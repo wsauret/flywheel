@@ -39,7 +39,7 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
     queue: Queue
     description: string
     priorBlocks?: AnyBlock[]
-    subprocessCwd?: string
+    workerCwd?: string
     workflowDeps?: WorkflowDeps
     chatContext?: string
     onRunnerDone?: (sessionId: string, result: WorkflowResult) => void
@@ -55,7 +55,7 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
       factories,
       priorBlocks,
       overrides: {
-        subprocessCwd: opts.subprocessCwd,
+        workerCwd: opts.workerCwd,
         workflowDeps: opts.workflowDeps,
         chatContext: opts.chatContext,
       },
@@ -147,7 +147,7 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
     cost?: number
     contextPercent?: number
     startedAt?: number
-    claudeSessionId?: string
+    engineSessionId?: string
   }): void {
     // Don't overwrite a live or already-loaded entry
     if (entries[sessionId]) return
@@ -165,7 +165,7 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
     if (data.kind === "workflow") {
       setEntries(sessionId, { ...base, kind: "workflow", steps: [] } as WorkflowSessionEntry)
     } else {
-      setEntries(sessionId, { ...base, kind: "chat", claudeSessionId: data.claudeSessionId } as ChatSessionEntry)
+      setEntries(sessionId, { ...base, kind: "chat", engineSessionId: data.engineSessionId } as ChatSessionEntry)
     }
   }
 
@@ -208,7 +208,7 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
     const entry = entries[sessionId]
     if (!entry) return
     // Dispose BEFORE deleting — onRunnerDone/onRunnerError callbacks read the
-    // store entry during disposal (e.g. to persist claudeSessionId). Deleting
+    // store entry during disposal (e.g. to persist engineSessionId). Deleting
     // first silently breaks any callback that calls sessionStore.get().
     if (!entry.ended && entry.runner) await entry.runner.dispose()
     setEntries(produce((e) => { delete e[sessionId] }))
@@ -219,7 +219,7 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
     if (!entry || entry.ended || !entry.runner) return false
     // Why here (not in the builder): this is a user-action-triggered optimistic
     // update for immediate UI feedback. The builder won't see a thinking event
-    // until the subprocess processes the injected message (~100ms+ later).
+    // until the engine processes the injected message (~100ms+ later).
     updateEntry(sessionId, { modelActivity: "thinking" })
     return entry.runner.injectMessage(text)
   }
@@ -233,9 +233,9 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
   }
 
   /** Number of actively running sessions (not ended).
-   *  Reading Object.keys(entries) on a SolidJS store proxy auto-tracks key
-   *  additions/removals when called inside a reactive context. The `ended`
-   *  field is also tracked since we read each entry. */
+   *  Reads Object.keys + ended from the SolidJS store proxy, so calls inside
+   *  reactive contexts (effects, memos, JSX) auto-track key additions/removals.
+   *  Also works imperatively outside reactive contexts (tests, callbacks). */
   function runningCount(): number {
     return Object.keys(entries).filter((id) => !entries[id]?.ended).length
   }

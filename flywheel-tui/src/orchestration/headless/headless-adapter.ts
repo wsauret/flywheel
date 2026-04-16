@@ -31,21 +31,20 @@ function sprintLabel(stepType: string, stepTitle: string): string {
 }
 
 const EVENT_HANDLERS = {
-  "subprocess:spawned":    { minLevel: "normal",  format: (e) => `  Subprocess spawned for step ${e.stepIndex}` },
-  "subprocess:output":     { minLevel: "normal",  format: (e) => { const d = e.data.replace(/\n$/, ""); return d ? `  ${e.stream === "stderr" ? "[stderr] " : ""}${d}` : null } },
-  "subprocess:ndjson":     { minLevel: "verbose", format: null },
-  "subprocess:injected":   { minLevel: "normal",  format: (e) => `  Subprocess stdin injected (${e.message.length} chars)` },
+  "engine:started":    { minLevel: "normal",  format: (e) => `  Engine started for step ${e.stepIndex}` },
+  "engine:output":     { minLevel: "normal",  format: (e) => { const d = e.data.replace(/\n$/, ""); return d ? `  ${e.stream === "stderr" ? "[stderr] " : ""}${d}` : null } },
+  "engine:ndjson":     { minLevel: "verbose", format: null },
+  "engine:injected":   { minLevel: "normal",  format: (e) => `  Engine message injected (${e.message.length} chars)` },
 
   "dispatcher:invoked":    { minLevel: "verbose", format: (e) => `  Dispatcher invoked for step ${e.stepIndex}` },
   "dispatcher:completed":  { minLevel: "verbose", format: () => `  Dispatcher completed` },
   "dispatcher:failed":     { minLevel: "normal",  format: (e) => `  Dispatcher failed: ${e.reason}` },
-  "dispatcher:output":     { minLevel: "verbose", format: null },
-
+  "dispatcher:ndjson":     { minLevel: "verbose", format: null },
   "evaluator:invoked":     { minLevel: "verbose", format: (e) => `  Evaluator invoked for step ${e.stepIndex}` },
   "evaluator:completed":   { minLevel: "verbose", format: (e) => `  Evaluator: ${e.result.passed ? "PASS" : "FAIL"} — ${e.result.reasoning}` },
   "evaluator:failed":      { minLevel: "normal",  format: (e) => `  Evaluator failed: ${e.reason}` },
+  "evaluator:ndjson":      { minLevel: "verbose", format: null },
   "evaluator:revision-requested": { minLevel: "normal", format: (e) => `  Revision requested (attempt ${e.revisionAttempt}/${e.maxRevisions}): ${e.reason}` },
-  "evaluator:output":      { minLevel: "verbose", format: null },
 
   "budget:metrics-changed": { minLevel: "verbose", format: (e) => `  Budget: ${e.tokens} tokens, ${formatCost(e.cost)}` },
   "budget:exhausted":      { minLevel: "minimal", format: (e) => `  Budget EXHAUSTED: ${e.reason}` },

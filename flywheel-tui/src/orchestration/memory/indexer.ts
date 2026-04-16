@@ -3,13 +3,11 @@ import { readdir, readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { parseFrontmatter } from "../utils/frontmatter.js";
 import type { AvailableContext, ContextEntry } from "../../workflows/schemas.js";
-import {
-  DEFAULT_STANDARDS_DIR,
-  DEFAULT_CONVENTION_FILES,
-  CONFIG_DIRS,
-} from "../../infra/paths.js";
-
 const MAX_ENTRIES_PER_CATEGORY = 20;
+
+const DEFAULT_STANDARDS_DIR = "docs/standards";
+const DEFAULT_CONVENTION_FILES = ["AGENTS.md", "CONTRIBUTING.md", "DEVELOPMENT.md"];
+const CONFIG_DIRS = [".claude/", ".opencode/"];
 
 const HARDCODED_SUMMARIES: Record<string, string> = {
   "AGENTS.md": "Project architecture, commands, TUI states, and developer conventions",

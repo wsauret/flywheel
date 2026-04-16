@@ -3,7 +3,7 @@ import { describe, it, expect, afterEach } from "bun:test";
 import {
   createDebouncedWriter,
   type DebouncedWriter,
-} from "../src/workflows/shared/debounced-writer";
+} from "../src/infra/debounced-writer";
 
 // ---------------------------------------------------------------------------
 // Helpers

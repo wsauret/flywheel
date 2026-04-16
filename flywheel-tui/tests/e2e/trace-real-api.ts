@@ -11,7 +11,7 @@ import * as path from "node:path";
 import { EventBus, createEmit } from "../../src/infra/event-bus";
 import { createTraceWriter } from "../../src/orchestration/session/trace-writer";
 import { createTraceCollector } from "../../src/orchestration/session/trace-collector";
-import { createTraceEventHandler } from "../../src/orchestration/engines/subprocess/trace-event-handler";
+import { createTraceEventHandler } from "../../src/orchestration/engines/trace-event-handler";
 import { NDJSONParser } from "../../src/infra/ndjson-parser";
 import type { Span } from "../../src/infra/trace-types";
 import { TRACES_DIR, resolveTraceFile, resolveTranscriptFile } from "../../src/infra/paths";
@@ -58,7 +58,7 @@ bus.emit({
 });
 
 bus.emit({
-  type: "subprocess:spawned",
+  type: "engine:started",
   workflowId: workflowId,
   stepIndex: 0,
   timestamp: Date.now(),

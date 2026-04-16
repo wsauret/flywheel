@@ -554,7 +554,7 @@ describe("StructuredOutputBuilder", () => {
       builder.startAgent("a2", "Plan", "Second", now + 100);
       // Route a tool explicitly to the completed agent a1
       const routed = builder.pushToolToAgent("a1", "Read", "file.ts", now + 200);
-      expect(routed).toBe(true);
+      expect(routed).toBeGreaterThanOrEqual(0);
 
       const blocks = builder.getBlocks();
       const agent1 = blocks[0] as AgentBlock;
@@ -564,9 +564,9 @@ describe("StructuredOutputBuilder", () => {
       expect(agent2.children).toHaveLength(0);
     });
 
-    it("pushToolToAgent returns false for unknown agent ID", () => {
+    it("pushToolToAgent returns -1 for unknown agent ID", () => {
       const routed = builder.pushToolToAgent("unknown", "Read", "file.ts", Date.now());
-      expect(routed).toBe(false);
+      expect(routed).toBe(-1);
     });
 
     it("second agent gets its own tools", () => {

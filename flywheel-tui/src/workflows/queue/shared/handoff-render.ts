@@ -1,7 +1,7 @@
-import type { SubprocessHandoff } from "../../../infra/handoff-schemas.js";
+import type { WorkerHandoff } from "../../../infra/handoff-schemas.js";
 
 export interface HandoffFieldSpec {
-  key: keyof SubprocessHandoff;
+  key: keyof WorkerHandoff;
   description: string;
   example: string;
   required?: boolean;

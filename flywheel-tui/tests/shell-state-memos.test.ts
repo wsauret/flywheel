@@ -13,6 +13,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "bun:test"
+import "../src/orchestration/engines/providers/claude/register"
 import { createRoot } from "solid-js"
 import { createShellState, type ShellSignals } from "../src/tui/hooks/shell-state"
 import { createSessionStore } from "../src/orchestration/session-store"

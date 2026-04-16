@@ -60,8 +60,8 @@ export class OpenTUIAdapter {
       this.updateEntry(patch as Partial<WorkflowSessionEntry>);
     };
 
-    // Workflow mode: subprocess:ndjson events are already emitted by
-    // subprocess-callback.ts — supply a no-op emit to avoid duplicates.
+    // Workflow mode: engine:ndjson events are already emitted by
+    // worker-callback.ts — supply a no-op emit to avoid duplicates.
     const noopEmit = createNoopEmit();
 
     this.outputSession = createOutputSession({
@@ -97,7 +97,7 @@ export class OpenTUIAdapter {
   // with no reduction in per-case complexity. The default throws for exhaustiveness.
   private handleEvent(event: FlywheelEvent): void {
     switch (event.type) {
-      case "subprocess:output":
+      case "engine:output":
         // Write output BEFORE resolving pending messages — resolvePendingMessages
         // moves resolved messages to the end of the block array, so the triggering
         // output must already be appended for the user message to appear after it.
@@ -109,8 +109,8 @@ export class OpenTUIAdapter {
         this.outputSession.resolvePendingMessages();
         break;
 
-      case "subprocess:spawned":
-        log.debug(`Subprocess spawned for step ${event.stepIndex}`, { step: event.stepIndex });
+      case "engine:started":
+        log.debug(`Engine started for step ${event.stepIndex}`, { step: event.stepIndex });
         this.outputSession.notifySpawned(event.timestamp);
         break;
 
@@ -125,6 +125,10 @@ export class OpenTUIAdapter {
 
       case "dispatcher:failed":
         this.ndjsonPipeline.failDispatcher(event.reason);
+        break;
+
+      case "dispatcher:ndjson":
+        this.ndjsonPipeline.feedDispatcherEvent(event.ndjsonEvent);
         break;
 
       case "evaluator:invoked":
@@ -143,6 +147,10 @@ export class OpenTUIAdapter {
         this.ndjsonPipeline.failEvaluator(event.reason);
         break;
 
+      case "evaluator:ndjson":
+        this.ndjsonPipeline.feedEvaluatorEvent(event.ndjsonEvent);
+        break;
+
       case "evaluator:revision-requested":
         this.ndjsonPipeline.completeEvaluator(`Needs revision (attempt ${event.revisionAttempt}/${event.maxRevisions})`);
         break;
@@ -158,21 +166,9 @@ export class OpenTUIAdapter {
         this.outputSession.flush();
         break;
 
-      case "subprocess:injected":
-        log.info("Subprocess stdin injected", { workflowId: event.workflowId, messageLength: event.message.length, pending: event.pending });
+      case "engine:injected":
+        log.info("Engine message injected", { workflowId: event.workflowId, messageLength: event.message.length, pending: event.pending });
         this.outputSession.notifyInjected(event.message, event.timestamp, event.pending, event.origin === "system");
-        break;
-
-      case "dispatcher:output":
-        if (event.stream === "stdout") {
-          this.ndjsonPipeline.dispatcherParser.write(event.data);
-        }
-        break;
-
-      case "evaluator:output":
-        if (event.stream === "stdout") {
-          this.ndjsonPipeline.evaluatorParser.write(event.data);
-        }
         break;
 
       case "queue:initialized":
@@ -218,7 +214,7 @@ export class OpenTUIAdapter {
         log.warn("Queue step failed", { workflowId: event.workflowId, stepId: event.stepId, stepType: event.stepType, reason: event.reason });
         break;
 
-      case "subprocess:ndjson":
+      case "engine:ndjson":
         break;
 
       // Trace events — handled by TraceCollector, no TUI rendering needed

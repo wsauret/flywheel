@@ -6,19 +6,14 @@ import { createSessionInfra } from "./session/create-session-infra.js"
 import { disposeSessionResources } from "./session/resources.js"
 import type { WorkflowSessionFactories } from "./session-store-types.js"
 import { EventBus, createEmit, type EmitFn, type Unsubscribe } from "../infra/event-bus.js"
-import type { WarmPool } from "./engines/pool/warm-pool.js"
-import type { RawSpawnedProcess } from "./engines/subprocess/stream-pipeline.js"
 import { randomUUID } from "node:crypto"
-import { formatStdinMessage } from "./engines/subprocess/stdin-format.js"
-import { InjectionQueue } from "./engines/subprocess/injection-queue.js"
-import type { SpawnResult } from "./engines/subprocess/spawner.js"
+import { InjectionQueue } from "./injection-queue.js"
 import type { Queue, StepStatus, Step } from "../workflows/queue/types.js"
 import { toBudgetLimits } from "../workflows/schemas.js"
 import type { AnyBlock } from "../infra/output-blocks.js"
 import type { WorkflowSessionEntry } from "./session-store-types.js"
 import type { WorkflowDeps } from "./engines/workflow-deps.js"
 import { generateSessionTitle } from "./session-title.js"
-import "../workflows/queue/steps/register-all"
 
 
 export type StepState = {
@@ -39,10 +34,10 @@ export interface WorkflowResult {
 
 interface WorkflowRunnerOverrides {
   projectCwd?: string
-  /** Override the subprocess cwd. Defaults to projectCwd.
+  /** Override the worker cwd. Defaults to projectCwd.
    * Used by /test (temp dir isolation) and git worktrees (branch-specific working dir).
-   * Session metadata/persistence stays in projectCwd; only the spawned process runs here. */
-  subprocessCwd?: string
+   * Session metadata/persistence stays in projectCwd; only the worker process runs here. */
+  workerCwd?: string
   /** Pre-computed workflow deps — avoids redundant config/engine/spawner creation. */
   workflowDeps?: WorkflowDeps
   /** Recent chat conversation preceding this workflow. */
@@ -70,7 +65,7 @@ export function createWorkflowRunner(opts: {
 }): WorkflowRunner {
   const { sessionId, queue, description, updateEntry, priorBlocks } = opts
   const projectCwd = opts.overrides?.projectCwd ?? process.cwd()
-  const subprocessCwd = opts.overrides?.subprocessCwd
+  const workerCwd = opts.overrides?.workerCwd
 
   // Why fallback: the controller always injects workflowDeps, but the runner
   // self-resolves as a safety net (fresh config read from disk per session).
@@ -139,33 +134,26 @@ export function createWorkflowRunner(opts: {
   updateEntry(sessionId, { steps: queue.steps.map(toStepState) })
 
   let executor: StepExecutor | null = null
+  let pools: { shutdown(): Promise<void> } | null = null
   let disposed = false
 
-  const injectionQueue = new InjectionQueue(
-    formatStdinMessage,
-  )
-
-  let dispatcherPool: WarmPool<SpawnResult> | null = null
-  let evaluatorPool: WarmPool<SpawnResult> | null = null
-  let subprocessPool: WarmPool<RawSpawnedProcess> | null = null
+  const injectionQueue = new InjectionQueue()
 
   async function run(): Promise<WorkflowResult> {
     const created = await createExecutor({
       deps, eventBus, workflowId, sessionId, queue, description,
-      projectCwd, subprocessCwd, infra, injectionQueue,
+      projectCwd, workerCwd, infra, injectionQueue,
       chatContext: opts.overrides?.chatContext,
       metricsWriter: (patch) => updateEntry(sessionId, patch),
     })
     executor = created.executor
-    dispatcherPool = created.pools.dispatcher
-    evaluatorPool = created.pools.evaluator
-    subprocessPool = created.pools.subprocess
+    pools = created.pools
     eventUnsubs.push(...created.eventUnsubs)
 
     generateSessionTitle(
       description,
       (title) => updateEntry(sessionId, { description: title }),
-      { engine: deps.engine, spawner: deps.spawner, projectCwd },
+      { engine: deps.engine, projectCwd },
     )
 
     const result = await executor.run()
@@ -194,11 +182,9 @@ export function createWorkflowRunner(opts: {
   }
 
   function injectMessage(text: string): boolean {
-    const ok = injectionQueue.deliverOrEnqueue(text, true)
-    if (ok) {
-      emit("subprocess:injected", { workflowId, message: text, origin: "user", pending: true })
-    }
-    return ok
+    injectionQueue.enqueue(text, true)
+    emit("engine:injected", { workflowId, message: text, origin: "user", pending: true })
+    return true
   }
 
   function cancelShutdown(): void {
@@ -211,11 +197,7 @@ export function createWorkflowRunner(opts: {
 
     eventUnsubs.forEach((u) => u())
 
-    await Promise.all([
-      dispatcherPool?.shutdown(),
-      evaluatorPool?.shutdown(),
-      subprocessPool?.shutdown(),
-    ])
+    await pools?.shutdown()
 
     // Pass null traceCollector if already finalized in run() to skip double-finalize.
     // For the abort path, pass the collector so open spans close with "error" status.

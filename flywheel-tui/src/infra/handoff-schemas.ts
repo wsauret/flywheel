@@ -1,4 +1,4 @@
-/** Subprocess handoff validation. Lives in infra/ because both workflows/ and orchestration/ consume it. */
+/** Worker handoff validation. Lives in infra/ because both workflows/ and orchestration/ consume it. */
 import { z } from "zod";
 
 function countSentences(text: string): number {
@@ -62,7 +62,7 @@ const SUMMARY_MAX_LENGTH = 5000;
 const SUMMARY_MAX_SENTENCES = 10;
 const TEST_OUTPUT_MIN_LENGTH = 10;
 
-export const SubprocessHandoffBaseSchema = z.object({
+export const WorkerHandoffBaseSchema = z.object({
   summary: z.string()
     .min(SUMMARY_MIN_LENGTH, {
       message: `summary must be at least ${SUMMARY_MIN_LENGTH} characters. Provide a more detailed summary describing what was accomplished.`,
@@ -98,10 +98,10 @@ export const SubprocessHandoffBaseSchema = z.object({
   finding_counts: FindingCountsSchema.optional(),
   p3_findings: z.array(P3FindingSchema).optional(),
   skillFeedback: SkillFeedbackSchema.optional()
-    .describe("Feedback on the skill procedure. Fill this out to help improve future subprocesses."),
+    .describe("Feedback on the skill procedure. Fill this out to help improve future workers."),
 }).passthrough();
 
-export const SubprocessHandoffSchema = SubprocessHandoffBaseSchema.superRefine((data, ctx) => {
+export const WorkerHandoffSchema = WorkerHandoffBaseSchema.superRefine((data, ctx) => {
   if (data.verification?.tests_passed === true) {
     const summary = data.verification.test_output_summary;
     if (!summary || summary.length < TEST_OUTPUT_MIN_LENGTH) {
@@ -114,4 +114,4 @@ export const SubprocessHandoffSchema = SubprocessHandoffBaseSchema.superRefine((
   }
 });
 
-export type SubprocessHandoff = z.infer<typeof SubprocessHandoffSchema>;
+export type WorkerHandoff = z.infer<typeof WorkerHandoffSchema>;

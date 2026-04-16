@@ -138,11 +138,11 @@ describe("Chat → OutputSession integration", () => {
   })
 
   describe("user echo detection via EventBus", () => {
-    it("subprocess:ndjson events are emitted to EventBus", () => {
+    it("engine:ndjson events are emitted to EventBus", () => {
       const { session, bus } = createTestOutputSession()
 
       const events: any[] = []
-      bus.subscribeToType("subprocess:ndjson", (e) => events.push(e))
+      bus.subscribeToType("engine:ndjson", (e) => events.push(e))
 
       // Feed a user echo event through stdout
       const ndjsonLine = JSON.stringify({ type: "user" }) + "\n"
@@ -154,14 +154,14 @@ describe("Chat → OutputSession integration", () => {
       session.dispose()
     })
 
-    it("chat code can subscribe to subprocess:ndjson and call resolvePendingMessages on user echo", () => {
+    it("chat code can subscribe to engine:ndjson and call resolvePendingMessages on user echo", () => {
       const { session, bus } = createTestOutputSession()
 
       // Inject a pending message
       session.notifyInjected("Hello!", Date.now(), true)
 
       // Subscribe like chat-session does
-      bus.subscribeToType("subprocess:ndjson", (e) => {
+      bus.subscribeToType("engine:ndjson", (e) => {
         if (e.ndjsonEvent.type === "user") {
           session.resolvePendingMessages()
         }
@@ -186,7 +186,7 @@ describe("Chat → OutputSession integration", () => {
       const { session, bus } = createTestOutputSession()
 
       const events: any[] = []
-      bus.subscribeToType("subprocess:ndjson", (e) => events.push(e))
+      bus.subscribeToType("engine:ndjson", (e) => events.push(e))
 
       const resultEvent = JSON.stringify({
         type: "result",
@@ -287,15 +287,18 @@ describe("Chat → OutputSession integration", () => {
   })
 
   describe("onFlush callback", () => {
-    it("fires on every flush tick when builder has changes", async () => {
+    it("fires on explicit flush, not on interval ticks", async () => {
       const { session, flushCalls } = createTestOutputSession()
 
       // Create some changes
       session.pushSystemMessage("test", Date.now())
 
-      // Wait for at least one flush tick (16ms interval)
+      // Wait for flush ticks — onFlush should NOT fire from the interval
       await new Promise((r) => setTimeout(r, 50))
+      expect(flushCalls.length).toBe(0)
 
+      // Explicit flush DOES fire onFlush
+      session.flush()
       expect(flushCalls.length).toBeGreaterThan(0)
 
       session.dispose()

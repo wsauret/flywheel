@@ -1,9 +1,16 @@
 import type { Engine } from "./types.js";
-import { claudeEngine } from "../providers/claude.js";
+
+const engines = new Map<string, Engine>();
+
+export function registerEngine(engine: Engine): void {
+  engines.set(engine.metadata.id, engine);
+}
 
 export function getEngine(id: string): Engine {
-  if (id !== claudeEngine.metadata.id) {
-    throw new Error(`Unknown engine "${id}". Available engines: ${claudeEngine.metadata.id}`);
+  const engine = engines.get(id);
+  if (!engine) {
+    const available = [...engines.keys()].join(", ");
+    throw new Error(`Unknown engine "${id}". Available engines: ${available}`);
   }
-  return claudeEngine;
+  return engine;
 }

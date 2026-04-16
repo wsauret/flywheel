@@ -28,7 +28,7 @@ function resultToEvalResult(result: EvaluatorResult): EvalResult {
 }
 
 /**
- * Creates an EvaluatorFn backed by the agent-based subprocess evaluator.
+ * Creates an EvaluatorFn backed by the agent-based evaluator.
  * The agent has Read, Bash, Grep, Glob, Write tools and can investigate
  * the worker's claims before rendering a verdict.
  */

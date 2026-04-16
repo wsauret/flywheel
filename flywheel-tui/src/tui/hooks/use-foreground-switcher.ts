@@ -41,7 +41,7 @@ export function createForegroundSwitcher(deps: ForegroundSwitcherDeps): (session
         cost: s.totalCost,
         contextPercent: s.contextPercent,
         startedAt: s.createdAt ? new Date(s.createdAt).getTime() : undefined,
-        claudeSessionId: s.claudeSessionId,
+        engineSessionId: s.engineSessionId,
       })
     }
     if (gen !== switchGen) return

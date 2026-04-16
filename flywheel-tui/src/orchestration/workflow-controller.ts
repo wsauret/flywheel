@@ -139,7 +139,7 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
       sessionId,
       queue,
       description: label,
-      subprocessCwd: testWorkdir.path,
+      workerCwd: testWorkdir.path,
       workflowDeps: wfDeps,
       onRunnerDone: (id, result) => { handleRunnerDone(id, result); testWorkdir.cleanup() },
       onRunnerError: (id, err) => { handleRunnerError(id, err); testWorkdir.cleanup() },

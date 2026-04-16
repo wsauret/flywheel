@@ -3,11 +3,11 @@ import type { BudgetTracker } from "./budget-tracker-types.js"
 import { createTraceWriter, type TraceWriter } from "./trace-writer.js"
 import { createTranscriptWriter, type TranscriptWriter } from "./transcript-writer.js"
 import { createTraceCollector, type TraceCollector } from "./trace-collector.js"
-import { createTraceEventHandler } from "../engines/subprocess/trace-event-handler.js"
+import { createTraceEventHandler } from "../engines/trace-event-handler.js"
 import type { FlywheelConfig } from "../config/schema.js"
 import type { EventBus, EmitFn, Unsubscribe } from "../../infra/event-bus.js"
 import type { BudgetLimits } from "../../workflows/schemas.js"
-import { extractContextUpdate, contextWindowForModel } from "../engines/providers/claude-context.js"
+import { extractContextUpdate, contextWindowForModel } from "../engines/engine-context.js"
 
 interface SessionInfraDeps {
   sessionId: string
@@ -39,7 +39,7 @@ export function createSessionInfra(deps: SessionInfraDeps): SessionInfra {
   })
 
   // Seed from config so % works before first "result" event; authoritative value overwrites later
-  const configModel = config.subprocess?.model ?? config.model ?? ""
+  const configModel = config.worker?.model ?? config.model ?? ""
   const estimatedWindow = contextWindowForModel(configModel)
   if (estimatedWindow > 0) budgetTracker.updateContextUtilization(0, estimatedWindow)
 
@@ -66,8 +66,8 @@ export function wireSessionSubscribers(
   metricsWriter?: MetricsWriter,
 ): Unsubscribe[] {
   const unsubs: Unsubscribe[] = [
-    bus.subscribeToType("subprocess:spawned", () => infra.budgetTracker.onNewSubprocess()),
-    bus.subscribeToType("subprocess:ndjson", (e) => {
+    bus.subscribeToType("engine:started", () => infra.budgetTracker.onNewProcess()),
+    bus.subscribeToType("engine:ndjson", (e) => {
       infra.budgetTracker.handleEvent(e.ndjsonEvent)
       const ctxUpdate = extractContextUpdate(e.ndjsonEvent)
       if (ctxUpdate) {
@@ -88,12 +88,12 @@ export function wireSessionSubscribers(
 
   if (infra.transcriptWriter) {
     const tw = infra.transcriptWriter
-    unsubs.push(bus.subscribeToType("subprocess:ndjson", (e) => tw.handleEvent(e.ndjsonEvent)))
+    unsubs.push(bus.subscribeToType("engine:ndjson", (e) => tw.handleEvent(e.ndjsonEvent)))
   }
 
   if (infra.traceCollector) {
     const traceHandler = createTraceEventHandler({ emit, workflowId })
-    unsubs.push(bus.subscribeToType("subprocess:ndjson", (e) => traceHandler.handleEvent(e.ndjsonEvent)))
+    unsubs.push(bus.subscribeToType("engine:ndjson", (e) => traceHandler.handleEvent(e.ndjsonEvent)))
     unsubs.push(...infra.traceCollector.subscribeToEvents(bus))
   }
 

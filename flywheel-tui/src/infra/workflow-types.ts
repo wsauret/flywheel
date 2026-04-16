@@ -4,6 +4,8 @@ import { z } from "zod"
 export const EffortSchema = z.enum(["low", "medium", "high", "max"])
 
 export const TierConfigSchema = z.object({
+  /** Engine override for this tier (e.g., "claude", "harness"). Falls back to top-level engine. */
+  engine: z.string().optional(),
   model: z.string().optional(),
   effort: EffortSchema.optional(),
 }).default({})
@@ -22,10 +24,32 @@ export const ToolScopingSchema = z.object({
   bash: z.boolean(),
   write: z.boolean(),
   edit: z.boolean(),
-  task: z.boolean().optional(),
+  task: z.boolean().default(false),
 }).strip()
 
-export type ToolScoping = z.infer<typeof ToolScopingSchema>
+type ToolScoping = z.infer<typeof ToolScopingSchema>
+
+const TOOL_SCOPING_TO_NAME: Record<string, string> = {
+  read: "Read",
+  bash: "Bash",
+  write: "Write",
+  edit: "Edit",
+  task: "Task",
+}
+
+/** Convert ToolScoping flags to an explicit tool name list. Write is always included (handoff). */
+export function toolScopingToToolNames(scoping: ToolScoping): string[] {
+  const allowed: string[] = []
+  for (const [key, cliName] of Object.entries(TOOL_SCOPING_TO_NAME)) {
+    if (scoping[key as keyof ToolScoping]) {
+      allowed.push(cliName)
+    }
+  }
+  if (!allowed.includes("Write")) {
+    allowed.push("Write")
+  }
+  return allowed
+}
 
 export const WorkerConfigSchema = z.object({
   tool_scoping: ToolScopingSchema.optional(),

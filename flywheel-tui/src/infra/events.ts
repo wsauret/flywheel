@@ -1,32 +1,32 @@
 import type { DispatcherDecision } from "./workflow-types.js";
-import type { NDJSONEvent } from "./subprocess-types.js";
+import type { NDJSONEvent } from "./ndjson-event-types.js";
 
 /** Base shape shared by all flywheel events. */
 type Ev<T extends string, P = {}> = { type: T; workflowId: string; timestamp: number } & P;
 
 /**
- * A parsed NDJSON event from a subprocess.
+ * A parsed NDJSON event from an engine worker.
  *
- * Distinct from `subprocess:output` which carries raw stdout/stderr chunks for display.
- * `subprocess:ndjson` carries parsed NDJSON events for consumption by budget tracking,
+ * Distinct from `engine:output` which carries raw stdout/stderr chunks for display.
+ * `engine:ndjson` carries parsed NDJSON events for consumption by budget tracking,
  * tracing, transcript persistence, and stream observers.
  */
-export type SubprocessNDJSON = Ev<"subprocess:ndjson", { ndjsonEvent: NDJSONEvent }>;
+export type EngineNDJSON = Ev<"engine:ndjson", { ndjsonEvent: NDJSONEvent }>;
 
 export type FlywheelEvent =
   | Ev<"dispatcher:invoked", { stepIndex: number }>
   | Ev<"dispatcher:completed", { decision: DispatcherDecision }>
   | Ev<"dispatcher:failed", { reason: string }>
-  | Ev<"dispatcher:output", { stream: "stdout" | "stderr"; data: string; engineName: string }>
+  | Ev<"dispatcher:ndjson", { ndjsonEvent: NDJSONEvent }>
   | Ev<"evaluator:invoked", { stepIndex: number }>
   | Ev<"evaluator:completed", { result: { passed: boolean; reasoning: string } }>
   | Ev<"evaluator:failed", { reason: string }>
+  | Ev<"evaluator:ndjson", { ndjsonEvent: NDJSONEvent }>
   | Ev<"evaluator:revision-requested", { stepIndex: number; revisionAttempt: number; maxRevisions: number; reason: string }>
-  | Ev<"evaluator:output", { stream: "stdout" | "stderr"; data: string; engineName: string }>
-  | Ev<"subprocess:spawned", { stepIndex: number }>
-  | Ev<"subprocess:output", { stream: "stdout" | "stderr"; data: string; engineId: string }>
-  | SubprocessNDJSON
-  | Ev<"subprocess:injected", { message: string; origin: "user" | "system"; pending?: boolean }>
+  | Ev<"engine:started", { stepIndex: number }>
+  | Ev<"engine:output", { stream: "stdout" | "stderr"; data: string; engineId: string }>
+  | EngineNDJSON
+  | Ev<"engine:injected", { message: string; origin: "user" | "system"; pending?: boolean }>
   | Ev<"budget:metrics-changed", { tokens: number; cost: number }>
   | Ev<"budget:exhausted", { reason: string }>
   | Ev<"queue:initialized", { stepIds: string[] }>

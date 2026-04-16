@@ -1,6 +1,6 @@
-// Single source of truth for the 7-point quality checklist.
+// Single source of truth for the quality checklist.
 // Used by three consumers with different framing:
-// - subprocess-callback.ts: worker self-review injection (turn boundary)
+// - worker-callback.ts: worker self-review injection (turn boundary)
 // - evaluator-criteria.ts: evaluator assessment criteria (sprint mode)
 // - prompts.ts: evaluator system prompt addendum (sprint mode, labels only)
 
@@ -16,6 +16,9 @@ const QUALITY_CHECKLIST: readonly ChecklistItem[] = [
   { label: "Tests", description: "tests added/updated for new behavior? Run the full test suite — zero failures." },
   { label: "Build", description: "does it compile? Run the type checker or build command if available." },
   { label: "Regression", description: "could the changes break existing functionality beyond what tests cover?" },
+  { label: "Generalization", description: "your solution must remain correct for any numeric values, array dimensions, or file contents change." },
+  { label: "Dedicated test script", description: "write a dedicated test script that tests each requirement independently, including edge cases, with clear PASS/FAIL output per test." },
+  { label: "Handoff finality", description: "TREAT handoff AS IRREVERSIBLE AND FINAL. Before completing, verify ALL requirements are met." },
 ]
 
 /** Numbered markdown list: `1. **Label** — description` */

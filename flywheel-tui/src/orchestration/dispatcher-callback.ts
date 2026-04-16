@@ -16,14 +16,13 @@ interface DispatcherCallbackDeps {
   maxRevisions: number | undefined
   emit: EmitFn
   workflowId: string
-  dispatcherTransport: DispatcherTransport | undefined
+  dispatcherTransport: DispatcherTransport
   contextIndexer: ContextIndexer
   contextAccumulator: ContextAccumulator
   projectCwd: string
   sessionObjective: string | undefined
   queue: Queue
-  dispatcherModel: string | undefined
-  subprocessModel: string | undefined
+  workerModel: string
   chatContext: string | undefined
 }
 
@@ -36,50 +35,46 @@ export function createDispatcherCallback(opts: DispatcherCallbackDeps): Dispatch
   const {
     maxRevisions, dispatcherTransport, contextIndexer, contextAccumulator,
     projectCwd, sessionObjective, queue, emit, workflowId,
-    dispatcherModel, subprocessModel, chatContext,
+    workerModel, chatContext,
   } = opts
 
-  const realDispatcher = dispatcherTransport
-    ? createStepDispatcher({
-        transport: dispatcherTransport,
-        emit,
-        workflowId,
-        configContext: {
-          maxEvalCycles: maxRevisions ?? 1,
-          worktreePath: projectCwd,
-          projectCwd,
-          subprocessModel: subprocessModel ?? "sonnet",
-          dispatcherModel: dispatcherModel ?? "sonnet",
-        },
-        sessionBudget: { wall_clock_deadline: null, invocations_remaining: null, token_budget_remaining: null },
-        availableContext: mergeAvailableContext(
-          contextIndexer.getRelevantContext(),
-          chatContext,
-        ),
-        sessionObjective,
-      })
-    : null
+  const stepDispatcher = createStepDispatcher({
+    transport: dispatcherTransport,
+    emit,
+    workflowId,
+    configContext: {
+      maxEvalCycles: maxRevisions ?? 1,
+      worktreePath: projectCwd,
+      projectCwd,
+      workerModel,
+      dispatcherModel: "sonnet",
+    },
+    sessionBudget: { wall_clock_deadline: null, invocations_remaining: null, token_budget_remaining: null },
+    availableContext: mergeAvailableContext(
+      contextIndexer.getRelevantContext(),
+      chatContext,
+    ),
+    sessionObjective,
+  })
 
   return async (step, context) => {
-    if (realDispatcher) {
-      try {
-        const dispatchContext = {
-          accumulatedContext: contextAccumulator.getContext(),
-          previousHandoff: context.previousHandoff,
-          previousAssessment: context.previousAssessment,
-        }
-        const decision = await realDispatcher.dispatch(step, queue, dispatchContext)
-        return {
-          prompt: decision.taskContent,
-          evaluationCriteria: decision.evaluationCriteria,
-          mutationRequests: decision.mutationRequests,
-        }
-      } catch (err) {
-        log.warn("real dispatcher failed, falling back to step metadata", {
-          stepId: step.id,
-          error: errorMessage(err),
-        })
+    try {
+      const dispatchContext = {
+        accumulatedContext: contextAccumulator.getContext(),
+        previousHandoff: context.previousHandoff,
+        previousAssessment: context.previousAssessment,
       }
+      const decision = await stepDispatcher.dispatch(step, queue, dispatchContext)
+      return {
+        prompt: decision.taskContent,
+        evaluationCriteria: decision.evaluationCriteria,
+        mutationRequests: decision.mutationRequests,
+      }
+    } catch (err) {
+      log.warn("dispatcher failed, falling back to step metadata", {
+        stepId: step.id,
+        error: errorMessage(err),
+      })
     }
 
     let prompt = buildStepMetadataPrompt(step)

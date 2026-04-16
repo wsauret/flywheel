@@ -1,8 +1,6 @@
-import { PooledSubprocessTransport } from "../workflows/dispatcher/subprocess-transport.js"
-import { PooledSubprocessEvaluatorTransport } from "../workflows/evaluator/subprocess-transport.js"
 import { createAgentEvaluatorFn } from "../workflows/evaluator/create-agent-evaluator.js"
 import { readHandoff } from "../workflows/queue/shared/handoff-reader.js"
-import { SubprocessHandoffSchema } from "../infra/handoff-schemas.js"
+import { WorkerHandoffSchema } from "../infra/handoff-schemas.js"
 import { createContextAccumulator } from "../workflows/queue/context-accumulator.js"
 import { createCompositeHook, type OnStepCompletedHook } from "../workflows/queue/shared/hooks.js"
 import { resolveTierConfigs } from "./config/schema.js"
@@ -11,25 +9,25 @@ import type { StepExecutor } from "../workflows/queue/executor-types.js"
 import { createQueuePersistence } from "../workflows/queue/persistence.js"
 import { createGuardrails } from "../workflows/queue/guardrails.js"
 import { ContextIndexer } from "./memory/indexer.js"
-import { createWarmPools } from "./engines/pool/create-warm-pools.js"
-import type { WarmPool } from "./engines/pool/warm-pool.js"
-import type { RawSpawnedProcess } from "./engines/subprocess/stream-pipeline.js"
-import { formatStdinMessage } from "./engines/subprocess/stdin-format.js"
 import { createPostTurnVerificationHook } from "../workflows/queue/post-turn-verification.js"
 import { createSprintHook } from "../workflows/queue/steps/sprint/hooks.js"
 import { SPRINT_HINT } from "../workflows/queue/steps/sprint/types.js"
 import { SPRINT_EVALUATOR_ADDENDUM } from "../workflows/queue/steps/sprint/prompts.js"
-import { createSubprocessCallback } from "./subprocess-callback.js"
+import { createWorkerCallback } from "./worker-callback.js"
 import { createDispatcherCallback } from "./dispatcher-callback.js"
-import { createObserverChain, createToolFailureObserver, createNoActionObserver } from "./engines/stream-observers.js"
+import { createEngineDispatcherTransport, createEngineEvaluatorTransport } from "./engine-transports.js"
+import { createClaudeWarmPools } from "./engines/providers/claude/pool/create-warm-pools.js"
+import { createPooledDispatcherTransport, createPooledEvaluatorTransport } from "./engines/providers/claude/pool/pooled-transports.js"
+import { createObserverChain, createToolFailureObserver, createNoActionObserver, createBudgetAwarenessObserver, createContextPressureObserver } from "./engines/stream-observers.js"
 import { createDoomLoopObserver } from "./engines/doom-loop.js"
-import { mapNDJSONToEngineEvents } from "./engines/subprocess/ndjson-event-mapper.js"
+import { mapNDJSONToEngineEvents } from "./engines/ndjson-event-mapper.js"
 import { createEmit, type EventBus, type Unsubscribe } from "../infra/event-bus.js"
 import { Log } from "../infra/log.js"
 import { errorMessage } from "../infra/error-message.js"
+import { getEngine } from "./engines/core/registry.js"
+import type { Engine } from "./engines/core/types.js"
 import type { WorkflowDeps } from "./engines/workflow-deps.js"
-import type { InjectionQueue } from "./engines/subprocess/injection-queue.js"
-import type { SpawnResult } from "./engines/subprocess/spawner.js"
+import type { InjectionQueue } from "./injection-queue.js"
 import type { Queue } from "../workflows/queue/types.js"
 import { wireSessionSubscribers, type MetricsWriter, type SessionInfra } from "./session/create-session-infra.js"
 
@@ -50,8 +48,8 @@ interface CreateExecutorInput {
   description: string
   /** Project working directory */
   projectCwd: string
-  /** Override subprocess cwd (for /test, worktrees) */
-  subprocessCwd?: string
+  /** Override worker cwd (for /test, worktrees) */
+  workerCwd?: string
   /** Session infrastructure (budget, transcript, tracing) — created by the runner. */
   infra: Pick<SessionInfra, "budgetTracker" | "transcriptWriter" | "traceCollector">
   /** Injection queue for turn-boundary message delivery */
@@ -65,12 +63,8 @@ interface CreateExecutorInput {
 interface CreateExecutorResult {
   /** The step executor, ready to run */
   executor: StepExecutor
-  /** Warm pools — caller must shut these down on dispose */
-  pools: {
-    dispatcher: WarmPool<SpawnResult> | null
-    evaluator: WarmPool<SpawnResult> | null
-    subprocess: WarmPool<RawSpawnedProcess> | null
-  }
+  /** Warm pools — caller must shut down on dispose. Null for non-pooling engines. */
+  pools: { shutdown(): Promise<void> } | null
   /** EventBus unsubscribe functions for all wired subscribers */
   eventUnsubs: Unsubscribe[]
 }
@@ -78,7 +72,7 @@ interface CreateExecutorResult {
 export async function createExecutor(input: CreateExecutorInput): Promise<CreateExecutorResult> {
   const {
     deps, eventBus, workflowId, sessionId, queue, description,
-    projectCwd, subprocessCwd, infra,
+    projectCwd, workerCwd, infra,
     injectionQueue, chatContext,
   } = input
   const emit = createEmit(eventBus)
@@ -93,51 +87,85 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
     externalHooks.push(hook)
   }
 
-  const pools = createWarmPools(deps, projectCwd, subprocessCwd, isSprint ? "sprint" : undefined)
-  const dispatcherPool = pools.dispatcher
-  const evaluatorPool = pools.evaluator
-  const subprocessPool = pools.subprocess
-
   const evaluatorAddendum = isSprint ? SPRINT_EVALUATOR_ADDENDUM : undefined
 
-  const engineName = deps.config.engine
-  const dispatcherTransport = new PooledSubprocessTransport({
-    pool: dispatcherPool,
-    formatStdinMessage,
-    sessionId,
-    baseDir: projectCwd,
-    onStdout: (chunk) => emit("dispatcher:output", { workflowId, stream: "stdout" as const, data: chunk, engineName }),
-    onStderr: (chunk) => emit("dispatcher:output", { workflowId, stream: "stderr" as const, data: chunk, engineName }),
-  })
-  log.info("queue dispatcher transport resolved", { label: "pooled", engine: engineName })
+  const tiers = resolveTierConfigs(deps.config)
 
-  let evaluatorTransport: PooledSubprocessEvaluatorTransport | undefined
-  if (evaluatorPool) {
-    evaluatorTransport = new PooledSubprocessEvaluatorTransport({
-      pool: evaluatorPool,
-      formatStdinMessage,
-      sessionId,
-      baseDir: projectCwd,
-      systemPromptAddendum: evaluatorAddendum,
-      onStdout: (chunk) => emit("evaluator:output", { workflowId, stream: "stdout" as const, data: chunk, engineName }),
-      onStderr: (chunk) => emit("evaluator:output", { workflowId, stream: "stderr" as const, data: chunk, engineName }),
-    })
-    log.info("queue evaluator transport created", { label: "pooled", engine: engineName })
-  }
+  // Resolve per-tier engines. Each tier can override the session-level engine.
+  const dispatcherEngine = getEngine(tiers.dispatcher.engine)
+  const evaluatorEngine = getEngine(tiers.evaluator.engine)
+  const workerEngine = getEngine(tiers.worker.engine)
+
+  const dispatcherModel = tiers.dispatcher.model ?? deps.config.model ?? dispatcherEngine.metadata.defaultModel
+  const evaluatorModel = tiers.evaluator.model ?? deps.config.model ?? evaluatorEngine.metadata.defaultModel
+  const workerModel = tiers.worker.model ?? deps.config.model ?? workerEngine.metadata.defaultModel
+
+  // Warm pools: only for tiers whose engine supports pre-spawning.
+  // In-process engines (harness) use the generic engine.createRunner() path.
+  const pools = (dispatcherEngine.metadata.supportsPooling || evaluatorEngine.metadata.supportsPooling)
+    ? createClaudeWarmPools({
+        cwd: projectCwd,
+        dispatcher: dispatcherEngine.metadata.supportsPooling
+          ? {
+              model: dispatcherModel, effort: tiers.dispatcher.effort,
+              onNDJSONEvent: (event) => emit("dispatcher:ndjson", { workflowId, ndjsonEvent: event }),
+            }
+          : undefined,
+        evaluator: evaluatorEngine.metadata.supportsPooling
+          ? {
+              model: evaluatorModel, effort: tiers.evaluator.effort,
+              onNDJSONEvent: (event) => emit("evaluator:ndjson", { workflowId, ndjsonEvent: event }),
+            }
+          : undefined,
+      })
+    : null
+
+  const dispatcherTransport = pools?.dispatcher
+    ? createPooledDispatcherTransport({ pool: pools.dispatcher, sessionId, projectCwd })
+    : createEngineDispatcherTransport({
+        engine: dispatcherEngine, sessionId, projectCwd,
+        model: dispatcherModel, effort: tiers.dispatcher.effort,
+        emit, workflowId,
+      })
+
+  const evaluatorTransport = pools?.evaluator
+    ? createPooledEvaluatorTransport({ pool: pools.evaluator, sessionId, projectCwd, systemPromptAddendum: evaluatorAddendum })
+    : createEngineEvaluatorTransport({
+        engine: evaluatorEngine, sessionId, projectCwd,
+        model: evaluatorModel, effort: tiers.evaluator.effort,
+        systemPromptAddendum: evaluatorAddendum,
+        emit, workflowId,
+      })
 
   const contextIndexer = new ContextIndexer(projectCwd)
   await contextIndexer.startIndexing()
+
+  const budgetConfig = deps.config.budget
+  const budgetAwareness = createBudgetAwarenessObserver(() => {
+    const maxCalls = budgetConfig.max_invocations
+    const maxTokens = budgetConfig.max_tokens
+    if (maxCalls === 0 && maxTokens === 0) return null
+    return {
+      remainingCalls: maxCalls > 0 ? Math.max(0, maxCalls - budgetTracker.getInvocationsUsed()) : Infinity,
+      remainingTokens: maxTokens > 0 ? Math.max(0, maxTokens - budgetTracker.getTokensUsed()) : Infinity,
+    }
+  })
+  const contextPressure = createContextPressureObserver(() =>
+    budgetTracker.getContextUtilization().percent,
+  )
 
   const observerChain = createObserverChain([
     createDoomLoopObserver(),
     createToolFailureObserver(),
     createNoActionObserver(),
+    budgetAwareness,
+    contextPressure,
   ])
 
   eventUnsubs.push(...wireSessionSubscribers(eventBus, emit, workflowId, infra, input.metricsWriter))
 
   eventUnsubs.push(
-    eventBus.subscribeToType("subprocess:ndjson", (e) => {
+    eventBus.subscribeToType("engine:ndjson", (e) => {
       for (const engineEvent of mapNDJSONToEngineEvents(e.ndjsonEvent)) {
         observerChain.onEvent(engineEvent)
       }
@@ -150,13 +178,10 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
     projectCwd,
   })
 
-  const tiers = resolveTierConfigs(deps.config)
   const contextAccumulator = createContextAccumulator({
     windowSize: deps.config.dispatcher_intelligence?.handoff_detail_window ?? 3,
   })
-  const evaluator = evaluatorTransport
-    ? createAgentEvaluatorFn({ transport: evaluatorTransport })
-    : null
+  const evaluator = createAgentEvaluatorFn({ transport: evaluatorTransport })
   const compositeHook = createCompositeHook([...externalHooks])
   const dispatcherFn = createDispatcherCallback({
     maxRevisions: deps.config.max_revisions, emit, workflowId,
@@ -164,21 +189,23 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
     contextIndexer,
     contextAccumulator, projectCwd,
     sessionObjective: description, queue,
-    dispatcherModel: tiers.dispatcher.model, subprocessModel: tiers.subprocess.model,
+    workerModel,
     chatContext,
   })
-  const subprocessFn = createSubprocessCallback({
-    deps, emit, workflowId,
+  const workerFn = createWorkerCallback({
+    engine: workerEngine,
+    model: workerModel,
+    effort: tiers.worker.effort,
+    emit, workflowId,
     sessionId, projectCwd,
-    subprocessCwd,
+    workerCwd,
     injectionQueue,
     observerChain,
-    subprocessPool,
   })
   const handoffReader = async (handoffPath: string) => {
     if (!handoffPath) return null
     try {
-      const handoff = await readHandoff(handoffPath, SubprocessHandoffSchema)
+      const handoff = await readHandoff(handoffPath, WorkerHandoffSchema)
       return handoff as unknown as Record<string, unknown>
     } catch (err) {
       log.warn("handoff read failed, continuing without handoff", {
@@ -203,7 +230,7 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
     sessionId,
     emit,
     dispatcher: dispatcherFn,
-    worker: subprocessFn,
+    worker: workerFn,
     evaluator,
     skipEvaluation: deps.config.skip_evaluation ?? false,
     handoffReader,
@@ -213,17 +240,13 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
     onStepCompleted: compositeHook,
     guardrails,
     sessionObjective: description,
-    onSubprocessDispatched: () => budgetTracker.incrementInvocations(),
+    onWorkerInvoked: () => budgetTracker.incrementInvocations(),
     postTurnVerification,
   })
 
   return {
     executor,
-    pools: {
-      dispatcher: dispatcherPool,
-      evaluator: evaluatorPool,
-      subprocess: subprocessPool,
-    },
+    pools,
     eventUnsubs,
   }
 }

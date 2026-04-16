@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach, beforeEach } from "vitest"
+import { describe, it, expect, vi, afterEach } from "vitest"
 import { createOutputSession, type OutputSession, type OutputSessionOptions } from "../src/orchestration/output-session"
 import { createNoopEmit } from "../src/infra/event-bus"
 import type { SessionEntryBase } from "../src/orchestration/session-store-types"
@@ -10,6 +10,9 @@ import type { AnyBlock } from "../src/infra/output-blocks"
 
 /** No-op emit that satisfies the required EmitFn signature. */
 const noopEmit = createNoopEmit()
+
+/** Flush one round of queued microtasks so onChange callbacks propagate. */
+const flushMicrotasks = () => new Promise<void>(r => queueMicrotask(r))
 
 function createMocks() {
   const updateEntry = vi.fn<(patch: Partial<SessionEntryBase>) => void>()
@@ -45,24 +48,19 @@ function makeAssistantThinkingNdjson(thinking: string): string {
 describe("createOutputSession", () => {
   let session: OutputSession | null = null
 
-  beforeEach(() => {
-    vi.useFakeTimers()
-  })
-
   afterEach(() => {
     session?.dispose()
     session = null
-    vi.useRealTimers()
   })
 
   // ── writeStdout: NDJSON thinking content ──
 
-  it("writeStdout with NDJSON thinking content -> updateEntry called with ThinkingBlock", () => {
+  it("writeStdout with NDJSON thinking content -> updateEntry called with ThinkingBlock", async () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit })
 
     session.writeStdout(makeAssistantThinkingNdjson("deep thoughts"))
-    vi.advanceTimersByTime(20)
+    await flushMicrotasks()
 
     // updateEntry should have been called with outputBlocks containing a thinking block
     const blockCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
@@ -77,12 +75,12 @@ describe("createOutputSession", () => {
 
   // ── writeStdout: NDJSON text content ──
 
-  it("writeStdout with NDJSON text content -> updateEntry called with TextBlock", () => {
+  it("writeStdout with NDJSON text content -> updateEntry called with TextBlock", async () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit })
 
     session.writeStdout(makeAssistantTextNdjson("Hello world"))
-    vi.advanceTimersByTime(20)
+    await flushMicrotasks()
 
     const blockCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].outputBlocks !== undefined,
@@ -96,13 +94,13 @@ describe("createOutputSession", () => {
 
   // ── writeStdout: per-call engineId ──
 
-  it("writeStdout(data, engineId) — per-call engineId flows through to parser", () => {
+  it("writeStdout(data, engineId) — per-call engineId flows through to parser", async () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit })
 
     // Feed a Claude assistant event with an explicit engineId
     session.writeStdout(makeAssistantTextNdjson("from claude engine"), "claude")
-    vi.advanceTimersByTime(20)
+    await flushMicrotasks()
 
     const blockCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].outputBlocks !== undefined,
@@ -115,14 +113,14 @@ describe("createOutputSession", () => {
 
   // ── writeStderr ──
 
-  it("writeStderr -> updateEntry called with SystemBlock after flush tick", () => {
+  it("writeStderr -> updateEntry called with SystemBlock after flush tick", async () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit })
 
     session.writeStderr("something went wrong", 1000)
 
-    // writeStderr defers to the 16ms interval — advance timers
-    vi.advanceTimersByTime(20)
+    // writeStderr defers to onChange microtask — flush it
+    await flushMicrotasks()
     const blockCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].outputBlocks !== undefined,
     )
@@ -135,7 +133,7 @@ describe("createOutputSession", () => {
 
   // ── notifySpawned ──
 
-  it("notifySpawned sets thinking start time, reflected in ThinkingBlock timestamp", () => {
+  it("notifySpawned sets thinking start time, reflected in ThinkingBlock timestamp", async () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit })
 
@@ -144,7 +142,7 @@ describe("createOutputSession", () => {
 
     // Now feed a thinking block — it should use the spawn timestamp
     session.writeStdout(makeAssistantThinkingNdjson("initial thinking"))
-    vi.advanceTimersByTime(20)
+    await flushMicrotasks()
 
     const blockCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].outputBlocks !== undefined,
@@ -158,12 +156,12 @@ describe("createOutputSession", () => {
 
   // ── notifyInjected ──
 
-  it("notifyInjected pushes user message + sets thinking start time", () => {
+  it("notifyInjected pushes user message + sets thinking start time", async () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit })
 
     session.notifyInjected("injected message", 3000, false, true)
-    vi.advanceTimersByTime(20)
+    await flushMicrotasks()
 
     const blockCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].outputBlocks !== undefined,
@@ -180,12 +178,12 @@ describe("createOutputSession", () => {
     expect((userMsg as { pending?: boolean }).pending).toBe(false)
   })
 
-  it("notifyInjected with pending=true marks message as pending user message (not system-injected)", () => {
+  it("notifyInjected with pending=true marks message as pending user message (not system-injected)", async () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit })
 
     session.notifyInjected("pending message", 3000, true, false)
-    vi.advanceTimersByTime(20)
+    await flushMicrotasks()
 
     const blockCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].outputBlocks !== undefined,
@@ -231,12 +229,12 @@ describe("createOutputSession", () => {
 
   // ── Flush interval ──
 
-  it("flush interval -> updateEntry({ outputBlocks }) called only when builder has changes", () => {
+  it("onChange -> updateEntry({ outputBlocks }) called only when builder has changes", async () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit })
 
     // Advance without changes — no outputBlocks update
-    vi.advanceTimersByTime(50)
+    await flushMicrotasks()
     const blockCallsBefore = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].outputBlocks !== undefined,
     )
@@ -244,7 +242,7 @@ describe("createOutputSession", () => {
 
     // Now write data
     session.writeStdout(makeAssistantTextNdjson("trigger flush"))
-    vi.advanceTimersByTime(20)
+    await flushMicrotasks()
 
     const blockCallsAfter = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].outputBlocks !== undefined,
@@ -254,28 +252,31 @@ describe("createOutputSession", () => {
 
   // ── onFlush hook ──
 
-  it("onFlush hook called on each 16ms tick alongside block flush", () => {
+  it("onFlush hook called on explicit flush, not on onChange callbacks", async () => {
     const { updateEntry, emit, onFlush } = createMocks()
     session = createOutputSession({ updateEntry, emit, onFlush })
 
     session.writeStdout(makeAssistantTextNdjson("data"))
-    vi.advanceTimersByTime(20)
+    await flushMicrotasks()
 
+    // onFlush only fires on explicit flush(), not interval ticks
+    expect(onFlush).not.toHaveBeenCalled()
+    session.flush()
     expect(onFlush).toHaveBeenCalled()
   })
 
-  // ── emit called with subprocess:ndjson ──
+  // ── emit called with engine:ndjson ──
 
-  it("emit called with subprocess:ndjson events", () => {
+  it("emit called with engine:ndjson events", () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit, workflowId: "test-wf" })
 
     session.writeStdout(makeAssistantTextNdjson("data for emit"))
 
-    // emit should have been called with subprocess:ndjson
+    // emit should have been called with engine:ndjson
     const emitFn = emit as unknown as ReturnType<typeof vi.fn>
     expect(emitFn).toHaveBeenCalledWith(
-      "subprocess:ndjson",
+      "engine:ndjson",
       expect.objectContaining({
         workflowId: "test-wf",
         ndjsonEvent: expect.objectContaining({
@@ -327,12 +328,12 @@ describe("createOutputSession", () => {
 
   // ── pushSystemMessage ──
 
-  it("pushSystemMessage() delegates to builder", () => {
+  it("pushSystemMessage() delegates to builder", async () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit })
 
     session.pushSystemMessage("System alert", 2000)
-    vi.advanceTimersByTime(20)
+    await flushMicrotasks()
 
     const blockCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].outputBlocks !== undefined,
@@ -346,13 +347,13 @@ describe("createOutputSession", () => {
 
   // ── resetTracking ──
 
-  it("resetTracking() delegates to builder", () => {
+  it("resetTracking() delegates to builder", async () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit })
 
     // Feed some data first to populate blocks
     session.writeStdout(makeAssistantTextNdjson("before reset"))
-    vi.advanceTimersByTime(20)
+    await flushMicrotasks()
 
     // resetTracking should not throw and blocks should still exist
     session.resetTracking()
@@ -378,20 +379,20 @@ describe("createOutputSession", () => {
 
   // ── dispose ──
 
-  it("dispose() stops flush interval, no further updateEntry calls", () => {
+  it("dispose() stops onChange callbacks, no further updateEntry calls", async () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit })
 
     // Write data and flush it
     session.writeStdout(makeAssistantTextNdjson("pre-dispose"))
-    vi.advanceTimersByTime(20)
+    await flushMicrotasks()
 
     // Dispose
     session.dispose()
     ;(updateEntry as ReturnType<typeof vi.fn>).mockClear()
 
     // Advance timers — no further updateEntry calls should happen
-    vi.advanceTimersByTime(100)
+    await flushMicrotasks()
     expect(updateEntry).not.toHaveBeenCalled()
 
     // Set to null so afterEach doesn't double-dispose
@@ -400,7 +401,7 @@ describe("createOutputSession", () => {
 
   // ── After dispose, writeStdout is a no-op ──
 
-  it("after dispose(), writeStdout is a no-op", () => {
+  it("after dispose(), writeStdout is a no-op", async () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit })
 
@@ -409,7 +410,7 @@ describe("createOutputSession", () => {
 
     // writeStdout should not throw or trigger any updates
     session.writeStdout(makeAssistantTextNdjson("should be ignored"))
-    vi.advanceTimersByTime(50)
+    await flushMicrotasks()
     expect(updateEntry).not.toHaveBeenCalled()
 
     session = null
@@ -417,7 +418,7 @@ describe("createOutputSession", () => {
 
   // ── After dispose, writeStderr is a no-op ──
 
-  it("after dispose(), writeStderr is a no-op", () => {
+  it("after dispose(), writeStderr is a no-op", async () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit })
 
@@ -425,7 +426,7 @@ describe("createOutputSession", () => {
     ;(updateEntry as ReturnType<typeof vi.fn>).mockClear()
 
     session.writeStderr("should be ignored", Date.now())
-    vi.advanceTimersByTime(50)
+    await flushMicrotasks()
     expect(updateEntry).not.toHaveBeenCalled()
 
     session = null
@@ -433,12 +434,12 @@ describe("createOutputSession", () => {
 
   // ── Raw text (non-JSON) falls through to text blocks ──
 
-  it("non-JSON stdout lines become text blocks via onRawText", () => {
+  it("non-JSON stdout lines become text blocks via onRawText", async () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit })
 
     session.writeStdout("plain text not json\n")
-    vi.advanceTimersByTime(20)
+    await flushMicrotasks()
 
     const blockCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].outputBlocks !== undefined,
@@ -468,14 +469,14 @@ describe("createOutputSession", () => {
 
   // ── Multiple writeStdout calls accumulate blocks ──
 
-  it("multiple writeStdout calls accumulate blocks", () => {
+  it("multiple writeStdout calls accumulate blocks", async () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit })
 
     session.writeStdout(makeAssistantTextNdjson("first"))
     session.writeStdout(makeAssistantThinkingNdjson("think"))
     session.writeStdout(makeAssistantTextNdjson("second"))
-    vi.advanceTimersByTime(20)
+    await flushMicrotasks()
 
     const blocks = session.getBlocks()
     // Should have text + thinking + text blocks
@@ -484,14 +485,14 @@ describe("createOutputSession", () => {
 
   // ── onFlush is NOT called when no changes ──
 
-  it("onFlush is called every tick even when builder has no changes", () => {
+  it("onFlush is only called on explicit flush, not on idle ticks", async () => {
     const { updateEntry, emit, onFlush } = createMocks()
     session = createOutputSession({ updateEntry, emit, onFlush })
 
-    // Advance timers without writing any data — onFlush still fires
-    vi.advanceTimersByTime(100)
+    // Advance timers without writing any data — onFlush does NOT fire
+    await flushMicrotasks()
 
-    expect(onFlush).toHaveBeenCalled()
+    expect(onFlush).not.toHaveBeenCalled()
   })
 
   // ── Double dispose is safe ──

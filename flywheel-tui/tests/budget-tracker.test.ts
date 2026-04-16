@@ -7,7 +7,7 @@ import { createBudgetTracker } from "../src/orchestration/session/budget-tracker
 import { createSession, readSession } from "../src/orchestration/session/persistence";
 import type { Session } from "../src/orchestration/session/schemas";
 import type { BudgetLimits } from "../src/workflows/schemas";
-import type { NDJSONEvent } from "../src/infra/subprocess-types";
+import type { NDJSONEvent } from "../src/infra/ndjson-event-types";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -235,15 +235,15 @@ describe("BudgetTracker — accumulation", () => {
     tracker.dispose();
   });
 
-  it("accumulates cost across separate worker processes via onNewSubprocess()", () => {
+  it("accumulates cost across separate worker processes via onNewProcess()", () => {
     const baseDir = makeTmpDir();
     const sessionId = createSession(minimalSession(), baseDir);
     const tracker = createBudgetTracker({ sessionId, baseDir, debounceMs: 1000 });
 
     // First worker: cumulative 0.025
     tracker.handleEvent(resultEvent(0.025));
-    // Second worker: onNewSubprocess resets baseline, so 0.010 is a fresh cumulative
-    tracker.onNewSubprocess();
+    // Second worker: onNewProcess resets baseline, so 0.010 is a fresh cumulative
+    tracker.onNewProcess();
     tracker.handleEvent(resultEvent(0.010));
 
     expect(tracker.getTotalCost()).toBeCloseTo(0.035, 10);
@@ -304,7 +304,7 @@ describe("BudgetTracker — token tracking", () => {
     // First worker: 500+200 = 700 tokens
     tracker.handleEvent(resultEvent(0.01, 500, 200));
     // Second worker: reset baselines, then 300+100 = 400 tokens
-    tracker.onNewSubprocess();
+    tracker.onNewProcess();
     tracker.handleEvent(resultEvent(0.02, 300, 100));
 
     expect(tracker.getTokensUsed()).toBe(1100); // 700 + 400
@@ -720,7 +720,7 @@ describe("BudgetTracker — isExhausted", () => {
     expect(tracker.isExhausted(unlimitedLimits({ max_tokens: 1000 }))).toBe(false);
 
     // Second worker process — reset baselines
-    tracker.onNewSubprocess();
+    tracker.onNewProcess();
     tracker.handleEvent(resultEvent(0.01, 100, 200)); // fresh cumulative: +300 = 1100 total
 
     // Token limit exceeded

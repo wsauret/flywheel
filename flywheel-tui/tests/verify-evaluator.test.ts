@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { EvaluatorResultSchema } from "../src/infra/workflow-types";
 import { getEngine } from "../src/orchestration/engines/core/registry";
-import { createEnvFilter } from "../src/orchestration/engines/subprocess/env-filter";
+import { createEnvFilter } from "../src/orchestration/engines/providers/claude/subprocess/env-filter";
 
 // ---------------------------------------------------------------------------
 // Test fixtures — realistic evaluator inputs

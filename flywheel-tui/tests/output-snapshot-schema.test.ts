@@ -45,7 +45,7 @@ function agentBlock(
   };
 }
 
-function systemBlock(message = "subprocess:spawned") {
+function systemBlock(message = "engine:started") {
   return { kind: "system" as const, message, timestamp: Date.now() };
 }
 

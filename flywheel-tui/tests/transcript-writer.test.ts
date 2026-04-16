@@ -12,7 +12,7 @@ import {
   createTranscriptWriter,
   type TranscriptWriter,
 } from "../src/orchestration/session/transcript-writer";
-import type { NDJSONEvent } from "../src/infra/subprocess-types";
+import type { NDJSONEvent } from "../src/infra/ndjson-event-types";
 import { TRACES_DIR } from "../src/infra/paths";
 
 // ---------------------------------------------------------------------------

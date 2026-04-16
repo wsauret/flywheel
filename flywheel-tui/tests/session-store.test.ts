@@ -10,6 +10,7 @@
  */
 
 import { describe, it, expect, mock, beforeEach } from "bun:test"
+import "../src/orchestration/engines/providers/claude/register"
 import { createSessionStore } from "../src/orchestration/session-store"
 import type { SessionEntry, ChatStoreHandle } from "../src/orchestration/session-store-types"
 import type { ChatRunner } from "../src/orchestration/chat-runner"

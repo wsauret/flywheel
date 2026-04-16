@@ -1,9 +1,4 @@
-export type EngineEvent =
-  | { type: "tool_use"; toolName: string; toolInput: Record<string, unknown> }
-  | { type: "tool_result"; isError: boolean }
-  | { type: "text" }
-  | { type: "result" }
-  | { type: "other" };
+import type { EngineEvent } from "./core/types.js";
 
 export interface StreamObserver {
   onEvent(event: EngineEvent): void;
@@ -63,6 +58,50 @@ export function createToolFailureObserver(
     },
     reset(): void {
       consecutiveErrors = 0;
+    },
+  };
+}
+
+export interface BudgetInfo {
+  remainingCalls: number;
+  remainingTokens: number;
+}
+
+export function createBudgetAwarenessObserver(
+  getBudgetInfo: () => BudgetInfo | null,
+): StreamObserver {
+  return {
+    onEvent(): void {},
+    onTurnComplete(): string | null {
+      const info = getBudgetInfo();
+      if (!info) return null;
+      if (info.remainingCalls < 5 || info.remainingTokens < 10_000) {
+        return `Budget running low: ${info.remainingCalls} API calls remaining, ${info.remainingTokens} tokens remaining. Prioritize completing the task efficiently.`;
+      }
+      return null;
+    },
+    reset(): void {},
+  };
+}
+
+export function createContextPressureObserver(
+  getContextPercent: () => number,
+): StreamObserver {
+  let hasFired = false;
+
+  return {
+    onEvent(): void {},
+    onTurnComplete(): string | null {
+      if (hasFired) return null;
+      const percent = getContextPercent();
+      if (percent > 60) {
+        hasFired = true;
+        return "Context is filling up. Be concise in your responses and tool usage to preserve context space.";
+      }
+      return null;
+    },
+    reset(): void {
+      hasFired = false;
     },
   };
 }

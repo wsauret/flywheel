@@ -1,10 +1,9 @@
 // Why in tui/adapters/ (not infra/output/): despite having no JSX, this is a TUI
-// adapter — it bridges infra streaming primitives (NDJSONParser, StructuredOutputBuilder)
-// into agent-block lifecycle management specific to TUI display. All consumers are in
+// adapter — it bridges infra streaming primitives (StructuredOutputBuilder) into
+// agent-block lifecycle management specific to TUI display. All consumers are in
 // tui/ (opentui.ts, agent-block.tsx). Infra owns the generic output builder; this
 // adapter owns the dispatcher/evaluator display policy on top of it.
-import { NDJSONParser } from "../../infra/ndjson-parser.js";
-import type { NDJSONEvent } from "../../infra/subprocess-types.js";
+import type { NDJSONEvent } from "../../infra/ndjson-event-types.js";
 import type { StructuredOutputBuilder } from "../../infra/output/structured-output-builder.js";
 import { getToolDetail } from "../../infra/output/output-formatter.js";
 
@@ -16,22 +15,16 @@ interface ActivityInfo {
 class AgentTracker {
   private blockId: string | null = null;
   private startedAt = 0;
-  readonly parser: NDJSONParser;
 
   constructor(
     private readonly builder: StructuredOutputBuilder,
     private readonly prefix: string,
-  ) {
-    this.parser = new NDJSONParser();
-    this.parser.onEvent = (event) => this.handleEvent(event);
-    this.parser.onRawText = () => {};
-  }
+  ) {}
 
   start(label: string, description: string): string {
     const blockId = `${this.prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     this.blockId = blockId;
     this.startedAt = Date.now();
-    this.parser.flush();
     this.builder.startAgent(blockId, label, description, Date.now());
     return blockId;
   }
@@ -39,19 +32,17 @@ class AgentTracker {
   complete(description?: string): void {
     if (!this.blockId) return;
     const elapsed = Date.now() - this.startedAt;
-    this.parser.flush();
     this.builder.completeAgent(this.blockId, elapsed, description);
     this.blockId = null;
   }
 
   fail(message: string): void {
     if (!this.blockId) return;
-    this.parser.flush();
     this.builder.errorAgent(this.blockId, message);
     this.blockId = null;
   }
 
-  private handleEvent(event: NDJSONEvent): void {
+  feedEvent(event: NDJSONEvent): void {
     if (!this.blockId) return;
     const activity = extractActivityInfo(event);
     if (!activity) return;
@@ -72,9 +63,6 @@ export class NdjsonPipeline {
   private readonly dispatcher: AgentTracker;
   private readonly evaluator: AgentTracker;
 
-  get dispatcherParser() { return this.dispatcher.parser; }
-  get evaluatorParser() { return this.evaluator.parser; }
-
   constructor(builder: StructuredOutputBuilder) {
     this.dispatcher = new AgentTracker(builder, "dispatcher");
     this.evaluator = new AgentTracker(builder, "evaluator");
@@ -84,9 +72,13 @@ export class NdjsonPipeline {
   completeDispatcher(description?: string): void { this.dispatcher.complete(description); }
   failDispatcher(reason: string): void { this.dispatcher.fail(`Unavailable: ${reason}. Using static prompt.`); }
 
+  feedDispatcherEvent(event: NDJSONEvent): void { this.dispatcher.feedEvent(event); }
+
   startEvaluator(): string { return this.evaluator.start("Evaluator", EVALUATOR_INITIAL_DESCRIPTION); }
   completeEvaluator(description?: string): void { this.evaluator.complete(description); }
   failEvaluator(reason: string): void { this.evaluator.fail(`Failed: ${reason}. Skipping.`); }
+
+  feedEvaluatorEvent(event: NDJSONEvent): void { this.evaluator.feedEvent(event); }
 }
 
 function extractActivityInfo(event: NDJSONEvent): ActivityInfo | null {

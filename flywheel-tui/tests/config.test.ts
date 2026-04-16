@@ -21,24 +21,24 @@ describe("FlywheelConfigSchema", () => {
       expect(result.data.engine).toBe("claude");
       expect(result.data.model).toBeUndefined();
       expect(result.data.dispatcher).toEqual({});
-      expect(result.data.subprocess).toEqual({});
+      expect(result.data.worker).toEqual({});
       expect(result.data.timeout_minutes).toBe(60);
     }
   });
 
-  it("subprocess schema accepts effort field", () => {
+  it("worker schema accepts effort field", () => {
     const result = FlywheelConfigSchema.safeParse({
-      subprocess: { model: "sonnet", effort: "high" },
+      worker: { model: "sonnet", effort: "high" },
     });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.subprocess.effort).toBe("high");
+      expect(result.data.worker.effort).toBe("high");
     }
   });
 
-  it("subprocess schema rejects invalid effort values", () => {
+  it("worker schema rejects invalid effort values", () => {
     const result = FlywheelConfigSchema.safeParse({
-      subprocess: { effort: "turbo" },
+      worker: { effort: "turbo" },
     });
     expect(result.success).toBe(false);
   });
@@ -167,13 +167,13 @@ describe("loadConfig: validation errors", () => {
 // ---------------------------------------------------------------------------
 
 describe("Per-tier model config", () => {
-  it("dispatcher.model and subprocess.model are separate fields", () => {
+  it("dispatcher.model and worker.model are separate fields", () => {
     const { config } = loadConfig(undefined, {
       FLYWHEEL_DISPATCHER_MODEL: "dispatcher-model",
-      FLYWHEEL_SUBPROCESS_MODEL: "subprocess-model",
+      FLYWHEEL_WORKER_MODEL: "worker-model",
     });
     expect(config.dispatcher.model).toBe("dispatcher-model");
-    expect(config.subprocess.model).toBe("subprocess-model");
+    expect(config.worker.model).toBe("worker-model");
   });
 
   it("FLYWHEEL_ENGINE sets engine for both tiers", () => {
@@ -183,13 +183,13 @@ describe("Per-tier model config", () => {
     expect(config.engine).toBe("opencode");
   });
 
-  it("FLYWHEEL_SUBPROCESS_MODEL overrides subprocess model only", () => {
+  it("FLYWHEEL_WORKER_MODEL overrides worker model only", () => {
     const { config } = loadConfig(undefined, {
       FLYWHEEL_MODEL: "base-model",
-      FLYWHEEL_SUBPROCESS_MODEL: "subprocess-override",
+      FLYWHEEL_WORKER_MODEL: "worker-override",
     });
     const tiers = resolveTierConfigs(config);
-    expect(tiers.subprocess.model).toBe("subprocess-override");
+    expect(tiers.worker.model).toBe("worker-override");
     expect(tiers.dispatcher.model).toBe("base-model");
   });
 
@@ -200,16 +200,16 @@ describe("Per-tier model config", () => {
     });
     const tiers = resolveTierConfigs(config);
     expect(tiers.dispatcher.model).toBe("dispatcher-override");
-    expect(tiers.subprocess.model).toBe("base-model");
+    expect(tiers.worker.model).toBe("base-model");
   });
 
-  it("FLYWHEEL_MODEL sets both dispatcher and subprocess model (convenience)", () => {
+  it("FLYWHEEL_MODEL sets both dispatcher and worker model (convenience)", () => {
     const { config } = loadConfig(undefined, {
       FLYWHEEL_MODEL: "shared-model",
     });
     const tiers = resolveTierConfigs(config);
     expect(tiers.dispatcher.model).toBe("shared-model");
-    expect(tiers.subprocess.model).toBe("shared-model");
+    expect(tiers.worker.model).toBe("shared-model");
   });
 
   it("precedence: specific > general > config file > defaults", () => {
@@ -217,13 +217,13 @@ describe("Per-tier model config", () => {
       path.join(FIXTURES_DIR, "flywheel.toml"),
       {
         FLYWHEEL_MODEL: "general-env-model",
-        FLYWHEEL_SUBPROCESS_MODEL: "specific-subprocess-model",
+        FLYWHEEL_WORKER_MODEL: "specific-worker-model",
       },
     );
     const tiers = resolveTierConfigs(config);
 
-    // Subprocess: specific env (FLYWHEEL_SUBPROCESS_MODEL) wins
-    expect(tiers.subprocess.model).toBe("specific-subprocess-model");
+    // Subprocess: specific env (FLYWHEEL_WORKER_MODEL) wins
+    expect(tiers.worker.model).toBe("specific-worker-model");
     // Dispatcher: general env (FLYWHEEL_MODEL) wins over config file
     expect(tiers.dispatcher.model).toBe("general-env-model");
   });
@@ -232,7 +232,7 @@ describe("Per-tier model config", () => {
     const { config } = loadConfig(undefined, {});
     const tiers = resolveTierConfigs(config);
     expect(tiers.dispatcher.model).toBeUndefined();
-    expect(tiers.subprocess.model).toBeUndefined();
+    expect(tiers.worker.model).toBeUndefined();
   });
 
   it("config file model serves as convenience fallback via resolveTierConfigs", () => {
@@ -243,7 +243,7 @@ describe("Per-tier model config", () => {
     const tiers = resolveTierConfigs(config);
     // flywheel.toml has model = "claude-sonnet-4-20250514"
     expect(tiers.dispatcher.model).toBe("claude-sonnet-4-20250514");
-    expect(tiers.subprocess.model).toBe("claude-sonnet-4-20250514");
+    expect(tiers.worker.model).toBe("claude-sonnet-4-20250514");
   });
 });
 
@@ -405,19 +405,19 @@ describe("resolveMaxEffort (via resolveTierConfigs in sprint mode)", () => {
   it("returns 'max' for opus model", () => {
     const config = FlywheelConfigSchema.parse({ model: "opus" });
     const tiers = resolveTierConfigs(config, "sprint");
-    expect(tiers.subprocess.effort).toBe("max");
+    expect(tiers.worker.effort).toBe("max");
   });
 
   it("returns 'high' for sonnet model", () => {
     const config = FlywheelConfigSchema.parse({ model: "sonnet" });
     const tiers = resolveTierConfigs(config, "sprint");
-    expect(tiers.subprocess.effort).toBe("high");
+    expect(tiers.worker.effort).toBe("high");
   });
 
   it("is case-insensitive (OPUS)", () => {
     const config = FlywheelConfigSchema.parse({ model: "OPUS" });
     const tiers = resolveTierConfigs(config, "sprint");
-    expect(tiers.subprocess.effort).toBe("max");
+    expect(tiers.worker.effort).toBe("max");
   });
 });
 
@@ -428,7 +428,7 @@ describe("resolveTierConfigs with sprint mode", () => {
     });
     const tiers = resolveTierConfigs(config, "sprint");
     expect(tiers.dispatcher.effort).toBe("max");
-    expect(tiers.subprocess.effort).toBe("max");
+    expect(tiers.worker.effort).toBe("max");
     expect(tiers.evaluator.effort).toBe("max");
   });
 
@@ -438,7 +438,7 @@ describe("resolveTierConfigs with sprint mode", () => {
     });
     const tiers = resolveTierConfigs(config, "sprint");
     expect(tiers.dispatcher.effort).toBe("high");
-    expect(tiers.subprocess.effort).toBe("high");
+    expect(tiers.worker.effort).toBe("high");
     expect(tiers.evaluator.effort).toBe("high");
   });
 
@@ -452,8 +452,8 @@ describe("resolveTierConfigs with sprint mode", () => {
     });
     const tiers = resolveTierConfigs(config, "sprint");
     // Worker and evaluator overridden by sprint config
-    expect(tiers.subprocess.model).toBe("opus");
-    expect(tiers.subprocess.effort).toBe("max");
+    expect(tiers.worker.model).toBe("opus");
+    expect(tiers.worker.effort).toBe("max");
     expect(tiers.evaluator.model).toBe("opus");
     expect(tiers.evaluator.effort).toBe("max");
     // Dispatcher falls back to global model + model-aware max
@@ -469,7 +469,7 @@ describe("resolveTierConfigs with sprint mode", () => {
       },
     });
     const tiers = resolveTierConfigs(config, "sprint");
-    expect(tiers.subprocess.effort).toBe("high"); // clamped
+    expect(tiers.worker.effort).toBe("high"); // clamped
   });
 
   it("non-sprint mode ignores sprint tier config", () => {
@@ -480,8 +480,8 @@ describe("resolveTierConfigs with sprint mode", () => {
       },
     });
     const tiers = resolveTierConfigs(config); // no mode
-    expect(tiers.subprocess.model).toBe("sonnet"); // not opus
-    expect(tiers.subprocess.effort).toBeUndefined(); // subprocess default
+    expect(tiers.worker.model).toBe("sonnet"); // not opus
+    expect(tiers.worker.effort).toBeUndefined(); // worker default
   });
 
   it("explicit tier effort takes precedence over sprint default", () => {
@@ -501,7 +501,7 @@ describe("resolveTierConfigs with sprint mode", () => {
     });
     const tiers = resolveTierConfigs(config);
     expect(tiers.dispatcher.effort).toBe("max");
-    expect(tiers.subprocess.effort).toBe("max");
+    expect(tiers.worker.effort).toBe("max");
     expect(tiers.evaluator.effort).toBe("max");
   });
 
@@ -513,7 +513,7 @@ describe("resolveTierConfigs with sprint mode", () => {
     });
     const tiers = resolveTierConfigs(config);
     expect(tiers.dispatcher.effort).toBe("low");
-    expect(tiers.subprocess.effort).toBe("max");
+    expect(tiers.worker.effort).toBe("max");
     expect(tiers.evaluator.effort).toBe("max");
   });
 
@@ -524,7 +524,7 @@ describe("resolveTierConfigs with sprint mode", () => {
     });
     const tiers = resolveTierConfigs(config);
     expect(tiers.dispatcher.effort).toBe("high");
-    expect(tiers.subprocess.effort).toBe("high");
+    expect(tiers.worker.effort).toBe("high");
     expect(tiers.evaluator.effort).toBe("high");
   });
 });

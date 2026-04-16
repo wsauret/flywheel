@@ -3,7 +3,6 @@ import type { WorkerLifecycle, ChatSessionState, ChatCallbacks } from "./chat-se
 import type { Unsubscribe } from "../infra/event-bus.js"
 import { Log } from "../infra/log.js"
 import { errorMessage } from "../infra/error-message.js"
-import { formatStdinMessage } from "./engines/subprocess/stdin-format.js"
 
 const log = Log.create({ service: "chat" })
 
@@ -26,22 +25,12 @@ export function createChatControls(input: ChatControlsInput): ChatControls {
 
   function interrupt() {
     if (state.ended) return
-    log.info("chat interrupted by user", { pid: state.workerPid })
+    log.info("chat interrupted by user")
 
     if (session.sessionId) state.captureSessionId(session.sessionId)
 
-    if (state.stdinHandle?.isOpen) {
-      state.stdinHandle.close()
-    }
-    state.detachWorker()
-
-    if (state.workerPid) {
-      const pid = state.workerPid
-      try { process.kill(pid, "SIGTERM") } catch { /* already gone */ }
-      setTimeout(() => {
-        try { process.kill(pid, "SIGKILL") } catch { /* already gone */ }
-      }, 2_000)
-    }
+    state.runner?.abort()
+    state.detachRunner()
 
     state.completeTurn()
     callbacks.onWaiting(false)
@@ -50,8 +39,8 @@ export function createChatControls(input: ChatControlsInput): ChatControls {
     session.pushSystemMessage("Interrupted", Date.now())
     session.flush()
 
-    if (state.claudeSessionId) {
-      lifecycle.spawnWorker(state.claudeSessionId).catch((err) => {
+    if (state.engineSessionId) {
+      lifecycle.spawnWorker(state.engineSessionId).catch((err) => {
         log.warn("eager reconnect after interrupt failed", { error: errorMessage(err) })
       })
     }
@@ -62,15 +51,15 @@ export function createChatControls(input: ChatControlsInput): ChatControls {
     state.markEnded()
     // Unsubscribe EventBus listeners — no more infra event processing.
     eventUnsubs.forEach((u) => u())
-    // Flush any remaining data before disposing (mirrors handleWorkerExit)
+    // Flush any remaining data before disposing (mirrors handleRunnerDone)
     session.flushParser()
     session.flush()
     session.dispose()
     // Resource disposal (budget flush, trace finalize, transcript close) is
     // handled by chat-runner's disposeSessionResources() — not duplicated here.
-    if (state.stdinHandle?.isOpen) state.stdinHandle.close()
+    if (state.runner) state.runner.abort()
     else callbacks.onEnded()
-    state.detachWorker()
+    state.detachRunner()
   }
 
   function send(text: string) {
@@ -78,23 +67,23 @@ export function createChatControls(input: ChatControlsInput): ChatControls {
 
     // Message is "pending" only when the agent is actively producing output
     // (mid-turn injection). After interrupt or idle-exit, the message starts a new turn.
-    const isPending = state.turnPhase === "agent-active" && state.stdinHandle?.isOpen === true
+    const isPending = state.turnPhase === "agent-active" && state.runner != null
     state.beginTurn()
     callbacks.onWaiting(true)
     const now = Date.now()
     session.notifyInjected(text, now, isPending, false)
     // No explicit flush needed — OutputSession's 16ms interval handles it
 
-    if (state.stdinHandle?.isOpen) {
-      const ok = state.stdinHandle.write(formatStdinMessage(text))
-      log.info("chat message sent", { length: text.length, written: ok })
+    if (state.runner) {
+      state.runner.send(text)
+      log.info("chat message sent", { length: text.length })
       return
     }
 
-    // Worker exited idle — reconnect via --resume and send the message as initial content
-    if (state.claudeSessionId) {
-      log.info("chat worker idle-exited, reconnecting via --resume", { sessionId: state.claudeSessionId })
-      lifecycle.spawnWorker(state.claudeSessionId, text).catch((err) => {
+    // Runner exited idle — reconnect via new runner and send the message as initial content
+    if (state.engineSessionId) {
+      log.info("chat runner idle-exited, reconnecting via new runner", { sessionId: state.engineSessionId })
+      lifecycle.spawnWorker(state.engineSessionId, text).catch((err) => {
         log.warn("chat reconnect failed", { error: errorMessage(err) })
         callbacks.onWaiting(false)
         callbacks.onError(`Reconnect failed: ${errorMessage(err)}`)
@@ -102,9 +91,9 @@ export function createChatControls(input: ChatControlsInput): ChatControls {
       return
     }
 
-    // No worker and no session ID to resume — this should only happen before the
-    // first turn completes (session ID not yet emitted by Claude Code).
-    log.warn("chat send: no active worker and no session ID to resume")
+    // No runner and no session ID to resume — this should only happen before the
+    // first turn completes (session ID not yet emitted by the engine).
+    log.warn("chat send: no active runner and no session ID to resume")
     callbacks.onWaiting(false)
   }
 

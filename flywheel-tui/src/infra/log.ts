@@ -41,7 +41,7 @@ export namespace Log {
     return levelPriority[input] >= levelPriority[level]
   }
 
-  export type Logger = {
+  type Logger = {
     debug(message?: unknown, extra?: Record<string, unknown>): void
     info(message?: unknown, extra?: Record<string, unknown>): void
     warn(message?: unknown, extra?: Record<string, unknown>): void

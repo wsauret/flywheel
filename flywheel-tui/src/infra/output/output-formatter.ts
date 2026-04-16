@@ -73,6 +73,19 @@ const TOOL_DETAIL_HANDLERS = new Map<string, ToolDetailHandler>([
   ["AskUserQuestion", (input) => { const q = input.question as string | undefined; return q ? truncateLine(q, 100) : null }],
   ["ToolSearch", (input) => { const query = input.query as string | undefined; return query ? truncateLine(query, 80) : null }],
   ["TodoWrite", () => null],
+  ["todo_list", (input) => {
+    const op = input.operation as string | undefined;
+    if (op === "read") return "read";
+    if (op === "write") {
+      const todos = input.todos as Array<{ content?: string }> | undefined;
+      return todos ? truncateLine(`write (${todos.length} items)`, 80) : "write";
+    }
+    return op ?? null;
+  }],
+  ["write_handoff", (input) => {
+    const summary = input.summary as string | undefined;
+    return summary ? truncateLine(summary, 80) : null;
+  }],
   ["EnterPlanMode", () => null],
   ["ExitPlanMode", () => null],
   ["EnterWorktree", () => null],
@@ -239,6 +252,58 @@ export function extractToolDiff(
 
   return undefined;
 }
+
+// ── Tool error laundering ──────────────────────────────────────────
+
+const RE_INPUT_VALIDATION = /^<tool_use_error>InputValidationError:\s*(.+?)<\/tool_use_error>$/s;
+const RE_TOOL_USE_ERROR = /^<tool_use_error>(.+?)<\/tool_use_error>$/s;
+const RE_NO_SUCH_TOOL = /^Error: No such tool available:\s*(.+)$/;
+const RE_SENSITIVE_EDIT = /^Claude requested permissions to edit (.+?) which is a sensitive file/;
+const RE_SENSITIVE_WRITE = /^Claude requested permissions to write to (.+?) which is a sensitive file/;
+const RE_SENSITIVE_READ = /^Claude requested permissions to read from (.+?) which is a sensitive file/;
+
+export function extractErrorText(content: string | unknown[] | undefined): string | undefined {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    for (const item of content) {
+      if (
+        typeof item === "object" &&
+        item !== null &&
+        "text" in item &&
+        typeof (item as { text: unknown }).text === "string"
+      ) {
+        return (item as { text: string }).text;
+      }
+    }
+  }
+  return undefined;
+}
+
+export function launderToolError(rawError: string, toolName?: string): string {
+  const label = toolName ?? "Tool";
+
+  let match = rawError.match(RE_INPUT_VALIDATION);
+  if (match) return `${label} failed — invalid input: ${match[1]}`;
+
+  match = rawError.match(RE_NO_SUCH_TOOL);
+  if (match) return `Tool not available: ${match[1]}`;
+
+  match = rawError.match(RE_SENSITIVE_EDIT);
+  if (match) return `Edit rejected — ${match[1]} is a protected file`;
+
+  match = rawError.match(RE_SENSITIVE_WRITE);
+  if (match) return `Write rejected — ${match[1]} is a protected file`;
+
+  match = rawError.match(RE_SENSITIVE_READ);
+  if (match) return `Read rejected — ${match[1]} is a protected file`;
+
+  match = rawError.match(RE_TOOL_USE_ERROR);
+  if (match) return `${label} failed — ${match[1]}`;
+
+  return `${label} failed`;
+}
+
+// ── Filetype mapping ───────────────────────────────────────────────
 
 function getFiletype(filePath: string): string | undefined {
   if (!filePath) return undefined;

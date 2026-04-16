@@ -60,8 +60,8 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
       try { manager.delete(id) } catch { /* already cleaned up */ }
     } else {
       const entry = sessionStore.get(id)
-      if (entry?.kind === "chat" && entry.claudeSessionId) {
-        try { updateSession(id, { claudeSessionId: entry.claudeSessionId }, projectCwd) } catch { /* best-effort */ }
+      if (entry?.kind === "chat" && entry.engineSessionId) {
+        try { updateSession(id, { engineSessionId: entry.engineSessionId }, projectCwd) } catch { /* best-effort */ }
       }
       manager.updateState(id, "paused")
     }
@@ -73,7 +73,7 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
     opts?: {
       initialMessage?: string
       priorBlocks?: AnyBlock[]
-      claudeSessionId?: string
+      engineSessionId?: string
       description?: string
       initialCost?: number
       initialTokens?: number
@@ -116,7 +116,7 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
             initialMessage: opts?.initialMessage?.trim() || undefined,
             priorBlocks: opts?.priorBlocks,
             showWelcome: isFirstChat && !opts?.priorBlocks,
-            claudeSessionId: opts?.claudeSessionId,
+            engineSessionId: opts?.engineSessionId,
           }),
       })
 
@@ -155,7 +155,7 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
     const bu = p?.budgetUsage
     const result = await launchChat(sessionId, {
       priorBlocks: priorBlocks.length > 0 ? priorBlocks : undefined,
-      claudeSessionId: p?.kind === "chat" ? p.claudeSessionId : undefined,
+      engineSessionId: p?.kind === "chat" ? p.engineSessionId : undefined,
       description: p?.label || p?.name || undefined,
       initialCost: p?.totalCost || bu?.cost_usd || undefined,
       initialTokens: bu?.tokens_used || undefined,
@@ -201,7 +201,7 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
     startup = { phase: "starting", id: sessionId, pending: [text] }
     launchChat(sessionId, {
       priorBlocks,
-      claudeSessionId: entry.claudeSessionId,
+      engineSessionId: entry.engineSessionId,
       description: entry.description,
       initialCost: entry.cost || undefined,
       initialTokens: entry.tokens || undefined,

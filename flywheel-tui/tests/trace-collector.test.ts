@@ -334,7 +334,7 @@ describe("TraceCollector — EventBus integration", () => {
     expect((stepSpan as any).output.failureReason).toBe("agent crashed");
   });
 
-  it("subprocess:spawned + queue:step-completed produces worker span as child of step", () => {
+  it("engine:started + queue:step-completed produces worker span as child of step", () => {
     bus.emit({
       type: "queue:initialized",
       workflowId: "wf-1",
@@ -350,7 +350,7 @@ describe("TraceCollector — EventBus integration", () => {
       timestamp: now(),
     });
     bus.emit({
-      type: "subprocess:spawned",
+      type: "engine:started",
       workflowId: "wf-1",
       stepIndex: 0,
       timestamp: now(),
@@ -391,7 +391,7 @@ describe("TraceCollector — EventBus integration", () => {
       timestamp: now(),
     });
     bus.emit({
-      type: "subprocess:spawned",
+      type: "engine:started",
       workflowId: "wf-1",
       stepIndex: 0,
       timestamp: now(),
@@ -531,7 +531,7 @@ describe("TraceCollector — integration", () => {
       timestamp: now(),
     });
     bus.emit({
-      type: "subprocess:spawned",
+      type: "engine:started",
       workflowId: "wf-1",
       stepIndex: 0,
       timestamp: now(),
@@ -567,7 +567,7 @@ describe("TraceCollector — integration", () => {
       timestamp: now(),
     });
     bus.emit({
-      type: "subprocess:spawned",
+      type: "engine:started",
       workflowId: "wf-1",
       stepIndex: 1,
       timestamp: now(),

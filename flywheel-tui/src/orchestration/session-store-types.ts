@@ -41,8 +41,8 @@ export interface ChatSessionEntry extends SessionEntryBase {
   readonly kind: "chat"
   /** Null for ended/loaded entries (no live runner). */
   readonly runner: ChatRunner | null
-  /** Claude Code session ID — used for --resume to reconnect with full context. */
-  claudeSessionId?: string
+  /** Engine session ID — used for --resume to reconnect with full context. */
+  engineSessionId?: string
 }
 
 export type SessionEntry = WorkflowSessionEntry | ChatSessionEntry
@@ -65,7 +65,7 @@ export interface SessionStore {
     queue: Queue
     description: string
     priorBlocks?: AnyBlock[]
-    subprocessCwd?: string
+    workerCwd?: string
     workflowDeps?: WorkflowDeps
     chatContext?: string
     onRunnerDone?: (sessionId: string, result: WorkflowResult) => void
@@ -93,7 +93,7 @@ export interface SessionStore {
     cost?: number
     contextPercent?: number
     startedAt?: number
-    claudeSessionId?: string
+    engineSessionId?: string
   }): void
 
   get(sessionId: string): SessionEntry | undefined

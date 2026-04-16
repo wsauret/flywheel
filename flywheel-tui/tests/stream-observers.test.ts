@@ -8,11 +8,13 @@
 
 import { describe, it, expect } from "bun:test";
 
+import type { EngineEvent } from "../src/orchestration/engines/core/types.js";
 import {
   createObserverChain,
   createToolFailureObserver,
   createNoActionObserver,
-  type EngineEvent,
+  createBudgetAwarenessObserver,
+  createContextPressureObserver,
   type StreamObserver,
 } from "../src/orchestration/engines/stream-observers.js";
 
@@ -214,5 +216,156 @@ describe("ObserverChain", () => {
     chain.reset();
     const messages = chain.onTurnComplete();
     expect(messages).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// BudgetAwarenessObserver
+// ---------------------------------------------------------------------------
+
+describe("BudgetAwarenessObserver", () => {
+  it("fires when remaining calls are below threshold", () => {
+    const obs = createBudgetAwarenessObserver(() => ({
+      remainingCalls: 3,
+      remainingTokens: 50_000,
+    }));
+    obs.onEvent(toolUse("Read", { file_path: "/a.ts" }));
+    const msg = obs.onTurnComplete();
+    expect(msg).not.toBeNull();
+    expect(msg).toContain("3 API calls remaining");
+    expect(msg).toContain("50000 tokens remaining");
+  });
+
+  it("fires when remaining tokens are below threshold", () => {
+    const obs = createBudgetAwarenessObserver(() => ({
+      remainingCalls: 20,
+      remainingTokens: 5_000,
+    }));
+    const msg = obs.onTurnComplete();
+    expect(msg).not.toBeNull();
+    expect(msg).toContain("5000 tokens remaining");
+  });
+
+  it("does NOT fire when budget is comfortable", () => {
+    const obs = createBudgetAwarenessObserver(() => ({
+      remainingCalls: 10,
+      remainingTokens: 100_000,
+    }));
+    const msg = obs.onTurnComplete();
+    expect(msg).toBeNull();
+  });
+
+  it("does NOT fire when budget info is null (unlimited)", () => {
+    const obs = createBudgetAwarenessObserver(() => null);
+    const msg = obs.onTurnComplete();
+    expect(msg).toBeNull();
+  });
+
+  it("fires at exact threshold boundary (calls = 4)", () => {
+    const obs = createBudgetAwarenessObserver(() => ({
+      remainingCalls: 4,
+      remainingTokens: 100_000,
+    }));
+    const msg = obs.onTurnComplete();
+    expect(msg).not.toBeNull();
+  });
+
+  it("does NOT fire at boundary (calls = 5)", () => {
+    const obs = createBudgetAwarenessObserver(() => ({
+      remainingCalls: 5,
+      remainingTokens: 100_000,
+    }));
+    const msg = obs.onTurnComplete();
+    expect(msg).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ContextPressureObserver
+// ---------------------------------------------------------------------------
+
+describe("ContextPressureObserver", () => {
+  it("fires when context exceeds 60%", () => {
+    const obs = createContextPressureObserver(() => 65);
+    const msg = obs.onTurnComplete();
+    expect(msg).not.toBeNull();
+    expect(msg).toContain("Context is filling up");
+    expect(msg).toContain("Be concise");
+  });
+
+  it("does NOT fire when context is below 60%", () => {
+    const obs = createContextPressureObserver(() => 55);
+    const msg = obs.onTurnComplete();
+    expect(msg).toBeNull();
+  });
+
+  it("does NOT fire at exactly 60%", () => {
+    const obs = createContextPressureObserver(() => 60);
+    const msg = obs.onTurnComplete();
+    expect(msg).toBeNull();
+  });
+
+  it("fires only once per threshold crossing", () => {
+    const obs = createContextPressureObserver(() => 70);
+    const msg1 = obs.onTurnComplete();
+    expect(msg1).not.toBeNull();
+    const msg2 = obs.onTurnComplete();
+    expect(msg2).toBeNull();
+  });
+
+  it("reset allows it to fire again", () => {
+    const obs = createContextPressureObserver(() => 70);
+    obs.onTurnComplete(); // fires
+    obs.reset();
+    const msg = obs.onTurnComplete();
+    expect(msg).not.toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// New observers work with generic EngineEvents (engine-agnostic)
+// ---------------------------------------------------------------------------
+
+describe("Engine-agnostic observer compatibility", () => {
+  it("budget and context observers work in a chain with all event types", () => {
+    const chain = createObserverChain([
+      createBudgetAwarenessObserver(() => ({ remainingCalls: 2, remainingTokens: 3_000 })),
+      createContextPressureObserver(() => 75),
+      createToolFailureObserver(),
+    ]);
+
+    // Feed events that any engine (harness or Claude) would emit
+    chain.onEvent(toolUse("Read", { file_path: "/a.ts" }));
+    chain.onEvent(toolResult(false));
+    chain.onEvent(textEvent());
+    chain.onEvent(resultEvent());
+
+    const messages = chain.onTurnComplete();
+    // Budget awareness and context pressure should fire; tool failure should not
+    expect(messages.length).toBe(2);
+    expect(messages.some((m) => m.includes("Budget running low"))).toBe(true);
+    expect(messages.some((m) => m.includes("Context is filling up"))).toBe(true);
+  });
+
+  it("observers handle the full EngineEvent union without errors", () => {
+    const events: EngineEvent[] = [
+      { type: "tool_use", toolName: "Bash", toolInput: { command: "ls" } },
+      { type: "tool_result", isError: false },
+      { type: "text" },
+      { type: "result" },
+      { type: "other" },
+    ];
+
+    const budget = createBudgetAwarenessObserver(() => ({ remainingCalls: 10, remainingTokens: 50_000 }));
+    const context = createContextPressureObserver(() => 30);
+
+    for (const event of events) {
+      budget.onEvent(event);
+      context.onEvent(event);
+    }
+
+    // Neither should fire with comfortable budget and low context
+    expect(budget.onTurnComplete()).toBeNull();
+    expect(context.onTurnComplete()).toBeNull();
   });
 });

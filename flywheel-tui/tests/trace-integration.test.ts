@@ -82,9 +82,9 @@ function emitHappyPath(bus: EventBus, workflowId: string) {
     timestamp: now(),
   });
 
-  // 3. subprocess:spawned
+  // 3. engine:started
   bus.emit({
-    type: "subprocess:spawned",
+    type: "engine:started",
     workflowId,
     stepIndex: 0,
     timestamp: now(),
@@ -166,7 +166,7 @@ function emitErrorPath(bus: EventBus, workflowId: string) {
     timestamp: now(),
   });
   bus.emit({
-    type: "subprocess:spawned",
+    type: "engine:started",
     workflowId,
     stepIndex: 0,
     timestamp: now(),

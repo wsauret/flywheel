@@ -1,0 +1,144 @@
+import { buildScaffolding } from "../workflows/queue/shared/scaffolding.js"
+import { formatChecklistNumbered } from "../workflows/queue/shared/quality-checklist.js"
+import {
+  buildWorkerHandoffPath,
+  ensureSessionDir,
+} from "../infra/paths.js"
+import { Log } from "../infra/log.js"
+import type { Engine } from "./engines/core/types.js"
+import type { EmitFn } from "../infra/event-bus.js"
+import type { InjectionQueue } from "./injection-queue.js"
+import type { Step } from "../workflows/queue/types.js"
+import { toolScopingToToolNames } from "../infra/workflow-types.js"
+import type { NDJSONEvent } from "../infra/ndjson-event-types.js"
+import { createNDJSONEvent } from "../infra/ndjson-event-factory.js"
+const log = Log.create({ service: "worker-callback" })
+
+/** Step types that get self-review injection at the first turn boundary. */
+const SELF_REVIEW_STEP_TYPES = new Set(["work", "debug"])
+
+const SELF_REVIEW_CHECKLIST = `Review your changes before completing:
+
+${formatChecklistNumbered()}
+
+If you find issues: fix them now.
+If everything looks good: confirm in your handoff.`
+
+function buildStepPrompt(
+  step: Step,
+  prompt: string,
+  sessionId: string,
+  projectCwd: string,
+): { fullPrompt: string; handoffPath: string } {
+  const handoffPath = buildWorkerHandoffPath(sessionId, step.type, step.id, projectCwd)
+  const scaffolding = buildScaffolding(step, { handoffPath })
+  const parts: string[] = []
+  if (scaffolding.preamble) parts.push(scaffolding.preamble)
+  parts.push(prompt)
+  if (scaffolding.postamble) parts.push(scaffolding.postamble)
+  const fullPrompt = parts.join("\n\n")
+
+  return { fullPrompt, handoffPath }
+}
+
+interface WorkerCallbackDeps {
+  /** Resolved engine for the worker tier. */
+  engine: Engine
+  /** Resolved model for the worker tier (tier > session-level > engine default). */
+  model: string
+  /** Resolved effort for the worker tier. */
+  effort?: string
+  emit: EmitFn
+  workflowId: string
+  sessionId: string
+  projectCwd: string
+  /** Override the worker cwd. Defaults to projectCwd.
+   * Used by /test (temp dir isolation) and git worktrees (branch-specific working dir).
+   * Session metadata/persistence stays in projectCwd; only the worker process runs here. */
+  workerCwd?: string
+  injectionQueue: InjectionQueue
+  /** Observer chain for stream observers — created by workflow-runner, fed via EventBus.
+   *  Worker-callback owns reset (per-step) and turn-complete (injection). */
+  observerChain?: { onTurnComplete(): string[]; reset(): void }
+}
+
+interface WorkerCallbackResult {
+  output: string
+  handoffPath: string
+  durationMs: number
+  sessionId: string | undefined
+}
+
+export function createWorkerCallback(
+  opts: WorkerCallbackDeps,
+): (step: Step, prompt: string) => Promise<WorkerCallbackResult> {
+  const {
+    engine, model, effort,
+    emit, workflowId, sessionId, projectCwd,
+    injectionQueue, observerChain,
+  } = opts
+
+  return async (step: Step, prompt: string, signal?: AbortSignal): Promise<WorkerCallbackResult> => {
+    observerChain?.reset()
+    let selfReviewInjected = false
+
+    const { fullPrompt, handoffPath } = buildStepPrompt(step, prompt, sessionId, projectCwd)
+    ensureSessionDir(sessionId, projectCwd)
+
+    // Boundary marker for transcript segmentation per worker invocation
+    {
+      const boundaryPayload = {
+        type: "flywheel:worker_boundary",
+        timestamp: new Date().toISOString(),
+        workflowId,
+        stepId: step.id,
+      }
+      emit("engine:ndjson", {
+        workflowId,
+        ndjsonEvent: createNDJSONEvent("flywheel:worker_boundary", boundaryPayload),
+      })
+    }
+
+    const runner = engine.createRunner({
+      model,
+      effort,
+      tools: step.toolScoping ? toolScopingToToolNames(step.toolScoping) : undefined,
+      cwd: opts.workerCwd ?? projectCwd,
+      handoffPath,
+      signal,
+      onEvent: (event: NDJSONEvent) => {
+        emit("engine:ndjson", { workflowId, ndjsonEvent: event })
+      },
+      onTurnComplete: () => {
+        const observerMessages = observerChain?.onTurnComplete() ?? []
+        for (const msg of observerMessages) injectionQueue.enqueue(msg)
+
+        if (!selfReviewInjected && SELF_REVIEW_STEP_TYPES.has(step.type)) {
+          injectionQueue.enqueue(SELF_REVIEW_CHECKLIST)
+          selfReviewInjected = true
+        }
+
+        const delivered = injectionQueue.drain()
+        if (delivered !== null) {
+          log.info("turn-boundary injection sent to worker", { userSteering: delivered.userSteering })
+          runner.send(delivered.message)
+          if (!delivered.userSteering) {
+            emit("engine:injected", { workflowId, message: delivered.message, origin: "system" })
+          }
+        }
+      },
+    })
+
+    runner.send(fullPrompt)
+    const engineResult = await runner.done
+
+    return {
+      output: engineResult.failure
+        ? (engineResult.failure.kind === "exit_code" ? "failed" : engineResult.failure.kind)
+        : "completed",
+      handoffPath,
+      durationMs: engineResult.durationMs,
+      sessionId: engineResult.sessionId,
+    }
+  }
+}

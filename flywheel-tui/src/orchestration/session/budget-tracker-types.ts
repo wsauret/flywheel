@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { NDJSONEvent } from "../../infra/subprocess-types.js";
+import type { NDJSONEvent } from "../../infra/ndjson-event-types.js";
 import type { EmitFn } from "../../infra/event-bus.js";
 import type { BudgetLimits } from "../../workflows/schemas.js";
 
@@ -47,13 +47,14 @@ export interface BudgetTracker {
   handleEvent(event: NDJSONEvent): void;
   getTotalCost(): number;
   incrementInvocations(): void;
+  getInvocationsUsed(): number;
   getTokensUsed(): number;
   updateContextUtilization(promptTokens: number, contextWindow: number): void;
   getContextUtilization(): ContextUtilization;
   isExhausted(budgetLimits: BudgetLimits): boolean;
   flush(): void;
   dispose(): void;
-  // Must be called before each new subprocess — Claude Code's total_cost_usd is
-  // cumulative within a process; a new process resets to 0, so the baseline must follow.
-  onNewSubprocess(): void;
+  // Must be called before each new engine process — total_cost_usd is cumulative
+  // within a process; a new process resets to 0, so the baseline must follow.
+  onNewProcess(): void;
 }

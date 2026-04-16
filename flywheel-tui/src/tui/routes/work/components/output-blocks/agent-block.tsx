@@ -21,10 +21,25 @@ interface AgentBlockProps {
 
 function ToolRow(props: { tool: ToolBlockType }) {
   const { theme } = useTheme()
+  const statusIcon = () => {
+    if (props.tool.errorMessage) return { icon: "✗", color: theme.error }
+    if (props.tool.completed) return { icon: "✓", color: theme.textMuted }
+    return undefined
+  }
   return (
-    <box flexDirection="row" gap={1} paddingLeft={1} overflow="hidden">
-      <text fg={theme.text} flexShrink={0}>{displayToolName(props.tool.name)}</text>
-      <text fg={theme.textSubtle} flexShrink={1} overflow="hidden" wrapMode="none">{props.tool.detail}</text>
+    <box flexDirection="column">
+      <box flexDirection="row" gap={1} paddingLeft={1} overflow="hidden">
+        <Show when={statusIcon()}>
+          {(s) => <text fg={s().color} flexShrink={0}>{s().icon}</text>}
+        </Show>
+        <text fg={theme.text} flexShrink={0}>{displayToolName(props.tool.name)}</text>
+        <text fg={theme.textSubtle} flexShrink={1} overflow="hidden" wrapMode="none">{props.tool.detail}</text>
+      </box>
+      <Show when={props.tool.errorMessage}>
+        <box paddingLeft={3}>
+          <text fg={theme.error}>{props.tool.errorMessage}</text>
+        </box>
+      </Show>
     </box>
   )
 }
@@ -73,7 +88,7 @@ export function AgentBlock(props: AgentBlockProps) {
   }
   const hiddenCount = () => {
     const all = props.block.children
-    if (!isActive() || showAll() || all.length <= MAX_VISIBLE_TOOLS) return 0
+    if (!isActive() || all.length <= MAX_VISIBLE_TOOLS) return 0
     return all.length - MAX_VISIBLE_TOOLS
   }
 

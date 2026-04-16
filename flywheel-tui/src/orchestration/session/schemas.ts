@@ -26,7 +26,7 @@ const ChatSessionSchema = z.object({
   ...baseFields,
   kind: z.literal("chat"),
   command: z.literal("chat"),
-  claudeSessionId: z.string().optional(),
+  engineSessionId: z.string().optional(),
 }).strict();
 
 export const SessionSchema = z.discriminatedUnion("kind", [

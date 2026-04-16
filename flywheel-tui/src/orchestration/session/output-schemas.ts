@@ -15,6 +15,8 @@ const ToolSnapshotSchema = ToolBlockSchema.pick({
   name: true,
   detail: true,
   timestamp: true,
+  errorMessage: true,
+  completed: true,
 });
 
 const AgentSnapshotSchema = AgentBlockSchema

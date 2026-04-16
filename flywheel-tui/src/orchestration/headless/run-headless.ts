@@ -1,7 +1,7 @@
 import { HeadlessAdapter } from "./headless-adapter.js"
 import { createSessionStore } from "../session-store.js"
 import { buildQueueFromTemplate } from "../../workflows/queue/templates.js"
-import { randomUUID } from "crypto"
+import { randomUUID } from "node:crypto"
 
 export async function runHeadless(description: string): Promise<boolean> {
   const factories = { createAdapter: () => new HeadlessAdapter({ logLevel: "normal", timestamps: true }) }

@@ -2,7 +2,7 @@
 //
 // Runs native shell checks after the worker declares done. If checks fail,
 // injects fix feedback and retries. Self-review is handled separately by
-// subprocess-callback at the turn boundary.
+// worker-callback at the turn boundary.
 
 import type { Step } from "./types.js";
 import type { WorkerOutput, PostTurnVerificationResult } from "./executor-types.js";
@@ -28,7 +28,7 @@ interface PostTurnVerificationConfig {
 const CODE_STEP_TYPE = "work";
 
 // Exported for unit tests — parsing handoff data has edge cases that warrant
-// direct testing without spinning up native verification subprocesses.
+// direct testing without spinning up native verification processes.
 export function extractDeclaredCommands(
   handoffData: Record<string, unknown> | null,
 ): DeclaredCommand[] {

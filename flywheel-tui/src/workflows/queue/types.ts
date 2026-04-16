@@ -41,7 +41,7 @@ export interface Step {
    *  Set by sprint hook on retry steps to keep the loop tight (worker → evaluator). */
   skipDispatcher?: boolean;
   /** Tool permission scoping for the worker. */
-  toolScoping?: { read: boolean; bash: boolean; write: boolean; edit: boolean; task?: boolean };
+  toolScoping?: { read: boolean; bash: boolean; write: boolean; edit: boolean; task: boolean };
   /**
    * Evaluator rubric — how to assess this step's output.
    * Set by templates for non-work steps; for work steps the dispatcher

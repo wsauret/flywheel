@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SubprocessHandoffBaseSchema } from "../../infra/handoff-schemas.js";
+import { WorkerHandoffBaseSchema } from "../../infra/handoff-schemas.js";
 import { EvaluatorResultSchema } from "../../infra/workflow-types.js";
 
 // Extends base schema: makes suggestions required (LLMs should always produce it)
@@ -10,7 +10,7 @@ export const EvaluatorVerdictSchema = EvaluatorResultSchema
 
 export type EvaluatorVerdict = z.infer<typeof EvaluatorVerdictSchema>;
 
-const EvaluatorHandoffDataSchema = SubprocessHandoffBaseSchema.pick({
+const EvaluatorHandoffDataSchema = WorkerHandoffBaseSchema.pick({
   summary: true,
   verification: true,
   artifacts: true,

@@ -38,7 +38,7 @@ const DispatcherConfigSchema = z.object({
   max_eval_cycles: z.number(),
   worktree_path: z.string(),
   project_cwd: z.string(),
-  subprocess_model: z.string(),
+  worker_model: z.string(),
   dispatcher_model: z.string(),
 }).strip();
 
@@ -72,7 +72,7 @@ export type DispatcherInput = z.infer<typeof DispatcherInputSchema>;
 
 import { MutationRequestSchema, DispatcherDecisionSchema } from "../../infra/workflow-types.js";
 
-// DispatcherDecisionHandoffSchema — handoff file written by dispatcher subprocess.
+// DispatcherDecisionHandoffSchema — handoff file written by the dispatcher engine.
 // Derived from DispatcherDecisionSchema: required step_index, optional evaluation_criteria,
 // no warnings field, passthrough tolerance for extra LLM output.
 

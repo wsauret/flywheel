@@ -57,15 +57,16 @@ export function findTodoIndex(blocks: AnyBlock[]): number {
   return -1;
 }
 
+/** Returns the child index of the appended tool, or -1 if the agent was not found. */
 export function appendToolToAgentChildren(
   blocks: AnyBlock[],
   agentIndexById: Map<string, number>,
   agentId: string,
   tool: ToolBlock,
   maxChildren: number,
-): boolean {
+): number {
   const agentIdx = agentIndexById.get(agentId);
-  if (agentIdx === undefined) return false;
+  if (agentIdx === undefined) return -1;
 
   const agent = blocks[agentIdx] as AgentBlock;
   let children = [...agent.children, tool];
@@ -73,5 +74,5 @@ export function appendToolToAgentChildren(
   const latestChild = `${tool.name}: ${tool.detail}`;
 
   blocks[agentIdx] = { ...agent, children, latestChild };
-  return true;
+  return children.length - 1;
 }

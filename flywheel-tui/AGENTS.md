@@ -56,8 +56,8 @@ Run `bun run scripts/check-boundaries.ts` after any file addition or move.
 | `formatDuration()`, `formatCost()` | `infra/format.ts` |
 | `invokePooled()` | `workflows/shared/invoke-pooled.ts` |
 | `log` | `infra/log.ts` |
-| `atomicWriteFile()` | `workflows/shared/atomic-write.ts` |
-| `DebouncedWriter` | `workflows/shared/debounced-writer.ts` |
+| `atomicWriteFile()` | `infra/atomic-write.ts` |
+| `DebouncedWriter` | `infra/debounced-writer.ts` |
 | `raceAbort()` | `workflows/queue/abort-utils.ts` |
 | `applyBudgetTruncation()` | `workflows/dispatcher/truncation.ts` |
 

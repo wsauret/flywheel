@@ -1,4 +1,4 @@
-import type { NDJSONEvent } from "../../infra/subprocess-types.js";
+import type { NDJSONEvent } from "../../infra/ndjson-event-types.js";
 import type { BudgetLimits, BudgetUsage } from "../../workflows/schemas.js";
 import { readSession, updateSession } from "./persistence.js";
 import { DEFAULT_DEBOUNCE_MS } from "./buffered-file-writer.js";
@@ -19,7 +19,7 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
   let wasExhausted = false;
 
   // total_cost_usd is cumulative within a process — compute deltas to avoid
-  // double-counting. onNewSubprocess() resets the baseline per spawn.
+  // double-counting. onNewProcess() resets the baseline per spawn.
   // usage.input_tokens / output_tokens are PER-TURN, added directly.
   let lastSeenCost = 0;
 
@@ -82,6 +82,7 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
   }
 
   function getTotalCost() { return totalCost; }
+  function getInvocationsUsed() { return invocationsUsed; }
   function getTokensUsed() { return tokensUsed; }
 
   function updateContextUtilization(promptTokens: number, contextWindow: number) {
@@ -113,7 +114,7 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
     return reason !== null;
   }
 
-  function onNewSubprocess() {
+  function onNewProcess() {
     lastSeenCost = 0;
   }
 
@@ -135,12 +136,13 @@ export function createBudgetTracker(deps: BudgetTrackerDeps): BudgetTracker {
     handleEvent,
     getTotalCost,
     incrementInvocations,
+    getInvocationsUsed,
     getTokensUsed,
     updateContextUtilization,
     getContextUtilization,
     isExhausted,
     flush,
     dispose,
-    onNewSubprocess,
+    onNewProcess,
   };
 }

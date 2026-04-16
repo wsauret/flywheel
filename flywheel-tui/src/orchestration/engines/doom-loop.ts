@@ -1,4 +1,5 @@
-import type { EngineEvent, StreamObserver } from "./stream-observers.js";
+import type { EngineEvent } from "./core/types.js";
+import type { StreamObserver } from "./stream-observers.js";
 
 const DEFAULT_THRESHOLD = 3;
 

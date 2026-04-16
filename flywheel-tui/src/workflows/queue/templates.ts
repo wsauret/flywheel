@@ -1,6 +1,6 @@
 // Queue System — Workflow Templates
 
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
 import { createQueue, type QueueOptions } from "./queue.js";
 import type { Step, Queue } from "./types.js";
 import { SPRINT_HINT } from "./steps/sprint/types.js";

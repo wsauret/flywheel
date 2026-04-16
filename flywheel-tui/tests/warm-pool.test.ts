@@ -1,7 +1,8 @@
-import { describe, test, expect, beforeEach, afterEach, mock } from "bun:test";
-import { WarmPool } from "../src/orchestration/engines/pool/warm-pool";
-import type { SpawnResult } from "../src/orchestration/engines/subprocess/spawner";
-import type { RawSpawnedProcess } from "../src/orchestration/engines/subprocess/stream-pipeline";
+import { describe, test, expect, beforeEach, afterEach } from "bun:test";
+import { WarmPool } from "../src/orchestration/engines/providers/claude/pool/warm-pool";
+import type { SpawnResult } from "../src/orchestration/engines/providers/claude/subprocess/spawner";
+import type { ProcessResult } from "../src/infra/ndjson-event-types";
+import type { RawSpawnedProcess } from "../src/orchestration/engines/providers/claude/subprocess/stream-pipeline";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -17,7 +18,7 @@ interface MockProcess {
 }
 
 function createMockProcess(pid: number): MockProcess {
-  let resolveResult!: (v: import("../src/orchestration/engines/subprocess/schemas").SubprocessResult) => void;
+  let resolveResult!: (v: ProcessResult) => void;
   let rejectResult!: (e: Error) => void;
   const mockProc: MockProcess = {
     killed: false,
@@ -25,7 +26,6 @@ function createMockProcess(pid: number): MockProcess {
     exit: (exitCode = 0) =>
       resolveResult({
         output: "",
-        rawOutput: "",
         exitCode,
         truncated: false,
         durationMs: 0,
@@ -34,7 +34,7 @@ function createMockProcess(pid: number): MockProcess {
     crash: (err = new Error("unexpected crash")) => rejectResult(err),
   };
 
-  const result = new Promise<import("../src/orchestration/engines/subprocess/schemas").SubprocessResult>(
+  const result = new Promise<ProcessResult>(
     (res, rej) => {
       resolveResult = res;
       rejectResult = rej;
@@ -236,7 +236,6 @@ interface MockRawProcess {
   resolveExit: (code: number) => void;
   rejectExit: (err: Error) => void;
   killed: boolean;
-  unregistered: boolean;
 }
 
 function createMockRawProcess(pid: number): MockRawProcess {
@@ -249,7 +248,6 @@ function createMockRawProcess(pid: number): MockRawProcess {
 
   const mock: MockRawProcess = {
     killed: false,
-    unregistered: false,
     resolveExit: null!,
     rejectExit: null!,
     raw: {
@@ -261,7 +259,6 @@ function createMockRawProcess(pid: number): MockRawProcess {
       stdout: new ReadableStream(),
       stderr: new ReadableStream(),
       stdinSink: undefined,
-      unregister: () => { mock.unregistered = true; },
     },
   };
   mock.resolveExit = resolveExit;
@@ -294,7 +291,7 @@ describe("WarmPool<RawSpawnedProcess> (worker pool)", () => {
       spawn: spawner,
       getPid: (raw) => raw.proc.pid,
       getExitPromise: (raw) => raw.proc.exited,
-      killProc: (raw) => { raw.unregister(); raw.proc.kill(); },
+      killProc: (raw) => { raw.proc.kill(); },
     });
 
     const raw = await pool.acquire();
@@ -309,7 +306,7 @@ describe("WarmPool<RawSpawnedProcess> (worker pool)", () => {
       spawn: spawner,
       getPid: (raw) => raw.proc.pid,
       getExitPromise: (raw) => raw.proc.exited,
-      killProc: (raw) => { raw.unregister(); raw.proc.kill(); },
+      killProc: (raw) => { raw.proc.kill(); },
     });
 
     const raw = await pool.acquire();
@@ -317,9 +314,8 @@ describe("WarmPool<RawSpawnedProcess> (worker pool)", () => {
 
     await new Promise((r) => setTimeout(r, 10));
 
-    // Original process was killed and unregistered
+    // Original process was killed
     expect(mocks[0].killed).toBe(true);
-    expect(mocks[0].unregistered).toBe(true);
 
     // Replacement was spawned
     expect(mocks.length).toBe(2);
@@ -332,7 +328,7 @@ describe("WarmPool<RawSpawnedProcess> (worker pool)", () => {
       spawn: spawner,
       getPid: (raw) => raw.proc.pid,
       getExitPromise: (raw) => raw.proc.exited,
-      killProc: (raw) => { raw.unregister(); raw.proc.kill(); },
+      killProc: (raw) => { raw.proc.kill(); },
     });
 
     await new Promise((r) => setTimeout(r, 10));
@@ -352,7 +348,7 @@ describe("WarmPool<RawSpawnedProcess> (worker pool)", () => {
       spawn: spawner,
       getPid: (raw) => raw.proc.pid,
       getExitPromise: (raw) => raw.proc.exited,
-      killProc: (raw) => { raw.unregister(); raw.proc.kill(); },
+      killProc: (raw) => { raw.proc.kill(); },
     });
 
     await new Promise((r) => setTimeout(r, 10));

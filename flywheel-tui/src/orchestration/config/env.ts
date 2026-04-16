@@ -17,7 +17,7 @@ const ENV_MAP: Record<string, EnvSetter> = {
   FLYWHEEL_ENGINE: (val, c) => { c.engine = val },
   FLYWHEEL_MODEL: (val, c) => { c.model = val },
   FLYWHEEL_SHOW_THINKING: (val, c) => { c.show_thinking = parseBool(val) },
-  FLYWHEEL_SUBPROCESS_MODEL: (val, c) => { ensure(c, "subprocess").model = val },
+  FLYWHEEL_WORKER_MODEL: (val, c) => { ensure(c, "worker").model = val },
   FLYWHEEL_DISPATCHER_MODEL: (val, c) => { ensure(c, "dispatcher").model = val },
   FLYWHEEL_TIMEOUT_MINUTES: (val, c) => { const n = parseIntSafe(val); if (n !== undefined) c.timeout_minutes = n },
   FLYWHEEL_PROJECT_CWD: (val, c) => { c.project_cwd = val },

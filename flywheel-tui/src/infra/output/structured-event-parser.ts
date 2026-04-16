@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import type { NDJSONEvent, AssistantEventData, ContentBlock } from "../subprocess-types.js";
+import type { NDJSONEvent, AssistantEventData, ContentBlock, UserEventData, UserEventToolResult } from "../ndjson-event-types.js";
 import type { StructuredOutputBuilder } from "./structured-output-builder.js";
-import { getToolDetail, extractToolDiff } from "./output-formatter.js";
+import { getToolDetail, extractToolDiff, extractErrorText, launderToolError } from "./output-formatter.js";
 
 const SUBAGENT_TOOL_NAMES = new Set(["task", "agent"]);
 
@@ -14,10 +14,15 @@ interface TrackedSubagent {
   spawnedAt: number;
 }
 
+type ToolBlockLocation =
+  | { type: "top-level"; index: number; toolName: string }
+  | { type: "agent-child"; agentId: string; childIndex: number; toolName: string };
+
 export class StructuredEventParser {
   private builder: StructuredOutputBuilder;
 
   private toolUseIdToAgent = new Map<string, TrackedSubagent>();
+  private toolUseIdToBlock = new Map<string, ToolBlockLocation>();
 
   constructor(builder: StructuredOutputBuilder) {
     this.builder = builder;
@@ -25,6 +30,7 @@ export class StructuredEventParser {
 
   reset(): void {
     this.toolUseIdToAgent.clear();
+    this.toolUseIdToBlock.clear();
   }
 
   dispatch(event: NDJSONEvent, now = Date.now()): void {
@@ -46,6 +52,8 @@ export class StructuredEventParser {
           this.toolUseIdToAgent.delete(toolUseId);
         }
       }
+    } else if (event.type === "user") {
+      this.handleUserEvent(event.data, now);
     }
   }
 
@@ -84,6 +92,10 @@ export class StructuredEventParser {
     const { name, input, id: toolUseId } = block;
 
     if (name && isSubagentToolName(name)) {
+      // Subagent tools (Task/Agent) populate toolUseIdToAgent, NOT toolUseIdToBlock.
+      // This mutual exclusivity ensures user-event tool_result handling (which reads
+      // toolUseIdToBlock) and tool_result event handling (which reads toolUseIdToAgent)
+      // never both fire for the same tool_use_id.
       const agentId = randomUUID();
       const desc = (input?.description as string) || name;
       const label = (input?.subagent_type as string) || name;
@@ -107,12 +119,55 @@ export class StructuredEventParser {
       const diffInfo = input ? extractToolDiff(name, input) : undefined;
       const filePath = (input?.file_path as string | undefined) ?? (input?.notebook_path as string | undefined);
       if (parentAgentId) {
-        if (!this.builder.pushToolToAgent(parentAgentId, name, detail, now, diffInfo?.diff, diffInfo?.filetype, diffInfo?.content, filePath)) {
-          this.builder.pushTool(name, detail, now, diffInfo?.diff, diffInfo?.filetype, diffInfo?.content, filePath);
+        const childIndex = this.builder.pushToolToAgent(parentAgentId, name, detail, now, diffInfo?.diff, diffInfo?.filetype, diffInfo?.content, filePath);
+        if (childIndex < 0) {
+          const idx = this.builder.pushTool(name, detail, now, diffInfo?.diff, diffInfo?.filetype, diffInfo?.content, filePath);
+          if (toolUseId && idx >= 0) {
+            this.toolUseIdToBlock.set(toolUseId, { type: "top-level", index: idx, toolName: name });
+          }
+        } else if (toolUseId) {
+          this.toolUseIdToBlock.set(toolUseId, { type: "agent-child", agentId: parentAgentId, childIndex, toolName: name });
         }
       } else {
-        this.builder.pushTool(name, detail, now, diffInfo?.diff, diffInfo?.filetype, diffInfo?.content, filePath);
+        const idx = this.builder.pushTool(name, detail, now, diffInfo?.diff, diffInfo?.filetype, diffInfo?.content, filePath);
+        if (toolUseId && idx >= 0) {
+          this.toolUseIdToBlock.set(toolUseId, { type: "top-level", index: idx, toolName: name });
+        }
       }
+    }
+  }
+
+  private handleUserEvent(data: UserEventData, now: number): void {
+    const content = data.message?.content;
+    if (!Array.isArray(content)) return;
+
+    for (const item of content) {
+      if (item.type !== "tool_result") continue;
+      const toolResult = item as UserEventToolResult;
+      const toolUseId = toolResult.tool_use_id;
+      if (!toolUseId) continue;
+
+      const location = this.toolUseIdToBlock.get(toolUseId);
+      if (!location) continue;
+
+      if (toolResult.is_error === true) {
+        const rawText = extractErrorText(toolResult.content) ?? "Unknown error";
+        const message = launderToolError(rawText, location.toolName);
+
+        if (location.type === "top-level") {
+          this.builder.errorTool(location.index, message);
+        } else {
+          this.builder.errorAgentChildTool(location.agentId, location.childIndex, message);
+        }
+      } else {
+        if (location.type === "top-level") {
+          this.builder.completeTool(location.index);
+        } else {
+          this.builder.completeAgentChildTool(location.agentId, location.childIndex);
+        }
+      }
+
+      this.toolUseIdToBlock.delete(toolUseId);
     }
   }
 

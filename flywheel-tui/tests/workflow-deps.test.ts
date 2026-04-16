@@ -41,7 +41,6 @@ function makeOverrides(
   } = {},
 ): WorkflowDepsOverrides {
   const config = opts.config ?? makeConfig();
-  const spawnerCalls: number[] = [];
 
   return {
     loadConfig: opts.failConfig
@@ -50,10 +49,6 @@ function makeOverrides(
     getEngine: opts.failEngine
       ? () => { throw new Error(opts.failEngine); }
       : (id: string) => makeFakeEngine(id),
-    createSpawner: (timeout: number) => {
-      spawnerCalls.push(timeout);
-      return { spawn: async () => ({} as any), _testTimeoutMinutes: timeout } as any;
-    },
   };
 }
 
@@ -62,13 +57,12 @@ function makeOverrides(
 // ---------------------------------------------------------------------------
 
 describe("prepareWorkflowDeps", () => {
-  it("returns { config, engine, spawner } on success", () => {
+  it("returns { config, engine } on success", () => {
     const deps = prepareWorkflowDeps(makeOverrides());
 
     expect(deps).toBeDefined();
     expect(deps.config).toBeDefined();
     expect(deps.engine).toBeDefined();
-    expect(deps.spawner).toBeDefined();
     expect(deps.config.engine).toBe("claude");
   });
 
@@ -86,21 +80,6 @@ describe("prepareWorkflowDeps", () => {
     prepareWorkflowDeps(overrides);
 
     expect(requestedEngineId).toBe("opencode");
-  });
-
-  it("creates spawner with correct timeout from config", () => {
-    const config = makeConfig({ timeout_minutes: 45 });
-    let spawnerTimeout: number | undefined;
-
-    const overrides = makeOverrides({ config });
-    overrides.createSpawner = (timeout: number) => {
-      spawnerTimeout = timeout;
-      return { spawn: async () => ({} as any) } as any;
-    };
-
-    prepareWorkflowDeps(overrides);
-
-    expect(spawnerTimeout).toBe(45);
   });
 
   it("throws when config loading fails", () => {

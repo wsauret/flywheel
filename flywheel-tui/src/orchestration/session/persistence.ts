@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { SessionSchema, type Session } from "./schemas.js";
-import { writeFileAtomic } from "../../workflows/shared/atomic-write.js";
+import { writeFileAtomic } from "../../infra/atomic-write.js";
 import {
   SESSIONS_DIR,
   resolveSessionDir,

@@ -72,13 +72,13 @@ async function applyMutations(
   return ctx;
 }
 
-/** Stage 4: Spawn worker subprocess. */
+/** Stage 4: Invoke worker engine. */
 async function spawnWorker(
   step: Step,
   deps: StepRunnerDeps,
   ctx: StepPipelineContext,
 ): Promise<StepPipelineContext> {
-  deps.onSubprocessDispatched?.();
+  deps.onWorkerInvoked?.();
   ctx.workerOutput = await raceAbort(
     deps.worker(step, ctx.dispatcherResult!.prompt, deps.abortSignal),
     deps.abortSignal,
@@ -154,7 +154,7 @@ async function evaluateAndAccumulate(
         workflowId,
         maxRevisions,
         abortSignal,
-        onSubprocessDispatched: deps.onSubprocessDispatched,
+        onWorkerInvoked: deps.onWorkerInvoked,
       },
     );
 

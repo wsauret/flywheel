@@ -11,6 +11,7 @@ export interface OutputSessionOptions {
   onFlush?: () => void
   workflowId?: string
   builder?: StructuredOutputBuilder
+  priorBlocks?: readonly AnyBlock[]
 }
 
 export interface OutputSession {
@@ -32,39 +33,40 @@ export interface OutputSession {
 
 export function createOutputSession(options: OutputSessionOptions): OutputSession {
   const { updateEntry, emit, onFlush, workflowId = "output-session" } = options
+  const prior = options.priorBlocks ?? []
 
   const builder = options.builder ?? new StructuredOutputBuilder()
   const eventParser = new StructuredEventParser(builder)
   const parser = new NDJSONParser()
 
   let disposed = false
-  let flushIntervalId: ReturnType<typeof setInterval> | null = null
+  let notifyQueued = false
 
-  // Why manual change detection: StructuredOutputBuilder uses plain class
-  // fields, not reactive signals. The 16ms polling interval bridges the
-  // non-reactive builder to the reactive store. Making the builder reactive
-  // would eliminate this, but is a larger refactor across the output pipeline.
-  let prevBlocks = builder.getBlocks()
-  let prevActivity = builder.modelActivity
+  function getFullBlocks(): AnyBlock[] {
+    const current = builder.getBlocks()
+    return prior.length > 0 ? [...prior, ...current] : current
+  }
+
+  function syncStore(): void {
+    notifyQueued = false
+    if (disposed) return
+    updateEntry({ outputBlocks: getFullBlocks(), modelActivity: builder.modelActivity })
+  }
+
+  builder.onChange = () => {
+    if (disposed || notifyQueued) return
+    notifyQueued = true
+    queueMicrotask(syncStore)
+  }
 
   parser.onEvent = (event) => {
-    emit("subprocess:ndjson", { workflowId, ndjsonEvent: event })
+    emit("engine:ndjson", { workflowId, ndjsonEvent: event })
     eventParser.dispatch(event)
   }
 
   parser.onRawText = (text) => {
     if (text.trim().length > 0) builder.pushText(text + "\n", Date.now())
   }
-
-  flushIntervalId = setInterval(() => {
-    const blocks = builder.getBlocks()
-    const activity = builder.modelActivity
-    const patch: Partial<SessionEntryBase> = {}
-    if (blocks !== prevBlocks) { prevBlocks = blocks; patch.outputBlocks = blocks }
-    if (activity !== prevActivity) { prevActivity = activity; patch.modelActivity = activity }
-    if (patch.outputBlocks || patch.modelActivity) updateEntry(patch)
-    onFlush?.()
-  }, 16)
 
   function writeStdout(data: string) {
     if (disposed) return
@@ -98,28 +100,23 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
     resetTracking: () => builder.resetTracking(),
     flushContextRun: (timestamp: number) => builder.flushContextRun(timestamp),
     flushParser: () => parser.flush(),
-    getBlocks: () => builder.getBlocks(),
+    getBlocks: getFullBlocks,
     resetActivity() {
       const now = Date.now();
       builder.flushContextRun(now);
       builder.closeOpenSubagents(now);
       builder.resetActivity();
-      prevActivity = "idle";
       updateEntry({ modelActivity: "idle" });
     },
     get sessionId() { return parser.sessionId },
     flush(): void {
-      prevActivity = builder.modelActivity
-      updateEntry({ outputBlocks: builder.getBlocks(), modelActivity: prevActivity })
+      updateEntry({ outputBlocks: getFullBlocks(), modelActivity: builder.modelActivity })
       onFlush?.()
     },
     dispose(): void {
       if (disposed) return
       disposed = true
-      if (flushIntervalId !== null) {
-        clearInterval(flushIntervalId)
-        flushIntervalId = null
-      }
+      builder.onChange = null
     },
   }
 }

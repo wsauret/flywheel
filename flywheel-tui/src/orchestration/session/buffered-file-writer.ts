@@ -1,5 +1,5 @@
 import * as fs from "node:fs";
-import { createDebouncedWriter } from "../../workflows/shared/debounced-writer.js";
+import { createDebouncedWriter } from "../../infra/debounced-writer.js";
 
 export const DEFAULT_DEBOUNCE_MS = 100;
 
@@ -36,7 +36,7 @@ export function createBufferedFileWriter<T>(opts: BufferedFileWriterOpts<T>): Bu
     try {
       fs.writeSync(fd, serialize(items));
     } catch {
-      // Best-effort — don't crash on write failure (SubprocessLogger precedent)
+      // Best-effort — don't crash on write failure
     }
   }
 

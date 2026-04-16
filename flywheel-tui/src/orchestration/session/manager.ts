@@ -30,7 +30,7 @@ export interface SessionSummary {
   createdAt?: string;
   repo?: string;
   branch?: string;
-  claudeSessionId?: string;
+  engineSessionId?: string;
 }
 
 export interface ManagerListResult {
@@ -116,7 +116,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
         createdAt: entry.data.createdAt,
         repo: entry.data.repo,
         branch: entry.data.branch,
-        claudeSessionId: entry.data.kind === "chat" ? entry.data.claudeSessionId : undefined,
+        engineSessionId: entry.data.kind === "chat" ? entry.data.engineSessionId : undefined,
       };
     });
 

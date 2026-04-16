@@ -127,7 +127,7 @@ describe("HeadlessAdapter (production)", () => {
 
       // This should NOT be logged at minimal level
       bus.emit({
-        type: "subprocess:spawned",
+        type: "engine:started",
         workflowId: wfId,
         stepIndex: 0,
         timestamp: ts,
@@ -158,7 +158,7 @@ describe("HeadlessAdapter (production)", () => {
       adapter.connect(bus)
 
       bus.emit({
-        type: "subprocess:spawned",
+        type: "engine:started",
         workflowId: wfId,
         stepIndex: 0,
         timestamp: ts,
@@ -172,7 +172,7 @@ describe("HeadlessAdapter (production)", () => {
         timestamp: ts,
       })
 
-      const hasSpawned = logs.some((l) => l.includes("Subprocess spawned"))
+      const hasSpawned = logs.some((l) => l.includes("Engine started"))
       const hasDispatcher = logs.some((l) => l.includes("Dispatcher invoked"))
       expect(hasSpawned).toBe(true)
       expect(hasDispatcher).toBe(false)

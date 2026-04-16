@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { detectRateLimit } from "../src/orchestration/engines/subprocess/rate-limit";
+import { detectRateLimit } from "../src/orchestration/engines/providers/claude/subprocess/rate-limit";
 
 describe("detectRateLimit", () => {
 

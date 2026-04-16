@@ -27,10 +27,11 @@ import { createShellState } from "./hooks/shell-state.js"
 import { createKeyboardHandler } from "./hooks/use-keyboard-handler.js"
 import { createForegroundSwitcher } from "./hooks/use-foreground-switcher.js"
 import { createHeaderDisplay } from "./hooks/use-header-display.js"
+import { createPasteCollapse } from "./hooks/paste-collapse.js"
 import type { RunnerErrorResult } from "../orchestration/session/types.js"
 
 export function FlywheelShell(props: { factories: WorkflowSessionFactories; projectCwd: string; showThinking?: boolean }) {
-  const { theme } = useTheme()
+  const { theme, syntax } = useTheme()
   const toast = useToast()
   const { manager, refreshList, sessions } = useSession()
   const renderer = useRenderer()
@@ -55,6 +56,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
   const [promptHeight, setPromptHeight] = createSignal(1)
 
   let promptRef: TextareaRenderable | null = null
+  let pasteCollapse: ReturnType<typeof createPasteCollapse> | null = null
 
   const switchForeground = createForegroundSwitcher({
     signals,
@@ -281,6 +283,8 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
             <textarea
               ref={(r: TextareaRenderable) => {
                 promptRef = r
+                pasteCollapse = createPasteCollapse(r, syntax)
+                r.onPaste = (event) => pasteCollapse!.handlePaste(event)
                 r.onContentChange = () => setPromptHeight(Math.min(3, Math.max(1, r.editorView.getTotalVirtualLineCount())))
                 queueMicrotask(() => r?.focus?.())
               }}
@@ -297,7 +301,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
                         : "Send a message..."
               }
               backgroundColor="transparent" focusedBackgroundColor="transparent"
-              onSubmit={() => { const v = promptRef?.plainText ?? ""; commands.handlePromptSubmit(v); promptRef?.clear(); setPromptHeight(1) }}
+              onSubmit={() => { const v = pasteCollapse?.expandForSubmit() ?? promptRef?.plainText ?? ""; commands.handlePromptSubmit(v); promptRef?.clear(); setPromptHeight(1) }}
               keyBindings={[
                 { name: "return", action: "submit" as TextareaAction },
                 { name: "z", ctrl: true, action: "undo" as TextareaAction },

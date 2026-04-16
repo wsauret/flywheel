@@ -7,23 +7,15 @@
  */
 
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 
 const FLYWHEEL_DIR = ".flywheel";
+
+export const MODELS_CACHE_DIR = path.join(os.homedir(), ".cache", "flywheel", "models");
 export const SESSIONS_DIR = `${FLYWHEEL_DIR}/sessions`;
 export const LOG_DIR = `${FLYWHEEL_DIR}/log`;
-export const SUBPROCESS_LOG_DIR = `${FLYWHEEL_DIR}/subprocess-logs`;
 export const TRACES_DIR = `${FLYWHEEL_DIR}/traces`;
-
-// Global directories (cross-session)
-// These domain defaults live here (not in orchestration/memory/) because paths.ts
-// is the single source of truth for all path constants. Sole consumer: memory/indexer.ts.
-
-export const DEFAULT_STANDARDS_DIR = "docs/standards";
-
-export const DEFAULT_CONVENTION_FILES = ["AGENTS.md", "CONTRIBUTING.md", "DEVELOPMENT.md"];
-
-export const CONFIG_DIRS = [".claude/", ".opencode/"];
 
 export const CONFIG_FILES = ["flywheel.toml", ".flywheel.toml"];
 
@@ -69,10 +61,10 @@ export function resolveSessionFile(
 }
 
 /**
- * Build a handoff file path for a subprocess step.
+ * Build a handoff file path for a worker step.
  * Pattern: `.flywheel/sessions/<session-id>/handoffs/<type>_<step-id>.json`
  */
-export function buildSubprocessHandoffPath(
+export function buildWorkerHandoffPath(
   sessionId: string,
   stepType: string,
   stepId: string,

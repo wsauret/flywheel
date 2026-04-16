@@ -6,7 +6,7 @@ import {
 } from "../src/orchestration/config/schema";
 import { EventBus, createEmit } from "../src/infra/event-bus";
 import type { FlywheelEvent } from "../src/infra/events";
-import { SubprocessResultSchema } from "../src/infra/subprocess-types";
+import { ProcessResultSchema } from "../src/infra/ndjson-event-types";
 import { HeadlessAdapter } from "./helpers/headless-adapter";
 
 // ---------------------------------------------------------------------------
@@ -146,12 +146,12 @@ describe("evaluator:revision-requested event type", () => {
 });
 
 // ---------------------------------------------------------------------------
-// VAL-REV-002: SubprocessResult.sessionId field
+// VAL-REV-002: ProcessResult.sessionId field
 // ---------------------------------------------------------------------------
 
-describe("SubprocessResult.sessionId field", () => {
+describe("ProcessResult.sessionId field", () => {
   it("schema accepts sessionId field", () => {
-    const result = SubprocessResultSchema.safeParse({
+    const result = ProcessResultSchema.safeParse({
       output: "test output",
       exitCode: 0,
       truncated: false,
@@ -166,7 +166,7 @@ describe("SubprocessResult.sessionId field", () => {
   });
 
   it("schema accepts missing sessionId (optional)", () => {
-    const result = SubprocessResultSchema.safeParse({
+    const result = ProcessResultSchema.safeParse({
       output: "test output",
       exitCode: 0,
       truncated: false,

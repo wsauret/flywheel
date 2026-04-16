@@ -4,7 +4,7 @@
 //
 // Tests for the tiered evaluation model: which step types get native checks.
 // Post-turn verification runs native checks and injects fix feedback on
-// failure. Self-review is handled separately by subprocess-callback.
+// failure. Self-review is handled separately by worker-callback.
 // ---------------------------------------------------------------------------
 
 import { describe, expect, test, mock } from "bun:test";

@@ -14,7 +14,7 @@ export interface SprintIterationRecord {
   evalFeedback?: string;
   /** Whether native verification checks passed this iteration. */
   nativeCheckPassed?: boolean;
-  /** Whether the worker subprocess crashed. */
+  /** Whether the worker process crashed. */
   workerCrashed?: boolean;
 }
 

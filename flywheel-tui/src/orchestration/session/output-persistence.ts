@@ -1,4 +1,4 @@
-import { writeFileAtomic } from "../../workflows/shared/atomic-write.js";
+import { writeFileAtomic } from "../../infra/atomic-write.js";
 import type { AnyBlock } from "../../infra/output-blocks.js";
 import {
   toSnapshot,
@@ -8,7 +8,7 @@ import {
 import {
   createDebouncedWriter,
   type DebouncedWriter,
-} from "../../workflows/shared/debounced-writer.js";
+} from "../../infra/debounced-writer.js";
 import { resolveSessionFile, ensureSessionDir } from "../../infra/paths.js";
 
 const DEFAULT_MAX_SIZE_BYTES = 50 * 1024 * 1024;

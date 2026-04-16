@@ -1,6 +1,6 @@
 import { ensureTracesDir, resolveTranscriptFile } from "../../infra/paths.js";
 import { createBufferedFileWriter, DEFAULT_DEBOUNCE_MS } from "./buffered-file-writer.js";
-import type { NDJSONEvent } from "../../infra/subprocess-types.js";
+import type { NDJSONEvent } from "../../infra/ndjson-event-types.js";
 
 export interface TranscriptWriter {
   /** Append a raw NDJSON event to the transcript file (buffered). */
@@ -34,7 +34,9 @@ export function createTranscriptWriter(deps: TranscriptWriterDeps): TranscriptWr
   let eventCount = 0;
 
   function handleEvent(event: NDJSONEvent): void {
-    if (!event.raw) return;
+    if (event.raw === "") return;
+    // Skip streaming deltas — only persist turn-boundary events
+    if (event.type === "content_block_delta") return;
     writer.push(event.raw);
     eventCount++;
   }

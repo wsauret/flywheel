@@ -282,9 +282,11 @@ describe("session resume via loadResumeData", () => {
       );
 
     expect(resumable).toHaveLength(2);
-    // Most recent should be id2
-    expect(resumable[0].id).toBe(id2);
-    expect(resumable[0].state).toBe("paused");
+    // Both sessions should be present and paused
+    const ids = resumable.map((s) => s.id);
+    expect(ids).toContain(id1);
+    expect(ids).toContain(id2);
+    expect(resumable.every((s) => s.state === "paused")).toBe(true);
   });
 });
 

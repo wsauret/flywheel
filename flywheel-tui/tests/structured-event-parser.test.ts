@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, mock } from "bun:test";
 import { StructuredEventParser } from "../src/infra/output/structured-event-parser";
 import { StructuredOutputBuilder } from "../src/infra/output/structured-output-builder";
-import type { NDJSONEvent } from "../src/infra/subprocess-types";
-import type { AgentBlock, ToolBlock } from "../src/tui/types";
+import type { NDJSONEvent } from "../src/infra/ndjson-event-types";
+import type { AgentBlock, ToolBlock } from "../src/infra/output-blocks";
 
 // ── Helpers ──
 
@@ -13,6 +13,7 @@ function makeAssistantEvent(content: Record<string, unknown>[]): NDJSONEvent {
       type: "assistant",
       message: { content },
     },
+    raw: "",
   };
 }
 
@@ -25,6 +26,7 @@ function makeToolResultEvent(toolUseId: string, opts?: { is_error?: boolean; con
       is_error: opts?.is_error ?? false,
       content: opts?.content ?? "done",
     },
+    raw: "",
   };
 }
 
@@ -52,7 +54,7 @@ describe("StructuredEventParser", () => {
         },
       ]);
 
-      parser.dispatch(event, "claude");
+      parser.dispatch(event, 1000);
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
       expect(blocks[0].kind).toBe("agent");
@@ -72,7 +74,7 @@ describe("StructuredEventParser", () => {
         },
       ]);
 
-      parser.dispatch(event, "claude");
+      parser.dispatch(event, 1000);
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
       const agent = blocks[0] as AgentBlock;
@@ -85,7 +87,7 @@ describe("StructuredEventParser", () => {
         { type: "tool_use", id: "tool_3", name: "Task", input: {} },
       ]);
 
-      parser.dispatch(event, "claude");
+      parser.dispatch(event, 1000);
       const blocks = builder.getBlocks();
       const agent = blocks[0] as AgentBlock;
       expect(agent.description).toBe("Task");
@@ -100,11 +102,11 @@ describe("StructuredEventParser", () => {
       const spawnEvent = makeAssistantEvent([
         { type: "tool_use", id: "tool_1", name: "Task", input: { description: "do stuff" } },
       ]);
-      parser.dispatch(spawnEvent, "claude");
+      parser.dispatch(spawnEvent, 1000);
 
       // Complete
       const resultEvent = makeToolResultEvent("tool_1");
-      parser.dispatch(resultEvent, "claude");
+      parser.dispatch(resultEvent, 1000);
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
@@ -117,11 +119,11 @@ describe("StructuredEventParser", () => {
       const spawnEvent = makeAssistantEvent([
         { type: "tool_use", id: "tool_err", name: "Task", input: { description: "will fail" } },
       ]);
-      parser.dispatch(spawnEvent, "claude");
+      parser.dispatch(spawnEvent, 1000);
 
       // Error result
       const resultEvent = makeToolResultEvent("tool_err", { is_error: true, content: "something broke" });
-      parser.dispatch(resultEvent, "claude");
+      parser.dispatch(resultEvent, 1000);
 
       const blocks = builder.getBlocks();
       const agent = blocks[0] as AgentBlock;
@@ -130,7 +132,7 @@ describe("StructuredEventParser", () => {
 
     it("ignores tool_result for unknown tool_use_id", () => {
       const resultEvent = makeToolResultEvent("unknown_id");
-      parser.dispatch(resultEvent, "claude");
+      parser.dispatch(resultEvent, 1000);
       // Should not throw, no blocks created
       expect(builder.getBlocks()).toHaveLength(0);
     });
@@ -145,7 +147,7 @@ describe("StructuredEventParser", () => {
         { type: "tool_use", id: "tool_r", name: "task_complete", input: { result: "done" } },
       ]);
 
-      parser.dispatch(event, "claude");
+      parser.dispatch(event, 1000);
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
       expect(blocks[0].kind).toBe("tool");
@@ -156,7 +158,7 @@ describe("StructuredEventParser", () => {
       const spawnEvent = makeAssistantEvent([
         { type: "tool_use", id: "agent_tool", name: "Task", input: { description: "agent work" } },
       ]);
-      parser.dispatch(spawnEvent, "claude");
+      parser.dispatch(spawnEvent, 1000);
 
       // Child tool with parent_tool_use_id
       const childEvent: NDJSONEvent = {
@@ -171,7 +173,7 @@ describe("StructuredEventParser", () => {
           },
         },
       };
-      parser.dispatch(childEvent, "claude");
+      parser.dispatch(childEvent, 1000);
 
       const blocks = builder.getBlocks();
       // Should have 1 agent block with the child tool nested inside
@@ -191,13 +193,13 @@ describe("StructuredEventParser", () => {
       const spawnEvent = makeAssistantEvent([
         { type: "tool_use", id: "tool_1", name: "Agent", input: { description: "exploring", subagent_type: "Explore" } },
       ]);
-      parser.dispatch(spawnEvent, "claude");
+      parser.dispatch(spawnEvent, 1000);
 
       // Top-level text arrives (no parent_tool_use_id) — agent must be done
       const textEvent = makeAssistantEvent([
         { type: "text", text: "Based on the exploration..." },
       ]);
-      parser.dispatch(textEvent, "claude");
+      parser.dispatch(textEvent, 1000);
 
       const blocks = builder.getBlocks();
       const agent = blocks[0] as AgentBlock;
@@ -209,13 +211,13 @@ describe("StructuredEventParser", () => {
       const spawnEvent = makeAssistantEvent([
         { type: "tool_use", id: "tool_1", name: "Agent", input: { description: "exploring" } },
       ]);
-      parser.dispatch(spawnEvent, "claude");
+      parser.dispatch(spawnEvent, 1000);
 
       // Top-level tool arrives — should be its own block, not a child of the agent
       const toolEvent = makeAssistantEvent([
         { type: "tool_use", id: "tool_2", name: "task_complete", input: { result: "done" } },
       ]);
-      parser.dispatch(toolEvent, "claude");
+      parser.dispatch(toolEvent, 1000);
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(2);
@@ -230,11 +232,11 @@ describe("StructuredEventParser", () => {
       const spawnEvent = makeAssistantEvent([
         { type: "tool_use", id: "tool_1", name: "Task", input: { description: "work" } },
       ]);
-      parser.dispatch(spawnEvent, "claude");
+      parser.dispatch(spawnEvent, 1000);
 
       // tool_result arrives before any top-level event
       const resultEvent = makeToolResultEvent("tool_1");
-      parser.dispatch(resultEvent, "claude");
+      parser.dispatch(resultEvent, 1000);
 
       const blocks = builder.getBlocks();
       const agent = blocks[0] as AgentBlock;
@@ -257,9 +259,9 @@ describe("StructuredEventParser", () => {
         { type: "tool_use", id: "tool_c", name: "Agent", input: { description: "explore C", subagent_type: "Explore" } },
       ]);
 
-      parser.dispatch(spawn1, "claude");
-      parser.dispatch(spawn2, "claude");
-      parser.dispatch(spawn3, "claude");
+      parser.dispatch(spawn1, 1000);
+      parser.dispatch(spawn2, 1000);
+      parser.dispatch(spawn3, 1000);
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(3);
@@ -273,16 +275,16 @@ describe("StructuredEventParser", () => {
       // Spawn three agents
       parser.dispatch(makeAssistantEvent([
         { type: "tool_use", id: "tool_a", name: "Agent", input: { description: "A" } },
-      ]), "claude");
+      ]), 1000);
       parser.dispatch(makeAssistantEvent([
         { type: "tool_use", id: "tool_b", name: "Agent", input: { description: "B" } },
-      ]), "claude");
+      ]), 1000);
       parser.dispatch(makeAssistantEvent([
         { type: "tool_use", id: "tool_c", name: "Agent", input: { description: "C" } },
-      ]), "claude");
+      ]), 1000);
 
       // Complete only Agent B
-      parser.dispatch(makeToolResultEvent("tool_b"), "claude");
+      parser.dispatch(makeToolResultEvent("tool_b"), 1000);
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(3);
@@ -295,18 +297,18 @@ describe("StructuredEventParser", () => {
       // Spawn two agents
       parser.dispatch(makeAssistantEvent([
         { type: "tool_use", id: "tool_a", name: "Agent", input: { description: "A" } },
-      ]), "claude");
+      ]), 1000);
       parser.dispatch(makeAssistantEvent([
         { type: "tool_use", id: "tool_b", name: "Agent", input: { description: "B" } },
-      ]), "claude");
+      ]), 1000);
 
       // Complete only Agent A via tool_result
-      parser.dispatch(makeToolResultEvent("tool_a"), "claude");
+      parser.dispatch(makeToolResultEvent("tool_a"), 1000);
 
       // Top-level text arrives — Agent B's tool_result was lost, should be auto-completed
       parser.dispatch(makeAssistantEvent([
         { type: "text", text: "Here are the results..." },
-      ]), "claude");
+      ]), 1000);
 
       const blocks = builder.getBlocks();
       expect((blocks[0] as AgentBlock).status).toBe("completed");
@@ -321,7 +323,7 @@ describe("StructuredEventParser", () => {
         { type: "tool_use", id: "tool_c", name: "Agent", input: { description: "C" } },
       ]);
 
-      parser.dispatch(event, "claude");
+      parser.dispatch(event, 1000);
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(3);
@@ -338,12 +340,12 @@ describe("StructuredEventParser", () => {
       const spawnEvent = makeAssistantEvent([
         { type: "tool_use", id: "tool_reset", name: "Task", input: { description: "test" } },
       ]);
-      parser.dispatch(spawnEvent, "claude");
+      parser.dispatch(spawnEvent, 1000);
       parser.reset();
 
       // tool_result after reset should not find the agent
       const resultEvent = makeToolResultEvent("tool_reset");
-      parser.dispatch(resultEvent, "claude");
+      parser.dispatch(resultEvent, 1000);
 
       // Agent should still be running (not completed) since reset cleared tracking
       const blocks = builder.getBlocks();
@@ -360,10 +362,191 @@ describe("StructuredEventParser", () => {
         { type: "text", text: "hello from unknown engine" },
       ]);
 
-      parser.dispatch(event, "some-other-engine");
+      parser.dispatch(event, 2000);
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
       expect(blocks[0].kind).toBe("text");
+    });
+  });
+
+  // ── User event tool_result extraction ──
+
+  describe("user event tool_result extraction", () => {
+    function makeUserToolResultEvent(toolResults: Array<{
+      tool_use_id: string;
+      is_error?: boolean;
+      content?: string;
+    }>): NDJSONEvent {
+      return {
+        type: "user",
+        data: {
+          type: "user",
+          message: {
+            content: toolResults.map(r => ({
+              type: "tool_result" as const,
+              tool_use_id: r.tool_use_id,
+              is_error: r.is_error ?? false,
+              content: r.content ?? "done",
+            })),
+          },
+        },
+        raw: "",
+      };
+    }
+
+    // Spawns a top-level tool block. Uses Edit with old_string/new_string so the tool
+    // gets a diff and renders standalone (not grouped into a context agent), ensuring
+    // toolUseIdToBlock is populated.
+    function spawnStandaloneToolBlock(toolUseId: string, name = "Edit"): void {
+      const event = makeAssistantEvent([
+        { type: "tool_use", id: toolUseId, name, input: { file_path: "test.ts", old_string: "a", new_string: "b" } },
+      ]);
+      parser.dispatch(event, 1000);
+    }
+
+    it("sets errorMessage on tool block for error tool_result", () => {
+      spawnStandaloneToolBlock("tool_1", "Edit");
+      const userEvent = makeUserToolResultEvent([
+        { tool_use_id: "tool_1", is_error: true, content: "<tool_use_error>Permission denied</tool_use_error>" },
+      ]);
+      parser.dispatch(userEvent, 2000);
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(1);
+      const tool = blocks[0] as ToolBlock;
+      expect(tool.errorMessage).toBeDefined();
+      expect(tool.errorMessage).toContain("Edit failed");
+    });
+
+    it("sets completed on tool block for non-error tool_result", () => {
+      spawnStandaloneToolBlock("tool_2");
+      const userEvent = makeUserToolResultEvent([
+        { tool_use_id: "tool_2", is_error: false, content: "success" },
+      ]);
+      parser.dispatch(userEvent, 2000);
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(1);
+      const tool = blocks[0] as ToolBlock;
+      expect(tool.completed).toBe(true);
+      expect(tool.errorMessage).toBeUndefined();
+    });
+
+    it("does nothing for user event with no tool_results", () => {
+      spawnStandaloneToolBlock("tool_3");
+      const userEvent: NDJSONEvent = {
+        type: "user",
+        data: {
+          type: "user",
+          message: { content: [{ type: "text", text: "hello" }] },
+        },
+        raw: "",
+      };
+      parser.dispatch(userEvent, 2000);
+
+      const blocks = builder.getBlocks();
+      const tool = blocks[0] as ToolBlock;
+      expect(tool.completed).toBeUndefined();
+      expect(tool.errorMessage).toBeUndefined();
+    });
+
+    it("handles multiple tool_results (mix of error and non-error)", () => {
+      spawnStandaloneToolBlock("tool_a", "Edit");
+      // task_complete is a non-context tool, also renders standalone
+      const event2 = makeAssistantEvent([
+        { type: "tool_use", id: "tool_b", name: "task_complete", input: { result: "done" } },
+      ]);
+      parser.dispatch(event2, 1000);
+
+      const userEvent = makeUserToolResultEvent([
+        { tool_use_id: "tool_a", is_error: true, content: "<tool_use_error>File not found</tool_use_error>" },
+        { tool_use_id: "tool_b", is_error: false, content: "written" },
+      ]);
+      parser.dispatch(userEvent, 2000);
+
+      const blocks = builder.getBlocks();
+      const toolA = blocks[0] as ToolBlock;
+      const toolB = blocks[1] as ToolBlock;
+      expect(toolA.errorMessage).toBeDefined();
+      expect(toolA.errorMessage).toContain("Edit failed");
+      expect(toolB.completed).toBe(true);
+      expect(toolB.errorMessage).toBeUndefined();
+    });
+
+    it("ignores tool_result for unknown tool_use_id without crashing", () => {
+      const userEvent = makeUserToolResultEvent([
+        { tool_use_id: "nonexistent_id", is_error: true, content: "boom" },
+      ]);
+      // Should not throw
+      parser.dispatch(userEvent, 2000);
+      expect(builder.getBlocks()).toHaveLength(0);
+    });
+
+    it("sets errorMessage on agent child tool for error tool_result", () => {
+      // Spawn agent, then a child tool inside it
+      const agentEvent = makeAssistantEvent([
+        { type: "tool_use", id: "agent_tool", name: "Task", input: { description: "work" } },
+      ]);
+      parser.dispatch(agentEvent, 1000);
+
+      const childEvent: NDJSONEvent = {
+        type: "assistant",
+        data: {
+          type: "assistant",
+          message: {
+            parent_tool_use_id: "agent_tool",
+            content: [
+              { type: "tool_use", id: "child_1", name: "Edit", input: { file_path: "test.ts", old_string: "a", new_string: "b" } },
+            ],
+          },
+        },
+        raw: "",
+      };
+      parser.dispatch(childEvent, 1500);
+
+      const userEvent = makeUserToolResultEvent([
+        { tool_use_id: "child_1", is_error: true, content: "<tool_use_error>File not found: test.ts</tool_use_error>" },
+      ]);
+      parser.dispatch(userEvent, 2000);
+
+      const blocks = builder.getBlocks();
+      const agent = blocks[0] as AgentBlock;
+      expect(agent.children).toHaveLength(1);
+      expect(agent.children[0].errorMessage).toBe("Edit failed — File not found: test.ts");
+    });
+
+    it("sets completed on agent child tool for non-error tool_result", () => {
+      // Spawn agent, then a child tool inside it
+      const agentEvent = makeAssistantEvent([
+        { type: "tool_use", id: "agent_tool_2", name: "Task", input: { description: "work" } },
+      ]);
+      parser.dispatch(agentEvent, 1000);
+
+      const childEvent: NDJSONEvent = {
+        type: "assistant",
+        data: {
+          type: "assistant",
+          message: {
+            parent_tool_use_id: "agent_tool_2",
+            content: [
+              { type: "tool_use", id: "child_2", name: "Bash", input: { command: "echo hi" } },
+            ],
+          },
+        },
+        raw: "",
+      };
+      parser.dispatch(childEvent, 1500);
+
+      const userEvent = makeUserToolResultEvent([
+        { tool_use_id: "child_2", is_error: false, content: "hi" },
+      ]);
+      parser.dispatch(userEvent, 2000);
+
+      const blocks = builder.getBlocks();
+      const agent = blocks[0] as AgentBlock;
+      expect(agent.children).toHaveLength(1);
+      expect(agent.children[0].completed).toBe(true);
+      expect(agent.children[0].errorMessage).toBeUndefined();
     });
   });
 });

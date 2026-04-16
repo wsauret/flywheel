@@ -1,14 +1,13 @@
-import { formatStdinMessage } from "./engines/subprocess/stdin-format.js"
-import { getEngine } from "./engines/core/registry.js"
 import { createOutputSession, type OutputSession } from "./output-session.js"
 import type { BudgetTracker } from "./session/budget-tracker-types.js"
 import { wireSessionSubscribers, type SessionInfra } from "./session/create-session-infra.js"
 import { createChatControls } from "./chat-controls.js"
 import { EventBus, createEmit, type EmitFn, type Unsubscribe } from "../infra/event-bus.js"
-import type { ProcessSpawner, StdinHandle } from "./engines/subprocess/spawner.js"
 import type { SessionEntryBase } from "./session-store-types.js"
-import type { NDJSONEvent } from "../infra/subprocess-types.js"
+import type { AnyBlock } from "../infra/output-blocks.js"
+import type { NDJSONEvent } from "../infra/ndjson-event-types.js"
 import type { MetricsWriter } from "./session/create-session-infra.js"
+import type { Engine, EngineRunner } from "./engines/core/types.js"
 
 type ChatInfra = Pick<SessionInfra, "budgetTracker" | "transcriptWriter" | "traceCollector">
 import { Log } from "../infra/log.js"
@@ -43,27 +42,25 @@ type ChatTurnPhase = "idle" | "awaiting-response" | "agent-active"
 // methods (beginTurn, markEnded) provide semantic state transitions without
 // exposing raw field assignments. Not a ref-bag — it's a state machine.
 //
-// Why _ended and _claudeSessionId overlap with the store: these are
-// subprocess-level guards used synchronously in chat-controls (send, interrupt,
+// Why _ended and _engineSessionId overlap with the store: these are
+// runner-level guards used synchronously in chat-controls (send, interrupt,
 // end) without awaiting a store read. The store's versions are the persistent
 // source of truth; these are in-process guards that prevent operations on a
-// subprocess that's already shutting down or needs to reconnect.
+// runner that's already shutting down or needs to reconnect.
 export class ChatSessionState {
-  private _stdinHandle: StdinHandle | null = null
-  private _workerPid: number | undefined
+  private _runner: EngineRunner | null = null
   private _ended = false
-  private _claudeSessionId: string | null
+  private _engineSessionId: string | null
   private _turnPhase: ChatTurnPhase = "idle"
   private _contextWarningFired = false
 
-  constructor(claudeSessionId?: string) {
-    this._claudeSessionId = claudeSessionId ?? null
+  constructor(engineSessionId?: string) {
+    this._engineSessionId = engineSessionId ?? null
   }
 
-  get stdinHandle() { return this._stdinHandle }
-  get workerPid() { return this._workerPid }
+  get runner() { return this._runner }
   get ended() { return this._ended }
-  get claudeSessionId() { return this._claudeSessionId }
+  get engineSessionId() { return this._engineSessionId }
   get turnPhase() { return this._turnPhase }
   get contextWarningFired() { return this._contextWarningFired }
 
@@ -72,36 +69,33 @@ export class ChatSessionState {
   completeTurn() { this._turnPhase = "idle" }
   markEnded() { this._ended = true }
   markContextWarningFired() { this._contextWarningFired = true }
-  captureSessionId(id: string) { this._claudeSessionId = id }
-  clearSessionId() { this._claudeSessionId = null }
-  attachWorker(pid: number | undefined, handle: StdinHandle | null) {
-    this._workerPid = pid
-    this._stdinHandle = handle
-  }
-  detachWorker() { this._stdinHandle = null }
+  captureSessionId(id: string) { this._engineSessionId = id }
+  clearSessionId() { this._engineSessionId = null }
+  attachRunner(runner: EngineRunner) { this._runner = runner }
+  detachRunner() { this._runner = null }
 }
 
 export interface ChatSessionDeps {
   projectCwd: string
-  engine: ReturnType<typeof getEngine>
+  engine: Engine
   model: string
-  spawner: ProcessSpawner
   infra: ChatInfra
   eventBus: EventBus
   chatId: string
   updateEntry: (patch: Partial<SessionEntryBase>) => void
   metricsWriter?: MetricsWriter
   onFlush?: () => void
-  claudeSessionId?: string
+  engineSessionId?: string
+  priorBlocks?: readonly AnyBlock[]
 }
 
 /**
- * Detect unrecoverable "Prompt is too long" from Claude Code. When the
- * accumulated conversation exceeds the context window, every --resume
+ * Detect unrecoverable "Prompt is too long" from the engine. When the
+ * accumulated conversation exceeds the context window, every resume
  * reloads the same oversized session and fails instantly. Clear the
- * session ID so the next send() spawns a fresh worker.
+ * session ID so the next send() spawns a fresh runner.
  */
-function handlePromptTooLong(
+function handleContextOverflow(
   event: NDJSONEvent,
   state: ChatSessionState,
   session: OutputSession,
@@ -112,7 +106,7 @@ function handlePromptTooLong(
   const isError = event.data.is_error === true || (typeof event.data.subtype === "string" && event.data.subtype !== "success")
   const resultText = typeof event.data.result === "string" ? event.data.result : ""
   if (isError && /prompt is too long/i.test(resultText)) {
-    log.warn("prompt too long — resetting session", { claudeSessionId: state.claudeSessionId })
+    log.warn("prompt too long — resetting session", { engineSessionId: state.engineSessionId })
     state.clearSessionId()
     session.pushSystemMessage(
       "Conversation too long for context window. Next message will start a fresh conversation.",
@@ -130,10 +124,11 @@ interface SetupOutputSessionInput {
   state: ChatSessionState
   updateEntry: (patch: Partial<SessionEntryBase>) => void
   onFlush?: () => void
+  priorBlocks?: readonly AnyBlock[]
 }
 
 function setupOutputSession(input: SetupOutputSessionInput): OutputSession {
-  const { budgetTracker, emit, chatId, state, updateEntry, onFlush } = input
+  const { budgetTracker, emit, chatId, state, updateEntry, onFlush, priorBlocks } = input
 
   // Suppress model activity that arrives outside a user-initiated turn.
   // Prevents "ghost thinking" during idle reconnections or process startup.
@@ -150,6 +145,7 @@ function setupOutputSession(input: SetupOutputSessionInput): OutputSession {
     updateEntry: activityGatedUpdateEntry,
     emit,
     workflowId: chatId,
+    priorBlocks,
     onFlush: () => {
       const ctx = budgetTracker.getContextUtilization()
       if (!state.contextWarningFired && ctx.percent >= 70) {
@@ -174,31 +170,27 @@ export interface WorkerLifecycle {
 }
 
 function createWorkerLifecycle(
-  deps: Pick<ChatSessionDeps, "engine" | "model" | "spawner" | "projectCwd" | "chatId">,
+  deps: Pick<ChatSessionDeps, "engine" | "model" | "projectCwd" | "chatId">,
   emit: EmitFn,
   session: OutputSession,
   callbacks: ChatCallbacks,
   state: ChatSessionState,
 ): WorkerLifecycle {
-  const { engine, model, spawner, projectCwd, chatId } = deps
-  const engineId = engine.metadata.id
+  const { engine, model, projectCwd, chatId } = deps
 
   async function spawnWorker(resumeSessionId?: string, messageToSend?: string): Promise<void> {
-    emit("subprocess:spawned", { workflowId: chatId, stepIndex: 0 })
+    emit("engine:started", { workflowId: chatId, stepIndex: 0 })
     if (messageToSend) state.beginTurn()
-    const engineCmd = engine.buildCommand({ model, resumeSessionId })
 
-    // Only send content if there's a message — an empty pipe lets Claude idle and
-    // wait rather than responding to a no-op greeting and potentially exiting.
-    const initialContent = messageToSend ? formatStdinMessage(messageToSend) : undefined
-
-    const spawnResult = await spawner.spawn(engineCmd.command, engineCmd.args, {
+    const runner = engine.createRunner({
+      model,
       cwd: projectCwd,
-      stdin: initialContent,
-      stdinPipe: true,
-      onStdout: (chunk) => session.writeStdout(chunk),
-      onStderr: (chunk) => {
-        if (chunk.trim()) session.writeStderr(chunk, Date.now())
+      resumeSessionId,
+      onEvent: (event) => {
+        // Emit to bus for infra subscribers (budget tracker, transcript writer)
+        emit("engine:ndjson", { workflowId: chatId, ndjsonEvent: event })
+        // Feed raw NDJSON to output session for rendering
+        session.writeStdout(event.raw + "\n")
       },
       onTurnComplete: () => {
         if (session.sessionId) state.captureSessionId(session.sessionId)
@@ -211,29 +203,51 @@ function createWorkerLifecycle(
       },
     })
 
-    state.attachWorker(spawnResult.pid, spawnResult.stdinHandle ?? null)
+    state.attachRunner(runner)
 
-    const handleWorkerExit = () => {
+    // Only send content if there's a message — an idle runner waits for the
+    // first send() rather than responding to a no-op greeting and exiting.
+    if (messageToSend) {
+      runner.send(messageToSend)
+    }
+
+    const handleRunnerDone = () => {
       if (session.sessionId) state.captureSessionId(session.sessionId)
       session.flushParser()
       session.flush()
-      state.detachWorker()
+      state.detachRunner()
 
       if (state.turnPhase !== "idle") {
-        log.warn("worker exited mid-turn — resetting session state")
+        log.warn("runner exited mid-turn — auto-reconnecting")
         state.completeTurn()
         callbacks.onWaiting(false)
         session.resetActivity()
-        session.pushSystemMessage("Agent process exited unexpectedly. Send a message to reconnect.", Date.now())
+        session.pushSystemMessage("Agent process exited unexpectedly. Reconnecting\u2026", Date.now())
         session.flush()
+
+        // Auto-reconnect and resume: spawn a new runner with a continue
+        // prompt so the agent picks up where it left off instead of
+        // sitting idle waiting for the user to notice.
+        if (!state.ended && state.engineSessionId) {
+          callbacks.onWaiting(true)
+          spawnWorker(state.engineSessionId, "Your process exited unexpectedly. Continue where you left off.").catch((err) => {
+            log.warn("auto-reconnect after unexpected exit failed", { error: errorMessage(err) })
+            callbacks.onWaiting(false)
+          })
+        }
       }
 
       if (state.ended) callbacks.onEnded()
     }
 
-    spawnResult.result.then(handleWorkerExit).catch((err) => {
+    runner.done.then(
+      (result) => {
+        if (result.sessionId) state.captureSessionId(result.sessionId)
+        handleRunnerDone()
+      },
+    ).catch((err) => {
       log.warn("chat process error", { error: errorMessage(err) })
-      handleWorkerExit()
+      handleRunnerDone()
     })
   }
 
@@ -246,12 +260,12 @@ export async function createChatSession(
   initialMessage?: string,
 ): Promise<ChatSession> {
   const {
-    projectCwd, engine, model, spawner, infra,
+    projectCwd, engine, model, infra,
     eventBus, chatId, updateEntry: rawUpdateEntry,
   } = deps
   const emit = createEmit(eventBus)
 
-  const state = new ChatSessionState(deps.claudeSessionId)
+  const state = new ChatSessionState(deps.engineSessionId)
 
   const eventUnsubs: Unsubscribe[] = []
   eventUnsubs.push(...wireSessionSubscribers(eventBus, emit, chatId, infra, deps.metricsWriter))
@@ -260,10 +274,11 @@ export async function createChatSession(
     budgetTracker: infra.budgetTracker, emit, chatId, state,
     updateEntry: rawUpdateEntry,
     onFlush: deps.onFlush,
+    priorBlocks: deps.priorBlocks,
   })
 
   eventUnsubs.push(
-    eventBus.subscribeToType("subprocess:ndjson", (e) => {
+    eventBus.subscribeToType("engine:ndjson", (e) => {
       const event = e.ndjsonEvent
 
       if (event.type === "user") {
@@ -271,12 +286,12 @@ export async function createChatSession(
         return
       }
 
-      handlePromptTooLong(event, state, session, callbacks)
+      handleContextOverflow(event, state, session, callbacks)
     }),
   )
 
   const lifecycle = createWorkerLifecycle(
-    { engine, model, spawner, projectCwd, chatId },
+    { engine, model, projectCwd, chatId },
     emit, session, callbacks, state,
   )
 
@@ -287,7 +302,7 @@ export async function createChatSession(
   const msg = initialMessage?.trim() || undefined
   if (msg) callbacks.onWaiting(true)
 
-  await lifecycle.spawnWorker(state.claudeSessionId ?? undefined, msg)
+  await lifecycle.spawnWorker(state.engineSessionId ?? undefined, msg)
 
   return { send: controls.send, interrupt: controls.interrupt, end: controls.end, budgetTracker: infra.budgetTracker, outputSession: session }
 }

@@ -43,7 +43,7 @@ describe("Queue event types", () => {
       const specific: FlywheelEvent[] = [];
       bus.subscribeToType("queue:initialized", (e) => specific.push(e));
       emit("queue:initialized", { workflowId: "wf-1", stepIds: ["s1"] });
-      emit("subprocess:spawned", { workflowId: "wf-1", stepIndex: 0 });
+      emit("engine:started", { workflowId: "wf-1", stepIndex: 0 });
       expect(specific).toHaveLength(1);
       expect(specific[0].type).toBe("queue:initialized");
     });

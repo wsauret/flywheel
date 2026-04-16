@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
-import { writeFileAtomic } from "../shared/atomic-write.js";
-import { createDebouncedWriter } from "../shared/debounced-writer.js";
+import { writeFileAtomic } from "../../infra/atomic-write.js";
+import { createDebouncedWriter } from "../../infra/debounced-writer.js";
 import { resolveSessionFile } from "../../infra/paths.js";
 import type { Queue } from "./types.js";
 import type { AccumulatorState } from "./context-accumulator.js";

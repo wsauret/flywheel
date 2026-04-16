@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import {
-  SubprocessHandoffSchema,
-  SubprocessHandoffBaseSchema,
+  WorkerHandoffSchema,
+  WorkerHandoffBaseSchema,
 } from "../../src/infra/handoff-schemas";
 import { EvaluatorVerdictSchema } from "../../src/workflows/evaluator/schemas";
 import { DispatcherDecisionHandoffSchema } from "../../src/workflows/dispatcher/schemas";
@@ -14,11 +14,11 @@ import { DispatcherDecisionHandoffSchema } from "../../src/workflows/dispatcher/
 // validation failures and retries.
 // ---------------------------------------------------------------------------
 
-describe("SubprocessHandoffSchema passthrough", () => {
+describe("WorkerHandoffSchema passthrough", () => {
   const validSummary = "Implemented the authentication middleware with JWT token validation and refresh support.";
 
   it("accepts handoff with extra unknown fields (passthrough)", () => {
-    const result = SubprocessHandoffSchema.safeParse({
+    const result = WorkerHandoffSchema.safeParse({
       summary: validSummary,
       extra_llm_field: "should be tolerated",
       notes: "some notes the LLM added",
@@ -29,7 +29,7 @@ describe("SubprocessHandoffSchema passthrough", () => {
   it("accepts handoff with extra 'warnings' key even if schema already has it", () => {
     // 'warnings' is already in the schema, but this tests the general
     // principle that extra keys don't break validation
-    const result = SubprocessHandoffSchema.safeParse({
+    const result = WorkerHandoffSchema.safeParse({
       summary: validSummary,
       warnings: ["some warning"],
     });
@@ -38,14 +38,14 @@ describe("SubprocessHandoffSchema passthrough", () => {
 
   it("still validates required fields even with passthrough", () => {
     // Missing summary should still fail
-    const result = SubprocessHandoffSchema.safeParse({
+    const result = WorkerHandoffSchema.safeParse({
       extra_field: "present",
     });
     expect(result.success).toBe(false);
   });
 
   it("still validates field types even with passthrough", () => {
-    const result = SubprocessHandoffSchema.safeParse({
+    const result = WorkerHandoffSchema.safeParse({
       summary: 42, // should be string
       extra_field: "present",
     });
@@ -53,11 +53,11 @@ describe("SubprocessHandoffSchema passthrough", () => {
   });
 });
 
-describe("SubprocessHandoffBaseSchema passthrough", () => {
+describe("WorkerHandoffBaseSchema passthrough", () => {
   const validSummary = "Implemented the authentication middleware with JWT token validation and refresh support.";
 
   it("accepts base schema with extra unknown fields", () => {
-    const result = SubprocessHandoffBaseSchema.safeParse({
+    const result = WorkerHandoffBaseSchema.safeParse({
       summary: validSummary,
       llm_hallucinated_key: "should be tolerated",
     });

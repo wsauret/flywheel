@@ -13,9 +13,9 @@ import {
 } from "../src/infra/workflow-types";
 import type { EvaluatorInput } from "../src/workflows/evaluator/schemas";
 import {
-  SubprocessResultSchema,
-  SubprocessFailureReasonSchema,
-} from "../src/infra/subprocess-types";
+  ProcessResultSchema,
+  ProcessFailureReasonSchema,
+} from "../src/infra/ndjson-event-types";
 import { SessionSchema } from "../src/orchestration/session/schemas";
 import {
   SessionBudgetStatusSchema,
@@ -133,7 +133,9 @@ describe("DispatcherDecisionSchema", () => {
       ...validDecision,
       worker_config: workerConfig,
     });
-    expect(result.worker_config).toEqual(workerConfig);
+    expect(result.worker_config).toEqual({
+      tool_scoping: { read: true, bash: true, write: true, edit: true, task: false },
+    });
   });
 
   it("accepts missing worker_config (optional)", () => {
@@ -210,7 +212,7 @@ describe("DispatcherInput type", () => {
       workflow_id: "wf-test-001",
       workflow: { name: "work", step_number: 1, total_steps: 2, step_description: "Setup" },
       last_worker_result: null,
-      config: { max_eval_cycles: 3, worktree_path: "/tmp/wt", project_cwd: "/tmp/proj", subprocess_model: "opus", dispatcher_model: "opus" },
+      config: { max_eval_cycles: 3, worktree_path: "/tmp/wt", project_cwd: "/tmp/proj", worker_model: "opus", dispatcher_model: "opus" },
       session_budget: { invocations_remaining: 100, token_budget_remaining: null, wall_clock_deadline: null },
       available_context: { conventions: [], standards: [] },
       step_context: createEmptyStepContext(),
@@ -227,7 +229,7 @@ describe("DispatcherInput type", () => {
       workflow_id: "wf-null-test",
       workflow: { name: "work", step_number: 1, total_steps: 1, step_description: "Test" },
       last_worker_result: null,
-      config: { max_eval_cycles: 3, worktree_path: "/tmp/wt", project_cwd: "/tmp/proj", subprocess_model: "opus", dispatcher_model: "opus" },
+      config: { max_eval_cycles: 3, worktree_path: "/tmp/wt", project_cwd: "/tmp/proj", worker_model: "opus", dispatcher_model: "opus" },
       session_budget: { invocations_remaining: 100, token_budget_remaining: null, wall_clock_deadline: null },
       available_context: { conventions: [], standards: [] },
       step_context: createEmptyStepContext(),
@@ -341,9 +343,9 @@ describe("EvaluatorInput type", () => {
 });
 
 // ---------------------------------------------------------------------------
-// SubprocessFailureReasonSchema (discriminated union)
+// ProcessFailureReasonSchema (discriminated union)
 // ---------------------------------------------------------------------------
-describe("SubprocessFailureReasonSchema", () => {
+describe("ProcessFailureReasonSchema", () => {
   const allKinds = [
     "timeout",
     "exit_code",
@@ -361,7 +363,7 @@ describe("SubprocessFailureReasonSchema", () => {
   });
 
   it("parses timeout kind with timeoutMs", () => {
-    const result = SubprocessFailureReasonSchema.safeParse({
+    const result = ProcessFailureReasonSchema.safeParse({
       kind: "timeout",
       timeoutMs: 30000,
       message: "Worker timed out",
@@ -370,7 +372,7 @@ describe("SubprocessFailureReasonSchema", () => {
   });
 
   it("rejects timeout kind without timeoutMs", () => {
-    const result = SubprocessFailureReasonSchema.safeParse({
+    const result = ProcessFailureReasonSchema.safeParse({
       kind: "timeout",
       message: "Worker timed out",
     });
@@ -385,13 +387,13 @@ describe("SubprocessFailureReasonSchema", () => {
         message: `Failed: ${kind}`,
       };
       if (kind === "exit_code") base.exitCode = 1;
-      const result = SubprocessFailureReasonSchema.safeParse(base);
+      const result = ProcessFailureReasonSchema.safeParse(base);
       expect(result.success).toBe(true);
     });
   }
 
   it("rejects unknown kind string", () => {
-    const result = SubprocessFailureReasonSchema.safeParse({
+    const result = ProcessFailureReasonSchema.safeParse({
       kind: "unknown_kind",
       message: "should fail",
     });
@@ -407,18 +409,18 @@ describe("SubprocessFailureReasonSchema", () => {
         kind: typo,
         message: "typo test",
       };
-      const result = SubprocessFailureReasonSchema.safeParse(base);
+      const result = ProcessFailureReasonSchema.safeParse(base);
       expect(result.success).toBe(false);
     });
   }
 });
 
 // ---------------------------------------------------------------------------
-// SubprocessResultSchema
+// ProcessResultSchema
 // ---------------------------------------------------------------------------
-describe("SubprocessResultSchema", () => {
+describe("ProcessResultSchema", () => {
   it("parses a valid worker result", () => {
-    const result = SubprocessResultSchema.safeParse({
+    const result = ProcessResultSchema.safeParse({
       output: "some output",
       exitCode: 0,
       truncated: false,
@@ -429,7 +431,7 @@ describe("SubprocessResultSchema", () => {
   });
 
   it("includes truncated field", () => {
-    const parsed = SubprocessResultSchema.parse({
+    const parsed = ProcessResultSchema.parse({
       output: "some output",
       exitCode: 0,
       truncated: true,
@@ -440,7 +442,7 @@ describe("SubprocessResultSchema", () => {
   });
 
   it("rejects missing truncated field", () => {
-    const result = SubprocessResultSchema.safeParse({
+    const result = ProcessResultSchema.safeParse({
       output: "some output",
       exitCode: 0,
       durationMs: 5000,
@@ -450,7 +452,7 @@ describe("SubprocessResultSchema", () => {
   });
 
   it("includes handoffPath field", () => {
-    const parsed = SubprocessResultSchema.parse({
+    const parsed = ProcessResultSchema.parse({
       output: "some output",
       exitCode: 0,
       truncated: false,
@@ -461,7 +463,7 @@ describe("SubprocessResultSchema", () => {
   });
 
   it("rejects missing handoffPath field", () => {
-    const result = SubprocessResultSchema.safeParse({
+    const result = ProcessResultSchema.safeParse({
       output: "some output",
       exitCode: 0,
       truncated: false,
@@ -471,7 +473,7 @@ describe("SubprocessResultSchema", () => {
   });
 
   it("accepts empty string handoffPath", () => {
-    const result = SubprocessResultSchema.safeParse({
+    const result = ProcessResultSchema.safeParse({
       output: "some output",
       exitCode: 0,
       truncated: false,
@@ -620,9 +622,9 @@ describe("EvaluationCriteriaSchema", () => {
 describe("ToolScopingSchema", () => {
   const valid = { read: true, bash: true, write: true, edit: true };
 
-  it("round-trips valid data", () => {
+  it("round-trips valid data with task defaulting to false", () => {
     const result = ToolScopingSchema.parse(valid);
-    expect(result).toEqual(valid);
+    expect(result).toEqual({ ...valid, task: false });
   });
 
   it("strips unknown fields", () => {
@@ -681,9 +683,11 @@ describe("WorkerConfigSchema", () => {
     tool_scoping: { read: true, bash: true, write: true, edit: true },
   };
 
-  it("round-trips valid data", () => {
+  it("round-trips valid data with task defaulting to false", () => {
     const result = WorkerConfigSchema.parse(valid);
-    expect(result).toEqual(valid);
+    expect(result).toEqual({
+      tool_scoping: { read: true, bash: true, write: true, edit: true, task: false },
+    });
   });
 
   it("strips unknown fields", () => {

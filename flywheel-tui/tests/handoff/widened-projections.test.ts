@@ -9,9 +9,9 @@
  */
 import { describe, it, expect } from "bun:test";
 import {
-  SubprocessHandoffSchema,
+  WorkerHandoffSchema,
 } from "../../src/infra/handoff-schemas";
-import type { SubprocessHandoff } from "../../src/infra/handoff-schemas";
+import type { WorkerHandoff } from "../../src/infra/handoff-schemas";
 import type { EvaluatorInput } from "../../src/workflows/evaluator/schemas";
 import { LastWorkerResultSchema } from "../../src/workflows/schemas";
 
@@ -19,7 +19,7 @@ import { LastWorkerResultSchema } from "../../src/workflows/schemas";
 // Fixtures
 // ---------------------------------------------------------------------------
 
-function fullHandoff(overrides?: Partial<SubprocessHandoff>): SubprocessHandoff {
+function fullHandoff(overrides?: Partial<WorkerHandoff>): WorkerHandoff {
   return {
     summary: "Implemented authentication module with JWT tokens, rate limiting, and session management. All tests pass.",
     artifacts: {
@@ -41,7 +41,7 @@ function fullHandoff(overrides?: Partial<SubprocessHandoff>): SubprocessHandoff 
     },
     files_to_review: ["src/auth/jwt.ts", "src/auth/session.ts"],
     ...overrides,
-  } as SubprocessHandoff;
+  } as WorkerHandoff;
 }
 
 // ---------------------------------------------------------------------------
@@ -49,7 +49,7 @@ function fullHandoff(overrides?: Partial<SubprocessHandoff>): SubprocessHandoff 
 // ---------------------------------------------------------------------------
 
 describe("VAL-HANDOFF-001: EvaluatorInput handoff includes warnings", () => {
-  it("EvaluatorInput handoff field accepts warnings from SubprocessHandoff", () => {
+  it("EvaluatorInput handoff field accepts warnings from WorkerHandoff", () => {
     const handoff = fullHandoff();
     const input: EvaluatorInput = {
       worker_output: "output",
@@ -89,7 +89,7 @@ describe("VAL-HANDOFF-001: EvaluatorInput handoff includes warnings", () => {
 // ---------------------------------------------------------------------------
 
 describe("VAL-HANDOFF-002: EvaluatorInput handoff includes decisions", () => {
-  it("EvaluatorInput handoff field accepts decisions from SubprocessHandoff", () => {
+  it("EvaluatorInput handoff field accepts decisions from WorkerHandoff", () => {
     const handoff = fullHandoff();
     const input: EvaluatorInput = {
       worker_output: "output",
@@ -247,7 +247,7 @@ describe("VAL-HANDOFF-007: Backward compatibility", () => {
     }
   });
 
-  it("existing handoff JSON from old schema still parses through SubprocessHandoffSchema", () => {
+  it("existing handoff JSON from old schema still parses through WorkerHandoffSchema", () => {
     const oldHandoff = {
       summary: "A".repeat(100),
       artifacts: {
@@ -260,7 +260,7 @@ describe("VAL-HANDOFF-007: Backward compatibility", () => {
         test_output_summary: "10 tests pass",
       },
     };
-    const result = SubprocessHandoffSchema.safeParse(oldHandoff);
+    const result = WorkerHandoffSchema.safeParse(oldHandoff);
     expect(result.success).toBe(true);
   });
 });

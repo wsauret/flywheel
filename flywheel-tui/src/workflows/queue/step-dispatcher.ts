@@ -64,7 +64,7 @@ export interface StepDispatcherDecision {
 }
 
 interface StepDispatcherOptions {
-  /** Dispatcher transport (subprocess or SDK). */
+  /** Dispatcher transport (engine-backed or pooled). */
   transport: DispatcherTransport;
   /** Event emitter for dispatcher lifecycle events. */
   emit: EmitFn;
@@ -75,7 +75,7 @@ interface StepDispatcherOptions {
     maxEvalCycles: number;
     worktreePath: string;
     projectCwd: string;
-    subprocessModel: string;
+    workerModel: string;
     dispatcherModel: string;
   };
   /** Session budget status. */

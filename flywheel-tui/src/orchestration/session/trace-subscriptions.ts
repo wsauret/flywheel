@@ -78,7 +78,7 @@ export function subscribeTraceEvents(bus: EventBus, ops: TraceSpanOps, workflowN
       }
     }),
 
-    bus.subscribeToType("subprocess:spawned", (event) => {
+    bus.subscribeToType("engine:started", (event) => {
       ops.startSpan("worker", `worker-${event.stepIndex}`, {
         stepIndex: event.stepIndex,
       });

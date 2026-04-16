@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { EventBus, createEmit, type EmitFn } from "../src/infra/event-bus";
 import { MockAdapter } from "./helpers/mock-adapter";
-import type { FlywheelEvent, SubprocessNDJSON } from "../src/infra/events";
-import type { NDJSONEvent } from "../src/infra/subprocess-types";
+import type { FlywheelEvent, EngineNDJSON } from "../src/infra/events";
+import type { NDJSONEvent } from "../src/infra/ndjson-event-types";
 
 describe("EventBus", () => {
   let bus: EventBus;
@@ -112,17 +112,17 @@ describe("EventBus", () => {
 // ---------------------------------------------------------------------------
 
 describe("createEmit", () => {
-  it("emits subprocess:spawned with correct fields via createEmit", () => {
+  it("emits engine:started with correct fields via createEmit", () => {
     const bus = new EventBus();
     const emit = createEmit(bus);
     const received: FlywheelEvent[] = [];
     bus.subscribe((e) => received.push(e));
 
-    emit("subprocess:spawned", { workflowId: "w1", stepIndex: 0 });
+    emit("engine:started", { workflowId: "w1", stepIndex: 0 });
 
     expect(received).toHaveLength(1);
-    expect(received[0].type).toBe("subprocess:spawned");
-    if (received[0].type === "subprocess:spawned") {
+    expect(received[0].type).toBe("engine:started");
+    if (received[0].type === "engine:started") {
       expect(received[0].workflowId).toBe("w1");
       expect(received[0].stepIndex).toBe(0);
       expect(typeof received[0].timestamp).toBe("number");
@@ -281,14 +281,14 @@ describe("MockAdapter", () => {
 });
 
 // ---------------------------------------------------------------------------
-// subprocess:ndjson event type
+// engine:ndjson event type
 // ---------------------------------------------------------------------------
 
-describe("subprocess:ndjson event", () => {
-  it("subscribeToType receives subprocess:ndjson with correct payload", () => {
+describe("engine:ndjson event", () => {
+  it("subscribeToType receives engine:ndjson with correct payload", () => {
     const bus = new EventBus();
-    const received: SubprocessNDJSON[] = [];
-    bus.subscribeToType("subprocess:ndjson", (e) => received.push(e));
+    const received: EngineNDJSON[] = [];
+    bus.subscribeToType("engine:ndjson", (e) => received.push(e));
 
     const ndjsonEvent: NDJSONEvent = {
       type: "assistant",
@@ -297,20 +297,20 @@ describe("subprocess:ndjson event", () => {
     };
 
     bus.emit({
-      type: "subprocess:ndjson",
+      type: "engine:ndjson",
       workflowId: "wf-test",
       ndjsonEvent,
       timestamp: Date.now(),
     });
 
     expect(received).toHaveLength(1);
-    expect(received[0].type).toBe("subprocess:ndjson");
+    expect(received[0].type).toBe("engine:ndjson");
     expect(received[0].workflowId).toBe("wf-test");
     expect(received[0].ndjsonEvent).toBe(ndjsonEvent);
     expect(received[0].ndjsonEvent.type).toBe("assistant");
   });
 
-  it("createEmit emits subprocess:ndjson with correct fields", () => {
+  it("createEmit emits engine:ndjson with correct fields", () => {
     const bus = new EventBus();
     const emit = createEmit(bus);
     const received: FlywheelEvent[] = [];
@@ -322,24 +322,24 @@ describe("subprocess:ndjson event", () => {
       raw: '{"type":"result","subtype":"success"}',
     };
 
-    emit("subprocess:ndjson", { workflowId: "wf-emit", ndjsonEvent });
+    emit("engine:ndjson", { workflowId: "wf-emit", ndjsonEvent });
 
     expect(received).toHaveLength(1);
-    expect(received[0].type).toBe("subprocess:ndjson");
-    if (received[0].type === "subprocess:ndjson") {
+    expect(received[0].type).toBe("engine:ndjson");
+    if (received[0].type === "engine:ndjson") {
       expect(received[0].workflowId).toBe("wf-emit");
       expect(received[0].ndjsonEvent).toBe(ndjsonEvent);
       expect(typeof received[0].timestamp).toBe("number");
     }
   });
 
-  it("catch-all subscriber receives subprocess:ndjson alongside typed subscriber", () => {
+  it("catch-all subscriber receives engine:ndjson alongside typed subscriber", () => {
     const bus = new EventBus();
     const catchAll: FlywheelEvent[] = [];
-    const typed: SubprocessNDJSON[] = [];
+    const typed: EngineNDJSON[] = [];
 
     bus.subscribe((e) => catchAll.push(e));
-    bus.subscribeToType("subprocess:ndjson", (e) => typed.push(e));
+    bus.subscribeToType("engine:ndjson", (e) => typed.push(e));
 
     const ndjsonEvent: NDJSONEvent = {
       type: "system",
@@ -348,7 +348,7 @@ describe("subprocess:ndjson event", () => {
     };
 
     bus.emit({
-      type: "subprocess:ndjson",
+      type: "engine:ndjson",
       workflowId: "wf-both",
       ndjsonEvent,
       timestamp: Date.now(),
@@ -359,7 +359,7 @@ describe("subprocess:ndjson event", () => {
     expect(catchAll[0]).toBe(typed[0]);
   });
 
-  it("MockAdapter records subprocess:ndjson events", () => {
+  it("MockAdapter records engine:ndjson events", () => {
     const bus = new EventBus();
     const adapter = new MockAdapter();
     adapter.connect(bus);
@@ -371,14 +371,14 @@ describe("subprocess:ndjson event", () => {
     };
 
     bus.emit({
-      type: "subprocess:ndjson",
+      type: "engine:ndjson",
       workflowId: "wf-mock",
       ndjsonEvent,
       timestamp: Date.now(),
     });
 
     expect(adapter.events).toHaveLength(1);
-    expect(adapter.events[0].type).toBe("subprocess:ndjson");
+    expect(adapter.events[0].type).toBe("engine:ndjson");
     adapter.disconnect();
   });
 });

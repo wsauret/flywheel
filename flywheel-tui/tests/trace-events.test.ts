@@ -12,11 +12,11 @@ import { describe, it, expect, beforeEach } from "bun:test";
 
 import { EventBus, createEmit, type EmitFn } from "../src/infra/event-bus";
 import type { FlywheelEvent } from "../src/infra/events";
-import type { NDJSONEvent } from "../src/infra/subprocess-types";
+import type { NDJSONEvent } from "../src/infra/ndjson-event-types";
 import type { Span } from "../src/infra/trace-types";
 import type { TraceWriter, TraceIndexEntry } from "../src/orchestration/session/trace-writer";
 import { createTraceCollector, type TraceCollector } from "../src/orchestration/session/trace-collector";
-import { createTraceEventHandler, type TraceEventHandler } from "../src/orchestration/engines/subprocess/trace-event-handler";
+import { createTraceEventHandler, type TraceEventHandler } from "../src/orchestration/engines/trace-event-handler";
 
 // ---------------------------------------------------------------------------
 // In-memory TraceWriter for testing
@@ -382,7 +382,7 @@ describe("TraceCollector — trace event subscriptions", () => {
       timestamp: now(),
     });
     bus.emit({
-      type: "subprocess:spawned",
+      type: "engine:started",
       workflowId: "wf-1",
       stepIndex: 0,
       timestamp: now(),
@@ -569,7 +569,7 @@ describe("End-to-end: NDJSON → trace event → span", () => {
     // Set up workflow context
     bus.emit({ type: "queue:initialized", workflowId: "wf-e2e", stepIds: ["s1"], timestamp: now() });
     bus.emit({ type: "queue:step-started", workflowId: "wf-e2e", stepId: "s1", stepType: "implement", stepTitle: "Build", timestamp: now() });
-    bus.emit({ type: "subprocess:spawned", workflowId: "wf-e2e", stepIndex: 0, timestamp: now() });
+    bus.emit({ type: "engine:started", workflowId: "wf-e2e", stepIndex: 0, timestamp: now() });
   });
 
   it("NDJSONEvent with tool_use → trace:tool-started → tool_call span", () => {

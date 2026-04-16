@@ -3,7 +3,7 @@
  *
  * Verifies:
  * - EvaluatorInput schema accepts optional handoff field
- * - EvaluatorHandoffDataSchema picks correct fields from SubprocessHandoff
+ * - EvaluatorHandoffDataSchema picks correct fields from WorkerHandoff
  */
 
 import { describe, it, expect } from "bun:test";

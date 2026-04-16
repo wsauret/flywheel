@@ -21,11 +21,13 @@
     "check:boundaries": "bun run scripts/check-boundaries.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
     "@opentui/core": "^0.1.0",
     "@opentui/solid": "^0.1.0",
     "diff": "^8.0.0",
     "js-yaml": "^4.1.0",
     "micromatch": "^4.0.8",
+    "openai": "^4.85.0",
     "solid-js": "^1.9.0",
     "zod": "^3.24.0"
   },

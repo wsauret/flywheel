@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from "bun:test";
-import { buildCommand, resolveModel } from "../src/orchestration/engines/providers/claude";
+import { buildCommand } from "../src/orchestration/engines/providers/claude/engine";
 
 describe("unified buildCommand", () => {
   it("produces --input-format stream-json and --output-format stream-json (no -p)", () => {
@@ -29,30 +29,24 @@ describe("unified buildCommand", () => {
   });
 
   it("with dispatcher tools returns --tools Write", () => {
-    const cmd = buildCommand({ tools: "Write" });
+    const cmd = buildCommand({ tools: ["Write"] });
     const toolsIdx = cmd.args.indexOf("--tools");
     expect(toolsIdx).toBeGreaterThanOrEqual(0);
     expect(cmd.args[toolsIdx + 1]).toBe("Write");
   });
 
   it("with evaluator tools returns --tools Read,Bash,Write,Grep,Glob", () => {
-    const cmd = buildCommand({ tools: "Read,Bash,Write,Grep,Glob" });
+    const cmd = buildCommand({ tools: ["Read", "Bash", "Write", "Grep", "Glob"] });
     const toolsIdx = cmd.args.indexOf("--tools");
     expect(toolsIdx).toBeGreaterThanOrEqual(0);
     expect(cmd.args[toolsIdx + 1]).toBe("Read,Bash,Write,Grep,Glob");
   });
 
-  it("with worker toolScoping derives --tools from ToolScopingConfig", () => {
-    const cmd = buildCommand({
-      toolScoping: { read: true, bash: true, write: true, edit: false },
-    });
+  it("with multiple tools joins with comma", () => {
+    const cmd = buildCommand({ tools: ["Read", "Bash", "Write"] });
     const toolsIdx = cmd.args.indexOf("--tools");
     expect(toolsIdx).toBeGreaterThanOrEqual(0);
-    const toolsArg = cmd.args[toolsIdx + 1];
-    expect(toolsArg).toContain("Read");
-    expect(toolsArg).toContain("Bash");
-    expect(toolsArg).toContain("Write");
-    expect(toolsArg).not.toContain("Edit");
+    expect(cmd.args[toolsIdx + 1]).toBe("Read,Bash,Write");
   });
 
   it("resolves bare 'opus' to 1M variant", () => {
@@ -93,7 +87,7 @@ describe("unified buildCommand", () => {
   it("omits --no-session-persistence (incompatible with stream-json)", () => {
     const cmd = buildCommand({
       systemPrompt: "test",
-      tools: "Write",
+      tools: ["Write"],
       effort: "low",
       model: "haiku",
     });
@@ -127,18 +121,14 @@ describe("unified buildCommand", () => {
     expect(cmd.args).not.toContain("--resume");
   });
 
-  it("omits --tools when neither tools nor toolScoping provided", () => {
+  it("omits --tools when tools not provided", () => {
     const cmd = buildCommand({});
     expect(cmd.args).not.toContain("--tools");
   });
 
-  it("explicit tools string takes precedence over toolScoping", () => {
-    const cmd = buildCommand({
-      tools: "Write",
-      toolScoping: { read: true, bash: true, write: true, edit: true },
-    });
-    const toolsIdx = cmd.args.indexOf("--tools");
-    expect(cmd.args[toolsIdx + 1]).toBe("Write");
+  it("omits --tools when empty array provided", () => {
+    const cmd = buildCommand({ tools: [] });
+    expect(cmd.args).not.toContain("--tools");
   });
 
   it("always includes --dangerously-skip-permissions", () => {
@@ -151,46 +141,10 @@ describe("unified buildCommand", () => {
     expect(cmd.command).toBe("claude");
   });
 
-  it("worker toolScoping always includes Write for handoff", () => {
-    const cmd = buildCommand({
-      toolScoping: { read: true, bash: false, write: false, edit: false },
-    });
+  it("single tool produces clean --tools arg", () => {
+    const cmd = buildCommand({ tools: ["Bash"] });
     const toolsIdx = cmd.args.indexOf("--tools");
-    const toolsArg = cmd.args[toolsIdx + 1];
-    expect(toolsArg).toContain("Write");
-    expect(toolsArg).toContain("Read");
-    expect(toolsArg).not.toContain("Bash");
+    expect(cmd.args[toolsIdx + 1]).toBe("Bash");
   });
 });
 
-describe("resolveModel", () => {
-  it("maps 'opus' to 1M variant", () => {
-    expect(resolveModel("opus")).toBe("claude-opus-4-6[1m]");
-  });
-
-  it("maps 'sonnet' to 1M variant", () => {
-    expect(resolveModel("sonnet")).toBe("claude-sonnet-4-6[1m]");
-  });
-
-  it("is case-insensitive", () => {
-    expect(resolveModel("Opus")).toBe("claude-opus-4-6[1m]");
-    expect(resolveModel("SONNET")).toBe("claude-sonnet-4-6[1m]");
-  });
-
-  it("maps 'opus[200k]' to bare alias", () => {
-    expect(resolveModel("opus[200k]")).toBe("opus");
-  });
-
-  it("maps 'sonnet[200k]' to bare alias", () => {
-    expect(resolveModel("sonnet[200k]")).toBe("sonnet");
-  });
-
-  it("passes 'haiku' through unchanged", () => {
-    expect(resolveModel("haiku")).toBe("haiku");
-  });
-
-  it("passes full model IDs through unchanged", () => {
-    expect(resolveModel("claude-opus-4-6[1m]")).toBe("claude-opus-4-6[1m]");
-    expect(resolveModel("claude-sonnet-4-6[1m]")).toBe("claude-sonnet-4-6[1m]");
-  });
-});

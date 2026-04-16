@@ -94,10 +94,28 @@ export function ToolBlock(props: ToolBlockProps) {
     </box>
   )
 
+  // Error renders outside the tool block box (where diff/content appears),
+  // unlike AgentBlock where errors render inside the agent component itself.
+  // This is intentional: tool errors are user-facing messages, agent errors
+  // are contextual within the agent's scope.
+  const errorLine = () => (
+    <Show when={props.block.errorMessage}>
+      <box paddingLeft={2}>
+        <text fg={theme.error}>{props.block.errorMessage}</text>
+      </box>
+    </Show>
+  )
+
   return (
-    <Show when={hasExpandable()} fallback={<box marginTop={1}>{header()}</box>}>
+    <Show when={hasExpandable()} fallback={
       <box flexDirection="column" marginTop={1}>
         {header()}
+        {errorLine()}
+      </box>
+    }>
+      <box flexDirection="column" marginTop={1}>
+        {header()}
+        {errorLine()}
         <CollapsibleBox expanded={expanded()} paddingTop={1} paddingBottom={1} paddingLeft={4} paddingRight={4}>
           <Show when={hasDiff()}>
             <For each={diffStyledLines()}>

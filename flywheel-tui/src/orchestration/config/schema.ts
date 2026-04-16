@@ -14,9 +14,9 @@ function noShellMetachars(fieldName: string) {
 const BoundariesSchema = z.object({
   /** Allowed port ranges (e.g. ["3000-3100", "8080-8090"]). */
   port_ranges: z.array(z.string()).optional(),
-  /** Directories subprocesses must not modify. */
+  /** Directories workers must not modify. */
   off_limits_dirs: z.array(z.string()).optional(),
-  /** External services subprocesses should be aware of. */
+  /** External services workers should be aware of. */
   external_services: z.array(z.string()).optional(),
 });
 
@@ -38,13 +38,13 @@ export const FlywheelConfigSchema = z.object({
   show_thinking: z.boolean().default(true),
   /** Per-tier config for the dispatcher */
   dispatcher: TierConfigSchema,
-  /** Per-tier config for the subprocess */
-  subprocess: TierConfigSchema,
+  /** Per-tier config for the worker */
+  worker: TierConfigSchema,
   /** Per-tier config for the evaluator */
   evaluator: TierConfigSchema,
-  /** Convenience: sets dispatcher.model, subprocess.model, and evaluator.model if not individually overridden */
+  /** Convenience: sets dispatcher.model, worker.model, and evaluator.model if not individually overridden */
   model: z.string().optional(),
-  /** Convenience: sets dispatcher.effort, subprocess.effort, and evaluator.effort if not individually overridden */
+  /** Convenience: sets dispatcher.effort, worker.effort, and evaluator.effort if not individually overridden */
   effort: EffortSchema.optional(),
   timeout_minutes: z.number().int().min(1).max(120).default(60),
   project_cwd: noShellMetachars("project_cwd").optional(),
@@ -58,7 +58,7 @@ export const FlywheelConfigSchema = z.object({
 
   /** Budget limits for workflow execution. 0 = unlimited for all fields. */
   budget: z.object({
-    /** Max total subprocess invocations across all steps. 0 = unlimited. */
+    /** Max total engine invocations across all steps. 0 = unlimited. */
     max_invocations: z.number().int().min(0).default(0),
     /** Max total tokens consumed. 0 = unlimited. */
     max_tokens: z.number().int().min(0).default(0),
@@ -75,7 +75,7 @@ export const FlywheelConfigSchema = z.object({
     standards: z.string().optional(),
   }).default({}),
 
-  /** Mission boundaries — constraints subprocesses must never violate. */
+  /** Mission boundaries — constraints workers must never violate. */
   boundaries: BoundariesSchema.optional(),
 
   /** Project commands for scrutiny validation (test, typecheck, lint). */
@@ -126,30 +126,35 @@ function resolveMaxEffort(model: string | undefined): "max" | "high" {
   return "high";
 }
 
-interface ResolvedTierConfig {
+export interface ResolvedTierConfig {
+  /** Engine ID for this tier. Always populated (tier override > top-level default). */
+  engine: string;
   model?: string;
   effort?: string;
 }
 
 const DEFAULT_EFFORTS = {
   dispatcher: "low",
-  subprocess: undefined,  // workers inherit engine default — no effort flag unless set
+  worker: undefined,  // workers inherit engine default — no effort flag unless set
   evaluator: "low",
 } as const;
 
 // Precedence: sprint.tier > tier-specific > per-tier default (or sprint model-aware max).
+// Engine precedence: tier.engine > config.engine (step-level overrides happen downstream).
 export function resolveTierConfigs(config: FlywheelConfig, mode?: "sprint"): {
   dispatcher: ResolvedTierConfig;
-  subprocess: ResolvedTierConfig;
+  worker: ResolvedTierConfig;
   evaluator: ResolvedTierConfig;
 } {
   const sprint = mode === "sprint" ? config.sprint : undefined;
+  const defaultEngine = config.engine;
 
   function resolve(
-    tier: { model?: string; effort?: string },
+    tier: { engine?: string; model?: string; effort?: string },
     sprintTier: { model?: string; effort?: string } | undefined,
     tierDefault: string | undefined,
   ): ResolvedTierConfig {
+    const engine = tier.engine ?? defaultEngine;
     const model = sprintTier?.model ?? tier.model ?? config.model;
     const raw = sprintTier?.effort
       ?? tier.effort
@@ -157,12 +162,12 @@ export function resolveTierConfigs(config: FlywheelConfig, mode?: "sprint"): {
       ?? (sprint ? resolveMaxEffort(model) : tierDefault);
     // Clamp: "max" is only valid for opus. Downgrade to "high" for other models.
     const effort = raw === "max" && !model?.toLowerCase().includes("opus") ? "high" : raw;
-    return { model, effort };
+    return { engine, model, effort };
   }
 
   return {
     dispatcher: resolve(config.dispatcher, sprint?.dispatcher, DEFAULT_EFFORTS.dispatcher),
-    subprocess: resolve(config.subprocess, sprint?.worker, DEFAULT_EFFORTS.subprocess),
+    worker: resolve(config.worker, sprint?.worker, DEFAULT_EFFORTS.worker),
     evaluator: resolve(config.evaluator, sprint?.evaluator, DEFAULT_EFFORTS.evaluator),
   };
 }

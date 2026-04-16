@@ -15,15 +15,15 @@ import { randomUUID } from "node:crypto";
 import { mkdtempSync, rmSync, existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { BunProcessSpawner } from "../../src/orchestration/engines/subprocess/bun-spawner";
+import { BunProcessSpawner } from "../../src/orchestration/engines/providers/claude/subprocess/bun-spawner";
 import { getEngine } from "../../src/orchestration/engines/core/registry";
-import { ensureSessionDir, buildSubprocessHandoffPath } from "../../src/infra/paths";
+import { ensureSessionDir, buildWorkerHandoffPath } from "../../src/infra/paths";
 import { buildScaffolding, type ScaffoldingPaths } from "../../src/workflows/queue/shared/scaffolding";
-import { formatStdinMessage } from "../../src/orchestration/engines/subprocess/stdin-format";
+import { formatStdinMessage } from "../../src/orchestration/engines/providers/claude/subprocess/stdin-format";
 import type { Step } from "../../src/workflows/queue/types";
 
 // Engine registration side effects
-import "../../src/orchestration/engines/providers/claude";
+import "../../src/orchestration/engines/providers/claude/register";
 
 // ---------------------------------------------------------------------------
 // Shared fixtures
@@ -72,7 +72,7 @@ async function spawnWorker(
   baseDir: string,
   opts?: { timeoutMs?: number },
 ) {
-  const handoffPath = buildSubprocessHandoffPath(sessionId, step.type, step.id, baseDir);
+  const handoffPath = buildWorkerHandoffPath(sessionId, step.type, step.id, baseDir);
   const scaffoldingPaths: ScaffoldingPaths = {
     handoffPath,
   };

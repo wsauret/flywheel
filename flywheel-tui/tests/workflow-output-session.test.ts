@@ -2,10 +2,10 @@
  * Tests for Phase 3: Workflow Mode (OpenTUIAdapter) → OutputSession integration.
  *
  * Verifies that:
- * - subprocess:spawned → thinking start captured via notifySpawned
- * - subprocess:output stdout → blocks rendered via writeStdout
- * - subprocess:output stderr → system block via writeStderr
- * - subprocess:injected → user message + thinking start via notifyInjected
+ * - engine:started → thinking start captured via notifySpawned
+ * - engine:output stdout → blocks rendered via writeStdout
+ * - engine:output stderr → system block via writeStderr
+ * - engine:injected → user message + thinking start via notifyInjected
  * - queue:completed → flush() writes immediately
  * - Shared builder — NdjsonPipeline writes to shared builder, OutputSession flushes them
  * - Synthetic thinking timer intercepts modelActivity via wrappedUpdateEntry
@@ -118,9 +118,9 @@ describe("Workflow → OutputSession integration", () => {
     })
   })
 
-  // ── subprocess:spawned → notifySpawned ──
+  // ── engine:started → notifySpawned ──
 
-  describe("subprocess:spawned → notifySpawned", () => {
+  describe("engine:started → notifySpawned", () => {
     it("sets thinking start, reflected in subsequent ThinkingBlock timestamp", () => {
       const { session: s, patches } = createWorkflowSession()
       session = s
@@ -149,9 +149,9 @@ describe("Workflow → OutputSession integration", () => {
     })
   })
 
-  // ── subprocess:output stdout → writeStdout ──
+  // ── engine:output stdout → writeStdout ──
 
-  describe("subprocess:output stdout → writeStdout", () => {
+  describe("engine:output stdout → writeStdout", () => {
     it("text content renders as TextBlock", () => {
       const { session: s, patches } = createWorkflowSession()
       session = s
@@ -179,9 +179,9 @@ describe("Workflow → OutputSession integration", () => {
     })
   })
 
-  // ── subprocess:output stderr → writeStderr ──
+  // ── engine:output stderr → writeStderr ──
 
-  describe("subprocess:output stderr → writeStderr", () => {
+  describe("engine:output stderr → writeStderr", () => {
     it("creates SystemBlock (flushed by interval or explicit flush)", () => {
       const { session: s, patches } = createWorkflowSession()
       session = s
@@ -199,9 +199,9 @@ describe("Workflow → OutputSession integration", () => {
     })
   })
 
-  // ── subprocess:injected → notifyInjected ──
+  // ── engine:injected → notifyInjected ──
 
-  describe("subprocess:injected → notifyInjected", () => {
+  describe("engine:injected → notifyInjected", () => {
     it("pushes user message + sets thinking start", () => {
       const { session: s, patches } = createWorkflowSession()
       session = s
@@ -351,10 +351,10 @@ describe("Workflow → OutputSession integration", () => {
     })
   })
 
-  // ── No-op emit prevents duplicate subprocess:ndjson ──
+  // ── No-op emit prevents duplicate engine:ndjson ──
 
   describe("no-op emit", () => {
-    it("no-op emit does not produce subprocess:ndjson events", () => {
+    it("no-op emit does not produce engine:ndjson events", () => {
       const emitCalls: any[] = []
       const trackingEmit = ((...args: any[]) => emitCalls.push(args)) as unknown as EmitFn
 

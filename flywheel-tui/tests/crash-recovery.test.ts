@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from "bun:test";
-import { categorizeFailure } from "../src/orchestration/engines/subprocess/errors.js";
+import { categorizeFailure } from "../src/orchestration/engines/providers/claude/subprocess/errors.js";
 
 // ---------------------------------------------------------------------------
 // Helper — default opts for categorizeFailure

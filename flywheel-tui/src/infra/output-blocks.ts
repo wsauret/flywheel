@@ -8,6 +8,12 @@ export const TextBlockSchema = z.object({
   timestamp: z.number(),
 })
 
+/**
+ * Optional fields (errorMessage, completed) are NOT discriminated by status because
+ * StructuredOutputBuilder mutates blocks via spread (`{ ...block, errorMessage }`).
+ * A discriminated union would break that pattern — errorMessage and completed are
+ * post-hoc mutations applied when tool_result events arrive, not construction-time fields.
+ */
 export const ToolBlockSchema = z.object({
   kind: z.literal("tool"),
   name: z.string(),
@@ -21,6 +27,10 @@ export const ToolBlockSchema = z.object({
   content: z.string().optional(),
   /** File type for syntax highlighting in diff rendering */
   filetype: z.string().optional(),
+  /** Error message from tool_result when is_error is true */
+  errorMessage: z.string().optional(),
+  /** Marked true when the corresponding tool_result arrives */
+  completed: z.boolean().optional(),
 })
 
 /**

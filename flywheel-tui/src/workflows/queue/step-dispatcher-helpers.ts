@@ -15,7 +15,7 @@ import type { MutationRequest, StepDispatchContext, StepDispatcherDecision } fro
 import type { MutationBudget } from "./guardrails.js";
 import { createEmptyStepContext } from "./step-context.js";
 import { parseRawHandoff } from "./shared/handoff-parse.js";
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
 
 /**
  * Build compact queue state for the dispatcher.
@@ -209,7 +209,7 @@ export function buildDispatcherInput(
       maxEvalCycles: number;
       worktreePath: string;
       projectCwd: string;
-      subprocessModel: string;
+      workerModel: string;
       dispatcherModel: string;
     };
     workflowId: string;
@@ -236,7 +236,7 @@ export function buildDispatcherInput(
       max_eval_cycles: options.configContext.maxEvalCycles,
       worktree_path: options.configContext.worktreePath,
       project_cwd: options.configContext.projectCwd,
-      subprocess_model: options.configContext.subprocessModel,
+      worker_model: options.configContext.workerModel,
       dispatcher_model: options.configContext.dispatcherModel,
     },
     session_budget: options.sessionBudget,

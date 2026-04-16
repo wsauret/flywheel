@@ -22,8 +22,28 @@ const AGENT_CHILDREN_CAP = 50;
 
 import type { ModelActivity } from "../output-blocks.js";
 
-function buildToolBlock(name: string, detail: string, timestamp: number, diff?: string, filetype?: string, content?: string, filePath?: string): ToolBlock {
-  return { kind: "tool", name, detail, timestamp, ...(filePath && { filePath }), ...(diff && { diff }), ...(content && { content }), ...(filetype && { filetype }) };
+interface BuildToolBlockOptions {
+  name: string;
+  detail: string;
+  timestamp: number;
+  toolUseId?: string;
+  diff?: string;
+  filetype?: string;
+  content?: string;
+  filePath?: string;
+}
+
+function buildToolBlock(opts: BuildToolBlockOptions): ToolBlock {
+  return {
+    kind: "tool",
+    name: opts.name,
+    detail: opts.detail,
+    timestamp: opts.timestamp,
+    ...(opts.filePath && { filePath: opts.filePath }),
+    ...(opts.diff && { diff: opts.diff }),
+    ...(opts.content && { content: opts.content }),
+    ...(opts.filetype && { filetype: opts.filetype }),
+  };
 }
 
 export class StructuredOutputBuilder {
@@ -38,12 +58,23 @@ export class StructuredOutputBuilder {
   private _modelActivity: ModelActivity = "idle";
   private thinkingStartedAt: number | null = null;
 
+  /** Fired when observable state (blocks or modelActivity) changes.
+   *  Only fires on the dirty false→true transition for blocks, so rapid
+   *  mutations within one synchronous batch produce a single notification. */
+  onChange: (() => void) | null = null;
+
   constructor() {
     this.contextTracker = new ContextGroupTracker({
       startContextAgent: (id, timestamp) => this.startAgent(id, "Tools", "Using tools...", timestamp),
       appendToolToContextAgent: (agentId, tool) => this.appendToolToAgent(agentId, tool),
       completeContextAgent: (agentId, duration) => this.completeAgent(agentId, duration),
     });
+  }
+
+  private markDirty(): void {
+    if (this.dirty) return;
+    this.dirty = true;
+    this.onChange?.();
   }
 
   get modelActivity(): ModelActivity { return this._modelActivity; }
@@ -54,6 +85,7 @@ export class StructuredOutputBuilder {
 
   notifyThinkingStarted(timestamp: number): void {
     this._modelActivity = "thinking";
+    this.onChange?.();
     if (this.thinkingStartedAt === null) {
       this.thinkingStartedAt = timestamp;
     }
@@ -72,7 +104,7 @@ export class StructuredOutputBuilder {
     } else {
       this.insertBlock({ kind: "thinking", content: text, timestamp: blockTimestamp });
     }
-    this.dirty = true;
+    this.markDirty();
   }
 
   pushUserMessage(text: string, timestamp: number, pending?: boolean, injected?: boolean): void {
@@ -93,10 +125,10 @@ export class StructuredOutputBuilder {
     } else {
       this.insertBlock(block);
     }
-    this.dirty = true;
+    this.markDirty();
   }
 
-  // Moves injected messages from pending to resolved once the subprocess acknowledges them.
+  // Moves injected messages from pending to resolved once the engine acknowledges them.
   resolvePendingMessages(): boolean {
     const pendingIndices: number[] = [];
     for (let i = 0; i < this.blocks.length; i++) {
@@ -121,7 +153,7 @@ export class StructuredOutputBuilder {
 
     rebuildAgentIndex(this.blocks, this.agentIndexById);
     this.todoBlockIndex = findTodoIndex(this.blocks);
-    this.dirty = true;
+    this.markDirty();
     return true;
   }
 
@@ -138,30 +170,34 @@ export class StructuredOutputBuilder {
       this.insertBlock({ kind: "text", content: text, timestamp });
     }
 
-    this.dirty = true;
+    this.markDirty();
   }
 
   pushSystemMessage(message: string, timestamp: number): void {
     this.contextTracker.breakContextRun(timestamp);
     this.insertBlock({ kind: "system", message, timestamp } as SystemBlock);
     this.enforceBlocksCap();
-    this.dirty = true;
+    this.markDirty();
   }
 
-  pushTool(name: string, detail: string, timestamp: number, diff?: string, filetype?: string, content?: string, filePath?: string): void {
+  pushTool(name: string, detail: string, timestamp: number, diff?: string, filetype?: string, content?: string, filePath?: string): number {
     this._modelActivity = "tool_executing";
-    const tool = buildToolBlock(name, detail, timestamp, diff, filetype, content, filePath);
+    const tool = buildToolBlock({ name, detail, timestamp, diff, filetype, content, filePath });
 
+    let idx: number;
     // Tools with diff/content data render standalone (not grouped) so the content is visible.
     if (isContextTool(name) && !diff && !content) {
       this.contextTracker.pushContextTool(tool, timestamp);
+      // Context-grouped tools live inside an agent's children — no top-level index.
+      idx = -1;
     } else {
       this.contextTracker.breakContextRun(timestamp);
-      this.insertBlock(tool);
+      idx = this.insertBlock(tool);
     }
 
     this.enforceBlocksCap();
-    this.dirty = true;
+    this.markDirty();
+    return idx;
   }
 
   pushTodoWrite(todos: TodoItem[], timestamp: number): void {
@@ -174,7 +210,7 @@ export class StructuredOutputBuilder {
         rebuildAgentIndex(this.blocks, this.agentIndexById);
         this.todoBlockIndex = -1;
       }
-      this.dirty = true;
+      this.markDirty();
       return;
     }
 
@@ -188,18 +224,18 @@ export class StructuredOutputBuilder {
     }
 
     this.enforceBlocksCap();
-    this.dirty = true;
+    this.markDirty();
   }
 
-  pushToolToAgent(agentId: string, name: string, detail: string, timestamp: number, diff?: string, filetype?: string, content?: string, filePath?: string): boolean {
-    const tool = buildToolBlock(name, detail, timestamp, diff, filetype, content, filePath);
+  pushToolToAgent(agentId: string, name: string, detail: string, timestamp: number, diff?: string, filetype?: string, content?: string, filePath?: string): number {
+    const tool = buildToolBlock({ name, detail, timestamp, diff, filetype, content, filePath });
     return this.appendToolToAgent(agentId, tool);
   }
 
-  private appendToolToAgent(agentId: string, tool: ToolBlock): boolean {
-    const ok = appendToolToAgentChildren(this.blocks, this.agentIndexById, agentId, tool, AGENT_CHILDREN_CAP);
-    if (ok) this.dirty = true;
-    return ok;
+  private appendToolToAgent(agentId: string, tool: ToolBlock): number {
+    const result = appendToolToAgentChildren(this.blocks, this.agentIndexById, agentId, tool, AGENT_CHILDREN_CAP);
+    if (result >= 0) this.markDirty();
+    return result;
   }
 
   startAgent(id: string, agentLabel: string, description: string, timestamp: number): void {
@@ -217,7 +253,7 @@ export class StructuredOutputBuilder {
     const idx = this.insertBlock(agent);
     this.agentIndexById.set(id, idx);
     this.enforceBlocksCap();
-    this.dirty = true;
+    this.markDirty();
   }
 
   completeAgent(id: string, duration: number, description?: string): void {
@@ -233,7 +269,7 @@ export class StructuredOutputBuilder {
       duration,
       ...(description !== undefined ? { description } : {}),
     };
-    this.dirty = true;
+    this.markDirty();
   }
 
   errorAgent(id: string, message: string): void {
@@ -242,7 +278,47 @@ export class StructuredOutputBuilder {
 
     const agent = this.blocks[idx] as AgentBlock;
     this.blocks[idx] = { ...agent, status: "error", errorMessage: message };
-    this.dirty = true;
+    this.markDirty();
+  }
+
+  errorTool(blockIndex: number, message: string): void {
+    const block = this.blocks[blockIndex];
+    if (!block || block.kind !== "tool") return;
+    this.blocks[blockIndex] = { ...block, errorMessage: message };
+    this.markDirty();
+  }
+
+  completeTool(blockIndex: number): void {
+    const block = this.blocks[blockIndex];
+    if (!block || block.kind !== "tool") return;
+    this.blocks[blockIndex] = { ...block, completed: true };
+    this.markDirty();
+  }
+
+  errorAgentChildTool(agentId: string, childIndex: number, message: string): void {
+    const idx = this.agentIndexById.get(agentId);
+    if (idx === undefined) return;
+    const agent = this.blocks[idx];
+    if (!agent || agent.kind !== "agent") return;
+    const child = agent.children[childIndex];
+    if (!child) return;
+    const updatedChildren = [...agent.children];
+    updatedChildren[childIndex] = { ...child, errorMessage: message };
+    this.blocks[idx] = { ...agent, children: updatedChildren };
+    this.markDirty();
+  }
+
+  completeAgentChildTool(agentId: string, childIndex: number): void {
+    const idx = this.agentIndexById.get(agentId);
+    if (idx === undefined) return;
+    const agent = this.blocks[idx];
+    if (!agent || agent.kind !== "agent") return;
+    const child = agent.children[childIndex];
+    if (!child) return;
+    const updatedChildren = [...agent.children];
+    updatedChildren[childIndex] = { ...child, completed: true };
+    this.blocks[idx] = { ...agent, children: updatedChildren };
+    this.markDirty();
   }
 
   updateAgentLatestChild(id: string, childDisplay: string): void {
@@ -253,7 +329,7 @@ export class StructuredOutputBuilder {
     if (agent.kind !== "agent" || agent.status !== "active") return;
 
     this.blocks[idx] = { ...agent, latestChild: childDisplay };
-    this.dirty = true;
+    this.markDirty();
   }
 
   closeOpenSubagents(timestamp: number): void {
@@ -269,7 +345,7 @@ export class StructuredOutputBuilder {
 
   flushContextRun(timestamp: number): void {
     this.contextTracker.breakContextRun(timestamp);
-    this.dirty = true;
+    this.markDirty();
   }
 
   getBlocks(): AnyBlock[] {
@@ -288,12 +364,12 @@ export class StructuredOutputBuilder {
     this.contextTracker.reset();
   }
 
-  // Preserves blocks for display continuity across subprocess restarts; only rebuilds index maps.
+  // Preserves blocks for display continuity across engine restarts; only rebuilds index maps.
   resetTracking(): void {
     this.agentIndexById.clear();
     this.todoBlockIndex = -1;
     this.contextTracker.resetTracking();
-    this.dirty = true;
+    this.markDirty();
     this.cachedSnapshot = [];
   }
 

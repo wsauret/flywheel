@@ -1,5 +1,6 @@
 import { OutputBuffer } from "./output-buffer.js";
-import type { NDJSONEvent } from "./subprocess-types.js";
+import type { NDJSONEvent } from "./ndjson-event-types.js";
+import { createNDJSONEvent } from "./ndjson-event-factory.js";
 
 const MAX_LINE_LENGTH = 1_000_000;
 
@@ -31,7 +32,7 @@ function extractJSON(line: string): Record<string, unknown> | null {
 const KNOWN_TYPES = new Set([
   "assistant", "system", "user", "tool_result", "result",
   "tool_use", "content_block_delta", "text", "step_finish", "error",
-  "flywheel:subprocess_boundary",
+  "flywheel:worker_boundary",
 ] as const);
 
 function classifyEvent(data: Record<string, unknown>): NDJSONEvent["type"] {
@@ -123,7 +124,6 @@ export class NDJSONParser {
     }
 
     const type = classifyEvent(data);
-    // Single boundary cast: raw JSON → typed discriminated union
-    this.onEvent({ type, data, raw } as NDJSONEvent);
+    this.onEvent(createNDJSONEvent(type, data, raw));
   }
 }

@@ -1,5 +1,4 @@
 import type { Engine } from "./engines/core/types.js"
-import type { ProcessSpawner } from "./engines/subprocess/spawner.js"
 import { Log } from "../infra/log.js"
 import { errorMessage } from "../infra/error-message.js"
 
@@ -13,14 +12,13 @@ const TITLE_TIMEOUT_MS = 10_000
 
 interface TitleGeneratorDeps {
   engine: Engine
-  spawner: ProcessSpawner
   projectCwd: string
 }
 
 export function generateSessionTitle(
   message: string,
   onTitle: (title: string) => void,
-  deps: TitleGeneratorDeps,
+  deps?: TitleGeneratorDeps,
 ): void {
   const words = message.trim().split(/\s+/)
   let quick = words.slice(0, 5).join(" ")
@@ -28,42 +26,43 @@ export function generateSessionTitle(
   else if (words.length > 5) quick += "..."
   onTitle(quick)
 
-  generateViaLLM(message, deps).then((title) => {
-    if (title) onTitle(title)
-  })
+  if (deps) {
+    generateViaLLM(message, deps).then((title) => {
+      if (title) onTitle(title)
+    })
+  }
 }
 
 async function generateViaLLM(message: string, deps: TitleGeneratorDeps): Promise<string | null> {
   if (process.env.NODE_ENV === "test" || process.env.BUN_ENV === "test") return null
   try {
-    const cmd = deps.engine.buildCommand({ model: "haiku" })
-
-    const args = [
-      "-p", TITLE_PROMPT + message.slice(0, 200),
-      "--model", "haiku",
-      "--output-format", "text",
-      "--dangerously-skip-permissions",
-    ]
-
-    let output = ""
-    const result = await deps.spawner.spawn(cmd.command, args, {
+    const chunks: string[] = []
+    const runner = deps.engine.createRunner({
+      model: "haiku",
       cwd: deps.projectCwd,
-      onStdout: (chunk) => { output += chunk },
-      onStderr: () => {},
+      onEvent: (event) => {
+        if (event.type === "assistant" && event.data?.message?.content) {
+          for (const block of event.data.message.content) {
+            if (block.type === "text") chunks.push(block.text)
+          }
+        }
+      },
     })
 
+    runner.send(TITLE_PROMPT + message.slice(0, 200))
+
     const completed = await Promise.race([
-      result.result.then(() => true),
+      runner.done.then(() => true),
       new Promise<false>((resolve) => setTimeout(() => resolve(false), TITLE_TIMEOUT_MS)),
     ])
 
     if (!completed) {
       log.warn("title generation timed out")
-      if (result.pid) try { process.kill(result.pid, "SIGTERM") } catch { /* already gone */ }
+      runner.abort()
       return null
     }
 
-    const title = output.trim()
+    const title = chunks.join("").trim()
     if (!title || title.length > 60) {
       log.warn("title generation produced empty or too long result", { length: title.length })
       return null

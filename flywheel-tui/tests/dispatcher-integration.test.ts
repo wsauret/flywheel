@@ -100,7 +100,7 @@ const DEFAULT_OPTIONS: Omit<StepDispatcherOptions, "transport"> = {
     maxEvalCycles: 3,
     worktreePath: "/tmp/worktree",
     projectCwd: "/tmp/project",
-    subprocessModel: "opus",
+    workerModel: "opus",
     dispatcherModel: "sonnet",
   },
   sessionBudget: {

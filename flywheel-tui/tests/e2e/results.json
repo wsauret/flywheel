@@ -27,11 +27,11 @@
   "eventSequence": [
     "workflow:started",
     "phase:started",
-    "subprocess:spawned",
+    "engine:started",
     "subprocess:completed",
     "phase:completed",
     "phase:started",
-    "subprocess:spawned",
+    "engine:started",
     "subprocess:completed",
     "phase:completed",
     "workflow:completed"

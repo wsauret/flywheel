@@ -9,7 +9,6 @@ import { EventBus, createEmit } from "../infra/event-bus.js"
 import { randomUUID } from "node:crypto"
 import type { SessionState } from "./session/types.js"
 import type { FlywheelConfig } from "./config/schema.js"
-import type { ProcessSpawner } from "./engines/subprocess/spawner.js"
 import type { SessionEntryBase, ChatSessionEntry } from "./session-store-types.js"
 import type { AnyBlock } from "../infra/output-blocks.js"
 import { buildChatWelcomeBlocks } from "./chat-welcome.js"
@@ -27,9 +26,8 @@ interface ChatRunnerDeps {
   initialMessage?: string
   priorBlocks?: AnyBlock[]
   showWelcome?: boolean
-  spawner?: ProcessSpawner
   config?: FlywheelConfig
-  claudeSessionId?: string
+  engineSessionId?: string
 }
 
 export interface ChatRunner {
@@ -65,19 +63,10 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
 
   let disposed = false
   let firstMessageSent = priorBlocks != null && priorBlocks.length > 0
-  // Why not derived from the manager: updateState reads from disk to
-  // deduplicate, so this local guard avoids redundant I/O on every
-  // onWaiting callback. Also prevents races if the session is deleted
-  // while a waiting transition is in flight.
-  let lastWaiting: boolean | null = null
-  // Why a local guard: onFlush fires every 16ms (OutputSession poll interval).
-  // Without this, updateSession would write the same claudeSessionId to disk
-  // ~60 times per second. The guard skips the disk write when the value hasn't changed.
-  let persistedClaudeSessionId: string | null = deps.claudeSessionId ?? null
-
-  if (priorBlocks && priorBlocks.length > 0) {
-    updateEntry({ outputBlocks: [...priorBlocks] })
-  }
+  // Why a local guard: onFlush fires on explicit flush calls.
+  // Without this, updateSession would write the same engineSessionId to disk
+  // repeatedly. The guard skips the disk write when the value hasn't changed.
+  let persistedEngineSessionId: string | null = deps.engineSessionId ?? null
 
   let initialBlocks: AnyBlock[] = []
   if (deps.showWelcome && !priorBlocks) {
@@ -86,50 +75,39 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
 
   // Cast: OutputSession writes Partial<SessionEntryBase> (generic), but
   // the store entry is ChatSessionEntry. Safe because we're always in chat mode.
-  const wrappedUpdateEntry = (patch: Partial<SessionEntryBase>) => {
-    const chatPatch = patch as Partial<ChatSessionEntry>
-    if (chatPatch.outputBlocks && priorBlocks && priorBlocks.length > 0) {
-      updateEntry({ ...chatPatch, outputBlocks: [...priorBlocks, ...chatPatch.outputBlocks] })
-    } else {
-      updateEntry(chatPatch)
-    }
+  const castUpdateEntry = (patch: Partial<SessionEntryBase>) => {
+    updateEntry(patch as Partial<ChatSessionEntry>)
   }
 
   const chatCallbacks: ChatCallbacks = {
     onWaiting: (waiting) => {
-      // Only transition to "active" when the subprocess is waiting for input
-      // (e.g. on auto-resume from "paused"). Chat sessions stay "active" for
-      // their entire subprocess lifetime — finalizeChat handles → "paused".
-      if (waiting && lastWaiting !== true) {
-        updateState(sessionId, "active")
-      }
-      lastWaiting = waiting
+      if (waiting) updateState(sessionId, "active")
     },
     onError: (message) => void deps.onError(message),
     onEnded: () => void deps.onEnded(),
   }
 
   const engine = workflowDeps.engine
-  const model = config.subprocess?.model ?? config.model ?? engine.metadata.defaultModel
+  const model = config.worker?.model ?? config.model ?? engine.metadata.defaultModel
 
   const chatSessionDeps: ChatSessionDeps = {
     projectCwd,
     engine,
     model,
-    spawner: deps.spawner ?? workflowDeps.spawner,
     infra,
     eventBus,
     chatId,
     metricsWriter: (patch) => updateEntry(patch as Partial<ChatSessionEntry>),
-    updateEntry: wrappedUpdateEntry,
-    claudeSessionId: deps.claudeSessionId,
+    updateEntry: castUpdateEntry,
+    priorBlocks,
+    engineSessionId: deps.engineSessionId,
     onFlush: () => {
       const csId = chatSession.outputSession.sessionId
       if (csId) {
-        updateEntry({ claudeSessionId: csId })
-        if (csId !== persistedClaudeSessionId) {
-          persistedClaudeSessionId = csId
-          try { updateSession(sessionId, { claudeSessionId: csId }, projectCwd) } catch { /* best-effort */ }
+        updateEntry({ engineSessionId: csId })
+        if (csId !== persistedEngineSessionId) {
+          persistedEngineSessionId = csId
+          try { updateSession(sessionId, { engineSessionId: csId }, projectCwd) } catch { /* best-effort */ }
         }
       }
       outputFlusher!.schedule()
@@ -138,12 +116,7 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
 
   const chatSession = await createChatSession(chatCallbacks, chatSessionDeps, initialMessage)
 
-  outputFlusher = outputPersistence.createFlusher(() => {
-    const sessionBlocks = chatSession.outputSession.getBlocks()
-    return priorBlocks && priorBlocks.length > 0
-      ? [...priorBlocks, ...sessionBlocks]
-      : sessionBlocks
-  })
+  outputFlusher = outputPersistence.createFlusher(() => chatSession.outputSession.getBlocks())
 
   function abort(): void {
     chatSession.interrupt()
@@ -161,7 +134,7 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
           updateEntry({ description: title })
           deps.onSessionName?.(title)
         },
-        { engine: workflowDeps.engine, spawner: workflowDeps.spawner, projectCwd },
+        { engine: workflowDeps.engine, projectCwd },
       )
     }
 
@@ -172,8 +145,8 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     if (disposed) return
     disposed = true
 
-    // 1. End the chat session FIRST (signal subprocess to stop).
-    //    Must happen before resource disposal — the subprocess may still write
+    // 1. End the chat session FIRST (signal the engine runner to stop).
+    //    Must happen before resource disposal — the runner may still write
     //    to budgetTracker/transcriptWriter while it's shutting down.
     chatSession.end()
 

@@ -150,10 +150,10 @@ interface StepExecutorHooks {
   persistAccumulatorState?: ((state: unknown) => void) | null;
 
   /**
-   * Called each time a subprocess is dispatched (before the subprocess runs).
+   * Called each time a worker is invoked (before it runs).
    * Wire to BudgetTracker.incrementInvocations() to track invocation counts.
    */
-  onSubprocessDispatched?: (() => void) | null;
+  onWorkerInvoked?: (() => void) | null;
 
   /**
    * Post-turn verification hook. Runs after worker output + handoff read,
