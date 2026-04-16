@@ -5,7 +5,7 @@
  * these helpers own the pinned-zone insertion algorithm and index maintenance.
  */
 
-import type { AnyBlock, ToolBlock, AgentBlock } from "../output-blocks.js";
+import type { AnyBlock, ToolEntry, AgentBlock } from "../output-blocks.js";
 
 /**
  * Index where new content should be inserted — before the pinned zone.
@@ -62,7 +62,7 @@ export function appendToolToAgentChildren(
   blocks: AnyBlock[],
   agentIndexById: Map<string, number>,
   agentId: string,
-  tool: ToolBlock,
+  tool: ToolEntry,
   maxChildren: number,
 ): number {
   const agentIdx = agentIndexById.get(agentId);

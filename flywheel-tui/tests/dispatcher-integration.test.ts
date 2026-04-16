@@ -112,7 +112,6 @@ const DEFAULT_OPTIONS: Omit<StepDispatcherOptions, "transport"> = {
     conventions: [],
     standards: [],
   },
-  sessionObjective: "Build a REST API",
 };
 
 // ---------------------------------------------------------------------------
@@ -260,39 +259,6 @@ describe("VAL-DISP-001: Dispatcher receives full per-step context", () => {
     expect(input.session_budget.invocations_remaining).toBe(5);
     expect(input.session_budget.token_budget_remaining).toBe(50000);
     expect(input.session_budget.wall_clock_deadline).toBe("2026-12-31T23:59:59Z");
-  });
-
-  test("dispatcher input includes session objective", async () => {
-    const transport = createMockTransport();
-    const dispatcher = createStepDispatcher({
-      ...DEFAULT_OPTIONS,
-      transport,
-      sessionObjective: "Build a REST API with pagination",
-    });
-
-    const step = makeStep();
-    const queue = makeQueue([step]);
-
-    await dispatcher.dispatch(step, queue, {
-      accumulatedContext: { summaries: [], recentHandoffs: [], totalSteps: 0 },
-      previousHandoff: null,
-      previousAssessment: null,
-      mutationBudget: {
-        maxQueueLength: 20,
-        currentQueueLength: 1,
-        remainingQueueCapacity: 19,
-        mutationsUsedThisStep: 0,
-        mutationsRemainingThisStep: 3,
-        totalSessionInserts: 0,
-        sessionInsertsRemaining: 10,
-        sessionObjective: "Build a REST API with pagination",
-      },
-    });
-
-    const input = transport.lastInput!;
-    // Session objective appears in mutation_budget.session_objective
-    expect(input.mutation_budget).toBeDefined();
-    expect(input.mutation_budget!.session_objective).toBe("Build a REST API with pagination");
   });
 });
 

@@ -3,9 +3,7 @@ import { RGBA } from "@opentui/core"
 import { resolveTheme, type Theme } from "../src/tui/shared/context/theme/resolve"
 import flywheelTheme from "../src/tui/shared/context/theme/flywheel.json" with { type: "json" }
 
-// All keys that must be present in Theme
 const EXPECTED_KEYS: (keyof Theme)[] = [
-  // Original tokens
   "primary",
   "secondary",
   "error",
@@ -21,18 +19,16 @@ const EXPECTED_KEYS: (keyof Theme)[] = [
   "border",
   "borderActive",
   "borderSubtle",
-  // Accent
   "accent",
-  // Diff tokens (hardcoded in resolve.ts, not in JSON)
+  "backdrop",
+  "successMuted",
   "diffAddedBg",
   "diffRemovedBg",
   "diffHighlightAdded",
   "diffHighlightRemoved",
   "diffAddedFg",
   "diffRemovedFg",
-  // Diff token from JSON
   "diffLineNumber",
-  // Markdown tokens
   "markdownText",
   "markdownHeading",
   "markdownLink",
@@ -47,7 +43,6 @@ const EXPECTED_KEYS: (keyof Theme)[] = [
   "markdownImage",
   "markdownImageText",
   "markdownCodeBlock",
-  // Syntax tokens
   "syntaxComment",
   "syntaxKeyword",
   "syntaxFunction",
@@ -97,10 +92,10 @@ describe("theme resolution", () => {
     expect(resolvedKeys).toEqual(expectedSorted)
   })
 
-  it("JSON theme keys match expected token list (excluding hardcoded diff tokens)", () => {
+  it("JSON theme keys match expected token list (excluding hardcoded tokens)", () => {
     const jsonKeys = Object.keys(flywheelTheme.theme).sort()
-    const hardcodedDiffKeys = new Set(["diffAddedBg", "diffRemovedBg", "diffHighlightAdded", "diffHighlightRemoved", "diffAddedFg", "diffRemovedFg"])
-    const expectedJsonKeys = [...EXPECTED_KEYS].filter(k => !hardcodedDiffKeys.has(k)).sort()
+    const hardcodedKeys = new Set<string>(["diffAddedBg", "diffRemovedBg", "diffHighlightAdded", "diffHighlightRemoved", "diffAddedFg", "diffRemovedFg", "backdrop", "successMuted"])
+    const expectedJsonKeys = [...EXPECTED_KEYS].filter(k => !hardcodedKeys.has(k)).sort()
     expect(jsonKeys).toEqual(expectedJsonKeys)
   })
 

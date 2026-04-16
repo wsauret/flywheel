@@ -101,7 +101,7 @@ Supported mutation types:
 Rules:
 - Check \`mutation_budget.mutations_remaining_this_step\` before requesting mutations.
 - Check \`mutation_budget.remaining_queue_capacity\` before requesting inserts.
-- Every mutation must include a \`reason\` tied to \`mutation_budget.session_objective\`.
+- Every mutation must include a \`reason\` tied to the user's task (\`workflow.step_description\`).
 - If no mutation is needed, omit \`mutation_requests\` entirely — don't mutate for the sake of it.
 - When budget is low (session_budget.invocations_remaining < pending steps), consider skipping lower-priority pending steps.
 - After inserting fix steps, check if any pending steps are now redundant and skip them.

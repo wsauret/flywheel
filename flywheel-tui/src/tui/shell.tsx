@@ -2,7 +2,7 @@
 
 import { createSignal, createMemo, For, Show, onCleanup } from "solid-js"
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
-import { createTextAttributes } from "@opentui/core"
+import { BOLD, DIM } from "@tui/shared/ui/text-attributes"
 import type { TextareaRenderable, TextareaAction } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { useToast } from "@tui/shared/context/toast"
@@ -30,6 +30,7 @@ import { createHeaderDisplay } from "./hooks/use-header-display.js"
 import { createPasteCollapse } from "./hooks/paste-collapse.js"
 import type { RunnerErrorResult } from "../orchestration/session/types.js"
 
+
 export function FlywheelShell(props: { factories: WorkflowSessionFactories; projectCwd: string; showThinking?: boolean }) {
   const { theme, syntax } = useTheme()
   const toast = useToast()
@@ -45,7 +46,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     sessions,
     refreshList,
     setTerminalTitle: (t: string) => renderer.setTerminalTitle(t),
-    showToast: (opts: { message: string; variant: "info" | "warning" | "error" }) => toast.show(opts),
+    showToast: (opts: { message: string; variant: "info" | "warning" | "error" | "success"; duration?: number }) => toast.show(opts),
     showThinking: props.showThinking ?? true,
   })
 
@@ -203,33 +204,38 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
         renderer.clearSelection()
       }}>
 
-      <box flexShrink={0} flexDirection="column" backgroundColor={theme.backgroundPanel} {...SplitBorder} border={["left"]} borderColor={theme.border}>
+      <box flexShrink={0} flexDirection="column" backgroundColor={theme.backgroundPanel} border={["left"]} customBorderChars={SplitBorder.customBorderChars} borderColor={theme.border}>
         <box flexDirection="row" justifyContent="space-between" paddingTop={1} paddingBottom={stepDisplay().visible.length > 0 ? 0 : 1} paddingLeft={2} paddingRight={1}>
           <box flexDirection="row" flexShrink={1} overflow="hidden">
-            <text fg={theme.primary} attributes={createTextAttributes({ bold: true })}>{"\u2699 flywheel"}</text>
+            <text fg={theme.primary} attributes={BOLD}>{"\u25CE flywheel"}</text>
             <Show when={signals.sessionTitle()}>
               <text fg={theme.textMuted}>{" \u00b7 "}</text>
               <text fg={theme.text}>{signals.sessionTitle()}</text>
             </Show>
           </box>
-          <Show when={headerRight()}>
-            <text fg={headerRightColor()} flexShrink={0}>{" "}{headerRight()}</text>
-          </Show>
+          <box flexDirection="row" flexShrink={0}>
+            <Show when={signals.foregroundId()}>
+              <text fg={theme.textSubtle}>{signals.foregroundId()}</text>
+            </Show>
+            <Show when={headerRight()}>
+              <text fg={headerRightColor()}>{" "}{headerRight()}</text>
+            </Show>
+          </box>
         </box>
         <Show when={stepDisplay().visible.length > 0}>
           <box paddingLeft={2} paddingRight={1} paddingBottom={1} flexDirection="row" overflow="hidden">
             <Show when={stepDisplay().collapsedCount > 0}>
-              <text fg={theme.success} attributes={createTextAttributes({ dim: true })}>{stepDisplay().collapsedCount} done</text>
+              <text fg={theme.success} attributes={DIM}>{stepDisplay().collapsedCount} done</text>
             </Show>
             <For each={stepDisplay().visible}>
               {(step, i) => {
                 const showSep = i() > 0 || stepDisplay().collapsedCount > 0
                 const stepColor = step.status === "completed" ? theme.success : step.status === "running" ? theme.primary : step.status === "failed" ? theme.error : theme.textMuted
-                const attrs = step.status === "running" ? createTextAttributes({ bold: true }) : (step.status === "completed" || step.status === "failed") ? undefined : createTextAttributes({ dim: true })
+                const attrs = step.status === "running" ? BOLD : (step.status === "completed" || step.status === "failed") ? undefined : DIM
                 const prefix = step.status === "completed" ? "\u2713 " : step.status === "failed" ? "\u2717 " : ""
                 return (
                   <box flexDirection="row">
-                    {showSep ? <text fg={theme.textMuted} attributes={createTextAttributes({ dim: true })}>{" \u203a "}</text> : null}
+                    {showSep ? <text fg={theme.borderSubtle}>{" \u203a "}</text> : null}
                     <text fg={stepColor} attributes={attrs}>
                       {prefix}{step.title}{step.status === "running" && step.startedAt ? ` ${formatElapsed(now() - step.startedAt)}` : ""}
                     </text>
@@ -246,7 +252,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
 
         <Show when={signals.pendingWorkCommand()}>
           <box flexGrow={1} flexDirection="column" justifyContent="center" alignItems="center" gap={1}>
-            <text fg={theme.primary} attributes={createTextAttributes({ bold: true })}>
+            <text fg={theme.primary} attributes={BOLD}>
               {signals.pendingWorkCommand() === "sprint" ? "Sprint Mode" : "Work Mode"}
             </text>
             <text fg={theme.textMuted}>Describe what you'd like to work on</text>
@@ -255,14 +261,22 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
 
         <Show when={signals.errorMessage()}>
           <scrollbox flexGrow={1}>
-            <box flexDirection="column" gap={1}>
-              <text fg={theme.error} attributes={createTextAttributes({ bold: true })}>Error</text>
-              <text fg={theme.error}>{signals.errorMessage()}</text>
-              <text fg={theme.textMuted}>
-                {signals.sessionState() === "paused"
-                  ? "Press Enter to retry, or Esc to stop"
-                  : "Press Ctrl+N to start fresh"}
-              </text>
+            <box flexDirection="column" paddingTop={1}>
+              <box border={["left"]} borderColor={theme.error} customBorderChars={SplitBorder.customBorderChars} paddingLeft={2} flexDirection="column" gap={1}>
+                <text fg={theme.error} attributes={BOLD}>{"✗"} Something went wrong</text>
+                <text fg={theme.text}>{signals.errorMessage()}</text>
+              </box>
+              <box paddingTop={1} paddingLeft={2} flexDirection="row">
+                <Show when={signals.sessionState() === "paused"} fallback={
+                  <>
+                    <text fg={theme.textSubtle}>Ctrl+N</text><text fg={theme.textMuted} attributes={DIM}>{" new session \u00b7 "}</text>
+                    <text fg={theme.textSubtle}>Ctrl+B</text><text fg={theme.textMuted} attributes={DIM}>{" sessions"}</text>
+                  </>
+                }>
+                  <text fg={theme.textSubtle}>Ctrl+R</text><text fg={theme.textMuted} attributes={DIM}>{" resume \u00b7 "}</text>
+                  <text fg={theme.textSubtle}>Esc</text><text fg={theme.textMuted} attributes={DIM}>{" stop"}</text>
+                </Show>
+              </box>
             </box>
           </scrollbox>
         </Show>
@@ -297,7 +311,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
                     : signals.agentState() === "active"
                       ? "Send a message to guide the agent (Esc to interrupt)"
                       : signals.sessionState() === "paused"
-                        ? "Send a message to resume, or Esc to force stop"
+                        ? "Send a message to resume, or press Esc to stop"
                         : "Send a message..."
               }
               backgroundColor="transparent" focusedBackgroundColor="transparent"
@@ -320,25 +334,34 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
             <ShimmerText text={promptStatusLabel()!} color={theme.primary} />
           </Show>
         </box>
-        <box flexDirection="row" flexShrink={0}>
-          <Show when={signals.agentState() === "active"}>
-            <text fg={theme.textMuted}>{"Esc interrupt \u00b7 "}</text>
+        <box flexDirection="row" gap={2} flexShrink={0}>
+          <Show when={signals.pendingWorkCommand()}>
+            <box flexDirection="row"><text fg={theme.textMuted}>Esc</text><text fg={theme.textSubtle}>{" cancel"}</text></box>
           </Show>
-          <Show when={signals.sessionState() === "paused"}>
-            <text fg={theme.textMuted}>{"Esc exit \u00b7 Ctrl+R resume \u00b7 "}</text>
+          <Show when={!signals.pendingWorkCommand() && signals.agentState() === "active"}>
+            <box flexDirection="row"><text fg={theme.textMuted}>Esc</text><text fg={theme.textSubtle}>{" interrupt"}</text></box>
           </Show>
-          <text fg={theme.textMuted} onMouseDown={() => { chat.backgroundChat(); chat.startChat() }}>
-            {"Ctrl+N new"}
-          </text>
-          <text fg={theme.textMuted}>
-            {sessions().filter(s => s.state === "active" || s.state === "paused").length >= 2 ? " \u00b7 Tab" : ""}
-            {" \u00b7 "}
-          </text>
-          <text fg={theme.textMuted} onMouseDown={() => sessionModal.openSessionsModal()}>
-            {sessions().length > 0
-              ? `Ctrl+B ${sessions().length} session${sessions().length === 1 ? "" : "s"}`
-              : "Ctrl+B sessions"}
-          </text>
+          <Show when={!signals.pendingWorkCommand() && signals.sessionState() === "paused"}>
+            <box flexDirection="row"><text fg={theme.textMuted}>Esc</text><text fg={theme.textSubtle}>{" exit"}</text></box>
+            <box flexDirection="row"><text fg={theme.textMuted}>Ctrl+R</text><text fg={theme.textSubtle}>{" resume"}</text></box>
+          </Show>
+          <Show when={!signals.pendingWorkCommand() && signals.sessionState() === "completed"}>
+            <box flexDirection="row"><text fg={theme.textMuted}>Esc</text><text fg={theme.textSubtle}>{" dismiss"}</text></box>
+          </Show>
+          <box onMouseDown={() => { chat.backgroundChat(); chat.startChat() }} flexDirection="row">
+            <text fg={theme.textMuted}>Ctrl+N</text><text fg={theme.textSubtle}>{" new"}</text>
+          </box>
+          <Show when={sessions().filter(s => s.state === "active" || s.state === "paused").length >= 2}>
+            <box flexDirection="row"><text fg={theme.textMuted}>Tab</text><text fg={theme.textSubtle}>{" switch"}</text></box>
+          </Show>
+          <box onMouseDown={() => sessionModal.openSessionsModal()} flexDirection="row">
+            <text fg={theme.textMuted}>Ctrl+B</text>
+            <text fg={theme.textSubtle}>
+              {sessions().length > 0
+                ? ` ${sessions().length} session${sessions().length === 1 ? "" : "s"}`
+                : " sessions"}
+            </text>
+          </box>
         </box>
       </box>
 

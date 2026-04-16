@@ -105,25 +105,3 @@ export function createContextPressureObserver(
     },
   };
 }
-
-export function createNoActionObserver(): StreamObserver {
-  let sawToolUse = false;
-
-  return {
-    onEvent(event: EngineEvent): void {
-      if (event.type === "tool_use") {
-        sawToolUse = true;
-      }
-    },
-    onTurnComplete(): string | null {
-      const hadTools = sawToolUse;
-      // Reset for next turn within the same step (multi-turn stdin pipe mode).
-      // Per-step reset is handled by observerChain.reset() between steps.
-      sawToolUse = false;
-      return hadTools ? null : "No tool calls were made. Take action to make progress on the task.";
-    },
-    reset(): void {
-      sawToolUse = false;
-    },
-  };
-}

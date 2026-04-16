@@ -48,6 +48,7 @@ export interface StreamOptions {
   systemPrompt: string;
   model?: string;
   reasoningEffort?: ReasoningEffort;
+  signal?: AbortSignal;
 }
 
 export interface LLMClient {

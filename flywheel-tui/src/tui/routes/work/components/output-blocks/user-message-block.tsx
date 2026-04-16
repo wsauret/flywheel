@@ -1,9 +1,9 @@
 /** @jsxImportSource @opentui/solid */
 
 import { createSignal, Show } from "solid-js"
-import { createTextAttributes } from "@opentui/core"
+import { BOLD, ITALIC } from "@tui/shared/ui/text-attributes"
 import { useTheme } from "@tui/shared/context/theme"
-import { EmptyBorder } from "@tui/shared/ui/border"
+import { VerticalBarBorder } from "@tui/shared/ui/border"
 import type { UserMessageBlock as UserMessageBlockType } from "@infra/output-blocks"
 
 interface UserMessageBlockProps {
@@ -30,13 +30,9 @@ export function UserMessageBlock(props: UserMessageBlockProps) {
     <Show when={injected()} fallback={
       <box
         marginTop={1}
-        marginBottom={1}
         border={["left"]}
         borderColor={pending() ? theme.textMuted : theme.secondary}
-        customBorderChars={{
-          ...EmptyBorder,
-          vertical: "┃",
-        }}
+        customBorderChars={VerticalBarBorder}
       >
         <box
           paddingTop={1}
@@ -53,7 +49,7 @@ export function UserMessageBlock(props: UserMessageBlockProps) {
             conceal={true}
             fg={pending() ? theme.textMuted : theme.text}
           />
-          {pending() && <text fg={theme.textMuted} attributes={createTextAttributes({ italic: true })}> (queued)</text>}
+          {pending() && <text fg={theme.textMuted} attributes={ITALIC}> (queued)</text>}
         </box>
       </box>
     }>
@@ -61,7 +57,7 @@ export function UserMessageBlock(props: UserMessageBlockProps) {
       <box flexDirection="column" marginTop={1}>
         <box flexDirection="row" gap={1} onMouseDown={() => setExpanded((v) => !v)}>
           <text fg={theme.textMuted}>↳</text>
-          <text fg={theme.textMuted} attributes={createTextAttributes({ bold: true })}>System</text>
+          <text fg={theme.textMuted} attributes={BOLD}>System</text>
           <text fg={theme.textMuted}>{expanded() ? "▾" : "▸"}</text>
           <Show when={!expanded()}>
             <text fg={theme.textMuted}>{previewLine(props.block.content)}</text>
@@ -71,10 +67,7 @@ export function UserMessageBlock(props: UserMessageBlockProps) {
           <box
             border={["left"]}
             borderColor={theme.textMuted}
-            customBorderChars={{
-              ...EmptyBorder,
-              vertical: "┃",
-            }}
+            customBorderChars={VerticalBarBorder}
           >
             <box
               paddingTop={1}

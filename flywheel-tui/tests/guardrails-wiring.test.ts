@@ -116,7 +116,6 @@ describe("Guardrails getMutationBudget", () => {
       maxQueueLength: 50,
       maxMutationsPerStepCompletion: 3,
       maxInsertedStepsPerSession: 20,
-      sessionObjective: "Test objective",
     });
 
     const budget = guardrails.getMutationBudget("step-1", 10);
@@ -128,7 +127,6 @@ describe("Guardrails getMutationBudget", () => {
     expect(budget.mutationsRemainingThisStep).toBe(3);
     expect(budget.totalSessionInserts).toBe(0);
     expect(budget.sessionInsertsRemaining).toBe(20);
-    expect(budget.sessionObjective).toBe("Test objective");
   });
 
   it("budget decreases after applying mutations", () => {
@@ -149,20 +147,5 @@ describe("Guardrails getMutationBudget", () => {
     expect(budget.mutationsUsedThisStep).toBe(2);
     expect(budget.mutationsRemainingThisStep).toBe(1);
     expect(budget.totalSessionInserts).toBe(2);
-  });
-});
-
-describe("Guardrails session objective via getMutationBudget", () => {
-  it("returns the configured session objective", () => {
-    const guardrails = createGuardrails({
-      sessionObjective: "Build authentication system",
-    });
-
-    expect(guardrails.getMutationBudget("step-1", 3).sessionObjective).toBe("Build authentication system");
-  });
-
-  it("returns empty string when no objective configured", () => {
-    const guardrails = createGuardrails();
-    expect(guardrails.getMutationBudget("step-1", 3).sessionObjective).toBe("");
   });
 });

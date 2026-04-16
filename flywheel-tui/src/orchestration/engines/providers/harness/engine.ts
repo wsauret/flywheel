@@ -11,6 +11,17 @@ const metadata: EngineMetadata = {
   description: "Direct LLM API engine (Anthropic + OpenAI)",
 };
 
+// Bare aliases → full Anthropic model IDs for direct API usage (no context-window suffixes).
+const MODEL_ALIASES: Record<string, string> = {
+  opus:   "claude-opus-4-6",
+  sonnet: "claude-sonnet-4-6",
+  haiku:  "claude-haiku-4-5-20251001",
+};
+
+function resolveModel(raw: string): string {
+  return MODEL_ALIASES[raw.toLowerCase().trim()] ?? raw;
+}
+
 export function createHarnessEngine(deps?: {
   modelsClient?: ModelsClient;
   createLLMClient?: (model: string, modelsClient: ModelsClient) => LLMClient;
@@ -23,7 +34,7 @@ export function createHarnessEngine(deps?: {
     createRunner(options: RunnerOptions) {
       return new HarnessRunner(
         options,
-        (model) => clientFactory(model, modelsClient),
+        (model) => clientFactory(resolveModel(model), modelsClient),
       );
     },
   };

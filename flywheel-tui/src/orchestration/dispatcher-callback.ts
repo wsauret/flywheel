@@ -20,7 +20,6 @@ interface DispatcherCallbackDeps {
   contextIndexer: ContextIndexer
   contextAccumulator: ContextAccumulator
   projectCwd: string
-  sessionObjective: string | undefined
   queue: Queue
   workerModel: string
   chatContext: string | undefined
@@ -34,7 +33,7 @@ function mergeAvailableContext(base: AvailableContext, chatContext: string | und
 export function createDispatcherCallback(opts: DispatcherCallbackDeps): DispatcherFn {
   const {
     maxRevisions, dispatcherTransport, contextIndexer, contextAccumulator,
-    projectCwd, sessionObjective, queue, emit, workflowId,
+    projectCwd, queue, emit, workflowId,
     workerModel, chatContext,
   } = opts
 
@@ -54,7 +53,6 @@ export function createDispatcherCallback(opts: DispatcherCallbackDeps): Dispatch
       contextIndexer.getRelevantContext(),
       chatContext,
     ),
-    sessionObjective,
   })
 
   return async (step, context) => {

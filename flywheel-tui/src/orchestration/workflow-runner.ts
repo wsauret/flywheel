@@ -141,7 +141,7 @@ export function createWorkflowRunner(opts: {
 
   async function run(): Promise<WorkflowResult> {
     const created = await createExecutor({
-      deps, eventBus, workflowId, sessionId, queue, description,
+      deps, eventBus, workflowId, sessionId, queue,
       projectCwd, workerCwd, infra, injectionQueue,
       chatContext: opts.overrides?.chatContext,
       metricsWriter: (patch) => updateEntry(sessionId, patch),

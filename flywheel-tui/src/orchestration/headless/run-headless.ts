@@ -7,7 +7,7 @@ export async function runHeadless(description: string): Promise<boolean> {
   const factories = { createAdapter: () => new HeadlessAdapter({ logLevel: "normal", timestamps: true }) }
   const sessionStore = createSessionStore(factories)
   const sessionId = randomUUID()
-  const queue = buildQueueFromTemplate("work")
+  const queue = buildQueueFromTemplate("work", description)
 
   const completed = await new Promise<boolean>((resolve) => {
     sessionStore.start({

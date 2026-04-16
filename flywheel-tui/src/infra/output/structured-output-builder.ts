@@ -1,7 +1,7 @@
 import type {
   AnyBlock,
   TextBlock,
-  ToolBlock,
+  ToolEntry,
   AgentBlock,
   SystemBlock,
   TodoItem,
@@ -22,7 +22,7 @@ const AGENT_CHILDREN_CAP = 50;
 
 import type { ModelActivity } from "../output-blocks.js";
 
-interface BuildToolBlockOptions {
+interface BuildToolEntryOptions {
   name: string;
   detail: string;
   timestamp: number;
@@ -33,7 +33,7 @@ interface BuildToolBlockOptions {
   filePath?: string;
 }
 
-function buildToolBlock(opts: BuildToolBlockOptions): ToolBlock {
+function buildToolEntry(opts: BuildToolEntryOptions): ToolEntry {
   return {
     kind: "tool",
     name: opts.name,
@@ -182,7 +182,7 @@ export class StructuredOutputBuilder {
 
   pushTool(name: string, detail: string, timestamp: number, diff?: string, filetype?: string, content?: string, filePath?: string): number {
     this._modelActivity = "tool_executing";
-    const tool = buildToolBlock({ name, detail, timestamp, diff, filetype, content, filePath });
+    const tool = buildToolEntry({ name, detail, timestamp, diff, filetype, content, filePath });
 
     let idx: number;
     // Tools with diff/content data render standalone (not grouped) so the content is visible.
@@ -228,11 +228,11 @@ export class StructuredOutputBuilder {
   }
 
   pushToolToAgent(agentId: string, name: string, detail: string, timestamp: number, diff?: string, filetype?: string, content?: string, filePath?: string): number {
-    const tool = buildToolBlock({ name, detail, timestamp, diff, filetype, content, filePath });
+    const tool = buildToolEntry({ name, detail, timestamp, diff, filetype, content, filePath });
     return this.appendToolToAgent(agentId, tool);
   }
 
-  private appendToolToAgent(agentId: string, tool: ToolBlock): number {
+  private appendToolToAgent(agentId: string, tool: ToolEntry): number {
     const result = appendToolToAgentChildren(this.blocks, this.agentIndexById, agentId, tool, AGENT_CHILDREN_CAP);
     if (result >= 0) this.markDirty();
     return result;

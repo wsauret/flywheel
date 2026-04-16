@@ -2,7 +2,7 @@
 
 import { createSignal } from "solid-js"
 import { useTerminalDimensions } from "@opentui/solid"
-import { createTextAttributes } from "@opentui/core"
+import { BOLD } from "@tui/shared/ui/text-attributes"
 import { useTheme } from "@tui/shared/context/theme"
 import { Clipboard } from "../utils/clipboard.js"
 
@@ -32,9 +32,9 @@ export function ErrorComponent(props: ErrorComponentProps) {
   return (
     <box flexDirection="column" gap={1} padding={2}>
       <box flexDirection="row" gap={2} alignItems="center">
-        <text fg={theme.error} attributes={createTextAttributes({ bold: true })}>Fatal Error</text>
+        <text fg={theme.error} attributes={BOLD}>Fatal Error</text>
         <box onMouseUp={copyError} backgroundColor={theme.backgroundElement} padding={1}>
-          <text fg={theme.text} attributes={createTextAttributes({ bold: true })}>{copied() ? "Copied!" : "Copy Error"}</text>
+          <text fg={theme.text} attributes={BOLD}>{copied() ? "Copied!" : "Copy Error"}</text>
         </box>
       </box>
       <box flexDirection="row" gap={2}>

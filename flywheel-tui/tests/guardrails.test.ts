@@ -2,13 +2,12 @@
 // ADR-004 Guardrails — Unit Tests
 // ---------------------------------------------------------------------------
 //
-// Tests for 6 guardrails protecting queue mutations:
+// Tests for 5 guardrails protecting queue mutations:
 //   1. Max queue length (VAL-GUARD-001, VAL-MUT-004)
 //   2. Max mutations per step completion (VAL-GUARD-002)
 //   3. Max inserted steps per session (VAL-GUARD-003)
 //   4. Provenance logging completeness (VAL-GUARD-005)
 //   5. Budget visibility in dispatcher calls (VAL-GUARD-006)
-//   6. Objective anchoring in mutation prompts (VAL-GUARD-007)
 //   7. Dispatcher-driven mutation updates queue and TUI (VAL-CROSS-009)
 // ---------------------------------------------------------------------------
 
@@ -57,7 +56,6 @@ function defaultGuardrailOptions(overrides?: Partial<GuardrailOptions>): Guardra
     maxQueueLength: 50,
     maxMutationsPerStepCompletion: 3,
     maxInsertedStepsPerSession: 20,
-    sessionObjective: "Build a hello world endpoint",
     ...overrides,
   };
 }
@@ -442,35 +440,6 @@ describe("Guardrail 5: Budget visibility in dispatcher calls", () => {
     const budget = guardrails.getMutationBudget("step-2", 10);
     expect(budget.mutationsUsedThisStep).toBe(0);
     expect(budget.mutationsRemainingThisStep).toBe(3);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Guardrail 6: Objective anchoring in mutation prompts (VAL-GUARD-007)
-// ---------------------------------------------------------------------------
-
-describe("Guardrail 6: Objective anchoring in mutation prompts", () => {
-  test("session objective is exposed via getMutationBudget", () => {
-    const guardrails = createGuardrails(defaultGuardrailOptions({
-      sessionObjective: "Build a REST API with authentication",
-    }));
-
-    expect(guardrails.getMutationBudget("step-1", 3).sessionObjective).toBe("Build a REST API with authentication");
-  });
-
-  test("session objective defaults to empty string", () => {
-    const guardrails = createGuardrails(defaultGuardrailOptions({ sessionObjective: undefined }));
-
-    expect(guardrails.getMutationBudget("step-1", 3).sessionObjective).toBe("");
-  });
-
-  test("objective is included in mutation budget context", () => {
-    const guardrails = createGuardrails(defaultGuardrailOptions({
-      sessionObjective: "Add dark mode toggle",
-    }));
-
-    const budget = guardrails.getMutationBudget("step-1", 5);
-    expect(budget.sessionObjective).toBe("Add dark mode toggle");
   });
 });
 

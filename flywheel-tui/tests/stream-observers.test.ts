@@ -12,7 +12,6 @@ import type { EngineEvent } from "../src/orchestration/engines/core/types.js";
 import {
   createObserverChain,
   createToolFailureObserver,
-  createNoActionObserver,
   createBudgetAwarenessObserver,
   createContextPressureObserver,
   type StreamObserver,
@@ -143,38 +142,6 @@ describe("ToolFailureObserver", () => {
 });
 
 // ---------------------------------------------------------------------------
-// NoActionObserver
-// ---------------------------------------------------------------------------
-
-describe("NoActionObserver", () => {
-  it("fires when turn completes with no tool_use events", () => {
-    const obs = createNoActionObserver();
-    obs.onEvent(textEvent());
-    const msg = obs.onTurnComplete();
-    expect(msg).not.toBeNull();
-    expect(msg).toContain("No tool calls were made");
-  });
-
-  it("does NOT fire when tools were used", () => {
-    const obs = createNoActionObserver();
-    obs.onEvent(textEvent());
-    obs.onEvent(toolUse("Read", { file_path: "/a.ts" }));
-    const msg = obs.onTurnComplete();
-    expect(msg).toBeNull();
-  });
-
-  it("resets between turns", () => {
-    const obs = createNoActionObserver();
-    obs.onEvent(toolUse("Read", { file_path: "/a.ts" }));
-    obs.onTurnComplete(); // first turn — had tools
-    // second turn — no tools
-    obs.onEvent(textEvent());
-    const msg = obs.onTurnComplete();
-    expect(msg).not.toBeNull();
-  });
-});
-
-// ---------------------------------------------------------------------------
 // ObserverChain
 // ---------------------------------------------------------------------------
 
@@ -182,21 +149,21 @@ describe("ObserverChain", () => {
   it("collects all non-null messages from multiple observers", () => {
     const chain = createObserverChain([
       createToolFailureObserver(),
-      createNoActionObserver(),
+      createDoomLoopObserver(),
     ]);
-    // No tool_use + 3 error tool_results → both should fire
-    chain.onEvent(toolResult(true));
-    chain.onEvent(toolResult(true));
-    chain.onEvent(toolResult(true));
+    // 3 error tool_results → tool failure fires; 3 repeated tool_use → doom loop fires
+    for (let i = 0; i < 3; i++) {
+      chain.onEvent(toolUse("Read", { file_path: "/a.ts" }));
+      chain.onEvent(toolResult(true));
+    }
     const messages = chain.onTurnComplete();
-    // NoActionObserver fires (no tool_use), ToolFailureObserver fires (3 errors)
     expect(messages.length).toBe(2);
   });
 
   it("returns empty array when no observers fire", () => {
     const chain = createObserverChain([
       createToolFailureObserver(),
-      createNoActionObserver(),
+      createDoomLoopObserver(),
     ]);
     chain.onEvent(toolUse("Read", { file_path: "/a.ts" }));
     chain.onEvent(toolResult(false));

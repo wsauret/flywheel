@@ -32,7 +32,8 @@ export interface AgentLoopOptions {
   client: LLMClient;
   tools?: ReturnType<typeof getToolDefinitions>;
   systemPrompt: string;
-  /** The user's task instruction — becomes the first user message. */
+  /** The user's task instruction — becomes the first user message.
+   *  When priorMessages is non-empty, this is the next turn (e.g. a revision request). */
   instruction: string;
   cwd: string;
   handoffPath?: string;
@@ -43,6 +44,10 @@ export interface AgentLoopOptions {
   /** Shared queue of pending user inputs. The runner pushes via send();
    *  the loop shifts at text-exit boundaries to continue as a new user turn. */
   pendingUserInputs?: string[];
+  /** Prior messages from a resumed conversation. Seeds the loop's history. */
+  priorMessages?: Message[];
+  /** Called whenever a message is pushed to history — enables streaming persistence. */
+  onMessageAppended?: (message: Message) => void;
 }
 
 export interface AgentLoopResult {
@@ -64,10 +69,20 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   const tools = options.tools ?? getToolDefinitions();
   const toolDefs = tools.map(({ name, description, input_schema }) => ({ name, description, input_schema }));
 
-  const messages: Message[] = [];
+  const messages: Message[] = options.priorMessages ? [...options.priorMessages] : [];
   const tokenCounter = createTokenCounter();
   const summarizer = createSummarizer(client);
   const todoList: TodoItem[] = [];
+
+  function pushMessage(message: Message): void {
+    messages.push(message);
+    tokenCounter.addMessage(message);
+    options.onMessageAppended?.(message);
+  }
+
+  // Seed token counter from resumed messages (counts happen via addMessage on push,
+  // so we pre-count the prior slice to keep totals accurate).
+  for (const m of messages) tokenCounter.addMessage(m);
 
   const toolContext: ToolContext = {
     cwd,
@@ -114,6 +129,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         tools: toolDefs,
         systemPrompt,
         reasoningEffort,
+        signal,
       });
 
       for await (const event of stream) {
@@ -163,9 +179,9 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
 
       if (err instanceof OutputLengthExceededError) {
         log.warn("output length exceeded, auto-resuming");
-        messages.push({ role: "user", content: userPrompt });
+        pushMessage({ role: "user", content: userPrompt });
         if (err.truncatedContent) {
-          messages.push({ role: "assistant", content: err.truncatedContent });
+          pushMessage({ role: "assistant", content: err.truncatedContent });
           tokenCounter.addToolResult(err.truncatedContent);
         }
         nextInput = { kind: "resume-truncation" };
@@ -176,14 +192,12 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     }
 
     const userMessage: Message = { role: "user", content: userPrompt };
-    messages.push(userMessage);
-    tokenCounter.addMessage(userMessage);
+    pushMessage(userMessage);
 
     if (assistantContent.length > 0) {
       options.onTurnAssistantMessage?.(assistantContent);
       const assistantMessage: Message = { role: "assistant", content: assistantContent };
-      messages.push(assistantMessage);
-      tokenCounter.addMessage(assistantMessage);
+      pushMessage(assistantMessage);
     }
 
     if (toolCalls.length === 0) {

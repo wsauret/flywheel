@@ -64,7 +64,6 @@ const DispatcherInputSchema = z.object({
     mutations_remaining_this_step: z.number(),
     total_session_inserts: z.number(),
     session_inserts_remaining: z.number(),
-    session_objective: z.string(),
   }).strip().optional(),
 }).strip();
 

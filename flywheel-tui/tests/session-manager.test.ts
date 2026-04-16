@@ -75,15 +75,13 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("SessionManager.create()", () => {
-  it("returns a UUID session ID", () => {
+  it("returns a 12-char hex session ID", () => {
     const baseDir = makeTmpDir();
     const mgr = createSessionManager(makeDeps(baseDir));
 
     const id = mgr.create("plans/test.md");
 
-    expect(id).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
-    );
+    expect(id).toMatch(/^[0-9a-f]{12}$/);
   });
 
   it("persists session to disk with correct planPath", () => {
@@ -471,7 +469,7 @@ describe("SessionManager config injection", () => {
 
     // Should create without error
     const id = mgr.create("plans/test.md");
-    expect(id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(id).toMatch(/^[0-9a-f]{12}$/);
   });
 
   it("uses default config when config is not provided in deps", () => {

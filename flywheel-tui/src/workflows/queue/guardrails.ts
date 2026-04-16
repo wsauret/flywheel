@@ -1,6 +1,6 @@
 // Queue System — ADR-004 Guardrails
 //
-// Implements 6 guardrails for queue mutations:
+// Implements 5 guardrails for queue mutations:
 //
 // 1. Max queue length (default 50) — enforced on all mutation operations
 // 2. Max mutations per step completion (default 3) — limits dispatcher
@@ -8,10 +8,11 @@
 // 3. Max inserted steps per session (default 20) — tracks total inserts
 //    (excluding initial template steps) and rejects when exceeded
 // 4. Budget visibility — every dispatcher call receives remaining budget
-// 5. Objective anchoring — every dispatcher mutation prompt includes
-//    original session objective
-// 6. Provenance logging — enforced at the queue mutation API level
+// 5. Provenance logging — enforced at the queue mutation API level
 //    (see queue.ts — all mutations require Provenance)
+//
+// Objective anchoring is handled upstream: the dispatcher reads the user's
+// task description from the step itself (step.description → workflow.step_description).
 //
 // Usage:
 //   const guardrails = createGuardrails({ maxQueueLength: 50, ... });
@@ -41,8 +42,6 @@ export interface GuardrailOptions {
   maxMutationsPerStepCompletion?: number;
   /** Maximum total steps inserted during a session (excludes template steps). Default: 20. */
   maxInsertedStepsPerSession?: number;
-  /** Session objective string for anchoring. */
-  sessionObjective?: string;
 }
 
 /** Guardrail gate result — either permitted or rejected with a reason. */
@@ -67,8 +66,6 @@ export interface MutationBudget {
   readonly totalSessionInserts: number;
   /** Remaining session insert capacity. */
   readonly sessionInsertsRemaining: number;
-  /** Session objective for anchoring. */
-  readonly sessionObjective: string;
 }
 
 /** Result of applying a single mutation through guardrails — same gate shape. */
@@ -97,7 +94,6 @@ export function createGuardrails(options: GuardrailOptions = {}) {
   const maxQueueLength = options.maxQueueLength ?? DEFAULT_MAX_QUEUE_LENGTH;
   const maxMutationsPerStep = options.maxMutationsPerStepCompletion ?? DEFAULT_MAX_MUTATIONS_PER_STEP;
   const maxInsertedPerSession = options.maxInsertedStepsPerSession ?? DEFAULT_MAX_INSERTED_STEPS_PER_SESSION;
-  const sessionObjective = options.sessionObjective ?? "";
 
   const stepMutationCounts = new Map<string, number>();
   /** Total session inserts (excluding initial template steps). */
@@ -149,7 +145,6 @@ export function createGuardrails(options: GuardrailOptions = {}) {
       mutationsRemainingThisStep: Math.max(0, maxMutationsPerStep - mutationsUsed),
       totalSessionInserts: sessionInsertCount,
       sessionInsertsRemaining: Math.max(0, maxInsertedPerSession - sessionInsertCount),
-      sessionObjective,
     };
   }
 

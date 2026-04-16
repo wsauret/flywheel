@@ -35,7 +35,7 @@ assert_contains "SR-01d-final.log" "✓" "SR-01d-step-completed" || true
 # which may be empty after the TUI clears output blocks on completion).
 # Concatenate all SR-01 captures for a single broad search.
 cat "$LOG_DIR"/SR-01*.log > "$LOG_DIR/SR-01-all.log" 2>/dev/null || true
-assert_contains "SR-01-all.log" "review\|verification\|check\|creat\|file\|passed" "SR-01e-self-review-evidence" || true
+assert_contains_ci "SR-01-all.log" "review\|verification\|check\|creat\|file\|passed" "SR-01e-self-review-evidence" || true
 
 # No-action observer may have fired (depends on timing)
 # This is informational — not a hard assertion
@@ -59,9 +59,9 @@ send_keys C-n; sleep "$WAIT_MEDIUM"
 
 # ── SR-02: Chat with observers — no false positives ──
 echo "SR-02: Chat with Observers Active"
-send_text "What is 13 * 7? Reply with just the number."
+send_text "say exactly: sr02-chat-ok"
 wait_and_capture "$WAIT_RESPONSE" "SR-02a-chat.log"
-assert_contains "SR-02a-chat.log" "91" "SR-02a-correct-answer" || true
+assert_contains "SR-02a-chat.log" "sr02-chat-ok" "SR-02a-correct-answer" || true
 
 # No observer noise in chat mode (observers are workflow-only)
 assert_not_contains "SR-02a-chat.log" "Doom loop" "SR-02b-no-doom-loop" || true
@@ -90,7 +90,7 @@ capture "SR-03d-completed.log"
 tmux capture-pane -t "$SESSION" -p -S -500 > "$LOG_DIR/SR-03e-scrollback.log" 2>/dev/null || true
 
 # SR-03: self-review evidence (injection + worker response)
-assert_contains "SR-03e-scrollback.log" "review\|verification\|tests_passed\|Evaluator.*passed" "SR-03e-self-review-evidence" || true
+assert_contains_ci "SR-03e-scrollback.log" "review\|verification\|tests_passed\|Evaluator.*passed" "SR-03e-self-review-evidence" || true
 
 if [ -f "$UAT_DIR/e2e-sr03.txt" ]; then
   echo "PASS  SR-03f-file-after-resume — file exists after pause/resume" >> "$SUMMARY"

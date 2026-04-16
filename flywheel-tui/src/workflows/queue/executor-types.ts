@@ -54,11 +54,13 @@ export type EvaluatorFn = (
   taskContent?: string,
 ) => Promise<EvalResult>;
 
-/** Worker: executes a step with a prompt */
+/** Worker: executes a step with a prompt.
+ *  When resumeSessionId is provided, continues the prior conversation (engine-specific). */
 export type WorkerFn = (
   step: Step,
   prompt: string,
   signal?: AbortSignal,
+  resumeSessionId?: string,
 ) => Promise<WorkerOutput>;
 
 /** Handoff reader: reads handoff data from path */
@@ -134,13 +136,6 @@ interface StepExecutorHooks {
    * context.
    */
   guardrails?: import("./guardrails").Guardrails | null;
-
-  /**
-   * Session objective — the original feature description.
-   * Always passed to the dispatcher context per ADR-003 Decision 4.
-   * Also used by guardrails for objective anchoring if guardrails are active.
-   */
-  sessionObjective?: string;
 
   /**
    * Persist accumulated context state alongside queue state.

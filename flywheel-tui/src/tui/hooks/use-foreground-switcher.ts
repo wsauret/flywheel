@@ -35,7 +35,7 @@ export function createForegroundSwitcher(deps: ForegroundSwitcherDeps): (session
       if (!s) return
       sessionStore.load(sessionId, {
         kind: s.kind as SessionKind,
-        description: s.label || s.name || sessionId.slice(0, 8),
+        description: s.label || s.name || sessionId,
         outputBlocks: blocks,
         tokens: s.totalTokens,
         cost: s.totalCost,

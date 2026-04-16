@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, mock } from "bun:test";
 import { StructuredEventParser } from "../src/infra/output/structured-event-parser";
 import { StructuredOutputBuilder } from "../src/infra/output/structured-output-builder";
 import type { NDJSONEvent } from "../src/infra/ndjson-event-types";
-import type { AgentBlock, ToolBlock } from "../src/infra/output-blocks";
+import type { AgentBlock, ToolEntry } from "../src/infra/output-blocks";
 
 // ── Helpers ──
 
@@ -141,8 +141,8 @@ describe("StructuredEventParser", () => {
   // ── Regular tool routing ──
 
   describe("regular tool use", () => {
-    it("creates a ToolBlock for non-subagent tools", () => {
-      // Use task_complete which is a non-context tool, so it renders as a standalone ToolBlock
+    it("creates a ToolEntry for non-subagent tools", () => {
+      // Use task_complete which is a non-context tool, so it renders as a standalone ToolEntry
       const event = makeAssistantEvent([
         { type: "tool_use", id: "tool_r", name: "task_complete", input: { result: "done" } },
       ]);
@@ -397,7 +397,7 @@ describe("StructuredEventParser", () => {
     // Spawns a top-level tool block. Uses Edit with old_string/new_string so the tool
     // gets a diff and renders standalone (not grouped into a context agent), ensuring
     // toolUseIdToBlock is populated.
-    function spawnStandaloneToolBlock(toolUseId: string, name = "Edit"): void {
+    function spawnStandaloneToolEntry(toolUseId: string, name = "Edit"): void {
       const event = makeAssistantEvent([
         { type: "tool_use", id: toolUseId, name, input: { file_path: "test.ts", old_string: "a", new_string: "b" } },
       ]);
@@ -405,7 +405,7 @@ describe("StructuredEventParser", () => {
     }
 
     it("sets errorMessage on tool block for error tool_result", () => {
-      spawnStandaloneToolBlock("tool_1", "Edit");
+      spawnStandaloneToolEntry("tool_1", "Edit");
       const userEvent = makeUserToolResultEvent([
         { tool_use_id: "tool_1", is_error: true, content: "<tool_use_error>Permission denied</tool_use_error>" },
       ]);
@@ -413,13 +413,13 @@ describe("StructuredEventParser", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
-      const tool = blocks[0] as ToolBlock;
+      const tool = blocks[0] as ToolEntry;
       expect(tool.errorMessage).toBeDefined();
       expect(tool.errorMessage).toContain("Edit failed");
     });
 
     it("sets completed on tool block for non-error tool_result", () => {
-      spawnStandaloneToolBlock("tool_2");
+      spawnStandaloneToolEntry("tool_2");
       const userEvent = makeUserToolResultEvent([
         { tool_use_id: "tool_2", is_error: false, content: "success" },
       ]);
@@ -427,13 +427,13 @@ describe("StructuredEventParser", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
-      const tool = blocks[0] as ToolBlock;
+      const tool = blocks[0] as ToolEntry;
       expect(tool.completed).toBe(true);
       expect(tool.errorMessage).toBeUndefined();
     });
 
     it("does nothing for user event with no tool_results", () => {
-      spawnStandaloneToolBlock("tool_3");
+      spawnStandaloneToolEntry("tool_3");
       const userEvent: NDJSONEvent = {
         type: "user",
         data: {
@@ -445,13 +445,13 @@ describe("StructuredEventParser", () => {
       parser.dispatch(userEvent, 2000);
 
       const blocks = builder.getBlocks();
-      const tool = blocks[0] as ToolBlock;
+      const tool = blocks[0] as ToolEntry;
       expect(tool.completed).toBeUndefined();
       expect(tool.errorMessage).toBeUndefined();
     });
 
     it("handles multiple tool_results (mix of error and non-error)", () => {
-      spawnStandaloneToolBlock("tool_a", "Edit");
+      spawnStandaloneToolEntry("tool_a", "Edit");
       // task_complete is a non-context tool, also renders standalone
       const event2 = makeAssistantEvent([
         { type: "tool_use", id: "tool_b", name: "task_complete", input: { result: "done" } },
@@ -465,8 +465,8 @@ describe("StructuredEventParser", () => {
       parser.dispatch(userEvent, 2000);
 
       const blocks = builder.getBlocks();
-      const toolA = blocks[0] as ToolBlock;
-      const toolB = blocks[1] as ToolBlock;
+      const toolA = blocks[0] as ToolEntry;
+      const toolB = blocks[1] as ToolEntry;
       expect(toolA.errorMessage).toBeDefined();
       expect(toolA.errorMessage).toContain("Edit failed");
       expect(toolB.completed).toBe(true);

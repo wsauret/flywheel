@@ -1324,7 +1324,7 @@ describe("VAL-EXEC-010: onStepCompleted hook called after step completion", () =
 describe("VAL-EXEC-013: Workflow templates expand into visible granular steps", () => {
   test("work template produces a single work step", async () => {
     const { buildQueueFromTemplate } = await import("../src/workflows/queue/templates");
-    const queue = buildQueueFromTemplate("work");
+    const queue = buildQueueFromTemplate("work", "example task");
 
     expect(queue.steps.length).toBe(1);
     expect(queue.steps[0].type).toBe("work");
@@ -1333,7 +1333,7 @@ describe("VAL-EXEC-013: Workflow templates expand into visible granular steps", 
 
   test("each step is independently visible with unique ID and title", async () => {
     const { buildQueueFromTemplate } = await import("../src/workflows/queue/templates");
-    const queue = buildQueueFromTemplate("work");
+    const queue = buildQueueFromTemplate("work", "example task");
 
     for (const step of queue.steps) {
       expect(step.id).toBeTruthy();

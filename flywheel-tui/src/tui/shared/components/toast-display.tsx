@@ -3,7 +3,7 @@
 
 import { Show } from "solid-js"
 import { useTerminalDimensions } from "@opentui/solid"
-import { createTextAttributes } from "@opentui/core"
+import { BOLD } from "@tui/shared/ui/text-attributes"
 import { useTheme } from "@tui/shared/context/theme"
 import { useToast } from "@tui/shared/context/toast"
 import type { ToastVariant } from "@tui/shared/context/toast"
@@ -33,7 +33,8 @@ export function ToastDisplay(props: { headerHeight: number }) {
   const toastWidth = () => {
     const msg = toast.current
     if (!msg) return 0
-    return msg.message.length + 6
+    const maxWidth = Math.floor(dimensions().width * 0.6)
+    return Math.min(msg.message.length + 6, maxWidth)
   }
 
   return (
@@ -51,7 +52,7 @@ export function ToastDisplay(props: { headerHeight: number }) {
           paddingLeft={1}
           paddingRight={1}
         >
-          <text fg={variantColor()} attributes={createTextAttributes({ bold: true })}>{VARIANT_PREFIX[msg().variant]} </text>
+          <text fg={variantColor()} attributes={BOLD}>{VARIANT_PREFIX[msg().variant]} </text>
           <text fg={theme.text}>{msg().message}</text>
         </box>
       )}

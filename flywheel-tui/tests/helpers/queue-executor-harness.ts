@@ -286,8 +286,6 @@ export interface HarnessOptions {
   maxRevisions?: number;
   /** Guardrail options. Null = no guardrails. */
   guardrails?: GuardrailOptions | null;
-  /** Session objective for dispatcher context. Default: "Test session objective". */
-  sessionObjective?: string;
   /** Custom handoff reader (overrides default). */
   handoffReader?: HandoffReaderFn;
   /** Custom persist function (overrides default). */
@@ -395,7 +393,6 @@ export function createHarness(opts: HarnessOptions = {}): Harness {
     maxRevisions: opts.maxRevisions ?? 0,
     onStepCompleted: opts.onStepCompleted ?? null,
     guardrails,
-    sessionObjective: opts.sessionObjective ?? "Test session objective",
     persistAccumulatorState,
   });
 

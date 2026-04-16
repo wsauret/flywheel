@@ -86,7 +86,7 @@ describe("OutputSnapshotSchema — validation", () => {
     expect(result.success).toBe(true);
   });
 
-  it("validates a ToolBlock snapshot", () => {
+  it("validates a ToolEntry snapshot", () => {
     const block = toolBlock();
     const result = OutputSnapshotSchema.safeParse(block);
     expect(result.success).toBe(true);
@@ -212,7 +212,7 @@ describe("toSnapshot — serialization", () => {
     expect(agentSnap.errorMessage).toBe("something failed");
   });
 
-  it("strips runtime-only fields from ToolBlock on serialize", () => {
+  it("preserves all ToolEntry fields on serialize", () => {
     const block = {
       ...toolBlock("Edit", "src/main.ts"),
       filePath: "/abs/src/main.ts",
@@ -225,10 +225,10 @@ describe("toSnapshot — serialization", () => {
     expect(snapshots).toHaveLength(1);
     const snap = snapshots[0] as any;
     expect(snap.name).toBe("Edit");
-    expect(snap.filePath).toBeUndefined();
-    expect(snap.diff).toBeUndefined();
-    expect(snap.content).toBeUndefined();
-    expect(snap.filetype).toBeUndefined();
+    expect(snap.filePath).toBe("/abs/src/main.ts");
+    expect(snap.diff).toBe("--- a\n+++ b");
+    expect(snap.content).toBe("file content");
+    expect(snap.filetype).toBe("ts");
   });
 
   it("strips expanded from AgentBlock on serialize", () => {
@@ -239,15 +239,15 @@ describe("toSnapshot — serialization", () => {
     expect((snapshots[0] as any).expanded).toBeUndefined();
   });
 
-  it("strips runtime-only fields from nested ToolBlocks in AgentBlock children", () => {
+  it("preserves all fields on nested ToolEntrys in AgentBlock children", () => {
     const children = [{ ...toolBlock("Edit", "a.ts"), filePath: "/a.ts", diff: "diff" }];
     const block = agentBlock({ status: "completed", children: children as any });
     const snapshots = toSnapshot([block] as any);
 
     const agentSnap = snapshots[0] as any;
     expect(agentSnap.children[0].name).toBe("Edit");
-    expect(agentSnap.children[0].filePath).toBeUndefined();
-    expect(agentSnap.children[0].diff).toBeUndefined();
+    expect(agentSnap.children[0].filePath).toBe("/a.ts");
+    expect(agentSnap.children[0].diff).toBe("diff");
   });
 
   it("handles empty block array", () => {

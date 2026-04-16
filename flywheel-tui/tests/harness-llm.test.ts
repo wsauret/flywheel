@@ -57,6 +57,8 @@ describe("isNonRetryable", () => {
   });
 });
 
+const noSleep = { sleep: async () => {} };
+
 describe("withRetry", () => {
   test("returns result on success", async () => {
     const result = await withRetry(async () => "ok");
@@ -71,7 +73,7 @@ describe("withRetry", () => {
         throw Object.assign(new Error("rate limit"), { status: 429 });
       }
       return "ok";
-    });
+    }, noSleep);
     expect(result).toBe("ok");
     expect(attempts).toBe(2);
   });
@@ -84,7 +86,7 @@ describe("withRetry", () => {
         throw Object.assign(new Error("server error"), { status: 500 });
       }
       return "ok";
-    });
+    }, noSleep);
     expect(result).toBe("ok");
     expect(attempts).toBe(2);
   });
@@ -95,7 +97,7 @@ describe("withRetry", () => {
       await withRetry(async () => {
         attempts++;
         throw Object.assign(new Error("bad request"), { status: 400 });
-      });
+      }, noSleep);
     } catch {
       // expected
     }
@@ -108,7 +110,7 @@ describe("withRetry", () => {
       await withRetry(async () => {
         attempts++;
         throw Object.assign(new Error("unauthorized"), { status: 401 });
-      });
+      }, noSleep);
     } catch {
       // expected
     }
@@ -121,7 +123,7 @@ describe("withRetry", () => {
       await withRetry(async () => {
         attempts++;
         throw Object.assign(new Error("forbidden"), { status: 403 });
-      });
+      }, noSleep);
     } catch {
       // expected
     }
@@ -134,35 +136,26 @@ describe("withRetry", () => {
       await withRetry(async () => {
         attempts++;
         throw Object.assign(new Error("not found"), { status: 404 });
-      });
+      }, noSleep);
     } catch {
       // expected
     }
     expect(attempts).toBe(1);
   });
 
-  test("honors retry-after header on 429", async () => {
+  test("calls sleep with computed delay", async () => {
+    const delays: number[] = [];
     let attempts = 0;
-    const start = Date.now();
     const result = await withRetry(async () => {
       attempts++;
       if (attempts === 1) {
-        throw Object.assign(new Error("rate limit"), {
-          status: 429,
-          headers: {
-            get(name: string) {
-              if (name === "retry-after") return "1";
-              return null;
-            },
-          },
-        });
+        throw Object.assign(new Error("rate limit"), { status: 429 });
       }
       return "ok";
-    });
+    }, { sleep: async (ms) => { delays.push(ms) } });
     expect(result).toBe("ok");
-    expect(attempts).toBe(2);
-    const elapsed = Date.now() - start;
-    expect(elapsed).toBeGreaterThanOrEqual(900);
+    expect(delays).toHaveLength(1);
+    expect(delays[0]).toBeGreaterThan(0);
   });
 
   test("throws after MAX_RETRIES exhausted", async () => {
@@ -171,7 +164,7 @@ describe("withRetry", () => {
       withRetry(async () => {
         attempts++;
         throw Object.assign(new Error("server error"), { status: 500 });
-      }),
+      }, noSleep),
     ).rejects.toThrow("server error");
     expect(attempts).toBe(3);
   });

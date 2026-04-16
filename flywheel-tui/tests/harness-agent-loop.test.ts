@@ -198,45 +198,77 @@ describe("agent loop", () => {
 });
 
 describe("buildHarnessSystemPrompt", () => {
-  test("includes verification warning", () => {
+  const allTools = new Set(["bash", "write_handoff", "todo_list", "read_image"]);
+
+  test("deprecated string overload still works", () => {
     const prompt = buildHarnessSystemPrompt("My task prompt", "anthropic");
+    expect(prompt).toContain("My task prompt");
     expect(prompt).toContain("evaluated against hidden tests");
-    expect(prompt).toContain("edge cases");
   });
 
-  test("includes todo list instructions", () => {
-    const prompt = buildHarnessSystemPrompt("My task prompt", "anthropic");
-    expect(prompt).toContain("todo list");
-    expect(prompt).toContain("todo_list(read)");
-    expect(prompt).toContain("context recovery");
-  });
-
-  test("includes orchestration prompt", () => {
-    const prompt = buildHarnessSystemPrompt("My task-specific instructions here", "anthropic");
-    expect(prompt).toContain("My task-specific instructions here");
-  });
-
-  test("uses anthropic editing for anthropic provider", () => {
-    const prompt = buildHarnessSystemPrompt("Task", "anthropic");
+  test("includes all sections with full tool set", () => {
+    const prompt = buildHarnessSystemPrompt({
+      orchestrationSystemPrompt: "Task", provider: "anthropic", availableTools: allTools,
+    });
+    expect(prompt).toContain("EXECUTION ENVIRONMENT");
     expect(prompt).toContain("cat > path/to/file");
-    expect(prompt).toContain("sed -i");
-    expect(prompt).not.toContain("apply_patch");
+    expect(prompt).toContain("evaluated against hidden tests");
+    expect(prompt).toContain("todo_list(read)");
+    expect(prompt).toContain("IRREVERSIBLE AND FINAL");
+    expect(prompt).toContain("numeric values");
+  });
+
+  test("handoff-only tools omit shell, editing, verification, todo, generalization", () => {
+    const prompt = buildHarnessSystemPrompt({
+      orchestrationSystemPrompt: "Dispatcher task",
+      provider: "anthropic",
+      availableTools: new Set(["write_handoff"]),
+    });
+    expect(prompt).toContain("Dispatcher task");
+    expect(prompt).toContain("IRREVERSIBLE AND FINAL");
+    expect(prompt).not.toContain("EXECUTION ENVIRONMENT");
+    expect(prompt).not.toContain("cat > path/to/file");
+    expect(prompt).not.toContain("evaluated against hidden tests");
+    expect(prompt).not.toContain("todo_list(read)");
+    expect(prompt).not.toContain("numeric values");
+  });
+
+  test("omits project instructions when no bash tool", () => {
+    const prompt = buildHarnessSystemPrompt({
+      orchestrationSystemPrompt: "Task",
+      provider: "anthropic",
+      projectInstructions: "Project CLAUDE.md content",
+      availableTools: new Set(["write_handoff"]),
+    });
+    expect(prompt).not.toContain("Project CLAUDE.md content");
+  });
+
+  test("includes project instructions when bash tool present", () => {
+    const prompt = buildHarnessSystemPrompt({
+      orchestrationSystemPrompt: "Task",
+      provider: "anthropic",
+      projectInstructions: "Project CLAUDE.md content",
+      availableTools: new Set(["bash", "write_handoff"]),
+    });
+    expect(prompt).toContain("Project CLAUDE.md content");
+  });
+
+  test("orchestration prompt comes first (primacy)", () => {
+    const prompt = buildHarnessSystemPrompt({
+      orchestrationSystemPrompt: "ORCHESTRATION_START",
+      provider: "anthropic",
+      availableTools: allTools,
+    });
+    const orchIdx = prompt.indexOf("ORCHESTRATION_START");
+    const shellIdx = prompt.indexOf("EXECUTION ENVIRONMENT");
+    expect(orchIdx).toBeLessThan(shellIdx);
   });
 
   test("uses openai editing for openai provider", () => {
-    const prompt = buildHarnessSystemPrompt("Task", "openai");
+    const prompt = buildHarnessSystemPrompt({
+      orchestrationSystemPrompt: "Task", provider: "openai", availableTools: allTools,
+    });
     expect(prompt).toContain("apply_patch");
-  });
-
-  test("includes handoff warning", () => {
-    const prompt = buildHarnessSystemPrompt("Task", "anthropic");
-    expect(prompt).toContain("IRREVERSIBLE AND FINAL");
-    expect(prompt).toContain("write_handoff");
-  });
-
-  test("includes generalization rule", () => {
-    const prompt = buildHarnessSystemPrompt("Task", "anthropic");
-    expect(prompt).toContain("numeric values");
-    expect(prompt).toContain("array dimensions");
+    expect(prompt).not.toContain("sed -i");
   });
 });

@@ -20,6 +20,7 @@ export function makeStep(type: Step["type"], title: string, extra?: Partial<Step
 
 export function buildQueueFromTemplate(
   name: WorkflowName,
+  description: string,
   maxSteps?: number,
 ): Queue {
   const queueOpts: QueueOptions | undefined = maxSteps
@@ -30,6 +31,7 @@ export function buildQueueFromTemplate(
     case "work": {
       const steps: Step[] = [
         makeStep("work", "Execute work", {
+          description,
           toolScoping: { read: true, bash: true, write: true, edit: true, task: true },
         }),
       ];
@@ -39,6 +41,7 @@ export function buildQueueFromTemplate(
     case "sprint": {
       const steps: Step[] = [
         makeStep("work", "Execute sprint", {
+          description,
           dispatcherHint: SPRINT_HINT,
           toolScoping: { read: true, bash: true, write: true, edit: true, task: true },
           evaluationCriteria: buildSprintEvaluationCriteria(),

@@ -6,9 +6,11 @@ import { SPRINT_HINT } from "../src/workflows/queue/steps/sprint/types";
 // Sprint template tests
 // ---------------------------------------------------------------------------
 
+const DESCRIPTION = "example task description";
+
 describe("buildQueueFromTemplate — sprint", () => {
   test("creates queue with one work step", () => {
-    const q = buildQueueFromTemplate("sprint");
+    const q = buildQueueFromTemplate("sprint", DESCRIPTION);
     expect(q.steps).toHaveLength(1);
     expect(q.steps[0].type).toBe("work");
     expect(q.steps[0].status).toBe("pending");
@@ -16,13 +18,18 @@ describe("buildQueueFromTemplate — sprint", () => {
     expect(q.status).toBe("idle");
   });
 
+  test("step description is the user-provided task", () => {
+    const q = buildQueueFromTemplate("sprint", DESCRIPTION);
+    expect(q.steps[0].description).toBe(DESCRIPTION);
+  });
+
   test("step has dispatcherHint set to SPRINT_HINT", () => {
-    const q = buildQueueFromTemplate("sprint");
+    const q = buildQueueFromTemplate("sprint", DESCRIPTION);
     expect(q.steps[0].dispatcherHint).toBe(SPRINT_HINT);
   });
 
   test("step has full tool scoping", () => {
-    const q = buildQueueFromTemplate("sprint");
+    const q = buildQueueFromTemplate("sprint", DESCRIPTION);
     expect(q.steps[0].toolScoping).toEqual({
       read: true,
       bash: true,
@@ -33,7 +40,7 @@ describe("buildQueueFromTemplate — sprint", () => {
   });
 
   test("step has evaluationCriteria set", () => {
-    const q = buildQueueFromTemplate("sprint");
+    const q = buildQueueFromTemplate("sprint", DESCRIPTION);
     const criteria = q.steps[0].evaluationCriteria;
     expect(criteria).toBeDefined();
     expect(typeof criteria).toBe("string");
@@ -43,7 +50,7 @@ describe("buildQueueFromTemplate — sprint", () => {
   });
 
   test("respects maxSteps option", () => {
-    const q = buildQueueFromTemplate("sprint", 5);
+    const q = buildQueueFromTemplate("sprint", DESCRIPTION, 5);
     expect(q.maxSteps).toBe(5);
   });
 });
@@ -54,24 +61,29 @@ describe("buildQueueFromTemplate — sprint", () => {
 
 describe("buildQueueFromTemplate — work (unchanged)", () => {
   test("creates queue with one work step", () => {
-    const q = buildQueueFromTemplate("work");
+    const q = buildQueueFromTemplate("work", DESCRIPTION);
     expect(q.steps).toHaveLength(1);
     expect(q.steps[0].type).toBe("work");
     expect(q.steps[0].status).toBe("pending");
   });
 
+  test("step description is the user-provided task", () => {
+    const q = buildQueueFromTemplate("work", DESCRIPTION);
+    expect(q.steps[0].description).toBe(DESCRIPTION);
+  });
+
   test("work step has no dispatcherHint", () => {
-    const q = buildQueueFromTemplate("work");
+    const q = buildQueueFromTemplate("work", DESCRIPTION);
     expect(q.steps[0].dispatcherHint).toBeUndefined();
   });
 
   test("work step has no evaluationCriteria", () => {
-    const q = buildQueueFromTemplate("work");
+    const q = buildQueueFromTemplate("work", DESCRIPTION);
     expect(q.steps[0].evaluationCriteria).toBeUndefined();
   });
 
   test("work step has full tool scoping", () => {
-    const q = buildQueueFromTemplate("work");
+    const q = buildQueueFromTemplate("work", DESCRIPTION);
     expect(q.steps[0].toolScoping).toEqual({
       read: true,
       bash: true,

@@ -4,11 +4,11 @@ import { formatDuration } from "../src/infra/format";
 import type {
   AnyBlock,
   TextBlock,
-  ToolBlock,
+  ToolEntry,
   AgentBlock,
   SystemBlock,
   UserMessageBlock,
-} from "../src/tui/types";
+} from "../src/infra/output-blocks";
 import type { Theme } from "../src/tui/shared/context/theme";
 
 /**
@@ -93,7 +93,7 @@ function selectBlockComponent(block: AnyBlock): string {
     case "text":
       return "TextBlock";
     case "tool":
-      return "ToolBlock";
+      return "ToolEntry";
     case "agent":
       return "AgentBlock";
     case "system":
@@ -109,9 +109,9 @@ describe("selectBlockComponent", () => {
     expect(selectBlockComponent(block)).toBe("TextBlock");
   });
 
-  it("selects ToolBlock for tool kind", () => {
-    const block: ToolBlock = { kind: "tool", name: "Bash", detail: "ls", timestamp: 1 };
-    expect(selectBlockComponent(block)).toBe("ToolBlock");
+  it("selects ToolEntry for tool kind", () => {
+    const block: ToolEntry = { kind: "tool", name: "Bash", detail: "ls", timestamp: 1 };
+    expect(selectBlockComponent(block)).toBe("ToolEntry");
   });
 
   it("selects AgentBlock for agent kind", () => {
@@ -198,7 +198,7 @@ describe("agentDisplayText", () => {
   });
 
   it("completed agent shows checkmark, duration, and tool count", () => {
-    const children: ToolBlock[] = Array.from({ length: 8 }, (_, i) => ({
+    const children: ToolEntry[] = Array.from({ length: 8 }, (_, i) => ({
       kind: "tool", name: `Tool${i}`, detail: "", timestamp: 1,
     }));
     const agent: AgentBlock = {
@@ -219,7 +219,7 @@ describe("agentDisplayText", () => {
   });
 
   it("completed agent without duration has no duration detail", () => {
-    const children: ToolBlock[] = Array.from({ length: 3 }, (_, i) => ({
+    const children: ToolEntry[] = Array.from({ length: 3 }, (_, i) => ({
       kind: "tool", name: `Tool${i}`, detail: "", timestamp: 1,
     }));
     const agent: AgentBlock = {
@@ -269,20 +269,20 @@ describe("agentDisplayText", () => {
   });
 });
 
-// ── ToolBlock display text logic ──
+// ── ToolEntry display text logic ──
 
 describe("toolBlockDisplayText", () => {
-  function toolDisplayText(tool: ToolBlock): string {
+  function toolDisplayText(tool: ToolEntry): string {
     return `▸ ${tool.name}: ${tool.detail}`;
   }
 
   it("formats tool name and detail", () => {
-    const tool: ToolBlock = { kind: "tool", name: "Bash", detail: "ls -la", timestamp: 1 };
+    const tool: ToolEntry = { kind: "tool", name: "Bash", detail: "ls -la", timestamp: 1 };
     expect(toolDisplayText(tool)).toBe("▸ Bash: ls -la");
   });
 
   it("handles empty detail", () => {
-    const tool: ToolBlock = { kind: "tool", name: "Read", detail: "", timestamp: 1 };
+    const tool: ToolEntry = { kind: "tool", name: "Read", detail: "", timestamp: 1 };
     expect(toolDisplayText(tool)).toBe("▸ Read: ");
   });
 });
@@ -345,7 +345,7 @@ describe("Block color contracts", () => {
   }
 
   function toolBlockColor(theme: Theme): Theme[keyof Theme] {
-    // ToolBlock: fg={themeCtx.theme.textMuted} — subdued tool calls
+    // ToolEntry: fg={themeCtx.theme.textMuted} — subdued tool calls
     return theme.textMuted;
   }
 
@@ -384,7 +384,7 @@ describe("Block color contracts", () => {
     expect(textBlockColor(mockTheme as Theme)).toBe(mockTheme.text);
   });
 
-  it("ToolBlock uses theme.textMuted (gray — subdued tool calls)", () => {
+  it("ToolEntry uses theme.textMuted (gray — subdued tool calls)", () => {
     expect(toolBlockColor(mockTheme as Theme)).toBe(mockTheme.textMuted);
   });
 

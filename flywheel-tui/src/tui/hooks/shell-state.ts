@@ -46,7 +46,7 @@ export interface ShellServices {
   metrics: MetricsHook
   refreshList: () => void
   setTerminalTitle: (title: string) => void
-  showToast: (opts: { message: string; variant: "info" | "warning" | "error" }) => void
+  showToast: (opts: { message: string; variant: "info" | "warning" | "error" | "success"; duration?: number }) => void
 }
 
 export function createShellState(deps: {
@@ -55,7 +55,7 @@ export function createShellState(deps: {
   sessions: Accessor<SessionSummary[]>
   refreshList: () => void
   setTerminalTitle: (title: string) => void
-  showToast: (opts: { message: string; variant: "info" | "warning" | "error" }) => void
+  showToast: (opts: { message: string; variant: "info" | "warning" | "error" | "success"; duration?: number }) => void
   showThinking?: boolean
 }): { signals: ShellSignals; services: ShellServices } {
   const [errorMessage, setErrorMessage] = createSignal("")

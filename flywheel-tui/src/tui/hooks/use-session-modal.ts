@@ -5,6 +5,7 @@ import type { SessionSummary } from "../../orchestration/session/manager.js"
 import type { SessionState } from "../../orchestration/session/types.js"
 import type { SessionActionDeps } from "../../orchestration/session-actions.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"
+import { Clipboard } from "../utils/clipboard.js"
 
 const GROUP_ORDER: SessionState[] = ["active", "paused", "completed"]
 
@@ -182,6 +183,13 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
     }
     if (evt.name === "r") {
       if (selected.state === "paused") { evt.preventDefault?.(); handleSessionResume(selected.id) }
+      return
+    }
+    if (evt.name === "c") {
+      evt.preventDefault?.()
+      Clipboard.copy(selected.id)
+        .then(() => services.showToast({ message: `Copied: ${selected.id}`, variant: "info" }))
+        .catch(() => services.showToast({ message: "Copy failed", variant: "error" }))
       return
     }
     if (evt.name === "d") {

@@ -194,7 +194,6 @@ function toMutationBudgetWire(budget: MutationBudget) {
     mutations_remaining_this_step: budget.mutationsRemainingThisStep,
     total_session_inserts: budget.totalSessionInserts,
     session_inserts_remaining: budget.sessionInsertsRemaining,
-    session_objective: budget.sessionObjective,
   };
 }
 

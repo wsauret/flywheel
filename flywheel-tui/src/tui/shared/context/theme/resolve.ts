@@ -1,5 +1,7 @@
 import { RGBA } from "@opentui/core"
 
+type ComputedKeys = "backdrop" | "successMuted" | "diffAddedBg" | "diffRemovedBg" | "diffHighlightAdded" | "diffHighlightRemoved" | "diffAddedFg" | "diffRemovedFg"
+
 export type Theme = {
   primary: RGBA
   secondary: RGBA
@@ -17,7 +19,8 @@ export type Theme = {
   borderActive: RGBA
   borderSubtle: RGBA
   accent: RGBA
-  // Diff colors — canonical constants, not theme-controlled (see DIFF_COLORS below)
+  backdrop: RGBA
+  successMuted: RGBA
   diffAddedBg: RGBA
   diffRemovedBg: RGBA
   diffHighlightAdded: RGBA
@@ -62,32 +65,43 @@ type ColorValue = HexColor | RefName | Variant | RGBA
 // of which theme or color mode the user has chosen. Keeping them constant
 // means the user always knows what green-bg means vs red-bg, and we never
 // accidentally ship a theme where the word-diff highlight is neon lime.
-//
-// Values are taken from Claude Code's dark/light theme (rgb values from
-// their theme.ts), which are well-balanced and widely tested in terminals.
 const DIFF_COLORS = {
   dark: {
-    diffAddedBg:          RGBA.fromHex("#1a3d2b"), // deep forest green line bg
-    diffRemovedBg:        RGBA.fromHex("#3d1a22"), // deep burgundy line bg
-    diffHighlightAdded:   RGBA.fromHex("#2a7a48"), // muted green word highlight
-    diffHighlightRemoved: RGBA.fromHex("#8a4455"), // muted rose word highlight
-    diffAddedFg:          RGBA.fromHex("#3a9a5c"), // bright green for + marker & line numbers
-    diffRemovedFg:        RGBA.fromHex("#c06070"), // bright rose for - marker & line numbers
+    diffAddedBg:          RGBA.fromHex("#1a3d2b"),
+    diffRemovedBg:        RGBA.fromHex("#3d1a22"),
+    diffHighlightAdded:   RGBA.fromHex("#2a7a48"),
+    diffHighlightRemoved: RGBA.fromHex("#8a4455"),
+    diffAddedFg:          RGBA.fromHex("#3a9a5c"),
+    diffRemovedFg:        RGBA.fromHex("#c06070"),
   },
   light: {
-    diffAddedBg:          RGBA.fromHex("#c7e1cb"), // soft green line bg
-    diffRemovedBg:        RGBA.fromHex("#fdd2d8"), // soft pink line bg
-    diffHighlightAdded:   RGBA.fromHex("#4a8a5a"), // muted green word highlight
-    diffHighlightRemoved: RGBA.fromHex("#b06070"), // muted red word highlight
-    diffAddedFg:          RGBA.fromHex("#2e7040"), // darker green for + marker & line numbers
-    diffRemovedFg:        RGBA.fromHex("#a04050"), // darker red for - marker & line numbers
+    diffAddedBg:          RGBA.fromHex("#c7e1cb"),
+    diffRemovedBg:        RGBA.fromHex("#fdd2d8"),
+    diffHighlightAdded:   RGBA.fromHex("#4a8a5a"),
+    diffHighlightRemoved: RGBA.fromHex("#b06070"),
+    diffAddedFg:          RGBA.fromHex("#2e7040"),
+    diffRemovedFg:        RGBA.fromHex("#a04050"),
+  },
+}
+
+// UI colors derived from the resolved theme — consistent across all themes.
+// backdrop: semi-transparent overlay for modals (dark scrim)
+// successMuted: dimmed success for completed-but-not-highlighted items (tool checkmarks)
+const UI_COLORS = {
+  dark: {
+    backdrop: RGBA.fromInts(0, 0, 0, 144),
+    successMuted: RGBA.fromHex("#6a8a6a"),
+  },
+  light: {
+    backdrop: RGBA.fromInts(0, 0, 0, 100),
+    successMuted: RGBA.fromHex("#5a7a5a"),
   },
 }
 
 export type ThemeJson = {
   $schema?: string
   defs?: Record<string, HexColor | RefName>
-  theme: Record<Exclude<keyof Theme, "diffAddedBg" | "diffRemovedBg" | "diffHighlightAdded" | "diffHighlightRemoved" | "diffAddedFg" | "diffRemovedFg">, ColorValue>
+  theme: Record<Exclude<keyof Theme, ComputedKeys>, ColorValue>
 }
 
 export function resolveTheme(theme: ThemeJson, mode: "dark" | "light"): Theme {
@@ -105,10 +119,11 @@ export function resolveTheme(theme: ThemeJson, mode: "dark" | "light"): Theme {
     Object.entries(theme.theme).map(([key, value]) => {
       return [key, resolveColor(value)]
     }),
-  ) as Omit<Theme, "diffAddedBg" | "diffRemovedBg" | "diffHighlightAdded" | "diffHighlightRemoved">
+  ) as Omit<Theme, ComputedKeys>
 
   return {
     ...resolved,
     ...DIFF_COLORS[mode],
+    ...UI_COLORS[mode],
   }
 }

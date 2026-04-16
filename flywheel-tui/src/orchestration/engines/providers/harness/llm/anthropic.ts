@@ -207,7 +207,7 @@ export function createAnthropicAdapter(
             params.thinking = { type: "enabled", budget_tokens: thinkingBudget };
           }
 
-          const stream = client.messages.stream(params);
+          const stream = client.messages.stream(params, { signal: options.signal });
           const toolInputBuffers = new Map<number, { id: string; name: string; json: string }>();
 
           for await (const event of stream) {

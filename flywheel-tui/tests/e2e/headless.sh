@@ -11,6 +11,12 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 BIN="$PROJECT_DIR/bin/flywheel"
 
+# Build env prefix for engine override (set by run-all.sh --engine=<name>)
+ENV_PREFIX=""
+if [ -n "${FLYWHEEL_E2E_ENGINE:-}" ]; then
+  ENV_PREFIX="FLYWHEEL_ENGINE=$FLYWHEEL_E2E_ENGINE"
+fi
+
 PASS=0
 FAIL=0
 
@@ -20,7 +26,7 @@ fail() { echo "  FAIL: $1"; FAIL=$((FAIL + 1)); }
 # ── H-01: --headless without --description exits 1 ──
 echo "H-01: --headless without --description"
 set +e
-output=$("$BIN" --headless 2>&1)
+output=$(env $ENV_PREFIX "$BIN" --headless 2>&1)
 exit_code=$?
 set -e
 
@@ -41,11 +47,19 @@ echo "H-02: --headless --description \"hello\""
 set +e
 # Run with a short timeout — we just want to confirm it doesn't hang trying to start TUI.
 # It will likely fail due to missing API key or similar, but should NOT launch TUI.
-output=$(timeout 15 "$BIN" --headless --description "hello" 2>&1)
+# Use background process + kill instead of GNU `timeout` (not available on macOS).
+env $ENV_PREFIX "$BIN" --headless --description "hello" > /tmp/headless-h02-out.txt 2>&1 &
+h02_pid=$!
+( sleep 15 && kill "$h02_pid" 2>/dev/null ) &
+watchdog_pid=$!
+wait "$h02_pid" 2>/dev/null
 exit_code=$?
+kill "$watchdog_pid" 2>/dev/null; wait "$watchdog_pid" 2>/dev/null || true
+output=$(cat /tmp/headless-h02-out.txt)
+rm -f /tmp/headless-h02-out.txt
 set -e
 
-# Exit code 124 = timeout killed it (still running, which means it started the workflow)
+# Exit code 143 = killed by watchdog (SIGTERM, still running after 15s — means it started)
 # Exit code 0 = completed successfully
 # Exit code 1 = failed (e.g., missing API key) — still acceptable
 # Any of these means it did NOT crash trying to launch TUI

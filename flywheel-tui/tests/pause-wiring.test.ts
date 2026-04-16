@@ -69,9 +69,7 @@ describe("Pause wiring -- session creation in startPipeline", () => {
     const mgr = createSessionManager(makeDeps(baseDir));
 
     const sessionId = mgr.create("plan -> work -> review");
-    expect(sessionId).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
-    );
+    expect(sessionId).toMatch(/^[0-9a-f]{12}$/);
 
     // Verify session exists on disk
     const persisted = readSession(sessionId, baseDir);

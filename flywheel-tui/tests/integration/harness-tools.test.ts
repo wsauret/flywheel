@@ -50,10 +50,10 @@ describe("harness tools", () => {
 
     it("times out and returns error", async () => {
       const ctx = makeContext({ cwd: tmpDir });
-      const result = await runCommand("sleep 0.5", ctx, 0.1);
+      const result = await runCommand("sleep 10", ctx, 1);
       expect(result.isError).toBe(true);
       expect(result.content).toContain("timed out");
-    }, 5_000);
+    }, 15_000);
 
     it("rejects interactive commands", async () => {
       const ctx = makeContext({ cwd: tmpDir });

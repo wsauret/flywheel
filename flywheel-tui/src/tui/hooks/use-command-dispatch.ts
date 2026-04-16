@@ -36,6 +36,18 @@ export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHo
   }
 
   commandRegistry.register({
+    pattern: /^\/help$/i,
+    execute() {
+      deps.services.showToast({
+        message: "/new /work /sprint /sessions /resume /exit · Esc interrupt · Ctrl+N new · Ctrl+B sessions · Tab switch",
+        variant: "info",
+        duration: 8000,
+      })
+      return true
+    },
+  })
+
+  commandRegistry.register({
     pattern: /^\/(?:exit|quit)$/i,
     execute() {
       if (deps.inChat()) deps.endChat()
@@ -111,7 +123,7 @@ export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHo
       if (trimmed.startsWith("/")) {
         void commandRegistry.dispatch(trimmed).then((handled) => {
           if (!handled) {
-            deps.services.showToast({ message: `Unknown command: ${trimmed.split(/\s/)[0]}`, variant: "warning" })
+            deps.services.showToast({ message: `Unknown command. Try /help`, variant: "warning" })
           }
         })
         return
@@ -139,7 +151,7 @@ export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHo
       if (deps.signals.sessionState() === "paused") {
         deps.services.showToast({ message: "Session paused. Esc to stop, Ctrl+R to resume, or /sessions to switch.", variant: "warning" })
       } else {
-        deps.services.showToast({ message: `Unknown command. Try /new, /sessions, /sprint "desc", /work "desc", or /exit`, variant: "warning" })
+        deps.services.showToast({ message: `Unknown command. Try /help`, variant: "warning" })
       }
     })
   }

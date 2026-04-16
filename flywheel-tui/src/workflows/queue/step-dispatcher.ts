@@ -2,14 +2,13 @@
 //
 // Bridges the queue step executor with the existing DispatcherTransport.
 // For each step, assembles a full DispatcherInput with:
-//   - Step metadata (type, title, hint, tool scoping, acceptance criteria)
+//   - Step metadata (type, title, description, hint, tool scoping, acceptance criteria)
 //   - Queue state (compact: step statuses)
 //   - Previous handoff from last completed step
 //   - Previous evaluator assessment
 //   - Accumulated context from prior steps (windowed)
 //   - Available context (L1 metadata from ContextIndexer)
 //   - Budget remaining
-//   - Session objective
 //
 // On transport failure: throws StepDispatcherError (caller marks step failed).
 
@@ -82,8 +81,6 @@ interface StepDispatcherOptions {
   sessionBudget: SessionBudgetStatus;
   /** Available context (L1 metadata). */
   availableContext: AvailableContext;
-  /** Session objective / description. */
-  sessionObjective?: string;
 }
 
 interface StepDispatcher {

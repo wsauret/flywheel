@@ -9,7 +9,7 @@
 import { Switch, Match } from "solid-js"
 import type { AnyBlock } from "@infra/output-blocks"
 import { TextBlock } from "./text-block.js"
-import { ToolBlock } from "./tool-block.js"
+import { ToolEntry } from "./tool-entry.js"
 import { AgentBlock } from "./agent-block.js"
 import { SystemBlock } from "./system-block.js"
 import { ThinkingBlock } from "./thinking-block.js"
@@ -29,7 +29,7 @@ export function BlockRenderer(props: BlockRendererProps) {
         {(block) => <TextBlock block={block()} />}
       </Match>
       <Match when={props.block.kind === "tool" ? props.block : undefined}>
-        {(block) => <ToolBlock block={block()} />}
+        {(block) => <ToolEntry block={block()} />}
       </Match>
       <Match when={props.block.kind === "agent" ? props.block : undefined}>
         {(block) => (

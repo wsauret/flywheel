@@ -20,14 +20,20 @@ import { Log } from "../../infra/log.js";
 
 const log = Log.create({ service: "step-executor" });
 
-function buildRevisionPrompt(originalPrompt: string, evalResult: EvalResult): string {
-  const parts = [originalPrompt, "\n## Revision Required"]
-  if (evalResult.reason) parts.push(`\n### Evaluator Reasoning\n${evalResult.reason}`)
-  if (evalResult.feedback) parts.push(`\n### Feedback\n${evalResult.feedback}`)
+/** Build the revision delta — feedback-only, for use on a resumed worker conversation. */
+function buildRevisionDelta(evalResult: EvalResult): string {
+  const parts = ["## Revision Required"]
+  if (evalResult.reason) parts.push(`### Evaluator Reasoning\n${evalResult.reason}`)
+  if (evalResult.feedback) parts.push(`### Feedback\n${evalResult.feedback}`)
   if (evalResult.suggestions.length) {
-    parts.push(`\n### Suggestions\n${evalResult.suggestions.map(s => `- ${s}`).join("\n")}`)
+    parts.push(`### Suggestions\n${evalResult.suggestions.map(s => `- ${s}`).join("\n")}`)
   }
-  return parts.join("\n")
+  return parts.join("\n\n")
+}
+
+/** Full revision prompt — original prompt + delta. Used when the worker engine can't resume. */
+function buildRevisionPrompt(originalPrompt: string, evalResult: EvalResult): string {
+  return `${originalPrompt}\n\n${buildRevisionDelta(evalResult)}`
 }
 
 interface RevisionLoopDeps {
@@ -127,10 +133,18 @@ export async function executeWithRevisions(
 
     emit("evaluator:revision-requested", { workflowId, stepIndex, revisionAttempt, maxRevisions, reason: evalResult.reason ?? "revision needed" });
 
-    prompt = buildRevisionPrompt(prompt, evalResult);
+    // Prefer resume (feedback-only delta on the existing conversation); fall back
+    // to re-sending the full prompt if the previous invocation didn't expose a
+    // session ID.
+    const prevSessionId = output.sessionId;
+    const revisionMessage = prevSessionId
+      ? buildRevisionDelta(evalResult)
+      : buildRevisionPrompt(prompt, evalResult);
+
+    if (!prevSessionId) prompt = buildRevisionPrompt(prompt, evalResult);
 
     onWorkerInvoked?.();
-    output = await raceAbort(worker(step, prompt, abortSignal), abortSignal);
+    output = await raceAbort(worker(step, revisionMessage, abortSignal, prevSessionId), abortSignal);
 
     try {
       handoff = await handoffReader(output.handoffPath);

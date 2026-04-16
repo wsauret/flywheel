@@ -84,7 +84,7 @@ export function OutputWindow(props: OutputWindowProps) {
                 backgroundColor: themeCtx.theme.backgroundElement,
               },
             }}
-            viewportCulling={true}
+            viewportCulling={false}
             focused={false}
           >
             <Index each={props.outputBlocks}>

@@ -113,10 +113,25 @@ export function renderWorkPostamble(fields: HandoffFieldSpec[], handoffPath: str
 ${renderHandoffInstruction(fields, handoffPath)}`
 }
 
-// Minimal — the dispatcher system prompt already covers the full output schema,
-// field reference, and example. This just tells the model where to write the file.
+// Explicit schema reminder — the dispatcher system prompt covers the full schema,
+// but the LLM may output JSON as text and write a summary to the handoff file.
+// Repeating the required fields here prevents that failure mode.
 export function renderDispatcherHandoffInstruction(handoffPath: string): string {
   return `${renderHandoffPreamble("Dispatcher", handoffPath)}
 
-Write your JSON decision using the schema from your system prompt. ${JSON_WRITE_TOOL_RULE}`;
+### Required fields
+
+The handoff file must contain your **dispatcher decision** — the same JSON schema from your system prompt:
+
+\`\`\`json
+{
+  "schema_version": 1,
+  "step_index": <number>,
+  "task_content": "<string>",
+  "context_files": ["<string>"],
+  "evaluation_criteria": { ... }
+}
+\`\`\`
+
+Do NOT write a summary, key_changes, or confidence object — write the dispatcher decision directly. ${JSON_WRITE_TOOL_RULE}`;
 }

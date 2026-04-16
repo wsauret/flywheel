@@ -14,7 +14,7 @@ export const TextBlockSchema = z.object({
  * A discriminated union would break that pattern — errorMessage and completed are
  * post-hoc mutations applied when tool_result events arrive, not construction-time fields.
  */
-export const ToolBlockSchema = z.object({
+export const ToolEntrySchema = z.object({
   kind: z.literal("tool"),
   name: z.string(),
   detail: z.string(),
@@ -46,7 +46,7 @@ export const AgentBlockSchema = z.object({
   agentLabel: z.string(),
   description: z.string(),
   status: z.enum(["active", "completed", "error", "paused"]),
-  children: z.array(ToolBlockSchema),
+  children: z.array(ToolEntrySchema),
   latestChild: z.string().optional(),
   duration: z.number().optional(),
   errorMessage: z.string().optional(),
@@ -87,7 +87,7 @@ export const TodoListBlockSchema = z.object({
 })
 
 export type TextBlock = z.infer<typeof TextBlockSchema>
-export type ToolBlock = z.infer<typeof ToolBlockSchema>
+export type ToolEntry = z.infer<typeof ToolEntrySchema>
 export type AgentBlock = z.infer<typeof AgentBlockSchema>
 export type SystemBlock = z.infer<typeof SystemBlockSchema>
 export type ThinkingBlock = z.infer<typeof ThinkingBlockSchema>
@@ -97,7 +97,7 @@ export type TodoListBlock = z.infer<typeof TodoListBlockSchema>
 
 const AnyBlockSchema = z.discriminatedUnion("kind", [
   TextBlockSchema,
-  ToolBlockSchema,
+  ToolEntrySchema,
   AgentBlockSchema,
   SystemBlockSchema,
   ThinkingBlockSchema,

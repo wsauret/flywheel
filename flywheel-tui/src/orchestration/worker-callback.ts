@@ -71,14 +71,14 @@ interface WorkerCallbackResult {
 
 export function createWorkerCallback(
   opts: WorkerCallbackDeps,
-): (step: Step, prompt: string) => Promise<WorkerCallbackResult> {
+): (step: Step, prompt: string, signal?: AbortSignal, resumeSessionId?: string) => Promise<WorkerCallbackResult> {
   const {
     engine, model, effort,
     emit, workflowId, sessionId, projectCwd,
     injectionQueue, observerChain,
   } = opts
 
-  return async (step: Step, prompt: string, signal?: AbortSignal): Promise<WorkerCallbackResult> => {
+  return async (step: Step, prompt: string, signal?: AbortSignal, resumeSessionId?: string): Promise<WorkerCallbackResult> => {
     observerChain?.reset()
     let selfReviewInjected = false
 
@@ -106,6 +106,7 @@ export function createWorkerCallback(
       cwd: opts.workerCwd ?? projectCwd,
       handoffPath,
       signal,
+      resumeSessionId,
       onEvent: (event: NDJSONEvent) => {
         emit("engine:ndjson", { workflowId, ndjsonEvent: event })
       },

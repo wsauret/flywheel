@@ -70,10 +70,7 @@ describe("createSession", () => {
 
     const id = createSession(data, baseDir);
 
-    // Verify UUID format
-    expect(id).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
-    );
+    expect(id).toMatch(/^[0-9a-f]{12}$/);
 
     // Verify file exists (directory-per-session layout)
     const filePath = path.join(baseDir, ".flywheel", "sessions", id, "session.json");

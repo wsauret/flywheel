@@ -1,7 +1,7 @@
 // Decoupled from StructuredOutputBuilder via callbacks so grouping
 // logic can be tested and reasoned about without block storage concerns.
 
-import type { ToolBlock } from "../output-blocks.js"
+import type { ToolEntry } from "../output-blocks.js"
 
 /** Tool names that break context grouping. */
 const NON_CONTEXT_TOOL_NAMES = new Set(["task_complete"])
@@ -12,7 +12,7 @@ export function isContextTool(name: string): boolean {
 
 interface ContextGroupCallbacks {
   startContextAgent: (id: string, timestamp: number) => void
-  appendToolToContextAgent: (agentId: string, tool: ToolBlock) => void
+  appendToolToContextAgent: (agentId: string, tool: ToolEntry) => void
   // Tool count is derived from children.length
   completeContextAgent: (agentId: string, duration: number) => void
 }
@@ -35,7 +35,7 @@ export class ContextGroupTracker {
     return this.contextAgentId
   }
 
-  pushContextTool(tool: ToolBlock, timestamp: number): string {
+  pushContextTool(tool: ToolEntry, timestamp: number): string {
     if (this.contextAgentId === null) {
       this.contextRunCounter++
       const id = `ctx-run-${this.contextRunCounter}`

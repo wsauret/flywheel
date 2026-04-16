@@ -98,6 +98,19 @@ assert_contains() {
   fi
 }
 
+assert_contains_ci() {
+  local file="$LOG_DIR/$1"
+  if grep -qi "$2" "$file" 2>/dev/null; then
+    echo "PASS  $3 — found '$2' in $1 (case-insensitive)" >> "$SUMMARY"
+    PASS_COUNT=$((PASS_COUNT + 1))
+    return 0
+  else
+    echo "FAIL  $3 — missing '$2' in $1 (case-insensitive)" >> "$SUMMARY"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+    return 1
+  fi
+}
+
 assert_not_contains() {
   local file="$LOG_DIR/$1"
   if grep -q "$2" "$file" 2>/dev/null; then
@@ -147,8 +160,12 @@ cleanup() {
 trap cleanup EXIT
 
 # Build env prefix string from optional args (e.g. "FLYWHEEL_MODEL=haiku" "FOO=1")
+# Automatically injects FLYWHEEL_ENGINE when FLYWHEEL_E2E_ENGINE is set (via --engine flag).
 _build_env_prefix() {
   local prefix="FLYWHEEL_PROJECT_CWD=$UAT_DIR"
+  if [ -n "${FLYWHEEL_E2E_ENGINE:-}" ]; then
+    prefix="$prefix FLYWHEEL_ENGINE=$FLYWHEEL_E2E_ENGINE"
+  fi
   for arg in "$@"; do
     prefix="$prefix $arg"
   done
@@ -176,7 +193,9 @@ stop_app() {
 # Optional args are passed as env vars: restart_app "FLYWHEEL_MODEL=haiku"
 restart_app() {
   send_keys C-c
-  sleep "$WAIT_SHORT"
+  sleep 5
+  send_keys C-c
+  sleep 10
   local env_prefix
   env_prefix=$(_build_env_prefix "$@")
   send_keys "$env_prefix bun run dev 2>>$STDERR_LOG" Enter

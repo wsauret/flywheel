@@ -18,7 +18,7 @@ import { createDispatcherCallback } from "./dispatcher-callback.js"
 import { createEngineDispatcherTransport, createEngineEvaluatorTransport } from "./engine-transports.js"
 import { createClaudeWarmPools } from "./engines/providers/claude/pool/create-warm-pools.js"
 import { createPooledDispatcherTransport, createPooledEvaluatorTransport } from "./engines/providers/claude/pool/pooled-transports.js"
-import { createObserverChain, createToolFailureObserver, createNoActionObserver, createBudgetAwarenessObserver, createContextPressureObserver } from "./engines/stream-observers.js"
+import { createObserverChain, createToolFailureObserver, createBudgetAwarenessObserver, createContextPressureObserver } from "./engines/stream-observers.js"
 import { createDoomLoopObserver } from "./engines/doom-loop.js"
 import { mapNDJSONToEngineEvents } from "./engines/ndjson-event-mapper.js"
 import { createEmit, type EventBus, type Unsubscribe } from "../infra/event-bus.js"
@@ -44,8 +44,6 @@ interface CreateExecutorInput {
   sessionId: string
   /** Queue to execute */
   queue: Queue
-  /** Human-readable session description (used as session objective) */
-  description: string
   /** Project working directory */
   projectCwd: string
   /** Override worker cwd (for /test, worktrees) */
@@ -71,7 +69,7 @@ interface CreateExecutorResult {
 
 export async function createExecutor(input: CreateExecutorInput): Promise<CreateExecutorResult> {
   const {
-    deps, eventBus, workflowId, sessionId, queue, description,
+    deps, eventBus, workflowId, sessionId, queue,
     projectCwd, workerCwd, infra,
     injectionQueue, chatContext,
   } = input
@@ -157,7 +155,6 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
   const observerChain = createObserverChain([
     createDoomLoopObserver(),
     createToolFailureObserver(),
-    createNoActionObserver(),
     budgetAwareness,
     contextPressure,
   ])
@@ -188,7 +185,7 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
     dispatcherTransport,
     contextIndexer,
     contextAccumulator, projectCwd,
-    sessionObjective: description, queue,
+    queue,
     workerModel,
     chatContext,
   })
@@ -239,7 +236,6 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
     maxRevisions: deps.config.max_revisions ?? 1,
     onStepCompleted: compositeHook,
     guardrails,
-    sessionObjective: description,
     onWorkerInvoked: () => budgetTracker.incrementInvocations(),
     postTurnVerification,
   })

@@ -73,7 +73,7 @@ describe("Lifecycle: create -> pause -> resume -> complete", () => {
 
     // Step 1: Create session (starts as active)
     const id = mgr.create("plans/feature-x.md", "Feature X");
-    expect(id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(id).toMatch(/^[0-9a-f]{12}$/);
 
     let persisted = readSession(id, baseDir);
     expect(persisted).not.toBeNull();

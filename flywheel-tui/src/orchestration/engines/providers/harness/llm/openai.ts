@@ -181,7 +181,7 @@ export function createOpenAIAdapter(
           };
           if (hasReasoning) params.reasoning_effort = effort;
 
-          const stream = await client.chat.completions.create(params);
+          const stream = await client.chat.completions.create(params, { signal: options.signal });
 
           const toolCalls = new Map<
             number,

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { StructuredOutputBuilder } from "../src/infra/output/structured-output-builder";
-import type { AnyBlock, TextBlock, ToolBlock, AgentBlock, SystemBlock, TodoListBlock, UserMessageBlock } from "../src/tui/types";
+import type { AnyBlock, TextBlock, ToolEntry, AgentBlock, SystemBlock, TodoListBlock, UserMessageBlock } from "../src/infra/output-blocks";
 
 describe("StructuredOutputBuilder", () => {
   let builder: StructuredOutputBuilder;
@@ -46,12 +46,12 @@ describe("StructuredOutputBuilder", () => {
   // ── Tool outside agent ──
 
   describe("pushTool", () => {
-    it("creates a standalone ToolBlock for excluded tools", () => {
+    it("creates a standalone ToolEntry for excluded tools", () => {
       builder.pushTool("task_complete", "done", Date.now());
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
       expect(blocks[0].kind).toBe("tool");
-      const tool = blocks[0] as ToolBlock;
+      const tool = blocks[0] as ToolEntry;
       expect(tool.name).toBe("task_complete");
       expect(tool.detail).toBe("done");
     });
@@ -148,7 +148,7 @@ describe("StructuredOutputBuilder", () => {
       expect(blocks).toHaveLength(2);
       expect(blocks[0].kind).toBe("agent");
       expect(blocks[1].kind).toBe("tool");
-      expect((blocks[1] as ToolBlock).name).toBe("task_complete");
+      expect((blocks[1] as ToolEntry).name).toBe("task_complete");
     });
 
     it("updateAgentLatestChild sets latestChild string", () => {

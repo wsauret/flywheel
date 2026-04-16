@@ -14,7 +14,7 @@ interface TrackedSubagent {
   spawnedAt: number;
 }
 
-type ToolBlockLocation =
+type ToolEntryLocation =
   | { type: "top-level"; index: number; toolName: string }
   | { type: "agent-child"; agentId: string; childIndex: number; toolName: string };
 
@@ -22,7 +22,7 @@ export class StructuredEventParser {
   private builder: StructuredOutputBuilder;
 
   private toolUseIdToAgent = new Map<string, TrackedSubagent>();
-  private toolUseIdToBlock = new Map<string, ToolBlockLocation>();
+  private toolUseIdToEntry = new Map<string, ToolEntryLocation>();
 
   constructor(builder: StructuredOutputBuilder) {
     this.builder = builder;
@@ -30,7 +30,7 @@ export class StructuredEventParser {
 
   reset(): void {
     this.toolUseIdToAgent.clear();
-    this.toolUseIdToBlock.clear();
+    this.toolUseIdToEntry.clear();
   }
 
   dispatch(event: NDJSONEvent, now = Date.now()): void {
@@ -92,9 +92,9 @@ export class StructuredEventParser {
     const { name, input, id: toolUseId } = block;
 
     if (name && isSubagentToolName(name)) {
-      // Subagent tools (Task/Agent) populate toolUseIdToAgent, NOT toolUseIdToBlock.
+      // Subagent tools (Task/Agent) populate toolUseIdToAgent, NOT toolUseIdToEntry.
       // This mutual exclusivity ensures user-event tool_result handling (which reads
-      // toolUseIdToBlock) and tool_result event handling (which reads toolUseIdToAgent)
+      // toolUseIdToEntry) and tool_result event handling (which reads toolUseIdToAgent)
       // never both fire for the same tool_use_id.
       const agentId = randomUUID();
       const desc = (input?.description as string) || name;
@@ -123,15 +123,15 @@ export class StructuredEventParser {
         if (childIndex < 0) {
           const idx = this.builder.pushTool(name, detail, now, diffInfo?.diff, diffInfo?.filetype, diffInfo?.content, filePath);
           if (toolUseId && idx >= 0) {
-            this.toolUseIdToBlock.set(toolUseId, { type: "top-level", index: idx, toolName: name });
+            this.toolUseIdToEntry.set(toolUseId, { type: "top-level", index: idx, toolName: name });
           }
         } else if (toolUseId) {
-          this.toolUseIdToBlock.set(toolUseId, { type: "agent-child", agentId: parentAgentId, childIndex, toolName: name });
+          this.toolUseIdToEntry.set(toolUseId, { type: "agent-child", agentId: parentAgentId, childIndex, toolName: name });
         }
       } else {
         const idx = this.builder.pushTool(name, detail, now, diffInfo?.diff, diffInfo?.filetype, diffInfo?.content, filePath);
         if (toolUseId && idx >= 0) {
-          this.toolUseIdToBlock.set(toolUseId, { type: "top-level", index: idx, toolName: name });
+          this.toolUseIdToEntry.set(toolUseId, { type: "top-level", index: idx, toolName: name });
         }
       }
     }
@@ -147,7 +147,7 @@ export class StructuredEventParser {
       const toolUseId = toolResult.tool_use_id;
       if (!toolUseId) continue;
 
-      const location = this.toolUseIdToBlock.get(toolUseId);
+      const location = this.toolUseIdToEntry.get(toolUseId);
       if (!location) continue;
 
       if (toolResult.is_error === true) {
@@ -167,7 +167,7 @@ export class StructuredEventParser {
         }
       }
 
-      this.toolUseIdToBlock.delete(toolUseId);
+      this.toolUseIdToEntry.delete(toolUseId);
     }
   }
 

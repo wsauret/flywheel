@@ -156,6 +156,6 @@ describe("Chat as Default Landing — unknown command toast", () => {
     const call = (showToast as any).mock.calls[0]
     const message: string = call[0].message
     expect(message).not.toContain("/chat")
-    expect(message).toContain("/new")
+    expect(message).toContain("/help")
   })
 })

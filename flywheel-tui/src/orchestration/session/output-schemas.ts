@@ -1,7 +1,7 @@
 import { z } from "zod";
 import {
   TextBlockSchema,
-  ToolBlockSchema,
+  ToolEntrySchema,
   AgentBlockSchema,
   SystemBlockSchema,
   ThinkingBlockSchema,
@@ -10,20 +10,12 @@ import {
   type AnyBlock,
 } from "../../infra/output-blocks.js";
 
-const ToolSnapshotSchema = ToolBlockSchema.pick({
-  kind: true,
-  name: true,
-  detail: true,
-  timestamp: true,
-  errorMessage: true,
-  completed: true,
-});
+const ToolSnapshotSchema = ToolEntrySchema;
 
 const AgentSnapshotSchema = AgentBlockSchema
-  .omit({ status: true, children: true })
+  .omit({ status: true })
   .extend({
     status: z.enum(["paused", "completed", "error"]),
-    children: z.array(ToolSnapshotSchema),
   });
 
 // Exported for tests — direct schema validation catches shape regressions

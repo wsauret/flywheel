@@ -60,7 +60,15 @@ function getRetryAfterMs(err: unknown): number | null {
   return null;
 }
 
-export async function withRetry<T>(fn: () => Promise<T>, label = "LLM"): Promise<T> {
+interface RetryOptions {
+  label?: string
+  sleep?: (ms: number) => Promise<void>
+}
+
+export async function withRetry<T>(fn: () => Promise<T>, opts?: string | RetryOptions): Promise<T> {
+  const label = typeof opts === "string" ? opts : opts?.label ?? "LLM"
+  const sleep = (typeof opts === "object" && opts?.sleep) || Bun.sleep
+
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
       return await fn();
@@ -76,7 +84,7 @@ export async function withRetry<T>(fn: () => Promise<T>, label = "LLM"): Promise
         status: hasStatus(err) ? err.status : undefined,
         retryAfter: retryAfter ? Math.round(retryAfter) : undefined,
       });
-      await Bun.sleep(delay);
+      await sleep(delay);
     }
   }
   throw new Error("Unreachable");

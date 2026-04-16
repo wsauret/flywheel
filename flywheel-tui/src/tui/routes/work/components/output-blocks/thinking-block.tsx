@@ -13,12 +13,12 @@
  * stable in the layout tree (no flicker on toggle).
  */
 
-import { createSignal, createMemo, onCleanup } from "solid-js"
+import { createSignal, createMemo, onCleanup, Show } from "solid-js"
 import { useTheme } from "@tui/shared/context/theme"
 import { useElapsed } from "@tui/shared/hooks/use-elapsed"
 import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
-import { EmptyBorder } from "@tui/shared/ui/border"
-import { createTextAttributes } from "@opentui/core"
+import { VerticalBarBorder } from "@tui/shared/ui/border"
+import { ITALIC } from "@tui/shared/ui/text-attributes"
 import { formatElapsed } from "@infra/format.js"
 import type { ThinkingBlock as ThinkingBlockType } from "@infra/output-blocks"
 
@@ -66,18 +66,15 @@ export function ThinkingBlock(props: ThinkingBlockProps) {
       marginTop={1}
       paddingLeft={2}
       border={["left"]}
-      borderColor={theme.backgroundElement}
+      borderColor={theme.borderSubtle}
       flexDirection="column"
-      customBorderChars={{
-        ...EmptyBorder,
-        vertical: "┃",
-      }}
+      customBorderChars={VerticalBarBorder}
       onMouseDown={isLong() ? () => setExpanded(prev => !prev) : undefined}
     >
       <box flexDirection="row" gap={1}>
-        <text fg={theme.textMuted} attributes={createTextAttributes({ italic: true })}>Thinking</text>
-        {elapsed() >= 1000 && <text fg={theme.textMuted}>{formatElapsed(elapsed())}</text>}
-        {isLong() && <text fg={theme.textMuted}>{expanded() ? "▾" : `▸ …${lineCount()} lines`}</text>}
+        <text fg={theme.textMuted} attributes={ITALIC}>Thinking</text>
+        <Show when={elapsed() >= 1000}><text fg={theme.textMuted}>{formatElapsed(elapsed())}</text></Show>
+        <Show when={isLong()}><text fg={theme.textMuted}>{expanded() ? "▾" : `▸ …${lineCount()} lines`}</text></Show>
       </box>
 
       <CollapsibleBox expanded={expanded()}>

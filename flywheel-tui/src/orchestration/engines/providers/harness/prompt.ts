@@ -45,24 +45,59 @@ Use the apply_patch shell helper for precise file edits. Prefer it over heredocs
 
 If apply_patch fails, inspect the file first with \`cat -n\` and retry with accurate context.`;
 
+export interface HarnessPromptOptions {
+  orchestrationSystemPrompt: string;
+  provider: Provider;
+  projectInstructions?: string;
+  /** Resolved harness tool names (e.g. "bash", "write_handoff", "todo_list"). */
+  availableTools: ReadonlySet<string>;
+}
+
+export function buildHarnessSystemPrompt(opts: HarnessPromptOptions): string;
+/** @deprecated Use the options-object overload. */
 export function buildHarnessSystemPrompt(
   orchestrationSystemPrompt: string,
   provider: Provider,
   projectInstructions?: string,
+): string;
+export function buildHarnessSystemPrompt(
+  optsOrPrompt: HarnessPromptOptions | string,
+  provider?: Provider,
+  projectInstructions?: string,
 ): string {
-  const editing = provider === "openai" ? OPENAI_EDITING : ANTHROPIC_EDITING;
+  if (typeof optsOrPrompt === "string") {
+    return buildPrompt({
+      orchestrationSystemPrompt: optsOrPrompt,
+      provider: provider!,
+      projectInstructions,
+      availableTools: ALL_TOOLS,
+    });
+  }
+  return buildPrompt(optsOrPrompt);
+}
 
-  const harnessInstructions = [
-    SHELL_INSTRUCTIONS,
-    editing,
-    VERIFICATION_WARNING,
-    TODO_LIST_USAGE,
-    GENERALIZATION_RULE,
-    HANDOFF_WARNING,
-  ].join("\n\n");
+const ALL_TOOLS: ReadonlySet<string> = new Set(["bash", "write_handoff", "todo_list", "read_image"]);
 
-  const parts = [harnessInstructions, orchestrationSystemPrompt];
-  if (projectInstructions) parts.push(projectInstructions);
+function buildPrompt(opts: HarnessPromptOptions): string {
+  const { orchestrationSystemPrompt, provider, projectInstructions, availableTools } = opts;
+  const has = (tool: string): boolean => availableTools.has(tool);
+
+  const toolSections: string[] = [];
+
+  if (has("bash")) {
+    toolSections.push(SHELL_INSTRUCTIONS);
+    toolSections.push(provider === "openai" ? OPENAI_EDITING : ANTHROPIC_EDITING);
+    toolSections.push(VERIFICATION_WARNING);
+    toolSections.push(GENERALIZATION_RULE);
+  }
+
+  if (has("todo_list")) toolSections.push(TODO_LIST_USAGE);
+  if (has("write_handoff")) toolSections.push(HANDOFF_WARNING);
+
+  // Orchestration prompt first (primacy), tool instructions second, project context last (recency).
+  const parts = [orchestrationSystemPrompt];
+  if (toolSections.length > 0) parts.push(toolSections.join("\n\n"));
+  if (has("bash") && projectInstructions) parts.push(projectInstructions);
 
   return parts.join("\n\n---\n\n");
 }

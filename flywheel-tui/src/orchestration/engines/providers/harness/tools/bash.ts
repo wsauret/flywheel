@@ -69,12 +69,24 @@ export async function runCommand(command: string, context: ToolContext, timeoutS
   return runForeground(command, context, timeout);
 }
 
+function buildScript(command: string): string {
+  return [
+    "set -m",
+    "exec 2>&1",
+    `{ ${command}; } &`,
+    "CHILD=$!",
+    "trap 'kill -- -$CHILD 2>/dev/null' TERM INT",
+    "wait $CHILD 2>/dev/null",
+    "exit $?",
+  ].join("\n");
+}
+
 async function runForeground(command: string, context: ToolContext, timeoutSec: number): Promise<ToolResult> {
   const scriptId = randomUUID().slice(0, 8);
   const scriptPath = `/tmp/flywheel-harness-${scriptId}.sh`;
 
   try {
-    await Bun.write(scriptPath, `exec 2>&1\n${command}\n`);
+    await Bun.write(scriptPath, buildScript(command));
 
     const proc = Bun.spawn(["bash", scriptPath], {
       cwd: context.cwd,

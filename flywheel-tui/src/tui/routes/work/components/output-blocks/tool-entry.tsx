@@ -1,12 +1,13 @@
 /** @jsxImportSource @opentui/solid */
 
 import { createSignal, createMemo, Show, For } from "solid-js"
-import { createTextAttributes, StyledText, fg as stFg, bg as stBg, type TextChunk } from "@opentui/core"
+import { StyledText, fg as stFg, bg as stBg, type TextChunk } from "@opentui/core"
+import { BOLD } from "@tui/shared/ui/text-attributes"
 import type { TextRenderable } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
 import { isHandoffPath } from "@tui/utils/text"
-import type { ToolBlock as ToolBlockType } from "@infra/output-blocks"
+import type { ToolEntry as ToolEntryType } from "@infra/output-blocks"
 import { renderHunk } from "@tui/adapters/color-diff"
 import { parseUnifiedDiff } from "@tui/adapters/diff-parser"
 import { toFileUri } from "@tui/adapters/linkify-paths"
@@ -31,21 +32,21 @@ export function displayToolName(name: string): string {
   return name
 }
 
-const BOLD = createTextAttributes({ bold: true })
 
-interface ToolBlockProps {
-  block: ToolBlockType
+interface ToolEntryProps {
+  block: ToolEntryType
 }
 
-export function ToolBlock(props: ToolBlockProps) {
+export function ToolEntry(props: ToolEntryProps) {
   const { theme } = useTheme()
   const name = () => displayToolName(props.block.name)
 
-  const hasDiff = () => !!props.block.diff
-  const hasContent = () => !!props.block.content
+  const isResolved = () => props.block.completed === true || !!props.block.errorMessage
+  const hasError = () => !!props.block.errorMessage
+  const hasDiff = () => !!props.block.diff && !hasError()
+  const hasContent = () => !!props.block.content && !hasError()
   const hasExpandable = () => hasDiff() || hasContent()
 
-  // Handoff docs are workflow-internal; collapse by default so users aren't flooded with content
   const [expanded, setExpanded] = createSignal(!isHandoffPath(props.block.filePath))
 
   const diffColors = createMemo(() => ({
@@ -80,8 +81,14 @@ export function ToolBlock(props: ToolBlockProps) {
     return props.block.content.split("\n")
   })
 
+  const statusIcon = () => {
+    if (hasError()) return { icon: "✗", color: theme.error }
+    return { icon: "✓", color: theme.primary }
+  }
+
   const header = () => (
     <box flexDirection="row" gap={1} overflow="hidden" onMouseDown={hasExpandable() ? () => setExpanded(prev => !prev) : undefined}>
+      <text fg={statusIcon().color} flexShrink={0}>{statusIcon().icon}</text>
       <text fg={theme.text} flexShrink={0} attributes={BOLD}>{name()}</text>
       <Show when={props.block.filePath} fallback={
         <text fg={theme.textSubtle} flexShrink={1} overflow="hidden" wrapMode="none">{props.block.detail}</text>
@@ -94,49 +101,42 @@ export function ToolBlock(props: ToolBlockProps) {
     </box>
   )
 
-  // Error renders outside the tool block box (where diff/content appears),
-  // unlike AgentBlock where errors render inside the agent component itself.
-  // This is intentional: tool errors are user-facing messages, agent errors
-  // are contextual within the agent's scope.
-  const errorLine = () => (
-    <Show when={props.block.errorMessage}>
-      <box paddingLeft={2}>
-        <text fg={theme.error}>{props.block.errorMessage}</text>
-      </box>
-    </Show>
-  )
-
   return (
-    <Show when={hasExpandable()} fallback={
-      <box flexDirection="column" marginTop={1}>
-        {header()}
-        {errorLine()}
-      </box>
-    }>
-      <box flexDirection="column" marginTop={1}>
-        {header()}
-        {errorLine()}
-        <CollapsibleBox expanded={expanded()} paddingTop={1} paddingBottom={1} paddingLeft={4} paddingRight={4}>
-          <Show when={hasDiff()}>
-            <For each={diffStyledLines()}>
-              {(line) => (
-                <box width="100%" backgroundColor={line.lineBg} paddingLeft={4} paddingRight={4}>
-                  <text ref={(el: TextRenderable) => { el.content = line.styled }} />
-                </box>
-              )}
-            </For>
+    <Show when={isResolved()}>
+      <Show when={hasExpandable()} fallback={
+        <box flexDirection="column">
+          {header()}
+          <Show when={hasError()}>
+            <box paddingLeft={3} overflow="hidden">
+              <text fg={theme.error} overflow="hidden" wrapMode="none">{props.block.errorMessage}</text>
+            </box>
           </Show>
-          <Show when={hasContent()}>
-            <For each={contentLines()}>
-              {(line) => (
-                <box paddingLeft={4} paddingRight={4}>
-                  <text fg={theme.text}>{line}</text>
-                </box>
-              )}
-            </For>
-          </Show>
-        </CollapsibleBox>
-      </box>
+        </box>
+      }>
+        <box flexDirection="column">
+          {header()}
+          <CollapsibleBox expanded={expanded()} paddingTop={1} paddingBottom={1} paddingLeft={2} paddingRight={1}>
+            <Show when={hasDiff()}>
+              <For each={diffStyledLines()}>
+                {(line) => (
+                  <box width="100%" backgroundColor={line.lineBg}>
+                    <text ref={(el: TextRenderable) => { el.content = line.styled }} />
+                  </box>
+                )}
+              </For>
+            </Show>
+            <Show when={hasContent()}>
+              <For each={contentLines()}>
+                {(line) => (
+                  <box>
+                    <text fg={theme.text}>{line}</text>
+                  </box>
+                )}
+              </For>
+            </Show>
+          </CollapsibleBox>
+        </box>
+      </Show>
     </Show>
   )
 }

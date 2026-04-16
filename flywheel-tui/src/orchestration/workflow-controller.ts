@@ -82,7 +82,7 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
     try {
       wfDeps = prepareWorkflowDeps()
       const workflowName: WorkflowName = command === "sprint" ? "sprint" : "work"
-      queue = buildQueueFromTemplate(workflowName, wfDeps.config.queue?.max_steps)
+      queue = buildQueueFromTemplate(workflowName, description, wfDeps.config.queue?.max_steps)
     } catch (err) {
       return { error: `Config error: ${extractErrorMessage(err)}` }
     }

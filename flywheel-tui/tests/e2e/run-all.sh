@@ -3,8 +3,10 @@
 # Run all TUI regression test modules.
 #
 # Usage:
-#   ./tests/e2e/run-all.sh                    # run all modules
-#   ./tests/e2e/run-all.sh chat workflow      # run specific modules
+#   ./tests/e2e/run-all.sh                              # run all modules
+#   ./tests/e2e/run-all.sh chat workflow                # run specific modules
+#   ./tests/e2e/run-all.sh --engine=harness             # run all with harness engine
+#   ./tests/e2e/run-all.sh --engine=harness chat        # specific modules + engine
 #
 # Each module runs in its own tmux session with isolated logs.
 # Results are collected into a single summary at the end.
@@ -13,6 +15,18 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BASE_DIR="$SCRIPT_DIR/results/$(date +%Y%m%d-%H%M%S)"
+
+# Parse --engine flag from args
+FLYWHEEL_E2E_ENGINE=""
+REMAINING_ARGS=()
+for arg in "$@"; do
+  case "$arg" in
+    --engine=*) FLYWHEEL_E2E_ENGINE="${arg#--engine=}" ;;
+    *) REMAINING_ARGS+=("$arg") ;;
+  esac
+done
+set -- "${REMAINING_ARGS[@]+"${REMAINING_ARGS[@]}"}"
+export FLYWHEEL_E2E_ENGINE
 
 ALL_MODULES=(
   headless
@@ -41,6 +55,7 @@ MODULE_RESULTS=()
 
 echo "════════════════════════════════════════════"
 echo "  TUI Regression Suite — $(date +%Y-%m-%d\ %H:%M)"
+echo "  Engine:  ${FLYWHEEL_E2E_ENGINE:-default (from config)}"
 echo "  Modules: ${MODULES[*]}"
 echo "  Results: $BASE_DIR"
 echo "════════════════════════════════════════════"
