@@ -13,10 +13,10 @@
  * so that closer-to-cwd content (higher priority) is preserved.
  */
 
-import { readFile, access } from "node:fs/promises";
+import { access } from "node:fs/promises";
+import { constants } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { homedir } from "node:os";
-import { constants } from "node:fs";
 
 // --- Constants ---
 
@@ -26,9 +26,10 @@ const MAX_INCLUDE_DEPTH = 5;
 const MAX_BYTES = 32_768; // 32 KB cap on total project instructions
 const SEPARATOR = "\n\n---\n\n";
 
-// Regex: @ preceded by start-of-line or whitespace, followed by a path.
-// Supports escaped spaces (\ ) in paths.
-const INCLUDE_RE = /(?:^|\s)@((?:[^\s\\]|\\ )+)/g;
+// Regex: @ preceded by start-of-line or whitespace (lookbehind), followed by a path.
+// Supports escaped spaces (\ ) in paths. Lookbehind ensures leading whitespace
+// is not captured into m[0], so replacement doesn't eat surrounding text.
+const INCLUDE_RE = /(?<=^|\s)@((?:[^\s\\]|\\ )+)/g;
 
 // Lines that look like code fences — skip @-references inside them.
 const FENCE_RE = /^(`{3,}|~{3,})/;
@@ -98,11 +99,9 @@ async function isProjectRoot(dir: string): Promise<boolean> {
 async function probeDir(dir: string): Promise<ContextFile | null> {
   for (const name of CANDIDATES) {
     const filePath = join(dir, name);
-    try {
-      const content = await readFile(filePath, "utf-8");
-      return { path: filePath, content };
-    } catch {
-      // File doesn't exist or isn't readable — try next candidate.
+    const file = Bun.file(filePath);
+    if (await file.exists()) {
+      return { path: filePath, content: await file.text() };
     }
   }
   return null;
@@ -126,13 +125,11 @@ async function expandIncludes(
 
   let result = content;
   for (const inc of paths) {
-    try {
-      const incContent = await readFile(inc.resolved, "utf-8");
-      const expanded = await expandIncludes(inc.resolved, incContent, processed, depth + 1);
-      result = result.replace(inc.raw, expanded);
-    } catch {
-      // Non-existent or unreadable — silently skip, leave the @reference as-is.
-    }
+    const file = Bun.file(inc.resolved);
+    if (!(await file.exists())) continue;
+    const incContent = await file.text();
+    const expanded = await expandIncludes(inc.resolved, incContent, processed, depth + 1);
+    result = result.replace(inc.raw, expanded);
   }
 
   return result;

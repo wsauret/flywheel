@@ -232,6 +232,14 @@ describe("@-include directives", () => {
     expect(result).toBe("cc @someone for review");
   });
 
+  test("preserves surrounding text when @-include appears mid-line", async () => {
+    await writeFile(join(root, "snippet.md"), "INJECTED");
+    await writeFile(join(root, "agents.md"), "before @./snippet.md after");
+
+    const result = await loadProjectInstructions(root);
+    expect(result).toBe("before INJECTED after");
+  });
+
   test("resolves include paths relative to the including file", async () => {
     const sub = join(root, "sub");
     await mkdir(sub, { recursive: true });
