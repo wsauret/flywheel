@@ -1,4 +1,4 @@
-import type { NDJSONEvent } from "../../../infra/ndjson-event-types.js";
+import type { NDJSONEvent, UserEventToolResult } from "../../../infra/ndjson-event-types.js";
 
 export interface EngineMetadata {
   /** Unique identifier (e.g., "claude", "harness") */
@@ -50,11 +50,23 @@ export interface RunnerOptions {
   onTurnComplete?: () => void;
   /** External abort signal. */
   signal?: AbortSignal;
+  /**
+   * Extra env vars to inject into the subprocess. Claude engine forwards these
+   * to the CLI child so our ask-hook (and future hooks) can find IPC endpoints.
+   */
+  extraEnv?: Record<string, string>;
+  /**
+   * Additional CLI settings as a JSON string. Claude engine forwards as
+   * `--settings <json>`. Used to register per-session hooks.
+   */
+  claudeSettings?: string;
 }
 
 export interface EngineRunner {
-  /** Send a message. First call starts execution; subsequent calls are multi-turn follow-ups. */
+  /** Send a user message. First call starts execution; subsequent calls are multi-turn follow-ups. */
   send(text: string): void;
+  /** Deliver an out-of-band tool result. Only engines that accept external tool execution implement this. */
+  sendToolResult?(toolResult: UserEventToolResult): void;
   /** Signal end-of-input: caller will not send() again. Runner finishes current turn then resolves `done`. */
   end(): void;
   /** Abort current turn or entire execution. */

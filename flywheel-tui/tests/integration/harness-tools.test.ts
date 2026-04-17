@@ -3,9 +3,9 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { runCommand } from "../src/orchestration/engines/providers/harness/tools/bash.js";
-import { executeWriteHandoff } from "../src/orchestration/engines/providers/harness/tools/write-handoff.js";
-import { executeReadImage } from "../src/orchestration/engines/providers/harness/tools/image.js";
+import { bashDefinition } from "../src/orchestration/engines/providers/harness/tools/bash.js";
+import { writeHandoffDefinition } from "../src/orchestration/engines/providers/harness/tools/write-handoff.js";
+import { readDefinition } from "../src/orchestration/engines/providers/harness/tools/read.js";
 import { executeTodoList } from "../src/orchestration/engines/providers/harness/tools/todo-list.js";
 import { executeTool, getToolDefinitions } from "../src/orchestration/engines/providers/harness/tools/tool-dispatch.js";
 import { limitOutput } from "../src/orchestration/engines/providers/harness/context/truncation.js";
@@ -35,7 +35,7 @@ describe("harness tools", () => {
   describe("bash", () => {
     it("executes command and returns stdout + exit code", async () => {
       const ctx = makeContext({ cwd: tmpDir });
-      const result = await runCommand("echo hello world", ctx);
+      const result = await bashDefinition.execute({ command: "echo hello world" }, ctx);
       expect(result.isError).toBe(false);
       expect(result.content).toContain("hello world");
       expect(result.content).toContain("[exit code: 0]");
@@ -43,14 +43,14 @@ describe("harness tools", () => {
 
     it("returns error for non-zero exit", async () => {
       const ctx = makeContext({ cwd: tmpDir });
-      const result = await runCommand("exit 42", ctx);
+      const result = await bashDefinition.execute({ command: "exit 42" }, ctx);
       expect(result.isError).toBe(true);
       expect(result.content).toContain("[exit code: 42]");
     });
 
     it("times out and returns error", async () => {
       const ctx = makeContext({ cwd: tmpDir });
-      const result = await runCommand("sleep 10", ctx, 1);
+      const result = await bashDefinition.execute({ command: "sleep 10", timeout: 1 }, ctx);
       expect(result.isError).toBe(true);
       expect(result.content).toContain("timed out");
     }, 15_000);
@@ -58,22 +58,22 @@ describe("harness tools", () => {
     it("rejects interactive commands", async () => {
       const ctx = makeContext({ cwd: tmpDir });
 
-      const vim = await runCommand("vim file.txt", ctx);
+      const vim = await bashDefinition.execute({ command: "vim file.txt" }, ctx);
       expect(vim.isError).toBe(true);
       expect(vim.content).toContain("Interactive command detected");
 
-      const less = await runCommand("less output.log", ctx);
+      const less = await bashDefinition.execute({ command: "less output.log" }, ctx);
       expect(less.isError).toBe(true);
       expect(less.content).toContain("Interactive command detected");
 
-      const python = await runCommand("python", ctx);
+      const python = await bashDefinition.execute({ command: "python" }, ctx);
       expect(python.isError).toBe(true);
       expect(python.content).toContain("Interactive command detected");
     });
 
     it("runs background commands", async () => {
       const ctx = makeContext({ cwd: tmpDir });
-      const result = await runCommand("echo bg-test &", ctx);
+      const result = await bashDefinition.execute({ command: "echo bg-test &" }, ctx);
       expect(result.isError).toBe(false);
       expect(result.content).toContain("Started in background");
       expect(result.content).toContain("PID:");
@@ -83,7 +83,7 @@ describe("harness tools", () => {
       const controller = new AbortController();
       controller.abort();
       const ctx = makeContext({ cwd: tmpDir, signal: controller.signal });
-      const result = await runCommand("echo should not run", ctx);
+      const result = await bashDefinition.execute({ command: "echo should not run" }, ctx);
       expect(result.isError).toBe(true);
       expect(result.content).toBe("Aborted");
     });
@@ -95,7 +95,7 @@ describe("harness tools", () => {
     it("writes worker-shaped handoff", async () => {
       const handoffPath = path.join(tmpDir, "handoff.json");
       const ctx = makeContext({ handoffPath });
-      const result = await executeWriteHandoff({
+      const result = await writeHandoffDefinition.execute({
         summary: "Completed the work successfully with all tests passing and features implemented.",
         key_changes: ["added feature X"],
         remaining_work: [],
@@ -114,7 +114,7 @@ describe("harness tools", () => {
     it("writes dispatcher-shaped handoff", async () => {
       const handoffPath = path.join(tmpDir, "dispatcher-handoff.json");
       const ctx = makeContext({ handoffPath });
-      const result = await executeWriteHandoff({
+      const result = await writeHandoffDefinition.execute({
         schema_version: 1,
         step_index: 0,
         task_content: "Create a hello world file",
@@ -135,7 +135,7 @@ describe("harness tools", () => {
 
     it("returns error when no handoff path configured", async () => {
       const ctx = makeContext();
-      const result = await executeWriteHandoff({
+      const result = await writeHandoffDefinition.execute({
         summary: "A valid summary that meets the minimum length requirement for handoff.",
         key_changes: [],
         remaining_work: [],
@@ -147,47 +147,61 @@ describe("harness tools", () => {
     });
   });
 
-  // --- read_image ---
+  // --- read ---
 
-  describe("read_image", () => {
+  describe("read", () => {
     it("reads a valid PNG image", async () => {
       const imgPath = path.join(tmpDir, "test.png");
-      // Minimal 1x1 red PNG
-      const pngHeader = Buffer.from([
-        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
-      ]);
-      fs.writeFileSync(imgPath, pngHeader);
+      const TINY_PNG = Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+        "base64",
+      );
+      fs.writeFileSync(imgPath, TINY_PNG);
 
       const ctx = makeContext();
-      const result = await executeReadImage({ path: imgPath }, ctx);
+      const result = await readDefinition.execute({ file_path: imgPath }, ctx);
       expect(result.isError).toBe(false);
       expect(result.content).toContain("data:image/png;base64,");
     });
 
-    it("rejects unsupported format", async () => {
+    it("rejects unsupported image format", async () => {
+      const imgPath = path.join(tmpDir, "test.bmp");
+      fs.writeFileSync(imgPath, Buffer.from([0x42, 0x4D]));
+
       const ctx = makeContext();
-      const result = await executeReadImage({ path: "/tmp/test.bmp" }, ctx);
+      const result = await readDefinition.execute({ file_path: imgPath }, ctx);
       expect(result.isError).toBe(true);
       expect(result.content).toContain("Unsupported image format");
     });
 
-    it("rejects files over 20MB", async () => {
+    it("rejects images over 20MB", async () => {
       const imgPath = path.join(tmpDir, "large.png");
       const fd = fs.openSync(imgPath, "w");
       fs.ftruncateSync(fd, 21 * 1024 * 1024);
       fs.closeSync(fd);
 
       const ctx = makeContext();
-      const result = await executeReadImage({ path: imgPath }, ctx);
+      const result = await readDefinition.execute({ file_path: imgPath }, ctx);
       expect(result.isError).toBe(true);
       expect(result.content).toContain("too large");
     });
 
-    it("returns error for missing path parameter", async () => {
+    it("returns error for missing file_path parameter", async () => {
       const ctx = makeContext();
-      const result = await executeReadImage({}, ctx);
+      const result = await readDefinition.execute({}, ctx);
       expect(result.isError).toBe(true);
-      expect(result.content).toContain("requires a string 'path' parameter");
+      expect(result.content).toContain("requires a string 'file_path' parameter");
+    });
+
+    it("reads text file with hashline-prefixed lines", async () => {
+      const filePath = path.join(tmpDir, "test.txt");
+      fs.writeFileSync(filePath, "hello\nworld");
+
+      const ctx = makeContext();
+      const result = await readDefinition.execute({ file_path: filePath }, ctx);
+      expect(result.isError).toBe(false);
+      expect(result.content).toMatch(/^1#[A-Z]{2}:hello/);
+      expect(result.content).toMatch(/2#[A-Z]{2}:world/);
     });
   });
 
@@ -304,7 +318,7 @@ describe("harness tools", () => {
       const names = defs.map((d) => d.name);
       expect(names).toContain("bash");
       expect(names).toContain("write_handoff");
-      expect(names).toContain("read_image");
+      expect(names).toContain("read");
       expect(names).toContain("todo_list");
     });
 

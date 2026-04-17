@@ -2,6 +2,7 @@ export interface ToolDefinition {
   name: string;
   description: string;
   input_schema: Record<string, unknown>;
+  execute: (input: unknown, context: ToolContext) => Promise<ToolResult>;
 }
 
 export interface ToolResult {
@@ -19,6 +20,33 @@ export interface ToolContext {
 
 export interface TodoItem {
   content: string;
-  status: "pending" | "in_progress" | "completed";
+  status: "pending" | "in_progress" | "completed" | "abandoned";
   priority?: "high" | "medium" | "low";
+}
+
+// --- Operations interfaces for DI ---
+
+export interface BunSubprocessLike {
+  readonly exitCode: number | null;
+  readonly exited: Promise<number | null>;
+  readonly stdout: ReadableStream<Uint8Array>;
+  readonly stderr: ReadableStream<Uint8Array>;
+  readonly pid: number;
+  kill(signal?: number): void;
+}
+
+export interface BashSpawnOptions {
+  cwd: string;
+  stdout: "pipe";
+  stderr: "pipe";
+}
+
+export interface BashOperations {
+  spawn(cmd: string[], opts: BashSpawnOptions): BunSubprocessLike;
+  writeScript(path: string, content: string): Promise<number>;
+  deleteScript(path: string): Promise<void>;
+}
+
+export interface HandoffOperations {
+  writeFile(path: string, content: string): Promise<number>;
 }

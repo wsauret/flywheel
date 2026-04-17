@@ -3,8 +3,8 @@
 import { createSignal, onMount, onCleanup } from "solid-js"
 import type { RGBA } from "@opentui/core"
 
-const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
-const SPINNER_INTERVAL = 80
+export const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+export const SPINNER_INTERVAL = 80
 
 interface SpinnerProps {
   color?: RGBA

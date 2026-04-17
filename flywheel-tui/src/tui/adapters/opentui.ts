@@ -91,6 +91,14 @@ export class OpenTUIAdapter {
     this.outputSession.dispose();
   }
 
+  answerQuestion(toolUseId: string, answers: Record<string, string>): void {
+    this.outputSession.answerQuestion(toolUseId, answers);
+  }
+
+  cancelQuestion(toolUseId: string): void {
+    this.outputSession.cancelQuestion(toolUseId);
+  }
+
   // Why switch, not a handler map (like HeadlessAdapter): the TUI handler logic
   // varies per event — ordering constraints, multi-method calls, pipeline routing.
   // A map would require `any`-typed event params (losing discriminated union narrowing)

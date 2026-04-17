@@ -20,7 +20,7 @@ import { ExpandToggle } from "@tui/shared/components/expand-toggle"
 import { useElapsed } from "@tui/shared/hooks/use-elapsed"
 import { formatDuration, formatElapsed } from "@infra/format.js"
 import { ToolRow, BOX_MAX_VISIBLE_TOOLS, SUCCESS_ICON, ERROR_ICON, moreHint } from "./tool-row.js"
-import { ToolEntry as ToolEntryBlock, displayToolName } from "./tool-entry.js"
+import { ToolEntry as ToolEntryBlock } from "./tool-entry.js"
 import { DISPATCHER_INITIAL_DESCRIPTION, EVALUATOR_INITIAL_DESCRIPTION } from "../../../../adapters/ndjson-pipeline.js"
 import type { AgentBlock } from "@infra/output-blocks"
 
@@ -106,17 +106,7 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
   return (
     <box flexDirection="column">
       <Show when={isBareSingleTool() && (isActive() || canToggle())}>
-        <Show when={props.block.children[0]!.completed || props.block.children[0]!.errorMessage}
-          fallback={
-            <box flexDirection="row" gap={1} overflow="hidden">
-              <Spinner color={theme.secondary} />
-              <text fg={theme.text} attributes={BOLD}>{displayToolName(props.block.children[0]!.name)}</text>
-              <text fg={theme.textSubtle} flexShrink={1} overflow="hidden" wrapMode="none">{props.block.children[0]!.detail}</text>
-            </box>
-          }
-        >
-          <ToolEntryBlock block={props.block.children[0]!} />
-        </Show>
+        <ToolEntryBlock block={props.block.children[0]!} />
       </Show>
 
       <Show when={props.block.status === "active" && !isBareSingleTool()}>

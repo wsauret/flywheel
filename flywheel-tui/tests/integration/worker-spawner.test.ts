@@ -19,7 +19,7 @@ import { BunProcessSpawner } from "../../src/orchestration/engines/providers/cla
 import { getEngine } from "../../src/orchestration/engines/core/registry";
 import { ensureSessionDir, buildWorkerHandoffPath } from "../../src/infra/paths";
 import { buildScaffolding, type ScaffoldingPaths } from "../../src/workflows/queue/shared/scaffolding";
-import { formatStdinMessage } from "../../src/orchestration/engines/providers/claude/subprocess/stdin-format";
+import { formatStdinInput } from "../../src/orchestration/engines/providers/claude/subprocess/stdin-format";
 import type { Step } from "../../src/workflows/queue/types";
 
 // Engine registration side effects
@@ -97,7 +97,7 @@ async function spawnWorker(
 
   let stdinContent: string | undefined;
   if (useStdinPipe && rawStdinContent) {
-    stdinContent = formatStdinMessage(engine.metadata.id, rawStdinContent);
+    stdinContent = formatStdinInput(rawStdinContent);
   } else {
     stdinContent = rawStdinContent;
   }

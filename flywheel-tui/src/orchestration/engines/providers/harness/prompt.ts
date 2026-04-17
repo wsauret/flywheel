@@ -18,10 +18,18 @@ const VERIFICATION_WARNING = `VERIFICATION:
 Your solution will be evaluated against hidden tests. Verify your solution handles edge cases. Double- and triple-check beyond visible tests.`;
 
 const TODO_LIST_USAGE = `TODO LIST:
-For tasks requiring 3+ steps, create a todo list immediately. Mark items in_progress before starting, completed when done. Call todo_list(read) after any context recovery to restore your task state.`;
+CRITICAL: Call todo_list(write) twice per task — once to mark in_progress before starting, once to mark completed when done. Keep exactly one task in_progress at all times during multi-step work.
+- Create a todo list when the task requires 3+ distinct steps, or when you receive new instructions mid-task.
+- Mark tasks as abandoned when blocked or no longer relevant — do not leave stale in_progress items.
+- After any context recovery, immediately call todo_list(read) to restore your task state.`;
 
 const GENERALIZATION_RULE = `GENERALIZATION:
 Your solution must remain correct for any numeric values, array dimensions, or file contents change.`;
+
+const READ_USAGE = `READ TOOL:
+- Use \`read\` instead of \`cat\`, \`head\`, or \`tail\` for file reading. Lines are displayed in hashline format (LINE#HASH:content) for line-addressable editing.
+- Use offset and limit parameters for large files instead of piping through head/tail.
+- The read tool also handles image files (PNG, JPG, GIF, WebP) — returns base64-encoded content.`;
 
 const HANDOFF_WARNING = `HANDOFF:
 TREAT write_handoff AS IRREVERSIBLE AND FINAL. Before calling write_handoff, verify ALL requirements are met. You have unlimited turns but only one submission.`;
@@ -45,6 +53,12 @@ Use the apply_patch shell helper for precise file edits. Prefer it over heredocs
 
 If apply_patch fails, inspect the file first with \`cat -n\` and retry with accurate context.`;
 
+const BASH_ANTI_PATTERNS = `BASH ANTI-PATTERNS:
+- Use the \`read\` tool instead of \`cat\`, \`head\`, or \`tail\` for reading file contents. Use \`read\` for image files. Only use bash for commands that execute programs, run tests, or modify system state.
+- Do not use \`2>&1\` — stderr is already captured.
+- Do not use \`2>/dev/null\` — error output is useful for debugging.
+- Do not pipe through \`| head\` or \`| tail\` — use the \`read\` tool with offset and limit parameters instead.`;
+
 export interface HarnessPromptOptions {
   orchestrationSystemPrompt: string;
   provider: Provider;
@@ -53,32 +67,7 @@ export interface HarnessPromptOptions {
   availableTools: ReadonlySet<string>;
 }
 
-export function buildHarnessSystemPrompt(opts: HarnessPromptOptions): string;
-/** @deprecated Use the options-object overload. */
-export function buildHarnessSystemPrompt(
-  orchestrationSystemPrompt: string,
-  provider: Provider,
-  projectInstructions?: string,
-): string;
-export function buildHarnessSystemPrompt(
-  optsOrPrompt: HarnessPromptOptions | string,
-  provider?: Provider,
-  projectInstructions?: string,
-): string {
-  if (typeof optsOrPrompt === "string") {
-    return buildPrompt({
-      orchestrationSystemPrompt: optsOrPrompt,
-      provider: provider!,
-      projectInstructions,
-      availableTools: ALL_TOOLS,
-    });
-  }
-  return buildPrompt(optsOrPrompt);
-}
-
-const ALL_TOOLS: ReadonlySet<string> = new Set(["bash", "write_handoff", "todo_list", "read_image"]);
-
-function buildPrompt(opts: HarnessPromptOptions): string {
+export function buildHarnessSystemPrompt(opts: HarnessPromptOptions): string {
   const { orchestrationSystemPrompt, provider, projectInstructions, availableTools } = opts;
   const has = (tool: string): boolean => availableTools.has(tool);
 
@@ -91,6 +80,8 @@ function buildPrompt(opts: HarnessPromptOptions): string {
     toolSections.push(GENERALIZATION_RULE);
   }
 
+  if (has("bash") && has("read")) toolSections.push(BASH_ANTI_PATTERNS);
+  if (has("read")) toolSections.push(READ_USAGE);
   if (has("todo_list")) toolSections.push(TODO_LIST_USAGE);
   if (has("write_handoff")) toolSections.push(HANDOFF_WARNING);
 

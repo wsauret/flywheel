@@ -6,8 +6,8 @@ import type {
 } from "../../core/types.js";
 import type { EngineCommand, EngineCommandOptions } from "./engine.js";
 import type { ProcessSpawner, SpawnResult, StdinHandle } from "./subprocess/spawner.js";
-import type { ProcessResult, ProcessFailureReason } from "../../../../infra/ndjson-event-types.js";
-import { formatStdinMessage } from "./subprocess/stdin-format.js";
+import type { ProcessResult, ProcessFailureReason, UserEventToolResult } from "../../../../infra/ndjson-event-types.js";
+import { formatStdinInput } from "./subprocess/stdin-format.js";
 import { killProcessGroup } from "../../../../infra/process-lifecycle.js";
 
 type CommandBuilder = (options: EngineCommandOptions) => EngineCommand;
@@ -60,7 +60,12 @@ export class SubprocessRunner implements EngineRunner {
     }
 
     if (!this.stdinHandle?.isOpen) return;
-    this.stdinHandle.write(formatStdinMessage(text));
+    this.stdinHandle.write(formatStdinInput(text));
+  }
+
+  sendToolResult(toolResult: UserEventToolResult): void {
+    if (!this.stdinHandle?.isOpen) return;
+    this.stdinHandle.write(formatStdinInput(toolResult));
   }
 
   end(): void {
@@ -82,11 +87,16 @@ export class SubprocessRunner implements EngineRunner {
       systemPrompt: options.systemPrompt,
       effort: options.effort,
       tools: options.tools,
+      settings: options.claudeSettings,
     });
 
-    const stdinContent = formatStdinMessage(
+    const stdinContent = formatStdinInput(
       engineCmd.promptPrefix ? engineCmd.promptPrefix + text : text,
     );
+
+    const env = options.extraEnv
+      ? { ...(process.env as Record<string, string>), ...options.extraEnv }
+      : undefined;
 
     const spawnPromise = this.spawner.spawn(engineCmd.command, engineCmd.args, {
       cwd: options.cwd,
@@ -96,6 +106,7 @@ export class SubprocessRunner implements EngineRunner {
       onSessionId: (id) => { this.sessionId = id; },
       onTurnComplete: options.onTurnComplete,
       signal: options.signal,
+      env,
     });
 
     spawnPromise.then(

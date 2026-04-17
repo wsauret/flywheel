@@ -8,7 +8,7 @@
 
 import { createSignal, createMemo } from "solid-js"
 import type { Accessor, Setter } from "solid-js"
-import type { AnyBlock } from "../../infra/output-blocks.js"
+import type { AnyBlock, QuestionBlock } from "../../infra/output-blocks.js"
 import type { StepState } from "../../orchestration/workflow-runner.js"
 import type { SessionState } from "../../orchestration/session/types.js"
 import type { SessionStore, SessionEntry } from "../../orchestration/session-store-types.js"
@@ -38,6 +38,8 @@ export interface ShellSignals {
   /** When set, bare /work was entered and we're waiting for a task description. Value is the command ("work" | "sprint"). */
   pendingWorkCommand: Accessor<string | undefined>
   setPendingWorkCommand: Setter<string | undefined>
+  /** Derived: the most recent unanswered, uncancelled question block. */
+  pendingQuestion: Accessor<QuestionBlock | undefined>
 }
 
 export interface ShellServices {
@@ -91,6 +93,17 @@ export function createShellState(deps: {
     storeEntry()?.description ?? ""
   )
 
+  const pendingQuestion = createMemo((): QuestionBlock | undefined => {
+    const blocks = outputBlocks()
+    for (let i = blocks.length - 1; i >= 0; i--) {
+      const b = blocks[i]
+      if (b.kind === "question" && !b.answers && !b.cancelled) {
+        return b
+      }
+    }
+    return undefined
+  })
+
   const sessionState = createMemo((): SessionState | null => {
     const fgId = foregroundId()
     if (!fgId) return null
@@ -114,6 +127,7 @@ export function createShellState(deps: {
     sessionState,
     storeEntry,
     pendingWorkCommand, setPendingWorkCommand,
+    pendingQuestion,
   }
 
   const services = {

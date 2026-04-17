@@ -2,4 +2,8 @@
 # Wrapper that ensures solid-js resolves to the browser (reactive) runtime.
 # Without --conditions=browser, Bun picks the "node" export condition which
 # maps solid-js to dist/server.js (SSR), breaking OpenTUI's reactive rendering.
-exec bun --conditions=browser run "$(dirname "$0")/../src/cli/index.ts" "$@"
+#
+# FLYWHEEL_CLI points back at this wrapper so child processes (notably the
+# Claude CLI's AskUserQuestion hook) can re-invoke us via `$FLYWHEEL_CLI ask-hook`
+# regardless of how the app was installed (dev, npm, compiled binary).
+FLYWHEEL_CLI="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")" exec bun --conditions=browser run "$(dirname "$0")/../src/cli/index.ts" "$@"

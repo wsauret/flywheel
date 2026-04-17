@@ -34,6 +34,9 @@ export interface ChatController {
   backgroundChat(foregroundId?: string): Promise<void>
   interruptChat(foregroundId: string | undefined): void
   sendMessage(foregroundId: string | undefined, text: string): boolean
+  sendToolResult(foregroundId: string | undefined, toolUseId: string, content: string, isError?: boolean): boolean
+  answerQuestion(foregroundId: string | undefined, toolUseId: string, answers: Record<string, string>): boolean
+  cancelQuestion(foregroundId: string | undefined, toolUseId: string): boolean
 }
 
 type StartupState =
@@ -243,6 +246,21 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
     return false
   }
 
+  function sendToolResult(foregroundId: string | undefined, toolUseId: string, content: string, isError?: boolean): boolean {
+    if (!foregroundId) return false
+    return sessionStore.injectToolResult(foregroundId, toolUseId, content, isError)
+  }
+
+  function answerQuestion(foregroundId: string | undefined, toolUseId: string, answers: Record<string, string>): boolean {
+    if (!foregroundId) return false
+    return sessionStore.answerQuestion(foregroundId, toolUseId, answers)
+  }
+
+  function cancelQuestion(foregroundId: string | undefined, toolUseId: string): boolean {
+    if (!foregroundId) return false
+    return sessionStore.cancelQuestion(foregroundId, toolUseId)
+  }
+
   return {
     startChat,
     resumeChat,
@@ -250,5 +268,8 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
     backgroundChat,
     interruptChat,
     sendMessage,
+    sendToolResult,
+    answerQuestion,
+    cancelQuestion,
   }
 }

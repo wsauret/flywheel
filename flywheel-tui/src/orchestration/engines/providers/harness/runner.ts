@@ -35,8 +35,7 @@ function mapEffort(effort: string | undefined): ReasoningEffort | undefined {
 // file creation and editing go through shell commands.
 const HARNESS_TOOL_ENABLERS: Record<string, readonly string[]> = {
   bash: ["Bash", "Read", "Grep", "Glob", "Edit", "Write"],
-  write_handoff: ["Write"],
-  read_image: ["Read"],
+  read: ["Read"],
   todo_list: ["Task"],
 };
 

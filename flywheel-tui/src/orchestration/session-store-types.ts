@@ -11,6 +11,10 @@ import type { EngineMetadata } from "./engines/core/types.js"
 export interface WorkflowAdapter {
   connect(bus: EventBus): void
   disconnect(): void
+  /** Mark a pending question block as answered in the adapter's output session.
+   *  No-op in adapters that don't render question blocks (e.g. headless). */
+  answerQuestion?(toolUseId: string, answers: Record<string, string>): void
+  cancelQuestion?(toolUseId: string): void
 }
 
 export interface WorkflowSessionFactories {
@@ -104,6 +108,9 @@ export interface SessionStore {
   remove(sessionId: string): Promise<void>
   updateEntry(sessionId: string, patch: Partial<WorkflowSessionEntry> | Partial<ChatSessionEntry>): void
   injectMessage(sessionId: string, text: string): boolean
+  injectToolResult(sessionId: string, toolUseId: string, content: string, isError?: boolean): boolean
+  answerQuestion(sessionId: string, toolUseId: string, answers: Record<string, string>): boolean
+  cancelQuestion(sessionId: string, toolUseId: string): boolean
   cancelShutdown(sessionId: string): boolean
   runningCount(): number
   allIds(): string[]

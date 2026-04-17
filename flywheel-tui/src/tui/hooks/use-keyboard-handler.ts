@@ -45,53 +45,62 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
     if (next.id !== current) deps.switchForeground(next.id)
   }
 
+  const escapeModes: Array<{ active: () => boolean; handler: () => void }> = [
+    {
+      active: () => !!signals.pendingWorkCommand(),
+      handler: () => signals.setPendingWorkCommand(undefined),
+    },
+    {
+      active: () => signals.sessionState() === "active" && !inChat(),
+      handler: () => {
+        workflow.pauseForeground()
+        const bg = runningCount()
+        if (bg > 0) deps.showToast({ message: `${bg} session${bg > 1 ? "s" : ""} still running in background`, variant: "info" })
+      },
+    },
+    {
+      active: () => inChat(),
+      handler: () => {
+        const now = Date.now()
+        if (now - lastChatEscAt < 2_000) {
+          lastChatEscAt = 0
+          chat.endChat()
+          deps.showToast({ message: "Chat force-ended", variant: "warning" })
+          return
+        }
+        lastChatEscAt = now
+        chat.interruptChat()
+      },
+    },
+    {
+      active: () => signals.sessionState() === "active",
+      handler: () => workflow.abortForeground(),
+    },
+    {
+      active: () => {
+        const s = signals.sessionState()
+        return s === "completed" || s === "paused"
+      },
+      handler: () => {
+        if (sessionModal.isViewingSession()) {
+          sessionModal.dismissViewedSession()
+          return
+        }
+        signals.setErrorMessage("")
+        signals.setForegroundId(undefined)
+        deps.setTerminalTitle(TERMINAL_TITLE_BASE)
+      },
+    },
+    {
+      active: () => !!signals.errorMessage(),
+      handler: () => signals.setErrorMessage(""),
+    },
+  ]
+
   function handleEscape(): void {
-    // Pending work mode: cancel and return to whatever was underneath
-    if (signals.pendingWorkCommand()) {
-      signals.setPendingWorkCommand(undefined)
-      return
-    }
-
-    const state = signals.sessionState()
-
-    // Active workflow (not chat): first Esc pauses, second Esc aborts
-    if (state === "active" && !inChat()) {
-      workflow.pauseForeground()
-      const bg = runningCount()
-      if (bg > 0) deps.showToast({ message: `${bg} session${bg > 1 ? "s" : ""} still running in background`, variant: "info" })
-      return
-    }
-
-    // In chat mode: first Esc interrupts, double-Esc (within 2s) force-ends session
-    if (inChat()) {
-      const now = Date.now()
-      if (now - lastChatEscAt < 2_000) {
-        lastChatEscAt = 0
-        chat.endChat()
-        deps.showToast({ message: "Chat force-ended", variant: "warning" })
-        return
-      }
-      lastChatEscAt = now
-      chat.interruptChat()
-      return
-    }
-
-    // Paused with runner still alive (winding down): abort it
-    if (state === "active") { workflow.abortForeground(); return }
-
-    if (state === "completed" || state === "paused") {
-      if (sessionModal.isViewingSession()) {
-        sessionModal.dismissViewedSession()
-        return
-      }
-      signals.setErrorMessage("")
-      signals.setForegroundId(undefined)
-      deps.setTerminalTitle(TERMINAL_TITLE_BASE)
-      return
-    }
-
-    if (signals.errorMessage()) {
-      signals.setErrorMessage("")
+    if (signals.pendingQuestion()) return;
+    for (const mode of escapeModes) {
+      if (mode.active()) { mode.handler(); return }
     }
   }
 

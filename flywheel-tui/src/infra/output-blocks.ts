@@ -86,6 +86,36 @@ export const TodoListBlockSchema = z.object({
   timestamp: z.number(),
 })
 
+const QuestionOptionSchema = z.object({
+  label: z.string(),
+  description: z.string().optional(),
+})
+
+const QuestionEntrySchema = z.object({
+  question: z.string(),
+  options: z.array(QuestionOptionSchema),
+  multiSelect: z.boolean().optional(),
+})
+
+/**
+ * Optional fields (answers, cancelled) are NOT discriminated by status because
+ * StructuredOutputBuilder mutates blocks via spread (`{ ...block, answers }`).
+ * A discriminated union would break that pattern — answers and cancelled are
+ * post-hoc mutations applied when the user resolves the dock, not construction-time fields.
+ *
+ * `answers` is keyed by question text matching Claude's wire format
+ * (see inspiration/claude-code/src/tools/AskUserQuestionTool/AskUserQuestionTool.tsx).
+ * Multi-select answers are comma-separated.
+ */
+export const QuestionBlockSchema = z.object({
+  kind: z.literal("question"),
+  toolUseId: z.string(),
+  questions: z.array(QuestionEntrySchema),
+  answers: z.record(z.string(), z.string()).optional(),
+  cancelled: z.boolean().optional(),
+  timestamp: z.number(),
+})
+
 export type TextBlock = z.infer<typeof TextBlockSchema>
 export type ToolEntry = z.infer<typeof ToolEntrySchema>
 export type AgentBlock = z.infer<typeof AgentBlockSchema>
@@ -94,8 +124,16 @@ export type ThinkingBlock = z.infer<typeof ThinkingBlockSchema>
 export type UserMessageBlock = z.infer<typeof UserMessageBlockSchema>
 export type TodoItem = z.infer<typeof TodoItemSchema>
 export type TodoListBlock = z.infer<typeof TodoListBlockSchema>
+export type QuestionOption = z.infer<typeof QuestionOptionSchema>
+export type QuestionEntry = z.infer<typeof QuestionEntrySchema>
+export type QuestionBlock = z.infer<typeof QuestionBlockSchema>
 
-const AnyBlockSchema = z.discriminatedUnion("kind", [
+/**
+ * Single source of truth for block shapes. Used for in-memory validation and
+ * derived by persistence (`src/orchestration/session/output-schemas.ts`) —
+ * adding a new block kind here auto-includes it in save/load.
+ */
+export const AnyBlockSchema = z.discriminatedUnion("kind", [
   TextBlockSchema,
   ToolEntrySchema,
   AgentBlockSchema,
@@ -103,6 +141,7 @@ const AnyBlockSchema = z.discriminatedUnion("kind", [
   ThinkingBlockSchema,
   UserMessageBlockSchema,
   TodoListBlockSchema,
+  QuestionBlockSchema,
 ])
 
 export type AnyBlock = z.infer<typeof AnyBlockSchema>

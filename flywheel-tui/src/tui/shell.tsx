@@ -28,8 +28,8 @@ import { createKeyboardHandler } from "./hooks/use-keyboard-handler.js"
 import { createForegroundSwitcher } from "./hooks/use-foreground-switcher.js"
 import { createHeaderDisplay } from "./hooks/use-header-display.js"
 import { createPasteCollapse } from "./hooks/paste-collapse.js"
+import { QuestionDock } from "./routes/work/components/question-dock.js"
 import type { RunnerErrorResult } from "../orchestration/session/types.js"
-
 
 export function FlywheelShell(props: { factories: WorkflowSessionFactories; projectCwd: string; showThinking?: boolean }) {
   const { theme, syntax } = useTheme()
@@ -53,9 +53,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
   renderer.setTerminalTitle(TERMINAL_TITLE_BASE)
 
   const metrics = services.metrics
-
   const [promptHeight, setPromptHeight] = createSignal(1)
-
   let promptRef: TextareaRenderable | null = null
   let pasteCollapse: ReturnType<typeof createPasteCollapse> | null = null
 
@@ -248,8 +246,6 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
       </box>
 
       <box flexGrow={1} flexDirection="column" paddingLeft={2} paddingRight={1} paddingBottom={1} gap={1}>
-
-
         <Show when={signals.pendingWorkCommand()}>
           <box flexGrow={1} flexDirection="column" justifyContent="center" alignItems="center" gap={1}>
             <text fg={theme.primary} attributes={BOLD}>
@@ -291,39 +287,49 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
 
       <box flexShrink={0}>
         <Show when={showPrompt()}>
-          <box paddingLeft={2} paddingRight={2} paddingTop={1} paddingBottom={1}
-            backgroundColor={theme.backgroundElement} border={["left"]} borderColor={theme.primary}
-            onMouseDown={() => promptRef?.focus?.()}>
-            <textarea
-              ref={(r: TextareaRenderable) => {
-                promptRef = r
-                pasteCollapse = createPasteCollapse(r, syntax)
-                r.onPaste = (event) => pasteCollapse!.handlePaste(event)
-                r.onContentChange = () => setPromptHeight(Math.min(3, Math.max(1, r.editorView.getTotalVirtualLineCount())))
-                queueMicrotask(() => r?.focus?.())
-              }}
-              width={lineWidth()} height={promptHeight()} wrapMode="word"
-              placeholder={
-                signals.pendingWorkCommand()
-                  ? "What would you like to work on?"
-                  : inChat()
-                    ? (signals.agentState() === "active" ? "Type to steer the conversation..." : "Send a message (/new for fresh chat)")
-                    : signals.agentState() === "active"
-                      ? "Send a message to guide the agent (Esc to interrupt)"
-                      : signals.sessionState() === "paused"
-                        ? "Send a message to resume, or press Esc to stop"
-                        : "Send a message..."
-              }
-              backgroundColor="transparent" focusedBackgroundColor="transparent"
-              onSubmit={() => { const v = pasteCollapse?.expandForSubmit() ?? promptRef?.plainText ?? ""; commands.handlePromptSubmit(v); promptRef?.clear(); setPromptHeight(1) }}
-              keyBindings={[
-                { name: "return", action: "submit" as TextareaAction },
-                { name: "z", ctrl: true, action: "undo" as TextareaAction },
-                { name: "z", meta: true, action: "undo" as TextareaAction },
-                { name: "y", ctrl: true, action: "redo" as TextareaAction },
-              ]}
-            />
-          </box>
+          <Show when={signals.pendingQuestion()} fallback={
+            <box paddingLeft={2} paddingRight={2} paddingTop={1} paddingBottom={1}
+              backgroundColor={theme.backgroundElement} border={["left"]} borderColor={theme.primary}
+              onMouseDown={() => promptRef?.focus?.()}>
+              <textarea
+                ref={(r: TextareaRenderable) => {
+                  promptRef = r
+                  pasteCollapse = createPasteCollapse(r, syntax)
+                  r.onPaste = (event) => pasteCollapse!.handlePaste(event)
+                  r.onContentChange = () => setPromptHeight(Math.min(3, Math.max(1, r.editorView.getTotalVirtualLineCount())))
+                  queueMicrotask(() => r?.focus?.())
+                }}
+                width={lineWidth()} height={promptHeight()} wrapMode="word"
+                placeholder={
+                  signals.pendingWorkCommand()
+                    ? "What would you like to work on?"
+                    : inChat()
+                      ? (signals.agentState() === "active" ? "Type to steer the conversation..." : "Send a message (/new for fresh chat)")
+                      : signals.agentState() === "active"
+                        ? "Send a message to guide the agent (Esc to interrupt)"
+                        : signals.sessionState() === "paused"
+                          ? "Send a message to resume, or press Esc to stop"
+                          : "Send a message..."
+                }
+                backgroundColor="transparent" focusedBackgroundColor="transparent"
+                onSubmit={() => { const v = pasteCollapse?.expandForSubmit() ?? promptRef?.plainText ?? ""; commands.handlePromptSubmit(v); promptRef?.clear(); setPromptHeight(1) }}
+                keyBindings={[
+                  { name: "return", action: "submit" as TextareaAction },
+                  { name: "z", ctrl: true, action: "undo" as TextareaAction },
+                  { name: "z", meta: true, action: "undo" as TextareaAction },
+                  { name: "y", ctrl: true, action: "redo" as TextareaAction },
+                ]}
+              />
+            </box>
+          }>
+            {(pq) => (
+              <QuestionDock
+                question={pq()}
+                onAnswer={(answers) => chat.answerQuestion(pq().toolUseId, answers)}
+                onCancel={() => chat.cancelQuestion(pq().toolUseId)}
+              />
+            )}
+          </Show>
         </Show>
       </box>
 

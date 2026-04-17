@@ -25,6 +25,8 @@ export interface ChatModeHook {
   /** Close the foreground chat — removes from store and marks paused. */
   endChat(): Promise<void>
   sendMessage(text: string): void
+  answerQuestion(toolUseId: string, answers: Record<string, string>): void
+  cancelQuestion(toolUseId: string): void
 }
 
 export function useChatMode(deps: ChatModeDeps): ChatModeHook {
@@ -87,5 +89,13 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
     controller.sendMessage(signals.foregroundId(), text)
   }
 
-  return { chatActive, startChat, backgroundChat, interruptChat, endChat, sendMessage }
+  function answerQuestion(toolUseId: string, answers: Record<string, string>): void {
+    controller.answerQuestion(signals.foregroundId(), toolUseId, answers)
+  }
+
+  function cancelQuestion(toolUseId: string): void {
+    controller.cancelQuestion(signals.foregroundId(), toolUseId)
+  }
+
+  return { chatActive, startChat, backgroundChat, interruptChat, endChat, sendMessage, answerQuestion, cancelQuestion }
 }

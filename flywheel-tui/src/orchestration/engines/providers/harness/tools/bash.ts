@@ -9,7 +9,7 @@
 import { randomUUID } from "node:crypto";
 import { Log } from "../../../../../infra/log.js";
 import { killProcessGroup } from "../../../../../infra/process-lifecycle.js";
-import type { ToolDefinition, ToolResult, ToolContext } from "./types.js";
+import type { ToolDefinition, ToolResult, ToolContext, BashOperations } from "./types.js";
 
 const log = Log.create({ service: "harness-bash" });
 
@@ -37,38 +37,6 @@ function isBackgroundCommand(command: string): boolean {
   return /&\s*$/.test(command.trim());
 }
 
-export const bashDefinition: ToolDefinition = {
-  name: "bash",
-  description: "Execute a shell command",
-  input_schema: {
-    type: "object",
-    properties: {
-      command: { type: "string", description: "The shell command to execute" },
-      timeout: { type: "number", description: "Timeout in seconds (default 120)" },
-    },
-    required: ["command"],
-  },
-};
-
-export async function runCommand(command: string, context: ToolContext, timeoutSec?: number): Promise<ToolResult> {
-  const interactiveError = checkInteractiveCommand(command);
-  if (interactiveError) {
-    return { content: interactiveError, isError: true };
-  }
-
-  if (context.signal?.aborted) {
-    return { content: "Aborted", isError: true };
-  }
-
-  const timeout = timeoutSec ?? DEFAULT_TIMEOUT_SEC;
-
-  if (isBackgroundCommand(command)) {
-    return runBackground(command, context);
-  }
-
-  return runForeground(command, context, timeout);
-}
-
 function buildScript(command: string): string {
   return [
     "set -m",
@@ -81,75 +49,127 @@ function buildScript(command: string): string {
   ].join("\n");
 }
 
-async function runForeground(command: string, context: ToolContext, timeoutSec: number): Promise<ToolResult> {
-  const scriptId = randomUUID().slice(0, 8);
-  const scriptPath = `/tmp/flywheel-harness-${scriptId}.sh`;
+const defaultBashOperations: BashOperations = {
+  spawn: (cmd, opts) => Bun.spawn(cmd, opts),
+  writeScript: (path, content) => Bun.write(path, content),
+  deleteScript: (path) => Bun.file(path).delete(),
+};
 
-  try {
-    await Bun.write(scriptPath, buildScript(command));
+export function createBashDefinition(options?: { operations?: BashOperations }): ToolDefinition {
+  const ops = options?.operations ?? defaultBashOperations;
 
-    const proc = Bun.spawn(["bash", scriptPath], {
+  async function runForeground(command: string, context: ToolContext, timeoutSec: number): Promise<ToolResult> {
+    const scriptId = randomUUID().slice(0, 8);
+    const scriptPath = `/tmp/flywheel-harness-${scriptId}.sh`;
+
+    try {
+      await ops.writeScript(scriptPath, buildScript(command));
+
+      const proc = ops.spawn(["bash", scriptPath], {
+        cwd: context.cwd,
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+
+      let timedOut = false;
+      const killTimer = setTimeout(() => {
+        timedOut = true;
+        log.warn("command timed out, sending SIGTERM", { timeoutSec });
+        killProcessGroup(proc, "SIGTERM");
+        setTimeout(() => {
+          killProcessGroup(proc, "SIGKILL");
+        }, KILL_GRACE_MS);
+      }, timeoutSec * 1000);
+
+      try {
+        await proc.exited;
+        const output = await new Response(proc.stdout).text();
+        const exitCode = timedOut ? 124 : (proc.exitCode ?? 1);
+
+        const parts: string[] = [];
+        if (timedOut) parts.push(`[Command timed out after ${timeoutSec}s; killed]`);
+        if (output.trim()) parts.push(output.trim());
+        else if (!timedOut) parts.push("(no output)");
+        parts.push(`[exit code: ${exitCode}]`);
+
+        return {
+          content: parts.join("\n"),
+          isError: exitCode !== 0,
+        };
+      } finally {
+        clearTimeout(killTimer);
+      }
+    } finally {
+      try {
+        await ops.deleteScript(scriptPath);
+      } catch {
+        // best-effort cleanup
+      }
+    }
+  }
+
+  async function runBackground(command: string, context: ToolContext): Promise<ToolResult> {
+    const scriptId = randomUUID().slice(0, 8);
+    const logPath = `/tmp/flywheel-harness-bg-${scriptId}.log`;
+
+    const stripped = command.trim().replace(/&\s*$/, "");
+    const wrapper = `nohup bash -c ${JSON.stringify(stripped)} > ${logPath} 2>&1 & echo $!`;
+
+    const proc = ops.spawn(["bash", "-c", wrapper], {
       cwd: context.cwd,
       stdout: "pipe",
       stderr: "pipe",
     });
 
-    let timedOut = false;
-    const killTimer = setTimeout(() => {
-      timedOut = true;
-      log.warn("command timed out, sending SIGTERM", { timeoutSec });
-      killProcessGroup(proc, "SIGTERM");
-      setTimeout(() => {
-        killProcessGroup(proc, "SIGKILL");
-      }, KILL_GRACE_MS);
-    }, timeoutSec * 1000);
+    await proc.exited;
+    const pid = parseInt((await new Response(proc.stdout).text()).trim(), 10) || 0;
 
-    try {
-      await proc.exited;
-      const output = await new Response(proc.stdout).text();
-      const exitCode = timedOut ? 124 : (proc.exitCode ?? 1);
-
-      const parts: string[] = [];
-      if (timedOut) parts.push(`[Command timed out after ${timeoutSec}s; killed]`);
-      if (output.trim()) parts.push(output.trim());
-      else if (!timedOut) parts.push("(no output)");
-      parts.push(`[exit code: ${exitCode}]`);
-
-      return {
-        content: parts.join("\n"),
-        isError: exitCode !== 0,
-      };
-    } finally {
-      clearTimeout(killTimer);
-    }
-  } finally {
-    try {
-      await Bun.file(scriptPath).delete();
-    } catch {
-      // best-effort cleanup
-    }
+    return {
+      content: `Started in background. PID: ${pid}. Log: ${logPath}.\nCheck progress: cat ${logPath}\nStop: kill ${pid}`,
+      isError: false,
+    };
   }
-}
 
-async function runBackground(command: string, context: ToolContext): Promise<ToolResult> {
-  const scriptId = randomUUID().slice(0, 8);
-  const logPath = `/tmp/flywheel-harness-bg-${scriptId}.log`;
+  async function runCommandInner(command: string, context: ToolContext, timeoutSec?: number): Promise<ToolResult> {
+    const interactiveError = checkInteractiveCommand(command);
+    if (interactiveError) {
+      return { content: interactiveError, isError: true };
+    }
 
-  const stripped = command.trim().replace(/&\s*$/, "");
-  const wrapper = `nohup bash -c ${JSON.stringify(stripped)} > ${logPath} 2>&1 & echo $!`;
+    if (context.signal?.aborted) {
+      return { content: "Aborted", isError: true };
+    }
 
-  const proc = Bun.spawn(["bash", "-c", wrapper], {
-    cwd: context.cwd,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
+    const timeout = timeoutSec ?? DEFAULT_TIMEOUT_SEC;
 
-  await proc.exited;
-  const pid = parseInt((await new Response(proc.stdout).text()).trim(), 10) || 0;
+    if (isBackgroundCommand(command)) {
+      return runBackground(command, context);
+    }
+
+    return runForeground(command, context, timeout);
+  }
 
   return {
-    content: `Started in background. PID: ${pid}. Log: ${logPath}.\nCheck progress: cat ${logPath}\nStop: kill ${pid}`,
-    isError: false,
+    name: "bash",
+    description: "Execute a shell command in an isolated bash session. Each call spawns a fresh process — environment variables, working directory changes, and shell state do not persist between calls. Chain dependent commands with && or ; within one call. End a command with & to run it in the background (returns PID and log path). Use the timeout parameter for commands that may run longer than the default 120s.",
+    input_schema: {
+      type: "object",
+      properties: {
+        command: { type: "string", description: "The shell command to execute" },
+        timeout: { type: "number", description: "Timeout in seconds (default 120)" },
+      },
+      required: ["command"],
+    },
+    async execute(input: unknown, context: ToolContext) {
+      const rec = input as Record<string, unknown>;
+      if (typeof rec.command !== "string") {
+        return { content: "bash requires a string 'command' parameter", isError: true };
+      }
+      const timeout = typeof rec.timeout === "number" ? rec.timeout : undefined;
+      return runCommandInner(rec.command, context, timeout);
+    },
   };
 }
+
+export const bashDefinition = createBashDefinition();
 

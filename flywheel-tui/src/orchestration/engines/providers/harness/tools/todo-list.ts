@@ -12,7 +12,13 @@ const MAX_CONTENT_LENGTH = 500;
 
 export const todoListDefinition: ToolDefinition = {
   name: "todo_list",
-  description: "Read or write a structured requirements tracking list",
+  description:
+    "Read or write a structured requirements tracking list. " +
+    "CRITICAL: Call twice per task — mark in_progress before starting work, then completed when done. " +
+    "Keep exactly one task in_progress at all times during multi-step work. " +
+    "Create a todo list when the task requires 3+ distinct steps. " +
+    "Mark tasks as abandoned when blocked or no longer relevant. " +
+    "Call todo_list(read) after any context recovery to restore your task state.",
   input_schema: {
     type: "object",
     properties: {
@@ -23,7 +29,7 @@ export const todoListDefinition: ToolDefinition = {
           type: "object",
           properties: {
             content: { type: "string", maxLength: 500 },
-            status: { type: "string", enum: ["pending", "in_progress", "completed"] },
+            status: { type: "string", enum: ["pending", "in_progress", "completed", "abandoned"] },
             priority: { type: "string", enum: ["high", "medium", "low"] },
           },
           required: ["content", "status"],
@@ -32,6 +38,8 @@ export const todoListDefinition: ToolDefinition = {
     },
     required: ["operation"],
   },
+  execute: (input: unknown, context: ToolContext) =>
+    Promise.resolve(executeTodoList(input as Record<string, unknown>, context)),
 };
 
 export function executeTodoList(
@@ -49,7 +57,11 @@ export function executeTodoList(
     }
     const formatted = context.todoList
       .map((item, i) => {
-        const status = item.status === "completed" ? "[x]" : item.status === "in_progress" ? "[~]" : "[ ]";
+        const status =
+          item.status === "completed" ? "[x]"
+          : item.status === "in_progress" ? "[~]"
+          : item.status === "abandoned" ? "[!]"
+          : "[ ]";
         const priority = item.priority ? ` (${item.priority})` : "";
         return `${i + 1}. ${status} ${item.content}${priority}`;
       })

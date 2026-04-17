@@ -1,7 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 
 import { For, Show, createMemo } from "solid-js"
-import { BOLD, DIM } from "@tui/shared/ui/text-attributes"
+import { BOLD } from "@tui/shared/ui/text-attributes"
 import { useTheme } from "@tui/shared/context/theme"
 import type { Theme } from "@tui/shared/context/theme/resolve"
 import type { TodoListBlock as TodoListBlockType, TodoItem } from "@infra/output-blocks"
@@ -47,14 +47,14 @@ export function TodoListBlock(props: TodoListBlockProps) {
     <Show when={incomplete().length > 0}>
       <box flexDirection="column">
         <box flexDirection="row" gap={1} overflow="hidden">
-          <text fg={theme.accent} attributes={BOLD}>{"\u2630"} Tasks</text>
+          <text fg={theme.accent} attributes={BOLD}>{"\u2261"} Tasks</text>
           <Show when={completedCount() > 0}>
             {(() => {
               const bar = () => progressBar(completedCount(), totalCount(), theme)
               return (
                 <>
                   <text fg={bar().fg}>{bar().text}</text>
-                  <text fg={theme.success} attributes={DIM}>{completedCount()}/{totalCount()}</text>
+                  <text fg={theme.success} attributes={BOLD}>{completedCount()}/{totalCount()}</text>
                 </>
               )
             })()}

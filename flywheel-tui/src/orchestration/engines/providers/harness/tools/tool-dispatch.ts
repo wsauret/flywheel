@@ -1,22 +1,24 @@
 /**
  * Closed dispatch table for harness tools.
  *
- * Fixed tool set — intentionally not a registry. All tools are known at
- * compile time. Unknown tool names return an error result (not throw).
+ * Fixed tool set — all tools known at compile time, registered via Map.
+ * Unknown tool names return an error result (not throw).
  */
 
-import { bashDefinition, runCommand } from "./bash.js";
-import { writeHandoffDefinition, executeWriteHandoff } from "./write-handoff.js";
-import { readImageDefinition, executeReadImage } from "./image.js";
-import { todoListDefinition, executeTodoList } from "./todo-list.js";
+import { bashDefinition } from "./bash.js";
+import { writeHandoffDefinition } from "./write-handoff.js";
+import { readDefinition } from "./read.js";
+import { todoListDefinition } from "./todo-list.js";
 import type { ToolDefinition, ToolResult, ToolContext } from "./types.js";
 
-const TOOL_DEFINITIONS: readonly ToolDefinition[] = Object.freeze([
-  bashDefinition,
-  writeHandoffDefinition,
-  readImageDefinition,
-  todoListDefinition,
+const TOOL_REGISTRY: ReadonlyMap<string, ToolDefinition> = new Map([
+  [bashDefinition.name, bashDefinition],
+  [writeHandoffDefinition.name, writeHandoffDefinition],
+  [readDefinition.name, readDefinition],
+  [todoListDefinition.name, todoListDefinition],
 ]);
+
+const TOOL_DEFINITIONS: readonly ToolDefinition[] = Array.from(TOOL_REGISTRY.values());
 
 export function getToolDefinitions(): readonly ToolDefinition[] {
   return TOOL_DEFINITIONS;
@@ -27,28 +29,12 @@ export async function executeTool(
   input: Record<string, unknown>,
   context: ToolContext,
 ): Promise<ToolResult> {
-  switch (name) {
-    case "bash": {
-      if (typeof input.command !== "string") {
-        return { content: "bash requires a string 'command' parameter", isError: true };
-      }
-      const timeout = typeof input.timeout === "number" ? input.timeout : undefined;
-      return runCommand(input.command, context, timeout);
-    }
-
-    case "write_handoff":
-      return executeWriteHandoff(input, context);
-
-    case "read_image":
-      return executeReadImage(input, context);
-
-    case "todo_list":
-      return executeTodoList(input, context);
-
-    default:
-      return {
-        content: `Unknown tool '${name}'. Available tools: ${getToolDefinitions().map((t) => t.name).join(", ")}`,
-        isError: true,
-      };
+  const definition = TOOL_REGISTRY.get(name);
+  if (!definition) {
+    return {
+      content: `Unknown tool '${name}'. Available tools: ${getToolDefinitions().map((t) => t.name).join(", ")}`,
+      isError: true,
+    };
   }
+  return definition.execute(input, context);
 }

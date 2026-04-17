@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { StructuredOutputBuilder } from "../src/infra/output/structured-output-builder";
-import type { AnyBlock, TextBlock, ToolEntry, AgentBlock, SystemBlock, TodoListBlock, UserMessageBlock } from "../src/infra/output-blocks";
+import type { AnyBlock, TextBlock, ToolEntry, AgentBlock, SystemBlock, TodoListBlock, UserMessageBlock, QuestionBlock } from "../src/infra/output-blocks";
 
 /** Build a resolved tool entry. Matches what the parser emits after tool_result. */
 function resolvedTool(name: string, detail: string, timestamp: number): ToolEntry {
@@ -836,6 +836,115 @@ describe("StructuredOutputBuilder", () => {
       expect(blocks).toHaveLength(2);
       expect(blocks[0].kind).toBe("todoList");
       expect(blocks[1].kind).toBe("todoList");
+    });
+  });
+
+  // ── Question blocks ──
+
+  describe("pushQuestion", () => {
+    it("creates a QuestionBlock with a single question", () => {
+      const now = Date.now();
+      const idx = builder.pushQuestion("tool_q1", [
+        {
+          question: "Which library?",
+          options: [{ label: "Option A", description: "First" }, { label: "Option B" }],
+        },
+      ], now);
+
+      expect(idx).toBeGreaterThanOrEqual(0);
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0].kind).toBe("question");
+      const q = blocks[0] as QuestionBlock;
+      expect(q.toolUseId).toBe("tool_q1");
+      expect(q.questions).toHaveLength(1);
+      expect(q.questions[0].question).toBe("Which library?");
+      expect(q.questions[0].options).toHaveLength(2);
+      expect(q.questions[0].multiSelect).toBeUndefined();
+      expect(q.answers).toBeUndefined();
+      expect(q.cancelled).toBeUndefined();
+    });
+
+    it("creates a multi-question block with multiSelect", () => {
+      const idx = builder.pushQuestion("tool_q_multi", [
+        { question: "Framework?", options: [{ label: "React" }, { label: "Vue" }] },
+        { question: "Features?", options: [{ label: "Dark" }, { label: "Auto-save" }], multiSelect: true },
+      ], Date.now());
+
+      expect(idx).toBeGreaterThanOrEqual(0);
+      const q = builder.getBlocks()[0] as QuestionBlock;
+      expect(q.questions).toHaveLength(2);
+      expect(q.questions[1].multiSelect).toBe(true);
+    });
+
+    it("sets modelActivity to tool_executing", () => {
+      expect(builder.modelActivity).toBe("idle");
+      builder.pushQuestion("tool_q3", [{ question: "Pick one", options: [{ label: "A" }] }], Date.now());
+      expect(builder.modelActivity).toBe("tool_executing");
+    });
+
+    it("breaks context tool grouping run", () => {
+      const now = Date.now();
+      builder.pushToolRow(resolvedTool("Read", "file.ts", now));
+      builder.pushQuestion("tool_q4", [{ question: "Continue?", options: [{ label: "Yes" }, { label: "No" }] }], now + 100);
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(2);
+      expect(blocks[0].kind).toBe("agent");
+      expect((blocks[0] as AgentBlock).status).toBe("completed");
+      expect(blocks[1].kind).toBe("question");
+    });
+  });
+
+  describe("answerQuestion", () => {
+    it("sets the answers record on the matching question block", () => {
+      const now = Date.now();
+      builder.pushQuestion("tool_q1", [
+        { question: "Which one?", options: [{ label: "A" }, { label: "B" }] },
+      ], now);
+      builder.answerQuestion("tool_q1", { "Which one?": "Option A" });
+
+      const q = builder.getBlocks()[0] as QuestionBlock;
+      expect(q.answers).toEqual({ "Which one?": "Option A" });
+    });
+
+    it("matches the correct block when multiple questions are in flight", () => {
+      const now = Date.now();
+      builder.pushTool("Read", "file.ts", now);
+      builder.pushQuestion("tool_q1", [{ question: "First?", options: [{ label: "A" }] }], now);
+      builder.pushQuestion("tool_q2", [{ question: "Second?", options: [{ label: "B" }] }], now);
+
+      builder.answerQuestion("tool_q2", { "Second?": "Option B" });
+
+      const blocks = builder.getBlocks();
+      expect((blocks[2] as QuestionBlock).answers).toEqual({ "Second?": "Option B" });
+      expect((blocks[1] as QuestionBlock).answers).toBeUndefined();
+    });
+
+    it("is a no-op when toolUseId matches no question", () => {
+      const now = Date.now();
+      builder.pushQuestion("tool_q1", [{ question: "Which?", options: [{ label: "A" }] }], now);
+      builder.answerQuestion("unknown_id", { "Which?": "A" });
+      expect((builder.getBlocks()[0] as QuestionBlock).answers).toBeUndefined();
+    });
+  });
+
+  describe("cancelQuestion", () => {
+    it("sets cancelled on the matching question block", () => {
+      const now = Date.now();
+      builder.pushQuestion("tool_q1", [{ question: "Which one?", options: [{ label: "A" }] }], now);
+      builder.cancelQuestion("tool_q1");
+
+      const q = builder.getBlocks()[0] as QuestionBlock;
+      expect(q.cancelled).toBe(true);
+      expect(q.answers).toBeUndefined();
+    });
+
+    it("is a no-op when toolUseId matches no question", () => {
+      const now = Date.now();
+      builder.pushTool("Edit", "file.ts", now);
+      builder.cancelQuestion("nonexistent");
+      expect((builder.getBlocks()[0] as ToolEntry).errorMessage).toBeUndefined();
     });
   });
 

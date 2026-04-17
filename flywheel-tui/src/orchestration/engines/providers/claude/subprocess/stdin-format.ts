@@ -1,7 +1,8 @@
-// Single function, but 7 consumers across orchestration/ and workflows/.
-// Extracted to avoid duplicating the wire format in every call site.
+import type { UserEventToolResult } from "../../../../../infra/ndjson-event-types.js";
 
-/** Format a text message as NDJSON for the subprocess stdin pipe. */
-export function formatStdinMessage(text: string): string {
-  return JSON.stringify({ type: "user", message: { role: "user", content: text } }) + "\n";
+export function formatStdinInput(input: string | UserEventToolResult): string {
+  if (typeof input === "string") {
+    return JSON.stringify({ type: "user", message: { role: "user", content: input } }) + "\n";
+  }
+  return JSON.stringify({ type: "user", message: { role: "user", content: [input] } }) + "\n";
 }

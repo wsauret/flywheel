@@ -21,6 +21,8 @@ export interface OutputSession {
   notifyInjected(message: string, timestamp: number, pending?: boolean, injected?: boolean): void
   resolvePendingMessages(): string[]
   pushSystemMessage(message: string, timestamp: number): void
+  answerQuestion(toolUseId: string, answers: Record<string, string>): void
+  cancelQuestion(toolUseId: string): void
   resetTracking(): void
   flushContextRun(timestamp: number): void
   flushParser(): void
@@ -97,6 +99,8 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
     notifyInjected,
     resolvePendingMessages: () => builder.resolvePendingMessages(),
     pushSystemMessage: (message: string, timestamp: number) => builder.pushSystemMessage(message, timestamp),
+    answerQuestion: (toolUseId: string, answers: Record<string, string>) => builder.answerQuestion(toolUseId, answers),
+    cancelQuestion: (toolUseId: string) => builder.cancelQuestion(toolUseId),
     resetTracking: () => builder.resetTracking(),
     flushContextRun: (timestamp: number) => builder.flushContextRun(timestamp),
     flushParser: () => parser.flush(),

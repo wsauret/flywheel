@@ -23,6 +23,8 @@ describe("SessionRunner interface", () => {
       pause: () => {},
       abort: () => {},
       injectMessage: (_text: string) => true,
+      answerQuestion: (_toolUseId, _answers) => {},
+      cancelQuestion: (_toolUseId) => {},
       cancelShutdown: () => {},
       dispose: async () => {},
     };

@@ -8,6 +8,8 @@ import type { AnyBlock } from "../infra/output-blocks.js"
 import type { NDJSONEvent } from "../infra/ndjson-event-types.js"
 import type { MetricsWriter } from "./session/create-session-infra.js"
 import type { Engine, EngineRunner } from "./engines/core/types.js"
+import type { AskHookServer } from "./ask-hook/server.js"
+import { buildAskHookSettings } from "./ask-hook/config.js"
 
 type ChatInfra = Pick<SessionInfra, "budgetTracker" | "transcriptWriter" | "traceCollector">
 import { Log } from "../infra/log.js"
@@ -23,6 +25,9 @@ export interface ChatCallbacks {
 
 export interface ChatSession {
   send(text: string): void
+  sendToolResult(toolUseId: string, content: string, isError?: boolean): void
+  answerQuestion(toolUseId: string, answers: Record<string, string>): void
+  cancelQuestion(toolUseId: string): void
   interrupt(): void
   end(): void
   readonly budgetTracker: BudgetTracker
@@ -87,6 +92,8 @@ export interface ChatSessionDeps {
   onFlush?: () => void
   engineSessionId?: string
   priorBlocks?: readonly AnyBlock[]
+  /** Optional — when present, AskUserQuestion is routed through this bridge. */
+  askHookServer?: AskHookServer
 }
 
 /**
@@ -170,13 +177,13 @@ export interface WorkerLifecycle {
 }
 
 function createWorkerLifecycle(
-  deps: Pick<ChatSessionDeps, "engine" | "model" | "projectCwd" | "chatId">,
+  deps: Pick<ChatSessionDeps, "engine" | "model" | "projectCwd" | "chatId"> & { askHookServer: AskHookServer | null },
   emit: EmitFn,
   session: OutputSession,
   callbacks: ChatCallbacks,
   state: ChatSessionState,
 ): WorkerLifecycle {
-  const { engine, model, projectCwd, chatId } = deps
+  const { engine, model, projectCwd, chatId, askHookServer } = deps
 
   async function spawnWorker(resumeSessionId?: string, messageToSend?: string): Promise<void> {
     emit("engine:started", { workflowId: chatId, stepIndex: 0 })
@@ -186,6 +193,8 @@ function createWorkerLifecycle(
       model,
       cwd: projectCwd,
       resumeSessionId,
+      extraEnv: askHookServer ? { FLYWHEEL_ASK_SOCKET: askHookServer.socketPath } : undefined,
+      claudeSettings: askHookServer ? buildAskHookSettings() : undefined,
       onEvent: (event) => {
         // Emit to bus for infra subscribers (budget tracker, transcript writer)
         emit("engine:ndjson", { workflowId: chatId, ndjsonEvent: event })
@@ -262,6 +271,7 @@ export async function createChatSession(
   const {
     projectCwd, engine, model, infra,
     eventBus, chatId, updateEntry: rawUpdateEntry,
+    askHookServer,
   } = deps
   const emit = createEmit(eventBus)
 
@@ -291,7 +301,7 @@ export async function createChatSession(
   )
 
   const lifecycle = createWorkerLifecycle(
-    { engine, model, projectCwd, chatId },
+    { engine, model, projectCwd, chatId, askHookServer: askHookServer ?? null },
     emit, session, callbacks, state,
   )
 
@@ -304,5 +314,24 @@ export async function createChatSession(
 
   await lifecycle.spawnWorker(state.engineSessionId ?? undefined, msg)
 
-  return { send: controls.send, interrupt: controls.interrupt, end: controls.end, budgetTracker: infra.budgetTracker, outputSession: session }
+  function answerQuestion(toolUseId: string, answers: Record<string, string>): void {
+    session.answerQuestion(toolUseId, answers)
+    if (askHookServer) askHookServer.deliver(toolUseId, answers)
+  }
+
+  function cancelQuestion(toolUseId: string): void {
+    session.cancelQuestion(toolUseId)
+    if (askHookServer) askHookServer.cancel(toolUseId)
+  }
+
+  return {
+    send: controls.send,
+    sendToolResult: controls.sendToolResult,
+    answerQuestion,
+    cancelQuestion,
+    interrupt: controls.interrupt,
+    end: controls.end,
+    budgetTracker: infra.budgetTracker,
+    outputSession: session,
+  }
 }

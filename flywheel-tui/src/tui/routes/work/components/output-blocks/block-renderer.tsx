@@ -15,6 +15,7 @@ import { SystemBlock } from "./system-block.js"
 import { ThinkingBlock } from "./thinking-block.js"
 import { UserMessageBlock } from "./user-message-block.js"
 import { TodoListBlock } from "./todo-list-block.js"
+import { QuestionHistoryBlock } from "./question-history-block.js"
 
 interface BlockRendererProps {
   block: AnyBlock
@@ -52,6 +53,9 @@ export function BlockRenderer(props: BlockRendererProps) {
       </Match>
       <Match when={props.block.kind === "todoList" ? props.block : undefined}>
         {(block) => <TodoListBlock block={block()} />}
+      </Match>
+      <Match when={props.block.kind === "question" ? props.block : undefined}>
+        {(block) => <QuestionHistoryBlock block={block()} />}
       </Match>
     </Switch>
     </box>

@@ -2,8 +2,7 @@ import type { NDJSONEvent } from "../../infra/ndjson-event-types.js";
 import { extractToolUseRecords, extractToolResultRecord } from "./ndjson-tool-events.js";
 import type { EmitFn } from "../../infra/event-bus.js";
 import { truncateField } from "../../infra/trace-types.js";
-
-const SUBAGENT_TOOL_NAMES = new Set(["Task", "dispatch_agent"]);
+import { SUBAGENT_TOOL_NAMES } from "../../infra/output/tool-constants.js";
 
 const MAX_FIELD_BYTES = 4096;
 
@@ -28,7 +27,7 @@ export function createTraceEventHandler(deps: TraceEventHandlerDeps): TraceEvent
     for (const record of extractToolUseRecords(event)) {
       const rawInput = truncateField(record.toolInput, MAX_FIELD_BYTES);
 
-      if (SUBAGENT_TOOL_NAMES.has(record.toolName)) {
+      if (SUBAGENT_TOOL_NAMES.has(record.toolName.toLowerCase())) {
         subagentToolUseIds.add(record.toolUseId);
         const input = record.toolInput as Record<string, unknown> | undefined;
         const description = String(input?.description ?? input?.task ?? record.toolName);

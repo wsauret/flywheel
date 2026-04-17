@@ -386,3 +386,65 @@ describe("round-trip serialization", () => {
     expect(blocks[1].kind).toBe("system");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Question block persistence
+// ---------------------------------------------------------------------------
+
+describe("question block persistence", () => {
+  function questionBlock(overrides?: {
+    toolUseId?: string;
+    questions?: Array<{ question: string; options: Array<{ label: string; description?: string }>; multiSelect?: boolean }>;
+    answers?: Record<string, string>;
+    cancelled?: boolean;
+  }) {
+    return {
+      kind: "question" as const,
+      toolUseId: overrides?.toolUseId ?? "tool_q1",
+      questions: overrides?.questions ?? [
+        { question: "Which framework?", options: [{ label: "React" }, { label: "Vue" }] },
+      ],
+      ...(overrides?.answers !== undefined && { answers: overrides.answers }),
+      ...(overrides?.cancelled !== undefined && { cancelled: overrides.cancelled }),
+      timestamp: 1000,
+    };
+  }
+
+  it("persists answered question blocks", () => {
+    const block = questionBlock({ answers: { "Which framework?": "React" } });
+    const snapshots = toSnapshot([block]);
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0].kind).toBe("question");
+    const restored = fromSnapshot(snapshots);
+    expect(restored[0]).toEqual(block);
+  });
+
+  it("persists cancelled question blocks", () => {
+    const block = questionBlock({ cancelled: true });
+    const snapshots = toSnapshot([block]);
+    const restored = fromSnapshot(snapshots);
+    expect(restored[0]).toEqual(block);
+  });
+
+  it("normalizes pending questions to cancelled on serialize", () => {
+    const pending = questionBlock(); // no answers, not cancelled
+    const snapshots = toSnapshot([pending]);
+    expect(snapshots).toHaveLength(1);
+    expect((snapshots[0] as any).kind).toBe("question");
+    expect((snapshots[0] as any).cancelled).toBe(true);
+    expect((snapshots[0] as any).answers).toBeUndefined();
+  });
+
+  it("round-trips multi-question multi-select answers", () => {
+    const block = questionBlock({
+      questions: [
+        { question: "Framework?", options: [{ label: "React" }, { label: "Vue" }] },
+        { question: "Features?", options: [{ label: "Dark" }, { label: "Auto" }], multiSelect: true },
+      ],
+      answers: { "Framework?": "React", "Features?": "Dark, Auto" },
+    });
+    const restored = fromSnapshot(toSnapshot([block]));
+    expect(restored).toHaveLength(1);
+    expect(restored[0]).toEqual(block);
+  });
+});

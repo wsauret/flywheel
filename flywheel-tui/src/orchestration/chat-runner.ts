@@ -5,8 +5,11 @@ import { updateSession } from "./session/persistence.js"
 import { disposeSessionResources } from "./session/resources.js"
 import { generateSessionTitle } from "./session-title.js"
 import { prepareWorkflowDeps } from "./engines/workflow-deps.js"
+import { createAskHookServer, type AskHookServer } from "./ask-hook/server.js"
 import { EventBus, createEmit } from "../infra/event-bus.js"
 import { randomUUID } from "node:crypto"
+import { join } from "node:path"
+import { tmpdir } from "node:os"
 import type { SessionState } from "./session/types.js"
 import type { FlywheelConfig } from "./config/schema.js"
 import type { SessionEntryBase, ChatSessionEntry } from "./session-store-types.js"
@@ -35,6 +38,7 @@ export interface ChatRunner {
   abort(): void
   dispose(): Promise<void>
   injectMessage(text: string): boolean
+  sendToolResult(toolUseId: string, content: string, isError?: boolean): void
   readonly chatSession: ChatSession
   readonly initialBlocks: readonly AnyBlock[]
 }
@@ -90,6 +94,14 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
   const engine = workflowDeps.engine
   const model = config.worker?.model ?? config.model ?? engine.metadata.defaultModel
 
+  // AskUserQuestion bridge — only wired for the Claude engine since the hook
+  // mechanism lives inside Claude's CLI. Other engines get no server.
+  let askHookServer: AskHookServer | null = null
+  if (engine.metadata.id === "claude") {
+    const socketPath = join(tmpdir(), `flywheel-ask-${sessionId}.sock`)
+    askHookServer = await createAskHookServer(socketPath)
+  }
+
   const chatSessionDeps: ChatSessionDeps = {
     projectCwd,
     engine,
@@ -101,6 +113,7 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     updateEntry: castUpdateEntry,
     priorBlocks,
     engineSessionId: deps.engineSessionId,
+    askHookServer: askHookServer ?? undefined,
     onFlush: () => {
       const csId = chatSession.outputSession.sessionId
       if (csId) {
@@ -150,7 +163,13 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     //    to budgetTracker/transcriptWriter while it's shutting down.
     chatSession.end()
 
-    // 2. Unified resource disposal (finalize → flush → dispose)
+    // 2. Close the ask-hook server — any pending hooks get cancel replies so
+    //    Claude's permission machinery doesn't hang waiting for stdout.
+    if (askHookServer) {
+      try { await askHookServer.close() } catch { /* best-effort */ }
+    }
+
+    // 3. Unified resource disposal (finalize → flush → dispose)
     const resources = {
       budgetTracker: infra.budgetTracker,
       traceWriter: infra.traceWriter,
@@ -161,11 +180,16 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     await disposeSessionResources(resources, "ok")
   }
 
+  function sendToolResult(toolUseId: string, content: string, isError?: boolean): void {
+    chatSession.sendToolResult(toolUseId, content, isError)
+  }
+
   return {
     sessionId,
     abort,
     dispose,
     injectMessage,
+    sendToolResult,
     chatSession,
     initialBlocks,
   }

@@ -1,10 +1,9 @@
 import { randomUUID } from "node:crypto";
 import type { NDJSONEvent, AssistantEventData, ContentBlock, UserEventData, UserEventToolResult } from "../ndjson-event-types.js";
 import type { StructuredOutputBuilder } from "./structured-output-builder.js";
-import type { ToolEntry } from "../output-blocks.js";
+import type { ToolEntry, QuestionEntry } from "../output-blocks.js";
 import { getToolDetail, extractToolDiff, extractErrorText, launderToolError } from "./output-formatter.js";
-
-const SUBAGENT_TOOL_NAMES = new Set(["task", "agent"]);
+import { SUBAGENT_TOOL_NAMES } from "./tool-constants.js";
 
 /** Tools that resolve near-instantly — rendered as already-completed (no spinner flash). */
 const OPTIMISTIC_TOOLS = new Set(["Read", "Glob", "Grep"]);
@@ -12,6 +11,7 @@ const OPTIMISTIC_TOOLS = new Set(["Read", "Glob", "Grep"]);
 function isSubagentToolName(name: string): boolean {
   return SUBAGENT_TOOL_NAMES.has(name.toLowerCase());
 }
+
 
 interface TrackedSubagent {
   agentId: string;
@@ -31,6 +31,11 @@ interface StandaloneToolLocation {
   toolName: string;
 }
 
+/** Tracks a subagent's AskUserQuestion so the parent row's status can be updated when the answer arrives. */
+interface QuestionLocation {
+  agentRow?: RowLocation;
+}
+
 /**
  * Top-level tools that bypass row-in-group and produce their own block. The
  * handler runs on tool_use and returns a StandaloneToolLocation if a later
@@ -44,6 +49,7 @@ type StandaloneHandler = (
   input: Record<string, unknown> | undefined,
   now: number,
   builder: StructuredOutputBuilder,
+  toolUseId?: string,
 ) => StandaloneToolLocation | null;
 
 function standaloneToolHandler(toolName: "Edit" | "Write"): StandaloneHandler {
@@ -70,7 +76,39 @@ const STANDALONE_TOP_LEVEL_TOOLS: Record<string, StandaloneHandler> = {
   },
   Edit: standaloneToolHandler("Edit"),
   Write: standaloneToolHandler("Write"),
+  AskUserQuestion: (input, now, builder, toolUseId) => {
+    const questions = extractQuestions(input);
+    if (!questions || questions.length === 0) return null;
+    if (!toolUseId) return null;
+    const idx = builder.pushQuestion(toolUseId, questions, now);
+    return idx >= 0 ? { index: idx, toolName: "AskUserQuestion" } : null;
+  },
 };
+
+function extractQuestions(input: Record<string, unknown> | undefined): QuestionEntry[] | null {
+  const raw = input?.questions;
+  if (!Array.isArray(raw)) return null;
+  const questions: QuestionEntry[] = [];
+  for (const q of raw) {
+    if (!q || typeof q !== "object") continue;
+    const rec = q as Record<string, unknown>;
+    if (typeof rec.question !== "string") continue;
+    const options = Array.isArray(rec.options)
+      ? (rec.options as Array<Record<string, unknown>>)
+          .filter((o) => o && typeof o.label === "string")
+          .map((o) => ({
+            label: o.label as string,
+            ...(typeof o.description === "string" && { description: o.description }),
+          }))
+      : [];
+    questions.push({
+      question: rec.question,
+      options,
+      ...(typeof rec.multiSelect === "boolean" && { multiSelect: rec.multiSelect }),
+    });
+  }
+  return questions;
+}
 
 export class StructuredEventParser {
   private builder: StructuredOutputBuilder;
@@ -78,6 +116,7 @@ export class StructuredEventParser {
   private toolUseIdToAgent = new Map<string, TrackedSubagent>();
   private toolUseIdToRow = new Map<string, RowLocation>();
   private toolUseIdToStandalone = new Map<string, StandaloneToolLocation>();
+  private toolUseIdToQuestion = new Map<string, QuestionLocation>();
 
   constructor(builder: StructuredOutputBuilder) {
     this.builder = builder;
@@ -87,6 +126,7 @@ export class StructuredEventParser {
     this.toolUseIdToAgent.clear();
     this.toolUseIdToRow.clear();
     this.toolUseIdToStandalone.clear();
+    this.toolUseIdToQuestion.clear();
   }
 
   dispatch(event: NDJSONEvent, now = Date.now()): void {
@@ -162,10 +202,34 @@ export class StructuredEventParser {
     if (!parentAgentId) {
       const handler = STANDALONE_TOP_LEVEL_TOOLS[name];
       if (handler) {
-        const location = handler(input, now, this.builder);
+        const location = handler(input, now, this.builder, toolUseId);
         if (location && toolUseId) this.toolUseIdToStandalone.set(toolUseId, location);
         return;
       }
+    }
+
+    // Subagent AskUserQuestion: push top-level question block AND a pending row in the parent agent.
+    if (parentAgentId && name === "AskUserQuestion") {
+      const questions = extractQuestions(input);
+      if (questions && questions.length > 0 && toolUseId) {
+        this.builder.pushQuestion(toolUseId, questions, now);
+
+        const detailSummary = questions.length === 1
+          ? questions[0]!.question
+          : `${questions.length} questions`;
+        const pending: ToolEntry = {
+          kind: "tool",
+          name: "AskUserQuestion",
+          detail: `Awaiting user answer: ${detailSummary}`,
+          timestamp: now,
+        };
+        const childIndex = this.builder.pushToolRowToAgent(parentAgentId, pending);
+        const agentRow: RowLocation | undefined = childIndex >= 0
+          ? { agentId: parentAgentId, childIndex, toolName: name }
+          : undefined;
+        this.toolUseIdToQuestion.set(toolUseId, { agentRow });
+      }
+      return;
     }
 
     // Every other tool pushes immediately as a pending row. The row renders
@@ -226,7 +290,17 @@ export class StructuredEventParser {
 
       const standalone = this.toolUseIdToStandalone.get(toolUseId);
       if (standalone) {
-        if (toolResult.is_error === true) {
+        if (standalone.toolName === "AskUserQuestion") {
+          // The dock sets answers locally via chat-session.answerQuestion before
+          // the tool_result arrives — this path is defensive for the race where
+          // the dock never resolved (e.g., hook failure). Empty-record fallback
+          // is benign because the builder guard skips if answers already set.
+          if (toolResult.is_error === true) {
+            this.builder.cancelQuestion(toolUseId);
+          } else {
+            this.builder.answerQuestion(toolUseId, {});
+          }
+        } else if (toolResult.is_error === true) {
           const rawText = extractErrorText(toolResult.content) ?? "Unknown error";
           const message = launderToolError(rawText, standalone.toolName);
           this.builder.errorTool(standalone.index, message);
@@ -234,6 +308,23 @@ export class StructuredEventParser {
           this.builder.completeTool(standalone.index);
         }
         this.toolUseIdToStandalone.delete(toolUseId);
+        continue;
+      }
+
+      const question = this.toolUseIdToQuestion.get(toolUseId);
+      if (question) {
+        if (toolResult.is_error === true) {
+          this.builder.cancelQuestion(toolUseId);
+          if (question.agentRow) {
+            this.builder.errorAgentChildTool(question.agentRow.agentId, question.agentRow.childIndex, "Cancelled");
+          }
+        } else {
+          this.builder.answerQuestion(toolUseId, {});
+          if (question.agentRow) {
+            this.builder.completeAgentChildTool(question.agentRow.agentId, question.agentRow.childIndex);
+          }
+        }
+        this.toolUseIdToQuestion.delete(toolUseId);
       }
     }
   }

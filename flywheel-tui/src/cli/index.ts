@@ -8,6 +8,20 @@ import "../workflows/queue/steps/register-all.js"
 
 
 async function main(): Promise<void> {
+  // ask-hook subcommand runs as a child of the Claude CLI. It must stay
+  // lightweight — no log init, no agent installer — because it's spawned
+  // once per AskUserQuestion and its stdout IS the hook's decision JSON.
+  if (process.argv.includes("ask-hook")) {
+    const { runAskHook } = await import("../orchestration/ask-hook/run.js")
+    try {
+      await runAskHook()
+    } catch (err) {
+      process.stderr.write(`flywheel-ask-hook: ${errorMessage(err)}\n`)
+      process.exit(1)
+    }
+    return
+  }
+
   const dir = process.env.FLYWHEEL_PROJECT_CWD || process.cwd()
   await Log.init({
     dir,

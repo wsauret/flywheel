@@ -1,10 +1,10 @@
 /** @jsxImportSource @opentui/solid */
 
-import { Show } from "solid-js"
+import { createMemo, Show } from "solid-js"
 import { useTheme } from "@tui/shared/context/theme"
-import { Spinner } from "@tui/shared/components/spinner"
+import { useSpinnerFrame } from "@tui/shared/hooks/use-spinner-frame.js"
 import type { ToolEntry } from "@infra/output-blocks"
-import { displayToolName } from "./tool-entry.js"
+import { getToolDisplayName } from "@infra/tool-display-registry.js"
 
 /** Single source of truth for tool-row rendering inside any box (subagent or Tools group). */
 export const BOX_MAX_VISIBLE_TOOLS = 4
@@ -31,23 +31,19 @@ export function ToolRow(props: ToolRowProps) {
   const hasError = () => !!props.tool.errorMessage
   const isCompleted = () => props.tool.completed === true
 
+  const spinnerFrame = useSpinnerFrame(() => !isCompleted() && !hasError())
+
+  const icon = createMemo(() => {
+    if (hasError()) return { text: ERROR_ICON, color: theme.error }
+    if (isCompleted()) return { text: SUCCESS_ICON, color: theme.primary }
+    return { text: spinnerFrame(), color: theme.secondary }
+  })
+
   return (
     <box flexDirection="column">
       <box flexDirection="row" gap={1} paddingLeft={1} overflow="hidden">
-        <Show
-          when={hasError()}
-          fallback={
-            <Show
-              when={isCompleted()}
-              fallback={<Spinner color={theme.secondary} />}
-            >
-              <text fg={theme.primary} flexShrink={0}>{SUCCESS_ICON}</text>
-            </Show>
-          }
-        >
-          <text fg={theme.error} flexShrink={0}>{ERROR_ICON}</text>
-        </Show>
-        <text fg={theme.text} flexShrink={0}>{displayToolName(props.tool.name)}</text>
+        <text fg={icon().color} flexShrink={0}>{icon().text}</text>
+        <text fg={theme.text} flexShrink={0}>{getToolDisplayName(props.tool.name)}</text>
         <text fg={theme.textSubtle} flexShrink={1} overflow="hidden" wrapMode="none">{props.tool.detail}</text>
       </box>
       <Show when={hasError()}>

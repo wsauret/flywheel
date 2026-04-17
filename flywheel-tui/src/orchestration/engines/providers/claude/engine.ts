@@ -41,6 +41,8 @@ export interface EngineCommandOptions {
   systemPrompt?: string;
   /** Effort level override (e.g., "low", "medium", "high") */
   effort?: string;
+  /** Inline JSON passed to --settings. Lets callers register per-session hooks. */
+  settings?: string;
 }
 
 export const metadata: EngineMetadata = {
@@ -85,6 +87,10 @@ export function buildCommand(options: EngineCommandOptions): EngineCommand {
 
   if (options.tools && options.tools.length > 0) {
     args.push("--tools", options.tools.join(","));
+  }
+
+  if (options.settings?.trim()) {
+    args.push("--settings", options.settings.trim());
   }
 
   return {

@@ -43,7 +43,7 @@ export function ToastDisplay(props: { headerHeight: number }) {
         <box
           position="absolute"
           left={Math.max(0, dimensions().width - toastWidth() - 2)}
-          top={props.headerHeight}
+          top={props.headerHeight + 1}
           zIndex={3000}
           flexDirection="row"
           backgroundColor={theme.backgroundPanel}

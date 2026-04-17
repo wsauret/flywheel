@@ -42,6 +42,17 @@ export interface Step {
   skipDispatcher?: boolean;
   /** Tool permission scoping for the worker. */
   toolScoping?: { read: boolean; bash: boolean; write: boolean; edit: boolean; task: boolean };
+  /**
+   * When true, the step worker can call AskUserQuestion and block on the user's
+   * answer. Opt-in so most workflow steps remain autonomous. Set by step types
+   * that expect user interaction (e.g. a future interactive plan step).
+   *
+   * Implementation: when true, workflow-runner's AskHookServer is exposed to
+   * the CLI via `--settings` + FLYWHEEL_ASK_SOCKET (see worker-callback). When
+   * false/absent, AskUserQuestion auto-denies headless — the correct behavior
+   * for autonomous steps.
+   */
+  allowAskUser?: boolean;
   /** Filter for the self-review checklist. Undefined => full checklist; empty => skip self-review.
    *  Set by the dispatcher and preserved across sprint revisions. */
   selfReviewItems?: readonly string[];

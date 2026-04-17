@@ -224,6 +224,30 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
     return entry.runner.injectMessage(text)
   }
 
+  function injectToolResult(sessionId: string, toolUseId: string, content: string, isError?: boolean): boolean {
+    const entry = entries[sessionId]
+    if (!entry || entry.ended || !entry.runner) return false
+    if (entry.kind !== "chat") return false
+    entry.runner.sendToolResult(toolUseId, content, isError)
+    return true
+  }
+
+  function answerQuestion(sessionId: string, toolUseId: string, answers: Record<string, string>): boolean {
+    const entry = entries[sessionId]
+    if (!entry || entry.ended || !entry.runner) return false
+    if (entry.kind === "chat") entry.runner.chatSession.answerQuestion(toolUseId, answers)
+    else entry.runner.answerQuestion(toolUseId, answers)
+    return true
+  }
+
+  function cancelQuestion(sessionId: string, toolUseId: string): boolean {
+    const entry = entries[sessionId]
+    if (!entry || entry.ended || !entry.runner) return false
+    if (entry.kind === "chat") entry.runner.chatSession.cancelQuestion(toolUseId)
+    else entry.runner.cancelQuestion(toolUseId)
+    return true
+  }
+
   function cancelShutdown(sessionId: string): boolean {
     const entry = entries[sessionId]
     if (!entry || entry.ended || !entry.runner) return false
@@ -261,5 +285,5 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
     disposeRoot()
   }
 
-  return { start, startChat, load, get, has, isRunning, allIds, pause, abort, remove, injectMessage, cancelShutdown, updateEntry, runningCount, disposeAll }
+  return { start, startChat, load, get, has, isRunning, allIds, pause, abort, remove, injectMessage, injectToolResult, answerQuestion, cancelQuestion, cancelShutdown, updateEntry, runningCount, disposeAll }
 }

@@ -198,13 +198,7 @@ describe("agent loop", () => {
 });
 
 describe("buildHarnessSystemPrompt", () => {
-  const allTools = new Set(["bash", "write_handoff", "todo_list", "read_image"]);
-
-  test("deprecated string overload still works", () => {
-    const prompt = buildHarnessSystemPrompt("My task prompt", "anthropic");
-    expect(prompt).toContain("My task prompt");
-    expect(prompt).toContain("evaluated against hidden tests");
-  });
+  const allTools = new Set(["bash", "write_handoff", "todo_list", "read"]);
 
   test("includes all sections with full tool set", () => {
     const prompt = buildHarnessSystemPrompt({
@@ -270,5 +264,49 @@ describe("buildHarnessSystemPrompt", () => {
     });
     expect(prompt).toContain("apply_patch");
     expect(prompt).not.toContain("sed -i");
+  });
+
+  test("includes bash anti-patterns when both bash and read are available", () => {
+    const prompt = buildHarnessSystemPrompt({
+      orchestrationSystemPrompt: "Task",
+      provider: "anthropic",
+      availableTools: new Set(["bash", "read"]),
+    });
+    expect(prompt).toContain("BASH ANTI-PATTERNS");
+    expect(prompt).toContain("read` tool instead of `cat`");
+    expect(prompt).toContain("2>&1");
+    expect(prompt).toContain("2>/dev/null");
+    expect(prompt).toContain("| head");
+  });
+
+  test("omits bash anti-patterns when read tool is absent", () => {
+    const prompt = buildHarnessSystemPrompt({
+      orchestrationSystemPrompt: "Task",
+      provider: "anthropic",
+      availableTools: new Set(["bash"]),
+    });
+    expect(prompt).not.toContain("BASH ANTI-PATTERNS");
+  });
+
+  test("omits bash anti-patterns when bash tool is absent", () => {
+    const prompt = buildHarnessSystemPrompt({
+      orchestrationSystemPrompt: "Task",
+      provider: "anthropic",
+      availableTools: new Set(["read"]),
+    });
+    expect(prompt).not.toContain("BASH ANTI-PATTERNS");
+  });
+
+  test("todo_list usage includes two-call protocol and abandoned status", () => {
+    const prompt = buildHarnessSystemPrompt({
+      orchestrationSystemPrompt: "Task",
+      provider: "anthropic",
+      availableTools: new Set(["todo_list"]),
+    });
+    expect(prompt).toContain("CRITICAL: Call todo_list(write) twice per task");
+    expect(prompt).toContain("in_progress");
+    expect(prompt).toContain("abandoned");
+    expect(prompt).toContain("context recovery");
+    expect(prompt).toContain("3+ distinct steps");
   });
 });

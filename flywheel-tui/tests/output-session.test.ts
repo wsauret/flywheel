@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest"
 import { createOutputSession, type OutputSession, type OutputSessionOptions } from "../src/orchestration/output-session"
 import { createNoopEmit } from "../src/infra/event-bus"
+import { StructuredOutputBuilder } from "../src/infra/output/structured-output-builder"
 import type { SessionEntryBase } from "../src/orchestration/session-store-types"
 import type { AnyBlock } from "../src/infra/output-blocks"
 
@@ -505,5 +506,47 @@ describe("createOutputSession", () => {
     expect(() => session!.dispose()).not.toThrow()
 
     session = null
+  })
+
+  // ── answerQuestion / cancelQuestion ──
+
+  it("answerQuestion marks the matching question block answered", async () => {
+    const { updateEntry, emit } = createMocks()
+    const builder = new StructuredOutputBuilder()
+    session = createOutputSession({ updateEntry, emit, builder })
+    builder.pushQuestion("tool_q1", [{ question: "Which color?", options: [{ label: "Red" }] }], 1)
+    await flushMicrotasks()
+    updateEntry.mockClear()
+
+    session.answerQuestion("tool_q1", { "Which color?": "Red" })
+    await flushMicrotasks()
+
+    expect(updateEntry).toHaveBeenCalled()
+    const blocks = updateEntry.mock.calls.at(-1)![0].outputBlocks as AnyBlock[]
+    const question = blocks.find((b) => b.kind === "question")
+    expect(question).toBeDefined()
+    if (question?.kind === "question") {
+      expect(question.answers).toEqual({ "Which color?": "Red" })
+      expect(question.cancelled).toBeUndefined()
+    }
+  })
+
+  it("cancelQuestion marks the matching question block cancelled", async () => {
+    const { updateEntry, emit } = createMocks()
+    const builder = new StructuredOutputBuilder()
+    session = createOutputSession({ updateEntry, emit, builder })
+    builder.pushQuestion("tool_q1", [{ question: "Which color?", options: [{ label: "Red" }] }], 1)
+    await flushMicrotasks()
+    updateEntry.mockClear()
+
+    session.cancelQuestion("tool_q1")
+    await flushMicrotasks()
+
+    expect(updateEntry).toHaveBeenCalled()
+    const blocks = updateEntry.mock.calls.at(-1)![0].outputBlocks as AnyBlock[]
+    const question = blocks.find((b) => b.kind === "question")
+    if (question?.kind === "question") {
+      expect(question.cancelled).toBe(true)
+    }
   })
 })

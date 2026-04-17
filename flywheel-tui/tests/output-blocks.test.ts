@@ -1,6 +1,9 @@
 import { describe, it, expect } from "bun:test";
 import { isHandoffPath } from "../src/tui/utils/text";
 import { formatDuration } from "../src/infra/format";
+import { getToolDetail } from "../src/infra/output/output-formatter";
+import { SUBAGENT_TOOL_NAMES } from "../src/infra/output/tool-constants";
+import { QuestionBlockSchema } from "../src/infra/output-blocks";
 import type {
   AnyBlock,
   TextBlock,
@@ -8,6 +11,7 @@ import type {
   AgentBlock,
   SystemBlock,
   UserMessageBlock,
+  QuestionBlock,
 } from "../src/infra/output-blocks";
 import type { Theme } from "../src/tui/shared/context/theme";
 
@@ -517,5 +521,170 @@ describe("isHandoffPath", () => {
 
   it("returns false for undefined", () => {
     expect(isHandoffPath(undefined)).toBe(false);
+  });
+});
+
+// ── getToolDetail regression (via registry) ──
+
+describe("getToolDetail via registry", () => {
+  const cwd = "/home/user/project";
+
+  it("Read returns formatted path", () => {
+    expect(getToolDetail("Read", { file_path: "/home/user/project/src/index.ts" }, cwd)).toBe("src/index.ts");
+  });
+
+  it("Read includes line range with offset and limit", () => {
+    expect(getToolDetail("Read", { file_path: "/home/user/project/src/index.ts", offset: 10, limit: 20 }, cwd)).toBe("src/index.ts:11-30");
+  });
+
+  it("Bash shortens cwd in command", () => {
+    expect(getToolDetail("Bash", { command: "ls /home/user/project/src" }, cwd)).toBe("ls src");
+  });
+
+  it("Glob returns pattern and directory", () => {
+    expect(getToolDetail("Glob", { pattern: "*.ts", path: "/home/user/project/src" }, cwd)).toBe("\"*.ts\" in src");
+  });
+
+  it("Grep returns pattern, directory, and file filter", () => {
+    expect(getToolDetail("Grep", { pattern: "TODO", path: "/home/user/project/src", glob: "*.ts" }, cwd)).toBe("\"TODO\" in src [*.ts]");
+  });
+
+  it("Agent returns description with subagent type", () => {
+    expect(getToolDetail("Agent", { description: "Search files", subagent_type: "explore" }, cwd)).toBe("[explore] Search files");
+  });
+
+  it("WebSearch returns query", () => {
+    expect(getToolDetail("WebSearch", { query: "bun test runner" }, cwd)).toBe("bun test runner");
+  });
+
+  it("unknown tool falls back to subject", () => {
+    expect(getToolDetail("SomeRandom", { subject: "my subject" }, cwd)).toBe("my subject");
+  });
+
+  it("unknown tool falls back to description", () => {
+    expect(getToolDetail("SomeRandom", { description: "my desc" }, cwd)).toBe("my desc");
+  });
+
+  it("unknown tool falls back to first string value", () => {
+    expect(getToolDetail("SomeRandom", { foo: 42, bar: "hello" }, cwd)).toBe("hello");
+  });
+
+  it("unknown tool returns null when no string values", () => {
+    expect(getToolDetail("SomeRandom", { foo: 42 }, cwd)).toBeNull();
+  });
+
+  it("cwd defaults to process.cwd() when omitted", () => {
+    const result = getToolDetail("Bash", { command: "echo hello" });
+    expect(result).toBe("echo hello");
+  });
+});
+
+// ── Shared SUBAGENT_TOOL_NAMES regression ──
+
+describe("SUBAGENT_TOOL_NAMES", () => {
+  it("includes task (lowercase)", () => {
+    expect(SUBAGENT_TOOL_NAMES.has("task")).toBe(true);
+  });
+
+  it("includes agent (lowercase)", () => {
+    expect(SUBAGENT_TOOL_NAMES.has("agent")).toBe(true);
+  });
+
+  it("includes dispatch_agent (lowercase)", () => {
+    expect(SUBAGENT_TOOL_NAMES.has("dispatch_agent")).toBe(true);
+  });
+
+  it("does not include capitalized variants (consumers normalize)", () => {
+    expect(SUBAGENT_TOOL_NAMES.has("Task")).toBe(false);
+    expect(SUBAGENT_TOOL_NAMES.has("Agent")).toBe(false);
+  });
+
+  it("does not include unrelated tools", () => {
+    expect(SUBAGENT_TOOL_NAMES.has("bash")).toBe(false);
+    expect(SUBAGENT_TOOL_NAMES.has("read")).toBe(false);
+  });
+});
+
+// ── QuestionBlockSchema validation ──
+
+describe("QuestionBlockSchema", () => {
+  it("validates a complete single-question block", () => {
+    const block: QuestionBlock = {
+      kind: "question",
+      toolUseId: "tool_q1",
+      questions: [
+        {
+          question: "Which library should we use?",
+          options: [
+            { label: "Option A", description: "First choice" },
+            { label: "Option B" },
+          ],
+        },
+      ],
+      timestamp: 1000,
+    };
+    const result = QuestionBlockSchema.safeParse(block);
+    expect(result.success).toBe(true);
+  });
+
+  it("validates multi-question block with multiSelect", () => {
+    const block: QuestionBlock = {
+      kind: "question",
+      toolUseId: "tool_q2",
+      questions: [
+        {
+          question: "Which framework?",
+          options: [{ label: "React" }, { label: "Vue" }],
+        },
+        {
+          question: "Select features",
+          options: [{ label: "Dark mode" }, { label: "Auto-save" }],
+          multiSelect: true,
+        },
+      ],
+      answers: { "Which framework?": "React", "Select features": "Dark mode, Auto-save" },
+      cancelled: false,
+      timestamp: 2000,
+    };
+    const result = QuestionBlockSchema.safeParse(block);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects missing required questions field", () => {
+    const result = QuestionBlockSchema.safeParse({
+      kind: "question",
+      toolUseId: "tool_q3",
+      timestamp: 1000,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects question entry missing options", () => {
+    const result = QuestionBlockSchema.safeParse({
+      kind: "question",
+      toolUseId: "tool_q4",
+      questions: [{ question: "Pick one" }],
+      timestamp: 1000,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects missing required toolUseId field", () => {
+    const result = QuestionBlockSchema.safeParse({
+      kind: "question",
+      questions: [{ question: "Pick one", options: [{ label: "A" }] }],
+      timestamp: 1000,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts empty options array in a question entry", () => {
+    const result = QuestionBlockSchema.safeParse({
+      kind: "question",
+      toolUseId: "tool_q5",
+      questions: [{ question: "Pick one", options: [] }],
+      timestamp: 1000,
+    });
+    expect(result.success).toBe(true);
   });
 });

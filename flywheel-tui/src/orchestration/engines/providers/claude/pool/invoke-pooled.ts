@@ -8,7 +8,7 @@
 
 import type { ZodType } from "zod";
 import { readHandoff, HandoffMissingError, HandoffInvalidError } from "../../../../../workflows/queue/shared/handoff-reader.js";
-import { formatStdinMessage } from "../subprocess/stdin-format.js";
+import { formatStdinInput } from "../subprocess/stdin-format.js";
 import { ensureSessionDir } from "../../../../../infra/paths.js";
 import { Log } from "../../../../../infra/log.js";
 import type { SpawnResult, StdinHandle } from "../subprocess/spawner.js";
@@ -56,7 +56,7 @@ export async function invokePooled<THandoff, TResult>(
 
     const fullPrompt = callbacks.buildFullPrompt(handoffPath);
     const stdinContent = `${callbacks.systemPrompt}\n\n---\n\n${fullPrompt}${retryNote}`;
-    const ndjsonMessage = formatStdinMessage(stdinContent);
+    const ndjsonMessage = formatStdinInput(stdinContent);
 
     const proc = await pool.acquire();
 

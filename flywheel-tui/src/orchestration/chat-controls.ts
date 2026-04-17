@@ -1,6 +1,7 @@
 import type { OutputSession } from "./output-session.js"
 import type { WorkerLifecycle, ChatSessionState, ChatCallbacks } from "./chat-session.js"
 import type { Unsubscribe } from "../infra/event-bus.js"
+import type { UserEventToolResult } from "../infra/ndjson-event-types.js"
 import { Log } from "../infra/log.js"
 import { errorMessage } from "../infra/error-message.js"
 
@@ -8,6 +9,7 @@ const log = Log.create({ service: "chat" })
 
 interface ChatControls {
   send(text: string): void
+  sendToolResult(toolUseId: string, content: string, isError?: boolean): void
   interrupt(): void
   end(): void
 }
@@ -102,5 +104,27 @@ export function createChatControls(input: ChatControlsInput): ChatControls {
     callbacks.onWaiting(false)
   }
 
-  return { send, interrupt, end }
+  function sendToolResult(toolUseId: string, content: string, isError?: boolean): void {
+    if (state.ended) return
+    const runner = state.runner
+    if (!runner) {
+      log.warn("sendToolResult: no active runner")
+      return
+    }
+    if (!runner.sendToolResult) {
+      log.warn("sendToolResult: engine does not accept external tool results", { toolUseId })
+      return
+    }
+
+    const toolResult: UserEventToolResult = {
+      type: "tool_result",
+      tool_use_id: toolUseId,
+      content,
+      is_error: isError,
+    }
+    runner.sendToolResult(toolResult)
+    log.info("tool result sent", { toolUseId, isError: isError ?? false })
+  }
+
+  return { send, sendToolResult, interrupt, end }
 }

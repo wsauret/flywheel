@@ -1,4 +1,5 @@
 import { createAgentEvaluatorFn } from "../workflows/evaluator/create-agent-evaluator.js"
+import type { AskHookServer } from "./ask-hook/server.js"
 import { readHandoff } from "../workflows/queue/shared/handoff-reader.js"
 import { WorkerHandoffSchema } from "../infra/handoff-schemas.js"
 import { createContextAccumulator } from "../workflows/queue/context-accumulator.js"
@@ -56,6 +57,10 @@ interface CreateExecutorInput {
   chatContext?: string
   /** Callback to write budget metrics to the session store. */
   metricsWriter?: MetricsWriter
+  /** Session-scoped ask-hook server, passed down to worker-callback so steps
+   *  with `allowAskUser` can route AskUserQuestion through our dock. Null when
+   *  the engine doesn't support the hook mechanism (e.g. harness). */
+  askHookServer?: AskHookServer | null
 }
 
 interface CreateExecutorResult {
@@ -198,6 +203,7 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
     workerCwd,
     injectionQueue,
     observerChain,
+    askHookServer: input.askHookServer,
   })
   const handoffReader = async (handoffPath: string) => {
     if (!handoffPath) return null

@@ -7,6 +7,8 @@ import type {
   TodoItem,
   TodoListBlock,
   UserMessageBlock,
+  QuestionBlock,
+  QuestionEntry,
 } from "../output-blocks.js";
 import { ContextGroupTracker } from "./context-group-tracker.js";
 import {
@@ -356,6 +358,43 @@ export class StructuredOutputBuilder {
     if (!block || block.kind !== "tool") return;
     this.blocks[blockIndex] = { ...block, completed: true };
     this.markDirty();
+  }
+
+  pushQuestion(toolUseId: string, questions: QuestionEntry[], timestamp: number): number {
+    this._modelActivity = "tool_executing";
+    this.contextTracker.breakContextRun(timestamp);
+    const block: QuestionBlock = {
+      kind: "question",
+      toolUseId,
+      questions,
+      timestamp,
+    };
+    const idx = this.insertBlock(block);
+    this.enforceBlocksCap();
+    this.markDirty();
+    return idx;
+  }
+
+  // Preserve locally-set answers (from the dock) — the parser sees a verbose
+  // echo in the tool_result ("User has answered your questions: ..."), which
+  // is noisier than the option labels we already stored.
+  answerQuestion(toolUseId: string, answers: Record<string, string>): void {
+    this.updateQuestion(toolUseId, { answers });
+  }
+
+  cancelQuestion(toolUseId: string): void {
+    this.updateQuestion(toolUseId, { cancelled: true });
+  }
+
+  private updateQuestion(toolUseId: string, patch: { answers?: Record<string, string>; cancelled?: true }): void {
+    for (let i = this.blocks.length - 1; i >= 0; i--) {
+      const block = this.blocks[i];
+      if (block.kind !== "question" || block.toolUseId !== toolUseId) continue;
+      if (block.answers !== undefined || block.cancelled) return;
+      this.blocks[i] = { ...block, ...patch };
+      this.markDirty();
+      return;
+    }
   }
 
   updateAgentLatestChild(id: string, childDisplay: string): void {

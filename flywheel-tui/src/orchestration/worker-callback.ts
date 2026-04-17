@@ -12,6 +12,8 @@ import type { Step } from "../workflows/queue/types.js"
 import { toolScopingToToolNames } from "../infra/workflow-types.js"
 import type { NDJSONEvent } from "../infra/ndjson-event-types.js"
 import { createNDJSONEvent } from "../infra/ndjson-event-factory.js"
+import type { AskHookServer } from "./ask-hook/server.js"
+import { buildAskHookSettings } from "./ask-hook/config.js"
 const log = Log.create({ service: "worker-callback" })
 
 /** Step types that get self-review injection at the first turn boundary. */
@@ -64,6 +66,9 @@ interface WorkerCallbackDeps {
   /** Observer chain for stream observers — created by workflow-runner, fed via EventBus.
    *  Worker-callback owns reset (per-step) and turn-complete (injection). */
   observerChain?: { onTurnComplete(): string[]; reset(): void }
+  /** Session-scoped ask-hook server. When a step has allowAskUser, its runner
+   *  gets this server's socket path via env and the --settings hook config. */
+  askHookServer?: AskHookServer | null
 }
 
 interface WorkerCallbackResult {
@@ -79,7 +84,7 @@ export function createWorkerCallback(
   const {
     engine, model, effort,
     emit, workflowId, sessionId, projectCwd,
-    injectionQueue, observerChain,
+    injectionQueue, observerChain, askHookServer,
   } = opts
 
   return async (step: Step, prompt: string, signal?: AbortSignal, resumeSessionId?: string): Promise<WorkerCallbackResult> => {
@@ -109,10 +114,24 @@ export function createWorkerCallback(
       })
     }
 
+    // Steps that opt in to AskUserQuestion need the tool in the allow-list
+    // (otherwise --tools restriction would block it) and the hook wired.
+    // When the step didn't set toolScoping at all, Claude exposes every tool
+    // and no extension is needed.
+    const askEnabled = step.allowAskUser === true && askHookServer != null
+    let tools = step.toolScoping ? toolScopingToToolNames(step.toolScoping) : undefined
+    if (askEnabled && tools && !tools.includes("AskUserQuestion")) {
+      tools = [...tools, "AskUserQuestion"]
+    }
+
     const runner = engine.createRunner({
       model,
       effort,
-      tools: step.toolScoping ? toolScopingToToolNames(step.toolScoping) : undefined,
+      tools,
+      ...(askEnabled && askHookServer && {
+        extraEnv: { FLYWHEEL_ASK_SOCKET: askHookServer.socketPath },
+        claudeSettings: buildAskHookSettings(),
+      }),
       cwd: opts.workerCwd ?? projectCwd,
       handoffPath,
       signal,

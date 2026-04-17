@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "bun:test";
 import { StructuredEventParser } from "../src/infra/output/structured-event-parser";
 import { StructuredOutputBuilder } from "../src/infra/output/structured-output-builder";
 import type { NDJSONEvent } from "../src/infra/ndjson-event-types";
-import type { AgentBlock, ToolEntry } from "../src/infra/output-blocks";
+import type { AgentBlock, ToolEntry, QuestionBlock } from "../src/infra/output-blocks";
 
 // ── Helpers ──
 
@@ -113,6 +113,25 @@ describe("StructuredEventParser", () => {
       const blocks = builder.getBlocks();
       const agent = blocks[0] as AgentBlock;
       expect(agent.description).toBe("Task");
+    });
+
+    it("creates an AgentBlock on dispatch_agent tool_use", () => {
+      const event = makeAssistantEvent([
+        {
+          type: "tool_use",
+          id: "tool_da",
+          name: "dispatch_agent",
+          input: { description: "dispatched work", subagent_type: "Worker" },
+        },
+      ]);
+
+      parser.dispatch(event, 1000);
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(1);
+      const agent = blocks[0] as AgentBlock;
+      expect(agent.agentLabel).toBe("Worker");
+      expect(agent.description).toBe("dispatched work");
+      expect(agent.status).toBe("active");
     });
   });
 
@@ -582,6 +601,163 @@ describe("StructuredEventParser", () => {
       expect(agent.children).toHaveLength(1);
       expect(agent.children[0].completed).toBe(true);
       expect(agent.children[0].errorMessage).toBeUndefined();
+    });
+  });
+
+  // ── AskUserQuestion routing ──
+
+  describe("AskUserQuestion", () => {
+    const questionInput = {
+      questions: [{
+        question: "Which library should we use?",
+        header: "Library",
+        options: [
+          { label: "Option A", description: "First choice" },
+          { label: "Option B", description: "Second choice" },
+        ],
+      }],
+    };
+
+    it("top-level AskUserQuestion creates a QuestionBlock preserving the questions array", () => {
+      const event = makeAssistantEvent([
+        { type: "tool_use", id: "tool_q1", name: "AskUserQuestion", input: questionInput },
+      ]);
+      parser.dispatch(event, 1000);
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0].kind).toBe("question");
+      const q = blocks[0] as QuestionBlock;
+      expect(q.toolUseId).toBe("tool_q1");
+      expect(q.questions).toHaveLength(1);
+      expect(q.questions[0].question).toBe("Which library should we use?");
+      expect(q.questions[0].options).toHaveLength(2);
+      expect(q.questions[0].options[0].label).toBe("Option A");
+      expect(q.answers).toBeUndefined();
+    });
+
+    it("multi-question input creates block with all questions and multiSelect", () => {
+      const multiInput = {
+        questions: [
+          { question: "Framework?", options: [{ label: "React" }, { label: "Vue" }] },
+          { question: "Features?", options: [{ label: "Dark" }, { label: "Auto-save" }], multiSelect: true },
+        ],
+      };
+      parser.dispatch(makeAssistantEvent([
+        { type: "tool_use", id: "tool_q_multi", name: "AskUserQuestion", input: multiInput },
+      ]), 1000);
+
+      const q = builder.getBlocks()[0] as QuestionBlock;
+      expect(q.questions).toHaveLength(2);
+      expect(q.questions[1].multiSelect).toBe(true);
+    });
+
+    it("tool_result is a defensive no-op when answers already set locally", () => {
+      parser.dispatch(makeAssistantEvent([
+        { type: "tool_use", id: "tool_q2", name: "AskUserQuestion", input: questionInput },
+      ]), 1000);
+
+      // Simulate the dock having set answers before the tool_result arrives.
+      builder.answerQuestion("tool_q2", { "Which library should we use?": "Option A" });
+
+      const answerContent = JSON.stringify({
+        answers: { "Which library should we use?": "Ignored-echo" },
+      });
+      parser.dispatch(makeUserToolResultEvent([
+        { tool_use_id: "tool_q2", is_error: false, content: answerContent },
+      ]), 2000);
+
+      const q = builder.getBlocks()[0] as QuestionBlock;
+      expect(q.answers).toEqual({ "Which library should we use?": "Option A" });
+      expect(q.cancelled).toBeUndefined();
+    });
+
+    it("error tool_result cancels question block", () => {
+      parser.dispatch(makeAssistantEvent([
+        { type: "tool_use", id: "tool_q3", name: "AskUserQuestion", input: questionInput },
+      ]), 1000);
+
+      parser.dispatch(makeUserToolResultEvent([
+        { tool_use_id: "tool_q3", is_error: true, content: "User cancelled" },
+      ]), 2000);
+
+      const q = builder.getBlocks()[0] as QuestionBlock;
+      expect(q.cancelled).toBe(true);
+      expect(q.answers).toBeUndefined();
+    });
+
+    it("subagent AskUserQuestion creates top-level question block AND agent child row", () => {
+      parser.dispatch(makeAssistantEvent([
+        { type: "tool_use", id: "agent_tool", name: "Task", input: { description: "doing work" } },
+      ]), 1000);
+
+      parser.dispatch(makeAssistantEvent(
+        [{ type: "tool_use", id: "child_q1", name: "AskUserQuestion", input: questionInput }],
+        "agent_tool",
+      ), 1500);
+
+      const blocks = builder.getBlocks();
+      const q = blocks.find(b => b.kind === "question") as QuestionBlock;
+      expect(q.questions[0].question).toBe("Which library should we use?");
+
+      const agent = blocks.find(b => b.kind === "agent") as AgentBlock;
+      expect(agent.children).toHaveLength(1);
+      expect(agent.children[0].name).toBe("AskUserQuestion");
+      expect(agent.children[0].detail).toContain("Awaiting user answer");
+    });
+
+    it("subagent question success completes agent child (answers set by dock)", () => {
+      parser.dispatch(makeAssistantEvent([
+        { type: "tool_use", id: "agent_tool", name: "Task", input: { description: "doing work" } },
+      ]), 1000);
+
+      parser.dispatch(makeAssistantEvent(
+        [{ type: "tool_use", id: "child_q2", name: "AskUserQuestion", input: questionInput }],
+        "agent_tool",
+      ), 1500);
+
+      builder.answerQuestion("child_q2", { "Which library should we use?": "Option B" });
+
+      parser.dispatch(makeUserToolResultEvent([
+        { tool_use_id: "child_q2", is_error: false, content: "echo" },
+      ]), 2000);
+
+      const blocks = builder.getBlocks();
+      const q = blocks.find(b => b.kind === "question") as QuestionBlock;
+      expect(q.answers).toEqual({ "Which library should we use?": "Option B" });
+
+      const agent = blocks.find(b => b.kind === "agent") as AgentBlock;
+      expect(agent.children[0].completed).toBe(true);
+    });
+
+    it("subagent question error cancels question and errors agent child", () => {
+      parser.dispatch(makeAssistantEvent([
+        { type: "tool_use", id: "agent_tool", name: "Task", input: { description: "doing work" } },
+      ]), 1000);
+
+      parser.dispatch(makeAssistantEvent(
+        [{ type: "tool_use", id: "child_q3", name: "AskUserQuestion", input: questionInput }],
+        "agent_tool",
+      ), 1500);
+
+      parser.dispatch(makeUserToolResultEvent([
+        { tool_use_id: "child_q3", is_error: true, content: "Cancelled" },
+      ]), 2000);
+
+      const blocks = builder.getBlocks();
+      const q = blocks.find(b => b.kind === "question") as QuestionBlock;
+      expect(q.cancelled).toBe(true);
+
+      const agent = blocks.find(b => b.kind === "agent") as AgentBlock;
+      expect(agent.children[0].errorMessage).toBe("Cancelled");
+    });
+
+    it("handles AskUserQuestion with no questions gracefully", () => {
+      parser.dispatch(makeAssistantEvent([
+        { type: "tool_use", id: "tool_q_empty", name: "AskUserQuestion", input: { questions: [] } },
+      ]), 1000);
+
+      expect(builder.getBlocks().filter(b => b.kind === "question")).toHaveLength(0);
     });
   });
 });

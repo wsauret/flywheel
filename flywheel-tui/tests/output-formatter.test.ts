@@ -4,22 +4,22 @@ import * as path from "node:path";
 
 describe("output-formatter", () => {
   describe("getToolDetail", () => {
-    it("Read shows file_path with ./ prefix", () => {
+    it("Read shows relative file path", () => {
       const filePath = path.join(process.cwd(), "src/index.ts");
-      expect(getToolDetail("Read", { file_path: filePath })).toBe("./src/index.ts");
+      expect(getToolDetail("Read", { file_path: filePath })).toBe("src/index.ts");
     });
 
-    it("Read converts relative paths to ./ prefix", () => {
-      expect(getToolDetail("Read", { file_path: "src/index.ts" })).toBe("./src/index.ts");
+    it("Read keeps relative paths as-is", () => {
+      expect(getToolDetail("Read", { file_path: "src/index.ts" })).toBe("src/index.ts");
     });
 
-    it("Write shows file_path with ./ prefix", () => {
-      expect(getToolDetail("Write", { file_path: "out.txt" })).toBe("./out.txt");
+    it("Write shows relative file path", () => {
+      expect(getToolDetail("Write", { file_path: "out.txt" })).toBe("out.txt");
     });
 
-    it("Edit shows file_path with ./ prefix", () => {
+    it("Edit shows relative file path", () => {
       expect(getToolDetail("Edit", { file_path: "config.json" })).toBe(
-        "./config.json",
+        "config.json",
       );
     });
 
