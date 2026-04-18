@@ -1,6 +1,6 @@
 /** @jsxImportSource @opentui/solid */
 
-import { createSignal, createMemo, For, Show, onCleanup } from "solid-js"
+import { createSignal, createMemo, createEffect, on, For, Show, onCleanup } from "solid-js"
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { BOLD, DIM } from "@tui/shared/ui/text-attributes"
 import type { TextareaRenderable, TextareaAction } from "@opentui/core"
@@ -34,7 +34,7 @@ import type { RunnerErrorResult } from "../orchestration/session/types.js"
 export function FlywheelShell(props: { factories: WorkflowSessionFactories; projectCwd: string; showThinking?: boolean }) {
   const { theme, syntax } = useTheme()
   const toast = useToast()
-  const { manager, refreshList, sessions } = useSession()
+  const { manager, sessions } = useSession()
   const renderer = useRenderer()
   const dimensions = useTerminalDimensions()
 
@@ -44,7 +44,6 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     sessionStore,
     manager,
     sessions,
-    refreshList,
     setTerminalTitle: (t: string) => renderer.setTerminalTitle(t),
     showToast: (opts: { message: string; variant: "info" | "warning" | "error" | "success"; duration?: number }) => toast.show(opts),
     showThinking: props.showThinking ?? true,
@@ -56,6 +55,26 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
   const [promptHeight, setPromptHeight] = createSignal(1)
   let promptRef: TextareaRenderable | null = null
   let pasteCollapse: ReturnType<typeof createPasteCollapse> | null = null
+  const draftBySession = new Map<string, string>()
+
+  function recalcPromptHeight(): void {
+    if (!promptRef) { setPromptHeight(1); return }
+    setPromptHeight(Math.min(3, Math.max(1, promptRef.editorView.getTotalVirtualLineCount())))
+  }
+
+  createEffect(on(() => signals.foregroundId(), (fgId, prevFgId) => {
+    if (prevFgId && promptRef) {
+      const text = promptRef.plainText ?? ""
+      if (text) draftBySession.set(prevFgId, text)
+      else draftBySession.delete(prevFgId)
+    }
+    if (promptRef) {
+      promptRef.clear()
+      const saved = fgId ? draftBySession.get(fgId) : undefined
+      if (saved) promptRef.insertText(saved)
+    }
+    recalcPromptHeight()
+  }))
 
   const switchForeground = createForegroundSwitcher({
     signals,
@@ -88,7 +107,6 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     deleteActiveChat: async (sessionId) => {
       await chat.endChat()
       try { services.manager.delete(sessionId) } catch { /* already cleaned up by endChat */ }
-      services.refreshList()
       const nextId = services.sessionStore.allIds().find((id) => services.sessionStore.isRunning(id))
       if (nextId) {
         await switchForeground(nextId)
@@ -296,7 +314,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
                   promptRef = r
                   pasteCollapse = createPasteCollapse(r, syntax)
                   r.onPaste = (event) => pasteCollapse!.handlePaste(event)
-                  r.onContentChange = () => setPromptHeight(Math.min(3, Math.max(1, r.editorView.getTotalVirtualLineCount())))
+                  r.onContentChange = recalcPromptHeight
                   queueMicrotask(() => r?.focus?.())
                 }}
                 width={lineWidth()} height={promptHeight()} wrapMode="word"
@@ -312,7 +330,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
                           : "Send a message..."
                 }
                 backgroundColor="transparent" focusedBackgroundColor="transparent"
-                onSubmit={() => { const v = pasteCollapse?.expandForSubmit() ?? promptRef?.plainText ?? ""; commands.handlePromptSubmit(v); promptRef?.clear(); setPromptHeight(1) }}
+                onSubmit={() => { const v = pasteCollapse?.expandForSubmit() ?? promptRef?.plainText ?? ""; commands.handlePromptSubmit(v); promptRef?.clear(); setPromptHeight(1); const fgId = signals.foregroundId(); if (fgId) draftBySession.delete(fgId) }}
                 keyBindings={[
                   { name: "return", action: "submit" as TextareaAction },
                   { name: "z", ctrl: true, action: "undo" as TextareaAction },

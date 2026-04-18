@@ -46,7 +46,6 @@ export interface ShellServices {
   sessionStore: SessionStore
   manager: SessionManager
   metrics: MetricsHook
-  refreshList: () => void
   setTerminalTitle: (title: string) => void
   showToast: (opts: { message: string; variant: "info" | "warning" | "error" | "success"; duration?: number }) => void
 }
@@ -55,7 +54,6 @@ export function createShellState(deps: {
   sessionStore: SessionStore
   manager: SessionManager
   sessions: Accessor<SessionSummary[]>
-  refreshList: () => void
   setTerminalTitle: (title: string) => void
   showToast: (opts: { message: string; variant: "info" | "warning" | "error" | "success"; duration?: number }) => void
   showThinking?: boolean
@@ -112,8 +110,8 @@ export function createShellState(deps: {
     const entry = storeEntry()
     if (entry && !entry.ended) return "active"
     // Derive from sessions() signal — the single in-memory representation
-    // of historical session state. Refreshed after every state transition
-    // (via refreshList in controllers) and polled every 5s for multi-instance sync.
+    // of historical session state. Auto-refreshed via manager.onChange on every
+    // mutation (create, updateState, updateLabel, delete).
     return deps.sessions().find((s) => s.id === fgId)?.state ?? null
   })
 
@@ -134,7 +132,6 @@ export function createShellState(deps: {
     sessionStore: deps.sessionStore,
     manager: deps.manager,
     metrics,
-    refreshList: deps.refreshList,
     setTerminalTitle: deps.setTerminalTitle,
     showToast: deps.showToast,
   }

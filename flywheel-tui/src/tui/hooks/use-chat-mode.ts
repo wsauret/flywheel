@@ -39,7 +39,6 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
   const controller = createChatController({
     sessionStore: services.sessionStore,
     manager: services.manager,
-    refreshList: services.refreshList,
     projectCwd: deps.projectCwd,
     onRunnerDone: deps.lifecycleCallbacks.onRunnerDone,
     onRunnerError: deps.lifecycleCallbacks.onRunnerError,

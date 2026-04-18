@@ -18,7 +18,6 @@ import type {
 interface WorkflowControllerDeps {
   sessionStore: SessionStore
   manager: SessionManager
-  refreshList: () => void
   foregroundId: () => string | undefined
   onRunnerDone?: (id: string, result: RunnerDoneResult) => void
   onRunnerError?: (id: string, result: RunnerErrorResult) => void
@@ -57,18 +56,16 @@ export interface WorkflowController {
 }
 
 export function createWorkflowController(deps: WorkflowControllerDeps): WorkflowController {
-  const { sessionStore, manager, refreshList } = deps
+  const { sessionStore, manager } = deps
 
   function handleRunnerDone(id: string, result: WorkflowResult): void {
     const state: SessionState = result.completed ? "completed" : "paused"
     manager.updateState(id, state)
-    refreshList()
     deps.onRunnerDone?.(id, { state })
   }
 
   function handleRunnerError(id: string, err: unknown): void {
     manager.updateState(id, "paused")
-    refreshList()
     deps.onRunnerError?.(id, { errorMessage: extractErrorMessage(err) })
   }
 

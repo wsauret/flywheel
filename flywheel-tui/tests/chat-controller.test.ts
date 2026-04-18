@@ -109,15 +109,18 @@ function createMockManager(): SessionManager & {
     _labelUpdates: labelUpdates,
     _deletes: deletes,
 
-    create: mock((planPath: string, name?: string, kind?: string, _initialState?: string) => {
+    onChange: null,
+
+    create: mock(function(this: any, planPath: string, name?: string, kind?: string, _initialState?: string) {
       const id = `chat-${++nextId}`
       created.push({ kind: kind ?? "workflow", name: name ?? planPath })
+      this.onChange?.()
       return id
     }),
     list: mock(() => ({ sessions: [], errors: [] })),
-    updateState: mock((id: string, state: string) => { stateUpdates.push({ id, state }) }),
-    updateLabel: mock((id: string, label: string) => { labelUpdates.push({ id, label }) }),
-    delete: mock((id: string) => { deletes.push(id) }),
+    updateState: mock(function(this: any, id: string, state: string) { stateUpdates.push({ id, state }); this.onChange?.() }),
+    updateLabel: mock(function(this: any, id: string, label: string) { labelUpdates.push({ id, label }); this.onChange?.() }),
+    delete: mock(function(this: any, id: string) { deletes.push(id); this.onChange?.() }),
     recoverStaleSessions: mock(() => 0),
   } as any
 }
@@ -126,7 +129,6 @@ function createDeps(overrides?: Partial<ChatControllerDeps>): ChatControllerDeps
   return {
     sessionStore: createMockSessionStore(),
     manager: createMockManager(),
-    refreshList: mock(() => {}),
     projectCwd: "/tmp/test-project",
     ...overrides,
   }
@@ -160,13 +162,15 @@ describe("ChatController", () => {
       expect(mockStore._startChatCalls).toHaveLength(1)
     })
 
-    it("calls refreshList after creating session", async () => {
+    it("triggers manager.onChange when creating session", async () => {
       const deps = createDeps()
+      const onChangeSpy = mock(() => {})
+      deps.manager.onChange = onChangeSpy
       const controller = createChatController(deps)
 
       await controller.startChat()
 
-      expect(deps.refreshList).toHaveBeenCalled()
+      expect(onChangeSpy).toHaveBeenCalled()
     })
 
     it("passes initialMessage through to runner", async () => {

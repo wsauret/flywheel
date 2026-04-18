@@ -82,6 +82,9 @@ export function ToolEntry(props: ToolEntryProps) {
       }>
         <text fg={theme.textSubtle} flexShrink={1} overflow="hidden" wrapMode="none"><a href={toFileUri(props.block.filePath!)}>{props.block.detail}</a></text>
       </Show>
+      <Show when={hasError()}>
+        <text fg={theme.error} flexShrink={0} overflow="hidden" wrapMode="none">{props.block.errorMessage}</text>
+      </Show>
       <Show when={hasExpandable()}>
         <text fg={theme.textMuted} flexShrink={0}>{expanded() ? "▾" : "▸"}</text>
       </Show>
@@ -91,11 +94,6 @@ export function ToolEntry(props: ToolEntryProps) {
   return (
     <box flexDirection="column">
       {header()}
-      <Show when={hasError()}>
-        <box paddingLeft={3} overflow="hidden">
-          <text fg={theme.error} overflow="hidden" wrapMode="none">{props.block.errorMessage}</text>
-        </box>
-      </Show>
       <Show when={hasExpandable()}>
         <CollapsibleBox expanded={expanded()} paddingTop={1} paddingBottom={1} paddingLeft={2} paddingRight={1}>
           <Show when={hasDiff()}>

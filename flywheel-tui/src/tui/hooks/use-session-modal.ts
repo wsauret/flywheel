@@ -127,7 +127,6 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
       // Stop the runner and remove from the reactive store (if live)
       await services.sessionStore.remove(sessionId)
       deps.actionDeps.manager.delete(sessionId)
-      services.refreshList()
       setModalRefreshTrigger((n) => n + 1)
       services.showToast({ message: "Session deleted", variant: "info" })
       // If we were viewing this session's transcript, restore prior state.

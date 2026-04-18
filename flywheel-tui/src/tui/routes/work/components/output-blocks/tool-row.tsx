@@ -40,16 +40,12 @@ export function ToolRow(props: ToolRowProps) {
   })
 
   return (
-    <box flexDirection="column">
-      <box flexDirection="row" gap={1} paddingLeft={1} overflow="hidden">
-        <text fg={icon().color} flexShrink={0}>{icon().text}</text>
-        <text fg={theme.text} flexShrink={0}>{getToolDisplayName(props.tool.name)}</text>
-        <text fg={theme.textSubtle} flexShrink={1} overflow="hidden" wrapMode="none">{props.tool.detail}</text>
-      </box>
+    <box flexDirection="row" gap={1} paddingLeft={1} overflow="hidden">
+      <text fg={icon().color} flexShrink={0}>{icon().text}</text>
+      <text fg={theme.text} flexShrink={0}>{getToolDisplayName(props.tool.name)}</text>
+      <text fg={theme.textSubtle} flexShrink={1} overflow="hidden" wrapMode="none">{props.tool.detail}</text>
       <Show when={hasError()}>
-        <box paddingLeft={3} overflow="hidden">
-          <text fg={theme.error} overflow="hidden" wrapMode="none">{props.tool.errorMessage}</text>
-        </box>
+        <text fg={theme.error} flexShrink={0} overflow="hidden" wrapMode="none">{props.tool.errorMessage}</text>
       </Show>
     </box>
   )

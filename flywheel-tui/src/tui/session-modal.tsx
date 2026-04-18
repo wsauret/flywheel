@@ -49,11 +49,10 @@ export function SessionModal(props: SessionModalProps) {
   const { theme } = useTheme()
   const { sessions } = useSession()
 
-  // ADR-006 deviation: signal-inside-effect. A createMemo won't work here
-  // because we need to *snapshot* sessions() only when refreshTrigger bumps,
-  // not re-derive on every sessions() change. Reactive updates from the
-  // background 5s poll cause terminal corruption (overlapping list items).
-  // The on()+defer pattern is the correct Solid idiom for event-triggered snapshots.
+  // ADR-006 deviation: signal-inside-effect. Snapshot sessions() on open,
+  // refresh only when refreshTrigger bumps (after delete). A createMemo would
+  // re-derive on every sessions() change — background workflow completions
+  // would shift the list while the user navigates with arrow keys.
   const initialSessions = untrack(() => sessions())
   const [snapshotSessions, setSnapshotSessions] = createSignal(initialSessions)
   createEffect(on(() => props.refreshTrigger, () => {

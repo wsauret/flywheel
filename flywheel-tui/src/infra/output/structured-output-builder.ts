@@ -1,14 +1,13 @@
 import type {
   AnyBlock,
-  TextBlock,
   ToolEntry,
   AgentBlock,
   SystemBlock,
   TodoItem,
-  TodoListBlock,
   UserMessageBlock,
   QuestionBlock,
   QuestionEntry,
+  ModelActivity,
 } from "../output-blocks.js";
 import { ContextGroupTracker } from "./context-group-tracker.js";
 import {
@@ -22,32 +21,6 @@ import {
 const BLOCKS_CAP = 20_000;
 const AGENT_CHILDREN_CAP = 50;
 
-import type { ModelActivity } from "../output-blocks.js";
-
-interface BuildToolEntryOptions {
-  name: string;
-  detail: string;
-  timestamp: number;
-  toolUseId?: string;
-  diff?: string;
-  filetype?: string;
-  content?: string;
-  filePath?: string;
-}
-
-function buildToolEntry(opts: BuildToolEntryOptions): ToolEntry {
-  return {
-    kind: "tool",
-    name: opts.name,
-    detail: opts.detail,
-    timestamp: opts.timestamp,
-    ...(opts.filePath && { filePath: opts.filePath }),
-    ...(opts.diff && { diff: opts.diff }),
-    ...(opts.content && { content: opts.content }),
-    ...(opts.filetype && { filetype: opts.filetype }),
-  };
-}
-
 /**
  * Mark any children still in-flight (no completed/errorMessage) as completed.
  * Called when an agent closes: a pending child in a completed block is a lost
@@ -58,6 +31,10 @@ function resolveUnresolvedChildren(children: ToolEntry[]): ToolEntry[] {
   return children.map((c) => (c.completed === true || c.errorMessage ? c : { ...c, completed: true }));
 }
 
+// ADR-006 deviation: over 400 lines. All methods mutate shared private state
+// (blocks, indexes, contextTracker, dirty flag). No natural seam exists —
+// splitting would require passing 5+ mutable fields through an interface,
+// creating more complexity than the single cohesive class.
 export class StructuredOutputBuilder {
   private blocks: AnyBlock[] = [];
   private dirty = false;
@@ -203,7 +180,13 @@ export class StructuredOutputBuilder {
    */
   pushTool(name: string, detail: string, timestamp: number, diff?: string, filetype?: string, content?: string, filePath?: string): number {
     this._modelActivity = "tool_executing";
-    const tool = buildToolEntry({ name, detail, timestamp, diff, filetype, content, filePath });
+    const tool: ToolEntry = {
+      kind: "tool", name, detail, timestamp,
+      ...(filePath && { filePath }),
+      ...(diff && { diff }),
+      ...(content && { content }),
+      ...(filetype && { filetype }),
+    };
     this.contextTracker.breakContextRun(timestamp);
     const idx = this.insertBlock(tool);
     this.enforceBlocksCap();
@@ -321,19 +304,14 @@ export class StructuredOutputBuilder {
   }
 
   completeAgentChildTool(agentId: string, childIndex: number): void {
-    const idx = this.agentIndexById.get(agentId);
-    if (idx === undefined) return;
-    const agent = this.blocks[idx];
-    if (!agent || agent.kind !== "agent") return;
-    const child = agent.children[childIndex];
-    if (!child) return;
-    const updatedChildren = [...agent.children];
-    updatedChildren[childIndex] = { ...child, completed: true };
-    this.blocks[idx] = { ...agent, children: updatedChildren };
-    this.markDirty();
+    this.patchAgentChild(agentId, childIndex, { completed: true });
   }
 
   errorAgentChildTool(agentId: string, childIndex: number, message: string): void {
+    this.patchAgentChild(agentId, childIndex, { errorMessage: message });
+  }
+
+  private patchAgentChild(agentId: string, childIndex: number, patch: Partial<ToolEntry>): void {
     const idx = this.agentIndexById.get(agentId);
     if (idx === undefined) return;
     const agent = this.blocks[idx];
@@ -341,7 +319,7 @@ export class StructuredOutputBuilder {
     const child = agent.children[childIndex];
     if (!child) return;
     const updatedChildren = [...agent.children];
-    updatedChildren[childIndex] = { ...child, errorMessage: message };
+    updatedChildren[childIndex] = { ...child, ...patch };
     this.blocks[idx] = { ...agent, children: updatedChildren };
     this.markDirty();
   }

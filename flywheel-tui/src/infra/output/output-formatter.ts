@@ -156,11 +156,19 @@ export function extractErrorText(content: string | unknown[] | undefined): strin
   return undefined;
 }
 
+const DETAIL_MAX_LEN = 60;
+
+function truncateDetail(text: string): string {
+  const first = text.split("\n", 1)[0]!;
+  if (first.length <= DETAIL_MAX_LEN) return first;
+  return first.slice(0, DETAIL_MAX_LEN - 1) + "…";
+}
+
 export function launderToolError(rawError: string, toolName?: string): string {
   const label = toolName ?? "Tool";
 
   let match = rawError.match(RE_INPUT_VALIDATION);
-  if (match) return `${label} failed — invalid input: ${match[1]}`;
+  if (match) return `${label} failed — invalid input: ${truncateDetail(match[1]!)}`;
 
   match = rawError.match(RE_NO_SUCH_TOOL);
   if (match) return `Tool not available: ${match[1]}`;
@@ -175,7 +183,7 @@ export function launderToolError(rawError: string, toolName?: string): string {
   if (match) return `Read rejected — ${match[1]} is a protected file`;
 
   match = rawError.match(RE_TOOL_USE_ERROR);
-  if (match) return `${label} failed — ${match[1]}`;
+  if (match) return `${label} failed — ${truncateDetail(match[1]!)}`;
 
   return `${label} failed`;
 }

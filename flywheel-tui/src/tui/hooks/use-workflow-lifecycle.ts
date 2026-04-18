@@ -36,7 +36,6 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
   const controller = createWorkflowController({
     sessionStore: services.sessionStore,
     manager: services.manager,
-    refreshList: services.refreshList,
     foregroundId: signals.foregroundId,
     onRunnerDone: deps.lifecycleCallbacks.onRunnerDone,
     onRunnerError: deps.lifecycleCallbacks.onRunnerError,

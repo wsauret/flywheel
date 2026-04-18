@@ -52,11 +52,13 @@ export interface SessionManager {
   updateLabel(id: string, label: string): void;
   delete(id: string): void;
   recoverStaleSessions(): number;
+  onChange: (() => void) | null;
 }
 
 export function createSessionManager(deps: SessionManagerDeps): SessionManager {
   const { baseDir } = deps;
   const config = deps.config ?? CONFIG_DEFAULTS;
+  let onChange: (() => void) | null = null;
 
   function readOrThrow(id: string) {
     const session = readSession(id, baseDir);
@@ -88,7 +90,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
       : { ...sharedFields, kind: "workflow", command: "work", planPath } satisfies Session;
 
     const id = persistCreateSession(sessionData, baseDir);
-
+    onChange?.();
     return id;
   }
 
@@ -136,11 +138,13 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     }
 
     updateSession(id, { state: newState }, baseDir);
+    onChange?.();
   }
 
   function updateLabel(id: string, label: string): void {
     try {
       updateSession(id, { label, name: label }, baseDir);
+      onChange?.();
     } catch {
       // Non-fatal — label update failure shouldn't crash anything
     }
@@ -148,6 +152,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
 
   function deleteSession(id: string): void {
     deleteSessionWithCompanions(id, baseDir);
+    onChange?.();
   }
 
   function recoverStaleSessions(): number {
@@ -179,5 +184,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     updateLabel,
     delete: deleteSession,
     recoverStaleSessions,
+    get onChange() { return onChange; },
+    set onChange(fn: (() => void) | null) { onChange = fn; },
   };
 }

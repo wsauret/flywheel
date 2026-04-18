@@ -139,8 +139,8 @@ export class StructuredEventParser {
       if (tracked) {
         const durationMs = now - tracked.spawnedAt;
         if (event.data.is_error === true) {
-          const content = typeof event.data.content === "string" ? event.data.content : "Unknown error";
-          this.builder.errorAgent(tracked.agentId, content);
+          const rawText = typeof event.data.content === "string" ? event.data.content : "Unknown error";
+          this.builder.errorAgent(tracked.agentId, launderToolError(rawText, "Agent"));
         } else {
           this.builder.completeAgent(tracked.agentId, durationMs);
         }

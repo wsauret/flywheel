@@ -160,16 +160,14 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
       </Show>
 
       <Show when={props.block.status === "error"}>
-        <box flexDirection="row" gap={1}>
-          <text fg={theme.error}>{ERROR_ICON}</text>
-          <text fg={theme.error} attributes={BOLD}>{props.block.agentLabel}</text>
+        <box flexDirection="row" gap={1} overflow="hidden">
+          <text fg={theme.error} flexShrink={0}>{ERROR_ICON}</text>
+          <text fg={theme.error} flexShrink={0} attributes={BOLD}>{props.block.agentLabel}</text>
           <text fg={theme.error} flexShrink={1} overflow="hidden" wrapMode="none">{props.block.description}</text>
+          <Show when={props.block.errorMessage}>
+            <text fg={theme.error} flexShrink={0} overflow="hidden" wrapMode="none">{props.block.errorMessage}</text>
+          </Show>
         </box>
-        <Show when={props.block.errorMessage}>
-          <box paddingLeft={3} overflow="hidden">
-            <text fg={theme.error} overflow="hidden" wrapMode="none">{props.block.errorMessage}</text>
-          </box>
-        </Show>
       </Show>
     </box>
   )

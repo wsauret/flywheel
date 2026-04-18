@@ -12,7 +12,6 @@ import type { RunnerDoneResult, RunnerErrorResult } from "./session/types.js"
 export interface ChatControllerDeps {
   sessionStore: SessionStore
   manager: SessionManager
-  refreshList: () => void
   projectCwd: string
   onRunnerDone?: (id: string, result: RunnerDoneResult) => void
   onRunnerError?: (id: string, result: RunnerErrorResult) => void
@@ -46,7 +45,7 @@ type StartupState =
 const log = Log.create({ service: "chat-controller" })
 
 export function createChatController(deps: ChatControllerDeps): ChatController {
-  const { sessionStore, manager, refreshList, projectCwd } = deps
+  const { sessionStore, manager, projectCwd } = deps
 
   let startup: StartupState = { phase: "idle" }
   // Why here (not in the TUI): the controller is the only entity that knows
@@ -68,7 +67,6 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
       }
       manager.updateState(id, "paused")
     }
-    refreshList()
   }
 
   async function launchChat(
@@ -108,12 +106,9 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
           createChatRunner({
             sessionId,
             projectCwd,
-            updateState: (id, state) => { manager.updateState(id, state); refreshList() },
+            updateState: manager.updateState,
             updateEntry: storeHandle.updateEntry,
-            onSessionName: (name) => {
-              manager.updateLabel(sessionId, name)
-              refreshList()
-            },
+            onSessionName: (name) => manager.updateLabel(sessionId, name),
             onError: storeHandle.onError,
             onEnded: storeHandle.onEnded,
             initialMessage: opts?.initialMessage?.trim() || undefined,
@@ -141,11 +136,9 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
 
   async function startChat(initialMessage?: string): Promise<StartChatResult | null> {
     const sessionId = manager.create("chat", "Chat", "chat", "active")
-    refreshList()
     const result = await launchChat(sessionId, { initialMessage })
     if (!result) {
       try { manager.delete(sessionId) } catch { /* best-effort */ }
-      refreshList()
       return null
     }
     if (!initialMessage?.trim()) emptyChats.add(sessionId)
@@ -156,6 +149,7 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
     const priorBlocks: AnyBlock[] = await createOutputPersistence({ sessionId, baseDir: projectCwd }).load()
     const p = readSession(sessionId, projectCwd)
     const bu = p?.budgetUsage
+    manager.updateState(sessionId, "active")
     const result = await launchChat(sessionId, {
       priorBlocks: priorBlocks.length > 0 ? priorBlocks : undefined,
       engineSessionId: p?.kind === "chat" ? p.engineSessionId : undefined,
@@ -198,6 +192,7 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
 
   function autoResumeChat(sessionId: string, entry: ChatSessionEntry, text: string): void {
     emptyChats.delete(sessionId)
+    manager.updateState(sessionId, "active")
     const priorBlocks = entry.outputBlocks.length > 0
       ? [...entry.outputBlocks] as AnyBlock[]
       : undefined
