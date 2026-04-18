@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { StructuredOutputBuilder } from "../src/infra/output/structured-output-builder";
-import type { AnyBlock, TextBlock, ToolEntry, AgentBlock, SystemBlock, TodoListBlock, UserMessageBlock, QuestionBlock } from "../src/infra/output-blocks";
+import type { AnyBlock, TextBlock, ToolEntry, ToolGroupBlock, SystemBlock, TodoListBlock, UserMessageBlock, QuestionBlock } from "../src/infra/output-blocks";
 
 /** Build a resolved tool entry. Matches what the parser emits after tool_result. */
 function resolvedTool(name: string, detail: string, timestamp: number): ToolEntry {
@@ -65,20 +65,20 @@ describe("StructuredOutputBuilder", () => {
   // ── Agent lifecycle ──
 
   describe("agent lifecycle", () => {
-    it("startAgent creates an AgentBlock with active status", () => {
+    it("startAgent creates an ToolGroupBlock with active status", () => {
       builder.startAgent("agent-1", "Explore", "Searching codebase", Date.now());
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
-      expect(blocks[0].kind).toBe("agent");
-      const agent = blocks[0] as AgentBlock;
+      expect(blocks[0].kind).toBe("toolGroup");
+      const agent = blocks[0] as ToolGroupBlock;
       expect(agent.id).toBe("agent-1");
-      expect(agent.agentLabel).toBe("Explore");
+      expect(agent.label).toBe("Explore");
       expect(agent.description).toBe("Searching codebase");
       expect(agent.status).toBe("active");
       expect(agent.children).toEqual([]);
     });
 
-    it("resolved tools committed to an agent are added to AgentBlock.children", () => {
+    it("resolved tools committed to an agent are added to ToolGroupBlock.children", () => {
       const now = Date.now();
       builder.startAgent("agent-1", "Explore", "Searching", now);
       builder.pushToolRowToAgent("agent-1", resolvedTool("Read", "file.ts", now + 100));
@@ -86,7 +86,7 @@ describe("StructuredOutputBuilder", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
-      const agent = blocks[0] as AgentBlock;
+      const agent = blocks[0] as ToolGroupBlock;
       expect(agent.children).toHaveLength(2);
       expect(agent.children[0].name).toBe("Read");
       expect(agent.children[1].name).toBe("Grep");
@@ -100,8 +100,8 @@ describe("StructuredOutputBuilder", () => {
       const blocks = builder.getBlocks();
       // Agent block + standalone tool — pushTool never captures
       expect(blocks).toHaveLength(2);
-      expect(blocks[0].kind).toBe("agent");
-      expect((blocks[0] as AgentBlock).children).toHaveLength(0);
+      expect(blocks[0].kind).toBe("toolGroup");
+      expect((blocks[0] as ToolGroupBlock).children).toHaveLength(0);
       expect(blocks[1].kind).toBe("tool");
     });
 
@@ -111,7 +111,7 @@ describe("StructuredOutputBuilder", () => {
       for (let i = 0; i < 60; i++) {
         builder.pushToolRowToAgent("agent-1", resolvedTool(`Tool${i}`, `detail-${i}`, now + i));
       }
-      const agent = builder.getBlocks()[0] as AgentBlock;
+      const agent = builder.getBlocks()[0] as ToolGroupBlock;
       expect(agent.children).toHaveLength(50);
       // Should keep the most recent 50
       expect(agent.children[0].name).toBe("Tool10");
@@ -126,7 +126,7 @@ describe("StructuredOutputBuilder", () => {
       builder.pushToolRowToAgent("agent-1", resolvedTool("Write", "out.ts", now));
       builder.completeAgent("agent-1", 1500);
 
-      const agent = builder.getBlocks()[0] as AgentBlock;
+      const agent = builder.getBlocks()[0] as ToolGroupBlock;
       expect(agent.status).toBe("completed");
       expect(agent.duration).toBe(1500);
       expect(agent.children).toHaveLength(3);
@@ -137,7 +137,7 @@ describe("StructuredOutputBuilder", () => {
       builder.startAgent("agent-1", "Explore", "Searching", now);
       builder.errorAgent("agent-1", "Timeout exceeded");
 
-      const agent = builder.getBlocks()[0] as AgentBlock;
+      const agent = builder.getBlocks()[0] as ToolGroupBlock;
       expect(agent.status).toBe("error");
       expect(agent.errorMessage).toBe("Timeout exceeded");
     });
@@ -151,7 +151,7 @@ describe("StructuredOutputBuilder", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(2);
-      expect(blocks[0].kind).toBe("agent");
+      expect(blocks[0].kind).toBe("toolGroup");
       expect(blocks[1].kind).toBe("tool");
       expect((blocks[1] as ToolEntry).name).toBe("Edit");
     });
@@ -161,7 +161,7 @@ describe("StructuredOutputBuilder", () => {
       builder.startAgent("agent-1", "Explore", "Searching", now);
       builder.updateAgentLatestChild("agent-1", "Reading src/index.ts");
 
-      const agent = builder.getBlocks()[0] as AgentBlock;
+      const agent = builder.getBlocks()[0] as ToolGroupBlock;
       expect(agent.latestChild).toBe("Reading src/index.ts");
     });
 
@@ -182,15 +182,15 @@ describe("StructuredOutputBuilder", () => {
   // ── Ad-hoc Tools group (pushToolRow) ──
 
   describe("Tools group (pushToolRow)", () => {
-    it("first resolved tool creates a Tools AgentBlock", () => {
+    it("first resolved tool creates a Tools ToolGroupBlock", () => {
       const now = Date.now();
       builder.pushToolRow(resolvedTool("Read", "file1.ts", now));
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
-      expect(blocks[0].kind).toBe("agent");
-      const agent = blocks[0] as AgentBlock;
-      expect(agent.agentLabel).toBe("Tools");
+      expect(blocks[0].kind).toBe("toolGroup");
+      const agent = blocks[0] as ToolGroupBlock;
+      expect(agent.label).toBe("Tools");
       expect(agent.description).toBe("Using tools...");
       expect(agent.status).toBe("active");
       expect(agent.children).toHaveLength(1);
@@ -198,7 +198,7 @@ describe("StructuredOutputBuilder", () => {
       expect(agent.latestChild).toBe("Read: file1.ts");
     });
 
-    it("consecutive resolved tools accumulate in the same Tools AgentBlock", () => {
+    it("consecutive resolved tools accumulate in the same Tools ToolGroupBlock", () => {
       const now = Date.now();
       builder.pushToolRow(resolvedTool("Read", "file1.ts", now));
       builder.pushToolRow(resolvedTool("Read", "file2.ts", now + 100));
@@ -206,9 +206,9 @@ describe("StructuredOutputBuilder", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
-      expect(blocks[0].kind).toBe("agent");
-      const agent = blocks[0] as AgentBlock;
-      expect(agent.agentLabel).toBe("Tools");
+      expect(blocks[0].kind).toBe("toolGroup");
+      const agent = blocks[0] as ToolGroupBlock;
+      expect(agent.label).toBe("Tools");
       expect(agent.children).toHaveLength(3);
       expect(agent.children[0].name).toBe("Read");
       expect(agent.children[1].name).toBe("Read");
@@ -225,7 +225,7 @@ describe("StructuredOutputBuilder", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
-      const agent = blocks[0] as AgentBlock;
+      const agent = blocks[0] as ToolGroupBlock;
       expect(agent.children).toHaveLength(4);
     });
 
@@ -238,9 +238,9 @@ describe("StructuredOutputBuilder", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(2);
-      expect(blocks[0].kind).toBe("agent");
-      const agent = blocks[0] as AgentBlock;
-      expect(agent.agentLabel).toBe("Tools");
+      expect(blocks[0].kind).toBe("toolGroup");
+      const agent = blocks[0] as ToolGroupBlock;
+      expect(agent.label).toBe("Tools");
       expect(agent.status).toBe("completed");
       expect(agent.children).toHaveLength(3);
       expect(agent.duration).toBe(300);
@@ -256,12 +256,12 @@ describe("StructuredOutputBuilder", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(3);
-      expect(blocks[0].kind).toBe("agent");
-      expect((blocks[0] as AgentBlock).status).toBe("completed");
+      expect(blocks[0].kind).toBe("toolGroup");
+      expect((blocks[0] as ToolGroupBlock).status).toBe("completed");
       expect(blocks[1].kind).toBe("tool");
-      expect(blocks[2].kind).toBe("agent");
-      expect((blocks[2] as AgentBlock).status).toBe("active");
-      expect((blocks[2] as AgentBlock).children).toHaveLength(1);
+      expect(blocks[2].kind).toBe("toolGroup");
+      expect((blocks[2] as ToolGroupBlock).status).toBe("active");
+      expect((blocks[2] as ToolGroupBlock).children).toHaveLength(1);
     });
 
     it("resolved tools routed to a real agent are plain children, not grouped", () => {
@@ -273,9 +273,9 @@ describe("StructuredOutputBuilder", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
-      expect(blocks[0].kind).toBe("agent");
-      const agent = blocks[0] as AgentBlock;
-      expect(agent.agentLabel).toBe("Explore");
+      expect(blocks[0].kind).toBe("toolGroup");
+      const agent = blocks[0] as ToolGroupBlock;
+      expect(agent.label).toBe("Explore");
       expect(agent.children).toHaveLength(3);
       expect(agent.children[0].name).toBe("Read");
     });
@@ -288,8 +288,8 @@ describe("StructuredOutputBuilder", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(2);
-      expect(blocks[0].kind).toBe("agent");
-      expect((blocks[0] as AgentBlock).status).toBe("completed");
+      expect(blocks[0].kind).toBe("toolGroup");
+      expect((blocks[0] as ToolGroupBlock).status).toBe("completed");
       expect(blocks[1].kind).toBe("text");
     });
 
@@ -301,8 +301,8 @@ describe("StructuredOutputBuilder", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(2);
-      expect(blocks[0].kind).toBe("agent");
-      expect((blocks[0] as AgentBlock).status).toBe("completed");
+      expect(blocks[0].kind).toBe("toolGroup");
+      expect((blocks[0] as ToolGroupBlock).status).toBe("completed");
       expect(blocks[1].kind).toBe("system");
     });
 
@@ -314,11 +314,11 @@ describe("StructuredOutputBuilder", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(2);
-      expect(blocks[0].kind).toBe("agent");
-      expect((blocks[0] as AgentBlock).agentLabel).toBe("Tools");
-      expect((blocks[0] as AgentBlock).status).toBe("completed");
-      expect(blocks[1].kind).toBe("agent");
-      expect((blocks[1] as AgentBlock).agentLabel).toBe("Explore");
+      expect(blocks[0].kind).toBe("toolGroup");
+      expect((blocks[0] as ToolGroupBlock).label).toBe("Tools");
+      expect((blocks[0] as ToolGroupBlock).status).toBe("completed");
+      expect(blocks[1].kind).toBe("toolGroup");
+      expect((blocks[1] as ToolGroupBlock).label).toBe("Explore");
     });
   });
 
@@ -388,7 +388,7 @@ describe("StructuredOutputBuilder", () => {
       builder.completeAgent("agent-1", 200);
 
       const blocks = builder.getBlocks();
-      const agentBlocks = blocks.filter((b) => b.kind === "agent");
+      const agentBlocks = blocks.filter((b) => b.kind === "toolGroup");
       expect(agentBlocks).toHaveLength(2);
     });
 
@@ -474,14 +474,14 @@ describe("StructuredOutputBuilder", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(3);
-      expect(blocks[0].kind).toBe("agent");
-      expect((blocks[0] as AgentBlock).agentLabel).toBe("Tools");
-      expect((blocks[0] as AgentBlock).status).toBe("completed");
-      expect((blocks[0] as AgentBlock).children).toHaveLength(2);
+      expect(blocks[0].kind).toBe("toolGroup");
+      expect((blocks[0] as ToolGroupBlock).label).toBe("Tools");
+      expect((blocks[0] as ToolGroupBlock).status).toBe("completed");
+      expect((blocks[0] as ToolGroupBlock).children).toHaveLength(2);
       expect(blocks[1].kind).toBe("system");
-      expect(blocks[2].kind).toBe("agent");
-      expect((blocks[2] as AgentBlock).agentLabel).toBe("Tools");
-      expect((blocks[2] as AgentBlock).status).toBe("active");
+      expect(blocks[2].kind).toBe("toolGroup");
+      expect((blocks[2] as ToolGroupBlock).label).toBe("Tools");
+      expect((blocks[2] as ToolGroupBlock).status).toBe("active");
     });
 
     it("system message after text creates separate block", () => {
@@ -536,8 +536,8 @@ describe("StructuredOutputBuilder", () => {
       expect(routed).toBeGreaterThanOrEqual(0);
 
       const blocks = builder.getBlocks();
-      const agent1 = blocks[0] as AgentBlock;
-      const agent2 = blocks[1] as AgentBlock;
+      const agent1 = blocks[0] as ToolGroupBlock;
+      const agent2 = blocks[1] as ToolGroupBlock;
       expect(agent1.children).toHaveLength(1);
       expect(agent1.children[0].name).toBe("Read");
       expect(agent2.children).toHaveLength(0);
@@ -559,8 +559,8 @@ describe("StructuredOutputBuilder", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(2);
-      const agent1 = blocks[0] as AgentBlock;
-      const agent2 = blocks[1] as AgentBlock;
+      const agent1 = blocks[0] as ToolGroupBlock;
+      const agent2 = blocks[1] as ToolGroupBlock;
       expect(agent1.children).toHaveLength(1);
       expect(agent1.children[0].name).toBe("Read");
       expect(agent2.children).toHaveLength(1);
@@ -576,7 +576,7 @@ describe("StructuredOutputBuilder", () => {
       builder.startAgent("a1", "Explore", "Searching", now);
       builder.closeOpenSubagents(now + 5000);
 
-      const agent = builder.getBlocks()[0] as AgentBlock;
+      const agent = builder.getBlocks()[0] as ToolGroupBlock;
       expect(agent.status).toBe("completed");
       expect(agent.duration).toBe(5000);
     });
@@ -589,8 +589,8 @@ describe("StructuredOutputBuilder", () => {
       builder.closeOpenSubagents(now + 200);
 
       // Tools group should still be active (not auto-completed)
-      const agent = builder.getBlocks()[0] as AgentBlock;
-      expect(agent.agentLabel).toBe("Tools");
+      const agent = builder.getBlocks()[0] as ToolGroupBlock;
+      expect(agent.label).toBe("Tools");
       expect(agent.status).toBe("active");
     });
 
@@ -600,7 +600,7 @@ describe("StructuredOutputBuilder", () => {
       builder.completeAgent("a1", 1000);
       builder.closeOpenSubagents(now + 5000);
 
-      const agent = builder.getBlocks()[0] as AgentBlock;
+      const agent = builder.getBlocks()[0] as ToolGroupBlock;
       expect(agent.status).toBe("completed");
       expect(agent.duration).toBe(1000); // original duration preserved
     });
@@ -612,8 +612,8 @@ describe("StructuredOutputBuilder", () => {
       builder.closeOpenSubagents(now + 5000);
 
       const blocks = builder.getBlocks();
-      expect((blocks[0] as AgentBlock).status).toBe("completed");
-      expect((blocks[1] as AgentBlock).status).toBe("completed");
+      expect((blocks[0] as ToolGroupBlock).status).toBe("completed");
+      expect((blocks[1] as ToolGroupBlock).status).toBe("completed");
     });
   });
 
@@ -703,8 +703,8 @@ describe("StructuredOutputBuilder", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(3);
-      expect(blocks[0].kind).toBe("agent");
-      expect((blocks[0] as AgentBlock).children).toHaveLength(1);
+      expect(blocks[0].kind).toBe("toolGroup");
+      expect((blocks[0] as ToolGroupBlock).children).toHaveLength(1);
       expect(blocks[1].kind).toBe("userMessage");
       expect(blocks[2].kind).toBe("todoList");
     });
@@ -797,8 +797,8 @@ describe("StructuredOutputBuilder", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(2);
-      expect(blocks[0].kind).toBe("agent"); // completed Tools group
-      expect((blocks[0] as AgentBlock).status).toBe("completed");
+      expect(blocks[0].kind).toBe("toolGroup"); // completed Tools group
+      expect((blocks[0] as ToolGroupBlock).status).toBe("completed");
       expect(blocks[1].kind).toBe("todoList");
     });
 
@@ -890,8 +890,8 @@ describe("StructuredOutputBuilder", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(2);
-      expect(blocks[0].kind).toBe("agent");
-      expect((blocks[0] as AgentBlock).status).toBe("completed");
+      expect(blocks[0].kind).toBe("toolGroup");
+      expect((blocks[0] as ToolGroupBlock).status).toBe("completed");
       expect(blocks[1].kind).toBe("question");
     });
   });

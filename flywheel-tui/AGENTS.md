@@ -127,6 +127,39 @@ Not: this.modelActivity = "thinking"; this.onModelActivityChange?.("thinking")
 
 ---
 
+## 8b. TUI Rendering — Text Selection
+
+**Single-line headers must be a single `<text>` element.** Multiple `<text>` elements in a `flexDirection="row"` box break terminal text selection — flex-positioned children are rendered as separate regions, so copied text skips some elements and loses line structure.
+
+**Pattern:** Compose a `StyledText` from `TextChunk`s (using `stFg`, `stBold`, `stItalic`, `stDim`, `stLink`) and render via one `<text>` with a reactive ref:
+
+```tsx
+const headerContent = createMemo(() => {
+  const chunks: TextChunk[] = [
+    stFg(theme.primary)("✓"),
+    stFg(theme.text)(" "),
+    stBold(stFg(theme.text)(name)),
+    stFg(theme.text)(" "),
+    stFg(theme.textSubtle)(detail),
+  ]
+  return new StyledText(chunks)
+})
+
+<box onMouseDown={handler}>
+  <text
+    ref={(el: TextRenderable) => {
+      createEffect(() => { el.content = headerContent() })
+    }}
+    overflow="hidden"
+    wrapMode="none"
+  />
+</box>
+```
+
+Use `<box>` only for click handlers (`onMouseDown`) or layout properties (`marginTop`, `paddingLeft`). Never use `flexDirection="row"` with multiple `<text>` children for content that should be selectable as one line.
+
+---
+
 ## 9. Agent Behavior
 
 - Test changes by running code. Fix errors before moving on.

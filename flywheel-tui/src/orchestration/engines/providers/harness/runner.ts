@@ -22,6 +22,7 @@ const EFFORT_MAP: Record<string, ReasoningEffort> = {
   low: "low",
   medium: "medium",
   high: "high",
+  max: "max",
 };
 
 function mapEffort(effort: string | undefined): ReasoningEffort | undefined {
@@ -108,7 +109,14 @@ export class HarnessRunner implements EngineRunner {
       provider: client.provider,
       projectInstructions,
       availableTools: availableToolNames,
+      cwd: options.cwd,
     });
+
+    let turnThinkingContent = "";
+    let turnInputTokens = 0;
+    let turnOutputTokens = 0;
+    let turnCacheReadTokens = 0;
+    let turnCacheCreateTokens = 0;
 
     const onEvent = (streamEvent: StreamEvent): void => {
       switch (streamEvent.kind) {
@@ -119,6 +127,7 @@ export class HarnessRunner implements EngineRunner {
           });
           break;
         case "thinking_delta":
+          turnThinkingContent += streamEvent.text;
           emitContentBlockDelta(options.onEvent, {
             type: "thinking_delta",
             thinking: streamEvent.text,
@@ -133,9 +142,12 @@ export class HarnessRunner implements EngineRunner {
           );
           break;
         case "tool_use":
-          // Collected and emitted as a batch in onTurnAssistantMessage
           break;
         case "usage":
+          turnInputTokens = streamEvent.inputTokens;
+          turnOutputTokens = streamEvent.outputTokens;
+          turnCacheReadTokens = streamEvent.cacheReadTokens;
+          turnCacheCreateTokens = streamEvent.cacheCreateTokens;
           this.totalInputTokens += streamEvent.inputTokens;
           this.totalOutputTokens += streamEvent.outputTokens;
           this.totalCostUsd += client.costFor({
@@ -149,36 +161,36 @@ export class HarnessRunner implements EngineRunner {
         case "done":
           emitResult(options.onEvent, {
             totalCostUsd: this.totalCostUsd,
-            inputTokens: this.totalInputTokens,
-            outputTokens: this.totalOutputTokens,
+            inputTokens: turnInputTokens,
+            outputTokens: turnOutputTokens,
             sessionId: this.sessionId,
             contextWindow: client.contextLimit,
           });
-          // onTurnComplete is deferred to onTurnAssistantMessage below so the
-          // assistant event (with text/tool_use blocks) reaches the parser
-          // BEFORE the chat session flushes the output blocks.
           break;
       }
     };
 
     const onTurnAssistantMessage = (content: LLMContentBlock[]): void => {
-      if (content.length > 0) {
-        const blocks = content.flatMap((b): ContentBlock[] => {
-          if (b.type === "text") return [{ type: "text", text: b.text }];
-          if (b.type === "tool_use") return [{ type: "tool_use", id: b.id, name: b.name, input: b.input }];
-          return [];
-        });
-        if (blocks.length > 0) {
-          emitAssistant(options.onEvent, blocks, {
-            input_tokens: this.totalInputTokens,
-            cache_read_input_tokens: 0,
-            cache_creation_input_tokens: 0,
-          });
-        }
+      const blocks: ContentBlock[] = [];
+      if (turnThinkingContent) {
+        blocks.push({ type: "thinking", thinking: turnThinkingContent });
       }
-      // Fire onTurnComplete AFTER the assistant event so the parser has the
-      // text blocks before the chat session flushes and resets activity.
-      options.onTurnComplete?.();
+      for (const b of content) {
+        if (b.type === "text") blocks.push({ type: "text", text: b.text });
+        else if (b.type === "tool_use") blocks.push({ type: "tool_use", id: b.id, name: b.name, input: b.input });
+      }
+      if (blocks.length > 0) {
+        emitAssistant(options.onEvent, blocks, {
+          input_tokens: turnInputTokens,
+          cache_read_input_tokens: turnCacheReadTokens,
+          cache_creation_input_tokens: turnCacheCreateTokens,
+        });
+      }
+      turnThinkingContent = "";
+      turnInputTokens = 0;
+      turnOutputTokens = 0;
+      turnCacheReadTokens = 0;
+      turnCacheCreateTokens = 0;
     };
 
     // Conversation persistence: load prior messages (if resuming) and stream new
@@ -211,12 +223,14 @@ export class HarnessRunner implements EngineRunner {
         onMessageAppended,
       });
 
+      options.onTurnComplete?.();
       this.resolveResult({
         durationMs: Date.now() - startTime,
         sessionId: this.sessionId,
         failure: result.contextOverflow ? { kind: "context_overflow" } : undefined,
       });
     } catch (err) {
+      options.onTurnComplete?.();
       this.resolveResult({
         durationMs: Date.now() - startTime,
         sessionId: this.sessionId,

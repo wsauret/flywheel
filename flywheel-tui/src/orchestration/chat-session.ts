@@ -217,6 +217,7 @@ function createWorkerLifecycle(
     // Only send content if there's a message — an idle runner waits for the
     // first send() rather than responding to a no-op greeting and exiting.
     if (messageToSend) {
+      session.notifySpawned(Date.now())
       runner.send(messageToSend)
     }
 

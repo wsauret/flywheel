@@ -1,12 +1,13 @@
 /** @jsxImportSource @opentui/solid */
 
-import { createMemo, Show } from "solid-js"
+import { createMemo, createEffect } from "solid-js"
+import { StyledText, fg as stFg, type TextChunk } from "@opentui/core"
+import type { TextRenderable } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { useSpinnerFrame } from "@tui/shared/hooks/use-spinner-frame.js"
 import type { ToolEntry } from "@infra/output-blocks"
 import { getToolDisplayName } from "@infra/tool-display-registry.js"
 
-/** Single source of truth for tool-row rendering inside any box (subagent or Tools group). */
 export const BOX_MAX_VISIBLE_TOOLS = 4
 export const SUCCESS_ICON = "✓"
 export const ERROR_ICON = "✗"
@@ -19,13 +20,6 @@ interface ToolRowProps {
   tool: ToolEntry
 }
 
-/**
- * Tool row rendered inside a box (subagent children or Tools ad-hoc group) or
- * inline as a single-tool Tools group. Three visual states, driven by the
- * ToolEntry fields: unresolved (spinner), completed (✓), errored (✗ + message).
- * The spinner/✓/✗ glyphs are all 1 cell wide, so the row layout is stable
- * across the single state transition.
- */
 export function ToolRow(props: ToolRowProps) {
   const { theme } = useTheme()
   const hasError = () => !!props.tool.errorMessage
@@ -39,14 +33,32 @@ export function ToolRow(props: ToolRowProps) {
     return { text: spinnerFrame(), color: theme.secondary }
   })
 
+  const rowContent = createMemo(() => {
+    const chunks: TextChunk[] = [
+      stFg(icon().color)(icon().text),
+      stFg(theme.text)(" "),
+      stFg(theme.text)(getToolDisplayName(props.tool.name)),
+    ]
+    if (props.tool.detail) {
+      chunks.push(stFg(theme.text)(" "))
+      chunks.push(stFg(theme.textSubtle)(props.tool.detail))
+    }
+    if (hasError() && props.tool.errorMessage) {
+      chunks.push(stFg(theme.text)(" "))
+      chunks.push(stFg(theme.error)(props.tool.errorMessage))
+    }
+    return new StyledText(chunks)
+  })
+
   return (
-    <box flexDirection="row" gap={1} paddingLeft={1} overflow="hidden">
-      <text fg={icon().color} flexShrink={0}>{icon().text}</text>
-      <text fg={theme.text} flexShrink={0}>{getToolDisplayName(props.tool.name)}</text>
-      <text fg={theme.textSubtle} flexShrink={1} overflow="hidden" wrapMode="none">{props.tool.detail}</text>
-      <Show when={hasError()}>
-        <text fg={theme.error} flexShrink={0} overflow="hidden" wrapMode="none">{props.tool.errorMessage}</text>
-      </Show>
+    <box paddingLeft={1}>
+      <text
+        ref={(el: TextRenderable) => {
+          createEffect(() => { el.content = rowContent() })
+        }}
+        overflow="hidden"
+        wrapMode="none"
+      />
     </box>
   )
 }

@@ -93,6 +93,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
 
   let nextInput: NextInput = { kind: "initial", text: instruction };
   let contextOverflow = false;
+  let previousResponseId: string | undefined;
 
   for (;;) {
     if (signal?.aborted) {
@@ -108,6 +109,9 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           applyHandoff(messages, handoff);
           nextInput = { kind: "recovered", handoff: handoff.userPrompt };
           contextOverflow = true;
+          // Server-side conversation chain is invalid after compaction — fall back
+          // to stateless mode where encrypted reasoning blocks carry the context.
+          previousResponseId = undefined;
         }
       } catch (err) {
         log.error("proactive summarization failed", {
@@ -130,6 +134,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         systemPrompt,
         reasoningEffort,
         signal,
+        previousResponseId,
       });
 
       for await (const event of stream) {
@@ -145,8 +150,22 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
             appendTextBlock(assistantContent, event.text);
             break;
           case "thinking_delta":
-            // Thinking streams to onEvent for display but must not enter message history --
-            // Anthropic rejects history with thinking content on subsequent turns.
+            break;
+          case "thinking_complete":
+            if (event.signature) {
+              assistantContent.push({
+                type: "thinking",
+                thinking: event.thinking,
+                signature: event.signature,
+              });
+            }
+            break;
+          case "reasoning":
+            assistantContent.push({
+              type: "reasoning",
+              id: event.id,
+              encrypted_content: event.encryptedContent,
+            });
             break;
           case "tool_use":
             toolCalls.push(event.toolCall);
@@ -159,6 +178,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
             break;
           case "done":
             stopReason = event.stopReason;
+            if (event.responseId) previousResponseId = event.responseId;
             break;
         }
       }
@@ -166,6 +186,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       if (err instanceof ContextLengthExceededError) {
         log.warn("context length exceeded, attempting recovery");
         contextOverflow = true;
+        previousResponseId = undefined;
         unwindMessages(messages, client.contextLimit);
         const handoff = await summarizer.summarize(messages, systemPrompt, cwd, signal);
         if (handoff) {
@@ -221,15 +242,29 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     for (const entry of parallelResults) {
       if (!entry) continue;
       const { tc, result } = entry;
-      onEvent({ kind: "tool_result", toolCallId: tc.id, content: result.content });
-      toolResults.push({ toolCallId: tc.id, content: result.content });
-      tokenCounter.addToolResult(result.content);
+      const content = truncateToolOutput(result.content);
+      onEvent({ kind: "tool_result", toolCallId: tc.id, content });
+      toolResults.push({ toolCallId: tc.id, content });
+      tokenCounter.addToolResult(content);
     }
 
     nextInput = { kind: "observation", toolResults };
   }
 
   return { contextOverflow };
+}
+
+const TOOL_OUTPUT_MAX_BYTES = 30_000;
+
+function truncateToolOutput(output: string): string {
+  const bytes = Buffer.byteLength(output, "utf-8");
+  if (bytes <= TOOL_OUTPUT_MAX_BYTES) return output;
+  const half = TOOL_OUTPUT_MAX_BYTES >> 1;
+  const buf = Buffer.from(output, "utf-8");
+  const first = buf.subarray(0, half).toString("utf-8");
+  const last = buf.subarray(buf.length - half).toString("utf-8");
+  const omitted = bytes - Buffer.byteLength(first, "utf-8") - Buffer.byteLength(last, "utf-8");
+  return `${first}\n[...${omitted} bytes omitted...]\n${last}`;
 }
 
 function appendTextBlock(blocks: ContentBlock[], text: string): void {

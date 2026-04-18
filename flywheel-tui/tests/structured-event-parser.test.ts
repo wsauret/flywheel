@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "bun:test";
 import { StructuredEventParser } from "../src/infra/output/structured-event-parser";
 import { StructuredOutputBuilder } from "../src/infra/output/structured-output-builder";
 import type { NDJSONEvent } from "../src/infra/ndjson-event-types";
-import type { AgentBlock, ToolEntry, QuestionBlock } from "../src/infra/output-blocks";
+import type { ToolGroupBlock, ToolEntry, QuestionBlock, TodoListBlock } from "../src/infra/output-blocks";
 
 // ── Helpers ──
 
@@ -66,7 +66,7 @@ describe("StructuredEventParser", () => {
   // ── Subagent spawn ──
 
   describe("subagent spawn", () => {
-    it("creates an AgentBlock on Task tool_use", () => {
+    it("creates an ToolGroupBlock on Task tool_use", () => {
       const event = makeAssistantEvent([
         {
           type: "tool_use",
@@ -79,14 +79,14 @@ describe("StructuredEventParser", () => {
       parser.dispatch(event, 1000);
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
-      expect(blocks[0].kind).toBe("agent");
-      const agent = blocks[0] as AgentBlock;
-      expect(agent.agentLabel).toBe("Explore");
+      expect(blocks[0].kind).toBe("toolGroup");
+      const agent = blocks[0] as ToolGroupBlock;
+      expect(agent.label).toBe("Explore");
       expect(agent.description).toBe("research files");
       expect(agent.status).toBe("active");
     });
 
-    it("creates an AgentBlock on Agent tool_use", () => {
+    it("creates an ToolGroupBlock on Agent tool_use", () => {
       const event = makeAssistantEvent([
         {
           type: "tool_use",
@@ -99,8 +99,8 @@ describe("StructuredEventParser", () => {
       parser.dispatch(event, 1000);
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
-      const agent = blocks[0] as AgentBlock;
-      expect(agent.agentLabel).toBe("Agent"); // no subagent_type → falls back to tool name
+      const agent = blocks[0] as ToolGroupBlock;
+      expect(agent.label).toBe("Agent"); // no subagent_type → falls back to tool name
       expect(agent.description).toBe("planning step");
     });
 
@@ -111,11 +111,11 @@ describe("StructuredEventParser", () => {
 
       parser.dispatch(event, 1000);
       const blocks = builder.getBlocks();
-      const agent = blocks[0] as AgentBlock;
+      const agent = blocks[0] as ToolGroupBlock;
       expect(agent.description).toBe("Task");
     });
 
-    it("creates an AgentBlock on dispatch_agent tool_use", () => {
+    it("creates an ToolGroupBlock on dispatch_agent tool_use", () => {
       const event = makeAssistantEvent([
         {
           type: "tool_use",
@@ -128,8 +128,8 @@ describe("StructuredEventParser", () => {
       parser.dispatch(event, 1000);
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
-      const agent = blocks[0] as AgentBlock;
-      expect(agent.agentLabel).toBe("Worker");
+      const agent = blocks[0] as ToolGroupBlock;
+      expect(agent.label).toBe("Worker");
       expect(agent.description).toBe("dispatched work");
       expect(agent.status).toBe("active");
     });
@@ -151,7 +151,7 @@ describe("StructuredEventParser", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
-      const agent = blocks[0] as AgentBlock;
+      const agent = blocks[0] as ToolGroupBlock;
       expect(agent.status).toBe("completed");
     });
 
@@ -167,7 +167,7 @@ describe("StructuredEventParser", () => {
       parser.dispatch(resultEvent, 1000);
 
       const blocks = builder.getBlocks();
-      const agent = blocks[0] as AgentBlock;
+      const agent = blocks[0] as ToolGroupBlock;
       expect(agent.status).toBe("error");
     });
 
@@ -190,9 +190,9 @@ describe("StructuredEventParser", () => {
       parser.dispatch(event, 1000);
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
-      expect(blocks[0].kind).toBe("agent");
-      const agent = blocks[0] as AgentBlock;
-      expect(agent.agentLabel).toBe("Tools");
+      expect(blocks[0].kind).toBe("toolGroup");
+      const agent = blocks[0] as ToolGroupBlock;
+      expect(agent.label).toBe("Tools");
       expect(agent.children).toHaveLength(1);
       expect(agent.children[0].name).toBe("Bash");
       // Pending: no completed or errorMessage
@@ -209,8 +209,8 @@ describe("StructuredEventParser", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
-      const agent = blocks[0] as AgentBlock;
-      expect(agent.agentLabel).toBe("Tools");
+      const agent = blocks[0] as ToolGroupBlock;
+      expect(agent.label).toBe("Tools");
       expect(agent.children).toHaveLength(1);
       expect(agent.children[0].completed).toBe(true);
     });
@@ -229,7 +229,7 @@ describe("StructuredEventParser", () => {
 
       // Child appears immediately as pending in the subagent's children.
       let blocks = builder.getBlocks();
-      let agent = blocks[0] as AgentBlock;
+      let agent = blocks[0] as ToolGroupBlock;
       expect(agent.children).toHaveLength(1);
       expect(agent.children[0].name).toBe("Bash");
       expect(agent.children[0].completed).toBeUndefined();
@@ -237,7 +237,7 @@ describe("StructuredEventParser", () => {
       parser.dispatch(makeUserToolResultEvent([{ tool_use_id: "child_tool" }]), 2000);
 
       blocks = builder.getBlocks();
-      agent = blocks[0] as AgentBlock;
+      agent = blocks[0] as ToolGroupBlock;
       expect(agent.children[0].completed).toBe(true);
     });
   });
@@ -259,7 +259,7 @@ describe("StructuredEventParser", () => {
       parser.dispatch(textEvent, 1000);
 
       const blocks = builder.getBlocks();
-      const agent = blocks[0] as AgentBlock;
+      const agent = blocks[0] as ToolGroupBlock;
       expect(agent.status).toBe("completed");
     });
 
@@ -282,11 +282,11 @@ describe("StructuredEventParser", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(2);
-      expect(blocks[0].kind).toBe("agent");
-      expect((blocks[0] as AgentBlock).status).toBe("completed"); // auto-closed
-      expect((blocks[0] as AgentBlock).children).toHaveLength(0); // no captured tools
-      expect(blocks[1].kind).toBe("agent");
-      expect((blocks[1] as AgentBlock).agentLabel).toBe("Tools");
+      expect(blocks[0].kind).toBe("toolGroup");
+      expect((blocks[0] as ToolGroupBlock).status).toBe("completed"); // auto-closed
+      expect((blocks[0] as ToolGroupBlock).children).toHaveLength(0); // no captured tools
+      expect(blocks[1].kind).toBe("toolGroup");
+      expect((blocks[1] as ToolGroupBlock).label).toBe("Tools");
     });
 
     it("tool_result still works as the authoritative close signal", () => {
@@ -301,7 +301,7 @@ describe("StructuredEventParser", () => {
       parser.dispatch(resultEvent, 1000);
 
       const blocks = builder.getBlocks();
-      const agent = blocks[0] as AgentBlock;
+      const agent = blocks[0] as ToolGroupBlock;
       expect(agent.status).toBe("completed");
     });
   });
@@ -328,9 +328,9 @@ describe("StructuredEventParser", () => {
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(3);
       // ALL three agents should still be active
-      expect((blocks[0] as AgentBlock).status).toBe("active");
-      expect((blocks[1] as AgentBlock).status).toBe("active");
-      expect((blocks[2] as AgentBlock).status).toBe("active");
+      expect((blocks[0] as ToolGroupBlock).status).toBe("active");
+      expect((blocks[1] as ToolGroupBlock).status).toBe("active");
+      expect((blocks[2] as ToolGroupBlock).status).toBe("active");
     });
 
     it("parallel agents each close only on their own tool_result", () => {
@@ -350,9 +350,9 @@ describe("StructuredEventParser", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(3);
-      expect((blocks[0] as AgentBlock).status).toBe("active");
-      expect((blocks[1] as AgentBlock).status).toBe("completed");
-      expect((blocks[2] as AgentBlock).status).toBe("active");
+      expect((blocks[0] as ToolGroupBlock).status).toBe("active");
+      expect((blocks[1] as ToolGroupBlock).status).toBe("completed");
+      expect((blocks[2] as ToolGroupBlock).status).toBe("active");
     });
 
     it("top-level text AFTER all tool_results still closes stragglers", () => {
@@ -373,8 +373,8 @@ describe("StructuredEventParser", () => {
       ]), 1000);
 
       const blocks = builder.getBlocks();
-      expect((blocks[0] as AgentBlock).status).toBe("completed");
-      expect((blocks[1] as AgentBlock).status).toBe("completed");
+      expect((blocks[0] as ToolGroupBlock).status).toBe("completed");
+      expect((blocks[1] as ToolGroupBlock).status).toBe("completed");
     });
 
     it("all three agents in one event stays correct", () => {
@@ -389,9 +389,9 @@ describe("StructuredEventParser", () => {
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(3);
-      expect((blocks[0] as AgentBlock).status).toBe("active");
-      expect((blocks[1] as AgentBlock).status).toBe("active");
-      expect((blocks[2] as AgentBlock).status).toBe("active");
+      expect((blocks[0] as ToolGroupBlock).status).toBe("active");
+      expect((blocks[1] as ToolGroupBlock).status).toBe("active");
+      expect((blocks[2] as ToolGroupBlock).status).toBe("active");
     });
   });
 
@@ -411,7 +411,7 @@ describe("StructuredEventParser", () => {
 
       // Agent should still be running (not completed) since reset cleared tracking
       const blocks = builder.getBlocks();
-      const agent = blocks[0] as AgentBlock;
+      const agent = blocks[0] as ToolGroupBlock;
       expect(agent.status).toBe("active");
     });
 
@@ -422,7 +422,7 @@ describe("StructuredEventParser", () => {
       parser.dispatch(event, 1000);
 
       // Row exists immediately as pending.
-      let agent = builder.getBlocks()[0] as AgentBlock;
+      let agent = builder.getBlocks()[0] as ToolGroupBlock;
       expect(agent.children[0].completed).toBeUndefined();
 
       parser.reset();
@@ -430,7 +430,7 @@ describe("StructuredEventParser", () => {
 
       // Without its location in the map, the tool_result can't update the row;
       // it remains pending.
-      agent = builder.getBlocks()[0] as AgentBlock;
+      agent = builder.getBlocks()[0] as ToolGroupBlock;
       expect(agent.children[0].completed).toBeUndefined();
     });
   });
@@ -534,9 +534,9 @@ describe("StructuredEventParser", () => {
       expect(editTool.errorMessage).toBeDefined();
       expect(editTool.errorMessage).toContain("Edit failed");
       // Bash resolved into the Tools group
-      expect(blocks[1].kind).toBe("agent");
-      const toolsAgent = blocks[1] as AgentBlock;
-      expect(toolsAgent.agentLabel).toBe("Tools");
+      expect(blocks[1].kind).toBe("toolGroup");
+      const toolsAgent = blocks[1] as ToolGroupBlock;
+      expect(toolsAgent.label).toBe("Tools");
       expect(toolsAgent.children).toHaveLength(1);
       expect(toolsAgent.children[0].name).toBe("Bash");
       expect(toolsAgent.children[0].completed).toBe(true);
@@ -573,7 +573,7 @@ describe("StructuredEventParser", () => {
       parser.dispatch(userEvent, 2000);
 
       const blocks = builder.getBlocks();
-      const agent = blocks[0] as AgentBlock;
+      const agent = blocks[0] as ToolGroupBlock;
       expect(agent.children).toHaveLength(1);
       expect(agent.children[0].errorMessage).toBe("Edit failed — File not found: test.ts");
     });
@@ -597,7 +597,7 @@ describe("StructuredEventParser", () => {
       parser.dispatch(userEvent, 2000);
 
       const blocks = builder.getBlocks();
-      const agent = blocks[0] as AgentBlock;
+      const agent = blocks[0] as ToolGroupBlock;
       expect(agent.children).toHaveLength(1);
       expect(agent.children[0].completed).toBe(true);
       expect(agent.children[0].errorMessage).toBeUndefined();
@@ -700,7 +700,7 @@ describe("StructuredEventParser", () => {
       const q = blocks.find(b => b.kind === "question") as QuestionBlock;
       expect(q.questions[0].question).toBe("Which library should we use?");
 
-      const agent = blocks.find(b => b.kind === "agent") as AgentBlock;
+      const agent = blocks.find(b => b.kind === "toolGroup") as ToolGroupBlock;
       expect(agent.children).toHaveLength(1);
       expect(agent.children[0].name).toBe("AskUserQuestion");
       expect(agent.children[0].detail).toContain("Awaiting user answer");
@@ -726,7 +726,7 @@ describe("StructuredEventParser", () => {
       const q = blocks.find(b => b.kind === "question") as QuestionBlock;
       expect(q.answers).toEqual({ "Which library should we use?": "Option B" });
 
-      const agent = blocks.find(b => b.kind === "agent") as AgentBlock;
+      const agent = blocks.find(b => b.kind === "toolGroup") as ToolGroupBlock;
       expect(agent.children[0].completed).toBe(true);
     });
 
@@ -748,7 +748,7 @@ describe("StructuredEventParser", () => {
       const q = blocks.find(b => b.kind === "question") as QuestionBlock;
       expect(q.cancelled).toBe(true);
 
-      const agent = blocks.find(b => b.kind === "agent") as AgentBlock;
+      const agent = blocks.find(b => b.kind === "toolGroup") as ToolGroupBlock;
       expect(agent.children[0].errorMessage).toBe("Cancelled");
     });
 
@@ -758,6 +758,191 @@ describe("StructuredEventParser", () => {
       ]), 1000);
 
       expect(builder.getBlocks().filter(b => b.kind === "question")).toHaveLength(0);
+    });
+  });
+
+  // ── todo_list (harness engine) ──
+
+  describe("todo_list standalone tool", () => {
+    it("creates a todoList block for todo_list write operations", () => {
+      parser.dispatch(makeAssistantEvent([
+        {
+          type: "tool_use",
+          id: "tool_todo_1",
+          name: "todo_list",
+          input: {
+            operation: "write",
+            todos: [
+              { content: "Set up project", status: "completed" },
+              { content: "Write tests", status: "in_progress" },
+              { content: "Deploy", status: "pending" },
+            ],
+          },
+        },
+      ]), 1000);
+
+      const blocks = builder.getBlocks();
+      const todo = blocks.find(b => b.kind === "todoList") as TodoListBlock;
+      expect(todo).toBeDefined();
+      expect(todo.todos).toHaveLength(3);
+      expect(todo.todos[0]!.content).toBe("Set up project");
+      expect(todo.todos[1]!.status).toBe("in_progress");
+    });
+
+    it("ignores todo_list read operations", () => {
+      parser.dispatch(makeAssistantEvent([
+        {
+          type: "tool_use",
+          id: "tool_todo_read",
+          name: "todo_list",
+          input: { operation: "read" },
+        },
+      ]), 1000);
+
+      const blocks = builder.getBlocks();
+      expect(blocks.filter(b => b.kind === "todoList")).toHaveLength(0);
+      expect(blocks.filter(b => b.kind === "tool")).toHaveLength(0);
+    });
+  });
+
+  // ── Optimistic tools (case-insensitive) ──
+
+  describe("optimistic tools", () => {
+    it("marks lowercase read as completed (harness engine)", () => {
+      parser.dispatch(makeAssistantEvent([
+        { type: "tool_use", id: "tool_read_1", name: "read", input: { file_path: "/tmp/foo.ts" } },
+      ]), 1000);
+
+      const agent = builder.getBlocks()[0] as ToolGroupBlock;
+      expect(agent.children).toHaveLength(1);
+      expect(agent.children[0]!.completed).toBe(true);
+    });
+
+    it("marks PascalCase Read as completed (claude engine)", () => {
+      parser.dispatch(makeAssistantEvent([
+        { type: "tool_use", id: "tool_Read_1", name: "Read", input: { file_path: "/tmp/foo.ts" } },
+      ]), 1000);
+
+      const agent = builder.getBlocks()[0] as ToolGroupBlock;
+      expect(agent.children).toHaveLength(1);
+      expect(agent.children[0]!.completed).toBe(true);
+    });
+  });
+
+  // ── Streaming text deltas ──
+
+  describe("streaming text deltas", () => {
+    function makeTextDelta(text: string): NDJSONEvent {
+      return {
+        type: "content_block_delta",
+        data: { type: "content_block_delta", delta: { type: "text_delta", text } },
+        raw: "",
+      };
+    }
+
+    function makeThinkingDelta(thinking: string): NDJSONEvent {
+      return {
+        type: "content_block_delta",
+        data: { type: "content_block_delta", delta: { type: "thinking_delta", thinking } },
+        raw: "",
+      };
+    }
+
+    it("pushes text blocks incrementally from text_delta events", () => {
+      parser.dispatch(makeTextDelta("Hello "), 1000);
+      parser.dispatch(makeTextDelta("world"), 1001);
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0]!.kind).toBe("text");
+      if (blocks[0]!.kind === "text") {
+        expect(blocks[0]!.content).toBe("Hello world");
+      }
+    });
+
+    it("skips duplicate text in assistant event after streaming deltas", () => {
+      parser.dispatch(makeTextDelta("Hello "), 1000);
+      parser.dispatch(makeTextDelta("world"), 1001);
+
+      parser.dispatch(makeAssistantEvent([
+        { type: "text", text: "Hello world" },
+      ]), 1002);
+
+      const blocks = builder.getBlocks();
+      const textBlocks = blocks.filter(b => b.kind === "text");
+      expect(textBlocks).toHaveLength(1);
+      if (textBlocks[0]!.kind === "text") {
+        expect(textBlocks[0]!.content).toBe("Hello world");
+      }
+    });
+
+    it("still processes text in assistant event when no deltas were streamed", () => {
+      parser.dispatch(makeAssistantEvent([
+        { type: "text", text: "No deltas here" },
+      ]), 1000);
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(1);
+      if (blocks[0]!.kind === "text") {
+        expect(blocks[0]!.content).toBe("No deltas here");
+      }
+    });
+
+    it("processes tool_use blocks from assistant event even when text was streamed", () => {
+      parser.dispatch(makeTextDelta("Response text"), 1000);
+
+      parser.dispatch(makeAssistantEvent([
+        { type: "text", text: "Response text" },
+        { type: "tool_use", id: "tool_1", name: "Bash", input: { command: "ls" } },
+      ]), 1001);
+
+      const blocks = builder.getBlocks();
+      const textBlocks = blocks.filter(b => b.kind === "text");
+      expect(textBlocks).toHaveLength(1);
+      const toolGroups = blocks.filter(b => b.kind === "toolGroup");
+      expect(toolGroups.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("resets streaming flag between turns", () => {
+      parser.dispatch(makeTextDelta("Turn 1"), 1000);
+      parser.dispatch(makeAssistantEvent([
+        { type: "text", text: "Turn 1" },
+        { type: "tool_use", id: "tool_1", name: "Bash", input: { command: "ls" } },
+      ]), 1001);
+
+      parser.dispatch(makeAssistantEvent([
+        { type: "text", text: "Turn 2 without deltas" },
+      ]), 1002);
+
+      const blocks = builder.getBlocks();
+      const textBlocks = blocks.filter(b => b.kind === "text");
+      expect(textBlocks).toHaveLength(2);
+      if (textBlocks[0]!.kind === "text") expect(textBlocks[0]!.content).toBe("Turn 1");
+      if (textBlocks[1]!.kind === "text") expect(textBlocks[1]!.content).toBe("Turn 2 without deltas");
+    });
+
+    it("streams thinking content from deltas into a ThinkingBlock", () => {
+      parser.dispatch(makeThinkingDelta("Deep thought"), 1000);
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0]!.kind).toBe("thinking");
+      expect((blocks[0] as { content: string }).content).toBe("Deep thought");
+      expect(builder.modelActivity).toBe("thinking");
+    });
+
+    it("skips duplicate thinking in assistant event when already streamed via deltas", () => {
+      parser.dispatch(makeThinkingDelta("thinking..."), 1000);
+
+      parser.dispatch(makeAssistantEvent([
+        { type: "thinking", thinking: "Full thinking content" },
+        { type: "text", text: "Response" },
+      ]), 1001);
+
+      const blocks = builder.getBlocks();
+      const thinkingBlocks = blocks.filter(b => b.kind === "thinking");
+      expect(thinkingBlocks).toHaveLength(1);
+      expect((thinkingBlocks[0] as { content: string }).content).toBe("thinking...");
     });
   });
 });

@@ -6,6 +6,9 @@
  * layer adds shell, verification, and tool-usage instructions.
  */
 
+import { execSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import type { Provider } from "./llm/types.js";
 
 const SHELL_INSTRUCTIONS = `EXECUTION ENVIRONMENT:
@@ -59,19 +62,56 @@ const BASH_ANTI_PATTERNS = `BASH ANTI-PATTERNS:
 - Do not use \`2>/dev/null\` — error output is useful for debugging.
 - Do not pipe through \`| head\` or \`| tail\` — use the \`read\` tool with offset and limit parameters instead.`;
 
+function detectShell(): string {
+  return process.env.SHELL ?? "unknown";
+}
+
+function detectOsVersion(): string {
+  try {
+    return execSync("uname -sr", { encoding: "utf-8", timeout: 2000 }).trim();
+  } catch {
+    return `${process.platform} ${process.arch}`;
+  }
+}
+
+function isGitRepo(cwd: string): boolean {
+  try {
+    return existsSync(join(cwd, ".git"));
+  } catch {
+    return false;
+  }
+}
+
+function buildEnvBlock(cwd: string): string {
+  const lines = [
+    `Working directory: ${cwd}`,
+    `Is directory a git repo: ${isGitRepo(cwd) ? "Yes" : "No"}`,
+    `Platform: ${process.platform}`,
+    `Shell: ${detectShell()}`,
+    `OS Version: ${detectOsVersion()}`,
+    `Date: ${new Date().toISOString().slice(0, 10)}`,
+  ];
+  return `<env>\n${lines.join("\n")}\n</env>`;
+}
+
 export interface HarnessPromptOptions {
   orchestrationSystemPrompt: string;
   provider: Provider;
   projectInstructions?: string;
   /** Resolved harness tool names (e.g. "bash", "write_handoff", "todo_list"). */
   availableTools: ReadonlySet<string>;
+  cwd?: string;
 }
 
 export function buildHarnessSystemPrompt(opts: HarnessPromptOptions): string {
-  const { orchestrationSystemPrompt, provider, projectInstructions, availableTools } = opts;
+  const { orchestrationSystemPrompt, provider, projectInstructions, availableTools, cwd } = opts;
   const has = (tool: string): boolean => availableTools.has(tool);
 
   const toolSections: string[] = [];
+
+  if (cwd) {
+    toolSections.push(buildEnvBlock(cwd));
+  }
 
   if (has("bash")) {
     toolSections.push(SHELL_INSTRUCTIONS);

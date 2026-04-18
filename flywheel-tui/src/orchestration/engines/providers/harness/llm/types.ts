@@ -5,13 +5,15 @@
  * Provider adapters convert to/from wire formats.
  */
 
-export type ReasoningEffort = "off" | "low" | "medium" | "high";
+export type ReasoningEffort = "off" | "low" | "medium" | "high" | "max";
 
 export type ContentBlock =
   | { type: "text"; text: string }
   | { type: "image"; mediaType: string; data: string }
   | { type: "tool_use"; id: string; name: string; input: Record<string, unknown> }
-  | { type: "tool_result"; tool_use_id: string; content: string };
+  | { type: "tool_result"; tool_use_id: string; content: string }
+  | { type: "thinking"; thinking: string; signature?: string }
+  | { type: "reasoning"; id: string; encrypted_content: string };
 
 export interface Message {
   role: "user" | "assistant" | "system";
@@ -37,10 +39,12 @@ export type Provider = "anthropic" | "openai";
 export type StreamEvent =
   | { kind: "text_delta"; text: string }
   | { kind: "thinking_delta"; text: string }
+  | { kind: "thinking_complete"; thinking: string; signature?: string }
   | { kind: "tool_use"; toolCall: ToolCall }
   | { kind: "tool_result"; toolCallId: string; content: string }
+  | { kind: "reasoning"; id: string; encryptedContent: string }
   | { kind: "usage"; inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheCreateTokens: number; reasoningTokens: number }
-  | { kind: "done"; stopReason: string };
+  | { kind: "done"; stopReason: string; responseId?: string };
 
 export interface StreamOptions {
   messages: Message[];
@@ -49,6 +53,7 @@ export interface StreamOptions {
   model?: string;
   reasoningEffort?: ReasoningEffort;
   signal?: AbortSignal;
+  previousResponseId?: string;
 }
 
 export interface LLMClient {

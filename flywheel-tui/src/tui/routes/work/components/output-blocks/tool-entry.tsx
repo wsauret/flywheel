@@ -1,8 +1,7 @@
 /** @jsxImportSource @opentui/solid */
 
-import { createSignal, createMemo, Show, For } from "solid-js"
-import { StyledText, fg as stFg, bg as stBg, type TextChunk } from "@opentui/core"
-import { BOLD } from "@tui/shared/ui/text-attributes"
+import { createSignal, createMemo, createEffect, Show, For } from "solid-js"
+import { StyledText, fg as stFg, bg as stBg, bold as stBold, link as stLink, type TextChunk } from "@opentui/core"
 import type { TextRenderable } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
@@ -73,21 +72,45 @@ export function ToolEntry(props: ToolEntryProps) {
     return { icon: spinnerFrame(), color: theme.secondary }
   })
 
+  const headerContent = createMemo(() => {
+    const chunks: TextChunk[] = [
+      stFg(statusIcon().color)(statusIcon().icon),
+      stFg(theme.text)(" "),
+      stBold(stFg(theme.text)(name())),
+    ]
+
+    const detail = props.block.detail
+    if (detail) {
+      chunks.push(stFg(theme.text)(" "))
+      if (props.block.filePath) {
+        chunks.push(stLink(toFileUri(props.block.filePath))(stFg(theme.textSubtle)(detail)))
+      } else {
+        chunks.push(stFg(theme.textSubtle)(detail))
+      }
+    }
+
+    if (hasError() && props.block.errorMessage) {
+      chunks.push(stFg(theme.text)(" "))
+      chunks.push(stFg(theme.error)(props.block.errorMessage))
+    }
+
+    if (hasExpandable()) {
+      chunks.push(stFg(theme.text)(" "))
+      chunks.push(stFg(theme.textMuted)(expanded() ? "▾" : "▸"))
+    }
+
+    return new StyledText(chunks)
+  })
+
   const header = () => (
-    <box flexDirection="row" gap={1} overflow="hidden" onMouseDown={hasExpandable() ? () => setExpanded(prev => !prev) : undefined}>
-      <text fg={statusIcon().color} flexShrink={0}>{statusIcon().icon}</text>
-      <text fg={theme.text} flexShrink={0} attributes={BOLD}>{name()}</text>
-      <Show when={props.block.filePath} fallback={
-        <text fg={theme.textSubtle} flexShrink={1} overflow="hidden" wrapMode="none">{props.block.detail}</text>
-      }>
-        <text fg={theme.textSubtle} flexShrink={1} overflow="hidden" wrapMode="none"><a href={toFileUri(props.block.filePath!)}>{props.block.detail}</a></text>
-      </Show>
-      <Show when={hasError()}>
-        <text fg={theme.error} flexShrink={0} overflow="hidden" wrapMode="none">{props.block.errorMessage}</text>
-      </Show>
-      <Show when={hasExpandable()}>
-        <text fg={theme.textMuted} flexShrink={0}>{expanded() ? "▾" : "▸"}</text>
-      </Show>
+    <box onMouseDown={hasExpandable() ? () => setExpanded(prev => !prev) : undefined}>
+      <text
+        ref={(el: TextRenderable) => {
+          createEffect(() => { el.content = headerContent() })
+        }}
+        overflow="hidden"
+        wrapMode="none"
+      />
     </box>
   )
 
@@ -110,14 +133,13 @@ export function ToolEntry(props: ToolEntryProps) {
               const lines = contentHighlighted()
               const maxDigits = String(lines.length).length
               return <For each={lines}>
-                {(segments, i) => (
-                  <box flexDirection="row">
-                    <text fg={theme.text}>{` ${String(i() + 1).padStart(maxDigits)}  `}</text>
-                    <For each={segments}>
-                      {(seg) => <text fg={seg.color ?? theme.text}>{seg.text}</text>}
-                    </For>
-                  </box>
-                )}
+                {(segments, i) => {
+                  const lineChunks: TextChunk[] = [
+                    stFg(theme.text)(` ${String(i() + 1).padStart(maxDigits)}  `),
+                    ...segments.map((seg) => stFg(seg.color ?? theme.text)(seg.text)),
+                  ]
+                  return <text ref={(el: TextRenderable) => { el.content = new StyledText(lineChunks) }} />
+                }}
               </For>
             })()}
           </Show>

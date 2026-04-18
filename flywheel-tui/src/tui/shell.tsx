@@ -31,7 +31,7 @@ import { createPasteCollapse } from "./hooks/paste-collapse.js"
 import { QuestionDock } from "./routes/work/components/question-dock.js"
 import type { RunnerErrorResult } from "../orchestration/session/types.js"
 
-export function FlywheelShell(props: { factories: WorkflowSessionFactories; projectCwd: string; showThinking?: boolean }) {
+export function FlywheelShell(props: { factories: WorkflowSessionFactories; projectCwd: string; showThinking?: boolean; engineName?: string }) {
   const { theme, syntax } = useTheme()
   const toast = useToast()
   const { manager, sessions } = useSession()
@@ -46,7 +46,6 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     sessions,
     setTerminalTitle: (t: string) => renderer.setTerminalTitle(t),
     showToast: (opts: { message: string; variant: "info" | "warning" | "error" | "success"; duration?: number }) => toast.show(opts),
-    showThinking: props.showThinking ?? true,
   })
 
   renderer.setTerminalTitle(TERMINAL_TITLE_BASE)
@@ -223,15 +222,18 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
       <box flexShrink={0} flexDirection="column" backgroundColor={theme.backgroundPanel} border={["left"]} customBorderChars={SplitBorder.customBorderChars} borderColor={theme.border}>
         <box flexDirection="row" justifyContent="space-between" paddingTop={1} paddingBottom={stepDisplay().visible.length > 0 ? 0 : 1} paddingLeft={2} paddingRight={1}>
           <box flexDirection="row" flexShrink={1} overflow="hidden">
-            <text fg={theme.primary} attributes={BOLD}>{"\u25CE flywheel"}</text>
+            <text fg={theme.primary} attributes={BOLD}>{"\u2699 flywheel"}</text>
             <Show when={signals.sessionTitle()}>
               <text fg={theme.textMuted}>{" \u00b7 "}</text>
               <text fg={theme.text}>{signals.sessionTitle()}</text>
             </Show>
           </box>
           <box flexDirection="row" flexShrink={0}>
+            <Show when={props.engineName}>
+              <text fg={theme.textSubtle}>{props.engineName}</text>
+            </Show>
             <Show when={signals.foregroundId()}>
-              <text fg={theme.textSubtle}>{signals.foregroundId()}</text>
+              <text fg={theme.textSubtle}>{props.engineName ? " \u00b7 " : ""}{"Session ID: "}{signals.foregroundId()}</text>
             </Show>
             <Show when={headerRight()}>
               <text fg={headerRightColor()}>{signals.foregroundId() ? " \u00b7 " : " "}{headerRight()}</text>
@@ -299,6 +301,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
           <OutputWindow
             outputBlocks={signals.outputBlocks()}
             workflowStatus={displayStatus()}
+            showThinking={props.showThinking ?? true}
           />
         </Show>
       </box>
@@ -332,6 +335,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
                 backgroundColor="transparent" focusedBackgroundColor="transparent"
                 onSubmit={() => { const v = pasteCollapse?.expandForSubmit() ?? promptRef?.plainText ?? ""; commands.handlePromptSubmit(v); promptRef?.clear(); setPromptHeight(1); const fgId = signals.foregroundId(); if (fgId) draftBySession.delete(fgId) }}
                 keyBindings={[
+                  { name: "return", shift: true, action: "newline" as TextareaAction },
                   { name: "return", action: "submit" as TextareaAction },
                   { name: "z", ctrl: true, action: "undo" as TextareaAction },
                   { name: "z", meta: true, action: "undo" as TextareaAction },

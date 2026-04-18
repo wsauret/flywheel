@@ -112,7 +112,7 @@ describe("Workflow → OutputSession integration", () => {
 
       // Should have both a text block (from worker) and an agent block (from dispatcher)
       const textBlock = blocks.find((b) => b.kind === "text")
-      const agentBlock = blocks.find((b) => b.kind === "agent")
+      const agentBlock = blocks.find((b) => b.kind === "toolGroup")
       expect(textBlock).toBeDefined()
       expect(agentBlock).toBeDefined()
     })

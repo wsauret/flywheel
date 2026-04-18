@@ -6,13 +6,14 @@ import { useKeyboard } from "@opentui/solid"
 import { ShimmerText } from "@tui/shared/components/shimmer-text"
 import { Spinner } from "@tui/shared/components/spinner"
 import { BlockRenderer } from "./output-blocks/block-renderer.js"
-import type { AnyBlock, AgentBlock } from "@infra/output-blocks"
+import type { AnyBlock, ToolGroupBlock } from "@infra/output-blocks"
 
 type WorkflowStatus = "idle" | "running" | "completed" | "interrupted"
 
 interface OutputWindowProps {
   outputBlocks: readonly AnyBlock[]
   workflowStatus: WorkflowStatus
+  showThinking?: boolean
 }
 
 export function OutputWindow(props: OutputWindowProps) {
@@ -29,7 +30,7 @@ export function OutputWindow(props: OutputWindowProps) {
   }
 
   const toggleAll = () => {
-    const agentBlocks = props.outputBlocks.filter((b): b is AgentBlock => b.kind === "agent")
+    const agentBlocks = props.outputBlocks.filter((b): b is ToolGroupBlock => b.kind === "toolGroup")
     const currentExpanded = expandedIds()
     const allExpanded = agentBlocks.every((b) => currentExpanded.has(b.id))
     if (allExpanded) {
@@ -88,7 +89,7 @@ export function OutputWindow(props: OutputWindowProps) {
             focused={false}
           >
             <Index each={props.outputBlocks}>
-              {(block) => <BlockRenderer block={block()} expandedIds={expandedIds()} onToggleExpand={toggleBlock} />}
+              {(block) => <BlockRenderer block={block()} expandedIds={expandedIds()} onToggleExpand={toggleBlock} showThinking={props.showThinking} />}
             </Index>
           </scrollbox>
         </Show>

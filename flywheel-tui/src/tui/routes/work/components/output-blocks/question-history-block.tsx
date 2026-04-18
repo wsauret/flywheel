@@ -1,8 +1,9 @@
 /** @jsxImportSource @opentui/solid */
 
-import { For, Show, createMemo } from "solid-js"
+import { For, Show, createMemo, createEffect } from "solid-js"
+import { StyledText, fg as stFg, bold as stBold, dim as stDim, type TextChunk } from "@opentui/core"
+import type { TextRenderable } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
-import { BOLD, DIM } from "@tui/shared/ui/text-attributes"
 import { useSpinnerFrame } from "@tui/shared/hooks/use-spinner-frame.js"
 import type { QuestionBlock } from "@infra/output-blocks"
 import { SUCCESS_ICON, ERROR_ICON } from "./tool-row.js"
@@ -37,18 +38,33 @@ export function QuestionHistoryBlock(props: QuestionHistoryBlockProps) {
     return { text: first.question, color: theme.textSubtle }
   })
 
-  // Header row — common to both single and multi-question cases
+  const headerContent = createMemo(() => {
+    const chunks: TextChunk[] = [
+      stFg(icon().color)(icon().text),
+      stFg(theme.text)(" "),
+      stBold(stFg(theme.text)("Ask User")),
+    ]
+    if (isSingleQuestion()) {
+      const summary = singleLineSummary()
+      chunks.push(stFg(theme.text)(" "))
+      chunks.push(stFg(summary.color)(summary.text))
+    } else {
+      const detail = isCancelled() ? "Cancelled" : isAnswered() ? `${props.block.questions.length} questions answered` : `${props.block.questions.length} questions`
+      chunks.push(stFg(theme.text)(" "))
+      chunks.push(stFg(theme.textSubtle)(detail))
+    }
+    return new StyledText(chunks)
+  })
+
   const header = () => (
-    <box flexDirection="row" gap={1} paddingLeft={1} overflow="hidden">
-      <text fg={icon().color} flexShrink={0}>{icon().text}</text>
-      <text fg={theme.text} attributes={BOLD} flexShrink={0}>Ask User</text>
-      <Show when={isSingleQuestion()} fallback={
-        <text fg={theme.textSubtle} flexShrink={1} overflow="hidden" wrapMode="none">
-          {isCancelled() ? "Cancelled" : isAnswered() ? `${props.block.questions.length} questions answered` : `${props.block.questions.length} questions`}
-        </text>
-      }>
-        <text fg={singleLineSummary().color} flexShrink={1} overflow="hidden" wrapMode="none">{singleLineSummary().text}</text>
-      </Show>
+    <box paddingLeft={1}>
+      <text
+        ref={(el: TextRenderable) => {
+          createEffect(() => { el.content = headerContent() })
+        }}
+        overflow="hidden"
+        wrapMode="none"
+      />
     </box>
   )
 
@@ -58,14 +74,19 @@ export function QuestionHistoryBlock(props: QuestionHistoryBlockProps) {
       <Show when={!isSingleQuestion() && isAnswered()}>
         <box flexDirection="column" paddingLeft={4}>
           <For each={props.block.questions}>
-            {(q) => (
-              <box flexDirection="row" gap={1} overflow="hidden">
-                <text fg={theme.textMuted} attributes={DIM} flexShrink={0}>·</text>
-                <text fg={theme.textSubtle} flexShrink={1} overflow="hidden" wrapMode="none">
-                  {q.question} → {props.block.answers?.[q.question] ?? ""}
-                </text>
-              </box>
-            )}
+            {(q) => {
+              const rowChunks: TextChunk[] = [
+                stDim(stFg(theme.textMuted)("·")),
+                stFg(theme.textSubtle)(` ${q.question} → ${props.block.answers?.[q.question] ?? ""}`),
+              ]
+              return (
+                <text
+                  ref={(el: TextRenderable) => { el.content = new StyledText(rowChunks) }}
+                  overflow="hidden"
+                  wrapMode="none"
+                />
+              )
+            }}
           </For>
         </box>
       </Show>

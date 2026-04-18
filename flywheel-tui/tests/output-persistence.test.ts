@@ -36,9 +36,10 @@ function toolBlock(name = "read", detail = "a.ts") {
 
 function agentBlock(status: "active" | "completed" | "error" = "completed") {
   return {
-    kind: "agent" as const,
+    kind: "toolGroup" as const,
     id: "a1",
-    agentLabel: "Coder",
+    groupKind: "agent" as const,
+    label: "Coder",
     description: "Writing code",
     status,
     children: [toolBlock()],
@@ -112,7 +113,7 @@ describe("createOutputPersistence — save + load", () => {
     expect((loaded[0] as any).content).toBe("second");
   });
 
-  it("normalizes active AgentBlock to paused on save", async () => {
+  it("normalizes active ToolGroupBlock to paused on save", async () => {
     const baseDir = makeTmpDir();
     const sessionId = crypto.randomUUID();
     const persistence = createOutputPersistence({ sessionId, baseDir });

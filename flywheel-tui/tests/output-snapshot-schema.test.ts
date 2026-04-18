@@ -22,7 +22,7 @@ function toolBlock(name = "read_file", detail = "/src/main.ts") {
 function agentBlock(
   overrides?: Partial<{
     id: string;
-    agentLabel: string;
+    label: string;
     description: string;
     status: "active" | "completed" | "error";
     children: ReturnType<typeof toolBlock>[];
@@ -32,9 +32,10 @@ function agentBlock(
   }>,
 ) {
   return {
-    kind: "agent" as const,
+    kind: "toolGroup" as const,
     id: overrides?.id ?? "agent-1",
-    agentLabel: overrides?.agentLabel ?? "Researcher",
+    groupKind: "agent" as const,
+    label: overrides?.label ?? "Researcher",
     description: overrides?.description ?? "Investigating codebase",
     status: overrides?.status ?? "active",
     children: overrides?.children ?? [toolBlock()],
@@ -92,7 +93,7 @@ describe("OutputSnapshotSchema — validation", () => {
     expect(result.success).toBe(true);
   });
 
-  it("validates an AgentBlock snapshot with completed status", () => {
+  it("validates an ToolGroupBlock snapshot with completed status", () => {
     const block = agentBlock({ status: "completed" });
     const result = OutputSnapshotSchema.safeParse(block);
     expect(result.success).toBe(true);
@@ -161,31 +162,31 @@ describe("toSnapshot — serialization", () => {
     expect(snapshots[2].kind).toBe("system");
   });
 
-  it("normalizes active AgentBlock status to paused", () => {
+  it("normalizes active ToolGroupBlock status to paused", () => {
     const blocks = [agentBlock({ status: "active" })];
     const snapshots = toSnapshot(blocks);
 
     expect(snapshots).toHaveLength(1);
-    expect(snapshots[0].kind).toBe("agent");
+    expect(snapshots[0].kind).toBe("toolGroup");
     // Active agents should be normalized to "paused" on serialize
     expect((snapshots[0] as any).status).toBe("paused");
   });
 
-  it("preserves completed AgentBlock status", () => {
+  it("preserves completed ToolGroupBlock status", () => {
     const blocks = [agentBlock({ status: "completed" })];
     const snapshots = toSnapshot(blocks);
 
     expect((snapshots[0] as any).status).toBe("completed");
   });
 
-  it("preserves error AgentBlock status", () => {
+  it("preserves error ToolGroupBlock status", () => {
     const blocks = [agentBlock({ status: "error" })];
     const snapshots = toSnapshot(blocks);
 
     expect((snapshots[0] as any).status).toBe("error");
   });
 
-  it("preserves AgentBlock children array", () => {
+  it("preserves ToolGroupBlock children array", () => {
     const children = [toolBlock("read", "a.ts"), toolBlock("write", "b.ts")];
     const blocks = [agentBlock({ children })];
     const snapshots = toSnapshot(blocks);
@@ -196,7 +197,7 @@ describe("toSnapshot — serialization", () => {
     expect(agentSnap.children[1].name).toBe("write");
   });
 
-  it("preserves AgentBlock optional fields", () => {
+  it("preserves ToolGroupBlock optional fields", () => {
     const blocks = [
       agentBlock({
         latestChild: "read_file",
@@ -231,7 +232,7 @@ describe("toSnapshot — serialization", () => {
     expect(snap.filetype).toBe("ts");
   });
 
-  it("strips expanded from AgentBlock on serialize", () => {
+  it("strips expanded from ToolGroupBlock on serialize", () => {
     const block = { ...agentBlock({ status: "completed" }), expanded: true };
     const snapshots = toSnapshot([block] as any);
 
@@ -239,7 +240,7 @@ describe("toSnapshot — serialization", () => {
     expect((snapshots[0] as any).expanded).toBeUndefined();
   });
 
-  it("preserves all fields on nested ToolEntrys in AgentBlock children", () => {
+  it("preserves all fields on nested ToolEntrys in ToolGroupBlock children", () => {
     const children = [{ ...toolBlock("Edit", "a.ts"), filePath: "/a.ts", diff: "diff" }];
     const block = agentBlock({ status: "completed", children: children as any });
     const snapshots = toSnapshot([block] as any);
@@ -279,9 +280,10 @@ describe("fromSnapshot — deserialization", () => {
   it("preserves all fields through deserialization", () => {
     const snapshots: OutputSnapshot[] = [
       {
-        kind: "agent",
+        kind: "toolGroup",
         id: "a1",
-        agentLabel: "Coder",
+        groupKind: "agent",
+        label: "Coder",
         description: "Writing code",
         status: "completed",
         children: [{ kind: "tool", name: "write", detail: "out.ts", timestamp: 50 }],
@@ -293,9 +295,9 @@ describe("fromSnapshot — deserialization", () => {
 
     expect(blocks).toHaveLength(1);
     const agent = blocks[0] as any;
-    expect(agent.kind).toBe("agent");
+    expect(agent.kind).toBe("toolGroup");
     expect(agent.id).toBe("a1");
-    expect(agent.agentLabel).toBe("Coder");
+    expect(agent.label).toBe("Coder");
     expect(agent.status).toBe("completed");
     expect(agent.children).toHaveLength(1);
     expect(agent.duration).toBe(3000);
@@ -346,14 +348,14 @@ describe("round-trip serialization", () => {
     expect(restored).toHaveLength(7);
     expect(restored[0].kind).toBe("text");
     expect(restored[1].kind).toBe("tool");
-    expect(restored[2].kind).toBe("agent");
+    expect(restored[2].kind).toBe("toolGroup");
     expect(restored[3].kind).toBe("system");
     expect(restored[4].kind).toBe("thinking");
     expect(restored[5].kind).toBe("userMessage");
     expect(restored[6].kind).toBe("todoList");
   });
 
-  it("active AgentBlock becomes paused after round-trip", () => {
+  it("active ToolGroupBlock becomes paused after round-trip", () => {
     const original = [agentBlock({ status: "active" })];
     const json = JSON.stringify(toSnapshot(original));
     const restored = fromSnapshot(JSON.parse(json));

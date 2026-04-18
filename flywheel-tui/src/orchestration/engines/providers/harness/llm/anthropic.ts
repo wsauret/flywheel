@@ -8,7 +8,7 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import type { TextBlock, ToolUseBlock, ThinkingDelta, TextDelta, InputJSONDelta } from "@anthropic-ai/sdk/resources/messages.js";
+import type { TextBlock, ToolUseBlock, ThinkingDelta, TextDelta, InputJSONDelta, SignatureDelta } from "@anthropic-ai/sdk/resources/messages.js";
 import { Log } from "../../../../../infra/log.js";
 import type { ModelsClient, ModelInfo } from "./models.js";
 import { withRetry, withRetryStream } from "./retry.js";
@@ -25,11 +25,12 @@ import { ContextLengthExceededError, OutputLengthExceededError } from "./types.j
 
 const log = Log.create({ service: "llm-anthropic" });
 
-const THINKING_BUDGETS: Record<ReasoningEffort, number> = {
-  off: 0,
-  low: 2_048,
-  medium: 4_096,
-  high: 8_192,
+const EFFORT_TO_ANTHROPIC: Record<ReasoningEffort, string | null> = {
+  off: null,
+  low: "low",
+  medium: "medium",
+  high: "high",
+  max: "max",
 };
 
 const MEDIA_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"] as const;
@@ -37,9 +38,16 @@ type MediaType = (typeof MEDIA_TYPES)[number];
 const MEDIA_TYPE_SET = new Set<string>(MEDIA_TYPES);
 
 const CACHE_CONTROL: Anthropic.CacheControlEphemeral = { type: "ephemeral" };
+const STREAM_IDLE_TIMEOUT_MS = 90_000;
+
+const BETA_HEADERS = [
+  "interleaved-thinking-2025-05-14",
+  "context-management-2025-06-27",
+].join(",");
 
 function toAnthropicContent(
   content: string | ContentBlock[],
+  toolResultIds?: Set<string>,
 ): string | Anthropic.ContentBlockParam[] {
   if (typeof content === "string") return content;
   const result: Anthropic.ContentBlockParam[] = [];
@@ -59,6 +67,7 @@ function toAnthropicContent(
         },
       });
     } else if (block.type === "tool_use") {
+      if (toolResultIds && !toolResultIds.has(block.id)) continue;
       result.push({
         type: "tool_use" as const,
         id: block.id,
@@ -71,44 +80,78 @@ function toAnthropicContent(
         tool_use_id: block.tool_use_id,
         content: block.content,
       });
+    } else if (block.type === "thinking") {
+      if (block.signature && block.thinking) {
+        result.push({
+          type: "thinking" as const,
+          thinking: block.thinking,
+          signature: block.signature,
+        });
+      } else if (block.thinking) {
+        result.push({ type: "text" as const, text: `<thinking>\n${block.thinking}\n</thinking>` });
+      }
     }
   }
   return result;
 }
 
-/** Mutates the last element in place -- safe because convertMessages returns a fresh array. */
-function withLastMessageCached(
-  messages: Anthropic.MessageParam[],
-): Anthropic.MessageParam[] {
-  if (messages.length === 0) return messages;
-  const lastIdx = messages.length - 1;
-  const last = messages[lastIdx]!;
-  if (typeof last.content === "string") {
-    const textBlock: Anthropic.TextBlockParam = {
-      type: "text",
-      text: last.content,
-      cache_control: CACHE_CONTROL,
+/** Tag the last content block in a message with cache_control. Mutates in place. */
+function tagLastBlock(messages: Anthropic.MessageParam[], idx: number): void {
+  const msg = messages[idx]!;
+  if (typeof msg.content === "string") {
+    messages[idx] = {
+      role: msg.role,
+      content: [{ type: "text", text: msg.content, cache_control: CACHE_CONTROL }],
     };
-    messages[lastIdx] = { role: last.role, content: [textBlock] };
-    return messages;
+    return;
   }
-  const content: Anthropic.ContentBlockParam[] = last.content.map((block, i) => {
-    if (i !== last.content.length - 1) return block;
+  const blocks = msg.content;
+  for (let i = blocks.length - 1; i >= 0; i--) {
+    const block = blocks[i]!;
     if (block.type === "text") {
-      return { type: "text" as const, text: block.text, cache_control: CACHE_CONTROL };
+      blocks[i] = { ...block, cache_control: CACHE_CONTROL };
+      return;
     }
-    return block;
-  });
-  messages[lastIdx] = { role: last.role, content };
+    if (block.type === "tool_result") {
+      blocks[i] = { ...block, cache_control: CACHE_CONTROL };
+      return;
+    }
+  }
+}
+
+/** Place cache breakpoints on the penultimate and last user messages. Mutates in place. */
+function addCacheBreakpoints(messages: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
+  if (messages.length === 0) return messages;
+
+  const userIndices: number[] = [];
+  for (let i = 0; i < messages.length; i++) {
+    if (messages[i]!.role === "user") userIndices.push(i);
+  }
+
+  if (userIndices.length >= 2) {
+    tagLastBlock(messages, userIndices[userIndices.length - 2]!);
+  }
+  if (userIndices.length >= 1) {
+    tagLastBlock(messages, userIndices[userIndices.length - 1]!);
+  }
+
   return messages;
 }
 
 function convertMessages(messages: Message[]): Anthropic.MessageParam[] {
+  const toolResultIds = new Set<string>();
+  for (const m of messages) {
+    if (typeof m.content === "string") continue;
+    for (const b of m.content) {
+      if (b.type === "tool_result") toolResultIds.add(b.tool_use_id);
+    }
+  }
+
   return messages
     .filter((m) => m.role !== "system")
     .map((m) => ({
       role: m.role as "user" | "assistant",
-      content: toAnthropicContent(m.content),
+      content: toAnthropicContent(m.content, toolResultIds),
     }));
 }
 
@@ -130,6 +173,10 @@ export function createAnthropicAdapter(
 
   function supportsReasoning(model: string, info: ModelInfo | null): boolean {
     return info?.reasoning ?? /^claude-(opus|sonnet|haiku)-4/.test(model);
+  }
+
+  function supportsAdaptiveThinking(model: string): boolean {
+    return /claude-(opus|sonnet)-4[.-]([6-9]|\d{2,})/.test(model);
   }
 
   function contextLimit(info: ModelInfo | null): number {
@@ -173,7 +220,7 @@ export function createAnthropicAdapter(
     async *streamWithTools(options: StreamOptions): AsyncGenerator<StreamEvent> {
       const model = options.model ?? defaultModel;
       const info = await resolveModelInfo(model);
-      const reasoning = options.reasoningEffort ?? "high";
+      const reasoning = options.reasoningEffort ?? "max";
 
       const anthropicMessages = convertMessages(options.messages);
       const anthropicTools: Anthropic.Tool[] = options.tools.map((t, i) => ({
@@ -183,15 +230,13 @@ export function createAnthropicAdapter(
         ...(i === options.tools.length - 1 ? { cache_control: CACHE_CONTROL } : {}),
       }));
 
-      const thinkingBudget = THINKING_BUDGETS[reasoning];
-      const useThinking = thinkingBudget > 0 && supportsReasoning(model, info);
+      const useThinking = reasoning !== "off" && supportsReasoning(model, info);
       if (reasoning !== "off" && !supportsReasoning(model, info)) {
         log.warn(`Model ${model} does not support reasoning -- proceeding without extended thinking`);
       }
 
-      const maxTokens = useThinking
-        ? Math.max(outputLimit(info), thinkingBudget + 1_024)
-        : outputLimit(info);
+      const maxOutput = outputLimit(info);
+      const maxTokens = useThinking ? Math.max(maxOutput, maxOutput * 2) : maxOutput;
 
       yield* withRetryStream(async function* () {
         try {
@@ -200,46 +245,89 @@ export function createAnthropicAdapter(
             max_tokens: maxTokens,
             stream: true,
             system: [{ type: "text", text: options.systemPrompt, cache_control: CACHE_CONTROL }],
-            messages: withLastMessageCached(anthropicMessages),
+            messages: addCacheBreakpoints(anthropicMessages),
             tools: anthropicTools,
           };
           if (useThinking) {
-            params.thinking = { type: "enabled", budget_tokens: thinkingBudget };
+            if (supportsAdaptiveThinking(model)) {
+              (params as unknown as Record<string, unknown>).thinking = { type: "adaptive" };
+              const effort = EFFORT_TO_ANTHROPIC[reasoning];
+              if (effort) {
+                (params as unknown as Record<string, unknown>).output_config = { effort };
+              }
+            } else {
+              params.thinking = { type: "enabled", budget_tokens: maxTokens - 1 };
+            }
           }
 
-          const stream = client.messages.stream(params, { signal: options.signal });
-          const toolInputBuffers = new Map<number, { id: string; name: string; json: string }>();
+          if (!useThinking) {
+            params.temperature = 1;
+          }
 
-          for await (const event of stream) {
+          const stream = client.messages.stream(params, {
+            signal: options.signal,
+            headers: { "anthropic-beta": BETA_HEADERS },
+          });
+          const toolInputBuffers = new Map<number, { id: string; name: string; json: string }>();
+          const thinkingBuffers = new Map<number, { thinking: string; signature: string }>();
+
+          let idleTimer: ReturnType<typeof setTimeout> | null = null;
+          const resetIdle = () => {
+            if (idleTimer) clearTimeout(idleTimer);
+            idleTimer = setTimeout(() => {
+              log.warn(`Stream idle for ${STREAM_IDLE_TIMEOUT_MS}ms, aborting`);
+              stream.abort();
+            }, STREAM_IDLE_TIMEOUT_MS);
+          };
+          resetIdle();
+
+          try { for await (const event of stream) {
+            resetIdle();
             if (event.type === "content_block_start") {
               const block = event.content_block;
               if (block.type === "tool_use") {
                 toolInputBuffers.set(event.index, { id: block.id, name: block.name, json: "" });
+              } else if (block.type === "thinking") {
+                thinkingBuffers.set(event.index, { thinking: "", signature: "" });
               }
             } else if (event.type === "content_block_delta") {
               const delta = event.delta;
               if (delta.type === "text_delta") {
                 yield { kind: "text_delta", text: (delta as TextDelta).text } as const;
               } else if (delta.type === "thinking_delta") {
+                const buf = thinkingBuffers.get(event.index);
+                if (buf) buf.thinking += (delta as ThinkingDelta).thinking;
                 yield { kind: "thinking_delta", text: (delta as ThinkingDelta).thinking } as const;
+              } else if (delta.type === "signature_delta") {
+                const buf = thinkingBuffers.get(event.index);
+                if (buf) buf.signature += (delta as SignatureDelta).signature;
               } else if (delta.type === "input_json_delta") {
                 const buf = toolInputBuffers.get(event.index);
                 if (buf) buf.json += (delta as InputJSONDelta).partial_json;
               }
             } else if (event.type === "content_block_stop") {
-              const buf = toolInputBuffers.get(event.index);
-              if (buf) {
+              const toolBuf = toolInputBuffers.get(event.index);
+              if (toolBuf) {
                 let input: Record<string, unknown>;
                 try {
-                  input = JSON.parse(buf.json) as Record<string, unknown>;
+                  input = JSON.parse(toolBuf.json) as Record<string, unknown>;
                 } catch {
-                  input = { _raw: buf.json };
+                  input = { _raw: toolBuf.json };
                 }
                 yield {
                   kind: "tool_use",
-                  toolCall: { id: buf.id, name: buf.name, input },
+                  toolCall: { id: toolBuf.id, name: toolBuf.name, input },
                 } as const;
                 toolInputBuffers.delete(event.index);
+              }
+              const thinkBuf = thinkingBuffers.get(event.index);
+              if (thinkBuf) {
+                yield {
+                  kind: "thinking_complete",
+                  thinking: thinkBuf.thinking,
+                  signature: thinkBuf.signature || undefined,
+                } as StreamEvent;
+                thinkingBuffers.delete(event.index);
               }
             } else if (event.type === "message_delta") {
               const stopReason = event.delta.stop_reason;
@@ -257,7 +345,7 @@ export function createAnthropicAdapter(
                 reasoningTokens: 0,
               } as const;
             }
-          }
+          } } finally { if (idleTimer) clearTimeout(idleTimer); }
 
           const finalMessage = await stream.finalMessage();
           const outputTokens = finalMessage.usage.output_tokens;
@@ -290,7 +378,7 @@ export function createAnthropicAdapter(
         const response = await client.messages.create({
           model: cache?.model ?? defaultModel,
           max_tokens: Math.min(outputLimit(cache?.info ?? null), 16_384),
-          messages: withLastMessageCached(anthropicMessages),
+          messages: addCacheBreakpoints(anthropicMessages),
         });
         return response.content
           .filter((b): b is TextBlock => b.type === "text")

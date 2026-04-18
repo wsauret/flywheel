@@ -1,7 +1,8 @@
 /** @jsxImportSource @opentui/solid */
 
-import { For, Show, createMemo } from "solid-js"
-import { BOLD } from "@tui/shared/ui/text-attributes"
+import { For, Show, createMemo, createEffect } from "solid-js"
+import { StyledText, fg as stFg, bold as stBold, type TextChunk } from "@opentui/core"
+import type { TextRenderable } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import type { Theme } from "@tui/shared/context/theme/resolve"
 import type { TodoListBlock as TodoListBlockType, TodoItem } from "@infra/output-blocks"
@@ -9,8 +10,8 @@ import type { TodoListBlock as TodoListBlockType, TodoItem } from "@infra/output
 const MAX_VISIBLE = 4
 
 function todoStyle(status: TodoItem["status"], theme: Theme) {
-  if (status === "in_progress") return { symbol: "\u25C9", symbolFg: theme.primary, textFg: theme.text, attrs: BOLD }
-  return { symbol: "\u25CB", symbolFg: theme.textMuted, textFg: theme.text, attrs: undefined }
+  if (status === "in_progress") return { symbol: "\u25C9", symbolFg: theme.primary, textFg: theme.text, bold: true }
+  return { symbol: "\u25CB", symbolFg: theme.textMuted, textFg: theme.text, bold: false }
 }
 
 function progressBar(completed: number, total: number, theme: Theme): { text: string; fg: typeof theme.success } {
@@ -46,27 +47,38 @@ export function TodoListBlock(props: TodoListBlockProps) {
   return (
     <Show when={incomplete().length > 0}>
       <box flexDirection="column">
-        <box flexDirection="row" gap={1} overflow="hidden">
-          <text fg={theme.accent} attributes={BOLD}>{"\u2261"} Tasks</text>
-          <Show when={completedCount() > 0}>
-            {(() => {
-              const bar = () => progressBar(completedCount(), totalCount(), theme)
-              return (
-                <>
-                  <text fg={bar().fg}>{bar().text}</text>
-                  <text fg={theme.success} attributes={BOLD}>{completedCount()}/{totalCount()}</text>
-                </>
-              )
-            })()}
-          </Show>
-        </box>
+        <text
+          ref={(el: TextRenderable) => {
+            createEffect(() => {
+              const chunks: TextChunk[] = [
+                stBold(stFg(theme.accent)("\u2261 Tasks")),
+              ]
+              if (completedCount() > 0) {
+                const bar = progressBar(completedCount(), totalCount(), theme)
+                chunks.push(stFg(theme.text)(" "))
+                chunks.push(stFg(bar.fg)(bar.text))
+                chunks.push(stFg(theme.text)(" "))
+                chunks.push(stBold(stFg(theme.success)(`${completedCount()}/${totalCount()}`)))
+              }
+              el.content = new StyledText(chunks)
+            })
+          }}
+          overflow="hidden"
+          wrapMode="none"
+        />
         <For each={visible()}>
           {(item) => {
             const style = todoStyle(item.status, theme)
+            const itemChunks: TextChunk[] = [
+              stFg(style.symbolFg)(style.symbol),
+              stFg(style.textFg)(` ${item.content}`),
+            ]
+            const styled = style.bold
+              ? new StyledText(itemChunks.map(c => stBold(c)))
+              : new StyledText(itemChunks)
             return (
-              <box flexDirection="row" gap={1} paddingLeft={2}>
-                <text fg={style.symbolFg} attributes={style.attrs}>{style.symbol}</text>
-                <text fg={style.textFg} attributes={style.attrs}>{item.content}</text>
+              <box paddingLeft={2}>
+                <text ref={(el: TextRenderable) => { el.content = styled }} />
               </box>
             )
           }}

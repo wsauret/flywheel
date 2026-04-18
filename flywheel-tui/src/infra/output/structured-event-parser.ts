@@ -5,8 +5,8 @@ import type { ToolEntry, QuestionEntry } from "../output-blocks.js";
 import { getToolDetail, extractToolDiff, extractErrorText, launderToolError } from "./output-formatter.js";
 import { SUBAGENT_TOOL_NAMES } from "./tool-constants.js";
 
-/** Tools that resolve near-instantly — rendered as already-completed (no spinner flash). */
-const OPTIMISTIC_TOOLS = new Set(["Read", "Glob", "Grep"]);
+/** Tools that resolve near-instantly — rendered as already-completed (no spinner flash). Lowercase for case-insensitive lookup. */
+const OPTIMISTIC_TOOLS = new Set(["read", "glob", "grep"]);
 
 function isSubagentToolName(name: string): boolean {
   return SUBAGENT_TOOL_NAMES.has(name.toLowerCase());
@@ -74,6 +74,12 @@ const STANDALONE_TOP_LEVEL_TOOLS: Record<string, StandaloneHandler> = {
     if (Array.isArray(todos)) builder.pushTodoWrite(todos, now);
     return null;
   },
+  todo_list: (input, now, builder) => {
+    if (input?.operation !== "write") return null;
+    const todos = input?.todos as Array<{ content: string; status: "pending" | "in_progress" | "completed" }> | undefined;
+    if (Array.isArray(todos)) builder.pushTodoWrite(todos, now);
+    return null;
+  },
   Edit: standaloneToolHandler("Edit"),
   Write: standaloneToolHandler("Write"),
   AskUserQuestion: (input, now, builder, toolUseId) => {
@@ -118,6 +124,9 @@ export class StructuredEventParser {
   private toolUseIdToStandalone = new Map<string, StandaloneToolLocation>();
   private toolUseIdToQuestion = new Map<string, QuestionLocation>();
 
+  private hasStreamedText = false;
+  private hasStreamedThinking = false;
+
   constructor(builder: StructuredOutputBuilder) {
     this.builder = builder;
   }
@@ -127,6 +136,8 @@ export class StructuredEventParser {
     this.toolUseIdToRow.clear();
     this.toolUseIdToStandalone.clear();
     this.toolUseIdToQuestion.clear();
+    this.hasStreamedText = false;
+    this.hasStreamedThinking = false;
   }
 
   dispatch(event: NDJSONEvent, now = Date.now()): void {
@@ -145,9 +156,20 @@ export class StructuredEventParser {
           this.builder.completeAgent(tracked.agentId, durationMs);
         }
         this.toolUseIdToAgent.delete(toolUseId);
+      } else {
+        this.resolveToolResult(toolUseId, event.data.is_error === true, event.data.content);
       }
     } else if (event.type === "user") {
       this.handleUserEvent(event.data);
+    } else if (event.type === "content_block_delta") {
+      const delta = event.data.delta;
+      if (delta?.type === "thinking_delta" && typeof delta.thinking === "string") {
+        this.builder.pushThinking(delta.thinking, now);
+        this.hasStreamedThinking = true;
+      } else if (delta?.type === "text_delta" && typeof delta.text === "string") {
+        this.builder.pushText(delta.text, now);
+        this.hasStreamedText = true;
+      }
     }
   }
 
@@ -167,13 +189,27 @@ export class StructuredEventParser {
       this.builder.closeOpenSubagents(now);
     }
 
+    const hasNonSubagentTools = !parentAgentId && content.some(
+      (block) => block.type === "tool_use" && block.name && !isSubagentToolName(block.name),
+    );
+
+    const skipStreamedText = this.hasStreamedText && !parentAgentId;
+    const skipStreamedThinking = this.hasStreamedThinking && !parentAgentId;
+    this.hasStreamedText = false;
+    this.hasStreamedThinking = false;
+
     for (const block of content) {
       if (block.type === "thinking" && typeof block.thinking === "string") {
         if (!parentAgentId) {
-          this.builder.pushThinking(block.thinking, now);
+          if (hasNonSubagentTools) {
+            this.builder.pushThinkingAsToolRow(now);
+          }
+          if (!skipStreamedThinking && block.thinking.length > 0) {
+            this.builder.pushThinking(block.thinking, now);
+          }
         }
       } else if (block.type === "text" && typeof block.text === "string") {
-        if (!parentAgentId && block.text.length > 0) {
+        if (!skipStreamedText && !parentAgentId && block.text.length > 0) {
           this.builder.pushText(block.text, now);
         }
       } else if (block.type === "tool_use") {
@@ -243,7 +279,7 @@ export class StructuredEventParser {
       detail,
       timestamp: now,
       ...(filePath && { filePath }),
-      ...(OPTIMISTIC_TOOLS.has(name) && { completed: true }),
+      ...(OPTIMISTIC_TOOLS.has(name.toLowerCase()) && { completed: true }),
     };
 
     let location: RowLocation | null = null;
@@ -265,6 +301,56 @@ export class StructuredEventParser {
     if (location && toolUseId) this.toolUseIdToRow.set(toolUseId, location);
   }
 
+  private resolveToolResult(toolUseId: string, isError: boolean, rawContent?: string | unknown[]): void {
+    const row = this.toolUseIdToRow.get(toolUseId);
+    if (row) {
+      if (isError) {
+        const rawText = extractErrorText(rawContent) ?? "Unknown error";
+        const message = launderToolError(rawText, row.toolName);
+        this.builder.errorAgentChildTool(row.agentId, row.childIndex, message);
+      } else {
+        this.builder.completeAgentChildTool(row.agentId, row.childIndex);
+      }
+      this.toolUseIdToRow.delete(toolUseId);
+      return;
+    }
+
+    const standalone = this.toolUseIdToStandalone.get(toolUseId);
+    if (standalone) {
+      if (standalone.toolName === "AskUserQuestion") {
+        if (isError) {
+          this.builder.cancelQuestion(toolUseId);
+        } else {
+          this.builder.answerQuestion(toolUseId, {});
+        }
+      } else if (isError) {
+        const rawText = extractErrorText(rawContent) ?? "Unknown error";
+        const message = launderToolError(rawText, standalone.toolName);
+        this.builder.errorTool(standalone.index, message);
+      } else {
+        this.builder.completeTool(standalone.index);
+      }
+      this.toolUseIdToStandalone.delete(toolUseId);
+      return;
+    }
+
+    const question = this.toolUseIdToQuestion.get(toolUseId);
+    if (question) {
+      if (isError) {
+        this.builder.cancelQuestion(toolUseId);
+        if (question.agentRow) {
+          this.builder.errorAgentChildTool(question.agentRow.agentId, question.agentRow.childIndex, "Cancelled");
+        }
+      } else {
+        this.builder.answerQuestion(toolUseId, {});
+        if (question.agentRow) {
+          this.builder.completeAgentChildTool(question.agentRow.agentId, question.agentRow.childIndex);
+        }
+      }
+      this.toolUseIdToQuestion.delete(toolUseId);
+    }
+  }
+
   private handleUserEvent(data: UserEventData): void {
     const content = data.message?.content;
     if (!Array.isArray(content)) return;
@@ -274,58 +360,7 @@ export class StructuredEventParser {
       const toolResult = item as UserEventToolResult;
       const toolUseId = toolResult.tool_use_id;
       if (!toolUseId) continue;
-
-      const row = this.toolUseIdToRow.get(toolUseId);
-      if (row) {
-        if (toolResult.is_error === true) {
-          const rawText = extractErrorText(toolResult.content) ?? "Unknown error";
-          const message = launderToolError(rawText, row.toolName);
-          this.builder.errorAgentChildTool(row.agentId, row.childIndex, message);
-        } else {
-          this.builder.completeAgentChildTool(row.agentId, row.childIndex);
-        }
-        this.toolUseIdToRow.delete(toolUseId);
-        continue;
-      }
-
-      const standalone = this.toolUseIdToStandalone.get(toolUseId);
-      if (standalone) {
-        if (standalone.toolName === "AskUserQuestion") {
-          // The dock sets answers locally via chat-session.answerQuestion before
-          // the tool_result arrives — this path is defensive for the race where
-          // the dock never resolved (e.g., hook failure). Empty-record fallback
-          // is benign because the builder guard skips if answers already set.
-          if (toolResult.is_error === true) {
-            this.builder.cancelQuestion(toolUseId);
-          } else {
-            this.builder.answerQuestion(toolUseId, {});
-          }
-        } else if (toolResult.is_error === true) {
-          const rawText = extractErrorText(toolResult.content) ?? "Unknown error";
-          const message = launderToolError(rawText, standalone.toolName);
-          this.builder.errorTool(standalone.index, message);
-        } else {
-          this.builder.completeTool(standalone.index);
-        }
-        this.toolUseIdToStandalone.delete(toolUseId);
-        continue;
-      }
-
-      const question = this.toolUseIdToQuestion.get(toolUseId);
-      if (question) {
-        if (toolResult.is_error === true) {
-          this.builder.cancelQuestion(toolUseId);
-          if (question.agentRow) {
-            this.builder.errorAgentChildTool(question.agentRow.agentId, question.agentRow.childIndex, "Cancelled");
-          }
-        } else {
-          this.builder.answerQuestion(toolUseId, {});
-          if (question.agentRow) {
-            this.builder.completeAgentChildTool(question.agentRow.agentId, question.agentRow.childIndex);
-          }
-        }
-        this.toolUseIdToQuestion.delete(toolUseId);
-      }
+      this.resolveToolResult(toolUseId, toolResult.is_error === true, toolResult.content);
     }
   }
 }

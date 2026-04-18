@@ -8,7 +8,7 @@ import type {
   AnyBlock,
   TextBlock,
   ToolEntry,
-  AgentBlock,
+  ToolGroupBlock,
   SystemBlock,
   UserMessageBlock,
   QuestionBlock,
@@ -98,8 +98,8 @@ function selectBlockComponent(block: AnyBlock): string {
       return "TextBlock";
     case "tool":
       return "ToolEntry";
-    case "agent":
-      return "AgentBlock";
+    case "toolGroup":
+      return "ToolGroupBlock";
     case "system":
       return "SystemBlock";
     default:
@@ -118,17 +118,18 @@ describe("selectBlockComponent", () => {
     expect(selectBlockComponent(block)).toBe("ToolEntry");
   });
 
-  it("selects AgentBlock for agent kind", () => {
-    const block: AgentBlock = {
-      kind: "agent",
+  it("selects ToolGroupBlock for toolGroup kind", () => {
+    const block: ToolGroupBlock = {
+      kind: "toolGroup",
       id: "a1",
-      agentLabel: "Explore",
+      groupKind: "agent",
+      label: "Explore",
       description: "Searching",
       status: "active",
       children: [],
       timestamp: 1,
     };
-    expect(selectBlockComponent(block)).toBe("AgentBlock");
+    expect(selectBlockComponent(block)).toBe("ToolGroupBlock");
   });
 
   it("selects SystemBlock for system kind", () => {
@@ -137,18 +138,18 @@ describe("selectBlockComponent", () => {
   });
 });
 
-// ── AgentBlock display text logic ──
+// ── ToolGroupBlock display text logic ──
 
 /**
  * Replicated from tool-group-block.tsx: derive display text for different agent states.
  */
-function agentDisplayText(agent: AgentBlock): {
+function toolGroupDisplayText(agent: ToolGroupBlock): {
   icon: string;
   label: string;
   detail: string;
   subline?: string;
 } {
-  const label = `${agent.agentLabel}: ${agent.description}`;
+  const label = `${agent.label}: ${agent.description}`;
 
   switch (agent.status) {
     case "active": {
@@ -170,33 +171,33 @@ function agentDisplayText(agent: AgentBlock): {
 
 describe("agentDisplayText", () => {
   it("active agent shows spinner icon and latest child", () => {
-    const agent: AgentBlock = {
-      kind: "agent",
+    const agent: ToolGroupBlock = {
+      kind: "toolGroup", groupKind: "agent" as const,
       id: "a1",
-      agentLabel: "Explore",
+      label: "Explore",
       description: "Searching codebase",
       status: "active",
       children: [],
       latestChild: "Reading src/index.ts",
       timestamp: 1,
     };
-    const result = agentDisplayText(agent);
+    const result = toolGroupDisplayText(agent);
     expect(result.icon).toBe("◐");
     expect(result.label).toBe("Explore: Searching codebase");
     expect(result.subline).toBe("↳ Reading src/index.ts");
   });
 
   it("active agent without latestChild has no subline", () => {
-    const agent: AgentBlock = {
-      kind: "agent",
+    const agent: ToolGroupBlock = {
+      kind: "toolGroup", groupKind: "agent" as const,
       id: "a1",
-      agentLabel: "Explore",
+      label: "Explore",
       description: "Starting",
       status: "active",
       children: [],
       timestamp: 1,
     };
-    const result = agentDisplayText(agent);
+    const result = toolGroupDisplayText(agent);
     expect(result.icon).toBe("◐");
     expect(result.subline).toBeUndefined();
   });
@@ -205,17 +206,17 @@ describe("agentDisplayText", () => {
     const children: ToolEntry[] = Array.from({ length: 8 }, (_, i) => ({
       kind: "tool", name: `Tool${i}`, detail: "", timestamp: 1,
     }));
-    const agent: AgentBlock = {
-      kind: "agent",
+    const agent: ToolGroupBlock = {
+      kind: "toolGroup", groupKind: "agent" as const,
       id: "a1",
-      agentLabel: "Explore",
+      label: "Explore",
       description: "Searching codebase",
       status: "completed",
       children,
       duration: 12345,
       timestamp: 1,
     };
-    const result = agentDisplayText(agent);
+    const result = toolGroupDisplayText(agent);
     expect(result.icon).toBe("✓");
     expect(result.label).toBe("Explore: Searching codebase");
     expect(result.detail).toBe(" (12.3s)");
@@ -226,48 +227,48 @@ describe("agentDisplayText", () => {
     const children: ToolEntry[] = Array.from({ length: 3 }, (_, i) => ({
       kind: "tool", name: `Tool${i}`, detail: "", timestamp: 1,
     }));
-    const agent: AgentBlock = {
-      kind: "agent",
+    const agent: ToolGroupBlock = {
+      kind: "toolGroup", groupKind: "agent" as const,
       id: "a1",
-      agentLabel: "Explore",
+      label: "Explore",
       description: "Done",
       status: "completed",
       children,
       timestamp: 1,
     };
-    const result = agentDisplayText(agent);
+    const result = toolGroupDisplayText(agent);
     expect(result.detail).toBe("");
     expect(result.subline).toBe("└ 3 tool calls");
   });
 
   it("error agent shows X icon and error message", () => {
-    const agent: AgentBlock = {
-      kind: "agent",
+    const agent: ToolGroupBlock = {
+      kind: "toolGroup", groupKind: "agent" as const,
       id: "a1",
-      agentLabel: "Explore",
+      label: "Explore",
       description: "Searching codebase",
       status: "error",
       children: [],
       errorMessage: "Timeout exceeded",
       timestamp: 1,
     };
-    const result = agentDisplayText(agent);
+    const result = toolGroupDisplayText(agent);
     expect(result.icon).toBe("✗");
     expect(result.label).toBe("Explore: Searching codebase");
     expect(result.subline).toBe("  Timeout exceeded");
   });
 
   it("error agent without errorMessage has no subline", () => {
-    const agent: AgentBlock = {
-      kind: "agent",
+    const agent: ToolGroupBlock = {
+      kind: "toolGroup", groupKind: "agent" as const,
       id: "a1",
-      agentLabel: "Explore",
+      label: "Explore",
       description: "Failed",
       status: "error",
       children: [],
       timestamp: 1,
     };
-    const result = agentDisplayText(agent);
+    const result = toolGroupDisplayText(agent);
     expect(result.icon).toBe("✗");
     expect(result.subline).toBeUndefined();
   });
@@ -318,7 +319,7 @@ describe("OutputWindow block-aware logic", () => {
   });
 
   it("blockCountText shows block count", () => {
-    expect(blockCountText([{ kind: "text" }, { kind: "tool" }, { kind: "agent" }]))
+    expect(blockCountText([{ kind: "text" }, { kind: "tool" }, { kind: "toolGroup" }]))
       .toBe("3 blocks");
   });
 
@@ -359,17 +360,17 @@ describe("Block color contracts", () => {
   }
 
   function agentBlockActiveLabelColor(theme: Theme): Theme[keyof Theme] {
-    // AgentBlock active header: fg={themeCtx.theme.primary} — blue pop
+    // ToolGroupBlock active header: fg={themeCtx.theme.primary} — blue pop
     return theme.primary;
   }
 
   function agentBlockCompletedLabelColor(theme: Theme): Theme[keyof Theme] {
-    // AgentBlock completed header: fg={themeCtx.theme.text}
+    // ToolGroupBlock completed header: fg={themeCtx.theme.text}
     return theme.text;
   }
 
   function agentBlockErrorLabelColor(theme: Theme): Theme[keyof Theme] {
-    // AgentBlock error header: fg={themeCtx.theme.error}
+    // ToolGroupBlock error header: fg={themeCtx.theme.error}
     return theme.error;
   }
 
@@ -396,15 +397,15 @@ describe("Block color contracts", () => {
     expect(systemBlockColor(mockTheme as Theme)).toBe(mockTheme.textMuted);
   });
 
-  it("AgentBlock active label uses theme.primary (blue — pops)", () => {
+  it("ToolGroupBlock active label uses theme.primary (blue — pops)", () => {
     expect(agentBlockActiveLabelColor(mockTheme as Theme)).toBe(mockTheme.primary);
   });
 
-  it("AgentBlock completed label uses theme.text (white)", () => {
+  it("ToolGroupBlock completed label uses theme.text (white)", () => {
     expect(agentBlockCompletedLabelColor(mockTheme as Theme)).toBe(mockTheme.text);
   });
 
-  it("AgentBlock error label uses theme.error (red)", () => {
+  it("ToolGroupBlock error label uses theme.error (red)", () => {
     expect(agentBlockErrorLabelColor(mockTheme as Theme)).toBe(mockTheme.error);
   });
 

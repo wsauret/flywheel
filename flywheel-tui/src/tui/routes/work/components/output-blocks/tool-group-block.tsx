@@ -1,33 +1,29 @@
 /** @jsxImportSource @opentui/solid */
 
 /**
- * Renders a titled group of ToolRows — used for both subagent blocks (Task/Agent)
- * and ad-hoc Tools groups. Underlying storage is AgentBlock in the schema; the
- * component is generic because both cases share the same shape: a title, a
- * collapsible box of rows, and active/completed/error states.
+ * Renders a titled group of ToolRows — used for both subagent blocks
+ * (groupKind: "agent") and ad-hoc Tools groups (groupKind: "tools").
  *
  * Tools groups with a single child render as just the row — no "Tools" header,
  * no border. The chrome materializes when a second row joins. Subagents always
  * render their title because it names what the agent is doing.
  */
 
-import { createSignal, Show, Index } from "solid-js"
-import { BOLD } from "@tui/shared/ui/text-attributes"
+import { createSignal, createMemo, createEffect, Show, Index } from "solid-js"
+import { StyledText, fg as stFg, bold as stBold, type TextChunk } from "@opentui/core"
+import type { TextRenderable } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
-import { Spinner } from "@tui/shared/components/spinner"
 import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
-import { ExpandToggle } from "@tui/shared/components/expand-toggle"
 import { useElapsed } from "@tui/shared/hooks/use-elapsed"
+import { useSpinnerFrame } from "@tui/shared/hooks/use-spinner-frame.js"
 import { formatDuration, formatElapsed } from "@infra/format.js"
 import { ToolRow, BOX_MAX_VISIBLE_TOOLS, SUCCESS_ICON, ERROR_ICON, moreHint } from "./tool-row.js"
 import { ToolEntry as ToolEntryBlock } from "./tool-entry.js"
 import { DISPATCHER_INITIAL_DESCRIPTION, EVALUATOR_INITIAL_DESCRIPTION } from "../../../../adapters/ndjson-pipeline.js"
-import type { AgentBlock } from "@infra/output-blocks"
-
-const TOOLS_LABEL = "Tools"
+import type { ToolGroupBlock as ToolGroupBlockType } from "@infra/output-blocks"
 
 interface ToolGroupBlockProps {
-  block: AgentBlock
+  block: ToolGroupBlockType
   expanded?: boolean
   onToggleExpand?: (id: string) => void
 }
@@ -43,7 +39,7 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
 
   const toolCount = () => props.block.children.length
   const canToggle = () => props.block.status === "completed" || props.block.status === "paused"
-  const isToolsGroup = () => props.block.agentLabel === TOOLS_LABEL
+  const isToolsGroup = () => props.block.groupKind === "tools"
   const isBareSingleTool = () => isToolsGroup() && toolCount() === 1
 
   const goalText = () => {
@@ -51,7 +47,7 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
     if (isToolsGroup()) return ""
     const isInitial = d === DISPATCHER_INITIAL_DESCRIPTION || d === EVALUATOR_INITIAL_DESCRIPTION
     if (isInitial || !d) return ""
-    if (d === props.block.agentLabel) return ""
+    if (d === props.block.label) return ""
     return d
   }
   const activeSummary = () => {
@@ -86,7 +82,61 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
     return all.length - BOX_MAX_VISIBLE_TOOLS
   }
 
+  const spinnerFrame = useSpinnerFrame(() => props.block.status === "active")
   const toggleShowAll = () => setShowAll((v) => !v)
+
+  const activeHeaderContent = createMemo(() => {
+    const chunks: TextChunk[] = [
+      stFg(theme.secondary)(spinnerFrame()),
+      stFg(theme.text)(" "),
+      stBold(stFg(theme.secondary)(props.block.label)),
+    ]
+    const summary = activeSummary()
+    if (summary) {
+      chunks.push(stFg(theme.text)(" "))
+      chunks.push(stFg(theme.textSubtle)(`· ${summary}`))
+    }
+    if (hiddenCount() > 0) {
+      chunks.push(stFg(theme.text)(" "))
+      chunks.push(stFg(theme.textMuted)(showAll() ? "▾" : "▸"))
+    }
+    return new StyledText(chunks)
+  })
+
+  const completedHeaderContent = createMemo(() => {
+    const chunks: TextChunk[] = [
+      stFg(theme.primary)(SUCCESS_ICON),
+      stFg(theme.text)(" "),
+      stBold(stFg(theme.primary)(props.block.label)),
+    ]
+    if (hasChildren()) {
+      chunks.push(stFg(theme.text)(" "))
+      chunks.push(stFg(theme.textMuted)((props.expanded ?? false) ? "▾" : "▸"))
+    }
+    const summary = completedSummary()
+    if (summary) {
+      chunks.push(stFg(theme.text)(" "))
+      chunks.push(stFg(theme.textSubtle)(`· ${summary}`))
+    }
+    return new StyledText(chunks)
+  })
+
+  const errorHeaderContent = createMemo(() => {
+    const chunks: TextChunk[] = [
+      stFg(theme.error)(ERROR_ICON),
+      stFg(theme.text)(" "),
+      stBold(stFg(theme.error)(props.block.label)),
+    ]
+    if (props.block.description) {
+      chunks.push(stFg(theme.text)(" "))
+      chunks.push(stFg(theme.error)(props.block.description))
+    }
+    if (props.block.errorMessage) {
+      chunks.push(stFg(theme.text)(" "))
+      chunks.push(stFg(theme.error)(props.block.errorMessage))
+    }
+    return new StyledText(chunks)
+  })
 
   function ToolList() {
     return (
@@ -110,15 +160,14 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
       </Show>
 
       <Show when={props.block.status === "active" && !isBareSingleTool()}>
-        <box flexDirection="row" gap={1} onMouseDown={hiddenCount() > 0 ? toggleShowAll : undefined}>
-          <Spinner color={theme.secondary} />
-          <text fg={theme.secondary} attributes={BOLD}>{props.block.agentLabel}</text>
-          <Show when={activeSummary()}>
-            <text fg={theme.textSubtle} flexShrink={1} overflow="hidden" wrapMode="none">· {activeSummary()}</text>
-          </Show>
-          <Show when={hiddenCount() > 0}>
-            <ExpandToggle expanded={showAll()} />
-          </Show>
+        <box onMouseDown={hiddenCount() > 0 ? toggleShowAll : undefined}>
+          <text
+            ref={(el: TextRenderable) => {
+              createEffect(() => { el.content = activeHeaderContent() })
+            }}
+            overflow="hidden"
+            wrapMode="none"
+          />
         </box>
         <Show when={hasChildren()}>
           <CollapsibleBox
@@ -135,15 +184,14 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
       </Show>
 
       <Show when={canToggle() && !isBareSingleTool()}>
-        <box flexDirection="row" gap={1} onMouseDown={() => props.onToggleExpand?.(props.block.id)}>
-          <text fg={theme.primary}>{SUCCESS_ICON}</text>
-          <text fg={theme.primary} attributes={BOLD}>{props.block.agentLabel}</text>
-          <Show when={hasChildren()}>
-            <ExpandToggle expanded={props.expanded ?? false} />
-          </Show>
-          <Show when={completedSummary()}>
-            <text fg={theme.textSubtle}>· {completedSummary()}</text>
-          </Show>
+        <box onMouseDown={() => props.onToggleExpand?.(props.block.id)}>
+          <text
+            ref={(el: TextRenderable) => {
+              createEffect(() => { el.content = completedHeaderContent() })
+            }}
+            overflow="hidden"
+            wrapMode="none"
+          />
         </box>
         <Show when={hasChildren()}>
           <CollapsibleBox
@@ -160,13 +208,14 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
       </Show>
 
       <Show when={props.block.status === "error"}>
-        <box flexDirection="row" gap={1} overflow="hidden">
-          <text fg={theme.error} flexShrink={0}>{ERROR_ICON}</text>
-          <text fg={theme.error} flexShrink={0} attributes={BOLD}>{props.block.agentLabel}</text>
-          <text fg={theme.error} flexShrink={1} overflow="hidden" wrapMode="none">{props.block.description}</text>
-          <Show when={props.block.errorMessage}>
-            <text fg={theme.error} flexShrink={0} overflow="hidden" wrapMode="none">{props.block.errorMessage}</text>
-          </Show>
+        <box>
+          <text
+            ref={(el: TextRenderable) => {
+              createEffect(() => { el.content = errorHeaderContent() })
+            }}
+            overflow="hidden"
+            wrapMode="none"
+          />
         </box>
       </Show>
     </box>

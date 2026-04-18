@@ -1,7 +1,9 @@
 /** @jsxImportSource @opentui/solid */
 
-import { createSignal, Show } from "solid-js"
-import { BOLD, ITALIC } from "@tui/shared/ui/text-attributes"
+import { createSignal, createMemo, createEffect, Show } from "solid-js"
+import { StyledText, fg as stFg, bold as stBold, type TextChunk } from "@opentui/core"
+import type { TextRenderable } from "@opentui/core"
+import { ITALIC } from "@tui/shared/ui/text-attributes"
 import { useTheme } from "@tui/shared/context/theme"
 import { VerticalBarBorder } from "@tui/shared/ui/border"
 import type { UserMessageBlock as UserMessageBlockType } from "@infra/output-blocks"
@@ -54,13 +56,25 @@ export function UserMessageBlock(props: UserMessageBlockProps) {
     }>
       {/* Injected message — collapsed by default */}
       <box flexDirection="column">
-        <box flexDirection="row" gap={1} onMouseDown={() => setExpanded((v) => !v)}>
-          <text fg={theme.textMuted}>↳</text>
-          <text fg={theme.textMuted} attributes={BOLD}>System</text>
-          <text fg={theme.textMuted}>{expanded() ? "▾" : "▸"}</text>
-          <Show when={!expanded()}>
-            <text fg={theme.textMuted}>{previewLine(props.block.content)}</text>
-          </Show>
+        <box onMouseDown={() => setExpanded((v) => !v)}>
+          <text
+            ref={(el: TextRenderable) => {
+              createEffect(() => {
+                const chunks: TextChunk[] = [
+                  stFg(theme.textMuted)("↳"),
+                  stFg(theme.textMuted)(" "),
+                  stBold(stFg(theme.textMuted)("System")),
+                  stFg(theme.textMuted)(` ${expanded() ? "▾" : "▸"}`),
+                ]
+                if (!expanded()) {
+                  chunks.push(stFg(theme.textMuted)(` ${previewLine(props.block.content)}`))
+                }
+                el.content = new StyledText(chunks)
+              })
+            }}
+            overflow="hidden"
+            wrapMode="none"
+          />
         </box>
         <Show when={expanded()}>
           <box

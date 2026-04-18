@@ -56,7 +56,6 @@ export function createShellState(deps: {
   sessions: Accessor<SessionSummary[]>
   setTerminalTitle: (title: string) => void
   showToast: (opts: { message: string; variant: "info" | "warning" | "error" | "success"; duration?: number }) => void
-  showThinking?: boolean
 }): { signals: ShellSignals; services: ShellServices } {
   const [errorMessage, setErrorMessage] = createSignal("")
   const [foregroundId, setForegroundId] = createSignal<string | undefined>()
@@ -71,10 +70,8 @@ export function createShellState(deps: {
   // Metrics created here — storeEntry is already bound, no late-binding possible.
   const metrics = useMetrics(storeEntry)
 
-  const showThinking = deps.showThinking ?? true
   const outputBlocks = createMemo(() => {
-    const blocks = storeEntry()?.outputBlocks ?? []
-    return showThinking ? blocks : blocks.filter((b) => b.kind !== "thinking")
+    return storeEntry()?.outputBlocks ?? []
   })
 
   const steps = createMemo(() => {

@@ -1,7 +1,7 @@
 import type {
   AnyBlock,
   ToolEntry,
-  AgentBlock,
+  ToolGroupBlock,
   SystemBlock,
   TodoItem,
   UserMessageBlock,
@@ -54,7 +54,7 @@ export class StructuredOutputBuilder {
 
   constructor() {
     this.contextTracker = new ContextGroupTracker({
-      startContextAgent: (id, timestamp) => this.startAgent(id, "Tools", "Using tools...", timestamp),
+      startContextAgent: (id, timestamp) => this.startAgent(id, "Tools", "Using tools...", timestamp, "tools"),
       appendToolToContextAgent: (agentId, tool) => this.appendToolToAgent(agentId, tool),
       completeContextAgent: (agentId, duration) => this.completeAgent(agentId, duration),
     });
@@ -94,6 +94,19 @@ export class StructuredOutputBuilder {
       this.insertBlock({ kind: "thinking", content: text, timestamp: blockTimestamp });
     }
     this.markDirty();
+  }
+
+  pushThinkingAsToolRow(timestamp: number): void {
+    this._modelActivity = "thinking";
+    const startTime = this.thinkingStartedAt ?? timestamp;
+    this.thinkingStartedAt = null;
+    this.pushToolRow({
+      kind: "tool",
+      name: "Thinking",
+      detail: "",
+      timestamp: startTime,
+      completed: true,
+    });
   }
 
   pushUserMessage(text: string, timestamp: number, pending?: boolean, injected?: boolean): void {
@@ -206,7 +219,7 @@ export class StructuredOutputBuilder {
     const agentId = this.contextTracker.pushContextTool(tool, tool.timestamp);
     const agentIdx = this.agentIndexById.get(agentId);
     if (agentIdx === undefined) return null;
-    const agent = this.blocks[agentIdx] as AgentBlock;
+    const agent = this.blocks[agentIdx] as ToolGroupBlock;
     const childIndex = agent.children.length - 1;
     this.enforceBlocksCap();
     this.markDirty();
@@ -254,13 +267,14 @@ export class StructuredOutputBuilder {
     return result;
   }
 
-  startAgent(id: string, agentLabel: string, description: string, timestamp: number): void {
+  startAgent(id: string, label: string, description: string, timestamp: number, groupKind: "agent" | "tools" = "agent"): void {
     this.contextTracker.breakContextRun(timestamp);
 
-    const agent: AgentBlock = {
-      kind: "agent",
+    const agent: ToolGroupBlock = {
+      kind: "toolGroup",
       id,
-      agentLabel,
+      groupKind,
+      label,
       description,
       status: "active",
       children: [],
@@ -276,7 +290,7 @@ export class StructuredOutputBuilder {
     const idx = this.agentIndexById.get(id);
     if (idx === undefined) return;
 
-    const agent = this.blocks[idx] as AgentBlock;
+    const agent = this.blocks[idx] as ToolGroupBlock;
     if (agent.status !== "active") return;
 
     this.blocks[idx] = {
@@ -293,7 +307,7 @@ export class StructuredOutputBuilder {
     const idx = this.agentIndexById.get(id);
     if (idx === undefined) return;
 
-    const agent = this.blocks[idx] as AgentBlock;
+    const agent = this.blocks[idx] as ToolGroupBlock;
     this.blocks[idx] = {
       ...agent,
       status: "error",
@@ -315,7 +329,7 @@ export class StructuredOutputBuilder {
     const idx = this.agentIndexById.get(agentId);
     if (idx === undefined) return;
     const agent = this.blocks[idx];
-    if (!agent || agent.kind !== "agent") return;
+    if (!agent || agent.kind !== "toolGroup") return;
     const child = agent.children[childIndex];
     if (!child) return;
     const updatedChildren = [...agent.children];
@@ -379,8 +393,8 @@ export class StructuredOutputBuilder {
     const idx = this.agentIndexById.get(id);
     if (idx === undefined) return;
 
-    const agent = this.blocks[idx] as AgentBlock;
-    if (agent.kind !== "agent" || agent.status !== "active") return;
+    const agent = this.blocks[idx] as ToolGroupBlock;
+    if (agent.status !== "active") return;
 
     this.blocks[idx] = { ...agent, latestChild: childDisplay };
     this.markDirty();
@@ -391,7 +405,7 @@ export class StructuredOutputBuilder {
     for (const [id, idx] of this.agentIndexById) {
       if (id === ctxId) continue;
       const block = this.blocks[idx];
-      if (block.kind === "agent" && block.status === "active") {
+      if (block.kind === "toolGroup" && block.status === "active") {
         this.completeAgent(id, timestamp - block.timestamp);
       }
     }

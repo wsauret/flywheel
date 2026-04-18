@@ -13,7 +13,7 @@ export const OutputSnapshotSchema = AnyBlockSchema;
 export type OutputSnapshot = AnyBlock;
 
 function normalizeForPersistence(block: AnyBlock): AnyBlock {
-  if (block.kind === "agent" && block.status === "active") {
+  if (block.kind === "toolGroup" && block.status === "active") {
     return { ...block, status: "paused" };
   }
   if (block.kind === "question" && !block.answers && !block.cancelled) {

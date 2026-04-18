@@ -40,10 +40,11 @@ export const ToolEntrySchema = z.object({
  * discriminants cleanly. The builder is the sole writer and always pairs status with
  * the correct fields, so the optionality is safe in practice.
  */
-export const AgentBlockSchema = z.object({
-  kind: z.literal("agent"),
+export const ToolGroupBlockSchema = z.object({
+  kind: z.literal("toolGroup"),
   id: z.string(),
-  agentLabel: z.string(),
+  groupKind: z.enum(["agent", "tools"]),
+  label: z.string(),
   description: z.string(),
   status: z.enum(["active", "completed", "error", "paused"]),
   children: z.array(ToolEntrySchema),
@@ -118,7 +119,7 @@ export const QuestionBlockSchema = z.object({
 
 export type TextBlock = z.infer<typeof TextBlockSchema>
 export type ToolEntry = z.infer<typeof ToolEntrySchema>
-export type AgentBlock = z.infer<typeof AgentBlockSchema>
+export type ToolGroupBlock = z.infer<typeof ToolGroupBlockSchema>
 export type SystemBlock = z.infer<typeof SystemBlockSchema>
 export type ThinkingBlock = z.infer<typeof ThinkingBlockSchema>
 export type UserMessageBlock = z.infer<typeof UserMessageBlockSchema>
@@ -136,7 +137,7 @@ export type QuestionBlock = z.infer<typeof QuestionBlockSchema>
 export const AnyBlockSchema = z.discriminatedUnion("kind", [
   TextBlockSchema,
   ToolEntrySchema,
-  AgentBlockSchema,
+  ToolGroupBlockSchema,
   SystemBlockSchema,
   ThinkingBlockSchema,
   UserMessageBlockSchema,

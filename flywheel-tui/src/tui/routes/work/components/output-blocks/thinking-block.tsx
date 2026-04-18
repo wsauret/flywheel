@@ -13,12 +13,14 @@
  * stable in the layout tree (no flicker on toggle).
  */
 
-import { createSignal, createMemo, onCleanup, Show } from "solid-js"
+import { createSignal, createMemo, createEffect, onCleanup } from "solid-js"
+import { StyledText, fg as stFg, bold as stBold, italic as stItalic, type TextChunk } from "@opentui/core"
+import type { TextRenderable } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { useElapsed } from "@tui/shared/hooks/use-elapsed"
+import { useSpinnerFrame } from "@tui/shared/hooks/use-spinner-frame.js"
 import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
 import { VerticalBarBorder } from "@tui/shared/ui/border"
-import { ITALIC } from "@tui/shared/ui/text-attributes"
 import { formatElapsed } from "@infra/format.js"
 import type { ThinkingBlock as ThinkingBlockType } from "@infra/output-blocks"
 
@@ -26,13 +28,12 @@ const COLLAPSED_LINES = 3
 
 interface ThinkingBlockProps {
   block: ThinkingBlockType
+  showContent?: boolean
 }
 
 export function ThinkingBlock(props: ThinkingBlockProps) {
   const { theme, subtleSyntax } = useTheme()
-  const [expanded, setExpanded] = createSignal(false)
 
-  // Freeze the timer once content stops growing for 2+ ticks.
   const [streaming, setStreaming] = createSignal(true)
   let lastContentLen = props.block.content.length
   let staleTicks = 0
@@ -49,6 +50,32 @@ export function ThinkingBlock(props: ThinkingBlockProps) {
   onCleanup(() => clearInterval(staleId))
 
   const elapsed = useElapsed(() => streaming() ? props.block.timestamp : undefined)
+  const spinnerFrame = useSpinnerFrame(() => streaming())
+
+  const statusIcon = createMemo(() => {
+    if (!streaming()) return { icon: "\u25c6", color: theme.accent }
+    return { icon: spinnerFrame(), color: theme.accent }
+  })
+
+  if (props.showContent === false) {
+    const collapsedContent = createMemo(() => {
+      const chunks: TextChunk[] = [
+        stFg(statusIcon().color)(statusIcon().icon),
+        stFg(theme.text)(" "),
+        stBold(stFg(theme.text)("Thinking...")),
+      ]
+      return new StyledText(chunks)
+    })
+    return (
+      <text
+        ref={(el: TextRenderable) => {
+          createEffect(() => { el.content = collapsedContent() })
+        }}
+      />
+    )
+  }
+
+  const [expanded, setExpanded] = createSignal(false)
 
   const trimmed = () => props.block.content.trim()
 
@@ -70,11 +97,22 @@ export function ThinkingBlock(props: ThinkingBlockProps) {
       customBorderChars={VerticalBarBorder}
       onMouseDown={isLong() ? () => setExpanded(prev => !prev) : undefined}
     >
-      <box flexDirection="row" gap={1}>
-        <text fg={theme.textMuted} attributes={ITALIC}>Thinking</text>
-        <Show when={elapsed() >= 1000}><text fg={theme.textMuted}>{formatElapsed(elapsed())}</text></Show>
-        <Show when={isLong()}><text fg={theme.textMuted}>{expanded() ? "▾" : `▸ …${lineCount()} lines`}</text></Show>
-      </box>
+      <text
+        ref={(el: TextRenderable) => {
+          createEffect(() => {
+            const chunks: TextChunk[] = [
+              stItalic(stFg(theme.textMuted)("Thinking")),
+            ]
+            if (elapsed() >= 1000) {
+              chunks.push(stFg(theme.textMuted)(` ${formatElapsed(elapsed())}`))
+            }
+            if (isLong()) {
+              chunks.push(stFg(theme.textMuted)(` ${expanded() ? "\u25be" : `\u25b8 \u2026${lineCount()} lines`}`))
+            }
+            el.content = new StyledText(chunks)
+          })
+        }}
+      />
 
       <CollapsibleBox expanded={expanded()}>
         <code

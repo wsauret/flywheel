@@ -21,6 +21,7 @@ interface BlockRendererProps {
   block: AnyBlock
   expandedIds?: Set<string>
   onToggleExpand?: (id: string) => void
+  showThinking?: boolean
 }
 
 export function BlockRenderer(props: BlockRendererProps) {
@@ -33,7 +34,7 @@ export function BlockRenderer(props: BlockRendererProps) {
       <Match when={props.block.kind === "tool" ? props.block : undefined}>
         {(block) => <ToolEntry block={block()} />}
       </Match>
-      <Match when={props.block.kind === "agent" ? props.block : undefined}>
+      <Match when={props.block.kind === "toolGroup" ? props.block : undefined}>
         {(block) => (
           <ToolGroupBlock
             block={block()}
@@ -46,7 +47,7 @@ export function BlockRenderer(props: BlockRendererProps) {
         {(block) => <SystemBlock block={block()} />}
       </Match>
       <Match when={props.block.kind === "thinking" ? props.block : undefined}>
-        {(block) => <ThinkingBlock block={block()} />}
+        {(block) => <ThinkingBlock block={block()} showContent={props.showThinking ?? true} />}
       </Match>
       <Match when={props.block.kind === "userMessage" ? props.block : undefined}>
         {(block) => <UserMessageBlock block={block()} />}

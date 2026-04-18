@@ -1,13 +1,19 @@
 /**
  * OpenAI streaming adapter.
  *
- * Uses the Chat Completions API with streaming. Reasoning effort maps
- * directly to the OpenAI reasoning_effort parameter for o-series and
- * gpt-5 families.
+ * Uses the Responses API with streaming. Reasoning effort maps to the
+ * reasoning.effort parameter; reasoning summaries stream as thinking
+ * deltas. Tool calls arrive as complete structured objects.
  */
 
 import OpenAI from "openai";
-import type { ChatCompletionChunk } from "openai/resources/chat/completions.js";
+import type {
+  ResponseCreateParamsStreaming,
+  ResponseInput,
+  ResponseInputContent,
+  ResponseStreamEvent,
+} from "openai/resources/responses/responses.js";
+import type { ReasoningEffort as OpenAIReasoningEffort } from "openai/resources/shared.js";
 import { Log } from "../../../../../infra/log.js";
 import type { ModelsClient, ModelInfo } from "./models.js";
 import { withRetry, withRetryStream } from "./retry.js";
@@ -24,66 +30,111 @@ import { ContextLengthExceededError, OutputLengthExceededError } from "./types.j
 
 const log = Log.create({ service: "llm-openai" });
 
-const REASONING_EFFORT: Record<ReasoningEffort, "low" | "medium" | "high" | null> = {
+const REASONING_EFFORT: Record<ReasoningEffort, string | null> = {
   off: null,
   low: "low",
   medium: "medium",
   high: "high",
+  max: "xhigh",
 };
 
-function toOpenAIMessages(m: Message): OpenAI.ChatCompletionMessageParam[] {
-  if (m.role === "system") {
-    const text =
-      typeof m.content === "string"
-        ? m.content
-        : m.content
-            .filter((b): b is { type: "text"; text: string } => b.type === "text")
-            .map((b) => b.text)
-            .join("");
-    return [{ role: "system", content: text }];
-  }
-  if (m.role === "assistant") {
-    if (typeof m.content === "string") return [{ role: "assistant", content: m.content }];
-    const textParts = m.content
-      .filter((b): b is { type: "text"; text: string } => b.type === "text")
-      .map((b) => b.text);
-    const toolUses = m.content
-      .filter((b): b is { type: "tool_use"; id: string; name: string; input: Record<string, unknown> } => b.type === "tool_use");
-    const text = textParts.join("") || null;
-    if (toolUses.length === 0) return [{ role: "assistant", content: text }];
-    return [{
-      role: "assistant",
-      content: text,
-      tool_calls: toolUses.map((t) => ({
-        id: t.id,
-        type: "function" as const,
-        function: { name: t.name, arguments: JSON.stringify(t.input) },
-      })),
-    }];
-  }
-  if (typeof m.content === "string") return [{ role: "user", content: m.content }];
-  const toolResults = m.content.filter(
-    (b): b is { type: "tool_result"; tool_use_id: string; content: string } => b.type === "tool_result",
-  );
-  if (toolResults.length > 0) {
-    return toolResults.map((r) => ({
-      role: "tool" as const,
-      tool_call_id: r.tool_use_id,
-      content: r.content,
-    }));
-  }
-  const parts: OpenAI.ChatCompletionContentPart[] = [];
-  for (const block of m.content) {
-    if (block.type === "text") {
-      parts.push({ type: "text", text: block.text });
-    } else if (block.type === "image") {
-      parts.push({
-        type: "image_url",
-        image_url: { url: `data:${block.mediaType};base64,${block.data}` },
-      });
+function toResponseInput(messages: Message[]): ResponseInput {
+  const input: ResponseInput = [];
+  const toolUseIds = new Set<string>();
+  const toolResultIds = new Set<string>();
+
+  // First pass: collect all tool_use and tool_result IDs for orphan detection.
+  for (const m of messages) {
+    if (typeof m.content === "string") continue;
+    for (const block of m.content) {
+      if (block.type === "tool_use") toolUseIds.add(block.id);
+      else if (block.type === "tool_result") toolResultIds.add(block.tool_use_id);
     }
   }
-  return [{ role: "user", content: parts }];
+
+  for (const m of messages) {
+    if (m.role === "system") continue;
+
+    if (m.role === "user") {
+      if (typeof m.content === "string") {
+        input.push({ role: "user", content: [{ type: "input_text", text: m.content }] });
+        continue;
+      }
+      const parts: ResponseInputContent[] = [];
+      for (const block of m.content) {
+        if (block.type === "text") {
+          parts.push({ type: "input_text", text: block.text });
+        } else if (block.type === "image") {
+          parts.push({
+            type: "input_image",
+            image_url: `data:${block.mediaType};base64,${block.data}`,
+            detail: "auto",
+          });
+        } else if (block.type === "tool_result") {
+          input.push({
+            type: "function_call_output",
+            call_id: block.tool_use_id,
+            output: block.content,
+          });
+        }
+      }
+      if (parts.length > 0) {
+        input.push({ role: "user", content: parts });
+      }
+      continue;
+    }
+
+    if (m.role === "assistant") {
+      if (typeof m.content === "string") {
+        input.push({
+          type: "message",
+          role: "assistant",
+          id: `msg_${input.length}`,
+          content: [{ type: "output_text", text: m.content, annotations: [] }],
+          status: "completed",
+        });
+        continue;
+      }
+      for (const block of m.content) {
+        if (block.type === "text") {
+          input.push({
+            type: "message",
+            role: "assistant",
+            id: `msg_${input.length}`,
+            content: [{ type: "output_text", text: block.text, annotations: [] }],
+            status: "completed",
+          });
+        } else if (block.type === "tool_use") {
+          if (!toolResultIds.has(block.id)) continue;
+          input.push({
+            type: "function_call",
+            call_id: block.id,
+            name: block.name,
+            arguments: JSON.stringify(block.input),
+          });
+        } else if (block.type === "reasoning") {
+          input.push({
+            type: "reasoning",
+            id: block.id,
+            encrypted_content: block.encrypted_content,
+          } as ResponseInput[number]);
+        }
+      }
+    }
+  }
+
+  return input;
+}
+
+function extractSystemPrompt(messages: Message[]): string {
+  for (const m of messages) {
+    if (m.role === "system") {
+      return typeof m.content === "string"
+        ? m.content
+        : m.content.filter((b): b is { type: "text"; text: string } => b.type === "text").map((b) => b.text).join("");
+    }
+  }
+  return "";
 }
 
 export function createOpenAIAdapter(
@@ -147,111 +198,152 @@ export function createOpenAIAdapter(
     async *streamWithTools(options: StreamOptions): AsyncGenerator<StreamEvent> {
       const model = options.model ?? defaultModel;
       const info = await resolveModelInfo(model);
-      const reasoning = options.reasoningEffort ?? "high";
+      const reasoning = options.reasoningEffort ?? "max";
 
-      const chatMessages: OpenAI.ChatCompletionMessageParam[] = [
-        { role: "system", content: options.systemPrompt },
-        ...options.messages.flatMap(toOpenAIMessages),
-      ];
-
-      const chatTools: OpenAI.ChatCompletionTool[] = options.tools.map((t) => ({
-        type: "function",
-        function: {
-          name: t.name,
-          description: t.description,
-          parameters: t.input_schema as OpenAI.FunctionParameters,
-        },
+      const tools: ResponseCreateParamsStreaming["tools"] = options.tools.map((t) => ({
+        type: "function" as const,
+        name: t.name,
+        description: t.description,
+        parameters: t.input_schema as Record<string, unknown>,
+        strict: false,
       }));
 
       const effort = REASONING_EFFORT[reasoning];
       const hasReasoning = effort !== null && supportsReasoning(model, info);
       if (reasoning !== "off" && !supportsReasoning(model, info)) {
-        log.warn(`Model ${model} does not support reasoning -- proceeding without reasoning_effort`);
+        log.warn(`Model ${model} does not support reasoning -- proceeding without reasoning`);
       }
 
       yield* withRetryStream(async function* () {
         try {
-          const params: OpenAI.ChatCompletionCreateParamsStreaming = {
+          const usePreviousResponse = !!options.previousResponseId;
+          const input = usePreviousResponse
+            ? toResponseInput(options.messages.slice(-1))
+            : toResponseInput(options.messages);
+          const instructions = options.systemPrompt || extractSystemPrompt(options.messages);
+
+          const params: ResponseCreateParamsStreaming = {
             model,
-            messages: chatMessages,
-            tools: chatTools,
-            max_completion_tokens: outputLimit(info),
+            input,
+            instructions,
+            tools,
+            max_output_tokens: outputLimit(info),
             stream: true,
-            stream_options: { include_usage: true },
+            store: false,
           };
-          if (hasReasoning) params.reasoning_effort = effort;
+          if (options.previousResponseId) {
+            params.previous_response_id = options.previousResponseId;
+          }
+          if (hasReasoning) {
+            params.reasoning = {
+              effort: effort as OpenAIReasoningEffort,
+              summary: "auto",
+            };
+            params.include = ["reasoning.encrypted_content"];
+          }
 
-          const stream = await client.chat.completions.create(params, { signal: options.signal });
+          const stream = await client.responses.create(params, { signal: options.signal });
 
-          const toolCalls = new Map<
-            number,
-            { id: string; name: string; args: string }
-          >();
-          let finishReason: string | null = null;
+          let responseId: string | undefined;
+          let toolArgsBuf = "";
 
-          for await (const chunk of stream as AsyncIterable<ChatCompletionChunk>) {
-            const choice = chunk.choices[0];
-            if (choice) {
-              const delta = choice.delta;
-              if (delta.content) {
-                yield { kind: "text_delta", text: delta.content } as const;
+          for await (const event of stream as AsyncIterable<ResponseStreamEvent>) {
+            switch (event.type) {
+              case "response.created":
+                responseId = event.response.id;
+                break;
+
+              case "response.reasoning_summary_text.delta":
+                yield { kind: "thinking_delta", text: event.delta } as const;
+                break;
+
+              case "response.output_text.delta":
+                yield { kind: "text_delta", text: event.delta } as const;
+                break;
+
+              case "response.refusal.delta":
+                yield { kind: "text_delta", text: event.delta } as const;
+                break;
+
+              case "response.function_call_arguments.delta":
+                toolArgsBuf += event.delta;
+                break;
+
+              case "response.output_item.done": {
+                const item = event.item;
+                if (item.type === "function_call") {
+                  let toolInput: Record<string, unknown>;
+                  try {
+                    toolInput = JSON.parse(item.arguments) as Record<string, unknown>;
+                  } catch {
+                    toolInput = { _raw: item.arguments };
+                  }
+                  yield {
+                    kind: "tool_use",
+                    toolCall: { id: item.call_id, name: item.name, input: toolInput },
+                  } as const;
+                  toolArgsBuf = "";
+                }
+                break;
               }
-              if (delta.tool_calls) {
-                for (const tc of delta.tool_calls) {
-                  const existing = toolCalls.get(tc.index);
-                  if (!existing) {
-                    toolCalls.set(tc.index, {
-                      id: tc.id ?? "",
-                      name: tc.function?.name ?? "",
-                      args: tc.function?.arguments ?? "",
-                    });
-                  } else {
-                    if (tc.function?.arguments) existing.args += tc.function.arguments;
+
+              case "response.completed": {
+                const response = event.response;
+                responseId = response?.id ?? responseId;
+                if (response?.usage) {
+                  const cachedTokens = response.usage.input_tokens_details?.cached_tokens ?? 0;
+                  const reasoningTokens = response.usage.output_tokens_details?.reasoning_tokens ?? 0;
+                  yield {
+                    kind: "usage",
+                    inputTokens: (response.usage.input_tokens ?? 0) - cachedTokens,
+                    outputTokens: response.usage.output_tokens ?? 0,
+                    cacheReadTokens: cachedTokens,
+                    cacheCreateTokens: 0,
+                    reasoningTokens,
+                  } as const;
+                }
+
+                // Capture encrypted reasoning items for round-tripping.
+                for (const item of response?.output ?? []) {
+                  if (item.type === "reasoning") {
+                    const r = item as { id?: string; encrypted_content?: string };
+                    if (r.id && r.encrypted_content) {
+                      yield {
+                        kind: "reasoning",
+                        id: r.id,
+                        encryptedContent: r.encrypted_content,
+                      } as StreamEvent;
+                    }
                   }
                 }
+
+                const status = response?.status;
+                if (status === "incomplete") {
+                  throw new OutputLengthExceededError("Response truncated");
+                }
+                yield {
+                  kind: "done",
+                  stopReason: status === "completed" ? "end_turn" : status ?? "unknown",
+                  responseId,
+                } as const;
+                break;
               }
-              if (choice.finish_reason) {
-                finishReason = choice.finish_reason;
+
+              case "response.failed": {
+                const error = event.response?.error;
+                const details = event.response?.incomplete_details;
+                const msg = error
+                  ? `${error.code ?? "unknown"}: ${error.message ?? "no message"}`
+                  : details?.reason
+                    ? `incomplete: ${details.reason}`
+                    : "Unknown error";
+                throw new Error(msg);
               }
-            }
 
-            if (chunk.usage) {
-              const reasoningTokens =
-                chunk.usage.completion_tokens_details?.reasoning_tokens ?? 0;
-              const cacheReadTokens =
-                chunk.usage.prompt_tokens_details?.cached_tokens ?? 0;
-              yield {
-                kind: "usage",
-                inputTokens: chunk.usage.prompt_tokens,
-                outputTokens: chunk.usage.completion_tokens,
-                cacheReadTokens,
-                cacheCreateTokens: 0,
-                reasoningTokens,
-              } as const;
+              case "error":
+                throw new Error(`Error Code ${(event as { code?: string }).code}: ${(event as { message?: string }).message}` || "Unknown error");
             }
           }
-
-          if (finishReason === "length") {
-            throw new OutputLengthExceededError("Response truncated");
-          }
-
-          for (const [, tc] of toolCalls) {
-            let input: Record<string, unknown>;
-            try {
-              input = JSON.parse(tc.args) as Record<string, unknown>;
-            } catch {
-              input = { _raw: tc.args };
-            }
-            yield {
-              kind: "tool_use",
-              toolCall: { id: tc.id, name: tc.name, input },
-            } as const;
-          }
-
-          yield {
-            kind: "done",
-            stopReason: finishReason ?? "unknown",
-          } as const;
         } catch (err) {
           if (err instanceof OpenAI.BadRequestError) {
             const msg = err.message;
@@ -268,19 +360,26 @@ export function createOpenAIAdapter(
     },
 
     async complete(messages: Message[]): Promise<string> {
-      const chatMessages = messages.flatMap(toOpenAIMessages);
+      const input = toResponseInput(messages);
+      const instructions = extractSystemPrompt(messages);
 
       return withRetry(async () => {
-        const response = await client.chat.completions.create({
+        const response = await client.responses.create({
           model: cache?.model ?? defaultModel,
-          messages: chatMessages,
-          max_completion_tokens: Math.min(outputLimit(cache?.info ?? null), 8_192),
+          input,
+          instructions,
+          max_output_tokens: Math.min(outputLimit(cache?.info ?? null), 8_192),
         });
-        return response.choices[0]?.message.content ?? "";
+        const output = response.output ?? [];
+        return output
+          .filter((item): item is OpenAI.Responses.ResponseOutputMessage => item.type === "message")
+          .flatMap((item) => item.content)
+          .filter((c): c is OpenAI.Responses.ResponseOutputText => c.type === "output_text")
+          .map((c) => c.text)
+          .join("");
       }, "OpenAI");
     },
   };
 
   return adapter;
 }
-
