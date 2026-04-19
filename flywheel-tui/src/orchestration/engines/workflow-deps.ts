@@ -25,6 +25,9 @@ export function prepareWorkflowDeps(overrides?: WorkflowDepsOverrides): Workflow
   const resolve = overrides?.getEngine ?? getEngine
 
   const { config } = load()
+  if (config.openai_auth && !process.env["FLYWHEEL_OPENAI_AUTH"]) {
+    process.env["FLYWHEEL_OPENAI_AUTH"] = config.openai_auth
+  }
 
   const engine = resolve(config.engine)
 

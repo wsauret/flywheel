@@ -35,6 +35,8 @@ export const FlywheelConfigSchema = z.object({
   /** Engine ID: "claude", "opencode", etc. */
   engine: z.string().default("claude"),
   preferred_vendor: z.enum(["anthropic", "openai"]).default("anthropic"),
+  openai_auth: z.enum(["api_key", "chatgpt"]).default("api_key"),
+  openai_email: z.string().email().optional(),
   /** TUI theme name: "opencode", "tokyonight", "dracula", "catppuccin", "nord", "gruvbox". */
   theme: z.string().optional(),
   /** Show thinking/reasoning blocks in the output window. Default: true. */

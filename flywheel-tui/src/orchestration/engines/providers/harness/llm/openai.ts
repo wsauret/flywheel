@@ -1,11 +1,3 @@
-/**
- * OpenAI streaming adapter.
- *
- * Uses the Responses API with streaming. Reasoning effort maps to the
- * reasoning.effort parameter; reasoning summaries stream as thinking
- * deltas. Tool calls arrive as complete structured objects.
- */
-
 import OpenAI from "openai";
 import type {
   ResponseCreateParamsStreaming,
@@ -15,21 +7,14 @@ import type {
 } from "openai/resources/responses/responses.js";
 import type { ReasoningEffort as OpenAIReasoningEffort } from "openai/resources/shared.js";
 import { Log } from "../../../../../infra/log.js";
+import type { OpenAIAuth } from "../../../../../infra/auth/openai-auth-types.js";
+import { createChatGPTClient } from "./openai-chatgpt.js";
 import type { ModelsClient, ModelInfo } from "./models.js";
 import { withRetry, withRetryStream } from "./retry.js";
-import type {
-  ContentBlock,
-  LLMClient,
-  Message,
-  ReasoningEffort,
-  StreamEvent,
-  StreamOptions,
-  ToolCall,
-} from "./types.js";
+import type { ContentBlock, LLMClient, Message, ReasoningEffort, StreamEvent, StreamOptions } from "./types.js";
 import { ContextLengthExceededError, OutputLengthExceededError } from "./types.js";
 
 const log = Log.create({ service: "llm-openai" });
-
 const REASONING_EFFORT: Record<ReasoningEffort, string | null> = {
   off: null,
   low: "low",
@@ -138,14 +123,16 @@ function extractSystemPrompt(messages: Message[]): string {
 }
 
 export function createOpenAIAdapter(
-  apiKey: string,
+  auth: OpenAIAuth,
   defaultModel: string,
   modelsClient: ModelsClient,
 ): LLMClient {
-  const client = new OpenAI({ apiKey });
+  const isChatGPT = auth.kind === "chatgpt";
+  const client = isChatGPT
+    ? createChatGPTClient(auth)
+    : new OpenAI({ apiKey: auth.apiKey });
 
   let cache: { model: string; info: ModelInfo } | null = null;
-
   async function resolveModelInfo(model: string): Promise<ModelInfo | null> {
     if (cache?.model === model) return cache.info;
     const info = await modelsClient.getModelInfo(model, "openai");
@@ -153,17 +140,9 @@ export function createOpenAIAdapter(
     return info;
   }
 
-  function supportsReasoning(model: string, info: ModelInfo | null): boolean {
-    return info?.reasoning ?? /^(o\d|gpt-5)/.test(model);
-  }
-
-  function contextLimit(info: ModelInfo | null): number {
-    return info?.contextLimit ?? 128_000;
-  }
-
-  function outputLimit(info: ModelInfo | null): number {
-    return info?.outputLimit ?? 16_384;
-  }
+  function supportsReasoning(model: string, info: ModelInfo | null): boolean { return info?.reasoning ?? /^(o\d|gpt-5)/.test(model); }
+  function contextLimit(info: ModelInfo | null): number { return info?.contextLimit ?? 128_000; }
+  function outputLimit(info: ModelInfo | null): number { return info?.outputLimit ?? 16_384; }
 
   const adapter: LLMClient = {
     provider: "openai",
@@ -179,6 +158,7 @@ export function createOpenAIAdapter(
     },
 
     costFor(tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; reasoning: number }): number {
+      if (isChatGPT) return 0;
       const info = cache?.info ?? null;
       if (!info?.cost) return 0;
       const inputRate = info.cost.input;
@@ -222,15 +202,15 @@ export function createOpenAIAdapter(
             : toResponseInput(options.messages);
           const instructions = options.systemPrompt || extractSystemPrompt(options.messages);
 
-          const params: ResponseCreateParamsStreaming = {
+          const params = {
             model,
             input,
             instructions,
             tools,
-            max_output_tokens: outputLimit(info),
+            ...(isChatGPT ? { store: false } : { max_output_tokens: outputLimit(info) }),
             stream: true,
-          };
-          if (options.previousResponseId) {
+          } as ResponseCreateParamsStreaming;
+          if (options.previousResponseId && !isChatGPT) {
             params.previous_response_id = options.previousResponseId;
           }
           if (hasReasoning) {
@@ -373,6 +353,24 @@ export function createOpenAIAdapter(
     async complete(messages: Message[]): Promise<string> {
       const input = toResponseInput(messages);
       const instructions = extractSystemPrompt(messages);
+
+      if (isChatGPT) {
+        // Codex endpoint requires streaming for all requests
+        return withRetry(async () => {
+          const stream = await client.responses.create({
+            model: cache?.model ?? defaultModel,
+            input,
+            instructions,
+            stream: true,
+            store: false,
+          } as ResponseCreateParamsStreaming);
+          const parts: string[] = [];
+          for await (const event of stream as AsyncIterable<ResponseStreamEvent>) {
+            if (event.type === "response.output_text.delta") parts.push(event.delta);
+          }
+          return parts.join("");
+        }, "OpenAI");
+      }
 
       return withRetry(async () => {
         const response = await client.responses.create({

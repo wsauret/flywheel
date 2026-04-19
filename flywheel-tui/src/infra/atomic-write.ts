@@ -22,7 +22,11 @@ function makeTmpPath(filePath: string): string {
  *
  * Creates parent directories if they don't exist.
  */
-export function writeFileAtomic(filePath: string, content: string): void {
+export function writeFileAtomic(
+  filePath: string,
+  content: string,
+  options?: { mode?: number },
+): void {
   const tmpPath = makeTmpPath(filePath);
 
   const dir = path.dirname(tmpPath);
@@ -30,13 +34,17 @@ export function writeFileAtomic(filePath: string, content: string): void {
     fs.mkdirSync(dir, { recursive: true });
   }
 
-  // Write → fsync → rename
+  // Write → fsync → chmod (if requested) → rename
   const fd = fs.openSync(tmpPath, "w");
   try {
     fs.writeFileSync(fd, content, "utf-8");
     fs.fsyncSync(fd);
   } finally {
     fs.closeSync(fd);
+  }
+
+  if (options?.mode !== undefined) {
+    fs.chmodSync(tmpPath, options.mode);
   }
 
   fs.renameSync(tmpPath, filePath);

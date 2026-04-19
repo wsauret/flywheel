@@ -81,7 +81,7 @@ export function validateResolvedModels(
         errors.push({ component, model, issue: "Missing ANTHROPIC_API_KEY" });
       }
     } else if (OPENAI_MODEL_RE.test(lower)) {
-      if (!env["OPENAI_API_KEY"]) {
+      if (env["FLYWHEEL_OPENAI_AUTH"] !== "chatgpt" && !env["OPENAI_API_KEY"]) {
         errors.push({ component, model, issue: "Missing OPENAI_API_KEY" });
       }
     }

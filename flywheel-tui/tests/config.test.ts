@@ -694,3 +694,49 @@ describe("resolveTierConfigs with model tier names", () => {
     expect(tiers.dispatcher.model).toBe("claude-sonnet-4-20250514");
   });
 });
+
+// ---------------------------------------------------------------------------
+// openai_auth config field
+// ---------------------------------------------------------------------------
+
+describe("openai_auth config field", () => {
+  it("defaults to 'api_key' when omitted", () => {
+    const result = FlywheelConfigSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.openai_auth).toBe("api_key");
+    }
+  });
+
+  it("parses 'api_key' correctly", () => {
+    const result = FlywheelConfigSchema.safeParse({ openai_auth: "api_key" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.openai_auth).toBe("api_key");
+    }
+  });
+
+  it("parses 'chatgpt' correctly", () => {
+    const result = FlywheelConfigSchema.safeParse({ openai_auth: "chatgpt" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.openai_auth).toBe("chatgpt");
+    }
+  });
+
+  it("rejects invalid openai_auth string", () => {
+    const result = FlywheelConfigSchema.safeParse({ openai_auth: "invalid" });
+    expect(result.success).toBe(false);
+  });
+
+  it("FLYWHEEL_OPENAI_AUTH env var overrides default", () => {
+    const { config } = loadConfig(undefined, {
+      FLYWHEEL_OPENAI_AUTH: "chatgpt",
+    });
+    expect(config.openai_auth).toBe("chatgpt");
+  });
+
+  it("CONFIG_DEFAULTS includes openai_auth as api_key", () => {
+    expect(CONFIG_DEFAULTS.openai_auth).toBe("api_key");
+  });
+});

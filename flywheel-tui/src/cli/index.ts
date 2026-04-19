@@ -8,6 +8,12 @@ import "../workflows/queue/steps/register-all.js"
 
 
 async function main(): Promise<void> {
+  if (process.argv[2] === "auth") {
+    const { runAuth } = await import("./auth.js")
+    await runAuth(process.argv.slice(3))
+    return
+  }
+
   // ask-hook subcommand runs as a child of the Claude CLI. It must stay
   // lightweight — no log init, no agent installer — because it's spawned
   // once per AskUserQuestion and its stdout IS the hook's decision JSON.

@@ -13,6 +13,7 @@ import * as path from "node:path";
 const FLYWHEEL_DIR = ".flywheel";
 
 export const MODELS_CACHE_DIR = path.join(os.homedir(), ".cache", "flywheel", "models");
+export const AUTH_DIR = path.join(os.homedir(), ".cache", "flywheel", "auth");
 export const SESSIONS_DIR = `${FLYWHEEL_DIR}/sessions`;
 export const LOG_DIR = `${FLYWHEEL_DIR}/log`;
 export const TRACES_DIR = `${FLYWHEEL_DIR}/traces`;
