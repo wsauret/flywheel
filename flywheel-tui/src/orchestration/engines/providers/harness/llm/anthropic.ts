@@ -236,7 +236,7 @@ export function createAnthropicAdapter(
       }
 
       const maxOutput = outputLimit(info);
-      const maxTokens = useThinking ? Math.max(maxOutput, maxOutput * 2) : maxOutput;
+      const maxTokens = maxOutput;
 
       yield* withRetryStream(async function* () {
         try {

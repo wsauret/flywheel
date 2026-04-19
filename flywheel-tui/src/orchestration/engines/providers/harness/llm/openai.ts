@@ -245,6 +245,14 @@ export function createOpenAIAdapter(
 
           let responseId: string | undefined;
           let toolArgsBuf = "";
+          let reasoningBuf = "";
+
+          function* flushReasoning(): Generator<StreamEvent> {
+            if (reasoningBuf) {
+              yield { kind: "thinking_complete", thinking: reasoningBuf } as StreamEvent;
+              reasoningBuf = "";
+            }
+          }
 
           for await (const event of stream as AsyncIterable<ResponseStreamEvent>) {
             switch (event.type) {
@@ -253,14 +261,16 @@ export function createOpenAIAdapter(
                 break;
 
               case "response.reasoning_summary_text.delta":
-                yield { kind: "thinking_delta", text: event.delta } as const;
+                reasoningBuf += event.delta;
                 break;
 
               case "response.output_text.delta":
+                yield* flushReasoning();
                 yield { kind: "text_delta", text: event.delta } as const;
                 break;
 
               case "response.refusal.delta":
+                yield* flushReasoning();
                 yield { kind: "text_delta", text: event.delta } as const;
                 break;
 
@@ -269,6 +279,7 @@ export function createOpenAIAdapter(
                 break;
 
               case "response.output_item.done": {
+                yield* flushReasoning();
                 const item = event.item;
                 if (item.type === "function_call") {
                   let toolInput: Record<string, unknown>;
@@ -287,6 +298,7 @@ export function createOpenAIAdapter(
               }
 
               case "response.completed": {
+                yield* flushReasoning();
                 const response = event.response;
                 responseId = response?.id ?? responseId;
                 if (response?.usage) {

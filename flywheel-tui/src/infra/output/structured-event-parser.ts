@@ -165,12 +165,10 @@ export class StructuredEventParser {
       const delta = event.data.delta;
       if (delta?.type === "thinking_delta" && typeof delta.thinking === "string") {
         if (this.builder.hasActiveToolsContext) {
-          // Join existing tool context as a row
           if (!this.hasStreamedThinking) {
             this.builder.pushThinkingAsToolRow(now);
           }
         } else {
-          // No tool context — create/append to standalone thinking block
           this.builder.pushThinking(delta.thinking, now);
         }
         this.hasStreamedThinking = true;
@@ -190,17 +188,6 @@ export class StructuredEventParser {
     const parentToolUseId = message?.parent_tool_use_id ?? data.parent_tool_use_id;
     const parentAgentId = parentToolUseId ? this.toolUseIdToAgent.get(parentToolUseId)?.agentId : undefined;
 
-    const spawnsAgents = !parentAgentId && content.some(
-      (block) => block.type === "tool_use" && isSubagentToolName(block.name),
-    );
-    if (!parentAgentId && !spawnsAgents) {
-      this.builder.closeOpenSubagents(now);
-    }
-
-    const hasNonSubagentTools = !parentAgentId && content.some(
-      (block) => block.type === "tool_use" && block.name && !isSubagentToolName(block.name),
-    );
-
     const skipStreamedText = this.hasStreamedText && !parentAgentId;
     const skipStreamedThinking = this.hasStreamedThinking && !parentAgentId;
     this.hasStreamedText = false;
@@ -218,10 +205,8 @@ export class StructuredEventParser {
       if (block.type === "thinking" && typeof block.thinking === "string") {
         if (!parentAgentId && !skipStreamedThinking) {
           if (this.builder.hasActiveToolsContext) {
-            // Join existing tool context as a row
             this.builder.pushThinkingAsToolRow(now);
           } else if (block.thinking.length > 0) {
-            // No tool context — create standalone thinking block
             this.builder.pushThinking(block.thinking, now);
           }
         }

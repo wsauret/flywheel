@@ -4,6 +4,7 @@ import { formatDuration } from "../src/infra/format";
 import { getToolDetail } from "../src/infra/output/output-formatter";
 import { SUBAGENT_TOOL_NAMES } from "../src/infra/output/tool-constants";
 import { AnyBlockSchema } from "../src/infra/output-blocks";
+import { shouldRenderToolContentAsMarkdown } from "../src/tui/routes/work/components/output-blocks/tool-entry-helpers.js";
 import type {
   AnyBlock,
   TextBlock,
@@ -58,6 +59,32 @@ describe("TextBlock expected props", () => {
       timestamp: 1,
     };
     expect(block.content).toContain("```ts");
+  });
+});
+
+describe("Write tool content rendering", () => {
+  it("uses markdown rendering for markdown write targets", () => {
+    expect(shouldRenderToolContentAsMarkdown({ name: "Write", filePath: "/tmp/README.md", filetype: "markdown" })).toBe(true);
+  });
+
+  it("matches .md extensions case-insensitively", () => {
+    expect(shouldRenderToolContentAsMarkdown({ name: "Write", filePath: "/tmp/README.MD", filetype: "markdown" })).toBe(true);
+  });
+
+  it("does not use markdown rendering for non-markdown files", () => {
+    expect(shouldRenderToolContentAsMarkdown({ name: "Write", filePath: "/tmp/config.toml", filetype: "toml" })).toBe(false);
+  });
+
+  it("prefers the file extension when a path is present", () => {
+    expect(shouldRenderToolContentAsMarkdown({ name: "Write", filePath: "/tmp/notes.txt", filetype: "markdown" })).toBe(false);
+  });
+
+  it("falls back to the detected filetype when no path is available", () => {
+    expect(shouldRenderToolContentAsMarkdown({ name: "Write", filetype: "markdown" })).toBe(true);
+  });
+
+  it("stays false for non-write tools even on markdown paths", () => {
+    expect(shouldRenderToolContentAsMarkdown({ name: "Edit", filePath: "/tmp/README.md", filetype: "markdown" })).toBe(false);
   });
 });
 

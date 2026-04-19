@@ -73,6 +73,16 @@ export function appendToolToAgentChildren(
   if (children.length > maxChildren) children = children.slice(-maxChildren);
   const latestChild = `${tool.name}: ${tool.detail}`;
 
-  blocks[agentIdx] = { ...agent, children, latestChild };
+  // Reactivate: if an agent was prematurely completed but new child events
+  // arrive, reopen it. The authoritative close signal is the tool_result for
+  // the subagent's tool_use_id — not the absence of activity.
+  const reactivate = agent.status === "completed";
+
+  blocks[agentIdx] = {
+    ...agent,
+    children,
+    latestChild,
+    ...(reactivate && { status: "active" as const, duration: undefined }),
+  };
   return children.length - 1;
 }

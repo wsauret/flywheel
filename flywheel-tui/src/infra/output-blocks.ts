@@ -23,7 +23,7 @@ const ToolEntrySchema = z.object({
   filePath: z.string().optional(),
   /** Unified diff string for Edit/ApplyPatch tools */
   diff: z.string().optional(),
-  /** Raw file content for Write tool (rendered as plain text, not diff) */
+  /** Raw file content for Write tool (rendered inline, not diff) */
   content: z.string().optional(),
   /** File type for syntax highlighting in diff rendering */
   filetype: z.string().optional(),

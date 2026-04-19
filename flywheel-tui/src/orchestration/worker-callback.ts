@@ -3,6 +3,7 @@ import { formatChecklistNumbered } from "../workflows/queue/shared/quality-check
 import {
   buildWorkerHandoffPath,
   ensureSessionDir,
+  resolveSessionDir,
 } from "../infra/paths.js"
 import { Log } from "../infra/log.js"
 import type { Engine } from "./engines/core/types.js"
@@ -133,6 +134,7 @@ export function createWorkerCallback(
         claudeSettings: buildAskHookSettings(),
       }),
       cwd: opts.workerCwd ?? projectCwd,
+      sessionDir: resolveSessionDir(sessionId, projectCwd),
       handoffPath,
       signal,
       resumeSessionId,

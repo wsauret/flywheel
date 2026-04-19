@@ -16,7 +16,7 @@ import { buildHarnessSystemPrompt } from "./prompt.js";
 import { loadProjectInstructions } from "./project-instructions.js";
 import { emitContentBlockDelta, emitToolResult, emitAssistant, emitResult } from "./emit.js";
 import { getToolDefinitions } from "./tools/tool-dispatch.js";
-import { appendMessage, conversationPathFor, loadMessages } from "./conversation-store.js";
+import { appendMessage, conversationPathFor, loadMessages, loadMeta, saveMeta } from "./conversation-store.js";
 
 const EFFORT_MAP: Record<string, ReasoningEffort> = {
   off: "off",
@@ -100,106 +100,116 @@ export class HarnessRunner implements EngineRunner {
       ? AbortSignal.any([options.signal, abortController.signal])
       : abortController.signal;
 
-    const client = this.createLLMClient(options.model);
-    const tools = options.tools ? resolveHarnessTools(options.tools) : undefined;
-    const availableToolNames = new Set((tools ?? getToolDefinitions()).map(t => t.name));
-
-    const projectInstructions = await loadProjectInstructions(options.cwd);
-    const systemPrompt = buildHarnessSystemPrompt({
-      orchestrationSystemPrompt: options.systemPrompt ?? "",
-      provider: client.provider,
-      projectInstructions,
-      availableTools: availableToolNames,
-      cwd: options.cwd,
-    });
-
-    let turn = { thinkingContent: "", inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreateTokens: 0 };
-
-    const onEvent = (streamEvent: StreamEvent): void => {
-      switch (streamEvent.kind) {
-        case "text_delta":
-          emitContentBlockDelta(options.onEvent, {
-            type: "text_delta",
-            text: streamEvent.text,
-          });
-          break;
-        case "thinking_delta":
-          turn.thinkingContent += streamEvent.text;
-          emitContentBlockDelta(options.onEvent, {
-            type: "thinking_delta",
-            thinking: streamEvent.text,
-          });
-          break;
-        case "tool_result":
-          emitToolResult(
-            options.onEvent,
-            streamEvent.toolCallId,
-            streamEvent.content,
-            false,
-          );
-          break;
-        case "tool_use":
-          break;
-        case "usage":
-          turn.inputTokens = streamEvent.inputTokens;
-          turn.outputTokens = streamEvent.outputTokens;
-          turn.cacheReadTokens = streamEvent.cacheReadTokens;
-          turn.cacheCreateTokens = streamEvent.cacheCreateTokens;
-          this.totalInputTokens += streamEvent.inputTokens;
-          this.totalOutputTokens += streamEvent.outputTokens;
-          this.totalCostUsd += client.costFor({
-            input: streamEvent.inputTokens,
-            output: streamEvent.outputTokens,
-            cacheRead: streamEvent.cacheReadTokens,
-            cacheWrite: streamEvent.cacheCreateTokens,
-            reasoning: streamEvent.reasoningTokens,
-          });
-          break;
-        case "done":
-          emitResult(options.onEvent, {
-            totalCostUsd: this.totalCostUsd,
-            inputTokens: turn.inputTokens,
-            outputTokens: turn.outputTokens,
-            sessionId: this.sessionId,
-            contextWindow: client.contextLimit,
-          });
-          break;
-      }
-    };
-
-    const onTurnAssistantMessage = (content: LLMContentBlock[]): void => {
-      const blocks: ContentBlock[] = [];
-      if (turn.thinkingContent) {
-        blocks.push({ type: "thinking", thinking: turn.thinkingContent });
-      }
-      for (const b of content) {
-        if (b.type === "text") blocks.push({ type: "text", text: b.text });
-        else if (b.type === "tool_use") blocks.push({ type: "tool_use", id: b.id, name: b.name, input: b.input });
-      }
-      if (blocks.length > 0) {
-        emitAssistant(options.onEvent, blocks, {
-          input_tokens: turn.inputTokens,
-          cache_read_input_tokens: turn.cacheReadTokens,
-          cache_creation_input_tokens: turn.cacheCreateTokens,
-        });
-      }
-      turn = { thinkingContent: "", inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreateTokens: 0 };
-    };
-
-    // Conversation persistence: load prior messages (if resuming) and stream new
-    // messages to disk as they're pushed. Path is derived from handoffPath, so
-    // when handoffPath is absent (e.g. tests) persistence is a no-op.
-    const conversationPath = options.handoffPath
-      ? conversationPathFor(options.handoffPath, this.sessionId)
-      : null;
-    const priorMessages: Message[] = conversationPath && options.resumeSessionId
-      ? loadMessages(conversationPath)
-      : [];
-    const onMessageAppended = conversationPath
-      ? (message: Message) => appendMessage(conversationPath, message)
-      : undefined;
-
     try {
+      const client = this.createLLMClient(options.model);
+      const tools = options.tools ? resolveHarnessTools(options.tools) : undefined;
+      const availableToolNames = new Set((tools ?? getToolDefinitions()).map(t => t.name));
+
+      const projectInstructions = await loadProjectInstructions(options.cwd);
+      const systemPrompt = buildHarnessSystemPrompt({
+        orchestrationSystemPrompt: options.systemPrompt ?? "",
+        provider: client.provider,
+        projectInstructions,
+        availableTools: availableToolNames,
+        cwd: options.cwd,
+      });
+
+      let turn = { thinkingContent: "", inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreateTokens: 0 };
+
+      const onEvent = (streamEvent: StreamEvent): void => {
+        switch (streamEvent.kind) {
+          case "text_delta":
+            emitContentBlockDelta(options.onEvent, {
+              type: "text_delta",
+              text: streamEvent.text,
+            });
+            break;
+          case "thinking_delta":
+            turn.thinkingContent += streamEvent.text;
+            emitContentBlockDelta(options.onEvent, {
+              type: "thinking_delta",
+              thinking: streamEvent.text,
+            });
+            break;
+          case "thinking_complete":
+            if (!turn.thinkingContent) {
+              emitContentBlockDelta(options.onEvent, {
+                type: "thinking_delta",
+                thinking: streamEvent.thinking,
+              });
+            }
+            turn.thinkingContent = streamEvent.thinking;
+            break;
+          case "tool_result":
+            emitToolResult(
+              options.onEvent,
+              streamEvent.toolCallId,
+              streamEvent.content,
+              false,
+            );
+            break;
+          case "tool_use":
+            break;
+          case "usage":
+            turn.inputTokens = streamEvent.inputTokens;
+            turn.outputTokens = streamEvent.outputTokens;
+            turn.cacheReadTokens = streamEvent.cacheReadTokens;
+            turn.cacheCreateTokens = streamEvent.cacheCreateTokens;
+            this.totalInputTokens += streamEvent.inputTokens;
+            this.totalOutputTokens += streamEvent.outputTokens;
+            this.totalCostUsd += client.costFor({
+              input: streamEvent.inputTokens,
+              output: streamEvent.outputTokens,
+              cacheRead: streamEvent.cacheReadTokens,
+              cacheWrite: streamEvent.cacheCreateTokens,
+              reasoning: streamEvent.reasoningTokens,
+            });
+            break;
+          case "done":
+            emitResult(options.onEvent, {
+              totalCostUsd: this.totalCostUsd,
+              inputTokens: turn.inputTokens,
+              outputTokens: turn.outputTokens,
+              sessionId: this.sessionId,
+              contextWindow: client.contextLimit,
+            });
+            break;
+        }
+      };
+
+      const onTurnAssistantMessage = (content: LLMContentBlock[]): void => {
+        const blocks: ContentBlock[] = [];
+        if (turn.thinkingContent) {
+          blocks.push({ type: "thinking", thinking: turn.thinkingContent });
+        }
+        for (const b of content) {
+          if (b.type === "text") blocks.push({ type: "text", text: b.text });
+          else if (b.type === "tool_use") blocks.push({ type: "tool_use", id: b.id, name: b.name, input: b.input });
+        }
+        if (blocks.length > 0) {
+          emitAssistant(options.onEvent, blocks, {
+            input_tokens: turn.inputTokens,
+            cache_read_input_tokens: turn.cacheReadTokens,
+            cache_creation_input_tokens: turn.cacheCreateTokens,
+          });
+        }
+        turn = { thinkingContent: "", inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreateTokens: 0 };
+      };
+
+      const isResume = !!options.resumeSessionId;
+      const conversationPath = options.sessionDir
+        ? conversationPathFor(options.sessionDir, this.sessionId)
+        : null;
+      const priorMessages: Message[] = conversationPath && isResume
+        ? loadMessages(conversationPath)
+        : [];
+      const priorMeta = options.sessionDir && isResume
+        ? loadMeta(options.sessionDir, this.sessionId)
+        : null;
+      const onMessageAppended = conversationPath
+        ? (message: Message) => appendMessage(conversationPath, message)
+        : undefined;
+
       const result = await runAgentLoop({
         client,
         systemPrompt,
@@ -215,7 +225,14 @@ export class HarnessRunner implements EngineRunner {
         priorMessages,
         onMessageAppended,
         sessionId: this.sessionId,
+        previousResponseId: priorMeta?.previousResponseId,
       });
+
+      if (options.sessionDir && result.previousResponseId) {
+        saveMeta(options.sessionDir, this.sessionId, {
+          previousResponseId: result.previousResponseId,
+        });
+      }
 
       options.onTurnComplete?.();
       this.resolveResult({

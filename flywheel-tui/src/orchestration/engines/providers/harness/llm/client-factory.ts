@@ -11,8 +11,23 @@ import { createOpenAIAdapter } from "./openai.js";
 import type { ModelsClient } from "./models.js";
 import type { LLMClient } from "./types.js";
 
+const CONTEXT_SUFFIX_RE = /\[\w+\]$/;
+
+const BARE_ALIASES: Record<string, string> = {
+  opus: "claude-opus-4-7",
+  sonnet: "claude-sonnet-4-6",
+  haiku: "claude-haiku-4-5-20251001",
+};
+
+function normalizeModel(model: string): string {
+  const alias = BARE_ALIASES[model.toLowerCase()];
+  if (alias) return alias;
+  return model.replace(CONTEXT_SUFFIX_RE, "");
+}
+
 export function createClient(model: string, modelsClient: ModelsClient): LLMClient {
-  const provider = modelsClient.detectProvider(model);
+  const normalized = normalizeModel(model);
+  const provider = modelsClient.detectProvider(normalized);
 
   if (provider === "anthropic") {
     const apiKey = process.env["ANTHROPIC_API_KEY"];
@@ -21,7 +36,7 @@ export function createClient(model: string, modelsClient: ModelsClient): LLMClie
         "ANTHROPIC_API_KEY environment variable is required for Anthropic models",
       );
     }
-    return createAnthropicAdapter(apiKey, model, modelsClient);
+    return createAnthropicAdapter(apiKey, normalized, modelsClient);
   }
 
   if (provider === "openai") {
@@ -31,7 +46,7 @@ export function createClient(model: string, modelsClient: ModelsClient): LLMClie
         "OPENAI_API_KEY environment variable is required for OpenAI models",
       );
     }
-    return createOpenAIAdapter(apiKey, model, modelsClient);
+    return createOpenAIAdapter(apiKey, normalized, modelsClient);
   }
 
   throw new Error(

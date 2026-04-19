@@ -1,4 +1,5 @@
-engine = "claude"
+engine = "harness"
+preferred_vendor = "openai" # "anthropic" | "openai"
 model = "powerful"
 effort = "max"
 theme = "default"

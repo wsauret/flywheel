@@ -52,12 +52,15 @@ export interface AgentLoopOptions {
   /** Maximum number of LLM calls before the loop terminates. Default 200. */
   maxLLMCalls?: number;
   sessionId?: string;
+  /** Restored from a previous session — lets providers resume server-side state. */
+  previousResponseId?: string;
 }
 
 export type AgentLoopOutcome = "ok" | "context_overflow" | "budget_exhausted";
 
 export interface AgentLoopResult {
   outcome: AgentLoopOutcome;
+  previousResponseId?: string;
 }
 
 export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoopResult> {
@@ -102,7 +105,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
 
   let nextInput: NextInput = { kind: "initial", text: instruction };
   let contextOverflow = false;
-  let previousResponseId: string | undefined;
+  let previousResponseId: string | undefined = options.previousResponseId;
 
   for (;;) {
     if (signal?.aborted) {
@@ -173,7 +176,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         pushMessage({ role: "assistant", content: finalContent });
       }
 
-      return { outcome: "budget_exhausted" };
+      return { outcome: "budget_exhausted", previousResponseId };
     }
 
     try {
@@ -278,7 +281,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         continue;
       }
       log.info("no tool calls in response, completing", { stopReason });
-      return { outcome: contextOverflow ? "context_overflow" : "ok" };
+      return { outcome: contextOverflow ? "context_overflow" : "ok", previousResponseId };
     }
 
     const toolResults: ToolResultEntry[] = [];
@@ -301,7 +304,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     nextInput = { kind: "observation", toolResults };
   }
 
-  return { outcome: contextOverflow ? "context_overflow" : "ok" };
+  return { outcome: contextOverflow ? "context_overflow" : "ok", previousResponseId };
 }
 
 function appendTextBlock(blocks: ContentBlock[], text: string): void {

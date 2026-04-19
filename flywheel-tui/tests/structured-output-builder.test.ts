@@ -617,6 +617,57 @@ describe("StructuredOutputBuilder", () => {
     });
   });
 
+  // ── Agent reactivation ──
+
+  describe("agent reactivation", () => {
+    it("reactivates a completed agent when new children arrive", () => {
+      const now = Date.now();
+      builder.startAgent("a1", "Explore", "Searching", now);
+      builder.completeAgent("a1", 1000);
+
+      const agent1 = builder.getBlocks()[0] as ToolGroupBlock;
+      expect(agent1.status).toBe("completed");
+      expect(agent1.duration).toBe(1000);
+
+      // New child arrives — agent should reactivate
+      builder.pushToolRowToAgent("a1", resolvedTool("Read", "file.ts", now + 2000));
+
+      const agent2 = builder.getBlocks()[0] as ToolGroupBlock;
+      expect(agent2.status).toBe("active");
+      expect(agent2.duration).toBeUndefined();
+      expect(agent2.children).toHaveLength(1);
+    });
+
+    it("does not reactivate an errored agent", () => {
+      const now = Date.now();
+      builder.startAgent("a1", "Explore", "Searching", now);
+      builder.errorAgent("a1", "something broke");
+
+      builder.pushToolRowToAgent("a1", resolvedTool("Read", "file.ts", now + 2000));
+
+      const agent = builder.getBlocks()[0] as ToolGroupBlock;
+      expect(agent.status).toBe("error");
+    });
+
+    it("reactivated agent can be completed again with correct duration", () => {
+      const now = Date.now();
+      builder.startAgent("a1", "Explore", "Searching", now);
+      builder.completeAgent("a1", 500);
+
+      builder.pushToolRowToAgent("a1", resolvedTool("Read", "file.ts", now + 1000));
+
+      const active = builder.getBlocks()[0] as ToolGroupBlock;
+      expect(active.status).toBe("active");
+
+      builder.completeAgent("a1", 3000);
+
+      const done = builder.getBlocks()[0] as ToolGroupBlock;
+      expect(done.status).toBe("completed");
+      expect(done.duration).toBe(3000);
+    });
+  });
+
+
   // ── Pinned zone (pending messages + todo) ──
 
   describe("pinned zone ordering", () => {

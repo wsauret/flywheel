@@ -14,6 +14,7 @@ import { buildAskHookSettings } from "./ask-hook/config.js"
 type ChatInfra = Pick<SessionInfra, "budgetTracker" | "transcriptWriter" | "traceCollector">
 import { Log } from "../infra/log.js"
 import { errorMessage } from "../infra/error-message.js"
+import { resolveSessionDir } from "../infra/paths.js"
 
 const log = Log.create({ service: "chat" })
 
@@ -192,6 +193,7 @@ function createWorkerLifecycle(
     const runner = engine.createRunner({
       model,
       cwd: projectCwd,
+      sessionDir: resolveSessionDir(chatId, projectCwd),
       resumeSessionId,
       extraEnv: askHookServer ? { FLYWHEEL_ASK_SOCKET: askHookServer.socketPath } : undefined,
       claudeSettings: askHookServer ? buildAskHookSettings() : undefined,
@@ -253,10 +255,18 @@ function createWorkerLifecycle(
     runner.done.then(
       (result) => {
         if (result.sessionId) state.captureSessionId(result.sessionId)
+        if (result.failure) {
+          log.warn("chat runner failed", { kind: result.failure.kind, message: "message" in result.failure ? result.failure.message : undefined })
+          const detail = "message" in result.failure ? `: ${result.failure.message}` : ""
+          session.pushSystemMessage(`Failed to connect to model provider${detail}`, Date.now())
+          session.flush()
+        }
         handleRunnerDone()
       },
     ).catch((err) => {
       log.warn("chat process error", { error: errorMessage(err) })
+      session.pushSystemMessage(`Failed to connect to model provider: ${errorMessage(err)}`, Date.now())
+      session.flush()
       handleRunnerDone()
     })
   }

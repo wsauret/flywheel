@@ -13,14 +13,14 @@ import { parseUnifiedDiff } from "@tui/adapters/diff-parser"
 import { toFileUri } from "@tui/adapters/linkify-paths"
 import { createHighlighter } from "@tui/adapters/syntax-highlight.js"
 import { getToolDisplayName } from "@infra/tool-display-registry.js"
-
+import { shouldRenderToolContentAsMarkdown } from "./tool-entry-helpers.js"
 
 interface ToolEntryProps {
   block: ToolEntryType
 }
 
 export function ToolEntry(props: ToolEntryProps) {
-  const { theme } = useTheme()
+  const { theme, syntax } = useTheme()
   const name = () => getToolDisplayName(props.block.name)
 
   const isCompleted = () => props.block.completed === true
@@ -61,8 +61,9 @@ export function ToolEntry(props: ToolEntryProps) {
   })
 
   const hl = createHighlighter(theme)
+  const rendersMarkdownContent = () => shouldRenderToolContentAsMarkdown(props.block)
   const contentHighlighted = createMemo(() => {
-    if (!props.block.content) return []
+    if (!props.block.content || rendersMarkdownContent()) return []
     return hl(props.block.content, props.block.filetype)
   })
 
@@ -129,19 +130,29 @@ export function ToolEntry(props: ToolEntryProps) {
             </For>
           </Show>
           <Show when={hasContent()}>
-            {(() => {
-              const lines = contentHighlighted()
-              const maxDigits = String(lines.length).length
-              return <For each={lines}>
-                {(segments, i) => {
-                  const lineChunks: TextChunk[] = [
-                    stFg(theme.text)(` ${String(i() + 1).padStart(maxDigits)}  `),
-                    ...segments.map((seg) => stFg(seg.color ?? theme.text)(seg.text)),
-                  ]
-                  return <text ref={(el: TextRenderable) => { el.content = new StyledText(lineChunks) }} />
-                }}
-              </For>
-            })()}
+            <Show when={rendersMarkdownContent()}>
+              <markdown
+                syntaxStyle={syntax}
+                content={props.block.content ?? ""}
+                streaming={false}
+                conceal={true}
+              />
+            </Show>
+            <Show when={!rendersMarkdownContent()}>
+              {(() => {
+                const lines = contentHighlighted()
+                const maxDigits = String(lines.length).length
+                return <For each={lines}>
+                  {(segments, i) => {
+                    const lineChunks: TextChunk[] = [
+                      stFg(theme.text)(` ${String(i() + 1).padStart(maxDigits)}  `),
+                      ...segments.map((seg) => stFg(seg.color ?? theme.text)(seg.text)),
+                    ]
+                    return <text ref={(el: TextRenderable) => { el.content = new StyledText(lineChunks) }} />
+                  }}
+                </For>
+              })()}
+            </Show>
           </Show>
         </CollapsibleBox>
       </Show>

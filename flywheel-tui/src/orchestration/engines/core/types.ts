@@ -34,6 +34,9 @@ export interface RunnerOptions {
   systemPrompt?: string;
   effort?: string;
   handoffPath?: string;
+  /** Absolute path to the session directory (`.flywheel/sessions/<id>`).
+   *  Used by the harness engine for conversation persistence across reconnects. */
+  sessionDir?: string;
   /** Resume a prior engine session instead of starting fresh. */
   resumeSessionId?: string;
   /** Explicit tool restriction (e.g. ["Write"] or ["Read", "Bash", "Write", "Grep", "Glob"]).

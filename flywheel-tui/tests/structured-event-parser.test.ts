@@ -242,17 +242,16 @@ describe("StructuredEventParser", () => {
     });
   });
 
-  // ── Blocking invariant: top-level events close agents ──
 
-  describe("blocking invariant", () => {
-    it("top-level text auto-completes an active agent", () => {
-      // Spawn agent
+  // ── Agent lifecycle: only tool_result closes agents ──
+
+  describe("agent lifecycle", () => {
+    it("agents stay active when unrelated assistant messages arrive", () => {
       const spawnEvent = makeAssistantEvent([
         { type: "tool_use", id: "tool_1", name: "Agent", input: { description: "exploring", subagent_type: "Explore" } },
       ]);
       parser.dispatch(spawnEvent, 1000);
 
-      // Top-level text arrives (no parent_tool_use_id) — agent must be done
       const textEvent = makeAssistantEvent([
         { type: "text", text: "Based on the exploration..." },
       ]);
@@ -260,49 +259,62 @@ describe("StructuredEventParser", () => {
 
       const blocks = builder.getBlocks();
       const agent = blocks[0] as ToolGroupBlock;
-      expect(agent.status).toBe("completed");
+      expect(agent.status).toBe("active");
     });
 
-    it("top-level staged tool does NOT get captured into active agent", () => {
-      // Spawn agent
+    it("unrelated assistant tools do NOT close an active agent", () => {
       const spawnEvent = makeAssistantEvent([
         { type: "tool_use", id: "tool_1", name: "Agent", input: { description: "exploring" } },
       ]);
       parser.dispatch(spawnEvent, 1000);
 
-      // Top-level tool arrives — stages. Agent auto-closes because this message
-      // is not inside the subagent and does not spawn a new subagent.
       const toolEvent = makeAssistantEvent([
         { type: "tool_use", id: "tool_2", name: "Bash", input: { command: "ls" } },
       ]);
       parser.dispatch(toolEvent, 1000);
 
-      // Resolve the tool
       parser.dispatch(makeUserToolResultEvent([{ tool_use_id: "tool_2" }]), 2000);
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(2);
       expect(blocks[0].kind).toBe("toolGroup");
-      expect((blocks[0] as ToolGroupBlock).status).toBe("completed"); // auto-closed
-      expect((blocks[0] as ToolGroupBlock).children).toHaveLength(0); // no captured tools
+      expect((blocks[0] as ToolGroupBlock).status).toBe("active");
+      expect((blocks[0] as ToolGroupBlock).children).toHaveLength(0);
       expect(blocks[1].kind).toBe("toolGroup");
       expect((blocks[1] as ToolGroupBlock).label).toBe("Tools");
     });
 
-    it("tool_result still works as the authoritative close signal", () => {
-      // Spawn agent
+    it("tool_result is the authoritative close signal", () => {
       const spawnEvent = makeAssistantEvent([
         { type: "tool_use", id: "tool_1", name: "Task", input: { description: "work" } },
       ]);
       parser.dispatch(spawnEvent, 1000);
 
-      // tool_result arrives before any top-level event
       const resultEvent = makeToolResultEvent("tool_1");
       parser.dispatch(resultEvent, 1000);
 
       const blocks = builder.getBlocks();
       const agent = blocks[0] as ToolGroupBlock;
       expect(agent.status).toBe("completed");
+    });
+
+    it("agent stays active through interleaved messages until tool_result", () => {
+      parser.dispatch(makeAssistantEvent([
+        { type: "tool_use", id: "tool_1", name: "Agent", input: { description: "research" } },
+      ]), 1000);
+
+      parser.dispatch(makeAssistantEvent([
+        { type: "text", text: "Intermediate update..." },
+      ]), 2000);
+      parser.dispatch(makeAssistantEvent([
+        { type: "tool_use", id: "tool_2", name: "Bash", input: { command: "echo hi" } },
+      ]), 3000);
+
+      expect((builder.getBlocks()[0] as ToolGroupBlock).status).toBe("active");
+
+      parser.dispatch(makeToolResultEvent("tool_1"), 4000);
+
+      expect((builder.getBlocks()[0] as ToolGroupBlock).status).toBe("completed");
     });
   });
 
@@ -355,7 +367,7 @@ describe("StructuredEventParser", () => {
       expect((blocks[2] as ToolGroupBlock).status).toBe("active");
     });
 
-    it("top-level text AFTER all tool_results still closes stragglers", () => {
+    it("agent without tool_result stays active even after sibling completes", () => {
       // Spawn two agents
       parser.dispatch(makeAssistantEvent([
         { type: "tool_use", id: "tool_a", name: "Agent", input: { description: "A" } },
@@ -367,14 +379,14 @@ describe("StructuredEventParser", () => {
       // Complete only Agent A via tool_result
       parser.dispatch(makeToolResultEvent("tool_a"), 1000);
 
-      // Top-level text arrives — Agent B's tool_result was lost, should be auto-completed
+      // Top-level text arrives — Agent B stays active until its own tool_result or lifecycle cleanup
       parser.dispatch(makeAssistantEvent([
         { type: "text", text: "Here are the results..." },
       ]), 1000);
 
       const blocks = builder.getBlocks();
       expect((blocks[0] as ToolGroupBlock).status).toBe("completed");
-      expect((blocks[1] as ToolGroupBlock).status).toBe("completed");
+      expect((blocks[1] as ToolGroupBlock).status).toBe("active");
     });
 
     it("all three agents in one event stays correct", () => {
@@ -931,12 +943,10 @@ describe("StructuredEventParser", () => {
     });
 
     it("thinking joins existing Tools group when tools arrive first", () => {
-      // Tools first, then thinking arrives
       parser.dispatch(makeAssistantEvent([
         { type: "tool_use", id: "t1", name: "Read", input: { file_path: "test.ts" } },
       ]), 1000);
 
-      // Now thinking delta arrives — joins the existing context
       parser.dispatch(makeThinkingDelta("reasoning..."), 1001);
 
       const blocks = builder.getBlocks();
