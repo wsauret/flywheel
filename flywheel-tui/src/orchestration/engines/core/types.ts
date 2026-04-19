@@ -83,6 +83,7 @@ export interface EngineResult {
 
 export type EngineFailureReason =
   | { kind: "context_overflow" }
+  | { kind: "budget_exhausted" }
   | { kind: "output_overflow" }
   | { kind: "api_error"; message: string }
   | { kind: "timeout" }

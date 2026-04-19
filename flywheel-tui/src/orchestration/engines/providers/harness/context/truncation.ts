@@ -6,13 +6,14 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { errorMessage } from "../../../../../infra/error-message.js";
 import { Log } from "../../../../../infra/log.js";
 
-function harnessOutputDir(cwd: string): string {
-  return join(cwd, ".flywheel", "harness-outputs");
+function harnessOutputDir(cwd: string, sessionId?: string): string {
+  const base = join(cwd, ".flywheel", "harness-outputs");
+  return sessionId ? join(base, sessionId) : base;
 }
 
 const log = Log.create({ service: "harness-truncation" });
@@ -23,18 +24,20 @@ const PORTION_BYTES = 15_000;
 export async function limitOutput(
   output: string,
   maxBytes: number = DEFAULT_MAX_BYTES,
-  cwd?: string,
+  cwd: string = process.cwd(),
+  sessionId?: string,
 ): Promise<{ text: string; truncated: boolean }> {
-  const bytes = Buffer.from(output, "utf-8");
-  if (bytes.length <= maxBytes) {
+  const byteLen = Buffer.byteLength(output, "utf-8");
+  if (byteLen <= maxBytes) {
     return { text: output, truncated: false };
   }
 
-  const savedPath = await trySaveFullOutput(output, cwd);
+  const savedPath = await trySaveFullOutput(output, cwd, sessionId);
 
+  const bytes = Buffer.from(output, "utf-8");
   const first = bytes.subarray(0, PORTION_BYTES).toString("utf-8");
   const last = bytes.subarray(-PORTION_BYTES).toString("utf-8");
-  const omitted = bytes.length - PORTION_BYTES * 2;
+  const omitted = byteLen - PORTION_BYTES * 2;
 
   let text = `${first}\n[truncated: ${omitted} bytes omitted]\n${last}`;
   if (savedPath) {
@@ -44,9 +47,9 @@ export async function limitOutput(
   return { text, truncated: true };
 }
 
-async function trySaveFullOutput(output: string, cwd?: string): Promise<string | null> {
+async function trySaveFullOutput(output: string, cwd: string, sessionId?: string): Promise<string | null> {
   try {
-    const dir = cwd ? harnessOutputDir(cwd) : harnessOutputDir(process.cwd());
+    const dir = harnessOutputDir(cwd, sessionId);
     mkdirSync(dir, { recursive: true });
 
     const ts = new Date().toISOString().replace(/[:.]/g, "-");
@@ -58,5 +61,14 @@ async function trySaveFullOutput(output: string, cwd?: string): Promise<string |
   } catch (err) {
     log.warn("failed to save full output", { error: errorMessage(err) });
     return null;
+  }
+}
+
+export function cleanupHarnessOutputs(cwd: string, sessionId: string): void {
+  try {
+    const dir = harnessOutputDir(cwd, sessionId);
+    rmSync(dir, { recursive: true, force: true });
+  } catch {
+    // Best effort
   }
 }

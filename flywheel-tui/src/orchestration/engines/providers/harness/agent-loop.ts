@@ -21,6 +21,7 @@ import type {
 import { ContextLengthExceededError, OutputLengthExceededError } from "./llm/types.js";
 import { executeTool, getToolDefinitions } from "./tools/tool-dispatch.js";
 import type { ToolContext, TodoItem } from "./tools/types.js";
+import { limitOutput } from "./context/truncation.js";
 import { createTokenCounter } from "./context/token-counter.js";
 import { createSummarizer, unwindMessages } from "./context/summarizer.js";
 import { renderNextInput, applyHandoff } from "./agent-state.js";
@@ -48,10 +49,15 @@ export interface AgentLoopOptions {
   priorMessages?: Message[];
   /** Called whenever a message is pushed to history — enables streaming persistence. */
   onMessageAppended?: (message: Message) => void;
+  /** Maximum number of LLM calls before the loop terminates. Default 200. */
+  maxLLMCalls?: number;
+  sessionId?: string;
 }
 
+export type AgentLoopOutcome = "ok" | "context_overflow" | "budget_exhausted";
+
 export interface AgentLoopResult {
-  contextOverflow: boolean;
+  outcome: AgentLoopOutcome;
 }
 
 export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoopResult> {
@@ -91,6 +97,9 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     todoList,
   };
 
+  const maxLLMCalls = options.maxLLMCalls ?? 200;
+  let llmCallCount = 0;
+
   let nextInput: NextInput = { kind: "initial", text: instruction };
   let contextOverflow = false;
   let previousResponseId: string | undefined;
@@ -121,13 +130,54 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     }
 
     const userPrompt = renderNextInput(nextInput);
+
+    if (nextInput.kind === "observation" && Array.isArray(userPrompt)) {
+      const budgetLine = `[Budget: ${llmCallCount}/${maxLLMCalls} calls used, ${maxLLMCalls - llmCallCount} remaining]`;
+      userPrompt.push({ type: "text", text: budgetLine });
+    }
+
     const turnMessages: Message[] = [...messages, { role: "user", content: userPrompt }];
 
     let assistantContent: ContentBlock[] = [];
     let toolCalls: ToolCall[] = [];
     let stopReason = "";
 
+    if (llmCallCount >= maxLLMCalls) {
+      log.info("budget exhausted", { llmCallCount, maxLLMCalls });
+
+      const exhaustionMessage = `Budget exhausted (${maxLLMCalls} LLM calls used). Provide a final summary of progress and remaining work.`;
+      pushMessage({ role: "user", content: exhaustionMessage });
+
+      const finalStream = client.streamWithTools({
+        messages: [...messages],
+        tools: [],
+        systemPrompt,
+        reasoningEffort,
+        signal,
+        previousResponseId,
+      });
+
+      const finalContent: ContentBlock[] = [];
+      for await (const event of finalStream) {
+        onEvent(event);
+        if (event.kind === "text_delta") {
+          appendTextBlock(finalContent, event.text);
+        }
+        if (event.kind === "done" && event.responseId) {
+          previousResponseId = event.responseId;
+        }
+      }
+
+      if (finalContent.length > 0) {
+        options.onTurnAssistantMessage?.(finalContent);
+        pushMessage({ role: "assistant", content: finalContent });
+      }
+
+      return { outcome: "budget_exhausted" };
+    }
+
     try {
+      llmCallCount++;
       const stream = client.streamWithTools({
         messages: turnMessages,
         tools: toolDefs,
@@ -228,7 +278,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         continue;
       }
       log.info("no tool calls in response, completing", { stopReason });
-      return { contextOverflow };
+      return { outcome: contextOverflow ? "context_overflow" : "ok" };
     }
 
     const toolResults: ToolResultEntry[] = [];
@@ -242,7 +292,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     for (const entry of parallelResults) {
       if (!entry) continue;
       const { tc, result } = entry;
-      const content = truncateToolOutput(result.content);
+      const { text: content } = await limitOutput(result.content, undefined, cwd, options.sessionId);
       onEvent({ kind: "tool_result", toolCallId: tc.id, content });
       toolResults.push({ toolCallId: tc.id, content });
       tokenCounter.addToolResult(content);
@@ -251,20 +301,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     nextInput = { kind: "observation", toolResults };
   }
 
-  return { contextOverflow };
-}
-
-const TOOL_OUTPUT_MAX_BYTES = 30_000;
-
-function truncateToolOutput(output: string): string {
-  const bytes = Buffer.byteLength(output, "utf-8");
-  if (bytes <= TOOL_OUTPUT_MAX_BYTES) return output;
-  const half = TOOL_OUTPUT_MAX_BYTES >> 1;
-  const buf = Buffer.from(output, "utf-8");
-  const first = buf.subarray(0, half).toString("utf-8");
-  const last = buf.subarray(buf.length - half).toString("utf-8");
-  const omitted = bytes - Buffer.byteLength(first, "utf-8") - Buffer.byteLength(last, "utf-8");
-  return `${first}\n[...${omitted} bytes omitted...]\n${last}`;
+  return { outcome: contextOverflow ? "context_overflow" : "ok" };
 }
 
 function appendTextBlock(blocks: ContentBlock[], text: string): void {

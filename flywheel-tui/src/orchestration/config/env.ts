@@ -15,6 +15,7 @@ function ensure<K extends keyof ConfigOverrides>(config: ConfigOverrides, key: K
 
 const ENV_MAP: Record<string, EnvSetter> = {
   FLYWHEEL_ENGINE: (val, c) => { c.engine = val },
+  FLYWHEEL_PREFERRED_VENDOR: (val, c) => { c.preferred_vendor = val as "anthropic" | "openai" },
   FLYWHEEL_MODEL: (val, c) => { c.model = val },
   FLYWHEEL_SHOW_THINKING: (val, c) => { c.show_thinking = parseBool(val) },
   FLYWHEEL_WORKER_MODEL: (val, c) => { ensure(c, "worker").model = val },

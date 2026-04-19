@@ -30,7 +30,10 @@ export interface SessionEntryBase {
   contextPercent: number
   readonly startedAt: number
   modelActivity: ModelActivity
-  /** True after the runner has completed/errored and been disposed. Data is retained for display. */
+  // Why not derived from runner === null: loaded sessions also have runner: null.
+  // Why not a lifecycle state (ADR-006 §State Ownership forbids status fields on
+  // registry entries): this is a runtime disposal guard — it prevents operations
+  // on a disposed runner. The session manager owns lifecycle (active/paused/completed).
   ended: boolean
 }
 

@@ -3,7 +3,7 @@ import { isHandoffPath } from "../src/tui/utils/text";
 import { formatDuration } from "../src/infra/format";
 import { getToolDetail } from "../src/infra/output/output-formatter";
 import { SUBAGENT_TOOL_NAMES } from "../src/infra/output/tool-constants";
-import { QuestionBlockSchema } from "../src/infra/output-blocks";
+import { AnyBlockSchema } from "../src/infra/output-blocks";
 import type {
   AnyBlock,
   TextBlock,
@@ -624,7 +624,7 @@ describe("QuestionBlockSchema", () => {
       ],
       timestamp: 1000,
     };
-    const result = QuestionBlockSchema.safeParse(block);
+    const result = AnyBlockSchema.safeParse(block);
     expect(result.success).toBe(true);
   });
 
@@ -647,12 +647,12 @@ describe("QuestionBlockSchema", () => {
       cancelled: false,
       timestamp: 2000,
     };
-    const result = QuestionBlockSchema.safeParse(block);
+    const result = AnyBlockSchema.safeParse(block);
     expect(result.success).toBe(true);
   });
 
   it("rejects missing required questions field", () => {
-    const result = QuestionBlockSchema.safeParse({
+    const result = AnyBlockSchema.safeParse({
       kind: "question",
       toolUseId: "tool_q3",
       timestamp: 1000,
@@ -661,7 +661,7 @@ describe("QuestionBlockSchema", () => {
   });
 
   it("rejects question entry missing options", () => {
-    const result = QuestionBlockSchema.safeParse({
+    const result = AnyBlockSchema.safeParse({
       kind: "question",
       toolUseId: "tool_q4",
       questions: [{ question: "Pick one" }],
@@ -671,7 +671,7 @@ describe("QuestionBlockSchema", () => {
   });
 
   it("rejects missing required toolUseId field", () => {
-    const result = QuestionBlockSchema.safeParse({
+    const result = AnyBlockSchema.safeParse({
       kind: "question",
       questions: [{ question: "Pick one", options: [{ label: "A" }] }],
       timestamp: 1000,
@@ -680,7 +680,7 @@ describe("QuestionBlockSchema", () => {
   });
 
   it("accepts empty options array in a question entry", () => {
-    const result = QuestionBlockSchema.safeParse({
+    const result = AnyBlockSchema.safeParse({
       kind: "question",
       toolUseId: "tool_q5",
       questions: [{ question: "Pick one", options: [] }],

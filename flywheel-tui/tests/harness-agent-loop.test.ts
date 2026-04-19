@@ -4,7 +4,7 @@ import { createTokenCounter } from "../src/orchestration/engines/providers/harne
 import { unwindMessages } from "../src/orchestration/engines/providers/harness/context/summarizer.js";
 import { buildHarnessSystemPrompt } from "../src/orchestration/engines/providers/harness/prompt.js";
 import { runAgentLoop } from "../src/orchestration/engines/providers/harness/agent-loop.js";
-import type { LLMClient, Message, StreamEvent, StreamOptions } from "../src/orchestration/engines/providers/harness/llm/types.js";
+import type { LLMClient, Message, StreamEvent, StreamOptions, ContentBlock } from "../src/orchestration/engines/providers/harness/llm/types.js";
 
 function makeFakeLLMClient(
   responses: Array<{ events: StreamEvent[] }>,
@@ -28,6 +28,10 @@ function makeFakeLLMClient(
 
     async complete(_messages: Message[]): Promise<string> {
       return "mock completion";
+    },
+
+    costFor() {
+      return 0;
     },
   };
 }
@@ -154,7 +158,7 @@ describe("agent loop", () => {
       onEvent: (e) => events.push(e),
     });
 
-    expect(result.contextOverflow).toBe(false);
+    expect(result.outcome).toBe("ok");
     expect(events.some((e) => e.kind === "text_delta")).toBe(true);
     expect(events.some((e) => e.kind === "done")).toBe(true);
   });
@@ -191,7 +195,7 @@ describe("agent loop", () => {
       },
     });
 
-    expect(result.contextOverflow).toBe(false);
+    expect(result.outcome).toBe("ok");
     // Turn 1 dispatched a tool, turn 2 returned text-only
     expect(events.filter((e) => e.kind === "tool_result").length).toBe(1);
   });
@@ -247,7 +251,7 @@ describe("buildHarnessSystemPrompt", () => {
     expect(prompt).toContain("Project CLAUDE.md content");
   });
 
-  test("orchestration prompt comes first (primacy)", () => {
+  test("orchestration prompt precedes tool sections", () => {
     const prompt = buildHarnessSystemPrompt({
       orchestrationSystemPrompt: "ORCHESTRATION_START",
       provider: "anthropic",
@@ -266,35 +270,35 @@ describe("buildHarnessSystemPrompt", () => {
     expect(prompt).not.toContain("sed -i");
   });
 
-  test("includes bash anti-patterns when both bash and read are available", () => {
+  test("includes tool usage rules when both bash and read are available", () => {
     const prompt = buildHarnessSystemPrompt({
       orchestrationSystemPrompt: "Task",
       provider: "anthropic",
       availableTools: new Set(["bash", "read"]),
     });
-    expect(prompt).toContain("BASH ANTI-PATTERNS");
-    expect(prompt).toContain("read` tool instead of `cat`");
+    expect(prompt).toContain("TOOL USAGE");
+    expect(prompt).toContain("`read` tool (not cat/head/tail)");
     expect(prompt).toContain("2>&1");
     expect(prompt).toContain("2>/dev/null");
-    expect(prompt).toContain("| head");
+    expect(prompt).toContain("head/tail");
   });
 
-  test("omits bash anti-patterns when read tool is absent", () => {
+  test("omits tool usage rules when read tool is absent", () => {
     const prompt = buildHarnessSystemPrompt({
       orchestrationSystemPrompt: "Task",
       provider: "anthropic",
       availableTools: new Set(["bash"]),
     });
-    expect(prompt).not.toContain("BASH ANTI-PATTERNS");
+    expect(prompt).not.toContain("TOOL USAGE");
   });
 
-  test("omits bash anti-patterns when bash tool is absent", () => {
+  test("omits tool usage rules when bash tool is absent", () => {
     const prompt = buildHarnessSystemPrompt({
       orchestrationSystemPrompt: "Task",
       provider: "anthropic",
       availableTools: new Set(["read"]),
     });
-    expect(prompt).not.toContain("BASH ANTI-PATTERNS");
+    expect(prompt).not.toContain("TOOL USAGE");
   });
 
   test("todo_list usage includes two-call protocol and abandoned status", () => {
@@ -308,5 +312,307 @@ describe("buildHarnessSystemPrompt", () => {
     expect(prompt).toContain("abandoned");
     expect(prompt).toContain("context recovery");
     expect(prompt).toContain("3+ distinct steps");
+  });
+});
+
+function makeCaptureClient(responses: Array<{ events: StreamEvent[] }>) {
+  let callIndex = 0;
+  const capturedMessages: Message[][] = [];
+
+  const client: LLMClient = {
+    provider: "anthropic",
+    model: "test-model",
+    contextLimit: 100_000,
+    outputLimit: 8_000,
+    supportsReasoning: false,
+    async *streamWithTools(options: StreamOptions): AsyncGenerator<StreamEvent> {
+      capturedMessages.push([...options.messages]);
+      const response = responses[callIndex++];
+      if (!response) throw new Error("No more mock responses");
+      for (const event of response.events) yield event;
+    },
+    async complete(_messages: Message[]): Promise<string> {
+      return "mock completion";
+    },
+    costFor() {
+      return 0;
+    },
+  };
+  return { client, capturedMessages };
+}
+
+describe("per-turn budget injection", () => {
+  test("appends budget line to observation messages after tool results", async () => {
+    const { client, capturedMessages } = makeCaptureClient([
+      {
+        events: [
+          { kind: "tool_use", toolCall: { id: "tc_1", name: "bash", input: { command: "echo hi" } } },
+          { kind: "done", stopReason: "tool_use" },
+        ],
+      },
+      {
+        events: [
+          { kind: "text_delta", text: "Done." },
+          { kind: "done", stopReason: "end_turn" },
+        ],
+      },
+    ]);
+
+    await runAgentLoop({
+      client,
+      systemPrompt: "test",
+      instruction: "do something",
+      cwd: "/tmp",
+      onEvent: () => {},
+      maxLLMCalls: 200,
+    });
+
+    expect(capturedMessages.length).toBe(2);
+    const secondCallMessages = capturedMessages[1]!;
+    const lastUserMsg = secondCallMessages[secondCallMessages.length - 1]!;
+    expect(lastUserMsg.role).toBe("user");
+    expect(Array.isArray(lastUserMsg.content)).toBe(true);
+    const blocks = lastUserMsg.content as ContentBlock[];
+    const budgetBlock = blocks.find((b) => b.type === "text" && b.text.includes("[Budget:"));
+    expect(budgetBlock).toBeDefined();
+    expect((budgetBlock as { type: "text"; text: string }).text).toContain("1/200 calls used");
+    expect((budgetBlock as { type: "text"; text: string }).text).toContain("199 remaining");
+  });
+
+  test("budget format is [Budget: X/Y calls used, Z remaining]", async () => {
+    const { client, capturedMessages } = makeCaptureClient([
+      {
+        events: [
+          { kind: "tool_use", toolCall: { id: "tc_1", name: "bash", input: { command: "echo 1" } } },
+          { kind: "done", stopReason: "tool_use" },
+        ],
+      },
+      {
+        events: [
+          { kind: "tool_use", toolCall: { id: "tc_2", name: "bash", input: { command: "echo 2" } } },
+          { kind: "done", stopReason: "tool_use" },
+        ],
+      },
+      {
+        events: [
+          { kind: "text_delta", text: "Done." },
+          { kind: "done", stopReason: "end_turn" },
+        ],
+      },
+    ]);
+
+    await runAgentLoop({
+      client,
+      systemPrompt: "test",
+      instruction: "do things",
+      cwd: "/tmp",
+      onEvent: () => {},
+      maxLLMCalls: 50,
+    });
+
+    const thirdCallMsgs = capturedMessages[2]!;
+    const lastMsg = thirdCallMsgs[thirdCallMsgs.length - 1]!;
+    const blocks = lastMsg.content as ContentBlock[];
+    const budgetBlock = blocks.find((b) => b.type === "text" && b.text.includes("[Budget:"));
+    expect(budgetBlock).toBeDefined();
+    expect((budgetBlock as { type: "text"; text: string }).text).toContain("2/50 calls used");
+    expect((budgetBlock as { type: "text"; text: string }).text).toContain("48 remaining");
+  });
+
+  test("first turn (initial instruction) has no budget line", async () => {
+    const { client, capturedMessages } = makeCaptureClient([
+      {
+        events: [
+          { kind: "text_delta", text: "Hello" },
+          { kind: "done", stopReason: "end_turn" },
+        ],
+      },
+    ]);
+
+    await runAgentLoop({
+      client,
+      systemPrompt: "test",
+      instruction: "say hello",
+      cwd: "/tmp",
+      onEvent: () => {},
+    });
+
+    const firstCallMsgs = capturedMessages[0]!;
+    const lastMsg = firstCallMsgs[firstCallMsgs.length - 1]!;
+    expect(typeof lastMsg.content).toBe("string");
+    expect(lastMsg.content).not.toContain("[Budget:");
+  });
+});
+
+describe("agent loop safety limits", () => {
+  test("terminates after exceeding maxLLMCalls", async () => {
+    const { client, capturedMessages } = makeCaptureClient([
+      {
+        events: [
+          { kind: "tool_use", toolCall: { id: "tc_1", name: "bash", input: { command: "echo 1" } } },
+          { kind: "done", stopReason: "tool_use" },
+        ],
+      },
+      {
+        events: [
+          { kind: "tool_use", toolCall: { id: "tc_2", name: "bash", input: { command: "echo 2" } } },
+          { kind: "done", stopReason: "tool_use" },
+        ],
+      },
+      {
+        events: [
+          { kind: "tool_use", toolCall: { id: "tc_3", name: "bash", input: { command: "echo 3" } } },
+          { kind: "done", stopReason: "tool_use" },
+        ],
+      },
+      {
+        events: [
+          { kind: "text_delta", text: "Summary of progress." },
+          { kind: "done", stopReason: "end_turn" },
+        ],
+      },
+    ]);
+
+    const result = await runAgentLoop({
+      client,
+      systemPrompt: "test",
+      instruction: "loop forever",
+      cwd: "/tmp",
+      onEvent: () => {},
+      maxLLMCalls: 3,
+    });
+
+    expect(result.outcome).toBe("budget_exhausted");
+    expect(capturedMessages.length).toBe(4);
+    const finalCallMsgs = capturedMessages[3]!;
+    const lastMsg = finalCallMsgs[finalCallMsgs.length - 1]!;
+    expect(lastMsg.role).toBe("user");
+    expect(typeof lastMsg.content).toBe("string");
+    expect(lastMsg.content).toContain("Budget exhausted");
+  });
+
+  test("result outcome is budget_exhausted when limit hit", async () => {
+    const { client } = makeCaptureClient([
+      {
+        events: [
+          { kind: "tool_use", toolCall: { id: "tc_1", name: "bash", input: { command: "echo" } } },
+          { kind: "done", stopReason: "tool_use" },
+        ],
+      },
+      {
+        events: [
+          { kind: "text_delta", text: "Final." },
+          { kind: "done", stopReason: "end_turn" },
+        ],
+      },
+    ]);
+
+    const result = await runAgentLoop({
+      client,
+      systemPrompt: "test",
+      instruction: "work",
+      cwd: "/tmp",
+      onEvent: () => {},
+      maxLLMCalls: 1,
+    });
+
+    expect(result.outcome).toBe("budget_exhausted");
+  });
+
+  test("budget exhausted message gives model a final response opportunity", async () => {
+    const events: StreamEvent[] = [];
+    const { client } = makeCaptureClient([
+      {
+        events: [
+          { kind: "tool_use", toolCall: { id: "tc_1", name: "bash", input: { command: "echo" } } },
+          { kind: "done", stopReason: "tool_use" },
+        ],
+      },
+      {
+        events: [
+          { kind: "text_delta", text: "Here is my final summary." },
+          { kind: "done", stopReason: "end_turn" },
+        ],
+      },
+    ]);
+
+    await runAgentLoop({
+      client,
+      systemPrompt: "test",
+      instruction: "work",
+      cwd: "/tmp",
+      onEvent: (e) => events.push(e),
+      maxLLMCalls: 1,
+    });
+
+    expect(events.some((e) => e.kind === "text_delta" && e.text === "Here is my final summary.")).toBe(true);
+  });
+
+  test("final call passes tools: [] to prevent further tool use", async () => {
+    let finalCallTools: unknown[] | undefined;
+    let callIndex = 0;
+    const responses = [
+      {
+        events: [
+          { kind: "tool_use" as const, toolCall: { id: "tc_1", name: "bash", input: { command: "echo" } } },
+          { kind: "done" as const, stopReason: "tool_use" },
+        ],
+      },
+      {
+        events: [
+          { kind: "text_delta" as const, text: "Done." },
+          { kind: "done" as const, stopReason: "end_turn" },
+        ],
+      },
+    ];
+
+    const client: LLMClient = {
+      provider: "anthropic",
+      model: "test-model",
+      contextLimit: 100_000,
+      outputLimit: 8_000,
+      supportsReasoning: false,
+      async *streamWithTools(opts: StreamOptions): AsyncGenerator<StreamEvent> {
+        if (callIndex === 1) finalCallTools = opts.tools;
+        const response = responses[callIndex++];
+        if (!response) throw new Error("No more mock responses");
+        for (const event of response.events) yield event;
+      },
+      async complete(): Promise<string> { return ""; },
+      costFor() { return 0; },
+    };
+
+    await runAgentLoop({
+      client,
+      systemPrompt: "test",
+      instruction: "work",
+      cwd: "/tmp",
+      onEvent: () => {},
+      maxLLMCalls: 1,
+    });
+
+    expect(finalCallTools).toEqual([]);
+  });
+
+  test("outcome is ok when loop exits normally", async () => {
+    const { client } = makeCaptureClient([
+      {
+        events: [
+          { kind: "text_delta", text: "All done." },
+          { kind: "done", stopReason: "end_turn" },
+        ],
+      },
+    ]);
+
+    const result = await runAgentLoop({
+      client,
+      systemPrompt: "test",
+      instruction: "do something",
+      cwd: "/tmp",
+      onEvent: () => {},
+      maxLLMCalls: 200,
+    });
+
+    expect(result.outcome).toBe("ok");
   });
 });

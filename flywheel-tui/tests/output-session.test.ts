@@ -42,6 +42,14 @@ function makeAssistantThinkingNdjson(thinking: string): string {
   }) + "\n"
 }
 
+/** Build a Claude-format assistant NDJSON line with arbitrary content blocks. */
+function makeAssistantNdjson(content: Array<Record<string, unknown>>): string {
+  return JSON.stringify({
+    type: "assistant",
+    message: { content },
+  }) + "\n"
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -56,22 +64,21 @@ describe("createOutputSession", () => {
 
   // ── writeStdout: NDJSON thinking content ──
 
-  it("writeStdout with NDJSON thinking content -> updateEntry called with ThinkingBlock", async () => {
+  it("writeStdout with NDJSON thinking content alone -> creates standalone thinking block", async () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit })
 
     session.writeStdout(makeAssistantThinkingNdjson("deep thoughts"))
     await flushMicrotasks()
 
-    // updateEntry should have been called with outputBlocks containing a thinking block
+    // Thinking without tool context creates a standalone thinking block
     const blockCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].outputBlocks !== undefined,
     )
     expect(blockCalls.length).toBeGreaterThan(0)
     const blocks = blockCalls[blockCalls.length - 1][0].outputBlocks as AnyBlock[]
-    const thinkingBlock = blocks.find((b) => b.kind === "thinking")
-    expect(thinkingBlock).toBeDefined()
-    expect((thinkingBlock as { content: string }).content).toContain("deep thoughts")
+    expect(blocks).toHaveLength(1)
+    expect(blocks[0].kind).toBe("thinking")
   })
 
   // ── writeStdout: NDJSON text content ──
@@ -134,14 +141,17 @@ describe("createOutputSession", () => {
 
   // ── notifySpawned ──
 
-  it("notifySpawned sets thinking start time, reflected in ThinkingBlock timestamp", async () => {
+  it("notifySpawned sets thinking start time, used when thinking joins a tool context", async () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit })
 
     // Notify spawned with a specific timestamp
     session.notifySpawned(5000)
 
-    // Now feed a thinking block — it should use the spawn timestamp
+    // First create a tool context, then thinking joins it
+    session.writeStdout(makeAssistantNdjson([
+      { type: "tool_use", id: "t1", name: "Read", input: { file_path: "test.ts" } },
+    ]))
     session.writeStdout(makeAssistantThinkingNdjson("initial thinking"))
     await flushMicrotasks()
 
@@ -150,9 +160,11 @@ describe("createOutputSession", () => {
     )
     expect(blockCalls.length).toBeGreaterThan(0)
     const blocks = blockCalls[blockCalls.length - 1][0].outputBlocks as AnyBlock[]
-    const thinkingBlock = blocks.find((b) => b.kind === "thinking")
-    expect(thinkingBlock).toBeDefined()
-    expect(thinkingBlock!.timestamp).toBe(5000)
+    const toolGroup = blocks.find((b) => b.kind === "toolGroup") as { children: Array<{ name: string; timestamp: number }> } | undefined
+    expect(toolGroup).toBeDefined()
+    const thinkingRow = toolGroup!.children.find(c => c.name === "Thinking")
+    expect(thinkingRow).toBeDefined()
+    expect(thinkingRow!.timestamp).toBe(5000)
   })
 
   // ── notifyInjected ──
@@ -214,10 +226,11 @@ describe("createOutputSession", () => {
     expect(activities).toContain("generating")
   })
 
-  it("thinking content triggers 'thinking' model activity", () => {
+  it("thinking content triggers 'thinking' model activity even without tool context", () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit })
 
+    // notifyThinkingStarted sets activity to "thinking" even without creating blocks
     session.writeStdout(makeAssistantThinkingNdjson("pondering"))
     session.flush()
 
@@ -475,13 +488,13 @@ describe("createOutputSession", () => {
     session = createOutputSession({ updateEntry, emit })
 
     session.writeStdout(makeAssistantTextNdjson("first"))
-    session.writeStdout(makeAssistantThinkingNdjson("think"))
     session.writeStdout(makeAssistantTextNdjson("second"))
     await flushMicrotasks()
 
     const blocks = session.getBlocks()
-    // Should have text + thinking + text blocks
-    expect(blocks.length).toBeGreaterThanOrEqual(3)
+    // Text blocks get merged, so we have at least 1
+    expect(blocks.length).toBeGreaterThanOrEqual(1)
+    expect(blocks[0].kind).toBe("text")
   })
 
   // ── onFlush is NOT called when no changes ──

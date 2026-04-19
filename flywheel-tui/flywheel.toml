@@ -1,21 +1,21 @@
 engine = "claude"
-model = "opus"
+model = "powerful"
 effort = "max"
 theme = "default"
 show_thinking = false
 
 [dispatcher]
-model = "sonnet"
+model = "mid"
 effort = "medium"
 
 [evaluator]
-model = "sonnet"
+model = "mid"
 effort = "low"
 
 [sprint.worker]
-model = "opus"
+model = "powerful"
 effort = "max"
 
 [sprint.evaluator]
-model = "opus"
+model = "powerful"
 effort = "max"

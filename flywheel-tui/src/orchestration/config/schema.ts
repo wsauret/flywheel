@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { EffortSchema, TierConfigSchema } from "../../infra/workflow-types.js";
 import { SprintConfigSchema } from "../../workflows/queue/steps/sprint/config-schema.js";
+import { resolveModelTier } from "./model-tiers.js";
+import type { ComponentRole, Vendor } from "./model-tiers.js";
 
 const SHELL_METACHAR_RE = /[;|&`$(){}<>]/;
 
@@ -32,6 +34,7 @@ const CommandsSchema = z.object({
 export const FlywheelConfigSchema = z.object({
   /** Engine ID: "claude", "opencode", etc. */
   engine: z.string().default("claude"),
+  preferred_vendor: z.enum(["anthropic", "openai"]).default("anthropic"),
   /** TUI theme name: "opencode", "tokyonight", "dracula", "catppuccin", "nord", "gruvbox". */
   theme: z.string().optional(),
   /** Show thinking/reasoning blocks in the output window. Default: true. */
@@ -129,7 +132,8 @@ function resolveMaxEffort(model: string | undefined): "max" | "high" {
 export interface ResolvedTierConfig {
   /** Engine ID for this tier. Always populated (tier override > top-level default). */
   engine: string;
-  model?: string;
+  /** Concrete model ID. Always populated (tier name resolution + component defaults). */
+  model: string;
   effort?: string;
 }
 
@@ -148,26 +152,30 @@ export function resolveTierConfigs(config: FlywheelConfig, mode?: "sprint"): {
 } {
   const sprint = mode === "sprint" ? config.sprint : undefined;
   const defaultEngine = config.engine;
+  const vendor: Vendor = config.preferred_vendor as Vendor;
 
   function resolve(
     tier: { engine?: string; model?: string; effort?: string },
     sprintTier: { model?: string; effort?: string } | undefined,
     tierDefault: string | undefined,
+    role: ComponentRole,
   ): ResolvedTierConfig {
     const engine = tier.engine ?? defaultEngine;
-    const model = sprintTier?.model ?? tier.model ?? config.model;
+    const effectiveVendor: Vendor = engine === "claude" ? "anthropic" : vendor;
+    const rawModel = sprintTier?.model ?? tier.model ?? config.model;
+    const model = resolveModelTier(rawModel, role, effectiveVendor);
     const raw = sprintTier?.effort
       ?? tier.effort
       ?? config.effort
       ?? (sprint ? resolveMaxEffort(model) : tierDefault);
     // Clamp: "max" is only valid for opus. Downgrade to "high" for other models.
-    const effort = raw === "max" && !model?.toLowerCase().includes("opus") ? "high" : raw;
+    const effort = raw === "max" && !model.toLowerCase().includes("opus") ? "high" : raw;
     return { engine, model, effort };
   }
 
   return {
-    dispatcher: resolve(config.dispatcher, sprint?.dispatcher, DEFAULT_EFFORTS.dispatcher),
-    worker: resolve(config.worker, sprint?.worker, DEFAULT_EFFORTS.worker),
-    evaluator: resolve(config.evaluator, sprint?.evaluator, DEFAULT_EFFORTS.evaluator),
+    dispatcher: resolve(config.dispatcher, sprint?.dispatcher, DEFAULT_EFFORTS.dispatcher, "dispatcher"),
+    worker: resolve(config.worker, sprint?.worker, DEFAULT_EFFORTS.worker, "worker"),
+    evaluator: resolve(config.evaluator, sprint?.evaluator, DEFAULT_EFFORTS.evaluator, "evaluator"),
   };
 }

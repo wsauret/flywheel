@@ -14,7 +14,7 @@ describe("harness engine registration", () => {
     const engine = getEngine("harness");
     expect(engine.metadata.id).toBe("harness");
     expect(engine.metadata.name).toBe("Flywheel Harness");
-    expect(engine.metadata.defaultModel).toBe("claude-opus-4-6");
+    expect(engine.metadata.defaultModel).toBe("claude-opus-4-7");
     expect(engine.metadata.description).toBe("Direct LLM API engine (Anthropic + OpenAI)");
   });
 

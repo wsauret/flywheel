@@ -40,6 +40,13 @@ function makeAssistantThinkingNdjson(thinking: string): string {
   }) + "\n"
 }
 
+function makeAssistantNdjson(content: Array<Record<string, unknown>>): string {
+  return JSON.stringify({
+    type: "assistant",
+    message: { content },
+  }) + "\n"
+}
+
 /** Create an OutputSession with a shared builder (workflow mode pattern). */
 function createWorkflowSession(overrides?: {
   onFlush?: () => void
@@ -121,19 +128,25 @@ describe("Workflow → OutputSession integration", () => {
   // ── engine:started → notifySpawned ──
 
   describe("engine:started → notifySpawned", () => {
-    it("sets thinking start, reflected in subsequent ThinkingBlock timestamp", () => {
+    it("sets thinking start, used when thinking joins a tool context", () => {
       const { session: s, patches } = createWorkflowSession()
       session = s
 
       session.notifySpawned(5000)
+      // Create tool context first, then thinking joins it
+      session.writeStdout(makeAssistantNdjson([
+        { type: "tool_use", id: "t1", name: "Read", input: { file_path: "test.ts" } },
+      ]))
       session.writeStdout(makeAssistantThinkingNdjson("initial thinking"))
       session.flush()
 
       const blockPatch = patches.filter((p) => p.outputBlocks !== undefined).pop()
       const blocks = blockPatch!.outputBlocks as AnyBlock[]
-      const thinkingBlock = blocks.find((b) => b.kind === "thinking")
-      expect(thinkingBlock).toBeDefined()
-      expect(thinkingBlock!.timestamp).toBe(5000)
+      const toolGroup = blocks.find((b) => b.kind === "toolGroup") as { children: Array<{ name: string; timestamp: number }> } | undefined
+      expect(toolGroup).toBeDefined()
+      const thinkingRow = toolGroup!.children.find(c => c.name === "Thinking")
+      expect(thinkingRow).toBeDefined()
+      expect(thinkingRow!.timestamp).toBe(5000)
     })
 
     it("triggers thinking model activity via updateEntry", () => {

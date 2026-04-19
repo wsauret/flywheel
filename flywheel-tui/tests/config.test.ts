@@ -6,6 +6,10 @@ import {
   CONFIG_DEFAULTS,
   resolveTierConfigs,
 } from "../src/orchestration/config/schema";
+import { TIER_TABLE } from "../src/orchestration/config/model-tiers.js";
+
+const A = TIER_TABLE.anthropic;
+const O = TIER_TABLE.openai;
 
 const FIXTURES_DIR = path.join(import.meta.dir, "fixtures");
 
@@ -228,11 +232,13 @@ describe("Per-tier model config", () => {
     expect(tiers.dispatcher.model).toBe("general-env-model");
   });
 
-  it("resolveTierConfigs returns undefined model when no model is set", () => {
+  it("resolveTierConfigs applies component defaults when no model is set", () => {
     const { config } = loadConfig(undefined, {});
     const tiers = resolveTierConfigs(config);
-    expect(tiers.dispatcher.model).toBeUndefined();
-    expect(tiers.worker.model).toBeUndefined();
+    // worker defaults to "powerful" tier, dispatcher/evaluator to "mid"
+    expect(tiers.worker.model).toBe(A.powerful);
+    expect(tiers.dispatcher.model).toBe(A.mid);
+    expect(tiers.evaluator.model).toBe(A.mid);
   });
 
   it("config file model serves as convenience fallback via resolveTierConfigs", () => {
@@ -244,6 +250,48 @@ describe("Per-tier model config", () => {
     // flywheel.toml has model = "claude-sonnet-4-20250514"
     expect(tiers.dispatcher.model).toBe("claude-sonnet-4-20250514");
     expect(tiers.worker.model).toBe("claude-sonnet-4-20250514");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// preferred_vendor config field
+// ---------------------------------------------------------------------------
+
+describe("preferred_vendor config field", () => {
+  it("parses 'anthropic' correctly", () => {
+    const result = FlywheelConfigSchema.safeParse({ preferred_vendor: "anthropic" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.preferred_vendor).toBe("anthropic");
+    }
+  });
+
+  it("parses 'openai' correctly", () => {
+    const result = FlywheelConfigSchema.safeParse({ preferred_vendor: "openai" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.preferred_vendor).toBe("openai");
+    }
+  });
+
+  it("defaults to 'anthropic' when omitted", () => {
+    const result = FlywheelConfigSchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.preferred_vendor).toBe("anthropic");
+    }
+  });
+
+  it("rejects invalid vendor string", () => {
+    const result = FlywheelConfigSchema.safeParse({ preferred_vendor: "google" });
+    expect(result.success).toBe(false);
+  });
+
+  it("FLYWHEEL_PREFERRED_VENDOR env var overrides config value", () => {
+    const { config } = loadConfig(undefined, {
+      FLYWHEEL_PREFERRED_VENDOR: "openai",
+    });
+    expect(config.preferred_vendor).toBe("openai");
   });
 });
 
@@ -451,13 +499,13 @@ describe("resolveTierConfigs with sprint mode", () => {
       },
     });
     const tiers = resolveTierConfigs(config, "sprint");
-    // Worker and evaluator overridden by sprint config
-    expect(tiers.worker.model).toBe("opus");
+    // Worker and evaluator overridden by sprint config (tier names resolved)
+    expect(tiers.worker.model).toBe(A.powerful);
     expect(tiers.worker.effort).toBe("max");
-    expect(tiers.evaluator.model).toBe("opus");
+    expect(tiers.evaluator.model).toBe(A.powerful);
     expect(tiers.evaluator.effort).toBe("max");
     // Dispatcher falls back to global model + model-aware max
-    expect(tiers.dispatcher.model).toBe("sonnet");
+    expect(tiers.dispatcher.model).toBe(A.mid);
     expect(tiers.dispatcher.effort).toBe("high");
   });
 
@@ -480,7 +528,7 @@ describe("resolveTierConfigs with sprint mode", () => {
       },
     });
     const tiers = resolveTierConfigs(config); // no mode
-    expect(tiers.worker.model).toBe("sonnet"); // not opus
+    expect(tiers.worker.model).toBe(A.mid); // resolved from "sonnet", not opus
     expect(tiers.worker.effort).toBeUndefined(); // worker default
   });
 
@@ -526,5 +574,123 @@ describe("resolveTierConfigs with sprint mode", () => {
     expect(tiers.dispatcher.effort).toBe("high");
     expect(tiers.worker.effort).toBe("high");
     expect(tiers.evaluator.effort).toBe("high");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// resolveTierConfigs with model tier names + preferred_vendor
+// ---------------------------------------------------------------------------
+
+describe("resolveTierConfigs with model tier names", () => {
+  it("'powerful' + anthropic resolves to opus", () => {
+    const config = FlywheelConfigSchema.parse({
+      model: "powerful",
+      preferred_vendor: "anthropic",
+    });
+    const tiers = resolveTierConfigs(config);
+    expect(tiers.worker.model).toBe(A.powerful);
+    expect(tiers.dispatcher.model).toBe(A.powerful);
+    expect(tiers.evaluator.model).toBe(A.powerful);
+  });
+
+  it("'powerful' + openai resolves via tier table (non-claude engine)", () => {
+    const config = FlywheelConfigSchema.parse({
+      engine: "harness",
+      model: "powerful",
+      preferred_vendor: "openai",
+    });
+    const tiers = resolveTierConfigs(config);
+    expect(tiers.worker.model).toBe(O.powerful);
+    expect(tiers.dispatcher.model).toBe(O.powerful);
+    expect(tiers.evaluator.model).toBe(O.powerful);
+  });
+
+  it("per-tier tier names resolve independently", () => {
+    const config = FlywheelConfigSchema.parse({
+      model: "powerful",
+      worker: { model: "cheap" },
+    });
+    const tiers = resolveTierConfigs(config);
+    expect(tiers.worker.model).toBe(A.cheap);
+    expect(tiers.dispatcher.model).toBe(A.powerful);
+    expect(tiers.evaluator.model).toBe(A.powerful);
+  });
+
+  it("sprint mode works with tier names", () => {
+    const config = FlywheelConfigSchema.parse({
+      model: "mid",
+      sprint: {
+        worker: { model: "powerful" },
+      },
+    });
+    const tiers = resolveTierConfigs(config, "sprint");
+    expect(tiers.worker.model).toBe(A.powerful);
+    expect(tiers.dispatcher.model).toBe(A.mid);
+  });
+
+  it("resolveMaxEffort returns 'max' when 'powerful' resolves to opus", () => {
+    const config = FlywheelConfigSchema.parse({ model: "powerful" });
+    const tiers = resolveTierConfigs(config, "sprint");
+    // "powerful" resolves to an opus model -> max
+    expect(tiers.worker.effort).toBe("max");
+  });
+
+  it("resolveMaxEffort returns 'high' when preferred_vendor is openai (non-claude engine)", () => {
+    const config = FlywheelConfigSchema.parse({
+      engine: "harness",
+      model: "powerful",
+      preferred_vendor: "openai",
+    });
+    const tiers = resolveTierConfigs(config, "sprint");
+    // "powerful" + openai resolves to a non-opus model -> high
+    expect(tiers.worker.effort).toBe("high");
+  });
+
+  it("component defaults apply when no model specified", () => {
+    const config = FlywheelConfigSchema.parse({});
+    const tiers = resolveTierConfigs(config);
+    // worker -> powerful tier
+    expect(tiers.worker.model).toBe(A.powerful);
+    // evaluator -> mid -> claude-sonnet-4-6
+    expect(tiers.evaluator.model).toBe(A.mid);
+    // dispatcher -> mid -> claude-sonnet-4-6
+    expect(tiers.dispatcher.model).toBe(A.mid);
+  });
+
+  it("legacy alias 'opus' resolves correctly through resolveTierConfigs", () => {
+    const config = FlywheelConfigSchema.parse({ model: "opus" });
+    const tiers = resolveTierConfigs(config);
+    expect(tiers.worker.model).toBe(A.powerful);
+    expect(tiers.dispatcher.model).toBe(A.powerful);
+  });
+
+  it("claude engine forces anthropic vendor regardless of preferred_vendor", () => {
+    const config = FlywheelConfigSchema.parse({
+      engine: "claude",
+      preferred_vendor: "openai",
+      model: "powerful",
+    });
+    const tiers = resolveTierConfigs(config);
+    // claude engine forces anthropic -> powerful tier
+    expect(tiers.worker.model).toBe(A.powerful);
+  });
+
+  it("non-claude engine uses preferred_vendor", () => {
+    const config = FlywheelConfigSchema.parse({
+      engine: "harness",
+      preferred_vendor: "openai",
+      model: "powerful",
+    });
+    const tiers = resolveTierConfigs(config);
+    expect(tiers.worker.model).toBe(O.powerful);
+  });
+
+  it("concrete model strings pass through unchanged", () => {
+    const config = FlywheelConfigSchema.parse({
+      model: "claude-sonnet-4-20250514",
+    });
+    const tiers = resolveTierConfigs(config);
+    expect(tiers.worker.model).toBe("claude-sonnet-4-20250514");
+    expect(tiers.dispatcher.model).toBe("claude-sonnet-4-20250514");
   });
 });

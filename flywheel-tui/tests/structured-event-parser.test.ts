@@ -921,28 +921,59 @@ describe("StructuredEventParser", () => {
       if (textBlocks[1]!.kind === "text") expect(textBlocks[1]!.content).toBe("Turn 2 without deltas");
     });
 
-    it("streams thinking content from deltas into a ThinkingBlock", () => {
+    it("thinking alone creates standalone thinking block (not a Tools group)", () => {
       parser.dispatch(makeThinkingDelta("Deep thought"), 1000);
 
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
-      expect(blocks[0]!.kind).toBe("thinking");
-      expect((blocks[0] as { content: string }).content).toBe("Deep thought");
+      expect(blocks[0].kind).toBe("thinking");
       expect(builder.modelActivity).toBe("thinking");
     });
 
-    it("skips duplicate thinking in assistant event when already streamed via deltas", () => {
-      parser.dispatch(makeThinkingDelta("thinking..."), 1000);
-
+    it("thinking joins existing Tools group when tools arrive first", () => {
+      // Tools first, then thinking arrives
       parser.dispatch(makeAssistantEvent([
-        { type: "thinking", thinking: "Full thinking content" },
-        { type: "text", text: "Response" },
-      ]), 1001);
+        { type: "tool_use", id: "t1", name: "Read", input: { file_path: "test.ts" } },
+      ]), 1000);
+
+      // Now thinking delta arrives — joins the existing context
+      parser.dispatch(makeThinkingDelta("reasoning..."), 1001);
 
       const blocks = builder.getBlocks();
-      const thinkingBlocks = blocks.filter(b => b.kind === "thinking");
-      expect(thinkingBlocks).toHaveLength(1);
-      expect((thinkingBlocks[0] as { content: string }).content).toBe("thinking...");
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0].kind).toBe("toolGroup");
+      const group = blocks[0] as ToolGroupBlock;
+      expect(group.children).toHaveLength(2);
+      expect(group.children[0].name).toBe("Read");
+      expect(group.children[1].name).toBe("Thinking");
+    });
+
+    it("thinking in assistant message joins tool context created by tools in same message", () => {
+      parser.dispatch(makeAssistantEvent([
+        { type: "thinking", thinking: "Full thinking" },
+        { type: "tool_use", id: "t1", name: "Grep", input: { pattern: "test" } },
+      ]), 1000);
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(1);
+      const group = blocks[0] as ToolGroupBlock;
+      expect(group.children).toHaveLength(2);
+      // Tools processed first, then thinking added
+      expect(group.children[0].name).toBe("Grep");
+      expect(group.children[1].name).toBe("Thinking");
+    });
+
+    it("thinking without tools creates standalone block", () => {
+      parser.dispatch(makeAssistantEvent([
+        { type: "thinking", thinking: "Just thinking" },
+        { type: "text", text: "Response without tools" },
+      ]), 1000);
+
+      const blocks = builder.getBlocks();
+      // Thinking block + text block
+      expect(blocks).toHaveLength(2);
+      expect(blocks[0].kind).toBe("thinking");
+      expect(blocks[1].kind).toBe("text");
     });
   });
 });

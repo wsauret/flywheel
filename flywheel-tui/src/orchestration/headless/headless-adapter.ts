@@ -71,6 +71,7 @@ export class HeadlessAdapter {
   private logLevel: LogLevel
   private customLogger: ((message: string) => void) | null = null
   private showTimestamps: boolean
+  private readonly fallbackLog = Log.create({ service: "headless-adapter" })
 
   constructor(options: HeadlessAdapterOptions = {}) {
     this.logFile = options.logFile ?? null
@@ -127,7 +128,7 @@ export class HeadlessAdapter {
     } else if (this.logWriter) {
       this.logWriter.write(fullMessage + "\n")
     } else {
-      Log.create({ service: "headless-adapter" }).info(fullMessage)
+      this.fallbackLog.info(fullMessage)
     }
   }
 }

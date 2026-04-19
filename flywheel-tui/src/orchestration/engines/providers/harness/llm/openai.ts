@@ -229,7 +229,6 @@ export function createOpenAIAdapter(
             tools,
             max_output_tokens: outputLimit(info),
             stream: true,
-            store: false,
           };
           if (options.previousResponseId) {
             params.previous_response_id = options.previousResponseId;

@@ -68,6 +68,9 @@ export class StructuredOutputBuilder {
 
   get modelActivity(): ModelActivity { return this._modelActivity; }
 
+  /** True if there's an active Tools context group that thinking can join. */
+  get hasActiveToolsContext(): boolean { return this.contextTracker.currentAgentId !== null; }
+
   resetActivity(): void {
     this._modelActivity = "idle";
   }
@@ -80,6 +83,23 @@ export class StructuredOutputBuilder {
     }
   }
 
+  /** Create a thinking tool row inside the Tools group. Only call when hasActiveToolsContext is true. */
+  pushThinkingAsToolRow(timestamp: number): void {
+    const startTime = this.thinkingStartedAt ?? timestamp;
+    this.thinkingStartedAt = null;
+
+    this.pushToolRow({
+      kind: "tool",
+      name: "Thinking",
+      detail: "",
+      timestamp: startTime,
+      completed: true,
+    });
+    // Restore "thinking" activity — pushToolRow sets to "tool_executing" but this is a thinking phase
+    this._modelActivity = "thinking";
+  }
+
+  /** Create/append to a standalone thinking block. Used when no tool context exists. */
   pushThinking(text: string, timestamp: number): void {
     this._modelActivity = "thinking";
     if (!text.trim()) return;
@@ -94,19 +114,6 @@ export class StructuredOutputBuilder {
       this.insertBlock({ kind: "thinking", content: text, timestamp: blockTimestamp });
     }
     this.markDirty();
-  }
-
-  pushThinkingAsToolRow(timestamp: number): void {
-    this._modelActivity = "thinking";
-    const startTime = this.thinkingStartedAt ?? timestamp;
-    this.thinkingStartedAt = null;
-    this.pushToolRow({
-      kind: "tool",
-      name: "Thinking",
-      detail: "",
-      timestamp: startTime,
-      completed: true,
-    });
   }
 
   pushUserMessage(text: string, timestamp: number, pending?: boolean, injected?: boolean): void {
@@ -429,6 +436,7 @@ export class StructuredOutputBuilder {
     this.cachedSnapshot = [];
     this.agentIndexById.clear();
     this.todoBlockIndex = -1;
+    this.thinkingStartedAt = null;
     this.contextTracker.reset();
   }
 
@@ -436,6 +444,7 @@ export class StructuredOutputBuilder {
   resetTracking(): void {
     this.agentIndexById.clear();
     this.todoBlockIndex = -1;
+    this.thinkingStartedAt = null;
     this.contextTracker.resetTracking();
     this.markDirty();
     this.cachedSnapshot = [];

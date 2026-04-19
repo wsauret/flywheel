@@ -2,7 +2,7 @@
 
 import { z } from "zod"
 
-export const TextBlockSchema = z.object({
+const TextBlockSchema = z.object({
   kind: z.literal("text"),
   content: z.string(),
   timestamp: z.number(),
@@ -14,7 +14,7 @@ export const TextBlockSchema = z.object({
  * A discriminated union would break that pattern — errorMessage and completed are
  * post-hoc mutations applied when tool_result events arrive, not construction-time fields.
  */
-export const ToolEntrySchema = z.object({
+const ToolEntrySchema = z.object({
   kind: z.literal("tool"),
   name: z.string(),
   detail: z.string(),
@@ -40,7 +40,7 @@ export const ToolEntrySchema = z.object({
  * discriminants cleanly. The builder is the sole writer and always pairs status with
  * the correct fields, so the optionality is safe in practice.
  */
-export const ToolGroupBlockSchema = z.object({
+const ToolGroupBlockSchema = z.object({
   kind: z.literal("toolGroup"),
   id: z.string(),
   groupKind: z.enum(["agent", "tools"]),
@@ -54,19 +54,19 @@ export const ToolGroupBlockSchema = z.object({
   timestamp: z.number(),
 })
 
-export const SystemBlockSchema = z.object({
+const SystemBlockSchema = z.object({
   kind: z.literal("system"),
   message: z.string(),
   timestamp: z.number(),
 })
 
-export const ThinkingBlockSchema = z.object({
+const ThinkingBlockSchema = z.object({
   kind: z.literal("thinking"),
   content: z.string(),
   timestamp: z.number(),
 })
 
-export const UserMessageBlockSchema = z.object({
+const UserMessageBlockSchema = z.object({
   kind: z.literal("userMessage"),
   content: z.string(),
   timestamp: z.number(),
@@ -81,7 +81,7 @@ const TodoItemSchema = z.object({
   status: z.enum(["pending", "in_progress", "completed"]),
 })
 
-export const TodoListBlockSchema = z.object({
+const TodoListBlockSchema = z.object({
   kind: z.literal("todoList"),
   todos: z.array(TodoItemSchema),
   timestamp: z.number(),
@@ -108,7 +108,7 @@ const QuestionEntrySchema = z.object({
  * (see inspiration/claude-code/src/tools/AskUserQuestionTool/AskUserQuestionTool.tsx).
  * Multi-select answers are comma-separated.
  */
-export const QuestionBlockSchema = z.object({
+const QuestionBlockSchema = z.object({
   kind: z.literal("question"),
   toolUseId: z.string(),
   questions: z.array(QuestionEntrySchema),
@@ -125,7 +125,7 @@ export type ThinkingBlock = z.infer<typeof ThinkingBlockSchema>
 export type UserMessageBlock = z.infer<typeof UserMessageBlockSchema>
 export type TodoItem = z.infer<typeof TodoItemSchema>
 export type TodoListBlock = z.infer<typeof TodoListBlockSchema>
-export type QuestionOption = z.infer<typeof QuestionOptionSchema>
+type QuestionOption = z.infer<typeof QuestionOptionSchema>
 export type QuestionEntry = z.infer<typeof QuestionEntrySchema>
 export type QuestionBlock = z.infer<typeof QuestionBlockSchema>
 

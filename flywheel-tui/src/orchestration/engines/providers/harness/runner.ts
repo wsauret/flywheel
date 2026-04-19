@@ -11,6 +11,7 @@ import type { EngineRunner, EngineResult, RunnerOptions } from "../../core/types
 import type { ContentBlock as LLMContentBlock, LLMClient, Message, ReasoningEffort, StreamEvent } from "./llm/types.js";
 import type { ContentBlock } from "../../../../infra/ndjson-event-types.js";
 import { runAgentLoop } from "./agent-loop.js";
+import { cleanupHarnessOutputs } from "./context/truncation.js";
 import { buildHarnessSystemPrompt } from "./prompt.js";
 import { loadProjectInstructions } from "./project-instructions.js";
 import { emitContentBlockDelta, emitToolResult, emitAssistant, emitResult } from "./emit.js";
@@ -112,11 +113,7 @@ export class HarnessRunner implements EngineRunner {
       cwd: options.cwd,
     });
 
-    let turnThinkingContent = "";
-    let turnInputTokens = 0;
-    let turnOutputTokens = 0;
-    let turnCacheReadTokens = 0;
-    let turnCacheCreateTokens = 0;
+    let turn = { thinkingContent: "", inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreateTokens: 0 };
 
     const onEvent = (streamEvent: StreamEvent): void => {
       switch (streamEvent.kind) {
@@ -127,7 +124,7 @@ export class HarnessRunner implements EngineRunner {
           });
           break;
         case "thinking_delta":
-          turnThinkingContent += streamEvent.text;
+          turn.thinkingContent += streamEvent.text;
           emitContentBlockDelta(options.onEvent, {
             type: "thinking_delta",
             thinking: streamEvent.text,
@@ -144,10 +141,10 @@ export class HarnessRunner implements EngineRunner {
         case "tool_use":
           break;
         case "usage":
-          turnInputTokens = streamEvent.inputTokens;
-          turnOutputTokens = streamEvent.outputTokens;
-          turnCacheReadTokens = streamEvent.cacheReadTokens;
-          turnCacheCreateTokens = streamEvent.cacheCreateTokens;
+          turn.inputTokens = streamEvent.inputTokens;
+          turn.outputTokens = streamEvent.outputTokens;
+          turn.cacheReadTokens = streamEvent.cacheReadTokens;
+          turn.cacheCreateTokens = streamEvent.cacheCreateTokens;
           this.totalInputTokens += streamEvent.inputTokens;
           this.totalOutputTokens += streamEvent.outputTokens;
           this.totalCostUsd += client.costFor({
@@ -161,8 +158,8 @@ export class HarnessRunner implements EngineRunner {
         case "done":
           emitResult(options.onEvent, {
             totalCostUsd: this.totalCostUsd,
-            inputTokens: turnInputTokens,
-            outputTokens: turnOutputTokens,
+            inputTokens: turn.inputTokens,
+            outputTokens: turn.outputTokens,
             sessionId: this.sessionId,
             contextWindow: client.contextLimit,
           });
@@ -172,8 +169,8 @@ export class HarnessRunner implements EngineRunner {
 
     const onTurnAssistantMessage = (content: LLMContentBlock[]): void => {
       const blocks: ContentBlock[] = [];
-      if (turnThinkingContent) {
-        blocks.push({ type: "thinking", thinking: turnThinkingContent });
+      if (turn.thinkingContent) {
+        blocks.push({ type: "thinking", thinking: turn.thinkingContent });
       }
       for (const b of content) {
         if (b.type === "text") blocks.push({ type: "text", text: b.text });
@@ -181,16 +178,12 @@ export class HarnessRunner implements EngineRunner {
       }
       if (blocks.length > 0) {
         emitAssistant(options.onEvent, blocks, {
-          input_tokens: turnInputTokens,
-          cache_read_input_tokens: turnCacheReadTokens,
-          cache_creation_input_tokens: turnCacheCreateTokens,
+          input_tokens: turn.inputTokens,
+          cache_read_input_tokens: turn.cacheReadTokens,
+          cache_creation_input_tokens: turn.cacheCreateTokens,
         });
       }
-      turnThinkingContent = "";
-      turnInputTokens = 0;
-      turnOutputTokens = 0;
-      turnCacheReadTokens = 0;
-      turnCacheCreateTokens = 0;
+      turn = { thinkingContent: "", inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreateTokens: 0 };
     };
 
     // Conversation persistence: load prior messages (if resuming) and stream new
@@ -221,13 +214,14 @@ export class HarnessRunner implements EngineRunner {
         tools,
         priorMessages,
         onMessageAppended,
+        sessionId: this.sessionId,
       });
 
       options.onTurnComplete?.();
       this.resolveResult({
         durationMs: Date.now() - startTime,
         sessionId: this.sessionId,
-        failure: result.contextOverflow ? { kind: "context_overflow" } : undefined,
+        failure: result.outcome === "ok" ? undefined : { kind: result.outcome },
       });
     } catch (err) {
       options.onTurnComplete?.();
@@ -238,6 +232,8 @@ export class HarnessRunner implements EngineRunner {
           ? { kind: "aborted" }
           : { kind: "api_error", message: errorMessage(err) },
       });
+    } finally {
+      cleanupHarnessOutputs(options.cwd, this.sessionId);
     }
   }
 }

@@ -36,8 +36,8 @@ export function createChatControls(input: ChatControlsInput): ChatControls {
 
     state.completeTurn()
     session.resetActivity()
-    const pendingTexts = session.resolvePendingMessages()
     session.pushSystemMessage("Interrupted", Date.now())
+    const pendingTexts = session.resolvePendingMessages()
     session.flush()
 
     const messageToResend = pendingTexts.join("\n\n") || undefined

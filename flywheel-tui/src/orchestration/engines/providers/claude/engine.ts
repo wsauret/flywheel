@@ -48,7 +48,7 @@ export interface EngineCommandOptions {
 export const metadata: EngineMetadata = {
   id: "claude",
   name: "Claude Code",
-  defaultModel: "claude-opus-4-6[1m]",
+  defaultModel: "claude-opus-4-7[1m]",
   description: "Anthropic's Claude Code CLI",
   // Claude Code delivers thinking as complete blocks, not streaming tokens.
   // The adapter uses this to emit a synthetic "thinking" activity event during silence.
@@ -100,23 +100,10 @@ export function buildCommand(options: EngineCommandOptions): EngineCommand {
   };
 }
 
-// Bare aliases ("opus", "sonnet") resolve to 1M-context variants by default.
-// Append `[200k]` to force the smaller context window. Full model IDs pass through unchanged.
-const ALIAS_TO_1M: Record<string, string> = {
-  opus:   "claude-opus-4-6[1m]",
-  sonnet: "claude-sonnet-4-6[1m]",
-};
-
-// Strips the [200k] suffix back to bare alias (which Claude CLI natively treats as 200k).
-const ALIAS_STRIP_CONTEXT_SUFFIX: Record<string, string> = {
-  "opus[200k]":   "opus",
-  "sonnet[200k]": "sonnet",
-};
-
 function resolveModel(raw: string): string {
   const key = raw.toLowerCase().trim();
-  if (ALIAS_STRIP_CONTEXT_SUFFIX[key]) return ALIAS_STRIP_CONTEXT_SUFFIX[key];
-  if (ALIAS_TO_1M[key]) return ALIAS_TO_1M[key];
+  if (key.endsWith("[200k]")) return raw.slice(0, -6);
+  if (key.startsWith("claude-") && !key.includes("[")) return `${raw}[1m]`;
   return raw;
 }
 

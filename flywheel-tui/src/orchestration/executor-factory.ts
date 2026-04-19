@@ -5,6 +5,7 @@ import { WorkerHandoffSchema } from "../infra/handoff-schemas.js"
 import { createContextAccumulator } from "../workflows/queue/context-accumulator.js"
 import { createCompositeHook, type OnStepCompletedHook } from "../workflows/queue/shared/hooks.js"
 import { resolveTierConfigs } from "./config/schema.js"
+import { validateResolvedModels } from "./config/model-tiers.js"
 import { createStepExecutor } from "../workflows/queue/executor.js"
 import type { StepExecutor } from "../workflows/queue/executor-types.js"
 import { createQueuePersistence } from "../workflows/queue/persistence.js"
@@ -99,9 +100,19 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
   const evaluatorEngine = getEngine(tiers.evaluator.engine)
   const workerEngine = getEngine(tiers.worker.engine)
 
-  const dispatcherModel = tiers.dispatcher.model ?? deps.config.model ?? dispatcherEngine.metadata.defaultModel
-  const evaluatorModel = tiers.evaluator.model ?? deps.config.model ?? evaluatorEngine.metadata.defaultModel
-  const workerModel = tiers.worker.model ?? deps.config.model ?? workerEngine.metadata.defaultModel
+  const dispatcherModel = tiers.dispatcher.model
+  const evaluatorModel = tiers.evaluator.model
+  const workerModel = tiers.worker.model
+
+  const validationErrors = validateResolvedModels([
+    { component: "dispatcher", model: dispatcherModel, engineId: dispatcherEngine.metadata.id },
+    { component: "evaluator", model: evaluatorModel, engineId: evaluatorEngine.metadata.id },
+    { component: "worker", model: workerModel, engineId: workerEngine.metadata.id },
+  ])
+  if (validationErrors.length > 0) {
+    const details = validationErrors.map(e => `  ${e.component} (${e.model}): ${e.issue}`).join("\n")
+    throw new Error(`Model configuration errors:\n${details}`)
+  }
 
   // Warm pools: only for tiers whose engine supports pre-spawning.
   // In-process engines (harness) use the generic engine.createRunner() path.
@@ -192,6 +203,7 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
     contextAccumulator, projectCwd,
     queue,
     workerModel,
+    dispatcherModel,
     chatContext,
   })
   const workerFn = createWorkerCallback({

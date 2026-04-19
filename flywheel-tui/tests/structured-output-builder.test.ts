@@ -511,7 +511,7 @@ describe("StructuredOutputBuilder", () => {
     it("reflects latest activity from text/tool/thinking", () => {
       expect(builder.modelActivity).toBe("idle");
 
-      builder.pushThinking("hmm", Date.now());
+      builder.pushThinkingAsToolRow(Date.now());
       expect(builder.modelActivity).toBe("thinking");
 
       builder.pushText("hello", Date.now());
@@ -945,6 +945,43 @@ describe("StructuredOutputBuilder", () => {
       builder.pushTool("Edit", "file.ts", now);
       builder.cancelQuestion("nonexistent");
       expect((builder.getBlocks()[0] as ToolEntry).errorMessage).toBeUndefined();
+    });
+  });
+
+  describe("pushThinkingAsToolRow", () => {
+    it("creates a Thinking tool row in a Tools group", () => {
+      const now = Date.now();
+      builder.pushThinkingAsToolRow(now);
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0].kind).toBe("toolGroup");
+      const group = blocks[0] as ToolGroupBlock;
+      expect(group.children).toHaveLength(1);
+      expect(group.children[0].name).toBe("Thinking");
+      expect(group.children[0].completed).toBe(true);
+    });
+
+    it("groups subsequent tools with the Thinking row", () => {
+      const now = Date.now();
+      builder.pushThinkingAsToolRow(now);
+      builder.pushToolRow(resolvedTool("Read", "file.ts", now + 100));
+      builder.pushToolRow(resolvedTool("Grep", "pattern", now + 200));
+
+      const blocks = builder.getBlocks();
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0].kind).toBe("toolGroup");
+      const group = blocks[0] as ToolGroupBlock;
+      expect(group.children).toHaveLength(3);
+      expect(group.children[0].name).toBe("Thinking");
+      expect(group.children[1].name).toBe("Read");
+      expect(group.children[2].name).toBe("Grep");
+    });
+
+    it("sets modelActivity to thinking", () => {
+      expect(builder.modelActivity).toBe("idle");
+      builder.pushThinkingAsToolRow(Date.now());
+      expect(builder.modelActivity).toBe("thinking");
     });
   });
 

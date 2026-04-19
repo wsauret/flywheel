@@ -29,6 +29,8 @@ export function generateSessionTitle(
   if (deps) {
     generateViaLLM(message, deps).then((title) => {
       if (title) onTitle(title)
+    }).catch((err) => {
+      log.warn("title generation callback failed", { error: errorMessage(err) })
     })
   }
 }

@@ -58,9 +58,11 @@ export interface ModelsClient {
   detectProvider(modelId: string): "anthropic" | "openai" | null;
 }
 
+const OPENAI_MODEL_RE = /^(gpt-|o\d|codex-|chatgpt-)/;
+
 function detectProvider(modelId: string): "anthropic" | "openai" | null {
   if (modelId.startsWith("claude-")) return "anthropic";
-  if (/^(gpt-|o\d|codex-|chatgpt-)/.test(modelId)) return "openai";
+  if (OPENAI_MODEL_RE.test(modelId)) return "openai";
   return null;
 }
 

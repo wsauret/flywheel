@@ -11,6 +11,8 @@ import { randomUUID } from "node:crypto"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import type { SessionState } from "./session/types.js"
+import { resolveTierConfigs } from "./config/schema.js"
+import { validateResolvedModels } from "./config/model-tiers.js"
 import type { FlywheelConfig } from "./config/schema.js"
 import type { SessionEntryBase, ChatSessionEntry } from "./session-store-types.js"
 import type { AnyBlock } from "../infra/output-blocks.js"
@@ -92,7 +94,16 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
   }
 
   const engine = workflowDeps.engine
-  const model = config.worker?.model ?? config.model ?? engine.metadata.defaultModel
+  const tiers = resolveTierConfigs(config)
+  const model = tiers.worker.model
+
+  const validationErrors = validateResolvedModels([
+    { component: "chat", model, engineId: engine.metadata.id },
+  ])
+  if (validationErrors.length > 0) {
+    const details = validationErrors.map(e => `  ${e.component} (${e.model}): ${e.issue}`).join("\n")
+    throw new Error(`Model configuration errors:\n${details}`)
+  }
 
   // AskUserQuestion bridge — only wired for the Claude engine since the hook
   // mechanism lives inside Claude's CLI. Other engines get no server.

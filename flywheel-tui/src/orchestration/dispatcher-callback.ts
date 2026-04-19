@@ -22,6 +22,7 @@ interface DispatcherCallbackDeps {
   projectCwd: string
   queue: Queue
   workerModel: string
+  dispatcherModel: string
   chatContext: string | undefined
 }
 
@@ -34,7 +35,7 @@ export function createDispatcherCallback(opts: DispatcherCallbackDeps): Dispatch
   const {
     maxRevisions, dispatcherTransport, contextIndexer, contextAccumulator,
     projectCwd, queue, emit, workflowId,
-    workerModel, chatContext,
+    workerModel, dispatcherModel, chatContext,
   } = opts
 
   const stepDispatcher = createStepDispatcher({
@@ -46,7 +47,7 @@ export function createDispatcherCallback(opts: DispatcherCallbackDeps): Dispatch
       worktreePath: projectCwd,
       projectCwd,
       workerModel,
-      dispatcherModel: "sonnet",
+      dispatcherModel,
     },
     sessionBudget: { wall_clock_deadline: null, invocations_remaining: null, token_budget_remaining: null },
     availableContext: mergeAvailableContext(

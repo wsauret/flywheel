@@ -3,7 +3,7 @@ import { createHarnessEngine } from "../src/orchestration/engines/providers/harn
 import type { ModelsClient } from "../src/orchestration/engines/providers/harness/llm/models";
 import type { LLMClient } from "../src/orchestration/engines/providers/harness/llm/types";
 
-describe("harness engine model alias resolution", () => {
+describe("harness engine model passthrough", () => {
   function makeSpyEngine() {
     const receivedModels: string[] = [];
 
@@ -34,68 +34,20 @@ describe("harness engine model alias resolution", () => {
     return { engine, receivedModels };
   }
 
-  test("bare 'opus' resolves to full model ID", () => {
-    const { engine, receivedModels } = makeSpyEngine();
-    const runner = engine.createRunner({
-      model: "opus",
-      cwd: "/tmp",
-      onEvent: () => {},
-    });
-    runner.send("test");
-    expect(receivedModels).toContain("claude-opus-4-6");
-  });
-
-  test("bare 'sonnet' resolves to full model ID", () => {
-    const { engine, receivedModels } = makeSpyEngine();
-    const runner = engine.createRunner({
-      model: "sonnet",
-      cwd: "/tmp",
-      onEvent: () => {},
-    });
-    runner.send("test");
-    expect(receivedModels).toContain("claude-sonnet-4-6");
-  });
-
-  test("bare 'haiku' resolves to full model ID", () => {
-    const { engine, receivedModels } = makeSpyEngine();
-    const runner = engine.createRunner({
-      model: "haiku",
-      cwd: "/tmp",
-      onEvent: () => {},
-    });
-    runner.send("test");
-    expect(receivedModels).toContain("claude-haiku-4-5-20251001");
-  });
-
-  test("case-insensitive resolution: 'Opus', 'SONNET', ' haiku '", () => {
-    for (const [input, expected] of [
-      ["Opus", "claude-opus-4-6"],
-      ["SONNET", "claude-sonnet-4-6"],
-      [" haiku ", "claude-haiku-4-5-20251001"],
-    ] as const) {
+  test("concrete Anthropic model IDs pass through unchanged", () => {
+    for (const model of ["claude-opus-4-7", "claude-sonnet-4-6", "claude-haiku-4-5-20251001"]) {
       const { engine, receivedModels } = makeSpyEngine();
       const runner = engine.createRunner({
-        model: input,
+        model,
         cwd: "/tmp",
         onEvent: () => {},
       });
       runner.send("test");
-      expect(receivedModels[0]).toBe(expected);
+      expect(receivedModels[0]).toBe(model);
     }
   });
 
-  test("full model IDs pass through unchanged", () => {
-    const { engine, receivedModels } = makeSpyEngine();
-    const runner = engine.createRunner({
-      model: "claude-opus-4-6",
-      cwd: "/tmp",
-      onEvent: () => {},
-    });
-    runner.send("test");
-    expect(receivedModels).toContain("claude-opus-4-6");
-  });
-
-  test("unknown model names pass through unchanged", () => {
+  test("OpenAI model IDs pass through unchanged", () => {
     const { engine, receivedModels } = makeSpyEngine();
     const runner = engine.createRunner({
       model: "gpt-4o",
@@ -104,5 +56,16 @@ describe("harness engine model alias resolution", () => {
     });
     runner.send("test");
     expect(receivedModels).toContain("gpt-4o");
+  });
+
+  test("arbitrary model strings pass through unchanged", () => {
+    const { engine, receivedModels } = makeSpyEngine();
+    const runner = engine.createRunner({
+      model: "some-custom-model-v2",
+      cwd: "/tmp",
+      onEvent: () => {},
+    });
+    runner.send("test");
+    expect(receivedModels).toContain("some-custom-model-v2");
   });
 });

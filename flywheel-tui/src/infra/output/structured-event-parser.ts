@@ -164,7 +164,15 @@ export class StructuredEventParser {
     } else if (event.type === "content_block_delta") {
       const delta = event.data.delta;
       if (delta?.type === "thinking_delta" && typeof delta.thinking === "string") {
-        this.builder.pushThinking(delta.thinking, now);
+        if (this.builder.hasActiveToolsContext) {
+          // Join existing tool context as a row
+          if (!this.hasStreamedThinking) {
+            this.builder.pushThinkingAsToolRow(now);
+          }
+        } else {
+          // No tool context — create/append to standalone thinking block
+          this.builder.pushThinking(delta.thinking, now);
+        }
         this.hasStreamedThinking = true;
       } else if (delta?.type === "text_delta" && typeof delta.text === "string") {
         this.builder.pushText(delta.text, now);
@@ -198,13 +206,22 @@ export class StructuredEventParser {
     this.hasStreamedText = false;
     this.hasStreamedThinking = false;
 
+    // Process tools first — they create the context group
+    for (const block of content) {
+      if (block.type === "tool_use") {
+        this.handleToolUse(block, parentAgentId, now);
+      }
+    }
+
+    // Now process thinking and text
     for (const block of content) {
       if (block.type === "thinking" && typeof block.thinking === "string") {
-        if (!parentAgentId) {
-          if (hasNonSubagentTools) {
+        if (!parentAgentId && !skipStreamedThinking) {
+          if (this.builder.hasActiveToolsContext) {
+            // Join existing tool context as a row
             this.builder.pushThinkingAsToolRow(now);
-          }
-          if (!skipStreamedThinking && block.thinking.length > 0) {
+          } else if (block.thinking.length > 0) {
+            // No tool context — create standalone thinking block
             this.builder.pushThinking(block.thinking, now);
           }
         }
@@ -212,8 +229,6 @@ export class StructuredEventParser {
         if (!skipStreamedText && !parentAgentId && block.text.length > 0) {
           this.builder.pushText(block.text, now);
         }
-      } else if (block.type === "tool_use") {
-        this.handleToolUse(block, parentAgentId, now);
       }
     }
   }

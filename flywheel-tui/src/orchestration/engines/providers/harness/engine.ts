@@ -7,20 +7,9 @@ import type { LLMClient } from "./llm/types.js";
 const metadata: EngineMetadata = {
   id: "harness",
   name: "Flywheel Harness",
-  defaultModel: "claude-opus-4-6",
+  defaultModel: "claude-opus-4-7",
   description: "Direct LLM API engine (Anthropic + OpenAI)",
 };
-
-// Bare aliases → full Anthropic model IDs for direct API usage (no context-window suffixes).
-const MODEL_ALIASES: Record<string, string> = {
-  opus:   "claude-opus-4-6",
-  sonnet: "claude-sonnet-4-6",
-  haiku:  "claude-haiku-4-5-20251001",
-};
-
-function resolveModel(raw: string): string {
-  return MODEL_ALIASES[raw.toLowerCase().trim()] ?? raw;
-}
 
 export function createHarnessEngine(deps?: {
   modelsClient?: ModelsClient;
@@ -34,7 +23,7 @@ export function createHarnessEngine(deps?: {
     createRunner(options: RunnerOptions) {
       return new HarnessRunner(
         options,
-        (model) => clientFactory(resolveModel(model), modelsClient),
+        (model) => clientFactory(model, modelsClient),
       );
     },
   };

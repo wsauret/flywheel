@@ -294,7 +294,7 @@ export function QuestionDock(props: QuestionDockProps) {
               // to distinguish from "on cursor".
               return isCursor() ? "\u25CF" : "\u25CB"              // ● under cursor / ○ not
             }
-            const indicatorColor = () => (multi() ? (isPicked() ? theme.primary : (isCursor() ? theme.primary : theme.textMuted)) : (isCursor() ? theme.primary : theme.textMuted))
+            const indicatorColor = () => (multi() && isPicked()) || isCursor() ? theme.primary : theme.textMuted
             const labelColor = () => isCursor() ? theme.text : theme.textMuted
             return (
               <box flexDirection="row" gap={1} overflow="hidden">

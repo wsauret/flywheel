@@ -200,6 +200,8 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
   async function finish(sessionId: string): Promise<void> {
     const entry = entries[sessionId]
     if (!entry || entry.ended) return
+    // Runner is not nulled — `ended` is the guard. The runner object stays
+    // referenced until remove() deletes the store entry.
     setEntries(sessionId, produce((entry) => { entry.ended = true }))
     if (entry.runner) await entry.runner.dispose()
   }

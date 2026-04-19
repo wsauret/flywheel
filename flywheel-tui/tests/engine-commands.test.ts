@@ -49,25 +49,39 @@ describe("unified buildCommand", () => {
     expect(cmd.args[toolsIdx + 1]).toBe("Read,Bash,Write");
   });
 
-  it("resolves bare 'opus' to 1M variant", () => {
-    const cmd = buildCommand({ model: "opus" });
+  it("appends [1m] to full Claude model IDs", () => {
+    const cmd = buildCommand({ model: "claude-opus-4-7" });
     const modelIdx = cmd.args.indexOf("--model");
     expect(modelIdx).toBeGreaterThanOrEqual(0);
-    expect(cmd.args[modelIdx + 1]).toBe("claude-opus-4-6[1m]");
+    expect(cmd.args[modelIdx + 1]).toBe("claude-opus-4-7[1m]");
   });
 
-  it("resolves bare 'sonnet' to 1M variant", () => {
-    const cmd = buildCommand({ model: "sonnet" });
+  it("appends [1m] to claude-sonnet model IDs", () => {
+    const cmd = buildCommand({ model: "claude-sonnet-4-6" });
     const modelIdx = cmd.args.indexOf("--model");
     expect(modelIdx).toBeGreaterThanOrEqual(0);
     expect(cmd.args[modelIdx + 1]).toBe("claude-sonnet-4-6[1m]");
   });
 
-  it("passes 'haiku' through unchanged", () => {
-    const cmd = buildCommand({ model: "haiku" });
+  it("strips [200k] suffix from Claude model IDs", () => {
+    const cmd = buildCommand({ model: "claude-opus-4-7[200k]" });
     const modelIdx = cmd.args.indexOf("--model");
     expect(modelIdx).toBeGreaterThanOrEqual(0);
-    expect(cmd.args[modelIdx + 1]).toBe("haiku");
+    expect(cmd.args[modelIdx + 1]).toBe("claude-opus-4-7");
+  });
+
+  it("passes through model IDs with existing context suffix unchanged", () => {
+    const cmd = buildCommand({ model: "claude-opus-4-7[1m]" });
+    const modelIdx = cmd.args.indexOf("--model");
+    expect(modelIdx).toBeGreaterThanOrEqual(0);
+    expect(cmd.args[modelIdx + 1]).toBe("claude-opus-4-7[1m]");
+  });
+
+  it("passes non-Claude model IDs through unchanged", () => {
+    const cmd = buildCommand({ model: "gpt-4o" });
+    const modelIdx = cmd.args.indexOf("--model");
+    expect(modelIdx).toBeGreaterThanOrEqual(0);
+    expect(cmd.args[modelIdx + 1]).toBe("gpt-4o");
   });
 
   it("respects --effort override", () => {

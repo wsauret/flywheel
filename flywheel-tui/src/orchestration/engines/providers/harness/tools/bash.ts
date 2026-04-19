@@ -14,6 +14,7 @@ import type { ToolDefinition, ToolResult, ToolContext, BashOperations } from "./
 const log = Log.create({ service: "harness-bash" });
 
 const DEFAULT_TIMEOUT_SEC = 120;
+const MAX_TIMEOUT_SEC = 300;
 const KILL_GRACE_MS = 5_000;
 
 const INTERACTIVE_COMMAND_PATTERNS: ReadonlyArray<{ match: RegExp; guidance: string }> = [
@@ -140,7 +141,11 @@ export function createBashDefinition(options?: { operations?: BashOperations }):
       return { content: "Aborted", isError: true };
     }
 
-    const timeout = timeoutSec ?? DEFAULT_TIMEOUT_SEC;
+    let timeout = timeoutSec ?? DEFAULT_TIMEOUT_SEC;
+    if (timeout > MAX_TIMEOUT_SEC) {
+      log.warn("bash timeout clamped", { requested: timeout, clamped: MAX_TIMEOUT_SEC });
+      timeout = MAX_TIMEOUT_SEC;
+    }
 
     if (isBackgroundCommand(command)) {
       return runBackground(command, context);
