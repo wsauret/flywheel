@@ -20,6 +20,7 @@ import type {
 } from "./llm/types.js";
 import { ContextLengthExceededError, OutputLengthExceededError } from "./llm/types.js";
 import { executeTool, getToolDefinitions } from "./tools/tool-dispatch.js";
+import { formatList as formatTodoList } from "./tools/todo-list.js";
 import type { ToolContext, TodoItem } from "./tools/types.js";
 import { limitOutput } from "./context/truncation.js";
 import { createTokenCounter } from "./context/token-counter.js";
@@ -28,6 +29,11 @@ import { renderNextInput, applyHandoff } from "./agent-state.js";
 import type { NextInput, ToolResultEntry } from "./agent-state.js";
 
 const log = Log.create({ service: "harness-agent-loop" });
+
+function withTodoState(handoffText: string, items: ReadonlyArray<TodoItem>): string {
+  if (items.length === 0) return handoffText;
+  return `${handoffText}\n\n<todo_state>\nYour todo list is preserved across context recovery. Do not call todo_list(read) — here is the current state:\n${formatTodoList(items)}\n</todo_state>`;
+}
 
 export interface AgentLoopOptions {
   client: LLMClient;
@@ -40,6 +46,10 @@ export interface AgentLoopOptions {
   handoffPath?: string;
   signal?: AbortSignal;
   onEvent: (event: StreamEvent) => void;
+  /** Fires when a new user turn is sent to the model. */
+  onUserMessage?: (content: string | ContentBlock[]) => void;
+  /** Fires when the model yields to the user (no tool calls, ready for next message). */
+  onTurnComplete?: () => void;
   onTurnAssistantMessage?: (content: ContentBlock[]) => void;
   reasoningEffort?: ReasoningEffort;
   /** Shared queue of pending user inputs. The runner pushes via send();
@@ -119,7 +129,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         const handoff = await summarizer.summarize(messages, systemPrompt, cwd, signal);
         if (handoff) {
           applyHandoff(messages, handoff);
-          nextInput = { kind: "recovered", handoff: handoff.userPrompt };
+          nextInput = { kind: "recovered", handoff: withTodoState(handoff.userPrompt, todoList) };
           contextOverflow = true;
           // Server-side conversation chain is invalid after compaction — fall back
           // to stateless mode where encrypted reasoning blocks carry the context.
@@ -133,6 +143,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     }
 
     const userPrompt = renderNextInput(nextInput);
+    options.onUserMessage?.(userPrompt);
 
     if (nextInput.kind === "observation" && Array.isArray(userPrompt)) {
       const budgetLine = `[Budget: ${llmCallCount}/${maxLLMCalls} calls used, ${maxLLMCalls - llmCallCount} remaining]`;
@@ -244,9 +255,9 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         const handoff = await summarizer.summarize(messages, systemPrompt, cwd, signal);
         if (handoff) {
           applyHandoff(messages, handoff);
-          nextInput = { kind: "recovered", handoff: handoff.userPrompt };
+          nextInput = { kind: "recovered", handoff: withTodoState(handoff.userPrompt, todoList) };
         } else {
-          nextInput = { kind: "recovered", handoff: instruction };
+          nextInput = { kind: "recovered", handoff: withTodoState(instruction, todoList) };
         }
         continue;
       }
@@ -275,6 +286,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     }
 
     if (toolCalls.length === 0) {
+      options.onTurnComplete?.();
       if (options.pendingUserInputs && options.pendingUserInputs.length > 0) {
         const next = options.pendingUserInputs.shift()!;
         nextInput = { kind: "initial", text: next };
@@ -285,23 +297,79 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     }
 
     const toolResults: ToolResultEntry[] = [];
-    const parallelResults = await Promise.all(
+    const steeringAbort = new AbortController();
+    const toolSignal = signal
+      ? AbortSignal.any([signal, steeringAbort.signal])
+      : steeringAbort.signal;
+    const steeringContext: ToolContext = { ...toolContext, signal: toolSignal };
+
+    const settled = await Promise.allSettled(
       toolCalls.map(async (tc) => {
-        if (signal?.aborted) return null;
-        return { tc, result: await executeTool(tc.name, tc.input, toolContext) };
+        if (steeringAbort.signal.aborted || signal?.aborted) return { tc, skipped: true as const };
+        try {
+          const result = await executeTool(tc.name, tc.input, steeringContext);
+          if (options.pendingUserInputs?.length && !steeringAbort.signal.aborted) {
+            steeringAbort.abort();
+          }
+          return { tc, skipped: false as const, result };
+        } catch {
+          if (steeringAbort.signal.aborted || signal?.aborted) return { tc, skipped: true as const };
+          throw undefined;
+        }
       }),
     );
 
-    for (const entry of parallelResults) {
-      if (!entry) continue;
-      const { tc, result } = entry;
-      const { text: content } = await limitOutput(result.content, undefined, cwd, options.sessionId);
-      onEvent({ kind: "tool_result", toolCallId: tc.id, content });
-      toolResults.push({ toolCallId: tc.id, content });
-      tokenCounter.addToolResult(content);
+    let todoMutated = false;
+    for (let i = 0; i < settled.length; i++) {
+      const entry = settled[i]!;
+      if (entry.status === "rejected") {
+        const tc = toolCalls[i]!;
+        const content = "Tool execution failed.";
+        onEvent({ kind: "tool_result", toolCallId: tc.id, content });
+        toolResults.push({ toolCallId: tc.id, content, isError: true });
+        continue;
+      }
+      const value = entry.value;
+      if (!value) continue;
+      if (value.skipped) {
+        const content = signal?.aborted ? "Interrupted by user." : "Skipped due to queued user message.";
+        onEvent({ kind: "tool_result", toolCallId: value.tc.id, content });
+        toolResults.push({ toolCallId: value.tc.id, content, isError: true });
+      } else {
+        const { text: content } = await limitOutput(value.result.content, undefined, cwd, options.sessionId);
+        onEvent({ kind: "tool_result", toolCallId: value.tc.id, content });
+        toolResults.push({ toolCallId: value.tc.id, content });
+        tokenCounter.addToolResult(content);
+        if (value.tc.name === "todo_list" && value.tc.input?.operation !== "read") todoMutated = true;
+      }
     }
 
-    nextInput = { kind: "observation", toolResults };
+    if (todoMutated && toolContext.todoList.length > 0) {
+      onEvent({
+        kind: "todo_state",
+        todos: toolContext.todoList.map((t) => ({
+          id: t.id,
+          content: t.content,
+          status: t.status,
+          ...(t.notes ? { notes: t.notes } : {}),
+        })),
+      });
+    }
+
+    if (signal?.aborted && toolResults.length > 0) {
+      const observationPrompt = renderNextInput({ kind: "observation", toolResults });
+      pushMessage({ role: "user", content: observationPrompt });
+      break;
+    }
+
+    if (options.pendingUserInputs && options.pendingUserInputs.length > 0) {
+      const observationPrompt = renderNextInput({ kind: "observation", toolResults });
+      pushMessage({ role: "user", content: observationPrompt });
+      const next = options.pendingUserInputs.shift()!;
+      nextInput = { kind: "initial", text: next };
+    } else {
+      nextInput = { kind: "observation", toolResults };
+    }
   }
 
   return { outcome: contextOverflow ? "context_overflow" : "ok", previousResponseId };

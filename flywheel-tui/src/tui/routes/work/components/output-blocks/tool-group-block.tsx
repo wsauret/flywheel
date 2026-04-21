@@ -16,10 +16,13 @@ import { useTheme } from "@tui/shared/context/theme"
 import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
 import { useElapsed } from "@tui/shared/hooks/use-elapsed"
 import { useSpinnerFrame } from "@tui/shared/hooks/use-spinner-frame.js"
+import { preventSelectionMouseDown } from "@tui/utils/mouse.js"
 import { formatDuration, formatElapsed } from "@infra/format.js"
 import { ToolRow, BOX_MAX_VISIBLE_TOOLS, SUCCESS_ICON, ERROR_ICON, moreHint } from "./tool-row.js"
 import { ToolEntry as ToolEntryBlock } from "./tool-entry.js"
 import { DISPATCHER_INITIAL_DESCRIPTION, EVALUATOR_INITIAL_DESCRIPTION } from "../../../../adapters/ndjson-pipeline.js"
+import { deriveGroupSummary, toolsGroupLabel } from "./group-summary.js"
+import { shouldRenderGroupedToolAsEntry } from "./tool-entry-helpers.js"
 import type { ToolGroupBlock as ToolGroupBlockType } from "@infra/output-blocks"
 
 interface ToolGroupBlockProps {
@@ -60,15 +63,6 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
     return parts.join(" · ")
   }
 
-  const completedSummary = () => {
-    const parts: string[] = []
-    const goal = goalText()
-    if (goal) parts.push(goal)
-    if (toolCount() > 0) parts.push(pluralizeTools(toolCount()))
-    if (props.block.duration != null) parts.push(formatDuration(props.block.duration))
-    return parts.join(" · ")
-  }
-
   const isActive = () => props.block.status === "active"
   const hasChildren = () => toolCount() > 0
   const visibleChildren = () => {
@@ -82,6 +76,14 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
     return all.length - BOX_MAX_VISIBLE_TOOLS
   }
 
+  const dynamicLabel = createMemo(() => {
+    if (props.block.groupKind === "agent") return props.block.label
+    return toolsGroupLabel(props.block.status === "active")
+  })
+  const dynamicSummary = createMemo(() =>
+    deriveGroupSummary(props.block.children)
+  )
+
   const spinnerFrame = useSpinnerFrame(() => props.block.status === "active")
   const toggleShowAll = () => setShowAll((v) => !v)
 
@@ -89,7 +91,7 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
     const chunks: TextChunk[] = [
       stFg(theme.secondary)(spinnerFrame()),
       stFg(theme.text)(" "),
-      stBold(stFg(theme.secondary)(props.block.label)),
+      stBold(stFg(theme.secondary)(dynamicLabel())),
     ]
     const summary = activeSummary()
     if (summary) {
@@ -107,16 +109,22 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
     const chunks: TextChunk[] = [
       stFg(theme.primary)(SUCCESS_ICON),
       stFg(theme.text)(" "),
-      stBold(stFg(theme.primary)(props.block.label)),
+      stBold(stFg(theme.primary)(dynamicLabel())),
     ]
-    if (hasChildren()) {
-      chunks.push(stFg(theme.text)(" "))
-      chunks.push(stFg(theme.textMuted)((props.expanded ?? false) ? "▾" : "▸"))
+    const goal = goalText()
+    if (goal) {
+      chunks.push(stFg(theme.textSubtle)(` · ${goal}`))
     }
-    const summary = completedSummary()
+    const summary = dynamicSummary()
     if (summary) {
-      chunks.push(stFg(theme.text)(" "))
-      chunks.push(stFg(theme.textSubtle)(`· ${summary}`))
+      chunks.push(stFg(theme.textSubtle)(` · ${summary}`))
+    }
+    if (props.block.duration != null) {
+      chunks.push(stFg(theme.textSubtle)(` · ${formatDuration(props.block.duration)}`))
+    }
+    if (hasChildren()) {
+      chunks.push(stFg(theme.text)("  "))
+      chunks.push(stFg(theme.textMuted)((props.expanded ?? false) ? "▾" : "▸"))
     }
     return new StyledText(chunks)
   })
@@ -142,7 +150,9 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
     return (
       <>
         <Index each={visibleChildren()}>
-          {(child) => <ToolRow tool={child()} />}
+          {(child) => shouldRenderGroupedToolAsEntry(child())
+            ? <ToolEntryBlock block={child()} />
+            : <ToolRow tool={child()} />}
         </Index>
         <Show when={hiddenCount() > 0}>
           <box paddingLeft={1}>
@@ -160,7 +170,7 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
       </Show>
 
       <Show when={props.block.status === "active" && !isBareSingleTool()}>
-        <box onMouseDown={hiddenCount() > 0 ? toggleShowAll : undefined}>
+        <box onMouseDown={hiddenCount() > 0 ? preventSelectionMouseDown(toggleShowAll) : undefined}>
           <text
             ref={(el: TextRenderable) => {
               createEffect(() => { el.content = activeHeaderContent() })
@@ -176,7 +186,7 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
             borderColor={theme.borderSubtle}
             paddingTop={0}
             paddingBottom={0}
-            onMouseDown={hiddenCount() > 0 ? toggleShowAll : undefined}
+            onMouseDown={hiddenCount() > 0 ? preventSelectionMouseDown(toggleShowAll) : undefined}
           >
             <ToolList />
           </CollapsibleBox>
@@ -184,7 +194,7 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
       </Show>
 
       <Show when={canToggle() && !isBareSingleTool()}>
-        <box onMouseDown={() => props.onToggleExpand?.(props.block.id)}>
+        <box onMouseDown={preventSelectionMouseDown(() => props.onToggleExpand?.(props.block.id))}>
           <text
             ref={(el: TextRenderable) => {
               createEffect(() => { el.content = completedHeaderContent() })
@@ -200,7 +210,7 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
             borderColor={theme.borderSubtle}
             paddingTop={0}
             paddingBottom={0}
-            onMouseDown={hiddenCount() > 0 ? toggleShowAll : undefined}
+            onMouseDown={hiddenCount() > 0 ? preventSelectionMouseDown(toggleShowAll) : undefined}
           >
             <ToolList />
           </CollapsibleBox>

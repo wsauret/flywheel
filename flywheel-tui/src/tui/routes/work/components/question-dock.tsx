@@ -260,6 +260,9 @@ export function QuestionDock(props: QuestionDockProps) {
       paddingTop={1}
       paddingBottom={1}
       backgroundColor={theme.backgroundElement}
+      // Why the left divider is correct here: this dock is the live input surface
+      // for a pending question, so the gutter acts as an attachment point to the
+      // transcript above it rather than a decorative status stripe on a passive card.
       border={["left"]}
       borderColor={theme.primary}
       customBorderChars={SplitBorder.customBorderChars}

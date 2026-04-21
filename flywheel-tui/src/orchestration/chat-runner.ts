@@ -158,7 +158,7 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
           updateEntry({ description: title })
           deps.onSessionName?.(title)
         },
-        { engine: workflowDeps.engine, projectCwd },
+        { engine: workflowDeps.engine, projectCwd, model },
       )
     }
 

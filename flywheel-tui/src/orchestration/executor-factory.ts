@@ -21,6 +21,7 @@ import { createEngineDispatcherTransport, createEngineEvaluatorTransport } from 
 import { createClaudeWarmPools } from "./engines/providers/claude/pool/create-warm-pools.js"
 import { createPooledDispatcherTransport, createPooledEvaluatorTransport } from "./engines/providers/claude/pool/pooled-transports.js"
 import { createObserverChain, createToolFailureObserver, createBudgetAwarenessObserver, createContextPressureObserver } from "./engines/stream-observers.js"
+import { DEFAULT_BUDGET } from "../workflows/schemas.js"
 import { createDoomLoopObserver } from "./engines/doom-loop.js"
 import { mapNDJSONToEngineEvents } from "./engines/ndjson-event-mapper.js"
 import { createEmit, type EventBus, type Unsubscribe } from "../infra/event-bus.js"
@@ -154,14 +155,12 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
   const contextIndexer = new ContextIndexer(projectCwd)
   await contextIndexer.startIndexing()
 
-  const budgetConfig = deps.config.budget
   const budgetAwareness = createBudgetAwarenessObserver(() => {
-    const maxCalls = budgetConfig.max_invocations
-    const maxTokens = budgetConfig.max_tokens
-    if (maxCalls === 0 && maxTokens === 0) return null
+    const { max_invocations, max_tokens } = DEFAULT_BUDGET
+    if (max_invocations === 0 && max_tokens === 0) return null
     return {
-      remainingCalls: maxCalls > 0 ? Math.max(0, maxCalls - budgetTracker.getInvocationsUsed()) : Infinity,
-      remainingTokens: maxTokens > 0 ? Math.max(0, maxTokens - budgetTracker.getTokensUsed()) : Infinity,
+      remainingCalls: max_invocations > 0 ? Math.max(0, max_invocations - budgetTracker.getInvocationsUsed()) : Infinity,
+      remainingTokens: max_tokens > 0 ? Math.max(0, max_tokens - budgetTracker.getTokensUsed()) : Infinity,
     }
   })
   const contextPressure = createContextPressureObserver(() =>
@@ -192,7 +191,7 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
   })
 
   const contextAccumulator = createContextAccumulator({
-    windowSize: deps.config.dispatcher_intelligence?.handoff_detail_window ?? 3,
+    windowSize: 3,
   })
   const evaluator = createAgentEvaluatorFn({ transport: evaluatorTransport })
   const compositeHook = createCompositeHook([...externalHooks])
@@ -233,8 +232,8 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
 
   const guardrails = createGuardrails({
     maxQueueLength: deps.config.queue?.max_steps ?? 50,
-    maxMutationsPerStepCompletion: deps.config.dispatcher_intelligence?.max_mutations_per_step ?? 3,
-    maxInsertedStepsPerSession: deps.config.dispatcher_intelligence?.max_inserted_steps ?? 20,
+    maxMutationsPerStepCompletion: 3,
+    maxInsertedStepsPerSession: 20,
   })
 
   const persistence = createQueuePersistence({ sessionId, baseDir: projectCwd })

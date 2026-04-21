@@ -286,20 +286,32 @@ describe("TraceWriter — rotation", () => {
     w3.finalizeTrace(makeIndexEntry({ traceId: "t3", sessionId: "s3", startTimeMs: 3000, status: "ok" }));
     w3.dispose();
 
-    // Write t4 — should evict t2 (oldest non-error), NOT t1 (error)
+    // Write t4 — now 3 non-error (t2,t3,t4) + 1 error (t1) = 4 total, no eviction needed
     const w4 = createTraceWriter({ sessionId: "s4", baseDir: tmpDir, maxTraces });
     w4.writeSpan(makeSpan({ sessionId: "s4", traceId: "t4" }));
     w4.flush();
     w4.finalizeTrace(makeIndexEntry({ traceId: "t4", sessionId: "s4", startTimeMs: 4000, status: "ok" }));
     w4.dispose();
 
-    const index = readIndex(tmpDir);
-    expect(index.length).toBe(3);
-    const traceIds = index.map((e) => e.traceId);
-    expect(traceIds).toContain("t1"); // error preserved
+    const index4 = readIndex(tmpDir);
+    expect(index4.length).toBe(4);
+    expect(index4.map((e) => e.traceId)).toContain("t1");
+    expect(index4.map((e) => e.traceId)).toContain("t2");
+
+    // Write t5 — now 4 non-error (t2,t3,t4,t5) > maxTraces(3), evicts t2 (oldest non-error)
+    const w5 = createTraceWriter({ sessionId: "s5", baseDir: tmpDir, maxTraces });
+    w5.writeSpan(makeSpan({ sessionId: "s5", traceId: "t5" }));
+    w5.flush();
+    w5.finalizeTrace(makeIndexEntry({ traceId: "t5", sessionId: "s5", startTimeMs: 5000, status: "ok" }));
+    w5.dispose();
+
+    const index5 = readIndex(tmpDir);
+    expect(index5.length).toBe(4);
+    const traceIds = index5.map((e) => e.traceId);
+    expect(traceIds).toContain("t1"); // error preserved (exempt from cap)
     expect(traceIds).not.toContain("t2"); // oldest non-error evicted
     expect(traceIds).toContain("t3");
-    expect(traceIds).toContain("t4");
+    expect(traceIds).toContain("t5");
 
     // Error trace file still exists
     expect(fs.existsSync(traceFilePath("s1", tmpDir))).toBe(true);

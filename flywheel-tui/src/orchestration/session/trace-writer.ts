@@ -83,10 +83,7 @@ export function createTraceWriter(deps: TraceWriterDeps): TraceWriter {
     const entries = readIndex(baseDir);
     entries.push(summary);
 
-    if (entries.length > maxTraces) {
-      rotate(entries);
-    }
-
+    rotate(entries);
     writeIndex(baseDir, entries);
   }
 
@@ -98,15 +95,20 @@ export function createTraceWriter(deps: TraceWriterDeps): TraceWriter {
     writer.dispose();
   }
 
-  // Evict oldest non-error traces first to preserve error traces longer
+  function nonErrorCount(entries: TraceIndexEntry[]): number {
+    let count = 0;
+    for (const e of entries) if (e.status !== "error") count++;
+    return count;
+  }
+
   function rotate(entries: TraceIndexEntry[]): void {
-    while (entries.length > maxTraces) {
+    while (nonErrorCount(entries) > maxTraces) {
       let evictIdx = -1;
       let oldestTime = Infinity;
 
       for (let i = 0; i < entries.length; i++) {
-        if (entries[i].status !== "error" && entries[i].startTimeMs < oldestTime) {
-          oldestTime = entries[i].startTimeMs;
+        if (entries[i]!.status !== "error" && entries[i]!.startTimeMs < oldestTime) {
+          oldestTime = entries[i]!.startTimeMs;
           evictIdx = i;
         }
       }

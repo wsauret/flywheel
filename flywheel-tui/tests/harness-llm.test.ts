@@ -8,6 +8,7 @@ import {
   createModelsClient,
 } from "../src/orchestration/engines/providers/harness/llm/models.js";
 import { createClient } from "../src/orchestration/engines/providers/harness/llm/client-factory.js";
+import { contextWindowForModel } from "../src/orchestration/engines/engine-context.js";
 
 describe("isNonRetryable", () => {
   test("returns true for 400 status", () => {
@@ -191,6 +192,15 @@ describe("createModelsClient", () => {
     const client = createModelsClient();
     expect(client.detectProvider("llama-3")).toBeNull();
     expect(client.detectProvider("gemini-pro")).toBeNull();
+  });
+});
+
+describe("contextWindowForModel", () => {
+  test("maps current OpenAI fallback families to expected windows", () => {
+    expect(contextWindowForModel("gpt-5.4")).toBe(128_000);
+    expect(contextWindowForModel("gpt-5.3-codex")).toBe(128_000);
+    expect(contextWindowForModel("chatgpt-4o-latest")).toBe(128_000);
+    expect(contextWindowForModel("o3-mini")).toBe(200_000);
   });
 });
 

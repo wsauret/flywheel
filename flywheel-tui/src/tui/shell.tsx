@@ -1,13 +1,16 @@
 /** @jsxImportSource @opentui/solid */
 
-import { createSignal, createMemo, createEffect, on, For, Show, onCleanup } from "solid-js"
+import { createSignal, createMemo, createEffect, on, Show, onCleanup } from "solid-js"
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
-import { BOLD, DIM } from "@tui/shared/ui/text-attributes"
-import type { TextareaRenderable, TextareaAction } from "@opentui/core"
+import { BOLD } from "@tui/shared/ui/text-attributes"
+import { StyledText, fg as stFg, dim as stDim } from "@opentui/core"
+import type { TextRenderable, TextareaRenderable, TextareaAction } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { useToast } from "@tui/shared/context/toast"
 import { useSession } from "@tui/shared/context/session"
 import { Clipboard } from "./utils/clipboard.js"
+import { consumeSelectedText } from "./utils/selection.js"
+import { consumeClickAction } from "./utils/mouse.js"
 import { registerPreExitCleanup } from "./exit.js"
 import { OutputWindow } from "./routes/work/components/output-window.js"
 import { SplitBorder } from "./shared/ui/border.js"
@@ -178,16 +181,31 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
 
   const lineWidth = createMemo(() => Math.max(dimensions().width - 4, 40))
 
-  const { displayStatus, headerRight, headerRightColor, stepDisplay } = createHeaderDisplay({
+  const { displayStatus, headerLeftContent, headerRightContent, stepBarContent } = createHeaderDisplay({
     signals,
     metrics,
     dimensions,
     inChat,
     runningCount,
+    now,
+    engineName: props.engineName,
     theme,
   })
 
   const showPrompt = createMemo(() => !sessionModal.sessionsModalOpen())
+
+  const errorHints = createMemo(() => {
+    if (signals.sessionState() === "paused") {
+      return new StyledText([
+        stFg(theme.textSubtle)("Ctrl+R"), stDim(stFg(theme.textMuted)(" resume \u00b7 ")),
+        stFg(theme.textSubtle)("Esc"), stDim(stFg(theme.textMuted)(" stop")),
+      ])
+    }
+    return new StyledText([
+      stFg(theme.textSubtle)("Ctrl+N"), stDim(stFg(theme.textMuted)(" new session \u00b7 ")),
+      stFg(theme.textSubtle)("Ctrl+B"), stDim(stFg(theme.textMuted)(" sessions")),
+    ])
+  })
 
   const activityLabel = createMemo(() => {
     switch (metrics.liveActivity()) {
@@ -211,56 +229,26 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
 
   return (
     <box width={dimensions().width} height={dimensions().height} flexDirection="column" backgroundColor={theme.background} onMouseUp={() => {
-        const text = renderer.getSelection()?.getSelectedText()
+        if (consumeClickAction()) { renderer.clearSelection(); return }
+        const text = consumeSelectedText(renderer)
         if (!text) return
         Clipboard.copy(text)
           .then(() => toast.show({ message: "Copied to clipboard", variant: "info" }))
           .catch((err) => toast.show({ message: errorMessage(err), variant: "error" }))
-        renderer.clearSelection()
       }}>
 
       <box flexShrink={0} flexDirection="column" backgroundColor={theme.backgroundPanel} border={["left"]} customBorderChars={SplitBorder.customBorderChars} borderColor={theme.border}>
-        <box flexDirection="row" justifyContent="space-between" paddingTop={1} paddingBottom={stepDisplay().visible.length > 0 ? 0 : 1} paddingLeft={2} paddingRight={1}>
-          <box flexDirection="row" flexShrink={1} overflow="hidden">
-            <text fg={theme.primary} attributes={BOLD}>{"\u2699 flywheel"}</text>
-            <Show when={signals.sessionTitle()}>
-              <text fg={theme.textMuted}>{" \u00b7 "}</text>
-              <text fg={theme.text}>{signals.sessionTitle()}</text>
-            </Show>
+        <box flexDirection="row" justifyContent="space-between" paddingTop={1} paddingBottom={stepBarContent() ? 0 : 1} paddingLeft={2} paddingRight={1}>
+          <box flexShrink={1} overflow="hidden">
+            <text ref={(el: TextRenderable) => { createEffect(() => { el.content = headerLeftContent() }) }} overflow="hidden" wrapMode="none" />
           </box>
-          <box flexDirection="row" flexShrink={0}>
-            <Show when={props.engineName}>
-              <text fg={theme.textSubtle}>{props.engineName}</text>
-            </Show>
-            <Show when={signals.foregroundId()}>
-              <text fg={theme.textSubtle}>{props.engineName ? " \u00b7 " : ""}{"Session ID: "}{signals.foregroundId()}</text>
-            </Show>
-            <Show when={headerRight()}>
-              <text fg={headerRightColor()}>{signals.foregroundId() ? " \u00b7 " : " "}{headerRight()}</text>
-            </Show>
+          <box flexShrink={0}>
+            <text ref={(el: TextRenderable) => { createEffect(() => { el.content = headerRightContent() }) }} />
           </box>
         </box>
-        <Show when={stepDisplay().visible.length > 0}>
-          <box paddingLeft={2} paddingRight={1} paddingBottom={1} flexDirection="row" overflow="hidden">
-            <Show when={stepDisplay().collapsedCount > 0}>
-              <text fg={theme.success} attributes={DIM}>{stepDisplay().collapsedCount} done</text>
-            </Show>
-            <For each={stepDisplay().visible}>
-              {(step, i) => {
-                const showSep = i() > 0 || stepDisplay().collapsedCount > 0
-                const stepColor = step.status === "completed" ? theme.success : step.status === "running" ? theme.primary : step.status === "failed" ? theme.error : theme.textMuted
-                const attrs = step.status === "running" ? BOLD : (step.status === "completed" || step.status === "failed") ? undefined : DIM
-                const prefix = step.status === "completed" ? "\u2713 " : step.status === "failed" ? "\u2717 " : ""
-                return (
-                  <box flexDirection="row">
-                    {showSep ? <text fg={theme.borderSubtle}>{" \u203a "}</text> : null}
-                    <text fg={stepColor} attributes={attrs}>
-                      {prefix}{step.title}{step.status === "running" && step.startedAt ? ` ${formatElapsed(now() - step.startedAt)}` : ""}
-                    </text>
-                  </box>
-                )
-              }}
-            </For>
+        <Show when={stepBarContent()}>
+          <box paddingLeft={2} paddingRight={1} paddingBottom={1}>
+            <text ref={(el: TextRenderable) => { createEffect(() => { const c = stepBarContent(); if (c) el.content = c }) }} overflow="hidden" wrapMode="none" />
           </box>
         </Show>
       </box>
@@ -282,16 +270,8 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
                 <text fg={theme.error} attributes={BOLD}>{"✗"} Something went wrong</text>
                 <text fg={theme.text}>{signals.errorMessage()}</text>
               </box>
-              <box paddingTop={1} paddingLeft={2} flexDirection="row">
-                <Show when={signals.sessionState() === "paused"} fallback={
-                  <>
-                    <text fg={theme.textSubtle}>Ctrl+N</text><text fg={theme.textMuted} attributes={DIM}>{" new session \u00b7 "}</text>
-                    <text fg={theme.textSubtle}>Ctrl+B</text><text fg={theme.textMuted} attributes={DIM}>{" sessions"}</text>
-                  </>
-                }>
-                  <text fg={theme.textSubtle}>Ctrl+R</text><text fg={theme.textMuted} attributes={DIM}>{" resume \u00b7 "}</text>
-                  <text fg={theme.textSubtle}>Esc</text><text fg={theme.textMuted} attributes={DIM}>{" stop"}</text>
-                </Show>
+              <box paddingTop={1} paddingLeft={2}>
+                <text ref={(el: TextRenderable) => { createEffect(() => { el.content = errorHints() }) }} />
               </box>
             </box>
           </scrollbox>
@@ -321,6 +301,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
                   queueMicrotask(() => r?.focus?.())
                 }}
                 width={lineWidth()} height={promptHeight()} wrapMode="word"
+                cursorColor={theme.primary}
                 placeholder={
                   signals.pendingWorkCommand()
                     ? "What would you like to work on?"
@@ -362,6 +343,9 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
             <ShimmerText text={promptStatusLabel()!} color={theme.primary} />
           </Show>
         </box>
+        {/* §8b exemption: key hints are UI controls, not selectable content lines.
+            Each hint needs its own <box> for conditional rendering / click handlers,
+            and the parent's gap={2} spaces them — StyledText can't express layout gap. */}
         <box flexDirection="row" gap={2} flexShrink={0}>
           <Show when={signals.pendingWorkCommand()}>
             <box flexDirection="row"><text fg={theme.textMuted}>Esc</text><text fg={theme.textSubtle}>{" cancel"}</text></box>
@@ -393,7 +377,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
         </box>
       </box>
 
-      <ToastDisplay headerHeight={stepDisplay().visible.length > 0 ? 4 : 3} />
+      <ToastDisplay headerHeight={stepBarContent() ? 4 : 3} />
 
       <Show when={sessionModal.sessionsModalOpen()}>
         <SessionModal

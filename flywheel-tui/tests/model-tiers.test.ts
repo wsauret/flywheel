@@ -35,10 +35,10 @@ describe("resolveModelTier: named tiers", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Legacy aliases
+// Model family aliases (opus/sonnet/haiku → tier names)
 // ---------------------------------------------------------------------------
 
-describe("resolveModelTier: legacy aliases", () => {
+describe("resolveModelTier: model family aliases", () => {
   test('"opus" → powerful (anthropic)', () => {
     expect(resolveModelTier("opus", "worker", "anthropic")).toBe(A.powerful);
   });

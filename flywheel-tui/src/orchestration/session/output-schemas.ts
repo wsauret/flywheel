@@ -13,8 +13,13 @@ export const OutputSnapshotSchema = AnyBlockSchema;
 export type OutputSnapshot = AnyBlock;
 
 function normalizeForPersistence(block: AnyBlock): AnyBlock {
-  if (block.kind === "toolGroup" && block.status === "active") {
-    return { ...block, status: "paused" };
+  if (block.kind === "toolGroup") {
+    // latestChild is runtime-only (tracks what the agent is doing now) — strip it.
+    const { latestChild: _, ...rest } = block;
+    if (block.status === "active") {
+      return { ...rest, status: "paused" };
+    }
+    return rest;
   }
   if (block.kind === "question" && !block.answers && !block.cancelled) {
     return { ...block, cancelled: true };

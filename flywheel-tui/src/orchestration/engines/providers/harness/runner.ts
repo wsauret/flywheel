@@ -14,7 +14,7 @@ import { runAgentLoop } from "./agent-loop.js";
 import { cleanupHarnessOutputs } from "./context/truncation.js";
 import { buildHarnessSystemPrompt } from "./prompt.js";
 import { loadProjectInstructions } from "./project-instructions.js";
-import { emitContentBlockDelta, emitToolResult, emitAssistant, emitResult } from "./emit.js";
+import { emitContentBlockDelta, emitToolResult, emitAssistant, emitResult, emitUser } from "./emit.js";
 import { getToolDefinitions } from "./tools/tool-dispatch.js";
 import { appendMessage, conversationPathFor, loadMessages, loadMeta, saveMeta } from "./conversation-store.js";
 
@@ -114,7 +114,7 @@ export class HarnessRunner implements EngineRunner {
         cwd: options.cwd,
       });
 
-      let turn = { thinkingContent: "", inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreateTokens: 0 };
+      let turn = { thinkingContent: "", inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreateTokens: 0, reasoningTokens: 0 };
 
       const onEvent = (streamEvent: StreamEvent): void => {
         switch (streamEvent.kind) {
@@ -150,19 +150,33 @@ export class HarnessRunner implements EngineRunner {
             break;
           case "tool_use":
             break;
+          case "todo_state":
+            emitAssistant(options.onEvent, [{
+              type: "tool_use",
+              id: `todo-sync-${Date.now()}`,
+              name: "todo_list",
+              input: { operation: "write", todos: streamEvent.todos },
+            }]);
+            break;
           case "usage":
+            const deltaInputTokens = Math.max(0, streamEvent.inputTokens - turn.inputTokens);
+            const deltaOutputTokens = Math.max(0, streamEvent.outputTokens - turn.outputTokens);
+            const deltaCacheReadTokens = Math.max(0, streamEvent.cacheReadTokens - turn.cacheReadTokens);
+            const deltaCacheCreateTokens = Math.max(0, streamEvent.cacheCreateTokens - turn.cacheCreateTokens);
+            const deltaReasoningTokens = Math.max(0, streamEvent.reasoningTokens - turn.reasoningTokens);
             turn.inputTokens = streamEvent.inputTokens;
             turn.outputTokens = streamEvent.outputTokens;
             turn.cacheReadTokens = streamEvent.cacheReadTokens;
             turn.cacheCreateTokens = streamEvent.cacheCreateTokens;
-            this.totalInputTokens += streamEvent.inputTokens;
-            this.totalOutputTokens += streamEvent.outputTokens;
+            turn.reasoningTokens = streamEvent.reasoningTokens;
+            this.totalInputTokens += deltaInputTokens;
+            this.totalOutputTokens += deltaOutputTokens;
             this.totalCostUsd += client.costFor({
-              input: streamEvent.inputTokens,
-              output: streamEvent.outputTokens,
-              cacheRead: streamEvent.cacheReadTokens,
-              cacheWrite: streamEvent.cacheCreateTokens,
-              reasoning: streamEvent.reasoningTokens,
+              input: deltaInputTokens,
+              output: deltaOutputTokens,
+              cacheRead: deltaCacheReadTokens,
+              cacheWrite: deltaCacheCreateTokens,
+              reasoning: deltaReasoningTokens,
             });
             break;
           case "done":
@@ -193,7 +207,7 @@ export class HarnessRunner implements EngineRunner {
             cache_creation_input_tokens: turn.cacheCreateTokens,
           });
         }
-        turn = { thinkingContent: "", inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreateTokens: 0 };
+        turn = { thinkingContent: "", inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreateTokens: 0, reasoningTokens: 0 };
       };
 
       const isResume = !!options.resumeSessionId;
@@ -218,6 +232,8 @@ export class HarnessRunner implements EngineRunner {
         handoffPath: options.handoffPath,
         signal,
         onEvent,
+        onUserMessage: (content) => { emitUser(options.onEvent, content); },
+        onTurnComplete: options.onTurnComplete,
         onTurnAssistantMessage,
         reasoningEffort: mapEffort(options.effort),
         pendingUserInputs: this.pendingUserInputs,
@@ -234,14 +250,12 @@ export class HarnessRunner implements EngineRunner {
         });
       }
 
-      options.onTurnComplete?.();
       this.resolveResult({
         durationMs: Date.now() - startTime,
         sessionId: this.sessionId,
         failure: result.outcome === "ok" ? undefined : { kind: result.outcome },
       });
     } catch (err) {
-      options.onTurnComplete?.();
       this.resolveResult({
         durationMs: Date.now() - startTime,
         sessionId: this.sessionId,

@@ -1,17 +1,37 @@
 engine = "harness"
-preferred_vendor = "openai" # "anthropic" | "openai"
+preferred_vendor = "openai"  # "anthropic" | "openai"
+openai_auth = "api_key"
+openai_email = "wsauret@crexi.com"
 model = "powerful"
 effort = "max"
 theme = "default"
 show_thinking = false
 
+[queue]
+max_steps = 50
+
 [dispatcher]
+# engine = "claude"
 model = "mid"
 effort = "medium"
 
+[worker]
+# engine = "claude"
+model = "powerful"
+effort = "max"
+
 [evaluator]
+# engine = "claude"
 model = "mid"
-effort = "low"
+effort = "medium"
+
+[sprint]
+max_iterations = 5
+detect_stuck = false
+
+[sprint.dispatcher]
+model = "mid"
+effort = "medium"
 
 [sprint.worker]
 model = "powerful"
@@ -20,3 +40,7 @@ effort = "max"
 [sprint.evaluator]
 model = "powerful"
 effort = "max"
+
+[tracing]
+enabled = true
+max_traces = 100

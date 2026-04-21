@@ -7,7 +7,7 @@ import {
   type SessionListResult as PersistenceListResult,
 } from "./persistence.js";
 import type { Session } from "./schemas.js";
-import { toBudgetLimits } from "../../workflows/schemas.js";
+import { DEFAULT_BUDGET, toBudgetLimits } from "../../workflows/schemas.js";
 import { computeContextPercent } from "./budget-tracker-types.js";
 import { isValidTransition, type SessionState } from "./types.js";
 import { CONFIG_DEFAULTS, type FlywheelConfig } from "../config/schema.js";
@@ -70,8 +70,6 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
 
   function create(planPath: string, name?: string, kind?: SessionKind, initialState?: SessionState): string {
     const now = new Date().toISOString();
-    const budget = config.budget;
-
     const state = initialState ?? "active";
 
     const sharedFields = {
@@ -81,7 +79,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
       name: name ?? "",
       createdAt: now,
       totalCost: 0,
-      budgetLimits: toBudgetLimits(budget),
+      budgetLimits: toBudgetLimits(DEFAULT_BUDGET),
       budgetUsage: { invocations_used: 0, tokens_used: 0, cost_usd: 0, context_prompt_tokens: 0, context_window: 0 },
     };
 

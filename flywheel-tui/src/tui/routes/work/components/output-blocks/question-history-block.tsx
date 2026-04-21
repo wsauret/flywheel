@@ -49,8 +49,12 @@ export function QuestionHistoryBlock(props: QuestionHistoryBlockProps) {
       chunks.push(stFg(theme.text)(" "))
       chunks.push(stFg(summary.color)(summary.text))
     } else {
-      const detail = isCancelled() ? "Cancelled" : isAnswered() ? `${props.block.questions.length} questions answered` : `${props.block.questions.length} questions`
-      chunks.push(stFg(theme.text)(" "))
+      const detail = isCancelled()
+        ? "Cancelled"
+        : isAnswered()
+          ? `${props.block.questions.filter(q => props.block.answers?.[q.question] !== undefined).length}/${props.block.questions.length} answered`
+          : `${props.block.questions.length} questions`
+      chunks.push(stFg(theme.text)(" · "))
       chunks.push(stFg(theme.textSubtle)(detail))
     }
     return new StyledText(chunks)
@@ -71,13 +75,17 @@ export function QuestionHistoryBlock(props: QuestionHistoryBlockProps) {
   return (
     <box flexDirection="column">
       {header()}
-      <Show when={!isSingleQuestion() && isAnswered()}>
+      <Show when={!isSingleQuestion() && isResolved()}>
         <box flexDirection="column" paddingLeft={4}>
           <For each={props.block.questions}>
             {(q) => {
+              const answer = props.block.answers?.[q.question]
+              const unanswered = answer === undefined
               const rowChunks: TextChunk[] = [
                 stDim(stFg(theme.textMuted)("·")),
-                stFg(theme.textSubtle)(` ${q.question} → ${props.block.answers?.[q.question] ?? ""}`),
+                unanswered
+                  ? stFg(theme.textMuted)(` ${q.question} (unanswered)`)
+                  : stFg(theme.textSubtle)(` ${q.question} → ${answer}`),
               ]
               return (
                 <text

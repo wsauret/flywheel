@@ -2,7 +2,7 @@ import type { NDJSONEvent } from "../../infra/ndjson-event-types.js";
 import { extractToolUseRecords, extractToolResultRecord } from "./ndjson-tool-events.js";
 import type { EmitFn } from "../../infra/event-bus.js";
 import { truncateField } from "../../infra/trace-types.js";
-import { SUBAGENT_TOOL_NAMES } from "../../infra/output/tool-constants.js";
+import { SUBAGENT_TOOL_NAMES } from "../../infra/tool-display-registry.js";
 
 const MAX_FIELD_BYTES = 4096;
 

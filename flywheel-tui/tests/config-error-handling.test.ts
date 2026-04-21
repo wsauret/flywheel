@@ -89,7 +89,7 @@ describe("loadConfig: file read errors", () => {
 describe("loadConfig: validation errors use ConfigLoadError", () => {
   it("throws ConfigLoadError with VALIDATION code for invalid values", () => {
     try {
-      loadConfig(undefined, { FLYWHEEL_TIMEOUT_MINUTES: "200" });
+      loadConfig(undefined, { FLYWHEEL_MAX_EVAL_CYCLES: "99" });
       expect(true).toBe(false);
     } catch (err) {
       expect(err).toBeInstanceOf(ConfigLoadError);

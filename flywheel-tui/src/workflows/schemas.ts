@@ -28,7 +28,12 @@ export const BudgetLimitsSchema = z.object({
 
 export type BudgetLimits = z.infer<typeof BudgetLimitsSchema>;
 
-/** Convert config budget (0 = unlimited) to BudgetLimits (null = unlimited). */
+export const DEFAULT_BUDGET = {
+  max_invocations: 0,
+  max_tokens: 0,
+  max_wall_clock_minutes: 0,
+} as const;
+
 export function toBudgetLimits(budget: {
   max_invocations: number;
   max_tokens: number;

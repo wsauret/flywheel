@@ -77,8 +77,10 @@ const UserMessageBlockSchema = z.object({
 })
 
 const TodoItemSchema = z.object({
+  id: z.string().optional(),
   content: z.string(),
-  status: z.enum(["pending", "in_progress", "completed"]),
+  status: z.enum(["pending", "in_progress", "completed", "abandoned"]),
+  notes: z.string().optional(),
 })
 
 const TodoListBlockSchema = z.object({

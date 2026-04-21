@@ -228,10 +228,10 @@ describe("harness tools", () => {
 
       const result = executeTodoList({ operation: "read" }, ctx);
       expect(result.isError).toBe(false);
-      expect(result.content).toContain("[ ] Task A");
-      expect(result.content).toContain("[~] Task B");
-      expect(result.content).toContain("[x] Task C");
-      expect(result.content).toContain("(high)");
+      expect(result.content).toContain("Task A");
+      expect(result.content).toContain("Task B");
+      expect(result.content).toContain("Task C");
+      expect(result.content).toContain("in_progress");
     });
 
     it("enforces max 50 items", () => {

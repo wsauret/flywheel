@@ -55,10 +55,22 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
     updateEntry({ outputBlocks: getFullBlocks(), modelActivity: builder.modelActivity })
   }
 
-  builder.onChange = () => {
+  let debounceTimer: Timer | undefined
+  const BATCH_WINDOW_MS = 200
+
+  builder.onContentChange = () => {
     if (disposed || notifyQueued) return
     notifyQueued = true
+    // Content arrival means the user is looking — flush any pending tool group batch too
+    clearTimeout(debounceTimer)
+    debounceTimer = undefined
     queueMicrotask(syncStore)
+  }
+
+  builder.onToolGroupChange = () => {
+    if (disposed) return
+    clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(syncStore, BATCH_WINDOW_MS)
   }
 
   parser.onEvent = (event) => {
@@ -114,13 +126,18 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
     },
     get sessionId() { return parser.sessionId },
     flush(): void {
+      clearTimeout(debounceTimer)
+      debounceTimer = undefined
       updateEntry({ outputBlocks: getFullBlocks(), modelActivity: builder.modelActivity })
       onFlush?.()
     },
     dispose(): void {
       if (disposed) return
       disposed = true
-      builder.onChange = null
+      clearTimeout(debounceTimer)
+      debounceTimer = undefined
+      builder.onContentChange = null
+      builder.onToolGroupChange = null
     },
   }
 }

@@ -46,9 +46,8 @@ export interface RunnerOptions {
   /** Called for each event the engine produces (NDJSONEvent objects). */
   onEvent: (event: NDJSONEvent) => void;
   /**
-   * Called when a turn completes (agent finished, ready for next message).
-   * For harness (in-process), fires immediately after the result event.
-   * For CLI engines, bridges the gap between result event and stdin readiness.
+   * Called when the model yields control to the user — no more tool calls,
+   * ready for the next user message. Same semantics in all engines.
    */
   onTurnComplete?: () => void;
   /** External abort signal. */

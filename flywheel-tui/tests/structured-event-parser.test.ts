@@ -698,7 +698,7 @@ describe("StructuredEventParser", () => {
       expect(q.answers).toBeUndefined();
     });
 
-    it("subagent AskUserQuestion creates top-level question block AND agent child row", () => {
+    it("subagent AskUserQuestion is treated as a regular tool row (subagents are non-interactive)", () => {
       parser.dispatch(makeAssistantEvent([
         { type: "tool_use", id: "agent_tool", name: "Task", input: { description: "doing work" } },
       ]), 1000);
@@ -709,59 +709,9 @@ describe("StructuredEventParser", () => {
       ), 1500);
 
       const blocks = builder.getBlocks();
-      const q = blocks.find(b => b.kind === "question") as QuestionBlock;
-      expect(q.questions[0].question).toBe("Which library should we use?");
-
       const agent = blocks.find(b => b.kind === "toolGroup") as ToolGroupBlock;
       expect(agent.children).toHaveLength(1);
       expect(agent.children[0].name).toBe("AskUserQuestion");
-      expect(agent.children[0].detail).toContain("Awaiting user answer");
-    });
-
-    it("subagent question success completes agent child (answers set by dock)", () => {
-      parser.dispatch(makeAssistantEvent([
-        { type: "tool_use", id: "agent_tool", name: "Task", input: { description: "doing work" } },
-      ]), 1000);
-
-      parser.dispatch(makeAssistantEvent(
-        [{ type: "tool_use", id: "child_q2", name: "AskUserQuestion", input: questionInput }],
-        "agent_tool",
-      ), 1500);
-
-      builder.answerQuestion("child_q2", { "Which library should we use?": "Option B" });
-
-      parser.dispatch(makeUserToolResultEvent([
-        { tool_use_id: "child_q2", is_error: false, content: "echo" },
-      ]), 2000);
-
-      const blocks = builder.getBlocks();
-      const q = blocks.find(b => b.kind === "question") as QuestionBlock;
-      expect(q.answers).toEqual({ "Which library should we use?": "Option B" });
-
-      const agent = blocks.find(b => b.kind === "toolGroup") as ToolGroupBlock;
-      expect(agent.children[0].completed).toBe(true);
-    });
-
-    it("subagent question error cancels question and errors agent child", () => {
-      parser.dispatch(makeAssistantEvent([
-        { type: "tool_use", id: "agent_tool", name: "Task", input: { description: "doing work" } },
-      ]), 1000);
-
-      parser.dispatch(makeAssistantEvent(
-        [{ type: "tool_use", id: "child_q3", name: "AskUserQuestion", input: questionInput }],
-        "agent_tool",
-      ), 1500);
-
-      parser.dispatch(makeUserToolResultEvent([
-        { tool_use_id: "child_q3", is_error: true, content: "Cancelled" },
-      ]), 2000);
-
-      const blocks = builder.getBlocks();
-      const q = blocks.find(b => b.kind === "question") as QuestionBlock;
-      expect(q.cancelled).toBe(true);
-
-      const agent = blocks.find(b => b.kind === "toolGroup") as ToolGroupBlock;
-      expect(agent.children[0].errorMessage).toBe("Cancelled");
     });
 
     it("handles AskUserQuestion with no questions gracefully", () => {

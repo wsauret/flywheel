@@ -11,7 +11,7 @@ export type ContentBlock =
   | { type: "text"; text: string }
   | { type: "image"; mediaType: string; data: string }
   | { type: "tool_use"; id: string; name: string; input: Record<string, unknown> }
-  | { type: "tool_result"; tool_use_id: string; content: string }
+  | { type: "tool_result"; tool_use_id: string; content: string; is_error?: boolean }
   | { type: "thinking"; thinking: string; signature?: string }
   | { type: "reasoning"; id: string; encrypted_content: string };
 
@@ -44,7 +44,8 @@ export type StreamEvent =
   | { kind: "tool_result"; toolCallId: string; content: string }
   | { kind: "reasoning"; id: string; encryptedContent: string }
   | { kind: "usage"; inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheCreateTokens: number; reasoningTokens: number }
-  | { kind: "done"; stopReason: string; responseId?: string };
+  | { kind: "done"; stopReason: string; responseId?: string }
+  | { kind: "todo_state"; todos: ReadonlyArray<{ id: string; content: string; status: string; notes?: string }> };
 
 export interface StreamOptions {
   messages: Message[];

@@ -1,5 +1,6 @@
 import { createMemo } from "solid-js"
 import type { Accessor } from "solid-js"
+import { StyledText, fg as stFg, bold as stBold, dim as stDim, type TextChunk } from "@opentui/core"
 import type { RGBA } from "@opentui/core"
 import type { StepState } from "../../orchestration/workflow-runner.js"
 import { formatElapsed, formatCost } from "../../infra/format.js"
@@ -12,18 +13,23 @@ interface HeaderDisplayDeps {
   dimensions: Accessor<{ width: number; height: number }>
   inChat: Accessor<boolean>
   runningCount: Accessor<number>
-  theme: { error: RGBA; warning: RGBA; success: RGBA; textMuted: RGBA }
+  now: Accessor<number>
+  engineName?: string
+  theme: {
+    primary: RGBA; text: RGBA; textMuted: RGBA; textSubtle: RGBA
+    borderSubtle: RGBA; error: RGBA; warning: RGBA; success: RGBA
+  }
 }
 
-interface HeaderDisplay {
+export interface HeaderDisplay {
   displayStatus: Accessor<"running" | "idle" | "interrupted" | "completed">
-  headerRight: Accessor<string>
-  headerRightColor: Accessor<RGBA>
-  stepDisplay: Accessor<{ collapsedCount: number; visible: readonly StepState[] }>
+  headerLeftContent: Accessor<StyledText>
+  headerRightContent: Accessor<StyledText>
+  stepBarContent: Accessor<StyledText | null>
 }
 
 export function createHeaderDisplay(deps: HeaderDisplayDeps): HeaderDisplay {
-  const { signals, metrics, dimensions, inChat, runningCount, theme } = deps
+  const { signals, metrics, dimensions, inChat, runningCount, now, engineName, theme } = deps
 
   const displayStatus = createMemo((): "running" | "idle" | "interrupted" | "completed" => {
     if (signals.agentState() === "active") return "running"
@@ -94,5 +100,45 @@ export function createHeaderDisplay(deps: HeaderDisplayDeps): HeaderDisplay {
     return { collapsedCount: 0, visible: steps }
   })
 
-  return { displayStatus, headerRight, headerRightColor, stepDisplay }
+  const headerLeftContent = createMemo(() => {
+    const chunks: TextChunk[] = [stBold(stFg(theme.primary)("\u2699 flywheel"))]
+    const title = signals.sessionTitle()
+    if (title) {
+      chunks.push(stFg(theme.textMuted)(" \u00b7 "), stFg(theme.text)(title))
+    }
+    return new StyledText(chunks)
+  })
+
+  const headerRightContent = createMemo(() => {
+    const chunks: TextChunk[] = []
+    if (engineName) chunks.push(stFg(theme.textSubtle)(engineName))
+    const fgId = signals.foregroundId()
+    if (fgId) chunks.push(stFg(theme.textSubtle)((engineName ? " \u00b7 " : "") + "Session ID: " + fgId))
+    const hr = headerRight()
+    if (hr) chunks.push(stFg(headerRightColor())((fgId ? " \u00b7 " : " ") + hr))
+    return new StyledText(chunks)
+  })
+
+  const stepBarContent = createMemo((): StyledText | null => {
+    const display = stepDisplay()
+    if (display.visible.length === 0) return null
+    const chunks: TextChunk[] = []
+    if (display.collapsedCount > 0) {
+      chunks.push(stDim(stFg(theme.success)(`${display.collapsedCount} done`)))
+    }
+    for (let i = 0; i < display.visible.length; i++) {
+      const step = display.visible[i]!
+      if (i > 0 || display.collapsedCount > 0) chunks.push(stFg(theme.borderSubtle)(" \u203a "))
+      const color = step.status === "completed" ? theme.success : step.status === "running" ? theme.primary : step.status === "failed" ? theme.error : theme.textMuted
+      const prefix = step.status === "completed" ? "\u2713 " : step.status === "failed" ? "\u2717 " : ""
+      const elapsed = step.status === "running" && step.startedAt ? ` ${formatElapsed(now() - step.startedAt)}` : ""
+      let chunk: TextChunk = stFg(color)(`${prefix}${step.title}${elapsed}`)
+      if (step.status === "running") chunk = stBold(chunk)
+      else if (step.status !== "completed" && step.status !== "failed") chunk = stDim(chunk)
+      chunks.push(chunk)
+    }
+    return new StyledText(chunks)
+  })
+
+  return { displayStatus, headerLeftContent, headerRightContent, stepBarContent }
 }

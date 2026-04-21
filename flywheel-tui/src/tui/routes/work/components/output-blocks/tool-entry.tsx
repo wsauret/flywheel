@@ -2,7 +2,7 @@
 
 import { createSignal, createMemo, createEffect, Show, For } from "solid-js"
 import { StyledText, fg as stFg, bg as stBg, bold as stBold, link as stLink, type TextChunk } from "@opentui/core"
-import type { TextRenderable } from "@opentui/core"
+import type { TextRenderable, RGBA } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
 import { useSpinnerFrame } from "@tui/shared/hooks/use-spinner-frame.js"
@@ -12,8 +12,21 @@ import { renderHunk } from "@tui/adapters/color-diff"
 import { parseUnifiedDiff } from "@tui/adapters/diff-parser"
 import { toFileUri } from "@tui/adapters/linkify-paths"
 import { createHighlighter } from "@tui/adapters/syntax-highlight.js"
-import { getToolDisplayName } from "@infra/tool-display-registry.js"
+import { preventSelectionMouseDown } from "@tui/utils/mouse.js"
+import { getToolDisplayName, classifyTool } from "@infra/tool-display-registry.js"
+import { truncateArrayMiddle } from "@infra/output/truncate-output.js"
 import { shouldRenderToolContentAsMarkdown } from "./tool-entry-helpers.js"
+
+/** Max visible lines per tool category before truncation kicks in. */
+function maxLinesForTool(name: string): number {
+  const cat = classifyTool(name)
+  switch (cat) {
+    case "exploration": return 3
+    case "mutation": return 5
+    case "execution": return 10
+    default: return 3
+  }
+}
 
 interface ToolEntryProps {
   block: ToolEntryType
@@ -30,6 +43,9 @@ export function ToolEntry(props: ToolEntryProps) {
   const hasExpandable = () => hasDiff() || hasContent()
 
   const [expanded, setExpanded] = createSignal(!isHandoffPath(props.block.filePath))
+  const [contentExpanded, setContentExpanded] = createSignal(false)
+
+  const maxLines = () => maxLinesForTool(props.block.name)
 
   const spinnerFrame = useSpinnerFrame(() => !isCompleted() && !hasError())
 
@@ -45,27 +61,46 @@ export function ToolEntry(props: ToolEntryProps) {
     lineNumber: theme.diffLineNumber,
   }))
 
-  const diffStyledLines = createMemo(() => {
+  type StyledDiffLine = { styled: StyledText; lineBg: RGBA | undefined }
+  const styleDiffLine = (line: { segments: Array<{ text: string; fg?: RGBA; bg?: RGBA }>; lineBg?: RGBA }): StyledDiffLine => {
+    const chunks: TextChunk[] = line.segments.map((seg) => {
+      let c: string | TextChunk = seg.text
+      if (seg.fg) c = stFg(seg.fg)(c)
+      if (seg.bg) c = stBg(seg.bg)(c)
+      return c as TextChunk
+    })
+    return { styled: new StyledText(chunks), lineBg: line.lineBg }
+  }
+
+  const allDiffStyledLines = createMemo((): StyledDiffLine[] => {
     if (!props.block.diff) return []
     const hunks = parseUnifiedDiff(props.block.diff)
-    const lines = hunks.flatMap((hunk) => renderHunk(hunk, diffColors()))
-    return lines.map((line) => {
-      const chunks: TextChunk[] = line.segments.map((seg) => {
-        let c: string | TextChunk = seg.text
-        if (seg.fg) c = stFg(seg.fg)(c)
-        if (seg.bg) c = stBg(seg.bg)(c)
-        return c as TextChunk
-      })
-      return { styled: new StyledText(chunks), lineBg: line.lineBg }
-    })
+    return hunks.flatMap((hunk) => renderHunk(hunk, diffColors())).map(styleDiffLine)
   })
+
+  const diffTruncation = createMemo(() =>
+    truncateArrayMiddle(allDiffStyledLines(), maxLines())
+  )
+
+  const diffStyledLines = createMemo((): StyledDiffLine[] =>
+    contentExpanded() ? allDiffStyledLines() : diffTruncation().lines
+  )
 
   const hl = createHighlighter(theme)
   const rendersMarkdownContent = () => shouldRenderToolContentAsMarkdown(props.block)
-  const contentHighlighted = createMemo(() => {
+
+  const allContentHighlighted = createMemo(() => {
     if (!props.block.content || rendersMarkdownContent()) return []
     return hl(props.block.content, props.block.filetype)
   })
+
+  const contentTruncation = createMemo(() =>
+    truncateArrayMiddle(allContentHighlighted(), maxLines())
+  )
+
+  const contentHighlighted = createMemo(() =>
+    contentExpanded() ? allContentHighlighted() : contentTruncation().lines
+  )
 
   const statusIcon = createMemo(() => {
     if (hasError()) return { icon: "✗", color: theme.error }
@@ -104,7 +139,7 @@ export function ToolEntry(props: ToolEntryProps) {
   })
 
   const header = () => (
-    <box onMouseDown={hasExpandable() ? () => setExpanded(prev => !prev) : undefined}>
+    <box onMouseDown={hasExpandable() ? preventSelectionMouseDown(() => setExpanded(prev => !prev)) : undefined}>
       <text
         ref={(el: TextRenderable) => {
           createEffect(() => { el.content = headerContent() })
@@ -128,6 +163,18 @@ export function ToolEntry(props: ToolEntryProps) {
                 </box>
               )}
             </For>
+            <Show when={diffTruncation().truncated && !contentExpanded()}>
+              <box onMouseDown={preventSelectionMouseDown(() => setContentExpanded(true))}>
+                <text
+                  ref={(el: TextRenderable) => {
+                    createEffect(() => {
+                      const n = diffTruncation().omitted
+                      el.content = new StyledText([stFg(theme.textMuted)(`  ... +${n} lines (click to expand)`)])
+                    })
+                  }}
+                />
+              </box>
+            </Show>
           </Show>
           <Show when={hasContent()}>
             <Show when={rendersMarkdownContent()}>
@@ -152,6 +199,18 @@ export function ToolEntry(props: ToolEntryProps) {
                   }}
                 </For>
               })()}
+              <Show when={contentTruncation().truncated && !contentExpanded()}>
+                <box onMouseDown={preventSelectionMouseDown(() => setContentExpanded(true))}>
+                  <text
+                    ref={(el: TextRenderable) => {
+                      createEffect(() => {
+                        const n = contentTruncation().omitted
+                        el.content = new StyledText([stFg(theme.textMuted)(`  ... +${n} lines (click to expand)`)])
+                      })
+                    }}
+                  />
+                </box>
+              </Show>
             </Show>
           </Show>
         </CollapsibleBox>

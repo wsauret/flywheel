@@ -5,6 +5,7 @@ import { HarnessRunner } from "../src/orchestration/engines/providers/harness/ru
 import { emitAssistant, emitToolResult, emitContentBlockDelta, emitResult } from "../src/orchestration/engines/providers/harness/emit";
 import type { NDJSONEvent } from "../src/infra/ndjson-event-types";
 import type { RunnerOptions } from "../src/orchestration/engines/core/types";
+import type { Message } from "../src/orchestration/engines/providers/harness/llm/types";
 
 // Force engine registration
 import "../src/orchestration/engines/providers/harness/register";
@@ -93,9 +94,97 @@ describe("HarnessRunner", () => {
     expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
+  test("accumulates cumulative usage events once per turn", async () => {
+    const events: NDJSONEvent[] = [];
+    const runner = new HarnessRunner(
+      makeOptions({
+        onEvent: (e) => events.push(e),
+      }),
+      () => ({
+        provider: "anthropic" as const,
+        model: "test",
+        contextLimit: 100_000,
+        outputLimit: 8_000,
+        supportsReasoning: false,
+        costFor({ input, output }) { return (input + output) / 1000; },
+        async *streamWithTools() {
+          yield { kind: "usage", inputTokens: 100, outputTokens: 0, cacheReadTokens: 0, cacheCreateTokens: 0, reasoningTokens: 0 } as const;
+          yield { kind: "usage", inputTokens: 100, outputTokens: 20, cacheReadTokens: 0, cacheCreateTokens: 0, reasoningTokens: 0 } as const;
+          yield { kind: "done", stopReason: "end_turn" } as const;
+        },
+        async complete() {
+          return "";
+        },
+      }),
+    );
+
+    runner.send("test instruction");
+    const result = await runner.done;
+    const resultEvent = events.find((e) => e.type === "result");
+
+    expect(result.failure).toBeUndefined();
+    expect(resultEvent?.data.total_cost_usd).toBeCloseTo(0.12, 10);
+    expect(resultEvent?.data.usage).toEqual({ input_tokens: 100, output_tokens: 20 });
+  });
+
   test("done promise exists immediately after construction", () => {
     const runner = new HarnessRunner(makeOptions(), makeFakeClientFactory());
     expect(runner.done).toBeInstanceOf(Promise);
+  });
+
+  test("pre-queued follow-up is picked up after tools settle", async () => {
+    const events: NDJSONEvent[] = [];
+    const calls: Message[][] = [];
+    let turnIndex = 0;
+    let turnCompleteCalls = 0;
+
+    const runner = new HarnessRunner(
+      makeOptions({
+        onEvent: (e) => events.push(e),
+        onTurnComplete: () => { turnCompleteCalls += 1; },
+      }),
+      () => ({
+        provider: "anthropic" as const,
+        model: "test",
+        contextLimit: 100_000,
+        outputLimit: 8_000,
+        supportsReasoning: false,
+        costFor() { return 0; },
+        async *streamWithTools(options) {
+          calls.push([...options.messages]);
+          if (turnIndex++ === 0) {
+            yield {
+              kind: "tool_use",
+              toolCall: { id: "todo-1", name: "todo_list", input: { operation: "read" } },
+            } as const;
+            yield { kind: "done", stopReason: "tool_use" } as const;
+            return;
+          }
+
+          yield { kind: "text_delta", text: "handled follow up" } as const;
+          yield { kind: "done", stopReason: "end_turn" } as const;
+        },
+        async complete() {
+          return "";
+        },
+      }),
+    );
+
+    runner.send("initial instruction");
+    runner.send("follow up");
+    const result = await runner.done;
+
+    expect(result.failure).toBeUndefined();
+    expect(calls).toHaveLength(2);
+    expect(calls[1]![calls[1]!.length - 1]).toEqual({ role: "user", content: "follow up" });
+    expect(turnCompleteCalls).toBe(1);
+
+    const userEvents = events.filter((e) => e.type === "user");
+    expect(userEvents).toHaveLength(2);
+    expect((userEvents[1]!.data.message?.content as Array<Record<string, unknown>>)[0]).toEqual({
+      type: "text",
+      text: "follow up",
+    });
   });
 });
 

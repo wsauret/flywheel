@@ -79,6 +79,7 @@ function toAnthropicContent(
         type: "tool_result" as const,
         tool_use_id: block.tool_use_id,
         content: block.content,
+        ...(block.is_error ? { is_error: true } : {}),
       });
     } else if (block.type === "thinking") {
       if (block.signature && block.thinking) {
@@ -211,8 +212,7 @@ export function createAnthropicAdapter(
         (tokens.input * inputRate +
           tokens.output * outputRate +
           tokens.cacheRead * cacheReadRate +
-          tokens.cacheWrite * cacheWriteRate +
-          tokens.reasoning * outputRate) /
+          tokens.cacheWrite * cacheWriteRate) /
         1_000_000
       );
     },
@@ -334,16 +334,6 @@ export function createAnthropicAdapter(
               if (stopReason === "max_tokens") {
                 throw new OutputLengthExceededError("Response truncated");
               }
-            } else if (event.type === "message_start") {
-              const usage = event.message.usage;
-              yield {
-                kind: "usage",
-                inputTokens: usage.input_tokens,
-                outputTokens: 0,
-                cacheReadTokens: usage.cache_read_input_tokens ?? 0,
-                cacheCreateTokens: usage.cache_creation_input_tokens ?? 0,
-                reasoningTokens: 0,
-              } as const;
             }
           } } finally { if (idleTimer) clearTimeout(idleTimer); }
 

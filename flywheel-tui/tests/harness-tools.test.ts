@@ -361,10 +361,10 @@ describe("harness tools", () => {
 
       const result = executeTodoList({ operation: "read" }, ctx);
       expect(result.isError).toBe(false);
-      expect(result.content).toContain("[ ] Task A");
-      expect(result.content).toContain("[~] Task B");
-      expect(result.content).toContain("[x] Task C");
-      expect(result.content).toContain("(high)");
+      expect(result.content).toContain("Task A");
+      expect(result.content).toContain("Task B");
+      expect(result.content).toContain("Task C");
+      expect(result.content).toContain("in_progress");
     });
 
     it("enforces max 50 items", () => {
@@ -408,7 +408,7 @@ describe("harness tools", () => {
       expect(ctx.todoList[0].content).toBe("Only");
     });
 
-    it("formats abandoned items with [!] prefix", () => {
+    it("formats abandoned items with cross symbol", () => {
       const ctx = makeContext();
       executeTodoList({
         operation: "write",
@@ -420,14 +420,17 @@ describe("harness tools", () => {
 
       const result = executeTodoList({ operation: "read" }, ctx);
       expect(result.isError).toBe(false);
-      expect(result.content).toContain("[!] Blocked task");
-      expect(result.content).toContain("[~] Active task");
+      expect(result.content).toContain("Blocked task");
+      expect(result.content).toContain("abandoned");
+      expect(result.content).toContain("Active task");
+      expect(result.content).toContain("in_progress");
     });
 
-    it("description mentions two-call protocol", () => {
-      expect(todoListDefinition.description).toContain("twice per task");
+    it("description mentions user visibility, granular operations, and context recovery", () => {
+      expect(todoListDefinition.description).toContain("rendered to the user");
+      expect(todoListDefinition.description).toContain("complete");
+      expect(todoListDefinition.description).toContain("auto-promotes");
       expect(todoListDefinition.description).toContain("in_progress");
-      expect(todoListDefinition.description).toContain("completed");
       expect(todoListDefinition.description).toContain("context recovery");
     });
 
@@ -451,6 +454,139 @@ describe("harness tools", () => {
       const result = executeTodoList({ operation: "write" }, ctx);
       expect(result.isError).toBe(true);
       expect(result.content).toContain("requires a 'todos' array");
+    });
+
+    it("write assigns sequential IDs", () => {
+      const ctx = makeContext();
+      executeTodoList({
+        operation: "write",
+        todos: [
+          { content: "First", status: "pending" },
+          { content: "Second", status: "pending" },
+        ],
+      }, ctx);
+      expect(ctx.todoList[0]!.id).toBe("task-1");
+      expect(ctx.todoList[1]!.id).toBe("task-2");
+    });
+
+    it("complete marks tasks done and auto-promotes next pending", () => {
+      const ctx = makeContext();
+      executeTodoList({
+        operation: "write",
+        todos: [
+          { content: "First", status: "in_progress" },
+          { content: "Second", status: "pending" },
+          { content: "Third", status: "pending" },
+        ],
+      }, ctx);
+
+      const result = executeTodoList({ operation: "complete", ids: ["task-1"] }, ctx);
+      expect(result.isError).toBe(false);
+      expect(ctx.todoList[0]!.status).toBe("completed");
+      expect(ctx.todoList[1]!.status).toBe("in_progress");
+      expect(ctx.todoList[2]!.status).toBe("pending");
+    });
+
+    it("complete reports errors for unknown IDs", () => {
+      const ctx = makeContext();
+      executeTodoList({
+        operation: "write",
+        todos: [{ content: "Task", status: "in_progress" }],
+      }, ctx);
+
+      const result = executeTodoList({ operation: "complete", ids: ["task-99"] }, ctx);
+      expect(result.isError).toBe(false);
+      expect(result.content).toContain("task-99 not found");
+    });
+
+    it("start switches in_progress to a specific task", () => {
+      const ctx = makeContext();
+      executeTodoList({
+        operation: "write",
+        todos: [
+          { content: "First", status: "in_progress" },
+          { content: "Second", status: "pending" },
+          { content: "Third", status: "pending" },
+        ],
+      }, ctx);
+
+      executeTodoList({ operation: "start", id: "task-3" }, ctx);
+      expect(ctx.todoList[0]!.status).toBe("pending");
+      expect(ctx.todoList[2]!.status).toBe("in_progress");
+    });
+
+    it("abandon marks tasks as abandoned and auto-promotes next", () => {
+      const ctx = makeContext();
+      executeTodoList({
+        operation: "write",
+        todos: [
+          { content: "Blocked", status: "in_progress" },
+          { content: "Next", status: "pending" },
+        ],
+      }, ctx);
+
+      executeTodoList({ operation: "abandon", ids: ["task-1"] }, ctx);
+      expect(ctx.todoList[0]!.status).toBe("abandoned");
+      expect(ctx.todoList[1]!.status).toBe("in_progress");
+    });
+
+    it("add_tasks appends new pending tasks", () => {
+      const ctx = makeContext();
+      executeTodoList({
+        operation: "write",
+        todos: [{ content: "First", status: "in_progress" }],
+      }, ctx);
+
+      executeTodoList({
+        operation: "add_tasks",
+        tasks: [{ content: "New task A" }, { content: "New task B" }],
+      }, ctx);
+      expect(ctx.todoList.length).toBe(3);
+      expect(ctx.todoList[1]!.content).toBe("New task A");
+      expect(ctx.todoList[1]!.status).toBe("pending");
+      expect(ctx.todoList[2]!.content).toBe("New task B");
+    });
+
+    it("add_notes appends observations to a task", () => {
+      const ctx = makeContext();
+      executeTodoList({
+        operation: "write",
+        todos: [{ content: "Investigate", status: "in_progress" }],
+      }, ctx);
+
+      executeTodoList({ operation: "add_notes", id: "task-1", notes: "Found edge case" }, ctx);
+      expect(ctx.todoList[0]!.notes).toBe("Found edge case");
+
+      executeTodoList({ operation: "add_notes", id: "task-1", notes: "Also needs null check" }, ctx);
+      expect(ctx.todoList[0]!.notes).toBe("Found edge case\nAlso needs null check");
+    });
+
+    it("auto-promotion enforces single in_progress", () => {
+      const ctx = makeContext();
+      executeTodoList({
+        operation: "write",
+        todos: [
+          { content: "A", status: "in_progress" },
+          { content: "B", status: "in_progress" },
+          { content: "C", status: "pending" },
+        ],
+      }, ctx);
+
+      const inProgress = ctx.todoList.filter(t => t.status === "in_progress");
+      expect(inProgress.length).toBe(1);
+      expect(inProgress[0]!.content).toBe("A");
+    });
+
+    it("read shows IDs in output", () => {
+      const ctx = makeContext();
+      executeTodoList({
+        operation: "write",
+        todos: [{ content: "My task", status: "pending" }],
+      }, ctx);
+
+      const result = executeTodoList({ operation: "read" }, ctx);
+      expect(result.content).toContain("task-1");
+      expect(result.content).toContain("My task");
     });
   });
 

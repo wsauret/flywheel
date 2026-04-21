@@ -487,43 +487,14 @@ describe("SessionManager config injection", () => {
   });
 });
 
-describe("SessionManager.create() budget initialization from config", () => {
-  it("populates budgetLimits from config.budget", () => {
+describe("SessionManager.create() budget initialization", () => {
+  it("creates sessions with unlimited budget", () => {
     const baseDir = makeTmpDir();
-    const config: FlywheelConfig = {
-      ...CONFIG_DEFAULTS,
-      budget: { max_invocations: 10, max_tokens: 50000, max_wall_clock_minutes: 45 },
-    };
-    const mgr = createSessionManager(makeDeps(baseDir, { config }));
-
-    const before = Date.now();
-    const id = mgr.create("plans/test.md");
-    const after = Date.now();
-
-    const persisted = readSession(id, baseDir);
-    expect(persisted!.budgetLimits.max_invocations).toBe(10);
-    expect(persisted!.budgetLimits.max_tokens).toBe(50000);
-
-    // wall_clock_deadline should be ~45 minutes from now
-    const deadline = new Date(persisted!.budgetLimits.wall_clock_deadline!).getTime();
-    const expectedMin = before + 45 * 60_000;
-    const expectedMax = after + 45 * 60_000;
-    expect(deadline).toBeGreaterThanOrEqual(expectedMin);
-    expect(deadline).toBeLessThanOrEqual(expectedMax);
-  });
-
-  it("maps config.budget with all zeros to unlimited budget (null sentinels)", () => {
-    const baseDir = makeTmpDir();
-    const config: FlywheelConfig = {
-      ...CONFIG_DEFAULTS,
-      budget: { max_invocations: 0, max_tokens: 0, max_wall_clock_minutes: 0 },
-    };
-    const mgr = createSessionManager(makeDeps(baseDir, { config }));
+    const mgr = createSessionManager(makeDeps(baseDir));
 
     const id = mgr.create("plans/test.md");
     const persisted = readSession(id, baseDir);
 
-    // 0 means unlimited — max_invocations stays 0, others map to null
     expect(persisted!.budgetLimits.max_invocations).toBe(0);
     expect(persisted!.budgetLimits.max_tokens).toBeNull();
     expect(persisted!.budgetLimits.wall_clock_deadline).toBeNull();
@@ -531,11 +502,7 @@ describe("SessionManager.create() budget initialization from config", () => {
 
   it("initializes budgetUsage to zeros", () => {
     const baseDir = makeTmpDir();
-    const config: FlywheelConfig = {
-      ...CONFIG_DEFAULTS,
-      budget: { max_invocations: 5, max_tokens: 10000, max_wall_clock_minutes: 10 },
-    };
-    const mgr = createSessionManager(makeDeps(baseDir, { config }));
+    const mgr = createSessionManager(makeDeps(baseDir));
 
     const id = mgr.create("plans/test.md");
     const persisted = readSession(id, baseDir);
@@ -543,40 +510,6 @@ describe("SessionManager.create() budget initialization from config", () => {
     expect(persisted!.budgetUsage.invocations_used).toBe(0);
     expect(persisted!.budgetUsage.tokens_used).toBe(0);
     expect(persisted!.budgetUsage.cost_usd).toBe(0);
-  });
-
-  it("sets wall_clock_deadline based on config.budget.max_wall_clock_minutes", () => {
-    const baseDir = makeTmpDir();
-    const config: FlywheelConfig = {
-      ...CONFIG_DEFAULTS,
-      budget: { max_invocations: 0, max_tokens: 0, max_wall_clock_minutes: 60 },
-    };
-    const mgr = createSessionManager(makeDeps(baseDir, { config }));
-
-    const before = Date.now();
-    const id = mgr.create("plans/test.md");
-    const after = Date.now();
-
-    const persisted = readSession(id, baseDir);
-    expect(persisted!.budgetLimits.wall_clock_deadline).not.toBeNull();
-
-    const deadline = new Date(persisted!.budgetLimits.wall_clock_deadline!).getTime();
-    expect(deadline).toBeGreaterThanOrEqual(before + 60 * 60_000);
-    expect(deadline).toBeLessThanOrEqual(after + 60 * 60_000);
-  });
-
-  it("sets wall_clock_deadline to null when max_wall_clock_minutes is 0", () => {
-    const baseDir = makeTmpDir();
-    const config: FlywheelConfig = {
-      ...CONFIG_DEFAULTS,
-      budget: { max_invocations: 0, max_tokens: 0, max_wall_clock_minutes: 0 },
-    };
-    const mgr = createSessionManager(makeDeps(baseDir, { config }));
-
-    const id = mgr.create("plans/test.md");
-    const persisted = readSession(id, baseDir);
-
-    expect(persisted!.budgetLimits.wall_clock_deadline).toBeNull();
   });
 });
 

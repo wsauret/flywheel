@@ -7,6 +7,7 @@ import type {
 } from "openai/resources/responses/responses.js";
 import type { ReasoningEffort as OpenAIReasoningEffort } from "openai/resources/shared.js";
 import { Log } from "../../../../../infra/log.js";
+import { contextWindowForModel } from "../../../engine-context.js";
 import type { OpenAIAuth } from "../../../../../infra/auth/openai-auth-types.js";
 import { createChatGPTClient } from "./openai-chatgpt.js";
 import type { ModelsClient, ModelInfo } from "./models.js";
@@ -141,14 +142,14 @@ export function createOpenAIAdapter(
   }
 
   function supportsReasoning(model: string, info: ModelInfo | null): boolean { return info?.reasoning ?? /^(o\d|gpt-5)/.test(model); }
-  function contextLimit(info: ModelInfo | null): number { return info?.contextLimit ?? 128_000; }
+  function contextLimit(model: string, info: ModelInfo | null): number { return info?.contextLimit ?? contextWindowForModel(model); }
   function outputLimit(info: ModelInfo | null): number { return info?.outputLimit ?? 16_384; }
 
   const adapter: LLMClient = {
     provider: "openai",
     model: defaultModel,
     get contextLimit() {
-      return contextLimit(cache?.info ?? null);
+      return contextLimit(cache?.model ?? defaultModel, cache?.info ?? null);
     },
     get outputLimit() {
       return outputLimit(cache?.info ?? null);
@@ -158,7 +159,6 @@ export function createOpenAIAdapter(
     },
 
     costFor(tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; reasoning: number }): number {
-      if (isChatGPT) return 0;
       const info = cache?.info ?? null;
       if (!info?.cost) return 0;
       const inputRate = info.cost.input;
@@ -169,8 +169,7 @@ export function createOpenAIAdapter(
         (tokens.input * inputRate +
           tokens.output * outputRate +
           tokens.cacheRead * cacheReadRate +
-          tokens.cacheWrite * cacheWriteRate +
-          tokens.reasoning * outputRate) /
+          tokens.cacheWrite * cacheWriteRate) /
         1_000_000
       );
     },
@@ -197,9 +196,14 @@ export function createOpenAIAdapter(
       yield* withRetryStream(async function* () {
         try {
           const usePreviousResponse = !!options.previousResponseId;
-          const input = usePreviousResponse
-            ? toResponseInput(options.messages.slice(-1))
-            : toResponseInput(options.messages);
+          let messagesToSend = options.messages;
+          if (usePreviousResponse) {
+            const lastAsstIdx = options.messages.findLastIndex((m) => m.role === "assistant");
+            messagesToSend = lastAsstIdx >= 0
+              ? options.messages.slice(lastAsstIdx + 1)
+              : options.messages.slice(-1);
+          }
+          const input = toResponseInput(messagesToSend);
           const instructions = options.systemPrompt || extractSystemPrompt(options.messages);
 
           const params = {

@@ -1,4 +1,3 @@
-timeout_minutes = 90
 engine = "claude"
 preferred_vendor = "anthropic"
 model = "claude-sonnet-4-20250514"

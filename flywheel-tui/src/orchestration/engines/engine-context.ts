@@ -16,9 +16,14 @@ export function contextWindowForModel(model: string): number {
   if (lower === "opus" || lower === "sonnet" || lower === "haiku") return 200_000;
 
   // OpenAI models
-  if (lower === "o1" || lower === "o3") return 200_000;
-  if (lower.startsWith("gpt-4o")) return 128_000; // gpt-4o, gpt-4o-mini
-  if (lower === "gpt-4-turbo") return 128_000;
+  if (/^o\d/.test(lower)) return 200_000;
+  if (
+    lower.startsWith("gpt-4o") ||
+    lower === "gpt-4-turbo" ||
+    lower.startsWith("gpt-5") ||
+    lower.startsWith("codex-") ||
+    lower.startsWith("chatgpt-")
+  ) return 128_000;
 
   // Reasonable default for unknown models
   return 200_000;

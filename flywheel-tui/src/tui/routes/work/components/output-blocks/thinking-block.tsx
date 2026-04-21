@@ -21,6 +21,7 @@ import { useElapsed } from "@tui/shared/hooks/use-elapsed"
 import { useSpinnerFrame } from "@tui/shared/hooks/use-spinner-frame.js"
 import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
 import { VerticalBarBorder } from "@tui/shared/ui/border"
+import { preventSelectionMouseDown } from "@tui/utils/mouse.js"
 import { formatElapsed } from "@infra/format.js"
 import type { ThinkingBlock as ThinkingBlockType } from "@infra/output-blocks"
 
@@ -95,7 +96,7 @@ export function ThinkingBlock(props: ThinkingBlockProps) {
       borderColor={theme.borderSubtle}
       flexDirection="column"
       customBorderChars={VerticalBarBorder}
-      onMouseDown={isLong() ? () => setExpanded(prev => !prev) : undefined}
+      onMouseDown={isLong() ? preventSelectionMouseDown(() => setExpanded(prev => !prev)) : undefined}
     >
       <text
         ref={(el: TextRenderable) => {

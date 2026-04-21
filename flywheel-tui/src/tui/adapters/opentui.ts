@@ -223,6 +223,9 @@ export class OpenTUIAdapter {
         break;
 
       case "engine:ndjson":
+        if (event.ndjsonEvent.type === "user") {
+          this.outputSession.resolvePendingMessages();
+        }
         break;
 
       // Trace events — handled by TraceCollector, no TUI rendering needed

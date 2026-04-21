@@ -11,6 +11,7 @@ const MAX_VISIBLE = 4
 
 function todoStyle(status: TodoItem["status"], theme: Theme) {
   if (status === "in_progress") return { symbol: "\u25C9", symbolFg: theme.primary, textFg: theme.text, bold: true }
+  if (status === "abandoned") return { symbol: "\u2715", symbolFg: theme.error, textFg: theme.textMuted, bold: false }
   return { symbol: "\u25CB", symbolFg: theme.textMuted, textFg: theme.text, bold: false }
 }
 
@@ -30,7 +31,7 @@ export function TodoListBlock(props: TodoListBlockProps) {
   const { theme } = useTheme()
 
   const incomplete = createMemo(() =>
-    props.block.todos.filter(t => t.status !== "completed")
+    props.block.todos.filter(t => t.status !== "completed" && t.status !== "abandoned")
   )
 
   const visible = createMemo(() => {

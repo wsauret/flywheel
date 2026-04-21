@@ -7,6 +7,7 @@
  */
 
 import type { NDJSONEvent, ContentBlock } from "../../../../infra/ndjson-event-types.js";
+import type { ContentBlock as LLMContentBlock } from "./llm/types.js";
 import { createNDJSONEvent } from "../../../../infra/ndjson-event-factory.js";
 
 type EventEmitter = (event: NDJSONEvent) => void;
@@ -15,6 +16,22 @@ interface UsageData {
   input_tokens?: number;
   cache_read_input_tokens?: number;
   cache_creation_input_tokens?: number;
+}
+
+export function emitUser(
+  emit: EventEmitter,
+  content: string | LLMContentBlock[],
+): void {
+  const userContent = typeof content === "string"
+    ? [{ type: "text", text: content }]
+    : content;
+
+  emit(
+    createNDJSONEvent("user", {
+      type: "user",
+      message: { role: "user", content: userContent },
+    }),
+  );
 }
 
 export function emitAssistant(

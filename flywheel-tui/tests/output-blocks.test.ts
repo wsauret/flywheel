@@ -2,7 +2,7 @@ import { describe, it, expect } from "bun:test";
 import { isHandoffPath } from "../src/tui/utils/text";
 import { formatDuration } from "../src/infra/format";
 import { getToolDetail } from "../src/infra/output/output-formatter";
-import { SUBAGENT_TOOL_NAMES } from "../src/infra/output/tool-constants";
+import { SUBAGENT_TOOL_NAMES } from "../src/infra/tool-display-registry";
 import { AnyBlockSchema } from "../src/infra/output-blocks";
 import { shouldRenderToolContentAsMarkdown } from "../src/tui/routes/work/components/output-blocks/tool-entry-helpers.js";
 import type {
@@ -716,3 +716,158 @@ describe("QuestionBlockSchema", () => {
     expect(result.success).toBe(true);
   });
 });
+
+// ── Compact Q&A rendering logic ──
+
+/**
+ * Replicated from question-history-block.tsx: derives the header detail
+ * text for multi-question blocks in compact format.
+ */
+function questionHeaderDetail(block: QuestionBlock): string {
+  if (block.cancelled) return "Cancelled"
+  if (block.answers) {
+    const answered = block.questions.filter(q => block.answers?.[q.question] !== undefined).length
+    return `${answered}/${block.questions.length} answered`
+  }
+  return `${block.questions.length} questions`
+}
+
+/**
+ * Replicated from question-history-block.tsx: derives the text for a
+ * single Q&A row in the compact multi-question display.
+ */
+function questionRowText(
+  questionText: string,
+  answer: string | undefined,
+  cancelled: boolean,
+): string {
+  if (cancelled && answer === undefined) return `${questionText} (unanswered)`
+  if (answer !== undefined) return `${questionText} → ${answer}`
+  return questionText
+}
+
+describe("compact Q&A header detail", () => {
+  function makeMultiBlock(overrides: Partial<QuestionBlock> = {}): QuestionBlock {
+    return {
+      kind: "question",
+      toolUseId: "tool_mq",
+      questions: [
+        { question: "Framework?", options: [{ label: "React" }, { label: "Vue" }] },
+        { question: "DB?", options: [{ label: "Postgres" }, { label: "MySQL" }] },
+        { question: "Cloud?", options: [{ label: "AWS" }, { label: "GCP" }] },
+      ],
+      timestamp: 1000,
+      ...overrides,
+    }
+  }
+
+  it("shows N/M answered when all answered", () => {
+    const block = makeMultiBlock({
+      answers: { "Framework?": "React", "DB?": "Postgres", "Cloud?": "AWS" },
+    })
+    expect(questionHeaderDetail(block)).toBe("3/3 answered")
+  })
+
+  it("shows N/M answered when partially answered", () => {
+    const block = makeMultiBlock({
+      answers: { "Framework?": "React" },
+    })
+    expect(questionHeaderDetail(block)).toBe("1/3 answered")
+  })
+
+  it("shows Cancelled when block is cancelled", () => {
+    const block = makeMultiBlock({ cancelled: true })
+    expect(questionHeaderDetail(block)).toBe("Cancelled")
+  })
+
+  it("shows question count when pending", () => {
+    const block = makeMultiBlock()
+    expect(questionHeaderDetail(block)).toBe("3 questions")
+  })
+})
+
+describe("compact Q&A row text", () => {
+  it("shows question → answer for answered questions", () => {
+    expect(questionRowText("Framework?", "React", false)).toBe("Framework? → React")
+  })
+
+  it("shows (unanswered) for cancelled questions without an answer", () => {
+    expect(questionRowText("Cloud?", undefined, true)).toBe("Cloud? (unanswered)")
+  })
+
+  it("shows answered questions even when block was cancelled", () => {
+    expect(questionRowText("Framework?", "React", true)).toBe("Framework? → React")
+  })
+
+  it("shows bare question text when pending", () => {
+    expect(questionRowText("Framework?", undefined, false)).toBe("Framework?")
+  })
+})
+
+// ── Auto-scroll predicate logic ──
+
+/**
+ * Replicated from output-window.tsx: determines if the last block is
+ * an unanswered question, used to trigger auto-scroll.
+ */
+function hasUnansweredQuestion(blocks: readonly AnyBlock[]): boolean {
+  const last = blocks.at(-1)
+  return last?.kind === "question" && !last.answers && !last.cancelled
+}
+
+describe("hasUnansweredQuestion", () => {
+  it("returns true when last block is an unanswered question", () => {
+    const blocks: AnyBlock[] = [
+      { kind: "text", content: "hello", timestamp: 1 },
+      {
+        kind: "question", toolUseId: "q1", timestamp: 2,
+        questions: [{ question: "Pick one", options: [{ label: "A" }] }],
+      },
+    ]
+    expect(hasUnansweredQuestion(blocks)).toBe(true)
+  })
+
+  it("returns false when last block is an answered question", () => {
+    const blocks: AnyBlock[] = [
+      {
+        kind: "question", toolUseId: "q1", timestamp: 1,
+        questions: [{ question: "Pick one", options: [{ label: "A" }] }],
+        answers: { "Pick one": "A" },
+      },
+    ]
+    expect(hasUnansweredQuestion(blocks)).toBe(false)
+  })
+
+  it("returns false when last block is a cancelled question", () => {
+    const blocks: AnyBlock[] = [
+      {
+        kind: "question", toolUseId: "q1", timestamp: 1,
+        questions: [{ question: "Pick one", options: [{ label: "A" }] }],
+        cancelled: true,
+      },
+    ]
+    expect(hasUnansweredQuestion(blocks)).toBe(false)
+  })
+
+  it("returns false when last block is not a question", () => {
+    const blocks: AnyBlock[] = [
+      { kind: "text", content: "hello", timestamp: 1 },
+    ]
+    expect(hasUnansweredQuestion(blocks)).toBe(false)
+  })
+
+  it("returns false for empty blocks", () => {
+    expect(hasUnansweredQuestion([])).toBe(false)
+  })
+
+  it("only checks the last block", () => {
+    const blocks: AnyBlock[] = [
+      {
+        kind: "question", toolUseId: "q1", timestamp: 1,
+        questions: [{ question: "First?", options: [{ label: "A" }] }],
+      },
+      { kind: "text", content: "response", timestamp: 2 },
+    ]
+    expect(hasUnansweredQuestion(blocks)).toBe(false)
+  })
+})

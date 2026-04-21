@@ -15,7 +15,8 @@ export const TIER_TABLE = {
   },
 } satisfies Record<Vendor, Record<ModelTier, string>>;
 
-const LEGACY_ALIASES: Record<string, ModelTier> = {
+// User-facing shorthands: Anthropic family names → abstract tier names.
+const MODEL_FAMILY_ALIASES: Record<string, ModelTier> = {
   opus: "powerful",
   sonnet: "mid",
   haiku: "cheap",
@@ -44,8 +45,8 @@ export function resolveModelTier(
     return vendorTiers[lowered as ModelTier];
   }
 
-  if (lowered in LEGACY_ALIASES) {
-    const tier = LEGACY_ALIASES[lowered]!;
+  if (lowered in MODEL_FAMILY_ALIASES) {
+    const tier = MODEL_FAMILY_ALIASES[lowered]!;
     return vendorTiers[tier];
   }
 

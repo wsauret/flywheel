@@ -26,7 +26,6 @@ describe("FlywheelConfigSchema", () => {
       expect(result.data.model).toBeUndefined();
       expect(result.data.dispatcher).toEqual({});
       expect(result.data.worker).toEqual({});
-      expect(result.data.timeout_minutes).toBe(60);
     }
   });
 
@@ -43,20 +42,6 @@ describe("FlywheelConfigSchema", () => {
   it("worker schema rejects invalid effort values", () => {
     const result = FlywheelConfigSchema.safeParse({
       worker: { effort: "turbo" },
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects timeout_minutes > 120", () => {
-    const result = FlywheelConfigSchema.safeParse({
-      timeout_minutes: 121,
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects timeout_minutes < 1", () => {
-    const result = FlywheelConfigSchema.safeParse({
-      timeout_minutes: 0,
     });
     expect(result.success).toBe(false);
   });
@@ -82,7 +67,6 @@ describe("loadConfig: file loading", () => {
 
     expect(config.engine).toBe("claude");
     expect(config.model).toBe("claude-sonnet-4-20250514");
-    expect(config.timeout_minutes).toBe(90);
   });
 
   it("uses defaults when no config file provided", () => {
@@ -90,7 +74,6 @@ describe("loadConfig: file loading", () => {
 
     expect(config.engine).toBe(CONFIG_DEFAULTS.engine);
     expect(config.model).toBeUndefined();
-    expect(config.timeout_minutes).toBe(CONFIG_DEFAULTS.timeout_minutes);
   });
 
   it("throws on non-existent config file", () => {
@@ -118,30 +101,17 @@ describe("loadConfig: precedence (env > config > defaults)", () => {
 
     // Config file values preserved where not overridden
     expect(config.model).toBe("claude-sonnet-4-20250514");
-    expect(config.timeout_minutes).toBe(90);
   });
 
   it("env overrides defaults when no config file", () => {
     const { config } = loadConfig(undefined, {
       FLYWHEEL_MODEL: "env-model",
-      FLYWHEEL_TIMEOUT_MINUTES: "45",
     });
 
     expect(config.model).toBe("env-model");
-    expect(config.timeout_minutes).toBe(45);
 
     // Defaults where not overridden
     expect(config.engine).toBe("claude");
-  });
-
-  it("config file overrides defaults", () => {
-    const { config } = loadConfig(
-      path.join(FIXTURES_DIR, "flywheel.toml"),
-      {},
-    );
-
-    // From config file (overriding defaults)
-    expect(config.timeout_minutes).toBe(90);
   });
 
   it("handles FLYWHEEL_PROJECT_CWD", () => {
@@ -155,16 +125,6 @@ describe("loadConfig: precedence (env > config > defaults)", () => {
 // ---------------------------------------------------------------------------
 // Config loader: validation errors
 // ---------------------------------------------------------------------------
-
-describe("loadConfig: validation errors", () => {
-  it("throws on out-of-range timeout_minutes via env", () => {
-    expect(() => {
-      loadConfig(undefined, {
-        FLYWHEEL_TIMEOUT_MINUTES: "200",
-      });
-    }).toThrow(/Invalid configuration/);
-  });
-});
 
 // ---------------------------------------------------------------------------
 // Per-tier model config
@@ -357,91 +317,6 @@ describe("max_eval_cycles config field", () => {
 
   it("CONFIG_DEFAULTS includes max_eval_cycles", () => {
     expect(CONFIG_DEFAULTS.max_eval_cycles).toBe(3);
-  });
-});
-
-describe("budget config section", () => {
-  it("defaults to all zeros (unlimited)", () => {
-    const result = FlywheelConfigSchema.safeParse({});
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.budget).toEqual({
-        max_invocations: 0,
-        max_tokens: 0,
-        max_wall_clock_minutes: 0,
-      });
-    }
-  });
-
-  it("accepts valid budget values", () => {
-    const result = FlywheelConfigSchema.safeParse({
-      budget: {
-        max_invocations: 100,
-        max_tokens: 500_000,
-        max_wall_clock_minutes: 30,
-      },
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.budget.max_invocations).toBe(100);
-      expect(result.data.budget.max_tokens).toBe(500_000);
-      expect(result.data.budget.max_wall_clock_minutes).toBe(30);
-    }
-  });
-
-  it("rejects negative budget values", () => {
-    const result = FlywheelConfigSchema.safeParse({
-      budget: { max_invocations: -1 },
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects non-integer budget values", () => {
-    const result = FlywheelConfigSchema.safeParse({
-      budget: { max_tokens: 1.5 },
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("allows partial budget (missing fields get defaults)", () => {
-    const result = FlywheelConfigSchema.safeParse({
-      budget: { max_invocations: 50 },
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.budget.max_invocations).toBe(50);
-      expect(result.data.budget.max_tokens).toBe(0);
-      expect(result.data.budget.max_wall_clock_minutes).toBe(0);
-    }
-  });
-
-  it("env var FLYWHEEL_BUDGET_MAX_INVOCATIONS overrides default", () => {
-    const { config } = loadConfig(undefined, {
-      FLYWHEEL_BUDGET_MAX_INVOCATIONS: "200",
-    });
-    expect(config.budget.max_invocations).toBe(200);
-  });
-
-  it("env var FLYWHEEL_BUDGET_MAX_TOKENS overrides default", () => {
-    const { config } = loadConfig(undefined, {
-      FLYWHEEL_BUDGET_MAX_TOKENS: "1000000",
-    });
-    expect(config.budget.max_tokens).toBe(1_000_000);
-  });
-
-  it("env var FLYWHEEL_BUDGET_MAX_WALL_CLOCK_MINUTES overrides default", () => {
-    const { config } = loadConfig(undefined, {
-      FLYWHEEL_BUDGET_MAX_WALL_CLOCK_MINUTES: "45",
-    });
-    expect(config.budget.max_wall_clock_minutes).toBe(45);
-  });
-
-  it("CONFIG_DEFAULTS includes budget section", () => {
-    expect(CONFIG_DEFAULTS.budget).toEqual({
-      max_invocations: 0,
-      max_tokens: 0,
-      max_wall_clock_minutes: 0,
-    });
   });
 });
 
@@ -657,7 +532,7 @@ describe("resolveTierConfigs with model tier names", () => {
     expect(tiers.dispatcher.model).toBe(A.mid);
   });
 
-  it("legacy alias 'opus' resolves correctly through resolveTierConfigs", () => {
+  it("family alias 'opus' resolves correctly through resolveTierConfigs", () => {
     const config = FlywheelConfigSchema.parse({ model: "opus" });
     const tiers = resolveTierConfigs(config);
     expect(tiers.worker.model).toBe(A.powerful);

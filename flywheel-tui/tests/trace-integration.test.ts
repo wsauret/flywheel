@@ -446,21 +446,22 @@ describe("Trace integration — rotation", () => {
       unsubs.forEach((u) => u());
     }
 
-    // Index should have at most maxTraces entries
     const entries = readIndexEntries();
-    expect(entries.length).toBeLessThanOrEqual(maxTraces);
 
-    // Error trace must survive
+    // Error traces are exempt from the cap
     const errorEntries = entries.filter((e) => e.status === "error");
     expect(errorEntries.length).toBe(1);
     expect(errorEntries[0].sessionId).toBe("session-error-rot");
 
+    // Non-error traces capped at maxTraces
+    const okEntries = entries.filter((e) => e.status === "ok");
+    expect(okEntries.length).toBeLessThanOrEqual(maxTraces);
+
+    // Total = capped ok + all errors
+    expect(entries.length).toBe(okEntries.length + errorEntries.length);
+
     // The error trace file must still exist
     const errorTraceFile = resolveTraceFile("session-error-rot", tempDir);
     expect(existsSync(errorTraceFile)).toBe(true);
-
-    // At least one ok trace was evicted (we had maxTraces+1 ok + 1 error)
-    const okEntries = entries.filter((e) => e.status === "ok");
-    expect(okEntries.length).toBeLessThan(maxTraces + 1);
   });
 });

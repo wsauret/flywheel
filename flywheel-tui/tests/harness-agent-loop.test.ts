@@ -301,15 +301,18 @@ describe("buildHarnessSystemPrompt", () => {
     expect(prompt).not.toContain("TOOL USAGE");
   });
 
-  test("todo_list usage includes two-call protocol and abandoned status", () => {
+  test("todo_list usage includes granular operations, user visibility, and rules", () => {
     const prompt = buildHarnessSystemPrompt({
       orchestrationSystemPrompt: "Task",
       provider: "anthropic",
       availableTools: new Set(["todo_list"]),
     });
-    expect(prompt).toContain("CRITICAL: Call todo_list(write) twice per task");
+    expect(prompt).toContain("todo_list(complete)");
+    expect(prompt).toContain("todo_list(start)");
+    expect(prompt).toContain("todo_list(abandon)");
     expect(prompt).toContain("in_progress");
-    expect(prompt).toContain("abandoned");
+    expect(prompt).toContain("rendered to the user in real time");
+    expect(prompt).toContain("user is watching");
     expect(prompt).toContain("context recovery");
     expect(prompt).toContain("3+ distinct steps");
   });

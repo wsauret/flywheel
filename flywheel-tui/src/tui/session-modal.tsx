@@ -13,6 +13,8 @@
 import { createMemo, createSignal, createEffect, For, Show, untrack, on } from "solid-js"
 
 import { BOLD } from "@tui/shared/ui/text-attributes"
+import { StyledText, fg as stFg, bold as stBold, type TextChunk } from "@opentui/core"
+import type { TextRenderable } from "@opentui/core"
 import { useTerminalDimensions } from "@opentui/solid"
 import { useTheme } from "@tui/shared/context/theme"
 import { useSession } from "@tui/shared/context/session"
@@ -139,12 +141,14 @@ export function SessionModal(props: SessionModalProps) {
       <box paddingTop={1} paddingBottom={1} flexDirection="column">
         <Show when={flatList().length === 0}>
           <box paddingTop={1} paddingBottom={1}>
-            <box flexDirection="row">
-              <text fg={theme.textMuted}>{"No sessions yet. Try "}</text>
-              <text fg={theme.secondary}>/sprint</text>
-              <text fg={theme.textMuted}>{" or "}</text>
-              <text fg={theme.secondary}>/work</text>
-            </box>
+            <text ref={(el: TextRenderable) => {
+              el.content = new StyledText([
+                stFg(theme.textMuted)("No sessions yet. Try "),
+                stFg(theme.secondary)("/sprint"),
+                stFg(theme.textMuted)(" or "),
+                stFg(theme.secondary)("/work"),
+              ])
+            }} />
           </box>
         </Show>
 
@@ -164,13 +168,14 @@ export function SessionModal(props: SessionModalProps) {
           <For each={groupedSections()}>
             {(section) => (
               <box flexDirection="column">
-                <box flexDirection="row" paddingTop={section.group === "active" ? 0 : 1}>
-                  <text fg={section.group === "active" ? theme.primary : section.group === "paused" ? theme.warning : theme.successMuted} attributes={BOLD}>
-                    {section.icon}
-                  </text>
-                  <text fg={theme.textMuted} attributes={BOLD}>
-                    {" "}{section.label} ({section.items.length})
-                  </text>
+                <box paddingTop={section.group === "active" ? 0 : 1}>
+                  <text ref={(el: TextRenderable) => {
+                    const iconColor = section.group === "active" ? theme.primary : section.group === "paused" ? theme.warning : theme.successMuted
+                    el.content = new StyledText([
+                      stBold(stFg(iconColor)(section.icon)),
+                      stBold(stFg(theme.textMuted)(` ${section.label} (${section.items.length})`)),
+                    ])
+                  }} />
                 </box>
 
                 <For each={section.items}>
@@ -183,6 +188,12 @@ export function SessionModal(props: SessionModalProps) {
                     const typeColor = () => item.session.kind === "chat" ? theme.info : theme.accent
 
 
+                    const metadata = [
+                      item.session.totalTokens > 0 && formatTokens(item.session.totalTokens),
+                      item.session.totalCost > 0 && formatCost(item.session.totalCost),
+                      item.session.lastUpdated && relativeTime(item.session.lastUpdated),
+                    ].filter(Boolean).join(" ")
+
                     return (
                       <box
                         backgroundColor={isSelected() ? theme.backgroundElement : undefined}
@@ -191,24 +202,22 @@ export function SessionModal(props: SessionModalProps) {
                         onMouseDown={() => props.onSelect(item.flatIndex)}
                       >
                         <box flexDirection="row" justifyContent="space-between">
-                          <box flexDirection="row" gap={1}>
-                            <text fg={isSelected() ? theme.primary : isActive() ? theme.primary : theme.textMuted}>
-                              {isSelected() ? "\u25B8" : isActive() ? "\u25CF" : " "}
-                            </text>
-                            <text fg={typeColor()}>{typeTag()}</text>
-                            <text fg={isActive() ? theme.primary : theme.text}>{label()}</text>
+                          <box flexShrink={1} overflow="hidden">
+                            <text ref={(el: TextRenderable) => {
+                              createEffect(() => {
+                                const cursorColor = isSelected() ? theme.primary : isActive() ? theme.primary : theme.textMuted
+                                const cursor = isSelected() ? "\u25B8" : isActive() ? "\u25CF" : " "
+                                el.content = new StyledText([
+                                  stFg(cursorColor)(cursor),
+                                  stFg(typeColor())(` ${typeTag()}`),
+                                  stFg(isActive() ? theme.primary : theme.text)(` ${label()}`),
+                                ])
+                              })
+                            }} overflow="hidden" wrapMode="none" />
                           </box>
-                          <box flexDirection="row" gap={1} flexShrink={0}>
-                            <Show when={item.session.totalTokens > 0}>
-                              <text fg={theme.textMuted}>{formatTokens(item.session.totalTokens)}</text>
-                            </Show>
-                            <Show when={item.session.totalCost > 0}>
-                              <text fg={theme.textMuted}>{formatCost(item.session.totalCost)}</text>
-                            </Show>
-                            <Show when={item.session.lastUpdated}>
-                              <text fg={theme.textMuted}>{relativeTime(item.session.lastUpdated)}</text>
-                            </Show>
-                          </box>
+                          <Show when={metadata}>
+                            <text fg={theme.textMuted} flexShrink={0}>{metadata}</text>
+                          </Show>
                         </box>
 
                         <Show when={isDeletePending() && isSelected()}>

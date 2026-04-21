@@ -125,6 +125,8 @@ export function createWorkerCallback(
       tools = [...tools, "AskUserQuestion"]
     }
 
+    emit("engine:started", { workflowId, stepIndex: 0 })
+
     const runner = engine.createRunner({
       model,
       effort,

@@ -13,7 +13,6 @@ function makeConfig(overrides: Partial<FlywheelConfig> = {}): FlywheelConfig {
     engine: "claude",
     dispatcher: {},
     worker: {},
-    timeout_minutes: 60,
     skip_evaluation: false,
     ...overrides,
   };
@@ -99,9 +98,9 @@ describe("prepareWorkflowDeps", () => {
   });
 
   it("returns config from loadConfig result", () => {
-    const config = makeConfig({ timeout_minutes: 90 });
+    const config = makeConfig({ skip_evaluation: true });
     const deps = prepareWorkflowDeps(makeOverrides({ config }));
 
-    expect(deps.config.timeout_minutes).toBe(90);
+    expect(deps.config.skip_evaluation).toBe(true);
   });
 });

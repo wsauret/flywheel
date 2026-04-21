@@ -7,7 +7,7 @@
 // Output: dist/flywheel-<platform>-<arch>.tar.gz
 
 import { $ } from "bun";
-import { mkdir, readdir, copyFile, readFile, stat } from "fs/promises";
+import { mkdir, readdir, copyFile, readFile, stat, cp, rm } from "fs/promises";
 import { join, basename } from "path";
 import solidPlugin from "@opentui/solid/bun-plugin";
 
@@ -34,6 +34,16 @@ const platformArch = getPlatformArch();
 const stagingDir = join(DIST, `flywheel-${platformArch}`);
 const agentsStagingDir = join(stagingDir, "agents");
 const skillsStagingDir = join(stagingDir, "skills");
+const runtimeStagingDir = join(stagingDir, "flywheel-runtime");
+const runtimeNodeModulesDir = join(runtimeStagingDir, "node_modules");
+const runtimePackages = [
+  "sharp",
+  "@img/colour",
+  "detect-libc",
+  "semver",
+  `@img/sharp-${platformArch}`,
+  `@img/sharp-libvips-${platformArch}`,
+] as const;
 
 // Step 0: Populate manifest.ts with real content (restored after bundling)
 const manifestPath = join(AGENTS_SRC, "manifest.ts");
@@ -155,7 +165,16 @@ for (const entry of skillEntries) {
   }
 }
 
-// Step 6: Generate install script
+// Step 6: Copy sharp runtime packages
+console.log("Copying sharp runtime...");
+await rm(runtimeStagingDir, { recursive: true, force: true });
+await mkdir(runtimeNodeModulesDir, { recursive: true });
+for (const packageName of runtimePackages) {
+  await copyRuntimePackage(packageName);
+}
+await patchVendoredSharpRuntime();
+
+// Step 7: Generate install script
 console.log("Generating install script...");
 const installScript = `#!/usr/bin/env bash
 set -euo pipefail
@@ -203,6 +222,11 @@ mkdir -p "\$INSTALL_DIR"
 rm -f "\$INSTALL_DIR/flywheel"
 cp "\$SCRIPT_DIR/flywheel" "\$INSTALL_DIR/flywheel"
 chmod +x "\$INSTALL_DIR/flywheel"
+
+if [ -d "\$SCRIPT_DIR/flywheel-runtime" ]; then
+  rm -rf "\$INSTALL_DIR/flywheel-runtime"
+  cp -R "\$SCRIPT_DIR/flywheel-runtime" "\$INSTALL_DIR/flywheel-runtime"
+fi
 
 # Re-sign at install location (macOS caches Gatekeeper assessments per-path)
 if [[ "\$(uname)" == "Darwin" ]]; then
@@ -254,7 +278,7 @@ echo ""
 await Bun.write(join(stagingDir, "install.sh"), installScript);
 await $`chmod +x ${join(stagingDir, "install.sh")}`;
 
-// Step 7: Create tarball
+// Step 8: Create tarball
 console.log("Creating tarball...");
 const tarball = `flywheel-${platformArch}.tar.gz`;
 await $`tar -czf ${join(DIST, tarball)} -C ${DIST} ${basename(stagingDir)}`;
@@ -263,10 +287,42 @@ await $`tar -czf ${join(DIST, tarball)} -C ${DIST} ${basename(stagingDir)}`;
 const tarballStat = await stat(join(DIST, tarball));
 const sizeMB = (tarballStat.size / 1024 / 1024).toFixed(1);
 console.log(`\nBuild complete: dist/${tarball} (${sizeMB} MB)`);
-console.log(`  Binary:  flywheel (standalone, no runtime needed)`);
+console.log(`  Binary:  flywheel (standalone + vendored sharp runtime)`);
 console.log(`  Assets:  ${assetExts.map((e) => `*${e}`).join(", ")}`);
 console.log(`  Agents:  ${personaFiles.length} persona(s)`);
 console.log(`  Install: tar xzf ${tarball} && cd ${basename(stagingDir)} && ./install.sh`);
+
+async function copyRuntimePackage(packageName: string): Promise<void> {
+  const segments = packageName.split("/");
+  const source = join(ROOT, "node_modules", ...segments);
+  const destination = join(runtimeNodeModulesDir, ...segments);
+  const destinationParent = join(runtimeNodeModulesDir, ...segments.slice(0, -1));
+
+  try {
+    await mkdir(destinationParent, { recursive: true });
+    await cp(source, destination, { recursive: true, force: true });
+  } catch (error) {
+    throw new Error(`Missing sharp runtime package ${packageName}: ${error}`);
+  }
+}
+
+async function patchVendoredSharpRuntime(): Promise<void> {
+  const patches = [
+    { file: join(runtimeNodeModulesDir, "sharp", "lib", "colour.js"), replacements: [["require(\x27@img/colour\x27)", "require(\x27../../@img/colour/index.cjs\x27)"]] },
+    { file: join(runtimeNodeModulesDir, "sharp", "lib", "utility.js"), replacements: [["require(\x27detect-libc\x27)", "require(\x27../../detect-libc/lib/detect-libc.js\x27)"], ["require(`@img/sharp-${runtimePlatform}/versions`)", "require(`../../@img/sharp-libvips-${runtimePlatform}/versions.json`)"]] },
+    { file: join(runtimeNodeModulesDir, "sharp", "lib", "sharp.js"), replacements: [["require(\x27detect-libc\x27)", "require(\x27../../detect-libc/lib/detect-libc.js\x27)"], ["`@img/sharp-${runtimePlatform}/sharp.node`", "`../../@img/sharp-${runtimePlatform}/lib/sharp-${runtimePlatform}.node`"], ["\x27@img/sharp-wasm32/sharp.node\x27", "\x27../../@img/sharp-wasm32/sharp.node\x27"], ["path.startsWith(\x27@img/sharp-linux-x64\x27)", "path.includes(\x27sharp-linux-x64\x27)"], ["require(`@img/sharp-libvips-${runtimePlatform}/package`)", "require(`../../@img/sharp-libvips-${runtimePlatform}/package.json`)"]] },
+    { file: join(runtimeNodeModulesDir, "sharp", "lib", "libvips.js"), replacements: [["require(\x27semver/functions/coerce\x27)", "require(\x27../../semver/functions/coerce.js\x27)"], ["require(\x27semver/functions/gte\x27)", "require(\x27../../semver/functions/gte.js\x27)"], ["require(\x27semver/functions/satisfies\x27)", "require(\x27../../semver/functions/satisfies.js\x27)"], ["require(\x27detect-libc\x27)", "require(\x27../../detect-libc/lib/detect-libc.js\x27)"]] },
+  ] as const;
+
+  for (const patch of patches) {
+    let content = await readFile(patch.file, "utf-8");
+    for (const [oldText, newText] of patch.replacements) {
+      if (!content.includes(oldText)) throw new Error(`Missing vendored sharp snippet in ${patch.file}: ${oldText}`);
+      content = content.replace(oldText, newText);
+    }
+    await Bun.write(patch.file, content);
+  }
+}
 
 // --- Manifest generation ---
 

@@ -197,7 +197,7 @@ describe("toSnapshot — serialization", () => {
     expect(agentSnap.children[1].name).toBe("write");
   });
 
-  it("preserves ToolGroupBlock optional fields", () => {
+  it("preserves ToolGroupBlock optional fields (except runtime-only latestChild)", () => {
     const blocks = [
       agentBlock({
         latestChild: "read_file",
@@ -208,7 +208,7 @@ describe("toSnapshot — serialization", () => {
     const snapshots = toSnapshot(blocks);
 
     const agentSnap = snapshots[0] as any;
-    expect(agentSnap.latestChild).toBe("read_file");
+    expect(agentSnap.latestChild).toBeUndefined();
     expect(agentSnap.duration).toBe(5000);
     expect(agentSnap.errorMessage).toBe("something failed");
   });
@@ -238,6 +238,32 @@ describe("toSnapshot — serialization", () => {
 
     expect(snapshots).toHaveLength(1);
     expect((snapshots[0] as any).expanded).toBeUndefined();
+  });
+
+  it("strips latestChild from completed ToolGroupBlock on serialize", () => {
+    const block = agentBlock({ status: "completed", latestChild: "Reading src/index.ts" });
+    const snapshots = toSnapshot([block]);
+
+    expect(snapshots).toHaveLength(1);
+    expect((snapshots[0] as any).latestChild).toBeUndefined();
+  });
+
+  it("strips latestChild from paused (active -> paused) ToolGroupBlock on serialize", () => {
+    const block = agentBlock({ status: "active", latestChild: "Running tests" });
+    const snapshots = toSnapshot([block]);
+
+    expect(snapshots).toHaveLength(1);
+    expect((snapshots[0] as any).status).toBe("paused");
+    expect((snapshots[0] as any).latestChild).toBeUndefined();
+  });
+
+  it("strips latestChild from error ToolGroupBlock on serialize", () => {
+    const block = agentBlock({ status: "error", latestChild: "Failed step", errorMessage: "timeout" });
+    const snapshots = toSnapshot([block]);
+
+    expect(snapshots).toHaveLength(1);
+    expect((snapshots[0] as any).latestChild).toBeUndefined();
+    expect((snapshots[0] as any).errorMessage).toBe("timeout");
   });
 
   it("preserves all fields on nested ToolEntrys in ToolGroupBlock children", () => {

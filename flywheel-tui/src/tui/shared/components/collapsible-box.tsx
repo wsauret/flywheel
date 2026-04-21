@@ -2,7 +2,7 @@
 
 import { Show } from "solid-js"
 import type { JSX } from "solid-js"
-import type { RGBA } from "@opentui/core"
+import type { MouseEvent, RGBA } from "@opentui/core"
 
 interface CollapsibleBoxProps {
   expanded: boolean
@@ -13,7 +13,7 @@ interface CollapsibleBoxProps {
   paddingRight?: number
   paddingTop?: number
   paddingBottom?: number
-  onMouseDown?: () => void
+  onMouseDown?: (event: MouseEvent) => void
 }
 
 export function CollapsibleBox(props: CollapsibleBoxProps) {

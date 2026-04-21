@@ -1,12 +1,13 @@
 /** @jsxImportSource @opentui/solid */
 
-import { Show, Index, createSignal } from "solid-js"
+import { Show, Index, createSignal, createMemo, createEffect } from "solid-js"
+import type { ScrollBoxRenderable } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { useKeyboard } from "@opentui/solid"
 import { ShimmerText } from "@tui/shared/components/shimmer-text"
 import { Spinner } from "@tui/shared/components/spinner"
 import { BlockRenderer } from "./output-blocks/block-renderer.js"
-import type { AnyBlock, ToolGroupBlock } from "@infra/output-blocks"
+import type { AnyBlock } from "@infra/output-blocks"
 
 type WorkflowStatus = "idle" | "running" | "completed" | "interrupted"
 
@@ -29,14 +30,18 @@ export function OutputWindow(props: OutputWindowProps) {
     })
   }
 
+  const agentBlockIds = createMemo(() =>
+    props.outputBlocks.filter((b) => b.kind === "toolGroup").map((b) => b.id)
+  )
+
   const toggleAll = () => {
-    const agentBlocks = props.outputBlocks.filter((b): b is ToolGroupBlock => b.kind === "toolGroup")
+    const ids = agentBlockIds()
     const currentExpanded = expandedIds()
-    const allExpanded = agentBlocks.every((b) => currentExpanded.has(b.id))
+    const allExpanded = ids.every((id) => currentExpanded.has(id))
     if (allExpanded) {
       setExpandedIds(new Set<string>())
     } else {
-      setExpandedIds(new Set<string>(agentBlocks.map((b) => b.id)))
+      setExpandedIds(new Set<string>(ids))
     }
   }
 
@@ -47,6 +52,17 @@ export function OutputWindow(props: OutputWindowProps) {
     }
   })
 
+  let scrollboxRef: ScrollBoxRenderable | undefined
+
+  const hasUnansweredQuestion = createMemo(() => {
+    const last = props.outputBlocks.at(-1)
+    return last?.kind === "question" && !last.answers && !last.cancelled
+  })
+
+  createEffect(() => {
+    if (hasUnansweredQuestion()) scrollboxRef?.scrollTo(scrollboxRef.scrollHeight)
+  })
+
   const isRunning = () => props.workflowStatus === "running"
   const hasContent = () => props.outputBlocks.length > 0
 
@@ -54,9 +70,8 @@ export function OutputWindow(props: OutputWindowProps) {
     <box flexDirection="column" flexGrow={1}>
       <box paddingLeft={1} paddingRight={0} flexDirection="column" flexGrow={1}>
         <Show when={!hasContent() && isRunning()}>
-          <box flexDirection="row">
+          <box flexDirection="row" gap={1}>
             <Spinner color={themeCtx.theme.primary} />
-            <text> </text>
             <ShimmerText text="Starting worker..." color={themeCtx.theme.textMuted} />
           </box>
         </Show>
@@ -71,6 +86,7 @@ export function OutputWindow(props: OutputWindowProps) {
 
         <Show when={hasContent()}>
           <scrollbox
+            ref={(el: ScrollBoxRenderable) => { scrollboxRef = el }}
             flexGrow={1}
             width="100%"
             stickyScroll={true}

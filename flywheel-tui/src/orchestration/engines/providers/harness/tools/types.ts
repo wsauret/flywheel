@@ -19,9 +19,11 @@ export interface ToolContext {
 }
 
 export interface TodoItem {
+  id: string;
   content: string;
   status: "pending" | "in_progress" | "completed" | "abandoned";
   priority?: "high" | "medium" | "low";
+  notes?: string;
 }
 
 // --- Operations interfaces for DI ---

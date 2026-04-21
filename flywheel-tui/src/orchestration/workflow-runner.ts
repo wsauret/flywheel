@@ -12,10 +12,11 @@ import { EventBus, createEmit, type EmitFn, type Unsubscribe } from "../infra/ev
 import { randomUUID } from "node:crypto"
 import { InjectionQueue } from "./injection-queue.js"
 import type { Queue, StepStatus, Step } from "../workflows/queue/types.js"
-import { toBudgetLimits } from "../workflows/schemas.js"
+import { DEFAULT_BUDGET, toBudgetLimits } from "../workflows/schemas.js"
 import type { AnyBlock } from "../infra/output-blocks.js"
 import type { WorkflowSessionEntry } from "./session-store-types.js"
 import type { WorkflowDeps } from "./engines/workflow-deps.js"
+import { resolveTierConfigs } from "./config/schema.js"
 import { generateSessionTitle } from "./session-title.js"
 
 
@@ -115,7 +116,7 @@ export function createWorkflowRunner(opts: {
     description,
     emitter: emit,
     workflowId,
-    budgetLimits: toBudgetLimits(deps.config.budget),
+    budgetLimits: toBudgetLimits(DEFAULT_BUDGET),
   })
   const { budgetTracker, traceWriter, transcriptWriter, traceCollector } = infra
   let traceFinalized = false
@@ -172,7 +173,7 @@ export function createWorkflowRunner(opts: {
     generateSessionTitle(
       description,
       (title) => updateEntry(sessionId, { description: title }),
-      { engine: deps.engine, projectCwd },
+      { engine: deps.engine, projectCwd, model: resolveTierConfigs(deps.config).worker.model },
     )
 
     const result = await executor.run()

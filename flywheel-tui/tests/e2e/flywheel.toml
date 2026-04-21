@@ -1,3 +1,2 @@
 # E2E test config
 # project_cwd is set dynamically by run.ts via env override
-timeout_minutes = 5

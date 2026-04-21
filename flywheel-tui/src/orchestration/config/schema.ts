@@ -13,24 +13,6 @@ function noShellMetachars(fieldName: string) {
   );
 }
 
-const BoundariesSchema = z.object({
-  /** Allowed port ranges (e.g. ["3000-3100", "8080-8090"]). */
-  port_ranges: z.array(z.string()).optional(),
-  /** Directories workers must not modify. */
-  off_limits_dirs: z.array(z.string()).optional(),
-  /** External services workers should be aware of. */
-  external_services: z.array(z.string()).optional(),
-});
-
-const CommandsSchema = z.object({
-  /** Command to run the test suite. */
-  test: z.string().optional(),
-  /** Command to run typecheck. */
-  typecheck: z.string().optional(),
-  /** Command to run the linter. */
-  lint: z.string().optional(),
-});
-
 export const FlywheelConfigSchema = z.object({
   /** Engine ID: "claude", "opencode", etc. */
   engine: z.string().default("claude"),
@@ -51,7 +33,6 @@ export const FlywheelConfigSchema = z.object({
   model: z.string().optional(),
   /** Convenience: sets dispatcher.effort, worker.effort, and evaluator.effort if not individually overridden */
   effort: EffortSchema.optional(),
-  timeout_minutes: z.number().int().min(1).max(120).default(60),
   project_cwd: noShellMetachars("project_cwd").optional(),
   skip_evaluation: z.boolean().default(false),
 
@@ -61,53 +42,10 @@ export const FlywheelConfigSchema = z.object({
   /** Max revision attempts after evaluator failure. 0 = no revisions. Default: 1. */
   max_revisions: z.number().int().min(0).max(5).default(1),
 
-  /** Budget limits for workflow execution. 0 = unlimited for all fields. */
-  budget: z.object({
-    /** Max total engine invocations across all steps. 0 = unlimited. */
-    max_invocations: z.number().int().min(0).default(0),
-    /** Max total tokens consumed. 0 = unlimited. */
-    max_tokens: z.number().int().min(0).default(0),
-    /** Max wall-clock time in minutes. 0 = unlimited. */
-    max_wall_clock_minutes: z.number().int().min(0).default(0),
-  }).default({}),
-
-  /** User-facing output directory overrides. */
-  paths: z.object({
-    plans: z.string().optional(),
-    research: z.string().optional(),
-    reviews: z.string().optional(),
-    solutions: z.string().optional(),
-    standards: z.string().optional(),
-  }).default({}),
-
-  /** Mission boundaries — constraints workers must never violate. */
-  boundaries: BoundariesSchema.optional(),
-
-  /** Project commands for scrutiny validation (test, typecheck, lint). */
-  commands: CommandsSchema.optional(),
-
   /** Queue execution engine configuration. */
   queue: z.object({
     /** Maximum number of steps allowed in a single queue. Default: 50. */
     max_steps: z.number().int().min(1).max(1000).default(50),
-    /** Persist queue state to disk for crash recovery. Default: true. */
-    persist_queue: z.boolean().default(true),
-  }).default({}),
-
-  /** Dispatcher intelligence configuration. */
-  dispatcher_intelligence: z.object({
-    /** Enable dispatcher queue mutations. Default: true. */
-    enabled: z.boolean().default(true),
-    /** Max mutations per step completion. Default: 3. */
-    max_mutations_per_step: z.number().int().min(0).max(10).default(3),
-    /** Max total steps inserted per session. Default: 20. */
-    max_inserted_steps: z.number().int().min(0).max(100).default(20),
-    /** Auto-insert fix steps from review findings. Default: true. */
-    auto_fix_insertion: z.boolean().default(true),
-    /** Separate budget for replan decisions (0 = unlimited). Default: 0. */
-    replan_cost_budget_usd: z.number().min(0).default(0),
-    /** Recent handoffs in full detail (older summarized). Default: 3. */
-    handoff_detail_window: z.number().int().min(1).max(20).default(3),
   }).default({}),
 
   /** Tracing configuration. */

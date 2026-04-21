@@ -18,6 +18,7 @@ export type NextInput =
 export interface ToolResultEntry {
   toolCallId: string;
   content: string;
+  isError?: boolean;
 }
 
 export function renderNextInput(input: NextInput): string | ContentBlock[] {
@@ -29,6 +30,7 @@ export function renderNextInput(input: NextInput): string | ContentBlock[] {
         type: "tool_result" as const,
         tool_use_id: r.toolCallId,
         content: r.content,
+        ...(r.isError ? { is_error: true } : {}),
       }));
     case "recovered":
       return input.handoff;

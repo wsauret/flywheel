@@ -22,15 +22,7 @@ const CHATGPT_FALLBACK_MODELS: ReadonlySet<string> = new Set([
 
 const CONTEXT_SUFFIX_RE = /\[\w+\]$/;
 
-const BARE_ALIASES: Record<string, string> = {
-  opus: "claude-opus-4-7",
-  sonnet: "claude-sonnet-4-6",
-  haiku: "claude-haiku-4-5-20251001",
-};
-
 function normalizeModel(model: string): string {
-  const alias = BARE_ALIASES[model.toLowerCase()];
-  if (alias) return alias;
   return model.replace(CONTEXT_SUFFIX_RE, "");
 }
 
