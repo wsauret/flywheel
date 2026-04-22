@@ -4,6 +4,8 @@ import type { EmitFn } from "../../infra/event-bus.js";
 import type { NativeCheckResult } from "../shared/native-verification.js";
 import type { EvaluationCriteria } from "../../infra/workflow-types.js";
 import type { AccumulatedContext } from "./context-accumulator.js";
+import type { MutationRequest, EvalResult } from "./step-dispatcher-types.js";
+import type { Guardrails } from "./guardrails.js";
 
 /** Result from worker execution */
 export interface WorkerOutput {
@@ -13,19 +15,8 @@ export interface WorkerOutput {
   sessionId?: string;
 }
 
-/** Result from evaluator */
-export interface EvalResult {
-  passed: boolean;
-  skipped: boolean;
-  transportError: boolean;
-  reason: string | null;
-  feedback: string | null;
-  suggestions: string[];
-  cyclesUsed: number;
-}
-
 /** Per-step context passed to the dispatcher callback. */
-export interface DispatcherContext {
+interface DispatcherContext {
   previousHandoff: Record<string, unknown> | null;
   previousAssessment: EvalResult | null;
 }
@@ -37,7 +28,7 @@ export type DispatcherFn = (
 ) => Promise<{
   prompt: string;
   evaluationCriteria: EvaluationCriteria | null;
-  mutationRequests?: import("./step-dispatcher").MutationRequest[];
+  mutationRequests?: MutationRequest[];
 }>;
 
 /**
@@ -72,7 +63,7 @@ export type HandoffReaderFn = (
 type PersistFn = (queue: Queue) => Promise<void>;
 
 /** Step context accumulator: accumulates handoff data across steps */
-export interface StepContextAccumulator {
+interface StepContextAccumulator {
   accumulate(data: unknown): void;
   getContext(): AccumulatedContext;
   /** Optional: serialize state for persistence. */
@@ -135,7 +126,7 @@ interface StepExecutorHooks {
    * When provided, the executor passes mutation_budget to the dispatcher
    * context.
    */
-  guardrails?: import("./guardrails").Guardrails | null;
+  guardrails?: Guardrails | null;
 
   /**
    * Persist accumulated context state alongside queue state.

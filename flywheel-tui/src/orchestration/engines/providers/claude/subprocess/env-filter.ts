@@ -1,5 +1,3 @@
-// Exclusion patterns are pre-compiled to RegExp[] at startup to avoid repeated parsing per-call.
-
 import micromatch from "micromatch";
 
 const DEFAULT_EXCLUDE_PATTERNS: readonly string[] = [
@@ -9,27 +7,14 @@ const DEFAULT_EXCLUDE_PATTERNS: readonly string[] = [
 ];
 
 export interface EnvFilterOptions {
-  /** Additional exclusion patterns (merged with defaults). */
   readonly envExclude?: readonly string[];
-  /** Passthrough keys that override exclusion (exact match). */
   readonly envPassthrough?: readonly string[];
 }
 
-/**
- * Pre-compiled environment filter.
- * Create once at startup via `createEnvFilter()`, reuse for every spawn.
- */
 interface EnvFilter {
-  /** Filter an environment record, returning only allowed entries. */
   filter(env: Record<string, string | undefined>): Record<string, string>;
 }
 
-/**
- * Create a pre-compiled environment filter.
- *
- * @param options - Additional exclusion patterns and passthrough overrides.
- * @returns An EnvFilter with pre-compiled patterns.
- */
 export function createEnvFilter(options: EnvFilterOptions = {}): EnvFilter {
   const { envExclude = [], envPassthrough = [] } = options;
 
@@ -40,7 +25,6 @@ export function createEnvFilter(options: EnvFilterOptions = {}): EnvFilter {
 
   const isExcluded = (key: string): boolean => matchers.some((m) => m(key));
 
-  // Build passthrough set for O(1) lookup
   const passthroughSet = new Set(envPassthrough);
 
   const shouldInclude = (key: string): boolean =>

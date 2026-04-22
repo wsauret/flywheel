@@ -1,64 +1,28 @@
-// Context Accumulator — Windowed Detail Strategy (ADR-004 Decision 8)
-//
-// Accumulates handoff data from completed steps. Uses a windowed detail
-// strategy: the last N handoffs are kept in full detail; older handoffs
-// are summarized to key decisions, artifacts, and issues.
-//
-// Failed step handoffs are NOT added (only successful completions).
-//
-// The accumulator state is serializable for persistence alongside queue
-// state and is restorable on session resume.
-//
-// Terminology:
-//   HandoffEntry — full-detail record of a step's handoff
-//   HandoffSummary — compressed record of an older step's handoff
-
 import type { Step } from "./types.js";
 
-/** Full-detail handoff entry for recent steps. */
 interface HandoffEntry {
-  /** ID of the step that produced this handoff. */
   stepId: string;
-  /** Type of the step. */
   stepType: Step["type"];
-  /** Title of the step. */
   stepTitle: string;
-  /** The complete handoff data from the worker. */
   handoff: Record<string, unknown>;
 }
 
-/** Summarized handoff for older steps (outside the detail window). */
 interface HandoffSummary {
-  /** ID of the step that produced this handoff. */
   stepId: string;
-  /** Type of the step. */
   stepType: Step["type"];
-  /** Title of the step. */
   stepTitle: string;
-  /** Key decisions extracted from the handoff. */
   decisions: string[];
-  /** Artifacts (files created/modified) extracted from the handoff. */
   artifacts: string[];
-  /** Issues/warnings extracted from the handoff. */
   issues: string[];
 }
 
-/** Serializable state for persistence and restoration. */
 export interface AccumulatorState {
-  /** All entries in order (full detail). Used for windowing on getContext(). */
   entries: HandoffEntry[];
 }
 
-/**
- * Context returned to the dispatcher. Includes windowed detail:
- * last N in full, older ones summarized.
- */
 export interface AccumulatedContext {
-  /** Summarized older handoffs (outside the detail window). */
   summaries: HandoffSummary[];
-  /** Full-detail recent handoffs (last N). */
   recentHandoffs: HandoffEntry[];
-  /** Total number of accumulated entries. */
   totalSteps: number;
 }
 
@@ -98,29 +62,15 @@ function summarizeEntry(entry: HandoffEntry): HandoffSummary {
   };
 }
 
-/**
- * ContextAccumulator extends the executor's StepContextAccumulator interface
- * with serialization and size methods for persistence support.
- *
- * `accumulate(data)` accepts `unknown` (matching StepContextAccumulator)
- * but only processes objects with the expected shape (stepId, stepType,
- * stepTitle, handoff). Anything else is silently ignored.
- */
 export interface ContextAccumulator {
-  /** Add a completed step's handoff data. */
   accumulate(data: unknown): void;
-  /** Get windowed context for the dispatcher. */
   getContext(): AccumulatedContext;
-  /** Serialize for persistence alongside queue state. */
   serialize(): AccumulatorState;
-  /** Number of accumulated entries. */
   size(): number;
 }
 
 interface ContextAccumulatorOptions {
-  /** Number of recent handoffs to keep in full detail. Default: 3. */
   windowSize?: number;
-  /** Pre-existing state to restore from persistence. */
   initialState?: AccumulatorState;
 }
 

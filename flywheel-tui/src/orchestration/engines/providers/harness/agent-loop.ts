@@ -10,7 +10,7 @@ import type {
   ToolCall,
   ContentBlock,
 } from "./llm/types.js";
-import { ContextLengthExceededError, OutputLengthExceededError } from "./llm/types.js";
+import { ContextLengthExceededError, OutputLengthExceededError, RetryableStreamError } from "./llm/types.js";
 import { executeTool, getToolDefinitions } from "./tools/tool-dispatch.js";
 import { formatList as formatTodoList } from "./tools/todo-list.js";
 import type { ToolContext, TodoItem } from "./tools/types.js";
@@ -24,13 +24,36 @@ const log = Log.create({ service: "harness-agent-loop" });
 
 const TODO_NUDGE_AFTER_TURNS = 10;
 const TODO_NUDGE_COOLDOWN_TURNS = 10;
+const MAX_STREAM_RETRIES = 5;
+const TRANSIENT_RETRY_BASE_MS = 500;
+const RATE_LIMIT_MIN_MS = 5_000;
+const RATE_LIMIT_MAX_MS = 30_000;
+const DEFAULT_RETRY_BASE_MS = 1_000;
+const DEFAULT_RETRY_MAX_MS = 30_000;
+
+function streamRetryBackoff(attempt: number, err: RetryableStreamError): number {
+  switch (err.kind) {
+    case "transient":
+      return TRANSIENT_RETRY_BASE_MS + Math.random() * TRANSIENT_RETRY_BASE_MS;
+    case "rate_limit": {
+      const exponential = Math.min(RATE_LIMIT_MIN_MS * 2 ** (attempt - 1), RATE_LIMIT_MAX_MS);
+      return exponential + exponential * 0.2 * Math.random();
+    }
+    case "overload":
+    case "unknown":
+    default: {
+      const exponential = Math.min(DEFAULT_RETRY_BASE_MS * 2 ** (attempt - 1), DEFAULT_RETRY_MAX_MS);
+      return exponential + Math.random() * DEFAULT_RETRY_BASE_MS * 0.5;
+    }
+  }
+}
 
 function withTodoState(handoffText: string, items: ReadonlyArray<TodoItem>): string {
   if (items.length === 0) return handoffText;
   return `${handoffText}\n\n<todo_state>\nYour todo list is preserved across context recovery. Do not call todo_list(read) — here is the current state:\n${formatTodoList(items)}\n</todo_state>`;
 }
 
-export interface AgentLoopOptions {
+interface AgentLoopOptions {
   client: LLMClient;
   tools?: ReturnType<typeof getToolDefinitions>;
   systemPrompt: string;
@@ -58,9 +81,9 @@ export interface AgentLoopOptions {
   previousResponseId?: string;
 }
 
-export type AgentLoopOutcome = "ok" | "context_overflow" | "budget_exhausted";
+type AgentLoopOutcome = "ok" | "context_overflow" | "budget_exhausted";
 
-export interface AgentLoopResult {
+interface AgentLoopResult {
   outcome: AgentLoopOutcome;
   previousResponseId?: string;
 }
@@ -114,6 +137,23 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   let nextInput: NextInput = { kind: "initial", text: instruction };
   let contextOverflow = false;
   let previousResponseId: string | undefined = options.previousResponseId;
+  let streamRetries = 0;
+  // Anchored context tracking (matches Claude Code / Codex pattern):
+  // After each API call, record the actual input_tokens from the response.
+  // Between calls, add heuristic estimates for newly pushed messages.
+  let lastApiPromptTokens = 0;
+  let heuristicAtLastApiCall = 0;
+
+  function estimateContextTokens(): number {
+    if (lastApiPromptTokens > 0) {
+      return lastApiPromptTokens + (tokenCounter.total - heuristicAtLastApiCall);
+    }
+    // No API anchor yet (first call, or post-compaction). Estimate from
+    // the current messages array so compaction resets are reflected.
+    const fresh = createTokenCounter();
+    for (const m of messages) fresh.addMessage(m);
+    return fresh.total;
+  }
 
   for (;;) {
     if (signal?.aborted) {
@@ -121,19 +161,28 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       break;
     }
 
-    if (messages.length > 0 && summarizer.shouldSummarize(tokenCounter.total, client.contextLimit)) {
-      log.info("proactive summarization triggered");
+    const contextTokens = estimateContextTokens();
+    if (messages.length > 0 && summarizer.shouldSummarize(contextTokens, client.contextLimit)) {
+      log.info("proactive summarization triggered", { contextTokens, contextLimit: client.contextLimit });
+      const compactStart = Date.now();
+      onEvent({ kind: "compaction_start" });
       try {
+        if (nextInput.kind === "initial") {
+          options.pendingUserInputs?.unshift(nextInput.text);
+          log.info("preserved user message before compaction");
+        }
         const handoff = await summarizer.summarize(messages, systemPrompt, cwd, signal);
         if (handoff) {
           applyHandoff(messages, handoff);
           nextInput = { kind: "recovered", handoff: withTodoState(handoff.userPrompt, todoList) };
           contextOverflow = true;
-          // Server-side conversation chain is invalid after compaction — fall back
-          // to stateless mode where encrypted reasoning blocks carry the context.
           previousResponseId = undefined;
+          lastApiPromptTokens = 0;
+          heuristicAtLastApiCall = 0;
         }
+        onEvent({ kind: "compaction_done", success: true, durationMs: Date.now() - compactStart });
       } catch (err) {
+        onEvent({ kind: "compaction_done", success: false, durationMs: Date.now() - compactStart });
         log.error("proactive summarization failed", {
           error: errorMessage(err),
         });
@@ -253,6 +302,10 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
               input: event.toolCall.input,
             });
             break;
+          case "usage":
+            lastApiPromptTokens = event.inputTokens + event.cacheReadTokens;
+            heuristicAtLastApiCall = tokenCounter.total;
+            break;
           case "done":
             stopReason = event.stopReason;
             if (event.responseId) previousResponseId = event.responseId;
@@ -261,16 +314,30 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       }
     } catch (err) {
       if (err instanceof ContextLengthExceededError) {
-        log.warn("context length exceeded, attempting recovery");
+        log.warn("context length exceeded, attempting recovery", { contextTokens: estimateContextTokens(), contextLimit: client.contextLimit });
+        const compactStart = Date.now();
+        onEvent({ kind: "compaction_start" });
+        if (nextInput.kind === "initial") {
+          options.pendingUserInputs?.unshift(nextInput.text);
+          log.info("preserved user message before context recovery");
+        }
         contextOverflow = true;
         previousResponseId = undefined;
+        lastApiPromptTokens = 0;
+        heuristicAtLastApiCall = 0;
         unwindMessages(messages, client.contextLimit);
-        const handoff = await summarizer.summarize(messages, systemPrompt, cwd, signal);
-        if (handoff) {
-          applyHandoff(messages, handoff);
-          nextInput = { kind: "recovered", handoff: withTodoState(handoff.userPrompt, todoList) };
-        } else {
-          nextInput = { kind: "recovered", handoff: withTodoState(instruction, todoList) };
+        try {
+          const handoff = await summarizer.summarize(messages, systemPrompt, cwd, signal);
+          if (handoff) {
+            applyHandoff(messages, handoff);
+            nextInput = { kind: "recovered", handoff: withTodoState(handoff.userPrompt, todoList) };
+          } else {
+            nextInput = { kind: "recovered", handoff: withTodoState(instruction, todoList) };
+          }
+          onEvent({ kind: "compaction_done", success: true, durationMs: Date.now() - compactStart });
+        } catch (compactErr) {
+          onEvent({ kind: "compaction_done", success: false, durationMs: Date.now() - compactStart });
+          throw compactErr;
         }
         continue;
       }
@@ -286,8 +353,21 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         continue;
       }
 
+      if (err instanceof RetryableStreamError && streamRetries < MAX_STREAM_RETRIES) {
+        streamRetries++;
+        llmCallCount--;
+        const delay = err.retryDelayMs ?? streamRetryBackoff(streamRetries, err);
+        log.warn(`stream error, retrying (${streamRetries}/${MAX_STREAM_RETRIES}) in ${Math.round(delay)}ms`, {
+          message: err.message,
+        });
+        await Bun.sleep(delay);
+        continue;
+      }
+
       throw err;
     }
+
+    streamRetries = 0;
 
     pushMessage({ role: "user", content: userPrompt });
 
@@ -323,9 +403,10 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
             steeringAbort.abort();
           }
           return { tc, skipped: false as const, result };
-        } catch {
+        } catch (err) {
           if (steeringAbort.signal.aborted || signal?.aborted) return { tc, skipped: true as const };
-          throw undefined;
+          log.warn("tool execution threw", { tool: tc.name, error: errorMessage(err) });
+          throw err;
         }
       }),
     );

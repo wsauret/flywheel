@@ -1,8 +1,10 @@
 import OpenAI from "openai";
 import type {
   ResponseCreateParamsStreaming,
+  ResponseErrorEvent,
   ResponseInput,
   ResponseInputContent,
+  ResponseReasoningItem,
   ResponseStreamEvent,
 } from "openai/resources/responses/responses.js";
 import type { ReasoningEffort as OpenAIReasoningEffort } from "openai/resources/shared.js";
@@ -11,11 +13,52 @@ import { contextWindowForModel } from "../../../engine-context.js";
 import type { OpenAIAuth } from "../../../../../infra/auth/openai-auth-types.js";
 import { createChatGPTClient } from "./openai-chatgpt.js";
 import type { ModelsClient, ModelInfo } from "./models.js";
-import { withRetry, withRetryStream } from "./retry.js";
+import { createModelInfoCache, computeCost } from "./llm-helpers.js";
+import { CLIENT_TIMEOUT_MS, createIdleWatchdog, withRetry, withRetryStream } from "./retry.js";
 import type { ContentBlock, LLMClient, Message, ReasoningEffort, StreamEvent, StreamOptions } from "./types.js";
-import { ContextLengthExceededError, OutputLengthExceededError } from "./types.js";
+import { ContextLengthExceededError, OutputLengthExceededError, RetryableStreamError } from "./types.js";
 
 const log = Log.create({ service: "llm-openai" });
+
+const STREAM_IDLE_TIMEOUT_MS = 120_000;
+
+const RETRY_AFTER_RE = /try again in\s*(\d+(?:\.\d+)?)\s*(s|ms|seconds?)/i;
+
+function parseRetryAfterMs(message: string): number | undefined {
+  const match = RETRY_AFTER_RE.exec(message);
+  if (!match) return undefined;
+  const value = parseFloat(match[1]!);
+  const unit = match[2]!.toLowerCase();
+  if (unit === "ms") return Math.round(value);
+  return Math.round(value * 1000);
+}
+
+function classifyResponseFailed(
+  error: { code?: string | null; message?: string | null } | undefined,
+  incompleteReason: string | undefined,
+): Error {
+  if (!error) {
+    const msg = incompleteReason ? `incomplete: ${incompleteReason}` : "Unknown error";
+    return new RetryableStreamError(msg, "transient");
+  }
+
+  const code = error.code ?? undefined;
+  const message = error.message ?? "Unknown error";
+
+  if (code === "context_length_exceeded") return new ContextLengthExceededError(message);
+  if (code === "insufficient_quota" || code === "usage_not_included") return new Error(message);
+  if (code === "invalid_prompt") return new Error(message);
+
+  if (code === "rate_limit_exceeded") {
+    return new RetryableStreamError(message, "rate_limit", parseRetryAfterMs(message));
+  }
+  if (code === "server_is_overloaded" || code === "slow_down") {
+    return new RetryableStreamError(message, "overload");
+  }
+
+  return new RetryableStreamError(`${code ?? "unknown"}: ${message}`);
+}
+
 const REASONING_EFFORT: Record<ReasoningEffort, string | null> = {
   off: null,
   low: "low",
@@ -102,9 +145,9 @@ function toResponseInput(messages: Message[]): ResponseInput {
           input.push({
             type: "reasoning",
             id: block.id,
+            summary: block.summary ?? [],
             encrypted_content: block.encrypted_content,
-            ...(block.summary ? { summary: block.summary } : {}),
-          } as ResponseInput[number]);
+          } satisfies ResponseReasoningItem);
         }
       }
     }
@@ -132,15 +175,10 @@ export function createOpenAIAdapter(
   const isChatGPT = auth.kind === "chatgpt";
   const client = isChatGPT
     ? createChatGPTClient(auth)
-    : new OpenAI({ apiKey: auth.apiKey });
+    : new OpenAI({ apiKey: auth.apiKey, timeout: CLIENT_TIMEOUT_MS });
 
-  let cache: { model: string; info: ModelInfo } | null = null;
-  async function resolveModelInfo(model: string): Promise<ModelInfo | null> {
-    if (cache?.model === model) return cache.info;
-    const info = await modelsClient.getModelInfo(model, "openai");
-    if (info) cache = { model, info };
-    return info;
-  }
+  const modelCache = createModelInfoCache(modelsClient, "openai");
+  const OPENAI_CACHE_RATES = { cacheReadRatio: 0.5, cacheWriteRatio: 1.0 } as const;
 
   function supportsReasoning(model: string, info: ModelInfo | null): boolean { return info?.reasoning ?? /^(o\d|gpt-5)/.test(model); }
   function contextLimit(model: string, info: ModelInfo | null): number { return info?.contextLimit ?? contextWindowForModel(model); }
@@ -151,34 +189,24 @@ export function createOpenAIAdapter(
     modelFamily: "openai",
     model: defaultModel,
     get contextLimit() {
-      return contextLimit(cache?.model ?? defaultModel, cache?.info ?? null);
+      return contextLimit(modelCache.getCached()?.model ?? defaultModel, modelCache.getCached()?.info ?? null);
     },
     get outputLimit() {
-      return outputLimit(cache?.info ?? null);
+      return outputLimit(modelCache.getCached()?.info ?? null);
     },
     get supportsReasoning() {
-      return supportsReasoning(cache?.model ?? defaultModel, cache?.info ?? null);
+      return supportsReasoning(modelCache.getCached()?.model ?? defaultModel, modelCache.getCached()?.info ?? null);
     },
 
-    costFor(tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; reasoning: number }): number {
-      const info = cache?.info ?? null;
+    costFor(tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; reasoning: number; promptTokens?: number }): number {
+      const info = modelCache.getCached()?.info ?? null;
       if (!info?.cost) return 0;
-      const inputRate = info.cost.input;
-      const outputRate = info.cost.output;
-      const cacheReadRate = info.cost.cacheRead ?? inputRate * 0.5;
-      const cacheWriteRate = info.cost.cacheWrite ?? inputRate;
-      return (
-        (tokens.input * inputRate +
-          tokens.output * outputRate +
-          tokens.cacheRead * cacheReadRate +
-          tokens.cacheWrite * cacheWriteRate) /
-        1_000_000
-      );
+      return computeCost(tokens, info.cost, OPENAI_CACHE_RATES);
     },
 
     async *streamWithTools(options: StreamOptions): AsyncGenerator<StreamEvent> {
       const model = options.model ?? defaultModel;
-      const info = await resolveModelInfo(model);
+      const info = await modelCache.resolveModelInfo(model);
       const reasoning = options.reasoningEffort ?? "max";
 
       const tools: ResponseCreateParamsStreaming["tools"] = options.tools.map((t) => ({
@@ -196,6 +224,15 @@ export function createOpenAIAdapter(
       }
 
       yield* withRetryStream(async function* () {
+        const idleAbort = new AbortController();
+        if (options.signal) {
+          options.signal.addEventListener("abort", () => idleAbort.abort(), { once: true });
+        }
+        const watchdog = createIdleWatchdog(STREAM_IDLE_TIMEOUT_MS, () => {
+          log.warn(`OpenAI stream idle for ${STREAM_IDLE_TIMEOUT_MS}ms, aborting`);
+          idleAbort.abort();
+        });
+
         try {
           const usePreviousResponse = !!options.previousResponseId;
           let messagesToSend = options.messages;
@@ -227,11 +264,13 @@ export function createOpenAIAdapter(
             params.include = ["reasoning.encrypted_content"];
           }
 
-          const stream = await client.responses.create(params, { signal: options.signal });
+          watchdog.reset();
+          const stream = await client.responses.create(params, { signal: idleAbort.signal });
 
           let responseId: string | undefined;
           let toolArgsBuf = "";
           let reasoningBuf = "";
+          let receivedCompleted = false;
 
           function* flushReasoning(): Generator<StreamEvent> {
             if (reasoningBuf) {
@@ -240,7 +279,9 @@ export function createOpenAIAdapter(
             }
           }
 
-          for await (const event of stream as AsyncIterable<ResponseStreamEvent>) {
+          try { for await (const event of stream as AsyncIterable<ResponseStreamEvent>) {
+            watchdog.reset();
+
             switch (event.type) {
               case "response.created":
                 responseId = event.response.id;
@@ -284,6 +325,7 @@ export function createOpenAIAdapter(
               }
 
               case "response.completed": {
+                receivedCompleted = true;
                 yield* flushReasoning();
                 const response = event.response;
                 responseId = response?.id ?? responseId;
@@ -300,10 +342,9 @@ export function createOpenAIAdapter(
                   } as const;
                 }
 
-                // Capture encrypted reasoning items for round-tripping.
                 for (const item of response?.output ?? []) {
                   if (item.type === "reasoning") {
-                    const r = item as { id?: string; encrypted_content?: string; summary?: Array<{ type: "summary_text"; text: string }> };
+                    const r = item as ResponseReasoningItem;
                     if (r.id && r.encrypted_content) {
                       yield {
                         kind: "reasoning",
@@ -329,20 +370,32 @@ export function createOpenAIAdapter(
 
               case "response.failed": {
                 const error = event.response?.error;
-                const details = event.response?.incomplete_details;
-                const msg = error
-                  ? `${error.code ?? "unknown"}: ${error.message ?? "no message"}`
-                  : details?.reason
-                    ? `incomplete: ${details.reason}`
-                    : "Unknown error";
-                throw new Error(msg);
+                const reason = event.response?.incomplete_details?.reason;
+                throw classifyResponseFailed(
+                  error ? { code: error.code, message: error.message } : undefined,
+                  reason,
+                );
               }
 
-              case "error":
-                throw new Error(`Error Code ${(event as { code?: string }).code}: ${(event as { message?: string }).message}` || "Unknown error");
+              case "error": {
+                const errorEvent = event as ResponseErrorEvent;
+                throw new RetryableStreamError(
+                  `Error Code ${errorEvent.code}: ${errorEvent.message}`,
+                  "transient",
+                );
+              }
             }
+          } } finally { watchdog.cleanup(); }
+
+          if (!receivedCompleted) {
+            throw new RetryableStreamError("stream closed before response.completed", "transient");
           }
         } catch (err) {
+          if (watchdog.timedOut) {
+            throw new RetryableStreamError("OpenAI stream idle timeout", "transient");
+          }
+          if (options.signal?.aborted) throw err;
+
           if (err instanceof OpenAI.BadRequestError) {
             const msg = err.message;
             if (
@@ -350,6 +403,21 @@ export function createOpenAIAdapter(
               msg.includes("context_length_exceeded")
             ) {
               throw new ContextLengthExceededError(msg);
+            }
+          }
+          if (err instanceof OpenAI.APIConnectionError) {
+            throw new RetryableStreamError(err.message, "transient");
+          }
+          if (err instanceof OpenAI.APIError && err.status !== undefined && err.status >= 500) {
+            throw new RetryableStreamError(err.message, "overload");
+          }
+          if (err instanceof Error && err.cause) {
+            const cause = err.cause;
+            if (cause instanceof OpenAI.APIConnectionError) {
+              throw new RetryableStreamError(cause.message, "transient");
+            }
+            if (cause instanceof OpenAI.APIError && cause.status !== undefined && cause.status >= 500) {
+              throw new RetryableStreamError(cause.message, "overload");
             }
           }
           throw err;
@@ -365,7 +433,7 @@ export function createOpenAIAdapter(
         // Codex endpoint requires streaming for all requests
         return withRetry(async () => {
           const stream = await client.responses.create({
-            model: cache?.model ?? defaultModel,
+            model: modelCache.getCached()?.model ?? defaultModel,
             input,
             instructions,
             stream: true,
@@ -381,10 +449,10 @@ export function createOpenAIAdapter(
 
       return withRetry(async () => {
         const response = await client.responses.create({
-          model: cache?.model ?? defaultModel,
+          model: modelCache.getCached()?.model ?? defaultModel,
           input,
           instructions,
-          max_output_tokens: Math.min(outputLimit(cache?.info ?? null), 8_192),
+          max_output_tokens: Math.min(outputLimit(modelCache.getCached()?.info ?? null), 8_192),
         });
         const output = response.output ?? [];
         return output

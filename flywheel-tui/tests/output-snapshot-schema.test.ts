@@ -1,11 +1,11 @@
 import { describe, it, expect } from "bun:test";
 
 import {
-  OutputSnapshotSchema,
   toSnapshot,
   fromSnapshot,
   type OutputSnapshot,
 } from "../src/orchestration/session/output-schemas";
+import { AnyBlockSchema as OutputSnapshotSchema } from "../src/infra/output-blocks";
 
 // ---------------------------------------------------------------------------
 // Helpers — standalone block fixtures (NOT imported from TUI types)

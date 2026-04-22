@@ -50,7 +50,7 @@ function resolveMaxEffort(model: string | undefined): "max" | "high" {
   return "high";
 }
 
-export interface ResolvedTierConfig {
+interface ResolvedTierConfig {
   engine: string;
   model: string;
   effort?: string;

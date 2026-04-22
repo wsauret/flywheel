@@ -54,7 +54,8 @@ function loadVendoredSharp(): SharpFactory | null {
 
   try {
     const requireFromEntry = createRequire(entryPath);
-    return normalizeSharpModule(requireFromEntry(entryPath) as unknown);
+    const mod: unknown = requireFromEntry(entryPath);
+    return normalizeSharpModule(mod);
   } catch {
     return null;
   }

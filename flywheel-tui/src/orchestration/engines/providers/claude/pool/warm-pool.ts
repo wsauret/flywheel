@@ -5,8 +5,6 @@ import {
 import { Log } from "../../../../../infra/log.js";
 import type { SpawnResult } from "../subprocess/spawner.js";
 
-// Generic justified: used with both SpawnResult (dispatcher/evaluator) and
-// RawSpawnedProcess (worker) in create-warm-pools.ts.
 interface WarmPoolOptions<T = SpawnResult> {
   spawn: () => Promise<T>;
   label: string;
@@ -71,9 +69,7 @@ export class WarmPool<T = SpawnResult> {
       try {
         const proc = await this.warmPromise;
         this.killProcess(proc);
-      } catch {
-        // Spawn may have failed — nothing to kill
-      }
+      } catch {}
       this.warmPromise = null;
     }
   }
@@ -125,27 +121,17 @@ export class WarmPool<T = SpawnResult> {
     if (this.killProcFn) {
       try {
         this.killProcFn(proc);
-      } catch {
-        // Process may already be dead
-      }
+      } catch {}
       return;
     }
 
     const handle: ChildHandle = {
       pid,
       kill: (signal?: number) => {
-        try {
-          process.kill(pid, signal ?? 15);
-        } catch {
-          // Process already dead
-        }
+        try { process.kill(pid, signal ?? 15); } catch {}
       },
     };
 
-    try {
-      killProcessGroup(handle, "SIGTERM");
-    } catch {
-      // Process may already be dead
-    }
+    try { killProcessGroup(handle, "SIGTERM"); } catch {}
   }
 }

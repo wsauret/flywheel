@@ -14,7 +14,7 @@ export function mapNDJSONToEngineEvents(event: NDJSONEvent): EngineEvent[] {
       return toolUseRecords.map((rec) => ({
         type: "tool_use" as const,
         toolName: rec.toolName,
-        toolInput: (rec.toolInput as Record<string, unknown>) ?? {},
+        toolInput: rec.toolInput ?? {},
       }));
     }
 

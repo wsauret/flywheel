@@ -1,5 +1,6 @@
 import type { Step } from "../queue/types.js";
-import type { EvaluatorFn, EvalResult } from "../queue/executor-types.js";
+import type { EvaluatorFn } from "../queue/executor-types.js";
+import type { EvalResult } from "../queue/step-dispatcher-types.js";
 import type { EvaluatorTransport } from "./transport.js";
 import type { EvaluatorInput } from "./schemas.js";
 import type { EvaluatorResult } from "../../infra/workflow-types.js";
@@ -27,11 +28,6 @@ function resultToEvalResult(result: EvaluatorResult): EvalResult {
   };
 }
 
-/**
- * Creates an EvaluatorFn backed by the agent-based evaluator.
- * The agent has Read, Bash, Grep, Glob, Write tools and can investigate
- * the worker's claims before rendering a verdict.
- */
 export function createAgentEvaluatorFn(
   options: CreateAgentEvaluatorFnOptions,
 ): EvaluatorFn {

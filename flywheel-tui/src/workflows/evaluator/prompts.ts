@@ -1,10 +1,16 @@
 import type { EvaluatorInput } from "./schemas.js";
 
-export const EVALUATOR_SYSTEM_PROMPT =
+const EVALUATOR_SYSTEM_PROMPT =
   "You are a verification agent. Read the worker's output, check each acceptance criterion, " +
   "and write a JSON verdict. You have tools — use them when a claim is worth verifying " +
   "(e.g., run the test command the worker reported, read a file the worker claims to have created). " +
   "Write the verdict file once you have enough evidence to decide.";
+
+export function buildEvaluatorSystemPrompt(addendum?: string): string {
+  return addendum
+    ? `${EVALUATOR_SYSTEM_PROMPT}\n\n${addendum}`
+    : EVALUATOR_SYSTEM_PROMPT;
+}
 
 export function buildEvaluatorPrompt(input: EvaluatorInput): string {
   const sections: string[] = [];

@@ -6,24 +6,13 @@ import { getToolDetail, extractToolDiff, extractErrorText, launderToolError } fr
 import { classifyTool, getToolDisplayName } from "../tool-display-registry.js";
 import { canonicalize } from "../canonical-name.js";
 
-/** Tools that resolve near-instantly — rendered as already-completed (no spinner flash). Lowercase for case-insensitive lookup. */
 const OPTIMISTIC_TOOLS = new Set(["read", "glob", "grep"]);
 
-/** Unified tracking for all tool_use → tool_result resolution. */
 type TrackedTool =
   | { kind: "agent"; agentId: string; spawnedAt: number }
   | { kind: "row"; agentId: string; childIndex: number; toolName: string }
   | { kind: "standalone"; index: number; toolName: string };
 
-/**
- * Top-level tools that bypass row-in-group and produce their own block. The
- * handler runs on tool_use and returns a StandaloneToolLocation if a later
- * tool_result should update the block's status in place (Edit/Write), or null
- * for fire-and-forget blocks (Skill/TodoWrite/ToolSearch).
- *
- * Single source of truth for which top-level tools are "standalone" — add a new
- * entry here rather than editing a switch statement.
- */
 interface StandaloneToolLocation {
   index: number;
   toolName: string;
@@ -46,14 +35,13 @@ function standaloneToolHandler(toolName: string): StandaloneHandler {
   };
 }
 
-/** All keys lowercase — tool names are normalized before lookup. */
 const STANDALONE_TOP_LEVEL_TOOLS: Record<string, StandaloneHandler> = {
   skill: (input, now, builder) => {
     const skill = (input?.skill as string | undefined) ?? (input?.name as string | undefined) ?? "unknown";
     builder.pushSystemMessage(`Loaded skill: ${skill}`, now);
     return null;
   },
-  toolsearch: () => null, // internal plumbing to load deferred tool schemas — not user-visible
+  toolsearch: () => null,
   todowrite: (input, now, builder) => {
     const todos = input?.todos as TodoItem[] | undefined;
     if (Array.isArray(todos)) builder.pushTodoWrite(todos, now);
@@ -161,14 +149,12 @@ export class StructuredEventParser {
     this.hasStreamedText = false;
     this.hasStreamedThinking = false;
 
-    // Process tools first — they create the context group
     for (const block of content) {
       if (block.type === "tool_use") {
         this.handleToolUse(block, parentAgentId, now);
       }
     }
 
-    // Now process thinking and text
     for (const block of content) {
       if (block.type === "thinking" && typeof block.thinking === "string") {
         if (!parentAgentId && !skipStreamedThinking) {
@@ -194,7 +180,6 @@ export class StructuredEventParser {
     const { input, id: toolUseId } = block;
     if (!block.name) return;
 
-    // Canonical form makes tool name lookups case-insensitive across providers.
     const name = canonicalize(block.name);
     const category = classifyTool(name);
 
@@ -209,8 +194,6 @@ export class StructuredEventParser {
       return;
     }
 
-    // Top-level tools with a handler bypass row-in-group and produce their own
-    // block. All keys in the map are lowercase.
     if (!parentAgentId) {
       const handler = STANDALONE_TOP_LEVEL_TOOLS[name];
       if (handler) {
@@ -221,8 +204,6 @@ export class StructuredEventParser {
         return;
       }
 
-      // Guard: mutation tools must always render standalone with their
-      // diffs — never bundled into read-only explore groups.
       if (category === "mutation") {
         const detail = input ? (getToolDetail(name, input) ?? "") : "";
         const filePath = (input?.file_path as string | undefined) ?? (input?.notebook_path as string | undefined);
@@ -235,7 +216,6 @@ export class StructuredEventParser {
       }
     }
 
-    // Every other tool pushes immediately as a pending child.
     const detail = input ? (getToolDetail(name, input) ?? "") : "";
     const filePath = (input?.file_path as string | undefined) ?? (input?.notebook_path as string | undefined);
     const diffInfo = input ? extractToolDiff(name, input) : undefined;

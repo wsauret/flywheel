@@ -1,10 +1,5 @@
 import { platform } from "os"
 
-/**
- * Writes text to clipboard via OSC 52 escape sequence.
- * This allows clipboard operations to work over SSH by having
- * the terminal emulator handle the clipboard locally.
- */
 function writeOsc52(text: string): void {
   if (!process.stdout.isTTY) return
   const base64 = Buffer.from(text).toString("base64")
@@ -77,7 +72,6 @@ export namespace Clipboard {
     if (os === "win32") {
 
       return async (text: string) => {
-        // Pipe via stdin to avoid PowerShell string interpolation ($env:FOO, $(), etc.)
         const proc = Bun.spawn(
           [
             "powershell.exe",

@@ -1,13 +1,3 @@
-// Queue System — Factory & Mutation API
-//
-// Core queue data model: creation, step lifecycle transitions, and mutation
-// operations (insert, remove, skip, reorder, replace). All mutations record
-// provenance in the mutation log and enforce validation rules.
-//
-// Terminology:
-//   Step   — single unit of work (replaces "step")
-//   Queue  — mutable, ordered list of steps for a session
-
 import type {
   Step,
   StepStatus,
@@ -15,27 +5,18 @@ import type {
   MutationLogEntry,
 } from "./types.js";
 
-// Provenance — who triggered the mutation and why
-
 export interface Provenance {
-  /** Who triggered the mutation (executor, user, sprint-hook, etc.). */
   readonly actor: string;
-  /** Why the mutation was performed. */
   readonly reason: string;
 }
-
-// MutationResult — discriminated union for mutation outcomes
 
 type MutationResult =
   | { success: true; queue: Queue }
   | { success: false; error: string };
 
 export interface QueueOptions {
-  /** Maximum number of steps allowed. Inserts exceeding this are rejected. */
   maxSteps?: number;
 }
-
-// Valid step transitions
 
 const VALID_TRANSITIONS: Record<StepStatus, StepStatus[]> = {
   pending: ["running", "skipped"],
@@ -45,12 +26,6 @@ const VALID_TRANSITIONS: Record<StepStatus, StepStatus[]> = {
   skipped: [],
 };
 
-// createQueue — factory function
-
-/**
- * Creates a new Queue from an array of steps.
- * All steps are set to pending, cursor starts at 0.
- */
 export function createQueue(
   steps: Step[],
   opts?: QueueOptions,
@@ -91,13 +66,6 @@ function findStepIndex(queue: Queue, stepId: string) {
   return queue.steps.findIndex((s) => s.id === stepId);
 }
 
-/**
- * Transition a step to a new status. Enforces valid transitions:
- *   pending → running | skipped
- *   running → completed | failed | pending (abort/interrupt recovery)
- *   failed  → pending (resume retry)
- *   completed, skipped → (none — terminal)
- */
 export function transitionStep(
   queue: Queue,
   stepId: string,
@@ -122,11 +90,6 @@ export function transitionStep(
   return { success: true, queue };
 }
 
-/**
- * Advances the queue cursor to the next pending step, skipping
- * completed/failed/skipped steps. If no pending steps remain,
- * cursor moves past the end of the array.
- */
 export function advanceCursor(queue: Queue): void {
   let idx = queue.cursor;
   while (idx < queue.steps.length) {
@@ -136,23 +99,15 @@ export function advanceCursor(queue: Queue): void {
     }
     idx++;
   }
-  // No pending steps found — cursor past end
   queue.cursor = queue.steps.length;
 }
 
-/**
- * Returns true when no steps have status "pending" or "running".
- */
 export function isFinished(queue: Queue): boolean {
   return !queue.steps.some(
     (s) => s.status === "pending" || s.status === "running",
   );
 }
 
-/**
- * Inserts one or more steps after the step with the given ID.
- * Respects max_steps if set. All inserted steps must be pending.
- */
 export function insertAfter(
   queue: Queue,
   afterStepId: string,
@@ -178,8 +133,6 @@ export function insertAfter(
   const insertionIndex = idx + 1;
   queue.steps.splice(insertionIndex, 0, ...newSteps);
 
-  // Adjust cursor when inserting steps before current cursor position
-  // (similar to how removeStep already adjusts cursor)
   if (insertionIndex <= queue.cursor) {
     queue.cursor += newSteps.length;
   }
@@ -193,10 +146,6 @@ export function insertAfter(
   return { success: true, queue };
 }
 
-/**
- * Removes a step from the queue. Only pending and skipped steps can be removed.
- * Completed and running steps are protected.
- */
 export function removeStep(
   queue: Queue,
   stepId: string,
@@ -217,7 +166,6 @@ export function removeStep(
 
   queue.steps.splice(idx, 1);
 
-  // Adjust cursor if removed step was before or at cursor
   if (idx < queue.cursor) {
     queue.cursor = Math.max(0, queue.cursor - 1);
   }
@@ -226,11 +174,6 @@ export function removeStep(
   return { success: true, queue };
 }
 
-/**
- * Marks a pending step as skipped. Completed and running steps cannot
- * be skipped. After skipping, cursor is advanced past the skipped step
- * if it was at the cursor position.
- */
 export function skipStep(
   queue: Queue,
   stepId: string,
@@ -251,7 +194,6 @@ export function skipStep(
   step.status = "skipped";
   logMutation(queue, "skip", [stepId], provenance);
 
-  // Advance cursor past skipped step if needed
   advanceCursor(queue);
 
   return { success: true, queue };

@@ -2,7 +2,7 @@ import { createMemo } from "solid-js"
 import type { Accessor } from "solid-js"
 import { StyledText, fg as stFg, bold as stBold, dim as stDim, type TextChunk } from "@opentui/core"
 import type { RGBA } from "@opentui/core"
-import type { StepState } from "../../orchestration/workflow-runner.js"
+import type { StepState } from "../../orchestration/workflow-runner-types.js"
 import { formatElapsed, formatCost } from "../../infra/format.js"
 import type { ShellSignals } from "./shell-state.js"
 import type { MetricsHook } from "./use-metrics.js"
@@ -22,7 +22,7 @@ interface HeaderDisplayDeps {
   }
 }
 
-export interface HeaderDisplay {
+interface HeaderDisplay {
   displayStatus: Accessor<"running" | "idle" | "interrupted" | "completed">
   headerLeftContent: Accessor<StyledText>
   headerRightContent: Accessor<StyledText>

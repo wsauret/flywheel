@@ -1,5 +1,5 @@
 import type { OutputSession } from "./output-session.js"
-import type { WorkerLifecycle, ChatSessionState, ChatCallbacks } from "./chat-session.js"
+import type { WorkerLifecycle, ChatSessionState, ChatCallbacks } from "./chat-types.js"
 import type { Unsubscribe } from "../infra/event-bus.js"
 import type { UserEventToolResult } from "../infra/ndjson-event-types.js"
 import { Log } from "../infra/log.js"
@@ -35,7 +35,7 @@ export function createChatControls(input: ChatControlsInput): ChatControls {
     state.detachRunner()
 
     state.completeTurn()
-    session.resetActivity()
+    session.resetActivity("paused")
     session.pushSystemMessage("Interrupted", Date.now())
     const pendingTexts = session.resolvePendingMessages()
     session.flush()
@@ -56,14 +56,10 @@ export function createChatControls(input: ChatControlsInput): ChatControls {
   function end() {
     if (state.ended) return
     state.markEnded()
-    // Unsubscribe EventBus listeners — no more infra event processing.
     eventUnsubs.forEach((u) => u())
-    // Flush any remaining data before disposing (mirrors handleRunnerDone)
     session.flushParser()
     session.flush()
     session.dispose()
-    // Resource disposal (budget flush, trace finalize, transcript close) is
-    // handled by chat-runner's disposeSessionResources() — not duplicated here.
     if (state.runner) state.runner.abort()
     else callbacks.onEnded()
     state.detachRunner()
@@ -72,22 +68,17 @@ export function createChatControls(input: ChatControlsInput): ChatControls {
   function send(text: string) {
     if (state.ended) { log.warn("chat send after ended"); return }
 
-    // Message is "pending" only when the agent is actively producing output
-    // (mid-turn injection). After interrupt or idle-exit, the message starts a new turn.
     const isPending = state.turnPhase === "agent-active" && state.runner != null
     state.beginTurn()
     callbacks.onWaiting(true)
     const now = Date.now()
     session.notifyInjected(text, now, isPending, false)
-    // No explicit flush needed — OutputSession's 16ms interval handles it
-
     if (state.runner) {
       state.runner.send(text)
       log.info("chat message sent", { length: text.length })
       return
     }
 
-    // Runner exited idle — reconnect via new runner and send the message as initial content
     if (state.engineSessionId) {
       log.info("chat runner idle-exited, reconnecting via new runner", { sessionId: state.engineSessionId })
       lifecycle.spawnWorker(state.engineSessionId, text).catch((err) => {
@@ -98,8 +89,6 @@ export function createChatControls(input: ChatControlsInput): ChatControls {
       return
     }
 
-    // No runner and no session ID to resume — this should only happen before the
-    // first turn completes (session ID not yet emitted by the engine).
     log.warn("chat send: no active runner and no session ID to resume")
     callbacks.onWaiting(false)
   }

@@ -37,40 +37,23 @@ import { wireSessionSubscribers, type MetricsWriter, type SessionInfra } from ".
 const log = Log.create({ service: "executor-factory" })
 
 interface CreateExecutorInput {
-  /** Prepared workflow deps (config, engine, etc.) */
   deps: WorkflowDeps
-  /** EventBus — emit is derived internally via createEmit */
   eventBus: EventBus
-  /** Unique workflow identifier */
   workflowId: string
-  /** Session ID */
   sessionId: string
-  /** Queue to execute */
   queue: Queue
-  /** Project working directory */
   projectCwd: string
-  /** Override worker cwd (for /test, worktrees) */
   workerCwd?: string
-  /** Session infrastructure (budget, transcript, tracing) — created by the runner. */
   infra: Pick<SessionInfra, "budgetTracker" | "transcriptWriter" | "traceCollector">
-  /** Injection queue for turn-boundary message delivery */
   injectionQueue: InjectionQueue
-  /** Recent chat conversation preceding this workflow. */
   chatContext?: string
-  /** Callback to write budget metrics to the session store. */
   metricsWriter?: MetricsWriter
-  /** Session-scoped ask-hook server, passed down to worker-callback so steps
-   *  with `allowAskUser` can route AskUserQuestion through our dock. Null when
-   *  the engine doesn't support the hook mechanism (e.g. harness). */
   askHookServer?: AskHookServer | null
 }
 
 interface CreateExecutorResult {
-  /** The step executor, ready to run */
   executor: StepExecutor
-  /** Warm pools — caller must shut down on dispose. Null for non-pooling engines. */
   pools: { shutdown(): Promise<void> } | null
-  /** EventBus unsubscribe functions for all wired subscribers */
   eventUnsubs: Unsubscribe[]
 }
 
@@ -96,7 +79,6 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
 
   const tiers = resolveTierConfigs(deps.config)
 
-  // Resolve per-tier engines. Each tier can override the session-level engine.
   const dispatcherEngine = getEngine(tiers.dispatcher.engine)
   const evaluatorEngine = getEngine(tiers.evaluator.engine)
   const workerEngine = getEngine(tiers.worker.engine)
@@ -115,8 +97,6 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
     throw new Error(`Model configuration errors:\n${details}`)
   }
 
-  // Warm pools: only for tiers whose engine supports pre-spawning.
-  // In-process engines (harness) use the generic engine.createRunner() path.
   const pools = (dispatcherEngine.metadata.supportsPooling || evaluatorEngine.metadata.supportsPooling)
     ? createClaudeWarmPools({
         cwd: projectCwd,
@@ -220,7 +200,7 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
     if (!handoffPath) return null
     try {
       const handoff = await readHandoff(handoffPath, WorkerHandoffSchema)
-      return handoff as unknown as Record<string, unknown>
+      return handoff as Record<string, unknown>
     } catch (err) {
       log.warn("handoff read failed, continuing without handoff", {
         path: handoffPath,
@@ -248,7 +228,7 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
     evaluator,
     skipEvaluation: deps.config.skip_evaluation ?? false,
     handoffReader,
-    persist: async (q) => { try { await persistence.save(q) } catch { /* best-effort */ } },
+    persist: async (q) => { await persistence.save(q) },
     accumulator: contextAccumulator,
     maxRevisions: deps.config.max_revisions ?? 1,
     onStepCompleted: compositeHook,

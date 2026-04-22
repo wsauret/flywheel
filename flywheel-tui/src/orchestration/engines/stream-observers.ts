@@ -62,7 +62,7 @@ export function createToolFailureObserver(
   };
 }
 
-export interface BudgetInfo {
+interface BudgetInfo {
   remainingCalls: number;
   remainingTokens: number;
 }

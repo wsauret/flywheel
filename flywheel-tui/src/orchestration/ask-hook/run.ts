@@ -5,6 +5,7 @@
  * to the TUI, prints a PreToolUse decision on stdout.
  */
 import net from "node:net";
+import { errorMessage } from "../../infra/error-message.js";
 
 interface HookInput {
   tool_name: string;
@@ -91,7 +92,7 @@ function bridge(socketPath: string, input: HookInput): Promise<BridgeOutcome> {
       try {
         finish({ kind: "ok", response: JSON.parse(line) as HookResponse });
       } catch (err) {
-        finish({ kind: "fail", message: `Ask-hook got malformed response: ${err instanceof Error ? err.message : String(err)}` });
+        finish({ kind: "fail", message: `Ask-hook got malformed response: ${errorMessage(err)}` });
       }
     });
 

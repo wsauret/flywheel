@@ -149,6 +149,7 @@ if (exitCode === 0) {
     workflowId: workflowId,
     reason: `exit code ${exitCode}`,
     stepsCompleted: 0,
+    finalStatus: "failed",
     timestamp: Date.now(),
   });
 }

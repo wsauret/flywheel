@@ -87,13 +87,13 @@ export function createEditDefinition(options?: { operations?: EditOperations }):
     name: "edit",
     description:
       "Edit a file using hashline-addressed operations. You MUST read the file first to get LINE#HASH " +
-      "references (e.g. 5#KX, 12#MQ), then use those references to address edits. " +
+      "references (e.g. 5#a3f, 12#0b1), then use those references to address edits. " +
       "Supports insert_before, insert_after, replace, delete, replace_all, and create. " +
       "All edits are validated transactionally — if any hash is stale, nothing changes. " +
       "Preserve the exact indentation (tabs or spaces) of surrounding code in your edit lines. " +
       "Do NOT include the LINE#HASH: prefix in your edit content. " +
       "replace_all and create do not require reading first. " +
-      "If an edit fails, the error includes updated references — retry using those directly.",
+      "If an edit fails, the error includes updated references and nearby line suggestions — retry using those directly.",
     input_schema: {
       type: "object",
       properties: {
@@ -114,7 +114,7 @@ export function createEditDefinition(options?: { operations?: EditOperations }):
               },
               target: {
                 type: "string",
-                description: "Target line reference e.g. '5#KX' (for insert_before/insert_after)",
+                description: "Target line reference e.g. '5#a3f' (for insert_before/insert_after)",
               },
               start: {
                 type: "string",
@@ -136,8 +136,8 @@ export function createEditDefinition(options?: { operations?: EditOperations }):
       },
       required: ["file_path", "edits"],
     },
-    async execute(input: unknown, context: ToolContext) {
-      const validated = validateEditInput(input as Record<string, unknown>);
+    async execute(input: Record<string, unknown>, context: ToolContext) {
+      const validated = validateEditInput(input);
       if (typeof validated === "string") {
         return { content: validated, isError: true };
       }
@@ -171,7 +171,13 @@ export function createEditDefinition(options?: { operations?: EditOperations }):
       });
 
       try {
-        await applyHashlineEdits(resolvedPath, strippedEdits, ops);
+        const result = await applyHashlineEdits(resolvedPath, strippedEdits, ops);
+        if (!result.changed) {
+          return {
+            content: "No changes applied — the file already contains the specified content. Verify you are editing the correct lines.",
+            isError: false,
+          };
+        }
       } catch (err) {
         if (err instanceof HashlineMismatchError) {
           return {

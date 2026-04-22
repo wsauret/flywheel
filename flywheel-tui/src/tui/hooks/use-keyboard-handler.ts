@@ -1,10 +1,3 @@
-/**
- * Shell Keyboard Handler — routes key events to the appropriate action.
- *
- * Extracted from FlywheelShell to keep the component focused on layout.
- * Pure function: takes all dependencies, returns a single handler.
- */
-
 import type { Accessor } from "solid-js"
 import { exitTUI } from "../exit.js"
 import type { ShellSignals } from "./shell-state.js"

@@ -51,4 +51,49 @@ describe("OpenTUIAdapter", () => {
     expect(userBlock).toBeDefined()
     expect((userBlock as Extract<AnyBlock, { kind: "userMessage" }>).pending).toBe(false)
   })
+
+  it("marks interrupted tool groups as paused instead of completed", async () => {
+    const bus = new EventBus()
+    const emit = createEmit(bus)
+    const patches: Array<Partial<WorkflowSessionEntry>> = []
+
+    adapter = new OpenTUIAdapter({
+      updateEntry: (patch) => patches.push(patch),
+    })
+    adapter.connect(bus)
+
+    emit("engine:output", {
+      workflowId: "wf-1",
+      stream: "stdout",
+      engineId: "claude",
+      data: JSON.stringify({
+        type: "assistant",
+        message: {
+          content: [
+            { type: "tool_use", id: "tool-1", name: "bash", input: { command: "sleep 10" } },
+          ],
+        },
+      }) + "\n",
+    })
+    await Promise.resolve()
+
+    emit("queue:failed", {
+      workflowId: "wf-1",
+      reason: "Interrupted — will resume from this step",
+      stepsCompleted: 0,
+      finalStatus: "paused",
+    })
+    await Promise.resolve()
+
+    const blockPatch = patches.filter((p) => p.outputBlocks !== undefined).pop()
+    expect(blockPatch).toBeDefined()
+
+    const blocks = blockPatch!.outputBlocks as AnyBlock[]
+    const group = blocks.find(
+      (b): b is Extract<AnyBlock, { kind: "toolGroup" }> => b.kind === "toolGroup",
+    )
+    expect(group).toBeDefined()
+    expect(group!.status).toBe("paused")
+    expect(group!.children[0]?.completed).toBeUndefined()
+  })
 })

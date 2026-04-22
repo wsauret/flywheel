@@ -5,11 +5,12 @@ import * as path from "node:path";
 
 import { bashDefinition, createBashDefinition } from "../src/orchestration/engines/providers/harness/tools/bash.js";
 import { writeHandoffDefinition, createHandoffDefinition } from "../src/orchestration/engines/providers/harness/tools/write-handoff.js";
-import { readDefinition, createReadDefinition, type ReadOperations } from "../src/orchestration/engines/providers/harness/tools/read.js";
+import { readDefinition } from "../src/orchestration/engines/providers/harness/tools/read.js";
 import { todoListDefinition, executeTodoList } from "../src/orchestration/engines/providers/harness/tools/todo-list.js";
 import { executeTool, getToolDefinitions } from "../src/orchestration/engines/providers/harness/tools/tool-dispatch.js";
 import { limitOutput } from "../src/orchestration/engines/providers/harness/context/truncation.js";
-import { computeLineHash, formatLineTag, formatHashLines } from "../src/orchestration/engines/providers/harness/tools/hashline.js";
+import { computeLineHash, formatLineTag, formatHashLines, escapeControlChars, stripHashlinePrefixes } from "../src/orchestration/engines/providers/harness/tools/hashline.js";
+import { createEditDefinition, type EditOperations } from "../src/orchestration/engines/providers/harness/tools/edit.js";
 import type { ToolContext, BashOperations, BunSubprocessLike, HandoffOperations } from "../src/orchestration/engines/providers/harness/tools/types.js";
 
 function makeContext(overrides?: Partial<ToolContext>): ToolContext {
@@ -152,11 +153,12 @@ describe("harness tools", () => {
   // --- hashline ---
 
   describe("hashline", () => {
-    it("produces stable 2-char hashes", () => {
+    it("produces stable 3-char hex hashes", () => {
       const hash1 = computeLineHash(1, "hello world");
       const hash2 = computeLineHash(1, "hello world");
       expect(hash1).toBe(hash2);
-      expect(hash1.length).toBe(2);
+      expect(hash1.length).toBe(3);
+      expect(hash1).toMatch(/^[0-9a-f]{3}$/);
     });
 
     it("uses index as seed for non-significant lines", () => {
@@ -165,23 +167,58 @@ describe("harness tools", () => {
       // may collide within the 256-entry hash space).
       const hashes = Array.from({ length: 20 }, (_, i) => computeLineHash(i + 1, "   "));
       const unique = new Set(hashes);
-      // With 20 draws from 256 buckets, a random distribution gives ~19 unique.
+      // With 20 draws from 4096 buckets, collisions are negligible.
       // We just need to confirm the seed actually varies the output.
       expect(unique.size).toBeGreaterThan(1);
     });
 
     it("formatLineTag produces LINENUM#HASH format", () => {
       const tag = formatLineTag(5, "const x = 1;");
-      expect(tag).toMatch(/^5#[A-Z]{2}$/);
+      expect(tag).toMatch(/^5#[0-9a-f]{3}$/);
     });
 
     it("formatHashLines prefixes every line", () => {
       const result = formatHashLines("line one\nline two\nline three");
       const lines = result.split("\n");
       expect(lines.length).toBe(3);
-      expect(lines[0]).toMatch(/^1#[A-Z]{2}:line one$/);
-      expect(lines[1]).toMatch(/^2#[A-Z]{2}:line two$/);
-      expect(lines[2]).toMatch(/^3#[A-Z]{2}:line three$/);
+      expect(lines[0]).toMatch(/^1#[0-9a-f]{3}:line one$/);
+      expect(lines[1]).toMatch(/^2#[0-9a-f]{3}:line two$/);
+      expect(lines[2]).toMatch(/^3#[0-9a-f]{3}:line three$/);
+    });
+
+    it("normalizes confusable characters before hashing", () => {
+      const hashEm = computeLineHash(1, "foo—bar");
+      const hashAscii = computeLineHash(1, "foo-bar");
+      expect(hashEm).toBe(hashAscii);
+
+      const hashSmart = computeLineHash(1, "“hello”");
+      const hashPlain = computeLineHash(1, "'hello'");
+      expect(hashSmart).toBe(hashPlain);
+
+      const hashNbsp = computeLineHash(1, "foo bar");
+      const hashSpace = computeLineHash(1, "foo bar");
+      expect(hashNbsp).toBe(hashSpace);
+    });
+
+    it("escapeControlChars replaces control characters", () => {
+      expect(escapeControlChars("hello\x00world")).toBe("hello\\u0000world");
+      expect(escapeControlChars("tab\there")).toBe("tab\there");
+      expect(escapeControlChars("normal text")).toBe("normal text");
+      expect(escapeControlChars("bell\x07here")).toBe("bell\\u0007here");
+    });
+
+    it("stripHashlinePrefixes handles diff + prefixes at 50% threshold", () => {
+      const below = "+added\nunchanged\nalso unchanged";
+      expect(stripHashlinePrefixes(below)).toBe(below);
+
+      const at = "+added\n+also added\nunchanged";
+      expect(stripHashlinePrefixes(at)).toBe("added\nalso added\nunchanged");
+
+      const all = "+line one\n+line two\n+line three";
+      expect(stripHashlinePrefixes(all)).toBe("line one\nline two\nline three");
+
+      const header = "++diff header\n+added line";
+      expect(stripHashlinePrefixes(header)).toBe("++diff header\nadded line");
     });
   });
 
@@ -195,7 +232,7 @@ describe("harness tools", () => {
       const ctx = makeContext({ cwd: tmpDir });
       const result = await readDefinition.execute({ file_path: filePath }, ctx);
       expect(result.isError).toBe(false);
-      expect(result.content).toMatch(/^1#[A-Z]{2}:first line/);
+      expect(result.content).toMatch(/^1#[0-9a-f]{3}:first line/);
       expect(result.content).toContain("second line");
       expect(result.content).toContain("third line");
     });
@@ -212,9 +249,9 @@ describe("harness tools", () => {
       );
       expect(result.isError).toBe(false);
       // offset=2 starts at line 3 (0-based offset, 1-indexed display)
-      expect(result.content).toMatch(/3#[A-Z]{2}:line 3/);
-      expect(result.content).toMatch(/4#[A-Z]{2}:line 4/);
-      expect(result.content).toMatch(/5#[A-Z]{2}:line 5/);
+      expect(result.content).toMatch(/3#[0-9a-f]{3}:line 3/);
+      expect(result.content).toMatch(/4#[0-9a-f]{3}:line 4/);
+      expect(result.content).toMatch(/5#[0-9a-f]{3}:line 5/);
       expect(result.content).not.toContain("line 2\n");
       expect(result.content).not.toContain(":line 6");
       expect(result.content).toContain("Starting from line 3");
@@ -320,22 +357,173 @@ describe("harness tools", () => {
       expect(result.content).toContain("Failed to read");
     });
 
-    it("accepts mock readFile operations", async () => {
-      const mockOps: ReadOperations = {
-        readFile: async () => ({
-          size: 20,
-          arrayBuffer: async () => new TextEncoder().encode("mock line 1\nmock line 2").buffer as ArrayBuffer,
-        }),
-        resizeImage: async () => null,
+    it("read with map: true includes structural map for a .ts file", async () => {
+      const filePath = path.join(tmpDir, "mapped.ts");
+      const tsContent = [
+        "export function greet(name: string): string {",
+        "  return `Hello, ${name}`;",
+        "}",
+        "",
+        "export class Calculator {",
+        "  add(a: number, b: number): number {",
+        "    return a + b;",
+        "  }",
+        "  subtract(a: number, b: number): number {",
+        "    return a - b;",
+        "  }",
+        "}",
+        "",
+        "interface Config {",
+        "  debug: boolean;",
+        "  port: number;",
+        "}",
+        "",
+        'type Status = "active" | "inactive";',
+        "",
+        "const DEFAULT_PORT = 3000;",
+      ].join("\n");
+      fs.writeFileSync(filePath, tsContent);
+
+      const ctx = makeContext({ cwd: tmpDir });
+      const result = await readDefinition.execute({ file_path: filePath, map: true }, ctx);
+      expect(result.isError).toBe(false);
+      expect(result.content).toContain("--- Structural Map (mapped.ts,");
+      expect(result.content).toContain("function greet:");
+      expect(result.content).toContain("class Calculator:");
+      expect(result.content).toContain("  method add:");
+    });
+
+    it("truncated read auto-appends structural map", async () => {
+      const filePath = path.join(tmpDir, "large.ts");
+      const lines = [
+        "export function topFunc(): void {",
+        ...Array.from({ length: 2998 }, (_, i) => `  const x${i} = ${i};`),
+        "}",
+      ];
+      fs.writeFileSync(filePath, lines.join("\n"));
+
+      const ctx = makeContext({ cwd: tmpDir });
+      const result = await readDefinition.execute({ file_path: filePath }, ctx);
+      expect(result.isError).toBe(false);
+      expect(result.content).toContain("more line");
+      expect(result.content).toContain("--- Structural Map (large.ts,");
+      expect(result.content).toContain("function topFunc:");
+    });
+
+    it("read with symbol returns only that function's lines", async () => {
+      const filePath = path.join(tmpDir, "sym.ts");
+      const tsContent = [
+        "const x = 1;",
+        "",
+        "export function greet(name: string): string {",
+        "  return `Hello, ${name}`;",
+        "}",
+        "",
+        "export function farewell(): string {",
+        '  return "Goodbye";',
+        "}",
+      ].join("\n");
+      fs.writeFileSync(filePath, tsContent);
+
+      const ctx = makeContext({ cwd: tmpDir });
+      const result = await readDefinition.execute({ file_path: filePath, symbol: "greet" }, ctx);
+      expect(result.isError).toBe(false);
+      expect(result.content).toContain("[Symbol: greet (function)");
+      expect(result.content).toContain("Hello");
+      expect(result.content).not.toContain("Goodbye");
+    });
+
+    it("read with symbol dot notation returns method", async () => {
+      const filePath = path.join(tmpDir, "cls.ts");
+      const tsContent = [
+        "export class Calculator {",
+        "  add(a: number, b: number): number {",
+        "    return a + b;",
+        "  }",
+        "  subtract(a: number, b: number): number {",
+        "    return a - b;",
+        "  }",
+        "}",
+      ].join("\n");
+      fs.writeFileSync(filePath, tsContent);
+
+      const ctx = makeContext({ cwd: tmpDir });
+      const result = await readDefinition.execute({ file_path: filePath, symbol: "Calculator.add" }, ctx);
+      expect(result.isError).toBe(false);
+      expect(result.content).toContain("[Symbol: add (method)");
+      expect(result.content).toContain("a + b");
+      expect(result.content).not.toContain("a - b");
+    });
+
+    it("read with nonexistent symbol falls back with available symbols", async () => {
+      const filePath = path.join(tmpDir, "avail.ts");
+      const tsContent = [
+        "export function greet(): string {",
+        '  return "Hi";',
+        "}",
+      ].join("\n");
+      fs.writeFileSync(filePath, tsContent);
+
+      const ctx = makeContext({ cwd: tmpDir });
+      const result = await readDefinition.execute({ file_path: filePath, symbol: "nonexistent" }, ctx);
+      expect(result.isError).toBe(false);
+      expect(result.content).toContain('symbol "nonexistent" not found');
+      expect(result.content).toContain("greet");
+      expect(result.content).toContain("Falling back to normal read");
+    });
+
+    it("read with symbol and offset returns error (mutually exclusive)", async () => {
+      const filePath = path.join(tmpDir, "excl.ts");
+      fs.writeFileSync(filePath, "const x = 1;");
+
+      const ctx = makeContext({ cwd: tmpDir });
+      const result = await readDefinition.execute({ file_path: filePath, symbol: "x", offset: 5 }, ctx);
+      expect(result.isError).toBe(true);
+      expect(result.content).toContain("mutually exclusive");
+    });
+
+    it("read with symbol and map returns error (mutually exclusive)", async () => {
+      const filePath = path.join(tmpDir, "excl2.ts");
+      fs.writeFileSync(filePath, "const x = 1;");
+
+      const ctx = makeContext({ cwd: tmpDir });
+      const result = await readDefinition.execute({ file_path: filePath, symbol: "x", map: true }, ctx);
+      expect(result.isError).toBe(true);
+      expect(result.content).toContain("mutually exclusive");
+    });
+
+  });
+
+  // --- edit ---
+
+  describe("edit", () => {
+    it("reports no-op when edit content matches existing", async () => {
+      const filePath = path.join(tmpDir, "noop.txt");
+      fs.writeFileSync(filePath, "line one\nline two\nline three");
+
+      const mockOps: EditOperations = {
+        readFile: (p) => Bun.file(p).text(),
+        writeFile: (p, content) => Bun.write(p, content).then(() => {}),
+        mkdir: (p) => fs.promises.mkdir(p, { recursive: true }).then(() => {}),
+        fileExists: (p) => fs.promises.access(p).then(() => true).catch(() => false),
       };
 
-      const def = createReadDefinition({ operations: mockOps });
-      const ctx = makeContext({ cwd: tmpDir });
-      const result = await def.execute({ file_path: "/mock/file.txt" }, ctx);
+      const editDef = createEditDefinition({ operations: mockOps });
+      const ctx = makeContext({ cwd: tmpDir, readFiles: new Set([filePath]) });
+
+      const hash2 = computeLineHash(2, "line two");
+      const result = await editDef.execute({
+        file_path: filePath,
+        edits: [{
+          op: "replace",
+          start: `2#${hash2}`,
+          end: `2#${hash2}`,
+          lines: ["line two"],
+        }],
+      }, ctx);
+
       expect(result.isError).toBe(false);
-      expect(result.content).toContain("mock line 1");
-      expect(result.content).toContain("mock line 2");
-      expect(result.content).toMatch(/^1#[A-Z]{2}:mock line 1/);
+      expect(result.content).toContain("No changes applied");
     });
   });
 

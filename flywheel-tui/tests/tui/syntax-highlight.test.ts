@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test"
 import { RGBA } from "@opentui/core"
-import { highlightCode, createHighlighter } from "@tui/adapters/syntax-highlight.js"
+import { createHighlighter } from "@tui/adapters/syntax-highlight.js"
 
 const mockTheme = {
   text: RGBA.fromHex("#cccccc"),
@@ -15,6 +15,17 @@ const mockTheme = {
   syntaxPunctuation: RGBA.fromHex("#abb2bf"),
 } as any
 
+// createHighlighter caches results — create fresh instances per call to avoid stale cache.
+function highlightCode(code: string, filetype: string | undefined, _theme: typeof mockTheme) {
+  return createHighlighter(mockTheme)(code, filetype)
+}
+
+function hasColoredSegment(code: string, filetype: string | undefined): boolean {
+  return highlightCode(code, filetype, mockTheme).some((line) =>
+    line.some((segment) => segment.color !== undefined),
+  )
+}
+
 describe("highlightCode", () => {
   it("returns one line per source line", () => {
     const result = highlightCode("const x = 1\nconst y = 2", "typescript", mockTheme)
@@ -25,6 +36,51 @@ describe("highlightCode", () => {
     const [[first]] = highlightCode("const x = 1", "typescript", mockTheme)
     expect(first!.color).toBeDefined()
     expect(first!.text).toBe("const")
+  })
+
+  it("highlights curated addon languages", () => {
+    const cases = [
+      { filetype: "dockerfile", code: "FROM bun:1\nRUN echo hi" },
+      { filetype: "powershell", code: "function Test { $value = 1 }" },
+      { filetype: "protobuf", code: 'syntax = "proto3";\nmessage Example {}' },
+      { filetype: "nix", code: "let x = 1; in x" },
+      { filetype: "dart", code: "class Greeter {}" },
+      { filetype: "elixir", code: "defmodule Example do\nend" },
+      { filetype: "erlang", code: "case Value of ok -> ok end." },
+      { filetype: "scala", code: "object Main extends App" },
+      { filetype: "clojure", code: "(def x 1)" },
+      { filetype: "groovy", code: "class Example {}" },
+      { filetype: "ocaml", code: "let x = 1" },
+      { filetype: "latex", code: "\\begin{document}" },
+    ]
+
+    for (const { code, filetype } of cases) {
+      expect(hasColoredSegment(code, filetype)).toBe(true)
+    }
+  })
+
+  it("resolves extended aliases case-insensitively", () => {
+    const cases = [
+      { filetype: "Dockerfile", code: "FROM bun:1" },
+      { filetype: "Containerfile", code: "FROM bun:1" },
+      { filetype: "PS1", code: "function Test { $value = 1 }" },
+      { filetype: "PROTO", code: 'syntax = "proto3";' },
+      { filetype: "EXS", code: "defmodule Example do\nend" },
+      { filetype: "ERL", code: "case Value of ok -> ok end." },
+      { filetype: "CLJS", code: "(def x 1)" },
+      { filetype: "GRADLE", code: "class Example {}" },
+      { filetype: "MLI", code: "let x = 1" },
+      { filetype: "TEX", code: "\\begin{document}" },
+      { filetype: "VUE", code: "const value = 1" },
+      { filetype: "Svelte", code: "const value = 1" },
+      { filetype: "tsx", code: "const x = 1" },
+      { filetype: "jsx", code: "const x = 1" },
+      { filetype: "zsh", code: "echo hi" },
+    ]
+
+    for (const { code, filetype } of cases) {
+      expect(hasColoredSegment(code, filetype)).toBe(true)
+    }
   })
 
   it("falls back to plain text for unknown languages", () => {
@@ -40,12 +96,6 @@ describe("highlightCode", () => {
 
   it("handles empty content", () => {
     expect(highlightCode("", "typescript", mockTheme)).toHaveLength(1)
-  })
-
-  it("resolves tsx/jsx/zsh aliases", () => {
-    expect(highlightCode("const x = 1", "tsx", mockTheme)[0]![0]!.color).toBeDefined()
-    expect(highlightCode("const x = 1", "jsx", mockTheme)[0]![0]!.color).toBeDefined()
-    expect(highlightCode("echo hi", "zsh", mockTheme)[0]![0]!.color).toBeDefined()
   })
 
   it("colors multi-line tokens across line breaks", () => {

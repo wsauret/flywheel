@@ -4,6 +4,7 @@ import { CODEX_API_BASE } from "../../../../../infra/auth/openai-auth-types.js";
 import { isTokenExpired, saveStoredTokens } from "../../../../../infra/auth/openai-token-store.js";
 import { refreshAccessToken } from "../../../../auth/openai-oauth.js";
 import { Log } from "../../../../../infra/log.js";
+import { CLIENT_TIMEOUT_MS } from "./retry.js";
 
 const log = Log.create({ service: "llm-openai-chatgpt" });
 
@@ -27,7 +28,11 @@ export function createChatGPTClient(auth: ChatGPTAuth): OpenAI {
     if (refreshPromise) return refreshPromise;
     refreshPromise = (async () => {
       try {
-        return await refreshAccessToken(current.refreshToken);
+        const result = await Promise.race([
+          refreshAccessToken(current.refreshToken),
+          Bun.sleep(30_000).then(() => { throw new Error("Token refresh timed out after 30s"); }),
+        ]);
+        return result;
       } finally {
         refreshPromise = null;
       }
@@ -38,6 +43,7 @@ export function createChatGPTClient(auth: ChatGPTAuth): OpenAI {
   return new OpenAI({
     baseURL: CODEX_API_BASE,
     apiKey: "chatgpt-oauth",
+    timeout: CLIENT_TIMEOUT_MS,
     defaultHeaders: staticHeaders,
     fetch: async (url: RequestInfo | URL, init?: RequestInit) => {
       if (isTokenExpired(current)) {

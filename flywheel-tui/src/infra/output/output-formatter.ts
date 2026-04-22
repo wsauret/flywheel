@@ -12,7 +12,6 @@ export function getToolDetail(
   const meta = getToolDisplay(name);
   if (meta?.getDetail) return meta.getDetail(input, cwd);
 
-  // Fallback for unknown tools (MCP, etc.): subject, description, first string value
   const subject = input.subject as string | undefined;
   if (subject) return singleLine(subject);
   const desc = input.description as string | undefined;
@@ -27,15 +26,6 @@ export function getToolDetail(
 
 const CONTEXT_LINES = 3;
 
-/**
- * Generate a unified diff from Edit tool's old_string → new_string.
- * Reads the file to produce context lines around the change.
- * Falls back to a minimal no-context diff if the file can't be read.
- *
- * Note: uses fs.readFileSync — a pragmatic boundary deviation. The diff
- * needs file content for context lines; threading a readFile callback
- * through 3 layers would be worse than the I/O here.
- */
 function createEditDiff(filePath: string, oldStr: string, newStr: string, cwd: string = process.cwd()): string {
   try {
     const resolved = path.isAbsolute(filePath) ? filePath : path.resolve(cwd, filePath);
@@ -79,10 +69,6 @@ function createMinimalDiff(filePath: string, oldContent: string, newContent: str
   return result;
 }
 
-/**
- * Extract the 1-based line number from a hashline reference like "5#KX".
- * Ignores the hash — validation is the edit tool's responsibility.
- */
 function parseHashlineRef(tag: string): number | null {
   const match = tag.match(/(\d+)/);
   if (!match) return null;
@@ -90,13 +76,6 @@ function parseHashlineRef(tag: string): number | null {
   return n >= 1 ? n : null;
 }
 
-/**
- * Simulate hashline-addressed edits on a copy of the file to produce a unified diff.
- *
- * The harness edit tool uses `edits` (insert_before/after, replace, delete,
- * replace_all, create) instead of old_string/new_string. We read the file,
- * replay the edits in-memory (bottom-up, same order as hashline.ts), and diff.
- */
 function createHashlineEditDiff(
   filePath: string,
   edits: Array<Record<string, unknown>>,
@@ -135,7 +114,6 @@ function createHashlineEditDiff(
     const oldContent = fs.readFileSync(resolved, "utf-8");
     const fileLines = [...oldContent.split("\n")];
 
-    // Sort edits bottom-up so line-number shifts don't cascade
     const sorted = edits
       .map((edit, idx) => {
         const op = edit.op as string;
@@ -191,22 +169,14 @@ function createHashlineEditDiff(
   }
 }
 
-/** Max lines for capturing Write diffs (full-file content can be huge). */
 const MAX_WRITE_DIFF_LINES = 200;
 
-/** Result of extracting display info from a tool_use input block. */
 type ToolDiffInfo = {
   diff?: string;
   content?: string;
   filetype: string | undefined;
 };
 
-/**
- * Extract diff/content info from a tool_use input block.
- *
- * - Edit → unified diff (red/green rendering)
- * - Write → raw content (plain text rendering)
- */
 export function extractToolDiff(
   name: string,
   input: Record<string, unknown>,
@@ -216,14 +186,12 @@ export function extractToolDiff(
   const lower = canonicalize(name);
 
   if (lower === "edit") {
-    // Claude Code format: old_string / new_string
     const oldStr = input.old_string as string | undefined;
     const newStr = input.new_string as string | undefined;
     if (oldStr != null && newStr != null) {
       return { diff: createEditDiff(fp, oldStr, newStr), filetype: ft };
     }
 
-    // Harness format: hashline-addressed edits array
     const edits = input.edits as Array<Record<string, unknown>> | undefined;
     if (Array.isArray(edits) && edits.length > 0) {
       return createHashlineEditDiff(fp, edits, ft);
@@ -240,11 +208,8 @@ export function extractToolDiff(
     }
   }
 
-
   return undefined;
 }
-
-// ── Tool error laundering ──────────────────────────────────────────
 
 const RE_INPUT_VALIDATION = /^<tool_use_error>InputValidationError:\s*(.+?)<\/tool_use_error>$/s;
 const RE_TOOL_USE_ERROR = /^<tool_use_error>(.+?)<\/tool_use_error>$/s;
@@ -257,17 +222,14 @@ export function extractErrorText(content: string | unknown[] | undefined): strin
   if (typeof content === "string") return content;
   if (Array.isArray(content)) {
     for (const item of content) {
-      if (
-        typeof item === "object" &&
-        item !== null &&
-        "text" in item &&
-        typeof (item as { text: unknown }).text === "string"
-      ) {
-        return (item as { text: string }).text;
-      }
+      if (hasTextString(item)) return item.text;
     }
   }
   return undefined;
+}
+
+function hasTextString(item: unknown): item is { text: string } {
+  return typeof item === "object" && item !== null && "text" in item && typeof (item as { text: string }).text === "string";
 }
 
 const DETAIL_MAX_LEN = 60;
@@ -302,12 +264,21 @@ export function launderToolError(rawError: string, toolName?: string): string {
   return `${label} failed`;
 }
 
-// ── Filetype mapping ───────────────────────────────────────────────
-
 function getFiletype(filePath: string): string | undefined {
   if (!filePath) return undefined;
-  const ext = filePath.split(".").pop()?.toLowerCase();
-  if (!ext) return undefined;
+
+  const baseName = path.basename(filePath).toLowerCase();
+  const specialNames: Record<string, string> = {
+    containerfile: "dockerfile",
+    dockerfile: "dockerfile",
+    makefile: "makefile",
+  };
+  const special = specialNames[baseName];
+  if (special) return special;
+
+  const ext = baseName.split(".").pop()?.toLowerCase();
+  if (!ext || ext === baseName) return undefined;
+
   const map: Record<string, string> = {
     ts: "typescript", tsx: "tsx", js: "javascript", jsx: "jsx",
     py: "python", rs: "rust", go: "go", rb: "ruby",
@@ -317,6 +288,13 @@ function getFiletype(filePath: string): string | undefined {
     c: "c", cpp: "cpp", h: "c", hpp: "cpp",
     java: "java", kt: "kotlin", swift: "swift",
     lua: "lua", vim: "vim", xml: "xml", graphql: "graphql",
+    dockerfile: "dockerfile", containerfile: "dockerfile",
+    ps1: "powershell", psm1: "powershell", psd1: "powershell",
+    proto: "protobuf", nix: "nix", dart: "dart",
+    ex: "elixir", exs: "elixir", erl: "erlang", hrl: "erlang",
+    scala: "scala", clj: "clojure", cljs: "clojure", cljc: "clojure",
+    gradle: "groovy", ml: "ocaml", mli: "ocaml", tex: "latex",
+    vue: "vue", svelte: "svelte",
   };
   return map[ext] ?? ext;
 }

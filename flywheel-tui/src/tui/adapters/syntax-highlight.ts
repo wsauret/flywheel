@@ -1,11 +1,54 @@
 import hljs from "highlight.js/lib/common"
+import clojure from "highlight.js/lib/languages/clojure"
+import dart from "highlight.js/lib/languages/dart"
+import dockerfile from "highlight.js/lib/languages/dockerfile"
+import elixir from "highlight.js/lib/languages/elixir"
+import erlang from "highlight.js/lib/languages/erlang"
+import groovy from "highlight.js/lib/languages/groovy"
+import latex from "highlight.js/lib/languages/latex"
+import nix from "highlight.js/lib/languages/nix"
+import ocaml from "highlight.js/lib/languages/ocaml"
+import powershell from "highlight.js/lib/languages/powershell"
+import protobuf from "highlight.js/lib/languages/protobuf"
+import scala from "highlight.js/lib/languages/scala"
 import type { RGBA } from "@opentui/core"
 import type { Theme } from "@tui/shared/context/theme/resolve.js"
+
+hljs.registerLanguage("clojure", clojure)
+hljs.registerLanguage("dart", dart)
+hljs.registerLanguage("dockerfile", dockerfile)
+hljs.registerLanguage("elixir", elixir)
+hljs.registerLanguage("erlang", erlang)
+hljs.registerLanguage("groovy", groovy)
+hljs.registerLanguage("latex", latex)
+hljs.registerLanguage("nix", nix)
+hljs.registerLanguage("ocaml", ocaml)
+hljs.registerLanguage("powershell", powershell)
+hljs.registerLanguage("protobuf", protobuf)
+hljs.registerLanguage("scala", scala)
 
 const LANG_ALIASES: Record<string, string> = {
   tsx: "typescript",
   jsx: "javascript",
   zsh: "bash",
+  containerfile: "dockerfile",
+  ps1: "powershell",
+  psm1: "powershell",
+  psd1: "powershell",
+  proto: "protobuf",
+  ex: "elixir",
+  exs: "elixir",
+  erl: "erlang",
+  hrl: "erlang",
+  clj: "clojure",
+  cljs: "clojure",
+  cljc: "clojure",
+  gradle: "groovy",
+  tex: "latex",
+  ml: "ocaml",
+  mli: "ocaml",
+  vue: "javascript",
+  svelte: "javascript",
 }
 
 const SCOPE_COLORS: Record<string, keyof Theme> = {
@@ -52,8 +95,8 @@ function decodeEntities(text: string): string {
   return text.replace(/&[#\w]+;/g, (m) => ENTITIES[m] ?? m)
 }
 
-export type Segment = { text: string; color?: RGBA }
-export type HighlightedLine = Segment[]
+type Segment = { text: string; color?: RGBA }
+type HighlightedLine = Segment[]
 
 function resolveColor(classStr: string, theme: Theme): RGBA | undefined {
   const key = SCOPE_COLORS[classStr]
@@ -62,11 +105,7 @@ function resolveColor(classStr: string, theme: Theme): RGBA | undefined {
   return first ? (SCOPE_COLORS[first] ? theme[SCOPE_COLORS[first]] as RGBA : undefined) : undefined
 }
 
-/**
- * Parse highlight.js HTML into per-line segment arrays.
- * Tracks color state across line breaks so multi-line tokens
- * (comments, template strings) stay colored.
- */
+// Tracks color state across line breaks so multi-line tokens stay colored.
 function parseToLines(html: string, theme: Theme): HighlightedLine[] {
   const lines: HighlightedLine[] = [[]]
   const colorStack: (RGBA | undefined)[] = []
@@ -104,8 +143,9 @@ function parseToLines(html: string, theme: Theme): HighlightedLine[] {
 }
 
 function resolveLang(filetype: string | undefined): string | undefined {
-  if (!filetype) return undefined
-  const lang = LANG_ALIASES[filetype] ?? filetype
+  const normalized = filetype?.trim().toLowerCase()
+  if (!normalized) return undefined
+  const lang = LANG_ALIASES[normalized] ?? normalized
   return hljs.getLanguage(lang) ? lang : undefined
 }
 
@@ -113,7 +153,7 @@ function toPlainLines(code: string): HighlightedLine[] {
   return code.split("\n").map((line) => [{ text: line }])
 }
 
-export function highlightCode(code: string, filetype: string | undefined, theme: Theme): HighlightedLine[] {
+function highlightCode(code: string, filetype: string | undefined, theme: Theme): HighlightedLine[] {
   const lang = resolveLang(filetype)
   if (!lang) return toPlainLines(code)
   try {
@@ -123,12 +163,6 @@ export function highlightCode(code: string, filetype: string | undefined, theme:
   }
 }
 
-/**
- * Streaming-aware highlighter. Caches the previous result so identical
- * content returns the same array reference (SolidJS <For> skips
- * re-rendering). During streaming, each content change triggers a full
- * re-highlight — correct for multi-line tokens, fast at our 200-line cap.
- */
 export function createHighlighter(theme: Theme): (code: string, filetype: string | undefined) => HighlightedLine[] {
   let prevCode: string | undefined
   let prevFiletype: string | undefined

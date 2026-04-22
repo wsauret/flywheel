@@ -1,12 +1,3 @@
-/**
- * StepContext — cumulative accumulator that grows as steps complete
- * within a queue execution.
- *
- * After each step, decisions, warnings, artifacts, issues, and skill
- * feedback are accumulated into the context. The dispatcher for step N
- * receives the cumulative context from steps 1 through N-1.
- */
-
 import { z } from "zod";
 
 const StepDecisionsSchema = z.object({

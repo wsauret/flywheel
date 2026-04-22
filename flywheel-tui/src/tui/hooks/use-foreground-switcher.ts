@@ -1,9 +1,3 @@
-/**
- * Foreground Switcher — loads a session into the store and makes it the
- * active foreground session. Handles generation-based staleness prevention
- * so rapid switches don't clobber each other.
- */
-
 import { batch } from "solid-js"
 import type { Accessor } from "solid-js"
 import { loadSessionOutput } from "../../orchestration/session-actions.js"

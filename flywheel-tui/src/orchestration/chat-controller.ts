@@ -9,7 +9,7 @@ import type { SessionManager } from "./session/manager.js"
 import type { AnyBlock } from "../infra/output-blocks.js"
 import type { RunnerDoneResult, RunnerErrorResult } from "./session/types.js"
 
-export interface ChatControllerDeps {
+interface ChatControllerDeps {
   sessionStore: SessionStore
   manager: SessionManager
   projectCwd: string
@@ -26,7 +26,7 @@ interface ResumeChatResult {
   priorBlocks: AnyBlock[]
 }
 
-export interface ChatController {
+interface ChatController {
   startChat(initialMessage?: string): Promise<StartChatResult | null>
   resumeChat(sessionId: string): Promise<ResumeChatResult | null>
   endChat(foregroundId: string | undefined): Promise<boolean>
@@ -48,13 +48,7 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
   const { sessionStore, manager, projectCwd } = deps
 
   let startup: StartupState = { phase: "idle" }
-  // Why here (not in the TUI): the controller is the only entity that knows
-  // whether this is the first chat — the session manager lists historical
-  // sessions, but new-process-first-chat is controller-local knowledge.
   let isFirstChat = true
-
-  // Tracks sessions started with no initial message so they can be silently
-  // deleted rather than persisted as "paused" stubs. Not a state — a policy.
   const emptyChats = new Set<string>()
 
   function finalizeChat(id: string): void {
@@ -127,8 +121,8 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
       }
 
       return { sessionId }
-    } catch {
-      // Caller handles null return — no additional recovery needed
+    } catch (err) {
+      log.warn("launchChat failed", { sessionId, error: extractErrorMessage(err) })
       startup = { phase: "idle" }
       return null
     }

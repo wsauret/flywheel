@@ -21,9 +21,6 @@ import { randomUUID } from "crypto";
 import {
   createSprintHook,
   isStuck,
-  normalizeFeedback,
-  recordIteration,
-  buildRetryStep,
 } from "../src/workflows/queue/steps/sprint/hooks";
 import { SPRINT_HINT } from "../src/workflows/queue/steps/sprint/types";
 import type { SprintConfig } from "../src/workflows/queue/steps/sprint/types";
@@ -73,39 +70,6 @@ function makeQueueWithStep(step: Step): Queue {
 // ---------------------------------------------------------------------------
 // normalizeFeedback
 // ---------------------------------------------------------------------------
-
-describe("normalizeFeedback", () => {
-  test("strips timestamps", () => {
-    const raw = "Error at 2026-04-07T12:34:56.789 in module";
-    expect(normalizeFeedback(raw)).toBe("Error at in module");
-  });
-
-  test("strips line numbers", () => {
-    const raw = "TypeError in src/foo.ts:42:10 — bad type";
-    expect(normalizeFeedback(raw)).toBe("TypeError in src/foo.ts — bad type");
-  });
-
-  test("strips durations", () => {
-    const raw = "Test suite ran in 1234ms, 3 failed after 2.5 seconds";
-    expect(normalizeFeedback(raw)).toBe("Test suite ran in , 3 failed after");
-  });
-
-  test("strips ANSI codes", () => {
-    const raw = "\x1b[31mError\x1b[0m: something failed";
-    expect(normalizeFeedback(raw)).toBe("Error: something failed");
-  });
-
-  test("collapses whitespace", () => {
-    const raw = "Error   in   module   \n  after   test";
-    expect(normalizeFeedback(raw)).toBe("Error in module after test");
-  });
-
-  test("makes identical failures match after normalization", () => {
-    const a = "Test failed at 2026-04-01T10:00:00 in src/foo.ts:10:5 (took 100ms)";
-    const b = "Test failed at 2026-04-02T11:30:00 in src/foo.ts:12:3 (took 250ms)";
-    expect(normalizeFeedback(a)).toBe(normalizeFeedback(b));
-  });
-});
 
 // ---------------------------------------------------------------------------
 // isStuck
@@ -173,113 +137,6 @@ describe("isStuck", () => {
         { iteration: 2, workerSummary: "b", evalFeedback: "tests fail" },
       ]),
     ).toBe(false);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// recordIteration
-// ---------------------------------------------------------------------------
-
-describe("recordIteration", () => {
-  test("extracts summary from handoffData", () => {
-    const record = recordIteration({ summary: "Fixed the auth bug" }, "completed", 1);
-    expect(record.workerSummary).toBe("Fixed the auth bug");
-    expect(record.iteration).toBe(1);
-    expect(record.nativeCheckPassed).toBe(true);
-  });
-
-  test("uses default summary when handoffData is null", () => {
-    const record = recordIteration(null, "failed", 3);
-    expect(record.workerSummary).toBe("Iteration 3");
-    expect(record.evalFeedback).toBeUndefined();
-    expect(record.nativeCheckPassed).toBe(false);
-  });
-
-  test("extracts eval_feedback field", () => {
-    const record = recordIteration(
-      { summary: "work done", eval_feedback: "tests still fail" },
-      "failed",
-      2,
-    );
-    expect(record.evalFeedback).toBe("tests still fail");
-  });
-
-  test("falls back to feedback field", () => {
-    const record = recordIteration(
-      { summary: "work done", feedback: "need more work" },
-      "failed",
-      2,
-    );
-    expect(record.evalFeedback).toBe("need more work");
-  });
-
-  test("falls back to verification field", () => {
-    const record = recordIteration(
-      { summary: "work done", verification: "check failed" },
-      "failed",
-      2,
-    );
-    expect(record.evalFeedback).toBe("check failed");
-  });
-
-  test("sets workerCrashed true when failed with null handoffData", () => {
-    const record = recordIteration(null, "failed", 1);
-    expect(record.workerCrashed).toBe(true);
-  });
-
-  test("sets workerCrashed false when failed with handoffData present", () => {
-    const record = recordIteration({ summary: "oops" }, "failed", 1);
-    expect(record.workerCrashed).toBe(false);
-  });
-
-  test("sets workerCrashed false when completed", () => {
-    const record = recordIteration({ summary: "done" }, "completed", 1);
-    expect(record.workerCrashed).toBe(false);
-  });
-
-  test("sets workerCrashed false when completed with null handoffData", () => {
-    const record = recordIteration(null, "completed", 1);
-    expect(record.workerCrashed).toBe(false);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// buildRetryStep
-// ---------------------------------------------------------------------------
-
-describe("buildRetryStep", () => {
-  test("creates step with SPRINT_HINT", () => {
-    const original = makeSprintStep();
-    const step = buildRetryStep(original, [], 2, 5);
-    expect(step.dispatcherHint).toBe(SPRINT_HINT);
-  });
-
-  test("builds sprint criteria (no history when empty)", () => {
-    const original = makeSprintStep({ evaluationCriteria: "All tests pass" });
-    const step = buildRetryStep(original, [], 2, 5);
-    // With empty history, gets the static sprint criteria prefix
-    expect(step.evaluationCriteria).toContain("Sprint Mode: Evaluation Criteria");
-    expect(step.evaluationCriteria).not.toContain("Prior Iteration History");
-  });
-
-  test("includes iteration count in title", () => {
-    const step = buildRetryStep(makeSprintStep(), [], 3, 5);
-    expect(step.title).toContain("iteration 3");
-  });
-
-  test("includes prior feedback in description", () => {
-    const history = [
-      { iteration: 1, workerSummary: "fixed auth", evalFeedback: "tests still fail" },
-    ];
-    const step = buildRetryStep(makeSprintStep(), history, 2, 5);
-    expect(step.description).toContain("tests still fail");
-    expect(step.description).toContain("2/5");
-  });
-
-  test("step is pending work type", () => {
-    const step = buildRetryStep(makeSprintStep(), [], 2, 5);
-    expect(step.type).toBe("work");
-    expect(step.status).toBe("pending");
   });
 });
 

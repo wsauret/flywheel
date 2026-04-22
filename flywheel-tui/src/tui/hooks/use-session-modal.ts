@@ -124,7 +124,6 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
 
   async function handleSessionDelete(sessionId: string): Promise<void> {
     try {
-      // Stop the runner and remove from the reactive store (if live)
       await services.sessionStore.remove(sessionId)
       deps.actionDeps.manager.delete(sessionId)
       setModalRefreshTrigger((n) => n + 1)

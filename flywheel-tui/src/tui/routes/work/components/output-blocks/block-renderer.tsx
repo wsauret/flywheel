@@ -1,11 +1,4 @@
 /** @jsxImportSource @opentui/solid */
-/**
- * BlockRenderer Component
- *
- * Switch component that renders the correct block type based on `block.kind`.
- * Imports components directly — no barrel file to avoid circular imports.
- */
-
 import { Switch, Match } from "solid-js"
 import type { AnyBlock } from "@infra/output-blocks"
 import { TextBlock } from "./text-block.js"

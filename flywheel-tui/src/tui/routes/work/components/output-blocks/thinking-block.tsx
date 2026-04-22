@@ -1,18 +1,4 @@
 /** @jsxImportSource @opentui/solid */
-/**
- * ThinkingBlock Component
- *
- * Renders reasoning/thinking output with a left border accent.
- *
- * Collapsed (default): shows the latest 3 lines of thinking, updated live
- * as content streams in. Click to expand.
- *
- * Expanded: shows the full thinking history. Click to collapse back.
- *
- * Uses CollapsibleBox for the full-content section to keep the container
- * stable in the layout tree (no flicker on toggle).
- */
-
 import { createSignal, createMemo, createEffect, onCleanup } from "solid-js"
 import { StyledText, fg as stFg, bold as stBold, italic as stItalic, type TextChunk } from "@opentui/core"
 import type { TextRenderable } from "@opentui/core"

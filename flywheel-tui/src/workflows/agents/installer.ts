@@ -1,17 +1,3 @@
-// Agent Installer — syncs persona + skill files to Claude Code discovery paths
-//
-// Claude Code discovers agents and skills from:
-//
-//   ~/.claude/agents/fly/*.md             (agents)
-//   ~/.claude/skills/<name>/SKILL.md      (skills)
-//   ~/.claude/skills/<name>/references/   (skill references, optional)
-//
-// Sources (tried in order):
-//   1. Filesystem — reads .md files from the repo source tree (dev mode)
-//   2. Generated manifest — inlined at build time (compiled binary / npm package)
-//
-// Idempotent: overwrites files that changed, skips identical ones.
-
 // fs/promises used intentionally — Bun has no readdir equivalent.
 import { mkdir, readdir, readFile, rm, writeFile } from "fs/promises";
 import { join } from "path";
@@ -28,7 +14,6 @@ interface InstallResult {
   errors: string[];
 }
 
-// --- Source resolution ---
 
 interface AgentSources {
   agents: Record<string, string>;
@@ -90,7 +75,6 @@ async function loadSources(): Promise<AgentSources> {
   return { agents: manifestAgents, skills: manifestSkills };
 }
 
-// --- Installation ---
 
 async function writeIfChanged(
   destPath: string,
@@ -166,7 +150,6 @@ async function installSkillFiles(
       result.errors.push(`failed to install skill ${skillName}/SKILL.md: ${errorMessage(err)}`);
     }
 
-    // Clean up stale references dir, then re-create if source has references
     const refsDest = join(skillDest, "references");
     try {
       await rm(refsDest, { recursive: true, force: true });

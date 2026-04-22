@@ -32,7 +32,7 @@ async function main(): Promise<void> {
   await Log.init({
     dir,
     print: process.argv.includes("--print-logs"),
-    level: process.env.FLYWHEEL_LOG_LEVEL as Log.Level | undefined,
+    level: process.env.FLYWHEEL_LOG_LEVEL && Log.isLevel(process.env.FLYWHEEL_LOG_LEVEL) ? process.env.FLYWHEEL_LOG_LEVEL : undefined,
   })
 
   installAgents().catch((err) => {

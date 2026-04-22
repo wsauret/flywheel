@@ -10,8 +10,8 @@ import type {
   StepExecutorOptions,
   StepExecutorResult,
   StepExecutor,
-  EvalResult,
 } from "./executor-types.js";
+import type { EvalResult } from "./step-dispatcher-types.js";
 import {
   transitionStep,
   advanceCursor,
@@ -85,7 +85,7 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
         const reason = "Shutdown requested";
         queue.status = "paused";
         await persistQueue();
-        emit("queue:failed", { workflowId, reason, stepsCompleted });
+        emit("queue:failed", { workflowId, reason, stepsCompleted, finalStatus: "paused" });
         return {
           completed: false,
           stepsCompleted,
@@ -118,7 +118,12 @@ export function createStepExecutor(options: StepExecutorOptions): StepExecutor {
         const failedReason = wasAborted
           ? "Interrupted — will resume from this step"
           : `Step "${step.title}" failed`;
-        emit("queue:failed", { workflowId, reason: failedReason, stepsCompleted });
+        emit("queue:failed", {
+          workflowId,
+          reason: failedReason,
+          stepsCompleted,
+          finalStatus: wasAborted ? "paused" : "failed",
+        });
         return {
           completed: false,
           stepsCompleted,

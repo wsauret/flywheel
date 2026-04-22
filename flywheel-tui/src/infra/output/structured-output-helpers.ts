@@ -1,16 +1,7 @@
-/**
- * Helper functions for StructuredOutputBuilder.
- *
- * Extracted for SRP: the builder owns block accumulation and dirty tracking;
- * these helpers own the pinned-zone insertion algorithm and index maintenance.
- */
-
 import type { AnyBlock, ToolEntry, ToolGroupBlock } from "../output-blocks.js";
 
-/**
- * Index where new content should be inserted — before the pinned zone.
- * Pinned zone (tail of the array): [...pending user messages, todo list].
- */
+// Pinned zone (tail of the array): [...pending user messages, todo list].
+// New content inserts before it.
 export function contentInsertionIndex(blocks: AnyBlock[]): number {
   let idx = blocks.length;
   while (idx > 0) {
@@ -57,7 +48,6 @@ export function findTodoIndex(blocks: AnyBlock[]): number {
   return -1;
 }
 
-/** Returns the child index of the appended tool, or -1 if the agent was not found. */
 export function appendToolToAgentChildren(
   blocks: AnyBlock[],
   agentIndexById: Map<string, number>,

@@ -7,7 +7,7 @@
  */
 
 import { Log } from "../../../../../infra/log.js";
-import { ContextLengthExceededError, OutputLengthExceededError } from "./types.js";
+import { ContextLengthExceededError, OutputLengthExceededError, RetryableStreamError } from "./types.js";
 import type { StreamEvent } from "./types.js";
 
 const log = Log.create({ service: "llm-retry" });
@@ -15,6 +15,8 @@ const log = Log.create({ service: "llm-retry" });
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 1_000;
 const MAX_DELAY_MS = 30_000;
+
+export const CLIENT_TIMEOUT_MS = 60_000;
 
 function hasStatus(e: unknown): e is { status: number } {
   return (
@@ -37,6 +39,7 @@ function hasHeaders(e: unknown): e is { headers: { get(name: string): string | n
 }
 
 export function isNonRetryable(err: unknown): boolean {
+  if (err instanceof RetryableStreamError) return false;
   if (err instanceof ContextLengthExceededError) return true;
   if (err instanceof OutputLengthExceededError) return true;
 
@@ -88,6 +91,31 @@ export async function withRetry<T>(fn: () => Promise<T>, opts?: string | RetryOp
     }
   }
   throw new Error("Unreachable");
+}
+
+interface IdleWatchdog {
+  readonly timedOut: boolean;
+  reset(): void;
+  cleanup(): void;
+}
+
+export function createIdleWatchdog(timeoutMs: number, onTimeout: () => void): IdleWatchdog {
+  let _timedOut = false;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  return {
+    get timedOut() { return _timedOut; },
+    reset() {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        _timedOut = true;
+        onTimeout();
+      }, timeoutMs);
+    },
+    cleanup() {
+      if (timer) clearTimeout(timer);
+    },
+  };
 }
 
 export async function* withRetryStream(

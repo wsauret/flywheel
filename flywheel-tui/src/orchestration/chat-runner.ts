@@ -1,4 +1,6 @@
-import { createChatSession, type ChatSession, type ChatCallbacks, type ChatSessionDeps } from "./chat-session.js"
+import { createChatSession, type ChatSession, type ChatSessionDeps } from "./chat-session.js"
+import type { ChatCallbacks } from "./chat-types.js"
+import type { ChatRunner } from "./chat-runner-types.js"
 import { createSessionInfra } from "./session/create-session-infra.js"
 import { createOutputPersistence } from "./session/output-persistence.js"
 import { updateSession } from "./session/persistence.js"
@@ -35,16 +37,6 @@ interface ChatRunnerDeps {
   engineSessionId?: string
 }
 
-export interface ChatRunner {
-  readonly sessionId: string
-  abort(): void
-  dispose(): Promise<void>
-  injectMessage(text: string): boolean
-  sendToolResult(toolUseId: string, content: string, isError?: boolean): void
-  readonly chatSession: ChatSession
-  readonly initialBlocks: readonly AnyBlock[]
-}
-
 export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner> {
   const { sessionId, projectCwd, updateState, updateEntry, initialMessage, priorBlocks } = deps
 
@@ -69,9 +61,6 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
 
   let disposed = false
   let firstMessageSent = priorBlocks != null && priorBlocks.length > 0
-  // Why a local guard: onFlush fires on explicit flush calls.
-  // Without this, updateSession would write the same engineSessionId to disk
-  // repeatedly. The guard skips the disk write when the value hasn't changed.
   let persistedEngineSessionId: string | null = deps.engineSessionId ?? null
 
   let initialBlocks: AnyBlock[] = []
@@ -79,8 +68,6 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     initialBlocks = buildChatWelcomeBlocks(projectCwd)
   }
 
-  // Cast: OutputSession writes Partial<SessionEntryBase> (generic), but
-  // the store entry is ChatSessionEntry. Safe because we're always in chat mode.
   const castUpdateEntry = (patch: Partial<SessionEntryBase>) => {
     updateEntry(patch as Partial<ChatSessionEntry>)
   }
@@ -105,8 +92,6 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     throw new Error(`Model configuration errors:\n${details}`)
   }
 
-  // AskUserQuestion bridge — only wired for the Claude engine since the hook
-  // mechanism lives inside Claude's CLI. Other engines get no server.
   let askHookServer: AskHookServer | null = null
   if (engine.metadata.id === "claude") {
     const socketPath = join(tmpdir(), `flywheel-ask-${sessionId}.sock`)
@@ -149,7 +134,6 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
   function injectMessage(text: string): boolean {
     chatSession.send(text)
 
-    // Auto-name the session from the first user message
     if (!firstMessageSent) {
       firstMessageSent = true
       generateSessionTitle(
@@ -169,18 +153,12 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     if (disposed) return
     disposed = true
 
-    // 1. End the chat session FIRST (signal the engine runner to stop).
-    //    Must happen before resource disposal — the runner may still write
-    //    to budgetTracker/transcriptWriter while it's shutting down.
     chatSession.end()
 
-    // 2. Close the ask-hook server — any pending hooks get cancel replies so
-    //    Claude's permission machinery doesn't hang waiting for stdout.
     if (askHookServer) {
       try { await askHookServer.close() } catch { /* best-effort */ }
     }
 
-    // 3. Unified resource disposal (finalize → flush → dispose)
     const resources = {
       budgetTracker: infra.budgetTracker,
       traceWriter: infra.traceWriter,

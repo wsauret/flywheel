@@ -1,7 +1,3 @@
-/**
- * Race a promise against an AbortSignal. If the signal fires first, the
- * returned promise rejects with a DOMException ("AbortError").
- */
 export function raceAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
   if (signal.aborted) {
     return Promise.reject(new DOMException("Aborted", "AbortError"));

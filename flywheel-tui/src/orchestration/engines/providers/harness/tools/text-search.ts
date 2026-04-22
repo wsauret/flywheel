@@ -1,16 +1,3 @@
-/**
- * Text/regex search tool using native ripgrep bindings.
- *
- * Provides file content search with pattern matching, glob filtering,
- * and two output modes (file_paths and content).
- *
- * Improvements over baseline:
- * - Column truncation (prevents base64/minified lines from dominating)
- * - Round-robin file distribution (prevents one large file from dominating)
- * - Gitignore fallback retry on 0 results
- * - Mtime sorting for file_paths mode
- */
-
 import { statSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { errorMessage } from "../../../../../infra/error-message.js";
@@ -78,7 +65,6 @@ function formatFilePathsOutput(
     if (!fileMap.has(display)) fileMap.set(display, match.path);
   }
 
-  // Sort by mtime descending (most recently modified first)
   const entries = [...fileMap.entries()].sort((a, b) => getMtime(b[1]) - getMtime(a[1]));
   const paths = entries.map(([display]) => display);
 
@@ -156,7 +142,7 @@ function runGrep(
   });
 }
 
-export function createTextSearchDefinition(): ToolDefinition {
+function createTextSearchDefinition(): ToolDefinition {
   return {
     name: "text_search",
     description:
@@ -211,27 +197,26 @@ export function createTextSearchDefinition(): ToolDefinition {
       },
       required: ["pattern"],
     },
-    async execute(input: unknown, context: ToolContext) {
-      const rec = input as Record<string, unknown>;
-      if (typeof rec.pattern !== "string") {
+    async execute(input: Record<string, unknown>, context: ToolContext) {
+      if (typeof input.pattern !== "string") {
         return { content: "text_search requires a string 'pattern' parameter", isError: true };
       }
 
-      const pattern = rec.pattern;
+      const pattern = input.pattern;
       if (!pattern.trim()) return { content: "Pattern must not be empty", isError: true };
 
-      const searchPath = typeof rec.path === "string"
-        ? (rec.path.startsWith("/") ? rec.path : resolve(context.cwd, rec.path))
+      const searchPath = typeof input.path === "string"
+        ? (input.path.startsWith("/") ? input.path : resolve(context.cwd, input.path))
         : context.cwd;
 
-      const effectiveLimit = typeof rec.head_limit === "number" ? rec.head_limit : DEFAULT_HEAD_LIMIT;
-      const isContent = rec.output_mode === "content";
+      const effectiveLimit = typeof input.head_limit === "number" ? input.head_limit : DEFAULT_HEAD_LIMIT;
+      const isContent = input.output_mode === "content";
       const outputMode = isContent ? "content" : "filesWithMatches";
-      const globPattern = typeof rec.glob_pattern === "string" ? rec.glob_pattern : undefined;
-      const fileType = typeof rec.type === "string" ? rec.type : undefined;
-      const ignoreCase = rec.case_insensitive === true;
-      const multiline = rec.multiline === true;
-      const contextLines = typeof rec.context === "number" ? rec.context : undefined;
+      const globPattern = typeof input.glob_pattern === "string" ? input.glob_pattern : undefined;
+      const fileType = typeof input.type === "string" ? input.type : undefined;
+      const ignoreCase = input.case_insensitive === true;
+      const multiline = input.multiline === true;
+      const contextLines = typeof input.context === "number" ? input.context : undefined;
       // Oversample for content mode so round-robin has material to distribute
       const internalLimit = isContent
         ? Math.min(effectiveLimit * OVERSAMPLE_FACTOR, MAX_MATCHES)

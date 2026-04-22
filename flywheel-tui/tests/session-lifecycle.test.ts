@@ -21,7 +21,7 @@ import {
   type SessionManagerDeps,
 } from "../src/orchestration/session/manager";
 import { readSession } from "../src/orchestration/session/persistence";
-import { isValidTransition, VALID_TRANSITIONS, type SessionState } from "../src/orchestration/session/types";
+import { isValidTransition, type SessionState } from "../src/orchestration/session/types";
 import { createOutputPersistence } from "../src/orchestration/session/output-persistence";
 import { fromSnapshot, type OutputSnapshot } from "../src/orchestration/session/output-schemas";
 
@@ -444,25 +444,20 @@ describe("Output persistence integration", () => {
 // ===========================================================================
 
 describe("Transition table validation", () => {
-  it("VALID_TRANSITIONS covers all 3 states", () => {
-    const allStates: SessionState[] = ["active", "paused", "completed"];
-    for (const state of allStates) {
-      expect(VALID_TRANSITIONS).toHaveProperty(state);
-    }
-  });
-
-  it("isValidTransition agrees with VALID_TRANSITIONS for all pairs", () => {
-    const allStates: SessionState[] = ["active", "paused", "completed"];
-    for (const from of allStates) {
-      for (const to of allStates) {
-        const expected = (VALID_TRANSITIONS[from] as readonly string[]).includes(to);
-        expect(isValidTransition(from, to)).toBe(expected);
-      }
-    }
+  it("isValidTransition covers the expected state machine", () => {
+    expect(isValidTransition("active", "paused")).toBe(true);
+    expect(isValidTransition("active", "completed")).toBe(true);
+    expect(isValidTransition("paused", "active")).toBe(true);
+    expect(isValidTransition("paused", "completed")).toBe(false);
+    expect(isValidTransition("paused", "paused")).toBe(false);
+    expect(isValidTransition("active", "active")).toBe(false);
   });
 
   it("completed is fully terminal (no outbound transitions)", () => {
-    expect(VALID_TRANSITIONS["completed"]).toEqual([]);
+    const allStates: SessionState[] = ["active", "paused", "completed"];
+    for (const to of allStates) {
+      expect(isValidTransition("completed", to)).toBe(false);
+    }
   });
 });
 

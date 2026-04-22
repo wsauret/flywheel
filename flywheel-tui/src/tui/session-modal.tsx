@@ -1,15 +1,4 @@
 /** @jsxImportSource @opentui/solid */
-/**
- * SessionModal — Full-screen overlay for browsing, resuming, and deleting sessions.
- *
- * Pure display component. Keyboard handling lives in the shell's useKeyboard
- * (which reliably receives all events). The shell drives cursor and actions
- * via props.
- *
- * Opens via `/sessions` or Ctrl+B.
- * Groups sessions by state: Active, Paused, Completed.
- */
-
 import { createMemo, createSignal, createEffect, For, Show, untrack, on } from "solid-js"
 
 import { BOLD } from "@tui/shared/ui/text-attributes"

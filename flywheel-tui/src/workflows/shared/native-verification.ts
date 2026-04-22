@@ -17,7 +17,6 @@ interface NativeVerificationResult {
   discrepancies: NativeCheckResult[];
 }
 
-/** Single-word commands that are always denied. */
 const DENIED_FIRST_TOKEN = new Set([
   // Filesystem destructive
   "rm", "rmdir", "mv", "cp", "mkdir", "touch", "chmod", "chown", "ln", "shred",
@@ -33,7 +32,6 @@ const DENIED_FIRST_TOKEN = new Set([
   "twine",
 ]);
 
-/** Two-token commands that are denied (e.g. "npm publish"). */
 const DENIED_TWO_TOKEN = new Set([
   "npm publish",
   "cargo publish",
@@ -44,32 +42,23 @@ const DENIED_TWO_TOKEN = new Set([
   "docker rmi",
 ]);
 
-/** Git subcommands that are denied. */
 const DENIED_GIT_SUBCOMMANDS = new Set([
   "push", "commit", "add", "reset", "checkout", "rebase", "branch", "merge", "stash",
 ]);
 
-/**
- * Check whether a command is on the deny-list.
- * Returns `true` if the command should be skipped.
- */
-// Exported for unit tests — the deny-list logic is security-critical and warrants direct testing.
 export function isDeniedCommand(command: string): boolean {
   const tokens = command.trim().split(/\s+/);
   if (tokens.length === 0 || tokens[0] === "") return true;
 
   const first = tokens[0];
 
-  // Single-word deny list
   if (DENIED_FIRST_TOKEN.has(first)) return true;
 
-  // Two-token deny list
   if (tokens.length >= 2) {
     const twoToken = `${first} ${tokens[1]}`;
     if (DENIED_TWO_TOKEN.has(twoToken)) return true;
   }
 
-  // Git subcommand deny list
   if (first === "git" && tokens.length >= 2) {
     if (DENIED_GIT_SUBCOMMANDS.has(tokens[1])) return true;
   }
@@ -87,10 +76,6 @@ function truncate(text: string, maxBytes: number): string {
   return buf.subarray(0, maxBytes).toString("utf-8") + "\n[truncated]";
 }
 
-/**
- * Spawn a subprocess with per-command timeout and shared deadline abort.
- * Shared by runSingleCommand and runGitDiffCheck to eliminate boilerplate.
- */
 async function spawnWithTimeout(
   tokens: string[],
   cwd: string,
@@ -106,12 +91,10 @@ async function spawnWithTimeout(
     env: process.env,
   });
 
-  // Per-command timeout
   const timeoutId = setTimeout(() => {
     try { proc.kill(); } catch { /* already exited */ }
   }, timeoutMs);
 
-  // Shared deadline abort
   const onAbort = () => {
     try { proc.kill(); } catch { /* already exited */ }
   };
@@ -183,7 +166,6 @@ async function runSingleCommand(
   } catch (err) {
     const message = errorMessage(err);
 
-    // Missing binary detection
     if (
       message.includes("not found") ||
       message.includes("ENOENT") ||
@@ -228,11 +210,9 @@ export async function runNativeVerification(opts: {
   const deadlineTimer = setTimeout(() => abortController.abort(), deadlineMs);
 
   try {
-    // Build check functions (not promises) so we can batch execution
     const MAX_CONCURRENT = 6;
     const checkFns: Array<() => Promise<NativeCheckResult>> = [];
 
-    // Run declared commands
     for (const decl of declaredCommands) {
       checkFns.push(() =>
         runSingleCommand(
@@ -249,7 +229,6 @@ export async function runNativeVerification(opts: {
       checkFns.push(() => runGitDiffCheck(projectCwd, timeoutMs, abortController.signal));
     }
 
-    // Execute in batches with max concurrency
     const checks: NativeCheckResult[] = [];
     for (let i = 0; i < checkFns.length; i += MAX_CONCURRENT) {
       const batch = checkFns.slice(i, i + MAX_CONCURRENT).map(fn => fn());

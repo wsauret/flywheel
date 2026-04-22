@@ -11,7 +11,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { TextBlock, ToolUseBlock, ThinkingDelta, TextDelta, InputJSONDelta, SignatureDelta } from "@anthropic-ai/sdk/resources/messages.js";
 import { Log } from "../../../../../infra/log.js";
 import type { ModelsClient, ModelInfo } from "./models.js";
-import { withRetry, withRetryStream } from "./retry.js";
+import { createModelInfoCache, computeCost } from "./llm-helpers.js";
+import { CLIENT_TIMEOUT_MS, createIdleWatchdog, withRetry, withRetryStream } from "./retry.js";
 import type {
   ContentBlock,
   LLMClient,
@@ -21,7 +22,7 @@ import type {
   StreamOptions,
   ToolCall,
 } from "./types.js";
-import { ContextLengthExceededError, OutputLengthExceededError } from "./types.js";
+import { ContextLengthExceededError, OutputLengthExceededError, RetryableStreamError } from "./types.js";
 
 const log = Log.create({ service: "llm-anthropic" });
 
@@ -39,6 +40,36 @@ const MEDIA_TYPE_SET = new Set<string>(MEDIA_TYPES);
 
 const CACHE_CONTROL: Anthropic.CacheControlEphemeral = { type: "ephemeral" };
 const STREAM_IDLE_TIMEOUT_MS = 90_000;
+
+function classifyAnthropicError(err: unknown): Error {
+  if (err instanceof Anthropic.APIConnectionError) {
+    return new RetryableStreamError(err.message, "transient");
+  }
+
+  if (err instanceof Anthropic.APIError) {
+    if (err.status === 529 || err.message?.includes('"type":"overloaded_error"')) {
+      return new RetryableStreamError(err.message, "overload");
+    }
+    if (err.status === 429) {
+      const retryAfter = err.headers?.get?.("retry-after");
+      const delayMs = retryAfter ? parseFloat(retryAfter) * 1000 : undefined;
+      return new RetryableStreamError(err.message, "rate_limit", Number.isFinite(delayMs) ? delayMs : undefined);
+    }
+    if (err.status === 408 || err.status === 409) {
+      return new RetryableStreamError(err.message, "transient");
+    }
+    if (err.status !== undefined && err.status >= 500) {
+      return new RetryableStreamError(err.message, "overload");
+    }
+  }
+
+  if (err instanceof Error && err.cause) {
+    const classified = classifyAnthropicError(err.cause);
+    if (classified instanceof RetryableStreamError) return classified;
+  }
+
+  return err instanceof Error ? err : new Error(String(err));
+}
 
 const BETA_HEADERS = [
   "interleaved-thinking-2025-05-14",
@@ -161,16 +192,10 @@ export function createAnthropicAdapter(
   defaultModel: string,
   modelsClient: ModelsClient,
 ): LLMClient {
-  const client = new Anthropic({ apiKey });
+  const client = new Anthropic({ apiKey, timeout: CLIENT_TIMEOUT_MS });
 
-  let cache: { model: string; info: ModelInfo } | null = null;
-
-  async function resolveModelInfo(model: string): Promise<ModelInfo | null> {
-    if (cache?.model === model) return cache.info;
-    const info = await modelsClient.getModelInfo(model, "anthropic");
-    if (info) cache = { model, info };
-    return info;
-  }
+  const modelCache = createModelInfoCache(modelsClient, "anthropic");
+  const ANTHROPIC_CACHE_RATES = { cacheReadRatio: 0.1, cacheWriteRatio: 1.25 } as const;
 
   function supportsReasoning(model: string, info: ModelInfo | null): boolean {
     return info?.reasoning ?? /^claude-(opus|sonnet|haiku)-4/.test(model);
@@ -193,34 +218,24 @@ export function createAnthropicAdapter(
     modelFamily: "anthropic",
     model: defaultModel,
     get contextLimit() {
-      return contextLimit(cache?.info ?? null);
+      return contextLimit(modelCache.getCached()?.info ?? null);
     },
     get outputLimit() {
-      return outputLimit(cache?.info ?? null);
+      return outputLimit(modelCache.getCached()?.info ?? null);
     },
     get supportsReasoning() {
-      return supportsReasoning(cache?.model ?? defaultModel, cache?.info ?? null);
+      return supportsReasoning(modelCache.getCached()?.model ?? defaultModel, modelCache.getCached()?.info ?? null);
     },
 
-    costFor(tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; reasoning: number }): number {
-      const info = cache?.info ?? null;
+    costFor(tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; reasoning: number; promptTokens?: number }): number {
+      const info = modelCache.getCached()?.info ?? null;
       if (!info?.cost) return 0;
-      const inputRate = info.cost.input;
-      const outputRate = info.cost.output;
-      const cacheReadRate = info.cost.cacheRead ?? inputRate * 0.1;
-      const cacheWriteRate = info.cost.cacheWrite ?? inputRate * 1.25;
-      return (
-        (tokens.input * inputRate +
-          tokens.output * outputRate +
-          tokens.cacheRead * cacheReadRate +
-          tokens.cacheWrite * cacheWriteRate) /
-        1_000_000
-      );
+      return computeCost(tokens, info.cost, ANTHROPIC_CACHE_RATES);
     },
 
     async *streamWithTools(options: StreamOptions): AsyncGenerator<StreamEvent> {
       const model = options.model ?? defaultModel;
-      const info = await resolveModelInfo(model);
+      const info = await modelCache.resolveModelInfo(model);
       const reasoning = options.reasoningEffort ?? "max";
 
       const anthropicMessages = convertMessages(options.messages);
@@ -240,6 +255,12 @@ export function createAnthropicAdapter(
       const maxTokens = maxOutput;
 
       yield* withRetryStream(async function* () {
+        let stream: ReturnType<typeof client.messages.stream> | undefined;
+        const watchdog = createIdleWatchdog(STREAM_IDLE_TIMEOUT_MS, () => {
+          log.warn(`Anthropic stream idle for ${STREAM_IDLE_TIMEOUT_MS}ms, aborting`);
+          stream?.abort();
+        });
+
         try {
           const params: Anthropic.MessageCreateParamsStreaming = {
             model,
@@ -265,25 +286,18 @@ export function createAnthropicAdapter(
             params.temperature = 1;
           }
 
-          const stream = client.messages.stream(params, {
+          stream = client.messages.stream(params, {
             signal: options.signal,
             headers: { "anthropic-beta": BETA_HEADERS },
           });
           const toolInputBuffers = new Map<number, { id: string; name: string; json: string }>();
           const thinkingBuffers = new Map<number, { thinking: string; signature: string }>();
+          let receivedMessageStop = false;
 
-          let idleTimer: ReturnType<typeof setTimeout> | null = null;
-          const resetIdle = () => {
-            if (idleTimer) clearTimeout(idleTimer);
-            idleTimer = setTimeout(() => {
-              log.warn(`Stream idle for ${STREAM_IDLE_TIMEOUT_MS}ms, aborting`);
-              stream.abort();
-            }, STREAM_IDLE_TIMEOUT_MS);
-          };
-          resetIdle();
+          watchdog.reset();
 
           try { for await (const event of stream) {
-            resetIdle();
+            watchdog.reset();
             if (event.type === "content_block_start") {
               const block = event.content_block;
               if (block.type === "tool_use") {
@@ -335,15 +349,20 @@ export function createAnthropicAdapter(
               if (stopReason === "max_tokens") {
                 throw new OutputLengthExceededError("Response truncated");
               }
+            } else if (event.type === "message_stop") {
+              receivedMessageStop = true;
             }
-          } } finally { if (idleTimer) clearTimeout(idleTimer); }
+          } } finally { watchdog.cleanup(); }
+
+          if (!receivedMessageStop) {
+            throw new RetryableStreamError("Anthropic stream closed before message_stop", "transient");
+          }
 
           const finalMessage = await stream.finalMessage();
-          const outputTokens = finalMessage.usage.output_tokens;
           yield {
             kind: "usage",
             inputTokens: finalMessage.usage.input_tokens,
-            outputTokens,
+            outputTokens: finalMessage.usage.output_tokens,
             cacheReadTokens: finalMessage.usage.cache_read_input_tokens ?? 0,
             cacheCreateTokens: finalMessage.usage.cache_creation_input_tokens ?? 0,
             reasoningTokens: 0,
@@ -351,13 +370,21 @@ export function createAnthropicAdapter(
 
           yield { kind: "done", stopReason: finalMessage.stop_reason ?? "unknown" } as const;
         } catch (err) {
+          if (watchdog.timedOut) {
+            throw new RetryableStreamError("Anthropic stream idle timeout", "transient");
+          }
+          if (options.signal?.aborted) throw err;
+
           if (err instanceof Anthropic.BadRequestError) {
             const msg = err.message;
             if (msg.includes("prompt is too long") || msg.includes("context")) {
               throw new ContextLengthExceededError(msg);
             }
           }
-          throw err;
+          if (err instanceof RetryableStreamError || err instanceof ContextLengthExceededError || err instanceof OutputLengthExceededError) {
+            throw err;
+          }
+          throw classifyAnthropicError(err);
         }
       }, "Anthropic");
     },
@@ -367,8 +394,8 @@ export function createAnthropicAdapter(
 
       return withRetry(async () => {
         const response = await client.messages.create({
-          model: cache?.model ?? defaultModel,
-          max_tokens: Math.min(outputLimit(cache?.info ?? null), 16_384),
+          model: modelCache.getCached()?.model ?? defaultModel,
+          max_tokens: Math.min(outputLimit(modelCache.getCached()?.info ?? null), 16_384),
           messages: addCacheBreakpoints(anthropicMessages),
         });
         return response.content

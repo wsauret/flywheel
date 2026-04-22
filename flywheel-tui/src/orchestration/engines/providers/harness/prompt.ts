@@ -77,19 +77,24 @@ const GENERALIZATION_RULE = `GENERALIZATION:
 Your solution must remain correct for any numeric values, array dimensions, or file contents change.`;
 
 const READ_USAGE = `READ TOOL:
-- Lines are displayed in hashline format (LINE#HASH:content) — these references are the input to the edit tool.
+- Lines are displayed in hashline format (LINE#HASH:content, e.g. 5#a3f:const x = 1) — these references are the input to the edit tool.
 - Use offset and limit parameters for large files — default reads up to 2000 lines.
+- When a file is truncated, a structural map is auto-appended showing symbols with line ranges — use it to target subsequent reads.
+- Use map: true to explicitly request a structural map alongside content.
+- Use symbol: "functionName" to read just that function (no line numbers needed). Supports dot notation: symbol: "ClassName.methodName".
+- symbol is mutually exclusive with offset/limit. map is mutually exclusive with symbol.
 - Parallelize reads when exploring related files — call read on multiple files in the same response.
 - Also handles image files (PNG, JPG, GIF, WebP) — returns base64-encoded content.`;
 
 const EDIT_USAGE = `EDIT TOOL:
-- You MUST read the file first to get LINE#HASH references (e.g. 5#KX, 12#MQ).
+- You MUST read the file first to get LINE#HASH references (e.g. 5#a3f, 12#0b1).
 - Use those references to address edits: insert_before, insert_after, replace, delete.
 - All edits in a single call are validated transactionally — if any hash is stale, nothing changes.
 - Preserve the exact indentation (tabs or spaces) of surrounding code in your edit lines.
 - Do NOT copy hashline prefixes (LINE#HASH:) into your edit content — they are metadata, not file content.
 - For new files, use the create op. For full rewrites, use replace_all (no read required).
-- If an edit fails, the error includes updated references — retry using those directly.`;
+- If an edit fails with hash mismatches, the error includes updated references and nearby line suggestions — retry using those directly without re-reading.
+- If an edit succeeds but reports "no changes applied", the file already contains the specified content — verify you are editing the correct lines.`;
 
 const WRITE_USAGE = `WRITE TOOL:
 - Creates NEW files only — rejects writes to files that already exist.
@@ -120,7 +125,10 @@ This engine exposes handoff completion as \`write_handoff\`.
 TREAT write_handoff AS IRREVERSIBLE AND FINAL. Before calling write_handoff, verify ALL requirements are met. You have unlimited turns but only one submission.`;
 
 const RESOURCE_LIMITS = `RESOURCE LIMITS:
-- Command output is truncated at 30KB. For large output, redirect to a file and read in parts.
+- Long command output is automatically compressed. Test runner output keeps only failures + summary.
+  Other commands over 200 lines keep the first 30 + last 40 lines plus any error/warning lines.
+- Set FLYWHEEL_RAW_OUTPUT=1 in your command to bypass compression for a specific call.
+- Command output is truncated at 30KB after compression. For large output, redirect to a file and read in parts.
 - If output is truncated, the full version is saved to a file — check the truncation notice for the path.
 - Prefer streaming and chunked processing over loading everything into memory.`;
 
@@ -166,6 +174,7 @@ FINAL ANSWER:
 - Tiny/small change (10 lines or less): 2-5 sentences or 3 bullets max. No headings.
 - Medium change (single area, a few files): 6 bullets or 6-10 sentences max.
 - Large/multi-file change: 1-2 bullets per file. Reference file:line, do not inline code.
+- Leave a blank line between every paragraph, every bullet, and every other distinct block of text in the final response. If you use bullets, put each bullet on its own line.
 - Never include before/after pairs, full method bodies, or large code blocks.${modelNotes}`;
 }
 
@@ -202,11 +211,7 @@ function detectOsVersion(): string {
 }
 
 function isGitRepo(cwd: string): boolean {
-  try {
-    return existsSync(join(cwd, ".git"));
-  } catch {
-    return false;
-  }
+  return existsSync(join(cwd, ".git"));
 }
 
 function buildEnvBlock(cwd: string): string {
@@ -221,7 +226,7 @@ function buildEnvBlock(cwd: string): string {
   return `<env>\n${lines.join("\n")}\n</env>`;
 }
 
-export interface HarnessPromptOptions {
+interface HarnessPromptOptions {
   orchestrationSystemPrompt: string;
   model: string;
   projectInstructions?: string;

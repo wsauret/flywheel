@@ -8,42 +8,22 @@ export function killProcessGroup(child: ChildHandle, signal: NodeJS.Signals): vo
 
   if (process.platform !== "win32") {
     try {
-      // Negative PID targets the process group on Unix
-      process.kill(-child.pid, signalNum);
+      process.kill(-child.pid, signalNum); // negative PID targets the process group
       return;
     } catch (err: unknown) {
       if (isEsrch(err)) {
-        // Process already gone — try direct kill as fallback
-        try {
-          child.kill(signalNum);
-        } catch {
-          // Process already dead, ignore
-        }
+        try { child.kill(signalNum); } catch {}
         return;
       }
-      // EPERM or other error — fall through to direct kill
-      try {
-        child.kill(signalNum);
-      } catch {
-        // ignore
-      }
+      try { child.kill(signalNum); } catch {}
     }
   } else {
-    // Windows: no process groups, kill directly
-    try {
-      child.kill(signalNum);
-    } catch {
-      // ignore
-    }
+    try { child.kill(signalNum); } catch {}
   }
 }
 
 function isEsrch(err: unknown): boolean {
-  return (
-    err instanceof Error &&
-    "code" in err &&
-    (err as NodeJS.ErrnoException).code === "ESRCH"
-  );
+  return err instanceof Error && "code" in err && err.code === "ESRCH";
 }
 
 const SIGNAL_MAP: Record<string, number> = {

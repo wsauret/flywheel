@@ -1,7 +1,7 @@
 import * as path from "node:path";
 import { canonicalize } from "./canonical-name.js";
+import { isHandoffPath } from "./paths.js";
 
-// ── Types ─────────────────────────────────────────────────────────
 
 type ToolCategory = "exploration" | "mutation" | "execution" | "subagent" | "standalone";
 
@@ -11,7 +11,6 @@ interface ToolDisplayMeta {
   getDetail?: (input: Record<string, unknown>, cwd: string) => string | null;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────
 
 function formatDisplayPath(filePath: string | undefined | null, cwd: string): string | null {
   if (!filePath) return null;
@@ -49,11 +48,6 @@ function extractToolPath(input: unknown): string | undefined {
   return typeof raw === "string" ? raw : undefined;
 }
 
-function isSessionHandoffPath(filePath: string): boolean {
-  const normalized = filePath.replaceAll("\\", "/");
-  return /(^|\/)\.flywheel\/sessions\/[^/]+\/handoffs\/.+$/.test(normalized);
-}
-
 function shellDetail(input: Record<string, unknown>, cwd: string): string | null {
   const cmd = input.command as string | undefined;
   if (!cmd) return null;
@@ -67,10 +61,22 @@ function agentDetail(input: Record<string, unknown>, _cwd: string): string | nul
   return singleLine(agentType ? `[${agentType}] ${desc ?? ""}` : desc);
 }
 
-// ── Registry ──────────────────────────────────────────────────────
+function searchDetail(input: Record<string, unknown>, cwd: string, ...filterKeys: string[]): string | null {
+  const pat = input.pattern as string | undefined;
+  const dir = input.path as string | undefined;
+  let extra: string | undefined;
+  for (const key of filterKeys) {
+    extra = input[key] as string | undefined;
+    if (extra) break;
+  }
+  const displayDir = dir ? formatDisplayPath(dir, cwd) : null;
+  const quoted = pat ? `"${pat}"` : null;
+  const parts = [quoted, displayDir && `in ${displayDir}`, extra && `[${extra}]`].filter(Boolean).join(" ");
+  return singleLine(parts || null);
+}
+
 
 const entries: Array<[string, ToolDisplayMeta]> = [
-  // Exploration tools — read-only information gathering
   ["read", {
     displayName: "Read",
     category: "exploration",
@@ -101,44 +107,19 @@ const entries: Array<[string, ToolDisplayMeta]> = [
   ["grep", {
     displayName: "Text Search",
     category: "exploration",
-    getDetail: (input, cwd) => {
-      const pat = input.pattern as string | undefined;
-      const dir = input.path as string | undefined;
-      const fileFilter = (input.glob as string | undefined) ?? (input.type as string | undefined);
-      const displayDir = dir ? formatDisplayPath(dir, cwd) : null;
-      const quoted = pat ? `"${pat}"` : null;
-      const parts = [quoted, displayDir && `in ${displayDir}`, fileFilter && `[${fileFilter}]`].filter(Boolean).join(" ");
-      return singleLine(parts || null);
-    },
+    getDetail: (input, cwd) => searchDetail(input, cwd, "glob", "type"),
   }],
   ["text_search", {
     displayName: "Text Search",
     category: "exploration",
-    getDetail: (input, cwd) => {
-      const pat = input.pattern as string | undefined;
-      const dir = input.path as string | undefined;
-      const fileFilter = (input.glob_pattern as string | undefined) ?? (input.type as string | undefined);
-      const displayDir = dir ? formatDisplayPath(dir, cwd) : null;
-      const quoted = pat ? `"${pat}"` : null;
-      const parts = [quoted, displayDir && `in ${displayDir}`, fileFilter && `[${fileFilter}]`].filter(Boolean).join(" ");
-      return singleLine(parts || null);
-    },
+    getDetail: (input, cwd) => searchDetail(input, cwd, "glob_pattern", "type"),
   }],
   ["ast_search", {
     displayName: "AST Search",
     category: "exploration",
-    getDetail: (input, cwd) => {
-      const pat = input.pattern as string | undefined;
-      const dir = input.path as string | undefined;
-      const lang = input.language as string | undefined;
-      const displayDir = dir ? formatDisplayPath(dir, cwd) : null;
-      const quoted = pat ? `"${pat}"` : null;
-      const parts = [quoted, displayDir && `in ${displayDir}`, lang && `[${lang}]`].filter(Boolean).join(" ");
-      return singleLine(parts || null);
-    },
+    getDetail: (input, cwd) => searchDetail(input, cwd, "language"),
   }],
 
-  // Mutation tools — file modifications
   ["write", {
     displayName: "Write",
     category: "mutation",
@@ -153,7 +134,6 @@ const entries: Array<[string, ToolDisplayMeta]> = [
     },
   }],
 
-  // Execution tools — shell, external services, mode transitions
   ["bash", {
     displayName: "Bash",
     category: "execution",
@@ -218,7 +198,6 @@ const entries: Array<[string, ToolDisplayMeta]> = [
   }],
   ["remotetrigger", { displayName: "Remote Trigger", category: "execution" }],
 
-  // Subagent tools — spawn child agents
   ["agent", {
     displayName: "Subagent",
     category: "subagent",
@@ -235,7 +214,6 @@ const entries: Array<[string, ToolDisplayMeta]> = [
     getDetail: agentDetail,
   }],
 
-  // Standalone tools — bypass row-in-group, produce their own block
   ["askuserquestion", {
     displayName: "Ask User",
     category: "standalone",
@@ -294,7 +272,6 @@ const entries: Array<[string, ToolDisplayMeta]> = [
 
 const toolDisplayRegistry: ReadonlyMap<string, ToolDisplayMeta> = new Map(entries);
 
-// ── Public API ────────────────────────────────────────────────────
 
 export function getToolDisplay(name: string): ToolDisplayMeta | undefined {
   return toolDisplayRegistry.get(canonicalize(name));
@@ -303,7 +280,7 @@ export function getToolDisplay(name: string): ToolDisplayMeta | undefined {
 export function getToolDisplayName(name: string, input?: unknown): string {
   const cn = canonicalize(name);
   const filePath = extractToolPath(input);
-  if ((cn === "write" || cn === "edit") && filePath && isSessionHandoffPath(filePath)) {
+  if ((cn === "write" || cn === "edit") && isHandoffPath(filePath)) {
     return "Write Handoff";
   }
   const meta = toolDisplayRegistry.get(cn);
@@ -313,13 +290,11 @@ export function getToolDisplayName(name: string, input?: unknown): string {
   return name;
 }
 
-// ── Classification API ───────────────────────────────────────────
 
 export function classifyTool(name: string): ToolCategory {
   return toolDisplayRegistry.get(canonicalize(name))?.category ?? "execution";
 }
 
-/** Derived from registry entries where `category === "subagent"`. */
 export const SUBAGENT_TOOL_NAMES: ReadonlySet<string> = new Set(
   entries.filter(([, meta]) => meta.category === "subagent").map(([name]) => name),
 );

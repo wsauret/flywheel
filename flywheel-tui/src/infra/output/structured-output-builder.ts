@@ -2,7 +2,6 @@ import type {
   AnyBlock,
   ToolEntry,
   ToolGroupBlock,
-  SystemBlock,
   TodoItem,
   UserMessageBlock,
   QuestionBlock,
@@ -21,12 +20,8 @@ import {
 const BLOCKS_CAP = 20_000;
 const AGENT_CHILDREN_CAP = 50;
 
-/**
- * Mark any children still in-flight (no completed/errorMessage) as completed.
- * Called when an agent closes: a pending child in a completed block is a lost
- * tool_result, and leaving a frozen spinner behind is worse than assuming the
- * tool succeeded.
- */
+// A pending child in a completed agent is a lost tool_result — better
+// to mark it complete than leave a frozen spinner.
 function resolveUnresolvedChildren(children: ToolEntry[]): ToolEntry[] {
   return children.map((c) => (c.completed === true || c.errorMessage ? c : { ...c, completed: true }));
 }
@@ -49,14 +44,7 @@ export class StructuredOutputBuilder {
   private thinkingStartedAt: number | null = null;
   private pendingThinkingRow: { agentId: string; childIndex: number } | null = null;
 
-  /** Fired on content mutations (text, thinking, system, user, question, todo, modelActivity).
-   *  Only fires on the dirty false->true transition, so rapid mutations within
-   *  one synchronous batch produce a single notification. */
   onContentChange: (() => void) | null = null;
-
-  /** Fired on tool group mutations (tool rows, agent start/complete/error, patches, latestChild).
-   *  Only fires on the dirty false->true transition, so rapid mutations within
-   *  one synchronous batch produce a single notification. */
   onToolGroupChange: (() => void) | null = null;
 
   constructor() {
@@ -64,6 +52,7 @@ export class StructuredOutputBuilder {
       startContextAgent: (id, timestamp) => this.startAgent(id, "Tools", "Using tools...", timestamp, "tools"),
       appendToolToContextAgent: (agentId, tool) => this.appendToolToAgent(agentId, tool),
       completeContextAgent: (agentId, duration) => this.completeAgent(agentId, duration),
+      pauseContextAgent: (agentId, duration) => this.pauseAgent(agentId, duration),
     });
   }
 
@@ -81,7 +70,6 @@ export class StructuredOutputBuilder {
 
   get modelActivity(): ModelActivity { return this._modelActivity; }
 
-  /** True if there's an active Tools context group that thinking can join. */
   get hasActiveToolsContext(): boolean { return this.contextTracker.currentAgentId !== null; }
 
   resetActivity(): void {
@@ -96,7 +84,6 @@ export class StructuredOutputBuilder {
     }
   }
 
-  /** Create a thinking tool row inside the Tools group. Only call when hasActiveToolsContext is true. */
   pushThinkingAsToolRow(timestamp: number): void {
     const startTime = this.thinkingStartedAt ?? timestamp;
     this.thinkingStartedAt = null;
@@ -108,11 +95,9 @@ export class StructuredOutputBuilder {
       timestamp: startTime,
     });
     this.pendingThinkingRow = loc;
-    // Restore "thinking" activity — pushToolRow sets to "tool_executing" but this is a thinking phase
     this._modelActivity = "thinking";
   }
 
-  /** Mark the pending thinking tool row as completed. No-op if none is pending. */
   completeThinkingRow(): void {
     if (!this.pendingThinkingRow) return;
     const { agentId, childIndex } = this.pendingThinkingRow;
@@ -120,7 +105,6 @@ export class StructuredOutputBuilder {
     this.completeAgentChildTool(agentId, childIndex);
   }
 
-  /** Create/append to a standalone thinking block. Used when no tool context exists. */
   pushThinking(text: string, timestamp: number): void {
     this._modelActivity = "thinking";
     if (!text.trim()) return;
@@ -141,7 +125,6 @@ export class StructuredOutputBuilder {
     this.contextTracker.breakContextRun(timestamp);
     const block = { kind: "userMessage" as const, content: text, timestamp, pending, injected };
     if (pending) {
-      // Pending messages pin above the todo but below content
       if (this.todoBlockIndex >= 0 && this.todoBlockIndex < this.blocks.length) {
         const idx = this.todoBlockIndex;
         this.blocks.splice(idx, 0, block);
@@ -158,7 +141,6 @@ export class StructuredOutputBuilder {
     this.markContentDirty();
   }
 
-  // Transitions pending injected messages to resolved once the engine acknowledges them.
   resolvePendingMessages(): string[] {
     const pendingIndices: number[] = [];
     for (let i = 0; i < this.blocks.length; i++) {
@@ -207,17 +189,11 @@ export class StructuredOutputBuilder {
 
   pushSystemMessage(message: string, timestamp: number): void {
     this.contextTracker.breakContextRun(timestamp);
-    this.insertBlock({ kind: "system", message, timestamp } as SystemBlock);
+    this.insertBlock({ kind: "system", message, timestamp });
     this.enforceBlocksCap();
     this.markContentDirty();
   }
 
-  /**
-   * Insert a top-level standalone tool entry — used for tools that render with
-   * their own body (diffs, content) rather than as a row inside a Tools group.
-   * Breaks any active Tools group. Parser routes here only for blacklisted
-   * tools (Edit, Write) that always render standalone.
-   */
   pushTool(name: string, detail: string, timestamp: number, diff?: string, filetype?: string, content?: string, filePath?: string): number {
     this._modelActivity = "tool_executing";
     const tool: ToolEntry = {
@@ -234,13 +210,6 @@ export class StructuredOutputBuilder {
     return idx;
   }
 
-  /**
-   * Append a tool row to the ad-hoc Tools group, opening a new group if none
-   * is active. The tool may be pending (no completed/errorMessage) — status is
-   * filled in later via completeAgentChildTool/errorAgentChildTool, keyed by
-   * the returned {agentId, childIndex}. Returns null only on unrecoverable
-   * append failure (shouldn't happen in practice).
-   */
   pushToolRow(tool: ToolEntry): { agentId: string; childIndex: number } | null {
     this._modelActivity = "tool_executing";
     const agentId = this.contextTracker.pushContextTool(tool, tool.timestamp);
@@ -253,10 +222,6 @@ export class StructuredOutputBuilder {
     return { agentId, childIndex };
   }
 
-  /**
-   * Append a tool row to a specific agent's children. The tool may be pending.
-   * Returns the child index, or -1 if the agent was not found.
-   */
   pushToolRowToAgent(agentId: string, tool: ToolEntry): number {
     return this.appendToolToAgent(agentId, tool);
   }
@@ -313,7 +278,7 @@ export class StructuredOutputBuilder {
     this.markToolDirty();
   }
 
-  completeAgent(id: string, duration: number, description?: string): void {
+  completeAgent(id: string, duration: number, description?: string, label?: string): void {
     const idx = this.agentIndexById.get(id);
     if (idx === undefined) return;
 
@@ -325,6 +290,23 @@ export class StructuredOutputBuilder {
       status: "completed",
       duration,
       children: resolveUnresolvedChildren(agent.children),
+      ...(description !== undefined ? { description } : {}),
+      ...(label !== undefined ? { label } : {}),
+    };
+    this.markToolDirty();
+  }
+
+  pauseAgent(id: string, duration: number, description?: string): void {
+    const idx = this.agentIndexById.get(id);
+    if (idx === undefined) return;
+
+    const agent = this.blocks[idx] as ToolGroupBlock;
+    if (agent.status !== "active") return;
+
+    this.blocks[idx] = {
+      ...agent,
+      status: "paused",
+      duration,
       ...(description !== undefined ? { description } : {}),
     };
     this.markToolDirty();
@@ -394,9 +376,6 @@ export class StructuredOutputBuilder {
     return idx;
   }
 
-  // Preserve locally-set answers (from the dock) — the parser sees a verbose
-  // echo in the tool_result ("User has answered your questions: ..."), which
-  // is noisier than the option labels we already stored.
   answerQuestion(toolUseId: string, answers: Record<string, string>): void {
     this.updateQuestion(toolUseId, { answers });
   }
@@ -438,8 +417,24 @@ export class StructuredOutputBuilder {
     }
   }
 
+  pauseOpenSubagents(timestamp: number): void {
+    const ctxId = this.contextTracker.currentAgentId;
+    for (const [id, idx] of this.agentIndexById) {
+      if (id === ctxId) continue;
+      const block = this.blocks[idx];
+      if (block.kind === "toolGroup" && block.status === "active") {
+        this.pauseAgent(id, timestamp - block.timestamp);
+      }
+    }
+  }
+
   flushContextRun(timestamp: number): void {
     this.contextTracker.breakContextRun(timestamp);
+    this.markToolDirty();
+  }
+
+  pauseContextRun(timestamp: number): void {
+    this.contextTracker.pauseContextRun(timestamp);
     this.markToolDirty();
   }
 
@@ -463,7 +458,6 @@ export class StructuredOutputBuilder {
     this.contextTracker.reset();
   }
 
-  // Preserves blocks for display continuity across engine restarts; only rebuilds index maps.
   resetTracking(): void {
     this.agentIndexById.clear();
     this.todoBlockIndex = -1;

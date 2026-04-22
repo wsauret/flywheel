@@ -70,7 +70,6 @@ export class OpenTUIAdapter {
       builder,
     });
 
-    // Initialize dispatcher/evaluator NDJSON pipeline with the shared builder
     this.ndjsonPipeline = new NdjsonPipeline(builder);
   }
 
@@ -195,7 +194,7 @@ export class OpenTUIAdapter {
       case "queue:failed":
         log.warn("Queue failed", { workflowId: event.workflowId, reason: event.reason, stepsCompleted: event.stepsCompleted });
         this.outputSession.resolvePendingMessages();
-        this.outputSession.resetActivity();
+        this.outputSession.resetActivity(event.finalStatus === "paused" ? "paused" : "completed");
         this.outputSession.flush();
         break;
 

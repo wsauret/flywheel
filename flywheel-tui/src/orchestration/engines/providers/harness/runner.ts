@@ -16,7 +16,7 @@ import { runAgentLoop } from "./agent-loop.js";
 import { cleanupHarnessOutputs } from "./context/truncation.js";
 import { buildHarnessSystemPrompt } from "./prompt.js";
 import { loadProjectInstructions } from "./project-instructions.js";
-import { emitContentBlockDelta, emitToolResult, emitAssistant, emitResult, emitUser } from "./emit.js";
+import { emitContentBlockDelta, emitToolResult, emitAssistant, emitResult, emitUser, emitCompaction } from "./emit.js";
 import { getToolDefinitions } from "./tools/tool-dispatch.js";
 import { appendMessage, conversationPathFor, loadMessages, loadMeta, saveMeta } from "./conversation-store.js";
 
@@ -190,7 +190,14 @@ export class HarnessRunner implements EngineRunner {
               cacheRead: deltaCacheReadTokens,
               cacheWrite: deltaCacheCreateTokens,
               reasoning: deltaReasoningTokens,
+              promptTokens: streamEvent.inputTokens + streamEvent.cacheReadTokens,
             });
+            break;
+          case "compaction_start":
+            emitCompaction(options.onEvent, "start");
+            break;
+          case "compaction_done":
+            emitCompaction(options.onEvent, streamEvent.success ? "done" : "error", streamEvent.durationMs);
             break;
           case "done":
             emitResult(options.onEvent, {

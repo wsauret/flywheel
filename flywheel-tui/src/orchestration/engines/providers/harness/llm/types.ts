@@ -29,13 +29,12 @@ export interface ToolCall {
   input: Record<string, unknown>;
 }
 
-export interface ToolDef {
+interface ToolDef {
   name: string;
   description: string;
   input_schema: Record<string, unknown>;
 }
 
-// --- Streaming types ---
 
 export type StreamEvent =
   | { kind: "text_delta"; text: string }
@@ -46,7 +45,9 @@ export type StreamEvent =
   | { kind: "reasoning"; id: string; encryptedContent: string; summary?: Array<{ type: "summary_text"; text: string }> }
   | { kind: "usage"; inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheCreateTokens: number; reasoningTokens: number }
   | { kind: "done"; stopReason: string; responseId?: string }
-  | { kind: "todo_state"; todos: ReadonlyArray<{ id: string; content: string; status: string; notes?: string }> };
+  | { kind: "todo_state"; todos: ReadonlyArray<{ id: string; content: string; status: string; notes?: string }> }
+  | { kind: "compaction_start" }
+  | { kind: "compaction_done"; success: boolean; durationMs: number };
 
 export interface StreamOptions {
   messages: Message[];
@@ -70,11 +71,11 @@ export interface LLMClient {
   complete(messages: Message[]): Promise<string>;
 
   /** Compute cost in USD from token counts using models.dev pricing.
+   *  `promptTokens` is the total prompt size for the API call (for tier determination).
    *  Returns 0 if pricing info is not yet available. */
-  costFor(tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; reasoning: number }): number;
+  costFor(tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; reasoning: number; promptTokens?: number }): number;
 }
 
-// --- Error classes ---
 
 export class ContextLengthExceededError extends Error {
   constructor(msg = "Context length exceeded") {
@@ -89,5 +90,18 @@ export class OutputLengthExceededError extends Error {
     super(msg);
     this.name = "OutputLengthExceededError";
     this.truncatedContent = truncated;
+  }
+}
+
+type RetryableErrorKind = "rate_limit" | "overload" | "transient" | "unknown";
+
+export class RetryableStreamError extends Error {
+  readonly retryDelayMs: number | undefined;
+  readonly kind: RetryableErrorKind;
+  constructor(message: string, kind: RetryableErrorKind = "unknown", retryDelayMs?: number) {
+    super(message);
+    this.name = "RetryableStreamError";
+    this.kind = kind;
+    this.retryDelayMs = retryDelayMs;
   }
 }

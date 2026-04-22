@@ -1,5 +1,6 @@
 import { createSignal, createMemo, createEffect, onCleanup } from "solid-js"
 import type { Accessor } from "solid-js"
+import type { ModelActivity } from "../../infra/output-blocks.js"
 import type { SessionEntry } from "../../orchestration/session-store-types.js"
 
 export interface MetricsHook {
@@ -8,7 +9,7 @@ export interface MetricsHook {
   liveTokens: Accessor<number>
   liveCost: Accessor<number>
   liveContextPercent: Accessor<number>
-  liveActivity: Accessor<"idle" | "thinking" | "generating" | "tool_executing">
+  liveActivity: Accessor<ModelActivity>
   pauseTimer(): void
   resetMetrics(): void
   resetElapsedTo(ms: number): void
@@ -18,7 +19,7 @@ export function useMetrics(entry: () => SessionEntry | undefined): MetricsHook {
   const liveTokens = createMemo(() => entry()?.tokens ?? 0)
   const liveCost = createMemo(() => entry()?.cost ?? 0)
   const liveContextPercent = createMemo(() => entry()?.contextPercent ?? 0)
-  const liveActivity = createMemo((): "idle" | "thinking" | "generating" | "tool_executing" => entry()?.modelActivity ?? "idle")
+  const liveActivity = createMemo((): ModelActivity => entry()?.modelActivity ?? "idle")
 
   // Why effect + setInterval, not a memo: elapsed time is wall-clock-driven,
   // not derivable from reactive state. The effect starts/stops the timer based

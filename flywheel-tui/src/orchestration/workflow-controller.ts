@@ -4,7 +4,7 @@ import { loadResumeData, findResumableSession } from "./session-actions.js"
 import { errorMessage as extractErrorMessage } from "../infra/error-message.js"
 import { TERMINAL_TITLE_PREFIX } from "../infra/format.js"
 import { TEST_STEPS, setupTestFixture, buildTestQueue, createTestWorkdir } from "./test-step.js"
-import type { WorkflowResult } from "./workflow-runner.js"
+import type { WorkflowResult } from "./workflow-runner-types.js"
 import type { SessionStore } from "./session-store-types.js"
 import type { SessionManager, SessionSummary } from "./session/manager.js"
 import type { SessionActionDeps } from "./session-actions.js"
@@ -43,7 +43,7 @@ interface RunnerDoneResult extends BaseRunnerDoneResult {
   state: SessionState
 }
 
-export interface WorkflowController {
+interface WorkflowController {
   startWorkflow(command: string, description: string, chatContext?: string): StartWorkflowResult | { error: string }
   startTestStep(stepId?: string): StartTestStepResult | { error: string } | { info: string }
   resumeWorkflow(sessionId: string): Promise<ResumeWorkflowResult | null>

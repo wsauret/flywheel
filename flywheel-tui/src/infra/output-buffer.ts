@@ -1,9 +1,3 @@
-/**
- * Capped output buffer — preserves the tail (most recent content) when
- * the character limit is exceeded. Truncated content is replaced with a
- * marker so downstream consumers know data was lost.
- */
-
 const TRUNCATION_MARKER = "[...truncated in memory...]\n";
 
 const BUFFER_LIMIT = 2_000_000;
@@ -27,12 +21,10 @@ function appendWithCharLimit(
     return { content: combined, truncated: false };
   }
 
-  // When limit is too small to fit marker + any tail, truncate the marker itself
   if (charLimit <= TRUNCATION_MARKER.length) {
     return { content: TRUNCATION_MARKER.slice(0, charLimit), truncated: true };
   }
 
-  // Keep the tail that fits within the limit (minus marker length)
   const keep = charLimit - TRUNCATION_MARKER.length;
   const combinedTailStart = combined.length - keep;
 

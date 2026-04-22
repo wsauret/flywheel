@@ -1,4 +1,4 @@
-export const EmptyBorder = {
+const EmptyBorder = {
   topLeft: "",
   bottomLeft: "",
   vertical: "",

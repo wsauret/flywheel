@@ -16,8 +16,7 @@ import { loadConfig } from "../orchestration/config/loader.js"
 import { resolveTierConfigs } from "../orchestration/config/schema.js"
 import { getEngine } from "../orchestration/engines/core/registry.js"
 import type { WorkflowSessionFactories } from "../orchestration/session-store-types.js"
-import { CONFIG_FILES } from "../infra/paths.js"
-import * as fs from "node:fs"
+import { findConfigFile } from "../infra/paths.js"
 import { setExitHandler } from "./exit.js"
 
 export interface TUIOptions {
@@ -35,7 +34,7 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
   let engineName = ""
   let modelName = ""
   try {
-    const configPath = CONFIG_FILES.find((p) => fs.existsSync(p))
+    const configPath = findConfigFile()
     const { config } = loadConfig(configPath)
     themeName = config.theme
     showThinking = config.show_thinking
@@ -45,8 +44,8 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
     if (config.openai_auth && !process.env["FLYWHEEL_OPENAI_AUTH"]) {
       process.env["FLYWHEEL_OPENAI_AUTH"] = config.openai_auth
     }
-  } catch {
-    // Config load failure is non-fatal
+  } catch (err) {
+    Log.Default.warn("config load failed (non-fatal, using defaults)", { error: errorMessage(err) })
   }
 
   // Promise with async executor: ExitProvider must live inside the Solid render
@@ -57,7 +56,7 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
       if (!loadStoredTokens()) {
         const { startBrowserFlow } = await import("../orchestration/auth/openai-oauth.js")
         const { loadConfig: lc } = await import("../orchestration/config/loader.js")
-        const cp = CONFIG_FILES.find((p) => fs.existsSync(p))
+        const cp = findConfigFile()
         const email = cp ? lc(cp).config.openai_email : undefined
         console.log("No ChatGPT tokens found. Opening browser to authenticate...")
         await startBrowserFlow(email)

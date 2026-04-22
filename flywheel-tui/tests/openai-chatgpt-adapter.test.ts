@@ -20,10 +20,14 @@ const COST_INFO: ModelInfo = {
   toolCall: true,
   attachment: false,
   temperature: true,
-  contextLimit: 128_000,
-  outputLimit: 16_384,
-  cost: { input: 2.5, output: 10 },
-  modalities: { input: ["text"], output: ["text"] },
+  contextLimit: 1_050_000,
+  outputLimit: 128_000,
+  cost: {
+    input: 2.5,
+    output: 15,
+    cacheRead: 0.25,
+    contextOver200k: { input: 5, output: 22.5, cacheRead: 0.5 },
+  },
 };
 
 let streamEvents: Array<Record<string, unknown>> = [];
@@ -154,7 +158,7 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
       outputTokens: 200,
       reasoningTokens: 50,
     });
-    expect(cost).toBeCloseTo((1000 * 2.5 + 200 * 10) / 1_000_000, 10);
+    expect(cost).toBeCloseTo((1000 * 2.5 + 200 * 15) / 1_000_000, 10);
   });
 
   it("uses pricing in chatgpt mode once model info is cached", async () => {
@@ -175,7 +179,36 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
       cacheRead: 0,
       cacheWrite: 0,
       reasoning: 80,
-    })).toBeCloseTo((1200 * 2.5 + 300 * 10) / 1_000_000, 10);
+    })).toBeCloseTo((1200 * 2.5 + 300 * 15) / 1_000_000, 10);
+  });
+
+  it("uses the higher GPT-5.4 rate when prompt usage crosses 200k tokens", async () => {
+    setMockResponseUsage({
+      inputTokens: 220_000,
+      outputTokens: 200,
+      cachedTokens: 60_000,
+      reasoningTokens: 50,
+    });
+    const auth: OpenAIAuth = { kind: "apiKey", apiKey: "sk-test" };
+    const client = createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient(COST_INFO));
+
+    const events = await collectStreamEvents(client);
+    const usageEvent = events.find((event) => event.kind === "usage");
+    const cost = client.costFor({
+      input: 160_000,
+      output: 200,
+      cacheRead: 60_000,
+      cacheWrite: 0,
+      reasoning: 50,
+    });
+
+    expect(usageEvent).toMatchObject({
+      inputTokens: 160_000,
+      outputTokens: 200,
+      cacheReadTokens: 60_000,
+      reasoningTokens: 50,
+    });
+    expect(cost).toBeCloseTo((160_000 * 5 + 200 * 22.5 + 60_000 * 0.5) / 1_000_000, 10);
   });
 
   it("uses heuristic context limits when OpenAI model metadata is unavailable", () => {

@@ -174,6 +174,34 @@ describe("output-formatter", () => {
       expect(result).toBeUndefined();
     });
 
+    it("detects filetypes for curated additions and framework aliases", () => {
+      const cases = [
+        { filePath: path.join(tmpDir, "Dockerfile"), expected: "dockerfile" },
+        { filePath: path.join(tmpDir, "Containerfile"), expected: "dockerfile" },
+        { filePath: path.join(tmpDir, "build.PS1"), expected: "powershell" },
+        { filePath: path.join(tmpDir, "schema.proto"), expected: "protobuf" },
+        { filePath: path.join(tmpDir, "flake.nix"), expected: "nix" },
+        { filePath: path.join(tmpDir, "main.dart"), expected: "dart" },
+        { filePath: path.join(tmpDir, "app.exs"), expected: "elixir" },
+        { filePath: path.join(tmpDir, "app.erl"), expected: "erlang" },
+        { filePath: path.join(tmpDir, "core.cljc"), expected: "clojure" },
+        { filePath: path.join(tmpDir, "build.gradle"), expected: "groovy" },
+        { filePath: path.join(tmpDir, "types.mli"), expected: "ocaml" },
+        { filePath: path.join(tmpDir, "paper.tex"), expected: "latex" },
+        { filePath: path.join(tmpDir, "Component.vue"), expected: "vue" },
+        { filePath: path.join(tmpDir, "Component.svelte"), expected: "svelte" },
+        { filePath: path.join(tmpDir, "Makefile"), expected: "makefile" },
+      ];
+
+      for (const { filePath, expected } of cases) {
+        const result = extractToolDiff("write", {
+          file_path: filePath,
+          content: "sample",
+        });
+        expect(result?.filetype).toBe(expected);
+      }
+    });
+
     it("still handles old_string/new_string format", () => {
       const result = extractToolDiff("edit", {
         file_path: testFile,

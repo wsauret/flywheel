@@ -1,7 +1,6 @@
 import type { FileSink } from "bun";
-import type { SpawnOptions, SpawnResult, StdinHandle } from "./spawner.js";
+import type { SpawnOptions, SpawnResult, StdinHandle, RawSpawnedProcess } from "./spawner.js";
 import type { ProcessResult } from "../../../../../infra/ndjson-event-types.js";
-import type { ChildHandle } from "../../../../../infra/process-lifecycle.js";
 import { OutputBuffer } from "../../../../../infra/output-buffer.js";
 import { CompletionDetector } from "./completion.js";
 import { NDJSONParser } from "../../../../../infra/ndjson-parser.js";
@@ -15,18 +14,8 @@ import {
   createStdinHandle,
 } from "./spawn-helpers.js";
 
-export interface RawSpawnedProcess {
-  proc: { pid: number; exited: Promise<number>; kill(signal?: number): void };
-  stdout: ReadableStream<Uint8Array>;
-  stderr: ReadableStream<Uint8Array>;
-  /** The raw Bun stdin sink, present when stdinPipe was requested. */
-  stdinSink?: FileSink;
-}
-
 interface StreamPipelineOptions {
-  /** Timeout in milliseconds for the subprocess. */
   timeoutMs: number;
-  /** Spawn options forwarded from the caller. */
   spawnOptions?: SpawnOptions;
 }
 
@@ -38,7 +27,6 @@ export function wireStreamPipeline(
   const timeoutMs = pipelineOpts.timeoutMs;
   const startTime = Date.now();
 
-  // Shared infrastructure
   const subprocessTimeout = createSubprocessTimeout(timeoutMs);
   const buffer = new OutputBuffer();
   const completionDetector = new CompletionDetector();
@@ -58,18 +46,14 @@ export function wireStreamPipeline(
     timeoutMs, startTime, handoffPath,
   };
 
-  // Stream readers with abort-safe cancellation
   const readers = createStreamReaderSet(subprocessTimeout.signal);
 
-  // Wire external abort signal
   if (options?.signal && !options.signal.aborted) {
     options.signal.addEventListener("abort", () => subprocessTimeout.interrupt(), { once: true });
   } else if (options?.signal?.aborted) {
     subprocessTimeout.interrupt();
   }
 
-  // Completion lifecycle — owned here, passed as callbacks to processor and helpers.
-  // The callback is set later by wireCompletionDetection (pipe mode) or stays null (non-pipe).
   let completionCallback: (() => void) | null = null;
   const persistent = !!options?.onTurnComplete;
   function fireCompletion(): void {
@@ -82,17 +66,14 @@ export function wireStreamPipeline(
 
   const usePipe = raw.stdinSink !== undefined;
 
-  // Attach timeout to process
-  subprocessTimeout.attachProcess(raw.proc as unknown as ChildHandle);
+  subprocessTimeout.attachProcess(raw.proc);
 
-  // Consume streams
   readers.stdout = raw.stdout.getReader();
   readers.stderr = raw.stderr.getReader();
 
   const readStdoutPromise = readStream(readers.stdout, rawStdoutChunks, processStdout);
   const readStderrPromise = readStream(readers.stderr, rawStderrChunks, (text) => options?.onStderr?.(text));
 
-  // Shared result builder — awaits provided work promises, then collects exit code.
   async function awaitResult(work: Promise<void>[]): Promise<ProcessResult> {
     try {
       await Promise.all(work);
@@ -105,7 +86,6 @@ export function wireStreamPipeline(
     }
   }
 
-  // --- Pipe mode: return early with StdinHandle, result resolves later ---
   if (usePipe) {
     const stdinSink = raw.stdinSink!;
     const stdinHandle = createStdinHandle(stdinSink, raw.proc);
@@ -124,11 +104,9 @@ export function wireStreamPipeline(
     };
   }
 
-  // --- Non-pipe mode: wait for completion, wrap in SpawnResult ---
   return { result: awaitResult([readStdoutPromise, readStderrPromise]), pid: raw.proc.pid };
 }
 
-// --- Pipe-mode helpers (inlined — single consumer, same concern as the pipeline) ---
 
 function writeInitialStdin(
   stdinSink: FileSink,

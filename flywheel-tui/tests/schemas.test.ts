@@ -1,21 +1,13 @@
 import { describe, it, expect } from "bun:test";
 import { createEmptyStepContext } from "../src/workflows/queue/step-context";
-import {
-  WorkflowInfoSchema,
-} from "../src/workflows/dispatcher/schemas";
 import type { DispatcherInput } from "../src/workflows/dispatcher/schemas";
 import {
   DispatcherDecisionSchema,
   EvaluatorResultSchema,
-  ToolScopingSchema,
   EvaluationCriteriaSchema,
   WorkerConfigSchema,
 } from "../src/infra/workflow-types";
 import type { EvaluatorInput } from "../src/workflows/evaluator/schemas";
-import {
-  ProcessResultSchema,
-  ProcessFailureReasonSchema,
-} from "../src/infra/ndjson-event-types";
 import { SessionSchema } from "../src/orchestration/session/schemas";
 import {
   SessionBudgetStatusSchema,
@@ -237,16 +229,6 @@ describe("DispatcherInput type", () => {
     expect(input.last_worker_result).toBeNull();
   });
 
-  it("WorkflowInfoSchema round-trips workflow field", () => {
-    const workflow = {
-      name: "work",
-      step_number: 2,
-      total_steps: 5,
-      step_description: "Implement core logic",
-    };
-    const result = WorkflowInfoSchema.parse(workflow);
-    expect(result).toEqual(workflow);
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -344,146 +326,6 @@ describe("EvaluatorInput type", () => {
 
 // ---------------------------------------------------------------------------
 // ProcessFailureReasonSchema (discriminated union)
-// ---------------------------------------------------------------------------
-describe("ProcessFailureReasonSchema", () => {
-  const allKinds = [
-    "timeout",
-    "exit_code",
-    "schema_error",
-    "api_error",
-    "rate_limited",
-    "transient",
-    "interrupted",
-    "handoff_missing",
-    "handoff_invalid",
-  ] as const;
-
-  it("validates all 9 kind strings", () => {
-    expect(allKinds.length).toBe(9);
-  });
-
-  it("parses timeout kind with timeoutMs", () => {
-    const result = ProcessFailureReasonSchema.safeParse({
-      kind: "timeout",
-      timeoutMs: 30000,
-      message: "Worker timed out",
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("rejects timeout kind without timeoutMs", () => {
-    const result = ProcessFailureReasonSchema.safeParse({
-      kind: "timeout",
-      message: "Worker timed out",
-    });
-    expect(result.success).toBe(false);
-  });
-
-  for (const kind of allKinds) {
-    if (kind === "timeout") continue;
-    it(`parses '${kind}' kind`, () => {
-      const base: Record<string, unknown> = {
-        kind,
-        message: `Failed: ${kind}`,
-      };
-      if (kind === "exit_code") base.exitCode = 1;
-      const result = ProcessFailureReasonSchema.safeParse(base);
-      expect(result.success).toBe(true);
-    });
-  }
-
-  it("rejects unknown kind string", () => {
-    const result = ProcessFailureReasonSchema.safeParse({
-      kind: "unknown_kind",
-      message: "should fail",
-    });
-    expect(result.success).toBe(false);
-  });
-
-  // Test each kind as a string literal to catch typos
-  for (const kind of allKinds) {
-    it(`kind '${kind}' is exactly that string literal`, () => {
-      // This test ensures the schema doesn't accept misspellings
-      const typo = kind + "x";
-      const base: Record<string, unknown> = {
-        kind: typo,
-        message: "typo test",
-      };
-      const result = ProcessFailureReasonSchema.safeParse(base);
-      expect(result.success).toBe(false);
-    });
-  }
-});
-
-// ---------------------------------------------------------------------------
-// ProcessResultSchema
-// ---------------------------------------------------------------------------
-describe("ProcessResultSchema", () => {
-  it("parses a valid worker result", () => {
-    const result = ProcessResultSchema.safeParse({
-      output: "some output",
-      exitCode: 0,
-      truncated: false,
-      durationMs: 5000,
-      handoffPath: "/tmp/handoffs/abc.json",
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("includes truncated field", () => {
-    const parsed = ProcessResultSchema.parse({
-      output: "some output",
-      exitCode: 0,
-      truncated: true,
-      durationMs: 5000,
-      handoffPath: "",
-    });
-    expect(parsed.truncated).toBe(true);
-  });
-
-  it("rejects missing truncated field", () => {
-    const result = ProcessResultSchema.safeParse({
-      output: "some output",
-      exitCode: 0,
-      durationMs: 5000,
-      handoffPath: "",
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("includes handoffPath field", () => {
-    const parsed = ProcessResultSchema.parse({
-      output: "some output",
-      exitCode: 0,
-      truncated: false,
-      durationMs: 5000,
-      handoffPath: "/tmp/.flywheel/handoffs/abc-123.json",
-    });
-    expect(parsed.handoffPath).toBe("/tmp/.flywheel/handoffs/abc-123.json");
-  });
-
-  it("rejects missing handoffPath field", () => {
-    const result = ProcessResultSchema.safeParse({
-      output: "some output",
-      exitCode: 0,
-      truncated: false,
-      durationMs: 5000,
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("accepts empty string handoffPath", () => {
-    const result = ProcessResultSchema.safeParse({
-      output: "some output",
-      exitCode: 0,
-      truncated: false,
-      durationMs: 5000,
-      handoffPath: "",
-    });
-    expect(result.success).toBe(true);
-  });
-});
-
 // ---------------------------------------------------------------------------
 // SessionSchema (.strict() — internal)
 // ---------------------------------------------------------------------------
@@ -615,33 +457,6 @@ describe("EvaluationCriteriaSchema", () => {
 
   it("rejects missing required fields", () => {
     const result = EvaluationCriteriaSchema.safeParse({});
-    expect(result.success).toBe(false);
-  });
-});
-
-describe("ToolScopingSchema", () => {
-  const valid = { read: true, bash: true, write: true, edit: true };
-
-  it("round-trips valid data with task defaulting to false", () => {
-    const result = ToolScopingSchema.parse(valid);
-    expect(result).toEqual({ ...valid, task: false });
-  });
-
-  it("strips unknown fields", () => {
-    const result = ToolScopingSchema.parse({
-      ...valid,
-      extra: "strip me",
-    });
-    expect((result as any).extra).toBeUndefined();
-  });
-
-  it("rejects non-boolean values", () => {
-    const result = ToolScopingSchema.safeParse({
-      read: "yes",
-      bash: true,
-      write: true,
-      edit: true,
-    });
     expect(result.success).toBe(false);
   });
 });

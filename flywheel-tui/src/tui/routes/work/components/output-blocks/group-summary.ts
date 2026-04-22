@@ -1,25 +1,12 @@
 import { classifyTool } from "@infra/tool-display-registry.js"
-import type { ToolEntry } from "@infra/output-blocks"
+import type { ToolEntry, ToolGroupBlock } from "@infra/output-blocks"
 
-export function toolsGroupLabel(active: boolean): string {
-  return active ? "Exploring..." : "Explored"
+export function toolsGroupLabel(status: ToolGroupBlock["status"]): string {
+  if (status === "active") return "Exploring..."
+  if (status === "paused") return "Interrupted"
+  return "Explored"
 }
 
-/**
- * Produces a verb-explicit summary string for a tool group.
- *
- * Four bins by category + filePath presence:
- *   exploration + filePath  → "read N files"
- *   exploration + no path   → "N searches"
- *   mutation + filePath      → "edited N files"  (agent children only)
- *   execution                → "N commands"
- *
- * Examples:
- *   [read, read, glob]        → "read 1 file · 1 search"
- *   [bash, bash]              → "2 commands"
- *   [read, edit(/a.ts)]       → "read 1 file · edited 1 file"
- *   []                        → ""
- */
 export function deriveGroupSummary(children: readonly ToolEntry[]): string {
   if (children.length === 0) return ""
 

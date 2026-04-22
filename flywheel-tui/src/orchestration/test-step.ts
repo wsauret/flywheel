@@ -6,6 +6,7 @@ import { createQueue } from "../workflows/queue/queue.js";
 import type { Queue, Step } from "../workflows/queue/types.js";
 import { ensureSessionDir, resolveSessionFile } from "../infra/paths.js";
 import { Log } from "../infra/log.js";
+import { errorMessage } from "../infra/error-message.js";
 
 const log = Log.create({ service: "test-step" });
 
@@ -71,8 +72,8 @@ export function setupTestFixture(
     if (fs.existsSync(fixtureHandoff)) {
       try {
         handoffData = JSON.parse(fs.readFileSync(fixtureHandoff, "utf-8")) as Record<string, unknown>;
-      } catch {
-        // Invalid JSON — skip
+      } catch (err) {
+        log.warn("invalid fixture handoff JSON", { path: fixtureHandoff, error: errorMessage(err) })
       }
     }
   }
@@ -138,8 +139,8 @@ export function createTestWorkdir(projectCwd: string): TestWorkdir {
       try {
         fs.rmSync(dir, { recursive: true, force: true });
         log.info("cleaned up test workdir", { path: dir });
-      } catch {
-        log.warn("failed to clean up test workdir", { path: dir });
+      } catch (err) {
+        log.warn("failed to clean up test workdir", { path: dir, error: errorMessage(err) });
       }
     },
   };

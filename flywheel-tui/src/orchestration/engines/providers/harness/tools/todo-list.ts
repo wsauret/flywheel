@@ -150,8 +150,8 @@ export const todoListDefinition: ToolDefinition = {
     },
     required: ["operation"],
   },
-  execute: (input: unknown, context: ToolContext) =>
-    Promise.resolve(executeTodoList(input as Record<string, unknown>, context)),
+  execute: (input: Record<string, unknown>, context: ToolContext) =>
+    Promise.resolve(executeTodoList(input, context)),
 };
 
 function applyWrite(input: Record<string, unknown>, context: ToolContext): ToolResult {

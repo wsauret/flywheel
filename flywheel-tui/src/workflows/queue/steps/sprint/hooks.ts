@@ -13,14 +13,12 @@ import type {
 import { SPRINT_HINT } from "./types.js";
 import { buildSprintEvaluationCriteria } from "./evaluator-criteria.js";
 
-// Sprint loop primitives — exported for direct unit testing of edge cases.
-
 const TIMESTAMP_RE = /\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}[.\d]*/g;
 const LINE_NUMBER_RE = /:\d+:\d+/g;
 const DURATION_RE = /\d+(\.\d+)?\s*(milliseconds|seconds|sec|ms|s)\b/gi;
 const ANSI_RE = /\x1b\[[0-9;]*m/g;
 // Strips volatile tokens so consecutive failures can be compared for stuck-detection.
-export function normalizeFeedback(raw: string): string {
+function normalizeFeedback(raw: string): string {
   return raw
     .replace(TIMESTAMP_RE, "")
     .replace(LINE_NUMBER_RE, "")
@@ -51,7 +49,7 @@ export function isStuck(
   return prevNorm === currNorm;
 }
 
-export function recordIteration(
+function recordIteration(
   handoffData: Record<string, unknown> | null,
   status: "completed" | "failed",
   iterationNumber: number,
@@ -59,9 +57,7 @@ export function recordIteration(
   const summary =
     (handoffData?.summary as string | undefined) ?? `Iteration ${iterationNumber}`;
 
-  // Extract eval feedback from handoffData if present.
-  // The hook works WITHOUT evaluator feedback (handoffData is raw worker handoff).
-  // The verification field can be a string OR an object with test_output_summary.
+  // verification can be a string OR an object with test_output_summary
   const verificationValue = handoffData?.verification;
   const verificationStr =
     typeof verificationValue === "string" ? verificationValue
@@ -74,7 +70,6 @@ export function recordIteration(
     (handoffData?.feedback as string | undefined) ??
     verificationStr ??
     undefined;
-  // Ensure we only pass strings to normalizeFeedback
   const evalFeedback = typeof rawFeedback === "string" ? rawFeedback : undefined;
 
   return {
@@ -86,7 +81,7 @@ export function recordIteration(
   };
 }
 
-export function buildRetryStep(
+function buildRetryStep(
   originalStep: Step,
   history: SprintIterationRecord[],
   iterationNumber: number,
@@ -97,7 +92,6 @@ export function buildRetryStep(
     ? lastRecord.evalFeedback ?? lastRecord.workerSummary
     : "unknown";
 
-  // Brief description only — full history stays in closure
   const description = `Sprint retry ${iterationNumber}/${maxIterations} — prior: ${priorSummary}`;
 
   return makeStep("work", `Sprint work (iteration ${iterationNumber})`, {
@@ -139,26 +133,21 @@ export function createSprintHook(config: SprintConfig): {
     state.history.push(record);
     if (record.evalFeedback) feedbackCache.set(record.iteration, normalizeFeedback(record.evalFeedback));
 
-    // Completed — sprint succeeded
     if (status === "completed") {
       state = { ...state, status: "completed" };
       return { continueExecution: false };
     }
 
-    // Failed — check stuck detection (identical consecutive failures)
     if (config.detect_stuck && isStuck(state.history, feedbackCache)) {
       state = { ...state, status: "exhausted", reason: "Stuck: identical consecutive failures" };
       return { continueExecution: false };
     }
 
-    // Failed — check max iterations
     if (state.iterationCount >= config.max_iterations) {
       state = { ...state, status: "exhausted", reason: "Max iterations reached" };
       return { continueExecution: false };
     }
 
-    // Failed — insert retry step, then return continue
-    // (insertAfter MUST happen before return)
     const retryStep = buildRetryStep(
       step,
       state.history,

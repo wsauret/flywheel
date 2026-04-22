@@ -6,7 +6,7 @@ import {
 } from "../src/orchestration/config/schema";
 import { EventBus, createEmit } from "../src/infra/event-bus";
 import type { FlywheelEvent } from "../src/infra/events";
-import { ProcessResultSchema } from "../src/infra/ndjson-event-types";
+import type { ProcessResult } from "../src/infra/ndjson-event-types";
 import { HeadlessAdapter } from "./helpers/headless-adapter";
 
 // ---------------------------------------------------------------------------
@@ -150,33 +150,27 @@ describe("evaluator:revision-requested event type", () => {
 // ---------------------------------------------------------------------------
 
 describe("ProcessResult.sessionId field", () => {
-  it("schema accepts sessionId field", () => {
-    const result = ProcessResultSchema.safeParse({
+  it("type accepts sessionId field", () => {
+    const result: ProcessResult = {
       output: "test output",
       exitCode: 0,
       truncated: false,
       durationMs: 1000,
       sessionId: "session-abc-123",
       handoffPath: "",
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.sessionId).toBe("session-abc-123");
-    }
+    };
+    expect(result.sessionId).toBe("session-abc-123");
   });
 
-  it("schema accepts missing sessionId (optional)", () => {
-    const result = ProcessResultSchema.safeParse({
+  it("type accepts missing sessionId (optional)", () => {
+    const result: ProcessResult = {
       output: "test output",
       exitCode: 0,
       truncated: false,
       durationMs: 1000,
       handoffPath: "",
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.sessionId).toBeUndefined();
-    }
+    };
+    expect(result.sessionId).toBeUndefined();
   });
 });
 

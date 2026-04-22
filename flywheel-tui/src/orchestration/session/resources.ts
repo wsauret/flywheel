@@ -4,7 +4,7 @@ import type { TranscriptWriter } from "./transcript-writer.js"
 import type { TraceCollector } from "./trace-collector.js"
 import type { OutputFlusher } from "./output-persistence.js"
 
-export interface SessionResources {
+interface SessionResources {
   budgetTracker: BudgetTracker
   traceWriter: TraceWriter | null
   transcriptWriter: TranscriptWriter | null

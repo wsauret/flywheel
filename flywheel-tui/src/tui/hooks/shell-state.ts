@@ -1,15 +1,7 @@
-/**
- * Shell State — shared reactive state for all TUI hooks.
- *
- * Split into two interfaces:
- * - ShellSignals: pure reactive state (signals, memos)
- * - ShellServices: injected dependencies (non-reactive objects)
- */
-
 import { createSignal, createMemo } from "solid-js"
 import type { Accessor, Setter } from "solid-js"
 import type { AnyBlock, QuestionBlock } from "../../infra/output-blocks.js"
-import type { StepState } from "../../orchestration/workflow-runner.js"
+import type { StepState } from "../../orchestration/workflow-runner-types.js"
 import type { SessionState } from "../../orchestration/session/types.js"
 import type { SessionStore, SessionEntry } from "../../orchestration/session-store-types.js"
 import type { SessionManager, SessionSummary } from "../../orchestration/session/manager.js"

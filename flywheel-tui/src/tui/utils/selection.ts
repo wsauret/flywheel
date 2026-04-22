@@ -1,4 +1,4 @@
-export interface SelectionConsumer {
+interface SelectionConsumer {
   getSelection(): { getSelectedText(): string } | null
   clearSelection(): void
 }

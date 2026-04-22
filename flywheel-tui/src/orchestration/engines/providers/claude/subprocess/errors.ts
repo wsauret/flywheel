@@ -40,13 +40,11 @@ export function categorizeFailure(opts: {
   timedOut: boolean;
   timeoutMs?: number;
   completionDetected: boolean;
-  /** Whether the process was killed by user interrupt (SIGINT/SIGTERM) */
   interrupted?: boolean;
 }): ProcessFailureReason | undefined {
   const { exitCode, stdout, stderr, timedOut, timeoutMs, completionDetected, interrupted } = opts;
 
-  // Interrupted by user (Ctrl+C / SIGINT / SIGTERM) — never retry
-  // Must check before timeout since both can set timedOut
+  // Must check before timeout since both can set timedOut.
   if (interrupted) {
     return {
       kind: "interrupted",
@@ -54,7 +52,6 @@ export function categorizeFailure(opts: {
     };
   }
 
-  // Timeout
   if (timedOut) {
     return {
       kind: "timeout",
@@ -63,8 +60,6 @@ export function categorizeFailure(opts: {
     };
   }
 
-  // Rate limited (check before transient since rate-limit is more specific)
-  // Uses RateLimitDetector which only checks stderr to avoid false positives.
   const rateLimitResult = detectRateLimit({ stderr, exitCode });
   if (rateLimitResult.isRateLimit) {
     return {
@@ -73,8 +68,7 @@ export function categorizeFailure(opts: {
     };
   }
 
-  // Transient errors — only check stderr (not stdout) to avoid false positives
-  // from code/text the subprocess produces containing transient-like patterns
+  // Only check stderr — stdout may contain code/text with transient-like patterns.
   if (isTransientError(stderr)) {
     return {
       kind: "transient",
@@ -82,7 +76,6 @@ export function categorizeFailure(opts: {
     };
   }
 
-  // API errors (non-zero exit + no specific pattern)
   if (exitCode !== 0 && isApiError(stderr)) {
     return {
       kind: "api_error",
@@ -90,13 +83,11 @@ export function categorizeFailure(opts: {
     };
   }
 
-  // Crash-after-success recovery: if completion was detected before the crash,
-  // treat as success — the worker finished its work, the crash is incidental.
+  // Crash-after-success: the worker finished, the crash is incidental.
   if (exitCode !== 0 && completionDetected && !interrupted && !timedOut) {
     return undefined;
   }
 
-  // Non-zero exit code
   if (exitCode !== 0) {
     return {
       kind: "exit_code",
@@ -105,11 +96,6 @@ export function categorizeFailure(opts: {
     };
   }
 
-  // Clean exit (code 0) is treated as successful completion.
-  // The <promise>COMPLETE</promise> marker and NDJSON result events are
-  // belt-and-suspenders signals; a clean exit is the authoritative indicator.
-  // Previously, missing the completion marker would cause non-retryable failure,
-  // silently halting the workflow even though the worker exited successfully.
   return undefined;
 }
 

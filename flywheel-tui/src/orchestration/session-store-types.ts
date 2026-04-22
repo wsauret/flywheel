@@ -1,18 +1,16 @@
-import type { WorkflowRunner, WorkflowResult, StepState } from "./workflow-runner.js"
+import type { WorkflowRunner, WorkflowResult, StepState } from "./workflow-runner-types.js"
 import type { AnyBlock } from "../infra/output-blocks.js"
 import type { ModelActivity } from "../infra/output-blocks.js"
-import type { ChatRunner } from "./chat-runner.js"
+import type { ChatRunner } from "./chat-runner-types.js"
 import type { SessionKind } from "./session/types.js"
 import type { Queue } from "../workflows/queue/types.js"
 import type { WorkflowDeps } from "./engines/workflow-deps.js"
 import type { EventBus } from "../infra/event-bus.js"
 import type { EngineMetadata } from "./engines/core/types.js"
 
-export interface WorkflowAdapter {
+interface WorkflowAdapter {
   connect(bus: EventBus): void
   disconnect(): void
-  /** Mark a pending question block as answered in the adapter's output session.
-   *  No-op in adapters that don't render question blocks (e.g. headless). */
   answerQuestion?(toolUseId: string, answers: Record<string, string>): void
   cancelQuestion?(toolUseId: string): void
 }
@@ -30,25 +28,19 @@ export interface SessionEntryBase {
   contextPercent: number
   readonly startedAt: number
   modelActivity: ModelActivity
-  // Why not derived from runner === null: loaded sessions also have runner: null.
-  // Why not a lifecycle state (ADR-006 §State Ownership forbids status fields on
-  // registry entries): this is a runtime disposal guard — it prevents operations
-  // on a disposed runner. The session manager owns lifecycle (active/paused/completed).
+  // Runtime disposal guard, not lifecycle state — loaded sessions also have runner: null.
   ended: boolean
 }
 
 export interface WorkflowSessionEntry extends SessionEntryBase {
   readonly kind: "workflow"
-  /** Null for ended/loaded entries (no live runner). */
   readonly runner: WorkflowRunner | null
   steps: readonly StepState[]
 }
 
 export interface ChatSessionEntry extends SessionEntryBase {
   readonly kind: "chat"
-  /** Null for ended/loaded entries (no live runner). */
   readonly runner: ChatRunner | null
-  /** Engine session ID — used for --resume to reconnect with full context. */
   engineSessionId?: string
 }
 
@@ -56,13 +48,7 @@ export type SessionEntry = WorkflowSessionEntry | ChatSessionEntry
 
 export interface ChatStoreHandle {
   updateEntry: (patch: Partial<ChatSessionEntry>) => void
-  /** Signal a fatal error — removes entry and fires onRunnerError.
-   *  Returns void (fire-and-forget). Implementations are async but callers
-   *  intentionally drop the promise — cleanup is best-effort. */
   onError: (message: string) => void
-  /** Signal normal completion — removes entry and fires onRunnerDone.
-   *  Returns void (fire-and-forget). Implementations are async but callers
-   *  intentionally drop the promise — cleanup is best-effort. */
   onEnded: () => void
 }
 

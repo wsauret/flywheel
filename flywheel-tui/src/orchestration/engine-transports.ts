@@ -1,23 +1,13 @@
-/**
- * Engine-backed transport implementations for dispatcher and evaluator.
- *
- * These implement the DI interfaces from workflows/ (DispatcherTransport,
- * EvaluatorTransport) using engine.createRunner() instead of warm process
- * pools. Both engines (Claude CLI, harness in-process) work
- * transparently through the Engine abstraction.
- */
-
 import { randomUUID } from "node:crypto"
 import type { Engine } from "./engines/core/types.js"
 import type { DispatcherTransport } from "../workflows/dispatcher/transport.js"
 import type { EvaluatorTransport } from "../workflows/evaluator/transport.js"
-import type { DispatcherInput } from "../workflows/dispatcher/schemas.js"
+import { DispatcherDecisionHandoffSchema, handoffToDecision, type DispatcherDecisionHandoff, type DispatcherInput } from "../workflows/dispatcher/schemas.js"
 import type { DispatcherDecision } from "../infra/workflow-types.js"
 import type { EvaluatorInput } from "../workflows/evaluator/schemas.js"
 import type { EvaluatorResult } from "../infra/workflow-types.js"
 import type { EmitFn } from "../infra/event-bus.js"
-import { EVALUATOR_SYSTEM_PROMPT, buildEvaluatorPrompt } from "../workflows/evaluator/prompts.js"
-import { DispatcherDecisionHandoffSchema } from "../workflows/dispatcher/schemas.js"
+import { buildEvaluatorSystemPrompt, buildEvaluatorPrompt } from "../workflows/evaluator/prompts.js"
 import { EvaluatorVerdictSchema } from "../workflows/evaluator/schemas.js"
 import { buildDispatcherSystemPrompt } from "../workflows/dispatcher/system-prompt.js"
 import { renderDispatcherHandoffInstruction } from "../workflows/queue/shared/handoff-render.js"
@@ -28,8 +18,6 @@ import { Log } from "../infra/log.js"
 import { toolActionsForProfile } from "./engines/core/tool-resolution.js"
 
 const log = Log.create({ service: "engine-transports" })
-
-// --- Dispatcher ---
 
 interface EngineDispatcherTransportOptions {
   engine: Engine
@@ -72,28 +60,14 @@ export function createEngineDispatcherTransport(
       runner.send(fullPrompt)
       await runner.done
 
-      const handoff = await readHandoff(handoffPath, DispatcherDecisionHandoffSchema)
-      const decision: DispatcherDecision = {
-        ...handoff,
-        evaluation_criteria: handoff.evaluation_criteria
-          ?? { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
-        // Zod .default() fills task at runtime, but .omit().extend() loses the
-        // output-type narrowing — re-spread worker_config to satisfy the compiler.
-        worker_config: handoff.worker_config ? {
-          ...handoff.worker_config,
-          tool_scoping: handoff.worker_config.tool_scoping
-            ? { ...handoff.worker_config.tool_scoping, task: handoff.worker_config.tool_scoping.task ?? false }
-            : undefined,
-        } : undefined,
-      }
+      const handoff = await readHandoff(handoffPath, DispatcherDecisionHandoffSchema) as DispatcherDecisionHandoff
+      const decision = handoffToDecision(handoff)
 
       log.info("dispatcher invocation complete", { sessionId, invocationId })
       return decision
     },
   }
 }
-
-// --- Evaluator ---
 
 interface EngineEvaluatorTransportOptions {
   engine: Engine
@@ -110,9 +84,7 @@ export function createEngineEvaluatorTransport(
   opts: EngineEvaluatorTransportOptions,
 ): EvaluatorTransport {
   const { engine, sessionId, projectCwd, model, effort, emit, workflowId } = opts
-  const systemPrompt = opts.systemPromptAddendum
-    ? `${EVALUATOR_SYSTEM_PROMPT}\n\n${opts.systemPromptAddendum}`
-    : EVALUATOR_SYSTEM_PROMPT
+  const systemPrompt = buildEvaluatorSystemPrompt(opts.systemPromptAddendum)
 
   return {
     async invoke(input: EvaluatorInput): Promise<EvaluatorResult> {

@@ -12,7 +12,7 @@ import { createTokenCounter } from "./token-counter.js";
 
 const log = Log.create({ service: "harness-summarizer" });
 
-const PROACTIVE_SUMMARIZATION_THRESHOLD = 8_000;
+const PROACTIVE_SUMMARIZATION_PERCENT = 85;
 const UNWIND_TARGET_FREE_TOKENS = 4_000;
 
 export interface Handoff {
@@ -20,7 +20,7 @@ export interface Handoff {
   userPrompt: string;
 }
 
-export interface Summarizer {
+interface Summarizer {
   shouldSummarize(currentTokens: number, contextLimit: number): boolean;
   summarize(
     messages: ReadonlyArray<Message>,
@@ -33,8 +33,7 @@ export interface Summarizer {
 export function createSummarizer(client: LLMClient): Summarizer {
   return {
     shouldSummarize(currentTokens: number, contextLimit: number): boolean {
-      const free = contextLimit - currentTokens;
-      return free < PROACTIVE_SUMMARIZATION_THRESHOLD;
+      return currentTokens > contextLimit * (PROACTIVE_SUMMARIZATION_PERCENT / 100);
     },
 
     async summarize(

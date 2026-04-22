@@ -5,7 +5,7 @@ import type {
   RunnerOptions,
 } from "../../core/types.js";
 import { resolveToolActions } from "../../core/tool-resolution.js";
-import type { EngineCommand, EngineCommandOptions } from "./engine.js";
+import type { EngineCommand, EngineCommandOptions } from "./engine-types.js";
 import type { ProcessSpawner, SpawnResult, StdinHandle } from "./subprocess/spawner.js";
 import type { ProcessResult, ProcessFailureReason, UserEventToolResult } from "../../../../infra/ndjson-event-types.js";
 import { formatStdinInput } from "./subprocess/stdin-format.js";

@@ -1,27 +1,14 @@
-// Step Dispatcher Helpers — pure data transformation functions
-//
-// Extracted from step-dispatcher.ts for SRP. These functions assemble,
-// convert, and normalize data structures for the step dispatcher without
-// depending on the dispatcher's closure state.
-
 import type { Step, Queue } from "./types.js";
 import type { LastWorkerResult, SessionBudgetStatus, AvailableContext } from "../schemas.js";
 import type { DispatcherInput } from "../dispatcher/schemas.js";
 import type { AccumulatedContext } from "./context-accumulator.js";
 import type { DispatcherDecision } from "../../infra/workflow-types.js";
 import type { StepContext } from "./step-context.js";
-import type { EvalResult } from "./executor-types.js";
-import type { MutationRequest, StepDispatchContext, StepDispatcherDecision } from "./step-dispatcher.js";
-import type { MutationBudget } from "./guardrails.js";
+import type { MutationRequest, StepDispatchContext, StepDispatcherDecision, MutationBudget, EvalResult } from "./step-dispatcher-types.js";
 import { createEmptyStepContext } from "./step-context.js";
 import { parseRawHandoff } from "./shared/handoff-parse.js";
 import { randomUUID } from "node:crypto";
 
-/**
- * Build compact queue state for the dispatcher.
- * Shows all steps with their statuses to give the dispatcher
- * awareness of queue progress without sending full step data.
- */
 function buildCompactQueueState(
   queue: Queue,
   currentStepIndex: number,
@@ -38,9 +25,6 @@ function buildCompactQueueState(
   };
 }
 
-/**
- * Convert a previous handoff to LastWorkerResult format.
- */
 function handoffToLastWorkerResult(
   handoff: Record<string, unknown>,
   stepIndex: number,
@@ -57,9 +41,6 @@ function handoffToLastWorkerResult(
   };
 }
 
-/**
- * Convert accumulated context to StepContext for the dispatcher input.
- */
 function accumulatedToStepContext(
   accumulated: AccumulatedContext,
 ): StepContext {
@@ -81,10 +62,6 @@ function accumulatedToStepContext(
   return ctx;
 }
 
-/**
- * Build the plan steps array from queue steps (compact representation).
- * Uses the new step-based schema for the dispatcher.
- */
 function buildPlanFromQueue(queue: Queue) {
   const steps = queue.steps.map((s) => ({
     title: s.title,
@@ -97,9 +74,6 @@ function buildPlanFromQueue(queue: Queue) {
   return { steps };
 }
 
-/**
- * Build step description — rich context string for the dispatcher.
- */
 function buildStepDescription(step: Step): string {
   const parts: string[] = [step.description ?? step.title];
 
@@ -125,9 +99,6 @@ function buildStepDescription(step: Step): string {
   return parts.join("\n");
 }
 
-/**
- * Inject evaluator assessment into step context as warnings.
- */
 function injectAssessmentIntoContext(ctx: StepContext, assessment: EvalResult): void {
   const warnings = [
     assessment.reason && `Previous evaluator assessment: ${assessment.reason}`,
@@ -144,9 +115,6 @@ function injectAssessmentIntoContext(ctx: StepContext, assessment: EvalResult): 
   }
 }
 
-/**
- * Normalize DispatcherDecision to StepDispatcherDecision.
- */
 export function normalizeDecision(
   raw: DispatcherDecision,
   step: Step,
@@ -197,7 +165,6 @@ function toMutationBudgetWire(budget: MutationBudget) {
   };
 }
 
-/** Assemble the full DispatcherInput from step, queue, and session context. */
 export function buildDispatcherInput(
   step: Step,
   queue: Queue,

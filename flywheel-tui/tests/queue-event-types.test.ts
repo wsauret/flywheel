@@ -66,14 +66,15 @@ describe("Queue event types", () => {
   // ── QueueFailed (VAL-QUEUE-031) ──
 
   describe("queue:failed", () => {
-    it("emits QueueFailed with reason and stepsCompleted", () => {
-      emit("queue:failed", { workflowId: "wf-3", reason: "worker crashed", stepsCompleted: 2 });
+    it("emits QueueFailed with reason, stepsCompleted, and finalStatus", () => {
+      emit("queue:failed", { workflowId: "wf-3", reason: "worker crashed", stepsCompleted: 2, finalStatus: "failed" });
       expect(received).toHaveLength(1);
       const e = received[0] as QueueFailed;
       expect(e.type).toBe("queue:failed");
       expect(e.workflowId).toBe("wf-3");
       expect(e.reason).toBe("worker crashed");
       expect(e.stepsCompleted).toBe(2);
+      expect(e.finalStatus).toBe("failed");
       expect(typeof e.timestamp).toBe("number");
     });
   });

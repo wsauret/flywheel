@@ -1,10 +1,10 @@
 import type { FileSink } from "bun";
-import type { ProcessSpawner, SpawnOptions, SpawnResult } from "./spawner.js";
+import type { ProcessSpawner, SpawnOptions, SpawnResult, RawSpawnedProcess } from "./spawner.js";
 import { createEnvFilter, type EnvFilterOptions } from "./env-filter.js";
 import type { ChildHandle } from "../../../../../infra/process-lifecycle.js";
 import { clampTimeoutMinutes, DEFAULT_TIMEOUT_MINUTES, createSubprocessTimeout } from "./timeout.js";
 import { buildErrorResult, resolveHandoffPath } from "./spawn-helpers.js";
-import { wireStreamPipeline, type RawSpawnedProcess } from "./stream-pipeline.js";
+import { wireStreamPipeline } from "./stream-pipeline.js";
 import { OutputBuffer } from "../../../../../infra/output-buffer.js";
 import { CompletionDetector } from "./completion.js";
 import { NDJSONParser } from "../../../../../infra/ndjson-parser.js";

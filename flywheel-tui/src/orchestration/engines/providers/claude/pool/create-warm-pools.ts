@@ -14,7 +14,7 @@ interface TierPoolConfig {
   onNDJSONEvent?: (event: NDJSONEvent) => void;
 }
 
-export interface ClaudeWarmPools {
+interface ClaudeWarmPools {
   dispatcher: WarmPool<SpawnResult> | null;
   evaluator: WarmPool<SpawnResult> | null;
   shutdown(): Promise<void>;

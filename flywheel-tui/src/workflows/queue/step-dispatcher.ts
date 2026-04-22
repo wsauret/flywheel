@@ -16,9 +16,6 @@ import type { Step, Queue } from "./types.js";
 import type { DispatcherTransport } from "../dispatcher/transport.js";
 import type { EmitFn } from "../../infra/event-bus.js";
 import type { SessionBudgetStatus, AvailableContext } from "../schemas.js";
-import type { EvaluationCriteria, WorkerConfig } from "../../infra/workflow-types.js";
-import type { AccumulatedContext } from "./context-accumulator.js";
-import type { EvalResult } from "./executor-types.js";
 import { applyBudgetTruncation } from "../dispatcher/truncation.js";
 import { Log } from "../../infra/log.js";
 import { errorMessage } from "../../infra/error-message.js";
@@ -26,41 +23,9 @@ import {
   buildDispatcherInput,
   normalizeDecision,
 } from "./step-dispatcher-helpers.js";
+import type { StepDispatchContext, StepDispatcherDecision, MutationRequest } from "./step-dispatcher-types.js";
 
 const log = Log.create({ service: "step-dispatcher" });
-
-export interface StepDispatchContext {
-  /** Windowed accumulated context from prior steps. */
-  accumulatedContext: AccumulatedContext;
-  /** Handoff data from the previous step (null if first step). */
-  previousHandoff: Record<string, unknown> | null;
-  /** Evaluator assessment from the previous step (null if first or no evaluator). */
-  previousAssessment: EvalResult | null;
-  /** Mutation budget from guardrails (for budget visibility — VAL-GUARD-006). */
-  mutationBudget?: import("./guardrails").MutationBudget | null;
-}
-
-// Types — Mutation requests (discriminated union on `type`)
-
-export type MutationRequest =
-  | { type: "insert_after"; targetStepId: string; steps: import("./types").Step[]; reason: string }
-  | { type: "skip"; targetStepId: string; reason: string }
-  | { type: "remove"; targetStepId: string; reason: string };
-
-export interface StepDispatcherDecision {
-  /** Crafted worker prompt. */
-  taskContent: string;
-  /** Evaluation criteria for the evaluator (null = no evaluation). */
-  evaluationCriteria: EvaluationCriteria | null;
-  /** Worker configuration overrides. */
-  workerConfig: WorkerConfig | null;
-  /** Files to inline into worker prompt (L2). */
-  contextToInline: string[];
-  /** Files the worker can read on demand (L3). */
-  contextFiles: string[];
-  /** Queue mutation requests from dispatcher. */
-  mutationRequests: MutationRequest[];
-}
 
 interface StepDispatcherOptions {
   /** Dispatcher transport (engine-backed or pooled). */

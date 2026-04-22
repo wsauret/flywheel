@@ -1,7 +1,7 @@
 import type { NDJSONEvent, UserEventToolResult } from "../../../infra/ndjson-event-types.js";
 import type { ToolAction } from "../../../infra/workflow-types.js";
 
-export interface EngineParityMetadata {
+interface EngineParityMetadata {
   resumeMode: "provider_session" | "local_transcript";
   handoffMode: "generic_file_write" | "dedicated_handoff_tool";
   progressMode: "builtin_todo" | "stateful_progress_tool";

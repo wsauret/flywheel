@@ -11,55 +11,22 @@ import type { WorkflowSessionFactories } from "./session-store-types.js"
 import { EventBus, createEmit, type EmitFn, type Unsubscribe } from "../infra/event-bus.js"
 import { randomUUID } from "node:crypto"
 import { InjectionQueue } from "./injection-queue.js"
-import type { Queue, StepStatus, Step } from "../workflows/queue/types.js"
+import type { Queue, Step } from "../workflows/queue/types.js"
 import { DEFAULT_BUDGET, toBudgetLimits } from "../workflows/schemas.js"
 import type { AnyBlock } from "../infra/output-blocks.js"
 import type { WorkflowSessionEntry } from "./session-store-types.js"
 import type { WorkflowDeps } from "./engines/workflow-deps.js"
 import { resolveTierConfigs } from "./config/schema.js"
 import { generateSessionTitle } from "./session-title.js"
-
-
-export type StepState = {
-  id: string; type: Step["type"]; title: string; status: StepStatus
-  durationMs?: number; startedAt?: number; completedAt?: number
-}
+import type { StepState, WorkflowResult, WorkflowRunner } from "./workflow-runner-types.js"
 
 type UpdateEntryFn = (sessionId: string, patch: Partial<WorkflowSessionEntry>) => void
 
-export interface WorkflowResult {
-  completed: boolean
-  stepsCompleted: number
-  stepsTotal: number
-  cost: number
-  tokens: number
-  reason?: string
-}
-
 interface WorkflowRunnerOverrides {
   projectCwd?: string
-  /** Override the worker cwd. Defaults to projectCwd.
-   * Used by /test (temp dir isolation) and git worktrees (branch-specific working dir).
-   * Session metadata/persistence stays in projectCwd; only the worker process runs here. */
   workerCwd?: string
-  /** Pre-computed workflow deps — avoids redundant config/engine/spawner creation. */
   workflowDeps?: WorkflowDeps
-  /** Recent chat conversation preceding this workflow. */
   chatContext?: string
-}
-
-export interface WorkflowRunner {
-  run(): Promise<WorkflowResult>
-  pause(): void
-  abort(): void
-  injectMessage(text: string): boolean
-  /** Resolve a pending AskUserQuestion by toolUseId. No-op if no step opted in. */
-  answerQuestion(toolUseId: string, answers: Record<string, string>): void
-  /** Cancel a pending AskUserQuestion. */
-  cancelQuestion(toolUseId: string): void
-  cancelShutdown(): void
-  readonly sessionId: string
-  dispose(): Promise<void>
 }
 
 export function createWorkflowRunner(opts: {
@@ -75,21 +42,12 @@ export function createWorkflowRunner(opts: {
   const projectCwd = opts.overrides?.projectCwd ?? process.cwd()
   const workerCwd = opts.overrides?.workerCwd
 
-  // Why fallback: the controller always injects workflowDeps, but the runner
-  // self-resolves as a safety net (fresh config read from disk per session).
   const deps = opts.overrides?.workflowDeps ?? prepareWorkflowDeps()
 
   const outputPersistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
-  // Why a local copy instead of reading from the store: the flusher's
-  // getBlocks callback fires on a schedule, and coupling it to the reactive
-  // store proxy would require a reactive scope. The local variable is always
-  // written in the same code path that writes the store, so they stay in sync.
   let currentBlocks: readonly AnyBlock[] = []
   const outputFlusher = outputPersistence.createFlusher(() => currentBlocks)
 
-  // Why not shared with chat-runner: workflow adds persistence scheduling and
-  // currentBlocks tracking; chat does neither. The 3 shared lines of priorBlocks
-  // prepending don't justify an abstraction over the runner-specific extensions.
   const priorBlocksPrefix = priorBlocks ?? []
   const wrappedUpdateEntry = (patch: Partial<WorkflowSessionEntry>) => {
     if (patch.outputBlocks) {
@@ -145,10 +103,6 @@ export function createWorkflowRunner(opts: {
   let pools: { shutdown(): Promise<void> } | null = null
   let disposed = false
 
-  // AskUserQuestion bridge — only wired for Claude. Individual steps opt in via
-  // `step.allowAskUser`; when no step opts in, the server idles unused. Cheap
-  // enough (one Unix socket per session) that conditionally creating it would
-  // save nothing and complicate the lifecycle.
   let askHookServer: AskHookServer | null = null
 
   const injectionQueue = new InjectionQueue()
@@ -229,15 +183,11 @@ export function createWorkflowRunner(opts: {
 
     await pools?.shutdown()
 
-    // Close ask-hook server — cancels any still-open hook connections so the
-    // Claude CLI doesn't hang waiting for a decision.
     if (askHookServer) {
       try { await askHookServer.close() } catch { /* best-effort */ }
       askHookServer = null
     }
 
-    // Pass null traceCollector if already finalized in run() to skip double-finalize.
-    // For the abort path, pass the collector so open spans close with "error" status.
     const resources = {
       budgetTracker,
       traceWriter,

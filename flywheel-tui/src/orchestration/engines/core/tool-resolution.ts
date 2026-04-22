@@ -1,6 +1,6 @@
 import type { ToolAction } from "../../../infra/workflow-types.js";
 
-export type EngineToolProfile = "dispatcher_handoff" | "evaluator_verification";
+type EngineToolProfile = "dispatcher_handoff" | "evaluator_verification";
 
 const PROFILE_ACTIONS: Record<EngineToolProfile, readonly ToolAction[]> = {
   dispatcher_handoff: ["handoff_write"],

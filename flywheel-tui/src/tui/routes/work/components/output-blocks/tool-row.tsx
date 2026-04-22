@@ -18,26 +18,37 @@ export function moreHint(hiddenCount: number, expanded: boolean): string {
 
 interface ToolRowProps {
   tool: ToolEntry
+  interrupted?: boolean
 }
+
+const DIAMOND = "◆"
 
 export function ToolRow(props: ToolRowProps) {
   const { theme } = useTheme()
   const hasError = () => !!props.tool.errorMessage
   const isCompleted = () => props.tool.completed === true
+  const isInterrupted = () => props.interrupted === true && !isCompleted() && !hasError()
+  const isThinking = () => props.tool.name === "Thinking"
 
-  const spinnerFrame = useSpinnerFrame(() => !isCompleted() && !hasError())
+  const spinnerFrame = useSpinnerFrame(() => !isCompleted() && !hasError() && !isInterrupted())
 
   const icon = createMemo(() => {
+    if (isThinking()) {
+      if (isCompleted()) return { text: DIAMOND, color: theme.accent }
+      return { text: spinnerFrame(), color: theme.accent }
+    }
     if (hasError()) return { text: ERROR_ICON, color: theme.error }
+    if (isInterrupted()) return { text: ERROR_ICON, color: theme.warning }
     if (isCompleted()) return { text: SUCCESS_ICON, color: theme.primary }
     return { text: spinnerFrame(), color: theme.secondary }
   })
 
   const rowContent = createMemo(() => {
+    const displayName = isThinking() ? "Thinking..." : getToolDisplayName(props.tool.name, props.tool)
     const chunks: TextChunk[] = [
       stFg(icon().color)(icon().text),
       stFg(theme.text)(" "),
-      stFg(theme.text)(getToolDisplayName(props.tool.name, props.tool)),
+      stFg(theme.text)(displayName),
     ]
     if (props.tool.detail) {
       chunks.push(stFg(theme.text)(" "))

@@ -1,10 +1,8 @@
-/** Shared domain schemas consumed by both workflows/ and orchestration/. Lives in infra/ because the one-way dependency rule prevents orchestration/ from importing workflows/. */
 import { z } from "zod"
 
 export const EffortSchema = z.enum(["low", "medium", "high", "max"])
 
 export const TierConfigSchema = z.object({
-  /** Engine override for this tier (e.g., "claude", "harness"). Falls back to top-level engine. */
   engine: z.string().optional(),
   model: z.string().optional(),
   effort: EffortSchema.optional(),
@@ -19,7 +17,7 @@ export const EvaluationCriteriaSchema = z.object({
 
 export type EvaluationCriteria = z.infer<typeof EvaluationCriteriaSchema>
 
-export const ToolScopingSchema = z.object({
+const ToolScopingSchema = z.object({
   read: z.boolean(),
   bash: z.boolean(),
   write: z.boolean(),
@@ -64,8 +62,6 @@ export function toolScopingToActions(scoping: ToolScoping): ToolAction[] {
 
 export const WorkerConfigSchema = z.object({
   tool_scoping: ToolScopingSchema.optional(),
-  /** Subset of quality-checklist labels to inject at the worker's self-review turn.
-   *  Omitted => full checklist. Empty array => skip self-review entirely. */
   self_review_items: z.array(z.string()).optional(),
 }).strip()
 

@@ -12,7 +12,7 @@ interface TraceEventHandlerDeps {
   workflowId: string;
 }
 
-export interface TraceEventHandler {
+interface TraceEventHandler {
   handleEvent(event: NDJSONEvent): void;
 }
 
@@ -30,7 +30,7 @@ export function createTraceEventHandler(deps: TraceEventHandlerDeps): TraceEvent
 
       if (SUBAGENT_TOOL_NAMES.has(canonicalize(record.toolName))) {
         subagentToolUseIds.add(record.toolUseId);
-        const input = record.toolInput as Record<string, unknown> | undefined;
+        const input = record.toolInput;
         const description = String(input?.description ?? input?.task ?? record.toolName);
         const prompt = truncateField(input?.prompt ?? input?.task ?? "", MAX_FIELD_BYTES);
         emit("trace:subagent-started", { workflowId: wfId, toolUseId: record.toolUseId, agentType: record.toolName, description, prompt });

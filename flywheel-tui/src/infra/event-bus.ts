@@ -8,7 +8,6 @@ type TypedListener<T extends FlywheelEvent["type"]> = (
 ) => void;
 export type Unsubscribe = () => void;
 
-/** Synchronous event bus. */
 const log = Log.create({ service: "event-bus" });
 
 export class EventBus {
@@ -38,10 +37,6 @@ export class EventBus {
     };
   }
 
-  /**
-   * Emit an event to all subscribers. Catches errors per listener
-   * to prevent one bad listener from breaking others.
-   */
   emit(event: FlywheelEvent): void {
     for (const listener of this.catchAll) {
       try {

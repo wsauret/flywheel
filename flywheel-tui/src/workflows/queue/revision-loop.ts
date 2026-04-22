@@ -6,8 +6,8 @@
 // evaluator feedback appended to the prompt.
 
 import type { Step } from "./types.js";
+import type { EvalResult } from "./step-dispatcher-types.js";
 import type {
-  EvalResult,
   EvaluatorFn,
   WorkerFn,
   WorkerOutput,
@@ -17,6 +17,7 @@ import type { EmitFn } from "../../infra/event-bus.js";
 import type { EvaluationCriteria } from "../../infra/workflow-types.js";
 import { raceAbort } from "./abort-utils.js";
 import { Log } from "../../infra/log.js";
+import { errorMessage } from "../../infra/error-message.js";
 
 const log = Log.create({ service: "step-executor" });
 
@@ -148,7 +149,8 @@ export async function executeWithRevisions(
 
     try {
       handoff = await handoffReader(output.handoffPath);
-    } catch {
+    } catch (err) {
+      log.warn("handoff read failed during revision", { stepId: step.id, error: errorMessage(err) });
       handoff = null;
     }
 

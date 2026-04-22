@@ -185,6 +185,7 @@ function emitErrorPath(bus: EventBus, workflowId: string) {
     workflowId,
     reason: "step failed",
     stepsCompleted: 0,
+    finalStatus: "failed",
     timestamp: now(),
   });
 }

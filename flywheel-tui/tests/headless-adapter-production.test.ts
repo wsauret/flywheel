@@ -139,6 +139,7 @@ describe("HeadlessAdapter (production)", () => {
         workflowId: wfId,
         reason: "timed out",
         stepsCompleted: 0,
+        finalStatus: "failed",
         timestamp: ts,
       })
 

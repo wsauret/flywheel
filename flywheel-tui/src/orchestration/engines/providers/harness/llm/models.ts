@@ -20,6 +20,17 @@ const API_URL = "https://models.dev/api.json";
 const CACHE_FILE = join(MODELS_CACHE_DIR, "models.json");
 const CACHE_TTL_MS = 24 * 60 * 60 * 1_000;
 
+interface ModelCostTier {
+  input: number;
+  output: number;
+  cacheRead?: number;
+  cacheWrite?: number;
+}
+
+export interface ModelCost extends ModelCostTier {
+  contextOver200k?: ModelCostTier;
+}
+
 export interface ModelInfo {
   provider: string;
   family: ReturnType<typeof inferModelFamilyFromProvider>;
@@ -31,8 +42,19 @@ export interface ModelInfo {
   temperature: boolean;
   contextLimit: number;
   outputLimit: number;
-  cost: { input: number; output: number; cacheRead?: number; cacheWrite?: number };
+  cost: ModelCost;
   modalities: { input: string[]; output: string[] };
+}
+
+interface RawModelCostTier {
+  input?: number;
+  output?: number;
+  cache_read?: number;
+  cache_write?: number;
+}
+
+interface RawModelCost extends RawModelCostTier {
+  context_over_200k?: RawModelCostTier;
 }
 
 interface RawModel {
@@ -43,7 +65,7 @@ interface RawModel {
   attachment?: boolean;
   temperature?: boolean;
   limit?: { context?: number; output?: number };
-  cost?: { input?: number; output?: number; cache_read?: number; cache_write?: number };
+  cost?: RawModelCost;
   modalities?: { input?: string[]; output?: string[] };
 }
 
@@ -123,6 +145,25 @@ export function createModelsClient(): ModelsClient {
     return inFlightPromise;
   }
 
+  function normalizeCost(rawCost: RawModelCost | undefined): ModelCost {
+    const base: ModelCost = {
+      input: rawCost?.input ?? 0,
+      output: rawCost?.output ?? 0,
+      cacheRead: rawCost?.cache_read,
+      cacheWrite: rawCost?.cache_write,
+    };
+    if (!rawCost?.context_over_200k) return base;
+    return {
+      ...base,
+      contextOver200k: {
+        input: rawCost.context_over_200k.input ?? base.input,
+        output: rawCost.context_over_200k.output ?? base.output,
+        cacheRead: rawCost.context_over_200k.cache_read ?? base.cacheRead,
+        cacheWrite: rawCost.context_over_200k.cache_write ?? base.cacheWrite,
+      },
+    };
+  }
+
   function normalize(provider: string, raw: RawModel): ModelInfo {
     return {
       provider,
@@ -135,12 +176,7 @@ export function createModelsClient(): ModelsClient {
       temperature: raw.temperature ?? true,
       contextLimit: raw.limit?.context ?? 200_000,
       outputLimit: raw.limit?.output ?? 4_096,
-      cost: {
-        input: raw.cost?.input ?? 0,
-        output: raw.cost?.output ?? 0,
-        cacheRead: raw.cost?.cache_read,
-        cacheWrite: raw.cost?.cache_write,
-      },
+      cost: normalizeCost(raw.cost),
       modalities: {
         input: raw.modalities?.input ?? ["text"],
         output: raw.modalities?.output ?? ["text"],

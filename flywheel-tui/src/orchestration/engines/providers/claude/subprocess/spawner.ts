@@ -1,5 +1,13 @@
+import type { FileSink } from "bun";
 import type { ProcessResult, NDJSONEvent } from "../../../../../infra/ndjson-event-types.js";
-import type { RawSpawnedProcess } from "./stream-pipeline.js";
+
+export interface RawSpawnedProcess {
+  proc: { pid: number; exited: Promise<number>; kill(signal?: number): void };
+  stdout: ReadableStream<Uint8Array>;
+  stderr: ReadableStream<Uint8Array>;
+  /** The raw Bun stdin sink, present when stdinPipe was requested. */
+  stdinSink?: FileSink;
+}
 
 export interface StdinHandle {
   write(message: string): boolean;

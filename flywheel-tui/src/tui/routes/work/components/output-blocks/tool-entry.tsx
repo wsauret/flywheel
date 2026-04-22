@@ -6,7 +6,7 @@ import type { TextRenderable, RGBA } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
 import { useSpinnerFrame } from "@tui/shared/hooks/use-spinner-frame.js"
-import { isHandoffPath } from "@tui/utils/text"
+import { isHandoffPath } from "@infra/paths.js"
 import type { ToolEntry as ToolEntryType } from "@infra/output-blocks"
 import { renderHunk } from "@tui/adapters/color-diff"
 import { parseUnifiedDiff } from "@tui/adapters/diff-parser"
@@ -16,6 +16,7 @@ import { preventSelectionMouseDown } from "@tui/utils/mouse.js"
 import { getToolDisplayName } from "@infra/tool-display-registry.js"
 import { truncateArrayHead } from "@infra/output/truncate-output.js"
 import {
+  getToolContentPreview,
   TOOL_PREVIEW_LINE_LIMIT,
   nextToolEntryToggleState,
   shouldRenderToolContentAsMarkdown,
@@ -23,6 +24,7 @@ import {
 
 interface ToolEntryProps {
   block: ToolEntryType
+  interrupted?: boolean
 }
 
 export function ToolEntry(props: ToolEntryProps) {
@@ -31,6 +33,7 @@ export function ToolEntry(props: ToolEntryProps) {
 
   const isCompleted = () => props.block.completed === true
   const hasError = () => !!props.block.errorMessage
+  const isInterrupted = () => props.interrupted === true && !isCompleted() && !hasError()
   const hasDiff = () => !!props.block.diff && !hasError()
   const hasContent = () => !!props.block.content && !hasError()
   const hasExpandable = () => hasDiff() || hasContent()
@@ -38,7 +41,7 @@ export function ToolEntry(props: ToolEntryProps) {
   const [bodyExpanded, setBodyExpanded] = createSignal(!isHandoffPath(props.block.filePath))
   const [contentExpanded, setContentExpanded] = createSignal(false)
 
-  const spinnerFrame = useSpinnerFrame(() => !isCompleted() && !hasError())
+  const spinnerFrame = useSpinnerFrame(() => !isCompleted() && !hasError() && !isInterrupted())
 
   const diffColors = createMemo(() => ({
     text: theme.text,
@@ -79,22 +82,18 @@ export function ToolEntry(props: ToolEntryProps) {
 
   const hl = createHighlighter(theme)
   const rendersMarkdownContent = () => shouldRenderToolContentAsMarkdown(props.block)
+  const contentPreview = createMemo(() =>
+    getToolContentPreview(props.block.content, TOOL_PREVIEW_LINE_LIMIT)
+  )
 
-  const allContentHighlighted = createMemo(() => {
+  const contentHighlighted = createMemo(() => {
     if (!props.block.content) return []
-    return hl(props.block.content, props.block.filetype)
+    const content = contentExpanded() ? props.block.content : contentPreview().content
+    return hl(content, props.block.filetype)
   })
 
-  const contentTruncation = createMemo(() =>
-    truncateArrayHead(allContentHighlighted(), TOOL_PREVIEW_LINE_LIMIT)
-  )
-
-  const contentHighlighted = createMemo(() =>
-    contentExpanded() ? allContentHighlighted() : contentTruncation().lines
-  )
-
   const keepsPreviewVisible = () => hasDiff() || hasContent()
-  const previewExpandable = () => diffTruncation().truncated || contentTruncation().truncated
+  const previewExpandable = () => diffTruncation().truncated || contentPreview().truncated
   const showsBody = () => keepsPreviewVisible() || bodyExpanded()
 
   const headerChevron = createMemo(() => {
@@ -116,6 +115,7 @@ export function ToolEntry(props: ToolEntryProps) {
 
   const statusIcon = createMemo(() => {
     if (hasError()) return { icon: "✗", color: theme.error }
+    if (isInterrupted()) return { icon: "✗", color: theme.warning }
     if (isCompleted()) return { icon: "✓", color: theme.primary }
     return { icon: spinnerFrame(), color: theme.secondary }
   })
@@ -211,12 +211,12 @@ export function ToolEntry(props: ToolEntryProps) {
                   }}
                 </For>
               })()}
-              <Show when={contentTruncation().truncated && !contentExpanded()}>
+              <Show when={contentPreview().truncated && !contentExpanded()}>
                 <box onMouseDown={preventSelectionMouseDown(() => setContentExpanded(true))}>
                   <text
                     ref={(el: TextRenderable) => {
                       createEffect(() => {
-                        const n = contentTruncation().omitted
+                        const n = contentPreview().omitted
                         el.content = new StyledText([stFg(theme.textMuted)(`  ... ${n} more lines (click to expand)`)])
                       })
                     }}

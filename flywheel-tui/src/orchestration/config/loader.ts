@@ -6,9 +6,7 @@ import { applyEnvOverrides } from "./env.js";
 
 type ConfigErrorCode = "FILE_NOT_FOUND" | "FILE_READ_ERROR" | "PARSE_ERROR" | "VALIDATION";
 
-// Exported for tests — instanceof checks on the structured `code` field are
-// more precise than string-matching error messages.
-export class ConfigLoadError extends Error {
+class ConfigLoadError extends Error {
   readonly code: ConfigErrorCode;
 
   constructor(message: string, code: ConfigErrorCode) {
@@ -29,7 +27,6 @@ export function loadConfig(
 ): LoadResult {
   const warnings: string[] = [];
 
-  // Start with empty object — Zod defaults will fill in
   let raw: Record<string, unknown> = {};
 
   // Layer 1: Config file
@@ -53,7 +50,6 @@ export function loadConfig(
     }
   }
 
-  // Validate with Zod (defaults are applied here)
   const result = FlywheelConfigSchema.safeParse(raw);
   if (!result.success) {
     throw new ConfigLoadError(

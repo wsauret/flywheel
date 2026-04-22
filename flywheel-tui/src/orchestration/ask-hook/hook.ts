@@ -5,8 +5,9 @@
  * `flywheel ask-hook` subcommand (see src/cli/index.ts).
  */
 import { runAskHook } from "./run.js";
+import { errorMessage } from "../../infra/error-message.js";
 
 runAskHook().catch((err) => {
-  process.stderr.write(`flywheel-ask-hook: ${err instanceof Error ? err.message : String(err)}\n`);
+  process.stderr.write(`flywheel-ask-hook: ${errorMessage(err)}\n`);
   process.exit(1);
 });

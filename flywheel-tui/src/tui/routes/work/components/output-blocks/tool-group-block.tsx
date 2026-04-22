@@ -1,14 +1,5 @@
 /** @jsxImportSource @opentui/solid */
 
-/**
- * Renders a titled group of ToolRows — used for both subagent blocks
- * (groupKind: "agent") and ad-hoc Tools groups (groupKind: "tools").
- *
- * Tools groups with a single child render as just the row — no "Tools" header,
- * no border. The chrome materializes when a second row joins. Subagents always
- * render their title because it names what the agent is doing.
- */
-
 import { createSignal, createMemo, createEffect, Show, Index } from "solid-js"
 import { StyledText, fg as stFg, bold as stBold, type TextChunk } from "@opentui/core"
 import type { TextRenderable } from "@opentui/core"
@@ -64,6 +55,7 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
   }
 
   const isActive = () => props.block.status === "active"
+  const isPaused = () => props.block.status === "paused"
   const hasChildren = () => toolCount() > 0
   const visibleChildren = () => {
     const all = props.block.children
@@ -78,7 +70,7 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
 
   const dynamicLabel = createMemo(() => {
     if (props.block.groupKind === "agent") return props.block.label
-    return toolsGroupLabel(props.block.status === "active")
+    return toolsGroupLabel(props.block.status)
   })
   const dynamicSummary = createMemo(() =>
     deriveGroupSummary(props.block.children)
@@ -129,6 +121,30 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
     return new StyledText(chunks)
   })
 
+  const pausedHeaderContent = createMemo(() => {
+    const chunks: TextChunk[] = [
+      stFg(theme.warning)(ERROR_ICON),
+      stFg(theme.text)(" "),
+      stBold(stFg(theme.warning)(dynamicLabel())),
+    ]
+    const goal = goalText()
+    if (goal) {
+      chunks.push(stFg(theme.textSubtle)(` · ${goal}`))
+    }
+    const summary = dynamicSummary()
+    if (summary) {
+      chunks.push(stFg(theme.textSubtle)(` · ${summary}`))
+    }
+    if (props.block.duration != null) {
+      chunks.push(stFg(theme.textSubtle)(` · ${formatDuration(props.block.duration)}`))
+    }
+    if (hasChildren()) {
+      chunks.push(stFg(theme.text)("  "))
+      chunks.push(stFg(theme.textMuted)((props.expanded ?? false) ? "▾" : "▸"))
+    }
+    return new StyledText(chunks)
+  })
+
   const errorHeaderContent = createMemo(() => {
     const chunks: TextChunk[] = [
       stFg(theme.error)(ERROR_ICON),
@@ -151,8 +167,8 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
       <>
         <Index each={visibleChildren()}>
           {(child) => shouldRenderGroupedToolAsEntry(child())
-            ? <ToolEntryBlock block={child()} />
-            : <ToolRow tool={child()} />}
+            ? <ToolEntryBlock block={child()} interrupted={isPaused()} />
+            : <ToolRow tool={child()} interrupted={isPaused()} />}
         </Index>
         <Show when={hiddenCount() > 0}>
           <box paddingLeft={1}>
@@ -166,7 +182,7 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
   return (
     <box flexDirection="column">
       <Show when={isBareSingleTool() && (isActive() || canToggle())}>
-        <ToolEntryBlock block={props.block.children[0]!} />
+        <ToolEntryBlock block={props.block.children[0]!} interrupted={isPaused()} />
       </Show>
 
       <Show when={props.block.status === "active" && !isBareSingleTool()}>
@@ -193,11 +209,35 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
         </Show>
       </Show>
 
-      <Show when={canToggle() && !isBareSingleTool()}>
+      <Show when={props.block.status === "completed" && !isBareSingleTool()}>
         <box onMouseDown={preventSelectionMouseDown(() => props.onToggleExpand?.(props.block.id))}>
           <text
             ref={(el: TextRenderable) => {
               createEffect(() => { el.content = completedHeaderContent() })
+            }}
+            overflow="hidden"
+            wrapMode="none"
+          />
+        </box>
+        <Show when={hasChildren()}>
+          <CollapsibleBox
+            expanded={props.expanded ?? false}
+            border={true}
+            borderColor={theme.borderSubtle}
+            paddingTop={0}
+            paddingBottom={0}
+            onMouseDown={hiddenCount() > 0 ? preventSelectionMouseDown(toggleShowAll) : undefined}
+          >
+            <ToolList />
+          </CollapsibleBox>
+        </Show>
+      </Show>
+
+      <Show when={props.block.status === "paused" && !isBareSingleTool()}>
+        <box onMouseDown={preventSelectionMouseDown(() => props.onToggleExpand?.(props.block.id))}>
+          <text
+            ref={(el: TextRenderable) => {
+              createEffect(() => { el.content = pausedHeaderContent() })
             }}
             overflow="hidden"
             wrapMode="none"

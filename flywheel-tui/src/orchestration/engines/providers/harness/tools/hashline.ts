@@ -1,25 +1,38 @@
 /**
  * Hashline format: display, parsing, validation, and transactional editing.
  *
- * Each line is prefixed with `LINENUM#HASH:` where HASH is a 2-character
- * code derived from xxHash32 of the trimmed line text. This format gives
- * the model line-addressable references for editing.
+ * Each line is prefixed with `LINENUM#HASH:` where HASH is a 3-character
+ * lowercase hex code derived from xxHash32 of the normalized line text.
+ * This format gives the model line-addressable references for editing.
  */
 
-const NIBBLE_STR = "ZPMQVRWSNKTXJBYH";
-
-const DICT = Array.from({ length: 256 }, (_, i) => {
-  const h = i >>> 4;
-  const l = i & 0x0f;
-  return `${NIBBLE_STR[h]!}${NIBBLE_STR[l]!}`;
-});
+const DICT = Array.from({ length: 4096 }, (_, i) => i.toString(16).padStart(3, "0"));
 
 const RE_SIGNIFICANT = /[\p{L}\p{N}]/u;
 
+const CONFUSABLE_HYPHENS = /[\u2010\u2011\u2012\u2013\u2014\u2212\ufe63\uff0d]/g;
+const CONFUSABLE_QUOTES = /[\u2018\u2019\u201c\u201d`\u00b4]/g;
+const CONFUSABLE_SPACES = /[\u00a0\u2000-\u200b\u2028\u2029\u3000\ufeff]/g;
+
+function normalizeConfusables(text: string): string {
+  return text
+    .replace(CONFUSABLE_HYPHENS, "-")
+    .replace(CONFUSABLE_QUOTES, "'")
+    .replace(CONFUSABLE_SPACES, " ");
+}
+
+const CONTROL_CHAR_RE = /[\x00-\x08\x0b\x0c\x0e-\x1f]/g;
+
+export function escapeControlChars(text: string): string {
+  return text.replace(CONTROL_CHAR_RE, (ch) =>
+    `\\u${ch.charCodeAt(0).toString(16).padStart(4, "0")}`,
+  );
+}
+
 export function computeLineHash(idx: number, line: string): string {
-  const trimmed = line.replace(/\r/g, "").trimEnd();
-  const seed = RE_SIGNIFICANT.test(trimmed) ? 0 : idx;
-  return DICT[Bun.hash.xxHash32(trimmed, seed) & 0xff]!;
+  const normalized = normalizeConfusables(line.replace(/\r/g, "")).trimEnd();
+  const seed = RE_SIGNIFICANT.test(normalized) ? 0 : idx;
+  return DICT[Bun.hash.xxHash32(normalized, seed) % 4096]!;
 }
 
 export function formatLineTag(lineNumber: number, lineText: string): string {
@@ -31,20 +44,20 @@ export function formatHashLines(content: string): string {
   return lines
     .map((line, i) => {
       const num = i + 1;
-      return `${formatLineTag(num, line)}:${line}`;
+      return `${formatLineTag(num, line)}:${escapeControlChars(line)}`;
     })
     .join("\n");
 }
 
 // ── Tag Parsing ───────────────────────────────────────────────────
 
-export interface LineRef {
+interface LineRef {
   line: number;
   hash: string;
 }
 
-export function parseTag(tag: string): LineRef | null {
-  const match = tag.match(/^\s*[>+-]*\s*(\d+)\s*#\s*([ZPMQVRWSNKTXJBYH]{2})/);
+function parseTag(tag: string): LineRef | null {
+  const match = tag.match(/^\s*[>+-]*\s*(\d+)\s*#\s*([0-9a-f]{3})/);
   if (match) {
     const line = parseInt(match[1]!, 10);
     if (line < 1) return null;
@@ -61,10 +74,44 @@ export function parseTag(tag: string): LineRef | null {
 
 // ── Hash Mismatch ─────────────────────────────────────────────────
 
-export interface HashMismatch {
+interface HashMismatch {
   line: number;
   expected: string;
   actual: string;
+}
+
+function tokenSimilarity(a: string, b: string): number {
+  const tokA = new Set(a.trim().split(/\s+/));
+  const tokB = new Set(b.trim().split(/\s+/));
+  if (tokA.size === 0 && tokB.size === 0) return 1;
+  if (tokA.size === 0 || tokB.size === 0) return 0;
+  let overlap = 0;
+  for (const t of tokA) if (tokB.has(t)) overlap++;
+  return overlap / Math.max(tokA.size, tokB.size);
+}
+
+function findSimilarLines(
+  originalLine: string,
+  fileLines: string[],
+  hintLine: number,
+  window = 50,
+  maxSuggestions = 3,
+): Array<{ line: number; hash: string; content: string }> {
+  const MIN_SIMILARITY = 0.3;
+  const start = Math.max(0, hintLine - 1 - window);
+  const end = Math.min(fileLines.length, hintLine - 1 + window + 1);
+  const candidates: Array<{ line: number; score: number; content: string }> = [];
+  for (let i = start; i < end; i++) {
+    if (!fileLines[i]!.trim()) continue;
+    const score = tokenSimilarity(originalLine, fileLines[i]!);
+    if (score >= MIN_SIMILARITY) candidates.push({ line: i + 1, score, content: fileLines[i]! });
+  }
+  candidates.sort((a, b) => b.score - a.score);
+  return candidates.slice(0, maxSuggestions).map((c) => ({
+    line: c.line,
+    hash: computeLineHash(c.line, c.content),
+    content: c.content,
+  }));
 }
 
 const MISMATCH_CONTEXT = 2;
@@ -102,27 +149,55 @@ export class HashlineMismatchError extends Error {
       const text = fileLines[lineNum - 1]!;
       const hash = computeLineHash(lineNum, text);
       const prefix = `${lineNum}#${hash}`;
-      lines.push(mismatchSet.has(lineNum) ? `>>> ${prefix}:${text}` : `    ${prefix}:${text}`);
+      const escaped = escapeControlChars(text);
+      lines.push(mismatchSet.has(lineNum) ? `>>> ${prefix}:${escaped}` : `    ${prefix}:${escaped}`);
     }
+
+    const suggestedLines: string[] = [];
+    for (const m of mismatches) {
+      const currentContent = fileLines[m.line - 1];
+      if (!currentContent?.trim()) continue;
+      const suggestions = findSimilarLines(currentContent, fileLines, m.line);
+      const filtered = suggestions.filter((s) => s.line !== m.line);
+      if (filtered.length > 0) {
+        suggestedLines.push("");
+        suggestedLines.push(`Did you mean one of these nearby lines?`);
+        for (const s of filtered) {
+          suggestedLines.push(`  ${s.line}#${s.hash}:${escapeControlChars(s.content)}`);
+        }
+      }
+    }
+    if (suggestedLines.length > 0) lines.push(...suggestedLines);
+
     return lines.join("\n");
   }
 }
 
 // ── Prefix Stripping ──────────────────────────────────────────────
 
-const HASHLINE_PREFIX_RE = /^\s*(?:>>>|>>)?\s*(?:\+?\s*(?:\d+\s*#\s*|#\s*)|\+)\s*[ZPMQVRWSNKTXJBYH]{2}:/;
+const HASHLINE_PREFIX_RE = /^\s*(?:>>>|>>)?\s*(?:\+?\s*(?:\d+\s*#\s*|#\s*)|\+)\s*[0-9a-f]{3}:/;
+
+const DIFF_PLUS_RE = /^\+(?!\+)/;
 
 export function stripHashlinePrefixes(content: string): string {
   const lines = content.split("\n");
   let hashPrefixCount = 0;
+  let diffPlusCount = 0;
   let nonEmpty = 0;
   for (const l of lines) {
     if (l.length === 0) continue;
     nonEmpty++;
     if (HASHLINE_PREFIX_RE.test(l)) hashPrefixCount++;
+    if (DIFF_PLUS_RE.test(l)) diffPlusCount++;
   }
-  if (nonEmpty === 0 || hashPrefixCount !== nonEmpty) return content;
-  return lines.map((l) => l.replace(HASHLINE_PREFIX_RE, "")).join("\n");
+  if (nonEmpty === 0) return content;
+  if (hashPrefixCount === nonEmpty) {
+    return lines.map((l) => l.replace(HASHLINE_PREFIX_RE, "")).join("\n");
+  }
+  if (diffPlusCount > 0 && diffPlusCount >= nonEmpty * 0.5) {
+    return lines.map((l) => l.replace(DIFF_PLUS_RE, "")).join("\n");
+  }
+  return content;
 }
 
 // ── Edit Types ────────────────────────────────────────────────────
@@ -200,8 +275,8 @@ export async function applyHashlineEdits(
   filePath: string,
   edits: HashlineEdit[],
   ops: EditFileOperations,
-): Promise<void> {
-  if (edits.length === 0) return;
+): Promise<{ changed: boolean }> {
+  if (edits.length === 0) return { changed: false };
 
   const hasCreate = edits.some((e) => e.op === "create");
   if (hasCreate) {
@@ -211,7 +286,7 @@ export async function applyHashlineEdits(
     const dir = filePath.substring(0, filePath.lastIndexOf("/"));
     if (dir) await ops.mkdir(dir);
     await ops.writeFile(filePath, createEdit.lines.join("\n"));
-    return;
+    return { changed: true };
   }
 
   const hasReplaceAll = edits.some((e) => e.op === "replace_all");
@@ -220,7 +295,7 @@ export async function applyHashlineEdits(
     const edit = edits[0]!;
     if (edit.op !== "replace_all") throw new Error("Expected replace_all edit");
     await ops.writeFile(filePath, edit.lines.join("\n"));
-    return;
+    return { changed: true };
   }
 
   const content = await ops.readFile(filePath);
@@ -288,6 +363,7 @@ export async function applyHashlineEdits(
     }
   }
 
-  if (!changed) return;
+  if (!changed) return { changed: false };
   await ops.writeFile(filePath, fileLines.join("\n"));
+  return { changed: true };
 }

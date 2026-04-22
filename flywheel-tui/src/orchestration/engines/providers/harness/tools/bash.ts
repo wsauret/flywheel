@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { Log } from "../../../../../infra/log.js";
 import { killProcessGroup } from "../../../../../infra/process-lifecycle.js";
+import { compressBashOutput } from "./bash-compressor.js";
 import { interceptBashCommand } from "./bash-interceptor.js";
 import type { ToolDefinition, ToolResult, ToolContext, BashOperations } from "./types.js";
 
@@ -82,7 +83,9 @@ export function createBashDefinition(options?: { operations?: BashOperations }):
 
       try {
         await proc.exited;
-        const output = await new Response(proc.stdout).text();
+        const rawOutput = await new Response(proc.stdout).text();
+        const compressed = compressBashOutput(command, rawOutput.trim());
+        const output = compressed.output;
         const exitCode = timedOut ? 124 : (proc.exitCode ?? 1);
 
         const parts: string[] = [];
@@ -170,16 +173,15 @@ export function createBashDefinition(options?: { operations?: BashOperations }):
       },
       required: ["command"],
     },
-    async execute(input: unknown, context: ToolContext) {
-      const rec = input as Record<string, unknown>;
-      if (typeof rec.command !== "string") {
+    async execute(input: Record<string, unknown>, context: ToolContext) {
+      if (typeof input.command !== "string") {
         return { content: "bash requires a string 'command' parameter", isError: true };
       }
-      const timeout = typeof rec.timeout === "number" ? rec.timeout : undefined;
-      const effectiveContext = typeof rec.cwd === "string"
-        ? { ...context, cwd: rec.cwd.startsWith("/") ? rec.cwd : resolve(context.cwd, rec.cwd) }
+      const timeout = typeof input.timeout === "number" ? input.timeout : undefined;
+      const effectiveContext = typeof input.cwd === "string"
+        ? { ...context, cwd: input.cwd.startsWith("/") ? input.cwd : resolve(context.cwd, input.cwd) }
         : context;
-      return runCommandInner(rec.command, effectiveContext, timeout);
+      return runCommandInner(input.command, effectiveContext, timeout);
     },
   };
 }

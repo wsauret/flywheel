@@ -32,7 +32,7 @@ export function generateSubtleSyntax(theme: Theme) {
   )
 }
 
-export function getSyntaxRules(theme: Theme) {
+function getSyntaxRules(theme: Theme) {
   return [
     {
       scope: ["default"],

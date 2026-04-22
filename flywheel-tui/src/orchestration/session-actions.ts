@@ -3,10 +3,14 @@ import { createQueuePersistence } from "../workflows/queue/persistence.js"
 import { readSession } from "./session/persistence.js"
 import { fromSnapshot } from "./session/output-schemas.js"
 import { isResumable } from "./session/types.js"
+import { Log } from "../infra/log.js"
+import { errorMessage } from "../infra/error-message.js"
 import type { Session } from "./session/schemas.js"
 import type { Queue } from "../workflows/queue/types.js"
 import type { SessionManager, SessionSummary } from "./session/manager.js"
 import type { AnyBlock } from "../infra/output-blocks.js"
+
+const log = Log.create({ service: "session-actions" })
 
 export interface SessionActionDeps {
   manager: SessionManager
@@ -22,7 +26,7 @@ interface ResumeData {
 export async function loadSessionOutput(sessionId: string, projectCwd?: string): Promise<AnyBlock[]> {
   const cwd = projectCwd ?? process.cwd()
   const persistence = createOutputPersistence({ sessionId, baseDir: cwd })
-  return (await persistence.load()) as AnyBlock[]
+  return await persistence.load()
 }
 
 export async function loadResumeData(
@@ -36,14 +40,14 @@ export async function loadResumeData(
 
   const outputPersistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
   const rawSnapshots = await outputPersistence.load()
-  const outputBlocks = fromSnapshot(rawSnapshots) as AnyBlock[]
+  const outputBlocks = fromSnapshot(rawSnapshots)
 
   let queue: Queue | null = null
   try {
     const queuePersistence = createQueuePersistence({ sessionId, baseDir: projectCwd })
     queue = await queuePersistence.load()
-  } catch {
-    // Queue file missing or corrupt
+  } catch (err) {
+    log.warn("queue load failed for resume", { sessionId, error: errorMessage(err) })
   }
   if (!queue) return null
 

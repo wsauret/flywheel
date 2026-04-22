@@ -3,13 +3,13 @@ import type { NDJSONEvent } from "../../infra/ndjson-event-types.js";
 interface ToolUseRecord {
   toolUseId: string;
   toolName: string;
-  toolInput: unknown;
+  toolInput: Record<string, unknown> | undefined;
 }
 
 interface ToolResultRecord {
   toolUseId: string;
   isError: boolean;
-  toolOutput: unknown;
+  toolOutput: string | unknown[] | undefined;
 }
 
 export function extractToolUseRecords(event: NDJSONEvent): ToolUseRecord[] {
@@ -36,6 +36,6 @@ export function extractToolResultRecord(event: NDJSONEvent): ToolResultRecord | 
   return {
     toolUseId: String(event.data.tool_use_id ?? ""),
     isError: Boolean(event.data.is_error),
-    toolOutput: event.data.content ?? "",
+    toolOutput: event.data.content,
   };
 }

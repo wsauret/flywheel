@@ -172,11 +172,6 @@ export class NdjsonPipeline {
   feedEvaluatorEvent(event: NDJSONEvent): void { this.evaluator.feedEvent(event); }
 }
 
-/**
- * Extract the last non-empty, meaningful line from text.
- * Skips lines that are only whitespace or punctuation.
- * Caps at 500 chars to bound memory; display truncation is handled by flexbox.
- */
 function extractLastMeaningfulLine(text: string): string | null {
   const lines = text.split("\n");
   for (let i = lines.length - 1; i >= 0; i--) {

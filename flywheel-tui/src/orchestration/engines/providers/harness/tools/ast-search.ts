@@ -120,7 +120,7 @@ async function walkFiles(dir: string, lang: Lang): Promise<string[]> {
   return result;
 }
 
-export function createAstSearchDefinition(): ToolDefinition {
+function createAstSearchDefinition(): ToolDefinition {
   return {
     name: "ast_search",
     description:
@@ -149,24 +149,23 @@ export function createAstSearchDefinition(): ToolDefinition {
       },
       required: ["pattern"],
     },
-    async execute(input: unknown, context: ToolContext) {
-      const rec = input as Record<string, unknown>;
-      if (typeof rec.pattern !== "string") {
+    async execute(input: Record<string, unknown>, context: ToolContext) {
+      if (typeof input.pattern !== "string") {
         return { content: "ast_search requires a string 'pattern' parameter", isError: true };
       }
 
-      const patternStr = rec.pattern;
+      const patternStr = input.pattern;
       if (!patternStr.trim()) return { content: "Pattern must not be empty", isError: true };
 
-      const searchPath = typeof rec.path === "string"
-        ? (rec.path.startsWith("/") ? rec.path : resolve(context.cwd, rec.path))
+      const searchPath = typeof input.path === "string"
+        ? (input.path.startsWith("/") ? input.path : resolve(context.cwd, input.path))
         : context.cwd;
 
-      let lang = resolveLang(rec.language as string | undefined);
+      let lang = resolveLang(typeof input.language === "string" ? input.language : undefined);
 
       let stat: Awaited<ReturnType<typeof fs.stat>>;
       try { stat = await fs.stat(searchPath); }
-      catch { return { content: `Path not found: ${rec.path ?? "."}`, isError: true }; }
+      catch { return { content: `Path not found: ${input.path ?? "."}`, isError: true }; }
 
       const allMatches: MatchResult[] = [];
 
@@ -194,7 +193,7 @@ export function createAstSearchDefinition(): ToolDefinition {
             }
           }
         } else {
-          return { content: `Path is not a file or directory: ${rec.path ?? "."}`, isError: true };
+          return { content: `Path is not a file or directory: ${input.path ?? "."}`, isError: true };
         }
       } catch (err) {
         const msg = errorMessage(err);

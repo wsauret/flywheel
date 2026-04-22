@@ -2,7 +2,6 @@ import { describe, it, expect } from "bun:test";
 import {
   SessionStateSchema,
   type SessionState,
-  VALID_TRANSITIONS,
   isValidTransition,
   isResumable,
 } from "../src/orchestration/session/types";
@@ -44,46 +43,6 @@ describe("SessionStateSchema", () => {
   it("rejects null", () => {
     const result = SessionStateSchema.safeParse(null);
     expect(result.success).toBe(false);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// VALID_TRANSITIONS record
-// ---------------------------------------------------------------------------
-describe("VALID_TRANSITIONS", () => {
-  it("is a frozen object (immutable)", () => {
-    expect(Object.isFrozen(VALID_TRANSITIONS)).toBe(true);
-  });
-
-  it("has an entry for every state in the schema", () => {
-    const states = SessionStateSchema.options;
-    for (const state of states) {
-      expect(VALID_TRANSITIONS).toHaveProperty(state);
-    }
-  });
-
-  it("completed is terminal with empty transition array", () => {
-    expect(VALID_TRANSITIONS["completed"]).toEqual([]);
-  });
-
-  it("active can transition to paused and completed", () => {
-    expect(VALID_TRANSITIONS["active"]).toEqual(["paused", "completed"]);
-  });
-
-  it("paused can only transition to active", () => {
-    expect(VALID_TRANSITIONS["paused"]).toEqual(["active"]);
-  });
-
-  it("every target in a transition array is a valid state", () => {
-    const states = new Set<string>(SessionStateSchema.options);
-    for (const [_from, targets] of Object.entries(VALID_TRANSITIONS) as [
-      string,
-      readonly string[],
-    ][]) {
-      for (const target of targets) {
-        expect(states.has(target)).toBe(true);
-      }
-    }
   });
 });
 

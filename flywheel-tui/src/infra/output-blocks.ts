@@ -1,5 +1,3 @@
-/** Lives in infra/ so both layers can import without crossing module boundaries. */
-
 import { z } from "zod"
 
 const TextBlockSchema = z.object({
@@ -8,38 +6,22 @@ const TextBlockSchema = z.object({
   timestamp: z.number(),
 })
 
-/**
- * Optional fields (errorMessage, completed) are NOT discriminated by status because
- * StructuredOutputBuilder mutates blocks via spread (`{ ...block, errorMessage }`).
- * A discriminated union would break that pattern — errorMessage and completed are
- * post-hoc mutations applied when tool_result events arrive, not construction-time fields.
- */
+// Optional fields (errorMessage, completed) are not discriminated by status because
+// the builder mutates blocks via spread — these are post-hoc mutations, not construction-time.
 const ToolEntrySchema = z.object({
   kind: z.literal("tool"),
   name: z.string(),
   detail: z.string(),
   timestamp: z.number(),
-  /** Absolute file path — when present, detail is clickable and opens in editor */
   filePath: z.string().optional(),
-  /** Unified diff string for Edit tools */
   diff: z.string().optional(),
-  /** Raw file content for Write tool (rendered inline, not diff) */
   content: z.string().optional(),
-  /** File type for syntax highlighting in diff rendering */
   filetype: z.string().optional(),
-  /** Error message from tool_result when is_error is true */
   errorMessage: z.string().optional(),
-  /** Marked true when the corresponding tool_result arrives */
   completed: z.boolean().optional(),
 })
 
-/**
- * Optional fields (duration, errorMessage) are NOT discriminated by status because
- * StructuredOutputBuilder mutates blocks via spread (`{ ...agent, status, duration }`).
- * A discriminated union would break that pattern — TypeScript can't spread across
- * discriminants cleanly. The builder is the sole writer and always pairs status with
- * the correct fields, so the optionality is safe in practice.
- */
+// Same spread-mutation rationale as ToolEntrySchema above.
 const ToolGroupBlockSchema = z.object({
   kind: z.literal("toolGroup"),
   id: z.string(),
@@ -70,9 +52,7 @@ const UserMessageBlockSchema = z.object({
   kind: z.literal("userMessage"),
   content: z.string(),
   timestamp: z.number(),
-  /** True while the message has been written to stdin but the agent hasn't picked it up yet. */
   pending: z.boolean().optional(),
-  /** True for system-injected messages (observer, self-review). Rendered collapsed as "↳ System". */
   injected: z.boolean().optional(),
 })
 
@@ -100,16 +80,8 @@ const QuestionEntrySchema = z.object({
   multiSelect: z.boolean().optional(),
 })
 
-/**
- * Optional fields (answers, cancelled) are NOT discriminated by status because
- * StructuredOutputBuilder mutates blocks via spread (`{ ...block, answers }`).
- * A discriminated union would break that pattern — answers and cancelled are
- * post-hoc mutations applied when the user resolves the dock, not construction-time fields.
- *
- * `answers` is keyed by question text matching Claude's wire format
- * (see inspiration/claude-code/src/tools/AskUserQuestionTool/AskUserQuestionTool.tsx).
- * Multi-select answers are comma-separated.
- */
+// Same spread-mutation rationale as ToolEntrySchema above.
+// `answers` is keyed by question text matching Claude's wire format.
 const QuestionBlockSchema = z.object({
   kind: z.literal("question"),
   toolUseId: z.string(),
@@ -131,11 +103,6 @@ type QuestionOption = z.infer<typeof QuestionOptionSchema>
 export type QuestionEntry = z.infer<typeof QuestionEntrySchema>
 export type QuestionBlock = z.infer<typeof QuestionBlockSchema>
 
-/**
- * Single source of truth for block shapes. Used for in-memory validation and
- * derived by persistence (`src/orchestration/session/output-schemas.ts`) —
- * adding a new block kind here auto-includes it in save/load.
- */
 export const AnyBlockSchema = z.discriminatedUnion("kind", [
   TextBlockSchema,
   ToolEntrySchema,

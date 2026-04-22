@@ -89,8 +89,8 @@ export function createHandoffDefinition(options?: { operations?: HandoffOperatio
       },
       additionalProperties: true,
     },
-    execute: (input: unknown, context: ToolContext) =>
-      executeHandoff(input as Record<string, unknown>, context),
+    execute: (input: Record<string, unknown>, context: ToolContext) =>
+      executeHandoff(input, context),
   };
 }
 

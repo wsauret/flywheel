@@ -9,7 +9,7 @@ import { AnyBlockSchema, type AnyBlock } from "../../infra/output-blocks.js";
  * before writing: a session's engine conversation is gone on restart, so
  * in-flight states (active agents, pending questions) can't resume.
  */
-export const OutputSnapshotSchema = AnyBlockSchema;
+const OutputSnapshotSchema = AnyBlockSchema;
 export type OutputSnapshot = AnyBlock;
 
 function normalizeForPersistence(block: AnyBlock): AnyBlock {

@@ -5,7 +5,7 @@ import type { EmitFn } from "../infra/event-bus.js"
 import type { SessionEntryBase } from "./session-store-types.js"
 import type { AnyBlock } from "../infra/output-blocks.js"
 
-export interface OutputSessionOptions {
+interface OutputSessionOptions {
   updateEntry: (patch: Partial<SessionEntryBase>) => void
   emit: EmitFn
   onFlush?: () => void
@@ -21,13 +21,15 @@ export interface OutputSession {
   notifyInjected(message: string, timestamp: number, pending?: boolean, injected?: boolean): void
   resolvePendingMessages(): string[]
   pushSystemMessage(message: string, timestamp: number): void
+  startCompaction(timestamp: number): void
+  completeCompaction(success: boolean, durationMs: number, timestamp: number): void
   answerQuestion(toolUseId: string, answers: Record<string, string>): void
   cancelQuestion(toolUseId: string): void
   resetTracking(): void
   flushContextRun(timestamp: number): void
   flushParser(): void
   getBlocks(): AnyBlock[]
-  resetActivity(): void
+  resetActivity(finalStatus?: "completed" | "paused"): void
   readonly sessionId: string | null
   flush(): void
   dispose(): void
@@ -93,9 +95,6 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
     builder.notifyThinkingStarted(timestamp)
   }
 
-  // These lambdas narrow the builder's ~15 methods to the OutputSession contract.
-  // The forwarding is intentional: consumers depend on OutputSession, not StructuredOutputBuilder.
-  // Exposing the builder directly would leak internal methods that callers shouldn't use.
   return {
     writeStdout,
     writeStderr,
@@ -103,16 +102,31 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
     notifyInjected,
     resolvePendingMessages: () => builder.resolvePendingMessages(),
     pushSystemMessage: (message: string, timestamp: number) => builder.pushSystemMessage(message, timestamp),
+    startCompaction(timestamp: number) {
+      builder.startAgent("compaction", "Compacting context...", "", timestamp, "agent")
+    },
+    completeCompaction(success: boolean, durationMs: number, _timestamp: number) {
+      if (success) {
+        builder.completeAgent("compaction", durationMs, "", "Context compacted")
+      } else {
+        builder.errorAgent("compaction", "Context compaction failed")
+      }
+    },
     answerQuestion: (toolUseId: string, answers: Record<string, string>) => builder.answerQuestion(toolUseId, answers),
     cancelQuestion: (toolUseId: string) => builder.cancelQuestion(toolUseId),
     resetTracking: () => builder.resetTracking(),
     flushContextRun: (timestamp: number) => builder.flushContextRun(timestamp),
     flushParser: () => parser.flush(),
     getBlocks: getFullBlocks,
-    resetActivity() {
+    resetActivity(finalStatus: "completed" | "paused" = "completed") {
       const now = Date.now();
-      builder.flushContextRun(now);
-      builder.closeOpenSubagents(now);
+      if (finalStatus === "paused") {
+        builder.pauseContextRun(now);
+        builder.pauseOpenSubagents(now);
+      } else {
+        builder.flushContextRun(now);
+        builder.closeOpenSubagents(now);
+      }
       builder.resetActivity();
       updateEntry({ modelActivity: "idle" });
     },

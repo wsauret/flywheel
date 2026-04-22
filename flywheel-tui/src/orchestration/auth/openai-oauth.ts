@@ -5,6 +5,7 @@ import { saveStoredTokens } from "../../infra/auth/openai-token-store.js";
 import { saveCachedModels } from "../../infra/auth/openai-model-cache.js";
 import { extractAccountId } from "../../infra/auth/openai-jwt.js";
 import { Log } from "../../infra/log.js";
+import { errorMessage } from "../../infra/error-message.js";
 
 const log = Log.create({ service: "openai-oauth" });
 
@@ -14,11 +15,7 @@ const DEVICE_CODE_URL = `${ISSUER}/api/accounts/deviceauth/usercode`;
 const DEVICE_POLL_URL = `${ISSUER}/api/accounts/deviceauth/token`;
 const DEVICE_REDIRECT_URI = `${ISSUER}/deviceauth/callback`;
 
-// ---------------------------------------------------------------------------
-// Pure URL builder — used by startBrowserFlow below, exported for unit testing
-// ---------------------------------------------------------------------------
-
-export function buildAuthorizeUrl(
+function buildAuthorizeUrl(
   redirectUri: string,
   pkce: { verifier: string; challenge: string },
   state: string,
@@ -40,11 +37,7 @@ export function buildAuthorizeUrl(
   return `${ISSUER}/oauth/authorize?${params.toString()}`;
 }
 
-// ---------------------------------------------------------------------------
-// Token exchange
-// ---------------------------------------------------------------------------
-
-export async function exchangeCodeForTokens(
+async function exchangeCodeForTokens(
   code: string,
   redirectUri: string,
   codeVerifier: string,
@@ -71,10 +64,6 @@ export async function exchangeCodeForTokens(
   return (await res.json()) as TokenResponse;
 }
 
-// ---------------------------------------------------------------------------
-// Token refresh
-// ---------------------------------------------------------------------------
-
 export async function refreshAccessToken(refreshToken: string): Promise<TokenResponse> {
   const body = new URLSearchParams({
     grant_type: "refresh_token",
@@ -96,10 +85,6 @@ export async function refreshAccessToken(refreshToken: string): Promise<TokenRes
   return (await res.json()) as TokenResponse;
 }
 
-// ---------------------------------------------------------------------------
-// Token response -> StoredTokens conversion
-// ---------------------------------------------------------------------------
-
 function toStoredTokens(tokenResponse: TokenResponse): StoredTokens {
   return {
     accessToken: tokenResponse.access_token,
@@ -108,10 +93,6 @@ function toStoredTokens(tokenResponse: TokenResponse): StoredTokens {
     accountId: extractAccountId(tokenResponse),
   };
 }
-
-// ---------------------------------------------------------------------------
-// HTML templates for callback server
-// ---------------------------------------------------------------------------
 
 function successHtml(): string {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Flywheel</title></head>
@@ -131,10 +112,6 @@ function errorHtml(message: string): string {
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
-
-// ---------------------------------------------------------------------------
-// Browser PKCE flow
-// ---------------------------------------------------------------------------
 
 export async function startBrowserFlow(loginHint?: string): Promise<StoredTokens> {
   const pkce = await generatePKCE();
@@ -225,10 +202,6 @@ export async function startBrowserFlow(loginHint?: string): Promise<StoredTokens
   }
 }
 
-// ---------------------------------------------------------------------------
-// Device code flow
-// ---------------------------------------------------------------------------
-
 export async function startDeviceCodeFlow(): Promise<StoredTokens> {
   const initRes = await fetch(DEVICE_CODE_URL, {
     method: "POST",
@@ -294,10 +267,6 @@ export async function startDeviceCodeFlow(): Promise<StoredTokens> {
   throw new Error("Device code flow timed out after 5 minutes");
 }
 
-// ---------------------------------------------------------------------------
-// Fetch available models from Codex endpoint and cache to disk
-// ---------------------------------------------------------------------------
-
 const MODELS_URL = `${CODEX_API_BASE}/models`;
 const CLIENT_VERSION = "1.0.0";
 
@@ -305,7 +274,7 @@ interface CodexModelsResponse {
   models?: Array<{ slug: string }>;
 }
 
-export async function fetchAndCacheModels(accessToken: string, accountId?: string): Promise<string[]> {
+async function fetchAndCacheModels(accessToken: string, accountId?: string): Promise<string[]> {
   try {
     const headers: Record<string, string> = {
       authorization: `Bearer ${accessToken}`,
@@ -326,7 +295,7 @@ export async function fetchAndCacheModels(accessToken: string, accountId?: strin
     log.info("cached Codex models", { count: slugs.length, models: slugs });
     return slugs;
   } catch (err) {
-    log.warn("Codex models fetch failed", { error: String(err) });
+    log.warn("Codex models fetch failed", { error: errorMessage(err) });
     return [];
   }
 }

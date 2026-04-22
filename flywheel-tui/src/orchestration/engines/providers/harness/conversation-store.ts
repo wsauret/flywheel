@@ -17,7 +17,7 @@ import type { Message } from "./llm/types.js";
 
 const log = Log.create({ service: "harness-conversation-store" });
 
-export interface ConversationMeta {
+interface ConversationMeta {
   previousResponseId?: string;
 }
 

@@ -8,15 +8,16 @@ import { createRequire } from "node:module";
 import { arch, platform } from "node:os";
 import { resolve } from "node:path";
 import { Log } from "../../../../../infra/log.js";
+import { errorMessage } from "../../../../../infra/error-message.js";
 
 const log = Log.create({ service: "harness-ripgrep" });
 
-export interface ContextLine {
+interface ContextLine {
   lineNumber: number;
   line: string;
 }
 
-export interface GrepOptions {
+interface GrepOptions {
   pattern: string;
   path: string;
   glob?: string;
@@ -70,16 +71,12 @@ function loadAddon(): NativeAddon | null {
     addonCache = require(addonPath) as NativeAddon;
     return addonCache;
   } catch (err) {
-    addonLoadError = err instanceof Error ? err.message : String(err);
+    addonLoadError = errorMessage(err);
     log.warn("ripgrep addon not available, text_search will be unavailable", {
       error: addonLoadError,
     });
     return null;
   }
-}
-
-export function isRipgrepAvailable(): boolean {
-  return loadAddon() !== null;
 }
 
 export function grep(options: GrepOptions): GrepResult {

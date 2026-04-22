@@ -2,7 +2,7 @@ export interface ToolDefinition {
   name: string;
   description: string;
   input_schema: Record<string, unknown>;
-  execute: (input: unknown, context: ToolContext) => Promise<ToolResult>;
+  execute: (input: Record<string, unknown>, context: ToolContext) => Promise<ToolResult>;
 }
 
 export interface ToolResult {
@@ -30,7 +30,6 @@ export interface TodoItem {
   notes?: string;
 }
 
-// --- Operations interfaces for DI ---
 
 export interface BunSubprocessLike {
   readonly exitCode: number | null;
@@ -41,7 +40,7 @@ export interface BunSubprocessLike {
   kill(signal?: number): void;
 }
 
-export interface BashSpawnOptions {
+interface BashSpawnOptions {
   cwd: string;
   stdout: "pipe";
   stderr: "pipe";

@@ -24,20 +24,21 @@ function extractJSON(line: string): Record<string, unknown> | null {
       return parsed as Record<string, unknown>;
     }
   } catch {
-    // Not valid JSON
   }
   return null;
 }
 
-const KNOWN_TYPES = new Set([
+type KnownEventType = Exclude<NDJSONEvent["type"], "unknown" | "compaction">;
+
+const KNOWN_TYPES: ReadonlySet<string> = new Set<KnownEventType>([
   "assistant", "system", "user", "tool_result", "result",
   "tool_use", "content_block_delta", "text", "step_finish", "error",
   "flywheel:worker_boundary",
-] as const);
+]);
 
 function classifyEvent(data: Record<string, unknown>): NDJSONEvent["type"] {
   const type = data.type;
-  return typeof type === "string" && (KNOWN_TYPES as Set<string>).has(type)
+  return typeof type === "string" && KNOWN_TYPES.has(type)
     ? type as NDJSONEvent["type"]
     : "unknown";
 }
@@ -102,7 +103,7 @@ export class NDJSONParser {
         this.emitEvent(parsed as Record<string, unknown>, line);
         return;
       }
-    } catch { /* not valid JSON — try garbage-prefix extraction */ }
+    } catch {}
 
     const extracted = extractJSON(cleaned);
     if (extracted) {

@@ -255,6 +255,7 @@ describe("TraceCollector — EventBus integration", () => {
       workflowId: "wf-1",
       reason: "budget exhausted",
       stepsCompleted: 0,
+      finalStatus: "failed",
       timestamp: now(),
     });
 
@@ -594,6 +595,7 @@ describe("TraceCollector — integration", () => {
       workflowId: "wf-1",
       reason: "step failed",
       stepsCompleted: 1,
+      finalStatus: "failed",
       timestamp: now(),
     });
 

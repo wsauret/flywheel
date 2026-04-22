@@ -1,21 +1,9 @@
-/**
- * Queue for messages injected into a runner at turn boundaries.
- *
- * Observer nudges and self-review prompts are enqueued mid-turn as they're
- * generated, then drained and delivered via `runner.send()` when the turn
- * completes. User-steering messages from the TUI also flow through this queue
- * — they're tagged so the caller can decide whether to emit a "system injection"
- * event (user messages are already visible in the TUI and don't need re-echoing).
- *
- * Pure data structure — no engine or stdin coupling.
- */
-
 interface QueueItem {
   text: string;
   userSteering: boolean;
 }
 
-export interface DrainResult {
+interface DrainResult {
   message: string;
   userSteering: boolean;
 }

@@ -1,8 +1,6 @@
 import type { ZodSchema, ZodError, ZodIssue } from "zod";
 import { errorMessage } from "../../../infra/error-message.js";
 
-// Exported for tests — callers need instanceof to distinguish missing,
-// invalid, and timeout failure modes.
 export class HandoffMissingError extends Error {
   readonly name = "HandoffMissingError";
   constructor(readonly path: string) {
@@ -31,7 +29,6 @@ export class HandoffReadTimeoutError extends Error {
 }
 
 interface ReadHandoffOptions {
-  /** Timeout in milliseconds (default: 5000) */
   timeoutMs?: number;
 }
 
@@ -86,7 +83,7 @@ function formatZodError(error: ZodError): string {
     .map((issue) => {
       const path = issue.path.length > 0 ? issue.path.join(".") : "(root)";
       if (issue.code === "unrecognized_keys") {
-        return `Unrecognized key(s) at ${path}: ${(issue as ZodIssue & { keys: string[] }).keys.join(", ")}`;
+        return `Unrecognized key(s) at ${path}: ${issue.keys.join(", ")}`;
       }
       return `${path}: ${issue.message}`;
     })

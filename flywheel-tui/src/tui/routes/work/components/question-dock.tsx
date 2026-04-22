@@ -13,21 +13,6 @@ interface QuestionDockProps {
   onCancel: () => void
 }
 
-/**
- * Interactive prompt for Claude's AskUserQuestion tool.
- *
- * Handles 1–4 questions per invocation, each with 2–4 options and its own
- * `multiSelect` flag. Navigation model adapted from OpenCode's pattern
- * (inspiration/opencode/.../session-question-dock.tsx):
- *   - Per-question selection state (array of labels for multi, single-element for radio)
- *   - Tab forward / back to move between questions
- *   - Progress dots show which questions are answered
- *   - "Other…" opens an inline text entry scoped to the current question
- *
- * Answer format matches Claude's wire protocol (see
- * inspiration/claude-code/.../AskUserQuestionTool.tsx): `Record<questionText, string>`
- * with multi-select values comma-joined.
- */
 export function QuestionDock(props: QuestionDockProps) {
   const { theme } = useTheme()
 
@@ -104,7 +89,6 @@ export function QuestionDock(props: QuestionDockProps) {
       return
     }
     setTab(tab() + 1)
-    // Reset cursor to first option of the next question. Preserve existing selections.
     setCursor(0)
     setEditing(false)
   }

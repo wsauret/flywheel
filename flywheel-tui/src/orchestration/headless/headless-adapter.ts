@@ -6,7 +6,7 @@ import type { FlywheelEvent } from "../../infra/events.js"
 import { Log } from "../../infra/log.js"
 import { formatCost } from "../../infra/format.js"
 
-export interface HeadlessAdapterOptions {
+interface HeadlessAdapterOptions {
   logFile?: string
   logLevel?: "minimal" | "normal" | "verbose"
   logger?: (message: string) => void
@@ -15,12 +15,12 @@ export interface HeadlessAdapterOptions {
 
 type LogLevel = "minimal" | "normal" | "verbose"
 
-type EventSpec = {
+type EventSpecFor<T extends FlywheelEvent["type"]> = {
   minLevel: LogLevel
-  // Why any: TS can't narrow through Record<type, EventSpec> lookup at the call site.
-  // The `satisfies` constraint below guarantees exhaustive, type-safe coverage.
-  format: ((event: any) => string | null) | null
+  format: ((event: Extract<FlywheelEvent, { type: T }>) => string | null) | null
 }
+
+type EventHandlerMap = { [T in FlywheelEvent["type"]]: EventSpecFor<T> }
 
 const LEVEL_ORDER: Record<LogLevel, number> = { minimal: 0, normal: 1, verbose: 2 }
 
@@ -61,7 +61,7 @@ const EVENT_HANDLERS = {
   "trace:tool-completed":     { minLevel: "verbose", format: (e) => `  Trace: tool completed — ${e.toolUseId}${e.isError ? " [ERROR]" : ""}` },
   "trace:subagent-started":   { minLevel: "verbose", format: (e) => `  Trace: subagent started — ${e.agentType}: ${e.description} (${e.toolUseId})` },
   "trace:subagent-completed": { minLevel: "verbose", format: (e) => `  Trace: subagent completed — ${e.toolUseId}${e.isError ? " [ERROR]" : ""}` },
-} satisfies Record<FlywheelEvent["type"], EventSpec>
+} satisfies EventHandlerMap
 
 export class HeadlessAdapter {
   private eventBus: EventBus | null = null
@@ -110,7 +110,7 @@ export class HeadlessAdapter {
   }
 
   private handleEvent(event: FlywheelEvent) {
-    const spec = EVENT_HANDLERS[event.type]
+    const spec = EVENT_HANDLERS[event.type] as EventSpecFor<typeof event.type>
     if (!spec.format) return
     if (LEVEL_ORDER[this.logLevel] < LEVEL_ORDER[spec.minLevel]) return
     const message = spec.format(event)

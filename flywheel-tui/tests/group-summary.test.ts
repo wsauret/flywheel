@@ -92,10 +92,14 @@ describe("deriveGroupSummary", () => {
 
 describe("toolsGroupLabel", () => {
   it("active", () => {
-    expect(toolsGroupLabel(true)).toBe("Exploring...")
+    expect(toolsGroupLabel("active")).toBe("Exploring...")
+  })
+
+  it("paused", () => {
+    expect(toolsGroupLabel("paused")).toBe("Interrupted")
   })
 
   it("completed", () => {
-    expect(toolsGroupLabel(false)).toBe("Explored")
+    expect(toolsGroupLabel("completed")).toBe("Explored")
   })
 })

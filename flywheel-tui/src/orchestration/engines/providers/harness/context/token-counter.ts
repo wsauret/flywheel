@@ -7,7 +7,7 @@
 
 import type { Message, ContentBlock } from "../llm/types.js";
 
-export interface TokenCounter {
+interface TokenCounter {
   addMessage(message: Message): void;
   addToolResult(content: string): void;
   readonly total: number;

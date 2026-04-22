@@ -4,14 +4,7 @@ import type { NDJSONEvent } from "./ndjson-event-types.js";
 /** Base shape shared by all flywheel events. */
 type Ev<T extends string, P = {}> = { type: T; workflowId: string; timestamp: number } & P;
 
-/**
- * A parsed NDJSON event from an engine worker.
- *
- * Distinct from `engine:output` which carries raw stdout/stderr chunks for display.
- * `engine:ndjson` carries parsed NDJSON events for consumption by budget tracking,
- * tracing, transcript persistence, and stream observers.
- */
-export type EngineNDJSON = Ev<"engine:ndjson", { ndjsonEvent: NDJSONEvent }>;
+type EngineNDJSON = Ev<"engine:ndjson", { ndjsonEvent: NDJSONEvent }>;
 
 export type FlywheelEvent =
   | Ev<"dispatcher:invoked", { stepIndex: number }>
@@ -31,7 +24,7 @@ export type FlywheelEvent =
   | Ev<"budget:exhausted", { reason: string }>
   | Ev<"queue:initialized", { stepIds: string[] }>
   | Ev<"queue:completed", { stepsCompleted: number }>
-  | Ev<"queue:failed", { reason: string; stepsCompleted: number }>
+  | Ev<"queue:failed", { reason: string; stepsCompleted: number; finalStatus: "paused" | "failed" }>
   | Ev<"queue:step-started", { stepId: string; stepType: string; stepTitle: string }>
   | Ev<"queue:step-completed", { stepId: string; stepType: string; stepTitle: string }>
   | Ev<"queue:step-failed", { stepId: string; stepType: string; stepTitle: string; reason: string }>

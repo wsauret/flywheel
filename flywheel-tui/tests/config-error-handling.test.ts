@@ -2,30 +2,17 @@ import { describe, it, expect } from "bun:test";
 import * as path from "node:path";
 import * as fs from "node:fs";
 import * as os from "node:os";
-import { loadConfig, ConfigLoadError } from "../src/orchestration/config/loader";
+import { loadConfig } from "../src/orchestration/config/loader";
 
 const FIXTURES_DIR = path.join(import.meta.dir, "fixtures");
 
-// ---------------------------------------------------------------------------
-// ConfigLoadError typed error class
-// ---------------------------------------------------------------------------
+interface ConfigLoadErrorLike extends Error {
+  code: string;
+}
 
-describe("ConfigLoadError", () => {
-  it("is an instance of Error", () => {
-    const err = new ConfigLoadError("test", "VALIDATION");
-    expect(err).toBeInstanceOf(Error);
-  });
-
-  it("has a code property for programmatic handling", () => {
-    const err = new ConfigLoadError("test", "VALIDATION");
-    expect(err.code).toBe("VALIDATION");
-  });
-
-  it("has name ConfigLoadError", () => {
-    const err = new ConfigLoadError("test", "VALIDATION");
-    expect(err.name).toBe("ConfigLoadError");
-  });
-});
+function isConfigLoadError(err: unknown): err is ConfigLoadErrorLike {
+  return err instanceof Error && err.name === "ConfigLoadError" && "code" in err;
+}
 
 // ---------------------------------------------------------------------------
 // Malformed TOML handling
@@ -38,9 +25,9 @@ describe("loadConfig: malformed TOML", () => {
       // Should not reach here
       expect(true).toBe(false);
     } catch (err) {
-      expect(err).toBeInstanceOf(ConfigLoadError);
-      expect((err as ConfigLoadError).code).toBe("PARSE_ERROR");
-      expect((err as ConfigLoadError).message).toContain("malformed.toml");
+      expect(isConfigLoadError(err)).toBe(true);
+      expect((err as ConfigLoadErrorLike).code).toBe("PARSE_ERROR");
+      expect((err as ConfigLoadErrorLike).message).toContain("malformed.toml");
     }
   });
 });
@@ -55,8 +42,8 @@ describe("loadConfig: file read errors", () => {
       loadConfig("/nonexistent/flywheel.toml", {});
       expect(true).toBe(false);
     } catch (err) {
-      expect(err).toBeInstanceOf(ConfigLoadError);
-      expect((err as ConfigLoadError).code).toBe("FILE_NOT_FOUND");
+      expect(isConfigLoadError(err)).toBe(true);
+      expect((err as ConfigLoadErrorLike).code).toBe("FILE_NOT_FOUND");
     }
   });
 
@@ -71,8 +58,8 @@ describe("loadConfig: file read errors", () => {
       loadConfig(tmpFile, {});
       expect(true).toBe(false);
     } catch (err) {
-      expect(err).toBeInstanceOf(ConfigLoadError);
-      expect((err as ConfigLoadError).code).toBe("FILE_READ_ERROR");
+      expect(isConfigLoadError(err)).toBe(true);
+      expect((err as ConfigLoadErrorLike).code).toBe("FILE_READ_ERROR");
     } finally {
       // Cleanup
       fs.chmodSync(tmpFile, 0o644);
@@ -92,9 +79,9 @@ describe("loadConfig: validation errors use ConfigLoadError", () => {
       loadConfig(undefined, { FLYWHEEL_MAX_EVAL_CYCLES: "99" });
       expect(true).toBe(false);
     } catch (err) {
-      expect(err).toBeInstanceOf(ConfigLoadError);
-      expect((err as ConfigLoadError).code).toBe("VALIDATION");
-      expect((err as ConfigLoadError).message).toContain("Invalid configuration");
+      expect(isConfigLoadError(err)).toBe(true);
+      expect((err as ConfigLoadErrorLike).code).toBe("VALIDATION");
+      expect((err as ConfigLoadErrorLike).message).toContain("Invalid configuration");
     }
   });
 });

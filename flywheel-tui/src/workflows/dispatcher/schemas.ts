@@ -4,7 +4,7 @@ import {
   SessionBudgetStatusSchema,
   AvailableContextSchema,
 } from "../schemas.js";
-import { EvaluationCriteriaSchema, MutationRequestSchema, DispatcherDecisionSchema, WorkerConfigSchema } from "../../infra/workflow-types.js";
+import { EvaluationCriteriaSchema, MutationRequestSchema, DispatcherDecisionSchema, WorkerConfigSchema, type DispatcherDecision } from "../../infra/workflow-types.js";
 import { StepContextSchema } from "../queue/step-context.js";
 
 // PlanInputSchema — step-based plan representation for the dispatcher
@@ -27,7 +27,7 @@ const PlanInputSchema = z.object({
   steps: z.array(PlanStepInputSchema),
 }).strip();
 
-export const WorkflowInfoSchema = z.object({
+const WorkflowInfoSchema = z.object({
   name: z.string(),
   step_number: z.number(),
   total_steps: z.number(),
@@ -82,3 +82,19 @@ export const DispatcherDecisionHandoffSchema = DispatcherDecisionSchema
   .passthrough();
 
 export type DispatcherDecisionHandoff = z.infer<typeof DispatcherDecisionHandoffSchema>;
+
+/** Convert a handoff file into the full DispatcherDecision, filling defaults
+ *  that the Zod schema makes optional for LLM tolerance. */
+export function handoffToDecision(handoff: DispatcherDecisionHandoff): DispatcherDecision {
+  return {
+    ...handoff,
+    evaluation_criteria: handoff.evaluation_criteria
+      ?? { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
+    worker_config: handoff.worker_config ? {
+      ...handoff.worker_config,
+      tool_scoping: handoff.worker_config.tool_scoping
+        ? { ...handoff.worker_config.tool_scoping, task: handoff.worker_config.tool_scoping.task ?? false }
+        : undefined,
+    } : undefined,
+  };
+}

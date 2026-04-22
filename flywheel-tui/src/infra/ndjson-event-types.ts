@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const ProcessFailureReasonSchema = z.discriminatedUnion("kind", [
+const ProcessFailureReasonSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("timeout"), timeoutMs: z.number(), message: z.string() }),
   z.object({ kind: z.literal("exit_code"), exitCode: z.number(), message: z.string() }),
   z.object({ kind: z.literal("schema_error"), message: z.string() }),
@@ -14,7 +14,7 @@ export const ProcessFailureReasonSchema = z.discriminatedUnion("kind", [
 
 export type ProcessFailureReason = z.infer<typeof ProcessFailureReasonSchema>;
 
-export const ProcessResultSchema = z.object({
+const ProcessResultSchema = z.object({
   output: z.string(),
   exitCode: z.number(),
   truncated: z.boolean(),
@@ -124,5 +124,6 @@ export type NDJSONEvent =
   | { type: "text"; data: Record<string, unknown>; raw: string }
   | { type: "step_finish"; data: Record<string, unknown>; raw: string }
   | { type: "error"; data: Record<string, unknown>; raw: string }
+  | { type: "compaction"; data: Record<string, unknown>; raw: string }
   | { type: "flywheel:worker_boundary"; data: Record<string, unknown>; raw: string }
   | { type: "unknown"; data: Record<string, unknown>; raw: string };

@@ -13,7 +13,7 @@ import type { ToolDefinition, ToolResult, ToolContext } from "./types.js";
 
 const log = Log.create({ service: "harness-write" });
 
-export interface WriteOperations {
+interface WriteOperations {
   writeFile(path: string, content: string): Promise<number>;
   mkdir(path: string): Promise<void>;
   fileExists(path: string): Promise<boolean>;
@@ -25,7 +25,7 @@ const defaultWriteOperations: WriteOperations = {
   fileExists: (path) => fs.access(path).then(() => true).catch(() => false),
 };
 
-export function createWriteDefinition(options?: { operations?: WriteOperations }): ToolDefinition {
+function createWriteDefinition(options?: { operations?: WriteOperations }): ToolDefinition {
   const ops = options?.operations ?? defaultWriteOperations;
 
   return {
@@ -49,17 +49,16 @@ export function createWriteDefinition(options?: { operations?: WriteOperations }
       },
       required: ["file_path", "content"],
     },
-    async execute(input: unknown, context: ToolContext) {
-      const rec = input as Record<string, unknown>;
-      if (typeof rec.file_path !== "string") {
+    async execute(input: Record<string, unknown>, context: ToolContext) {
+      if (typeof input.file_path !== "string") {
         return { content: "write requires a string 'file_path' parameter", isError: true };
       }
-      if (typeof rec.content !== "string") {
+      if (typeof input.content !== "string") {
         return { content: "write requires a string 'content' parameter", isError: true };
       }
 
-      const rawPath = rec.file_path;
-      const fileContent = rec.content;
+      const rawPath = input.file_path;
+      const fileContent = input.content;
       const resolvedPath = rawPath.startsWith("/") ? rawPath : resolve(context.cwd, rawPath);
 
       try {

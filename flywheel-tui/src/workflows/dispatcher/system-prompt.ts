@@ -1,12 +1,3 @@
-/**
- * Dispatcher system prompt — instructs the dispatcher LLM on its role,
- * input format, and expected output format.
- *
- * The system prompt is a pure function of nothing — returns the same string
- * every time. This enables prompt caching: the stable prefix can be cached
- * while per-step variable content (truncation warnings, input JSON) goes
- * in the user segment.
- */
 
 import {
   formatChecklistInclusionGuidance,

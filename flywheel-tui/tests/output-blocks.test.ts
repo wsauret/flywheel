@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { isHandoffPath } from "../src/tui/utils/text";
+import { isHandoffPath } from "../src/infra/paths";
 import { formatDuration } from "../src/infra/format";
 import { getToolDetail } from "../src/infra/output/output-formatter";
 import { SUBAGENT_TOOL_NAMES } from "../src/infra/tool-display-registry";
@@ -189,6 +189,12 @@ function toolGroupDisplayText(agent: ToolGroupBlock): {
       const toolInfo = agent.children.length > 0 ? `└ ${agent.children.length} tool calls` : undefined;
       return { icon: "✓", label, detail, subline: toolInfo };
     }
+    case "paused": {
+      const duration = agent.duration != null ? formatDuration(agent.duration) : "";
+      const detail = duration ? ` (${duration})` : "";
+      const toolInfo = agent.children.length > 0 ? `└ ${agent.children.length} tool calls` : undefined;
+      return { icon: "✗", label, detail, subline: toolInfo };
+    }
     case "error": {
       const subline = agent.errorMessage ? `  ${agent.errorMessage}` : undefined;
       return { icon: "✗", label, detail: "", subline };
@@ -248,6 +254,27 @@ describe("agentDisplayText", () => {
     expect(result.label).toBe("Explore: Searching codebase");
     expect(result.detail).toBe(" (12.3s)");
     expect(result.subline).toBe("└ 8 tool calls");
+  });
+
+  it("paused agent shows X icon, duration, and tool count", () => {
+    const children: ToolEntry[] = Array.from({ length: 2 }, (_, i) => ({
+      kind: "tool", name: `Tool${i}`, detail: "", timestamp: 1,
+    }));
+    const agent: ToolGroupBlock = {
+      kind: "toolGroup", groupKind: "agent" as const,
+      id: "a1",
+      label: "Explore",
+      description: "Interrupted run",
+      status: "paused",
+      children,
+      duration: 2500,
+      timestamp: 1,
+    };
+    const result = toolGroupDisplayText(agent);
+    expect(result.icon).toBe("✗");
+    expect(result.label).toBe("Explore: Interrupted run");
+    expect(result.detail).toBe(" (2.5s)");
+    expect(result.subline).toBe("└ 2 tool calls");
   });
 
   it("completed agent without duration has no duration detail", () => {

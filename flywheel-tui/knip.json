@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/knip/schema.json",
+  "entry": ["src/cli/index.ts", "src/cli/auth.ts"],
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignore": [
+    "src-legacy/**",
+    "tests-legacy/**",
+    "scripts/**",
+    "src/orchestration/ask-hook/hook.ts"
+  ]
+}

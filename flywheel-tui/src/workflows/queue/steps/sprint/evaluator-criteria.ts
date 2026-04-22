@@ -24,14 +24,12 @@ const STATIC_CRITERIA_PREFIX = [
   formatChecklistNumbered(),
   "",
 
-  // ── Verdict output fields ───────────────────────────────────────
   "### Required Feedback Fields",
   "",
   "Your verdict MUST include:",
   "- `feedback`: Specific summary for the worker if a retry is needed.",
   "",
 
-  // ── When to FAIL / PASS ─────────────────────────────────────────
   "### When to FAIL",
   "",
   "FAIL only for hard evidence of problems:",
@@ -67,7 +65,6 @@ const STATIC_CRITERIA_PREFIX = [
 export function buildSprintEvaluationCriteria(
   history?: SprintIterationRecord[],
 ): string {
-  // ── Test weakening detection (only with history) ────────────────
   const hasHistory = history != null && history.length > 0;
 
   if (!hasHistory) {
@@ -91,7 +88,6 @@ export function buildSprintEvaluationCriteria(
     "NOT to weaken the assertions to match a broken implementation.",
     "",
 
-    // ── Serialized iteration history ──────────────────────────────
     "### Prior Iteration History",
     "",
     "Use this history to detect test weakening and understand progression:",

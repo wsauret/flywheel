@@ -1,24 +1,3 @@
-/**
- * File-based logger for flywheel.
- *
- * Adapted from OpenCode's `src/util/log.ts`. Writes structured log lines to
- * `.flywheel/log/` so errors never leak to stderr and corrupt the TUI.
- *
- * Format: `LEVEL TIMESTAMP +DELTAms key=value ... message\n`
- *
- * Usage:
- *   import { Log } from "../utils/log.js"
- *   const log = Log.create({ service: "session" })
- *   log.info("started")
- *   log.error("transition failed", { from: "paused", to: "completed" })
- *
- * Call `Log.init()` once at startup (before any logging).
- * Before init, messages go to stderr as a fallback.
- *
- * Log directory: `.flywheel/log/`
- * Rotation: keeps the 10 newest files, deletes older ones.
- */
-
 import path from "path"
 // node:fs used intentionally — Bun has no equivalent for createWriteStream (append streaming)
 // or synchronous directory operations (mkdirSync, readdirSync). See ADR-006 "Bun as Runtime."
@@ -33,6 +12,12 @@ export namespace Log {
     INFO: 1,
     WARN: 2,
     ERROR: 3,
+  }
+
+  const VALID_LEVELS: ReadonlySet<string> = new Set<Level>(["DEBUG", "INFO", "WARN", "ERROR"])
+
+  export function isLevel(value: string): value is Level {
+    return VALID_LEVELS.has(value)
   }
 
   let level: Level = "INFO"
@@ -56,9 +41,7 @@ export namespace Log {
   export const Default = create({ service: "default" })
 
   export interface Options {
-    /** Base directory for `.flywheel/log/`. Typically `process.cwd()` or `config.project_cwd`. */
-    dir: string
-    /** If true, log to stderr instead of file (for debugging). */
+      dir: string
     print?: boolean
     level?: Level
   }
@@ -67,7 +50,6 @@ export namespace Log {
     process.stderr.write(msg)
   }
 
-  /** Silence all log output. Used by test preload. */
   export function suppress() {
     write = () => {}
   }

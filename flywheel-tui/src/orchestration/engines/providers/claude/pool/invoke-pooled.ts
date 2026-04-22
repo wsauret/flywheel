@@ -1,11 +1,3 @@
-/**
- * Shared acquire/run/release lifecycle for pooled subprocess invocations.
- *
- * Used by both dispatcher and evaluator pooled transports (ADR-006 check #7:
- * abstraction used in 2+ places). Encapsulates pool acquire/release, stdin
- * message formatting, retry on handoff failure, and handoff file reading.
- */
-
 import type { ZodType } from "zod";
 import { readHandoff, HandoffMissingError, HandoffInvalidError } from "../../../../../workflows/queue/shared/handoff-reader.js";
 import { formatStdinInput } from "../subprocess/stdin-format.js";
@@ -15,17 +7,13 @@ import type { SpawnResult, StdinHandle } from "../subprocess/spawner.js";
 import type { WarmPool } from "./warm-pool.js";
 
 interface InvokePooledCallbacks<THandoff, TResult> {
-  /** Role label for logging (e.g. "dispatcher", "evaluator"). */
   role: string;
-  /** Build the handoff file path for this invocation. */
   buildHandoffPath: (sessionId: string, invocationId: string, baseDir: string) => string;
-  /** Build the full user prompt including handoff instructions. */
   buildFullPrompt: (handoffPath: string) => string;
-  /** System prompt — prepended to the stdin message. */
   systemPrompt: string;
-  /** Zod schema for handoff file validation. */
+  // Zod's ZodType<Output, Def, Input> requires `any` for Def/Input
+  // when schemas use .passthrough() (Input != Output).
   handoffSchema: ZodType<THandoff, any, any>;
-  /** Map the parsed handoff to the final result type. */
   mapResult: (handoff: THandoff) => TResult;
 }
 

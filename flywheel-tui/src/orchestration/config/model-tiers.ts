@@ -5,7 +5,7 @@ import { canonicalize } from "../../infra/canonical-name.js";
 type ModelTier = "powerful" | "mid" | "cheap";
 type ComponentRole = "worker" | "evaluator" | "dispatcher";
 
-export const TIER_TABLE = {
+const TIER_TABLE = {
   anthropic: {
     powerful: "claude-opus-4-6[1m]",
     mid: "claude-sonnet-4-6[1m]",
@@ -33,6 +33,11 @@ const MODEL_TIER_ALIASES: Record<string, ModelTier> = {
   "flash-lite": "cheap",
 };
 
+const MODEL_TIERS: ReadonlySet<string> = new Set<ModelTier>(["powerful", "mid", "cheap"]);
+function isModelTier(value: string): value is ModelTier {
+  return MODEL_TIERS.has(value);
+}
+
 const COMPONENT_DEFAULT_TIERS: Record<ComponentRole, ModelTier> = {
   worker: "powerful",
   evaluator: "mid",
@@ -52,8 +57,8 @@ export function resolveModelTier(
   const lowered = canonicalize(raw);
 
   const familyTiers = TIER_TABLE[family];
-  if (lowered in familyTiers) {
-    return familyTiers[lowered as ModelTier];
+  if (isModelTier(lowered)) {
+    return familyTiers[lowered];
   }
 
   if (lowered in MODEL_TIER_ALIASES) {
@@ -64,7 +69,7 @@ export function resolveModelTier(
   return raw;
 }
 
-export interface ModelValidationError {
+interface ModelValidationError {
   component: string;
   model: string;
   issue: string;
@@ -95,4 +100,4 @@ export function validateResolvedModels(
   return errors;
 }
 
-export type { ModelTier, ComponentRole };
+export type { ComponentRole };

@@ -83,6 +83,20 @@ interface ResultOpts {
   contextWindow?: number;
 }
 
+export function emitCompaction(
+  emit: EventEmitter,
+  state: "start" | "done" | "error",
+  durationMs?: number,
+): void {
+  emit(
+    createNDJSONEvent("compaction", {
+      type: "compaction",
+      state,
+      ...(durationMs != null ? { duration_ms: durationMs } : {}),
+    }),
+  );
+}
+
 export function emitResult(emit: EventEmitter, opts: ResultOpts): void {
   const modelUsage: Record<string, { contextWindow?: number }> | undefined =
     opts.contextWindow

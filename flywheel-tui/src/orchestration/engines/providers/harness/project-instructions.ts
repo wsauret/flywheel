@@ -1,24 +1,8 @@
-/**
- * Project instruction file discovery and loading.
- *
- * Walks up from the working directory to the project root (.git boundary),
- * collecting one instruction file per directory level. At each level the first
- * match wins: agents.md > AGENTS.md > CLAUDE.md > claude.md.
- *
- * Files support @-include directives that pull in referenced files relative
- * to the directive's location.
- *
- * Walk order: root-first, cwd-last (closest to cwd = highest model priority).
- * Total output is capped at MAX_BYTES — root-end sections are dropped first
- * so that closer-to-cwd content (higher priority) is preserved.
- */
-
 import { access } from "node:fs/promises";
 import { constants } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { homedir } from "node:os";
 
-// --- Constants ---
 
 /** Checked in order per directory — first match wins. */
 const CANDIDATES = ["agents.md", "AGENTS.md", "CLAUDE.md", "claude.md"] as const;
@@ -34,14 +18,7 @@ const INCLUDE_RE = /(?<=^|\s)@((?:[^\s\\]|\\ )+)/g;
 // Lines that look like code fences — skip @-references inside them.
 const FENCE_RE = /^(`{3,}|~{3,})/;
 
-// --- Public API ---
 
-/**
- * Loads all project instruction files from cwd up to the project root,
- * resolves @-includes, and returns a single concatenated string (or undefined
- * if no files were found). Output is capped at 32 KB — root-end sections are
- * dropped first to preserve closer-to-cwd content.
- */
 export async function loadProjectInstructions(cwd: string): Promise<string | undefined> {
   const files = await walkForInstructionFiles(cwd);
   if (files.length === 0) return undefined;
@@ -57,7 +34,6 @@ export async function loadProjectInstructions(cwd: string): Promise<string | und
   return truncateToLimit(sections);
 }
 
-// --- Directory walk ---
 
 interface ContextFile {
   path: string;
@@ -76,7 +52,6 @@ async function walkForInstructionFiles(cwd: string): Promise<ContextFile[]> {
       ancestors.unshift(file); // root-first ordering
     }
 
-    // Stop after processing a directory that contains .git
     if (await isProjectRoot(current)) break;
 
     const parent = dirname(current);
@@ -107,7 +82,6 @@ async function probeDir(dir: string): Promise<ContextFile | null> {
   return null;
 }
 
-// --- @-include expansion ---
 
 async function expandIncludes(
   filePath: string,
@@ -136,9 +110,7 @@ async function expandIncludes(
 }
 
 interface IncludeRef {
-  /** The original @path token (used for replacement). */
   raw: string;
-  /** Absolute resolved path. */
   resolved: string;
 }
 
@@ -172,7 +144,6 @@ function extractIncludePaths(content: string, baseDir: string): IncludeRef[] {
   return refs;
 }
 
-// --- Size cap ---
 
 /**
  * Joins sections with separators, dropping root-end sections first if the

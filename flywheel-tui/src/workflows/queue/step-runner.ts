@@ -1,7 +1,7 @@
 // Step Runner — single-step execution: dispatch → worker → eval → accumulate
 
 import type { Step } from "./types.js";
-import type { EvalResult } from "./executor-types.js";
+import type { EvalResult } from "./step-dispatcher-types.js";
 import type { StepRunnerDeps, StepRunnerResult, StepPipelineContext } from "./step-runner-types.js";
 import { type Provenance } from "./queue.js";
 import { executeWithRevisions } from "./revision-loop.js";

@@ -1,9 +1,3 @@
-// Single source of truth for the quality checklist.
-// Used by three consumers with different framing:
-// - worker-callback.ts: worker self-review injection (turn boundary)
-// - evaluator-criteria.ts: evaluator assessment criteria (sprint mode)
-// - prompts.ts: evaluator system prompt addendum (sprint mode, labels only)
-
 interface ChecklistItem {
   label: string
   description: string
@@ -60,7 +54,7 @@ const QUALITY_CHECKLIST: readonly ChecklistItem[] = [
 ]
 
 /** Canonical label set — the only values `self_review_items` may contain. */
-export const CHECKLIST_LABELS: readonly string[] = QUALITY_CHECKLIST.map((i) => i.label)
+const CHECKLIST_LABELS: readonly string[] = QUALITY_CHECKLIST.map((i) => i.label)
 
 /** Numbered markdown list: `1. **Label** — description`. Pass a subset of labels to filter; undefined = all. */
 export function formatChecklistNumbered(labels?: readonly string[]): string {

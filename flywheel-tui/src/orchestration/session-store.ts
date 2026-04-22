@@ -1,11 +1,12 @@
 import { createRoot } from "solid-js"
 import { createStore, produce } from "solid-js/store"
-import { createWorkflowRunner, type WorkflowResult } from "./workflow-runner.js"
+import { createWorkflowRunner } from "./workflow-runner.js"
+import type { WorkflowResult } from "./workflow-runner-types.js"
 import type { WorkflowSessionFactories } from "./session-store-types.js"
 import type { AnyBlock } from "../infra/output-blocks.js"
 import type { Queue } from "../workflows/queue/types.js"
 import type { SessionKind } from "./session/types.js"
-import type { ChatRunner } from "./chat-runner.js"
+import type { ChatRunner } from "./chat-runner-types.js"
 import type { WorkflowDeps } from "./engines/workflow-deps.js"
 import type {
   SessionStore,
@@ -16,9 +17,6 @@ import type {
 } from "./session-store-types.js"
 
 export function createSessionStore(factories: WorkflowSessionFactories): SessionStore {
-  // Single reactive root for all sessions — createStore requires an owner context.
-  // Not per-session: all entries share one store, additions/removals tracked together.
-  // Definite assignment (!) is safe: createRoot's callback runs synchronously.
   let disposeRoot!: () => void
   let entries!: Record<string, SessionEntry>
   let setEntries!: ReturnType<typeof createStore<Record<string, SessionEntry>>>[1]
@@ -77,7 +75,6 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
 
     setEntries(sessionId, entry)
 
-    // Fire-and-forget: lifecycle callbacks handle completion
     runner.run().then(
       async (result) => {
         opts.onRunnerDone?.(sessionId, result)
@@ -106,7 +103,6 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
   }): Promise<string> {
     const { sessionId, description = "Chat", priorBlocks } = opts
 
-    // Create a store handle for the runner — data writes go directly to the reactive store
     const storeHandle: ChatStoreHandle = {
       updateEntry: (patch) => updateEntry(sessionId, patch),
       onError: async (message) => {
@@ -149,7 +145,6 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
     startedAt?: number
     engineSessionId?: string
   }): void {
-    // Don't overwrite a live or already-loaded entry
     if (entries[sessionId]) return
     const base = {
       description: data.description,
@@ -194,14 +189,11 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
     const entry = entries[sessionId]
     if (!entry || entry.ended || !entry.runner) return
     entry.runner.abort()
-    // Status transitions happen when run() resolves (workflow) or via callbacks (chat)
   }
 
   async function finish(sessionId: string): Promise<void> {
     const entry = entries[sessionId]
     if (!entry || entry.ended) return
-    // Runner is not nulled — `ended` is the guard. The runner object stays
-    // referenced until remove() deletes the store entry.
     setEntries(sessionId, produce((entry) => { entry.ended = true }))
     if (entry.runner) await entry.runner.dispose()
   }
@@ -209,9 +201,7 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
   async function remove(sessionId: string): Promise<void> {
     const entry = entries[sessionId]
     if (!entry) return
-    // Dispose BEFORE deleting — onRunnerDone/onRunnerError callbacks read the
-    // store entry during disposal (e.g. to persist engineSessionId). Deleting
-    // first silently breaks any callback that calls sessionStore.get().
+    // Dispose before deleting — callbacks during disposal read the store entry.
     if (!entry.ended && entry.runner) await entry.runner.dispose()
     setEntries(produce((e) => { delete e[sessionId] }))
   }
@@ -219,9 +209,7 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
   function injectMessage(sessionId: string, text: string): boolean {
     const entry = entries[sessionId]
     if (!entry || entry.ended || !entry.runner) return false
-    // Why here (not in the builder): this is a user-action-triggered optimistic
-    // update for immediate UI feedback. The builder won't see a thinking event
-    // until the engine processes the injected message (~100ms+ later).
+    // Optimistic UI update — the builder won't see a thinking event until ~100ms later.
     updateEntry(sessionId, { modelActivity: "thinking" })
     return entry.runner.injectMessage(text)
   }
@@ -258,10 +246,6 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
     return true
   }
 
-  /** Number of actively running sessions (not ended).
-   *  Reads Object.keys + ended from the SolidJS store proxy, so calls inside
-   *  reactive contexts (effects, memos, JSX) auto-track key additions/removals.
-   *  Also works imperatively outside reactive contexts (tests, callbacks). */
   function runningCount(): number {
     return Object.keys(entries).filter((id) => !entries[id]?.ended).length
   }

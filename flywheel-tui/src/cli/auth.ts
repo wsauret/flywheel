@@ -1,6 +1,5 @@
-import * as fs from "node:fs"
 import { errorMessage } from "../infra/error-message.js"
-import { CONFIG_FILES } from "../infra/paths.js"
+import { findConfigFile } from "../infra/paths.js"
 import { loadConfig } from "../orchestration/config/loader.js"
 
 const USAGE = `Usage: flywheel auth <command>
@@ -44,7 +43,7 @@ export async function runAuth(args: string[]): Promise<void> {
 
 function resolveEmail(cliEmail?: string): string | undefined {
   if (cliEmail) return cliEmail
-  const configPath = CONFIG_FILES.find((p) => fs.existsSync(p))
+  const configPath = findConfigFile()
   if (!configPath) return undefined
   return loadConfig(configPath).config.openai_email
 }

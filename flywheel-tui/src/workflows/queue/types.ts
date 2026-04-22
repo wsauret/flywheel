@@ -31,7 +31,6 @@ export interface Step {
   /** Current lifecycle status. */
   status: StepStatus;
 
-  // --- Execution configuration (ADR-004 Decision 2) ---
 
   /** Longer description of what this step should accomplish. */
   description?: string;
@@ -63,14 +62,12 @@ export interface Step {
    */
   evaluationCriteria?: string;
 
-  // --- Work content (populated for work steps from plan output) ---
 
   /** What the work must achieve (substance). Included in worker prompt. */
   acceptanceCriteria?: string[];
   /** Files relevant to this step's work. */
   fileReferences?: string[];
 
-  // --- Grouping ---
 
   /** Groups related steps for feature boundary detection. */
   feature?: string;

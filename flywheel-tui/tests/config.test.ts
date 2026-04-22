@@ -6,11 +6,10 @@ import {
   CONFIG_DEFAULTS,
   resolveTierConfigs,
 } from "../src/orchestration/config/schema";
-import { TIER_TABLE } from "../src/orchestration/config/model-tiers.js";
-
-const A = TIER_TABLE.anthropic;
-const O = TIER_TABLE.openai;
-const G = TIER_TABLE.google;
+// Expected concrete model names for each family+tier.
+const A = { powerful: "claude-opus-4-6[1m]", mid: "claude-sonnet-4-6[1m]", cheap: "claude-haiku-4-5-20251001" };
+const O = { powerful: "gpt-5.4", mid: "gpt-5.3-codex", cheap: "gpt-5.4-mini" };
+const G = { powerful: "gemini-2.5-pro", mid: "gemini-2.5-flash", cheap: "gemini-2.5-flash-lite" };
 
 const FIXTURES_DIR = path.join(import.meta.dir, "fixtures");
 

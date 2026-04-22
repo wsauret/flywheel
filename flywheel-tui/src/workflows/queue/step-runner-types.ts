@@ -1,9 +1,8 @@
 import type {
-  EvalResult,
   WorkerOutput,
   StepExecutorOptions,
 } from "./executor-types.js";
-import type { MutationRequest } from "./step-dispatcher.js";
+import type { EvalResult, MutationRequest } from "./step-dispatcher-types.js";
 import type { EvaluationCriteria } from "../../infra/workflow-types.js";
 
 export interface StepRunnerDeps extends Omit<StepExecutorOptions, "persist" | "sessionId"> {

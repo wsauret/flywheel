@@ -128,6 +128,17 @@ describe("buildHarnessSystemPrompt — resource limits, style, and tool preceden
     expect(openaiPrompt).not.toContain("25 words or fewer");
   });
 
+  test("final answer guidance requires blank lines between all text blocks", () => {
+    const prompt = buildHarnessSystemPrompt({
+      orchestrationSystemPrompt: "",
+      model: "gpt-4o",
+      availableTools: new Set(),
+    });
+    expect(prompt).toContain(
+      "Leave a blank line between every paragraph, every bullet, and every other distinct block of text in the final response.",
+    );
+  });
+
   test("includes tool precedence rules when both bash and read are available", () => {
     const prompt = buildHarnessSystemPrompt({
       orchestrationSystemPrompt: "",

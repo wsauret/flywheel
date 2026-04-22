@@ -1,19 +1,10 @@
-/**
- * Pool-aware DispatcherTransport and EvaluatorTransport for the Claude engine.
- *
- * These bypass the Engine abstraction to work directly with pre-warmed
- * subprocesses. The pool is a Claude-specific optimization — other engines
- * use the generic engine-transports.ts which calls engine.createRunner().
- */
-
-import type { DispatcherInput } from "../../../../../workflows/dispatcher/schemas.js";
+import { DispatcherDecisionHandoffSchema, handoffToDecision, type DispatcherDecisionHandoff, type DispatcherInput } from "../../../../../workflows/dispatcher/schemas.js";
 import type { DispatcherDecision } from "../../../../../infra/workflow-types.js";
 import type { DispatcherTransport } from "../../../../../workflows/dispatcher/transport.js";
 import type { EvaluatorInput } from "../../../../../workflows/evaluator/schemas.js";
 import type { EvaluatorResult } from "../../../../../infra/workflow-types.js";
 import type { EvaluatorTransport } from "../../../../../workflows/evaluator/transport.js";
-import { EVALUATOR_SYSTEM_PROMPT, buildEvaluatorPrompt } from "../../../../../workflows/evaluator/prompts.js";
-import { DispatcherDecisionHandoffSchema, type DispatcherDecisionHandoff } from "../../../../../workflows/dispatcher/schemas.js";
+import { buildEvaluatorSystemPrompt, buildEvaluatorPrompt } from "../../../../../workflows/evaluator/prompts.js";
 import { EvaluatorVerdictSchema, type EvaluatorVerdict } from "../../../../../workflows/evaluator/schemas.js";
 import { buildDispatcherSystemPrompt } from "../../../../../workflows/dispatcher/system-prompt.js";
 import { renderDispatcherHandoffInstruction } from "../../../../../workflows/queue/shared/handoff-render.js";
@@ -22,8 +13,6 @@ import { buildInvocationHandoffPath } from "../../../../../infra/paths.js";
 import { invokePooled } from "./invoke-pooled.js";
 import type { WarmPool } from "./warm-pool.js";
 import type { SpawnResult } from "../subprocess/spawner.js";
-
-// --- Dispatcher ---
 
 interface PooledDispatcherOptions {
   pool: WarmPool<SpawnResult>;
@@ -52,25 +41,13 @@ export function createPooledDispatcherTransport(
           },
           systemPrompt,
           handoffSchema: DispatcherDecisionHandoffSchema,
-          mapResult: (handoff): DispatcherDecision => ({
-            ...handoff,
-            evaluation_criteria: handoff.evaluation_criteria
-              ?? { acceptance_criteria: [], required_tests: false, custom_checks: [], required_outputs: [] },
-            worker_config: handoff.worker_config ? {
-              ...handoff.worker_config,
-              tool_scoping: handoff.worker_config.tool_scoping
-                ? { ...handoff.worker_config.tool_scoping, task: handoff.worker_config.tool_scoping.task ?? false }
-                : undefined,
-            } : undefined,
-          }),
+          mapResult: handoffToDecision,
         },
         { sessionId: opts.sessionId, baseDir: opts.projectCwd },
       );
     },
   };
 }
-
-// --- Evaluator ---
 
 interface PooledEvaluatorOptions {
   pool: WarmPool<SpawnResult>;
@@ -82,9 +59,7 @@ interface PooledEvaluatorOptions {
 export function createPooledEvaluatorTransport(
   opts: PooledEvaluatorOptions,
 ): EvaluatorTransport {
-  const systemPrompt = opts.systemPromptAddendum
-    ? `${EVALUATOR_SYSTEM_PROMPT}\n\n${opts.systemPromptAddendum}`
-    : EVALUATOR_SYSTEM_PROMPT;
+  const systemPrompt = buildEvaluatorSystemPrompt(opts.systemPromptAddendum);
 
   return {
     async invoke(input: EvaluatorInput): Promise<EvaluatorResult> {

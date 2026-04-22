@@ -1,16 +1,3 @@
-/**
- * Trace span types and Zod schemas for structured trace collection.
- *
- * Spans form a tree representing workflow execution. Each span has a `kind`
- * discriminator that determines the shape of `input` and `output`.
- *
- * Conventions:
- * - SpanKind is a string union (not enum), matching events.ts pattern
- * - Timestamps are epoch milliseconds (number)
- * - IDs use randomUUID from node:crypto
- * - Input/output fields are 4KB byte-capped via truncateField()
- */
-
 export type SpanKind = "workflow" | "step" | "worker" | "subagent" | "tool_call";
 
 interface WorkflowSpanInput {
@@ -39,7 +26,6 @@ interface WorkerSpanInput {
 interface WorkerSpanOutput {
   resultSummary: string;
   failureReason: string | null;
-  /** Number of ndjson transcript events emitted during this worker's lifetime (delta, not total). */
   ndjsonEventCount?: number;
 }
 
@@ -110,8 +96,6 @@ interface ToolCallSpan extends SpanBase {
 
 export type Span = WorkflowSpan | StepSpan | WorkerSpan | SubagentSpan | ToolCallSpan;
 
-// Co-located with trace types because it's only used by trace serialization
-// (trace-collector.ts, trace-writer.ts). Not worth a separate file.
 export function truncateField(value: unknown, maxBytes: number = 4096): string {
   let json: string;
   try {

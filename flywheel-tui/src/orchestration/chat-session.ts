@@ -7,9 +7,10 @@ import type { SessionEntryBase } from "./session-store-types.js"
 import type { AnyBlock } from "../infra/output-blocks.js"
 import type { NDJSONEvent } from "../infra/ndjson-event-types.js"
 import type { MetricsWriter } from "./session/create-session-infra.js"
-import type { Engine, EngineRunner } from "./engines/core/types.js"
+import type { Engine } from "./engines/core/types.js"
 import type { AskHookServer } from "./ask-hook/server.js"
 import { buildAskHookSettings } from "./ask-hook/config.js"
+import { ChatSessionState, type ChatCallbacks, type WorkerLifecycle } from "./chat-types.js"
 
 type ChatInfra = Pick<SessionInfra, "budgetTracker" | "transcriptWriter" | "traceCollector">
 import { Log } from "../infra/log.js"
@@ -17,12 +18,6 @@ import { errorMessage } from "../infra/error-message.js"
 import { resolveSessionDir } from "../infra/paths.js"
 
 const log = Log.create({ service: "chat" })
-
-export interface ChatCallbacks {
-  onWaiting: (waiting: boolean) => void
-  onError: (message: string) => void
-  onEnded: () => void
-}
 
 export interface ChatSession {
   send(text: string): void
@@ -33,52 +28,6 @@ export interface ChatSession {
   end(): void
   readonly budgetTracker: BudgetTracker
   readonly outputSession: OutputSession
-}
-
-// Three-state turn machine:
-// - idle: no turn in flight, safe to end/reconnect
-// - awaiting-response: message sent, waiting for first assistant chunk
-// - agent-active: assistant is streaming, tools are running
-// Consumers: activityGatedUpdateEntry (suppress ghost-thinking), handleWorkerExit
-// (detect mid-turn crash), chat-controls send() (mark injections as pending).
-type ChatTurnPhase = "idle" | "awaiting-response" | "agent-active"
-
-// Why a class with private fields: the getters enforce read-only access from
-// external code (chat-controls, worker lifecycle) while the named mutation
-// methods (beginTurn, markEnded) provide semantic state transitions without
-// exposing raw field assignments. Not a ref-bag — it's a state machine.
-//
-// Why _ended and _engineSessionId overlap with the store: these are
-// runner-level guards used synchronously in chat-controls (send, interrupt,
-// end) without awaiting a store read. The store's versions are the persistent
-// source of truth; these are in-process guards that prevent operations on a
-// runner that's already shutting down or needs to reconnect.
-export class ChatSessionState {
-  private _runner: EngineRunner | null = null
-  private _ended = false
-  private _engineSessionId: string | null
-  private _turnPhase: ChatTurnPhase = "idle"
-  private _contextWarningFired = false
-
-  constructor(engineSessionId?: string) {
-    this._engineSessionId = engineSessionId ?? null
-  }
-
-  get runner() { return this._runner }
-  get ended() { return this._ended }
-  get engineSessionId() { return this._engineSessionId }
-  get turnPhase() { return this._turnPhase }
-  get contextWarningFired() { return this._contextWarningFired }
-
-  beginTurn() { this._turnPhase = "awaiting-response" }
-  activateTurn() { this._turnPhase = "agent-active" }
-  completeTurn() { this._turnPhase = "idle" }
-  markEnded() { this._ended = true }
-  markContextWarningFired() { this._contextWarningFired = true }
-  captureSessionId(id: string) { this._engineSessionId = id }
-  clearSessionId() { this._engineSessionId = null }
-  attachRunner(runner: EngineRunner) { this._runner = runner }
-  detachRunner() { this._runner = null }
 }
 
 export interface ChatSessionDeps {
@@ -93,16 +42,11 @@ export interface ChatSessionDeps {
   onFlush?: () => void
   engineSessionId?: string
   priorBlocks?: readonly AnyBlock[]
-  /** Optional — when present, AskUserQuestion is routed through this bridge. */
   askHookServer?: AskHookServer
 }
 
-/**
- * Detect unrecoverable "Prompt is too long" from the engine. When the
- * accumulated conversation exceeds the context window, every resume
- * reloads the same oversized session and fails instantly. Clear the
- * session ID so the next send() spawns a fresh runner.
- */
+// "Prompt is too long" is unrecoverable — every resume reloads the same
+// oversized session. Clear the session ID so the next send() starts fresh.
 function handleContextOverflow(
   event: NDJSONEvent,
   state: ChatSessionState,
@@ -138,9 +82,8 @@ interface SetupOutputSessionInput {
 function setupOutputSession(input: SetupOutputSessionInput): OutputSession {
   const { budgetTracker, emit, chatId, state, updateEntry, onFlush, priorBlocks } = input
 
-  // Suppress model activity that arrives outside a user-initiated turn.
-  // Prevents "ghost thinking" during idle reconnections or process startup.
-  // Transitions from "awaiting-response" to "agent-active" on first non-idle activity.
+  // Suppress model activity outside a user-initiated turn to prevent
+  // "ghost thinking" during idle reconnections or process startup.
   const activityGatedUpdateEntry = (patch: Partial<SessionEntryBase>) => {
     if (patch.modelActivity && patch.modelActivity !== "idle") {
       if (state.turnPhase === "idle") return
@@ -168,13 +111,7 @@ function setupOutputSession(input: SetupOutputSessionInput): OutputSession {
       onFlush?.()
     },
   })
-  // Why not `return createOutputSession(...)`: the onFlush callback references
-  // `session` to push a context warning — the variable must be in scope.
   return session
-}
-
-export interface WorkerLifecycle {
-  spawnWorker(resumeSessionId?: string, messageToSend?: string): Promise<void>
 }
 
 function createWorkerLifecycle(
@@ -198,9 +135,17 @@ function createWorkerLifecycle(
       extraEnv: askHookServer ? { FLYWHEEL_ASK_SOCKET: askHookServer.socketPath } : undefined,
       claudeSettings: askHookServer ? buildAskHookSettings() : undefined,
       onEvent: (event) => {
-        // Emit to bus for infra subscribers (budget tracker, transcript writer)
         emit("engine:ndjson", { workflowId: chatId, ndjsonEvent: event })
-        // Feed raw NDJSON to output session for rendering
+        if (event.type === "compaction") {
+          const data = event.data as { state: string; duration_ms?: number }
+          if (data.state === "start") {
+            session.startCompaction(Date.now())
+          } else {
+            session.completeCompaction(data.state === "done", data.duration_ms ?? 0, Date.now())
+          }
+          session.flush()
+          return
+        }
         session.writeStdout(event.raw + "\n")
       },
       onTurnComplete: () => {
@@ -216,8 +161,6 @@ function createWorkerLifecycle(
 
     state.attachRunner(runner)
 
-    // Only send content if there's a message — an idle runner waits for the
-    // first send() rather than responding to a no-op greeting and exiting.
     if (messageToSend) {
       session.notifySpawned(Date.now())
       runner.send(messageToSend)
@@ -237,9 +180,6 @@ function createWorkerLifecycle(
         session.pushSystemMessage("Agent process exited unexpectedly. Reconnecting\u2026", Date.now())
         session.flush()
 
-        // Auto-reconnect and resume: spawn a new runner with a continue
-        // prompt so the agent picks up where it left off instead of
-        // sitting idle waiting for the user to notice.
         if (!state.ended && state.engineSessionId) {
           callbacks.onWaiting(true)
           spawnWorker(state.engineSessionId, "Your process exited unexpectedly. Continue where you left off.").catch((err) => {

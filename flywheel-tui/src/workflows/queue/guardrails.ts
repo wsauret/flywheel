@@ -1,27 +1,5 @@
-// Queue System — ADR-004 Guardrails
-//
-// Implements 5 guardrails for queue mutations:
-//
-// 1. Max queue length (default 50) — enforced on all mutation operations
-// 2. Max mutations per step completion (default 3) — limits dispatcher
-//    mutations per invocation
-// 3. Max inserted steps per session (default 20) — tracks total inserts
-//    (excluding initial template steps) and rejects when exceeded
-// 4. Budget visibility — every dispatcher call receives remaining budget
-// 5. Provenance logging — enforced at the queue mutation API level
-//    (see queue.ts — all mutations require Provenance)
-//
-// Objective anchoring is handled upstream: the dispatcher reads the user's
-// task description from the step itself (step.description → workflow.step_description).
-//
-// Usage:
-//   const guardrails = createGuardrails({ maxQueueLength: 50, ... });
-//   // Before applying dispatcher mutations:
-//   const budget = guardrails.getMutationBudget(stepId, queue.steps.length);
-//   const results = guardrails.applyMutations(queue, stepId, mutations, prov);
-
 import type { Step, Queue } from "./types.js";
-import type { MutationRequest } from "./step-dispatcher.js";
+import type { MutationRequest, MutationBudget } from "./step-dispatcher-types.js";
 import {
   insertAfter,
   removeStep,
@@ -32,52 +10,21 @@ import { Log } from "../../infra/log.js";
 
 const log = Log.create({ service: "guardrails" });
 
-/** Configuration for guardrails. All limits are configurable.
- *  Exported as the parameter type of createGuardrails — makes the DI
- *  interface explicit for test harnesses that construct custom configs. */
-export interface GuardrailOptions {
-  /** Maximum number of steps allowed in the queue. Default: 50. */
+interface GuardrailOptions {
   maxQueueLength?: number;
-  /** Maximum mutations the dispatcher can request per step completion. Default: 3. */
   maxMutationsPerStepCompletion?: number;
-  /** Maximum total steps inserted during a session (excludes template steps). Default: 20. */
   maxInsertedStepsPerSession?: number;
 }
 
-/** Guardrail gate result — either permitted or rejected with a reason. */
 interface GateResult {
   readonly allowed: boolean;
   readonly reason?: string;
 }
 
-/** Budget information exposed to the dispatcher. */
-export interface MutationBudget {
-  /** Configured max queue length. */
-  readonly maxQueueLength: number;
-  /** Current number of steps in the queue. */
-  readonly currentQueueLength: number;
-  /** Remaining capacity (maxQueueLength - currentQueueLength). */
-  readonly remainingQueueCapacity: number;
-  /** Mutations already applied for this step. */
-  readonly mutationsUsedThisStep: number;
-  /** Mutations remaining for this step. */
-  readonly mutationsRemainingThisStep: number;
-  /** Total steps inserted during this session (excluding template). */
-  readonly totalSessionInserts: number;
-  /** Remaining session insert capacity. */
-  readonly sessionInsertsRemaining: number;
-}
-
-/** Result of applying a single mutation through guardrails — same gate shape. */
 type MutationApplicationResult = GateResult;
 
 export interface Guardrails {
-  /** Get the remaining mutation budget for a step. */
   getMutationBudget(stepId: string, currentQueueLength: number): MutationBudget;
-  /**
-   * Apply a set of dispatcher-requested mutations through all guardrails.
-   * Returns one result per mutation request.
-   */
   applyMutations(
     queue: Queue,
     stepId: string,
@@ -96,7 +43,6 @@ export function createGuardrails(options: GuardrailOptions = {}) {
   const maxInsertedPerSession = options.maxInsertedStepsPerSession ?? DEFAULT_MAX_INSERTED_STEPS_PER_SESSION;
 
   const stepMutationCounts = new Map<string, number>();
-  /** Total session inserts (excluding initial template steps). */
   let sessionInsertCount = 0;
 
   function checkInsert(queue: Queue, count: number) {

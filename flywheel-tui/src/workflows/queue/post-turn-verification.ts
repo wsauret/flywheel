@@ -27,9 +27,7 @@ interface PostTurnVerificationConfig {
 // Only "work" steps produce code artifacts that need native verification.
 const CODE_STEP_TYPE = "work";
 
-// Exported for unit tests — parsing handoff data has edge cases that warrant
-// direct testing without spinning up native verification processes.
-export function extractDeclaredCommands(
+function extractDeclaredCommands(
   handoffData: Record<string, unknown> | null,
 ): DeclaredCommand[] {
   if (!handoffData) return [];

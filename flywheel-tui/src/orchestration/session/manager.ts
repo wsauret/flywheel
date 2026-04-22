@@ -33,7 +33,7 @@ export interface SessionSummary {
   engineSessionId?: string;
 }
 
-export interface ManagerListResult {
+interface ManagerListResult {
   sessions: SessionSummary[];
   errors: PersistenceListResult["errors"];
 }

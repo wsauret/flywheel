@@ -1,10 +1,3 @@
-// Shared handoff data parser
-//
-// Extracts common fields from a raw `Record<string, unknown>` handoff.
-// Used by both the step-dispatcher (LastWorkerResult) and the evaluator
-// (EvaluatorInput handoff) to avoid duplicating extraction logic.
-
-/** Parsed handoff — the shared superset of fields both consumers need. */
 interface ParsedHandoff {
   summary: string;
   filesCreated: string[];
@@ -17,21 +10,15 @@ interface ParsedHandoff {
   filesToReview: string[];
 }
 
-/** Type guard: value is a non-null string. */
 function isString(v: unknown): v is string {
   return typeof v === "string";
 }
 
-/**
- * Parse common fields from a raw handoff record.
- * Tolerant of missing/malformed data — returns safe defaults.
- */
 export function parseRawHandoff(raw: Record<string, unknown>): ParsedHandoff {
   const summary = typeof raw.summary === "string"
     ? raw.summary
     : JSON.stringify(raw).slice(0, 500);
 
-  // Nested artifacts object
   let filesCreated: string[] = [];
   let filesModified: string[] = [];
   let commandsRun: unknown[] = [];

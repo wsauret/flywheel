@@ -6,17 +6,15 @@ interface ContextUpdate {
   contextWindow: number;
 }
 
-// The authoritative value comes from the "result" event's modelUsage.contextWindow field,
-// but that only fires when the engine process exits — too late for mid-session warnings.
+// Falls back to static lookup because the authoritative value (result event's
+// modelUsage.contextWindow) only fires when the engine process exits.
 export function contextWindowForModel(model: string): number {
   const lower = canonicalize(model);
 
-  // Claude models: full IDs, aliases, and context-window suffixes
   if (lower.includes("[1m]")) return 1_000_000;
   if (lower.startsWith("claude-")) return 200_000;
   if (lower === "opus" || lower === "sonnet" || lower === "haiku") return 200_000;
 
-  // OpenAI models
   if (/^o\d/.test(lower)) return 200_000;
   if (
     lower.startsWith("gpt-4o") ||
@@ -26,10 +24,8 @@ export function contextWindowForModel(model: string): number {
     lower.startsWith("chatgpt-")
   ) return 128_000;
 
-  // Google models
   if (lower.startsWith("gemini-")) return 1_000_000;
 
-  // Reasonable default for unknown models
   return 200_000;
 }
 
