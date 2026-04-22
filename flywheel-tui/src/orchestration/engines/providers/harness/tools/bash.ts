@@ -1,9 +1,8 @@
-import { existsSync } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { arch, platform } from "node:os";
 import { resolve } from "node:path";
 import { Log } from "../../../../../infra/log.js";
 import { killProcessGroup } from "../../../../../infra/process-lifecycle.js";
+import { interceptBashCommand } from "./bash-interceptor.js";
 import type { ToolDefinition, ToolResult, ToolContext, BashOperations } from "./types.js";
 
 const log = Log.create({ service: "harness-bash" });
@@ -11,20 +10,6 @@ const log = Log.create({ service: "harness-bash" });
 export const DEFAULT_TIMEOUT_SEC = 120;
 export const MAX_TIMEOUT_SEC = 3600;
 const KILL_GRACE_MS = 5_000;
-
-const APPLY_PATCH_PREAMBLE = (() => {
-  const p = platform();
-  const a = arch();
-  const name =
-    p === "darwin" && a === "arm64" ? "apply_patch-darwin-arm64"
-    : p === "darwin" && a === "x64" ? "apply_patch-darwin-x64"
-    : p === "linux" && a === "x64" ? "apply_patch-linux-x64"
-    : p === "linux" && a === "arm64" ? "apply_patch-linux-arm64"
-    : null;
-  if (!name) return "";
-  const bin = resolve(import.meta.dir, "../../../../../../bin/vendor", name);
-  return existsSync(bin) ? `apply_patch() { "${bin}" "$@"; }; export -f apply_patch` : "";
-})();
 
 const INTERACTIVE_COMMAND_PATTERNS: ReadonlyArray<{ match: RegExp; guidance: string }> = [
   { match: /\b(vim|vi|nvim|nano|emacs|pico|ed)\b/, guidance: "editors can't run interactively -- use `cat > file <<EOF ... EOF` or `sed` for edits" },
@@ -52,7 +37,6 @@ function buildScript(command: string): string {
     "set -m",
     "exec 2>&1",
   ];
-  if (APPLY_PATCH_PREAMBLE) lines.push(APPLY_PATCH_PREAMBLE);
   lines.push(
     `{ ${command}; } &`,
     "CHILD=$!",
@@ -86,11 +70,12 @@ export function createBashDefinition(options?: { operations?: BashOperations }):
       });
 
       let timedOut = false;
+      let escalationTimer: ReturnType<typeof setTimeout> | undefined;
       const killTimer = setTimeout(() => {
         timedOut = true;
         log.warn("command timed out, sending SIGTERM", { timeoutSec });
         killProcessGroup(proc, "SIGTERM");
-        setTimeout(() => {
+        escalationTimer = setTimeout(() => {
           killProcessGroup(proc, "SIGKILL");
         }, KILL_GRACE_MS);
       }, timeoutSec * 1000);
@@ -112,6 +97,7 @@ export function createBashDefinition(options?: { operations?: BashOperations }):
         };
       } finally {
         clearTimeout(killTimer);
+        if (escalationTimer) clearTimeout(escalationTimer);
       }
     } finally {
       try {
@@ -145,6 +131,11 @@ export function createBashDefinition(options?: { operations?: BashOperations }):
   }
 
   async function runCommandInner(command: string, context: ToolContext, timeoutSec?: number): Promise<ToolResult> {
+    if (context.availableTools) {
+      const intercepted = interceptBashCommand(command, context.availableTools);
+      if (intercepted) return { content: intercepted, isError: true };
+    }
+
     const interactiveError = checkInteractiveCommand(command);
     if (interactiveError) {
       return { content: interactiveError, isError: true };
@@ -169,11 +160,12 @@ export function createBashDefinition(options?: { operations?: BashOperations }):
 
   return {
     name: "bash",
-    description: `Execute a shell command in an isolated bash session. Each call spawns a fresh process — environment variables, working directory changes, and shell state do not persist between calls. Chain dependent commands with && or ; within one call. End a command with & to run it in the background (returns PID and log path). You may specify an optional timeout in seconds (up to ${MAX_TIMEOUT_SEC}s). By default, commands timeout after ${DEFAULT_TIMEOUT_SEC}s.`,
+    description: `Execute a shell command in an isolated bash session. Each call spawns a fresh process — environment variables, working directory changes, and shell state do not persist between calls. Use the cwd parameter to set the working directory instead of cd. Always quote paths containing spaces or special characters (parentheses, brackets). Chain dependent commands with && or ; within one call. End a command with & to run it in the background (returns PID and log path). You may specify an optional timeout in seconds (up to ${MAX_TIMEOUT_SEC}s). By default, commands timeout after ${DEFAULT_TIMEOUT_SEC}s.`,
     input_schema: {
       type: "object",
       properties: {
         command: { type: "string", description: "The shell command to execute" },
+        cwd: { type: "string", description: "Working directory for the command (default: project root)" },
         timeout: { type: "number", description: `Optional timeout in seconds (default ${DEFAULT_TIMEOUT_SEC}, max ${MAX_TIMEOUT_SEC})` },
       },
       required: ["command"],
@@ -184,7 +176,10 @@ export function createBashDefinition(options?: { operations?: BashOperations }):
         return { content: "bash requires a string 'command' parameter", isError: true };
       }
       const timeout = typeof rec.timeout === "number" ? rec.timeout : undefined;
-      return runCommandInner(rec.command, context, timeout);
+      const effectiveContext = typeof rec.cwd === "string"
+        ? { ...context, cwd: rec.cwd.startsWith("/") ? rec.cwd : resolve(context.cwd, rec.cwd) }
+        : context;
+      return runCommandInner(rec.command, effectiveContext, timeout);
     },
   };
 }

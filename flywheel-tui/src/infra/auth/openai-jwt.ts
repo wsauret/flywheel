@@ -1,6 +1,6 @@
 import type { IdTokenClaims, TokenResponse } from "./openai-auth-types.js";
 
-export function parseJwtClaims(token: string): IdTokenClaims | undefined {
+function parseJwtClaims(token: string): IdTokenClaims | undefined {
   const parts = token.split(".");
   if (parts.length !== 3) return undefined;
 

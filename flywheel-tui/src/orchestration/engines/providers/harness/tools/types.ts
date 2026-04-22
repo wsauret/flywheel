@@ -16,6 +16,10 @@ export interface ToolContext {
   handoffPath?: string;
   /** In-memory todo list state owned by the runner. */
   todoList: TodoItem[];
+  /** Tracks which file paths have been read during this session (for read-before-edit enforcement). */
+  readFiles: Set<string>;
+  /** Names of tools available in this session (for bash command interception). */
+  availableTools?: ReadonlySet<string>;
 }
 
 export interface TodoItem {

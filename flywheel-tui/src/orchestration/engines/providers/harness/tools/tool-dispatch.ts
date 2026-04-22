@@ -9,6 +9,10 @@ import { bashDefinition } from "./bash.js";
 import { writeHandoffDefinition } from "./write-handoff.js";
 import { readDefinition } from "./read.js";
 import { todoListDefinition } from "./todo-list.js";
+import { editDefinition } from "./edit.js";
+import { writeDefinition } from "./write.js";
+import { textSearchDefinition } from "./text-search.js";
+import { astSearchDefinition } from "./ast-search.js";
 import type { ToolDefinition, ToolResult, ToolContext } from "./types.js";
 
 const TOOL_REGISTRY: ReadonlyMap<string, ToolDefinition> = new Map([
@@ -16,6 +20,10 @@ const TOOL_REGISTRY: ReadonlyMap<string, ToolDefinition> = new Map([
   [writeHandoffDefinition.name, writeHandoffDefinition],
   [readDefinition.name, readDefinition],
   [todoListDefinition.name, todoListDefinition],
+  [editDefinition.name, editDefinition],
+  [writeDefinition.name, writeDefinition],
+  [textSearchDefinition.name, textSearchDefinition],
+  [astSearchDefinition.name, astSearchDefinition],
 ]);
 
 const TOOL_DEFINITIONS: readonly ToolDefinition[] = Array.from(TOOL_REGISTRY.values());

@@ -21,7 +21,7 @@ const ToolEntrySchema = z.object({
   timestamp: z.number(),
   /** Absolute file path — when present, detail is clickable and opens in editor */
   filePath: z.string().optional(),
-  /** Unified diff string for Edit/ApplyPatch tools */
+  /** Unified diff string for Edit tools */
   diff: z.string().optional(),
   /** Raw file content for Write tool (rendered inline, not diff) */
   content: z.string().optional(),

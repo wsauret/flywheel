@@ -34,7 +34,7 @@ describe("Agent loop with Anthropic (real API)", () => {
       onEvent: (e) => events.push(e),
     });
 
-    expect(result.completedNormally).toBe(true);
+    expect(result.outcome).toBe("ok");
 
     const filePath = `${tmpDir}/test.txt`;
     const content = fs.existsSync(filePath) ? fs.readFileSync(filePath, "utf-8") : "";
@@ -64,7 +64,7 @@ describe("Agent loop with OpenAI (real API)", () => {
       onEvent: (e) => events.push(e),
     });
 
-    expect(result.completedNormally).toBe(true);
+    expect(result.outcome).toBe("ok");
 
     const filePath = `${tmpDir}/test.txt`;
     const content = fs.existsSync(filePath) ? fs.readFileSync(filePath, "utf-8") : "";

@@ -3,7 +3,8 @@ import type { NDJSONEvent, AssistantEventData, ContentBlock, UserEventData, User
 import type { StructuredOutputBuilder } from "./structured-output-builder.js";
 import type { ToolEntry, QuestionEntry, TodoItem } from "../output-blocks.js";
 import { getToolDetail, extractToolDiff, extractErrorText, launderToolError } from "./output-formatter.js";
-import { classifyTool } from "../tool-display-registry.js";
+import { classifyTool, getToolDisplayName } from "../tool-display-registry.js";
+import { canonicalize } from "../canonical-name.js";
 
 /** Tools that resolve near-instantly — rendered as already-completed (no spinner flash). Lowercase for case-insensitive lookup. */
 const OPTIMISTIC_TOOLS = new Set(["read", "glob", "grep"]);
@@ -35,7 +36,7 @@ type StandaloneHandler = (
   toolUseId?: string,
 ) => StandaloneToolLocation | null;
 
-function standaloneToolHandler(toolName: "Edit" | "Write"): StandaloneHandler {
+function standaloneToolHandler(toolName: string): StandaloneHandler {
   return (input, now, builder) => {
     const detail = input ? (getToolDetail(toolName, input) ?? "") : "";
     const filePath = (input?.file_path as string | undefined) ?? (input?.notebook_path as string | undefined);
@@ -45,14 +46,15 @@ function standaloneToolHandler(toolName: "Edit" | "Write"): StandaloneHandler {
   };
 }
 
+/** All keys lowercase — tool names are normalized before lookup. */
 const STANDALONE_TOP_LEVEL_TOOLS: Record<string, StandaloneHandler> = {
-  Skill: (input, now, builder) => {
+  skill: (input, now, builder) => {
     const skill = (input?.skill as string | undefined) ?? (input?.name as string | undefined) ?? "unknown";
     builder.pushSystemMessage(`Loaded skill: ${skill}`, now);
     return null;
   },
-  ToolSearch: () => null, // internal plumbing to load deferred tool schemas — not user-visible
-  TodoWrite: (input, now, builder) => {
+  toolsearch: () => null, // internal plumbing to load deferred tool schemas — not user-visible
+  todowrite: (input, now, builder) => {
     const todos = input?.todos as TodoItem[] | undefined;
     if (Array.isArray(todos)) builder.pushTodoWrite(todos, now);
     return null;
@@ -63,14 +65,14 @@ const STANDALONE_TOP_LEVEL_TOOLS: Record<string, StandaloneHandler> = {
     if (Array.isArray(todos)) builder.pushTodoWrite(todos, now);
     return null;
   },
-  Edit: standaloneToolHandler("Edit"),
-  Write: standaloneToolHandler("Write"),
-  AskUserQuestion: (input, now, builder, toolUseId) => {
+  edit: standaloneToolHandler("edit"),
+  write: standaloneToolHandler("write"),
+  askuserquestion: (input, now, builder, toolUseId) => {
     const questions = extractQuestions(input);
     if (!questions || questions.length === 0) return null;
     if (!toolUseId) return null;
     const idx = builder.pushQuestion(toolUseId, questions, now);
-    return idx >= 0 ? { index: idx, toolName: "AskUserQuestion" } : null;
+    return idx >= 0 ? { index: idx, toolName: "askuserquestion" } : null;
   },
 };
 
@@ -137,6 +139,7 @@ export class StructuredEventParser {
         }
         this.hasStreamedThinking = true;
       } else if (delta?.type === "text_delta" && typeof delta.text === "string") {
+        this.builder.completeThinkingRow();
         this.builder.pushText(delta.text, now);
         this.hasStreamedText = true;
       }
@@ -181,18 +184,24 @@ export class StructuredEventParser {
         }
       }
     }
+
+    // Complete any pending thinking row — whether streamed or batch-delivered,
+    // thinking is done once the assistant message is fully processed.
+    this.builder.completeThinkingRow();
   }
 
   private handleToolUse(block: ContentBlock & { type: "tool_use" }, parentAgentId: string | undefined, now: number) {
-    const { name, input, id: toolUseId } = block;
-    if (!name) return;
+    const { input, id: toolUseId } = block;
+    if (!block.name) return;
 
+    // Canonical form makes tool name lookups case-insensitive across providers.
+    const name = canonicalize(block.name);
     const category = classifyTool(name);
 
     if (category === "subagent") {
       const agentId = randomUUID();
-      const desc = (input?.description as string) || name;
-      const label = (input?.subagent_type as string) || name;
+      const desc = (input?.description as string) || getToolDisplayName(name);
+      const label = (input?.subagent_type as string) || getToolDisplayName(name);
       this.builder.startAgent(agentId, label, desc, now);
       if (toolUseId) {
         this.trackedTools.set(toolUseId, { kind: "agent", agentId, spawnedAt: now });
@@ -201,8 +210,7 @@ export class StructuredEventParser {
     }
 
     // Top-level tools with a handler bypass row-in-group and produce their own
-    // block. classifyTool routes subagent/groupable; the handler map dispatches
-    // standalone rendering for tools that need it (Edit, Write, AskUserQuestion, etc.).
+    // block. All keys in the map are lowercase.
     if (!parentAgentId) {
       const handler = STANDALONE_TOP_LEVEL_TOOLS[name];
       if (handler) {
@@ -212,11 +220,22 @@ export class StructuredEventParser {
         }
         return;
       }
+
+      // Guard: mutation tools must always render standalone with their
+      // diffs — never bundled into read-only explore groups.
+      if (category === "mutation") {
+        const detail = input ? (getToolDetail(name, input) ?? "") : "";
+        const filePath = (input?.file_path as string | undefined) ?? (input?.notebook_path as string | undefined);
+        const diffInfo = input ? extractToolDiff(name, input) : undefined;
+        const idx = this.builder.pushTool(name, detail, now, diffInfo?.diff, diffInfo?.filetype, diffInfo?.content, filePath);
+        if (idx >= 0 && toolUseId) {
+          this.trackedTools.set(toolUseId, { kind: "standalone", index: idx, toolName: name });
+        }
+        return;
+      }
     }
 
-    // Every other tool pushes immediately as a pending child. Most render as a
-    // compact row, but mutation tools can carry diff/content so the group
-    // renderer can upgrade them to a full ToolEntry preview with highlighting.
+    // Every other tool pushes immediately as a pending child.
     const detail = input ? (getToolDetail(name, input) ?? "") : "";
     const filePath = (input?.file_path as string | undefined) ?? (input?.notebook_path as string | undefined);
     const diffInfo = input ? extractToolDiff(name, input) : undefined;
@@ -229,7 +248,7 @@ export class StructuredEventParser {
       ...(diffInfo?.diff && { diff: diffInfo.diff }),
       ...(diffInfo?.content && { content: diffInfo.content }),
       ...(diffInfo?.filetype && { filetype: diffInfo.filetype }),
-      ...(OPTIMISTIC_TOOLS.has(name.toLowerCase()) && { completed: true }),
+      ...(OPTIMISTIC_TOOLS.has(name) && { completed: true }),
     };
 
     let tracked: TrackedTool | null = null;
@@ -270,7 +289,7 @@ export class StructuredEventParser {
       case "row": {
         if (isError) {
           const rawText = extractErrorText(rawContent) ?? "Unknown error";
-          const message = launderToolError(rawText, tracked.toolName);
+          const message = launderToolError(rawText, getToolDisplayName(tracked.toolName));
           this.builder.errorAgentChildTool(tracked.agentId, tracked.childIndex, message);
         } else {
           this.builder.completeAgentChildTool(tracked.agentId, tracked.childIndex);
@@ -278,7 +297,7 @@ export class StructuredEventParser {
         break;
       }
       case "standalone": {
-        if (tracked.toolName === "AskUserQuestion") {
+        if (tracked.toolName === "askuserquestion") {
           if (isError) {
             this.builder.cancelQuestion(toolUseId);
           } else {
@@ -286,7 +305,7 @@ export class StructuredEventParser {
           }
         } else if (isError) {
           const rawText = extractErrorText(rawContent) ?? "Unknown error";
-          const message = launderToolError(rawText, tracked.toolName);
+          const message = launderToolError(rawText, getToolDisplayName(tracked.toolName));
           this.builder.errorTool(tracked.index, message);
         } else {
           this.builder.completeTool(tracked.index);

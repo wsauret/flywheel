@@ -1,12 +1,4 @@
-/**
- * Core agentic loop with streaming and context recovery.
- *
- * Structure: each iteration (1) builds messages from NextInput,
- * (2) streams LLM response, (3) dispatches tool calls, (4) advances state.
- *
- * Self-contained -- knows nothing about NDJSONEvent, EngineRunner, or the TUI.
- * Works with LLMClient, StreamEvent, and ToolContext.
- */
+// Self-contained agentic loop — no coupling to NDJSONEvent, EngineRunner, or the TUI.
 
 import { errorMessage } from "../../../../infra/error-message.js";
 import { Log } from "../../../../infra/log.js";
@@ -49,20 +41,17 @@ export interface AgentLoopOptions {
   handoffPath?: string;
   signal?: AbortSignal;
   onEvent: (event: StreamEvent) => void;
-  /** Fires when a new user turn is sent to the model. */
   onUserMessage?: (content: string | ContentBlock[]) => void;
-  /** Fires when the model yields to the user (no tool calls, ready for next message). */
   onTurnComplete?: () => void;
   onTurnAssistantMessage?: (content: ContentBlock[]) => void;
   reasoningEffort?: ReasoningEffort;
   /** Shared queue of pending user inputs. The runner pushes via send();
    *  the loop shifts at text-exit boundaries to continue as a new user turn. */
   pendingUserInputs?: string[];
-  /** Prior messages from a resumed conversation. Seeds the loop's history. */
   priorMessages?: Message[];
   /** Called whenever a message is pushed to history — enables streaming persistence. */
   onMessageAppended?: (message: Message) => void;
-  /** Maximum number of LLM calls before the loop terminates. Default 200. */
+  /** Default 200. */
   maxLLMCalls?: number;
   sessionId?: string;
   /** Restored from a previous session — lets providers resume server-side state. */
@@ -111,12 +100,14 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     signal,
     handoffPath,
     todoList,
+    readFiles: new Set(),
+    availableTools: new Set(tools.map((t) => t.name)),
   };
 
   const maxLLMCalls = options.maxLLMCalls ?? 200;
   let llmCallCount = 0;
 
-  const hasTodoTool = (options.tools ?? getToolDefinitions()).some((t) => t.name === "todo_list");
+  const hasTodoTool = tools.some((t) => t.name === "todo_list");
   let turnsSinceTodoMutation = 0;
   let turnsSinceTodoNudge = 0;
 
@@ -250,6 +241,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
               type: "reasoning",
               id: event.id,
               encrypted_content: event.encryptedContent,
+              ...(event.summary ? { summary: event.summary } : {}),
             });
             break;
           case "tool_use":
@@ -297,13 +289,11 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       throw err;
     }
 
-    const userMessage: Message = { role: "user", content: userPrompt };
-    pushMessage(userMessage);
+    pushMessage({ role: "user", content: userPrompt });
 
     if (assistantContent.length > 0) {
       options.onTurnAssistantMessage?.(assistantContent);
-      const assistantMessage: Message = { role: "assistant", content: assistantContent };
-      pushMessage(assistantMessage);
+      pushMessage({ role: "assistant", content: assistantContent });
     }
 
     if (toolCalls.length === 0) {
@@ -411,4 +401,3 @@ function appendTextBlock(blocks: ContentBlock[], text: string): void {
     blocks.push({ type: "text", text });
   }
 }
-

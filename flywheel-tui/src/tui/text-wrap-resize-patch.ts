@@ -15,7 +15,9 @@
 
 import { TextBufferRenderable } from "@opentui/core"
 
-// onResize is a private method — `as any` required to monkey-patch it (see module doc for upstream issue)
+// `as any` is unavoidable: onResize/_wrapMode/textBufferView are private in
+// OpenTUI and have no public API. There's no way to patch or access them with
+// correct types until the upstream fix lands.
 const originalOnResize = (TextBufferRenderable.prototype as any).onResize
 
 ;(TextBufferRenderable.prototype as any).onResize = function (

@@ -38,7 +38,7 @@ describe("grouped tool rich previews", () => {
     const agent = blocks[0] as ToolGroupBlock;
     const child = agent.children[0]!;
 
-    expect(child.name).toBe("Edit");
+    expect(child.name).toBe("edit");
     expect(child.filePath).toBe("src/example.ts");
     expect(child.filetype).toBe("typescript");
     expect(child.diff).toContain("--- a/src/example.ts");
@@ -68,7 +68,7 @@ describe("grouped tool rich previews", () => {
     const agent = blocks[0] as ToolGroupBlock;
     const child = agent.children[0]!;
 
-    expect(child.name).toBe("Write");
+    expect(child.name).toBe("write");
     expect(child.filePath).toBe("src/example.ts");
     expect(child.filetype).toBe("typescript");
     expect(child.content).toBe("const value = 1;\nconst next = value + 1;\n");

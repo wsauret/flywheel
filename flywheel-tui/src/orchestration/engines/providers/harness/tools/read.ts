@@ -5,7 +5,7 @@
  * Replaces the standalone read_image tool.
  */
 
-import { extname } from "node:path";
+import { extname, resolve } from "node:path";
 import { errorMessage } from "../../../../../infra/error-message.js";
 import { Log } from "../../../../../infra/log.js";
 import { formatLineTag } from "./hashline.js";
@@ -158,14 +158,17 @@ export function createReadDefinition(options?: { operations?: ReadOperations }):
   return {
     name: "read",
     description:
-      "Read a file's contents. Text files are returned with hashline-prefixed line numbers (LINE#HASH:content). " +
-      "Image files (PNG, JPG, GIF, WebP) are returned as base64-encoded data.",
+      "Read a file's contents. Text files are returned with hashline-prefixed line numbers " +
+      "(e.g. 1#ZP:const x = 1) — these LINE#HASH references are used by the edit tool to address lines precisely. " +
+      "Image files (PNG, JPG, GIF, WebP) are returned as base64-encoded data. " +
+      "This tool reads files only, not directories. " +
+      "You can read multiple files in parallel — always parallelize when exploring related files.",
     input_schema: {
       type: "object",
       properties: {
         file_path: {
           type: "string",
-          description: "Absolute path to the file to read",
+          description: "Absolute or relative path to the file to read",
         },
         offset: {
           type: "number",
@@ -178,28 +181,31 @@ export function createReadDefinition(options?: { operations?: ReadOperations }):
       },
       required: ["file_path"],
     },
-    async execute(input: unknown, _context: ToolContext) {
+    async execute(input: unknown, context: ToolContext) {
       const rec = input as Record<string, unknown>;
       if (typeof rec.file_path !== "string") {
         return { content: "read requires a string 'file_path' parameter", isError: true };
       }
 
-      const filePath = rec.file_path;
-      const ext = extname(filePath).toLowerCase();
+      const rawPath = rec.file_path;
+      const resolvedPath = rawPath.startsWith("/") ? rawPath : resolve(context.cwd, rawPath);
+      const ext = extname(resolvedPath).toLowerCase();
 
       try {
         if (isImageExtension(ext)) {
-          return await readImage(filePath, ops);
+          return await readImage(resolvedPath, ops);
         }
 
         const offset = typeof rec.offset === "number" ? Math.max(0, Math.floor(rec.offset)) : 0;
         const limit = typeof rec.limit === "number" ? Math.max(1, Math.floor(rec.limit)) : DEFAULT_LINE_LIMIT;
 
-        return await readText(filePath, offset, limit, ops);
+        const result = await readText(resolvedPath, offset, limit, ops);
+        if (!result.isError) context.readFiles.add(resolvedPath);
+        return result;
       } catch (err) {
         const msg = errorMessage(err);
-        log.warn("failed to read file", { path: filePath, error: msg });
-        return { content: `Failed to read '${filePath}': ${msg}`, isError: true };
+        log.warn("failed to read file", { path: rawPath, error: msg });
+        return { content: `Failed to read '${rawPath}': ${msg}`, isError: true };
       }
     },
   };

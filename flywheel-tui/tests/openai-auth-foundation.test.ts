@@ -21,45 +21,7 @@ function ensureCleanDir(dir: string): void {
 }
 
 // ---------------------------------------------------------------------------
-// JWT parsing
-// ---------------------------------------------------------------------------
-
-describe("parseJwtClaims", () => {
-  // Lazy import to allow test file to exist before implementation
-  let parseJwtClaims: typeof import("../src/infra/auth/openai-jwt.js").parseJwtClaims;
-
-  beforeEach(async () => {
-    const mod = await import("../src/infra/auth/openai-jwt.js");
-    parseJwtClaims = mod.parseJwtClaims;
-  });
-
-  it("parses a valid JWT payload", () => {
-    const token = createTestJwt({ sub: "user-123", email: "test@example.com" });
-    const claims = parseJwtClaims(token);
-    expect(claims).toBeDefined();
-    expect(claims!.sub).toBe("user-123");
-  });
-
-  it("returns undefined for a malformed JWT with only 2 segments", () => {
-    const claims = parseJwtClaims("header.body");
-    expect(claims).toBeUndefined();
-  });
-
-  it("returns undefined for invalid base64 in payload", () => {
-    const claims = parseJwtClaims("valid-header.!!!invalid-base64!!!.signature");
-    expect(claims).toBeUndefined();
-  });
-
-  it("returns undefined for non-JSON payload", () => {
-    const header = Buffer.from("{}").toString("base64url");
-    const body = Buffer.from("not json at all").toString("base64url");
-    const claims = parseJwtClaims(`${header}.${body}.sig`);
-    expect(claims).toBeUndefined();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Account ID extraction
+// Account ID extraction (exercises JWT parsing indirectly)
 // ---------------------------------------------------------------------------
 
 describe("extractAccountId", () => {

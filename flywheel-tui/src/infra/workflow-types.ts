@@ -27,7 +27,7 @@ export const ToolScopingSchema = z.object({
   task: z.boolean().default(false),
 }).strip()
 
-export type ToolScoping = z.infer<typeof ToolScopingSchema>
+type ToolScoping = z.infer<typeof ToolScopingSchema>
 
 export type ToolAction =
   | "handoff_write"
@@ -58,32 +58,6 @@ export function toolScopingToActions(scoping: ToolScoping): ToolAction[] {
   }
   if (!allowed.includes("handoff_write")) {
     allowed.push("handoff_write")
-  }
-  return allowed
-}
-
-const TOOL_SCOPING_TO_NAME: Record<string, string> = {
-  read: "Read",
-  bash: "Bash",
-  write: "Write",
-  edit: "Edit",
-  task: "Task",
-}
-
-/**
- * Legacy provider-shaped tool list for Claude-compatible callers.
- * Prefer toolScopingToActions() plus engine-side resolution in new code.
- * Write is always included (handoff).
- */
-export function toolScopingToToolNames(scoping: ToolScoping): string[] {
-  const allowed: string[] = []
-  for (const [key, cliName] of Object.entries(TOOL_SCOPING_TO_NAME)) {
-    if (scoping[key as keyof ToolScoping]) {
-      allowed.push(cliName)
-    }
-  }
-  if (!allowed.includes("Write")) {
-    allowed.push("Write")
   }
   return allowed
 }

@@ -16,6 +16,7 @@ function makeContext(overrides?: Partial<ToolContext>): ToolContext {
   return {
     cwd: os.tmpdir(),
     todoList: [],
+    readFiles: new Set(),
     ...overrides,
   };
 }
@@ -730,9 +731,9 @@ describe("harness tools", () => {
 
     it("getToolDefinitions returns all registered tools", () => {
       const defs = getToolDefinitions();
-      expect(defs.length).toBe(4);
+      expect(defs.length).toBe(8);
       const names = defs.map((d) => d.name);
-      expect(names).toEqual(expect.arrayContaining(["bash", "write_handoff", "read", "todo_list"]));
+      expect(names).toEqual(expect.arrayContaining(["bash", "write_handoff", "read", "todo_list", "edit", "write", "text_search", "ast_search"]));
     });
   });
 

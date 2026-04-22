@@ -13,20 +13,13 @@ import { parseUnifiedDiff } from "@tui/adapters/diff-parser"
 import { toFileUri } from "@tui/adapters/linkify-paths"
 import { createHighlighter } from "@tui/adapters/syntax-highlight.js"
 import { preventSelectionMouseDown } from "@tui/utils/mouse.js"
-import { getToolDisplayName, classifyTool } from "@infra/tool-display-registry.js"
-import { truncateArrayMiddle } from "@infra/output/truncate-output.js"
-import { shouldRenderToolContentAsMarkdown } from "./tool-entry-helpers.js"
-
-/** Max visible lines per tool category before truncation kicks in. */
-function maxLinesForTool(name: string): number {
-  const cat = classifyTool(name)
-  switch (cat) {
-    case "exploration": return 3
-    case "mutation": return 5
-    case "execution": return 10
-    default: return 3
-  }
-}
+import { getToolDisplayName } from "@infra/tool-display-registry.js"
+import { truncateArrayHead } from "@infra/output/truncate-output.js"
+import {
+  TOOL_PREVIEW_LINE_LIMIT,
+  nextToolEntryToggleState,
+  shouldRenderToolContentAsMarkdown,
+} from "./tool-entry-helpers.js"
 
 interface ToolEntryProps {
   block: ToolEntryType
@@ -42,10 +35,8 @@ export function ToolEntry(props: ToolEntryProps) {
   const hasContent = () => !!props.block.content && !hasError()
   const hasExpandable = () => hasDiff() || hasContent()
 
-  const [expanded, setExpanded] = createSignal(!isHandoffPath(props.block.filePath))
+  const [bodyExpanded, setBodyExpanded] = createSignal(!isHandoffPath(props.block.filePath))
   const [contentExpanded, setContentExpanded] = createSignal(false)
-
-  const maxLines = () => maxLinesForTool(props.block.name)
 
   const spinnerFrame = useSpinnerFrame(() => !isCompleted() && !hasError())
 
@@ -79,7 +70,7 @@ export function ToolEntry(props: ToolEntryProps) {
   })
 
   const diffTruncation = createMemo(() =>
-    truncateArrayMiddle(allDiffStyledLines(), maxLines())
+    truncateArrayHead(allDiffStyledLines(), TOOL_PREVIEW_LINE_LIMIT)
   )
 
   const diffStyledLines = createMemo((): StyledDiffLine[] =>
@@ -90,17 +81,38 @@ export function ToolEntry(props: ToolEntryProps) {
   const rendersMarkdownContent = () => shouldRenderToolContentAsMarkdown(props.block)
 
   const allContentHighlighted = createMemo(() => {
-    if (!props.block.content || rendersMarkdownContent()) return []
+    if (!props.block.content) return []
     return hl(props.block.content, props.block.filetype)
   })
 
   const contentTruncation = createMemo(() =>
-    truncateArrayMiddle(allContentHighlighted(), maxLines())
+    truncateArrayHead(allContentHighlighted(), TOOL_PREVIEW_LINE_LIMIT)
   )
 
   const contentHighlighted = createMemo(() =>
     contentExpanded() ? allContentHighlighted() : contentTruncation().lines
   )
+
+  const keepsPreviewVisible = () => hasDiff() || hasContent()
+  const previewExpandable = () => diffTruncation().truncated || contentTruncation().truncated
+  const showsBody = () => keepsPreviewVisible() || bodyExpanded()
+
+  const headerChevron = createMemo(() => {
+    if (keepsPreviewVisible() && previewExpandable()) return contentExpanded() ? "▾" : "▸"
+    if (!keepsPreviewVisible() && hasExpandable()) return bodyExpanded() ? "▾" : "▸"
+    return null
+  })
+
+  const toggleHeader = () => {
+    const next = nextToolEntryToggleState(
+      { bodyExpanded: bodyExpanded(), previewExpanded: contentExpanded() },
+      { keepsPreviewVisible: keepsPreviewVisible(), previewExpandable: previewExpandable() },
+    )
+    setBodyExpanded(next.bodyExpanded)
+    setContentExpanded(next.previewExpanded)
+  }
+
+  const canToggleHeader = () => headerChevron() !== null
 
   const statusIcon = createMemo(() => {
     if (hasError()) return { icon: "✗", color: theme.error }
@@ -130,16 +142,16 @@ export function ToolEntry(props: ToolEntryProps) {
       chunks.push(stFg(theme.error)(props.block.errorMessage))
     }
 
-    if (hasExpandable()) {
+    if (headerChevron()) {
       chunks.push(stFg(theme.text)(" "))
-      chunks.push(stFg(theme.textMuted)(expanded() ? "▾" : "▸"))
+      chunks.push(stFg(theme.textMuted)(headerChevron()!))
     }
 
     return new StyledText(chunks)
   })
 
   const header = () => (
-    <box onMouseDown={hasExpandable() ? preventSelectionMouseDown(() => setExpanded(prev => !prev)) : undefined}>
+    <box onMouseDown={canToggleHeader() ? preventSelectionMouseDown(toggleHeader) : undefined}>
       <text
         ref={(el: TextRenderable) => {
           createEffect(() => { el.content = headerContent() })
@@ -154,7 +166,7 @@ export function ToolEntry(props: ToolEntryProps) {
     <box flexDirection="column">
       {header()}
       <Show when={hasExpandable()}>
-        <CollapsibleBox expanded={expanded()} paddingTop={1} paddingBottom={1} paddingLeft={2} paddingRight={1}>
+        <CollapsibleBox expanded={showsBody()} paddingTop={1} paddingBottom={1} paddingLeft={2} paddingRight={1}>
           <Show when={hasDiff()}>
             <For each={diffStyledLines()}>
               {(line) => (
@@ -177,7 +189,7 @@ export function ToolEntry(props: ToolEntryProps) {
             </Show>
           </Show>
           <Show when={hasContent()}>
-            <Show when={rendersMarkdownContent()}>
+            <Show when={contentExpanded() && rendersMarkdownContent()}>
               <markdown
                 syntaxStyle={syntax}
                 content={props.block.content ?? ""}
@@ -185,7 +197,7 @@ export function ToolEntry(props: ToolEntryProps) {
                 conceal={true}
               />
             </Show>
-            <Show when={!rendersMarkdownContent()}>
+            <Show when={!contentExpanded() || !rendersMarkdownContent()}>
               {(() => {
                 const lines = contentHighlighted()
                 const maxDigits = String(lines.length).length
@@ -205,7 +217,7 @@ export function ToolEntry(props: ToolEntryProps) {
                     ref={(el: TextRenderable) => {
                       createEffect(() => {
                         const n = contentTruncation().omitted
-                        el.content = new StyledText([stFg(theme.textMuted)(`  ... +${n} lines (click to expand)`)])
+                        el.content = new StyledText([stFg(theme.textMuted)(`  ... ${n} more lines (click to expand)`)])
                       })
                     }}
                   />

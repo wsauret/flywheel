@@ -33,7 +33,7 @@ import { createPasteCollapse } from "./hooks/paste-collapse.js"
 import { QuestionDock } from "./routes/work/components/question-dock.js"
 import type { RunnerErrorResult } from "../orchestration/session/types.js"
 
-export function FlywheelShell(props: { factories: WorkflowSessionFactories; projectCwd: string; showThinking?: boolean; engineName?: string }) {
+export function FlywheelShell(props: { factories: WorkflowSessionFactories; projectCwd: string; showThinking?: boolean; engineName?: string; modelName?: string }) {
   const { theme, syntax } = useTheme()
   const toast = useToast()
   const { manager, sessions } = useSession()
@@ -188,6 +188,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     runningCount,
     now,
     engineName: props.engineName,
+    modelName: props.modelName,
     theme,
   })
 
@@ -220,8 +221,8 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     const activity = metrics.liveActivity()
     if (activity === "idle") return null
 
-    // Track `now` to guarantee re-evaluation every second — elapsed() alone
-    // doesn't reliably propagate through ShimmerText's animation timeline.
+    // Solid memos don't auto-refresh on timer ticks; tracking now() forces
+    // re-evaluation so the elapsed counter updates every second.
     void now()
     return `${activityLabel()!} (${formatElapsed(metrics.episodeElapsed())})`
   })
@@ -346,9 +347,9 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
             <ShimmerText text={promptStatusLabel()!} color={theme.primary} />
           </Show>
         </box>
-        {/* §8b exemption: key hints are UI controls, not selectable content lines.
-            Each hint needs its own <box> for conditional rendering / click handlers,
-            and the parent's gap={2} spaces them — StyledText can't express layout gap. */}
+        {/* §8b exemption: key hints are ephemeral UI chrome, not copyable content.
+            They require per-item conditional rendering (<Show>) and click handlers
+            that StyledText can't express — and nobody copies "Esc cancel Ctrl+N new". */}
         <box flexDirection="row" gap={2} flexShrink={0}>
           <Show when={signals.pendingWorkCommand()}>
             <box flexDirection="row"><text fg={theme.textMuted}>Esc</text><text fg={theme.textSubtle}>{" cancel"}</text></box>

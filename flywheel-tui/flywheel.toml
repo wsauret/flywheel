@@ -1,5 +1,5 @@
 engine = "harness"
-preferred_vendor = "openai"  # "anthropic" | "openai"
+preferred_model_family = "openai"  # "anthropic" | "openai"
 openai_auth = "api_key"
 openai_email = "wsauret@crexi.com"
 model = "powerful"

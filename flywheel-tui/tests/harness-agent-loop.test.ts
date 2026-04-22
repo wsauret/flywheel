@@ -209,7 +209,6 @@ describe("buildHarnessSystemPrompt", () => {
       orchestrationSystemPrompt: "Task", model: "claude-sonnet-4-5", availableTools: allTools,
     });
     expect(prompt).toContain("EXECUTION ENVIRONMENT");
-    expect(prompt).toContain("cat > path/to/file");
     expect(prompt).toContain("evaluated against hidden tests");
     expect(prompt).toContain("todo_list(read)");
     expect(prompt).toContain("IRREVERSIBLE AND FINAL");
@@ -225,7 +224,6 @@ describe("buildHarnessSystemPrompt", () => {
     expect(prompt).toContain("Dispatcher task");
     expect(prompt).toContain("IRREVERSIBLE AND FINAL");
     expect(prompt).not.toContain("EXECUTION ENVIRONMENT");
-    expect(prompt).not.toContain("cat > path/to/file");
     expect(prompt).not.toContain("evaluated against hidden tests");
     expect(prompt).not.toContain("todo_list(read)");
     expect(prompt).not.toContain("numeric values");
@@ -262,12 +260,12 @@ describe("buildHarnessSystemPrompt", () => {
     expect(orchIdx).toBeLessThan(shellIdx);
   });
 
-  test("uses openai editing for openai provider", () => {
+  test("bash-only scope does not include legacy editing instructions", () => {
     const prompt = buildHarnessSystemPrompt({
-      orchestrationSystemPrompt: "Task", model: "gpt-4o", availableTools: allTools,
+      orchestrationSystemPrompt: "Task", model: "gpt-4o", availableTools: new Set(["bash", "read", "todo_list", "write_handoff"]),
     });
-    expect(prompt).toContain("apply_patch");
-    expect(prompt).not.toContain("sed -i");
+    expect(prompt).not.toContain("apply_patch");
+    expect(prompt).not.toContain("cat > path/to/file");
   });
 
   test("includes tool usage rules when both bash and read are available", () => {
@@ -277,7 +275,8 @@ describe("buildHarnessSystemPrompt", () => {
       availableTools: new Set(["bash", "read"]),
     });
     expect(prompt).toContain("TOOL USAGE");
-    expect(prompt).toContain("`read` tool (not cat/head/tail)");
+    expect(prompt).toContain("MUST use dedicated tools");
+    expect(prompt).toContain("read(file_path=");
     expect(prompt).toContain("2>&1");
     expect(prompt).toContain("2>/dev/null");
     expect(prompt).toContain("head/tail");

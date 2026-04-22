@@ -20,11 +20,11 @@ const CLAUDE_ACTIONS: Record<ToolAction, readonly string[]> = {
 
 const HARNESS_ACTIONS: Record<ToolAction, readonly string[]> = {
   handoff_write: ["write_handoff"],
-  file_read: ["read", "bash"],
-  file_search: ["bash"],
+  file_read: ["read"],
+  file_search: ["text_search", "ast_search"],
   shell_exec: ["bash"],
-  file_write: ["bash"],
-  file_edit: ["bash"],
+  file_write: ["write"],
+  file_edit: ["edit"],
   task_or_progress: ["todo_list"],
   ask_user: [],
 };

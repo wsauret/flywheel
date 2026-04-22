@@ -40,9 +40,10 @@ the user wants you to act on it. Do not just answer and move on.`;
 
 const SHELL_INSTRUCTIONS = `EXECUTION ENVIRONMENT:
 - Commands run as non-persistent sessions: each bash call starts a fresh process. Environment variables, working directory, and shell state do NOT carry over between calls.
-- To preserve state within a single call, chain with && or ;, e.g. \`cd /app && export FOO=bar && make\`.
+- Use the cwd parameter to set the working directory instead of cd. Chain with && or ; only when commands depend on each other within one call.
 - For long-running tasks (servers, watchers), end the command with & -- it keeps running after the call returns.
 - You may specify an optional timeout in seconds (up to ${MAX_TIMEOUT_SEC}s). By default, commands timeout after ${DEFAULT_TIMEOUT_SEC}s. Use this for commands that may run longer than the default.
+- Python virtual environments: since each call is a fresh shell, activations are lost. Use venv/bin/python directly (e.g. \`venv/bin/python script.py\`, \`venv/bin/pip install pkg\`) or chain activation: \`source venv/bin/activate && python script.py\`.
 - Always verify changes by running tests after modifications.`;
 
 const VERIFICATION_WARNING = `VERIFICATION:
@@ -76,9 +77,43 @@ const GENERALIZATION_RULE = `GENERALIZATION:
 Your solution must remain correct for any numeric values, array dimensions, or file contents change.`;
 
 const READ_USAGE = `READ TOOL:
-- Lines are displayed in hashline format (LINE#HASH:content) for line-addressable editing.
-- Use offset and limit parameters for large files.
+- Lines are displayed in hashline format (LINE#HASH:content) — these references are the input to the edit tool.
+- Use offset and limit parameters for large files — default reads up to 2000 lines.
+- Parallelize reads when exploring related files — call read on multiple files in the same response.
 - Also handles image files (PNG, JPG, GIF, WebP) — returns base64-encoded content.`;
+
+const EDIT_USAGE = `EDIT TOOL:
+- You MUST read the file first to get LINE#HASH references (e.g. 5#KX, 12#MQ).
+- Use those references to address edits: insert_before, insert_after, replace, delete.
+- All edits in a single call are validated transactionally — if any hash is stale, nothing changes.
+- Preserve the exact indentation (tabs or spaces) of surrounding code in your edit lines.
+- Do NOT copy hashline prefixes (LINE#HASH:) into your edit content — they are metadata, not file content.
+- For new files, use the create op. For full rewrites, use replace_all (no read required).
+- If an edit fails, the error includes updated references — retry using those directly.`;
+
+const WRITE_USAGE = `WRITE TOOL:
+- Creates NEW files only — rejects writes to files that already exist.
+- To modify existing files, use the edit tool (read first, then edit with LINE#HASH references).
+- For full rewrites of existing files, use edit(replace_all).
+- NEVER proactively create documentation files (*.md) or README files unless explicitly requested.`;
+
+const TEXT_SEARCH_USAGE = `TEXT SEARCH TOOL:
+- Use text_search for pattern matching across files. NEVER use grep or rg via bash.
+- Supports full regex syntax (e.g. "log.*Error", "function\\s+\\w+").
+- Literal braces need escaping: "interface\\{\\}" to find "interface{}" in Go code.
+- For cross-line patterns (e.g. "struct \\{[\\s\\S]*?field"), set multiline: true.
+- "file_paths" mode (default) is fast, lists matching files sorted by recency.
+- "content" mode shows matching lines with context, distributed evenly across files.
+- Respects .gitignore by default. If a search returns 0 results, it retries without gitignore automatically.
+- PERFORMANCE TIP: Make multiple speculative search calls in a single response to speed up discovery.`;
+
+const AST_SEARCH_USAGE = `AST SEARCH TOOL:
+- Use ast_search when syntax shape matters more than raw text.
+- Use text_search instead for exact strings, identifiers, or regex patterns.
+- Metavariables: $NAME captures a single node, $$$ARGS captures zero or more (variadic).
+- Example: "function $NAME($$$ARGS) { $$$BODY }" matches all functions and captures name, args, body.
+- Example: "import $NAME from '$SOURCE'" captures import name and source path.
+- Defaults to TypeScript for directory searches. Specify "language" for other languages.`;
 
 const HANDOFF_WARNING = `HANDOFF:
 This engine exposes handoff completion as \`write_handoff\`.
@@ -134,35 +169,24 @@ FINAL ANSWER:
 - Never include before/after pairs, full method bodies, or large code blocks.${modelNotes}`;
 }
 
-const ANTHROPIC_EDITING = `FILE EDITING:
-- For full-file writes use \`cat > path/to/file <<'EOF' ... EOF\`. Quote the delimiter to avoid variable interpolation.
-- For small targeted substitutions use \`sed -i 's/old/new/g' path/to/file\`.
-- Always verify the result with \`cat path/to/file\` or \`diff\` before moving on.`;
+const TOOL_PRECEDENCE = `TOOL USAGE — MUST use dedicated tools instead of bash equivalents:
+| Instead of (WRONG)                     | Use (CORRECT)                                  |
+|----------------------------------------|------------------------------------------------|
+| cat file, head -n N file, tail file    | read(file_path="file")                         |
+| grep -rn 'pattern' dir/               | text_search(pattern="...", path="dir/")         |
+| rg 'pattern' dir/                      | text_search(pattern="...", path="dir/")         |
+| find dir -name '*.ts'                  | text_search(pattern=".", glob_pattern="*.ts")   |
+| sed -i 's/old/new/' file              | edit(file_path="file", edits=[...])             |
+| echo 'content' > file                 | write (new file) or edit (existing file)          |
+| cat <<'EOF' > file ... EOF            | write (new file) or edit (existing file)          |
 
-
-const OPENAI_EDITING = `FILE EDITING with apply_patch (preferred):
-Use the apply_patch shell helper for precise file edits. Prefer it over heredocs or sed for multi-line changes. Invoke via a heredoc:
-
-  apply_patch <<'PATCH'
-  *** Begin Patch
-  *** Update File: path/to/file.py
-  @@ def existing_function():
-  -    old_line
-  +    new_line
-  *** End Patch
-  PATCH
-
-If apply_patch fails, inspect the file first with \`cat -n\` and retry with accurate context.`;
-
-const TOOL_PRECEDENCE = `TOOL USAGE:
-- Reading files: use the \`read\` tool (not cat/head/tail). It supports pagination and images.
-- Running commands/tests: use \`bash\`.
-- File editing: use the approach described above (model-family-specific).
-- Tracking progress: use \`todo_list\` for multi-step work (3+ steps).
-- Do NOT use bash to read files when the \`read\` tool is available.
+Additional rules:
+- Use \`ast_search\` for structural code patterns (function shapes, imports, class declarations).
+- Use \`todo_list\` for multi-step work (3+ steps).
 - Do NOT pipe bash output through head/tail — use \`read\` with offset/limit instead.
 - Do NOT use \`2>&1\` — stderr is already captured.
-- Do NOT redirect stderr with \`2>/dev/null\` — error output aids debugging.`;
+- Do NOT redirect stderr with \`2>/dev/null\` — error output aids debugging.
+- Bash is for running commands/tests, build tools, and git operations — not for file I/O or search.`;
 
 function detectShell(): string {
   return process.env.SHELL ?? "unknown";
@@ -218,12 +242,15 @@ export function buildHarnessSystemPrompt(opts: HarnessPromptOptions): string {
   const toolSections: string[] = [];
   if (has("bash")) {
     toolSections.push(SHELL_INSTRUCTIONS);
-    toolSections.push(family === "anthropic" ? ANTHROPIC_EDITING : OPENAI_EDITING);
     toolSections.push(VERIFICATION_WARNING);
     toolSections.push(GENERALIZATION_RULE);
   }
   if (has("bash") && has("read")) toolSections.push(TOOL_PRECEDENCE);
   if (has("read")) toolSections.push(READ_USAGE);
+  if (has("edit")) toolSections.push(EDIT_USAGE);
+  if (has("write")) toolSections.push(WRITE_USAGE);
+  if (has("text_search")) toolSections.push(TEXT_SEARCH_USAGE);
+  if (has("ast_search")) toolSections.push(AST_SEARCH_USAGE);
   if (has("todo_list")) toolSections.push(TODO_LIST_USAGE);
   if (has("write_handoff")) toolSections.push(HANDOFF_WARNING);
   if (toolSections.length > 0) parts.push(toolSections.join("\n\n"));

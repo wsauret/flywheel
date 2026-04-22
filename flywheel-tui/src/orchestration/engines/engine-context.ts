@@ -1,4 +1,5 @@
 import type { NDJSONEvent } from "../../infra/ndjson-event-types.js";
+import { canonicalize } from "../../infra/canonical-name.js";
 
 interface ContextUpdate {
   promptTokens: number;
@@ -8,7 +9,7 @@ interface ContextUpdate {
 // The authoritative value comes from the "result" event's modelUsage.contextWindow field,
 // but that only fires when the engine process exits — too late for mid-session warnings.
 export function contextWindowForModel(model: string): number {
-  const lower = model.toLowerCase().trim();
+  const lower = canonicalize(model);
 
   // Claude models: full IDs, aliases, and context-window suffixes
   if (lower.includes("[1m]")) return 1_000_000;

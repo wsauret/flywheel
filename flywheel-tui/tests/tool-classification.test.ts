@@ -2,7 +2,6 @@ import { describe, it, expect } from "bun:test";
 import {
   classifyTool,
   SUBAGENT_TOOL_NAMES,
-  type ToolCategory,
 } from "../src/infra/tool-display-registry.js";
 
 describe("classifyTool", () => {

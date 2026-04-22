@@ -20,7 +20,7 @@ export function TextBlock(props: TextBlockProps) {
     <box>
       <markdown
         ref={(el: MarkdownRenderable) => {
-          // _linkifyMarkdownChunks is a private property on MarkdownRenderable — `as any` required to override it
+          // Override private linkify to add file-path click handlers (no public API exists)
           (el as any)._linkifyMarkdownChunks = linkifyChunks
         }}
         syntaxStyle={themeCtx.syntax}

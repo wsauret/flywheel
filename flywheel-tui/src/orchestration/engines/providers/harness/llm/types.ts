@@ -16,7 +16,7 @@ export type ContentBlock =
   | { type: "tool_use"; id: string; name: string; input: Record<string, unknown> }
   | { type: "tool_result"; tool_use_id: string; content: string; is_error?: boolean }
   | { type: "thinking"; thinking: string; signature?: string }
-  | { type: "reasoning"; id: string; encrypted_content: string };
+  | { type: "reasoning"; id: string; encrypted_content: string; summary?: Array<{ type: "summary_text"; text: string }> };
 
 export interface Message {
   role: "user" | "assistant" | "system";
@@ -43,7 +43,7 @@ export type StreamEvent =
   | { kind: "thinking_complete"; thinking: string; signature?: string }
   | { kind: "tool_use"; toolCall: ToolCall }
   | { kind: "tool_result"; toolCallId: string; content: string }
-  | { kind: "reasoning"; id: string; encryptedContent: string }
+  | { kind: "reasoning"; id: string; encryptedContent: string; summary?: Array<{ type: "summary_text"; text: string }> }
   | { kind: "usage"; inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheCreateTokens: number; reasoningTokens: number }
   | { kind: "done"; stopReason: string; responseId?: string }
   | { kind: "todo_state"; todos: ReadonlyArray<{ id: string; content: string; status: string; notes?: string }> };

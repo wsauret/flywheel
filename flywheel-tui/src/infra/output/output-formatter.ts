@@ -2,6 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { createPatch } from "diff";
 import { getToolDisplay, singleLine } from "../tool-display-registry.js";
+import { canonicalize } from "../canonical-name.js";
 
 export function getToolDetail(
   name: string,
@@ -78,6 +79,118 @@ function createMinimalDiff(filePath: string, oldContent: string, newContent: str
   return result;
 }
 
+/**
+ * Extract the 1-based line number from a hashline reference like "5#KX".
+ * Ignores the hash — validation is the edit tool's responsibility.
+ */
+function parseHashlineRef(tag: string): number | null {
+  const match = tag.match(/(\d+)/);
+  if (!match) return null;
+  const n = parseInt(match[1]!, 10);
+  return n >= 1 ? n : null;
+}
+
+/**
+ * Simulate hashline-addressed edits on a copy of the file to produce a unified diff.
+ *
+ * The harness edit tool uses `edits` (insert_before/after, replace, delete,
+ * replace_all, create) instead of old_string/new_string. We read the file,
+ * replay the edits in-memory (bottom-up, same order as hashline.ts), and diff.
+ */
+function createHashlineEditDiff(
+  filePath: string,
+  edits: Array<Record<string, unknown>>,
+  filetype: string | undefined,
+): ToolDiffInfo | undefined {
+  try {
+    if (edits.length === 1) {
+      const first = edits[0]!;
+      const op = first.op as string;
+      const lines = first.lines as string[] | undefined;
+
+      if (op === "create") {
+        if (!lines) return undefined;
+        const lineCount = lines.length;
+        return lineCount <= MAX_WRITE_DIFF_LINES
+          ? { content: lines.join("\n"), filetype }
+          : undefined;
+      }
+
+      if (op === "replace_all") {
+        if (!lines) return undefined;
+        const newContent = lines.join("\n");
+        const resolved = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
+        try {
+          const oldContent = fs.readFileSync(resolved, "utf-8");
+          return { diff: createPatch(filePath, oldContent, newContent, "", "", { context: CONTEXT_LINES }), filetype };
+        } catch {
+          return newContent.split("\n").length <= MAX_WRITE_DIFF_LINES
+            ? { content: newContent, filetype }
+            : undefined;
+        }
+      }
+    }
+
+    const resolved = path.isAbsolute(filePath) ? filePath : path.resolve(process.cwd(), filePath);
+    const oldContent = fs.readFileSync(resolved, "utf-8");
+    const fileLines = [...oldContent.split("\n")];
+
+    // Sort edits bottom-up so line-number shifts don't cascade
+    const sorted = edits
+      .map((edit, idx) => {
+        const op = edit.op as string;
+        let sortLine = 0;
+        if (op === "insert_before" || op === "insert_after") {
+          sortLine = parseHashlineRef(edit.target as string) ?? 0;
+        } else if (op === "replace" || op === "delete") {
+          sortLine = parseHashlineRef(edit.end as string) ?? 0;
+        }
+        return { edit, idx, sortLine };
+      })
+      .sort((a, b) => b.sortLine - a.sortLine || a.idx - b.idx);
+
+    for (const { edit } of sorted) {
+      const op = edit.op as string;
+      const lines = edit.lines as string[] | undefined;
+
+      switch (op) {
+        case "insert_before": {
+          const line = parseHashlineRef(edit.target as string);
+          if (line && line <= fileLines.length) fileLines.splice(line - 1, 0, ...(lines ?? []));
+          break;
+        }
+        case "insert_after": {
+          const line = parseHashlineRef(edit.target as string);
+          if (line && line <= fileLines.length) fileLines.splice(line, 0, ...(lines ?? []));
+          break;
+        }
+        case "replace": {
+          const start = parseHashlineRef(edit.start as string);
+          const end = parseHashlineRef(edit.end as string);
+          if (start && end && end <= fileLines.length) {
+            fileLines.splice(start - 1, end - start + 1, ...(lines ?? []));
+          }
+          break;
+        }
+        case "delete": {
+          const start = parseHashlineRef(edit.start as string);
+          const end = parseHashlineRef(edit.end as string);
+          if (start && end && end <= fileLines.length) {
+            fileLines.splice(start - 1, end - start + 1);
+          }
+          break;
+        }
+      }
+    }
+
+    const newContent = fileLines.join("\n");
+    if (newContent === oldContent) return undefined;
+    return { diff: createPatch(filePath, oldContent, newContent, "", "", { context: CONTEXT_LINES }), filetype };
+  } catch {
+    return undefined;
+  }
+}
+
 /** Max lines for capturing Write diffs (full-file content can be huge). */
 const MAX_WRITE_DIFF_LINES = 200;
 
@@ -93,7 +206,6 @@ type ToolDiffInfo = {
  *
  * - Edit → unified diff (red/green rendering)
  * - Write → raw content (plain text rendering)
- * - ApplyPatch → unified diff
  */
 export function extractToolDiff(
   name: string,
@@ -101,16 +213,24 @@ export function extractToolDiff(
 ): ToolDiffInfo | undefined {
   const fp = (input.file_path as string) ?? "";
   const ft = getFiletype(fp);
+  const lower = canonicalize(name);
 
-  if (name === "Edit") {
+  if (lower === "edit") {
+    // Claude Code format: old_string / new_string
     const oldStr = input.old_string as string | undefined;
     const newStr = input.new_string as string | undefined;
     if (oldStr != null && newStr != null) {
       return { diff: createEditDiff(fp, oldStr, newStr), filetype: ft };
     }
+
+    // Harness format: hashline-addressed edits array
+    const edits = input.edits as Array<Record<string, unknown>> | undefined;
+    if (Array.isArray(edits) && edits.length > 0) {
+      return createHashlineEditDiff(fp, edits, ft);
+    }
   }
 
-  if (name === "Write") {
+  if (lower === "write") {
     const rawContent = input.content as string | undefined;
     if (rawContent) {
       const lineCount = rawContent.split("\n").length;
@@ -120,12 +240,6 @@ export function extractToolDiff(
     }
   }
 
-  if (name === "ApplyPatch") {
-    const patch = input.patch as string | undefined;
-    if (patch) {
-      return { diff: patch, filetype: ft };
-    }
-  }
 
   return undefined;
 }

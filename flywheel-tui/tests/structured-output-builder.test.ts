@@ -1000,7 +1000,7 @@ describe("StructuredOutputBuilder", () => {
   });
 
   describe("pushThinkingAsToolRow", () => {
-    it("creates a Thinking tool row in a Tools group", () => {
+    it("creates a pending Thinking tool row in a Tools group", () => {
       const now = Date.now();
       builder.pushThinkingAsToolRow(now);
 
@@ -1010,7 +1010,7 @@ describe("StructuredOutputBuilder", () => {
       const group = blocks[0] as ToolGroupBlock;
       expect(group.children).toHaveLength(1);
       expect(group.children[0].name).toBe("Thinking");
-      expect(group.children[0].completed).toBe(true);
+      expect(group.children[0].completed).toBeUndefined();
     });
 
     it("groups subsequent tools with the Thinking row", () => {
@@ -1033,6 +1033,40 @@ describe("StructuredOutputBuilder", () => {
       expect(builder.modelActivity).toBe("idle");
       builder.pushThinkingAsToolRow(Date.now());
       expect(builder.modelActivity).toBe("thinking");
+    });
+  });
+
+  describe("completeThinkingRow", () => {
+    it("marks the pending Thinking row as completed", () => {
+      builder.pushThinkingAsToolRow(Date.now());
+      builder.completeThinkingRow();
+
+      const group = builder.getBlocks()[0] as ToolGroupBlock;
+      expect(group.children[0].name).toBe("Thinking");
+      expect(group.children[0].completed).toBe(true);
+    });
+
+    it("is a no-op when no thinking row is pending", () => {
+      builder.pushToolRow(resolvedTool("Read", "file.ts", Date.now()));
+      builder.completeThinkingRow();
+
+      const group = builder.getBlocks()[0] as ToolGroupBlock;
+      expect(group.children[0].name).toBe("Read");
+    });
+
+    it("is safe to call after the context group was already closed", () => {
+      builder.pushThinkingAsToolRow(Date.now());
+      // breakContextRun via pushText resolves all children including Thinking
+      builder.pushText("hello", Date.now());
+      // completeThinkingRow is a harmless double-complete
+      builder.completeThinkingRow();
+
+      const blocks = builder.getBlocks();
+      // toolGroup (completed) + text block
+      expect(blocks).toHaveLength(2);
+      const group = blocks[0] as ToolGroupBlock;
+      expect(group.status).toBe("completed");
+      expect(group.children[0].completed).toBe(true);
     });
   });
 

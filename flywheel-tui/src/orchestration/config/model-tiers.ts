@@ -1,5 +1,6 @@
 import { buildMissingAccessProviderMessage, getConfiguredAccessProvidersForFamily } from "../engines/providers/harness/llm/access-provider.js";
 import { buildUnknownModelFamilyMessage, detectModelFamily, type ModelFamily } from "../engines/providers/harness/llm/model-family.js";
+import { canonicalize } from "../../infra/canonical-name.js";
 
 type ModelTier = "powerful" | "mid" | "cheap";
 type ComponentRole = "worker" | "evaluator" | "dispatcher";
@@ -48,7 +49,7 @@ export function resolveModelTier(
     return TIER_TABLE[family][tier];
   }
 
-  const lowered = raw.toLowerCase();
+  const lowered = canonicalize(raw);
 
   const familyTiers = TIER_TABLE[family];
   if (lowered in familyTiers) {

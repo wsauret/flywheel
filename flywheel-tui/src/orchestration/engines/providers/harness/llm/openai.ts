@@ -103,6 +103,7 @@ function toResponseInput(messages: Message[]): ResponseInput {
             type: "reasoning",
             id: block.id,
             encrypted_content: block.encrypted_content,
+            ...(block.summary ? { summary: block.summary } : {}),
           } as ResponseInput[number]);
         }
       }
@@ -302,12 +303,13 @@ export function createOpenAIAdapter(
                 // Capture encrypted reasoning items for round-tripping.
                 for (const item of response?.output ?? []) {
                   if (item.type === "reasoning") {
-                    const r = item as { id?: string; encrypted_content?: string };
+                    const r = item as { id?: string; encrypted_content?: string; summary?: Array<{ type: "summary_text"; text: string }> };
                     if (r.id && r.encrypted_content) {
                       yield {
                         kind: "reasoning",
                         id: r.id,
                         encryptedContent: r.encrypted_content,
+                        ...(r.summary ? { summary: r.summary } : {}),
                       } as StreamEvent;
                     }
                   }

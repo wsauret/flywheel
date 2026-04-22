@@ -47,6 +47,7 @@ export class StructuredOutputBuilder {
 
   private _modelActivity: ModelActivity = "idle";
   private thinkingStartedAt: number | null = null;
+  private pendingThinkingRow: { agentId: string; childIndex: number } | null = null;
 
   /** Fired on content mutations (text, thinking, system, user, question, todo, modelActivity).
    *  Only fires on the dirty false->true transition, so rapid mutations within
@@ -100,15 +101,23 @@ export class StructuredOutputBuilder {
     const startTime = this.thinkingStartedAt ?? timestamp;
     this.thinkingStartedAt = null;
 
-    this.pushToolRow({
+    const loc = this.pushToolRow({
       kind: "tool",
       name: "Thinking",
       detail: "",
       timestamp: startTime,
-      completed: true,
     });
+    this.pendingThinkingRow = loc;
     // Restore "thinking" activity — pushToolRow sets to "tool_executing" but this is a thinking phase
     this._modelActivity = "thinking";
+  }
+
+  /** Mark the pending thinking tool row as completed. No-op if none is pending. */
+  completeThinkingRow(): void {
+    if (!this.pendingThinkingRow) return;
+    const { agentId, childIndex } = this.pendingThinkingRow;
+    this.pendingThinkingRow = null;
+    this.completeAgentChildTool(agentId, childIndex);
   }
 
   /** Create/append to a standalone thinking block. Used when no tool context exists. */
@@ -149,8 +158,7 @@ export class StructuredOutputBuilder {
     this.markContentDirty();
   }
 
-  // Moves injected messages from pending to resolved once the engine acknowledges them.
-  // Returns the text content of resolved messages (empty array if none were pending).
+  // Transitions pending injected messages to resolved once the engine acknowledges them.
   resolvePendingMessages(): string[] {
     const pendingIndices: number[] = [];
     for (let i = 0; i < this.blocks.length; i++) {
@@ -451,6 +459,7 @@ export class StructuredOutputBuilder {
     this.agentIndexById.clear();
     this.todoBlockIndex = -1;
     this.thinkingStartedAt = null;
+    this.pendingThinkingRow = null;
     this.contextTracker.reset();
   }
 
@@ -459,6 +468,7 @@ export class StructuredOutputBuilder {
     this.agentIndexById.clear();
     this.todoBlockIndex = -1;
     this.thinkingStartedAt = null;
+    this.pendingThinkingRow = null;
     this.contextTracker.resetTracking();
     this.markContentDirty();
     this.markToolDirty();

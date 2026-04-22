@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
+    "@ast-grep/napi": "^0.42.1",
     "@opentui/core": "^0.1.0",
     "@opentui/solid": "^0.1.0",
     "diff": "^8.0.0",

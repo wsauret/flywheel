@@ -15,7 +15,7 @@ const DEVICE_POLL_URL = `${ISSUER}/api/accounts/deviceauth/token`;
 const DEVICE_REDIRECT_URI = `${ISSUER}/deviceauth/callback`;
 
 // ---------------------------------------------------------------------------
-// Pure URL builder (exported for testing)
+// Pure URL builder — used by startBrowserFlow below, exported for unit testing
 // ---------------------------------------------------------------------------
 
 export function buildAuthorizeUrl(

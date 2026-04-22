@@ -13,6 +13,7 @@ import { SessionProvider } from "@tui/shared/context/session"
 import { createSessionManager } from "../orchestration/session/manager.js"
 import { ErrorComponent } from "./components/error-boundary.js"
 import { loadConfig } from "../orchestration/config/loader.js"
+import { resolveTierConfigs } from "../orchestration/config/schema.js"
 import { getEngine } from "../orchestration/engines/core/registry.js"
 import type { WorkflowSessionFactories } from "../orchestration/session-store-types.js"
 import { CONFIG_FILES } from "../infra/paths.js"
@@ -32,12 +33,15 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
   let themeName: string | undefined
   let showThinking = true
   let engineName = ""
+  let modelName = ""
   try {
     const configPath = CONFIG_FILES.find((p) => fs.existsSync(p))
     const { config } = loadConfig(configPath)
     themeName = config.theme
     showThinking = config.show_thinking
-    engineName = getEngine(config.engine).metadata.name
+    const engine = getEngine(config.engine)
+    engineName = engine.metadata.id === "harness" ? "" : engine.metadata.name
+    modelName = resolveTierConfigs(config).worker.model
     if (config.openai_auth && !process.env["FLYWHEEL_OPENAI_AUTH"]) {
       process.env["FLYWHEEL_OPENAI_AUTH"] = config.openai_auth
     }
@@ -89,7 +93,7 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
             <ToastProvider>
               <ThemeProvider mode={mode} themeName={themeName}>
                 <SessionProvider manager={manager}>
-                  <FlywheelShell factories={factories} projectCwd={projectCwd} showThinking={showThinking} engineName={engineName} />
+                  <FlywheelShell factories={factories} projectCwd={projectCwd} showThinking={showThinking} engineName={engineName} modelName={modelName} />
                 </SessionProvider>
               </ThemeProvider>
             </ToastProvider>

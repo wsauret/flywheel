@@ -3,6 +3,7 @@ import type {
   EngineMetadata,
   RunnerOptions,
 } from "../../core/types.js";
+import { canonicalize } from "../../../../infra/canonical-name.js";
 import type { ProcessSpawner } from "./subprocess/spawner.js";
 import { SubprocessRunner } from "./subprocess-runner.js";
 import { BunProcessSpawner } from "./subprocess/bun-spawner.js";
@@ -109,7 +110,7 @@ export function buildCommand(options: EngineCommandOptions): EngineCommand {
 }
 
 function resolveModel(raw: string): string {
-  const key = raw.toLowerCase().trim();
+  const key = canonicalize(raw);
   if (key.endsWith("[200k]")) return raw.slice(0, -6);
   if (key.startsWith("claude-") && !key.includes("[")) return `${raw}[1m]`;
   return raw;

@@ -15,6 +15,7 @@ interface HeaderDisplayDeps {
   runningCount: Accessor<number>
   now: Accessor<number>
   engineName?: string
+  modelName?: string
   theme: {
     primary: RGBA; text: RGBA; textMuted: RGBA; textSubtle: RGBA
     borderSubtle: RGBA; error: RGBA; warning: RGBA; success: RGBA
@@ -29,7 +30,7 @@ export interface HeaderDisplay {
 }
 
 export function createHeaderDisplay(deps: HeaderDisplayDeps): HeaderDisplay {
-  const { signals, metrics, dimensions, inChat, runningCount, now, engineName, theme } = deps
+  const { signals, metrics, dimensions, inChat, runningCount, now, engineName, modelName, theme } = deps
 
   const displayStatus = createMemo((): "running" | "idle" | "interrupted" | "completed" => {
     if (signals.agentState() === "active") return "running"
@@ -111,11 +112,14 @@ export function createHeaderDisplay(deps: HeaderDisplayDeps): HeaderDisplay {
 
   const headerRightContent = createMemo(() => {
     const chunks: TextChunk[] = []
-    if (engineName) chunks.push(stFg(theme.textSubtle)(engineName))
+    let hasPrev = false
+    const sep = () => { if (hasPrev) chunks.push(stFg(theme.textSubtle)(" \u00b7 ")); hasPrev = true }
+    if (engineName) { sep(); chunks.push(stFg(theme.textSubtle)(engineName)) }
+    if (modelName) { sep(); chunks.push(stFg(theme.textSubtle)(modelName)) }
     const fgId = signals.foregroundId()
-    if (fgId) chunks.push(stFg(theme.textSubtle)((engineName ? " \u00b7 " : "") + "Session ID: " + fgId))
+    if (fgId) { sep(); chunks.push(stFg(theme.textSubtle)("ID: " + fgId)) }
     const hr = headerRight()
-    if (hr) chunks.push(stFg(headerRightColor())((fgId ? " \u00b7 " : " ") + hr))
+    if (hr) { sep(); chunks.push(stFg(headerRightColor())(hr)) }
     return new StyledText(chunks)
   })
 

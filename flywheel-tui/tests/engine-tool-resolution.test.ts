@@ -11,7 +11,7 @@ describe("engine tool resolution", () => {
 
   test("evaluator profile preserves existing effective tool breadth", () => {
     expect(resolveToolProfile("claude", "evaluator_verification")).toEqual(["Read", "Bash", "Write", "Grep", "Glob"]);
-    expect(resolveToolProfile("harness", "evaluator_verification")).toEqual(["read", "bash", "write_handoff"]);
+    expect(resolveToolProfile("harness", "evaluator_verification")).toEqual(["read", "bash", "write", "write_handoff", "text_search", "ast_search"]);
   });
 
   test("worker scoping keeps Claude provider-native tool names", () => {
@@ -20,9 +20,9 @@ describe("engine tool resolution", () => {
     expect(resolveToolActions("claude", actions)).toEqual(["Read", "Bash", "Write"]);
   });
 
-  test("worker read scope keeps harness read plus shell emulation and handoff", () => {
+  test("worker read scope keeps harness read and handoff", () => {
     const actions = toolScopingToActions({ read: true, bash: false, write: false, edit: false, task: false });
-    expect(resolveToolActions("harness", actions)).toEqual(["read", "bash", "write_handoff"]);
+    expect(resolveToolActions("harness", actions)).toEqual(["read", "write_handoff"]);
   });
 
   test("ask_user only resolves on Claude", () => {

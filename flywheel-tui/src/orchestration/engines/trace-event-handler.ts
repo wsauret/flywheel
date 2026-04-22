@@ -3,6 +3,7 @@ import { extractToolUseRecords, extractToolResultRecord } from "./ndjson-tool-ev
 import type { EmitFn } from "../../infra/event-bus.js";
 import { truncateField } from "../../infra/trace-types.js";
 import { SUBAGENT_TOOL_NAMES } from "../../infra/tool-display-registry.js";
+import { canonicalize } from "../../infra/canonical-name.js";
 
 const MAX_FIELD_BYTES = 4096;
 
@@ -27,7 +28,7 @@ export function createTraceEventHandler(deps: TraceEventHandlerDeps): TraceEvent
     for (const record of extractToolUseRecords(event)) {
       const rawInput = truncateField(record.toolInput, MAX_FIELD_BYTES);
 
-      if (SUBAGENT_TOOL_NAMES.has(record.toolName.toLowerCase())) {
+      if (SUBAGENT_TOOL_NAMES.has(canonicalize(record.toolName))) {
         subagentToolUseIds.add(record.toolUseId);
         const input = record.toolInput as Record<string, unknown> | undefined;
         const description = String(input?.description ?? input?.task ?? record.toolName);

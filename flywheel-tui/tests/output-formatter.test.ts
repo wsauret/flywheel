@@ -1,6 +1,7 @@
-import { describe, it, expect } from "bun:test";
-import { getToolDetail } from "../src/infra/output/output-formatter";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { getToolDetail, extractToolDiff } from "../src/infra/output/output-formatter";
 import * as path from "node:path";
+import * as fs from "node:fs";
 
 describe("output-formatter", () => {
   describe("getToolDetail", () => {
@@ -68,6 +69,120 @@ describe("output-formatter", () => {
 
     it("unknown tool with no string values returns null", () => {
       expect(getToolDetail("CustomTool", { count: 5 })).toBeNull();
+    });
+  });
+
+  describe("extractToolDiff — hashline edits", () => {
+    const tmpDir = path.join("/tmp", `flywheel-test-${process.pid}`);
+    const testFile = path.join(tmpDir, "test.ts");
+
+    beforeEach(() => {
+      fs.mkdirSync(tmpDir, { recursive: true });
+      fs.writeFileSync(testFile, "line one\nline two\nline three\nline four\n");
+    });
+
+    afterEach(() => {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    it("produces a diff for a replace edit", () => {
+      const result = extractToolDiff("edit", {
+        file_path: testFile,
+        edits: [{ op: "replace", start: "2#XX", end: "2#XX", lines: ["line TWO"] }],
+      });
+      expect(result).toBeDefined();
+      expect(result!.diff).toContain("-line two");
+      expect(result!.diff).toContain("+line TWO");
+      expect(result!.filetype).toBe("typescript");
+    });
+
+    it("produces a diff for a delete edit", () => {
+      const result = extractToolDiff("edit", {
+        file_path: testFile,
+        edits: [{ op: "delete", start: "2#XX", end: "3#XX" }],
+      });
+      expect(result).toBeDefined();
+      expect(result!.diff).toContain("-line two");
+      expect(result!.diff).toContain("-line three");
+    });
+
+    it("produces a diff for an insert_before edit", () => {
+      const result = extractToolDiff("edit", {
+        file_path: testFile,
+        edits: [{ op: "insert_before", target: "2#XX", lines: ["inserted"] }],
+      });
+      expect(result).toBeDefined();
+      expect(result!.diff).toContain("+inserted");
+    });
+
+    it("produces a diff for an insert_after edit", () => {
+      const result = extractToolDiff("edit", {
+        file_path: testFile,
+        edits: [{ op: "insert_after", target: "2#XX", lines: ["inserted"] }],
+      });
+      expect(result).toBeDefined();
+      expect(result!.diff).toContain("+inserted");
+    });
+
+    it("handles multiple edits in a single batch", () => {
+      const result = extractToolDiff("edit", {
+        file_path: testFile,
+        edits: [
+          { op: "replace", start: "1#XX", end: "1#XX", lines: ["LINE ONE"] },
+          { op: "delete", start: "4#XX", end: "4#XX" },
+        ],
+      });
+      expect(result).toBeDefined();
+      expect(result!.diff).toContain("-line one");
+      expect(result!.diff).toContain("+LINE ONE");
+      expect(result!.diff).toContain("-line four");
+    });
+
+    it("returns content for a create edit", () => {
+      const result = extractToolDiff("edit", {
+        file_path: path.join(tmpDir, "new.ts"),
+        edits: [{ op: "create", lines: ["new content", "second line"] }],
+      });
+      expect(result).toBeDefined();
+      expect(result!.content).toBe("new content\nsecond line");
+      expect(result!.diff).toBeUndefined();
+    });
+
+    it("produces a diff for replace_all", () => {
+      const result = extractToolDiff("edit", {
+        file_path: testFile,
+        edits: [{ op: "replace_all", lines: ["completely new"] }],
+      });
+      expect(result).toBeDefined();
+      expect(result!.diff).toContain("-line one");
+      expect(result!.diff).toContain("+completely new");
+    });
+
+    it("returns undefined when file does not exist for non-create ops", () => {
+      const result = extractToolDiff("edit", {
+        file_path: path.join(tmpDir, "nonexistent.ts"),
+        edits: [{ op: "replace", start: "1#XX", end: "1#XX", lines: ["x"] }],
+      });
+      expect(result).toBeUndefined();
+    });
+
+    it("returns undefined when edits array is empty", () => {
+      const result = extractToolDiff("edit", {
+        file_path: testFile,
+        edits: [],
+      });
+      expect(result).toBeUndefined();
+    });
+
+    it("still handles old_string/new_string format", () => {
+      const result = extractToolDiff("edit", {
+        file_path: testFile,
+        old_string: "line two",
+        new_string: "line TWO",
+      });
+      expect(result).toBeDefined();
+      expect(result!.diff).toContain("-line two");
+      expect(result!.diff).toContain("+line TWO");
     });
   });
 });

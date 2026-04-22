@@ -100,7 +100,7 @@ describe("StructuredEventParser", () => {
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(1);
       const agent = blocks[0] as ToolGroupBlock;
-      expect(agent.label).toBe("Agent"); // no subagent_type → falls back to tool name
+      expect(agent.label).toBe("Subagent"); // no subagent_type → falls back to display name
       expect(agent.description).toBe("planning step");
     });
 
@@ -112,7 +112,7 @@ describe("StructuredEventParser", () => {
       parser.dispatch(event, 1000);
       const blocks = builder.getBlocks();
       const agent = blocks[0] as ToolGroupBlock;
-      expect(agent.description).toBe("Task");
+      expect(agent.description).toBe("Subagent"); // no description → falls back to display name
     });
 
     it("creates an ToolGroupBlock on dispatch_agent tool_use", () => {
@@ -194,7 +194,7 @@ describe("StructuredEventParser", () => {
       const agent = blocks[0] as ToolGroupBlock;
       expect(agent.label).toBe("Tools");
       expect(agent.children).toHaveLength(1);
-      expect(agent.children[0].name).toBe("Bash");
+      expect(agent.children[0].name).toBe("bash");
       // Pending: no completed or errorMessage
       expect(agent.children[0].completed).toBeUndefined();
       expect(agent.children[0].errorMessage).toBeUndefined();
@@ -231,7 +231,7 @@ describe("StructuredEventParser", () => {
       let blocks = builder.getBlocks();
       let agent = blocks[0] as ToolGroupBlock;
       expect(agent.children).toHaveLength(1);
-      expect(agent.children[0].name).toBe("Bash");
+      expect(agent.children[0].name).toBe("bash");
       expect(agent.children[0].completed).toBeUndefined();
 
       parser.dispatch(makeUserToolResultEvent([{ tool_use_id: "child_tool" }]), 2000);
@@ -550,7 +550,7 @@ describe("StructuredEventParser", () => {
       const toolsAgent = blocks[1] as ToolGroupBlock;
       expect(toolsAgent.label).toBe("Tools");
       expect(toolsAgent.children).toHaveLength(1);
-      expect(toolsAgent.children[0].name).toBe("Bash");
+      expect(toolsAgent.children[0].name).toBe("bash");
       expect(toolsAgent.children[0].completed).toBe(true);
     });
 
@@ -711,7 +711,7 @@ describe("StructuredEventParser", () => {
       const blocks = builder.getBlocks();
       const agent = blocks.find(b => b.kind === "toolGroup") as ToolGroupBlock;
       expect(agent.children).toHaveLength(1);
-      expect(agent.children[0].name).toBe("AskUserQuestion");
+      expect(agent.children[0].name).toBe("askuserquestion");
     });
 
     it("handles AskUserQuestion with no questions gracefully", () => {
@@ -904,7 +904,7 @@ describe("StructuredEventParser", () => {
       expect(blocks[0].kind).toBe("toolGroup");
       const group = blocks[0] as ToolGroupBlock;
       expect(group.children).toHaveLength(2);
-      expect(group.children[0].name).toBe("Read");
+      expect(group.children[0].name).toBe("read");
       expect(group.children[1].name).toBe("Thinking");
     });
 
@@ -919,7 +919,7 @@ describe("StructuredEventParser", () => {
       const group = blocks[0] as ToolGroupBlock;
       expect(group.children).toHaveLength(2);
       // Tools processed first, then thinking added
-      expect(group.children[0].name).toBe("Grep");
+      expect(group.children[0].name).toBe("grep");
       expect(group.children[1].name).toBe("Thinking");
     });
 

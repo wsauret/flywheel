@@ -1,4 +1,4 @@
-export function base64UrlEncode(buffer: ArrayBuffer): string {
+function base64UrlEncode(buffer: ArrayBuffer): string {
   return Buffer.from(buffer).toString("base64url");
 }
 

@@ -3,6 +3,7 @@ import { EffortSchema, TierConfigSchema } from "../../infra/workflow-types.js";
 import { SprintConfigSchema } from "../../workflows/queue/steps/sprint/config-schema.js";
 import { resolveModelTier } from "./model-tiers.js";
 import type { ModelFamily } from "../engines/providers/harness/llm/model-family.js";
+import { canonicalize } from "../../infra/canonical-name.js";
 import type { ComponentRole } from "./model-tiers.js";
 
 const SHELL_METACHAR_RE = /[;|&`$(){}<>]/;
@@ -45,7 +46,7 @@ export type FlywheelConfig = z.infer<typeof FlywheelConfigSchema>;
 export const CONFIG_DEFAULTS: FlywheelConfig = FlywheelConfigSchema.parse({});
 
 function resolveMaxEffort(model: string | undefined): "max" | "high" {
-  if (model && model.toLowerCase().includes("opus")) return "max";
+  if (model && canonicalize(model).includes("opus")) return "max";
   return "high";
 }
 
@@ -84,7 +85,7 @@ export function resolveTierConfigs(config: FlywheelConfig, mode?: "sprint"): {
       ?? tier.effort
       ?? config.effort
       ?? (sprint ? resolveMaxEffort(model) : tierDefault);
-    const effort = raw === "max" && !model.toLowerCase().includes("opus") ? "high" : raw;
+    const effort = raw === "max" && !canonicalize(model).includes("opus") ? "high" : raw;
     return { engine, model, effort };
   }
 

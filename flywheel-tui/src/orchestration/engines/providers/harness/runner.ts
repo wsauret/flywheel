@@ -7,6 +7,7 @@
 
 import { randomUUID } from "node:crypto";
 import { errorMessage } from "../../../../infra/error-message.js";
+import { canonicalize } from "../../../../infra/canonical-name.js";
 import type { EngineRunner, EngineResult, RunnerOptions } from "../../core/types.js";
 import { resolveToolActions } from "../../core/tool-resolution.js";
 import type { ContentBlock as LLMContentBlock, LLMClient, Message, ReasoningEffort, StreamEvent } from "./llm/types.js";
@@ -29,16 +30,18 @@ const EFFORT_MAP: Record<string, ReasoningEffort> = {
 
 function mapEffort(effort: string | undefined): ReasoningEffort | undefined {
   if (!effort) return undefined;
-  return EFFORT_MAP[effort.toLowerCase()];
+  return EFFORT_MAP[canonicalize(effort)];
 }
 
 // Maps harness tool names to the Claude CLI tool names that enable them.
 // A harness tool is included if ANY of its enabling CLI tools are in the allowed list.
-// "Write" and "Edit" enable bash because the harness has no native file-write tool —
-// file creation and editing go through shell commands.
 const HARNESS_TOOL_ENABLERS: Record<string, readonly string[]> = {
   bash: ["Bash", "Read", "Grep", "Glob", "Edit", "Write"],
   read: ["Read"],
+  edit: ["Edit"],
+  write: ["Write", "Edit"],
+  text_search: ["Grep", "Glob"],
+  ast_search: ["Grep", "Glob"],
   todo_list: ["Task"],
 };
 

@@ -4,7 +4,7 @@ import {
   SessionBudgetStatusSchema,
   AvailableContextSchema,
 } from "../schemas.js";
-import { EvaluationCriteriaSchema, WorkerConfigSchema } from "../../infra/workflow-types.js";
+import { EvaluationCriteriaSchema, MutationRequestSchema, DispatcherDecisionSchema, WorkerConfigSchema } from "../../infra/workflow-types.js";
 import { StepContextSchema } from "../queue/step-context.js";
 
 // PlanInputSchema — step-based plan representation for the dispatcher
@@ -68,8 +68,6 @@ const DispatcherInputSchema = z.object({
 }).strip();
 
 export type DispatcherInput = z.infer<typeof DispatcherInputSchema>;
-
-import { MutationRequestSchema, DispatcherDecisionSchema } from "../../infra/workflow-types.js";
 
 // DispatcherDecisionHandoffSchema — handoff file written by the dispatcher engine.
 // Derived from DispatcherDecisionSchema: required step_index, optional evaluation_criteria,
