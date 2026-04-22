@@ -12,7 +12,7 @@ function makeFakeLLMClient(
   let callIndex = 0;
 
   return {
-    provider: "anthropic",
+    model: "claude-sonnet-4-5",
     model: "test-model",
     contextLimit: 100_000,
     outputLimit: 8_000,
@@ -206,7 +206,7 @@ describe("buildHarnessSystemPrompt", () => {
 
   test("includes all sections with full tool set", () => {
     const prompt = buildHarnessSystemPrompt({
-      orchestrationSystemPrompt: "Task", provider: "anthropic", availableTools: allTools,
+      orchestrationSystemPrompt: "Task", model: "claude-sonnet-4-5", availableTools: allTools,
     });
     expect(prompt).toContain("EXECUTION ENVIRONMENT");
     expect(prompt).toContain("cat > path/to/file");
@@ -219,7 +219,7 @@ describe("buildHarnessSystemPrompt", () => {
   test("handoff-only tools omit shell, editing, verification, todo, generalization", () => {
     const prompt = buildHarnessSystemPrompt({
       orchestrationSystemPrompt: "Dispatcher task",
-      provider: "anthropic",
+      model: "claude-sonnet-4-5",
       availableTools: new Set(["write_handoff"]),
     });
     expect(prompt).toContain("Dispatcher task");
@@ -234,7 +234,7 @@ describe("buildHarnessSystemPrompt", () => {
   test("omits project instructions when no bash tool", () => {
     const prompt = buildHarnessSystemPrompt({
       orchestrationSystemPrompt: "Task",
-      provider: "anthropic",
+      model: "claude-sonnet-4-5",
       projectInstructions: "Project CLAUDE.md content",
       availableTools: new Set(["write_handoff"]),
     });
@@ -244,7 +244,7 @@ describe("buildHarnessSystemPrompt", () => {
   test("includes project instructions when bash tool present", () => {
     const prompt = buildHarnessSystemPrompt({
       orchestrationSystemPrompt: "Task",
-      provider: "anthropic",
+      model: "claude-sonnet-4-5",
       projectInstructions: "Project CLAUDE.md content",
       availableTools: new Set(["bash", "write_handoff"]),
     });
@@ -254,7 +254,7 @@ describe("buildHarnessSystemPrompt", () => {
   test("orchestration prompt precedes tool sections", () => {
     const prompt = buildHarnessSystemPrompt({
       orchestrationSystemPrompt: "ORCHESTRATION_START",
-      provider: "anthropic",
+      model: "claude-sonnet-4-5",
       availableTools: allTools,
     });
     const orchIdx = prompt.indexOf("ORCHESTRATION_START");
@@ -264,7 +264,7 @@ describe("buildHarnessSystemPrompt", () => {
 
   test("uses openai editing for openai provider", () => {
     const prompt = buildHarnessSystemPrompt({
-      orchestrationSystemPrompt: "Task", provider: "openai", availableTools: allTools,
+      orchestrationSystemPrompt: "Task", model: "gpt-4o", availableTools: allTools,
     });
     expect(prompt).toContain("apply_patch");
     expect(prompt).not.toContain("sed -i");
@@ -273,7 +273,7 @@ describe("buildHarnessSystemPrompt", () => {
   test("includes tool usage rules when both bash and read are available", () => {
     const prompt = buildHarnessSystemPrompt({
       orchestrationSystemPrompt: "Task",
-      provider: "anthropic",
+      model: "claude-sonnet-4-5",
       availableTools: new Set(["bash", "read"]),
     });
     expect(prompt).toContain("TOOL USAGE");
@@ -286,7 +286,7 @@ describe("buildHarnessSystemPrompt", () => {
   test("omits tool usage rules when read tool is absent", () => {
     const prompt = buildHarnessSystemPrompt({
       orchestrationSystemPrompt: "Task",
-      provider: "anthropic",
+      model: "claude-sonnet-4-5",
       availableTools: new Set(["bash"]),
     });
     expect(prompt).not.toContain("TOOL USAGE");
@@ -295,7 +295,7 @@ describe("buildHarnessSystemPrompt", () => {
   test("omits tool usage rules when bash tool is absent", () => {
     const prompt = buildHarnessSystemPrompt({
       orchestrationSystemPrompt: "Task",
-      provider: "anthropic",
+      model: "claude-sonnet-4-5",
       availableTools: new Set(["read"]),
     });
     expect(prompt).not.toContain("TOOL USAGE");
@@ -304,7 +304,7 @@ describe("buildHarnessSystemPrompt", () => {
   test("todo_list usage includes granular operations, user visibility, and rules", () => {
     const prompt = buildHarnessSystemPrompt({
       orchestrationSystemPrompt: "Task",
-      provider: "anthropic",
+      model: "claude-sonnet-4-5",
       availableTools: new Set(["todo_list"]),
     });
     expect(prompt).toContain("todo_list(complete)");
@@ -323,7 +323,8 @@ function makeCaptureClient(responses: Array<{ events: StreamEvent[] }>) {
   const capturedMessages: Message[][] = [];
 
   const client: LLMClient = {
-    provider: "anthropic",
+    accessProvider: "anthropic_api",
+    modelFamily: "anthropic",
     model: "test-model",
     contextLimit: 100_000,
     outputLimit: 8_000,
@@ -570,7 +571,8 @@ describe("agent loop safety limits", () => {
     ];
 
     const client: LLMClient = {
-      provider: "anthropic",
+      accessProvider: "anthropic_api",
+      modelFamily: "anthropic",
       model: "test-model",
       contextLimit: 100_000,
       outputLimit: 8_000,

@@ -25,6 +25,9 @@ export function contextWindowForModel(model: string): number {
     lower.startsWith("chatgpt-")
   ) return 128_000;
 
+  // Google models
+  if (lower.startsWith("gemini-")) return 1_000_000;
+
   // Reasonable default for unknown models
   return 200_000;
 }

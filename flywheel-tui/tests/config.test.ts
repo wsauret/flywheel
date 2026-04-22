@@ -10,6 +10,7 @@ import { TIER_TABLE } from "../src/orchestration/config/model-tiers.js";
 
 const A = TIER_TABLE.anthropic;
 const O = TIER_TABLE.openai;
+const G = TIER_TABLE.google;
 
 const FIXTURES_DIR = path.join(import.meta.dir, "fixtures");
 
@@ -214,23 +215,23 @@ describe("Per-tier model config", () => {
 });
 
 // ---------------------------------------------------------------------------
-// preferred_vendor config field
+// preferred_model_family config field
 // ---------------------------------------------------------------------------
 
-describe("preferred_vendor config field", () => {
+describe("preferred_model_family config field", () => {
   it("parses 'anthropic' correctly", () => {
-    const result = FlywheelConfigSchema.safeParse({ preferred_vendor: "anthropic" });
+    const result = FlywheelConfigSchema.safeParse({ preferred_model_family: "anthropic" });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.preferred_vendor).toBe("anthropic");
+      expect(result.data.preferred_model_family).toBe("anthropic");
     }
   });
 
   it("parses 'openai' correctly", () => {
-    const result = FlywheelConfigSchema.safeParse({ preferred_vendor: "openai" });
+    const result = FlywheelConfigSchema.safeParse({ preferred_model_family: "openai" });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.preferred_vendor).toBe("openai");
+      expect(result.data.preferred_model_family).toBe("openai");
     }
   });
 
@@ -238,20 +239,28 @@ describe("preferred_vendor config field", () => {
     const result = FlywheelConfigSchema.safeParse({});
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.preferred_vendor).toBe("anthropic");
+      expect(result.data.preferred_model_family).toBe("anthropic");
     }
   });
 
-  it("rejects invalid vendor string", () => {
-    const result = FlywheelConfigSchema.safeParse({ preferred_vendor: "google" });
+  it("parses google correctly", () => {
+    const result = FlywheelConfigSchema.safeParse({ preferred_model_family: "google" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.preferred_model_family).toBe("google");
+    }
+  });
+
+  it("rejects invalid family string", () => {
+    const result = FlywheelConfigSchema.safeParse({ preferred_model_family: "copilot" });
     expect(result.success).toBe(false);
   });
 
-  it("FLYWHEEL_PREFERRED_VENDOR env var overrides config value", () => {
+  it("FLYWHEEL_PREFERRED_MODEL_FAMILY env var overrides config value", () => {
     const { config } = loadConfig(undefined, {
-      FLYWHEEL_PREFERRED_VENDOR: "openai",
+      FLYWHEEL_PREFERRED_MODEL_FAMILY: "openai",
     });
-    expect(config.preferred_vendor).toBe("openai");
+    expect(config.preferred_model_family).toBe("openai");
   });
 });
 
@@ -453,14 +462,14 @@ describe("resolveTierConfigs with sprint mode", () => {
 });
 
 // ---------------------------------------------------------------------------
-// resolveTierConfigs with model tier names + preferred_vendor
+// resolveTierConfigs with model tier names + preferred_model_family
 // ---------------------------------------------------------------------------
 
 describe("resolveTierConfigs with model tier names", () => {
   it("'powerful' + anthropic resolves to opus", () => {
     const config = FlywheelConfigSchema.parse({
       model: "powerful",
-      preferred_vendor: "anthropic",
+      preferred_model_family: "anthropic",
     });
     const tiers = resolveTierConfigs(config);
     expect(tiers.worker.model).toBe(A.powerful);
@@ -472,7 +481,7 @@ describe("resolveTierConfigs with model tier names", () => {
     const config = FlywheelConfigSchema.parse({
       engine: "harness",
       model: "powerful",
-      preferred_vendor: "openai",
+      preferred_model_family: "openai",
     });
     const tiers = resolveTierConfigs(config);
     expect(tiers.worker.model).toBe(O.powerful);
@@ -510,11 +519,11 @@ describe("resolveTierConfigs with model tier names", () => {
     expect(tiers.worker.effort).toBe("max");
   });
 
-  it("resolveMaxEffort returns 'high' when preferred_vendor is openai (non-claude engine)", () => {
+  it("resolveMaxEffort returns 'high' when preferred_model_family is openai (non-claude engine)", () => {
     const config = FlywheelConfigSchema.parse({
       engine: "harness",
       model: "powerful",
-      preferred_vendor: "openai",
+      preferred_model_family: "openai",
     });
     const tiers = resolveTierConfigs(config, "sprint");
     // "powerful" + openai resolves to a non-opus model -> high
@@ -539,10 +548,10 @@ describe("resolveTierConfigs with model tier names", () => {
     expect(tiers.dispatcher.model).toBe(A.powerful);
   });
 
-  it("claude engine forces anthropic vendor regardless of preferred_vendor", () => {
+  it("claude engine forces anthropic family regardless of preferred_model_family", () => {
     const config = FlywheelConfigSchema.parse({
       engine: "claude",
-      preferred_vendor: "openai",
+      preferred_model_family: "openai",
       model: "powerful",
     });
     const tiers = resolveTierConfigs(config);
@@ -550,14 +559,25 @@ describe("resolveTierConfigs with model tier names", () => {
     expect(tiers.worker.model).toBe(A.powerful);
   });
 
-  it("non-claude engine uses preferred_vendor", () => {
+  it("non-claude engine uses preferred_model_family", () => {
     const config = FlywheelConfigSchema.parse({
       engine: "harness",
-      preferred_vendor: "openai",
+      preferred_model_family: "openai",
       model: "powerful",
     });
     const tiers = resolveTierConfigs(config);
     expect(tiers.worker.model).toBe(O.powerful);
+  });
+
+  it("google family defaults resolve through the google tier table", () => {
+    const config = FlywheelConfigSchema.parse({
+      engine: "harness",
+      preferred_model_family: "google",
+    });
+    const tiers = resolveTierConfigs(config);
+    expect(tiers.worker.model).toBe(G.powerful);
+    expect(tiers.dispatcher.model).toBe(G.mid);
+    expect(tiers.evaluator.model).toBe(G.mid);
   });
 
   it("concrete model strings pass through unchanged", () => {

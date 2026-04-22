@@ -34,7 +34,7 @@ interface ToolEntryProps {
 
 export function ToolEntry(props: ToolEntryProps) {
   const { theme, syntax } = useTheme()
-  const name = () => getToolDisplayName(props.block.name)
+  const name = () => getToolDisplayName(props.block.name, props.block)
 
   const isCompleted = () => props.block.completed === true
   const hasError = () => !!props.block.errorMessage

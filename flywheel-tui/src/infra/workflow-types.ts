@@ -27,7 +27,40 @@ export const ToolScopingSchema = z.object({
   task: z.boolean().default(false),
 }).strip()
 
-type ToolScoping = z.infer<typeof ToolScopingSchema>
+export type ToolScoping = z.infer<typeof ToolScopingSchema>
+
+export type ToolAction =
+  | "handoff_write"
+  | "file_read"
+  | "file_search"
+  | "shell_exec"
+  | "file_write"
+  | "file_edit"
+  | "task_or_progress"
+  | "ask_user"
+
+const TOOL_SCOPING_TO_ACTIONS: Record<keyof ToolScoping, readonly ToolAction[]> = {
+  read: ["file_read"],
+  bash: ["shell_exec"],
+  write: ["file_write"],
+  edit: ["file_edit"],
+  task: ["task_or_progress"],
+}
+
+export function toolScopingToActions(scoping: ToolScoping): ToolAction[] {
+  const allowed: ToolAction[] = []
+  for (const [key, actions] of Object.entries(TOOL_SCOPING_TO_ACTIONS)) {
+    if (scoping[key as keyof ToolScoping]) {
+      for (const action of actions) {
+        if (!allowed.includes(action)) allowed.push(action)
+      }
+    }
+  }
+  if (!allowed.includes("handoff_write")) {
+    allowed.push("handoff_write")
+  }
+  return allowed
+}
 
 const TOOL_SCOPING_TO_NAME: Record<string, string> = {
   read: "Read",
@@ -37,7 +70,11 @@ const TOOL_SCOPING_TO_NAME: Record<string, string> = {
   task: "Task",
 }
 
-/** Convert ToolScoping flags to an explicit tool name list. Write is always included (handoff). */
+/**
+ * Legacy provider-shaped tool list for Claude-compatible callers.
+ * Prefer toolScopingToActions() plus engine-side resolution in new code.
+ * Write is always included (handoff).
+ */
 export function toolScopingToToolNames(scoping: ToolScoping): string[] {
   const allowed: string[] = []
   for (const [key, cliName] of Object.entries(TOOL_SCOPING_TO_NAME)) {

@@ -1,10 +1,10 @@
 import type { Engine } from "./engines/core/types.js"
+import { detectModelFamily } from "./engines/providers/harness/llm/model-family.js"
 import { resolveModelTier } from "./config/model-tiers.js"
 import { Log } from "../infra/log.js"
 import { errorMessage } from "../infra/error-message.js"
 
 const log = Log.create({ service: "session-title" })
-const OPENAI_MODEL_RE = /^(gpt-|o\d|codex-|chatgpt-)/i
 
 const TITLE_PROMPT = `Generate a title of 5 words or fewer that summarizes what this message is about. Output ONLY the title, nothing else. No quotes, no punctuation at the end, no explanation.
 
@@ -18,18 +18,10 @@ interface TitleGeneratorDeps {
   model?: string
 }
 
-function detectVendor(model: string | undefined): "anthropic" | "openai" | null {
-  const lowered = model?.toLowerCase()
-  if (!lowered) return null
-  if (lowered.startsWith("claude-")) return "anthropic"
-  if (OPENAI_MODEL_RE.test(lowered)) return "openai"
-  return null
-}
-
 function resolveTitleModel(deps: TitleGeneratorDeps): string {
   if (deps.engine.metadata.id === "claude") return "haiku"
-  const vendor = detectVendor(deps.model) ?? "anthropic"
-  return resolveModelTier("cheap", "worker", vendor)
+  const family = deps.model ? detectModelFamily(deps.model) : null
+  return resolveModelTier("cheap", "worker", family ?? "anthropic")
 }
 
 function resolveTitleModels(deps: TitleGeneratorDeps): string[] {

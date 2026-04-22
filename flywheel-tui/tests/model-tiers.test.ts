@@ -3,6 +3,7 @@ import { resolveModelTier, validateResolvedModels, TIER_TABLE } from "../src/orc
 
 const A = TIER_TABLE.anthropic;
 const O = TIER_TABLE.openai;
+const G = TIER_TABLE.google;
 
 // ---------------------------------------------------------------------------
 // Tier resolution: named tiers → concrete models
@@ -84,6 +85,11 @@ describe("resolveModelTier: explicit models pass through", () => {
       resolveModelTier("my-custom-model-v2", "worker", "anthropic"),
     ).toBe("my-custom-model-v2");
   });
+
+  test("google aliases resolve through google family tiers", () => {
+    expect(resolveModelTier("pro", "worker", "google")).toBe(G.powerful);
+    expect(resolveModelTier("flash", "worker", "google")).toBe(G.mid);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -163,7 +169,7 @@ describe("validateResolvedModels", () => {
     expect(errors).toHaveLength(1);
     expect(errors[0]!.component).toBe("worker");
     expect(errors[0]!.model).toBe(A.mid);
-    expect(errors[0]!.issue).toBe("Missing ANTHROPIC_API_KEY");
+    expect(errors[0]!.issue).toContain("ANTHROPIC_API_KEY");
   });
 
   test("missing OPENAI_API_KEY for gpt model", () => {
@@ -174,7 +180,7 @@ describe("validateResolvedModels", () => {
     expect(errors).toHaveLength(1);
     expect(errors[0]!.component).toBe("worker");
     expect(errors[0]!.model).toBe(O.powerful);
-    expect(errors[0]!.issue).toBe("Missing OPENAI_API_KEY");
+    expect(errors[0]!.issue).toContain("OPENAI_API_KEY");
   });
 
   test("missing OPENAI_API_KEY for o-series model (o3)", () => {
@@ -185,7 +191,16 @@ describe("validateResolvedModels", () => {
     expect(errors).toHaveLength(1);
     expect(errors[0]!.component).toBe("evaluator");
     expect(errors[0]!.model).toBe("o3");
-    expect(errors[0]!.issue).toBe("Missing OPENAI_API_KEY");
+    expect(errors[0]!.issue).toContain("OPENAI_API_KEY");
+  });
+
+  test("reports missing google-family access provider", () => {
+    const errors = validateResolvedModels(
+      [{ component: "worker", model: "gemini-2.5-pro", engineId: "harness" }],
+      {},
+    );
+    expect(errors).toHaveLength(1);
+    expect(errors[0]!.issue).toContain("google models");
   });
 
   test("mixed vendors validates both keys, returns errors for each", () => {
@@ -197,8 +212,8 @@ describe("validateResolvedModels", () => {
       {},
     );
     expect(errors).toHaveLength(2);
-    expect(errors[0]!.issue).toBe("Missing ANTHROPIC_API_KEY");
-    expect(errors[1]!.issue).toBe("Missing OPENAI_API_KEY");
+    expect(errors[0]!.issue).toContain("ANTHROPIC_API_KEY");
+    expect(errors[1]!.issue).toContain("OPENAI_API_KEY");
   });
 
   test("claude engine with non-claude model reports mismatch", () => {

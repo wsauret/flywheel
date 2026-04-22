@@ -37,7 +37,7 @@ export function ToolRow(props: ToolRowProps) {
     const chunks: TextChunk[] = [
       stFg(icon().color)(icon().text),
       stFg(theme.text)(" "),
-      stFg(theme.text)(getToolDisplayName(props.tool.name)),
+      stFg(theme.text)(getToolDisplayName(props.tool.name, props.tool)),
     ]
     if (props.tool.detail) {
       chunks.push(stFg(theme.text)(" "))

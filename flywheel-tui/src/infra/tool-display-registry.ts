@@ -39,6 +39,20 @@ export function singleLine(s: string | undefined | null): string | null {
   return s.replace(/\n/g, " ").trim();
 }
 
+function extractToolPath(input: unknown): string | undefined {
+  if (input == null || typeof input !== "object") return undefined;
+  const record = input as Record<string, unknown>;
+  const raw = (record.filePath as string | undefined)
+    ?? (record.file_path as string | undefined)
+    ?? (record.notebook_path as string | undefined);
+  return typeof raw === "string" ? raw : undefined;
+}
+
+function isSessionHandoffPath(filePath: string): boolean {
+  const normalized = filePath.replaceAll("\\", "/");
+  return /(^|\/)\.flywheel\/sessions\/[^/]+\/handoffs\/.+$/.test(normalized);
+}
+
 function shellDetail(input: Record<string, unknown>, cwd: string): string | null {
   const cmd = input.command as string | undefined;
   if (!cmd) return null;
@@ -220,7 +234,7 @@ const entries: Array<[string, ToolDisplayMeta]> = [
       return query ? singleLine(query) : null;
     }),
   }],
-  ["todowrite", { displayName: "Task Update", category: "standalone" }],
+  ["todowrite", { displayName: "Todo List", category: "standalone" }],
   ["skill", {
     displayName: "Skill",
     category: "standalone",
@@ -268,8 +282,12 @@ export function getToolDisplay(name: string): ToolDisplayMeta | undefined {
   return toolDisplayRegistry.get(name.toLowerCase());
 }
 
-export function getToolDisplayName(name: string): string {
+export function getToolDisplayName(name: string, input?: unknown): string {
   const lower = name.toLowerCase();
+  const filePath = extractToolPath(input);
+  if ((lower === "write" || lower === "edit") && filePath && isSessionHandoffPath(filePath)) {
+    return "Write Handoff";
+  }
   const meta = toolDisplayRegistry.get(lower);
   if (meta) return meta.displayName;
   if (lower.startsWith("schedulecron") || lower.startsWith("cron")) return "Cron";

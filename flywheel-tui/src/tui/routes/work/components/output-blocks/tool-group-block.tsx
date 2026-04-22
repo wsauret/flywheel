@@ -40,7 +40,7 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
   const [showAll, setShowAll] = createSignal(false)
   const activeElapsed = useElapsed(() => props.block.status === "active" ? props.block.timestamp : undefined)
 
-  const toolCount = () => props.block.children.length
+  const toolCount = () => props.block.children.filter(c => c.name !== "Thinking").length
   const canToggle = () => props.block.status === "completed" || props.block.status === "paused"
   const isToolsGroup = () => props.block.groupKind === "tools"
   const isBareSingleTool = () => isToolsGroup() && toolCount() === 1

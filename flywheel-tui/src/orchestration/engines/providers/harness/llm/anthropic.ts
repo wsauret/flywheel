@@ -189,7 +189,8 @@ export function createAnthropicAdapter(
   }
 
   const adapter: LLMClient = {
-    provider: "anthropic",
+    accessProvider: "anthropic_api",
+    modelFamily: "anthropic",
     model: defaultModel,
     get contextLimit() {
       return contextLimit(cache?.info ?? null);

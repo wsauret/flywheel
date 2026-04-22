@@ -1,9 +1,9 @@
 /**
  * LLM client factory.
  *
- * Routes to the correct provider adapter based on model prefix heuristics
- * and models.dev metadata. Callers get an LLMClient without knowing whether
- * the model is Anthropic or OpenAI.
+ * Routes to the correct access-provider adapter based on model-family heuristics.
+ * Callers get an LLMClient without knowing whether the model is Anthropic,
+ * OpenAI, or another supported family.
  */
 
 import { createAnthropicAdapter } from "./anthropic.js";
@@ -11,6 +11,12 @@ import { createOpenAIAdapter } from "./openai.js";
 import { loadStoredTokens } from "../../../../../infra/auth/openai-token-store.js";
 import { loadCachedModels } from "../../../../../infra/auth/openai-model-cache.js";
 import { Log } from "../../../../../infra/log.js";
+import {
+  buildMissingAccessProviderMessage,
+  getConfiguredAccessProvidersForFamily,
+  type AccessProviderId,
+} from "./access-provider.js";
+import { buildUnknownModelFamilyMessage, detectModelFamily } from "./model-family.js";
 import type { ModelsClient } from "./models.js";
 import type { LLMClient } from "./types.js";
 
@@ -26,44 +32,51 @@ function normalizeModel(model: string): string {
   return model.replace(CONTEXT_SUFFIX_RE, "");
 }
 
+function createAnthropicApiClient(model: string, modelsClient: ModelsClient): LLMClient {
+  const apiKey = process.env["ANTHROPIC_API_KEY"];
+  if (!apiKey) {
+    throw new Error(
+      "ANTHROPIC_API_KEY environment variable is required for Anthropic models",
+    );
+  }
+  return createAnthropicAdapter(apiKey, model, modelsClient);
+}
+
+function createChatGPTAccessClient(model: string, modelsClient: ModelsClient): LLMClient {
+  const tokens = loadStoredTokens();
+  if (!tokens) {
+    throw new Error("No ChatGPT tokens found. Run: flywheel auth login");
+  }
+  const allowedModels = loadCachedModels() ?? CHATGPT_FALLBACK_MODELS;
+  if (!allowedModels.has(model)) {
+    log.warn(`Model "${model}" not in ChatGPT model list — may not be available`);
+  }
+  return createOpenAIAdapter({ kind: "chatgpt", ...tokens }, model, modelsClient);
+}
+
+function createOpenAIApiClient(model: string, modelsClient: ModelsClient): LLMClient {
+  const apiKey = process.env["OPENAI_API_KEY"];
+  if (!apiKey) {
+    throw new Error(
+      "OPENAI_API_KEY environment variable is required for OpenAI models",
+    );
+  }
+  return createOpenAIAdapter({ kind: "apiKey", apiKey }, model, modelsClient);
+}
+
+const ACCESS_PROVIDER_FACTORIES: Record<AccessProviderId, (model: string, modelsClient: ModelsClient) => LLMClient> = {
+  anthropic_api: createAnthropicApiClient,
+  chatgpt: createChatGPTAccessClient,
+  openai_api: createOpenAIApiClient,
+};
+
 export function createClient(model: string, modelsClient: ModelsClient): LLMClient {
   const normalized = normalizeModel(model);
-  const provider = modelsClient.detectProvider(normalized);
+  const family = detectModelFamily(normalized);
+  if (!family) throw new Error(buildUnknownModelFamilyMessage(model));
 
-  if (provider === "anthropic") {
-    const apiKey = process.env["ANTHROPIC_API_KEY"];
-    if (!apiKey) {
-      throw new Error(
-        "ANTHROPIC_API_KEY environment variable is required for Anthropic models",
-      );
-    }
-    return createAnthropicAdapter(apiKey, normalized, modelsClient);
-  }
+  const accessProvider = getConfiguredAccessProvidersForFamily(family)[0];
+  if (!accessProvider) throw new Error(buildMissingAccessProviderMessage(family));
 
-  if (provider === "openai") {
-    const authMode = process.env["FLYWHEEL_OPENAI_AUTH"];
-    if (authMode === "chatgpt") {
-      const tokens = loadStoredTokens();
-      if (!tokens) {
-        throw new Error("No ChatGPT tokens found. Run: flywheel auth login");
-      }
-      const allowedModels = loadCachedModels() ?? CHATGPT_FALLBACK_MODELS;
-      if (!allowedModels.has(normalized)) {
-        log.warn(`Model "${normalized}" not in ChatGPT model list — may not be available`);
-      }
-      return createOpenAIAdapter({ kind: "chatgpt", ...tokens }, normalized, modelsClient);
-    }
-    const apiKey = process.env["OPENAI_API_KEY"];
-    if (!apiKey) {
-      throw new Error(
-        "OPENAI_API_KEY environment variable is required for OpenAI models",
-      );
-    }
-    return createOpenAIAdapter({ kind: "apiKey", apiKey }, normalized, modelsClient);
-  }
-
-  throw new Error(
-    `Cannot determine provider for model '${model}'. ` +
-      `Model name must start with 'claude-' (Anthropic) or 'gpt-'/'o' (OpenAI).`,
-  );
+  return ACCESS_PROVIDER_FACTORIES[accessProvider](normalized, modelsClient);
 }

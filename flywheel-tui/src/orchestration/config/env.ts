@@ -15,7 +15,7 @@ function ensure<K extends keyof ConfigOverrides>(config: ConfigOverrides, key: K
 
 const ENV_MAP: Record<string, EnvSetter> = {
   FLYWHEEL_ENGINE: (val, c) => { c.engine = val },
-  FLYWHEEL_PREFERRED_VENDOR: (val, c) => { c.preferred_vendor = val as "anthropic" | "openai" },
+  FLYWHEEL_PREFERRED_MODEL_FAMILY: (val, c) => { c.preferred_model_family = val as "anthropic" | "openai" | "google" },
   FLYWHEEL_OPENAI_AUTH: (val, c) => { c.openai_auth = val as "api_key" | "chatgpt" },
   FLYWHEEL_OPENAI_EMAIL: (val, c) => { c.openai_email = val },
   FLYWHEEL_MODEL: (val, c) => { c.model = val },
@@ -24,10 +24,10 @@ const ENV_MAP: Record<string, EnvSetter> = {
   FLYWHEEL_DISPATCHER_MODEL: (val, c) => { ensure(c, "dispatcher").model = val },
   FLYWHEEL_PROJECT_CWD: (val, c) => { c.project_cwd = val },
   FLYWHEEL_SKIP_EVALUATION: (val, c) => { c.skip_evaluation = parseBool(val) },
-  FLYWHEEL_MAX_EVAL_CYCLES: (val, c) => { const n = parseIntSafe(val); if (n !== undefined) c.max_eval_cycles = n },
-  FLYWHEEL_MAX_REVISIONS: (val, c) => { const n = parseIntSafe(val); if (n !== undefined) c.max_revisions = n },
-  FLYWHEEL_QUEUE_MAX_STEPS: (val, c) => { const n = parseIntSafe(val); if (n !== undefined) ensure(c, "queue").max_steps = n },
-  FLYWHEEL_SPRINT_MAX_ITERATIONS: (val, c) => { const n = parseIntSafe(val); if (n !== undefined) ensure(c, "sprint").max_iterations = n },
+  FLYWHEEL_MAX_EVAL_CYCLES: (val, c) => { const n = parseIntSafe(val); if (n != undefined) c.max_eval_cycles = n },
+  FLYWHEEL_MAX_REVISIONS: (val, c) => { const n = parseIntSafe(val); if (n != undefined) c.max_revisions = n },
+  FLYWHEEL_QUEUE_MAX_STEPS: (val, c) => { const n = parseIntSafe(val); if (n != undefined) ensure(c, "queue").max_steps = n },
+  FLYWHEEL_SPRINT_MAX_ITERATIONS: (val, c) => { const n = parseIntSafe(val); if (n != undefined) ensure(c, "sprint").max_iterations = n },
   FLYWHEEL_SPRINT_DETECT_STUCK: (val, c) => { ensure(c, "sprint").detect_stuck = parseBool(val) },
 };
 

@@ -19,7 +19,7 @@ Write a JSON file to:
 }
 
 const JSON_VALIDITY_RULE = "Write valid JSON — no trailing commas, no comments, no markdown wrapping.";
-const JSON_WRITE_TOOL_RULE = "Write the file using your file-writing tool, not stdout.";
+const JSON_WRITE_TOOL_RULE = "Write the file using the handoff-writing mechanism for this engine (for example a dedicated handoff tool or a file-writing tool), not stdout.";
 
 function renderHandoffInstruction(
   fields: HandoffFieldSpec[],
@@ -71,7 +71,7 @@ ${fieldLines.join("\n\n")}
 4. If this step also requires writing other artifacts (for example \`context.md\`, \`plan.json\`, or edits to \`plan.json\`), complete those artifact writes first and write the handoff file last.
 5. If you want to present the user with a summary or final message, print it BEFORE writing the handoff file. Any output after the handoff write may not be seen.
 6. Treat the handoff file as your final completion signal: once the handoff is written, the queue may auto-complete the step immediately.
-7. Write the file using your file-writing tool (e.g., \`write_file\`, \`create\`, or equivalent). Do NOT just print the JSON to stdout.
+7. Write the file using the handoff-writing mechanism for this engine (e.g., \`write_file\`, \`create\`, or equivalent). Do NOT just print the JSON to stdout.
 8. The file must be valid JSON — no trailing commas, no comments, no markdown wrapping.
 9. **Accuracy is critical.** A verification agent will re-execute commands from \`artifacts.commands_run\` and check that files in \`artifacts.files_created\`/\`files_modified\` exist on disk. If any reported command returns a different exit code than you claimed, or a reported file does not exist, the step fails verification and you will be asked to retry. Only report commands you actually ran and files that actually exist.`;
 }

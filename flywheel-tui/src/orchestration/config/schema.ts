@@ -2,7 +2,8 @@ import { z } from "zod";
 import { EffortSchema, TierConfigSchema } from "../../infra/workflow-types.js";
 import { SprintConfigSchema } from "../../workflows/queue/steps/sprint/config-schema.js";
 import { resolveModelTier } from "./model-tiers.js";
-import type { ComponentRole, Vendor } from "./model-tiers.js";
+import type { ModelFamily } from "../engines/providers/harness/llm/model-family.js";
+import type { ComponentRole } from "./model-tiers.js";
 
 const SHELL_METACHAR_RE = /[;|&`$(){}<>]/;
 
@@ -14,49 +15,28 @@ function noShellMetachars(fieldName: string) {
 }
 
 export const FlywheelConfigSchema = z.object({
-  /** Engine ID: "claude", "opencode", etc. */
   engine: z.string().default("claude"),
-  preferred_vendor: z.enum(["anthropic", "openai"]).default("anthropic"),
+  preferred_model_family: z.enum(["anthropic", "openai", "google"]).default("anthropic"),
   openai_auth: z.enum(["api_key", "chatgpt"]).default("api_key"),
   openai_email: z.string().email().optional(),
-  /** TUI theme name: "opencode", "tokyonight", "dracula", "catppuccin", "nord", "gruvbox". */
   theme: z.string().optional(),
-  /** Show thinking/reasoning blocks in the output window. Default: true. */
   show_thinking: z.boolean().default(true),
-  /** Per-tier config for the dispatcher */
   dispatcher: TierConfigSchema,
-  /** Per-tier config for the worker */
   worker: TierConfigSchema,
-  /** Per-tier config for the evaluator */
   evaluator: TierConfigSchema,
-  /** Convenience: sets dispatcher.model, worker.model, and evaluator.model if not individually overridden */
   model: z.string().optional(),
-  /** Convenience: sets dispatcher.effort, worker.effort, and evaluator.effort if not individually overridden */
   effort: EffortSchema.optional(),
   project_cwd: noShellMetachars("project_cwd").optional(),
   skip_evaluation: z.boolean().default(false),
-
-  /** Max evaluator retry cycles per step. 1 = single attempt (no retries). Default: 3. */
   max_eval_cycles: z.number().int().min(1).max(10).default(3),
-
-  /** Max revision attempts after evaluator failure. 0 = no revisions. Default: 1. */
   max_revisions: z.number().int().min(0).max(5).default(1),
-
-  /** Queue execution engine configuration. */
   queue: z.object({
-    /** Maximum number of steps allowed in a single queue. Default: 50. */
     max_steps: z.number().int().min(1).max(1000).default(50),
   }).default({}),
-
-  /** Tracing configuration. */
   tracing: z.object({
-    /** Enable trace collection. Default: true. */
     enabled: z.boolean().default(true),
-    /** Maximum number of traces to keep in the index. Default: 100. */
     max_traces: z.number().int().min(1).default(100),
   }).default({}),
-
-  /** Sprint mode configuration. */
   sprint: SprintConfigSchema,
 });
 
@@ -70,21 +50,17 @@ function resolveMaxEffort(model: string | undefined): "max" | "high" {
 }
 
 export interface ResolvedTierConfig {
-  /** Engine ID for this tier. Always populated (tier override > top-level default). */
   engine: string;
-  /** Concrete model ID. Always populated (tier name resolution + component defaults). */
   model: string;
   effort?: string;
 }
 
 const DEFAULT_EFFORTS = {
   dispatcher: "low",
-  worker: undefined,  // workers inherit engine default — no effort flag unless set
+  worker: undefined,
   evaluator: "low",
 } as const;
 
-// Precedence: sprint.tier > tier-specific > per-tier default (or sprint model-aware max).
-// Engine precedence: tier.engine > config.engine (step-level overrides happen downstream).
 export function resolveTierConfigs(config: FlywheelConfig, mode?: "sprint"): {
   dispatcher: ResolvedTierConfig;
   worker: ResolvedTierConfig;
@@ -92,7 +68,7 @@ export function resolveTierConfigs(config: FlywheelConfig, mode?: "sprint"): {
 } {
   const sprint = mode === "sprint" ? config.sprint : undefined;
   const defaultEngine = config.engine;
-  const vendor: Vendor = config.preferred_vendor as Vendor;
+  const family: ModelFamily = config.preferred_model_family;
 
   function resolve(
     tier: { engine?: string; model?: string; effort?: string },
@@ -101,14 +77,13 @@ export function resolveTierConfigs(config: FlywheelConfig, mode?: "sprint"): {
     role: ComponentRole,
   ): ResolvedTierConfig {
     const engine = tier.engine ?? defaultEngine;
-    const effectiveVendor: Vendor = engine === "claude" ? "anthropic" : vendor;
+    const effectiveFamily: ModelFamily = engine === "claude" ? "anthropic" : family;
     const rawModel = sprintTier?.model ?? tier.model ?? config.model;
-    const model = resolveModelTier(rawModel, role, effectiveVendor);
+    const model = resolveModelTier(rawModel, role, effectiveFamily);
     const raw = sprintTier?.effort
       ?? tier.effort
       ?? config.effort
       ?? (sprint ? resolveMaxEffort(model) : tierDefault);
-    // Clamp: "max" is only valid for opus. Downgrade to "high" for other models.
     const effort = raw === "max" && !model.toLowerCase().includes("opus") ? "high" : raw;
     return { engine, model, effort };
   }

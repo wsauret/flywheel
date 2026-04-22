@@ -12,6 +12,7 @@ import { join } from "node:path";
 import { mkdirSync } from "node:fs";
 import { Log } from "../../../../../infra/log.js";
 import { MODELS_CACHE_DIR } from "../../../../../infra/paths.js";
+import { detectModelFamily, inferModelFamilyFromProvider } from "./model-family.js";
 
 const log = Log.create({ service: "llm-models" });
 
@@ -21,6 +22,7 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1_000;
 
 export interface ModelInfo {
   provider: string;
+  family: ReturnType<typeof inferModelFamilyFromProvider>;
   id: string;
   name: string;
   reasoning: boolean;
@@ -55,15 +57,6 @@ type RawApi = Record<string, RawProvider>;
 
 export interface ModelsClient {
   getModelInfo(modelId: string, providerHint?: string): Promise<ModelInfo | null>;
-  detectProvider(modelId: string): "anthropic" | "openai" | null;
-}
-
-const OPENAI_MODEL_RE = /^(gpt-|o\d|codex-|chatgpt-)/;
-
-function detectProvider(modelId: string): "anthropic" | "openai" | null {
-  if (modelId.startsWith("claude-")) return "anthropic";
-  if (OPENAI_MODEL_RE.test(modelId)) return "openai";
-  return null;
 }
 
 export function createModelsClient(): ModelsClient {
@@ -133,6 +126,7 @@ export function createModelsClient(): ModelsClient {
   function normalize(provider: string, raw: RawModel): ModelInfo {
     return {
       provider,
+      family: inferModelFamilyFromProvider(provider),
       id: raw.id,
       name: raw.name ?? raw.id,
       reasoning: raw.reasoning ?? false,
@@ -155,16 +149,14 @@ export function createModelsClient(): ModelsClient {
   }
 
   return {
-    detectProvider,
-
     async getModelInfo(modelId: string, providerHint?: string): Promise<ModelInfo | null> {
       const api = await loadApi();
       if (!api) return null;
 
       const candidates: string[] = [];
       if (providerHint) candidates.push(providerHint);
-      const canonical = detectProvider(modelId);
-      if (canonical && !candidates.includes(canonical)) candidates.push(canonical);
+      const family = detectModelFamily(modelId);
+      if (family && !candidates.includes(family)) candidates.push(family);
 
       for (const providerId of candidates) {
         const p = api[providerId];

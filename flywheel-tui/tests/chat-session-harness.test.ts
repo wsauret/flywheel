@@ -52,7 +52,8 @@ describe("chat session with harness engine", () => {
     })
 
     const createClient = (): LLMClient => ({
-      provider: "anthropic",
+      accessProvider: "anthropic_api",
+      modelFamily: "anthropic",
       model: "test",
       contextLimit: 100_000,
       outputLimit: 8_000,

@@ -250,6 +250,9 @@ function applyAddNotes(input: Record<string, unknown>, context: ToolContext): To
   return { content: formatList(context.todoList), isError: false };
 }
 
+const MUTATION_REINFORCEMENT =
+  "Todos updated. Continue using todo_list to track progress — mark each task complete as you finish it.";
+
 export function executeTodoList(
   input: Record<string, unknown>,
   context: ToolContext,
@@ -262,18 +265,32 @@ export function executeTodoList(
     case "read":
       return { content: formatList(context.todoList), isError: false };
     case "write":
-      return applyWrite(input, context);
     case "complete":
-      return applyComplete(input, context);
     case "start":
-      return applyStart(input, context);
     case "abandon":
-      return applyAbandon(input, context);
     case "add_tasks":
-      return applyAddTasks(input, context);
-    case "add_notes":
-      return applyAddNotes(input, context);
+    case "add_notes": {
+      const result = applyMutation(input.operation, input, context);
+      if (result.isError) return result;
+      return { content: `${MUTATION_REINFORCEMENT}\n\n${result.content}`, isError: false };
+    }
     default:
       return { content: `Unknown operation '${input.operation}'. Use read, write, complete, start, abandon, add_tasks, or add_notes.`, isError: true };
+  }
+}
+
+function applyMutation(
+  op: string,
+  input: Record<string, unknown>,
+  context: ToolContext,
+): ToolResult {
+  switch (op) {
+    case "write": return applyWrite(input, context);
+    case "complete": return applyComplete(input, context);
+    case "start": return applyStart(input, context);
+    case "abandon": return applyAbandon(input, context);
+    case "add_tasks": return applyAddTasks(input, context);
+    case "add_notes": return applyAddNotes(input, context);
+    default: return { content: "Unknown mutation", isError: true };
   }
 }

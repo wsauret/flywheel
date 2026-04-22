@@ -27,7 +27,7 @@ describe("Agent loop with Anthropic (real API)", () => {
     const result = await runAgentLoop({
       client,
       tools: toolDefs,
-      systemPrompt: buildHarnessSystemPrompt("You are a helpful assistant.", "anthropic"),
+      systemPrompt: buildHarnessSystemPrompt({ orchestrationSystemPrompt: "You are a helpful assistant.", model: "claude-sonnet-4-5", availableTools: new Set(["bash", "read"]) }),
       instruction: "Create a file called test.txt containing 'hello from anthropic'. Use the bash tool. Do NOT call write_handoff.",
       cwd: tmpDir,
       signal: AbortSignal.timeout(60_000),
@@ -57,7 +57,7 @@ describe("Agent loop with OpenAI (real API)", () => {
     const result = await runAgentLoop({
       client,
       tools: toolDefs,
-      systemPrompt: buildHarnessSystemPrompt("You are a helpful assistant.", "openai"),
+      systemPrompt: buildHarnessSystemPrompt({ orchestrationSystemPrompt: "You are a helpful assistant.", model: "gpt-4o-mini", availableTools: new Set(["bash", "read"]) }),
       instruction: "Create a file called test.txt containing 'hello from openai'. Use the bash tool. Do NOT call write_handoff.",
       cwd: tmpDir,
       signal: AbortSignal.timeout(60_000),

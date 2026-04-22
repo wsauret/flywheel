@@ -16,7 +16,7 @@ describe("harness engine registration", () => {
     expect(engine.metadata.id).toBe("harness");
     expect(engine.metadata.name).toBe("Flywheel Harness");
     expect(engine.metadata.defaultModel).toBe("claude-opus-4-7");
-    expect(engine.metadata.description).toBe("Direct LLM API engine (Anthropic + OpenAI)");
+    expect(engine.metadata.description).toBe("Direct LLM API engine with model-family-aware routing");
   });
 
   test("engine has createRunner method", () => {
@@ -61,7 +61,8 @@ describe("HarnessRunner", () => {
         onEvent: (e) => events.push(e),
       }),
       () => ({
-        provider: "anthropic" as const,
+        accessProvider: "anthropic_api" as const,
+        modelFamily: "anthropic" as const,
         model: "test",
         contextLimit: 100_000,
         outputLimit: 8_000,
@@ -101,7 +102,8 @@ describe("HarnessRunner", () => {
         onEvent: (e) => events.push(e),
       }),
       () => ({
-        provider: "anthropic" as const,
+        accessProvider: "anthropic_api" as const,
+        modelFamily: "anthropic" as const,
         model: "test",
         contextLimit: 100_000,
         outputLimit: 8_000,
@@ -144,7 +146,8 @@ describe("HarnessRunner", () => {
         onTurnComplete: () => { turnCompleteCalls += 1; },
       }),
       () => ({
-        provider: "anthropic" as const,
+        accessProvider: "anthropic_api" as const,
+        modelFamily: "anthropic" as const,
         model: "test",
         contextLimit: 100_000,
         outputLimit: 8_000,

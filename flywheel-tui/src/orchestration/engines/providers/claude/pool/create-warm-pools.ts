@@ -3,6 +3,7 @@ import { buildCommand } from "../engine.js";
 import { BunProcessSpawner } from "../subprocess/bun-spawner.js";
 import { createEnvFilter } from "../subprocess/env-filter.js";
 import { buildDispatcherSystemPrompt } from "../../../../../workflows/dispatcher/system-prompt.js";
+import { resolveToolProfile } from "../../../core/tool-resolution.js";
 import type { SpawnResult } from "../subprocess/spawner.js";
 import type { NDJSONEvent } from "../../../../../infra/ndjson-event-types.js";
 
@@ -34,7 +35,7 @@ export function createClaudeWarmPools(opts: CreateWarmPoolsOptions): ClaudeWarmP
   let dispatcher: WarmPool<SpawnResult> | null = null;
   if (opts.dispatcher) {
     const dCmd = buildCommand({
-      tools: ["Write"],
+      tools: resolveToolProfile("claude", "dispatcher_handoff"),
       model: opts.dispatcher.model ?? "sonnet",
       effort: opts.dispatcher.effort ?? "low",
       systemPrompt: buildDispatcherSystemPrompt(),
@@ -51,7 +52,7 @@ export function createClaudeWarmPools(opts: CreateWarmPoolsOptions): ClaudeWarmP
   let evaluator: WarmPool<SpawnResult> | null = null;
   if (opts.evaluator) {
     const eCmd = buildCommand({
-      tools: ["Read", "Bash", "Write", "Grep", "Glob"],
+      tools: resolveToolProfile("claude", "evaluator_verification"),
       model: opts.evaluator.model ?? "sonnet",
       effort: opts.evaluator.effort ?? "low",
     });

@@ -5,11 +5,6 @@ import type { LLMClient, StreamEvent } from "../src/orchestration/engines/provid
 
 function stubModelsClient(info: ModelInfo | null = null): ModelsClient {
   return {
-    detectProvider(modelId: string) {
-      if (modelId.startsWith("claude-")) return "anthropic";
-      if (/^(gpt-|o\d)/.test(modelId)) return "openai";
-      return null;
-    },
     async getModelInfo() {
       return info;
     },
@@ -18,6 +13,7 @@ function stubModelsClient(info: ModelInfo | null = null): ModelsClient {
 
 const COST_INFO: ModelInfo = {
   provider: "openai",
+  family: "openai",
   id: "gpt-5.4",
   name: "GPT 5.4",
   reasoning: false,
@@ -115,7 +111,8 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
       expiresAtMs: Date.now() + 3_600_000,
     };
     const client = createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient());
-    expect(client.provider).toBe("openai");
+    expect(client.accessProvider).toBe("chatgpt");
+    expect(client.modelFamily).toBe("openai");
     expect(client.model).toBe("gpt-5.4");
   });
 
@@ -203,7 +200,8 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
   it("produces a client with provider 'openai' in apiKey mode (regression)", () => {
     const auth: OpenAIAuth = { kind: "apiKey", apiKey: "sk-test" };
     const client = createOpenAIAdapter(auth, "gpt-5.4", stubModelsClient());
-    expect(client.provider).toBe("openai");
+    expect(client.accessProvider).toBe("openai_api");
+    expect(client.modelFamily).toBe("openai");
     expect(client.model).toBe("gpt-5.4");
   });
 });
@@ -240,7 +238,8 @@ describe("createClient — ChatGPT auth routing", () => {
     delete process.env["FLYWHEEL_OPENAI_AUTH"];
     process.env["OPENAI_API_KEY"] = "sk-test";
     const client = createClient("gpt-5.4", stubModelsClient());
-    expect(client.provider).toBe("openai");
+    expect(client.accessProvider).toBe("openai_api");
+    expect(client.modelFamily).toBe("openai");
   });
 });
 

@@ -25,6 +25,7 @@ import { renderEvaluatorHandoffInstruction } from "../workflows/queue/shared/han
 import { buildInvocationHandoffPath, ensureSessionDir } from "../infra/paths.js"
 import { readHandoff } from "../workflows/queue/shared/handoff-reader.js"
 import { Log } from "../infra/log.js"
+import { toolActionsForProfile } from "./engines/core/tool-resolution.js"
 
 const log = Log.create({ service: "engine-transports" })
 
@@ -60,7 +61,7 @@ export function createEngineDispatcherTransport(
         model,
         systemPrompt,
         effort,
-        tools: ["Write"],
+        toolActions: toolActionsForProfile("dispatcher_handoff"),
         cwd: projectCwd,
         handoffPath,
         onEvent: (event) => {
@@ -127,7 +128,7 @@ export function createEngineEvaluatorTransport(
         model,
         systemPrompt,
         effort,
-        tools: ["Read", "Bash", "Write", "Grep", "Glob"],
+        toolActions: toolActionsForProfile("evaluator_verification"),
         cwd: projectCwd,
         handoffPath,
         onEvent: (event) => {

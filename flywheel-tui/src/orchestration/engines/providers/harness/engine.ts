@@ -8,7 +8,15 @@ const metadata: EngineMetadata = {
   id: "harness",
   name: "Flywheel Harness",
   defaultModel: "claude-opus-4-7",
-  description: "Direct LLM API engine (Anthropic + OpenAI)",
+  description: "Direct LLM API engine with model-family-aware routing",
+  parity: {
+    resumeMode: "local_transcript",
+    handoffMode: "dedicated_handoff_tool",
+    progressMode: "stateful_progress_tool",
+    toolExecutionMode: "shell_emulated",
+    taskScopeMode: "progress_tool",
+    supportsExternalToolResults: false,
+  },
 };
 
 export function createHarnessEngine(deps?: {

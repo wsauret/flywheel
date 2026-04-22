@@ -26,20 +26,20 @@ function makeSuccessOps(): BashOperations {
 }
 
 describe("bash tool timeout clamp", () => {
-  test("clamps timeout above 300s without error", async () => {
+  test("clamps timeout above 3600s without error", async () => {
     const bash = createBashDefinition({ operations: makeSuccessOps() });
     const context: ToolContext = { cwd: "/tmp", todoList: [] };
 
-    const result = await bash.execute({ command: "echo hi", timeout: 600 }, context);
+    const result = await bash.execute({ command: "echo hi", timeout: 7200 }, context);
     expect(result.isError).toBe(false);
     expect(result.content).toContain("ok");
   });
 
-  test("allows timeout at or below 300s", async () => {
+  test("allows timeout at or below 3600s", async () => {
     const bash = createBashDefinition({ operations: makeSuccessOps() });
     const context: ToolContext = { cwd: "/tmp", todoList: [] };
 
-    const result = await bash.execute({ command: "echo hi", timeout: 300 }, context);
+    const result = await bash.execute({ command: "echo hi", timeout: 3600 }, context);
     expect(result.isError).toBe(false);
   });
 

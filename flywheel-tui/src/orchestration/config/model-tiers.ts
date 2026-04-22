@@ -1,5 +1,7 @@
+import { buildMissingAccessProviderMessage, getConfiguredAccessProvidersForFamily } from "../engines/providers/harness/llm/access-provider.js";
+import { buildUnknownModelFamilyMessage, detectModelFamily, type ModelFamily } from "../engines/providers/harness/llm/model-family.js";
+
 type ModelTier = "powerful" | "mid" | "cheap";
-type Vendor = "anthropic" | "openai";
 type ComponentRole = "worker" | "evaluator" | "dispatcher";
 
 export const TIER_TABLE = {
@@ -13,13 +15,21 @@ export const TIER_TABLE = {
     mid: "gpt-5.3-codex",
     cheap: "gpt-5.4-mini",
   },
-} satisfies Record<Vendor, Record<ModelTier, string>>;
+  google: {
+    powerful: "gemini-2.5-pro",
+    mid: "gemini-2.5-flash",
+    cheap: "gemini-2.5-flash-lite",
+  },
+} satisfies Record<ModelFamily, Record<ModelTier, string>>;
 
-// User-facing shorthands: Anthropic family names → abstract tier names.
-const MODEL_FAMILY_ALIASES: Record<string, ModelTier> = {
+// User-facing shorthands: family-specific model nicknames → abstract tier names.
+const MODEL_TIER_ALIASES: Record<string, ModelTier> = {
   opus: "powerful",
   sonnet: "mid",
   haiku: "cheap",
+  pro: "powerful",
+  flash: "mid",
+  "flash-lite": "cheap",
 };
 
 const COMPONENT_DEFAULT_TIERS: Record<ComponentRole, ModelTier> = {
@@ -31,33 +41,27 @@ const COMPONENT_DEFAULT_TIERS: Record<ComponentRole, ModelTier> = {
 export function resolveModelTier(
   raw: string | undefined,
   role: ComponentRole,
-  vendor: Vendor,
+  family: ModelFamily,
 ): string {
   if (raw === undefined) {
     const tier = COMPONENT_DEFAULT_TIERS[role];
-    return TIER_TABLE[vendor][tier];
+    return TIER_TABLE[family][tier];
   }
 
   const lowered = raw.toLowerCase();
 
-  const vendorTiers = TIER_TABLE[vendor];
-  if (lowered in vendorTiers) {
-    return vendorTiers[lowered as ModelTier];
+  const familyTiers = TIER_TABLE[family];
+  if (lowered in familyTiers) {
+    return familyTiers[lowered as ModelTier];
   }
 
-  if (lowered in MODEL_FAMILY_ALIASES) {
-    const tier = MODEL_FAMILY_ALIASES[lowered]!;
-    return vendorTiers[tier];
+  if (lowered in MODEL_TIER_ALIASES) {
+    const tier = MODEL_TIER_ALIASES[lowered]!;
+    return familyTiers[tier];
   }
 
   return raw;
 }
-
-// ---------------------------------------------------------------------------
-// API key validation
-// ---------------------------------------------------------------------------
-
-const OPENAI_MODEL_RE = /^(gpt-|o\d|codex-|chatgpt-)/;
 
 export interface ModelValidationError {
   component: string;
@@ -71,23 +75,23 @@ export function validateResolvedModels(
 ): ModelValidationError[] {
   const errors: ModelValidationError[] = [];
   for (const { component, model, engineId } of models) {
-    if (engineId === "claude" && !model.toLowerCase().startsWith("claude-")) {
+    const family = detectModelFamily(model);
+
+    if (engineId === "claude" && family !== "anthropic") {
       errors.push({ component, model, issue: `Claude engine requires Claude models, got "${model}"` });
       continue;
     }
 
-    const lower = model.toLowerCase();
-    if (lower.startsWith("claude-")) {
-      if (!env["ANTHROPIC_API_KEY"]) {
-        errors.push({ component, model, issue: "Missing ANTHROPIC_API_KEY" });
-      }
-    } else if (OPENAI_MODEL_RE.test(lower)) {
-      if (env["FLYWHEEL_OPENAI_AUTH"] !== "chatgpt" && !env["OPENAI_API_KEY"]) {
-        errors.push({ component, model, issue: "Missing OPENAI_API_KEY" });
-      }
+    if (!family) {
+      errors.push({ component, model, issue: buildUnknownModelFamilyMessage(model) });
+      continue;
+    }
+
+    if (getConfiguredAccessProvidersForFamily(family, env).length === 0) {
+      errors.push({ component, model, issue: buildMissingAccessProviderMessage(family) });
     }
   }
   return errors;
 }
 
-export type { ModelTier, Vendor, ComponentRole };
+export type { ModelTier, ComponentRole };

@@ -146,7 +146,8 @@ export function createOpenAIAdapter(
   function outputLimit(info: ModelInfo | null): number { return info?.outputLimit ?? 16_384; }
 
   const adapter: LLMClient = {
-    provider: "openai",
+    accessProvider: isChatGPT ? "chatgpt" : "openai_api",
+    modelFamily: "openai",
     model: defaultModel,
     get contextLimit() {
       return contextLimit(cache?.model ?? defaultModel, cache?.info ?? null);

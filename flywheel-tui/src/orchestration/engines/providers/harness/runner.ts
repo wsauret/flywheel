@@ -8,6 +8,7 @@
 import { randomUUID } from "node:crypto";
 import { errorMessage } from "../../../../infra/error-message.js";
 import type { EngineRunner, EngineResult, RunnerOptions } from "../../core/types.js";
+import { resolveToolActions } from "../../core/tool-resolution.js";
 import type { ContentBlock as LLMContentBlock, LLMClient, Message, ReasoningEffort, StreamEvent } from "./llm/types.js";
 import type { ContentBlock } from "../../../../infra/ndjson-event-types.js";
 import { runAgentLoop } from "./agent-loop.js";
@@ -43,11 +44,16 @@ const HARNESS_TOOL_ENABLERS: Record<string, readonly string[]> = {
 
 function resolveHarnessTools(cliToolNames: ReadonlyArray<string>): ReturnType<typeof getToolDefinitions> {
   const allowed = new Set(cliToolNames);
-  const enabled = new Set<string>(["write_handoff"]); // always available for handoff output
+  const enabled = new Set<string>(["write_handoff"]);
   for (const [name, enablers] of Object.entries(HARNESS_TOOL_ENABLERS)) {
     if (enablers.some(e => allowed.has(e))) enabled.add(name);
   }
   return getToolDefinitions().filter(t => enabled.has(t.name));
+}
+
+function resolveHarnessToolDefinitions(toolNames: ReadonlyArray<string>): ReturnType<typeof getToolDefinitions> {
+  const allowed = new Set(toolNames);
+  return getToolDefinitions().filter((tool) => allowed.has(tool.name));
 }
 
 export class HarnessRunner implements EngineRunner {
@@ -102,13 +108,17 @@ export class HarnessRunner implements EngineRunner {
 
     try {
       const client = this.createLLMClient(options.model);
-      const tools = options.tools ? resolveHarnessTools(options.tools) : undefined;
+      const tools = options.toolActions
+        ? resolveHarnessToolDefinitions(resolveToolActions("harness", options.toolActions))
+        : options.tools
+          ? resolveHarnessTools(options.tools)
+          : undefined;
       const availableToolNames = new Set((tools ?? getToolDefinitions()).map(t => t.name));
 
       const projectInstructions = await loadProjectInstructions(options.cwd);
       const systemPrompt = buildHarnessSystemPrompt({
         orchestrationSystemPrompt: options.systemPrompt ?? "",
-        provider: client.provider,
+        model: client.model,
         projectInstructions,
         availableTools: availableToolNames,
         cwd: options.cwd,

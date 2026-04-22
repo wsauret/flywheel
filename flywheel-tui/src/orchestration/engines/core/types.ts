@@ -1,4 +1,14 @@
 import type { NDJSONEvent, UserEventToolResult } from "../../../infra/ndjson-event-types.js";
+import type { ToolAction } from "../../../infra/workflow-types.js";
+
+export interface EngineParityMetadata {
+  resumeMode: "provider_session" | "local_transcript";
+  handoffMode: "generic_file_write" | "dedicated_handoff_tool";
+  progressMode: "builtin_todo" | "stateful_progress_tool";
+  toolExecutionMode: "provider_native" | "shell_emulated";
+  taskScopeMode: "subagent" | "progress_tool";
+  supportsExternalToolResults: boolean;
+}
 
 export interface EngineMetadata {
   /** Unique identifier (e.g., "claude", "harness") */
@@ -9,6 +19,8 @@ export interface EngineMetadata {
   defaultModel: string;
   /** Display description */
   description: string;
+  /** Structured parity notes for cross-engine comparisons. */
+  parity: EngineParityMetadata;
   /**
    * When set, the engine delivers thinking as complete blocks rather than
    * streaming tokens. The adapter will emit a synthetic "thinking" activity
@@ -39,8 +51,9 @@ export interface RunnerOptions {
   sessionDir?: string;
   /** Resume a prior engine session instead of starting fresh. */
   resumeSessionId?: string;
-  /** Explicit tool restriction (e.g. ["Write"] or ["Read", "Bash", "Write", "Grep", "Glob"]).
-   *  Claude engine maps to --tools flag; harness engine uses for dispatch filtering. */
+  /** Engine-agnostic tool actions resolved at the engine boundary. */
+  toolActions?: ReadonlyArray<ToolAction>;
+  /** Provider-native tool restriction kept for low-level callers. */
   tools?: ReadonlyArray<string>;
   cwd: string;
   /** Called for each event the engine produces (NDJSONEvent objects). */

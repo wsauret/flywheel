@@ -10,11 +10,12 @@ import type { Engine } from "./engines/core/types.js"
 import type { EmitFn } from "../infra/event-bus.js"
 import type { InjectionQueue } from "./injection-queue.js"
 import type { Step } from "../workflows/queue/types.js"
-import { toolScopingToToolNames } from "../infra/workflow-types.js"
+import { toolScopingToActions } from "../infra/workflow-types.js"
 import type { NDJSONEvent } from "../infra/ndjson-event-types.js"
 import { createNDJSONEvent } from "../infra/ndjson-event-factory.js"
 import type { AskHookServer } from "./ask-hook/server.js"
 import { buildAskHookSettings } from "./ask-hook/config.js"
+import type { ToolAction } from "../infra/workflow-types.js"
 const log = Log.create({ service: "worker-callback" })
 
 /** Step types that get self-review injection at the first turn boundary. */
@@ -120,9 +121,11 @@ export function createWorkerCallback(
     // When the step didn't set toolScoping at all, Claude exposes every tool
     // and no extension is needed.
     const askEnabled = step.allowAskUser === true && askHookServer != null
-    let tools = step.toolScoping ? toolScopingToToolNames(step.toolScoping) : undefined
-    if (askEnabled && tools && !tools.includes("AskUserQuestion")) {
-      tools = [...tools, "AskUserQuestion"]
+    let toolActions = step.toolScoping ? toolScopingToActions(step.toolScoping) : undefined
+    if (askEnabled && toolActions) {
+      const nextActions: ToolAction[] = [...toolActions]
+      if (!nextActions.includes("ask_user")) nextActions.push("ask_user")
+      toolActions = nextActions
     }
 
     emit("engine:started", { workflowId, stepIndex: 0 })
@@ -130,7 +133,7 @@ export function createWorkerCallback(
     const runner = engine.createRunner({
       model,
       effort,
-      tools,
+      toolActions,
       ...(askEnabled && askHookServer && {
         extraEnv: { FLYWHEEL_ASK_SOCKET: askHookServer.socketPath },
         claudeSettings: buildAskHookSettings(),

@@ -30,6 +30,9 @@ import type { NextInput, ToolResultEntry } from "./agent-state.js";
 
 const log = Log.create({ service: "harness-agent-loop" });
 
+const TODO_NUDGE_AFTER_TURNS = 10;
+const TODO_NUDGE_COOLDOWN_TURNS = 10;
+
 function withTodoState(handoffText: string, items: ReadonlyArray<TodoItem>): string {
   if (items.length === 0) return handoffText;
   return `${handoffText}\n\n<todo_state>\nYour todo list is preserved across context recovery. Do not call todo_list(read) — here is the current state:\n${formatTodoList(items)}\n</todo_state>`;
@@ -113,6 +116,10 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   const maxLLMCalls = options.maxLLMCalls ?? 200;
   let llmCallCount = 0;
 
+  const hasTodoTool = (options.tools ?? getToolDefinitions()).some((t) => t.name === "todo_list");
+  let turnsSinceTodoMutation = 0;
+  let turnsSinceTodoNudge = 0;
+
   let nextInput: NextInput = { kind: "initial", text: instruction };
   let contextOverflow = false;
   let previousResponseId: string | undefined = options.previousResponseId;
@@ -148,6 +155,20 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     if (nextInput.kind === "observation" && Array.isArray(userPrompt)) {
       const budgetLine = `[Budget: ${llmCallCount}/${maxLLMCalls} calls used, ${maxLLMCalls - llmCallCount} remaining]`;
       userPrompt.push({ type: "text", text: budgetLine });
+
+      const inProgress = hasTodoTool
+        ? toolContext.todoList.find((t) => t.status === "in_progress")
+        : undefined;
+      if (
+        inProgress &&
+        turnsSinceTodoMutation >= TODO_NUDGE_AFTER_TURNS &&
+        turnsSinceTodoNudge >= TODO_NUDGE_COOLDOWN_TURNS
+      ) {
+        userPrompt.push({ type: "text", text:
+          `[Todo: "${inProgress.content}" is still in_progress — if done, call todo_list(complete). The user is watching the progress bar.]`,
+        });
+        turnsSinceTodoNudge = 0;
+      }
     }
 
     const turnMessages: Message[] = [...messages, { role: "user", content: userPrompt }];
@@ -344,16 +365,23 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       }
     }
 
-    if (todoMutated && toolContext.todoList.length > 0) {
-      onEvent({
-        kind: "todo_state",
-        todos: toolContext.todoList.map((t) => ({
-          id: t.id,
-          content: t.content,
-          status: t.status,
-          ...(t.notes ? { notes: t.notes } : {}),
-        })),
-      });
+    if (todoMutated) {
+      turnsSinceTodoMutation = 0;
+      turnsSinceTodoNudge = 0;
+      if (toolContext.todoList.length > 0) {
+        onEvent({
+          kind: "todo_state",
+          todos: toolContext.todoList.map((t) => ({
+            id: t.id,
+            content: t.content,
+            status: t.status,
+            ...(t.notes ? { notes: t.notes } : {}),
+          })),
+        });
+      }
+    } else {
+      turnsSinceTodoMutation++;
+      turnsSinceTodoNudge++;
     }
 
     if (signal?.aborted && toolResults.length > 0) {

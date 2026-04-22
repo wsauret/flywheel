@@ -50,6 +50,14 @@ export const metadata: EngineMetadata = {
   name: "Claude Code",
   defaultModel: "claude-opus-4-7[1m]",
   description: "Anthropic's Claude Code CLI",
+  parity: {
+    resumeMode: "provider_session",
+    handoffMode: "generic_file_write",
+    progressMode: "builtin_todo",
+    toolExecutionMode: "provider_native",
+    taskScopeMode: "subagent",
+    supportsExternalToolResults: true,
+  },
   // Claude Code delivers thinking as complete blocks, not streaming tokens.
   // The adapter uses this to emit a synthetic "thinking" activity event during silence.
   syntheticThinkingMs: 500,

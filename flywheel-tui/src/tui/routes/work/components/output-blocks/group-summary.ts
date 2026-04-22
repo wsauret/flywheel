@@ -52,6 +52,7 @@ export function deriveGroupSummary(children: readonly ToolEntry[]): string {
 
   if (parts.length > 0) return parts.join(" · ")
 
-  const n = children.length
+  const n = children.filter(c => c.name !== "Thinking").length
+  if (n === 0) return ""
   return `${n} operation${n === 1 ? "" : "s"}`
 }

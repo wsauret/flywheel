@@ -4,9 +4,8 @@ import {
   ContextLengthExceededError,
   OutputLengthExceededError,
 } from "../src/orchestration/engines/providers/harness/llm/types.js";
-import {
-  createModelsClient,
-} from "../src/orchestration/engines/providers/harness/llm/models.js";
+import { createModelsClient } from "../src/orchestration/engines/providers/harness/llm/models.js";
+import { detectModelFamily } from "../src/orchestration/engines/providers/harness/llm/model-family.js";
 import { createClient } from "../src/orchestration/engines/providers/harness/llm/client-factory.js";
 import { contextWindowForModel } from "../src/orchestration/engines/engine-context.js";
 
@@ -171,27 +170,28 @@ describe("withRetry", () => {
   });
 });
 
-describe("createModelsClient", () => {
-  test("detectProvider maps claude- to anthropic", () => {
-    const client = createModelsClient();
-    expect(client.detectProvider("claude-opus-4-6")).toBe("anthropic");
-    expect(client.detectProvider("claude-sonnet-4-5-20250514")).toBe("anthropic");
-    expect(client.detectProvider("claude-haiku-4-5-20251001")).toBe("anthropic");
+describe("detectModelFamily", () => {
+  test("maps claude- to anthropic", () => {
+    expect(detectModelFamily("claude-opus-4-6")).toBe("anthropic");
+    expect(detectModelFamily("claude-sonnet-4-5-20250514")).toBe("anthropic");
+    expect(detectModelFamily("claude-haiku-4-5-20251001")).toBe("anthropic");
   });
 
-  test("detectProvider maps gpt-/o-series/chatgpt- to openai", () => {
-    const client = createModelsClient();
-    expect(client.detectProvider("gpt-4o")).toBe("openai");
-    expect(client.detectProvider("gpt-4o-mini")).toBe("openai");
-    expect(client.detectProvider("o1")).toBe("openai");
-    expect(client.detectProvider("o3-mini")).toBe("openai");
-    expect(client.detectProvider("chatgpt-4o-latest")).toBe("openai");
+  test("maps gpt-/o-series/chatgpt- to openai", () => {
+    expect(detectModelFamily("gpt-4o")).toBe("openai");
+    expect(detectModelFamily("gpt-4o-mini")).toBe("openai");
+    expect(detectModelFamily("o1")).toBe("openai");
+    expect(detectModelFamily("o3-mini")).toBe("openai");
+    expect(detectModelFamily("chatgpt-4o-latest")).toBe("openai");
   });
 
-  test("detectProvider returns null for unknown prefix", () => {
-    const client = createModelsClient();
-    expect(client.detectProvider("llama-3")).toBeNull();
-    expect(client.detectProvider("gemini-pro")).toBeNull();
+  test("maps gemini- to google", () => {
+    expect(detectModelFamily("gemini-2.5-pro")).toBe("google");
+    expect(detectModelFamily("gemma-3")).toBe("google");
+  });
+
+  test("returns null for unknown prefixes", () => {
+    expect(detectModelFamily("llama-3")).toBeNull();
   });
 });
 
@@ -201,14 +201,15 @@ describe("contextWindowForModel", () => {
     expect(contextWindowForModel("gpt-5.3-codex")).toBe(128_000);
     expect(contextWindowForModel("chatgpt-4o-latest")).toBe(128_000);
     expect(contextWindowForModel("o3-mini")).toBe(200_000);
+    expect(contextWindowForModel("gemini-2.5-pro")).toBe(1_000_000);
   });
 });
 
 describe("createClient", () => {
-  test("throws for unknown provider", () => {
+  test("throws for unknown model family", () => {
     const modelsClient = createModelsClient();
     expect(() => createClient("llama-3-70b", modelsClient)).toThrow(
-      "Cannot determine provider",
+      "Cannot determine model family",
     );
   });
 
@@ -236,13 +237,19 @@ describe("createClient", () => {
     }
   });
 
-  test("routes to anthropic adapter for claude models", () => {
+  test("throws when no access provider is configured for google models", () => {
+    const modelsClient = createModelsClient();
+    expect(() => createClient("gemini-2.5-pro", modelsClient)).toThrow("google models");
+  });
+
+  test("routes to anthropic access provider for claude models", () => {
     const original = process.env["ANTHROPIC_API_KEY"];
     process.env["ANTHROPIC_API_KEY"] = "test-key";
     try {
       const modelsClient = createModelsClient();
       const client = createClient("claude-opus-4-6", modelsClient);
-      expect(client.provider).toBe("anthropic");
+      expect(client.accessProvider).toBe("anthropic_api");
+      expect(client.modelFamily).toBe("anthropic");
     } finally {
       if (original !== undefined) {
         process.env["ANTHROPIC_API_KEY"] = original;
@@ -252,13 +259,14 @@ describe("createClient", () => {
     }
   });
 
-  test("routes to openai adapter for gpt models", () => {
+  test("routes to openai access provider for gpt models", () => {
     const original = process.env["OPENAI_API_KEY"];
     process.env["OPENAI_API_KEY"] = "test-key";
     try {
       const modelsClient = createModelsClient();
       const client = createClient("gpt-4o", modelsClient);
-      expect(client.provider).toBe("openai");
+      expect(client.accessProvider).toBe("openai_api");
+      expect(client.modelFamily).toBe("openai");
     } finally {
       if (original !== undefined) {
         process.env["OPENAI_API_KEY"] = original;

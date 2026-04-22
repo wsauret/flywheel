@@ -4,13 +4,12 @@ import { createSignal, createMemo, createEffect, on, Show, onCleanup } from "sol
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { BOLD } from "@tui/shared/ui/text-attributes"
 import { StyledText, fg as stFg, dim as stDim } from "@opentui/core"
-import type { TextRenderable, TextareaRenderable, TextareaAction } from "@opentui/core"
+import type { TextRenderable, TextareaRenderable, TextareaAction, MouseEvent } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { useToast } from "@tui/shared/context/toast"
 import { useSession } from "@tui/shared/context/session"
 import { Clipboard } from "./utils/clipboard.js"
 import { consumeSelectedText } from "./utils/selection.js"
-import { consumeClickAction } from "./utils/mouse.js"
 import { registerPreExitCleanup } from "./exit.js"
 import { OutputWindow } from "./routes/work/components/output-window.js"
 import { SplitBorder } from "./shared/ui/border.js"
@@ -227,9 +226,13 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     return `${activityLabel()!} (${formatElapsed(metrics.episodeElapsed())})`
   })
 
+  let mouseDownPrevented = false
+
   return (
-    <box width={dimensions().width} height={dimensions().height} flexDirection="column" backgroundColor={theme.background} onMouseUp={() => {
-        if (consumeClickAction()) { renderer.clearSelection(); return }
+    <box width={dimensions().width} height={dimensions().height} flexDirection="column" backgroundColor={theme.background}
+      onMouseDown={(e: MouseEvent) => { mouseDownPrevented = e.defaultPrevented }}
+      onMouseUp={() => {
+        if (mouseDownPrevented) { mouseDownPrevented = false; renderer.clearSelection(); return }
         const text = consumeSelectedText(renderer)
         if (!text) return
         Clipboard.copy(text)

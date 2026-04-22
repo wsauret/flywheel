@@ -1,33 +1,60 @@
 import { describe, expect, test } from "bun:test";
 import { buildHarnessSystemPrompt } from "../src/orchestration/engines/providers/harness/prompt.js";
+import { detectModelFamily } from "../src/orchestration/engines/providers/harness/llm/model-family.js";
+
+describe("detectModelFamily", () => {
+  test("detects anthropic family from claude model names", () => {
+    expect(detectModelFamily("claude-sonnet-4-5")).toBe("anthropic");
+    expect(detectModelFamily("claude-opus-4-7")).toBe("anthropic");
+    expect(detectModelFamily("claude-haiku-4-5")).toBe("anthropic");
+  });
+
+  test("detects openai family from gpt/o-series model names", () => {
+    expect(detectModelFamily("gpt-4o")).toBe("openai");
+    expect(detectModelFamily("gpt-4o-mini")).toBe("openai");
+    expect(detectModelFamily("o3")).toBe("openai");
+    expect(detectModelFamily("o1-preview")).toBe("openai");
+    expect(detectModelFamily("codex-mini")).toBe("openai");
+    expect(detectModelFamily("chatgpt-4o-latest")).toBe("openai");
+  });
+
+  test("detects google family from gemini model names", () => {
+    expect(detectModelFamily("gemini-2.5-pro")).toBe("google");
+    expect(detectModelFamily("gemma-3")).toBe("google");
+  });
+
+  test("returns null for unknown models", () => {
+    expect(detectModelFamily("llama-3")).toBeNull();
+  });
+});
 
 describe("buildHarnessSystemPrompt — identity and constraints", () => {
   test("produces non-empty prompt with empty orchestration content", () => {
     const prompt = buildHarnessSystemPrompt({
       orchestrationSystemPrompt: "",
-      provider: "anthropic",
+      model: "claude-sonnet-4-5",
       availableTools: new Set(),
     });
     expect(prompt.length).toBeGreaterThan(0);
     expect(prompt).toContain("AI assistant");
   });
 
-  test("contains identity text regardless of provider", () => {
-    for (const provider of ["anthropic", "openai"] as const) {
+  test("contains identity text regardless of model family", () => {
+    for (const model of ["claude-sonnet-4-5", "gpt-4o"]) {
       const prompt = buildHarnessSystemPrompt({
         orchestrationSystemPrompt: "",
-        provider,
+        model,
         availableTools: new Set(),
       });
       expect(prompt).toContain("AI assistant");
     }
   });
 
-  test("contains constraints regardless of provider", () => {
-    for (const provider of ["anthropic", "openai"] as const) {
+  test("contains constraints regardless of model family", () => {
+    for (const model of ["claude-sonnet-4-5", "gpt-4o"]) {
       const prompt = buildHarnessSystemPrompt({
         orchestrationSystemPrompt: "",
-        provider,
+        model,
         availableTools: new Set(),
       });
       expect(prompt).toContain("Do NOT give up");
@@ -37,7 +64,7 @@ describe("buildHarnessSystemPrompt — identity and constraints", () => {
   test("identity and constraints appear even with empty tool set", () => {
     const prompt = buildHarnessSystemPrompt({
       orchestrationSystemPrompt: "",
-      provider: "anthropic",
+      model: "claude-sonnet-4-5",
       availableTools: new Set(),
     });
     expect(prompt).toContain("AI assistant");
@@ -47,7 +74,7 @@ describe("buildHarnessSystemPrompt — identity and constraints", () => {
   test("orchestration prompt appears after identity/constraints but before tool sections", () => {
     const prompt = buildHarnessSystemPrompt({
       orchestrationSystemPrompt: "ORCHESTRATION_MARKER",
-      provider: "anthropic",
+      model: "claude-sonnet-4-5",
       availableTools: new Set(["bash"]),
     });
     const identityIdx = prompt.indexOf("AI assistant");
@@ -64,7 +91,7 @@ describe("buildHarnessSystemPrompt — resource limits, style, and tool preceden
   test("includes resource limits when bash is available", () => {
     const prompt = buildHarnessSystemPrompt({
       orchestrationSystemPrompt: "",
-      provider: "anthropic",
+      model: "claude-sonnet-4-5",
       availableTools: new Set(["bash"]),
     });
     expect(prompt).toContain("RESOURCE LIMITS");
@@ -74,71 +101,84 @@ describe("buildHarnessSystemPrompt — resource limits, style, and tool preceden
   test("omits resource limits when bash is not available", () => {
     const prompt = buildHarnessSystemPrompt({
       orchestrationSystemPrompt: "",
-      provider: "anthropic",
+      model: "claude-sonnet-4-5",
       availableTools: new Set(["read"]),
     });
     expect(prompt).not.toContain("RESOURCE LIMITS");
   });
 
-  test("includes style section regardless of provider or tools", () => {
-    for (const provider of ["anthropic", "openai"] as const) {
-      const prompt = buildHarnessSystemPrompt({
-        orchestrationSystemPrompt: "",
-        provider,
-        availableTools: new Set(),
-      });
-      expect(prompt).toContain("STYLE");
+  test("includes model-family-specific communication section", () => {
+    const anthropicPrompt = buildHarnessSystemPrompt({
+      orchestrationSystemPrompt: "",
+      model: "claude-sonnet-4-5",
+      availableTools: new Set(),
+    });
+    const openaiPrompt = buildHarnessSystemPrompt({
+      orchestrationSystemPrompt: "",
+      model: "gpt-4o",
+      availableTools: new Set(),
+    });
+    for (const prompt of [anthropicPrompt, openaiPrompt]) {
+      expect(prompt).toContain("COMMUNICATION");
       expect(prompt).toContain("No emojis");
     }
+    expect(anthropicPrompt).toContain("25 words or fewer");
+    expect(anthropicPrompt).not.toContain("critical to keep the user updated");
+    expect(openaiPrompt).toContain("critical to keep the user updated");
+    expect(openaiPrompt).not.toContain("25 words or fewer");
   });
 
   test("includes tool precedence rules when both bash and read are available", () => {
     const prompt = buildHarnessSystemPrompt({
       orchestrationSystemPrompt: "",
-      provider: "anthropic",
+      model: "claude-sonnet-4-5",
       availableTools: new Set(["bash", "read"]),
     });
     expect(prompt).toContain("TOOL USAGE");
     expect(prompt).toContain("todo_list");
   });
+  test("names the harness-specific progress and handoff mechanisms", () => {
+    const prompt = buildHarnessSystemPrompt({
+      orchestrationSystemPrompt: "",
+      model: "claude-sonnet-4-5",
+      availableTools: new Set(["todo_list", "write_handoff"]),
+    });
+    expect(prompt).toContain("`todo_list`");
+    expect(prompt).toContain("`write_handoff`");
+  });
 });
 
-describe("buildHarnessSystemPrompt — provider behavioral tuning", () => {
-  test("includes OpenAI behavioral guidance for openai provider", () => {
+describe("buildHarnessSystemPrompt — model-family behavioral tuning", () => {
+  test("includes extended thinking note for anthropic-family models", () => {
     const prompt = buildHarnessSystemPrompt({
       orchestrationSystemPrompt: "",
-      provider: "openai",
+      model: "claude-sonnet-4-5",
       availableTools: new Set(["bash"]),
     });
-    expect(prompt).toContain("OPENAI MODEL NOTES");
-    expect(prompt).toContain("apply_patch");
-  });
-
-  test("includes Anthropic behavioral guidance for anthropic provider", () => {
-    const prompt = buildHarnessSystemPrompt({
-      orchestrationSystemPrompt: "",
-      provider: "anthropic",
-      availableTools: new Set(["bash"]),
-    });
-    expect(prompt).toContain("ANTHROPIC MODEL NOTES");
+    expect(prompt).toContain("MODEL NOTES");
     expect(prompt).toContain("extended thinking");
+    expect(prompt).not.toContain("Use tools purposefully");
   });
 
-  test("OpenAI prompt does not contain anthropic behavioral text", () => {
+  test("includes tool-purposefulness note for openai-family models", () => {
     const prompt = buildHarnessSystemPrompt({
       orchestrationSystemPrompt: "",
-      provider: "openai",
+      model: "gpt-4o",
       availableTools: new Set(["bash"]),
     });
-    expect(prompt).not.toContain("ANTHROPIC MODEL NOTES");
+    expect(prompt).toContain("MODEL NOTES");
+    expect(prompt).toContain("Use tools purposefully");
+    expect(prompt).not.toContain("extended thinking");
   });
 
-  test("Anthropic prompt does not contain OpenAI behavioral text", () => {
+  test("uses non-anthropic guidance for google-family models", () => {
     const prompt = buildHarnessSystemPrompt({
       orchestrationSystemPrompt: "",
-      provider: "anthropic",
+      model: "gemini-2.5-pro",
       availableTools: new Set(["bash"]),
     });
-    expect(prompt).not.toContain("OPENAI MODEL NOTES");
+    expect(prompt).toContain("MODEL NOTES");
+    expect(prompt).toContain("Use tools purposefully");
+    expect(prompt).not.toContain("extended thinking");
   });
 });

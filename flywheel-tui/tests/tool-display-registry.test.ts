@@ -194,7 +194,7 @@ describe("getToolDisplayName", () => {
     expect(getToolDisplayName("notebookedit")).toBe("Notebook Edit");
     expect(getToolDisplayName("powershell")).toBe("PowerShell");
     expect(getToolDisplayName("repl")).toBe("REPL");
-    expect(getToolDisplayName("todowrite")).toBe("Task Update");
+    expect(getToolDisplayName("todowrite")).toBe("Todo List");
     expect(getToolDisplayName("toolsearch")).toBe("Tool Search");
     expect(getToolDisplayName("sendmessage")).toBe("Send Message");
     expect(getToolDisplayName("askuserquestion")).toBe("Ask User");
@@ -225,6 +225,12 @@ describe("getToolDisplayName", () => {
   it("returns raw name for completely unknown tools", () => {
     expect(getToolDisplayName("SomeRandomTool")).toBe("SomeRandomTool");
   });
+  it("uses Write Handoff for session handoff file writes", () => {
+    const filePath = "/home/user/project/.flywheel/sessions/abc-123/handoffs/work_step1.json";
+    expect(getToolDisplayName("Write", { filePath })).toBe("Write Handoff");
+    expect(getToolDisplayName("Edit", { filePath })).toBe("Write Handoff");
+  });
+
 
   it("returns proper display names for todo_list and write_handoff", () => {
     expect(getToolDisplayName("todo_list")).toBe("Todo List");

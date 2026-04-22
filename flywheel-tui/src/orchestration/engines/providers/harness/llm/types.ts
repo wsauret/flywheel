@@ -1,3 +1,6 @@
+import type { AccessProviderId } from "./access-provider.js";
+import type { ModelFamily } from "./model-family.js";
+
 /**
  * Provider-agnostic LLM types.
  *
@@ -32,8 +35,6 @@ export interface ToolDef {
   input_schema: Record<string, unknown>;
 }
 
-export type Provider = "anthropic" | "openai";
-
 // --- Streaming types ---
 
 export type StreamEvent =
@@ -58,7 +59,8 @@ export interface StreamOptions {
 }
 
 export interface LLMClient {
-  readonly provider: Provider;
+  readonly accessProvider: AccessProviderId;
+  readonly modelFamily: ModelFamily;
   readonly model: string;
   readonly contextLimit: number;
   readonly outputLimit: number;

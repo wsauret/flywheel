@@ -1,21 +1,30 @@
-/**
- * Fresh-per-command bash execution.
- *
- * Every call spawns a new bash subprocess. No persistent shell state.
- * Commands are written to a temp script to eliminate quoting bugs.
- * Timeout kills the subprocess with SIGTERM, then SIGKILL after grace period.
- */
-
+import { existsSync } from "node:fs";
 import { randomUUID } from "node:crypto";
+import { arch, platform } from "node:os";
+import { resolve } from "node:path";
 import { Log } from "../../../../../infra/log.js";
 import { killProcessGroup } from "../../../../../infra/process-lifecycle.js";
 import type { ToolDefinition, ToolResult, ToolContext, BashOperations } from "./types.js";
 
 const log = Log.create({ service: "harness-bash" });
 
-const DEFAULT_TIMEOUT_SEC = 120;
-const MAX_TIMEOUT_SEC = 300;
+export const DEFAULT_TIMEOUT_SEC = 120;
+export const MAX_TIMEOUT_SEC = 3600;
 const KILL_GRACE_MS = 5_000;
+
+const APPLY_PATCH_PREAMBLE = (() => {
+  const p = platform();
+  const a = arch();
+  const name =
+    p === "darwin" && a === "arm64" ? "apply_patch-darwin-arm64"
+    : p === "darwin" && a === "x64" ? "apply_patch-darwin-x64"
+    : p === "linux" && a === "x64" ? "apply_patch-linux-x64"
+    : p === "linux" && a === "arm64" ? "apply_patch-linux-arm64"
+    : null;
+  if (!name) return "";
+  const bin = resolve(import.meta.dir, "../../../../../../bin/vendor", name);
+  return existsSync(bin) ? `apply_patch() { "${bin}" "$@"; }; export -f apply_patch` : "";
+})();
 
 const INTERACTIVE_COMMAND_PATTERNS: ReadonlyArray<{ match: RegExp; guidance: string }> = [
   { match: /\b(vim|vi|nvim|nano|emacs|pico|ed)\b/, guidance: "editors can't run interactively -- use `cat > file <<EOF ... EOF` or `sed` for edits" },
@@ -39,15 +48,19 @@ function isBackgroundCommand(command: string): boolean {
 }
 
 function buildScript(command: string): string {
-  return [
+  const lines = [
     "set -m",
     "exec 2>&1",
+  ];
+  if (APPLY_PATCH_PREAMBLE) lines.push(APPLY_PATCH_PREAMBLE);
+  lines.push(
     `{ ${command}; } &`,
     "CHILD=$!",
     "trap 'kill -- -$CHILD 2>/dev/null' TERM INT",
     "wait $CHILD 2>/dev/null",
     "exit $?",
-  ].join("\n");
+  );
+  return lines.join("\n");
 }
 
 const defaultBashOperations: BashOperations = {
@@ -156,12 +169,12 @@ export function createBashDefinition(options?: { operations?: BashOperations }):
 
   return {
     name: "bash",
-    description: "Execute a shell command in an isolated bash session. Each call spawns a fresh process — environment variables, working directory changes, and shell state do not persist between calls. Chain dependent commands with && or ; within one call. End a command with & to run it in the background (returns PID and log path). Use the timeout parameter for commands that may run longer than the default 120s.",
+    description: `Execute a shell command in an isolated bash session. Each call spawns a fresh process — environment variables, working directory changes, and shell state do not persist between calls. Chain dependent commands with && or ; within one call. End a command with & to run it in the background (returns PID and log path). You may specify an optional timeout in seconds (up to ${MAX_TIMEOUT_SEC}s). By default, commands timeout after ${DEFAULT_TIMEOUT_SEC}s.`,
     input_schema: {
       type: "object",
       properties: {
         command: { type: "string", description: "The shell command to execute" },
-        timeout: { type: "number", description: "Timeout in seconds (default 120)" },
+        timeout: { type: "number", description: `Optional timeout in seconds (default ${DEFAULT_TIMEOUT_SEC}, max ${MAX_TIMEOUT_SEC})` },
       },
       required: ["command"],
     },

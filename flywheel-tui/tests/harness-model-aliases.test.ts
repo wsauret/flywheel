@@ -13,7 +13,8 @@ describe("harness engine model passthrough", () => {
     } as unknown as ModelsClient;
 
     const fakeLLMClient: LLMClient = {
-      provider: "anthropic" as const,
+      accessProvider: "anthropic_api" as const,
+      modelFamily: "anthropic" as const,
       model: "test",
       contextLimit: 200_000,
       outputLimit: 16_000,
