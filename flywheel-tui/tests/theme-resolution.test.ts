@@ -34,6 +34,7 @@ const EXPECTED_KEYS: (keyof Theme)[] = [
   "markdownLink",
   "markdownLinkText",
   "markdownCode",
+  "markdownCodeBg",
   "markdownBlockQuote",
   "markdownEmph",
   "markdownStrong",

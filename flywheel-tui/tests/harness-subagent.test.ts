@@ -43,6 +43,7 @@ function makeContext(overrides?: Partial<ToolContext>): ToolContext {
     cwd: os.tmpdir(),
     todoList: [],
     readFiles: new Set(),
+    bgLogPaths: new Set(),
     ...overrides,
   };
 }

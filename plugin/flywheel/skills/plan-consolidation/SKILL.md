@@ -63,7 +63,7 @@ If `findings.json` has zero findings and zero open questions:
 Questions to surface:
 
 1. `findings.json.open_questions` (entries the synthesizer could not resolve)
-2. Inter-reviewer conflicts — findings sharing a fingerprint but diverging on severity (synthesizer promotes severity and flags the divergence)
+2. Inter-reviewer conflicts — findings where two or more reviewers described the same issue but assigned different severities. Surface the divergence; the user decides which severity is right rather than defaulting to the more severe.
 
 Present each question **BLOCKING: one at a time** via AskUserQuestion:
 

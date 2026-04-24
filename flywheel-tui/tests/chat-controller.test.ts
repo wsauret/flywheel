@@ -56,7 +56,10 @@ function createMockSessionStore(): SessionStore & {
         onError: () => {},
         onEnded: () => {},
       }
-      await opts.createRunner(handle)
+      // Tolerate createRunner failures — in tests the real createChatRunner
+      // has no auth and throws; we only need the entry populated with a mock
+      // runner so the controller can observe the session as "active".
+      try { await opts.createRunner(handle) } catch { /* test mode */ }
 
       // Add entry
       entries.set(opts.sessionId, {
@@ -250,6 +253,40 @@ describe("ChatController", () => {
       expect(mockManager._stateUpdates.find((u) => u.state === "paused")).toBeUndefined()
     })
 
+    it("disposes runner before deleting empty chat (prevents orphan dir race)", async () => {
+      // Reproduces the bug where manager.delete (fs.rmSync) ran BEFORE the
+      // runner's output-flush fired, so writeFileAtomic recreated the session
+      // directory with only output.json. Fix: dispose first, delete second.
+      const deps = createDeps()
+      const callOrder: string[] = []
+
+      const mockStore = deps.sessionStore as ReturnType<typeof createMockSessionStore>
+      const mockManager = deps.manager as ReturnType<typeof createMockManager>
+      const originalRemove = mockStore.remove
+      const originalDelete = mockManager.delete
+      mockStore.remove = mock(async (id: string) => {
+        callOrder.push(`remove:${id}`)
+        await originalRemove(id)
+      }) as any
+      mockManager.delete = mock(function(this: any, id: string) {
+        callOrder.push(`delete:${id}`)
+        originalDelete.call(this, id)
+      }) as any
+
+      const controller = createChatController(deps)
+      const sessionId = await controller.startChat()
+      expect(sessionId).not.toBeNull()
+      callOrder.length = 0
+
+      await controller.endChat(sessionId)
+
+      const removeIdx = callOrder.indexOf(`remove:${sessionId}`)
+      const deleteIdx = callOrder.indexOf(`delete:${sessionId}`)
+      expect(removeIdx).toBeGreaterThanOrEqual(0)
+      expect(deleteIdx).toBeGreaterThanOrEqual(0)
+      expect(removeIdx).toBeLessThan(deleteIdx)
+    })
+
     it("marks paused when chat has user messages", async () => {
       const deps = createDeps()
       const controller = createChatController(deps)
@@ -298,6 +335,37 @@ describe("ChatController", () => {
 
       // After backgrounding, sendMessage should return false (no buffering, no foreground)
       expect(controller.sendMessage(undefined, "dropped")).toBe(false)
+    })
+
+    it("disposes runner before deleting empty chat (prevents orphan dir race)", async () => {
+      const deps = createDeps()
+      const callOrder: string[] = []
+
+      const mockStore = deps.sessionStore as ReturnType<typeof createMockSessionStore>
+      const mockManager = deps.manager as ReturnType<typeof createMockManager>
+      const originalRemove = mockStore.remove
+      const originalDelete = mockManager.delete
+      mockStore.remove = mock(async (id: string) => {
+        callOrder.push(`remove:${id}`)
+        await originalRemove(id)
+      }) as any
+      mockManager.delete = mock(function(this: any, id: string) {
+        callOrder.push(`delete:${id}`)
+        originalDelete.call(this, id)
+      }) as any
+
+      const controller = createChatController(deps)
+      const sessionId = await controller.startChat()
+      expect(sessionId).not.toBeNull()
+      callOrder.length = 0
+
+      await controller.backgroundChat(sessionId ?? undefined)
+
+      const removeIdx = callOrder.indexOf(`remove:${sessionId}`)
+      const deleteIdx = callOrder.indexOf(`delete:${sessionId}`)
+      expect(removeIdx).toBeGreaterThanOrEqual(0)
+      expect(deleteIdx).toBeGreaterThanOrEqual(0)
+      expect(removeIdx).toBeLessThan(deleteIdx)
     })
   })
 

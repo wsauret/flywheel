@@ -26,7 +26,7 @@ export function createPooledDispatcherTransport(
   const systemPrompt = buildDispatcherSystemPrompt();
 
   return {
-    async invoke(input: DispatcherInput): Promise<DispatcherDecision> {
+    async invoke(input: DispatcherInput, signal?: AbortSignal): Promise<DispatcherDecision> {
       const userContent = `Here is the dispatcher input:\n\n${JSON.stringify(input)}\n\nRespond with valid JSON only.`;
 
       return invokePooled<DispatcherDecisionHandoff, DispatcherDecision>(
@@ -43,7 +43,7 @@ export function createPooledDispatcherTransport(
           handoffSchema: DispatcherDecisionHandoffSchema,
           mapResult: handoffToDecision,
         },
-        { sessionId: opts.sessionId, baseDir: opts.projectCwd },
+        { sessionId: opts.sessionId, baseDir: opts.projectCwd, signal },
       );
     },
   };
@@ -62,7 +62,7 @@ export function createPooledEvaluatorTransport(
   const systemPrompt = buildEvaluatorSystemPrompt(opts.systemPromptAddendum);
 
   return {
-    async invoke(input: EvaluatorInput): Promise<EvaluatorResult> {
+    async invoke(input: EvaluatorInput, signal?: AbortSignal): Promise<EvaluatorResult> {
       const userMessage = buildEvaluatorPrompt(input);
 
       return invokePooled<EvaluatorVerdict, EvaluatorResult>(
@@ -79,7 +79,7 @@ export function createPooledEvaluatorTransport(
           handoffSchema: EvaluatorVerdictSchema,
           mapResult: (verdict): EvaluatorResult => verdict,
         },
-        { sessionId: opts.sessionId, baseDir: opts.projectCwd },
+        { sessionId: opts.sessionId, baseDir: opts.projectCwd, signal },
       );
     },
   };

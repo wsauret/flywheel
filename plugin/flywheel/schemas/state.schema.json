@@ -41,6 +41,14 @@
         },
         "started_at": { "type": ["string", "null"], "format": "date-time" },
         "completed_at": { "type": ["string", "null"], "format": "date-time" },
+        "executed_by": {
+          "description": "How the phase was executed. subagent = dispatched via Task (default per SKILL.md Phase 2.2). main-agent = implementation in the orchestrator (bypass). null while pending.",
+          "enum": ["subagent", "main-agent", null]
+        },
+        "bypass_justification": {
+          "description": "Required (non-empty string) when executed_by == main-agent. Names the structural reason dispatch was blocked — not a convenience reason.",
+          "type": ["string", "null"]
+        },
         "outcomes": { "type": "array", "items": { "type": "string" } },
         "strikes": { "type": "array", "items": { "type": "string" } },
         "bc_satisfied": {
@@ -48,7 +56,22 @@
           "items": { "type": "string", "pattern": "^BC-[A-Z0-9]+-\\d{3}$" }
         },
         "artifacts": { "$ref": "#/$defs/artifacts" }
-      }
+      },
+      "allOf": [
+        {
+          "description": "main-agent bypass requires a non-empty justification string.",
+          "if": {
+            "properties": { "executed_by": { "const": "main-agent" } },
+            "required": ["executed_by"]
+          },
+          "then": {
+            "properties": {
+              "bypass_justification": { "type": "string", "minLength": 1 }
+            },
+            "required": ["bypass_justification"]
+          }
+        }
+      ]
     },
     "artifacts": {
       "type": "object",

@@ -27,10 +27,11 @@ Run `bun run scripts/check-boundaries.ts` after any file addition or move.
 | `cli/` | Entry point, wires all layers | Domain logic, UI components |
 | `infra/` | Logging, error utils, output blocks, events | Logic that imports from `src/` |
 | `workflows/` | Queue engine, dispatcher, evaluator, step types | Config, sessions, engines, rendering |
+| `workflows/handoff-types/` | Named handoff-type registry; Zod schemas + instructional field specs for step-produced handoffs | Orchestration machinery, step logic, transport schemas |
 | `orchestration/` | Config, sessions, engines, worker spawning | Rendering, UI, hooks |
 | `tui/` | Shell, hooks, adapters, components | Domain logic, session CRUD, queue building |
 
-**New code:** Steps → `workflows/queue/steps/<type>/`. Hooks → `tui/hooks/`. Shared utils → `workflows/shared/`. Engines → `orchestration/engines/`.
+**New code:** Steps → `workflows/queue/steps/<type>/`. Handoff types → `workflows/handoff-types/<type-name>.ts`. Hooks → `tui/hooks/`. Shared utils → `workflows/shared/`. Engines → `orchestration/engines/`.
 
 `src-legacy/` and `tests-legacy/` are frozen archives, not in `tsconfig`.
 

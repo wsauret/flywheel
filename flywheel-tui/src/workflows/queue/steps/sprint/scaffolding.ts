@@ -7,4 +7,5 @@ import { SPRINT_PREAMBLE } from "./prompts.js";
 registerScaffolding(variantKey("work", SPRINT_HINT), (_step, paths: ScaffoldingPaths) => ({
   preamble: SPRINT_PREAMBLE,
   postamble: renderWorkPostamble(WORK_STEP_FIELDS, paths.handoffPath),
+  produces: "work-handoff",
 }));

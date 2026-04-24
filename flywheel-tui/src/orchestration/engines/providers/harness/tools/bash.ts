@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { unlinkSync } from "node:fs";
 import { resolve } from "node:path";
 import { Log } from "../../../../../infra/log.js";
 import { killProcessGroup } from "../../../../../infra/process-lifecycle.js";
@@ -151,6 +152,8 @@ export function createBashDefinition(options?: { operations?: BashOperations }):
     await proc.exited;
     const pid = parseInt((await new Response(proc.stdout).text()).trim(), 10) || 0;
 
+    context.bgLogPaths.add(logPath);
+
     return {
       content: `Started in background. PID: ${pid}. Log: ${logPath}.\nCheck progress: cat ${logPath}\nStop: kill ${pid}`,
       isError: false,
@@ -211,4 +214,15 @@ export function createBashDefinition(options?: { operations?: BashOperations }):
 }
 
 export const bashDefinition = createBashDefinition();
+
+export function cleanupBackgroundLogs(paths: Set<string>): void {
+  for (const p of paths) {
+    try {
+      unlinkSync(p);
+    } catch {
+      // best-effort — log may already be gone
+    }
+  }
+  paths.clear();
+}
 

@@ -70,16 +70,26 @@ BC_SATISFIED=$(jq --arg pid "$PHASE_ID" '
 ' "$SESSION_DIR/baseline.json")
 ```
 
-### Step 3: Merge into state.json via atomic write
+### Step 3: Record how the phase was executed
+
+Every phase-completion checkpoint must set `executed_by` — `"subagent"` (default, the phase was dispatched per SKILL.md Phase 2.2) or `"main-agent"` (bypass, requires `bypass_justification`). See `references/state-file-template.md` for the field contract.
+
+If you are about to write `executed_by: "main-agent"`, stop and read the "`executed_by` and `bypass_justification`" section of state-file-template.md before proceeding. Bypasses for convenience reasons ("it was small," "I already had context") are not legitimate and should be rewritten as subagent dispatches.
+
+### Step 4: Merge into state.json via atomic write
 
 ```bash
 jq --argjson new_phase "$UPDATED_PHASE_JSON" \
-   --argjson bc_list "$BC_SATISFIED" '
+   --argjson bc_list "$BC_SATISFIED" \
+   --arg executed_by "$EXECUTED_BY" \
+   --arg bypass_justification "${BYPASS_JUSTIFICATION:-}" '
   (.phases[] | select(.id == $new_phase.id)) |= (
     . + $new_phase |
     .status = "completed" |
     .completed_at = now | todateiso8601 |
-    .bc_satisfied = $bc_list
+    .bc_satisfied = $bc_list |
+    .executed_by = $executed_by |
+    .bypass_justification = (if $bypass_justification == "" then null else $bypass_justification end)
   )
   | .status = "in_progress"
   | .summary = "Phase \($new_phase.id) complete."
@@ -87,7 +97,9 @@ jq --argjson new_phase "$UPDATED_PHASE_JSON" \
 mv "$SESSION_DIR/state.json.tmp" "$SESSION_DIR/state.json"
 ```
 
-### Step 4: Update session.json.last_checkpoint_at
+**Checkpoint validity check**: if `executed_by == "main-agent"` and `bypass_justification` is null or empty, the checkpoint is invalid. Either set a real justification or re-execute the phase via subagent dispatch before checkpointing.
+
+### Step 5: Update session.json.last_checkpoint_at
 
 ```bash
 jq --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '.last_checkpoint_at = $ts' \
@@ -95,7 +107,7 @@ jq --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '.last_checkpoint_at = $ts' \
 mv "$SESSION_DIR/session.json.tmp" "$SESSION_DIR/session.json"
 ```
 
-### Step 5: Manual Verification Pause (if applicable)
+### Step 6: Manual Verification Pause (if applicable)
 
 If the current phase's `manual_verification` field is non-empty, ask the user before continuing:
 
@@ -177,3 +189,4 @@ Earlier versions of this skill used dual-write (state.md + native Tasks) for red
 - **Fabricating `commands_run[]` entries**: K5 violation; downstream compliance breaks.
 - **Leaving `strikes[]` empty after actual failures**: loses the error log; 3-strike escalation needs the history.
 - **Updating `bc_satisfied[]` before the phase's `verification` command exits 0**: violates the "evidence before claim" rule; see `verification-gates.md`.
+- **Omitting `executed_by` or setting `"main-agent"` without a justification**: SKILL.md Phase 2.2 requires subagent dispatch. Bypass requires a documented structural reason (not convenience) in `bypass_justification`.

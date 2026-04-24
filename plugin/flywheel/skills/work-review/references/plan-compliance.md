@@ -2,6 +2,8 @@
 
 This reference backs `work-review` Phase 1.0. It describes the TWO mechanical compliance checks the skill runs against the frozen baseline + live state, plus Check 0 (baseline hash verification) which gates both.
 
+> Note on "Check 1b" (files outside baseline): earlier versions of this skill emitted P1 findings for any path in `state.artifacts.files_created | files_modified` that was not in `baseline.phases[].files[]`. This rule was **CUT** because it cannot distinguish scope creep from principled extensions (DRY when a 2nd consumer appears, SRP splits, shared test fixtures, emergent shared helpers). A mechanical set-subtraction cannot read files or evaluate intent. Reviewer agents can, and do. File-level scope judgment is delegated to them; the synthesizer arbitrates via `work-review/SKILL.md` Phase 3.3a. Do not reintroduce Check 1b — the failure mode (noise on every principled refactor) is worse than the failure mode it was meant to catch (which reviewer agents already cover).
+
 > Note on "Check 3" (commands re-execution): per D3 of the rigor-gradient pipeline refactor, the K6 commands re-execution check is **CUT**. The trust mechanism for "implementer ran the tests" is B5 (work-implementation's anti-pattern against declaring done without running tests). Re-executing recorded commands adds wall-time, idempotency risk (re-running `git commit`/migrations), and only samples a few entries. Do not reintroduce Check 3 without reversing D3 at the plan level.
 
 ## Preconditions
@@ -51,7 +53,7 @@ On mismatch, emit this synthetic P1 finding:
 
 ## Check 1 — Structured Diff (Scope Drift)
 
-Compare the baseline shape to the state shape. Three classes of drift, all P1:
+Compare the baseline shape to the state shape. Two classes of drift, both P1:
 
 ### 1a. Skipped phases
 
@@ -68,24 +70,7 @@ Compare the baseline shape to the state shape. Three classes of drift, all P1:
 }
 ```
 
-### 1b. Files outside baseline scope
-
-Any path in `state.phases[i].artifacts.files_created[]` or `files_modified[]` that is NOT in the corresponding `baseline.phases[i].files[]` is an out-of-scope edit.
-
-```json
-{
-  "title": "File outside baseline scope modified",
-  "severity": "P1",
-  "scope": { "kind": "code", "file": "<path>", "line": null },
-  "what_wrong": "state.phases[<id>].artifacts touched <path> but baseline.phases[<id>].files[] does not include it.",
-  "suggested_fix": "Remove the edit or amend the baseline to include <path>.",
-  "evidence": "state.phases[<id>].artifacts files_modified/files_created listed <path>."
-}
-```
-
-Note the polymorphic scope: this is a `code` finding because the evidence is a concrete file, not a planning concept.
-
-### 1c. Removed tasks
+### 1b. Removed tasks
 
 Baseline tasks that show no evidence of being implemented in state. The evidence surface is `state.phases[i].outcomes[]`: if outcomes reference at least one baseline task id (by literal match), any baseline task NOT referenced is treated as removed. If outcomes reference no task ids, the check is silent for that phase (we cannot distinguish coverage and must not emit false positives).
 
@@ -99,6 +84,8 @@ Baseline tasks that show no evidence of being implemented in state. The evidence
   "evidence": "state.phases[<id>].outcomes does not mention task id <tid>."
 }
 ```
+
+Note: file-level scope drift is NOT checked here. See the Check 1b cut note at the top of this file. Reviewer agents + synthesizer arbitration (SKILL.md Phase 3.3a) handle file-level judgment.
 
 ## Check 2 — BC Coverage
 
@@ -123,30 +110,27 @@ This turns "did the implementer satisfy every contract they agreed to?" into a m
 |---|---|---|
 | Check 0 (hash mismatch) | `plan` | `phase_id` (use `"*"` when not phase-specific) |
 | Check 1a (skipped phase) | `plan` | `phase_id` |
-| Check 1b (file outside baseline) | `code` | `file`, optional `line: null` |
-| Check 1c (removed task) | `plan` | `phase_id` + `task_id` |
+| Check 1b (removed task) | `plan` | `phase_id` + `task_id` |
 | Check 2 (uncovered BC) | `plan` | `bc_id` |
 
 All findings must conform to `flywheel/schemas/findings.schema.json`. The `scope` is polymorphic (`oneOf`) — `plan` requires at least one of `phase_id` / `task_id` / `bc_id`; `code` requires `file`.
 
 ## Emission Path
 
-The findings produced by Check 0, 1, and 2 are synthetic (no reviewer agent produced them), so they skip the parse step in Phase 3.1 but still pass through:
+The findings produced by Check 0, 1, and 2 are synthetic (no reviewer agent produced them), so they skip the parse step in Phase 3.1. They enter the Phase 3.3 dedup pass with `reviewer: "plan-compliance"` in their reviewers_matched list. No severity promotion is applied — these findings are already at their intended severity (P1) at source, and cross-source agreement does not change how urgently they need fixing.
 
-1. The fingerprint script (`flywheel/synthesizer/fingerprint.sh --group`) alongside reviewer outputs, so cross-reviewer + mechanical-check collisions promote severity (rare but possible: a reviewer also flags scope drift).
-2. The write path that produces `review.findings.json` in the session dir.
-
-The synthesizer uses `"reviewer": "synthesizer"` on the envelope (see `findings.schema.json`'s reviewer enum). The mechanical checks use the same envelope when surfacing their findings through the pipeline.
+The synthesizer uses `"reviewer": "synthesizer"` on the merged envelope. Mechanical checks appear in `findings[]` with reviewers_matched tagged appropriately so readers can trace provenance.
 
 ## Reference Tests
 
 - `tests/work-review/hash.test.sh` — Check 0 (normal + mutated cases, hash format).
-- `tests/work-review/diff.test.sh` — Check 1 (skipped phase, file outside baseline, removed task).
+- `tests/work-review/diff.test.sh` — Check 1 (skipped phase, removed task).
 - `tests/work-review/bc-coverage.test.sh` — Check 2 (uncovered BC, all-covered happy path).
 
 ## Anti-Patterns
 
 - **Do not re-emit findings when Check 0 halts**. Checks 1 and 2 must be skipped on hash mismatch.
-- **Do not widen the file-outside-baseline check to subdirectories.** An explicit file list means the implementer committed to those files; the check's value is that it is literal.
+- **Do not re-introduce Check 1b (files outside baseline).** A mechanical set-subtraction cannot distinguish principled extensions from scope creep. Reviewer agents can read files; the synthesizer arbitrates via Phase 3.3a. The old rule produced P1 noise on every legitimate refactor.
 - **Do not treat "state.status == completed" as proof of phase completion.** Check 1a compares `baseline.phases[].id` against `state.phases[]` with `status == "completed"`; state's top-level status is a summary field.
 - **Do not re-introduce commands re-execution (former Check 3).** D3 cut it; reversing requires a D3-level decision, not an implementation change.
+- **Do not promote severity on cross-source agreement.** Severity reflects the urgency of fixing the issue; match count reflects how many sources noticed it. These are orthogonal. Inflating severity by agreement produced false P1 blockers on well-corroborated P3 nits.

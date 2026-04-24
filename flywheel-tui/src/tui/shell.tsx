@@ -166,7 +166,6 @@ export function FlywheelShell(props: { createAdapter: CreateWorkflowAdapter; pro
     chat,
     sessionModal,
     inChat,
-    runningCount,
     switchForeground,
   })
   useKeyboard(handleKey)

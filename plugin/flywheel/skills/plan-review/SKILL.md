@@ -1,6 +1,6 @@
 ---
 name: plan-review
-description: Run ALL reviewer agents in parallel against a plan. Deduplicates findings via fingerprint script and writes findings.json to the active session. Triggers on "review plan", "check plan".
+description: Run ALL reviewer agents in parallel against a plan. Deduplicates findings semantically and writes findings.json to the active session. Triggers on "review plan", "check plan".
 allowed-tools:
   - Read
   - Write
@@ -14,7 +14,7 @@ allowed-tools:
 
 # Plan Reviewing Skill
 
-Run ALL available reviewer agents in parallel, collect their JSON findings, dedup via fingerprint, and write a merged `findings.json` into the active session directory.
+Run ALL available reviewer agents in parallel, collect their JSON findings, dedup semantically, and write a merged `findings.json` into the active session directory.
 
 **Philosophy:** Each reviewer represents a different stakeholder perspective. These perspectives legitimately conflict. We do NOT resolve conflicts — we preserve them as distinct findings with `reviewers_matched` annotations and surface disagreements for the user to decide.
 
@@ -120,22 +120,16 @@ Synthetic shape:
 }
 ```
 
-### 3.3 Semantic dedup, then policy via fingerprint.sh
-
-**You do the dedup. The script does the policy.**
+### 3.3 Semantic dedup
 
 Walk the reviewer outputs and decide which findings describe the same issue — reviewers may phrase a shared concern differently (e.g. "missing type hints on handlers" vs "handlers lack return annotations" — same problem). Group them by meaning, not by string match.
 
-Then emit one JSON array where each element is a group: `{"reviewers": [...], "finding": <one representative finding from the group>}`. Pipe it to the script:
+For each group, emit a single merged finding directly — no external script, no severity promotion. The merged finding inherits the severity the reviewers assigned (take the max, which is the most severe P-level anyone flagged: P1 > P2 > P3). Attach:
 
-```bash
-# Write your groupings to a tmp file, then:
-cat /tmp/grouped.json | flywheel/synthesizer/fingerprint.sh
-```
+- `reviewers_matched`: unique list of reviewer names that reported the issue
+- `match_count`: length of that list
 
-The script annotates each group with `fingerprint`, `match_count`, `reviewers_matched`, and promotes `finding.severity` one level when `match_count >= 2`.
-
-**BLOCKING:** `flywheel/synthesizer/fingerprint.sh` is a black-box tool. Do NOT read its source. Run `flywheel/synthesizer/fingerprint.sh --help` to see the contract if you need it.
+**Do NOT promote severity based on `match_count`.** Severity describes how important the issue is to fix; match_count describes how many reviewers independently noticed it. They are orthogonal. A P3 that three reviewers flagged is a well-corroborated P3 — still a P3. The `match_count` field signals corroboration to anyone reading the review.
 
 ### 3.4 Compose the merged findings.json
 

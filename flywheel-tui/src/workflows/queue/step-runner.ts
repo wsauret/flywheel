@@ -34,10 +34,14 @@ async function dispatchStep(
     ctx.dispatcherResult = { prompt, evaluationCriteria: null };
     log.info("dispatcher skipped (step.skipDispatcher)", { stepId: step.id });
   } else {
-    ctx.dispatcherResult = await deps.dispatcher(step, {
-      previousHandoff: ctx.previousHandoff,
-      previousAssessment: ctx.previousAssessment,
-    });
+    ctx.dispatcherResult = await deps.dispatcher(
+      step,
+      {
+        previousHandoff: ctx.previousHandoff,
+        previousAssessment: ctx.previousAssessment,
+      },
+      deps.abortSignal,
+    );
   }
 
   return ctx;
@@ -248,7 +252,7 @@ export async function executeStep(
     return { outcome: "completed", previousHandoff: ctx.previousHandoff, previousAssessment: ctx.previousAssessment };
   } catch (error) {
     // Abort/interrupt: revert the step to pending so it can be retried on resume
-    if (error instanceof DOMException && error.name === "AbortError") {
+    if (deps.abortSignal?.aborted || (error instanceof DOMException && error.name === "AbortError")) {
       log.info("step interrupted by abort, reverting to pending", { stepId: step.id });
       await safeTransition(step.id, "pending", "interrupted by abort — will retry on resume");
       return { outcome: "failed", previousHandoff: ctx.previousHandoff, previousAssessment: ctx.previousAssessment };

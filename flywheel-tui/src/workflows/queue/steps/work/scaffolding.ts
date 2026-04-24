@@ -5,4 +5,5 @@ import { WORK_STEP_FIELDS } from "./fields.js";
 registerScaffolding("work", (_step, paths: ScaffoldingPaths) => ({
   preamble: "",
   postamble: renderWorkPostamble(WORK_STEP_FIELDS, paths.handoffPath),
+  produces: "work-handoff",
 }));

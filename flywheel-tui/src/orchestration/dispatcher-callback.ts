@@ -50,14 +50,14 @@ export function createDispatcherCallback(opts: DispatcherCallbackDeps): Dispatch
       : contextIndexer.getRelevantContext(),
   })
 
-  return async (step, context) => {
+  return async (step, context, signal) => {
     try {
       const dispatchContext = {
         accumulatedContext: contextAccumulator.getContext(),
         previousHandoff: context.previousHandoff,
         previousAssessment: context.previousAssessment,
       }
-      const decision = await stepDispatcher.dispatch(step, queue, dispatchContext)
+      const decision = await stepDispatcher.dispatch(step, queue, dispatchContext, signal)
       if (decision.workerConfig?.self_review_items !== undefined) {
         step.selfReviewItems = decision.workerConfig.self_review_items
       }
@@ -67,6 +67,8 @@ export function createDispatcherCallback(opts: DispatcherCallbackDeps): Dispatch
         mutationRequests: decision.mutationRequests,
       }
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") throw err
+      if (signal?.aborted) throw err
       log.warn("dispatcher failed, falling back to step metadata", {
         stepId: step.id,
         error: errorMessage(err),

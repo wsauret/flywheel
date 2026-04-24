@@ -54,11 +54,8 @@
         "suggested_fix": { "type": "string", "minLength": 1 },
         "evidence": { "type": "string", "minLength": 1 },
         "id": { "type": "string", "minLength": 1 },
-        "fingerprint": { "type": "string", "minLength": 1 },
         "match_count": { "type": "integer", "minimum": 1 },
-        "reviewers_matched": { "type": "array", "items": { "type": "string" } },
-        "base_severity": { "enum": ["P1", "P2", "P3"] },
-        "promoted": { "type": "boolean" }
+        "reviewers_matched": { "type": "array", "items": { "type": "string" } }
       }
     },
     "scope": {

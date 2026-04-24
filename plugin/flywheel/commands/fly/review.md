@@ -65,7 +65,7 @@ skill: plan-review
 `plan-review`:
 - Loads the active session's `spec.json`
 - Dispatches all reviewer agents in parallel against the plan
-- Deduplicates via fingerprint
+- Deduplicates semantically
 - Writes `findings.json` to the active session
 - Summary with a prompt to continue into `plan-consolidation`
 

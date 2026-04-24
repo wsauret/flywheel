@@ -1,0 +1,81 @@
+## Sprint Mode — Iterative Implementation
+
+You are in sprint mode. Follow this discipline:
+
+1. **RESEARCH**: Read the codebase. Understand conventions, test frameworks,
+   existing patterns. Check CLAUDE.md for project rules — extract test commands,
+   forbidden patterns, and naming conventions.
+
+2. **PLAN**: Form a brief mental plan. What files to create/modify?
+   What tests to write? What's the simplest approach?
+
+3. **EXECUTE with TDD**:
+   - Write or update tests FIRST (they should fail initially)
+   - Implement the minimum code to make tests pass
+   - Run tests and verify they pass
+
+4. **SELF-VERIFY**: Before finishing, run the full test suite and any
+   build/lint commands. Fix issues before writing the handoff.
+
+5. **HANDOFF**: Write a thorough handoff — the evaluator will use this
+   to assess your work. Include: what you did, what tests you wrote,
+   what commands you ran and their results, any decisions made.
+
+SCOPE DISCIPLINE: Do the minimum needed. No gold-plating, no unrelated cleanup.
+If you hit a wall 3 times on the same problem, write what you tried in
+the handoff and let the evaluator decide next steps.---
+## Output Requirements
+
+## Handoff Instructions
+
+**CRITICAL:** Before you finish, you MUST write a valid JSON handoff file. This is how the queue tracks your work. If you skip this step or produce invalid JSON, the queue will retry the entire step.
+
+Write a JSON file to:
+`/tmp/h.json`
+
+### Required format
+
+The file must contain a single JSON object (not wrapped in markdown code fences). Use this exact structure:
+
+```json
+{
+  "summary": "Implemented the authentication middleware with JWT validation...",
+  "artifacts": {"files_created": ["src/auth.ts"], "files_modified": ["src/app.ts"], "commands_run": [{"command": "bun test", "exitCode": 0, "observation": "12/12 tests pass"}]},
+  "verification": {"tests_passed": true, "test_output_summary": "12/12 tests pass"},
+  "decisions": ["Used JWT over session tokens for statelessness"],
+  "warnings": ["Rate limiter not yet configured for production"],
+  "files_to_review": ["src/auth.ts", "tests/auth.test.ts"]
+}
+```
+
+### Field reference
+
+- **summary** (REQUIRED): 100-5000 char summary of what was done, decisions made, and current state
+  Example: "Implemented the authentication middleware with JWT validation..."
+
+- **artifacts** (optional): Files created, modified, and commands run. IMPORTANT: commands_run entries will be RE-EXECUTED by a verification agent — only list commands you actually ran, with accurate exit codes. Fabricated or inaccurate entries cause the step to fail verification and retry
+  Example: {"files_created": ["src/auth.ts"], "files_modified": ["src/app.ts"], "commands_run": [{"command": "bun test", "exitCode": 0, "observation": "12/12 tests pass"}]}
+
+- **verification** (optional): Whether tests passed and a brief summary of test output. Must reflect actual results — a verification agent will re-run reported commands to confirm
+  Example: {"tests_passed": true, "test_output_summary": "12/12 tests pass"}
+
+- **decisions** (optional): Key architectural or implementation decisions made
+  Example: ["Used JWT over session tokens for statelessness"]
+
+- **warnings** (optional): Issues or risks discovered during execution
+  Example: ["Rate limiter not yet configured for production"]
+
+- **files_to_review** (optional): Files that should be reviewed by the evaluator or user
+  Example: ["src/auth.ts", "tests/auth.test.ts"]
+
+### Rules
+
+1. The `summary` field is REQUIRED (100-5000 characters, single paragraph, no newlines).
+2. All other fields are optional but strongly encouraged — they improve downstream quality assessment.
+3. Do NOT include fields not listed above — unknown fields cause a validation error and the step will be retried.
+4. If this step also requires writing other artifacts (for example `context.md`, `plan.json`, or edits to `plan.json`), complete those artifact writes first and write the handoff file last.
+5. If you want to present the user with a summary or final message, print it BEFORE writing the handoff file. Any output after the handoff write may not be seen.
+6. Treat the handoff file as your final completion signal: once the handoff is written, the queue may auto-complete the step immediately.
+7. Write the file using the handoff-writing mechanism for this engine (e.g., `write_file`, `create`, or equivalent). Do NOT just print the JSON to stdout.
+8. The file must be valid JSON — no trailing commas, no comments, no markdown wrapping.
+9. **Accuracy is critical.** A verification agent will re-execute commands from `artifacts.commands_run` and check that files in `artifacts.files_created`/`files_modified` exist on disk. If any reported command returns a different exit code than you claimed, or a reported file does not exist, the step fails verification and you will be asked to retry. Only report commands you actually ran and files that actually exist.

@@ -34,6 +34,8 @@ Written once by work-implementation Phase 1 after loading the TaskList:
       "status": "pending",
       "started_at": null,
       "completed_at": null,
+      "executed_by": null,
+      "bypass_justification": null,
       "outcomes": [],
       "strikes": [],
       "bc_satisfied": [],
@@ -69,6 +71,8 @@ After phase-1 completion, state.json looks like:
       "status": "completed",
       "started_at": "2026-04-23T12:00:00Z",
       "completed_at": "2026-04-23T12:30:00Z",
+      "executed_by": "subagent",
+      "bypass_justification": null,
       "outcomes": [
         "Added --timeout flag to commander",
         "Wired SIGALRM handler with Windows guard and stderr warning"
@@ -93,6 +97,8 @@ After phase-1 completion, state.json looks like:
       "status": "pending",
       "started_at": null,
       "completed_at": null,
+      "executed_by": null,
+      "bypass_justification": null,
       "outcomes": [],
       "strikes": [],
       "bc_satisfied": [],
@@ -175,6 +181,33 @@ The top-level `state.status` follows the same enum. `paused` at the top level me
 
 ---
 
+## `executed_by` and `bypass_justification`
+
+Every completed phase records **how** it was executed:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `executed_by` | `"subagent"` \| `"main-agent"` \| `null` | `"subagent"` = dispatched via Task per SKILL.md Phase 2.2. `"main-agent"` = implementation happened in the orchestrator. `null` while phase is pending. |
+| `bypass_justification` | `string` \| `null` | Required when `executed_by == "main-agent"`. Describes the specific reason dispatch was blocked (not "it looked small"). |
+
+Subagent dispatch is the default path. `executed_by: "main-agent"` with `bypass_justification: null` is a schema violation — the checkpoint is invalid and should not be accepted.
+
+Legitimate bypass reasons include:
+
+- The Task tool is unavailable or returning structural failures on repeat attempts.
+- The phase's work is a single trivial atomic edit to session state (e.g. updating `active.json`, not source code).
+- Two phases need to update a shared reference atomically and splitting across subagents would race.
+
+Illegitimate reasons:
+
+- "It was small." "It was mechanical." "I already had the context."
+- "I wanted to save time." (Dispatch is cheaper than you think; context accumulation is more expensive than you think.)
+- "The subagent would just do the same thing." (That's the point — it does it in an isolated context.)
+
+`work-review` can surface a P2 finding when `executed_by: "main-agent"` appears without a compelling justification. Treat the field as a discipline signal, not paperwork.
+
+---
+
 ## `commands_run` Accuracy (K5 discipline)
 
 Every entry in `artifacts.commands_run[]` must reflect what actually ran:
@@ -221,3 +254,4 @@ If orchestrator compacts mid-execution (or user runs `/fly:work` with no args):
 - **Using `plan_id` instead of `session_id`** — state.json lives in a session directory; the canonical identifier is `session_id` (matches `session.json.session_id` and the directory name). The schema requires it.
 - **Duplicating `baseline_hash` into state.json** — the hash lives in `session.json.baseline_hash` only. One source of truth; work-review reads it from there.
 - **Inventing status values like `"not_started"`, `"active"`, or `"done"`** — the enum is exactly `pending | in_progress | paused | completed`. Nothing else validates.
+- **Omitting `executed_by` or setting it to `"main-agent"` without a `bypass_justification`** — every completed phase must record whether it went through subagent dispatch, and bypass requires a documented structural reason (not convenience). See `executed_by and bypass_justification` above.

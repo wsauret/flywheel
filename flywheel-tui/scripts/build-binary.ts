@@ -11,6 +11,8 @@ import { mkdir, readdir, copyFile, readFile, stat, cp, rm } from "fs/promises";
 import { join, basename } from "path";
 import solidPlugin from "@opentui/solid/bun-plugin";
 
+import { writeManifest } from "./build-manifest.js";
+
 const ROOT = join(import.meta.dir, "..");
 const DIST = join(ROOT, "dist");
 const AGENTS_SRC = join(ROOT, "src", "workflows", "agents");
@@ -321,58 +323,3 @@ async function patchVendoredSharpRuntime(): Promise<void> {
   }
 }
 
-// --- Manifest generation ---
-
-async function writeManifest(destPath: string): Promise<void> {
-  const agents: Record<string, string> = {};
-  const skills: Record<string, { skill: string; references: Record<string, string> }> = {};
-
-  // Read canonical agent persona files. The runtime installer projects each
-  // file to the right shape for Claude (`~/.claude/agents/fly/`) and the
-  // harness (`~/.flywheel/agents/`), so the manifest only needs the canonical
-  // form.
-  const personaDir = join(AGENTS_SRC, "personas", "fly");
-  const mdFiles = (await readdir(personaDir)).filter((f) => f.endsWith(".md"));
-  for (const file of mdFiles) {
-    agents[file] = await readFile(join(personaDir, file), "utf-8");
-  }
-
-  // Read skill files
-  const skillsDir = join(AGENTS_SRC, "skills");
-  const entries = await readdir(skillsDir, { withFileTypes: true });
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    const skillSrc = join(skillsDir, entry.name);
-    let skillContent = "";
-    try {
-      skillContent = await readFile(join(skillSrc, "SKILL.md"), "utf-8");
-    } catch {
-      continue;
-    }
-
-    const refs: Record<string, string> = {};
-    try {
-      const refFiles = (await readdir(join(skillSrc, "references"))).filter((f) =>
-        f.endsWith(".md"),
-      );
-      for (const ref of refFiles) {
-        refs[ref] = await readFile(join(skillSrc, "references", ref), "utf-8");
-      }
-    } catch {
-      // No references — fine
-    }
-
-    skills[entry.name] = { skill: skillContent, references: refs };
-  }
-
-  const code = [
-    "// Populated by scripts/build-binary.ts — restored to empty defaults after bundling",
-    "",
-    `export const agents: Record<string, string> = ${JSON.stringify(agents, null, 2)};`,
-    "",
-    `export const skills: Record<string, { skill: string; references: Record<string, string> }> = ${JSON.stringify(skills, null, 2)};`,
-    "",
-  ].join("\n");
-
-  await Bun.write(destPath, code);
-}

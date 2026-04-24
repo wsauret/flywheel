@@ -40,6 +40,7 @@ export function createSessionStore(createAdapter: CreateWorkflowAdapter): Sessio
     workerCwd?: string
     workflowDeps?: WorkflowDeps
     chatContext?: string
+    seedInitialUserMessage?: boolean
     onRunnerDone?: (sessionId: string, result: WorkflowResult) => void
     onRunnerError?: (sessionId: string, err: unknown) => void
   }): string {
@@ -52,6 +53,7 @@ export function createSessionStore(createAdapter: CreateWorkflowAdapter): Sessio
       updateEntry,
       createAdapter,
       priorBlocks,
+      seedInitialUserMessage: opts.seedInitialUserMessage,
       overrides: {
         workerCwd: opts.workerCwd,
         workflowDeps: opts.workflowDeps,

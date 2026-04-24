@@ -18,14 +18,14 @@ interface KeyboardHandlerDeps {
   chat: ChatModeHook
   sessionModal: SessionModalHook
   inChat: Accessor<boolean>
-  runningCount: Accessor<number>
   switchForeground: (sessionId: string) => void
 }
 
 export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
-  const { signals, sessionStore, showToast, setTerminalTitle, workflow, chat, sessionModal, inChat, runningCount } = deps
+  const { signals, sessionStore, showToast, setTerminalTitle, workflow, chat, sessionModal, inChat } = deps
 
   let lastChatEscAt = 0
+  let lastWorkflowEscAt = 0
 
   function cycleSession(direction: 1 | -1): void {
     const cycleable = deps.sessions().filter(s => s.state === "active" || s.state === "paused")
@@ -49,9 +49,14 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
     {
       active: () => signals.sessionState() === "active" && !inChat(),
       handler: () => {
+        const now = Date.now()
+        if (now - lastWorkflowEscAt < 2_000) {
+          lastWorkflowEscAt = 0
+          workflow.abortForeground()
+          return
+        }
+        lastWorkflowEscAt = now
         workflow.pauseForeground()
-        const bg = runningCount()
-        if (bg > 0) showToast({ message: `${bg} session${bg > 1 ? "s" : ""} still running in background`, variant: "info" })
       },
     },
     {
@@ -67,10 +72,6 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
         lastChatEscAt = now
         chat.interruptChat()
       },
-    },
-    {
-      active: () => signals.sessionState() === "active",
-      handler: () => workflow.abortForeground(),
     },
     {
       active: () => {

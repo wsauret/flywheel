@@ -100,6 +100,10 @@ export class HeadlessAdapter {
     this.eventBus = null
   }
 
+  seedUserMessage(text: string): void {
+    this.log(`User request: ${text}`)
+  }
+
   private closeLogStream() {
     if (this.logWriter) {
       this.logWriter.flush()

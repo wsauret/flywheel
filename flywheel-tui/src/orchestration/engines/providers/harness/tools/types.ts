@@ -18,6 +18,8 @@ export interface ToolContext {
   todoList: TodoItem[];
   /** Tracks which file paths have been read during this session (for read-before-edit enforcement). */
   readFiles: Set<string>;
+  /** Background bash log paths written during this session; deleted when the agent loop exits. */
+  bgLogPaths: Set<string>;
   /** Names of tools available in this session (for bash command interception). */
   availableTools?: ReadonlySet<string>;
   /** Set per-call by executeTool — the tool_use block's ID from the LLM response. */

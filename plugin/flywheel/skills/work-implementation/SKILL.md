@@ -95,6 +95,12 @@ Quick check of the phase's referenced files (from `phase.files[]` and each `task
 
 ### 2.2 Dispatch Subagent
 
+**BLOCKING: Every phase executes inside a Task subagent. The main agent's role in Phase 2 is probe (2.1) → dispatch (2.2) → checkpoint (2.3) — not implementation. Do NOT use Edit or Write on source files from the main agent.**
+
+If a phase looks trivially small, dispatch it anyway. You cannot judge cross-phase context pressure from a single phase's scope — by the time phase N feels heavy, phases 1..N-1 have already accumulated in the main thread. A 3-file, 20-minute phase still dispatches; the rationalization "it was small and mechanical" is the exact failure mode this rule exists to catch.
+
+Main-agent bypass is only legitimate when dispatch itself is blocked (Task tool unavailable, subagent returning structural failures, a shared reference both phases need to update atomically). Record the bypass with a non-null `bypass_justification` at checkpoint; see `references/checkpoint-procedure.md`.
+
 **BLOCKING: Do NOT specify a `model` parameter** — subagents inherit the current session's model.
 
 ```
@@ -195,6 +201,7 @@ Read `references/recovery-and-errors.md` before proceeding (resume flow, strande
 - **Split plan into "this session" phases** — context pressure is handled via Ralph mode or subagent dispatch. If a spec is genuinely too large, return to plan-consolidation.
 - **Ask for approval between every task** — spec is the authority. Only ask when the spec itself is ambiguous.
 - **BLOCKING: Declare "done" without running tests** — `references/verification-gates.md` requires evidence. Each phase's `verification` command must execute and pass before state transitions to `complete`.
+- **BLOCKING: Direct main-agent execution of "small" phases** — "Small" is a per-phase judgment; context pressure is a per-plan property. Reads, edits, and test output accumulate across phases and choke the main thread by late phases. Dispatch every phase via Task. The main agent does probe + dispatch + checkpoint — nothing else. If legitimately bypassed, `state.phases[i].executed_by` must be `"main-agent"` with a non-null `bypass_justification`; "it looked small" is not a valid justification.
 
 ---
 

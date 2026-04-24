@@ -12,8 +12,10 @@ export function contextWindowForModel(model: string): number {
   const lower = canonicalize(model);
 
   if (lower.includes("[1m]")) return 1_000_000;
+  if (/^claude-(sonnet|opus)-4-[6-9]/.test(lower)) return 1_000_000;
   if (lower.startsWith("claude-")) return 200_000;
-  if (lower === "opus" || lower === "sonnet" || lower === "haiku") return 200_000;
+  if (lower === "opus" || lower === "sonnet") return 1_000_000;
+  if (lower === "haiku") return 200_000;
 
   if (/^o\d/.test(lower)) return 200_000;
   if (

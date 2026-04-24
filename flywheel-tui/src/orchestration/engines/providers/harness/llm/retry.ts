@@ -42,6 +42,8 @@ export function isNonRetryable(err: unknown): boolean {
   if (err instanceof RetryableStreamError) return false;
   if (err instanceof ContextLengthExceededError) return true;
   if (err instanceof OutputLengthExceededError) return true;
+  if (err instanceof DOMException && err.name === "AbortError") return true;
+  if (err instanceof Error && err.name === "AbortError") return true;
 
   if (hasStatus(err)) {
     const { status } = err;

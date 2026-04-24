@@ -25,6 +25,7 @@ interface DispatcherContext {
 export type DispatcherFn = (
   step: Step,
   context: DispatcherContext,
+  signal?: AbortSignal,
 ) => Promise<{
   prompt: string;
   evaluationCriteria: EvaluationCriteria | null;
@@ -43,6 +44,7 @@ export type EvaluatorFn = (
   handoffData?: Record<string, unknown> | null,
   /** The full dispatcher-crafted task prompt, for richer evaluator context. */
   taskContent?: string,
+  signal?: AbortSignal,
 ) => Promise<EvalResult>;
 
 /** Worker: executes a step with a prompt.

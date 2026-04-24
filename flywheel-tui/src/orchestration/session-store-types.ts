@@ -11,6 +11,7 @@ import type { EngineMetadata } from "./engines/core/types.js"
 interface WorkflowAdapter {
   connect(bus: EventBus): void
   disconnect(): void
+  seedUserMessage?(text: string, timestamp: number): void
   answerQuestion?(toolUseId: string, answers: Record<string, string>): void
   cancelQuestion?(toolUseId: string): void
 }
@@ -59,6 +60,7 @@ export interface SessionStore {
     workerCwd?: string
     workflowDeps?: WorkflowDeps
     chatContext?: string
+    seedInitialUserMessage?: boolean
     onRunnerDone?: (sessionId: string, result: WorkflowResult) => void
     onRunnerError?: (sessionId: string, err: unknown) => void
   }): string

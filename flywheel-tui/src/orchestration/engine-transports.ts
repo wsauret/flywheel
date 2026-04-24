@@ -38,7 +38,7 @@ export function createEngineDispatcherTransport(
   const systemPrompt = buildDispatcherSystemPrompt()
 
   return {
-    async invoke(input: DispatcherInput): Promise<DispatcherDecision> {
+    async invoke(input: DispatcherInput, signal?: AbortSignal): Promise<DispatcherDecision> {
       const invocationId = randomUUID()
       ensureSessionDir(sessionId, projectCwd)
       const handoffPath = buildInvocationHandoffPath("dispatcher", sessionId, invocationId, projectCwd)
@@ -58,6 +58,7 @@ export function createEngineDispatcherTransport(
         handoffPath,
         prompt: fullPrompt,
         handoffSchema: DispatcherDecisionHandoffSchema,
+        signal,
         onEvent: (event) => {
           emit("dispatcher:ndjson", { workflowId, ndjsonEvent: event })
         },
@@ -89,7 +90,7 @@ export function createEngineEvaluatorTransport(
   const systemPrompt = buildEvaluatorSystemPrompt(opts.systemPromptAddendum)
 
   return {
-    async invoke(input: EvaluatorInput): Promise<EvaluatorResult> {
+    async invoke(input: EvaluatorInput, signal?: AbortSignal): Promise<EvaluatorResult> {
       const invocationId = randomUUID()
       ensureSessionDir(sessionId, projectCwd)
       const handoffPath = buildInvocationHandoffPath("evaluator", sessionId, invocationId, projectCwd)
@@ -109,6 +110,7 @@ export function createEngineEvaluatorTransport(
         handoffPath,
         prompt: fullPrompt,
         handoffSchema: EvaluatorVerdictSchema,
+        signal,
         onEvent: (event) => {
           emit("evaluator:ndjson", { workflowId, ndjsonEvent: event })
         },

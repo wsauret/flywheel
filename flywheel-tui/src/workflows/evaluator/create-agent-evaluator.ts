@@ -31,6 +31,7 @@ export function createAgentEvaluatorFn(transport: EvaluatorTransport): Evaluator
     evaluationCriteria?: EvaluationCriteria | null,
     handoffData?: Record<string, unknown> | null,
     taskContent?: string,
+    signal?: AbortSignal,
   ): Promise<EvalResult> => {
     log.info("agent evaluation starting", {
       stepId: step.id,
@@ -61,7 +62,7 @@ export function createAgentEvaluatorFn(transport: EvaluatorTransport): Evaluator
     };
 
     try {
-      const result = await transport.invoke(input);
+      const result = await transport.invoke(input, signal);
 
       log.info("agent evaluation complete", {
         stepId: step.id,
@@ -70,6 +71,9 @@ export function createAgentEvaluatorFn(transport: EvaluatorTransport): Evaluator
 
       return resultToEvalResult(result);
     } catch (error) {
+      // Propagate aborts — don't swallow them as graceful degradation.
+      if (signal?.aborted || (error instanceof DOMException && error.name === "AbortError")) throw error;
+
       const errMsg = errorMessage(error);
       log.warn("agent evaluation transport error, degrading gracefully", {
         stepId: step.id,

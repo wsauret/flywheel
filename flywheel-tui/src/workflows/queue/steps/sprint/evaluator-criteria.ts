@@ -7,45 +7,21 @@
 //
 // Sprint mode uses Opus for the evaluator to provide thorough assessment.
 
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+import { stepMarkdown } from "../../../agents/manifest.js";
+import { loadStepMarkdown } from "../../shared/load-step-markdown.js";
 import type { SprintIterationRecord } from "./types.js";
-import { formatChecklistNumbered } from "../../shared/quality-checklist.js";
 
-// Computed once at module load for prompt caching.
-
-const STATIC_CRITERIA_PREFIX = [
-  "## Sprint Mode: Evaluation Criteria",
-  "",
-  "Evaluate the worker's output against these checks — the same checklist",
-  "the worker used for self-review before submitting. Your job is to verify",
-  "the worker did what was asked, not to find reasons to fail passing work.",
-  "",
-  "### Assessment Checklist",
-  "",
-  formatChecklistNumbered(),
-  "",
-
-  "### Required Feedback Fields",
-  "",
-  "Your verdict MUST include:",
-  "- `feedback`: Specific summary for the worker if a retry is needed.",
-  "",
-
-  "### When to FAIL",
-  "",
-  "FAIL only for hard evidence of problems:",
-  "- Tests actually failing or not running",
-  "- Critical deliverables missing from the task requirements",
-  "- Implementation fundamentally wrong or broken",
-  "- Tests weakened compared to previous iterations (assertions removed/trivialized)",
-  "",
-  "### When to PASS",
-  "",
-  "PASS when the work meets the task requirements, even if imperfect:",
-  "- Implementation addresses the task. Minor style issues are NOT grounds to fail.",
-  "- Tests exist and validate the core behavior. Not every edge case needs coverage.",
-  "- When in doubt, PASS with suggestions. Retries are expensive.",
-  "",
-].join("\n");
+// Loaded once at module load for prompt caching.
+const STATIC_CRITERIA_PREFIX = loadStepMarkdown({
+  filePath: fileURLToPath(new URL("./evaluator-criteria-prefix.md", import.meta.url)),
+  manifestKey: "workflows/queue/steps/sprint/evaluator-criteria-prefix.md",
+  displayName: "sprint evaluator criteria",
+  readFile: readFileSync,
+  manifest: stepMarkdown,
+});
 
 /**
  * Build self-review-aligned evaluation criteria for a sprint iteration.

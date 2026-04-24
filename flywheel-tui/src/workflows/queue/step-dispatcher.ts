@@ -54,6 +54,7 @@ interface StepDispatcher {
     step: Step,
     queue: Queue,
     context: StepDispatchContext,
+    signal?: AbortSignal,
   ): Promise<StepDispatcherDecision>;
 }
 
@@ -71,6 +72,7 @@ export function createStepDispatcher(options: StepDispatcherOptions): StepDispat
     step: Step,
     queue: Queue,
     context: StepDispatchContext,
+    signal?: AbortSignal,
   ): Promise<StepDispatcherDecision> {
     const stepIndex = queue.steps.findIndex((s) => s.id === step.id);
     const currentIndex = stepIndex >= 0 ? stepIndex : queue.cursor;
@@ -94,7 +96,7 @@ export function createStepDispatcher(options: StepDispatcherOptions): StepDispat
         stepIndex: currentIndex,
       });
 
-      const decision = await transport.invoke(input);
+      const decision = await transport.invoke(input, signal);
 
       log.info("dispatcher decision received", {
         stepId: step.id,

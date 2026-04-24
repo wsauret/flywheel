@@ -5,6 +5,7 @@ import { errorMessage } from "../infra/error-message.js"
 import { installAgents } from "../workflows/agents/installer.js"
 import "../orchestration/engines/register-all.js"
 import "../workflows/queue/steps/register-all.js"
+import "../workflows/handoff-types/register-all.js"
 
 
 async function main(): Promise<void> {

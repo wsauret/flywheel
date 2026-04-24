@@ -9,8 +9,8 @@
   "scripts": {
     "dev": "bun --conditions=browser run src/cli/index.ts",
     "start": "bun --conditions=browser run src/cli/index.ts",
-    "test": "bun test --only-failures tests/*.test.ts tests/schemas/*.test.ts tests/handoff/*.test.ts tests/evaluator/*.test.ts tests/tui/*.test.ts",
-    "test:verbose": "bun test tests/*.test.ts tests/schemas/*.test.ts tests/handoff/*.test.ts tests/evaluator/*.test.ts tests/tui/*.test.ts",
+    "test": "bun test --only-failures tests/*.test.ts tests/schemas/*.test.ts tests/handoff/*.test.ts tests/handoff-types/*.test.ts tests/evaluator/*.test.ts tests/tui/*.test.ts tests/queue/steps/*.test.ts tests/build/*.test.ts",
+    "test:verbose": "bun test tests/*.test.ts tests/schemas/*.test.ts tests/handoff/*.test.ts tests/handoff-types/*.test.ts tests/evaluator/*.test.ts tests/tui/*.test.ts tests/queue/steps/*.test.ts tests/build/*.test.ts",
     "test:integration": "bun test tests/integration/",
     "test:e2e": "bun test tests/e2e/",
     "test:all": "bun test",

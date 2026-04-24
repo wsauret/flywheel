@@ -76,7 +76,7 @@ function classifyAnthropicError(err: unknown): Error {
 
 const BETA_HEADERS = [
   "interleaved-thinking-2025-05-14",
-  "context-management-2025-06-27",
+  "context-1m-2025-08-07",
 ].join(",");
 
 function toAnthropicContent(

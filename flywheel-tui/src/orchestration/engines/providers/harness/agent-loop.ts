@@ -13,6 +13,7 @@ import type {
 } from "./llm/types.js";
 import { ContextLengthExceededError, OutputLengthExceededError, RetryableStreamError } from "./llm/types.js";
 import { getToolDefinitions } from "./tools/tool-dispatch.js";
+import { cleanupBackgroundLogs } from "./tools/bash.js";
 import type { ToolContext, ToolDefinition, TodoItem } from "./tools/types.js";
 import { createTokenCounter } from "./context/token-counter.js";
 import { createSummarizer, unwindMessages } from "./context/summarizer.js";
@@ -113,15 +114,18 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     pushMessage({ role: "user", content });
   }
 
+  const bgLogPaths = new Set<string>();
   const toolContext: ToolContext = {
     cwd,
     signal,
     handoffPath,
     todoList,
     readFiles: new Set(),
+    bgLogPaths,
     availableTools: new Set(tools.map((t) => t.name)),
   };
 
+  try {
   const maxLLMCalls = options.maxLLMCalls ?? DEFAULT_MAX_LLM_CALLS;
   let llmCallCount = 0;
 
@@ -416,4 +420,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   }
 
   return { outcome: contextOverflow ? "context_overflow" : "ok", previousResponseId };
+  } finally {
+    cleanupBackgroundLogs(bgLogPaths);
+  }
 }

@@ -84,6 +84,10 @@ export class OpenTUIAdapter {
     this.outputSession.dispose();
   }
 
+  seedUserMessage(text: string, timestamp: number): void {
+    this.outputSession.pushUserMessage(text, timestamp, { queued: false, injected: false });
+  }
+
   answerQuestion(toolUseId: string, answers: Record<string, string>): void {
     this.outputSession.answerQuestion(toolUseId, answers);
   }

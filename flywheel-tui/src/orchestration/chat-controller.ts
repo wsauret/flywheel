@@ -134,8 +134,12 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
     startup = { phase: "idle" }
     setIsStarting(false)
     if (foregroundId && emptyChats.has(foregroundId)) {
-      finalizeChat(foregroundId)
+      // Dispose the runner BEFORE finalizeChat runs manager.delete (rmSync).
+      // The runner's final output-flush writes output.json via writeFileAtomic
+      // which mkdirs the session directory; if that fires AFTER rmSync, it
+      // recreates an orphan directory containing only output.json.
       await sessionStore.remove(foregroundId)
+      finalizeChat(foregroundId)
     }
   }
 
@@ -149,8 +153,17 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
       setIsStarting(false)
     }
 
-    finalizeChat(foregroundId)
-    await sessionStore.remove(foregroundId)
+    if (emptyChats.has(foregroundId)) {
+      // Empty chat — dispose before finalize so the output-flush can't recreate
+      // the directory after manager.delete's rmSync. See backgroundChat.
+      await sessionStore.remove(foregroundId)
+      finalizeChat(foregroundId)
+    } else {
+      // Non-empty chat pauses instead of deleting. finalizeChat reads the store
+      // entry's engineSessionId, so run it before sessionStore.remove clears it.
+      finalizeChat(foregroundId)
+      await sessionStore.remove(foregroundId)
+    }
     return true
   }
 

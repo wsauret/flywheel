@@ -36,6 +36,7 @@ export function createWorkflowRunner(opts: {
   updateEntry: UpdateEntryFn
   createAdapter: CreateWorkflowAdapter
   priorBlocks?: AnyBlock[]
+  seedInitialUserMessage?: boolean
   overrides?: WorkflowRunnerOverrides
 }): WorkflowRunner {
   const { sessionId, queue, description, updateEntry, priorBlocks } = opts
@@ -112,6 +113,10 @@ export function createWorkflowRunner(opts: {
   const injectionQueue = new InjectionQueue()
 
   async function run(): Promise<WorkflowResult> {
+    if (opts.seedInitialUserMessage) {
+      adapter.seedUserMessage?.(description, Date.now())
+    }
+
     if (deps.engine.metadata.id === "claude") {
       const socketPath = join(tmpdir(), `flywheel-ask-${sessionId}.sock`)
       askHookServer = await createAskHookServer(socketPath)

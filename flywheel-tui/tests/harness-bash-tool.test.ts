@@ -28,7 +28,7 @@ function makeSuccessOps(): BashOperations {
 describe("bash tool timeout clamp", () => {
   test("clamps timeout above 3600s without error", async () => {
     const bash = createBashDefinition({ operations: makeSuccessOps() });
-    const context: ToolContext = { cwd: "/tmp", todoList: [] };
+    const context: ToolContext = { cwd: "/tmp", todoList: [], readFiles: new Set(), bgLogPaths: new Set() };
 
     const result = await bash.execute({ command: "echo hi", timeout: 7200 }, context);
     expect(result.isError).toBe(false);
@@ -37,7 +37,7 @@ describe("bash tool timeout clamp", () => {
 
   test("allows timeout at or below 3600s", async () => {
     const bash = createBashDefinition({ operations: makeSuccessOps() });
-    const context: ToolContext = { cwd: "/tmp", todoList: [] };
+    const context: ToolContext = { cwd: "/tmp", todoList: [], readFiles: new Set(), bgLogPaths: new Set() };
 
     const result = await bash.execute({ command: "echo hi", timeout: 3600 }, context);
     expect(result.isError).toBe(false);
@@ -45,7 +45,7 @@ describe("bash tool timeout clamp", () => {
 
   test("default timeout works without explicit timeout", async () => {
     const bash = createBashDefinition({ operations: makeSuccessOps() });
-    const context: ToolContext = { cwd: "/tmp", todoList: [] };
+    const context: ToolContext = { cwd: "/tmp", todoList: [], readFiles: new Set(), bgLogPaths: new Set() };
 
     const result = await bash.execute({ command: "echo hi" }, context);
     expect(result.isError).toBe(false);
@@ -55,7 +55,7 @@ describe("bash tool timeout clamp", () => {
 describe("bash interactive-command detection", () => {
   const runCommand = async (command: string): Promise<{ content: string; isError: boolean }> => {
     const bash = createBashDefinition({ operations: makeSuccessOps() });
-    const context: ToolContext = { cwd: "/tmp", todoList: [] };
+    const context: ToolContext = { cwd: "/tmp", todoList: [], readFiles: new Set(), bgLogPaths: new Set() };
     return bash.execute({ command }, context);
   };
 
@@ -98,7 +98,7 @@ describe("bash interceptor routes to dedicated tools", () => {
     availableTools: ReadonlySet<string>,
   ): Promise<{ content: string; isError: boolean }> => {
     const bash = createBashDefinition({ operations: makeSuccessOps() });
-    const context: ToolContext = { cwd: "/tmp", todoList: [], availableTools };
+    const context: ToolContext = { cwd: "/tmp", todoList: [], readFiles: new Set(), bgLogPaths: new Set(), availableTools };
     return bash.execute({ command }, context);
   };
 

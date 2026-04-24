@@ -15,6 +15,8 @@ function makeContext(overrides?: Partial<ToolContext>): ToolContext {
   return {
     cwd: os.tmpdir(),
     todoList: [],
+    readFiles: new Set(),
+    bgLogPaths: new Set(),
     ...overrides,
   };
 }

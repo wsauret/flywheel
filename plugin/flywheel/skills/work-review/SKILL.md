@@ -14,7 +14,7 @@ allowed-tools:
 
 # Work Reviewing Skill
 
-Perform exhaustive code reviews using multi-agent analysis. Collect each reviewer's JSON findings, dedup via fingerprint, and write a merged `review.findings.json` into the active session directory.
+Perform exhaustive code reviews using multi-agent analysis. Collect each reviewer's JSON findings, dedup semantically, and write a merged `review.findings.json` into the active session directory.
 
 ## Input
 
@@ -35,11 +35,11 @@ No active session. Run /fly:plan first.
 
 ## Phase 1.0: Mechanical Compliance Checks
 
-Run this phase FIRST when the active session has `baseline.json` + `state.json` + `session.json`, indicating this was planned work. Each check emits K1 JSON findings that flow through the Phase 3 synthesizer (fingerprint dedup + session write).
+Run this phase FIRST when the active session has `baseline.json` + `state.json` + `session.json`, indicating this was planned work. Checks that survive here are the ones reviewer agents cannot easily perform — hash tampering, BC-coverage set arithmetic. Everything judgment-based (including "is this file extension principled or creep?") is delegated to the reviewer agents in Phase 2 and arbitrated by the synthesizer in Phase 3.
 
 Read `references/plan-compliance.md` for the full jq shapes, example finding JSON for each check, and the HALT semantics. The logic below is the entry-point summary.
 
-There are **TWO** mechanical checks plus a hash-verification gate (Check 0). The former Check 3 (commands re-execution) was **CUT per D3** — do not implement it. Re-running commands adds wall-time and idempotency risk; the trust mechanism for "ran the tests" is the B5 anti-pattern in work-implementation.
+There are **TWO** mechanical checks. The former Check 1b (files outside baseline) was **CUT**: file-level scope judgment is a reviewer-agent responsibility, not a mechanical check. Principled extensions (DRY when a 2nd consumer appears, SRP splits, shared fixtures) are legitimate and indistinguishable from scope creep without reading the file. Reviewer agents read files; a set-subtraction cannot. See `references/plan-compliance.md` for the rationale. The former Check 3 (commands re-execution) was also **CUT per D3** — do not implement it. Re-running commands adds wall-time and idempotency risk; the trust mechanism for "ran the tests" is the B5 anti-pattern in work-implementation.
 
 ### Load artifacts
 
@@ -65,10 +65,9 @@ STORED=$(jq -r '.baseline_hash' "$SESSION")
 
 ### Check 1 — Structured Diff (scope drift)
 
-Three sub-cases, all P1:
+Two sub-cases, all P1:
 
 - **Skipped phases**: `baseline.phases[].id` NOT in `state.phases[]` with `status == "completed"` → `{scope: {kind: "plan", phase_id: <id>}, title: "Phase <id> skipped but baseline requires it"}`
-- **Files outside baseline**: any path in `state.phases[i].artifacts.files_created[]` or `files_modified[]` NOT in `baseline.phases[i].files[]` → `{scope: {kind: "code", file: <path>, line: null}, title: "File outside baseline scope modified"}`
 - **Removed tasks**: when `state.phases[i].outcomes[]` references at least one baseline task id, baseline task ids NOT referenced are treated as removed → `{scope: {kind: "plan", phase_id: <id>, task_id: <tid>}, title: "Task removed from implementation"}`. If no task ids appear in outcomes at all, the check is silent for that phase.
 
 ### Check 2 — BC Coverage
@@ -77,7 +76,7 @@ Compute the union of `state.phases[].bc_satisfied[]`. For each `baseline.behavio
 
 ### Emission
 
-Findings from Check 0, 1, and 2 are synthetic (no reviewer agent produced them) but still flow through the Phase 3 synthesizer path alongside reviewer outputs so that cross-source collisions promote severity. The merged set lands in `review.findings.json` via the Phase 3 write path.
+Findings from Check 0, 1, and 2 are synthetic (no reviewer agent produced them) and flow into Phase 3's merged `review.findings.json` alongside reviewer outputs. They are assigned P1 at source (they describe plan-contract violations) and do NOT get promoted further by agreement — severity reflects how important the issue is, not how many sources noticed it.
 
 Include the mechanical-check summary as the first section of the Phase 4 chat summary. Flag deviations as P1.
 
@@ -182,21 +181,41 @@ Emit a synthetic P1 against the violating reviewer agent file and retain the ori
 }
 ```
 
-### 3.3 Semantic dedup, then policy via fingerprint.sh
-
-**You do the dedup. The script does the policy.**
+### 3.3 Semantic dedup
 
 Walk the reviewer outputs and group findings that describe the same issue, even when the wording differs. Semantic equivalence is your call; reviewers don't coordinate phrasing.
 
-Emit one JSON array where each element is a group: `{"reviewers": [...], "finding": <representative finding from the group>}`. Pipe it to the script:
+For each group, emit a single merged finding directly — no external script, no severity promotion. The merged finding inherits the severity the reviewers assigned (take the max, which is the most severe P-level anyone flagged: P1 > P2 > P3). Attach:
 
-```bash
-cat /tmp/grouped.json | flywheel/synthesizer/fingerprint.sh
-```
+- `reviewers_matched`: unique list of reviewer names that reported the issue
+- `match_count`: length of that list
 
-The script returns each group annotated with `fingerprint`, `match_count`, `reviewers_matched`, and promotes `finding.severity` one level when `match_count >= 2`.
+**Do NOT promote severity based on `match_count`.** Severity describes how important the issue is to fix; match_count describes how many reviewers independently noticed it. They are orthogonal. A P3 that three reviewers flagged is a well-corroborated P3 — still a P3. The `match_count` field itself signals the corroboration to anyone reading the review.
 
-**BLOCKING:** `flywheel/synthesizer/fingerprint.sh` is a black-box tool. Do NOT read its source. Run `flywheel/synthesizer/fingerprint.sh --help` for the contract.
+### 3.3a Drift arbitration (files outside baseline scope)
+
+When a reviewer finding targets a file that is NOT in `baseline.phases[].files[]`, the synthesizer arbitrates before including it in the final output.
+
+Procedure for each such finding:
+
+1. Read the file. The reviewer flagged something specific; evaluate the finding against the actual file content.
+2. Separately, evaluate intent: does the file's existence look like a principled extension (DRY crossed a threshold, SRP split, shared helper, test fixture), or scope creep (unrelated refactor, speculative abstraction, drive-by changes)?
+3. **If principled extension**: keep or drop the reviewer's finding based on its merit, independent of the drift. Do NOT additionally flag "file outside baseline" — the file being outside baseline is not, by itself, a finding.
+4. **If scope creep**: keep the reviewer's finding. Additionally emit a P2 synthetic finding `{scope: {kind: "code", file: <path>, line: null}, title: "Out-of-scope file: <path>"}` noting the unrelated work.
+
+Principled-extension signals:
+- File is in a `tests/fixtures/`, `shared/`, or similar reuse-pattern location
+- Has 2+ production consumers (DRY threshold)
+- Aligns with an agents.md / ADR rule the baseline already cites in `context.patterns[]`
+- No behavior change outside what the baseline phases declared
+
+Creep signals:
+- Unrelated to any declared phase goal
+- Single-consumer, no reuse
+- Adds new behavior not declared in any BC
+- Touches files/directories far from the phase's declared scope
+
+The synthesizer applies this judgment once at merge time. The mechanical Check 1b that existed in earlier skill versions was noise — it cannot read files or evaluate intent, so it emitted false positives on every principled refactor.
 
 ### 3.4 Triage P3 findings
 
