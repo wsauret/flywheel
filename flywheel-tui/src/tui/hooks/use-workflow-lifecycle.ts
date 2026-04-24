@@ -3,17 +3,14 @@ import {
   createWorkflowController,
 } from "../../orchestration/workflow-controller.js"
 import { TERMINAL_TITLE_BASE } from "../../infra/format.js"
-import type { SessionActionDeps } from "../../orchestration/session-actions.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"
-import type { RunnerDoneResult, RunnerErrorResult } from "../../orchestration/session/types.js"
+import type { SessionState } from "../../orchestration/session/types.js"
 
 interface WorkflowLifecycleDeps {
   signals: ShellSignals
   services: ShellServices
-  lifecycleCallbacks: {
-    onRunnerDone: (id: string, result: RunnerDoneResult) => void
-    onRunnerError: (id: string, result: RunnerErrorResult) => void
-  }
+  onRunnerDone: (id: string, state: SessionState) => void
+  onRunnerError: (id: string, errorMessage: string) => void
 }
 
 export interface WorkflowLifecycleHook {
@@ -26,7 +23,6 @@ export interface WorkflowLifecycleHook {
   steerWorkflow(text: string): boolean
   /** Check if a session is a workflow (for keyboard handler). */
   isWorkflowSession(id: string): boolean
-  actionDeps: SessionActionDeps
 }
 
 export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifecycleHook {
@@ -37,8 +33,8 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
     sessionStore: services.sessionStore,
     manager: services.manager,
     foregroundId: signals.foregroundId,
-    onRunnerDone: deps.lifecycleCallbacks.onRunnerDone,
-    onRunnerError: deps.lifecycleCallbacks.onRunnerError,
+    onRunnerDone: deps.onRunnerDone,
+    onRunnerError: deps.onRunnerError,
   })
 
   function resetUIState(terminalTitle?: string): void {
@@ -97,19 +93,19 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
   }
 
   async function handleResume(sessionIdArg?: string): Promise<void> {
-    const result = await controller.handleResume(sessionIdArg)
+    const sessionId = await controller.handleResume(sessionIdArg)
 
-    if (!result) {
-      if (!sessionIdArg) {
-        services.showToast({ message: "No resumable sessions found", variant: "warning" })
-      } else {
-        services.showToast({ message: "Failed to resume \u2014 missing data", variant: "error" })
-      }
+    if (!sessionId) {
+      const message = sessionIdArg
+        ? "Failed to resume \u2014 missing data"
+        : "No resumable sessions found"
+      const variant = sessionIdArg ? "error" : "warning"
+      services.showToast({ message, variant })
       return
     }
 
     resetUIState()
-    signals.setForegroundId(result.sessionId)
+    signals.setForegroundId(sessionId)
   }
 
   return {
@@ -120,6 +116,5 @@ export function useWorkflowLifecycle(deps: WorkflowLifecycleDeps): WorkflowLifec
     handleResume,
     steerWorkflow: (text: string) => controller.steerWorkflow(signals.foregroundId(), text),
     isWorkflowSession: controller.isWorkflowSession,
-    actionDeps: controller.getActionDeps(),
   }
 }

@@ -1,10 +1,9 @@
 /**
- * Tests for ChatRunner — wraps ChatSession with SessionRunner compliance,
+ * Tests for ChatRunner — wraps ChatSession with
  * output persistence, and state machine transitions.
  */
 
-import { describe, it, expect, beforeEach } from "bun:test"
-import type { SessionRunner } from "../src/orchestration/session-runner"
+import { describe, it, expect } from "bun:test"
 import type { AnyBlock } from "../src/infra/output-blocks"
 
 // ── Stubs ──
@@ -33,25 +32,6 @@ function createStubChatSession() {
 describe("ChatRunner", () => {
   // We test the design contract here. The actual createChatRunner is tested
   // against a mock ChatSession factory (no real subprocess).
-
-  it("ChatRunner implements SessionRunner interface", () => {
-    // Type-level check: if this compiles, the contract is met.
-    const assertAssignable = (_runner: SessionRunner) => {}
-
-    // Minimal mock matching the ChatRunner shape
-    const mockChatRunner: SessionRunner = {
-      sessionId: "chat-test-session",
-      abort: () => {},
-      dispose: async () => {},
-      injectMessage: (_text: string) => true,
-    }
-
-    assertAssignable(mockChatRunner)
-    expect(typeof mockChatRunner.sessionId).toBe("string")
-    expect(typeof mockChatRunner.abort).toBe("function")
-    expect(typeof mockChatRunner.dispose).toBe("function")
-    expect(typeof mockChatRunner.injectMessage).toBe("function")
-  })
 
   it("injectMessage delegates to ChatSession.send and returns true", () => {
     const stub = createStubChatSession()

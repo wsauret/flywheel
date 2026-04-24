@@ -90,8 +90,10 @@ export const todoListDefinition: ToolDefinition = {
     "Track and display progress on multi-step work. The todo list is rendered to the user in real time " +
     "as a live progress indicator — they see each task appear, see the active task highlighted, and see " +
     "tasks checked off as you complete them. Keep it current so the user can follow your progress. " +
-    "Use write to create the initial list. Use complete/start/abandon for incremental updates " +
-    "(the next pending task auto-promotes to in_progress). " +
+    "Use write ONCE to seed the initial list. After that, use complete/start/abandon/add_tasks/add_notes " +
+    "for every update — the next pending task auto-promotes to in_progress when you complete one. " +
+    "write is rejected if the list still has pending or in-progress tasks: complete or abandon them first, " +
+    "or use incremental ops. Empty writes are rejected. " +
     "Create a todo list when the task requires 3+ distinct steps. " +
     "Your todo state is preserved across context recovery.",
   input_schema: {
@@ -158,8 +160,29 @@ function applyWrite(input: Record<string, unknown>, context: ToolContext): ToolR
   if (!Array.isArray(input.todos)) {
     return { content: "write operation requires a 'todos' array", isError: true };
   }
-  const todos = input.todos as Array<Record<string, unknown>>;
+  if (input.todos.length === 0) {
+    return {
+      content:
+        "write rejected: 'todos' array is empty. Use abandon to drop tasks individually, or omit the call if you want to leave the list as-is.",
+      isError: true,
+    };
+  }
 
+  const activeExisting = context.todoList.filter(
+    (t) => t.status === "pending" || t.status === "in_progress",
+  );
+  if (activeExisting.length > 0) {
+    const activeIds = activeExisting.map((t) => t.id).join(", ");
+    return {
+      content:
+        `write rejected: the todo list still has ${activeExisting.length} active task(s) (${activeIds}). ` +
+        "Use complete/abandon to close them out first, or use add_tasks/start/add_notes for incremental updates. " +
+        "write is only allowed when the list is empty or all remaining tasks are terminal (completed/abandoned).",
+      isError: true,
+    };
+  }
+
+  const todos = input.todos as Array<Record<string, unknown>>;
   nextId = 1;
   const enforced: TodoItem[] = todos.slice(0, MAX_ITEMS).map((item) => ({
     id: generateId(),
@@ -251,7 +274,7 @@ function applyAddNotes(input: Record<string, unknown>, context: ToolContext): To
 }
 
 const MUTATION_REINFORCEMENT =
-  "Todos updated. Continue using todo_list to track progress — mark each task complete as you finish it.";
+  "Todo list updated. Keep it in sync as you work: call todo_list(complete) the MOMENT you finish the current in_progress task — do not batch, do not wait. If you discover new work, todo_list(add_tasks). If a task no longer applies, todo_list(abandon). The user is watching the progress bar in real time.";
 
 export function executeTodoList(
   input: Record<string, unknown>,

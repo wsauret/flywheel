@@ -4,7 +4,6 @@
  * Verifies:
  * - Message buffering during async startup (queue messages -> replay on ready)
  * - startChat creates session via manager and sessionStore
- * - resumeChat loads persisted output blocks before launching
  * - endChat removes from sessionStore and marks paused
  * - backgroundChat clears startup state
  */
@@ -142,10 +141,10 @@ describe("ChatController", () => {
       const deps = createDeps()
       const controller = createChatController(deps)
 
-      const result = await controller.startChat()
+      const sessionId = await controller.startChat()
 
-      expect(result).not.toBeNull()
-      expect(result!.sessionId).toMatch(/^chat-/)
+      expect(sessionId).not.toBeNull()
+      expect(sessionId).toMatch(/^chat-/)
       const mockManager = deps.manager as ReturnType<typeof createMockManager>
       expect(mockManager._created).toHaveLength(1)
       expect(mockManager._created[0].kind).toBe("chat")
@@ -240,14 +239,14 @@ describe("ChatController", () => {
       const deps = createDeps()
       const controller = createChatController(deps)
 
-      const result = await controller.startChat()
-      expect(result).not.toBeNull()
+      const sessionId = await controller.startChat()
+      expect(sessionId).not.toBeNull()
 
-      const ended = await controller.endChat(result!.sessionId)
+      const ended = await controller.endChat(sessionId)
       expect(ended).toBe(true)
 
       const mockManager = deps.manager as ReturnType<typeof createMockManager>
-      expect(mockManager._deletes).toContain(result!.sessionId)
+      expect(mockManager._deletes).toContain(sessionId)
       expect(mockManager._stateUpdates.find((u) => u.state === "paused")).toBeUndefined()
     })
 
@@ -255,20 +254,20 @@ describe("ChatController", () => {
       const deps = createDeps()
       const controller = createChatController(deps)
 
-      const result = await controller.startChat()
-      expect(result).not.toBeNull()
+      const sessionId = await controller.startChat()
+      expect(sessionId).not.toBeNull()
 
       // Send a message so the chat is no longer empty
-      controller.sendMessage(result!.sessionId, "hello")
+      controller.sendMessage(sessionId, "hello")
 
-      const ended = await controller.endChat(result!.sessionId)
+      const ended = await controller.endChat(sessionId)
       expect(ended).toBe(true)
 
       const mockManager = deps.manager as ReturnType<typeof createMockManager>
       const pausedUpdate = mockManager._stateUpdates.find((u) => u.state === "paused")
       expect(pausedUpdate).toBeDefined()
-      expect(pausedUpdate!.id).toBe(result!.sessionId)
-      expect(mockManager._deletes).not.toContain(result!.sessionId)
+      expect(pausedUpdate!.id).toBe(sessionId)
+      expect(mockManager._deletes).not.toContain(sessionId)
     })
 
     it("returns false when no foreground ID", async () => {
@@ -307,11 +306,11 @@ describe("ChatController", () => {
       const deps = createDeps()
       const controller = createChatController(deps)
 
-      const result = await controller.startChat()
-      controller.interruptChat(result!.sessionId)
+      const sessionId = await controller.startChat()
+      controller.interruptChat(sessionId)
 
       const mockStore = deps.sessionStore as ReturnType<typeof createMockSessionStore>
-      expect(mockStore._abortCalls).toContain(result!.sessionId)
+      expect(mockStore._abortCalls).toContain(sessionId)
     })
 
     it("does nothing when no foreground ID", () => {
@@ -328,8 +327,8 @@ describe("ChatController", () => {
       const deps = createDeps()
       const controller = createChatController(deps)
 
-      const result = await controller.startChat()
-      controller.sendMessage(result!.sessionId, "hello")
+      const sessionId = await controller.startChat()
+      controller.sendMessage(sessionId, "hello")
 
       const mockStore = deps.sessionStore as ReturnType<typeof createMockSessionStore>
       expect(mockStore._injectedMessages).toContain("hello")

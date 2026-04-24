@@ -19,24 +19,19 @@ import { createShellState, type ShellSignals } from "../src/tui/hooks/shell-stat
 import { createSessionStore } from "../src/orchestration/session-store"
 import type { ChatStoreHandle } from "../src/orchestration/session-store-types"
 import type { ChatRunner } from "../src/orchestration/chat-runner"
-import type { WorkflowSessionFactories } from "../src/orchestration/session-store-types"
+import type { CreateWorkflowAdapter } from "../src/orchestration/session-store-types"
 import type { AnyBlock } from "../src/infra/output-blocks"
 
-/** Minimal mock factories for sessionStore tests. */
-const mockFactories: WorkflowSessionFactories = {
-  createAdapter: () => ({
-    connect: () => {},
-    start: () => {},
-    stop: () => {},
-    disconnect: () => {},
-  }),
-}
+/** Minimal mock adapter factory for sessionStore tests. */
+const mockCreateAdapter: CreateWorkflowAdapter = () => ({
+  connect: () => {},
+  disconnect: () => {},
+})
 
 /** Minimal mock metrics that records calls. */
 function createMockMetrics() {
   return {
     elapsed: () => 0,
-    liveTokens: () => 0,
     liveCost: () => 0,
     liveContextPercent: () => 0,
     spinnerTick: () => 0,
@@ -73,37 +68,37 @@ function buildShellState(sessionStore: ReturnType<typeof createSessionStore>) {
 
 describe("Shell state derived memos", () => {
   it("outputBlocks returns empty array when no foreground session", () => {
-    const sessionStore = createSessionStore(mockFactories)
+    const sessionStore = createSessionStore(mockCreateAdapter)
     const { signals } = buildShellState(sessionStore)
     expect(signals.outputBlocks()).toEqual([])
   })
 
   it("storeEntry is undefined when no foreground set", () => {
-    const sessionStore = createSessionStore(mockFactories)
+    const sessionStore = createSessionStore(mockCreateAdapter)
     const { signals } = buildShellState(sessionStore)
     expect(signals.storeEntry()).toBeUndefined()
   })
 
   it("agentState defaults to idle when no foreground session", () => {
-    const sessionStore = createSessionStore(mockFactories)
+    const sessionStore = createSessionStore(mockCreateAdapter)
     const { signals } = buildShellState(sessionStore)
     expect(signals.agentState()).toBe("idle")
   })
 
   it("steps returns empty array when no foreground session", () => {
-    const sessionStore = createSessionStore(mockFactories)
+    const sessionStore = createSessionStore(mockCreateAdapter)
     const { signals } = buildShellState(sessionStore)
     expect(signals.steps()).toEqual([])
   })
 
   it("sessionTitle returns empty string when no foreground session", () => {
-    const sessionStore = createSessionStore(mockFactories)
+    const sessionStore = createSessionStore(mockCreateAdapter)
     const { signals } = buildShellState(sessionStore)
     expect(signals.sessionTitle()).toBe("")
   })
 
   it("ShellSignals interface has removed setters absent", () => {
-    const sessionStore = createSessionStore(mockFactories)
+    const sessionStore = createSessionStore(mockCreateAdapter)
     const { signals } = buildShellState(sessionStore)
 
     // These setters should NOT exist on the new interface
@@ -121,7 +116,7 @@ describe("Shell state derived memos", () => {
   })
 
   it("ShellSignals interface has new accessors", () => {
-    const sessionStore = createSessionStore(mockFactories)
+    const sessionStore = createSessionStore(mockCreateAdapter)
     const { signals } = buildShellState(sessionStore)
 
     // Memo accessors
@@ -137,7 +132,7 @@ describe("Shell state derived memos", () => {
   it("storeEntry returns entry when foreground matches a sessionStore session", async () => {
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const sessionStore = createSessionStore(mockFactories)
+        const sessionStore = createSessionStore(mockCreateAdapter)
         await sessionStore.startChat({
           sessionId: "chat-a",
           description: "My Chat",
@@ -159,7 +154,7 @@ describe("Shell state derived memos", () => {
   it("outputBlocks derives from sessionStore entry when foreground is set", async () => {
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const sessionStore = createSessionStore(mockFactories)
+        const sessionStore = createSessionStore(mockCreateAdapter)
         let handle: ChatStoreHandle | null = null
 
         await sessionStore.startChat({
@@ -182,7 +177,7 @@ describe("Shell state derived memos", () => {
   it("steps returns empty array for chat entries (discriminated union)", async () => {
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const sessionStore = createSessionStore(mockFactories)
+        const sessionStore = createSessionStore(mockCreateAdapter)
         await sessionStore.startChat({
           sessionId: "chat-a",
           createRunner: async (h) => createMockChatRunner("chat-a"),
@@ -202,7 +197,7 @@ describe("Shell state derived memos", () => {
   it("steps returns workflow steps for workflow entries", async () => {
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const sessionStore = createSessionStore(mockFactories)
+        const sessionStore = createSessionStore(mockCreateAdapter)
 
         sessionStore.start({
           sessionId: "wf-a",
@@ -229,7 +224,7 @@ describe("Shell state derived memos", () => {
   it("agentState derives active from non-idle modelActivity", async () => {
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const sessionStore = createSessionStore(mockFactories)
+        const sessionStore = createSessionStore(mockCreateAdapter)
         let handle: ChatStoreHandle | null = null
 
         await sessionStore.startChat({

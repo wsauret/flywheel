@@ -107,11 +107,11 @@ describe("Chat → OutputSession integration", () => {
     })
   })
 
-  describe("notifyInjected + pending messages", () => {
-    it("creates a user message block with pending flag", () => {
+  describe("pushUserMessage + queued messages", () => {
+    it("creates a user message block with pending flag when queued", () => {
       const { session } = createTestOutputSession()
 
-      session.notifyInjected("Hello!", Date.now(), true)
+      session.pushUserMessage("Hello!", Date.now(), { queued: true })
 
       const blocks = session.getBlocks()
       const userBlock = blocks.find((b: any) => b.kind === "userMessage")
@@ -121,17 +121,29 @@ describe("Chat → OutputSession integration", () => {
       session.dispose()
     })
 
-    it("resolvePendingMessages marks pending messages as resolved", () => {
+    it("takeNextQueued returns oldest queued message and flips its flag", () => {
       const { session } = createTestOutputSession()
 
-      session.notifyInjected("Hello!", Date.now(), true)
-      const resolved = session.resolvePendingMessages()
-      expect(resolved).toEqual(["Hello!"])
+      session.pushUserMessage("Hello!", Date.now(), { queued: true })
+      expect(session.takeNextQueued()).toBe("Hello!")
 
       const blocks = session.getBlocks()
       const userBlock = blocks.find((b: any) => b.kind === "userMessage")
       expect(userBlock).toBeDefined()
       expect((userBlock as any).pending).toBe(false)
+      expect(session.takeNextQueued()).toBe(null)
+
+      session.dispose()
+    })
+
+    it("drainQueued returns all queued messages and flips their flags", () => {
+      const { session } = createTestOutputSession()
+
+      session.pushUserMessage("first", Date.now(), { queued: true })
+      session.pushUserMessage("second", Date.now(), { queued: true })
+      const drained = session.drainQueued()
+      expect(drained).toEqual(["first", "second"])
+      expect(session.hasQueued()).toBe(false)
 
       session.dispose()
     })
@@ -154,31 +166,6 @@ describe("Chat → OutputSession integration", () => {
       session.dispose()
     })
 
-    it("chat code can subscribe to engine:ndjson and call resolvePendingMessages on user echo", () => {
-      const { session, bus } = createTestOutputSession()
-
-      // Inject a pending message
-      session.notifyInjected("Hello!", Date.now(), true)
-
-      // Subscribe like chat-session does
-      bus.subscribeToType("engine:ndjson", (e) => {
-        if (e.ndjsonEvent.type === "user") {
-          session.resolvePendingMessages()
-        }
-      })
-
-      // Feed the user echo event
-      const ndjsonLine = JSON.stringify({ type: "user" }) + "\n"
-      session.writeStdout(ndjsonLine)
-
-      // Pending message should now be resolved
-      const blocks = session.getBlocks()
-      const userBlock = blocks.find((b: any) => b.kind === "userMessage")
-      expect(userBlock).toBeDefined()
-      expect((userBlock as any).pending).toBe(false)
-
-      session.dispose()
-    })
   })
 
   describe("context-too-long detection via EventBus", () => {

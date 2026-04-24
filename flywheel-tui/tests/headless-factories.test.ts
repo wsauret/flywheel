@@ -2,15 +2,15 @@ import { describe, it, expect } from "bun:test"
 import { EventBus } from "../src/infra/event-bus"
 import { HeadlessAdapter } from "../src/orchestration/headless/headless-adapter"
 import type { HeadlessAdapterOptions } from "../src/orchestration/headless/headless-adapter"
-import type { WorkflowSessionFactories, WorkflowAdapter } from "../src/orchestration/session-store-types"
+import type { CreateWorkflowAdapter, WorkflowAdapter } from "../src/orchestration/session-store-types"
 import type { FlywheelEvent } from "../src/infra/events"
 
-function headlessFactories(opts?: HeadlessAdapterOptions): WorkflowSessionFactories {
-  return { createAdapter: () => new HeadlessAdapter(opts) }
+function headlessCreateAdapter(opts?: HeadlessAdapterOptions): CreateWorkflowAdapter {
+  return () => new HeadlessAdapter(opts)
 }
 
-function wireAdapter(factories: WorkflowSessionFactories, bus?: EventBus): { adapter: WorkflowAdapter; eventBus: EventBus } {
-  const adapter = factories.createAdapter({ updateEntry: () => {} })
+function wireAdapter(createAdapter: CreateWorkflowAdapter, bus?: EventBus): { adapter: WorkflowAdapter; eventBus: EventBus } {
+  const adapter = createAdapter({ updateEntry: () => {} })
   const eventBus = bus ?? new EventBus()
   adapter.connect(eventBus)
   return { adapter, eventBus }
@@ -22,7 +22,7 @@ function wireAdapter(factories: WorkflowSessionFactories, bus?: EventBus): { ada
 
 describe("createHeadlessFactories", () => {
   it("creates adapter and connects to bus", () => {
-    const { adapter, eventBus } = wireAdapter(headlessFactories())
+    const { adapter, eventBus } = wireAdapter(headlessCreateAdapter())
     expect(adapter).toBeDefined()
     expect(eventBus).toBeDefined()
     adapter.disconnect()
@@ -31,7 +31,7 @@ describe("createHeadlessFactories", () => {
   it("events emitted on bus arrive at adapter", () => {
     const logs: string[] = []
     const bus = new EventBus()
-    const { adapter } = wireAdapter(headlessFactories({
+    const { adapter } = wireAdapter(headlessCreateAdapter({
       logger: (msg) => logs.push(msg),
       timestamps: false,
     }), bus)
@@ -51,7 +51,7 @@ describe("createHeadlessFactories", () => {
   it("passes adapter options through", () => {
     const logs: string[] = []
     const bus = new EventBus()
-    const { adapter } = wireAdapter(headlessFactories({
+    const { adapter } = wireAdapter(headlessCreateAdapter({
       logLevel: "minimal",
       logger: (msg) => logs.push(msg),
       timestamps: false,

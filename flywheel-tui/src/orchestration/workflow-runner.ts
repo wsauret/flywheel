@@ -7,7 +7,7 @@ import { disposeSessionResources } from "./session/resources.js"
 import { createAskHookServer, type AskHookServer } from "./ask-hook/server.js"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
-import type { WorkflowSessionFactories } from "./session-store-types.js"
+import type { CreateWorkflowAdapter } from "./session-store-types.js"
 import { EventBus, createEmit, type EmitFn, type Unsubscribe } from "../infra/event-bus.js"
 import { randomUUID } from "node:crypto"
 import { InjectionQueue } from "./injection-queue.js"
@@ -34,7 +34,7 @@ export function createWorkflowRunner(opts: {
   queue: Queue
   description: string
   updateEntry: UpdateEntryFn
-  factories: WorkflowSessionFactories
+  createAdapter: CreateWorkflowAdapter
   priorBlocks?: AnyBlock[]
   overrides?: WorkflowRunnerOverrides
 }): WorkflowRunner {
@@ -61,7 +61,7 @@ export function createWorkflowRunner(opts: {
     updateEntry(sessionId, patch)
   }
 
-  const adapter = opts.factories.createAdapter({ updateEntry: wrappedUpdateEntry, engineMetadata: deps.engine.metadata })
+  const adapter = opts.createAdapter({ updateEntry: wrappedUpdateEntry, engineMetadata: deps.engine.metadata })
   const eventBus = new EventBus()
   adapter.connect(eventBus)
   const emit = createEmit(eventBus)
@@ -79,6 +79,10 @@ export function createWorkflowRunner(opts: {
   const { budgetTracker, traceWriter, transcriptWriter, traceCollector } = infra
   let traceFinalized = false
 
+  // Queue is an imperatively-mutated value (not reactive), so three subscribers
+  // re-snapshot `queue.steps` on each lifecycle event. This is the idiomatic
+  // event → compute → store pattern from ADR-006: the non-reactive domain value
+  // is projected into the reactive store via explicit subscribers.
   const eventUnsubs: Unsubscribe[] = []
   eventUnsubs.push(
     eventBus.subscribeToType("queue:step-started", (event) => {
@@ -127,7 +131,7 @@ export function createWorkflowRunner(opts: {
     generateSessionTitle(
       description,
       (title) => updateEntry(sessionId, { description: title }),
-      { engine: deps.engine, projectCwd, model: resolveTierConfigs(deps.config).worker.model },
+      { engine: deps.engine, auth: deps.auth, projectCwd, model: resolveTierConfigs(deps.config).worker.model },
     )
 
     const result = await executor.run()

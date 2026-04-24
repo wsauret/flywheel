@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto"
 import type { Engine } from "./engines/core/types.js"
+import type { AuthContext } from "../infra/auth/auth-context.js"
 import type { DispatcherTransport } from "../workflows/dispatcher/transport.js"
 import type { EvaluatorTransport } from "../workflows/evaluator/transport.js"
-import { DispatcherDecisionHandoffSchema, handoffToDecision, type DispatcherDecisionHandoff, type DispatcherInput } from "../workflows/dispatcher/schemas.js"
+import { DispatcherDecisionHandoffSchema, handoffToDecision, type DispatcherInput } from "../workflows/dispatcher/schemas.js"
 import type { DispatcherDecision } from "../infra/workflow-types.js"
 import type { EvaluatorInput } from "../workflows/evaluator/schemas.js"
 import type { EvaluatorResult } from "../infra/workflow-types.js"
@@ -13,9 +14,9 @@ import { buildDispatcherSystemPrompt } from "../workflows/dispatcher/system-prom
 import { renderDispatcherHandoffInstruction } from "../workflows/queue/shared/handoff-render.js"
 import { renderEvaluatorHandoffInstruction } from "../workflows/queue/shared/handoff-render.js"
 import { buildInvocationHandoffPath, ensureSessionDir } from "../infra/paths.js"
-import { readHandoff } from "../workflows/queue/shared/handoff-reader.js"
 import { Log } from "../infra/log.js"
 import { toolActionsForProfile } from "./engines/core/tool-resolution.js"
+import { invokeHandoffRunner } from "./handoff-runner.js"
 
 const log = Log.create({ service: "engine-transports" })
 
@@ -27,12 +28,13 @@ interface EngineDispatcherTransportOptions {
   effort?: string
   emit: EmitFn
   workflowId: string
+  auth: AuthContext
 }
 
 export function createEngineDispatcherTransport(
   opts: EngineDispatcherTransportOptions,
 ): DispatcherTransport {
-  const { engine, sessionId, projectCwd, model, effort, emit, workflowId } = opts
+  const { engine, sessionId, projectCwd, model, effort, emit, workflowId, auth } = opts
   const systemPrompt = buildDispatcherSystemPrompt()
 
   return {
@@ -45,22 +47,21 @@ export function createEngineDispatcherTransport(
       const handoffInstruction = renderDispatcherHandoffInstruction(handoffPath)
       const fullPrompt = `${userContent}\n\n${handoffInstruction}`
 
-      const runner = engine.createRunner({
+      const handoff = await invokeHandoffRunner({
+        engine,
         model,
+        auth,
         systemPrompt,
         effort,
         toolActions: toolActionsForProfile("dispatcher_handoff"),
         cwd: projectCwd,
         handoffPath,
+        prompt: fullPrompt,
+        handoffSchema: DispatcherDecisionHandoffSchema,
         onEvent: (event) => {
           emit("dispatcher:ndjson", { workflowId, ndjsonEvent: event })
         },
       })
-
-      runner.send(fullPrompt)
-      await runner.done
-
-      const handoff = await readHandoff(handoffPath, DispatcherDecisionHandoffSchema) as DispatcherDecisionHandoff
       const decision = handoffToDecision(handoff)
 
       log.info("dispatcher invocation complete", { sessionId, invocationId })
@@ -78,12 +79,13 @@ interface EngineEvaluatorTransportOptions {
   systemPromptAddendum?: string
   emit: EmitFn
   workflowId: string
+  auth: AuthContext
 }
 
 export function createEngineEvaluatorTransport(
   opts: EngineEvaluatorTransportOptions,
 ): EvaluatorTransport {
-  const { engine, sessionId, projectCwd, model, effort, emit, workflowId } = opts
+  const { engine, sessionId, projectCwd, model, effort, emit, workflowId, auth } = opts
   const systemPrompt = buildEvaluatorSystemPrompt(opts.systemPromptAddendum)
 
   return {
@@ -96,22 +98,21 @@ export function createEngineEvaluatorTransport(
       const handoffInstruction = renderEvaluatorHandoffInstruction(handoffPath)
       const fullPrompt = `${userMessage}\n\n${handoffInstruction}`
 
-      const runner = engine.createRunner({
+      const verdict = await invokeHandoffRunner({
+        engine,
         model,
+        auth,
         systemPrompt,
         effort,
         toolActions: toolActionsForProfile("evaluator_verification"),
         cwd: projectCwd,
         handoffPath,
+        prompt: fullPrompt,
+        handoffSchema: EvaluatorVerdictSchema,
         onEvent: (event) => {
           emit("evaluator:ndjson", { workflowId, ndjsonEvent: event })
         },
       })
-
-      runner.send(fullPrompt)
-      await runner.done
-
-      const verdict = await readHandoff(handoffPath, EvaluatorVerdictSchema)
 
       log.info("evaluator invocation complete", { sessionId, invocationId, passed: verdict.passed })
       return verdict

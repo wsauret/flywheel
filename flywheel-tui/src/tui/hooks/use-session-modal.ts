@@ -1,35 +1,10 @@
-import { createSignal, createMemo, batch } from "solid-js"
+import { createSignal, createMemo, batch, untrack } from "solid-js"
 import type { Accessor } from "solid-js"
 import { errorMessage as extractErrorMessage } from "../../infra/error-message.js"
 import type { SessionSummary } from "../../orchestration/session/manager.js"
-import type { SessionState } from "../../orchestration/session/types.js"
-import type { SessionActionDeps } from "../../orchestration/session-actions.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"
 import { Clipboard } from "../utils/clipboard.js"
-
-const GROUP_ORDER: SessionState[] = ["active", "paused", "completed"]
-
-export function buildSessionList(sessions: SessionSummary[]): { session: SessionSummary; group: SessionState }[] {
-  const items: { session: SessionSummary; group: SessionState }[] = []
-  const groups: Record<SessionState, SessionSummary[]> = {
-    active: [], paused: [], completed: [],
-  }
-
-  for (const s of sessions) {
-    groups[s.state].push(s)
-  }
-
-  for (const key of GROUP_ORDER) {
-    groups[key].sort(
-      (a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime(),
-    )
-    for (const s of groups[key]) {
-      items.push({ session: s, group: key })
-    }
-  }
-
-  return items
-}
+import { buildSessionList } from "../session-modal.js"
 
 /** State captured when viewing a historical session — carries both the restore point and the viewed ID. */
 interface ViewingState {
@@ -44,22 +19,22 @@ interface SessionModalDeps {
   handleResume: (sessionId: string) => Promise<void>
   switchForeground: (sessionId: string) => void
   deleteActiveChat: (sessionId: string) => Promise<void>
-  actionDeps: SessionActionDeps
 }
 
 export interface SessionModalHook {
   sessionsModalOpen: Accessor<boolean>
   modalCursor: Accessor<number>
   modalConfirmDelete: Accessor<string | undefined>
-  /** Monotonically increasing counter — bumps on delete to refresh modal snapshot. */
-  modalRefreshTrigger: Accessor<number>
+  /** Snapshot of the session list taken at modal-open time. Refreshed only on delete —
+   *  prevents background workflow completions from shifting the list while the user navigates. */
+  snapshotSessions: Accessor<SessionSummary[]>
   /** True when the user is viewing a historical session and prior state can be restored. */
   isViewingSession: Accessor<boolean>
   openSessionsModal(): void
   closeSessionsModal(): void
   selectModalItem(index: number): void
   handleModalKey(evt: { name: string; ctrl?: boolean; meta?: boolean }): void
-  /** Dismiss the viewed session and restore the UI state that existed before viewing. */
+  /** Dismiss a viewed historical session and restore prior UI state. */
   dismissViewedSession(): void
   /** Commit to the viewed session (e.g. user sent a message) — clears snapshot without restoring. */
   commitViewedSession(): void
@@ -71,13 +46,14 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
   const [sessionsModalOpen, setSessionsModalOpen] = createSignal(false)
   const [modalCursor, setModalCursor] = createSignal(0)
   const [modalConfirmDelete, setModalConfirmDelete] = createSignal<string | undefined>()
-  const [modalRefreshTrigger, setModalRefreshTrigger] = createSignal(0)
+  const [snapshotSessions, setSnapshotSessions] = createSignal<SessionSummary[]>(untrack(() => deps.sessions()))
 
   // State saved before viewing a completed session, so we can restore on dismiss.
   const [viewingState, setViewingState] = createSignal<ViewingState | undefined>()
 
   function openSessionsModal(): void {
     batch(() => {
+      setSnapshotSessions(deps.sessions())
       setSessionsModalOpen(true)
       setModalCursor(0)
       setModalConfirmDelete(undefined)
@@ -125,20 +101,20 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
   async function handleSessionDelete(sessionId: string): Promise<void> {
     try {
       await services.sessionStore.remove(sessionId)
-      deps.actionDeps.manager.delete(sessionId)
-      setModalRefreshTrigger((n) => n + 1)
+      services.manager.delete(sessionId)
+      setSnapshotSessions(deps.sessions())
       services.showToast({ message: "Session deleted", variant: "info" })
       // If we were viewing this session's transcript, restore prior state.
       if (viewingState()?.viewedSessionId === sessionId) {
-        restorePriorState()
+        dismissViewedSession()
       }
     } catch (err) {
       services.showToast({ message: `Delete failed: ${extractErrorMessage(err)}`, variant: "error" })
     }
   }
 
-  /** Restore the UI state that existed before handleSessionView was called. */
-  function restorePriorState(): void {
+  /** Dismiss a viewed historical session: restore the prior foreground, clear the snapshot. */
+  function dismissViewedSession(): void {
     const state = viewingState()
     if (state) {
       signals.setForegroundId(state.priorForegroundId)
@@ -153,7 +129,7 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
       setModalConfirmDelete(undefined)
       return
     }
-    const items = buildSessionList(deps.sessions())
+    const items = buildSessionList(snapshotSessions())
     const total = items.length
     if (total === 0) return
 
@@ -206,10 +182,6 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
     }
   }
 
-  function dismissViewedSession(): void {
-    restorePriorState()
-  }
-
   /** Clear the viewing snapshot WITHOUT restoring prior state.
    *  Used when the user commits to the viewed session (e.g. sends a message),
    *  so the auto-resumed chat stays in the foreground. */
@@ -223,7 +195,7 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
     sessionsModalOpen,
     modalCursor,
     modalConfirmDelete,
-    modalRefreshTrigger,
+    snapshotSessions,
     isViewingSession,
     openSessionsModal,
     closeSessionsModal,

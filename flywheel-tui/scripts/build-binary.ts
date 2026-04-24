@@ -121,7 +121,9 @@ for (const entry of distEntries) {
   }
 }
 
-// Step 4: Copy agent persona files
+// Step 4: Copy agent persona files. Tarball ships the canonical sources;
+// install.sh stages them so the running TS installer can project per
+// destination (Claude vs harness) on app startup.
 console.log("Copying agent files...");
 await mkdir(agentsStagingDir, { recursive: true });
 const personaDir = join(AGENTS_SRC, "personas", "fly");
@@ -238,12 +240,7 @@ for f in "\$SCRIPT_DIR"/*.wasm "\$SCRIPT_DIR"/*.scm; do
   [ -f "\$f" ] && cp "\$f" "\$INSTALL_DIR/"
 done
 
-# --- Install agents + skills ---
-if [ -d "\$SCRIPT_DIR/agents" ]; then
-  mkdir -p "\$CLAUDE_DIR/agents/fly"
-  cp "\$SCRIPT_DIR/agents/"*.md "\$CLAUDE_DIR/agents/fly/"
-fi
-
+# --- Install skills (agents are projected by the binary at first launch) ---
 if [ -d "\$SCRIPT_DIR/skills" ]; then
   for skill_dir in "\$SCRIPT_DIR/skills"/*/; do
     skill_name="\$(basename "\$skill_dir")"
@@ -330,7 +327,10 @@ async function writeManifest(destPath: string): Promise<void> {
   const agents: Record<string, string> = {};
   const skills: Record<string, { skill: string; references: Record<string, string> }> = {};
 
-  // Read agent persona files
+  // Read canonical agent persona files. The runtime installer projects each
+  // file to the right shape for Claude (`~/.claude/agents/fly/`) and the
+  // harness (`~/.flywheel/agents/`), so the manifest only needs the canonical
+  // form.
   const personaDir = join(AGENTS_SRC, "personas", "fly");
   const mdFiles = (await readdir(personaDir)).filter((f) => f.endsWith(".md"));
   for (const file of mdFiles) {

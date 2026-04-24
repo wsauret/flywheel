@@ -1,25 +1,24 @@
 /** @jsxImportSource @opentui/solid */
-import { createMemo, createSignal, createEffect, For, Show, untrack, on } from "solid-js"
+import { createMemo, createEffect, For, Show } from "solid-js"
 
 import { BOLD } from "@tui/shared/ui/text-attributes"
 import { StyledText, fg as stFg, bold as stBold, type TextChunk } from "@opentui/core"
 import type { TextRenderable } from "@opentui/core"
 import { useTerminalDimensions } from "@opentui/solid"
 import { useTheme } from "@tui/shared/context/theme"
-import { useSession } from "@tui/shared/context/session"
+
 import { isResumable } from "../orchestration/session/types.js"
 import { truncate } from "./utils/text.js"
 import { formatCost, formatTokens, relativeTime } from "../infra/format.js"
-import { buildSessionList } from "./hooks/use-session-modal.js"
+
 import type { SessionState } from "../orchestration/session/types.js"
 import type { SessionSummary } from "../orchestration/session/manager.js"
 
 interface SessionModalProps {
+  sessions: SessionSummary[]
   activeSessionId?: string
   cursor: number
   confirmDeleteId?: string
-  /** Monotonically increasing counter — bump to refresh the session list snapshot. */
-  refreshTrigger?: number
   onClose: () => void
   onSelect: (flatIndex: number) => void
 }
@@ -36,20 +35,23 @@ const GROUP_ICONS: Record<SessionState, string> = {
   completed: "\u2713",
 }
 
+const GROUP_ORDER: SessionState[] = ["active", "paused", "completed"]
+
+/** Flatten sessions into a grouped, recency-sorted list for cursor navigation and rendering. */
+export function buildSessionList(sessions: SessionSummary[]): { session: SessionSummary; group: SessionState }[] {
+  const groups: Record<SessionState, SessionSummary[]> = { active: [], paused: [], completed: [] }
+  for (const s of sessions) groups[s.state].push(s)
+  return GROUP_ORDER.flatMap((group) =>
+    groups[group]
+      .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
+      .map((session) => ({ session, group })),
+  )
+}
+
 export function SessionModal(props: SessionModalProps) {
   const { theme } = useTheme()
-  const { sessions } = useSession()
 
-  // ADR-006 deviation: signal-inside-effect. Snapshot sessions() on open,
-  // refresh only when refreshTrigger bumps (after delete). A createMemo would
-  // re-derive on every sessions() change — background workflow completions
-  // would shift the list while the user navigates with arrow keys.
-  const initialSessions = untrack(() => sessions())
-  const [snapshotSessions, setSnapshotSessions] = createSignal(initialSessions)
-  createEffect(on(() => props.refreshTrigger, () => {
-    setSnapshotSessions(sessions())
-  }, { defer: true }))
-  const flatList = createMemo(() => buildSessionList(snapshotSessions()))
+  const flatList = createMemo(() => buildSessionList(props.sessions))
 
   const groupedSections = createMemo(() => {
     const items = flatList()
@@ -122,8 +124,8 @@ export function SessionModal(props: SessionModalProps) {
       >
       <box flexDirection="row" justifyContent="space-between">
         <text fg={theme.primary} attributes={BOLD}>Sessions</text>
-        <box onMouseDown={props.onClose}>
-          <text fg={theme.textMuted}>×</text>
+        <box selectable={false} onMouseDown={props.onClose}>
+          <text selectable={false} fg={theme.textMuted}>×</text>
         </box>
       </box>
 
@@ -185,29 +187,31 @@ export function SessionModal(props: SessionModalProps) {
 
                     return (
                       <box
+                        selectable={false}
                         backgroundColor={isSelected() ? theme.backgroundElement : undefined}
                         paddingLeft={2}
                         paddingRight={1}
                         onMouseDown={() => props.onSelect(item.flatIndex)}
                       >
-                        <box flexDirection="row" justifyContent="space-between">
-                          <box flexShrink={1} overflow="hidden">
-                            <text ref={(el: TextRenderable) => {
-                              createEffect(() => {
-                                const cursorColor = isSelected() ? theme.primary : isActive() ? theme.primary : theme.textMuted
-                                const cursor = isSelected() ? "\u25B8" : isActive() ? "\u25CF" : " "
-                                el.content = new StyledText([
-                                  stFg(cursorColor)(cursor),
-                                  stFg(typeColor())(` ${typeTag()}`),
-                                  stFg(isActive() ? theme.primary : theme.text)(` ${label()}`),
-                                ])
-                              })
-                            }} overflow="hidden" wrapMode="none" />
-                          </box>
-                          <Show when={metadata}>
-                            <text fg={theme.textMuted} flexShrink={0}>{metadata}</text>
-                          </Show>
-                        </box>
+                        <text selectable={false} ref={(el: TextRenderable) => {
+                          createEffect(() => {
+                            const cursorColor = isSelected() ? theme.primary : isActive() ? theme.primary : theme.textMuted
+                            const cursor = isSelected() ? "\u25B8" : isActive() ? "\u25CF" : " "
+                            const leftLabel = `${cursor} ${typeTag()} ${label()}`
+                            // Row's usable width = modalWidth() minus modal border/padding (4) and row left/right padding (3).
+                            const rowWidth = Math.max(modalWidth() - 7, leftLabel.length)
+                            const padding = " ".repeat(Math.max(1, rowWidth - leftLabel.length - metadata.length))
+                            const chunks: TextChunk[] = [
+                              stFg(cursorColor)(cursor),
+                              stFg(typeColor())(` ${typeTag()}`),
+                              stFg(isActive() ? theme.primary : theme.text)(` ${label()}`),
+                            ]
+                            if (metadata) {
+                              chunks.push(stFg(theme.textMuted)(`${padding}${metadata}`))
+                            }
+                            el.content = new StyledText(chunks)
+                          })
+                        }} overflow="hidden" wrapMode="none" />
 
                         <Show when={isDeletePending() && isSelected()}>
                           <text fg={theme.warning}>Press d again to confirm delete</text>

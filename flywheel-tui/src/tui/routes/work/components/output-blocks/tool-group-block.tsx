@@ -7,7 +7,6 @@ import { useTheme } from "@tui/shared/context/theme"
 import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
 import { useElapsed } from "@tui/shared/hooks/use-elapsed"
 import { useSpinnerFrame } from "@tui/shared/hooks/use-spinner-frame.js"
-import { preventSelectionMouseDown } from "@tui/utils/mouse.js"
 import { formatDuration, formatElapsed } from "@infra/format.js"
 import { ToolRow, BOX_MAX_VISIBLE_TOOLS, SUCCESS_ICON, ERROR_ICON, moreHint } from "./tool-row.js"
 import { ToolEntry as ToolEntryBlock } from "./tool-entry.js"
@@ -171,8 +170,8 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
             : <ToolRow tool={child()} interrupted={isPaused()} />}
         </Index>
         <Show when={hiddenCount() > 0}>
-          <box paddingLeft={1}>
-            <text fg={theme.textMuted}>{moreHint(hiddenCount(), showAll())}</text>
+          <box selectable={false} paddingLeft={1} onMouseDown={toggleShowAll}>
+            <text selectable={false} fg={theme.textMuted}>{moreHint(hiddenCount(), showAll())}</text>
           </box>
         </Show>
       </>
@@ -186,8 +185,9 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
       </Show>
 
       <Show when={props.block.status === "active" && !isBareSingleTool()}>
-        <box onMouseDown={hiddenCount() > 0 ? preventSelectionMouseDown(toggleShowAll) : undefined}>
+        <box selectable={false} onMouseDown={hiddenCount() > 0 ? toggleShowAll : undefined}>
           <text
+            selectable={false}
             ref={(el: TextRenderable) => {
               createEffect(() => { el.content = activeHeaderContent() })
             }}
@@ -202,7 +202,6 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
             borderColor={theme.borderSubtle}
             paddingTop={0}
             paddingBottom={0}
-            onMouseDown={hiddenCount() > 0 ? preventSelectionMouseDown(toggleShowAll) : undefined}
           >
             <ToolList />
           </CollapsibleBox>
@@ -210,8 +209,9 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
       </Show>
 
       <Show when={props.block.status === "completed" && !isBareSingleTool()}>
-        <box onMouseDown={preventSelectionMouseDown(() => props.onToggleExpand?.(props.block.id))}>
+        <box selectable={false} onMouseDown={() => props.onToggleExpand?.(props.block.id)}>
           <text
+            selectable={false}
             ref={(el: TextRenderable) => {
               createEffect(() => { el.content = completedHeaderContent() })
             }}
@@ -226,7 +226,6 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
             borderColor={theme.borderSubtle}
             paddingTop={0}
             paddingBottom={0}
-            onMouseDown={hiddenCount() > 0 ? preventSelectionMouseDown(toggleShowAll) : undefined}
           >
             <ToolList />
           </CollapsibleBox>
@@ -234,8 +233,9 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
       </Show>
 
       <Show when={props.block.status === "paused" && !isBareSingleTool()}>
-        <box onMouseDown={preventSelectionMouseDown(() => props.onToggleExpand?.(props.block.id))}>
+        <box selectable={false} onMouseDown={() => props.onToggleExpand?.(props.block.id)}>
           <text
+            selectable={false}
             ref={(el: TextRenderable) => {
               createEffect(() => { el.content = pausedHeaderContent() })
             }}
@@ -250,7 +250,6 @@ export function ToolGroupBlock(props: ToolGroupBlockProps) {
             borderColor={theme.borderSubtle}
             paddingTop={0}
             paddingBottom={0}
-            onMouseDown={hiddenCount() > 0 ? preventSelectionMouseDown(toggleShowAll) : undefined}
           >
             <ToolList />
           </CollapsibleBox>

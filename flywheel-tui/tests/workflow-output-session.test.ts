@@ -5,7 +5,7 @@
  * - engine:started → thinking start captured via notifySpawned
  * - engine:output stdout → blocks rendered via writeStdout
  * - engine:output stderr → system block via writeStderr
- * - engine:injected → user message + thinking start via notifyInjected
+ * - engine:injected → user message + thinking start via pushUserMessage
  * - queue:completed → flush() writes immediately
  * - Shared builder — NdjsonPipeline writes to shared builder, OutputSession flushes them
  * - Synthetic thinking timer intercepts modelActivity via wrappedUpdateEntry
@@ -212,14 +212,14 @@ describe("Workflow → OutputSession integration", () => {
     })
   })
 
-  // ── engine:injected → notifyInjected ──
+  // ── engine:injected → pushUserMessage ──
 
-  describe("engine:injected → notifyInjected", () => {
+  describe("engine:injected → pushUserMessage", () => {
     it("pushes user message + sets thinking start", () => {
       const { session: s, patches } = createWorkflowSession()
       session = s
 
-      session.notifyInjected("injected prompt", 3000, false, true)
+      session.pushUserMessage("injected prompt", 3000, { injected: true })
       session.flush()
 
       const blockPatch = patches.filter((p) => p.outputBlocks !== undefined).pop()

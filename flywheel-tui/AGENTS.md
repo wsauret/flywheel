@@ -1,3 +1,6 @@
+@docs/adrs/006-flywheel-design-principles.md
+@docs/tmux-uat-guide.md
+
 <coding_guidelines>
 # Flywheel CLI -- Agent Instructions
 
@@ -241,3 +244,7 @@ One domain, one home. No re-exports, bridge files, or compatibility shims.
 When a module moves, update every import — no forwarding addresses.
 ```
 </coding_guidelines>
+
+For conceptual architecture — how the layers compose, the three-tier isolation model, session lifecycle, and reactive dataflow — see `docs/architecture.md`.
+
+Design decisions are recorded in `docs/adrs/` — consult the relevant ADR when modifying the three-tier orchestrator (001), queue execution model (003), engine abstraction or harness (004), or chat session type (005).

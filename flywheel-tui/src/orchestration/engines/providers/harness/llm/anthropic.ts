@@ -5,6 +5,9 @@
  * Caching: 3 ephemeral cache_control breakpoints on tools (last), system,
  * and the final message -- captures the stable prefix (tools + system) plus
  * a rolling anchor (last message) that grows with the conversation.
+ * ADR-006: Intentionally cohesive provider adapter. Request building, stream
+ * decoding, and normalized event mapping stay together to keep one protocol path
+ * and avoid indirection tax.
  */
 
 import Anthropic from "@anthropic-ai/sdk";
@@ -113,7 +116,11 @@ function toAnthropicContent(
         ...(block.is_error ? { is_error: true } : {}),
       });
     } else if (block.type === "thinking") {
-      if (block.signature && block.thinking) {
+      // Anthropic requires signed thinking blocks to be preserved verbatim
+      // across turns when extended thinking is enabled — dropping them (even
+      // when the text body is empty) invalidates the server-side reasoning
+      // chain and produces opaque 4xx errors on the next request.
+      if (block.signature) {
         result.push({
           type: "thinking" as const,
           thinking: block.thinking,
@@ -124,7 +131,23 @@ function toAnthropicContent(
       }
     }
   }
-  return result;
+  // Anthropic rejects a user turn if any block precedes a tool_result that
+  // answers the prior assistant tool_use ("tool_use ids were found without
+  // tool_result blocks immediately after"). Hoisting here owns the rule at
+  // the protocol boundary so injection sites upstream (nudge-injector and
+  // any future additions) can push blocks in any order.
+  return hoistToolResults(result);
+}
+
+export function hoistToolResults(
+  blocks: Anthropic.ContentBlockParam[],
+): Anthropic.ContentBlockParam[] {
+  const toolResults: Anthropic.ContentBlockParam[] = [];
+  const rest: Anthropic.ContentBlockParam[] = [];
+  for (const b of blocks) {
+    (b.type === "tool_result" ? toolResults : rest).push(b);
+  }
+  return toolResults.length === 0 ? blocks : [...toolResults, ...rest];
 }
 
 /** Tag the last content block in a message with cache_control. Mutates in place. */

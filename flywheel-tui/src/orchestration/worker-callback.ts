@@ -7,6 +7,7 @@ import {
 } from "../infra/paths.js"
 import { Log } from "../infra/log.js"
 import type { Engine } from "./engines/core/types.js"
+import type { AuthContext } from "../infra/auth/auth-context.js"
 import type { EmitFn } from "../infra/event-bus.js"
 import type { InjectionQueue } from "./injection-queue.js"
 import type { Step } from "../workflows/queue/types.js"
@@ -16,6 +17,7 @@ import { createNDJSONEvent } from "../infra/ndjson-event-factory.js"
 import type { AskHookServer } from "./ask-hook/server.js"
 import { buildAskHookSettings } from "./ask-hook/config.js"
 import type { ToolAction } from "../infra/workflow-types.js"
+import { createRunnerContext } from "./runner-context.js"
 const log = Log.create({ service: "worker-callback" })
 
 const SELF_REVIEW_STEP_TYPES = new Set(["work", "debug"])
@@ -49,6 +51,7 @@ function buildStepPrompt(
 
 interface WorkerCallbackDeps {
   engine: Engine
+  auth: AuthContext
   model: string
   effort?: string
   emit: EmitFn
@@ -72,7 +75,7 @@ export function createWorkerCallback(
   opts: WorkerCallbackDeps,
 ): (step: Step, prompt: string, signal?: AbortSignal, resumeSessionId?: string) => Promise<WorkerCallbackResult> {
   const {
-    engine, model, effort,
+    engine, model, effort, auth,
     emit, workflowId, sessionId, projectCwd,
     injectionQueue, observerChain, askHookServer,
   } = opts
@@ -111,8 +114,10 @@ export function createWorkerCallback(
 
     emit("engine:started", { workflowId, stepIndex: 0 })
 
-    const runner = engine.createRunner({
+    const ctx = createRunnerContext({
+      engine,
       model,
+      auth,
       effort,
       toolActions,
       ...(askEnabled && askHookServer && {
@@ -134,18 +139,18 @@ export function createWorkerCallback(
         const delivered = injectionQueue.drain()
         if (delivered !== null) {
           log.info("turn-boundary injection sent to worker", { userSteering: delivered.userSteering })
-          runner.send(delivered.message)
+          ctx.send(delivered.message)
           if (!delivered.userSteering) {
             emit("engine:injected", { workflowId, message: delivered.message, origin: "system" })
           }
         } else {
-          runner.end()
+          ctx.end()
         }
       },
     })
 
-    runner.send(fullPrompt)
-    const engineResult = await runner.done
+    ctx.send(fullPrompt)
+    const engineResult = await ctx.done
 
     return {
       output: engineResult.failure

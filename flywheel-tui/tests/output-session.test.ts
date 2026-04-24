@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from "vitest"
+import { describe, it, expect, mock, afterEach } from "bun:test"
 import { createOutputSession, type OutputSession, type OutputSessionOptions } from "../src/orchestration/output-session"
 import { createNoopEmit } from "../src/infra/event-bus"
 import { StructuredOutputBuilder } from "../src/infra/output/structured-output-builder"
@@ -16,9 +16,9 @@ const noopEmit = createNoopEmit()
 const flushMicrotasks = () => new Promise<void>(r => queueMicrotask(r))
 
 function createMocks() {
-  const updateEntry = vi.fn<(patch: Partial<SessionEntryBase>) => void>()
-  const emit = vi.fn() as unknown as OutputSessionOptions["emit"]
-  const onFlush = vi.fn()
+  const updateEntry = mock<(patch: Partial<SessionEntryBase>) => void>()
+  const emit = mock() as unknown as OutputSessionOptions["emit"]
+  const onFlush = mock()
   return { updateEntry, emit, onFlush }
 }
 
@@ -72,7 +72,7 @@ describe("createOutputSession", () => {
     await flushMicrotasks()
 
     // Thinking without tool context creates a standalone thinking block
-    const blockCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
+    const blockCalls = (updateEntry as ReturnType<typeof mock>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].outputBlocks !== undefined,
     )
     expect(blockCalls.length).toBeGreaterThan(0)
@@ -90,7 +90,7 @@ describe("createOutputSession", () => {
     session.writeStdout(makeAssistantTextNdjson("Hello world"))
     await flushMicrotasks()
 
-    const blockCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
+    const blockCalls = (updateEntry as ReturnType<typeof mock>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].outputBlocks !== undefined,
     )
     expect(blockCalls.length).toBeGreaterThan(0)
@@ -110,7 +110,7 @@ describe("createOutputSession", () => {
     session.writeStdout(makeAssistantTextNdjson("from claude engine"), "claude")
     await flushMicrotasks()
 
-    const blockCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
+    const blockCalls = (updateEntry as ReturnType<typeof mock>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].outputBlocks !== undefined,
     )
     expect(blockCalls.length).toBeGreaterThan(0)
@@ -129,7 +129,7 @@ describe("createOutputSession", () => {
 
     // writeStderr defers to onChange microtask — flush it
     await flushMicrotasks()
-    const blockCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
+    const blockCalls = (updateEntry as ReturnType<typeof mock>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].outputBlocks !== undefined,
     )
     expect(blockCalls.length).toBeGreaterThan(0)
@@ -155,7 +155,7 @@ describe("createOutputSession", () => {
     session.writeStdout(makeAssistantThinkingNdjson("initial thinking"))
     await flushMicrotasks()
 
-    const blockCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
+    const blockCalls = (updateEntry as ReturnType<typeof mock>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].outputBlocks !== undefined,
     )
     expect(blockCalls.length).toBeGreaterThan(0)
@@ -167,45 +167,42 @@ describe("createOutputSession", () => {
     expect(thinkingRow!.timestamp).toBe(5000)
   })
 
-  // ── notifyInjected ──
+  // ── pushUserMessage ──
 
-  it("notifyInjected pushes user message + sets thinking start time", async () => {
+  it("pushUserMessage pushes user message + sets thinking start time", async () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit })
 
-    session.notifyInjected("injected message", 3000, false, true)
+    session.pushUserMessage("injected message", 3000, { injected: true })
     await flushMicrotasks()
 
-    const blockCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
+    const blockCalls = (updateEntry as ReturnType<typeof mock>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].outputBlocks !== undefined,
     )
     expect(blockCalls.length).toBeGreaterThan(0)
     const blocks = blockCalls[blockCalls.length - 1][0].outputBlocks as AnyBlock[]
 
-    // Should have a user message block
     const userMsg = blocks.find((b) => b.kind === "userMessage")
     expect(userMsg).toBeDefined()
     expect((userMsg as { content: string }).content).toBe("injected message")
-    // System-injected: injected=true, pending=false
     expect((userMsg as { injected?: boolean }).injected).toBe(true)
     expect((userMsg as { pending?: boolean }).pending).toBe(false)
   })
 
-  it("notifyInjected with pending=true marks message as pending user message (not system-injected)", async () => {
+  it("pushUserMessage with queued=true marks message as queued (not system-injected)", async () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit })
 
-    session.notifyInjected("pending message", 3000, true, false)
+    session.pushUserMessage("pending message", 3000, { queued: true })
     await flushMicrotasks()
 
-    const blockCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
+    const blockCalls = (updateEntry as ReturnType<typeof mock>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].outputBlocks !== undefined,
     )
     const blocks = blockCalls[blockCalls.length - 1][0].outputBlocks as AnyBlock[]
     const userMsg = blocks.find((b) => b.kind === "userMessage")
     expect(userMsg).toBeDefined()
     expect((userMsg as { pending?: boolean }).pending).toBe(true)
-    // User-steering messages are not system-injected
     expect((userMsg as { injected?: boolean }).injected).toBe(false)
   })
 
@@ -218,7 +215,7 @@ describe("createOutputSession", () => {
     session.writeStdout(makeAssistantTextNdjson("some text"))
     session.flush()
 
-    const activityCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
+    const activityCalls = (updateEntry as ReturnType<typeof mock>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].modelActivity !== undefined,
     )
     expect(activityCalls.length).toBeGreaterThan(0)
@@ -234,7 +231,7 @@ describe("createOutputSession", () => {
     session.writeStdout(makeAssistantThinkingNdjson("pondering"))
     session.flush()
 
-    const activityCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
+    const activityCalls = (updateEntry as ReturnType<typeof mock>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].modelActivity !== undefined,
     )
     const activities = activityCalls.map((c: Partial<SessionEntryBase>[]) => c[0].modelActivity)
@@ -249,7 +246,7 @@ describe("createOutputSession", () => {
 
     // Advance without changes — no outputBlocks update
     await flushMicrotasks()
-    const blockCallsBefore = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
+    const blockCallsBefore = (updateEntry as ReturnType<typeof mock>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].outputBlocks !== undefined,
     )
     expect(blockCallsBefore.length).toBe(0)
@@ -258,7 +255,7 @@ describe("createOutputSession", () => {
     session.writeStdout(makeAssistantTextNdjson("trigger flush"))
     await flushMicrotasks()
 
-    const blockCallsAfter = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
+    const blockCallsAfter = (updateEntry as ReturnType<typeof mock>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].outputBlocks !== undefined,
     )
     expect(blockCallsAfter.length).toBeGreaterThan(0)
@@ -288,7 +285,7 @@ describe("createOutputSession", () => {
     session.writeStdout(makeAssistantTextNdjson("data for emit"))
 
     // emit should have been called with engine:ndjson
-    const emitFn = emit as unknown as ReturnType<typeof vi.fn>
+    const emitFn = emit as unknown as ReturnType<typeof mock>
     expect(emitFn).toHaveBeenCalledWith(
       "engine:ndjson",
       expect.objectContaining({
@@ -310,8 +307,8 @@ describe("createOutputSession", () => {
     session.writeStdout(makeAssistantTextNdjson("urgent data"))
 
     // Clear mocks to isolate flush() behavior
-    ;(updateEntry as ReturnType<typeof vi.fn>).mockClear()
-    ;(onFlush as ReturnType<typeof vi.fn>).mockClear()
+    ;(updateEntry as ReturnType<typeof mock>).mockClear()
+    ;(onFlush as ReturnType<typeof mock>).mockClear()
 
     session.flush()
 
@@ -322,22 +319,29 @@ describe("createOutputSession", () => {
     expect(onFlush).toHaveBeenCalled()
   })
 
-  // ── resolvePendingMessages ──
+  // ── queue primitives ──
 
-  it("resolvePendingMessages() delegates to builder, returns message texts", () => {
+  it("takeNextQueued pops oldest queued message, returns null when empty", () => {
     const { updateEntry, emit } = createMocks()
     session = createOutputSession({ updateEntry, emit })
 
-    // No pending messages — should return empty array
-    expect(session.resolvePendingMessages()).toEqual([])
+    expect(session.takeNextQueued()).toBe(null)
+    session.pushUserMessage("first", 1000, { queued: true })
+    session.pushUserMessage("second", 2000, { queued: true })
+    expect(session.takeNextQueued()).toBe("first")
+    expect(session.takeNextQueued()).toBe("second")
+    expect(session.takeNextQueued()).toBe(null)
+  })
 
-    // Add a pending message via notifyInjected with pending=true
-    session.notifyInjected("pending msg", 1000, true)
+  it("drainQueued returns every queued message and empties the queue", () => {
+    const { updateEntry, emit } = createMocks()
+    session = createOutputSession({ updateEntry, emit })
 
-    // Now resolve — should return the message texts
-    expect(session.resolvePendingMessages()).toEqual(["pending msg"])
-    // Second resolve — already resolved, should return empty array
-    expect(session.resolvePendingMessages()).toEqual([])
+    expect(session.drainQueued()).toEqual([])
+    session.pushUserMessage("first", 1000, { queued: true })
+    session.pushUserMessage("second", 2000, { queued: true })
+    expect(session.drainQueued()).toEqual(["first", "second"])
+    expect(session.hasQueued()).toBe(false)
   })
 
   // ── pushSystemMessage ──
@@ -349,7 +353,7 @@ describe("createOutputSession", () => {
     session.pushSystemMessage("System alert", 2000)
     await flushMicrotasks()
 
-    const blockCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
+    const blockCalls = (updateEntry as ReturnType<typeof mock>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].outputBlocks !== undefined,
     )
     expect(blockCalls.length).toBeGreaterThan(0)
@@ -403,7 +407,7 @@ describe("createOutputSession", () => {
 
     // Dispose
     session.dispose()
-    ;(updateEntry as ReturnType<typeof vi.fn>).mockClear()
+    ;(updateEntry as ReturnType<typeof mock>).mockClear()
 
     // Advance timers — no further updateEntry calls should happen
     await flushMicrotasks()
@@ -420,7 +424,7 @@ describe("createOutputSession", () => {
     session = createOutputSession({ updateEntry, emit })
 
     session.dispose()
-    ;(updateEntry as ReturnType<typeof vi.fn>).mockClear()
+    ;(updateEntry as ReturnType<typeof mock>).mockClear()
 
     // writeStdout should not throw or trigger any updates
     session.writeStdout(makeAssistantTextNdjson("should be ignored"))
@@ -437,7 +441,7 @@ describe("createOutputSession", () => {
     session = createOutputSession({ updateEntry, emit })
 
     session.dispose()
-    ;(updateEntry as ReturnType<typeof vi.fn>).mockClear()
+    ;(updateEntry as ReturnType<typeof mock>).mockClear()
 
     session.writeStderr("should be ignored", Date.now())
     await flushMicrotasks()
@@ -455,7 +459,7 @@ describe("createOutputSession", () => {
     session.writeStdout("plain text not json\n")
     await flushMicrotasks()
 
-    const blockCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
+    const blockCalls = (updateEntry as ReturnType<typeof mock>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].outputBlocks !== undefined,
     )
     expect(blockCalls.length).toBeGreaterThan(0)
@@ -474,7 +478,7 @@ describe("createOutputSession", () => {
     session.notifySpawned(1000)
     session.flush()
 
-    const activityCalls = (updateEntry as ReturnType<typeof vi.fn>).mock.calls.filter(
+    const activityCalls = (updateEntry as ReturnType<typeof mock>).mock.calls.filter(
       (c: Partial<SessionEntryBase>[]) => c[0].modelActivity !== undefined,
     )
     expect(activityCalls.length).toBeGreaterThan(0)

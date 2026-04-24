@@ -12,11 +12,6 @@ import type { AnyBlock } from "../infra/output-blocks.js"
 
 const log = Log.create({ service: "session-actions" })
 
-export interface SessionActionDeps {
-  manager: SessionManager
-  activeSessionId: () => string | undefined
-}
-
 interface ResumeData {
   session: Session
   outputBlocks: AnyBlock[]
@@ -84,8 +79,8 @@ export function extractChatContext(blocks: readonly AnyBlock[]): string | undefi
   return result
 }
 
-export function findResumableSession(deps: SessionActionDeps): SessionSummary | null {
-  const { sessions } = deps.manager.list()
+export function findResumableSession(manager: SessionManager): SessionSummary | null {
+  const { sessions } = manager.list()
   const resumable = sessions
     .filter(s => isResumable(s.state))
     .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())

@@ -33,7 +33,7 @@ export function createTraceEventHandler(deps: TraceEventHandlerDeps): TraceEvent
         const input = record.toolInput;
         const description = String(input?.description ?? input?.task ?? record.toolName);
         const prompt = truncateField(input?.prompt ?? input?.task ?? "", MAX_FIELD_BYTES);
-        emit("trace:subagent-started", { workflowId: wfId, toolUseId: record.toolUseId, agentType: record.toolName, description, prompt });
+        emit("trace:subagent-started", { workflowId: wfId, toolUseId: record.toolUseId, agentType: record.toolName, description, prompt, model: "" });
       } else {
         emit("trace:tool-started", { workflowId: wfId, toolUseId: record.toolUseId, toolName: record.toolName, toolInput: rawInput });
       }

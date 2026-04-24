@@ -3,13 +3,13 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { bashDefinition } from "../src/orchestration/engines/providers/harness/tools/bash.js";
-import { writeHandoffDefinition } from "../src/orchestration/engines/providers/harness/tools/write-handoff.js";
-import { readDefinition } from "../src/orchestration/engines/providers/harness/tools/read.js";
-import { executeTodoList } from "../src/orchestration/engines/providers/harness/tools/todo-list.js";
-import { executeTool, getToolDefinitions } from "../src/orchestration/engines/providers/harness/tools/tool-dispatch.js";
-import { limitOutput } from "../src/orchestration/engines/providers/harness/context/truncation.js";
-import type { ToolContext } from "../src/orchestration/engines/providers/harness/tools/types.js";
+import { bashDefinition } from "../../src/orchestration/engines/providers/harness/tools/bash.js";
+import { writeHandoffDefinition } from "../../src/orchestration/engines/providers/harness/tools/write-handoff.js";
+import { readDefinition } from "../../src/orchestration/engines/providers/harness/tools/read.js";
+import { executeTodoList } from "../../src/orchestration/engines/providers/harness/tools/todo-list.js";
+import { executeTool, getToolDefinitions } from "../../src/orchestration/engines/providers/harness/tools/tool-dispatch.js";
+import { limitOutput } from "../../src/orchestration/engines/providers/harness/context/truncation.js";
+import type { ToolContext } from "../../src/orchestration/engines/providers/harness/tools/types.js";
 
 function makeContext(overrides?: Partial<ToolContext>): ToolContext {
   return {

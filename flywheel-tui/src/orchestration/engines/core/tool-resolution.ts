@@ -16,6 +16,7 @@ const CLAUDE_ACTIONS: Record<ToolAction, readonly string[]> = {
   file_edit: ["Edit"],
   task_or_progress: ["Task"],
   ask_user: ["AskUserQuestion"],
+  task_delegation: [],
 };
 
 const HARNESS_ACTIONS: Record<ToolAction, readonly string[]> = {
@@ -27,6 +28,7 @@ const HARNESS_ACTIONS: Record<ToolAction, readonly string[]> = {
   file_edit: ["edit"],
   task_or_progress: ["todo_list"],
   ask_user: [],
+  task_delegation: ["subagent"],
 };
 
 function actionMapForEngine(engineId: string): Record<ToolAction, readonly string[]> {

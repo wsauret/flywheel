@@ -219,6 +219,7 @@ describe("HeadlessAdapter (production)", () => {
         agentType: "code-review",
         description: "Review code",
         prompt: "Review this",
+        model: "",
         timestamp: ts,
       })
 

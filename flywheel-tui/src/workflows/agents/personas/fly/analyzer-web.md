@@ -1,9 +1,13 @@
 ---
 name: analyzer-web
-description: "Fetch and analyze web content deeply. Given URLs from locator-web, retrieves and extracts relevant information."
-model: sonnet
-tools: [WebFetch, Read]
-skills: [flywheel-conventions]
+description: Fetch and analyze web content deeply. Given URLs from locator-web, retrieves and extracts relevant information.
+tier: mid
+claude:
+  tools:
+    - WebFetch
+    - Read
+  skills:
+    - flywheel-conventions
 ---
 
 # Web Analyzer Agent

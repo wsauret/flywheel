@@ -1,9 +1,17 @@
 ---
 name: locator-codebase
-description: "Find WHERE files and components live in the codebase. Returns paths only - no file contents. Use for initial discovery before deep analysis."
-model: haiku
-tools: [Grep, Glob, LS]
-skills: [flywheel-conventions]
+description: Find WHERE files and components live in the codebase. Returns paths only - no file contents. Use for initial discovery before deep analysis.
+tier: cheap
+claude:
+  tools:
+    - Grep
+    - Glob
+    - LS
+  skills:
+    - flywheel-conventions
+harness:
+  tools:
+    - text_search
 ---
 
 Find WHERE files and components live. Return paths only — no analysis, no suggestions.

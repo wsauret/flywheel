@@ -4,7 +4,7 @@ import { createSignal, createMemo, createEffect, on, Show, onCleanup } from "sol
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { BOLD } from "@tui/shared/ui/text-attributes"
 import { StyledText, fg as stFg, dim as stDim } from "@opentui/core"
-import type { TextRenderable, TextareaRenderable, TextareaAction, MouseEvent } from "@opentui/core"
+import type { TextRenderable, TextareaRenderable, TextareaAction } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
 import { useToast } from "@tui/shared/context/toast"
 import { useSession } from "@tui/shared/context/session"
@@ -18,7 +18,7 @@ import { ShimmerText } from "@tui/shared/components/shimmer-text"
 import { SessionModal } from "./session-modal.js"
 import { ToastDisplay } from "@tui/shared/components/toast-display"
 import { createSessionStore } from "../orchestration/session-store.js"
-import type { WorkflowSessionFactories } from "../orchestration/session-store-types.js"
+import type { CreateWorkflowAdapter } from "../orchestration/session-store-types.js"
 import { formatElapsed, TERMINAL_TITLE_BASE } from "../infra/format.js"
 import { errorMessage } from "../infra/error-message.js"
 import { useWorkflowLifecycle } from "./hooks/use-workflow-lifecycle.js"
@@ -31,16 +31,15 @@ import { createForegroundSwitcher } from "./hooks/use-foreground-switcher.js"
 import { createHeaderDisplay } from "./hooks/use-header-display.js"
 import { createPasteCollapse } from "./hooks/paste-collapse.js"
 import { QuestionDock } from "./routes/work/components/question-dock.js"
-import type { RunnerErrorResult } from "../orchestration/session/types.js"
 
-export function FlywheelShell(props: { factories: WorkflowSessionFactories; projectCwd: string; showThinking?: boolean; engineName?: string; modelName?: string }) {
+export function FlywheelShell(props: { createAdapter: CreateWorkflowAdapter; projectCwd: string; showThinking?: boolean; engineName?: string; modelName?: string }) {
   const { theme, syntax } = useTheme()
   const toast = useToast()
   const { manager, sessions } = useSession()
   const renderer = useRenderer()
   const dimensions = useTerminalDimensions()
 
-  const sessionStore = createSessionStore(props.factories)
+  const sessionStore = createSessionStore(props.createAdapter)
 
   const { signals, services } = createShellState({
     sessionStore,
@@ -82,22 +81,19 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     services,
     sessions,
     projectCwd: props.projectCwd,
-    setTerminalTitle: (t: string) => renderer.setTerminalTitle(t),
   })
 
-  const lifecycleCallbacks = {
-    onRunnerDone: () => {
-      services.setTerminalTitle(TERMINAL_TITLE_BASE)
-    },
-    onRunnerError: (_id: string, result: RunnerErrorResult) => {
-      signals.setErrorMessage(result.errorMessage)
-      services.setTerminalTitle(TERMINAL_TITLE_BASE)
-    },
+  const onRunnerDone = () => {
+    services.setTerminalTitle(TERMINAL_TITLE_BASE)
+  }
+  const onRunnerError = (_id: string, errorMessage: string) => {
+    signals.setErrorMessage(errorMessage)
+    services.setTerminalTitle(TERMINAL_TITLE_BASE)
   }
 
-  const workflow = useWorkflowLifecycle({ signals, services, lifecycleCallbacks })
+  const workflow = useWorkflowLifecycle({ signals, services, onRunnerDone, onRunnerError })
 
-  const chat = useChatMode({ signals, services, projectCwd: props.projectCwd, lifecycleCallbacks })
+  const chat = useChatMode({ signals, services, projectCwd: props.projectCwd, onRunnerDone, onRunnerError })
 
   const sessionModal = useSessionModal({
     signals,
@@ -115,12 +111,11 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
         await chat.startChat()
       }
     },
-    actionDeps: workflow.actionDeps,
   })
 
   const inChat = createMemo(() => {
-    // chatActive covers the async startup window before the sessionStore entry exists
-    if (chat.chatActive()) return true
+    // isStarting covers the async startup window before the sessionStore entry exists
+    if (chat.isStarting()) return true
     return signals.storeEntry()?.kind === "chat"
   })
 
@@ -150,6 +145,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
 
   const handleKey = createKeyboardHandler({
     signals,
+    services,
     sessionStore,
     sessions,
     workflow,
@@ -158,8 +154,6 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     inChat,
     runningCount,
     switchForeground,
-    setTerminalTitle: (t: string) => renderer.setTerminalTitle(t),
-    showToast: (opts) => toast.show(opts),
   })
   useKeyboard(handleKey)
 
@@ -227,13 +221,9 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
     return `${activityLabel()!} (${formatElapsed(metrics.episodeElapsed())})`
   })
 
-  let mouseDownPrevented = false
-
   return (
     <box width={dimensions().width} height={dimensions().height} flexDirection="column" backgroundColor={theme.background}
-      onMouseDown={(e: MouseEvent) => { mouseDownPrevented = e.defaultPrevented }}
       onMouseUp={() => {
-        if (mouseDownPrevented) { mouseDownPrevented = false; renderer.clearSelection(); return }
         const text = consumeSelectedText(renderer)
         if (!text) return
         Clipboard.copy(text)
@@ -295,7 +285,7 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
           <Show when={signals.pendingQuestion()} fallback={
             <box paddingLeft={2} paddingRight={2} paddingTop={1} paddingBottom={1}
               backgroundColor={theme.backgroundElement} border={["left"]} borderColor={theme.primary}
-              onMouseDown={() => promptRef?.focus?.()}>
+              selectable={false} onMouseDown={() => promptRef?.focus?.()}>
               <textarea
                 ref={(r: TextareaRenderable) => {
                   promptRef = r
@@ -347,36 +337,37 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
             <ShimmerText text={promptStatusLabel()!} color={theme.primary} />
           </Show>
         </box>
-        {/* §8b exemption: key hints are ephemeral UI chrome, not copyable content.
-            They require per-item conditional rendering (<Show>) and click handlers
-            that StyledText can't express — and nobody copies "Esc cancel Ctrl+N new". */}
+        {/* Key-hint row: each hint is a single <text> composing a StyledText from
+            chunks, per ADR-006 §8b. Click handlers and <Show>-conditional visibility
+            live on the wrapping <box>, not on the text element itself. */}
         <box flexDirection="row" gap={2} flexShrink={0}>
           <Show when={signals.pendingWorkCommand()}>
-            <box flexDirection="row"><text fg={theme.textMuted}>Esc</text><text fg={theme.textSubtle}>{" cancel"}</text></box>
+            <text ref={(el: TextRenderable) => { el.content = new StyledText([stFg(theme.textMuted)("Esc"), stFg(theme.textSubtle)(" cancel")]) }} />
           </Show>
           <Show when={!signals.pendingWorkCommand() && signals.agentState() === "active"}>
-            <box flexDirection="row"><text fg={theme.textMuted}>Esc</text><text fg={theme.textSubtle}>{" interrupt"}</text></box>
+            <text ref={(el: TextRenderable) => { el.content = new StyledText([stFg(theme.textMuted)("Esc"), stFg(theme.textSubtle)(" interrupt")]) }} />
           </Show>
           <Show when={!signals.pendingWorkCommand() && signals.sessionState() === "paused"}>
-            <box flexDirection="row"><text fg={theme.textMuted}>Esc</text><text fg={theme.textSubtle}>{" exit"}</text></box>
-            <box flexDirection="row"><text fg={theme.textMuted}>Ctrl+R</text><text fg={theme.textSubtle}>{" resume"}</text></box>
+            <text ref={(el: TextRenderable) => { el.content = new StyledText([stFg(theme.textMuted)("Esc"), stFg(theme.textSubtle)(" exit")]) }} />
+            <text ref={(el: TextRenderable) => { el.content = new StyledText([stFg(theme.textMuted)("Ctrl+R"), stFg(theme.textSubtle)(" resume")]) }} />
           </Show>
           <Show when={!signals.pendingWorkCommand() && signals.sessionState() === "completed"}>
-            <box flexDirection="row"><text fg={theme.textMuted}>Esc</text><text fg={theme.textSubtle}>{" dismiss"}</text></box>
+            <text ref={(el: TextRenderable) => { el.content = new StyledText([stFg(theme.textMuted)("Esc"), stFg(theme.textSubtle)(" dismiss")]) }} />
           </Show>
-          <box onMouseDown={() => { chat.backgroundChat(); chat.startChat() }} flexDirection="row">
-            <text fg={theme.textMuted}>Ctrl+N</text><text fg={theme.textSubtle}>{" new"}</text>
+          <box selectable={false} onMouseDown={() => { chat.backgroundChat(); chat.startChat() }}>
+            <text selectable={false} ref={(el: TextRenderable) => { el.content = new StyledText([stFg(theme.textMuted)("Ctrl+N"), stFg(theme.textSubtle)(" new")]) }} />
           </box>
           <Show when={sessions().filter(s => s.state === "active" || s.state === "paused").length >= 2}>
-            <box flexDirection="row"><text fg={theme.textMuted}>Tab</text><text fg={theme.textSubtle}>{" switch"}</text></box>
+            <text ref={(el: TextRenderable) => { el.content = new StyledText([stFg(theme.textMuted)("Tab"), stFg(theme.textSubtle)(" switch")]) }} />
           </Show>
-          <box onMouseDown={() => sessionModal.openSessionsModal()} flexDirection="row">
-            <text fg={theme.textMuted}>Ctrl+B</text>
-            <text fg={theme.textSubtle}>
-              {sessions().length > 0
-                ? ` ${sessions().length} session${sessions().length === 1 ? "" : "s"}`
-                : " sessions"}
-            </text>
+          <box selectable={false} onMouseDown={() => sessionModal.openSessionsModal()}>
+            <text selectable={false} ref={(el: TextRenderable) => {
+              createEffect(() => {
+                const n = sessions().length
+                const suffix = n > 0 ? ` ${n} session${n === 1 ? "" : "s"}` : " sessions"
+                el.content = new StyledText([stFg(theme.textMuted)("Ctrl+B"), stFg(theme.textSubtle)(suffix)])
+              })
+            }} />
           </box>
         </box>
       </box>
@@ -385,10 +376,10 @@ export function FlywheelShell(props: { factories: WorkflowSessionFactories; proj
 
       <Show when={sessionModal.sessionsModalOpen()}>
         <SessionModal
+          sessions={sessionModal.snapshotSessions()}
           activeSessionId={signals.foregroundId()}
           cursor={sessionModal.modalCursor()}
           confirmDeleteId={sessionModal.modalConfirmDelete()}
-          refreshTrigger={sessionModal.modalRefreshTrigger()}
           onClose={sessionModal.closeSessionsModal}
           onSelect={sessionModal.selectModalItem}
         />

@@ -1,4 +1,5 @@
 export type SpanKind = "workflow" | "step" | "worker" | "subagent" | "tool_call";
+export type SpanStatus = "ok" | "error";
 
 interface WorkflowSpanInput {
   stepIds: string[];
@@ -60,7 +61,7 @@ interface SpanBase {
   startTimeMs: number;
   endTimeMs?: number;
   durationMs?: number;
-  status: "ok" | "error";
+  status: SpanStatus;
   error: { message: string; code?: string } | null;
 }
 

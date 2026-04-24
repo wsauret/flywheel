@@ -1,4 +1,5 @@
 import type { Engine } from "./engines/core/types.js"
+import type { AuthContext } from "../infra/auth/auth-context.js"
 import { detectModelFamily } from "./engines/providers/harness/llm/model-family.js"
 import { resolveModelTier } from "./config/model-tiers.js"
 import { Log } from "../infra/log.js"
@@ -14,6 +15,7 @@ const TITLE_TIMEOUT_MS = 10_000
 
 interface TitleGeneratorDeps {
   engine: Engine
+  auth: AuthContext
   projectCwd: string
   model?: string
 }
@@ -78,6 +80,7 @@ async function generateViaLLMWithModel(
     const chunks: string[] = []
     const runner = deps.engine.createRunner({
       model,
+      auth: deps.auth,
       cwd: deps.projectCwd,
       onEvent: (event) => {
         if (event.type === "assistant" && event.data?.message?.content) {
@@ -90,10 +93,12 @@ async function generateViaLLMWithModel(
 
     runner.send(TITLE_PROMPT + message.slice(0, 200))
 
-    const completed = await Promise.race([
-      runner.done,
-      new Promise<"timeout">((resolve) => setTimeout(() => resolve("timeout"), TITLE_TIMEOUT_MS)),
-    ])
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined
+    const timeoutPromise = new Promise<"timeout">((resolve) => {
+      timeoutHandle = setTimeout(() => resolve("timeout"), TITLE_TIMEOUT_MS)
+    })
+    const completed = await Promise.race([runner.done, timeoutPromise])
+    if (timeoutHandle !== undefined) clearTimeout(timeoutHandle)
 
     if (completed === "timeout") {
       logFailure("title generation timed out", { model })

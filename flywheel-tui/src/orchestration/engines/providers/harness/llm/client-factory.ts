@@ -17,13 +17,14 @@ import {
   type AccessProviderId,
 } from "./access-provider.js";
 import { buildUnknownModelFamilyMessage, detectModelFamily } from "./model-family.js";
+import type { AuthContext } from "../../../../../infra/auth/auth-context.js";
 import type { ModelsClient } from "./models.js";
 import type { LLMClient } from "./types.js";
 
 const log = Log.create({ service: "llm-client-factory" });
 
 const CHATGPT_FALLBACK_MODELS: ReadonlySet<string> = new Set([
-  "gpt-5.4", "gpt-5.4-mini", "gpt-5.3-codex", "gpt-5.2",
+  "gpt-5.4", "gpt-5.3-codex", "gpt-5.2", "gpt-5", "gpt-5-mini",
 ]);
 
 const CONTEXT_SUFFIX_RE = /\[\w+\]$/;
@@ -32,17 +33,16 @@ function normalizeModel(model: string): string {
   return model.replace(CONTEXT_SUFFIX_RE, "");
 }
 
-function createAnthropicApiClient(model: string, modelsClient: ModelsClient): LLMClient {
-  const apiKey = process.env["ANTHROPIC_API_KEY"];
-  if (!apiKey) {
+function createAnthropicApiClient(model: string, modelsClient: ModelsClient, auth: AuthContext): LLMClient {
+  if (!auth.anthropicApiKey) {
     throw new Error(
       "ANTHROPIC_API_KEY environment variable is required for Anthropic models",
     );
   }
-  return createAnthropicAdapter(apiKey, model, modelsClient);
+  return createAnthropicAdapter(auth.anthropicApiKey, model, modelsClient);
 }
 
-function createChatGPTAccessClient(model: string, modelsClient: ModelsClient): LLMClient {
+function createChatGPTAccessClient(model: string, modelsClient: ModelsClient, _auth: AuthContext): LLMClient {
   const tokens = loadStoredTokens();
   if (!tokens) {
     throw new Error("No ChatGPT tokens found. Run: flywheel auth login");
@@ -54,29 +54,31 @@ function createChatGPTAccessClient(model: string, modelsClient: ModelsClient): L
   return createOpenAIAdapter({ kind: "chatgpt", ...tokens }, model, modelsClient);
 }
 
-function createOpenAIApiClient(model: string, modelsClient: ModelsClient): LLMClient {
-  const apiKey = process.env["OPENAI_API_KEY"];
-  if (!apiKey) {
+function createOpenAIApiClient(model: string, modelsClient: ModelsClient, auth: AuthContext): LLMClient {
+  if (!auth.openaiApiKey) {
     throw new Error(
       "OPENAI_API_KEY environment variable is required for OpenAI models",
     );
   }
-  return createOpenAIAdapter({ kind: "apiKey", apiKey }, model, modelsClient);
+  return createOpenAIAdapter({ kind: "apiKey", apiKey: auth.openaiApiKey }, model, modelsClient);
 }
 
-const ACCESS_PROVIDER_FACTORIES: Record<AccessProviderId, (model: string, modelsClient: ModelsClient) => LLMClient> = {
+const ACCESS_PROVIDER_FACTORIES: Record<
+  AccessProviderId,
+  (model: string, modelsClient: ModelsClient, auth: AuthContext) => LLMClient
+> = {
   anthropic_api: createAnthropicApiClient,
   chatgpt: createChatGPTAccessClient,
   openai_api: createOpenAIApiClient,
 };
 
-export function createClient(model: string, modelsClient: ModelsClient): LLMClient {
+export function createClient(model: string, modelsClient: ModelsClient, auth: AuthContext): LLMClient {
   const normalized = normalizeModel(model);
   const family = detectModelFamily(normalized);
   if (!family) throw new Error(buildUnknownModelFamilyMessage(model));
 
-  const accessProvider = getConfiguredAccessProvidersForFamily(family)[0];
+  const accessProvider = getConfiguredAccessProvidersForFamily(family, auth)[0];
   if (!accessProvider) throw new Error(buildMissingAccessProviderMessage(family));
 
-  return ACCESS_PROVIDER_FACTORIES[accessProvider](normalized, modelsClient);
+  return ACCESS_PROVIDER_FACTORIES[accessProvider](normalized, modelsClient, auth);
 }

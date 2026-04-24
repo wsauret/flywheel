@@ -38,11 +38,12 @@ export function emitAssistant(
   emit: EventEmitter,
   content: ContentBlock[],
   usage?: UsageData,
+  parentToolUseId?: string,
 ): void {
   emit(
     createNDJSONEvent("assistant", {
       type: "assistant",
-      message: { content, usage },
+      message: { content, usage, ...(parentToolUseId ? { parent_tool_use_id: parentToolUseId } : {}) },
     }),
   );
 }
@@ -52,6 +53,7 @@ export function emitToolResult(
   toolUseId: string,
   content: string,
   isError: boolean,
+  parentToolUseId?: string,
 ): void {
   emit(
     createNDJSONEvent("tool_result", {
@@ -59,6 +61,7 @@ export function emitToolResult(
       tool_use_id: toolUseId,
       content,
       is_error: isError,
+      ...(parentToolUseId ? { parent_tool_use_id: parentToolUseId } : {}),
     }),
   );
 }
@@ -66,11 +69,13 @@ export function emitToolResult(
 export function emitContentBlockDelta(
   emit: EventEmitter,
   delta: { type: string; text?: string; thinking?: string },
+  parentToolUseId?: string,
 ): void {
   emit(
     createNDJSONEvent("content_block_delta", {
       type: "content_block_delta",
       delta,
+      ...(parentToolUseId ? { parent_tool_use_id: parentToolUseId } : {}),
     }),
   );
 }
@@ -87,17 +92,19 @@ export function emitCompaction(
   emit: EventEmitter,
   state: "start" | "done" | "error",
   durationMs?: number,
+  parentToolUseId?: string,
 ): void {
   emit(
     createNDJSONEvent("compaction", {
       type: "compaction",
       state,
       ...(durationMs != null ? { duration_ms: durationMs } : {}),
+      ...(parentToolUseId ? { parent_tool_use_id: parentToolUseId } : {}),
     }),
   );
 }
 
-export function emitResult(emit: EventEmitter, opts: ResultOpts): void {
+export function emitResult(emit: EventEmitter, opts: ResultOpts, parentToolUseId?: string): void {
   const modelUsage: Record<string, { contextWindow?: number }> | undefined =
     opts.contextWindow
       ? { default: { contextWindow: opts.contextWindow } }
@@ -114,6 +121,7 @@ export function emitResult(emit: EventEmitter, opts: ResultOpts): void {
         output_tokens: opts.outputTokens,
       },
       modelUsage,
+      ...(parentToolUseId ? { parent_tool_use_id: parentToolUseId } : {}),
     }),
   );
 }

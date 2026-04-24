@@ -199,6 +199,61 @@ describe("agent loop", () => {
     // Turn 1 dispatched a tool, turn 2 returned text-only
     expect(events.filter((e) => e.kind === "tool_result").length).toBe(1);
   });
+
+  test("resume with trailing user message merges instruction instead of appending", async () => {
+    // Simulates a crash where the prior runner persisted asst(tool_use) +
+    // user(tool_result) before dying. The resume instruction must NOT create
+    // a second consecutive user message — Anthropic rejects that with a 400.
+    const priorMessages: Message[] = [
+      { role: "user", content: "original task" },
+      {
+        role: "assistant",
+        content: [
+          { type: "tool_use", id: "tc_1", name: "bash", input: { command: "echo hi" } },
+        ],
+      },
+      {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: "tc_1", content: "hi\n" }],
+      },
+    ];
+
+    const client = makeFakeLLMClient([
+      {
+        events: [
+          { kind: "text_delta", text: "Continuing." },
+          { kind: "done", stopReason: "end_turn" },
+        ],
+      },
+    ]);
+
+    let finalMessages: ReadonlyArray<Message> = [];
+    await runAgentLoop({
+      client,
+      tools: [],
+      systemPrompt: "sys",
+      instruction: "Your process exited unexpectedly. Continue where you left off.",
+      cwd: "/tmp",
+      priorMessages,
+      persistMessages: (msgs) => { finalMessages = msgs; },
+      onEvent: () => {},
+    });
+
+    // Role alternation must hold: no two consecutive user messages.
+    for (let i = 1; i < finalMessages.length; i++) {
+      expect(finalMessages[i]!.role === finalMessages[i - 1]!.role).toBe(false);
+    }
+
+    // The trailing user message must still contain the original tool_result
+    // AND the resume instruction as an appended text block.
+    const lastUser = finalMessages.find((m, i) => m.role === "user" && i === 2);
+    expect(lastUser).toBeDefined();
+    const content = lastUser!.content;
+    expect(Array.isArray(content)).toBe(true);
+    const blocks = content as ContentBlock[];
+    expect(blocks[0]!.type).toBe("tool_result");
+    expect(blocks.some((b) => b.type === "text" && b.text.includes("Continue where you left off"))).toBe(true);
+  });
 });
 
 describe("buildHarnessSystemPrompt", () => {
@@ -275,7 +330,7 @@ describe("buildHarnessSystemPrompt", () => {
       availableTools: new Set(["bash", "read"]),
     });
     expect(prompt).toContain("TOOL USAGE");
-    expect(prompt).toContain("MUST use dedicated tools");
+    expect(prompt).toContain("MUST** use dedicated tools");
     expect(prompt).toContain("read(file_path=");
     expect(prompt).toContain("2>&1");
     expect(prompt).toContain("2>/dev/null");
@@ -311,7 +366,7 @@ describe("buildHarnessSystemPrompt", () => {
     expect(prompt).toContain("todo_list(abandon)");
     expect(prompt).toContain("in_progress");
     expect(prompt).toContain("rendered to the user in real time");
-    expect(prompt).toContain("user is watching");
+    expect(prompt).toContain("watching the progress bar");
     expect(prompt).toContain("context recovery");
     expect(prompt).toContain("3+ distinct steps");
   });
@@ -345,7 +400,7 @@ function makeCaptureClient(responses: Array<{ events: StreamEvent[] }>) {
 }
 
 describe("per-turn budget injection", () => {
-  test("appends budget line to observation messages after tool results", async () => {
+  test("appends budget nudge to observation messages after tool results", async () => {
     const { client, capturedMessages } = makeCaptureClient([
       {
         events: [
@@ -376,13 +431,16 @@ describe("per-turn budget injection", () => {
     expect(lastUserMsg.role).toBe("user");
     expect(Array.isArray(lastUserMsg.content)).toBe(true);
     const blocks = lastUserMsg.content as ContentBlock[];
-    const budgetBlock = blocks.find((b) => b.type === "text" && b.text.includes("[Budget:"));
+    const budgetBlock = blocks.find((b) => b.type === "text" && b.text.includes("Pacing:"));
     expect(budgetBlock).toBeDefined();
-    expect((budgetBlock as { type: "text"; text: string }).text).toContain("1/200 calls used");
-    expect((budgetBlock as { type: "text"; text: string }).text).toContain("199 remaining");
+    const text = (budgetBlock as { type: "text"; text: string }).text;
+    expect(text).toContain("<system-reminder>");
+    expect(text).toContain("1/200 model calls used");
+    expect(text).toContain("199 remaining");
+    expect(text).toContain("Never mention");
   });
 
-  test("budget format is [Budget: X/Y calls used, Z remaining]", async () => {
+  test("budget nudge is wrapped in system-reminder with pacing framing", async () => {
     const { client, capturedMessages } = makeCaptureClient([
       {
         events: [
@@ -416,10 +474,13 @@ describe("per-turn budget injection", () => {
     const thirdCallMsgs = capturedMessages[2]!;
     const lastMsg = thirdCallMsgs[thirdCallMsgs.length - 1]!;
     const blocks = lastMsg.content as ContentBlock[];
-    const budgetBlock = blocks.find((b) => b.type === "text" && b.text.includes("[Budget:"));
+    const budgetBlock = blocks.find((b) => b.type === "text" && b.text.includes("Pacing:"));
     expect(budgetBlock).toBeDefined();
-    expect((budgetBlock as { type: "text"; text: string }).text).toContain("2/50 calls used");
-    expect((budgetBlock as { type: "text"; text: string }).text).toContain("48 remaining");
+    const text = (budgetBlock as { type: "text"; text: string }).text;
+    expect(text).toContain("<system-reminder>");
+    expect(text).toContain("2/50 model calls used");
+    expect(text).toContain("48 remaining");
+    expect(text).toContain("Never mention");
   });
 
   test("first turn (initial instruction) has no budget line", async () => {
@@ -443,7 +504,7 @@ describe("per-turn budget injection", () => {
     const firstCallMsgs = capturedMessages[0]!;
     const lastMsg = firstCallMsgs[firstCallMsgs.length - 1]!;
     expect(typeof lastMsg.content).toBe("string");
-    expect(lastMsg.content).not.toContain("[Budget:");
+    expect(lastMsg.content).not.toContain("Pacing:");
   });
 });
 

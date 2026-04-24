@@ -140,7 +140,7 @@ export class StructuredEventParser {
 
     if (!Array.isArray(content)) return;
 
-    const parentToolUseId = message?.parent_tool_use_id ?? data.parent_tool_use_id;
+    const parentToolUseId = message?.parent_tool_use_id;
     const parentTracked = parentToolUseId ? this.trackedTools.get(parentToolUseId) : undefined;
     const parentAgentId = parentTracked?.kind === "agent" ? parentTracked.agentId : undefined;
 
@@ -157,7 +157,17 @@ export class StructuredEventParser {
 
     for (const block of content) {
       if (block.type === "thinking" && typeof block.thinking === "string") {
-        if (!parentAgentId && !skipStreamedThinking) {
+        if (parentAgentId) {
+          if (block.thinking.length > 0) {
+            this.builder.pushToolRowToAgent(parentAgentId, {
+              kind: "tool",
+              name: "Thinking",
+              detail: "",
+              timestamp: now,
+              completed: true,
+            });
+          }
+        } else if (!skipStreamedThinking) {
           if (this.builder.hasActiveToolsContext) {
             this.builder.pushThinkingAsToolRow(now);
           } else if (block.thinking.length > 0) {

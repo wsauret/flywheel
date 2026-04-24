@@ -15,15 +15,29 @@ import { ErrorComponent } from "./components/error-boundary.js"
 import { loadConfig } from "../orchestration/config/loader.js"
 import { resolveTierConfigs } from "../orchestration/config/schema.js"
 import { getEngine } from "../orchestration/engines/core/registry.js"
-import type { WorkflowSessionFactories } from "../orchestration/session-store-types.js"
+import type { CreateWorkflowAdapter } from "../orchestration/session-store-types.js"
 import { findConfigFile } from "../infra/paths.js"
 import { setExitHandler } from "./exit.js"
 
+/**
+ * Options for configuring the TUI runtime.
+ *
+ * @public
+ * Dynamic-import entry point (see below).
+ */
 export interface TUIOptions {
   mode?: "dark" | "light"
   projectCwd?: string
 }
 
+/**
+ * Start the Flywheel TUI.
+ *
+ * @public
+ * `tui/launcher.ts` loads this module via `await import("./app")` so OpenTUI's preload hook can
+ * register before SolidJS renders — a static import would pull in the JSX runtime too early.
+ * Knip cannot trace dynamic imports; this export is not dead.
+ */
 export function startTUI(options: TUIOptions = {}): Promise<void> {
   const mode = options.mode ?? "dark"
   const projectCwd = options.projectCwd ?? process.env.FLYWHEEL_PROJECT_CWD ?? process.cwd()
@@ -33,6 +47,8 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
   let showThinking = true
   let engineName = ""
   let modelName = ""
+  let openaiAuth: "api_key" | "chatgpt" = "api_key"
+  let openaiEmail: string | undefined
   try {
     const configPath = findConfigFile()
     const { config } = loadConfig(configPath)
@@ -41,9 +57,8 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
     const engine = getEngine(config.engine)
     engineName = engine.metadata.id === "harness" ? "" : engine.metadata.name
     modelName = resolveTierConfigs(config).worker.model
-    if (config.openai_auth && !process.env["FLYWHEEL_OPENAI_AUTH"]) {
-      process.env["FLYWHEEL_OPENAI_AUTH"] = config.openai_auth
-    }
+    openaiAuth = config.openai_auth
+    openaiEmail = config.openai_email
   } catch (err) {
     Log.Default.warn("config load failed (non-fatal, using defaults)", { error: errorMessage(err) })
   }
@@ -51,15 +66,12 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
   // Promise with async executor: ExitProvider must live inside the Solid render
   // tree (needs useRenderer()), so we can't use top-level async/await here.
   return new Promise<void>(async (resolve) => {
-    if (process.env["FLYWHEEL_OPENAI_AUTH"] === "chatgpt") {
+    if (openaiAuth === "chatgpt") {
       const { loadStoredTokens } = await import("../infra/auth/openai-token-store.js")
       if (!loadStoredTokens()) {
         const { startBrowserFlow } = await import("../orchestration/auth/openai-oauth.js")
-        const { loadConfig: lc } = await import("../orchestration/config/loader.js")
-        const cp = findConfigFile()
-        const email = cp ? lc(cp).config.openai_email : undefined
         console.log("No ChatGPT tokens found. Opening browser to authenticate...")
-        await startBrowserFlow(email)
+        await startBrowserFlow(openaiEmail)
       }
     }
 
@@ -68,9 +80,7 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
     }
 
     const { OpenTUIAdapter } = await import("./adapters/opentui")
-    const factories: WorkflowSessionFactories = {
-      createAdapter: (opts) => new OpenTUIAdapter(opts),
-    }
+    const createAdapter: CreateWorkflowAdapter = (opts) => new OpenTUIAdapter(opts)
 
     // Lazy import FlywheelShell to ensure OpenTUI preload has registered
     const { FlywheelShell } = await import("./shell")
@@ -92,7 +102,7 @@ export function startTUI(options: TUIOptions = {}): Promise<void> {
             <ToastProvider>
               <ThemeProvider mode={mode} themeName={themeName}>
                 <SessionProvider manager={manager}>
-                  <FlywheelShell factories={factories} projectCwd={projectCwd} showThinking={showThinking} engineName={engineName} modelName={modelName} />
+                  <FlywheelShell createAdapter={createAdapter} projectCwd={projectCwd} showThinking={showThinking} engineName={engineName} modelName={modelName} />
                 </SessionProvider>
               </ThemeProvider>
             </ToastProvider>

@@ -206,73 +206,54 @@ describe("contextWindowForModel", () => {
 });
 
 describe("createClient", () => {
+  const apiKeyAuth = {
+    openaiAuth: "api_key" as const,
+    anthropicApiKey: "test-anthropic-key",
+    openaiApiKey: "test-openai-key",
+  };
+  const noKeysAuth = {
+    openaiAuth: "api_key" as const,
+    anthropicApiKey: undefined,
+    openaiApiKey: undefined,
+  };
+
   test("throws for unknown model family", () => {
     const modelsClient = createModelsClient();
-    expect(() => createClient("llama-3-70b", modelsClient)).toThrow(
+    expect(() => createClient("llama-3-70b", modelsClient, apiKeyAuth)).toThrow(
       "Cannot determine model family",
     );
   });
 
   test("throws when ANTHROPIC_API_KEY is missing", () => {
-    const original = process.env["ANTHROPIC_API_KEY"];
-    delete process.env["ANTHROPIC_API_KEY"];
-    try {
-      const modelsClient = createModelsClient();
-      expect(() => createClient("claude-opus-4-6", modelsClient)).toThrow(
-        "ANTHROPIC_API_KEY",
-      );
-    } finally {
-      if (original !== undefined) process.env["ANTHROPIC_API_KEY"] = original;
-    }
+    const modelsClient = createModelsClient();
+    const auth = { ...apiKeyAuth, anthropicApiKey: undefined };
+    expect(() => createClient("claude-opus-4-6", modelsClient, auth)).toThrow(
+      "ANTHROPIC_API_KEY",
+    );
   });
 
   test("throws when OPENAI_API_KEY is missing", () => {
-    const original = process.env["OPENAI_API_KEY"];
-    delete process.env["OPENAI_API_KEY"];
-    try {
-      const modelsClient = createModelsClient();
-      expect(() => createClient("gpt-4o", modelsClient)).toThrow("OPENAI_API_KEY");
-    } finally {
-      if (original !== undefined) process.env["OPENAI_API_KEY"] = original;
-    }
+    const modelsClient = createModelsClient();
+    const auth = { ...apiKeyAuth, openaiApiKey: undefined };
+    expect(() => createClient("gpt-4o", modelsClient, auth)).toThrow("OPENAI_API_KEY");
   });
 
   test("throws when no access provider is configured for google models", () => {
     const modelsClient = createModelsClient();
-    expect(() => createClient("gemini-2.5-pro", modelsClient)).toThrow("google models");
+    expect(() => createClient("gemini-2.5-pro", modelsClient, noKeysAuth)).toThrow("google models");
   });
 
   test("routes to anthropic access provider for claude models", () => {
-    const original = process.env["ANTHROPIC_API_KEY"];
-    process.env["ANTHROPIC_API_KEY"] = "test-key";
-    try {
-      const modelsClient = createModelsClient();
-      const client = createClient("claude-opus-4-6", modelsClient);
-      expect(client.accessProvider).toBe("anthropic_api");
-      expect(client.modelFamily).toBe("anthropic");
-    } finally {
-      if (original !== undefined) {
-        process.env["ANTHROPIC_API_KEY"] = original;
-      } else {
-        delete process.env["ANTHROPIC_API_KEY"];
-      }
-    }
+    const modelsClient = createModelsClient();
+    const client = createClient("claude-opus-4-6", modelsClient, apiKeyAuth);
+    expect(client.accessProvider).toBe("anthropic_api");
+    expect(client.modelFamily).toBe("anthropic");
   });
 
   test("routes to openai access provider for gpt models", () => {
-    const original = process.env["OPENAI_API_KEY"];
-    process.env["OPENAI_API_KEY"] = "test-key";
-    try {
-      const modelsClient = createModelsClient();
-      const client = createClient("gpt-4o", modelsClient);
-      expect(client.accessProvider).toBe("openai_api");
-      expect(client.modelFamily).toBe("openai");
-    } finally {
-      if (original !== undefined) {
-        process.env["OPENAI_API_KEY"] = original;
-      } else {
-        delete process.env["OPENAI_API_KEY"];
-      }
-    }
+    const modelsClient = createModelsClient();
+    const client = createClient("gpt-4o", modelsClient, apiKeyAuth);
+    expect(client.accessProvider).toBe("openai_api");
+    expect(client.modelFamily).toBe("openai");
   });
 });

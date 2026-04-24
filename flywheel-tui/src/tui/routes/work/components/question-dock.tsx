@@ -1,11 +1,13 @@
 /** @jsxImportSource @opentui/solid */
 
-import { createSignal, createMemo, For, Show } from "solid-js"
+import { Show, createEffect } from "solid-js"
 import { useKeyboard } from "@opentui/solid"
+import { StyledText, fg as stFg, bold as stBold, dim as stDim, type TextChunk } from "@opentui/core"
+import type { TextRenderable } from "@opentui/core"
 import { useTheme } from "@tui/shared/context/theme"
-import { BOLD, DIM } from "@tui/shared/ui/text-attributes"
 import { SplitBorder } from "@tui/shared/ui/border"
 import type { QuestionBlock } from "@infra/output-blocks"
+import { createQuestionForm } from "./question-dock-form.js"
 
 interface QuestionDockProps {
   question: QuestionBlock
@@ -16,224 +18,83 @@ interface QuestionDockProps {
 export function QuestionDock(props: QuestionDockProps) {
   const { theme } = useTheme()
 
-  const questions = createMemo(() => props.question.questions)
-  const total = createMemo(() => questions().length)
-
-  const [tab, setTab] = createSignal(0)
-  const currentQuestion = createMemo(() => questions()[tab()])
-
-  // Per-question: selected option labels. Arrays because multiSelect can hold multiple.
-  const [selections, setSelections] = createSignal<string[][]>(
-    Array.from({ length: total() }, () => []),
-  )
-  // Per-question: free-text ("Other") entry and whether it's active.
-  const [customText, setCustomText] = createSignal<string[]>(
-    Array.from({ length: total() }, () => ""),
-  )
-  const [customOn, setCustomOn] = createSignal<boolean[]>(
-    Array.from({ length: total() }, () => false),
-  )
-  const [editing, setEditing] = createSignal(false)
-
-  const [cursor, setCursor] = createSignal(0)
-
-  const multi = createMemo(() => currentQuestion()?.multiSelect === true)
-  const options = createMemo(() => currentQuestion()?.options ?? [])
-  // Total rows the cursor can land on: all options + the "Other…" row.
-  const rowCount = createMemo(() => options().length + 1)
-  const otherIndex = createMemo(() => options().length)
-  const isOnOther = createMemo(() => cursor() === otherIndex())
-  const last = createMemo(() => tab() >= total() - 1)
-
-  const currentSelections = createMemo(() => selections()[tab()] ?? [])
-  const currentCustom = createMemo(() => customText()[tab()] ?? "")
-  const currentCustomOn = createMemo(() => customOn()[tab()] === true)
-
-  function updateAt<T>(setter: (u: (prev: T[]) => T[]) => void, index: number, value: T): void {
-    setter((prev) => {
-      const next = [...prev]
-      next[index] = value
-      return next
-    })
-  }
-
-  function pick(label: string): void {
-    updateAt(setSelections, tab(), [label])
-    updateAt(setCustomOn, tab(), false)
-    setEditing(false)
-  }
-
-  function toggle(label: string): void {
-    const cur = currentSelections()
-    const idx = cur.indexOf(label)
-    const next = idx >= 0 ? cur.filter((_, i) => i !== idx) : [...cur, label]
-    updateAt(setSelections, tab(), next)
-  }
-
-  function openOther(): void {
-    updateAt(setCustomOn, tab(), true)
-    setEditing(true)
-  }
-
-  function commitOther(): void {
-    setEditing(false)
-    const text = currentCustom().trim()
-    if (!text) {
-      updateAt(setCustomOn, tab(), false)
-    }
-  }
-
-  function advance(): void {
-    if (last()) {
-      submit()
-      return
-    }
-    setTab(tab() + 1)
-    setCursor(0)
-    setEditing(false)
-  }
-
-  function back(): void {
-    if (tab() <= 0) return
-    setTab(tab() - 1)
-    setCursor(0)
-    setEditing(false)
-  }
-
-  function submit(): void {
-    const all = questions()
-    const sels = selections()
-    const custom = customText()
-    const customFlags = customOn()
-
-    const answers: Record<string, string> = {}
-    for (let i = 0; i < all.length; i++) {
-      const q = all[i]
-      if (!q) continue
-      const parts: string[] = []
-      const picks = sels[i] ?? []
-      parts.push(...picks)
-      if (customFlags[i]) {
-        const text = (custom[i] ?? "").trim()
-        if (text) parts.push(text)
-      }
-      if (parts.length > 0) {
-        answers[q.question] = parts.join(", ")
-      }
-    }
-
-    if (Object.keys(answers).length === 0) {
-      // Nothing selected anywhere — treat as cancel so Claude doesn't get an empty allow.
-      props.onCancel()
-      return
-    }
-    props.onAnswer(answers)
-  }
-
-  useKeyboard((evt) => {
-    if (editing()) {
-      if (evt.name === "escape") {
-        evt.preventDefault()
-        setEditing(false)
-        return
-      }
-      if (evt.name === "return") {
-        evt.preventDefault()
-        commitOther()
-        return
-      }
-      // Tab commits the custom text and advances to the next question (or
-      // submits if last). Shift+Tab commits and goes back. Consistent with
-      // Tab's "next" semantic outside editing mode.
-      if (evt.name === "tab" && !evt.shift) {
-        evt.preventDefault()
-        commitOther()
-        advance()
-        return
-      }
-      if (evt.name === "shift-tab" || (evt.name === "tab" && evt.shift)) {
-        evt.preventDefault()
-        commitOther()
-        back()
-        return
-      }
-      if (evt.name === "backspace") {
-        evt.preventDefault()
-        updateAt(setCustomText, tab(), currentCustom().slice(0, -1))
-        return
-      }
-      if (evt.name === "space") {
-        evt.preventDefault()
-        updateAt(setCustomText, tab(), currentCustom() + " ")
-        return
-      }
-      if (evt.name.length === 1 && !evt.ctrl && !evt.meta) {
-        evt.preventDefault()
-        updateAt(setCustomText, tab(), currentCustom() + evt.name)
-        return
-      }
-      return
-    }
-
-    if (evt.name === "escape") {
-      evt.preventDefault()
-      props.onCancel()
-      return
-    }
-
-    if (evt.name === "up" || (evt.ctrl && evt.name === "p")) {
-      evt.preventDefault()
-      setCursor((i) => (i - 1 + rowCount()) % rowCount())
-      return
-    }
-
-    if (evt.name === "down" || (evt.ctrl && evt.name === "n")) {
-      evt.preventDefault()
-      setCursor((i) => (i + 1) % rowCount())
-      return
-    }
-
-    if (evt.name === "tab" && !evt.shift) {
-      evt.preventDefault()
-      advance()
-      return
-    }
-    if (evt.name === "shift-tab" || (evt.name === "tab" && evt.shift)) {
-      evt.preventDefault()
-      back()
-      return
-    }
-
-    if (evt.name === "space" && multi() && !isOnOther()) {
-      evt.preventDefault()
-      const opt = options()[cursor()]
-      if (opt) toggle(opt.label)
-      return
-    }
-
-    if (evt.name === "return") {
-      evt.preventDefault()
-      if (isOnOther()) {
-        openOther()
-        return
-      }
-      const opt = options()[cursor()]
-      if (!opt) return
-      if (multi()) {
-        toggle(opt.label)
-        // Multi: Enter does not auto-advance — user explicitly presses Tab to move on.
-        return
-      }
-      pick(opt.label)
-      advance()
-    }
+  const form = createQuestionForm({
+    question: () => props.question,
+    onAnswer: (a) => props.onAnswer(a),
+    onCancel: () => props.onCancel(),
   })
 
-  const progress = () => `Question ${tab() + 1} of ${total()}`
-  const isAnswered = (i: number): boolean => {
-    const sel = selections()[i] ?? []
-    const custom = customOn()[i] === true && (customText()[i] ?? "").trim().length > 0
-    return sel.length > 0 || custom
+  useKeyboard(form.handleKey)
+
+  // Header: "Ask User · Question N of M ● ○ ○" — composed as chunks on a single
+  // <text> so the full line is selectable as one region (ADR-006 §8b).
+  const headerContent = () => {
+    const chunks: TextChunk[] = [stBold(stFg(theme.primary)("Ask User"))]
+    if (form.total() > 1) {
+      chunks.push(stDim(stFg(theme.textMuted)(" \u00B7 ")))
+      chunks.push(stFg(theme.textMuted)(`Question ${form.tab() + 1} of ${form.total()} `))
+      form.questions().forEach((_, i) => {
+        const color = i === form.tab() ? theme.primary : (form.isAnswered(i) ? theme.success : theme.textMuted)
+        const glyph = i === form.tab() || form.isAnswered(i) ? "\u25CF" : "\u25CB"
+        chunks.push(stFg(color)(` ${glyph}`))
+      })
+    }
+    return new StyledText(chunks)
+  }
+
+  const questionContent = () => new StyledText([stFg(theme.text)(form.currentQuestion()?.question ?? "")])
+
+  function optionContent(label: string, description: string | undefined, isCursor: boolean, isPicked: boolean): StyledText {
+    // Single-select shows the cursor as the "picked" glyph; multi-select has a
+    // distinct checkbox toggle independent of cursor position.
+    const glyph = form.multi()
+      ? (isPicked ? "\u25A3" : "\u25A1")
+      : (isCursor ? "\u25CF" : "\u25CB")
+    const indicatorColor = (form.multi() && isPicked) || isCursor ? theme.primary : theme.textMuted
+    const labelColor = isCursor ? theme.text : theme.textMuted
+    const text = description ? `${label} \u2014 ${description}` : label
+    return new StyledText([
+      stFg(indicatorColor)(glyph),
+      stFg(labelColor)(` ${text}`),
+    ])
+  }
+
+  function otherContent(): StyledText {
+    const onOther = form.isOnOther()
+    const custom = form.currentCustom()
+    const hasText = custom.trim().length > 0
+    const filled = form.multi() ? (form.currentCustomOn() && hasText) : (onOther || (form.currentCustomOn() && hasText))
+    const glyph = form.multi()
+      ? (filled ? "\u25A3" : "\u25A1")
+      : (filled ? "\u25CF" : "\u25CB")
+    const indicatorColor = onOther ? theme.primary : theme.textMuted
+    const labelColor = onOther ? theme.text : theme.textMuted
+    const label = form.currentCustomOn() && custom ? `Other \u2014 ${custom}` : "Other\u2026"
+    return new StyledText([
+      stFg(indicatorColor)(glyph),
+      stFg(labelColor)(` ${label}`),
+    ])
+  }
+
+  const editingContent = () => new StyledText([
+    stFg(theme.textMuted)("\u25B8"),
+    stFg(theme.text)(` ${form.currentCustom()}_`),
+  ])
+
+  const hintsContent = () => {
+    // Two variants: option-selection hints vs. text-editing hints.
+    const chunks: TextChunk[] = []
+    const push = (s: string) => chunks.push(stDim(stFg(theme.textMuted)(s)))
+    if (form.editing()) {
+      push("Enter submit \u00B7 Esc back to options")
+      if (form.total() > 1) push(" \u00B7 Tab next \u00B7 Shift+Tab back")
+    } else {
+      push(form.multi() ? "Space toggle \u00B7 Enter submit/open Other" : "Enter select")
+      push(" \u00B7 \u2191\u2193 navigate")
+      if (form.total() > 1) push(" \u00B7 Tab next \u00B7 Shift+Tab back")
+      push(" \u00B7 Esc cancel")
+    }
+    return new StyledText(chunks)
   }
 
   return (
@@ -251,89 +112,39 @@ export function QuestionDock(props: QuestionDockProps) {
       borderColor={theme.primary}
       customBorderChars={SplitBorder.customBorderChars}
     >
-      <box flexDirection="row" gap={1} paddingBottom={1}>
-        <text fg={theme.primary} attributes={BOLD}>Ask User</text>
-        <Show when={total() > 1}>
-          <text fg={theme.textMuted} attributes={DIM}>{"\u00B7"}</text>
-          <text fg={theme.textMuted}>{progress()}</text>
-          <text fg={theme.textMuted}>{" "}</text>
-          <For each={questions()}>
-            {(_, i) => (
-              <text fg={i() === tab() ? theme.primary : (isAnswered(i()) ? theme.success : theme.textMuted)}>
-                {i() === tab() ? "\u25CF" : (isAnswered(i()) ? "\u25CF" : "\u25CB")}
-              </text>
-            )}
-          </For>
-        </Show>
+      <box paddingBottom={1}>
+        <text ref={(el: TextRenderable) => { createEffect(() => { el.content = headerContent() }) }} overflow="hidden" wrapMode="none" />
       </box>
 
-      <text fg={theme.text}>{currentQuestion()?.question ?? ""}</text>
+      <text ref={(el: TextRenderable) => { createEffect(() => { el.content = questionContent() }) }} />
 
       <box flexDirection="column" paddingTop={1} paddingBottom={1}>
-        <For each={options()}>
-          {(opt, i) => {
-            const isCursor = () => cursor() === i()
-            const isPicked = () => currentSelections().includes(opt.label)
-            const indicator = () => {
-              if (multi()) return isPicked() ? "\u25A3" : "\u25A1"  // ▣ filled / ▢ empty (checkbox toggle)
-              // Single-select: the cursor itself marks the highlighted option —
-              // user confirms with Enter, so there's no separate "picked" state
-              // to distinguish from "on cursor".
-              return isCursor() ? "\u25CF" : "\u25CB"              // ● under cursor / ○ not
-            }
-            const indicatorColor = () => (multi() && isPicked()) || isCursor() ? theme.primary : theme.textMuted
-            const labelColor = () => isCursor() ? theme.text : theme.textMuted
-            return (
-              <box flexDirection="row" gap={1} overflow="hidden">
-                <text fg={indicatorColor()} flexShrink={0}>{indicator()}</text>
-                <text fg={labelColor()} flexShrink={1} overflow="hidden" wrapMode="none">
-                  {opt.description ? `${opt.label} \u2014 ${opt.description}` : opt.label}
-                </text>
-              </box>
-            )
-          }}
-        </For>
-
-        <box flexDirection="row" gap={1} overflow="hidden">
-          <text fg={isOnOther() ? theme.primary : theme.textMuted} flexShrink={0}>
-            {(() => {
-              const filled = multi()
-                ? currentCustomOn() && currentCustom().trim().length > 0
-                : isOnOther() || (currentCustomOn() && currentCustom().trim().length > 0)
-              if (multi()) return filled ? "\u25A3" : "\u25A1"
-              return filled ? "\u25CF" : "\u25CB"
-            })()}
-          </text>
-          <text fg={isOnOther() ? theme.text : theme.textMuted} flexShrink={1} overflow="hidden" wrapMode="none">
-            {currentCustomOn() && currentCustom() ? `Other — ${currentCustom()}` : "Other\u2026"}
-          </text>
-        </box>
+        {form.options().map((opt, i) => (
+          <text
+            ref={(el: TextRenderable) => {
+              createEffect(() => { el.content = optionContent(opt.label, opt.description, form.cursor() === i, form.currentSelections().includes(opt.label)) })
+            }}
+            overflow="hidden"
+            wrapMode="none"
+          />
+        ))}
+        <text
+          ref={(el: TextRenderable) => { createEffect(() => { el.content = otherContent() }) }}
+          overflow="hidden"
+          wrapMode="none"
+        />
       </box>
 
-      <Show when={editing()}>
-        <box flexDirection="row" gap={1} paddingBottom={1} overflow="hidden">
-          <text fg={theme.textMuted} flexShrink={0}>{"\u25B8"}</text>
-          <text fg={theme.text} flexShrink={1} flexGrow={1} wrapMode="word">
-            {currentCustom() + "_"}
-          </text>
+      <Show when={form.editing()}>
+        <box paddingBottom={1}>
+          <text
+            ref={(el: TextRenderable) => { createEffect(() => { el.content = editingContent() }) }}
+            wrapMode="word"
+          />
         </box>
       </Show>
 
-      <box flexDirection="row">
-        <Show when={editing()} fallback={
-          <text fg={theme.textMuted} attributes={DIM}>
-            <Show when={multi()} fallback="Enter select">Space toggle · Enter submit/open Other</Show>
-            {" \u00B7 \u2191\u2193 navigate"}
-            <Show when={total() > 1}>{" \u00B7 Tab next \u00B7 Shift+Tab back"}</Show>
-            {" \u00B7 Esc cancel"}
-          </text>
-        }>
-          <text fg={theme.textMuted} attributes={DIM}>
-            Enter submit {"\u00B7"} Esc back to options
-            <Show when={total() > 1}>{" \u00B7 Tab next \u00B7 Shift+Tab back"}</Show>
-          </text>
-        </Show>
-      </box>
+      <text ref={(el: TextRenderable) => { createEffect(() => { el.content = hintsContent() }) }} />
     </box>
   )
 }

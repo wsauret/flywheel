@@ -1,4 +1,5 @@
 import type { Engine, EngineMetadata, RunnerOptions } from "../../core/types.js";
+import type { AuthContext } from "../../../../infra/auth/auth-context.js";
 import { createModelsClient, type ModelsClient } from "./llm/models.js";
 import { createClient } from "./llm/client-factory.js";
 import { HarnessRunner } from "./runner.js";
@@ -21,7 +22,7 @@ const metadata: EngineMetadata = {
 
 export function createHarnessEngine(deps?: {
   modelsClient?: ModelsClient;
-  createLLMClient?: (model: string, modelsClient: ModelsClient) => LLMClient;
+  createLLMClient?: (model: string, modelsClient: ModelsClient, auth: AuthContext) => LLMClient;
 }): Engine {
   const modelsClient = deps?.modelsClient ?? createModelsClient();
   const clientFactory = deps?.createLLMClient ?? createClient;
@@ -29,9 +30,13 @@ export function createHarnessEngine(deps?: {
   return {
     metadata,
     createRunner(options: RunnerOptions) {
+      const auth = options.auth;
+      if (!auth) {
+        throw new Error("Harness engine requires RunnerOptions.auth to be set");
+      }
       return new HarnessRunner(
         options,
-        (model) => clientFactory(model, modelsClient),
+        (model) => clientFactory(model, modelsClient, auth),
       );
     },
   };

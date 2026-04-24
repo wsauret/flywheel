@@ -2,7 +2,7 @@ import { createRoot } from "solid-js"
 import { createStore, produce } from "solid-js/store"
 import { createWorkflowRunner } from "./workflow-runner.js"
 import type { WorkflowResult } from "./workflow-runner-types.js"
-import type { WorkflowSessionFactories } from "./session-store-types.js"
+import type { CreateWorkflowAdapter } from "./session-store-types.js"
 import type { AnyBlock } from "../infra/output-blocks.js"
 import type { Queue } from "../workflows/queue/types.js"
 import type { SessionKind } from "./session/types.js"
@@ -16,7 +16,7 @@ import type {
   ChatStoreHandle,
 } from "./session-store-types.js"
 
-export function createSessionStore(factories: WorkflowSessionFactories): SessionStore {
+export function createSessionStore(createAdapter: CreateWorkflowAdapter): SessionStore {
   let disposeRoot!: () => void
   let entries!: Record<string, SessionEntry>
   let setEntries!: ReturnType<typeof createStore<Record<string, SessionEntry>>>[1]
@@ -50,7 +50,7 @@ export function createSessionStore(factories: WorkflowSessionFactories): Session
       queue,
       description,
       updateEntry,
-      factories,
+      createAdapter,
       priorBlocks,
       overrides: {
         workerCwd: opts.workerCwd,

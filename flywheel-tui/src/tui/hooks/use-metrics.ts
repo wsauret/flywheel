@@ -6,7 +6,6 @@ import type { SessionEntry } from "../../orchestration/session-store-types.js"
 export interface MetricsHook {
   elapsed: Accessor<number>
   episodeElapsed: Accessor<number>
-  liveTokens: Accessor<number>
   liveCost: Accessor<number>
   liveContextPercent: Accessor<number>
   liveActivity: Accessor<ModelActivity>
@@ -16,7 +15,6 @@ export interface MetricsHook {
 }
 
 export function useMetrics(entry: () => SessionEntry | undefined): MetricsHook {
-  const liveTokens = createMemo(() => entry()?.tokens ?? 0)
   const liveCost = createMemo(() => entry()?.cost ?? 0)
   const liveContextPercent = createMemo(() => entry()?.contextPercent ?? 0)
   const liveActivity = createMemo((): ModelActivity => entry()?.modelActivity ?? "idle")
@@ -75,7 +73,6 @@ export function useMetrics(entry: () => SessionEntry | undefined): MetricsHook {
   return {
     elapsed,
     episodeElapsed,
-    liveTokens,
     liveCost,
     liveContextPercent,
     liveActivity,

@@ -10,6 +10,8 @@ import type { Message, ContentBlock } from "../llm/types.js";
 interface TokenCounter {
   addMessage(message: Message): void;
   addToolResult(content: string): void;
+  reset(): void;
+  resetFor(messages: ReadonlyArray<Message>): void;
   readonly total: number;
 }
 
@@ -46,6 +48,15 @@ export function createTokenCounter(): TokenCounter {
 
     addToolResult(content: string) {
       totalTokens += Math.ceil(content.length / 4);
+    },
+
+    reset() {
+      totalTokens = 0;
+    },
+
+    resetFor(messages) {
+      totalTokens = 0;
+      for (const m of messages) totalTokens += Math.ceil(estimateChars(m.content) / 4);
     },
 
     get total() {

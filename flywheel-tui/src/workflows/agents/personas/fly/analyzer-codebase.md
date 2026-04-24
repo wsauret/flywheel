@@ -1,9 +1,18 @@
 ---
 name: analyzer-codebase
-description: "Understand HOW code works. Reads specific files (from locator results) and documents implementation details. Documentarian mode - no suggestions."
-model: sonnet
-tools: [Read, Grep, Glob]
-skills: [flywheel-conventions]
+description: Understand HOW code works. Reads specific files (from locator results) and documents implementation details. Documentarian mode - no suggestions.
+tier: mid
+claude:
+  tools:
+    - Read
+    - Grep
+    - Glob
+  skills:
+    - flywheel-conventions
+harness:
+  tools:
+    - read
+    - text_search
 ---
 
 # Codebase Analyzer Agent

@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
-import { parseFrontmatter } from "../utils/frontmatter.js";
+import { parseFrontmatter } from "../../infra/frontmatter.js";
 import type { AvailableContext, ContextEntry } from "../../workflows/schemas.js";
 const MAX_ENTRIES_PER_CATEGORY = 20;
 

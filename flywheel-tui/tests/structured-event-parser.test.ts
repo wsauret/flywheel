@@ -240,6 +240,50 @@ describe("StructuredEventParser", () => {
       agent = blocks[0] as ToolGroupBlock;
       expect(agent.children[0].completed).toBe(true);
     });
+
+    it("renders subagent thinking as a completed Thinking row in the parent group", () => {
+      const spawnEvent = makeAssistantEvent([
+        { type: "tool_use", id: "agent_tool", name: "Task", input: { description: "research" } },
+      ]);
+      parser.dispatch(spawnEvent, 1000);
+
+      const turnEvent = makeAssistantEvent(
+        [
+          { type: "thinking", thinking: "Let me reason about this..." },
+          { type: "tool_use", id: "child_tool", name: "Grep", input: { pattern: "foo" } },
+        ],
+        "agent_tool",
+      );
+      parser.dispatch(turnEvent, 1500);
+
+      const blocks = builder.getBlocks();
+      const agent = blocks[0] as ToolGroupBlock;
+      expect(agent.children).toHaveLength(2);
+      expect(agent.children[0].name).toBe("grep");
+      expect(agent.children[1].name).toBe("Thinking");
+      expect(agent.children[1].completed).toBe(true);
+    });
+
+    it("skips empty subagent thinking blocks", () => {
+      const spawnEvent = makeAssistantEvent([
+        { type: "tool_use", id: "agent_tool", name: "Task", input: { description: "research" } },
+      ]);
+      parser.dispatch(spawnEvent, 1000);
+
+      const turnEvent = makeAssistantEvent(
+        [
+          { type: "thinking", thinking: "" },
+          { type: "tool_use", id: "child_tool", name: "Grep", input: { pattern: "foo" } },
+        ],
+        "agent_tool",
+      );
+      parser.dispatch(turnEvent, 1500);
+
+      const blocks = builder.getBlocks();
+      const agent = blocks[0] as ToolGroupBlock;
+      expect(agent.children).toHaveLength(1);
+      expect(agent.children[0].name).toBe("grep");
+    });
   });
 
 

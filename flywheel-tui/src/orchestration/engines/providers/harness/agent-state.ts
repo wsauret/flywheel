@@ -1,19 +1,12 @@
 /**
- * Agent loop state types and message history management.
- *
- * The NextInput union represents every possible reason for the next
- * user message in the conversation. Each variant carries exactly the
- * data needed to render that turn's prompt.
+ * Agent loop state helpers. The conversation's `messages` array is the
+ * authoritative state — this module just provides the two shape transforms
+ * the loop needs: rendering tool results as user content, and replacing the
+ * history wholesale during a handoff.
  */
 
 import type { Message, ContentBlock } from "./llm/types.js";
 import type { Handoff } from "./context/summarizer.js";
-
-export type NextInput =
-  | { kind: "initial"; text: string }
-  | { kind: "observation"; toolResults: ToolResultEntry[] }
-  | { kind: "recovered"; handoff: string }
-  | { kind: "resume-truncation" };
 
 export interface ToolResultEntry {
   toolCallId: string;
@@ -21,24 +14,25 @@ export interface ToolResultEntry {
   isError?: boolean;
 }
 
-export function renderNextInput(input: NextInput): string | ContentBlock[] {
-  switch (input.kind) {
-    case "initial":
-      return input.text;
-    case "observation":
-      return input.toolResults.map((r) => ({
-        type: "tool_result" as const,
-        tool_use_id: r.toolCallId,
-        content: r.content,
-        ...(r.isError ? { is_error: true } : {}),
-      }));
-    case "recovered":
-      return input.handoff;
-    case "resume-truncation":
-      return "Your previous response was cut off at the output-length limit. Continue from where you stopped.";
-  }
+export function renderToolResults(results: ReadonlyArray<ToolResultEntry>): ContentBlock[] {
+  return results.map((r) => ({
+    type: "tool_result" as const,
+    tool_use_id: r.toolCallId,
+    content: r.content,
+    ...(r.isError ? { is_error: true } : {}),
+  }));
 }
 
 export function applyHandoff(messages: Message[], handoff: Handoff): void {
   messages.splice(0, messages.length, ...handoff.messages);
+}
+
+/** Append text into the trailing text block, or push a new block if none. */
+export function appendTextBlock(blocks: ContentBlock[], text: string): void {
+  const last = blocks[blocks.length - 1];
+  if (last?.type === "text") {
+    last.text += text;
+  } else {
+    blocks.push({ type: "text", text });
+  }
 }

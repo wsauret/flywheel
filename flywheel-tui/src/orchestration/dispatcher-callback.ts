@@ -26,11 +26,6 @@ interface DispatcherCallbackDeps {
   chatContext: string | undefined
 }
 
-function mergeAvailableContext(base: AvailableContext, chatContext: string | undefined): AvailableContext {
-  if (!chatContext) return base
-  return { ...base, chatHistory: chatContext }
-}
-
 export function createDispatcherCallback(opts: DispatcherCallbackDeps): DispatcherFn {
   const {
     maxRevisions, dispatcherTransport, contextIndexer, contextAccumulator,
@@ -50,10 +45,9 @@ export function createDispatcherCallback(opts: DispatcherCallbackDeps): Dispatch
       dispatcherModel,
     },
     sessionBudget: { wall_clock_deadline: null, invocations_remaining: null, token_budget_remaining: null },
-    availableContext: mergeAvailableContext(
-      contextIndexer.getRelevantContext(),
-      chatContext,
-    ),
+    availableContext: chatContext
+      ? { ...contextIndexer.getRelevantContext(), chatHistory: chatContext }
+      : contextIndexer.getRelevantContext(),
   })
 
   return async (step, context) => {

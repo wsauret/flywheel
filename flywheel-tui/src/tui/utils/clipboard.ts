@@ -9,6 +9,11 @@ function writeOsc52(text: string): void {
   process.stdout.write(sequence)
 }
 
+// Namespace-scoped cache because the platform and its copy tool are process-global,
+// and the resolver is pure platform inspection. Factory + DI wouldn't add anything:
+// any consumer would build the same memoized closure. The one exception that would
+// justify DI is test mocking of spawn — we don't do that here; integration tests
+// exercise the real command on their host.
 export namespace Clipboard {
   let copyMethod: ((text: string) => Promise<void>) | undefined
   const getCopyMethod = () => {

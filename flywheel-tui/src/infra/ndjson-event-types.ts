@@ -59,7 +59,6 @@ export interface AssistantEventData {
     };
     parent_tool_use_id?: string | null;
   };
-  parent_tool_use_id?: string | null;
 }
 
 interface ToolResultEventData {
@@ -67,6 +66,7 @@ interface ToolResultEventData {
   tool_use_id?: string;
   is_error?: boolean;
   content?: string | unknown[];
+  parent_tool_use_id?: string | null;
 }
 
 interface ResultEventData {
@@ -91,6 +91,7 @@ interface ContentBlockDeltaData {
     thinking?: string;
     text?: string;
   };
+  parent_tool_use_id?: string | null;
 }
 
 interface DirectToolUseData {

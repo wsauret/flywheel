@@ -105,15 +105,15 @@ export class OpenTUIAdapter {
   private handleEvent(event: FlywheelEvent): void {
     switch (event.type) {
       case "engine:output":
-        // Write output BEFORE resolving pending messages — resolvePendingMessages
-        // moves resolved messages to the end of the block array, so the triggering
-        // output must already be appended for the user message to appear after it.
+        // Write output BEFORE draining — drained messages reposition to the
+        // end of the block array, so the triggering output must already be
+        // appended for the user message to appear after it.
         if (event.stream === "stderr") {
           this.outputSession.writeStderr(event.data, event.timestamp);
         } else {
           this.outputSession.writeStdout(event.data);
         }
-        this.outputSession.resolvePendingMessages();
+        this.outputSession.drainQueued();
         break;
 
       case "engine:started":
@@ -175,7 +175,7 @@ export class OpenTUIAdapter {
 
       case "engine:injected":
         log.info("Engine message injected", { workflowId: event.workflowId, messageLength: event.message.length, pending: event.pending });
-        this.outputSession.notifyInjected(event.message, event.timestamp, event.pending, event.origin === "system");
+        this.outputSession.pushUserMessage(event.message, event.timestamp, { queued: event.pending, injected: event.origin === "system" });
         break;
 
       case "queue:initialized":
@@ -186,14 +186,14 @@ export class OpenTUIAdapter {
       // The builder retains its last activity; only the queue knows execution ended.
       case "queue:completed":
         log.info("Queue completed", { workflowId: event.workflowId, stepsCompleted: event.stepsCompleted });
-        this.outputSession.resolvePendingMessages();
+        this.outputSession.drainQueued();
         this.outputSession.resetActivity();
         this.outputSession.flush();
         break;
 
       case "queue:failed":
         log.warn("Queue failed", { workflowId: event.workflowId, reason: event.reason, stepsCompleted: event.stepsCompleted });
-        this.outputSession.resolvePendingMessages();
+        this.outputSession.drainQueued();
         this.outputSession.resetActivity(event.finalStatus === "paused" ? "paused" : "completed");
         this.outputSession.flush();
         break;
@@ -223,7 +223,7 @@ export class OpenTUIAdapter {
 
       case "engine:ndjson":
         if (event.ndjsonEvent.type === "user") {
-          this.outputSession.resolvePendingMessages();
+          this.outputSession.drainQueued();
         }
         break;
 

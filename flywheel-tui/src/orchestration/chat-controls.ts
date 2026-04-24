@@ -37,7 +37,7 @@ export function createChatControls(input: ChatControlsInput): ChatControls {
     state.completeTurn()
     session.resetActivity("paused")
     session.pushSystemMessage("Interrupted", Date.now())
-    const pendingTexts = session.resolvePendingMessages()
+    const pendingTexts = session.drainQueued()
     session.flush()
 
     const messageToResend = pendingTexts.join("\n\n") || undefined
@@ -55,7 +55,7 @@ export function createChatControls(input: ChatControlsInput): ChatControls {
 
   function end() {
     if (state.ended) return
-    state.markEnded()
+    state.end()
     eventUnsubs.forEach((u) => u())
     session.flushParser()
     session.flush()
@@ -68,11 +68,10 @@ export function createChatControls(input: ChatControlsInput): ChatControls {
   function send(text: string) {
     if (state.ended) { log.warn("chat send after ended"); return }
 
-    const isPending = state.turnPhase === "agent-active" && state.runner != null
+    const queued = state.turnPhase === "agent-active" && state.runner != null
     state.beginTurn()
     callbacks.onWaiting(true)
-    const now = Date.now()
-    session.notifyInjected(text, now, isPending, false)
+    session.pushUserMessage(text, Date.now(), { queued, injected: false })
     if (state.runner) {
       state.runner.send(text)
       log.info("chat message sent", { length: text.length })

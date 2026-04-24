@@ -12,7 +12,6 @@ import { renderHunk } from "@tui/adapters/color-diff"
 import { parseUnifiedDiff } from "@tui/adapters/diff-parser"
 import { toFileUri } from "@tui/adapters/linkify-paths"
 import { createHighlighter } from "@tui/adapters/syntax-highlight.js"
-import { preventSelectionMouseDown } from "@tui/utils/mouse.js"
 import { getToolDisplayName } from "@infra/tool-display-registry.js"
 import { truncateArrayHead } from "@infra/output/truncate-output.js"
 import {
@@ -151,8 +150,9 @@ export function ToolEntry(props: ToolEntryProps) {
   })
 
   const header = () => (
-    <box onMouseDown={canToggleHeader() ? preventSelectionMouseDown(toggleHeader) : undefined}>
+    <box selectable={false} onMouseDown={canToggleHeader() ? toggleHeader : undefined}>
       <text
+        selectable={false}
         ref={(el: TextRenderable) => {
           createEffect(() => { el.content = headerContent() })
         }}
@@ -176,8 +176,9 @@ export function ToolEntry(props: ToolEntryProps) {
               )}
             </For>
             <Show when={diffTruncation().truncated && !contentExpanded()}>
-              <box onMouseDown={preventSelectionMouseDown(() => setContentExpanded(true))}>
+              <box selectable={false} onMouseDown={() => setContentExpanded(true)}>
                 <text
+                  selectable={false}
                   ref={(el: TextRenderable) => {
                     createEffect(() => {
                       const n = diffTruncation().omitted
@@ -212,8 +213,9 @@ export function ToolEntry(props: ToolEntryProps) {
                 </For>
               })()}
               <Show when={contentPreview().truncated && !contentExpanded()}>
-                <box onMouseDown={preventSelectionMouseDown(() => setContentExpanded(true))}>
+                <box selectable={false} onMouseDown={() => setContentExpanded(true)}>
                   <text
+                    selectable={false}
                     ref={(el: TextRenderable) => {
                       createEffect(() => {
                         const n = contentPreview().omitted

@@ -18,8 +18,10 @@ export interface OutputSession {
   writeStdout(data: string): void
   writeStderr(data: string, timestamp: number): void
   notifySpawned(timestamp: number): void
-  notifyInjected(message: string, timestamp: number, pending?: boolean, injected?: boolean): void
-  resolvePendingMessages(): string[]
+  pushUserMessage(message: string, timestamp: number, options?: { queued?: boolean; injected?: boolean }): void
+  takeNextQueued(): string | null
+  hasQueued(): boolean
+  drainQueued(): string[]
   pushSystemMessage(message: string, timestamp: number): void
   startCompaction(timestamp: number): void
   completeCompaction(success: boolean, durationMs: number, timestamp: number): void
@@ -63,9 +65,7 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
     queueMicrotask(syncStore)
   }
 
-  builder.onContentChange = scheduleSync
-
-  builder.onToolGroupChange = scheduleSync
+  builder.onChange = scheduleSync
 
   parser.onEvent = (event) => {
     emit("engine:ndjson", { workflowId, ndjsonEvent: event })
@@ -90,8 +90,8 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
     builder.notifyThinkingStarted(timestamp)
   }
 
-  function notifyInjected(message: string, timestamp: number, pending?: boolean, injected?: boolean): void {
-    builder.pushUserMessage(message, timestamp, pending ?? false, injected ?? false)
+  function pushUserMessage(message: string, timestamp: number, opts?: { queued?: boolean; injected?: boolean }): void {
+    builder.pushUserMessage(message, timestamp, opts?.queued ?? false, opts?.injected ?? false)
     builder.notifyThinkingStarted(timestamp)
   }
 
@@ -99,8 +99,10 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
     writeStdout,
     writeStderr,
     notifySpawned,
-    notifyInjected,
-    resolvePendingMessages: () => builder.resolvePendingMessages(),
+    pushUserMessage,
+    takeNextQueued: () => builder.takeNextQueued(),
+    hasQueued: () => builder.hasQueued(),
+    drainQueued: () => builder.drainQueued(),
     pushSystemMessage: (message: string, timestamp: number) => builder.pushSystemMessage(message, timestamp),
     startCompaction(timestamp: number) {
       builder.startAgent("compaction", "Compacting context...", "", timestamp, "agent")
@@ -138,8 +140,7 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
     dispose(): void {
       if (disposed) return
       disposed = true
-      builder.onContentChange = null
-      builder.onToolGroupChange = null
+      builder.onChange = null
     },
   }
 }

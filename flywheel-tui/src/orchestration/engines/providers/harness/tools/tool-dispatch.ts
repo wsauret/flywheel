@@ -36,13 +36,17 @@ export async function executeTool(
   name: string,
   input: Record<string, unknown>,
   context: ToolContext,
+  toolCallId?: string,
+  extraTools?: ReadonlyMap<string, ToolDefinition>,
 ): Promise<ToolResult> {
-  const definition = TOOL_REGISTRY.get(name);
+  const definition = extraTools?.get(name) ?? TOOL_REGISTRY.get(name);
   if (!definition) {
     return {
       content: `Unknown tool '${name}'. Available tools: ${getToolDefinitions().map((t) => t.name).join(", ")}`,
       isError: true,
     };
   }
-  return definition.execute(input, context);
+  if (context.signal?.aborted) return { content: "Aborted by user.", isError: true };
+  const ctx = toolCallId != null ? { ...context, toolCallId } : context;
+  return definition.execute(input, ctx);
 }

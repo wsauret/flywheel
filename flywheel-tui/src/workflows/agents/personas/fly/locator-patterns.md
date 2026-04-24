@@ -1,9 +1,17 @@
 ---
 name: locator-patterns
-description: "Find WHERE specific patterns exist in the codebase. Returns file:line references without reading full contents."
-model: haiku
-tools: [Grep, Glob, LS]
-skills: [flywheel-conventions]
+description: Find WHERE specific patterns exist in the codebase. Returns file:line references without reading full contents.
+tier: cheap
+claude:
+  tools:
+    - Grep
+    - Glob
+    - LS
+  skills:
+    - flywheel-conventions
+harness:
+  tools:
+    - text_search
 ---
 
 Find WHERE specific code patterns exist. Return file:line references — no analysis, no suggestions.

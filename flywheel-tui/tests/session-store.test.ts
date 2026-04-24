@@ -14,17 +14,13 @@ import "../src/orchestration/engines/providers/claude/register"
 import { createSessionStore } from "../src/orchestration/session-store"
 import type { SessionEntry, ChatStoreHandle } from "../src/orchestration/session-store-types"
 import type { ChatRunner } from "../src/orchestration/chat-runner"
-import type { WorkflowSessionFactories } from "../src/orchestration/session-store-types"
+import type { CreateWorkflowAdapter } from "../src/orchestration/session-store-types"
 
-/** Minimal mock factories for sessionStore tests (workflow features not tested here). */
-const mockFactories: WorkflowSessionFactories = {
-  createAdapter: () => ({
-    connect: () => {},
-    start: () => {},
-    stop: () => {},
-    disconnect: () => {},
-  }),
-}
+/** Minimal mock adapter factory for sessionStore tests (workflow features not tested here). */
+const mockCreateAdapter: CreateWorkflowAdapter = () => ({
+  connect: () => {},
+  disconnect: () => {},
+})
 
 // ── Helpers ──
 
@@ -48,7 +44,7 @@ describe("SessionStore — chat entries", () => {
   let capturedHandle: ChatStoreHandle | null
 
   beforeEach(() => {
-    sessionStore = createSessionStore(mockFactories)
+    sessionStore = createSessionStore(mockCreateAdapter)
     mockRunner = createMockChatRunner("chat-001")
     capturedHandle = null
   })
@@ -275,7 +271,7 @@ describe("SessionStore — load() for historical sessions", () => {
   let sessionStore: ReturnType<typeof createSessionStore>
 
   beforeEach(() => {
-    sessionStore = createSessionStore(mockFactories)
+    sessionStore = createSessionStore(mockCreateAdapter)
   })
 
   it("load() creates an ended entry with display data and no runner", () => {
@@ -349,7 +345,7 @@ describe("SessionStore — updateEntry direct writes (workflow)", () => {
   let sessionStore: ReturnType<typeof createSessionStore>
 
   beforeEach(() => {
-    sessionStore = createSessionStore(mockFactories)
+    sessionStore = createSessionStore(mockCreateAdapter)
   })
 
   it("updateEntry({ outputBlocks }) updates workflow entry outputBlocks", () => {

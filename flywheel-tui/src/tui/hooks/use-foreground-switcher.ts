@@ -11,11 +11,10 @@ interface ForegroundSwitcherDeps {
   services: ShellServices
   sessions: Accessor<SessionSummary[]>
   projectCwd: string
-  setTerminalTitle: (title: string) => void
 }
 
 export function createForegroundSwitcher(deps: ForegroundSwitcherDeps): (sessionId: string) => Promise<void> {
-  const { signals, services, sessions, projectCwd, setTerminalTitle } = deps
+  const { signals, services, sessions, projectCwd } = deps
   const { sessionStore, metrics } = services
 
   let switchGen = 0
@@ -46,6 +45,6 @@ export function createForegroundSwitcher(deps: ForegroundSwitcherDeps): (session
       metrics.resetElapsedTo(Date.now() - entry.startedAt)
       signals.setErrorMessage("")
     })
-    setTerminalTitle(entry.kind === "chat" ? TERMINAL_TITLE_BASE : `${TERMINAL_TITLE_PREFIX}${entry.description}`)
+    services.setTerminalTitle(entry.kind === "chat" ? TERMINAL_TITLE_BASE : `${TERMINAL_TITLE_PREFIX}${entry.description}`)
   }
 }

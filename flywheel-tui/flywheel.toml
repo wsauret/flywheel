@@ -1,6 +1,6 @@
 engine = "harness"
-preferred_model_family = "openai"  # "anthropic" | "openai"
-openai_auth = "api_key"
+preferred_model_family = "anthropic"  # "anthropic" | "openai" | "google"
+openai_auth = "chatgpt"  # "api_key" | "chatgpt"
 openai_email = "wsauret@crexi.com"
 model = "powerful"
 effort = "max"

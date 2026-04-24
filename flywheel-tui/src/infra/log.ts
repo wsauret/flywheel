@@ -4,6 +4,12 @@ import path from "path"
 import { mkdirSync, readdirSync, unlinkSync, statSync, createWriteStream } from "node:fs"
 import { LOG_DIR } from "./paths.js"
 
+// Namespace singleton is intentional: logging is a cross-cutting infrastructure
+// concern whose destination (file, stdout) and level are process-global by
+// definition, and we need to log from any module before Log.init() runs
+// (e.g., during module-load config validation). A factory would force every
+// importer to thread a logger handle through its constructor — noise without
+// added capability.
 export namespace Log {
   export type Level = "DEBUG" | "INFO" | "WARN" | "ERROR"
 

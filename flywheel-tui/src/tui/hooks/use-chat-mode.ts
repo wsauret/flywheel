@@ -1,23 +1,20 @@
-import { createSignal, batch } from "solid-js"
 import type { Accessor } from "solid-js"
 import { createChatController } from "../../orchestration/chat-controller.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"
-import type { RunnerDoneResult, RunnerErrorResult } from "../../orchestration/session/types.js"
 
 interface ChatModeDeps {
   signals: ShellSignals
   services: ShellServices
   /** Project working directory — injected to avoid hardcoding process.cwd(). */
   projectCwd: string
-  lifecycleCallbacks: {
-    onRunnerDone: (id: string, result: RunnerDoneResult) => void
-    onRunnerError: (id: string, result: RunnerErrorResult) => void
-  }
+  onRunnerDone: (id: string) => void
+  onRunnerError: (id: string, errorMessage: string) => void
 }
 
 export interface ChatModeHook {
-  /** True while a chat session is being created (async startup window). */
-  chatActive: Accessor<boolean>
+  /** True while a chat session is being created (async startup window) —
+   *  forwarded from the controller so there's one source of truth. */
+  isStarting: Accessor<boolean>
   startChat(initialMessage?: string): Promise<void>
   /** Put the current chat in the background without ending it. */
   backgroundChat(): Promise<void>
@@ -33,52 +30,30 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
   const { signals, services } = deps
   const metrics = services.metrics
 
-  // Only true during the async startup window of a new chat
-  const [chatActive, setChatActive] = createSignal(false)
-
   const controller = createChatController({
     sessionStore: services.sessionStore,
     manager: services.manager,
     projectCwd: deps.projectCwd,
-    onRunnerDone: deps.lifecycleCallbacks.onRunnerDone,
-    onRunnerError: deps.lifecycleCallbacks.onRunnerError,
+    onRunnerDone: deps.onRunnerDone,
+    onRunnerError: deps.onRunnerError,
   })
 
   async function startChat(initialMessage?: string): Promise<void> {
-    setChatActive(true)
     metrics.resetMetrics()
-
-    const result = await controller.startChat(initialMessage)
-
-    batch(() => {
-      setChatActive(false)
-      if (result) {
-        signals.setForegroundId(result.sessionId)
-      } else {
-        signals.setErrorMessage("Chat failed to start")
-      }
-    })
+    const sessionId = await controller.startChat(initialMessage)
+    if (sessionId) signals.setForegroundId(sessionId)
+    else signals.setErrorMessage("Chat failed to start")
   }
 
   async function backgroundChat(): Promise<void> {
     await controller.backgroundChat(signals.foregroundId())
-    batch(() => {
-      setChatActive(false)
-      signals.setForegroundId(undefined)
-    })
+    signals.setForegroundId(undefined)
   }
 
   async function endChat(): Promise<void> {
     const fgId = signals.foregroundId()
-    const ended = await controller.endChat(fgId)
-    if (ended) {
-      batch(() => {
-        setChatActive(false)
-        signals.setForegroundId(undefined)
-      })
-    }
+    if (await controller.endChat(fgId)) signals.setForegroundId(undefined)
   }
-
 
   function interruptChat(): void {
     controller.interruptChat(signals.foregroundId())
@@ -96,5 +71,14 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
     controller.cancelQuestion(signals.foregroundId(), toolUseId)
   }
 
-  return { chatActive, startChat, backgroundChat, interruptChat, endChat, sendMessage, answerQuestion, cancelQuestion }
+  return {
+    isStarting: controller.isStarting,
+    startChat,
+    backgroundChat,
+    interruptChat,
+    endChat,
+    sendMessage,
+    answerQuestion,
+    cancelQuestion,
+  }
 }

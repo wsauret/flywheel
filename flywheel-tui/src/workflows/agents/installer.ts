@@ -2,8 +2,10 @@
 import { mkdir, readdir, readFile, rm, writeFile } from "fs/promises";
 import { join } from "path";
 import { homedir } from "os";
+import * as yaml from "js-yaml";
 import { Log } from "../../infra/log.js";
 import { errorMessage } from "../../infra/error-message.js";
+import { parseFrontmatter } from "../../infra/frontmatter.js";
 import { agents as manifestAgents, skills as manifestSkills } from "./manifest.js";
 
 const log = Log.create({ service: "agent-installer" });
@@ -24,16 +26,26 @@ function getSourceDir(): string {
   return new URL(".", import.meta.url).pathname;
 }
 
+async function readMdFilesFromDir(dirPath: string): Promise<Record<string, string>> {
+  const result: Record<string, string> = {};
+  try {
+    const files = (await readdir(dirPath)).filter((f) => f.endsWith(".md"));
+    for (const file of files) {
+      result[file] = await readFile(join(dirPath, file), "utf-8");
+    }
+  } catch {
+    // Directory may not exist
+  }
+  return result;
+}
+
 async function readFromFilesystem(): Promise<AgentSources> {
   const baseDir = getSourceDir();
   const agents: Record<string, string> = {};
   const skills: AgentSources["skills"] = {};
 
   const personaDir = join(baseDir, "personas", "fly");
-  const personaFiles = (await readdir(personaDir)).filter((f) => f.endsWith(".md"));
-  for (const file of personaFiles) {
-    agents[file] = await readFile(join(personaDir, file), "utf-8");
-  }
+  Object.assign(agents, await readMdFilesFromDir(personaDir));
 
   const skillsDir = join(baseDir, "skills");
   const skillEntries = await readdir(skillsDir, { withFileTypes: true });
@@ -90,19 +102,14 @@ async function writeIfChanged(
   return "installed";
 }
 
-async function installAgentFiles(
+async function installAgentFilesToDir(
   agents: Record<string, string>,
+  targetDir: string,
   result: InstallResult,
 ): Promise<void> {
-  const targetDir = join(homedir(), ".claude", "agents", "fly");
   const files = Object.keys(agents);
+  if (files.length === 0) return;
 
-  if (files.length === 0) {
-    log.warn("no persona files found");
-    return;
-  }
-
-  // We own the entire fly/ directory — wipe and re-copy for a clean slate
   try {
     await rm(targetDir, { recursive: true, force: true });
   } catch {
@@ -124,6 +131,82 @@ async function installAgentFiles(
       result.errors.push(`failed to install agent ${file}: ${errorMessage(err)}`);
     }
   }
+}
+
+type Destination = "claude" | "harness";
+
+// Top-level `tier:` is canonical (powerful/mid/cheap/inherit). The installer
+// projects it to each target's vocabulary: a Claude `model:` short name, or
+// the harness's own `tier:` field. `inherit` becomes "no pin" — Claude omits
+// `model:` so the session model is used; the harness skips `tier:` so the
+// subagent inherits from the parent at runtime.
+const TIER_TO_CLAUDE_MODEL: Record<string, string> = {
+  powerful: "opus",
+  mid: "sonnet",
+  cheap: "haiku",
+};
+
+// Projects the canonical frontmatter down to the flat shape each destination
+// expects. Returns null when the persona has no subtree for this destination —
+// those personas are skipped at install time so each registry only sees agents
+// it can actually run.
+function projectPersona(content: string, destination: Destination): string | null {
+  const parsed = parseFrontmatter(content);
+  if (!parsed) return null;
+
+  const fm = parsed.frontmatter;
+  const section = fm[destination];
+  if (!section || typeof section !== "object") return null;
+
+  const tier = typeof fm.tier === "string" ? fm.tier : "inherit";
+  const sectionFields = section as Record<string, unknown>;
+
+  const projected: Record<string, unknown> = {
+    name: fm.name,
+    description: fm.description,
+  };
+
+  if (destination === "claude") {
+    const model = TIER_TO_CLAUDE_MODEL[tier];
+    if (model) projected.model = model;
+  } else {
+    if (tier !== "inherit") projected.tier = tier;
+  }
+
+  Object.assign(projected, sectionFields);
+
+  const yamlText = yaml.dump(projected, { lineWidth: -1, noRefs: true }).trimEnd();
+  return `---\n${yamlText}\n---\n${parsed.body}`;
+}
+
+function projectAll(agents: Record<string, string>, destination: Destination): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [filename, content] of Object.entries(agents)) {
+    const projected = projectPersona(content, destination);
+    if (projected) out[filename] = projected;
+  }
+  return out;
+}
+
+async function installAgentFiles(
+  agents: Record<string, string>,
+  result: InstallResult,
+): Promise<void> {
+  if (Object.keys(agents).length === 0) {
+    log.warn("no persona files found");
+    return;
+  }
+
+  await installAgentFilesToDir(
+    projectAll(agents, "claude"),
+    join(homedir(), ".claude", "agents", "fly"),
+    result,
+  );
+  await installAgentFilesToDir(
+    projectAll(agents, "harness"),
+    join(homedir(), ".flywheel", "agents"),
+    result,
+  );
 }
 
 async function installSkillFiles(

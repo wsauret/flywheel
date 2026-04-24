@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { EventBus, Unsubscribe } from "../../infra/event-bus.js";
-import type { SpanKind, Span } from "../../infra/trace-types.js";
+import type { SpanKind, Span, SpanStatus } from "../../infra/trace-types.js";
 import { truncateField } from "../../infra/trace-types.js";
 import type { TraceWriter } from "./trace-writer.js";
 import { subscribeTraceEvents } from "./trace-subscriptions.js";
@@ -13,9 +13,9 @@ interface TraceCollectorDeps {
 
 export interface TraceCollector {
   startSpan(kind: SpanKind, name: string, input?: unknown): string;
-  endSpan(spanId: string, output?: unknown, status?: "ok" | "error", error?: { message: string; code?: string }): void;
+  endSpan(spanId: string, output?: unknown, status?: SpanStatus, error?: { message: string; code?: string }): void;
   subscribeToEvents(bus: EventBus): Unsubscribe[];
-  finalize(status?: "ok" | "error"): void;
+  finalize(status?: SpanStatus): void;
   dispose(): void;
 }
 
@@ -68,7 +68,7 @@ export function createTraceCollector(deps: TraceCollectorDeps): TraceCollector {
   function buildCompletedSpan(
     open: OpenSpan,
     output: unknown,
-    status: "ok" | "error",
+    status: SpanStatus,
     error: { message: string; code?: string } | null,
     endTimeMs: number,
   ): Span {
@@ -124,7 +124,7 @@ export function createTraceCollector(deps: TraceCollectorDeps): TraceCollector {
   function endSpan(
     spanId: string,
     output?: unknown,
-    status: "ok" | "error" = "ok",
+    status: SpanStatus = "ok",
     error?: { message: string; code?: string },
   ): void {
     const open = openSpans.get(spanId);
@@ -175,7 +175,7 @@ export function createTraceCollector(deps: TraceCollectorDeps): TraceCollector {
     }, workflowName);
   }
 
-  function finalize(status: "ok" | "error" = "ok"): void {
+  function finalize(status: SpanStatus = "ok"): void {
     if (finalized) return;
     finalized = true;
     const endTimeMs = Date.now();
@@ -204,7 +204,7 @@ export function createTraceCollector(deps: TraceCollectorDeps): TraceCollector {
     writer.flush();
   }
 
-  function buildDefaultOutput(kind: SpanKind, status: "ok" | "error"): unknown {
+  function buildDefaultOutput(kind: SpanKind, status: SpanStatus): unknown {
     const reason = status === "error" ? "trace finalized with open spans" : null;
     switch (kind) {
       case "workflow":

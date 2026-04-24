@@ -716,19 +716,17 @@ describe("StructuredOutputBuilder", () => {
       expect(blocks[3].kind).toBe("todoList");
     });
 
-    it("resolvePendingMessages moves messages out of pinned zone into content", () => {
+    it("drainQueued moves messages out of pinned zone into content", () => {
       const now = Date.now();
       builder.pushText("output", now);
       builder.pushTodoWrite([{ content: "Task", status: "in_progress" }], now + 100);
       builder.pushUserMessage("follow-up", now + 200, true);
 
-      // Before resolve: [text, pending, todo]
       expect(builder.getBlocks()[1].kind).toBe("userMessage");
       expect((builder.getBlocks()[1] as UserMessageBlock).pending).toBe(true);
 
-      builder.resolvePendingMessages();
+      expect(builder.drainQueued()).toEqual(["follow-up"]);
 
-      // After resolve: [text, resolved, todo] — resolved is content now
       const blocks = builder.getBlocks();
       expect(blocks).toHaveLength(3);
       expect(blocks[0].kind).toBe("text");
@@ -736,12 +734,31 @@ describe("StructuredOutputBuilder", () => {
       expect((blocks[1] as UserMessageBlock).pending).toBe(false);
       expect(blocks[2].kind).toBe("todoList");
 
-      // New content goes after the resolved message, before todo
       builder.pushSystemMessage("agent responds", now + 400);
       const after = builder.getBlocks();
       expect(after).toHaveLength(4);
       expect(after[2].kind).toBe("system");
       expect(after[3].kind).toBe("todoList");
+    });
+
+    it("takeNextQueued pops oldest queued message and repositions it", () => {
+      const now = Date.now();
+      builder.pushTodoWrite([{ content: "Task", status: "in_progress" }], now);
+      builder.pushUserMessage("first", now + 100, true);
+      builder.pushUserMessage("second", now + 200, true);
+
+      expect(builder.hasQueued()).toBe(true);
+      expect(builder.takeNextQueued()).toBe("first");
+
+      const blocks = builder.getBlocks();
+      const resolved = blocks.find(b => b.kind === "userMessage" && b.content === "first") as UserMessageBlock;
+      expect(resolved.pending).toBe(false);
+      const stillQueued = blocks.find(b => b.kind === "userMessage" && b.content === "second") as UserMessageBlock;
+      expect(stillQueued.pending).toBe(true);
+
+      expect(builder.takeNextQueued()).toBe("second");
+      expect(builder.takeNextQueued()).toBe(null);
+      expect(builder.hasQueued()).toBe(false);
     });
 
     it("agent blocks insert before pinned zone with correct index tracking", () => {

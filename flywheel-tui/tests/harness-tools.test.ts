@@ -578,7 +578,7 @@ describe("harness tools", () => {
       expect(ctx.todoList[0].content.length).toBe(500);
     });
 
-    it("write atomically replaces list", () => {
+    it("write reseeds after all prior tasks are terminal", () => {
       const ctx = makeContext();
       executeTodoList({
         operation: "write",
@@ -589,12 +589,16 @@ describe("harness tools", () => {
       }, ctx);
       expect(ctx.todoList.length).toBe(2);
 
-      executeTodoList({
+      executeTodoList({ operation: "complete", ids: ["task-1"] }, ctx);
+      executeTodoList({ operation: "abandon", ids: ["task-2"] }, ctx);
+
+      const result = executeTodoList({
         operation: "write",
-        todos: [{ content: "Only", status: "completed" }],
+        todos: [{ content: "Only", status: "in_progress" }],
       }, ctx);
+      expect(result.isError).toBe(false);
       expect(ctx.todoList.length).toBe(1);
-      expect(ctx.todoList[0].content).toBe("Only");
+      expect(ctx.todoList[0]!.content).toBe("Only");
     });
 
     it("formats abandoned items with cross symbol", () => {
@@ -776,6 +780,56 @@ describe("harness tools", () => {
       const result = executeTodoList({ operation: "read" }, ctx);
       expect(result.content).toContain("task-1");
       expect(result.content).toContain("My task");
+    });
+
+    it("rejects write with empty todos array", () => {
+      const ctx = makeContext();
+      const result = executeTodoList({ operation: "write", todos: [] }, ctx);
+      expect(result.isError).toBe(true);
+      expect(result.content).toContain("empty");
+    });
+
+    it("rejects write when list has active tasks", () => {
+      const ctx = makeContext();
+      executeTodoList({
+        operation: "write",
+        todos: [
+          { content: "First", status: "in_progress" },
+          { content: "Second", status: "pending" },
+        ],
+      }, ctx);
+
+      const result = executeTodoList({
+        operation: "write",
+        todos: [{ content: "Replacement", status: "in_progress" }],
+      }, ctx);
+
+      expect(result.isError).toBe(true);
+      expect(result.content).toContain("active task");
+      expect(result.content).toContain("complete/abandon");
+      expect(ctx.todoList.length).toBe(2);
+      expect(ctx.todoList[0]!.content).toBe("First");
+    });
+
+    it("allows write after all active tasks are closed out", () => {
+      const ctx = makeContext();
+      executeTodoList({
+        operation: "write",
+        todos: [
+          { content: "First", status: "in_progress" },
+          { content: "Second", status: "pending" },
+        ],
+      }, ctx);
+      executeTodoList({ operation: "complete", ids: ["task-1", "task-2"] }, ctx);
+
+      const result = executeTodoList({
+        operation: "write",
+        todos: [{ content: "Next phase", status: "in_progress" }],
+      }, ctx);
+
+      expect(result.isError).toBe(false);
+      expect(ctx.todoList.length).toBe(1);
+      expect(ctx.todoList[0]!.content).toBe("Next phase");
     });
   });
 

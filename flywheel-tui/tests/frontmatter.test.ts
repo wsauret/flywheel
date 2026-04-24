@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
-import { parseFrontmatter } from "../src/orchestration/utils/frontmatter";
-import type { ParsedDoc } from "../src/orchestration/utils/frontmatter";
+import { parseFrontmatter } from "../src/infra/frontmatter";
+import type { ParsedDoc } from "../src/infra/frontmatter";
 
 // ---------------------------------------------------------------------------
 // parseFrontmatter

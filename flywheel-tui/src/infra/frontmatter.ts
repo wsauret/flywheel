@@ -1,6 +1,6 @@
 import * as yaml from "js-yaml";
 
-interface ParsedDoc {
+export interface ParsedDoc {
   frontmatter: Record<string, unknown>;
   body: string;
 }

@@ -86,7 +86,10 @@ export function OutputWindow(props: OutputWindowProps) {
 
         <Show when={hasContent()}>
           <scrollbox
-            ref={(el: ScrollBoxRenderable) => { scrollboxRef = el }}
+            ref={(el: ScrollBoxRenderable) => {
+              scrollboxRef = el
+              el.shouldStartSelection = () => true
+            }}
             flexGrow={1}
             width="100%"
             stickyScroll={true}

@@ -1,9 +1,18 @@
 ---
 name: analyzer-docs
-description: "Extract insights from documentation. Given paths from locator-docs, reads and synthesizes key information."
-model: sonnet
-tools: [Read, Grep, Glob]
-skills: [flywheel-conventions]
+description: Extract insights from documentation. Given paths from locator-docs, reads and synthesizes key information.
+tier: mid
+claude:
+  tools:
+    - Read
+    - Grep
+    - Glob
+  skills:
+    - flywheel-conventions
+harness:
+  tools:
+    - read
+    - text_search
 ---
 
 # Documentation Analyzer Agent

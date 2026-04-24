@@ -31,7 +31,8 @@ export function contextWindowForModel(model: string): number {
 
 export function extractContextUpdate(event: NDJSONEvent): ContextUpdate | null {
   if (event.type === "assistant") {
-    if (event.data.parent_tool_use_id != null) return null;
+    const parentToolUseId = event.data.message?.parent_tool_use_id;
+    if (parentToolUseId != null) return null;
 
     const usage = event.data.message?.usage;
     if (!usage) return null;

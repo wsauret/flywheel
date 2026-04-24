@@ -95,6 +95,24 @@ describe("HarnessRunner", () => {
     expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
+  test("aborting a never-started runner resolves done immediately", async () => {
+    const runner = new HarnessRunner(
+      makeOptions({ onEvent: () => {} }),
+      makeFakeClientFactory(),
+    );
+
+    // Do NOT call runner.send() — runAgentLoop never runs, so there's no
+    // async path listening to the abort signal. The runner must still resolve
+    // `done` so lifecycle callbacks (onDone -> onEnded) can fire.
+    runner.abort();
+
+    const result = await runner.done;
+    expect(result.failure).toBeDefined();
+    expect(result.failure!.kind).toBe("aborted");
+    expect(result.sessionId).toBe(runner.sessionId);
+    expect(result.durationMs).toBe(0);
+  });
+
   test("accumulates cumulative usage events once per turn", async () => {
     const events: NDJSONEvent[] = [];
     const runner = new HarnessRunner(
@@ -139,11 +157,15 @@ describe("HarnessRunner", () => {
     const calls: Message[][] = [];
     let turnIndex = 0;
     let turnCompleteCalls = 0;
+    const queue: string[] = [];
 
     const runner = new HarnessRunner(
       makeOptions({
         onEvent: (e) => events.push(e),
         onTurnComplete: () => { turnCompleteCalls += 1; },
+        takeNextQueued: () => queue.shift() ?? null,
+        hasQueuedInput: () => queue.length > 0,
+        drainQueued: () => queue.splice(0),
       }),
       () => ({
         accessProvider: "anthropic_api" as const,
@@ -174,7 +196,7 @@ describe("HarnessRunner", () => {
     );
 
     runner.send("initial instruction");
-    runner.send("follow up");
+    queue.push("follow up");
     const result = await runner.done;
 
     expect(result.failure).toBeUndefined();
@@ -182,9 +204,14 @@ describe("HarnessRunner", () => {
     expect(calls[1]![calls[1]!.length - 1]).toEqual({ role: "user", content: "follow up" });
     expect(turnCompleteCalls).toBe(1);
 
+    // Three user events: initial instruction, tool-result observation, follow-up.
+    // The observation is emitted at tool-exec completion so the on-disk log never
+    // ends on a dangling assistant(tool_use).
     const userEvents = events.filter((e) => e.type === "user");
-    expect(userEvents).toHaveLength(2);
-    expect((userEvents[1]!.data.message?.content as Array<Record<string, unknown>>)[0]).toEqual({
+    expect(userEvents).toHaveLength(3);
+    const observationBlocks = userEvents[1]!.data.message?.content as Array<Record<string, unknown>>;
+    expect(observationBlocks[0]).toMatchObject({ type: "tool_result", tool_use_id: "todo-1" });
+    expect((userEvents[2]!.data.message?.content as Array<Record<string, unknown>>)[0]).toEqual({
       type: "text",
       text: "follow up",
     });
@@ -192,41 +219,45 @@ describe("HarnessRunner", () => {
 });
 
 describe("emit helpers", () => {
-  test("emitAssistant creates assistant event with content and usage", () => {
+  test("emitAssistant keeps parent_tool_use_id on the assistant message", () => {
     const events: NDJSONEvent[] = [];
     const emit = (e: NDJSONEvent) => events.push(e);
 
-    emitAssistant(emit, [{ type: "text", text: "hello" }], { input_tokens: 100 });
+    emitAssistant(emit, [{ type: "text", text: "hello" }], { input_tokens: 100 }, "parent-tool-1");
 
     expect(events).toHaveLength(1);
     expect(events[0]!.type).toBe("assistant");
     expect(events[0]!.data.message.content).toEqual([{ type: "text", text: "hello" }]);
     expect(events[0]!.data.message.usage.input_tokens).toBe(100);
+    expect(events[0]!.data.message.parent_tool_use_id).toBe("parent-tool-1");
+    expect(JSON.parse(events[0]!.raw).parent_tool_use_id).toBeUndefined();
   });
 
-  test("emitToolResult creates tool_result event", () => {
+  test("emitToolResult keeps parent_tool_use_id on the outer event", () => {
     const events: NDJSONEvent[] = [];
     const emit = (e: NDJSONEvent) => events.push(e);
 
-    emitToolResult(emit, "tool-123", "result text", false);
+    emitToolResult(emit, "tool-123", "result text", false, "parent-tool-1");
 
     expect(events).toHaveLength(1);
     expect(events[0]!.type).toBe("tool_result");
     expect(events[0]!.data.tool_use_id).toBe("tool-123");
     expect(events[0]!.data.content).toBe("result text");
     expect(events[0]!.data.is_error).toBe(false);
+    expect(events[0]!.data.parent_tool_use_id).toBe("parent-tool-1");
   });
 
-  test("emitContentBlockDelta creates content_block_delta event", () => {
+  test("emitContentBlockDelta keeps parent_tool_use_id on the outer event", () => {
     const events: NDJSONEvent[] = [];
     const emit = (e: NDJSONEvent) => events.push(e);
 
-    emitContentBlockDelta(emit, { type: "text_delta", text: "chunk" });
+    emitContentBlockDelta(emit, { type: "text_delta", text: "chunk" }, "parent-tool-1");
 
     expect(events).toHaveLength(1);
     expect(events[0]!.type).toBe("content_block_delta");
     expect(events[0]!.data.delta.type).toBe("text_delta");
     expect(events[0]!.data.delta.text).toBe("chunk");
+    expect(events[0]!.data.parent_tool_use_id).toBe("parent-tool-1");
   });
 
   test("emitResult includes total_cost_usd for budget tracker", () => {

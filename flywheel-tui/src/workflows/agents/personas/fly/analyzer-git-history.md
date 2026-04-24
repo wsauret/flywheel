@@ -1,9 +1,20 @@
 ---
 name: analyzer-git-history
 description: Analyze git history to understand code evolution, trace origins of patterns, identify contributors, and extract development insights. Documentarian mode - no suggestions.
-model: sonnet
-tools: [Bash, Read, Grep, Glob]
-skills: [flywheel-conventions]
+tier: mid
+claude:
+  tools:
+    - Bash
+    - Read
+    - Grep
+    - Glob
+  skills:
+    - flywheel-conventions
+harness:
+  tools:
+    - bash
+    - read
+    - text_search
 ---
 
 **Note: The current year is 2026.** Use this when interpreting commit dates and recent changes.

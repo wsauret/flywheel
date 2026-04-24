@@ -1,5 +1,7 @@
 import type { NDJSONEvent, UserEventToolResult } from "../../../infra/ndjson-event-types.js";
 import type { ToolAction } from "../../../infra/workflow-types.js";
+import type { AuthContext } from "../../../infra/auth/auth-context.js";
+import type { AgentDefinition } from "../providers/harness/agent-loader.js";
 
 interface EngineParityMetadata {
   resumeMode: "provider_session" | "local_transcript";
@@ -55,6 +57,14 @@ export interface RunnerOptions {
   toolActions?: ReadonlyArray<ToolAction>;
   /** Provider-native tool restriction kept for low-level callers. */
   tools?: ReadonlyArray<string>;
+  /**
+   * Harness-native tool names (e.g. "read", "bash", "edit") when the caller
+   * already knows which tools to enable. Used by the subagent runner so it
+   * can honor an agent's declared `tools: [...]` list without round-tripping
+   * through the CLI-name or ToolAction resolver. Preferred by callers that
+   * already speak harness semantics.
+   */
+  engineToolNames?: ReadonlyArray<string>;
   cwd: string;
   /** Called for each event the engine produces (NDJSONEvent objects). */
   onEvent: (event: NDJSONEvent) => void;
@@ -75,6 +85,53 @@ export interface RunnerOptions {
    * `--settings <json>`. Used to register per-session hooks.
    */
   claudeSettings?: string;
+  /**
+   * Auth context resolved from config + environment. The harness engine needs this
+   * to pick the right access-provider (API key vs ChatGPT OAuth). Other engines
+   * may ignore it.
+   */
+  auth?: AuthContext;
+  // Queue access: the chat/workflow layer owns the queue so there is one
+  // source of truth for what is pending. Runner reads at turn boundaries.
+  takeNextQueued?: () => string | null;
+  hasQueuedInput?: () => boolean;
+  drainQueued?: () => string[];
+  /**
+   * Marks this runner as a nested (subagent) execution whose emitted events
+   * should be tagged with `parent_tool_use_id`. Harness-only. When present,
+   * `emitAssistant`, `emitToolResult`, `emitContentBlockDelta`, and
+   * `emitResult` attach this id so the TUI routes output to the subagent
+   * group rather than the top-level stream. User messages stay top-level.
+   */
+  parentToolUseId?: string;
+  /**
+   * Per-runner LLM call ceiling. When set, overrides the engine's default
+   * (harness default: DEFAULT_MAX_LLM_CALLS, 200 at the time of writing).
+   * Subagents pass `agent.maxTurns` here so each agent honors its own cap.
+   */
+  maxLLMCalls?: number;
+  /**
+   * Path resolver for the conversation JSONL file.
+   * String form: a literal path used verbatim.
+   * Function form: called with the runner's internal session UUID. Callers
+   * that require a stable, externally-determined path (e.g. subagent keyed
+   * on toolCallId) MUST ignore the `sessionId` argument and return their
+   * own path. The argument exists only to support callers that derive the
+   * path from the session ID.
+   * Omit to fall back to the engine default (`conversations/<sessionId>.jsonl`).
+   */
+  conversationPath?: string | ((sessionId: string) => string);
+  /**
+   * Pre-resolved agent registry. When supplied, the runner skips its own
+   * filesystem lookup. Subagents reuse the parent harness loop's registry
+   * so a nested run never rescans `~/.flywheel/agents`.
+   */
+  agentRegistry?: Map<string, AgentDefinition>;
+  /**
+   * Pre-resolved project instructions. When supplied, the runner skips
+   * `loadProjectInstructions(cwd)`. Subagents pass the parent's cached value.
+   */
+  projectInstructions?: string;
 }
 
 export interface EngineRunner {
@@ -86,6 +143,12 @@ export interface EngineRunner {
   end(): void;
   /** Abort current turn or entire execution. */
   abort(): void;
+  /**
+   * Remove and return any queued user inputs that have not yet been consumed.
+   * Used on interrupt to recover messages that would otherwise be lost when a
+   * new runner takes over. Engines without an internal queue can omit this.
+   */
+  drainPendingInputs?(): string[];
   /** Resolves when the runner has completed all processing. */
   readonly done: Promise<EngineResult>;
 }

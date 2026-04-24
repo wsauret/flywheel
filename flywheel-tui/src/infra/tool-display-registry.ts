@@ -213,6 +213,11 @@ const entries: Array<[string, ToolDisplayMeta]> = [
     category: "subagent",
     getDetail: agentDetail,
   }],
+  ["subagent", {
+    displayName: "Subagent",
+    category: "subagent",
+    getDetail: agentDetail,
+  }],
 
   ["askuserquestion", {
     displayName: "Ask User",

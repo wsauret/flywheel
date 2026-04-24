@@ -9,7 +9,6 @@ import { generateSessionTitle } from "./session-title.js"
 import { prepareWorkflowDeps } from "./engines/workflow-deps.js"
 import { createAskHookServer, type AskHookServer } from "./ask-hook/server.js"
 import { EventBus, createEmit } from "../infra/event-bus.js"
-import { randomUUID } from "node:crypto"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import type { SessionState } from "./session/types.js"
@@ -45,7 +44,6 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
 
   const eventBus = new EventBus()
   const emit = createEmit(eventBus)
-  const chatId = randomUUID()
 
   const infra = createSessionInfra({
     sessionId,
@@ -53,7 +51,7 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     config,
     description: "chat",
     emitter: emit,
-    workflowId: chatId,
+    workflowId: sessionId,
   })
 
   const outputPersistence = createOutputPersistence({ sessionId, baseDir: projectCwd })
@@ -66,10 +64,6 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
   let initialBlocks: AnyBlock[] = []
   if (deps.showWelcome && !priorBlocks) {
     initialBlocks = buildChatWelcomeBlocks(projectCwd)
-  }
-
-  const castUpdateEntry = (patch: Partial<SessionEntryBase>) => {
-    updateEntry(patch as Partial<ChatSessionEntry>)
   }
 
   const chatCallbacks: ChatCallbacks = {
@@ -86,7 +80,7 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
 
   const validationErrors = validateResolvedModels([
     { component: "chat", model, engineId: engine.metadata.id },
-  ])
+  ], workflowDeps.auth)
   if (validationErrors.length > 0) {
     const details = validationErrors.map(e => `  ${e.component} (${e.model}): ${e.issue}`).join("\n")
     throw new Error(`Model configuration errors:\n${details}`)
@@ -102,11 +96,12 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     projectCwd,
     engine,
     model,
+    auth: workflowDeps.auth,
     infra,
     eventBus,
-    chatId,
+    sessionId,
     metricsWriter: (patch) => updateEntry(patch as Partial<ChatSessionEntry>),
-    updateEntry: castUpdateEntry,
+    updateEntry: (patch) => updateEntry(patch as Partial<ChatSessionEntry>),
     priorBlocks,
     engineSessionId: deps.engineSessionId,
     askHookServer: askHookServer ?? undefined,
@@ -142,7 +137,7 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
           updateEntry({ description: title })
           deps.onSessionName?.(title)
         },
-        { engine: workflowDeps.engine, projectCwd, model },
+        { engine: workflowDeps.engine, auth: workflowDeps.auth, projectCwd, model },
       )
     }
 

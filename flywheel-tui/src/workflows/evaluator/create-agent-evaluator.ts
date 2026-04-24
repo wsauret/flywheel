@@ -12,10 +12,6 @@ import { parseRawHandoff } from "../queue/shared/handoff-parse.js";
 
 const log = Log.create({ service: "evaluator-agent-factory" });
 
-interface CreateAgentEvaluatorFnOptions {
-  transport: EvaluatorTransport;
-}
-
 function resultToEvalResult(result: EvaluatorResult): EvalResult {
   return {
     passed: result.passed,
@@ -28,11 +24,7 @@ function resultToEvalResult(result: EvaluatorResult): EvalResult {
   };
 }
 
-export function createAgentEvaluatorFn(
-  options: CreateAgentEvaluatorFnOptions,
-): EvaluatorFn {
-  const { transport } = options;
-
+export function createAgentEvaluatorFn(transport: EvaluatorTransport): EvaluatorFn {
   return async (
     step: Step,
     workerOutput: string,

@@ -57,6 +57,10 @@ interface NativeAddon {
   grep(options: GrepOptions): GrepResult;
 }
 
+// Process-global native-addon cache. The Node `.node` binding can only be
+// dlopen'd once per process, and its internal state is shared — threading this
+// through a factory would still produce the same singleton via require().
+// addonLoadError is sticky so we don't retry a broken binary each grep call.
 let addonCache: NativeAddon | null = null;
 let addonLoadError: string | null = null;
 

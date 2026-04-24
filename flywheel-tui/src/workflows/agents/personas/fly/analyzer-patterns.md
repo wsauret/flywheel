@@ -1,9 +1,18 @@
 ---
 name: analyzer-patterns
-description: "Extract code examples with context. Given file:line references from locator-patterns, reads and documents the patterns."
-model: sonnet
-tools: [Read, Grep, Glob]
-skills: [flywheel-conventions]
+description: Extract code examples with context. Given file:line references from locator-patterns, reads and documents the patterns.
+tier: mid
+claude:
+  tools:
+    - Read
+    - Grep
+    - Glob
+  skills:
+    - flywheel-conventions
+harness:
+  tools:
+    - read
+    - text_search
 ---
 
 # Pattern Analyzer Agent

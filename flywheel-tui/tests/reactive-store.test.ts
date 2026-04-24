@@ -13,22 +13,13 @@ import { createRoot, createMemo, createEffect } from "solid-js"
 import { createSessionStore } from "../src/orchestration/session-store"
 import type { SessionEntry, ChatStoreHandle } from "../src/orchestration/session-store-types"
 import type { ChatRunner } from "../src/orchestration/chat-runner"
-import type { WorkflowSessionFactories } from "../src/orchestration/session-store-types"
+import type { CreateWorkflowAdapter } from "../src/orchestration/session-store-types"
 
-/** Minimal mock factories for sessionStore tests. */
-const mockFactories: WorkflowSessionFactories = {
-  createStore: () => ({
-    startWorkflow: () => {},
-    subscribe: () => () => {},
-    subscribeExecution: () => () => {},
-  }),
-  createAdapter: () => ({
-    connect: () => {},
-    start: () => {},
-    stop: () => {},
-    disconnect: () => {},
-  }),
-}
+/** Minimal mock adapter factory for sessionStore tests. */
+const mockCreateAdapter: CreateWorkflowAdapter = () => ({
+  connect: () => {},
+  disconnect: () => {},
+})
 
 // ── Helpers ──
 
@@ -49,7 +40,7 @@ describe("Reactive SessionStore — store-backed", () => {
   it("get() returns a reactive proxy — memo tracks changes", async () => {
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const sessionStore = createSessionStore(mockFactories)
+        const sessionStore = createSessionStore(mockCreateAdapter)
         let capturedHandle: ChatStoreHandle | null = null
 
         await sessionStore.startChat({
@@ -78,7 +69,7 @@ describe("Reactive SessionStore — store-backed", () => {
   it("workflow entry has steps, chat entry does not (discriminated union)", async () => {
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const sessionStore = createSessionStore(mockFactories)
+        const sessionStore = createSessionStore(mockCreateAdapter)
 
         await sessionStore.startChat({
           sessionId: "chat-union-001",
@@ -99,7 +90,7 @@ describe("Reactive SessionStore — store-backed", () => {
   it("remove() deletes entry from store entirely", async () => {
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const sessionStore = createSessionStore(mockFactories)
+        const sessionStore = createSessionStore(mockCreateAdapter)
 
         await sessionStore.startChat({
           sessionId: "remove-001",
@@ -121,7 +112,7 @@ describe("Reactive SessionStore — store-backed", () => {
   it("mutations via store handle are visible to reactive consumers", async () => {
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const sessionStore = createSessionStore(mockFactories)
+        const sessionStore = createSessionStore(mockCreateAdapter)
         let capturedHandle: ChatStoreHandle | null = null
 
         await sessionStore.startChat({

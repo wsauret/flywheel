@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test";
+import { describe, it, expect, beforeEach, mock } from "bun:test";
 import type { OpenAIAuth } from "../src/infra/auth/openai-auth-types.js";
 import type { ModelsClient, ModelInfo } from "../src/orchestration/engines/providers/harness/llm/models.js";
 import type { LLMClient, StreamEvent } from "../src/orchestration/engines/providers/harness/llm/types.js";
@@ -245,32 +245,20 @@ describe("createOpenAIAdapter — ChatGPT mode", () => {
 
 describe("createClient — ChatGPT auth routing", () => {
   let createClient: typeof import("../src/orchestration/engines/providers/harness/llm/client-factory.js").createClient;
-  const savedEnv: Record<string, string | undefined> = {};
 
   beforeEach(async () => {
-    savedEnv["FLYWHEEL_OPENAI_AUTH"] = process.env["FLYWHEEL_OPENAI_AUTH"];
-    savedEnv["OPENAI_API_KEY"] = process.env["OPENAI_API_KEY"];
     const mod = await import("../src/orchestration/engines/providers/harness/llm/client-factory.js");
     createClient = mod.createClient;
   });
 
-  afterEach(() => {
-    if (savedEnv["FLYWHEEL_OPENAI_AUTH"] === undefined) delete process.env["FLYWHEEL_OPENAI_AUTH"];
-    else process.env["FLYWHEEL_OPENAI_AUTH"] = savedEnv["FLYWHEEL_OPENAI_AUTH"];
-    if (savedEnv["OPENAI_API_KEY"] === undefined) delete process.env["OPENAI_API_KEY"];
-    else process.env["OPENAI_API_KEY"] = savedEnv["OPENAI_API_KEY"];
-  });
-
-  it("existing behavior: requires OPENAI_API_KEY without FLYWHEEL_OPENAI_AUTH", () => {
-    delete process.env["FLYWHEEL_OPENAI_AUTH"];
-    delete process.env["OPENAI_API_KEY"];
-    expect(() => createClient("gpt-5.4", stubModelsClient())).toThrow("OPENAI_API_KEY");
+  it("existing behavior: requires OPENAI_API_KEY without chatgpt auth", () => {
+    const auth = { openaiAuth: "api_key" as const, anthropicApiKey: undefined, openaiApiKey: undefined };
+    expect(() => createClient("gpt-5.4", stubModelsClient(), auth)).toThrow("OPENAI_API_KEY");
   });
 
   it("existing behavior: works with OPENAI_API_KEY", () => {
-    delete process.env["FLYWHEEL_OPENAI_AUTH"];
-    process.env["OPENAI_API_KEY"] = "sk-test";
-    const client = createClient("gpt-5.4", stubModelsClient());
+    const auth = { openaiAuth: "api_key" as const, anthropicApiKey: undefined, openaiApiKey: "sk-test" };
+    const client = createClient("gpt-5.4", stubModelsClient(), auth);
     expect(client.accessProvider).toBe("openai_api");
     expect(client.modelFamily).toBe("openai");
   });
@@ -288,22 +276,25 @@ describe("validateResolvedModels — chatgpt auth exemption", () => {
     validateResolvedModels = mod.validateResolvedModels;
   });
 
-  it("skips OPENAI_API_KEY check when FLYWHEEL_OPENAI_AUTH=chatgpt in env", () => {
+  it("skips OPENAI_API_KEY check when openaiAuth is 'chatgpt'", () => {
     const models = [{ component: "worker", model: "gpt-5.4", engineId: "harness" }];
-    const errors = validateResolvedModels(models, { FLYWHEEL_OPENAI_AUTH: "chatgpt" });
+    const auth = { openaiAuth: "chatgpt" as const, anthropicApiKey: undefined, openaiApiKey: undefined };
+    const errors = validateResolvedModels(models, auth);
     expect(errors).toEqual([]);
   });
 
   it("still requires OPENAI_API_KEY without chatgpt auth", () => {
     const models = [{ component: "worker", model: "gpt-5.4", engineId: "harness" }];
-    const errors = validateResolvedModels(models, {});
+    const auth = { openaiAuth: "api_key" as const, anthropicApiKey: undefined, openaiApiKey: undefined };
+    const errors = validateResolvedModels(models, auth);
     expect(errors.length).toBe(1);
     expect(errors[0]!.issue).toContain("OPENAI_API_KEY");
   });
 
   it("still requires ANTHROPIC_API_KEY regardless of chatgpt auth", () => {
     const models = [{ component: "worker", model: "claude-sonnet-4-6", engineId: "harness" }];
-    const errors = validateResolvedModels(models, { FLYWHEEL_OPENAI_AUTH: "chatgpt" });
+    const auth = { openaiAuth: "chatgpt" as const, anthropicApiKey: undefined, openaiApiKey: undefined };
+    const errors = validateResolvedModels(models, auth);
     expect(errors.length).toBe(1);
     expect(errors[0]!.issue).toContain("ANTHROPIC_API_KEY");
   });

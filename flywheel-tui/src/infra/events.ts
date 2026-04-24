@@ -30,6 +30,6 @@ export type FlywheelEvent =
   | Ev<"queue:step-failed", { stepId: string; stepType: string; stepTitle: string; reason: string }>
   | Ev<"trace:tool-started", { toolUseId: string; toolName: string; toolInput: string }>
   | Ev<"trace:tool-completed", { toolUseId: string; toolOutput: string; isError: boolean }>
-  | Ev<"trace:subagent-started", { toolUseId: string; agentType: string; description: string; prompt: string }>
+  | Ev<"trace:subagent-started", { toolUseId: string; agentType: string; description: string; prompt: string; model: string }>
   | Ev<"trace:subagent-completed", { toolUseId: string; result: string; isError: boolean }>;
 

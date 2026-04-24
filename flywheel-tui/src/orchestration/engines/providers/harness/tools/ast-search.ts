@@ -91,17 +91,19 @@ async function searchFile(filePath: string, patternStr: string, lang: Lang): Pro
   });
 }
 
-async function walkFiles(dir: string, lang: Lang): Promise<string[]> {
+async function walkFiles(dir: string, lang: Lang, signal?: AbortSignal): Promise<string[]> {
   const extensions = LANG_EXTENSIONS[lang];
   if (!extensions) return [];
 
   const result: string[] = [];
 
   async function walk(currentDir: string): Promise<void> {
+    if (signal?.aborted) return;
     let names: string[];
     try { names = await fs.readdir(currentDir); }
     catch { return; }
     for (const name of names) {
+      if (signal?.aborted) return;
       if (SKIP_DIRS.has(name)) continue;
       const fullPath = join(currentDir, name);
       let stat: Awaited<ReturnType<typeof fs.stat>>;
@@ -124,13 +126,15 @@ function createAstSearchDefinition(): ToolDefinition {
   return {
     name: "ast_search",
     description:
-      "Search code using structural AST patterns via ast-grep. Use this when syntax shape matters " +
-      "more than raw text — e.g. finding all function declarations, specific import patterns, or " +
-      "class shapes. Metavariables: $NAME captures a single node, $$$ARGS captures zero or more " +
-      "(variadic). Example: \"function $NAME($$$ARGS) { $$$BODY }\" matches all function declarations " +
-      "and captures the name, arguments, and body. " +
-      "Use text_search instead when looking for exact strings, identifiers, or regex patterns. " +
-      "Defaults to TypeScript for directory searches.",
+      "Structural code search via ast-grep — matches AST shape, not text. Use when regex can't " +
+      "express what you need: distinguishing `function foo` from `const foo = () =>`, matching any " +
+      "method call on an object (`logger.$_($$$ARGS)`), capturing parts of a match for reuse, or " +
+      "finding imports without false-matches in strings/comments. " +
+      "Pattern syntax: $NAME captures one node, $$$ARGS captures zero or more (variadic), $_ is a " +
+      "wildcard. Examples: `function $NAME($$$ARGS) { $$$BODY }` (all fn decls), " +
+      "`const $NAME = ($$$ARGS) => $BODY` (all arrow fns), `import { $$$IMPORTS } from \"react\"`. " +
+      "If a regex works, prefer text_search — simpler and faster. Empty results usually mean the " +
+      "pattern isn't a single valid AST node; wrap in parseable context. Defaults to TypeScript.",
     input_schema: {
       type: "object",
       properties: {
@@ -182,8 +186,9 @@ function createAstSearchDefinition(): ToolDefinition {
           allMatches.push(...matches);
         } else if (stat.isDirectory()) {
           if (!lang) lang = Lang.TypeScript;
-          const files = await walkFiles(searchPath, lang);
+          const files = await walkFiles(searchPath, lang, context.signal);
           for (const file of files) {
+            if (context.signal?.aborted) return { content: "Aborted by user.", isError: true };
             if (allMatches.length >= MAX_MATCHES) break;
             try {
               const matches = await searchFile(file, patternStr, lang);

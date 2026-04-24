@@ -1,39 +1,30 @@
+import { createSignal, type Accessor } from "solid-js"
 import { createChatRunner } from "./chat-runner.js"
-import { createOutputPersistence } from "./session/output-persistence.js"
-import { readSession, updateSession } from "./session/persistence.js"
-import { computeContextPercent } from "./session/budget-tracker-types.js"
+import { updateSession } from "./session/persistence.js"
 import { errorMessage as extractErrorMessage } from "../infra/error-message.js"
 import { Log } from "../infra/log.js"
 import type { ChatStoreHandle, SessionStore, ChatSessionEntry } from "./session-store-types.js"
 import type { SessionManager } from "./session/manager.js"
 import type { AnyBlock } from "../infra/output-blocks.js"
-import type { RunnerDoneResult, RunnerErrorResult } from "./session/types.js"
 
 interface ChatControllerDeps {
   sessionStore: SessionStore
   manager: SessionManager
   projectCwd: string
-  onRunnerDone?: (id: string, result: RunnerDoneResult) => void
-  onRunnerError?: (id: string, result: RunnerErrorResult) => void
-}
-
-interface StartChatResult {
-  sessionId: string
-}
-
-interface ResumeChatResult {
-  sessionId: string
-  priorBlocks: AnyBlock[]
+  onRunnerDone?: (id: string) => void
+  onRunnerError?: (id: string, errorMessage: string) => void
 }
 
 interface ChatController {
-  startChat(initialMessage?: string): Promise<StartChatResult | null>
-  resumeChat(sessionId: string): Promise<ResumeChatResult | null>
+  /** True during the async startup window — from the first launchChat call
+   *  until the session-store entry exists (or startup fails). Reactive so the
+   *  shell can render "in chat" while the sessionStore entry is still being built. */
+  isStarting: Accessor<boolean>
+  startChat(initialMessage?: string): Promise<string | null>
   endChat(foregroundId: string | undefined): Promise<boolean>
   backgroundChat(foregroundId?: string): Promise<void>
   interruptChat(foregroundId: string | undefined): void
   sendMessage(foregroundId: string | undefined, text: string): boolean
-  sendToolResult(foregroundId: string | undefined, toolUseId: string, content: string, isError?: boolean): boolean
   answerQuestion(foregroundId: string | undefined, toolUseId: string, answers: Record<string, string>): boolean
   cancelQuestion(foregroundId: string | undefined, toolUseId: string): boolean
 }
@@ -48,6 +39,7 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
   const { sessionStore, manager, projectCwd } = deps
 
   let startup: StartupState = { phase: "idle" }
+  const [isStarting, setIsStarting] = createSignal(false)
   let isFirstChat = true
   const emptyChats = new Set<string>()
 
@@ -75,9 +67,10 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
       startedAt?: number
       contextPercent?: number
     },
-  ): Promise<{ sessionId: string } | null> {
+  ): Promise<boolean> {
     const priorPending = (startup.phase === "starting" && startup.id === sessionId) ? startup.pending : []
     startup = { phase: "starting", id: sessionId, pending: priorPending }
+    setIsStarting(true)
 
     try {
       await sessionStore.startChat({
@@ -90,11 +83,11 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
         contextPercent: opts?.contextPercent,
         onRunnerDone: (id) => {
           finalizeChat(id)
-          deps.onRunnerDone?.(id, {})
+          deps.onRunnerDone?.(id)
         },
         onRunnerError: (id, err) => {
           finalizeChat(id)
-          deps.onRunnerError?.(id, { errorMessage: extractErrorMessage(err) })
+          deps.onRunnerError?.(id, extractErrorMessage(err))
         },
         createRunner: (storeHandle: ChatStoreHandle) =>
           createChatRunner({
@@ -114,51 +107,35 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
 
       const pendingMessages = startup.phase === "starting" ? startup.pending : []
       startup = { phase: "idle" }
+      setIsStarting(false)
       isFirstChat = false
 
       for (const msg of pendingMessages) {
         sessionStore.injectMessage(sessionId, msg)
       }
 
-      return { sessionId }
+      return true
     } catch (err) {
       log.warn("launchChat failed", { sessionId, error: extractErrorMessage(err) })
       startup = { phase: "idle" }
-      return null
+      setIsStarting(false)
+      return false
     }
   }
 
-  async function startChat(initialMessage?: string): Promise<StartChatResult | null> {
+  async function startChat(initialMessage?: string): Promise<string | null> {
     const sessionId = manager.create("chat", "Chat", "chat", "active")
-    const result = await launchChat(sessionId, { initialMessage })
-    if (!result) {
+    if (!(await launchChat(sessionId, { initialMessage }))) {
       try { manager.delete(sessionId) } catch { /* best-effort */ }
       return null
     }
     if (!initialMessage?.trim()) emptyChats.add(sessionId)
-    return { sessionId: result.sessionId }
-  }
-
-  async function resumeChat(sessionId: string): Promise<ResumeChatResult | null> {
-    const priorBlocks: AnyBlock[] = await createOutputPersistence({ sessionId, baseDir: projectCwd }).load()
-    const p = readSession(sessionId, projectCwd)
-    const bu = p?.budgetUsage
-    manager.updateState(sessionId, "active")
-    const result = await launchChat(sessionId, {
-      priorBlocks: priorBlocks.length > 0 ? priorBlocks : undefined,
-      engineSessionId: p?.kind === "chat" ? p.engineSessionId : undefined,
-      description: p?.label || p?.name || undefined,
-      initialCost: p?.totalCost || bu?.cost_usd || undefined,
-      initialTokens: bu?.tokens_used || undefined,
-      startedAt: p?.createdAt ? new Date(p.createdAt).getTime() : undefined,
-      contextPercent: computeContextPercent(bu?.context_prompt_tokens ?? 0, bu?.context_window ?? 0) || undefined,
-    })
-    if (!result) return null
-    return { sessionId: result.sessionId, priorBlocks }
+    return sessionId
   }
 
   async function backgroundChat(foregroundId?: string): Promise<void> {
     startup = { phase: "idle" }
+    setIsStarting(false)
     if (foregroundId && emptyChats.has(foregroundId)) {
       finalizeChat(foregroundId)
       await sessionStore.remove(foregroundId)
@@ -172,6 +149,7 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
 
     if (startup.phase === "starting" && startup.id === foregroundId) {
       startup = { phase: "idle" }
+      setIsStarting(false)
     }
 
     finalizeChat(foregroundId)
@@ -202,6 +180,7 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
     }).catch((err) => {
       log.error("chat auto-resume failed — message dropped", { error: extractErrorMessage(err) })
       startup = { phase: "idle" }
+      setIsStarting(false)
     })
   }
 
@@ -235,11 +214,6 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
     return false
   }
 
-  function sendToolResult(foregroundId: string | undefined, toolUseId: string, content: string, isError?: boolean): boolean {
-    if (!foregroundId) return false
-    return sessionStore.injectToolResult(foregroundId, toolUseId, content, isError)
-  }
-
   function answerQuestion(foregroundId: string | undefined, toolUseId: string, answers: Record<string, string>): boolean {
     if (!foregroundId) return false
     return sessionStore.answerQuestion(foregroundId, toolUseId, answers)
@@ -251,13 +225,12 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
   }
 
   return {
+    isStarting,
     startChat,
-    resumeChat,
     endChat,
     backgroundChat,
     interruptChat,
     sendMessage,
-    sendToolResult,
     answerQuestion,
     cancelQuestion,
   }

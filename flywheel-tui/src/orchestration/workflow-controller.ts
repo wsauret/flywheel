@@ -7,20 +7,14 @@ import { TEST_STEPS, setupTestFixture, buildTestQueue, createTestWorkdir } from 
 import type { WorkflowResult } from "./workflow-runner-types.js"
 import type { SessionStore } from "./session-store-types.js"
 import type { SessionManager, SessionSummary } from "./session/manager.js"
-import type { SessionActionDeps } from "./session-actions.js"
-import type { AnyBlock } from "../infra/output-blocks.js"
-import type {
-  RunnerDoneResult as BaseRunnerDoneResult,
-  RunnerErrorResult,
-  SessionState,
-} from "./session/types.js"
+import type { SessionState } from "./session/types.js"
 
 interface WorkflowControllerDeps {
   sessionStore: SessionStore
   manager: SessionManager
   foregroundId: () => string | undefined
-  onRunnerDone?: (id: string, result: RunnerDoneResult) => void
-  onRunnerError?: (id: string, result: RunnerErrorResult) => void
+  onRunnerDone?: (id: string, state: SessionState) => void
+  onRunnerError?: (id: string, errorMessage: string) => void
 }
 
 interface StartWorkflowResult {
@@ -34,23 +28,12 @@ interface StartTestStepResult {
   terminalTitle: string
 }
 
-interface ResumeWorkflowResult {
-  sessionId: string
-  priorBlocks: AnyBlock[]
-}
-
-interface RunnerDoneResult extends BaseRunnerDoneResult {
-  state: SessionState
-}
-
 interface WorkflowController {
   startWorkflow(command: string, description: string, chatContext?: string): StartWorkflowResult | { error: string }
   startTestStep(stepId?: string): StartTestStepResult | { error: string } | { info: string }
-  resumeWorkflow(sessionId: string): Promise<ResumeWorkflowResult | null>
   pause(foregroundId: string | undefined): boolean
   abort(foregroundId: string | undefined): void
-  handleResume(sessionIdArg?: string): Promise<ResumeWorkflowResult | null>
-  getActionDeps(): SessionActionDeps
+  handleResume(sessionIdArg?: string): Promise<string | null>
   isWorkflowSession(sessionId: string): boolean
   steerWorkflow(foregroundId: string | undefined, text: string): boolean
 }
@@ -61,12 +44,12 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
   function handleRunnerDone(id: string, result: WorkflowResult): void {
     const state: SessionState = result.completed ? "completed" : "paused"
     manager.updateState(id, state)
-    deps.onRunnerDone?.(id, { state })
+    deps.onRunnerDone?.(id, state)
   }
 
   function handleRunnerError(id: string, err: unknown): void {
     manager.updateState(id, "paused")
-    deps.onRunnerError?.(id, { errorMessage: extractErrorMessage(err) })
+    deps.onRunnerError?.(id, extractErrorMessage(err))
   }
 
   function startWorkflow(
@@ -145,14 +128,11 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
     return { sessionId, workdir: testWorkdir.path, terminalTitle }
   }
 
-  async function resumeWorkflow(
-    sessionId: string,
-  ): Promise<ResumeWorkflowResult | null> {
+  async function resumeWorkflow(sessionId: string): Promise<string | null> {
     const data = await loadResumeData(sessionId)
     if (!data) return null
 
     const description = data.session.name || data.session.label || ""
-
     manager.updateState(sessionId, "active")
 
     sessionStore.start({
@@ -164,10 +144,7 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
       onRunnerError: handleRunnerError,
     })
 
-    return {
-      sessionId,
-      priorBlocks: data.outputBlocks,
-    }
+    return sessionId
   }
 
   function pause(foregroundId: string | undefined): boolean {
@@ -184,24 +161,14 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
     sessionStore.abort(foregroundId)
   }
 
-  async function handleResume(
-    sessionIdArg?: string,
-  ): Promise<ResumeWorkflowResult | null> {
+  async function handleResume(sessionIdArg?: string): Promise<string | null> {
     let targetId = sessionIdArg
     if (!targetId) {
-      const actionDeps = getActionDeps()
-      const session = findResumableSession(actionDeps)
+      const session = findResumableSession(manager)
       if (!session) return null
       targetId = session.id
     }
     return resumeWorkflow(targetId)
-  }
-
-  function getActionDeps(): SessionActionDeps {
-    return {
-      manager,
-      activeSessionId: deps.foregroundId,
-    }
   }
 
   function isWorkflowSession(sessionId: string): boolean {
@@ -220,11 +187,9 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
   return {
     startWorkflow,
     startTestStep,
-    resumeWorkflow,
     pause,
     abort,
     handleResume,
-    getActionDeps,
     isWorkflowSession,
     steerWorkflow,
   }

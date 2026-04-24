@@ -1,4 +1,5 @@
 import type { ModelFamily } from "./model-family.js";
+import type { AuthContext } from "../../../../../infra/auth/auth-context.js";
 
 export type AccessProviderId = "anthropic_api" | "chatgpt" | "openai_api";
 
@@ -6,7 +7,7 @@ interface AccessProviderDefinition {
   id: AccessProviderId;
   supportedFamilies: readonly ModelFamily[];
   configHints: readonly string[];
-  isConfigured: (env: Record<string, string | undefined>) => boolean;
+  isConfigured: (auth: AuthContext) => boolean;
 }
 
 const ACCESS_PROVIDER_DEFINITIONS: readonly AccessProviderDefinition[] = [
@@ -14,19 +15,19 @@ const ACCESS_PROVIDER_DEFINITIONS: readonly AccessProviderDefinition[] = [
     id: "anthropic_api",
     supportedFamilies: ["anthropic"],
     configHints: ["ANTHROPIC_API_KEY"],
-    isConfigured: (env) => !!env["ANTHROPIC_API_KEY"],
+    isConfigured: (auth) => !!auth.anthropicApiKey,
   },
   {
     id: "chatgpt",
     supportedFamilies: ["openai"],
-    configHints: ["FLYWHEEL_OPENAI_AUTH=chatgpt"],
-    isConfigured: (env) => env["FLYWHEEL_OPENAI_AUTH"] === "chatgpt",
+    configHints: ["openai_auth = \"chatgpt\" (or FLYWHEEL_OPENAI_AUTH=chatgpt)"],
+    isConfigured: (auth) => auth.openaiAuth === "chatgpt",
   },
   {
     id: "openai_api",
     supportedFamilies: ["openai"],
     configHints: ["OPENAI_API_KEY"],
-    isConfigured: (env) => !!env["OPENAI_API_KEY"],
+    isConfigured: (auth) => !!auth.openaiApiKey,
   },
 ];
 
@@ -36,10 +37,10 @@ function definitionsForFamily(family: ModelFamily): AccessProviderDefinition[] {
 
 export function getConfiguredAccessProvidersForFamily(
   family: ModelFamily,
-  env: Record<string, string | undefined> = process.env,
+  auth: AuthContext,
 ): AccessProviderId[] {
   return definitionsForFamily(family)
-    .filter((definition) => definition.isConfigured(env))
+    .filter((definition) => definition.isConfigured(auth))
     .map((definition) => definition.id);
 }
 

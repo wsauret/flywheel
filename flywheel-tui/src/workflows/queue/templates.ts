@@ -32,7 +32,7 @@ export function buildQueueFromTemplate(
       const steps: Step[] = [
         makeStep("work", "Execute work", {
           description,
-          toolScoping: { read: true, bash: true, write: true, edit: true, task: true },
+          toolScoping: { read: true, bash: true, write: true, edit: true, task: true, delegation: true },
         }),
       ];
       return createQueue(steps, queueOpts);
@@ -43,7 +43,7 @@ export function buildQueueFromTemplate(
         makeStep("work", "Execute sprint", {
           description,
           dispatcherHint: SPRINT_HINT,
-          toolScoping: { read: true, bash: true, write: true, edit: true, task: true },
+          toolScoping: { read: true, bash: true, write: true, edit: true, task: true, delegation: true },
           evaluationCriteria: buildSprintEvaluationCriteria(),
         }),
       ];

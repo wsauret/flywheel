@@ -193,3 +193,24 @@ describe("buildHarnessSystemPrompt — model-family behavioral tuning", () => {
     expect(prompt).not.toContain("extended thinking");
   });
 });
+
+describe("buildHarnessSystemPrompt — subagent delegation", () => {
+  test("includes subagent section when subagent tool is available", () => {
+    const prompt = buildHarnessSystemPrompt({
+      orchestrationSystemPrompt: "",
+      model: "claude-sonnet-4-6[1m]",
+      availableTools: new Set(["bash", "read", "subagent"]),
+    });
+    expect(prompt).toContain("SUBAGENT DELEGATION");
+    expect(prompt).toContain("Terse prompts produce shallow results");
+  });
+
+  test("excludes subagent section when subagent tool is not available", () => {
+    const prompt = buildHarnessSystemPrompt({
+      orchestrationSystemPrompt: "",
+      model: "claude-sonnet-4-6[1m]",
+      availableTools: new Set(["bash", "read"]),
+    });
+    expect(prompt).not.toContain("SUBAGENT DELEGATION");
+  });
+});

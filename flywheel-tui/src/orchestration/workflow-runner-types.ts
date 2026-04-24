@@ -5,6 +5,13 @@ export type StepState = {
   durationMs?: number; startedAt?: number; completedAt?: number
 }
 
+// Optional-field shape is deliberate: the result is a *single* return value
+// constructed once at the end of workflow-runner.run() — never incrementally
+// spread-updated. Discriminating it would cascade `kind` through ~70 call
+// sites across session-store, workflow-controller, run-headless, ~60 tests,
+// and headless adapters, for a minor type-safety win where the only invariant
+// ("completed ⇒ no reason") holds by construction in one function. Keeping
+// this shape flat is the more elegant tradeoff for the current surface area.
 export interface WorkflowResult {
   completed: boolean
   stepsCompleted: number

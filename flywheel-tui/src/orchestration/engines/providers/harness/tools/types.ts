@@ -20,6 +20,8 @@ export interface ToolContext {
   readFiles: Set<string>;
   /** Names of tools available in this session (for bash command interception). */
   availableTools?: ReadonlySet<string>;
+  /** Set per-call by executeTool — the tool_use block's ID from the LLM response. */
+  toolCallId?: string;
 }
 
 export interface TodoItem {

@@ -1,9 +1,17 @@
 ---
 name: locator-docs
-description: "Find WHERE documentation lives. Searches README, CLAUDE.md, docs/, and inline comments."
-model: haiku
-tools: [Grep, Glob, LS]
-skills: [flywheel-conventions]
+description: Find WHERE documentation lives. Searches README, CLAUDE.md, docs/, and inline comments.
+tier: cheap
+claude:
+  tools:
+    - Grep
+    - Glob
+    - LS
+  skills:
+    - flywheel-conventions
+harness:
+  tools:
+    - text_search
 ---
 
 Find WHERE documentation lives. Return paths only — no summaries, no suggestions.

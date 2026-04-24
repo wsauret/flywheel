@@ -126,7 +126,7 @@ describe("DispatcherDecisionSchema", () => {
       worker_config: workerConfig,
     });
     expect(result.worker_config).toEqual({
-      tool_scoping: { read: true, bash: true, write: true, edit: true, task: false },
+      tool_scoping: { read: true, bash: true, write: true, edit: true, task: false, delegation: false },
     });
   });
 
@@ -501,7 +501,7 @@ describe("WorkerConfigSchema", () => {
   it("round-trips valid data with task defaulting to false", () => {
     const result = WorkerConfigSchema.parse(valid);
     expect(result).toEqual({
-      tool_scoping: { read: true, bash: true, write: true, edit: true, task: false },
+      tool_scoping: { read: true, bash: true, write: true, edit: true, task: false, delegation: false },
     });
   });
 

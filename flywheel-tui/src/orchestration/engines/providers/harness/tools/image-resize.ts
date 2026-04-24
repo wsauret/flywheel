@@ -33,6 +33,8 @@ const QUALITY_STEPS = [85, 70, 55, 40] as const;
 const SCALE_STEPS = [1.0, 0.75, 0.5, 0.35, 0.25] as const;
 const VENDORED_SHARP_ENTRY = ["flywheel-runtime", "node_modules", "sharp", "lib", "index.js"] as const;
 
+// Process-global because sharp's native bindings are dlopen'd once per process.
+// Cached as a promise so concurrent callers await the single load in flight.
 let sharpFactoryPromise: Promise<SharpFactory | null> | undefined;
 
 function normalizeSharpModule(mod: unknown): SharpFactory | null {

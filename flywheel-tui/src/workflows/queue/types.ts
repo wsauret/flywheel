@@ -9,6 +9,8 @@
 //   Queue  — mutable, ordered list of steps for a session
 //   Workflow — named template that generates an initial queue
 
+import type { ToolScoping } from "../../infra/workflow-types.js";
+
 
 // StepStatus — lifecycle state of a single step
 
@@ -24,7 +26,10 @@ export type StepStatus =
 export interface Step {
   /** Unique identifier (UUID). */
   readonly id: string;
-  /** What kind of step this is. */
+  /** Step kind — the registry key for scaffolding and handoff layout.
+   *  Currently "work" is the only kind; other kinds (plan, review, research, …)
+   *  are reserved for ADR-003's planned step variants. The field is the discriminant
+   *  even though only one value is registered today. */
   readonly type: "work";
   /** Human-readable title for display. */
   readonly title: string;
@@ -40,7 +45,7 @@ export interface Step {
    *  Set by sprint hook on retry steps to keep the loop tight (worker → evaluator). */
   skipDispatcher?: boolean;
   /** Tool permission scoping for the worker. */
-  toolScoping?: { read: boolean; bash: boolean; write: boolean; edit: boolean; task: boolean };
+  toolScoping?: ToolScoping;
   /**
    * When true, the step worker can call AskUserQuestion and block on the user's
    * answer. Opt-in so most workflow steps remain autonomous. Set by step types

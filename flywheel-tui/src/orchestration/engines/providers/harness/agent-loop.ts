@@ -1,6 +1,7 @@
-// Self-contained agentic loop — no coupling to NDJSONEvent, EngineRunner, or the TUI.
+// Agent turn state machine: owns the stream/tool-execution loop end-to-end.
+// Peripheral concerns (nudge cadence, context compaction retry, summarization)
+// live in sibling modules to keep this file scoped to sequencing.
 
-import { errorMessage } from "../../../../infra/error-message.js";
 import { Log } from "../../../../infra/log.js";
 import type {
   LLMClient,
@@ -11,47 +12,20 @@ import type {
   ContentBlock,
 } from "./llm/types.js";
 import { ContextLengthExceededError, OutputLengthExceededError, RetryableStreamError } from "./llm/types.js";
-import { executeTool, getToolDefinitions } from "./tools/tool-dispatch.js";
-import { formatList as formatTodoList } from "./tools/todo-list.js";
-import type { ToolContext, TodoItem } from "./tools/types.js";
-import { limitOutput } from "./context/truncation.js";
+import { getToolDefinitions } from "./tools/tool-dispatch.js";
+import type { ToolContext, ToolDefinition, TodoItem } from "./tools/types.js";
 import { createTokenCounter } from "./context/token-counter.js";
 import { createSummarizer, unwindMessages } from "./context/summarizer.js";
-import { renderNextInput, applyHandoff } from "./agent-state.js";
-import type { NextInput, ToolResultEntry } from "./agent-state.js";
+import { appendTextBlock, renderToolResults } from "./agent-state.js";
+import { createNudgeInjector } from "./nudge-injector.js";
+import { runProactiveCompaction, runReactiveCompaction } from "./compaction-cycle.js";
+import { runBudgetExhaustTurn } from "./budget-exhaust.js";
+import { MAX_STREAM_RETRIES, streamRetryBackoff } from "./stream-retry.js";
+import { executeToolCallsParallel } from "./tool-execution.js";
 
 const log = Log.create({ service: "harness-agent-loop" });
 
-const TODO_NUDGE_AFTER_TURNS = 10;
-const TODO_NUDGE_COOLDOWN_TURNS = 10;
-const MAX_STREAM_RETRIES = 5;
-const TRANSIENT_RETRY_BASE_MS = 500;
-const RATE_LIMIT_MIN_MS = 5_000;
-const RATE_LIMIT_MAX_MS = 30_000;
-const DEFAULT_RETRY_BASE_MS = 1_000;
-const DEFAULT_RETRY_MAX_MS = 30_000;
-
-function streamRetryBackoff(attempt: number, err: RetryableStreamError): number {
-  switch (err.kind) {
-    case "transient":
-      return TRANSIENT_RETRY_BASE_MS + Math.random() * TRANSIENT_RETRY_BASE_MS;
-    case "rate_limit": {
-      const exponential = Math.min(RATE_LIMIT_MIN_MS * 2 ** (attempt - 1), RATE_LIMIT_MAX_MS);
-      return exponential + exponential * 0.2 * Math.random();
-    }
-    case "overload":
-    case "unknown":
-    default: {
-      const exponential = Math.min(DEFAULT_RETRY_BASE_MS * 2 ** (attempt - 1), DEFAULT_RETRY_MAX_MS);
-      return exponential + Math.random() * DEFAULT_RETRY_BASE_MS * 0.5;
-    }
-  }
-}
-
-function withTodoState(handoffText: string, items: ReadonlyArray<TodoItem>): string {
-  if (items.length === 0) return handoffText;
-  return `${handoffText}\n\n<todo_state>\nYour todo list is preserved across context recovery. Do not call todo_list(read) — here is the current state:\n${formatTodoList(items)}\n</todo_state>`;
-}
+const DEFAULT_MAX_LLM_CALLS = 200;
 
 interface AgentLoopOptions {
   client: LLMClient;
@@ -68,17 +42,23 @@ interface AgentLoopOptions {
   onTurnComplete?: () => void;
   onTurnAssistantMessage?: (content: ContentBlock[]) => void;
   reasoningEffort?: ReasoningEffort;
-  /** Shared queue of pending user inputs. The runner pushes via send();
-   *  the loop shifts at text-exit boundaries to continue as a new user turn. */
-  pendingUserInputs?: string[];
+  takeNextQueued?: () => string | null;
+  hasQueuedInput?: () => boolean;
   priorMessages?: Message[];
-  /** Called whenever a message is pushed to history — enables streaming persistence. */
-  onMessageAppended?: (message: Message) => void;
+  /** Called once per new message push. Prefer this over persistMessages when
+   *  provided — it appends one line vs rewriting the whole file. */
+  persistAppend?: (message: Message) => void;
+  /** Full-rewrite callback. Used for compaction (when the messages array is
+   *  replaced) and for in-place merges into the trailing user message. Also
+   *  serves as fallback when persistAppend is absent. */
+  persistMessages?: (messages: ReadonlyArray<Message>) => void;
   /** Default 200. */
   maxLLMCalls?: number;
   sessionId?: string;
   /** Restored from a previous session — lets providers resume server-side state. */
   previousResponseId?: string;
+  /** Dynamically created tools (e.g. subagent) injected by the runner. */
+  extraTools?: ReadonlyMap<string, ToolDefinition>;
 }
 
 type AgentLoopOutcome = "ok" | "context_overflow" | "budget_exhausted";
@@ -100,7 +80,9 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     reasoningEffort,
   } = options;
 
-  const tools = options.tools ?? getToolDefinitions();
+  const baseTools = options.tools ?? getToolDefinitions();
+  const extraToolDefs = options.extraTools ? Array.from(options.extraTools.values()) : [];
+  const tools = extraToolDefs.length > 0 ? [...baseTools, ...extraToolDefs] : baseTools;
   const toolDefs = tools.map(({ name, description, input_schema }) => ({ name, description, input_schema }));
 
   const messages: Message[] = options.priorMessages ? [...options.priorMessages] : [];
@@ -108,15 +90,22 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   const summarizer = createSummarizer(client);
   const todoList: TodoItem[] = [];
 
+  for (const m of messages) tokenCounter.addMessage(m);
+
   function pushMessage(message: Message): void {
     messages.push(message);
     tokenCounter.addMessage(message);
-    options.onMessageAppended?.(message);
+    if (options.persistAppend) {
+      options.persistAppend(message);
+    } else {
+      options.persistMessages?.(messages);
+    }
   }
 
-  // Seed token counter from resumed messages (counts happen via addMessage on push,
-  // so we pre-count the prior slice to keep totals accurate).
-  for (const m of messages) tokenCounter.addMessage(m);
+  function pushUser(content: string | ContentBlock[]): void {
+    options.onUserMessage?.(content);
+    pushMessage({ role: "user", content });
+  }
 
   const toolContext: ToolContext = {
     cwd,
@@ -127,14 +116,11 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     availableTools: new Set(tools.map((t) => t.name)),
   };
 
-  const maxLLMCalls = options.maxLLMCalls ?? 200;
+  const maxLLMCalls = options.maxLLMCalls ?? DEFAULT_MAX_LLM_CALLS;
   let llmCallCount = 0;
 
-  const hasTodoTool = tools.some((t) => t.name === "todo_list");
-  let turnsSinceTodoMutation = 0;
-  let turnsSinceTodoNudge = 0;
+  const nudge = createNudgeInjector();
 
-  let nextInput: NextInput = { kind: "initial", text: instruction };
   let contextOverflow = false;
   let previousResponseId: string | undefined = options.previousResponseId;
   let streamRetries = 0;
@@ -148,11 +134,37 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     if (lastApiPromptTokens > 0) {
       return lastApiPromptTokens + (tokenCounter.total - heuristicAtLastApiCall);
     }
-    // No API anchor yet (first call, or post-compaction). Estimate from
-    // the current messages array so compaction resets are reflected.
-    const fresh = createTokenCounter();
-    for (const m of messages) fresh.addMessage(m);
-    return fresh.total;
+    // No API anchor yet (first call, or post-compaction). tokenCounter is
+    // kept in sync with `messages` via pushMessage and the reset-on-compaction
+    // paths below, so we can read its total directly.
+    return tokenCounter.total;
+  }
+
+  // Loop invariant: `messages` ends on a user message whenever a stream call
+  // is about to happen. Every branch that reaches a stream call must restore
+  // this — seed, recovery paths, and tool turns all push a user message.
+  //
+  // On resume, priorMessages may already end on a user message (e.g., a
+  // tool_result turn the previous runner persisted before dying). A naive
+  // pushUser(instruction) would land two user messages in a row and break
+  // Anthropic's role-alternation rule, surfacing as a 400 "tool_use ids
+  // were found without tool_result blocks immediately after" error. Merge
+  // into the trailing user message instead so the tool_results still sit
+  // adjacent to the assistant(tool_use) that produced them.
+  const tail = messages[messages.length - 1];
+  if (tail && tail.role === "user") {
+    const existing: ContentBlock[] = typeof tail.content === "string"
+      ? [{ type: "text", text: tail.content }]
+      : [...tail.content];
+    existing.push({ type: "text", text: instruction });
+    messages[messages.length - 1] = { role: "user", content: existing };
+    tokenCounter.addMessage({ role: "user", content: [{ type: "text", text: instruction }] });
+    options.onUserMessage?.(instruction);
+    // This path replaces the last message in place, so append-mode would
+    // leave the prior trailing line orphaned on disk — use full rewrite.
+    options.persistMessages?.(messages);
+  } else {
+    pushUser(instruction);
   }
 
   for (;;) {
@@ -164,92 +176,51 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     const contextTokens = estimateContextTokens();
     if (messages.length > 0 && summarizer.shouldSummarize(contextTokens, client.contextLimit)) {
       log.info("proactive summarization triggered", { contextTokens, contextLimit: client.contextLimit });
-      const compactStart = Date.now();
-      onEvent({ kind: "compaction_start" });
-      try {
-        if (nextInput.kind === "initial") {
-          options.pendingUserInputs?.unshift(nextInput.text);
-          log.info("preserved user message before compaction");
-        }
-        const handoff = await summarizer.summarize(messages, systemPrompt, cwd, signal);
-        if (handoff) {
-          applyHandoff(messages, handoff);
-          nextInput = { kind: "recovered", handoff: withTodoState(handoff.userPrompt, todoList) };
-          contextOverflow = true;
-          previousResponseId = undefined;
-          lastApiPromptTokens = 0;
-          heuristicAtLastApiCall = 0;
-        }
-        onEvent({ kind: "compaction_done", success: true, durationMs: Date.now() - compactStart });
-      } catch (err) {
-        onEvent({ kind: "compaction_done", success: false, durationMs: Date.now() - compactStart });
-        log.error("proactive summarization failed", {
-          error: errorMessage(err),
-        });
+      const result = await runProactiveCompaction({
+        summarizer, messages, systemPrompt, cwd, signal, todoList, onEvent,
+      });
+      if (result.applied) {
+        contextOverflow = true;
+        previousResponseId = undefined;
+        lastApiPromptTokens = 0;
+        heuristicAtLastApiCall = 0;
+        tokenCounter.resetFor(messages);
+        // Handoff replaced the messages array — sync disk with the new state.
+        options.persistMessages?.(messages);
+        if (result.promptToInject != null) pushUser(result.promptToInject);
       }
     }
-
-    const userPrompt = renderNextInput(nextInput);
-    options.onUserMessage?.(userPrompt);
-
-    if (nextInput.kind === "observation" && Array.isArray(userPrompt)) {
-      const budgetLine = `[Budget: ${llmCallCount}/${maxLLMCalls} calls used, ${maxLLMCalls - llmCallCount} remaining]`;
-      userPrompt.push({ type: "text", text: budgetLine });
-
-      const inProgress = hasTodoTool
-        ? toolContext.todoList.find((t) => t.status === "in_progress")
-        : undefined;
-      if (
-        inProgress &&
-        turnsSinceTodoMutation >= TODO_NUDGE_AFTER_TURNS &&
-        turnsSinceTodoNudge >= TODO_NUDGE_COOLDOWN_TURNS
-      ) {
-        userPrompt.push({ type: "text", text:
-          `[Todo: "${inProgress.content}" is still in_progress — if done, call todo_list(complete). The user is watching the progress bar.]`,
-        });
-        turnsSinceTodoNudge = 0;
-      }
-    }
-
-    const turnMessages: Message[] = [...messages, { role: "user", content: userPrompt }];
-
-    let assistantContent: ContentBlock[] = [];
-    let toolCalls: ToolCall[] = [];
-    let stopReason = "";
 
     if (llmCallCount >= maxLLMCalls) {
       log.info("budget exhausted", { llmCallCount, maxLLMCalls });
-
-      const exhaustionMessage = `Budget exhausted (${maxLLMCalls} LLM calls used). Provide a final summary of progress and remaining work.`;
-      pushMessage({ role: "user", content: exhaustionMessage });
-
-      const finalStream = client.streamWithTools({
-        messages: [...messages],
-        tools: [],
-        systemPrompt,
-        reasoningEffort,
-        signal,
-        previousResponseId,
+      pushUser(`Budget exhausted (${maxLLMCalls} LLM calls used). Provide a final summary of progress and remaining work.`);
+      const { finalContent, previousResponseId: nextId } = await runBudgetExhaustTurn({
+        client, messages, systemPrompt, reasoningEffort, signal, previousResponseId, onEvent,
       });
-
-      const finalContent: ContentBlock[] = [];
-      for await (const event of finalStream) {
-        onEvent(event);
-        if (event.kind === "text_delta") {
-          appendTextBlock(finalContent, event.text);
-        }
-        if (event.kind === "done" && event.responseId) {
-          previousResponseId = event.responseId;
-        }
-      }
-
+      previousResponseId = nextId;
       if (finalContent.length > 0) {
         options.onTurnAssistantMessage?.(finalContent);
         pushMessage({ role: "assistant", content: finalContent });
       }
-
       return { outcome: "budget_exhausted", previousResponseId };
     }
+
+    // Decorate the last user message with nudges for THIS request only.
+    // The on-disk log stays clean so retries and resumes don't accumulate duplicates.
+    let turnMessages: Message[] = messages;
+    const last = messages[messages.length - 1];
+    if (last?.role === "user" && Array.isArray(last.content)) {
+      const augmented = nudge.decorate(last.content, {
+        llmCalls: llmCallCount,
+        maxCalls: maxLLMCalls,
+        todoList: toolContext.todoList,
+      });
+      turnMessages = [...messages.slice(0, -1), { ...last, content: augmented }];
+    }
+
+    let assistantContent: ContentBlock[] = [];
+    let toolCalls: ToolCall[] = [];
+    let stopReason = "";
 
     try {
       llmCallCount++;
@@ -314,42 +285,33 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       }
     } catch (err) {
       if (err instanceof ContextLengthExceededError) {
-        log.warn("context length exceeded, attempting recovery", { contextTokens: estimateContextTokens(), contextLimit: client.contextLimit });
-        const compactStart = Date.now();
-        onEvent({ kind: "compaction_start" });
-        if (nextInput.kind === "initial") {
-          options.pendingUserInputs?.unshift(nextInput.text);
-          log.info("preserved user message before context recovery");
-        }
+        log.warn("context length exceeded, attempting recovery", {
+          contextTokens: estimateContextTokens(),
+          contextLimit: client.contextLimit,
+        });
         contextOverflow = true;
         previousResponseId = undefined;
         lastApiPromptTokens = 0;
         heuristicAtLastApiCall = 0;
         unwindMessages(messages, client.contextLimit);
-        try {
-          const handoff = await summarizer.summarize(messages, systemPrompt, cwd, signal);
-          if (handoff) {
-            applyHandoff(messages, handoff);
-            nextInput = { kind: "recovered", handoff: withTodoState(handoff.userPrompt, todoList) };
-          } else {
-            nextInput = { kind: "recovered", handoff: withTodoState(instruction, todoList) };
-          }
-          onEvent({ kind: "compaction_done", success: true, durationMs: Date.now() - compactStart });
-        } catch (compactErr) {
-          onEvent({ kind: "compaction_done", success: false, durationMs: Date.now() - compactStart });
-          throw compactErr;
-        }
+        const result = await runReactiveCompaction({
+          summarizer, messages, systemPrompt, cwd, signal, todoList, onEvent,
+          fallbackInstruction: instruction,
+        });
+        tokenCounter.resetFor(messages);
+        // Handoff (and/or unwind) rewrote the messages array — sync disk.
+        options.persistMessages?.(messages);
+        if (result.promptToInject != null) pushUser(result.promptToInject);
         continue;
       }
 
       if (err instanceof OutputLengthExceededError) {
         log.warn("output length exceeded, auto-resuming");
-        pushMessage({ role: "user", content: userPrompt });
         if (err.truncatedContent) {
           pushMessage({ role: "assistant", content: err.truncatedContent });
           tokenCounter.addToolResult(err.truncatedContent);
         }
-        nextInput = { kind: "resume-truncation" };
+        pushUser("Your previous response was cut off at the output-length limit. Continue from where you stopped.");
         continue;
       }
 
@@ -369,76 +331,43 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
 
     streamRetries = 0;
 
-    pushMessage({ role: "user", content: userPrompt });
-
-    if (assistantContent.length > 0) {
-      options.onTurnAssistantMessage?.(assistantContent);
-      pushMessage({ role: "assistant", content: assistantContent });
-    }
-
+    // No tool calls: push the assistant reply and either continue with a
+    // pending user input or end the loop.
     if (toolCalls.length === 0) {
+      if (assistantContent.length > 0) {
+        options.onTurnAssistantMessage?.(assistantContent);
+        pushMessage({ role: "assistant", content: assistantContent });
+      }
       options.onTurnComplete?.();
-      if (options.pendingUserInputs && options.pendingUserInputs.length > 0) {
-        const next = options.pendingUserInputs.shift()!;
-        nextInput = { kind: "initial", text: next };
+      const nextQueued = options.takeNextQueued?.();
+      if (nextQueued != null) {
+        pushUser(nextQueued);
         continue;
       }
       log.info("no tool calls in response, completing", { stopReason });
       return { outcome: contextOverflow ? "context_overflow" : "ok", previousResponseId };
     }
 
-    const toolResults: ToolResultEntry[] = [];
-    const steeringAbort = new AbortController();
-    const toolSignal = signal
-      ? AbortSignal.any([signal, steeringAbort.signal])
-      : steeringAbort.signal;
-    const steeringContext: ToolContext = { ...toolContext, signal: toolSignal };
-
-    const settled = await Promise.allSettled(
-      toolCalls.map(async (tc) => {
-        if (steeringAbort.signal.aborted || signal?.aborted) return { tc, skipped: true as const };
-        try {
-          const result = await executeTool(tc.name, tc.input, steeringContext);
-          if (options.pendingUserInputs?.length && !steeringAbort.signal.aborted) {
-            steeringAbort.abort();
-          }
-          return { tc, skipped: false as const, result };
-        } catch (err) {
-          if (steeringAbort.signal.aborted || signal?.aborted) return { tc, skipped: true as const };
-          log.warn("tool execution threw", { tool: tc.name, error: errorMessage(err) });
-          throw err;
-        }
-      }),
-    );
-
-    let todoMutated = false;
-    for (let i = 0; i < settled.length; i++) {
-      const entry = settled[i]!;
-      if (entry.status === "rejected") {
-        const tc = toolCalls[i]!;
-        const content = "Tool execution failed.";
-        onEvent({ kind: "tool_result", toolCallId: tc.id, content });
-        toolResults.push({ toolCallId: tc.id, content, isError: true });
-        continue;
-      }
-      const value = entry.value;
-      if (!value) continue;
-      if (value.skipped) {
-        const content = signal?.aborted ? "Interrupted by user." : "Skipped due to queued user message.";
-        onEvent({ kind: "tool_result", toolCallId: value.tc.id, content });
-        toolResults.push({ toolCallId: value.tc.id, content, isError: true });
-      } else {
-        const { text: content } = await limitOutput(value.result.content, undefined, cwd, options.sessionId);
-        onEvent({ kind: "tool_result", toolCallId: value.tc.id, content });
-        toolResults.push({ toolCallId: value.tc.id, content });
-        tokenCounter.addToolResult(content);
-        if (value.tc.name === "todo_list" && value.tc.input?.operation !== "read") todoMutated = true;
-      }
+    // Announce the assistant turn BEFORE tools execute so the render pipeline
+    // tracks tool_use ids before any tool_result (or nested subagent event)
+    // arrives. The messages array mutation is deferred to after tool execution
+    // so the on-disk log never shows an orphan tool_use if the process crashes
+    // mid-tool — the invariant "assistant(tool_use) is immediately followed by
+    // user(tool_result)" holds at every persistence boundary.
+    if (assistantContent.length > 0) {
+      options.onTurnAssistantMessage?.(assistantContent);
     }
 
+    const { toolResults, todoMutated } = await executeToolCallsParallel({
+      toolCalls, toolContext, signal, hasQueuedInput: options.hasQueuedInput,
+      extraTools: options.extraTools, cwd, sessionId: options.sessionId,
+      tokenCounter, onEvent,
+    });
+
+    for (const tc of toolCalls) nudge.onToolCall(tc.name);
+
     if (todoMutated) {
-      turnsSinceTodoMutation = 0;
-      turnsSinceTodoNudge = 0;
+      nudge.onTodoMutation();
       if (toolContext.todoList.length > 0) {
         onEvent({
           kind: "todo_state",
@@ -450,35 +379,21 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           })),
         });
       }
-    } else {
-      turnsSinceTodoMutation++;
-      turnsSinceTodoNudge++;
     }
 
-    if (signal?.aborted && toolResults.length > 0) {
-      const observationPrompt = renderNextInput({ kind: "observation", toolResults });
-      pushMessage({ role: "user", content: observationPrompt });
-      break;
+    // Persist assistant(tool_use) and user(tool_result) together — the render
+    // emit already happened before tool execution; here we only mutate the
+    // messages array so disk state stays consistent.
+    if (assistantContent.length > 0) {
+      pushMessage({ role: "assistant", content: assistantContent });
     }
+    pushUser(renderToolResults(toolResults));
 
-    if (options.pendingUserInputs && options.pendingUserInputs.length > 0) {
-      const observationPrompt = renderNextInput({ kind: "observation", toolResults });
-      pushMessage({ role: "user", content: observationPrompt });
-      const next = options.pendingUserInputs.shift()!;
-      nextInput = { kind: "initial", text: next };
-    } else {
-      nextInput = { kind: "observation", toolResults };
-    }
+    if (signal?.aborted) break;
+
+    const nextQueued = options.takeNextQueued?.();
+    if (nextQueued != null) pushUser(nextQueued);
   }
 
   return { outcome: contextOverflow ? "context_overflow" : "ok", previousResponseId };
-}
-
-function appendTextBlock(blocks: ContentBlock[], text: string): void {
-  const last = blocks[blocks.length - 1];
-  if (last?.type === "text") {
-    last.text += text;
-  } else {
-    blocks.push({ type: "text", text });
-  }
 }

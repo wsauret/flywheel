@@ -3,6 +3,12 @@ import { createHarnessEngine } from "../src/orchestration/engines/providers/harn
 import type { ModelsClient } from "../src/orchestration/engines/providers/harness/llm/models";
 import type { LLMClient } from "../src/orchestration/engines/providers/harness/llm/types";
 
+const testAuth = {
+  openaiAuth: "api_key" as const,
+  anthropicApiKey: "test-anthropic",
+  openaiApiKey: "test-openai",
+};
+
 describe("harness engine model passthrough", () => {
   function makeSpyEngine() {
     const receivedModels: string[] = [];
@@ -40,6 +46,7 @@ describe("harness engine model passthrough", () => {
       const { engine, receivedModels } = makeSpyEngine();
       const runner = engine.createRunner({
         model,
+        auth: testAuth,
         cwd: "/tmp",
         onEvent: () => {},
       });
@@ -52,6 +59,7 @@ describe("harness engine model passthrough", () => {
     const { engine, receivedModels } = makeSpyEngine();
     const runner = engine.createRunner({
       model: "gpt-4o",
+      auth: testAuth,
       cwd: "/tmp",
       onEvent: () => {},
     });
@@ -63,6 +71,7 @@ describe("harness engine model passthrough", () => {
     const { engine, receivedModels } = makeSpyEngine();
     const runner = engine.createRunner({
       model: "some-custom-model-v2",
+      auth: testAuth,
       cwd: "/tmp",
       onEvent: () => {},
     });

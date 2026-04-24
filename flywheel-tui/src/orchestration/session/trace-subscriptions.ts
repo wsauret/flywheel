@@ -1,9 +1,9 @@
 import type { EventBus, Unsubscribe } from "../../infra/event-bus.js";
-import type { SpanKind } from "../../infra/trace-types.js";
+import type { SpanKind, SpanStatus } from "../../infra/trace-types.js";
 
 interface TraceSpanOps {
   startSpan(kind: SpanKind, name: string, input?: unknown): string;
-  endSpan(spanId: string, output?: unknown, status?: "ok" | "error", error?: { message: string; code?: string }): void;
+  endSpan(spanId: string, output?: unknown, status?: SpanStatus, error?: { message: string; code?: string }): void;
   findOpenSpanByKind(kind: SpanKind): string | null;
   /** Reset the span stack to only contain the workflow span, then push a new step span. */
   resetStackForStep(workflowSpanId: string | null): void;
@@ -108,7 +108,7 @@ export function subscribeTraceEvents(bus: EventBus, ops: TraceSpanOps, workflowN
         agentType: event.agentType,
         description: event.description,
         prompt: event.prompt,
-        model: "",
+        model: event.model,
       });
       ops.setToolSpanId(event.toolUseId, spanId);
     }),

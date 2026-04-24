@@ -30,10 +30,14 @@ function resolveUnresolvedChildren(children: ToolEntry[]): ToolEntry[] {
 // (blocks, indexes, contextTracker, dirty flag). No natural seam exists —
 // splitting would require passing 5+ mutable fields through an interface,
 // creating more complexity than the single cohesive class.
+//
+// Why one dirty flag, not two: content and tool-group changes both invalidate
+// the same block snapshot. Separate flags were speculative granularity no
+// consumer used — onContentChange and onToolGroupChange were always set to
+// the same callback.
 export class StructuredOutputBuilder {
   private blocks: AnyBlock[] = [];
-  private contentDirty = false;
-  private toolDirty = false;
+  private dirty = false;
   private cachedSnapshot: AnyBlock[] = [];
 
   private agentIndexById = new Map<string, number>();
@@ -44,8 +48,7 @@ export class StructuredOutputBuilder {
   private thinkingStartedAt: number | null = null;
   private pendingThinkingRow: { agentId: string; childIndex: number } | null = null;
 
-  onContentChange: (() => void) | null = null;
-  onToolGroupChange: (() => void) | null = null;
+  onChange: (() => void) | null = null;
 
   constructor() {
     this.contextTracker = new ContextGroupTracker({
@@ -56,16 +59,10 @@ export class StructuredOutputBuilder {
     });
   }
 
-  private markContentDirty(): void {
-    if (this.contentDirty) return;
-    this.contentDirty = true;
-    this.onContentChange?.();
-  }
-
-  private markToolDirty(): void {
-    if (this.toolDirty) return;
-    this.toolDirty = true;
-    this.onToolGroupChange?.();
+  private markDirty(): void {
+    if (this.dirty) return;
+    this.dirty = true;
+    this.onChange?.();
   }
 
   get modelActivity(): ModelActivity { return this._modelActivity; }
@@ -78,7 +75,7 @@ export class StructuredOutputBuilder {
 
   notifyThinkingStarted(timestamp: number): void {
     this._modelActivity = "thinking";
-    this.markContentDirty();
+    this.markDirty();
     if (this.thinkingStartedAt === null) {
       this.thinkingStartedAt = timestamp;
     }
@@ -118,7 +115,7 @@ export class StructuredOutputBuilder {
     } else {
       this.insertBlock({ kind: "thinking", content: text, timestamp: blockTimestamp });
     }
-    this.markContentDirty();
+    this.markDirty();
   }
 
   pushUserMessage(text: string, timestamp: number, pending?: boolean, injected?: boolean): void {
@@ -138,16 +135,37 @@ export class StructuredOutputBuilder {
     } else {
       this.insertBlock(block);
     }
-    this.markContentDirty();
+    this.markDirty();
   }
 
-  resolvePendingMessages(): string[] {
+  // The queue of user inputs waiting for the agent is the sequence of
+  // userMessage blocks with pending=true. One source of truth; takeNextQueued
+  // / hasQueued / drainQueued are the only accessors.
+
+  takeNextQueued(): string | null {
+    const idx = this.blocks.findIndex(b => b.kind === "userMessage" && b.pending);
+    if (idx < 0) return null;
+    const [msg] = this.blocks.splice(idx, 1) as [UserMessageBlock];
+    const resolved = { ...msg, pending: false };
+    const todoIdx = this.blocks.findIndex(b => b.kind === "todoList");
+    if (todoIdx >= 0) this.blocks.splice(todoIdx, 0, resolved);
+    else this.blocks.push(resolved);
+    rebuildAgentIndex(this.blocks, this.agentIndexById);
+    this.todoBlockIndex = findTodoIndex(this.blocks);
+    this.markDirty();
+    return msg.content;
+  }
+
+  hasQueued(): boolean {
+    for (const b of this.blocks) if (b.kind === "userMessage" && b.pending) return true;
+    return false;
+  }
+
+  drainQueued(): string[] {
     const pendingIndices: number[] = [];
     for (let i = 0; i < this.blocks.length; i++) {
       const b = this.blocks[i];
-      if (b.kind === "userMessage" && b.pending) {
-        pendingIndices.push(i);
-      }
+      if (b.kind === "userMessage" && b.pending) pendingIndices.push(i);
     }
     if (pendingIndices.length === 0) return [];
 
@@ -159,15 +177,12 @@ export class StructuredOutputBuilder {
       texts.unshift(msg.content);
     }
     const todoIdx = this.blocks.findIndex(b => b.kind === "todoList");
-    if (todoIdx >= 0) {
-      this.blocks.splice(todoIdx, 0, ...resolved);
-    } else {
-      this.blocks.push(...resolved);
-    }
+    if (todoIdx >= 0) this.blocks.splice(todoIdx, 0, ...resolved);
+    else this.blocks.push(...resolved);
 
     rebuildAgentIndex(this.blocks, this.agentIndexById);
     this.todoBlockIndex = findTodoIndex(this.blocks);
-    this.markContentDirty();
+    this.markDirty();
     return texts;
   }
 
@@ -184,14 +199,14 @@ export class StructuredOutputBuilder {
       this.insertBlock({ kind: "text", content: text, timestamp });
     }
 
-    this.markContentDirty();
+    this.markDirty();
   }
 
   pushSystemMessage(message: string, timestamp: number): void {
     this.contextTracker.breakContextRun(timestamp);
     this.insertBlock({ kind: "system", message, timestamp });
     this.enforceBlocksCap();
-    this.markContentDirty();
+    this.markDirty();
   }
 
   pushTool(name: string, detail: string, timestamp: number, diff?: string, filetype?: string, content?: string, filePath?: string): number {
@@ -206,7 +221,7 @@ export class StructuredOutputBuilder {
     this.contextTracker.breakContextRun(timestamp);
     const idx = this.insertBlock(tool);
     this.enforceBlocksCap();
-    this.markToolDirty();
+    this.markDirty();
     return idx;
   }
 
@@ -218,7 +233,7 @@ export class StructuredOutputBuilder {
     const agent = this.blocks[agentIdx] as ToolGroupBlock;
     const childIndex = agent.children.length - 1;
     this.enforceBlocksCap();
-    this.markToolDirty();
+    this.markDirty();
     return { agentId, childIndex };
   }
 
@@ -236,7 +251,7 @@ export class StructuredOutputBuilder {
         rebuildAgentIndex(this.blocks, this.agentIndexById);
         this.todoBlockIndex = -1;
       }
-      this.markContentDirty();
+      this.markDirty();
       return;
     }
 
@@ -250,12 +265,12 @@ export class StructuredOutputBuilder {
     }
 
     this.enforceBlocksCap();
-    this.markContentDirty();
+    this.markDirty();
   }
 
   private appendToolToAgent(agentId: string, tool: ToolEntry): number {
     const result = appendToolToAgentChildren(this.blocks, this.agentIndexById, agentId, tool, AGENT_CHILDREN_CAP);
-    if (result >= 0) this.markToolDirty();
+    if (result >= 0) this.markDirty();
     return result;
   }
 
@@ -275,7 +290,7 @@ export class StructuredOutputBuilder {
     const idx = this.insertBlock(agent);
     this.agentIndexById.set(id, idx);
     this.enforceBlocksCap();
-    this.markToolDirty();
+    this.markDirty();
   }
 
   completeAgent(id: string, duration: number, description?: string, label?: string): void {
@@ -293,7 +308,7 @@ export class StructuredOutputBuilder {
       ...(description !== undefined ? { description } : {}),
       ...(label !== undefined ? { label } : {}),
     };
-    this.markToolDirty();
+    this.markDirty();
   }
 
   pauseAgent(id: string, duration: number, description?: string): void {
@@ -309,7 +324,7 @@ export class StructuredOutputBuilder {
       duration,
       ...(description !== undefined ? { description } : {}),
     };
-    this.markToolDirty();
+    this.markDirty();
   }
 
   errorAgent(id: string, message: string): void {
@@ -323,7 +338,7 @@ export class StructuredOutputBuilder {
       errorMessage: message,
       children: resolveUnresolvedChildren(agent.children),
     };
-    this.markToolDirty();
+    this.markDirty();
   }
 
   completeAgentChildTool(agentId: string, childIndex: number): void {
@@ -344,21 +359,21 @@ export class StructuredOutputBuilder {
     const updatedChildren = [...agent.children];
     updatedChildren[childIndex] = { ...child, ...patch };
     this.blocks[idx] = { ...agent, children: updatedChildren };
-    this.markToolDirty();
+    this.markDirty();
   }
 
   errorTool(blockIndex: number, message: string): void {
     const block = this.blocks[blockIndex];
     if (!block || block.kind !== "tool") return;
     this.blocks[blockIndex] = { ...block, errorMessage: message };
-    this.markToolDirty();
+    this.markDirty();
   }
 
   completeTool(blockIndex: number): void {
     const block = this.blocks[blockIndex];
     if (!block || block.kind !== "tool") return;
     this.blocks[blockIndex] = { ...block, completed: true };
-    this.markToolDirty();
+    this.markDirty();
   }
 
   pushQuestion(toolUseId: string, questions: QuestionEntry[], timestamp: number): number {
@@ -372,7 +387,7 @@ export class StructuredOutputBuilder {
     };
     const idx = this.insertBlock(block);
     this.enforceBlocksCap();
-    this.markContentDirty();
+    this.markDirty();
     return idx;
   }
 
@@ -390,7 +405,7 @@ export class StructuredOutputBuilder {
       if (block.kind !== "question" || block.toolUseId !== toolUseId) continue;
       if (block.answers !== undefined || block.cancelled) return;
       this.blocks[i] = { ...block, ...patch };
-      this.markContentDirty();
+      this.markDirty();
       return;
     }
   }
@@ -403,7 +418,7 @@ export class StructuredOutputBuilder {
     if (agent.status !== "active") return;
 
     this.blocks[idx] = { ...agent, latestChild: childDisplay };
-    this.markToolDirty();
+    this.markDirty();
   }
 
   closeOpenSubagents(timestamp: number): void {
@@ -430,26 +445,24 @@ export class StructuredOutputBuilder {
 
   flushContextRun(timestamp: number): void {
     this.contextTracker.breakContextRun(timestamp);
-    this.markToolDirty();
+    this.markDirty();
   }
 
   pauseContextRun(timestamp: number): void {
     this.contextTracker.pauseContextRun(timestamp);
-    this.markToolDirty();
+    this.markDirty();
   }
 
   getBlocks(): AnyBlock[] {
-    if (!this.contentDirty && !this.toolDirty) return this.cachedSnapshot;
-    this.contentDirty = false;
-    this.toolDirty = false;
+    if (!this.dirty) return this.cachedSnapshot;
+    this.dirty = false;
     this.cachedSnapshot = [...this.blocks];
     return this.cachedSnapshot;
   }
 
   reset(): void {
     this.blocks = [];
-    this.contentDirty = false;
-    this.toolDirty = false;
+    this.dirty = false;
     this.cachedSnapshot = [];
     this.agentIndexById.clear();
     this.todoBlockIndex = -1;
@@ -464,8 +477,7 @@ export class StructuredOutputBuilder {
     this.thinkingStartedAt = null;
     this.pendingThinkingRow = null;
     this.contextTracker.resetTracking();
-    this.markContentDirty();
-    this.markToolDirty();
+    this.markDirty();
     this.cachedSnapshot = [];
   }
 

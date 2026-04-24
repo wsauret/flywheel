@@ -7,7 +7,6 @@ import { useElapsed } from "@tui/shared/hooks/use-elapsed"
 import { useSpinnerFrame } from "@tui/shared/hooks/use-spinner-frame.js"
 import { CollapsibleBox } from "@tui/shared/components/collapsible-box"
 import { VerticalBarBorder } from "@tui/shared/ui/border"
-import { preventSelectionMouseDown } from "@tui/utils/mouse.js"
 import { formatElapsed } from "@infra/format.js"
 import type { ThinkingBlock as ThinkingBlockType } from "@infra/output-blocks"
 
@@ -82,24 +81,29 @@ export function ThinkingBlock(props: ThinkingBlockProps) {
       borderColor={theme.borderSubtle}
       flexDirection="column"
       customBorderChars={VerticalBarBorder}
-      onMouseDown={isLong() ? preventSelectionMouseDown(() => setExpanded(prev => !prev)) : undefined}
     >
-      <text
-        ref={(el: TextRenderable) => {
-          createEffect(() => {
-            const chunks: TextChunk[] = [
-              stItalic(stFg(theme.textMuted)("Thinking")),
-            ]
-            if (elapsed() >= 1000) {
-              chunks.push(stFg(theme.textMuted)(` ${formatElapsed(elapsed())}`))
-            }
-            if (isLong()) {
-              chunks.push(stFg(theme.textMuted)(` ${expanded() ? "\u25be" : `\u25b8 \u2026${lineCount()} lines`}`))
-            }
-            el.content = new StyledText(chunks)
-          })
-        }}
-      />
+      <box
+        selectable={false}
+        onMouseDown={isLong() ? () => setExpanded(prev => !prev) : undefined}
+      >
+        <text
+          selectable={false}
+          ref={(el: TextRenderable) => {
+            createEffect(() => {
+              const chunks: TextChunk[] = [
+                stItalic(stFg(theme.textMuted)("Thinking")),
+              ]
+              if (elapsed() >= 1000) {
+                chunks.push(stFg(theme.textMuted)(` ${formatElapsed(elapsed())}`))
+              }
+              if (isLong()) {
+                chunks.push(stFg(theme.textMuted)(` ${expanded() ? "\u25be" : `\u25b8 \u2026${lineCount()} lines`}`))
+              }
+              el.content = new StyledText(chunks)
+            })
+          }}
+        />
+      </box>
 
       <CollapsibleBox expanded={expanded()}>
         <code

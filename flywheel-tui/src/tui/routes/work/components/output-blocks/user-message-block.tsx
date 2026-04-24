@@ -6,7 +6,6 @@ import type { TextRenderable } from "@opentui/core"
 import { ITALIC } from "@tui/shared/ui/text-attributes"
 import { useTheme } from "@tui/shared/context/theme"
 import { VerticalBarBorder } from "@tui/shared/ui/border"
-import { preventSelectionMouseDown } from "@tui/utils/mouse.js"
 import type { UserMessageBlock as UserMessageBlockType } from "@infra/output-blocks"
 
 interface UserMessageBlockProps {
@@ -57,8 +56,9 @@ export function UserMessageBlock(props: UserMessageBlockProps) {
     }>
       {/* Injected message — collapsed by default */}
       <box flexDirection="column">
-        <box onMouseDown={preventSelectionMouseDown(() => setExpanded((v) => !v))}>
+        <box selectable={false} onMouseDown={() => setExpanded((v) => !v)}>
           <text
+            selectable={false}
             ref={(el: TextRenderable) => {
               createEffect(() => {
                 const chunks: TextChunk[] = [

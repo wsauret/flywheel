@@ -15,9 +15,7 @@ interface WorkflowAdapter {
   cancelQuestion?(toolUseId: string): void
 }
 
-export interface WorkflowSessionFactories {
-  createAdapter: (opts: { updateEntry: (patch: Partial<WorkflowSessionEntry>) => void; engineMetadata?: EngineMetadata }) => WorkflowAdapter
-}
+export type CreateWorkflowAdapter = (opts: { updateEntry: (patch: Partial<WorkflowSessionEntry>) => void; engineMetadata?: EngineMetadata }) => WorkflowAdapter
 
 export interface SessionEntryBase {
   readonly kind: SessionKind

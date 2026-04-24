@@ -23,9 +23,10 @@ const ToolScopingSchema = z.object({
   write: z.boolean(),
   edit: z.boolean(),
   task: z.boolean().default(false),
+  delegation: z.boolean().default(false),
 }).strip()
 
-type ToolScoping = z.infer<typeof ToolScopingSchema>
+export type ToolScoping = z.infer<typeof ToolScopingSchema>
 
 export type ToolAction =
   | "handoff_write"
@@ -36,6 +37,7 @@ export type ToolAction =
   | "file_edit"
   | "task_or_progress"
   | "ask_user"
+  | "task_delegation"
 
 const TOOL_SCOPING_TO_ACTIONS: Record<keyof ToolScoping, readonly ToolAction[]> = {
   read: ["file_read"],
@@ -43,6 +45,7 @@ const TOOL_SCOPING_TO_ACTIONS: Record<keyof ToolScoping, readonly ToolAction[]> 
   write: ["file_write"],
   edit: ["file_edit"],
   task: ["task_or_progress"],
+  delegation: ["task_delegation"],
 }
 
 export function toolScopingToActions(scoping: ToolScoping): ToolAction[] {

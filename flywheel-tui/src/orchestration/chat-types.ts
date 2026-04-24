@@ -1,4 +1,4 @@
-import type { EngineRunner } from "./engines/core/types.js"
+import type { RunnerContext } from "./runner-context.js"
 
 export interface ChatCallbacks {
   onWaiting: (waiting: boolean) => void
@@ -12,10 +12,19 @@ export interface WorkerLifecycle {
 
 type ChatTurnPhase = "idle" | "awaiting-response" | "agent-active"
 
-// Duplicates _ended and _engineSessionId from the store as synchronous
-// guards for chat-controls (send, interrupt, end) that can't await a store read.
+// Tracks chat-session lifecycle state that is distinct from the store:
+//   - _ended: "has chat-controls.end() been called?" (proactive, set before disposal).
+//     This is different from SessionEntryBase.ended which flips after the runner
+//     finishes disposal — they are correlated but set at different timepoints.
+//   - _engineSessionId: local cache of the engine's session ID for respawn on
+//     unexpected exit / prompt-too-long reset. The store also carries this field
+//     (written from the same EngineResult), but routing reads through the store
+//     would require threading a read accessor into ChatSessionDeps — a larger
+//     surface than the cache saves.
+// Both are written by chat-session itself; neither is set elsewhere, so they are
+// owned here, not copies of the store.
 export class ChatSessionState {
-  private _runner: EngineRunner | null = null
+  private _runner: RunnerContext | null = null
   private _ended = false
   private _engineSessionId: string | null
   private _turnPhase: ChatTurnPhase = "idle"
@@ -34,10 +43,10 @@ export class ChatSessionState {
   beginTurn() { this._turnPhase = "awaiting-response" }
   activateTurn() { this._turnPhase = "agent-active" }
   completeTurn() { this._turnPhase = "idle" }
-  markEnded() { this._ended = true }
+  end() { this._ended = true }
   markContextWarningFired() { this._contextWarningFired = true }
   captureSessionId(id: string) { this._engineSessionId = id }
   clearSessionId() { this._engineSessionId = null }
-  attachRunner(runner: EngineRunner) { this._runner = runner }
+  attachRunner(runner: RunnerContext) { this._runner = runner }
   detachRunner() { this._runner = null }
 }

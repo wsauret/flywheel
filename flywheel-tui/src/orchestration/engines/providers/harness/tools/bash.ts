@@ -12,13 +12,19 @@ export const DEFAULT_TIMEOUT_SEC = 120;
 export const MAX_TIMEOUT_SEC = 3600;
 const KILL_GRACE_MS = 5_000;
 
+// Editor/pager patterns anchor to command position (start of line or after a shell separator)
+// so identifiers like `vi.fn` or `vitest` inside inline scripts don't false-trigger.
+const CMD_POS = String.raw`(?:^|[;&|(\n])\s*`;
+const CMD_END = String.raw`(?:\s|$|[;&|)])`;
+
 const INTERACTIVE_COMMAND_PATTERNS: ReadonlyArray<{ match: RegExp; guidance: string }> = [
-  { match: /\b(vim|vi|nvim|nano|emacs|pico|ed)\b/, guidance: "editors can't run interactively -- use `cat > file <<EOF ... EOF` or `sed` for edits" },
-  { match: /\b(less|more|most)\b/, guidance: "use `cat`, `head`, or `tail` instead of a pager" },
-  { match: /\b(top|htop|btop|atop)\b/, guidance: "use `ps aux` or `ps -eo ...` for a one-shot process snapshot" },
+  { match: new RegExp(`${CMD_POS}(vim|nvim|nano|emacs|pico)${CMD_END}`), guidance: "editors can't run interactively -- use the `edit` tool for existing files, `write` for new files" },
+  { match: new RegExp(`${CMD_POS}(less|more|most)${CMD_END}`), guidance: "use the `read` tool instead of a pager" },
+  { match: new RegExp(`${CMD_POS}(top|htop|btop|atop)${CMD_END}`), guidance: "use `ps aux` or `ps -eo ...` for a one-shot process snapshot" },
   { match: /\bman\s+\S+/, guidance: "use `--help` on the command or read the manpage source if needed" },
   { match: /^\s*(python3?|ipython|node|ruby|irb|php|lua)(\s+-i)?\s*$/, guidance: "pass `-c 'code'` (or `-e`) to run inline, or write a script file and execute it" },
-  { match: /\b(telnet|ftp|nc\s+-l)\b/, guidance: "use non-interactive alternatives: `curl`, `wget`, `ncat --exec`" },
+  { match: new RegExp(`${CMD_POS}(telnet|ftp)${CMD_END}`), guidance: "use non-interactive alternatives: `curl`, `wget`, `ncat --exec`" },
+  { match: /\bnc\s+-l\b/, guidance: "use non-interactive alternatives: `curl`, `wget`, `ncat --exec`" },
 ];
 
 function checkInteractiveCommand(command: string): string | null {
@@ -71,6 +77,7 @@ export function createBashDefinition(options?: { operations?: BashOperations }):
       });
 
       let timedOut = false;
+      let aborted = false;
       let escalationTimer: ReturnType<typeof setTimeout> | undefined;
       const killTimer = setTimeout(() => {
         timedOut = true;
@@ -81,8 +88,23 @@ export function createBashDefinition(options?: { operations?: BashOperations }):
         }, KILL_GRACE_MS);
       }, timeoutSec * 1000);
 
+      let abortEscalationTimer: ReturnType<typeof setTimeout> | undefined;
+      const abortHandler = () => {
+        aborted = true;
+        log.info("bash aborted by signal, sending SIGTERM");
+        killProcessGroup(proc, "SIGTERM");
+        abortEscalationTimer = setTimeout(() => {
+          killProcessGroup(proc, "SIGKILL");
+        }, KILL_GRACE_MS);
+      };
+      if (context.signal) {
+        if (context.signal.aborted) abortHandler();
+        else context.signal.addEventListener("abort", abortHandler, { once: true });
+      }
+
       try {
         await proc.exited;
+        if (aborted) return { content: "Aborted by user.", isError: true };
         const rawOutput = await new Response(proc.stdout).text();
         const compressed = compressBashOutput(command, rawOutput.trim());
         const output = compressed.output;
@@ -101,6 +123,8 @@ export function createBashDefinition(options?: { operations?: BashOperations }):
       } finally {
         clearTimeout(killTimer);
         if (escalationTimer) clearTimeout(escalationTimer);
+        if (abortEscalationTimer) clearTimeout(abortEscalationTimer);
+        context.signal?.removeEventListener("abort", abortHandler);
       }
     } finally {
       try {

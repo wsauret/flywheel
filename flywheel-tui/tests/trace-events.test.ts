@@ -137,7 +137,7 @@ describe("Trace events — EventBus routing", () => {
     const received: FlywheelEvent[] = [];
     bus.subscribeToType("trace:subagent-started", (e) => received.push(e));
 
-    emit("trace:subagent-started", { workflowId: "wf-1", toolUseId: "toolu_456", agentType: "Task", description: "implement feature", prompt: "do the thing" });
+    emit("trace:subagent-started", { workflowId: "wf-1", toolUseId: "toolu_456", agentType: "Task", description: "implement feature", prompt: "do the thing", model: "" });
 
     expect(received).toHaveLength(1);
     const evt = received[0];
@@ -448,6 +448,7 @@ describe("TraceCollector — trace event subscriptions", () => {
       agentType: "Task",
       description: "implement feature",
       prompt: "build it",
+      model: "",
       timestamp: now(),
     });
     bus.emit({
@@ -476,6 +477,7 @@ describe("TraceCollector — trace event subscriptions", () => {
       agentType: "Task",
       description: "test",
       prompt: "run tests",
+      model: "",
       timestamp: now(),
     });
     bus.emit({

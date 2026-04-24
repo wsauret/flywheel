@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/knip/schema.json",
-  "entry": ["src/cli/index.ts", "src/cli/auth.ts"],
+  "entry": ["src/cli/index.ts", "src/cli/auth.ts", "tests/**/*.test.ts"],
   "project": ["src/**/*.{ts,tsx}"],
   "ignore": [
     "src-legacy/**",

@@ -257,18 +257,6 @@ describe("WorkflowController", () => {
     })
   })
 
-  describe("getActionDeps", () => {
-    it("returns SessionActionDeps with correct structure", () => {
-      const deps = createDeps()
-      const controller = createWorkflowController(deps)
-
-      const actionDeps = controller.getActionDeps()
-
-      expect(actionDeps.manager).toBe(deps.manager)
-      expect(typeof actionDeps.activeSessionId).toBe("function")
-    })
-  })
-
   describe("lifecycle callbacks", () => {
     it("onRunnerError callback is accepted in deps", () => {
       let capturedResult: any = null

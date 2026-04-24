@@ -55,6 +55,16 @@ const RULES: readonly InterceptRule[] = [
     tool: "write",
     message: 'Use the `write` tool instead of heredoc redirects. Example: write(file_path="...", content="...")',
   },
+  {
+    pattern: /^\s*(bun|node|deno)\s+(run\s+)?(-e|--eval|-p|--print)\b[\s\S]*(readFileSync|writeFileSync|readFile\s*\(|writeFile\s*\(|appendFileSync|Bun\.(file|write)\s*\()/,
+    tool: "edit",
+    message: "Inline scripts doing file I/O are disallowed. Use `read` + `edit` (or `write` for new files). An interactive command error is not a reason to reformulate the operation as a script.",
+  },
+  {
+    pattern: /^\s*python3?\s+-c\b[\s\S]*(open\s*\(|Path\s*\([^)]+\)\.(write_text|read_text|open)|shutil\.|os\.rename|os\.remove)/,
+    tool: "edit",
+    message: "Inline Python scripts doing file I/O are disallowed. Use `read` + `edit` (or `write` for new files).",
+  },
 ];
 
 export function interceptBashCommand(

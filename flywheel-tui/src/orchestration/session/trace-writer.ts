@@ -3,7 +3,7 @@ import * as path from "node:path";
 import { TRACES_DIR, ensureTracesDir, resolveTraceFile, resolveTranscriptFile } from "../../infra/paths.js";
 import { writeFileAtomic } from "../../infra/atomic-write.js";
 import { createBufferedFileWriter, DEFAULT_DEBOUNCE_MS } from "./buffered-file-writer.js";
-import type { Span } from "../../infra/trace-types.js";
+import type { Span, SpanStatus } from "../../infra/trace-types.js";
 
 interface TraceIndexEntry {
   traceId: string;
@@ -12,7 +12,7 @@ interface TraceIndexEntry {
   startTimeMs: number;
   endTimeMs: number;
   durationMs: number;
-  status: "ok" | "error";
+  status: SpanStatus;
   spanCount: number;
   closedSpanCount: number;
 }

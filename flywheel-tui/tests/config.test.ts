@@ -6,10 +6,11 @@ import {
   CONFIG_DEFAULTS,
   resolveTierConfigs,
 } from "../src/orchestration/config/schema";
-// Expected concrete model names for each family+tier.
-const A = { powerful: "claude-opus-4-6[1m]", mid: "claude-sonnet-4-6[1m]", cheap: "claude-haiku-4-5-20251001" };
-const O = { powerful: "gpt-5.4", mid: "gpt-5.3-codex", cheap: "gpt-5.4-mini" };
-const G = { powerful: "gemini-2.5-pro", mid: "gemini-2.5-flash", cheap: "gemini-2.5-flash-lite" };
+import { resolveModelForTier } from "../src/orchestration/config/model-tiers.js";
+// Derived from tier preferences so tests don't break when the list changes.
+const A = { powerful: resolveModelForTier("powerful", "anthropic"), mid: resolveModelForTier("mid", "anthropic"), cheap: resolveModelForTier("cheap", "anthropic") };
+const O = { powerful: resolveModelForTier("powerful", "openai"), mid: resolveModelForTier("mid", "openai"), cheap: resolveModelForTier("cheap", "openai") };
+const G = { powerful: resolveModelForTier("powerful", "google"), mid: resolveModelForTier("mid", "google"), cheap: resolveModelForTier("cheap", "google") };
 
 const FIXTURES_DIR = path.join(import.meta.dir, "fixtures");
 

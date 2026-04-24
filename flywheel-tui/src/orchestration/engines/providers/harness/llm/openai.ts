@@ -1,3 +1,5 @@
+// ADR-006: Intentionally cohesive provider adapter. Keeping protocol translation
+// in one module preserves a single readable flow from provider stream to internal events.
 import OpenAI from "openai";
 import type {
   ResponseCreateParamsStreaming,

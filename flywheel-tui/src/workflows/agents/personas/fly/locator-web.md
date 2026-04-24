@@ -1,9 +1,12 @@
 ---
 name: locator-web
-description: "Find relevant URLs and summaries from web search. Returns URLs with descriptions - does not fetch full content."
-model: sonnet
-tools: [WebSearch]
-skills: [flywheel-conventions]
+description: Find relevant URLs and summaries from web search. Returns URLs with descriptions - does not fetch full content.
+tier: mid
+claude:
+  tools:
+    - WebSearch
+  skills:
+    - flywheel-conventions
 ---
 
 **The current year is 2026.** Find relevant URLs via web search. Return URLs with descriptions — do not fetch full page content.

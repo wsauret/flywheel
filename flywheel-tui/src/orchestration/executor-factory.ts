@@ -91,7 +91,7 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
     { component: "dispatcher", model: dispatcherModel, engineId: dispatcherEngine.metadata.id },
     { component: "evaluator", model: evaluatorModel, engineId: evaluatorEngine.metadata.id },
     { component: "worker", model: workerModel, engineId: workerEngine.metadata.id },
-  ])
+  ], deps.auth)
   if (validationErrors.length > 0) {
     const details = validationErrors.map(e => `  ${e.component} (${e.model}): ${e.issue}`).join("\n")
     throw new Error(`Model configuration errors:\n${details}`)
@@ -121,6 +121,7 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
         engine: dispatcherEngine, sessionId, projectCwd,
         model: dispatcherModel, effort: tiers.dispatcher.effort,
         emit, workflowId,
+        auth: deps.auth,
       })
 
   const evaluatorTransport = pools?.evaluator
@@ -130,6 +131,7 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
         model: evaluatorModel, effort: tiers.evaluator.effort,
         systemPromptAddendum: evaluatorAddendum,
         emit, workflowId,
+        auth: deps.auth,
       })
 
   const contextIndexer = new ContextIndexer(projectCwd)
@@ -173,7 +175,7 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
   const contextAccumulator = createContextAccumulator({
     windowSize: 3,
   })
-  const evaluator = createAgentEvaluatorFn({ transport: evaluatorTransport })
+  const evaluator = createAgentEvaluatorFn(evaluatorTransport)
   const compositeHook = createCompositeHook([...externalHooks])
   const dispatcherFn = createDispatcherCallback({
     maxRevisions: deps.config.max_revisions, emit, workflowId,
@@ -187,6 +189,7 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
   })
   const workerFn = createWorkerCallback({
     engine: workerEngine,
+    auth: deps.auth,
     model: workerModel,
     effort: tiers.worker.effort,
     emit, workflowId,

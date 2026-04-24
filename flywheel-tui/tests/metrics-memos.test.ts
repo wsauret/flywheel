@@ -1,8 +1,8 @@
 /**
  * Tests for metrics memos (Phase 1 — ADR-006 Elegance Compliance).
  *
- * Verifies that the 4 store-derived metric fields (liveTokens, liveCost,
- * liveContextPercent, liveActivity) are reactive memos derived from the
+ * Verifies that the store-derived metric fields (liveCost, liveContextPercent,
+ * liveActivity) are reactive memos derived from the
  * sessionStore entry — NOT standalone signals with manual sync effects.
  *
  * Also verifies that resetMetrics() only resets leaf signals (workStartTime,
@@ -22,17 +22,13 @@ import { createSessionStore } from "../src/orchestration/session-store"
 import type { ChatStoreHandle, SessionEntry } from "../src/orchestration/session-store-types"
 import type { ChatRunner } from "../src/orchestration/chat-runner"
 import type { ChatSession } from "../src/orchestration/chat-session"
-import type { WorkflowSessionFactories } from "../src/orchestration/session-store-types"
+import type { CreateWorkflowAdapter } from "../src/orchestration/session-store-types"
 import { useMetrics } from "../src/tui/hooks/use-metrics"
 
-const mockFactories: WorkflowSessionFactories = {
-  createAdapter: () => ({
-    connect: () => {},
-    start: () => {},
-    stop: () => {},
-    disconnect: () => {},
-  }),
-}
+const mockCreateAdapter: CreateWorkflowAdapter = () => ({
+  connect: () => {},
+  disconnect: () => {},
+})
 
 function createMockChatRunner(sessionId: string): ChatRunner {
   return {
@@ -49,7 +45,7 @@ describe("Metrics memos derive from sessionStore entry", () => {
   it("memos derive values from entry at creation time", async () => {
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const sessionStore = createSessionStore(mockFactories)
+        const sessionStore = createSessionStore(mockCreateAdapter)
         let handle: ChatStoreHandle | null = null
 
         await sessionStore.startChat({
@@ -58,12 +54,11 @@ describe("Metrics memos derive from sessionStore entry", () => {
         })
 
         // Set up store values BEFORE creating metrics — memos evaluate eagerly once in test mode
-        handle!.updateEntry({ tokens: 1500, cost: 0.05, contextPercent: 42, modelActivity: "thinking" })
+        handle!.updateEntry({ cost: 0.05, contextPercent: 42, modelActivity: "thinking" })
 
         const metrics = useMetrics(() => sessionStore.get("chat-a"))
 
         // Memos should derive values from the entry
-        expect(metrics.liveTokens()).toBe(1500)
         expect(metrics.liveCost()).toBe(0.05)
         expect(metrics.liveContextPercent()).toBe(42)
         expect(metrics.liveActivity()).toBe("thinking")
@@ -78,7 +73,6 @@ describe("Metrics memos derive from sessionStore entry", () => {
     createRoot((dispose) => {
       const metrics = useMetrics(() => undefined)
 
-      expect(metrics.liveTokens()).toBe(0)
       expect(metrics.liveCost()).toBe(0)
       expect(metrics.liveContextPercent()).toBe(0)
       expect(metrics.liveActivity()).toBe("idle")
@@ -90,7 +84,7 @@ describe("Metrics memos derive from sessionStore entry", () => {
   it("resetMetrics resets only leaf signals, not store-derived memos", async () => {
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const sessionStore = createSessionStore(mockFactories)
+        const sessionStore = createSessionStore(mockCreateAdapter)
         let handle: ChatStoreHandle | null = null
 
         await sessionStore.startChat({
@@ -99,7 +93,7 @@ describe("Metrics memos derive from sessionStore entry", () => {
         })
 
         // Set up store values BEFORE creating metrics
-        handle!.updateEntry({ tokens: 500, cost: 0.01, contextPercent: 10, modelActivity: "generating" })
+        handle!.updateEntry({ cost: 0.01, contextPercent: 10, modelActivity: "generating" })
 
         const metrics = useMetrics(() => sessionStore.get("chat-b"))
 
@@ -110,7 +104,6 @@ describe("Metrics memos derive from sessionStore entry", () => {
         expect(metrics.elapsed()).toBe(0)
 
         // Store-derived memos should still reflect sessionStore data (NOT reset to 0)
-        expect(metrics.liveTokens()).toBe(500)
         expect(metrics.liveCost()).toBe(0.01)
         expect(metrics.liveContextPercent()).toBe(10)
         expect(metrics.liveActivity()).toBe("generating")
@@ -132,7 +125,6 @@ describe("Metrics memos derive from sessionStore entry", () => {
       expect("setActivity" in metrics).toBe(false)
 
       // Read-only accessors should exist
-      expect(typeof metrics.liveTokens).toBe("function")
       expect(typeof metrics.liveCost).toBe("function")
       expect(typeof metrics.liveContextPercent).toBe("function")
       expect(typeof metrics.liveActivity).toBe("function")
@@ -155,7 +147,7 @@ describe("Metrics memos derive from sessionStore entry", () => {
     // This tests the contract without relying on memo reactivity in test mode
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const sessionStore = createSessionStore(mockFactories)
+        const sessionStore = createSessionStore(mockCreateAdapter)
         let handle: ChatStoreHandle | null = null
 
         await sessionStore.startChat({
@@ -196,7 +188,7 @@ describe("Metrics memos derive from sessionStore entry", () => {
     // matching the real lifecycle — to ensure memos track the live store proxy.
     await new Promise<void>((resolve) => {
       createRoot(async (dispose) => {
-        const sessionStore = createSessionStore(mockFactories)
+        const sessionStore = createSessionStore(mockCreateAdapter)
         let handle: ChatStoreHandle | null = null
 
         await sessionStore.startChat({

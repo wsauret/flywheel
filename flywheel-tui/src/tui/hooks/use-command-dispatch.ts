@@ -20,11 +20,7 @@ interface CommandDispatchDeps {
   openSessionsModal: () => void
 }
 
-interface CommandDispatchHook {
-  handlePromptSubmit(text: string): void
-}
-
-export function useCommandDispatch(deps: CommandDispatchDeps): CommandDispatchHook {
+export function useCommandDispatch(deps: CommandDispatchDeps) {
   const commandRegistry = createCommandRegistry()
 
   function getChatContext(): string | undefined {

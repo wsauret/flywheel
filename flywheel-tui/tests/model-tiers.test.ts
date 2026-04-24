@@ -1,11 +1,10 @@
 import { describe, test, expect } from "bun:test";
-import { resolveModelTier, validateResolvedModels } from "../src/orchestration/config/model-tiers.js";
+import { resolveModelTier, resolveModelForTier, validateResolvedModels } from "../src/orchestration/config/model-tiers.js";
 
-// Expected concrete model names for each family+tier.
-// Kept in the test so it breaks loudly when the table changes.
-const A = { powerful: "claude-opus-4-6[1m]", mid: "claude-sonnet-4-6[1m]", cheap: "claude-haiku-4-5-20251001" };
-const O = { powerful: "gpt-5.4", mid: "gpt-5.3-codex", cheap: "gpt-5.4-mini" };
-const G = { powerful: "gemini-2.5-pro", mid: "gemini-2.5-flash", cheap: "gemini-2.5-flash-lite" };
+// Derived from tier preferences so tests don't break when the list changes.
+const A = { powerful: resolveModelForTier("powerful", "anthropic"), mid: resolveModelForTier("mid", "anthropic"), cheap: resolveModelForTier("cheap", "anthropic") };
+const O = { powerful: resolveModelForTier("powerful", "openai"), mid: resolveModelForTier("mid", "openai"), cheap: resolveModelForTier("cheap", "openai") };
+const G = { powerful: resolveModelForTier("powerful", "google"), mid: resolveModelForTier("mid", "google"), cheap: resolveModelForTier("cheap", "google") };
 
 // ---------------------------------------------------------------------------
 // Tier resolution: named tiers → concrete models
@@ -155,10 +154,15 @@ describe("resolveModelTier: component defaults", () => {
 // ---------------------------------------------------------------------------
 
 describe("validateResolvedModels", () => {
+  const noKeys = { openaiAuth: "api_key" as const, anthropicApiKey: undefined, openaiApiKey: undefined };
+  const anthropicOnly = { openaiAuth: "api_key" as const, anthropicApiKey: "sk-ant-test", openaiApiKey: undefined };
+  const openaiOnly = { openaiAuth: "api_key" as const, anthropicApiKey: undefined, openaiApiKey: "sk-test" };
+  const bothKeys = { openaiAuth: "api_key" as const, anthropicApiKey: "sk-ant-test", openaiApiKey: "sk-test" };
+
   test("passes when correct keys are present", () => {
     const errors = validateResolvedModels(
       [{ component: "worker", model: A.powerful, engineId: "claude" }],
-      { ANTHROPIC_API_KEY: "sk-ant-test" },
+      anthropicOnly,
     );
     expect(errors).toEqual([]);
   });
@@ -166,7 +170,7 @@ describe("validateResolvedModels", () => {
   test("missing ANTHROPIC_API_KEY for claude model", () => {
     const errors = validateResolvedModels(
       [{ component: "worker", model: A.mid, engineId: "claude" }],
-      {},
+      noKeys,
     );
     expect(errors).toHaveLength(1);
     expect(errors[0]!.component).toBe("worker");
@@ -177,7 +181,7 @@ describe("validateResolvedModels", () => {
   test("missing OPENAI_API_KEY for gpt model", () => {
     const errors = validateResolvedModels(
       [{ component: "worker", model: O.powerful, engineId: "harness" }],
-      {},
+      noKeys,
     );
     expect(errors).toHaveLength(1);
     expect(errors[0]!.component).toBe("worker");
@@ -188,7 +192,7 @@ describe("validateResolvedModels", () => {
   test("missing OPENAI_API_KEY for o-series model (o3)", () => {
     const errors = validateResolvedModels(
       [{ component: "evaluator", model: "o3", engineId: "harness" }],
-      {},
+      noKeys,
     );
     expect(errors).toHaveLength(1);
     expect(errors[0]!.component).toBe("evaluator");
@@ -199,7 +203,7 @@ describe("validateResolvedModels", () => {
   test("reports missing google-family access provider", () => {
     const errors = validateResolvedModels(
       [{ component: "worker", model: "gemini-2.5-pro", engineId: "harness" }],
-      {},
+      noKeys,
     );
     expect(errors).toHaveLength(1);
     expect(errors[0]!.issue).toContain("google models");
@@ -211,7 +215,7 @@ describe("validateResolvedModels", () => {
         { component: "worker", model: A.powerful, engineId: "harness" },
         { component: "evaluator", model: O.mid, engineId: "harness" },
       ],
-      {},
+      noKeys,
     );
     expect(errors).toHaveLength(2);
     expect(errors[0]!.issue).toContain("ANTHROPIC_API_KEY");
@@ -221,7 +225,7 @@ describe("validateResolvedModels", () => {
   test("claude engine with non-claude model reports mismatch", () => {
     const errors = validateResolvedModels(
       [{ component: "worker", model: O.powerful, engineId: "claude" }],
-      { OPENAI_API_KEY: "sk-test" },
+      openaiOnly,
     );
     expect(errors).toHaveLength(1);
     expect(errors[0]!.issue).toContain("Claude engine requires Claude models");
@@ -235,7 +239,7 @@ describe("validateResolvedModels", () => {
         { component: "evaluator", model: O.mid, engineId: "harness" },
         { component: "dispatcher", model: A.mid, engineId: "harness" },
       ],
-      { ANTHROPIC_API_KEY: "sk-ant-test", OPENAI_API_KEY: "sk-test" },
+      bothKeys,
     );
     expect(errors).toEqual([]);
   });

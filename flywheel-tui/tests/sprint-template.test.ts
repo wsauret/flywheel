@@ -36,6 +36,7 @@ describe("buildQueueFromTemplate — sprint", () => {
       write: true,
       edit: true,
       task: true,
+      delegation: true,
     });
   });
 
@@ -90,6 +91,7 @@ describe("buildQueueFromTemplate — work (unchanged)", () => {
       write: true,
       edit: true,
       task: true,
+      delegation: true,
     });
   });
 });

@@ -8,7 +8,11 @@
 
 import { describe, it, expect } from "bun:test"
 import type { Engine, EngineResult, RunnerOptions } from "../src/orchestration/engines/core/types.js"
+import { resolveModelForTier } from "../src/orchestration/config/model-tiers.js"
 import { generateSessionTitle } from "../src/orchestration/session-title.js"
+
+const OPENAI_CHEAP = resolveModelForTier("cheap", "openai")
+const ANTHROPIC_CHEAP = resolveModelForTier("cheap", "anthropic")
 
 describe("generateSessionTitle — immediate fallback", () => {
   it("calls onTitle immediately with a short message as-is", () => {
@@ -120,7 +124,7 @@ describe("generateSessionTitle — LLM model selection", () => {
       await Promise.resolve()
     })
 
-    expect(receivedModels).toEqual(["gpt-5.4-mini"])
+    expect(receivedModels).toEqual([OPENAI_CHEAP])
     expect(titles.at(-1)).toBe("Generated Title")
   })
 
@@ -138,7 +142,7 @@ describe("generateSessionTitle — LLM model selection", () => {
       await Promise.resolve()
     })
 
-    expect(receivedModels).toEqual(["claude-haiku-4-5-20251001"])
+    expect(receivedModels).toEqual([ANTHROPIC_CHEAP])
     expect(titles.at(-1)).toBe("Generated Title")
   })
 
@@ -153,7 +157,7 @@ describe("generateSessionTitle — LLM model selection", () => {
       },
       createRunner(options: RunnerOptions) {
         receivedModels.push(options.model)
-        if (options.model === "gpt-5.4-mini") {
+        if (options.model === OPENAI_CHEAP) {
           return {
             done: Promise.resolve<EngineResult>({
               durationMs: 0,
@@ -195,7 +199,7 @@ describe("generateSessionTitle — LLM model selection", () => {
       await new Promise<void>((resolve) => setTimeout(resolve, 0))
     })
 
-    expect(receivedModels).toEqual(["gpt-5.4-mini", "gpt-4o-mini"])
+    expect(receivedModels).toEqual([OPENAI_CHEAP, "gpt-4o-mini"])
     expect(titles.at(-1)).toBe("Recovered Title")
   })
 })

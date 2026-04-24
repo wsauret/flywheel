@@ -4,8 +4,7 @@ import { buildQueueFromTemplate } from "../../workflows/queue/templates.js"
 import { randomUUID } from "node:crypto"
 
 export async function runHeadless(description: string): Promise<boolean> {
-  const factories = { createAdapter: () => new HeadlessAdapter({ logLevel: "normal", timestamps: true }) }
-  const sessionStore = createSessionStore(factories)
+  const sessionStore = createSessionStore(() => new HeadlessAdapter({ logLevel: "normal", timestamps: true }))
   const sessionId = randomUUID()
   const queue = buildQueueFromTemplate("work", description)
 
