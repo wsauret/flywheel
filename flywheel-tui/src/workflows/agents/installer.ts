@@ -1,5 +1,5 @@
-// fs/promises used intentionally — Bun has no readdir equivalent.
-import { mkdir, readdir, readFile, rm, writeFile } from "fs/promises";
+// fs/promises used for mkdir/readdir/rm — Bun has no equivalents for these.
+import { mkdir, readdir, rm } from "fs/promises";
 import { join } from "path";
 import { homedir } from "os";
 import * as yaml from "js-yaml";
@@ -31,7 +31,7 @@ async function readMdFilesFromDir(dirPath: string): Promise<Record<string, strin
   try {
     const files = (await readdir(dirPath)).filter((f) => f.endsWith(".md"));
     for (const file of files) {
-      result[file] = await readFile(join(dirPath, file), "utf-8");
+      result[file] = await Bun.file(join(dirPath, file)).text();
     }
   } catch {
     // Directory may not exist
@@ -54,7 +54,7 @@ async function readFromFilesystem(): Promise<AgentSources> {
     const skillSrc = join(skillsDir, entry.name);
     let skillContent: string;
     try {
-      skillContent = await readFile(join(skillSrc, "SKILL.md"), "utf-8");
+      skillContent = await Bun.file(join(skillSrc, "SKILL.md")).text();
     } catch {
       continue;
     }
@@ -64,7 +64,7 @@ async function readFromFilesystem(): Promise<AgentSources> {
         f.endsWith(".md"),
       );
       for (const ref of refFiles) {
-        refs[ref] = await readFile(join(skillSrc, "references", ref), "utf-8");
+        refs[ref] = await Bun.file(join(skillSrc, "references", ref)).text();
       }
     } catch {
       // No references — fine
@@ -93,12 +93,12 @@ async function writeIfChanged(
   content: string,
 ): Promise<"installed" | "skipped"> {
   try {
-    const existing = await readFile(destPath, "utf-8");
+    const existing = await Bun.file(destPath).text();
     if (existing === content) return "skipped";
   } catch {
     // File doesn't exist — will write
   }
-  await writeFile(destPath, content, "utf-8");
+  await Bun.write(destPath, content);
   return "installed";
 }
 
@@ -125,7 +125,7 @@ async function installAgentFilesToDir(
 
   for (const file of files) {
     try {
-      await writeFile(join(targetDir, file), agents[file]!, "utf-8");
+      await Bun.write(join(targetDir, file), agents[file]!);
       result.installed++;
     } catch (err) {
       result.errors.push(`failed to install agent ${file}: ${errorMessage(err)}`);
@@ -252,7 +252,7 @@ async function installSkillFiles(
 
     for (const [file, content] of refEntries) {
       try {
-        await writeFile(join(refsDest, file), content, "utf-8");
+        await Bun.write(join(refsDest, file), content);
         result.installed++;
       } catch (err) {
         result.errors.push(

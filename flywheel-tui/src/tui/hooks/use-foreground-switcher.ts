@@ -5,17 +5,20 @@ import type { SessionKind } from "../../orchestration/session/types.js"
 import type { SessionSummary } from "../../orchestration/session/manager.js"
 import { TERMINAL_TITLE_BASE, TERMINAL_TITLE_PREFIX } from "../../infra/format.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"
+import type { SessionStore } from "../../orchestration/session-store-types.js"
+import type { MetricsHook } from "./use-metrics.js"
 
 interface ForegroundSwitcherDeps {
   signals: ShellSignals
-  services: ShellServices
+  sessionStore: SessionStore
+  metrics: MetricsHook
+  setTerminalTitle: ShellServices["setTerminalTitle"]
   sessions: Accessor<SessionSummary[]>
   projectCwd: string
 }
 
 export function createForegroundSwitcher(deps: ForegroundSwitcherDeps): (sessionId: string) => Promise<void> {
-  const { signals, services, sessions, projectCwd } = deps
-  const { sessionStore, metrics } = services
+  const { signals, sessionStore, metrics, setTerminalTitle, sessions, projectCwd } = deps
 
   let switchGen = 0
 
@@ -45,6 +48,6 @@ export function createForegroundSwitcher(deps: ForegroundSwitcherDeps): (session
       metrics.resetElapsedTo(Date.now() - entry.startedAt)
       signals.setErrorMessage("")
     })
-    services.setTerminalTitle(entry.kind === "chat" ? TERMINAL_TITLE_BASE : `${TERMINAL_TITLE_PREFIX}${entry.description}`)
+    setTerminalTitle(entry.kind === "chat" ? TERMINAL_TITLE_BASE : `${TERMINAL_TITLE_PREFIX}${entry.description}`)
   }
 }

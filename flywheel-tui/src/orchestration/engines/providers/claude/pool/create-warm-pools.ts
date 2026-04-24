@@ -11,7 +11,7 @@ interface TierPoolConfig {
   model?: string;
   effort?: string;
   /** Called for each NDJSON event produced by the tier's engine process. */
-  onNDJSONEvent?: (event: NDJSONEvent) => void;
+  onEvent?: (event: NDJSONEvent) => void;
 }
 
 interface ClaudeWarmPools {
@@ -40,8 +40,8 @@ export function createClaudeWarmPools(opts: CreateWarmPoolsOptions): ClaudeWarmP
       effort: opts.dispatcher.effort ?? "low",
       systemPrompt: buildDispatcherSystemPrompt(),
     });
-    const dSpawnOpts = opts.dispatcher.onNDJSONEvent
-      ? { ...spawnOpts, onNDJSONEvent: opts.dispatcher.onNDJSONEvent }
+    const dSpawnOpts = opts.dispatcher.onEvent
+      ? { ...spawnOpts, onEvent: opts.dispatcher.onEvent }
       : spawnOpts;
     dispatcher = new WarmPool<SpawnResult>({
       label: "dispatcher",
@@ -56,8 +56,8 @@ export function createClaudeWarmPools(opts: CreateWarmPoolsOptions): ClaudeWarmP
       model: opts.evaluator.model ?? "sonnet",
       effort: opts.evaluator.effort ?? "low",
     });
-    const eSpawnOpts = opts.evaluator.onNDJSONEvent
-      ? { ...spawnOpts, onNDJSONEvent: opts.evaluator.onNDJSONEvent }
+    const eSpawnOpts = opts.evaluator.onEvent
+      ? { ...spawnOpts, onEvent: opts.evaluator.onEvent }
       : spawnOpts;
     evaluator = new WarmPool<SpawnResult>({
       label: "evaluator",

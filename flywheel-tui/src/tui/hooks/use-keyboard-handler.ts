@@ -10,8 +10,9 @@ import { TERMINAL_TITLE_BASE } from "../../infra/format.js"
 
 interface KeyboardHandlerDeps {
   signals: ShellSignals
-  services: ShellServices
   sessionStore: SessionStore
+  showToast: ShellServices["showToast"]
+  setTerminalTitle: ShellServices["setTerminalTitle"]
   sessions: Accessor<SessionSummary[]>
   workflow: WorkflowLifecycleHook
   chat: ChatModeHook
@@ -22,18 +23,21 @@ interface KeyboardHandlerDeps {
 }
 
 export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
-  const { signals, services, sessionStore, workflow, chat, sessionModal, inChat, runningCount } = deps
+  const { signals, sessionStore, showToast, setTerminalTitle, workflow, chat, sessionModal, inChat, runningCount } = deps
 
   let lastChatEscAt = 0
 
   function cycleSession(direction: 1 | -1): void {
     const cycleable = deps.sessions().filter(s => s.state === "active" || s.state === "paused")
-    if (cycleable.length < 2) return
+    if (cycleable.length === 0) return
     const current = signals.foregroundId()
     const idx = current ? cycleable.findIndex(s => s.id === current) : -1
-    const next = idx === -1
-      ? cycleable[0]!
-      : cycleable[(idx + direction + cycleable.length) % cycleable.length]!
+    if (idx === -1) {
+      deps.switchForeground(cycleable[0]!.id)
+      return
+    }
+    if (cycleable.length < 2) return
+    const next = cycleable[(idx + direction + cycleable.length) % cycleable.length]!
     if (next.id !== current) deps.switchForeground(next.id)
   }
 
@@ -47,7 +51,7 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
       handler: () => {
         workflow.pauseForeground()
         const bg = runningCount()
-        if (bg > 0) services.showToast({ message: `${bg} session${bg > 1 ? "s" : ""} still running in background`, variant: "info" })
+        if (bg > 0) showToast({ message: `${bg} session${bg > 1 ? "s" : ""} still running in background`, variant: "info" })
       },
     },
     {
@@ -57,7 +61,7 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
         if (now - lastChatEscAt < 2_000) {
           lastChatEscAt = 0
           chat.endChat()
-          services.showToast({ message: "Chat force-ended", variant: "warning" })
+          showToast({ message: "Chat force-ended", variant: "warning" })
           return
         }
         lastChatEscAt = now
@@ -80,7 +84,7 @@ export function createKeyboardHandler(deps: KeyboardHandlerDeps) {
         }
         signals.setErrorMessage("")
         signals.setForegroundId(undefined)
-        services.setTerminalTitle(TERMINAL_TITLE_BASE)
+        setTerminalTitle(TERMINAL_TITLE_BASE)
       },
     },
     {

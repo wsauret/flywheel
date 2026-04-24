@@ -40,7 +40,6 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
 
   let startup: StartupState = { phase: "idle" }
   const [isStarting, setIsStarting] = createSignal(false)
-  let isFirstChat = true
   const emptyChats = new Set<string>()
 
   function finalizeChat(id: string): void {
@@ -100,7 +99,6 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
             onEnded: storeHandle.onEnded,
             initialMessage: opts?.initialMessage?.trim() || undefined,
             priorBlocks: opts?.priorBlocks,
-            showWelcome: isFirstChat && !opts?.priorBlocks,
             engineSessionId: opts?.engineSessionId,
           }),
       })
@@ -108,7 +106,6 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
       const pendingMessages = startup.phase === "starting" ? startup.pending : []
       startup = { phase: "idle" }
       setIsStarting(false)
-      isFirstChat = false
 
       for (const msg of pendingMessages) {
         sessionStore.injectMessage(sessionId, msg)

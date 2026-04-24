@@ -125,6 +125,10 @@
       "dark": "darkYellowBright",
       "light": "lightYellow"
     },
+    "markdownCodeBg": {
+      "dark": "darkBg1",
+      "light": "lightBg2"
+    },
     "markdownBlockQuote": {
       "dark": "darkGray",
       "light": "lightGray"

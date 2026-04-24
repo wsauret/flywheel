@@ -61,7 +61,7 @@ interface MatchResult {
 }
 
 async function searchFile(filePath: string, patternStr: string, lang: Lang): Promise<MatchResult[]> {
-  const content = await fs.readFile(filePath, "utf-8");
+  const content = await Bun.file(filePath).text();
   const root = parse(lang, content);
   const rootNode = root.root();
   const matches = rootNode.findAll(patternStr);

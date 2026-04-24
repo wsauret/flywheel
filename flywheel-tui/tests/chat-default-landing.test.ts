@@ -15,7 +15,7 @@ mock.module("../src/tui/exit.js", () => ({
 import { useCommandDispatch } from "../src/tui/hooks/use-command-dispatch.js"
 import type { CommandDispatchDeps } from "../src/tui/hooks/use-command-dispatch.js"
 
-function createMockDeps(overrides: Partial<CommandDispatchDeps> = {}): CommandDispatchDeps {
+function createMockDeps(overrides: Partial<CommandDispatchDeps> & { showToast?: any; sessionStore?: any } = {}): CommandDispatchDeps {
   const defaultSignals = {
     agentState: () => "idle" as const,
     outputBlocks: () => [] as any[],
@@ -30,18 +30,11 @@ function createMockDeps(overrides: Partial<CommandDispatchDeps> = {}): CommandDi
     pendingWorkCommand: () => undefined,
     setPendingWorkCommand: mock(() => {}),
   }
-  const defaultServices = {
-    sessionStore: { runningCount: () => 0 } as any,
-    manager: {} as any,
-    refreshList: mock(() => {}),
-    setTerminalTitle: mock(() => {}),
-    metrics: {} as any,
-    showToast: mock(() => {}),
-  }
-  const { signals: _s, services: _svc, ...rest } = overrides
+  const { signals: _s, sessionStore: _store, showToast: _toast, ...rest } = overrides
   return {
     signals: { ...defaultSignals, ...(overrides.signals ?? {}) } as any,
-    services: { ...defaultServices, ...(overrides.services ?? {}) } as any,
+    sessionStore: (overrides.sessionStore ?? { runningCount: () => 0, get: () => undefined }) as any,
+    showToast: overrides.showToast ?? mock(() => {}),
     inChat: () => true,
     startWorkflow: mock(async () => {}),
     startTestStep: mock(async () => {}),
@@ -50,6 +43,7 @@ function createMockDeps(overrides: Partial<CommandDispatchDeps> = {}): CommandDi
     endChat: mock(() => {}),
     sendMessage: mock(() => {}),
     handleResume: mock(async () => {}),
+    steerWorkflow: mock(() => false),
     openSessionsModal: mock(() => {}),
     ...rest,
   }
@@ -69,7 +63,7 @@ describe("Chat as Default Landing — /new command", () => {
 
   it("/end and /stop are not special commands in chat (go through registry)", async () => {
     const showToast = mock(() => {})
-    const deps = createMockDeps({ services: { showToast } as any })
+    const deps = createMockDeps({ showToast })
     const { handlePromptSubmit } = useCommandDispatch(deps)
 
     handlePromptSubmit("/end")
@@ -114,7 +108,7 @@ describe("Chat as Default Landing — free text routing", () => {
 
   it("unknown slash commands in chat go to command registry (not sendMessage), show toast", async () => {
     const showToast = mock(() => {})
-    const deps = createMockDeps({ services: { showToast } as any })
+    const deps = createMockDeps({ showToast })
     const { handlePromptSubmit } = useCommandDispatch(deps)
 
     handlePromptSubmit("/something random")
@@ -143,7 +137,7 @@ describe("Chat as Default Landing — unknown command toast", () => {
     const deps = createMockDeps({
       inChat: () => false,
       signals: { sessionState: () => null } as any,
-      services: { showToast } as any,
+      showToast,
     })
     const { handlePromptSubmit } = useCommandDispatch(deps)
 

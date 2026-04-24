@@ -17,14 +17,11 @@ import { createOutputSession, type OutputSession, type OutputSessionOptions } fr
 import { StructuredOutputBuilder } from "../src/infra/output/structured-output-builder"
 import { NdjsonPipeline } from "../src/tui/adapters/ndjson-pipeline"
 import type { SessionEntryBase } from "../src/orchestration/session-store-types"
-import { createNoopEmit } from "../src/infra/event-bus"
 import type { AnyBlock } from "../src/infra/output-blocks"
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-const noopEmit = createNoopEmit()
 
 function makeAssistantTextNdjson(text: string): string {
   return JSON.stringify({
@@ -56,7 +53,6 @@ function createWorkflowSession(overrides?: {
 
   const session = createOutputSession({
     updateEntry: (patch) => patches.push({ ...patch }),
-    emit: noopEmit,
     builder,
     onFlush: overrides?.onFlush,
   })
@@ -339,7 +335,6 @@ describe("Workflow → OutputSession integration", () => {
 
       const s = createOutputSession({
         updateEntry: wrappedUpdateEntry,
-        emit: noopEmit,
         builder,
       })
       session = s
@@ -361,30 +356,6 @@ describe("Workflow → OutputSession integration", () => {
 
       // Clean up
       if (syntheticTimer) clearTimeout(syntheticTimer)
-    })
-  })
-
-  // ── No-op emit prevents duplicate engine:ndjson ──
-
-  describe("no-op emit", () => {
-    it("no-op emit does not produce engine:ndjson events", () => {
-      const emitCalls: any[] = []
-      const trackingEmit = ((...args: any[]) => emitCalls.push(args)) as unknown as EmitFn
-
-      // Deliberately use the tracking emit to verify no calls happen with no-op
-      const builder = new StructuredOutputBuilder()
-      const s = createOutputSession({
-        updateEntry: () => {},
-        emit: noopEmit,
-        builder,
-      })
-      session = s
-
-      s.writeStdout(makeAssistantTextNdjson("test"))
-
-      // With noopEmit, no events should be tracked
-      // (This test validates the pattern — noopEmit absorbs the call)
-      expect(emitCalls.length).toBe(0)
     })
   })
 

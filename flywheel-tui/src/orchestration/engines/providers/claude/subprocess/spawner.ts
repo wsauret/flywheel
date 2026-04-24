@@ -76,5 +76,5 @@ export interface SpawnOptions {
    * Called for each parsed NDJSON event (step_finish, tool_use, text, etc.).
    * Wire to BudgetTracker.handleEvent to capture cost/token data from process output.
    */
-  onNDJSONEvent?: (event: NDJSONEvent) => void;
+  onEvent?: (event: NDJSONEvent) => void;
 }

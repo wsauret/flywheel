@@ -1,6 +1,5 @@
 import { describe, it, expect, mock, afterEach } from "bun:test"
 import { createOutputSession, type OutputSession, type OutputSessionOptions } from "../src/orchestration/output-session"
-import { createNoopEmit } from "../src/infra/event-bus"
 import { StructuredOutputBuilder } from "../src/infra/output/structured-output-builder"
 import type { SessionEntryBase } from "../src/orchestration/session-store-types"
 import type { AnyBlock } from "../src/infra/output-blocks"
@@ -9,17 +8,13 @@ import type { AnyBlock } from "../src/infra/output-blocks"
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** No-op emit that satisfies the required EmitFn signature. */
-const noopEmit = createNoopEmit()
-
 /** Flush one round of queued microtasks so onChange callbacks propagate. */
 const flushMicrotasks = () => new Promise<void>(r => queueMicrotask(r))
 
 function createMocks() {
   const updateEntry = mock<(patch: Partial<SessionEntryBase>) => void>()
-  const emit = mock() as unknown as OutputSessionOptions["emit"]
   const onFlush = mock()
-  return { updateEntry, emit, onFlush }
+  return { updateEntry, onFlush }
 }
 
 /** Build a Claude-format assistant NDJSON line with a text content block. */
@@ -65,8 +60,8 @@ describe("createOutputSession", () => {
   // ── writeStdout: NDJSON thinking content ──
 
   it("writeStdout with NDJSON thinking content alone -> creates standalone thinking block", async () => {
-    const { updateEntry, emit } = createMocks()
-    session = createOutputSession({ updateEntry, emit })
+    const { updateEntry } = createMocks()
+    session = createOutputSession({ updateEntry })
 
     session.writeStdout(makeAssistantThinkingNdjson("deep thoughts"))
     await flushMicrotasks()
@@ -84,8 +79,8 @@ describe("createOutputSession", () => {
   // ── writeStdout: NDJSON text content ──
 
   it("writeStdout with NDJSON text content -> updateEntry called with TextBlock", async () => {
-    const { updateEntry, emit } = createMocks()
-    session = createOutputSession({ updateEntry, emit })
+    const { updateEntry } = createMocks()
+    session = createOutputSession({ updateEntry })
 
     session.writeStdout(makeAssistantTextNdjson("Hello world"))
     await flushMicrotasks()
@@ -103,8 +98,8 @@ describe("createOutputSession", () => {
   // ── writeStdout: per-call engineId ──
 
   it("writeStdout(data, engineId) — per-call engineId flows through to parser", async () => {
-    const { updateEntry, emit } = createMocks()
-    session = createOutputSession({ updateEntry, emit })
+    const { updateEntry } = createMocks()
+    session = createOutputSession({ updateEntry })
 
     // Feed a Claude assistant event with an explicit engineId
     session.writeStdout(makeAssistantTextNdjson("from claude engine"), "claude")
@@ -122,8 +117,8 @@ describe("createOutputSession", () => {
   // ── writeStderr ──
 
   it("writeStderr -> updateEntry called with SystemBlock after flush tick", async () => {
-    const { updateEntry, emit } = createMocks()
-    session = createOutputSession({ updateEntry, emit })
+    const { updateEntry } = createMocks()
+    session = createOutputSession({ updateEntry })
 
     session.writeStderr("something went wrong", 1000)
 
@@ -142,8 +137,8 @@ describe("createOutputSession", () => {
   // ── notifySpawned ──
 
   it("notifySpawned sets thinking start time, used when thinking joins a tool context", async () => {
-    const { updateEntry, emit } = createMocks()
-    session = createOutputSession({ updateEntry, emit })
+    const { updateEntry } = createMocks()
+    session = createOutputSession({ updateEntry })
 
     // Notify spawned with a specific timestamp
     session.notifySpawned(5000)
@@ -170,8 +165,8 @@ describe("createOutputSession", () => {
   // ── pushUserMessage ──
 
   it("pushUserMessage pushes user message + sets thinking start time", async () => {
-    const { updateEntry, emit } = createMocks()
-    session = createOutputSession({ updateEntry, emit })
+    const { updateEntry } = createMocks()
+    session = createOutputSession({ updateEntry })
 
     session.pushUserMessage("injected message", 3000, { injected: true })
     await flushMicrotasks()
@@ -190,8 +185,8 @@ describe("createOutputSession", () => {
   })
 
   it("pushUserMessage with queued=true marks message as queued (not system-injected)", async () => {
-    const { updateEntry, emit } = createMocks()
-    session = createOutputSession({ updateEntry, emit })
+    const { updateEntry } = createMocks()
+    session = createOutputSession({ updateEntry })
 
     session.pushUserMessage("pending message", 3000, { queued: true })
     await flushMicrotasks()
@@ -209,8 +204,8 @@ describe("createOutputSession", () => {
   // ── Model activity transitions ──
 
   it("model activity transitions -> updateEntry called with correct modelActivity values", () => {
-    const { updateEntry, emit } = createMocks()
-    session = createOutputSession({ updateEntry, emit })
+    const { updateEntry } = createMocks()
+    session = createOutputSession({ updateEntry })
 
     session.writeStdout(makeAssistantTextNdjson("some text"))
     session.flush()
@@ -224,8 +219,8 @@ describe("createOutputSession", () => {
   })
 
   it("thinking content triggers 'thinking' model activity even without tool context", () => {
-    const { updateEntry, emit } = createMocks()
-    session = createOutputSession({ updateEntry, emit })
+    const { updateEntry } = createMocks()
+    session = createOutputSession({ updateEntry })
 
     // notifyThinkingStarted sets activity to "thinking" even without creating blocks
     session.writeStdout(makeAssistantThinkingNdjson("pondering"))
@@ -241,8 +236,8 @@ describe("createOutputSession", () => {
   // ── Flush interval ──
 
   it("onChange -> updateEntry({ outputBlocks }) called only when builder has changes", async () => {
-    const { updateEntry, emit } = createMocks()
-    session = createOutputSession({ updateEntry, emit })
+    const { updateEntry } = createMocks()
+    session = createOutputSession({ updateEntry })
 
     // Advance without changes — no outputBlocks update
     await flushMicrotasks()
@@ -264,8 +259,8 @@ describe("createOutputSession", () => {
   // ── onFlush hook ──
 
   it("onFlush hook called on explicit flush, not on onChange callbacks", async () => {
-    const { updateEntry, emit, onFlush } = createMocks()
-    session = createOutputSession({ updateEntry, emit, onFlush })
+    const { updateEntry, onFlush } = createMocks()
+    session = createOutputSession({ updateEntry, onFlush })
 
     session.writeStdout(makeAssistantTextNdjson("data"))
     await flushMicrotasks()
@@ -276,32 +271,11 @@ describe("createOutputSession", () => {
     expect(onFlush).toHaveBeenCalled()
   })
 
-  // ── emit called with engine:ndjson ──
-
-  it("emit called with engine:ndjson events", () => {
-    const { updateEntry, emit } = createMocks()
-    session = createOutputSession({ updateEntry, emit, workflowId: "test-wf" })
-
-    session.writeStdout(makeAssistantTextNdjson("data for emit"))
-
-    // emit should have been called with engine:ndjson
-    const emitFn = emit as unknown as ReturnType<typeof mock>
-    expect(emitFn).toHaveBeenCalledWith(
-      "engine:ndjson",
-      expect.objectContaining({
-        workflowId: "test-wf",
-        ndjsonEvent: expect.objectContaining({
-          type: "assistant",
-        }),
-      }),
-    )
-  })
-
   // ── flush() forces immediate updateEntry + onFlush ──
 
   it("flush() forces immediate updateEntry + onFlush call", () => {
-    const { updateEntry, emit, onFlush } = createMocks()
-    session = createOutputSession({ updateEntry, emit, onFlush })
+    const { updateEntry, onFlush } = createMocks()
+    session = createOutputSession({ updateEntry, onFlush })
 
     // Write some data but don't advance timers
     session.writeStdout(makeAssistantTextNdjson("urgent data"))
@@ -322,8 +296,8 @@ describe("createOutputSession", () => {
   // ── queue primitives ──
 
   it("takeNextQueued pops oldest queued message, returns null when empty", () => {
-    const { updateEntry, emit } = createMocks()
-    session = createOutputSession({ updateEntry, emit })
+    const { updateEntry } = createMocks()
+    session = createOutputSession({ updateEntry })
 
     expect(session.takeNextQueued()).toBe(null)
     session.pushUserMessage("first", 1000, { queued: true })
@@ -334,8 +308,8 @@ describe("createOutputSession", () => {
   })
 
   it("drainQueued returns every queued message and empties the queue", () => {
-    const { updateEntry, emit } = createMocks()
-    session = createOutputSession({ updateEntry, emit })
+    const { updateEntry } = createMocks()
+    session = createOutputSession({ updateEntry })
 
     expect(session.drainQueued()).toEqual([])
     session.pushUserMessage("first", 1000, { queued: true })
@@ -347,8 +321,8 @@ describe("createOutputSession", () => {
   // ── pushSystemMessage ──
 
   it("pushSystemMessage() delegates to builder", async () => {
-    const { updateEntry, emit } = createMocks()
-    session = createOutputSession({ updateEntry, emit })
+    const { updateEntry } = createMocks()
+    session = createOutputSession({ updateEntry })
 
     session.pushSystemMessage("System alert", 2000)
     await flushMicrotasks()
@@ -366,8 +340,8 @@ describe("createOutputSession", () => {
   // ── resetTracking ──
 
   it("resetTracking() delegates to builder", async () => {
-    const { updateEntry, emit } = createMocks()
-    session = createOutputSession({ updateEntry, emit })
+    const { updateEntry } = createMocks()
+    session = createOutputSession({ updateEntry })
 
     // Feed some data first to populate blocks
     session.writeStdout(makeAssistantTextNdjson("before reset"))
@@ -382,8 +356,8 @@ describe("createOutputSession", () => {
   // ── getBlocks ──
 
   it("getBlocks() returns current blocks", () => {
-    const { updateEntry, emit } = createMocks()
-    session = createOutputSession({ updateEntry, emit })
+    const { updateEntry } = createMocks()
+    session = createOutputSession({ updateEntry })
 
     // Initially empty
     expect(session.getBlocks()).toEqual([])
@@ -398,8 +372,8 @@ describe("createOutputSession", () => {
   // ── dispose ──
 
   it("dispose() stops onChange callbacks, no further updateEntry calls", async () => {
-    const { updateEntry, emit } = createMocks()
-    session = createOutputSession({ updateEntry, emit })
+    const { updateEntry } = createMocks()
+    session = createOutputSession({ updateEntry })
 
     // Write data and flush it
     session.writeStdout(makeAssistantTextNdjson("pre-dispose"))
@@ -420,8 +394,8 @@ describe("createOutputSession", () => {
   // ── After dispose, writeStdout is a no-op ──
 
   it("after dispose(), writeStdout is a no-op", async () => {
-    const { updateEntry, emit } = createMocks()
-    session = createOutputSession({ updateEntry, emit })
+    const { updateEntry } = createMocks()
+    session = createOutputSession({ updateEntry })
 
     session.dispose()
     ;(updateEntry as ReturnType<typeof mock>).mockClear()
@@ -437,8 +411,8 @@ describe("createOutputSession", () => {
   // ── After dispose, writeStderr is a no-op ──
 
   it("after dispose(), writeStderr is a no-op", async () => {
-    const { updateEntry, emit } = createMocks()
-    session = createOutputSession({ updateEntry, emit })
+    const { updateEntry } = createMocks()
+    session = createOutputSession({ updateEntry })
 
     session.dispose()
     ;(updateEntry as ReturnType<typeof mock>).mockClear()
@@ -453,8 +427,8 @@ describe("createOutputSession", () => {
   // ── Raw text (non-JSON) falls through to text blocks ──
 
   it("non-JSON stdout lines become text blocks via onRawText", async () => {
-    const { updateEntry, emit } = createMocks()
-    session = createOutputSession({ updateEntry, emit })
+    const { updateEntry } = createMocks()
+    session = createOutputSession({ updateEntry })
 
     session.writeStdout("plain text not json\n")
     await flushMicrotasks()
@@ -472,8 +446,8 @@ describe("createOutputSession", () => {
   // ── notifySpawned triggers thinking model activity ──
 
   it("notifySpawned triggers 'thinking' model activity via updateEntry", () => {
-    const { updateEntry, emit } = createMocks()
-    session = createOutputSession({ updateEntry, emit })
+    const { updateEntry } = createMocks()
+    session = createOutputSession({ updateEntry })
 
     session.notifySpawned(1000)
     session.flush()
@@ -488,8 +462,8 @@ describe("createOutputSession", () => {
   // ── Multiple writeStdout calls accumulate blocks ──
 
   it("multiple writeStdout calls accumulate blocks", async () => {
-    const { updateEntry, emit } = createMocks()
-    session = createOutputSession({ updateEntry, emit })
+    const { updateEntry } = createMocks()
+    session = createOutputSession({ updateEntry })
 
     session.writeStdout(makeAssistantTextNdjson("first"))
     session.writeStdout(makeAssistantTextNdjson("second"))
@@ -504,8 +478,8 @@ describe("createOutputSession", () => {
   // ── onFlush is NOT called when no changes ──
 
   it("onFlush is only called on explicit flush, not on idle ticks", async () => {
-    const { updateEntry, emit, onFlush } = createMocks()
-    session = createOutputSession({ updateEntry, emit, onFlush })
+    const { updateEntry, onFlush } = createMocks()
+    session = createOutputSession({ updateEntry, onFlush })
 
     // Advance timers without writing any data — onFlush does NOT fire
     await flushMicrotasks()
@@ -516,8 +490,8 @@ describe("createOutputSession", () => {
   // ── Double dispose is safe ──
 
   it("calling dispose() twice does not throw", () => {
-    const { updateEntry, emit } = createMocks()
-    session = createOutputSession({ updateEntry, emit })
+    const { updateEntry } = createMocks()
+    session = createOutputSession({ updateEntry })
 
     session.dispose()
     expect(() => session!.dispose()).not.toThrow()
@@ -528,9 +502,9 @@ describe("createOutputSession", () => {
   // ── answerQuestion / cancelQuestion ──
 
   it("answerQuestion marks the matching question block answered", async () => {
-    const { updateEntry, emit } = createMocks()
+    const { updateEntry } = createMocks()
     const builder = new StructuredOutputBuilder()
-    session = createOutputSession({ updateEntry, emit, builder })
+    session = createOutputSession({ updateEntry, builder })
     builder.pushQuestion("tool_q1", [{ question: "Which color?", options: [{ label: "Red" }] }], 1)
     await flushMicrotasks()
     updateEntry.mockClear()
@@ -549,9 +523,9 @@ describe("createOutputSession", () => {
   })
 
   it("cancelQuestion marks the matching question block cancelled", async () => {
-    const { updateEntry, emit } = createMocks()
+    const { updateEntry } = createMocks()
     const builder = new StructuredOutputBuilder()
-    session = createOutputSession({ updateEntry, emit, builder })
+    session = createOutputSession({ updateEntry, builder })
     builder.pushQuestion("tool_q1", [{ question: "Which color?", options: [{ label: "Red" }] }], 1)
     await flushMicrotasks()
     updateEntry.mockClear()

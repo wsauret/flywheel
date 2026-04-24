@@ -74,6 +74,19 @@ export function ThinkingBlock(props: ThinkingBlockProps) {
   const lineCount = createMemo(() => trimmed().split("\n").length)
   const isLong = () => lineCount() > COLLAPSED_LINES
 
+  const headerContent = createMemo(() => {
+    const chunks: TextChunk[] = [
+      stItalic(stFg(theme.textMuted)("Thinking")),
+    ]
+    if (elapsed() >= 1000) {
+      chunks.push(stFg(theme.textMuted)(` ${formatElapsed(elapsed())}`))
+    }
+    if (isLong()) {
+      chunks.push(stFg(theme.textMuted)(` ${expanded() ? "\u25be" : `\u25b8 \u2026${lineCount()} lines`}`))
+    }
+    return new StyledText(chunks)
+  })
+
   return (
     <box
       paddingLeft={2}
@@ -89,18 +102,7 @@ export function ThinkingBlock(props: ThinkingBlockProps) {
         <text
           selectable={false}
           ref={(el: TextRenderable) => {
-            createEffect(() => {
-              const chunks: TextChunk[] = [
-                stItalic(stFg(theme.textMuted)("Thinking")),
-              ]
-              if (elapsed() >= 1000) {
-                chunks.push(stFg(theme.textMuted)(` ${formatElapsed(elapsed())}`))
-              }
-              if (isLong()) {
-                chunks.push(stFg(theme.textMuted)(` ${expanded() ? "\u25be" : `\u25b8 \u2026${lineCount()} lines`}`))
-              }
-              el.content = new StyledText(chunks)
-            })
+            createEffect(() => { el.content = headerContent() })
           }}
         />
       </box>

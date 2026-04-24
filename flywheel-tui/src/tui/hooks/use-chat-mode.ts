@@ -1,10 +1,15 @@
 import type { Accessor } from "solid-js"
 import { createChatController } from "../../orchestration/chat-controller.js"
-import type { ShellSignals, ShellServices } from "./shell-state.js"
+import type { ShellSignals } from "./shell-state.js"
+import type { SessionStore } from "../../orchestration/session-store-types.js"
+import type { SessionManager } from "../../orchestration/session/manager.js"
+import type { MetricsHook } from "./use-metrics.js"
 
 interface ChatModeDeps {
   signals: ShellSignals
-  services: ShellServices
+  sessionStore: SessionStore
+  manager: SessionManager
+  metrics: MetricsHook
   /** Project working directory — injected to avoid hardcoding process.cwd(). */
   projectCwd: string
   onRunnerDone: (id: string) => void
@@ -27,15 +32,14 @@ export interface ChatModeHook {
 }
 
 export function useChatMode(deps: ChatModeDeps): ChatModeHook {
-  const { signals, services } = deps
-  const metrics = services.metrics
+  const { signals, sessionStore, manager, metrics, projectCwd, onRunnerDone, onRunnerError } = deps
 
   const controller = createChatController({
-    sessionStore: services.sessionStore,
-    manager: services.manager,
-    projectCwd: deps.projectCwd,
-    onRunnerDone: deps.onRunnerDone,
-    onRunnerError: deps.onRunnerError,
+    sessionStore,
+    manager,
+    projectCwd,
+    onRunnerDone,
+    onRunnerError,
   })
 
   async function startChat(initialMessage?: string): Promise<void> {
@@ -46,8 +50,9 @@ export function useChatMode(deps: ChatModeDeps): ChatModeHook {
   }
 
   async function backgroundChat(): Promise<void> {
-    await controller.backgroundChat(signals.foregroundId())
+    const fgId = signals.foregroundId()
     signals.setForegroundId(undefined)
+    await controller.backgroundChat(fgId)
   }
 
   async function endChat(): Promise<void> {

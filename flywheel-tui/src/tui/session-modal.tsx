@@ -185,6 +185,24 @@ export function SessionModal(props: SessionModalProps) {
                       item.session.lastUpdated && relativeTime(item.session.lastUpdated),
                     ].filter(Boolean).join(" ")
 
+                    const rowContent = createMemo(() => {
+                      const cursorColor = isSelected() ? theme.primary : isActive() ? theme.primary : theme.textMuted
+                      const cursor = isSelected() ? "\u25B8" : isActive() ? "\u25CF" : " "
+                      const leftLabel = `${cursor} ${typeTag()} ${label()}`
+                      // Row's usable width = modalWidth() minus modal border/padding (4) and row left/right padding (3).
+                      const rowWidth = Math.max(modalWidth() - 7, leftLabel.length)
+                      const padding = " ".repeat(Math.max(1, rowWidth - leftLabel.length - metadata.length))
+                      const chunks: TextChunk[] = [
+                        stFg(cursorColor)(cursor),
+                        stFg(typeColor())(` ${typeTag()}`),
+                        stFg(isActive() ? theme.primary : theme.text)(` ${label()}`),
+                      ]
+                      if (metadata) {
+                        chunks.push(stFg(theme.textMuted)(`${padding}${metadata}`))
+                      }
+                      return new StyledText(chunks)
+                    })
+
                     return (
                       <box
                         selectable={false}
@@ -194,23 +212,7 @@ export function SessionModal(props: SessionModalProps) {
                         onMouseDown={() => props.onSelect(item.flatIndex)}
                       >
                         <text selectable={false} ref={(el: TextRenderable) => {
-                          createEffect(() => {
-                            const cursorColor = isSelected() ? theme.primary : isActive() ? theme.primary : theme.textMuted
-                            const cursor = isSelected() ? "\u25B8" : isActive() ? "\u25CF" : " "
-                            const leftLabel = `${cursor} ${typeTag()} ${label()}`
-                            // Row's usable width = modalWidth() minus modal border/padding (4) and row left/right padding (3).
-                            const rowWidth = Math.max(modalWidth() - 7, leftLabel.length)
-                            const padding = " ".repeat(Math.max(1, rowWidth - leftLabel.length - metadata.length))
-                            const chunks: TextChunk[] = [
-                              stFg(cursorColor)(cursor),
-                              stFg(typeColor())(` ${typeTag()}`),
-                              stFg(isActive() ? theme.primary : theme.text)(` ${label()}`),
-                            ]
-                            if (metadata) {
-                              chunks.push(stFg(theme.textMuted)(`${padding}${metadata}`))
-                            }
-                            el.content = new StyledText(chunks)
-                          })
+                          createEffect(() => { el.content = rowContent() })
                         }} overflow="hidden" wrapMode="none" />
 
                         <Show when={isDeletePending() && isSelected()}>

@@ -32,7 +32,6 @@ function sprintLabel(stepType: string, stepTitle: string): string {
 
 const EVENT_HANDLERS = {
   "engine:started":    { minLevel: "normal",  format: (e) => `  Engine started for step ${e.stepIndex}` },
-  "engine:output":     { minLevel: "normal",  format: (e) => { const d = e.data.replace(/\n$/, ""); return d ? `  ${e.stream === "stderr" ? "[stderr] " : ""}${d}` : null } },
   "engine:ndjson":     { minLevel: "verbose", format: null },
   "engine:injected":   { minLevel: "normal",  format: (e) => `  Engine message injected (${e.message.length} chars)` },
 

@@ -74,8 +74,6 @@ function handleContextOverflow(
 
 interface SetupOutputSessionInput {
   budgetTracker: BudgetTracker
-  emit: EmitFn
-  sessionId: string
   state: ChatSessionState
   updateEntry: (patch: Partial<SessionEntryBase>) => void
   onFlush?: () => void
@@ -83,7 +81,7 @@ interface SetupOutputSessionInput {
 }
 
 function setupOutputSession(input: SetupOutputSessionInput): OutputSession {
-  const { budgetTracker, emit, sessionId, state, updateEntry, onFlush, priorBlocks } = input
+  const { budgetTracker, state, updateEntry, onFlush, priorBlocks } = input
 
   // Suppress model activity outside a user-initiated turn to prevent
   // "ghost thinking" during idle reconnections or process startup.
@@ -97,8 +95,6 @@ function setupOutputSession(input: SetupOutputSessionInput): OutputSession {
 
   const session = createOutputSession({
     updateEntry: activityGatedUpdateEntry,
-    emit,
-    workflowId: sessionId,
     priorBlocks,
     onFlush: () => {
       const ctx = budgetTracker.getContextUtilization()
@@ -235,6 +231,7 @@ function createWorkerLifecycle(
         callbacks.onWaiting(false)
         session.resetActivity()
         session.flush()
+        return null
       },
       takeNextQueued: () => session.takeNextQueued(),
       hasQueuedInput: () => session.hasQueued(),
@@ -270,7 +267,7 @@ export async function createChatSession(
   eventUnsubs.push(...wireSessionSubscribers(eventBus, emit, sessionId, infra, deps.metricsWriter))
 
   const session = setupOutputSession({
-    budgetTracker: infra.budgetTracker, emit, sessionId, state,
+    budgetTracker: infra.budgetTracker, state,
     updateEntry: rawUpdateEntry,
     onFlush: deps.onFlush,
     priorBlocks: deps.priorBlocks,

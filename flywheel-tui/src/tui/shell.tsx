@@ -78,7 +78,9 @@ export function FlywheelShell(props: { createAdapter: CreateWorkflowAdapter; pro
 
   const switchForeground = createForegroundSwitcher({
     signals,
-    services,
+    sessionStore,
+    metrics: services.metrics,
+    setTerminalTitle: services.setTerminalTitle,
     sessions,
     projectCwd: props.projectCwd,
   })
@@ -93,18 +95,28 @@ export function FlywheelShell(props: { createAdapter: CreateWorkflowAdapter; pro
 
   const workflow = useWorkflowLifecycle({ signals, services, onRunnerDone, onRunnerError })
 
-  const chat = useChatMode({ signals, services, projectCwd: props.projectCwd, onRunnerDone, onRunnerError })
+  const chat = useChatMode({
+    signals,
+    sessionStore,
+    manager,
+    metrics: services.metrics,
+    projectCwd: props.projectCwd,
+    onRunnerDone,
+    onRunnerError,
+  })
 
   const sessionModal = useSessionModal({
     signals,
-    services,
+    sessionStore,
+    manager,
+    showToast: services.showToast,
     sessions,
     handleResume: workflow.handleResume,
     switchForeground,
     deleteActiveChat: async (sessionId) => {
       await chat.endChat()
-      try { services.manager.delete(sessionId) } catch { /* already cleaned up by endChat */ }
-      const nextId = services.sessionStore.allIds().find((id) => services.sessionStore.isRunning(id))
+      try { manager.delete(sessionId) } catch { /* already cleaned up by endChat */ }
+      const nextId = sessionStore.allIds().find((id) => sessionStore.isRunning(id))
       if (nextId) {
         await switchForeground(nextId)
       } else {
@@ -123,7 +135,8 @@ export function FlywheelShell(props: { createAdapter: CreateWorkflowAdapter; pro
 
   const commands = useCommandDispatch({
     signals,
-    services,
+    sessionStore,
+    showToast: services.showToast,
     inChat,
     startWorkflow: workflow.startWorkflow,
     startTestStep: workflow.startTestStep,
@@ -145,8 +158,9 @@ export function FlywheelShell(props: { createAdapter: CreateWorkflowAdapter; pro
 
   const handleKey = createKeyboardHandler({
     signals,
-    services,
     sessionStore,
+    showToast: services.showToast,
+    setTerminalTitle: services.setTerminalTitle,
     sessions,
     workflow,
     chat,

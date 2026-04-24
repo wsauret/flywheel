@@ -14,7 +14,6 @@
 
 import { describe, it, expect, beforeEach } from "bun:test"
 import { createOutputSession, type OutputSession, type OutputSessionOptions } from "../src/orchestration/output-session"
-import { EventBus, createEmit } from "../src/infra/event-bus"
 import type { SessionEntryBase } from "../src/orchestration/session-store-types"
 import type { AnyBlock } from "../src/infra/output-blocks"
 
@@ -26,20 +25,15 @@ function createTestOutputSession(overrides?: Partial<OutputSessionOptions>) {
   const patches: Array<Partial<SessionEntryBase>> = []
   const flushCalls: number[] = []
 
-  const bus = new EventBus()
-  const emit = createEmit(bus)
-
   const opts: OutputSessionOptions = {
     updateEntry: (patch) => patches.push({ ...patch }),
-    emit,
     onFlush: () => flushCalls.push(Date.now()),
-    workflowId: "test-chat",
     ...overrides,
   }
 
   const session = createOutputSession(opts)
 
-  return { session, patches, flushCalls, bus, emit }
+  return { session, patches, flushCalls }
 }
 
 // ---------------------------------------------------------------------------
@@ -144,50 +138,6 @@ describe("Chat → OutputSession integration", () => {
       const drained = session.drainQueued()
       expect(drained).toEqual(["first", "second"])
       expect(session.hasQueued()).toBe(false)
-
-      session.dispose()
-    })
-  })
-
-  describe("user echo detection via EventBus", () => {
-    it("engine:ndjson events are emitted to EventBus", () => {
-      const { session, bus } = createTestOutputSession()
-
-      const events: any[] = []
-      bus.subscribeToType("engine:ndjson", (e) => events.push(e))
-
-      // Feed a user echo event through stdout
-      const ndjsonLine = JSON.stringify({ type: "user" }) + "\n"
-      session.writeStdout(ndjsonLine)
-
-      expect(events.length).toBe(1)
-      expect(events[0].ndjsonEvent.type).toBe("user")
-
-      session.dispose()
-    })
-
-  })
-
-  describe("context-too-long detection via EventBus", () => {
-    it("result event with 'prompt is too long' is visible on EventBus for chat to handle", () => {
-      const { session, bus } = createTestOutputSession()
-
-      const events: any[] = []
-      bus.subscribeToType("engine:ndjson", (e) => events.push(e))
-
-      const resultEvent = JSON.stringify({
-        type: "result",
-        is_error: true,
-        subtype: "error",
-        result: "Error: prompt is too long for context window",
-      }) + "\n"
-      session.writeStdout(resultEvent)
-
-      expect(events.length).toBe(1)
-      const data = events[0].ndjsonEvent.data
-      expect(data.type).toBe("result")
-      expect(data.is_error).toBe(true)
-      expect(data.result).toContain("prompt is too long")
 
       session.dispose()
     })
@@ -331,8 +281,6 @@ describe("Chat → OutputSession integration", () => {
 
       const session = createOutputSession({
         updateEntry: wrappedUpdateEntry,
-        emit: createEmit(new EventBus()),
-        workflowId: "test",
       })
 
       session.pushSystemMessage("new message", Date.now())

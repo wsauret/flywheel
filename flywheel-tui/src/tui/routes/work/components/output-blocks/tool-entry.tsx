@@ -149,6 +149,14 @@ export function ToolEntry(props: ToolEntryProps) {
     return new StyledText(chunks)
   })
 
+  const diffTruncationNote = createMemo(() =>
+    new StyledText([stFg(theme.textMuted)(`  ... +${diffTruncation().omitted} lines (click to expand)`)])
+  )
+
+  const contentTruncationNote = createMemo(() =>
+    new StyledText([stFg(theme.textMuted)(`  ... ${contentPreview().omitted} more lines (click to expand)`)])
+  )
+
   const header = () => (
     <box selectable={false} onMouseDown={canToggleHeader() ? toggleHeader : undefined}>
       <text
@@ -180,10 +188,7 @@ export function ToolEntry(props: ToolEntryProps) {
                 <text
                   selectable={false}
                   ref={(el: TextRenderable) => {
-                    createEffect(() => {
-                      const n = diffTruncation().omitted
-                      el.content = new StyledText([stFg(theme.textMuted)(`  ... +${n} lines (click to expand)`)])
-                    })
+                    createEffect(() => { el.content = diffTruncationNote() })
                   }}
                 />
               </box>
@@ -217,10 +222,7 @@ export function ToolEntry(props: ToolEntryProps) {
                   <text
                     selectable={false}
                     ref={(el: TextRenderable) => {
-                      createEffect(() => {
-                        const n = contentPreview().omitted
-                        el.content = new StyledText([stFg(theme.textMuted)(`  ... ${n} more lines (click to expand)`)])
-                      })
+                      createEffect(() => { el.content = contentTruncationNote() })
                     }}
                   />
                 </box>

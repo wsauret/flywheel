@@ -3,10 +3,12 @@ import { exitTUI } from "../exit.js"
 import { createCommandRegistry } from "../../orchestration/command-registry.js"
 import { extractChatContext } from "../../orchestration/session-actions.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"
+import type { SessionStore } from "../../orchestration/session-store-types.js"
 
 interface CommandDispatchDeps {
   signals: ShellSignals
-  services: ShellServices
+  sessionStore: SessionStore
+  showToast: ShellServices["showToast"]
   inChat: Accessor<boolean>
   startWorkflow: (command: string, description: string, chatContext?: string) => void
   startTestStep: (stepId?: string) => void
@@ -26,7 +28,7 @@ export function useCommandDispatch(deps: CommandDispatchDeps) {
   function getChatContext(): string | undefined {
     const fgId = deps.signals.foregroundId()
     if (!fgId || !deps.inChat()) return undefined
-    const entry = deps.services.sessionStore.get(fgId)
+    const entry = deps.sessionStore.get(fgId)
     if (!entry) return undefined
     return extractChatContext(entry.outputBlocks)
   }
@@ -34,7 +36,7 @@ export function useCommandDispatch(deps: CommandDispatchDeps) {
   commandRegistry.register({
     pattern: /^\/help$/i,
     execute() {
-      deps.services.showToast({
+      deps.showToast({
         message: "/new /work /sprint /sessions /resume /exit · Esc interrupt · Ctrl+N new · Ctrl+B sessions · Tab switch",
         variant: "info",
         duration: 8000,
@@ -119,7 +121,7 @@ export function useCommandDispatch(deps: CommandDispatchDeps) {
       if (trimmed.startsWith("/")) {
         void commandRegistry.dispatch(trimmed).then((handled) => {
           if (!handled) {
-            deps.services.showToast({ message: `Unknown command. Try /help`, variant: "warning" })
+            deps.showToast({ message: `Unknown command. Try /help`, variant: "warning" })
           }
         })
         return
@@ -133,9 +135,9 @@ export function useCommandDispatch(deps: CommandDispatchDeps) {
       if (deps.signals.foregroundId() && !trimmed.startsWith("/")) {
         const injected = deps.steerWorkflow(trimmed)
         if (injected) {
-          deps.services.showToast({ message: "Message sent to worker", variant: "info" })
+          deps.showToast({ message: "Message sent to worker", variant: "info" })
         } else {
-          deps.services.showToast({ message: "Could not deliver message \u2014 worker pipe closed", variant: "warning" })
+          deps.showToast({ message: "Could not deliver message \u2014 worker pipe closed", variant: "warning" })
         }
         return
       }
@@ -145,9 +147,9 @@ export function useCommandDispatch(deps: CommandDispatchDeps) {
       if (handled) return
 
       if (deps.signals.sessionState() === "paused") {
-        deps.services.showToast({ message: "Session paused. Esc to stop, Ctrl+R to resume, or /sessions to switch.", variant: "warning" })
+        deps.showToast({ message: "Session paused. Esc to stop, Ctrl+R to resume, or /sessions to switch.", variant: "warning" })
       } else {
-        deps.services.showToast({ message: `Unknown command. Try /help`, variant: "warning" })
+        deps.showToast({ message: `Unknown command. Try /help`, variant: "warning" })
       }
     })
   }

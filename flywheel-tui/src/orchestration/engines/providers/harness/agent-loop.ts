@@ -39,7 +39,13 @@ interface AgentLoopOptions {
   signal?: AbortSignal;
   onEvent: (event: StreamEvent) => void;
   onUserMessage?: (content: string | ContentBlock[]) => void;
-  onTurnComplete?: () => void;
+  /** Fires when the model produces no tool calls — turn fully ended. Returns
+   *  text to inject (keeping the loop alive) or null to end the loop. */
+  onTurnComplete?: () => string | null;
+  /** Fires after each tool-execution batch. Returns text to inject as the
+   *  next user message, or null to proceed unchanged. The loop stays
+   *  tool-agnostic — consumers filter on tool names internally. */
+  onPostToolBatch?: (toolNames: readonly string[], errors: readonly boolean[]) => string | null;
   onTurnAssistantMessage?: (content: ContentBlock[]) => void;
   reasoningEffort?: ReasoningEffort;
   takeNextQueued?: () => string | null;
@@ -338,7 +344,11 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         options.onTurnAssistantMessage?.(assistantContent);
         pushMessage({ role: "assistant", content: assistantContent });
       }
-      options.onTurnComplete?.();
+      const injected = options.onTurnComplete?.();
+      if (injected != null) {
+        pushMessage({ role: "user", content: injected });
+        continue;
+      }
       const nextQueued = options.takeNextQueued?.();
       if (nextQueued != null) {
         pushUser(nextQueued);
@@ -390,6 +400,16 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     pushUser(renderToolResults(toolResults));
 
     if (signal?.aborted) break;
+
+    // Post-tool-batch hook: consumer decides whether this batch warrants an
+    // injection (e.g. double-confirm after write_handoff). The hook owns UI
+    // emission (engine:injected), so push directly into the conversation
+    // without the onUserMessage NDJSON side-channel.
+    const injected = options.onPostToolBatch?.(
+      toolCalls.map((tc) => tc.name),
+      toolResults.map((r) => r.isError === true),
+    );
+    if (injected != null) pushMessage({ role: "user", content: injected });
 
     const nextQueued = options.takeNextQueued?.();
     if (nextQueued != null) pushUser(nextQueued);

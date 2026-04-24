@@ -126,6 +126,10 @@
       "dark": "darkGreen",
       "light": "lightGreen"
     },
+    "markdownCodeBg": {
+      "dark": "darkStep4",
+      "light": "lightStep4"
+    },
     "markdownBlockQuote": {
       "dark": "darkYellow",
       "light": "lightYellow"

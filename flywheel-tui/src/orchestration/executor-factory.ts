@@ -103,13 +103,13 @@ export async function createExecutor(input: CreateExecutorInput): Promise<Create
         dispatcher: dispatcherEngine.metadata.supportsPooling
           ? {
               model: dispatcherModel, effort: tiers.dispatcher.effort,
-              onNDJSONEvent: (event) => emit("dispatcher:ndjson", { workflowId, ndjsonEvent: event }),
+              onEvent: (event) => emit("dispatcher:ndjson", { workflowId, ndjsonEvent: event }),
             }
           : undefined,
         evaluator: evaluatorEngine.metadata.supportsPooling
           ? {
               model: evaluatorModel, effort: tiers.evaluator.effort,
-              onNDJSONEvent: (event) => emit("evaluator:ndjson", { workflowId, ndjsonEvent: event }),
+              onEvent: (event) => emit("evaluator:ndjson", { workflowId, ndjsonEvent: event }),
             }
           : undefined,
       })

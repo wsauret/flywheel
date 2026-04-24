@@ -8,6 +8,7 @@ import type { WorkflowResult } from "./workflow-runner-types.js"
 import type { SessionStore } from "./session-store-types.js"
 import type { SessionManager, SessionSummary } from "./session/manager.js"
 import type { SessionState } from "./session/types.js"
+import type { UserMessageBlock } from "../infra/output-blocks.js"
 
 interface WorkflowControllerDeps {
   sessionStore: SessionStore
@@ -70,10 +71,17 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
     const sessionId = manager.create(description, description, "workflow", "active")
     const terminalTitle = `${TERMINAL_TITLE_PREFIX}${command}`
 
+    const descriptionBlock: UserMessageBlock = {
+      kind: "userMessage",
+      content: description,
+      timestamp: Date.now(),
+    }
+
     sessionStore.start({
       sessionId,
       queue,
       description,
+      priorBlocks: [descriptionBlock],
       workflowDeps: wfDeps,
       chatContext,
       onRunnerDone: handleRunnerDone,

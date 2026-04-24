@@ -28,6 +28,19 @@ export function UserMessageBlock(props: UserMessageBlockProps) {
   const injected = () => props.block.injected === true
   const [expanded, setExpanded] = createSignal(false)
 
+  const injectedHeader = createMemo(() => {
+    const chunks: TextChunk[] = [
+      stFg(theme.textMuted)("↳"),
+      stFg(theme.textMuted)(" "),
+      stBold(stFg(theme.textMuted)("System")),
+      stFg(theme.textMuted)(` ${expanded() ? "▾" : "▸"}`),
+    ]
+    if (!expanded()) {
+      chunks.push(stFg(theme.textMuted)(` ${previewLine(props.block.content)}`))
+    }
+    return new StyledText(chunks)
+  })
+
   return (
     <Show when={injected()} fallback={
       <box
@@ -60,18 +73,7 @@ export function UserMessageBlock(props: UserMessageBlockProps) {
           <text
             selectable={false}
             ref={(el: TextRenderable) => {
-              createEffect(() => {
-                const chunks: TextChunk[] = [
-                  stFg(theme.textMuted)("↳"),
-                  stFg(theme.textMuted)(" "),
-                  stBold(stFg(theme.textMuted)("System")),
-                  stFg(theme.textMuted)(` ${expanded() ? "▾" : "▸"}`),
-                ]
-                if (!expanded()) {
-                  chunks.push(stFg(theme.textMuted)(` ${previewLine(props.block.content)}`))
-                }
-                el.content = new StyledText(chunks)
-              })
+              createEffect(() => { el.content = injectedHeader() })
             }}
             overflow="hidden"
             wrapMode="none"

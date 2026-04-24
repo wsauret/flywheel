@@ -103,7 +103,7 @@ export class SubprocessRunner implements EngineRunner {
       cwd: options.cwd,
       stdin: stdinContent,
       stdinPipe: true,
-      onNDJSONEvent: options.onEvent,
+      onEvent: options.onEvent,
       onSessionId: (id) => { this.sessionId = id; },
       onTurnComplete: options.onTurnComplete,
       signal: options.signal,

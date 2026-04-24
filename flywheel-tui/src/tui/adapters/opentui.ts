@@ -4,7 +4,6 @@ import type { WorkflowSessionEntry, SessionEntryBase } from "../../orchestration
 import { createOutputSession, type OutputSession } from "../../orchestration/output-session.js";
 import { StructuredOutputBuilder } from "../../infra/output/structured-output-builder.js";
 import { NdjsonPipeline } from "./ndjson-pipeline.js";
-import { createNoopEmit } from "../../infra/event-bus.js";
 import { Log } from "../../infra/log.js";
 
 const STEP_BOUNDARY_PREFIX = "[step-boundary]";
@@ -60,13 +59,8 @@ export class OpenTUIAdapter {
       this.updateEntry(patch as Partial<WorkflowSessionEntry>);
     };
 
-    // Workflow mode: engine:ndjson events are already emitted by
-    // worker-callback.ts — supply a no-op emit to avoid duplicates.
-    const noopEmit = createNoopEmit();
-
     this.outputSession = createOutputSession({
       updateEntry: this.wrappedUpdateEntry,
-      emit: noopEmit,
       builder,
     });
 
@@ -104,18 +98,6 @@ export class OpenTUIAdapter {
   // with no reduction in per-case complexity. The default throws for exhaustiveness.
   private handleEvent(event: FlywheelEvent): void {
     switch (event.type) {
-      case "engine:output":
-        // Write output BEFORE draining — drained messages reposition to the
-        // end of the block array, so the triggering output must already be
-        // appended for the user message to appear after it.
-        if (event.stream === "stderr") {
-          this.outputSession.writeStderr(event.data, event.timestamp);
-        } else {
-          this.outputSession.writeStdout(event.data);
-        }
-        this.outputSession.drainQueued();
-        break;
-
       case "engine:started":
         log.debug(`Engine started for step ${event.stepIndex}`, { step: event.stepIndex });
         this.outputSession.notifySpawned(event.timestamp);
@@ -222,6 +204,13 @@ export class OpenTUIAdapter {
         break;
 
       case "engine:ndjson":
+        // Worker phase events flow through here. Dispatcher/evaluator use their
+        // own event types (dispatcher:ndjson, evaluator:ndjson) routed through
+        // NdjsonPipeline's AgentTracker — intentionally collapsed into a single
+        // bookend block. The worker's output is the step's real substance and
+        // renders as top-level blocks (tool rows, thinking, text) via the
+        // shared StructuredEventParser.
+        this.outputSession.dispatchNdjsonEvent(event.ndjsonEvent);
         if (event.ndjsonEvent.type === "user") {
           this.outputSession.drainQueued();
         }

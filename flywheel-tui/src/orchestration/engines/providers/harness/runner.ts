@@ -312,6 +312,7 @@ export class HarnessRunner implements EngineRunner {
         onEvent,
         onUserMessage: (content) => { emitUser(options.onEvent, content); },
         onTurnComplete: options.onTurnComplete,
+        onPostToolBatch: options.onPostToolBatch,
         onTurnAssistantMessage,
         reasoningEffort: mapEffort(options.effort),
         takeNextQueued: options.takeNextQueued,

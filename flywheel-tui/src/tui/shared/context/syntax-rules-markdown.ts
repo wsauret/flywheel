@@ -82,14 +82,7 @@ export function getMarkdownSyntaxRules(theme: Theme) {
     {
       scope: ["markup.raw", "markup.raw.block"],
       style: {
-        foreground: theme.markdownCode,
-      },
-    },
-    {
-      scope: ["markup.raw.inline"],
-      style: {
-        foreground: theme.markdownCode,
-        background: theme.background,
+        foreground: theme.syntaxOperator,
       },
     },
     {

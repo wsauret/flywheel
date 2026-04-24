@@ -102,6 +102,10 @@
       "dark": "green",
       "light": "green"
     },
+    "markdownCodeBg": {
+      "dark": "#363848",
+      "light": "#d0d0ca"
+    },
     "markdownBlockQuote": {
       "dark": "comment",
       "light": "#6272a4"

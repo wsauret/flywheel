@@ -45,24 +45,26 @@ export function TodoListBlock(props: TodoListBlockProps) {
   )
   const totalCount = createMemo(() => props.block.todos.length)
 
+  const headerContent = createMemo(() => {
+    const chunks: TextChunk[] = [
+      stBold(stFg(theme.accent)("\u2261 Tasks")),
+    ]
+    if (completedCount() > 0) {
+      const bar = progressBar(completedCount(), totalCount(), theme)
+      chunks.push(stFg(theme.text)(" "))
+      chunks.push(stFg(bar.fg)(bar.text))
+      chunks.push(stFg(theme.text)(" "))
+      chunks.push(stBold(stFg(theme.success)(`${completedCount()}/${totalCount()}`)))
+    }
+    return new StyledText(chunks)
+  })
+
   return (
     <Show when={incomplete().length > 0}>
       <box flexDirection="column">
         <text
           ref={(el: TextRenderable) => {
-            createEffect(() => {
-              const chunks: TextChunk[] = [
-                stBold(stFg(theme.accent)("\u2261 Tasks")),
-              ]
-              if (completedCount() > 0) {
-                const bar = progressBar(completedCount(), totalCount(), theme)
-                chunks.push(stFg(theme.text)(" "))
-                chunks.push(stFg(bar.fg)(bar.text))
-                chunks.push(stFg(theme.text)(" "))
-                chunks.push(stBold(stFg(theme.success)(`${completedCount()}/${totalCount()}`)))
-              }
-              el.content = new StyledText(chunks)
-            })
+            createEffect(() => { el.content = headerContent() })
           }}
           overflow="hidden"
           wrapMode="none"

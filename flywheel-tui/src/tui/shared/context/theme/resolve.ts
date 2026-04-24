@@ -33,6 +33,7 @@ export type Theme = {
   markdownLink: RGBA
   markdownLinkText: RGBA
   markdownCode: RGBA
+  markdownCodeBg: RGBA
   markdownBlockQuote: RGBA
   markdownEmph: RGBA
   markdownStrong: RGBA

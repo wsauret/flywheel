@@ -3,6 +3,8 @@ import type { Accessor } from "solid-js"
 import { errorMessage as extractErrorMessage } from "../../infra/error-message.js"
 import type { SessionSummary } from "../../orchestration/session/manager.js"
 import type { ShellSignals, ShellServices } from "./shell-state.js"
+import type { SessionStore } from "../../orchestration/session-store-types.js"
+import type { SessionManager } from "../../orchestration/session/manager.js"
 import { Clipboard } from "../utils/clipboard.js"
 import { buildSessionList } from "../session-modal.js"
 
@@ -14,7 +16,9 @@ interface ViewingState {
 
 interface SessionModalDeps {
   signals: ShellSignals
-  services: ShellServices
+  sessionStore: SessionStore
+  manager: SessionManager
+  showToast: ShellServices["showToast"]
   sessions: Accessor<SessionSummary[]>
   handleResume: (sessionId: string) => Promise<void>
   switchForeground: (sessionId: string) => void
@@ -41,7 +45,7 @@ export interface SessionModalHook {
 }
 
 export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
-  const { signals, services } = deps
+  const { signals, sessionStore, manager, showToast } = deps
 
   const [sessionsModalOpen, setSessionsModalOpen] = createSignal(false)
   const [modalCursor, setModalCursor] = createSignal(0)
@@ -53,9 +57,13 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
 
   function openSessionsModal(): void {
     batch(() => {
-      setSnapshotSessions(deps.sessions())
+      const snapshot = deps.sessions()
+      setSnapshotSessions(snapshot)
       setSessionsModalOpen(true)
-      setModalCursor(0)
+      const activeId = signals.foregroundId()
+      const items = buildSessionList(snapshot)
+      const activeIndex = activeId ? items.findIndex((item) => item.session.id === activeId) : -1
+      setModalCursor(activeIndex >= 0 ? activeIndex : 0)
       setModalConfirmDelete(undefined)
     })
   }
@@ -75,7 +83,7 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
     setSessionsModalOpen(false)
 
     // Running sessions — switch foreground directly (no save/restore needed)
-    if (services.sessionStore.isRunning(sessionId)) {
+    if (sessionStore.isRunning(sessionId)) {
       setViewingState(undefined)
       await deps.switchForeground(sessionId)
       return
@@ -100,16 +108,16 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
 
   async function handleSessionDelete(sessionId: string): Promise<void> {
     try {
-      await services.sessionStore.remove(sessionId)
-      services.manager.delete(sessionId)
+      await sessionStore.remove(sessionId)
+      manager.delete(sessionId)
       setSnapshotSessions(deps.sessions())
-      services.showToast({ message: "Session deleted", variant: "info" })
+      showToast({ message: "Session deleted", variant: "info" })
       // If we were viewing this session's transcript, restore prior state.
       if (viewingState()?.viewedSessionId === sessionId) {
         dismissViewedSession()
       }
     } catch (err) {
-      services.showToast({ message: `Delete failed: ${extractErrorMessage(err)}`, variant: "error" })
+      showToast({ message: `Delete failed: ${extractErrorMessage(err)}`, variant: "error" })
     }
   }
 
@@ -162,8 +170,8 @@ export function useSessionModal(deps: SessionModalDeps): SessionModalHook {
     if (evt.name === "c") {
       evt.preventDefault?.()
       Clipboard.copy(selected.id)
-        .then(() => services.showToast({ message: `Copied: ${selected.id}`, variant: "info" }))
-        .catch(() => services.showToast({ message: "Copy failed", variant: "error" }))
+        .then(() => showToast({ message: `Copied: ${selected.id}`, variant: "info" }))
+        .catch(() => showToast({ message: "Copy failed", variant: "error" }))
       return
     }
     if (evt.name === "d") {

@@ -1,15 +1,13 @@
 import { NDJSONParser } from "../infra/ndjson-parser.js"
 import { StructuredOutputBuilder } from "../infra/output/structured-output-builder.js"
 import { StructuredEventParser } from "../infra/output/structured-event-parser.js"
-import type { EmitFn } from "../infra/event-bus.js"
 import type { SessionEntryBase } from "./session-store-types.js"
 import type { AnyBlock } from "../infra/output-blocks.js"
+import type { NDJSONEvent } from "../infra/ndjson-event-types.js"
 
 interface OutputSessionOptions {
   updateEntry: (patch: Partial<SessionEntryBase>) => void
-  emit: EmitFn
   onFlush?: () => void
-  workflowId?: string
   builder?: StructuredOutputBuilder
   priorBlocks?: readonly AnyBlock[]
 }
@@ -17,6 +15,7 @@ interface OutputSessionOptions {
 export interface OutputSession {
   writeStdout(data: string): void
   writeStderr(data: string, timestamp: number): void
+  dispatchNdjsonEvent(event: NDJSONEvent): void
   notifySpawned(timestamp: number): void
   pushUserMessage(message: string, timestamp: number, options?: { queued?: boolean; injected?: boolean }): void
   takeNextQueued(): string | null
@@ -38,7 +37,7 @@ export interface OutputSession {
 }
 
 export function createOutputSession(options: OutputSessionOptions): OutputSession {
-  const { updateEntry, emit, onFlush, workflowId = "output-session" } = options
+  const { updateEntry, onFlush } = options
   const prior = options.priorBlocks ?? []
 
   const builder = options.builder ?? new StructuredOutputBuilder()
@@ -68,7 +67,6 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
   builder.onChange = scheduleSync
 
   parser.onEvent = (event) => {
-    emit("engine:ndjson", { workflowId, ndjsonEvent: event })
     eventParser.dispatch(event)
   }
 
@@ -95,9 +93,15 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
     builder.notifyThinkingStarted(timestamp)
   }
 
+  function dispatchNdjsonEvent(event: NDJSONEvent): void {
+    if (disposed) return
+    eventParser.dispatch(event)
+  }
+
   return {
     writeStdout,
     writeStderr,
+    dispatchNdjsonEvent,
     notifySpawned,
     pushUserMessage,
     takeNextQueued: () => builder.takeNextQueued(),

@@ -14,11 +14,12 @@
     "darkSubtle": "#a0a0a6",
     "darkStep12": "#ececf0",
     "darkSecondary": "#90a573",
-    "darkAccent": "#9d7cd8",
+    "darkAccent": "#ad7ebc",
     "darkRed": "#bf7b7b",
+    "darkRose": "#c0919c",
     "darkOrange": "#d4a070",
     "darkGreen": "#9bb880",
-    "darkCyan": "#7da89e",
+    "darkCyan": "#73ada0",
     "darkYellow": "#ccb486",
     "lightStep1": "#ffffff",
     "lightStep2": "#fafafa",
@@ -36,6 +37,7 @@
     "lightSecondary": "#5a6b3e",
     "lightAccent": "#d68c27",
     "lightRed": "#904a4a",
+    "lightRose": "#8f5a68",
     "lightOrange": "#8a6038",
     "lightGreen": "#5a7044",
     "lightCyan": "#486e64",
@@ -130,13 +132,17 @@
       "dark": "darkGreen",
       "light": "lightGreen"
     },
+    "markdownCodeBg": {
+      "dark": "darkStep4",
+      "light": "lightStep4"
+    },
     "markdownBlockQuote": {
       "dark": "darkYellow",
       "light": "lightYellow"
     },
     "markdownEmph": {
-      "dark": "darkYellow",
-      "light": "lightYellow"
+      "dark": "darkRose",
+      "light": "lightRose"
     },
     "markdownStrong": {
       "dark": "darkOrange",

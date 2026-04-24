@@ -31,13 +31,12 @@ interface ChatRunnerDeps {
   onEnded: () => void
   initialMessage?: string
   priorBlocks?: AnyBlock[]
-  showWelcome?: boolean
   config?: FlywheelConfig
   engineSessionId?: string
 }
 
 export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner> {
-  const { sessionId, projectCwd, updateState, updateEntry, initialMessage, priorBlocks } = deps
+  const { sessionId, projectCwd, updateState, updateEntry, initialMessage } = deps
 
   const workflowDeps = prepareWorkflowDeps()
   const config = deps.config ?? workflowDeps.config
@@ -58,13 +57,10 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
   let outputFlusher: ReturnType<typeof outputPersistence.createFlusher>
 
   let disposed = false
-  let firstMessageSent = priorBlocks != null && priorBlocks.length > 0
+  let firstMessageSent = deps.priorBlocks != null && deps.priorBlocks.length > 0
   let persistedEngineSessionId: string | null = deps.engineSessionId ?? null
 
-  let initialBlocks: AnyBlock[] = []
-  if (deps.showWelcome && !priorBlocks) {
-    initialBlocks = buildChatWelcomeBlocks(projectCwd)
-  }
+  const initialBlocks: readonly AnyBlock[] = deps.priorBlocks ?? buildChatWelcomeBlocks(projectCwd)
 
   const chatCallbacks: ChatCallbacks = {
     onWaiting: (waiting) => {
@@ -102,7 +98,7 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     sessionId,
     metricsWriter: (patch) => updateEntry(patch as Partial<ChatSessionEntry>),
     updateEntry: (patch) => updateEntry(patch as Partial<ChatSessionEntry>),
-    priorBlocks,
+    priorBlocks: initialBlocks,
     engineSessionId: deps.engineSessionId,
     askHookServer: askHookServer ?? undefined,
     onFlush: () => {

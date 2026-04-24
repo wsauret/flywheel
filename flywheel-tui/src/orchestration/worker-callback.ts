@@ -22,6 +22,20 @@ const log = Log.create({ service: "worker-callback" })
 
 const SELF_REVIEW_STEP_TYPES = new Set(["work", "debug"])
 
+function drainForInjection(
+  queue: InjectionQueue,
+  emit: EmitFn,
+  workflowId: string,
+): string | null {
+  const delivered = queue.drain()
+  if (delivered === null) return null
+  log.info("injection drained to worker", { userSteering: delivered.userSteering })
+  if (!delivered.userSteering) {
+    emit("engine:injected", { workflowId, message: delivered.message, origin: "system" })
+  }
+  return delivered.message
+}
+
 function buildSelfReviewMessage(items: readonly string[] | undefined): string | null {
   if (items && items.length === 0) return null
   return `Review your changes before completing:
@@ -135,17 +149,20 @@ export function createWorkerCallback(
       onTurnComplete: () => {
         const observerMessages = observerChain?.onTurnComplete() ?? []
         for (const msg of observerMessages) injectionQueue.enqueue(msg)
-
-        const delivered = injectionQueue.drain()
-        if (delivered !== null) {
-          log.info("turn-boundary injection sent to worker", { userSteering: delivered.userSteering })
-          ctx.send(delivered.message)
-          if (!delivered.userSteering) {
-            emit("engine:injected", { workflowId, message: delivered.message, origin: "system" })
-          }
-        } else {
-          ctx.end()
-        }
+        const injected = drainForInjection(injectionQueue, emit, workflowId)
+        // Subprocess engines rely on stdin writes; harness reads the return.
+        if (injected !== null) ctx.send(injected)
+        else ctx.end()
+        return injected
+      },
+      onPostToolBatch: (toolNames, errors) => {
+        // Double-confirm boundary: when the agent signals completion by
+        // writing the handoff, drain pending injections so it reviews its
+        // work before the run closes. The loop stays tool-agnostic — the
+        // handoff-specific filter lives here.
+        const idx = toolNames.indexOf("write_handoff")
+        if (idx === -1 || errors[idx]) return null
+        return drainForInjection(injectionQueue, emit, workflowId)
       },
     })
 

@@ -70,9 +70,18 @@ export interface RunnerOptions {
   onEvent: (event: NDJSONEvent) => void;
   /**
    * Called when the model yields control to the user — no more tool calls,
-   * ready for the next user message. Same semantics in all engines.
+   * ready for the next user message. Returns a message to inject (keeping
+   * the loop alive) or null to end. Harness uses the return value directly;
+   * subprocess engines rely on in-callback side effects (stdin write/close).
    */
-  onTurnComplete?: () => void;
+  onTurnComplete?: () => string | null;
+  /**
+   * Called after each tool-execution batch completes. Returns a message to
+   * inject as the next user message, or null to proceed unchanged. Worker
+   * layer uses this as the double-confirm handoff boundary by filtering on
+   * tool names internally — the loop stays tool-agnostic.
+   */
+  onPostToolBatch?: (toolNames: readonly string[], errors: readonly boolean[]) => string | null;
   /** External abort signal. */
   signal?: AbortSignal;
   /**

@@ -32,8 +32,8 @@ export function wireStreamPipeline(
   const completionDetector = new CompletionDetector();
   const ndjsonParser = new NDJSONParser(buffer);
 
-  if (options?.onNDJSONEvent) {
-    ndjsonParser.onEvent = options.onNDJSONEvent;
+  if (options?.onEvent) {
+    ndjsonParser.onEvent = options.onEvent;
   }
 
   const rawStdoutChunks: string[] = [];

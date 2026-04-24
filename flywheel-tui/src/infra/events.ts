@@ -17,7 +17,6 @@ export type FlywheelEvent =
   | Ev<"evaluator:ndjson", { ndjsonEvent: NDJSONEvent }>
   | Ev<"evaluator:revision-requested", { stepIndex: number; revisionAttempt: number; maxRevisions: number; reason: string }>
   | Ev<"engine:started", { stepIndex: number }>
-  | Ev<"engine:output", { stream: "stdout" | "stderr"; data: string; engineId: string }>
   | EngineNDJSON
   | Ev<"engine:injected", { message: string; origin: "user" | "system"; pending?: boolean }>
   | Ev<"budget:metrics-changed", { tokens: number; cost: number }>

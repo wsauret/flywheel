@@ -1,4 +1,3 @@
-import { platform } from "os"
 
 function writeOsc52(text: string): void {
   if (!process.stdout.isTTY) return
@@ -23,7 +22,7 @@ export namespace Clipboard {
   }
 
   function resolveCopyMethod(): (text: string) => Promise<void> {
-    const os = platform()
+    const os = process.platform
 
     if (os === "darwin" && Bun.which("osascript")) {
 

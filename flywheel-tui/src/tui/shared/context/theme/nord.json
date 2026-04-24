@@ -106,6 +106,10 @@
       "dark": "nord14",
       "light": "nord14"
     },
+    "markdownCodeBg": {
+      "dark": "nord2",
+      "light": "nord4"
+    },
     "markdownBlockQuote": {
       "dark": "#8B95A7",
       "light": "nord3"

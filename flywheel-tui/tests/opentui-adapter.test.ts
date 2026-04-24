@@ -62,18 +62,16 @@ describe("OpenTUIAdapter", () => {
     })
     adapter.connect(bus)
 
-    emit("engine:output", {
+    emit("engine:ndjson", {
       workflowId: "wf-1",
-      stream: "stdout",
-      engineId: "claude",
-      data: JSON.stringify({
+      ndjsonEvent: createNDJSONEvent("assistant", {
         type: "assistant",
         message: {
           content: [
             { type: "tool_use", id: "tool-1", name: "bash", input: { command: "sleep 10" } },
           ],
         },
-      }) + "\n",
+      }),
     })
     await Promise.resolve()
 

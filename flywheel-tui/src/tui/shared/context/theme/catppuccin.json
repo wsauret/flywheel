@@ -76,6 +76,7 @@
     "markdownLink": { "dark": "darkBlue", "light": "lightBlue" },
     "markdownLinkText": { "dark": "darkSky", "light": "lightSky" },
     "markdownCode": { "dark": "darkGreen", "light": "lightGreen" },
+    "markdownCodeBg": { "dark": "darkSurface0", "light": "lightSurface0" },
     "markdownBlockQuote": { "dark": "darkYellow", "light": "lightYellow" },
     "markdownEmph": { "dark": "darkYellow", "light": "lightYellow" },
     "markdownStrong": { "dark": "darkPeach", "light": "lightPeach" },
