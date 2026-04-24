@@ -1,6 +1,6 @@
 ---
 name: brainstorm
-description: Conversational exploration of ideas before detailed planning. One question at a time, 2-3 approaches, incremental validation. Triggers on "explore", "brainstorm", "think about".
+description: Conversational exploration of ideas before detailed planning. One question at a time, 2-3 approaches, incremental validation. Triggers on "explore", "brainstorm", "think about". Once the approach is clear, use plan-creation to produce a spec.json.
 allowed-tools:
   - Read
   - Write
@@ -46,7 +46,7 @@ Feature idea via `$ARGUMENTS`. If empty, ask: "What would you like to explore?"
 
 ## Phase 1: Silent Research
 
-Run research agents to understand context. **DO NOT present findings to user** -- use them to ask smarter questions.
+Run research agents to understand context. **BLOCKING: DO NOT present findings to user** -- use them to ask smarter questions.
 
 Read `references/research-dispatch.md` before proceeding -- contains locator/analyzer dispatch templates and extraction checklist.
 

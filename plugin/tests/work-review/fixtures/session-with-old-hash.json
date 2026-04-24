@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "session_id": "hash-mutated-feature-2026-04-23",
+  "slug": "hash-mutated-feature",
+  "status": "active",
+  "started_at": "2026-04-23T12:00:00Z",
+  "last_checkpoint_at": "2026-04-23T12:00:00Z",
+  "active_skill": "work-review",
+  "baseline_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+}

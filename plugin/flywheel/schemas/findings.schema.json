@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "flywheel/schemas/findings.schema.json",
+  "title": "Reviewer findings",
+  "description": "Structured output from a single reviewer agent. Each finding carries severity, scope (code or plan), and observable-behavior evidence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "reviewer", "summary", "findings", "residual_risks", "open_questions"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "reviewer": {
+      "enum": [
+        "reviewer-architecture",
+        "reviewer-code-quality",
+        "reviewer-elegance",
+        "reviewer-performance",
+        "reviewer-patterns",
+        "reviewer-data-integrity",
+        "synthesizer"
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 100,
+      "maxLength": 5000
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/finding" }
+    },
+    "residual_risks": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "open_questions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "mechanical_compliance": {
+      "type": "object",
+      "description": "Emitted by work-review synthesizer Phase 1.0. Reports baseline hash verification + structured diff + BC coverage results."
+    }
+  },
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "severity", "scope", "what_wrong", "suggested_fix", "evidence"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "severity": { "enum": ["P1", "P2", "P3"] },
+        "scope": { "$ref": "#/$defs/scope" },
+        "what_wrong": { "type": "string", "minLength": 1 },
+        "suggested_fix": { "type": "string", "minLength": 1 },
+        "evidence": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1 },
+        "fingerprint": { "type": "string", "minLength": 1 },
+        "match_count": { "type": "integer", "minimum": 1 },
+        "reviewers_matched": { "type": "array", "items": { "type": "string" } },
+        "base_severity": { "enum": ["P1", "P2", "P3"] },
+        "promoted": { "type": "boolean" }
+      }
+    },
+    "scope": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "file"],
+          "properties": {
+            "kind": { "const": "code" },
+            "file": { "type": "string", "minLength": 1 },
+            "line": { "type": ["integer", "null"] }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "anyOf": [
+            { "required": ["phase_id"] },
+            { "required": ["task_id"] },
+            { "required": ["bc_id"] }
+          ],
+          "properties": {
+            "kind": { "const": "plan" },
+            "phase_id": { "type": "string", "minLength": 1 },
+            "task_id": { "type": "string", "minLength": 1 },
+            "bc_id": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    }
+  }
+}

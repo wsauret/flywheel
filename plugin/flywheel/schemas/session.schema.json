@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "flywheel/schemas/session.schema.json",
+  "title": "Session metadata",
+  "description": "Session-level metadata (slug, status, active skill, baseline hash). Filenames on disk are constants — no artifacts sub-object per elegance P1-1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "session_id",
+    "slug",
+    "status",
+    "started_at",
+    "last_checkpoint_at",
+    "active_skill",
+    "baseline_hash"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+-\\d{4}-\\d{2}-\\d{2}(-\\d+)?$"
+    },
+    "slug": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "status": { "enum": ["active", "paused", "completed"] },
+    "started_at": { "type": "string", "format": "date-time" },
+    "last_checkpoint_at": { "type": ["string", "null"], "format": "date-time" },
+    "active_skill": {
+      "oneOf": [
+        {
+          "enum": [
+            "plan-creation",
+            "plan-review",
+            "plan-consolidation",
+            "work-implementation",
+            "work-review"
+          ]
+        },
+        { "type": "null" }
+      ]
+    },
+    "baseline_hash": {
+      "oneOf": [
+        { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        { "type": "null" }
+      ]
+    }
+  }
+}

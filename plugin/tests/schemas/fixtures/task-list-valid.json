@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "plan_id": "refactor-rigor-gradient-pipeline",
+  "summary": "Reshape the plugin pipeline to use structured JSON artifacts under per-session directories. Adds assertion-level traceability via behavioral_contract and fulfills claims.",
+  "goal": "Ship the rigor-gradient pipeline substrate: schemas, .gitignore, conventions updates.",
+  "origin": {
+    "created_by": "plan-creation",
+    "findings_path": null
+  },
+  "context": {
+    "key_files": ["flywheel/schemas/findings.schema.json"],
+    "patterns": ["oneOf polymorphism for scope kinds"],
+    "gotchas": ["ajv-cli does not bundle ajv-formats; disable format validation or pass -c."]
+  },
+  "behavioral_contract": [
+    {
+      "id": "BC-FOUNDATION-001",
+      "title": "Schemas valid and fixtures pass",
+      "description": "All six schemas compile; all 17 fixtures pass or fail as expected.",
+      "evidence": "bash tests/schemas/run.sh exits 0",
+      "area": "schemas"
+    }
+  ],
+  "phases": [
+    {
+      "id": "phase-1",
+      "goal": "Land the schema substrate.",
+      "depends_on": [],
+      "files": ["flywheel/schemas/findings.schema.json"],
+      "tasks": [
+        {
+          "id": "t1",
+          "description": "Author findings.schema.json.",
+          "files": ["flywheel/schemas/findings.schema.json"],
+          "test_scenarios": ["Valid code-scope finding passes", "Missing summary fails"],
+          "fulfills": ["BC-FOUNDATION-001"]
+        }
+      ],
+      "verification": "bash tests/schemas/run.sh",
+      "manual_verification": "Spot-check fixtures directory listing."
+    }
+  ],
+  "success_criteria": ["All 17 fixtures behave as expected"]
+}

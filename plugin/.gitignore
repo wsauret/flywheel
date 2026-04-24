@@ -1,0 +1,3 @@
+.flywheel/
+.DS_Store
+tests/uat/results/

@@ -84,7 +84,21 @@ Only after Stage 1 passes:
 Auto-detect project type:
 
 ```bash
-npm test || pytest || cargo test || go test ./...
+bun run test || pytest || cargo test || go test ./...
 ```
 
 Run after each phase checkpoint.
+
+---
+
+## System-Wide Test Check
+
+Before marking a phase complete, ask:
+
+1. What fires when this runs? (callbacks, middleware, observers)
+2. Do tests exercise the real chain, or is everything mocked?
+3. Can failure leave orphaned state?
+4. What other interfaces expose this?
+5. Do error strategies align across layers?
+
+Surfaces integration bugs → fix at the right layer, not every layer. One well-placed handler beats five defensive wrappers.

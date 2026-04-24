@@ -1,81 +1,154 @@
 # Session Detection (Phase 0)
 
-Detailed validation logic, presentation templates, and edge cases for detecting and resuming active sessions.
+Active-pointer model, stale-pointer rescue, slug-arg tiebreak, and the shared `/fly:review` routing heuristic. Read this file before Phase 0 to handle every input shape correctly.
 
-## Check for Active Session
+## Active-Pointer Model
+
+Session state lives under `.flywheel/plugin/sessions/<session-id>/`. The currently-active session is identified by `.flywheel/plugin/active.json`:
+
+```json
+{ "schema_version": 1, "session_id": "add-timeout-flag-2026-04-23" }
+```
+
+Session id pattern: `<slug>-<YYYY-MM-DD>` (optional `-N` suffix for collisions). The active pointer resolves to a session directory containing `spec.json`, `session.json`, and (after work-start) `baseline.json` + `state.json`.
+
+## Phase 0 Procedure
+
+Follow this decision tree **in order**. Each branch short-circuits the next.
+
+### Step 1: Inspect `$ARGUMENTS`
+
+| `$ARGUMENTS` | Action |
+|---|---|
+| empty | Fall through to Step 2 (use active session). |
+| `findings.json` path | Fix-findings mode: set `SESSION_DIR` from the findings-path parent or active session; input type is findings. Go to Phase 1. |
+| slug (matches `^[a-z0-9-]+$` and no `.json` extension) | Prefix-scan for sessions (see Step 3). |
+| anything else that looks like a path | Treat as an explicit spec.json or findings.json path. Resolve the session dir; go to Phase 1. |
+
+### Step 2: Empty args — resolve active session
+
+1. If `.flywheel/plugin/active.json` is missing:
+   ```
+   Error: No active session. Run /fly:plan or /fly:work <slug>.
+   ```
+   Exit with a non-zero status.
+
+2. Read `.flywheel/plugin/active.json`:
+   ```bash
+   SESSION_ID=$(jq -r '.session_id' .flywheel/plugin/active.json)
+   ```
+
+3. **Stale-pointer rescue (P1-F)** — if `.flywheel/plugin/sessions/$SESSION_ID/` does not exist:
+   ```
+   Error: Session $SESSION_ID not found. Clearing active pointer.
+   Run /fly:plan or /fly:work <slug>.
+   ```
+   Then: `rm -f .flywheel/plugin/active.json`. Exit with a non-zero status.
+
+4. Otherwise: `SESSION_DIR=.flywheel/plugin/sessions/$SESSION_ID`. Continue to Phase 1.
+
+### Step 3: Slug arg — prefix-scan with tiebreak (P1-H)
 
 ```bash
-test -f .flywheel/session.md && echo "Active session found"
+SLUG="$ARGUMENTS"
+# Prefix-scan: collect all sessions whose id starts with <slug>-<date>.
+matches=$(find .flywheel/plugin/sessions -maxdepth 1 -type d -name "${SLUG}-*" | sort -r)
 ```
 
-## If Session Exists AND No Arguments Provided
+- Zero matches: error "No session matching slug '$SLUG'. Run /fly:plan first."
+- One match: that's the session. Set `SESSION_DIR`, update `active.json`, continue to Phase 1.
+- Multiple matches: **tiebreak by lexical sort desc**. ISO-date suffix (`-YYYY-MM-DD`) sorts lexically = chronologically. Take the first result after `sort -r`. Update `active.json` to the winner, continue to Phase 1.
 
-Read session file frontmatter:
+Write the new active pointer atomically per the Phase 2 atomic-write rule:
 
 ```bash
-head -20 .flywheel/session.md
+printf '{"schema_version":1,"session_id":"%s"}' "$WINNER" > .flywheel/plugin/active.json.tmp
+mv .flywheel/plugin/active.json.tmp .flywheel/plugin/active.json
 ```
 
-### Resume Validation
+### Step 4: Explicit findings.json path arg — fix-findings mode
 
-Before offering to resume, **validate the session state**:
+If `$ARGUMENTS` points to a `*.findings.json` file:
 
-1. **Read state file fully** (not via subagent - critical context)
-2. **Verify files in "Code Context" still exist:**
-   ```bash
-   # For each file in state's Code Context
-   test -f "$FILE" && echo "exists" || echo "missing"
-   ```
-3. **Check for unexpected changes since last_checkpoint:**
-   ```bash
-   # Get modified files since checkpoint
-   git diff --name-only --since="$LAST_CHECKPOINT"
-   ```
-4. **Check context file staleness:**
-   - If context file >7 days old: Note warning
-   - If codebase >50 commits since research: Note warning
+1. Verify the file exists and validates against `flywheel/schemas/findings.schema.json`.
+2. The session dir is the path's parent directory (or resolved via active.json if the path is outside a session).
+3. Set the skill's input-type flag to `fix-findings`. Phase 1's adapter takes the findings.json branch.
 
-### Present Validation Summary
+## `/fly:review` Routing Heuristic (D9)
 
+This is a **shared helper** authored here per D9 and referenced by `flywheel/commands/fly/review.md` in Phase 5. `/fly:review` does not have its own skill — it dispatches to `plan-review` or `work-review` based on the input.
+
+### Contract
+
+| Input | Dispatch |
+|---|---|
+| `$ARGUMENTS` matches `^#?\d+$` (PR number) | `work-review` with the PR target |
+| `$ARGUMENTS` looks like a branch name | `work-review` with the branch target |
+| `$ARGUMENTS` empty AND session has `baseline.json` | `work-review` (work is in progress or complete) |
+| `$ARGUMENTS` empty AND session has `spec.json` but no `baseline.json` | `plan-review` (spec not yet executed) |
+| `$ARGUMENTS` empty AND neither file present | error "No spec to review. Run /fly:plan first." |
+
+### Procedure (pseudocode matching `tests/work/routing.test.sh`)
+
+```bash
+route_review() {
+  local arguments="$1"
+  local session_dir="$2"   # resolved from .flywheel/plugin/active.json
+
+  # PR number, with or without '#' prefix
+  if [[ "$arguments" =~ ^#?[0-9]+$ ]]; then
+    echo "work-review"
+    return 0
+  fi
+
+  # Branch-name shape: contains '/', or starts with alphanumeric and has
+  # dot/dash/underscore chars.
+  if [ -n "$arguments" ] && [[ "$arguments" == */* || "$arguments" =~ ^[a-zA-Z][a-zA-Z0-9._-]*$ ]]; then
+    echo "work-review"
+    return 0
+  fi
+
+  if [ -z "$session_dir" ]; then
+    echo "No active session and no PR/branch argument. Run /fly:plan first." >&2
+    return 4
+  fi
+
+  if [ -f "$session_dir/baseline.json" ]; then
+    echo "work-review"
+    return 0
+  fi
+
+  if [ -f "$session_dir/spec.json" ]; then
+    echo "plan-review"
+    return 0
+  fi
+
+  echo "No spec to review. Run /fly:plan first." >&2
+  return 4
+}
 ```
-Resuming: [plan name]
-Phase: [N] of [M]
-Last checkpoint: [timestamp] ([X hours/days] ago)
 
-Validation:
-- Files: [N] exist, [M] missing
-- Changes since checkpoint: [none / list of files]
-- Context staleness: [fresh / warning X days old / warning Y commits since research]
+### Intuition
 
-Continue? [Yes / Show details / Start fresh]
-```
+- **Presence of `baseline.json`** is the signal that work has been started. If work is in progress or complete, review targets the executed work — `work-review`.
+- **Presence of `spec.json` alone** means the plan hasn't been executed yet. Review targets the plan — `plan-review`.
+- **An explicit PR/branch** bypasses the session-based inference; the user is asking to review code in a specific scope, regardless of the local session state.
 
-### Handling Validation Issues
+### Edge Cases
 
-- Missing files: Ask user to confirm (files may have been intentionally deleted)
-- Unexpected changes: Show which files, ask if intentional
-- Stale context: Warn but allow proceeding
+- **User passed a session id as arg** (matches `^[a-z0-9-]+-\d{4}-\d{2}-\d{2}(-\d+)?$`): treat as a slug lookup via the Phase 0 slug-arg procedure, then apply the routing heuristic against the resolved session dir with empty `arguments`.
+- **Both `spec.json` and `baseline.json` exist but `baseline.json` is corrupt**: route to `work-review`. It will detect the corruption via the Phase 1.0 hash check.
 
-### AskUserQuestion Template
+## Validation Checks Before Proceeding
 
-```
-Question: "Found active session for [plan_path]. [Validation summary]"
-Options:
-1. Resume (Recommended) - Continue from Phase [N]
-2. Show details - View full validation report
-3. Start fresh - Abandon session, ask for new plan
-```
+Once the session is resolved, before Phase 1:
 
-- **Resume:** Set `PLAN_PATH` from session, continue to Phase 1
-- **Show details:** Display full state file and validation, ask again
-- **Start fresh:** Delete session file, ask for plan path
+1. **Schema version match** — `session.json.schema_version == 1`. Reject with `"Unsupported schema version <N>. Re-run the producing skill to regenerate."` (P2-6).
+2. **`spec.json` presence** for plan-mode work, or **`findings.json` presence** for fix-findings mode. Missing → ask the user to run the preceding skill.
+3. **Stale `.tmp` cleanup** — if `state.json.tmp` exists from a prior interrupted write, delete it. The authoritative state file is `state.json`; `.tmp` is scratch.
 
-## If Session Exists AND Arguments Provided
+## If Session Exists AND `$ARGUMENTS` Disagrees
 
-Compare session `plan_path` with provided argument:
-- **Same plan:** Resume session
-- **Different plan:** Auto-switch to the new plan. Providing a plan path is implicit confirmation that the user wants to work on it. Clean up the old session file and proceed with the new plan. Briefly note the switch (e.g., "Switching from [old plan] to [new plan]") but do NOT prompt the user for confirmation.
-
-## If No Session
-
-Proceed normally - require plan path from arguments or ask user.
+- **Same session (arg resolves to same session_id as active.json)**: proceed.
+- **Different session (arg resolves to a different session_id)**: update `active.json` to the new session_id (auto-switch; providing an arg is implicit confirmation). Briefly note the switch, no prompt.
+- **Arg is a findings.json path in the same session**: switch to fix-findings mode for this invocation without changing active.json.

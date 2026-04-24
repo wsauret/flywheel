@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "plan_id": "five-bc-feature",
+  "status": "completed",
+  "summary": "State fixture covering four of five BCs. bc_satisfied union across phases includes BC-A-001..004 only; BC-A-005 is absent, which must trigger a plan-scope P1 finding with bc_id BC-A-005 in the BC coverage check.",
+  "phases": [
+    {
+      "id": "phase-1",
+      "status": "completed",
+      "started_at": "2026-04-23T12:00:00Z",
+      "completed_at": "2026-04-23T12:30:00Z",
+      "outcomes": ["Four contracts addressed"],
+      "strikes": [],
+      "bc_satisfied": ["BC-A-001", "BC-A-002", "BC-A-003", "BC-A-004"],
+      "artifacts": {
+        "files_created": [],
+        "files_modified": ["src/alpha.ts"],
+        "commands_run": [
+          {
+            "command": "bun run test tests/alpha.test.ts",
+            "exit_code": 0,
+            "stdout_tail": "4 pass",
+            "re_executable": true
+          }
+        ]
+      }
+    }
+  ],
+  "learnings": [],
+  "error_log": []
+}

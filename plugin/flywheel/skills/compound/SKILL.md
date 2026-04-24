@@ -82,6 +82,19 @@ I need a few details to document this:
 
 ---
 
+## Step 2.5: First-Use Discoverability Check
+
+On first compound creation in a repo, offer to add a one-line pointer to `docs/solutions/` in AGENTS.md or CLAUDE.md so future agents find the knowledge store.
+
+Detection: `ls docs/solutions/ 2>/dev/null | wc -l` returns 0 AND neither AGENTS.md nor CLAUDE.md has a grep hit for `docs/solutions`.
+
+If detected, **AskUserQuestion:** "No existing solutions directory detected. Add a one-line pointer to `docs/solutions/` in AGENTS.md or CLAUDE.md so future agents find it?"
+- Options: `Add to AGENTS.md` / `Add to CLAUDE.md` / `Skip`
+
+On yes, Edit the chosen file to append: `` Past solutions & compound learnings live in `docs/solutions/`. ``
+
+---
+
 ## Step 3: Check Existing Docs
 
 ```bash

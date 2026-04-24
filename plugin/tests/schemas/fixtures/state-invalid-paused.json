@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "session_id": "refactor-rigor-gradient-pipeline-2026-04-23",
+  "status": "paused",
+  "summary": "This fixture is named state-invalid-paused for historical reasons, but paused is an allowed status per state.schema.json. This file serves as a placeholder valid-pass test.",
+  "phases": [],
+  "learnings": [],
+  "error_log": []
+}

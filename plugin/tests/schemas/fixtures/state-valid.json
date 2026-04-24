@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "session_id": "refactor-rigor-gradient-pipeline-2026-04-23",
+  "status": "in_progress",
+  "summary": "Phase 1 in progress. Two commands executed; BC-FOUNDATION-001 satisfied.",
+  "phases": [
+    {
+      "id": "phase-1",
+      "status": "completed",
+      "started_at": "2026-04-23T12:00:00Z",
+      "completed_at": "2026-04-23T12:30:00Z",
+      "outcomes": ["All 17 fixtures pass"],
+      "strikes": [],
+      "bc_satisfied": ["BC-FOUNDATION-001", "BC-FOUNDATION-002", "BC-FOUNDATION-003"],
+      "artifacts": {
+        "files_created": ["flywheel/schemas/findings.schema.json"],
+        "files_modified": ["flywheel/skills/flywheel-conventions/SKILL.md"],
+        "commands_run": [
+          {
+            "command": "bash tests/schemas/run.sh",
+            "exit_code": 0,
+            "stdout_tail": "All 17 fixtures behaved as expected.",
+            "re_executable": true
+          }
+        ]
+      }
+    }
+  ],
+  "learnings": ["ajv-cli does not bundle ajv-formats; disable format validation."],
+  "error_log": []
+}

@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "reviewer": "reviewer-elegance",
+  "summary": "Reviewed auth refactor and the accompanying plan. Two findings: a code-level date parser that silently drops DD/MM/YYYY input, and a plan-level gap where Phase 2 lacks error handling despite BC-AUTH-003 requiring graceful network failure. Both are concrete, reachable, and blocking.",
+  "findings": [
+    {
+      "title": "parseDate silently drops DD/MM/YYYY input",
+      "severity": "P1",
+      "scope": {
+        "kind": "code",
+        "file": "src/auth.ts",
+        "line": 42
+      },
+      "what_wrong": "Users submitting dates in DD/MM/YYYY hit a silent parse error that logs them out. parseDate only accepts YYYY-MM-DD and returns null; the caller at line 78 does not check the result and treats null as 'expired'.",
+      "suggested_fix": "Detect both formats explicitly; throw a typed error on unrecognized input so the caller routes to the retry dialog instead of logging the user out.",
+      "evidence": "src/auth.ts:42-55 shows the regex; src/auth.ts:78 shows the caller treating null as expired."
+    },
+    {
+      "title": "Phase 2 network-failure fallback is missing despite BC-AUTH-003",
+      "severity": "P2",
+      "scope": {
+        "kind": "plan",
+        "phase_id": "phase-2",
+        "bc_id": "BC-AUTH-003"
+      },
+      "what_wrong": "When the network request in Phase 2 fails, users will see a crash. The plan does not specify fallback UI or retry logic, and BC-AUTH-003 (graceful network failure) has no task claim.",
+      "suggested_fix": "Add a task under Phase 2 that claims BC-AUTH-003 and specifies the fallback UI plus exponential-backoff retry.",
+      "evidence": "docs/plans/refactor-rigor-gradient-pipeline.md Phase 2 tasks list; BC-AUTH-003 appears in behavioral_contract[] with zero fulfills claims."
+    }
+  ],
+  "residual_risks": [
+    "Date format detection may still fail for ambiguous inputs like 01/02/2026 (is it Jan 2 or Feb 1?). Out of scope for this review but worth a follow-up."
+  ],
+  "open_questions": []
+}

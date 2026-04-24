@@ -1,7 +1,7 @@
 ---
 name: fly:plan
 description: Full planning workflow - create (with integrated validation), review, and consolidate. Orchestrates three independent skills.
-argument-hint: "[feature description OR path to *-design.md OR path to existing plan]"
+argument-hint: "[feature description OR path to *-design.md OR slug of existing session]"
 ---
 
 # Full Planning Workflow
@@ -10,8 +10,8 @@ argument-hint: "[feature description OR path to *-design.md OR path to existing 
 
 **Determine which skill to invoke first based on the input:**
 
-- If the input is a path to an **existing `.md` file in `docs/plans/`** (NOT ending in `-design.md`): invoke `plan-review` (skip creation)
-- **Otherwise** (feature description OR `-design.md` path): invoke `plan-creation`
+- If the input is a **slug** (lowercase kebab, e.g. `feat-user-auth`) that matches an existing session under `.flywheel/plugin/sessions/<slug>-*` whose `spec.json` exists: invoke `plan-review` (skip creation)
+- **Otherwise** (feature description, or a path to a design document ending in `-design.md`): invoke `plan-creation`
 
 **Invoke the first skill NOW using the Skill tool:**
 
@@ -19,7 +19,7 @@ argument-hint: "[feature description OR path to *-design.md OR path to existing 
 skill: plan-creation
 ```
 
-OR if the input is an existing plan file in `docs/plans/`:
+OR if the input resolves to an existing session with spec.json:
 
 ```
 skill: plan-review
@@ -49,34 +49,31 @@ This orchestrator runs three skills in sequence. After each skill completes, imm
 [Input] → plan-creation → plan-review → plan-consolidation → [Present]
 ```
 
-| Variable | Set By | Used By |
-|----------|--------|---------|
-| `PLAN_PATH` | plan-creation (or input detection in review mode) | All subsequent skills |
-| `CONTEXT_PATH` | plan-creation | plan-review, plan-consolidation |
+After plan-creation, the session dir at `.flywheel/plugin/sessions/<session-id>/` contains the spec.json, context.md, and session.json that subsequent skills read. The active pointer `.flywheel/plugin/active.json` is the connecting glue — no explicit path-passing between phases.
 
-1. **plan-creation** → produces `PLAN_PATH` and `CONTEXT_PATH` (includes codebase research, DRY checks, and external validation for high-risk topics)
-2. **plan-review** → invoke with `PLAN_PATH`
-3. **plan-consolidation** → invoke with `PLAN_PATH`
+1. **plan-creation** → writes `spec.json`, `context.md`, `session.json` into the session dir; updates `active.json`
+2. **plan-review** → reads the active session's spec.json, writes `findings.json`
+3. **plan-consolidation** → merges `findings.json` into `spec.json`; backs up pre-consolidation spec to `spec.json.pre-consolidation`
 
-If you started with `plan-review` (review mode), continue with step 3.
+If the input was a slug that resolved to an existing session (review mode), start at step 2.
 
 ### Invoking each subsequent skill:
 
 After plan-creation completes, invoke:
 ```
 skill: plan-review
-args: [PLAN_PATH from creation output]
 ```
 
 After plan-review completes, invoke:
 ```
 skill: plan-consolidation
-args: [PLAN_PATH]
 ```
+
+Both skills read the active session via `.flywheel/plugin/active.json` — no path arg needed.
 
 ### Phase 4: Present Results
 
-Display summary: plan path, context path, phases completed, findings count, and any critical items.
+Display summary: session id, session dir path, phases completed, findings count, and any critical items.
 
 ---
 
@@ -90,10 +87,10 @@ Display summary: plan path, context path, phases completed, findings count, and 
 
 ## Examples
 
-- `/fly:plan Add user authentication with OAuth2` — Full mode (all 3 phases)
-- `/fly:plan docs/plans/oauth2-design.md` — Design mode (creation uses design doc as input)
-- `/fly:plan docs/plans/feat-user-auth.md` — Review mode (skips creation, starts at review)
+- `/fly:plan Add user authentication with OAuth2` — Full mode (all 3 phases, creates a new session)
+- `/fly:plan docs/plans/oauth2-design.md` — Design mode (creation uses design doc as input, creates a new session)
+- `/fly:plan feat-user-auth` — Review mode if a session slug `feat-user-auth-*` already exists (skips creation, starts at review)
 
 ---
 
-After consolidation, the plan file at `PLAN_PATH` contains: implementation checklist, integrated review findings addressed or deferred, technical reference section, and raw data in a collapsible appendix. Ready for `/fly:work`.
+After consolidation, the session dir contains: `spec.json` (refined with findings integrated), `spec.json.pre-consolidation` (backup of the pre-refinement spec), `findings.json`, `context.md`, and `session.json`. Ready for `/fly:work`.

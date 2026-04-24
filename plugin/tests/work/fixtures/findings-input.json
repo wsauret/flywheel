@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "reviewer": "synthesizer",
+  "summary": "Reviewed the existing auth module after the last work session. Four code-scope findings grouped across two files: two findings on src/auth.ts (parseDate + session handler leak), one on src/session.ts (stale handler not cleared), and one on src/utils/date.ts (duplicate utility). All P1 or P2; fix-findings mode will translate these into task-sized units grouped by file.",
+  "findings": [
+    {
+      "title": "parseDate silently drops DD/MM/YYYY input",
+      "severity": "P1",
+      "scope": {
+        "kind": "code",
+        "file": "src/auth.ts",
+        "line": 42
+      },
+      "what_wrong": "Users submitting dates in DD/MM/YYYY hit a silent parse error that logs them out. parseDate only accepts YYYY-MM-DD and returns null; the caller at line 78 does not check the result and treats null as 'expired'.",
+      "suggested_fix": "Detect both formats explicitly; throw a typed error on unrecognized input so the caller routes to the retry dialog instead of logging the user out.",
+      "evidence": "src/auth.ts:42-55 shows the regex; src/auth.ts:78 shows the caller treating null as expired."
+    },
+    {
+      "title": "parseDate caller at :78 treats null as expired",
+      "severity": "P1",
+      "scope": {
+        "kind": "code",
+        "file": "src/auth.ts",
+        "line": 78
+      },
+      "what_wrong": "The caller conflates parse failure with expiry. A typed error from parseDate would fix this at the source; the caller should still route unrecognized errors to the retry dialog, not the logout path.",
+      "suggested_fix": "Switch the caller onto the new typed-error branch from parseDate; map unknown-parse errors to the retry dialog.",
+      "evidence": "src/auth.ts:78 shows the null check falling into the logout branch."
+    },
+    {
+      "title": "SIGALRM handler leaks across commands",
+      "severity": "P2",
+      "scope": {
+        "kind": "code",
+        "file": "src/session.ts",
+        "line": 120
+      },
+      "what_wrong": "The session dispatch installs signal.alarm(N) but never clears it on the return path. In long-lived shells the next command inherits the stale handler and is terminated spuriously.",
+      "suggested_fix": "Clear the alarm and restore the previous SIGALRM handler in a finally block.",
+      "evidence": "src/session.ts:120 installs the alarm; no matching signal.alarm(0) in the function."
+    },
+    {
+      "title": "local parseDate duplicates parseIsoDate",
+      "severity": "P3",
+      "scope": {
+        "kind": "code",
+        "file": "src/utils/date.ts",
+        "line": 18
+      },
+      "what_wrong": "Two utilities for the same job; callers will diverge. parseIsoDate already handles the ISO case with proper error typing; the local parseDate is a subset with weaker semantics.",
+      "suggested_fix": "Delete the local parseDate; import parseIsoDate from src/utils/date.ts and switch callers.",
+      "evidence": "src/auth.ts:42 vs src/utils/date.ts:18."
+    }
+  ],
+  "residual_risks": [
+    "Very short timeouts (under 1 second) may race with handler installation; consider minimum-timeout guard in a follow-up."
+  ],
+  "open_questions": []
+}

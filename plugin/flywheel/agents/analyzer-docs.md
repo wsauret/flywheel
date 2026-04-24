@@ -27,7 +27,7 @@ You are an expert at extracting and synthesizing information from documentation.
 
 - **IMPORTANT**: Use the Read tool WITHOUT limit/offset parameters to read entire files
 - **CRITICAL**: Read documentation files completely to understand full context
-- **NEVER** read files partially - documentation sections often reference each other
+- **BLOCKING: NEVER** read files partially - documentation sections often reference each other
 
 Partial reads cause hallucination. Better to read fully once than partially multiple times.
 

@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "plan_id": "five-bc-feature",
+  "summary": "Baseline fixture with five behavioral contracts (BC-A-001 through BC-A-005). Used to exercise the BC coverage check in work-review Phase 1.0 Check 2. The corresponding state covers only four of the five, so the check must produce a plan-scope P1 finding for BC-A-005.",
+  "goal": "Exercise BC coverage detection.",
+  "origin": {
+    "created_by": "plan-creation",
+    "findings_path": null
+  },
+  "context": {
+    "key_files": ["src/alpha.ts"],
+    "patterns": [],
+    "gotchas": []
+  },
+  "behavioral_contract": [
+    {
+      "id": "BC-A-001",
+      "title": "First contract",
+      "description": "Contract number one.",
+      "evidence": "Test for BC-A-001.",
+      "area": "alpha"
+    },
+    {
+      "id": "BC-A-002",
+      "title": "Second contract",
+      "description": "Contract number two.",
+      "evidence": "Test for BC-A-002.",
+      "area": "alpha"
+    },
+    {
+      "id": "BC-A-003",
+      "title": "Third contract",
+      "description": "Contract number three.",
+      "evidence": "Test for BC-A-003.",
+      "area": "alpha"
+    },
+    {
+      "id": "BC-A-004",
+      "title": "Fourth contract",
+      "description": "Contract number four.",
+      "evidence": "Test for BC-A-004.",
+      "area": "alpha"
+    },
+    {
+      "id": "BC-A-005",
+      "title": "Fifth contract",
+      "description": "Contract number five — the uncovered one.",
+      "evidence": "Test for BC-A-005.",
+      "area": "alpha"
+    }
+  ],
+  "phases": [
+    {
+      "id": "phase-1",
+      "goal": "Satisfy five contracts.",
+      "depends_on": [],
+      "files": ["src/alpha.ts"],
+      "tasks": [
+        {
+          "id": "t1",
+          "description": "Address the five contracts.",
+          "files": ["src/alpha.ts"],
+          "test_scenarios": ["All five contracts verified"],
+          "fulfills": ["BC-A-001", "BC-A-002", "BC-A-003", "BC-A-004", "BC-A-005"]
+        }
+      ],
+      "verification": "bun run test tests/alpha.test.ts",
+      "manual_verification": "Exercise each contract."
+    }
+  ],
+  "success_criteria": [
+    "All five BCs satisfied"
+  ],
+  "baseline_frozen_at": "2026-04-23T12:00:00Z"
+}

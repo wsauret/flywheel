@@ -27,7 +27,7 @@ You are an expert at extracting and documenting code patterns. You receive file:
 
 - **IMPORTANT**: Use the Read tool WITHOUT limit/offset parameters to read entire files
 - **CRITICAL**: Read the full file even if you only need one section
-- **NEVER** read files partially - context matters for pattern understanding
+- **BLOCKING: NEVER** read files partially - context matters for pattern understanding
 
 Partial reads cause hallucination. Better to read fully once than partially multiple times.
 

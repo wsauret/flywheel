@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "plan_id": "fix-findings-2026-04-23",
+  "summary": "Fix-findings mode TaskList derived from a findings.json input. The adapter groups findings by file into phases (one phase per file), synthesizes one BC per finding title from the input, and creates one task per finding. This fixture is what the adapter at work-implementation Phase 1 produces from tests/work/fixtures/findings-input.json. It preserves severity through task ordering (P1 first within a phase) and carries origin.findings_path so downstream work-review can trace back to the source.",
+  "goal": "Integrate review findings into code. Each finding becomes a task; each file becomes a phase.",
+  "origin": {
+    "created_by": "work-implementation-adapter",
+    "findings_path": "tests/work/fixtures/findings-input.json"
+  },
+  "context": {
+    "key_files": ["src/auth.ts", "src/session.ts", "src/utils/date.ts"],
+    "patterns": ["Each finding becomes a task; the adapter keeps the original file path in files[]"],
+    "gotchas": ["Adapter synthesizes BCs from finding titles; BC IDs are generated with the finding's file-area uppercased (e.g. src/auth.ts → AUTH)."]
+  },
+  "behavioral_contract": [
+    {
+      "id": "BC-AUTH-001",
+      "title": "parseDate silently drops DD/MM/YYYY input",
+      "description": "Synthesized BC from finding 'parseDate silently drops DD/MM/YYYY input'. Fix eliminates the silent-null path that logs users out on unrecognized date formats.",
+      "evidence": "Task description references the finding's suggested_fix; test scenarios cover the what_wrong case.",
+      "area": "auth"
+    },
+    {
+      "id": "BC-AUTH-002",
+      "title": "parseDate caller at line 78 treats null as expired",
+      "description": "Synthesized BC from finding 'parseDate caller at :78 treats null as expired'. Fix switches the caller onto the typed-error branch.",
+      "evidence": "Task description references the finding's suggested_fix; test scenarios cover the what_wrong case.",
+      "area": "auth"
+    },
+    {
+      "id": "BC-SESSION-001",
+      "title": "SIGALRM handler leaks across commands",
+      "description": "Synthesized BC from finding 'SIGALRM handler leaks across commands'. Fix clears the alarm in a finally block.",
+      "evidence": "Task description references the finding's suggested_fix; test scenarios cover the what_wrong case.",
+      "area": "session"
+    },
+    {
+      "id": "BC-DATE-001",
+      "title": "Local parseDate duplicates parseIsoDate",
+      "description": "Synthesized BC from finding 'local parseDate duplicates parseIsoDate'. Fix deletes the local utility and switches callers.",
+      "evidence": "Task description references the finding's suggested_fix; test scenarios cover the what_wrong case.",
+      "area": "date"
+    }
+  ],
+  "phases": [
+    {
+      "id": "phase-src-auth-ts",
+      "goal": "Fix findings in src/auth.ts.",
+      "depends_on": [],
+      "files": ["src/auth.ts"],
+      "tasks": [
+        {
+          "id": "t-finding-1",
+          "description": "Detect both YYYY-MM-DD and DD/MM/YYYY explicitly in parseDate at src/auth.ts:42; throw a typed error on unrecognized input so the caller routes to the retry dialog instead of logging the user out. Derived from P1 finding 'parseDate silently drops DD/MM/YYYY input'.",
+          "files": ["src/auth.ts"],
+          "test_scenarios": [
+            "DD/MM/YYYY input parses successfully",
+            "Unrecognized format throws typed error, not null",
+            "Caller at :78 no longer routes typed error to logout"
+          ],
+          "fulfills": ["BC-AUTH-001"]
+        },
+        {
+          "id": "t-finding-2",
+          "description": "Switch the caller at src/auth.ts:78 onto the new typed-error branch from parseDate; map unknown-parse errors to the retry dialog. Derived from P1 finding 'parseDate caller at :78 treats null as expired'.",
+          "files": ["src/auth.ts"],
+          "test_scenarios": [
+            "Typed parse error triggers retry dialog, not logout",
+            "Regression: legitimate expiry still routes to logout"
+          ],
+          "fulfills": ["BC-AUTH-002"]
+        }
+      ],
+      "verification": "bun run test tests/auth/",
+      "manual_verification": "Submit a DD/MM/YYYY date through the auth flow; confirm the retry dialog appears."
+    },
+    {
+      "id": "phase-src-session-ts",
+      "goal": "Fix findings in src/session.ts.",
+      "depends_on": [],
+      "files": ["src/session.ts"],
+      "tasks": [
+        {
+          "id": "t-finding-3",
+          "description": "Clear the alarm and restore the previous SIGALRM handler in a finally block at src/session.ts:120. Derived from P2 finding 'SIGALRM handler leaks across commands'.",
+          "files": ["src/session.ts"],
+          "test_scenarios": [
+            "After command completion, SIGALRM is cleared (signal.alarm(0))",
+            "Previous handler restored after command completion",
+            "Long-lived shell: second command does not inherit stale alarm"
+          ],
+          "fulfills": ["BC-SESSION-001"]
+        }
+      ],
+      "verification": "bun run test tests/session/",
+      "manual_verification": "Run two commands back-to-back in a long-lived shell; confirm the second isn't terminated by the first's leaked alarm."
+    },
+    {
+      "id": "phase-src-utils-date-ts",
+      "goal": "Fix findings in src/utils/date.ts.",
+      "depends_on": [],
+      "files": ["src/utils/date.ts"],
+      "tasks": [
+        {
+          "id": "t-finding-4",
+          "description": "Delete the local parseDate; import parseIsoDate from src/utils/date.ts and switch callers. Derived from P3 finding 'local parseDate duplicates parseIsoDate'.",
+          "files": ["src/utils/date.ts", "src/auth.ts"],
+          "test_scenarios": [
+            "Callers use parseIsoDate; local parseDate removed",
+            "No regression in date parsing tests"
+          ],
+          "fulfills": ["BC-DATE-001"]
+        }
+      ],
+      "verification": "bun run test tests/utils/date/",
+      "manual_verification": "Grep for remaining local parseDate references; should find none."
+    }
+  ],
+  "success_criteria": [
+    "All findings from findings-input.json are addressed",
+    "Test suites for each affected file pass",
+    "No new orphaned BCs introduced"
+  ]
+}

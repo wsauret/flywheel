@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "plan_id": "files-abc-feature",
+  "status": "completed",
+  "summary": "State fixture that claims phase-1 complete, but modifies A, B, and Z (Z is not in the baseline phase's files[]). The file Z is outside the baseline scope and should produce a code-scope P1 finding in the structured-diff check.",
+  "phases": [
+    {
+      "id": "phase-1",
+      "status": "completed",
+      "started_at": "2026-04-23T12:00:00Z",
+      "completed_at": "2026-04-23T12:30:00Z",
+      "outcomes": ["Drift occurred"],
+      "strikes": [],
+      "bc_satisfied": ["BC-FILES-001"],
+      "artifacts": {
+        "files_created": [],
+        "files_modified": ["src/a.ts", "src/b.ts", "src/z.ts"],
+        "commands_run": []
+      }
+    }
+  ],
+  "learnings": [],
+  "error_log": []
+}

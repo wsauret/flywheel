@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "plan_id": "three-phase-feature",
+  "summary": "Baseline fixture with three phases A/B/C for structured-diff tests. Phase A writes the config loader; Phase B wires it into the CLI; Phase C documents the flag. Used to exercise the skipped-phase detection in work-review Phase 1.0 Check 1.",
+  "goal": "Exercise skipped-phase detection.",
+  "origin": {
+    "created_by": "plan-creation",
+    "findings_path": null
+  },
+  "context": {
+    "key_files": ["src/config.ts", "src/cli.ts", "docs/flags.md"],
+    "patterns": [],
+    "gotchas": []
+  },
+  "behavioral_contract": [
+    {
+      "id": "BC-THREE-001",
+      "title": "Config loader present",
+      "description": "Loader reads config from path.",
+      "evidence": "Unit test.",
+      "area": "config"
+    },
+    {
+      "id": "BC-THREE-002",
+      "title": "CLI wired to loader",
+      "description": "CLI invokes loader before dispatch.",
+      "evidence": "Integration test.",
+      "area": "cli"
+    },
+    {
+      "id": "BC-THREE-003",
+      "title": "Docs updated",
+      "description": "docs/flags.md describes the new flag.",
+      "evidence": "Diff review.",
+      "area": "docs"
+    }
+  ],
+  "phases": [
+    {
+      "id": "phase-a",
+      "goal": "Config loader.",
+      "depends_on": [],
+      "files": ["src/config.ts"],
+      "tasks": [
+        {
+          "id": "t-a1",
+          "description": "Implement loader.",
+          "files": ["src/config.ts"],
+          "test_scenarios": ["Loader reads valid config"],
+          "fulfills": ["BC-THREE-001"]
+        }
+      ],
+      "verification": "bun run test tests/config.test.ts",
+      "manual_verification": "Run CLI with sample config."
+    },
+    {
+      "id": "phase-b",
+      "goal": "CLI wiring.",
+      "depends_on": ["phase-a"],
+      "files": ["src/cli.ts"],
+      "tasks": [
+        {
+          "id": "t-b1",
+          "description": "Invoke loader from CLI.",
+          "files": ["src/cli.ts"],
+          "test_scenarios": ["CLI dispatches with loaded config"],
+          "fulfills": ["BC-THREE-002"]
+        }
+      ],
+      "verification": "bun run test tests/cli.test.ts",
+      "manual_verification": "Invoke CLI with test config."
+    },
+    {
+      "id": "phase-c",
+      "goal": "Documentation.",
+      "depends_on": ["phase-b"],
+      "files": ["docs/flags.md"],
+      "tasks": [
+        {
+          "id": "t-c1",
+          "description": "Document the new flag.",
+          "files": ["docs/flags.md"],
+          "test_scenarios": ["Docs exist"],
+          "fulfills": ["BC-THREE-003"]
+        }
+      ],
+      "verification": "grep -q 'new-flag' docs/flags.md",
+      "manual_verification": "Visual review."
+    }
+  ],
+  "success_criteria": [
+    "All three phases complete"
+  ],
+  "baseline_frozen_at": "2026-04-23T12:00:00Z"
+}

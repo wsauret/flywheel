@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "reviewer": "reviewer-architecture",
+  "summary": "Reviewed the consolidated plan for refactor-rigor-gradient-pipeline. One P2 finding at Phase 4a: the atomic-write contract is stated but not verified by any test. Otherwise sound.",
+  "findings": [
+    {
+      "title": "Phase 4a atomic-write contract lacks verification task",
+      "severity": "P2",
+      "scope": {
+        "kind": "plan",
+        "phase_id": "phase-4a",
+        "bc_id": "BC-PIPE-015"
+      },
+      "what_wrong": "BC-PIPE-015 (atomic writes) has a fulfills claim in Phase 4a but no test scenario exercises a crash mid-write. Implementer may ship without proving atomicity.",
+      "suggested_fix": "Add a test scenario under the Phase 4a task claiming BC-PIPE-015 that kills the process between tmp-write and rename, then asserts state.json parses.",
+      "evidence": "docs/plans/refactor-rigor-gradient-pipeline.md Phase 4a tasks list."
+    }
+  ],
+  "residual_risks": [],
+  "open_questions": []
+}

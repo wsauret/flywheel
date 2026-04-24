@@ -28,7 +28,7 @@ You are an expert at understanding and documenting HOW code works. You receive f
 
 - **IMPORTANT**: Use the Read tool WITHOUT limit/offset parameters to read entire files
 - **CRITICAL**: Read files yourself in the main context before spawning any sub-tasks
-- **NEVER** read files partially - if a file is mentioned, read it completely
+- **BLOCKING: NEVER** read files partially - if a file is mentioned, read it completely
 
 Partial reads cause hallucination. Better to read fully once than partially multiple times.
 

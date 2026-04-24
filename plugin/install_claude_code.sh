@@ -13,20 +13,28 @@ echo "  Flywheel Plugin Installer"
 echo "================================"
 echo ""
 
-# Step 1: Add marketplace from repo root
-echo "Step 1: Adding marketplace..."
+# Step 1: Hard uninstall any prior install (plugin + marketplace + cache)
+echo "Step 1: Hard uninstall of any prior flywheel install..."
+claude plugin uninstall flywheel@flywheel-marketplace > /dev/null 2>&1 || true
+claude plugin uninstall flywheel@local-marketplace > /dev/null 2>&1 || true
 claude plugin marketplace remove flywheel-marketplace > /dev/null 2>&1 || true
 claude plugin marketplace remove local-marketplace > /dev/null 2>&1 || true
+rm -rf "$HOME/.claude/plugins/cache/flywheel-marketplace" 2>/dev/null || true
+rm -rf "$HOME/.claude/plugins/cache/local-marketplace" 2>/dev/null || true
+echo "  ✓ Prior install cleaned"
+
+# Step 2: Add marketplace from repo root
+echo "Step 2: Adding marketplace..."
 claude plugin marketplace add "$REPO_ROOT" > /dev/null
 echo "  ✓ Marketplace added"
 
-# Step 2: Install the plugin
-echo "Step 2: Installing plugin..."
+# Step 3: Install the plugin
+echo "Step 3: Installing plugin..."
 claude plugin install flywheel@flywheel-marketplace > /dev/null
 echo "  ✓ Plugin installed"
 
-# Step 3: Configure Context7 API key
-echo "Step 3: Configuring Context7..."
+# Step 4: Configure Context7 API key
+echo "Step 4: Configuring Context7..."
 
 # Determine shell profile file
 get_shell_profile() {

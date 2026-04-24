@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "session_id": "add-timeout-flag-2026-04-23",
+  "slug": "add-timeout-flag",
+  "status": "active",
+  "started_at": "2026-04-23T12:00:00Z",
+  "last_checkpoint_at": "2026-04-23T12:00:00Z",
+  "active_skill": "work-implementation",
+  "baseline_hash": "53f1cdd7f5bac32c065ad6d15265a62e42f249860d0025ecf7f25489dfab84c5"
+}

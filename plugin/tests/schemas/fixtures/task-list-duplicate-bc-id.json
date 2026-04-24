@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "plan_id": "refactor-rigor-gradient-pipeline",
+  "summary": "This fixture has two IDENTICAL behavioral_contract entries to trigger uniqueItems. Same-id-different-body case is a procedural concern (coverage gate), not schema concern, per I1.4 note.",
+  "goal": "Demonstrate uniqueItems array-level catch.",
+  "origin": {
+    "created_by": "plan-creation",
+    "findings_path": null
+  },
+  "context": {
+    "key_files": [],
+    "patterns": [],
+    "gotchas": []
+  },
+  "behavioral_contract": [
+    {
+      "id": "BC-DUP-001",
+      "title": "Duplicated contract",
+      "description": "This entry appears twice to trigger uniqueItems.",
+      "evidence": "n/a",
+      "area": "demo"
+    },
+    {
+      "id": "BC-DUP-001",
+      "title": "Duplicated contract",
+      "description": "This entry appears twice to trigger uniqueItems.",
+      "evidence": "n/a",
+      "area": "demo"
+    }
+  ],
+  "phases": [
+    {
+      "id": "phase-1",
+      "goal": "Minimal phase.",
+      "depends_on": [],
+      "files": [],
+      "tasks": [
+        {
+          "id": "t1",
+          "description": "A task.",
+          "files": [],
+          "test_scenarios": [],
+          "fulfills": ["BC-DUP-001"]
+        }
+      ],
+      "verification": "none",
+      "manual_verification": ""
+    }
+  ],
+  "success_criteria": []
+}

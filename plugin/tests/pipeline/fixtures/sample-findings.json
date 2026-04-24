@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "reviewer": "synthesizer",
+  "summary": "Reviewed the add-timeout-flag spec. Two findings: P1 on missing cleanup of the SIGALRM handler on successful completion (handler leaks into subsequent commands in long-running shells), P2 on Windows behavior when the flag is supplied (silent no-op is surprising; should warn or error). Both map to existing tasks and do not need new BCs.",
+  "findings": [
+    {
+      "title": "SIGALRM handler is not cleared on successful completion",
+      "severity": "P1",
+      "scope": {
+        "kind": "plan",
+        "phase_id": "phase-1",
+        "task_id": "t1.2",
+        "bc_id": "BC-CLI-001"
+      },
+      "what_wrong": "When the CLI runs under a long-lived shell (e.g. REPL) and completes before the timeout fires, the SIGALRM handler remains installed. The next command inherits the stale handler, causing a spurious termination once the original timeout elapses.",
+      "suggested_fix": "Clear the alarm and restore the previous SIGALRM handler in a finally block after command dispatch completes.",
+      "evidence": "task t1.2 installs signal.alarm(N) but does not show signal.alarm(0) on the return path."
+    },
+    {
+      "title": "Windows silent no-op is surprising",
+      "severity": "P2",
+      "scope": {
+        "kind": "plan",
+        "phase_id": "phase-1",
+        "task_id": "t1.2",
+        "bc_id": "BC-CLI-001"
+      },
+      "what_wrong": "On Windows, the platform guard skips SIGALRM installation but still accepts --timeout without warning. Users will believe timeouts are active.",
+      "suggested_fix": "On Windows with --timeout > 0, print a warning to stderr that the flag is unsupported on this platform.",
+      "evidence": "task t1.2 guard only skips installation; does not surface the no-op."
+    }
+  ],
+  "residual_risks": [
+    "Very short timeouts (under 1 second) may race with handler installation; consider minimum-timeout guard in a follow-up."
+  ],
+  "open_questions": []
+}

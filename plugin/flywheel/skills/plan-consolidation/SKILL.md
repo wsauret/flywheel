@@ -1,6 +1,6 @@
 ---
 name: plan-consolidation
-description: Restructure reviewed plans into actionable checklists for /work. Triggers on "consolidate plan", "finalize plan".
+description: Refine the active session's spec.json by merging reviewer findings.json into it. Backs up the pre-refinement spec to a .pre-consolidation sidecar. Triggers on "consolidate plan", "finalize plan".
 allowed-tools:
   - Read
   - Write
@@ -13,46 +13,59 @@ allowed-tools:
 
 # Plan Consolidation Skill
 
-Transform plans with a Review Summary into a single, coherent, work-ready document with integrated checklists.
-
-**Philosophy:** Reviewing adds valuable content but scatters it. Consolidation restructures everything into actionable format.
+Merge review findings into the active session's `spec.json`. The refined spec carries `origin.created_by = "plan-consolidation"` and an `origin.findings_path`. Pre-refinement spec preserved as a `.pre-consolidation` sidecar (D7). Namespace: plugin uses `.flywheel/plugin/sessions/`.
 
 ## Input
 
-Plan path via `$ARGUMENTS`. Should already have Plan Review Summary (from plan-review).
+No arguments. Reads the active session from `.flywheel/plugin/active.json`.
 
 ---
 
-## Phase 1: Analyze Plan Structure
+## Phase 1: Load Active Session
 
-Check for original content and Plan Review Summary. See `references/extraction-patterns.md` for detection details.
+1. Read `.flywheel/plugin/active.json` to resolve `session_id`
+2. Compute session directory: `.flywheel/plugin/sessions/<session_id>/`
+3. Read three inputs:
+   - `spec.json` (the pre-refinement spec)
+   - `findings.json` (written by plan-review)
+   - `context.md` (research sidecar)
 
-- **No Review Summary:** Warn and ask to continue
-- **No original content:** Error - plan hasn't been created
+**Errors:**
 
----
-
-## Phase 2: Extract Content
-
-Using patterns from `references/extraction-patterns.md`:
-
-1. **Extract review findings** into P1/P2/P3 categories
-2. **Extract implementation steps** into phases
-3. **Map findings to steps** for integrated checklists
+- `active.json` missing → ask the user to run plan-creation first
+- `findings.json` missing → ask the user to run plan-review first, or abort
+- `spec.json` missing → the session is broken; ask the user to delete and restart
 
 ---
 
-## Phase 3: Resolve Open Questions
+## Phase 2: Back Up to Sidecar (D7)
 
-**The user must weigh in before we can create a work-ready plan.**
+```bash
+cp .flywheel/plugin/sessions/<id>/spec.json \
+   .flywheel/plugin/sessions/<id>/spec.json.pre-consolidation
+```
 
-Scan for all unresolved items:
-- `### Open Questions` sections/tables, `OPEN QUESTION:` markers
-- TODO, TBD, "to be decided", "Decision needed"
-- "Option A vs Option B", "Either... or...", "Alternatively,"
-- Reviewer conflicts from "Conflicts Between Reviewers" section
+Cleaned on `ship`.
 
-Present each question **one at a time**:
+---
+
+## Phase 3: No-Op Check
+
+If `findings.json` has zero findings and zero open questions:
+
+- Print: "No refinements needed — spec is already work-ready."
+- Skip to Phase 7 (next-steps prompt).
+
+---
+
+## Phase 4: Surface Open Questions
+
+Questions to surface:
+
+1. `findings.json.open_questions` (entries the synthesizer could not resolve)
+2. Inter-reviewer conflicts — findings sharing a fingerprint but diverging on severity (synthesizer promotes severity and flags the divergence)
+
+Present each question **BLOCKING: one at a time** via AskUserQuestion:
 
 ```
 Question: "[Topic]: [The question]"
@@ -64,89 +77,78 @@ Options:
 3. "You pick what's best" - Let me decide
 ```
 
-Handle responses: user picks option → record decision; user picks "You decide" → apply recommendation, note delegated; custom answer → record exactly. Never proceed with unresolved questions.
+Record: user picks option → decision logged; "You decide" → apply recommendation, note delegated; custom answer → record exactly. **BLOCKING: Never proceed with unresolved questions.**
 
 ---
 
-## Phase 4: Synthesize
+## Phase 5: Integrate Findings by Severity
 
-### Principles
+For each finding in `findings.json.findings`:
 
-1. **Deduplicate** - Same insight from multiple sources → one entry
-2. **Prioritize** - P1 before P2, high-impact first
-3. **Preserve test-first ordering** — Maintain test-before-implementation order within phases
-4. **Integrate** - Insights IN checklist items, not floating
-5. **Make executable** - Every item is a concrete action
+### P1 — Must Integrate
 
-P1 findings are CRITICAL: resolve with a specific checklist action, or flag as BLOCKING.
+- Fold `suggested_fix` language into the affected task's `description`
+- Add test scenarios that cover the failure mode described in `what_wrong`
+- If the finding does not map to an existing task: add a new task (and, if needed, a new BC with a matching `fulfills[]` claim)
 
----
+### P2 — Default Integrate; Allow Defer
 
-## Phase 5: Generate Consolidated Plan
+Same as P1 by default, but the user may defer with a rationale. Deferred P2s are recorded as a task note (keep the rationale terse; one sentence).
 
-Write using template from `references/consolidated-plan-template.md`.
+### P3 — User Triage
 
-Structure: Status → Executive Summary → Decisions Made → Critical Items → Implementation Checklist → Technical Reference → Review Findings Summary → Appendix (raw review data).
+Present each P3 via AskUserQuestion with three options:
 
----
-
-## Phase 6: Write Files
-
-```bash
-cp [plan_path] [plan_path].pre-consolidation.backup
-```
-
-Overwrite plan file with consolidated version. Original content preserved in Appendix.
+- **Include** — integrate like a P2
+- **Drop** — no change to spec
+- **Follow-up** — note as a future improvement in the spec's `success_criteria` or `open_questions` (user's choice)
 
 ---
 
-## Phase 7: Present Results
+## Phase 6: Re-Validate BC Coverage
 
-Display summary and offer next steps:
+Per D13:
 
-```
-Plan Consolidated — [plan_path]
+- **BLOCKING: Orphans (zero claims)** → hard error. Either assign a task's `fulfills[]` or remove the BC.
+- **Duplicates (multiple claims on the same BC)** → surface as an Open Question (not automatic failure). Ask which claim is authoritative; keep both if they cover different scenarios.
 
-Summary: [N] phases, [N] checklist items, [N] findings addressed
-Status: [Ready for /fly:work OR "Blocked - see Critical Items"]
-```
+Re-run coverage check after integrations. If a new BC was added in Phase 5, confirm it has at-least-one task claim.
 
-**AskUserQuestion:** "Plan consolidated and ready. What next?"
-- Start /fly:work (Recommended)
-- Done for now
+---
+
+## Phase 7: Write Refined Spec and Prompt
+
+1. Update the spec in memory:
+   - `origin.created_by = "plan-consolidation"`
+   - `origin.findings_path = ".flywheel/plugin/sessions/<id>/findings.json"`
+2. Validate the refined spec against `flywheel/schemas/task-list.schema.json` before writing
+3. Write `.flywheel/plugin/sessions/<id>/spec.json` (overwrite)
+4. Print summary:
+   ```
+   Spec refined — <id>
+   Integrated: N P1, N P2, N P3
+   Deferred: N
+   BC coverage: OK (all BCs claimed)
+   ```
+5. **AskUserQuestion:** "Spec consolidated and ready. What next?"
+   - Start `/fly:work` (Recommended)
+   - Done for now
 
 ---
 
 ## Error Handling
 
-- **Missing content:** Warn and continue, or error if critical
-- **Write failure:** Display content, suggest alternative path
-- **Malformed input:** Best-effort consolidation, note unparsed sections
+- **Active session missing:** Prompt user to run plan-creation first
+- **Findings missing:** Prompt user to run plan-review first, or abort
+- **Schema validation failure on write:** Restore from `spec.json.pre-consolidation`; report which field failed; do not leave a half-merged spec on disk
+- **User rejects every option on an open question:** Abort consolidation; spec stays in pre-refinement state (sidecar was created but the main spec.json was not overwritten)
 
 ---
 
 ## Anti-Patterns
 
-- **Skip question resolution** - Don't consolidate with TBD items
-- **Multiple questions at once** - One at a time
-- **Just append** - Restructure, don't slap summary on top
-- **Floating insights** - Integrate into checklist items
-- **Ignore P1s** - Must resolve or block
-- **Vague checklists** - "Implement auth" → "Step 2.1: Create JWT in `src/auth/tokens.ts`"
-
----
-
-## Quality Checks
-
-- [ ] All open questions resolved with user input
-- [ ] All P1 findings addressed or flagged as blocking
-- [ ] Every implementation step has concrete action
-- [ ] Each phase has test verification
-- [ ] Plan genuinely ready for `/fly:work`
-
----
-
-## Detailed References
-
-- `references/consolidated-plan-template.md` - Output structure
-- `references/extraction-patterns.md` - How to extract and categorize content
+- **Skip open-question resolution** — Don't refine with unresolved questions
+- **Multiple questions at once** — One at a time
+- **BLOCKING: Auto-drop a P1** — P1s integrate; only the user may downgrade to follow-up
+- **BLOCKING: Silent BC orphaning** — Adding a task without assigning `fulfills[]` is a coverage failure
+- **Touch `context.md`** — Research context stays a sidecar (D1). Only `spec.json` is refined.
