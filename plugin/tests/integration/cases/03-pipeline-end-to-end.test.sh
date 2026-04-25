@@ -139,6 +139,30 @@ else
   echo "----- end -----"
 fi
 
+# Decision-propagation assertion: plan-review surfaces an open question
+# about whether 'stdlib only' applies to tests (pytest vs unittest). The
+# autopilot picks the recommended answer ("Stdlib only — tests too").
+# Plan-consolidation Phase 4.5 must propagate that decision INTO the
+# spec — verification commands and task descriptions should reflect
+# unittest, NOT pytest. If pytest still appears in verification commands
+# after consolidation, the decision evaporated into conversation history
+# and the implementer will produce wrong output (this happened in a
+# prior run).
+verifications=$(jq -r '.phases[].verification' "$SDIR/spec.json" 2>/dev/null)
+if echo "$verifications" | grep -qi "pytest"; then
+  note_fail "consolidated spec verification uses pytest — 'stdlib only' decision not propagated into spec"
+  echo "----- verification commands -----"
+  echo "$verifications"
+  echo "----- end -----"
+elif echo "$verifications" | grep -qi "unittest"; then
+  note_pass "consolidated spec verification uses unittest (decision propagated)"
+else
+  note_fail "consolidated spec verification uses neither pytest nor unittest — propagation unclear"
+  echo "----- verification commands -----"
+  echo "$verifications"
+  echo "----- end -----"
+fi
+
 # ---- Step 2: /fly:work (plan mode) -----------------------------------------
 tmux_send_line "$SESSION" "/fly:work"
 
