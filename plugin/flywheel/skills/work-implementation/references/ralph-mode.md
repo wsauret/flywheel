@@ -1,58 +1,77 @@
 # Ralph Mode: Stateless Agent Loops
 
-**Philosophy:** Agent as stateless function. Fresh context each chunk. `progress.json` and `session.json` are THE source of truth.
+**Philosophy:** Agent as stateless function. Fresh context each phase. State files are THE source of truth.
 
-Named after [Ralph Wiggum](https://ghuntley.com/ralph/) — a "hilariously dumb" but effective solution to context window limits.
+Named after [Ralph Wiggum](https://ghuntley.com/ralph/) - a "hilariously dumb" but effective solution to context window limits.
 
 ## When Ralph Mode Activates
 
-Any of:
+Ralph mode is triggered when ANY of these conditions are true:
 
-1. **Spec has >5 phases** (plan mode) or **review has >5 file-groups** (fix-findings mode) — long tasks benefit from periodic context refresh.
-2. **User invokes with `--ralph` flag** — explicit request for stateless execution.
-3. **Context exceeds 50% and >2 chunks remain** — proactive compaction.
+1. **Plan has >5 phases** - Long tasks benefit from periodic context refresh
+2. **User invokes with `--ralph` flag** - Explicit request for stateless execution
+3. **Context exceeds 50% and >2 phases remain** - Proactive compaction
 
 ## Ralph Checkpoint
 
-After each chunk checkpoint in Ralph mode:
+After each phase checkpoint in Ralph mode:
 
-### 1. Ensure progress.json carries forward what the next agent needs
+### 1. Write Detailed State
 
-`progress.json` already records `completed[]` and `artifacts`. For Ralph, also append decisions/discoveries to `error_log` (or extend with a `learnings[]` field if the discovery isn't an error). The next agent reads progress.json cold and needs:
-
-- `completed[]` — which chunks are done.
-- `artifacts.files_modified[]` — every file touched.
-- `artifacts.commands_run[]` — every verification command with accurate exit codes.
+Ensure state file has everything for cold resume:
+- Current phase number
+- All completed phases with summaries
+- Key decisions (exhaustive)
+- Learnings (patterns, gotchas)
+- Code context (all files modified/created)
+- Any blockers or decisions deferred
 
 ### 2. Suggest Context Clear
 
 ```
-Chunk <id> complete. Context is <X>% full with <M> chunks remaining.
+Phase [N] complete. Context is [X]% full with [M] phases remaining.
 
 Recommend clearing context and saying "carry on" for optimal performance.
 
 Your progress is saved in:
-- progress: .flywheel/plugin/sessions/<id>/progress.json
-- session: .flywheel/plugin/sessions/<id>/session.json
-- spec or findings: .flywheel/plugin/sessions/<id>/spec.json or review.findings.json
+- State: [state_path]
+- Session: .flywheel/session.md
 
 Options:
-1. Clear context now (Recommended) — Say "carry on" to resume
-2. Continue without clearing — may degrade quality on later chunks
+1. Clear context now (Recommended) - Say "carry on" to resume
+2. Continue without clearing - May degrade quality on later phases
 ```
 
 ### 3. If User Clears
 
-New instance runs `/fly:work` with no args:
+New instance loads fresh, reads state, continues seamlessly.
 
-1. Phase 0 resolves session via `active.json`.
-2. Phase 1 reads `progress.json`, skips init (progress already exists).
-3. Phase 2 enters from the first chunk whose ID is NOT in `completed[]`.
+## State File Completeness for Ralph
 
-No work lost.
+In Ralph mode, state file MUST contain:
 
-## Common Mistakes in Ralph Mode
+```markdown
+## Progress
+- [x] Phase 1: [description] - [key outcome]
+- [x] Phase 2: [description] - [key outcome]
+- [ ] Phase 3: [description]
 
-- **Stale or vague artifacts**: writing `"implemented the feature"` instead of concrete file/command lines. Be specific so the cold-resume agent doesn't rediscover.
-- **Forgetting to update `last_checkpoint_at`**: harmless for Ralph itself, but staleness tracking elsewhere gets wrong.
-- **Not clearing `active_skill` on Ralph-triggered context clear**: the trap should handle this, but double-check; a lingering active_skill blocks re-entry.
+## Key Decisions
+- Phase 1: [decision 1 with rationale]
+- Phase 1: [decision 2]
+- Phase 2: [decision 3]
+
+## Learnings
+- Phase 1: [pattern discovered - file:line]
+- Phase 2: [gotcha found - explanation]
+
+## Code Context
+- Created: [file1], [file2]
+- Modified: [file3], [file4]
+
+## Current Working State
+<!-- For Ralph resume - what was the agent working on? -->
+- Last action: [what was just completed]
+- Next action: [what should happen next]
+- Open questions: [any pending decisions]
+```

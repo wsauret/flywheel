@@ -1,6 +1,6 @@
 ---
 name: debug
-description: Debug issues with iterative fix loop. Gathers problem description, investigates, then enters fix-verify cycle. Triggers on "debug", "fix this", "troubleshoot". Use when the goal is to fix a specific reported issue. For exploration or new features, use brainstorm or plan-creation.
+description: Debug issues with iterative fix loop. Gathers problem description, investigates, then enters fix-verify cycle. Triggers on "debug", "fix this", "troubleshoot".
 allowed-tools:
   - Read
   - Write

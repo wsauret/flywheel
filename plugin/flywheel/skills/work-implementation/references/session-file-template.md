@@ -1,168 +1,162 @@
 # Session File Template
 
-`session.json` is the session-level metadata pointer. Conforms to `flywheel/schemas/session.schema.json`. Written once by plan-creation and updated on every skill entry/exit.
+The session file enables "carry on" resume after clearing context.
 
 ## File Location
 
 ```
-.flywheel/plugin/sessions/<session-id>/session.json
+.flywheel/session.md
 ```
 
-And the active-session pointer:
-
-```
-.flywheel/plugin/active.json
-```
-
-The active pointer has shape `{ "schema_version": 1, "session_id": "<session-id>" }`.
+Single file in project root. Only one active session at a time.
 
 ---
 
-## Initial Session (plan-creation exit)
+## Session File Structure
 
-Written by plan-creation at session creation:
+```markdown
+---
+active_skill: work-implementation
+plan_path: docs/plans/feat-user-auth.md
+state_path: docs/plans/feat-user-auth.state.md
+context_path: docs/plans/feat-user-auth.context.md
+started: 2024-01-15T10:00:00
+last_checkpoint: 2024-01-15T10:30:00
+current_phase: 2
+total_phases: 4
+skip_manual_pauses: false
+---
 
-```json
-{
-  "schema_version": 1,
-  "session_id": "add-timeout-flag-2026-04-23",
-  "slug": "add-timeout-flag",
-  "status": "active",
-  "started_at": "2026-04-23T12:00:00Z",
-  "last_checkpoint_at": null,
-  "active_skill": null
-}
+# Active Flywheel Session
+
+## Quick Resume
+
+After clearing context, say **"carry on"** or run:
+
+```
+/fly:work docs/plans/feat-user-auth.md
 ```
 
-Note: `active_skill: null` because plan-creation sets the field only while running, then clears it on exit.
+## Current Status
+
+- **Plan:** feat-user-auth.md
+- **Phase:** 2 of 4 - Core implementation
+- **Last completed:** Phase 1 - Foundation setup
+
+## Key Decisions (carried forward)
+
+- Using repository pattern for data access
+- Tests in `__tests__/` directory
+
+## Key Learnings (carried forward)
+
+- Existing auth uses middleware pattern in `src/middleware/auth.ts`
+- Tests expect mock database in `__mocks__/db.ts`
+
+## Recent Files Modified
+
+- `src/services/auth.ts` (created)
+- `src/routes/index.ts` (modified)
+
+## Handoff Summary
+
+<!-- Everything a context-less agent needs to continue -->
+
+### What We're Building
+
+[1-2 sentence goal from plan's Desired End State]
+
+### Where We Are
+
+Phase 2 of 4: Core implementation
+Last completed: Phase 1 - Foundation setup
+
+### What We Learned
+
+[Top 3 learnings from state.md, abbreviated]
+
+### What's Next
+
+[Immediate next action from current phase]
+```
+
+### Frontmatter Fields
+
+| Field | Purpose |
+|-------|---------|
+| `skip_manual_pauses` | If true, skip manual verification prompts (user opted out) |
 
 ---
 
-## At work-implementation Start (Phase 1 exit)
+## Lifecycle
 
-After Phase 1 initializes progress.json:
+### On Work Start
 
-```json
-{
-  "schema_version": 1,
-  "session_id": "add-timeout-flag-2026-04-23",
-  "slug": "add-timeout-flag",
-  "status": "active",
-  "started_at": "2026-04-23T12:00:00Z",
-  "last_checkpoint_at": "2026-04-23T12:05:00Z",
-  "active_skill": "work-implementation"
-}
-```
-
-Changes from initial form:
-
-- `last_checkpoint_at`: timestamp of Phase 1 completion.
-- `active_skill`: `"work-implementation"` while the skill is executing.
-
----
-
-## Mid-Execution Checkpoint
-
-Each chunk completion updates `last_checkpoint_at`. Other fields stay stable:
-
-```json
-{
-  "schema_version": 1,
-  "session_id": "add-timeout-flag-2026-04-23",
-  "slug": "add-timeout-flag",
-  "status": "active",
-  "started_at": "2026-04-23T12:00:00Z",
-  "last_checkpoint_at": "2026-04-23T12:35:00Z",
-  "active_skill": "work-implementation"
-}
-```
-
----
-
-## At Skill Exit
-
-On **every** exit path — success, caught error, 3-strike abort, user interruption — the skill must clear `active_skill`:
-
-```json
-{ "...": "...", "active_skill": null }
-```
-
-Implementation pattern (bash):
+When `work-implementation` skill starts:
 
 ```bash
-cleanup_active_skill() {
-  if [ -f "$SESSION_DIR/session.json" ]; then
-    jq '.active_skill = null' "$SESSION_DIR/session.json" > "$SESSION_DIR/session.json.tmp"
-    mv "$SESSION_DIR/session.json.tmp" "$SESSION_DIR/session.json"
-  fi
-}
-trap cleanup_active_skill EXIT
+mkdir -p .flywheel
 ```
 
-The trap ensures cleanup runs even on script crashes. `session.status` stays `"active"` — the session itself is still open; just this skill is done.
+Write session file with initial state.
 
----
+### On Phase Checkpoint
 
-## Session Completion
+After each phase completes, update:
+- `last_checkpoint` timestamp
+- `current_phase` number
+- Key decisions (append)
+- Recent files modified
 
-When work-implementation finishes a full, successful run **and** the user chooses to ship (via `/fly:ship`), `/fly:ship` sets `session.status = "completed"`. work-implementation itself does **not** mark the session completed — that's ship's job. work-implementation's exit simply clears `active_skill`.
+### On Work Complete
 
----
-
-## Status Enum
-
-Three states:
-
-| status | Meaning |
-|---|---|
-| `active` | Session is open, skills may run against it. |
-| `paused` | Session is suspended (user interrupted; work is mid-flight). |
-| `completed` | Session is done. Typically shipped via ship. |
-
-Delete is an action, not a state — `rm -rf` the session directory to remove it. `active.json` must be cleared first (or the stale-pointer rescue runs next time).
-
----
-
-## Atomic Writes
-
-Every session.json update follows the same atomic-write pattern as progress.json:
+When all phases done:
 
 ```bash
-jq '<update>' "$SESSION_DIR/session.json" > "$SESSION_DIR/session.json.tmp"
-mv "$SESSION_DIR/session.json.tmp" "$SESSION_DIR/session.json"
+rm .flywheel/session.md
 ```
 
-The `mv` is atomic on local POSIX filesystems. `.tmp` is scratch; stranded `.tmp` files are safe to delete.
+Or mark as completed:
+
+```yaml
+active_skill: none
+status: completed
+```
 
 ---
 
 ## Resume Detection
 
-When `/fly:work` is called with no arguments:
+When `/fly:work` called with no arguments:
 
-1. Read `.flywheel/plugin/active.json`.
-2. Load `session.json` from the active session.
-3. If `active_skill == "work-implementation"` is already set, another instance may be running — warn the user (do not auto-switch; ask to confirm).
-4. Otherwise, set `active_skill = "work-implementation"` and enter Phase 1 resume path (see `load-resume-procedures.md`).
-
-### "Carry On" Shorthand
-
-"carry on", "continue", "resume" — all route through the same Phase 0 procedure as bare `/fly:work`:
-
-1. Read active.json.
-2. Resolve session dir (with stale-pointer rescue if needed).
-3. Enter Phase 1 resume (progress.json present → skip init, jump to first non-completed chunk).
+1. Check for `.flywheel/session.md`
+2. If exists and `active_skill: work-implementation`:
+   - Read plan_path, state_path, context_path
+   - Offer to resume: "Found active session for [plan]. Resume?"
+3. If not exists or completed:
+   - Ask user which plan to work on
 
 ---
 
-## Common Mistakes
+## "Carry On" Detection
 
-- **Forgetting to clear `active_skill` on exit** — a lingering value makes the next invocation think another instance is running. Always use the trap-based cleanup pattern.
-- **Setting `status: "completed"` in work-implementation** — that belongs to ship. work-implementation only manipulates `active_skill` and `last_checkpoint_at`.
-- **Writing session.json directly (not through `.tmp`)** — use the atomic write pattern.
+When user says "carry on", "continue", "resume", etc.:
+
+1. Check for `.flywheel/session.md`
+2. If active session found:
+   - Load plan, state, context files
+   - Resume from current_phase
+3. If no session:
+   - Ask user what to continue
 
 ---
 
 ## Gitignore
 
-`.flywheel/` is in `.gitignore`. Session state stays local; it is not committed. Once a session ships, artifacts the user wants to keep (plan summaries, post-mortems) go into `docs/`, not `.flywheel/`.
+Add to `.gitignore`:
+
+```
+.flywheel/
+```
+
+Session state is local, not committed.

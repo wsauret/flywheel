@@ -18,7 +18,7 @@ A plugin for Claude Code and OpenCode that turns development cycles into momentu
 ```bash
 git clone https://github.com/wsauret/flywheel.git
 cd flywheel
-./plugin/install_claude_code.sh
+./install_claude_code.sh
 ```
 
 ### OpenCode
@@ -26,7 +26,7 @@ cd flywheel
 ```bash
 git clone https://github.com/wsauret/flywheel.git
 cd flywheel
-python3 plugin/install_opencode.py
+python3 install_opencode.py
 ```
 
 This transforms the plugin into OpenCode's config format and writes to `~/.config/opencode/`. Re-run the script to update.
@@ -66,7 +66,7 @@ claude mcp add --header "CONTEXT7_API_KEY: your-key-here" \
 
 **Claude Code:** Run `/plugins` and toggle auto-update on for `flywheel-marketplace`.
 
-**OpenCode:** Re-run `python3 plugin/install_opencode.py` to pick up changes.
+**OpenCode:** Re-run `python3 install_opencode.py` to pick up changes.
 
 ## What Problems Does This Solve?
 
@@ -154,13 +154,13 @@ Each cycle builds on the last: plans inform future plans, reviews catch more iss
 
 | Type | Count | Examples |
 |------|-------|---------|
-| Reviewers | 6 | architecture, code-quality, performance, patterns, data-integrity, elegance |
+| Reviewers | 6 | architecture, code-quality, performance, patterns, data-integrity, plan-philosophy |
 | Research Locators | 4 | codebase, patterns, docs, web |
 | Research Analyzers | 5 | codebase, patterns, docs, web, git-history |
 | Commands | 8 | brainstorm, research, plan, work, review, compound, debug, ship |
 | Skills | 13 | plan-creation, plan-review, plan-consolidation, work-implementation, work-review, and more |
 
-See `plugin/flywheel/README.md` for full agent, command, and skill reference tables.
+See `flywheel/README.md` for full agent, command, and skill reference tables.
 
 ## Inspiration
 
@@ -171,4 +171,4 @@ This project is heavily inspired by:
 
 ## License
 
-[MIT](../LICENSE)
+[MIT](LICENSE)

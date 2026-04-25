@@ -1,67 +1,105 @@
-# Session ID and Artifact Layout
+# Plan Formatting Guide
 
-Conventions for the session directory plan-creation writes.
+Conventions for well-structured plan files.
 
-## Session ID Pattern
+## Filename Conventions
 
-**Format:** `<slug>-<YYYY-MM-DD>` with an optional `-N` collision tiebreak (`-2`, `-3`, …).
+**Format:** `<type>-<descriptive-name>.md`
 
-- **Slug**: kebab-case, alphanumeric + hyphens only. Regex: `^[a-z0-9-]+$`
-- **Date**: ISO 8601 `YYYY-MM-DD` (the day the session is created)
-- **Tiebreak**: integer suffix starting at `-2` when a session for the same slug already exists for the same date
+**Type prefixes:**
+- `feat:` → `feat-`
+- `fix:` → `fix-`
+- `refactor:` → `refactor-`
+
+**Sanitization:**
+- Strip prefix colon
+- Lowercase all words
+- Replace spaces with hyphens
+- Keep it descriptive (3-5 words after prefix)
 
 **Examples:**
-
-- `add-timeout-flag-2026-04-23`
-- `fix-checkout-race-2026-04-23`
-- `refactor-auth-2026-04-23-2` (second session with the same slug on the same day)
+- `feat: Add User Authentication` → `feat-add-user-authentication.md`
+- `fix: Checkout Race Condition` → `fix-checkout-race-condition.md`
+- `refactor: API Client Extraction` → `refactor-api-client-extraction.md`
 
 **Invalid (avoid):**
+- `plan-1.md` (not descriptive)
+- `new-feature.md` (too vague)
+- `feat: user auth.md` (invalid characters)
 
-- `add_timeout_flag-2026-04-23` (underscores)
-- `Add-Timeout-2026-04-23` (uppercase)
-- `timeout-2026-4-23` (unpadded month/day)
+---
 
-## Directory Layout
+## Content Formatting
 
+### Headings
+- Use clear, descriptive headings with proper hierarchy (##, ###)
+- First `#` is the title
+
+### Code Examples
+- Use triple backticks with language syntax highlighting
+- Include file path references in comments
+
+````markdown
+```python
+def process_user(user):
+  # Implementation here
 ```
-.flywheel/plugin/sessions/<session-id>/
-  spec.json                    # plan-creation writes; plan-consolidation refines
-  session.json                 # plan-creation writes; status/active_skill metadata
-  spec.json.pre-consolidation  # plan-consolidation writes before refinement
-  review.findings.json         # plan-review and work-review write here (consumed by next skill)
-  progress.json                # work-implementation checkpoint state
+````
+
+### Collapsible Sections
+
+For lengthy content like error logs:
+
+```markdown
+<details>
+<summary>Full error stacktrace</summary>
+
+Error details here...
+
+</details>
 ```
 
-The `plugin/` infix exists so plugin sessions coexist with TUI sessions (`.flywheel/sessions/`) in the same repo without collision.
+### Task Lists
+- Use `- [ ]` for trackable acceptance criteria
+- Each criterion must be testable
 
-## Active Pointer
+### Cross-References
+- Link issues/PRs: `#123`
+- Reference commits: SHA hashes
+- Code permalinks: GitHub 'y' key for permanent link
+- External resources: descriptive link text
 
-**Path:** `.flywheel/plugin/active.json`
-
-**Schema:**
-
-```json
-{ "schema_version": 1, "session_id": "<session-id>" }
-```
-
-plan-creation writes this after it writes the session directory. Downstream skills read this to find the active session.
-
-## Collision Behavior
-
-1. Compute candidate session id: `<slug>-<YYYY-MM-DD>`
-2. If `.flywheel/plugin/sessions/<candidate>/` does not exist → use candidate
-3. Otherwise, append `-2`, `-3`, … until a free slot is found
-4. If `-9` is taken (i.e. 10 sessions for the same slug on the same day) → error out and ask the user to clean up — they likely have a stuck session
-
-Collision detection is recursion-safe: each probe is a single `test -d` call.
+---
 
 ## Content Guidelines
 
-### Repo-relative file paths
+### Acceptance Criteria
+Every criterion must be:
+- **Specific** - Clear what needs to happen
+- **Testable** - Can verify it's done
+- **Independent** - Doesn't depend on other criteria ambiguously
 
-Every path inside `spec.json` is repo-relative (`src/auth.ts:42-55`), never absolute. The spec is checked against real code, and absolute paths rot the moment someone else opens the session.
+### File References
+Always include specific paths with line numbers:
+- `src/services/auth.ts:42`
+- `src/models/user.py:15-30`
 
-### Test scenarios
+### Open Questions
+Format from research that needs user decision:
 
-Each task lists enumerable scenarios. A scenario is concrete enough that the implementer turns it directly into a test case. If you can't write one, the task is not ready — surface it as an `open_question` on the spec.
+```markdown
+| Question | Options | Source |
+|----------|---------|--------|
+| [Question] | A: [opt], B: [opt] | [agent] |
+```
+
+---
+
+## Output Location
+
+```
+docs/plans/<type>-<descriptive-name>.md
+docs/plans/<type>-<descriptive-name>.context.md
+```
+
+Ensure `docs/plans/` directory exists: `mkdir -p docs/plans`

@@ -1,6 +1,6 @@
 ---
 name: work-implementation
-description: Execute spec.json (plan mode) or review.findings.json (fix-findings mode) by dispatching subagents per chunk. Triggers on "work on", "implement", "execute plan", "carry on", "continue".
+description: Execute work plans using probe-dispatch-checkpoint pattern. Orchestrator stays lean, dispatches subagents per phase. Triggers on "work on", "implement", "execute plan", "carry on", "continue".
 allowed-tools:
   - Read
   - Write
@@ -16,262 +16,178 @@ allowed-tools:
   - AskUserQuestion
 ---
 
-# Work Implementation Skill
+# Executing-Work Skill
 
-Execute the active session's plan or review findings via probe → dispatch → checkpoint. Namespace: plugin uses `.flywheel/plugin/sessions/`.
+Execute plans using **probe-dispatch-checkpoint** pattern. Orchestrator stays lean, dispatches subagents per phase, persists state for recovery.
+
+**Context Compaction:** This skill manages context via `.state.md` files (progress checkpoints) and `.context.md` files (research findings). If context is lost mid-work, these files enable seamless recovery.
 
 ## Input
 
-No required arguments. Optional `$ARGUMENTS`:
+Plan path via `$ARGUMENTS`. Can be a plan, specification, or todo file.
 
-- empty → use the active session from `.flywheel/plugin/active.json`
-- slug (`^[a-z0-9-]+$`) → prefix-scan `.flywheel/plugin/sessions/<slug>-*`; tiebreak by most-recent date
-
-Mode is detected from session contents — never set explicitly.
+**If no arguments provided:** Check for active session (see Phase 0).
 
 ---
 
 ## Phase 0: Session Detection
 
-Read `references/session-detection.md`.
+**Run this phase FIRST, before anything else.**
 
-Decision tree:
+Read `references/session-detection.md` before proceeding -- contains validation logic, presentation templates, and edge case handling for session resume.
 
-1. **No args, active.json missing** → error: `"No active session. Run /fly:plan or /fly:work <slug>."` Exit.
-2. **No args, active.json points to missing session dir** → error: `"Session <id> not found. Clearing active pointer."` Clear active.json. Exit.
-3. **No args, active.json present** → use it.
-4. **Slug arg** → prefix-scan; tiebreak by lexical-desc sort (ISO-date semantics); update active.json to winner.
-
-Validate `session.json.schema_version == 1`. Mismatch → `"Unsupported schema version <N>. Re-run the producing skill to regenerate."`
+1. Check for `.flywheel/session.md`
+2. **Session exists, no args:** Validate state (files exist, no unexpected changes, context freshness), present summary, ask user to resume/show details/start fresh
+3. **Session exists, args provided:** Compare plan paths -- same plan resumes, different plan auto-switches (providing a plan is implicit confirmation)
+4. **No session:** Require plan path from arguments or ask user
 
 ---
 
-## Phase 1: Mode Detection & Load
+## Phase 1: Load & Resume
 
-Read `references/load-resume-procedures.md`.
+Read `references/load-resume-procedures.md` before proceeding -- contains state file checks, baseline creation, session file template, format validation checklists, task creation examples, and worktree assessment.
 
-Procedure:
-
-1. **Detect mode** from session contents:
-   - `progress.json` exists with `mode: "fix-findings"` → resume fix-findings.
-   - `progress.json` exists with `mode: "plan"` AND `status: "completed"` AND `review.findings.json` exists → start fresh fix-findings (archive old `progress.json` to `progress.json.plan-mode`).
-   - `progress.json` exists with `mode: "plan"` → resume plan mode.
-   - `progress.json` missing AND `review.findings.json` exists AND `spec.json` exists → error: `"Run /fly:plan-consolidation to merge review findings before starting work."`
-   - `progress.json` missing AND `spec.json` exists → start fresh plan mode.
-   - else → error: `"No spec.json or review.findings.json in session."`
-
-2. **Init progress.json (fresh start only)**:
-
-   ```json
-   {
-     "schema_version": 1,
-     "mode": "<plan|fix-findings>",
-     "status": "pending",
-     "completed": [],
-     "in_progress": null,
-     "artifacts": { "files_modified": [], "commands_run": [] },
-     "error_log": []
-   }
-   ```
-
-   Atomic write (`.tmp` → `mv`).
-
-3. **Session update**: `active_skill = "work-implementation"`, `last_checkpoint_at = <now>`. Atomic write.
-
-4. **Skill-exit trap** to clear `active_skill`:
-
-   ```bash
-   cleanup_active_skill() {
-     if [ -f "$SESSION_DIR/session.json" ]; then
-       jq '.active_skill = null' "$SESSION_DIR/session.json" \
-         > "$SESSION_DIR/session.json.tmp"
-       mv "$SESSION_DIR/session.json.tmp" "$SESSION_DIR/session.json"
-     fi
-   }
-   trap cleanup_active_skill EXIT
-   ```
-
-5. **Worktree assessment**: advisory prompt per `references/load-resume-procedures.md` if scope is large.
-
-No baseline. No hash. No BC coverage check. No TaskList synthesis.
+1. **Check/create state file** from plan path (`${PLAN_PATH%.md}.state.md`). Resume from first unchecked phase if exists; otherwise create per `references/state-file-template.md`
+2. **Create baseline plan snapshot** for compliance checking (`${PLAN_PATH%.md}.baseline.md`)
+3. **Create/update session file** in `.flywheel/session.md` per `references/session-file-template.md`
+4. **Load context** from `[plan_path].context.md` (file references, gotchas, naming conventions)
+5. **Load applicable standards** from `docs/standards/` — search by plan tags/topics, include in dispatch context for subagents
+6. **Validate format** of plan, state, and context files; log warnings in state file
+7. **Create native Tasks** (one per phase) for progress tracking -- dual-write with state file for redundancy
+8. **Assess worktree need** (recommend if >10 files, >3 phases, or critical paths)
 
 ---
 
-## Phase 2: Execute (Per-Chunk Loop)
+## Phase 2: Execute (Per-Phase Loop)
 
-The chunk unit depends on mode. In both modes, a chunk is a **phase + bullets** structure: one logical unit of work containing several related items the subagent works through in a single dispatch.
+For each unchecked phase:
 
-- **Plan mode**: chunk = phase from `spec.json.phases[]`. ID = `phase.id`. Bullets = `phase.tasks[]`.
-- **Fix-findings mode**: chunk = **theme group** of findings — a logical cluster (e.g. one design refactor, one shared-helper simplification, one polish pass) that one subagent can address in a single dispatch. ID = `theme-<slug>` (e.g. `theme-scaffolding-redesign`, `theme-polish`). Bullets = the findings in that theme.
+### 2.1 Probe Phase Files
 
-  **Theme grouping (the synthesizer's job):**
-  - Cluster findings whose suggested fixes share a structural change (same file or same coordinated cross-file edit).
-  - Group all small unrelated polish (1-line comment fixes, import merges, single-finding files) into one `theme-polish` chunk; do NOT dispatch one subagent per single-finding file.
-  - Aim for 1-5 themes regardless of finding count. 17 findings → ~4 themes is right; 17 findings → 17 themes is wrong.
-  - Themes don't have to be balanced. A scaffolding redesign with 3 findings is a theme; a polish pass with 9 P3s is also a theme.
-  - Theme name should describe the change (e.g. `theme-loadmd-simplify`), not the file (e.g. `theme-load-step-markdown-ts`).
-
-For each chunk whose ID is NOT in `progress.completed[]`:
-
-### 2.1 Probe Files
-
-Quick check of the chunk's files. Flag missing files; warn if any single file >500 lines.
+Quick check of referenced files. If >500 lines: warn, consider splitting. Note missing files.
 
 ### 2.2 Dispatch Subagent
 
-**BLOCKING: every chunk runs inside a Task subagent.** Main agent does probe → dispatch → checkpoint, never Edit/Write on source files.
-
-**Plan mode dispatch:**
+**Do NOT specify a `model` parameter** — subagents inherit the current session's model. Specifying a model overrides the user's selection and causes inconsistent behavior across phases.
 
 ```
 Task general-purpose: "
 ## Task
-Execute phase <id>: <phase.goal>
+Execute Phase N: <description>
 
-## Phase JSON
-<paste phase JSON: tasks, files, verification, manual_verification>
+## Plan Excerpt
+<paste full phase content>
 
 ## Context
-- summary: <spec.summary>
-- success_criteria: <spec.success_criteria>
-- key_files: <spec.context.key_files>
-- patterns: <spec.context.patterns>
-- gotchas: <spec.context.gotchas>
-- Already completed: <progress.completed>
-
-## Elegance bar (NON-NEGOTIABLE)
-Maximize elegance over minimizing churn. Pick the more elegant design even if it means a larger refactor.
-- Every line you add must do important work. If you can't name what concretely breaks when a line is removed, delete it.
-- Single source of truth — read from existing state, don't duplicate.
-- Use the language/framework's idiomatic primitive before reaching for a wrapper. Search the codebase first.
-- Wrappers and helpers must add capability, not move code around. No shallow wrappers, no forwarding chains.
-- No speculative code, no defensive checks for impossible cases, no backward-compat shims for nonexistent consumers.
-- Follow existing patterns; deviate when the existing pattern is itself inelegant — note it in your report.
+- Key decisions: <from state file>
+- Files to reference: <from context file>
+- Patterns to follow: <from context file>
+- Applicable standards: <from docs/standards/ if any match>
 
 ## Constraints
-- TDD per task (RED → GREEN → REFACTOR). REFACTOR is mandatory: after green, re-read each touched file and ask 'would a reader ask why any line is here?' If yes, simplify or delete. Skip TDD only for pure refactor, docs, or config-only changes.
-- Before claiming a task done, confirm every added line has a concrete purpose. Anything that doesn't, delete.
-- Record commands run with literal command + actual exit_code.
-- Report: outcomes, files_modified[], commands_run[], simplifications_made[] (places you deleted or consolidated instead of adding).
+- Follow existing patterns exactly
+- Run tests after changes
+- Report: files modified, decisions made, blockers
 "
 ```
 
-**Fix-findings mode dispatch:**
-
-```
-Task general-purpose: "
-## Task
-Resolve theme: <theme-id> — <theme-description>
-
-## Context
-- spec: .flywheel/plugin/sessions/<session_id>/spec.json (Read for system-level goal, success criteria, and design rationale in context.gotchas[])
-
-## Findings (read all before fixing any)
-<paste each finding verbatim: title, severity, location, failure, fix>
-
-## Approach: symptoms vs. structure
-These findings are clustered because they likely share a structural cause. Diagnose first, patch never.
-1. Read all findings before touching code. Identify the structural issue they point at.
-2. Fix the structure once. If the structural change resolves N of M findings as a side effect, re-evaluate the rest before applying their fixes — they may dissolve too.
-3. Do NOT apply each fix as an isolated patch. The fixes are reviewer hypotheses about individual symptoms; the synthesizer grouped them because the real fix is upstream.
-
-## Elegance bar (NON-NEGOTIABLE)
-Maximize elegance over minimizing churn. If the cleaner shape requires touching files outside the findings list, take it — note the drift in your report.
-- Every line you keep must do important work; every line you add too.
-- Prefer deletion to modification. The best fix is often less code, not more.
-
-## Holistic re-read (mandatory before claiming done)
-After applying changes, re-read each touched file end-to-end. Ask:
-- Is the result simpler than what I started with?
-- Does any line in this diff lack a concrete purpose?
-- Would a reader ask 'why is this here?' about anything I added?
-If the diff is longer or more complex than the pre-fix code, you patched instead of refactored. Redo as a refactor.
-
-## Constraints
-- Run tests after the change set; capture exit_code.
-- Report: which finding IDs were addressed, files_modified[], commands_run[], structural_change (one-sentence summary of what shape change resolved the theme).
-"
-```
-
-**BLOCKING: Do NOT specify a `model` parameter** — subagents inherit the current session's model.
+Provide plan text directly (don't make subagent read file). One phase at a time. Include decisions from previous phases.
 
 ### 2.2a TDD Cycle
 
-Read `flywheel-conventions/references/tdd-cycle.md` for RED/GREEN/REFACTOR. Skip TDD for pure refactoring, config-only, or docs changes.
+Read `flywheel-conventions/references/tdd-cycle.md` before proceeding -- contains RED/GREEN/REFACTOR steps and skip conditions.
 
-### 2.3 Checkpoint (Atomic Write)
+Apply RED-GREEN-REFACTOR per implementation task. Skip TDD for pure refactoring, config-only, or docs changes.
 
-Read `references/checkpoint-procedure.md`.
+### 2.3 Checkpoint (Dual-Write)
 
-On subagent return:
+Read `references/checkpoint-procedure.md` before proceeding -- contains dual-write steps, manual verification pause flow, and skip conditions.
 
-1. Append chunk ID to `progress.completed[]`.
-2. Append `files_modified[]`, `commands_run[]`, and `simplifications_made[]` (if reported) to `progress.artifacts`.
-3. Atomic write `progress.json` (`.tmp` → `mv`).
-4. Update `session.json.last_checkpoint_at`.
-5. Verify the chunk's `verification` (plan mode) or run tests (fix-findings mode). Capture exit_code. Re-run if any doubt.
-6. Manual verification pause if `phase.manual_verification` is non-empty (plan mode).
+1. **Update native Task** to completed (primary)
+2. **Update state file** with phase completion, decisions, learnings, code context (backup)
+3. **Verify TDD evidence** and run tests
+4. **Update session file** (timestamp, phase number, status)
+5. **Manual verification pause** if plan has Manual Verification criteria (ask user to confirm)
 
 ### 2.4 Ralph Mode Check
 
-Ralph mode activates when any of: spec has >5 phases, `--ralph` flag, or context >50% with >2 chunks remaining. Read `references/ralph-mode.md`.
+Check if Ralph mode should activate (>5 phases, `--ralph` flag, or context >50% with >2 phases remaining). If active, write detailed state and suggest context clear. Read `references/ralph-mode.md` before proceeding -- contains trigger conditions, checkpoint format, and state file completeness requirements.
 
 ### 2.5 Loop
 
-Continue to the next non-completed chunk. All complete → Phase 3.
+Continue to next unchecked phase. All complete -> Phase 3.
 
 ---
 
 ## Phase 3: Quality Check
 
-Run the plan's `success_criteria` checks (plan mode) or full test suite + typecheck (fix-findings mode). Read `references/verification-gates.md`: identify the proving command, run it fresh, read full output, verify, then claim done.
+Follow `references/verification-gates.md`: IDENTIFY proving command, RUN it fresh, READ full output, VERIFY it confirms claim, ONLY THEN make claim with evidence.
+
+**Two-Stage Review:**
+1. **Stage 1: Spec Compliance** - Built what was requested? (Fix gaps before Stage 2)
+2. **Stage 2: Code Quality** - Code clean and tested?
 
 ---
 
 ## Phase 4: Complete
 
+All phases executed and quality-checked. Present the user with next steps:
+
 ```
-All chunks complete and verified.
+All phases complete and verified.
 
 What's next?
-1. Review the work — /fly:review (recommended for substantive changes)
-2. Ship it — /fly:ship (commit, PR, compound learnings)
+1. Review the work (recommended if complex changes)
+2. Ship it (commit, PR, and compound learnings)
 ```
 
-After the user's choice:
+- **Option 1**: Invoke the `work-review` skill to run a code review before shipping.
+- **Option 2**: Invoke the `ship` skill, which handles branch creation, commit, PR, and compounding learnings from this work session.
 
-1. `progress.json.status = "completed"` (atomic write).
-2. Phase 1 trap clears `session.json.active_skill`. ship handles `session.status = "completed"`.
-3. Worktree cleanup if applicable.
+After the user's choice completes:
+
+1. **Update state:** Mark `status: completed`
+2. **Clear session and baseline:** `rm .flywheel/session.md` and baseline file
+3. **Worktree cleanup:** If in worktree, offer to remove and switch to main
+
+---
+
+## Recovery & Error Handling
+
+Read `references/recovery-and-errors.md` before proceeding -- contains dual-write recovery flow, task persistence details, 3-Strike error protocol, and specific error case handling.
+
+**Recovery:** "carry on" or `/fly:work` with no args -> session file identifies plan -> check Tasks + state file -> resume from first uncompleted phase.
+
+**Errors:** 3-Strike protocol (diagnose, alternative approach, broader rethink, then escalate). Subagent failures: retry/skip/abort. Test failures: fix before checkpoint.
 
 ---
 
-## Recovery & Errors
+## Key Principles
 
-Read `references/recovery-and-errors.md`.
-
-**Errors**: 3-Strike protocol per chunk (record each attempt in `progress.error_log`). Subagent failures: retry/skip/abort prompt. Test failures: fix before checkpointing.
-
----
+- **Checkpoint after each phase** - enables recovery
+- **State file is source of truth** - not conversation memory
+- **Sequential execution** - one phase at a time
+- **Provide context to subagents** - they start fresh
+- **Ship complete features** - finish what you start
+- **Ralph mode for long tasks** - context clear is a feature, not a bug
 
 ## Anti-Patterns
 
-- **Synthesize a TaskList from findings.json** — findings.json IS the list. Group by theme (not by file) and dispatch.
-- **Group fix-findings by `location`** — produces one chunk per file, which inflates dispatch count for any review with single-finding files. Use theme groups instead (see Phase 2 chunk-definition section). 17 findings spread across 9 files should land in ~4 themes, not 9.
-- **Write a baseline.json or compute a hash** — neither exists in the simplified model. spec.json is the live target.
-- **BLOCKING: Direct main-agent execution of "small" chunks** — dispatch every chunk via Task. The main agent does probe + dispatch + checkpoint, nothing else.
-- **BLOCKING: Declare done without running verification** — `references/verification-gates.md` requires fresh evidence. Each chunk's `verification` must execute and pass before the chunk is marked completed.
+- **Skip checkpoints** - lose recovery capability
+- **Parallel implementation** - causes file conflicts
+- **Make subagent read plan** - provide text directly
+- **Ignore test failures** - fix before checkpoint
 
 ---
 
 ## Detailed References
 
-- `references/session-detection.md` — Phase 0 active-pointer model, slug-arg tiebreak
-- `references/load-resume-procedures.md` — Phase 1 mode detection, fresh-start init, resume invariants
-- `references/checkpoint-procedure.md` — Atomic write recipe, `commands_run` accuracy
-- `references/progress-file-template.md` — progress.json shape, atomic write invariant, status enum
-- `references/session-file-template.md` — session.json shape, `active_skill` lifecycle, skill-exit cleanup trap
-- `references/verification-gates.md` — Verification protocol
-- `references/recovery-and-errors.md` — Resume flow, 3-Strike protocol
-- `references/ralph-mode.md` — Stateless agent loop triggers, checkpoint format
-- `flywheel-conventions/references/tdd-cycle.md` — RED/GREEN/REFACTOR; skip conditions
+- `references/session-detection.md` - Phase 0 validation logic, presentation templates, edge cases
+- `references/load-resume-procedures.md` - Phase 1 state checks, format validation, task creation, worktree assessment
+- `flywheel-conventions/references/tdd-cycle.md` - RED/GREEN/REFACTOR steps and skip conditions
+- `references/checkpoint-procedure.md` - Dual-write checkpoint steps, manual verification pause
+- `references/ralph-mode.md` - Stateless agent loop triggers, checkpoint format, state completeness
+- `references/recovery-and-errors.md` - Recovery flow, 3-Strike protocol, specific error cases
+- `references/state-file-template.md` - State file structure and recovery process
+- `references/session-file-template.md` - Session file for "carry on" resume
+- `references/verification-gates.md` - Verification protocol, two-stage review

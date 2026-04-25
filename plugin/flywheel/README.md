@@ -9,8 +9,8 @@ A plugin for Claude Code and OpenCode that turns development cycles into momentu
 AI agents struggle with large codebases because context windows fill with search results, file contents, and tool outputs. Flywheel manages this through deliberate compaction at each phase:
 
 - **Research → Plan → Implement workflow** - Each phase produces compact artifacts, not sprawling chat
-- **`docs/research/` artifacts** - Persist research findings across sessions
-- **`progress.json` checkpoints** - Atomic state writes enable recovery if context is lost mid-work
+- **`.context.md` files** - Persist research findings across sessions
+- **`.state.md` files** - Enable recovery if context is lost mid-work
 - **Subagent dispatch** - Fresh context for research tasks, compact results returned
 
 This keeps context utilization in the 40-60% range where models perform best.
@@ -56,7 +56,7 @@ Flywheel requires human approval at research and plan boundaries because that's 
 ```bash
 git clone https://github.com/wsauret/flywheel.git
 cd flywheel
-./plugin/install_claude_code.sh
+./install_claude_code.sh
 ```
 
 ### OpenCode
@@ -64,7 +64,7 @@ cd flywheel
 ```bash
 git clone https://github.com/wsauret/flywheel.git
 cd flywheel
-python3 plugin/install_opencode.py
+python3 install_opencode.py
 ```
 
 This transforms the plugin into OpenCode's config format and writes to `~/.config/opencode/`. Re-run the script to update.
@@ -92,7 +92,7 @@ Agents are organized into categories for easier discovery.
 | `reviewer-data-integrity` | Database migrations and data integrity |
 | `reviewer-patterns` | Analyze code for patterns and anti-patterns |
 | `reviewer-performance` | Performance analysis and optimization |
-| `reviewer-elegance` | Design elegance review for plans and code |
+| `reviewer-plan-philosophy` | TDD ordering, SOLID compliance, DRY compliance in plans |
 
 ### Research Locators (4) - Cheap, Parallel
 

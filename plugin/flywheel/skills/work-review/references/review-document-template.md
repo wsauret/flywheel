@@ -110,7 +110,6 @@ Group findings into phases by file/module/concern. Each phase should be a cohere
 | reviewer-architecture | [completed | failed | skipped] | [N] |
 | reviewer-performance | [completed | failed | skipped] | [N] |
 | reviewer-data-integrity | [completed | failed | skipped | N/A] | [N] |
-| reviewer-elegance | [completed | failed | skipped] | [N] |
 
 ## Next Steps
 

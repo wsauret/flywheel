@@ -17,7 +17,7 @@ Document solved problems to build searchable institutional knowledge.
 **Why "compound"?** Each documented solution compounds your team's knowledge like compound interest. First time solving a problem takes research. Document it, and the next occurrence takes minutes.
 
 **Compounding vs Compaction:** Flywheel uses two strategies (see README):
-- **Compaction** = Reduce context mid-work (atomic `progress.json` checkpoints, structured `spec.json.context` arrays)
+- **Compaction** = Reduce context mid-work (`.context.md`, `.state.md` files)
 - **Compounding** = Accumulate knowledge post-work (this skill)
 
 **Preconditions:**
@@ -79,19 +79,6 @@ I need a few details to document this:
 2. What was the exact error?
 3. What environment?
 ```
-
----
-
-## Step 2.5: First-Use Discoverability Check
-
-On first compound creation in a repo, offer to add a one-line pointer to `docs/solutions/` in AGENTS.md or CLAUDE.md so future agents find the knowledge store.
-
-Detection: `ls docs/solutions/ 2>/dev/null | wc -l` returns 0 AND neither AGENTS.md nor CLAUDE.md has a grep hit for `docs/solutions`.
-
-If detected, **AskUserQuestion:** "No existing solutions directory detected. Add a one-line pointer to `docs/solutions/` in AGENTS.md or CLAUDE.md so future agents find it?"
-- Options: `Add to AGENTS.md` / `Add to CLAUDE.md` / `Skip`
-
-On yes, Edit the chosen file to append: `` Past solutions & compound learnings live in `docs/solutions/`. ``
 
 ---
 
