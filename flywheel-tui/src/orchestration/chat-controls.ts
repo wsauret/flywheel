@@ -88,8 +88,15 @@ export function createChatControls(input: ChatControlsInput): ChatControls {
       return
     }
 
-    log.warn("chat send: no active runner and no session ID to resume")
-    callbacks.onWaiting(false)
+    // First send for a fresh chat — no runner, no engine session id yet.
+    // Spawning here is the persistence + worker boundary; nothing on disk
+    // exists for this chat until the runner produces its first output.
+    log.info("chat first send — spawning fresh runner")
+    lifecycle.spawnWorker(undefined, text).catch((err) => {
+      log.warn("chat first-send spawn failed", { error: errorMessage(err) })
+      callbacks.onWaiting(false)
+      callbacks.onError(`Failed to start chat: ${errorMessage(err)}`)
+    })
   }
 
   function sendToolResult(toolUseId: string, content: string, isError?: boolean): void {

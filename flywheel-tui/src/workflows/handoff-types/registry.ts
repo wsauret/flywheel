@@ -1,11 +1,9 @@
 import type { z } from "zod";
 import type { HandoffFieldSpec } from "../queue/shared/handoff-render.js";
 
-export type { HandoffFieldSpec };
-
 export interface HandoffType {
   name: string;
-  fields: HandoffFieldSpec[];
+  fields: readonly HandoffFieldSpec[];
   schema: z.ZodTypeAny;
   description?: string;
 }
@@ -13,9 +11,12 @@ export interface HandoffType {
 const registry = new Map<string, HandoffType>();
 
 export function registerHandoffType(type: HandoffType): void {
+  // Fail-fast: duplicate handoff-type names indicate a misconfigured registration root (unlike scaffolding, which allows variant overrides).
   if (registry.has(type.name)) {
     throw new Error(`Duplicate handoff type registration: ${type.name}`);
   }
+  Object.freeze(type.fields);
+  Object.freeze(type);
   registry.set(type.name, type);
 }
 

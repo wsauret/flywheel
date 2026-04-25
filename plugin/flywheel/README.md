@@ -9,8 +9,8 @@ A plugin for Claude Code and OpenCode that turns development cycles into momentu
 AI agents struggle with large codebases because context windows fill with search results, file contents, and tool outputs. Flywheel manages this through deliberate compaction at each phase:
 
 - **Research → Plan → Implement workflow** - Each phase produces compact artifacts, not sprawling chat
-- **`.context.md` files** - Persist research findings across sessions
-- **`.state.md` files** - Enable recovery if context is lost mid-work
+- **`docs/research/` artifacts** - Persist research findings across sessions
+- **`progress.json` checkpoints** - Atomic state writes enable recovery if context is lost mid-work
 - **Subagent dispatch** - Fresh context for research tasks, compact results returned
 
 This keeps context utilization in the 40-60% range where models perform best.

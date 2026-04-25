@@ -47,4 +47,15 @@ describe("handoff-type registry", () => {
     expect(names.filter((n) => n === a.name)).toHaveLength(1);
     expect(names.filter((n) => n === b.name)).toHaveLength(1);
   });
+
+  it("registered HandoffType is frozen — fields and entry both immutable", () => {
+    const type = synthetic();
+    registerHandoffType(type);
+    const entry = getHandoffType(type.name);
+    expect(Object.isFrozen(entry)).toBe(true);
+    expect(Object.isFrozen(entry?.fields)).toBe(true);
+    expect(() => {
+      (entry as { description: string }).description = "mutated";
+    }).toThrow();
+  });
 });

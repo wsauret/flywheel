@@ -40,7 +40,7 @@ Before codebase research, check existing knowledge (skip missing dirs):
    find docs/research -name "*<topic-keywords>*" -mtime -30 2>/dev/null | head -3
    ```
 
-If relevant knowledge found, use it as starting point for Phase 1. Note findings in `context.md`.
+If relevant knowledge found, use it as starting point for Phase 1. Fold key references into `context.gotchas[]` or `context.patterns[]` so they survive into the dispatch.
 
 ---
 
@@ -88,6 +88,22 @@ Incorporate findings into the spec. Flag `CLAIM_INVALID` or `VERSION_ISSUE` as `
 
 ---
 
+## Phase 2.5: Design Synthesis (thought exercise)
+
+Before composing phases, ask: **does this feature have more than one plausible shape?**
+
+**Skip when** the shape is obvious — bug fixes, small additions, pure config changes, or features the codebase already has a single established pattern for. Most plans skip this; that's expected.
+
+**When the design space is genuinely open** (multiple plausible decompositions, multi-layer features, new abstractions being introduced):
+
+1. Sketch 2 candidate shapes — typically "the natural one" and "a simpler one that consolidates with existing code." Add a third only if a different decomposition is genuinely plausible.
+2. Pick the shape that's simplest, most symmetric, and adds the least new state or abstraction. The Elegance Discipline applies: maximize elegance over minimizing churn — pick the cleaner shape even if it means a larger refactor.
+3. Record the rejected alternative as a one-line `context.gotchas[]` entry (e.g., "considered splitting auth into 3 services; rejected because shared session state would force a coordination layer"). This preserves the reasoning so reviewers and implementers don't re-litigate.
+
+A thinking step, not a deliverable. No file is written; the only durable output is a `context.gotchas[]` entry when you actually rejected an alternative worth noting. If you find yourself manufacturing alternatives to satisfy the step, skip it — that's the signal it doesn't apply here.
+
+---
+
 ## Phase 3: Compose and Write Artifacts
 
 Spec is a structured JSON document validated against `flywheel/schemas/task-list.schema.json`. Namespace: plugin uses `.flywheel/plugin/sessions/`.
@@ -113,33 +129,33 @@ mkdir -p .flywheel/plugin/sessions/<session-id>
 
 Every task lists concrete test scenarios — sentences an implementer could turn directly into test cases. If you can't write one, surface an `open_question`.
 
-### Step 5: Compose `behavioral_contract[]`
+### Step 5: Spec Quality Bar gate
 
-- BC id pattern: `BC-<AREA>-<NNN>` (e.g. `BC-AUTH-001`)
-- Each BC has `title`, `description`, `evidence`, `area`
-- Assign `fulfills[]` arrays to the tasks that claim each BC
+Apply the Spec Quality Bar from `flywheel-conventions`. Verify: clear file paths, enumerated test scenarios, explicit verification commands. Unresolved uncertainty → `open_questions[]`, not vague tasks.
 
-### Step 6: Spec Quality Bar gate
-
-Apply the Spec Quality Bar from `flywheel-conventions`. Verify: clear file paths, enumerated test scenarios, explicit verification commands, clear dependencies, BC coverage (at-least-one task claim per BC; orphans = error per D13). Unresolved uncertainty → `open_questions[]`, not vague tasks.
-
-### Step 7: Write `spec.json`
+### Step 6: Write `spec.json`
 
 Path: `.flywheel/plugin/sessions/<session-id>/spec.json`
 
-Required top-level fields: `schema_version: 1`, `plan_id`, `summary` (100–5000 chars), `goal`, `origin`, `context`, `behavioral_contract`, `phases`, `success_criteria`. See `flywheel/schemas/task-list.schema.json` for the authoritative shape.
+Required top-level fields: `schema_version: 1`, `summary` (100–5000 chars; the system-level goal and what we're building), `context`, `phases`, `success_criteria`. Optional: `open_questions` (array of strings). See `flywheel/schemas/task-list.schema.json` for the authoritative shape.
+
+**BLOCKING: top-level fields are exactly the set above.** `additionalProperties: false` rejects anything else — do NOT emit `risks`, `notes`, `assumptions`, or any field not listed in the schema. Risk discussion belongs in `context.gotchas[]`; uncertainty belongs in `open_questions[]`.
 
 **BLOCKING: `context` must use the schema shape** — not a free-form object. Exactly three arrays:
+
+- `key_files[]` — repo-relative paths the implementer should know about, with one-line reasons.
+- `patterns[]` — existing patterns to follow, named so the implementer can match the codebase style.
+- `gotchas[]` — pitfalls AND design rationale. Surprises the implementer needs to know: prerequisites, rejected alternatives, why-this-shape decisions, principle violations surfaced from review, edge cases.
 
 ```json
 {
   "key_files": ["scratch-app/app.py — Flask app + route handler", "scratch-app/tests/test_hello.py — pytest case"],
   "patterns": ["Flask route decorator for minimal HTTP handlers", "Flask test client in pytest for route coverage"],
-  "gotchas": ["Green-field repo: pip must be installed before running tests"]
+  "gotchas": ["Green-field repo: pip must be installed before running tests", "Considered 3-phase split; rejected because phase-1 was just mkdir"]
 }
 ```
 
-Narrative research (stack choice, rationale, codebase survey) belongs in the `context.md` sidecar (Step 8), NOT in spec.json's `context` block.
+Research rationale (stack choice, why-this-pattern, rejected alternatives) goes in `context.patterns[]` and `context.gotchas[]` as richer entries — those array items have no length cap. The spec is the single artifact; there is no narrative sidecar.
 
 **BLOCKING: `phases[].tasks[]` must use the schema shape**. No extra fields — `additionalProperties: false` rejects anything unknown. Each phase shape:
 
@@ -147,7 +163,6 @@ Narrative research (stack choice, rationale, codebase survey) belongs in the `co
 {
   "id": "phase-1",
   "goal": "Land the hello route and a smoke test.",
-  "depends_on": [],
   "files": ["scratch-app/app.py", "scratch-app/tests/test_hello.py"],
   "tasks": [
     {
@@ -157,8 +172,7 @@ Narrative research (stack choice, rationale, codebase survey) belongs in the `co
       "test_scenarios": [
         "GET /hello returns 200 with body 'hello world'",
         "POST /hello returns 405 method not allowed"
-      ],
-      "fulfills": ["BC-HELLO-001"]
+      ]
     }
   ],
   "verification": "cd scratch-app && pytest tests/test_hello.py -q",
@@ -168,34 +182,19 @@ Narrative research (stack choice, rationale, codebase survey) belongs in the `co
 
 **BLOCKING: DO NOT** add `name`, `verification_commands`, or any other field to a task — the schema rejects them. Use `description` for the narrative; put verification at the phase level, not the task level. `test_scenarios[]` are plain strings (one scenario per entry; include expected behavior in the string). `files[]` entries are plain repo-relative paths (no " (new)" suffixes, no annotations).
 
-**Origin block on creation:**
-
-```json
-{
-  "created_by": "plan-creation",
-  "findings_path": null
-}
-```
-
-### Step 8: Write `context.md` sidecar
-
-Path: `.flywheel/plugin/sessions/<session-id>/context.md`
-
-Record research findings as structured prose with `research-date` and `codebase-version` metadata for staleness tracking. Kept outside spec.json so the spec stays machine-consumable.
-
-### Step 9: Write `session.json`
+### Step 7: Write `session.json`
 
 Path: `.flywheel/plugin/sessions/<session-id>/session.json`
 
-Fields: `schema_version: 1`, `session_id`, `slug`, `status: "active"`, `started_at` (ISO 8601), `last_checkpoint_at: null`, `active_skill: "plan-creation"`, `baseline_hash: null`. On exit, set `active_skill: null`.
+Fields: `schema_version: 1`, `session_id`, `slug`, `status: "active"`, `started_at` (ISO 8601), `last_checkpoint_at: null`, `active_skill: "plan-creation"`. On exit, set `active_skill: null`.
 
-### Step 10: Update `.flywheel/plugin/active.json`
+### Step 8: Update `.flywheel/plugin/active.json`
 
 ```json
 { "schema_version": 1, "session_id": "<session-id>" }
 ```
 
-### Step 11: Print summary
+### Step 9: Print summary
 
 Print the spec's `summary` field + next-steps hint.
 
@@ -235,7 +234,6 @@ Print the spec's `summary` field + next-steps hint.
 - **Skip AskUserQuestion** — user must choose next step
 - **BLOCKING: Skip external validation for high-risk topics** — security, payments, migrations MUST be validated against docs
 - **Run external validation for everything** — only high-risk topics warrant the token cost
-- **BLOCKING: Emit an orphan BC** — every BC needs at-least-one task claim (D13)
 
 ---
 

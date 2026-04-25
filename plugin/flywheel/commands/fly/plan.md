@@ -49,9 +49,9 @@ This orchestrator runs three skills in sequence. After each skill completes, imm
 [Input] → plan-creation → plan-review → plan-consolidation → [Present]
 ```
 
-After plan-creation, the session dir at `.flywheel/plugin/sessions/<session-id>/` contains the spec.json, context.md, and session.json that subsequent skills read. The active pointer `.flywheel/plugin/active.json` is the connecting glue — no explicit path-passing between phases.
+After plan-creation, the session dir at `.flywheel/plugin/sessions/<session-id>/` contains the spec.json and session.json that subsequent skills read. The active pointer `.flywheel/plugin/active.json` is the connecting glue — no explicit path-passing between phases.
 
-1. **plan-creation** → writes `spec.json`, `context.md`, `session.json` into the session dir; updates `active.json`
+1. **plan-creation** → writes `spec.json`, `session.json` into the session dir; updates `active.json`
 2. **plan-review** → reads the active session's spec.json, writes `findings.json`
 3. **plan-consolidation** → merges `findings.json` into `spec.json`; backs up pre-consolidation spec to `spec.json.pre-consolidation`
 
@@ -93,4 +93,4 @@ Display summary: session id, session dir path, phases completed, findings count,
 
 ---
 
-After consolidation, the session dir contains: `spec.json` (refined with findings integrated), `spec.json.pre-consolidation` (backup of the pre-refinement spec), `findings.json`, `context.md`, and `session.json`. Ready for `/fly:work`.
+After consolidation, the session dir contains: `spec.json` (refined with findings integrated), `spec.json.pre-consolidation` (backup of the pre-refinement spec), and `session.json`. The `review.findings.json` is consumed and removed. Ready for `/fly:work`.

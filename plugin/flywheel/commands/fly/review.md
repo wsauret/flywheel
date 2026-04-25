@@ -21,10 +21,10 @@ Follow the routing heuristic in order. The first match wins.
 | `$ARGUMENTS` matches `^#?[0-9]+$` (PR number, with or without `#`) | `work-review` (PR target) |
 | `$ARGUMENTS` is a branch-name shape (contains `/`, or alpha-leading identifier) | `work-review` (branch target) |
 | `$ARGUMENTS` is a slug (matches `^[a-z0-9-]+$`) that resolves to a session | resolve session, then re-apply the heuristic with empty args against the resolved session |
-| `$ARGUMENTS` empty AND the active session has `baseline.json` | `work-review` (work is in progress or complete) |
-| `$ARGUMENTS` empty AND the active session has `spec.json` but no `baseline.json` | `plan-review` (spec not yet executed) |
+| `$ARGUMENTS` empty AND the active session has `progress.json` | `work-review` (work is in progress or complete) |
+| `$ARGUMENTS` empty AND the active session has `spec.json` but no `progress.json` | `plan-review` (spec not yet executed) |
 | `$ARGUMENTS` empty AND no active session | error: `"No active session and no PR/branch argument. Run /fly:plan first."` |
-| `$ARGUMENTS` empty AND active session has neither `spec.json` nor `baseline.json` | error: `"No spec to review. Run /fly:plan first."` |
+| `$ARGUMENTS` empty AND active session has neither `spec.json` nor `progress.json` | error: `"No spec to review. Run /fly:plan first."` |
 
 **Active session resolution**: read `.flywheel/plugin/active.json` if it exists; the `session_id` points at `.flywheel/plugin/sessions/<session_id>/`. If `active.json` is missing or its session dir does not exist, treat as no active session.
 
@@ -48,7 +48,7 @@ skill: plan-review
 
 ## Intuition
 
-- **`baseline.json` present** = work started; review targets the executed work → `work-review`
+- **`progress.json` present** = work started; review targets the executed work → `work-review`
 - **`spec.json` only** = plan not executed; review targets the plan → `plan-review`
 - **PR or branch arg** = user explicitly scoped the review to code; bypass session inference → `work-review`
 
@@ -66,7 +66,7 @@ skill: plan-review
 - Loads the active session's `spec.json`
 - Dispatches all reviewer agents in parallel against the plan
 - Deduplicates semantically
-- Writes `findings.json` to the active session
+- Writes `review.findings.json` to the active session
 - Summary with a prompt to continue into `plan-consolidation`
 
 See `flywheel/skills/work-review/SKILL.md` and `flywheel/skills/plan-review/SKILL.md` for full procedural details. See `flywheel/skills/work-implementation/references/session-detection.md` for the canonical routing heuristic and its pseudocode.

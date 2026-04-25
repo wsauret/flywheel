@@ -2,40 +2,13 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "flywheel/schemas/task-list.schema.json",
   "title": "Task list (spec.json)",
-  "description": "Consolidated plan output consumed by work-implementation. Behavioral contracts + phased tasks with fulfills[] claims. Top-level is open (no additionalProperties constraint) so baseline.schema.json can extend via allOf. Nested objects ($defs/*) are strict.",
+  "description": "Plan output consumed by work-implementation. Tasks live inside phases for grouping; no behavioral contracts, no fulfills claims, no origin metadata.",
   "type": "object",
-  "required": [
-    "schema_version",
-    "plan_id",
-    "summary",
-    "goal",
-    "origin",
-    "context",
-    "behavioral_contract",
-    "phases",
-    "success_criteria"
-  ],
+  "additionalProperties": false,
+  "required": ["schema_version", "summary", "context", "phases", "success_criteria"],
   "properties": {
     "schema_version": { "const": 1 },
-    "plan_id": {
-      "type": "string",
-      "pattern": "^[a-z0-9-]+$"
-    },
-    "summary": {
-      "type": "string",
-      "minLength": 100,
-      "maxLength": 5000
-    },
-    "goal": { "type": "string", "minLength": 1 },
-    "origin": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["created_by"],
-      "properties": {
-        "created_by": { "type": "string", "minLength": 1 },
-        "findings_path": { "type": ["string", "null"] }
-      }
-    },
+    "summary": { "type": "string", "minLength": 100, "maxLength": 5000 },
     "context": {
       "type": "object",
       "additionalProperties": false,
@@ -46,50 +19,18 @@
         "gotchas": { "type": "array", "items": { "type": "string" } }
       }
     },
-    "behavioral_contract": {
-      "type": "array",
-      "uniqueItems": true,
-      "items": { "$ref": "#/$defs/bc" },
-      "description": "uniqueItems on whole-object is a proxy for unique id. Same-id-different-body duplicates are caught by the coverage gate (procedural) per D13."
-    },
-    "phases": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/phase" }
-    },
-    "success_criteria": {
-      "type": "array",
-      "items": { "type": "string" }
-    }
+    "phases": { "type": "array", "items": { "$ref": "#/$defs/phase" } },
+    "success_criteria": { "type": "array", "items": { "type": "string" } },
+    "open_questions": { "type": "array", "items": { "type": "string" } }
   },
   "$defs": {
-    "bc": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "title", "description", "evidence", "area"],
-      "properties": {
-        "id": { "type": "string", "pattern": "^BC-[A-Z0-9]+-\\d{3}$" },
-        "title": { "type": "string", "minLength": 1 },
-        "description": { "type": "string", "minLength": 1 },
-        "evidence": { "type": "string", "minLength": 1 },
-        "area": { "type": "string", "minLength": 1 }
-      }
-    },
     "phase": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "goal",
-        "depends_on",
-        "files",
-        "tasks",
-        "verification",
-        "manual_verification"
-      ],
+      "required": ["id", "goal", "files", "tasks", "verification"],
       "properties": {
         "id": { "type": "string", "minLength": 1 },
         "goal": { "type": "string", "minLength": 1 },
-        "depends_on": { "type": "array", "items": { "type": "string" } },
         "files": { "type": "array", "items": { "type": "string" } },
         "tasks": { "type": "array", "items": { "$ref": "#/$defs/task" } },
         "verification": { "type": "string", "minLength": 1 },
@@ -99,16 +40,12 @@
     "task": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "description", "files", "test_scenarios", "fulfills"],
+      "required": ["id", "description", "files", "test_scenarios"],
       "properties": {
         "id": { "type": "string", "minLength": 1 },
         "description": { "type": "string", "minLength": 1 },
         "files": { "type": "array", "items": { "type": "string" } },
-        "test_scenarios": { "type": "array", "items": { "type": "string" } },
-        "fulfills": {
-          "type": "array",
-          "items": { "type": "string", "pattern": "^BC-[A-Z0-9]+-\\d{3}$" }
-        }
+        "test_scenarios": { "type": "array", "items": { "type": "string" } }
       }
     }
   }

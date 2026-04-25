@@ -10,7 +10,7 @@ Session state lives under `.flywheel/plugin/sessions/<session-id>/`. The current
 { "schema_version": 1, "session_id": "add-timeout-flag-2026-04-23" }
 ```
 
-Session id pattern: `<slug>-<YYYY-MM-DD>` (optional `-N` suffix for collisions). The active pointer resolves to a session directory containing `spec.json`, `session.json`, and (after work-start) `baseline.json` + `state.json`.
+Session id pattern: `<slug>-<YYYY-MM-DD>` (optional `-N` suffix for collisions). The active pointer resolves to a session directory containing `spec.json`, `session.json`, and (after first chunk completes) `progress.json`. `review.findings.json` may also be present, written by `plan-review` (consumed by `plan-consolidation`) or `work-review` (consumed by `work-implementation` in fix-findings mode).
 
 ## Phase 0 Procedure
 
@@ -21,9 +21,7 @@ Follow this decision tree **in order**. Each branch short-circuits the next.
 | `$ARGUMENTS` | Action |
 |---|---|
 | empty | Fall through to Step 2 (use active session). |
-| `findings.json` path | Fix-findings mode: set `SESSION_DIR` from the findings-path parent or active session; input type is findings. Go to Phase 1. |
-| slug (matches `^[a-z0-9-]+$` and no `.json` extension) | Prefix-scan for sessions (see Step 3). |
-| anything else that looks like a path | Treat as an explicit spec.json or findings.json path. Resolve the session dir; go to Phase 1. |
+| slug (matches `^[a-z0-9-]+$`) | Prefix-scan for sessions (see Step 3). |
 
 ### Step 2: Empty args — resolve active session
 
@@ -66,14 +64,6 @@ printf '{"schema_version":1,"session_id":"%s"}' "$WINNER" > .flywheel/plugin/act
 mv .flywheel/plugin/active.json.tmp .flywheel/plugin/active.json
 ```
 
-### Step 4: Explicit findings.json path arg — fix-findings mode
-
-If `$ARGUMENTS` points to a `*.findings.json` file:
-
-1. Verify the file exists and validates against `flywheel/schemas/findings.schema.json`.
-2. The session dir is the path's parent directory (or resolved via active.json if the path is outside a session).
-3. Set the skill's input-type flag to `fix-findings`. Phase 1's adapter takes the findings.json branch.
-
 ## `/fly:review` Routing Heuristic (D9)
 
 This is a **shared helper** authored here per D9 and referenced by `flywheel/commands/fly/review.md` in Phase 5. `/fly:review` does not have its own skill — it dispatches to `plan-review` or `work-review` based on the input.
@@ -84,8 +74,8 @@ This is a **shared helper** authored here per D9 and referenced by `flywheel/com
 |---|---|
 | `$ARGUMENTS` matches `^#?\d+$` (PR number) | `work-review` with the PR target |
 | `$ARGUMENTS` looks like a branch name | `work-review` with the branch target |
-| `$ARGUMENTS` empty AND session has `baseline.json` | `work-review` (work is in progress or complete) |
-| `$ARGUMENTS` empty AND session has `spec.json` but no `baseline.json` | `plan-review` (spec not yet executed) |
+| `$ARGUMENTS` empty AND session has `progress.json` | `work-review` (work is in progress or complete) |
+| `$ARGUMENTS` empty AND session has `spec.json` but no `progress.json` | `plan-review` (spec not yet executed) |
 | `$ARGUMENTS` empty AND neither file present | error "No spec to review. Run /fly:plan first." |
 
 ### Procedure (pseudocode matching `tests/work/routing.test.sh`)
@@ -113,7 +103,7 @@ route_review() {
     return 4
   fi
 
-  if [ -f "$session_dir/baseline.json" ]; then
+  if [ -f "$session_dir/progress.json" ]; then
     echo "work-review"
     return 0
   fi
@@ -130,25 +120,23 @@ route_review() {
 
 ### Intuition
 
-- **Presence of `baseline.json`** is the signal that work has been started. If work is in progress or complete, review targets the executed work — `work-review`.
+- **Presence of `progress.json`** is the signal that work has been started. If work is in progress or complete, review targets the executed work — `work-review`.
 - **Presence of `spec.json` alone** means the plan hasn't been executed yet. Review targets the plan — `plan-review`.
 - **An explicit PR/branch** bypasses the session-based inference; the user is asking to review code in a specific scope, regardless of the local session state.
 
 ### Edge Cases
 
 - **User passed a session id as arg** (matches `^[a-z0-9-]+-\d{4}-\d{2}-\d{2}(-\d+)?$`): treat as a slug lookup via the Phase 0 slug-arg procedure, then apply the routing heuristic against the resolved session dir with empty `arguments`.
-- **Both `spec.json` and `baseline.json` exist but `baseline.json` is corrupt**: route to `work-review`. It will detect the corruption via the Phase 1.0 hash check.
 
 ## Validation Checks Before Proceeding
 
 Once the session is resolved, before Phase 1:
 
-1. **Schema version match** — `session.json.schema_version == 1`. Reject with `"Unsupported schema version <N>. Re-run the producing skill to regenerate."` (P2-6).
-2. **`spec.json` presence** for plan-mode work, or **`findings.json` presence** for fix-findings mode. Missing → ask the user to run the preceding skill.
-3. **Stale `.tmp` cleanup** — if `state.json.tmp` exists from a prior interrupted write, delete it. The authoritative state file is `state.json`; `.tmp` is scratch.
+1. **Schema version match** — `session.json.schema_version == 1`. Reject with `"Unsupported schema version <N>. Re-run the producing skill to regenerate."`
+2. **`spec.json` presence** for plan-mode work, or **`review.findings.json` presence** for fix-findings mode. Missing → ask the user to run the preceding skill.
+3. **Stale `.tmp` cleanup** — if `progress.json.tmp` exists from a prior interrupted write, delete it. The authoritative state file is `progress.json`; `.tmp` is scratch.
 
 ## If Session Exists AND `$ARGUMENTS` Disagrees
 
 - **Same session (arg resolves to same session_id as active.json)**: proceed.
 - **Different session (arg resolves to a different session_id)**: update `active.json` to the new session_id (auto-switch; providing an arg is implicit confirmation). Briefly note the switch, no prompt.
-- **Arg is a findings.json path in the same session**: switch to fix-findings mode for this invocation without changing active.json.

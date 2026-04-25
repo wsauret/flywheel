@@ -19,9 +19,9 @@ describe("getStepProduces", () => {
     expect(getStepProduces(key)).toBeUndefined();
   });
 
-  it("returns the declared produces name when a strategy sets it", () => {
+  it("returns the declared produces name when registration sets it", () => {
     const key = `test-${randomUUID()}`;
-    registerScaffolding(key, () => ({ preamble: "a", postamble: "b", produces: "x" }));
+    registerScaffolding(key, () => ({ preamble: "a", postamble: "b" }), "x");
     expect(getStepProduces(key)).toBe("x");
   });
 
@@ -53,7 +53,7 @@ describe("getStepProduces", () => {
     const typeKey = `test-${randomUUID()}`;
     const variantHint = `variant-${randomUUID()}`;
     const fullVariantKey = `${typeKey}:${variantHint}`;
-    registerScaffolding(typeKey, () => ({ preamble: "", postamble: "", produces: "type-level" }));
+    registerScaffolding(typeKey, () => ({ preamble: "", postamble: "" }), "type-level");
     registerScaffolding(fullVariantKey, () => ({ preamble: "", postamble: "" }));
     expect(getStepProduces(fullVariantKey)).toBe("type-level");
   });
@@ -63,11 +63,11 @@ describe("getStepProduces", () => {
     const variantHint = `variant-${randomUUID()}`;
     const fullVariantKey = `${typeKey}:${variantHint}`;
     registerScaffolding(typeKey, () => ({ preamble: "", postamble: "" }));
-    registerScaffolding(fullVariantKey, () => ({
-      preamble: "",
-      postamble: "",
-      produces: "variant-only",
-    }));
+    registerScaffolding(
+      fullVariantKey,
+      () => ({ preamble: "", postamble: "" }),
+      "variant-only",
+    );
     expect(getStepProduces(typeKey)).toBeUndefined();
   });
 

@@ -1,7 +1,5 @@
-import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { stepMarkdown } from "../../../agents/manifest.js";
 import { formatChecklistLabels } from "../../shared/quality-checklist.js";
 import { loadStepMarkdown } from "../../shared/load-step-markdown.js";
 
@@ -13,10 +11,8 @@ export const SPRINT_EVALUATOR_ADDENDUM =
   "Only FAIL for hard evidence: tests failing, critical deliverables missing, or fundamentally broken output."
 
 /** Sprint mode preamble — injected into every sprint worker prompt. */
-export const SPRINT_PREAMBLE = loadStepMarkdown({
-  filePath: fileURLToPath(new URL("./preamble.md", import.meta.url)),
-  manifestKey: "workflows/queue/steps/sprint/preamble.md",
-  displayName: "sprint preamble",
-  readFile: readFileSync,
-  manifest: stepMarkdown,
-});
+export const SPRINT_PREAMBLE = loadStepMarkdown(
+  fileURLToPath(new URL("./preamble.md", import.meta.url)),
+  "workflows/queue/steps/sprint/preamble.md",
+  "sprint preamble",
+);

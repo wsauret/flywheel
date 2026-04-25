@@ -22,6 +22,9 @@ import { classifyResponseFailed, REASONING_EFFORT, toResponseInput, extractSyste
 
 const log = Log.create({ service: "llm-openai" });
 
+// Two distinct silences. TTFT covers server-side preprocessing where no stream
+// events flow yet. Idle is between events once streaming has started.
+const STREAM_TTFT_TIMEOUT_MS = 600_000;
 const STREAM_IDLE_TIMEOUT_MS = 120_000;
 
 
@@ -87,8 +90,11 @@ export function createOpenAIAdapter(
         if (options.signal) {
           options.signal.addEventListener("abort", () => idleAbort.abort(), { once: true });
         }
+        let firstEventReceived = false;
         const watchdog = createIdleWatchdog(STREAM_IDLE_TIMEOUT_MS, () => {
-          log.warn(`OpenAI stream idle for ${STREAM_IDLE_TIMEOUT_MS}ms, aborting`);
+          const phase = firstEventReceived ? "idle" : "pre-stream";
+          const ms = firstEventReceived ? STREAM_IDLE_TIMEOUT_MS : STREAM_TTFT_TIMEOUT_MS;
+          log.warn(`OpenAI stream ${phase} for ${ms}ms, aborting`);
           idleAbort.abort();
         });
 
@@ -123,7 +129,9 @@ export function createOpenAIAdapter(
             params.include = ["reasoning.encrypted_content"];
           }
 
-          watchdog.reset();
+          // Long budget for TTFT — server preprocessing can sit silent for
+          // minutes. Switches to the tighter idle budget on first event.
+          watchdog.reset(STREAM_TTFT_TIMEOUT_MS);
           const stream = await client.responses.create(params, { signal: idleAbort.signal });
 
           let responseId: string | undefined;
@@ -139,6 +147,7 @@ export function createOpenAIAdapter(
           }
 
           try { for await (const event of stream as AsyncIterable<ResponseStreamEvent>) {
+            firstEventReceived = true;
             watchdog.reset();
 
             switch (event.type) {
@@ -251,7 +260,8 @@ export function createOpenAIAdapter(
           }
         } catch (err) {
           if (watchdog.timedOut) {
-            throw new RetryableStreamError("OpenAI stream idle timeout", "transient");
+            const reason = firstEventReceived ? "idle timeout" : "pre-stream timeout";
+            throw new RetryableStreamError(`OpenAI stream ${reason}`, "transient");
           }
           if (options.signal?.aborted) throw err;
 

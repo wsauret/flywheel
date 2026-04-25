@@ -9,7 +9,7 @@
 // Invoked by scripts/build-binary.ts before bundling, then restored to the
 // checked-in empty default after bundling.
 
-import { readdir, readFile } from "fs/promises";
+import { readdir } from "fs/promises";
 import { join } from "path";
 
 const ROOT = join(import.meta.dir, "..");
@@ -27,7 +27,7 @@ export async function writeManifest(destPath: string): Promise<void> {
   const personaDir = join(AGENTS_SRC, "personas", "fly");
   const mdFiles = (await readdir(personaDir)).filter((f) => f.endsWith(".md"));
   for (const file of mdFiles) {
-    agents[file] = await readFile(join(personaDir, file), "utf-8");
+    agents[file] = await Bun.file(join(personaDir, file)).text();
   }
 
   // Read skill files
@@ -38,7 +38,7 @@ export async function writeManifest(destPath: string): Promise<void> {
     const skillSrc = join(skillsDir, entry.name);
     let skillContent = "";
     try {
-      skillContent = await readFile(join(skillSrc, "SKILL.md"), "utf-8");
+      skillContent = await Bun.file(join(skillSrc, "SKILL.md")).text();
     } catch {
       continue;
     }
@@ -49,7 +49,7 @@ export async function writeManifest(destPath: string): Promise<void> {
         f.endsWith(".md"),
       );
       for (const ref of refFiles) {
-        refs[ref] = await readFile(join(skillSrc, "references", ref), "utf-8");
+        refs[ref] = await Bun.file(join(skillSrc, "references", ref)).text();
       }
     } catch {
       // No references — fine
@@ -58,12 +58,14 @@ export async function writeManifest(destPath: string): Promise<void> {
     skills[entry.name] = { skill: skillContent, references: refs };
   }
 
-  // Read step markdown files (keyed by path relative to src/).
+  // Read step markdown files (keyed by path relative to src/). In-memory
+  // accumulation is fine at the current scale; trigger for streaming would
+  // be ~50+ step .md files.
   const stepsDir = join(ROOT, "src", "workflows", "queue", "steps");
   const stepsGlob = new Bun.Glob("**/*.md");
   for await (const rel of stepsGlob.scan({ cwd: stepsDir })) {
     const abs = join(stepsDir, rel);
-    stepMarkdown[`workflows/queue/steps/${rel}`] = await readFile(abs, "utf-8");
+    stepMarkdown[`workflows/queue/steps/${rel}`] = await Bun.file(abs).text();
   }
 
   const code = [

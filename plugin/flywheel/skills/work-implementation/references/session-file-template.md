@@ -20,7 +20,7 @@ The active pointer has shape `{ "schema_version": 1, "session_id": "<session-id>
 
 ## Initial Session (plan-creation exit)
 
-Written by plan-creation Phase 3 Step 9:
+Written by plan-creation at session creation:
 
 ```json
 {
@@ -30,18 +30,17 @@ Written by plan-creation Phase 3 Step 9:
   "status": "active",
   "started_at": "2026-04-23T12:00:00Z",
   "last_checkpoint_at": null,
-  "active_skill": null,
-  "baseline_hash": null
+  "active_skill": null
 }
 ```
 
-Note: `active_skill: null` because plan-creation sets the field only while running, then clears it on exit (P2-14).
+Note: `active_skill: null` because plan-creation sets the field only while running, then clears it on exit.
 
 ---
 
 ## At work-implementation Start (Phase 1 exit)
 
-After Phase 1 computes the baseline hash and initializes state.json:
+After Phase 1 initializes progress.json:
 
 ```json
 {
@@ -51,22 +50,20 @@ After Phase 1 computes the baseline hash and initializes state.json:
   "status": "active",
   "started_at": "2026-04-23T12:00:00Z",
   "last_checkpoint_at": "2026-04-23T12:05:00Z",
-  "active_skill": "work-implementation",
-  "baseline_hash": "53f1cdd7f5bac32c065ad6d15265a62e42f249860d0025ecf7f25489dfab84c5"
+  "active_skill": "work-implementation"
 }
 ```
 
-Changes from the initial form:
+Changes from initial form:
 
 - `last_checkpoint_at`: timestamp of Phase 1 completion.
 - `active_skill`: `"work-implementation"` while the skill is executing.
-- `baseline_hash`: SHA-256 of baseline.json (64 hex chars).
 
 ---
 
 ## Mid-Execution Checkpoint
 
-Each phase completion updates `last_checkpoint_at`. The other fields stay stable:
+Each chunk completion updates `last_checkpoint_at`. Other fields stay stable:
 
 ```json
 {
@@ -76,30 +73,18 @@ Each phase completion updates `last_checkpoint_at`. The other fields stay stable
   "status": "active",
   "started_at": "2026-04-23T12:00:00Z",
   "last_checkpoint_at": "2026-04-23T12:35:00Z",
-  "active_skill": "work-implementation",
-  "baseline_hash": "53f1cdd7f5bac32c065ad6d15265a62e42f249860d0025ecf7f25489dfab84c5"
+  "active_skill": "work-implementation"
 }
 ```
 
-`baseline_hash` must never change during execution. If it does, the frozen baseline has been mutated — a protocol violation (work-review Phase 1.0 Check 0 catches this).
-
 ---
 
-## At Skill Exit (P2-14)
+## At Skill Exit
 
 On **every** exit path — success, caught error, 3-strike abort, user interruption — the skill must clear `active_skill`:
 
 ```json
-{
-  "schema_version": 1,
-  "session_id": "add-timeout-flag-2026-04-23",
-  "slug": "add-timeout-flag",
-  "status": "active",
-  "started_at": "2026-04-23T12:00:00Z",
-  "last_checkpoint_at": "2026-04-23T13:00:00Z",
-  "active_skill": null,
-  "baseline_hash": "53f1cdd7f5bac32c065ad6d15265a62e42f249860d0025ecf7f25489dfab84c5"
-}
+{ "...": "...", "active_skill": null }
 ```
 
 Implementation pattern (bash):
@@ -120,34 +105,19 @@ The trap ensures cleanup runs even on script crashes. `session.status` stays `"a
 
 ## Session Completion
 
-When work-implementation ships a full, successful run **and** the user chooses to ship (via `/fly:ship`), `/fly:ship` sets `session.status = "completed"`:
-
-```json
-{
-  "schema_version": 1,
-  "session_id": "add-timeout-flag-2026-04-23",
-  "slug": "add-timeout-flag",
-  "status": "completed",
-  "started_at": "2026-04-23T12:00:00Z",
-  "last_checkpoint_at": "2026-04-23T13:30:00Z",
-  "active_skill": null,
-  "baseline_hash": "53f1cdd7f5bac32c065ad6d15265a62e42f249860d0025ecf7f25489dfab84c5"
-}
-```
-
-work-implementation itself does **not** mark the session completed — that's ship's job. work-implementation's exit simply clears `active_skill`.
+When work-implementation finishes a full, successful run **and** the user chooses to ship (via `/fly:ship`), `/fly:ship` sets `session.status = "completed"`. work-implementation itself does **not** mark the session completed — that's ship's job. work-implementation's exit simply clears `active_skill`.
 
 ---
 
 ## Status Enum
 
-Three states (per the user's state-machine overhaul memory):
+Three states:
 
 | status | Meaning |
 |---|---|
 | `active` | Session is open, skills may run against it. |
 | `paused` | Session is suspended (user interrupted; work is mid-flight). |
-| `completed` | Session is done. Typically shipped via ship; could also be manually closed. |
+| `completed` | Session is done. Typically shipped via ship. |
 
 Delete is an action, not a state — `rm -rf` the session directory to remove it. `active.json` must be cleared first (or the stale-pointer rescue runs next time).
 
@@ -155,7 +125,7 @@ Delete is an action, not a state — `rm -rf` the session directory to remove it
 
 ## Atomic Writes
 
-Every session.json update follows the `state.json` atomic-write pattern (see `state-file-template.md`):
+Every session.json update follows the same atomic-write pattern as progress.json:
 
 ```bash
 jq '<update>' "$SESSION_DIR/session.json" > "$SESSION_DIR/session.json.tmp"
@@ -181,14 +151,13 @@ When `/fly:work` is called with no arguments:
 
 1. Read active.json.
 2. Resolve session dir (with stale-pointer rescue if needed).
-3. Enter Phase 1 resume (state.json present → skip init, jump to first non-completed phase).
+3. Enter Phase 1 resume (progress.json present → skip init, jump to first non-completed chunk).
 
 ---
 
 ## Common Mistakes
 
-- **Forgetting to clear `active_skill` on exit** — a lingering active_skill value makes the next invocation think another instance is running. Always use the trap-based cleanup pattern.
-- **Changing `baseline_hash` mid-execution** — the hash is immutable for the lifetime of the session. Editing spec.json does not update baseline_hash (baseline is frozen; mid-execution plan changes require a fresh `/fly:work` invocation which writes a new baseline).
+- **Forgetting to clear `active_skill` on exit** — a lingering value makes the next invocation think another instance is running. Always use the trap-based cleanup pattern.
 - **Setting `status: "completed"` in work-implementation** — that belongs to ship. work-implementation only manipulates `active_skill` and `last_checkpoint_at`.
 - **Writing session.json directly (not through `.tmp`)** — use the atomic write pattern.
 
@@ -196,4 +165,4 @@ When `/fly:work` is called with no arguments:
 
 ## Gitignore
 
-`.flywheel/` is in `.gitignore` per Phase 1 of the refactor. Session state stays local; it is not committed. Once a session ships, artifacts the user wants to keep (plan summaries, post-mortems) go into `docs/`, not `.flywheel/`.
+`.flywheel/` is in `.gitignore`. Session state stays local; it is not committed. Once a session ships, artifacts the user wants to keep (plan summaries, post-mortems) go into `docs/`, not `.flywheel/`.

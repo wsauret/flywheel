@@ -40,18 +40,32 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
 
   let startup: StartupState = { phase: "idle" }
   const [isStarting, setIsStarting] = createSignal(false)
-  const emptyChats = new Set<string>()
 
-  function finalizeChat(id: string): void {
-    if (emptyChats.delete(id)) {
-      try { manager.delete(id) } catch { /* already cleaned up */ }
-    } else {
-      const entry = sessionStore.get(id)
-      if (entry?.kind === "chat" && entry.engineSessionId) {
-        try { updateSession(id, { engineSessionId: entry.engineSessionId }, projectCwd) } catch { /* best-effort */ }
-      }
-      manager.updateState(id, "paused")
+  // Tracks which chat sessions have been persisted to disk via manager.create.
+  // A chat is persisted on the first user message — that is the sole boundary
+  // where session.json appears. Closing a chat that never reached this point
+  // is a true no-op (no rmSync, no defensive flush ordering).
+  const persistedChats = new Set<string>()
+
+  function persistChat(sessionId: string): void {
+    if (persistedChats.has(sessionId)) return
+    persistedChats.add(sessionId)
+    try {
+      manager.create("chat", "Chat", "chat", "active", sessionId)
+    } catch (err) {
+      persistedChats.delete(sessionId)
+      log.error("manager.create failed on first message", { sessionId, error: extractErrorMessage(err) })
+      throw err
     }
+  }
+
+  function pauseChat(id: string): void {
+    if (!persistedChats.has(id)) return
+    const entry = sessionStore.get(id)
+    if (entry?.kind === "chat" && entry.engineSessionId) {
+      try { updateSession(id, { engineSessionId: entry.engineSessionId }, projectCwd) } catch { /* best-effort */ }
+    }
+    try { manager.updateState(id, "paused") } catch { /* best-effort */ }
   }
 
   async function launchChat(
@@ -81,11 +95,11 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
         startedAt: opts?.startedAt,
         contextPercent: opts?.contextPercent,
         onRunnerDone: (id) => {
-          finalizeChat(id)
+          pauseChat(id)
           deps.onRunnerDone?.(id)
         },
         onRunnerError: (id, err) => {
-          finalizeChat(id)
+          pauseChat(id)
           deps.onRunnerError?.(id, extractErrorMessage(err))
         },
         createRunner: (storeHandle: ChatStoreHandle) =>
@@ -95,6 +109,7 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
             updateState: manager.updateState,
             updateEntry: storeHandle.updateEntry,
             onSessionName: (name) => manager.updateLabel(sessionId, name),
+            onFirstMessage: () => persistChat(sessionId),
             onError: storeHandle.onError,
             onEnded: storeHandle.onEnded,
             initialMessage: opts?.initialMessage?.trim() || undefined,
@@ -121,26 +136,19 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
   }
 
   async function startChat(initialMessage?: string): Promise<string | null> {
-    const sessionId = manager.create("chat", "Chat", "chat", "active")
+    const sessionId = manager.allocateId()
     if (!(await launchChat(sessionId, { initialMessage }))) {
-      try { manager.delete(sessionId) } catch { /* best-effort */ }
+      // Nothing was persisted — manager.create only runs on first message.
+      // No filesystem cleanup needed here.
       return null
     }
-    if (!initialMessage?.trim()) emptyChats.add(sessionId)
     return sessionId
   }
 
   async function backgroundChat(foregroundId?: string): Promise<void> {
     startup = { phase: "idle" }
     setIsStarting(false)
-    if (foregroundId && emptyChats.has(foregroundId)) {
-      // Dispose the runner BEFORE finalizeChat runs manager.delete (rmSync).
-      // The runner's final output-flush writes output.json via writeFileAtomic
-      // which mkdirs the session directory; if that fires AFTER rmSync, it
-      // recreates an orphan directory containing only output.json.
-      await sessionStore.remove(foregroundId)
-      finalizeChat(foregroundId)
-    }
+    if (foregroundId) await sessionStore.remove(foregroundId)
   }
 
   async function endChat(foregroundId: string | undefined): Promise<boolean> {
@@ -153,17 +161,10 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
       setIsStarting(false)
     }
 
-    if (emptyChats.has(foregroundId)) {
-      // Empty chat — dispose before finalize so the output-flush can't recreate
-      // the directory after manager.delete's rmSync. See backgroundChat.
-      await sessionStore.remove(foregroundId)
-      finalizeChat(foregroundId)
-    } else {
-      // Non-empty chat pauses instead of deleting. finalizeChat reads the store
-      // entry's engineSessionId, so run it before sessionStore.remove clears it.
-      finalizeChat(foregroundId)
-      await sessionStore.remove(foregroundId)
-    }
+    // Read the engine session id BEFORE sessionStore.remove clears the entry.
+    // pauseChat is a no-op for never-persisted chats.
+    pauseChat(foregroundId)
+    await sessionStore.remove(foregroundId)
     return true
   }
 
@@ -173,7 +174,9 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
   }
 
   function autoResumeChat(sessionId: string, entry: ChatSessionEntry, text: string): void {
-    emptyChats.delete(sessionId)
+    // Resumed chats are already persisted on disk from their prior session.
+    // Mark them as such so endChat takes the pause path, not the no-op path.
+    persistedChats.add(sessionId)
     manager.updateState(sessionId, "active")
     const priorBlocks = entry.outputBlocks.length > 0
       ? [...entry.outputBlocks] as AnyBlock[]
@@ -197,13 +200,11 @@ export function createChatController(deps: ChatControllerDeps): ChatController {
   function sendMessage(foregroundId: string | undefined, text: string): boolean {
     if (startup.phase === "starting") {
       startup.pending.push(text)
-      emptyChats.delete(startup.id)
       return true
     }
     if (!foregroundId) return false
 
     if (sessionStore.injectMessage(foregroundId, text)) {
-      emptyChats.delete(foregroundId)
       return true
     }
 

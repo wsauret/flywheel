@@ -63,8 +63,26 @@ When evaluating language-specific patterns, load the `language-standards` skill 
 
 ## Output Format
 
-Return findings as a JSON object conforming to `flywheel/schemas/findings.schema.json`. See `flywheel/schemas/findings.example.json` for a canonical example.
+Return findings as natural-language prose. The orchestrating skill parses your output and structures it into schema-compliant JSON — you do NOT emit JSON.
 
-**BLOCKING:** The invoker provides a `scope_context` parameter ("plan" or "code") in the Task prompt. Set `scope.kind` accordingly. Populate only the keys relevant to the finding — **omit unused keys, do NOT set them to `null`**. Plan scope requires at least one of `phase_id`/`task_id`/`bc_id`; code scope requires `file` (and optionally `line`).
+For each finding, provide all of:
 
-Return valid JSON only — no prose wrapper, no markdown fences.
+- **Title** — a short scannable phrase (no period).
+- **Severity** — `P1` (blocks merge), `P2` (should fix), or `P3` (nice-to-have).
+- **Location** — format provided by the invoker. Code review: `<repo-relative-path>` or `<repo-relative-path>:<line>`. Plan review: `<phase_id>` or `<phase_id>/<task_id>`.
+- **Failure** — a paragraph covering intent (what should happen), observation (what's wrong), and reasoning (why this matters). See `flywheel-conventions` "Lead with the Failure" for the structure.
+- **Fix** — a concrete proposed change. The implementer treats this as a hypothesis, so be specific without over-prescribing.
+
+Suggested format per finding:
+
+```
+**Finding:** <title>
+**Severity:** P<n>
+**Location:** <location>
+**Failure:** <intent + observation + reasoning paragraph>
+**Fix:** <proposed change>
+```
+
+Multiple findings: separate with a blank line. No findings: say "No findings."
+
+Do not write to any files — return prose in your response only. The synthesizer owns all file writes.

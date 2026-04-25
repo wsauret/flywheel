@@ -4,6 +4,7 @@ import {
   updateSession,
   listSessions,
   deleteSessionWithCompanions,
+  generateSessionId,
   type SessionListResult as PersistenceListResult,
 } from "./persistence.js";
 import type { Session } from "./schemas.js";
@@ -46,7 +47,11 @@ interface SessionManagerDeps {
 import type { SessionKind } from "./types.js";
 
 export interface SessionManager {
-  create(planPath: string, name?: string, kind?: SessionKind, initialState?: SessionState): string;
+  /** Allocate a new session id without writing to disk. Use when session
+   *  creation is deferred (e.g. chat-open holds an id in memory and only
+   *  calls create() on first send). */
+  allocateId(): string;
+  create(planPath: string, name?: string, kind?: SessionKind, initialState?: SessionState, id?: string): string;
   list(): ManagerListResult;
   updateState(id: string, newState: SessionState): void;
   updateLabel(id: string, label: string): void;
@@ -68,7 +73,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
     return session;
   }
 
-  function create(planPath: string, name?: string, kind?: SessionKind, initialState?: SessionState): string {
+  function create(planPath: string, name?: string, kind?: SessionKind, initialState?: SessionState, id?: string): string {
     const now = new Date().toISOString();
     const state = initialState ?? "active";
 
@@ -87,9 +92,9 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
       ? { ...sharedFields, kind: "chat", command: "chat" } satisfies Session
       : { ...sharedFields, kind: "workflow", command: "work", planPath } satisfies Session;
 
-    const id = persistCreateSession(sessionData, baseDir);
+    const persistedId = persistCreateSession(sessionData, baseDir, id);
     onChange?.();
-    return id;
+    return persistedId;
   }
 
   function list(): ManagerListResult {
@@ -176,6 +181,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
   }
 
   return {
+    allocateId: generateSessionId,
     create,
     list,
     updateState,

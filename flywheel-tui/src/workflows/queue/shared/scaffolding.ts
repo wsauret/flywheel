@@ -1,12 +1,11 @@
 import type { Step } from "../types.js";
 
-interface ScaffoldingResult {
+export interface ScaffoldingResult {
   preamble: string;
   postamble: string;
-  produces?: string;
 }
 
-type ScaffoldingStrategy = (step: Step, paths: ScaffoldingPaths) => ScaffoldingResult;
+export type ScaffoldingStrategy = (step: Step, paths: ScaffoldingPaths) => ScaffoldingResult;
 
 export interface ScaffoldingPaths {
   handoffPath: string;
@@ -17,9 +16,15 @@ export function variantKey(type: Step["type"], hint?: string): string {
 }
 
 const registry = new Map<string, ScaffoldingStrategy>();
+const producesMap = new Map<string, string>();
 
-export function registerScaffolding(key: string, strategy: ScaffoldingStrategy): void {
+export function registerScaffolding(
+  key: string,
+  strategy: ScaffoldingStrategy,
+  produces?: string,
+): void {
   registry.set(key, strategy);
+  if (produces !== undefined) producesMap.set(key, produces);
 }
 
 export function buildScaffolding(step: Step, paths: ScaffoldingPaths): ScaffoldingResult {
@@ -34,23 +39,11 @@ export function buildScaffolding(step: Step, paths: ScaffoldingPaths): Scaffoldi
 }
 
 export function getStepProduces(key: string): string | undefined {
-  const stubStep = { id: "", type: "work", title: "", status: "pending" } as Step;
-  const stubPaths: ScaffoldingPaths = { handoffPath: "" };
-
-  const isVariant = key.includes(":");
-  if (isVariant) {
-    const variantStrategy = registry.get(key);
-    if (variantStrategy) {
-      const produces = variantStrategy(stubStep, stubPaths).produces;
-      if (produces !== undefined) return produces;
-    }
+  if (key.includes(":")) {
+    const variantProduces = producesMap.get(key);
+    if (variantProduces !== undefined) return variantProduces;
     const typeKey = key.slice(0, key.indexOf(":"));
-    const typeStrategy = registry.get(typeKey);
-    if (typeStrategy) return typeStrategy(stubStep, stubPaths).produces;
-    return undefined;
+    return producesMap.get(typeKey);
   }
-
-  const strategy = registry.get(key);
-  if (strategy) return strategy(stubStep, stubPaths).produces;
-  return undefined;
+  return producesMap.get(key);
 }

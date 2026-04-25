@@ -27,13 +27,10 @@ Conventions for the session directory plan-creation writes.
 ```
 .flywheel/plugin/sessions/<session-id>/
   spec.json                    # plan-creation writes; plan-consolidation refines
-  context.md                   # plan-creation writes; research prose sidecar (D1)
-  session.json                 # plan-creation writes; status/active_skill/baseline_hash
-  findings.json                # plan-review writes (post-Phase 2)
-  spec.json.pre-consolidation  # plan-consolidation writes before refinement (D7)
-  baseline.json                # work-implementation writes at baseline capture
-  state.json                   # work-implementation checkpoint state
-  review.findings.json         # work-review writes
+  session.json                 # plan-creation writes; status/active_skill metadata
+  spec.json.pre-consolidation  # plan-consolidation writes before refinement
+  review.findings.json         # plan-review and work-review write here (consumed by next skill)
+  progress.json                # work-implementation checkpoint state
 ```
 
 The `plugin/` infix exists so plugin sessions coexist with TUI sessions (`.flywheel/sessions/`) in the same repo without collision.
@@ -68,7 +65,3 @@ Every path inside `spec.json` is repo-relative (`src/auth.ts:42-55`), never abso
 ### Test scenarios
 
 Each task lists enumerable scenarios. A scenario is concrete enough that the implementer turns it directly into a test case. If you can't write one, the task is not ready — surface it as an `open_question` on the spec.
-
-### BC id format
-
-`BC-<AREA>-<NNN>` where `AREA` is uppercase alphanumerics (e.g. `AUTH`, `CLI`, `PLANNING`) and `NNN` is a three-digit sequence (e.g. `001`). Regex: `^BC-[A-Z0-9]+-\d{3}$`.

@@ -3,7 +3,10 @@
 
 import type { RetryableStreamError } from "./llm/types.js";
 
-export const MAX_STREAM_RETRIES = 5;
+// Outer-loop budget for stream-level errors. Multiplied by the inner withRetry
+// budget (3) — keep this small so a genuinely broken stream surfaces fast
+// instead of burning tokens across a long retry storm.
+export const MAX_STREAM_RETRIES = 2;
 
 const TRANSIENT_RETRY_BASE_MS = 500;
 const RATE_LIMIT_MIN_MS = 5_000;

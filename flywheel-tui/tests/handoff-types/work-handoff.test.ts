@@ -57,6 +57,7 @@ describe("work-handoff registration", () => {
         (i) => i.path.join(".") === "verification.test_output_summary",
       );
       expect(tosError).toBeDefined();
+      expect(tosError?.message).toContain("10");
     }
   });
 
@@ -66,6 +67,10 @@ describe("work-handoff registration", () => {
   });
 
   it("getAllHandoffTypes contains work-handoff exactly once", () => {
+    // Tests share a Bun process where synthetic handoff types may be
+    // registered by other test files (e.g. registry.test.ts), so we do
+    // not assert absolute cardinality. The filter-based check pins
+    // exactly-once for work-handoff specifically.
     const names = getAllHandoffTypes().map((t) => t.name);
     expect(names.filter((n) => n === "work-handoff")).toHaveLength(1);
   });

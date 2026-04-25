@@ -204,6 +204,11 @@ function createWorkerLifecycle(
     ctx = createRunnerContext({
       engine,
       model,
+      // Chat is conversational, not a sprint worker step. Default to "high"
+      // instead of letting the adapter fall through to "max" — max-effort
+      // adaptive thinking on every turn pushes time-to-first-token into the
+      // multi-minute range with large prompts.
+      effort: "high",
       cwd: projectCwd,
       sessionDir: resolveSessionDir(sessionId, projectCwd),
       resumeSessionId,
@@ -252,7 +257,6 @@ function createWorkerLifecycle(
 export async function createChatSession(
   callbacks: ChatCallbacks,
   deps: ChatSessionDeps,
-  initialMessage?: string,
 ): Promise<ChatSession> {
   const {
     projectCwd, engine, model, infra,
@@ -287,11 +291,6 @@ export async function createChatSession(
   const controls = createChatControls({
     lifecycle, session, callbacks, eventUnsubs, state,
   })
-
-  const msg = initialMessage?.trim() || undefined
-  if (msg) callbacks.onWaiting(true)
-
-  await lifecycle.spawnWorker(state.engineSessionId ?? undefined, msg)
 
   function answerQuestion(toolUseId: string, answers: Record<string, string>): void {
     session.answerQuestion(toolUseId, answers)

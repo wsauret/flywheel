@@ -118,7 +118,10 @@ describe("chat session with harness engine", () => {
           resolveActive()
         }
       },
-    }, "initial instruction")
+    } as any)
+
+    // First send drives the worker spawn now that creation is deferred.
+    session.send("initial instruction")
 
     await Promise.race([
       becameActive,

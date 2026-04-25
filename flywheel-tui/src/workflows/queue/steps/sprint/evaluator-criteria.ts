@@ -1,27 +1,23 @@
 // Sprint Evaluator Criteria — self-review-aligned evaluation for sprint mode.
 //
-// Evaluates work against the same 7-point checklist used by the self-review
-// injection (orchestration/worker-callback.ts). The evaluator
-// should PASS work that meets these criteria and only FAIL for hard evidence
-// of broken functionality — not for style, minor omissions, or gold-plating.
+// Evaluates work against the self-review checklist (defined in
+// evaluator-criteria-prefix.md). The evaluator should PASS work that meets
+// these criteria and only FAIL for hard evidence of broken functionality —
+// not for style, minor omissions, or gold-plating.
 //
 // Sprint mode uses Opus for the evaluator to provide thorough assessment.
 
-import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { stepMarkdown } from "../../../agents/manifest.js";
 import { loadStepMarkdown } from "../../shared/load-step-markdown.js";
 import type { SprintIterationRecord } from "./types.js";
 
 // Loaded once at module load for prompt caching.
-const STATIC_CRITERIA_PREFIX = loadStepMarkdown({
-  filePath: fileURLToPath(new URL("./evaluator-criteria-prefix.md", import.meta.url)),
-  manifestKey: "workflows/queue/steps/sprint/evaluator-criteria-prefix.md",
-  displayName: "sprint evaluator criteria",
-  readFile: readFileSync,
-  manifest: stepMarkdown,
-});
+const STATIC_CRITERIA_PREFIX = loadStepMarkdown(
+  fileURLToPath(new URL("./evaluator-criteria-prefix.md", import.meta.url)),
+  "workflows/queue/steps/sprint/evaluator-criteria-prefix.md",
+  "sprint evaluator criteria",
+);
 
 /**
  * Build self-review-aligned evaluation criteria for a sprint iteration.

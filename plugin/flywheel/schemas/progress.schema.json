@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "flywheel/schemas/progress.schema.json",
+  "title": "Work progress (progress.json)",
+  "description": "Runtime state for work-implementation. Single completion list per mode. Atomic writes via progress.json.tmp -> mv.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "mode", "completed", "in_progress", "artifacts"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "mode": { "enum": ["plan", "fix-findings"] },
+    "status": { "enum": ["pending", "in_progress", "completed"] },
+    "completed": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Item IDs completed. In plan mode: phase IDs. In fix-findings mode: finding IDs (or array indices as strings)."
+    },
+    "in_progress": { "type": ["string", "null"] },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["files_modified", "commands_run"],
+      "properties": {
+        "files_modified": { "type": "array", "items": { "type": "string" } },
+        "commands_run": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["command", "exit_code"],
+            "properties": {
+              "command": { "type": "string", "minLength": 1 },
+              "exit_code": { "type": "integer" },
+              "stdout_tail": { "type": "string" }
+            }
+          }
+        },
+        "simplifications_made": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "error_log": { "type": "array", "items": { "type": "string" } }
+  }
+}

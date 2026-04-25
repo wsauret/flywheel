@@ -42,6 +42,11 @@ type MediaType = (typeof MEDIA_TYPES)[number];
 const MEDIA_TYPE_SET = new Set<string>(MEDIA_TYPES);
 
 const CACHE_CONTROL: Anthropic.CacheControlEphemeral = { type: "ephemeral" };
+// Two distinct silences. TTFT covers server-side preprocessing (cache lookup,
+// extended-thinking warmup) where no SSE events flow yet — generous so we don't
+// abort work that's actually happening. Idle is between events once streaming
+// has started — tighter, because gaps there mean the connection is dead.
+const STREAM_TTFT_TIMEOUT_MS = 600_000;
 const STREAM_IDLE_TIMEOUT_MS = 90_000;
 
 function classifyAnthropicError(err: unknown): Error {
@@ -279,8 +284,11 @@ export function createAnthropicAdapter(
 
       yield* withRetryStream(async function* () {
         let stream: ReturnType<typeof client.messages.stream> | undefined;
+        let firstEventReceived = false;
         const watchdog = createIdleWatchdog(STREAM_IDLE_TIMEOUT_MS, () => {
-          log.warn(`Anthropic stream idle for ${STREAM_IDLE_TIMEOUT_MS}ms, aborting`);
+          const phase = firstEventReceived ? "idle" : "pre-stream";
+          const ms = firstEventReceived ? STREAM_IDLE_TIMEOUT_MS : STREAM_TTFT_TIMEOUT_MS;
+          log.warn(`Anthropic stream ${phase} for ${ms}ms, aborting`);
           stream?.abort();
         });
 
@@ -317,9 +325,13 @@ export function createAnthropicAdapter(
           const thinkingBuffers = new Map<number, { thinking: string; signature: string }>();
           let receivedMessageStop = false;
 
-          watchdog.reset();
+          // Long budget for TTFT — server may sit silent for minutes during
+          // extended-thinking warmup with large prompts. Once any event arrives
+          // we switch to the tighter idle budget.
+          watchdog.reset(STREAM_TTFT_TIMEOUT_MS);
 
           try { for await (const event of stream) {
+            firstEventReceived = true;
             watchdog.reset();
             if (event.type === "content_block_start") {
               const block = event.content_block;
@@ -394,7 +406,8 @@ export function createAnthropicAdapter(
           yield { kind: "done", stopReason: finalMessage.stop_reason ?? "unknown" } as const;
         } catch (err) {
           if (watchdog.timedOut) {
-            throw new RetryableStreamError("Anthropic stream idle timeout", "transient");
+            const reason = firstEventReceived ? "idle timeout" : "pre-stream timeout";
+            throw new RetryableStreamError(`Anthropic stream ${reason}`, "transient");
           }
           if (options.signal?.aborted) throw err;
 

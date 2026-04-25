@@ -97,22 +97,24 @@ export async function withRetry<T>(fn: () => Promise<T>, opts?: string | RetryOp
 
 interface IdleWatchdog {
   readonly timedOut: boolean;
-  reset(): void;
+  /** Override the default budget for this arming. Used to give a longer window
+   *  for time-to-first-event (server preprocessing) than for in-stream idleness. */
+  reset(timeoutMs?: number): void;
   cleanup(): void;
 }
 
-export function createIdleWatchdog(timeoutMs: number, onTimeout: () => void): IdleWatchdog {
+export function createIdleWatchdog(defaultTimeoutMs: number, onTimeout: () => void): IdleWatchdog {
   let _timedOut = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
 
   return {
     get timedOut() { return _timedOut; },
-    reset() {
+    reset(timeoutMs?: number) {
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => {
         _timedOut = true;
         onTimeout();
-      }, timeoutMs);
+      }, timeoutMs ?? defaultTimeoutMs);
     },
     cleanup() {
       if (timer) clearTimeout(timer);

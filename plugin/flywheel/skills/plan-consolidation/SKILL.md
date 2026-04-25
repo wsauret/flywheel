@@ -13,7 +13,7 @@ allowed-tools:
 
 # Plan Consolidation Skill
 
-Merge review findings into the active session's `spec.json`. The refined spec carries `origin.created_by = "plan-consolidation"` and an `origin.findings_path`. Pre-refinement spec preserved as a `.pre-consolidation` sidecar (D7). Namespace: plugin uses `.flywheel/plugin/sessions/`.
+Merge review findings into the active session's `spec.json`. Pre-refinement spec is preserved as a `.pre-consolidation` sidecar so the refinement is auditable (D7). The refined `spec.json` retains the same top-level shape as the pre-refinement spec — only the content changes. Do NOT add top-level fields like `origin`, `risks`, or `notes`; the schema rejects additional properties. Namespace: plugin uses `.flywheel/plugin/sessions/`.
 
 ## Input
 
@@ -25,15 +25,14 @@ No arguments. Reads the active session from `.flywheel/plugin/active.json`.
 
 1. Read `.flywheel/plugin/active.json` to resolve `session_id`
 2. Compute session directory: `.flywheel/plugin/sessions/<session_id>/`
-3. Read three inputs:
+3. Read two inputs:
    - `spec.json` (the pre-refinement spec)
-   - `findings.json` (written by plan-review)
-   - `context.md` (research sidecar)
+   - `review.findings.json` (written by plan-review)
 
 **Errors:**
 
 - `active.json` missing → ask the user to run plan-creation first
-- `findings.json` missing → ask the user to run plan-review first, or abort
+- `review.findings.json` missing → ask the user to run plan-review first, or abort
 - `spec.json` missing → the session is broken; ask the user to delete and restart
 
 ---
@@ -51,7 +50,7 @@ Cleaned on `ship`.
 
 ## Phase 3: No-Op Check
 
-If `findings.json` has zero findings and zero open questions:
+If `review.findings.json` has zero findings and zero open questions:
 
 - Print: "No refinements needed — spec is already work-ready."
 - Skip to Phase 7 (next-steps prompt).
@@ -62,10 +61,12 @@ If `findings.json` has zero findings and zero open questions:
 
 Questions to surface:
 
-1. `findings.json.open_questions` (entries the synthesizer could not resolve)
+1. `review.findings.json.open_questions` (entries the synthesizer could not resolve)
 2. Inter-reviewer conflicts — findings where two or more reviewers described the same issue but assigned different severities. Surface the divergence; the user decides which severity is right rather than defaulting to the more severe.
 
-Present each question **BLOCKING: one at a time** via AskUserQuestion:
+**BLOCKING: Each AskUserQuestion call MUST contain exactly ONE question.** Never pass multiple questions to a single AskUserQuestion call (no `questions: [...]` arrays of length > 1). Make a separate call per question, await the response, then make the next call. Bundled multi-question prompts produce a confusing wizard-style "Review your answers / Submit" review flow that breaks both UX and test automation.
+
+For each question:
 
 ```
 Question: "[Topic]: [The question]"
@@ -81,15 +82,36 @@ Record: user picks option → decision logged; "You decide" → apply recommenda
 
 ---
 
+## Phase 4.5: Propagate Decisions Into the Spec
+
+**BLOCKING: Each resolved decision MUST be reflected in the spec's content, not just remembered in the conversation.** The implementer dispatches against the refined `spec.json`; if a decision isn't IN the spec, it won't be honored — that's a consolidation failure, not an implementer failure.
+
+For each answered question:
+
+1. **Identify affected tasks/phases** — the question's topic points to one or more `phases[].tasks[]`. Read the task descriptions and find the ones that would behave differently under each option.
+2. **Rewrite task descriptions** to bake the decision in as a constraint. Examples:
+   - "stdlib for tests too?" → "yes" → rewrite test task descriptions to mandate `unittest.TestCase` (not pytest); remove any pytest-favoring language; update `test_scenarios` if they implied pytest fixtures.
+   - "Notes plain strings or structured?" → "plain strings" → rewrite storage task to specify `str` content type explicitly; remove any dataclass references.
+3. **Update `verification` commands** if the decision changes them. Example: `pytest` → `python -m unittest tests.test_module`.
+4. **Append the decision to `context.gotchas[]`** as a one-line note that survives into the implementer dispatch. Format: `"Decision: <topic> → <answer>. <one-sentence why>."`. Example: `"Decision: stdlib only for tests → use unittest.TestCase, not pytest. Verification command runs python -m unittest."`.
+
+The bar: a fresh implementer who reads only `spec.json` (no conversation history) must reach the same outcome the user's answer prescribed. If they could plausibly do something different, the decision wasn't propagated thoroughly enough.
+
+---
+
 ## Phase 5: Integrate Findings by Severity
 
-For each finding in `findings.json.findings`:
+**Surface failures into context.** For every P1/P2 finding integrated into spec.json, append a one-line summary of the `failure` to `spec.context.gotchas[]` so the implementer sees the reasoning during dispatch, not just the patch.
+
+**Structural failures replace, don't patch.** If a finding's `failure` leads with a structural anti-pattern (Shallow Wrapper, Forwarding Chain, Premature Abstraction, Parallel State, Speculative Code, God Class), do NOT fold the `fix` into the affected task's description — that adds the patch on top of the inelegant shape. Instead, re-shape the affected phase or task to the simpler form the finding prescribes. Delete tasks made redundant by the redesign. The "Maximize elegance over minimizing churn" rule applies: pick the cleaner shape even when it means a larger refactor.
+
+For each remaining finding in `review.findings.json.findings`:
 
 ### P1 — Must Integrate
 
-- Fold `suggested_fix` language into the affected task's `description`
-- Add test scenarios that cover the failure mode described in `what_wrong`
-- If the finding does not map to an existing task: add a new task (and, if needed, a new BC with a matching `fulfills[]` claim)
+- Fold `fix` language into the affected task's `description`
+- Add test scenarios that cover the failure described in `failure`
+- If the finding does not map to an existing task: add a new task to the relevant phase
 
 ### P2 — Default Integrate; Allow Defer
 
@@ -105,30 +127,19 @@ Present each P3 via AskUserQuestion with three options:
 
 ---
 
-## Phase 6: Re-Validate BC Coverage
+## Phase 6: Write Refined Spec and Prompt
 
-Per D13:
-
-- **BLOCKING: Orphans (zero claims)** → hard error. Either assign a task's `fulfills[]` or remove the BC.
-- **Duplicates (multiple claims on the same BC)** → surface as an Open Question (not automatic failure). Ask which claim is authoritative; keep both if they cover different scenarios.
-
-Re-run coverage check after integrations. If a new BC was added in Phase 5, confirm it has at-least-one task claim.
-
----
-
-## Phase 7: Write Refined Spec and Prompt
-
-1. Update the spec in memory:
-   - `origin.created_by = "plan-consolidation"`
-   - `origin.findings_path = ".flywheel/plugin/sessions/<id>/findings.json"`
-2. Validate the refined spec against `flywheel/schemas/task-list.schema.json` before writing
-3. Write `.flywheel/plugin/sessions/<id>/spec.json` (overwrite)
+1. Validate the refined spec against `flywheel/schemas/task-list.schema.json`.
+2. Atomic write `.flywheel/plugin/sessions/<id>/spec.json` (`.tmp` → `mv`).
+3. **Delete `review.findings.json`** — it has been consumed. This is the signal to `/fly:work` that no unhandled review remains.
+   ```bash
+   rm .flywheel/plugin/sessions/<id>/review.findings.json
+   ```
 4. Print summary:
    ```
    Spec refined — <id>
    Integrated: N P1, N P2, N P3
    Deferred: N
-   BC coverage: OK (all BCs claimed)
    ```
 5. **AskUserQuestion:** "Spec consolidated and ready. What next?"
    - Start `/fly:work` (Recommended)
@@ -150,5 +161,5 @@ Re-run coverage check after integrations. If a new BC was added in Phase 5, conf
 - **Skip open-question resolution** — Don't refine with unresolved questions
 - **Multiple questions at once** — One at a time
 - **BLOCKING: Auto-drop a P1** — P1s integrate; only the user may downgrade to follow-up
-- **BLOCKING: Silent BC orphaning** — Adding a task without assigning `fulfills[]` is a coverage failure
-- **Touch `context.md`** — Research context stays a sidecar (D1). Only `spec.json` is refined.
+- **Resolve a question without rewriting the spec** — Decisions must propagate into task descriptions, verification commands, and `context.gotchas[]`. A decision that lives only in the conversation history is invisible to the implementer (Phase 4.5).
+- **Fold structural failures into existing tasks** — Replace the affected phase or task with the simpler shape, don't patch the original. Surface the `failure` into `context.gotchas[]`.

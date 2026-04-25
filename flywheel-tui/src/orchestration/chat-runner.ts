@@ -27,6 +27,10 @@ interface ChatRunnerDeps {
   updateState: (id: string, state: SessionState) => void
   updateEntry: ChatUpdateEntryFn
   onSessionName?: (name: string) => void
+  /** Fired when the first user message is sent for a fresh chat.
+   *  Resumed chats (with priorBlocks) skip this — they were persisted
+   *  on a prior session and re-loading them does not re-create. */
+  onFirstMessage?: () => void
   onError: (message: string) => void
   onEnded: () => void
   initialMessage?: string
@@ -114,7 +118,7 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
     },
   }
 
-  const chatSession = await createChatSession(chatCallbacks, chatSessionDeps, initialMessage)
+  const chatSession = await createChatSession(chatCallbacks, chatSessionDeps)
 
   outputFlusher = outputPersistence.createFlusher(() => chatSession.outputSession.getBlocks())
 
@@ -123,10 +127,13 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
   }
 
   function injectMessage(text: string): boolean {
-    chatSession.send(text)
-
     if (!firstMessageSent) {
       firstMessageSent = true
+      // First message of a fresh chat is the persistence boundary — fire the
+      // callback BEFORE chatSession.send so manager.create runs ahead of the
+      // worker spawn (the spawn writes session-scoped output via the flusher,
+      // which expects session.json to already exist).
+      deps.onFirstMessage?.()
       generateSessionTitle(
         text,
         (title) => {
@@ -137,7 +144,12 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
       )
     }
 
+    chatSession.send(text)
     return true
+  }
+
+  if (initialMessage?.trim()) {
+    injectMessage(initialMessage)
   }
 
   async function dispose(): Promise<void> {
@@ -150,12 +162,20 @@ export async function createChatRunner(deps: ChatRunnerDeps): Promise<ChatRunner
       try { await askHookServer.close() } catch { /* best-effort */ }
     }
 
+    // For never-messaged chats, no session.json was ever written —
+    // disposeSessionResources would call outputFlusher.flush(), which
+    // mkdirs the session directory and writes output.json, leaving an
+    // orphan. Substitute a no-op flusher in that case.
+    const flusherForDispose = firstMessageSent
+      ? outputFlusher
+      : { schedule: () => {}, flush: async () => {}, dispose: () => outputFlusher.dispose() }
+
     const resources = {
       budgetTracker: infra.budgetTracker,
       traceWriter: infra.traceWriter,
       transcriptWriter: infra.transcriptWriter,
       traceCollector: infra.traceCollector,
-      outputFlusher,
+      outputFlusher: flusherForDispose,
     }
     await disposeSessionResources(resources, "ok")
   }

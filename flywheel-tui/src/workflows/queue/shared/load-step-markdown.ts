@@ -5,22 +5,21 @@
 // compiled standalone binary where the filesystem layout is lost.
 // If both fail, throws with a message naming both locations.
 
+import { readFileSync } from "node:fs";
+
 import { errorMessage } from "../../../infra/error-message.js";
+import { stepMarkdown } from "../../agents/manifest.js";
 
-export interface LoadStepMarkdownOptions {
-  filePath: string;
-  manifestKey: string;
-  displayName: string;
-  readFile: (filePath: string, encoding: "utf-8") => string;
-  manifest: Record<string, string>;
-}
-
-export function loadStepMarkdown(options: LoadStepMarkdownOptions): string {
-  const { filePath, manifestKey, displayName, readFile, manifest } = options;
+export function loadStepMarkdown(
+  filePath: string,
+  manifestKey: string,
+  displayName: string,
+): string {
   try {
-    return readFile(filePath, "utf-8");
+    return readFileSync(filePath, "utf-8");
   } catch (fsErr) {
-    const manifestValue = manifest[manifestKey];
+    if ((fsErr as NodeJS.ErrnoException).code !== "ENOENT") throw fsErr;
+    const manifestValue = stepMarkdown[manifestKey];
     if (manifestValue !== undefined) return manifestValue;
     throw new Error(
       `Failed to load ${displayName}: filesystem path ${filePath} (${errorMessage(fsErr)}) and manifest key ${manifestKey} both missing.`,

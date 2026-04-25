@@ -18,15 +18,19 @@ function sessionFilePath(id: string, baseDir: string) {
   return resolveSessionFile(id, "session", baseDir);
 }
 
-export function createSession(data: Session, baseDir: string): string {
-  const id = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+export function generateSessionId(): string {
+  return crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+}
 
-  ensureSessionDir(id, baseDir);
-  const filePath = sessionFilePath(id, baseDir);
+export function createSession(data: Session, baseDir: string, id?: string): string {
+  const sessionId = id ?? generateSessionId();
+
+  ensureSessionDir(sessionId, baseDir);
+  const filePath = sessionFilePath(sessionId, baseDir);
   const parsed = SessionSchema.parse(data);
 
   writeFileAtomic(filePath, JSON.stringify(parsed, null, 2));
-  return id;
+  return sessionId;
 }
 
 export function readSession(id: string, baseDir: string): Session | null {

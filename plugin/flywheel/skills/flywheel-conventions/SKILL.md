@@ -4,6 +4,45 @@ description: Shared conventions for Flywheel subagents. Tool discipline, output 
 user-invocable: false
 ---
 
+## Elegance Discipline (BLOCKING: Apply at every stage)
+
+**Maximize elegance.** This is the single governing principle. Every rule below describes what elegance looks like — heuristics in service of the principle, not the goal themselves. When a rule produces awkward or indirect output, break it and document why the result is more elegant.
+
+Maximize elegance over minimizing churn. Pick the more elegant design no matter how big the refactor. Better now than months from now with more features and dependencies in place.
+
+The output — plan or code — must read as if every decision was deliberate. A reader should never ask "why is this here?" about any line, phase, or task.
+
+### Decision checklist (heuristics, not laws — interrogate any check that feels wrong)
+
+| # | Check | If violated |
+|---|-------|-------------|
+| 1 | Is there exactly one source of truth for this data? | You're creating a copy. Read from the existing source. |
+| 2 | Would deleting this code change behavior? | If not, delete it now. |
+| 3 | Is this abstraction used in 2+ places? | If not, inline it — unless inlining would force the caller to do two unrelated jobs. |
+| 4 | Does this wrapper add a new capability? | If not, call the underlying API directly. |
+| 5 | Could a reader understand this in 30 seconds without context? | If not, the names or shape are wrong. |
+| 6 | Does data flow in one direction? | If A updates B and B updates A, you have a cycle. Pick one owner. |
+| 7 | Are you fighting the language or framework? | Use the idiomatic primitive. Ceremony signals the tool wants to be used differently. |
+| 8 | Are you adding something speculative ("we might need…")? | Delete it. Add when the need is concrete. |
+
+### Anti-patterns (almost always inelegant; if the alternative is worse, document and move on)
+
+| Pattern | Why it's wrong | Instead |
+|---------|----------------|---------|
+| Shallow Wrapper | Wraps an API, adds no new capability | Call the underlying API directly |
+| Forwarding Chain | A→B→C where B just delegates | A calls C directly, or A writes state C reads |
+| Parallel State | Same value stored in two places — copies drift | Single source of truth, derive the rest |
+| Speculative Code | Built for hypothetical futures | Delete. Add when needed. |
+| Premature Abstraction | Generic interface, one implementation, no extension plan | Inline. Extract on the second consumer. |
+| Dead Code | Doesn't change behavior — taxes every reader | Delete |
+| Mechanical Pattern Application | Convention applied where it produces awkward output | Deviate, document why |
+
+### Symptoms vs. structure
+
+When you see multiple small issues clustered in one area, they usually point at one structural defect. Fix the structure; the symptoms dissolve. If you find yourself patching N findings in the same file, stop and redesign instead.
+
+---
+
 ## Tool Discipline
 
 **BLOCKING: Never use Bash for operations that have a dedicated tool.**
@@ -48,7 +87,6 @@ Rules apply to both code-review (scope: code) and plan-review (scope: plan). Cor
 
 **Plan-review only** (scope: plan):
 
-- **BC ID naming nitpicks** — unless the ID violates a convention documented in the schema
 - **Alternative approaches without a concrete break** — "consider X architecture instead of Y" without naming what breaks about Y when implemented
 - **Scope creep suggestions** — "also add Z while you're at it"; review evaluates the stated plan, not expansions to it
 
@@ -56,21 +94,27 @@ A suppressed finding is better than a noisy one. If in doubt between "flag weakl
 
 ---
 
-## Finding Quality: Lead with Observable Behavior
+## Finding Quality: Lead with the Failure
 
-For every finding, the `what_wrong` field must lead with what breaks, for whom — not with code or plan structure.
+The `failure` field is the implementer's primary input. It must contain everything needed to understand the full scope of the problem in one read. **Three components, typically a paragraph (2-4 sentences):**
 
-**Code findings** (scope: code) — describe what breaks NOW:
+1. **Intent** — what the code or plan was trying to achieve.
+2. **Observation** — what's specifically wrong (the discrepancy from intent).
+3. **Reasoning** — why this discrepancy matters: consequences for users, the system, or design integrity.
 
-- **Weak**: "The function parseDate() doesn't validate input format."
-- **Strong**: "Users submitting dates in DD/MM/YYYY hit a silent parse error that logs them out. parseDate only accepts YYYY-MM-DD and returns null; the caller doesn't check."
+Failure is broad: an **observable failure** (something doesn't work for someone) OR a **principle violation** (a design rule like SRP, DRY, or Single Source of Truth is broken). Both are failures; both are reasons the code or plan needs to change.
 
-**Plan findings** (scope: plan) — describe what WILL break when the plan is implemented:
+**Strong (observable):**
+> "parseDate is supposed to accept the common date formats users actually submit. It only handles YYYY-MM-DD and returns null for DD/MM/YYYY. The caller at line 78 treats null as 'expired' and logs the user out, so DD/MM/YYYY input becomes a silent logout — wrong outcome and confusing UX."
 
-- **Weak**: "Phase 2 doesn't specify error handling."
-- **Strong**: "When the network request in Phase 2 fails, users will see a crash. The plan doesn't specify fallback UI or retry logic, and BC-AUTH-003 ('graceful network failure') has no task claim."
+**Strong (principle):**
+> "Violates SRP. AuthService should expose only orchestration concerns; it currently imports React components and renders login forms inline. Every UI tweak forces re-testing auth logic, and headless contexts can't use the service."
 
-If you cannot name a concrete observable consequence — present or anticipated (wrong result, unhandled error, contract mismatch, security exposure) — the finding is advisory. Mark it P3 or suppress.
+**Weak (either flavor)** — names absence or is too terse:
+- "parseDate doesn't validate input format." ← describes absence; no intent, no consequence.
+- "AuthService is doing too much." ← vague; no specific intent or violation named.
+
+If you can write the failure in one sentence, you're probably missing the intent or the reasoning. If you cannot articulate intent + observation + reasoning, the finding is advisory — mark P3 or suppress.
 
 ---
 
@@ -82,11 +126,8 @@ Before emitting `spec.json`, verify each phase contains:
 - Repo-relative file paths (never absolute)
 - Enumerated test scenarios specific enough that the implementer doesn't invent coverage
 - Explicit verification command
-- Clear dependencies (`depends_on`) if any
 
 A spec is ready when an implementer can start confidently without needing to infer.
-
-BC coverage rule: every BC must have at-least-one task claim (orphans = error). Multiple task claims surface as Open Question during consolidation (not automatic failure). BC IDs must be unique within a spec.
 
 If any phase fails the bar, loop back: read the codebase, ask the user, or defer the phase explicitly as `status: deferred` with rationale.
 

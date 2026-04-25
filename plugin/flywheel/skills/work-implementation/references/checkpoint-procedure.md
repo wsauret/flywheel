@@ -1,105 +1,24 @@
 # Checkpoint Procedure
 
-Every phase completion emits a checkpoint: a JSON-atomic write to `state.json` + an update to `session.json.last_checkpoint_at`. This file documents the exact procedure, the atomic-write invariant, and the accuracy requirements for `commands_run[]`.
+After every chunk completes, the skill writes an atomic checkpoint to `progress.json` and updates `session.json.last_checkpoint_at`.
 
 ## When to Checkpoint
 
-- After every phase completes (`phases[i].status` transitions to `completed`).
-- After every successful subagent dispatch (update `outcomes[]`, `artifacts`).
-- On 3-strike escalation (record the strike in `phases[i].strikes[]`).
-- On skill exit (update `active_skill: null` in session.json).
+- After every chunk completes (subagent returned, verification passed).
+- On skill exit (the trap clears `active_skill`).
 
-## Atomic Write Invariant (P1-D)
+## Atomic Write Invariant
 
-**Always** write `state.json` through `state.json.tmp`, then rename:
+**Always** write through `.tmp`, then rename:
 
 ```bash
-# Construct the updated state in-memory (via jq), write to .tmp, rename.
-jq '<mutation>' "$SESSION_DIR/state.json" > "$SESSION_DIR/state.json.tmp"
-mv "$SESSION_DIR/state.json.tmp" "$SESSION_DIR/state.json"
+jq '<mutation>' "$SESSION_DIR/progress.json" > "$SESSION_DIR/progress.json.tmp"
+mv "$SESSION_DIR/progress.json.tmp" "$SESSION_DIR/progress.json"
 ```
 
-The `mv` is atomic on local POSIX filesystems. At any instant, `state.json` is either pre-write or post-write — never partial. `state.json.tmp` exists only during the write window.
+The `mv` is atomic on local POSIX filesystems. At any instant, `progress.json` is either pre-write or post-write — never partial.
 
-**Same pattern applies to session.json**:
-
-```bash
-jq '.last_checkpoint_at = $ts' --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  "$SESSION_DIR/session.json" > "$SESSION_DIR/session.json.tmp"
-mv "$SESSION_DIR/session.json.tmp" "$SESSION_DIR/session.json"
-```
-
-`tests/work/atomic-write.test.sh` exercises this pattern.
-
-## Checkpoint Steps (Per Phase Completion)
-
-### Step 1: Capture artifacts from the subagent
-
-The subagent reports:
-- `files_created[]` — paths of new files.
-- `files_modified[]` — paths of edited files.
-- `commands_run[]` — every command executed, with exit_code and stdout_tail.
-
-Example agent-reported JSON payload:
-
-```json
-{
-  "outcomes": ["Added --timeout to commander", "Tests pass"],
-  "artifacts": {
-    "files_created": ["tests/cli/timeout.test.ts"],
-    "files_modified": ["src/cli.ts"],
-    "commands_run": [
-      {
-        "command": "bun run test tests/cli/timeout.test.ts",
-        "exit_code": 0,
-        "stdout_tail": "PASS — 4 tests passed",
-        "re_executable": true
-      }
-    ]
-  }
-}
-```
-
-### Step 2: Compute `bc_satisfied[]` for this phase
-
-Union of `fulfills[]` across the phase's tasks. Pull from the baseline (not the live spec.json — baseline is authoritative for what was committed to):
-
-```bash
-BC_SATISFIED=$(jq --arg pid "$PHASE_ID" '
-  [.phases[] | select(.id == $pid) | .tasks[].fulfills[]] | unique
-' "$SESSION_DIR/baseline.json")
-```
-
-### Step 3: Record how the phase was executed
-
-Every phase-completion checkpoint must set `executed_by` — `"subagent"` (default, the phase was dispatched per SKILL.md Phase 2.2) or `"main-agent"` (bypass, requires `bypass_justification`). See `references/state-file-template.md` for the field contract.
-
-If you are about to write `executed_by: "main-agent"`, stop and read the "`executed_by` and `bypass_justification`" section of state-file-template.md before proceeding. Bypasses for convenience reasons ("it was small," "I already had context") are not legitimate and should be rewritten as subagent dispatches.
-
-### Step 4: Merge into state.json via atomic write
-
-```bash
-jq --argjson new_phase "$UPDATED_PHASE_JSON" \
-   --argjson bc_list "$BC_SATISFIED" \
-   --arg executed_by "$EXECUTED_BY" \
-   --arg bypass_justification "${BYPASS_JUSTIFICATION:-}" '
-  (.phases[] | select(.id == $new_phase.id)) |= (
-    . + $new_phase |
-    .status = "completed" |
-    .completed_at = now | todateiso8601 |
-    .bc_satisfied = $bc_list |
-    .executed_by = $executed_by |
-    .bypass_justification = (if $bypass_justification == "" then null else $bypass_justification end)
-  )
-  | .status = "in_progress"
-  | .summary = "Phase \($new_phase.id) complete."
-' "$SESSION_DIR/state.json" > "$SESSION_DIR/state.json.tmp"
-mv "$SESSION_DIR/state.json.tmp" "$SESSION_DIR/state.json"
-```
-
-**Checkpoint validity check**: if `executed_by == "main-agent"` and `bypass_justification` is null or empty, the checkpoint is invalid. Either set a real justification or re-execute the phase via subagent dispatch before checkpointing.
-
-### Step 5: Update session.json.last_checkpoint_at
+Same pattern for `session.json`:
 
 ```bash
 jq --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '.last_checkpoint_at = $ts' \
@@ -107,7 +26,60 @@ jq --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '.last_checkpoint_at = $ts' \
 mv "$SESSION_DIR/session.json.tmp" "$SESSION_DIR/session.json"
 ```
 
-### Step 6: Manual Verification Pause (if applicable)
+## Checkpoint Steps (Per Chunk Completion)
+
+### Step 1: Capture artifacts from the subagent
+
+The subagent reports:
+- `files_modified[]` — paths edited or created.
+- `commands_run[]` — every command executed, with literal command and actual exit_code.
+- `simplifications_made[]` (optional) — places the subagent deleted or consolidated instead of adding. One short string per simplification.
+
+Example agent-reported payload:
+
+```json
+{
+  "outcomes": ["Added --timeout to commander", "Tests pass"],
+  "artifacts": {
+    "files_modified": ["src/cli.ts", "tests/cli/timeout.test.ts"],
+    "commands_run": [
+      { "command": "bun run test tests/cli/timeout.test.ts", "exit_code": 0, "stdout_tail": "PASS — 4 tests passed" }
+    ],
+    "simplifications_made": ["Inlined the temporary timeout-default helper since it had one consumer"]
+  }
+}
+```
+
+### Step 2: Merge into progress.json
+
+```bash
+jq --arg id "$CHUNK_ID" \
+   --argjson files "$FILES_MODIFIED" \
+   --argjson cmds "$COMMANDS_RUN" \
+   --argjson simps "$SIMPLIFICATIONS" '
+  .completed += [$id]
+  | .in_progress = null
+  | .artifacts.files_modified = (.artifacts.files_modified + $files | unique)
+  | .artifacts.commands_run += $cmds
+  | .artifacts.simplifications_made = ((.artifacts.simplifications_made // []) + $simps)
+  | .status = "in_progress"
+' "$SESSION_DIR/progress.json" > "$SESSION_DIR/progress.json.tmp"
+mv "$SESSION_DIR/progress.json.tmp" "$SESSION_DIR/progress.json"
+```
+
+`$SIMPLIFICATIONS` defaults to `[]` if the subagent reported none.
+
+If this is the last chunk, set `status: "completed"` instead of `"in_progress"`.
+
+### Step 3: Update session.json.last_checkpoint_at
+
+```bash
+jq --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '.last_checkpoint_at = $ts' \
+  "$SESSION_DIR/session.json" > "$SESSION_DIR/session.json.tmp"
+mv "$SESSION_DIR/session.json.tmp" "$SESSION_DIR/session.json"
+```
+
+### Step 4: Manual Verification Pause (plan mode, if applicable)
 
 If the current phase's `manual_verification` field is non-empty, ask the user before continuing:
 
@@ -118,75 +90,52 @@ Automated verification passed: <list from artifacts.commands_run>
 
 Please verify manually: <from phase.manual_verification>
 
-1. Continue to next phase (Recommended) — I've verified manually
+1. Continue to next chunk (Recommended) — I've verified manually
 2. Continue all remaining — Skip future manual pauses
 3. Stop here — I have feedback
 ```
 
 Handle:
-- **Continue**: proceed to next phase.
+- **Continue**: proceed to next chunk.
 - **Continue all**: set a session-scoped flag to skip future manual pauses this run.
-- **Stop here**: set phase status to `paused`, exit the execution loop, wait for the user.
+- **Stop here**: stop the loop and wait for the user. Resume picks up from the same chunk on next `/fly:work`.
 
-## `commands_run` Accuracy Requirement (K5)
+## `commands_run` Accuracy
 
-From the state schema:
+From the schema:
 
 ```json
 {
   "command": "...",
   "exit_code": 0,
-  "stdout_tail": "...",
-  "re_executable": true
+  "stdout_tail": "..."
 }
 ```
 
 Rules:
 
-- **`command`** is the literal string executed. Include redirections, pipes, env-var prefixes if they're part of the run.
-- **`exit_code`** is the actual value captured via `$?` or the bash return. **Do not guess**; do not write `0` just because tests "should" pass.
-- **`stdout_tail`** is an actual truncation of captured stdout (last ~200 chars is fine). Fabrication here is a K5 violation.
-- **`re_executable`** is `true` if the command can be re-run safely (idempotent tests, lints, type-checks) and `false` if not (`git commit`, DB migrations, filesystem-mutating scripts).
+- **`command`** is the literal string executed. Include redirections, pipes, env-var prefixes.
+- **`exit_code`** is the actual value captured. **Do not guess**; do not write `0` just because tests "should" pass.
+- **`stdout_tail`** is an actual truncation of captured stdout. Fabrication here breaks the verification discipline.
 
-Work-review Phase 4b (when it lands) may run a re-execution check against entries with `re_executable: true`. Fabricated entries break that check. Be accurate or drop the entry.
-
-## Reference to Phase 4b Compliance Consequences
-
-Phase 4b (work-review) runs two mechanical checks against state.json:
-
-1. **Structured diff** vs baseline.json — did we stay within scope?
-2. **BC coverage** — is every baseline BC covered by `state.phases[].bc_satisfied[]`?
-
-Both require state.json to accurately reflect what happened. If you fabricate a phase-completion entry, Phase 4b's BC-coverage check will claim false coverage, and a reviewer will surface the discrepancy as a P1 finding against the phase.
-
-Accurate checkpointing is a downstream requirement. Enforce it at source.
+Be accurate or drop the entry.
 
 ## Recovery From Interrupted Checkpoint
 
 If the orchestrator is interrupted mid-checkpoint (e.g. context cleared right after `jq` but before `mv`):
 
-- `state.json.tmp` exists with the new content.
-- `state.json` still holds the prior state.
+- `progress.json.tmp` exists with the new content.
+- `progress.json` still holds the prior state.
 - Readers see the prior state (no partial-write corruption).
-- On resume, work-implementation Phase 0 startup should **delete any stale `.tmp` file** (it's scratch):
+- On resume, Phase 0/1 should delete any stale `.tmp` file:
   ```bash
-  rm -f "$SESSION_DIR/state.json.tmp" "$SESSION_DIR/session.json.tmp"
+  rm -f "$SESSION_DIR/progress.json.tmp" "$SESSION_DIR/session.json.tmp"
   ```
-- The phase will be re-executed (it was `in_progress`, not `completed`). This is safe if subagent work is idempotent — TDD-driven phases usually are. If not, the subagent must detect "already done" and short-circuit.
-
-## No Dual-Write, Just Atomic Write
-
-Earlier versions of this skill used dual-write (state.md + native Tasks) for redundancy. With JSON state the dual-write is unnecessary:
-
-- `state.json` is atomic on disk.
-- Recovery reads from `state.json` directly.
-- Native Tasks (TaskCreate/TaskUpdate/TaskList) are still useful for UI-level progress visualization but are **not** the source of truth. Keep them in sync if used; do not rely on them for resume.
+- The chunk will be re-executed (its ID was not yet in `completed[]`). Subagent work should be idempotent — TDD-driven changes usually are.
 
 ## Common Mistakes
 
-- **Writing `state.json` directly (no `.tmp`)**: half-written state corrupts resume.
+- **Writing `progress.json` directly (no `.tmp`)**: half-written state corrupts resume.
 - **Forgetting to update `session.json.last_checkpoint_at`**: resume still works but staleness tracking is wrong.
-- **Fabricating `commands_run[]` entries**: K5 violation; downstream compliance breaks.
-- **Leaving `strikes[]` empty after actual failures**: loses the error log; 3-strike escalation needs the history.
-- **Updating `bc_satisfied[]` before the phase's `verification` command exits 0**: violates the "evidence before claim" rule; see `verification-gates.md`.
-- **Omitting `executed_by` or setting `"main-agent"` without a justification**: SKILL.md Phase 2.2 requires subagent dispatch. Bypass requires a documented structural reason (not convenience) in `bypass_justification`.
+- **Fabricating `commands_run[]` entries**: breaks verification discipline.
+- **Appending the chunk ID to `completed[]` before `verification` exits 0**: violates the "evidence before claim" rule. See `verification-gates.md`.

@@ -113,11 +113,12 @@ function createMockManager(): SessionManager & {
 
     onChange: null,
 
-    create: mock(function(this: any, planPath: string, name?: string, kind?: string, _initialState?: string) {
-      const id = `chat-${++nextId}`
+    allocateId: mock(() => `chat-${++nextId}`),
+    create: mock(function(this: any, planPath: string, name?: string, kind?: string, _initialState?: string, id?: string) {
+      const sessionId = id ?? `chat-${++nextId}`
       created.push({ kind: kind ?? "workflow", name: name ?? planPath })
       this.onChange?.()
-      return id
+      return sessionId
     }),
     list: mock(() => ({ sessions: [], errors: [] })),
     updateState: mock(function(this: any, id: string, state: string) { stateUpdates.push({ id, state }); this.onChange?.() }),
@@ -140,7 +141,7 @@ function createDeps(overrides?: Partial<ChatControllerDeps>): ChatControllerDeps
 
 describe("ChatController", () => {
   describe("startChat", () => {
-    it("creates session via manager with chat kind", async () => {
+    it("allocates a session id but does NOT persist on open", async () => {
       const deps = createDeps()
       const controller = createChatController(deps)
 
@@ -149,9 +150,8 @@ describe("ChatController", () => {
       expect(sessionId).not.toBeNull()
       expect(sessionId).toMatch(/^chat-/)
       const mockManager = deps.manager as ReturnType<typeof createMockManager>
-      expect(mockManager._created).toHaveLength(1)
-      expect(mockManager._created[0].kind).toBe("chat")
-      expect(mockManager._created[0].name).toBe("Chat")
+      // manager.create only fires on first message — opening a chat is in-memory only
+      expect(mockManager._created).toHaveLength(0)
     })
 
     it("registers session with sessionStore.startChat", async () => {
@@ -162,17 +162,6 @@ describe("ChatController", () => {
 
       const mockStore = deps.sessionStore as ReturnType<typeof createMockSessionStore>
       expect(mockStore._startChatCalls).toHaveLength(1)
-    })
-
-    it("triggers manager.onChange when creating session", async () => {
-      const deps = createDeps()
-      const onChangeSpy = mock(() => {})
-      deps.manager.onChange = onChangeSpy
-      const controller = createChatController(deps)
-
-      await controller.startChat()
-
-      expect(onChangeSpy).toHaveBeenCalled()
     })
 
     it("passes initialMessage through to runner", async () => {
@@ -238,7 +227,7 @@ describe("ChatController", () => {
   })
 
   describe("endChat", () => {
-    it("deletes empty chat (no user messages) instead of pausing", async () => {
+    it("never-messaged chat: pure no-op (no manager.delete, no manager.create, no pause)", async () => {
       const deps = createDeps()
       const controller = createChatController(deps)
 
@@ -249,62 +238,11 @@ describe("ChatController", () => {
       expect(ended).toBe(true)
 
       const mockManager = deps.manager as ReturnType<typeof createMockManager>
-      expect(mockManager._deletes).toContain(sessionId)
-      expect(mockManager._stateUpdates.find((u) => u.state === "paused")).toBeUndefined()
-    })
-
-    it("disposes runner before deleting empty chat (prevents orphan dir race)", async () => {
-      // Reproduces the bug where manager.delete (fs.rmSync) ran BEFORE the
-      // runner's output-flush fired, so writeFileAtomic recreated the session
-      // directory with only output.json. Fix: dispose first, delete second.
-      const deps = createDeps()
-      const callOrder: string[] = []
-
-      const mockStore = deps.sessionStore as ReturnType<typeof createMockSessionStore>
-      const mockManager = deps.manager as ReturnType<typeof createMockManager>
-      const originalRemove = mockStore.remove
-      const originalDelete = mockManager.delete
-      mockStore.remove = mock(async (id: string) => {
-        callOrder.push(`remove:${id}`)
-        await originalRemove(id)
-      }) as any
-      mockManager.delete = mock(function(this: any, id: string) {
-        callOrder.push(`delete:${id}`)
-        originalDelete.call(this, id)
-      }) as any
-
-      const controller = createChatController(deps)
-      const sessionId = await controller.startChat()
-      expect(sessionId).not.toBeNull()
-      callOrder.length = 0
-
-      await controller.endChat(sessionId)
-
-      const removeIdx = callOrder.indexOf(`remove:${sessionId}`)
-      const deleteIdx = callOrder.indexOf(`delete:${sessionId}`)
-      expect(removeIdx).toBeGreaterThanOrEqual(0)
-      expect(deleteIdx).toBeGreaterThanOrEqual(0)
-      expect(removeIdx).toBeLessThan(deleteIdx)
-    })
-
-    it("marks paused when chat has user messages", async () => {
-      const deps = createDeps()
-      const controller = createChatController(deps)
-
-      const sessionId = await controller.startChat()
-      expect(sessionId).not.toBeNull()
-
-      // Send a message so the chat is no longer empty
-      controller.sendMessage(sessionId, "hello")
-
-      const ended = await controller.endChat(sessionId)
-      expect(ended).toBe(true)
-
-      const mockManager = deps.manager as ReturnType<typeof createMockManager>
-      const pausedUpdate = mockManager._stateUpdates.find((u) => u.state === "paused")
-      expect(pausedUpdate).toBeDefined()
-      expect(pausedUpdate!.id).toBe(sessionId)
+      // The chat was never persisted — there is nothing on disk to delete
+      // and nothing in manager state to pause. The Set never grew either.
       expect(mockManager._deletes).not.toContain(sessionId)
+      expect(mockManager._created).toHaveLength(0)
+      expect(mockManager._stateUpdates.find((u) => u.state === "paused")).toBeUndefined()
     })
 
     it("returns false when no foreground ID", async () => {
@@ -337,35 +275,20 @@ describe("ChatController", () => {
       expect(controller.sendMessage(undefined, "dropped")).toBe(false)
     })
 
-    it("disposes runner before deleting empty chat (prevents orphan dir race)", async () => {
+    it("never-messaged chat: removes from sessionStore but does not touch manager", async () => {
       const deps = createDeps()
-      const callOrder: string[] = []
-
-      const mockStore = deps.sessionStore as ReturnType<typeof createMockSessionStore>
-      const mockManager = deps.manager as ReturnType<typeof createMockManager>
-      const originalRemove = mockStore.remove
-      const originalDelete = mockManager.delete
-      mockStore.remove = mock(async (id: string) => {
-        callOrder.push(`remove:${id}`)
-        await originalRemove(id)
-      }) as any
-      mockManager.delete = mock(function(this: any, id: string) {
-        callOrder.push(`delete:${id}`)
-        originalDelete.call(this, id)
-      }) as any
-
       const controller = createChatController(deps)
+
       const sessionId = await controller.startChat()
       expect(sessionId).not.toBeNull()
-      callOrder.length = 0
 
       await controller.backgroundChat(sessionId ?? undefined)
 
-      const removeIdx = callOrder.indexOf(`remove:${sessionId}`)
-      const deleteIdx = callOrder.indexOf(`delete:${sessionId}`)
-      expect(removeIdx).toBeGreaterThanOrEqual(0)
-      expect(deleteIdx).toBeGreaterThanOrEqual(0)
-      expect(removeIdx).toBeLessThan(deleteIdx)
+      const mockStore = deps.sessionStore as ReturnType<typeof createMockSessionStore>
+      const mockManager = deps.manager as ReturnType<typeof createMockManager>
+      expect(mockStore._removeCalls).toContain(sessionId)
+      expect(mockManager._deletes).not.toContain(sessionId)
+      expect(mockManager._created).toHaveLength(0)
     })
   })
 
