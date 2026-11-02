@@ -45,10 +45,10 @@ function deleteDraft(tag: string): string {
 }
 
 /** Create, verify, and publish the release, and return the failure reason if
- *  any step refused. The tag lives in the private repository, so it is not
- *  verified on the public one: `gh release create` creates the public tag at
- *  the public default branch, an address only. The assets carry their own
- *  identity through SHASUMS256.txt and release.json. */
+ *  any step refused. The release step pushed the tag to the public
+ *  repository before this runs, so `gh release create` attaches the release
+ *  to the tagged release commit. The assets carry their own identity through
+ *  SHASUMS256.txt and release.json. */
 export async function publishRelease(tag: string, assetPaths: readonly string[], notesFile: string): Promise<string | undefined> {
   const create = gh(["release", "create", tag, "--repo", PUBLIC_REPO, "--draft", "--title", tag, "--notes-file", notesFile, ...assetPaths]);
   if (create.exitCode !== 0) {
