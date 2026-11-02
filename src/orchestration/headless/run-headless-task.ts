@@ -30,6 +30,7 @@ import { capabilityAccessFor } from "../agent-runtime/tools/types.js"
 import { subscribeSessionRuntimeFacts } from "../session/create-session-infra.js"
 import { createTaskProgressWriter, HEADLESS_PROGRESS_EVENT_TYPES } from "./task-progress.js"
 import { createAgentHost } from "../runner/host.js"
+import { AgentTurnAborted } from "../runner/agent-turn-types.js"
 import { createUnattendedRecovery } from "../agent-runtime/unattended-recovery.js"
 import { HEADLESS_MODULE_CEILING } from "./host-registration.js"
 import { runHeadlessBootstrap } from "./headless-bootstrap.js"
@@ -300,7 +301,9 @@ export async function runHeadlessTask(task: string, options: RunHeadlessTaskOpti
           })
           const running = runnerHost.runTurn({
             createContextOptions: async ({ providerSessionKey }) => {
-              if (deadline.expired) throw new Error("Headless task deadline expired")
+              // A deadline that fired in setup that nothing races ends the turn
+              // the way a deadline that interrupts it does: aborted.
+              if (deadline.expired) throw new AgentTurnAborted()
               // Each attempt reads the tree, so a recovered attempt continues
               // with the tool calls and results that the failed one flushed.
               const priorContext = await treeWriter.buildContext()

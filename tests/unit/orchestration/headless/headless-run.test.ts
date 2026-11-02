@@ -13,6 +13,7 @@ import type { ProviderAvailabilityOwner } from "../../../../src/orchestration/ag
 import { QuotaCoordinationError } from "../../../../src/orchestration/agent-runtime/llm/errors.js"
 import type { AgentFactory, AgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
 import { AuthProfileManager } from "../../../../src/orchestration/auth/auth-profile-manager.js"
+import * as headlessDeadline from "../../../../src/orchestration/headless/headless-deadline.js"
 import { runHeadlessTask } from "../../../../src/orchestration/headless/run-headless-task.js"
 import { readSessionMetadata } from "../../../../src/orchestration/session/session-metadata-store.js"
 import { prepareWorkspaceState } from "../../../../src/orchestration/workspace-state.js"
@@ -241,14 +242,50 @@ describe("runHeadlessTask ownership", () => {
     }
     const write = spyOn(process.stderr, "write").mockImplementation(() => true)
     const startedAt = performance.now()
+    // The deadline also counts setup, which takes over 2 s on a saturated
+    // 4-core runner; a deadline that fires before the first attempt never
+    // reaches the capacity wait under test.
     const result = await runHeadlessTask("work", {
-      modelsClient: fakeModelsClient, directories: testDirectories(projectRoot), launcher, printErrorsToStderr: false, deadlineSeconds: 1,
+      modelsClient: fakeModelsClient, directories: testDirectories(projectRoot), launcher, printErrorsToStderr: false, deadlineSeconds: 3,
       prepareWorkflowDeps: async () => makeWorkflowDeps(createAgent),
     }).finally(() => { write.mockRestore() })
     expect(result.completed).toBe(false)
     expect(result.termination).toMatchObject({ terminal: { kind: "aborted" }, deadlineFired: true })
     expect(runs).toBe(1)
     expect(performance.now() - startedAt).toBeLessThan(10_000)
+  }, 20_000)
+
+  test("a deadline that fires in setup that nothing races ends the task as aborted", async () => {
+    const projectRoot = directory("headless-setup-deadline-")
+    let runs = 0
+    const createAgent: AgentFactory = (options) => {
+      runs += 1
+      return completedAgent(options)
+    }
+    // The real deadline fires at once, and setup passes every raced step, so
+    // the deadline is already expired when the turn asks for its context.
+    const create = headlessDeadline.createHeadlessDeadline
+    const deadline = spyOn(headlessDeadline, "createHeadlessDeadline").mockImplementation(() => {
+      const real = create(0)
+      return {
+        get expired() { return real.expired },
+        get expiry() { return real.expiry },
+        awaitSetup: (operation) => operation,
+        awaitActive: real.awaitActive,
+        dispose: real.dispose,
+      }
+    })
+    try {
+      const result = await runHeadlessTask("work", {
+        modelsClient: fakeModelsClient, directories: testDirectories(projectRoot), launcher, printErrorsToStderr: false,
+        prepareWorkflowDeps: async () => makeWorkflowDeps(createAgent),
+      })
+      expect(result.error).toBeUndefined()
+      expect(result.termination).toEqual({ version: 2, terminal: { kind: "aborted" }, deadlineFired: true })
+      expect(runs).toBe(0)
+    } finally {
+      deadline.mockRestore()
+    }
   })
 
   test("persists the explicitly captured profile on the headless task session", async () => {

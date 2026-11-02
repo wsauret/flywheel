@@ -116,7 +116,9 @@ describe("runHeadlessTask deadline", () => {
         directories: testDirectories(projectRoot),
         launcher,
         printErrorsToStderr: false,
-        deadlineSeconds: 1,
+        // The deadline also counts setup, which can take over 2 s on a
+        // saturated 4-core runner; it must fire after the runner starts.
+        deadlineSeconds: 3,
         prepareWorkflowDeps: async () => workflowDeps(createAgent),
       });
 
