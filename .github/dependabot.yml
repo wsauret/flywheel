@@ -1,0 +1,26 @@
+# Monthly grouped version updates. Security updates are a repository setting
+# and cover every ecosystem, the Cargo crates included.
+#
+# The crates have no version-update entry: crates/tokenizer builds the committed
+# tokenizer asset, which only release readiness rebuilds, so a routine bump
+# would leave that asset stale. The Claude Agent SDK is ignored because a bump
+# needs a live Claude engine test, so it stays a deliberate change.
+version: 2
+updates:
+  - package-ecosystem: bun
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      bun:
+        patterns: ["*"]
+    ignore:
+      - dependency-name: "@anthropic-ai/claude-agent-sdk"
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]

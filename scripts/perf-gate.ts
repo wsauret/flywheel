@@ -160,26 +160,6 @@ export function watchAccountTask(platform: NodeJS.Platform, query: StateQuery): 
   };
 }
 
-/** The first commit whose installer and client find the Windows login home in
- *  the account database. An earlier build reads it from
- *  `HKCU\Volatile Environment`, which only an interactive desktop logon
- *  creates, and takes a failed read for "this home is the login home". */
-const WINDOWS_LOGIN_HOME_FIX = "461a3fa056";
-
-/** Why the gate must not install or run the baseline at `revision`, or nothing.
- *  Temporary: remove this check once the latest published release contains
- *  461a3fa056 (review by 2026-12-31). A baseline without the fix, on a machine
- *  where no person is logged on to the desktop, overwrites the operator's own
- *  account task with one that runs the gate's copy. A revision git cannot
- *  place counts as one without the fix. */
-export function baselineLoginHomeRefusal(platform: NodeJS.Platform, revision: string, query: StateQuery): string | undefined {
-  if (platform !== "win32") return undefined;
-  if (query(["git", "-C", repository, "merge-base", "--is-ancestor", WINDOWS_LOGIN_HOME_FIX, revision]).exitCode === 0) return undefined;
-  const profile = query(["reg", "query", String.raw`HKCU\Volatile Environment`, "/v", "USERPROFILE"]);
-  if (profile.exitCode === 0 && /USERPROFILE\s+REG_\w+\s+\S/.test(profile.stdout)) return undefined;
-  return `the baseline at ${revision} lacks ${WINDOWS_LOGIN_HOME_FIX} and finds the login home in HKCU\\Volatile Environment, which no desktop logon created on this machine, so its installer would overwrite this account's "${ACCOUNT_WINDOWS_TASK}" scheduled task. Run the Windows performance gate while a person is logged on to the desktop (a locked session counts), or from a desktop session.`;
-}
-
 /** The release suite's launch. The candidate, the evidence directory, and the
  *  work directory lie under the run directory, so its command line names the
  *  run, and its environment carries the harness marker: a sweep of the run
@@ -211,12 +191,9 @@ const timeline = createTimeline(console.log, "gate");
 
 /** Install one archive's staging directory into its own HOME under `parent`
  *  so the embedded absolute paths of two installs never fight over `current`.
- *  The macOS and Linux installers, and the Windows installer from 461a3fa056
- *  on, read the login home from the account database and so register no
- *  account service under an isolated HOME. An earlier Windows installer reads
- *  it from `HKCU\Volatile Environment` and, where no desktop logon created
- *  that key, registers the gate's copy as the account's own task:
- *  `baselineLoginHomeRefusal` refuses that baseline before any install, and
+ *  The installers read the login home from the account database and so
+ *  register no account service under an isolated HOME. An earlier Windows
+ *  installer could register the gate's copy as the account's own task, so
  *  `watchAccountTask` proves the task unchanged at exit. The Windows
  *  installer is also told to leave the account PATH alone, so a gate install
  *  stays invisible to the operator's own installation. */
@@ -335,11 +312,9 @@ async function runGate(): Promise<void> {
   if (staleSurvivors.length > 0) fail(`processes a previous gate run started are still running:${listed(staleSurvivors)}`);
   for (const stale of staleRuns) rmSync(stale, { recursive: true, force: true });
 
-  // Both Windows account-task guards run before anything installs. A cached
-  // baseline is checked too: its client still starts the account task.
+  // The Windows account-task guard, `watchAccountTask`, starts before anything
+  // installs. A cached baseline counts too: its client still starts the task.
   const latest = await timeline.time("latest-release", () => latestReleaseTag());
-  const refusal = latest === undefined ? undefined : baselineLoginHomeRefusal(process.platform, `refs/tags/${latest}`, queryState);
-  if (refusal !== undefined) fail(refusal);
   let accountTaskChange: () => string | undefined;
   try {
     accountTaskChange = watchAccountTask(process.platform, queryState);

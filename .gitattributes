@@ -18,12 +18,3 @@
 /bench/tasks/implement/psf__requests-6028/original/history/0/prompt.txt -text
 /bench/tasks/implement/psf__requests-6028/original/history/1/prompt.txt -text
 /bench/tasks/implement/psf__requests-6028/original/problem.txt -text
-# Maintainer-only material lives under private/, a checkout of the
-# maintainer's private companion repository, and never reaches the public
-# snapshot, which scripts/assemble-public-tree.sh builds with `git archive`.
-# The snapshot machinery itself stays private too. That script also fails
-# when any of these paths, or any ignored local-only directory, appears in the
-# assembled tree, so add each new export-ignore path to its forbidden list.
-/scripts/publish-public.ts export-ignore
-/scripts/assemble-public-tree.sh export-ignore
-/private export-ignore

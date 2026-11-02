@@ -64,8 +64,6 @@ logs/
 *.log
 # Recorded qualification evidence of a benchmark task, not a run log.
 !bench/tasks/implement/jquense__yup-2305/qualification/original-quoted-install.log
-# Terminal captures of the maintainer's QA runs are kept records.
-!/private/docs/qa/runs/*/captures/*.log
 
 # Environment and secrets
 .env
@@ -105,3 +103,6 @@ inspiration/
 
 # Stray process artifacts
 /pid
+
+# The maintainer's private companion repository is checked out here.
+/private/

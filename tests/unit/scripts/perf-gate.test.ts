@@ -2,7 +2,7 @@ import { describe, expect, spyOn, test } from "bun:test"
 import { join } from "node:path"
 import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, unlinkSync, writeFileSync } from "node:fs"
 
-import { baselineLoginHomeRefusal, comparisonPlan, publishedDriverPath, resolvePublishedDriver, suiteLaunch, watchAccountTask, type StateQuery } from "../../../scripts/perf-gate.js"
+import { comparisonPlan, publishedDriverPath, resolvePublishedDriver, suiteLaunch, watchAccountTask, type StateQuery } from "../../../scripts/perf-gate.js"
 import { RELEASE_HARNESS_ENVIRONMENT } from "../../helpers/real-process-fixture.js"
 import { temporaryDirectories } from "../../helpers/directories.js"
 import { activatePlacedBuild, copyActiveBuild } from "../../helpers/placed-build.js"
@@ -256,18 +256,15 @@ describe("perf gate suite launch", () => {
 })
 
 /** A Windows machine as the gate's state queries see it: the account task's
- *  XML (nothing when Task Scheduler holds no task), whether the published
- *  baseline contains the login-home fix, and whether an interactive logon
- *  created the volatile USERPROFILE value. It records every command asked. */
-type WindowsMachineState = { task: string | undefined; taskListed?: boolean; baselineFixed: boolean; volatileProfile: boolean }
+ *  XML (nothing when Task Scheduler holds no task). It records every command
+ *  asked. */
+type WindowsMachineState = { task: string | undefined; taskListed?: boolean }
 
 function windowsMachine(state: WindowsMachineState) {
   const asked: string[][] = []
   const query: StateQuery = (command) => {
     asked.push([...command])
     const [program, ...args] = command
-    if (program === "git" && args.includes("--is-ancestor")) return { exitCode: state.baselineFixed ? 0 : 1, stdout: "" }
-    if (program === "reg") return state.volatileProfile ? { exitCode: 0, stdout: "\r\nHKEY_CURRENT_USER\\Volatile Environment\r\n    USERPROFILE    REG_SZ    C:\\Users\\operator\r\n" } : { exitCode: 1, stdout: "" }
     if (program === "schtasks" && args.includes("/XML")) return state.task === undefined ? { exitCode: 1, stdout: "" } : { exitCode: 0, stdout: state.task }
     if (program === "schtasks" && args.includes("CSV")) return { exitCode: 0, stdout: state.taskListed ? '"\\Flywheel Serve","N/A","Running"\r\n' : '"\\Other Task","N/A","Ready"\r\n' }
     throw new Error(`unexpected command ${command.join(" ")}`)
@@ -281,13 +278,13 @@ const gateLauncher = String.raw`C:\Users\operator\.cache\flywheel\perf-gate\base
 
 describe("perf gate Windows account task guard", () => {
   test("passes when the account task is unchanged after the run", () => {
-    const machine = windowsMachine({ task: taskXml(realLauncher), baselineFixed: true, volatileProfile: true })
+    const machine = windowsMachine({ task: taskXml(realLauncher) })
     const changed = watchAccountTask("win32", machine.query)
     expect(changed()).toBeUndefined()
   })
 
   test("fails a run that changed the account task and names both commands and the repair", () => {
-    const state: WindowsMachineState = { task: taskXml(realLauncher), baselineFixed: false, volatileProfile: false }
+    const state: WindowsMachineState = { task: taskXml(realLauncher) }
     const machine = windowsMachine(state)
     const changed = watchAccountTask("win32", machine.query)
     state.task = taskXml(gateLauncher)
@@ -298,7 +295,7 @@ describe("perf gate Windows account task guard", () => {
   })
 
   test("a task the run created is repaired by deleting it, and no task before and after passes", () => {
-    const state: WindowsMachineState = { task: undefined, baselineFixed: false, volatileProfile: false }
+    const state: WindowsMachineState = { task: undefined }
     const machine = windowsMachine(state)
     const changed = watchAccountTask("win32", machine.query)
     expect(changed()).toBeUndefined()
@@ -309,29 +306,13 @@ describe("perf gate Windows account task guard", () => {
   })
 
   test("refuses to start when the account task exists but its definition cannot be read", () => {
-    const machine = windowsMachine({ task: undefined, taskListed: true, baselineFixed: true, volatileProfile: true })
+    const machine = windowsMachine({ task: undefined, taskListed: true })
     expect(() => watchAccountTask("win32", machine.query)).toThrow("Flywheel Serve")
   })
 
-  test("refuses a baseline without the login-home fix when no desktop logon set the volatile profile, before it runs any install", () => {
-    const machine = windowsMachine({ task: undefined, baselineFixed: false, volatileProfile: false })
-    const refusal = baselineLoginHomeRefusal("win32", "refs/tags/v0.0.12", machine.query)
-    expect(refusal).toContain("logged on to the desktop")
-    expect(machine.asked.map(([program]) => program)).toEqual(["git", "reg"])
-    expect(machine.asked[0]).toContain("refs/tags/v0.0.12")
-  })
-
-  test("accepts a fixed baseline without the volatile profile, and an old baseline with it", () => {
-    const fixed = windowsMachine({ task: undefined, baselineFixed: true, volatileProfile: false })
-    expect(baselineLoginHomeRefusal("win32", "refs/tags/v0.0.13", fixed.query)).toBeUndefined()
-    const desktop = windowsMachine({ task: undefined, baselineFixed: false, volatileProfile: true })
-    expect(baselineLoginHomeRefusal("win32", "refs/tags/v0.0.12", desktop.query)).toBeUndefined()
-  })
-
-  test("runs none of the Windows checks on another platform", () => {
-    const machine = windowsMachine({ task: undefined, baselineFixed: false, volatileProfile: false })
+  test("runs no Windows check on another platform", () => {
+    const machine = windowsMachine({ task: undefined })
     for (const platform of ["darwin", "linux"] as const) {
-      expect(baselineLoginHomeRefusal(platform, "refs/tags/v0.0.12", machine.query)).toBeUndefined()
       expect(watchAccountTask(platform, machine.query)()).toBeUndefined()
     }
     expect(machine.asked).toEqual([])

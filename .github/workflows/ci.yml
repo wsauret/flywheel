@@ -1,11 +1,11 @@
 name: ci
 
-# Runs the contributor gates on pull requests from contributors: `bun run
-# lint`, `bun run test`, and `bun run check:boundaries`, the three commands
-# that CONTRIBUTING.md and the pull request template require. The maintainer
-# runs the same gates locally before every push, so pushes to main and the
-# maintainer's own pull requests do not spend the hosted-runner budget. The
-# maintainer can still start a run by hand from the Actions tab.
+# Runs the contributor gates on every pull request and every push to main:
+# `bun run lint`, `bun run test`, and `bun run check:boundaries`, the three
+# commands that CONTRIBUTING.md and the pull request template require. A run
+# on main gives main its own status. The standard runners of a public
+# repository cost nothing, and anyone can start a run by hand from the
+# Actions tab.
 #
 # Every pull request also checks its title against the changelog contract of
 # AGENTS.md. A squash merge makes the title the commit header, and release
@@ -28,6 +28,8 @@ name: ci
 # `test:integration:no-api` needs no credentials.
 
 on:
+  push:
+    branches: [main]
   pull_request:
     # The default types, and `edited` so that a fixed title checks again.
     types: [opened, synchronize, reopened, edited]
@@ -65,21 +67,16 @@ jobs:
 
   gates:
     name: gates (${{ matrix.os }})
-    # A pull request that the repository owner opened runs no gates, and an
-    # edit of a pull request runs only the title check.
-    if: >-
-      github.event_name != 'pull_request' ||
-      (github.event.pull_request.user.login != github.repository_owner && github.event.action != 'edited')
+    # An edit of a pull request runs only the title check.
+    if: github.event_name != 'pull_request' || github.event.action != 'edited'
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             lint: true
-            test_shards: "2"
           - os: windows-latest
             lint: true
-            test_shards: "2"
           - os: macos-latest
             lint: false
     runs-on: ${{ matrix.os }}
@@ -95,16 +92,10 @@ jobs:
       # The default 90-second hang guard assumes a development machine. On a
       # four-core runner, a healthy run takes longer than that.
       TEST_HANG_GUARD_SECONDS: "900"
-      # Lint starts all of its steps at once and needs about 10 GB. A private
-      # repository's Linux and Windows runners have 7 GB, so lint runs one
-      # step at a time. A public repository's runners have 16 GB; raise this
-      # then.
-      LINT_CONCURRENCY: "1"
-      # A private repository's Linux and Windows runners have two cores, and
-      # four test processes there made healthy cases with real 20 ms timers
-      # miss their deadline, so they run two. Empty keeps the runner's own
-      # count, as on macOS.
-      TEST_SHARDS: ${{ matrix.test_shards }}
+      # Lint and the unit suite keep their own parallelism. A public
+      # repository's Linux and Windows runners have 16 GB, above the 10 GB that
+      # lint needs with all steps at once, and four cores, which carry the
+      # suite's default of four shards.
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:

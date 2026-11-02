@@ -98,7 +98,6 @@
     "readiness": "bun run scripts/readiness.ts",
     "readiness:login": "bun run scripts/readiness-login.ts",
     "notes:draft": "bun run scripts/release-notes.ts --surface terminal",
-    "publish:public": "bun run scripts/publish-public.ts",
     "bench:coding": "bun --conditions=browser run bench/chat-ab/coding-ab.ts",
     "bench:planning": "bun --conditions=browser run bench/chat-ab/planning.ts",
     "bench:workflow-audit": "bun --conditions=browser run bench/chat-ab/workflow-audit.ts",
