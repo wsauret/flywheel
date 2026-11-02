@@ -1,5 +1,5 @@
 pip==24.2
-setuptools==75.1.0
+setuptools==84.1.0
 wheel==0.44.0
 pytest==7.4.4
 pytest-mock==2.0.0
