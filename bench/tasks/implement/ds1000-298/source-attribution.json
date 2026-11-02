@@ -1,0 +1,66 @@
+{
+  "dataset": "DS-1000, by Yuhang Lai, Chengxi Li, Yiming Wang, Tianyi Zhang, Ruiqi Zhong, Luke Zettlemoyer, Scott Wen-tau Yih, Daniel Fried, Sida Wang, and Tao Yu. Simplified-format credits: Yuhang Lai and Sida Wang.",
+  "dataset_license": "CC BY-SA 4.0, official release LICENSE applies to the task records, references, test producers, and harness; this is not an inference from a separate permissive harness license.",
+  "dataset_pin": "https://github.com/xlang-ai/DS-1000/tree/b39aab71da6d23ef8d3cac59a7c5f834516ab334",
+  "question_url": "https://stackoverflow.com/questions/29831489",
+  "answer_url": "https://stackoverflow.com/a/29831596",
+  "question_authors_and_editors": [
+    [
+      "Mateen Ulhaq",
+      "https://stackoverflow.com/users/365102/mateen-ulhaq"
+    ],
+    [
+      "yatu",
+      "https://stackoverflow.com/users/9698684/yatu"
+    ],
+    [
+      "kmario23",
+      "https://stackoverflow.com/users/2956066/kmario23"
+    ],
+    [
+      "Martin Thoma",
+      "https://stackoverflow.com/users/562769/martin-thoma"
+    ],
+    [
+      "user2357112",
+      "https://stackoverflow.com/users/2357112/user2357112"
+    ],
+    [
+      "YXD",
+      "https://stackoverflow.com/users/553404/yxd"
+    ],
+    [
+      "James Atwood",
+      "https://stackoverflow.com/users/938325/james-atwood"
+    ],
+    [
+      "EdChum",
+      "https://stackoverflow.com/users/704848/edchum"
+    ]
+  ],
+  "answer_authors_and_editors": [
+    [
+      "Mateen Ulhaq",
+      "https://stackoverflow.com/users/365102/mateen-ulhaq"
+    ],
+    [
+      "dsalaj",
+      "https://stackoverflow.com/users/4958717/dsalaj"
+    ],
+    [
+      "YXD",
+      "https://stackoverflow.com/users/553404/yxd"
+    ]
+  ],
+  "revision_licenses": [
+    "CC BY-SA 3.0",
+    "CC BY-SA 4.0"
+  ],
+  "question_matching_body_revision": 8,
+  "reference_related_answer_revision": 4,
+  "matching_evidence": "The original question revisions contain the same opening and exact closing sentence as the DS task, with the integer example changed to floats and sorted distinct categories by DS authors. The answer revisions contain the same zeros allocation and indexed assignment pattern extended by DS authors with np.unique inverse indices. DS metadata does not contain a source URL.",
+  "original_rights": "Question/answer historical revisions are CC BY-SA 3.0 and later revisions are CC BY-SA 4.0. Section 4(b) of the preserved 3.0 legal text permits an adaptation under a later license version with the same elements. Preserve both source licenses and all supplied author/editor attribution.",
+  "publication_notice": "The original-format README asks not to upload unzipped benchmark data and includes a training-corpus canary. Preserve that notice and let the parent determine any later redistribution format.",
+  "qualification_changes": "No task prompt, reference, grading test, or evaluator bytes were edited. Launcher adaptations select fork and set short owned absolute SyncManager socket addresses.",
+  "current_seat_headroom": "Unverified. No candidate model or judge was called."
+}

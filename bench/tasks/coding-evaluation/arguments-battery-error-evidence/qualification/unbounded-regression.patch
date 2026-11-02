@@ -1,0 +1,10 @@
+--- a/src/orchestration/agent-runtime/llm/json-parse.ts
++++ b/src/orchestration/agent-runtime/llm/json-parse.ts
+@@ -191,6 +191,5 @@
+ const RAW_SNIPPET_MAX = 600;
+ 
+ function rawSnippet(raw: string): string {
+-  if (raw.length <= RAW_SNIPPET_MAX) return raw;
+-  return `${raw.slice(0, RAW_SNIPPET_MAX)} … [${raw.length - RAW_SNIPPET_MAX} more chars]`;
++  return raw;
+ }

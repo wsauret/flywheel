@@ -1,0 +1,11 @@
+--- a/src/orchestration/config/config-file.ts
++++ b/src/orchestration/config/config-file.ts
+@@ -179,7 +179,7 @@
+       reopened.directory.close();
+     }
+   };
+-  const read = () => current(file => readHeldFile(file.directory, file.fileName));
++  const read = () => readHeldFile(held.directory, held.fileName);
+   return {
+     read,
+     readText: () => textOf(read()),

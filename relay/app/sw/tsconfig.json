@@ -1,0 +1,11 @@
+{
+  "//": "The service worker compiles against the worker global scope, not the DOM: `self` is a ServiceWorkerGlobalScope here and a Window in the page, and one project cannot hold both. It imports no repository module.",
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    "lib": ["ESNext", "WebWorker"],
+    "types": []
+  },
+  "include": ["sw.ts"]
+}

@@ -1,0 +1,11 @@
+--- a/src/orchestration/config/config-file.ts
++++ b/src/orchestration/config/config-file.ts
+@@ -134,7 +134,7 @@
+ export async function withConfigOwnership<T>(location: ConfigFileLocation, use: (config: ConfigOwnership) => T): Promise<T> {
+   const held = openConfigDirectory(location);
+   try {
+-    return await withLockIn(held.directory, "flywheel.toml.lock", () => use(configOwnership(held)));
++    return await withLockIn(held.directory, `${held.fileName}.lock`, () => use(configOwnership(held)));
+   } finally {
+     held.directory.close();
+   }

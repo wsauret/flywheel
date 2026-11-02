@@ -1,0 +1,14 @@
+===================================================================
+--- a/render.ts
++++ b/render.ts
+@@ -53,9 +53,9 @@
+       if (node.block === "if") {
+         if (value) output += evaluate(node.children, scope);
+       } else if (Array.isArray(value)) {
+         const items: readonly unknown[] = value;
+-        for (const item of items) output += evaluate(node.children, item);
++        for (const item of items) output += evaluate(node.children, { ...Object(scope), ...Object(item) });
+       }
+     }
+   }
+   return output;

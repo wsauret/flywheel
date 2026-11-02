@@ -1,0 +1,4 @@
+{
+  "original": "exec \"${r}\" ${o.map",
+  "adapted": "exec '${r.replace(/'/g,`'\"'\"'`)}' ${o.map"
+}

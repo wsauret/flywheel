@@ -1,0 +1,496 @@
+/* The shell: one container, a rail that appears when there is room for it, and
+   a pane holding the toolbar, notices, transcript, and composer. */
+
+.client {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  padding-top: env(safe-area-inset-top, 0px);
+  box-sizing: border-box;
+  /* A flex item's default `min-width: auto` lets one unbreakable child push
+     the pane wider than the viewport, which sends the composer's own button
+     off screen. Wide content scrolls inside its own container instead. */
+  min-width: 0;
+  overflow: hidden;
+  container-type: size;
+  container-name: client;
+}
+
+.client-content {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.pane {
+  /* The composer floats over the pane's bottom edge; this is what it floats in. */
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  container-type: inline-size;
+  container-name: pane;
+}
+.pane-resident {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.pane-resident[inert] {
+  visibility: hidden;
+  pointer-events: none;
+}
+.pane-takeover {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pane-advisory {
+  order: -1;
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 40%;
+  overflow: auto;
+  border-bottom: 1px solid var(--fw-hairline);
+}
+
+/* The rail. Present only above the first width rung; the script decides the
+   same threshold for which surface opens the list. A width the person dragged
+   arrives as --fw-rail-width on the shell and wins over the rung. */
+.rail {
+  flex: 0 0 var(--fw-rail-width, 16rem);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--fw-hairline);
+  background: color-mix(in srgb, var(--fw-bg) 92%, var(--fw-fg));
+}
+@container client (min-width: 60rem) {
+  .rail { flex-basis: var(--fw-rail-width, 18rem); }
+}
+/* The rail's edge as a handle: a hit area astride the hairline, lit on hover
+   and while dragging so the person sees what they have hold of. */
+.rail-resizer {
+  position: relative;
+  flex: 0 0 var(--fw-s2);
+  /* Half over the rail's edge, half in its own gap: the pane after it paints
+     over anything past that, so the handle stays where it is drawn. */
+  margin-left: calc(-1 * var(--fw-s1));
+  cursor: col-resize;
+  touch-action: none;
+}
+.rail-resizer:hover, .rail-resizer:active { background: color-mix(in srgb, var(--fw-focus) 35%, transparent); }
+.rail-head {
+  display: flex;
+  align-items: center;
+  gap: var(--fw-s1);
+  padding: var(--fw-s2) var(--fw-s2) var(--fw-s2) var(--fw-s3);
+  border-bottom: 1px solid var(--fw-hairline);
+}
+.rail-search {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--fw-s2);
+  min-width: 0;
+  height: 26px;
+  padding: 0 var(--fw-s2);
+  color: var(--fw-fg-muted);
+  background: var(--fw-input-bg);
+  border: 1px solid var(--fw-input-border);
+  border-radius: var(--fw-radius);
+}
+.rail-search:focus-within { border-color: var(--fw-focus); }
+.rail-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--fw-input-fg);
+  font: inherit;
+  font-size: var(--fw-text-sm);
+}
+.rail-search input::-webkit-search-cancel-button { display: none; }
+.rail-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--fw-s1) var(--fw-s1) var(--fw-s3);
+}
+
+/* Toolbar */
+
+.toolbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--fw-s2);
+  padding: var(--fw-s2) var(--fw-s3);
+  flex: 0 0 auto;
+  min-width: 0;
+  border-bottom: 1px solid var(--fw-hairline);
+}
+.toolbar-spacer { flex: 1 1 auto; }
+/* The header owns the popover anchor so a phone keeps its details in view. */
+.context-gauge { display: flex; flex: 0 0 auto; }
+.context-ring {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fw-s1);
+  min-height: var(--fw-s6);
+  padding: 0 var(--fw-s2);
+  background: transparent;
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-xs);
+  font-variant-numeric: tabular-nums;
+  border-radius: var(--fw-radius-pill);
+}
+@media (pointer: coarse) { .context-ring { min-height: 36px; } }
+@media (hover: hover) { .context-ring:hover { background: var(--fw-bg-raised); } }
+.context-ring:active, .context-ring[aria-expanded="true"] { background: var(--fw-press); }
+.context-ring svg { display: block; width: var(--fw-s4); height: var(--fw-s4); }
+.ring-track { fill: none; stroke: color-mix(in srgb, var(--fw-fg) 18%, transparent); stroke-width: 2.5; }
+.ring-fill { fill: none; stroke: var(--fw-success); stroke-width: 2.5; stroke-linecap: round; transition: stroke-dasharray var(--fw-motion-slow) ease, stroke var(--fw-motion-slow) ease; }
+.context-ring.warn .ring-fill { stroke: var(--fw-warning); }
+.context-ring.hot .ring-fill { stroke: var(--fw-orange); }
+.context-popover {
+  position: absolute;
+  top: calc(100% + var(--fw-s2));
+  right: var(--fw-s3);
+  z-index: var(--fw-z-popover);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--fw-s2);
+  width: max-content;
+  max-width: calc(100% - 2 * var(--fw-s3));
+  box-sizing: border-box;
+  padding: var(--fw-s3);
+  background: var(--fw-hover-bg);
+  color: var(--fw-hover-fg);
+  border: 1px solid var(--fw-hover-border);
+  border-radius: var(--fw-radius);
+  box-shadow: var(--fw-shadow-popover);
+  font-size: var(--fw-text-sm);
+  line-height: var(--fw-leading-tight);
+  text-align: left;
+}
+.context-popover-detail { color: var(--fw-fg-muted); font-size: var(--fw-text-xs); font-variant-numeric: tabular-nums; }
+.context-popover .primary { margin-top: var(--fw-s1); }
+.toolbar-title {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fw-s2);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fw-text-sm);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.toolbar-sessions {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--fw-s2);
+  min-width: 0;
+  max-width: 100%;
+  height: 26px;
+  padding: 0 var(--fw-s2);
+  background: transparent;
+  color: var(--fw-fg);
+  text-align: left;
+}
+.toolbar-sessions:hover { background: var(--fw-bg-raised); }
+.toolbar-sessions .icon { opacity: 0.6; }
+.toolbar-sessions .toolbar-title { flex: 0 1 auto; }
+.toolbar-chat .toolbar-spacer { display: none; }
+.toolbar-title-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.toolbar-location {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  /* Flex items drop the separators' own spaces, so the gap spaces them. */
+  gap: var(--fw-s1);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fw-text-xs);
+  font-weight: 400;
+  color: var(--fw-fg-muted);
+}
+.toolbar-location-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.toolbar-location-branch {
+  flex-shrink: 0;
+  max-width: var(--fw-workspace-width);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.toolbar-location .icon, .toolbar-subtitle .icon { vertical-align: middle; }
+.toolbar-sessions > .icon { flex: 0 0 auto; }
+.toolbar-needs {
+  flex: 0 0 auto;
+  padding: 0 var(--fw-s1);
+  border-radius: var(--fw-radius-pill);
+  font-size: var(--fw-text-2xs);
+  font-weight: 600;
+  color: color-mix(in srgb, var(--fw-warning) 70%, var(--fw-fg));
+  background: color-mix(in srgb, var(--fw-warning) 15%, transparent);
+  white-space: nowrap;
+}
+@container pane (max-width: 40rem) {
+  .toolbar-sessions > .toolbar-location { display: none; }
+  .toolbar-sessions .toolbar-title { flex: 1 1 auto; }
+  .toolbar-needs { padding: 0; width: var(--fw-s2); height: var(--fw-s2); background: var(--fw-warning); }
+  .toolbar-needs > span { display: none; }
+}
+
+/* The phone's chat header: the chevron back to the list, then the chat's
+   name over the project's. The chevron is a thumb-sized outlined disc, so it
+   reads as the way out and not as one more icon in the row. */
+.toolbar-back {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--fw-input-border);
+  border-radius: var(--fw-radius-pill);
+  background: var(--fw-bg-raised);
+  color: var(--fw-fg);
+}
+.toolbar-back:hover { border-color: var(--fw-focus); }
+.toolbar-heading {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: var(--fw-leading-tight);
+}
+.toolbar-heading .toolbar-title { display: flex; }
+.toolbar-subtitle {
+  display: flex;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-xs);
+}
+
+/* The phone's screen stack. The session list fills the container underneath
+   and the chat pane slides over it on one custom property: 0 in a chat, the
+   full width on the list, and a pixel offset while a finger drags it. The list
+   shifts a little with the pane so the two read as one surface moving. */
+.client.stack .pane {
+  position: relative;
+  background: var(--fw-bg);
+  box-shadow: var(--fw-shadow-sheet);
+  transform: translateX(var(--fw-stack-x, 0px));
+  transition: transform var(--fw-motion-slow) var(--fw-ease);
+  will-change: transform;
+}
+.client.stack .screen-sessions {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  transform: translateX(calc((var(--fw-stack-x, 0px) - 100%) * 0.3));
+  transition: transform var(--fw-motion-slow) var(--fw-ease);
+}
+.client.stack.dragging .pane,
+.client.stack.dragging .screen-sessions { transition: none; }
+.screen-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--fw-s2);
+  padding: var(--fw-s2) var(--fw-s3);
+  border-bottom: 1px solid var(--fw-hairline);
+}
+@media (prefers-reduced-motion: reduce) {
+  .client.stack .pane, .client.stack .screen-sessions { transition: none; }
+}
+
+.connection {
+  font-size: var(--fw-text-xs);
+  padding: 1px 7px;
+  border-radius: var(--fw-radius-pill);
+  background: var(--fw-bg-raised-strong);
+  color: var(--fw-fg-muted);
+  flex: 0 0 auto;
+}
+.connection-fault { color: var(--fw-error); }
+.connection-success { color: var(--fw-success); }
+.connection-warning { color: var(--fw-warning); }
+.connection-update { color: var(--fw-warning); cursor: pointer; }
+/* The runtime's notice: a row under the toolbar that wraps at any width. */
+.runtime-fault {
+  margin: 0;
+  padding: var(--fw-s2) var(--fw-s3);
+  font-size: var(--fw-text-xs);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  background: var(--fw-bg-raised);
+  border-bottom: 1px solid var(--fw-hairline);
+  flex: 0 0 auto;
+}
+.runtime-fault-fault { color: var(--fw-error); }
+.runtime-fault-warning { color: var(--fw-warning); }
+/* A module's badge: the count leads, the noun follows, and the tone says how
+   much the count needs the person. */
+.toolbar-badge { display: inline-flex; align-items: baseline; gap: 0.3em; cursor: pointer; }
+.toolbar-badge-count { font-weight: 700; }
+.toolbar-badge-warning { color: var(--fw-warning); }
+.toolbar-badge-alert { color: var(--fw-error); }
+
+.cost-pill, .generation-speed {
+  flex: 0 0 auto;
+  font-size: var(--fw-text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--fw-fg-muted);
+}
+.generation-speed { display: none; }
+@container client (min-width: 40rem) {
+  .generation-speed { display: inline; }
+}
+
+.workflow-glyph { color: var(--fw-info); }
+
+/* Runtime notices, above the transcript because they are about the session as
+   a whole, not about any one turn in it. */
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fw-s2);
+  flex: 0 0 auto;
+  padding: var(--fw-s2) var(--fw-s3);
+  border-bottom: 1px solid var(--fw-hairline);
+  border-left: 2px solid var(--fw-fg-muted);
+  font-size: var(--fw-text-sm);
+  min-width: 0;
+}
+.notice.severity-warning { border-left-color: var(--fw-warning); }
+.notice.severity-error { border-left-color: var(--fw-error); }
+.notice-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.notice-title { font-weight: 600; }
+.notice-message { color: var(--fw-fg-muted); font-size: var(--fw-text-xs); word-break: break-word; }
+.notice-action {
+  flex: 0 0 auto;
+  padding: 2px var(--fw-s2);
+  background: var(--fw-bg-raised);
+  color: var(--fw-fg);
+  font-size: var(--fw-text-xs);
+  border-radius: var(--fw-radius-sm);
+}
+.notice-action:hover { background: var(--fw-bg-raised-strong); border-color: var(--fw-focus); }
+
+/* Full-pane stages: starting, and setup. These are the whole pane rather than
+   a banner, because until they resolve there is nothing behind them a person
+   could use. */
+.stage {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  /* A short pane scrolls the stage. Plain centring would push the top of a
+     tall stage above the scroll origin, where no scroll reaches it. */
+  justify-content: safe center;
+  gap: var(--fw-s3);
+  padding: var(--fw-s5) var(--fw-s4);
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  animation: rise var(--fw-motion-slow) var(--fw-ease);
+}
+/* Children keep their height and the stage scrolls; shrinking them would
+   squash the mark and the list before any scroll appears. */
+.stage > * { flex-shrink: 0; }
+@container client (min-width: 40rem) {
+  .stage { padding: var(--fw-s6) var(--fw-s5); }
+}
+.stage-title { font-size: var(--fw-text-lg); font-weight: 600; letter-spacing: -0.01em; }
+.stage-body { margin: 0; color: var(--fw-fg-muted); font-size: var(--fw-text-sm); max-width: 42ch; }
+.stage-note { margin: 0; font-size: var(--fw-text-xs); color: var(--fw-fg-muted); }
+.mark { width: 30px; height: 30px; color: var(--fw-link); opacity: 0.9; margin-bottom: var(--fw-s1); }
+/* The loading screen is the icon the person just tapped, centred and lit, with
+   its mark turning: motion here means the machine is working. The setup
+   screens keep the small still mark, because there the machine is waiting on
+   the person and a spinner would say the opposite. */
+.stage-starting { align-items: center; text-align: center; gap: var(--fw-s2); }
+.stage-starting .stage-title { margin-top: var(--fw-s2); }
+/* The radius is the tile's own corner, so the shadow follows the drawing. */
+.brand-tile { display: block; line-height: 0; border-radius: 22.37%; box-shadow: var(--fw-shadow-sheet); }
+.brand-tile svg { display: block; }
+.brand-tile .brand-mark { transform-box: fill-box; transform-origin: center; animation: spin 3s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.provider-list { display: flex; flex-direction: column; gap: var(--fw-s1); margin: var(--fw-s2) 0; max-width: 32rem; }
+/* A narrow pane stacks each row: the name on its own line at full width, and
+   what it needs below it. Side by side, the two share a width that holds
+   neither, and the name, which is how a person finds their provider, is the
+   one cut. From the first width rung up there is room for one line. */
+.provider {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--fw-s3);
+  row-gap: 2px;
+  width: 100%;
+  min-width: 0;
+  padding: var(--fw-s2) var(--fw-s3);
+  text-align: left;
+  background: var(--fw-bg-raised);
+  color: var(--fw-fg);
+  border-radius: var(--fw-radius);
+}
+.provider-name { grid-column: 1; font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+.provider-how { grid-column: 1; font-size: var(--fw-text-xs); color: var(--fw-fg-muted); min-width: 0; overflow-wrap: anywhere; }
+.provider:hover { background: var(--fw-bg-raised-strong); border-color: var(--fw-focus); }
+.provider-how.warn { color: var(--fw-warning); }
+.provider-go {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  font-size: var(--fw-text-lg);
+  line-height: 1;
+  color: var(--fw-fg-muted);
+  opacity: 0.5;
+  transition: transform var(--fw-motion-fast) ease, opacity var(--fw-motion-fast) ease;
+}
+.provider:hover .provider-go { opacity: 1; transform: translateX(2px); }
+@container client (min-width: 40rem) {
+  .provider { grid-template-columns: minmax(0, 1fr) auto auto; align-items: baseline; padding-block: 9px; }
+  .provider-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .provider-how { grid-column: 2; grid-row: 1; white-space: nowrap; }
+  .provider-go { grid-column: 3; grid-row: 1; }
+}
+
+.sheet-problem {
+  margin: 0 var(--fw-s2) var(--fw-s2);
+  padding: var(--fw-s2) var(--fw-s3);
+  border-left: 2px solid var(--fw-error);
+  color: var(--fw-error);
+  font-size: var(--fw-text-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage, .brand-tile .brand-mark { animation: none; }
+}

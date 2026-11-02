@@ -1,0 +1,97 @@
+{
+  "task": "astropy__astropy-14598",
+  "sourceRepo": "astropy/astropy",
+  "baseCommit": "80c3854a5f4f4a6ab86c03d9db7854767fcd83c1",
+  "originalIssue": {
+    "url": "https://github.com/astropy/astropy/issues/14581",
+    "author": "ycopin",
+    "createdAt": "2023-03-27T13:46:45Z",
+    "derivation": "title + LF + body + LF",
+    "bytes": 2651
+  },
+  "dataset": {
+    "id": "princeton-nlp/SWE-bench_Verified",
+    "pin": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+    "rowIndex": 14,
+    "publishedFields": [
+      "problem_statement",
+      "patch",
+      "test_patch",
+      "repo",
+      "version",
+      "FAIL_TO_PASS",
+      "PASS_TO_PASS"
+    ],
+    "url": "https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/tree/c104f840cc67f8b6eec6f759ebc8b2693d585d4a"
+  },
+  "rights": {
+    "astropy": "BSD-3-Clause; retain all source notices and licenses/astropy-LICENSE.rst",
+    "grader": "MIT; retain licenses/harness-LICENSE and original source notices",
+    "issueBasis": "Source-specific rationale: the repository carried BSD-3-Clause before the issue was posted, and the pinned GitHub Terms D.6 license repository contributions on the repository terms. This is not legal advice, a blanket dataset grant, or proof that no private superseding agreement exists.",
+    "policy": {
+      "policyCommit": "b7c7dbf672fe493585f3f44da595d6e5ae5d77c8",
+      "policyChangedAt": "2023-02-15T15:16:18Z",
+      "licenseAtIssueCreationCommit": "a33a6c76ff16a43c483c37bc41ce1b9901447612",
+      "licenseChangedAt": "2022-04-22T17:25:32Z",
+      "contributionLicenseSection": "Whenever you add Content to a repository containing notice of a license, you license that Content under the same terms, and you agree that you have the right to license that Content under those terms. If you have a separate agreement to license that Content under different terms, such as a contributor license agreement, that agreement will supersede.\n\nIsn't this just how it works already? Yep. This is widely accepted as the norm in the open-source community; it's commonly referred to by the shorthand \"inbound=outbound\". We're just making it explicit."
+    },
+    "observations": [
+      {
+        "url": "https://api.github.com/repos/github/docs/commits?path=content%2Fsite-policy%2Fgithub-terms%2Fgithub-terms-of-service.md&until=2023-03-27T13%3A46%3A45Z&per_page=1",
+        "name": "commits.json",
+        "status": 200,
+        "bytes": 3007,
+        "sha256": "e98c127e1c5c12e5e6aabc86e64ff006e63d419b95fd2ab4228a2b74ca579af0"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/github/docs/b7c7dbf672fe493585f3f44da595d6e5ae5d77c8/content/site-policy/github-terms/github-terms-of-service.md",
+        "name": "terms-in-2023.txt",
+        "status": 200,
+        "bytes": 43158,
+        "sha256": "860b141079e961a6ea3a86485dcf493fbb202bb9a633680dc4feba5cc34d4c07"
+      },
+      {
+        "url": "https://api.github.com/repos/astropy/astropy/commits?path=LICENSE.rst&until=2023-03-27T13%3A46%3A45Z&per_page=1",
+        "name": "license-commits.json",
+        "status": 200,
+        "bytes": 3210,
+        "sha256": "dd3a84f64d18245214d137d98e645701f50413bcd11f321eb65051f5b9e7495a"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/astropy/astropy/a33a6c76ff16a43c483c37bc41ce1b9901447612/LICENSE.rst",
+        "name": "license-at-issue-creation.rst",
+        "status": 200,
+        "bytes": 1496,
+        "sha256": "a86d75ead6df0886dcbc04230ffcd971c66a4a6746ca559ddf768865370637f5"
+      }
+    ]
+  },
+  "copyLedger": "copy-ledger.json",
+  "nativeAdaptations": {
+    "platform": "macOS arm64; installed CPython 3.9 and clang; no system installs or interpreter copies",
+    "runtime": "stdlib venv --symlinks; pip 23.2.1; public hash-owned wheel downloads inside .bench-home",
+    "source": "All 1876 archive files, hashes and modes retained; no compatibility source changes",
+    "build": "python -m pip install -e .[test] --verbose; original isolation retained; offline owned wheels and build constraints; original source produces 17 extensions",
+    "grading": "Reconstruct separate source tree from captured patch. Restore all 684 original grading owners, including root tox.ini, and remove added discovery overrides on selected-test ancestors before build. Apply complete original test patch afterward. Original AST functions and registry assignments run unchanged.",
+    "pytest": "Absolute virtual-environment pytest console script under its own python; no PYTHONPATH and no python -m pytest",
+    "api": "33 public examples are observations only, not additional acceptance criteria",
+    "incompleteMaps": "The unchanged original test_failed counts missing selected IDs as failures. Candidate source-build exit 1, import/API probe exit 1, and pytest exits 1-5 continue into original grading. Missing IDs and unavailable ancillary observations remain explicit. Setup, acquisition, dependency installation, tools, timeouts, truncation, restoration, grading helper failures and malformed adapter output remain infrastructure failures.",
+    "limits": "Native owned build 600 seconds, test 300 seconds, outer adapter 1200 seconds; no original Linux or leaderboard equivalence claim",
+    "candidateBudget": "Unchanged shared 150 turns and 25 minutes; provisioning and grading excluded",
+    "storage": "Runtime packages, wheels, pristine grader files and build logs stay in .bench-home or original ignored build paths, outside captured source"
+  },
+  "originalFailureSemantics": {
+    "evalShellSha256": "caabde10cc32c0af73073d55a428aee7a4356831a02daac4ae2ade23bf9159e4",
+    "evalShellSource": "https://swe-bench-submissions.s3.amazonaws.com/bash-only/20260217_mini-v2.0.0_claude-4-6-opus/logs/astropy__astropy-14598/eval.sh",
+    "ordering": [
+      "Original eval.sh line 2 uses set -uxo pipefail, without set -e.",
+      "Original eval.sh line 13 builds editable .[test] before restoring the original selected test and applying the test patch.",
+      "Original eval.sh lines 44-46 put pytest between test-output markers. A nonzero build or pytest status does not suppress the ending marker.",
+      "Original grading.py lines 31-34 make missing selected IDs failures.",
+      "Original grading.py lines 102-138 use that decision to populate FAIL_TO_PASS and PASS_TO_PASS reports.",
+      "Original grading.py lines 168-206 calculate resolution from those reports."
+    ],
+    "candidateFailureControl": "Captured syntax faults in setup.py and FITS card.py produced build 1, import probe 1, pytest 4, API probe 1, no parsed selected IDs, and the original 0/176 result. The original parser also emits the unselected entry while=ERROR: from pytest warning-configuration diagnostics; the adapter retains it unchanged.",
+    "remainingQualificationLimits": "No separate skipped-test or forced command-timeout control was run. Healthy controls retain exact original warning policy and skip behavior."
+  }
+}

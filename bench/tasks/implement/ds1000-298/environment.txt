@@ -1,0 +1,2 @@
+Write your completion to solution.py.
+The local Python interpreter is .bench-home/python/bin/python (CPython 3.10.20 with NumPy 1.26.4).

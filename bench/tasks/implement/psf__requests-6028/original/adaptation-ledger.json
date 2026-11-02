@@ -1,0 +1,45 @@
+{
+  "unchanged": [
+    "The exact original problem is instruction.txt.",
+    "The original base, gold patch, test patch, row and full pytest -rA tests/test_utils.py remain unchanged.",
+    "The original selected groups, parser normalization, skip semantics and resolution criterion remain unchanged.",
+    "The original full parser, grader, runtime harness files and historical qualifier remain verbatim."
+  ],
+  "nativeAdaptations": [
+    {
+      "original": "The original source .gitignore is part of the pinned base",
+      "native": "Grade preparation repeats the native provisioner's .flywheel/ and .bench-home/ append after source verification",
+      "reason": "implement-task.ts:330-331 changes .gitignore before committing the candidate baseline. A real captured .gitignore edit failed to apply to pristine source. The reference control exercises this baseline alignment."
+    },
+    {
+      "original": "Conda and original Linux installation",
+      "native": "Public pinned standalone CPython, stdlib venv, 12 public universal wheels, offline hashed pip and pip check",
+      "reason": "The archived native contract imports current workspace Requests. The fresh public controls reproduce its full selected criterion without an installed Requests distribution."
+    },
+    {
+      "original": "The eval.sh restores tests/test_utils.py at the base before applying test.patch",
+      "native": "Restore the original tests package and pytest configuration, then apply the exact test.patch",
+      "reason": "The real file imports tests.compat and tests.utils. tests/conftest.py imports requests.compat. Pytest discovers setup.cfg, pytest.ini and conftest files. Captured edits to these files would change grading authority."
+    },
+    {
+      "original": "Historical native pytest imports runner and candidate from one Python process",
+      "native": "Python -I loads pinned pytest and installed plugins before adding the workspace path",
+      "reason": "A candidate pytest.py, pip.py or pytest_mock.py must not replace the pinned runner, package installer or plugin. Candidate source imports remain inside the evaluation budget."
+    },
+    {
+      "original": "Historical native qualification has no timeout; the public CLI defaults to 1800 seconds for full eval.sh",
+      "native": "1800-second owned evaluation ceiling, separate 600-second setup and 120-second score allowances",
+      "reason": "The native setup differs from original installation. The adapter makes no original per-pytest or historical deadline-equivalence claim."
+    },
+    {
+      "original": "run_instance raises before report generation on patch application failure or timeout",
+      "native": "The adapter fails without writing a native score in those cases",
+      "reason": "Inventing a zero-score timeout report would not preserve this original execution policy."
+    },
+    {
+      "original": "Original arbitrary-prediction patch application has a fallback chain",
+      "native": "git apply --verbose for the benchmark's baseline-relative captured Git diff",
+      "reason": "Native capture generates its own exact diff. This fixture does not promise arbitrary external-patch fallback equivalence."
+    }
+  ]
+}

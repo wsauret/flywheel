@@ -1,0 +1,25 @@
+{
+  "scope": "The unit adds this task directory, updates bench/README.md, and extends the owning catalog assertion in tests/unit/bench/implement-task.test.ts.",
+  "replacements": [
+    {
+      "oldAuthority": "The provenance folder of the 2026-10-12 requests difficulty calibration, which the repository no longer keeps",
+      "newAuthority": "original/ and provenance/",
+      "method": "Byte-for-byte copies, identified by copy-ledger.json. New executable code does not replace or edit the retained originals."
+    },
+    {
+      "oldImplementation": "Historical native scripts and supplied public scratch probe",
+      "newImplementation": "adapter.ts and native-support.py",
+      "method": "Use the repository-owned process supervisor and sandbox command environment. Reconstruct public source and pinned runtime in each workspace. Invoke original AST nodes rather than rewriting scoring."
+    },
+    {
+      "oldLink": "https://github.com/psf/requests/issues/6025",
+      "newLink": "https://github.com/psf/requests/issues/6027",
+      "method": "Retain the historical fetch manifest unchanged. Record the public PR and exact issue/problem-byte reconciliation in provenance.json."
+    }
+  ],
+  "nonChanges": [
+    "No shared benchmark runtime changes or new model calls.",
+    "No changes to the original problem, test patch, selected groups or grading functions.",
+    "No synthetic third semantic fault or extra network task."
+  ]
+}

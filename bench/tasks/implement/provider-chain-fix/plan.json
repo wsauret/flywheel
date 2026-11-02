@@ -1,0 +1,174 @@
+{
+  "schema_version": 1,
+  "summary": "Fix the five reviewed defects in the automatic access-provider chain: request-boundary availability checks, ChatGPT secondary-window exhaustion, and WebSocket quota observation first, then Copilot spend finalization on abnormal stream exits and no-op session-notice patches.",
+  "context": {
+    "key_files": [
+      "src/orchestration/agent-runtime/llm/provider-chain-client.ts",
+      "src/orchestration/agent-runtime/llm/provider-availability.ts",
+      "src/orchestration/agent-runtime/llm/openai.ts",
+      "src/orchestration/agent-runtime/llm/openai-completions.ts",
+      "src/orchestration/agent-runtime/llm/anthropic.ts",
+      "src/infra/session-notice.ts",
+      "tests/unit/orchestration/agent-runtime/llm/provider-chain-client.test.ts",
+      "tests/unit/orchestration/agent-runtime/llm/provider-availability.test.ts",
+      "tests/unit/orchestration/agent-runtime/llm/openai-chatgpt-adapter.test.ts",
+      "tests/unit/orchestration/agent-runtime/llm/copilot-usage-observation.test.ts",
+      "tests/unit/infra/session-notice.test.ts"
+    ],
+    "patterns": [
+      "`provider-availability.ts` is the single process-local owner of account quota state. Every adapter and the chain read and update that one owner.",
+      "The chain skips a candidate only on availability state and fails over only on a terminal `QuotaExhaustedError` with no produced evidence.",
+      "A skipped candidate raises one session-scoped notice per exhaustion window: the scope is `provider-quota:<sessionId>:<provider>` and the id appends the window.",
+      "Credentials stay `Redacted.Redacted`; notice text and log fields never carry a token.",
+      "Each stream attempt owns one `CopilotSpendObserver`, because each attempt is a separately billed request."
+    ],
+    "constraints": [
+      "Fix request-boundary availability checks, secondary ChatGPT window handling, and WebSocket quota observation first. Then make Copilot spend finalization safe on abnormal exits and suppress no-op notice patches. Re-run focused tests for every touched area.",
+      "Do not change which failure classes trigger failover. Only a terminal quota failure with no produced evidence advances the chain; every other failure stays with the retry and recovery policy that owns it.",
+      "Do not add persistence. Availability and observed spend stay process-local state in `provider-availability.ts`; no SQLite fact, config field, or file is added for them.",
+      "Keep the Redacted discipline: no credential reaches a notice, a log field, or an error message.",
+      "Repository-wide `tsc` and `bun run lint` are already red in this snapshot for reasons unrelated to these five defects (an unrelated in-flight access-provider addition). Each phase's named focused `bun test` command is its verification gate."
+    ]
+  },
+  "milestones": [
+    {
+      "id": "availability-state",
+      "goal": "Make availability state decide every request: recheck the chain per request, evaluate both ChatGPT windows, and feed WebSocket quota failures back to the shared availability owner.",
+      "files": [
+        "src/orchestration/agent-runtime/llm/provider-chain-client.ts",
+        "src/orchestration/agent-runtime/llm/provider-availability.ts",
+        "src/orchestration/agent-runtime/llm/openai.ts",
+        "tests/unit/orchestration/agent-runtime/llm/provider-chain-client.test.ts",
+        "tests/unit/orchestration/agent-runtime/llm/provider-availability.test.ts",
+        "tests/unit/orchestration/agent-runtime/llm/openai-chatgpt-adapter.test.ts"
+      ],
+      "tasks": [
+        {
+          "id": "recheck-availability-per-request",
+          "description": "Write the failing tests first, then make provider selection request-local in `createProviderChainClient()`. Today the chain resolves its delegate once at construction and keeps it, so the agent loop's later `streamWithTools()` and `complete()` calls reuse a provider the account can no longer pay for. Resolve the serving candidate from the head of the chain at the start of every request, and keep the failed-candidate walk scoped to the request that failed on it, so a recovered subscription is preferred again on the next request. Keep the identity the client reports (`accessProvider`) at the chain head so a caller attributes a request before it starts, and keep announcing a different serving provider through `onProviderFailover`.",
+          "files": [
+            "src/orchestration/agent-runtime/llm/provider-chain-client.ts",
+            "tests/unit/orchestration/agent-runtime/llm/provider-chain-client.test.ts"
+          ],
+          "test_scenarios": [
+            "Two streams on one chain client: the provider is available for the first and exhausted before the second, and the second stream runs on the fallback.",
+            "A candidate that was exhausted for the first request and recovered before the second is preferred again for the second.",
+            "A chain that is spent between two requests rejects the second request with the typed exhausted-chain error.",
+            "`complete()` follows the same per-request resolution as `streamWithTools()`.",
+            "Evidence-gated failover inside one request is unchanged: a quota failure after produced evidence still propagates instead of restarting."
+          ]
+        },
+        {
+          "id": "evaluate-secondary-chatgpt-window",
+          "description": "Write the failing tests first, then evaluate both ChatGPT windows in `chatGptQuotaState()`. The availability owner stores a primary and a secondary window, and the predicate reads `chatGptQuota().primaryUsedPercent` only, so an active secondary window at 100 percent does not exclude ChatGPT. Treat the provider as spent when either window is at or above 100 percent, ignore a window the backend reports as inactive (zero minutes long) and a window whose reset moment has passed, and use the exhausted window's reset value for the notice id and the notice text.",
+          "files": [
+            "src/orchestration/agent-runtime/llm/provider-chain-client.ts",
+            "tests/unit/orchestration/agent-runtime/llm/provider-chain-client.test.ts"
+          ],
+          "test_scenarios": [
+            "Primary below 100 percent with an active secondary window at 100 percent skips ChatGPT and names the secondary window's reset in the notice id and message.",
+            "A secondary window at 100 percent that reports zero window minutes is ignored and ChatGPT still serves the request.",
+            "A secondary window at 100 percent whose reset moment has already passed is ignored and ChatGPT still serves the request."
+          ]
+        },
+        {
+          "id": "observe-websocket-quota-frames",
+          "description": "Write the failing tests first, then normalize terminal ChatGPT quota frames from the preferred WebSocket path into the same availability owner the HTTP and SSE error branch already updates. Only the HTTP and SSE branch calls `observeChatGptQuotaExhausted()` today, so a WebSocket quota failure fails the current request over but leaves later requests selecting ChatGPT. Read the terminal quota code from both frame shapes the transport carries, `response.failed` (payload on `response.error`) and a bare `error` frame (the payload itself), record `resets_at` when the frame states one, and record nothing for a frame that names no terminal quota code. Keep the frame classifier and the failover behaviour of the current request unchanged.",
+          "files": [
+            "src/orchestration/agent-runtime/llm/provider-availability.ts",
+            "src/orchestration/agent-runtime/llm/openai.ts",
+            "tests/unit/orchestration/agent-runtime/llm/provider-availability.test.ts",
+            "tests/unit/orchestration/agent-runtime/llm/openai-chatgpt-adapter.test.ts"
+          ],
+          "test_scenarios": [
+            "A `response.failed` frame whose `response.error` names a terminal quota code with `resets_at` marks the window exhausted at that reset.",
+            "A bare `error` frame with a terminal quota code and no reset marks the window exhausted with no reset.",
+            "A frame with a non-quota code, a frame with no code, and a non-object frame leave the windows untouched.",
+            "After a WebSocket quota failure, a later automatic chain request for the same model skips ChatGPT and starts on the next candidate."
+          ]
+        }
+      ],
+      "verification": "bun test tests/unit/orchestration/agent-runtime/llm/provider-chain-client.test.ts tests/unit/orchestration/agent-runtime/llm/provider-availability.test.ts tests/unit/orchestration/agent-runtime/llm/openai-chatgpt-adapter.test.ts",
+      "qualitative_verification": "Confirm the availability owner is still the only source of quota state: the chain holds no cached availability across requests, and the WebSocket path updates the same owner the HTTP and SSE path updates."
+    },
+    {
+      "id": "spend-finalization-and-quiet-notices",
+      "goal": "Make Copilot spend finalization safe on abnormal stream exits and stop healthy provider resolution from emitting no-op session-notice patches.",
+      "files": [
+        "src/orchestration/agent-runtime/llm/provider-availability.ts",
+        "src/orchestration/agent-runtime/llm/anthropic.ts",
+        "src/orchestration/agent-runtime/llm/openai-completions.ts",
+        "src/infra/session-notice.ts",
+        "tests/unit/orchestration/agent-runtime/llm/copilot-usage-observation.test.ts",
+        "tests/unit/infra/session-notice.test.ts"
+      ],
+      "tasks": [
+        {
+          "id": "commit-copilot-spend-on-abnormal-exit",
+          "description": "Write the failing tests first, then commit the observed Copilot total from a per-attempt `finally`. The two adapters that commit spend after normal stream completion are `anthropic.ts` and `openai-completions.ts`; the OpenAI Responses adapter in `openai.ts` already commits from a `finally` and needs no change. An error, a cancellation, a watchdog failure, or an early generator close after a billed total is observed currently bypasses the commit, so threshold polling stays stale and keeps selecting exhausted Copilot access. Make `CopilotSpendObserver.commit()` idempotent so the `finally` cannot double-bill a request that also completed normally.",
+          "files": [
+            "src/orchestration/agent-runtime/llm/provider-availability.ts",
+            "src/orchestration/agent-runtime/llm/anthropic.ts",
+            "src/orchestration/agent-runtime/llm/openai-completions.ts",
+            "tests/unit/orchestration/agent-runtime/llm/copilot-usage-observation.test.ts"
+          ],
+          "test_scenarios": [
+            "A repeated `commit()` on one observer records the request total once.",
+            "A stream that carries a billed total and then throws records that total for every adapter that observes Copilot spend.",
+            "A consumer that abandons a live stream after the billed total records that total, and closing the already closed stream does not re-bill it.",
+            "A stream that carries no Copilot total still records nothing."
+          ]
+        },
+        {
+          "id": "identity-preserving-notice-reducer",
+          "description": "Write the failing tests first, then make `applySessionNoticeOperation()` return the current notice array itself when a `resolve` or `resolve-scope` operation matches nothing. Every available candidate resolves its provider scope, so the healthy automatic request is the common case; `filter` allocates a new array there, the session entry patcher reads the new reference as a change, and every healthy request pays store and runtime-to-TUI work for an empty patch. Keep the removal behaviour identical when a notice does match.",
+          "files": [
+            "src/infra/session-notice.ts",
+            "tests/unit/infra/session-notice.test.ts"
+          ],
+          "test_scenarios": [
+            "`resolve` for an id that is not raised returns the same array reference.",
+            "`resolve-scope` for a scope that holds no notice returns the same array reference.",
+            "Resolving against an empty notice list returns that same list.",
+            "`resolve` and `resolve-scope` still drop the notices they match.",
+            "A healthy chain request emits only resolve operations, and folding every operation a healthy chain emits leaves the notice list reference unchanged."
+          ]
+        }
+      ],
+      "verification": "bun test tests/unit/orchestration/agent-runtime/llm/copilot-usage-observation.test.ts tests/unit/infra/session-notice.test.ts tests/unit/orchestration/agent-runtime/llm/provider-chain-client.test.ts",
+      "qualitative_verification": "Confirm every adapter that observes Copilot spend finalizes it on both the normal and the abnormal exit of one attempt, and that a healthy provider resolution produces no session patch."
+    }
+  ],
+  "success_criteria": [
+    "Every request resolves its serving provider from current availability state, so a provider the account can no longer pay for receives no further request and a recovered subscription is preferred again.",
+    "ChatGPT counts as spent when either ChatGPT window is exhausted, while an inactive or already reset window is ignored, and the notice names the exhausted window's reset.",
+    "A terminal quota frame from the WebSocket path updates the same availability owner as the HTTP and SSE path, including its reset, so later requests skip ChatGPT.",
+    "Observed Copilot spend is committed exactly once per attempt on both normal and abnormal stream exits.",
+    "Resolving a notice that is not raised leaves the notice array reference unchanged, so a healthy request emits no session patch.",
+    "Failover triggers are unchanged: only a terminal quota failure with no produced evidence advances the chain."
+  ],
+  "implementation_contract": {
+    "directives": [
+      {
+        "id": "evidence-over-plan",
+        "text": "Treat phase instructions as claims to reconcile with source: verify every named file, symbol, and field against the repository before you change it, and correct the instruction when the source contradicts it.",
+        "completion_check": "The final handoff names each plan claim that source evidence corrected, with the file and symbol that settled it."
+      },
+      {
+        "id": "test-first-per-task",
+        "text": "For every task, add or change the focused test that fails for the defect before you change production code, then make it pass.",
+        "completion_check": "The diff contains the focused test change for every defect, and the transcript shows the failing run before the fix."
+      },
+      {
+        "id": "green-phase-gates",
+        "text": "Do not start phase 2 while phase 1's verification command is failing; correct the phase and rerun its verification first.",
+        "completion_check": "The transcript shows each phase's verification command passing before the next phase starts."
+      },
+      {
+        "id": "no-scope-creep",
+        "text": "Change only the five reviewed defect sites and their focused tests. Do not change failover trigger classes, add persistence, refactor neighbouring adapters, or repair unrelated pre-existing type errors.",
+        "completion_check": "The final diff touches only the named defect areas and their tests."
+      }
+    ]
+  }
+}

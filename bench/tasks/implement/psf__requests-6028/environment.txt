@@ -1,0 +1,7 @@
+The workspace contains the original Python project. Work in this workspace.
+The public CPython runtime is .bench-home/python/bin/python3.12.
+The standard virtual environment is .bench-home/venv/bin/python.
+The environment contains the pinned test runner and dependencies.
+The project imports directly from the current workspace. It is not an installed distribution.
+Do not install the project or change the test runner.
+The candidate work budget is 25 minutes.

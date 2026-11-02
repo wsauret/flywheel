@@ -1,0 +1,67 @@
+{
+  "instance": "psf__requests-6028",
+  "repository": "https://github.com/psf/requests",
+  "baseCommit": "0192aac24123735b3eaf9b08df46429bb770c283",
+  "sourceArchiveSha256": "acf8041195a5fdd1177612ddb93b159424de40d95b7156567c162405864a3cb8",
+  "sourceFiles": 97,
+  "dataset": {
+    "publisher": "princeton-nlp/SWE-bench_Verified",
+    "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+    "row": 297,
+    "archiveSha256": "a45b1fe4e2f0c8390b2b2938ac83e92ed5979000856808f3679c07812e9e6dcd",
+    "rowSha256": "edf938312deac464b6c76f233642aa7bf99a7afb16599f86799bf299d8c52a4e",
+    "license": "The publisher labels the dataset MIT. This does not relicense the underlying Requests source, issue text or patches.",
+    "freshProof": "The fresh public dataset archive matches the archived hash. The retained row was decoded in the historical qualifier; promotion does not claim a second Parquet decode."
+  },
+  "harness": {
+    "repository": "https://github.com/SWE-bench/SWE-bench",
+    "revision": "02e7a74ffd0b707aab73d203fe87bdc7c76afc8e",
+    "archiveSha256": "d06181d5365b51fc7ff490171581b9ee87d77e19b3a739a8d574bf25d9ef9479",
+    "authority": "original/harness-functions.json and original/grading-entrypoints.json identify exact original AST nodes. The full pinned files remain verbatim under original/swebench/.",
+    "groups": "The row retains its original JSON-string groups: two FAIL_TO_PASS and 185 PASS_TO_PASS tests.",
+    "criterion": "Unchanged original parser and grader determine the selected report. Skipped F2P is a failure. Skipped P2P is maintained. Missing selected IDs remain failures. FULL requires both original ratios to equal one.",
+    "failurePolicy": "run_evaluation.py:331-337 raises on unapplied model patches. Lines 375-381 raise on evaluation timeout. Lines 414-429 return without a report. Native acquisition, setup, patch application and timeout failures therefore produce no grade. Pytest failures, collection errors and compile failures reach get_logs_eval and the selected-test grader.",
+    "nativePatchScope": "The benchmark supplies Git-generated diffs against its own baseline, including committed and untracked changes. Grade preparation reproduces the provisioner's exact .gitignore append before applying captured patches. Native application uses git apply --verbose, the original first attempt. It does not claim the original Docker fallback chain for arbitrary external patches.",
+    "outputPolicy": "The exact archived eval.sh has test-output markers and no test-exit-code marker. Native scoring uses those same markers and the original get_logs_eval. Missing and import diagnostics do not override a valid original grade."
+  },
+  "issueCorrection": {
+    "pr": "https://github.com/psf/requests/pull/6028",
+    "issue": "https://github.com/psf/requests/issues/6027",
+    "issuePublicJsonSha256": "0dae6f72ad23a7e227c393217d5ee3424a18db63af61f1d96eea7d49f6a6426c",
+    "prPublicJsonSha256": "be72568a6c7188ba5ddd9d0427a4d79cdb267e3959c95ac787a3200557be98af",
+    "evidence": "The public PR says This closes #6027. The problem equals issue 6027 title, newline, body, newline byte-for-byte.",
+    "historicalError": "The old archive fetched issue 6025, Support for proxy that requires DigestAuth. It is not this problem. The old archive and its original fetch manifest remain unchanged.",
+    "proof": "provenance/issue-reconciliation.json, provenance/issue-6027.json and provenance/requests-pr.json"
+  },
+  "runtime": {
+    "python": "CPython 3.12.13+20260510 aarch64-apple-darwin",
+    "runtimeSha256": "5a30271f8d345a5b02b0c9e4e31e0f1e1455a8e4a04fba95cd9762472abc3b17",
+    "packages": "packages.json contains all 12 exact versions. public-inputs.json pins each universal wheel's public URL, byte size and SHA-256.",
+    "installation": "A fresh stdlib venv bootstraps from the runtime's embedded ensurepip wheel. Offline pip installs all 12 wheels with --no-index --no-deps --require-hashes. pip check must pass.",
+    "candidateImports": "The isolated runner loads pinned pytest and its plugins before the candidate workspace enters sys.path. Requests has no installed distribution. Source identities are observed inside the pytest lifecycle, never a preliminary candidate import.",
+    "temporaryDirectory": "Each grading workspace is fresh. Each pytest command also receives a new .bench-home/pytest-tmp directory. requests/utils.py:272-278 reuses extracted zip members by basename. tests/test_utils.py:299 compares those bytes; a shared TMPDIR caused an observed extra failure.",
+    "workspaceInputs": 14,
+    "publicManifestDownloads": 33,
+    "manifestScope": "The fresh 33-download manifest includes provenance, metadata, the dataset and harness. Only source, runtime and 12 wheels are acquired to prepare each workspace.",
+    "notices": "Requests LICENSE and NOTICE, runtime LICENSE, harness MIT LICENSE, and every license/notice member from all 12 wheels are retained under licenses/."
+  },
+  "budgets": {
+    "candidateMs": 1500000,
+    "nativeEvaluationMs": 1800000,
+    "setupAllowanceMs": 600000,
+    "scoringAllowanceMs": 120000,
+    "outerAdapterMs": 2520000,
+    "publicAuthority": "The pinned run_evaluation.py:833-839 CLI defaults to 1800 seconds. Lines 367-368 apply the supplied timeout to the complete /bin/bash /eval.sh, including installation.",
+    "nativeScope": "Native setup includes public acquisition, runtime extraction, venv creation, offline installation and candidate patch application. The evaluation ceiling covers grading restoration, the exact test patch, grading identities and the actual pytest lifecycle. Scoring follows separately.",
+    "limits": "This is an explicit native ceiling derived from the public CLI default, not an original per-pytest timeout. The original callable default is None. Historical native qualification was unbounded. Historical invocation deadline equivalence is not established. No 300-second original budget is claimed."
+  },
+  "nativeLimits": [
+    "The original Linux eval installs Requests with pip install .; historical native qualification and this fixture import the current workspace directly.",
+    "Only the native macOS arm64 task criterion is qualified. Python 3.8.12, Linux, Windows, container, paid-proxy and TLS equivalence are not claimed.",
+    "No model calls or extra network task were added.",
+    "The original parser splits test names on whitespace. A qualification workspace with spaces in its path collapsed two filesystem parameter IDs. The qualifier now uses a whitespace-free temporary root without changing the parser or filtering missing IDs.",
+    "Owned subprocesses and sandbox HOME exclude inherited credentials. This is not OS network confinement.",
+    "Command capture retains 16 MB per pipe. Incomplete output cannot support original grading and produces no report."
+  ],
+  "historicalResults": "calibration.json and original/history retain the two actual model passes, costs and request accounting. Their identities describe historical artifacts, not the final promoted fixture."
+}

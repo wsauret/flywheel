@@ -1,0 +1,242 @@
+/* The parent chat's workflow card: a box under the card's header with one
+   line for each phase of the plan, the agents of a phase that runs as a tree
+   under it, and the plan's chits. One grid lines up the heads, quiet column,
+   and times. Each phase's count starts its quiet column. No track takes its
+   width from content: agent lines come and go, chits appear, and times grow
+   while the run goes on, and a content-sized track would move the quiet
+   column of every line with them. The head track holds a two-word title
+   and twelve chits; the time track holds `9h 59m 59s` at the time's smaller size. */
+
+.workflow-card {
+  display: grid;
+  grid-template-columns: minmax(0, min(50%, 36ch)) minmax(0, 1fr) 9ch;
+  column-gap: var(--fw-s3);
+  align-items: center;
+  margin: var(--fw-s1) 0 0 var(--fw-gutter);
+  padding: var(--fw-s2) var(--fw-s3);
+  border: 1px solid var(--fw-hairline);
+  border-radius: var(--fw-radius-lg);
+  background: var(--fw-bg-raised);
+  font-size: var(--fw-text-sm);
+  line-height: var(--fw-leading-tight);
+}
+.workflow-card.opens { cursor: pointer; }
+.workflow-card.opens:hover { border-color: var(--fw-hover-border); }
+
+.workflow-card > * { grid-column: 1 / -1; }
+.workflow-card-phase, .workflow-card-agent {
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--fw-radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.workflow-card-phase { display: grid; grid-template-columns: subgrid; align-items: center; }
+.workflow-card-phase > *, .workflow-card-agent > * { min-width: 0; }
+button:is(.workflow-card-phase, .workflow-card-agent)[aria-disabled="true"] { cursor: inherit; }
+button:is(.workflow-card-phase, .workflow-card-agent):not([aria-disabled="true"]):hover { background: var(--fw-list-hover); }
+button:is(.workflow-card-phase, .workflow-card-agent):not([aria-disabled="true"]):active { background: var(--fw-press); }
+button:is(.workflow-card-phase, .workflow-card-agent):focus-visible { outline: 1px solid var(--fw-focus); outline-offset: -1px; }
+/* A phase's name and an agent's name each keep one colour in every state;
+   the glyph carries the state. */
+.workflow-card-id { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fw-phase-name); }
+.workflow-card-choice { color: var(--fw-fg-muted); }
+:is(.workflow-card-phase, .workflow-card-agent):is(.state-running, .state-parked) :is(.workflow-card-id, .workflow-card-label) { font-weight: 600; }
+.workflow-card-count { justify-self: end; font-size: var(--fw-text-xs); font-variant-numeric: tabular-nums; color: var(--fw-fg-muted); white-space: nowrap; }
+
+/* A phase and an agent carry their state; a glyph and a chit take its
+   colour. */
+.workflow-card .state-running, .workflow-chit.tone-running { --workflow-card-state: var(--fw-info); }
+.workflow-card .state-parked, .workflow-chit.tone-parked { --workflow-card-state: var(--fw-warning); }
+.workflow-card .state-done, .workflow-chit.tone-done { --workflow-card-state: var(--fw-success); }
+.workflow-card .state-failed, .workflow-chit.tone-failed { --workflow-card-state: var(--fw-error); }
+
+/* The agents of a phase: a tree under the phase's id. Each line draws its
+   branch on the left in the border colour, and the last one ends it. */
+.workflow-card-tree {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  column-gap: inherit;
+}
+.workflow-card-counted { color: var(--fw-fg-muted); }
+.workflow-card-counted .workflow-card-more { grid-column: 2 / -1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.workflow-card:not(.full) .workflow-card-counted { grid-template-columns: 14px minmax(0, 1fr); column-gap: var(--fw-s2); padding-left: var(--fw-s2); }
+/* Agent names keep their colour while the phase has unsettled work. */
+.workflow-card-agent-name { color: var(--fw-agent-name); }
+
+/* A chit: a slanted mark for each unit, filled in its state's colour once
+   the unit started and ringed in the border colour while it waits. */
+.workflow-chits { display: inline-flex; align-items: center; gap: 2px; padding: 0 2px; }
+.workflow-chit { flex: 0 0 auto; width: 10px; height: 7px; transform: skewX(-20deg); background: var(--workflow-card-state, var(--fw-fg-muted)); }
+.workflow-chit.tone-pending { background: transparent; box-shadow: inset 0 0 0 1px var(--fw-hairline); }
+.workflow-chit.tone-running {
+  background: linear-gradient(90deg, var(--fw-info) 0%, color-mix(in srgb, var(--fw-info) 55%, var(--fw-fg)) 50%, var(--fw-info) 100%);
+  background-size: 200% 100%;
+  animation: workflow-card-sheen 1.6s var(--fw-ease) infinite;
+}
+
+.workflow-card-notice { color: var(--fw-warning); padding-bottom: var(--fw-s1); }
+.workflow-card-fold { min-height: 28px; display: flex; align-items: center; color: var(--fw-fg-muted); }
+.workflow-card-fold.tone-done { color: var(--fw-success); }
+
+/* The inline bar leads the plan; the full-size bar stays at its foot. */
+.workflow-card-bar { display: flex; align-items: center; gap: var(--fw-s3); min-width: 0; }
+.workflow-card-bar-label { display: flex; flex: 1 1 0; flex-wrap: wrap; column-gap: 0.5ch; min-width: 0; max-height: 1lh; overflow: hidden; font-size: var(--fw-text-xs); font-variant-numeric: tabular-nums; color: var(--fw-fg-muted); }
+.workflow-card-bar-part { white-space: nowrap; }
+.workflow-card-bar-part.tone-plain { color: var(--fw-fg-muted); }
+.workflow-card-bar-part.tone-done { color: var(--fw-success); }
+.workflow-card-bar-part.tone-failed { color: var(--fw-error); }
+
+@keyframes workflow-card-sheen {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .workflow-chit.tone-running { animation: none; }
+}
+
+/* The full-size card: every phase, each with the model its agents share
+   and its operations, and every agent of an expanded phase with its brief,
+   persona, own model, and operations. The selected line is raised and
+   marked at its left edge; the plan bar stays at the foot of the screen's
+   scroller. */
+.workflow-card.full {
+  grid-template-columns: 1.2em minmax(6ch, max-content) max-content max-content minmax(0, 1fr) 6ch 5ch 7ch;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: var(--fw-text);
+}
+.workflow-card.full .workflow-card-tree { grid-column: 2 / -1; grid-template-columns: 14px 1.2em minmax(6ch, max-content) max-content max-content minmax(0, 1fr) 6ch 7ch; column-gap: var(--fw-s2); }
+.workflow-card-model, .workflow-card-role, .workflow-card-operations { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fw-fg-muted); font-size: var(--fw-text-sm); }
+/* An inline line names its agent's model at the start of its quiet column,
+   so the column's text ellipsizes before the model does. */
+.workflow-card-detail > .workflow-card-model { margin-inline-end: var(--fw-s2); }
+.workflow-card-operations { justify-self: end; font-variant-numeric: tabular-nums; font-size: var(--fw-text-xs); }
+.workflow-card.full [aria-selected="true"] { background: var(--fw-bg-raised-strong); box-shadow: inset 2px 0 0 var(--fw-focus); }
+.workflow-card.full [role="treeitem"]:focus-visible { outline: 1px solid var(--fw-focus); outline-offset: -1px; }
+.workflow-card-follow-up { min-height: 28px; padding: 0; border: 0; border-radius: var(--fw-radius-sm); background: transparent; color: var(--fw-fg-muted); font: inherit; text-align: left; cursor: pointer; }
+.workflow-card-follow-up:hover { background: var(--fw-list-hover); color: var(--fw-fg); }
+.workflow-card.full .workflow-card-bar { position: sticky; bottom: 0; padding-block: var(--fw-s2); background: var(--fw-bg); }
+
+/* The full-size card's screen: the header line with the workflow's state,
+   time, and controls, then the card, which scrolls in the
+   workflow's column under the header. */
+.workflow-card-screen { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.workflow-card-screen-head { display: flex; align-items: center; gap: var(--fw-s2); padding: var(--fw-s2) var(--fw-workflow-inset); min-width: 0; }
+.workflow-card-screen-stats { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fw-fg-muted); font-size: var(--fw-text-sm); font-variant-numeric: tabular-nums; }
+.workflow-card-screen-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-inline: var(--fw-workflow-inset); }
+.workflow-card-screen-head > .workflow-action { min-height: 24px; }
+
+/* The controls of a workflow and of an agent: a small text button with an
+   icon, as the card's header and the agent view's line draw them. */
+.workflow-action {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fw-s1);
+  font-size: var(--fw-text-xs);
+  padding: 1px var(--fw-s2);
+  border: 1px solid transparent;
+  border-radius: var(--fw-radius-sm);
+  background: var(--fw-secondary);
+  color: var(--fw-secondary-fg);
+  cursor: pointer;
+}
+.workflow-action:hover { background: var(--fw-secondary-hover); }
+.workflow-sep { color: var(--fw-fg-muted); opacity: 0.6; flex: 0 0 auto; }
+
+/* Words in the tone of what they say, the way the terminal colours the
+   same words. */
+.tone-plain { color: var(--fw-fg); }
+.tone-done { color: var(--fw-success); }
+.tone-failed { color: var(--fw-error); }
+.tone-muted { color: var(--fw-fg-muted); }
+
+/* Wide cards keep their controls beside the link. Narrow cards disclose them
+   over the tail of the header without adding a line. */
+.agent-group-head { display: flex; align-items: center; gap: var(--fw-s2); min-width: 0; }
+.agent-group-head > .disclosure { flex: 1 1 var(--agent-disclosure-basis, auto); min-width: 0; }
+.card-action-header { --card-action-size: 32px; position: relative; min-width: 0; }
+.card-inline-actions { display: flex; flex: 0 0 auto; align-items: center; gap: var(--fw-s2); }
+.card-inline-actions:empty { display: none; }
+.card-inline-actions > .workflow-action { min-height: 24px; }
+.card-actions-overlay { display: none; }
+.card-actions-trigger { display: grid; place-items: center; min-width: var(--card-action-size); min-height: var(--card-action-size); padding: 0; background: transparent; color: var(--fw-fg-muted); font-size: var(--fw-text-lg); }
+@media (hover: hover) {
+  .card-actions-trigger:hover { color: var(--fw-fg); }
+}
+.card-actions-trigger:is(:active, [aria-expanded="true"]) { background: var(--fw-press); border-radius: var(--fw-radius-sm); color: var(--fw-fg); }
+.card-actions-trigger:focus-visible { outline: 1px solid var(--fw-focus); outline-offset: -1px; border-radius: var(--fw-radius-sm); }
+.card-action-header > .agent-group-head { -webkit-touch-callout: none; user-select: none; }
+.card-action-header:has(.card-action-menu) > .agent-group-head > .disclosure:active { box-shadow: none; }
+.card-action-menu { position: absolute; top: 100%; right: 0; z-index: var(--fw-z-popover); width: max-content; max-width: 100%; margin-top: var(--fw-s1); box-shadow: var(--fw-shadow-tooltip); }
+.card-action-menu .panel-scroll-content { grid-template-columns: auto minmax(0, 1fr); }
+.card-action-menu .panel-row { background: transparent; color: var(--fw-fg); text-align: left; }
+.card-action-menu .panel-row:hover, .card-action-menu .panel-row:focus-visible { background: var(--fw-list-active-bg); color: var(--fw-list-active-fg); }
+.card-action-menu .panel-row:active { background: var(--fw-press); }
+.card-action-meaning { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fw-fg-muted); font-size: var(--fw-text-xs); }
+.card-action-menu .panel-row:is(:hover, :focus-visible) .card-action-meaning { color: inherit; }
+
+/* A phone draws fewer chits and reads the short count, such as
+   `7/21 · 11 running`. */
+.workflow-card .phone-only, .workflow-agent-band .phone-only { display: none; }
+
+@container pane (max-width: 40rem) {
+  .control-word { display: none; }
+  .card-action-header > .agent-group-head { position: relative; flex-wrap: nowrap; overflow: hidden; white-space: nowrap; }
+  .card-action-header .card-inline-actions { display: none; }
+  .card-actions-overlay { position: absolute; top: 0; right: 0; bottom: 0; display: flex; align-items: center; padding-left: var(--fw-s5); background: linear-gradient(to right, transparent, var(--fw-bg) var(--fw-s5)); }
+  .subagent-head > .disclosure { flex-basis: auto; overflow: hidden; }
+  .subagent-head .subagent-header-wrap { flex-wrap: nowrap; }
+  .subagent-head .subagent-header-goal { max-width: max(0px, calc(100% - var(--subagent-identity-width))); }
+  .subagent-head .subagent-header-model { flex-shrink: 1; }
+  .agent-group-head:has(.card-actions-overlay) > .disclosure { padding-right: calc(var(--card-action-size) + var(--fw-s5)); }
+  .workflow-head .workflow-summary { display: grid; grid-template-columns: minmax(5ch, 1fr) minmax(0, max-content); }
+  .workflow-head .workflow-header-parts { display: flex; min-width: 0; white-space: nowrap; }
+  .workflow-header-parts > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .workflow-header-parts > span:last-child:not(:first-child) { flex-shrink: 0; }
+  .workflow-card-screen-head > .workflow-action { min-width: 32px; min-height: 32px; }
+  :is(.workflow-card, .workflow-agent-band) .wide-only { display: none; }
+  :is(.workflow-card, .workflow-agent-band) .phone-only { display: inline-flex; }
+  /* A phone's full-size card drops the brief, the persona, and the
+     operations, and keeps the model, the time, and an agent's quiet column.
+     The model's track is no wider than its label and at most 16ch, an
+     agent's name takes at most 40% of its line, and the quiet column keeps
+     at least a quarter, so a failure reason or the running activity shows
+     beside a long name. */
+  .workflow-card.full { grid-template-columns: 1.2em minmax(6ch, max-content) fit-content(16ch) max-content minmax(0, 1fr) 0 5ch 6ch; }
+  .workflow-card.full .workflow-card-tree { grid-template-columns: 14px 1.2em fit-content(40%) 0 fit-content(16ch) minmax(25%, 1fr) 0 6ch; }
+  .workflow-card.full :is(.workflow-card-role, .workflow-card-operations) { visibility: hidden; }
+  /* A phone cannot show a list title beside its chits at any fixed split,
+     so the head gives the quiet column more of the narrow width. */
+  .workflow-card { column-gap: var(--fw-s2); }
+  .workflow-card:not(.full) { grid-template-columns: minmax(0, 40%) minmax(0, 1fr) 9ch; }
+  /* A phone's inline card drops the model, as the terminal's narrow card
+     does, so a failure reason or the running activity keeps the quiet
+     column. The full-size card and the agent view still name the model. */
+  .workflow-card:not(.full) .workflow-card-detail > .workflow-card-model { display: none; }
+  /* A phone's full-size phase line drops its quiet column, and its plan bar drops the
+     units that run or an interrupt holds before any other part. */
+  .workflow-card.full .workflow-card-phase > .workflow-card-detail { visibility: hidden; }
+  .workflow-card .workflow-card-bar-part.active { order: 1; }
+}
+@media (pointer: coarse) {
+  .card-action-header { --card-action-size: 44px; }
+  :is(.workflow-card-phase, .workflow-card-agent, .workflow-card-fold, .workflow-card-follow-up) { min-height: 44px; }
+  .workflow-card-screen-head > .workflow-action, .card-inline-actions > .workflow-action, .card-action-menu .panel-row { min-width: 44px; min-height: 44px; }
+  @container pane (max-width: 40rem) {
+    .card-action-header > .agent-group-head:has(.card-actions-overlay) { min-height: var(--card-action-size); }
+  }
+}
+@media (hover: none) {
+  .card-action-header > .agent-group-head > .disclosure:hover:not(:disabled) { background: transparent; }
+}
+.agent-group-summary .tone-warning { color: var(--fw-warning); }
+

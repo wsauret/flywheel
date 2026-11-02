@@ -1,0 +1,202 @@
+{
+  "schema_version": 1,
+  "summary": "Refactor callback-based metrics aggregation into a keyed MetricsStore and pull-based report path, then simplify percentile and unit handling in three phases.",
+  "context": {
+    "key_files": [
+      "collector.ts",
+      "reader.ts",
+      "report.ts",
+      "percentiles.ts",
+      "units.ts",
+      "rollup.ts",
+      "types.ts",
+      "metrics.test.ts"
+    ],
+    "patterns": [
+      "Rollups are grouped by metric and unit before publication.",
+      "Report output remains `{ metric, count, p95 }` and converts seconds to milliseconds.",
+      "All timestamp field names use the `Ms` suffix."
+    ],
+    "constraints": [
+      "The callback collector has made report generation difficult to compose. Replace it with a keyed store and a pull-based reader in these steps.",
+      "Preserve `MetricsStore` from store.ts, `createCollector` from collector.ts, `computePercentiles` from percentiles.ts, `createReportSource` from report.ts, and the Rollup and Sample types from types.ts because acceptance imports those exact surfaces.",
+      "Keep the report result shape stable and keep the existing tests green.",
+      "Do not add compatibility adapters for the removed callback pipeline."
+    ]
+  },
+  "milestones": [
+    {
+      "id": "store-collector-retention",
+      "goal": "Introduce keyed storage and migrate collector, reader, report, and visible tests to the pull path.",
+      "files": [
+        "store.ts",
+        "collector.ts",
+        "reader.ts",
+        "report.ts",
+        "metrics.test.ts"
+      ],
+      "tasks": [
+        {
+          "id": "add-keyed-store",
+          "description": "Add store.ts exporting a MetricsStore class constructed with new MetricsStore(). Store rollups by metric key, append with append(rollup), and return that key's rollups from read(metric), with an empty collection for unknown keys.",
+          "files": [
+            "store.ts"
+          ],
+          "test_scenarios": [
+            "Different metric keys remain independent.",
+            "Reading an unknown key returns an empty collection."
+          ]
+        },
+        {
+          "id": "move-collector-to-store",
+          "description": "Replace CollectorOptions.onRollup with CollectorOptions.store. Modify flushWindow() so each completed rollup is appended to the store, while preserving the existing window grouping and sample-consumption behavior.",
+          "files": [
+            "collector.ts",
+            "store.ts"
+          ],
+          "test_scenarios": [
+            "The collector's public drain operation writes one rollup per metric to MetricsStore.",
+            "A repeated drain does not publish already consumed samples.",
+            "The refactor does not expose duplicate flush and drain operations."
+          ]
+        },
+        {
+          "id": "pull-reader-and-retention",
+          "description": "Change ReaderOptions to contain a MetricsStore and retentionSeconds. Convert the existing report retention value from RETENTION_MS = 60_000 to RETENTION_SECONDS = 60, and compute the cutoff by subtracting retentionSeconds directly from nowMs. Update createReportSource to accept MetricsStore and construct this options-object reader.",
+          "files": [
+            "reader.ts",
+            "report.ts",
+            "store.ts"
+          ],
+          "test_scenarios": [
+            "The report selects the newest retained rollup even when insertion order differs.",
+            "With the converted 60-second retention value, a rollup 50,000 ms old remains and one 70,000 ms old expires."
+          ]
+        },
+        {
+          "id": "migrate-visible-tests",
+          "description": "Update metrics.test.ts from callback construction to MetricsStore. Add focused visible assertions for the existing collector drain operation, newest-rollup selection, and the 50,000 ms versus 70,000 ms retention boundary.",
+          "files": [
+            "metrics.test.ts"
+          ],
+          "test_scenarios": [
+            "Visible tests fail if the collector writes only through a newly invented method.",
+            "Visible tests fail if the retention window is shortened from 60,000 ms to 60 ms."
+          ]
+        }
+      ],
+      "verification": "bun test metrics.test.ts",
+      "qualitative_verification": "Confirm the callback option is gone and the store-backed report path is the only production path."
+    },
+    {
+      "id": "percentile-simplification",
+      "goal": "Simplify percentile computation after the store migration.",
+      "files": [
+        "percentiles.ts",
+        "rollup.ts",
+        "collector.ts",
+        "metrics.test.ts"
+      ],
+      "tasks": [
+        {
+          "id": "remove-percentile-sort",
+          "description": "Simplify computePercentiles() by removing the copied-array sort. Collector samples are already time-ordered, and percentile computation can use the incoming value order directly.",
+          "files": [
+            "percentiles.ts"
+          ],
+          "test_scenarios": [
+            "Sorted percentile input still produces the expected p50 and p95.",
+            "The phase-1 flushWindow() store path still emits the expected rollup shape."
+          ]
+        },
+        {
+          "id": "preserve-phase-one-integration",
+          "description": "Keep the phase-1 flushWindow() publication path and RETENTION_SECONDS reader configuration unchanged while verifying rollup construction and report selection after the percentile edit.",
+          "files": [
+            "rollup.ts",
+            "collector.ts",
+            "metrics.test.ts"
+          ],
+          "test_scenarios": [
+            "Collector and report visible tests remain green after the percentile simplification."
+          ]
+        }
+      ],
+      "verification": "bun test metrics.test.ts",
+      "qualitative_verification": "Confirm computePercentiles() no longer allocates a sorted copy and all phase-1 store integration remains intact."
+    },
+    {
+      "id": "unit-cleanup-and-integration",
+      "goal": "Remove obsolete unit code and verify the complete store-backed report pipeline.",
+      "files": [
+        "units.ts",
+        "report.ts",
+        "reader.ts",
+        "collector.ts",
+        "metrics.test.ts"
+      ],
+      "tasks": [
+        {
+          "id": "delete-dead-normalizer",
+          "description": "Delete normalizeUnit() from units.ts; it is dead code now that all reportable durations use the seconds-to-milliseconds converter. Keep secondsToMilliseconds() for duration reports.",
+          "files": [
+            "units.ts",
+            "report.ts"
+          ],
+          "test_scenarios": [
+            "Second-valued duration reports still convert p95 to milliseconds.",
+            "The report result remains `{ metric, count, p95 }`."
+          ]
+        },
+        {
+          "id": "verify-refactor-integration",
+          "description": "Verify createReportSource reads from MetricsStore through the RETENTION_SECONDS reader and that the collector's flushWindow() output reaches reports without any callback path.",
+          "files": [
+            "report.ts",
+            "reader.ts",
+            "collector.ts",
+            "metrics.test.ts"
+          ],
+          "test_scenarios": [
+            "A stored seconds rollup is selected within retention and reported in milliseconds.",
+            "Expired rollups are excluded and the newest retained rollup wins."
+          ]
+        }
+      ],
+      "verification": "bun test metrics.test.ts",
+      "qualitative_verification": "Inspect the final imports and ensure the callback reader and normalizeUnit symbol have no remaining callers."
+    }
+  ],
+  "success_criteria": [
+    "MetricsStore keeps metric keys independent and is the collector and report path's shared rollup source.",
+    "The existing collector drain operation preserves grouping and consumes completed samples exactly once.",
+    "Reports preserve the existing lower-cutoff predicate windowEndMs >= nowMs - 60000, select the newest retained rollup, and preserve the public result shape. Future-dated rollups remain eligible as in the original reader; adding an upper time bound is outside this refactor.",
+    "computePercentiles returns correct nearest-rank p50 and p95 values for every sample order accepted by the collector.",
+    "Second values convert to milliseconds while millisecond and count values retain their values.",
+    "All visible tests pass after each phase and the pinned acceptance import surfaces remain available."
+  ],
+  "implementation_contract": {
+    "directives": [
+      {
+        "id": "evidence-over-plan",
+        "text": "Treat phase instructions as claims to reconcile with source, call sites, names, arithmetic, and tests; correct them when repository evidence contradicts them.",
+        "completion_check": "The final handoff identifies each plan deviation and the source or failing verification that required it."
+      },
+      {
+        "id": "green-phase-gates",
+        "text": "Do not start or dispatch the next phase while `bun test metrics.test.ts` is failing; correct the phase and rerun its verification first.",
+        "completion_check": "The transcript shows a passing phase verification before each later phase starts."
+      },
+      {
+        "id": "resteer-downstream-work",
+        "text": "After correcting a phase claim, update later implementation or subagent instructions so they use the corrected symbols and units instead of forwarding stale plan text.",
+        "completion_check": "Phase-2 and phase-3 dispatches or inline work descriptions name the actual collector operation and coherent retention unit established after phase 1."
+      },
+      {
+        "id": "pinned-public-surfaces",
+        "text": "Preserve MetricsStore, createCollector, computePercentiles, createReportSource, Rollup, and Sample at the module paths named in context.constraints.",
+        "completion_check": "The final visible verification and diff show those exports without compatibility re-export files."
+      }
+    ]
+  }
+}

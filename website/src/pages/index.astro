@@ -1,0 +1,233 @@
+---
+import Checks from "../components/Checks.astro";
+import InstallCommand from "../components/InstallCommand.astro";
+import ProductFrame from "../components/ProductFrame.astro";
+import ProviderFlow from "../components/ProviderFlow.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+import SiteLayout from "../layouts/SiteLayout.astro";
+
+const description = "Flywheel runs whole jobs as durable workflows that survive a closed terminal, a crash, an update, or an empty quota. Bring every subscription you pay for, Claude included, and follow one live session from your terminal, browser, or phone.";
+---
+
+<SiteLayout title="Flywheel - The coding agent that keeps working." description={description}>
+  <SiteHeader />
+  <main>
+    <section class="hero">
+      <svg class="gauge" viewBox="0 0 560 560" fill="none" aria-hidden="true">
+        <circle cx="280" cy="280" r="238" stroke="oklch(0.28 0.012 185)" stroke-width="1" />
+        <circle cx="280" cy="280" r="196" stroke="oklch(0.24 0.01 188)" stroke-width="1" />
+        <g stroke="oklch(0.4 0.014 180)">
+          <path d="M280 30v16M280 514v16M30 280h16M514 280h16" />
+          <path d="M103 103l11 11M446 446l11 11M457 103l-11 11M114 446l-11 11" />
+          <path d="M280 78v10M482 280h-10M280 482v-10M78 280h10" opacity="0.6" />
+        </g>
+        <circle cx="280" cy="280" r="238" stroke="oklch(0.78 0.13 75)" stroke-width="2" stroke-dasharray="150 1345" stroke-dashoffset="-372" stroke-linecap="round" />
+      </svg>
+      <div class="shell">
+        <div class="hero-inner">
+          <p class="kicker">Open-source coding agent &middot; Apache 2.0</p>
+          <h1>The coding agent that <span class="dim">keeps working.</span></h1>
+          <p class="lede">Flywheel runs whole jobs as durable workflows. A run survives a closed terminal, a crash, an update, or an empty quota. Bring every subscription you pay for, Claude included, and follow the same live session from your terminal, your browser, or your phone.</p>
+          <InstallCommand id="install" />
+          <div class="hero-links">
+            <a href="https://github.com/wsauret/flywheel#install">Installation guide</a>
+            <a href="https://github.com/wsauret/flywheel">GitHub</a>
+          </div>
+        </div>
+
+        <div class="stage">
+          <ProductFrame title="flywheel · relink">
+            <img src="/media/hero.png" alt="The Flywheel terminal UI running a review workflow: five reviewer agents check a change at the same time" width="3064" height="1900" />
+          </ProductFrame>
+          <div class="stage-foot">
+            <span><b>&gt;</b> one chat message: build &middot; review &middot; repair &middot; verify, then five reviewers at once</span>
+            <span>Apache 2.0 &middot; macOS &middot; Linux &middot; Windows</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" id="workflows">
+      <div class="shell chapter-grid">
+        <div>
+          <p class="eyebrow">01 / Workflows</p>
+          <h2>Ask for the whole job. It keeps going.</h2>
+          <p class="body">Describe the work in chat. The agent writes a workflow and launches it: phases of agents that build, review, repair, and verify, with independent work running at the same time. The run lives in a background service, not in your terminal window.</p>
+          <Checks items={[
+            "Close the terminal. The run continues.",
+            "Update Flywheel mid-run. Running agents and shell commands move to the new build.",
+            "Out of quota at 2 a.m.? The agent waits for the reset, then continues.",
+            "After a crash, Resume restarts only the agents that were in flight.",
+          ]} />
+        </div>
+        <div>
+          <div class="board" role="img" aria-label="An example night of one workflow run: the terminal closes, an update installs, the quota runs out and resets, and the run finishes verified">
+            <div class="board-head"><span>one run &middot; <b>overnight</b></span><span>flywheel serve</span></div>
+            <div class="zone">
+              <div class="lrow"><span class="t">21:04</span><span class="ev">workflow started</span><span class="det">3 phases &middot; 5 agents</span></div>
+              <div class="lrow"><span class="t">21:09</span><span class="ev">terminal closed</span><span class="det">run continues</span></div>
+              <div class="lrow"><span class="t">23:40</span><span class="ev">update installed</span><span class="det">agents move to the new build</span></div>
+              <div class="lrow"><span class="t">02:12</span><span class="ev wait">quota spent</span><span class="det">waiting for the reset</span></div>
+              <div class="lrow"><span class="t">05:00</span><span class="ev">quota reset</span><span class="det">run continues</span></div>
+              <div class="lrow"><span class="t">05:26</span><span class="ev ok">verify passed</span><span class="det">run complete</span></div>
+            </div>
+            <div class="board-foot"><span class="tick">&#9642;</span>the run lives in the background service, not in the terminal</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" id="providers">
+      <div class="shell chapter-grid">
+        <div>
+          <p class="eyebrow">02 / Providers</p>
+          <h2>Every model you pay for. No lock-in.</h2>
+          <p class="body">Sign in with Claude, ChatGPT, GitHub Copilot, SuperGrok, or OpenCode Go. Add API keys for Anthropic, OpenAI, Google, DeepSeek, OpenRouter, or any OpenAI-compatible endpoint. Choose a model for each role: the chat, workflow agents, and background work.</p>
+          <Checks items={[
+            "Subscriptions serve first. API keys serve only when no subscription can.",
+            "Failover happens inside the turn. You never retry by hand.",
+            "Each request records which provider and account served it.",
+          ]} />
+        </div>
+        <div>
+          <ProviderFlow />
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" id="rotation">
+      <div class="shell chapter-grid">
+        <div>
+          <p class="eyebrow">03 / Account rotation</p>
+          <h2>Two subscriptions? Flywheel uses both.</h2>
+          <p class="body">Add several accounts of the same paid subscription. When one hits its usage cap or goes down, the next account takes the turn, and nothing on your screen changes. For Claude, the account whose weekly window resets soonest goes first, so quota that is about to expire gets used first.</p>
+          <Checks items={[
+            "Paid overage stays off until you allow it, once per account.",
+            "The Usage view shows each account's spend and history.",
+            "API keys catch what no subscription can serve.",
+          ]} />
+        </div>
+        <div>
+          <div class="board" role="img" aria-label="Three Claude accounts in rotation order: the account whose weekly window resets soonest serves first, an account at its usage cap is skipped, and an API key is the fallback">
+            <div class="board-head"><span>claude &middot; <b>3 accounts</b></span><span>soonest reset first</span></div>
+            <div class="zone">
+              <div class="zone-label"><span class="no">1</span>Subscription accounts</div>
+              <div class="prow"><span class="name">Account 1</span><span class="accounts">weekly reset in 9 h</span><span class="chips"><span class="chip on">serving</span></span></div>
+              <div class="prow"><span class="name">Account 2</span><span class="accounts">weekly reset in 3 d</span><span class="chips"><span class="chip">next</span></span></div>
+              <div class="prow dim"><span class="name">Account 3</span><span class="accounts"><span class="cap">usage cap reached</span></span><span class="chips"><span class="chip">skipped</span></span></div>
+            </div>
+            <div class="zone">
+              <div class="zone-label"><span class="no">2</span>Fallback</div>
+              <div class="prow dim"><span class="name">Anthropic API key</span><span class="accounts">paid use off until you allow it</span></div>
+            </div>
+            <div class="board-foot"><span class="tick">&#9642;</span>the turn moves to the next account; your screen does not change</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" id="claude">
+      <div class="shell chapter-grid">
+        <div>
+          <p class="eyebrow">04 / Claude</p>
+          <h2>Claude, through Anthropic's own SDK.</h2>
+          <p class="body">Flywheel signs in to your Claude subscription through the official Claude Agent SDK. Anthropic's engine holds the login: Flywheel never reads, stores, or sends your Claude token. Flywheel's tools, workflows, subagents, skills, and session recording all work on this route.</p>
+          <Checks items={[
+            "Sign in from /auth, or with flywheel auth login --claude-agent-sdk.",
+            "Several Claude accounts rotate like any other subscription.",
+            "Your own Claude login and settings outside Flywheel stay untouched.",
+          ]} />
+        </div>
+        <div>
+          <div class="board" role="img" aria-label="How a Claude subscription runs in Flywheel: Anthropic's engine holds the login and makes the model call, and every Flywheel capability stays available">
+            <div class="board-head"><span>claude agent sdk &middot; <b>official engine</b></span><span>subscription login</span></div>
+            <div class="zone">
+              <div class="zone-label"><span class="no">1</span>Anthropic's engine</div>
+              <div class="lrow"><span class="ev">login</span><span class="det">held by the engine</span></div>
+              <div class="lrow"><span class="ev">token</span><span class="det">never read by Flywheel</span></div>
+              <div class="lrow"><span class="ev">model calls</span><span class="det">made by the engine</span></div>
+            </div>
+            <div class="zone">
+              <div class="zone-label"><span class="no">2</span>Flywheel, unchanged</div>
+              <div class="prow"><span class="chips start"><span class="chip on">tools</span><span class="chip on">workflows</span><span class="chip on">subagents</span><span class="chip on">skills</span><span class="chip on">session recording</span><span class="chip on">rotation</span></span></div>
+            </div>
+            <div class="board-foot"><span class="tick">&#9642;</span>$ flywheel auth login --claude-agent-sdk</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" id="surfaces">
+      <div class="shell">
+        <div class="chapter-head">
+          <p class="eyebrow">05 / Every surface</p>
+          <h2>One session. Terminal, browser, or phone.</h2>
+          <p class="body">Every client attaches to the same live session. Start a job in the terminal, follow it in the browser, and answer the agent's question from your phone.</p>
+        </div>
+        <div class="devices">
+          <ProductFrame title="flywheel web">
+            <img src="/media/web.png" alt="The Flywheel web client showing the same live session as the terminal" width="2880" height="1800" loading="lazy" decoding="async" />
+          </ProductFrame>
+          <div class="phone">
+            <img src="/media/phone.png" alt="The Flywheel phone client with a question from the agent waiting for an answer" width="1206" height="2622" loading="lazy" decoding="async" />
+          </div>
+        </div>
+        <ul class="facts">
+          <li><b>Local web.</b> <code>flywheel web</code> opens the web client. Only your machine can reach it.</li>
+          <li><b>Phone pairing.</b> <code>/remote</code> pairs your phone with a QR code. No account, no password.</li>
+          <li><b>Sealed end to end.</b> The relay passes your messages along but cannot read them.</li>
+          <li><b>Quiet by default.</b> Your phone notifies you only when a chat asks you a question.</li>
+          <li><b>VS Code.</b> The <a href="https://marketplace.visualstudio.com/items?itemName=flywheel-core-team.flywheel">extension</a> adds native diff review with undo for each file.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="chapter" id="themes">
+      <div class="shell">
+        <div class="chapter-head">
+          <p class="eyebrow">06 / Themes</p>
+          <h2>Your terminal, your colors.</h2>
+          <p class="body">Flywheel ships about 40 themes, from Catppuccin to Gruvbox, and a new theme applies at once, with no restart. <code>flywheel font install</code> installs Monaspace, the font that Flywheel is designed around.</p>
+        </div>
+        <img class="themes" src="/media/themes.png" alt="Flywheel in three of its bundled themes" width="2880" height="736" loading="lazy" decoding="async" />
+      </div>
+    </section>
+
+    <section class="chapter" id="more">
+      <div class="shell">
+        <div class="chapter-head">
+          <p class="eyebrow">07 / And also</p>
+          <h2>Smaller things that matter.</h2>
+        </div>
+        <div class="cards">
+          <div class="card"><h3>Everything is on the record.</h3><p>Sessions are stored as facts in a local SQLite database. <code>flywheel events search</code> answers what happened.</p></div>
+          <div class="card"><h3>Turn anything off.</h3><p>About 20 capabilities each have one switch. Off removes their tools, prompts, and commands.</p></div>
+          <div class="card"><h3>Review and undo.</h3><p><code>/changes</code> shows the session's diff, with undo for each file.</p></div>
+          <div class="card"><h3>MCP.</h3><p>Add servers over stdio or HTTP with OAuth, or import an <code>.mcp.json</code> file.</p></div>
+          <div class="card"><h3>Skills and memory.</h3><p>Learned skills are files you can read, and <code>flywheel skills why</code> traces each one to its sessions.</p></div>
+          <div class="card"><h3>Tabs.</h3><p>Run several sessions in one terminal window. <code>ctrl+n</code> opens a new tab, and <code>ctrl+s</code> finds any earlier session.</p></div>
+          <div class="card"><h3>Side questions.</h3><p><code>/btw</code> asks a quick question about the chat without interrupting its work. The answer stays out of the transcript.</p></div>
+          <div class="card"><h3>Background commands.</h3><p>Builds, test suites, and dev servers run while the agent keeps working, and each result reaches the agent when it ends.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="chapter" id="get-started">
+      <div class="shell install-final">
+        <p class="eyebrow">08 / Install</p>
+        <h2>Ready when you are.</h2>
+        <p class="body">The installer verifies every download against the published SHA-256 digests. Flywheel then updates itself without interrupting a running session.</p>
+        <InstallCommand id="install-footer" />
+        <p class="matrix">darwin-arm64 &middot; darwin-x64 &middot; linux-x64 &middot; linux-arm64 &middot; linux-x64-musl &middot; linux-arm64-musl &middot; win32-x64 &middot; win32-arm64</p>
+        <p class="matrix-note">On Alpine, run <code>apk add libstdc++ curl</code> before you install.</p>
+        <p class="privacy">Flywheel agents run shell commands and edit files with your permissions, without asking before each step. Its guards catch ordinary mistakes but are not a sandbox, so run untrusted repositories inside a container, a virtual machine, or a disposable checkout.</p>
+        <p class="privacy">For model inference, Flywheel sends your prompts and code only to the providers that you configure. Agent tools, such as MCP servers, web search, and shell commands, can send content to other destinations. Release builds send an automatic crash report with no conversation or file content. Turn off the Bug reports setting to stop it. <a href="https://github.com/wsauret/flywheel/blob/main/docs/privacy.md">What Flywheel sends over the network</a> lists every request it makes on its own.</p>
+      </div>
+    </section>
+  </main>
+  <SiteFooter />
+  <script>
+    import "../scripts/site.ts";
+  </script>
+</SiteLayout>

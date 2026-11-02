@@ -1,0 +1,10 @@
+--- a/src/orchestration/agent-runtime/llm/json-parse.ts
++++ b/src/orchestration/agent-runtime/llm/json-parse.ts
+@@ -69,6 +69,7 @@
+       }
+       if (VALID_JSON_ESCAPES.has(nextChar)) {
+         repaired += `\\${nextChar}`;
++        index += 1;
+         continue;
+       }
+       repaired += "\\\\";

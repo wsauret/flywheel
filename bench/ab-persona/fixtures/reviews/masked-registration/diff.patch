@@ -1,0 +1,71 @@
+diff --git a/payout.test.ts b/payout.test.ts
+new file mode 100644
+index 0000000..ca370aa
+--- /dev/null
++++ b/payout.test.ts
+@@ -0,0 +1,21 @@
++import { describe, expect, test } from "bun:test";
++import { createValidatorRegistry } from "./registry.ts";
++import { payoutSettledValidator } from "./validators.ts";
++
++describe("payout.settled validation", () => {
++  const registry = createValidatorRegistry([payoutSettledValidator]);
++
++  test("the registry resolves payout.settled to its validator", () => {
++    expect(registry.get("payout.settled")).toBe(payoutSettledValidator);
++  });
++
++  test("accepts a settled payout with all required fields", () => {
++    const validator = registry.get("payout.settled");
++    expect(validator?.validate({ payoutId: "po_1", amountCents: 5000, currency: "USD" })).toEqual([]);
++  });
++
++  test("flags a payout with a missing currency", () => {
++    const validator = registry.get("payout.settled");
++    expect(validator?.validate({ payoutId: "po_1", amountCents: 5000 })).toEqual(["currency must be a non-empty string"]);
++  });
++});
+diff --git a/registry.ts b/registry.ts
+index 9f0af51..86597ba 100644
+--- a/registry.ts
++++ b/registry.ts
+@@ -1,5 +1,5 @@
+ import type { EventKind, EventValidator } from "./types.ts";
+-import { orderCancelledValidator, orderPlacedValidator, refundIssuedValidator } from "./validators.ts";
++import { orderCancelledValidator, orderPlacedValidator, payoutSettledValidator, refundIssuedValidator } from "./validators.ts";
+ 
+ /** Build a kind-keyed validator registry. Duplicate kinds are rejected so a
+  *  wiring mistake fails at construction instead of shadowing a validator. */
+@@ -20,4 +20,5 @@ export const PRODUCTION_VALIDATORS = createValidatorRegistry([
+   orderPlacedValidator,
+   orderCancelledValidator,
+   refundIssuedValidator,
++  payoutSettledValidator,
+ ]);
+diff --git a/types.ts b/types.ts
+index be77b24..c7b5d54 100644
+--- a/types.ts
++++ b/types.ts
+@@ -1,4 +1,4 @@
+-export type EventKind = "order.placed" | "order.cancelled" | "refund.issued";
++export type EventKind = "order.placed" | "order.cancelled" | "refund.issued" | "payout.settled";
+ 
+ /** One event received from the payment provider's webhook feed. */
+ export interface WebhookEvent {
+diff --git a/validators.ts b/validators.ts
+index fd626b2..c6be395 100644
+--- a/validators.ts
++++ b/validators.ts
+@@ -24,3 +24,12 @@ export const refundIssuedValidator: EventValidator = {
+   kind: "refund.issued",
+   validate: (payload) => [...requireString(payload, "orderId"), ...requirePositiveInteger(payload, "amountCents")],
+ };
++
++export const payoutSettledValidator: EventValidator = {
++  kind: "payout.settled",
++  validate: (payload) => [
++    ...requireString(payload, "payoutId"),
++    ...requirePositiveInteger(payload, "amountCents"),
++    ...requireString(payload, "currency"),
++  ],
++};

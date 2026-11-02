@@ -1,0 +1,471 @@
+/* Transcript blocks. One gutter for the whole transcript: every left-aligned
+   entry puts a marker in the same column the disclosure chevron occupies
+   (--fw-marker-x) and starts its content at the same edge (--fw-gutter). Rows
+   that expand show the chevron; everything else shows a solid dot, so the eye
+   tracks one rail of markers instead of ragged indents. */
+
+.block { animation: rise var(--fw-motion) ease-out; }
+
+/* A message from the person: a full-width band on a lighter surface with the
+   primary action's accent bar sitting in the marker gutter, so the transcript
+   keeps one left rhythm and the speaker still reads at a glance from colour.
+   It answers the person's own tap, so it shows at once with no rise: a rise
+   would flash the queued copy and play again when the runtime's copy replaces
+   it. */
+.block.user {
+  animation: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-s2);
+  align-self: stretch;
+  /* The bar is the band's own left edge on the marker gutter, and the text
+     keeps the shared content edge: 11px margin + 3px bar + 12px padding. */
+  margin: var(--fw-s3) 0 var(--fw-s3) 11px;
+  border-left: 3px solid var(--fw-user-accent);
+  padding: var(--fw-s2) var(--fw-s3) var(--fw-s2) 12px;
+  background: var(--fw-bg-raised-strong);
+  border-radius: 3px;
+}
+/* A queued message dims its words and images only, so its Queued marker
+   keeps full contrast. */
+.block.user.pending .user-text, .block.user.pending .user-images { opacity: 0.55; }
+/* A message this client sent that the runtime has not shown back yet says so
+   under its words: muted while queued, a warning with its cause and the way
+   back into the composer when it was not delivered. */
+.user-delivery {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fw-s2);
+  font-size: var(--fw-text-2xs);
+  font-style: italic;
+  color: var(--fw-fg-muted);
+}
+.user-delivery.failed { font-style: normal; color: var(--fw-warning); }
+/* A message from another session names its sender above its words, and the
+   words of the person that the sender attached follow under their own label. */
+.user-sender { font-size: var(--fw-text-2xs); color: var(--fw-fg-muted); }
+/* The rail and the sender header share the session-message colour; the
+   person's words that the sender quotes keep the muted label. */
+.block.user.from-session { border-left-color: var(--fw-session-message); }
+.block.user.from-session > .user-sender { color: var(--fw-session-message); }
+.user-person-words { margin-top: var(--fw-s2); }
+.user-delivery-cause { min-width: 0; overflow-wrap: anywhere; }
+.user-delivery-edit { font-size: var(--fw-text-2xs); padding: 0 var(--fw-s1); }
+/* A phone has no Up key, so Edit is its only way back to the message. */
+@media (pointer: coarse) { .user-delivery-edit { min-height: calc(2 * var(--fw-s5)); padding-inline: var(--fw-s2); } }
+
+.message { display: flex; flex-direction: column; min-width: 0; position: relative; }
+.row-meta {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--fw-s2);
+  font-size: var(--fw-text-2xs);
+  color: var(--fw-fg-muted);
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+  transition: opacity var(--fw-motion) var(--fw-ease);
+}
+.timed-block, .tool-group, .agent-group-block { position: relative; }
+.timed-block:has(> .row-meta), .tool-group, .agent-group-block { padding-top: calc(var(--fw-row-meta-space) - var(--disclosure-pad-y)); }
+.timed-block:has(> .message > .block.user) { padding-top: 0; }
+.timed-block:has(> .message > .block.assistant) { padding-top: calc(var(--fw-row-meta-space) - var(--fw-s2)); }
+.row-meta .message-copy { position: relative; font-size: var(--fw-text-2xs); padding: 0; min-height: 0; line-height: inherit; }
+.message-copy[data-copied] { color: var(--fw-success); }
+.row-meta.inline-time { position: static; margin-left: auto; flex: none; visibility: hidden; opacity: 1; font-variant-numeric: tabular-nums; }
+.tool-head > .inline-time { align-self: flex-start; padding-block: var(--disclosure-pad-y); padding-right: var(--fw-s2); }
+/* The 60rem pane leaves a gutter beside the reading column, so metadata costs no row height. */
+@container pane (min-width: 60rem) {
+  .timed-block:has(> .row-meta), .tool-group, .agent-group-block,
+  .timed-block:has(> .message > .block.assistant) { padding-top: 0; }
+  .row-meta:not(.inline-time) {
+    left: calc(100% + var(--fw-s1));
+    right: auto;
+    width: max-content;
+    max-width: calc((100cqw - var(--fw-measure)) / 2 - var(--fw-s1) - var(--fw-s3));
+    display: grid;
+    grid-template-columns: max-content max-content;
+    column-gap: var(--fw-s1);
+    row-gap: 0;
+    line-height: var(--fw-leading-tight);
+  }
+  .row-meta:not(.inline-time) .row-time { display: contents; }
+  .row-meta:not(.inline-time) .row-date { grid-column: 1; grid-row: 1; }
+  .row-meta:not(.inline-time) .row-date-separator { display: none; }
+  .row-meta:not(.inline-time) .row-clock { grid-column: 1 / -1; grid-row: 1; }
+  .row-meta:not(.inline-time):has(.row-date) .row-clock { grid-row: 2; }
+  .row-meta:not(.inline-time) .message-copy { grid-column: 2; grid-row: 2; justify-self: end; }
+  .row-meta:not(.inline-time):has(.row-date) .message-copy { grid-row: 1; }
+  .timed-block:has(> .message > .block.user) > .row-meta { top: var(--fw-s3); }
+  .timed-block:has(> .message > .block.assistant) > .row-meta,
+  .tool-group > .row-meta, .agent-group-block > .row-meta { top: var(--fw-s2); }
+}
+.timed-block:hover > .row-meta, .timed-block:focus-within > .row-meta,
+.tool-group:hover > .row-meta, .tool-group:focus-within > .row-meta,
+.agent-group-block:hover > .row-meta, .agent-group-block:focus-within > .row-meta,
+.row-meta:has([data-copied]), .row-meta.live-time, .times-revealed .row-meta { opacity: 1; pointer-events: auto; }
+.tool:hover > .disclosure > .inline-time, .tool:focus-within > .disclosure > .inline-time,
+.tool:hover > .tool-head > .inline-time, .tool:focus-within > .tool-head > .inline-time,
+.times-revealed .inline-time, .inline-time.live-time { visibility: visible; }
+@media (pointer: coarse) {
+  .transcript:not(.times-revealed) .timed-block:hover:not(:focus-within) > .row-meta:not(.live-time),
+  .transcript:not(.times-revealed) .tool-group:hover:not(:focus-within) > .row-meta:not(.live-time),
+  .transcript:not(.times-revealed) .agent-group-block:hover:not(:focus-within) > .row-meta:not(.live-time) { opacity: 0; pointer-events: none; }
+  .transcript:not(.times-revealed) .tool:hover:not(:focus-within) .inline-time:not(.live-time) { visibility: hidden; }
+  .times-revealed .row-meta, .timed-block:focus-within > .row-meta, .tool-group:focus-within > .row-meta,
+  .agent-group-block:focus-within > .row-meta { opacity: 1; pointer-events: auto; }
+  .times-revealed .inline-time, .tool:focus-within .inline-time { visibility: visible; }
+  .times-revealed .message-copy::before {
+    content: "";
+    position: absolute;
+    inset-inline: calc(-1 * var(--fw-s1));
+    height: var(--fw-s6);
+    top: 50%;
+    transform: translateY(-50%);
+  }
+}
+.transcript-content { transform: translateX(calc(-1 * var(--fw-s5) * var(--time-drag, 0))); transition: transform var(--fw-motion-slow) var(--fw-ease); }
+.dragging-times .transcript-content { transition: none; }
+.user-text { white-space: pre-wrap; word-break: break-word; color: var(--fw-fg-prose); }
+.user-images {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--fw-s2);
+  min-width: 0;
+}
+.user-images img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: min(100%, var(--fw-image-preview-width));
+  max-height: var(--fw-image-preview-height);
+  border-radius: var(--fw-radius);
+}
+
+.marker-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--fw-radius-pill);
+  background: var(--fw-fg-muted);
+  opacity: 0.85;
+}
+/* Work in flight: the one place the transcript spends colour and motion, the
+   same green and the same breath as the chat header's dot. */
+.marker-dot.live { background: var(--fw-success); opacity: 1; animation: breathe 1.4s ease-in-out infinite; }
+
+.block.assistant,
+.block.system {
+  position: relative;
+  padding-left: var(--fw-gutter);
+}
+.block.system { font-size: var(--fw-text-sm); color: var(--fw-fg-muted); }
+.block.system.returned-input { white-space: pre-wrap; overflow-wrap: anywhere; }
+.block.assistant::before,
+.block.system::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--fw-marker-x) - 3px);
+  top: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--fw-radius-pill);
+  background: var(--fw-fg-muted);
+  opacity: 0.85;
+}
+.block.system.error::before { background: var(--fw-error); opacity: 1; }
+
+/* Contiguous tool rows read as one run: a hairline rail joins their markers,
+   split into a tail below each row that has a successor and a head above each
+   row that has a predecessor, so it stays continuous whatever height an
+   expanded body gives the row in between. */
+.chain { position: relative; }
+.chain:has(+ .chain)::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--fw-marker-x) - 0.5px);
+  top: 18px;
+  bottom: -2px;
+  width: 1px;
+  background: var(--fw-rail);
+}
+.chain + .chain::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--fw-marker-x) - 0.5px);
+  top: 0;
+  height: 6px;
+  width: 1px;
+  background: var(--fw-rail);
+}
+.chain + .block.agent-group-block, .chain + .block.question-record, .chain + .block.tool-group { margin-top: 0; }
+.block.agent-group-block:has(+ .chain), .block.question-record:has(+ .chain), .block.tool-group:has(+ .chain) { margin-bottom: 0; }
+
+/* The conversation itself is the brightest text on the surface; tool rows sit
+   below it. The host supplies the lift through the prose token. */
+.block.assistant { word-break: break-word; color: var(--fw-fg-prose); }
+.block.assistant > :first-child { margin-top: 0; }
+.block.assistant > :last-child { margin-bottom: 0; }
+
+.block.system.error { color: var(--fw-error); }
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--fw-s3);
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+.divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--fw-hairline); }
+
+/* Disclosure rows: tools, groups, injected messages. A one-line row is one
+   line of its text plus twice this padding, which is also how the activity
+   preview below counts its rows. A row is a tap target on a phone, and 3px of
+   padding is not one. */
+:root { --disclosure-pad-y: 3px; }
+@media (pointer: coarse) { :root { --disclosure-pad-y: 6px; } }
+.disclosure {
+  display: flex;
+  align-items: center;
+  gap: var(--fw-s2);
+  width: 100%;
+  min-width: 0;
+  padding: var(--disclosure-pad-y) var(--fw-s2);
+  text-align: left;
+  background: transparent;
+  color: var(--fw-fg);
+  border-radius: var(--fw-radius);
+  font-size: var(--fw-text-sm);
+}
+.disclosure:hover:not(:disabled) { background: var(--fw-list-hover); }
+
+.chevron {
+  width: 10px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fw-fg-muted);
+  transition: transform var(--fw-motion-fast) ease;
+}
+
+.tool-title { font-weight: 700; flex: 0 0 auto; }
+.agent-group-summary {
+  display: flex;
+  align-items: baseline;
+  gap: var(--fw-s2);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.agent-group-summary > .tool-title {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* A workflow's title is its run summary, often several words, and its state
+   and time never drop, so the title gives up its width first. */
+.workflow-summary > .tool-title { flex: 0 1 auto; min-width: 0; }
+.workflow-summary > .workflow-header-parts { flex: 0 0 auto; }
+.agent-open { flex: 0 0 auto; white-space: nowrap; color: var(--fw-fg-muted); }
+/* Tool names carry Flywheel's tool colour, softened toward the muted grey
+   because the raw terminal value glows on this surface. Scoped to tool rows so
+   agent-group headers keep the plain foreground. */
+.tool .tool-title, .workflow-card-tool { color: color-mix(in srgb, var(--fw-tool-name) 72%, var(--fw-fg-muted)); }
+.tool-detail {
+  /* Most of a tool-heavy transcript's text is this detail, so full muted grey
+     dims the whole surface. Lifted most of the way to the foreground: still
+     visibly secondary to the name, no longer faded. */
+  color: color-mix(in srgb, var(--fw-fg) 75%, var(--fw-fg-muted));
+  font-family: var(--fw-font-mono);
+  font-size: var(--fw-text-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.exit-code { color: var(--fw-error); font-size: var(--fw-text-xs); margin-left: auto; flex: 0 0 auto; }
+/* Tight children reserve their metadata slot so reveal never shifts a detail. */
+.tool.compact .disclosure { align-items: flex-start; }
+.tool.compact .chevron { height: 1lh; }
+.tool.compact .tool-detail { white-space: nowrap; flex: 1; }
+
+.tool.execute-summary .disclosure { align-items: flex-start; }
+.tool.execute-summary .tool-detail {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.block.injected .tool-title { color: var(--fw-fg-muted); }
+.thinking-body {
+  margin-left: var(--fw-marker-x);
+  padding: var(--fw-s1) 0 var(--fw-s1) var(--fw-s3);
+  border-left: 1px solid var(--fw-hairline);
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-sm);
+}
+
+.tool-body { padding: var(--fw-s1) 0 var(--fw-s1) var(--fw-gutter); }
+.file-diff { display: flex; flex-direction: column; gap: var(--fw-s2); min-width: 0; }
+.diff-file { min-width: 0; overflow-x: auto; }
+.diff-file-header { display: flex; align-items: center; gap: var(--fw-s1); min-width: max-content; }
+.removed-directory { display: flex; flex-direction: column; gap: var(--fw-s2); min-width: 0; }
+/* The label holds the count, the size and the disclosure arrow, so it wraps rather than clip on a narrow screen. */
+.removed-directory > .diff-file-path { align-self: flex-start; max-width: 100%; white-space: normal; overflow-wrap: anywhere; text-align: left; }
+.removed-directory > .diff-file { margin-left: var(--fw-s3); }
+.diff-file-path {
+  padding: 2px var(--fw-s2);
+  background: transparent;
+  color: var(--fw-fg-muted);
+  font-family: var(--fw-font-mono);
+  font-size: var(--fw-text-xs);
+  white-space: nowrap;
+}
+.diff-file-path:hover:not(:disabled) { background: var(--fw-bg-raised); color: var(--fw-fg); }
+.tool-file-path {
+  display: block;
+  max-width: 100%;
+  margin-bottom: var(--fw-s1);
+  padding: 2px var(--fw-s2);
+  background: transparent;
+  color: var(--fw-fg-muted);
+  font-family: var(--fw-font-mono);
+  font-size: var(--fw-text-xs);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.tool-file-path:hover { background: var(--fw-bg-raised); color: var(--fw-fg); }
+/* A file name inside a compact read row: it reads as the row's text until
+   the pointer reaches it, so a run of names stays one line of names. */
+.tool-file-link {
+  display: inline;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.tool-file-link:hover { color: var(--fw-fg); text-decoration: underline; }
+.diff-file-action, .diff-file-move { color: var(--fw-fg-muted); font-size: var(--fw-text-xs); }
+.diff-file-action { text-transform: uppercase; }
+.diff-line { display: grid; grid-template-columns: var(--fw-diff-line-number-width) var(--fw-diff-line-number-width) var(--fw-diff-marker-width) max-content; }
+.diff-line-number { color: var(--fw-fg-muted); text-align: right; user-select: none; }
+.diff-marker { color: var(--fw-fg-muted); text-align: center; user-select: none; }
+.diff-partial::after { content: "▏"; color: var(--fw-fg-muted); }
+.tool-error, .tool-advisory, .tool-notice { font-size: var(--fw-text-sm); padding: 2px 0 2px var(--fw-gutter); }
+.tool-error { color: var(--fw-error); }
+.tool-body > .tool-error, .tool-body > .tool-notice { padding-left: 0; }
+.tool-advisory { color: var(--fw-fg-muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+/* Files a mutating command landed with conflict markers, or could not land, stay visible on the row, open or folded. */
+.tool-notice { color: var(--fw-warning); overflow-wrap: anywhere; }
+/* Controls for work still in flight, at the end of the row that owns it. The
+   row's header is the disclosure button plus these; they lie over the tail of
+   the line, so a long command fades under them instead of moving to make room,
+   and the row keeps its one-line height. */
+.tool-head { position: relative; display: flex; min-width: 0; }
+.tool-head > .disclosure { flex: 1 1 auto; }
+.tool-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--fw-s1);
+  padding: 0 var(--fw-s2) 0 var(--fw-s5);
+  background: linear-gradient(to right, transparent, var(--fw-bg) var(--fw-s5));
+}
+.tool-action {
+  padding: 1px var(--fw-s2);
+  background: var(--fw-bg-raised);
+  color: var(--fw-fg);
+  font-size: var(--fw-text-xs);
+  line-height: 1.4;
+  border-radius: var(--fw-radius-sm);
+  white-space: nowrap;
+}
+.tool-action:hover { background: var(--fw-bg-raised-strong); border-color: var(--fw-focus); }
+/* A held command still runs: its note is information in the info color, never
+   the muted color that reads as finished or skipped work. */
+.processor-wait { color: var(--fw-info); font-size: var(--fw-text-xs); white-space: nowrap; }
+
+.diff-openable { cursor: pointer; }
+.diff-openable:hover .diff { background: var(--fw-bg-raised); }
+/* The diff box, not its margin, is the target, so the press tints the box.
+   A swipe back that starts on the box is not a press of it. */
+.client:not(.dragging) .diff-openable:active .diff { background: var(--fw-press); }
+
+.mutation { padding-left: var(--fw-gutter); display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.mutation-omitted { font-size: var(--fw-text-xs); color: var(--fw-fg-muted); padding-left: 27px; }
+
+.omitted {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fw-s2);
+  padding: var(--fw-s1) 0;
+  font-size: var(--fw-text-xs);
+  color: var(--fw-fg-muted);
+}
+.hydrate {
+  background: transparent;
+  color: var(--fw-link);
+  border-color: var(--fw-hairline);
+  padding: 1px var(--fw-s2);
+  font-size: var(--fw-text-xs);
+}
+.hydrate:hover { background: var(--fw-bg-raised); }
+
+/* A resolved question reads like a tool run. Its rows expand nothing, so they
+   take the disclosure layout without the hover surface. */
+.disclosure.static { cursor: default; }
+.disclosure.static:hover { background: transparent; }
+.question-record .tool-title { color: color-mix(in srgb, var(--fw-tool-name) 72%, var(--fw-fg-muted)); }
+.question-record .disclosure { align-items: flex-start; }
+.question-record .chevron { height: 1lh; }
+.question-record-text { min-width: 0; overflow-wrap: anywhere; }
+.question-record-text .tool-detail { white-space: pre-wrap; }
+.tool-detail-error { color: var(--fw-error); }
+
+.group-body { padding-left: var(--fw-gutter); }
+.group-loading { padding: 3px var(--fw-s2); font-size: var(--fw-text-xs); color: var(--fw-fg-muted); }
+/* A workflow card with no plan names, in its place, why the run waits and
+   what the person can do. */
+.group-loading.plan-notice { color: var(--fw-warning); }
+
+.tool-group-summary, .turn-fold { font-weight: 400; color: var(--fw-fg-muted); }
+.tool-group-summary { display: flex; flex-wrap: wrap; align-items: center; gap: var(--fw-s1); }
+.tool-group-failed { color: var(--fw-error); }
+.turn-fold { align-items: flex-start; }
+.turn-fold .chevron { height: 1lh; }
+
+/* Room around what someone reads, rather than between every row. A sequence
+   of tool calls stays a sequence; an answer, a question, and a turn boundary
+   each get space to be a thing of their own. */
+.block.assistant, .block.agent-group-block, .block.question-record, .block.tool-group, .divider { margin: var(--fw-s2) 0; }
+.block.assistant + .block.tool, .block.tool + .block.assistant { margin-top: var(--fw-s2); }
+
+/* The divider owns the space on both of its sides. Neighbouring block margins
+   would stack asymmetrically on top of it, so they yield; last in the sheet
+   because these tie the block-margin rules on specificity and must win by
+   order. */
+.block:has(+ .work-divider), .divider:has(+ .work-divider) { margin-bottom: 0; }
+.work-divider + .block, .work-divider + .divider { margin-top: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .block, .marker-dot.live { animation: none; }
+  .transcript-content { transform: none; transition: none; }
+  .row-meta { transition: none; }
+}

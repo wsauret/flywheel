@@ -1,0 +1,44 @@
+--- a/src/infra/auth/auth-store-mutations.ts
++++ b/src/infra/auth/auth-store-mutations.ts
+@@ -451,7 +451,7 @@
+   }
+ }
+ 
+-/** Replaces a wholly rejected provider entry, never a damaged account collection. */
++/** Replaces one rejected provider during an explicit login while preserving every sibling value. */
+ export async function replaceRejectedProviderCredentials(
+   providerId: CredentialProviderId,
+   replacement: Credential | CredentialCollection,
+@@ -474,7 +474,9 @@
+       }
+       if (!isRecord(raw)) throw new AuthStoreMutationError([fileMalformedCondition(access.authDirectory, revision)]);
+       const decoded = decodeAuthStoreWithDiagnostics(raw, { classifySlot, rejectExcessProperties: true });
+-      if (!decoded.dropped.includes(providerId)) return false;
++      const rejected = decoded.dropped.includes(providerId)
++        || decoded.diagnostics.some((diagnostic) => diagnostic.kind === "invalid_instance" && diagnostic.providerId === providerId);
++      if (!rejected) return false;
+       const encoded = JSON.stringify({ ...raw, [providerId]: persistedLoginReplacement(replacement, classifySlot(providerId)) });
+       if (Buffer.byteLength(encoded) > MAX_AUTH_STORE_BYTES) throw new RangeError(`auth.json exceeds ${MAX_AUTH_STORE_BYTES} bytes`);
+       signal?.throwIfAborted();
+@@ -486,8 +488,8 @@
+   }
+ }
+ 
+-/** Replaces a wholly rejected provider entry, never a damaged account collection.
+- * The receipt retains the original entry for failed catalog settlement. */
++/** Explicit login replaces a malformed provider entry and retains its exact
++ * bytes in a receipt so failed settlement can put that complete entry back. */
+ export async function replaceRejectedProviderCredentialsWithReceipt(
+   providerId: CredentialProviderId,
+   replacement: Credential | CredentialCollection,
+@@ -506,7 +508,9 @@
+       try { raw = JSON.parse(bytes.toString("utf8")); } catch { throw new AuthStoreMutationError([fileMalformedCondition(access.authDirectory, revision)]); }
+       if (!isRecord(raw)) throw new AuthStoreMutationError([fileMalformedCondition(access.authDirectory, revision)]);
+       const decoded = decodeAuthStoreWithDiagnostics(raw, { classifySlot, rejectExcessProperties: true });
+-      if (!decoded.dropped.includes(providerId)) return undefined;
++      const rejected = decoded.dropped.includes(providerId)
++        || decoded.diagnostics.some((diagnostic) => diagnostic.kind === "invalid_instance" && diagnostic.providerId === providerId);
++      if (!rejected) return undefined;
+       const before = raw[providerId];
+       const after = persistedLoginReplacement(replacement, classifySlot(providerId));
+       const encoded = JSON.stringify({ ...raw, [providerId]: after });

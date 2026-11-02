@@ -1,0 +1,58 @@
+/* Usage: the terminal modal's shape in the sheet's grammar. A switch between
+   the three views with the reading's status beside it; one row per account
+   with its reading in the value column; the open account marked at its left
+   edge, its windows as bars beneath. */
+.usage-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fw-s2);
+  flex-wrap: wrap;
+  padding: var(--fw-s1) var(--fw-s2) var(--fw-s2);
+}
+.usage-bar .sheet-segment { max-width: 100%; overflow-x: auto; }
+/* Every account is a choice here, so the picker wraps rather than hiding the chosen one off the edge. */
+.usage-sources .sheet-segment { flex-wrap: wrap; overflow: visible; }
+.usage-status { color: var(--fw-fg-muted); font-size: var(--fw-text-xs); white-space: nowrap; }
+.usage-status.warn { color: var(--fw-warning); }
+.usage-account { border-radius: var(--fw-radius-sm); }
+.usage-account.open { background: var(--fw-list-hover); box-shadow: inset 2px 0 0 var(--fw-accent); }
+/* The reading is the row's point, so it is never cut: the name and its
+   subtitle wrap around it instead. */
+.usage-account > .sheet-row .sheet-row-value { flex: 0 0 auto; max-width: none; color: var(--fw-fg); }
+.usage-account .sheet-row-value .tone-warn, .usage-metric-reading.tone-warn, .usage-summary.tone-warn { color: var(--fw-warning); }
+.usage-account .sheet-row-value .tone-error, .usage-metric-reading.tone-error { color: var(--fw-error); }
+.usage-detail { display: flex; flex-direction: column; padding: 0 var(--fw-s2) var(--fw-s2); }
+.usage-summary { padding: 0 var(--fw-s2) var(--fw-s1); color: var(--fw-fg-muted); font-size: var(--fw-text-xs); }
+.usage-metrics { display: flex; flex-direction: column; gap: var(--fw-s2); padding: var(--fw-s1) var(--fw-s2); }
+.usage-metric { display: flex; flex-direction: column; gap: 2px; font-size: var(--fw-text-sm); }
+.usage-metric-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--fw-s3); }
+.usage-metric-label { font-weight: 500; }
+.usage-metric-reading { color: var(--fw-fg-muted); font-size: var(--fw-text-xs); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.usage-metric .sheet-bar { margin-top: 0; }
+.usage-metric-note { color: var(--fw-fg-muted); font-size: var(--fw-text-xs); }
+.usage-toggle { align-self: flex-start; margin: 0 var(--fw-s1); }
+.usage-reset { display: flex; flex-direction: column; align-items: flex-start; gap: var(--fw-s3); padding: var(--fw-s1) var(--fw-s2); font-size: var(--fw-text-sm); }
+.usage-reset-text { min-width: 0; }
+.usage-reset-list { margin: 0; padding-inline-start: var(--fw-s4); }
+.usage-reset .primary { flex: 0 0 auto; white-space: nowrap; }
+.usage-details { padding: var(--fw-s1) var(--fw-s2); }
+.usage-details summary { cursor: pointer; font-weight: 500; }
+.usage-detail-group { overflow-wrap: anywhere; }
+.usage-details .sheet-row, .usage-detail-group .sheet-section { min-width: 0; overflow-wrap: anywhere; }
+
+/* History: one chart per window. The line is the window filling, the dashed
+   marks are the provider's resets, and the two hairlines are half and full. */
+.usage-charts { display: flex; flex-direction: column; gap: var(--fw-s3); padding: var(--fw-s1) var(--fw-s2); }
+.usage-chart { display: flex; flex-direction: column; gap: 2px; font-size: var(--fw-text-sm); }
+.usage-chart-plot { display: block; width: 100%; height: 56px; overflow: visible; }
+.usage-chart-grid { stroke: var(--fw-hairline); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.usage-chart-reset { stroke: var(--fw-fg-muted); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+.usage-chart-line { fill: none; stroke: var(--fw-accent); stroke-width: 1.5; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.usage-chart-area { fill: var(--fw-accent); opacity: 0.15; }
+.usage-chart-mark { stroke: var(--fw-accent); stroke-width: 3; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.usage-chart.tone-warn .usage-chart-line, .usage-chart.tone-warn .usage-chart-mark { stroke: var(--fw-warning); }
+.usage-chart.tone-warn .usage-chart-area { fill: var(--fw-warning); }
+.usage-chart.tone-error .usage-chart-line, .usage-chart.tone-error .usage-chart-mark { stroke: var(--fw-error); }
+.usage-chart.tone-error .usage-chart-area { fill: var(--fw-error); }
+.usage-chart-axis { display: flex; justify-content: space-between; color: var(--fw-fg-muted); font-size: var(--fw-text-xs); }

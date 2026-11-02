@@ -1,0 +1,12 @@
+{
+  "//": "The Worker compiles against Cloudflare's runtime types and nothing browser-shaped. Strictness comes from the root config because the Worker compiles the repository's protocol modules directly.",
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "../..",
+    "lib": ["ESNext"],
+    "types": ["@cloudflare/workers-types", "bun"]
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"]
+}

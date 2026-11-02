@@ -1,0 +1,31 @@
+# Curated variants, workflow 1 of 2. Each agent of the variants phase
+# drafts one variant of the same request. No agent chooses a variant. When
+# the run completes, the root chat reads the variants, asks the person with
+# ask_user which one to keep, and launches workflow 2 with the selected
+# variant as its input. Launch input:
+# { "variants": [{ "slot": "a", "direction": "plain" }, { "slot": "b", "direction": "playful" }] }
+id: curated-variants
+name: Curated variants
+description: Draft several independent variants of the same request for the person to choose from.
+input:
+  fields:
+    variants:
+      type: list
+      max: 4
+      unique: slot
+      of:
+        type: object
+        fields:
+          slot: { type: string, description: "The slot id, such as a or b." }
+          direction: { type: string }
+phases:
+  - phase: variants
+    over: input.variants
+    label: direction
+    brief: Draft one complete variant of the request, in the direction that your item names. Do not edit files. Put the whole variant in your handoff.
+    output:
+      fields:
+        variant: { type: string, description: The complete variant. }
+        tradeoffs: { type: string }
+  - phase: compare
+    brief: Put the variants side by side. For each one, state its direction, its strongest point, and its tradeoffs. Do not choose one; the person chooses.

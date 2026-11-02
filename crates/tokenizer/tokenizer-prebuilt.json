@@ -1,0 +1,107 @@
+{
+  "version": 2,
+  "toolchain": "nightly-2026-07-28",
+  "target": "wasm32-unknown-unknown",
+  "rustcCommit": "09ee43b2d6055539771bee8ac30a6e56eb4db773",
+  "targetArchive": {
+    "url": "https://static.rust-lang.org/dist/2026-07-28/rust-std-nightly-wasm32-unknown-unknown.tar.xz",
+    "sha256": "b96f9154922368d06628eb2dba683a027e58ea328ff8ff3bbdd6d056780f5bbc"
+  },
+  "upstream": {
+    "revision": "a1b254047d12e143b7c6011536e918c6c35c5906"
+  },
+  "ctok": {
+    "revision": "df3b59b5e645289a5eadc8e24036b99d39c333c4"
+  },
+  "sourceSha256": "71c141bda2afe3be03717004eb0133d2bda5228b86c654e4d7231b6fc1f1baba",
+  "cargo": {
+    "tomlSha256": "2a3f15a3da17992ba80ebe86b7fe5fb350a8dcbee54b0d98faaf121f4b3dc696",
+    "lockSha256": "1794aaa25856e0776d489ef39f3b6973fce39446dda643dd89f356ec1c6e0284"
+  },
+  "vocabularies": {
+    "ctok_v3.bin.zst": "8791577f60f6c5cfd8b9c85c7cd560c6040e2dd25b9fbe5f6feac7e35e9748b1",
+    "ctok_v4_7.bin.zst": "6083d7b803771bc55c537cc3a928d36fcc7104b3c802909e2a73d2bf15f7a458",
+    "o200k_base.bin.zst": "0e259657a96681b696e63490a50afed27a53a671fbed7aa9fd9a22908273414a"
+  },
+  "fixtureInventory": {
+    "corpus": {
+      "rows": 6,
+      "checks": 30,
+      "sha256": "aeeff9e4860bd91ba5fafa50b073201c85db7e6107bcc55853fd6fe86e88d632"
+    },
+    "claude": {
+      "rows": 493,
+      "checks": 1479,
+      "offsets": {
+        "ClaudeV3": 7,
+        "ClaudeV47": 11,
+        "ClaudeV5": 6
+      },
+      "sha256": "35fbb455a23e6f28f06744d4730629eab47cc18abcdcce85917dbc8ddbedca97"
+    },
+    "sonnet": {
+      "rows": 63,
+      "checks": 63,
+      "offset": 6,
+      "sha256": "6ea5dfc68cf1f13d76a732bb42cb18296ec25614fcdc400d3b30c4b7eb29b6b3"
+    },
+    "totalChecks": 1572
+  },
+  "abi": {
+    "imports": [],
+    "exports": [
+      {
+        "name": "memory",
+        "kind": "memory",
+        "type": {
+          "minimum": 49,
+          "shared": false,
+          "address": "i32"
+        }
+      },
+      {
+        "name": "allocate",
+        "kind": "function",
+        "type": {
+          "parameters": [
+            "i32"
+          ],
+          "results": [
+            "i32"
+          ]
+        }
+      },
+      {
+        "name": "count",
+        "kind": "function",
+        "type": {
+          "parameters": [
+            "i32",
+            "i32",
+            "i32"
+          ],
+          "results": [
+            "i32"
+          ]
+        }
+      },
+      {
+        "name": "release",
+        "kind": "function",
+        "type": {
+          "parameters": [
+            "i32",
+            "i32"
+          ],
+          "results": []
+        }
+      }
+    ]
+  },
+  "artifact": {
+    "compressedSha256": "62224149c02be22dee5007066adb6a15162f40b45e144d16ca8ed4d04055bdbc",
+    "compressedBytes": 1231330,
+    "wasmSha256": "b8312401bc245d8777d9032279513c459a0eeda98e181e3df5c330c272005f4f",
+    "wasmBytes": 2266718
+  }
+}

@@ -1,0 +1,257 @@
+{
+  "schemaVersion": 1,
+  "role": "reserved-evaluation",
+  "baseCommit": "660a22b5f26b3dcb8d62c6a75143000d0aa81c4c",
+  "fixCommit": "def651a34848b23ffb4289b7faf5094d870b6e16",
+  "productionFixPaths": [
+    "src/infra/auth/auth-store-mutations.ts"
+  ],
+  "sourceClosure": [
+    {
+      "path": "src/infra/auth/auth-profile-retirements.ts",
+      "sha256": "d526d1f98e308a5455aa0ef513ef849f567f06af7a652cd83c9e20fb1626a0d6",
+      "bytes": 2871
+    },
+    {
+      "path": "src/infra/auth/auth-profile-store.ts",
+      "sha256": "538137fcb0769ecac6ce731bb1b5d443b99381ac032c7a979f7985527478151a",
+      "bytes": 26465
+    },
+    {
+      "path": "src/infra/auth/auth-store-mutations.ts",
+      "sha256": "ab3b61a5915d4527c57fb8c00b059b280a7ddb694c1e3fbff93185fa136a98b0",
+      "bytes": 28929
+    },
+    {
+      "path": "src/infra/auth/auth-store-types.ts",
+      "sha256": "bc45a26bba5f401885450916d8e4d29bfc1a9855b49bd0eb84b6c613a4a1b4ce",
+      "bytes": 4426
+    },
+    {
+      "path": "src/infra/auth/auth-store.ts",
+      "sha256": "feedae4c5e0b823da540bdc3dbfcfe181ba3be9b7287aa9d2ace0f58e638de3e",
+      "bytes": 10215
+    },
+    {
+      "path": "src/infra/auth/credential-comparison.ts",
+      "sha256": "1ba75faacd35bff7faba93f493777fbd96e6ceb6a3539489df706e2226d74047",
+      "bytes": 648
+    },
+    {
+      "path": "src/infra/auth/locked-json-store.ts",
+      "sha256": "f84d950ed011ca46983d446d62d4e7af06fd4b1954c8e3b7a976d6efb5acc15e",
+      "bytes": 6808
+    },
+    {
+      "path": "src/infra/darwin-process-api.ts",
+      "sha256": "ece9843fdaf4c1f8f6a5d0fe0e713700a6c7cdb9008cc661869cc7ccbf540281",
+      "bytes": 15213
+    },
+    {
+      "path": "src/infra/debug-log.ts",
+      "sha256": "ab12c383ace49b35cb5b2761694907fc895c92bed272566f2fe9be70f34a2eca",
+      "bytes": 25744
+    },
+    {
+      "path": "src/infra/descriptor-directory-contract.ts",
+      "sha256": "3a8c236d1cbd37e9b8e4e320bbfcc3bf9c155268bc5050c31723cb02beb3dac5",
+      "bytes": 6291
+    },
+    {
+      "path": "src/infra/descriptor-directory-posix-component.ts",
+      "sha256": "0cd25b0730373a28a0acc57bcbffd265a3c8f41d727256b351b3a45703083345",
+      "bytes": 264
+    },
+    {
+      "path": "src/infra/descriptor-directory-posix.ts",
+      "sha256": "740275668961e49d11442cfce80885d6221984f7692565ebcf29467ab57b26f8",
+      "bytes": 26843
+    },
+    {
+      "path": "src/infra/descriptor-directory-win32-native.ts",
+      "sha256": "226a0ce495859138d5700d549413964d5244bb16359ac765c7f13548b6fcba80",
+      "bytes": 28325
+    },
+    {
+      "path": "src/infra/descriptor-directory-win32-path.ts",
+      "sha256": "7ca851e12058124f567f84c82a4f8eb96a1beb2134707488e2c52fd940f9d43c",
+      "bytes": 6144
+    },
+    {
+      "path": "src/infra/descriptor-directory-win32.ts",
+      "sha256": "21f3bce74232ce489b4377958be7a26915d9635ebe97541c2c01e76c2b97045c",
+      "bytes": 24910
+    },
+    {
+      "path": "src/infra/descriptor-directory.ts",
+      "sha256": "03e84a938249378d947f123e8612af7d60f5e0975e7cd1ed39b22cb73810f9a9",
+      "bytes": 7012
+    },
+    {
+      "path": "src/infra/diagnostics-registry.ts",
+      "sha256": "4c28b64871538e83e5e99a58ab2659e19ccc66fbcc36cf83407e7a2e7e9d8005",
+      "bytes": 4529
+    },
+    {
+      "path": "src/infra/directory-authorities.ts",
+      "sha256": "a3169ab55c90a148e511090436db3575962444ce09d08a5782a8e3e590a7d95d",
+      "bytes": 10853
+    },
+    {
+      "path": "src/infra/error-message.ts",
+      "sha256": "334675efada1843953a11b614d50a2138e2c88397d573e1a57a99fd94b610bbd",
+      "bytes": 2677
+    },
+    {
+      "path": "src/infra/kernel-api-open.ts",
+      "sha256": "b4c3c8cba4021853506371a22bf3dc89715c7a387661ff3ecabafc7849926da2",
+      "bytes": 1567
+    },
+    {
+      "path": "src/infra/libc.ts",
+      "sha256": "c1b0c19df7ccc12e600a8c2f2b834129c56d5018ad5370fe2e65b64557202013",
+      "bytes": 3829
+    },
+    {
+      "path": "src/infra/literal-schema.ts",
+      "sha256": "d6ec5ea2cc5818c68da45d644a8c057b72d7c35762f68f8dcc6dc20579fd5ecf",
+      "bytes": 264
+    },
+    {
+      "path": "src/infra/log.ts",
+      "sha256": "d8d0abe39b56bce6d287df00ef120545dab29f3246a304ec4a69e3fd7b52532f",
+      "bytes": 7495
+    },
+    {
+      "path": "src/infra/native-assets.ts",
+      "sha256": "b6c6766238e57bf4f9d95b78b10dbc8f79bc9efb6c8fbf03e642ea961e322b08",
+      "bytes": 1948
+    },
+    {
+      "path": "src/infra/open-at.ts",
+      "sha256": "7ee681bdc1b16d80c97779e894ffdaba0fe45fdb1b29e7b8205683479e7a4cc8",
+      "bytes": 2352
+    },
+    {
+      "path": "src/infra/ownership-file-lock.ts",
+      "sha256": "5529a50a008575c20d09bf671b2724bdf86ba0da2a72f0dfd67e5ea35ed81d89",
+      "bytes": 30753
+    },
+    {
+      "path": "src/infra/paths.ts",
+      "sha256": "5db7a96d9accbd94287ea9cb5ac63f671f39a84b6325c62d2f47d420f817394f",
+      "bytes": 16236
+    },
+    {
+      "path": "src/infra/private-path.ts",
+      "sha256": "7ef74d874a190180d957e65843b2048a18424553918ee487cdf9c167fac7a99b",
+      "bytes": 7355
+    },
+    {
+      "path": "src/infra/process-container.ts",
+      "sha256": "2f77c048e78d6bb63cb41eefea67c8b3f54e96d1d4bf54bb4bdbed9d73c9248c",
+      "bytes": 49086
+    },
+    {
+      "path": "src/infra/process-diagnostic-reader.ts",
+      "sha256": "ecf4054259e64587b10df8b50686775409eefb807decebbccd37870313b6b62e",
+      "bytes": 4716
+    },
+    {
+      "path": "src/infra/process-holder.ts",
+      "sha256": "0d9493a98c98c397d4d92031e40f6e55adb6422cfc4d871c998d3f61bd7715f2",
+      "bytes": 10253
+    },
+    {
+      "path": "src/infra/process-liveness.ts",
+      "sha256": "e3280bc7ca6fcec8c8152fc760fd065e13a71601492511e2a235ff455ae22a07",
+      "bytes": 1297
+    },
+    {
+      "path": "src/infra/read-dir-at.ts",
+      "sha256": "aea5b8c9d87f74753300761756af6b3890ed9816c432ec05b898ca73689fe72b",
+      "bytes": 5458
+    },
+    {
+      "path": "src/infra/record.ts",
+      "sha256": "a89bf855ea16d685a45fe1da2a547c861988bc8519a9134397fb4707e77af713",
+      "bytes": 352
+    },
+    {
+      "path": "src/infra/redact-secrets.ts",
+      "sha256": "48bb4f60fc8675fbcdedd5841504267f53496ef9c879973de1d904990fb5c7a2",
+      "bytes": 3997
+    },
+    {
+      "path": "src/infra/windows-file-replacement.ts",
+      "sha256": "31c07668b1fa2dff46de73f53b4548f97b5daa2bbcf046ad492299999bf76296",
+      "bytes": 5640
+    },
+    {
+      "path": "src/infra/windows-private-directory-acl.ts",
+      "sha256": "f3d21c4b3bffb8d6e675ad5b33b6432b2c4a3ca0dc93922a163fc5812a14142a",
+      "bytes": 8052
+    },
+    {
+      "path": "src/infra/windows-process-api.ts",
+      "sha256": "7f35b7e639d323d4f22a8c732f83d8c2ec719e3104d83b6c89e6409008cfdc26",
+      "bytes": 16065
+    },
+    {
+      "path": "src/infra/with-deadline.ts",
+      "sha256": "26678b4841102142acb0a579fd8b1f580a07fa3620991638c767ec1688967c06",
+      "bytes": 2761
+    },
+    {
+      "path": "src/infra/write-file-under.ts",
+      "sha256": "b413b72849d814552425a85f8595d9e1a61b43d462aaedf2543b27de9017c578",
+      "bytes": 5867
+    }
+  ],
+  "dependency": {
+    "name": "effect",
+    "version": "4.0.0-beta.84",
+    "setup": [
+      "bun",
+      "install",
+      "--frozen-lockfile"
+    ],
+    "lockSha256": "3e55f35da475b1e8fa0bdadc18ab5304c7597bf51ce9e7e4b8b5b3a04851ed94"
+  },
+  "acceptanceProvenance": {
+    "adaptedFrom": "bench/chat-ab/tasks/auth-sibling-lost/acceptance/auth-sibling-lost.test.ts",
+    "sourceSha256": "265ff4807c8ff917e4c0f00579ef2b390d7bc2058d1ad517a5ab6a721b248093",
+    "adaptation": "Uses the original mutation APIs directly instead of loginWithApiKey. Extends sibling preservation and wholly rejected repair to both variants, exact no-change values, file bytes, receipt entries, and healthy-provider non-rewrite. Uses real temporary auth.json files and the historical string credential serialization boundary; no auth mocks."
+  },
+  "controls": {
+    "reference": "Exact git diff from baseCommit to fixCommit, restricted to productionFixPaths.",
+    "original-bug": "Reverse of that exact one-file change after reference.",
+    "alternative": "Changes the decision to raw-versus-decoded provider presence.",
+    "wholly-rejected-regression": "Adds an overbroad safety guard that refuses repair whenever any provider entry was dropped."
+  },
+  "scopeLimits": [
+    "Mutation API contract only, not full login or provider authentication.",
+    "Native fixed Bun environment; no cross-platform runtime claim.",
+    "Synthetic credentials in cleaned temporary account directories only.",
+    "Tests are frozen acceptance; no custom judge or framework changes."
+  ],
+  "knownPriorInspection": [
+    "The original source and shipped fix have prior human and model inspection.",
+    "The older related chat-ab auth-sibling-lost task has prior human and model inspection.",
+    "The parent inspected and probed both original and fixed APIs before this task was built."
+  ],
+  "reservationMeaning": "Never used for prompt tuning in this new corpus. This is not proof of unseen data or public-training exclusion.",
+  "candidateBoundary": "Commit-backed archive includes only the pinned 40-path production closure and sandbox package setup. Answer patches and provenance stay outside the candidate archive.",
+  "boundaryCorrection": {
+    "originalProposal": "Pass Redacted.make synthetic credentials as in the parent probe.",
+    "evidence": "The pinned CredentialSchema.key is Schema.String. A fresh frozen-install probe passed Redacted.make and wrote the literal <redacted> instead of the supplied synthetic key, causing extra failures in both repair controls.",
+    "decision": "The parent approved synthetic string inputs at the historical boundary. No historical schema or reference fix changes.",
+    "currentRuntimeLimits": "This fixture replays the historical serialization boundary and does not change current runtime secret rules."
+  },
+  "environment": {
+    "runtime": "bun",
+    "version": "1.4.0",
+    "platform": "darwin",
+    "arch": "arm64"
+  }
+}

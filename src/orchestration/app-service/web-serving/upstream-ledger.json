@@ -1,0 +1,168 @@
+{
+  "upstream": {
+    "repository": "https://github.com/openclaw/openclaw",
+    "revision": "d694fe8c09ffa672ed1d144210730fc8dfd9f18e"
+  },
+  "copies": [
+    {
+      "source": "inspiration/openclaw/ui/src/app/settings.ts",
+      "target": "webview/local/token.ts",
+      "startMarker": "function loadSessionToken(gatewayUrl: string): string {",
+      "endMarker": "// Fresh storage always wins unless a write failed.",
+      "sourceSha256": "8802f137e3902d0ed4ec3f157a91f393532105be7a4cd5efcafa1c1bd35a9aee",
+      "substitutions": [
+        {
+          "from": "gatewayUrl",
+          "to": "origin"
+        },
+        {
+          "from": "openclaw.control.token.v1:",
+          "to": "flywheel.local.token.v1:"
+        }
+      ]
+    },
+    {
+      "source": "inspiration/openclaw/ui/src/app/startup-settings.ts",
+      "target": "webview/local/token.ts",
+      "startMarker": "const hashToken = hashParams.get(\"token\");",
+      "endMarker": "    url.hash = nextHash ? `#${nextHash}` : \"\";",
+      "sourceSha256": "140a0c5aae53fa2243a40651725d3ccfe6d95e55eabdbf1ec384d9f89c392892",
+      "substitutions": [
+        {
+          "from": "settings.token",
+          "to": "stored token"
+        }
+      ]
+    },
+    {
+      "source": "inspiration/openclaw/src/gateway/startup-auth.ts",
+      "target": "src/orchestration/app-service/web-serving/token-auth.ts",
+      "startMarker": "const generatedToken = crypto.randomBytes(24).toString(\"hex\");",
+      "endMarker": "const nextCfg: OpenClawConfig = {",
+      "sourceSha256": "ac354a1943329ff0595c865381aa8887c89e3f2d595aca2717aa1205f03c621a",
+      "substitutions": [
+        {
+          "from": "generatedToken",
+          "to": "generateToken"
+        }
+      ]
+    },
+    {
+      "source": "inspiration/openclaw/src/gateway/auth.ts",
+      "target": "src/orchestration/app-service/web-serving/token-auth.ts",
+      "startMarker": "async function authorizeSharedSecretAuth(params: {",
+      "endMarker": "function rejectIfRateLimited(params: {",
+      "sourceSha256": "2c6e0896b94ecee7961cd56bbcb3376432f8e0cd23d546184f1644c69ae7f38f",
+      "substitutions": [
+        {
+          "from": "authorizeSharedSecretAuth",
+          "to": "authorizeToken"
+        }
+      ]
+    },
+    {
+      "source": "inspiration/openclaw/src/security/secret-equal.ts",
+      "target": "src/orchestration/app-service/web-serving/token-auth.ts",
+      "startMarker": "function padSecretBytes(bytes: Buffer, length: number): Buffer {",
+      "endMarker": "}",
+      "sourceSha256": "6f0c4b9d4e8a7484bf344e4f2d89d769f412e86af5c5df02e0c860f2caf43df8",
+      "substitutions": [
+        {
+          "from": "safeEqualSecret",
+          "to": "authorizeToken"
+        }
+      ]
+    },
+    {
+      "source": "inspiration/openclaw/src/gateway/control-ui-csp.ts",
+      "target": "src/orchestration/app-service/web-serving/control-ui-csp.ts",
+      "startMarker": "export function buildControlUiCspHeader(",
+      "endMarker": "  ].join(\"; \");",
+      "sourceSha256": "689a1d9cfbfa9d7e9132336eca6fa93d056564cbab2f0e517ccb70db0df21799",
+      "substitutions": [
+        {
+          "from": "inline script hashes, portal and WASM relaxations, and third-party font, image, and frame hosts",
+          "to": "removed: the page is one bundled script and stylesheet from the served origin"
+        }
+      ]
+    },
+    {
+      "source": "inspiration/openclaw/src/gateway/control-ui-http-utils.ts",
+      "target": "src/orchestration/app-service/web-serving/control-ui-http-utils.ts",
+      "startMarker": "export function isReadHttpMethod(method: string | undefined): boolean {",
+      "endMarker": "export function respondNotFound(res: ServerResponse): void {",
+      "sourceSha256": "f7b9914386e12dd3580821049b03fbcd8bfb43431abaeee66de95dc794858d00",
+      "substitutions": [
+        {
+          "from": "ServerResponse",
+          "to": "Response"
+        }
+      ]
+    },
+    {
+      "source": "inspiration/openclaw/src/gateway/control-ui-routing.ts",
+      "target": "src/orchestration/app-service/web-serving/control-ui-routing.ts",
+      "startMarker": "/** Classify an HTTP request as Control UI serving, redirect, 404, or non-Control-UI. */",
+      "endMarker": "  return { kind: \"serve\", spaFallback };",
+      "sourceSha256": "24de1993ce5a64d37d5779c8cb4460d3a12e936c15bdc4510910f236683ea219",
+      "substitutions": [
+        {
+          "from": "configurable base path and excluded routes",
+          "to": "fixed root mount"
+        }
+      ]
+    },
+    {
+      "source": "inspiration/openclaw/src/gateway/control-ui-static.ts",
+      "target": "src/orchestration/app-service/web-serving/control-ui-static.ts",
+      "startMarker": "const CONTROL_UI_IMMUTABLE_CACHE_CONTROL = \"public, max-age=31536000, immutable\";",
+      "endMarker": "export function respondHeadForControlUiFile(",
+      "sourceSha256": "115cc4b3188f996ea6e97c9aab8fd79a95448075f9635e5ab41742c13c515246",
+      "substitutions": [
+        {
+          "from": "ServerResponse and compression negotiation",
+          "to": "Bun Response without compression"
+        }
+      ]
+    },
+    {
+      "source": "inspiration/openclaw/src/gateway/control-ui-csp.ts",
+      "target": "src/orchestration/app-service/web-serving/control-ui-csp.ts",
+      "startMarker": "export function applyControlUiSecurityHeaders(",
+      "endMarker": "\"camera=(self), microphone=*, geolocation=*, clipboard-write=*\",",
+      "sourceSha256": "ce2f71ae8054ddede273680309f6b3e4f0615d3eb1c233f88075e072094e7c72",
+      "substitutions": [
+        {
+          "from": "Gateway security headers on ServerResponse",
+          "to": "repository static response headers"
+        }
+      ]
+    },
+    {
+      "source": "inspiration/openclaw/src/gateway/control-ui.ts",
+      "target": "src/orchestration/app-service/web-serving/control-ui-static.ts",
+      "startMarker": "function sendJson(res: ServerResponse, status: number, body: unknown) {",
+      "endMarker": "function isValidAgentPathSegment(agentId: string): boolean {",
+      "sourceSha256": "29519e591b9386d34f1242361bf013d841afee64b62f33a8bc47e37e6a7f2c9b",
+      "substitutions": [
+        {
+          "from": "Gateway unavailable responses",
+          "to": "repository static responses"
+        }
+      ]
+    },
+    {
+      "source": "inspiration/openclaw/src/gateway/control-ui.ts",
+      "target": "src/orchestration/app-service/web-serving/control-ui-static.ts",
+      "startMarker": "function isExpectedSafePathError(error: unknown): boolean {",
+      "endMarker": "async function prepareControlUiBootstrapConfig(",
+      "sourceSha256": "789a6a309e4f0636c6453cb328fb5ddb54627b3bccf828f0601da1839a0f1edd",
+      "substitutions": [
+        {
+          "from": "filesystem descriptor guards",
+          "to": "lexical and canonical repository-root guards"
+        }
+      ]
+    }
+  ]
+}

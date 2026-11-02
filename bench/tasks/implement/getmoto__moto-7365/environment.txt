@@ -1,0 +1,2 @@
+The current workspace contains the application source.
+Use the private Python runtime at .bench-home/venv/bin/python.

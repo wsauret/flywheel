@@ -1,0 +1,267 @@
+diff --git a/billing.ts b/billing.ts
+index e164d2a99..fbe5bb848 100644
+--- a/billing.ts
++++ b/billing.ts
+@@ -1,5 +1,6 @@
+ import type { Ledger } from "./ledger.ts";
+-import type { ChargeRequest, LedgerEntry, TotalBreakdown } from "./types.ts";
++import { minorUnitsPerMajor } from "./rates.ts";
++import type { ChargeRequest, LedgerEntry, PromoCode, RateProvider, TotalBreakdown } from "./types.ts";
+ 
+ const PROCESSING_FEE_RATE = 0.029;
+ const TAX_RATE = 0.0875;
+@@ -18,39 +19,93 @@ export function subtotalOf(request: ChargeRequest): number {
+   return subtotal;
+ }
+ 
+-export function computeTotal(subtotalCents: number): TotalBreakdown {
++/** Compute the customer-facing breakdown: discount, tax, and total. */
++export function computeTotal(subtotalCents: number, promo?: PromoCode): TotalBreakdown {
++  if (!promo) {
++    const taxCents = Math.round(subtotalCents * TAX_RATE);
++    return { subtotalCents, discountCents: 0, taxCents, totalCents: subtotalCents + taxCents };
++  }
++  if (promo.kind === "percent") {
++    const discountCents = Math.round(subtotalCents * (promo.value / 100));
++    const discounted = subtotalCents - discountCents;
++    const taxCents = Math.round(discounted * TAX_RATE);
++    return { subtotalCents, discountCents, taxCents, totalCents: discounted + taxCents };
++  }
+   const taxCents = Math.round(subtotalCents * TAX_RATE);
+-  return { subtotalCents, taxCents, totalCents: subtotalCents + taxCents };
++  const discountCents = Math.min(promo.value, subtotalCents);
++  return { subtotalCents, discountCents, taxCents, totalCents: subtotalCents + taxCents - discountCents };
++}
++
++/** Derive a key that is stable across client retries of the same purchase, so
++ *  a network timeout followed by a resend does not double-charge. The day
++ *  bucket keeps the key space from growing without bound. */
++export function idempotencyKeyFor(request: ChargeRequest, postedAt: number): string {
++  const day = Math.floor(postedAt / 86_400_000);
++  const subtotal = subtotalOf(request);
++  return `${request.customerId}:${request.currency}:${subtotal}:${day}`;
+ }
+ 
+ export class BillingService {
+   constructor(
+     private readonly ledger: Ledger,
++    private readonly rates: RateProvider,
+     private readonly clock: () => number = Date.now,
+   ) {}
+ 
++  /** Charge the customer and post a settlement-currency ledger entry.
++   *  Replays of an already-processed request return the original entry. */
+   charge(request: ChargeRequest): LedgerEntry {
+-    const breakdown = computeTotal(subtotalOf(request));
++    const postedAt = this.clock();
++    const idempotencyKey = idempotencyKeyFor(request, postedAt);
++    const existing = this.ledger.findByIdempotencyKey(idempotencyKey);
++    if (existing) return existing;
++
++    const breakdown = computeTotal(subtotalOf(request), request.promo);
+     const grossCents = applyProcessingFee(breakdown.totalCents);
++    const fxRate = this.rates.current(request.currency);
++    const settledCents = this.settle(grossCents, request.currency, fxRate);
++
+     return this.ledger.append({
+       customerId: request.customerId,
+       kind: "charge",
++      currency: request.currency,
+       grossCents,
+-      postedAt: this.clock(),
++      settledCents,
++      fxRate,
++      postedAt,
++      idempotencyKey,
+     });
+   }
+ 
++  /** Reverse a charge in full. The customer gets back everything they paid,
++   *  including the processing fee we passed through. */
+   refund(chargeId: string): LedgerEntry {
+     const charge = this.ledger.findById(chargeId);
+     if (!charge || charge.kind !== "charge") {
+       throw new Error(`No charge found for ${chargeId}`);
+     }
++    const postedAt = this.clock();
++    const grossCents = applyProcessingFee(charge.grossCents);
++    const fxRate = this.rates.current(charge.currency);
++    const settledCents = this.settle(grossCents, charge.currency, fxRate);
++
+     return this.ledger.append({
+       customerId: charge.customerId,
+       kind: "refund",
+-      grossCents: -charge.grossCents,
+-      postedAt: this.clock(),
++      currency: charge.currency,
++      grossCents: -grossCents,
++      settledCents: -settledCents,
++      fxRate,
++      postedAt,
++      idempotencyKey: `refund:${charge.id}`,
+       relatedEntryId: charge.id,
+     });
+   }
++
++  /** Convert a customer-currency amount into USD settlement minor units.
++   *  JPY amounts are whole yen, so the minor-unit scale differs. */
++  private settle(grossCents: number, currency: LedgerEntry["currency"], fxRate: number): number {
++    const major = grossCents / minorUnitsPerMajor(currency);
++    return Math.round(major * fxRate * 100);
++  }
+ }
+diff --git a/ledger.ts b/ledger.ts
+index 08971a121..911ee46d8 100644
+--- a/ledger.ts
++++ b/ledger.ts
+@@ -4,14 +4,20 @@ import type { LedgerEntry } from "./types.ts";
+  *  post compensating entries instead of editing history. */
+ export class Ledger {
+   private readonly entries: LedgerEntry[] = [];
++  private readonly byKey = new Map<string, LedgerEntry>();
+   private sequence = 0;
+ 
+   append(entry: Omit<LedgerEntry, "id">): LedgerEntry {
+     const posted: LedgerEntry = { ...entry, id: `led_${++this.sequence}` };
+     this.entries.push(posted);
++    this.byKey.set(posted.idempotencyKey, posted);
+     return posted;
+   }
+ 
++  findByIdempotencyKey(key: string): LedgerEntry | undefined {
++    return this.byKey.get(key);
++  }
++
+   findById(id: string): LedgerEntry | undefined {
+     return this.entries.find((entry) => entry.id === id);
+   }
+diff --git a/rates.ts b/rates.ts
+new file mode 100644
+index 000000000..73fcddbc2
+--- /dev/null
++++ b/rates.ts
+@@ -0,0 +1,27 @@
++import type { Currency, RateProvider } from "./types.ts";
++
++/** In-memory rate table refreshed by a market-data poller elsewhere in the
++ *  service. Rates drift over the life of the process. */
++export class RateTable implements RateProvider {
++  private readonly rates = new Map<Currency, number>([["USD", 1]]);
++
++  update(currency: Currency, rate: number): void {
++    if (!Number.isFinite(rate) || rate <= 0) {
++      throw new Error(`Rejected non-positive rate ${rate} for ${currency}`);
++    }
++    this.rates.set(currency, rate);
++  }
++
++  current(currency: Currency): number {
++    const rate = this.rates.get(currency);
++    if (rate === undefined) {
++      throw new Error(`No rate loaded for ${currency}`);
++    }
++    return rate;
++  }
++}
++
++/** JPY has no minor unit; every other currency we support uses cents. */
++export function minorUnitsPerMajor(currency: Currency): number {
++  return currency === "JPY" ? 1 : 100;
++}
+diff --git a/reconcile.ts b/reconcile.ts
+new file mode 100644
+index 000000000..44c09a518
+--- /dev/null
++++ b/reconcile.ts
+@@ -0,0 +1,29 @@
++import type { Discrepancy, LedgerEntry } from "./types.ts";
++
++/** Total a customer statement in dollars for display and reconciliation.
++ *  Charges count positive, refunds carry their stored negative sign. */
++export function statementTotalDollars(entries: readonly LedgerEntry[]): number {
++  let total = 0;
++  for (const entry of entries) {
++    total += entry.settledCents / 100;
++  }
++  return total;
++}
++
++/** Compare our computed statement total against the processor's reported
++ *  balance. Any mismatch is escalated to the finance on-call, so this check
++ *  must never fire spuriously. */
++export function reconcile(entries: readonly LedgerEntry[], processorBalanceCents: number): Discrepancy | null {
++  const computedDollars = statementTotalDollars(entries);
++  if (computedDollars !== processorBalanceCents / 100) {
++    return { expectedCents: processorBalanceCents, computedDollars };
++  }
++  return null;
++}
++
++/** Human-readable statement line, e.g. "led_12  charge  -$10.40". */
++export function formatStatementLine(entry: LedgerEntry): string {
++  const dollars = Math.abs(entry.settledCents) / 100;
++  const sign = entry.settledCents < 0 ? "-" : "";
++  return `${entry.id}  ${entry.kind}  ${sign}$${dollars.toFixed(2)}`;
++}
+diff --git a/types.ts b/types.ts
+index 617abe08e..5ffaacb5f 100644
+--- a/types.ts
++++ b/types.ts
+@@ -1,17 +1,29 @@
++export type Currency = "USD" | "EUR" | "GBP" | "JPY";
++
+ export interface LineItem {
+   sku: string;
+   unitCents: number;
+   quantity: number;
+ }
+ 
++export interface PromoCode {
++  code: string;
++  /** "percent" discounts take value as 0-100; "fixed" discounts take value as cents. */
++  kind: "percent" | "fixed";
++  value: number;
++}
++
+ export interface ChargeRequest {
+   requestId: string;
+   customerId: string;
++  currency: Currency;
+   lineItems: readonly LineItem[];
++  promo?: PromoCode;
+ }
+ 
+ export interface TotalBreakdown {
+   subtotalCents: number;
++  discountCents: number;
+   taxCents: number;
+   totalCents: number;
+ }
+@@ -20,8 +32,26 @@ export interface LedgerEntry {
+   id: string;
+   customerId: string;
+   kind: "charge" | "refund";
+-  /** Amount in USD minor units, processing fee included. */
++  /** Currency the customer was billed in. */
++  currency: Currency;
++  /** Customer-facing amount in minor units of `currency`, processing fee included. */
+   grossCents: number;
++  /** Settlement amount in USD minor units, converted at `fxRate`. */
++  settledCents: number;
++  /** Exchange rate from `currency` to USD captured when the entry posted. */
++  fxRate: number;
+   postedAt: number;
++  idempotencyKey: string;
++  /** For refunds, the id of the charge being reversed. */
+   relatedEntryId?: string;
+ }
++
++export interface RateProvider {
++  /** Current market rate from `currency` to USD. */
++  current(currency: Currency): number;
++}
++
++export interface Discrepancy {
++  expectedCents: number;
++  computedDollars: number;
++}

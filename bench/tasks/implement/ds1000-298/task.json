@@ -1,0 +1,15 @@
+{
+  "kind": "native",
+  "id": "ds1000-298",
+  "stratum": "easy",
+  "family": "ds1000",
+  "split": "development",
+  "instruction": "original/prompt.txt.gz",
+  "environment": "environment.txt",
+  "timeoutMinutes": 25,
+  "native": {
+    "path": [".bench-home/python/bin"],
+    "command": ["bun", "adapter.ts"],
+    "timeoutMs": 900000
+  }
+}

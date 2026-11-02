@@ -1,0 +1,363 @@
+{
+  "date": "2026-10-12",
+  "model": "gpt-6.1-sol",
+  "effort": "high",
+  "accessProvider": "chatgpt",
+  "candidateTimeoutMs": 1500000,
+  "terminal": {
+    "kind": "timed-out",
+    "timeoutMs": 1500000
+  },
+  "durationMs": 1500016,
+  "completedRuns": 0,
+  "attempts": 1,
+  "capturedCode": {
+    "accepted": true,
+    "pytestExitCode": 0,
+    "reward": "1",
+    "programs": [
+      {
+        "id": "/tests/shadow_test/01-factorial.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/02-fibonacci.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/03-list-operations.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/04-higher-order.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/05-simple-io.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/06-interactive-io.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/08-progn-sequencing.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/09-mutual-recursion.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/10-advanced-features.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/accumulator_patterns.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/binary_tree.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/church_numerals.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/closures.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/continuation_passing.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/currying.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/filter_operations.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/fold_operations.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/function_composition.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/lazy_evaluation.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/list_operations.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/map_operations.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/memoization.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/mutual_recursion.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/nested_defines.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/oeis_sequences.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/oeis_sequences2.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/oeis_sequences3.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/recursive_structures.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/test_read.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/variadic_functions.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/shadow_test/y_combinator.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/01-factorial.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/02-fibonacci.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/03-list-operations.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/04-higher-order.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/05-simple-io.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/06-interactive-io.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/08-progn-sequencing.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/09-mutual-recursion.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/10-advanced-features.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/accumulator_patterns.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/binary_tree.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/calculator.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/church_numerals.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/closures.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/continuation_passing.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/currying.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/filter_operations.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/fold_operations.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/function_composition.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/lazy_evaluation.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/list_operations.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/map_operations.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/memoization.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/mutual_recursion.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/nested_defines.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/oeis_sequences.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/oeis_sequences2.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/oeis_sequences3.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/recursive_structures.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/test_read.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/variadic_functions.scm",
+        "status": "PASSED"
+      },
+      {
+        "id": "/tests/test/y_combinator.scm",
+        "status": "PASSED"
+      }
+    ],
+    "metacircular": [
+      {
+        "program": "05-simple-io.scm",
+        "timeoutSeconds": 60,
+        "returncode": 0,
+        "timedOut": false,
+        "stdoutSha256": "d4070121d21f971b30e2747de515c32b0635d96d21b6b6699cd4fe0e9837ec9d"
+      },
+      {
+        "program": "closures.scm",
+        "timeoutSeconds": 60,
+        "returncode": 0,
+        "timedOut": false,
+        "stdoutSha256": "6bdd371115f2180aa0d8721cc886379223ca4d60535a002fdb9e74708c66ff68"
+      },
+      {
+        "program": "05-simple-io.scm",
+        "timeoutSeconds": 60,
+        "returncode": 0,
+        "timedOut": false,
+        "stdoutSha256": "0f6e13aba0f4d9b3704405ef16b83896892fa4f8b91afa5996dbb6f90ab5e8cb"
+      },
+      {
+        "program": "calculator.scm",
+        "timeoutSeconds": 60,
+        "returncode": 0,
+        "timedOut": false,
+        "stdoutSha256": "e5af7e22932e2ebf2c6967782ae8137e3ebbc4dd1f14199766edc00de3b20e5b"
+      },
+      {
+        "program": "closures.scm",
+        "timeoutSeconds": 60,
+        "returncode": 0,
+        "timedOut": false,
+        "stdoutSha256": "e61c39056e499b4d6f29b6dc974d49d87606291041646be88b568bcfeb0db3c2"
+      }
+    ],
+    "interpreterRestored": true,
+    "testsRestored": true,
+    "sourceSha256": "9b3d8446ed771f09c11edb33b03c7d09871e40ca4cd158ad4cb0ebb6224f6cd7"
+  },
+  "accounting": {
+    "estimatedUsd": {
+      "kind": "unavailable",
+      "reason": "indexed requests lack canonical measurements; unknown values are not zero"
+    },
+    "billedUsd": {
+      "kind": "unavailable",
+      "reason": "indexed requests lack canonical measurements; unknown values are not zero"
+    },
+    "tokens": {
+      "kind": "unavailable",
+      "reason": "indexed requests lack canonical measurements; unknown values are not zero"
+    },
+    "providers": {
+      "kind": "unavailable",
+      "reason": "indexed requests lack canonical measurements; unknown values are not zero"
+    },
+    "pricedEntryCount": 30,
+    "unpricedEntryCount": 0
+  },
+  "knownSubtotal": {
+    "estimatedUsd": {
+      "kind": "observed",
+      "value": 0.6164364000000001
+    },
+    "billedUsd": {
+      "kind": "observed",
+      "value": 0
+    },
+    "tokens": {
+      "kind": "observed",
+      "value": 1517484
+    },
+    "providers": {
+      "kind": "observed",
+      "value": [
+        "chatgpt"
+      ]
+    },
+    "pricedEntryCount": 30,
+    "unpricedEntryCount": 0
+  },
+  "missingCanonicalMeasurementCount": 1,
+  "caveat": "Historical timed-out attempt with passing captured code, not a completed pass. Full-run accounting is unavailable; known committed-entry subtotal is not a full-run zero bill.",
+  "sourceHashes": {
+    "scheme-metacircular-0-result.json": "8c9c2f03b7ab7ebb8dd09f2443e59874dca636172d0394ed825c66a3a71c5937",
+    "scheme-metacircular-0-grade.json": "c5b9fdb92123115fa40a2f9ab577ef6bd5b8a29509cc76e3e1adac5842cedafb",
+    "scheme-metacircular-0-recovered-canonical-usage.json": "d6e53e860127ac6c9dfc26cf482642c508463d39f999bc4f34e28d4d5fe6f83a",
+    "scheme-metacircular-0-model.patch": "fc14bf44a108c59534c2d970160eea2f03cfd03256fff5916f330236be9ad153"
+  }
+}

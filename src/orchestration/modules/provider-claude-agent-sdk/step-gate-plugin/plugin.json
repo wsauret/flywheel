@@ -1,0 +1,1 @@
+{ "name": "step-gate", "version": "1.0.0", "description": "Sends a model request only when the host admitted it" }

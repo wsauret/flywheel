@@ -1,0 +1,23 @@
+.workspace-panel {
+  flex: 0 0 var(--fw-workspace-width);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-left: 1px solid var(--fw-hairline);
+  background: var(--fw-bg);
+}
+
+/* The panel's header is a column of the toolbar's chrome, so its hairline
+   falls on the toolbar's line. */
+.workspace-panel .sheet-header { padding-block: var(--fw-s2); }
+
+/* Measuring the token expression also respects a host's font size and column width. */
+.workspace-fit {
+  position: absolute;
+  width: calc(var(--fw-measure-min) + var(--fw-pane-inset) * 2 + var(--fw-workspace-width) + 1px);
+  height: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+

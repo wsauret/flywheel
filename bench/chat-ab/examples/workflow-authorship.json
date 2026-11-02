@@ -1,0 +1,32 @@
+{
+  "name": "workflow-authorship-pilot",
+  "tasks": [
+    "debug-mutable-default",
+    "config-lock-first-write",
+    "cut-tool-args"
+  ],
+  "repeats": 3,
+  "model": "claude-sonnet-5-5",
+  "effort": "medium",
+  "roles": {
+    "workflow-agent": {
+      "model": "claude-sonnet-5-5",
+      "effort": "medium"
+    }
+  },
+  "treatments": {
+    "authored": {
+      "revision": "HEAD",
+      "patches": [
+        "bench/chat-ab/workflow-authorship/patches/no-learning-review.patch"
+      ]
+    },
+    "handcrafted": {
+      "revision": "HEAD",
+      "patches": [
+        "bench/chat-ab/workflow-authorship/patches/handcrafted.patch",
+        "bench/chat-ab/workflow-authorship/patches/no-learning-review.patch"
+      ]
+    }
+  }
+}

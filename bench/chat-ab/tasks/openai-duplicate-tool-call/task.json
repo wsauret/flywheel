@@ -1,0 +1,42 @@
+{
+  "id": "openai-duplicate-tool-call",
+  "stratum": "production-history",
+  "timeoutMinutes": 45,
+  "sandbox": {
+    "commit": "e67ebae9d014895afadf4e539ce77aec9c374240",
+    "paths": [
+      "src",
+      "tests",
+      "docs",
+      "scripts",
+      "package.json",
+      "bun.lock",
+      "tsconfig.json",
+      "tsconfig.tests.json",
+      "oxlint.config.ts",
+      "knip.jsonc",
+      "AGENTS.md",
+      ".gitignore",
+      "bunfig.toml",
+      "vscode/package.json",
+      "website/package.json"
+    ],
+    "patch": "sandbox.patch",
+    "setup": [
+      [
+        "bun",
+        "install"
+      ]
+    ]
+  },
+  "challenge": { "truth": "change" },
+  "acceptanceBaseline": {
+    "failToPass": [
+      "acceptance/parallel-tool-calls-turn.test.ts > parallel tool calls on an OpenAI Responses turn > records each parallel call once when the final frame lists the calls at new positions without item ids"
+    ],
+    "passToPass": [
+      "acceptance/parallel-tool-calls-turn.test.ts > parallel tool calls on an OpenAI Responses turn > regression guard: keeps a call that only the final frame reports",
+      "acceptance/parallel-tool-calls-turn.test.ts > parallel tool calls on an OpenAI Responses turn > regression guard: keeps two distinct calls without item ids when the final frame swaps them"
+    ]
+  }
+}

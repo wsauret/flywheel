@@ -1,0 +1,187 @@
+diff --git a/src/array.ts b/src/array.ts
+index 29f030b..cd94b9d 100644
+--- a/src/array.ts
++++ b/src/array.ts
+@@ -82,13 +82,7 @@ export default class ArraySchema<
+       const castElement = this.innerType!.cast(v, {
+         ..._opts,
+         path: `${_opts.path || ''}[${idx}]`,
+-        parent: value,
+-        originalValue: v,
+-        value: v,
+-        index: idx,
+-
+       });
+-      
+       if (castElement !== v) {
+         isChanged = true;
+       }
+diff --git a/src/object.ts b/src/object.ts
+index 94dc817..5825f68 100644
+--- a/src/object.ts
++++ b/src/object.ts
+@@ -181,10 +181,10 @@ export default class ObjectSchema<
+     for (const prop of props) {
+       let field = fields[prop];
+       let exists = prop in (value as {})!;
+-      let inputValue = value[prop];
+ 
+       if (field) {
+         let fieldValue;
++        let inputValue = value[prop];
+ 
+         // safe to mutate since this is fired in sequence
+         innerOptions.path = (options.path ? `${options.path}.` : '') + prop;
+@@ -205,19 +205,20 @@ export default class ObjectSchema<
+ 
+         fieldValue =
+           !options.__validating || !strict
+-            ? (field as ISchema<any>).cast(inputValue, innerOptions)
+-            : inputValue;
++            ? // TODO: use _cast, this is double resolving
++              (field as ISchema<any>).cast(value[prop], innerOptions)
++            : value[prop];
+ 
+         if (fieldValue !== undefined) {
+           intermediateValue[prop] = fieldValue;
+         }
+       } else if (exists && !strip) {
+-        intermediateValue[prop] = inputValue;
++        intermediateValue[prop] = value[prop];
+       }
+ 
+       if (
+         exists !== prop in intermediateValue ||
+-        intermediateValue[prop] !== inputValue
++        intermediateValue[prop] !== value[prop]
+       ) {
+         isChanged = true;
+       }
+diff --git a/src/schema.ts b/src/schema.ts
+index 4b2bd6e..dd65e72 100644
+--- a/src/schema.ts
++++ b/src/schema.ts
+@@ -83,10 +83,6 @@ export interface CastOptions<C = {}> {
+   stripUnknown?: boolean;
+   // XXX: should be private?
+   path?: string;
+-  index?: number;
+-  key?: string;
+-  originalValue?: any;
+-  value?: any;
+   resolved?: boolean;
+ }
+ 
+@@ -378,8 +374,8 @@ export default abstract class Schema<
+     options: CastOptions<TContext> | CastOptionalityOptions<TContext> = {},
+   ): this['__outputType'] {
+     let resolvedSchema = this.resolve({
+-      ...options,
+       value,
++      ...options,
+       // parent: options.parent,
+       // context: options.context,
+     });
+diff --git a/src/tuple.ts b/src/tuple.ts
+index 54bb8a9..c68a120 100644
+--- a/src/tuple.ts
++++ b/src/tuple.ts
+@@ -114,10 +114,6 @@ export default class TupleSchema<
+       const castElement = type.cast(value[idx], {
+         ...options,
+         path: `${options.path || ''}[${idx}]`,
+-        parent: value,
+-        originalValue: value[idx],
+-        value: value[idx],
+-        index: idx,
+       });
+       if (castElement !== value[idx]) isChanged = true;
+       return castElement;
+diff --git a/test/array.ts b/test/array.ts
+index 0735377..0771dee 100644
+--- a/test/array.ts
++++ b/test/array.ts
+@@ -29,27 +29,6 @@ describe('Array types', () => {
+         'false',
+       ]);
+     });
+-
+-    it('should pass array options to descendants when casting', async () => {
+-      let value = ['1', '2'];
+-
+-      let itemSchema = string().when([], function (_, _s, opts: any) {
+-
+-        const parent = opts.parent;
+-        const idx = opts.index;
+-        const val = opts.value;
+-        const originalValue = opts.originalValue;
+-        
+-        expect(parent).toEqual(value);
+-        expect(typeof idx).toBe('number');
+-        expect(val).toEqual(parent[idx]);
+-        expect(originalValue).toEqual(parent[idx]);
+-
+-        return string();
+-      });
+-
+-      await array().of(itemSchema).validate(value);
+-    });
+   });
+ 
+   it('should handle DEFAULT', () => {
+@@ -235,23 +214,6 @@ describe('Array types', () => {
+     await array().of(itemSchema).validate(value);
+   });
+ 
+-  it('should pass deeply resolved path to descendants', async () => {
+-    let value = ['2', '3'];
+-    let expectedPaths = ['items[0]', 'items[1]'];
+-
+-    let itemSchema = string().when([], function (_, _s, opts: any) {
+-      let path = opts.path;
+-      expect(expectedPaths).toContain(path);
+-      return string().required();
+-    });
+-
+-    const schema = object({
+-      items: array().of(itemSchema)
+-    })
+-
+-    await schema.validate({ items: value });
+-  });
+-
+   it('should maintain array sparseness through validation', async () => {
+     let sparseArray = new Array(2);
+     sparseArray[1] = 1;
+diff --git a/test/tuple.ts b/test/tuple.ts
+index 9ed0e7a..16bef54 100644
+--- a/test/tuple.ts
++++ b/test/tuple.ts
+@@ -15,27 +15,6 @@ describe('Array types', () => {
+         tuple([string(), string(), string()]).cast(['4', 5, false]),
+       ).toEqual(['4', '5', 'false']);
+     });
+-
+-    it('should pass array options to descendants when casting', async () => {
+-      let value = ['1', '2'];
+-  
+-      let itemSchema = string().when([], function (_, _s, opts: any) {
+-  
+-        const parent = opts.parent;
+-        const idx = opts.index;
+-        const val = opts.value;
+-        const originalValue = opts.originalValue;
+-        
+-        expect(parent).toEqual(value);
+-        expect(typeof idx).toBe('number');
+-        expect(val).toEqual(parent[idx]);
+-        expect(originalValue).toEqual(parent[idx]);
+-  
+-        return string();
+-      });
+-
+-      await tuple([itemSchema, itemSchema]).validate(value);
+-    });
+   });
+ 
+   it('should handle DEFAULT', () => {

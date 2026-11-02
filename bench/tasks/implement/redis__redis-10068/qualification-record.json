@@ -1,0 +1,205 @@
+{
+  "task": "redis__redis-10068",
+  "testedContentIdentity": "e1d03fd5b6879d17b0a3bd156ba371628c29ec855946f3565e60e5995866f562",
+  "testedContentIdentityScope": "whole fixture before retaining these results; retained evidence changes the current fixture hash",
+  "observedAt": "2026-10-13T01:01:12.331Z",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "controls": [
+    {
+      "name": "base",
+      "acceptance": {
+        "passed": 0,
+        "failed": 1,
+        "total": 1
+      },
+      "selectedStatuses": {
+        "XTRIM with MINID option, big delta from master record": "FAILED",
+        "XTRIM with MINID option": "PASSED",
+        "XTRIM with MAXLEN option basic test": "PASSED",
+        "XTRIM with ~ is limited": "PASSED",
+        "XTRIM without ~ is not limited": "PASSED",
+        "XTRIM without ~ and with LIMIT": "PASSED",
+        "XTRIM with LIMIT delete entries no more than limit": "PASSED",
+        "XTRIM with ~ MAXLEN can propagate correctly": "PASSED"
+      },
+      "resolution": "RESOLVED_NO",
+      "productionCapture": {
+        "reportBytes": 22060,
+        "completeLogBytes": 13245460,
+        "testRegionBytes": 4728,
+        "identitiesVerified": true
+      },
+      "cleanup": {
+        "pids": [
+          17556,
+          17558,
+          17562,
+          17561,
+          17559,
+          17557,
+          17570,
+          17564,
+          17571,
+          17563,
+          17567,
+          17569,
+          17568,
+          17565,
+          17560,
+          17566,
+          17573,
+          17740
+        ],
+        "ports": [
+          21079,
+          21111
+        ],
+        "surviving": [],
+        "listeners": []
+      },
+      "evidence": {
+        "file": "base-grade.json.gz",
+        "bytes": 5249,
+        "sha256": "fa402f4660c175fff973657ff10b77e8f8448cfec3365b14b3f2b4da067c9059",
+        "decompressedBytes": 24986,
+        "decompressedSha256": "8f7f23bfcdcb8e4ef65bc1bf547509da8044b6c9a38f3cfd41f1c569c2a2bfcd",
+        "previousRetainedEvidence": {
+          "file": "base-grade.json.gz",
+          "bytes": 4750,
+          "sha256": "d7df118421de8f06841feefc12a75a200f8e2da23235018e77ee8a8a2eb9bc20",
+          "decompressedBytes": 24466,
+          "decompressedSha256": "98934a7f7e031838aa5f59488a786bcd7df4996f30c6ff2668ef5a4039263015",
+          "retention": "Full original evaluation execution was scored before projection. Complete stdout/stderr/log identities and the unchanged test-output region replace diagnostic BASE source copies.",
+          "testedContentIdentity": "8bbffa7a1149d1ba96a9fdfd9899b0f55af258832acd2b5d99a1538f577a14c3",
+          "observedAt": "2026-10-13T00:38:58.696Z",
+          "scope": "Historical projected qualification artifact identity before the production-capture correction; not the current file identity."
+        },
+        "historicalFullEvidence": {
+          "file": "base-grade.json.gz",
+          "bytes": 5647268,
+          "sha256": "1183e5a2f5eb14a6ed2d2d2914471b6ad9c9eb679458a27aa7c829ba94d88b36",
+          "decompressedBytes": 27699473,
+          "decompressedSha256": "9ad9eb8387b4aa6c9a9b03a2ea038fc5cc5d5333c5079fd6fc25bfe341917c89",
+          "testedContentIdentity": "8bbffa7a1149d1ba96a9fdfd9899b0f55af258832acd2b5d99a1538f577a14c3",
+          "observedAt": "2026-10-13T00:38:58.696Z",
+          "scope": "Historical full preprojection artifact identity from the earlier qualification, not the current projected file identity."
+        },
+        "retention": "This artifact contains the actual compact production report. Full raw evaluator and normalized scorer-input logs were scored and verified before shared workspace cleanup. Their separate byte counts and SHA-256 identities and the complete marker-delimited test region remain in the report."
+      }
+    },
+    {
+      "name": "reference",
+      "acceptance": {
+        "passed": 1,
+        "failed": 0,
+        "total": 1
+      },
+      "selectedStatuses": {
+        "XTRIM with MINID option, big delta from master record": "PASSED",
+        "XTRIM with MINID option": "PASSED",
+        "XTRIM with MAXLEN option basic test": "PASSED",
+        "XTRIM with ~ is limited": "PASSED",
+        "XTRIM without ~ is not limited": "PASSED",
+        "XTRIM without ~ and with LIMIT": "PASSED",
+        "XTRIM with LIMIT delete entries no more than limit": "PASSED",
+        "XTRIM with ~ MAXLEN can propagate correctly": "PASSED"
+      },
+      "resolution": "RESOLVED_FULL",
+      "productionCapture": {
+        "reportBytes": 21545,
+        "completeLogBytes": 13275124,
+        "testRegionBytes": 3782,
+        "identitiesVerified": true
+      },
+      "cleanup": {
+        "pids": [
+          19832,
+          19834,
+          19835,
+          19836,
+          19833,
+          19840,
+          19839,
+          19837,
+          19841,
+          19838,
+          19842,
+          19843,
+          19844,
+          19845,
+          19846,
+          19847,
+          19849,
+          20020
+        ],
+        "ports": [
+          21079,
+          21111
+        ],
+        "surviving": [],
+        "listeners": []
+      },
+      "evidence": {
+        "file": "reference-grade.json.gz",
+        "bytes": 11096,
+        "sha256": "a2778aea2246007682e389cb89632bf80e893d01bba1b56f2a4cd54961ff3b5c",
+        "decompressedBytes": 55843,
+        "decompressedSha256": "a36d85bfb143956601addd43169a756c56893fd13c98c0915ce106430ed10fe0",
+        "previousRetainedEvidence": {
+          "file": "reference-grade.json.gz",
+          "bytes": 10615,
+          "sha256": "209db036c963d5192ef3ab29d2f817d48b1c9e0be6c0cbd61cb273e50e3b6efe",
+          "decompressedBytes": 55287,
+          "decompressedSha256": "d695803cc609205bf089242b4dadd37744ffc7e3151860726ca5307cf682001f",
+          "retention": "Full original evaluation execution was scored before projection. Complete stdout/stderr/log identities and the unchanged test-output region replace diagnostic BASE source copies.",
+          "testedContentIdentity": "8bbffa7a1149d1ba96a9fdfd9899b0f55af258832acd2b5d99a1538f577a14c3",
+          "observedAt": "2026-10-13T00:38:58.696Z",
+          "scope": "Historical projected qualification artifact identity before the production-capture correction; not the current file identity."
+        },
+        "historicalFullEvidence": {
+          "file": "reference-grade.json.gz",
+          "bytes": 5665157,
+          "sha256": "4ee8a6149d294798ca142e89df77e3f131b817cc60f70af8e2147f42a9a5eddb",
+          "decompressedBytes": 27792460,
+          "decompressedSha256": "3634f9bdd0aa01d979fd5efbd82c0c3e35132401030af9c15754a042de7c4786",
+          "testedContentIdentity": "8bbffa7a1149d1ba96a9fdfd9899b0f55af258832acd2b5d99a1538f577a14c3",
+          "observedAt": "2026-10-13T00:38:58.696Z",
+          "scope": "Historical full preprojection artifact identity from the earlier qualification, not the current projected file identity."
+        },
+        "retention": "This artifact contains the actual compact production report. Full raw evaluator and normalized scorer-input logs were scored and verified before shared workspace cleanup. Their separate byte counts and SHA-256 identities and the complete marker-delimited test region remain in the report."
+      }
+    }
+  ],
+  "candidateToolProof": {
+    "file": "candidate-tool-proof.json.gz",
+    "bytes": 18417,
+    "sha256": "a22e9ea82e7ef1696a7572d97ad0c0ee8336ef89454c9d08b69aa8c65394a9b7",
+    "decompressedBytes": 538412,
+    "decompressedSha256": "65d2a5e84d47f1476f7b02d6fc2f2223abd5d591f81dc9bafb940d9feda9c60c"
+  },
+  "deadlineProof": {
+    "exitCode": null,
+    "stdout": "15638 15639\n",
+    "stderr": "",
+    "timedOut": true,
+    "command": [
+      "<home>/.bun/bin/bun",
+      "-e",
+      "process.on(\"SIGTERM\",()=>{}); const child=Bun.spawn([process.execPath,\"-e\",'process.on(\"SIGTERM\",()=>{});setInterval(()=>{},1000)'],{windowsHide:true,stdout:\"ignore\",stderr:\"ignore\"});console.log(process.pid+\" \"+child.pid);setInterval(()=>{},1000);"
+    ],
+    "durationMs": 6439,
+    "pids": [
+      15638,
+      15639
+    ],
+    "childTreeGone": true
+  },
+  "cleanup": {
+    "tmpClean": true
+  },
+  "modelCalls": 0,
+  "empiricalModelDifficulty": "not measured",
+  "empiricalModelCost": "not measured",
+  "retention": "The retained grade artifacts contain the compact report returned by actual production capture, not a retention-only projection. The full raw and normalized logs were verified before scoring workspace cleanup. Historical identities describe earlier artifacts and do not claim the current files have those bytes."
+}

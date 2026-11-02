@@ -1,0 +1,53 @@
+id: fix-and-review
+name: Fix and review
+description: Fix the bug, review the fix, and address each finding.
+input:
+  fields:
+    reviewers:
+      type: list
+      description: The reviewers.
+      of: { type: object, fields: { name: { type: string, description: Reviewer name. } } }
+steps:
+  implement:
+    name: Implement
+    instructions: Fix the bug and add a test.
+    toolScoping: { read: true, edit: true }
+    output:
+      fields:
+        summary: { type: string, description: The fix and the test. }
+        changed_files:
+          type: list
+          of: { type: string, description: A repository-relative path. }
+  review:
+    name: Review
+    instructions: Review the change.
+    toolScoping: { read: true }
+    output:
+      fields:
+        findings:
+          type: list
+          description: Defects in the change.
+          of:
+            type: object
+            fields:
+              site: { type: string, description: Exactly path:line. }
+              description: { type: string, description: The defect, in one sentence. }
+  fix:
+    name: Fix
+    instructions: Address each finding.
+    toolScoping: { read: true, edit: true }
+    output:
+      fields:
+        findings:
+          type: list
+          description: One entry for each finding.
+          of:
+            type: object
+            fields:
+              site: { type: string, description: The site. }
+              change: { type: string, description: What you changed, or why you changed nothing. }
+flow:
+  - step: implement
+  - { map: input.reviewers, id: reviews, label: name, do: review, reads: [implement], join: { reducer: collect } }
+  - step: fix
+    reads: [reviews]

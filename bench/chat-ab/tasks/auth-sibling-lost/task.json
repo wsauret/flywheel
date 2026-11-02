@@ -1,0 +1,19 @@
+{
+  "id": "auth-sibling-lost",
+  "stratum": "production-history",
+  "timeoutMinutes": 45,
+  "sandbox": {
+    "commit": "660a22b5f26b3dcb8d62c6a75143000d0aa81c4c",
+    "paths": ["src", "tests", "docs", "scripts", "package.json", "bun.lock", "tsconfig.json", "oxlint.config.ts", "knip.jsonc", "AGENTS.md", ".gitignore", "bunfig.toml", ".env.test", "relay", "vscode", "webview", "website", "crates/tokenizer/tokenizer-prebuilt.json", "crates/tokenizer/flywheel-tokenizer.wasm.zst"],
+    "patch": "sandbox.patch",
+    "setup": [["bun", "install"]]
+  },
+  "acceptanceBaseline": {
+    "failToPass": [
+      "acceptance/auth-sibling-lost.test.ts > explicit API key login next to stored accounts > never discards a healthy account when another account of the same provider is damaged"
+    ],
+    "passToPass": [
+      "acceptance/auth-sibling-lost.test.ts > explicit API key login next to stored accounts > still repairs a wholly rejected provider entry and preserves unknown siblings"
+    ]
+  }
+}

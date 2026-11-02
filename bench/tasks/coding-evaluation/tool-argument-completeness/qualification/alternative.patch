@@ -1,0 +1,56 @@
+diff --git a/src/orchestration/agent-runtime/llm/json-parse.ts b/src/orchestration/agent-runtime/llm/json-parse.ts
+--- a/src/orchestration/agent-runtime/llm/json-parse.ts
++++ b/src/orchestration/agent-runtime/llm/json-parse.ts
+@@ -5,12 +5,10 @@
+  * because providers don't always escape correctly mid-stream.
+  *
+  * Ported from `upstream llm/utils/json-parse.ts` for sharing across Flywheel agent runtime adapters.
+- * Three-tier fallback: strict JSON.parse → repair control chars + bad
+- * escapes → partial-json's tolerant parse.
++ * Accept complete strict JSON or a complete repaired document, never a
++ * shortened value manufactured by tolerant prefix completion.
+  */
+ 
+-import { parse as partialParse } from "partial-json";
+-
+ const VALID_JSON_ESCAPES = new Set(['"', "\\", "/", "b", "f", "n", "r", "t", "u"]);
+ 
+ interface UnknownFields { [key: string]: unknown }
+@@ -142,33 +140,15 @@ export function parseToolArguments(raw: string | undefined): ParsedToolArguments
+   return { input: {}, parseError: `${reason}. Raw argument text received: ${rawSnippet(raw)}` };
+ }
+ 
+-/** Three-tier salvage: strict parse -> repair -> partial parse, each tried on
+- *  the raw text and an envelope-stripped candidate. `undefined` = total failure. */
+-// oxlint-disable-next-line anti-slop/no-unknown-returns -- boundary: Salvaged provider JSON has no trusted shape before runtime narrowing.
++/** Accept only complete documents, including the existing repairs and envelopes. */
++// oxlint-disable-next-line anti-slop/no-unknown-returns -- boundary: Provider JSON has no trusted shape before runtime narrowing.
+ function salvageJson(raw: string): unknown {
+-  const candidates = [raw];
+   const stripped = stripJsonEnvelope(raw);
+-  if (stripped !== raw && stripped.trim() !== "") candidates.push(stripped);
+-
+-  for (const candidate of candidates) {
++  for (const candidate of stripped === raw ? [raw] : [raw, stripped]) {
+     try {
+       return parseJsonWithRepair(candidate);
+     } catch {
+-      // fall through to the next candidate / tolerant tiers
+-    }
+-  }
+-  for (const candidate of candidates) {
+-    try {
+-      const result = partialParse(candidate);
+-      if (result) return result;
+-    } catch {
+-      // try repaired form below
+-    }
+-    try {
+-      const result = partialParse(repairJson(candidate));
+-      if (result) return result;
+-    } catch {
+-      // next candidate
++      // No candidate parsed as a complete document.
+     }
+   }
+   return undefined;

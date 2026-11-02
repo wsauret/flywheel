@@ -1,0 +1,24 @@
+export function updateMcpServerConfig(
+	path: string,
+	name: string,
+	patch: McpServerConfigPatch,
+	options: { override?: boolean } = {},
+): void {
+	editMcpServers(path, (servers, parsed) => {
+		let server = servers?.[name];
+		if (server === undefined && options.override) {
+			server = {};
+			parsed.mcpServers = { ...servers, [name]: server };
+		}
+		if (!isRecord(server)) throw new Error(`${path} does not define MCP server "${name}"`);
+		const keepDefaults = isOverride(server);
+		if (patch.enabled !== undefined) {
+			if (patch.enabled && !keepDefaults) delete server.enabled;
+			else server.enabled = patch.enabled;
+		}
+		if (patch.exposure !== undefined) {
+			if (patch.exposure === "codemode" && !keepDefaults) delete server.exposure;
+			else server.exposure = patch.exposure;
+		}
+		return true;
+	});

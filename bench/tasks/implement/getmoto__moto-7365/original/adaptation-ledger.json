@@ -1,0 +1,73 @@
+{
+  "task": "getmoto__moto-7365",
+  "verdict": "native grading is viable on the observed macOS arm64 host without reducing the original test or grading set",
+  "immutable_sources": {
+    "dataset": "https://huggingface.co/datasets/SWE-Gym/SWE-Gym/tree/bb94ed9e39bbeb96a7fcbfb533b80f25a7fd59cb",
+    "moto": "https://github.com/getmoto/moto/tree/7f6c9cb1deafb280fe7fcc7551c38e397f11a706",
+    "gym_documentation": "https://github.com/SWE-Gym/SWE-Gym/tree/b681068ca20628c6987b7416cc4cf03f06b77ba5",
+    "openhands": "https://github.com/SWE-Gym/OpenHands/tree/e644a2ca45c3623b27a7e6c169e3d479f0a87fbc",
+    "provision_and_grading_harness": "https://github.com/SWE-Gym/SWE-Bench-Fork/tree/e440817248cf29bee71ca9ab3c3a762177ab8f7c",
+    "original_issue_snapshot": "https://github.com/getmoto/moto/issues/7349",
+    "fix_pull_request": "https://github.com/getmoto/moto/pull/7365"
+  },
+  "adaptations": [
+    {
+      "original": "Linux container and conda Python 3.12 environment",
+      "native": "macOS arm64 uv venv using CPython 3.12.13",
+      "reason": "The request prohibits containers. The original Python minor version is retained.",
+      "semantics": "Runtime platform differs. Portability is established only on the observed host."
+    },
+    {
+      "original": "make init installs editable Moto and requirements-dev.txt, including all/server extras and unrelated tooling",
+      "native": "Editable original Moto core plus boto3==1.34.43, botocore==1.34.44, pytest==8.0.0 and pytest-xdist==3.5.0; resolved transitive versions are frozen in native-dependencies.lock.txt",
+      "reason": "The issue reports those boto3, botocore and pytest versions. The xdist plugin is needed for the unchanged -n0 option. The two original tests run without any optional service packages.",
+      "semantics": "Provisioning is reduced, not grading. The complete original test file and both original grading test ids are retained. No source dependency guards or test exclusions are added.",
+      "evidence": ["setup-install-base.log", "setup-install-gold.log", "dependency-check-base.log", "dependency-check-gold.log", "gold-runtime-audit.json"]
+    },
+    {
+      "original": "Git clone and git apply",
+      "native": "Exact base commit tarball extracted into two isolated scratch directories; system patch -p1 applies byte-for-byte dataset patches",
+      "reason": "git apply inside the enclosing Flywheel checkout reported skipped paths with exit zero. System patch applies all hunks and the reverse dry-run checks pass.",
+      "semantics": "Original tracked-file comparison proves that only the test patch changes base; only the test and gold patches change gold. The original test file is identical in both copies.",
+      "evidence": ["apply-test-base.log", "apply-test-base-native.log", "apply-test-gold-native.log", "apply-gold-native.log", "source-test-patch-check-base.log", "source-test-patch-check-gold.log", "source-gold-patch-check.log", "evidence.json"]
+    },
+    {
+      "original": "pytest -n0 -rA tests/test_dynamodb/test_dynamodb_update_expressions.py; resolve only when every FAIL_TO_PASS and PASS_TO_PASS case succeeds",
+      "native": "The same whole-file selection, -n0 and -rA, with JUnit output. Gold invokes pytest.main through an observation-only audit script.",
+      "reason": "JUnit preserves exact per-test outcomes. The audit records Python socket and process events without blocking or replacing behavior.",
+      "semantics": "No test names, test bodies, assertions, fixtures or grading groups are removed. No xfail, skip, retry or selective single-test substitute is introduced.",
+      "evidence": ["test.patch", "base-test.log", "gold-test.log", "base-junit.xml", "gold-junit.xml", "audit_pytest.py"]
+    },
+    {
+      "original": "MOTO_TEST_ALLOW_AWS_REQUEST defaults false and TEST_SERVER_MODE defaults false",
+      "native": "Both are explicitly false; inherited AWS credentials and relevant Moto endpoint overrides are removed; metadata lookup is disabled",
+      "reason": "The original decorator uses in-process mock_aws in its default mode. Explicit defaults keep the test from using the user's cloud credentials or a live service.",
+      "semantics": "The original default mocked grading mode is retained. No actual AWS requests or remote runtime calls are made."
+    }
+  ],
+  "rejections": [],
+  "licensing": {
+    "dataset": {
+      "declared_license": "MIT",
+      "evidence": "dataset-README.md:37",
+      "caveat": "The immutable dataset tree has no standalone MIT license file. Preserve the card and metadata declaration; do not infer that it relicenses embedded upstream code."
+    },
+    "moto_source_and_embedded_patches": {
+      "license": "Apache-2.0",
+      "preserved_license": "moto-LICENSE",
+      "source_copies": ["base/LICENSE", "gold/LICENSE"],
+      "metadata_evidence": "moto-setup.cfg:9",
+      "attribution": "Moto contributors; issue author jtherrmann. PR 7365 credits jtherrmann and adds typing changes and tests. Original issue and PR snapshots are preserved."
+    },
+    "gym_project_documentation": {"license": "Apache-2.0", "preserved_license": "gym-LICENSE"},
+    "swebench_harness_source": {"license": "MIT", "preserved_license": "swebench-LICENSE"},
+    "distribution": "This is a local scratch probe, not a relicensed or published task. Preserve upstream license, copyright and notice files when distributing artifacts."
+  },
+  "failures_and_corrections": [
+    "Moto has no setup.py or tests/conftest.py at this base; inspected setup.cfg, pyproject.toml and the DynamoDB conftest.py instead.",
+    "git apply skipped all patch paths despite exit zero. Switched to system patch after reading the explicit skipped-path diagnostic.",
+    "One reverse-check invocation used the helper's scratch directory instead of the probe directory. Corrected the working directory before the checks ran.",
+    "The broken-base failure is expected: Decimal('11.700000000000003') differs from Decimal('11.7'). It is not a setup failure."
+  ],
+  "claims_not_made": ["Empirical model hardness", "Linux or Windows runtime portability", "Exact reproduction of the original container dependency versions", "Need for Docker, DynamoDB Local, cloud credentials or a Moto server"]
+}

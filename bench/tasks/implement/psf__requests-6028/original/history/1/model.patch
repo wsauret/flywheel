@@ -1,0 +1,45 @@
+diff --git a/requests/utils.py b/requests/utils.py
+index 1c2ae4e..0424fe2 100644
+--- a/requests/utils.py
++++ b/requests/utils.py
+@@ -973,6 +973,8 @@ def prepend_scheme_if_needed(url, new_scheme):
+     netloc = parsed.netloc
+     if not netloc:
+         netloc, path = path, netloc
++    if auth:
++        netloc = '{}@{}'.format(auth, netloc)
+ 
+     if scheme is None:
+         scheme = new_scheme
+diff --git a/tests/test_requests.py b/tests/test_requests.py
+index 29b3aca..ccbe9df 100644
+--- a/tests/test_requests.py
++++ b/tests/test_requests.py
+@@ -1890,6 +1890,11 @@ class TestRequests:
+         adapter = HTTPAdapter()
+         headers = adapter.proxy_headers("http://user:pass@httpbin.org")
+         assert headers == {'Proxy-Authorization': 'Basic dXNlcjpwYXNz'}
++        adapter.get_connection(
++            "https://example.org", proxies={"https": "http://user:pass@httpbin.org"}
++        )
++        manager = next(iter(adapter.proxy_manager.values()))
++        assert manager.proxy_headers == headers
+ 
+     def test_proxy_auth_empty_pass(self):
+         adapter = HTTPAdapter()
+diff --git a/tests/test_utils.py b/tests/test_utils.py
+index c2186b8..f7cc657 100644
+--- a/tests/test_utils.py
++++ b/tests/test_utils.py
+@@ -602,6 +602,11 @@ def test_parse_header_links(value, expected):
+         ('example.com/path', 'http://example.com/path'),
+         ('//example.com/path', 'http://example.com/path'),
+         ('example.com:80', 'http://example.com:80'),
++        ('http://user:pass@example.com', 'http://user:pass@example.com'),
++        ('//user:pass@example.com', 'http://user:pass@example.com'),
++        ('https://user:pass@example.com', 'https://user:pass@example.com'),
++        ('http://user:pass%23word@example.com:80/path',
++         'http://user:pass%23word@example.com:80/path'),
+     ))
+ def test_prepend_scheme_if_needed(value, expected):
+     assert prepend_scheme_if_needed(value, 'http') == expected

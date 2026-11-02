@@ -1,0 +1,9 @@
+#!/bin/sh
+# Replaces this shell with the CLI, so a source checkout runs no bootstrap
+# child: argv, environment and exit status belong to the CLI itself. The
+# browser export condition is set here because SolidJS must resolve to its
+# browser runtime in the process that renders; scripts/dev.ts stages the
+# native runtime assets inside that same process.
+set -e
+bin_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec bun --conditions=browser "$bin_dir/../scripts/dev.ts" "$@"

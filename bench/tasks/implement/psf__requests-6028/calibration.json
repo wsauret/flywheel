@@ -1,0 +1,167 @@
+{
+  "status": "Historical completed candidates only, not fresh qualification or a population pass-rate estimate",
+  "date": "2026-10-12",
+  "candidateMinutes": 25,
+  "taskPasses": 2,
+  "completedRuns": 2,
+  "modelCallsInPromotion": 0,
+  "runs": [
+    {
+      "repeat": 0,
+      "model": "gpt-6.1-sol",
+      "effort": "high",
+      "durationMs": 158227,
+      "accounting": {
+        "estimatedUsd": {
+          "kind": "observed",
+          "value": 0.26193439999999996
+        },
+        "billedUsd": {
+          "kind": "observed",
+          "value": 0
+        },
+        "tokens": {
+          "kind": "observed",
+          "value": 764871
+        },
+        "providers": {
+          "kind": "observed",
+          "value": [
+            "chatgpt"
+          ]
+        },
+        "pricedEntryCount": 13,
+        "unpricedEntryCount": 0
+      },
+      "acceptance": {
+        "passed": 187,
+        "failed": 0,
+        "total": 187
+      },
+      "artifacts": {
+        "original/history/0/grade.json": {
+          "bytes": 116492,
+          "sha256": "6cb317a4c91ee02281f550c29721e7d800355cf3188b947cf67dfaa401d9d6cc"
+        },
+        "original/history/0/model.patch": {
+          "bytes": 2485,
+          "sha256": "6e54acca61ebaf666d074536241d807a86db888f452641adacce8f9799c3c351"
+        },
+        "original/history/0/request-index.jsonl": {
+          "bytes": 2526,
+          "sha256": "f0596a25e8adf24a28cdfae3f6bdc591a74007d36c33fae2f704af510703c874"
+        },
+        "original/history/0/recovered-canonical-usage.json": {
+          "bytes": 21399,
+          "sha256": "9dba46e59daf8af88bd524040be1755437964c1e88115f2fc96da7daaa5a3980"
+        },
+        "original/history/0/native-environment.json": {
+          "bytes": 5713,
+          "sha256": "2238870d07a11e36eccbdac17c1bbe8fb98a4e56cb909e32d0d9782181998041"
+        },
+        "original/history/0/prompt.txt": {
+          "bytes": 1795,
+          "sha256": "d81681223215468faf270ffb9346c8b7ad140fe24543fa52198230b0a710ae35"
+        }
+      }
+    },
+    {
+      "repeat": 1,
+      "model": "gpt-6.1-sol",
+      "effort": "high",
+      "durationMs": 183001,
+      "accounting": {
+        "estimatedUsd": {
+          "kind": "observed",
+          "value": 0.188496
+        },
+        "billedUsd": {
+          "kind": "observed",
+          "value": 0
+        },
+        "tokens": {
+          "kind": "observed",
+          "value": 480057
+        },
+        "providers": {
+          "kind": "observed",
+          "value": [
+            "chatgpt"
+          ]
+        },
+        "pricedEntryCount": 13,
+        "unpricedEntryCount": 0
+      },
+      "acceptance": {
+        "passed": 187,
+        "failed": 0,
+        "total": 187
+      },
+      "artifacts": {
+        "original/history/1/grade.json": {
+          "bytes": 116492,
+          "sha256": "1bb4076a2e1d84362a2f42a63eae350249e50749fa046d5036fc00a8e7ca6079"
+        },
+        "original/history/1/model.patch": {
+          "bytes": 1925,
+          "sha256": "bca9f46a7e12259e3cd2f13cae4613d2e7e8b90ea223096613f1187cc27b62fd"
+        },
+        "original/history/1/request-index.jsonl": {
+          "bytes": 2526,
+          "sha256": "96e6a700235eafc3d3d31643936e58ce5fc830a48568b8460990cdd3d7bc9846"
+        },
+        "original/history/1/recovered-canonical-usage.json": {
+          "bytes": 21355,
+          "sha256": "a51eb86083cd94fafb14fea72fd010833812c0d32de41169f22b446f83fab9fd"
+        },
+        "original/history/1/native-environment.json": {
+          "bytes": 5713,
+          "sha256": "ccb9fbb8982a0cdf30c07a1444122a84da2292a02da71b1e6d87e241b3f9841c"
+        },
+        "original/history/1/prompt.txt": {
+          "bytes": 1795,
+          "sha256": "110e26eb67d707bec8840014c411b1973b8e8fc906f18366c00345ad43c3d0d9"
+        }
+      }
+    }
+  ],
+  "totals": {
+    "estimatedUsd": 0.45043039999999995,
+    "billedUsd": 0,
+    "tokens": 1244928,
+    "durationMs": 341228
+  },
+  "historicalIdentity": {
+    "source": "e34b72318db355facc9e4d618800dc7b7788fee8",
+    "config": {
+      "kind": "benchmark-config",
+      "persona": "implementer-public-native-baseline",
+      "mode": "implement",
+      "variants": [
+        {
+          "id": "baseline",
+          "model": "gpt-6.1-sol",
+          "effort": "high"
+        }
+      ],
+      "repeats": 2,
+      "stamp": "2026-10-12T02-47-16-639Z",
+      "identity": {
+        "profileId": "<profile>",
+        "authorityIncarnation": "d19a84bf-5bd4-4ce6-991b-71d89fd19349",
+        "contentIdentity": "cc018b7f6e8889aec8f3a1a04b5f3f880d722b94bd3a86c6d79d5b9c5ae9e5e9"
+      },
+      "taskIdentity": "3cc353aeda64bebe1d2a50ac3a9f3e442a55ecdcd5fb11269faac956467d2fbb",
+      "personaGuidanceIdentity": "6acaee24f512f5f0c9072f47ab426f543a21bb88baea4c37b0f6e739230d2c95",
+      "judgeIdentity": "544ba68416b75133f03f8d56610428a2448967a71a1f99469a924e1e11d3a3b5",
+      "scoringVersion": "original-public-native-v1"
+    },
+    "guidanceIdentity": "6acaee24f512f5f0c9072f47ab426f543a21bb88baea4c37b0f6e739230d2c95",
+    "skillRevisionIdentity": "ead65d11e7fc88a4335fdf59961325eb55a313638e0b18dbcdb0ecdde554d098"
+  },
+  "limitations": [
+    "Historical model prompts included private paths. The promoted instruction is the exact raw problem with a separate neutral appendix.",
+    "Historical runtime preparation is not the current public provisioning recipe.",
+    "No new models were called."
+  ]
+}

@@ -1,0 +1,22 @@
+diff --git a/src/orchestration/modules/workflows/orchestration.ts b/src/orchestration/modules/workflows/orchestration.ts
+index 4e537cf..99ba3f7 100644
+--- a/src/orchestration/modules/workflows/orchestration.ts
++++ b/src/orchestration/modules/workflows/orchestration.ts
+@@ -12,7 +12,7 @@ Workflows is On: aim for the most complete and correct result, not the cheapest
+ 
+ Use a workflow only when it runs at least two agents and a later agent reads the output of an earlier one, such as finders and then verifiers. Give the work of one agent to a subagent. Give agents that can all run at the same time to parallel subagents.
+ 
+-- Write a workflow file for the task and launch it by content or path with the workflow tool.
++- Write a workflow file for the task and launch it by content or path with the workflow tool. You must launch a workflow for the task, even when the task looks small; this requirement comes before every sizing rule in this section.
+ - Run the parts of one task, such as understand, design, and implement, as several dispatches in sequence, one for each part, and read each result before you start the next part. A part holds all of its own agents: the implement workflow builds, reviews by lens, repairs the confirmed findings, and verifies the repair, never in later subagents or a second workflow (\`examples/build-review-loop.workflow.yaml\` in \`workflow-authoring\`). Its result is a first draft: read it against the Design intent, and revise what drifts from it. End a part only where the person must decide, such as approval of a design or whether to pay for a run: ask with \`ask_user\`, and pass the answer as \`input\` to the next workflow.
+ - Start independent units of work at the same time. Before a plan of several units starts, list the prerequisites of each unit and the files that it changes. Start every unit whose prerequisites are complete and whose files do not overlap the files of a running unit. A unit waits only for a named prerequisite or a named file overlap; the order in which units commit is not a reason to wait. Do not wait on a running dispatch while a unit that can start is still unstarted.
+ - Prefer workflows that verify their findings adversarially, unless the work is trivial or already verified.`
+@@ -21,7 +21,7 @@ Use a workflow only when it runs at least two agents and a later agent reads the
+  *  not move the model: on plain requests it read the sizing rule and worked
+  *  alone on 24 of 24 tasks, and this reminder made it launch (ARCH-CONTEXT-022). */
+ export const ORCHESTRATION_REMINDER = {
+-  on: "Workflows is On: aim for the most complete and correct answer, not the cheapest one, and reach it as soon as possible. Delegate every substantive task; token cost is not a constraint. Use a workflow only when a later agent reads the output of an earlier one; use subagents for one agent or for agents that can run at the same time. Start independent units of work at the same time: a unit waits only for a named prerequisite or a file that a running unit changes. Refer to the Orchestrating with workflows section. Work without delegation only on conversational turns and trivial mechanical edits.",
++  on: "Workflows is On: aim for the most complete and correct answer, not the cheapest one, and reach it as soon as possible. Delegate every substantive task; token cost is not a constraint. Use a workflow only when a later agent reads the output of an earlier one; use subagents for one agent or for agents that can run at the same time. Start independent units of work at the same time: a unit waits only for a named prerequisite or a file that a running unit changes. You must launch a workflow for the task, even when the task looks small. Refer to the Orchestrating with workflows section. Work without delegation only on conversational turns and trivial mechanical edits.",
+   still: "Workflows is still On: delegate substantive tasks, start independent units of work at the same time, and use a workflow only when a later agent reads the output of an earlier one.",
+   off: "Workflows is no longer On: stop delegating every substantive task. Do the work directly or with subagents, and launch a workflow only when the task needs one and the workflow tool is available.",
+   every: 10,

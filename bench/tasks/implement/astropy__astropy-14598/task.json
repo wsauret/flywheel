@@ -1,0 +1,13 @@
+{
+  "kind": "native",
+  "id": "astropy__astropy-14598",
+  "stratum": "medium",
+  "family": "swe-derived",
+  "split": "development",
+  "instruction": "instruction.txt",
+  "native": {
+    "path": [".bench-home/python/bin"],
+    "command": ["bun", "adapter.ts"],
+    "timeoutMs": 1200000
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "summary": "Refuse nonobject auth-store roots with a typed storage error instead of reporting a successful no-change result.",
+  "context": {
+    "key_files": [
+      "src/infra/auth/auth-store-mutations.ts"
+    ],
+    "patterns": [
+      "Retain the pinned native public boundary."
+    ],
+    "constraints": [
+      "Both rejected-provider APIs reject invalid JSON and nonobject roots without changing stored bytes.",
+      "A corrected object store remains usable after refusal.",
+      "Genuine rejected entries remain repairable with exact sibling preservation and accurate return values.",
+      "Use dummy credentials and temporary directories only.",
+      "Change only src/infra/auth/auth-store-mutations.ts. Do not change tests or dependencies."
+    ]
+  },
+  "milestones": [
+    {
+      "id": "repair-native-contract",
+      "goal": "Refuse nonobject auth-store roots with a typed storage error instead of reporting a successful no-change result.",
+      "files": [
+        "src/infra/auth/auth-store-mutations.ts"
+      ],
+      "tasks": [
+        {
+          "id": "repair-contract",
+          "description": "Refuse nonobject auth-store roots with a typed storage error instead of reporting a successful no-change result.",
+          "files": [
+            "src/infra/auth/auth-store-mutations.ts"
+          ],
+          "test_scenarios": [
+            "boolean refuses nonobject store roots without changing bytes",
+            "boolean refuses invalid JSON and remains usable after external correction",
+            "boolean repairs a malformed target and preserves its sibling",
+            "receipt refuses nonobject store roots without changing bytes",
+            "receipt refuses invalid JSON and remains usable after external correction",
+            "receipt repairs a malformed target and preserves its sibling"
+          ]
+        }
+      ],
+      "verification": "bun -e \"await import('./src/infra/auth/auth-store-mutations.ts')\"",
+      "qualitative_verification": "Preserve native behavior and failure evidence."
+    }
+  ],
+  "success_criteria": [
+    "Both rejected-provider APIs reject invalid JSON and nonobject roots without changing stored bytes.",
+    "A corrected object store remains usable after refusal.",
+    "Genuine rejected entries remain repairable with exact sibling preservation and accurate return values.",
+    "Use dummy credentials and temporary directories only."
+  ]
+}

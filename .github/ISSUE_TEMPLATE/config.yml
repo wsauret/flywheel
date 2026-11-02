@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question
+    url: https://github.com/wsauret/flywheel/discussions/categories/q-a
+    about: Ask how to use Flywheel in the Q&A discussions. Issues are for bugs and feature requests.
+  - name: Report a security vulnerability
+    url: https://github.com/wsauret/flywheel/security/advisories/new
+    about: Do not open a public issue for a security problem. Report it privately through a GitHub security advisory.

@@ -1,0 +1,12 @@
+diff --git a/src/orchestration/modules/learning/config.ts b/src/orchestration/modules/learning/config.ts
+index 2d08d74..60109e2 100644
+--- a/src/orchestration/modules/learning/config.ts
++++ b/src/orchestration/modules/learning/config.ts
+@@ -12,5 +12,6 @@ export const memoryConfigSection = section("memory", Schema.Struct({ review_inte
+ export function learningReviewPolicy(config: { readonly [section: string]: unknown }) {
+   const memory = configSection(config, memoryConfigSection)
+   const skills = configSection(config, skillsConfigSection)
+-  return { memoryIntervalTurns: memory.review_interval_turns, skillIntervalIterations: skills.review_interval_iterations, notifications: skills.notifications }
++  // Benchmark cells run no learning review: its background requests would add cost and model traffic outside the work under test.
++  return { memoryIntervalTurns: 0, skillIntervalIterations: 0, notifications: skills.notifications }
+ }

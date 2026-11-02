@@ -1,0 +1,85 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`compileOutput instructions renders the postamble for a representative contract 1`] = `
+"---
+## Output Requirements
+
+## Handoff Instructions
+
+Before you finish, you MUST call \`handoff\` with a valid JSON object using the fields below. Plain text is not completion. If the call is rejected, address its feedback and call again.
+
+### Rules
+
+1. Fields marked (REQUIRED) must be present. Include optional fields only when they add useful results or evidence.
+2. Do NOT include fields that the field reference does not list; unknown fields are rejected.
+3. When a message from the person, or a message addressed to you or to your item, changed the work while you ran, record each change in the handoff: quote the instruction and name what it replaced. Later agents and the join read the handoff, not your conversation.
+4. **Before submitting the handoff, you MUST print a brief summary (2-5 sentences) of what you accomplished, key decisions, and anything the user should know.** The handoff submission itself is invisible in the UI; this printed summary is the user's only visibility into the outcome of your work.
+5. Treat the handoff call as your final completion signal: once the handoff is recorded, the runtime may complete your attempt immediately. Any output after the handoff call may not be seen.
+6. The handoff must be valid JSON data; no comments or markdown wrapping.
+7. Field values are plain JSON data. Never serialize other fields as XML or pseudo-XML inside a string value, and never put markdown code fences or tool-call markup such as \`<parameter>\` or \`</invoke>\` in one. A tag quoted in prose is allowed.
+
+### Envelope
+
+- **summary** (REQUIRED, string): What the step did.
+- **commands_run** (REQUIRED, list of object, at least 1): The Bash commands whose results prove this handoff's claims. Cite the ones that matter, not every command you ran. Each completed foreground Bash result ends with its model-visible [toolUseId: ...] citation. Copy that id into toolUseId. The runtime records the command and its exit code from the cited call. observation is your trusted concise account of the output; ground it in what the command returned.
+  Example: [{"toolUseId":"toolu_abc123","observation":"12 tests passed"}]
+  - Each item (object):
+    - **toolUseId** (REQUIRED, string): The id from the [toolUseId: ...] line that ends the cited Bash result.
+    - **observation** (REQUIRED, string): A concise account of what the command returned.
+- **files_modified** (optional, list of string): Workspace-relative paths of the files you created or changed.
+
+### Fields
+
+- **hypothesis** (REQUIRED, string, nullable): The root cause, or null.
+- **notes** (optional, list of string): Notes.
+- **report** (REQUIRED, path): The report file.
+  Example: "docs/report.md"
+- **contract_result** (optional, object): The directive ledger.
+  - **directives** (REQUIRED, list of variant on \`status\`, at least 1, at most 2, each item has a different \`id\`): One entry for each plan directive.
+    - Each item (variant on \`status\`):
+      - When \`status\` is "satisfied":
+        - **id** (REQUIRED, string): The directive id.
+        - **evidence** (REQUIRED, string): A test name.
+      - When \`status\` is "deviated":
+        - **id** (REQUIRED, string): The directive id.
+        - **evidence** (REQUIRED, string): What was built instead.
+        - **risk** (REQUIRED, one of "low", "high"): Risk.
+
+### Required format
+
+Pass one JSON object as the tool input, in this shape:
+
+\`\`\`json
+{
+  "summary": "...",
+  "commands_run": [
+    {
+      "toolUseId": "toolu_abc123",
+      "observation": "12 tests passed"
+    }
+  ],
+  "files_modified": [
+    "..."
+  ],
+  "hypothesis": "...",
+  "notes": [
+    "..."
+  ],
+  "report": "docs/report.md",
+  "contract_result": {
+    "directives": [
+      {
+        "status": "satisfied",
+        "id": "...",
+        "evidence": "..."
+      }
+    ]
+  }
+}
+\`\`\`
+
+### Type rules
+
+1. **Command execution is recorded from the calls you cite; result descriptions are trusted reports.** Cite the Bash commands that prove your claims by their exact toolUseId; the runtime records each command and its exit code from the cited call. Never improve, infer, or fabricate evidence. A later agent re-runs commands only when its brief explicitly requires fresh verification.
+2. Each \`path\` value uses this machine's path syntax and can be absolute or relative to your working directory. Preserve the exact path of the artifact, including scratch files outside that directory. The path can name a file or a directory, and it must exist when you call \`handoff\`, unless its field says that it can name a file that does not exist yet."
+`;

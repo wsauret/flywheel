@@ -1,0 +1,133 @@
+{
+  "original/prompt.txt.gz": {
+    "source": "Q/reviewed/298/prompt.txt",
+    "bytes": 368,
+    "sha256": "23a2d33dce071fb01e37975e1acd7ba495d7d0b6f2a3d0a55706ebcf3aca451c",
+    "decompressedBytes": 550,
+    "decompressedSha256": "15adfb344bef2bc9bb8ca11419d509bcbce8f006b0a3047a5b76620f2fea352b"
+  },
+  "original/record.json.gz": {
+    "source": "Q/reviewed/298/record.json",
+    "bytes": 1027,
+    "sha256": "59893823a832fa935448bc4f5ed97d135d8b185609093fe7415352d146d89468",
+    "decompressedBytes": 2456,
+    "decompressedSha256": "3b61cba8762c48ef4f1d3ab357fc98f8dff402ac0e66e6b6c84c4703750d1b64"
+  },
+  "original/code_context.py.gz": {
+    "source": "Q/reviewed/298/code_context.py",
+    "bytes": 589,
+    "sha256": "337fb6f0d436dfd5a0e078a419b6df75546e6f93e500745090b45845b5120004",
+    "decompressedBytes": 1480,
+    "decompressedSha256": "5815e0a4978d7e9b68c5a36aca52679b2c1805dbfb7beca1ef1d9a8d426e3051"
+  },
+  "original/reference_code.py.gz": {
+    "source": "Q/reviewed/298/reference_code.py",
+    "bytes": 110,
+    "sha256": "0244321136bd561f44b014c147fa05f27df157929ab46e128677ea1d5a1069fb",
+    "decompressedBytes": 109,
+    "decompressedSha256": "fd6900704632462d64e1b0b9f65fd2942db653da6305858991a26fed2d343d26"
+  },
+  "controls/semantic-fault.py.gz": {
+    "source": "Q/private/298/semantic-fault.py",
+    "bytes": 123,
+    "sha256": "2bfb12df66ba5db4dd59a9c9ec3675d607695fd3bcd79ad7b29765ae883a1d95",
+    "decompressedBytes": 125,
+    "decompressedSha256": "a361d8a8c6e55fdd7f65d462bd6a17e776605aa3a464f1d62b807ac2ee2acb15"
+  },
+  "original/execution.py": {
+    "source": "Q/upstream/xlang-ai-DS-1000-b39aab7/execution.py",
+    "bytes": 5791,
+    "sha256": "fab0beb2a5c3300f4540c2225ffc013881e5770fed388ad20d4620ae040cd311"
+  },
+  "original/test_ds1000.py": {
+    "source": "Q/upstream/xlang-ai-DS-1000-b39aab7/test_ds1000.py",
+    "bytes": 3051,
+    "sha256": "32ebe279eefa2d3cb1d633a82b43954ea813567e2fca28a9f6d777ce7f04d50c"
+  },
+  "licenses/LICENSE": {
+    "source": "Q/candidate-visible/298/LICENSE",
+    "bytes": 20139,
+    "sha256": "2003829cf643d61b00a76088dd31bb11b8029546f24c56b39fd492adb9281483"
+  },
+  "licenses/NOTICE.txt": {
+    "source": "Q/candidate-visible/298/NOTICE.txt",
+    "bytes": 1303,
+    "sha256": "9f465cfde7df7ea3b32f638d19566a27e2099f0a382b05f2d37610eacaff4222"
+  },
+  "licenses/cc-by-sa-3.0.txt": {
+    "source": "Q/candidate-visible/298/cc-by-sa-3.0.txt",
+    "bytes": 22240,
+    "sha256": "3f941b3b89cf7b8370ceb83cc76d2120d471b58735d8ca60238a751a48d7f72f"
+  },
+  "licenses/cc-by-sa-4.0.txt": {
+    "source": "Q/candidate-visible/298/cc-by-sa-4.0.txt",
+    "bytes": 20138,
+    "sha256": "28a9529c7d0bb4dc51f4bf5c116a3d16ef247a052f7591466768ddf563fd1cf5"
+  },
+  "source-attribution.json": {
+    "source": "Q/source-attribution-298.json",
+    "bytes": 3046,
+    "sha256": "dc8494769db3691976520ff3c64131fe5669b4a594ba31f9692fd5842251eb2c"
+  },
+  "licenses/ORIGINAL-DATA-NOTICE.txt": {
+    "source": "Q/private/298/ORIGINAL-DATA-NOTICE.txt",
+    "bytes": 8030,
+    "sha256": "6b7dbb9ca3accf6a6fa25f38fe8c9c42a5fc27143d50ecc603ad98fa59791760"
+  },
+  "historical/ds1000-298-0-result.json.gz": {
+    "source": "S/ds298-ready-v2/ds298-native-run-2026-10-12T11-08-16-934Z/ds1000-298-0-result.json",
+    "bytes": 1955,
+    "sha256": "14d3f7c32be03dc4c27a38d41e8a7ba1d6240b3b6164511be7a7ba24ce1bb2b3",
+    "decompressedBytes": 5678,
+    "decompressedSha256": "6745b0fd23425f7e25a661b4f3f0726fccd75a39f5d277b11c799b732bdb8a30"
+  },
+  "historical/ds1000-298-0-grade.json.gz": {
+    "source": "S/ds298-ready-v2/ds298-native-run-2026-10-12T11-08-16-934Z/ds1000-298-0-grade.json",
+    "bytes": 1499,
+    "sha256": "820e97273de7b9a1fdf5258525a1fb81c5b32a5d11455c03021df0855c38f6bc",
+    "decompressedBytes": 5641,
+    "decompressedSha256": "443890e9c4811e333b383a86250a985b5a3c261ffa37e2b2ea64239b9422977a"
+  },
+  "historical/ds1000-298-0-recovered-canonical-usage.json.gz": {
+    "source": "S/ds298-ready-v2/ds298-native-run-2026-10-12T11-08-16-934Z/ds1000-298-0-recovered-canonical-usage.json",
+    "bytes": 1812,
+    "sha256": "b92502d1a9e8bfdb0defad117f4974b75b7b9706e2133a4845eff5d1691deed8",
+    "decompressedBytes": 15572,
+    "decompressedSha256": "321b4abc2b3c5607829bbb56ace5677e3935167ed43a2c0f63b2ed37c0c41419"
+  },
+  "historical/ds1000-298-0-model.patch.gz": {
+    "source": "S/ds298-ready-v2/ds298-native-run-2026-10-12T11-08-16-934Z/ds1000-298-0-model.patch",
+    "bytes": 156,
+    "sha256": "738f75035ab8951ac11d51e0f031993cca3c4492e45ada4ca3437e1e6b22f692",
+    "decompressedBytes": 175,
+    "decompressedSha256": "067714a90f340267cde724bb26879472320713d17f838a10b73e9985ffee2b1f"
+  },
+  "qualification/base-grade.json.gz": {
+    "source": "fresh shared native qualification/base-grade.json.gz",
+    "bytes": 2088,
+    "sha256": "a142961ebbcee98e56737113ee4676f88de92f8a71c2a79404b3ae09687efc48",
+    "decompressedBytes": 7277,
+    "decompressedSha256": "7f40b5417dedf79d3f6b2ab283bad9842b6e3c69f82a6e34be3fc76bda125e37"
+  },
+  "qualification/reference-grade.json.gz": {
+    "source": "fresh shared native qualification/reference-grade.json.gz",
+    "bytes": 2522,
+    "sha256": "d356d2ee65066963b42c9ea35bbc4f5e4080f158b1062cea0359361deedaed82",
+    "decompressedBytes": 9076,
+    "decompressedSha256": "ae0002593ee36301655aea37d502ce57cd1f050103c37c5fcf9f286840b3e47e"
+  },
+  "qualification/fault-grade.json.gz": {
+    "source": "fresh shared native qualification/fault-grade.json.gz",
+    "bytes": 2444,
+    "sha256": "790059303490d5f2ef9d2e228cc1e92d29cce917238f0ce5eca9dd4485739fa7",
+    "decompressedBytes": 8281,
+    "decompressedSha256": "978541f841cb854781e09e7e3a878117824723fbbf9738048dffd8a7373978ad"
+  },
+  "qualification/full-record.json.gz": {
+    "source": "fresh shared native qualification/qualification-record.json",
+    "bytes": 1883,
+    "sha256": "b20ef1dd1ec426276fdad638378093162355373316f0a16d224252fce890eba9",
+    "decompressedBytes": 8343,
+    "decompressedSha256": "d5b8ba28d146983dcdcb9cd8477dada502976461302e19d5e4a1dd5e5f2bffb1"
+  }
+}

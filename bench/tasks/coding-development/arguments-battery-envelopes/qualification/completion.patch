@@ -1,0 +1,20 @@
+--- a/src/orchestration/agent-runtime/llm/json-parse.ts
++++ b/src/orchestration/agent-runtime/llm/json-parse.ts
+@@ -109,7 +109,7 @@
+   const start = s.search(/[{[]/);
+   if (start === -1) return s;
+   const close = s[start] === "{" ? "}" : "]";
+-  const end = s.indexOf(close);
++  const end = s.lastIndexOf(close);
+   return end > start ? s.slice(start, end + 1) : s;
+ }
+ 
+@@ -173,7 +173,7 @@
+   for (const candidate of candidates) {
+     for (const text of [candidate, repairJson(candidate)]) {
+       try {
+-        if (partialParse(text)) return { kind: "incomplete" };
++        if (partialParse(text)) return { kind: "complete", value: partialParse(text) };
+       } catch {
+         // next form
+       }

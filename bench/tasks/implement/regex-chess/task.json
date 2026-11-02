@@ -1,0 +1,15 @@
+{
+  "kind": "native",
+  "id": "regex-chess",
+  "stratum": "hard",
+  "family": "terminal-bench",
+  "split": "development",
+  "instruction": "instruction.txt",
+  "environment": "environment.txt",
+  "timeoutMinutes": 25,
+  "native": {
+    "path": [".bench-home/python/bin"],
+    "command": ["bun", "adapter.ts"],
+    "timeoutMs": 3900000
+  }
+}

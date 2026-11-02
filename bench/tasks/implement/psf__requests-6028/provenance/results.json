@@ -1,0 +1,58 @@
+{
+  "outcome": "Fresh public native setup reproduces the archived task criterion.",
+  "recipe": [
+    "Fetch the pinned Requests source, harness, dataset, and CPython archive with fetch.ts.",
+    "Extract the runtime and create a standard-library venv.",
+    "Fetch the 12 universal wheels directly from public PyPI metadata URLs, verify their SHA-256, and install offline with --require-hashes --no-deps --no-index.",
+    "Copy pristine source into independently initialized Git repositories and apply the original test patch to both controls, then the gold patch to gold.",
+    "Run python -I -B bootstrap.py TARGET in each target with a fresh TMPDIR. Bootstrap pins and loads pytest and pytest-mock before exposing the target, then executes pytest -rA tests/test_utils.py.",
+    "Run grade.py against the unchanged, freshly fetched original parser and grader AST nodes."
+  ],
+  "controls": {
+    "base": {"collected": 214, "passed": 201, "failed": 2, "skipped": 11, "f2p_success": 0, "f2p_failure": 2, "p2p_success": 185, "p2p_failure": 0, "resolution": "RESOLVED_NO", "owned_command_seconds": 0.545923541},
+    "gold": {"collected": 214, "passed": 203, "failed": 0, "skipped": 11, "f2p_success": 2, "f2p_failure": 0, "p2p_success": 185, "p2p_failure": 0, "resolution": "RESOLVED_FULL", "owned_command_seconds": 0.417718333},
+    "skips": {"cStringIO_unavailable": 1, "Windows_only": 10},
+    "grading_seconds": 0.07855375000000003,
+    "grading_skip_contract": "Unchanged original functions assert skipped F2P is failure and skipped P2P is maintained. FULL requires both ratios to equal 1.",
+    "parser_note": "The original parser reports 195 normalized keys, not 214 raw test cases. Base has 193 PASSED and 2 FAILED parsed keys. Gold has 195 PASSED parsed keys. The original selected criterion remains 187 cases.",
+    "semantic_fault": "The base implementation removes user information from authenticated proxy URLs. Both original F2P assertions fail with the auth component absent."
+  },
+  "isolation": {
+    "runtime": "CPython 3.12.13+20260510, aarch64-apple-darwin",
+    "environment": "Fresh standard venv, no copied site-packages, no uv, no private cache, no system installation, no installed Requests distribution.",
+    "candidate_imports": "base-identity.json and gold-identity.json prove requests and requests.utils resolve inside the corresponding candidate tree.",
+    "source_import_budget": "The identity hook executes in the actual owned pytest command. There is no separate candidate import preflight.",
+    "process_ownership": "run.ts uses the repository createProcessSupervisor, createLauncherScope, and runOwnedCommand. Both streams are forwarded live. The owned backend uses windowsHide: true. Every observed scope closure settled."
+  },
+  "timeout": {
+    "original_eval": "original-eval.sh has no per-command timeout.",
+    "original_qualification": "qualify.py.txt and final-verify.py.txt have no timeout.",
+    "public_harness_cli_default_seconds": 1800,
+    "public_harness_authority": "harness/swebench/harness/run_evaluation.py:833-839",
+    "public_harness_scope": "run_evaluation.py:367-368 applies the supplied timeout to the complete /bin/bash /eval.sh, including installation and tests.",
+    "callable_default": "run_instance timeout defaults to None; docker_utils.exec_run_with_timeout defaults to 60 only when its timeout argument is omitted. The evaluation caller supplies its timeout explicitly.",
+    "probe_limit_seconds": 1800,
+    "probe_scope": "Each owned command has a probe-only 1800-second limit. This does not establish historical native deadline equivalence or claim an original 300-second policy.",
+    "recorded_historical_invocation_timeout": "Not established."
+  },
+  "provenance": {
+    "correct_issue": "https://github.com/psf/requests/issues/6027",
+    "pr": "https://github.com/psf/requests/pull/6028",
+    "comparison": "The fresh PR body closes #6027. The archived problem bytes equal the fresh issue title + newline + body + newline exactly.",
+    "incorrect_prior_link": "The archived fetch manifest fetched issue 6025, Support for proxy that requires DigestAuth. Its bytes do not match the task. The archive remains unchanged.",
+    "dataset": "The freshly fetched dataset has the exact archived SHA-256 a45b1fe4e2f0c8390b2b2938ac83e92ed5979000856808f3679c07812e9e6dcd. This probe uses the archive's row 297 and verifies its problem and patches byte-for-byte; it does not independently decode Parquet again.",
+    "inputs": "inputs-manifest.json records URL, status, byte length, and SHA-256 for every public download, including all 12 wheels and their PyPI metadata.",
+    "notices": "inspection.json records preserved Requests Apache-2.0 LICENSE and NOTICE, harness MIT LICENSE, runtime LICENSE.txt, and license/notice entries from every wheel. Exact wheel notice bytes are retained under notices/.",
+    "grader": "grade.py, verified-harness-functions.json, harness/swebench/harness/grading.py, and harness/swebench/harness/log_parsers/python.py. Full fresh grader/parser bytes and all selected AST function hashes match the archive."
+  },
+  "probe_corrections": [
+    "The first Git apply inside the enclosing repository returned success without applying the test patch. Independent Git initialization fixed patch scoping. The first raw run collected only 212 cases and is retained under unpatched-initial-base-*.",
+    "A reused TMPDIR retained test_utils.py from that initial unpatched run. Requests extract_zipped_paths reuses an existing basename at utils.py:272-278. The real original test then failed its byte comparison at tests/test_utils.py:299. Fresh per-command TMPDIR values removed the interference. Shared-temp outputs are retained under shared-tmp-*."
+  ],
+  "limits": [
+    "This proves the historical native task criterion, not Python 3.8.12, Linux installation equivalence, TLS behavior, paid-proxy behavior, or all issue platforms.",
+    "No model calls, paid proxy calls, project edits, or reserved corpus expansion occurred.",
+    "No extra network-stack probe was needed because the original semantic base control fails exactly the two required assertions.",
+    "The archive's original Linux evaluation installs source with pip install ., while the historical native qualifier and this probe import the current source tree directly."
+  ]
+}

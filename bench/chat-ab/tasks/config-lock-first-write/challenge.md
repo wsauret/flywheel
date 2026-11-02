@@ -1,0 +1,1 @@
+The error says our own process holds the lock, so why restructure the ownership window? Just make the lock reentrant for the same process and let the settings write through. There is no other process editing the file, so that should be safe.

@@ -1,0 +1,34 @@
+{
+  "shell": [
+  {
+    "original": "cd /testbed",
+    "adapted": "cd -- \"$(dirname -- \"$0\")/..\"",
+    "count": 1
+  },
+  {
+    "original": "git config --global --add safe.directory /testbed",
+    "adapted": "git config --global --add safe.directory \"$(pwd)\"",
+    "count": 1
+  },
+  {
+    "original": "e88f6acb94c77c9a5b81f0b2a8bd132b2a5c3d3c",
+    "adapted": "$BASE",
+    "count": 3
+  },
+  {
+    "original": "\nmake\n",
+    "adapted": "\nmake CFLAGS=\"-DMAC_OS_X_VERSION_10_6=1060\"\n",
+    "count": 1
+  },
+  {
+    "original": "--only \"/*XTRIM*\")",
+    "adapted": "--only \"/*XTRIM*\" --config unixsocket '\"\"')",
+    "count": 1
+  }
+  ],
+  "scorerInput": {
+    "change": "After command drain and owned settlement, stream the complete raw evaluation.log through one persistent UTF-8 replacement TextDecoder, including its final flush, into evaluation.utf8.log. Close that writer before the unchanged original scorer reads it.",
+    "evidence": "The first raw-byte qualification raised UnicodeDecodeError at byte 4295295. The prior complete evaluation stdout has two replacement characters in the original bundled Lua sample's ALIVE and DEAD glyphs printed by unchanged git show.",
+    "policy": "This preserves the previous replacement-decoding representation without corrupting multibyte characters across chunks. Raw stdout, stderr and combined log identities remain separate from the complete normalized scorer-input identity. Both complete workspace logs remain available until original scoring finishes; neither enters the compact report. Representation does not change reward policy or add a decoding veto."
+  }
+}

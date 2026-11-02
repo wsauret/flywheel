@@ -1,0 +1,11 @@
+--- a/src/infra/auth/auth-store-mutations.ts
++++ b/src/infra/auth/auth-store-mutations.ts
+@@ -197,7 +197,7 @@
+       const bytes = readAuthStoreBytesForMutation(access);
+       const raw: unknown = bytes === undefined ? {} : JSON.parse(bytes.toString("utf8"));
+       if (!isRecord(raw) || !persistedAuthEntriesEqual(receipt.providerId, raw[receipt.providerId], receipt.after)) return false;
+-      const restored: Record<string, unknown> = {};
++      const restored = { ...raw };
+       if (receipt.before === undefined) Reflect.deleteProperty(restored, receipt.providerId);
+       else restored[receipt.providerId] = receipt.before;
+       access.writeFile(AUTH_STORE_FILE, JSON.stringify(restored));

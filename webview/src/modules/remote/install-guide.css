@@ -1,0 +1,139 @@
+/* The install guide: a card whose only motion is the tap loop, so attention
+   lands on the next tap and nowhere else. Each step's tile lifts and rings in
+   turn; the loop length is set by the component from the step count. */
+
+.install-guide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-s3);
+  width: 100%;
+  max-width: 30rem;
+  padding: var(--fw-s3) var(--fw-s3) var(--fw-s2);
+  border: 1px solid var(--fw-hairline);
+  border-radius: var(--fw-radius-lg);
+  background: var(--fw-bg-raised);
+}
+.sheet-body .install-guide { margin: var(--fw-s1) 0 var(--fw-s3); }
+.push-guide {
+  align-self: center;
+  flex-shrink: 0;
+  width: calc(100% - 2 * var(--fw-s3));
+  max-width: 30rem;
+  margin: var(--fw-s3);
+  max-height: 30%;
+  overflow: auto;
+}
+.push-guide .install-tile,
+.push-guide .install-ring,
+.push-guide .install-label { animation-iteration-count: 2; }
+
+.install-text { display: flex; flex-direction: column; gap: var(--fw-s1); }
+.install-title { margin: 0; font-size: var(--fw-text); font-weight: 600; letter-spacing: -0.01em; }
+.install-lead { margin: 0; color: var(--fw-fg-muted); font-size: var(--fw-text-sm); }
+
+.install-browser {
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.install-note { margin: 0; color: var(--fw-warning); font-size: var(--fw-text-sm); }
+
+.install-steps:empty { display: none; }
+.install-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
+  gap: var(--fw-s2);
+  margin: 0;
+  padding: var(--fw-s2) 0;
+  list-style: none;
+}
+.install-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--fw-s2);
+  min-width: 0;
+  text-align: center;
+}
+
+/* The tile is the thing a finger would press. It rises while its turn lasts. */
+.install-tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  color: var(--fw-fg);
+  background: var(--fw-input-bg);
+  border: 1px solid var(--fw-input-border);
+  border-radius: var(--fw-radius);
+  animation: install-lift var(--install-cycle) var(--fw-ease) infinite;
+  animation-delay: var(--install-delay);
+}
+.install-glyph { width: 1.6rem; height: 1.6rem; }
+
+/* The ring is the touch: it blooms from the tile's centre once per loop, at
+   this step's turn, then vanishes until the loop comes round. */
+.install-ring {
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--fw-accent);
+  border-radius: inherit;
+  opacity: 0;
+  animation: install-ring var(--install-cycle) var(--fw-ease) infinite;
+  animation-delay: var(--install-delay);
+}
+
+.install-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--fw-s1);
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-xs);
+  line-height: var(--fw-leading-tight);
+  animation: install-label var(--install-cycle) var(--fw-ease) infinite;
+  animation-delay: var(--install-delay);
+}
+.install-number {
+  display: inline-grid;
+  place-items: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: var(--fw-radius-pill);
+  background: var(--fw-bg-raised-strong);
+  color: var(--fw-fg);
+  font-size: var(--fw-text-2xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.install-actions { display: flex; justify-content: flex-end; gap: var(--fw-s2); }
+
+/* One step's share of the loop is 1 / steps; the keyframes below use the
+   first quarter of the cycle for a three-step guide and settle within it, so a
+   guide of two or five steps still hands off before the next tile rises. */
+@keyframes install-lift {
+  0% { transform: none; border-color: var(--fw-input-border); }
+  6% { transform: translateY(-3px); border-color: var(--fw-accent); }
+  22% { transform: translateY(-3px); border-color: var(--fw-accent); }
+  30%, 100% { transform: none; border-color: var(--fw-input-border); }
+}
+@keyframes install-ring {
+  0% { opacity: 0; transform: scale(0.9); }
+  4% { opacity: 0.9; transform: scale(1); }
+  18% { opacity: 0; transform: scale(1.35); }
+  100% { opacity: 0; transform: scale(1.35); }
+}
+@keyframes install-label {
+  0% { color: var(--fw-fg-muted); }
+  6%, 22% { color: var(--fw-fg); }
+  30%, 100% { color: var(--fw-fg-muted); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .install-tile, .install-ring, .install-label { animation: none; }
+  .install-ring { display: none; }
+  .install-label { color: var(--fw-fg); }
+}

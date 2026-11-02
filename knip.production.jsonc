@@ -1,0 +1,43 @@
+{
+  "$schema": "node_modules/knip/schema.json",
+  "ignoreExportsUsedInFile": false,
+  "includeEntryExports": true,
+  // VS Code consumes these named exports outside the TypeScript import graph.
+  "tags": ["-externalHost"],
+  "workspaces": {
+    ".": {
+      // The unit tests reach knip through the test script it parses; the
+      // integration suites run through scripts it does not follow, so they are
+      // entries by name and the exports only they reach stay accounted for.
+      "entry": ["src/orchestration/app-service/worker-entry.ts", "src/infra/internal-process-channel.ts", "src/orchestration/app-service/project-executor-protocol.ts", "tests/integration/**/*.test.ts"],
+      "project": ["src/**/*.{ts,tsx}"],
+      "ignore": ["src/infra/code-mode/**"]
+    },
+    "vscode": {
+      "entry": ["src/extension.ts"],
+      "project": ["src/**/*.{ts,tsx}"],
+      "ignoreDependencies": ["@vscode/vsce"],
+    },
+    "webview": {
+      // Tests are entries by name, as the test script's browser condition
+      // hides them from knip's script parser; they keep the exports only a
+      // test reaches accounted for, as the parsed script did before.
+      "entry": ["src/index.ts", "local/main.tsx", "editor/main.tsx", "phone/main.tsx", "src/**/*.test.{ts,tsx}", "phone/**/*.test.ts", "local/**/*.test.ts", "editor/**/*.test.ts"],
+      "project": ["src/**/*.{ts,tsx}", "local/**/*.{ts,tsx}", "editor/**/*.{ts,tsx}", "phone/**/*.{ts,tsx}"],
+      // The build resolves the Babel presets by name and hands Babel their paths.
+      "ignoreDependencies": ["babel-preset-solid", "@babel/preset-typescript"],
+    },
+    "relay": {
+      // The Worker and the hosted phone page are production deployables that
+      // consume the protocol and the phone shell's host contract.
+      // The build script is an entry through the package scripts; the icon
+      // renderer it imports must be in the project for its dependency to count.
+      "entry": ["worker/src/index.ts", "app/bootstrap.ts", "app/sw/sw.ts"],
+      "project": ["worker/src/**/*.ts", "app/client-choice.ts", "app/device-store.ts", "app/sw/*.ts", "app/icon.ts"],
+      "ignoreDependencies": ["cloudflare"],
+      "ignore": ["**/*.d.ts"],
+    }
+  },
+  // The grammar loader resolves these assets from runtime strings.
+  "ignoreDependencies": ["@vscode/tree-sitter-wasm"]
+}

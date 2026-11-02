@@ -1,0 +1,26 @@
+import { SECRET_REPLACEMENT } from "../../infra/redact-secrets.js";
+
+export const GLOBAL_GUIDELINE_ID = {
+  batchIndependentToolCalls: "batch-independent-tool-calls",
+  savedOutputRecovery: "saved-output-recovery",
+  secretRedactionMarker: "secret-redaction-marker",
+} as const;
+
+export type GlobalGuidelineId = typeof GLOBAL_GUIDELINE_ID[keyof typeof GLOBAL_GUIDELINE_ID];
+
+interface GlobalGuidelineText {
+  readonly "batch-independent-tool-calls": string;
+  readonly "saved-output-recovery": string;
+  readonly "secret-redaction-marker": string;
+}
+
+const GLOBAL_GUIDELINES: GlobalGuidelineText = Object.freeze({
+  [GLOBAL_GUIDELINE_ID.batchIndependentToolCalls]: "Independent tool calls in one turn run concurrently and return together, so batch independent calls with distinct inputs into a single turn. Before submitting, remove duplicate calls with the same tool name and arguments. Repeat a call only when a failure, changed state, or verification requirement makes a fresh result necessary. A turn carries both text and tool calls: when a progress update is due, put the text first and issue the batched calls in that same turn. Serialize across turns only when a later call depends on an earlier call's output, such as reading a file before editing it. This is about grouping calls you already need, not making unnecessary ones.",
+  [GLOBAL_GUIDELINE_ID.savedOutputRecovery]: "When a tool truncates its output and names a saved-output file, read that file or search inside it for the part you need instead of re-running a broader call; it holds the complete result the truncated view came from.",
+  [GLOBAL_GUIDELINE_ID.secretRedactionMarker]: `\`${SECRET_REPLACEMENT}\` in tool output usually marks a runtime redaction, not the true bytes; the command or edit itself ran with the real value. Never copy the mask into a command, edit, or file. If the masked text is clearly not a secret (over-matched code), recover the bytes via a transformed view like \`sed -n '<N>p' <file> | rev\`; if it is a real credential, leave it masked.`,
+});
+
+
+export function renderGlobalGuidelines(ids: readonly GlobalGuidelineId[]): readonly string[] {
+  return ids.map((id) => GLOBAL_GUIDELINES[id]);
+}

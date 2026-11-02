@@ -1,0 +1,12 @@
+# The repository root ignores `.vscode/`, which is source here: the launch
+# configuration is how you run this extension. A pattern in a nested ignore
+# file wins over the root's, so it is re-included deliberately rather than by
+# accident. Dependencies lock through the root `bun.lock`; there is no lockfile
+# in this directory.
+!.vscode/
+
+node_modules/
+out/
+dist/
+*.vsix
+.vscode-test/

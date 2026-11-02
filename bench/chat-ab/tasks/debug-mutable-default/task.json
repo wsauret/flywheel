@@ -1,0 +1,22 @@
+{
+  "id": "debug-mutable-default",
+  "stratum": "revived-e2e",
+  "timeoutMinutes": 45,
+  "sandbox": {
+    "commit": "64d9b75aeaa02fb5d00d2f75d01ea8a50df0d743",
+    "paths": [".gitignore"],
+    "patch": "sandbox.patch"
+  },
+  "challenge": { "truth": "change" },
+  "acceptanceBaseline": {
+    "failToPass": [
+      "acceptance/mutable-default.test.ts > default calls with different inputs do not share seen ids",
+      "acceptance/mutable-default.test.ts > the original test_process_twice scenario passes"
+    ],
+    "passToPass": [
+      "acceptance/mutable-default.test.ts > existing passing test test_basic_processing still passes",
+      "acceptance/mutable-default.test.ts > existing passing test test_shared_dedup still passes",
+      "acceptance/mutable-default.test.ts > existing passing test test_summary_report still passes"
+    ]
+  }
+}

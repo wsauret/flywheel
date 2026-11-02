@@ -1,0 +1,44 @@
+--- a/src/orchestration/config/config-file.ts
++++ b/src/orchestration/config/config-file.ts
+@@ -134,7 +134,7 @@
+ export async function withConfigOwnership<T>(location: ConfigFileLocation, use: (config: ConfigOwnership) => T): Promise<T> {
+   const held = openConfigDirectory(location);
+   try {
+-    return await withLockIn(held.directory, `${held.fileName}.lock`, () => use(configOwnership(held, location)));
++    return await withLockIn(held.directory, `${held.fileName}.lock`, () => use(configOwnership(held)));
+   } finally {
+     held.directory.close();
+   }
+@@ -149,7 +149,7 @@
+   let hold: LockHold | undefined;
+   try {
+     hold = acquireLockSyncIn(held.directory, `${held.fileName}.lock`);
+-    return use(configOwnership(held, location));
++    return use(configOwnership(held));
+   } finally {
+     if (hold) releaseLockIn(held.directory, hold);
+     held.directory.close();
+@@ -170,20 +170,12 @@
+   };
+ }
+ 
+-function configOwnership(held: HeldConfigFile, location: ConfigFileLocation): ConfigOwnership {
+-  const current = <T>(use: (current: HeldConfigFile) => T): T => {
+-    const reopened = openConfigDirectory(location);
+-    try {
+-      return use(reopened);
+-    } finally {
+-      reopened.directory.close();
+-    }
+-  };
+-  const read = () => current(file => readHeldFile(file.directory, file.fileName));
++function configOwnership(held: HeldConfigFile): ConfigOwnership {
++  const read = () => readHeldFile(held.directory, held.fileName);
+   return {
+     read,
+     readText: () => textOf(read()),
+-    write: (text) => current(file => file.directory.writeFile(file.fileName, text)),
++    write: (text) => held.directory.writeFile(held.fileName, text),
+   };
+ }
+ 

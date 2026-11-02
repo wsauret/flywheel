@@ -1,0 +1,95 @@
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import tarfile
+import time
+
+import pyarrow.parquet as pq
+
+root = Path(__file__).resolve().parent
+sha = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+assert sha(root / "dataset.parquet") == "a45b1fe4e2f0c8390b2b2938ac83e92ed5979000856808f3679c07812e9e6dcd"
+rows = pq.read_table(root / "dataset.parquet").to_pylist()
+row = rows[297]
+prior = json.loads((root / "prior-row.json").read_text())
+assert row["instance_id"] == "psf__requests-6028"
+assert all(prior[key] == value for key, value in row.items())
+for field, name in [("patch", "gold.patch"), ("test_patch", "test.patch"), ("problem_statement", "problem.txt"), ("hints_text", "hints.txt")]:
+    assert row[field].encode() == (root / name).read_bytes()
+(root / "row.json").write_text(json.dumps(row, indent=2))
+with tarfile.open(root / "requests.tar.gz") as archive:
+    stage = root / "source-extract"
+    stage.mkdir()
+    archive.extractall(stage, filter="data")
+    next(stage.iterdir()).rename(root / "source")
+    stage.rmdir()
+env = {
+    "HOME": str(root / "home"), "TMPDIR": str(root / "tmp"),
+    "PIP_CONFIG_FILE": os.devnull, "PIP_CACHE_DIR": str(root / "pip-cache"),
+    "XDG_CACHE_HOME": str(root / "pip-cache"),
+    "PYTHONNOUSERSITE": "1", "PYTHONDONTWRITEBYTECODE": "1",
+    "PATH": str(root / "venv/bin") + ":/usr/bin:/bin:/usr/sbin:/sbin", "LANG": "en_US.UTF-8",
+    "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
+}
+timings = []
+def run(argv, cwd=root, output=None, allowed=(0,)):
+    argv = list(map(str, argv))
+    print(json.dumps({"argv": argv, "cwd": str(cwd)}), flush=True)
+    start = time.monotonic()
+    chunks = []
+    with subprocess.Popen(argv, cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as child:
+        for line in child.stdout:
+            print(line, end="", flush=True)
+            chunks.append(line)
+        code = child.wait()
+    text = "".join(chunks)
+    if output:
+        (root / output).write_text(text)
+    timings.append({"argv": argv, "seconds": time.monotonic() - start, "exit": code})
+    (root / "qualification-timings.json").write_text(json.dumps(timings, indent=2))
+    assert code in allowed, (argv, code)
+    return text
+
+def tree(path):
+    return {str(file.relative_to(path)): sha(file) for file in path.rglob("*") if file.is_file() and ".git" not in file.parts and "__pycache__" not in file.parts and ".pytest_cache" not in file.parts}
+
+initial = tree(root / "source")
+comparisons = {}
+for variant in ["base", "gold"]:
+    target = root / variant
+    shutil.copytree(root / "source", target)
+    run(["git", "init", "--quiet"], cwd=target)
+    patches = ["test.patch"] if variant == "base" else ["test.patch", "gold.patch"]
+    for patch in patches:
+        run(["git", "apply", "--check", root / patch], cwd=target)
+        run(["git", "apply", "--verbose", root / patch], cwd=target)
+        run(["git", "apply", "--reverse", "--check", root / patch], cwd=target)
+    after = tree(target)
+    changed = [name for name in initial if after[name] != initial[name]]
+    assert set(after) == set(initial)
+    assert set(changed) == ({"tests/test_utils.py"} if variant == "base" else {"tests/test_utils.py", "requests/utils.py"})
+    applied = dict(after)
+    for patch in reversed(patches):
+        run(["git", "apply", "--reverse", root / patch], cwd=target)
+    assert tree(target) == initial
+    for patch in patches:
+        run(["git", "apply", root / patch], cwd=target)
+    assert tree(target) == applied
+    comparisons[variant] = {"changed_files": changed, "applied_hashes": {name: applied[name] for name in changed}, "reverse_restored_archive_bytes": True}
+    python = root / "venv/bin/python"
+    run([python, "-B", "-c", "import requests, sys, pathlib, importlib.metadata as m, json; assert pathlib.Path(requests.__file__).resolve().is_relative_to(pathlib.Path.cwd()); print(json.dumps({'requests':requests.__file__, 'python':sys.executable, 'packages':{d.metadata['Name']: d.version for d in m.distributions()}, 'sys_path':sys.path}))"], cwd=target, output=variant + "-identity.stdout")
+    run([python, "-B", "-m", "pytest", "-rA", "tests/test_utils.py"], cwd=target, output=variant + "-pytest.stdout", allowed=(1,) if variant == "base" else (0,))
+    probe = run([python, "-I", "-B", root / "probe.py", target], output=variant + "-probe.stdout")
+    probe_result = json.loads(probe)
+    assert probe_result["normalization_preserves_auth"] == (variant == "gold")
+    assert probe_result["requests_status"] == (200 if variant == "gold" else 407)
+    assert probe_result["proxy_observation"]["auth_present"] == (variant == "gold")
+    assert probe_result["thread_joined"] and probe_result["proxy_listener_closed"]
+    assert tree(target) == applied
+(root / "source-comparison.json").write_text(json.dumps({"archive_files": initial, "comparisons": comparisons}, indent=2))
+run([root / "python/bin/python3.12", "-I", "-B", root / "grade.py"], output="grader.stdout")
+assert tree(root / "source") == initial
+print(json.dumps({"qualification": "completed", "selected": 187, "source_files": len(initial)}))

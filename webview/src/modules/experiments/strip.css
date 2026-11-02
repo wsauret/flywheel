@@ -1,0 +1,127 @@
+/* The experiment loop's ledger for the open session, under the workflow strip
+   and above the transcript: best against baseline, the tally, and whether a
+   run is being measured now. Open, it is the run table, newest first. */
+
+.experiment-strip {
+  border-bottom: 1px solid var(--fw-hairline);
+  padding: 2px 0 6px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.experiment-strip-header { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.experiment-strip-header .disclosure { flex: 1 1 auto; min-width: 0; }
+.experiment-title { flex: 0 0 auto; font-weight: 600; white-space: nowrap; }
+/* A loop that is switched off keeps its ledger but stops asking for attention. */
+.experiment-strip.inactive .experiment-title { color: var(--fw-fg-muted); }
+
+/* The summary row. Figures keep tabular digits so the best and baseline line
+   up as the loop reruns; overflow clips at the right, never widens the pane. */
+.experiment-inline {
+  display: flex;
+  align-items: baseline;
+  gap: var(--fw-s3);
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.experiment-figure { display: inline-flex; align-items: baseline; gap: var(--fw-s1); flex: 0 0 auto; }
+.experiment-figure-label { color: var(--fw-fg-muted); font-size: var(--fw-text-xs); }
+/* A value the harness has not produced yet is said, not left blank. */
+.experiment-pending { color: var(--fw-fg-muted); font-style: italic; }
+
+/* Confidence bands: the same three semantic colours on every host's theme,
+   tinted onto a pill so the figure reads as a judgement, not a measurement. */
+.experiment-confidence {
+  flex: 0 0 auto;
+  padding: 0 6px;
+  border-radius: var(--fw-radius-pill);
+  font-size: var(--fw-text-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.experiment-confidence.band-success { color: var(--fw-success); background: color-mix(in srgb, var(--fw-success) 16%, transparent); }
+.experiment-confidence.band-warning { color: var(--fw-warning); background: color-mix(in srgb, var(--fw-warning) 16%, transparent); }
+.experiment-confidence.band-error { color: var(--fw-error); background: color-mix(in srgb, var(--fw-error) 16%, transparent); }
+
+/* Busy: a breathing dot beside "measuring" while the harness runs a command.
+   Motion here means the machine is working; reduced motion stills it. */
+.experiment-busy {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: var(--fw-s1);
+  border-radius: var(--fw-radius-pill);
+  background: var(--fw-info);
+  vertical-align: middle;
+  animation: breathe 1.4s ease-in-out infinite;
+}
+.experiment-strip.running .tool-detail { color: var(--fw-info); }
+
+/* The run table scrolls inside its own region: a long loop shows its newest
+   rows and the composer keeps its place. Focusable so the keyboard can scroll
+   it and so `/experiment dashboard` has somewhere to land. */
+.experiment-runs {
+  margin-top: var(--fw-s1);
+  padding: 0 0 0 22px;
+  max-height: min(40cqh, 16rem);
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
+}
+.experiment-runs-content { display: flex; flex-direction: column; gap: calc(var(--fw-s1) / 2); }
+.experiment-runs:focus-visible { outline: 2px solid var(--fw-focus); outline-offset: -2px; border-radius: var(--fw-radius-sm); }
+
+.experiment-run {
+  display: flex;
+  align-items: center;
+  gap: var(--fw-s2);
+  min-width: 0;
+  font-size: var(--fw-text-sm);
+  font-variant-numeric: tabular-nums;
+}
+.experiment-run-number { flex: 0 0 3ch; color: var(--fw-fg-muted); font-size: var(--fw-text-xs); }
+.experiment-run-status { flex: 0 0 auto; color: var(--fw-fg-muted); font-size: var(--fw-text-xs); white-space: nowrap; }
+.experiment-run-metric { flex: 0 0 auto; white-space: nowrap; }
+.experiment-run.status-keep .experiment-run-metric { color: var(--fw-fg); font-weight: 600; }
+.experiment-run.status-discard .experiment-run-metric,
+.experiment-run.status-crash .experiment-run-metric,
+.experiment-run.status-checks_failed .experiment-run-metric { color: var(--fw-fg-muted); }
+/* Secondary metrics and the description/duration are detail. They are hidden
+   below the width rungs rather than wrapped, because a wrapped row loses the
+   one-line-per-run rhythm the table is read by. */
+.experiment-run-secondary { display: none; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fw-fg-muted); font-size: var(--fw-text-xs); }
+.experiment-run-detail { display: none; flex: 1 1 auto; min-width: 0; align-items: baseline; gap: var(--fw-s2); justify-content: flex-end; }
+.experiment-run-description { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fw-fg-muted); }
+.experiment-run-duration { flex: 0 0 auto; color: var(--fw-fg-muted); font-size: var(--fw-text-xs); white-space: nowrap; }
+.experiment-run .experiment-confidence { margin-left: auto; }
+.experiment-run-detail + .experiment-confidence { margin-left: 0; }
+
+@container client (min-width: 40rem) {
+  .experiment-run-detail { display: flex; }
+}
+@container client (min-width: 60rem) {
+  .experiment-run-secondary { display: block; }
+}
+
+/* Rows from an earlier charter segment are history: a new segment has a new
+   baseline, so their figures do not compare with the current ones. */
+.experiment-run.segment-old { opacity: 0.55; }
+.experiment-run.segment-old .experiment-run-metric { font-weight: 400; }
+
+/* The placeholder row for a run in flight, and the empty ledger. */
+.experiment-run.pending { color: var(--fw-fg-muted); }
+.experiment-empty { color: var(--fw-fg-muted); font-size: var(--fw-text-sm); padding: var(--fw-s1) 0; }
+
+/* Status by shape as well as colour: a dot per run. */
+.dot { width: 7px; height: 7px; border-radius: var(--fw-radius-pill); flex: 0 0 auto; background: var(--fw-fg-muted); }
+.dot-run-keep { background: var(--fw-success); }
+.dot-run-discard { background: var(--fw-fg-muted); }
+.dot-run-crash { background: var(--fw-error); }
+.dot-run-checks_failed { background: var(--fw-warning); }
+.dot-run-pending { background: var(--fw-info); animation: breathe 1.4s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .experiment-busy, .dot-run-pending { animation: none; }
+}

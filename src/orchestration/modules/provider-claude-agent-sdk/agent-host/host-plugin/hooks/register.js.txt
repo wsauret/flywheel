@@ -1,0 +1,60 @@
+// The agent host gate: an engine plugin that every shared agent host loads through the SDK's `plugins` option
+// (host-gate.ts). It is the step gate's hook (step-gate-plugin/hooks/register.js.txt) with the host's admission added.
+// The host's main thread is a dispatcher whose turns Flywheel starts with a nonce; its hosted agents send a model
+// request only while Flywheel holds an open request for that agent. A failure anywhere before a request refuses the
+// step, so the gate fails closed. Every event name is a string literal, because the CLI skips a module whose
+// `on()` names are not.
+
+/** What a step answers when the CLI sends no request: no text, no tool calls, no stop reason, no usage. */
+function refused(e) {
+  return { turnId: e.turnId, index: e.index, answer: "", toolUses: [], stopReason: null, usage: null };
+}
+
+/** Posts `body` to the host's gate and returns its JSON answer, or undefined when the gate did not answer. */
+async function ask($, path, body) {
+  const socketPath = await $.env.get("AGENT_HOST_SOCKET");
+  if (socketPath === undefined) return undefined;
+  const response = await $.http.fetch("http://localhost/" + path, { method: "POST", socketPath, body: JSON.stringify(body) });
+  return response.ok ? JSON.parse(response.text) : undefined;
+}
+
+// Each hook names the engine's `next` as `send`: calling it sends the step's model request.
+export const register = (on) => {
+  // Flywheel delivers every completion of a hosted agent itself, so the dispatcher model never reads one.
+  on("prompt.submit", async ($, e, next) => {
+    if (e.origin?.kind === "task-notification") return { drop: "Flywheel delivers agent completions itself." };
+    return next(e);
+  });
+  on("turn.start", async ($, e, next) => {
+    if (e.agentId === undefined) await ask($, "turn", { turnId: e.turnId, text: e.text });
+    return next(e);
+  });
+  on("turn.step", async function* ($, e, send) {
+    const decision = await ask($, "step", { turnId: e.turnId, index: e.index, messageCount: e.messageCount, agentId: e.agentId ?? null });
+    if (decision?.admit !== true) return refused(e);
+    const step = {
+      ...e,
+      ...(typeof decision.effort === "string" ? { effort: decision.effort } : {}),
+      ...(typeof decision.model === "string" ? { model: decision.model } : {}),
+    };
+    if (e.agentId === undefined) return yield* send(step);
+    // A step whose request failed ends without a stop chunk. Flywheel reads the service's answer from the engine's
+    // debug output, which names the request's agent and its request id.
+    const items = send(step);
+    while (true) {
+      const next = await items.next();
+      if (next.done === true) {
+        await ask($, "done", { agentId: e.agentId });
+        return next.value;
+      }
+      // The engine's own chunks carry nothing that Flywheel reads.
+      if (next.value?.kind !== "engine") await ask($, "item", { agentId: e.agentId, item: next.value });
+      yield next.value;
+    }
+  }).catch(async function* ($, e, send) {
+    // After the request went out, the hook only passes its response on. The mod API replays the settled call
+    // here and sends nothing again.
+    if (send.called) return yield* send(e);
+    return refused(e);
+  });
+};

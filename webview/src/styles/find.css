@@ -1,0 +1,78 @@
+/* The find bar sits at the top of the pane, over the transcript, and its hits
+   hang from it: a reading surface with one row per match. */
+.find {
+  position: relative;
+  flex: 0 0 auto;
+  z-index: var(--fw-z-popover);
+  border-bottom: 1px solid var(--fw-hairline);
+  background: var(--fw-bg);
+}
+.find-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--fw-s2);
+  padding: var(--fw-s1) var(--fw-s3);
+  color: var(--fw-fg-muted);
+}
+.find-bar input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 26px;
+  padding: 0 var(--fw-s2);
+  color: var(--fw-fg);
+  background: var(--fw-input-bg);
+  border: 1px solid var(--fw-input-border);
+  border-radius: var(--fw-radius);
+  font: inherit;
+}
+.find-bar input:focus { outline: none; border-color: var(--fw-focus); }
+.find-scope { display: inline-flex; border: 1px solid var(--fw-hairline); border-radius: var(--fw-radius); overflow: hidden; }
+.find-scope button {
+  padding: 2px var(--fw-s2);
+  font-size: var(--fw-text-xs);
+  color: var(--fw-fg-muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.find-scope button.on { color: var(--fw-fg); background: var(--fw-bg-raised-strong); }
+.find-count { font-size: var(--fw-text-xs); white-space: nowrap; min-width: 6ch; text-align: right; }
+.find-hits {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  max-height: 40cqh;
+  overflow-y: auto;
+  margin: 0;
+  padding: var(--fw-s1) 0;
+  list-style: none;
+  background: var(--fw-menu-bg);
+  border-bottom: 1px solid var(--fw-hairline);
+  box-shadow: var(--fw-shadow-sheet);
+}
+.find-hits li {
+  display: grid;
+  grid-template-columns: 5.5em 1fr auto;
+  gap: var(--fw-s2);
+  align-items: baseline;
+  padding: var(--fw-s1) var(--fw-s3);
+  font-size: var(--fw-text-sm);
+  cursor: pointer;
+}
+.find-list { margin: 0; padding: 0; list-style: none; }
+.find-hits li:hover, .find-hits li.active { background: var(--fw-list-hover); }
+.find-hit-who { color: var(--fw-fg-muted); font-size: var(--fw-text-xs); }
+.find-hit-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.find-hit-text mark { background: transparent; color: var(--fw-fg); font-weight: 600; }
+.find-hit-session { color: var(--fw-fg-muted); font-size: var(--fw-text-xs); white-space: nowrap; }
+.find-more { justify-content: center; grid-template-columns: 1fr; text-align: center; }
+
+/* The block a hit landed on: lit for a moment on the same gutter as its
+   marker, then left alone. */
+.row.found > * { animation: found var(--fw-motion-slow) var(--fw-ease) 3; }
+@keyframes found {
+  from { box-shadow: inset 3px 0 0 var(--fw-focus); }
+  to { box-shadow: none; }
+}
+@media (prefers-reduced-motion: reduce) { .row.found > * { animation: none; box-shadow: inset 3px 0 0 var(--fw-focus); } }

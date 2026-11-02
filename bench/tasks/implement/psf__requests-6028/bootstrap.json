@@ -1,0 +1,9 @@
+{
+  "owner": "Pinned public CPython stdlib venv and ensurepip. Offline pinned pip then replaces the bootstrap pip.",
+  "runtimeSha256": "5a30271f8d345a5b02b0c9e4e31e0f1e1455a8e4a04fba95cd9762472abc3b17",
+  "archiveMember": "python/lib/python3.12/ensurepip/_bundled/pip-25.0.1-py3-none-any.whl",
+  "bytes": 1841526,
+  "sha256": "c46efd13b6aa8279f33f2864459c8ce587ea6a1a59ee20de055868d8f7688f7f",
+  "bootstrapVersion": "25.0.1",
+  "finalVersion": "24.2"
+}

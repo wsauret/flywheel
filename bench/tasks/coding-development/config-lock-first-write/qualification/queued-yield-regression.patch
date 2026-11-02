@@ -1,0 +1,45 @@
+--- a/src/orchestration/config/config-file.ts
++++ b/src/orchestration/config/config-file.ts
+@@ -18,7 +18,7 @@
+ 
+ import * as path from "node:path";
+ import { lstatSync, watch } from "node:fs";
+-import { acquireLockIn, acquireLockSyncIn, releaseLockIn, type LockHold } from "../../infra/ownership-file-lock.js";
++import { acquireLockIn, tryAcquireLockSyncIn, acquireLockSyncIn, releaseLockIn, type LockHold } from "../../infra/ownership-file-lock.js";
+ import { ContainedDirectory } from "../../infra/descriptor-directory.js";
+ import { errorMessage } from "../../infra/error-message.js";
+ import { Log } from "../../infra/log.js";
+@@ -133,14 +133,26 @@
+  *  window would have nothing to wait for if it did. */
+ export async function withConfigOwnership<T>(location: ConfigFileLocation, use: (config: ConfigOwnership) => T): Promise<T> {
+   const held = openConfigDirectory(location);
+-  let hold: LockHold | undefined;
+-  try {
+-    hold = await acquireLockIn(held.directory, `${held.fileName}.lock`);
+-    return use(configOwnership(held));
+-  } finally {
+-    if (hold) releaseLockIn(held.directory, hold);
++  const finish = (hold: LockHold): T => {
++    try {
++      return use(configOwnership(held));
++    } finally {
++      releaseLockIn(held.directory, hold);
++      held.directory.close();
++    }
++  };
++  let immediate: LockHold | undefined;
++  try {
++    immediate = tryAcquireLockSyncIn(held.directory, `${held.fileName}.lock`);
++  } catch (error) {
+     held.directory.close();
+-  }
++    throw error;
++  }
++  if (immediate) return finish(immediate);
++  return acquireLockIn(held.directory, `${held.fileName}.lock`).then(finish, (error) => {
++    held.directory.close();
++    throw error;
++  });
+ }
+ 
+ /** The same window for a caller whose whole window is synchronous, such as a

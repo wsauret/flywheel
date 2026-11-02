@@ -1,0 +1,156 @@
+{
+  "summary": "One-paragraph account of the audit: what the source claimed, which capabilities were judged better, and what was dismissed and why.",
+  "fields": {
+    "provenance": {
+      "type": "variant",
+      "tag": "source_type",
+      "description": "Object identifying the audited bookmark. Always { source_type, bookmark_id, source_url }; source_type \"article\" needs nothing more, source_type \"github\" also needs local_clone (a workspace-relative path below inspiration/raindrop/) and source_commit (the full 40-char lowercase hex commit of the clone). Validation resolves the clone and the commit from the worker working directory.",
+      "cases": {
+        "article": {
+          "bookmark_id": {
+            "type": "string",
+            "description": "The numeric Raindrop bookmark id."
+          },
+          "source_url": {
+            "type": "string",
+            "description": "The http(s) URL of the source, without embedded credentials."
+          }
+        },
+        "github": {
+          "bookmark_id": {
+            "type": "string",
+            "description": "The numeric Raindrop bookmark id."
+          },
+          "source_url": {
+            "type": "string",
+            "description": "The http(s) URL of the source, without embedded credentials."
+          },
+          "local_clone": {
+            "type": "string",
+            "description": "The workspace-relative clone path below inspiration/raindrop/."
+          },
+          "source_commit": {
+            "type": "string",
+            "description": "The full 40-character lowercase hex commit of the clone."
+          }
+        }
+      }
+    },
+    "plan_artifacts": {
+      "type": "list",
+      "description": "Array of { path, disposition, summary } for the research and plan artifacts this audit wrote. path is relative to the worker working directory and names a docs/research/*.md or docs/plans/*.md file that must exist; disposition is \"created\" or \"updated\". Exactly one docs/research/*.md research artifact is required; a plan belongs here only when the audit reached a proposal. The companion docs/plans/README.md roster edit is not an artifact entry.",
+      "of": {
+        "type": "object",
+        "fields": {
+          "path": {
+            "type": "path",
+            "description": "The workspace-relative path of the artifact."
+          },
+          "disposition": {
+            "type": "enum",
+            "values": [
+              "created",
+              "updated"
+            ],
+            "description": "Whether the audit created or updated the artifact."
+          },
+          "summary": {
+            "type": "string",
+            "description": "What the artifact holds."
+          }
+        }
+      }
+    },
+    "definition_proposals": {
+      "type": "list",
+      "description": "Array of definition-improvement proposals. Empty when the source justifies no definition change.",
+      "of": {
+        "type": "object",
+        "fields": {
+          "title": {
+            "type": "string",
+            "description": "Concise title describing the definition gap and the proposed change. Slugified into the docs/improvements filename."
+          },
+          "target_kind": {
+            "type": "enum",
+            "values": [
+              "step_prompt",
+              "workflow_template",
+              "handoff_schema",
+              "review_rubric",
+              "validator",
+              "test",
+              "project_instruction",
+              "adr"
+            ],
+            "description": "What kind of definition the proposal targets: one of step_prompt, workflow_template, handoff_schema, review_rubric, validator, test, project_instruction, adr."
+          },
+          "target_path": {
+            "type": "path",
+            "exists": false,
+            "description": "Workspace-relative path of the definition the proposal is about (e.g. src/agent-skills/systematic-debugging/SKILL.md). Never mutated; the consumer writes a separate proposal doc."
+          },
+          "authority": {
+            "type": "enum",
+            "values": [
+              "project_local",
+              "user_global",
+              "shipped_default"
+            ],
+            "description": "Which definition layer owns the target: project_local (this repo), user_global (~/.flywheel), or shipped_default (the bundled definitions). The consumer derives the risk tier from this; do not self-assess risk."
+          },
+          "source_evidence": {
+            "type": "list",
+            "min": 1,
+            "description": "Array of { kind, reference, summary }. kind is one of step_failure, handoff_validation_failure, retry_pattern, review_finding, qa_gap, user_correction, budget_exhaustion, verification_gap, trace_fact, external_source; reference names a durable artifact (fact position, session id, handoff field, file:line); summary is one sentence.",
+            "of": {
+              "type": "object",
+              "fields": {
+                "kind": {
+                  "type": "enum",
+                  "values": [
+                    "step_failure",
+                    "handoff_validation_failure",
+                    "retry_pattern",
+                    "review_finding",
+                    "qa_gap",
+                    "user_correction",
+                    "budget_exhaustion",
+                    "verification_gap",
+                    "trace_fact",
+                    "external_source"
+                  ],
+                  "description": "The kind of evidence."
+                },
+                "reference": {
+                  "type": "string",
+                  "description": "A durable artifact: a fact position, a session id, a handoff field, or file:line."
+                },
+                "summary": {
+                  "type": "string",
+                  "description": "One sentence."
+                }
+              }
+            }
+          },
+          "finding": {
+            "type": "string",
+            "description": "What went wrong or what friction recurred, grounded in the cited evidence."
+          },
+          "proposal": {
+            "type": "string",
+            "description": "The specific definition change proposed and why it prevents recurrence."
+          },
+          "diff_preview": {
+            "type": "string",
+            "description": "A unified-diff sketch of the proposed change. Evidence only; the deterministic consumer never applies it."
+          },
+          "acceptance_check": {
+            "type": "string",
+            "description": "How a reviewer verifies the change worked (a command, a scenario, an observable behavior)."
+          }
+        }
+      }
+    }
+  }
+}

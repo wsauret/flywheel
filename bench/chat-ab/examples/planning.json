@@ -1,0 +1,11 @@
+{
+  "name": "planning-models",
+  "tasks": ["healthz-greenfield", "session-cost-budget", "handoff-size-guard", "retry-telemetry-refactor"],
+  "repeats": 3,
+  "model": "claude-sonnet-5-5",
+  "effort": "medium",
+  "treatments": {
+    "sonnet": { "revision": "HEAD", "patches": ["bench/chat-ab/workflow-authorship/patches/no-learning-review.patch"] },
+    "opus": { "revision": "HEAD", "model": "claude-opus-5.5", "effort": "high", "patches": ["bench/chat-ab/workflow-authorship/patches/no-learning-review.patch"] }
+  }
+}

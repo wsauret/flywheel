@@ -1,0 +1,1 @@
+Use a workflow to explain how a malformed tool-call argument from a provider stream travels through these five files: <paths>. Read each file in its own parallel lane. Then write one synthesis that traces the path from end to end, with file:line references, and states what the user finally sees. Do not change any file in the repository.

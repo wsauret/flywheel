@@ -1,0 +1,7 @@
+I asked the agent to write a long file with Claude through OpenRouter. The response hit the output limit during the write. The file ended halfway through a line, and the turn stopped without noticing. Please prevent cut-off tool calls from running on any provider, and make OpenRouter continue after an output limit like the direct Anthropic API.
+
+Put the safety decision in the shared tool-argument reader, not just OpenRouter. Accept complete JSON, but never finish an incomplete document by inventing its missing ending. Distinguish incomplete input from other invalid input. This must cover cuts inside strings, cuts between arguments, and streams that close without a final stop reason. A provider can deliver a tool call before it reports the output limit, so waiting for that report is not sufficient.
+
+Return an argument error for an incomplete call through the existing tool-dispatch refusal path. Do not execute it with shortened or empty arguments. Tell the model that the call was cut off so it can send the whole call again. Keep the existing handling of complete arguments, including repairs for unescaped control characters and bad escapes, and removal of surrounding formatting.
+
+The provider adapter used by OpenRouter must report an output-limit finish as an output overflow, not a normally completed turn. Let the existing agent loop own continuation. Run the relevant tests, and verify that cut calls never execute while complete calls still execute once with their full content.

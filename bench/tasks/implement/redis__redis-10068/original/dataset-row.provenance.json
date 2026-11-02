@@ -1,0 +1,8 @@
+{
+  "url": "https://huggingface.co/datasets/SWE-bench/SWE-bench_Multilingual/resolve/846e647b9f33c0b51b739d005d13d85493c9af09/data/test-00000-of-00001.parquet",
+  "resolvedUrl": "https://us.aws.cdn.hf.co/xet-bridge-us/68101f6210b86ba322aabec8/cdabec51fc9b98ef7df8f16dc8ff95bb863ae76520643f0e72e06793abee8d57?xip=yCMF0fRy6mI&X-Xet-Cas-Uid=public&response-content-disposition=inline%3B+filename*%3DUTF-8%27%27test-00000-of-00001.parquet%3B+filename%3D%22test-00000-of-00001.parquet%22%3B&user_id=public&Expires=1791850637&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly91cy5hd3MuY2RuLmhmLmNvL3hldC1icmlkZ2UtdXMvNjgxMDFmNjIxMGI4NmJhMzIyYWFiZWM4L2NkYWJlYzUxZmM5Yjk4ZWY3ZGY4ZjE2ZGM4ZmY5NWJiODYzYWU3NjUyMDY0M2YwZTcyZTA2NzkzYWJlZThkNTdcXD94aXA9eUNNRjBmUnk2bUkmWC1YZXQtQ2FzLVVpZD1wdWJsaWMmcmVzcG9uc2UtY29udGVudC1kaXNwb3NpdGlvbj1pbmxpbmUlM0IrZmlsZW5hbWUlMkElM0RVVEYtOCUyNyUyN3Rlc3QtMDAwMDAtb2YtMDAwMDEucGFycXVldCUzQitmaWxlbmFtZSUzRCUyMnRlc3QtMDAwMDAtb2YtMDAwMDEucGFycXVldCUyMiUzQiZ1c2VyX2lkPXB1YmxpYyIsIkNvbmRpdGlvbiI6eyJEYXRlTGVzc1RoYW4iOnsiRXBvY2hUaW1lIjoxNzkxODUwNjM3fX19XX0_&Signature=MEUCIQC7-RUJT6-I5VT8JLb9fV3KJ-eOouhJKtbbc52nscV2tgIgQWRq15grCwLSccvcVzUbyoOmgXChxwf1qF2Ij7IVHIg_&Key-Pair-Id=01KXEF4KZ1B6FV465MAWR4M21F&Hash-Algorithm=SHA256",
+  "status": 200,
+  "sha256": "92abca7cb527b41a9f66d03a26ce441ff7319e3a49f985998fd56be4bb9b08b2",
+  "bytes": 1875846,
+  "time": "2026-10-12T23:17:19.383Z"
+}

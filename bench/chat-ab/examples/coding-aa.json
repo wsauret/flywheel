@@ -1,0 +1,11 @@
+{
+  "name": "coding-aa",
+  "tasks": ["config-lock-first-write"],
+  "repeats": 2,
+  "model": "claude-haiku-5-5",
+  "effort": "low",
+  "treatments": {
+    "control": "HEAD",
+    "candidate": "HEAD"
+  }
+}

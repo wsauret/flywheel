@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "summary": "Keep config reads and writes bound to the directory admitted for the ownership window, even after its path is replaced.",
+  "context": {
+    "key_files": [
+      "src/orchestration/config/config-file.ts",
+      "src/infra/ownership-file-lock.ts"
+    ],
+    "patterns": [
+      "Config callbacks are synchronous and operate through native contained directories."
+    ],
+    "constraints": [
+      "The directory admitted at window entry owns all file operations through callback completion.",
+      "Do not re-resolve the config path inside an admitted window. Preserve both entry points and return values.",
+      "Preserve the public entry points and native ownership protocol. Do not replace file operations with stubs."
+    ]
+  },
+  "milestones": [
+    {
+      "id": "repair-config-contract",
+      "goal": "Keep config reads and writes bound to the directory admitted for the ownership window, even after its path is replaced.",
+      "files": [
+        "src/orchestration/config/config-file.ts",
+        "src/infra/ownership-file-lock.ts"
+      ],
+      "tasks": [
+        {
+          "id": "repair-native-contract",
+          "description": "Keep config reads and writes bound to the directory admitted for the ownership window, even after its path is replaced.",
+          "files": [
+            "src/orchestration/config/config-file.ts",
+            "src/infra/ownership-file-lock.ts"
+          ],
+          "test_scenarios": [
+            "An asynchronous ownership callback can rename its admitted directory and install another directory at the old path without redirecting reads or writes.",
+            "The synchronous ownership entry point preserves the same descriptor-bound behavior.",
+            "The replacement directory remains unchanged and the original ownership lock is released."
+          ]
+        }
+      ],
+      "verification": "bun test config-smoke.test.ts",
+      "qualitative_verification": "Confirm the implementation retains descriptor-bound native operations."
+    }
+  ],
+  "success_criteria": [
+    "An asynchronous ownership callback can rename its admitted directory and install another directory at the old path without redirecting reads or writes.",
+    "The synchronous ownership entry point preserves the same descriptor-bound behavior.",
+    "The replacement directory remains unchanged and the original ownership lock is released."
+  ],
+  "implementation_contract": {
+    "directives": [
+      {
+        "id": "native-contract",
+        "text": "The directory admitted at window entry owns all file operations through callback completion.",
+        "completion_check": "Native acceptance scenarios pass without weakening ownership."
+      }
+    ]
+  }
+}

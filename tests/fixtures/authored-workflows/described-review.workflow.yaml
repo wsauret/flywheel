@@ -1,0 +1,62 @@
+# The review-changes example as it shipped when every keyed field had to
+# state a description. A run that launched it recorded these hashes, so the
+# file must keep them. Do not edit it.
+id: review-changes
+name: Review changes
+description: Review each changed file, merge duplicate findings, and verify each finding.
+input:
+  fields:
+    files:
+      type: list
+      description: The changed files to review.
+      of:
+        type: object
+        fields:
+          path: { type: string, description: Repository-relative path of the file. }
+steps:
+  review:
+    name: Review one file
+    kind: check
+    instructions: Review the file in your item context. Report only defects that you can point to by line.
+    toolScoping: { read: true, search: true, list: true }
+    output:
+      fields:
+        findings:
+          type: list
+          max: 5
+          unique: site
+          description: Defects in this file.
+          of:
+            type: object
+            fields:
+              site: { type: string, description: "Exactly `<path>:<line>`, such as `src/a.ts:42`. Build it only from path and line." }
+              path: { type: string, description: "Repository-relative path, with no leading ./" }
+              line: { type: number, description: The first line of the defect. }
+              claim: { type: string, description: The defect in one sentence. }
+  verify:
+    name: Verify one finding
+    kind: check
+    instructions: Try to refute the finding in your item context. Confirm it only when you reproduce it or trace it in the code.
+    toolScoping: { read: true, search: true, list: true, bash: true }
+    output:
+      fields:
+        verdict: { type: enum, values: [confirmed, refuted], description: The result of the check. }
+        evidence: { type: string, description: What you ran or read. }
+  report:
+    name: Report
+    instructions: Write the final list of confirmed findings with their evidence.
+    toolScoping: { read: true }
+flow:
+  - map: input.files
+    id: reviews
+    label: path
+    do: review
+    join:
+      reducer: dedupe
+      with: { items: findings, by: site }
+  - map: reviews.kept
+    id: checks
+    label: claim
+    do: verify
+    join: { reducer: collect }
+  - step: report

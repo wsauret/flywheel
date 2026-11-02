@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "role": "development",
+  "family": "auth-sibling-preservation",
+  "sourceRef": "660a22b5f26b3dcb8d62c6a75143000d0aa81c4c",
+  "sourcePaths": [
+    "src/infra/auth/auth-profile-retirements.ts",
+    "src/infra/auth/auth-profile-store.ts",
+    "src/infra/auth/auth-store-mutations.ts",
+    "src/infra/auth/auth-store-types.ts",
+    "src/infra/auth/auth-store.ts",
+    "src/infra/auth/credential-comparison.ts",
+    "src/infra/auth/locked-json-store.ts",
+    "src/infra/darwin-process-api.ts",
+    "src/infra/debug-log.ts",
+    "src/infra/descriptor-directory-contract.ts",
+    "src/infra/descriptor-directory-posix-component.ts",
+    "src/infra/descriptor-directory-posix.ts",
+    "src/infra/descriptor-directory-win32-native.ts",
+    "src/infra/descriptor-directory-win32-path.ts",
+    "src/infra/descriptor-directory-win32.ts",
+    "src/infra/descriptor-directory.ts",
+    "src/infra/diagnostics-registry.ts",
+    "src/infra/directory-authorities.ts",
+    "src/infra/error-message.ts",
+    "src/infra/kernel-api-open.ts",
+    "src/infra/libc.ts",
+    "src/infra/literal-schema.ts",
+    "src/infra/log.ts",
+    "src/infra/native-assets.ts",
+    "src/infra/open-at.ts",
+    "src/infra/ownership-file-lock.ts",
+    "src/infra/paths.ts",
+    "src/infra/private-path.ts",
+    "src/infra/process-container.ts",
+    "src/infra/process-diagnostic-reader.ts",
+    "src/infra/process-holder.ts",
+    "src/infra/process-liveness.ts",
+    "src/infra/read-dir-at.ts",
+    "src/infra/record.ts",
+    "src/infra/redact-secrets.ts",
+    "src/infra/windows-file-replacement.ts",
+    "src/infra/windows-private-directory-acl.ts",
+    "src/infra/windows-process-api.ts",
+    "src/infra/with-deadline.ts",
+    "src/infra/write-file-under.ts"
+  ],
+  "sourceSha256": "ab3b61a5915d4527c57fb8c00b059b280a7ddb694c1e3fbff93185fa136a98b0",
+  "seedSha256": "08e626b5df75077f75b897ee126ae8dd279d4061dfcf5c4038728f8a326b2cec",
+  "construction": {
+    "kind": "synthetic-regression",
+    "historicalBugClaim": false,
+    "description": "Refuse nonobject auth-store roots with a typed storage error instead of reporting a successful no-change result.",
+    "nativeBoundary": "Use the pinned source closure with real file operations or its installed parser dependency, without mocks."
+  },
+  "candidateBoundary": "Only pinned source, sandbox.patch, and plan are candidate inputs. Acceptance and controls remain separate.",
+  "priorInspection": "No candidate prompt or campaign result was inspected. This is development material, not an unseen-source claim.",
+  "environment": {
+    "runtime": "bun",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "controls": [
+    {
+      "id": "reference",
+      "patches": [
+        "qualification/reference.patch"
+      ],
+      "expectation": "pass",
+      "expectedFailures": [],
+      "rationale": "Restore the pinned native implementation."
+    },
+    {
+      "id": "alternative",
+      "patches": [
+        "qualification/alternative.patch"
+      ],
+      "expectation": "pass",
+      "expectedFailures": [],
+      "rationale": "Express the same boundary decision independently."
+    },
+    {
+      "id": "root-no-change",
+      "patches": [
+        "qualification/root-no-change.patch"
+      ],
+      "expectation": "fail",
+      "expectedFailures": [
+        "acceptance/contract.test.ts > boolean refuses nonobject store roots without changing bytes",
+        "acceptance/contract.test.ts > receipt refuses nonobject store roots without changing bytes"
+      ],
+      "rationale": "Synthetic silent no-change path hides nonobject root corruption."
+    },
+    {
+      "id": "boolean-only",
+      "patches": [
+        "qualification/boolean-only.patch"
+      ],
+      "expectation": "fail",
+      "expectedFailures": [
+        "acceptance/contract.test.ts > receipt refuses nonobject store roots without changing bytes"
+      ],
+      "rationale": "Repairs only one of the two supported mutation entry points."
+    },
+    {
+      "id": "repair-disabled",
+      "patches": [
+        "qualification/repair-disabled.patch"
+      ],
+      "expectation": "fail",
+      "expectedFailures": [
+        "acceptance/contract.test.ts > boolean refuses invalid JSON and remains usable after external correction",
+        "acceptance/contract.test.ts > boolean repairs a malformed target and preserves its sibling",
+        "acceptance/contract.test.ts > receipt refuses invalid JSON and remains usable after external correction",
+        "acceptance/contract.test.ts > receipt repairs a malformed target and preserves its sibling"
+      ],
+      "rationale": "Disables genuine repair instead of retaining the refusal boundary."
+    }
+  ]
+}

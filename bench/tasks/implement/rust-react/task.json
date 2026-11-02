@@ -1,0 +1,12 @@
+{
+  "kind": "native",
+  "id": "rust-react",
+  "stratum": "medium",
+  "family": "exercism",
+  "split": "development",
+  "instruction": "instruction.txt",
+  "native": {
+    "command": ["bun", "adapter.ts"],
+    "timeoutMs": 210000
+  }
+}

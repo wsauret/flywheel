@@ -1,0 +1,26 @@
+{
+  "dark": {
+    "text": "#b7bcc6",
+    "comment": "#8f96a3",
+    "keyword": "#81a1c1",
+    "function": "#88c0d0",
+    "variable": "#b7bcc6",
+    "string": "#a3be8c",
+    "number": "#b48ead",
+    "type": "#8fbcbb",
+    "operator": "#81a1c1",
+    "punctuation": "#a5a5a5"
+  },
+  "light": {
+    "text": "#4d5360",
+    "comment": "#656d79",
+    "keyword": "#35526f",
+    "function": "#205866",
+    "variable": "#4d5360",
+    "string": "#41582b",
+    "number": "#64435f",
+    "type": "#2d5858",
+    "operator": "#35526f",
+    "punctuation": "#656d79"
+  }
+}

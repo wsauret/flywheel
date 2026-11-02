@@ -1,0 +1,20 @@
+{
+  "id": "handoff-ignores-background-command",
+  "stratum": "production-history",
+  "timeoutMinutes": 45,
+  "sandbox": {
+    "commit": "7e28a03747d04a4b464bd6a0b6cde08d74f90a89",
+    "paths": ["src", "crates/tokenizer/tokenizer-prebuilt.json", "crates/tokenizer/flywheel-tokenizer.wasm.zst", "tests", "docs", "scripts", "package.json", "bun.lock", "tsconfig.json", "oxlint.config.ts", "knip.jsonc", "AGENTS.md", ".gitignore", "bunfig.toml", "relay/package.json", "vscode/package.json", "webview/package.json", "website/package.json"],
+    "patch": "sandbox.patch",
+    "setup": [["bun", "install"]]
+  },
+  "acceptanceBaseline": {
+    "failToPass": [
+      "acceptance/handoff-background-command.test.ts > workflow handoff gate and background commands > blocks handoff while a background command is still active, and until its result reaches the model",
+      "acceptance/handoff-background-command.test.ts > workflow handoff gate and background commands > the handoff tool refuses while a background command runs or its result is not incorporated, then accepts"
+    ],
+    "passToPass": [
+      "acceptance/handoff-background-command.test.ts > workflow handoff gate and background commands > still gates handoff on subagents as before"
+    ]
+  }
+}

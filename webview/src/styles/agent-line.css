@@ -1,0 +1,36 @@
+/* Workflow rows inherit their card's subgrid. A transcript row owns only the
+   glyph and detail cells, since its header names the agent and its time. */
+.workflow-card-agent { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: center; }
+.workflow-card-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fw-agent-name); }
+.workflow-card-detail { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fw-fg-muted); }
+.workflow-card-detail.tone-failed { color: var(--fw-error); }
+.workflow-card-detail.tone-done { color: var(--fw-success); }
+.workflow-card-detail.tone-warning { color: var(--fw-warning); }
+.workflow-card-glyph { color: var(--workflow-card-state, var(--fw-fg-muted)); }
+.workflow-card-time { justify-self: end; font-size: var(--fw-text-xs); font-variant-numeric: tabular-nums; color: var(--fw-fg-muted); white-space: nowrap; }
+.workflow-card-branch { position: relative; align-self: stretch; }
+.workflow-card-branch::before { content: ""; position: absolute; top: 0; bottom: 0; left: 4px; border-left: 1px solid var(--fw-hairline); }
+.workflow-card-agent.last .workflow-card-branch::before { bottom: 50%; }
+.workflow-card-branch::after { content: ""; position: absolute; top: 50%; left: 4px; right: 0; border-top: 1px solid var(--fw-hairline); }
+.workflow-card-head { display: flex; align-items: center; gap: var(--fw-s2); min-width: 0; overflow: hidden; white-space: nowrap; }
+.workflow-card-head .workflow-card-glyph { flex-shrink: 0; }
+.workflow-card-head .workflow-card-chits { flex-shrink: 0; }
+.workflow-card-head .workflow-card-branch { flex: 0 0 14px; margin-left: var(--fw-s2); }
+.workflow-card:not(.full) .workflow-card-agent > .workflow-card-head { align-self: stretch; }
+.subagent-line { display: grid; grid-template-columns: 5ch minmax(0, 1fr); column-gap: var(--fw-s2); align-items: center; margin-left: var(--fw-gutter); font-size: var(--fw-text-sm); line-height: var(--fw-leading-tight); min-height: calc(var(--fw-s5) + var(--fw-s1)); }
+.subagent-line > * { min-width: 0; }
+.subagent-line.workflow-card-agent { font-size: var(--fw-text-sm); line-height: var(--fw-leading-tight); }
+.subagent-line > .workflow-card-head { align-self: stretch; }
+.subagent-line > .workflow-card-head .workflow-card-branch { margin-left: 0; }
+.subagent-line.state-running { --workflow-card-state: var(--fw-info); }
+.subagent-line.state-parked, .subagent-line.state-partial { --workflow-card-state: var(--fw-warning); }
+.subagent-line.state-done { --workflow-card-state: var(--fw-success); }
+.subagent-line.state-failed { --workflow-card-state: var(--fw-error); }
+.subagent-failure { min-height: 0; }
+.subagent-line-detail { grid-column: 2 / -1; color: var(--fw-fg-muted); font-size: var(--fw-text-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.subagent-header-parts { display: flex; align-items: baseline; flex: 1 1 var(--subagent-identity-width, 0px); width: var(--subagent-identity-width, 0px); min-width: 0; gap: 0; white-space: pre; position: relative; }
+.subagent-header-wrap { flex-wrap: wrap; }
+.subagent-header-parts > span { flex: 0 0 auto; white-space: pre; }
+.subagent-header-parts > .subagent-header-goal { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.subagent-head { flex-wrap: wrap; --agent-disclosure-basis: min-content; }
+.subagent-header-dropped { position: absolute; visibility: hidden; width: max-content; }

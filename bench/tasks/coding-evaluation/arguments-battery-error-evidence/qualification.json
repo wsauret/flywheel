@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "role": "reserved-evaluation",
+  "contentIdentity": "88c591a5136b03edc364626aae97a65f1ed72ad8240624e0ea4aad70a8b54cde",
+  "testIds": [
+    "acceptance/error-evidence.test.ts > error evidence > bounds incomplete argument evidence while retaining the raw prefix",
+    "acceptance/error-evidence.test.ts > error evidence > bounds nonobject evidence without changing the root diagnosis",
+    "acceptance/error-evidence.test.ts > error evidence > retains all raw evidence through the exact snippet boundary",
+    "acceptance/error-evidence.test.ts > error evidence > returns full successful inputs and preserves short failures"
+  ],
+  "cases": [
+    {
+      "id": "reference",
+      "patches": [
+        "qualification/reference.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "Restore the pinned native behavior.",
+      "expectedFailures": []
+    },
+    {
+      "id": "alternative",
+      "patches": [
+        "qualification/alternative.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "Use an independently expressed repair with a different omission marker to reject format-only false negatives.",
+      "expectedFailures": []
+    },
+    {
+      "id": "original-bug",
+      "patches": [
+        "qualification/reference.patch",
+        "qualification/original-bug.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "The seeded snippet loses the raw prefix and includes the disallowed tail.",
+      "expectedFailures": [
+        "acceptance/error-evidence.test.ts > error evidence > bounds incomplete argument evidence while retaining the raw prefix",
+        "acceptance/error-evidence.test.ts > error evidence > bounds nonobject evidence without changing the root diagnosis",
+        "acceptance/error-evidence.test.ts > error evidence > retains all raw evidence through the exact snippet boundary"
+      ]
+    },
+    {
+      "id": "unbounded-regression",
+      "patches": [
+        "qualification/reference.patch",
+        "qualification/unbounded-regression.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Return all raw text instead of bounded diagnostic evidence.",
+      "expectedFailures": [
+        "acceptance/error-evidence.test.ts > error evidence > bounds incomplete argument evidence while retaining the raw prefix",
+        "acceptance/error-evidence.test.ts > error evidence > bounds nonobject evidence without changing the root diagnosis",
+        "acceptance/error-evidence.test.ts > error evidence > retains all raw evidence through the exact snippet boundary"
+      ]
+    },
+    {
+      "id": "completion-regression",
+      "patches": [
+        "qualification/reference.patch",
+        "qualification/completion-regression.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Accept tolerant completions instead of refusing incomplete and malformed buffers.",
+      "expectedFailures": [
+        "acceptance/error-evidence.test.ts > error evidence > bounds incomplete argument evidence while retaining the raw prefix",
+        "acceptance/error-evidence.test.ts > error evidence > retains all raw evidence through the exact snippet boundary",
+        "acceptance/error-evidence.test.ts > error evidence > returns full successful inputs and preserves short failures"
+      ]
+    }
+  ]
+}

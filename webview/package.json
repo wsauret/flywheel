@@ -1,0 +1,27 @@
+{
+  "name": "flywheel-webview",
+  "description": "The Flywheel web client: one SolidJS bundle hosted by the local browser, VS Code extension, and phone app, with each host's shell.",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun run build.ts",
+    "test": "bun --conditions=browser test src phone local"
+  },
+  "dependencies": {
+    "@solid-primitives/keyed": "^1.5.3",
+    "effect": "4.0.0-beta.84",
+    "entities": "7.0.1",
+    "highlight.js": "^11.12.0",
+    "jsqr": "^1.4.0",
+    "marked": "^18.0.10",
+    "solid-js": "1.9.12"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@babel/preset-typescript": "^7.27.1",
+    "@types/babel__core": "^7.20.5",
+    "@types/bun": "^1.4.4",
+    "babel-preset-solid": "^1.9.15"
+  }
+}

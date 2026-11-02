@@ -1,0 +1,17 @@
+# solid-js must resolve with "browser" condition for reactive runtime.
+# scripts/dev.ts launches Bun with --conditions=browser for local runs.
+# Tests pass --conditions=browser via scripts/test-parallel.ts so createEffect
+# runs — under the default "server" resolution effects are inert. A bare
+# `bun test` on a single file must add --conditions=browser to match.
+
+[test]
+root = "./tests"
+preload = ["./tests/preload.ts"]
+
+# The vscode workspace flips bun's default linker to "isolated", which stores
+# packages under node_modules/.bun and exposes them through symlinks. The
+# binary build copies package directories into the shipped native payload and
+# patch-deps rewrites files inside them, so the layout must stay hoisted: a
+# symlinked store ships absolute-path links the build identity refuses.
+[install]
+linker = "hoisted"

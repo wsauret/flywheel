@@ -1,0 +1,1 @@
+Propose how to make the tool-call argument repair in these five files safer: <paths>. Report the best design with file:line references to the code it changes. Do not change any file in the repository.

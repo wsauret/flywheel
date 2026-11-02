@@ -1,0 +1,19 @@
+{
+  "id": "arguments-battery-error-evidence",
+  "stratum": "synthetic-regression",
+  "timeoutMinutes": 20,
+  "sandbox": {
+    "commit": "f77cd52b328a4009d54b105411202d586d18427d",
+    "paths": [
+      "src/orchestration/agent-runtime/llm/json-parse.ts"
+    ],
+    "patch": "sandbox.patch",
+    "setup": [
+      [
+        "bun",
+        "install",
+        "--frozen-lockfile"
+      ]
+    ]
+  }
+}

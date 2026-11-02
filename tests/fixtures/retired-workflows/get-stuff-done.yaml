@@ -1,0 +1,111 @@
+id: get-stuff-done
+name: Get Stuff Done
+description: Each spec phase is a durable workflow step, reassessed between phases, with end-of-run global acceptance.
+use_when: >
+  Only when the user asks for the Get Stuff Done workflow by name. Never
+  propose it; for implementation work the user has not routed, offer the
+  `implement` or `implement-and-review` workflow instead. Suited to a
+  settled design whose build is genuinely multi-phase, where the phase
+  boundary should be a durable queue checkpoint and the roadmap is
+  re-grounded against the goal between phases.
+confirmation_template: spec-and-implement
+# Long-horizon caps: the phase drain fans one implement step per plan phase and
+# every reassessment may insert corrections, so this run needs far more queue
+# and insert headroom than a fixed-shape workflow.
+guardrails:
+  max_queue_length: 200
+  max_session_inserts: 120
+bindings:
+  spec-create:
+    skill: gsd.spec-create
+    handoff: spec-handoff
+    writes:
+      - id: plan
+        lifetime: durable
+        supersedes: []
+    selfReview: false
+    toolScoping:
+      read: true
+      bash: false
+      search: true
+      list: true
+      subagent: true
+  spec-review:
+    skill: gsd.spec-review
+    handoff: spec-handoff
+    writes:
+      - id: reviewed-plan
+        lifetime: durable
+        supersedes:
+          - plan
+    selfReview: false
+    toolScoping:
+      read: true
+      bash: false
+      search: true
+      list: true
+      subagent: true
+  implement:
+    skill: gsd.implement
+    handoff: work-handoff
+    writes:
+      - id: implementation
+        lifetime: durable
+        supersedes: []
+    selfReview: false
+    toolScoping:
+      read: true
+      bash: true
+      search: true
+      list: true
+      write: true
+      edit: true
+      subagent: true
+  reassess:
+    skill: gsd.reassess
+    handoff: reassessment-handoff
+    writes:
+      - reassessment
+    selfReview: false
+    toolScoping:
+      read: true
+      bash: false
+      search: true
+      list: true
+  verify-acceptance:
+    skill: gsd.verify-acceptance
+    handoff: work-handoff
+    writes:
+      - id: implementation
+        lifetime: durable
+        supersedes: []
+    selfReview: false
+    toolScoping:
+      read: true
+      bash: true
+      search: true
+      list: true
+steps:
+  # Plan the run, then validate the draft into the work-ready roadmap the drain
+  # consumes. These GSD skills carry GSD-style planning, execution, and
+  # reassessment prose; the shared skills used by the `implement` workflows are
+  # the Flywheel arm to A/B against.
+  - step: spec-create
+  - step: spec-review
+  # The phase drain: the for-loop fans one `implement` step per
+  # phase from the reviewed plan's `phases[]` (the authoritative, work-ready
+  # roadmap). Phases drain sequentially - one phase settles before the next
+  # starts - and each fanned step carries the per-item
+  # `then: reassess`, so a completed or blocked phase result
+  # always reaches a reassessment that re-specs the remaining pending phase
+  # steps (the long-horizon checkpoint grain). A blocked phase reaches its
+  # reassessment as the transient `blocked_work` report and settles only
+  # through a correction that reassessment proposes.
+  - for: spec-review.phases
+    do: implement
+    then: reassess
+  # Terminal global-acceptance gate over the FULL run diff, and the single writer
+  # of the run's `implementation` artifact (the per-phase steps write only
+  # work-handoff). The run ends at this acceptance gate; there is no
+  # reviewer-panel convergence pass here (that loop lives in implement-and-review).
+  - step: verify-acceptance

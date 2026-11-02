@@ -1,0 +1,28 @@
+{
+  "//": "First-search retrieval benchmark queries. targetFile is the file a human would call the right first result (typically the definition holder). Gate on targetFile RANK only -- no hardcoded line. Queries run against THIS repo via search content mode.",
+  "queries": [
+    { "query": "formatMatchLine", "path": "src", "glob": "*.ts", "targetFile": "src/orchestration/agent-runtime/tools/match-line-format.ts" },
+    { "query": "interface GrepMatch", "path": "src", "glob": "*.ts", "targetFile": "src/orchestration/agent-runtime/tools/ripgrep.ts" },
+    { "query": "formatContentOutput", "path": "src", "glob": "*.ts", "targetFile": "src/orchestration/agent-runtime/tools/search.ts" },
+    { "query": "validateSearchInput", "path": "src", "glob": "*.ts", "targetFile": "src/orchestration/agent-runtime/tools/search.ts" },
+    { "query": "handleSearchError", "path": "src", "glob": "*.ts", "targetFile": "src/orchestration/agent-runtime/tools/search.ts" },
+    { "query": "formatMatchingFilesOutput", "path": "src", "glob": "*.ts", "targetFile": "src/orchestration/agent-runtime/tools/search.ts" },
+    { "query": "errorMessage", "path": "src", "glob": "*.ts", "targetFile": "src/infra/error-message.ts" },
+    { "query": "formatDuration", "path": "src", "glob": "*.ts", "targetFile": "src/protocol/client/format.ts" },
+    { "query": "formatCost", "path": "src", "glob": "*.ts", "targetFile": "src/protocol/client/format.ts" },
+    { "query": "writeFileAtomic", "path": "src", "glob": "*.ts", "targetFile": "src/infra/atomic-write.ts" },
+    { "query": "createDebouncedWriter", "path": "src", "glob": "*.ts", "targetFile": "src/infra/debounced-writer.ts" },
+    { "query": "raceAbort", "path": "src", "glob": "*.ts", "targetFile": "src/workflows/queue/abort.ts" },
+    { "query": "getToolDisplay", "path": "src", "glob": "*.ts", "targetFile": "src/infra/tools/tool-display-registry.ts" },
+    { "query": "class OutputProjector", "path": "src", "glob": "*.ts", "targetFile": "src/infra/output/output-projector.ts" },
+    { "query": "checkNumericRange", "path": "src", "glob": "*.ts", "targetFile": "src/orchestration/agent-runtime/tools/numeric-input.ts" },
+    { "query": "generateFileMap", "path": "src", "glob": "*.ts", "targetFile": "src/orchestration/agent-runtime/tools/structural-map.ts" },
+    { "query": "createSessionManager", "path": "src", "glob": "*.ts", "targetFile": "src/orchestration/session/manager.ts" },
+    { "query": "createWorkflowRunner", "path": "src", "glob": "*.ts", "targetFile": "src/orchestration/workflow-runner.ts" },
+    { "query": "createAgentRuntime", "path": "src", "glob": "*.ts", "targetFile": "src/orchestration/agent-runtime/factory.ts" },
+    { "query": "createWorkflowVmHost", "path": "src", "glob": "*.ts", "targetFile": "src/workflows/vm/host.ts" },
+    { "query": "registerHandoffType", "path": "src", "glob": "*.ts", "targetFile": "src/workflows/handoffs/registry.ts" },
+    { "query": "resolveToolPath", "path": "src", "glob": "*.ts", "targetFile": "src/orchestration/agent-runtime/tools/tool-paths.ts" },
+    { "query": "isDefinitionLine", "path": "src", "glob": "*.ts", "targetFile": "src/orchestration/agent-runtime/tools/search-ranking.ts" }
+  ]
+}

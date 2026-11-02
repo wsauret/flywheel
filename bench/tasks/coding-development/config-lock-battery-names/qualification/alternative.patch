@@ -1,0 +1,36 @@
+--- a/src/orchestration/config/config-file.ts
++++ b/src/orchestration/config/config-file.ts
+@@ -134,7 +134,7 @@
+ export async function withConfigOwnership<T>(location: ConfigFileLocation, use: (config: ConfigOwnership) => T): Promise<T> {
+   const held = openConfigDirectory(location);
+   try {
+-    return await withLockIn(held.directory, "flywheel.toml.lock", () => use(configOwnership(held)));
++    return await withLockIn(held.directory, held.lockName, () => use(configOwnership(held)));
+   } finally {
+     held.directory.close();
+   }
+@@ -148,7 +148,7 @@
+   const held = openConfigDirectory(location);
+   let hold: LockHold | undefined;
+   try {
+-    hold = acquireLockSyncIn(held.directory, "flywheel.toml.lock");
++    hold = acquireLockSyncIn(held.directory, held.lockName);
+     return use(configOwnership(held));
+   } finally {
+     if (hold) releaseLockIn(held.directory, hold);
+@@ -159,6 +159,7 @@
+ interface HeldConfigFile {
+   readonly directory: ContainedDirectory;
+   readonly fileName: string;
++  readonly lockName: string;
+ }
+ 
+ function openConfigDirectory(location: ConfigFileLocation): HeldConfigFile {
+@@ -167,6 +168,7 @@
+   return {
+     directory: ContainedDirectory.open(path.dirname(configDir), [path.basename(configDir)], { privateDirectories: true }),
+     fileName: path.basename(configPath),
++    lockName: `${path.basename(configPath)}.lock`,
+   };
+ }
+ 

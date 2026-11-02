@@ -1,0 +1,35 @@
+--- a/src/infra/truncate-field.ts
++++ b/src/infra/truncate-field.ts
+@@ -11,7 +11,7 @@
+   }
+ 
+   const buf = Buffer.from(json, "utf-8");
+-  if (json.length <= maxBytes) return json;
++  if (buf.length <= maxBytes) return json;
+ 
+   // Truncate at byte boundary, then decode; Buffer.toString handles partial
+   // multi-byte sequences by stopping before an incomplete character.
+--- a/src/infra/repeat-coalescer.ts
++++ b/src/infra/repeat-coalescer.ts
+@@ -81,7 +81,7 @@
+         return
+       }
+       episode.count += 1
+-      if (episode.events.length <= MAX_SAMPLE) episode.events.push(event)
++      if (episode.events.length < MAX_SAMPLE) episode.events.push(event)
+     },
+     end(key) {
+       // Deleting the entry being visited is safe while iterating a Map.
+--- a/src/infra/session-fair-admission.ts
++++ b/src/infra/session-fair-admission.ts
+@@ -27,7 +27,10 @@
+   let active = 0
+ 
+   const makeRelease = (): (() => void) => {
++    let held = true
+     return () => {
++      if (!held) return
++      held = false
+       active--
+       drain()
+     }

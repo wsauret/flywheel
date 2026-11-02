@@ -1,0 +1,54 @@
+# The phase-grammar twin of ../fix-and-review.workflow.yaml, with the same
+# mistakes of authors: a comma that splits a description in a { } mapping,
+# a description on a list item, summary as a declared field, and a join that
+# restates the default join.
+id: fix-and-review
+name: Fix and review
+description: Fix the bug, review the fix, and address each finding.
+input:
+  fields:
+    reviewers:
+      type: list
+      description: The reviewers.
+      of: { type: object, fields: { name: { type: string, description: Reviewer name. } } }
+phases:
+  - phase: implement
+    name: Implement
+    brief: Fix the bug and add a test.
+    output:
+      fields:
+        summary: { type: string, description: The fix and the test. }
+        changed_files:
+          type: list
+          of: { type: string, description: A repository-relative path. }
+  - phase: review
+    over: input.reviewers
+    label: name
+    name: Review
+    brief: Review the change.
+    reads: [implement]
+    join: { reducer: collect }
+    output:
+      fields:
+        findings:
+          type: list
+          description: Defects in the change.
+          of:
+            type: object
+            fields:
+              site: { type: string, description: Exactly path:line. }
+              description: { type: string, description: The defect, in one sentence. }
+  - phase: fix
+    name: Fix
+    brief: Address each finding.
+    reads: [review]
+    output:
+      fields:
+        findings:
+          type: list
+          description: One entry for each finding.
+          of:
+            type: object
+            fields:
+              site: { type: string, description: The site. }
+              change: { type: string, description: What you changed, or why you changed nothing. }

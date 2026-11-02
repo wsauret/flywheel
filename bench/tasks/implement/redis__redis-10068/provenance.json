@@ -1,0 +1,87 @@
+{
+  "dataset": {
+    "repository": "https://huggingface.co/datasets/SWE-bench/SWE-bench_Multilingual",
+    "revision": "846e647b9f33c0b51b739d005d13d85493c9af09",
+    "originalSplit": "test",
+    "instance": "redis__redis-10068",
+    "row": "original/row.json",
+    "parquetSha256": "92abca7cb527b41a9f66d03a26ce441ff7319e3a49f985998fd56be4bb9b08b2",
+    "license": "MIT declared by the retained pinned dataset card",
+    "stratum": "c is the source language category. The dataset supplies no difficulty stratum. Empirical difficulty remains unmeasured."
+  },
+  "source": {
+    "repository": "https://github.com/redis/redis",
+    "revision": "e88f6acb94c77c9a5b81f0b2a8bd132b2a5c3d3c",
+    "archive": "public-inputs.json",
+    "manifest": "source-manifest.json",
+    "files": 1357,
+    "license": "licenses/redis-COPYING"
+  },
+  "oracle": {
+    "repository": "https://github.com/SWE-bench/SWE-bench",
+    "revision": "02e7a74ffd0b707aab73d203fe87bdc7c76afc8e",
+    "temporalScope": "Pinned current official harness. The dataset does not identify a historical harness revision.",
+    "parser": "parse_log_redis",
+    "evalType": "pass_and_fail",
+    "selectedTests": 8,
+    "failToPass": 1,
+    "passToPass": 7,
+    "execution": "The private stdlib-only Python loader executes exact original AST functions, official constants, log extraction, report construction, and advisory infrastructure classification.",
+    "shellAuthority": "original/eval.sh retains the complete original evaluation script. Only the exact replacements in replacement-ledger.json are applied.",
+    "restoration": "The original script restores tests/unit/type/stream.tcl before applying the test patch and after evaluation. No new candidate test-tampering criterion is added.",
+    "exitPolicy": "The original script uses set -uxo pipefail, not set -e. Its final test-file restoration can return zero even when a test failed. The original log scorer, not the shell exit, determines resolution.",
+    "diagnosticStorage": "Evaluation stdout and stderr are forwarded live unchanged and streamed as raw bytes into the grading workspace's evaluation.log. Owned capture retains its existing 16 MB per-pipe completeness limit. After command drain and owned settlement, the raw writer closes and one persistent UTF-8 replacement decoder streams the complete raw log into evaluation.utf8.log, with a final decoder flush and writer close before the unchanged original scorer reads it. Two invalid original Lua source glyph bytes printed by git show require the previous replacement-decoding representation. The report retains command exit, duration, timeout and truncation metadata, separate complete raw stdout/stderr/log and normalized scorer-input byte counts and SHA-256 identities, and the complete original marker-delimited test-output region, not duplicate BASE source dumps. Both complete logs remain workspace-owned until scoring finishes. A missing test-output region is represented by empty diagnostic text after original scoring and adds no reward veto."
+  },
+  "limits": {
+    "candidateMs": 1500000,
+    "setupMs": 600000,
+    "wholeEvaluationMs": 1800000,
+    "scoringMs": 60000,
+    "diagnosticsMs": 60000,
+    "settlementMs": 60000,
+    "adapterMs": 2580000,
+    "redisNoProgressSeconds": 1200,
+    "authority": "original/sources/run_evaluation.py:366-381 and :833-838 cover the whole evaluation in one 1800-second default deadline.",
+    "failurePolicy": "A whole-evaluation timeout raises EvaluationError before get_eval_report and produces no report. The native adapter also throws without scoring. A completed source-build or test failure is parsed by the original scorer. Missing or invalid test output remains unresolved; advisory classification never vetoes that score. Candidate patch-application failure produces no report, as original run_instance does.",
+    "nativeAllowances": "Source acquisition, installed-tool observations, local Git baseline, and candidate application share 600 seconds. Private scoring and binary diagnostics each have 60 seconds. The adapter reserves another 60 seconds for owned settlement. The Redis no-progress limit is unchanged."
+  },
+  "adaptations": [
+    {
+      "change": "make CFLAGS=\"-DMAC_OS_X_VERSION_10_6=1060\" after the original make distclean",
+      "evidence": "The fresh precursor qualification found the missing old SDK macro selected incomplete stat64/fstat64 and PowerPC context. The definition selects existing modern Darwin branches without source edits.",
+      "paths": "src/config.h:44-50,95-97; src/debug.c:1099-1116,1191",
+      "candidateTool": "native-build.sh is copied to .bench-home/bin/build and qualified under the usual sandbox environment."
+    },
+    {
+      "change": "Append --config unixsocket '\"\"' to the original test command",
+      "evidence": "The precursor observed a 146-byte owned workspace socket path exceeding the Darwin 104-byte limit. The selected tests use TCP clients.",
+      "paths": "tests/support/server.tcl:481-486 and tests/test_helper.tcl:620-624",
+      "scope": "The original --durable, single group, XTRIM filter, test bodies, assertions, and eight selected test IDs remain unchanged."
+    }
+  ],
+  "visibility": {
+    "candidate": "The unchanged problem statement, empty hints, pristine public BASE, neutral environment appendix, and build helper only. Preparation never compiles or introduces gold, restored tests, grader IDs, evaluator logs, or reference artifacts.",
+    "grade": "Fresh pinned public source, captured patch, original restored test patch, private pinned Python 3.12.13, and original scorer.",
+    "baselineAlignment": "The grading baseline uses the shared provisioner's exact .gitignore append. All three original source-commit references map to the fresh local BASE commit.",
+    "claims": "No private cache, global account config, historical harness, original Docker image, leaderboard, resource-limit, or OS network-confinement equivalence is claimed."
+  },
+  "runtime": {
+    "platform": "native macOS arm64",
+    "observedCompiler": "Apple clang 21.0.0 clang-2100.1.1.101",
+    "observedMake": "GNU Make 3.81",
+    "observedTcl": "/usr/bin/tclsh8.5 8.5.9",
+    "dependencies": "Bundled C dependencies are retained in the pinned source archive. Installed tools are observed each run. No compiler download, system install, Parquet decoder, or Python package install is required.",
+    "privateScorerPython": "The existing public pinned Python 3.12.13 fixture runtime is acquired only in the separate grading workspace."
+  },
+  "notices": {
+    "redis": "licenses/redis-COPYING",
+    "harness": "licenses/harness-LICENSE",
+    "python": "licenses/python-LICENSE.txt",
+    "bundled": ["licenses/hiredis-COPYING", "licenses/jemalloc-COPYING", "licenses/lua-COPYRIGHT", "licenses/hdr_histogram-COPYING.txt"],
+    "policy": "Fresh archives retain all source and bundled dependency notices. The dataset MIT declaration does not replace their copyrights."
+  },
+  "copies": "copy-ledger.json",
+  "qualification": "qualification-record.json and qualification/*-grade.json.gz retain real catalog, preparation, compact production capture, original grading, candidate launcher, and ownership cleanup evidence. The qualifier checks the production report against the full workspace log and independently captured live raw pipes before shared cleanup removes the grading workspace. Historical full-artifact identities refer to earlier pre-correction evidence, not to the current projected files.",
+  "publication": "Publish this development fixture independently of later model results. Evaluation task files remain untouched.",
+  "calibration": "calibration.json records sampled model results and cost. Population difficulty remains unmeasured."
+}

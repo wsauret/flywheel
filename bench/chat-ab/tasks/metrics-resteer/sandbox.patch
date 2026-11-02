@@ -1,0 +1,248 @@
+diff --git a/collector.ts b/collector.ts
+new file mode 100644
+--- /dev/null
++++ b/collector.ts
+@@ -0,0 +1,40 @@
++import { rollupSamples } from "./rollup.js";
++import type { Rollup, Sample } from "./types.js";
++
++export interface CollectorOptions {
++  windowMs: number;
++  onRollup(rollup: Rollup): void;
++}
++
++export interface Collector {
++  add(sample: Sample): void;
++  drainWindow(windowEndMs: number): void;
++}
++
++export function createCollector(options: CollectorOptions): Collector {
++  const pending: Sample[] = [];
++  return {
++    add(sample) {
++      pending.push(sample);
++    },
++    // This function was renamed from flushWindow because draining consumes the samples.
++    drainWindow(windowEndMs) {
++      const windowStartMs = windowEndMs - options.windowMs;
++      const selected = pending.filter((sample) => sample.timestampMs > windowStartMs && sample.timestampMs <= windowEndMs);
++      for (let index = pending.length - 1; index >= 0; index--) {
++        const sample = pending[index];
++        if (sample && sample.timestampMs <= windowEndMs) pending.splice(index, 1);
++      }
++      const byMetric = new Map<string, Sample[]>();
++      for (const sample of selected) {
++        const key = `${sample.metric}\u0000${sample.unit}`;
++        const group = byMetric.get(key);
++        if (group) group.push(sample);
++        else byMetric.set(key, [sample]);
++      }
++      for (const samples of byMetric.values()) {
++        options.onRollup(rollupSamples(samples, windowStartMs, windowEndMs));
++      }
++    },
++  };
++}
+diff --git a/metrics.test.ts b/metrics.test.ts
+new file mode 100644
+--- /dev/null
++++ b/metrics.test.ts
+@@ -0,0 +1,41 @@
++/// <reference types="bun" />
++import { describe, expect, test } from "bun:test";
++import { createCollector } from "./collector.js";
++import { computePercentiles } from "./percentiles.js";
++import { createReportSource } from "./report.js";
++import type { Rollup } from "./types.js";
++
++function sample(value: number, timestampMs: number) {
++  return { metric: "latency", value, timestampMs, unit: "ms" as const };
++}
++
++describe("callback metrics pipeline", () => {
++  test("computes percentiles for sorted input", () => {
++    expect(computePercentiles([1, 2, 3, 4, 5])).toEqual({ p50: 3, p95: 5 });
++  });
++
++  test("collector handles samples that arrive out of timestamp order", () => {
++    const rollups: Rollup[] = [];
++    const collector = createCollector({ windowMs: 100, onRollup: (rollup) => rollups.push(rollup) });
++    collector.add(sample(90, 90));
++    collector.add(sample(10, 10));
++    collector.add(sample(50, 50));
++    collector.drainWindow(100);
++    expect(rollups).toHaveLength(1);
++  });
++
++  test("report reads retained rollups and normalizes seconds", () => {
++    const rollups: Rollup[] = [{
++      metric: "latency",
++      windowStartMs: 1_900,
++      windowEndMs: 1_980,
++      count: 2,
++      min: 0.1,
++      max: 0.2,
++      p50: 0.1,
++      p95: 0.2,
++      unit: "s",
++    }];
++    expect(createReportSource(() => rollups).report("latency", 2_000)).toEqual({ metric: "latency", count: 2, p95: 200 });
++  });
++});
+diff --git a/percentiles.ts b/percentiles.ts
+new file mode 100644
+--- /dev/null
++++ b/percentiles.ts
+@@ -0,0 +1,19 @@
++export interface Percentiles {
++  p50: number;
++  p95: number;
++}
++
++function nearestRank(sorted: readonly number[], percentile: number): number {
++  const index = Math.max(0, Math.ceil(percentile * sorted.length) - 1);
++  const value = sorted[index];
++  if (value === undefined) throw new Error("Cannot compute a percentile of an empty collection");
++  return value;
++}
++
++export function computePercentiles(values: readonly number[]): Percentiles {
++  const sorted = [...values].sort((left, right) => left - right);
++  return {
++    p50: nearestRank(sorted, 0.5),
++    p95: nearestRank(sorted, 0.95),
++  };
++}
+diff --git a/reader.ts b/reader.ts
+new file mode 100644
+--- /dev/null
++++ b/reader.ts
+@@ -0,0 +1,21 @@
++import type { Rollup } from "./types.js";
++
++export interface ReaderOptions {
++  readRollups(): readonly Rollup[];
++  retentionMs: number;
++}
++
++export interface MetricsReader {
++  latest(metric: string, nowMs: number): Rollup | undefined;
++}
++
++export function createReader(options: ReaderOptions): MetricsReader {
++  return {
++    latest(metric, nowMs) {
++      const cutoffMs = nowMs - options.retentionMs;
++      return options.readRollups()
++        .filter((rollup) => rollup.metric === metric && rollup.windowEndMs >= cutoffMs)
++        .sort((left, right) => right.windowEndMs - left.windowEndMs)[0];
++    },
++  };
++}
+diff --git a/report.ts b/report.ts
+new file mode 100644
+--- /dev/null
++++ b/report.ts
+@@ -0,0 +1,30 @@
++import { createReader } from "./reader.js";
++import type { Rollup } from "./types.js";
++import { UNIT_NORMALIZERS } from "./units.js";
++
++export const RETENTION_MS = 60_000;
++
++export interface MetricReport {
++  metric: string;
++  count: number;
++  p95: number;
++}
++
++export interface ReportSource {
++  report(metric: string, nowMs: number): MetricReport | undefined;
++}
++
++export function createReportSource(readRollups: () => readonly Rollup[]): ReportSource {
++  const reader = createReader({ readRollups, retentionMs: RETENTION_MS });
++  return {
++    report(metric, nowMs) {
++      const rollup = reader.latest(metric, nowMs);
++      if (!rollup) return undefined;
++      return {
++        metric,
++        count: rollup.count,
++        p95: UNIT_NORMALIZERS[rollup.unit](rollup.p95),
++      };
++    },
++  };
++}
+diff --git a/rollup.ts b/rollup.ts
+new file mode 100644
+--- /dev/null
++++ b/rollup.ts
+@@ -0,0 +1,22 @@
++import { computePercentiles } from "./percentiles.js";
++import type { Rollup, Sample } from "./types.js";
++
++export function rollupSamples(samples: readonly Sample[], windowStartMs: number, windowEndMs: number): Rollup {
++  const first = samples[0];
++  if (!first) throw new Error("Cannot roll up an empty window");
++  if (samples.some((sample) => sample.metric !== first.metric || sample.unit !== first.unit)) {
++    throw new Error("A rollup window must contain one metric and unit");
++  }
++  const values = samples.map((sample) => sample.value);
++  const percentiles = computePercentiles(values);
++  return {
++    metric: first.metric,
++    windowStartMs,
++    windowEndMs,
++    count: values.length,
++    min: Math.min(...values),
++    max: Math.max(...values),
++    ...percentiles,
++    unit: first.unit,
++  };
++}
+diff --git a/types.ts b/types.ts
+new file mode 100644
+--- /dev/null
++++ b/types.ts
+@@ -0,0 +1,20 @@
++export type MetricUnit = "ms" | "s" | "count";
++
++export interface Sample {
++  metric: string;
++  timestampMs: number;
++  value: number;
++  unit: MetricUnit;
++}
++
++export interface Rollup {
++  metric: string;
++  windowStartMs: number;
++  windowEndMs: number;
++  count: number;
++  min: number;
++  max: number;
++  p50: number;
++  p95: number;
++  unit: MetricUnit;
++}
+diff --git a/units.ts b/units.ts
+new file mode 100644
+--- /dev/null
++++ b/units.ts
+@@ -0,0 +1,15 @@
++import type { MetricUnit } from "./types.js";
++
++export function normalizeUnit(value: number): number {
++  return value;
++}
++
++export function secondsToMilliseconds(value: number): number {
++  return value * 1_000;
++}
++
++export const UNIT_NORMALIZERS: Readonly<Record<MetricUnit, (value: number) => number>> = {
++  ms: normalizeUnit,
++  s: secondsToMilliseconds,
++  count: normalizeUnit,
++};

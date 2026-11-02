@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "summary": "Repair config ownership so an asynchronous read does not prevent a synchronous settings write in the same turn.",
+  "context": {
+    "key_files": [
+      "src/orchestration/config/config-file.ts",
+      "src/infra/ownership-file-lock.ts"
+    ],
+    "patterns": [
+      "Config callbacks are synchronous. The directory and ownership lock cover each callback."
+    ],
+    "constraints": [
+      "Preserve descriptor-bound file operations, ownership checks, callback failures, and asynchronous waiting for a held lock.",
+      "Do not replace native ownership with a stub or change the public config entry points."
+    ]
+  },
+  "milestones": [
+    {
+      "id": "repair-config-ownership",
+      "goal": "Remove every yield between successful acquisition and synchronous callback release, and preserve the existing lock contract.",
+      "files": [
+        "src/orchestration/config/config-file.ts",
+        "src/infra/ownership-file-lock.ts"
+      ],
+      "tasks": [
+        {
+          "id": "repair-first-write",
+          "description": "Make withConfigOwnership run and release its synchronous callback without yielding after every successful acquisition attempt, including after waiting for contention. Preserve nonblocking waiting when another owner holds the lock. Propagate callback errors and release ownership.",
+          "files": [
+            "src/orchestration/config/config-file.ts",
+            "src/infra/ownership-file-lock.ts"
+          ],
+          "test_scenarios": [
+            "Start an asynchronous config read and immediately perform a synchronous write in the same turn. Both succeed.",
+            "A throwing callback rejects with its original error and releases ownership.",
+            "A held lock released by a timer allows the waiting asynchronous callback to capture empty text before a sibling synchronous write queued at native lock publication succeeds."
+          ]
+        }
+      ],
+      "verification": "bun test config-smoke.test.ts",
+      "qualitative_verification": "Confirm all config operations retain native descriptor-bound ownership."
+    }
+  ],
+  "success_criteria": [
+    "Same-turn read and synchronous write succeed without lock refusal.",
+    "Callback failures propagate and ownership is released.",
+    "Waiting ownership does not block the event loop.",
+    "After every successful acquisition, the synchronous callback and release complete before a queued sibling write runs."
+  ],
+  "implementation_contract": {
+    "directives": [
+      {
+        "id": "preserve-native-ownership",
+        "text": "Preserve the public config ownership entry points and descriptor-bound locking.",
+        "completion_check": "The final diff repairs production ownership without replacing the native file boundary."
+      }
+    ]
+  }
+}

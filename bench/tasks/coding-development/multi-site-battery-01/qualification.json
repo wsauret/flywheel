@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "role": "development",
+  "contentIdentity": "53674e829d02acda906e6768c0bc78d7e9055246b5946aa43505b2dae0da4d1a",
+  "testIds": [
+    "acceptance/truncate-field.test.ts > truncate-field: keeps multi-byte text within the byte budget",
+    "acceptance/truncate-field.test.ts > truncate-field: passes values that fit the budget through unchanged",
+    "acceptance/repeat-coalescer.test.ts > repeat-coalescer: keeps at most 256 sampled repeats in arrival order",
+    "acceptance/repeat-coalescer.test.ts > repeat-coalescer: keeps every repeat when the sample is not full",
+    "acceptance/session-fair-admission.test.ts > session-fair-admission: a repeated release frees its permit only once",
+    "acceptance/session-fair-admission.test.ts > session-fair-admission: a taken permit released twice creates no capacity",
+    "acceptance/session-fair-admission.test.ts > session-fair-admission: each single release admits the next session in turn",
+    "acceptance/skill-id.test.ts > skill-id: accepts ids that only begin with the letters of the learned root",
+    "acceptance/skill-id.test.ts > skill-id: still reserves the learned root and its namespace"
+  ],
+  "cases": [
+    {
+      "id": "reference",
+      "patches": [
+        "qualification/reference.patch"
+      ],
+      "expectation": "pass",
+      "expectedFailures": [],
+      "rationale": "Restore the pinned implementation at all four sites."
+    },
+    {
+      "id": "alternative",
+      "patches": [
+        "qualification/alternative.patch"
+      ],
+      "expectation": "pass",
+      "expectedFailures": [],
+      "rationale": "Repair all four sites with independently written logic: a byte-length guard, a count-based sample cap, a permit set, and a first-segment comparison."
+    },
+    {
+      "id": "without-truncate-field",
+      "patches": [
+        "qualification/without-truncate-field.patch"
+      ],
+      "expectation": "fail",
+      "expectedFailures": [
+        "acceptance/truncate-field.test.ts > truncate-field: keeps multi-byte text within the byte budget"
+      ],
+      "rationale": "Repair three sites and leave truncateField comparing UTF-16 length with a byte budget."
+    },
+    {
+      "id": "without-repeat-coalescer",
+      "patches": [
+        "qualification/without-repeat-coalescer.patch"
+      ],
+      "expectation": "fail",
+      "expectedFailures": [
+        "acceptance/repeat-coalescer.test.ts > repeat-coalescer: keeps at most 256 sampled repeats in arrival order"
+      ],
+      "rationale": "Repair three sites and leave the repeat sample one past its cap."
+    },
+    {
+      "id": "without-session-fair-admission",
+      "patches": [
+        "qualification/without-session-fair-admission.patch"
+      ],
+      "expectation": "fail",
+      "expectedFailures": [
+        "acceptance/session-fair-admission.test.ts > session-fair-admission: a repeated release frees its permit only once",
+        "acceptance/session-fair-admission.test.ts > session-fair-admission: a taken permit released twice creates no capacity"
+      ],
+      "rationale": "Repair three sites and leave permit release without its once guard."
+    },
+    {
+      "id": "without-skill-id",
+      "patches": [
+        "qualification/without-skill-id.patch"
+      ],
+      "expectation": "fail",
+      "expectedFailures": [
+        "acceptance/skill-id.test.ts > skill-id: accepts ids that only begin with the letters of the learned root"
+      ],
+      "rationale": "Repair three sites and leave the learned reservation matching any id that begins with its letters."
+    },
+    {
+      "id": "clamped-release",
+      "patches": [
+        "qualification/clamped-release.patch"
+      ],
+      "expectation": "fail",
+      "expectedFailures": [
+        "acceptance/session-fair-admission.test.ts > session-fair-admission: a repeated release frees its permit only once",
+        "acceptance/session-fair-admission.test.ts > session-fair-admission: a taken permit released twice creates no capacity"
+      ],
+      "rationale": "Repair three sites and clamp the active count at zero, which still lets a repeated release admit extra work."
+    },
+    {
+      "id": "root-only-reservation",
+      "patches": [
+        "qualification/root-only-reservation.patch"
+      ],
+      "expectation": "fail",
+      "expectedFailures": [
+        "acceptance/skill-id.test.ts > skill-id: still reserves the learned root and its namespace"
+      ],
+      "rationale": "Repair three sites and narrow the learned reservation to the bare root, which releases the learned.* namespace."
+    }
+  ]
+}

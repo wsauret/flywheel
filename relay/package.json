@@ -1,0 +1,26 @@
+{
+  "name": "flywheel-relay",
+  "description": "The relay Worker paired phones reach a Flywheel runtime through, and the phone host that mounts the web client against it.",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test worker app",
+    "test:worker": "bun test worker",
+    "test:reports": "bun test worker/src/reports.test.ts",
+    "build:app": "bun run app/build.ts",
+    "dev:worker": "bunx wrangler dev --config worker/wrangler.jsonc",
+    "deploy:worker": "bun run probe.ts --before-deploy && bunx wrangler deploy --config worker/wrangler.jsonc",
+    "probe:worker": "bun run probe.ts",
+    "usage:worker": "bun run usage.ts",
+    "deploy:app": "bun run app/build.ts && bunx wrangler deploy --config app/wrangler.jsonc"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260905.1",
+    "@types/bun": "^1.4.4",
+    "effect": "4.0.0-beta.84",
+    "miniflare": "5.20260825.0-alpha",
+    "sharp": "^0.35.3",
+    "wrangler": "^4.126.0"
+  }
+}

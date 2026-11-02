@@ -1,0 +1,44 @@
+{
+  "id": "catalog-overflow-hydration",
+  "stratum": "production-history",
+  "timeoutMinutes": 45,
+  "sandbox": {
+    "commit": "5a665aec2a5e8acbe41b835ef0c137a63a6a7230",
+    "paths": [
+      "src",
+      "tests",
+      "docs",
+      "scripts",
+      "package.json",
+      "bun.lock",
+      "tsconfig.json",
+      "oxlint.config.ts",
+      "knip.jsonc",
+      "AGENTS.md",
+      ".gitignore",
+      "bunfig.toml",
+      "relay/package.json",
+      "vscode/package.json",
+      "webview/package.json",
+      "website/package.json",
+      "crates/tokenizer/tokenizer-prebuilt.json",
+      "crates/tokenizer/flywheel-tokenizer.wasm.zst"
+    ],
+    "patch": "sandbox.patch",
+    "setup": [
+      [
+        "bun",
+        "install"
+      ]
+    ]
+  },
+  "acceptanceBaseline": {
+    "failToPass": [
+      "acceptance/event-lane-overflow.test.ts > a client that falls behind the runtime event lane > each separate overflow is followed by its own recovery signal, and the lane stays open and ordered",
+      "acceptance/event-lane-overflow.test.ts > a client that falls behind the runtime event lane > session rows whose last update was dropped are hydrated again without a reconnect or a later update"
+    ],
+    "passToPass": [
+      "acceptance/event-lane-overflow.test.ts > a client that falls behind the runtime event lane > a client that keeps up receives no recovery signal"
+    ]
+  }
+}

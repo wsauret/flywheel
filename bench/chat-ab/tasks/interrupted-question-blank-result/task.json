@@ -1,0 +1,49 @@
+{
+  "id": "interrupted-question-blank-result",
+  "stratum": "production-history",
+  "timeoutMinutes": 45,
+  "sandbox": {
+    "commit": "806de1855e4b6dcfd9d8ebce1ae26806c1d6fcd4",
+    "paths": [
+      "src",
+      "tests",
+      "docs",
+      "scripts",
+      "package.json",
+      "bun.lock",
+      "tsconfig.json",
+      "tsconfig.tests.json",
+      "oxlint.config.ts",
+      "knip.jsonc",
+      "AGENTS.md",
+      ".gitignore",
+      "bunfig.toml",
+      "crates/tokenizer/tokenizer-prebuilt.json",
+      "crates/tokenizer/flywheel-tokenizer.wasm.zst",
+      "relay/package.json",
+      "vscode/package.json",
+      "webview/package.json",
+      "website/package.json"
+    ],
+    "patch": "sandbox.patch",
+    "setup": [
+      [
+        "bun",
+        "install"
+      ]
+    ]
+  },
+  "acceptanceBaseline": {
+    "failToPass": [
+      "acceptance/blank-error-result-history.test.ts > a recorded session with a blank error tool result > a session that already holds a blank interrupted question sends its next message with a non-empty error result for that question (\"  \\n\")",
+      "acceptance/blank-error-result-history.test.ts > a recorded session with a blank error tool result > a session that already holds a blank interrupted question sends its next message with a non-empty error result for that question (\"\")",
+      "acceptance/blank-error-result-history.test.ts > a recorded session with a blank error tool result > a session that holds any blank error result sends its next message with non-empty error content",
+      "acceptance/suspended-question.test.ts > a question that suspends the turn > settles a suspended durable tool without emitting or checkpointing a tool result"
+    ],
+    "passToPass": [
+      "acceptance/blank-error-result-history.test.ts > a recorded session with a blank error tool result > a recorded blank successful result is not turned into an error",
+      "acceptance/blank-error-result-history.test.ts > a recorded session with a blank error tool result > a recorded non-blank error result reaches Anthropic as written",
+      "acceptance/suspended-question.test.ts > a question that suspends the turn > checkpoints a finished tool result while a sibling call is still running"
+    ]
+  }
+}

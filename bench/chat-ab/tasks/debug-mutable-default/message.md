@@ -1,0 +1,1 @@
+test_process_twice is failing, the second call to process_events returns an empty list when it should return all events. The first call works fine. The verification command is: python3 -m pytest tests/ -v

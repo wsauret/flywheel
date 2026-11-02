@@ -1,0 +1,45 @@
+===================================================================
+--- a/render.ts
++++ b/render.ts
+@@ -42,24 +42,33 @@
+   const text = value === null || value === undefined ? "" : String(value);
+   return escaped ? text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;") : text;
+ }
+ 
++type Work = { nodes: readonly Node[]; scope: unknown; index: number };
++
+ function evaluate(nodes: readonly Node[], scope: unknown): string {
+-  let output = "";
+-  for (const node of nodes) {
+-    if (node.kind === "text") output += node.value;
+-    else if (node.kind === "variable") output += variableText(resolvePath(scope, node.path), node.escaped);
++  const work: Work[] = [{ nodes, scope, index: 0 }];
++  const output: string[] = [];
++  let current: Work | undefined;
++  while ((current = work.pop()) !== undefined) {
++    const node = current.nodes[current.index];
++    if (!node) continue;
++    work.push({ ...current, index: current.index + 1 });
++    if (node.kind === "text") output.push(node.value);
++    else if (node.kind === "variable") output.push(variableText(resolvePath(current.scope, node.path), node.escaped));
+     else {
+-      const value = resolvePath(scope, node.path);
++      const value = resolvePath(current.scope, node.path);
+       if (node.block === "if") {
+-        if (value) output += evaluate(node.children, scope);
++        if (value) work.push({ nodes: node.children, scope: current.scope, index: 0 });
+       } else if (Array.isArray(value)) {
+         const items: readonly unknown[] = value;
+-        for (const item of items) output += evaluate(node.children, item);
++        for (let index = items.length - 1; index >= 0; index--) {
++          work.push({ nodes: node.children, scope: items[index], index: 0 });
++        }
+       }
+     }
+   }
+-  return output;
++  return output.join("");
+ }
+ 
+ export function render(template: string, context: TemplateContext = {}): string {
+   return evaluate(parse(template), context);

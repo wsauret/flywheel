@@ -1,0 +1,160 @@
+name: ci
+
+# Runs the contributor gates on pull requests from contributors: `bun run
+# lint`, `bun run test`, and `bun run check:boundaries`, the three commands
+# that CONTRIBUTING.md and the pull request template require. The maintainer
+# runs the same gates locally before every push, so pushes to main and the
+# maintainer's own pull requests do not spend the hosted-runner budget. The
+# maintainer can still start a run by hand from the Actions tab.
+#
+# Every pull request also checks its title against the changelog contract of
+# AGENTS.md. A squash merge makes the title the commit header, and release
+# notes drop a header that does not parse. An edit of the title runs this
+# check again, and only this check.
+#
+# The unit suite runs on the three first-class platforms of AGENTS.md.
+# Release readiness runs it on macOS, Linux, and Windows, so a change that
+# breaks one of them must fail here first. Lint and the boundary check run on
+# Linux and Windows only. They give the same result on every POSIX host, and
+# lint starts all of its steps at once: its peak memory is above the 7 GB of
+# the hosted macOS runner.
+#
+# The job reads no secret and needs no network after `bun install`: the unit
+# suite refuses every request to another host (tests/preload.ts), and git in a
+# test reads no global or system configuration (.env.test). The integration
+# suites do not run here. `test:integration:api` and
+# `test:integration:claude-engine` need the auth profile that
+# `FLYWHEEL_LIVE_AUTH_PROFILE` names, with live logins, and spend quota;
+# `test:integration:no-api` needs no credentials.
+
+on:
+  pull_request:
+    # The default types, and `edited` so that a fixed title checks again.
+    types: [opened, synchronize, reopened, edited]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # One run per pull request or branch. A new push to a pull request cancels
+  # the run of the push that it replaces. An edit runs only the title check,
+  # so it has its own group and never cancels the gates of a push.
+  group: ci-${{ github.event.action == 'edited' && 'edited-' || '' }}${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pr-title:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2.0.2
+        with:
+          bun-version-file: package.json
+      # The check imports no package, so it needs no `bun install`. The title
+      # is untrusted input: it reaches the script only through the
+      # environment, never inside the script text.
+      - name: Check the title against the changelog contract
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: printf '%s\n' "$TITLE" | bun run scripts/commit-contract.ts check-message
+
+  gates:
+    name: gates (${{ matrix.os }})
+    # A pull request that the repository owner opened runs no gates, and an
+    # edit of a pull request runs only the title check.
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.pull_request.user.login != github.repository_owner && github.event.action != 'edited')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            lint: true
+            test_shards: "2"
+          - os: windows-latest
+            lint: true
+            test_shards: "2"
+          - os: macos-latest
+            lint: false
+    runs-on: ${{ matrix.os }}
+    # Far above the gates' own guards, so that each gate reports first. This
+    # only stops a runner that no gate can stop.
+    timeout-minutes: 45
+    env:
+      # A hosted runner has four or fewer cores, slower than a development
+      # machine, and shares them with other tenants. The unit suite still
+      # prints its duration, but the 60-second budget does not fail the run,
+      # as on a release machine.
+      TEST_BUDGET: advisory
+      # The default 90-second hang guard assumes a development machine. On a
+      # four-core runner, a healthy run takes longer than that.
+      TEST_HANG_GUARD_SECONDS: "900"
+      # Lint starts all of its steps at once and needs about 10 GB. A private
+      # repository's Linux and Windows runners have 7 GB, so lint runs one
+      # step at a time. A public repository's runners have 16 GB; raise this
+      # then.
+      LINT_CONCURRENCY: "1"
+      # A private repository's Linux and Windows runners have two cores, and
+      # four test processes there made healthy cases with real 20 ms timers
+      # miss their deadline, so they run two. Empty keeps the runner's own
+      # count, as on macOS.
+      TEST_SHARDS: ${{ matrix.test_shards }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2.0.2
+        with:
+          # The `packageManager` field of package.json names the one Bun
+          # version that contributors, release readiness, and CI use.
+          bun-version-file: package.json
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      # The validation lane (scripts/validation-lane.ts) admits one gate at a
+      # time through ticket files in the temporary directory. Each runner is a
+      # new machine and the steps run in order, so every gate enters an empty
+      # lane at once.
+      - name: Lint
+        if: matrix.lint
+        run: bun run lint
+      - name: Layer boundaries
+        if: matrix.lint
+        run: bun run check:boundaries
+      # Real-time scanning on the hosted Windows image slows each file that
+      # the unit suite reads and each process that it starts.
+      - name: Stop real-time scanning
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Set-MpPreference -DisableRealtimeMonitoring $true
+      # The hosted Windows image keeps the user profile, and TEMP inside it,
+      # on its system disk, where a SQLite commit of a unit test can take
+      # twenty times as long as on a desktop and cases miss their deadline.
+      # The tests run with a profile on the work disk instead, laid out as
+      # Windows lays out every profile, with TEMP inside it: a test can name
+      # a file in TEMP from the home directory, as `~/...`.
+      - name: Move the user profile to the work disk
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $userProfile = Join-Path $env:RUNNER_TEMP "profile"
+          $temp = Join-Path $userProfile "AppData\Local\Temp"
+          New-Item -ItemType Directory -Force -Path $temp | Out-Null
+          "USERPROFILE=$userProfile" >> $env:GITHUB_ENV
+          "HOME=$userProfile" >> $env:GITHUB_ENV
+          "TEMP=$temp" >> $env:GITHUB_ENV
+          "TMP=$temp" >> $env:GITHUB_ENV
+      # Bun's 5-second test deadline assumes a development machine. On a
+      # hosted runner, healthy slow cases take up to about 8 seconds, so CI
+      # uses the 20-second deadline that Windows already gets locally.
+      - name: Unit tests
+        run: bun run test --timeout 20000

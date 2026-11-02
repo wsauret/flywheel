@@ -1,0 +1,1 @@
+I want a configurable size ceiling for step handoffs so one oversized payload cannot destabilize a workflow. Reject oversized handoffs with a typed, complete error and fail the step attempt instead of truncating content or hiding the failure. Add coverage for boundary values and multibyte content.

@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "summary": "Repair complete tool arguments without losing string state at escaped delimiters.",
+  "context": {
+    "key_files": [
+      "src/orchestration/agent-runtime/llm/json-parse.ts"
+    ],
+    "patterns": [
+      "parseToolArguments returns an object and an optional parseError without throwing.",
+      "Strict parsing precedes complete-document repair; tolerant parsing classifies incomplete buffers only."
+    ],
+    "constraints": [
+      "Change only src/orchestration/agent-runtime/llm/json-parse.ts.",
+      "Preserve the public parser and private helper contracts.",
+      "Do not change tests, dependencies, setup, or runtime composition.",
+      "Repair must preserve the exact decoded value of each complete field, including slash runs and escaped quotes.",
+      "Never complete or return shortened values from a partial argument document.",
+      "Do not disable repair to avoid the scanner fault."
+    ]
+  },
+  "milestones": [
+    {
+      "id": "repair-parser-contract",
+      "goal": "Repair complete tool arguments without losing string state at escaped delimiters.",
+      "files": [
+        "src/orchestration/agent-runtime/llm/json-parse.ts"
+      ],
+      "tasks": [
+        {
+          "id": "repair-boundary",
+          "description": "Restore correct character consumption in the repair scanner. Valid escapes consume their following character once. Raw controls inside strings are escaped, not removed. Complete repaired objects must retain all values, while unfinished arguments must remain refused. Preserve strict parsing, supported envelopes, Unicode, literal invalid-escape repair, and empty buffers.",
+          "files": [
+            "src/orchestration/agent-runtime/llm/json-parse.ts"
+          ],
+          "test_scenarios": [
+            "preserves escaped quotes beside raw control characters",
+            "preserves backslash parity and nested delimiter text",
+            "refuses unfinished repair candidates without shortened values",
+            "retains strict JSON unicode and empty buffer behavior"
+          ]
+        }
+      ],
+      "verification": "bun -e 'import { parseToolArguments } from \"./src/orchestration/agent-runtime/llm/json-parse.ts\"; const rejected = parseToolArguments(\"{\\\"value\\\":\"); if (!rejected.parseError || Object.keys(rejected.input).length) throw new Error(\"partial accepted\"); const accepted = parseToolArguments(\"{\\\"value\\\":1}\"); if (accepted.parseError || accepted.input.value !== 1) throw new Error(\"complete refused\");'",
+      "qualitative_verification": "All supported complete values survive unchanged; rejected buffers remain rejected with useful bounded feedback."
+    }
+  ],
+  "success_criteria": [
+    "Repair complete tool arguments without losing string state at escaped delimiters.",
+    "Repair must preserve the exact decoded value of each complete field, including slash runs and escaped quotes.",
+    "Never complete or return shortened values from a partial argument document.",
+    "Do not disable repair to avoid the scanner fault.",
+    "No adapter, dispatch, or full agent-loop claim is made."
+  ]
+}

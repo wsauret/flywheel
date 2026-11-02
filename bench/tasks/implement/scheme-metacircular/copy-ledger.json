@@ -1,0 +1,574 @@
+{
+  "original/tests/shadow_test/y_combinator.scm": {
+    "bytes": 877,
+    "sha256": "38d25b02d54342ab5610ad03fcef68c5f1d4eef8902295645f6acceb853c9860"
+  },
+  "original/tests/shadow_test/mutual_recursion.scm": {
+    "bytes": 1913,
+    "sha256": "2fbc9562e863cb2b325f86419fb2a7588265aaf5576295550722ee4274663712"
+  },
+  "original/tests/shadow_test/nested_defines.scm": {
+    "bytes": 1154,
+    "sha256": "23ad3b2f936949501466da784511ea2e6215e2b198ca371bef86f6af877ca923"
+  },
+  "original/tests/shadow_test/memoization.scm": {
+    "bytes": 1644,
+    "sha256": "25482c1912fab1235651b1b7acd727f2ea6a55dc5c1919f841b44cfc32107b05"
+  },
+  "original/tests/shadow_test/01-factorial.scm": {
+    "bytes": 548,
+    "sha256": "540e81fac476f04dc510ba107721d606ac980760088b2136889e7d4bf884e5c5"
+  },
+  "original/tests/shadow_test/continuation_passing.scm": {
+    "bytes": 1133,
+    "sha256": "79e7445c42227846f1adfaf08c17e278aac7a34df77482900b068be4fd248080"
+  },
+  "original/tests/shadow_test/06-interactive-io.scm": {
+    "bytes": 1032,
+    "sha256": "4fbc0e2d6e42c5a9495e549ccb13c02fcaeddf8fdaf8d2cf5de833116f12610a"
+  },
+  "original/tests/shadow_test/filter_operations.scm": {
+    "bytes": 749,
+    "sha256": "485a0563b81d002e368c5e4b2b7cc98a5306163701053630f416e3b783a2a238"
+  },
+  "original/tests/shadow_test/binary_tree.scm": {
+    "bytes": 1342,
+    "sha256": "5a3dafc8844969cebb5809f253f4e54de7df480f378da8197f870badef03ee47"
+  },
+  "original/tests/shadow_test/05-simple-io.scm": {
+    "bytes": 947,
+    "sha256": "1eba30db30824fcf6048ea8e49b84e85c866cefce30862fce49b300e4416843c"
+  },
+  "original/tests/shadow_test/oeis_sequences.scm": {
+    "bytes": 1943,
+    "sha256": "1b586df6af2429a54808f7587f60021ba2b2c9bcc2ef2f9cbe44339699853c62"
+  },
+  "original/tests/shadow_test/09-mutual-recursion.scm": {
+    "bytes": 986,
+    "sha256": "3bfa1f77e602c7039f8c8c70315e6d4fff6eed737dab0f0398e5bdf690137c2c"
+  },
+  "original/tests/shadow_test/closures.scm": {
+    "bytes": 911,
+    "sha256": "c7d025a376987f5ee22f529847b66eaf53f0af7033acbb4055cedb734168d612"
+  },
+  "original/tests/shadow_test/02-fibonacci.scm": {
+    "bytes": 811,
+    "sha256": "628957171e0c4a3ee373635923fcd29e75bdf4bf13a402ac26fe94a5fc1443ac"
+  },
+  "original/tests/shadow_test/oeis_sequences2.scm": {
+    "bytes": 2364,
+    "sha256": "300da0b0dc20b883e01142adea9eb6da1a583a1b969ac0be47aa32c1ab66340e"
+  },
+  "original/tests/shadow_test/10-advanced-features.scm": {
+    "bytes": 2052,
+    "sha256": "b69ef497088fcf0aec388789a17561b783b8cdd5915719915a51c5ba189c31ff"
+  },
+  "original/tests/shadow_test/oeis_sequences3.scm": {
+    "bytes": 2565,
+    "sha256": "dea198e874bf518b93c8406a843b64c1586cf4ce780fec8c444f8343e9322c75"
+  },
+  "original/tests/shadow_test/03-list-operations.scm": {
+    "bytes": 1198,
+    "sha256": "fe8f17f59fe4045582fce363d52df95ba7c4de7345542c8bd4993a9f2f396235"
+  },
+  "original/tests/shadow_test/04-higher-order.scm": {
+    "bytes": 988,
+    "sha256": "9c2eba8c91bb7b224de56d789207d2eaad98bbe1f8c360d6eca4f014f42f9230"
+  },
+  "original/tests/shadow_test/lazy_evaluation.scm": {
+    "bytes": 1294,
+    "sha256": "edd95748de14aadf916c65209b5bcb8759d3e33b7ec935289a5128a656d33bec"
+  },
+  "original/tests/shadow_test/variadic_functions.scm": {
+    "bytes": 2434,
+    "sha256": "ac940ac0273e87ee06280fee192194ab5cdc14c88b61da9cfba92105e66b8f2f"
+  },
+  "original/tests/shadow_test/map_operations.scm": {
+    "bytes": 651,
+    "sha256": "974ac42d892f4b62b9b21ef7844581624dad811b38d35944f1005cc47f249856"
+  },
+  "original/tests/shadow_test/test_read.scm": {
+    "bytes": 90,
+    "sha256": "fda448c22685e2f9af37ff7b986ee5e906d485a2db16f62eec113149f866870f"
+  },
+  "original/tests/shadow_test/church_numerals.scm": {
+    "bytes": 1225,
+    "sha256": "31d075785f2f605bac3bd9ac2d99fcf7eaaed6686eb9afeab1d40bf5f35bbf2c"
+  },
+  "original/tests/shadow_test/fold_operations.scm": {
+    "bytes": 821,
+    "sha256": "461b33db6b3f5580122d4c6dff0fd6d11c7f044865ffd684ade67d9b296a5a24"
+  },
+  "original/tests/shadow_test/list_operations.scm": {
+    "bytes": 1680,
+    "sha256": "660963851ecb49639f66557bd88db1e73db323186742145f33cb2e14d3af1103"
+  },
+  "original/tests/shadow_test/function_composition.scm": {
+    "bytes": 1194,
+    "sha256": "65ceee00188b12c3549134449e2f938d010c2c97dba090f5b53244abb3579b1f"
+  },
+  "original/tests/shadow_test/08-progn-sequencing.scm": {
+    "bytes": 1087,
+    "sha256": "3bf8236dc5356d29ab8dbfe1b0f4c519354fbb23c8f3eaf946779c28b80feea3"
+  },
+  "original/tests/shadow_test/currying.scm": {
+    "bytes": 1610,
+    "sha256": "690a8cccbb1d249c8f6fcabc0193cecc5d0e4c1af39a0bb67c7e95fcff8e393e"
+  },
+  "original/tests/shadow_test/recursive_structures.scm": {
+    "bytes": 2994,
+    "sha256": "64f1a430bf04a627f5e27bf004805544b60406f8a123d186516774dfcf3846cd"
+  },
+  "original/tests/shadow_test/accumulator_patterns.scm": {
+    "bytes": 1427,
+    "sha256": "8b9192796a6f9c3155cc5e44d0a0ba6a46d20a0d94e265b69b23ec8af43e4a07"
+  },
+  "original/tests/test/y_combinator.scm": {
+    "bytes": 846,
+    "sha256": "971144dcb2b04aaa3b34d9279459bd7d2e8256c585d17809465848c2589d36d8"
+  },
+  "original/tests/test/mutual_recursion.scm": {
+    "bytes": 1892,
+    "sha256": "a3dc23a96ec1cf05b0be4a4f0b6d3da9e2bad1aa3f7a83c7566f71f980a67fe2"
+  },
+  "original/tests/test/nested_defines.scm": {
+    "bytes": 1133,
+    "sha256": "21faa0ccaf744cb8c9d283bbfd0c36e195c803c85f511e70a99267c0a85b6216"
+  },
+  "original/tests/test/memoization.scm": {
+    "bytes": 1694,
+    "sha256": "cf8202df22407dbba72ca7f660d8ab7cd4ca962b215c36cc491d5c1a474c160b"
+  },
+  "original/tests/test/01-factorial.scm": {
+    "bytes": 497,
+    "sha256": "2623000a742c63d50ae1851854826247caee129c7d1613be6c7131d21f26a6ad"
+  },
+  "original/tests/test/continuation_passing.scm": {
+    "bytes": 1104,
+    "sha256": "01049581e582f7d35ef40ef68e1827d012da619beea57c1c74675a5f245318d7"
+  },
+  "original/tests/test/06-interactive-io.scm": {
+    "bytes": 992,
+    "sha256": "aa3cae79b79dca90ac9d61a1babf64d6a5bb6559798c7727c11be02d8ddfd216"
+  },
+  "original/tests/test/filter_operations.scm": {
+    "bytes": 719,
+    "sha256": "f6bc75f6da9ece96c0616e3570e4df59d0f2eb4655375d3a46b0349c86cc5dd8"
+  },
+  "original/tests/test/binary_tree.scm": {
+    "bytes": 1311,
+    "sha256": "c95f59ccac1ea4a9c846afddc993aa40ac081c0f9e6731544530109b269b67ae"
+  },
+  "original/tests/test/05-simple-io.scm": {
+    "bytes": 921,
+    "sha256": "3deeb3275df1b771449ebaebfcb9a934f375415e138c5e9f3685516c69a1f7a0"
+  },
+  "original/tests/test/calculator.scm": {
+    "bytes": 341,
+    "sha256": "a09213ec8a2ec52486b9346c420ddb7c537576ef71b1cc5c6ec61d13d9139f61"
+  },
+  "original/tests/test/oeis_sequences.scm": {
+    "bytes": 2009,
+    "sha256": "d1f77161b367176b3dfab55a34466e511c602c7ae359e05f5a715627b93dca6a"
+  },
+  "original/tests/test/09-mutual-recursion.scm": {
+    "bytes": 895,
+    "sha256": "939e18f4bd25b5ab0e2a4a767bf7eb6b0d8fb3530d28bf236f06cf27f2d90ee8"
+  },
+  "original/tests/test/closures.scm": {
+    "bytes": 904,
+    "sha256": "3ecfc35289479288876e20bf7f55e5b8eda84acd35937e89e3d062308a99aeff"
+  },
+  "original/tests/test/02-fibonacci.scm": {
+    "bytes": 686,
+    "sha256": "db769cef446d5da9e9b1abccdf9ca644e239938095a98c21551aee25255a57d4"
+  },
+  "original/tests/test/README.md": {
+    "bytes": 2108,
+    "sha256": "1f2174c7f12721f9f1898cda190c2886fb3ef9d35fd085f315da5814657104ae"
+  },
+  "original/tests/test/oeis_sequences2.scm": {
+    "bytes": 2351,
+    "sha256": "5679ef0f99743114d8c06edcdcde1fea9474b71aeb57c2069f1ee33df1970bce"
+  },
+  "original/tests/test/10-advanced-features.scm": {
+    "bytes": 1945,
+    "sha256": "c4cc5fb412df363875768c6a1e645255f6bc8f9ddf988d1ec2f4a266cedb8ec7"
+  },
+  "original/tests/test/oeis_sequences3.scm": {
+    "bytes": 2555,
+    "sha256": "5dc8b44158b2648a6e9766f6bcdf21553a07bf487d79e64ebb418511ef3b8186"
+  },
+  "original/tests/test/03-list-operations.scm": {
+    "bytes": 1033,
+    "sha256": "1a14b4100dedef30010fed62ea9fd295add1b0facb2e8e6e27c8d8eb3d90111b"
+  },
+  "original/tests/test/04-higher-order.scm": {
+    "bytes": 894,
+    "sha256": "59cd17bbffad641a37729b17c5bf9178b8bae7289fe89cc7135eb0bfec2b4fd6"
+  },
+  "original/tests/test/lazy_evaluation.scm": {
+    "bytes": 1279,
+    "sha256": "ea5912a53a35b65bf2bee9483dca90814b8baf52ae3ae50c2d4589f794dca54d"
+  },
+  "original/tests/test/variadic_functions.scm": {
+    "bytes": 2468,
+    "sha256": "c9b847c50840c6977904e5033a07f6108cc3a54012b02d916e79025fb43e0f6e"
+  },
+  "original/tests/test/map_operations.scm": {
+    "bytes": 637,
+    "sha256": "0cebddb3d4a50e4b6f6bfc0e8c12762d3f42609030aef077d8ab4bedda4718d9"
+  },
+  "original/tests/test/test_read.scm": {
+    "bytes": 84,
+    "sha256": "5b9ee381c3cf45b2fc8c2e7b490857fb67f1ac78653b586d7f2848daf6853809"
+  },
+  "original/tests/test/church_numerals.scm": {
+    "bytes": 1179,
+    "sha256": "f37d858f32a9c5ba8868d094018c92516acadf0ea4e55b7c36f14320cb0c69a6"
+  },
+  "original/tests/test/fold_operations.scm": {
+    "bytes": 800,
+    "sha256": "05aab492ad914baecd19cf454ed587e7a031e94b8990500eb1c869c15da6fc0b"
+  },
+  "original/tests/test/list_operations.scm": {
+    "bytes": 1683,
+    "sha256": "d7e70621afbbb787cf646e2089bccfbd3681fbb2e70325f3e50f56ccd30dbd9d"
+  },
+  "original/tests/test/function_composition.scm": {
+    "bytes": 1397,
+    "sha256": "9b56dc78823e7d35adb213744c0f8e95684074d6a12bb98c8c05755788be5b06"
+  },
+  "original/tests/test/08-progn-sequencing.scm": {
+    "bytes": 1067,
+    "sha256": "4c0a4d980cf4223d1d17715d58adbe27dc120eced257a0d9f42de952c094bc5b"
+  },
+  "original/tests/test/currying.scm": {
+    "bytes": 1578,
+    "sha256": "2844d54eee9a94af05a11b4aae06d6e7823d193f17235c8f90bf98926cbca75d"
+  },
+  "original/tests/test/recursive_structures.scm": {
+    "bytes": 2780,
+    "sha256": "67838ff5bac26ea359139720adec1d5700176147b0062065c7def9715e8a2aeb"
+  },
+  "original/tests/test/accumulator_patterns.scm": {
+    "bytes": 1410,
+    "sha256": "50d246e00577d1f3ab3f0462c2b9618ea63680c33fcca12369cd1707b010cb5f"
+  },
+  "original/tests/interp.py": {
+    "bytes": 17578,
+    "sha256": "efb8b5cdcf78b73afcf39d59600a1f355ca89b7bac9854bb01f110cc77bea2c1"
+  },
+  "original/tests/test_outputs.py": {
+    "bytes": 6823,
+    "sha256": "fbb84e3c0c2f72ed7de90f54380f860052c16155e7d0c9076cd57c966e9be7ed"
+  },
+  "original/tests/test.sh": {
+    "bytes": 608,
+    "sha256": "4770437ea96c3cc84684b4f99d55fb148fcac09f9ea1e8ef49de487716e6c334"
+  },
+  "original/solution/solve.sh": {
+    "bytes": 11910,
+    "sha256": "e2c5b0ac2bef4801a1891e13c108813381877426c1a7f01bab86b4fc1f712510"
+  },
+  "original/instruction.md": {
+    "bytes": 1127,
+    "sha256": "3af5f9567b62f93683db7518ec6fcb609f83796258aa02166b5a7091c5b69031"
+  },
+  "original/README.md": {
+    "bytes": 2905,
+    "sha256": "095d3ec6dcc0fe0c7a7e92355456dcea6992f91d1f8d397669b8cfe18475f506"
+  },
+  "original/.gitignore": {
+    "bytes": 177,
+    "sha256": "9a8dd8d9b6c3adb8e9e56328df27deef859a3e98fffc9b8133c8b22207c25953"
+  },
+  "original/environment/Dockerfile": {
+    "bytes": 418,
+    "sha256": "9b3df76222e16aad360fbd34cb0f71a0be8986052c065b10b92c0cdf417b25c7"
+  },
+  "original/environment/tests/shadow_test/y_combinator.scm": {
+    "bytes": 877,
+    "sha256": "38d25b02d54342ab5610ad03fcef68c5f1d4eef8902295645f6acceb853c9860"
+  },
+  "original/environment/tests/shadow_test/mutual_recursion.scm": {
+    "bytes": 1913,
+    "sha256": "2fbc9562e863cb2b325f86419fb2a7588265aaf5576295550722ee4274663712"
+  },
+  "original/environment/tests/shadow_test/nested_defines.scm": {
+    "bytes": 1154,
+    "sha256": "23ad3b2f936949501466da784511ea2e6215e2b198ca371bef86f6af877ca923"
+  },
+  "original/environment/tests/shadow_test/memoization.scm": {
+    "bytes": 1644,
+    "sha256": "25482c1912fab1235651b1b7acd727f2ea6a55dc5c1919f841b44cfc32107b05"
+  },
+  "original/environment/tests/shadow_test/01-factorial.scm": {
+    "bytes": 548,
+    "sha256": "540e81fac476f04dc510ba107721d606ac980760088b2136889e7d4bf884e5c5"
+  },
+  "original/environment/tests/shadow_test/continuation_passing.scm": {
+    "bytes": 1133,
+    "sha256": "79e7445c42227846f1adfaf08c17e278aac7a34df77482900b068be4fd248080"
+  },
+  "original/environment/tests/shadow_test/06-interactive-io.scm": {
+    "bytes": 1032,
+    "sha256": "4fbc0e2d6e42c5a9495e549ccb13c02fcaeddf8fdaf8d2cf5de833116f12610a"
+  },
+  "original/environment/tests/shadow_test/filter_operations.scm": {
+    "bytes": 749,
+    "sha256": "485a0563b81d002e368c5e4b2b7cc98a5306163701053630f416e3b783a2a238"
+  },
+  "original/environment/tests/shadow_test/binary_tree.scm": {
+    "bytes": 1342,
+    "sha256": "5a3dafc8844969cebb5809f253f4e54de7df480f378da8197f870badef03ee47"
+  },
+  "original/environment/tests/shadow_test/05-simple-io.scm": {
+    "bytes": 947,
+    "sha256": "1eba30db30824fcf6048ea8e49b84e85c866cefce30862fce49b300e4416843c"
+  },
+  "original/environment/tests/shadow_test/oeis_sequences.scm": {
+    "bytes": 1943,
+    "sha256": "1b586df6af2429a54808f7587f60021ba2b2c9bcc2ef2f9cbe44339699853c62"
+  },
+  "original/environment/tests/shadow_test/09-mutual-recursion.scm": {
+    "bytes": 986,
+    "sha256": "3bfa1f77e602c7039f8c8c70315e6d4fff6eed737dab0f0398e5bdf690137c2c"
+  },
+  "original/environment/tests/shadow_test/closures.scm": {
+    "bytes": 911,
+    "sha256": "c7d025a376987f5ee22f529847b66eaf53f0af7033acbb4055cedb734168d612"
+  },
+  "original/environment/tests/shadow_test/02-fibonacci.scm": {
+    "bytes": 811,
+    "sha256": "628957171e0c4a3ee373635923fcd29e75bdf4bf13a402ac26fe94a5fc1443ac"
+  },
+  "original/environment/tests/shadow_test/oeis_sequences2.scm": {
+    "bytes": 2364,
+    "sha256": "300da0b0dc20b883e01142adea9eb6da1a583a1b969ac0be47aa32c1ab66340e"
+  },
+  "original/environment/tests/shadow_test/10-advanced-features.scm": {
+    "bytes": 2052,
+    "sha256": "b69ef497088fcf0aec388789a17561b783b8cdd5915719915a51c5ba189c31ff"
+  },
+  "original/environment/tests/shadow_test/oeis_sequences3.scm": {
+    "bytes": 2565,
+    "sha256": "dea198e874bf518b93c8406a843b64c1586cf4ce780fec8c444f8343e9322c75"
+  },
+  "original/environment/tests/shadow_test/03-list-operations.scm": {
+    "bytes": 1198,
+    "sha256": "fe8f17f59fe4045582fce363d52df95ba7c4de7345542c8bd4993a9f2f396235"
+  },
+  "original/environment/tests/shadow_test/04-higher-order.scm": {
+    "bytes": 988,
+    "sha256": "9c2eba8c91bb7b224de56d789207d2eaad98bbe1f8c360d6eca4f014f42f9230"
+  },
+  "original/environment/tests/shadow_test/lazy_evaluation.scm": {
+    "bytes": 1294,
+    "sha256": "edd95748de14aadf916c65209b5bcb8759d3e33b7ec935289a5128a656d33bec"
+  },
+  "original/environment/tests/shadow_test/variadic_functions.scm": {
+    "bytes": 2434,
+    "sha256": "ac940ac0273e87ee06280fee192194ab5cdc14c88b61da9cfba92105e66b8f2f"
+  },
+  "original/environment/tests/shadow_test/map_operations.scm": {
+    "bytes": 651,
+    "sha256": "974ac42d892f4b62b9b21ef7844581624dad811b38d35944f1005cc47f249856"
+  },
+  "original/environment/tests/shadow_test/test_read.scm": {
+    "bytes": 90,
+    "sha256": "fda448c22685e2f9af37ff7b986ee5e906d485a2db16f62eec113149f866870f"
+  },
+  "original/environment/tests/shadow_test/church_numerals.scm": {
+    "bytes": 1225,
+    "sha256": "31d075785f2f605bac3bd9ac2d99fcf7eaaed6686eb9afeab1d40bf5f35bbf2c"
+  },
+  "original/environment/tests/shadow_test/fold_operations.scm": {
+    "bytes": 821,
+    "sha256": "461b33db6b3f5580122d4c6dff0fd6d11c7f044865ffd684ade67d9b296a5a24"
+  },
+  "original/environment/tests/shadow_test/list_operations.scm": {
+    "bytes": 1680,
+    "sha256": "660963851ecb49639f66557bd88db1e73db323186742145f33cb2e14d3af1103"
+  },
+  "original/environment/tests/shadow_test/function_composition.scm": {
+    "bytes": 1194,
+    "sha256": "65ceee00188b12c3549134449e2f938d010c2c97dba090f5b53244abb3579b1f"
+  },
+  "original/environment/tests/shadow_test/08-progn-sequencing.scm": {
+    "bytes": 1087,
+    "sha256": "3bf8236dc5356d29ab8dbfe1b0f4c519354fbb23c8f3eaf946779c28b80feea3"
+  },
+  "original/environment/tests/shadow_test/currying.scm": {
+    "bytes": 1610,
+    "sha256": "690a8cccbb1d249c8f6fcabc0193cecc5d0e4c1af39a0bb67c7e95fcff8e393e"
+  },
+  "original/environment/tests/shadow_test/recursive_structures.scm": {
+    "bytes": 2994,
+    "sha256": "64f1a430bf04a627f5e27bf004805544b60406f8a123d186516774dfcf3846cd"
+  },
+  "original/environment/tests/shadow_test/accumulator_patterns.scm": {
+    "bytes": 1427,
+    "sha256": "8b9192796a6f9c3155cc5e44d0a0ba6a46d20a0d94e265b69b23ec8af43e4a07"
+  },
+  "original/environment/tests/test/y_combinator.scm": {
+    "bytes": 846,
+    "sha256": "971144dcb2b04aaa3b34d9279459bd7d2e8256c585d17809465848c2589d36d8"
+  },
+  "original/environment/tests/test/mutual_recursion.scm": {
+    "bytes": 1892,
+    "sha256": "a3dc23a96ec1cf05b0be4a4f0b6d3da9e2bad1aa3f7a83c7566f71f980a67fe2"
+  },
+  "original/environment/tests/test/nested_defines.scm": {
+    "bytes": 1133,
+    "sha256": "21faa0ccaf744cb8c9d283bbfd0c36e195c803c85f511e70a99267c0a85b6216"
+  },
+  "original/environment/tests/test/memoization.scm": {
+    "bytes": 1694,
+    "sha256": "cf8202df22407dbba72ca7f660d8ab7cd4ca962b215c36cc491d5c1a474c160b"
+  },
+  "original/environment/tests/test/01-factorial.scm": {
+    "bytes": 497,
+    "sha256": "2623000a742c63d50ae1851854826247caee129c7d1613be6c7131d21f26a6ad"
+  },
+  "original/environment/tests/test/continuation_passing.scm": {
+    "bytes": 1104,
+    "sha256": "01049581e582f7d35ef40ef68e1827d012da619beea57c1c74675a5f245318d7"
+  },
+  "original/environment/tests/test/06-interactive-io.scm": {
+    "bytes": 992,
+    "sha256": "aa3cae79b79dca90ac9d61a1babf64d6a5bb6559798c7727c11be02d8ddfd216"
+  },
+  "original/environment/tests/test/filter_operations.scm": {
+    "bytes": 719,
+    "sha256": "f6bc75f6da9ece96c0616e3570e4df59d0f2eb4655375d3a46b0349c86cc5dd8"
+  },
+  "original/environment/tests/test/binary_tree.scm": {
+    "bytes": 1311,
+    "sha256": "c95f59ccac1ea4a9c846afddc993aa40ac081c0f9e6731544530109b269b67ae"
+  },
+  "original/environment/tests/test/05-simple-io.scm": {
+    "bytes": 921,
+    "sha256": "3deeb3275df1b771449ebaebfcb9a934f375415e138c5e9f3685516c69a1f7a0"
+  },
+  "original/environment/tests/test/calculator.scm": {
+    "bytes": 341,
+    "sha256": "a09213ec8a2ec52486b9346c420ddb7c537576ef71b1cc5c6ec61d13d9139f61"
+  },
+  "original/environment/tests/test/oeis_sequences.scm": {
+    "bytes": 2009,
+    "sha256": "d1f77161b367176b3dfab55a34466e511c602c7ae359e05f5a715627b93dca6a"
+  },
+  "original/environment/tests/test/09-mutual-recursion.scm": {
+    "bytes": 895,
+    "sha256": "939e18f4bd25b5ab0e2a4a767bf7eb6b0d8fb3530d28bf236f06cf27f2d90ee8"
+  },
+  "original/environment/tests/test/closures.scm": {
+    "bytes": 904,
+    "sha256": "3ecfc35289479288876e20bf7f55e5b8eda84acd35937e89e3d062308a99aeff"
+  },
+  "original/environment/tests/test/02-fibonacci.scm": {
+    "bytes": 686,
+    "sha256": "db769cef446d5da9e9b1abccdf9ca644e239938095a98c21551aee25255a57d4"
+  },
+  "original/environment/tests/test/README.md": {
+    "bytes": 2108,
+    "sha256": "1f2174c7f12721f9f1898cda190c2886fb3ef9d35fd085f315da5814657104ae"
+  },
+  "original/environment/tests/test/oeis_sequences2.scm": {
+    "bytes": 2351,
+    "sha256": "5679ef0f99743114d8c06edcdcde1fea9474b71aeb57c2069f1ee33df1970bce"
+  },
+  "original/environment/tests/test/10-advanced-features.scm": {
+    "bytes": 1945,
+    "sha256": "c4cc5fb412df363875768c6a1e645255f6bc8f9ddf988d1ec2f4a266cedb8ec7"
+  },
+  "original/environment/tests/test/oeis_sequences3.scm": {
+    "bytes": 2555,
+    "sha256": "5dc8b44158b2648a6e9766f6bcdf21553a07bf487d79e64ebb418511ef3b8186"
+  },
+  "original/environment/tests/test/03-list-operations.scm": {
+    "bytes": 1033,
+    "sha256": "1a14b4100dedef30010fed62ea9fd295add1b0facb2e8e6e27c8d8eb3d90111b"
+  },
+  "original/environment/tests/test/04-higher-order.scm": {
+    "bytes": 894,
+    "sha256": "59cd17bbffad641a37729b17c5bf9178b8bae7289fe89cc7135eb0bfec2b4fd6"
+  },
+  "original/environment/tests/test/lazy_evaluation.scm": {
+    "bytes": 1279,
+    "sha256": "ea5912a53a35b65bf2bee9483dca90814b8baf52ae3ae50c2d4589f794dca54d"
+  },
+  "original/environment/tests/test/variadic_functions.scm": {
+    "bytes": 2468,
+    "sha256": "c9b847c50840c6977904e5033a07f6108cc3a54012b02d916e79025fb43e0f6e"
+  },
+  "original/environment/tests/test/map_operations.scm": {
+    "bytes": 637,
+    "sha256": "0cebddb3d4a50e4b6f6bfc0e8c12762d3f42609030aef077d8ab4bedda4718d9"
+  },
+  "original/environment/tests/test/test_read.scm": {
+    "bytes": 84,
+    "sha256": "5b9ee381c3cf45b2fc8c2e7b490857fb67f1ac78653b586d7f2848daf6853809"
+  },
+  "original/environment/tests/test/church_numerals.scm": {
+    "bytes": 1179,
+    "sha256": "f37d858f32a9c5ba8868d094018c92516acadf0ea4e55b7c36f14320cb0c69a6"
+  },
+  "original/environment/tests/test/fold_operations.scm": {
+    "bytes": 800,
+    "sha256": "05aab492ad914baecd19cf454ed587e7a031e94b8990500eb1c869c15da6fc0b"
+  },
+  "original/environment/tests/test/list_operations.scm": {
+    "bytes": 1683,
+    "sha256": "d7e70621afbbb787cf646e2089bccfbd3681fbb2e70325f3e50f56ccd30dbd9d"
+  },
+  "original/environment/tests/test/function_composition.scm": {
+    "bytes": 1397,
+    "sha256": "9b56dc78823e7d35adb213744c0f8e95684074d6a12bb98c8c05755788be5b06"
+  },
+  "original/environment/tests/test/08-progn-sequencing.scm": {
+    "bytes": 1067,
+    "sha256": "4c0a4d980cf4223d1d17715d58adbe27dc120eced257a0d9f42de952c094bc5b"
+  },
+  "original/environment/tests/test/currying.scm": {
+    "bytes": 1578,
+    "sha256": "2844d54eee9a94af05a11b4aae06d6e7823d193f17235c8f90bf98926cbca75d"
+  },
+  "original/environment/tests/test/recursive_structures.scm": {
+    "bytes": 2780,
+    "sha256": "67838ff5bac26ea359139720adec1d5700176147b0062065c7def9715e8a2aeb"
+  },
+  "original/environment/tests/test/accumulator_patterns.scm": {
+    "bytes": 1410,
+    "sha256": "50d246e00577d1f3ab3f0462c2b9618ea63680c33fcca12369cd1707b010cb5f"
+  },
+  "original/environment/tests/interp.py": {
+    "bytes": 17578,
+    "sha256": "efb8b5cdcf78b73afcf39d59600a1f355ca89b7bac9854bb01f110cc77bea2c1"
+  },
+  "original/environment/tests/test_outputs.py": {
+    "bytes": 6823,
+    "sha256": "fbb84e3c0c2f72ed7de90f54380f860052c16155e7d0c9076cd57c966e9be7ed"
+  },
+  "original/task.toml": {
+    "bytes": 918,
+    "sha256": "8dae8eb226183b0ca92331c1106152a7abc93b03b4e5a95291b86a4ddc9b44e0"
+  },
+  "LICENSE": {
+    "bytes": 11357,
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  "instruction.txt": {
+    "bytes": 1127,
+    "sha256": "3af5f9567b62f93683db7518ec6fcb609f83796258aa02166b5a7091c5b69031"
+  },
+  "controls/reference-eval.scm": {
+    "bytes": 11746,
+    "sha256": "4178c037a3058bf22c00aa94d409e64bdfbc88766115ddb475ca5a2073973e2b"
+  },
+  "controls/fault-eval.scm": {
+    "bytes": 11736,
+    "sha256": "a35976f0e10b3f1e487b0d13e7ec858f86e53ae2b80d8af2ad08d3a87798fad9"
+  }
+}

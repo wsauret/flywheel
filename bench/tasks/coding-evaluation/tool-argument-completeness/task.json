@@ -1,0 +1,11 @@
+{
+  "id": "tool-argument-completeness",
+  "stratum": "production-bug",
+  "timeoutMinutes": 20,
+  "sandbox": {
+    "commit": "b6d624689385427eed079ea68815e8d6dce1b2e0",
+    "paths": ["src/orchestration/agent-runtime/llm/json-parse.ts"],
+    "patch": "sandbox.patch",
+    "setup": [["bun", "install", "--frozen-lockfile"]]
+  }
+}

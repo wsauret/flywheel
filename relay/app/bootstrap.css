@@ -1,0 +1,113 @@
+/* The hosted page's own screen: pairing, which also says when no paired
+   machine could serve a client. Everything else a person sees is the client
+   the page loads. The page draws with the client's tokens and the phone
+   shell's theme, bundled in when the page is built, so its screen reads as
+   the same app the client is. */
+
+@import "../../webview/src/styles/tokens.css";
+@import "../../webview/phone/host-theme.css";
+
+body {
+  font-family: var(--fw-font);
+  font-size: var(--fw-text);
+  line-height: var(--fw-leading);
+  color: var(--fw-fg);
+}
+
+.boot {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-s4);
+  width: min(28rem, 100%);
+  max-height: 100%;
+  margin: 0 auto;
+  padding: calc(var(--fw-s6) + env(safe-area-inset-top, 0px)) var(--fw-s5) calc(var(--fw-s5) + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+}
+
+.boot h1 {
+  margin: 0;
+  font-size: var(--fw-text-lg);
+  font-weight: 600;
+  line-height: var(--fw-leading-tight);
+}
+
+.boot p {
+  margin: 0;
+  color: var(--fw-fg-muted);
+}
+
+.boot code {
+  font-family: var(--fw-font-mono);
+  font-size: var(--fw-text-sm);
+  color: var(--fw-fg);
+}
+
+.boot label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-s1);
+  font-size: var(--fw-text-sm);
+  color: var(--fw-fg-muted);
+}
+
+.boot input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--fw-s2) var(--fw-s3);
+  border: 1px solid var(--fw-input-border);
+  border-radius: var(--fw-radius);
+  background: var(--fw-input-bg);
+  color: var(--fw-input-fg);
+  font: inherit;
+  font-size: var(--fw-text-field);
+}
+
+.boot form {
+  display: flex;
+  gap: var(--fw-s2);
+}
+
+.boot button {
+  min-height: 44px;
+  padding: var(--fw-s2) var(--fw-s4);
+  border: none;
+  border-radius: var(--fw-radius);
+  background: var(--fw-secondary);
+  color: var(--fw-secondary-fg);
+  font: inherit;
+  font-weight: 500;
+}
+
+.boot button.primary {
+  background: var(--fw-accent);
+  color: var(--fw-accent-fg);
+}
+
+.boot button:focus-visible,
+.boot input:focus-visible {
+  outline: 2px solid var(--fw-focus);
+  outline-offset: 2px;
+}
+
+.boot button:disabled {
+  opacity: 0.5;
+}
+
+.boot a {
+  color: var(--fw-link);
+}
+
+.boot .fine {
+  font-size: var(--fw-text-sm);
+}
+
+.boot .status:empty {
+  display: none;
+}
+
+.boot .status.warn {
+  color: var(--fw-warning);
+}

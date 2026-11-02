@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "summary": "Preserve subscription collection evidence even when decoding leaves no usable account, while repairing slot-incompatible entries.",
+  "context": {
+    "key_files": [
+      "src/infra/auth/auth-store-mutations.ts",
+      "src/infra/auth/auth-store.ts"
+    ],
+    "patterns": [
+      "Retain the real locked auth-store mutation and strict credential decoder."
+    ],
+    "constraints": [
+      "Both rejected-provider APIs must preserve every byte and return no change for subscription arrays, including all-invalid, empty, and legacy-only arrays.",
+      "An object in a subscription slot and an array in a metered slot must remain repairable.",
+      "Repair must mint replacement lineages without mutating input credentials or unrelated entries.",
+      "Receipts must contain the exact rejected entry and the exact written entry.",
+      "Use dummy credentials only. Do not access an installed account or service.",
+      "Change only src/infra/auth/auth-store-mutations.ts. Do not change tests, dependencies, or the runtime."
+    ]
+  },
+  "milestones": [
+    {
+      "id": "repair-auth-contract",
+      "goal": "Preserve subscription collection evidence even when decoding leaves no usable account, while repairing slot-incompatible entries.",
+      "files": [
+        "src/infra/auth/auth-store-mutations.ts"
+      ],
+      "tasks": [
+        {
+          "id": "preserve-auth-state",
+          "description": "Preserve subscription collection evidence even when decoding leaves no usable account, while repairing slot-incompatible entries.",
+          "files": [
+            "src/infra/auth/auth-store-mutations.ts"
+          ],
+          "test_scenarios": [
+            "boolean preserves a collection with no surviving accounts",
+            "boolean preserves empty and retired legacy collections",
+            "boolean repairs a wrong-slot object without renewing unrelated accounts",
+            "boolean repairs an array rejected by a metered slot",
+            "receipt preserves a collection with no surviving accounts",
+            "receipt preserves empty and retired legacy collections",
+            "receipt repairs a wrong-slot object without renewing unrelated accounts",
+            "receipt repairs an array rejected by a metered slot"
+          ]
+        }
+      ],
+      "verification": "bun -e \"await import('./src/infra/auth/auth-store-mutations.ts')\"",
+      "qualitative_verification": "Inspect no-change and failure paths and confirm unrelated stored entries remain intact."
+    }
+  ],
+  "success_criteria": [
+    "Both rejected-provider APIs must preserve every byte and return no change for subscription arrays, including all-invalid, empty, and legacy-only arrays.",
+    "An object in a subscription slot and an array in a metered slot must remain repairable.",
+    "Repair must mint replacement lineages without mutating input credentials or unrelated entries.",
+    "Receipts must contain the exact rejected entry and the exact written entry."
+  ]
+}

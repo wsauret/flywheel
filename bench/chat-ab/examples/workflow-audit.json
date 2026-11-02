@@ -1,0 +1,11 @@
+{
+  "name": "workflow-audit-reference",
+  "tasks": ["test1", "test2"],
+  "repeats": 1,
+  "model": "claude-sonnet-5-5",
+  "effort": "medium",
+  "treatments": {
+    "control": "HEAD",
+    "candidate": { "subject": "claude-code" }
+  }
+}

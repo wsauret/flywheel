@@ -1,0 +1,11 @@
+{
+  "//": "Strictness comes from the root config: the extension imports the repository's protocol modules directly, so it must compile them the way the repository compiles them. Overrides carry only what the extension host genuinely needs: the vscode and node ambient types and no emit because Bun.build produces the bundle. The editor shell the extension mounts is webview/editor in the runtime's tree, compiled by the webview project.",
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "..",
+    "types": ["node", "vscode", "bun"]
+  },
+  "include": ["src", "scripts"],
+  "exclude": ["node_modules"]
+}

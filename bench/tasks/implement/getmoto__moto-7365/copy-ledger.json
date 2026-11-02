@@ -1,0 +1,303 @@
+{
+  "original/task-row.json": {
+    "bytes": 7457,
+    "sha256": "4628a8d87737b19b45b043910e22cccee582b7dec0d838bede5c5c3f72297467",
+    "adaptation": "none; exact bytes"
+  },
+  "original/test.patch": {
+    "bytes": 2073,
+    "sha256": "450f49cac71635200c1089d01e4228865afa9e314f28dedcf5b3d33645714fb9",
+    "adaptation": "none; exact bytes"
+  },
+  "original/gold.patch": {
+    "bytes": 2148,
+    "sha256": "ac4914f47c1f3a0bf131a55da16c1ff8cb0df54f8296088fe1e70744840222b4",
+    "adaptation": "none; exact bytes"
+  },
+  "original/native-dependencies.lock.txt": {
+    "bytes": 439,
+    "sha256": "89d44ac8ccfb956583a3dadc681fd2df4718200359510c99cd965ce3a49e922a",
+    "adaptation": "none; exact bytes"
+  },
+  "original/adaptation-ledger.json": {
+    "bytes": 6234,
+    "sha256": "726c69b0336c3cc9da2e87370b7dcedde57dd019c6677e3bb81fa5ad939ca893",
+    "adaptation": "none; exact bytes"
+  },
+  "original/dataset-README.md.txt": {
+    "bytes": 1141,
+    "sha256": "d6fc7d653a1b65c486b0a273bedf14b6a9c892c201bb85776bc0132d29639c31",
+    "adaptation": "none; exact bytes"
+  },
+  "original/dataset-info.json": {
+    "bytes": 1488,
+    "sha256": "63dd15d470664d2d5902d0fb48450fc8655bf3a2a26ab9a6462174bf4550420a",
+    "adaptation": "none; exact bytes"
+  },
+  "original/issue.txt": {
+    "bytes": 2421,
+    "sha256": "6b50cd53338edfdf8a9ea38625cb2e31d13e1accf5ec63fde423748417ad2ef3",
+    "adaptation": "none; exact bytes"
+  },
+  "licenses/moto-LICENSE": {
+    "bytes": 10834,
+    "sha256": "f12ef9fd396a13e90878630b1b4fab471c6ed9cb7a48cf2abb2516281632218e",
+    "adaptation": "none; exact bytes"
+  },
+  "licenses/gym-LICENSE": {
+    "bytes": 11357,
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "adaptation": "none; exact bytes"
+  },
+  "licenses/swebench-LICENSE": {
+    "bytes": 1159,
+    "sha256": "2bd2e08df7147f67a69b42c10efae09bd4bf119df397371036187d5dd1b02f57",
+    "adaptation": "none; exact bytes"
+  },
+  "original/constants.py": {
+    "source": "fresh public verification inputs/constants.py",
+    "bytes": 69496,
+    "sha256": "5bd655172c9a9dfcb494d9c52bcbcc0d79a59cd20c39b8bbdc41ab8b0a9baf14",
+    "adaptation": "none; exact bytes"
+  },
+  "original/log_parsers.py": {
+    "source": "fresh public verification inputs/log_parsers.py",
+    "bytes": 13298,
+    "sha256": "44ce810ca5bc14fb07f5f765cf6955ad9fac9218f1e1f7112914edbd52fc825f",
+    "adaptation": "none; exact bytes"
+  },
+  "original/grading.py": {
+    "source": "fresh public verification inputs/grading.py",
+    "bytes": 8382,
+    "sha256": "ce6dbe44af58ec602d5906af14cd08e816500ac13fc9a6d0f88ee79375113619",
+    "adaptation": "none; exact bytes"
+  },
+  "requirements-hashed.txt": {
+    "source": "fresh public verification inputs/requirements-hashed.txt",
+    "bytes": 2493,
+    "sha256": "f944d3091595b8fb3eae4e951e2978880954bf10a1812c031b4e1ce6c4183685",
+    "adaptation": "none; exact bytes"
+  },
+  "instruction.txt": {
+    "source": "original/task-row.json#problem_statement",
+    "bytes": 2421,
+    "sha256": "6b50cd53338edfdf8a9ea38625cb2e31d13e1accf5ec63fde423748417ad2ef3",
+    "adaptation": "UTF-8 encoding of exact dataset field; no appendix"
+  },
+  "licenses/public/python/lib/python3.12/LICENSE.txt": {
+    "source": "python/lib/python3.12/LICENSE.txt",
+    "bytes": 13936,
+    "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/boto3-1.34.43-py3-none-any.whl/boto3-1.34.43.dist-info/LICENSE": {
+    "source": "wheels/boto3-1.34.43-py3-none-any.whl#boto3-1.34.43.dist-info/LICENSE",
+    "bytes": 10174,
+    "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/boto3-1.34.43-py3-none-any.whl/boto3-1.34.43.dist-info/NOTICE": {
+    "source": "wheels/boto3-1.34.43-py3-none-any.whl#boto3-1.34.43.dist-info/NOTICE",
+    "bytes": 83,
+    "sha256": "04fb1e61484a7810f1ba09bb42bc01ca58c9af33927d7c5a21556e4c4d1c7fa4",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/botocore-1.34.44-py3-none-any.whl/botocore-1.34.44.dist-info/LICENSE.txt": {
+    "source": "wheels/botocore-1.34.44-py3-none-any.whl#botocore-1.34.44.dist-info/LICENSE.txt",
+    "bytes": 10174,
+    "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/botocore-1.34.44-py3-none-any.whl/botocore-1.34.44.dist-info/NOTICE": {
+    "source": "wheels/botocore-1.34.44-py3-none-any.whl#botocore-1.34.44.dist-info/NOTICE",
+    "bytes": 2467,
+    "sha256": "1d1c5a6f3d68cb11f4fad1afa86a7450d0286f15c176ef0ea048f255b46d95b0",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/certifi-2026.7.22-py3-none-any.whl/certifi-2026.7.22.dist-info/licenses/LICENSE": {
+    "source": "wheels/certifi-2026.7.22-py3-none-any.whl#certifi-2026.7.22.dist-info/licenses/LICENSE",
+    "bytes": 989,
+    "sha256": "e93716da6b9c0d5a4a1df60fe695b370f0695603d21f6f83f053e42cfc10caf7",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/cffi-2.1.1-cp312-cp312-macosx_11_0_arm64.whl/cffi-2.1.1.dist-info/licenses/LICENSE": {
+    "source": "wheels/cffi-2.1.1-cp312-cp312-macosx_11_0_arm64.whl#cffi-2.1.1.dist-info/licenses/LICENSE",
+    "bytes": 1123,
+    "sha256": "5ba24ddc57067f9249add644c3afc41a5d6dc37e23433ef759d95df370b0af63",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/charset_normalizer-3.5.2-cp312-cp312-macosx_10_13_universal2.whl/charset_normalizer-3.5.2.dist-info/licenses/LICENSE": {
+    "source": "wheels/charset_normalizer-3.5.2-cp312-cp312-macosx_10_13_universal2.whl#charset_normalizer-3.5.2.dist-info/licenses/LICENSE",
+    "bytes": 1071,
+    "sha256": "6d0d41bfe170ac6c7dc248c9a63e254d0fb45a60d50a8257d0af92c6e249b887",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/cryptography-50.0.2-cp311-abi3-macosx_11_0_arm64.whl/cryptography-50.0.2.dist-info/licenses/LICENSE": {
+    "source": "wheels/cryptography-50.0.2-cp311-abi3-macosx_11_0_arm64.whl#cryptography-50.0.2.dist-info/licenses/LICENSE",
+    "bytes": 197,
+    "sha256": "3e0c7c091a948b82533ba98fd7cbb40432d6f1a9acbf85f5922d2f99a93ae6bb",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/cryptography-50.0.2-cp311-abi3-macosx_11_0_arm64.whl/cryptography-50.0.2.dist-info/licenses/LICENSE.APACHE": {
+    "source": "wheels/cryptography-50.0.2-cp311-abi3-macosx_11_0_arm64.whl#cryptography-50.0.2.dist-info/licenses/LICENSE.APACHE",
+    "bytes": 11360,
+    "sha256": "aac73b3148f6d1d7111dbca32099f68d26c644c6813ae1e4f05f6579aa2663fe",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/cryptography-50.0.2-cp311-abi3-macosx_11_0_arm64.whl/cryptography-50.0.2.dist-info/licenses/LICENSE.BSD": {
+    "source": "wheels/cryptography-50.0.2-cp311-abi3-macosx_11_0_arm64.whl#cryptography-50.0.2.dist-info/licenses/LICENSE.BSD",
+    "bytes": 1532,
+    "sha256": "602c4c7482de6479dd2e9793cda275e5e63d773dacd1eca689232ab7008fb4fb",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/execnet-2.1.2-py3-none-any.whl/execnet-2.1.2.dist-info/licenses/LICENSE": {
+    "source": "wheels/execnet-2.1.2-py3-none-any.whl#execnet-2.1.2.dist-info/licenses/LICENSE",
+    "bytes": 1054,
+    "sha256": "e89eed1074d3a943198ba139b80844f5b445b860bba74a8aeadc0610566164ea",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/idna-3.20-py3-none-any.whl/idna-3.20.dist-info/licenses/LICENSE.md": {
+    "source": "wheels/idna-3.20-py3-none-any.whl#idna-3.20.dist-info/licenses/LICENSE.md",
+    "bytes": 1541,
+    "sha256": "1a9a4f0e3d479a27240ddd59a9137a66ab4a0f9dfdc8ca6188cc0bfd85187f04",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/iniconfig-2.3.1-py3-none-any.whl/iniconfig-2.3.1.dist-info/licenses/LICENSE": {
+    "source": "wheels/iniconfig-2.3.1-py3-none-any.whl#iniconfig-2.3.1.dist-info/licenses/LICENSE",
+    "bytes": 1098,
+    "sha256": "3409fa91f7ace557894632676656e32264fe5ef7581535725dc9a23774551bd4",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/jinja2-3.1.6-py3-none-any.whl/jinja2-3.1.6.dist-info/licenses/LICENSE.txt": {
+    "source": "wheels/jinja2-3.1.6-py3-none-any.whl#jinja2-3.1.6.dist-info/licenses/LICENSE.txt",
+    "bytes": 1475,
+    "sha256": "3b49dcee4105eb37bac10faf1be260408fe85d252b8e9df2e0979fc1e094437b",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/jmespath-1.1.0-py3-none-any.whl/jmespath-1.1.0.dist-info/LICENSE": {
+    "source": "wheels/jmespath-1.1.0-py3-none-any.whl#jmespath-1.1.0.dist-info/LICENSE",
+    "bytes": 1113,
+    "sha256": "6eefacfa4d71b82d08408c751470ac8d9854538da2142cb27be0287fb13d0ab9",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/markupsafe-3.0.4-cp312-cp312-macosx_11_0_arm64.whl/markupsafe-3.0.4.dist-info/licenses/LICENSE.txt": {
+    "source": "wheels/markupsafe-3.0.4-cp312-cp312-macosx_11_0_arm64.whl#markupsafe-3.0.4.dist-info/licenses/LICENSE.txt",
+    "bytes": 1475,
+    "sha256": "489a8e1108509ed98a37bb983e11e0f7e1d31f0bd8f99a79c8448e7ff37d07ea",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/packaging-26.3-py3-none-any.whl/packaging-26.3.dist-info/licenses/LICENSE": {
+    "source": "wheels/packaging-26.3-py3-none-any.whl#packaging-26.3.dist-info/licenses/LICENSE",
+    "bytes": 197,
+    "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/packaging-26.3-py3-none-any.whl/packaging-26.3.dist-info/licenses/LICENSE.APACHE": {
+    "source": "wheels/packaging-26.3-py3-none-any.whl#packaging-26.3.dist-info/licenses/LICENSE.APACHE",
+    "bytes": 10174,
+    "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/packaging-26.3-py3-none-any.whl/packaging-26.3.dist-info/licenses/LICENSE.BSD": {
+    "source": "wheels/packaging-26.3-py3-none-any.whl#packaging-26.3.dist-info/licenses/LICENSE.BSD",
+    "bytes": 1344,
+    "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/pluggy-1.6.0-py3-none-any.whl/pluggy-1.6.0.dist-info/licenses/LICENSE": {
+    "source": "wheels/pluggy-1.6.0-py3-none-any.whl#pluggy-1.6.0.dist-info/licenses/LICENSE",
+    "bytes": 1110,
+    "sha256": "d6b65e6c213a5d0b577911d34d6e5949b9f59d76c238c5071a2f3fc16cfb2606",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/pycparser-3.11-py3-none-any.whl/pycparser-3.11.dist-info/licenses/LICENSE": {
+    "source": "wheels/pycparser-3.11-py3-none-any.whl#pycparser-3.11.dist-info/licenses/LICENSE",
+    "bytes": 1543,
+    "sha256": "0a9e78156ae8b96caf1b4f11ac2df424b83de29736f9e757630548a6272fdf90",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/pytest-8.0.0-py3-none-any.whl/pytest-8.0.0.dist-info/LICENSE": {
+    "source": "wheels/pytest-8.0.0-py3-none-any.whl#pytest-8.0.0.dist-info/LICENSE",
+    "bytes": 1091,
+    "sha256": "ca836a5f9ecca3b2f350230faa20a48fb8b145653b5568d784862df864706b9b",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/pytest_xdist-3.5.0-py3-none-any.whl/pytest_xdist-3.5.0.dist-info/LICENSE": {
+    "source": "wheels/pytest_xdist-3.5.0-py3-none-any.whl#pytest_xdist-3.5.0.dist-info/LICENSE",
+    "bytes": 1054,
+    "sha256": "e89eed1074d3a943198ba139b80844f5b445b860bba74a8aeadc0610566164ea",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/python_dateutil-2.9.0.post0-py2.py3-none-any.whl/python_dateutil-2.9.0.post0.dist-info/LICENSE": {
+    "source": "wheels/python_dateutil-2.9.0.post0-py2.py3-none-any.whl#python_dateutil-2.9.0.post0.dist-info/LICENSE",
+    "bytes": 2889,
+    "sha256": "ba00f51a0d92823b5a1cde27d8b5b9d2321e67ed8da9bc163eff96d5e17e577e",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/pyyaml-6.0.3-cp312-cp312-macosx_11_0_arm64.whl/pyyaml-6.0.3.dist-info/licenses/LICENSE": {
+    "source": "wheels/pyyaml-6.0.3-cp312-cp312-macosx_11_0_arm64.whl#pyyaml-6.0.3.dist-info/licenses/LICENSE",
+    "bytes": 1101,
+    "sha256": "8d3928f9dc4490fd635707cb88eb26bd764102a7282954307d3e5167a577e8a4",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/requests-2.34.2-py3-none-any.whl/requests-2.34.2.dist-info/licenses/LICENSE": {
+    "source": "wheels/requests-2.34.2-py3-none-any.whl#requests-2.34.2.dist-info/licenses/LICENSE",
+    "bytes": 10142,
+    "sha256": "09e8a9bcec8067104652c168685ab0931e7868f9c8284b66f5ae6edae5f1130b",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/requests-2.34.2-py3-none-any.whl/requests-2.34.2.dist-info/licenses/NOTICE": {
+    "source": "wheels/requests-2.34.2-py3-none-any.whl#requests-2.34.2.dist-info/licenses/NOTICE",
+    "bytes": 38,
+    "sha256": "f5110972dedad2b4e9d314518daf3b7d72d6e02e499acd802181de6f74571dcc",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/responses-0.26.3-py3-none-any.whl/responses-0.26.3.dist-info/licenses/LICENSE": {
+    "source": "wheels/responses-0.26.3-py3-none-any.whl#responses-0.26.3.dist-info/licenses/LICENSE",
+    "bytes": 10835,
+    "sha256": "489ecb70b4447c034a10978a4b08da015c9bd9fa95ca3aeaf219d9815416a67c",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/s3transfer-0.10.4-py3-none-any.whl/s3transfer-0.10.4.dist-info/LICENSE.txt": {
+    "source": "wheels/s3transfer-0.10.4-py3-none-any.whl#s3transfer-0.10.4.dist-info/LICENSE.txt",
+    "bytes": 11358,
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/s3transfer-0.10.4-py3-none-any.whl/s3transfer-0.10.4.dist-info/NOTICE.txt": {
+    "source": "wheels/s3transfer-0.10.4-py3-none-any.whl#s3transfer-0.10.4.dist-info/NOTICE.txt",
+    "bytes": 83,
+    "sha256": "d8354e0fa7fb762da7bc054a8a6774a0b310dfbbc78006393ee573a0e57612b5",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/six-1.17.0-py2.py3-none-any.whl/six-1.17.0.dist-info/LICENSE": {
+    "source": "wheels/six-1.17.0-py2.py3-none-any.whl#six-1.17.0.dist-info/LICENSE",
+    "bytes": 1066,
+    "sha256": "4375ba20e2b9c6c4e7cad2940a628fd90e95cc3d50ee92aae755715d8ba1fbd0",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/urllib3-2.0.7-py3-none-any.whl/urllib3-2.0.7.dist-info/licenses/LICENSE.txt": {
+    "source": "wheels/urllib3-2.0.7-py3-none-any.whl#urllib3-2.0.7.dist-info/licenses/LICENSE.txt",
+    "bytes": 1093,
+    "sha256": "130e3a64d5fdd5d096a752694634a7d9df284469de86e5732100268041e3d686",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/werkzeug-3.1.9-py3-none-any.whl/werkzeug/debug/shared/ICON_LICENSE.md": {
+    "source": "wheels/werkzeug-3.1.9-py3-none-any.whl#werkzeug/debug/shared/ICON_LICENSE.md",
+    "bytes": 222,
+    "sha256": "0e103a6358149792707e0d0d14df518f8556213b7cb54c7422f7467f4bb1f7eb",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/werkzeug-3.1.9-py3-none-any.whl/werkzeug-3.1.9.dist-info/licenses/LICENSE.txt": {
+    "source": "wheels/werkzeug-3.1.9-py3-none-any.whl#werkzeug-3.1.9.dist-info/licenses/LICENSE.txt",
+    "bytes": 1475,
+    "sha256": "3b49dcee4105eb37bac10faf1be260408fe85d252b8e9df2e0979fc1e094437b",
+    "adaptation": "none; exact public artifact member"
+  },
+  "licenses/public/xmltodict-1.0.4-py3-none-any.whl/xmltodict-1.0.4.dist-info/licenses/LICENSE": {
+    "source": "wheels/xmltodict-1.0.4-py3-none-any.whl#xmltodict-1.0.4.dist-info/licenses/LICENSE",
+    "bytes": 1085,
+    "sha256": "d66d5eb8f83a0ba21d3dd04318b8817588e8764daabea852d1035e3f07ffda55",
+    "adaptation": "none; exact public artifact member"
+  }
+}

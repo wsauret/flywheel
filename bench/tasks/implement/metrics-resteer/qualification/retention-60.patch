@@ -1,0 +1,14 @@
+===================================================================
+--- a/report.ts
++++ b/report.ts
+@@ -1,9 +1,9 @@
+ import { createReader } from "./reader.js";
+ import type { MetricsStore } from "./store.js";
+ import { UNIT_NORMALIZERS } from "./units.js";
+ 
+-export const RETENTION_MS = 60_000;
++export const RETENTION_MS = 60;
+ 
+ export interface MetricReport {
+   metric: string;
+   count: number;

@@ -1,0 +1,58 @@
+{
+  "commit": "7228f2a30:flywheel-tui",
+  "paths": ["src", "tests", "docs", "package.json", "tsconfig.json", "AGENTS.md"],
+  "title": "Code review: quota-aware provider chains and failover (real production diff, real review findings)",
+  "defects": [
+    {
+      "id": "stale-availability-between-requests",
+      "title": "The automatic chain never rechecks availability after the client is built",
+      "category": "state-freshness",
+      "files": ["src/orchestration/agent-runtime/llm/provider-chain-client.ts"],
+      "catch_criteria": "The review must identify that createProviderChainClient resolves the serving candidate once (const head = await selectOrReject(0)) and that requestWalk().start() returns that stored selection, so quotaState is consulted again only inside advance() after a terminal quota failure. One client serves many streamWithTools calls (the agent loop reuses it after every tool result), so availability learned between requests cannot move the chain and a provider already known to be exhausted receives another doomed request. Naming 'the client caches the provider' without the construction-time-only selection plus multi-request reuse mechanism does not count."
+    },
+    {
+      "id": "chatgpt-secondary-window-ignored",
+      "title": "ChatGPT availability evaluates only the primary rate-limit window",
+      "category": "correctness",
+      "files": [
+        "src/orchestration/agent-runtime/llm/provider-chain-client.ts",
+        "src/orchestration/agent-runtime/llm/provider-availability.ts"
+      ],
+      "catch_criteria": "The review must identify that chatGptQuotaState reads only availability.chatGptQuota().primary although the availability owner records both windows from the x-codex-primary-* and x-codex-secondary-* headers, so an account whose secondary window is at 100 percent while the primary window is below 100 is still selected and is sent a request the account cannot pay for. A correct finding evaluates both windows and skips a window the backend reports as inactive (windowMinutes 0) or already past its resetsAtSeconds. Naming 'quota handling is incomplete' without the unread secondary window does not count."
+    },
+    {
+      "id": "websocket-quota-not-observed",
+      "title": "WebSocket quota failures never update the shared ChatGPT availability owner",
+      "category": "state-consistency",
+      "files": [
+        "src/orchestration/agent-runtime/llm/openai.ts",
+        "src/orchestration/agent-runtime/llm/openai-chatgpt.ts",
+        "src/orchestration/agent-runtime/llm/provider-availability.ts"
+      ],
+      "catch_criteria": "The review must identify that only the HTTP/SSE fetch boundary records exhaustion (chatGptBackendErrorResponse calls observeChatGptQuotaExhausted in openai-chatgpt.ts), while the preferred ChatGPT WebSocket transport's terminal frames are handled in openai.ts by classifyResponseFailed alone: the response.failed and error branches map the frame to QuotaExhaustedError but never tell the process-local availability owner. The current request therefore fails over, but the owner still reports ChatGPT as available, so every later automatic request selects ChatGPT again. Naming only 'the WebSocket path duplicates error handling' does not count."
+    },
+    {
+      "id": "spend-commit-skipped-on-abnormal-exit",
+      "title": "Copilot billed spend is committed only after a normal stream completion",
+      "category": "resource-accounting",
+      "files": [
+        "src/orchestration/agent-runtime/llm/anthropic.ts",
+        "src/orchestration/agent-runtime/llm/openai.ts",
+        "src/orchestration/agent-runtime/llm/openai-completions.ts",
+        "src/orchestration/agent-runtime/llm/provider-availability.ts"
+      ],
+      "catch_criteria": "The review must identify that all three adapters call copilotSpend.commit() only on the normal completion path (after receivedCompleted in openai.ts, immediately before the terminal done yield in anthropic.ts and openai-completions.ts), so a thrown frame, a classified stream error, a watchdog timeout, a cancellation, or an early generator close after observe() already read copilot_usage.total_nano_aiu discards the observed total. spentSinceRefreshNanoAiu then stays below the poll threshold, the Copilot meter stays stale, and selection keeps choosing exhausted Copilot access. The fix must make commit() idempotent and call it from a per-attempt finally in each adapter."
+    },
+    {
+      "id": "no-op-notice-patch-churn",
+      "title": "Healthy provider resolution emits a no-op session notice patch on every request",
+      "category": "ui-efficiency",
+      "files": [
+        "src/infra/session-notice.ts",
+        "src/orchestration/agent-runtime/llm/provider-chain-client.ts"
+      ],
+      "catch_criteria": "The review must identify that removeNotices always returns current.filter(...), a fresh array even when no notice matches, and that selectFrom calls resolveQuotaNotice (a resolve-scope operation) for the serving candidate of every request including the healthy case where no quota notice exists. The session entry patcher compares references, so the new empty array reads as a change and mints an empty patch to the TUI on each request. Naming only 'extra notice calls' without the always-new-array reducer plus the reference comparison downstream does not count."
+    }
+  ],
+  "review_prompt_hint": "The change gives every model client an automatic access-provider chain: a process-local availability owner polls Copilot quota and reads ChatGPT rate windows, the chain drops candidates the account cannot pay for, a terminal quota failure restarts the request on the next candidate, and the skips and recoveries are reported to the session as notices. Pay close attention to how fresh the availability state is at each decision point, to every quota window the account exposes, to both ChatGPT transports (HTTP/SSE and WebSocket), to spend accounting when a stream ends abnormally, and to how much store and UI work a healthy request causes"
+}

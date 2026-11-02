@@ -1,0 +1,87 @@
+{
+  "status": "measured",
+  "date": "2026-10-13",
+  "model": "gpt-6.1-sol",
+  "effort": "high",
+  "profile": "<profile>",
+  "fixtureContentIdentityAtMeasurement": "864e5d5ffe94863fc6575127666706bb6f29581b17b9ad73b110b27e9c592192",
+  "candidateMinutes": 25,
+  "taskPasses": 2,
+  "completedRuns": 2,
+  "difficulty": "Both completed samples passed the original criterion. No difficulty headroom was observed for this seat; this is not a population difficulty estimate.",
+  "publication": "Independent of model results.",
+  "runs": [
+    {
+      "repeat": 0,
+      "durationMs": 199035,
+      "accounting": {
+        "estimatedUsd": {
+          "kind": "observed",
+          "value": 0.20853000000000002
+        },
+        "billedUsd": {
+          "kind": "observed",
+          "value": 0
+        },
+        "tokens": {
+          "kind": "observed",
+          "value": 540545
+        },
+        "providers": {
+          "kind": "observed",
+          "value": [
+            "chatgpt"
+          ]
+        },
+        "pricedEntryCount": 11,
+        "unpricedEntryCount": 0
+      },
+      "acceptance": {
+        "passed": 1,
+        "failed": 0,
+        "total": 1
+      },
+      "selectedTests": {
+        "passed": 44,
+        "failed": 0,
+        "total": 44
+      }
+    },
+    {
+      "repeat": 1,
+      "durationMs": 231600,
+      "accounting": {
+        "estimatedUsd": {
+          "kind": "observed",
+          "value": 0.2380832
+        },
+        "billedUsd": {
+          "kind": "observed",
+          "value": 0
+        },
+        "tokens": {
+          "kind": "observed",
+          "value": 671535
+        },
+        "providers": {
+          "kind": "observed",
+          "value": [
+            "chatgpt"
+          ]
+        },
+        "pricedEntryCount": 13,
+        "unpricedEntryCount": 0
+      },
+      "acceptance": {
+        "passed": 1,
+        "failed": 0,
+        "total": 1
+      },
+      "selectedTests": {
+        "passed": 44,
+        "failed": 0,
+        "total": 44
+      }
+    }
+  ]
+}

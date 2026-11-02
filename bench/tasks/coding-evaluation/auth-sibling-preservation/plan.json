@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "summary": "Repair the rejected-provider mutation APIs without discarding stored sibling accounts.",
+  "context": {
+    "key_files": ["src/infra/auth/auth-store-mutations.ts", "src/infra/auth/auth-store.ts"],
+    "patterns": ["Use the existing strict auth-store decoder and locked mutation access."],
+    "constraints": [
+      "Keep both public mutation signatures and their false or undefined no-change results.",
+      "Preserve every original file byte when the provider has a partially damaged account collection or a healthy valid entry.",
+      "Continue replacing wholly rejected provider entries while preserving unknown sibling values.",
+      "A successful receipt must retain the exact before and after entries.",
+      "Change only src/infra/auth/auth-store-mutations.ts. Do not change tests, dependencies, or the runtime."
+    ]
+  },
+  "milestones": [
+    {
+      "id": "repair-rejected-provider",
+      "goal": "Distinguish a wholly rejected provider entry from a damaged account collection in both mutation APIs.",
+      "files": ["src/infra/auth/auth-store-mutations.ts"],
+      "tasks": [
+        {
+          "id": "preserve-account-siblings",
+          "description": "Repair replaceRejectedProviderCredentials and replaceRejectedProviderCredentialsWithReceipt so partially damaged collections remain untouched, wholly rejected entries still repair, healthy entries stay unchanged, and successful receipts retain exact entries.",
+          "files": ["src/infra/auth/auth-store-mutations.ts"],
+          "test_scenarios": [
+            "Both APIs preserve all bytes and return no change for a collection with a healthy account and a damaged account.",
+            "Both APIs replace a wholly rejected metered provider and preserve an unknown sibling; the receipt contains the exact original and written entry.",
+            "Both APIs preserve all bytes and return no change for a healthy subscription provider."
+          ]
+        }
+      ],
+      "verification": "bun -e \"await import('./src/infra/auth/auth-store-mutations.ts')\"",
+      "qualitative_verification": "Inspect both locked mutation decisions and confirm that neither damaged collections nor healthy entries can reach a write."
+    }
+  ],
+  "success_criteria": [
+    "Both mutation APIs preserve damaged account collections and healthy providers without rewriting the file.",
+    "Wholly rejected entries still repair without changing unknown sibling values.",
+    "Successful receipts retain the exact before and after provider entries."
+  ]
+}

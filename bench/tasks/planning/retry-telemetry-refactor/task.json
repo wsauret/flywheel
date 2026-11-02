@@ -1,0 +1,25 @@
+{
+  "id": "retry-telemetry-refactor",
+  "stratum": "broad",
+  "timeoutMinutes": 30,
+  "sandbox": {
+    "commit": "e63bd9b6c9c602dcc2b0643fadfc75a7f947f0ff:flywheel-tui",
+    "paths": [
+      "src",
+      "tests",
+      "docs",
+      "scripts",
+      "patches",
+      "package.json",
+      "bun.lock",
+      "tsconfig.json",
+      "oxlint.config.ts",
+      "knip.jsonc",
+      "AGENTS.md",
+      "CLAUDE.md",
+      "README.md",
+      ".gitignore",
+      "bunfig.toml"
+    ]
+  }
+}

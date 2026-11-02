@@ -1,0 +1,76 @@
+id: repair
+name: Repair
+description: Investigate, fix, and verify a small reported issue.
+confirmation_template: debug
+phases:
+  - phase: investigate
+    name: Investigate
+    brief: Investigate the reported issue, trace the causal chain, and confirm the root cause. Do not edit files.
+    dependencies: [root-cause-analysis]
+    output:
+      summary: Concise result of the investigation.
+      fields:
+        hypothesis:
+          type: string
+          nullable: true
+          description: Confirmed root cause and full causal chain. Null only when decisive evidence proves there is no defect.
+        evidence:
+          type: list
+          of: { type: string }
+          min: 1
+    writes:
+      - id: repair-investigation
+        lifetime: durable
+        supersedes: []
+  - phase: fix
+    if: investigate.hypothesis
+    name: Fix
+    brief: Fix the confirmed root cause with a failing regression test first, or repair each defect that Verify listed.
+    dependencies: [test-driven-development]
+    output:
+      summary: Concise result of the fix.
+      commands: { min: 1 }
+      fields:
+        hypothesis: { type: string }
+        fix_description: { type: string }
+        evidence:
+          type: list
+          of: { type: string }
+          min: 1
+    writes:
+      - id: repair-fix
+        lifetime: durable
+        supersedes: []
+  - repeat:
+      while: verify.defects
+      max: 3
+    phases:
+      - phase: verify
+        name: Verify
+        brief: Verify the present tree against the report and list each check that still fails. Do not edit files.
+        dependencies: [verification]
+        output:
+          summary: The result of the verification.
+          commands: { min: 1 }
+          fields:
+            defects:
+              type: list
+              of:
+                type: object
+                fields:
+                  check: { type: string }
+                  observation: { type: string }
+            evidence:
+              type: list
+              of: { type: string }
+              min: 1
+        writes:
+          - id: repair-verification
+            lifetime: durable
+            supersedes: []
+      - phase: refix
+        runs: fix
+        writes:
+          - id: repair-fix
+            lifetime: durable
+            supersedes: []

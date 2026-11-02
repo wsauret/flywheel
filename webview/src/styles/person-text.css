@@ -1,0 +1,5 @@
+.person-text-clipped { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 8; overflow: hidden; }
+.person-text-toggle { position: relative; margin-inline-start: calc(-1 * var(--fw-s3)); color: var(--fw-fg-muted); font-size: var(--fw-text-xs); }
+@media (pointer: coarse) {
+  .person-text-toggle::before { content: ""; position: absolute; inset: calc(-1 * var(--fw-s3)) 0; }
+}

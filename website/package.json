@@ -1,0 +1,18 @@
+{
+  "name": "flywheel-website",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --bun astro dev",
+    "build": "bun --bun astro build",
+    "preview": "bun --bun astro preview",
+    "test": "bun --bun astro build && bun test tests",
+    "deploy": "bunx wrangler deploy"
+  },
+  "devDependencies": {
+    "astro": "^7.2.8",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.126.0"
+  }
+}

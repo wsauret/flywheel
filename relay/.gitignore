@@ -1,0 +1,3 @@
+# wrangler dev state and the built phone host
+.wrangler/
+app/dist/

@@ -1,0 +1,20 @@
+[package]
+name = "flywheel-tokenizer"
+version = "0.0.0"
+edition = "2024"
+license = "MIT"
+
+[workspace]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+xutf = "=1.4.0"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

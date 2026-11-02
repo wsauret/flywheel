@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "role": "reserved-evaluation",
+  "contentIdentity": "010eb9c5c544df8ea57044fb98a035289d3f804762f65041a8a1b87eeaf343f4",
+  "testIds": [
+    "acceptance/auth-sibling-preservation.test.ts > replaceRejectedProviderCredentials > preserves every byte of a partially damaged account collection",
+    "acceptance/auth-sibling-preservation.test.ts > replaceRejectedProviderCredentials > repairs a wholly rejected provider while preserving unknown siblings and receipt entries",
+    "acceptance/auth-sibling-preservation.test.ts > replaceRejectedProviderCredentials > does not rewrite a healthy valid provider",
+    "acceptance/auth-sibling-preservation.test.ts > replaceRejectedProviderCredentialsWithReceipt > preserves every byte of a partially damaged account collection",
+    "acceptance/auth-sibling-preservation.test.ts > replaceRejectedProviderCredentialsWithReceipt > repairs a wholly rejected provider while preserving unknown siblings and receipt entries",
+    "acceptance/auth-sibling-preservation.test.ts > replaceRejectedProviderCredentialsWithReceipt > does not rewrite a healthy valid provider"
+  ],
+  "cases": [
+    {
+      "id": "reference",
+      "patches": [
+        "qualification/reference.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "The exact shipped one-file repair replaces only wholly rejected entries.",
+      "expectedFailures": []
+    },
+    {
+      "id": "alternative",
+      "patches": [
+        "qualification/reference.patch",
+        "qualification/alternative.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "Uses presence in the decoded store instead of the dropped-provider list. The decoder classifies each raw provider into exactly one of those sets.",
+      "expectedFailures": []
+    },
+    {
+      "id": "original-bug",
+      "patches": [
+        "qualification/reference.patch",
+        "qualification/original-bug.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Restores the exact original production file, whose invalid-instance diagnostic permits replacing a partially damaged collection.",
+      "expectedFailures": [
+        "acceptance/auth-sibling-preservation.test.ts > replaceRejectedProviderCredentials > preserves every byte of a partially damaged account collection",
+        "acceptance/auth-sibling-preservation.test.ts > replaceRejectedProviderCredentialsWithReceipt > preserves every byte of a partially damaged account collection"
+      ]
+    },
+    {
+      "id": "wholly-rejected-regression",
+      "patches": [
+        "qualification/reference.patch",
+        "qualification/wholly-rejected-regression.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "An overbroad no-change guard suppresses wholly rejected repair in both APIs.",
+      "expectedFailures": [
+        "acceptance/auth-sibling-preservation.test.ts > replaceRejectedProviderCredentials > repairs a wholly rejected provider while preserving unknown siblings and receipt entries",
+        "acceptance/auth-sibling-preservation.test.ts > replaceRejectedProviderCredentialsWithReceipt > repairs a wholly rejected provider while preserving unknown siblings and receipt entries"
+      ]
+    }
+  ]
+}

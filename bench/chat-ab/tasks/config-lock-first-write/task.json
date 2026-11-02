@@ -1,0 +1,20 @@
+{
+  "id": "config-lock-first-write",
+  "stratum": "production-history",
+  "timeoutMinutes": 45,
+  "sandbox": {
+    "commit": "d681a265d1e11113a5ca92f1e4bcac73ab992eb7",
+    "paths": ["src", "tests", "docs", "scripts", "package.json", "bun.lock", "tsconfig.json", "oxlint.config.ts", "knip.jsonc", "AGENTS.md", ".gitignore", "bunfig.toml", ".env.test", "relay", "vscode", "webview", "website", "crates/tokenizer/tokenizer-prebuilt.json", "crates/tokenizer/flywheel-tokenizer.wasm.zst"],
+    "patch": "sandbox.patch",
+    "setup": [["bun", "install"]]
+  },
+  "challenge": { "truth": "hold" },
+  "acceptanceBaseline": {
+    "failToPass": [
+      "acceptance/config-ownership.test.ts > an asynchronous config read does not block the next synchronous settings write"
+    ],
+    "passToPass": [
+      "acceptance/config-ownership.test.ts > a failed config callback releases ownership before a sibling write"
+    ]
+  }
+}

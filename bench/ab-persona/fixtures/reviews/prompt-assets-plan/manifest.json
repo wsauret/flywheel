@@ -1,0 +1,50 @@
+{
+  "title": "Plan review: prompt-asset layering refactor (real production plan, seeded defects)",
+  "commit": "5ca69a4c3:flywheel-tui",
+  "paths": ["src", "tests", "scripts", "docs", "package.json", "tsconfig.json", "AGENTS.md"],
+  "defects": [
+    {
+      "id": "reexport-shim",
+      "title": "Plan keeps register.ts as a compatibility re-export of the moved systemPrompt",
+      "category": "forwarding-chain",
+      "files": ["src/workflows/register.ts"],
+      "catch_criteria": "The review must identify that keeping `register.ts` exporting `systemPrompt` as a thin re-export of the new infra module is a forwarding-address shim that the project's rules (ADR-005, AGENTS.md: no re-exports, bridge files, or compatibility shims; update every import) and the plan's own embedded authoritative description ('Do NOT create re-export shims; update every import') explicitly forbid. Naming either authority while rejecting the shim counts."
+    },
+    {
+      "id": "infra-imports-workflows",
+      "title": "Infra asset loader imports defaultUserDefinitionsRoot from the workflows layer",
+      "category": "layering-violation",
+      "files": ["src/workflows/loader.ts"],
+      "catch_criteria": "The review must identify that having `src/infra/agent-assets/loader.ts` import `defaultUserDefinitionsRoot` from `src/workflows/loader.ts` inverts the dependency direction (infra imports nothing from src/), so check:boundaries fails; the user-root function must move into infra with the resolver. Flagging only 'duplication avoidance' without the boundary inversion does not count."
+    },
+    {
+      "id": "core-order-misstated",
+      "title": "Plan misstates buildSystemPromptParts ordering for subagent prompts",
+      "category": "false-code-claim",
+      "files": ["src/orchestration/agent-runtime/shared/system-prompt.ts"],
+      "catch_criteria": "The review must identify that the key_files claim that the builder appends the universal core after persona instructions for subagents is false: buildSystemPromptParts places the core system prompt first for every prompt kind (chat, step-worker, subagent, compaction), as both the code and the plan's own embedded description state. The finding must cite the actual first-position behavior, not merely doubt the claim."
+    },
+    {
+      "id": "catalog-names-renamed",
+      "title": "Tightening anti-pattern catalog names breaks plan-review's verbatim routing vocabulary",
+      "category": "hidden-contract-break",
+      "files": ["src/workflows/steps/flywheel/plan-review.md", "src/workflows/steps/references/reviewer-protocol.md"],
+      "catch_criteria": "The review must identify that renaming catalog entries (e.g. `Forwarding Chain` to `Needless Indirection`, `Premature Abstraction` to `Early Abstraction`) breaks consumers that match the names verbatim: plan-review.md routes finding Failure paragraphs against the exact catalog names and reviewer-protocol.md tells reviewers to lead with them, and the embedded description calls the names load-bearing routing vocabulary that must be preserved verbatim. The finding must connect the rename to a concrete consumer, not just prefer the old names."
+    },
+    {
+      "id": "manifest-restore-dropped",
+      "title": "Generated infra manifest is left populated in the working tree after binary builds",
+      "category": "build-lifecycle",
+      "files": ["scripts/build-binary.ts", "src/workflows/agents/manifest.ts"],
+      "catch_criteria": "The review must identify that skipping the restore step for the generated infra manifest leaves a checked-in source file populated after every binary build, dirtying the tree and violating the established build lifecycle in scripts/build-binary.ts, which temporarily writes embedded content and restores the original in finally so checked-in manifests stay empty in development. 'Deterministic content' does not excuse leaving generated content in a tracked file."
+    },
+    {
+      "id": "reviewer-doctrine-deleted",
+      "title": "Reviewer output rules, severity ladder, and false-positive suppression are deleted instead of rehomed",
+      "category": "content-loss",
+      "files": ["src/workflows/conventions.md", "src/workflows/steps/references/reviewer-protocol.md"],
+      "catch_criteria": "The review must identify that the 'near-duplicate' justification is false: at this commit reviewer-protocol.md contains only the four-slot Failure format in its dispatch paste block, while the Output Rules word caps, the P1/P2/P3 severity ladder, the path:42-67 reference format, and the False-Positive Suppression cases exist only in conventions.md, so deleting conventions.md without merging them removes load-bearing reviewer doctrine that the embedded description explicitly requires merging into reviewer-protocol.md. The finding must name at least one concretely lost section and where it should land."
+    }
+  ],
+  "review_prompt_hint": "This is a production implementation plan (plan-handoff JSON) for refactoring prompt-asset layering: moving the universal system prompt into infra, folding the elegance doctrine into it, and deleting conventions.md. Verify its claims about loaders, prompt assembly, build-manifest lifecycle, and step references against the codebase, the module-boundary rules, and the authoritative user description embedded in the plan"
+}

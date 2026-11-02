@@ -1,0 +1,216 @@
+{
+  "harnessPin": "d83e1001739f4d96add351d9ec0d56f4594a0d82",
+  "method": "Compile original AST function definitions and registry assignments without changing their bodies. Load original core constants directly. Exclude unrelated imports only. Pass the Astropy repo and original selected lists to the original parser and grading functions. Preserve both raw streams; parse stdout followed by stderr.",
+  "compiledOriginalNodes": [
+    {
+      "source": "log_parsers.py",
+      "name": "parse_log_pytest",
+      "line": 8,
+      "endLine": 27,
+      "sourceSha256": "516eaca92781371e1183f2d97c51477787249a230869fca7d060e916980e058c"
+    },
+    {
+      "source": "log_parsers.py",
+      "name": "parse_log_pytest_options",
+      "line": 30,
+      "endLine": 58,
+      "sourceSha256": "6cd3958480d4b3ec6a1eb26ce84bbb9215bbc9e91c795df82edad418030cd7da"
+    },
+    {
+      "source": "log_parsers.py",
+      "name": "parse_log_django",
+      "line": 61,
+      "endLine": 134,
+      "sourceSha256": "f2cea8577bf7e44f2e3bf99d526ee235ebb525769e16147719803bce7844398f"
+    },
+    {
+      "source": "log_parsers.py",
+      "name": "parse_log_pytest_v2",
+      "line": 137,
+      "endLine": 163,
+      "sourceSha256": "6a472283e83ee96ea9dbc3ac00464b9180e8b50996e3c90a72a0f61617356deb"
+    },
+    {
+      "source": "log_parsers.py",
+      "name": "parse_log_seaborn",
+      "line": 166,
+      "endLine": 189,
+      "sourceSha256": "d9cb5f47d67be5d4b46817c7438b287abfd5227831e15cb0d06d062191759ff1"
+    },
+    {
+      "source": "log_parsers.py",
+      "name": "parse_log_sympy",
+      "line": 192,
+      "endLine": 219,
+      "sourceSha256": "55853f23276e63137711ea2322962841a038bc1228e2d4116852c36195e834d9"
+    },
+    {
+      "source": "log_parsers.py",
+      "name": "parse_log_matplotlib",
+      "line": 222,
+      "endLine": 243,
+      "sourceSha256": "c4286cf179153a9e558b983d58655badef3d3d516338427a4e40d7d609fad848"
+    },
+    {
+      "source": "log_parsers.py",
+      "name": null,
+      "line": 246,
+      "endLine": 246,
+      "sourceSha256": "24e161fb5a474aecf3a0deb3a3b9532ed7e0134261843a796e9abd975225a0c1"
+    },
+    {
+      "source": "log_parsers.py",
+      "name": null,
+      "line": 247,
+      "endLine": 247,
+      "sourceSha256": "639beb9f1523ad696bc44a7b814ded61501647fc72f96b4a28f2c92799bcfca7"
+    },
+    {
+      "source": "log_parsers.py",
+      "name": null,
+      "line": 248,
+      "endLine": 248,
+      "sourceSha256": "439a6b5c7270a64e7be287b1027e10a5d5de3c7b990518f01c906b21a5db95b9"
+    },
+    {
+      "source": "log_parsers.py",
+      "name": null,
+      "line": 249,
+      "endLine": 249,
+      "sourceSha256": "84c32c55951a80bd0034c3d0755bdd9a3a31d4959aa26d8dabc877240ae76799"
+    },
+    {
+      "source": "log_parsers.py",
+      "name": null,
+      "line": 250,
+      "endLine": 250,
+      "sourceSha256": "d68255a196f6c72780b7fb8a3ce8ce71559d367ccb2105e8cb8c945fc72c5de3"
+    },
+    {
+      "source": "log_parsers.py",
+      "name": null,
+      "line": 251,
+      "endLine": 251,
+      "sourceSha256": "18f75c3ab929bbb135d8531cf2332e36fe44554d82e5821cefd049bd2b1dfe71"
+    },
+    {
+      "source": "log_parsers.py",
+      "name": null,
+      "line": 252,
+      "endLine": 252,
+      "sourceSha256": "b70d4c0520f2f7c2bbf413c80e013f071a7ac450ba0d81ca65d32367534d8309"
+    },
+    {
+      "source": "log_parsers.py",
+      "name": null,
+      "line": 254,
+      "endLine": 254,
+      "sourceSha256": "e318aa4435ecb0777dc6d0deaa1be911cc225e95ffebe5c2c993ed0cb76b0391"
+    },
+    {
+      "source": "log_parsers.py",
+      "name": null,
+      "line": 255,
+      "endLine": 255,
+      "sourceSha256": "d6221974526151fb034847b6b848d3ed1aac7e5961c7338809d639ff05659af1"
+    },
+    {
+      "source": "log_parsers.py",
+      "name": null,
+      "line": 256,
+      "endLine": 256,
+      "sourceSha256": "5712b8576f9ae2d2969bb5e192208ae84f4aebba635651e453946bef4006016b"
+    },
+    {
+      "source": "log_parsers.py",
+      "name": null,
+      "line": 258,
+      "endLine": 258,
+      "sourceSha256": "96dc2af4c713dfca73eeb4bc7474b52441bb8431e4ecd71f3ae1d2aca28bd4e0"
+    },
+    {
+      "source": "log_parsers.py",
+      "name": null,
+      "line": 259,
+      "endLine": 259,
+      "sourceSha256": "6e05a680b6eda0276ddc12db3d75e5eda12e0b68b21691c2e4fb93e7d082bf1a"
+    },
+    {
+      "source": "log_parsers.py",
+      "name": null,
+      "line": 260,
+      "endLine": 260,
+      "sourceSha256": "02c651fe23d7150b4e13fa7ac636433eea9156dceb42483da8cb99e7eb2fab14"
+    },
+    {
+      "source": "log_parsers.py",
+      "name": null,
+      "line": 263,
+      "endLine": 282,
+      "sourceSha256": "da938a0402e40a994ba21860916fc880d13df88a49a134c1882fbf14bf13a91a"
+    },
+    {
+      "source": "harness-log-parser-utils.py",
+      "name": "ansi_escape",
+      "line": 6,
+      "endLine": 14,
+      "sourceSha256": "87a929f88ee22b7bf8e4cca4250c372f1b1fcef2c0bfc42119846f50373b1474"
+    },
+    {
+      "source": "harness-log-parser-utils.py",
+      "name": "get_eval_type",
+      "line": 17,
+      "endLine": 20,
+      "sourceSha256": "33437d9fabeb19d5aae9fa189d1e4c9af8cbad893f23145c593aaa21250a0301"
+    },
+    {
+      "source": "grading.py",
+      "name": "test_passed",
+      "line": 27,
+      "endLine": 28,
+      "sourceSha256": "3b3475a3c2bc703ea2b5e120cf01d123d9f14713641209867138c84e928fa122"
+    },
+    {
+      "source": "grading.py",
+      "name": "test_failed",
+      "line": 31,
+      "endLine": 34,
+      "sourceSha256": "0c7e04ad490308c2ade6c26f4a31ff727700350d11b72a2bca6b24b32c445c62"
+    },
+    {
+      "source": "grading.py",
+      "name": "get_eval_tests_report",
+      "line": 74,
+      "endLine": 165,
+      "sourceSha256": "64ba7f612dd394ac63b2bb4a950482be5ab314e500c8582982243be2c6d4664d"
+    },
+    {
+      "source": "grading.py",
+      "name": "compute_fail_to_pass",
+      "line": 168,
+      "endLine": 175,
+      "sourceSha256": "4e136eba2ece44d753afb773924aea11b11e20930552871ad3cf6621bee4172d"
+    },
+    {
+      "source": "grading.py",
+      "name": "compute_pass_to_pass",
+      "line": 178,
+      "endLine": 186,
+      "sourceSha256": "339e3e13e525c5787aca7b477f02a064a22d95f7ebee7d03cd53cc6cd3b62fe1"
+    },
+    {
+      "source": "grading.py",
+      "name": "get_resolution_status",
+      "line": 189,
+      "endLine": 206,
+      "sourceSha256": "482b856b7b89bf98540f43cac9c918a102a278aab524616c614682c5b758df64"
+    }
+  ],
+  "canonicalTestPatchEqualsOriginalEvalHeredoc": true,
+  "heredocComparison": "Only terminal newline padding differs; every original patch line is identical.",
+  "selectedCounts": {
+    "FAIL_TO_PASS": 1,
+    "PASS_TO_PASS": 175
+  },
+  "selectedUniqueTotal": 176
+}

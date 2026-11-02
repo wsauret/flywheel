@@ -1,0 +1,46 @@
+{
+  "id": "interrupt-stops-project",
+  "stratum": "production-history",
+  "timeoutMinutes": 45,
+  "sandbox": {
+    "commit": "d7b05a4266e7d441b3692d79e1a8f259c5b0265e",
+    "paths": [
+      "src",
+      "tests",
+      "docs",
+      "scripts",
+      "package.json",
+      "bun.lock",
+      "tsconfig.json",
+      "oxlint.config.ts",
+      "knip.jsonc",
+      "AGENTS.md",
+      ".gitignore",
+      "bunfig.toml",
+      "relay/package.json",
+      "vscode/package.json",
+      "webview/package.json",
+      "website/package.json",
+      "crates/tokenizer/tokenizer-prebuilt.json",
+      "crates/tokenizer/flywheel-tokenizer.wasm.zst"
+    ],
+    "patch": "sandbox.patch",
+    "setup": [
+      [
+        "bun",
+        "install"
+      ]
+    ]
+  },
+  "acceptanceBaseline": {
+    "failToPass": [
+      "acceptance/interrupt-across-detach.test.ts > stopping one session across a brief executor connection drop > a workflow interrupt in flight when the socket drops is also answered after the reconnect",
+      "acceptance/interrupt-across-detach.test.ts > stopping one session across a brief executor connection drop > an interrupt in flight when the socket drops is answered by the executor after it reconnects, and nothing is force-stopped"
+    ],
+    "passToPass": [
+      "acceptance/interrupt-across-detach.test.ts > stopping one session across a brief executor connection drop > a connection that does not come back inside the stop window still force-stops the session",
+      "acceptance/interrupt-across-detach.test.ts > stopping one session across a brief executor connection drop > an interrupt the executor answers in time force-stops nothing",
+      "acceptance/interrupt-across-detach.test.ts > stopping one session across a brief executor connection drop > an interrupt the executor refuses for any other reason still force-stops the session"
+    ]
+  }
+}

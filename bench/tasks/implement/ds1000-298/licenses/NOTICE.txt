@@ -1,0 +1,11 @@
+DS-1000, by Yuhang Lai, Chengxi Li, Yiming Wang, Tianyi Zhang, Ruiqi Zhong, Luke Zettlemoyer, Scott Wen-tau Yih, Daniel Fried, Sida Wang, and Tao Yu. Simplified-format credits: Yuhang Lai and Sida Wang.
+https://github.com/xlang-ai/DS-1000/tree/b39aab71da6d23ef8d3cac59a7c5f834516ab334
+Licensed under CC BY-SA 4.0: https://creativecommons.org/licenses/by-sa/4.0/
+
+The DS-1000 authors adapted the question at https://stackoverflow.com/questions/29831489.
+Question author/editor attribution: Mateen Ulhaq (https://stackoverflow.com/users/365102/mateen-ulhaq), yatu (https://stackoverflow.com/users/9698684/yatu), kmario23 (https://stackoverflow.com/users/2956066/kmario23), Martin Thoma (https://stackoverflow.com/users/562769/martin-thoma), user2357112 (https://stackoverflow.com/users/2357112/user2357112), YXD (https://stackoverflow.com/users/553404/yxd), James Atwood (https://stackoverflow.com/users/938325/james-atwood), EdChum (https://stackoverflow.com/users/704848/edchum).
+Original question revisions use CC BY-SA 3.0 and CC BY-SA 4.0.
+https://creativecommons.org/licenses/by-sa/3.0/
+https://creativecommons.org/licenses/by-sa/4.0/
+
+No qualification changes were made to the task prompt. The DS-1000 source modified the upstream question to use real-valued inputs and sorted distinct categories.

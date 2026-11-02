@@ -1,0 +1,30 @@
+--- a/src/infra/auth/auth-store-mutations.ts
++++ b/src/infra/auth/auth-store-mutations.ts
+@@ -472,11 +472,11 @@
+       } catch {
+         throw new AuthStoreMutationError([fileMalformedCondition(access.authDirectory, revision)]);
+       }
+-      if (!isRecord(raw)) return undefined as never;
++      if (!isRecord(raw)) throw new AuthStoreMutationError([fileMalformedCondition(access.authDirectory, revision)]);
+       const decoded = decodeAuthStoreWithDiagnostics(raw, { classifySlot, rejectExcessProperties: true });
+       const rejected = decoded.dropped.includes(providerId)
+         || decoded.diagnostics.some((diagnostic) => diagnostic.kind === "invalid_instance" && diagnostic.providerId === providerId);
+-      if (!rejected) return false;
++      return false;
+       const encoded = JSON.stringify({ ...raw, [providerId]: persistedLoginReplacement(replacement, classifySlot(providerId)) });
+       if (Buffer.byteLength(encoded) > MAX_AUTH_STORE_BYTES) throw new RangeError(`auth.json exceeds ${MAX_AUTH_STORE_BYTES} bytes`);
+       signal?.throwIfAborted();
+@@ -506,11 +506,11 @@
+       const revision = lockedJsonRevision(bytes);
+       let raw: unknown;
+       try { raw = JSON.parse(bytes.toString("utf8")); } catch { throw new AuthStoreMutationError([fileMalformedCondition(access.authDirectory, revision)]); }
+-      if (!isRecord(raw)) return undefined as never;
++      if (!isRecord(raw)) throw new AuthStoreMutationError([fileMalformedCondition(access.authDirectory, revision)]);
+       const decoded = decodeAuthStoreWithDiagnostics(raw, { classifySlot, rejectExcessProperties: true });
+       const rejected = decoded.dropped.includes(providerId)
+         || decoded.diagnostics.some((diagnostic) => diagnostic.kind === "invalid_instance" && diagnostic.providerId === providerId);
+-      if (!rejected) return undefined;
++      return undefined;
+       const before = raw[providerId];
+       const after = persistedLoginReplacement(replacement, classifySlot(providerId));
+       const encoded = JSON.stringify({ ...raw, [providerId]: after });

@@ -1,0 +1,11 @@
+--- a/src/infra/ownership-file-lock.ts
++++ b/src/infra/ownership-file-lock.ts
+@@ -242,7 +242,7 @@
+   const record = ownRecord();
+   for (let attempt = 0; ; attempt++) {
+     const result = attemptLock(directory, name, record);
+-    if (result.kind === "acquired" || result.kind === "foreign") return acquired({ name, owner: record.owner });
++    if (result.kind === "acquired") return acquired({ name, owner: record.owner });
+     if (result.kind === "foreign" || attempt === MAX_RETRIES) throw refusal(name, result);
+     await Bun.sleep(backoffMs(baseDelayMs, attempt));
+   }

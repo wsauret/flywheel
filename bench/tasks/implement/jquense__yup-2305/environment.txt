@@ -1,0 +1,3 @@
+The current workspace contains the application source.
+Use the private Node runtime at .bench-home/tooling/runtime/bin/node.
+Use .bench-home/bin/yarn for the package scripts.

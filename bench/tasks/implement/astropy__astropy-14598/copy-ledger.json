@@ -1,0 +1,114 @@
+[
+  {
+    "file": "original/harness-core-constants.py",
+    "sha256": "8bb14b004de3c4d1d5b41c0ba5298e635abceb613838c1ffa43b9bfd359e6f84",
+    "bytes": 2807,
+    "origin": "https://raw.githubusercontent.com/SWE-bench/SWE-bench/d83e1001739f4d96add351d9ec0d56f4594a0d82/swebench/harness/constants/constants.py",
+    "transformation": "byte-identical copy"
+  },
+  {
+    "file": "original/log_parsers.py",
+    "sha256": "685e8b6f03265da70e22246ce1dc6bc711f7f9fd8b390413e1785d49c29a06f4",
+    "bytes": 10677,
+    "origin": "https://raw.githubusercontent.com/SWE-bench/SWE-bench/d83e1001739f4d96add351d9ec0d56f4594a0d82/swebench/harness/log_parsers/python.py",
+    "transformation": "byte-identical copy"
+  },
+  {
+    "file": "original/harness-log-parser-utils.py",
+    "sha256": "4913a8e2f0a0b013190a2874924e3babe38b9d65a2c52e1ddf02883900a3d31e",
+    "bytes": 533,
+    "origin": "https://raw.githubusercontent.com/SWE-bench/SWE-bench/d83e1001739f4d96add351d9ec0d56f4594a0d82/swebench/harness/log_parsers/utils.py",
+    "transformation": "byte-identical copy"
+  },
+  {
+    "file": "original/grading.py",
+    "sha256": "5d22efae8f80b7c99af37d4681799c73fa848d5f3124aeb87f784ea8e1c97be0",
+    "bytes": 8541,
+    "origin": "https://raw.githubusercontent.com/SWE-bench/SWE-bench/d83e1001739f4d96add351d9ec0d56f4594a0d82/swebench/harness/grading.py",
+    "transformation": "byte-identical copy"
+  },
+  {
+    "file": "licenses/harness-LICENSE",
+    "sha256": "2bd2e08df7147f67a69b42c10efae09bd4bf119df397371036187d5dd1b02f57",
+    "bytes": 1159,
+    "origin": "https://raw.githubusercontent.com/SWE-bench/SWE-bench/d83e1001739f4d96add351d9ec0d56f4594a0d82/LICENSE",
+    "transformation": "byte-identical copy"
+  },
+  {
+    "file": "licenses/astropy-LICENSE.rst",
+    "sha256": "a86d75ead6df0886dcbc04230ffcd971c66a4a6746ca559ddf768865370637f5",
+    "bytes": 1496,
+    "origin": "https://raw.githubusercontent.com/astropy/astropy/80c3854a5f4f4a6ab86c03d9db7854767fcd83c1/LICENSE.rst",
+    "transformation": "byte-identical copy"
+  },
+  {
+    "file": "instruction.txt",
+    "sha256": "5edf1315e9ce360f72c2d3b23f08cdb974a758b64b13a6724236ca5d54beb9a9",
+    "bytes": 2651,
+    "origin": "https://github.com/astropy/astropy/issues/14581; title + LF + body + LF",
+    "transformation": "byte-identical copy"
+  },
+  {
+    "file": "original/test.patch",
+    "sha256": "c790ba338bd320c416771738a49f657b02c2bf4e16dcd0d575d1e55d61c4b150",
+    "bytes": 1044,
+    "origin": "princeton-nlp/SWE-bench_Verified@c104f840cc67f8b6eec6f759ebc8b2693d585d4a row 14, test_patch",
+    "transformation": "byte-identical copy"
+  },
+  {
+    "file": "controls/reference.patch",
+    "sha256": "867bc2472fb6f36b4bb180ae83d94b99533948f51c0f16f1e666dd87c9d4c396",
+    "bytes": 963,
+    "origin": "princeton-nlp/SWE-bench_Verified@c104f840cc67f8b6eec6f759ebc8b2693d585d4a row 14, patch",
+    "transformation": "byte-identical copy"
+  },
+  {
+    "file": "api-probe.py",
+    "sha256": "1f0cfd486a9f9498f503f171b91800bbdc2a80658ac66e93538c02f8203f6cd8",
+    "bytes": 2384,
+    "origin": "Flywheel qualification: public FITS Card examples from original issue and test patch",
+    "transformation": "byte-identical copy"
+  },
+  {
+    "file": "environment-pins.txt",
+    "sha256": "b71e1ad9b088d5539f506061fd6538985bd08df09a6bc9d58ec25b28f82304e2",
+    "bytes": 486,
+    "origin": "Original environment requirements, exact native package pins",
+    "transformation": "byte-identical copy"
+  },
+  {
+    "file": "build-constraints.txt",
+    "sha256": "12472a4baa083907a2ae8a2d6722c6889b7f526c5f3e8f8f966e55426849181f",
+    "bytes": 115,
+    "origin": "Native build dependency constraints; original source build isolation retained",
+    "transformation": "byte-identical copy"
+  },
+  {
+    "file": "source-manifest.json",
+    "sha256": "c9ff550d212a33bb2fbbf8b7fb324e642c486bbf346bb0264f6ab46c1a8167df",
+    "bytes": 279972,
+    "origin": "SHA-256 manifest of every original source archive file",
+    "transformation": "byte-identical copy"
+  },
+  {
+    "file": "wheel-index.json",
+    "sha256": "c7353ea9426fc1a0566a3d67878f09424db4e53ec73c1c307b29509504ba7d48",
+    "bytes": 13715,
+    "origin": "Public PyPI wheel URLs and verified SHA-256 identities",
+    "transformation": "byte-identical copy"
+  },
+  {
+    "file": "original/parser-provenance.json",
+    "sha256": "5522fc21bba5eb664797252b8d09c1ca192f6c512ba66062216c68e2b3b93e25",
+    "bytes": 6623,
+    "origin": "Original AST node identities and extraction selection",
+    "transformation": "byte-identical copy"
+  },
+  {
+    "file": "controls/fault.patch",
+    "sha256": "994011c1ea734b236631d5f48148d4bc536ababd480847d459b5438453e436d2",
+    "bytes": 470,
+    "origin": "Own semantic mutation of reference control",
+    "transformation": "Drop regex end-anchor change; keep unescape change. No model trajectory copied."
+  }
+]

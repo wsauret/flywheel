@@ -1,0 +1,229 @@
+[
+  {
+    "file": "python/lib/python3.12/LICENSE.txt",
+    "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf",
+    "preserved": "licenses/public/python/lib/python3.12/LICENSE.txt"
+  },
+  {
+    "file": "inputs/swebench-LICENSE",
+    "sha256": "2bd2e08df7147f67a69b42c10efae09bd4bf119df397371036187d5dd1b02f57"
+  },
+  {
+    "file": "inputs/moto-LICENSE",
+    "sha256": "f12ef9fd396a13e90878630b1b4fab471c6ed9cb7a48cf2abb2516281632218e"
+  },
+  {
+    "file": "inputs/gym-LICENSE",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  {
+    "file": "wheels/boto3-1.34.43-py3-none-any.whl",
+    "member": "boto3-1.34.43.dist-info/LICENSE",
+    "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+    "preserved": "licenses/public/boto3-1.34.43-py3-none-any.whl/boto3-1.34.43.dist-info/LICENSE"
+  },
+  {
+    "file": "wheels/boto3-1.34.43-py3-none-any.whl",
+    "member": "boto3-1.34.43.dist-info/NOTICE",
+    "sha256": "04fb1e61484a7810f1ba09bb42bc01ca58c9af33927d7c5a21556e4c4d1c7fa4",
+    "preserved": "licenses/public/boto3-1.34.43-py3-none-any.whl/boto3-1.34.43.dist-info/NOTICE"
+  },
+  {
+    "file": "wheels/botocore-1.34.44-py3-none-any.whl",
+    "member": "botocore-1.34.44.dist-info/LICENSE.txt",
+    "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+    "preserved": "licenses/public/botocore-1.34.44-py3-none-any.whl/botocore-1.34.44.dist-info/LICENSE.txt"
+  },
+  {
+    "file": "wheels/botocore-1.34.44-py3-none-any.whl",
+    "member": "botocore-1.34.44.dist-info/NOTICE",
+    "sha256": "1d1c5a6f3d68cb11f4fad1afa86a7450d0286f15c176ef0ea048f255b46d95b0",
+    "preserved": "licenses/public/botocore-1.34.44-py3-none-any.whl/botocore-1.34.44.dist-info/NOTICE"
+  },
+  {
+    "file": "wheels/certifi-2026.7.22-py3-none-any.whl",
+    "member": "certifi-2026.7.22.dist-info/licenses/LICENSE",
+    "sha256": "e93716da6b9c0d5a4a1df60fe695b370f0695603d21f6f83f053e42cfc10caf7",
+    "preserved": "licenses/public/certifi-2026.7.22-py3-none-any.whl/certifi-2026.7.22.dist-info/licenses/LICENSE"
+  },
+  {
+    "file": "wheels/cffi-2.1.1-cp312-cp312-macosx_11_0_arm64.whl",
+    "member": "cffi-2.1.1.dist-info/licenses/LICENSE",
+    "sha256": "5ba24ddc57067f9249add644c3afc41a5d6dc37e23433ef759d95df370b0af63",
+    "preserved": "licenses/public/cffi-2.1.1-cp312-cp312-macosx_11_0_arm64.whl/cffi-2.1.1.dist-info/licenses/LICENSE"
+  },
+  {
+    "file": "wheels/charset_normalizer-3.5.2-cp312-cp312-macosx_10_13_universal2.whl",
+    "member": "charset_normalizer-3.5.2.dist-info/licenses/LICENSE",
+    "sha256": "6d0d41bfe170ac6c7dc248c9a63e254d0fb45a60d50a8257d0af92c6e249b887",
+    "preserved": "licenses/public/charset_normalizer-3.5.2-cp312-cp312-macosx_10_13_universal2.whl/charset_normalizer-3.5.2.dist-info/licenses/LICENSE"
+  },
+  {
+    "file": "wheels/cryptography-50.0.2-cp311-abi3-macosx_11_0_arm64.whl",
+    "member": "cryptography-50.0.2.dist-info/licenses/LICENSE",
+    "sha256": "3e0c7c091a948b82533ba98fd7cbb40432d6f1a9acbf85f5922d2f99a93ae6bb",
+    "preserved": "licenses/public/cryptography-50.0.2-cp311-abi3-macosx_11_0_arm64.whl/cryptography-50.0.2.dist-info/licenses/LICENSE"
+  },
+  {
+    "file": "wheels/cryptography-50.0.2-cp311-abi3-macosx_11_0_arm64.whl",
+    "member": "cryptography-50.0.2.dist-info/licenses/LICENSE.APACHE",
+    "sha256": "aac73b3148f6d1d7111dbca32099f68d26c644c6813ae1e4f05f6579aa2663fe",
+    "preserved": "licenses/public/cryptography-50.0.2-cp311-abi3-macosx_11_0_arm64.whl/cryptography-50.0.2.dist-info/licenses/LICENSE.APACHE"
+  },
+  {
+    "file": "wheels/cryptography-50.0.2-cp311-abi3-macosx_11_0_arm64.whl",
+    "member": "cryptography-50.0.2.dist-info/licenses/LICENSE.BSD",
+    "sha256": "602c4c7482de6479dd2e9793cda275e5e63d773dacd1eca689232ab7008fb4fb",
+    "preserved": "licenses/public/cryptography-50.0.2-cp311-abi3-macosx_11_0_arm64.whl/cryptography-50.0.2.dist-info/licenses/LICENSE.BSD"
+  },
+  {
+    "file": "wheels/execnet-2.1.2-py3-none-any.whl",
+    "member": "execnet-2.1.2.dist-info/licenses/LICENSE",
+    "sha256": "e89eed1074d3a943198ba139b80844f5b445b860bba74a8aeadc0610566164ea",
+    "preserved": "licenses/public/execnet-2.1.2-py3-none-any.whl/execnet-2.1.2.dist-info/licenses/LICENSE"
+  },
+  {
+    "file": "wheels/idna-3.20-py3-none-any.whl",
+    "member": "idna-3.20.dist-info/licenses/LICENSE.md",
+    "sha256": "1a9a4f0e3d479a27240ddd59a9137a66ab4a0f9dfdc8ca6188cc0bfd85187f04",
+    "preserved": "licenses/public/idna-3.20-py3-none-any.whl/idna-3.20.dist-info/licenses/LICENSE.md"
+  },
+  {
+    "file": "wheels/iniconfig-2.3.1-py3-none-any.whl",
+    "member": "iniconfig-2.3.1.dist-info/licenses/LICENSE",
+    "sha256": "3409fa91f7ace557894632676656e32264fe5ef7581535725dc9a23774551bd4",
+    "preserved": "licenses/public/iniconfig-2.3.1-py3-none-any.whl/iniconfig-2.3.1.dist-info/licenses/LICENSE"
+  },
+  {
+    "file": "wheels/jinja2-3.1.6-py3-none-any.whl",
+    "member": "jinja2-3.1.6.dist-info/licenses/LICENSE.txt",
+    "sha256": "3b49dcee4105eb37bac10faf1be260408fe85d252b8e9df2e0979fc1e094437b",
+    "preserved": "licenses/public/jinja2-3.1.6-py3-none-any.whl/jinja2-3.1.6.dist-info/licenses/LICENSE.txt"
+  },
+  {
+    "file": "wheels/jmespath-1.1.0-py3-none-any.whl",
+    "member": "jmespath-1.1.0.dist-info/LICENSE",
+    "sha256": "6eefacfa4d71b82d08408c751470ac8d9854538da2142cb27be0287fb13d0ab9",
+    "preserved": "licenses/public/jmespath-1.1.0-py3-none-any.whl/jmespath-1.1.0.dist-info/LICENSE"
+  },
+  {
+    "file": "wheels/markupsafe-3.0.4-cp312-cp312-macosx_11_0_arm64.whl",
+    "member": "markupsafe-3.0.4.dist-info/licenses/LICENSE.txt",
+    "sha256": "489a8e1108509ed98a37bb983e11e0f7e1d31f0bd8f99a79c8448e7ff37d07ea",
+    "preserved": "licenses/public/markupsafe-3.0.4-cp312-cp312-macosx_11_0_arm64.whl/markupsafe-3.0.4.dist-info/licenses/LICENSE.txt"
+  },
+  {
+    "file": "wheels/packaging-26.3-py3-none-any.whl",
+    "member": "packaging-26.3.dist-info/licenses/LICENSE",
+    "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48",
+    "preserved": "licenses/public/packaging-26.3-py3-none-any.whl/packaging-26.3.dist-info/licenses/LICENSE"
+  },
+  {
+    "file": "wheels/packaging-26.3-py3-none-any.whl",
+    "member": "packaging-26.3.dist-info/licenses/LICENSE.APACHE",
+    "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+    "preserved": "licenses/public/packaging-26.3-py3-none-any.whl/packaging-26.3.dist-info/licenses/LICENSE.APACHE"
+  },
+  {
+    "file": "wheels/packaging-26.3-py3-none-any.whl",
+    "member": "packaging-26.3.dist-info/licenses/LICENSE.BSD",
+    "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5",
+    "preserved": "licenses/public/packaging-26.3-py3-none-any.whl/packaging-26.3.dist-info/licenses/LICENSE.BSD"
+  },
+  {
+    "file": "wheels/pluggy-1.6.0-py3-none-any.whl",
+    "member": "pluggy-1.6.0.dist-info/licenses/LICENSE",
+    "sha256": "d6b65e6c213a5d0b577911d34d6e5949b9f59d76c238c5071a2f3fc16cfb2606",
+    "preserved": "licenses/public/pluggy-1.6.0-py3-none-any.whl/pluggy-1.6.0.dist-info/licenses/LICENSE"
+  },
+  {
+    "file": "wheels/pycparser-3.11-py3-none-any.whl",
+    "member": "pycparser-3.11.dist-info/licenses/LICENSE",
+    "sha256": "0a9e78156ae8b96caf1b4f11ac2df424b83de29736f9e757630548a6272fdf90",
+    "preserved": "licenses/public/pycparser-3.11-py3-none-any.whl/pycparser-3.11.dist-info/licenses/LICENSE"
+  },
+  {
+    "file": "wheels/pytest-8.0.0-py3-none-any.whl",
+    "member": "pytest-8.0.0.dist-info/LICENSE",
+    "sha256": "ca836a5f9ecca3b2f350230faa20a48fb8b145653b5568d784862df864706b9b",
+    "preserved": "licenses/public/pytest-8.0.0-py3-none-any.whl/pytest-8.0.0.dist-info/LICENSE"
+  },
+  {
+    "file": "wheels/pytest_xdist-3.5.0-py3-none-any.whl",
+    "member": "pytest_xdist-3.5.0.dist-info/LICENSE",
+    "sha256": "e89eed1074d3a943198ba139b80844f5b445b860bba74a8aeadc0610566164ea",
+    "preserved": "licenses/public/pytest_xdist-3.5.0-py3-none-any.whl/pytest_xdist-3.5.0.dist-info/LICENSE"
+  },
+  {
+    "file": "wheels/python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
+    "member": "python_dateutil-2.9.0.post0.dist-info/LICENSE",
+    "sha256": "ba00f51a0d92823b5a1cde27d8b5b9d2321e67ed8da9bc163eff96d5e17e577e",
+    "preserved": "licenses/public/python_dateutil-2.9.0.post0-py2.py3-none-any.whl/python_dateutil-2.9.0.post0.dist-info/LICENSE"
+  },
+  {
+    "file": "wheels/pyyaml-6.0.3-cp312-cp312-macosx_11_0_arm64.whl",
+    "member": "pyyaml-6.0.3.dist-info/licenses/LICENSE",
+    "sha256": "8d3928f9dc4490fd635707cb88eb26bd764102a7282954307d3e5167a577e8a4",
+    "preserved": "licenses/public/pyyaml-6.0.3-cp312-cp312-macosx_11_0_arm64.whl/pyyaml-6.0.3.dist-info/licenses/LICENSE"
+  },
+  {
+    "file": "wheels/requests-2.34.2-py3-none-any.whl",
+    "member": "requests-2.34.2.dist-info/licenses/LICENSE",
+    "sha256": "09e8a9bcec8067104652c168685ab0931e7868f9c8284b66f5ae6edae5f1130b",
+    "preserved": "licenses/public/requests-2.34.2-py3-none-any.whl/requests-2.34.2.dist-info/licenses/LICENSE"
+  },
+  {
+    "file": "wheels/requests-2.34.2-py3-none-any.whl",
+    "member": "requests-2.34.2.dist-info/licenses/NOTICE",
+    "sha256": "f5110972dedad2b4e9d314518daf3b7d72d6e02e499acd802181de6f74571dcc",
+    "preserved": "licenses/public/requests-2.34.2-py3-none-any.whl/requests-2.34.2.dist-info/licenses/NOTICE"
+  },
+  {
+    "file": "wheels/responses-0.26.3-py3-none-any.whl",
+    "member": "responses-0.26.3.dist-info/licenses/LICENSE",
+    "sha256": "489ecb70b4447c034a10978a4b08da015c9bd9fa95ca3aeaf219d9815416a67c",
+    "preserved": "licenses/public/responses-0.26.3-py3-none-any.whl/responses-0.26.3.dist-info/licenses/LICENSE"
+  },
+  {
+    "file": "wheels/s3transfer-0.10.4-py3-none-any.whl",
+    "member": "s3transfer-0.10.4.dist-info/LICENSE.txt",
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "preserved": "licenses/public/s3transfer-0.10.4-py3-none-any.whl/s3transfer-0.10.4.dist-info/LICENSE.txt"
+  },
+  {
+    "file": "wheels/s3transfer-0.10.4-py3-none-any.whl",
+    "member": "s3transfer-0.10.4.dist-info/NOTICE.txt",
+    "sha256": "d8354e0fa7fb762da7bc054a8a6774a0b310dfbbc78006393ee573a0e57612b5",
+    "preserved": "licenses/public/s3transfer-0.10.4-py3-none-any.whl/s3transfer-0.10.4.dist-info/NOTICE.txt"
+  },
+  {
+    "file": "wheels/six-1.17.0-py2.py3-none-any.whl",
+    "member": "six-1.17.0.dist-info/LICENSE",
+    "sha256": "4375ba20e2b9c6c4e7cad2940a628fd90e95cc3d50ee92aae755715d8ba1fbd0",
+    "preserved": "licenses/public/six-1.17.0-py2.py3-none-any.whl/six-1.17.0.dist-info/LICENSE"
+  },
+  {
+    "file": "wheels/urllib3-2.0.7-py3-none-any.whl",
+    "member": "urllib3-2.0.7.dist-info/licenses/LICENSE.txt",
+    "sha256": "130e3a64d5fdd5d096a752694634a7d9df284469de86e5732100268041e3d686",
+    "preserved": "licenses/public/urllib3-2.0.7-py3-none-any.whl/urllib3-2.0.7.dist-info/licenses/LICENSE.txt"
+  },
+  {
+    "file": "wheels/werkzeug-3.1.9-py3-none-any.whl",
+    "member": "werkzeug/debug/shared/ICON_LICENSE.md",
+    "sha256": "0e103a6358149792707e0d0d14df518f8556213b7cb54c7422f7467f4bb1f7eb",
+    "preserved": "licenses/public/werkzeug-3.1.9-py3-none-any.whl/werkzeug/debug/shared/ICON_LICENSE.md"
+  },
+  {
+    "file": "wheels/werkzeug-3.1.9-py3-none-any.whl",
+    "member": "werkzeug-3.1.9.dist-info/licenses/LICENSE.txt",
+    "sha256": "3b49dcee4105eb37bac10faf1be260408fe85d252b8e9df2e0979fc1e094437b",
+    "preserved": "licenses/public/werkzeug-3.1.9-py3-none-any.whl/werkzeug-3.1.9.dist-info/licenses/LICENSE.txt"
+  },
+  {
+    "file": "wheels/xmltodict-1.0.4-py3-none-any.whl",
+    "member": "xmltodict-1.0.4.dist-info/licenses/LICENSE",
+    "sha256": "d66d5eb8f83a0ba21d3dd04318b8817588e8764daabea852d1035e3f07ffda55",
+    "preserved": "licenses/public/xmltodict-1.0.4-py3-none-any.whl/xmltodict-1.0.4.dist-info/licenses/LICENSE"
+  }
+]

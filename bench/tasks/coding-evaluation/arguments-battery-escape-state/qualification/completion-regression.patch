@@ -1,0 +1,11 @@
+--- a/src/orchestration/agent-runtime/llm/json-parse.ts
++++ b/src/orchestration/agent-runtime/llm/json-parse.ts
+@@ -173,7 +173,7 @@
+   for (const candidate of candidates) {
+     for (const text of [candidate, repairJson(candidate)]) {
+       try {
+-        if (partialParse(text)) return { kind: "incomplete" };
++        if (partialParse(text)) return { kind: "complete", value: partialParse(text) };
+       } catch {
+         // next form
+       }

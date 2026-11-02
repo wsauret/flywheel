@@ -1,0 +1,30 @@
+{
+  "traps": [],
+  "judgment": [
+    {
+      "id": "delegation-trivial-phase",
+      "title": "Avoids waste on the trivial phase",
+      "catchCriteria": "The parent performs template-error-message inline. A subagent dispatch whose stated scope is only that phase, whose returned diff is four changed lines or fewer, and during which the parent transcript shows no concurrent work violates this point."
+    },
+    {
+      "id": "delegation-substantial-phase",
+      "title": "Uses a bounded strategy for substantial work",
+      "catchCriteria": "For tokenizer-and-parser, telemetry and the transcript show either a focused implementer-subagent dispatch or an inline implementation followed by a passing first `bun test render.test.ts` phase verification. An inline implementation whose first verification fails and then requires one or more repair dispatches violates this point."
+    },
+    {
+      "id": "phase-verification-gates",
+      "title": "Runs verification between phases",
+      "catchCriteria": "The parent transcript shows `bun test render.test.ts` run after work for each of the three phase IDs and, for phases one and two, before any implementation or subagent dispatch for the next phase begins. A final-only test run does not satisfy this point."
+    },
+    {
+      "id": "phase-ordering",
+      "title": "Preserves phase order unless evidence requires change",
+      "catchCriteria": "The transcript and diff show template-error-message before tokenizer-and-parser before renderer-integration. Any skip, merge, or reorder is accompanied by a concrete repository or verification result that explains why the original ordering could not be followed."
+    },
+    {
+      "id": "orchestrator-integration-review",
+      "title": "Reviews delegated work as one integrated implementation",
+      "catchCriteria": "Before the final handoff, the parent inspects or tests the combined public surfaces and reports the final `bun test render.test.ts` result. It does not treat successful subagent handoffs alone as proof that render.ts, tokenizer.ts, parser.ts, and TemplateError integrate."
+    }
+  ]
+}

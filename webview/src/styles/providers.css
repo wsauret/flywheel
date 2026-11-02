@@ -1,0 +1,98 @@
+/* Providers: one card per provider, one card per account inside it, and the
+   panel a login in progress takes over the sheet body with. */
+
+.provider-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-s2);
+  margin: var(--fw-s1) var(--fw-s2) var(--fw-s3);
+  padding: var(--fw-s3);
+  border: 1px solid var(--fw-hairline);
+  border-radius: var(--fw-radius-lg);
+  background: var(--fw-bg-raised);
+}
+.provider-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fw-s2);
+  min-width: 0;
+}
+/* The title keeps a readable width; on a phone the actions drop under it
+   rather than squeezing the name to an ellipsis. */
+.provider-card-title { display: flex; flex: 1 1 12rem; flex-direction: column; min-width: 0; gap: 1px; }
+.provider-card-actions { flex: 0 0 auto; display: inline-flex; gap: var(--fw-s1); margin-left: auto; }
+.provider-card-actions > button { white-space: nowrap; }
+.provider-card-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.provider-card-status, .account-card-status, .account-note, .mode-status, .mode-details {
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-xs);
+}
+.account-note { margin: 0; }
+/* What keeps a provider or an account from serving, with its repair: a warning the person acts on, not an error. */
+.card-problem {
+  margin: 0;
+  padding-left: var(--fw-s2);
+  border-left: 2px solid var(--fw-warning);
+  color: var(--fw-warning);
+  font-size: var(--fw-text-xs);
+  overflow-wrap: anywhere;
+}
+
+.account-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-s2);
+  padding: var(--fw-s2) var(--fw-s3);
+  border: 1px solid var(--fw-hairline);
+  border-radius: var(--fw-radius);
+  background: var(--fw-input-bg);
+}
+.account-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--fw-s2); min-width: 0; }
+.account-card-label { font-weight: 500; font-size: var(--fw-text-sm); }
+.account-card-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--fw-s1) var(--fw-s2); }
+.account-card-actions > button { white-space: nowrap; }
+.account-card-actions:empty { display: none; }
+
+.mode-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fw-s2);
+  padding: var(--fw-s1) 0;
+  font-size: var(--fw-text-sm);
+  cursor: pointer;
+}
+.mode-row input { margin-top: 3px; accent-color: var(--fw-accent); }
+.mode-row.pending .mode-label { color: var(--fw-warning); }
+.mode-row:has(input[aria-disabled="true"]) { cursor: default; color: var(--fw-fg-muted); }
+.mode-row:has(input[aria-disabled="true"]) .mode-label { color: var(--fw-fg-muted); }
+.mode-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.mode-label { font-weight: 500; }
+
+.login-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-s2);
+  padding: var(--fw-s2);
+}
+.login-lead, .login-wait {
+  margin: 0;
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-sm);
+  word-break: break-word;
+}
+.login-form { display: flex; flex-direction: column; gap: var(--fw-s2); }
+.login-actions { display: flex; justify-content: flex-end; gap: var(--fw-s2); }
+.login-code {
+  align-self: flex-start;
+  padding: var(--fw-s2) var(--fw-s3);
+  font-family: var(--fw-font-mono);
+  font-size: var(--fw-text-lg);
+  letter-spacing: 0.08em;
+  color: var(--fw-fg);
+  background: var(--fw-input-bg);
+  border: 1px solid var(--fw-input-border);
+  border-radius: var(--fw-radius);
+  user-select: all;
+}

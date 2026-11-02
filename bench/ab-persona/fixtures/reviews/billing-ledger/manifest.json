@@ -1,0 +1,41 @@
+{
+  "title": "Multi-currency settlement, promo codes, and idempotent charge retries",
+  "defects": [
+    {
+      "id": "reconcile-float-equality",
+      "title": "Reconciliation compares float-accumulated dollar totals with strict equality",
+      "category": "numerical-correctness",
+      "files": ["reconcile.ts"],
+      "catch_criteria": "The review must identify that statementTotalDollars accumulates settledCents / 100 in binary floating point and that reconcile compares the accumulated total to processorBalanceCents / 100 with strict inequality (!==), so statements whose cent totals match exactly can still report a discrepancy once rounding error accumulates across entries. Naming only 'floating point money' without the accumulation-plus-exact-comparison mechanism does not count."
+    },
+    {
+      "id": "idempotency-key-collision",
+      "title": "Idempotency key collides for legitimate distinct purchases",
+      "category": "correctness",
+      "files": ["billing.ts"],
+      "catch_criteria": "The review must identify that idempotencyKeyFor is built only from customerId, currency, subtotal, and the day bucket while request.requestId is never used, so two legitimately distinct purchases of the same amount by the same customer on the same day produce the same key and the second charge is silently swallowed, returning the first entry instead of charging."
+    },
+    {
+      "id": "refund-double-fee",
+      "title": "Refund grosses up an amount that already includes the processing fee",
+      "category": "correctness",
+      "files": ["billing.ts"],
+      "catch_criteria": "The review must identify that refund() calls applyProcessingFee(charge.grossCents) even though grossCents was already grossed up by applyProcessingFee at charge time, so the fee markup is applied twice along the refund path and every full refund over-refunds by roughly the fee rate applied to the gross amount."
+    },
+    {
+      "id": "refund-fx-timing",
+      "title": "Refund settles at the current exchange rate instead of the charge-time rate",
+      "category": "correctness",
+      "files": ["billing.ts"],
+      "catch_criteria": "The review must identify that refund() reads rates.current(charge.currency) instead of reusing the stored charge.fxRate, so a charge and its refund convert at rates read at different times; whenever the rate has drifted, the pair does not net to zero in settlement currency and the ledger accumulates unexplained FX exposure."
+    },
+    {
+      "id": "discount-tax-ordering",
+      "title": "Fixed discounts are applied after tax while percent discounts are applied before tax",
+      "category": "correctness",
+      "files": ["billing.ts"],
+      "catch_criteria": "The review must identify that computeTotal taxes the discounted subtotal for percent promos but taxes the full undiscounted subtotal for fixed promos, so the two promo kinds use inconsistent tax bases and fixed-discount customers are charged tax on money they never paid."
+    }
+  ],
+  "review_prompt_hint": "The change adds multi-currency settlement, promo-code discounts, and idempotent retry handling to a payment ledger. Pay close attention to money arithmetic, rounding, currency conversion timing, and the retry/replay semantics"
+}

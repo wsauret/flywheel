@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "role": "reserved-evaluation",
+  "source": {
+    "repository": "flywheel",
+    "ref": "b6d624689385427eed079ea68815e8d6dce1b2e0",
+    "paths": [
+      {
+        "path": "src/orchestration/agent-runtime/llm/json-parse.ts",
+        "sha256": "f407c31177fe3d18f9c6db4e63944891d29b3541df036f6bb60573d0a3808c47"
+      }
+    ]
+  },
+  "fix": {
+    "ref": "f77cd52b328a4009d54b105411202d586d18427d",
+    "paths": [
+      {
+        "path": "src/orchestration/agent-runtime/llm/json-parse.ts",
+        "sha256": "33672f6dc572595bfa19778a969aae024a2dfa57ec02f4d1f9561266af8d0043"
+      }
+    ],
+    "patch": "qualification/reference.patch",
+    "scope": "Exact original-to-shipped diff for this module only."
+  },
+  "dependencyClosure": {
+    "sourceModules": [
+      "src/orchestration/agent-runtime/llm/json-parse.ts"
+    ],
+    "externalDependencies": {
+      "partial-json": "0.1.7"
+    },
+    "setup": [
+      "bun",
+      "install",
+      "--frozen-lockfile"
+    ],
+    "lockSha256": "6f470047c18a66eeaa59de964441a4275efc3fa24921db08af3a18823059c8bd"
+  },
+  "scope": "parseToolArguments module boundary only. No adapter, full agent-loop, tool-dispatch, or nonexecution proof.",
+  "environment": {
+    "runtime": "bun",
+    "version": "1.4.0",
+    "revision": "34cbb9a40",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "supportedRepairScope": "Complete invalid escapes cover literal non-JSON escapes such as \\q and \\x20. Native probes showed malformed Unicode escapes such as \\uZZZZ are rejected by the shipped module, so they are not required as successful repairs.",
+  "helperContract": "parseJsonWithRepair is private in both pinned source versions. Preserve its helper contract without adding an export to the exact reference patch.",
+  "verificationStatus": {
+    "directNativeControls": "The original and guard controls failed only their declared behavioral assertions. The reference and alternative passed all ten tests with the one-package frozen dependency setup.",
+    "nativeQualification": "After sandbox Git initialization was moved before patch application, fresh qualification installed only partial-json 0.1.7 from the fixture's frozen lock. All four controls qualified with the exact declared test IDs and assertion failures."
+  },
+  "priorInspection": {
+    "reservedMeaning": "Never used for prompt tuning in this new corpus. This is not unseen-source or public-training proof.",
+    "knownInspection": "The production source and older related chat-ab cut-tool-args tasks have prior human and model inspection.",
+    "relatedContract": "bench/chat-ab/tasks/cut-tool-args/acceptance/cut-tool-args.test.ts"
+  },
+  "candidateArchive": {
+    "paths": [
+      "src/orchestration/agent-runtime/llm/json-parse.ts"
+    ],
+    "addedBySandboxPatch": [
+      "package.json",
+      "bun.lock"
+    ],
+    "excludes": [
+      "provenance.json",
+      "qualification.json",
+      "qualification",
+      "acceptance"
+    ]
+  },
+  "controls": {
+    "reference": "Exact shipped module diff.",
+    "alternative": "Strict and repaired complete candidates only; no partial-json completion or classification dependency.",
+    "originalBug": "Apply qualification/reference.patch then its exact reverse qualification/original-bug.patch.",
+    "guardRegression": "Apply qualification/reference.patch then disable complete raw control-character repair; strict JSON and completeness remain."
+  }
+}

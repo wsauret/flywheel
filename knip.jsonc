@@ -1,0 +1,45 @@
+{
+  "$schema": "node_modules/knip/schema.json",
+  "workspaces": {
+    ".": {
+      // The bench CLIs are entry points: they consume the shared benchmark service
+      // in src/orchestration/benchmark. Task and fixture trees under bench are
+      // corpora, not code this project builds.
+      "entry": ["src/cli/auth.ts", "src/infra/llm/tool-output-part-schema.ts", "src/infra/internal-process-channel.ts", "src/orchestration/app-service/project-executor-protocol.ts", "scripts/dump-prompt.ts", "tests/**/*.ts", "bench/shared/native-persona-launcher.ts", "bench/shared/native-persona-worker.ts", "bench/ab-persona/bench.ts", "bench/ab-persona/compare.ts", "bench/ab-persona/strategy-bench.ts", "bench/chat-ab/bench.ts", "bench/chat-ab/compare.ts", "bench/chat-ab/check-task.ts", "bench/chat-ab/paired.ts", "bench/terminal_bench/analyze-tool-outcomes.ts", "bench/linux-runtime-verification/smoke.ts"],
+      "project": ["src/**/*.{ts,tsx}", "bench/*/*.ts"],
+      "ignore": ["src/infra/code-mode/**"]
+    },
+    "vscode": {
+      "entry": ["src/extension.ts", "scripts/*.ts", "src/**/*.test.ts"],
+      "project": ["src/**/*.{ts,tsx}", "scripts/*.ts"],
+      // The packaging script invokes vsce through bunx, a string knip cannot see.
+      "ignoreDependencies": ["@vscode/vsce"]
+    },
+    "webview": {
+      // The client's one public entry is imported by every host; local is the
+      // production browser host, editor is the shell the extension loads from
+      // the runtime's build, and phone is the shell the hosted phone page
+      // loads through the relay.
+      // Tests are entries by name: the test script carries the browser
+      // condition, which knip's script parser does not read through.
+      "entry": ["src/index.ts", "local/main.tsx", "editor/main.tsx", "phone/main.tsx", "src/**/*.test.{ts,tsx}", "phone/**/*.test.ts", "local/**/*.test.ts", "editor/**/*.test.ts"],
+      "project": ["src/**/*.{ts,tsx}", "local/**/*.{ts,tsx}", "editor/**/*.{ts,tsx}", "phone/**/*.{ts,tsx}"],
+      // The build resolves the Babel presets by name and hands Babel their paths.
+      "ignoreDependencies": ["babel-preset-solid", "@babel/preset-typescript"]
+    },
+    "relay": {
+      // The Worker entry wrangler deploys, the counting Worker the storage
+      // tests serve by path, the bootstrap the hosted page bundles, and the
+      // build and dev scripts that produce and serve it.
+      "entry": ["worker/src/index.ts", "worker/test/counting-relay.ts", "app/bootstrap.ts", "app/sw/sw.ts", "app/serve.ts", "**/*.test.ts"],
+      "project": ["worker/src/**/*.ts", "worker/test/**/*.ts", "app/sw/*.ts", "app/*.ts"],
+      // Ambient declarations for the Worker bindings and CSS imports.
+      "ignore": ["**/*.d.ts"],
+      // `cloudflare:workers` is the Worker runtime's own module, not a package.
+      "ignoreDependencies": ["cloudflare"]
+    }
+  },
+  // These dependencies are loaded by tools from strings or resolved file paths,
+  // so knip cannot see a static import reference.
+  "ignoreDependencies": ["@vscode/tree-sitter-wasm"]
+}

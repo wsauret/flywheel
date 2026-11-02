@@ -1,0 +1,11 @@
+{
+  "//": "The hosted phone page compiles against the DOM, like the phone shell it loads. Strictness comes from the root config because the page compiles the repository's protocol modules directly; the bun types serve the build and dev scripts and the test runner.",
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "../..",
+    "types": ["bun"]
+  },
+  "include": ["*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

@@ -1,0 +1,17 @@
+{
+  "source": "solution/solve.sh:145-151",
+  "old_utf8": "(procedure-env proc)",
+  "new_utf8": "global-env",
+  "replacement_count": 1,
+  "reference_sha256": "4178c037a3058bf22c00aa94d409e64bdfbc88766115ddb475ca5a2073973e2b",
+  "fault_sha256": "a35976f0e10b3f1e487b0d13e7ec858f86e53ae2b80d8af2ad08d3a87798fad9",
+  "hypothesis": "Compound procedure applications extend global-env instead of the captured lexical environment.",
+  "behavioral_risk": "Free variables from enclosing local environments become unavailable or bind globally.",
+  "not_a_fault_in": [
+    "host interpreter",
+    "primitives",
+    "parser",
+    "grader",
+    "fixtures"
+  ]
+}

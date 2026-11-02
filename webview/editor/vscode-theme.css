@@ -1,0 +1,83 @@
+/* The VS Code host's theme, expressed as the client's tokens.
+
+   The client reads only its own --fw-* vocabulary. This file is the one place
+   the editor's theme variables are named, so the panel belongs to whatever
+   theme the editor is showing without any component knowing an editor exists.
+   Fallback chains cover themes that define only a subset of the variables. */
+
+:root {
+  --fw-font: var(--vscode-font-family);
+  --fw-font-mono: var(--vscode-editor-font-family);
+
+  --fw-fg: var(--vscode-foreground);
+  --fw-fg-muted: var(--vscode-descriptionForeground);
+  --fw-scrollbar-thumb: var(--vscode-scrollbarSlider-background);
+  --fw-scrollbar-track: transparent;
+  --fw-fg-prose: var(--vscode-foreground);
+  --fw-bg: var(--vscode-sideBar-background);
+  --fw-bg-raised: color-mix(in srgb, var(--vscode-foreground) 6%, transparent);
+  --fw-bg-raised-strong: color-mix(in srgb, var(--vscode-foreground) 10%, transparent);
+  --fw-hairline: color-mix(in srgb, var(--vscode-foreground) 16%, transparent);
+  --fw-rail: color-mix(in srgb, var(--vscode-foreground) 11%, transparent);
+
+  --fw-accent: var(--vscode-button-background, #3794ff);
+  --fw-accent-hover: var(--vscode-button-hoverBackground, var(--vscode-button-background));
+  --fw-accent-fg: var(--vscode-button-foreground);
+  --fw-secondary: var(--vscode-button-secondaryBackground, var(--vscode-button-background));
+  --fw-secondary-hover: var(--vscode-button-secondaryHoverBackground, var(--vscode-button-hoverBackground));
+  --fw-secondary-fg: var(--vscode-button-secondaryForeground, var(--vscode-button-foreground));
+  --fw-focus: var(--vscode-focusBorder);
+  --fw-link: var(--vscode-textLink-foreground);
+  --fw-link-active: var(--vscode-textLink-activeForeground, var(--vscode-textLink-foreground));
+
+  --fw-error: var(--vscode-errorForeground);
+  --fw-warning: var(--vscode-editorWarning-foreground, #d29922);
+  --fw-success: var(--vscode-charts-green, #3fb950);
+  --fw-info: var(--vscode-charts-blue, #3794ff);
+  --fw-purple: var(--vscode-charts-purple, #b180d7);
+  --fw-teal: var(--vscode-terminal-ansiCyan, #4cc4cc);
+  --fw-orange: var(--vscode-charts-orange, #d18616);
+  /* The terminal theme's tool colour, softened toward the muted grey because
+     the raw value glows on an editor surface. */
+  --fw-tool-name: color-mix(in srgb, #ffe2a9 72%, var(--vscode-descriptionForeground));
+
+  --fw-input-bg: var(--vscode-input-background);
+  --fw-input-fg: var(--vscode-input-foreground);
+  --fw-input-border: var(--vscode-inlineChatInput-border, var(--vscode-input-border, var(--vscode-widget-border, #7f7f7f66)));
+  --fw-menu-bg: var(--vscode-menu-background, var(--vscode-dropdown-background, var(--vscode-editorWidget-background, var(--vscode-sideBar-background))));
+  --fw-menu-border: var(--vscode-dropdown-border, var(--fw-hairline));
+  --fw-list-hover: var(--vscode-list-hoverBackground, var(--fw-bg-raised));
+  --fw-list-active-bg: var(--vscode-list-activeSelectionBackground, var(--fw-bg-raised-strong));
+  --fw-list-active-fg: var(--vscode-list-activeSelectionForeground, var(--vscode-foreground));
+  --fw-hover-bg: var(--vscode-editorHoverWidget-background, var(--vscode-editorWidget-background, var(--vscode-sideBar-background)));
+  --fw-hover-fg: var(--vscode-editorHoverWidget-foreground, var(--vscode-foreground));
+  --fw-hover-border: var(--vscode-editorHoverWidget-border, var(--fw-hairline));
+  --fw-scrim: rgb(0 0 0 / 0.45);
+
+  --fw-code-bg: var(--vscode-textCodeBlock-background);
+  --fw-diff-add-bg: var(--vscode-diffEditor-insertedTextBackground, rgb(63 185 80 / 0.15));
+  --fw-diff-del-bg: var(--vscode-diffEditor-removedTextBackground, rgb(248 81 73 / 0.15));
+  --fw-chat-code-keyword: var(--vscode-debugTokenExpression-name, #569cd6);
+  --fw-chat-code-string: var(--vscode-debugTokenExpression-string, #ce9178);
+  --fw-chat-code-number: var(--vscode-debugTokenExpression-number, #b5cea8);
+  --fw-chat-code-function: var(--vscode-symbolIcon-functionForeground, #dcdcaa);
+  --fw-chat-code-type: var(--vscode-symbolIcon-classForeground, #4ec9b0);
+}
+
+body.vscode-light,
+body.vscode-high-contrast-light {
+  color-scheme: light;
+  --fw-input-backdrop: var(--fw-input-backdrop-light);
+}
+body.vscode-dark,
+body.vscode-high-contrast { color-scheme: dark; }
+
+/* The conversation itself is the brightest text in the panel. Dark themes'
+   default foreground sits several steps below white and reads dim next to the
+   editor; lifting only what the person and the model said keeps hierarchy over
+   the tool rows. Light themes keep the plain foreground, because the same mix
+   would wash out dark-on-light text. */
+body.vscode-dark,
+body.vscode-high-contrast {
+  --fw-fg-prose: color-mix(in srgb, var(--vscode-foreground) 65%, white);
+}

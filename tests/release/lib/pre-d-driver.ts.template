@@ -1,0 +1,29 @@
+import { readFileSync, writeFileSync } from 'node:fs'
+import type { RuntimeClient } from '@SOURCE@/src/protocol/app-service-types.ts'
+import { startIsolatedServe } from './pre-d-isolated-serve.ts'
+import { runParallelSessionsScenario } from './pre-d-parallel-children.ts'
+import { runWorkflowAgentLoad, type WorkflowLoadPort } from '@CANDIDATE@/tests/release/scenarios/parallel-workflow-agents.ts'
+import { createTimeline } from '@CANDIDATE@/tests/release/lib/timeline.ts'
+
+function oldPort(client:RuntimeClient):WorkflowLoadPort {
+  return {
+    statusSurface:'pre-D workflowLiveSnapshot agent activity',
+    async openChat(initialMessage) { const r=await client.dispatch({type:'chat.open', initialMessage}); if(!r.ok||!r.sessionId) throw new Error('old chat refused'); return r.sessionId },
+    async enable() { const snapshot=await client.query({type:'moduleSnapshot'}); const r=await client.dispatch({type:'settings.set_workflow_mode',expected:snapshot.capabilities.workflowsMode,mode:'on'}); if(!r.ok) throw new Error('old workflows refused') },
+    observe(listener) { return client.subscribe(event=>{ if(event.type!=='patch')return; const {cursor,payload}=event.patch; const edgeKeys=payload.kind==='workflow_live.changed' ? payload.agents.flatMap(agent=>agent.activity?.detail.match(/m14-\d+/g)??[]) : []; listener({domain:cursor.domain,bytes:Buffer.byteLength(JSON.stringify(event.patch)),edgeKeys,...(cursor.scope==='session'?{sessionId:cursor.sessionId}:{})}) }) },
+    run(db,parent) { const row=db.query<{id:string;createdAt:string},[string]>("select session_id as id,json_extract(payload,'$.createdAt') as createdAt from event where type='session.created' and json_extract(payload,'$.kind')='workflow' and json_extract(payload,'$.launchedFrom.parentSessionId')=? limit 1").get(parent); return row?{id:row.id,acceptedAt:Date.parse(row.createdAt)}:undefined },
+    async watch(workflowId) { await client.dispatch({type:'session.activate',sessionId:workflowId}); await client.query({type:'workflowLiveSnapshot',sessionIds:[workflowId]}) },
+    async members(workflowId) { const r=await client.query({type:'workflowViewSnapshot',sessionIds:[workflowId]}); const view=r.views[0]?.view;return view?.attempts.flatMap(a=>{ const node=view.tree.nodes.find(n=>n.kind==='agent'&&n.currentAttemptId===a.id);return a.startedAt!==undefined&&node?.kind==='agent'&&node.item?[{id:a.id,attemptId:a.id,key:node.item.text,startedAt:a.startedAt}]:[] })??[] },
+    async status(workflowId) { const r=await client.query({type:'workflowLiveSnapshot',sessionIds:[workflowId]}); if(!r.views[0]?.view) throw new Error('old live missing'); return Buffer.byteLength(JSON.stringify(r)) },
+    async show(workflowId) { const r=await client.query({type:'sessionDetail',sessionId:workflowId}); if(!r.view)throw new Error('old workflow detail missing'); return Buffer.byteLength(JSON.stringify(r)) },
+    async output(workflowId,member) { return Buffer.byteLength(JSON.stringify(await client.query({type:'workflowAgentOutput',sessionId:workflowId,target:{kind:'attempt',attemptId:member.attemptId},request:{anchor:{kind:'tail'},maxBlocks:200,maxBytes:256*1024}}))) },
+    async state(workflowId) { return (await client.query({type:'workflowViewSnapshot',sessionIds:[workflowId]})).views[0]?.view?.state },
+    async catalogTokens() { const {rows}=await client.query({type:'snapshot'}); return rows.some(row=>row.totalsLoading)?undefined:rows.reduce((total,row)=>total+(row.totalTokens??0),0) },
+    assertOwnership(db,workflowId,parent) { const n=db.query<{n:number},[string,string]>("select count(*) as n from event where type='session.created' and session_id=? and json_extract(payload,'$.kind')='workflow' and json_extract(payload,'$.launchedFrom.parentSessionId')=?").get(workflowId,parent)!.n; if(n!==1)throw new Error('old workflow ownership missing') },
+    close:()=>client.close(),
+  }
+}
+const input=JSON.parse(readFileSync(process.argv[2]!, 'utf8'))
+const context={...input.context,timeline:createTimeline()}
+const result=input.scenario==='parallel-children' ? await runParallelSessionsScenario(context,'children') : await runWorkflowAgentLoad(context,async(context,options)=>{const serve=await startIsolatedServe(context,options);try{return {serve,port:oldPort(await serve.openProject(options.project))}}catch(e){await serve.stop();throw e}})
+writeFileSync(input.output,JSON.stringify(result))

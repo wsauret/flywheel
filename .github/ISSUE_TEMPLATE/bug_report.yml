@@ -1,0 +1,70 @@
+name: Bug report
+description: Tell us about a problem in Flywheel.
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thank you for the report. Do not put API keys, tokens, or private file content in this issue. For a security problem, follow SECURITY.md instead.
+  - type: input
+    id: version
+    attributes:
+      label: Flywheel version
+      description: Paste the output of `flywheel --version`.
+      placeholder: flywheel 0.x.y (build ...)
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - macOS
+        - Linux
+        - Windows
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where did the problem occur?
+      multiple: true
+      options:
+        - Terminal UI
+        - Web client
+        - Phone
+        - Editor extension
+        - CLI command
+        - Background service
+        - Install or update
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to cause the problem
+      description: Give each step as a numbered item.
+      placeholder: |
+        1. Run `flywheel`
+        2. Type ...
+        3. Press ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: Include the exact error text. Attach a screenshot if it helps.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Other information
+      description: The provider and model, your terminal, or anything else that can help.

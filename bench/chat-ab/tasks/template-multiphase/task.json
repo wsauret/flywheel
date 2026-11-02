@@ -1,0 +1,53 @@
+{
+  "id": "template-multiphase",
+  "stratum": "medium",
+  "timeoutMinutes": 45,
+  "sandbox": {
+    "commit": "64d9b75aeaa02fb5d00d2f75d01ea8a50df0d743",
+    "paths": [
+      ".gitignore"
+    ],
+    "patch": "sandbox.patch"
+  },
+  "acceptanceBaseline": {
+    "failToPass": [
+      "acceptance/template-engine.test.ts > blocks > a missing or non-array each value renders no body",
+      "acceptance/template-engine.test.ts > blocks > an empty collection renders no body",
+      "acceptance/template-engine.test.ts > blocks > does not evaluate a nested body when its parent is false",
+      "acceptance/template-engine.test.ts > blocks > iterates object items with item scope",
+      "acceptance/template-engine.test.ts > blocks > nests each inside if",
+      "acceptance/template-engine.test.ts > blocks > nests if inside each",
+      "acceptance/template-engine.test.ts > blocks > omits a false if body",
+      "acceptance/template-engine.test.ts > blocks > renders a truthy if body",
+      "acceptance/template-engine.test.ts > blocks > resolves dot paths from an each item",
+      "acceptance/template-engine.test.ts > blocks > supports nested blocks of the same kind",
+      "acceptance/template-engine.test.ts > blocks > trims whitespace in block tags",
+      "acceptance/template-engine.test.ts > blocks > uses item-only scope without leaking parent fields",
+      "acceptance/template-engine.test.ts > blocks > uses ordinary JavaScript truthiness",
+      "acceptance/template-engine.test.ts > public error contract > preserves the exact message, name, and source position",
+      "acceptance/template-engine.test.ts > structural errors > reports a mismatched closing at the closing position",
+      "acceptance/template-engine.test.ts > structural errors > reports an unclosed each at its opening position",
+      "acceptance/template-engine.test.ts > structural errors > reports an unclosed if at its opening position",
+      "acceptance/template-engine.test.ts > structural errors > reports an unexpected closing at its position",
+      "acceptance/template-engine.test.ts > structural errors > reports crossed mismatches at the innermost closing position",
+      "acceptance/template-engine.test.ts > structural errors > reports the only outstanding outer block after its nested block closes",
+      "acceptance/template-engine.test.ts > tokenizer > preserves literal spans and omits empty text tokens",
+      "acceptance/template-engine.test.ts > tokenizer > recognizes every tag form with trimmed paths and exact opening offsets",
+      "acceptance/template-engine.test.ts > variables > a missing raw path renders empty text",
+      "acceptance/template-engine.test.ts > variables > escaped and raw substitutions remain independent",
+      "acceptance/template-engine.test.ts > variables > escapes all supported HTML characters",
+      "acceptance/template-engine.test.ts > variables > renders missing and intermediate nullish paths as empty text",
+      "acceptance/template-engine.test.ts > variables > substitutes variables and preserves untagged text",
+      "acceptance/template-engine.test.ts > variables > triple braces render raw text",
+      "acceptance/template-engine.test.ts > variables > uses ordinary string conversion while retaining false and zero",
+      "acceptance/template-engine.test.ts > variables > walks a dot path"
+    ],
+    "passToPass": [
+      "acceptance/literal-guards.test.ts > literal templates > preserves whitespace and line breaks",
+      "acceptance/literal-guards.test.ts > literal templates > renders an empty template",
+      "acceptance/literal-guards.test.ts > literal templates > renders plain text unchanged",
+      "acceptance/literal-guards.test.ts > literal templates > tokenizes literal text with its source position",
+      "acceptance/literal-guards.test.ts > template errors > exports an error with its detail and source position"
+    ]
+  }
+}

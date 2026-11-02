@@ -1,0 +1,41 @@
+.transcript.selecting-text {
+  touch-action: pinch-zoom;
+}
+
+.selection-grips {
+  position: fixed;
+  inset: 0;
+  z-index: var(--fw-z-tooltip);
+  pointer-events: none;
+}
+
+.selection-grip {
+  position: fixed;
+  width: calc(2 * var(--fw-s6));
+  height: calc(2 * var(--fw-s6));
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.selection-grip[hidden] {
+  display: none;
+}
+
+.selection-grip-dot {
+  width: var(--fw-s6);
+  height: var(--fw-s6);
+  border-radius: var(--fw-radius-pill);
+  background: var(--fw-accent);
+  border: 2px solid var(--fw-accent-fg);
+  box-shadow: var(--fw-shadow-popover);
+  pointer-events: none;
+}
+
+.selection-grip:active .selection-grip-dot {
+  background: var(--fw-accent-hover);
+}

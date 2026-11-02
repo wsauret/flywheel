@@ -1,0 +1,226 @@
+/* The composer's / panel: grouped rows over the transcript. Toggle and value
+   idioms match the toolbar's grammar. */
+
+.command-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: 50cqh;
+  margin-bottom: var(--fw-s2);
+  overflow: hidden;
+  background: var(--fw-menu-bg);
+  border: 1px solid var(--fw-input-border);
+  border-radius: var(--fw-radius-lg);
+  animation: rise var(--fw-motion) ease-out;
+}
+
+/* Two shared tracks: labels, then one control column the whole panel agrees
+   on. The control track auto-sizes to the widest control anywhere in the
+   list, so that widest one sits against the right inset and every other
+   control centres within the same column. */
+.panel-scroll {
+  overflow-y: auto;
+  max-height: 300px;
+  padding: var(--fw-s1) 0 var(--fw-s2);
+}
+.panel-scroll-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-content: start;
+  row-gap: 2px;
+}
+.panel-divider, .panel-section { grid-column: 1 / -1; }
+
+.panel-divider { flex: 0 0 auto; height: 1px; margin: 4px 0; background: var(--fw-input-border); }
+/* The catalog the bare panel keeps behind its filter, named once under the
+   list. It is a target as well as a hint: it opens the Commands sheet. */
+.panel-footer { flex: 0 0 auto; padding: 6px 12px; border-top: 1px solid var(--fw-input-border); font-size: var(--fw-text-xs); color: var(--fw-fg-muted); cursor: pointer; }
+.panel-footer:hover { background: var(--fw-list-hover); }
+.panel-section { padding: 4px 12px; font-size: var(--fw-text-xs); color: var(--fw-fg); opacity: 0.5; }
+
+/* Subgrid: the row paints one hover surface while its label and control sit
+   on the panel's shared tracks. Inset by a 4px margin so the highlight floats
+   inside the popup rather than touching its edges. */
+.panel-row {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+  align-items: center;
+  column-gap: var(--fw-s2);
+  min-width: 0;
+  margin: 0 var(--fw-s1);
+  padding: 4px var(--fw-s2);
+  border-radius: var(--fw-radius-sm);
+  cursor: pointer;
+  font-size: var(--fw-text-sm);
+}
+@media (pointer: coarse) { .panel-row { padding-top: 8px; padding-bottom: 8px; } }
+.panel-row > .panel-label { grid-column: 1; }
+.panel-row > .panel-control { grid-column: 2; justify-self: stretch; }
+.panel-row[data-active="true"] { background: var(--fw-list-active-bg); color: var(--fw-list-active-fg); }
+
+.panel-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.panel-label-suffix { color: var(--fw-fg-muted); }
+.panel-row[data-active="true"] .panel-label-suffix { color: inherit; opacity: 0.85; }
+
+.panel-control { min-width: 0; display: inline-flex; align-items: center; justify-content: center; }
+.panel-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fw-text-xs);
+  color: var(--fw-fg-muted);
+}
+.panel-row[data-active="true"] .panel-value { color: inherit; opacity: 0.85; }
+
+/* The chevrons say a value iterates: quiet at rest, lit with the row so they
+   read as the arrow keys' affordance while it is the one being steered. A
+   pointer steps the value back or forward through them. */
+.panel-cycle-chevron { flex: 0 0 auto; padding: 0 4px; font-size: var(--fw-text-xs); color: var(--fw-fg-muted); opacity: 0.55; }
+.panel-row[data-active="true"] .panel-cycle-chevron { color: inherit; opacity: 0.85; }
+
+/* The question panel: the agent's question in the / panel's frame, so it reads
+   as a menu rising from the prompt bar. The choices are one list: each row is a
+   mark, a title, and its description, and hairlines between rows say where one
+   choice ends. A row that needs words opens its field inside itself once picked,
+   so a field can only belong to the choice above it. */
+.question-text, .question-choices { grid-column: 1 / -1; }
+/* A question shows every choice it can: the typeahead's 300px cap would cut
+   the last row of a four-choice list on a phone with no sign that more exists.
+   The frame takes most of the pane and scrolls only past that. */
+.question-panel { flex: 0 1 auto; min-height: 0; max-height: 72cqh; }
+.question-panel .panel-scroll { flex: 1 1 auto; min-height: 0; max-height: none; }
+/* The head carries the section label and the minimize control; the strip the
+   panel collapses to names the question and keeps every pick until the tap
+   that brings the panel back. */
+.question-head { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: var(--fw-s2); padding-right: var(--fw-s2); }
+.question-head .panel-section { flex: 1 1 auto; min-width: 0; }
+.question-collapsed {
+  display: flex;
+  align-items: center;
+  gap: var(--fw-s3);
+  width: 100%;
+  padding: var(--fw-s2) var(--fw-s3);
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: var(--fw-fg);
+  font-size: var(--fw-text-sm);
+}
+.question-collapsed:hover { background: var(--fw-list-hover); }
+.question-collapsed-label { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.question-collapsed-header { font-size: var(--fw-text-xs); color: var(--fw-fg-muted); }
+.question-collapsed-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (pointer: coarse) { .question-collapsed { padding-top: var(--fw-s3); padding-bottom: var(--fw-s3); } }
+.question-text {
+  padding: 2px 12px var(--fw-s2);
+  font-size: var(--fw-text-sm);
+  color: var(--fw-fg);
+}
+.question-choices {
+  --question-mark: 16px;
+  --question-row-x: var(--fw-s3);
+  display: flex;
+  flex-direction: column;
+  margin: 0 var(--fw-s2) var(--fw-s2);
+  border: 1px solid var(--fw-hairline);
+  border-radius: var(--fw-radius-lg);
+  /* Clip, not hidden: a hidden box is a scroll container, which the panel's
+     grid may shrink below its rows. Above a keyboard it then cut off the last
+     choice and the field it opened, and left the panel nothing to scroll. */
+  overflow: clip;
+}
+.question-choice + .question-choice { border-top: 1px solid var(--fw-hairline); }
+.question-choice[data-active="true"] { background: var(--fw-list-active-bg); }
+.question-choice-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fw-s3);
+  width: 100%;
+  padding: var(--fw-s2) var(--question-row-x);
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: var(--fw-fg);
+  font-size: var(--fw-text-sm);
+}
+.question-choice-row:hover { background: var(--fw-list-hover); }
+.question-choice[data-active="true"] .question-choice-row:hover { background: transparent; }
+/* The mark: a ring for one pick, a rounded box for many. It fills with the
+   accent when picked, and that is the only colour the row spends. */
+.question-mark {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: var(--question-mark);
+  height: var(--question-mark);
+  margin-top: 2px;
+  border: 1px solid var(--fw-input-border);
+  border-radius: var(--fw-radius-pill);
+  color: var(--fw-accent-fg);
+  transition: background var(--fw-motion-fast) ease, border-color var(--fw-motion-fast) ease;
+}
+.question-mark-box { border-radius: var(--fw-radius-sm); }
+.question-mark-on { background: var(--fw-accent); border-color: var(--fw-accent); }
+.question-choice-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; white-space: normal; }
+.question-choice-title { font-weight: 500; }
+.question-recommended {
+  margin-left: var(--fw-s2);
+  padding: 0 var(--fw-s2);
+  border-radius: var(--fw-radius-pill);
+  background: var(--fw-bg-raised);
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-xs);
+  font-weight: 500;
+}
+.question-choice-description { font-size: var(--fw-text-xs); color: var(--fw-fg-muted); }
+/* The field sits under the row's own text, indented past the mark, so it reads
+   as part of that choice and not as a row of its own. It is one line at rest
+   and grows with its text, wrapping so the first word typed stays in view; past
+   its ceiling it scrolls on its own and the panel keeps its buttons. */
+.question-input {
+  display: block;
+  box-sizing: border-box;
+  width: calc(100% - var(--question-row-x) * 2 - var(--question-mark) - var(--fw-s3));
+  max-height: 40cqh;
+  resize: none;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+  margin: 0 var(--question-row-x) var(--fw-s2) calc(var(--question-row-x) + var(--question-mark) + var(--fw-s3));
+  padding: 6px var(--fw-s3);
+  font-family: inherit;
+  font-size: var(--fw-text-sm);
+  background: var(--fw-input-bg);
+  color: var(--fw-input-fg);
+  border: 1px solid var(--fw-input-border);
+  border-radius: var(--fw-radius);
+}
+.question-input:focus { outline: none; border-color: var(--fw-focus); }
+@media (pointer: coarse) {
+  .question-choices { --question-mark: 20px; --question-row-x: var(--fw-s4); }
+  .question-choice-row { padding-top: var(--fw-s3); padding-bottom: var(--fw-s3); font-size: var(--fw-text); }
+  .question-input { padding: 9px var(--fw-s3); }
+}
+.panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--fw-s2);
+  padding: var(--fw-s2) var(--fw-s3);
+  border-top: 1px solid var(--fw-input-border);
+}
+.question-panel .panel-actions button[aria-disabled="true"] { color: var(--fw-fg-muted); cursor: default; }
+.question-panel .panel-actions .ghost-text[aria-disabled="true"]:hover { background: transparent; }
+.question-panel .panel-actions .primary[aria-disabled="true"]:hover { background: var(--fw-accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  .command-panel { animation: none; }
+}
+
+/* The @ panel: one path per row, the file's own name carrying the weight. */
+.mention-panel .panel-scroll-content { grid-template-columns: minmax(0, 1fr); }
+.mention-dir { color: var(--fw-fg-muted); }
+.panel-row[data-active="true"] .mention-dir { color: inherit; opacity: 0.75; }
+.mention-name { font-weight: 500; }

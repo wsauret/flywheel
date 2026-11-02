@@ -1,0 +1,63 @@
+--- a/src/orchestration/config/config-file.ts
++++ b/src/orchestration/config/config-file.ts
+@@ -134,7 +134,7 @@
+ export async function withConfigOwnership<T>(location: ConfigFileLocation, use: (config: ConfigOwnership) => T): Promise<T> {
+   const held = openConfigDirectory(location);
+   try {
+-    return await withLockIn(held.directory, `${held.fileName}.lock`, () => use(configOwnership(held, location)));
++    return await withLockIn(held.directory, `${held.fileName}.lock`, () => use(held.ownership));
+   } finally {
+     held.directory.close();
+   }
+@@ -149,7 +149,7 @@
+   let hold: LockHold | undefined;
+   try {
+     hold = acquireLockSyncIn(held.directory, `${held.fileName}.lock`);
+-    return use(configOwnership(held, location));
++    return use(held.ownership);
+   } finally {
+     if (hold) releaseLockIn(held.directory, hold);
+     held.directory.close();
+@@ -159,31 +159,23 @@
+ interface HeldConfigFile {
+   readonly directory: ContainedDirectory;
+   readonly fileName: string;
++  readonly ownership: ConfigOwnership;
+ }
+ 
+ function openConfigDirectory(location: ConfigFileLocation): HeldConfigFile {
+   const configPath = path.resolve(configFilePath(location));
+   const configDir = path.dirname(configPath);
++  const directory = ContainedDirectory.open(path.dirname(configDir), [path.basename(configDir)], { privateDirectories: true });
++  const fileName = path.basename(configPath);
++  const read = () => readHeldFile(directory, fileName);
+   return {
+-    directory: ContainedDirectory.open(path.dirname(configDir), [path.basename(configDir)], { privateDirectories: true }),
+-    fileName: path.basename(configPath),
+-  };
+-}
+-
+-function configOwnership(held: HeldConfigFile, location: ConfigFileLocation): ConfigOwnership {
+-  const current = <T>(use: (current: HeldConfigFile) => T): T => {
+-    const reopened = openConfigDirectory(location);
+-    try {
+-      return use(reopened);
+-    } finally {
+-      reopened.directory.close();
+-    }
+-  };
+-  const read = () => current(file => readHeldFile(file.directory, file.fileName));
+-  return {
+-    read,
+-    readText: () => textOf(read()),
+-    write: (text) => current(file => file.directory.writeFile(file.fileName, text)),
++    directory,
++    fileName,
++    ownership: {
++      read,
++      readText: () => textOf(read()),
++      write: (text) => directory.writeFile(fileName, text),
++    },
+   };
+ }
+ 

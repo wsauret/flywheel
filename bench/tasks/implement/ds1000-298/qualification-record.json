@@ -1,0 +1,203 @@
+{
+  "platform": "darwin",
+  "arch": "arm64",
+  "controls": [
+    {
+      "name": "base",
+      "preparedMs": 11643,
+      "captureAndGradeMs": 11204,
+      "acceptance": {
+        "passed": 0,
+        "failed": 1,
+        "total": 1
+      },
+      "graderSeconds": 0.3225371250882745,
+      "originalCaseIds": [
+        1,
+        2,
+        3
+      ],
+      "caseObservation": "IDs identify original cases, not individually observed execution. Failure can stop before later cases or test_string.",
+      "managerLifecycle": [
+        {
+          "address": [
+            "127.0.0.1",
+            54194
+          ],
+          "pid": 21395,
+          "exitcode": 0,
+          "listenerClosed": true,
+          "aliveAfterShutdown": false,
+          "inheritedAuthkey": true
+        }
+      ],
+      "factoryRestored": true,
+      "noActiveChildren": true,
+      "ownedTmpUnchanged": true,
+      "acquired": [
+        {
+          "filename": "python.tar.gz",
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260510/cpython-3.10.20%2B20260510-aarch64-apple-darwin-install_only.tar.gz",
+          "bytes": 25921421,
+          "sha256": "22f02aa2458efa28029f91800c3d85a270ae308a2d8450f3f6cef49f56abfa48",
+          "status": 200
+        },
+        {
+          "filename": "numpy-1.26.4-cp310-cp310-macosx_11_0_arm64.whl",
+          "url": "https://files.pythonhosted.org/packages/20/f7/b24208eba89f9d1b58c1668bc6c8c4fd472b20c45573cb767f59d49fb0f6/numpy-1.26.4-cp310-cp310-macosx_11_0_arm64.whl",
+          "bytes": 13966411,
+          "sha256": "2e4ee3380d6de9c9ec04745830fd9e2eccb3e6cf790d39d7b98ffd19b0dd754a",
+          "status": 200
+        }
+      ],
+      "versions": {
+        "python": "3.10.20 (main, May 10 2026, 19:20:50) [Clang 22.1.3 ]",
+        "numpy": "1.26.4",
+        "executable": "<repo>/.flywheel/sessions/0626ab51281e/scratch/ds298-fixture-qualification/owned tmp $ ' \"/flywheel-bench-grade-6V94EV/.bench-home/python/bin/python",
+        "numpyPath": "<repo>/.flywheel/sessions/0626ab51281e/scratch/ds298-fixture-qualification/owned tmp $ ' \"/flywheel-bench-grade-6V94EV/.bench-home/python/lib/python3.10/site-packages/numpy/__init__.py"
+      },
+      "evidence": {
+        "file": "qualification/base-grade.json.gz",
+        "bytes": 2088,
+        "sha256": "a142961ebbcee98e56737113ee4676f88de92f8a71c2a79404b3ae09687efc48",
+        "decompressedBytes": 7277,
+        "decompressedSha256": "7f40b5417dedf79d3f6b2ab283bad9842b6e3c69f82a6e34be3fc76bda125e37"
+      },
+      "originalPassed": false,
+      "originalResultSha256": "fa6dae2ef459225ad117b93e45241405a1f116b0cc1ba48cd5901668d5153573"
+    },
+    {
+      "name": "reference",
+      "preparedMs": 11577,
+      "captureAndGradeMs": 11437,
+      "acceptance": {
+        "passed": 1,
+        "failed": 0,
+        "total": 1
+      },
+      "graderSeconds": 0.358547291951254,
+      "originalCaseIds": [
+        1,
+        2,
+        3
+      ],
+      "caseObservation": "IDs identify original cases, not individually observed execution. Failure can stop before later cases or test_string.",
+      "managerLifecycle": [
+        {
+          "address": [
+            "127.0.0.1",
+            54259
+          ],
+          "pid": 22323,
+          "exitcode": 0,
+          "listenerClosed": true,
+          "aliveAfterShutdown": false,
+          "inheritedAuthkey": true
+        }
+      ],
+      "factoryRestored": true,
+      "noActiveChildren": true,
+      "ownedTmpUnchanged": true,
+      "acquired": [
+        {
+          "filename": "python.tar.gz",
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260510/cpython-3.10.20%2B20260510-aarch64-apple-darwin-install_only.tar.gz",
+          "bytes": 25921421,
+          "sha256": "22f02aa2458efa28029f91800c3d85a270ae308a2d8450f3f6cef49f56abfa48",
+          "status": 200
+        },
+        {
+          "filename": "numpy-1.26.4-cp310-cp310-macosx_11_0_arm64.whl",
+          "url": "https://files.pythonhosted.org/packages/20/f7/b24208eba89f9d1b58c1668bc6c8c4fd472b20c45573cb767f59d49fb0f6/numpy-1.26.4-cp310-cp310-macosx_11_0_arm64.whl",
+          "bytes": 13966411,
+          "sha256": "2e4ee3380d6de9c9ec04745830fd9e2eccb3e6cf790d39d7b98ffd19b0dd754a",
+          "status": 200
+        }
+      ],
+      "versions": {
+        "python": "3.10.20 (main, May 10 2026, 19:20:50) [Clang 22.1.3 ]",
+        "numpy": "1.26.4",
+        "executable": "<repo>/.flywheel/sessions/0626ab51281e/scratch/ds298-fixture-qualification/owned tmp $ ' \"/flywheel-bench-grade-rB7jdJ/.bench-home/python/bin/python",
+        "numpyPath": "<repo>/.flywheel/sessions/0626ab51281e/scratch/ds298-fixture-qualification/owned tmp $ ' \"/flywheel-bench-grade-rB7jdJ/.bench-home/python/lib/python3.10/site-packages/numpy/__init__.py"
+      },
+      "evidence": {
+        "file": "qualification/reference-grade.json.gz",
+        "bytes": 2522,
+        "sha256": "d356d2ee65066963b42c9ea35bbc4f5e4080f158b1062cea0359361deedaed82",
+        "decompressedBytes": 9076,
+        "decompressedSha256": "ae0002593ee36301655aea37d502ce57cd1f050103c37c5fcf9f286840b3e47e"
+      },
+      "originalPassed": true,
+      "originalResultSha256": "284d1e8c4918248233df17642bbb940c001e1fa856c18aab86ba6dbe7813eb13"
+    },
+    {
+      "name": "fault",
+      "preparedMs": 10396,
+      "captureAndGradeMs": 12396,
+      "acceptance": {
+        "passed": 0,
+        "failed": 1,
+        "total": 1
+      },
+      "graderSeconds": 0.43249200005084276,
+      "originalCaseIds": [
+        1,
+        2,
+        3
+      ],
+      "caseObservation": "IDs identify original cases, not individually observed execution. Failure can stop before later cases or test_string.",
+      "managerLifecycle": [
+        {
+          "address": [
+            "127.0.0.1",
+            54325
+          ],
+          "pid": 22929,
+          "exitcode": 0,
+          "listenerClosed": true,
+          "aliveAfterShutdown": false,
+          "inheritedAuthkey": true
+        }
+      ],
+      "factoryRestored": true,
+      "noActiveChildren": true,
+      "ownedTmpUnchanged": true,
+      "acquired": [
+        {
+          "filename": "python.tar.gz",
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260510/cpython-3.10.20%2B20260510-aarch64-apple-darwin-install_only.tar.gz",
+          "bytes": 25921421,
+          "sha256": "22f02aa2458efa28029f91800c3d85a270ae308a2d8450f3f6cef49f56abfa48",
+          "status": 200
+        },
+        {
+          "filename": "numpy-1.26.4-cp310-cp310-macosx_11_0_arm64.whl",
+          "url": "https://files.pythonhosted.org/packages/20/f7/b24208eba89f9d1b58c1668bc6c8c4fd472b20c45573cb767f59d49fb0f6/numpy-1.26.4-cp310-cp310-macosx_11_0_arm64.whl",
+          "bytes": 13966411,
+          "sha256": "2e4ee3380d6de9c9ec04745830fd9e2eccb3e6cf790d39d7b98ffd19b0dd754a",
+          "status": 200
+        }
+      ],
+      "versions": {
+        "python": "3.10.20 (main, May 10 2026, 19:20:50) [Clang 22.1.3 ]",
+        "numpy": "1.26.4",
+        "executable": "<repo>/.flywheel/sessions/0626ab51281e/scratch/ds298-fixture-qualification/owned tmp $ ' \"/flywheel-bench-grade-OId51l/.bench-home/python/bin/python",
+        "numpyPath": "<repo>/.flywheel/sessions/0626ab51281e/scratch/ds298-fixture-qualification/owned tmp $ ' \"/flywheel-bench-grade-OId51l/.bench-home/python/lib/python3.10/site-packages/numpy/__init__.py"
+      },
+      "evidence": {
+        "file": "qualification/fault-grade.json.gz",
+        "bytes": 2444,
+        "sha256": "790059303490d5f2ef9d2e228cc1e92d29cce917238f0ce5eca9dd4485739fa7",
+        "decompressedBytes": 8281,
+        "decompressedSha256": "978541f841cb854781e09e7e3a878117824723fbbf9738048dffd8a7373978ad"
+      },
+      "originalPassed": false,
+      "originalResultSha256": "e2d0a3baa535ce24b0c5ce8c3adcb047d80f1ac5bdba92d6f5fae4cc70df6b1b"
+    }
+  ],
+  "tmpClean": true,
+  "loaderInstructionBytes": 550,
+  "modelCalls": 0,
+  "historicalModelAccounting": "calibration.json is separate from these control runs",
+  "taskIdentityNote": "Recorded pre-evidence fixture identity is in qualification/full-record.json.gz. Retaining evidence changes fixture identity."
+}

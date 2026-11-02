@@ -1,0 +1,1 @@
+I want each session to have an optional spend budget that I can set in flywheel.toml. When a session crosses the soft limit, show a clear warning in the TUI without stopping the session. Derive the warning from the cost data Flywheel already collects so resumed sessions stay accurate.

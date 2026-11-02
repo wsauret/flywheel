@@ -1,0 +1,24 @@
+{
+  "index_zero_based": 19959,
+  "reference_pair": [
+    "(%%\n#stack:\n)([^%#\n]*)\n([^%]*#legal_knight_moves: )([^\n]*)",
+    "\\1\\3\\2;\\4"
+  ],
+  "fault_pair": [
+    "(%%\n#stack:\n)([^%#\n]*)\n([^%]*#legal_knight_moves: )([^\n]*)",
+    "\\1\\3\\4"
+  ],
+  "original_pair_byte_start": 1316700,
+  "original_pair_byte_end_exclusive": 1316784,
+  "original_pair_utf8": "[\"(%%\\n#stack:\\n)([^%#\\n]*)\\n([^%]*#legal_knight_moves: )([^\\n]*)\", \"\\\\1\\\\3\\\\2;\\\\4\"]",
+  "fault_pair_utf8": "[\"(%%\\n#stack:\\n)([^%#\\n]*)\\n([^%]*#legal_knight_moves: )([^\\n]*)\", \"\\\\1\\\\3\\\\4\"]",
+  "original_replacement_json_bytes": "\"\\\\1\\\\3\\\\2;\\\\4\"",
+  "fault_replacement_json_bytes": "\"\\\\1\\\\3\\\\4\"",
+  "reference_sha256": "19dbeb84c93f34f5047f9b726564bc140541a4131ad02b148d51b35deafd83c1",
+  "fault_sha256": "b13979ed792ac219ca4ab584033d64c9387679ad4108790923fe6806dbaaee31",
+  "reference_bytes": 2618134,
+  "fault_bytes": 2618130,
+  "observed_reference_evidence": "<repo>/.flywheel/sessions/7c061b5b674d/scratch/qualification/reference/fault-choice-observation.json",
+  "expected_before_run": "The initial position loses the observed g1h3 knight move, reducing 20 legal next positions to 19. All three game tests reach that initial position and must fail move-count equality. Size must still pass.",
+  "mechanism": "The original accumulation replacement appends capture group 2, the observed knight move FEN, to legal_knight_moves. The fault consumes that stack entry but does not append it."
+}

@@ -1,0 +1,14 @@
+===================================================================
+--- a/reader.ts
++++ b/reader.ts
+@@ -14,9 +14,9 @@
+   return {
+     latest(metric, nowMs) {
+       const cutoffMs = nowMs - options.retentionMs;
+       return options.store.read(metric)
+-        .filter((rollup) => rollup.windowEndMs >= cutoffMs)
++        .filter((rollup) => rollup.windowEndMs >= cutoffMs && rollup.windowEndMs <= nowMs)
+         .sort((left, right) => right.windowEndMs - left.windowEndMs)[0];
+     },
+   };
+ }

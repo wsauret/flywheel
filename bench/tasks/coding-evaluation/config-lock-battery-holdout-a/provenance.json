@@ -1,0 +1,315 @@
+{
+  "schemaVersion": 1,
+  "role": "reserved-evaluation",
+  "baseRef": "d681a265d1e11113a5ca92f1e4bcac73ab992eb7",
+  "sourceFixture": "config-lock-first-write",
+  "sourcePaths": [
+    "src/infra/darwin-process-api.ts",
+    "src/infra/debug-log.ts",
+    "src/infra/descriptor-directory-contract.ts",
+    "src/infra/descriptor-directory-posix-component.ts",
+    "src/infra/descriptor-directory-posix.ts",
+    "src/infra/descriptor-directory-win32-native.ts",
+    "src/infra/descriptor-directory-win32-path.ts",
+    "src/infra/descriptor-directory-win32.ts",
+    "src/infra/descriptor-directory.ts",
+    "src/infra/diagnostics-registry.ts",
+    "src/infra/directory-authorities.ts",
+    "src/infra/error-message.ts",
+    "src/infra/kernel-api-open.ts",
+    "src/infra/libc.ts",
+    "src/infra/log.ts",
+    "src/infra/native-assets.ts",
+    "src/infra/open-at.ts",
+    "src/infra/ownership-file-lock.ts",
+    "src/infra/paths.ts",
+    "src/infra/private-path.ts",
+    "src/infra/process-container.ts",
+    "src/infra/process-diagnostic-reader.ts",
+    "src/infra/process-holder.ts",
+    "src/infra/process-liveness.ts",
+    "src/infra/read-dir-at.ts",
+    "src/infra/redact-secrets.ts",
+    "src/infra/windows-file-replacement.ts",
+    "src/infra/windows-private-directory-acl.ts",
+    "src/infra/windows-process-api.ts",
+    "src/infra/with-deadline.ts",
+    "src/infra/write-file-under.ts",
+    "src/orchestration/config/config-file.ts"
+  ],
+  "sources": [
+    {
+      "path": "src/infra/darwin-process-api.ts",
+      "baseSha256": "ece9843fdaf4c1f8f6a5d0fe0e713700a6c7cdb9008cc661869cc7ccbf540281",
+      "sandboxSha256": "ece9843fdaf4c1f8f6a5d0fe0e713700a6c7cdb9008cc661869cc7ccbf540281",
+      "referenceSha256": "ece9843fdaf4c1f8f6a5d0fe0e713700a6c7cdb9008cc661869cc7ccbf540281"
+    },
+    {
+      "path": "src/infra/debug-log.ts",
+      "baseSha256": "ab12c383ace49b35cb5b2761694907fc895c92bed272566f2fe9be70f34a2eca",
+      "sandboxSha256": "ab12c383ace49b35cb5b2761694907fc895c92bed272566f2fe9be70f34a2eca",
+      "referenceSha256": "ab12c383ace49b35cb5b2761694907fc895c92bed272566f2fe9be70f34a2eca"
+    },
+    {
+      "path": "src/infra/descriptor-directory-contract.ts",
+      "baseSha256": "3a8c236d1cbd37e9b8e4e320bbfcc3bf9c155268bc5050c31723cb02beb3dac5",
+      "sandboxSha256": "3a8c236d1cbd37e9b8e4e320bbfcc3bf9c155268bc5050c31723cb02beb3dac5",
+      "referenceSha256": "3a8c236d1cbd37e9b8e4e320bbfcc3bf9c155268bc5050c31723cb02beb3dac5"
+    },
+    {
+      "path": "src/infra/descriptor-directory-posix-component.ts",
+      "baseSha256": "0cd25b0730373a28a0acc57bcbffd265a3c8f41d727256b351b3a45703083345",
+      "sandboxSha256": "0cd25b0730373a28a0acc57bcbffd265a3c8f41d727256b351b3a45703083345",
+      "referenceSha256": "0cd25b0730373a28a0acc57bcbffd265a3c8f41d727256b351b3a45703083345"
+    },
+    {
+      "path": "src/infra/descriptor-directory-posix.ts",
+      "baseSha256": "3c3b5844821668b2c2adce580ab57d352cb8908899408c433e457cb735674b87",
+      "sandboxSha256": "3c3b5844821668b2c2adce580ab57d352cb8908899408c433e457cb735674b87",
+      "referenceSha256": "3c3b5844821668b2c2adce580ab57d352cb8908899408c433e457cb735674b87"
+    },
+    {
+      "path": "src/infra/descriptor-directory-win32-native.ts",
+      "baseSha256": "e1db01119f5e341a82bb4b840190c7cad68d380a9048991f042926a31935d3ed",
+      "sandboxSha256": "e1db01119f5e341a82bb4b840190c7cad68d380a9048991f042926a31935d3ed",
+      "referenceSha256": "e1db01119f5e341a82bb4b840190c7cad68d380a9048991f042926a31935d3ed"
+    },
+    {
+      "path": "src/infra/descriptor-directory-win32-path.ts",
+      "baseSha256": "3118bd9ae616c8ba082c5a37df0bf2171261000f80b5833cd8981c90e0493e24",
+      "sandboxSha256": "3118bd9ae616c8ba082c5a37df0bf2171261000f80b5833cd8981c90e0493e24",
+      "referenceSha256": "3118bd9ae616c8ba082c5a37df0bf2171261000f80b5833cd8981c90e0493e24"
+    },
+    {
+      "path": "src/infra/descriptor-directory-win32.ts",
+      "baseSha256": "feb499d77a965f4aaded9fcd02c65f20154e6ca78e5075a41bf6cf548e506f25",
+      "sandboxSha256": "feb499d77a965f4aaded9fcd02c65f20154e6ca78e5075a41bf6cf548e506f25",
+      "referenceSha256": "feb499d77a965f4aaded9fcd02c65f20154e6ca78e5075a41bf6cf548e506f25"
+    },
+    {
+      "path": "src/infra/descriptor-directory.ts",
+      "baseSha256": "03e84a938249378d947f123e8612af7d60f5e0975e7cd1ed39b22cb73810f9a9",
+      "sandboxSha256": "03e84a938249378d947f123e8612af7d60f5e0975e7cd1ed39b22cb73810f9a9",
+      "referenceSha256": "03e84a938249378d947f123e8612af7d60f5e0975e7cd1ed39b22cb73810f9a9"
+    },
+    {
+      "path": "src/infra/diagnostics-registry.ts",
+      "baseSha256": "4c28b64871538e83e5e99a58ab2659e19ccc66fbcc36cf83407e7a2e7e9d8005",
+      "sandboxSha256": "4c28b64871538e83e5e99a58ab2659e19ccc66fbcc36cf83407e7a2e7e9d8005",
+      "referenceSha256": "4c28b64871538e83e5e99a58ab2659e19ccc66fbcc36cf83407e7a2e7e9d8005"
+    },
+    {
+      "path": "src/infra/directory-authorities.ts",
+      "baseSha256": "a3169ab55c90a148e511090436db3575962444ce09d08a5782a8e3e590a7d95d",
+      "sandboxSha256": "a3169ab55c90a148e511090436db3575962444ce09d08a5782a8e3e590a7d95d",
+      "referenceSha256": "a3169ab55c90a148e511090436db3575962444ce09d08a5782a8e3e590a7d95d"
+    },
+    {
+      "path": "src/infra/error-message.ts",
+      "baseSha256": "334675efada1843953a11b614d50a2138e2c88397d573e1a57a99fd94b610bbd",
+      "sandboxSha256": "334675efada1843953a11b614d50a2138e2c88397d573e1a57a99fd94b610bbd",
+      "referenceSha256": "334675efada1843953a11b614d50a2138e2c88397d573e1a57a99fd94b610bbd"
+    },
+    {
+      "path": "src/infra/kernel-api-open.ts",
+      "baseSha256": "b4c3c8cba4021853506371a22bf3dc89715c7a387661ff3ecabafc7849926da2",
+      "sandboxSha256": "b4c3c8cba4021853506371a22bf3dc89715c7a387661ff3ecabafc7849926da2",
+      "referenceSha256": "b4c3c8cba4021853506371a22bf3dc89715c7a387661ff3ecabafc7849926da2"
+    },
+    {
+      "path": "src/infra/libc.ts",
+      "baseSha256": "c1b0c19df7ccc12e600a8c2f2b834129c56d5018ad5370fe2e65b64557202013",
+      "sandboxSha256": "c1b0c19df7ccc12e600a8c2f2b834129c56d5018ad5370fe2e65b64557202013",
+      "referenceSha256": "c1b0c19df7ccc12e600a8c2f2b834129c56d5018ad5370fe2e65b64557202013"
+    },
+    {
+      "path": "src/infra/log.ts",
+      "baseSha256": "d8d0abe39b56bce6d287df00ef120545dab29f3246a304ec4a69e3fd7b52532f",
+      "sandboxSha256": "d8d0abe39b56bce6d287df00ef120545dab29f3246a304ec4a69e3fd7b52532f",
+      "referenceSha256": "d8d0abe39b56bce6d287df00ef120545dab29f3246a304ec4a69e3fd7b52532f"
+    },
+    {
+      "path": "src/infra/native-assets.ts",
+      "baseSha256": "b6c6766238e57bf4f9d95b78b10dbc8f79bc9efb6c8fbf03e642ea961e322b08",
+      "sandboxSha256": "b6c6766238e57bf4f9d95b78b10dbc8f79bc9efb6c8fbf03e642ea961e322b08",
+      "referenceSha256": "b6c6766238e57bf4f9d95b78b10dbc8f79bc9efb6c8fbf03e642ea961e322b08"
+    },
+    {
+      "path": "src/infra/open-at.ts",
+      "baseSha256": "7ee681bdc1b16d80c97779e894ffdaba0fe45fdb1b29e7b8205683479e7a4cc8",
+      "sandboxSha256": "7ee681bdc1b16d80c97779e894ffdaba0fe45fdb1b29e7b8205683479e7a4cc8",
+      "referenceSha256": "7ee681bdc1b16d80c97779e894ffdaba0fe45fdb1b29e7b8205683479e7a4cc8"
+    },
+    {
+      "path": "src/infra/ownership-file-lock.ts",
+      "baseSha256": "5529a50a008575c20d09bf671b2724bdf86ba0da2a72f0dfd67e5ea35ed81d89",
+      "sandboxSha256": "f8560aaed29881fcb74dce7954e0891c74775dddec911ea5b1d14c3bd6bbd977",
+      "referenceSha256": "30ddfca3f02a93d909fb4d35abf3b09a183cae9f0699b637f30af078a367662b"
+    },
+    {
+      "path": "src/infra/paths.ts",
+      "baseSha256": "5db7a96d9accbd94287ea9cb5ac63f671f39a84b6325c62d2f47d420f817394f",
+      "sandboxSha256": "5db7a96d9accbd94287ea9cb5ac63f671f39a84b6325c62d2f47d420f817394f",
+      "referenceSha256": "5db7a96d9accbd94287ea9cb5ac63f671f39a84b6325c62d2f47d420f817394f"
+    },
+    {
+      "path": "src/infra/private-path.ts",
+      "baseSha256": "fcb55a599043eba24a435556301cba6b2c1e2a73f1b1938365f74cee22146706",
+      "sandboxSha256": "fcb55a599043eba24a435556301cba6b2c1e2a73f1b1938365f74cee22146706",
+      "referenceSha256": "fcb55a599043eba24a435556301cba6b2c1e2a73f1b1938365f74cee22146706"
+    },
+    {
+      "path": "src/infra/process-container.ts",
+      "baseSha256": "2f77c048e78d6bb63cb41eefea67c8b3f54e96d1d4bf54bb4bdbed9d73c9248c",
+      "sandboxSha256": "2f77c048e78d6bb63cb41eefea67c8b3f54e96d1d4bf54bb4bdbed9d73c9248c",
+      "referenceSha256": "2f77c048e78d6bb63cb41eefea67c8b3f54e96d1d4bf54bb4bdbed9d73c9248c"
+    },
+    {
+      "path": "src/infra/process-diagnostic-reader.ts",
+      "baseSha256": "ecf4054259e64587b10df8b50686775409eefb807decebbccd37870313b6b62e",
+      "sandboxSha256": "ecf4054259e64587b10df8b50686775409eefb807decebbccd37870313b6b62e",
+      "referenceSha256": "ecf4054259e64587b10df8b50686775409eefb807decebbccd37870313b6b62e"
+    },
+    {
+      "path": "src/infra/process-holder.ts",
+      "baseSha256": "0d9493a98c98c397d4d92031e40f6e55adb6422cfc4d871c998d3f61bd7715f2",
+      "sandboxSha256": "0d9493a98c98c397d4d92031e40f6e55adb6422cfc4d871c998d3f61bd7715f2",
+      "referenceSha256": "0d9493a98c98c397d4d92031e40f6e55adb6422cfc4d871c998d3f61bd7715f2"
+    },
+    {
+      "path": "src/infra/process-liveness.ts",
+      "baseSha256": "e3280bc7ca6fcec8c8152fc760fd065e13a71601492511e2a235ff455ae22a07",
+      "sandboxSha256": "e3280bc7ca6fcec8c8152fc760fd065e13a71601492511e2a235ff455ae22a07",
+      "referenceSha256": "e3280bc7ca6fcec8c8152fc760fd065e13a71601492511e2a235ff455ae22a07"
+    },
+    {
+      "path": "src/infra/read-dir-at.ts",
+      "baseSha256": "aea5b8c9d87f74753300761756af6b3890ed9816c432ec05b898ca73689fe72b",
+      "sandboxSha256": "aea5b8c9d87f74753300761756af6b3890ed9816c432ec05b898ca73689fe72b",
+      "referenceSha256": "aea5b8c9d87f74753300761756af6b3890ed9816c432ec05b898ca73689fe72b"
+    },
+    {
+      "path": "src/infra/redact-secrets.ts",
+      "baseSha256": "48bb4f60fc8675fbcdedd5841504267f53496ef9c879973de1d904990fb5c7a2",
+      "sandboxSha256": "48bb4f60fc8675fbcdedd5841504267f53496ef9c879973de1d904990fb5c7a2",
+      "referenceSha256": "48bb4f60fc8675fbcdedd5841504267f53496ef9c879973de1d904990fb5c7a2"
+    },
+    {
+      "path": "src/infra/windows-file-replacement.ts",
+      "baseSha256": "31c07668b1fa2dff46de73f53b4548f97b5daa2bbcf046ad492299999bf76296",
+      "sandboxSha256": "31c07668b1fa2dff46de73f53b4548f97b5daa2bbcf046ad492299999bf76296",
+      "referenceSha256": "31c07668b1fa2dff46de73f53b4548f97b5daa2bbcf046ad492299999bf76296"
+    },
+    {
+      "path": "src/infra/windows-private-directory-acl.ts",
+      "baseSha256": "5e095ae01fff18a5558b1015ec164644bdeab371d096936e6f8ae6d866082c54",
+      "sandboxSha256": "5e095ae01fff18a5558b1015ec164644bdeab371d096936e6f8ae6d866082c54",
+      "referenceSha256": "5e095ae01fff18a5558b1015ec164644bdeab371d096936e6f8ae6d866082c54"
+    },
+    {
+      "path": "src/infra/windows-process-api.ts",
+      "baseSha256": "7f35b7e639d323d4f22a8c732f83d8c2ec719e3104d83b6c89e6409008cfdc26",
+      "sandboxSha256": "7f35b7e639d323d4f22a8c732f83d8c2ec719e3104d83b6c89e6409008cfdc26",
+      "referenceSha256": "7f35b7e639d323d4f22a8c732f83d8c2ec719e3104d83b6c89e6409008cfdc26"
+    },
+    {
+      "path": "src/infra/with-deadline.ts",
+      "baseSha256": "26678b4841102142acb0a579fd8b1f580a07fa3620991638c767ec1688967c06",
+      "sandboxSha256": "26678b4841102142acb0a579fd8b1f580a07fa3620991638c767ec1688967c06",
+      "referenceSha256": "26678b4841102142acb0a579fd8b1f580a07fa3620991638c767ec1688967c06"
+    },
+    {
+      "path": "src/infra/write-file-under.ts",
+      "baseSha256": "b413b72849d814552425a85f8595d9e1a61b43d462aaedf2543b27de9017c578",
+      "sandboxSha256": "b413b72849d814552425a85f8595d9e1a61b43d462aaedf2543b27de9017c578",
+      "referenceSha256": "b413b72849d814552425a85f8595d9e1a61b43d462aaedf2543b27de9017c578"
+    },
+    {
+      "path": "src/orchestration/config/config-file.ts",
+      "baseSha256": "f71b8c46119adc118732e1cb9dac7b8eeac7eb1cc80907dbcd0a64ea77795ef4",
+      "sandboxSha256": "3800f661c6364a34c035234e7b0c65380a78fac45ca8d60cc80235447c0ec9b1",
+      "referenceSha256": "3800f661c6364a34c035234e7b0c65380a78fac45ca8d60cc80235447c0ec9b1"
+    }
+  ],
+  "construction": {
+    "kind": "synthetic-contract-regression",
+    "prerequisite": "Apply the existing no-yield ownership repair before injecting the new regression.",
+    "injection": "The acquired callback dispatch incorrectly treats a foreign lock object as an acquired native lock.",
+    "historicalBugClaim": false,
+    "nativeBoundary": "The pinned native descriptor and process-holder source remains present and executes without substitutes."
+  },
+  "tests": [
+    {
+      "destination": "acceptance/config-battery.test.ts",
+      "origin": "New fixture-authored native public-boundary scenarios.",
+      "scenarios": [
+        "A symbolic link at the lock name rejects before invoking the callback and leaves the link and its target unchanged.",
+        "A directory at the lock name rejects before invoking the callback and preserves its contents.",
+        "An admitted callback failure is propagated exactly once, and its native lock is released."
+      ]
+    },
+    {
+      "destination": "config-smoke.test.ts",
+      "origin": "Unchanged visible smoke test from config-lock-first-write/sandbox.patch."
+    }
+  ],
+  "controls": [
+    {
+      "id": "reference",
+      "patches": [
+        "qualification/reference.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "Restore the preserved native contract in the seeded source.",
+      "expectedFailures": []
+    },
+    {
+      "id": "alternative",
+      "patches": [
+        "qualification/alternative.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "An independently structured repair retains native operations.",
+      "expectedFailures": []
+    },
+    {
+      "id": "seeded-bug",
+      "patches": [
+        "qualification/seeded-bug.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "The acquired callback dispatch incorrectly treats a foreign lock object as an acquired native lock.",
+      "expectedFailures": [
+        "acceptance/config-battery.test.ts > a symbolic link lock refuses admission and preserves both entries",
+        "acceptance/config-battery.test.ts > a directory lock refuses admission without removing the directory"
+      ]
+    },
+    {
+      "id": "swallowed-error",
+      "patches": [
+        "qualification/swallowed-error.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Refuse callback admission but hide the failure at the public ownership boundary.",
+      "expectedFailures": [
+        "acceptance/config-battery.test.ts > a symbolic link lock refuses admission and preserves both entries",
+        "acceptance/config-battery.test.ts > a directory lock refuses admission without removing the directory",
+        "acceptance/config-battery.test.ts > a callback exception is not retried and leaves native ownership reusable"
+      ]
+    }
+  ],
+  "environment": {
+    "runtime": "bun",
+    "platform": "darwin",
+    "architecture": "arm64",
+    "dependencies": [],
+    "setup": "bun install --frozen-lockfile"
+  },
+  "limits": [
+    "Synthetic regression, not a newly discovered historical defect.",
+    "Native macOS evidence does not establish Windows or Linux behavior.",
+    "Only this new fixture is reserved when role is reserved-evaluation. Its source and existing family are not unseen.",
+    "The acceptance tests and repairs are not candidate inputs.",
+    "No candidate prompts or campaign results were inspected."
+  ]
+}

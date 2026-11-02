@@ -1,0 +1,41 @@
+# A lens-diverse review. Each named agent reviews the same change for one
+# way it can fail, which catches failures that identical reviewers miss.
+# Each agent runs as a reviewer persona: the persona brings its review
+# method, its read-only tools, its turn limit, and its model seat, as it
+# would as a subagent, and the phase's brief and output contract apply to
+# every agent. Pick the reviewer personas that the review method would
+# dispatch for this change. The dedupe join merges what the agents find by
+# `site`, and keeps the agent that found each one in its `branch` field.
+id: lens-review
+name: Lens review
+description: Review one change through several reviewer personas and merge what they find.
+phases:
+  - phase: review
+    brief: Review the change in the request through your persona's lens. Follow each suspicious result into the code that consumes it, also outside the changed files. A doc comment or a test that calls a behavior intended does not make it correct. Report each finding with its file and line, its evidence, and a scenario that triggers it.
+    output:
+      fields:
+        findings:
+          type: list
+          # The cap only bounds the worst case. Keep it high enough that a
+          # reviewer never drops a real finding.
+          max: 20
+          unique: site
+          of:
+            type: object
+            fields:
+              site: { type: string, description: "Exactly `<path>:<line>`, such as `src/a.ts:42`. Build it only from path and line." }
+              path: { type: string, description: "Repository-relative path, with no leading ./" }
+              line: { type: number, description: The first line of the finding. }
+              severity: { type: enum, values: [low, medium, high] }
+              claim: { type: string, description: The finding in one sentence. }
+              evidence: { type: string, description: "The lines that show the finding, each as path and line, including the code that consumes the result." }
+              scenario: { type: string, description: "The input or sequence that triggers the finding, and the wrong outcome that it causes." }
+    agents:
+      - { agent: security, persona: reviewer-code-security }
+      - { agent: perf, persona: reviewer-code-performance }
+      - { agent: elegance, persona: reviewer-code-elegance }
+    join:
+      reducer: dedupe
+      with: { items: findings, by: site }
+  - phase: summarize
+    brief: Order the kept findings by severity, highest first, and name the agent of each one from its `branch` field. Then name each agent that has no kept finding.

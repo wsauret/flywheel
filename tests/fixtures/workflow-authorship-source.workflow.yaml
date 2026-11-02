@@ -1,0 +1,15 @@
+id: evidence-probe
+name: Evidence probe
+phases:
+  - repeat:
+      while: verify.more
+      max: 2
+    phases:
+      - phase: verify
+        brief: Check the result.
+        output:
+          fields:
+            more:
+              type: string
+              nullable: true
+              description: Further work.

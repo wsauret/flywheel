@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "role": "development",
+  "family": "tool-argument-completeness",
+  "sourceRef": "f77cd52b328a4009d54b105411202d586d18427d",
+  "sourcePaths": [
+    "src/orchestration/agent-runtime/llm/json-parse.ts"
+  ],
+  "sourceSha256": "33672f6dc572595bfa19778a969aae024a2dfa57ec02f4d1f9561266af8d0043",
+  "seedSha256": "a258499a4c0f30e3a9ee7c02ef7ec995ca2739f91b8e9b1cab2c9534296beef3",
+  "construction": {
+    "kind": "synthetic-regression",
+    "historicalBugClaim": false,
+    "description": "Preserve complete nested argument envelopes while refusing truncated documents and nonobject roots.",
+    "nativeBoundary": "Use the pinned source closure with real file operations or its installed parser dependency, without mocks."
+  },
+  "candidateBoundary": "Only pinned source, sandbox.patch, and plan are candidate inputs. Acceptance and controls remain separate.",
+  "priorInspection": "No candidate prompt or campaign result was inspected. This is development material, not an unseen-source claim.",
+  "environment": {
+    "runtime": "bun",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "controls": [
+    {
+      "id": "reference",
+      "patches": [
+        "qualification/reference.patch"
+      ],
+      "expectation": "pass",
+      "expectedFailures": [],
+      "rationale": "Restore the pinned native implementation."
+    },
+    {
+      "id": "alternative",
+      "patches": [
+        "qualification/alternative.patch"
+      ],
+      "expectation": "pass",
+      "expectedFailures": [],
+      "rationale": "Express the same boundary decision independently."
+    },
+    {
+      "id": "first-close",
+      "patches": [
+        "qualification/first-close.patch"
+      ],
+      "expectation": "fail",
+      "expectedFailures": [
+        "acceptance/contract.test.ts > unwraps nested objects without dropping trailing fields",
+        "acceptance/contract.test.ts > refuses complete array envelopes as arrays",
+        "acceptance/contract.test.ts > retains strict bare objects and repairs enveloped controls"
+      ],
+      "rationale": "Synthetic first-close selection truncates nested envelopes."
+    },
+    {
+      "id": "raw-only",
+      "patches": [
+        "qualification/raw-only.patch"
+      ],
+      "expectation": "fail",
+      "expectedFailures": [
+        "acceptance/contract.test.ts > unwraps nested objects without dropping trailing fields",
+        "acceptance/contract.test.ts > refuses complete array envelopes as arrays",
+        "acceptance/contract.test.ts > retains strict bare objects and repairs enveloped controls"
+      ],
+      "rationale": "Disables envelope handling instead of selecting its full document."
+    },
+    {
+      "id": "completion",
+      "patches": [
+        "qualification/completion.patch"
+      ],
+      "expectation": "fail",
+      "expectedFailures": [
+        "acceptance/contract.test.ts > does not complete a truncated nested document"
+      ],
+      "rationale": "Returns tolerant partial values instead of refusing incomplete arguments."
+    }
+  ]
+}

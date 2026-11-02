@@ -1,0 +1,116 @@
+{
+  "submit": "file",
+  "summary": "Brief summary of the plan.",
+  "fields": {
+    "schema_version": {
+      "type": "enum",
+      "values": [1],
+      "description": "Plan schema version. Must be 1."
+    },
+    "context": {
+      "type": "object",
+      "description": "Plan context: key_files, patterns, constraints (constraints[0] is the verbatim user description), and optional project_docs (doc paths consulted during research, forwarded to reviewers).",
+      "fields": {
+        "key_files": {
+          "type": "list",
+          "optional": true,
+          "of": { "type": "string" },
+          "description": "Repo-relative paths with one-line reasons."
+        },
+        "patterns": {
+          "type": "list",
+          "optional": true,
+          "of": { "type": "string" },
+          "description": "Existing patterns to follow."
+        },
+        "constraints": {
+          "type": "list",
+          "min": 1,
+          "of": { "type": "string" },
+          "description": "Pitfalls and design rationale. constraints[0] is the verbatim user description."
+        },
+        "project_docs": {
+          "type": "list",
+          "optional": true,
+          "of": { "type": "string" },
+          "description": "Doc paths consulted during research, forwarded to reviewers."
+        }
+      }
+    },
+    "milestones": {
+      "type": "list",
+      "min": 1,
+      "unique": "id",
+      "description": "Array of direct implementation milestones. Each milestone has id, goal, files, tasks, and verification. Never include discovery or decision milestones.",
+      "of": {
+        "type": "object",
+        "fields": {
+          "id": { "type": "string", "description": "The milestone id." },
+          "goal": { "type": "string", "description": "What the milestone delivers." },
+          "files": {
+            "type": "list",
+            "of": { "type": "string" },
+            "description": "Repo-relative paths the milestone is expected to touch."
+          },
+          "tasks": {
+            "type": "list",
+            "unique": "id",
+            "description": "The concrete changes of the milestone.",
+            "of": {
+              "type": "object",
+              "fields": {
+                "id": { "type": "string", "description": "The task id." },
+                "description": { "type": "string", "description": "The concrete change." },
+                "files": {
+                  "type": "list",
+                  "of": { "type": "string" },
+                  "description": "Repo-relative paths the task changes."
+                },
+                "test_scenarios": {
+                  "type": "list",
+                  "of": { "type": "string" },
+                  "description": "Plain statements of the expected behavior."
+                }
+              }
+            }
+          },
+          "verification": { "type": "string", "description": "A runnable command that proves this milestone alone." },
+          "qualitative_verification": {
+            "type": "string",
+            "optional": true,
+            "nullable": true,
+            "description": "The judgment that no command can prove, or null."
+          }
+        }
+      }
+    },
+    "success_criteria": {
+      "type": "list",
+      "min": 1,
+      "of": { "type": "string" },
+      "description": "Measurable criteria for the implementation to be considered complete."
+    },
+    "implementation_contract": {
+      "type": "object",
+      "optional": true,
+      "description": "A compact contract for the implementer: 1-4 directives, each { id, text, completion_check }. fly.spec-create originates it and spec-review preserves an existing contract. Downstream work agents echo every directive in contract_result.",
+      "fields": {
+        "directives": {
+          "type": "list",
+          "min": 1,
+          "max": 4,
+          "unique": "id",
+          "description": "One concrete commitment for each directive.",
+          "of": {
+            "type": "object",
+            "fields": {
+              "id": { "type": "string", "description": "The directive id." },
+              "text": { "type": "string", "description": "The commitment the diff either satisfies or does not." },
+              "completion_check": { "type": "string", "description": "A file, test, command, or exact symbol the work handoff can cite." }
+            }
+          }
+        }
+      }
+    }
+  }
+}

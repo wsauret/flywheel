@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "summary": "Keep bounded raw evidence in refused tool arguments without truncating valid input.",
+  "context": {
+    "key_files": [
+      "src/orchestration/agent-runtime/llm/json-parse.ts"
+    ],
+    "patterns": [
+      "parseToolArguments returns an object and an optional parseError without throwing.",
+      "Strict parsing precedes complete-document repair; tolerant parsing classifies incomplete buffers only."
+    ],
+    "constraints": [
+      "Change only src/orchestration/agent-runtime/llm/json-parse.ts.",
+      "Preserve the public parser and private helper contracts.",
+      "Do not change tests, dependencies, setup, or runtime composition.",
+      "Bound error evidence only. Successful argument values must never be truncated.",
+      "A long failure must not include the tail after the 600-code-unit snippet.",
+      "Preserve the failure category and do not replace errors with empty successful inputs."
+    ]
+  },
+  "milestones": [
+    {
+      "id": "repair-parser-contract",
+      "goal": "Keep bounded raw evidence in refused tool arguments without truncating valid input.",
+      "files": [
+        "src/orchestration/agent-runtime/llm/json-parse.ts"
+      ],
+      "tasks": [
+        {
+          "id": "repair-boundary",
+          "description": "Restore failure feedback that includes the first 600 raw JavaScript string code units for longer buffers. Include all raw text through length 600. Use the original received text, not repaired or envelope-stripped text. Keep incomplete-document and non-object diagnoses, refusal input {}, successful full values, and the empty-buffer contract. No omission marker or count format is required.",
+          "files": [
+            "src/orchestration/agent-runtime/llm/json-parse.ts"
+          ],
+          "test_scenarios": [
+            "bounds incomplete argument evidence while retaining the raw prefix",
+            "bounds nonobject evidence without changing the root diagnosis",
+            "retains all raw evidence through the exact snippet boundary",
+            "returns full successful inputs and preserves short failures"
+          ]
+        }
+      ],
+      "verification": "bun -e 'import { parseToolArguments } from \"./src/orchestration/agent-runtime/llm/json-parse.ts\"; const rejected = parseToolArguments(\"{\\\"value\\\":\"); if (!rejected.parseError || Object.keys(rejected.input).length) throw new Error(\"partial accepted\"); const accepted = parseToolArguments(\"{\\\"value\\\":1}\"); if (accepted.parseError || accepted.input.value !== 1) throw new Error(\"complete refused\");'",
+      "qualitative_verification": "All supported complete values survive unchanged; rejected buffers remain rejected with useful bounded feedback."
+    }
+  ],
+  "success_criteria": [
+    "Keep bounded raw evidence in refused tool arguments without truncating valid input.",
+    "Bound error evidence only. Successful argument values must never be truncated.",
+    "A long failure must not include the tail after the 600-code-unit snippet.",
+    "Preserve the failure category and do not replace errors with empty successful inputs.",
+    "No adapter, dispatch, or full agent-loop claim is made."
+  ]
+}

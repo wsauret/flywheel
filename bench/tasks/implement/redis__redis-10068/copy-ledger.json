@@ -1,0 +1,114 @@
+{
+  "original/row.json": {
+    "bytes": 7480,
+    "sha256": "ba001df3350ef04259f8d0eddc69e834b6294586938f60623dc00137cb8b4749"
+  },
+  "original/patch.patch": {
+    "bytes": 2236,
+    "sha256": "bfd6bb78c0989f447eb45cdc9a1fb3ff790d7d33313a6638d3737f4cc6858ff1"
+  },
+  "original/test_patch.patch": {
+    "bytes": 790,
+    "sha256": "c1e87f169718938c45d0e08009fcb3345ac2d4e1a69ed662fcbdc97204b3008f"
+  },
+  "original/eval.sh": {
+    "bytes": 1347,
+    "sha256": "b5a3473474dc00c70c79b9254ea3b4980bd54d27a5985ad4e0304080f7dccd2c"
+  },
+  "instruction.txt": {
+    "bytes": 2020,
+    "sha256": "715dccc041916d7c1f6ef38374cb75b97a26361e54313af3ac1fbc3972dd064f"
+  },
+  "original/problem_statement.txt": {
+    "bytes": 2020,
+    "sha256": "715dccc041916d7c1f6ef38374cb75b97a26361e54313af3ac1fbc3972dd064f"
+  },
+  "source-manifest.json": {
+    "bytes": 196008,
+    "sha256": "ea980fb10f5865e8bd30afaa45e75b22781907dba8329d74225834717f925895"
+  },
+  "licenses/harness-LICENSE": {
+    "bytes": 1159,
+    "sha256": "2bd2e08df7147f67a69b42c10efae09bd4bf119df397371036187d5dd1b02f57"
+  },
+  "original/dataset-card.md": {
+    "bytes": 4306,
+    "sha256": "c8b96ca94b43344556c610bcc4e836ef6b5472e2e1f9ca561aebd5cc011e3a14"
+  },
+  "original/dataset-card.provenance.json": {
+    "bytes": 611,
+    "sha256": "9d4a99e68daf148bf87a0c126358bccf2a3176e794920d14254142bcf383cd53"
+  },
+  "original/dataset-row.provenance.json": {
+    "bytes": 1401,
+    "sha256": "602d67cc5cbd462c1b79b0c383a3e8de485b80634541982304b0e86c374a2a62"
+  },
+  "original/source.provenance.json": {
+    "bytes": 365,
+    "sha256": "36a55d4bee36853b5c02c8d74a778fec40b9344795398340406d379f009026f5"
+  },
+  "original/eval.yaml": {
+    "bytes": 521,
+    "sha256": "4c7e76ef3d281eb01e006c5d01a6db049e82fdd60776f935e14f353288d657fc"
+  },
+  "licenses/redis-COPYING": {
+    "bytes": 1487,
+    "sha256": "97f0a15b7bbae580d2609dad2e11f1956ae167be296ab60f4691ab9c30ee9828"
+  },
+  "licenses/hiredis-COPYING": {
+    "bytes": 1588,
+    "sha256": "dca05ce8fc87a8261783b4aed0deef8becc9350b6aa770bc714d0c1833b896eb"
+  },
+  "licenses/jemalloc-COPYING": {
+    "bytes": 1709,
+    "sha256": "94aa2caa98c25d942f58b956c71dba6a99ff98fc3a31cbc669fe2a4cd0268b53"
+  },
+  "licenses/lua-COPYRIGHT": {
+    "bytes": 1528,
+    "sha256": "ee5e3e82af1e1b543c4f216e399d7c8cfee797711913f349e385101c4ae60a79"
+  },
+  "licenses/hdr_histogram-COPYING.txt": {
+    "bytes": 7048,
+    "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+  },
+  "original/sources/c.py": {
+    "bytes": 4375,
+    "sha256": "861a34ce7e596fd5d155ac15bf88acdc495ce12da13a8ae8bbdf8b07edee5e00"
+  },
+  "original/sources/c.py.provenance.json": {
+    "bytes": 444,
+    "sha256": "52076b7668983056206fcb15d2b84db7e09291792e9b78cb97ae465b50a03d95"
+  },
+  "original/sources/grading.py": {
+    "bytes": 14144,
+    "sha256": "a095273010175001a6779e365b3b77abb8657c7ac2e4f80b4bc360faa6f09483"
+  },
+  "original/sources/grading.py.provenance.json": {
+    "bytes": 433,
+    "sha256": "0170f3cb255132232fe9e856b070b40c7777ff423a4c19a69a5fe71643c2bb12"
+  },
+  "original/sources/__init__.py": {
+    "bytes": 2182,
+    "sha256": "8895ab5313d874349c4b07bd223bb9eb00acaee377b432e67cc7ad840341e79b"
+  },
+  "original/sources/__init__.py.provenance.json": {
+    "bytes": 454,
+    "sha256": "15d80d5a69b328fd7728b7ffcb5b7bf66eb25e665c927bad817b24c47ef95c54"
+  },
+  "original/sources/run_evaluation.py": {
+    "bytes": 31442,
+    "sha256": "04b5dab584fbe62ae9d1ff025edf52d714e584102d587c7e647805d1efb37d84"
+  },
+  "original/sources/run_evaluation.py.provenance.json": {
+    "bytes": 447,
+    "sha256": "48813d88f8ca876d0566d5c0baa721ed28cb7be6f6926ebd36151168376e3f53"
+  },
+  "original/sources/infra_failure.py": {
+    "bytes": 2840,
+    "sha256": "72eaca5e8f76390ff9ac1d2d606f5390820b88efe6eed56efed8ff520c593eac"
+  },
+  "licenses/python-LICENSE.txt": {
+    "bytes": 13936,
+    "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+  }
+}

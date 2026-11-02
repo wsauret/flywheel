@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "role": "development",
+  "contentIdentity": "5ec6d5cbc20d44615198c06ba24df6296f109bfe31dce22b054df2490a029e0b",
+  "testIds": [
+    "acceptance/contract.test.ts > boolean refuses nonobject store roots without changing bytes",
+    "acceptance/contract.test.ts > boolean refuses invalid JSON and remains usable after external correction",
+    "acceptance/contract.test.ts > boolean repairs a malformed target and preserves its sibling",
+    "acceptance/contract.test.ts > receipt refuses nonobject store roots without changing bytes",
+    "acceptance/contract.test.ts > receipt refuses invalid JSON and remains usable after external correction",
+    "acceptance/contract.test.ts > receipt repairs a malformed target and preserves its sibling"
+  ],
+  "cases": [
+    {
+      "id": "reference",
+      "patches": [
+        "qualification/reference.patch"
+      ],
+      "expectation": "pass",
+      "expectedFailures": [],
+      "rationale": "Restore the pinned native implementation."
+    },
+    {
+      "id": "alternative",
+      "patches": [
+        "qualification/alternative.patch"
+      ],
+      "expectation": "pass",
+      "expectedFailures": [],
+      "rationale": "Express the same boundary decision independently."
+    },
+    {
+      "id": "root-no-change",
+      "patches": [
+        "qualification/root-no-change.patch"
+      ],
+      "expectation": "fail",
+      "expectedFailures": [
+        "acceptance/contract.test.ts > boolean refuses nonobject store roots without changing bytes",
+        "acceptance/contract.test.ts > receipt refuses nonobject store roots without changing bytes"
+      ],
+      "rationale": "Synthetic silent no-change path hides nonobject root corruption."
+    },
+    {
+      "id": "boolean-only",
+      "patches": [
+        "qualification/boolean-only.patch"
+      ],
+      "expectation": "fail",
+      "expectedFailures": [
+        "acceptance/contract.test.ts > receipt refuses nonobject store roots without changing bytes"
+      ],
+      "rationale": "Repairs only one of the two supported mutation entry points."
+    },
+    {
+      "id": "repair-disabled",
+      "patches": [
+        "qualification/repair-disabled.patch"
+      ],
+      "expectation": "fail",
+      "expectedFailures": [
+        "acceptance/contract.test.ts > boolean refuses invalid JSON and remains usable after external correction",
+        "acceptance/contract.test.ts > boolean repairs a malformed target and preserves its sibling",
+        "acceptance/contract.test.ts > receipt refuses invalid JSON and remains usable after external correction",
+        "acceptance/contract.test.ts > receipt repairs a malformed target and preserves its sibling"
+      ],
+      "rationale": "Disables genuine repair instead of retaining the refusal boundary."
+    }
+  ]
+}

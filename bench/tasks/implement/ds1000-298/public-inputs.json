@@ -1,0 +1,14 @@
+[
+  {
+    "filename": "python.tar.gz",
+    "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260510/cpython-3.10.20%2B20260510-aarch64-apple-darwin-install_only.tar.gz",
+    "bytes": 25921421,
+    "sha256": "22f02aa2458efa28029f91800c3d85a270ae308a2d8450f3f6cef49f56abfa48"
+  },
+  {
+    "filename": "numpy-1.26.4-cp310-cp310-macosx_11_0_arm64.whl",
+    "url": "https://files.pythonhosted.org/packages/20/f7/b24208eba89f9d1b58c1668bc6c8c4fd472b20c45573cb767f59d49fb0f6/numpy-1.26.4-cp310-cp310-macosx_11_0_arm64.whl",
+    "bytes": 13966411,
+    "sha256": "2e4ee3380d6de9c9ec04745830fd9e2eccb3e6cf790d39d7b98ffd19b0dd754a"
+  }
+]

@@ -1,0 +1,6 @@
+{
+  "id": "healthz-greenfield",
+  "stratum": "small",
+  "timeoutMinutes": 30,
+  "sandbox": "greenfield"
+}

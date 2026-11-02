@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "summary": "Refuse asynchronous config admission when the native lock entry is a foreign filesystem object.",
+  "context": {
+    "key_files": [
+      "src/orchestration/config/config-file.ts",
+      "src/infra/ownership-file-lock.ts"
+    ],
+    "patterns": [
+      "Config callbacks are synchronous and operate through native contained directories."
+    ],
+    "constraints": [
+      "Only successful native lock acquisition may admit a callback. Foreign entries are never ownership grants.",
+      "Preserve callback failures and native release. Do not delete or repair foreign objects.",
+      "Preserve the public entry points and native ownership protocol. Do not replace file operations with stubs."
+    ]
+  },
+  "milestones": [
+    {
+      "id": "repair-config-contract",
+      "goal": "Refuse asynchronous config admission when the native lock entry is a foreign filesystem object.",
+      "files": [
+        "src/orchestration/config/config-file.ts",
+        "src/infra/ownership-file-lock.ts"
+      ],
+      "tasks": [
+        {
+          "id": "repair-native-contract",
+          "description": "Refuse asynchronous config admission when the native lock entry is a foreign filesystem object.",
+          "files": [
+            "src/orchestration/config/config-file.ts",
+            "src/infra/ownership-file-lock.ts"
+          ],
+          "test_scenarios": [
+            "A symbolic link at the lock name rejects before invoking the callback and leaves the link and its target unchanged.",
+            "A directory at the lock name rejects before invoking the callback and preserves its contents.",
+            "An admitted callback failure is propagated exactly once, and its native lock is released."
+          ]
+        }
+      ],
+      "verification": "bun test config-smoke.test.ts",
+      "qualitative_verification": "Confirm the implementation retains descriptor-bound native operations."
+    }
+  ],
+  "success_criteria": [
+    "A symbolic link at the lock name rejects before invoking the callback and leaves the link and its target unchanged.",
+    "A directory at the lock name rejects before invoking the callback and preserves its contents.",
+    "An admitted callback failure is propagated exactly once, and its native lock is released."
+  ],
+  "implementation_contract": {
+    "directives": [
+      {
+        "id": "native-contract",
+        "text": "Only successful native lock acquisition may admit a callback. Foreign entries are never ownership grants.",
+        "completion_check": "Native acceptance scenarios pass without weakening ownership."
+      }
+    ]
+  }
+}

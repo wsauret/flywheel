@@ -1,0 +1,1 @@
+In src/orchestration/agent-runtime/llm/json-parse.ts, add a one-line comment directly above VALID_JSON_ESCAPES that says it lists the characters that JSON allows after a backslash. Change nothing else. The other files on this path are <paths>; you do not need them.

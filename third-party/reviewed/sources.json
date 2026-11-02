@@ -1,0 +1,20 @@
+{
+  "@emnapi/runtime@1.11.3": {
+    "source": "https://raw.githubusercontent.com/toyobayashi/emnapi/b2011ea96d28fe60a6b8eabb82c2d6264daf7460/LICENSE",
+    "files": ["third-party/reviewed/npm/emnapi-runtime-1.11.3/LICENSE"]
+  },
+  "data-uri-to-buffer@4.0.1": {
+    "source": "https://registry.npmjs.org/data-uri-to-buffer/4.0.1 and SPDX license-list-data commit 31ba1a50e5397e00a304dbadc76531740e89ee48",
+    "evidence": ["third-party/reviewed/npm/data-uri-to-buffer-4.0.1/package.json"],
+    "files": ["third-party/reviewed/licenses/MIT.txt"]
+  },
+  "kubernetes-types@1.30.0": {
+    "source": "https://registry.npmjs.org/kubernetes-types/1.30.0 and Apache License 2.0 canonical text",
+    "evidence": ["third-party/reviewed/npm/kubernetes-types-1.30.0/package.json"],
+    "files": ["crates/tokenizer/LICENSE.rust-std-APACHE"]
+  },
+  "standardwebhooks@1.0.0": {
+    "source": "https://raw.githubusercontent.com/standard-webhooks/standard-webhooks/929bf0c1928b188287eaf88d0a9f0a4e87df6499/libraries/LICENSE",
+    "files": ["third-party/reviewed/npm/standardwebhooks-1.0.0/LICENSE"]
+  }
+}

@@ -1,0 +1,144 @@
+{
+  "family": "exercism",
+  "split": "development",
+  "classification": "Migrated public task with inspected reference and development calibration; not untouched evaluation.",
+  "files": {
+    "instruction.txt": {
+      "bytes": 992,
+      "sha256": "5b6121be9f6b8b6694b0e79b12bcb571bd0b2bf45be4767a39bb11202b496ca9"
+    },
+    "candidate/Cargo.toml": {
+      "bytes": 106,
+      "sha256": "a7e86259e695485bc33a20921a1d361221d6e2a624b03c47cfb323b516ea55e9"
+    },
+    "candidate/src/lib.rs": {
+      "bytes": 4925,
+      "sha256": "46547887d9457fcff323c996e59ad359e0444c04b070146c25e920c36dff0f69"
+    },
+    "tests/react.rs": {
+      "bytes": 14167,
+      "sha256": "f53454021d91884b5dd7698be4dc1d80620f3c587fd09e760b851256e1db6c71"
+    },
+    "controls/reference.rs": {
+      "bytes": 7858,
+      "sha256": "2164b2d739786c6ff8691db83372a9d74b53ed3d3100f1c7960fcfa46379706f"
+    },
+    "controls/callback-fault.rs": {
+      "bytes": 7646,
+      "sha256": "c2c6b64cd3284abfe3c1f551c41a957c8bea70139a0063992f0a03065abefb51"
+    },
+    "licenses/rust-LICENSE": {
+      "bytes": 1065,
+      "sha256": "e52f804e74f0fbd34e8927962319df346166b8194094309a0aee318693df44df"
+    },
+    "licenses/problem-specifications-LICENSE": {
+      "bytes": 1087,
+      "sha256": "564d81b4e8fa0a816529287256d25d477106e540682003a718140eb7cf913601"
+    },
+    "licenses/aider-LICENSE.txt": {
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    }
+  },
+  "upstreamArtifacts": [
+    {
+      "url": "https://raw.githubusercontent.com/Aider-AI/polyglot-benchmark/7e0611e77b54e2dea774cdc0aa00cf9f7ed6144f/rust/exercises/practice/react/.docs/instructions.md",
+      "sha256": "2d227f7e0b99585c441704993f1ed93009b946ec1ab46c3e9cde89e4dbee500b",
+      "bytes": 732
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Aider-AI/polyglot-benchmark/7e0611e77b54e2dea774cdc0aa00cf9f7ed6144f/rust/exercises/practice/react/.meta/config.json",
+      "sha256": "d63c5019b2716e6012794a675c9bf90608993d1c4507eff1d967cdb7ac9c4d2d",
+      "bytes": 512
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Aider-AI/polyglot-benchmark/7e0611e77b54e2dea774cdc0aa00cf9f7ed6144f/rust/exercises/practice/react/.meta/example.rs",
+      "sha256": "2164b2d739786c6ff8691db83372a9d74b53ed3d3100f1c7960fcfa46379706f",
+      "bytes": 7858
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Aider-AI/polyglot-benchmark/7e0611e77b54e2dea774cdc0aa00cf9f7ed6144f/rust/exercises/practice/react/.meta/tests.toml",
+      "sha256": "f26429cbf584e9384c4b69609b2a16e482134e5bed918dc8a7bedd6340e4cc1b",
+      "bytes": 1360
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Aider-AI/polyglot-benchmark/7e0611e77b54e2dea774cdc0aa00cf9f7ed6144f/rust/exercises/practice/react/Cargo.toml",
+      "sha256": "a7e86259e695485bc33a20921a1d361221d6e2a624b03c47cfb323b516ea55e9",
+      "bytes": 106
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Aider-AI/polyglot-benchmark/7e0611e77b54e2dea774cdc0aa00cf9f7ed6144f/rust/exercises/practice/react/src/lib.rs",
+      "sha256": "46547887d9457fcff323c996e59ad359e0444c04b070146c25e920c36dff0f69",
+      "bytes": 4925
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Aider-AI/polyglot-benchmark/7e0611e77b54e2dea774cdc0aa00cf9f7ed6144f/rust/exercises/practice/react/tests/react.rs",
+      "sha256": "f53454021d91884b5dd7698be4dc1d80620f3c587fd09e760b851256e1db6c71",
+      "bytes": 14167
+    },
+    {
+      "url": "https://raw.githubusercontent.com/exercism/rust/6c321382019fa969401b8e923a5e12ff69065561/LICENSE",
+      "sha256": "e52f804e74f0fbd34e8927962319df346166b8194094309a0aee318693df44df",
+      "bytes": 1065
+    },
+    {
+      "url": "https://raw.githubusercontent.com/exercism/problem-specifications/ae6a54b3a195a012b4d24e86d934ba2181e2842b/LICENSE",
+      "sha256": "564d81b4e8fa0a816529287256d25d477106e540682003a718140eb7cf913601",
+      "bytes": 1087
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Aider-AI/aider/32faf82b31c54d6f19c5c3d63bc294f748bd3e72/benchmark/benchmark.py",
+      "sha256": "ba350b7b3ebcc9da6f588c0724dade552791b3c5edd9f16641eadb5931de9c30",
+      "bytes": 34621
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Aider-AI/aider/32faf82b31c54d6f19c5c3d63bc294f748bd3e72/benchmark/prompts.py",
+      "sha256": "204ff3b6e8d24f854a395e0d66c6bc78f47934059dec7d83b85e530e53446683",
+      "bytes": 473
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Aider-AI/aider/32faf82b31c54d6f19c5c3d63bc294f748bd3e72/LICENSE.txt",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "bytes": 11358
+    }
+  ],
+  "licenses": {
+    "candidate, original tests, reference and derived fault": "MIT: licenses/rust-LICENSE",
+    "exercise instructions": "MIT: licenses/problem-specifications-LICENSE",
+    "original instruction addendum": "Apache-2.0: licenses/aider-LICENSE.txt",
+    "harnessCodeCopied": false
+  },
+  "nativeAdaptations": [
+    "Use installed native Rust tools on PATH, not the original unavailable compiler environment.",
+    "Only candidate Cargo.toml, src/lib.rs and MIT notices enter the candidate workspace.",
+    "Original hidden tests and controls remain outside candidate source.",
+    "Reconstruct source, initialize a separate Git repository, apply captured patch, and restore original tests/react.rs.",
+    "Keep candidate source and documentation edits; no supplemental doctest criterion.",
+    "Cargo state and temporary files live under the workspace-owned .bench-home; Cargo is offline.",
+    "Prepare verifies tool availability and versions, not candidate compilation.",
+    "Success is the original Cargo exit-zero criterion, not observed test counts.",
+    "The task-owned Bun adapter imports the standard Flywheel owned-command, process-supervisor, and sandbox environment boundaries from the repository; no private toolchain paths or copied process owner.",
+    "Cargo timeout awaits descendant settlement and pipe drainage through the shared process owner.",
+    "Cargo output is streamed live. Retained evidence is limited to 1000000 bytes per pipe with explicit truncation flags."
+  ],
+  "command": [
+    "cargo",
+    "test",
+    "--",
+    "--include-ignored"
+  ],
+  "cargoTimeoutMs": 180000,
+  "outerAdapterTimeoutMs": 210000,
+  "setupAndSettlementAllowanceMs": 30000,
+  "timeoutSemantics": "Cargo timeout rejects the original criterion. Outer timeout, missing report, or unavailable tools is infrastructure failure.",
+  "callbackFault": {
+    "mutation": "Combine dependent-update and callback loops in reference set_value; all other source bytes match.",
+    "expectedFailures": [
+      "callbacks_should_only_be_called_once_even_if_multiple_dependencies_change",
+      "callbacks_should_not_be_called_if_dependencies_change_but_output_value_doesnt_change"
+    ]
+  },
+  "limitations": [
+    "No claim of cross-platform execution or original compiler equivalence."
+  ]
+}

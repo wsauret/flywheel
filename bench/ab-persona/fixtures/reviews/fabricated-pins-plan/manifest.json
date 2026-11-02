@@ -1,0 +1,43 @@
+{
+  "title": "Plan review: dependency pin reproducibility and packaged-runbook alignment (real snapshot, fabricated claims seeded)",
+  "commit": "475945d1b",
+  "paths": ["package.json", "tests/unit/scripts", "vscode/.vscodeignore", "vscode/docs"],
+  "defects": [
+    {
+      "id": "exact-pin-from-caret",
+      "title": "Plan claims the OpenAI SDK is pinned exactly at 6.39.0; the manifest carries a caret range",
+      "category": "false-manifest-claim",
+      "files": ["package.json"],
+      "catch_criteria": "The review must state that the manifest field is \"openai\": \"^6.39.0\" (package.json:102), a caret range that floats to any 6.x release at or above 6.39.0, so the plan's claim of an exact 6.39.0 pin is false and its conclusion that the SDK resolution cannot drift between installs does not hold. Quoting the caret field from the manifest, with its location, is the required evidence; a general remark that some ranges float, without citing this field, does not count."
+    },
+    {
+      "id": "invented-feed-version",
+      "title": "Plan's upgrade target web-tree-sitter 0.25.12 was never published to the npm registry",
+      "category": "invented-version",
+      "files": ["package.json"],
+      "catch_criteria": "The review must state that web-tree-sitter 0.25.12 does not exist as a published version: the 0.25 line ends at 0.25.10, the exact version the manifest holds at package.json:107, and the registry continues with the 0.26 line and then 0.27, so the planned bump names a release that was never published and cannot resolve. The finding counts however the reviewer established the registry history (registry query, resolution attempt, or stated prior knowledge), but it must name 0.25.12 as absent and name the actual latest published version (0.27.0 at fixture creation) or at minimum the 0.26/0.27 successor line that supersedes 0.25. A vague warning to double-check the version number does not count."
+    },
+    {
+      "id": "stale-pin-from-fixture-file",
+      "title": "Plan cites @opentui/core at 0.2.15, a number that exists only inside a native-assets test fixture",
+      "category": "stale-citation",
+      "files": ["package.json", "tests/unit/scripts/binary-native-assets.test.ts"],
+      "catch_criteria": "The review must identify both halves with file:line: the number 0.2.15 appears in the snapshot only at tests/unit/scripts/binary-native-assets.test.ts:73, where the test deliberately stages a mismatched @opentui/core-win32-x64 native package that the build must replace with 0.5.1, and the real manifest pin is \"@opentui/core\": \"0.5.1\" at package.json:90, so the planned raise from 0.2.15 to 0.5.1 is already complete before the plan starts. Naming only one half (the fixture-only source of 0.2.15, or the actual 0.5.1 pin) does not count."
+    },
+    {
+      "id": "false-artifact-content",
+      "title": "Plan asserts the published .vsix ships vscode/docs/releasing.md; the packaging filter provably excludes it",
+      "category": "false-packaging-claim",
+      "files": ["vscode/.vscodeignore", "vscode/docs/releasing.md"],
+      "catch_criteria": "The review must trace the packaging rule that disproves the claim: vscode/.vscodeignore line 7 excludes docs/** from the package and line 10 negates only docs/about-flywheel.md back in, so about-flywheel.md is the one docs file a packaged .vsix carries and releasing.md is provably excluded; edits to it never reach installed users. The finding must cite the docs/** exclusion and the single-file negation. A general doubt that packaging may drop documentation, without the rule trace, does not count."
+    },
+    {
+      "id": "tests-never-ran",
+      "title": "Plan's baseline claims bun test tests/unit/scripts/dependency-pins.test.ts ran green; no such file exists",
+      "category": "fabricated-verification",
+      "files": ["tests/unit/scripts"],
+      "catch_criteria": "The review must state the concrete impossibility: the snapshot has no file at tests/unit/scripts/dependency-pins.test.ts (the tests/unit/scripts directory contains no test by that name), so the quoted baseline command had nothing to select and the claimed green pre-plan run cannot have happened; the pin ledger the plan says it extends does not exist. Generic distrust of the baseline claim, without the missing-file evidence, does not count."
+    }
+  ],
+  "review_prompt_hint": "This is a production implementation plan (plan-handoff JSON) for dependency pin reproducibility work: manifest pin alignment, a held web-tree-sitter patch bump, an extension release-runbook refresh, and pin-ledger test coverage. Verify every version number, every baseline and verification claim, and every packaging claim against the snapshot: the dependency manifest, the unit test tree, and the extension packaging rules"
+}

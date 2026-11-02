@@ -1,0 +1,60 @@
+diff --git a/requests/utils.py b/requests/utils.py
+index 1c2ae4e..15e536d 100644
+--- a/requests/utils.py
++++ b/requests/utils.py
+@@ -974,6 +974,8 @@ def prepend_scheme_if_needed(url, new_scheme):
+     if not netloc:
+         netloc, path = path, netloc
+ 
++    if auth:
++        netloc = '@'.join([auth, netloc])
+     if scheme is None:
+         scheme = new_scheme
+     if path is None:
+diff --git a/tests/test_lowlevel.py b/tests/test_lowlevel.py
+index 7256eda..0f1d994 100644
+--- a/tests/test_lowlevel.py
++++ b/tests/test_lowlevel.py
+@@ -301,6 +301,26 @@ def test_use_proxy_from_environment(httpbin, var, scheme):
+         assert len(fake_proxy.handler_results[0]) > 0
+ 
+ 
++def test_authenticated_http_proxy():
++    def proxy_handler(sock):
++        request = consume_socket_content(sock, timeout=0.5)
++        if b'Proxy-Authorization: Basic dXNlcjpwYXNz\r\n' in request:
++            status = b'200 OK'
++        else:
++            status = b'407 Proxy Authentication Required'
++        sock.sendall(b'HTTP/1.1 ' + status + b'\r\nContent-Length: 0\r\n\r\n')
++        return request
++
++    server = Server(proxy_handler)
++    with server as (host, port), requests.Session() as session:
++        session.trust_env = False
++        proxy = 'http://user:pass@{}:{}'.format(host, port)
++        response = session.get('http://example.org/', proxies={'http': proxy}, timeout=5)
++
++    assert response.status_code == 200
++    assert server.handler_results[0].startswith(b'GET http://example.org/ HTTP/1.1\r\n')
++
++
+ def test_redirect_rfc1808_to_non_ascii_location():
+     path = u'š'
+     expected_path = b'%C5%A1'
+diff --git a/tests/test_utils.py b/tests/test_utils.py
+index c2186b8..1f0b7de 100644
+--- a/tests/test_utils.py
++++ b/tests/test_utils.py
+@@ -602,6 +602,11 @@ def test_parse_header_links(value, expected):
+         ('example.com/path', 'http://example.com/path'),
+         ('//example.com/path', 'http://example.com/path'),
+         ('example.com:80', 'http://example.com:80'),
++        ('http://user:pass@example.com/path', 'http://user:pass@example.com/path'),
++        ('user@example.com:80', 'http://user@example.com:80'),
++        ('//user:pass@[::1]:80/path', 'http://user:pass@[::1]:80/path'),
++        ('https://user:pass%23word@example.com/path?query=yes#fragment',
++         'https://user:pass%23word@example.com/path?query=yes#fragment'),
+     ))
+ def test_prepend_scheme_if_needed(value, expected):
+     assert prepend_scheme_if_needed(value, 'http') == expected

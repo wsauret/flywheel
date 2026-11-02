@@ -1,0 +1,48 @@
+/* The blank transcript's card. Centred where the conversation will be; the
+   auto margins take the transcript's free space so it sits in the middle of the
+   pane rather than hugging the top. */
+
+.intro {
+  margin: auto;
+  width: min(100%, 24rem);
+  padding: var(--fw-s4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-s3);
+  border: 1px solid var(--fw-hairline);
+  border-radius: var(--fw-radius-lg);
+  background: var(--fw-bg-raised);
+}
+
+.intro-head { display: flex; align-items: center; gap: var(--fw-s2); }
+.intro-mark { width: 22px; height: 22px; color: var(--fw-link); }
+.intro-name { font-weight: 600; letter-spacing: -0.01em; }
+.intro-version { color: var(--fw-fg-muted); font-size: var(--fw-text-xs); }
+
+.intro-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: var(--fw-s3);
+  row-gap: var(--fw-s1);
+  margin: 0;
+  font-size: var(--fw-text-sm);
+}
+.intro-facts dt { color: var(--fw-fg-muted); }
+/* The value is the fact a person reads, so at a narrow width the hint moves
+   to its own line instead of squeezing the value. The value truncates only
+   when it alone is wider than the card. */
+.intro-facts dd {
+  margin: 0;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--fw-s2);
+}
+.intro-facts dd > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.intro-effort { opacity: 0.7; }
+.intro-hint { flex: 0 0 auto; color: var(--fw-fg-muted); font-size: var(--fw-text-xs); white-space: nowrap; }
+.intro-hint .link { font-size: inherit; text-decoration: none; }
+/* A module row whose fact needs attention, in the same colour the status
+   sheet's rows use for it. */
+.intro-facts .tone-warn { color: var(--fw-warning); }

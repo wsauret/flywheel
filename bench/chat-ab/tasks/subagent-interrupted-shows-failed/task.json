@@ -1,0 +1,20 @@
+{
+  "id": "subagent-interrupted-shows-failed",
+  "stratum": "production-history",
+  "timeoutMinutes": 45,
+  "sandbox": {
+    "commit": "6a5d5365587343f2ffe57f0adae82417e0ef6154",
+    "paths": ["src","tests","docs","scripts","package.json","bun.lock","tsconfig.json","oxlint.config.ts","knip.jsonc","AGENTS.md",".gitignore","bunfig.toml",".env.test","relay/package.json","vscode/package.json","webview/package.json","website/package.json","crates/tokenizer/tokenizer-prebuilt.json","crates/tokenizer/flywheel-tokenizer.wasm.zst"],
+    "patch": "sandbox.patch",
+    "setup": [["bun", "install"]]
+  },
+  "acceptanceBaseline": {
+    "failToPass": [
+      "acceptance/subagent-interrupted-status.test.ts > the parent's process list for a subagent > a child that the person interrupted lists as interrupted, not failed, and leaves the active work count",
+      "acceptance/subagent-interrupted-status.test.ts > the parent's process list for a subagent > a child that the runtime interrupted lists as interrupted, not failed, and leaves the active work count"
+    ],
+    "passToPass": [
+      "acceptance/subagent-interrupted-status.test.ts > the parent's process list for a subagent > a child whose run fails still lists as failed"
+    ]
+  }
+}

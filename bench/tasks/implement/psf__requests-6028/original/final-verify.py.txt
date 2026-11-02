@@ -1,0 +1,130 @@
+import hashlib
+import importlib.metadata
+import json
+import os
+from pathlib import Path
+import platform
+import shutil
+import ssl
+import subprocess
+import sys
+import time
+import xml.etree.ElementTree as ET
+
+root = Path(__file__).resolve().parent
+output = root / "final"
+output.mkdir()
+sha = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+comparison = json.loads((root / "source-comparison.json").read_text())
+env = {
+    "HOME": str(root / "home"), "TMPDIR": str(root / "tmp"),
+    "PIP_CONFIG_FILE": os.devnull, "PIP_CACHE_DIR": str(root / "pip-cache"),
+    "XDG_CACHE_HOME": str(root / "pip-cache"),
+    "PYTHONNOUSERSITE": "1", "PYTHONDONTWRITEBYTECODE": "1",
+    "PATH": str(root / "venv/bin") + ":/usr/bin:/bin:/usr/sbin:/sbin", "LANG": "en_US.UTF-8",
+    "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
+}
+timings = []
+def run(argv, cwd=root, name=None, allowed=(0,), extra=None):
+    start = time.monotonic()
+    argv = list(map(str, argv))
+    print(json.dumps({"argv": argv, "cwd": str(cwd)}), flush=True)
+    text = []
+    with subprocess.Popen(argv, cwd=cwd, env=env | (extra or {}), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as child:
+        for line in child.stdout:
+            print(line, end="", flush=True)
+            text.append(line)
+        code = child.wait()
+    text = "".join(text)
+    if name:
+        (output / name).write_text(text)
+    timings.append({"argv": argv, "cwd": str(cwd), "seconds": time.monotonic() - start, "exit": code})
+    (output / "timings.json").write_text(json.dumps(timings, indent=2))
+    assert code in allowed, (argv, code)
+    return text
+
+def check_sources():
+    for variant in ["source", "base", "gold"]:
+        target = root / variant
+        actual = {str(file.relative_to(target)): sha(file) for file in target.rglob("*") if file.is_file() and ".git" not in file.parts and "__pycache__" not in file.parts and ".pytest_cache" not in file.parts}
+        expected = dict(comparison["archive_files"])
+        if variant != "source":
+            expected.update(comparison["comparisons"][variant]["applied_hashes"])
+        assert actual == expected, variant
+
+check_sources()
+assert (root / "gold/requests/utils.py").read_bytes() == (root / "gold-upstream-utils.py").read_bytes()
+assert (root / "gold/tests/test_utils.py").read_bytes() == (root / "gold-upstream-test_utils.py").read_bytes()
+assert (root / "gold-upstream-LICENSE").read_bytes() == (root / "source/LICENSE").read_bytes()
+assert (root / "gold-upstream-NOTICE").read_bytes() == (root / "source/NOTICE").read_bytes()
+row = json.loads((root / "row.json").read_text())
+for field, name in [("patch", "gold.patch"), ("test_patch", "test.patch"), ("problem_statement", "problem.txt"), ("hints_text", "hints.txt")]:
+    assert row[field].encode() == (root / name).read_bytes()
+assert row["hints_text"] not in row["problem_statement"]
+python = root / "venv/bin/python"
+run([python, "-I", "-B", "-m", "pip", "check"], name="pip-check.stdout")
+run([root / "metadata-venv/bin/python", "-I", "-B", "-c", "import pyarrow.parquet as pq, json, pathlib, hashlib; p=pathlib.Path.cwd(); assert hashlib.sha256((p/'dataset.parquet').read_bytes()).hexdigest()=='a45b1fe4e2f0c8390b2b2938ac83e92ed5979000856808f3679c07812e9e6dcd'; rows=pq.read_table(p/'dataset.parquet').to_pylist(); assert rows[297]==json.loads((p/'row.json').read_text()); print(json.dumps({'rows':len(rows),'verified_row':297,'row_exact':True}))"], name="row-verification.stdout")
+full = {}
+for variant in ["base", "gold"]:
+    target = root / variant
+    xml = output / (variant + ".xml")
+    run([python, "-B", "-m", "pytest", "-rA", "tests/test_utils.py"], cwd=target, name=variant + "-pytest.stdout", allowed=(1,) if variant == "base" else (0,), extra={"PYTEST_ADDOPTS": "--junitxml=" + str(xml)})
+    cases = ET.parse(xml).findall(".//testcase")
+    statuses = {}
+    for case in cases:
+        parts = case.attrib["classname"].split(".")
+        assert parts[:2] == ["tests", "test_utils"]
+        nodeid = "tests/test_utils.py::" + "::".join(parts[2:] + [case.attrib["name"]])
+        status = "ERROR" if case.find("error") is not None else "FAILED" if case.find("failure") is not None else "SKIPPED" if case.find("skipped") is not None else "PASSED"
+        assert nodeid not in statuses
+        statuses[nodeid] = status
+    assert len(statuses) == 214
+    assert list(statuses.values()).count("ERROR") == 0
+    assert list(statuses.values()).count("FAILED") == (2 if variant == "base" else 0)
+    assert list(statuses.values()).count("PASSED") == (201 if variant == "base" else 203)
+    assert list(statuses.values()).count("SKIPPED") == 11
+    former_errors = {nodeid: status for nodeid, status in statuses.items() if "test_should_bypass_proxies_pass_only_hostname[" in nodeid}
+    assert len(former_errors) == 8 and set(former_errors.values()) == {"PASSED"}
+    full[variant] = {"statuses": statuses, "former_eight_setup_errors": former_errors, "counts": {status: list(statuses.values()).count(status) for status in sorted(set(statuses.values()))}}
+    (output / (variant + "-full-statuses.json")).write_text(json.dumps(full[variant], indent=2))
+    probe = json.loads(run([python, "-I", "-B", root / "probe.py", target], name=variant + "-probe.stdout"))
+    assert probe["requests_status"] == (200 if variant == "gold" else 407)
+    assert probe["proxy_observation"]["auth_present"] == (variant == "gold")
+    assert probe["normalization_preserves_auth"] == (variant == "gold")
+    assert probe["thread_joined"] and probe["proxy_listener_closed"]
+run([root / "python/bin/python3.12", "-I", "-B", root / "grade.py", output], name="grader.stdout")
+for variant in ["base", "gold"]:
+    initial_grade = json.loads((root / (variant + "-grade.json")).read_text())
+    final_grade = json.loads((output / (variant + "-grade.json")).read_text())
+    assert initial_grade["report"] == final_grade["report"]
+    assert initial_grade["selected_statuses"] == final_grade["selected_statuses"]
+check_sources()
+site = root / "venv/lib/python3.12/site-packages"
+assert not list(site.glob("*.egg-link"))
+assert not list(site.glob("__editable__*"))
+for pth in site.glob("*.pth"):
+    assert pth.name == "distutils-precedence.pth"
+tmp_entries = list((root / "tmp").iterdir())
+cleanup = {"tmp_entries_before_cleanup": [path.name for path in tmp_entries], "proxy_threads_joined": True, "proxy_listeners_closed": True, "subprocesses_waited": True}
+for path in tmp_entries:
+    if path.is_dir():
+        shutil.rmtree(path)
+    else:
+        path.unlink()
+cleanup["tmp_empty"] = not list((root / "tmp").iterdir())
+(output / "cleanup.json").write_text(json.dumps(cleanup, indent=2))
+identity = {"version": sys.version, "executable": sys.executable, "prefix": sys.prefix, "platform": platform.platform(), "openssl": ssl.OPENSSL_VERSION, "interpreter_sha256": sha(root / "python/bin/python3.12"), "packages": {dist.metadata["Name"]: dist.version for dist in importlib.metadata.distributions()}, "wheel_hashes": {file.name: sha(file) for file in (root / "wheelhouse").iterdir()}, "source_and_upstream_gold_bytes_unchanged": True}
+(output / "identities.json").write_text(json.dumps(identity, indent=2))
+toolchain_files = {str(file.relative_to(root / "python")): sha(file) for file in (root / "python").rglob("*") if file.is_file()}
+(output / "interpreter-files.json").write_text(json.dumps(toolchain_files, indent=2))
+prior = root.parents[1] / "d2578820f72a/scratch"
+public = output / "published-proxy"
+public.mkdir()
+public_hashes = {}
+for name in ["report.json", "test_output.decoded.txt", "patch.diff", "manifest.json"]:
+    source = prior / ("psf__requests-6028-" + name)
+    shutil.copy2(source, public / name)
+    assert sha(source) == sha(public / name)
+    public_hashes[name] = sha(source)
+(public / "copied-hashes.json").write_text(json.dumps(public_hashes, indent=2))
+print(json.dumps({"final_verification": "completed", "base": full["base"]["counts"], "gold": full["gold"]["counts"], "former_eight_errors": "all passed", "tmp_empty": cleanup["tmp_empty"]}))

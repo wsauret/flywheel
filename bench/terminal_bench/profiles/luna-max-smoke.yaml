@@ -1,0 +1,25 @@
+# Template derived from a historical 5-task x 5-attempt TB 2.1 run.
+# The dataset, task set, attempts, and concurrency retain the old run policy.
+# The model setting uses current Luna, so this is not a historical model
+# replication or evidence for the current model.
+#
+# Run with bench/terminal_bench/run-terminal-bench.sh and --auth-profile <profile>.
+#
+# Profiles are immutable after their first campaign. Copy to a new file for
+# any model, task, or policy change.
+headless:
+  model: gpt-6-luna
+agents:
+- import_path: "bench.terminal_bench.flywheel_agent:FlywheelHeadless"
+datasets:
+- name: terminal-bench/terminal-bench-2-1
+  ref: sha256:7d7bdc1cbedad549fc1140404bd4dc45e5fd0ea7c4186773687d177ad3a0699a
+  task_names:
+  - terminal-bench/build-pov-ray
+  - terminal-bench/compile-compcert
+  - terminal-bench/protein-assembly
+  - terminal-bench/pytorch-model-cli
+  - terminal-bench/sam-cell-seg
+n_attempts: 5
+n_concurrent_trials: 2
+jobs_dir: jobs

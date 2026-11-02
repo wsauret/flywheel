@@ -1,0 +1,23 @@
+--- a/package.json
++++ b/package.json
+@@ -0,0 +1 @@
++{"name":"config-lock-native-fixture","private":true,"type":"module"}
+--- a/config-smoke.test.ts
++++ b/config-smoke.test.ts
+@@ -0,0 +1,16 @@
++import { expect, test } from "bun:test";
++import { mkdtempSync, rmSync } from "node:fs";
++import { tmpdir } from "node:os";
++import { join } from "node:path";
++import { withConfigOwnershipBlocking } from "./src/orchestration/config/config-file.js";
++
++test("a synchronous config write is readable", () => {
++  const directory = mkdtempSync(join(tmpdir(), "config-smoke-"));
++  try {
++    const location = { configPath: join(directory, "flywheel.toml") };
++    withConfigOwnershipBlocking(location, config => expect(config.write("show_thinking = true\n")).toBeUndefined());
++    expect(withConfigOwnershipBlocking(location, config => config.readText())).toBe("show_thinking = true\n");
++  } finally {
++    rmSync(directory, { recursive: true, force: true });
++  }
++});

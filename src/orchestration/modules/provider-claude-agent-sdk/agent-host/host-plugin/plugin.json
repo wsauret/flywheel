@@ -1,0 +1,1 @@
+{ "name": "agent-host", "version": "1.0.0", "description": "Sends a model request of the shared agent host only when Flywheel admitted it" }

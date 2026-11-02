@@ -1,0 +1,106 @@
+--- a/package.json
++++ b/package.json
+@@ -0,0 +1 @@
++{"name":"config-lock-native-fixture","private":true,"type":"module"}
+--- a/config-smoke.test.ts
++++ b/config-smoke.test.ts
+@@ -0,0 +1,16 @@
++import { expect, test } from "bun:test";
++import { mkdtempSync, rmSync } from "node:fs";
++import { tmpdir } from "node:os";
++import { join } from "node:path";
++import { withConfigOwnershipBlocking } from "./src/orchestration/config/config-file.js";
++
++test("a synchronous config write is readable", () => {
++  const directory = mkdtempSync(join(tmpdir(), "config-smoke-"));
++  try {
++    const location = { configPath: join(directory, "flywheel.toml") };
++    withConfigOwnershipBlocking(location, config => expect(config.write("show_thinking = true\n")).toBeUndefined());
++    expect(withConfigOwnershipBlocking(location, config => config.readText())).toBe("show_thinking = true\n");
++  } finally {
++    rmSync(directory, { recursive: true, force: true });
++  }
++});
+--- a/src/infra/ownership-file-lock.ts
++++ b/src/infra/ownership-file-lock.ts
+@@ -206,15 +206,43 @@
+ 
+ /** Acquire one lock inside a directory the caller holds. A held lock is retried
+  *  with backoff, and a lock whose holder is proven gone is reclaimed. */
+-export async function acquireLockIn(
++export function acquireLockIn(
+   directory: LockDirectory,
+   name: string,
+   baseDelayMs: number = BASE_DELAY_MS,
+ ): Promise<LockHold> {
++  return acquireLockUsingIn(directory, name, baseDelayMs, (hold) => hold);
++}
++
++/** Wait without blocking for ownership, then run synchronous work and release
++ *  before yielding. Throws acquisition and callback failures to the caller.
++ *  `use` must not return asynchronous work: a synchronous sibling would block
++ *  the event loop needed to finish that work and release the lock. */
++export function withLockIn<T>(
++  directory: LockDirectory,
++  name: string,
++  use: () => T,
++  baseDelayMs: number = BASE_DELAY_MS,
++): Promise<T> {
++  return acquireLockUsingIn(directory, name, baseDelayMs, (hold) => {
++    try {
++      return use();
++    } finally {
++      releaseLockIn(directory, hold);
++    }
++  });
++}
++
++async function acquireLockUsingIn<T>(
++  directory: LockDirectory,
++  name: string,
++  baseDelayMs: number,
++  acquired: (hold: LockHold) => T,
++): Promise<T> {
+   const record = ownRecord();
+   for (let attempt = 0; ; attempt++) {
+     const result = attemptLock(directory, name, record);
+-    if (result.kind === "acquired") return { name, owner: record.owner };
++    if (result.kind === "acquired") return acquired({ name, owner: record.owner });
+     if (result.kind === "foreign" || attempt === MAX_RETRIES) throw refusal(name, result);
+     await Bun.sleep(backoffMs(baseDelayMs, attempt));
+   }
+--- a/src/orchestration/config/config-file.ts
++++ b/src/orchestration/config/config-file.ts
+@@ -18,7 +18,7 @@
+ 
+ import * as path from "node:path";
+ import { lstatSync, watch } from "node:fs";
+-import { acquireLockIn, acquireLockSyncIn, releaseLockIn, type LockHold } from "../../infra/ownership-file-lock.js";
++import { withLockIn, acquireLockSyncIn, releaseLockIn, type LockHold } from "../../infra/ownership-file-lock.js";
+ import { ContainedDirectory } from "../../infra/descriptor-directory.js";
+ import { errorMessage } from "../../infra/error-message.js";
+ import { Log } from "../../infra/log.js";
+@@ -133,12 +133,9 @@
+  *  window would have nothing to wait for if it did. */
+ export async function withConfigOwnership<T>(location: ConfigFileLocation, use: (config: ConfigOwnership) => T): Promise<T> {
+   const held = openConfigDirectory(location);
+-  let hold: LockHold | undefined;
+-  try {
+-    hold = await acquireLockIn(held.directory, `${held.fileName}.lock`);
+-    return use(configOwnership(held));
++  try {
++    return await withLockIn(held.directory, "flywheel.toml.lock", () => use(configOwnership(held)));
+   } finally {
+-    if (hold) releaseLockIn(held.directory, hold);
+     held.directory.close();
+   }
+ }
+@@ -151,7 +148,7 @@
+   const held = openConfigDirectory(location);
+   let hold: LockHold | undefined;
+   try {
+-    hold = acquireLockSyncIn(held.directory, `${held.fileName}.lock`);
++    hold = acquireLockSyncIn(held.directory, "flywheel.toml.lock");
+     return use(configOwnership(held));
+   } finally {
+     if (hold) releaseLockIn(held.directory, hold);

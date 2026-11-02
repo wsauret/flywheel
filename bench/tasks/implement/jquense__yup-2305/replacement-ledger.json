@@ -1,0 +1,55 @@
+{
+  "setup": [
+    {
+      "original": "Container clones fixed upstream, installs with --frozen-lockfile, builds, resets tracked files, applies bug.patch, and rebuilds BASE.",
+      "native": "Hash-verified public archive and private runtime/bootstrap. The same frozen install and build scripts run. Re-extraction restores tracked archive bytes before the exact bug patch and BASE rebuild.",
+      "unchanged": "Source, lock, package scripts, build scripts, original bug patch and original fix patch."
+    },
+    {
+      "original": "Node 22 from a floating system repository and globally enabled package manager bootstrap.",
+      "native": "Pinned 22.23.3 runtime and 0.36.0 bootstrap in an owned CommonJS tooling boundary. The upstream packageManager SHA512 verifies 4.5.3. One adapter-owned environment sets PATH, HOME, TMPDIR, bootstrap cache, package cache, global folder, install state and adapted bundle. The candidate launcher exports that same environment before Corepack. Install, builds, candidate scripts and verification use that launcher after raw Corepack acquires the pinned manager.",
+      "unchanged": "No global install and no account cache are prerequisites. Public byte identities are in public-inputs.json."
+    },
+    {
+      "original": "Automatic TypeScript type roots in the source configuration.",
+      "native": "OS-temp workspaces retain exact original tsconfig bytes. Nested workspaces with an ancestor node_modules/@types/bun use only compilerOptions.typeRoots=['./node_modules/@types'].",
+      "evidence": "The earlier nested source probe failed on newer ancestor type syntax under TypeScript 4.9. The native OS-temp qualification builds the original config successfully. The retained original-plain-setup.json records the nested isolation probe.",
+      "unchanged": "No other source configuration adaptation is applied. The exact original tsconfig is retained under original/."
+    },
+    {
+      "original": "The package manager's scriptUtils launcher generator emits exec with an unescaped double-quoted executable path.",
+      "native": "One replacement in an adapted private bundle uses the generator's existing single-quote escaping rule for the executable path. The original downloaded and bootstrap-cached bundles remain intact. The supported YARN_YARN_PATH selects the adapted private copy without changing application configuration.",
+      "ledger": "launcher-replacement.json",
+      "producer": "The gh launcher generator in the pinned public bundle, at byte offset 863674 near its #!/bin/sh template.",
+      "evidence": "The original frozen install at a path containing a literal double quote fails with shell unexpected EOF in the generated Node wrapper. The same original adapter at a plain path installs and builds successfully. The former candidate launcher omitted the adapted bundle and workspace cache bindings: its documented yarn exec node --version failed with exit 2 at the quoted path even though setup passed. The corrected qualification invokes that launcher with only the usual sandbox environment, verifies Node 22.23.3, and queries the package cache, global folder, install state and adapted bundle paths before dependency cleanup.",
+      "rejectedBuiltIns": "yarnPath chooses a binary; ignorePath disables that choice. Neither changes generator escaping. script execution settings do not change the hardcoded #!/bin/sh wrapper or its executable interpolation. Disabling install scripts would change the original installation and is not used.",
+      "configurationReference": "https://yarnpkg.com/configuration/yarnrc",
+      "unchanged": "Windows .cmd generation, wrapper arguments, original package scripts, source, tests, lockfile and reward."
+    }
+  ],
+  "grading": [
+    {
+      "original": "Absolute container paths in the original tests/test.sh.",
+      "native": "Only the application, tests and reward directory paths become quoted environment variables. The original shell, assertions, testonly arguments, overwrite policy, reward and exit status remain the authority."
+    },
+    {
+      "original": "Container begins with BASE source.",
+      "native": "A fresh BASE preparation receives the captured candidate patch. The grader appends the same .gitignore entries as provisionTaskSandbox before patch application.",
+      "evidence": "The shared provisioner appends .flywheel/ and .bench-home/ before its baseline. The reference control edits .gitignore and verifies that its captured patch applies in the fresh grader."
+    },
+    {
+      "original": "The grader returns only a binary reward.",
+      "native": "A separate diagnostic invocation adds --json and --outputFile to inventory the same 44 test IDs. It cannot replace or veto the original shell reward. Diagnostic read errors remain evidence.",
+      "unchanged": "No additional grader, tamper veto, source preflight, configuration restoration or broader test replacement policy."
+    }
+  ],
+  "controls": {
+    "base": "Exact bug.patch followed by the required BASE rebuild.",
+    "reference": "Exact original solution/fix.patch applied to the captured candidate.",
+    "fault": "The reference's src/array.ts changes index: idx to index: idx + 1.",
+    "expected": "BASE passes 42 of 44, reference passes 44 of 44, and index fault passes 43 of 44. Rewards are 0, 1 and 0."
+  },
+  "observability": "Setup and command records are fixture-owned evidence, not runtime log families. No steady-state product logs are added.",
+  "qualificationFootprint": "After setup evidence, candidate launcher checks and deadline checks, qualification removes only the candidate's ignored runtime/cache/node_modules before capture. The fresh grader provisions its own dependencies. Normal model workspaces retain their dependencies, so qualification does not prove the normal production peak storage footprint.",
+  "modelEvidence": "No model has run on this native fixture. Difficulty and cost are not measured."
+}

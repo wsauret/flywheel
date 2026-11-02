@@ -1,0 +1,333 @@
+{
+  "date": "2026-10-12",
+  "task": "astropy__astropy-14598",
+  "environment": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "python": "3.9.6",
+    "compiler": "Apple clang 21.0.0",
+    "bun": "1.4.0"
+  },
+  "modelCalls": 0,
+  "instructionUnchanged": true,
+  "taskTreeUnchangedDuringExecution": true,
+  "runner": "loadImplementTasks -> provisionTaskSandbox -> captureImplementation; real owned commands",
+  "adapterSha256": "066516d0564a9e8d072b930691a326eff6ff03504ac5ba91143e1695a8ece3e3",
+  "supportSha256": "22a416089fbdd6dd1d17518097e7a84873b560e83f6e76d118aa34569abd1f98",
+  "taskConfigSha256": "18191460d4e9d16a5f2d1b09e80754c3475b979b535ee128030cb42186860b59",
+  "instructionSha256": "5edf1315e9ce360f72c2d3b23f08cdb974a758b64b13a6724236ca5d54beb9a9",
+  "committedCandidateCaptured": true,
+  "runtimeExcludedFromCapturedPatch": true,
+  "restoredOwners": 684,
+  "restoredOwnerChange": "Current restoration includes the original root tox.ini. Historical controls retain their observed 683-owner counts and execution identities.",
+  "sourceManifestEntries": 1876,
+  "tamperControl": {
+    "referenceCommittedWith": [
+      "pytest.py",
+      "pyproject.toml [tool.pytest.ini_options]",
+      "root conftest.py",
+      "original test_header.py",
+      "pytest.ini",
+      ".pytest.ini",
+      "tox.ini",
+      "injected/conftest.py",
+      "pytest.ini, .pytest.ini, pyproject.toml, tox.ini and setup.cfg in each nested selected test-path ancestor",
+      "production-unrelated/pyproject.toml retained outside the discovery chain"
+    ],
+    "result": "176/176; pytest 7.4 selected original setup.cfg, all 684 original grading owners restored, absolute pytest entrypoint resisted pytest.py collision"
+  },
+  "outerAdapterTimeoutMs": 1200000,
+  "ownedBuildTimeoutMs": 600000,
+  "ownedPytestTimeoutMs": 300000,
+  "originalPerCommandTimeout": "not declared in original evaluation shell",
+  "equivalence": "Native macOS arm64 qualification only; not original Linux or leaderboard equivalence",
+  "rawEvidence": "Native reports retain every command stdout/stderr, original status map, selected report, 33 API observations, tool and source identities, restoration identities and public acquisition evidence. Qualification records include their hashes; no model trajectories are published.",
+  "cases": [
+    {
+      "control": "base",
+      "passed": 175,
+      "failed": 1,
+      "total": 176,
+      "durationMs": 86315,
+      "resolution": "RESOLVED_NO",
+      "statusMapSha256": "99489b2bc3507077eb0c6a208397cf03c27a58af3744357484b0ac796f8db248",
+      "sourceSha256": "62958392a71425d478de5ce37c93568ab9a50cda9ef33fabe3892be74d1fe9c8",
+      "restoredOwners": 683,
+      "apiSummary": {
+        "canonical_added_test_values": {
+          "total": 3,
+          "passing": 0,
+          "mismatching_n": [
+            null,
+            null,
+            null
+          ]
+        },
+        "original_embedded_quotes": {
+          "total": 20,
+          "passing": 7,
+          "mismatching_n": [
+            55,
+            56,
+            57,
+            58,
+            59,
+            60,
+            61,
+            62,
+            63,
+            65,
+            67,
+            68,
+            69
+          ]
+        },
+        "original_terminal_quotes": {
+          "total": 10,
+          "passing": 6,
+          "mismatching_n": [
+            65,
+            67,
+            68,
+            69
+          ]
+        }
+      },
+      "nativeReportSha256": "5161bfefe6a30052ce8ae2ef61a5ad2e093d26a6d110994d39b063fc36ced2fe",
+      "captureSha256": "cf1d3b505c86f572309fd86ce2e8ff13f90b48c872e08fe1e7d495bce882df85",
+      "pytest": {
+        "exitCode": 1,
+        "durationMs": 6653,
+        "stdoutSha256": "8eb6b100357ee605830134ff43875e9584952aa30e358407e4bc7acd2a7d7bd8",
+        "stderrSha256": "c37cecc9f3016c6166143cf253abda2141829c44af3ba5515c13d4c4122f1707"
+      },
+      "build": {
+        "exitCode": 0,
+        "durationMs": 56738,
+        "stdoutSha256": "9e07daf82ec1fb4ee8b4d91361ea84913d07125bcb2bf310b01dc4031bed7617",
+        "stderrSha256": "8d6f8aa53ed55dce62795894bdf76fdad727d705a00bf58b68512dde6d847b9c"
+      },
+      "acquisition": {
+        "requests": 37,
+        "allHTTP200": true,
+        "allHashAndSizeVerified": true,
+        "sourceBytes": 7668017,
+        "wheelBytes": 32405485
+      },
+      "toolVersions": {
+        "python": "3.9.6 (default, May 22 2026, 11:13:45) \n[Clang 21.0.0 (clang-2100.1.1.101)]",
+        "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.3.0\nThread model: posix\nInstalledDir: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+        "pip": "23.2.1"
+      },
+      "stdoutTruncated": false,
+      "stderrTruncated": false,
+      "nativeExtensionCount": 17,
+      "originalSelectedMap": "controls/expected.json#base",
+      "originalAPIObservationsMatched": 33,
+      "executionAdapterSha256": "ca5e459987920c6c6e4fe520605ab9c39ed36a436a0b4bd2abf8abc5a2d2029d",
+      "executionSupportSha256": "81d6d1024aa2318edc2e133d354a47aecf1ae390574d47af90c7e3ecc3c7c580",
+      "all33OriginalAPIExamplesMatched": true
+    },
+    {
+      "control": "reference",
+      "passed": 176,
+      "failed": 0,
+      "total": 176,
+      "durationMs": 80092,
+      "resolution": "RESOLVED_FULL",
+      "statusMapSha256": "abc9eab6b3fd33f40ccef1cc63ff0034c69d56ebc70f2872392be85eee931cd7",
+      "sourceSha256": "098609715fa5b559223c739f6eedbc0751fb489270159889c9c9201ed330f303",
+      "restoredOwners": 683,
+      "apiSummary": {
+        "canonical_added_test_values": {
+          "total": 3,
+          "passing": 3,
+          "mismatching_n": []
+        },
+        "original_embedded_quotes": {
+          "total": 20,
+          "passing": 20,
+          "mismatching_n": []
+        },
+        "original_terminal_quotes": {
+          "total": 10,
+          "passing": 10,
+          "mismatching_n": []
+        }
+      },
+      "nativeReportSha256": "d7e744f905275d057e79f066de0083db35d3cf931262308ed66e41861c1efd4f",
+      "captureSha256": "7f0f043a43e7e3f7ecf8f739c0d387cda985ee8dac733a6b2e032e7aa4c25420",
+      "pytest": {
+        "exitCode": 0,
+        "durationMs": 5287,
+        "stdoutSha256": "44fb6063a6fe7e8ad60f9dd892f58641c079e7097ddd44199153d1029b2d28bc",
+        "stderrSha256": "c37cecc9f3016c6166143cf253abda2141829c44af3ba5515c13d4c4122f1707"
+      },
+      "build": {
+        "exitCode": 0,
+        "durationMs": 51678,
+        "stdoutSha256": "a304da41fa1838caa0350876b434cd218b01dfe65f1ffa29064db16069832b64",
+        "stderrSha256": "6890804f81732f705941e1be2557bea30380ad49e1eed59808e197227b5bdbf6"
+      },
+      "acquisition": {
+        "requests": 37,
+        "allHTTP200": true,
+        "allHashAndSizeVerified": true,
+        "sourceBytes": 7668017,
+        "wheelBytes": 32405485
+      },
+      "toolVersions": {
+        "python": "3.9.6 (default, May 22 2026, 11:13:45) \n[Clang 21.0.0 (clang-2100.1.1.101)]",
+        "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.3.0\nThread model: posix\nInstalledDir: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+        "pip": "23.2.1"
+      },
+      "stdoutTruncated": false,
+      "stderrTruncated": false,
+      "nativeExtensionCount": 17,
+      "originalSelectedMap": "controls/expected.json#reference",
+      "originalAPIObservationsMatched": 33,
+      "executionAdapterSha256": "ca5e459987920c6c6e4fe520605ab9c39ed36a436a0b4bd2abf8abc5a2d2029d",
+      "executionSupportSha256": "81d6d1024aa2318edc2e133d354a47aecf1ae390574d47af90c7e3ecc3c7c580",
+      "all33OriginalAPIExamplesMatched": true
+    },
+    {
+      "control": "fault",
+      "passed": 175,
+      "failed": 1,
+      "total": 176,
+      "durationMs": 76767,
+      "resolution": "RESOLVED_NO",
+      "statusMapSha256": "99489b2bc3507077eb0c6a208397cf03c27a58af3744357484b0ac796f8db248",
+      "sourceSha256": "12a4765d3ac475cf5ff2d6e19d6a8d21ff6a2f0c1f81366185a2b05b611bb987",
+      "restoredOwners": 683,
+      "apiSummary": {
+        "canonical_added_test_values": {
+          "total": 3,
+          "passing": 2,
+          "mismatching_n": [
+            null
+          ]
+        },
+        "original_embedded_quotes": {
+          "total": 20,
+          "passing": 20,
+          "mismatching_n": []
+        },
+        "original_terminal_quotes": {
+          "total": 10,
+          "passing": 10,
+          "mismatching_n": []
+        }
+      },
+      "nativeReportSha256": "3ba44f547caf99e996d63a97361cc4bf8723f49a76f14a2e52e203fc8b0862ed",
+      "captureSha256": "e19e8823b73e8b978474ff811763df7acc1d9e639af97b07428c20fe7ef0c191",
+      "pytest": {
+        "exitCode": 1,
+        "durationMs": 5044,
+        "stdoutSha256": "2212030035aa7edbc6479c14155bd4c671ab847138375bf2b159a0ab9b84dd2a",
+        "stderrSha256": "c37cecc9f3016c6166143cf253abda2141829c44af3ba5515c13d4c4122f1707"
+      },
+      "build": {
+        "exitCode": 0,
+        "durationMs": 51090,
+        "stdoutSha256": "5007168037aafddaffe2b14773c7aaf376f4c97963276b4c5e4974050e9f5033",
+        "stderrSha256": "585eba1a3437316d73977d8e4340d980915ba3e6e00d9483b39f41958d629836"
+      },
+      "acquisition": {
+        "requests": 37,
+        "allHTTP200": true,
+        "allHashAndSizeVerified": true,
+        "sourceBytes": 7668017,
+        "wheelBytes": 32405485
+      },
+      "toolVersions": {
+        "python": "3.9.6 (default, May 22 2026, 11:13:45) \n[Clang 21.0.0 (clang-2100.1.1.101)]",
+        "compiler": "Apple clang version 21.0.0 (clang-2100.1.1.101)\nTarget: arm64-apple-darwin25.3.0\nThread model: posix\nInstalledDir: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+        "pip": "23.2.1"
+      },
+      "stdoutTruncated": false,
+      "stderrTruncated": false,
+      "nativeExtensionCount": 17,
+      "originalSelectedMap": "controls/expected.json#fault",
+      "originalAPIObservationsMatched": 33,
+      "executionAdapterSha256": "ca5e459987920c6c6e4fe520605ab9c39ed36a436a0b4bd2abf8abc5a2d2029d",
+      "executionSupportSha256": "81d6d1024aa2318edc2e133d354a47aecf1ae390574d47af90c7e3ecc3c7c580",
+      "all33OriginalAPIExamplesMatched": true
+    }
+  ],
+  "healthyControlsPrecedeOriginalFailureSemanticsCorrection": true,
+  "reviewFixControls": {
+    "executionAdapterSha256": "066516d0564a9e8d072b930691a326eff6ff03504ac5ba91143e1695a8ece3e3",
+    "executionSupportSha256": "22a416089fbdd6dd1d17518097e7a84873b560e83f6e76d118aa34569abd1f98",
+    "executionTaskConfigSha256": "18191460d4e9d16a5f2d1b09e80754c3475b979b535ee128030cb42186860b59",
+    "executionContentIdentity": "ff98514025ca5d8b9b48fcedddb070a67f81498eace0380c7bcc29c8304988ba",
+    "taskTreeUnchangedDuringExecution": true,
+    "providerRequests": 0,
+    "acquisitionPerGrade": "37 public inputs, all HTTP 200, SHA-256 and byte sizes verified",
+    "pytestConfigProbe": "Installed pytest 7.4 selected each of the five supported nested config filenames before restoration and original setup.cfg after restoration.",
+    "reference": {
+      "passed": 176,
+      "failed": 0,
+      "total": 176,
+      "durationMs": 77395,
+      "resolution": "RESOLVED_FULL",
+      "restoredOwners": 684,
+      "originalSelectedMap": "controls/expected.json#reference",
+      "statusMapSha256": "abc9eab6b3fd33f40ccef1cc63ff0034c69d56ebc70f2872392be85eee931cd7",
+      "nativeReportSha256": "4a0752d00dde3c695e065b92e574100a620999c8d248e6c65d1225f084f43da1",
+      "sourceSha256": "098609715fa5b559223c739f6eedbc0751fb489270159889c9c9201ed330f303",
+      "pytestConfigSelected": "setup.cfg",
+      "pytestExitCode": 0,
+      "nativeExtensionCount": 17,
+      "all33OriginalAPIExamplesMatched": true,
+      "committedCandidateCaptured": true,
+      "unrelatedProductionConfigPreserved": true
+    },
+    "deletedCard": {
+      "passed": 0,
+      "failed": 176,
+      "total": 176,
+      "durationMs": 69878,
+      "resolution": "RESOLVED_NO",
+      "restoredOwners": 684,
+      "missingSelectedIds": 176,
+      "statusMapSha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "nativeReportSha256": "8d496d3c08c1b52aa8c1abeb62a957e05d6720d6ea7219fd804819c88eeb02e4",
+      "sourceSha256": {
+        "unavailable": "The captured candidate deleted astropy/io/fits/card.py."
+      },
+      "buildExitCode": 0,
+      "importProbeExitCode": 1,
+      "pytestExitCode": 4,
+      "apiProbeExitCode": 1,
+      "scoreExitCode": 0,
+      "importAndAPIExplicitlyUnavailable": true
+    }
+  },
+  "syntaxFault": {
+    "criterion": {
+      "passed": 0,
+      "failed": 176,
+      "total": 176
+    },
+    "candidateMutation": "Append invalid Python function declarations to setup.py and astropy/io/fits/card.py",
+    "buildExitCode": 1,
+    "importProbeExitCode": 1,
+    "pytestExitCode": 4,
+    "apiProbeExitCode": 1,
+    "pytestReason": "Original setup.cfg warning-class resolution cannot import the candidate after its failed source build",
+    "originalParserStatuses": {
+      "while": "ERROR:"
+    },
+    "missingSelectedIds": 176,
+    "originalResolution": "RESOLVED_NO",
+    "importAndAPIExplicitlyUnavailable": true,
+    "restoredOwners": 683,
+    "providerRequests": 0,
+    "nativeReportSha256": "2ad09d429bd291e674997874e4b4eca80dfb7f017b7dad8f80f91ebe449284a5",
+    "executionAdapterSha256": "066516d0564a9e8d072b930691a326eff6ff03504ac5ba91143e1695a8ece3e3",
+    "executionSupportSha256": "9b1dcc54ffcb6416d3045b05cf20b4d3f4e5867b65f346c3fe1e7c52aff8aa02",
+    "stdoutTruncated": false,
+    "stderrTruncated": false
+  }
+}

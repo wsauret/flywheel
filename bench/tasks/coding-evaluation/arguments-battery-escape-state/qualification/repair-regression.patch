@@ -1,0 +1,11 @@
+--- a/src/orchestration/agent-runtime/llm/json-parse.ts
++++ b/src/orchestration/agent-runtime/llm/json-parse.ts
+@@ -90,7 +90,7 @@
+     return JSON.parse(json);
+   } catch (error) {
+     const repaired = repairJson(json);
+-    if (repaired !== json) return JSON.parse(repaired);
++    if (false) return JSON.parse(repaired);
+     throw error;
+   }
+ }

@@ -1,0 +1,642 @@
+# Use when the design is already settled in chat and the work is substantial: multiple dependent phases or architectural decisions whose mistakes would invalidate later phases. Launch only when no user choice or technical uncertainty remains and no phase needs discovery, experiments, or proof-of-concept work; the workflow inspects the repository only to ground the settled design in exact files, callers, and tests. Do not use it to start designing, for a bounded change, for routine ticket-sized work, or for bulk homogeneous work such as mass lint fixes, codemods, or renames. When you can launch a workflow file, run bulk work as one that fans out over the sites and verifies each one; otherwise drive it from chat as waves of implementer subagents with per-batch verification. Once the workflow is running, newly exposed implementation uncertainty belongs to the active step: troubleshoot it, run a focused experiment or proof of concept, and continue. The fact that work remains is not a blocker.
+id: implement
+name: Implement
+description: Turn a settled design into a reviewed implementation spec, then implement it.
+phases:
+  - phase: spec-create
+    name: Create Spec
+    dependencies:
+      - research
+      - implementation-planning
+    subagents:
+      - explorer
+      - advisor
+    brief: |-
+
+      # Implementation Spec Creation
+
+      Research the codebase, validate technical claims, and emit a work-ready implementation spec. The method is the retained Implementation Specification section below; this brief adds the role boundary, the grounding sequence, and the artifact contract.
+
+      ## Role boundary
+
+      - Workflow execution keeps target implementation files read-only. This agent has `write` and `edit` for the scratch spec artifact and for disposable experiments; the spec-create parent owns disposable proof-of-concept tests in workflow scratch and writes them when they produce stronger evidence than static reasoning. A user request to create or edit a target file is downstream implementation work; the read-only target is a role, not a blocker and not an open question.
+      - Explorer delegation stays read-only: use explorers for repository research, data analysis, and path probes. Do not dispatch implementer or mutation-capable subagents. Do not ask explorers to create scratch files or proof-of-concept tests.
+
+      ## Request Triage
+
+      The workflow input must be a fully settled design, and it must arrive with no open questions; the chat agent owns every question known before launch. Resolve newly discovered uncertainty by analyzing representative data, running actual code paths, writing disposable proof-of-concept tests in workflow scratch, consulting external documentation, or dispatching explorers before writing the spec. When empirical work cannot answer a narrow user-owned choice, message your parent with `message_session` and wait for its reply: the parent holds the approved design and asks the person when it must. When repository evidence fundamentally contradicts the approved design, message your parent the same way with the contradiction and its evidence: the parent revises the design with the person and replies, or it stops the workflow. If the launch input is incomplete, investigate the missing context here and message your parent only for that narrow user-owned choice: a clarification is not an implementation milestone, and `milestones: []` is invalid.
+
+      Check the `<env>` block's `Repo snapshot` line. A greenfield repository (fewer than 5 tracked files) skips codebase research; go straight to shape synthesis.
+
+      ## Ground the spec in the codebase
+
+      Use the memory the runtime already supplied.
+
+      Map each finding to `context`: codebase findings to `key_files[]`, pattern findings to `patterns[]`, doc and external findings to `constraints[]`. Record every project doc consulted (architecture docs, ADRs, guidelines) as repo-relative paths in `context.project_docs[]`, excluding AGENTS.md and source files; downstream review agents forward these paths to reviewers verbatim. Act on the composed research protocol's flags: reuse an `EXISTING_SOLUTION`; treat a `DRY_VIOLATION` as a consolidation hypothesis and add a consolidation task only when the code shares one responsibility and the consolidation has demonstrated benefit while preserving independent boundary obligations; record a rejected consolidation in the existing `context.constraints[]`; record a `PATTERN_CONFLICT` with the reason for keeping or correcting it; cover an `INTEGRATION_RISK` with tests in the affected milestone; and resolve an `OPEN_QUESTION`, `CLAIM_INVALID`, or `VERSION_ISSUE` here rather than passing it on.
+
+      Before shape synthesis, confirm that the referenced paths exist, that the relevant existing implementations and conventions are known, and that no proposed work duplicates existing code.
+
+      Note a confirmed external claim's source inline in the spec text; correct an invalid claim or version conflict by researching a valid implementation shape. Best practices from those sources are candidate constraints for shape synthesis: they enter implementation work only when design-cited or codebase-cited and the selected remedy is the simplest feature-complete shape. An authoritative recommendation alone does not justify new tasks, guards, layers, or scenarios.
+
+      ## Shape synthesis
+
+      Follow the shape-synthesis method in the composed package in your own context; do not dispatch subagents to draft or score alternatives, because the downstream spec-review phase is the adversarial check. Record the outcome in one of the package's two required forms as a string appended to `context.constraints[]`, after the user's verbatim description. Do NOT add handoff fields outside the documented schema and do NOT invent ad hoc `context.*` keys for rejected alternatives or scoring metadata.
+
+      ## Artifact
+
+      A completed spec is one JSON document under the workflow scratch `plans/` directory, authored with `write` (and `edit` for bounded extension passes), never through a shell script or heredoc. Its top-level fields are exactly `schema_version: 1`, `summary` (100-5000 chars: the system-level goal and what is being built), `context`, `milestones`, `success_criteria`, and `implementation_contract`. Do not emit `open_questions`, `risks`, `notes`, or any other field; risk discussion belongs in `context.constraints[]`. Do not turn discovery, experiments, spikes, or proof-of-concept work into implementation milestones. Finish with a `handoff` call carrying only the spec file's `path`; the host validates the file and reports every problem with its line for you to repair with `edit`. A spec contains no open questions, discovery milestones, experiments, spikes, proof-of-concept tasks, or choices deferred to the implementer.
+
+      ### `context`
+
+      Three arrays plus one optional: `key_files[]` (repo-relative paths with one-line reasons), `patterns[]` (existing patterns to follow), `constraints[]` (pitfalls and design rationale: prerequisites, rejected alternatives, why-this-shape decisions, edge cases), and `project_docs[]` (plain doc paths; omit on greenfield). `context.constraints[0]` is the user's feature description copied literally, prefixed `User feature description (verbatim, authoritative): `; every downstream agent treats it as the authoritative constraint. The final `context.constraints[0]` remains the user's verbatim description UNCHANGED, and rationale is appended after it, append-only; never prepend, move, paraphrase, or replace constraints[0]. The `Design intent` section inside it, and each revision entry, is the fixed tier for every downstream agent; every other `constraints[]` entry, every milestone, and every directive is implementation design that the implement agent may revise with a recorded deviation. The user's description is the original request under `## User Request`, above any `### Added since launch` heading. Each addition under that heading is a request addendum from the parent: it is implementation direction unless it holds the literal heading `Design intent`, and every downstream agent reads it from its own bundle. Follow each addition, append how the spec follows it to `constraints[]`, and never copy an addition into `constraints[0]`. A direct message from the person while this agent works that changes the work is a revision. Follow it and record it as a `constraints[]` entry directly after `constraints[0]`, prefixed `Revision (verbatim, from the person): `, followed by the quoted instruction and what it replaces. A revision replaces what it names in `constraints[0]`, which stays unchanged.
+
+      ### `milestones`
+
+      Each milestone is `{ id, goal, files, tasks, verification, qualitative_verification }` and each task is `{ id, description, files, test_scenarios }`, with no other fields. `test_scenarios[]` are plain strings that state the expected behavior; `files[]` are plain repo-relative paths.
+
+      The example below illustrates the schema, not a required stack or layout. Use the target repository's actual language, framework, paths, and verification commands.
+
+      ```json
+      {
+        "id": "milestone-1",
+        "goal": "Land the healthz route and a smoke test.",
+        "files": ["src/server.ts", "tests/server.test.ts"],
+        "tasks": [
+          {
+            "id": "t1",
+            "description": "Add Express GET /healthz returning JSON `{sha: process.env.BUILD_SHA}`.",
+            "files": ["src/server.ts"],
+            "test_scenarios": ["GET /healthz returns 200 with a body containing `sha`"]
+          }
+        ],
+        "verification": "bun run test tests/server.test.ts",
+        "qualitative_verification": null
+      }
+      ```
+
+      `verification` is always a runnable command that proves this milestone alone: a focused test file, a type or schema smoke check, or a small script, never the project's full-suite commands unless nothing narrower can prove the milestone. For a surface one command cannot prove (a server, a rendered view), use a focused script against its real boundary and put the remaining judgment in `qualitative_verification`. Apply the composed method's milestone sizing and never emit a code-review milestone: reviewer routing the user requested is a `context.constraints[]` entry for the workflow's code-review phase. A UAT milestone that drives the running application against acceptance criteria is legitimate implementer-owned verification.
+
+      ### `success_criteria`
+
+      Global acceptance only, including the composed method's elegance criterion anchored to the shape-synthesis rejection. Do not restate milestone verification here.
+
+      ### `implementation_contract` (REQUIRED in every spec)
+
+      `implementation_contract` is the implementer's contract: what their diff must commit to. spec-create originates it in every spec and spec-review preserves it; since spec-review is optional, spec-create cannot rely on a later phase to add it. Downstream work agents echo every directive in `contract_result`.
+
+      Shape: `{ directives: [{ id, text, completion_check }] }`, directives only, 1-4 of them. Each directive is one concrete commitment the diff either satisfies or does not, written so a reader can name what breaks if it were removed, and paired with a `completion_check` that names a file, test, command, or exact symbol the implement agent's output can cite. Forbidden: exact file allowlists (`milestones[].files` already scopes paths), generic quality advice such as "follow existing patterns" that is too vague to check, and impossible diff claims such as "only additions" or "no removed lines" when the work needs mechanical imports, exports, wiring, or test setup edits.
+
+      ```json
+      { "id": "d1", "text": "The /healthz handler reads the build SHA once at startup, not per request.", "completion_check": "tests/server.test.ts asserts two requests return the same SHA after process.env.BUILD_SHA changes mid-run." }
+      ```
+
+      When no commitment beyond the milestones is needed, prefer one tight directive naming the highest-risk integration point over a list of weak ones.
+
+      ## Error handling
+
+      Log an explorer failure and continue with the available findings.
+
+
+      # Implementation Specification
+
+      Input: one approved settled design with no open questions and the repository revision it applies to. Preserve every settled decision, requirement, non-goal, and acceptable outcome. This package owns the implementation-planning method only. It does not own workflow handoff schemas, artifact paths, tool routing, agent selection, or host orchestration.
+
+      ## Ground the plan in the codebase
+
+      Use the composed research method before decomposition. Read the nearest implementation patterns, exact implementation seams, callers, registrations, tests, module boundaries, and project rules. Reuse work that already exists instead of planning a second copy. Verify every existing path and symbol cited by the specification.
+      Grounding confirms how to execute an already settled design. Prefer observed behavior over educated guesses: analyze representative data, run actual code paths, and write disposable proof-of-concept tests in workflow scratch when those can resolve a technical question. Code reading identifies what to test; it does not substitute for executable evidence. Resolve newly discovered technical uncertainty during specification and state any remaining inference explicitly. Do not turn that work into an implementation milestone or ask the implementer to choose among alternatives.
+
+      Map every requested behavior and success criterion to concrete implementation work and proof. If repository evidence contradicts a settled implementation detail, correct the specification when the approved behavior and architecture still hold.
+
+      ## Every element earns its place
+
+      Apply this admission test to every milestone, task, scenario, criterion, directive, guard, capability, and mode:
+
+      - **Design-cited:** the settled design requests it. Cite the requirement ID when the design uses IDs.
+      - **Codebase-cited:** a concrete normal-operation trigger exists in the repository. Name its `file:line`, symbol, or caller.
+      - **Not admitted:** it does not belong in implementation work.
+
+      Write the rationale when admission is not self-evident, especially for defensive guards, unnamed capabilities, extra scenario variants, and criteria beyond settled acceptance. A hypothetical crash, hostile input, interrupted write, or degraded outcome is not a codebase citation. Record it as `Deferred hardening: <entry> - assumption: <one sentence>` instead of making it a task or scenario. Do not add speculative compatibility, robustness, abstraction, or future-use work.
+
+      ## Converge on one feature-complete shape
+
+      The specification owns the implementation shape needed to deliver the whole settled feature. For trivial work, record `Single obvious shape - no alternative considered because <concrete reason>.` For nontrivial work, choose the maximally elegant feature-complete decomposition. Do not manufacture alternatives, but record any plausible alternative encountered as `Considered: <alternative>. Rejected because: <one concrete reason>.`
+
+      Explicit requirements and confirmed correctness, security, data-integrity, performance, and runtime constraints are hard gates. Among shapes that satisfy them, choose the one with the fewest owners, states, layers, abstractions, and failure branches. Reject wrappers, parallel state, forwarding chains, speculative structure, and defensive machinery without a design or repository citation. Simplicity never means omitting requested behavior.
+
+      ## Shape milestones and verification
+
+      Shape the milestones, scenarios, and verification with the composed implementation-planning method. The section labeled `Design intent` in the launch input is the fixed tier; everything this specification adds is implementation design. Carry the label through unchanged so the implementer sees the same line. Implementation may revise implementation design, expand necessary files, and change milestone boundaries from new evidence while preserving the Design intent; do not turn estimates into approval gates. Message your parent with `message_session` only for a narrow user-owned choice, and wait for its reply. When repository evidence contradicts the approved design, message your parent with `message_session`, give the contradiction and its evidence, and wait for its reply.
+
+      ## Enforce readiness
+
+      A workflow specification has no open questions and no implementation-time unknowns. Resolve newly discovered uncertainty inside the specification agent through repository inspection, focused research, or experiments. Do not create a milestone for discovery, experiment, spike, or proof-of-concept work, and do not ask the implementer to figure out how the system works.
+
+      The specification is ready only when every requirement and success criterion maps to implementation work and proof; every existing citation is verified; files, symbols, tests, scenarios, dependencies, and boundary contracts are concrete; each milestone fits one run and has fresh verification; global acceptance closes the complete feature; rationale records the selected shape; speculative work is absent or deferred; and no open questions remain.
+
+      Return the workflow consumer's implementation-ready specification shape. Do not define its handoff fields, artifact location, tool policy, reviewer dispatch, or host control flow here.
+    output:
+      submit: file
+      summary: Brief summary of the plan.
+      fields:
+        schema_version:
+          type: enum
+          values:
+            - 1
+          description: Plan schema version. Must be 1.
+        context:
+          type: object
+          description: "Plan context: key_files, patterns, constraints (constraints[0] is the verbatim user description), and optional project_docs (doc paths consulted during research, forwarded to reviewers)."
+          fields:
+            key_files:
+              type: list
+              optional: true
+              of:
+                type: string
+              description: Repo-relative paths with one-line reasons.
+            patterns:
+              type: list
+              optional: true
+              of:
+                type: string
+              description: Existing patterns to follow.
+            constraints:
+              type: list
+              min: 1
+              of:
+                type: string
+              description: Pitfalls and design rationale. constraints[0] is the verbatim user description.
+            project_docs:
+              type: list
+              optional: true
+              of:
+                type: string
+              description: Doc paths consulted during research, forwarded to reviewers.
+        milestones:
+          type: list
+          min: 1
+          unique: id
+          description: Array of direct implementation milestones. Each milestone has id, goal, files, tasks, and verification. Never include discovery or decision milestones.
+          of:
+            type: object
+            fields:
+              id:
+                type: string
+                description: The milestone id.
+              goal:
+                type: string
+                description: What the milestone delivers.
+              files:
+                type: list
+                of:
+                  type: string
+                description: Repo-relative paths the milestone is expected to touch.
+              tasks:
+                type: list
+                unique: id
+                description: The concrete changes of the milestone.
+                of:
+                  type: object
+                  fields:
+                    id:
+                      type: string
+                      description: The task id.
+                    description:
+                      type: string
+                      description: The concrete change.
+                    files:
+                      type: list
+                      of:
+                        type: string
+                      description: Repo-relative paths the task changes.
+                    test_scenarios:
+                      type: list
+                      of:
+                        type: string
+                      description: Plain statements of the expected behavior.
+              verification:
+                type: string
+                description: A runnable command that proves this milestone alone.
+              qualitative_verification:
+                type: string
+                optional: true
+                nullable: true
+                description: The judgment that no command can prove, or null.
+        success_criteria:
+          type: list
+          min: 1
+          of:
+            type: string
+          description: Measurable criteria for the implementation to be considered complete.
+        implementation_contract:
+          type: object
+          optional: true
+          description: "A compact contract for the implementer: 1-4 directives, each { id, text, completion_check }. fly.spec-create originates it and spec-review preserves an existing contract. Downstream work agents echo every directive in contract_result."
+          fields:
+            directives:
+              type: list
+              min: 1
+              max: 4
+              unique: id
+              description: One concrete commitment for each directive.
+              of:
+                type: object
+                fields:
+                  id:
+                    type: string
+                    description: The directive id.
+                  text:
+                    type: string
+                    description: The commitment the diff either satisfies or does not.
+                  completion_check:
+                    type: string
+                    description: A file, test, command, or exact symbol the work handoff can cite.
+    writes:
+      - id: plan
+        lifetime: durable
+        supersedes: []
+  - phase: spec-review
+    name: Review Spec
+    dependencies:
+      - research
+      - implementation-planning
+      - code-review
+    subagents:
+      - reviewer-plan-quality
+      - reviewer-plan-performance
+      - reviewer-plan-data-integrity
+      - reviewer-plan-elegance
+      - reviewer-plan-design
+      - reviewer-plan-security
+      - reviewer-mechanism
+      - advisor
+    brief: |-
+
+      # Implementation Spec Review & Consolidation
+
+      Review the draft spec with parallel reviewer agents, synthesize their findings, and merge them into a refined work-ready spec.
+
+      **Role boundary:** the draft spec is your input; you refine it, you do not implement it. Do not create, edit, delete, or verify target implementation files. The only subagents you may dispatch are the listed `reviewer-*` agents, and your first subagent calls are reviewer calls. Reviewer dispatch is mandatory: the work of this agent is incomplete until the selected set has run and returned, and a trivial spec shrinks the set, never to zero. Resolve newly discovered uncertainty inside this agent through repository evidence, focused research, experiments, or mechanism verification; never defer it to implementation.
+
+      **Location format:** plan-scope, `<milestone_id>` or `<milestone_id>/<task_id>`. The composed review method sizes the `reviewer-plan-*` set, assigns the spec's material claims, and verifies them; the sections below carry only what this brief adds.
+
+      ## Reviewer prompt
+
+      Each reviewer prompt carries the full spec inline plus the plan-scope location format:
+
+      ```
+      Review this implementation spec.
+
+      SPEC:
+      [full spec content or spec.json content]
+
+      PROJECT CONTEXT PATHS (read these for the project's grain - do not re-discover):
+      [paths from the input spec's context.project_docs, or the fallback sweep, or "none"]
+
+      ASSIGNED CLAIMS (verify each with the narrowest tool you already hold before writing findings; report the check-derived evidence; add material claims this list missed):
+      [the claims assigned to this reviewer, verbatim, with plan-scope locations, or "none assigned"]
+
+      This spec descends from a settled design. The design fixed the what: the section labeled `Design intent` inside `context.constraints[0]`, which carries the purpose, feature set, key decisions, non-goals, constraints with their rejected alternatives, and verification expectations. The spec owns the rest of the how. Critique the how - decomposition, files, tests, verification - and correct real mistakes in it. A finding that would change the what is a contradiction to flag, never a recommendation to integrate.
+
+      Use plan-scope locations: `<milestone_id>` or `<milestone_id>/<task_id>`.
+      Do NOT write to any files. The synthesizer owns all file writes.
+      ```
+
+      ## Consolidate into the refined spec
+
+      Write no sidecars, backups, or drafts; the refined spec is the only deliverable. If the review produced zero findings and no unresolved claims, print "No refinements needed - spec is already work-ready." and skip to the summary.
+
+      ### Constraint-and-Shape Arbitration
+
+      Split every surviving finding into the constraint its evidence establishes and the fix it proposes. Keep a constraint only when it is design-cited, codebase-cited, or confirmed by mechanism verification; treat every fix as a candidate. Build one coherent correction set: verified constraints are hard gates, and among shapes that satisfy them elegance governs, with the fewest new tasks, owners, states, layers, abstractions, and failure branches. Do not accumulate one mechanism per reviewer, merge fixes by union, or count reviewers. When a specialist names a real constraint but proposes defensive complexity, keep the constraint and replace the remedy with the smallest change that satisfies the evidence.
+
+      ### Integrate arbitrated findings
+
+      **Consistency check before integrating any finding.** `context.constraints[0]` is the user's verbatim, immutable description, and each `Revision` entry after it replaces what it names there. A task that follows a revision is settled design, never a contradiction of `constraints[0]`. Defer a finding that changes something the user or a revision named or reverses the settled design, that adds a capability the user did not request, that contradicts an existing `success_criteria` entry, or that is assumption-based hardening.
+
+      **Integrate by severity.** P1: Fold the selected arbitrated correction into the affected task's `description` and never restore the reviewer's original fix, add test scenarios for the failure, and add a task only when no existing task can own the behavior. P2: correctness, consistency, and requested-behavior findings integrate like a P1; hardening integrates only when design-cited or codebase-cited (a concrete trigger in this codebase, such as a `file:line`, a named caller, or a wave-2 verified claim), and an assumption-based hardening finding ("an attacker could", "a crash at this instant") is recorded as `Deferred: <finding> - assumption: <one sentence>` in `context.constraints[]`. P3: integrate only what is design-cited or codebase-cited and survives the same checks; drop style preferences and record the rest as `Deferred: <finding> - <rationale>`. Do not ask the user which P3s to keep. For every integrated P1 or P2, append a one-line failure summary to `context.constraints[]` so the implementer sees the reasoning.
+
+      **Structural failures replace, do not patch.** When a finding's Failure leads with a name from the composed elegance catalog, or with Working with the Grain, Test Desert, Test Afterthought, Reinvented Wheel, Shotgun Surgery, N+1 Query, Race Condition, Layering Violation, or Convention Drift, reshape the affected milestone to the cleaner shape instead of folding a fix into the task.
+
+      **Preserve verification ownership and phase boundaries.** Findings may add or narrow a milestone's `verification` command but must not move global acceptance into milestones; `success_criteria[]` holds final suites, lint, boundaries, live integration checks, and qualitative gates. Remove any milestone or task whose purpose is a review wave or resolving review findings, moving reviewer-selection guidance into `context.constraints[]`; implementer-owned UAT milestones stay.
+
+      **Preserve and refine `implementation_contract`.** spec-create originates the contract and spec-review is an optional pass, so it must not be the only source of baseline contract requirements: copy the contract forward verbatim by default. You may tighten vague directives that cannot be pinned to a concrete file, test, command, or symbol; repair over-strict completion checks that make impossible diff claims such as "only additions" when the work needs mechanical imports, exports, wiring, or test setup edits; add missing constraints a P1 or P2 finding shows are load-bearing, within the 1-4 cap; and remove a directive only when its behavior left the spec. You must not empty or replace the contract, introduce exact file allowlists or generic quality advice, or originate a contract the input lacked; log a missing contract as a defect in the summary.
+
+      **Check milestone sizing and sweep.** Split any milestone past the composed package's one-run budget along its dependency seam, each part with its own verification command. Then run the composed method's full sweep over the merged spec; its advisory notes feed the "Design-mandated hardening worth revisiting" list below. Never weaken `constraints[0]`.
+
+      ## Write the refined spec
+
+      Copy `context.constraints[0]` and every `Revision` entry exactly from the input, including prefixes and order. Record a direct message from the person while this agent works that changes the work as a revision the same way, after the existing ones. Write the refined spec as JSON under the workflow scratch `plans/` directory with `write` (and `edit` for bounded passes), never through a shell script, and call `handoff` with only the file's `path`; the host validates the file and reports every problem with its line. The file carries the canonical top-level fields, must contain no open questions, discovery milestones, experiments, spikes, proof-of-concept tasks, or choices deferred to the implementer, and states what the evidence supports for every material claim. When a narrow choice belongs to the person and repository evidence cannot answer it, ask your parent: the parent holds the approved design and asks the person when it must. When repository evidence fundamentally contradicts the approved design, give your parent the contradiction and its evidence. In both cases, reach your parent through the channel that your WORKING UNATTENDED instructions name, and wait for its reply. When those instructions say that no parent can answer during this run, decide on your own judgment and state each assumption in your handoff.
+
+      Then print the only user-facing output of this agent:
+
+      ```
+      Key integration decisions:
+      - <one line per P1/P2 finding that changed the plan>
+
+      Design-mandated hardening worth revisiting:
+      - <one line per design-cited element that would otherwise fail the concrete-trigger test; omit when empty>
+
+      Spec refined - <id>
+      Integrated: N P1, N P2, N P3
+      Deferred: N
+      Simplified: N elements deferred or collapsed by the sweep
+      ```
+
+
+      # Implementation Specification
+
+      Input: one approved settled design with no open questions and the repository revision it applies to. Preserve every settled decision, requirement, non-goal, and acceptable outcome. This package owns the implementation-planning method only. It does not own workflow handoff schemas, artifact paths, tool routing, agent selection, or host orchestration.
+
+      ## Ground the plan in the codebase
+
+      Use the composed research method before decomposition. Read the nearest implementation patterns, exact implementation seams, callers, registrations, tests, module boundaries, and project rules. Reuse work that already exists instead of planning a second copy. Verify every existing path and symbol cited by the specification.
+      Grounding confirms how to execute an already settled design. Prefer observed behavior over educated guesses: analyze representative data, run actual code paths, and write disposable proof-of-concept tests in workflow scratch when those can resolve a technical question. Code reading identifies what to test; it does not substitute for executable evidence. Resolve newly discovered technical uncertainty during specification and state any remaining inference explicitly. Do not turn that work into an implementation milestone or ask the implementer to choose among alternatives.
+
+      Map every requested behavior and success criterion to concrete implementation work and proof. If repository evidence contradicts a settled implementation detail, correct the specification when the approved behavior and architecture still hold.
+
+      ## Every element earns its place
+
+      Apply this admission test to every milestone, task, scenario, criterion, directive, guard, capability, and mode:
+
+      - **Design-cited:** the settled design requests it. Cite the requirement ID when the design uses IDs.
+      - **Codebase-cited:** a concrete normal-operation trigger exists in the repository. Name its `file:line`, symbol, or caller.
+      - **Not admitted:** it does not belong in implementation work.
+
+      Write the rationale when admission is not self-evident, especially for defensive guards, unnamed capabilities, extra scenario variants, and criteria beyond settled acceptance. A hypothetical crash, hostile input, interrupted write, or degraded outcome is not a codebase citation. Record it as `Deferred hardening: <entry> - assumption: <one sentence>` instead of making it a task or scenario. Do not add speculative compatibility, robustness, abstraction, or future-use work.
+
+      ## Converge on one feature-complete shape
+
+      The specification owns the implementation shape needed to deliver the whole settled feature. For trivial work, record `Single obvious shape - no alternative considered because <concrete reason>.` For nontrivial work, choose the maximally elegant feature-complete decomposition. Do not manufacture alternatives, but record any plausible alternative encountered as `Considered: <alternative>. Rejected because: <one concrete reason>.`
+
+      Explicit requirements and confirmed correctness, security, data-integrity, performance, and runtime constraints are hard gates. Among shapes that satisfy them, choose the one with the fewest owners, states, layers, abstractions, and failure branches. Reject wrappers, parallel state, forwarding chains, speculative structure, and defensive machinery without a design or repository citation. Simplicity never means omitting requested behavior.
+
+      ## Shape milestones and verification
+
+      Shape the milestones, scenarios, and verification with the composed implementation-planning method. The section labeled `Design intent` in the launch input is the fixed tier; everything this specification adds is implementation design. Carry the label through unchanged so the implementer sees the same line. Implementation may revise implementation design, expand necessary files, and change milestone boundaries from new evidence while preserving the Design intent; do not turn estimates into approval gates. Message your parent with `message_session` only for a narrow user-owned choice, and wait for its reply. When repository evidence contradicts the approved design, message your parent with `message_session`, give the contradiction and its evidence, and wait for its reply.
+
+      ## Enforce readiness
+
+      A workflow specification has no open questions and no implementation-time unknowns. Resolve newly discovered uncertainty inside the specification agent through repository inspection, focused research, or experiments. Do not create a milestone for discovery, experiment, spike, or proof-of-concept work, and do not ask the implementer to figure out how the system works.
+
+      The specification is ready only when every requirement and success criterion maps to implementation work and proof; every existing citation is verified; files, symbols, tests, scenarios, dependencies, and boundary contracts are concrete; each milestone fits one run and has fresh verification; global acceptance closes the complete feature; rationale records the selected shape; speculative work is absent or deferred; and no open questions remain.
+
+      Return the workflow consumer's implementation-ready specification shape. Do not define its handoff fields, artifact location, tool policy, reviewer dispatch, or host control flow here.
+    output:
+      submit: file
+      summary: Brief summary of the plan.
+      fields:
+        schema_version:
+          type: enum
+          values:
+            - 1
+          description: Plan schema version. Must be 1.
+        context:
+          type: object
+          description: "Plan context: key_files, patterns, constraints (constraints[0] is the verbatim user description), and optional project_docs (doc paths consulted during research, forwarded to reviewers)."
+          fields:
+            key_files:
+              type: list
+              optional: true
+              of:
+                type: string
+              description: Repo-relative paths with one-line reasons.
+            patterns:
+              type: list
+              optional: true
+              of:
+                type: string
+              description: Existing patterns to follow.
+            constraints:
+              type: list
+              min: 1
+              of:
+                type: string
+              description: Pitfalls and design rationale. constraints[0] is the verbatim user description.
+            project_docs:
+              type: list
+              optional: true
+              of:
+                type: string
+              description: Doc paths consulted during research, forwarded to reviewers.
+        milestones:
+          type: list
+          min: 1
+          unique: id
+          description: Array of direct implementation milestones. Each milestone has id, goal, files, tasks, and verification. Never include discovery or decision milestones.
+          of:
+            type: object
+            fields:
+              id:
+                type: string
+                description: The milestone id.
+              goal:
+                type: string
+                description: What the milestone delivers.
+              files:
+                type: list
+                of:
+                  type: string
+                description: Repo-relative paths the milestone is expected to touch.
+              tasks:
+                type: list
+                unique: id
+                description: The concrete changes of the milestone.
+                of:
+                  type: object
+                  fields:
+                    id:
+                      type: string
+                      description: The task id.
+                    description:
+                      type: string
+                      description: The concrete change.
+                    files:
+                      type: list
+                      of:
+                        type: string
+                      description: Repo-relative paths the task changes.
+                    test_scenarios:
+                      type: list
+                      of:
+                        type: string
+                      description: Plain statements of the expected behavior.
+              verification:
+                type: string
+                description: A runnable command that proves this milestone alone.
+              qualitative_verification:
+                type: string
+                optional: true
+                nullable: true
+                description: The judgment that no command can prove, or null.
+        success_criteria:
+          type: list
+          min: 1
+          of:
+            type: string
+          description: Measurable criteria for the implementation to be considered complete.
+        implementation_contract:
+          type: object
+          optional: true
+          description: "A compact contract for the implementer: 1-4 directives, each { id, text, completion_check }. fly.spec-create originates it and spec-review preserves an existing contract. Downstream work agents echo every directive in contract_result."
+          fields:
+            directives:
+              type: list
+              min: 1
+              max: 4
+              unique: id
+              description: One concrete commitment for each directive.
+              of:
+                type: object
+                fields:
+                  id:
+                    type: string
+                    description: The directive id.
+                  text:
+                    type: string
+                    description: The commitment the diff either satisfies or does not.
+                  completion_check:
+                    type: string
+                    description: A file, test, command, or exact symbol the work handoff can cite.
+    writes:
+      - id: reviewed-plan
+        lifetime: durable
+        supersedes:
+          - plan
+  - phase: implement
+    name: Implement
+    dependencies:
+      - implementation
+    subagents:
+      - implementer
+      - reviewer-uat
+      - advisor
+    brief: |
+
+      # Work Implementation
+
+      You orchestrate the work of this brief: probe, dispatch, verify, repeat. Every implementation milestone or finding theme goes to a subagent; defects you find yourself are fixed inline (see Follow-up work). Deliver the original user intent. The inherited plan and low-level design are revisable implementation guidance, not permission boundaries.
+
+      ## Autonomous revision
+
+      Do not wait for approval during implementation. Resolve technical choices from repository evidence and the original user intent. Only a root chat asks the person: when a choice belongs to the person, message your parent with `message_session` and wait for its reply. Expand necessary files and repair scope, revise low-level design, and split, combine, reorder, or replace milestones when discoveries require it.
+
+      Preserve high-level requested behavior, explicit user prohibitions, and required quality checks. Do not add unrelated features or weaken acceptance to make completion easier. Keep a working revision and verification ledger in session notes: original milestone or choice, contradictory evidence, replacement work, affected requirements, and verification. Carry revised dependencies into subsequent dispatches. The final handoff records material revisions in `decisions` and accounts for affected directives in `contract_result`; never label your own revision as user steering. The dispatching parent reviews this verified first draft against user intent and owns further iteration. Expected design drift is review input, not a reason to stop.
+
+      At each verified commit boundary, apply this reference:
+
+      {{ref:commit-contract}}
+
+      ## Mode
+
+      Decide the mode from the context bundle before touching any file:
+
+      - **Fix-findings mode**: `## Output of the Phase Before` carries an output whose `findings` list is not empty. Resolve only those findings; the inherited plan and implementation are background, not work to repeat.
+      - **Plan mode**: otherwise. Start from the single live inherited plan artifact (normally `reviewed-plan`) and complete its intended outcomes under the revised dependency order.
+
+      If this brief claims a review happened but no earlier phase with `findings` is present, that is a wiring fault: report it in the handoff instead of guessing a scope.
+
+      ## Plan mode
+
+      Read the original request and plan (summary, success_criteria, key_files, patterns, constraints), distinguish user requirements from planner choices, and keep that picture in your working notes; do not paste it into each dispatch. Then, for each milestone in the current dependency order:
+
+      1. **Probe.** Start with the milestone's named files and relevant `context.key_files`, then follow load-bearing callers and dependencies. Verify paths with list or search. Resolve renamed or missing paths and correct the working plan.
+      2. **Dispatch** one `implementer` subagent with a milestone-local packet: the milestone id, goal, expected-touch files, tasks, and verification command; the plan's `Design intent` section and every `Revision` constraint verbatim under that label, so the implementer sees the fixed tier as written; the verified relevant files with one-line reasons; the applicable constraints, labeled as implementation design the implementer may revise; and the outputs of earlier milestones this one consumes. These are expected-touch files, not a permission boundary: explicitly authorize additional files, necessary repairs, and low-level design changes that serve the goal without another approval. Preserve exact literal contents only when the user requires them. Give enough intent for independent judgment, not the entire plan. Require local evidence and a report of material revisions; global acceptance and the completion decision remain yours. Dispatch `reviewer-uat` instead of `implementer` for a verification-only milestone that drives the live system and edits no source; it reports findings, and any defect it surfaces follows Follow-up work.
+      3. **Verify.** Inspect the subagent's command, output, and exit status to understand its claims, then freshly verify the milestone on the present tree yourself with the fewest decisive checks. Past observations guide hypotheses only, never current acceptance. Judge any `qualitative_verification` through fresh inspection yourself and address a defect before continuing. Within the same verification pass, one fresh check can prove multiple requirements; do not pile up equivalent checks after the requirements are proved.
+      4. **Continue.** Carry only the dependency-relevant outputs into the next dispatch.
+
+      **No mid-implementation review waves.** Code review is a separate phase of the workflow, or the dispatching session's job when no such phase exists. Your quality instruments are the milestone verification commands and the Quality Check, not reviewer subagents.
+
+      **Follow-up work.** Defects you discover yourself, such as a failing lint, a gap surfaced by verification, or an unmet criterion, are not milestones: fix them inline, because you already hold the diagnosis. Dispatch a follow-up implementer only when the fix is genuinely large, and then send your diagnosis (the failing command, the root cause, the exact files), not a fresh discovery brief. Either way, record current verification evidence for the fix in the ledger.
+
+      **Persistence.** Remaining milestones, elapsed effort, commits already made, final gates not yet run, and needing another implementation pass are incomplete work, never blockers. When the next path is uncertain, troubleshoot one hypothesis at a time. Run the smallest focused experiment or proof of concept through the real seam that can decide the path, use its evidence, and continue with the next bounded action. A child's scope concern or failed approach returns to your revision loop, not to the user. Spec drift, extra files, milestone-order conflicts, and unfinished work are yours to resolve. When evidence contradicts the Design intent, or a demonstrated external prerequisite or explicit user prohibition prevents every viable next action, message your parent with `message_session`: cite the condition, attempted alternatives, and evidence, then wait for its reply. The parent revises the design with the person and replies, or it stops the workflow. Do not bypass consent for independently restricted actions or fabricate completion.
+
+      **Completion gate.** Before the final handoff, account for every original milestone by id as completed or replaced by identified completed work. Prove that the revised implementation covers the requested outcomes and required checks. Validate actual paths and preserve exact paths only where they are user requirements; do not create obsolete planned files just to satisfy a stale list. Missing implementation goes to an implementer; a gap in completed work follows Follow-up work. Do not write a completion handoff while required work remains. When this brief also requires other artifact writes, complete them before you submit the handoff. The handoff names completed and replaced milestone ids and the actual files created or modified.
+
+      ## Fix-findings mode
+
+      Read every finding and the spec rationale before dispatching. Group the findings into one to five themes, with small unrelated polish in one `theme-polish`.
+
+      For each theme: probe the theme's files, dispatch one `implementer` with the theme's findings verbatim, its write set, the relevant spec rationale, and the narrowest verification hint, then verify its evidence as in plan mode. Tell the implementer to read every finding in the theme before touching code, to diagnose the shared structural cause first, and not to patch each finding independently; bound it the same way as a milestone dispatch, with local evidence only and no re-reading of the entire review. The implementer may take a cleaner structural fix outside the finding files and must report the drift.
+
+      When findings expose a flaw in structure the spec chose, revise that low-level design, implement the coherent fix, and verify it. Record the evidence and deviation for parent review rather than returning for re-planning.
+
+      The final handoff names every completed theme id and the findings addressed.
+
+      ## Dispatched evidence
+
+      The `implementation` package composed above owns the test-driven loop; the subagent runs it. Your duty is the evidence: when a milestone or theme changed behavior, its report must carry valid RED and GREEN evidence, or it is unfinished work.
+
+      ## Quality Check
+
+      After all milestones or themes are complete, run a fresh final acceptance pass against the plan's `success_criteria` (or the resolved findings) on the present tree. Collected milestone evidence guides this pass but does not satisfy it. Use the fewest decisive fresh checks plus explicit repository gates, not a full suite by default. Within the same verification pass, do not add equivalent checks once the criteria are proved. Verify a criterion that is not a command by freshly reading the cumulative diff and citing the line that proves it. Never mark a milestone or theme complete with failing tests; record a skipped check and its reason so review can see the gap.
+
+      Maintain a verification ledger throughout: per milestone, the verification command, exit code, and the output fact that proves it, plus any qualitative judgment; after all milestones, each global criterion with its command or diff evidence. In the final handoff, cite the commands that prove the criteria in `commands_run`, and describe a manual check in `summary`.
+
+      `contract_result` is required when implementation_contract is present in the input plan. Check the actual diff against the contract before writing the final handoff and fill the field per the handoff field guidance. A contract change that the person or your parent asked for is superseded, never deviated. Superseded carries the instruction that replaced the directive, quoted, and its source: `person` for a message from the person, `parent` for a message from your parent.
+
+      Commit each verified unit before moving on: add only that unit's files to the git index and write the message under the commit contract above, one commit per unit with its supporting refactors and tests.
+    output:
+      summary: What was done, the completed or replaced milestone ids, the verification performed now and its result, and the current state. Name each warning and each file that needs a careful review here.
+      fields:
+        decisions:
+          type: list
+          of:
+            type: string
+          optional: true
+          description: Material revisions of the plan or the low-level design, and why.
+        contract_result:
+          type: object
+          optional: true
+          description: Required when the plan carries implementation_contract. Account for every directive.
+          fields:
+            directives:
+              type: list
+              min: 1
+              unique: id
+              description: One entry for each plan directive.
+              of:
+                type: variant
+                tag: status
+                cases:
+                  satisfied:
+                    id:
+                      type: string
+                      description: The directive id.
+                    evidence:
+                      type: string
+                      description: A test name, file path, command, or symbol.
+                  deviated:
+                    id:
+                      type: string
+                      description: The directive id.
+                    evidence:
+                      type: string
+                      description: What was built instead.
+                    reason:
+                      type: string
+                      description: Why.
+                    risk:
+                      type: enum
+                      values:
+                        - low
+                        - medium
+                        - high
+                      description: Risk of the deviation.
+                  superseded:
+                    id:
+                      type: string
+                      description: The directive id.
+                    instruction:
+                      type: string
+                      description: The quoted instruction that replaced the directive.
+                    source:
+                      type: enum
+                      values:
+                        - person
+                        - parent
+                      description: Who gave it.
+    writes:
+      - id: implementation
+        lifetime: durable
+        supersedes: []

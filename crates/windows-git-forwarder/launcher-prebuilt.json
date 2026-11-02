@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "sourceSha256": "ca33b631db4b4510e1a9ed9bdb69cf31e6849ab1481e49925c526aa0356d5713",
+  "files": {
+    "flywheel-git-forwarder.win32-arm64.exe": {
+      "sha256": "88198eb7d8123e5691805c3354d85b6b48c987a9a809ff5c71b3ce68a068e23c",
+      "bytes": 19456
+    },
+    "flywheel-git-forwarder.win32-x64.exe": {
+      "sha256": "edad3ce611d2946683c274a85637ed8816107d16e713df46b6d73894937373fe",
+      "bytes": 23040
+    }
+  }
+}

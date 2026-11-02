@@ -1,0 +1,51 @@
+{
+  "id": "cut-tool-args",
+  "stratum": "production-history",
+  "timeoutMinutes": 45,
+  "sandbox": {
+    "commit": "b6d624689385427eed079ea68815e8d6dce1b2e0",
+    "paths": [
+      "src",
+      "tests",
+      "docs",
+      "scripts",
+      "package.json",
+      "bun.lock",
+      "tsconfig.json",
+      "tsconfig.tests.json",
+      "oxlint.config.ts",
+      "knip.jsonc",
+      "AGENTS.md",
+      "CLAUDE.md",
+      ".gitignore",
+      "bunfig.toml",
+      "relay/package.json",
+      "vscode/package.json",
+      "webview/package.json",
+      "website/package.json",
+      "crates/tokenizer/tokenizer-prebuilt.json",
+      "crates/tokenizer/flywheel-tokenizer.wasm.zst"
+    ],
+    "patch": "sandbox.patch",
+    "setup": [
+      [
+        "bun",
+        "install"
+      ]
+    ]
+  },
+  "challenge": { "truth": "hold" },
+  "acceptanceBaseline": {
+    "failToPass": [
+      "acceptance/cut-tool-args.test.ts > a tool call cut off by the output limit, through the agent loop > Anthropic API: a write cut between two arguments never runs with the arguments it has so far",
+      "acceptance/cut-tool-args.test.ts > a tool call cut off by the output limit, through the agent loop > Anthropic API: a write cut inside its content string never runs with the shortened content",
+      "acceptance/cut-tool-args.test.ts > a tool call cut off by the output limit, through the agent loop > OpenRouter chat completions: a write cut by finish_reason length never runs with the shortened content",
+      "acceptance/cut-tool-args.test.ts > a tool call cut off by the output limit, through the agent loop > OpenRouter chat completions: a write whose stream closed with no finish_reason never runs with the shortened content",
+      "acceptance/cut-tool-args.test.ts > chat-completions output-length cut > finish_reason length is an output overflow, not a completed turn"
+    ],
+    "passToPass": [
+      "acceptance/cut-tool-args.test.ts > a tool call cut off by the output limit, through the agent loop > regression guard: a complete OpenRouter write whose content carries an unescaped newline still runs once with that content",
+      "acceptance/cut-tool-args.test.ts > a tool call cut off by the output limit, through the agent loop > regression guard: a complete write call on the Anthropic API still runs once with its full arguments"
+    ]
+  }
+}

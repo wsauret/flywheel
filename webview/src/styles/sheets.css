@@ -1,0 +1,362 @@
+/* Sheets: the client's own modal surfaces. Bottom-anchored where a thumb
+   works, centred where a pointer does; one component, one container query.
+   The sheet's scrim is the shared dialog scrim with a different placement.
+   Both classes name it so the placement wins on specificity rather than on
+   the order the bundler happens to emit the two stylesheets in. */
+
+.scrim.sheet-scrim {
+  align-items: end;
+  padding: 0;
+  /* A fixed track: a header or row too wide for the phone scrolls or truncates
+     inside the sheet instead of growing the sheet past the viewport. */
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.sheet {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  max-height: min(88cqh, 44rem);
+  background: var(--fw-menu-bg);
+  color: var(--fw-fg);
+  border: 1px solid var(--fw-menu-border);
+  border-bottom: none;
+  border-radius: var(--fw-radius-lg) var(--fw-radius-lg) 0 0;
+  box-shadow: var(--fw-shadow-sheet);
+  animation: sheet-rise var(--fw-motion-slow) var(--fw-ease);
+}
+/* The home indicator sits over the sheet's last section, the body or the
+   footer, rather than over padding on the sheet itself: rows scroll out from
+   under the indicator and the sheet reads as one surface to the screen's
+   edge, with no blank strip where the padding would be. */
+.sheet > :last-child { padding-bottom: calc(var(--fw-s3) + env(safe-area-inset-bottom, 0px)); }
+
+@container client (min-width: 40rem) {
+  .scrim.sheet-scrim { align-items: center; padding: var(--fw-s5); }
+  .sheet {
+    width: min(100%, 34rem);
+    max-height: min(84cqh, 40rem);
+    border-bottom: 1px solid var(--fw-menu-border);
+    border-radius: var(--fw-radius-lg);
+    animation-name: dialog-rise;
+  }
+  .sheet > :last-child { padding-bottom: var(--fw-s3); }
+  .sheet-wide { width: min(100%, 56rem); }
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  gap: var(--fw-s2);
+  padding: var(--fw-s3) var(--fw-s3) var(--fw-s2) var(--fw-s4);
+  border-bottom: 1px solid var(--fw-hairline);
+}
+.sheet-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0;
+  font-size: var(--fw-text);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sheet-tools { display: flex; align-items: center; gap: var(--fw-s1); }
+
+.sheet-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--fw-s2) var(--fw-s2) var(--fw-s3);
+  -webkit-overflow-scrolling: touch;
+}
+
+.sheet-footer {
+  display: flex;
+  overflow-y: auto;
+  justify-content: flex-end;
+  gap: var(--fw-s2);
+  padding: var(--fw-s2) var(--fw-s3) var(--fw-s3);
+  border-top: 1px solid var(--fw-hairline);
+}
+
+.sheet-section {
+  padding: var(--fw-s3) var(--fw-s2) var(--fw-s1);
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* A named group inside a section, such as Appearance under Application. */
+.sheet-subsection {
+  padding: var(--fw-s2) var(--fw-s2) var(--fw-s1);
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-xs);
+  font-weight: 600;
+}
+
+/* Rows share the command panel's grammar: label left, value right, detail
+   under the label in the muted colour. */
+.sheet-row {
+  display: flex;
+  align-items: center;
+  gap: var(--fw-s3);
+  width: 100%;
+  min-width: 0;
+  padding: 7px var(--fw-s2);
+  border-radius: var(--fw-radius-sm);
+  font-size: var(--fw-text-sm);
+  color: var(--fw-fg);
+  text-align: left;
+}
+.sheet-row-button { background: transparent; cursor: pointer; }
+.sheet-row-button:hover:not([aria-disabled="true"]) { background: var(--fw-list-hover); }
+.sheet-row-button[aria-disabled="true"] { color: var(--fw-fg-muted); cursor: default; }
+.sheet-row-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.sheet-row-label { font-weight: 500; overflow-wrap: anywhere; }
+.sheet-row-label.tone-warn { color: var(--fw-warning); }
+.sheet-row-label.tone-error { color: var(--fw-error); }
+.sheet-row-label.tone-ok { color: var(--fw-success); }
+.sheet-row-detail {
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-xs);
+  word-break: break-word;
+  white-space: pre-line;
+}
+/* A model row's providers and facts stay on one line, so a phone row holds two lines however many providers serve it. */
+.model-option-detail {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* --fw-accent is a background role and is too dim as small text; weight keeps the emphasis when colour alone is not seen. */
+.model-option-serving { color: var(--fw-link); font-weight: 600; }
+.sheet-row-value {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 50%;
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-xs);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheet-empty {
+  padding: var(--fw-s5) var(--fw-s3);
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-sm);
+  text-align: center;
+}
+
+/* A search field at the top of a list sheet, and any other text field a sheet
+   asks with. */
+.sheet-search, .sheet-input {
+  width: 100%;
+  margin: var(--fw-s1) 0 var(--fw-s2);
+  padding: 7px var(--fw-s3);
+  font: inherit;
+  font-size: var(--fw-text-sm);
+  color: var(--fw-input-fg);
+  background: var(--fw-input-bg);
+  border: 1px solid var(--fw-input-border);
+  border-radius: var(--fw-radius);
+}
+.sheet-search:focus, .sheet-input:focus { outline: none; border-color: var(--fw-focus); }
+
+@keyframes sheet-rise { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
+
+/* In-place setting controls. The row keeps the panel's grammar; the control
+   sits where the value would, so a reading and its edit occupy one place. */
+.setting-row { align-items: center; }
+.setting-control { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: flex-end; max-width: 60%; }
+.sheet-row-problem { color: var(--fw-warning); font-size: var(--fw-text-xs); }
+
+.sheet-switch {
+  position: relative;
+  width: 2.4rem;
+  height: 1.4rem;
+  padding: 0;
+  border-radius: var(--fw-radius-pill);
+  background: var(--fw-input-border);
+  transition: background var(--fw-motion) var(--fw-ease);
+  cursor: pointer;
+}
+.sheet-switch.on { background: var(--fw-accent); }
+.sheet-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(1.4rem - 4px);
+  height: calc(1.4rem - 4px);
+  border-radius: var(--fw-radius-pill);
+  background: var(--fw-accent-fg);
+  transition: transform var(--fw-motion) var(--fw-ease);
+}
+.sheet-switch.on .sheet-switch-thumb { transform: translateX(1rem); }
+
+.sheet-segment {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  border-radius: var(--fw-radius);
+  background: var(--fw-input-bg);
+  border: 1px solid var(--fw-input-border);
+}
+/* An unselected option sits on the segment's own ground. Without its own
+   background a button falls back to the browser's button face, which reads as
+   a raised, disabled control in the dark scheme. */
+.sheet-segment-option {
+  padding: 3px var(--fw-s2);
+  border-radius: var(--fw-radius-sm);
+  background: transparent;
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.sheet-segment-option:hover:not(:disabled) { color: var(--fw-fg); }
+.sheet-segment-option.selected { background: var(--fw-bg-raised-strong); color: var(--fw-fg); font-weight: 600; }
+
+/* A value that edits on tap reads as a field at rest: the input's own ground
+   and border, the foreground colour, no dimming. */
+.sheet-field-value {
+  min-width: 4rem;
+  padding: 3px var(--fw-s2);
+  border-radius: var(--fw-radius-sm);
+  color: var(--fw-fg);
+  background: var(--fw-input-bg);
+  border: 1px solid var(--fw-input-border);
+  font-size: var(--fw-text-xs);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  cursor: text;
+}
+.sheet-field-value:hover:not(:disabled):not([aria-disabled="true"]) { border-color: var(--fw-focus); }
+.sheet-field-value[aria-disabled="true"] { color: var(--fw-fg-muted); cursor: default; }
+.sheet-field-value.sheet-field-placeholder { color: var(--fw-fg-muted); }
+.sheet-field { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.sheet-field-input { width: 11rem; margin: 0; padding: 3px var(--fw-s2); font-size: var(--fw-text-xs); text-align: right; }
+.sheet-field-full { width: 100%; align-items: stretch; }
+.sheet-field-full > :is(.sheet-field-value, .sheet-field-input) { width: 100%; text-align: left; }
+.sheet-field-input[aria-invalid="true"] { border-color: var(--fw-error); }
+.sheet-field-problem { color: var(--fw-error); font-size: var(--fw-text-2xs); }
+.sheet-field-status { color: var(--fw-fg-muted); font-size: var(--fw-text-2xs); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-switch, .sheet-switch-thumb { transition: none; }
+}
+
+/* A reading against its total, as a thin bar under the row's label. The bar
+   is the shape a person reads at a glance; the exact numbers stay in the text. */
+.sheet-bar {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 4px;
+  margin-top: var(--fw-s1);
+  border-radius: var(--fw-radius-pill);
+  background: var(--fw-input-border);
+  overflow: hidden;
+}
+.sheet-bar-fill { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--fw-accent); }
+.sheet-bar.warn .sheet-bar-fill { background: var(--fw-warning); }
+.sheet-bar.hot .sheet-bar-fill { background: var(--fw-error); }
+
+/* Background work: the row, then the last lines of its output. A nested
+   child indents under the child that started it, and finished work reads
+   as dimmed. */
+.background-row { display: flex; flex-direction: column; padding-left: calc(var(--fw-s3) * var(--background-depth, 0)); }
+.background-row-done .sheet-row-label { color: var(--fw-fg-muted); font-weight: 400; }
+.background-filter { display: flex; gap: var(--fw-s1); }
+.background-filter button[aria-pressed="true"] { color: var(--fw-accent); }
+.background-tail {
+  margin: 0 var(--fw-s2) var(--fw-s2) var(--fw-s4);
+  padding: var(--fw-s1) var(--fw-s2);
+  overflow-x: auto;
+  color: var(--fw-fg-muted);
+  background: var(--fw-code-bg);
+  border-radius: var(--fw-radius-sm);
+  font-family: var(--fw-font-mono);
+  font-size: var(--fw-text-2xs);
+  line-height: var(--fw-leading-tight);
+  white-space: pre;
+}
+
+/* The changes review: one framed card per net-changed file. The header is the
+   raised band a reader scans by; the path carries the weight, the change badge
+   its colour, and Undo sits at the far edge. The net diff hangs below it. */
+.changes-content { display: flex; flex-direction: column; gap: var(--fw-s3); min-width: 0; padding: var(--fw-s3); overflow-wrap: anywhere; }
+.changes-content p { margin: 0; }
+.changes-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--fw-s2); }
+.changes-content button { padding: var(--fw-s1) var(--fw-s2); border-radius: var(--fw-radius-sm); background: var(--fw-code-bg); color: var(--fw-fg); cursor: pointer; }
+.changes-content button:hover { color: var(--fw-link); }
+.changes-content button:disabled { opacity: 0.5; cursor: default; }
+.changes-content button:focus-visible { outline: 1px solid var(--fw-link); }
+.changes-warning { color: var(--fw-warning); font-size: var(--fw-text-sm); }
+.changes-file { min-width: 0; border: 1px solid var(--fw-hairline); border-radius: var(--fw-radius-sm); overflow: hidden; }
+.changes-folder-file { margin-left: var(--fw-s3); }
+.changes-folder-chevron { color: var(--fw-fg-muted); }
+.changes-file-header { display: flex; align-items: center; gap: var(--fw-s2); min-width: 0; padding: var(--fw-s1) var(--fw-s2); background: var(--fw-bg-raised); cursor: pointer; }
+.changes-file-header:hover { background: var(--fw-bg-raised-strong); }
+.changes-content .changes-file-path {
+  display: flex;
+  -webkit-user-select: text;
+  user-select: text;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--fw-fg);
+  font-family: var(--fw-font-mono);
+  font-size: var(--fw-text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.changes-file-directory { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; direction: rtl; text-align: right; }
+.changes-file-directory bdi { direction: ltr; }
+.changes-file-name { flex: 0 0 auto; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+/* The agents that changed the file, in the color every agent name takes. */
+.changes-file-writers { flex: 0 2 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fw-agent-name); font-size: var(--fw-text-xs); }
+.changes-file-change { flex: none; font-family: var(--fw-font-mono); font-size: var(--fw-text-xs); }
+.changes-file-counts { display: flex; flex: none; gap: var(--fw-s1); font-family: var(--fw-font-mono); font-size: var(--fw-text-xs); white-space: nowrap; }
+.changes-file-change-added { color: var(--fw-success); }
+.changes-file-change-modified { color: var(--fw-warning); }
+.changes-file-change-removed { color: var(--fw-error); }
+.changes-file-viewed { display: flex; flex: none; align-items: center; gap: var(--fw-s1); font-size: var(--fw-text-xs); cursor: pointer; white-space: nowrap; }
+.changes-file-header button { flex: none; white-space: nowrap; font-size: var(--fw-text-xs); }
+.diff-gap { padding: var(--fw-s1) var(--fw-s2); color: var(--fw-fg-muted); background: var(--fw-bg-raised); font-family: var(--fw-font-mono); font-size: var(--fw-text-xs); }
+.changes-file-viewed input { margin: 0; accent-color: var(--fw-link); }
+.changes-file-viewed input:focus-visible { outline: 1px solid var(--fw-link); }
+.changes-file-body { padding: var(--fw-s2); overflow-x: auto; }
+.changes-file-status { padding: var(--fw-s1) var(--fw-s2); color: var(--fw-fg-muted); font-size: var(--fw-text-xs); }
+.changes-file-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: var(--fw-s2); padding: var(--fw-s2); border-bottom: 1px solid var(--fw-hairline); font-size: var(--fw-text-sm); }
+.changes-editor { height: 100%; overflow: auto; }
+
+/* The shortcuts sheet: one row per chord, keys drawn as keycaps. */
+.shortcut-keys { display: inline-flex; gap: var(--fw-s1); flex: 0 0 auto; }
+.shortcut-keys kbd {
+  font-family: var(--fw-font-mono);
+  font-size: var(--fw-text-xs);
+  line-height: 1.4;
+  min-width: 1.6em;
+  padding: 1px var(--fw-s1);
+  text-align: center;
+  color: var(--fw-fg);
+  background: var(--fw-bg-raised);
+  border: 1px solid var(--fw-hairline);
+  border-bottom-width: 2px;
+  border-radius: var(--fw-radius-sm);
+}

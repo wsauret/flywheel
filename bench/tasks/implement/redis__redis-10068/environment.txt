@@ -1,0 +1,7 @@
+This fixture uses native macOS arm64. It requires /usr/bin/clang, /usr/bin/make, /usr/bin/tclsh8.5, /usr/bin/git, /usr/bin/tar, /bin/bash, and Bun from the runner's PATH. No compiler or system package is installed.
+
+Run .bench-home/bin/build from the workspace to build. The helper runs make distclean, then make CFLAGS="-DMAC_OS_X_VERSION_10_6=1060". The macro selects the source's existing modern Darwin branches because current Apple SDKs omit the old availability macro. It does not change source bytes.
+
+Run TERM=dumb ./runtest with the groups and filters you need. Append --config unixsocket '""' when running tests in this workspace. This disables the unused Unix socket whose workspace path exceeds the Darwin socket path limit. Test clients can still use loopback TCP. The Redis harness keeps its original 1200-second no-progress timeout.
+
+The candidate budget is 25 minutes. Candidate preparation provides pristine BASE source only. Evaluation uses a separate fresh workspace. This is not Docker image, historical harness, resource-limit, leaderboard, or OS network-confinement equivalence.

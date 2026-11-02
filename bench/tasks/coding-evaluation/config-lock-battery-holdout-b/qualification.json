@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "role": "reserved-evaluation",
+  "contentIdentity": "ee39c9d20dbe478676118342d1b6e1cd606d5a45b2d731a3338ec734146f2e54",
+  "testIds": [
+    "config-smoke.test.ts > a synchronous config write is readable",
+    "acceptance/config-battery.test.ts > asynchronous ownership stays on its admitted directory after a path replacement",
+    "acceptance/config-battery.test.ts > synchronous ownership stays on its admitted directory after a path replacement"
+  ],
+  "cases": [
+    {
+      "id": "reference",
+      "patches": [
+        "qualification/reference.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "Restore the preserved native contract in the seeded source.",
+      "expectedFailures": []
+    },
+    {
+      "id": "alternative",
+      "patches": [
+        "qualification/alternative.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "An independently structured repair retains native operations.",
+      "expectedFailures": []
+    },
+    {
+      "id": "seeded-bug",
+      "patches": [
+        "qualification/seeded-bug.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Config operations reopen the pathname for each read and write instead of using the admitted directory descriptor.",
+      "expectedFailures": [
+        "acceptance/config-battery.test.ts > asynchronous ownership stays on its admitted directory after a path replacement",
+        "acceptance/config-battery.test.ts > synchronous ownership stays on its admitted directory after a path replacement"
+      ]
+    },
+    {
+      "id": "read-only",
+      "patches": [
+        "qualification/read-only.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Pin reads but let writes reopen the replaced path, violating the same ownership window.",
+      "expectedFailures": [
+        "acceptance/config-battery.test.ts > asynchronous ownership stays on its admitted directory after a path replacement",
+        "acceptance/config-battery.test.ts > synchronous ownership stays on its admitted directory after a path replacement"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+Please replace this metrics pipeline's callback aggregation with a keyed store and pull-based reporting. Keep the existing collection, percentile, retention, and unit behavior while making the store the shared source for collectors and reports. Migrate the visible tests to the new API, add focused coverage, and verify the complete pipeline.

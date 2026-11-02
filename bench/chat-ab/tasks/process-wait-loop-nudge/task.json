@@ -1,0 +1,48 @@
+{
+  "id": "process-wait-loop-nudge",
+  "stratum": "production-history",
+  "timeoutMinutes": 45,
+  "sandbox": {
+    "commit": "d154a1354b9f4154f91c1473c47a9008ccd6590a",
+    "paths": [
+      "src",
+      "tests",
+      "docs",
+      "scripts",
+      "crates/tokenizer",
+      "package.json",
+      "bun.lock",
+      "tsconfig.json",
+      "oxlint.config.ts",
+      "knip.jsonc",
+      "AGENTS.md",
+      ".gitignore",
+      "bunfig.toml",
+      "relay/package.json",
+      "vscode/package.json",
+      "webview/package.json",
+      "website/package.json",
+      ".env.test"
+    ],
+    "patch": "sandbox.patch",
+    "setup": [
+      [
+        "bun",
+        "install"
+      ]
+    ]
+  },
+  "acceptanceBaseline": {
+    "failToPass": [
+      "acceptance/process-wait-nudge.test.ts > process waits on running background work > an earlier nudge for a repeated read is not followed by another nudge after waits on running work",
+      "acceptance/process-wait-nudge.test.ts > process waits on running background work > four waits with a limit while four background tasks finish, then a reply, get no nudge",
+      "acceptance/process-wait-nudge.test.ts > process waits on running background work > three waits while three background tasks finish, then a reply, get no nudge"
+    ],
+    "passToPass": [
+      "acceptance/process-wait-nudge.test.ts > regression guards: real loops still get the nudge > regression guard (a lasting exemption once work ran): three waits after the only task finished",
+      "acceptance/process-wait-nudge.test.ts > regression guards: real loops still get the nudge > regression guard (an exemption for every process action): the same process list repeated while work runs",
+      "acceptance/process-wait-nudge.test.ts > regression guards: real loops still get the nudge > regression guard (an exemption for every wait): three waits with nothing running",
+      "acceptance/process-wait-nudge.test.ts > regression guards: real loops still get the nudge > regression guard (an exemption that hides other calls): the same failing command retried between waits on running work"
+    ]
+  }
+}

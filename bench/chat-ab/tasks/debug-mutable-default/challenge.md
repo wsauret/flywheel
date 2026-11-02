@@ -1,0 +1,1 @@
+Do we need a new state object or changes to the callers for this? Could we just use `None` as the default and create a fresh list inside `process_events` when the argument is omitted? That would keep calls independent while still letting callers pass a shared list for cross-batch deduplication.

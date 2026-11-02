@@ -1,0 +1,11 @@
+--- a/src/infra/auth/auth-store-mutations.ts
++++ b/src/infra/auth/auth-store-mutations.ts
+@@ -472,7 +472,7 @@
+       } catch {
+         throw new AuthStoreMutationError([fileMalformedCondition(access.authDirectory, revision)]);
+       }
+-      if (!isRecord(raw)) return undefined as never;
++      if (!isRecord(raw)) throw new AuthStoreMutationError([fileMalformedCondition(access.authDirectory, revision)]);
+       const decoded = decodeAuthStoreWithDiagnostics(raw, { classifySlot, rejectExcessProperties: true });
+       const rejected = decoded.dropped.includes(providerId)
+         || decoded.diagnostics.some((diagnostic) => diagnostic.kind === "invalid_instance" && diagnostic.providerId === providerId);

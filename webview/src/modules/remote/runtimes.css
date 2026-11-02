@@ -1,0 +1,152 @@
+/* The machines list and the pairing panel: the phone's front door. */
+
+.stage-runtimes .stage-title { margin-bottom: var(--fw-s3); }
+.stage-runtimes .runtime-list { width: 100%; max-width: 30rem; margin-bottom: var(--fw-s4); }
+
+.runtime-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-s3);
+}
+.runtime {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-s2);
+  padding: var(--fw-s3);
+  border: 1px solid var(--fw-hairline);
+  border-radius: var(--fw-radius-lg);
+  background: var(--fw-bg-raised);
+}
+.runtime-head {
+  display: flex;
+  align-items: center;
+  gap: var(--fw-s2);
+  min-width: 0;
+}
+.runtime-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.runtime-presence {
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-xs);
+}
+.runtime-presence.online { color: var(--fw-success); }
+.runtime-note {
+  margin: 0;
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-sm);
+}
+.runtime-note.warn { color: var(--fw-warning); }
+.placement-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-s1);
+}
+.placement {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "name version" "detail detail";
+  gap: 0 var(--fw-s2);
+  width: 100%;
+  padding: var(--fw-s2) var(--fw-s3);
+  text-align: left;
+  color: var(--fw-fg);
+  background: var(--fw-input-bg);
+  border: 1px solid var(--fw-input-border);
+  border-radius: var(--fw-radius);
+  cursor: pointer;
+}
+.placement-row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--fw-s1);
+}
+.placement-row .placement { flex: 1 1 auto; min-width: 0; }
+.placement:hover { background: var(--fw-list-hover); }
+.placement.selected { border-color: var(--fw-accent); }
+.placement.dormant { border-style: dashed; }
+/* A project the machine is creating from a repository: a row that states
+   progress and takes no tap until the project exists. Its message can be a
+   sentence, so it wraps instead of ending in an ellipsis. */
+.placement.creating { cursor: default; border-style: dashed; }
+.placement.creating:hover { background: var(--fw-input-bg); }
+.placement.creating .placement-detail { white-space: normal; }
+.new-project-open { align-self: flex-start; }
+.new-project-form {
+  display: flex;
+  gap: var(--fw-s2);
+}
+.placement-detail.plain { font-family: inherit; }
+.placement-detail.warn { color: var(--fw-warning); }
+.placement-name { grid-area: name; font-weight: 600; }
+.placement-version { grid-area: version; color: var(--fw-fg-muted); font-size: var(--fw-text-xs); }
+.placement-detail {
+  grid-area: detail;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fw-fg-muted);
+  font-family: var(--fw-font-mono);
+  font-size: var(--fw-text-xs);
+}
+
+.pair-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-s3);
+  width: 100%;
+  max-width: 30rem;
+  padding: var(--fw-s3);
+  border: 1px dashed var(--fw-hairline);
+  border-radius: var(--fw-radius-lg);
+}
+.sheet-body .pair-panel { margin-top: var(--fw-s3); }
+.pair-lead {
+  margin: 0;
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-sm);
+}
+.pair-lead code {
+  font-family: var(--fw-font-mono);
+  color: var(--fw-fg);
+}
+.pair-name {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-s1);
+}
+.pair-name span {
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-sm);
+}
+.pair-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-s2);
+}
+.pair-form {
+  display: flex;
+  gap: var(--fw-s2);
+}
+.pair-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: var(--fw-s2) var(--fw-s3);
+  color: var(--fw-input-fg);
+  background: var(--fw-input-bg);
+  border: 1px solid var(--fw-input-border);
+  border-radius: var(--fw-radius);
+  font: inherit;
+}
+.pair-input:focus { outline: none; border-color: var(--fw-focus); }
+.pair-status {
+  margin: 0;
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-sm);
+}
+.pair-status.warn { color: var(--fw-warning); }

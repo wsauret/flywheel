@@ -1,0 +1,8 @@
+name: SWE-Bench Multilingual
+description: "SWE-bench Multilingual is an evaluation benchmark designed to measure how effectively AI coding agents and Large Language Models (LLMs) can resolve real-world software engineering issues. It is an extension of the original Python-only SWE-bench, expanding testing across 9 programming languages: C, C++, Go, Java, JavaScript, TypeScript, PHP, Ruby, and Rust."
+evaluation_framework: swe-bench
+
+tasks:
+  - id: swe_bench_multilingual_%_resolved
+    config: default
+    split: test

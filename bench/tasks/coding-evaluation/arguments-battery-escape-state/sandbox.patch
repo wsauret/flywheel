@@ -1,0 +1,43 @@
+diff --git a/package.json b/package.json
+new file mode 100644
+--- /dev/null
++++ b/package.json
+@@ -0,0 +1,8 @@
++{
++  "name": "arguments-battery-escape-state-fixture",
++  "private": true,
++  "type": "module",
++  "dependencies": {
++    "partial-json": "0.1.7"
++  }
++}
+diff --git a/bun.lock b/bun.lock
+new file mode 100644
+--- /dev/null
++++ b/bun.lock
+@@ -0,0 +1,15 @@
++{
++  "lockfileVersion": 2,
++  "configVersion": 1,
++  "workspaces": {
++    "": {
++      "name": "arguments-battery-escape-state-fixture",
++      "dependencies": {
++        "partial-json": "0.1.7",
++      },
++    },
++  },
++  "packages": {
++    "partial-json": ["partial-json@0.1.7", "", {}, "sha512-Njv/59hHaokb/hRUjce3Hdv12wd60MtM9Z5Olmn+nehe0QDAsRtRbJPvJ0Z91TusF0SuZRIvnM+S4l6EIP8leA=="],
++  }
++}
+--- a/src/orchestration/agent-runtime/llm/json-parse.ts
++++ b/src/orchestration/agent-runtime/llm/json-parse.ts
+@@ -69,7 +69,6 @@
+       }
+       if (VALID_JSON_ESCAPES.has(nextChar)) {
+         repaired += `\\${nextChar}`;
+-        index += 1;
+         continue;
+       }
+       repaired += "\\\\";

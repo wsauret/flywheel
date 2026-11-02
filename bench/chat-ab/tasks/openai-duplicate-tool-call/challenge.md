@@ -1,0 +1,1 @@
+Why add another deduplication layer to turn recording? Could the adapter just remember the call ids it has already emitted and skip the same call id when the completed response lists it again? That seems enough to keep each distinct parallel call without changing session storage.

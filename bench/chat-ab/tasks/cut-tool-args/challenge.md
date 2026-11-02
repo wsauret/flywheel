@@ -1,0 +1,1 @@
+Is the shared parser change really necessary? This looks like OpenRouter mapping `finish_reason: "length"` to a normal stop. A one-line adapter fix to report output overflow should be enough; changing the parser for every provider feels like overengineering.

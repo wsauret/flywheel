@@ -1,0 +1,43 @@
+/**
+ * Keys of a server's state: by name and URL, so servers sharing a URL keep separate accounts, and the
+ * legacy key by URL alone, written by older versions.
+ */
+function storeKeys(name: string, serverUrl: string): { key: string; legacyKey: string } {
+	const legacyKey = String(new URL(serverUrl));
+	return { key: `${mcpNamespace(name)}|${legacyKey}`, legacyKey };
+}
+
+export interface McpOAuthServerStore extends McpOAuthStateStore {
+	/** Run `fn` while no other process refreshes the server's tokens. */
+	withRefreshLock<T>(fn: () => Promise<T>): Promise<T>;
+}
+
+/** Per-server OAuth state (client registration, tokens, pending PKCE verifier) in `mcp-auth.json`. */
+export class McpOAuthCredentialStore {
+	private readonly backend: AuthStorageBackend;
+	/** Directory for the refresh lock files. Without one, refreshes are only serialized in this process. */
+	private readonly lockDir: string | undefined;
+
+	constructor(backend?: AuthStorageBackend, lockDir?: string) {
+		this.backend = backend ?? new FileAuthStorageBackend(join(getAgentDir(), "mcp-auth.json"));
+		this.lockDir = backend ? lockDir : getAgentDir();
+	}
+
+	forServer(name: string, serverUrl: string): McpOAuthServerStore {
+		const { key, legacyKey } = storeKeys(name, serverUrl);
+		return {
+			// The first server to load legacy state takes it over; others with the same URL sign in again.
+			load: () =>
+				this.backend.withLock((current) => {
+					const states = parseStates(current);
+					if (states[key] || !states[legacyKey]) return { result: states[key] };
+					states[key] = states[legacyKey];
+					delete states[legacyKey];
+					return { result: states[key], next: serializeStates(states) };
+				}),
+			save: (state) =>
+				this.write((states) => {
+					states[key] = state;
+				}),
+			withRefreshLock: (fn) => this.withRefreshLock(key, fn),
+		};

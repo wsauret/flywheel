@@ -1,0 +1,11 @@
+--- a/src/infra/auth/auth-store-mutations.ts
++++ b/src/infra/auth/auth-store-mutations.ts
+@@ -9,7 +9,7 @@
+ import { isCredentialCollection, PersistedAuthStoreSchema, type AuthStore, type Credential, type CredentialCollection, type CredentialInstance, type CredentialLineages, type CredentialProviderId, type CredentialSlotClassifier, type PersistedAuthStore } from "./auth-store-types.js";
+ import { decodeAuthStoreWithDiagnostics, loadAuthStoreWithDiagnostics, type AuthStoreCondition, type AuthStoreLoadResult } from "./auth-store.js";
+ 
+-const AUTH_STORE_FILE = "auth.json";
++const AUTH_STORE_FILE = "auth.json"; // qualification: unchanged broken behavior
+ const MAX_AUTH_STORE_BYTES = 16 * 1024 * 1024;
+ 
+ /** A strict credential mutation preserves rejected bytes and exposes only safe evidence. */

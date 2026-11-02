@@ -1,0 +1,185 @@
+{
+  "task": "jquense__yup-2305",
+  "testedContentIdentity": "2ffbc51b43d734dcdc30d045c60d36fe8d0db691d94aadb71d136caf63683e76",
+  "testedContentIdentityScope": "Whole fixture before retaining these results; retained evidence changes the current fixture hash.",
+  "observedAt": "2026-10-13T00:15:45.813Z",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "controls": [
+    {
+      "name": "base",
+      "preparedMs": 31165,
+      "captureAndGradeMs": 53579,
+      "acceptance": {
+        "passed": 0,
+        "failed": 1,
+        "total": 1
+      },
+      "passed": 42,
+      "tests": 44,
+      "failedIds": [
+        {
+          "file": "test/array.ts",
+          "id": "Array types casting should pass array options to descendants when casting",
+          "status": "failed"
+        },
+        {
+          "file": "test/tuple.ts",
+          "id": "Array types casting should pass array options to descendants when casting",
+          "status": "failed"
+        }
+      ],
+      "evidence": {
+        "file": "base-grade.json.gz",
+        "bytes": 8256,
+        "sha256": "4a02c24cecaeabc108b41356a7532d1fec4f418242efaafe658c91dbb47f4c63",
+        "decompressedBytes": 61822,
+        "decompressedSha256": "d1392879e28efe7c1ce736e4e363dd3e9db1dee75317943620a8dd3b63cc602c"
+      }
+    },
+    {
+      "name": "reference",
+      "preparedMs": 30182,
+      "captureAndGradeMs": 55751,
+      "acceptance": {
+        "passed": 1,
+        "failed": 0,
+        "total": 1
+      },
+      "passed": 44,
+      "tests": 44,
+      "failedIds": [],
+      "evidence": {
+        "file": "reference-grade.json.gz",
+        "bytes": 11380,
+        "sha256": "bc62d31bd22e2d94facd1cd8589a1ca96b1e0af47d075a8fb4002d436837dd52",
+        "decompressedBytes": 68758,
+        "decompressedSha256": "b95471a17e2eb6a5f9a89e77e9dc6d02e9456d94c9222680191e5ad2df006513"
+      }
+    },
+    {
+      "name": "index-fault",
+      "preparedMs": 31460,
+      "captureAndGradeMs": 44887,
+      "acceptance": {
+        "passed": 0,
+        "failed": 1,
+        "total": 1
+      },
+      "passed": 43,
+      "tests": 44,
+      "failedIds": [
+        {
+          "file": "test/array.ts",
+          "id": "Array types casting should pass array options to descendants when casting",
+          "status": "failed"
+        }
+      ],
+      "evidence": {
+        "file": "index-fault-grade.json.gz",
+        "bytes": 9412,
+        "sha256": "2afd786c5b84c5c18bcb52d5f1d80dcc96a62da70d37523f62d3d244963cd40c",
+        "decompressedBytes": 61108,
+        "decompressedSha256": "7d58d8d0b19c0880509d3565890eb79358aa22affcccbd2e64e94e32af92f511"
+      }
+    }
+  ],
+  "deadlineProof": {
+    "exitCode": null,
+    "stdout": "36612 36613\n",
+    "stderr": "",
+    "timedOut": true,
+    "command": [
+      "<tmp>/native-fixture-wTKi3k/owned tmp $ ' \"/flywheel-bench-r5tQ8m/.bench-home/tooling/runtime/bin/node",
+      "-e",
+      "const {spawn}=require('node:child_process'); process.on('SIGTERM',()=>{});const child=spawn(process.execPath,['-e',\"process.on('SIGTERM',()=>{});setInterval(()=>{},1000)\"],{windowsHide:true,stdio:'ignore'});console.log(process.pid+' '+child.pid);setInterval(()=>{},1000);"
+    ],
+    "durationMs": 6426,
+    "pids": [
+      36612,
+      36613
+    ],
+    "childTreeGone": true
+  },
+  "candidateToolProof": {
+    "version": {
+      "exitCode": 0,
+      "stdout": "v22.23.3\n",
+      "stderr": "",
+      "timedOut": false,
+      "command": [
+        "<tmp>/native-fixture-wTKi3k/owned tmp $ ' \"/flywheel-bench-r5tQ8m/.bench-home/bin/yarn",
+        "exec",
+        "node",
+        "--version"
+      ],
+      "durationMs": 552
+    },
+    "paths": {
+      "cacheFolder": {
+        "exitCode": 0,
+        "stdout": "\"<tmp>/native-fixture-wTKi3k/owned tmp $ ' \\\"/flywheel-bench-r5tQ8m/.bench-home/cache/packages\"\n",
+        "stderr": "",
+        "timedOut": false,
+        "command": [
+          "<tmp>/native-fixture-wTKi3k/owned tmp $ ' \"/flywheel-bench-r5tQ8m/.bench-home/bin/yarn",
+          "config",
+          "get",
+          "cacheFolder",
+          "--json"
+        ],
+        "durationMs": 255
+      },
+      "globalFolder": {
+        "exitCode": 0,
+        "stdout": "\"<tmp>/native-fixture-wTKi3k/owned tmp $ ' \\\"/flywheel-bench-r5tQ8m/.bench-home/cache/global\"\n",
+        "stderr": "",
+        "timedOut": false,
+        "command": [
+          "<tmp>/native-fixture-wTKi3k/owned tmp $ ' \"/flywheel-bench-r5tQ8m/.bench-home/bin/yarn",
+          "config",
+          "get",
+          "globalFolder",
+          "--json"
+        ],
+        "durationMs": 304
+      },
+      "installStatePath": {
+        "exitCode": 0,
+        "stdout": "\"<tmp>/native-fixture-wTKi3k/owned tmp $ ' \\\"/flywheel-bench-r5tQ8m/.bench-home/install-state.gz\"\n",
+        "stderr": "",
+        "timedOut": false,
+        "command": [
+          "<tmp>/native-fixture-wTKi3k/owned tmp $ ' \"/flywheel-bench-r5tQ8m/.bench-home/bin/yarn",
+          "config",
+          "get",
+          "installStatePath",
+          "--json"
+        ],
+        "durationMs": 270
+      },
+      "yarnPath": {
+        "exitCode": 0,
+        "stdout": "\"<tmp>/native-fixture-wTKi3k/owned tmp $ ' \\\"/flywheel-bench-r5tQ8m/.bench-home/tooling/manager.js\"\n",
+        "stderr": "",
+        "timedOut": false,
+        "command": [
+          "<tmp>/native-fixture-wTKi3k/owned tmp $ ' \"/flywheel-bench-r5tQ8m/.bench-home/bin/yarn",
+          "config",
+          "get",
+          "yarnPath",
+          "--json"
+        ],
+        "durationMs": 260
+      }
+    },
+    "environment": "usual sandbox environment only; no adapter overlays"
+  },
+  "cleanup": {
+    "tmpClean": true
+  },
+  "modelCalls": 0,
+  "empiricalModelDifficulty": "not measured",
+  "empiricalModelCost": "not measured",
+  "caveat": "The unchanged 44-test grader covers less than the original prompt's full API contract."
+}

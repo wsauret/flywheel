@@ -1,0 +1,38 @@
+{
+  "kind": "coding-ab",
+  "version": 2,
+  "name": "coding-v2-proof",
+  "model": "claude-sonnet-5-5",
+  "effort": "medium",
+  "authProfile": "Personal",
+  "answers": "approve-root-workflow-launch",
+  "infrastructureIdentity": "09b0ff597f3e5cbd61416d6b3e50b2f583d052b28a4a66fcd4bf4785df05d89f",
+  "treatments": [
+    {
+      "id": "control",
+      "revision": "3585f088f4a9e98073bebaedaeeb27aa13fef624",
+      "sourceIdentity": "fef25a5945ffb0f17be0b5acdbd64445a6d95aeb19dbf1feb22a24219568012c",
+      "dependencyIdentity": "04132d9f5dc1a3af5bd14ee77692a49e3fdb89807f9722735c7c1d5a2bcea94c",
+      "harnessIdentity": "0e69809f7d67ff6595979825636a993616cb242961580d1feb47d4a5502423ba",
+      "settingsIdentity": "98211d0372ad65148442b370083e85ad343c7eefcc5b6ff63656e5a927d3a932"
+    },
+    {
+      "id": "candidate",
+      "revision": "445012719a240f83c4e3c52ea5efdaeb66fc7f74",
+      "sourceIdentity": "f9828a415b1ab007e75303d78801546baa82ed92ce50535f6059ef7bdd4bd0cd",
+      "dependencyIdentity": "04132d9f5dc1a3af5bd14ee77692a49e3fdb89807f9722735c7c1d5a2bcea94c",
+      "harnessIdentity": "0e69809f7d67ff6595979825636a993616cb242961580d1feb47d4a5502423ba",
+      "settingsIdentity": "98211d0372ad65148442b370083e85ad343c7eefcc5b6ff63656e5a927d3a932"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "config-lock-first-write",
+      "role": "development",
+      "contentIdentity": "ca5db6ec1a4e049e129c32db47537b7c82666579149d2d89413857d9a748bb52",
+      "qualificationIdentity": "5a4f580211ceaabf9852a1af773ee99520fbd3564985f1a5e1996eb20a164198"
+    }
+  ],
+  "repeats": 1,
+  "createdAt": "2026-10-13T19:10:50.447Z"
+}

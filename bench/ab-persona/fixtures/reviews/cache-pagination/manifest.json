@@ -1,0 +1,41 @@
+{
+  "title": "Stale-while-revalidate caching and cursor pagination for the document listing API",
+  "defects": [
+    {
+      "id": "cache-key-missing-dimension",
+      "title": "Cache key omits includeArchived, so archived-inclusive and normal listings share pages",
+      "category": "correctness",
+      "files": ["api.ts"],
+      "catch_criteria": "The review must identify that pageCacheKey is built from viewerId, sort, filter, offset, and pageSize but not query.includeArchived, while includeArchived changes what source.fetch returns, so a request with includeArchived: true and one with false collide on the same key and each can be served the other's cached result set."
+    },
+    {
+      "id": "page-boundary-off-by-one",
+      "title": "hasMore inferred from a full page fabricates an empty extra page at exact multiples",
+      "category": "correctness",
+      "files": ["api.ts"],
+      "catch_criteria": "The review must identify that list() fetches exactly pageSize rows and sets hasMore = items.length >= pageSize, so when the total result count is an exact multiple of pageSize the final full page still reports hasMore: true and issues a cursor whose next fetch returns an empty page. The fix shape (fetch pageSize + 1, or otherwise distinguish 'exactly full' from 'more remain') must be implied by the diagnosis."
+    },
+    {
+      "id": "stale-tier-invalidation-gap",
+      "title": "Permission invalidation misses the stale tier, so revoked results are still served",
+      "category": "security",
+      "files": ["cache.ts", "api.ts"],
+      "catch_criteria": "The review must identify that entries aging past TTL move from the fresh map into the separate stale map, and invalidatePrefix only deletes from the fresh and empty maps, so after onPermissionsChanged a viewer's stale-tier pages survive and the stale-while-revalidate branch keeps serving documents the viewer no longer has permission to see for up to the stale grace window."
+    },
+    {
+      "id": "cursor-shared-mutation",
+      "title": "Cursor state is stored and returned by reference, and list() mutates it",
+      "category": "correctness",
+      "files": ["cursor.ts", "api.ts"],
+      "catch_criteria": "The review must identify that resolveCursor returns the stored PageState object by reference and list() mutates state.offset += items.length before passing the same object to issueCursor, so the previously issued token's map entry now points at the advanced offset; re-using an earlier cursor (a retry or a client refetch) silently returns a later page instead of the page the cursor was issued for."
+    },
+    {
+      "id": "negative-ttl-unit-mix",
+      "title": "Negative-cache freshness compares seconds against a millisecond-scaled TTL",
+      "category": "correctness",
+      "files": ["cache.ts"],
+      "catch_criteria": "The review must identify that isKnownEmpty computes ageSeconds in seconds but compares it against NEGATIVE_TTL_SECONDS * 1000, so the intended 5-second negative TTL actually holds 'no results' for 5000 seconds; empty listings keep being served long after documents appear. Noting that the positive-TTL checks in get() scale correctly while only this branch mixes units strengthens the catch."
+    }
+  ],
+  "review_prompt_hint": "The change adds a stale-while-revalidate cache tier, negative caching, and opaque-cursor pagination to a permission-scoped document listing API. Pay close attention to cache key completeness, invalidation coverage across tiers, time-unit consistency, aliasing of shared state, and page-boundary arithmetic"
+}

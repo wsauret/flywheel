@@ -1,0 +1,199 @@
+{
+  "acquired": [
+    {
+      "file": "inputs/yup.tar.gz",
+      "url": "https://codeload.github.com/jquense/yup/tar.gz/fe5a10bef3326d1e241b5ee75c98d8e1eb051660",
+      "bytes": 284186,
+      "sha256": "8f6db9a6e739799ba00c8704b5f7ec49447ef8863f96f2ef1f9fa51642e0eae1",
+      "status": 200
+    },
+    {
+      "file": "inputs/node.tar.gz",
+      "url": "https://nodejs.org/dist/v22.23.3/node-v22.23.3-darwin-arm64.tar.gz",
+      "bytes": 49963763,
+      "sha256": "23b25245dcfb9af7262f8ff142e9e2e0af025368117329e7a7458a51e5922f53",
+      "status": 200
+    },
+    {
+      "file": "inputs/corepack.tgz",
+      "url": "https://registry.npmjs.org/corepack/-/corepack-0.36.0.tgz",
+      "bytes": 127543,
+      "sha256": "9128cfe26aee0c99f4fc68c15c6b8b12309a68be0de2c012cdfea2a463cb722f",
+      "status": 200
+    },
+    {
+      "file": "inputs/yarn-4.5.3.js",
+      "url": "https://repo.yarnpkg.com/4.5.3/packages/yarnpkg-cli/bin/yarn.js",
+      "bytes": 2764795,
+      "sha256": "dddc0b96ad2dca8d56a5302b56bf3cbf8210654474a6bf88877da61e866f3d46",
+      "status": 200
+    }
+  ],
+  "commands": {
+    "runtime-extract": {
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": "",
+      "timedOut": false,
+      "command": [
+        "/usr/bin/tar",
+        "-xzf",
+        "<repo>/.flywheel/sessions/d08a819f60d6/scratch/plain-prepare/.bench-home/inputs/node.tar.gz",
+        "--strip-components=1",
+        "-C",
+        "<repo>/.flywheel/sessions/d08a819f60d6/scratch/plain-prepare/.bench-home/tooling/runtime"
+      ],
+      "durationMs": 6548
+    },
+    "bootstrap-extract": {
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": "",
+      "timedOut": false,
+      "command": [
+        "/usr/bin/tar",
+        "-xzf",
+        "<repo>/.flywheel/sessions/d08a819f60d6/scratch/plain-prepare/.bench-home/inputs/corepack.tgz",
+        "-C",
+        "<repo>/.flywheel/sessions/d08a819f60d6/scratch/plain-prepare/.bench-home/tooling/bootstrap"
+      ],
+      "durationMs": 132
+    },
+    "source-extract": {
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": "",
+      "timedOut": false,
+      "command": [
+        "/usr/bin/tar",
+        "-xzf",
+        "<repo>/.flywheel/sessions/d08a819f60d6/scratch/plain-prepare/.bench-home/inputs/yup.tar.gz",
+        "--strip-components=1",
+        "-C",
+        "<repo>/.flywheel/sessions/d08a819f60d6/scratch/plain-prepare"
+      ],
+      "durationMs": 150
+    },
+    "runtime-version": {
+      "exitCode": 0,
+      "stdout": "v22.23.3\n",
+      "stderr": "",
+      "timedOut": false,
+      "command": [
+        "<repo>/.flywheel/sessions/d08a819f60d6/scratch/plain-prepare/.bench-home/tooling/runtime/bin/node",
+        "--version"
+      ],
+      "durationMs": 1701
+    },
+    "bootstrap-version": {
+      "exitCode": 0,
+      "stdout": "0.36.0\n",
+      "stderr": "",
+      "timedOut": false,
+      "command": [
+        "<repo>/.flywheel/sessions/d08a819f60d6/scratch/plain-prepare/.bench-home/tooling/runtime/bin/node",
+        "<repo>/.flywheel/sessions/d08a819f60d6/scratch/plain-prepare/.bench-home/tooling/bootstrap/package/dist/corepack.js",
+        "--version"
+      ],
+      "durationMs": 196
+    },
+    "package-manager-version": {
+      "exitCode": 0,
+      "stdout": "4.5.3\n",
+      "stderr": "",
+      "timedOut": false,
+      "command": [
+        "<repo>/.flywheel/sessions/d08a819f60d6/scratch/plain-prepare/.bench-home/tooling/runtime/bin/node",
+        "<repo>/.flywheel/sessions/d08a819f60d6/scratch/plain-prepare/.bench-home/tooling/bootstrap/package/dist/corepack.js",
+        "yarn",
+        "--version"
+      ],
+      "durationMs": 752
+    },
+    "install": {
+      "exitCode": 0,
+      "stdout": "➤ YN0050: The --frozen-lockfile option is deprecated; use --immutable and/or --immutable-cache instead\n\n➤ YN0000: · Yarn 4.5.3\n➤ YN0000: ┌ Resolution step\n➤ YN0000: └ Completed in 0s 411ms\n➤ YN0000: ┌ Post-resolution validation\n➤ YN0086: │ Some peer dependencies are incorrectly met by dependencies; run yarn explain peer-requirements for details.\n➤ YN0000: └ Completed\n➤ YN0000: ┌ Fetch step\n➤ YN0013: │ 1509 packages were added to the project (+ 275.86 MiB).\n➤ YN0000: └ Completed in 17s 391ms\n➤ YN0000: ┌ Link step\n➤ YN0007: │ hookem@npm:2.0.1 must be built because it never has been before or the last one failed\n➤ YN0007: │ fsevents@patch:fsevents@npm%3A1.2.11#optional!builtin<compat/fsevents>::version=1.2.11&hash=d11327 must be built because it never has been before or the last one failed\n➤ YN0009: │ fsevents@patch:fsevents@npm%3A1.2.11#optional!builtin<compat/fsevents>::version=1.2.11&hash=d11327 couldn't be built successfully (exit code 1, logs can be found here: <repo>/.flywheel/sessions/d08a819f60d6/scratch/plain-prepare/.bench-home/tmp/xfs-f09b7c1f/build.log)\n➤ YN0000: └ Completed in 44s 174ms\n➤ YN0000: · Done with warnings in 1m 3s\n",
+      "stderr": "",
+      "timedOut": false,
+      "command": [
+        "<repo>/.flywheel/sessions/d08a819f60d6/scratch/plain-prepare/.bench-home/tooling/runtime/bin/node",
+        "<repo>/.flywheel/sessions/d08a819f60d6/scratch/plain-prepare/.bench-home/tooling/bootstrap/package/dist/corepack.js",
+        "yarn",
+        "install",
+        "--frozen-lockfile"
+      ],
+      "durationMs": 63124
+    },
+    "fixed-build": {
+      "exitCode": 0,
+      "stdout": "┌───────────────────────────────┐\n│                               │\n│   Destination: lib/index.js   │\n│   Bundle Size:  78.72 KB      │\n│   Minified Size:  41.83 KB    │\n│   Gzipped Size:  12.14 KB     │\n│                               │\n└───────────────────────────────┘\n┌───────────────────────────────────┐\n│                                   │\n│   Destination: lib/index.esm.js   │\n│   Bundle Size:  77.96 KB          │\n│   Minified Size:  41.18 KB        │\n│   Gzipped Size:  12 KB            │\n│                                   │\n└───────────────────────────────────┘\n\nDocToccing single file \"README.md\" for github.com.\n\n==================\n\n\"README.md\" will be updated\n\nEverything is OK.\n",
+      "stderr": "\u001b[36m\n\u001b[1m./dts/index.d.ts\u001b[22m → \u001b[1mlib/index.d.ts\u001b[22m...\u001b[39m\n\u001b[32mcreated \u001b[1mlib/index.d.ts\u001b[22m in \u001b[1m101ms\u001b[22m\u001b[39m\n\u001b[36m\n\u001b[1m./src/index.ts\u001b[22m → \u001b[1mlib/index.js, lib/index.esm.js\u001b[22m...\u001b[39m\nbabelHelpers: 'bundled' option was used by default. It is recommended to configure this option explicitly, read more here: https://github.com/rollup/plugins/tree/master/packages/babel#babelhelpers\nBrowserslist: caniuse-lite is outdated. Please run:\n  npx update-browserslist-db@latest\n  Why you should do it regularly: https://github.com/browserslist/update-db#readme\n\u001b[32mcreated \u001b[1mlib/index.js, lib/index.esm.js\u001b[22m in \u001b[1m795ms\u001b[22m\u001b[39m\n",
+      "timedOut": false,
+      "command": [
+        "<repo>/.flywheel/sessions/d08a819f60d6/scratch/plain-prepare/.bench-home/tooling/runtime/bin/node",
+        "<repo>/.flywheel/sessions/d08a819f60d6/scratch/plain-prepare/.bench-home/tooling/bootstrap/package/dist/corepack.js",
+        "yarn",
+        "build"
+      ],
+      "durationMs": 4313
+    },
+    "restore-tracked": {
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": "",
+      "timedOut": false,
+      "command": [
+        "/usr/bin/tar",
+        "-xzf",
+        "<repo>/.flywheel/sessions/d08a819f60d6/scratch/plain-prepare/.bench-home/inputs/yup.tar.gz",
+        "--strip-components=1",
+        "-C",
+        "<repo>/.flywheel/sessions/d08a819f60d6/scratch/plain-prepare"
+      ],
+      "durationMs": 69
+    },
+    "bug-patch": {
+      "exitCode": 0,
+      "stdout": "patching file 'src/array.ts'\npatching file 'src/object.ts'\npatching file 'src/schema.ts'\npatching file 'src/tuple.ts'\npatching file 'test/array.ts'\npatching file 'test/tuple.ts'\n",
+      "stderr": "",
+      "timedOut": false,
+      "command": [
+        "/usr/bin/patch",
+        "-p1",
+        "-i",
+        "<worktree>/bench/ab-steps/tasks-implement/jquense__yup-2305/original/environment/bug.patch"
+      ],
+      "durationMs": 38
+    },
+    "base-build": {
+      "exitCode": 0,
+      "stdout": "┌───────────────────────────────┐\n│                               │\n│   Destination: lib/index.js   │\n│   Bundle Size:  78.52 KB      │\n│   Minified Size:  41.75 KB    │\n│   Gzipped Size:  12.12 KB     │\n│                               │\n└───────────────────────────────┘\n┌───────────────────────────────────┐\n│                                   │\n│   Destination: lib/index.esm.js   │\n│   Bundle Size:  77.76 KB          │\n│   Minified Size:  41.1 KB         │\n│   Gzipped Size:  11.97 KB         │\n│                                   │\n└───────────────────────────────────┘\n\nDocToccing single file \"README.md\" for github.com.\n\n==================\n\n\"README.md\" will be updated\n\nEverything is OK.\n",
+      "stderr": "\u001b[36m\n\u001b[1m./dts/index.d.ts\u001b[22m → \u001b[1mlib/index.d.ts\u001b[22m...\u001b[39m\n\u001b[32mcreated \u001b[1mlib/index.d.ts\u001b[22m in \u001b[1m94ms\u001b[22m\u001b[39m\n\u001b[36m\n\u001b[1m./src/index.ts\u001b[22m → \u001b[1mlib/index.js, lib/index.esm.js\u001b[22m...\u001b[39m\nbabelHelpers: 'bundled' option was used by default. It is recommended to configure this option explicitly, read more here: https://github.com/rollup/plugins/tree/master/packages/babel#babelhelpers\nBrowserslist: caniuse-lite is outdated. Please run:\n  npx update-browserslist-db@latest\n  Why you should do it regularly: https://github.com/browserslist/update-db#readme\n\u001b[32mcreated \u001b[1mlib/index.js, lib/index.esm.js\u001b[22m in \u001b[1m710ms\u001b[22m\u001b[39m\n",
+      "timedOut": false,
+      "command": [
+        "<repo>/.flywheel/sessions/d08a819f60d6/scratch/plain-prepare/.bench-home/tooling/runtime/bin/node",
+        "<repo>/.flywheel/sessions/d08a819f60d6/scratch/plain-prepare/.bench-home/tooling/bootstrap/package/dist/corepack.js",
+        "yarn",
+        "build"
+      ],
+      "durationMs": 4034
+    }
+  },
+  "identities": {
+    "src/array.ts": "7599445d9f5698ca3c460b98841f9d36379e26c2c990a759b4db6267d86e3080",
+    "src/tuple.ts": "ff96046d5bda2580b6d581a6631713d4b7610d0e97a00e76ac1cbf1ca7168743",
+    "src/types.ts": "57c612d13de9039451cb1f538bfdd56c4e79289cb840493a3d3f79d4db529997",
+    "tsconfig.json": "92dce3ce5a67a2b7c188c05f89a1727fffe7ec84a7fc937422a4b472278962ee",
+    "yarn.lock": "089f2ab9bdb2ce483bb7148c67b2cc714692b9b967126a78a6c03e65fdbf617f",
+    "lib/index.js": "be51279164f2d01443646d541e8ae463c897f2fe895ff02ccce809b5e585716f",
+    "dts/index.d.ts": "67d98da19189bee207e0259fc46b12a574c1dbb04dde6213b03a118a8f77486b"
+  },
+  "isolatedTypesFrom": "<repo>",
+  "sourceFiles": 75,
+  "packages": {
+    "cacheEntries": 1510,
+    "node": "22.23.3",
+    "bootstrap": "0.36.0",
+    "manager": "4.5.3"
+  }
+}

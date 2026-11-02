@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-12",
+  "historical": true,
+  "model": "gpt-6.1-sol",
+  "effort": "high",
+  "terminal": "completed",
+  "durationMs": 44203,
+  "attempts": 1,
+  "completedRuns": 1,
+  "originalAggregatePassed": true,
+  "accounting": {
+    "estimatedUsd": {
+      "kind": "observed",
+      "value": 0.048477599999999996
+    },
+    "billedUsd": {
+      "kind": "observed",
+      "value": 0
+    },
+    "tokens": {
+      "kind": "observed",
+      "value": 79623
+    },
+    "providers": {
+      "kind": "observed",
+      "value": [
+        "chatgpt"
+      ]
+    },
+    "pricedEntryCount": 5,
+    "unpricedEntryCount": 0
+  },
+  "calculated": {
+    "estimatedUsd": 0.048477599999999996,
+    "tokens": 79623,
+    "pricedEntryCount": 5,
+    "missingCanonicalMeasurementCount": 0
+  },
+  "sourceHashes": {
+    "ds1000-298-0-result.json": "6745b0fd23425f7e25a661b4f3f0726fccd75a39f5d277b11c799b732bdb8a30",
+    "ds1000-298-0-grade.json": "443890e9c4811e333b383a86250a985b5a3c261ffa37e2b2ea64239b9422977a",
+    "ds1000-298-0-recovered-canonical-usage.json": "321b4abc2b3c5607829bbb56ace5677e3935167ed43a2c0f63b2ed37c0c41419",
+    "ds1000-298-0-model.patch": "067714a90f340267cde724bb26879472320713d17f838a10b73e9985ffee2b1f"
+  },
+  "caveat": "Historical native model attempt, not a run of this fixture. The earlier wrapper used an AF_UNIX manager address and a different provisioning path. Fresh controls qualify the public-runtime TCP adapter without new model calls. Billed zero is the observed included subscription accounting, not an invented zero cost."
+}

@@ -1,0 +1,27 @@
+name: Feature request
+description: Ask for a new capability or a change to Flywheel.
+title: "feature: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: Tell us what you want to do and what stops you now.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: The change you want
+      description: Tell us what Flywheel must do. Say which surface it affects, for example the terminal UI, the web client, or a CLI command.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+  - type: textarea
+    id: context
+    attributes:
+      label: Other information

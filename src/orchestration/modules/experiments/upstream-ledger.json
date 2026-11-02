@@ -1,0 +1,448 @@
+{
+  "upstream": {
+    "repository": "https://github.com/davebcn87/pi-autoresearch",
+    "revision": "939ede8220daad440eac6bb7b6e315cc283e0a64"
+  },
+  "copies": [
+    {
+      "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
+      "target": "src/orchestration/modules/experiments/types.ts",
+      "startMarker": "interface ExperimentResult {",
+      "endMarker": "  /** Current session confidence score (best improvement / noise floor). null if insufficient data. */",
+      "sha256": "d251d0d2e5193fc7faec7c39163c7bd9bffb549e68d0df8472b5bc80127449f3",
+      "substitutions": [
+        { "from": "ExperimentResult", "to": "ExperimentRun and ExperimentRunValue" },
+        { "from": "MetricDef", "to": "ExperimentMetric" },
+        {
+          "from": "maxExperiments",
+          "to": "removed: the iteration limit lives in the initialized configuration fact",
+          "reason": "Durable per-segment configuration replaces the mutable in-memory state field."
+        },
+        {
+          "from": "baselineMetric absent upstream",
+          "to": "baselineMetric added beside bestMetric",
+          "reason": "The projection publishes the derived baseline so views never recompute it."
+        },
+        {
+          "from": "current segment inferred from initialization position",
+          "to": "currentSegment uses the initialized fact's canonical segment",
+          "reason": "Durable initialization and run facts already record the segment identity."
+        }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
+      "target": "src/orchestration/modules/experiments/metric-lines.ts",
+      "startMarker": "/** Prefix for structured metric output lines: `METRIC name=value` */",
+      "endMarker": "  return metrics;\n}",
+      "sha256": "2cb621ea24fccc73e9ed9716adb7b737e9b2c5951cb428797770046cf3a31054",
+      "substitutions": [
+        { "from": "function parseMetricLines", "to": "export function parseMetricLines" }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
+      "target": "src/orchestration/modules/experiments/result-analysis.ts",
+      "startMarker": "function isBetter(",
+      "endMarker": "  return results.filter((r) => r.segment === segment);",
+      "sha256": "3e1db0c7d0c0be58af8564c8ca9beefbd4eb3a0cf0a8f9cbf0fe16b897bf0a1b",
+      "substitutions": [
+        { "from": "ExperimentResult", "to": "ExperimentRun" },
+        {
+          "from": "r.status === \"keep\" && r.metric > 0",
+          "to": "result.status === \"keep\"",
+          "reason": "The candidate list is already filtered to positive metrics, so the repeated check is redundant."
+        }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
+      "target": "src/orchestration/modules/experiments/result-analysis.ts",
+      "startMarker": "/** Baseline = first experiment in current segment */",
+      "endMarker": "  return direction === \"lower\" ? Math.min(...kept) : Math.max(...kept);",
+      "sha256": "b67e1e79bdcd559c2efc791564dcf0d5f5458e97f2b159b79b24e09d1d96cd8b",
+      "substitutions": [
+        { "from": "ExperimentResult", "to": "ExperimentRun" }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
+      "target": "src/orchestration/modules/experiments/auto-resume-guards.ts",
+      "startMarker": "export const AUTORESUME_TURN_LIMIT = 200;",
+      "endMarker": "  return null;\n}",
+      "sha256": "6e3fabb4d974aa38df07196a246e74688afce3d2637f4306da9f6ac3d9288d85",
+      "substitutions": [
+        { "from": "AUTORESUME_TURN_LIMIT", "to": "AUTO_RESUME_TURN_LIMIT" },
+        { "from": "countConsecutiveDiscardOrCrashResults", "to": "countConsecutiveDiscardOrCrashRuns" },
+        { "from": "Autoresearch auto-resume", "to": "Experiment auto-resume" }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
+      "target": "src/orchestration/modules/experiments/git-worktree.ts",
+      "startMarker": "function validateWorkDir(ctxCwd: string): string | null {",
+      "endMarker": "  return null;\n}",
+      "sha256": "2d39c6412d4436f99e27ce2203b03f61649fccce80d6ceedbdf40f355ede84c5",
+      "substitutions": [
+        {
+          "from": "directory existence check of the .auto/config.json workingDir",
+          "to": "clean Git root equals execution dir: canonical equality with the session execution directory and project root, a Git toplevel match, and a clean porcelain status",
+          "reason": "Flywheel admits only one dedicated clean Git worktree per session, so existence alone is not enough."
+        },
+        { "from": "fs.statSync", "to": "OwnedCommandRunner git rev-parse and git status" }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
+      "target": "src/orchestration/modules/experiments/experiment-command-runner.ts",
+      "startMarker": "function isAutoresearchShCommand(command: string): boolean {",
+      "endMarker": "(?:\\s|$)/.test(cmd);\n}",
+      "sha256": "23b4770a96aead69a3bf51791bdf2ae469475b9e22181a6788ffa9acd2cd3071",
+      "substitutions": [
+        {
+          "from": "measure.sh prefix guard over a model-supplied command",
+          "to": "removed: run_experiment takes no command and executes only the recorded measure_command",
+          "reason": "The charter records the measurement command, so the model never supplies one to validate."
+        }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
+      "target": "src/orchestration/modules/experiments/experiment-command-runner.ts",
+      "startMarker": "      const timeout = (params.timeout_seconds ?? 600) * 1000;",
+      "endMarker": "        text += `\\n\\n── Checks output (last 80 lines) ──\\n${details.checksOutput}`;",
+      "sha256": "796089a3bd4a4e54e29e97334b4974e5b0fb41b55c1731fdf714d45d39e7d9a5",
+      "substitutions": [
+        {
+          "from": "direct child_process spawn with killTree and temp-file overflow",
+          "to": "OwnedCommandRunner with timeoutMs, MAX_OUTPUT_BYTES, and tail retention",
+          "reason": "Every external process launch goes through the owned process authority."
+        },
+        { "from": ".auto/checks.sh existence probe", "to": "recorded checks_command or null" },
+        { "from": "EXPERIMENT_MAX_LINES / EXPERIMENT_MAX_BYTES", "to": "MODEL_OUTPUT_LINES / MODEL_OUTPUT_BYTES" },
+        { "from": "checksOutput.split(\"\\n\").slice(-80)", "to": "lastLines(commandOutput(checks), FAILED_CHECK_LINES)" }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
+      "target": "src/orchestration/modules/experiments/tools/run-experiment.ts",
+      "startMarker": "    async execute(_toolCallId, params, signal, onUpdate, ctx) {",
+      "endMarker": "        details: { ...details, truncation: llmTruncation.truncated ? llmTruncation : undefined, fullOutputPath },",
+      "sha256": "248701d94ecee60673b38f90ffa2b0cbd894fdd8609690bc6d5465e17f79b240",
+      "substitutions": [
+        { "from": "runtime.state and runtime.runningExperiment", "to": "replayed ExperimentSnapshot and ExperimentExecutionState" },
+        { "from": "Maximum experiments reached text", "to": "Experiment iteration limit reached failure" },
+        {
+          "from": "runtime.lastRunChecks",
+          "to": "ExperimentExecutionState pending result",
+          "reason": "The unlogged result is the one live value the session owns until log_experiment settles it."
+        },
+        { "from": "measurement result without content identity", "to": "pending result bound to isolated Git tree identity before and after commands" }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
+      "target": "src/orchestration/modules/experiments/tools/init-experiment.ts",
+      "startMarker": "      const isReinit = state.results.length > 0;",
+      "endMarker": "        details: { state: cloneExperimentState(state) },",
+      "sha256": "97c60121b5f355233ba770411fba5b78881ac29514db59dd0fba0dcdcdecf50e",
+      "substitutions": [
+        { "from": "config header appended to .auto/log.jsonl", "to": "experiment.initialized session fact with segment = segments.length + 1" },
+        { "from": "readMaxExperiments(ctx.cwd) from .auto/config.json", "to": "maxIterations parsed from the charter TOML" },
+        {
+          "from": "params applied directly to state",
+          "to": "params must equal the parsed .experiment/charter.md",
+          "reason": "The approved charter is the only configuration authority."
+        },
+        { "from": "fireHook before", "to": "removed: hooks are not ported" }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
+      "target": "src/orchestration/modules/experiments/tools/log-experiment.ts",
+      "startMarker": "      const secondaryMetrics = params.metrics ?? {};",
+      "endMarker": "        } as LogDetails,",
+      "sha256": "74529546fdaac188d7e22f1a0c3b9da1887a658fce0531a7d91f5322436aabfd",
+      "substitutions": [
+        { "from": "runtime.lastRunChecks keep gate", "to": "pending.status === \"checks_failed\" or \"measurement_failed\" keep refusal" },
+        {
+          "from": "secondary metric consistency and force validation (index.ts L2247-2275: missing or new tracked names refused unless force)",
+          "to": "removed: measured METRIC lines merged under supplied metrics, no force parameter",
+          "reason": "Metrics come from the measurement, so the model cannot omit or invent tracked names."
+        },
+        { "from": "state.results.push and .auto/log.jsonl append", "to": "experiment.run.recorded fact settled through record-before-act Git settlement" },
+        { "from": "params.commit.slice(0, 7)", "to": "commit \"pending\" until settlement records the kept revision" },
+        { "from": "fireHook after and overlay refresh", "to": "removed: hooks and overlay are not ported" }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
+      "target": "src/orchestration/modules/experiments/git-operations.ts",
+      "startMarker": "      // Auto-commit only on keep",
+      "endMarker": "          text += `\\n⚠️ Git commit error: ${e instanceof Error ? e.message : String(e)}`;",
+      "sha256": "d0a0acc4f5bfa2c882fedefa42aea1d6bc5d77b0a71c6a42c4a98fd7c50b4b8c",
+      "substitutions": [
+        {
+          "from": "pi.exec with soft failures appended to text",
+          "to": "OwnedCommandRunner with requireSuccess exit-code checks that throw",
+          "reason": "A failed keep must fail settlement instead of recording a kept run without a commit."
+        },
+        { "from": "git diff --cached --quiet exit 0 keeps the caller-provided commit", "to": "exit 0 skips the commit and returns the current HEAD, so the baseline keep records the real commit" },
+        { "from": "keep stages and commits unchecked content", "to": "keep compares the measured Git tree at the staging and committed-tree boundaries" },
+        { "from": "commitMsg with embedded blank line", "to": "two -m arguments: description and Result: trailer" }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
+      "target": "src/orchestration/modules/experiments/git-operations.ts",
+      "startMarker": "          const revertScript = `",
+      "endMarker": "          text += `\\n⚠️ Git revert failed: ${e instanceof Error ? e.message : String(e)}`;",
+      "sha256": "aa3863957f3ee2bd5b6c0753120f90e7df839a6a7771e587897b5675c1a5137a",
+      "substitutions": [
+        { "from": "bash -c script over .auto and autoresearch.* excludes", "to": "git argv with :(exclude).experiment pathspecs and -e .experiment excludes" },
+        {
+          "from": "errors appended to text",
+          "to": "requireSuccess exit-code checks that throw",
+          "reason": "A failed revert leaves the tree dirty, so settlement must surface it."
+        }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/jsonl.ts",
+      "target": "src/orchestration/modules/experiments/state-reconstruction.ts",
+      "startMarker": "function inferMetricUnit(name: string): string {",
+      "endMarker": "    registerSecondaryMetrics(state, run.metrics);",
+      "sha256": "6a740978ace608b309bc2823d0bf222078dabbffaf950518265785df360a4cec",
+      "substitutions": [
+        {
+          "from": "JSONL lines with lenient field coercion",
+          "to": "strict ExperimentStateEntry values decoded from session facts",
+          "reason": "Facts are parsed strictly once at the recovery boundary, so reconstruction needs no salvage."
+        },
+        { "from": "ReconstructedJsonlState", "to": "ExperimentState with baselineMetric, bestMetric, and confidence derived after every run" },
+        {
+          "from": "segment inferred from initialization position and assigned to each run",
+          "to": "initialized and run entries preserve their fact-recorded segment",
+          "reason": "The initialized fact is the segment owner, and recorded run facts already carry that identity."
+        }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
+      "target": "src/orchestration/modules/experiments/system-prompt-fragment.ts",
+      "startMarker": "  // When in autoresearch mode, add a static note to the system prompt.",
+      "endMarker": "      systemPrompt: event.systemPrompt + extra,",
+      "sha256": "c90f88f24e9fc99e1d35a8230160c51210b8a9d4fd55f8a6489ffd3cd28f4874",
+      "substitutions": [
+        { "from": "Autoresearch Mode (ACTIVE)", "to": "Experiment Mode (ACTIVE)" },
+        { "from": "Experiment rules: ${mdPath}", "to": "Experiment rules: .experiment/charter.md is read-only during the loop." },
+        { "from": ".auto/ideas.md bullet points", "to": "session checkpoint as working memory" },
+        { "from": "${checksPath} exists and runs automatically", "to": "The recorded checks command (${options.checksCommand}) runs automatically" },
+        { "from": "Ideas backlog exists hint", "to": "removed: notes replace the ideas file" }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
+      "target": "src/orchestration/modules/experiments/chat-observer.ts",
+      "startMarker": "  const composeResumeMessage = (_ctx: ExtensionContext): string => {",
+      "endMarker": "      \"Do not re-read .auto/prompt.md or .auto/log.jsonl — the compaction summary already contains them.\",",
+      "sha256": "04e6e1e917149e6712721238c54522459c346b644a408af5d34b5743124d1ccb",
+      "substitutions": [
+        { "from": "persisted autoresearch state", "to": "persisted experiment state" },
+        {
+          "from": "Do not re-read .auto/prompt.md or .auto/log.jsonl",
+          "to": "Re-read .experiment/charter.md after compaction and recover the theme ledger, ideas backlog, and prior attempts from the session checkpoint",
+          "reason": "There is no deterministic compaction summary, so the resume text names the durable sources instead."
+        },
+        { "from": "pendingResumeTimer and pi.sendUserMessage", "to": "experiment.resumed fact plus enqueueSilentSystem runtime notification" }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
+      "target": "src/orchestration/agent-runtime/tools/experiment-schemas.ts",
+      "startMarker": "const RunParams = Type.Object({",
+      "endMarker": "        'Actionable Side Information — structured diagnostics for this run. Free-form key/value pairs. Parsed ASI from run_experiment output is merged automatically; use this to add or override fields.',",
+      "sha256": "4422634a550b7c4d4a434a1cc3e494a486348e658a345476693bd790f6f00ea6",
+      "substitutions": [
+        { "from": "TypeBox Type.Object", "to": "plain JSON Schema objects with additionalProperties: false" },
+        { "from": "RunParams.command", "to": "removed: run_experiment executes the recorded measure_command" },
+        {
+          "from": "InitParams name, metric_name, metric_unit, direction",
+          "to": "plus measure_command, checks_command, work_dir, max_iterations, protected_paths, sealed_paths",
+          "reason": "init_experiment must restate the whole charter so the fact records the admitted configuration."
+        },
+        { "from": "Actionable Side Information — structured", "to": "Actionable Side Information - structured" }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
+      "target": "src/orchestration/modules/experiments/experiment-command.ts",
+      "startMarker": "  const autoresearchHelp = () =>",
+      "endMarker": "      \"  /autoresearch dashboard\",",
+      "sha256": "8e2e4de098c504ee167a9427b0270f99cb47b795f83fc06fb81e67a10347c7f0",
+      "substitutions": [
+        { "from": "/autoresearch [off|clear|export|dashboard|<text>]", "to": "/experiment [design <goal>|start|off|clear|dashboard]" },
+        { "from": "<text> enters autoresearch mode", "to": "design <goal> creates an approved experiment charter and start validates the committed charter" },
+        { "from": "export opens a local live dashboard in your browser", "to": "removed: browser export is not ported" },
+        { "from": "Examples block", "to": "removed" }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
+      "target": "src/orchestration/modules/experiments/experiment-command.ts",
+      "startMarker": "      const rulesLoaded = hasAutoresearchRules(ctx);",
+      "endMarker": "      sendWhenReady(ctx, message);",
+      "sha256": "147b2c00cd7ed2055a0773a2337c78549c7b5070d660ef7e02e4d9f7b6452768",
+      "substitutions": [
+        { "from": "Autoresearch mode active. ${trimmedArgs} ${BENCHMARK_GUARDRAIL}", "to": "EXPERIMENT_START_CONTEXT: Experiment mode active. Read .experiment/charter.md, then call init_experiment ..." },
+        { "from": "/skill:autoresearch-create fallback when no prompt.md exists", "to": "start refuses without a committed charter; design dispatches /experiment-charter <goal>" },
+        { "from": "recordAutoresearchActivation and setAutoresearchMode", "to": "recordMode(true, workDir) experiment.mode.changed fact" },
+        { "from": "fireHook before activation steer", "to": "removed: hooks are not ported" }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/tests/auto-resume-guards.test.mjs",
+      "target": "tests/unit/orchestration/modules/experiments/auto-resume-guards.test.ts",
+      "startMarker": "test(\"auto-resume turn ceiling is 200\", () => {",
+      "endMarker": "      state([...previousSegmentFailures, currentSegmentFailure], 1),",
+      "sha256": "c934c6c6f0b556c55d4a5994083c136693a3c492b21f48b1cb224e78e2389813",
+      "substitutions": [
+        { "from": "node:test and node:assert", "to": "bun:test describe/expect" },
+        { "from": "countConsecutiveDiscardOrCrashResults", "to": "countConsecutiveDiscardOrCrashRuns" },
+        {
+          "from": "keep resets the streak",
+          "to": "checks_failed resets the streak",
+          "reason": "The port asserts every non-failure status resets the count."
+        }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/extensions/pi-autoresearch/index.ts",
+      "target": "src/tui/modules/experiments/dashboard-lines.ts",
+      "startMarker": "function renderDashboardLines(",
+      "endMarker": "    lines.push(truncateToWidth(rowLine, width));\n  }",
+      "sha256": "2fb4a31d950a7fc2d7d2be06708af2715f0b325f42beb73aad8f6a956eecc702",
+      "substitutions": [
+        { "from": "ExperimentState from the in-memory runtime", "to": "FrontendExperimentView from the protocol experiment view" },
+        { "from": "pi TUI theme helpers", "to": "@opentui/core TextChunk styling with TuiTheme colors" },
+        { "from": "Autoresearch dashboard title", "to": "Experiment dashboard title" }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/skills/autoresearch-finalize/SKILL.md",
+      "target": "src/agent-skills/experiment-finalize/SKILL.md",
+      "startMarker": "---\nname: autoresearch-finalize",
+      "endMarker": "only process kept experiments from the jsonl.",
+      "sha256": "679eb2630bb3991c24a51326b4279e30ed61451a3e96bd79fcfcbebd2db42d47",
+      "substitutions": [
+        { "from": "frontmatter name autoresearch-finalize with context: fork", "to": "Flywheel skill frontmatter for experiment-finalize" },
+        { "from": "Autoresearch finalize title", "to": "Experiment finalize title" },
+        {
+          "from": ".auto/log.jsonl rows",
+          "to": "flywheel events search --type experiment.run.recorded --json --limit 0, store rows sorted by position",
+          "reason": "Recorded run facts are the durable ledger; there is no log file."
+        },
+        {
+          "from": "bash <SKILL_DIR>/finalize.sh <groups.json>",
+          "to": "skill tool action child-run with skill_id experiment-finalize and script finalize.sh",
+          "reason": "The bundled script runs only through the granted child-run authority, never a path the model composes."
+        },
+        { "from": "approval then rerun of the grouping", "to": "freeze rule: the approved groups JSON is run exactly, never recomputed" }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/skills/autoresearch-finalize/finalize.sh",
+      "target": "src/agent-skills/experiment-finalize/finalize.sh",
+      "startMarker": "#!/usr/bin/env bash\nset -euo pipefail",
+      "endMarker": "main \"$@\"",
+      "sha256": "010179881c220d918341a96825307da0326d72a97eaf9d382d35f49190056a10",
+      "substitutions": [
+        { "from": "L4, L12, L47-48: .auto and autoresearch.* path excludes", "to": ".experiment folder exclude only" },
+        { "from": "L62 comment and L94-95 wording", "to": "experiment wording" },
+        { "from": "L159, L166, L220, L273: branch prefix autoresearch/", "to": "branch prefix experiment/" },
+        { "from": "L299, L304, L405, L408-409 messages", "to": "experiment wording and .experiment paths" },
+        {
+          "from": "L411-422 ideas block",
+          "to": "removed",
+          "reason": "Session notes replace the ideas file, so there is nothing to carry over."
+        }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/skills/autoresearch-create/SKILL.md",
+      "target": "src/agent-skills/experiment-charter/SKILL.md",
+      "startMarker": "Bash script (`set -euo pipefail`) that: pre-checks fast",
+      "endMarker": "Add instrumentation as you learn what matters.",
+      "sha256": "294bdc9e7d56bec886a8c42782fd9b526e9dd6abacd98bc20820115b27677fa0",
+      "substitutions": [
+        { "from": ".auto/measure.sh", "to": ".experiment/measure.sh" },
+        {
+          "from": "update it during the loop clause",
+          "to": "replaced: the committed charter files are read-only while the loop runs",
+          "reason": "The approved charter is the only configuration authority, so measurement cannot drift mid-loop."
+        }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/skills/autoresearch-create/SKILL.md",
+      "target": "src/agent-skills/experiment-charter/SKILL.md",
+      "startMarker": "#### Agent-supplied ASI via `log_experiment`",
+      "endMarker": "re-discovering the same dead ends.",
+      "sha256": "7545ec2c379da06a3744d621738808e6af796b053c0c3631c99aeb2cc791ae10",
+      "substitutions": [
+        { "from": "description and ASI in .auto/log.jsonl", "to": "description and ASI in the recorded run facts" }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/skills/autoresearch-create/SKILL.md",
+      "target": "src/agent-skills/experiment-charter/SKILL.md",
+      "startMarker": "Bash script (`set -euo pipefail`) for backpressure/correctness checks",
+      "endMarker": "helps the agent pinpoint what broke.",
+      "sha256": "e875bbe574892dbc82c29df213d1269159605a3a806950911df90ec60d91736e",
+      "substitutions": [
+        { "from": ".auto/checks.sh", "to": ".experiment/checks.sh" },
+        {
+          "from": "Only create this file when the user's constraints require correctness validation",
+          "to": "checks.sh always exists; a charter without correctness gates ships an exit-0 script",
+          "reason": "The charter commit holds exactly three files, so the checks script is never optional."
+        }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/skills/autoresearch-create/SKILL.md",
+      "target": "src/agent-skills/experiment-charter/SKILL.md",
+      "startMarker": "## Loop Rules",
+      "endMarker": "Keep going until interrupted.",
+      "sha256": "8562a76c6b7dde34705962952163c7128e5462651fcd36e3281cb9c4b4af8df3",
+      "substitutions": [
+        { "from": ".auto paths", "to": ".experiment paths" },
+        { "from": ".auto/log.jsonl", "to": "recorded run facts" }
+      ]
+    },
+    {
+      "source": "inspiration/pi-autoresearch/tests/finalize_test.sh",
+      "target": "tests/integration/orchestration/modules/experiments/finalize-test.sh",
+      "startMarker": "#!/usr/bin/env bash\nset -euo pipefail",
+      "endMarker": "[ $TESTS_FAILED -eq 0 ] || exit 1",
+      "sha256": "51c3c4735de1ec0698c8505a263ece1567012b5039d9956ce7690c97357b946a",
+      "substitutions": [
+        { "from": "skills/autoresearch-finalize/finalize.sh and .auto paths", "to": "src/agent-skills/experiment-finalize/finalize.sh and .experiment paths" },
+        { "from": "autoresearch/ branch names", "to": "experiment/ branch names" },
+        {
+          "from": "inherited Git environment",
+          "to": "added Git isolation header: GIT_CONFIG_GLOBAL=/dev/null, GIT_CONFIG_NOSYSTEM, maintenance and gc off, fixed author and committer identity",
+          "reason": "The integration test must not read or write the developer's Git configuration."
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "Not ported: the browser export HTTP server and assets/template.html.",
+    "Not ported: keyboard shortcuts (extensions/pi-autoresearch/shortcuts.ts).",
+    "Not ported: before/after hooks (extensions/pi-autoresearch/hooks.ts) and the hooks skill.",
+    "Not ported: the deterministic compaction summary (extensions/pi-autoresearch/compaction.ts).",
+    "Not ported: custom tool-result renderers (renderCall/renderResult).",
+    "Not ported: the legacy flat file layout in extensions/pi-autoresearch/paths.ts.",
+    "Not ported: the .auto/log.jsonl and .auto/config.json files; session facts and the charter TOML replace them."
+  ]
+}

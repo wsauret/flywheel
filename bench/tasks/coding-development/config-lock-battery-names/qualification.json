@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "role": "development",
+  "contentIdentity": "30bc8dde835b807597e17d2f1f1674f1487498f18c2d1c10bc5221f2e35b822c",
+  "testIds": [
+    "config-smoke.test.ts > a synchronous config write is readable",
+    "acceptance/config-battery.test.ts > different config names have independent synchronous ownership",
+    "acceptance/config-battery.test.ts > asynchronous ownership waits on the selected file while another file stays writable",
+    "acceptance/config-battery.test.ts > synchronous ownership refuses an existing owner of the selected file",
+    "acceptance/config-battery.test.ts > callback failure releases the selected file and preserves its error"
+  ],
+  "cases": [
+    {
+      "id": "reference",
+      "patches": [
+        "qualification/reference.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "Restore the preserved native contract in the seeded source.",
+      "expectedFailures": []
+    },
+    {
+      "id": "alternative",
+      "patches": [
+        "qualification/alternative.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "An independently structured repair retains native operations.",
+      "expectedFailures": []
+    },
+    {
+      "id": "seeded-bug",
+      "patches": [
+        "qualification/seeded-bug.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Both config ownership entry points use a constant lock basename, ignoring the supported configPath override.",
+      "expectedFailures": [
+        "acceptance/config-battery.test.ts > different config names have independent synchronous ownership",
+        "acceptance/config-battery.test.ts > asynchronous ownership waits on the selected file while another file stays writable",
+        "acceptance/config-battery.test.ts > synchronous ownership refuses an existing owner of the selected file"
+      ]
+    },
+    {
+      "id": "async-only",
+      "patches": [
+        "qualification/async-only.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Repair only asynchronous lock naming, leaving synchronous operations on the wrong lock.",
+      "expectedFailures": [
+        "acceptance/config-battery.test.ts > different config names have independent synchronous ownership",
+        "acceptance/config-battery.test.ts > synchronous ownership refuses an existing owner of the selected file"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+# Auto detect text files, normalize to LF in the repository, and check out
+# LF on every platform. Generated artifacts are compared byte for byte and
+# bundled assets are hashed, so a CRLF working tree fails those checks on
+# Windows while passing on POSIX.
+* text=auto eol=lf
+# These upstream texts keep their original CRLF or mixed line endings,
+# which their copy ledgers and license notices hash byte for byte.
+/bench/tasks/implement/redis__redis-10068/instruction.txt -text
+/bench/tasks/implement/redis__redis-10068/original/problem_statement.txt -text
+/bench/tasks/implement/astropy__astropy-14598/instruction.txt -text
+/bench/tasks/implement/getmoto__moto-7365/instruction.txt -text
+/bench/tasks/implement/getmoto__moto-7365/original/issue.txt -text
+/bench/tasks/implement/httpx-streaming-json-iteration/licenses/wheels/trustme-1.2.1-py3-none-any/trustme-1.2.1.dist-info/licenses/LICENSE -text
+/bench/tasks/implement/httpx-streaming-json-iteration/licenses/wheels/trustme-1.2.1-py3-none-any/trustme-1.2.1.dist-info/licenses/LICENSE.APACHE2 -text
+/bench/tasks/implement/httpx-streaming-json-iteration/licenses/wheels/trustme-1.2.1-py3-none-any/trustme-1.2.1.dist-info/licenses/LICENSE.MIT -text
+/bench/tasks/implement/psf__requests-6028/instruction.txt -text
+/bench/tasks/implement/psf__requests-6028/original/hints.txt -text
+/bench/tasks/implement/psf__requests-6028/original/history/0/prompt.txt -text
+/bench/tasks/implement/psf__requests-6028/original/history/1/prompt.txt -text
+/bench/tasks/implement/psf__requests-6028/original/problem.txt -text
+# Maintainer-only material lives under private/, a checkout of the
+# maintainer's private companion repository, and never reaches the public
+# snapshot, which scripts/assemble-public-tree.sh builds with `git archive`.
+# The snapshot machinery itself stays private too. That script also fails
+# when any of these paths, or any ignored local-only directory, appears in the
+# assembled tree, so add each new export-ignore path to its forbidden list.
+/scripts/publish-public.ts export-ignore
+/scripts/assemble-public-tree.sh export-ignore
+/private export-ignore

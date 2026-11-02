@@ -1,0 +1,270 @@
+/* The composer: the primary affordance, so it gets the one strong focus
+   treatment on the surface. It is a card on the pane, not a bar across it:
+   the card's own surface and border say where the transcript ends, so no
+   rule is drawn above it.
+
+   The card keeps one shape on every pointer. Controls under a coarse pointer
+   are circles sized for a thumb. */
+
+.composer {
+  --composer-radius: var(--fw-radius-xl);
+  --composer-control: 26px;
+  --composer-control-radius: var(--fw-radius);
+  /* The side inset of a pill that holds words: tight in a narrow pane, such
+     as an editor sidebar or a phone, where the row has little width to spare. */
+  --composer-pill-inset: var(--fw-s2);
+  /* The footer never yields to the transcript, but it cannot outgrow the pane:
+     a question panel docked here must fit above the keyboard and scroll inside
+     itself, never push its own field under it. Nor can it rise under the
+     status bar: the pane's top edge is the screen's on a phone. */
+  flex: 0 0 auto;
+  max-height: calc(100% - env(safe-area-inset-top, 0px));
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  /* It floats over the pane's bottom edge rather than ending the transcript:
+     the transcript keeps its own room below the newest output (see
+     transcript.css), and scrolled up, content passes beneath this card. */
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* The card sits over the transcript's reading column, the same width. */
+  padding: var(--fw-s1) var(--fw-column-inset) var(--fw-s3);
+  /* The home indicator sits inside the composer's own padding on a phone.
+     Zeroed while the keyboard is up, because the keyboard covers the
+     indicator and the padding would float the composer above the keyboard. */
+  padding-bottom: calc(var(--fw-s3) + var(--fw-keyboard-safe, env(safe-area-inset-bottom, 0px)));
+}
+@container client (min-width: 40rem) {
+  .composer { --composer-pill-inset: var(--fw-s3); }
+}
+@media (pointer: coarse) {
+  .composer {
+    --composer-control: 36px;
+    --composer-control-radius: var(--fw-radius-pill);
+  }
+}
+
+.composer-field {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--fw-input-bg);
+  border: 1px solid var(--fw-input-border);
+  border-radius: var(--composer-radius);
+  box-shadow: var(--fw-shadow-tooltip);
+  transition: border-color var(--fw-motion) ease, box-shadow var(--fw-motion) ease;
+}
+.composer-finished-notice {
+  padding: var(--fw-s3);
+  font-size: var(--fw-text-sm);
+  color: var(--fw-fg-muted);
+}
+@supports (backdrop-filter: blur(var(--fw-blur-light))) {
+  .composer-field {
+    background: var(--fw-input-glass);
+    backdrop-filter: var(--fw-input-backdrop);
+  }
+}
+/* Focus under a fine pointer is a soft halo and nothing else, so it reads as a
+   glow the theme's accent owns rather than a box drawn around the card. The
+   border keeps its resting colour, and the textarea inside draws no ring of
+   its own: the card is the one focus surface. Under a coarse pointer there is
+   no focus treatment at all; the keyboard rising already says where focus is. */
+.composer-field:focus-within {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fw-focus) 14%, transparent);
+}
+@media (pointer: coarse) { .composer-field:focus-within { box-shadow: var(--fw-shadow-tooltip); } }
+.composer-field textarea:focus-visible { outline: none; }
+
+/* Scoped to the field, not the whole composer: the question panel also sits in
+   the composer, and its answer fields own their width and spacing. */
+.composer-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: calc(2 * var(--fw-s5));
+  max-height: 220px;
+  padding: var(--fw-s3) var(--fw-s3) var(--fw-s2);
+  resize: none;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--fw-input-fg);
+  font-family: inherit;
+  font-size: var(--fw-text);
+  line-height: 1.5;
+}
+.composer-field textarea::placeholder { color: var(--fw-fg-muted); }
+
+/* Left-aligned utilities, with only the send/stop action pushed to the right
+   edge, so a new utility button lands beside the slash button instead of
+   floating to the middle. */
+.composer-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--fw-s2);
+  padding: var(--fw-s2);
+}
+.composer-actions > :last-child { margin-left: auto; }
+.attach-menu button.panel-row { text-align: left; }
+.attach-menu button.panel-row:not([data-active="true"]) { background: transparent; color: inherit; }
+@media (pointer: coarse) {
+  .composer-actions { padding-top: 0; }
+}
+@media (pointer: coarse) {
+  @container client (max-width: 40rem) {
+    .composer .composer-changes { flex: 0 0 auto; }
+    .composer-changes-label { display: none; }
+    .composer-changes .composer-changes-compact { display: inline-flex; }
+  }
+}
+
+@media (hover: hover) {
+  /* Anchor action bubbles to the card, not the buttons below typed text. */
+  .composer-actions [title] { position: static; }
+  .composer-actions [title]:hover:not(:has([title]:hover))::after {
+    top: auto;
+    bottom: calc(100% + var(--fw-s2));
+    left: 0;
+  }
+  .composer-actions > [title]:last-child:hover:not(:has([title]:hover))::after { left: auto; right: 0; }
+}
+
+/* Every control in the card is one size and one shape; send and stop are
+   that same shape in the theme's action colours. */
+.composer-slash,
+.composer-attach,
+.composer-revert,
+.composer-send,
+.composer-stop {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  width: var(--composer-control);
+  height: var(--composer-control);
+  flex: 0 0 auto;
+  border-radius: var(--composer-control-radius);
+}
+
+/* The slash affordance. A typeahead nobody knows about is a feature nobody
+   uses, and this is the smallest thing that says it exists. */
+.composer-slash,
+.composer-attach,
+.composer-revert {
+  background: transparent;
+  color: var(--fw-fg-muted);
+  font-family: var(--fw-font-mono);
+  font-size: var(--fw-text-sm);
+}
+.composer-revert svg, .composer-attach svg { display: block; }
+@media (pointer: coarse) {
+  .composer-slash, .composer-attach { background: var(--fw-bg-raised); }
+}
+.composer-slash:hover,
+.composer-attach:hover,
+.composer-revert:hover { background: var(--fw-bg-raised); color: var(--fw-fg); }
+
+/* Phones keep the changes count whole; the model name yields space first.
+   Fine-pointer panes retain the descriptive label and can shorten it. */
+.composer-changes {
+  display: inline-flex;
+  align-items: center;
+  height: var(--composer-control);
+  padding: 0 var(--composer-pill-inset);
+  flex: 0 1 auto;
+  min-width: max(var(--composer-control), calc(2 * var(--composer-pill-inset) + 1em + 2px));
+  overflow: hidden;
+  background: transparent;
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-sm);
+  border-radius: var(--composer-control-radius);
+}
+.composer-changes-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.composer-changes-compact { display: none; align-items: center; gap: var(--fw-s1); white-space: nowrap; }
+.composer-changes:hover { background: var(--fw-bg-raised-strong); color: var(--fw-fg); }
+
+/* The name yields first; the chevron remains visible as the menu affordance. */
+.composer-model {
+  display: inline-flex;
+  align-items: center;
+  column-gap: var(--fw-s1);
+  height: var(--composer-control);
+  padding: 0 var(--composer-pill-inset);
+  /* The model yields width before the phone's compact changes count. */
+  flex: 0 1 auto;
+  min-width: max(var(--composer-control), calc(2 * var(--composer-pill-inset) + 1em + 2px));
+  max-width: 50%;
+  overflow: hidden;
+  background: var(--fw-bg-raised);
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-xs);
+  line-height: calc(var(--composer-control) - 2px);
+  border-radius: var(--fw-radius-pill);
+  white-space: nowrap;
+}
+.composer-model-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.composer-model-effort { flex: 0 1 auto; overflow: hidden; opacity: 0.7; }
+.composer-model > .icon { flex: 0 0 auto; }
+.composer-model:hover { background: var(--fw-bg-raised); color: var(--fw-fg); }
+.composer-actions button:active, .composer-actions button[aria-expanded="true"] { background: var(--fw-press); }
+@container pane (max-width: 40rem) {
+  .composer-model-effort { display: none; }
+  .composer-actions { gap: var(--fw-s1); }
+}
+
+.composer-send { background: var(--fw-accent); color: var(--fw-accent-fg); }
+.composer-send:hover:not(:disabled):not([aria-disabled="true"]) { background: var(--fw-accent-hover); }
+.composer-send:is(:disabled, [aria-disabled="true"]) { opacity: 0.45; cursor: default; }
+.composer-stop { background: var(--fw-secondary); color: var(--fw-secondary-fg); }
+.composer-stop:hover { background: var(--fw-secondary-hover); }
+/* A solid square that scales with its control, so the glyph reads as a stop
+   sign at both rungs rather than a fixed-size outline. */
+.composer-stop svg { display: block; width: 44%; height: 44%; }
+.composer-send .icon, .composer-stop .icon { stroke-width: 1.8; }
+
+/* Attachments wait as chips at the top of the card, one control high, so the
+   field still reads as one card with its files above its words. An image
+   shows itself; a text file shows a glyph and its name. */
+.composer-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fw-s2);
+  padding: var(--fw-s2) var(--fw-s3) 0;
+}
+.attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fw-s2);
+  height: var(--composer-control);
+  max-width: 100%;
+  padding-right: var(--fw-s1);
+  overflow: hidden;
+  background: var(--fw-bg-raised);
+  border: 1px solid var(--fw-hairline);
+  border-radius: var(--composer-control-radius);
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-xs);
+}
+.attachment-thumb { display: block; width: var(--composer-control); height: var(--composer-control); object-fit: cover; }
+.attachment-file { display: grid; place-items: center; width: var(--composer-control); height: var(--composer-control); }
+.attachment-file svg { display: block; }
+.attachment-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attachment-remove {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: var(--fw-radius-pill);
+  color: var(--fw-fg-muted);
+}
+.attachment-remove svg { display: block; }
+.attachment-remove:hover { background: var(--fw-bg-raised-strong); color: var(--fw-fg); }
+
+/* A file held over the card lights the card's border, and nothing else
+   moves: the drop lands in the same card the words do. */
+.composer-field.dropping { border-color: var(--fw-focus); }

@@ -1,0 +1,82 @@
+const OVERRIDE_KEYS = ["enabled", "exposure", "toolExposure"];
+
+/** Whether an entry overrides a server defined elsewhere instead of defining one. */
+function isOverride(value: Record<string, unknown>): boolean {
+	return value.command === undefined && value.url === undefined && value.type === undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+interface McpConfigState {
+	servers: Map<string, McpServerEntry>;
+	autoEnableCodemode?: boolean;
+	errors: string[];
+}
+
+function readConfigFile(path: string, scope: "global" | "project", state: McpConfigState): void {
+	const { servers, errors } = state;
+	if (!existsSync(path)) return;
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(readFileSync(path, "utf8"));
+	} catch (error) {
+		errors.push(`${path}: ${error instanceof Error ? error.message : String(error)}`);
+		return;
+	}
+	if (!isRecord(parsed) || (parsed.mcpServers !== undefined && !isRecord(parsed.mcpServers))) {
+		errors.push(`${path}: expected an object with an "mcpServers" object`);
+		return;
+	}
+	if (typeof parsed.autoEnableCodemode === "boolean") state.autoEnableCodemode = parsed.autoEnableCodemode;
+	else if (parsed.autoEnableCodemode !== undefined) errors.push(`${path}: autoEnableCodemode must be a boolean`);
+	for (const [name, value] of Object.entries(parsed.mcpServers ?? {})) {
+		if (scope === "project" && isRecord(value) && isOverride(value)) {
+			const base = servers.get(name);
+			const extra = Object.keys(value).filter((key) => !OVERRIDE_KEYS.includes(key));
+			if (!base) {
+				errors.push(`${path}: server "${name}" needs "command" or "url", or a global server to override`);
+			} else if (extra.length > 0) {
+				errors.push(`${path}: server "${name}": an override can only set ${OVERRIDE_KEYS.join(", ")}`);
+			} else {
+				const config = validateMcpServerConfig(name, { ...base.config, ...value });
+				if (typeof config === "string") errors.push(`${path}: ${config}`);
+				else servers.set(name, { ...base, config, override: path });
+			}
+			continue;
+		}
+		const config = validateMcpServerConfig(name, value);
+		if (typeof config === "string") {
+			errors.push(`${path}: ${config}`);
+			continue;
+		}
+		// Names that differ only in `-` and `_` would share a namespace.
+		const clash = [...servers.keys()].find((other) => other !== name && mcpNamespace(other) === mcpNamespace(name));
+		if (clash) {
+			errors.push(`${path}: server "${name}" conflicts with "${clash}"`);
+			continue;
+		}
+		if (scope === "project" && "url" in config && config.auth) {
+			errors.push(`${path}: server "${name}": auth is only allowed in the global mcp.json`);
+			continue;
+		}
+		servers.set(name, { name, config, source: path, scope });
+	}
+}
+
+/**
+ * Load global and (when trusted) project MCP configuration. Disabled servers are included with
+ * `enabled: false`, so they can be enabled again.
+ */
+export function loadMcpConfig(options: { agentDir: string; cwd: string; projectTrusted: boolean }): LoadedMcpConfig {
+	const state: McpConfigState = { servers: new Map(), errors: [] };
+	readConfigFile(join(options.agentDir, "mcp.json"), "global", state);
+	const projectConfig = options.projectTrusted ? join(options.cwd, CONFIG_DIR_NAME, "mcp.json") : undefined;
+	if (projectConfig) readConfigFile(projectConfig, "project", state);
+	return {
+		servers: [...state.servers.values()],
+		...(state.autoEnableCodemode === undefined ? {} : { autoEnableCodemode: state.autoEnableCodemode }),
+		errors: state.errors,
+		...(projectConfig ? { projectConfig } : {}),
+	};

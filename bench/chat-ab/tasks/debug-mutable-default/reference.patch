@@ -1,0 +1,17 @@
+diff --git a/src/processor.py b/src/processor.py
+--- a/src/processor.py
++++ b/src/processor.py
+@@ -4,10 +4,12 @@
+-def process_events(events: list[Event], seen_ids: list[int] = []) -> list[Event]:
++def process_events(events: list[Event], seen_ids: list[int] | None = None) -> list[Event]:
+     """Process events, skipping any previously seen IDs.
+ 
+     Tracks seen IDs to enable cross-batch deduplication when the caller
+     passes a shared seen_ids list. When called without seen_ids, each
+     call should process independently.
+     """
++    if seen_ids is None:
++        seen_ids = []
+     result = []
+     for e in events:
+         if e.id not in seen_ids:

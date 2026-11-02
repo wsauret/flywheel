@@ -1,0 +1,1499 @@
+{
+  "controls": {
+    "implement": {
+      "workflowName": "Implement",
+      "graph": {
+        "nodes": [
+          {
+            "kind": "step",
+            "id": "implement:node:1",
+            "workflowDefinitionId": "implement",
+            "order": 0,
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "implement"
+            },
+            "state": {
+              "_tag": "ready"
+            },
+            "definitionId": "spec-create",
+            "name": "Create Spec",
+            "then": null,
+            "retry": null
+          },
+          {
+            "kind": "step",
+            "id": "implement:node:2",
+            "workflowDefinitionId": "implement",
+            "order": 1,
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "implement"
+            },
+            "state": {
+              "_tag": "pending"
+            },
+            "definitionId": "spec-review",
+            "name": "Review Spec",
+            "then": null,
+            "retry": null
+          },
+          {
+            "kind": "step",
+            "id": "implement:node:3",
+            "workflowDefinitionId": "implement",
+            "order": 2,
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "implement"
+            },
+            "state": {
+              "_tag": "pending"
+            },
+            "definitionId": "implement",
+            "name": "Implement",
+            "then": null,
+            "retry": null
+          }
+        ],
+        "dependencies": [
+          {
+            "nodeId": "implement:node:2",
+            "dependsOn": "implement:node:1"
+          },
+          {
+            "nodeId": "implement:node:3",
+            "dependsOn": "implement:node:2"
+          }
+        ],
+        "joins": [],
+        "budgets": []
+      },
+      "attempts": [
+        {
+          "id": "implement:node:1:attempt:1",
+          "logicalNodeId": "implement:node:1",
+          "workflowDefinitionId": "implement",
+          "definitionId": "spec-create",
+          "sequence": 1,
+          "iteration": 1,
+          "resumeRevertCount": 0,
+          "provenance": {
+            "_tag": "authored"
+          },
+          "ownership": {
+            "_tag": "workflow",
+            "workflowDefinitionId": "implement"
+          },
+          "state": {
+            "_tag": "pending"
+          },
+          "parentAttemptId": null,
+          "conversationId": null,
+          "handoff": null,
+          "priorRetryFeedback": null,
+          "forItem": null
+        },
+        {
+          "id": "implement:node:2:attempt:1",
+          "logicalNodeId": "implement:node:2",
+          "workflowDefinitionId": "implement",
+          "definitionId": "spec-review",
+          "sequence": 1,
+          "iteration": 1,
+          "resumeRevertCount": 0,
+          "provenance": {
+            "_tag": "authored"
+          },
+          "ownership": {
+            "_tag": "workflow",
+            "workflowDefinitionId": "implement"
+          },
+          "state": {
+            "_tag": "pending"
+          },
+          "parentAttemptId": null,
+          "conversationId": null,
+          "handoff": null,
+          "priorRetryFeedback": null,
+          "forItem": null
+        },
+        {
+          "id": "implement:node:3:attempt:1",
+          "logicalNodeId": "implement:node:3",
+          "workflowDefinitionId": "implement",
+          "definitionId": "implement",
+          "sequence": 1,
+          "iteration": 1,
+          "resumeRevertCount": 0,
+          "provenance": {
+            "_tag": "authored"
+          },
+          "ownership": {
+            "_tag": "workflow",
+            "workflowDefinitionId": "implement"
+          },
+          "state": {
+            "_tag": "pending"
+          },
+          "parentAttemptId": null,
+          "conversationId": null,
+          "handoff": null,
+          "priorRetryFeedback": null,
+          "forItem": null
+        }
+      ],
+      "frontier": [
+        "implement:node:1"
+      ],
+      "guardrails": {
+        "maxQueueLength": 50,
+        "maxMutationsPerAttempt": 3,
+        "maxSessionInserts": 20,
+        "sessionInsertsUsed": 0,
+        "attemptMutationsUsed": [
+          {
+            "attemptId": "implement:node:1:attempt:1",
+            "used": 0
+          },
+          {
+            "attemptId": "implement:node:2:attempt:1",
+            "used": 0
+          },
+          {
+            "attemptId": "implement:node:3:attempt:1",
+            "used": 0
+          }
+        ]
+      },
+      "status": "ready",
+      "followUp": null,
+      "aggregateSeq": 0
+    },
+    "debug": {
+      "workflowName": "Debug",
+      "graph": {
+        "nodes": [
+          {
+            "kind": "step",
+            "id": "debug:node:1",
+            "workflowDefinitionId": "debug",
+            "order": 0,
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "debug"
+            },
+            "state": {
+              "_tag": "ready"
+            },
+            "definitionId": "investigate",
+            "name": "Investigate",
+            "then": {
+              "step": "fix",
+              "when": "hypothesis",
+              "then": null
+            },
+            "retry": null
+          },
+          {
+            "kind": "while",
+            "id": "debug:node:2",
+            "workflowDefinitionId": "debug",
+            "order": 1,
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "debug"
+            },
+            "state": {
+              "_tag": "pending"
+            },
+            "evaluator": {
+              "step": "verify",
+              "field": "defects"
+            },
+            "body": [
+              {
+                "step": "verify"
+              },
+              {
+                "step": "fix"
+              }
+            ],
+            "maxIterations": 3,
+            "detectStuck": false,
+            "iteration": 1,
+            "priorNormalizedSignal": null
+          }
+        ],
+        "dependencies": [
+          {
+            "nodeId": "debug:node:2",
+            "dependsOn": "debug:node:1"
+          }
+        ],
+        "joins": [],
+        "budgets": []
+      },
+      "attempts": [
+        {
+          "id": "debug:node:1:attempt:1",
+          "logicalNodeId": "debug:node:1",
+          "workflowDefinitionId": "debug",
+          "definitionId": "investigate",
+          "sequence": 1,
+          "iteration": 1,
+          "resumeRevertCount": 0,
+          "provenance": {
+            "_tag": "authored"
+          },
+          "ownership": {
+            "_tag": "workflow",
+            "workflowDefinitionId": "debug"
+          },
+          "state": {
+            "_tag": "pending"
+          },
+          "parentAttemptId": null,
+          "conversationId": null,
+          "handoff": null,
+          "priorRetryFeedback": null,
+          "forItem": null
+        },
+        {
+          "id": "debug:node:2:attempt:1",
+          "logicalNodeId": "debug:node:2",
+          "workflowDefinitionId": "debug",
+          "definitionId": "verify",
+          "sequence": 1,
+          "iteration": 1,
+          "resumeRevertCount": 0,
+          "provenance": {
+            "_tag": "authored"
+          },
+          "ownership": {
+            "_tag": "workflow",
+            "workflowDefinitionId": "debug"
+          },
+          "state": {
+            "_tag": "pending"
+          },
+          "parentAttemptId": null,
+          "conversationId": null,
+          "handoff": null,
+          "priorRetryFeedback": null,
+          "forItem": null
+        },
+        {
+          "id": "debug:node:2:attempt:2",
+          "logicalNodeId": "debug:node:2",
+          "workflowDefinitionId": "debug",
+          "definitionId": "fix",
+          "sequence": 2,
+          "iteration": 1,
+          "resumeRevertCount": 0,
+          "provenance": {
+            "_tag": "authored"
+          },
+          "ownership": {
+            "_tag": "workflow",
+            "workflowDefinitionId": "debug"
+          },
+          "state": {
+            "_tag": "pending"
+          },
+          "parentAttemptId": null,
+          "conversationId": null,
+          "handoff": null,
+          "priorRetryFeedback": null,
+          "forItem": null
+        }
+      ],
+      "frontier": [
+        "debug:node:1"
+      ],
+      "guardrails": {
+        "maxQueueLength": 50,
+        "maxMutationsPerAttempt": 3,
+        "maxSessionInserts": 20,
+        "sessionInsertsUsed": 0,
+        "attemptMutationsUsed": [
+          {
+            "attemptId": "debug:node:1:attempt:1",
+            "used": 0
+          },
+          {
+            "attemptId": "debug:node:2:attempt:1",
+            "used": 0
+          },
+          {
+            "attemptId": "debug:node:2:attempt:2",
+            "used": 0
+          }
+        ]
+      },
+      "status": "ready",
+      "followUp": null,
+      "aggregateSeq": 0
+    },
+    "qa": {
+      "workflowName": "QA",
+      "graph": {
+        "nodes": [
+          {
+            "kind": "step",
+            "id": "qa:node:1",
+            "workflowDefinitionId": "qa",
+            "order": 0,
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "qa"
+            },
+            "state": {
+              "_tag": "ready"
+            },
+            "definitionId": "surface-map",
+            "name": "Map QA Surface",
+            "then": null,
+            "retry": null
+          },
+          {
+            "kind": "step",
+            "id": "qa:node:2",
+            "workflowDefinitionId": "qa",
+            "order": 1,
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "qa"
+            },
+            "state": {
+              "_tag": "pending"
+            },
+            "definitionId": "test-fix-surface",
+            "name": "Test & Fix Surface",
+            "then": null,
+            "retry": null
+          },
+          {
+            "kind": "while",
+            "id": "qa:node:3",
+            "workflowDefinitionId": "qa",
+            "order": 2,
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "qa"
+            },
+            "state": {
+              "_tag": "pending"
+            },
+            "evaluator": {
+              "step": "review-fixes",
+              "field": "findings"
+            },
+            "body": [
+              {
+                "step": "review-fixes"
+              },
+              {
+                "step": "test-fix-surface"
+              }
+            ],
+            "maxIterations": 5,
+            "detectStuck": true,
+            "iteration": 1,
+            "priorNormalizedSignal": null
+          }
+        ],
+        "dependencies": [
+          {
+            "nodeId": "qa:node:2",
+            "dependsOn": "qa:node:1"
+          },
+          {
+            "nodeId": "qa:node:3",
+            "dependsOn": "qa:node:2"
+          }
+        ],
+        "joins": [],
+        "budgets": []
+      },
+      "attempts": [
+        {
+          "id": "qa:node:1:attempt:1",
+          "logicalNodeId": "qa:node:1",
+          "workflowDefinitionId": "qa",
+          "definitionId": "surface-map",
+          "sequence": 1,
+          "iteration": 1,
+          "resumeRevertCount": 0,
+          "provenance": {
+            "_tag": "authored"
+          },
+          "ownership": {
+            "_tag": "workflow",
+            "workflowDefinitionId": "qa"
+          },
+          "state": {
+            "_tag": "pending"
+          },
+          "parentAttemptId": null,
+          "conversationId": null,
+          "handoff": null,
+          "priorRetryFeedback": null,
+          "forItem": null
+        },
+        {
+          "id": "qa:node:2:attempt:1",
+          "logicalNodeId": "qa:node:2",
+          "workflowDefinitionId": "qa",
+          "definitionId": "test-fix-surface",
+          "sequence": 1,
+          "iteration": 1,
+          "resumeRevertCount": 0,
+          "provenance": {
+            "_tag": "authored"
+          },
+          "ownership": {
+            "_tag": "workflow",
+            "workflowDefinitionId": "qa"
+          },
+          "state": {
+            "_tag": "pending"
+          },
+          "parentAttemptId": null,
+          "conversationId": null,
+          "handoff": null,
+          "priorRetryFeedback": null,
+          "forItem": null
+        },
+        {
+          "id": "qa:node:3:attempt:1",
+          "logicalNodeId": "qa:node:3",
+          "workflowDefinitionId": "qa",
+          "definitionId": "review-fixes",
+          "sequence": 1,
+          "iteration": 1,
+          "resumeRevertCount": 0,
+          "provenance": {
+            "_tag": "authored"
+          },
+          "ownership": {
+            "_tag": "workflow",
+            "workflowDefinitionId": "qa"
+          },
+          "state": {
+            "_tag": "pending"
+          },
+          "parentAttemptId": null,
+          "conversationId": null,
+          "handoff": null,
+          "priorRetryFeedback": null,
+          "forItem": null
+        },
+        {
+          "id": "qa:node:3:attempt:2",
+          "logicalNodeId": "qa:node:3",
+          "workflowDefinitionId": "qa",
+          "definitionId": "test-fix-surface",
+          "sequence": 2,
+          "iteration": 1,
+          "resumeRevertCount": 0,
+          "provenance": {
+            "_tag": "authored"
+          },
+          "ownership": {
+            "_tag": "workflow",
+            "workflowDefinitionId": "qa"
+          },
+          "state": {
+            "_tag": "pending"
+          },
+          "parentAttemptId": null,
+          "conversationId": null,
+          "handoff": null,
+          "priorRetryFeedback": null,
+          "forItem": null
+        }
+      ],
+      "frontier": [
+        "qa:node:1"
+      ],
+      "guardrails": {
+        "maxQueueLength": 50,
+        "maxMutationsPerAttempt": 3,
+        "maxSessionInserts": 20,
+        "sessionInsertsUsed": 0,
+        "attemptMutationsUsed": [
+          {
+            "attemptId": "qa:node:1:attempt:1",
+            "used": 0
+          },
+          {
+            "attemptId": "qa:node:2:attempt:1",
+            "used": 0
+          },
+          {
+            "attemptId": "qa:node:3:attempt:1",
+            "used": 0
+          },
+          {
+            "attemptId": "qa:node:3:attempt:2",
+            "used": 0
+          }
+        ]
+      },
+      "status": "ready",
+      "followUp": null,
+      "aggregateSeq": 0
+    },
+    "raindrop-audit": {
+      "workflowName": "Raindrop Audit",
+      "graph": {
+        "nodes": [
+          {
+            "kind": "step",
+            "id": "raindrop-audit:node:1",
+            "workflowDefinitionId": "raindrop-audit",
+            "order": 0,
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "raindrop-audit"
+            },
+            "state": {
+              "_tag": "ready"
+            },
+            "definitionId": "raindrop-audit",
+            "name": "Raindrop Audit",
+            "then": null,
+            "retry": null
+          }
+        ],
+        "dependencies": [],
+        "joins": [],
+        "budgets": []
+      },
+      "attempts": [
+        {
+          "id": "raindrop-audit:node:1:attempt:1",
+          "logicalNodeId": "raindrop-audit:node:1",
+          "workflowDefinitionId": "raindrop-audit",
+          "definitionId": "raindrop-audit",
+          "sequence": 1,
+          "iteration": 1,
+          "resumeRevertCount": 0,
+          "provenance": {
+            "_tag": "authored"
+          },
+          "ownership": {
+            "_tag": "workflow",
+            "workflowDefinitionId": "raindrop-audit"
+          },
+          "state": {
+            "_tag": "pending"
+          },
+          "parentAttemptId": null,
+          "conversationId": null,
+          "handoff": null,
+          "priorRetryFeedback": null,
+          "forItem": null
+        }
+      ],
+      "frontier": [
+        "raindrop-audit:node:1"
+      ],
+      "guardrails": {
+        "maxQueueLength": 50,
+        "maxMutationsPerAttempt": 3,
+        "maxSessionInserts": 20,
+        "sessionInsertsUsed": 0,
+        "attemptMutationsUsed": [
+          {
+            "attemptId": "raindrop-audit:node:1:attempt:1",
+            "used": 0
+          }
+        ]
+      },
+      "status": "ready",
+      "followUp": null,
+      "aggregateSeq": 0
+    },
+    "dual-bind": {
+      "workflowName": "Dual Bind",
+      "graph": {
+        "nodes": [
+          {
+            "kind": "step",
+            "id": "dual-bind:node:1",
+            "workflowDefinitionId": "dual-bind",
+            "order": 0,
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "dual-bind"
+            },
+            "state": {
+              "_tag": "ready"
+            },
+            "definitionId": "first",
+            "name": "Investigate",
+            "then": null,
+            "retry": null
+          },
+          {
+            "kind": "step",
+            "id": "dual-bind:node:2",
+            "workflowDefinitionId": "dual-bind",
+            "order": 1,
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "dual-bind"
+            },
+            "state": {
+              "_tag": "pending"
+            },
+            "definitionId": "second",
+            "name": "Investigate",
+            "then": null,
+            "retry": null
+          }
+        ],
+        "dependencies": [
+          {
+            "nodeId": "dual-bind:node:2",
+            "dependsOn": "dual-bind:node:1"
+          }
+        ],
+        "joins": [],
+        "budgets": []
+      },
+      "attempts": [
+        {
+          "id": "dual-bind:node:1:attempt:1",
+          "logicalNodeId": "dual-bind:node:1",
+          "workflowDefinitionId": "dual-bind",
+          "definitionId": "first",
+          "sequence": 1,
+          "iteration": 1,
+          "resumeRevertCount": 0,
+          "provenance": {
+            "_tag": "authored"
+          },
+          "ownership": {
+            "_tag": "workflow",
+            "workflowDefinitionId": "dual-bind"
+          },
+          "state": {
+            "_tag": "pending"
+          },
+          "parentAttemptId": null,
+          "conversationId": null,
+          "handoff": null,
+          "priorRetryFeedback": null,
+          "forItem": null
+        },
+        {
+          "id": "dual-bind:node:2:attempt:1",
+          "logicalNodeId": "dual-bind:node:2",
+          "workflowDefinitionId": "dual-bind",
+          "definitionId": "second",
+          "sequence": 1,
+          "iteration": 1,
+          "resumeRevertCount": 0,
+          "provenance": {
+            "_tag": "authored"
+          },
+          "ownership": {
+            "_tag": "workflow",
+            "workflowDefinitionId": "dual-bind"
+          },
+          "state": {
+            "_tag": "pending"
+          },
+          "parentAttemptId": null,
+          "conversationId": null,
+          "handoff": null,
+          "priorRetryFeedback": null,
+          "forItem": null
+        }
+      ],
+      "frontier": [
+        "dual-bind:node:1"
+      ],
+      "guardrails": {
+        "maxQueueLength": 50,
+        "maxMutationsPerAttempt": 3,
+        "maxSessionInserts": 20,
+        "sessionInsertsUsed": 0,
+        "attemptMutationsUsed": [
+          {
+            "attemptId": "dual-bind:node:1:attempt:1",
+            "used": 0
+          },
+          {
+            "attemptId": "dual-bind:node:2:attempt:1",
+            "used": 0
+          }
+        ]
+      },
+      "status": "ready",
+      "followUp": null,
+      "aggregateSeq": 0
+    }
+  },
+  "histories": {
+    "catalog": {
+      "facts": [
+        {
+          "type": "attempt.started",
+          "version": 1,
+          "payload": {
+            "attemptId": "implement:node:1:attempt:1"
+          }
+        },
+        {
+          "type": "workflow.control.committed",
+          "version": 9,
+          "payload": {
+            "proposalId": "implement:proposal:8:attempt-started:implement:node:1:attempt:1",
+            "event": {
+              "type": "ATTEMPT_STARTED",
+              "attemptId": "implement:node:1:attempt:1",
+              "conversationId": "legacy-conversation"
+            }
+          }
+        },
+        {
+          "type": "workflow.reassessed",
+          "version": 2,
+          "payload": {
+            "proposalId": "legacy-reassessment",
+            "changes": [
+              {
+                "kind": "add_node",
+                "node": {
+                  "kind": "step",
+                  "id": "implement:node:1:reassessed",
+                  "workflowDefinitionId": "implement",
+                  "order": 3,
+                  "ownership": {
+                    "_tag": "workflow",
+                    "workflowDefinitionId": "implement"
+                  },
+                  "state": {
+                    "_tag": "pending"
+                  },
+                  "definitionId": "fly.spec-create",
+                  "name": "Reassessed position",
+                  "then": null,
+                  "retry": null
+                },
+                "forItem": null
+              }
+            ]
+          }
+        },
+        {
+          "type": "workflow.control.committed",
+          "version": 9,
+          "payload": {
+            "proposalId": "implement:proposal:10:reassess:legacy-reassessment",
+            "event": {
+              "type": "REASSESSMENT_PROPOSED",
+              "proposal": {
+                "proposalId": "legacy-reassessment",
+                "ownerNodeId": "implement:node:1",
+                "reason": "The staged plan misses one position.",
+                "changes": [
+                  {
+                    "kind": "add_node",
+                    "node": {
+                      "kind": "step",
+                      "id": "implement:node:1:reassessed",
+                      "workflowDefinitionId": "implement",
+                      "order": 3,
+                      "ownership": {
+                        "_tag": "workflow",
+                        "workflowDefinitionId": "implement"
+                      },
+                      "state": {
+                        "_tag": "pending"
+                      },
+                      "definitionId": "fly.spec-create",
+                      "name": "Reassessed position",
+                      "then": null,
+                      "retry": null
+                    },
+                    "forItem": null
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "type": "attempt.blocked",
+          "version": 1,
+          "payload": {
+            "attemptId": "implement:node:1:attempt:1",
+            "reason": "The staged workspace installs no harness for the queue projection.",
+            "evidence": "bun test tests/unit/workflows/vm exits 1 with no such file."
+          }
+        },
+        {
+          "type": "workflow.control.committed",
+          "version": 9,
+          "payload": {
+            "proposalId": "implement:proposal:12:attempt-blocked:implement:node:1:attempt:1",
+            "event": {
+              "type": "ATTEMPT_BLOCKED",
+              "blocked": {
+                "attemptId": "implement:node:1:attempt:1",
+                "conversationId": "legacy-conversation",
+                "handoff": {
+                  "outcome": {
+                    "state": "blocked",
+                    "reason": "The staged workspace installs no harness for the queue projection.",
+                    "evidence": "bun test tests/unit/workflows/vm exits 1 with no such file."
+                  },
+                  "summary": "Stopped before writing code because the harness is missing."
+                }
+              },
+              "correctiveDefinitionId": "fly.spec-review"
+            }
+          }
+        }
+      ],
+      "final": {
+        "workflowName": "Implement",
+        "graph": {
+          "nodes": [
+            {
+              "kind": "step",
+              "id": "implement:node:1",
+              "workflowDefinitionId": "implement",
+              "order": 0,
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "implement"
+              },
+              "state": {
+                "_tag": "running"
+              },
+              "definitionId": "fly.spec-create",
+              "name": "Create Spec",
+              "then": {
+                "step": "fly.spec-review",
+                "when": null,
+                "then": null
+              },
+              "retry": null
+            },
+            {
+              "kind": "step",
+              "id": "implement:node:2",
+              "workflowDefinitionId": "implement",
+              "order": 1,
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "implement"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "definitionId": "fly.spec-review",
+              "name": "Review Spec",
+              "then": null,
+              "retry": null
+            },
+            {
+              "kind": "step",
+              "id": "implement:node:3",
+              "workflowDefinitionId": "implement",
+              "order": 2,
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "implement"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "definitionId": "fly.implement",
+              "name": "Implement",
+              "then": null,
+              "retry": null
+            },
+            {
+              "kind": "step",
+              "id": "implement:node:1:reassessed",
+              "workflowDefinitionId": "implement",
+              "order": 3,
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "implement"
+              },
+              "state": {
+                "_tag": "ready"
+              },
+              "definitionId": "fly.spec-create",
+              "name": "Reassessed position",
+              "then": null,
+              "retry": null
+            }
+          ],
+          "dependencies": [
+            {
+              "nodeId": "implement:node:2",
+              "dependsOn": "implement:node:1"
+            },
+            {
+              "nodeId": "implement:node:3",
+              "dependsOn": "implement:node:2"
+            }
+          ],
+          "joins": [],
+          "budgets": []
+        },
+        "attempts": [
+          {
+            "id": "implement:node:1:attempt:1",
+            "logicalNodeId": "implement:node:1",
+            "workflowDefinitionId": "implement",
+            "definitionId": "fly.spec-create",
+            "sequence": 1,
+            "iteration": 1,
+            "resumeRevertCount": 0,
+            "provenance": {
+              "_tag": "authored"
+            },
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "implement"
+            },
+            "state": {
+              "_tag": "blocked",
+              "reason": "The staged workspace installs no harness for the queue projection."
+            },
+            "parentAttemptId": null,
+            "conversationId": "legacy-conversation",
+            "handoff": {
+              "outcome": {
+                "state": "blocked",
+                "reason": "The staged workspace installs no harness for the queue projection.",
+                "evidence": "bun test tests/unit/workflows/vm exits 1 with no such file."
+              },
+              "summary": "Stopped before writing code because the harness is missing."
+            },
+            "priorRetryFeedback": null,
+            "forItem": null
+          },
+          {
+            "id": "implement:node:1:attempt:2",
+            "logicalNodeId": "implement:node:1",
+            "workflowDefinitionId": "implement",
+            "definitionId": "fly.spec-review",
+            "sequence": 2,
+            "iteration": 1,
+            "resumeRevertCount": 0,
+            "provenance": {
+              "_tag": "then"
+            },
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "implement"
+            },
+            "state": {
+              "_tag": "pending"
+            },
+            "parentAttemptId": "implement:node:1:attempt:1",
+            "conversationId": null,
+            "handoff": null,
+            "priorRetryFeedback": null,
+            "forItem": null
+          },
+          {
+            "id": "implement:node:2:attempt:1",
+            "logicalNodeId": "implement:node:2",
+            "workflowDefinitionId": "implement",
+            "definitionId": "fly.spec-review",
+            "sequence": 1,
+            "iteration": 1,
+            "resumeRevertCount": 0,
+            "provenance": {
+              "_tag": "authored"
+            },
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "implement"
+            },
+            "state": {
+              "_tag": "pending"
+            },
+            "parentAttemptId": null,
+            "conversationId": null,
+            "handoff": null,
+            "priorRetryFeedback": null,
+            "forItem": null
+          },
+          {
+            "id": "implement:node:3:attempt:1",
+            "logicalNodeId": "implement:node:3",
+            "workflowDefinitionId": "implement",
+            "definitionId": "fly.implement",
+            "sequence": 1,
+            "iteration": 1,
+            "resumeRevertCount": 0,
+            "provenance": {
+              "_tag": "authored"
+            },
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "implement"
+            },
+            "state": {
+              "_tag": "pending"
+            },
+            "parentAttemptId": null,
+            "conversationId": null,
+            "handoff": null,
+            "priorRetryFeedback": null,
+            "forItem": null
+          },
+          {
+            "id": "implement:node:1:reassessed:attempt:1",
+            "logicalNodeId": "implement:node:1:reassessed",
+            "workflowDefinitionId": "implement",
+            "definitionId": "fly.spec-create",
+            "sequence": 1,
+            "iteration": 1,
+            "resumeRevertCount": 0,
+            "provenance": {
+              "_tag": "reassessment"
+            },
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "implement"
+            },
+            "state": {
+              "_tag": "pending"
+            },
+            "parentAttemptId": null,
+            "conversationId": null,
+            "handoff": null,
+            "priorRetryFeedback": null,
+            "forItem": null
+          }
+        ],
+        "frontier": [
+          "implement:node:1:reassessed"
+        ],
+        "guardrails": {
+          "maxQueueLength": 50,
+          "maxMutationsPerAttempt": 3,
+          "maxSessionInserts": 20,
+          "sessionInsertsUsed": 2,
+          "attemptMutationsUsed": [
+            {
+              "attemptId": "implement:node:1:attempt:1",
+              "used": 2
+            },
+            {
+              "attemptId": "implement:node:1:attempt:2",
+              "used": 0
+            },
+            {
+              "attemptId": "implement:node:2:attempt:1",
+              "used": 0
+            },
+            {
+              "attemptId": "implement:node:3:attempt:1",
+              "used": 0
+            },
+            {
+              "attemptId": "implement:node:1:reassessed:attempt:1",
+              "used": 0
+            }
+          ]
+        },
+        "status": "ready",
+        "followUp": null,
+        "aggregateSeq": 13
+      }
+    },
+    "rename": {
+      "facts": [
+        {
+          "type": "attempt.started",
+          "version": 1,
+          "payload": {
+            "attemptId": "flywheel-core:node:1:attempt:1"
+          }
+        },
+        {
+          "type": "workflow.control.committed",
+          "version": 9,
+          "payload": {
+            "proposalId": "flywheel-core:proposal:6:attempt-started:flywheel-core:node:1:attempt:1",
+            "event": {
+              "type": "ATTEMPT_STARTED",
+              "attemptId": "flywheel-core:node:1:attempt:1",
+              "conversationId": "legacy-conversation"
+            }
+          }
+        },
+        {
+          "type": "workflow.reassessed",
+          "version": 2,
+          "payload": {
+            "proposalId": "legacy-reassessment",
+            "changes": [
+              {
+                "kind": "add_node",
+                "node": {
+                  "kind": "step",
+                  "id": "flywheel-core:node:1:reassessed",
+                  "workflowDefinitionId": "flywheel-core",
+                  "order": 3,
+                  "ownership": {
+                    "_tag": "workflow",
+                    "workflowDefinitionId": "flywheel-core"
+                  },
+                  "state": {
+                    "_tag": "pending"
+                  },
+                  "definitionId": "plan-create",
+                  "name": "Reassessed position",
+                  "then": null,
+                  "retry": null
+                },
+                "forItem": null
+              }
+            ]
+          }
+        },
+        {
+          "type": "workflow.control.committed",
+          "version": 9,
+          "payload": {
+            "proposalId": "flywheel-core:proposal:8:reassess:legacy-reassessment",
+            "event": {
+              "type": "REASSESSMENT_PROPOSED",
+              "proposal": {
+                "proposalId": "legacy-reassessment",
+                "ownerNodeId": "flywheel-core:node:1",
+                "reason": "The staged plan misses one position.",
+                "changes": [
+                  {
+                    "kind": "add_node",
+                    "node": {
+                      "kind": "step",
+                      "id": "flywheel-core:node:1:reassessed",
+                      "workflowDefinitionId": "flywheel-core",
+                      "order": 3,
+                      "ownership": {
+                        "_tag": "workflow",
+                        "workflowDefinitionId": "flywheel-core"
+                      },
+                      "state": {
+                        "_tag": "pending"
+                      },
+                      "definitionId": "plan-create",
+                      "name": "Reassessed position",
+                      "then": null,
+                      "retry": null
+                    },
+                    "forItem": null
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "type": "attempt.blocked",
+          "version": 1,
+          "payload": {
+            "attemptId": "flywheel-core:node:1:attempt:1",
+            "reason": "The staged workspace installs no harness for the queue projection.",
+            "evidence": "bun test tests/unit/workflows/vm exits 1 with no such file."
+          }
+        },
+        {
+          "type": "workflow.control.committed",
+          "version": 9,
+          "payload": {
+            "proposalId": "flywheel-core:proposal:10:attempt-blocked:flywheel-core:node:1:attempt:1",
+            "event": {
+              "type": "ATTEMPT_BLOCKED",
+              "blocked": {
+                "attemptId": "flywheel-core:node:1:attempt:1",
+                "conversationId": "legacy-conversation",
+                "handoff": {
+                  "outcome": {
+                    "state": "blocked",
+                    "reason": "The staged workspace installs no harness for the queue projection.",
+                    "evidence": "bun test tests/unit/workflows/vm exits 1 with no such file."
+                  },
+                  "summary": "Stopped before writing code because the harness is missing."
+                }
+              },
+              "correctiveDefinitionId": "plan-review"
+            }
+          }
+        }
+      ],
+      "final": {
+        "workflowName": "Implement",
+        "graph": {
+          "nodes": [
+            {
+              "kind": "step",
+              "id": "flywheel-core:node:1",
+              "workflowDefinitionId": "flywheel-core",
+              "order": 0,
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "flywheel-core"
+              },
+              "state": {
+                "_tag": "running"
+              },
+              "definitionId": "plan-create",
+              "name": "Create Spec",
+              "then": {
+                "step": "plan-review",
+                "when": null,
+                "then": null
+              },
+              "retry": null
+            },
+            {
+              "kind": "step",
+              "id": "flywheel-core:node:2",
+              "workflowDefinitionId": "flywheel-core",
+              "order": 1,
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "flywheel-core"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "definitionId": "plan-review",
+              "name": "Review Spec",
+              "then": null,
+              "retry": null
+            },
+            {
+              "kind": "step",
+              "id": "flywheel-core:node:3",
+              "workflowDefinitionId": "flywheel-core",
+              "order": 2,
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "flywheel-core"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "definitionId": "implement",
+              "name": "Implement",
+              "then": null,
+              "retry": null
+            },
+            {
+              "kind": "step",
+              "id": "flywheel-core:node:1:reassessed",
+              "workflowDefinitionId": "flywheel-core",
+              "order": 3,
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "flywheel-core"
+              },
+              "state": {
+                "_tag": "ready"
+              },
+              "definitionId": "plan-create",
+              "name": "Reassessed position",
+              "then": null,
+              "retry": null
+            }
+          ],
+          "dependencies": [
+            {
+              "nodeId": "flywheel-core:node:2",
+              "dependsOn": "flywheel-core:node:1"
+            },
+            {
+              "nodeId": "flywheel-core:node:3",
+              "dependsOn": "flywheel-core:node:2"
+            }
+          ],
+          "joins": [],
+          "budgets": []
+        },
+        "attempts": [
+          {
+            "id": "flywheel-core:node:1:attempt:1",
+            "logicalNodeId": "flywheel-core:node:1",
+            "workflowDefinitionId": "flywheel-core",
+            "definitionId": "plan-create",
+            "sequence": 1,
+            "iteration": 1,
+            "resumeRevertCount": 0,
+            "provenance": {
+              "_tag": "authored"
+            },
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "flywheel-core"
+            },
+            "state": {
+              "_tag": "blocked",
+              "reason": "The staged workspace installs no harness for the queue projection."
+            },
+            "parentAttemptId": null,
+            "conversationId": "legacy-conversation",
+            "handoff": {
+              "outcome": {
+                "state": "blocked",
+                "reason": "The staged workspace installs no harness for the queue projection.",
+                "evidence": "bun test tests/unit/workflows/vm exits 1 with no such file."
+              },
+              "summary": "Stopped before writing code because the harness is missing."
+            },
+            "priorRetryFeedback": null,
+            "forItem": null
+          },
+          {
+            "id": "flywheel-core:node:1:attempt:2",
+            "logicalNodeId": "flywheel-core:node:1",
+            "workflowDefinitionId": "flywheel-core",
+            "definitionId": "plan-review",
+            "sequence": 2,
+            "iteration": 1,
+            "resumeRevertCount": 0,
+            "provenance": {
+              "_tag": "then"
+            },
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "flywheel-core"
+            },
+            "state": {
+              "_tag": "pending"
+            },
+            "parentAttemptId": "flywheel-core:node:1:attempt:1",
+            "conversationId": null,
+            "handoff": null,
+            "priorRetryFeedback": null,
+            "forItem": null
+          },
+          {
+            "id": "flywheel-core:node:2:attempt:1",
+            "logicalNodeId": "flywheel-core:node:2",
+            "workflowDefinitionId": "flywheel-core",
+            "definitionId": "plan-review",
+            "sequence": 1,
+            "iteration": 1,
+            "resumeRevertCount": 0,
+            "provenance": {
+              "_tag": "authored"
+            },
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "flywheel-core"
+            },
+            "state": {
+              "_tag": "pending"
+            },
+            "parentAttemptId": null,
+            "conversationId": null,
+            "handoff": null,
+            "priorRetryFeedback": null,
+            "forItem": null
+          },
+          {
+            "id": "flywheel-core:node:3:attempt:1",
+            "logicalNodeId": "flywheel-core:node:3",
+            "workflowDefinitionId": "flywheel-core",
+            "definitionId": "implement",
+            "sequence": 1,
+            "iteration": 1,
+            "resumeRevertCount": 0,
+            "provenance": {
+              "_tag": "authored"
+            },
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "flywheel-core"
+            },
+            "state": {
+              "_tag": "pending"
+            },
+            "parentAttemptId": null,
+            "conversationId": null,
+            "handoff": null,
+            "priorRetryFeedback": null,
+            "forItem": null
+          },
+          {
+            "id": "flywheel-core:node:1:reassessed:attempt:1",
+            "logicalNodeId": "flywheel-core:node:1:reassessed",
+            "workflowDefinitionId": "flywheel-core",
+            "definitionId": "plan-create",
+            "sequence": 1,
+            "iteration": 1,
+            "resumeRevertCount": 0,
+            "provenance": {
+              "_tag": "reassessment"
+            },
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "flywheel-core"
+            },
+            "state": {
+              "_tag": "pending"
+            },
+            "parentAttemptId": null,
+            "conversationId": null,
+            "handoff": null,
+            "priorRetryFeedback": null,
+            "forItem": null
+          }
+        ],
+        "frontier": [
+          "flywheel-core:node:1:reassessed"
+        ],
+        "guardrails": {
+          "maxQueueLength": 50,
+          "maxMutationsPerAttempt": 3,
+          "maxSessionInserts": 20,
+          "sessionInsertsUsed": 2,
+          "attemptMutationsUsed": [
+            {
+              "attemptId": "flywheel-core:node:1:attempt:1",
+              "used": 2
+            },
+            {
+              "attemptId": "flywheel-core:node:1:attempt:2",
+              "used": 0
+            },
+            {
+              "attemptId": "flywheel-core:node:2:attempt:1",
+              "used": 0
+            },
+            {
+              "attemptId": "flywheel-core:node:3:attempt:1",
+              "used": 0
+            },
+            {
+              "attemptId": "flywheel-core:node:1:reassessed:attempt:1",
+              "used": 0
+            }
+          ]
+        },
+        "status": "ready",
+        "followUp": null,
+        "aggregateSeq": 11
+      }
+    }
+  }
+}

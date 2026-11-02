@@ -1,0 +1,209 @@
+/* The client's design tokens: the whole vocabulary a component may read.
+
+   A host owns the values, so a component never learns which host it is in.
+   The VS Code host maps its editor theme onto these names in its own
+   stylesheet. The browser hosts, the local page and the phone, share
+   webview/local/theme.css, which follows the system setting and restates the
+   palette in light mode. The values here are the dark set those hosts start
+   from: a complete warm dark theme.
+
+   Rules the lint gate enforces on every other stylesheet: no colour except
+   through a token, no font size or z-index except through a token, and no
+   container width outside the ladder declared at the bottom of this file. */
+
+:root {
+  color-scheme: dark;
+  /* Type. The host's UI face for prose, its editor face for code. */
+  --fw-font: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --fw-font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --fw-text-2xs: 10px;
+  --fw-text-xs: 11px;
+  --fw-text-sm: 12px;
+  --fw-text: 13px;
+  --fw-text-lg: 15px;
+  /* Text a person types into a field: the body size, which a touch device
+     floors below. */
+  --fw-text-field: var(--fw-text);
+  --fw-leading: 1.55;
+  --fw-leading-tight: 1.4;
+
+  /* Space. One rhythm; components read steps, never pixel literals. */
+  --fw-s1: 4px;
+  --fw-s2: 8px;
+  --fw-s3: 12px;
+  --fw-s4: 16px;
+  --fw-s5: 24px;
+  --fw-s6: 32px;
+  --fw-diff-line-number-width: 4ch;
+  --fw-diff-marker-width: 2ch;
+  --fw-row-meta-space: calc(var(--fw-text-2xs) * var(--fw-leading) + var(--fw-s1));
+  /* The reading column: the transcript and the prompt share this width,
+     centred, so a wide window never stretches a line past easy reading. */
+  --fw-measure: 46rem;
+  /* The least inset between the pane's edge and the column. */
+  --fw-pane-inset: var(--fw-s3);
+  /* The side padding that centres the column. Its percentage resolves against
+     the pane on each element that reads it, so the transcript and the prompt
+     share one left edge; a scrollbar that takes width trims only the right. */
+  --fw-column-inset: max(var(--fw-pane-inset), (100% - var(--fw-measure)) / 2);
+  /* A workflow's full-size card and its agent views share this wider
+     column, centred, so the layout does not move when an agent opens. */
+  --fw-workflow-measure: 60rem;
+  --fw-workflow-inset: max(var(--fw-pane-inset), (100% - var(--fw-workflow-measure)) / 2);
+  --fw-workspace-width: 28rem;
+  --fw-table-cell-max: 24rem;
+  /* The narrowest reading column a docked workspace panel may leave beside
+     it; below this the panel opens as a sheet instead. */
+  --fw-measure-min: 36rem;
+  /* The transcript's one left gutter: every marker centres at --fw-marker-x
+     and every entry's content starts at --fw-gutter. */
+  --fw-gutter: 26px;
+  --fw-marker-x: 13px;
+  --fw-image-preview-width: 400px;
+  --fw-image-preview-height: min(240px, calc(100dvh / 3));
+
+  --fw-radius-sm: 4px;
+  --fw-radius: 6px;
+  --fw-radius-lg: 8px;
+  /* The composer card: round enough to read as its own object on the pane. */
+  --fw-radius-xl: 22px;
+  --fw-radius-pill: 999px;
+  --fw-blur-light: 8px;
+
+  /* Motion. Two durations and one curve; reduced-motion turns them off. */
+  --fw-motion-fast: 120ms;
+  --fw-motion: 150ms;
+  --fw-motion-slow: 240ms;
+  --fw-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  /* Layers. Popovers float over content, tooltips over popovers, and sheets
+     over those. Toasts float over everything: a toast often reports what the
+     open sheet just did, so the sheet must never cover it. */
+  --fw-z-popover: 20;
+  --fw-z-tooltip: 30;
+  --fw-z-sheet: 40;
+  --fw-z-toast: 50;
+
+  /* Ground and text. A warm near-black with warm greys over it, the way the
+     panel reads in the editor: no blue cast anywhere, so the surface feels
+     soft rather than cold, and text sits a few steps below white. */
+  --fw-bg: #1c1b19;
+  --fw-fg: #cfcbc3;
+  --fw-fg-muted: #9b968c;
+  /* The conversation itself is the brightest text on the surface; tool rows
+     and chrome sit below it. The same lift the editor host applies. */
+  --fw-fg-prose: color-mix(in srgb, var(--fw-fg) 65%, white);
+  /* One step of separation from the ground, for anything that should read as
+     sitting on the surface rather than in it, and a firmer second step. */
+  --fw-bg-raised: color-mix(in srgb, var(--fw-fg) 6%, transparent);
+  --fw-bg-raised-strong: color-mix(in srgb, var(--fw-fg) 10%, transparent);
+  /* The tint a control shows while a finger or pointer is down on it. It is
+     laid over the control's own ground, so it is one step past every hover
+     ground and still reads on a hovered, selected, or accent control. It
+     derives from the text colour, so every host theme gets it whole. */
+  --fw-press: color-mix(in srgb, var(--fw-fg) 14%, transparent);
+  --fw-hairline: color-mix(in srgb, var(--fw-fg) 16%, transparent);
+  /* The tool rail: quieter than a hairline because it runs through every tool
+     cluster, and at divider strength a long run reads busy. */
+  --fw-rail: color-mix(in srgb, var(--fw-fg) 11%, transparent);
+
+  /* Accent and its text, for the one primary action on screen. */
+  --fw-accent: #0078d4;
+  --fw-accent-hover: #026ec1;
+  --fw-accent-fg: #ffffff;
+  --fw-selection-bg: color-mix(in srgb, var(--fw-accent) 80%, black);
+  --fw-selection-fg: var(--fw-accent-fg);
+  --fw-scrollbar-thumb: color-mix(in srgb, var(--fw-fg-muted) 45%, transparent);
+  --fw-scrollbar-track: transparent;
+  --fw-scroll-fade: var(--fw-s3);
+  --fw-secondary: #33312d;
+  --fw-secondary-hover: #3e3c37;
+  --fw-secondary-fg: var(--fw-fg);
+  --fw-focus: #0078d4;
+  --fw-link: #4daafc;
+  --fw-link-active: #4daafc;
+
+  /* Semantic colour: the editor's chart palette. */
+  --fw-error: #f85149;
+  --fw-warning: #cca700;
+  --fw-success: #89d185;
+  /* Camera-readable codes keep full contrast under every host theme. */
+  --fw-qr-ground: #fff;
+  --fw-qr-ink: #000;
+  --fw-info: #3794ff;
+  --fw-purple: #b180d7;
+  --fw-teal: #4cc4cc;
+  --fw-orange: #d18616;
+  /* A workflow's names: a phase's name reads violet and an agent's name
+     teal on the inline card, the full-size card, and the agent view, so a
+     name never reads as a state's colour: the teal sits apart from the
+     green of done and the blue of running. The terminal maps the same two
+     roles onto its theme's phaseName and agentName. */
+  --fw-phase-name: var(--fw-purple);
+  --fw-agent-name: var(--fw-teal);
+  /* The person's own messages share the primary action's accent. */
+  --fw-user-accent: var(--fw-accent);
+  /* A message that another session sent carries the blue rail, so it never
+     reads as the person's own words. */
+  --fw-session-message: var(--fw-info);
+  /* The terminal theme's tool colour, softened toward the muted grey because
+     the raw value glows on a flat surface. */
+  --fw-tool-name: color-mix(in srgb, #ffe2a9 72%, var(--fw-fg-muted));
+
+  /* Inputs, menus, and floating surfaces. The composer sits a step above the
+     ground and below the editor's own input grey, which reads too light for a
+     card that floats over the transcript. */
+  --fw-input-bg: #262523;
+  --fw-input-glass: color-mix(in srgb, var(--fw-input-bg) 80%, transparent);
+  /* Image previews can pass under the card. Tone-map their extremes without
+     removing the blurred transcript texture or increasing the glass opacity. */
+  --fw-input-backdrop-dark: blur(var(--fw-blur-light)) brightness(0.3);
+  --fw-input-backdrop-light: blur(var(--fw-blur-light)) brightness(1.2) contrast(0.6);
+  --fw-input-backdrop: var(--fw-input-backdrop-dark);
+  --fw-input-fg: var(--fw-fg);
+  --fw-input-border: #3d3b36;
+  --fw-menu-bg: #232220;
+  --fw-menu-border: #3d3b36;
+  --fw-list-hover: #2d2c29;
+  --fw-list-active-bg: var(--fw-bg-raised-strong);
+  --fw-list-active-fg: var(--fw-fg);
+  --fw-hover-bg: #242321;
+  --fw-hover-fg: var(--fw-fg);
+  --fw-hover-border: #46443e;
+  --fw-shadow-popover: 0 4px 14px rgb(0 0 0 / 0.28);
+  --fw-shadow-tooltip: 0 2px 8px rgb(0 0 0 / 0.24);
+  --fw-shadow-sheet: 0 12px 40px rgb(0 0 0 / 0.45);
+  --fw-scrim: rgb(0 0 0 / 0.45);
+
+  /* Code and diffs: the editor's code block and diff tints. */
+  --fw-code-bg: #2b2a27;
+  --fw-diff-add-bg: rgb(156 204 44 / 0.2);
+  --fw-diff-del-bg: rgb(255 0 0 / 0.2);
+  /* Standard diffs: the conventional saturated green and red a person expects
+     from any diff tool, for the setting that turns the theme's tints off. */
+  --fw-diff-add-standard-bg: rgb(46 160 67 / 0.32);
+  --fw-diff-del-standard-bg: rgb(218 54 51 / 0.32);
+  --fw-chat-code-keyword: #7fb4f5;
+  --fw-chat-code-string: #d9a66e;
+  --fw-chat-code-number: #b5cea8;
+  --fw-chat-code-function: #dcdcaa;
+  --fw-chat-code-type: #4ec9b0;
+}
+
+/* iOS zooms the page into any focused field set below 16px and keeps that
+   zoom after the field blurs, which pushes the right edge of every surface
+   off screen. On a touch device field text never falls below the size iOS
+   honours, on every page a host draws. */
+@media (pointer: coarse) {
+  :root { --fw-text-field: max(var(--fw-text), 16px); }
+}
+
+/* The container-width ladder. Layout thresholds are container queries at these
+   widths and no others: new work rounds up to the next rung rather than adding
+   one. 40rem is where the session list stops being a screen and becomes a
+   rail; 60rem is where a second column of detail earns its place. These are
+   recorded here as documentation, because a container query cannot read a
+   custom property. One admission is computed rather than a rung: the
+   workspace panel docks only where the reading column's minimum still fits
+   beside it (.workspace-fit), because the person sets the rail's width and no
+   fixed rung can promise that fit. */

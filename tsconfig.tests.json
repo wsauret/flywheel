@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    // The oxlint plugin is loaded from source by oxlint itself, so its imports
+    // name `.ts` deliberately. Nothing is emitted from this project, which is
+    // the case the flag exists for.
+    "allowImportingTsExtensions": true
+  },
+  // The ambient declarations come too. Nothing imports a global augmentation, so
+  // it is reached by being included and no other way: without them this project
+  // compiles the same `src` files against a different ambient world than
+  // `tsconfig.json` does, and reports errors that are its own configuration's
+  // rather than the code's.
+  "include": ["tests/**/*.ts", "tests/**/*.tsx", "scripts/**/*.ts", "private/scripts/**/*.ts", "src/**/*.d.ts", "bench/shared/native-persona-launcher.ts", "bench/shared/native-persona-worker.ts"],
+  // These fixtures are deliberate lint violations, which
+  // tests/integration/oxlint-solid-bridge.test.ts lints; they are not meant to compile.
+  "exclude": ["node_modules", "tests/fixtures/oxlint-solid-*.tsx"]
+}

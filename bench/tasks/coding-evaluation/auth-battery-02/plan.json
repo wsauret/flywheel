@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "summary": "Repair failed-login rollback so it restores only its target entry and preserves the latest sibling state.",
+  "context": {
+    "key_files": [
+      "src/infra/auth/auth-store-mutations.ts",
+      "src/infra/auth/auth-store.ts"
+    ],
+    "patterns": [
+      "Retain the real locked auth-store mutation and strict credential decoder."
+    ],
+    "constraints": [
+      "Rollback must restore the exact pre-login rejected entry without deleting or reverting siblings changed after login.",
+      "A receipt can roll back only while its exact written entry remains current, including lineage.",
+      "A repeated rollback must return false without rewriting the file.",
+      "Damaged subscription collections must not produce repair receipts, and aborted repairs must not write.",
+      "Use dummy credentials only. Do not access an installed account or service.",
+      "Change only src/infra/auth/auth-store-mutations.ts. Do not change tests, dependencies, or the runtime."
+    ]
+  },
+  "milestones": [
+    {
+      "id": "repair-auth-contract",
+      "goal": "Repair failed-login rollback so it restores only its target entry and preserves the latest sibling state.",
+      "files": [
+        "src/infra/auth/auth-store-mutations.ts"
+      ],
+      "tasks": [
+        {
+          "id": "preserve-auth-state",
+          "description": "Repair failed-login rollback so it restores only its target entry and preserves the latest sibling state.",
+          "files": [
+            "src/infra/auth/auth-store-mutations.ts"
+          ],
+          "test_scenarios": [
+            "restores a rejected entry after settlement failure without losing newer siblings",
+            "refuses rollback over a reconnect with identical credentials and a new lineage",
+            "does not issue a repair receipt for conflicting subscription identities",
+            "refuses an aborted repair before any durable write"
+          ]
+        }
+      ],
+      "verification": "bun -e \"await import('./src/infra/auth/auth-store-mutations.ts')\"",
+      "qualitative_verification": "Inspect no-change and failure paths and confirm unrelated stored entries remain intact."
+    }
+  ],
+  "success_criteria": [
+    "Rollback must restore the exact pre-login rejected entry without deleting or reverting siblings changed after login.",
+    "A receipt can roll back only while its exact written entry remains current, including lineage.",
+    "A repeated rollback must return false without rewriting the file.",
+    "Damaged subscription collections must not produce repair receipts, and aborted repairs must not write."
+  ]
+}

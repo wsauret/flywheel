@@ -1,0 +1,69 @@
+id: implement
+name: Implement
+description: Turn a settled design into a reviewed implementation spec, then implement it.
+use_when: >
+  Use when the design is already settled in chat and the work is substantial:
+  multiple dependent phases or architectural decisions whose mistakes would
+  invalidate later phases. Launch only when no user choice or technical
+  uncertainty remains and no phase needs discovery, experiments, or
+  proof-of-concept work; the workflow inspects the repository only to ground
+  the settled design in exact files, callers, and tests. Do not use it to
+  start designing, for a bounded change, for routine ticket-sized work, or for
+  bulk homogeneous work such as mass lint fixes, codemods, or renames; drive
+  bulk work from chat as waves of implementer subagents with per-batch
+  verification.
+  Once the workflow is running, newly exposed implementation uncertainty belongs
+  to the active step: troubleshoot it, run a focused experiment or proof of concept,
+  and continue. The fact that work remains is not a blocker.
+confirmation_template: spec-and-implement
+bindings:
+  spec-create:
+    skill: fly.spec-create
+    handoff: spec-handoff
+    writes:
+      - id: plan
+        lifetime: durable
+        supersedes: []
+    toolScoping:
+      read: true
+      bash: true
+      search: true
+      list: true
+      write: true
+      edit: true
+      subagent: true
+  spec-review:
+    skill: fly.spec-review
+    handoff: spec-handoff
+    writes:
+      - id: reviewed-plan
+        lifetime: durable
+        supersedes:
+          - plan
+    toolScoping:
+      read: true
+      bash: true
+      search: true
+      list: true
+      write: true
+      edit: true
+      subagent: true
+  implement:
+    skill: fly.implement
+    handoff: work-handoff
+    writes:
+      - id: implementation
+        lifetime: durable
+        supersedes: []
+    toolScoping:
+      read: true
+      bash: true
+      search: true
+      list: true
+      write: true
+      edit: true
+      subagent: true
+steps:
+  - step: spec-create
+  - step: spec-review
+  - step: implement

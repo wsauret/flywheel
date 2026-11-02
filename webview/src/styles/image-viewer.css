@@ -1,0 +1,24 @@
+.image-viewer {
+  width: min(calc(100vw - 2 * var(--fw-s4)), 60rem);
+  height: calc(100dvh - 2 * var(--fw-s4));
+  max-width: none;
+  max-height: none;
+  padding: var(--fw-s4);
+  box-sizing: border-box;
+  color: var(--fw-fg);
+  background: var(--fw-menu-bg);
+  border: 1px solid var(--fw-menu-border);
+  border-radius: var(--fw-radius-lg);
+  box-shadow: var(--fw-shadow-sheet);
+}
+.image-viewer[open] { display: flex; flex-direction: column; gap: var(--fw-s3); }
+.image-viewer::backdrop { background: var(--fw-scrim); }
+.image-viewer-header { display: flex; align-items: center; justify-content: space-between; gap: var(--fw-s2); }
+.image-viewer-viewport { flex: 1; min-height: 0; overflow: auto; display: flex; }
+.image-viewer-viewport img { display: block; height: auto; max-width: none; max-height: none; margin: auto; flex-shrink: 0; }
+.image-viewer-controls { display: flex; justify-content: center; gap: var(--fw-s2); }
+.image-preview { display: block; padding: 0; border: 0; background: none; max-width: 100%; cursor: zoom-in; }
+.image-preview:focus-visible { outline: 2px solid var(--fw-focus); outline-offset: 2px; }
+/* The image covers the button, so the press dims the image instead of
+   tinting the ground behind it. */
+.image-preview:active > img { opacity: 0.75; }

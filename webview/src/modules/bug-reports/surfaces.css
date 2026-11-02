@@ -1,0 +1,4 @@
+.bug-report-form { display: flex; flex-direction: column; gap: var(--fw-s3); }
+.bug-report-form p, .bug-report-status p { margin: 0; }
+.bug-report-form textarea { width: 100%; box-sizing: border-box; resize: vertical; }
+.bug-report-status { display: flex; flex-direction: column; align-items: flex-start; gap: var(--fw-s2); overflow-wrap: anywhere; }

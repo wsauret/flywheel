@@ -1,0 +1,12 @@
+{
+  "pr_url": "https://github.com/psf/requests/pull/6028",
+  "pr_body": "Thanks to @adamp01 and @racam for quickly helping us find this. Moving from `urlparse` to `parse_url` has led to Requests dropping the `auth` portion of proxy URLs. This patch will manually add it if present, returning us to our previous behavior.\r\n\r\nThis closes #6027.",
+  "issue_url": "https://github.com/psf/requests/issues/6027",
+  "issue_title": "Proxy authentication bug",
+  "exact_title_newline_body": false,
+  "exact_title_newline_body_newline": true,
+  "problem_bytes": 1268,
+  "body_bytes": 1242,
+  "wrong_issue_title": "Support for proxy that requires DigestAuth",
+  "wrong_issue_matches": false
+}

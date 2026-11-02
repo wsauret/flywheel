@@ -1,0 +1,1 @@
+Use a workflow to audit these five files for correctness bugs: <paths>. Run the bug finders in rounds until a round finds no new bug. Then have three independent reviewers try to refute each finding, and keep a finding only when at least two of the three confirm it. Report each kept bug with its file, line, and evidence.

@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "role": "reserved-evaluation",
+  "contentIdentity": "5b28af08ca3bd4bc06809042cf844a544fb34d52722cdfcf6b4ec1b2ab042351",
+  "testIds": [
+    "config-smoke.test.ts > a synchronous config write is readable",
+    "acceptance/config-battery.test.ts > a symbolic link lock refuses admission and preserves both entries",
+    "acceptance/config-battery.test.ts > a directory lock refuses admission without removing the directory",
+    "acceptance/config-battery.test.ts > a callback exception is not retried and leaves native ownership reusable"
+  ],
+  "cases": [
+    {
+      "id": "reference",
+      "patches": [
+        "qualification/reference.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "Restore the preserved native contract in the seeded source.",
+      "expectedFailures": []
+    },
+    {
+      "id": "alternative",
+      "patches": [
+        "qualification/alternative.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "An independently structured repair retains native operations.",
+      "expectedFailures": []
+    },
+    {
+      "id": "seeded-bug",
+      "patches": [
+        "qualification/seeded-bug.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "The acquired callback dispatch incorrectly treats a foreign lock object as an acquired native lock.",
+      "expectedFailures": [
+        "acceptance/config-battery.test.ts > a symbolic link lock refuses admission and preserves both entries",
+        "acceptance/config-battery.test.ts > a directory lock refuses admission without removing the directory"
+      ]
+    },
+    {
+      "id": "swallowed-error",
+      "patches": [
+        "qualification/swallowed-error.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Refuse callback admission but hide the failure at the public ownership boundary.",
+      "expectedFailures": [
+        "acceptance/config-battery.test.ts > a symbolic link lock refuses admission and preserves both entries",
+        "acceptance/config-battery.test.ts > a directory lock refuses admission without removing the directory",
+        "acceptance/config-battery.test.ts > a callback exception is not retried and leaves native ownership reusable"
+      ]
+    }
+  ]
+}

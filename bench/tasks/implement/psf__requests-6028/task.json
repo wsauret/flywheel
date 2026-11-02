@@ -1,0 +1,15 @@
+{
+  "kind": "native",
+  "id": "psf__requests-6028",
+  "stratum": "easy",
+  "family": "swe-derived",
+  "split": "development",
+  "instruction": "instruction.txt",
+  "environment": "environment.txt",
+  "timeoutMinutes": 25,
+  "native": {
+    "path": [".bench-home/venv/bin"],
+    "command": ["bun", "adapter.ts"],
+    "timeoutMs": 2520000
+  }
+}

@@ -1,0 +1,240 @@
+[
+  {
+    "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260510/cpython-3.12.13%2B20260510-aarch64-apple-darwin-install_only.tar.gz",
+    "file": "inputs/python.tar.gz",
+    "bytes": 25102827,
+    "sha256": "5a30271f8d345a5b02b0c9e4e31e0f1e1455a8e4a04fba95cd9762472abc3b17"
+  },
+  {
+    "url": "https://codeload.github.com/getmoto/moto/tar.gz/7f6c9cb1deafb280fe7fcc7551c38e397f11a706",
+    "file": "inputs/moto.tar.gz",
+    "bytes": 5247535,
+    "sha256": "4e3093e85f0067ea5ac31f7a3f80d1661728c3bbc56a99ccb70b85bdf370b950"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/SWE-Gym/SWE-Bench-Fork/e440817248cf29bee71ca9ab3c3a762177ab8f7c/swebench/harness/constants.py",
+    "file": "inputs/constants.py",
+    "bytes": 69496,
+    "sha256": "5bd655172c9a9dfcb494d9c52bcbcc0d79a59cd20c39b8bbdc41ab8b0a9baf14"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/SWE-Gym/SWE-Bench-Fork/e440817248cf29bee71ca9ab3c3a762177ab8f7c/swebench/harness/log_parsers.py",
+    "file": "inputs/log_parsers.py",
+    "bytes": 13298,
+    "sha256": "44ce810ca5bc14fb07f5f765cf6955ad9fac9218f1e1f7112914edbd52fc825f"
+  },
+  {
+    "url": "https://raw.githubusercontent.com/SWE-Gym/SWE-Bench-Fork/e440817248cf29bee71ca9ab3c3a762177ab8f7c/swebench/harness/grading.py",
+    "file": "inputs/grading.py",
+    "bytes": 8382,
+    "sha256": "ce6dbe44af58ec602d5906af14cd08e816500ac13fc9a6d0f88ee79375113619"
+  },
+  {
+    "package": "boto3==1.34.43",
+    "url": "https://files.pythonhosted.org/packages/15/ac/f51d13299fb897ca4314b4085ee7bc409985ec7e478adbd327102f0fe14e/boto3-1.34.43-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/boto3/1.34.43/json",
+    "file": "wheels/boto3-1.34.43-py3-none-any.whl",
+    "bytes": 139320,
+    "sha256": "179cdcff2dee116ff0bbe10c21a374fff8ae0d9ea3842bd8dd2c9f69e8185d91"
+  },
+  {
+    "package": "botocore==1.34.44",
+    "url": "https://files.pythonhosted.org/packages/aa/3a/5b08bc151e45ffe8c661af1a587cf2ac6ad9410e7d341e343ca46bfca83e/botocore-1.34.44-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/botocore/1.34.44/json",
+    "file": "wheels/botocore-1.34.44-py3-none-any.whl",
+    "bytes": 11965355,
+    "sha256": "8d9837fb33256e70b9c8955a32d3e60fa70a0b72849a909737cf105fcc3b5deb"
+  },
+  {
+    "package": "certifi==2026.7.22",
+    "url": "https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/certifi/2026.7.22/json",
+    "file": "wheels/certifi-2026.7.22-py3-none-any.whl",
+    "bytes": 136983,
+    "sha256": "62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775"
+  },
+  {
+    "package": "cffi==2.1.1",
+    "url": "https://files.pythonhosted.org/packages/54/7d/16e5a096677b5e313ca80cd5e5170efa3ea44624a82bb111925522da64b1/cffi-2.1.1-cp312-cp312-macosx_11_0_arm64.whl",
+    "metadataUrl": "https://pypi.org/pypi/cffi/2.1.1/json",
+    "file": "wheels/cffi-2.1.1-cp312-cp312-macosx_11_0_arm64.whl",
+    "bytes": 184719,
+    "sha256": "f81b3b8f3d4e343550fa4baa0e479bba9f2d29ce9c2e9b51d1ce1718d7442fcf"
+  },
+  {
+    "package": "charset-normalizer==3.5.2",
+    "url": "https://files.pythonhosted.org/packages/e7/c8/693809898870237d82785a03f3b2b58fe4c9f14669f84a7d4e623c92a59e/charset_normalizer-3.5.2-cp312-cp312-macosx_10_13_universal2.whl",
+    "metadataUrl": "https://pypi.org/pypi/charset-normalizer/3.5.2/json",
+    "file": "wheels/charset_normalizer-3.5.2-cp312-cp312-macosx_10_13_universal2.whl",
+    "bytes": 367780,
+    "sha256": "ed2a239c0ea213acc1908150a3037257083c7c083128f1a4cec2ec4b97dca491"
+  },
+  {
+    "package": "cryptography==50.0.2",
+    "url": "https://files.pythonhosted.org/packages/e5/56/d194340cc4a57535e82e1bee9e89667ac4b7c13b5d3f59686deae3094dd5/cryptography-50.0.2-cp311-abi3-macosx_11_0_arm64.whl",
+    "metadataUrl": "https://pypi.org/pypi/cryptography/50.0.2/json",
+    "file": "wheels/cryptography-50.0.2-cp311-abi3-macosx_11_0_arm64.whl",
+    "bytes": 3914904,
+    "sha256": "fa8f5efb344d6908a1ce62f4a24e2e5780f825d6f53f5f50ec5ffacac72936cb"
+  },
+  {
+    "package": "execnet==2.1.2",
+    "url": "https://files.pythonhosted.org/packages/ab/84/02fc1827e8cdded4aa65baef11296a9bbe595c474f0d6d758af082d849fd/execnet-2.1.2-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/execnet/2.1.2/json",
+    "file": "wheels/execnet-2.1.2-py3-none-any.whl",
+    "bytes": 40708,
+    "sha256": "67fba928dd5a544b783f6056f449e5e3931a5c378b128bc18501f7ea79e296ec"
+  },
+  {
+    "package": "idna==3.20",
+    "url": "https://files.pythonhosted.org/packages/58/a2/bb081bab032533a855d44de1d56f8e8426114ff1ba5d1f07a438a0a654f8/idna-3.20-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/idna/3.20/json",
+    "file": "wheels/idna-3.20-py3-none-any.whl",
+    "bytes": 69583,
+    "sha256": "ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c"
+  },
+  {
+    "package": "iniconfig==2.3.1",
+    "url": "https://files.pythonhosted.org/packages/56/43/4ca9e49d27a1fcf6bece6f6aec0ea46bb9112489b93d4b688fb415457bdb/iniconfig-2.3.1-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/iniconfig/2.3.1/json",
+    "file": "wheels/iniconfig-2.3.1-py3-none-any.whl",
+    "bytes": 7552,
+    "sha256": "9121e2c1fdb355232495be3194c8dfe87ccc2d5dee45947b78e68f499790d7a7"
+  },
+  {
+    "package": "Jinja2==3.1.6",
+    "url": "https://files.pythonhosted.org/packages/62/a1/3d680cbfd5f4b8f15abc1d571870c5fc3e594bb582bc3b64ea099db13e56/jinja2-3.1.6-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/Jinja2/3.1.6/json",
+    "file": "wheels/jinja2-3.1.6-py3-none-any.whl",
+    "bytes": 134899,
+    "sha256": "85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67"
+  },
+  {
+    "package": "jmespath==1.1.0",
+    "url": "https://files.pythonhosted.org/packages/14/2f/967ba146e6d58cf6a652da73885f52fc68001525b4197effc174321d70b4/jmespath-1.1.0-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/jmespath/1.1.0/json",
+    "file": "wheels/jmespath-1.1.0-py3-none-any.whl",
+    "bytes": 20419,
+    "sha256": "a5663118de4908c91729bea0acadca56526eb2698e83de10cd116ae0f4e97c64"
+  },
+  {
+    "package": "MarkupSafe==3.0.4",
+    "url": "https://files.pythonhosted.org/packages/a2/f0/d6613774d86fbf6d145751d43c59875e47a6f9f17daee0aef173bd36d90e/markupsafe-3.0.4-cp312-cp312-macosx_11_0_arm64.whl",
+    "metadataUrl": "https://pypi.org/pypi/MarkupSafe/3.0.4/json",
+    "file": "wheels/markupsafe-3.0.4-cp312-cp312-macosx_11_0_arm64.whl",
+    "bytes": 12050,
+    "sha256": "0930db9bdc62d22944e10b066448bb65dc9abe9112880c7cab8da54db4284d5f"
+  },
+  {
+    "package": "packaging==26.3",
+    "url": "https://files.pythonhosted.org/packages/63/34/ba1c580383c9eada3711951fef0795c80b829a078d72188184bcab9dd527/packaging-26.3-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/packaging/26.3/json",
+    "file": "wheels/packaging-26.3-py3-none-any.whl",
+    "bytes": 129956,
+    "sha256": "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c"
+  },
+  {
+    "package": "pluggy==1.6.0",
+    "url": "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/pluggy/1.6.0/json",
+    "file": "wheels/pluggy-1.6.0-py3-none-any.whl",
+    "bytes": 20538,
+    "sha256": "e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746"
+  },
+  {
+    "package": "pycparser==3.11",
+    "url": "https://files.pythonhosted.org/packages/90/11/0e6f11117525ff0eec40ebac3d313376f102df93ca44ad9e893ee85e4f89/pycparser-3.11-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/pycparser/3.11/json",
+    "file": "wheels/pycparser-3.11-py3-none-any.whl",
+    "bytes": 51178,
+    "sha256": "51d5a8ba2be0bbe440b99d2112604c95bbbc3c2748a64260186c541e1729cd80"
+  },
+  {
+    "package": "pytest==8.0.0",
+    "url": "https://files.pythonhosted.org/packages/c7/10/727155d44c5e04bb08e880668e53079547282e4f950535234e5a80690564/pytest-8.0.0-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/pytest/8.0.0/json",
+    "file": "wheels/pytest-8.0.0-py3-none-any.whl",
+    "bytes": 334024,
+    "sha256": "50fb9cbe836c3f20f0dfa99c565201fb75dc54c8d76373cd1bde06b06657bdb6"
+  },
+  {
+    "package": "pytest-xdist==3.5.0",
+    "url": "https://files.pythonhosted.org/packages/50/37/125fe5ec459321e2d48a0c38672cfc2419ad87d580196fd894e5f25230b0/pytest_xdist-3.5.0-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/pytest-xdist/3.5.0/json",
+    "file": "wheels/pytest_xdist-3.5.0-py3-none-any.whl",
+    "bytes": 42017,
+    "sha256": "d075629c7e00b611df89f490a5063944bee7a4362a5ff11c7cc7824a03dfce24"
+  },
+  {
+    "package": "python-dateutil==2.9.0.post0",
+    "url": "https://files.pythonhosted.org/packages/ec/57/56b9bcc3c9c6a792fcbaf139543cee77261f3651ca9da0c93f5c1221264b/python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/python-dateutil/2.9.0.post0/json",
+    "file": "wheels/python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
+    "bytes": 229892,
+    "sha256": "a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427"
+  },
+  {
+    "package": "PyYAML==6.0.3",
+    "url": "https://files.pythonhosted.org/packages/89/a0/6cf41a19a1f2f3feab0e9c0b74134aa2ce6849093d5517a0c550fe37a648/pyyaml-6.0.3-cp312-cp312-macosx_11_0_arm64.whl",
+    "metadataUrl": "https://pypi.org/pypi/PyYAML/6.0.3/json",
+    "file": "wheels/pyyaml-6.0.3-cp312-cp312-macosx_11_0_arm64.whl",
+    "bytes": 173973,
+    "sha256": "fc09d0aa354569bc501d4e787133afc08552722d3ab34836a80547331bb5d4a0"
+  },
+  {
+    "package": "requests==2.34.2",
+    "url": "https://files.pythonhosted.org/packages/a0/f4/c67b0b3f1b9245e8d266f0f112c500d50e5b4e83cb6f3b71b6528104182a/requests-2.34.2-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/requests/2.34.2/json",
+    "file": "wheels/requests-2.34.2-py3-none-any.whl",
+    "bytes": 73075,
+    "sha256": "2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0"
+  },
+  {
+    "package": "responses==0.26.3",
+    "url": "https://files.pythonhosted.org/packages/6d/86/ca7958de70cb0752350575e98229368a3a2f746a2942034b3364e17312bb/responses-0.26.3-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/responses/0.26.3/json",
+    "file": "wheels/responses-0.26.3-py3-none-any.whl",
+    "bytes": 36289,
+    "sha256": "74474f799334ac4f37d93b6437ecc3bb1bb5c77a8d31780a338643be2dce0af8"
+  },
+  {
+    "package": "s3transfer==0.10.4",
+    "url": "https://files.pythonhosted.org/packages/66/05/7957af15543b8c9799209506df4660cba7afc4cf94bfb60513827e96bed6/s3transfer-0.10.4-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/s3transfer/0.10.4/json",
+    "file": "wheels/s3transfer-0.10.4-py3-none-any.whl",
+    "bytes": 83175,
+    "sha256": "244a76a24355363a68164241438de1b72f8781664920260c48465896b712a41e"
+  },
+  {
+    "package": "six==1.17.0",
+    "url": "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/six/1.17.0/json",
+    "file": "wheels/six-1.17.0-py2.py3-none-any.whl",
+    "bytes": 11050,
+    "sha256": "4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274"
+  },
+  {
+    "package": "urllib3==2.0.7",
+    "url": "https://files.pythonhosted.org/packages/d2/b2/b157855192a68541a91ba7b2bbcb91f1b4faa51f8bae38d8005c034be524/urllib3-2.0.7-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/urllib3/2.0.7/json",
+    "file": "wheels/urllib3-2.0.7-py3-none-any.whl",
+    "bytes": 124213,
+    "sha256": "fdb6d215c776278489906c2f8916e6e7d4f5a9b602ccbcfdf7f016fc8da0596e"
+  },
+  {
+    "package": "Werkzeug==3.1.9",
+    "url": "https://files.pythonhosted.org/packages/a1/38/df03f564f43cec2684823f3cccae1a652ee7face1cbaa76fb223096e64d7/werkzeug-3.1.9-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/Werkzeug/3.1.9/json",
+    "file": "wheels/werkzeug-3.1.9-py3-none-any.whl",
+    "bytes": 228700,
+    "sha256": "6392e50c78460ba618e5b21f08a71f59c99ce99cdc6cf6e3dd7e6ccca8754fab"
+  },
+  {
+    "package": "xmltodict==1.0.4",
+    "url": "https://files.pythonhosted.org/packages/38/34/98a2f52245f4d47be93b580dae5f9861ef58977d73a79eb47c58f1ad1f3a/xmltodict-1.0.4-py3-none-any.whl",
+    "metadataUrl": "https://pypi.org/pypi/xmltodict/1.0.4/json",
+    "file": "wheels/xmltodict-1.0.4-py3-none-any.whl",
+    "bytes": 13580,
+    "sha256": "a4a00d300b0e1c59fc2bfccb53d7b2e88c32f200df138a0dd2229f842497026a"
+  }
+]

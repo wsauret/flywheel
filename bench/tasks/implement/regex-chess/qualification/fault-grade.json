@@ -1,0 +1,395 @@
+{
+  "passed": 0,
+  "failed": 1,
+  "total": 1,
+  "evidence": {
+    "criterion": "original pytest status and reward.txt",
+    "pytestExitCode": 1,
+    "reward": "0",
+    "statuses": [
+      {
+        "id": "test_not_long",
+        "status": "PASSED"
+      },
+      {
+        "id": "test_immortal_game",
+        "status": "FAILED"
+      },
+      {
+        "id": "test_game_of_century",
+        "status": "FAILED"
+      },
+      {
+        "id": "test_naroditsky_ivanchuk",
+        "status": "FAILED"
+      }
+    ],
+    "positions": [
+      {
+        "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "generated": 19,
+        "oracle": 20
+      },
+      {
+        "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "generated": 19,
+        "oracle": 20
+      },
+      {
+        "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "generated": 19,
+        "oracle": 20
+      }
+    ],
+    "groups": [],
+    "ctrf": {
+      "results": {
+        "tool": {
+          "name": "pytest",
+          "version": "8.4.1"
+        },
+        "summary": {
+          "tests": 4,
+          "passed": 1,
+          "failed": 3,
+          "skipped": 0,
+          "pending": 0,
+          "other": 0,
+          "start": 1791835073.329118,
+          "stop": 1791835077.92256
+        },
+        "tests": [
+          {
+            "name": ".bench-home/verifier/tests/test_outputs.py::test_immortal_game",
+            "status": "failed",
+            "raw_status": "call_failed",
+            "duration": 1.5115018747746944,
+            "start": 1791835073.409777,
+            "stop": 1791835074.93388,
+            "retries": 0,
+            "file_path": ".bench-home/verifier/tests/test_outputs.py",
+            "trace": "def test_immortal_game():\n        pgn = \"\"\"[Event \"Casual Game\"]\n    [Site \"London ENG\"]\n    [Date \"1851.06.21\"]\n    [Round \"?\"]\n    [White \"Anderssen, Adolf\"]\n    [Black \"Kieseritzky, Lionel\"]\n    [Result \"1-0\"]\n    \n    1. e4 e5 2. f4 exf4 3. Bc4 Qh4+ 4. Kf1 b5 5. Bxb5 Nf6 6. Nf3 Qh6 7. d3 Nh5 8. Nh4 Qg5 9. Nf5 c6 10. g4 Nf6 11. Rg1 cxb5 12. h4 Qg6 13. h5 Qg5 14. Qf3 Ng8 15. Bxf4 Qf6 16. Nc3 Bc5 17. Nd5 Qxb2 18. Bd6 Bxg1 19. e5 Qxa1+ 20. Ke2 Na6 21. Nxg7+ Kd8 22. Qf6+ Nxf6 23. Be7# 1-0\"\"\"\n>       do_test_game(pgn, \"Anderssen's Immortal Game\")\n\n.bench-home/verifier/tests/test_outputs.py:105: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n.bench-home/verifier/tests/test_outputs.py:73: in do_test_game\n    verify_legal_moves(board.fen())\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nfen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'\n\n    def verify_legal_moves(fen):\n        \"\"\"Verify that the solution generates all legal moves for a given position.\"\"\"\n        our_moves = run_solution(fen)\n    \n        board = chess.Board(fen)\n        python_chess_moves = set()\n        for move in board.legal_moves:\n            if move.promotion and move.promotion != chess.QUEEN:\n                continue\n    \n            board_copy = board.copy()\n            board_copy.push(move)\n            python_chess_moves.add(\" \".join(board_copy.fen().split(\" \")[:-2]))\n    \n        print(f\"Position: {fen}, Our moves: {len(our_moves)}, Python-chess moves: {len(python_chess_moves)}\")\n    \n        for x in our_moves:\n            assert x in python_chess_moves or x.rpartition(\" \")[0]+\" -\" in python_chess_moves, (\n                f\"Position: {fen}, Our move: {x} not found in Python-chess moves: {python_chess_moves}\"\n            )\n    \n>       assert len(our_moves) == len(python_chess_moves), (\n            f\"Position: {fen}, Our moves: {len(our_moves)}, Python-chess moves: {len(python_chess_moves)}\"\n        )\nE       AssertionError: Position: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1, Our moves: 19, Python-chess moves: 20\nE       assert 19 == 20\nE        +  where 19 = len(['rnbqkbnr/pppppppp/8/8/8/5N2/PPPPPPPP/RNBQKB1R b KQkq -', 'rnbqkbnr/pppppppp/8/8/8/2N5/PPPPPPPP/R1BQKBNR b KQkq -', '...rnbqkbnr/pppppppp/8/8/7P/8/PPPPPPP1/RNBQKBNR b KQkq h3', 'rnbqkbnr/pppppppp/8/8/8/6P1/PPPPPP1P/RNBQKBNR b KQkq -', ...])\nE        +  and   20 = len({'rnbqkbnr/pppppppp/8/8/1P6/8/P1PPPPPP/RNBQKBNR b KQkq -', 'rnbqkbnr/pppppppp/8/8/2P5/8/PP1PPPPP/RNBQKBNR b KQkq -', '...rnbqkbnr/pppppppp/8/8/5P2/8/PPPPP1PP/RNBQKBNR b KQkq -', 'rnbqkbnr/pppppppp/8/8/6P1/8/PPPPPP1P/RNBQKBNR b KQkq -', ...})\n\n.bench-home/verifier/tests/test_outputs.py:39: AssertionError",
+            "message": "The test failed in the call phase due to an assertion error"
+          },
+          {
+            "name": ".bench-home/verifier/tests/test_outputs.py::test_game_of_century",
+            "status": "failed",
+            "raw_status": "call_failed",
+            "duration": 1.486249792156741,
+            "start": 1791835074.9339972,
+            "stop": 1791835076.4231098,
+            "retries": 0,
+            "file_path": ".bench-home/verifier/tests/test_outputs.py",
+            "trace": "def test_game_of_century():\n        pgn = \"\"\"[Event \"Third Rosenwald Trophy\"]\n    [Site \"New York, NY USA\"]\n    [Date \"1956.10.17\"]\n    [Round \"8\"]\n    [White \"Byrne, Donald\"]\n    [Black \"Fischer, Robert James\"]\n    [Result \"0-1\"]\n    \n    1. Nf3 Nf6 2. c4 g6 3. Nc3 Bg7 4. d4 O-O 5. Bf4 d5 6. Qb3 dxc4 7. Qxc4 c6 8. e4 Nbd7 9. Rd1 Nb6 10. Qc5 Bg4 11. Bg5 Na4 12. Qa3 Nxc3 13. bxc3 Nxe4 14. Bxe7 Qb6 15. Bc4 Nxc3 16. Bc5 Rfe8+ 17. Kf1 Be6 18. Bxb6 Bxc4+ 19. Kg1 Ne2+ 20. Kf1 Nxd4+ 21. Kg1 Ne2+ 22. Kf1 Nc3+ 23. Kg1 axb6 24. Qb4 Ra4 25. Qxb6 Nxd1 26. h3 Rxa2 27. Kh2 Nxf2 28. Re1 Rxe1 29. Qd8+ Bf8 30. Nxe1 Bd5 31. Nf3 Ne4 32. Qb8 b5 33. h4 h5 34. Ne5 Kg7 35. Kg1 Bc5+ 36. Kf1 Ng3+ 37. Ke1 Bb4+ 38. Kd1 Bb3+ 39. Kc1 Ne2+ 40. Kb1 Nc3+ 41. Kc1 Rc2# 0-1\"\"\"\n>       do_test_game(pgn, \"Fischer's Game of the Century\")\n\n.bench-home/verifier/tests/test_outputs.py:117: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n.bench-home/verifier/tests/test_outputs.py:73: in do_test_game\n    verify_legal_moves(board.fen())\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nfen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'\n\n    def verify_legal_moves(fen):\n        \"\"\"Verify that the solution generates all legal moves for a given position.\"\"\"\n        our_moves = run_solution(fen)\n    \n        board = chess.Board(fen)\n        python_chess_moves = set()\n        for move in board.legal_moves:\n            if move.promotion and move.promotion != chess.QUEEN:\n                continue\n    \n            board_copy = board.copy()\n            board_copy.push(move)\n            python_chess_moves.add(\" \".join(board_copy.fen().split(\" \")[:-2]))\n    \n        print(f\"Position: {fen}, Our moves: {len(our_moves)}, Python-chess moves: {len(python_chess_moves)}\")\n    \n        for x in our_moves:\n            assert x in python_chess_moves or x.rpartition(\" \")[0]+\" -\" in python_chess_moves, (\n                f\"Position: {fen}, Our move: {x} not found in Python-chess moves: {python_chess_moves}\"\n            )\n    \n>       assert len(our_moves) == len(python_chess_moves), (\n            f\"Position: {fen}, Our moves: {len(our_moves)}, Python-chess moves: {len(python_chess_moves)}\"\n        )\nE       AssertionError: Position: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1, Our moves: 19, Python-chess moves: 20\nE       assert 19 == 20\nE        +  where 19 = len(['rnbqkbnr/pppppppp/8/8/8/5N2/PPPPPPPP/RNBQKB1R b KQkq -', 'rnbqkbnr/pppppppp/8/8/8/2N5/PPPPPPPP/R1BQKBNR b KQkq -', '...rnbqkbnr/pppppppp/8/8/7P/8/PPPPPPP1/RNBQKBNR b KQkq h3', 'rnbqkbnr/pppppppp/8/8/8/6P1/PPPPPP1P/RNBQKBNR b KQkq -', ...])\nE        +  and   20 = len({'rnbqkbnr/pppppppp/8/8/1P6/8/P1PPPPPP/RNBQKBNR b KQkq -', 'rnbqkbnr/pppppppp/8/8/2P5/8/PP1PPPPP/RNBQKBNR b KQkq -', '...rnbqkbnr/pppppppp/8/8/5P2/8/PPPPP1PP/RNBQKBNR b KQkq -', 'rnbqkbnr/pppppppp/8/8/6P1/8/PPPPPP1P/RNBQKBNR b KQkq -', ...})\n\n.bench-home/verifier/tests/test_outputs.py:39: AssertionError",
+            "message": "The test failed in the call phase due to an assertion error"
+          },
+          {
+            "name": ".bench-home/verifier/tests/test_outputs.py::test_naroditsky_ivanchuk",
+            "status": "failed",
+            "raw_status": "call_failed",
+            "duration": 1.4841665828134865,
+            "start": 1791835076.423209,
+            "stop": 1791835077.9103858,
+            "retries": 0,
+            "file_path": ".bench-home/verifier/tests/test_outputs.py",
+            "trace": "def test_naroditsky_ivanchuk():\n        pgn = \"\"\"[Event \"World Blitz Championship\"]\n    [Site \"New York, NY USA\"]\n    [Date \"2024.12.30\"]\n    [EventDate \"2024.12.30\"]\n    [Round \"11.9\"]\n    [Result \"0-1\"]\n    [White \"Vasyl Ivanchuk\"]\n    [Black \"Daniel Naroditsky\"]\n    [ECO \"E60\"]\n    [WhiteElo \"2651\"]\n    [BlackElo \"2711\"]\n    [PlyCount \"82\"]\n    \n    1. d4 Nf6 2. c4 g6 3. f3 Bg7 4. e4 d6 5. Be3 O-O 6. Nc3 a6 7. Bd3 Nfd7 8.\n    Nge2 c5 9. d5 Ne5 10. a4 Nbd7 11. b3 Nxd3+ 12. Qxd3 f5 13. Rd1 b5 14. cxb5\n    axb5 15. axb5 Ne5 16. Qc2 fxe4 17. Nxe4 Qa5+ 18. N2c3 Nxf3+ 19. gxf3 Rxf3\n    20. Kd2 Bd4 21. Ra1 Bxe3+ 22. Ke2 Bg4 23. Rxa5 Rxa5 24. Kd3 Bd4+ 25. Kc4\n    Bf5 26. Qd2 Bxc3 27. Nxc3 e5 28. Re1 Rf4+ 29. Qxf4 exf4 30. Ne4 Bxe4 31.\n    Rxe4 g5 32. b6 Ra8 33. Kb5 f3 34. Re1 g4 35. Kc6 h5 36. Kxd6 Rf8 37. b7 h4\n    38. Rg1 f2 39. Rxg4+ Kh7 40. Rxh4+ Kg6 41. Rg4+ 0-1\"\"\"\n>       do_test_game(pgn)\n\n.bench-home/verifier/tests/test_outputs.py:141: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n.bench-home/verifier/tests/test_outputs.py:73: in do_test_game\n    verify_legal_moves(board.fen())\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nfen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'\n\n    def verify_legal_moves(fen):\n        \"\"\"Verify that the solution generates all legal moves for a given position.\"\"\"\n        our_moves = run_solution(fen)\n    \n        board = chess.Board(fen)\n        python_chess_moves = set()\n        for move in board.legal_moves:\n            if move.promotion and move.promotion != chess.QUEEN:\n                continue\n    \n            board_copy = board.copy()\n            board_copy.push(move)\n            python_chess_moves.add(\" \".join(board_copy.fen().split(\" \")[:-2]))\n    \n        print(f\"Position: {fen}, Our moves: {len(our_moves)}, Python-chess moves: {len(python_chess_moves)}\")\n    \n        for x in our_moves:\n            assert x in python_chess_moves or x.rpartition(\" \")[0]+\" -\" in python_chess_moves, (\n                f\"Position: {fen}, Our move: {x} not found in Python-chess moves: {python_chess_moves}\"\n            )\n    \n>       assert len(our_moves) == len(python_chess_moves), (\n            f\"Position: {fen}, Our moves: {len(our_moves)}, Python-chess moves: {len(python_chess_moves)}\"\n        )\nE       AssertionError: Position: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1, Our moves: 19, Python-chess moves: 20\nE       assert 19 == 20\nE        +  where 19 = len(['rnbqkbnr/pppppppp/8/8/8/5N2/PPPPPPPP/RNBQKB1R b KQkq -', 'rnbqkbnr/pppppppp/8/8/8/2N5/PPPPPPPP/R1BQKBNR b KQkq -', '...rnbqkbnr/pppppppp/8/8/7P/8/PPPPPPP1/RNBQKBNR b KQkq h3', 'rnbqkbnr/pppppppp/8/8/8/6P1/PPPPPP1P/RNBQKBNR b KQkq -', ...])\nE        +  and   20 = len({'rnbqkbnr/pppppppp/8/8/1P6/8/P1PPPPPP/RNBQKBNR b KQkq -', 'rnbqkbnr/pppppppp/8/8/2P5/8/PP1PPPPP/RNBQKBNR b KQkq -', '...rnbqkbnr/pppppppp/8/8/5P2/8/PPPPP1PP/RNBQKBNR b KQkq -', 'rnbqkbnr/pppppppp/8/8/6P1/8/PPPPPP1P/RNBQKBNR b KQkq -', ...})\n\n.bench-home/verifier/tests/test_outputs.py:39: AssertionError",
+            "message": "The test failed in the call phase due to an assertion error"
+          },
+          {
+            "name": ".bench-home/verifier/tests/test_outputs.py::test_not_long",
+            "status": "passed",
+            "duration": 0.01186729222536087,
+            "start": 1791835077.910484,
+            "stop": 1791835077.922441,
+            "retries": 0,
+            "file_path": ".bench-home/verifier/tests/test_outputs.py"
+          }
+        ]
+      }
+    },
+    "restored": {
+      "check.py": "01b9b50720bc1b67e37c535ff30320da18e82764fcd84279712c86e1d522da2d",
+      "test_outputs.py": "2ac2a408b2e95d4828ab2deff9975c42d5fa2d9ace1e4e7827495fbb56529fb0",
+      "native-test.sh": "4b3028f7405fbb0fdf2992530168134aa02256a8e6f8bd1423a62718fbe0f83d"
+    },
+    "removed": [],
+    "replacements": [
+      {
+        "file": "check.py",
+        "original": "\"/app/re.json\"",
+        "native": "\"<repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/re.json\"",
+        "occurrences": 1
+      },
+      {
+        "file": "test_outputs.py",
+        "original": "\"/app/re.json\"",
+        "native": "\"<repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/re.json\"",
+        "occurrences": 3
+      },
+      {
+        "file": "test.sh",
+        "original": "#!/bin/bash\n\n# Install curl\napt-get update\napt-get install -y curl\n\n# Install uv\ncurl -LsSf https://astral.sh/uv/0.9.5/install.sh | sh\n\nsource $HOME/.local/bin/env\n\n# Check if we're in a valid working directory\nif [ \"$PWD\" = \"/\" ]; then\n    echo \"Error: No working directory set. Please set a WORKDIR in your Dockerfile before running this script.\"\n    exit 1\nfi\n\n",
+        "native": "",
+        "occurrences": 1
+      },
+      {
+        "file": "test.sh",
+        "original": "uvx \\\n  -p 3.13 \\\n  -w pytest==8.4.1 \\\n  -w chess==1.11.2 \\\n  -w pytest-json-ctrf==0.3.5 \\\n  pytest",
+        "native": "\"<repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/python/bin/python\" -I \"<repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/python/bin/pytest\"",
+        "occurrences": 1
+      },
+      {
+        "file": "test.sh",
+        "original": "/logs/verifier/ctrf.json",
+        "native": "\"<repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/verifier/logs/ctrf.json\"",
+        "occurrences": 1
+      },
+      {
+        "file": "test.sh",
+        "original": "/logs/verifier/reward.txt",
+        "native": "\"<repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/verifier/logs/reward.txt\"",
+        "occurrences": 2
+      },
+      {
+        "file": "test.sh",
+        "original": "/tests/test_outputs.py",
+        "native": "\"<repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/verifier/tests/test_outputs.py\"",
+        "occurrences": 1
+      }
+    ],
+    "acquired": [
+      {
+        "filename": "cpython-3.13.9+20251014-aarch64-apple-darwin-install_only_stripped.tar.gz",
+        "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20251014/cpython-3.13.9%2B20251014-aarch64-apple-darwin-install_only_stripped.tar.gz",
+        "bytes": 16456948,
+        "sha256": "52721745b0fa3196e4d0381fa5c06dda1d54343b90d49d90c3bba52d1171bd98",
+        "status": 200
+      },
+      {
+        "filename": "pytest-8.4.1-py3-none-any.whl",
+        "url": "https://files.pythonhosted.org/packages/29/16/c8a903f4c4dffe7a12843191437d7cd8e32751d5de349d45d3fe69544e87/pytest-8.4.1-py3-none-any.whl",
+        "bytes": 365474,
+        "sha256": "539c70ba6fcead8e78eebbf1115e8b589e7565830d7d006a8723f19ac8a0afb7",
+        "name": "pytest",
+        "version": "8.4.1",
+        "status": 200
+      },
+      {
+        "filename": "pytest_json_ctrf-0.3.5-py3-none-any.whl",
+        "url": "https://files.pythonhosted.org/packages/51/a8/d58637d10f70ae14a1ad18cb37f4aa32d5593510213d5f929892cb1c9c6d/pytest_json_ctrf-0.3.5-py3-none-any.whl",
+        "bytes": 6837,
+        "sha256": "e82fd1d69be2f92385bc33540063e5ad7b17b36de67764c84f3ceb9815a895e9",
+        "name": "pytest-json-ctrf",
+        "version": "0.3.5",
+        "status": 200
+      },
+      {
+        "filename": "pluggy-1.6.0-py3-none-any.whl",
+        "url": "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl",
+        "bytes": 20538,
+        "sha256": "e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746",
+        "name": "pluggy",
+        "version": "1.6.0",
+        "status": 200
+      },
+      {
+        "filename": "iniconfig-2.3.1-py3-none-any.whl",
+        "url": "https://files.pythonhosted.org/packages/56/43/4ca9e49d27a1fcf6bece6f6aec0ea46bb9112489b93d4b688fb415457bdb/iniconfig-2.3.1-py3-none-any.whl",
+        "bytes": 7552,
+        "sha256": "9121e2c1fdb355232495be3194c8dfe87ccc2d5dee45947b78e68f499790d7a7",
+        "name": "iniconfig",
+        "version": "2.3.1",
+        "status": 200
+      },
+      {
+        "filename": "packaging-26.3-py3-none-any.whl",
+        "url": "https://files.pythonhosted.org/packages/63/34/ba1c580383c9eada3711951fef0795c80b829a078d72188184bcab9dd527/packaging-26.3-py3-none-any.whl",
+        "bytes": 129956,
+        "sha256": "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c",
+        "name": "packaging",
+        "version": "26.3",
+        "status": 200
+      },
+      {
+        "filename": "pygments-2.21.0-py3-none-any.whl",
+        "url": "https://files.pythonhosted.org/packages/71/46/17f022dd3e953bf20a04a028a21ec746d942f8d2af30fa0f124fa0e6a684/pygments-2.21.0-py3-none-any.whl",
+        "bytes": 1250147,
+        "sha256": "2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9",
+        "name": "pygments",
+        "version": "2.21.0",
+        "status": 200
+      },
+      {
+        "filename": "chess-1.11.2.tar.gz",
+        "url": "https://files.pythonhosted.org/packages/93/09/7d04d7581ae3bb8b598017941781bceb7959dd1b13e3ebf7b6a2cd843bc9/chess-1.11.2.tar.gz",
+        "bytes": 6131385,
+        "sha256": "a8b43e5678fdb3000695bdaa573117ad683761e5ca38e591c4826eba6d25bb39",
+        "name": "chess",
+        "version": "1.11.2",
+        "status": 200
+      },
+      {
+        "filename": "setuptools-80.9.0-py3-none-any.whl",
+        "url": "https://files.pythonhosted.org/packages/a3/dc/17031897dae0efacfea57dfd3a82fdd2a2aeb58e0ff71b77b87e44edc772/setuptools-80.9.0-py3-none-any.whl",
+        "bytes": 1201486,
+        "sha256": "062d34222ad13e0cc312a4c02d73f059e86a4acbfbdea8f8f76b28c99f306922",
+        "name": "setuptools",
+        "version": "80.9.0",
+        "status": 200
+      }
+    ],
+    "commands": {
+      "extract": {
+        "exitCode": 0,
+        "stdout": "",
+        "stderr": "",
+        "timedOut": false,
+        "command": [
+          "tar",
+          "-xzf",
+          "<repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/cpython-3.13.9+20251014-aarch64-apple-darwin-install_only_stripped.tar.gz",
+          "-C",
+          "<repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/runtime"
+        ],
+        "durationMs": 555
+      },
+      "venv": {
+        "exitCode": 0,
+        "stdout": "",
+        "stderr": "",
+        "timedOut": false,
+        "command": [
+          "<repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/runtime/python/bin/python3",
+          "-I",
+          "-m",
+          "venv",
+          "--symlinks",
+          "<repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/python"
+        ],
+        "durationMs": 2365
+      },
+      "packages": {
+        "exitCode": 0,
+        "stdout": "Processing ./.bench-home/inputs/pytest-8.4.1-py3-none-any.whl\nProcessing ./.bench-home/inputs/pytest_json_ctrf-0.3.5-py3-none-any.whl\nProcessing ./.bench-home/inputs/pluggy-1.6.0-py3-none-any.whl\nProcessing ./.bench-home/inputs/iniconfig-2.3.1-py3-none-any.whl\nProcessing ./.bench-home/inputs/packaging-26.3-py3-none-any.whl\nProcessing ./.bench-home/inputs/pygments-2.21.0-py3-none-any.whl\nInstalling collected packages: pytest-json-ctrf, pytest, pygments, pluggy, packaging, iniconfig\n\nSuccessfully installed iniconfig-2.3.1 packaging-26.3 pluggy-1.6.0 pygments-2.21.0 pytest-8.4.1 pytest-json-ctrf-0.3.5\n",
+        "stderr": "",
+        "timedOut": false,
+        "command": [
+          "<repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/python/bin/python",
+          "-I",
+          "-m",
+          "pip",
+          "--isolated",
+          "install",
+          "--no-index",
+          "--no-cache-dir",
+          "--no-deps",
+          "<repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/inputs/pytest-8.4.1-py3-none-any.whl",
+          "<repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/inputs/pytest_json_ctrf-0.3.5-py3-none-any.whl",
+          "<repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/inputs/pluggy-1.6.0-py3-none-any.whl",
+          "<repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/inputs/iniconfig-2.3.1-py3-none-any.whl",
+          "<repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/inputs/packaging-26.3-py3-none-any.whl",
+          "<repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/inputs/pygments-2.21.0-py3-none-any.whl"
+        ],
+        "durationMs": 1235
+      },
+      "chess": {
+        "exitCode": 0,
+        "stdout": "Looking in links: <repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/inputs\nProcessing ./.bench-home/inputs/chess-1.11.2.tar.gz\n  Installing build dependencies: started\n  Installing build dependencies: finished with status 'done'\n  Getting requirements to build wheel: started\n  Getting requirements to build wheel: finished with status 'done'\n  Preparing metadata (pyproject.toml): started\n  Preparing metadata (pyproject.toml): finished with status 'done'\nBuilding wheels for collected packages: chess\n  Building wheel for chess (pyproject.toml): started\n  Building wheel for chess (pyproject.toml): finished with status 'done'\n  Created wheel for chess: filename=chess-1.11.2-py3-none-any.whl size=147878 sha256=c384353ec9346e8a70952418ebb6b88fec8da90c66c22955c7db1bd02c956f2d\n  Stored in directory: <repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/tmp/pip-ephem-wheel-cache-yxb93g0_/wheels/87/61/88/6af5a97c537729dc1b63a375208e55cc320fa85d6e78d8591e\nSuccessfully built chess\nInstalling collected packages: chess\nSuccessfully installed chess-1.11.2\n",
+        "stderr": "",
+        "timedOut": false,
+        "command": [
+          "<repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/python/bin/python",
+          "-I",
+          "-m",
+          "pip",
+          "--isolated",
+          "install",
+          "--no-index",
+          "--no-cache-dir",
+          "--find-links",
+          "<repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/inputs",
+          "<repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/inputs/chess-1.11.2.tar.gz"
+        ],
+        "durationMs": 1617
+      },
+      "package-check": {
+        "exitCode": 0,
+        "stdout": "No broken requirements found.\n",
+        "stderr": "",
+        "timedOut": false,
+        "command": [
+          "<repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/python/bin/python",
+          "-I",
+          "-m",
+          "pip",
+          "--isolated",
+          "check"
+        ],
+        "durationMs": 185
+      },
+      "versions": {
+        "exitCode": 0,
+        "stdout": "{\"python\": \"3.13.9 (main, Oct 14 2025, 21:10:40) [Clang 20.1.4 ]\", \"packages\": {\"pytest\": \"8.4.1\", \"pytest-json-ctrf\": \"0.3.5\", \"pluggy\": \"1.6.0\", \"iniconfig\": \"2.3.1\", \"packaging\": \"26.3\", \"pygments\": \"2.21.0\", \"chess\": \"1.11.2\"}}\n",
+        "stderr": "",
+        "timedOut": false,
+        "command": [
+          "<repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/python/bin/python",
+          "-I",
+          "-c",
+          "import sys,json,importlib.metadata as m; print(json.dumps({'python':sys.version,'packages':{n:m.version(n) for n in sys.argv[1:]}}))",
+          "pytest",
+          "pytest-json-ctrf",
+          "pluggy",
+          "iniconfig",
+          "packaging",
+          "pygments",
+          "chess"
+        ],
+        "durationMs": 89
+      },
+      "git-init": {
+        "exitCode": 0,
+        "stdout": "",
+        "stderr": "",
+        "timedOut": false,
+        "command": [
+          "git",
+          "init",
+          "-q"
+        ],
+        "durationMs": 54
+      },
+      "candidate-patch": {
+        "exitCode": 0,
+        "stdout": "",
+        "stderr": "Checking patch re.json...\nApplied patch re.json cleanly.\n",
+        "timedOut": false,
+        "command": [
+          "git",
+          "apply",
+          "--verbose",
+          "--exclude=check.py",
+          "<repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-artifacts-it1s2r/captured.patch"
+        ],
+        "durationMs": 49
+      },
+      "verifier": {
+        "exitCode": 0,
+        "stdout": "============================= test session starts ==============================\nplatform darwin -- Python 3.13.9, pytest-8.4.1, pluggy-1.6.0\nrootdir: <repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq\nplugins: json-ctrf-0.3.5\ncollected 4 items\n\n.bench-home/verifier/tests/test_outputs.py FFF.                          [100%]\n\n=================================== FAILURES ===================================\n______________________________ test_immortal_game ______________________________\n\n    def test_immortal_game():\n        pgn = \"\"\"[Event \"Casual Game\"]\n    [Site \"London ENG\"]\n    [Date \"1851.06.21\"]\n    [Round \"?\"]\n    [White \"Anderssen, Adolf\"]\n    [Black \"Kieseritzky, Lionel\"]\n    [Result \"1-0\"]\n    \n    1. e4 e5 2. f4 exf4 3. Bc4 Qh4+ 4. Kf1 b5 5. Bxb5 Nf6 6. Nf3 Qh6 7. d3 Nh5 8. Nh4 Qg5 9. Nf5 c6 10. g4 Nf6 11. Rg1 cxb5 12. h4 Qg6 13. h5 Qg5 14. Qf3 Ng8 15. Bxf4 Qf6 16. Nc3 Bc5 17. Nd5 Qxb2 18. Bd6 Bxg1 19. e5 Qxa1+ 20. Ke2 Na6 21. Nxg7+ Kd8 22. Qf6+ Nxf6 23. Be7# 1-0\"\"\"\n>       do_test_game(pgn, \"Anderssen's Immortal Game\")\n\n.bench-home/verifier/tests/test_outputs.py:105: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n.bench-home/verifier/tests/test_outputs.py:73: in do_test_game\n    verify_legal_moves(board.fen())\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nfen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'\n\n    def verify_legal_moves(fen):\n        \"\"\"Verify that the solution generates all legal moves for a given position.\"\"\"\n        our_moves = run_solution(fen)\n    \n        board = chess.Board(fen)\n        python_chess_moves = set()\n        for move in board.legal_moves:\n            if move.promotion and move.promotion != chess.QUEEN:\n                continue\n    \n            board_copy = board.copy()\n            board_copy.push(move)\n            python_chess_moves.add(\" \".join(board_copy.fen().split(\" \")[:-2]))\n    \n        print(f\"Position: {fen}, Our moves: {len(our_moves)}, Python-chess moves: {len(python_chess_moves)}\")\n    \n        for x in our_moves:\n            assert x in python_chess_moves or x.rpartition(\" \")[0]+\" -\" in python_chess_moves, (\n                f\"Position: {fen}, Our move: {x} not found in Python-chess moves: {python_chess_moves}\"\n            )\n    \n>       assert len(our_moves) == len(python_chess_moves), (\n            f\"Position: {fen}, Our moves: {len(our_moves)}, Python-chess moves: {len(python_chess_moves)}\"\n        )\nE       AssertionError: Position: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1, Our moves: 19, Python-chess moves: 20\nE       assert 19 == 20\nE        +  where 19 = len(['rnbqkbnr/pppppppp/8/8/8/5N2/PPPPPPPP/RNBQKB1R b KQkq -', 'rnbqkbnr/pppppppp/8/8/8/2N5/PPPPPPPP/R1BQKBNR b KQkq -', '...rnbqkbnr/pppppppp/8/8/7P/8/PPPPPPP1/RNBQKBNR b KQkq h3', 'rnbqkbnr/pppppppp/8/8/8/6P1/PPPPPP1P/RNBQKBNR b KQkq -', ...])\nE        +  and   20 = len({'rnbqkbnr/pppppppp/8/8/1P6/8/P1PPPPPP/RNBQKBNR b KQkq -', 'rnbqkbnr/pppppppp/8/8/2P5/8/PP1PPPPP/RNBQKBNR b KQkq -', '...rnbqkbnr/pppppppp/8/8/5P2/8/PPPPP1PP/RNBQKBNR b KQkq -', 'rnbqkbnr/pppppppp/8/8/6P1/8/PPPPPP1P/RNBQKBNR b KQkq -', ...})\n\n.bench-home/verifier/tests/test_outputs.py:39: AssertionError\n----------------------------- Captured stdout call -----------------------------\n\nTesting positions from: Anderssen's Immortal Game\nPGN string length: 417\nTesting initial position\nPosition: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1, Our moves: 19, Python-chess moves: 20\n_____________________________ test_game_of_century _____________________________\n\n    def test_game_of_century():\n        pgn = \"\"\"[Event \"Third Rosenwald Trophy\"]\n    [Site \"New York, NY USA\"]\n    [Date \"1956.10.17\"]\n    [Round \"8\"]\n    [White \"Byrne, Donald\"]\n    [Black \"Fischer, Robert James\"]\n    [Result \"0-1\"]\n    \n    1. Nf3 Nf6 2. c4 g6 3. Nc3 Bg7 4. d4 O-O 5. Bf4 d5 6. Qb3 dxc4 7. Qxc4 c6 8. e4 Nbd7 9. Rd1 Nb6 10. Qc5 Bg4 11. Bg5 Na4 12. Qa3 Nxc3 13. bxc3 Nxe4 14. Bxe7 Qb6 15. Bc4 Nxc3 16. Bc5 Rfe8+ 17. Kf1 Be6 18. Bxb6 Bxc4+ 19. Kg1 Ne2+ 20. Kf1 Nxd4+ 21. Kg1 Ne2+ 22. Kf1 Nc3+ 23. Kg1 axb6 24. Qb4 Ra4 25. Qxb6 Nxd1 26. h3 Rxa2 27. Kh2 Nxf2 28. Re1 Rxe1 29. Qd8+ Bf8 30. Nxe1 Bd5 31. Nf3 Ne4 32. Qb8 b5 33. h4 h5 34. Ne5 Kg7 35. Kg1 Bc5+ 36. Kf1 Ng3+ 37. Ke1 Bb4+ 38. Kd1 Bb3+ 39. Kc1 Ne2+ 40. Kb1 Nc3+ 41. Kc1 Rc2# 0-1\"\"\"\n>       do_test_game(pgn, \"Fischer's Game of the Century\")\n\n.bench-home/verifier/tests/test_outputs.py:117: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n.bench-home/verifier/tests/test_outputs.py:73: in do_test_game\n    verify_legal_moves(board.fen())\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nfen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'\n\n    def verify_legal_moves(fen):\n        \"\"\"Verify that the solution generates all legal moves for a given position.\"\"\"\n        our_moves = run_solution(fen)\n    \n        board = chess.Board(fen)\n        python_chess_moves = set()\n        for move in board.legal_moves:\n            if move.promotion and move.promotion != chess.QUEEN:\n                continue\n    \n            board_copy = board.copy()\n            board_copy.push(move)\n            python_chess_moves.add(\" \".join(board_copy.fen().split(\" \")[:-2]))\n    \n        print(f\"Position: {fen}, Our moves: {len(our_moves)}, Python-chess moves: {len(python_chess_moves)}\")\n    \n        for x in our_moves:\n            assert x in python_chess_moves or x.rpartition(\" \")[0]+\" -\" in python_chess_moves, (\n                f\"Position: {fen}, Our move: {x} not found in Python-chess moves: {python_chess_moves}\"\n            )\n    \n>       assert len(our_moves) == len(python_chess_moves), (\n            f\"Position: {fen}, Our moves: {len(our_moves)}, Python-chess moves: {len(python_chess_moves)}\"\n        )\nE       AssertionError: Position: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1, Our moves: 19, Python-chess moves: 20\nE       assert 19 == 20\nE        +  where 19 = len(['rnbqkbnr/pppppppp/8/8/8/5N2/PPPPPPPP/RNBQKB1R b KQkq -', 'rnbqkbnr/pppppppp/8/8/8/2N5/PPPPPPPP/R1BQKBNR b KQkq -', '...rnbqkbnr/pppppppp/8/8/7P/8/PPPPPPP1/RNBQKBNR b KQkq h3', 'rnbqkbnr/pppppppp/8/8/8/6P1/PPPPPP1P/RNBQKBNR b KQkq -', ...])\nE        +  and   20 = len({'rnbqkbnr/pppppppp/8/8/1P6/8/P1PPPPPP/RNBQKBNR b KQkq -', 'rnbqkbnr/pppppppp/8/8/2P5/8/PP1PPPPP/RNBQKBNR b KQkq -', '...rnbqkbnr/pppppppp/8/8/5P2/8/PPPPP1PP/RNBQKBNR b KQkq -', 'rnbqkbnr/pppppppp/8/8/6P1/8/PPPPPP1P/RNBQKBNR b KQkq -', ...})\n\n.bench-home/verifier/tests/test_outputs.py:39: AssertionError\n----------------------------- Captured stdout call -----------------------------\n\nTesting positions from: Fischer's Game of the Century\nPGN string length: 672\nTesting initial position\nPosition: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1, Our moves: 19, Python-chess moves: 20\n___________________________ test_naroditsky_ivanchuk ___________________________\n\n    def test_naroditsky_ivanchuk():\n        pgn = \"\"\"[Event \"World Blitz Championship\"]\n    [Site \"New York, NY USA\"]\n    [Date \"2024.12.30\"]\n    [EventDate \"2024.12.30\"]\n    [Round \"11.9\"]\n    [Result \"0-1\"]\n    [White \"Vasyl Ivanchuk\"]\n    [Black \"Daniel Naroditsky\"]\n    [ECO \"E60\"]\n    [WhiteElo \"2651\"]\n    [BlackElo \"2711\"]\n    [PlyCount \"82\"]\n    \n    1. d4 Nf6 2. c4 g6 3. f3 Bg7 4. e4 d6 5. Be3 O-O 6. Nc3 a6 7. Bd3 Nfd7 8.\n    Nge2 c5 9. d5 Ne5 10. a4 Nbd7 11. b3 Nxd3+ 12. Qxd3 f5 13. Rd1 b5 14. cxb5\n    axb5 15. axb5 Ne5 16. Qc2 fxe4 17. Nxe4 Qa5+ 18. N2c3 Nxf3+ 19. gxf3 Rxf3\n    20. Kd2 Bd4 21. Ra1 Bxe3+ 22. Ke2 Bg4 23. Rxa5 Rxa5 24. Kd3 Bd4+ 25. Kc4\n    Bf5 26. Qd2 Bxc3 27. Nxc3 e5 28. Re1 Rf4+ 29. Qxf4 exf4 30. Ne4 Bxe4 31.\n    Rxe4 g5 32. b6 Ra8 33. Kb5 f3 34. Re1 g4 35. Kc6 h5 36. Kxd6 Rf8 37. b7 h4\n    38. Rg1 f2 39. Rxg4+ Kh7 40. Rxh4+ Kg6 41. Rg4+ 0-1\"\"\"\n>       do_test_game(pgn)\n\n.bench-home/verifier/tests/test_outputs.py:141: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n.bench-home/verifier/tests/test_outputs.py:73: in do_test_game\n    verify_legal_moves(board.fen())\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nfen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'\n\n    def verify_legal_moves(fen):\n        \"\"\"Verify that the solution generates all legal moves for a given position.\"\"\"\n        our_moves = run_solution(fen)\n    \n        board = chess.Board(fen)\n        python_chess_moves = set()\n        for move in board.legal_moves:\n            if move.promotion and move.promotion != chess.QUEEN:\n                continue\n    \n            board_copy = board.copy()\n            board_copy.push(move)\n            python_chess_moves.add(\" \".join(board_copy.fen().split(\" \")[:-2]))\n    \n        print(f\"Position: {fen}, Our moves: {len(our_moves)}, Python-chess moves: {len(python_chess_moves)}\")\n    \n        for x in our_moves:\n            assert x in python_chess_moves or x.rpartition(\" \")[0]+\" -\" in python_chess_moves, (\n                f\"Position: {fen}, Our move: {x} not found in Python-chess moves: {python_chess_moves}\"\n            )\n    \n>       assert len(our_moves) == len(python_chess_moves), (\n            f\"Position: {fen}, Our moves: {len(our_moves)}, Python-chess moves: {len(python_chess_moves)}\"\n        )\nE       AssertionError: Position: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1, Our moves: 19, Python-chess moves: 20\nE       assert 19 == 20\nE        +  where 19 = len(['rnbqkbnr/pppppppp/8/8/8/5N2/PPPPPPPP/RNBQKB1R b KQkq -', 'rnbqkbnr/pppppppp/8/8/8/2N5/PPPPPPPP/R1BQKBNR b KQkq -', '...rnbqkbnr/pppppppp/8/8/7P/8/PPPPPPP1/RNBQKBNR b KQkq h3', 'rnbqkbnr/pppppppp/8/8/8/6P1/PPPPPP1P/RNBQKBNR b KQkq -', ...])\nE        +  and   20 = len({'rnbqkbnr/pppppppp/8/8/1P6/8/P1PPPPPP/RNBQKBNR b KQkq -', 'rnbqkbnr/pppppppp/8/8/2P5/8/PP1PPPPP/RNBQKBNR b KQkq -', '...rnbqkbnr/pppppppp/8/8/5P2/8/PPPPP1PP/RNBQKBNR b KQkq -', 'rnbqkbnr/pppppppp/8/8/6P1/8/PPPPPP1P/RNBQKBNR b KQkq -', ...})\n\n.bench-home/verifier/tests/test_outputs.py:39: AssertionError\n----------------------------- Captured stdout call -----------------------------\n\nTesting positions from: Unnamed Game\nPGN string length: 749\nTesting initial position\nPosition: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1, Our moves: 19, Python-chess moves: 20\n==================================== PASSES ====================================\n=========================== short test summary info ============================\nPASSED .bench-home/verifier/tests/test_outputs.py::test_not_long\nFAILED .bench-home/verifier/tests/test_outputs.py::test_immortal_game - Asser...\nFAILED .bench-home/verifier/tests/test_outputs.py::test_game_of_century - Ass...\nFAILED .bench-home/verifier/tests/test_outputs.py::test_naroditsky_ivanchuk\n========================= 3 failed, 1 passed in 4.59s ==========================\n",
+        "stderr": "+ <repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/python/bin/python -I <repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/python/bin/pytest --ctrf <repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/verifier/logs/ctrf.json <repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/verifier/tests/test_outputs.py -rA\n+ '[' 1 -eq 0 ']'\n+ echo 0\n",
+        "timedOut": false,
+        "command": [
+          "/bin/bash",
+          "-x",
+          "<repo>/.flywheel/sessions/0626ab51281e/scratch/chess-fixture-qualification/tmp/flywheel-bench-grade-nMF9Pq/.bench-home/verifier/tests/native-test.sh"
+        ],
+        "durationMs": 4813
+      }
+    },
+    "limits": {
+      "verifierMs": 3600000,
+      "adapterMs": 3900000
+    },
+    "equivalence": "native macOS arm64 only; no original environment or cross-platform equivalence claim"
+  }
+}

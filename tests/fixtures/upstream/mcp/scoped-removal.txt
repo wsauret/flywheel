@@ -1,0 +1,12 @@
+/** Remove a server from an `mcp.json`. Returns false when the file does not define it. */
+export function removeMcpServerConfig(path: string, name: string): boolean {
+	if (!existsSync(path)) return false;
+	let removed = false;
+	editMcpServers(path, (servers) => {
+		if (!servers || servers[name] === undefined) return false;
+		delete servers[name];
+		removed = true;
+		return true;
+	});
+	return removed;
+}

@@ -1,0 +1,1744 @@
+{
+  "mapped": {
+    "type": "workflow.control.initialized",
+    "version": 10,
+    "actor": "flywheel",
+    "payload": {
+      "control": {
+        "definitionIdentity": {
+          "workflowDefinitionId": "mapped",
+          "vmVersion": "2",
+          "skills": [],
+          "personas": [],
+          "graphSha256": "aba1fb0073f0c6b6a281085927f8441758573c9c170682ff5f7cabb2ada14ea4",
+          "phases": [
+            {
+              "phaseId": "build",
+              "sha256": "0f9282c48a4f576e3a683a273bf7d2f798f867a3260f92dcdcb922b412c22b66"
+            }
+          ],
+          "steps": [
+            {
+              "stepId": "implement",
+              "policySha256": "7825fd5d5a73417eed30a36457d43959f5bb788f934b7484d4e345cac24fd096",
+              "contentSha256": "69837995288c57e2315c48061852e29e850177d7fbd127f82a9d0f4b894a739c",
+              "outputSha256": "f35cd02cd97b67077a86f78eb15ec16044957e3420ff5787bcf1b5a715f40d06"
+            },
+            {
+              "stepId": "plan",
+              "policySha256": "fc50ee2adc886bcd609831529bb601bdffa8167b716d99f1fa2434f9bb66f353",
+              "contentSha256": "52c2c2934854005bb112b9abca9162857884200f8b57d9b9740ccd888f8b5884",
+              "outputSha256": "cef3639e1cf6df55c21ee68ee14dc98007c74e34d7fdae26e486f862a79950b2"
+            },
+            {
+              "stepId": "review",
+              "policySha256": "bef9bfa20ec5e42dffd03e938e99a8397bb1b8a5481a0d2e01396caf47779051",
+              "contentSha256": "3cd3c0e6717df16b1fe05a73902cb8dfeab0457c2d943dac6e34f7b9ea5ccdd8",
+              "outputSha256": "f35cd02cd97b67077a86f78eb15ec16044957e3420ff5787bcf1b5a715f40d06"
+            },
+            {
+              "stepId": "tail",
+              "policySha256": "a3bdf8e28317df869636a96b8c3abc7d713cd74b34c40486c7549f36e2cd9c78",
+              "contentSha256": "d4749e0a513aad13f1005874f52d5f39da812a14a29dcef24b0226211a99cf4e",
+              "outputSha256": "f35cd02cd97b67077a86f78eb15ec16044957e3420ff5787bcf1b5a715f40d06"
+            }
+          ]
+        },
+        "workflowName": "Mapped",
+        "graph": {
+          "nodes": [
+            {
+              "kind": "step",
+              "id": "mapped:node:1",
+              "workflowDefinitionId": "mapped",
+              "order": 0,
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "mapped"
+              },
+              "state": {
+                "_tag": "ready"
+              },
+              "definitionId": "plan",
+              "name": "Plan",
+              "then": null,
+              "retry": null
+            },
+            {
+              "kind": "phase",
+              "id": "mapped:node:2",
+              "workflowDefinitionId": "mapped",
+              "order": 1,
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "mapped"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "phaseId": "build",
+              "name": "build"
+            },
+            {
+              "kind": "group",
+              "id": "mapped:node:2:node:1",
+              "workflowDefinitionId": "mapped",
+              "order": 2,
+              "ownership": {
+                "_tag": "phase",
+                "workflowDefinitionId": "mapped",
+                "phaseId": "build",
+                "parentNodeId": "mapped:node:2"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "mapId": "per-item",
+              "name": "per-item",
+              "source": {
+                "nodeId": "mapped:node:1",
+                "field": "items"
+              },
+              "key": "id",
+              "label": "title",
+              "width": 3,
+              "stages": [
+                {
+                  "step": "implement",
+                  "name": "Implement"
+                },
+                {
+                  "step": "review",
+                  "name": "Review"
+                }
+              ],
+              "retry": null,
+              "reducer": {
+                "id": "collect",
+                "version": 1,
+                "params": {},
+                "contract": {
+                  "total": {
+                    "type": "number",
+                    "description": "How many branches the frozen manifest admitted."
+                  },
+                  "completed": {
+                    "type": "number",
+                    "description": "How many branches completed every stage."
+                  },
+                  "failed": {
+                    "type": "number",
+                    "description": "How many branches failed a stage."
+                  },
+                  "items": {
+                    "type": "list",
+                    "description": "One item per branch, ordered by key.",
+                    "max": 3,
+                    "unique": "key",
+                    "of": {
+                      "type": "object",
+                      "fields": {
+                        "key": {
+                          "type": "string",
+                          "description": "The branch identity: the item's unique key."
+                        },
+                        "disposition": {
+                          "type": "enum",
+                          "description": "How the branch ended.",
+                          "values": [
+                            "completed",
+                            "failed"
+                          ]
+                        },
+                        "handoff": {
+                          "type": "object",
+                          "description": "The handoff of the branch's last stage, or null when the branch failed.",
+                          "nullable": true,
+                          "fields": {
+                            "step_id": {
+                              "type": "string",
+                              "description": "The attempt that wrote the handoff."
+                            },
+                            "sha256": {
+                              "type": "string",
+                              "description": "The sha256 of the handoff content."
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "write": {
+                "id": "reviews",
+                "lifetime": "durable",
+                "supersedes": []
+              },
+              "admittedContext": null,
+              "settlement": null
+            },
+            {
+              "kind": "step",
+              "id": "mapped:node:3",
+              "workflowDefinitionId": "mapped",
+              "order": 3,
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "mapped"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "definitionId": "tail",
+              "name": "Tail",
+              "then": null,
+              "retry": null
+            }
+          ],
+          "dependencies": [
+            {
+              "nodeId": "mapped:node:2",
+              "dependsOn": "mapped:node:1"
+            },
+            {
+              "nodeId": "mapped:node:3",
+              "dependsOn": "mapped:node:2"
+            }
+          ],
+          "joins": [],
+          "budgets": []
+        },
+        "attempts": [
+          {
+            "id": "mapped:node:1:attempt:1",
+            "logicalNodeId": "mapped:node:1",
+            "workflowDefinitionId": "mapped",
+            "definitionId": "plan",
+            "sequence": 1,
+            "iteration": 1,
+            "resumeRevertCount": 0,
+            "provenance": {
+              "_tag": "authored"
+            },
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "mapped"
+            },
+            "state": {
+              "_tag": "pending"
+            },
+            "parentAttemptId": null,
+            "conversationId": null,
+            "handoff": null,
+            "priorRetryFeedback": null,
+            "forItem": null
+          },
+          {
+            "id": "mapped:node:3:attempt:1",
+            "logicalNodeId": "mapped:node:3",
+            "workflowDefinitionId": "mapped",
+            "definitionId": "tail",
+            "sequence": 1,
+            "iteration": 1,
+            "resumeRevertCount": 0,
+            "provenance": {
+              "_tag": "authored"
+            },
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "mapped"
+            },
+            "state": {
+              "_tag": "pending"
+            },
+            "parentAttemptId": null,
+            "conversationId": null,
+            "handoff": null,
+            "priorRetryFeedback": null,
+            "forItem": null
+          }
+        ],
+        "frontier": [
+          "mapped:node:1"
+        ],
+        "guardrails": {
+          "maxQueueLength": 50,
+          "maxMutationsPerAttempt": 3,
+          "maxSessionInserts": 20,
+          "sessionInsertsUsed": 0,
+          "attemptMutationsUsed": [
+            {
+              "attemptId": "mapped:node:1:attempt:1",
+              "used": 0
+            },
+            {
+              "attemptId": "mapped:node:3:attempt:1",
+              "used": 0
+            }
+          ]
+        },
+        "status": "ready",
+        "followUp": null,
+        "aggregateSeq": 1
+      }
+    }
+  },
+  "survey": {
+    "type": "workflow.control.initialized",
+    "version": 10,
+    "actor": "flywheel",
+    "payload": {
+      "control": {
+        "definitionIdentity": {
+          "workflowDefinitionId": "survey",
+          "vmVersion": "2",
+          "skills": [],
+          "personas": [],
+          "graphSha256": "0c2f27f364385e71cddd05fbf79e486e23e8f9e00120872542c51aadda9127fe",
+          "phases": [
+            {
+              "phaseId": "survey",
+              "sha256": "aa845b74d88651917252ee098f9de1e42f85e3a930aae52765ba4f56caedacc3"
+            }
+          ],
+          "steps": [
+            {
+              "stepId": "inventory",
+              "policySha256": "916d911cb978774fa570fb40991f56c7effb2e1f5a386a24f2bacde43becd059",
+              "contentSha256": "23210eb5d7ea3082b618779093a8f55cb50c91010b31bdd82fc3afa4faff6ee8",
+              "outputSha256": "bcbcec174069ec1d45551de3784bf73b5ed8a0eeab6fa52f4bc7e4080951f940"
+            },
+            {
+              "stepId": "survey",
+              "policySha256": "f0bee2aee4288167189a74078fa028f5dc9f5dc3e4aaf1fbf9c88b3f4b38e8ff",
+              "contentSha256": "b5b32f90bc58e36400be1a26c004b4de333a1dfca48881780706ff3e5186e795",
+              "outputSha256": "f35cd02cd97b67077a86f78eb15ec16044957e3420ff5787bcf1b5a715f40d06"
+            },
+            {
+              "stepId": "synthesize",
+              "policySha256": "f0d55306cc8da4b0b7c7a5e129891356f5a0603f5225efdc64ffb62196dbb92b",
+              "contentSha256": "4824f19720ab393811e3f7cc3443871c58b230bf5d0337b7d21df1e7d4ee3995",
+              "outputSha256": "f35cd02cd97b67077a86f78eb15ec16044957e3420ff5787bcf1b5a715f40d06"
+            },
+            {
+              "stepId": "verify",
+              "policySha256": "450f2bed9485f93a474efc1e69d4d290a81adf950697050a27ee9113e6f4de7e",
+              "contentSha256": "35cbec0b5673f281232f09207e9575c766fe25dca192a3ad73596e8f4764c7fd",
+              "outputSha256": "301f8c349ef073123db5b41a20ec4fceebc15805417975badf4a2d8100ce7cd4"
+            }
+          ]
+        },
+        "workflowName": "Survey",
+        "graph": {
+          "nodes": [
+            {
+              "kind": "step",
+              "id": "survey:node:1",
+              "workflowDefinitionId": "survey",
+              "order": 0,
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "survey"
+              },
+              "state": {
+                "_tag": "ready"
+              },
+              "definitionId": "inventory",
+              "name": "Inventory",
+              "then": null,
+              "retry": null
+            },
+            {
+              "kind": "phase",
+              "id": "survey:node:2",
+              "workflowDefinitionId": "survey",
+              "order": 1,
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "survey"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "phaseId": "survey",
+              "name": "survey"
+            },
+            {
+              "kind": "group",
+              "id": "survey:node:2:node:1",
+              "workflowDefinitionId": "survey",
+              "order": 2,
+              "ownership": {
+                "_tag": "phase",
+                "workflowDefinitionId": "survey",
+                "phaseId": "survey",
+                "parentNodeId": "survey:node:2"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "mapId": "targets",
+              "name": "targets",
+              "source": {
+                "nodeId": "survey:node:1",
+                "field": "targets"
+              },
+              "key": "id",
+              "label": "title",
+              "width": 8,
+              "stages": [
+                {
+                  "step": "survey",
+                  "name": "Survey"
+                },
+                {
+                  "step": "verify",
+                  "name": "Verify"
+                }
+              ],
+              "retry": null,
+              "reducer": {
+                "id": "coverage",
+                "version": 1,
+                "params": {
+                  "priority": "priority",
+                  "outcome": "outcome",
+                  "exclusions": "exclusions"
+                },
+                "contract": {
+                  "status": {
+                    "type": "enum",
+                    "description": "full when the manifest holds a required target and the survey reached every one, empty when the manifest held no targets, and partial otherwise.",
+                    "values": [
+                      "full",
+                      "partial",
+                      "empty"
+                    ]
+                  },
+                  "required": {
+                    "type": "object",
+                    "description": "The required targets: the exact numerator and denominator, and the keys that the survey did and did not reach, ordered by key.",
+                    "fields": {
+                      "numerator": {
+                        "type": "number",
+                        "description": "How many required targets the survey reached."
+                      },
+                      "denominator": {
+                        "type": "number",
+                        "description": "How many required targets the manifest holds."
+                      },
+                      "surveyed": {
+                        "type": "list",
+                        "description": "The keys of the required targets that the survey reached.",
+                        "max": 8,
+                        "of": {
+                          "type": "string"
+                        }
+                      },
+                      "unsurveyed": {
+                        "type": "list",
+                        "description": "The keys of the required targets that the survey did not reach.",
+                        "max": 8,
+                        "of": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "supporting": {
+                    "type": "object",
+                    "description": "The supporting targets: the exact numerator and denominator, and the keys that the survey did and did not reach, ordered by key.",
+                    "fields": {
+                      "numerator": {
+                        "type": "number",
+                        "description": "How many supporting targets the survey reached."
+                      },
+                      "denominator": {
+                        "type": "number",
+                        "description": "How many supporting targets the manifest holds."
+                      },
+                      "surveyed": {
+                        "type": "list",
+                        "description": "The keys of the supporting targets that the survey reached.",
+                        "max": 8,
+                        "of": {
+                          "type": "string"
+                        }
+                      },
+                      "unsurveyed": {
+                        "type": "list",
+                        "description": "The keys of the supporting targets that the survey did not reach.",
+                        "max": 8,
+                        "of": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "inaccessible": {
+                    "type": "list",
+                    "description": "The keys of the targets whose report states inaccessible, ordered by key.",
+                    "max": 8,
+                    "of": {
+                      "type": "string"
+                    }
+                  },
+                  "excluded": {
+                    "type": "list",
+                    "description": "The keys of the targets that the source excluded or whose report states excluded, ordered by key.",
+                    "of": {
+                      "type": "string"
+                    }
+                  },
+                  "failed": {
+                    "type": "list",
+                    "description": "The keys of the targets whose branch failed or reported no outcome, ordered by key.",
+                    "max": 8,
+                    "of": {
+                      "type": "string"
+                    }
+                  },
+                  "items": {
+                    "type": "list",
+                    "description": "One item per branch, ordered by key, with a reference to its report.",
+                    "max": 8,
+                    "unique": "key",
+                    "of": {
+                      "type": "object",
+                      "fields": {
+                        "key": {
+                          "type": "string",
+                          "description": "The branch identity: the item's unique key."
+                        },
+                        "priority": {
+                          "type": "enum",
+                          "description": "The target's priority.",
+                          "values": [
+                            "required",
+                            "supporting"
+                          ]
+                        },
+                        "disposition": {
+                          "type": "enum",
+                          "description": "How the branch ended.",
+                          "values": [
+                            "completed",
+                            "failed"
+                          ]
+                        },
+                        "outcome": {
+                          "type": "enum",
+                          "description": "What the report states, or null when the branch failed or stated no outcome.",
+                          "nullable": true,
+                          "values": [
+                            "surveyed",
+                            "inaccessible",
+                            "excluded"
+                          ]
+                        },
+                        "handoff": {
+                          "type": "object",
+                          "description": "The handoff of the branch's last stage, or null when the branch failed.",
+                          "nullable": true,
+                          "fields": {
+                            "step_id": {
+                              "type": "string",
+                              "description": "The attempt that wrote the handoff."
+                            },
+                            "sha256": {
+                              "type": "string",
+                              "description": "The sha256 of the handoff content."
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "write": {
+                "id": "targets",
+                "lifetime": "transient"
+              },
+              "admittedContext": null,
+              "settlement": null
+            },
+            {
+              "kind": "step",
+              "id": "survey:node:3",
+              "workflowDefinitionId": "survey",
+              "order": 3,
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "survey"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "definitionId": "synthesize",
+              "name": "Synthesize",
+              "then": null,
+              "retry": null
+            }
+          ],
+          "dependencies": [
+            {
+              "nodeId": "survey:node:2",
+              "dependsOn": "survey:node:1"
+            },
+            {
+              "nodeId": "survey:node:3",
+              "dependsOn": "survey:node:2"
+            }
+          ],
+          "joins": [],
+          "budgets": []
+        },
+        "attempts": [
+          {
+            "id": "survey:node:1:attempt:1",
+            "logicalNodeId": "survey:node:1",
+            "workflowDefinitionId": "survey",
+            "definitionId": "inventory",
+            "sequence": 1,
+            "iteration": 1,
+            "resumeRevertCount": 0,
+            "provenance": {
+              "_tag": "authored"
+            },
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "survey"
+            },
+            "state": {
+              "_tag": "pending"
+            },
+            "parentAttemptId": null,
+            "conversationId": null,
+            "handoff": null,
+            "priorRetryFeedback": null,
+            "forItem": null
+          },
+          {
+            "id": "survey:node:3:attempt:1",
+            "logicalNodeId": "survey:node:3",
+            "workflowDefinitionId": "survey",
+            "definitionId": "synthesize",
+            "sequence": 1,
+            "iteration": 1,
+            "resumeRevertCount": 0,
+            "provenance": {
+              "_tag": "authored"
+            },
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "survey"
+            },
+            "state": {
+              "_tag": "pending"
+            },
+            "parentAttemptId": null,
+            "conversationId": null,
+            "handoff": null,
+            "priorRetryFeedback": null,
+            "forItem": null
+          }
+        ],
+        "frontier": [
+          "survey:node:1"
+        ],
+        "guardrails": {
+          "maxQueueLength": 50,
+          "maxMutationsPerAttempt": 3,
+          "maxSessionInserts": 20,
+          "sessionInsertsUsed": 0,
+          "attemptMutationsUsed": [
+            {
+              "attemptId": "survey:node:1:attempt:1",
+              "used": 0
+            },
+            {
+              "attemptId": "survey:node:3:attempt:1",
+              "used": 0
+            }
+          ]
+        },
+        "status": "ready",
+        "followUp": null,
+        "aggregateSeq": 1
+      }
+    }
+  },
+  "findings": {
+    "type": "workflow.control.initialized",
+    "version": 10,
+    "actor": "flywheel",
+    "payload": {
+      "control": {
+        "definitionIdentity": {
+          "workflowDefinitionId": "findings",
+          "vmVersion": "2",
+          "skills": [],
+          "personas": [],
+          "graphSha256": "168ef4c4c8daeda800f18b46648a408235d09f64df0dd7f9b0c7b7d2d08dd66a",
+          "steps": [
+            {
+              "stepId": "report",
+              "policySha256": "d12ad2564ee07cf0a0eac6bce8e9f91714ed9129e19d7e6b9a7748f8cce046bb",
+              "contentSha256": "c720a83f38522a3e5c0ad9874467d37266d0f2e7db5ca7f1eea48d1c2b1cebc3",
+              "outputSha256": "f35cd02cd97b67077a86f78eb15ec16044957e3420ff5787bcf1b5a715f40d06"
+            },
+            {
+              "stepId": "review",
+              "policySha256": "1939d6e3cc5df95a2679bacfaa7ddfac200b20402f6b6e0407f77a7cce9f54c8",
+              "contentSha256": "47ddcf170e141b1f9b03a046fd750fb73afa705e804fe25985f8050fbce375ff",
+              "outputSha256": "4d2e2cdcbda05ee00afc125fc4641ad278d4634c3558f4cdf2197ab388f39cc4"
+            },
+            {
+              "stepId": "verify",
+              "policySha256": "450f2bed9485f93a474efc1e69d4d290a81adf950697050a27ee9113e6f4de7e",
+              "contentSha256": "68309a8a68d6d2210061d38444854ea09c0955cc71e18fb5a7f493b989837750",
+              "outputSha256": "1e92dbce2f3f9a9df6150457fd271d847c467afb86dda188ffc7a3ee4e0af8dd"
+            }
+          ]
+        },
+        "workflowName": "Findings",
+        "graph": {
+          "nodes": [
+            {
+              "kind": "group",
+              "id": "findings:node:1",
+              "workflowDefinitionId": "findings",
+              "order": 0,
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "findings"
+              },
+              "state": {
+                "_tag": "ready"
+              },
+              "mapId": "reviews",
+              "name": "reviews",
+              "source": {
+                "nodeId": "input",
+                "field": "files"
+              },
+              "key": "path",
+              "label": "path",
+              "width": 3,
+              "stages": [
+                {
+                  "step": "review",
+                  "name": "Review"
+                }
+              ],
+              "retry": null,
+              "reducer": {
+                "id": "dedupe",
+                "version": 2,
+                "params": {
+                  "items": "findings",
+                  "by": "id"
+                },
+                "contract": {
+                  "kept": {
+                    "type": "list",
+                    "description": "The first item per \"id\" that no earlier round of the loop kept or dropped, in branch-key order and then list order, each with the key of its branch.",
+                    "max": 6,
+                    "unique": "id",
+                    "of": {
+                      "type": "object",
+                      "fields": {
+                        "id": {
+                          "type": "string",
+                          "description": "The finding id."
+                        },
+                        "title": {
+                          "type": "string",
+                          "description": "The finding title."
+                        },
+                        "area": {
+                          "type": "string",
+                          "description": "The area the finding touches."
+                        },
+                        "branch": {
+                          "type": "string",
+                          "description": "The key of the branch that reported the item."
+                        }
+                      }
+                    }
+                  },
+                  "dropped": {
+                    "type": "list",
+                    "description": "Every entry that the join did not keep, in fold order, each with the reason.",
+                    "max": 6,
+                    "of": {
+                      "type": "object",
+                      "fields": {
+                        "key": {
+                          "type": "string",
+                          "description": "The key of the entry, or null when the item states none.",
+                          "nullable": true
+                        },
+                        "branch": {
+                          "type": "string",
+                          "description": "The key of the branch that reported the item."
+                        },
+                        "reason": {
+                          "type": "string",
+                          "description": "Why the join dropped the entry."
+                        }
+                      }
+                    }
+                  },
+                  "failed": {
+                    "type": "list",
+                    "description": "The keys of the branches that failed or did not settle, ordered by key. They reported no entries.",
+                    "max": 3,
+                    "of": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "write": {
+                "id": "reviews",
+                "lifetime": "transient"
+              },
+              "admittedContext": null,
+              "settlement": null
+            },
+            {
+              "kind": "group",
+              "id": "findings:node:2",
+              "workflowDefinitionId": "findings",
+              "order": 1,
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "findings"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "mapId": "checks",
+              "name": "Verify",
+              "source": {
+                "nodeId": "findings:node:1",
+                "field": "kept"
+              },
+              "key": "id",
+              "label": "title",
+              "width": 6,
+              "stages": [
+                {
+                  "step": "verify",
+                  "name": "Verify"
+                }
+              ],
+              "retry": null,
+              "reducer": {
+                "id": "quorum",
+                "version": 1,
+                "params": {
+                  "vote": "verdict",
+                  "min_valid": 1,
+                  "max_refuted": 0,
+                  "group_by": "area"
+                },
+                "contract": {
+                  "passed": {
+                    "type": "list",
+                    "description": "The verdicts that reached the quorum. One verdict per value of \"area\", ordered by that value.",
+                    "max": 6,
+                    "unique": "group",
+                    "of": {
+                      "type": "object",
+                      "fields": {
+                        "group": {
+                          "type": "string",
+                          "description": "The value of \"area\" that the verdict counts."
+                        },
+                        "valid": {
+                          "type": "number",
+                          "description": "How many branches voted valid."
+                        },
+                        "refuted": {
+                          "type": "number",
+                          "description": "How many branches voted refuted."
+                        },
+                        "abstain": {
+                          "type": "number",
+                          "description": "How many branches abstained, failed, or did not settle."
+                        },
+                        "reason": {
+                          "type": "string",
+                          "description": "The counts against the thresholds that decided the verdict."
+                        }
+                      }
+                    }
+                  },
+                  "rejected": {
+                    "type": "list",
+                    "description": "The verdicts that did not reach the quorum. One verdict per value of \"area\", ordered by that value.",
+                    "max": 6,
+                    "unique": "group",
+                    "of": {
+                      "type": "object",
+                      "fields": {
+                        "group": {
+                          "type": "string",
+                          "description": "The value of \"area\" that the verdict counts."
+                        },
+                        "valid": {
+                          "type": "number",
+                          "description": "How many branches voted valid."
+                        },
+                        "refuted": {
+                          "type": "number",
+                          "description": "How many branches voted refuted."
+                        },
+                        "abstain": {
+                          "type": "number",
+                          "description": "How many branches abstained, failed, or did not settle."
+                        },
+                        "reason": {
+                          "type": "string",
+                          "description": "The counts against the thresholds that decided the verdict."
+                        }
+                      }
+                    }
+                  },
+                  "failed": {
+                    "type": "list",
+                    "description": "The keys of the branches that failed or did not settle, ordered by key. Each abstained.",
+                    "max": 6,
+                    "of": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "write": {
+                "id": "checks",
+                "lifetime": "transient"
+              },
+              "admittedContext": null,
+              "settlement": null
+            },
+            {
+              "kind": "step",
+              "id": "findings:node:3",
+              "workflowDefinitionId": "findings",
+              "order": 2,
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "findings"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "definitionId": "report",
+              "name": "Report",
+              "then": null,
+              "retry": null
+            }
+          ],
+          "dependencies": [
+            {
+              "nodeId": "findings:node:2",
+              "dependsOn": "findings:node:1"
+            },
+            {
+              "nodeId": "findings:node:3",
+              "dependsOn": "findings:node:2"
+            }
+          ],
+          "joins": [
+            {
+              "kind": "collect_all",
+              "nodeId": "findings:node:1",
+              "requiredNodeIds": []
+            }
+          ],
+          "budgets": []
+        },
+        "attempts": [
+          {
+            "id": "findings:node:3:attempt:1",
+            "logicalNodeId": "findings:node:3",
+            "workflowDefinitionId": "findings",
+            "definitionId": "report",
+            "sequence": 1,
+            "iteration": 1,
+            "resumeRevertCount": 0,
+            "provenance": {
+              "_tag": "authored"
+            },
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "findings"
+            },
+            "state": {
+              "_tag": "pending"
+            },
+            "parentAttemptId": null,
+            "conversationId": null,
+            "handoff": null,
+            "priorRetryFeedback": null,
+            "forItem": null
+          }
+        ],
+        "frontier": [],
+        "guardrails": {
+          "maxQueueLength": 50,
+          "maxMutationsPerAttempt": 3,
+          "maxSessionInserts": 20,
+          "sessionInsertsUsed": 0,
+          "attemptMutationsUsed": [
+            {
+              "attemptId": "findings:node:3:attempt:1",
+              "used": 0
+            }
+          ]
+        },
+        "status": "ready",
+        "followUp": null,
+        "aggregateSeq": 1
+      }
+    }
+  },
+  "votes": {
+    "type": "workflow.control.initialized",
+    "version": 10,
+    "actor": "flywheel",
+    "payload": {
+      "control": {
+        "definitionIdentity": {
+          "workflowDefinitionId": "votes",
+          "vmVersion": "2",
+          "skills": [],
+          "personas": [],
+          "graphSha256": "e6d2fa833b6f48e4ea91f2238ed782bad0a0212032b0c3b51e3423aa79dbb15a",
+          "steps": [
+            {
+              "stepId": "report",
+              "policySha256": "d12ad2564ee07cf0a0eac6bce8e9f91714ed9129e19d7e6b9a7748f8cce046bb",
+              "contentSha256": "23b8e7ad849f54d7f9e9df968719e010e9c1e1dbc7951cfd13c94ac1684e5d25",
+              "outputSha256": "f35cd02cd97b67077a86f78eb15ec16044957e3420ff5787bcf1b5a715f40d06"
+            },
+            {
+              "stepId": "review",
+              "policySha256": "1939d6e3cc5df95a2679bacfaa7ddfac200b20402f6b6e0407f77a7cce9f54c8",
+              "contentSha256": "0d783c90ebd087cf16fc269fb4ca37a25ad57f12357cb64f7be8fbf85fe73721",
+              "outputSha256": "4d2e2cdcbda05ee00afc125fc4641ad278d4634c3558f4cdf2197ab388f39cc4"
+            },
+            {
+              "stepId": "verify",
+              "policySha256": "450f2bed9485f93a474efc1e69d4d290a81adf950697050a27ee9113e6f4de7e",
+              "contentSha256": "cf486922d9778694c8ecd2fccf3526544a787c2e93a05f564a2afe8e3aafb5db",
+              "outputSha256": "1e92dbce2f3f9a9df6150457fd271d847c467afb86dda188ffc7a3ee4e0af8dd"
+            }
+          ]
+        },
+        "workflowName": "Votes",
+        "graph": {
+          "nodes": [
+            {
+              "kind": "group",
+              "id": "votes:node:1",
+              "workflowDefinitionId": "votes",
+              "order": 0,
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "votes"
+              },
+              "state": {
+                "_tag": "ready"
+              },
+              "mapId": "reviews",
+              "name": "reviews",
+              "source": {
+                "nodeId": "input",
+                "field": "files"
+              },
+              "key": "path",
+              "label": "path",
+              "width": 3,
+              "stages": [
+                {
+                  "step": "review",
+                  "name": "Review"
+                }
+              ],
+              "retry": null,
+              "reducer": {
+                "id": "dedupe",
+                "version": 2,
+                "params": {
+                  "items": "findings",
+                  "by": "id"
+                },
+                "contract": {
+                  "kept": {
+                    "type": "list",
+                    "description": "The first item per \"id\" that no earlier round of the loop kept or dropped, in branch-key order and then list order, each with the key of its branch.",
+                    "max": 6,
+                    "unique": "id",
+                    "of": {
+                      "type": "object",
+                      "fields": {
+                        "id": {
+                          "type": "string",
+                          "description": "The finding id."
+                        },
+                        "title": {
+                          "type": "string",
+                          "description": "The finding title."
+                        },
+                        "area": {
+                          "type": "string",
+                          "description": "The area the finding touches."
+                        },
+                        "branch": {
+                          "type": "string",
+                          "description": "The key of the branch that reported the item."
+                        }
+                      }
+                    }
+                  },
+                  "dropped": {
+                    "type": "list",
+                    "description": "Every entry that the join did not keep, in fold order, each with the reason.",
+                    "max": 6,
+                    "of": {
+                      "type": "object",
+                      "fields": {
+                        "key": {
+                          "type": "string",
+                          "description": "The key of the entry, or null when the item states none.",
+                          "nullable": true
+                        },
+                        "branch": {
+                          "type": "string",
+                          "description": "The key of the branch that reported the item."
+                        },
+                        "reason": {
+                          "type": "string",
+                          "description": "Why the join dropped the entry."
+                        }
+                      }
+                    }
+                  },
+                  "failed": {
+                    "type": "list",
+                    "description": "The keys of the branches that failed or did not settle, ordered by key. They reported no entries.",
+                    "max": 3,
+                    "of": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "write": {
+                "id": "reviews",
+                "lifetime": "transient"
+              },
+              "admittedContext": null,
+              "settlement": null
+            },
+            {
+              "kind": "group",
+              "id": "votes:node:2",
+              "workflowDefinitionId": "votes",
+              "order": 1,
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "votes"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "mapId": "checks",
+              "name": "Verify",
+              "source": {
+                "nodeId": "votes:node:1",
+                "field": "kept"
+              },
+              "key": "id",
+              "label": "title",
+              "width": 6,
+              "votes": 3,
+              "stages": [
+                {
+                  "step": "verify",
+                  "name": "Verify"
+                }
+              ],
+              "retry": null,
+              "reducer": {
+                "id": "quorum",
+                "version": 1,
+                "params": {
+                  "vote": "verdict",
+                  "min_valid": 2,
+                  "max_refuted": 1
+                },
+                "contract": {
+                  "passed": {
+                    "type": "list",
+                    "description": "The verdicts that reached the quorum. One verdict per item over its 3 votes, ordered by the item key.",
+                    "max": 6,
+                    "unique": "key",
+                    "of": {
+                      "type": "object",
+                      "fields": {
+                        "key": {
+                          "type": "string",
+                          "description": "The key of the item that the verdict counts: its unique key, or its position in the list."
+                        },
+                        "label": {
+                          "type": "string",
+                          "description": "The display label of that item."
+                        },
+                        "valid": {
+                          "type": "number",
+                          "description": "How many branches voted valid."
+                        },
+                        "refuted": {
+                          "type": "number",
+                          "description": "How many branches voted refuted."
+                        },
+                        "abstain": {
+                          "type": "number",
+                          "description": "How many branches abstained, failed, or did not settle."
+                        },
+                        "reason": {
+                          "type": "string",
+                          "description": "The counts against the thresholds that decided the verdict."
+                        }
+                      }
+                    }
+                  },
+                  "rejected": {
+                    "type": "list",
+                    "description": "The verdicts that did not reach the quorum. One verdict per item over its 3 votes, ordered by the item key.",
+                    "max": 6,
+                    "unique": "key",
+                    "of": {
+                      "type": "object",
+                      "fields": {
+                        "key": {
+                          "type": "string",
+                          "description": "The key of the item that the verdict counts: its unique key, or its position in the list."
+                        },
+                        "label": {
+                          "type": "string",
+                          "description": "The display label of that item."
+                        },
+                        "valid": {
+                          "type": "number",
+                          "description": "How many branches voted valid."
+                        },
+                        "refuted": {
+                          "type": "number",
+                          "description": "How many branches voted refuted."
+                        },
+                        "abstain": {
+                          "type": "number",
+                          "description": "How many branches abstained, failed, or did not settle."
+                        },
+                        "reason": {
+                          "type": "string",
+                          "description": "The counts against the thresholds that decided the verdict."
+                        }
+                      }
+                    }
+                  },
+                  "failed": {
+                    "type": "list",
+                    "description": "The keys of the branches that failed or did not settle, ordered by key. Each abstained.",
+                    "max": 18,
+                    "of": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "write": {
+                "id": "checks",
+                "lifetime": "transient"
+              },
+              "admittedContext": null,
+              "settlement": null
+            },
+            {
+              "kind": "step",
+              "id": "votes:node:3",
+              "workflowDefinitionId": "votes",
+              "order": 2,
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "votes"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "definitionId": "report",
+              "name": "Report",
+              "then": null,
+              "retry": null
+            }
+          ],
+          "dependencies": [
+            {
+              "nodeId": "votes:node:2",
+              "dependsOn": "votes:node:1"
+            },
+            {
+              "nodeId": "votes:node:3",
+              "dependsOn": "votes:node:2"
+            }
+          ],
+          "joins": [
+            {
+              "kind": "collect_all",
+              "nodeId": "votes:node:1",
+              "requiredNodeIds": []
+            }
+          ],
+          "budgets": []
+        },
+        "attempts": [
+          {
+            "id": "votes:node:3:attempt:1",
+            "logicalNodeId": "votes:node:3",
+            "workflowDefinitionId": "votes",
+            "definitionId": "report",
+            "sequence": 1,
+            "iteration": 1,
+            "resumeRevertCount": 0,
+            "provenance": {
+              "_tag": "authored"
+            },
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "votes"
+            },
+            "state": {
+              "_tag": "pending"
+            },
+            "parentAttemptId": null,
+            "conversationId": null,
+            "handoff": null,
+            "priorRetryFeedback": null,
+            "forItem": null
+          }
+        ],
+        "frontier": [],
+        "guardrails": {
+          "maxQueueLength": 50,
+          "maxMutationsPerAttempt": 3,
+          "maxSessionInserts": 20,
+          "sessionInsertsUsed": 0,
+          "attemptMutationsUsed": [
+            {
+              "attemptId": "votes:node:3:attempt:1",
+              "used": 0
+            }
+          ]
+        },
+        "status": "ready",
+        "followUp": null,
+        "aggregateSeq": 1
+      }
+    }
+  },
+  "mappedRecovered": {
+    "type": "workflow.control.recovered",
+    "version": 10,
+    "actor": "flywheel",
+    "payload": {
+      "supersededThroughSeq": 0,
+      "degradationReasons": [
+        {
+          "kind": "missing_root"
+        }
+      ],
+      "runtimeIdentity": {
+        "version": "old",
+        "buildId": "old"
+      },
+      "identities": {
+        "workflow": {
+          "source": "recovered",
+          "value": "map"
+        },
+        "step": null,
+        "attempt": null,
+        "conversation": null
+      },
+      "control": {
+        "definitionIdentity": {
+          "workflowDefinitionId": "mapped",
+          "vmVersion": "2",
+          "skills": [],
+          "personas": [],
+          "graphSha256": "aba1fb0073f0c6b6a281085927f8441758573c9c170682ff5f7cabb2ada14ea4",
+          "phases": [
+            {
+              "phaseId": "build",
+              "sha256": "0f9282c48a4f576e3a683a273bf7d2f798f867a3260f92dcdcb922b412c22b66"
+            }
+          ],
+          "steps": [
+            {
+              "stepId": "implement",
+              "policySha256": "7825fd5d5a73417eed30a36457d43959f5bb788f934b7484d4e345cac24fd096",
+              "contentSha256": "69837995288c57e2315c48061852e29e850177d7fbd127f82a9d0f4b894a739c",
+              "outputSha256": "f35cd02cd97b67077a86f78eb15ec16044957e3420ff5787bcf1b5a715f40d06"
+            },
+            {
+              "stepId": "plan",
+              "policySha256": "fc50ee2adc886bcd609831529bb601bdffa8167b716d99f1fa2434f9bb66f353",
+              "contentSha256": "52c2c2934854005bb112b9abca9162857884200f8b57d9b9740ccd888f8b5884",
+              "outputSha256": "cef3639e1cf6df55c21ee68ee14dc98007c74e34d7fdae26e486f862a79950b2"
+            },
+            {
+              "stepId": "review",
+              "policySha256": "bef9bfa20ec5e42dffd03e938e99a8397bb1b8a5481a0d2e01396caf47779051",
+              "contentSha256": "3cd3c0e6717df16b1fe05a73902cb8dfeab0457c2d943dac6e34f7b9ea5ccdd8",
+              "outputSha256": "f35cd02cd97b67077a86f78eb15ec16044957e3420ff5787bcf1b5a715f40d06"
+            },
+            {
+              "stepId": "tail",
+              "policySha256": "a3bdf8e28317df869636a96b8c3abc7d713cd74b34c40486c7549f36e2cd9c78",
+              "contentSha256": "d4749e0a513aad13f1005874f52d5f39da812a14a29dcef24b0226211a99cf4e",
+              "outputSha256": "f35cd02cd97b67077a86f78eb15ec16044957e3420ff5787bcf1b5a715f40d06"
+            }
+          ]
+        },
+        "workflowName": "Mapped",
+        "graph": {
+          "nodes": [
+            {
+              "kind": "step",
+              "id": "mapped:node:1",
+              "workflowDefinitionId": "mapped",
+              "order": 0,
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "mapped"
+              },
+              "state": {
+                "_tag": "ready"
+              },
+              "definitionId": "plan",
+              "name": "Plan",
+              "then": null,
+              "retry": null
+            },
+            {
+              "kind": "phase",
+              "id": "mapped:node:2",
+              "workflowDefinitionId": "mapped",
+              "order": 1,
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "mapped"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "phaseId": "build",
+              "name": "build"
+            },
+            {
+              "kind": "group",
+              "id": "mapped:node:2:node:1",
+              "workflowDefinitionId": "mapped",
+              "order": 2,
+              "ownership": {
+                "_tag": "phase",
+                "workflowDefinitionId": "mapped",
+                "phaseId": "build",
+                "parentNodeId": "mapped:node:2"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "mapId": "per-item",
+              "name": "per-item",
+              "source": {
+                "nodeId": "mapped:node:1",
+                "field": "items"
+              },
+              "key": "id",
+              "label": "title",
+              "width": 3,
+              "stages": [
+                {
+                  "step": "implement",
+                  "name": "Implement"
+                },
+                {
+                  "step": "review",
+                  "name": "Review"
+                }
+              ],
+              "retry": null,
+              "reducer": {
+                "id": "collect",
+                "version": 1,
+                "params": {},
+                "contract": {
+                  "total": {
+                    "type": "number",
+                    "description": "How many branches the frozen manifest admitted."
+                  },
+                  "completed": {
+                    "type": "number",
+                    "description": "How many branches completed every stage."
+                  },
+                  "failed": {
+                    "type": "number",
+                    "description": "How many branches failed a stage."
+                  },
+                  "items": {
+                    "type": "list",
+                    "description": "One item per branch, ordered by key.",
+                    "max": 3,
+                    "unique": "key",
+                    "of": {
+                      "type": "object",
+                      "fields": {
+                        "key": {
+                          "type": "string",
+                          "description": "The branch identity: the item's unique key."
+                        },
+                        "disposition": {
+                          "type": "enum",
+                          "description": "How the branch ended.",
+                          "values": [
+                            "completed",
+                            "failed"
+                          ]
+                        },
+                        "handoff": {
+                          "type": "object",
+                          "description": "The handoff of the branch's last stage, or null when the branch failed.",
+                          "nullable": true,
+                          "fields": {
+                            "step_id": {
+                              "type": "string",
+                              "description": "The attempt that wrote the handoff."
+                            },
+                            "sha256": {
+                              "type": "string",
+                              "description": "The sha256 of the handoff content."
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "write": {
+                "id": "reviews",
+                "lifetime": "durable",
+                "supersedes": []
+              },
+              "admittedContext": null,
+              "settlement": null
+            },
+            {
+              "kind": "step",
+              "id": "mapped:node:3",
+              "workflowDefinitionId": "mapped",
+              "order": 3,
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "mapped"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "definitionId": "tail",
+              "name": "Tail",
+              "then": null,
+              "retry": null
+            }
+          ],
+          "dependencies": [
+            {
+              "nodeId": "mapped:node:2",
+              "dependsOn": "mapped:node:1"
+            },
+            {
+              "nodeId": "mapped:node:3",
+              "dependsOn": "mapped:node:2"
+            }
+          ],
+          "joins": [],
+          "budgets": []
+        },
+        "attempts": [
+          {
+            "id": "mapped:node:1:attempt:1",
+            "logicalNodeId": "mapped:node:1",
+            "workflowDefinitionId": "mapped",
+            "definitionId": "plan",
+            "sequence": 1,
+            "iteration": 1,
+            "resumeRevertCount": 0,
+            "provenance": {
+              "_tag": "authored"
+            },
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "mapped"
+            },
+            "state": {
+              "_tag": "pending"
+            },
+            "parentAttemptId": null,
+            "conversationId": null,
+            "handoff": null,
+            "priorRetryFeedback": null,
+            "forItem": null
+          },
+          {
+            "id": "mapped:node:3:attempt:1",
+            "logicalNodeId": "mapped:node:3",
+            "workflowDefinitionId": "mapped",
+            "definitionId": "tail",
+            "sequence": 1,
+            "iteration": 1,
+            "resumeRevertCount": 0,
+            "provenance": {
+              "_tag": "authored"
+            },
+            "ownership": {
+              "_tag": "workflow",
+              "workflowDefinitionId": "mapped"
+            },
+            "state": {
+              "_tag": "pending"
+            },
+            "parentAttemptId": null,
+            "conversationId": null,
+            "handoff": null,
+            "priorRetryFeedback": null,
+            "forItem": null
+          }
+        ],
+        "frontier": [
+          "mapped:node:1"
+        ],
+        "guardrails": {
+          "maxQueueLength": 50,
+          "maxMutationsPerAttempt": 3,
+          "maxSessionInserts": 20,
+          "sessionInsertsUsed": 0,
+          "attemptMutationsUsed": [
+            {
+              "attemptId": "mapped:node:1:attempt:1",
+              "used": 0
+            },
+            {
+              "attemptId": "mapped:node:3:attempt:1",
+              "used": 0
+            }
+          ]
+        },
+        "status": "ready",
+        "followUp": null,
+        "aggregateSeq": 1
+      }
+    }
+  },
+  "votesExpanded": {
+    "type": "group.expanded",
+    "version": 2,
+    "actor": "flywheel",
+    "payload": {
+      "groupNodeId": "votes:node:2",
+      "itemCount": 1,
+      "changes": [
+        {
+          "kind": "add_node",
+          "node": {
+            "kind": "branch",
+            "id": "votes:node:2:branch:1",
+            "workflowDefinitionId": "votes",
+            "order": 2,
+            "state": {
+              "_tag": "pending"
+            },
+            "ownership": {
+              "_tag": "group",
+              "workflowDefinitionId": "votes",
+              "mapId": "checks",
+              "parentNodeId": "votes:node:2"
+            },
+            "key": "F1#1",
+            "label": "Finding F1 #1",
+            "ordinal": 1,
+            "item": {
+              "id": "F1"
+            },
+            "vote": {
+              "number": 1,
+              "itemKey": "F1",
+              "itemLabel": "Finding F1"
+            }
+          },
+          "forItem": {
+            "id": "F1"
+          }
+        }
+      ],
+      "admittedContext": []
+    }
+  },
+  "votesExpandedPlain": {
+    "type": "group.expanded",
+    "version": 1,
+    "actor": "flywheel",
+    "payload": {
+      "groupNodeId": "votes:node:2",
+      "itemCount": 1,
+      "changes": [
+        {
+          "kind": "add_node",
+          "node": {
+            "kind": "branch",
+            "id": "votes:node:2:branch:1",
+            "workflowDefinitionId": "votes",
+            "order": 2,
+            "state": {
+              "_tag": "pending"
+            },
+            "ownership": {
+              "_tag": "group",
+              "workflowDefinitionId": "votes",
+              "mapId": "checks",
+              "parentNodeId": "votes:node:2"
+            },
+            "key": "F1#1",
+            "label": "Finding F1 #1",
+            "ordinal": 1,
+            "item": {
+              "id": "F1"
+            }
+          },
+          "forItem": {
+            "id": "F1"
+          }
+        }
+      ],
+      "admittedContext": []
+    }
+  }
+}

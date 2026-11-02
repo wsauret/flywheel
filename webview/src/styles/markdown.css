@@ -1,0 +1,129 @@
+/* Rendered model output: prose, code, and diffs. These selectors match markup
+   the renderer generates as strings, so they are global by necessity. Wide
+   content scrolls inside its own box; the transcript never scrolls sideways. */
+
+.block.assistant p { margin: 0 0 var(--fw-s2); }
+.block.assistant ul, .block.assistant ol { margin: 0 0 var(--fw-s2); padding-left: 20px; }
+.block.assistant li { margin: 2px 0; }
+.block.assistant h1, .block.assistant h2, .block.assistant h3 {
+  font-size: var(--fw-text);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: var(--fw-s4) 0 var(--fw-s2);
+}
+.block.assistant a { color: var(--fw-link); text-underline-offset: 2px; }
+.block.assistant blockquote {
+  margin: 0 0 var(--fw-s2);
+  padding-left: var(--fw-s3);
+  border-left: 2px solid var(--fw-hairline);
+  color: var(--fw-fg-muted);
+}
+.block.assistant table {
+  border-collapse: collapse;
+  margin: var(--fw-s2) 0;
+  display: block;
+  overflow-x: auto;
+  font-size: var(--fw-text-sm);
+}
+.block.assistant th, .block.assistant td {
+  border: 1px solid var(--fw-hairline);
+  padding: var(--fw-s1) var(--fw-s2);
+  text-align: left;
+  word-break: normal;
+  overflow-wrap: break-word;
+  max-width: var(--fw-table-cell-max);
+}
+.block.assistant th { background: var(--fw-bg-raised); font-weight: 600; }
+.block.assistant code {
+  font-family: var(--fw-font-mono);
+  font-size: 0.92em;
+  background: var(--fw-bg-raised-strong);
+  padding: 1px 5px;
+  border-radius: var(--fw-radius-sm);
+}
+
+pre.code {
+  margin: var(--fw-s2) 0;
+  padding: var(--fw-s3) var(--fw-s4);
+  overflow-x: auto;
+  background: var(--fw-code-bg);
+  border: 1px solid var(--fw-hairline);
+  border-radius: var(--fw-radius);
+  font-family: var(--fw-font-mono);
+  font-size: var(--fw-text-sm);
+  line-height: 1.5;
+  color: var(--fw-fg);
+}
+pre.code code { background: none; padding: 0; font-size: inherit; }
+pre.code.message-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+/* The block's header row: its language, and a copy that appears when the
+   pointer is over the block. The row sits in flow above the code, so a
+   narrow panel never draws the label over the first line. It stays at the
+   left edge while a long line scrolls the block sideways. */
+.code-tools {
+  position: sticky;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--fw-s2);
+  margin-bottom: var(--fw-s1);
+  font-family: var(--fw-font);
+  line-height: 1.4;
+}
+.code-copy {
+  font-size: var(--fw-text-2xs);
+  line-height: 1.4;
+  padding: 0 var(--fw-s1);
+  color: var(--fw-fg-muted);
+  background: var(--fw-bg-raised);
+  border: 1px solid var(--fw-hairline);
+  border-radius: var(--fw-radius-sm);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--fw-motion) var(--fw-ease);
+}
+pre.code:hover .code-copy, .code-copy:focus-visible, .code-copy[data-copied] { opacity: 1; }
+.code-copy[data-copied] { color: var(--fw-success); }
+@media (pointer: coarse) { .code-copy { opacity: 1; } }
+.code-lang {
+  font-size: var(--fw-text-2xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fw-fg-muted);
+  opacity: 0.7;
+}
+
+/* Diffs: the runtime already computed the patch; this only colours it. The
+   box scrolls sideways for long lines. Its one column is as wide as the
+   longest row, and grows to the box when the rows are shorter, so every row
+   stretches to the same width and a row's tint runs the whole scrolled length
+   instead of stopping at the edge of the box the way a block row's own width
+   would. The intrinsic size must be the minimum here: a percentage minimum
+   is the base size, and a track never grows past its base when the box has
+   no free space, which is exactly the overflowing case. */
+.diff {
+  display: grid;
+  grid-template-columns: minmax(max-content, 100%);
+  margin: var(--fw-s2) 0;
+  border: 1px solid var(--fw-hairline);
+  border-radius: var(--fw-radius);
+  overflow-x: auto;
+  font-family: var(--fw-font-mono);
+  font-size: var(--fw-text-sm);
+}
+.diff-line { padding: 0 var(--fw-s2); white-space: pre; }
+.diff-add { background: var(--fw-diff-add-bg); }
+.diff-del { background: var(--fw-diff-del-bg); }
+.standard-diffs .diff-add { background: var(--fw-diff-add-standard-bg); }
+.standard-diffs .diff-del { background: var(--fw-diff-del-standard-bg); }
+.diff-hunk { color: var(--fw-fg-muted); background: var(--fw-bg-raised); }
+
+/* highlight.js mapped onto the host's syntax tokens rather than its own
+   palette, so code in the transcript matches code in the editor. */
+.hljs-keyword, .hljs-selector-tag, .hljs-built_in { color: var(--fw-chat-code-keyword); }
+.hljs-string, .hljs-attr { color: var(--fw-chat-code-string); }
+.hljs-number, .hljs-literal { color: var(--fw-chat-code-number); }
+.hljs-comment, .hljs-quote { color: var(--fw-fg-muted); font-style: italic; }
+.hljs-title, .hljs-function .hljs-title { color: var(--fw-chat-code-function); }
+.hljs-type, .hljs-class .hljs-title { color: var(--fw-chat-code-type); }

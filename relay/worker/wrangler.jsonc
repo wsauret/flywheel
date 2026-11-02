@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "flywheel-relay",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-27",
+  "routes": [{ "pattern": "relay.flywl.sh", "custom_domain": true }],
+  "durable_objects": {
+    "bindings": [
+      { "name": "RELAY_RUNTIME", "class_name": "RelayRuntime" },
+      { "name": "REPORTS", "class_name": "ReportInbox" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["RelayRuntime"] },
+    { "tag": "v2", "new_sqlite_classes": ["ReportInbox"] }
+  ],
+  "ratelimits": [
+    { "name": "REPORTS_RATE_LIMITER", "namespace_id": "1002", "simple": { "limit": 5, "period": 60 } },
+    { "name": "RELAY_SOCKET_RATE_LIMITER", "namespace_id": "1003", "simple": { "limit": 300, "period": 60 } }
+  ],
+  // The daily byte budget per runtime id; relay/README.md (Abuse limits).
+  // RELAY_ADMISSION is set as a secret instead, so a deploy never resets it.
+  "vars": { "RELAY_DAILY_GIB": "8" },
+  "observability": { "enabled": true }
+}

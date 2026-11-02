@@ -1,0 +1,5 @@
+setuptools==68.0.0
+setuptools-scm==9.2.2
+wheel==0.46.3
+oldest-supported-numpy==2023.12.21
+extension-helpers==1.2.0

@@ -1,0 +1,674 @@
+{
+  "identity": {
+    "workerRunId": "2fd71c41-abce-415c-8528-40bf7dd91495",
+    "label": "psf__requests-6028-0",
+    "profileId": "<profile>",
+    "authorityIncarnation": "d19a84bf-5bd4-4ce6-991b-71d89fd19349",
+    "usageDbFile": "<home>/.flywheel/auth/profiles/<profile>/subscription-usage-authority-v2.sqlite",
+    "conversation": "stateless"
+  },
+  "requests": [
+    {
+      "workerRunId": "2fd71c41-abce-415c-8528-40bf7dd91495",
+      "requestId": "72385d25-4871-4c8f-aeb7-4282daf05b20",
+      "identity": {
+        "providerSessionKey": "agent-e1a54527-ce94-40bf-a3d7-5318f970e14c"
+      },
+      "turn": 1
+    },
+    {
+      "workerRunId": "2fd71c41-abce-415c-8528-40bf7dd91495",
+      "requestId": "04d2a930-a955-42b4-8ca4-c8a95a2943da",
+      "identity": {
+        "providerSessionKey": "agent-e1a54527-ce94-40bf-a3d7-5318f970e14c"
+      },
+      "turn": 2
+    },
+    {
+      "workerRunId": "2fd71c41-abce-415c-8528-40bf7dd91495",
+      "requestId": "c7244b88-93c7-4558-a171-8063691d30bf",
+      "identity": {
+        "providerSessionKey": "agent-e1a54527-ce94-40bf-a3d7-5318f970e14c"
+      },
+      "turn": 3
+    },
+    {
+      "workerRunId": "2fd71c41-abce-415c-8528-40bf7dd91495",
+      "requestId": "02c2a4ee-a288-48eb-93c3-97381608b6c0",
+      "identity": {
+        "providerSessionKey": "agent-e1a54527-ce94-40bf-a3d7-5318f970e14c"
+      },
+      "turn": 4
+    },
+    {
+      "workerRunId": "2fd71c41-abce-415c-8528-40bf7dd91495",
+      "requestId": "32d606cd-3c06-4d2e-8ea5-06c5f4f91a08",
+      "identity": {
+        "providerSessionKey": "agent-e1a54527-ce94-40bf-a3d7-5318f970e14c"
+      },
+      "turn": 5
+    },
+    {
+      "workerRunId": "2fd71c41-abce-415c-8528-40bf7dd91495",
+      "requestId": "fc48eee8-aa21-424b-b5f0-626e5982ed78",
+      "identity": {
+        "providerSessionKey": "agent-e1a54527-ce94-40bf-a3d7-5318f970e14c"
+      },
+      "turn": 6
+    },
+    {
+      "workerRunId": "2fd71c41-abce-415c-8528-40bf7dd91495",
+      "requestId": "7ecea9e4-941d-47c4-808b-7e09cf6dc37b",
+      "identity": {
+        "providerSessionKey": "agent-e1a54527-ce94-40bf-a3d7-5318f970e14c"
+      },
+      "turn": 7
+    },
+    {
+      "workerRunId": "2fd71c41-abce-415c-8528-40bf7dd91495",
+      "requestId": "3caa490c-9475-475a-966a-2bdb40848fdf",
+      "identity": {
+        "providerSessionKey": "agent-e1a54527-ce94-40bf-a3d7-5318f970e14c"
+      },
+      "turn": 8
+    },
+    {
+      "workerRunId": "2fd71c41-abce-415c-8528-40bf7dd91495",
+      "requestId": "de0be232-e4a6-4bc8-86b7-1962d7f87e68",
+      "identity": {
+        "providerSessionKey": "agent-e1a54527-ce94-40bf-a3d7-5318f970e14c"
+      },
+      "turn": 9
+    },
+    {
+      "workerRunId": "2fd71c41-abce-415c-8528-40bf7dd91495",
+      "requestId": "26eabd55-7661-4af2-ad5e-a23bd0f80818",
+      "identity": {
+        "providerSessionKey": "agent-e1a54527-ce94-40bf-a3d7-5318f970e14c"
+      },
+      "turn": 10
+    },
+    {
+      "workerRunId": "2fd71c41-abce-415c-8528-40bf7dd91495",
+      "requestId": "b28b7c0e-0b91-4e96-9370-c94333376a31",
+      "identity": {
+        "providerSessionKey": "agent-e1a54527-ce94-40bf-a3d7-5318f970e14c"
+      },
+      "turn": 11
+    },
+    {
+      "workerRunId": "2fd71c41-abce-415c-8528-40bf7dd91495",
+      "requestId": "bda99aef-5f64-4a1f-92cf-018cd35240f9",
+      "identity": {
+        "providerSessionKey": "agent-e1a54527-ce94-40bf-a3d7-5318f970e14c"
+      },
+      "turn": 12
+    },
+    {
+      "workerRunId": "2fd71c41-abce-415c-8528-40bf7dd91495",
+      "requestId": "2d753006-4c32-43a0-b326-195fb0ad8e09",
+      "identity": {
+        "providerSessionKey": "agent-e1a54527-ce94-40bf-a3d7-5318f970e14c"
+      },
+      "turn": 13
+    }
+  ],
+  "entries": [
+    {
+      "attemptId": "72385d25-4871-4c8f-aeb7-4282daf05b20",
+      "occurredAt": "2026-10-12T02:48:12.784Z",
+      "profileId": "<profile>",
+      "attribution": {
+        "kind": "candidate",
+        "providerId": "chatgpt",
+        "instanceId": "99e54bc1-2601-4510-90e8-738696864fd6"
+      },
+      "spendMode": "included",
+      "credentialLineage": "99e54bc1-2601-4510-90e8-738696864fd6",
+      "model": "gpt-6.1-sol",
+      "tokens": {
+        "input": 12958,
+        "output": 128,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "reasoning": 0
+      },
+      "classification": "subscription_equivalent",
+      "price": {
+        "kind": "priced",
+        "estimatedUsd": 0.027196,
+        "rateCard": {
+          "highContext.cacheRead": 0.2,
+          "highContext.cacheWrite": 5,
+          "highContext.cacheWrite1h": 8,
+          "highContext.input": 4,
+          "highContext.output": 15,
+          "highContext.reasoning": 15,
+          "standard.cacheRead": 0.1,
+          "standard.cacheWrite": 2.5,
+          "standard.cacheWrite1h": 4,
+          "standard.input": 2,
+          "standard.output": 10,
+          "standard.reasoning": 10
+        },
+        "provenance": "{\"source\":\"provider-docs\",\"provider\":\"openai\",\"model\":\"gpt-6.1-sol\"}"
+      },
+      "currency": "USD"
+    },
+    {
+      "attemptId": "04d2a930-a955-42b4-8ca4-c8a95a2943da",
+      "occurredAt": "2026-10-12T02:48:19.970Z",
+      "profileId": "<profile>",
+      "attribution": {
+        "kind": "candidate",
+        "providerId": "chatgpt",
+        "instanceId": "99e54bc1-2601-4510-90e8-738696864fd6"
+      },
+      "spendMode": "included",
+      "credentialLineage": "99e54bc1-2601-4510-90e8-738696864fd6",
+      "model": "gpt-6.1-sol",
+      "tokens": {
+        "input": 6317,
+        "output": 175,
+        "cacheRead": 12800,
+        "cacheWrite": 0,
+        "reasoning": 0
+      },
+      "classification": "subscription_equivalent",
+      "price": {
+        "kind": "priced",
+        "estimatedUsd": 0.015664,
+        "rateCard": {
+          "highContext.cacheRead": 0.2,
+          "highContext.cacheWrite": 5,
+          "highContext.cacheWrite1h": 8,
+          "highContext.input": 4,
+          "highContext.output": 15,
+          "highContext.reasoning": 15,
+          "standard.cacheRead": 0.1,
+          "standard.cacheWrite": 2.5,
+          "standard.cacheWrite1h": 4,
+          "standard.input": 2,
+          "standard.output": 10,
+          "standard.reasoning": 10
+        },
+        "provenance": "{\"source\":\"provider-docs\",\"provider\":\"openai\",\"model\":\"gpt-6.1-sol\"}"
+      },
+      "currency": "USD"
+    },
+    {
+      "attemptId": "c7244b88-93c7-4558-a171-8063691d30bf",
+      "occurredAt": "2026-10-12T02:48:33.645Z",
+      "profileId": "<profile>",
+      "attribution": {
+        "kind": "candidate",
+        "providerId": "chatgpt",
+        "instanceId": "99e54bc1-2601-4510-90e8-738696864fd6"
+      },
+      "spendMode": "included",
+      "credentialLineage": "99e54bc1-2601-4510-90e8-738696864fd6",
+      "model": "gpt-6.1-sol",
+      "tokens": {
+        "input": 16257,
+        "output": 360,
+        "cacheRead": 18944,
+        "cacheWrite": 0,
+        "reasoning": 97
+      },
+      "classification": "subscription_equivalent",
+      "price": {
+        "kind": "priced",
+        "estimatedUsd": 0.038008400000000005,
+        "rateCard": {
+          "highContext.cacheRead": 0.2,
+          "highContext.cacheWrite": 5,
+          "highContext.cacheWrite1h": 8,
+          "highContext.input": 4,
+          "highContext.output": 15,
+          "highContext.reasoning": 15,
+          "standard.cacheRead": 0.1,
+          "standard.cacheWrite": 2.5,
+          "standard.cacheWrite1h": 4,
+          "standard.input": 2,
+          "standard.output": 10,
+          "standard.reasoning": 10
+        },
+        "provenance": "{\"source\":\"provider-docs\",\"provider\":\"openai\",\"model\":\"gpt-6.1-sol\"}"
+      },
+      "currency": "USD"
+    },
+    {
+      "attemptId": "02c2a4ee-a288-48eb-93c3-97381608b6c0",
+      "occurredAt": "2026-10-12T02:48:41.717Z",
+      "profileId": "<profile>",
+      "attribution": {
+        "kind": "candidate",
+        "providerId": "chatgpt",
+        "instanceId": "99e54bc1-2601-4510-90e8-738696864fd6"
+      },
+      "spendMode": "included",
+      "credentialLineage": "99e54bc1-2601-4510-90e8-738696864fd6",
+      "model": "gpt-6.1-sol",
+      "tokens": {
+        "input": 29201,
+        "output": 191,
+        "cacheRead": 35072,
+        "cacheWrite": 0,
+        "reasoning": 57
+      },
+      "classification": "subscription_equivalent",
+      "price": {
+        "kind": "priced",
+        "estimatedUsd": 0.06381919999999999,
+        "rateCard": {
+          "highContext.cacheRead": 0.2,
+          "highContext.cacheWrite": 5,
+          "highContext.cacheWrite1h": 8,
+          "highContext.input": 4,
+          "highContext.output": 15,
+          "highContext.reasoning": 15,
+          "standard.cacheRead": 0.1,
+          "standard.cacheWrite": 2.5,
+          "standard.cacheWrite1h": 4,
+          "standard.input": 2,
+          "standard.output": 10,
+          "standard.reasoning": 10
+        },
+        "provenance": "{\"source\":\"provider-docs\",\"provider\":\"openai\",\"model\":\"gpt-6.1-sol\"}"
+      },
+      "currency": "USD"
+    },
+    {
+      "attemptId": "32d606cd-3c06-4d2e-8ea5-06c5f4f91a08",
+      "occurredAt": "2026-10-12T02:49:03.800Z",
+      "profileId": "<profile>",
+      "attribution": {
+        "kind": "candidate",
+        "providerId": "chatgpt",
+        "instanceId": "99e54bc1-2601-4510-90e8-738696864fd6"
+      },
+      "spendMode": "included",
+      "credentialLineage": "99e54bc1-2601-4510-90e8-738696864fd6",
+      "model": "gpt-6.1-sol",
+      "tokens": {
+        "input": 2576,
+        "output": 763,
+        "cacheRead": 64128,
+        "cacheWrite": 0,
+        "reasoning": 127
+      },
+      "classification": "subscription_equivalent",
+      "price": {
+        "kind": "priced",
+        "estimatedUsd": 0.019194799999999998,
+        "rateCard": {
+          "highContext.cacheRead": 0.2,
+          "highContext.cacheWrite": 5,
+          "highContext.cacheWrite1h": 8,
+          "highContext.input": 4,
+          "highContext.output": 15,
+          "highContext.reasoning": 15,
+          "standard.cacheRead": 0.1,
+          "standard.cacheWrite": 2.5,
+          "standard.cacheWrite1h": 4,
+          "standard.input": 2,
+          "standard.output": 10,
+          "standard.reasoning": 10
+        },
+        "provenance": "{\"source\":\"provider-docs\",\"provider\":\"openai\",\"model\":\"gpt-6.1-sol\"}"
+      },
+      "currency": "USD"
+    },
+    {
+      "attemptId": "fc48eee8-aa21-424b-b5f0-626e5982ed78",
+      "occurredAt": "2026-10-12T02:49:06.162Z",
+      "profileId": "<profile>",
+      "attribution": {
+        "kind": "candidate",
+        "providerId": "chatgpt",
+        "instanceId": "99e54bc1-2601-4510-90e8-738696864fd6"
+      },
+      "spendMode": "included",
+      "credentialLineage": "99e54bc1-2601-4510-90e8-738696864fd6",
+      "model": "gpt-6.1-sol",
+      "tokens": {
+        "input": 935,
+        "output": 35,
+        "cacheRead": 66560,
+        "cacheWrite": 0,
+        "reasoning": 0
+      },
+      "classification": "subscription_equivalent",
+      "price": {
+        "kind": "priced",
+        "estimatedUsd": 0.008876,
+        "rateCard": {
+          "highContext.cacheRead": 0.2,
+          "highContext.cacheWrite": 5,
+          "highContext.cacheWrite1h": 8,
+          "highContext.input": 4,
+          "highContext.output": 15,
+          "highContext.reasoning": 15,
+          "standard.cacheRead": 0.1,
+          "standard.cacheWrite": 2.5,
+          "standard.cacheWrite1h": 4,
+          "standard.input": 2,
+          "standard.output": 10,
+          "standard.reasoning": 10
+        },
+        "provenance": "{\"source\":\"provider-docs\",\"provider\":\"openai\",\"model\":\"gpt-6.1-sol\"}"
+      },
+      "currency": "USD"
+    },
+    {
+      "attemptId": "7ecea9e4-941d-47c4-808b-7e09cf6dc37b",
+      "occurredAt": "2026-10-12T02:49:22.633Z",
+      "profileId": "<profile>",
+      "attribution": {
+        "kind": "candidate",
+        "providerId": "chatgpt",
+        "instanceId": "99e54bc1-2601-4510-90e8-738696864fd6"
+      },
+      "spendMode": "included",
+      "credentialLineage": "99e54bc1-2601-4510-90e8-738696864fd6",
+      "model": "gpt-6.1-sol",
+      "tokens": {
+        "input": 297,
+        "output": 562,
+        "cacheRead": 67328,
+        "cacheWrite": 0,
+        "reasoning": 100
+      },
+      "classification": "subscription_equivalent",
+      "price": {
+        "kind": "priced",
+        "estimatedUsd": 0.0129468,
+        "rateCard": {
+          "highContext.cacheRead": 0.2,
+          "highContext.cacheWrite": 5,
+          "highContext.cacheWrite1h": 8,
+          "highContext.input": 4,
+          "highContext.output": 15,
+          "highContext.reasoning": 15,
+          "standard.cacheRead": 0.1,
+          "standard.cacheWrite": 2.5,
+          "standard.cacheWrite1h": 4,
+          "standard.input": 2,
+          "standard.output": 10,
+          "standard.reasoning": 10
+        },
+        "provenance": "{\"source\":\"provider-docs\",\"provider\":\"openai\",\"model\":\"gpt-6.1-sol\"}"
+      },
+      "currency": "USD"
+    },
+    {
+      "attemptId": "3caa490c-9475-475a-966a-2bdb40848fdf",
+      "occurredAt": "2026-10-12T02:49:25.899Z",
+      "profileId": "<profile>",
+      "attribution": {
+        "kind": "candidate",
+        "providerId": "chatgpt",
+        "instanceId": "99e54bc1-2601-4510-90e8-738696864fd6"
+      },
+      "spendMode": "included",
+      "credentialLineage": "99e54bc1-2601-4510-90e8-738696864fd6",
+      "model": "gpt-6.1-sol",
+      "tokens": {
+        "input": 1353,
+        "output": 35,
+        "cacheRead": 67456,
+        "cacheWrite": 0,
+        "reasoning": 0
+      },
+      "classification": "subscription_equivalent",
+      "price": {
+        "kind": "priced",
+        "estimatedUsd": 0.0098016,
+        "rateCard": {
+          "highContext.cacheRead": 0.2,
+          "highContext.cacheWrite": 5,
+          "highContext.cacheWrite1h": 8,
+          "highContext.input": 4,
+          "highContext.output": 15,
+          "highContext.reasoning": 15,
+          "standard.cacheRead": 0.1,
+          "standard.cacheWrite": 2.5,
+          "standard.cacheWrite1h": 4,
+          "standard.input": 2,
+          "standard.output": 10,
+          "standard.reasoning": 10
+        },
+        "provenance": "{\"source\":\"provider-docs\",\"provider\":\"openai\",\"model\":\"gpt-6.1-sol\"}"
+      },
+      "currency": "USD"
+    },
+    {
+      "attemptId": "de0be232-e4a6-4bc8-86b7-1962d7f87e68",
+      "occurredAt": "2026-10-12T02:49:50.672Z",
+      "profileId": "<profile>",
+      "attribution": {
+        "kind": "candidate",
+        "providerId": "chatgpt",
+        "instanceId": "99e54bc1-2601-4510-90e8-738696864fd6"
+      },
+      "spendMode": "included",
+      "credentialLineage": "99e54bc1-2601-4510-90e8-738696864fd6",
+      "model": "gpt-6.1-sol",
+      "tokens": {
+        "input": 422,
+        "output": 701,
+        "cacheRead": 68608,
+        "cacheWrite": 0,
+        "reasoning": 241
+      },
+      "classification": "subscription_equivalent",
+      "price": {
+        "kind": "priced",
+        "estimatedUsd": 0.0147148,
+        "rateCard": {
+          "highContext.cacheRead": 0.2,
+          "highContext.cacheWrite": 5,
+          "highContext.cacheWrite1h": 8,
+          "highContext.input": 4,
+          "highContext.output": 15,
+          "highContext.reasoning": 15,
+          "standard.cacheRead": 0.1,
+          "standard.cacheWrite": 2.5,
+          "standard.cacheWrite1h": 4,
+          "standard.input": 2,
+          "standard.output": 10,
+          "standard.reasoning": 10
+        },
+        "provenance": "{\"source\":\"provider-docs\",\"provider\":\"openai\",\"model\":\"gpt-6.1-sol\"}"
+      },
+      "currency": "USD"
+    },
+    {
+      "attemptId": "26eabd55-7661-4af2-ad5e-a23bd0f80818",
+      "occurredAt": "2026-10-12T02:49:54.571Z",
+      "profileId": "<profile>",
+      "attribution": {
+        "kind": "candidate",
+        "providerId": "chatgpt",
+        "instanceId": "99e54bc1-2601-4510-90e8-738696864fd6"
+      },
+      "spendMode": "included",
+      "credentialLineage": "99e54bc1-2601-4510-90e8-738696864fd6",
+      "model": "gpt-6.1-sol",
+      "tokens": {
+        "input": 1363,
+        "output": 86,
+        "cacheRead": 68864,
+        "cacheWrite": 0,
+        "reasoning": 0
+      },
+      "classification": "subscription_equivalent",
+      "price": {
+        "kind": "priced",
+        "estimatedUsd": 0.010472400000000001,
+        "rateCard": {
+          "highContext.cacheRead": 0.2,
+          "highContext.cacheWrite": 5,
+          "highContext.cacheWrite1h": 8,
+          "highContext.input": 4,
+          "highContext.output": 15,
+          "highContext.reasoning": 15,
+          "standard.cacheRead": 0.1,
+          "standard.cacheWrite": 2.5,
+          "standard.cacheWrite1h": 4,
+          "standard.input": 2,
+          "standard.output": 10,
+          "standard.reasoning": 10
+        },
+        "provenance": "{\"source\":\"provider-docs\",\"provider\":\"openai\",\"model\":\"gpt-6.1-sol\"}"
+      },
+      "currency": "USD"
+    },
+    {
+      "attemptId": "b28b7c0e-0b91-4e96-9370-c94333376a31",
+      "occurredAt": "2026-10-12T02:50:07.716Z",
+      "profileId": "<profile>",
+      "attribution": {
+        "kind": "candidate",
+        "providerId": "chatgpt",
+        "instanceId": "99e54bc1-2601-4510-90e8-738696864fd6"
+      },
+      "spendMode": "included",
+      "credentialLineage": "99e54bc1-2601-4510-90e8-738696864fd6",
+      "model": "gpt-6.1-sol",
+      "tokens": {
+        "input": 2019,
+        "output": 270,
+        "cacheRead": 70144,
+        "cacheWrite": 0,
+        "reasoning": 140
+      },
+      "classification": "subscription_equivalent",
+      "price": {
+        "kind": "priced",
+        "estimatedUsd": 0.013752400000000001,
+        "rateCard": {
+          "highContext.cacheRead": 0.2,
+          "highContext.cacheWrite": 5,
+          "highContext.cacheWrite1h": 8,
+          "highContext.input": 4,
+          "highContext.output": 15,
+          "highContext.reasoning": 15,
+          "standard.cacheRead": 0.1,
+          "standard.cacheWrite": 2.5,
+          "standard.cacheWrite1h": 4,
+          "standard.input": 2,
+          "standard.output": 10,
+          "standard.reasoning": 10
+        },
+        "provenance": "{\"source\":\"provider-docs\",\"provider\":\"openai\",\"model\":\"gpt-6.1-sol\"}"
+      },
+      "currency": "USD"
+    },
+    {
+      "attemptId": "bda99aef-5f64-4a1f-92cf-018cd35240f9",
+      "occurredAt": "2026-10-12T02:50:12.442Z",
+      "profileId": "<profile>",
+      "attribution": {
+        "kind": "candidate",
+        "providerId": "chatgpt",
+        "instanceId": "99e54bc1-2601-4510-90e8-738696864fd6"
+      },
+      "spendMode": "included",
+      "credentialLineage": "99e54bc1-2601-4510-90e8-738696864fd6",
+      "model": "gpt-6.1-sol",
+      "tokens": {
+        "input": 621,
+        "output": 142,
+        "cacheRead": 72064,
+        "cacheWrite": 0,
+        "reasoning": 0
+      },
+      "classification": "subscription_equivalent",
+      "price": {
+        "kind": "priced",
+        "estimatedUsd": 0.009868400000000001,
+        "rateCard": {
+          "highContext.cacheRead": 0.2,
+          "highContext.cacheWrite": 5,
+          "highContext.cacheWrite1h": 8,
+          "highContext.input": 4,
+          "highContext.output": 15,
+          "highContext.reasoning": 15,
+          "standard.cacheRead": 0.1,
+          "standard.cacheWrite": 2.5,
+          "standard.cacheWrite1h": 4,
+          "standard.input": 2,
+          "standard.output": 10,
+          "standard.reasoning": 10
+        },
+        "provenance": "{\"source\":\"provider-docs\",\"provider\":\"openai\",\"model\":\"gpt-6.1-sol\"}"
+      },
+      "currency": "USD"
+    },
+    {
+      "attemptId": "2d753006-4c32-43a0-b326-195fb0ad8e09",
+      "occurredAt": "2026-10-12T02:50:45.452Z",
+      "profileId": "<profile>",
+      "attribution": {
+        "kind": "candidate",
+        "providerId": "chatgpt",
+        "instanceId": "99e54bc1-2601-4510-90e8-738696864fd6"
+      },
+      "spendMode": "included",
+      "credentialLineage": "99e54bc1-2601-4510-90e8-738696864fd6",
+      "model": "gpt-6.1-sol",
+      "tokens": {
+        "input": 666,
+        "output": 903,
+        "cacheRead": 72576,
+        "cacheWrite": 0,
+        "reasoning": 229
+      },
+      "classification": "subscription_equivalent",
+      "price": {
+        "kind": "priced",
+        "estimatedUsd": 0.0176196,
+        "rateCard": {
+          "highContext.cacheRead": 0.2,
+          "highContext.cacheWrite": 5,
+          "highContext.cacheWrite1h": 8,
+          "highContext.input": 4,
+          "highContext.output": 15,
+          "highContext.reasoning": 15,
+          "standard.cacheRead": 0.1,
+          "standard.cacheWrite": 2.5,
+          "standard.cacheWrite1h": 4,
+          "standard.input": 2,
+          "standard.output": 10,
+          "standard.reasoning": 10
+        },
+        "provenance": "{\"source\":\"provider-docs\",\"provider\":\"openai\",\"model\":\"gpt-6.1-sol\"}"
+      },
+      "currency": "USD"
+    }
+  ],
+  "uncommitted": [],
+  "accounting": {
+    "estimatedUsd": {
+      "kind": "observed",
+      "value": 0.26193439999999996
+    },
+    "billedUsd": {
+      "kind": "observed",
+      "value": 0
+    },
+    "tokens": {
+      "kind": "observed",
+      "value": 764871
+    },
+    "providers": {
+      "kind": "observed",
+      "value": [
+        "chatgpt"
+      ]
+    },
+    "pricedEntryCount": 13,
+    "unpricedEntryCount": 0
+  }
+}

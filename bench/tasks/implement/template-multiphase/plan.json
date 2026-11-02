@@ -1,0 +1,172 @@
+{
+  "schema_version": 1,
+  "summary": "Complete the nested template engine in three ordered phases: a tiny public error-message adjustment, tokenization and structural parsing, then rendering and integration.",
+  "context": {
+    "key_files": [
+      "types.ts",
+      "tokenizer.ts",
+      "render.ts",
+      "render.test.ts"
+    ],
+    "patterns": [
+      "Keep TemplateToken as the tokenizer's typed public output and preserve exact zero-based source offsets.",
+      "Keep render(template, context) as the public integration entry point.",
+      "Use TemplateError from types.ts for all structural parse failures."
+    ],
+    "constraints": [
+      "Implement the renderer in these ordered steps while preserving the existing public `render(template, context)` entry point.",
+      "Preserve the public exports `render` from render.ts, `tokenize` from tokenizer.ts, and `TemplateError` from types.ts because acceptance imports those exact surfaces.",
+      "Keep the implementation self-contained and keep all existing tests green.",
+      "Do not change TemplateToken's discriminated union or its position semantics."
+    ]
+  },
+  "milestones": [
+    {
+      "id": "template-error-message",
+      "goal": "Make the small public TemplateError message adjustment without spending a subagent-sized unit of work on it.",
+      "files": [
+        "types.ts"
+      ],
+      "tasks": [
+        {
+          "id": "prefix-template-errors",
+          "description": "Change the exported TemplateError constructor's message to `Template error: ${message} at position ${position}` while preserving its name and readonly position field.",
+          "files": [
+            "types.ts"
+          ],
+          "test_scenarios": [
+            "The visible TemplateError test constructs the exported class and confirms its name, original detail, and source position remain present."
+          ]
+        }
+      ],
+      "verification": "bun test render.test.ts",
+      "qualitative_verification": "Inspect the phase diff: it should be a one-file, one-line behavior change."
+    },
+    {
+      "id": "tokenizer-and-parser",
+      "goal": "Implement complete token recognition and a stack-based structural parser that supports arbitrary nesting and precise errors.",
+      "files": [
+        "tokenizer.ts",
+        "parser.ts",
+        "types.ts",
+        "render.test.ts"
+      ],
+      "tasks": [
+        {
+          "id": "tokenize-template-syntax",
+          "description": "Complete tokenize() for escaped variables, raw variables, if/each openings, and if/each closings. Preserve literal spans, trim tag-internal path whitespace, and record each token's exact zero-based opening offset.",
+          "files": [
+            "tokenizer.ts",
+            "types.ts"
+          ],
+          "test_scenarios": [
+            "Mixed text, escaped variables, and raw variables produce the exact token sequence and positions.",
+            "Block tags with extra internal whitespace produce trimmed paths.",
+            "Empty input produces no tokens and adjacent tags do not create empty text tokens."
+          ]
+        },
+        {
+          "id": "parse-nested-blocks",
+          "description": "Add parser.ts with a typed nested representation built from TemplateToken values. Match each close with the innermost open block and throw TemplateError at the closing offset for unexpected or mismatched closings and at the opening offset for an unclosed block.",
+          "files": [
+            "parser.ts",
+            "types.ts"
+          ],
+          "test_scenarios": [
+            "Mixed and same-kind nested blocks preserve their tree structure.",
+            "Unexpected and mismatched closings report the closing token position.",
+            "An unclosed block reports its opening token position."
+          ]
+        },
+        {
+          "id": "cover-parser-boundary",
+          "description": "Extend render.test.ts with direct tokenizer and parser cases so this phase's verification exercises token positions, nested structure, and structural TemplateError positions before renderer integration begins.",
+          "files": [
+            "render.test.ts"
+          ],
+          "test_scenarios": [
+            "Visible tests fail on wrong variable offsets, incorrect innermost close matching, or incorrect unclosed-block positions."
+          ]
+        }
+      ],
+      "verification": "bun test render.test.ts",
+      "qualitative_verification": "Inspect tokenizer branches for forward progress and inspect parser stack operations for innermost matching."
+    },
+    {
+      "id": "renderer-integration",
+      "goal": "Render variables and nested blocks from the parsed structure while preserving the public render() API.",
+      "files": [
+        "render.ts",
+        "parser.ts",
+        "tokenizer.ts",
+        "types.ts",
+        "render.test.ts"
+      ],
+      "tasks": [
+        {
+          "id": "resolve-and-escape-values",
+          "description": "Resolve dot-separated paths from the current context. Missing segments, null, and undefined render as empty text; false and zero retain normal string forms. Escape &, <, >, double quote, and single quote in that order for ordinary variables, while triple braces remain raw.",
+          "files": [
+            "render.ts"
+          ],
+          "test_scenarios": [
+            "Nested paths resolve and absent or nullish values become empty text.",
+            "False and zero render as strings.",
+            "Escaped output handles all five characters without double escaping and raw output remains unchanged."
+          ]
+        },
+        {
+          "id": "render-recursive-blocks",
+          "description": "Render parsed if blocks with ordinary JavaScript truthiness and each blocks only for arrays. Evaluate each body with the item as its scoped context, support arbitrary mixed and same-kind nesting, and do not evaluate bodies omitted by a false parent.",
+          "files": [
+            "render.ts",
+            "parser.ts"
+          ],
+          "test_scenarios": [
+            "Truthy and false if values include or omit their body.",
+            "Empty, absent, and non-array each values render no body.",
+            "Nested each and if blocks resolve paths from each item and support same-kind nesting."
+          ]
+        },
+        {
+          "id": "cover-public-integration",
+          "description": "Extend render.test.ts with focused public-API cases for substitutions, blocks, nesting, and structural error positions without importing parser internals.",
+          "files": [
+            "render.test.ts"
+          ],
+          "test_scenarios": [
+            "Visible tests drive render(), tokenize(), and TemplateError through the same public surfaces used by acceptance."
+          ]
+        }
+      ],
+      "verification": "bun test render.test.ts",
+      "qualitative_verification": "Confirm the final diff keeps render(), tokenize(), and TemplateError exported from their original modules and does not expose parser internals."
+    }
+  ],
+  "success_criteria": [
+    "All visible tests pass after every phase's verification gate.",
+    "render() supports escaped and raw variables, dot paths, if blocks, each blocks, item scope, and arbitrary nesting.",
+    "tokenize() preserves exact zero-based source offsets and trims only tag-internal path whitespace.",
+    "TemplateError reports the required opening or closing position for every structural error.",
+    "The exact acceptance import surfaces remain available: render.ts, tokenizer.ts, and types.ts with the named exports pinned above."
+  ],
+  "implementation_contract": {
+    "directives": [
+      {
+        "id": "ordered-phase-gates",
+        "text": "Complete the three phases in order and run each phase's verification before starting or dispatching the next phase.",
+        "completion_check": "The command transcript shows `bun test render.test.ts` after each phase and before work on the next phase."
+      },
+      {
+        "id": "public-import-surfaces",
+        "text": "Preserve `render`, `tokenize`, and `TemplateError` at their current module paths.",
+        "completion_check": "render.test.ts and final verification import those symbols from render.ts, tokenizer.ts, and types.ts without adapters or re-export files."
+      },
+      {
+        "id": "structural-position-contract",
+        "text": "Keep exact source positions through tokenization, parsing, and TemplateError reporting.",
+        "completion_check": "Tests cover variable token offsets plus unexpected, mismatched, and unclosed block positions."
+      }
+    ]
+  }
+}

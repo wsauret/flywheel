@@ -1,0 +1,81 @@
+diff --git a/render.test.ts b/render.test.ts
+new file mode 100644
+--- /dev/null
++++ b/render.test.ts
+@@ -0,0 +1,32 @@
++/// <reference types="bun" />
++import { describe, expect, test } from "bun:test";
++import { render } from "./render.js";
++import { tokenize } from "./tokenizer.js";
++import { TemplateError } from "./types.js";
++
++describe("literal templates", () => {
++  test("renders plain text unchanged", () => {
++    expect(render("Hello, world!")).toBe("Hello, world!");
++  });
++
++  test("renders an empty template", () => {
++    expect(render("")).toBe("");
++  });
++
++  test("preserves whitespace and line breaks", () => {
++    expect(render(" first\n  second ")).toBe(" first\n  second ");
++  });
++
++  test("tokenizes literal text with its source position", () => {
++    expect(tokenize("abc")).toEqual([{ kind: "text", value: "abc", position: 0 }]);
++  });
++});
++
++describe("template errors", () => {
++  test("exports an error with its detail and source position", () => {
++    const error = new TemplateError("Unexpected closing tag", 4);
++    expect(error.name).toBe("TemplateError");
++    expect(error.message).toContain("Unexpected closing tag");
++    expect(error.message).toContain("position 4");
++  });
++});
+diff --git a/render.ts b/render.ts
+new file mode 100644
+--- /dev/null
++++ b/render.ts
+@@ -0,0 +1,8 @@
++import { tokenize } from "./tokenizer.js";
++import type { TemplateContext } from "./types.js";
++
++export function render(template: string, _context: TemplateContext = {}): string {
++  return tokenize(template)
++    .map((token) => token.kind === "text" ? token.value : "")
++    .join("");
++}
+diff --git a/tokenizer.ts b/tokenizer.ts
+new file mode 100644
+--- /dev/null
++++ b/tokenizer.ts
+@@ -0,0 +1,7 @@
++import type { TemplateToken } from "./types.js";
++
++export function tokenize(template: string): TemplateToken[] {
++  return template.length === 0
++    ? []
++    : [{ kind: "text", value: template, position: 0 }];
++}
+diff --git a/types.ts b/types.ts
+new file mode 100644
+--- /dev/null
++++ b/types.ts
+@@ -0,0 +1,14 @@
++export type TemplateContext = Readonly<Record<string, unknown>>;
++
++export type TemplateToken =
++  | { kind: "text"; value: string; position: number }
++  | { kind: "variable"; path: string; escaped: boolean; position: number }
++  | { kind: "open"; block: "if" | "each"; path: string; position: number }
++  | { kind: "close"; block: "if" | "each"; position: number };
++
++export class TemplateError extends Error {
++  constructor(message: string, readonly position: number) {
++    super(`${message} at position ${position}`);
++    this.name = "TemplateError";
++  }
++}

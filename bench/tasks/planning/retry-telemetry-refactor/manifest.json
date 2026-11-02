@@ -1,0 +1,70 @@
+{
+  "mustAddress": [
+    {
+      "id": "m1",
+      "title": "Stale recordSpan claim",
+      "catchCriteria": "The plan corrects or flags the brief's stale `recordSpan` claim: `TraceCollector` in `src/orchestration/session/trace-collector.ts` exposes `startSpan`, `endSpan`, `subscribeToEvents`, `finalize`, and `dispose`, while `TraceSpanOps` in `src/orchestration/session/trace-subscriptions.ts` calls only `startSpan` and `endSpan`; it must not invent a `recordSpan` migration."
+    },
+    {
+      "id": "m2",
+      "title": "Strict start-before-completion invariant",
+      "catchCriteria": "The plan corrects or flags the claim that asynchronous trace delivery lets completion overtake start: `subscribeTraceEvents` uses `delivery: \"direct\"`, `createTraceCollector` records `span.started` after opening the span and records `span.completed` before closing it, and `completeSpan` in `src/orchestration/session/trace-projection.ts` rejects a completion with no prior open start. The refactor must preserve strict rejection rather than add ordering repair or tolerant replay."
+    },
+    {
+      "id": "m3",
+      "title": "Live finalization publication",
+      "catchCriteria": "The plan corrects or flags the dead-code claim: `recordTraceFinalized` in `src/orchestration/session/trace-collector.ts` is called by `finalize` after open spans close and publishes the `trace.finalized` summary. The refactor must retain one equivalent finalization publication path and its summary fields."
+    },
+    {
+      "id": "m4",
+      "title": "Actual trace schema ownership",
+      "catchCriteria": "The plan corrects or flags the wrong-location claim: `TraceFactSchemas`, `TraceFact`, and `parseTraceFact` are defined in `src/orchestration/session/trace-event-types.ts` and registered by `src/orchestration/session/session-fact-registry.ts`, not defined in infra. It must keep the session-owned durable schema out of `src/infra/` while reusing infra's generic `defineFact` primitive."
+    },
+    {
+      "id": "m5",
+      "title": "Canonical lifecycle transition seam",
+      "catchCriteria": "The plan identifies the duplicated live and replay lifecycle state in `createTraceCollector` in `src/orchestration/session/trace-collector.ts` (`openSpans`/`endedSpans`, start/end transitions) and `src/orchestration/session/trace-projection.ts` (`openSpans`, `startSpan`, `completeSpan`) and gives a concrete consolidation design. It must reuse the existing `traceSpanAllowsRoot`, `traceSpanAllowsParent`, and `traceParentRuleDescription` policy instead of creating a second parentage rule set."
+    },
+    {
+      "id": "m6",
+      "title": "Event correlation surface",
+      "catchCriteria": "The plan preserves and explicitly accounts for `subscribeTraceEvents` in `src/orchestration/session/trace-subscriptions.ts` correlations for workflow initialized/completed/paused/failed, queue-step started/completed/failed, agent-run started, and tool/subagent started/completed events. It must retain follow-up-step filtering, workflow/step/worker/tool ID maps, nested `parentToolUseId` parentage, worker cost baselines, and direct ordered delivery."
+    },
+    {
+      "id": "m7",
+      "title": "Persisted tool fact source",
+      "catchCriteria": "The plan includes `createSessionToolExecutionStore.applyStoredEvent` in `src/orchestration/session/tool-execution-store.ts` and the runtime-fact persistence subscriber in `src/orchestration/session/create-session-infra.ts`: stored tool facts must still update the projection before emitting the four `trace.tool.*` and `trace.subagent.*` correlation events, with `executionMode`, `traceKind`, `modelRequestId`, and `parentToolUseId` preserved."
+    },
+    {
+      "id": "m8",
+      "title": "Complete construction and wiring callers",
+      "catchCriteria": "The plan enumerates the sole production collector construction in `acquireSessionResources` in `src/orchestration/session/session-resources-service.ts`, subscription installation in `wireSessionSubscribers` in `src/orchestration/session/create-session-infra.ts`, and both production callers of that wiring: `createChatSession` in `src/orchestration/chat-session.ts` and `createWorkflowHost` in `src/orchestration/workflow-host-factory.ts`. Tracing-disabled behavior must continue to use a null collector."
+    },
+    {
+      "id": "m9",
+      "title": "Durable fact and diagnostic contracts",
+      "catchCriteria": "The plan preserves `TraceFact` in the `SessionEventWriter` fact union in `src/orchestration/session/session-event-writer.ts`, `TraceFactSchemas` registration in `src/orchestration/session/session-fact-registry.ts`, and the stable `span.started`, `span.completed`, and `trace.finalized` event names consumed by `src/infra/event-search.ts`, `src/cli/event-search-format.ts`, and `src/cli/event-search-args.ts`."
+    },
+    {
+      "id": "m10",
+      "title": "Replay and lineage consumers",
+      "catchCriteria": "The plan keeps `loadTraceFromEvents` and `TRACE_EVENT_TYPES` wired into `createSessionLineageInspector` in `src/orchestration/session/lineage-inspector.ts`, and accounts for both inspector constructions in `src/orchestration/app-service/runtime-composition.ts` and `src/orchestration/app-service/runtime-background-worker.ts`, so foreground and background lineage return the same strict trace view."
+    },
+    {
+      "id": "m11",
+      "title": "Lossless shutdown sequencing",
+      "catchCriteria": "The plan preserves the lifecycle order encoded by `composeWorkflowHostLifecycle` in `src/orchestration/workflow-host-lifecycle.ts` and `acquireSessionResources` in `src/orchestration/session/session-resources-service.ts`: drain the event bus, finalize the trace and close open spans, then drain/dispose the session writer before disposing projections and remaining resources. It must not delete finalization on the assumption that ordinary span completions are sufficient."
+    },
+    {
+      "id": "m12",
+      "title": "Focused no-regression proof",
+      "catchCriteria": "The plan names focused tests for strict parentage and orphan rejection, persisted tool/subagent-to-span flow, finalized fact ordering, cost enrichment, lineage replay, tracing-disabled behavior, and resource disposal order, and verifies them with `bun run test -- tests/unit/orchestration/session/trace-parentage.test.ts tests/unit/orchestration/session/trace-events-e2e.test.ts tests/unit/orchestration/session/trace-store.test.ts tests/unit/orchestration/session/trace-collector-finalize.test.ts tests/unit/orchestration/session/trace-cost-enrichment.test.ts tests/unit/orchestration/session/lineage-inspector.test.ts tests/unit/orchestration/session/effect-session-resources.test.ts`."
+    }
+  ],
+  "falsePremises": [
+    "m1",
+    "m2",
+    "m3",
+    "m4"
+  ]
+}

@@ -1,0 +1,1 @@
+Please complete this small template engine. It currently renders only literal text. I need escaped and raw variables, dot paths, nested if and each blocks, and useful structural errors with source positions. Preserve the existing public API and tests, add focused coverage, and verify the result.

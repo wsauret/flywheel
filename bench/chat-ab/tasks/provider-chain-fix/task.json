@@ -1,0 +1,56 @@
+{
+  "id": "provider-chain-fix",
+  "stratum": "production-history",
+  "timeoutMinutes": 45,
+  "sandbox": {
+    "commit": "7228f2a30:flywheel-tui",
+    "paths": [
+      "src",
+      "tests",
+      "docs",
+      "scripts",
+      "patches",
+      "package.json",
+      "bun.lock",
+      "tsconfig.json",
+      "oxlint.config.ts",
+      "knip.jsonc",
+      "AGENTS.md",
+      ".gitignore"
+    ],
+    "patch": "pre-fix.patch",
+    "setup": [
+      [
+        "bun",
+        "install"
+      ]
+    ]
+  },
+  "acceptanceBaseline": {
+    "failToPass": [
+      "acceptance/chatgpt-websocket-quota.test.ts > WebSocket quota failures update shared ChatGPT availability > accepts both terminal frame shapes, every quota code, and optional resets",
+      "acceptance/chatgpt-websocket-quota.test.ts > WebSocket quota failures update shared ChatGPT availability > records the exhausted window so a later automatic request is served by OpenAI API",
+      "acceptance/copilot-spend-abnormal-exit.test.ts > Copilot spend when a stream fails after the billed total > Anthropic liveness failure after billing commits the observed total",
+      "acceptance/copilot-spend-abnormal-exit.test.ts > Copilot spend when a stream fails after the billed total > a repeated commit records the request total once",
+      "acceptance/copilot-spend-abnormal-exit.test.ts > Copilot spend when a stream fails after the billed total > caller cancellation after a billed total still commits it",
+      "acceptance/copilot-spend-abnormal-exit.test.ts > Copilot spend when a stream fails after the billed total > early consumer close commits once and a second close is idempotent",
+      "acceptance/copilot-spend-abnormal-exit.test.ts > Copilot spend when a stream fails after the billed total > the Anthropic adapter commits the observed total",
+      "acceptance/copilot-spend-abnormal-exit.test.ts > Copilot spend when a stream fails after the billed total > the OpenAI Responses adapter commits the observed total",
+      "acceptance/copilot-spend-abnormal-exit.test.ts > Copilot spend when a stream fails after the billed total > the OpenAI chat-completions adapter commits the observed total",
+      "acceptance/provider-chain-availability.test.ts > ChatGPT secondary window > an exhausted active secondary window spends the provider and names its reset",
+      "acceptance/provider-chain-availability.test.ts > availability between requests > a request after the whole chain was spent is rejected with the typed error",
+      "acceptance/provider-chain-availability.test.ts > availability between requests > the next request moves off a provider that was spent since the last one",
+      "acceptance/provider-chain-availability.test.ts > availability between requests > the next request prefers a subscription that recovered",
+      "acceptance/provider-chain-availability.test.ts > healthy resolution emits no session patch > a healthy chain leaves the notice list unchanged, request after request",
+      "acceptance/provider-chain-availability.test.ts > healthy resolution emits no session patch > resolving a notice that is not raised returns the same notice list"
+    ],
+    "passToPass": [
+      "acceptance/chatgpt-websocket-quota.test.ts > WebSocket quota failures update shared ChatGPT availability > regression guard: does not mutate availability for unsupported terminal payloads",
+      "acceptance/copilot-spend-abnormal-exit.test.ts > Copilot spend when a stream fails after the billed total > regression guard: an abnormal exit without a billed total records nothing",
+      "acceptance/copilot-spend-abnormal-exit.test.ts > Copilot spend when a stream fails after the billed total > regression guard: normal completion commits the observed Responses total",
+      "acceptance/provider-chain-availability.test.ts > ChatGPT secondary window > regression guard: an inactive or already reset secondary window is ignored",
+      "acceptance/provider-chain-availability.test.ts > availability between requests > regression guard: head identity stays stable and failover is announced before the fallback request",
+      "acceptance/provider-chain-availability.test.ts > availability between requests > regression guard: quota after produced evidence propagates without starting the fallback"
+    ]
+  }
+}

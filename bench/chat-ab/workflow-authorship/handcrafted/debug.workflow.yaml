@@ -1,0 +1,219 @@
+# Use for a small investigation and fix when the user reports a specific bug and the root cause is not known. The workflow separates root-cause analysis, the fix, and verification. Keep obvious fixes and clear local changes in-process.
+id: debug
+name: Debug
+description: Investigate, fix, and verify a small reported issue.
+phases:
+  - phase: investigate
+    name: Investigate
+    dependencies:
+      - root-cause-analysis
+    brief: |
+
+      # Debug - Investigation
+
+      This agent runs the composed root-cause method and stops at its causal-chain gate. It never edits files: the fix phase owns the change.
+
+      ---
+
+      ## Part 0: Problem Contract
+
+      - Extract the actual behavior, expected behavior, scope, supplied identifiers, constraints, and prior attempts from the request and prior context.
+
+      ---
+
+      ## Part 1: Research
+
+      Investigate without editing files:
+
+      1. Locate the subsystem that owns the observed behavior. Read the entry point, the value's source, its callers, and its consumers.
+      2. Check environment assumptions only when evidence makes an environment mismatch plausible.
+
+      ---
+
+      ## Part 2: Diagnose
+
+      Apply the composed method to the report and the evidence selected above.
+
+      Classify the result as positive, decisive negative, or inconclusive. A positive result confirms the defect and causal chain. A decisive negative proves that there is no defect or change to make. If available evidence is inconclusive, message your parent with `message_session` and wait true, ask only for the specific inaccessible evidence that can unblock the investigation, and continue from its reply. If the reply does not supply the evidence, message your parent again with the blocked or exhausted result of the composed method, and wait true for its decision. An inconclusive result is never a hypothesis and never null, so Fix cannot run on an invented root cause.
+
+      ---
+
+      ## Investigation handoff
+
+      A successful investigation emits either a confirmed defect or a decisive no-change result:
+
+      - `summary`: State how the problem was confirmed, or what proved that no change is needed.
+      - `hypothesis`: State the confirmed root cause and full causal chain with file and line references. Use `null` exclusively for a decisive no-change result.
+      - `evidence`: Cite at least one decisive runtime fact, code invariant, test result, or safe reproduction result. Name where and how the symptom was observed, so that Verify observes it the same way.
+
+      For a decisive no-change result, cite inspected paths, observations, and why they settle the report. Do not use `null` when evidence is inconclusive or inaccessible. Hand off a hypothesis only when its causal chain is complete.
+    output:
+      summary: Concise result of the investigation.
+      fields:
+        hypothesis:
+          type: string
+          nullable: true
+          description: Confirmed root cause and full causal chain. Use null only when decisive evidence proves there is no defect or change to make. Never use null for an inconclusive or inaccessible investigation.
+        evidence:
+          type: list
+          of:
+            type: string
+          min: 1
+          description: Decisive fresh runtime, code, or test observations from this agent.
+    writes:
+      - id: debug-investigation
+        lifetime: durable
+        supersedes: []
+  - phase: fix
+    name: Fix
+    dependencies:
+      - test-driven-development
+    brief: |
+
+      # Debug - Fix
+
+      Make one focused change, with the failing regression written first per the `test-driven-development` package composed above. The artifacts in `## Inherited Artifacts` select the pass:
+
+      - `debug-investigation` without `debug-verification`: the first pass. The investigation's `hypothesis` is the confirmed root cause, and its evidence supports it. Fix only that diagnosis.
+      - `debug-verification`: a repair pass. Each item of its `defects` is a check that still fails on the present tree. Run each one again, diagnose from its output why it still fails within the confirmed causal chain, and repair it on the present tree. `debug-fix`, when present, is the previous pass: keep its changes unless a defect traces to one of them.
+
+      Do not reconstruct an older workflow state: the present tree and the inherited artifacts are the inputs of this pass. When the investigation's `hypothesis` is null, no root cause is confirmed and a listed defect refutes the investigation: return control to Investigation.
+
+      ---
+
+      ## Scope of this fix
+
+      - Address the confirmed root cause, or the listed defects, and nothing else.
+      - If no test framework is available, use the narrowest safe behavior check the investigation evidence supports.
+      - One targeted change, then run the focused check. This agent owns the focused failing regression and its GREEN proof; Verify owns fresh final verification and explicit repository gates.
+      - When a targeted change fails, diagnose why it failed. If the diagnosis refutes the confirmed causal chain, stop without another edit and return control to Investigation. Do not invent a new diagnosis here.
+
+      ---
+
+      ## Return to Investigation
+
+      When the confirmed chain no longer holds, or no root cause is confirmed, make no further edit. Investigation is not a later phase of this workflow, so send this report to your parent with `message_session` and wait true, and continue from it:
+
+      ```
+      ## Refuted Diagnosis
+      - Problem: <original description>
+      - Confirmed chain under test: <the investigation's causal chain>
+      - Targeted change attempted: <the one change and why the chain predicted it>
+      - Refuting evidence: <the fresh output that contradicts the chain>
+      - Changes made so far: <list of files modified, and whether they are still applied>
+      - Recommendation: <what Investigation should trace next>
+      ```
+
+      ---
+
+      ## Fix handoff
+
+      - State the confirmed causal chain in `hypothesis`, with what a repair pass traced within it. Record this agent's fresh RED and GREEN observations of the focused regression in `evidence`; investigation proof guides the hypothesis but is not this agent's acceptance evidence.
+      - In a repair pass, name each listed check in `evidence` with its fresh result.
+      - State the completed fix in `summary` and record the applied change in `fix_description`.
+      - Cite the commands that ran the focused regression in `commands_run`. Verify independently runs the smallest decisive fresh checks and explicit repository gates.
+
+      Hand off when the focused test or behavior check passes for the right reason. A failed check is work to revise from its output, not a reason to stop.
+    output:
+      summary: Concise result of the fix.
+      commands:
+        min: 1
+      fields:
+        hypothesis:
+          type: string
+          description: Confirmed root cause and full causal chain.
+        fix_description:
+          type: string
+          description: The applied change and why it addresses the root cause.
+        evidence:
+          type: list
+          of:
+            type: string
+          min: 1
+          description: Decisive fresh runtime, code, or test observations from this agent. Prior records guide hypotheses only, never current acceptance.
+    writes:
+      - id: debug-fix
+        lifetime: durable
+        supersedes: []
+    if: investigate.hypothesis
+  - repeat:
+      while: verify.defects
+      max: 3
+    phases:
+      - phase: verify
+        name: Verify
+        dependencies:
+          - verification
+        brief: |
+
+          # Debug - Verification & Summary
+
+          This agent never edits files: Fix owns every change. The artifacts in `## Inherited Artifacts` select what this pass verifies:
+
+          - `debug-fix`: the claimed fix. Compare its evidence with the repository diff and fresh behavior. When `debug-verification` is also present, run each of its checks again, its listed defects included.
+          - `debug-investigation` alone, with a null `hypothesis`: no fix ran. Verify the decisive no-change result: freshly observe the reported behavior and check the cited no-change evidence.
+
+          ---
+
+          ## Verify
+
+          This agent owns fresh final verification. Past observations guide hypotheses only, never current acceptance. Apply the composed verification method on the present tree: freshly observe the original symptom, run a fresh focused regression check, and read `git diff` to confirm only intended changes are present. Choose the fewest decisive fresh checks that prove the fix and preserved behavior, plus explicit repository gates; do not run an unrelated broader suite. One fresh check may cover multiple claims. Within this verification pass, stop once those claims are proved rather than adding equivalent checks. Record and cite each Bash command that this agent runs.
+
+          Observe the original symptom where the report observed it, such as the installed binary, the client, or the command that the user ran, as the investigation's evidence describes. This observation is an explicit acceptance requirement of this brief. A passing test, the regression that Fix wrote included, shows intent, not that the symptom is gone, so it never replaces this observation.
+
+          ### Defects
+
+          A failed check is a defect. List each one in `defects` with its exact check and what it showed, then hand off: the workflow returns the list to Fix and verifies again. Hand off an empty list only when no selected check shows the reported symptom or a regression on the present tree. A failure that you prove unrelated to this report, such as another change's broken gate or a baseline failure, goes in `evidence` with its proof, not in `defects`, because Fix cannot repair it. Never omit a defect to end the loop, and never list a speculative one to extend it.
+
+          When a check that the claim needs cannot run because a tool, a surface, or a credential is missing, message your parent with `message_session` and wait true, and name the missing prerequisite. If the check still cannot run, report it as unavailable per the composed method in the Verification line, with the closest equivalent check and its result, and state Low confidence. An unavailable check is not a defect, because Fix cannot repair it, and it is never a pass.
+
+          ### Structured summary
+
+          ```
+          ## Debug Summary
+          **Problem**: [What was broken: exact symptom]
+          **Root Cause**: [Full causal chain from trigger to symptom, with file:line references]
+          **Fix**: [What was changed and why: the causal explanation, not just "changed X to Y"]
+          **Test Coverage**: [What test was added/modified to prevent recurrence]
+          **Verification**: [Fresh symptom, regression, and diff observations from this agent, plus explicitly required gates; then PASS, the number of defects listed, or UNAVAILABLE with the missing prerequisite]
+          **Confidence**: [High / Medium / Low]
+          ```
+
+          ### Verification handoff
+
+          - Put the structured Debug Summary above in `summary`.
+          - List each failed check in `defects`.
+          - Record this agent's fresh observations, the fresh proof, and the explicit repository gates in `evidence`, and cite their commands in `commands_run`. Prior investigation and fix records remain context, not this agent's acceptance evidence.
+        output:
+          summary: The Debug Summary block with Problem, Root Cause, Fix, Test Coverage, Verification, and Confidence.
+          commands:
+            min: 1
+          fields:
+            defects:
+              type: list
+              description: Each check of this agent that still shows the reported symptom or a regression on the present tree. Empty only when no selected check shows the symptom or a regression. The workflow runs Fix again while this list is not empty.
+              of:
+                type: object
+                fields:
+                  check:
+                    type: string
+                    description: The exact command or scenario that failed, so that Fix can run it again.
+                  observation:
+                    type: string
+                    description: What the check showed, against what the report expects.
+            evidence:
+              type: list
+              of:
+                type: string
+              min: 1
+              description: Decisive fresh runtime, code, or test observations from this agent. Prior records guide hypotheses only, never current acceptance.
+        writes:
+          - id: debug-verification
+            lifetime: durable
+            supersedes: []
+      - phase: refix
+        runs: fix
+        writes:
+          - id: debug-fix
+            lifetime: durable
+            supersedes: []

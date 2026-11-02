@@ -1,0 +1,22 @@
+diff --git a/src/orchestration/agent-runtime/tools/tool-exposure-planner.ts b/src/orchestration/agent-runtime/tools/tool-exposure-planner.ts
+--- a/src/orchestration/agent-runtime/tools/tool-exposure-planner.ts
++++ b/src/orchestration/agent-runtime/tools/tool-exposure-planner.ts
+@@ -233,6 +233,18 @@ export async function planToolExposure(input: ToolExposureInput): Promise<ToolExpo
+     registrationIdentities.set(tool.name, deferred.identity);
+     registrationIds.set(tool.name, deferred.registrationId);
+   }
++  if (kernel.purpose.kind === "interactive-chat") {
++    const allowed = new Set(["workflow", "skill", "read", "list", "search", "process"]);
++    for (const name of eligibleTools.keys()) {
++      if (allowed.has(name)) continue;
++      eligibleTools.delete(name);
++      providerTools.delete(name);
++      registrationIds.delete(name);
++      registrationIdentities.delete(name);
++      omitted.push({ name, reason: "excluded by the forced workflow benchmark root surface" });
++    }
++  }
++
+   const usable = new Set([...providerTools.keys()].filter((name) => !ungranted.has(name) && !unusable.has(name)));
+   return { eligibleTools, tools: providerTools, omitted, usable, registrationIds, registrationIdentities, ...(skillRegistry ? { skillRegistry } : {}) };
+ }

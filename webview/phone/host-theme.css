@@ -1,0 +1,84 @@
+/* The phone host's own layer over the browser hosts' theme (local/theme.css,
+   which main.tsx imports first): the phone's type scale and its installed-app
+   geometry. The scanner overlay is the one host-owned surface, and it uses the
+   same tokens. */
+
+:root {
+  /* The phone's own type scale: one step larger than the editor's, because a
+     phone is read at arm's length. */
+  --fw-text-2xs: 11px;
+  --fw-text-xs: 12px;
+  --fw-text-sm: 13px;
+  --fw-text: 15px;
+  --fw-text-lg: 17px;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--fw-bg);
+  /* The shell is a fixed column; the transcript scrolls inside it. */
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+#root {
+  height: 100%;
+  /* The keyboard inset the host measures; the client's composer pads by
+     --fw-keyboard-safe when it is set and by the home indicator otherwise. */
+  padding-bottom: var(--fw-keyboard-inset, 0px);
+  box-sizing: border-box;
+}
+#root .client { height: 100%; }
+
+/* In an installed iOS app the layout viewport is the screen minus the status
+   bar, anchored at the top, so 100%, dvh, and svh all stop a status bar's
+   height above the bottom edge and leave a band under the composer. The
+   large viewport is the whole screen there, because the app has no toolbar.
+   The host adds the class from navigator.standalone; the display-mode media
+   query stays false on iOS 26. The client's shell then fills the root, which
+   carries the keyboard inset as padding. */
+html.ios-installed,
+html.ios-installed body,
+html.ios-installed #root { height: 100lvh; }
+
+.scan-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--fw-z-sheet);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--fw-s4);
+  padding: var(--fw-s5);
+  padding-bottom: calc(var(--fw-s5) + env(safe-area-inset-bottom, 0px));
+  background: var(--fw-bg);
+  color: var(--fw-fg);
+}
+.scan-overlay video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.scan-hint {
+  position: relative;
+  margin: 0;
+  padding: var(--fw-s2) var(--fw-s3);
+  border-radius: var(--fw-radius);
+  background: var(--fw-scrim);
+  color: var(--fw-accent-fg);
+  font-size: var(--fw-text-sm);
+  text-align: center;
+}
+.scan-cancel {
+  position: relative;
+  padding: var(--fw-s2) var(--fw-s5);
+  border: none;
+  border-radius: var(--fw-radius-pill);
+  background: var(--fw-secondary);
+  color: var(--fw-secondary-fg);
+  font: inherit;
+}

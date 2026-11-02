@@ -1,0 +1,157 @@
+/* The workflow module supplies header and navigation styles above the ordinary conversation body. */
+
+.workflow-agent-chrome {
+  /* The column that a header part's separator stands in. */
+  --workflow-agent-sep: 2ch;
+  display: flex; flex-direction: column; gap: var(--fw-s2); padding-top: var(--fw-s2);
+  /* A header above the transcript: it keeps its content's height however
+     long the transcript below it grows. */
+  flex: none;
+}
+.initial-message-row {
+  display: flex;
+  gap: var(--fw-s2);
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-sm);
+  text-align: left;
+}
+.workflow-profile {
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-sm);
+}
+/* The workflow band: the way back and the workflow's name, then the whole
+   workflow's progress at the right. A rule closes it, so everything under
+   it reads as one agent's. A band too narrow for both on one line moves
+   the progress to a line of its own; the way back and the name keep one
+   line, and the way back gives up its width before the name does. */
+.workflow-agent-band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fw-s1) var(--fw-s3);
+  padding: 0 var(--fw-workflow-inset) var(--fw-s2);
+  border-bottom: 1px solid var(--fw-hairline);
+  min-width: 0;
+  font-size: var(--fw-text-sm);
+}
+.workflow-agent-names { display: flex; align-items: center; gap: var(--fw-s2); flex: 0 1 auto; min-width: 0; }
+.workflow-agent-workflow-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--fw-fg); }
+/* The progress keeps its count whole: on a line too narrow for all of it,
+   it gives up the word `workflow`, then the chits, and only then wraps the
+   count at a part. */
+.workflow-agent-progress { display: flex; align-items: center; flex: 0 1 auto; margin-left: auto; min-width: 0; max-width: 100%; }
+/* The parts that a narrow line drops, laid out from the count leftward
+   after an empty anchor: a part that has no room wraps to a second row,
+   which stays hidden, and the parts after it follow it there. */
+.workflow-agent-drops {
+  display: flex;
+  flex-direction: row-reverse;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: flex-start;
+  gap: 0 var(--fw-s2);
+  flex: 0 1 auto;
+  min-width: 0;
+  height: 1lh;
+  overflow: hidden;
+}
+.workflow-agent-drops > * { min-height: 1lh; }
+.workflow-agent-drops-anchor { width: 0; }
+/* The word that marks the progress as the whole workflow's. */
+.workflow-agent-word { color: var(--fw-fg-muted); white-space: nowrap; }
+/* The count takes its whole width before the dropped parts take any, and
+   wraps at a part only on a line narrower than itself. */
+.workflow-agent-count { flex: 0 0 auto; max-width: 100%; font-variant-numeric: tabular-nums; }
+/* The way back is a button: it sits on a raised ground, lights under the
+   pointer, darkens while pressed, and shows the focus ring from the
+   keyboard. A name longer than the band cuts only once the band has no
+   room left. */
+.workflow-agent-back {
+  /* The way back shrinks well before the workflow's name does. */
+  flex: 0 100 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 2px var(--fw-s2);
+  border: 0;
+  border-radius: var(--fw-radius);
+  background: var(--fw-bg-raised);
+  color: var(--fw-fg-muted);
+  font: inherit;
+  cursor: pointer;
+}
+.workflow-agent-back:active { background: var(--fw-press); }
+.workflow-agent-back:focus-visible { outline: 1px solid var(--fw-focus); }
+/* The agent line: the agent's phase, its own name, and how it runs, then
+   its state, time, and operations, and its controls at the right. A phase
+   name and an agent name read in their own colours on every workflow
+   surface, apart from the colours of the states. The line's width never
+   depends on its parts, so the parts it drops to fit one row never change
+   the room it has: it takes what the controls leave, and on a phone a row
+   of its own above them. A line that still does not fit wraps at a part
+   instead of cutting a word. */
+.workflow-agent-header { display: flex; flex-wrap: wrap; align-items: center; gap: var(--fw-s1) var(--fw-s2); min-width: 0; padding-inline: var(--fw-workflow-inset); }
+.workflow-agent-line { flex: 1 1 0; min-width: 0; margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 var(--fw-s3); font-size: var(--fw-text-sm); }
+/* A line that wraps at its parts. Each part's separator stands in a column
+   of its own before the part. The line starts that column in its left
+   margin, which it hides, so the first part of every row shows no
+   separator and no row starts with `·`. */
+.workflow-agent-parts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  min-width: 0;
+  margin-left: calc(-1 * var(--workflow-agent-sep));
+  clip-path: inset(0 0 0 var(--workflow-agent-sep));
+}
+.workflow-agent-part-item { white-space: nowrap; }
+.workflow-agent-sep { display: inline-block; width: var(--workflow-agent-sep); text-align: center; color: var(--fw-fg-muted); }
+.workflow-agent-phase, .workflow-agent-name { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+.workflow-agent-phase { color: var(--fw-phase-name); }
+.workflow-agent-name { font-weight: 600; color: var(--fw-agent-name); }
+.workflow-agent-part { color: var(--fw-fg-muted); }
+.workflow-agent-part.agent-running { color: var(--fw-info); }
+.workflow-agent-part.agent-parked { color: var(--fw-warning); }
+.workflow-agent-part.agent-done { color: var(--fw-success); }
+.workflow-agent-part.agent-failed { color: var(--fw-error); }
+.workflow-agent-controls { display: flex; flex: 0 0 auto; align-items: center; gap: var(--fw-s2); margin-left: auto; }
+@container pane (max-width: 40rem) {
+  .workflow-agent-line { flex-basis: 100%; }
+}
+/* Next agent is a quiet button beside the agent's own control. */
+.workflow-agent-next {
+  padding: 2px var(--fw-s2);
+  border: 0;
+  border-radius: var(--fw-radius);
+  background: transparent;
+  color: var(--fw-fg-muted);
+  font: inherit;
+  font-size: var(--fw-text-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.workflow-agent-next:active { background: var(--fw-press); }
+.workflow-agent-next:focus-visible { outline: 1px solid var(--fw-focus); }
+/* A touch screen keeps the hover state after a tap, so only a pointer
+   that hovers lights the controls. */
+@media (hover: hover) {
+  .workflow-agent-back:hover { background: var(--fw-bg-raised-strong); color: var(--fw-fg); }
+  .workflow-agent-next:hover { background: var(--fw-list-hover); color: var(--fw-fg); }
+  /* The controls stand against the right edge, so their tooltips grow
+     leftward to stay inside the pane. */
+  .workflow-agent-controls [title]:hover:not(:has([title]:hover))::after { left: auto; right: 0; }
+}
+
+.workflow-agent-empty { color: var(--fw-fg-muted); font-size: var(--fw-text-sm); }
+
+@media (pointer: coarse) {
+  .workflow-agent-back, .workflow-agent-next, .workflow-agent-controls > .workflow-action { min-height: 44px; }
+}
+
+/* The transcript and the composer stay mounted while a workflow's full-size
+   card or an agent view shows in their place. The composer shows for an
+   agent view whose agent takes a message. */
+.transcript-slot, .composer-slot { display: contents; }
+.transcript-slot.hidden-for-workflow, .composer-slot.hidden-for-workflow { display: none; }

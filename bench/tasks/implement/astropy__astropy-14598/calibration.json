@@ -1,0 +1,64 @@
+{
+  "status": "historical completed candidates; not a population pass-rate estimate",
+  "date": "2026-10-12",
+  "model": "gpt-6.1-sol",
+  "effort": "high",
+  "budget": {
+    "turns": 150,
+    "candidateMinutes": 25
+  },
+  "taskPasses": 0,
+  "completedRuns": 2,
+  "selectedTests": 176,
+  "passedPerRun": 175,
+  "providerRequests": 25,
+  "settledRequests": 25,
+  "billedUSD": 0,
+  "tokens": 1100587,
+  "estimatedEquivalentUSD": 0.3833248,
+  "runs": [
+    {
+      "id": "fits-native-run-2026-10-12T13-40-55-151Z",
+      "durationMs": 240919,
+      "requests": 15,
+      "tokens": 716892,
+      "estimatedEquivalentUSD": 0.2260892,
+      "billedUSD": 0,
+      "selectedPassed": 175,
+      "taskPassed": false,
+      "artifactSha256": {
+        "result": "4f1555ab044f13c32c56d4702d03de465c9024c9cebe2abc29a7ed3584b7d327",
+        "grade": "3e7f4e5ec34ae1190e45de66602f87a0a168fd52928d0ce2405213453b7bab64",
+        "model": "61683aee85c0a0c727c7c1af3b8205b2d5141967d07402d30990d723b5c13fc8"
+      },
+      "sourceSha256": "12a4765d3ac475cf5ff2d6e19d6a8d21ff6a2f0c1f81366185a2b05b611bb987",
+      "statusMapSha256": "8f9b0dcabbcfb1133b5f2946e245346636180408093466f7c7bc56256ef29710",
+      "resolution": "RESOLVED_NO",
+      "failingSelectedIds": [
+        "astropy/io/fits/tests/test_header.py::TestHeaderFunctions::test_long_string_value_with_quotes"
+      ]
+    },
+    {
+      "id": "fits-native-run-2026-10-12T13-53-35-420Z",
+      "durationMs": 125965,
+      "requests": 10,
+      "tokens": 383695,
+      "estimatedEquivalentUSD": 0.1572356,
+      "billedUSD": 0,
+      "selectedPassed": 175,
+      "taskPassed": false,
+      "artifactSha256": {
+        "result": "b61452df8a6f77862453bd68bb430279ff7d785e4738898093af02d26c76c6d7",
+        "grade": "c2b7ae14a78cf62b194cf9103377d10cc6da302a829d0db0124beec7a74d82a1",
+        "model": "0513ad11a8485dd3731c8e4d7df590198f2f58af8d55019244cdeef60fe6a5a5"
+      },
+      "sourceSha256": "2352e0e935ef0a7122ce134705b9ef2ef56baef43458da26051e24c8b1c38212",
+      "statusMapSha256": "8f9b0dcabbcfb1133b5f2946e245346636180408093466f7c7bc56256ef29710",
+      "resolution": "RESOLVED_NO",
+      "failingSelectedIds": [
+        "astropy/io/fits/tests/test_header.py::TestHeaderFunctions::test_long_string_value_with_quotes"
+      ]
+    }
+  ],
+  "interpretation": "Both completed samples missed the original quoted-string round-trip criterion. This is historical difficulty evidence only. Passing migrations remain in scope separately. No prompts, tool bodies, model trajectories, or provider calls are included."
+}

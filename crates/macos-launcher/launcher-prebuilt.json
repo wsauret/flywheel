@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "identifier": "sh.flywl.flywheel.launcher",
+  "sourceSha256": "233cb70b0b25556763dddcfa236acd89dbd86d95c82fcd5d9bd749f6aeddcf44",
+  "files": {
+    "Contents/Info.plist": {
+      "sha256": "09bd640c92827f63a6df1240a378b264d4bc88cb1bf61a006f712dc183d44343",
+      "bytes": 891
+    },
+    "Contents/MacOS/Flywheel": {
+      "sha256": "7147e4052a1a4cc2c57f93e9b76692a7660ac4fc37cd8d64b9f04dea7b806407",
+      "bytes": 101008
+    },
+    "Contents/PkgInfo": {
+      "sha256": "82502191c9484b04d685374f9879a0066069c49b8acae7a04b01d38d07e8eca0",
+      "bytes": 8
+    },
+    "Contents/Resources/Flywheel.icns": {
+      "sha256": "196ce9bece91dbd5489988679f2bb45e1ed2c45c177233f3bdc27b6b2aa38df9",
+      "bytes": 866707
+    },
+    "Contents/_CodeSignature/CodeResources": {
+      "sha256": "a2d6ef22579059c79671c6c45a97f1d8427cbe7a2356a6ff8b0710a4cd189fd3",
+      "bytes": 2448
+    }
+  }
+}

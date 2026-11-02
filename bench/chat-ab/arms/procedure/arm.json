@@ -1,0 +1,4 @@
+{
+  "description": "The chat follows pstack's playbook procedure checklist. Not yet run on this face; an earlier POC of the same checklist matched baseline acceptance at 36% more cost per accepted result.",
+  "invokeSkill": "playbooks"
+}

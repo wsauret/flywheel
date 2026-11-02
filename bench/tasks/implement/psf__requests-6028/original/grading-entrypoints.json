@@ -1,0 +1,101 @@
+[
+  {
+    "file": "swebench/harness/constants/__init__.py",
+    "name": "APPLY_PATCH_FAIL",
+    "lines": [
+      44,
+      44
+    ],
+    "source_sha256": "218e2ed4c705690246ae804e5407d84312ad172199c5ba3eae00b9aa6566eca7"
+  },
+  {
+    "file": "swebench/harness/constants/__init__.py",
+    "name": "RESET_FAILED",
+    "lines": [
+      46,
+      46
+    ],
+    "source_sha256": "e92baf6d1a7574603e1cf6ca1d3ca258c4b152117e5092381041dd667eb6f223"
+  },
+  {
+    "file": "swebench/harness/constants/__init__.py",
+    "name": "TESTS_ERROR",
+    "lines": [
+      47,
+      47
+    ],
+    "source_sha256": "331c4c215e9967fd79f27c08b976fa3ab1c46214b1071fcfe6bbf5fb67f8f813"
+  },
+  {
+    "file": "swebench/harness/constants/__init__.py",
+    "name": "TESTS_TIMEOUT",
+    "lines": [
+      50,
+      50
+    ],
+    "source_sha256": "8c58319f8655a2bd2cb36358ab684333789ddff49427a58956c3fe306409fd82"
+  },
+  {
+    "file": "swebench/harness/constants/__init__.py",
+    "name": "START_TEST_OUTPUT",
+    "lines": [
+      51,
+      51
+    ],
+    "source_sha256": "f92849a9a6fa7d792b31f856e66d5780b4ecb964c89adb4c9cb09b72a5b8bf8d"
+  },
+  {
+    "file": "swebench/harness/constants/__init__.py",
+    "name": "END_TEST_OUTPUT",
+    "lines": [
+      52,
+      52
+    ],
+    "source_sha256": "f444dc574c64bf44fd56d0cf2e466ea20aece4768be304ff051d0a2747be7b04"
+  },
+  {
+    "file": "swebench/harness/constants/__init__.py",
+    "name": "TEST_EXIT_CODE",
+    "lines": [
+      53,
+      53
+    ],
+    "source_sha256": "fbc11c1f72f3997fd5a1ce2495c9efc8a43d79dc1d8a107b2bb67c7c1b64039d"
+  },
+  {
+    "file": "swebench/harness/grading.py",
+    "name": "SUITE_RAN",
+    "lines": [
+      31,
+      46
+    ],
+    "source_sha256": "816366f6bf0370e68b7a13a5ace638ec81313788cb96056c31802ae08df60a38"
+  },
+  {
+    "file": "swebench/harness/grading.py",
+    "name": "TEST_EXIT_CODE_RE",
+    "lines": [
+      51,
+      51
+    ],
+    "source_sha256": "1b96861ad86b23d210ada5f179bf2a2d9aa902a0ae7ff2b7c0c5e220b8cafe59"
+  },
+  {
+    "file": "swebench/harness/grading.py",
+    "name": "parse_test_exit_code",
+    "lines": [
+      55,
+      58
+    ],
+    "source_sha256": "901d6eaa7b05d438540f4943b1e3bb4e0fb86df8b2da8ae5e1cd0a88ab916817"
+  },
+  {
+    "file": "swebench/harness/grading.py",
+    "name": "get_logs_eval",
+    "lines": [
+      113,
+      176
+    ],
+    "source_sha256": "b74367ed596d78eefe9756e709557ec8ef3dc124cdc0a0fbc98024d53c14137c"
+  }
+]

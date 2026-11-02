@@ -1,0 +1,32 @@
+// The step gate: an engine plugin that the Agent SDK bridge loads into every query through the SDK's
+// `plugins` option (step-gate.ts). The CLI fires `turn.step` before it sends each model request of a turn. This hook
+// asks the bridge whether the host admitted that request, over the query's Unix socket, and answers a refused step
+// itself, so the CLI sends nothing. A failure anywhere before the request refuses the step, so the gate fails closed.
+
+/** What a step answers when the CLI sends no request: no text, no tool calls, no stop reason, no usage. */
+function refused(e) {
+  return { turnId: e.turnId, index: e.index, answer: "", toolUses: [], stopReason: null, usage: null };
+}
+
+/** Whether the bridge admits this step. The bridge names its socket in the CLI's environment. */
+async function admitted($, e) {
+  const socketPath = await $.env.get("STEP_GATE_SOCKET");
+  if (socketPath === undefined) return false;
+  const response = await $.http.fetch("http://localhost/step", {
+    method: "POST", socketPath, body: JSON.stringify({ turnId: e.turnId, index: e.index, messageCount: e.messageCount }),
+  });
+  return response.ok && JSON.parse(response.text).admit === true;
+}
+
+// Each hook names the engine's `next` as `send`: calling it sends the step's model request.
+export const register = (on) => {
+  on("turn.step", async function* ($, e, send) {
+    if (!(await admitted($, e))) return refused(e);
+    return yield* send(e);
+  }).catch(async function* ($, e, send) {
+    // After the request went out, the hook only passes its response on. The mod API replays the settled call
+    // here and sends nothing again.
+    if (send.called) return yield* send(e);
+    return refused(e);
+  });
+};

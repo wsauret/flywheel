@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Flywheel</title>
+<!-- The branded way in to this machine's own Flywheel page: the hub on the
+     loopback port every runtime tries to serve. A navigation to a plain-http
+     loopback address is allowed from an https page; a redirect header is
+     not, so the hop is this page's own. -->
+<meta http-equiv="refresh" content="0; url=http://127.0.0.1:41000/">
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; min-height: 100dvh; display: grid; place-items: center; background: #1c1b19; color: #cfcbc3; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+  main { width: min(36rem, calc(100% - 3rem)); }
+  a { color: #4a9eff; }
+</style>
+</head>
+<body>
+<main>
+  <p>Opening the Flywheel projects on this machine at <a href="http://127.0.0.1:41000/">127.0.0.1:41000</a>. If nothing opens, no Flywheel runtime is serving here yet: run <code>flywheel web</code> in a project.</p>
+</main>
+</body>
+</html>

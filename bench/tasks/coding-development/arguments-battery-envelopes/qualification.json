@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "role": "development",
+  "contentIdentity": "39c6ed690b8d5d25166f45dd128b69078638b3e7c73b206e6961d7c39fbe2e3c",
+  "testIds": [
+    "acceptance/contract.test.ts > unwraps nested objects without dropping trailing fields",
+    "acceptance/contract.test.ts > refuses complete array envelopes as arrays",
+    "acceptance/contract.test.ts > retains strict bare objects and repairs enveloped controls",
+    "acceptance/contract.test.ts > does not complete a truncated nested document"
+  ],
+  "cases": [
+    {
+      "id": "reference",
+      "patches": [
+        "qualification/reference.patch"
+      ],
+      "expectation": "pass",
+      "expectedFailures": [],
+      "rationale": "Restore the pinned native implementation."
+    },
+    {
+      "id": "alternative",
+      "patches": [
+        "qualification/alternative.patch"
+      ],
+      "expectation": "pass",
+      "expectedFailures": [],
+      "rationale": "Express the same boundary decision independently."
+    },
+    {
+      "id": "first-close",
+      "patches": [
+        "qualification/first-close.patch"
+      ],
+      "expectation": "fail",
+      "expectedFailures": [
+        "acceptance/contract.test.ts > unwraps nested objects without dropping trailing fields",
+        "acceptance/contract.test.ts > refuses complete array envelopes as arrays",
+        "acceptance/contract.test.ts > retains strict bare objects and repairs enveloped controls"
+      ],
+      "rationale": "Synthetic first-close selection truncates nested envelopes."
+    },
+    {
+      "id": "raw-only",
+      "patches": [
+        "qualification/raw-only.patch"
+      ],
+      "expectation": "fail",
+      "expectedFailures": [
+        "acceptance/contract.test.ts > unwraps nested objects without dropping trailing fields",
+        "acceptance/contract.test.ts > refuses complete array envelopes as arrays",
+        "acceptance/contract.test.ts > retains strict bare objects and repairs enveloped controls"
+      ],
+      "rationale": "Disables envelope handling instead of selecting its full document."
+    },
+    {
+      "id": "completion",
+      "patches": [
+        "qualification/completion.patch"
+      ],
+      "expectation": "fail",
+      "expectedFailures": [
+        "acceptance/contract.test.ts > does not complete a truncated nested document"
+      ],
+      "rationale": "Returns tolerant partial values instead of refusing incomplete arguments."
+    }
+  ]
+}

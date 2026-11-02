@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "role": "reserved-evaluation",
+  "contentIdentity": "8d2fe1669af354535e631fd6b342c8f35282673cede8462bac15e276c3e2b745",
+  "testIds": [
+    "acceptance/contract.test.ts > restores a rejected entry after settlement failure without losing newer siblings",
+    "acceptance/contract.test.ts > refuses rollback over a reconnect with identical credentials and a new lineage",
+    "acceptance/contract.test.ts > does not issue a repair receipt for conflicting subscription identities",
+    "acceptance/contract.test.ts > refuses an aborted repair before any durable write"
+  ],
+  "cases": [
+    {
+      "id": "reference",
+      "patches": [
+        "qualification/reference.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "Restores the production decision at the damaged boundary.",
+      "expectedFailures": []
+    },
+    {
+      "id": "alternative",
+      "patches": [
+        "qualification/alternative.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "Uses an independent equivalent decision without requiring the reference patch.",
+      "expectedFailures": []
+    },
+    {
+      "id": "baseline",
+      "patches": [
+        "qualification/baseline.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Synthetic target-only rollback reconstruction drops siblings from the live store.",
+      "expectedFailures": [
+        "acceptance/contract.test.ts > restores a rejected entry after settlement failure without losing newer siblings"
+      ]
+    },
+    {
+      "id": "stale-overwrite",
+      "patches": [
+        "qualification/stale-overwrite.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Ignores the written generation and permits rollback over a newer reconnect.",
+      "expectedFailures": [
+        "acceptance/contract.test.ts > refuses rollback over a reconnect with identical credentials and a new lineage"
+      ]
+    },
+    {
+      "id": "repair-disabled",
+      "patches": [
+        "qualification/repair-disabled.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Disables receipt creation instead of repairing rollback preservation.",
+      "expectedFailures": [
+        "acceptance/contract.test.ts > restores a rejected entry after settlement failure without losing newer siblings",
+        "acceptance/contract.test.ts > refuses rollback over a reconnect with identical credentials and a new lineage"
+      ]
+    }
+  ]
+}

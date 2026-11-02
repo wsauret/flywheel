@@ -1,0 +1,43 @@
+{
+  "id": "session-list-empty-after-timeout",
+  "stratum": "production-history",
+  "timeoutMinutes": 45,
+  "sandbox": {
+    "commit": "217735ebeac0629ea024cbefa111be957469d3d8",
+    "paths": [
+      "src",
+      "tests",
+      "docs",
+      "scripts",
+      "package.json",
+      "bun.lock",
+      "tsconfig.json",
+      "oxlint.config.ts",
+      "knip.jsonc",
+      "AGENTS.md",
+      ".gitignore",
+      "bunfig.toml",
+      "relay/package.json",
+      "vscode/package.json",
+      "webview/package.json",
+      "website/package.json",
+      "crates/tokenizer/tokenizer-prebuilt.json",
+      "crates/tokenizer/flywheel-tokenizer.wasm.zst",
+      ".env.test"
+    ],
+    "patch": "sandbox.patch",
+    "setup": [
+      [
+        "bun",
+        "install"
+      ]
+    ]
+  },
+  "acceptanceBaseline": {
+    "failToPass": [
+      "acceptance/catalog-baseline-retry.test.ts > session list after a failed first history read > a change heard after the failure reads the history again and keeps the changes heard meanwhile",
+      "acceptance/catalog-baseline-retry.test.ts > session list after a failed first history read > the next snapshot request after the failure reads the history again"
+    ],
+    "passToPass": []
+  }
+}

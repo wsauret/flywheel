@@ -1,0 +1,85 @@
+{
+  "upstream": {
+    "repository": "https://github.com/earendil-works/pi",
+    "revision": "636703a0a4f2f4d8558d08f2308cb41109585bf5"
+  },
+  "license": "LICENSE.txt",
+  "adaptation": "The fixtures preserve exact original source slices. Runtime functions are not verbatim ports: JSON file, trust, and exposure scaffolding is replaced by existing typed account TOML storage and enabled-only project scope.",
+  "copies": [
+    {
+      "label": "project merge and override",
+      "source": "packages/coding-agent/src/extensions/mcp/config.ts",
+      "fixture": "project-merge.txt",
+      "firstLine": 74,
+      "lastLine": 155,
+      "target": "src/orchestration/modules/mcp/config.ts",
+      "replacements": [
+        "Global then project Map loading becomes typed account TOML resolution keyed by canonical projectRoot.",
+        "Deciding expression value.command === undefined && value.url === undefined is retained; the upstream && value.type === undefined is omitted because existing transports use command/url and override policy excludes type.",
+        "Deciding spread { ...base.config, ...value } becomes { ...base, enabled: value.enabled } because enabled is the only project override policy.",
+        "Deciding replacement servers.set(name, { name, config, source: path, scope }) becomes servers[name] = value plus derived source metadata; no connection-field merge occurs for full definitions.",
+        "JSON path/source metadata becomes secret-free definitionScope/enabledScope/enabled/hasGlobalFallback.",
+        "Unknown transport and orphan override diagnostics belong to the retained section owner."
+      ],
+      "sha256": "19e638b0d56c1bee96ed4778a1d7d7c229c0cc5c392a586c17a3d9f33112228f"
+    },
+    {
+      "label": "scoped policy update",
+      "source": "packages/coding-agent/src/extensions/mcp/config.ts",
+      "fixture": "scoped-policy-update.txt",
+      "firstLine": 169,
+      "lastLine": 192,
+      "target": "src/orchestration/modules/mcp/config-mutation.ts",
+      "replacements": [
+        "JSON editMcpServers becomes RuntimeConfigOwner.mutateSection with selected-state digest CAS.",
+        "Only enabled is supported; semantic upsert preserves unrelated TOML and authored true overrides."
+      ],
+      "sha256": "d3a958a3ed70135118cda69ad4ebcd3c2ac78eecac4c553a671b1ac361d67276"
+    },
+    {
+      "label": "scoped removal",
+      "source": "packages/coding-agent/src/extensions/mcp/config.ts",
+      "fixture": "scoped-removal.txt",
+      "firstLine": 211,
+      "lastLine": 222,
+      "target": "src/orchestration/modules/mcp/config-mutation.ts",
+      "replacements": [
+        "JSON rewrite becomes selected semantic subtree removal under one account publication.",
+        "Global removal prunes dependent enabled-only entries across projects but retains full project definitions and credentials."
+      ],
+      "sha256": "94c0ad8ea1e055b6ebdfb80d7dc81bacd16407988c4b14fa9d9824ef28a6ceb5"
+    },
+    {
+      "label": "account identity",
+      "source": "packages/coding-agent/src/extensions/mcp/oauth.ts",
+      "fixture": "account-identity.txt",
+      "firstLine": 123,
+      "lastLine": 165,
+      "target": "src/orchestration/modules/mcp/credentials.ts",
+      "replacements": [
+        "Existing account credential store remains unchanged: server name plus SHA-256 URL, no scope in identity.",
+        "Do not copy upstream JSON auth storage, namespace normalization, legacy URL migration or refresh locks."
+      ],
+      "sha256": "75b940552f4692247b0ef407abdf9283ea0a7ebb00d0f2c13e2fe28c864d7dc3"
+    },
+    {
+      "label": "scoped enabled actions",
+      "source": "packages/coding-agent/src/extensions/mcp/index.ts",
+      "fixture": "scoped-enabled-actions.txt",
+      "firstLine": 743,
+      "lastLine": 769,
+      "target": "src/protocol/modules/mcp.ts",
+      "replacements": [
+        "Global-without-override eligibility entry.scope === global && !entry.override becomes definitionScope === global && enabledScope === global; account-private choices need no repository trust or project JSON path.",
+        "Enable/Disable and Enable/Disable in this project labels and inverse enabled choice are retained in shared protocol selectors, with enabledScope directing the plain action.",
+        "Reconnect, tools, exposure and signout actions are omitted; authentication retains its existing protocol action and saved credentials are never deleted."
+      ],
+      "sha256": "78c5ff0a45c1834c10525fe4c1cba89f197576e4a5e8d2bce99a372d66b15b0f"
+    }
+  ],
+  "omissions": [
+    "Repository-controlled project JSON and trust are replaced by private canonical-project entries in account TOML.",
+    "Exposure and toolExposure policies are omitted; only enabled overrides are admitted.",
+    "No transport, generic trust framework, config watcher, credential store, remote revocation, or sign-out port."
+  ]
+}

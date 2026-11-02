@@ -1,0 +1,62 @@
+[
+  {
+    "text": "Hello, world!",
+    "counts": {
+      "O200kBase": 4,
+      "ClaudeV3": 4,
+      "ClaudeV47": 6,
+      "ClaudeV5": 6,
+      "ClaudeV5Sonnet": 6
+    }
+  },
+  {
+    "text": "Café é 中文 日本語 مرحبا 👩🏽‍💻",
+    "counts": {
+      "O200kBase": 16,
+      "ClaudeV3": 26,
+      "ClaudeV47": 26,
+      "ClaudeV5": 26,
+      "ClaudeV5Sonnet": 26
+    }
+  },
+  {
+    "text": "export function add(a: number, b: number): number {\n  return a + b;\n}\n",
+    "counts": {
+      "O200kBase": 20,
+      "ClaudeV3": 23,
+      "ClaudeV47": 23,
+      "ClaudeV5": 23,
+      "ClaudeV5Sonnet": 23
+    }
+  },
+  {
+    "text": "",
+    "counts": {
+      "O200kBase": 0,
+      "ClaudeV3": 1,
+      "ClaudeV47": 1,
+      "ClaudeV5": 0,
+      "ClaudeV5Sonnet": 0
+    }
+  },
+  {
+    "text": "\ud800",
+    "counts": {
+      "O200kBase": 1,
+      "ClaudeV3": 2,
+      "ClaudeV47": 2,
+      "ClaudeV5": 1,
+      "ClaudeV5Sonnet": 1
+    }
+  },
+  {
+    "text": "a\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\na\n",
+    "counts": {
+      "O200kBase": 64,
+      "ClaudeV3": 63,
+      "ClaudeV47": 63,
+      "ClaudeV5": 63,
+      "ClaudeV5Sonnet": 63
+    }
+  }
+]

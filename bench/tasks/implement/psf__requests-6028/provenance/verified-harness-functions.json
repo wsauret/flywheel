@@ -1,0 +1,182 @@
+[
+  {
+    "file": "swebench/harness/constants/__init__.py",
+    "name": "ResolvedStatus",
+    "lines": [
+      6,
+      9
+    ],
+    "source_sha256": "9fdf8d88958a9f3d36f3d2eefb71fedd64a4f7c32a8929eb018b37c9fdb17236",
+    "fresh_sha256": "9fdf8d88958a9f3d36f3d2eefb71fedd64a4f7c32a8929eb018b37c9fdb17236"
+  },
+  {
+    "file": "swebench/harness/constants/__init__.py",
+    "name": "TestStatus",
+    "lines": [
+      12,
+      17
+    ],
+    "source_sha256": "c51ce8c3b99a0062dc54742437f443960ed44887a8e7addf310059bb2649624c",
+    "fresh_sha256": "c51ce8c3b99a0062dc54742437f443960ed44887a8e7addf310059bb2649624c"
+  },
+  {
+    "file": "swebench/harness/constants/__init__.py",
+    "name": "EvalType",
+    "lines": [
+      20,
+      22
+    ],
+    "source_sha256": "08cbb6ea38ed201912cae3134af25f94f91980c565c4836ebd2e1803fe6bbd10",
+    "fresh_sha256": "08cbb6ea38ed201912cae3134af25f94f91980c565c4836ebd2e1803fe6bbd10"
+  },
+  {
+    "file": "swebench/harness/constants/__init__.py",
+    "name": "FAIL_TO_PASS",
+    "lines": [
+      30,
+      30
+    ],
+    "source_sha256": "f262fd9e05d7f84d8e4258cd8eb2115efe3a1d3254877ec896218000fb52b596",
+    "fresh_sha256": "f262fd9e05d7f84d8e4258cd8eb2115efe3a1d3254877ec896218000fb52b596"
+  },
+  {
+    "file": "swebench/harness/constants/__init__.py",
+    "name": "FAIL_TO_FAIL",
+    "lines": [
+      31,
+      31
+    ],
+    "source_sha256": "1af017158f1872d4dddd43b6fa0e33bc32290d00b209c5c06b07f0dfd29d97ae",
+    "fresh_sha256": "1af017158f1872d4dddd43b6fa0e33bc32290d00b209c5c06b07f0dfd29d97ae"
+  },
+  {
+    "file": "swebench/harness/constants/__init__.py",
+    "name": "PASS_TO_PASS",
+    "lines": [
+      32,
+      32
+    ],
+    "source_sha256": "e95e2cf69cad1db7bf9669eecc68c05f2c442bedf57ebab5ba1fff03cf82eea9",
+    "fresh_sha256": "e95e2cf69cad1db7bf9669eecc68c05f2c442bedf57ebab5ba1fff03cf82eea9"
+  },
+  {
+    "file": "swebench/harness/constants/__init__.py",
+    "name": "PASS_TO_FAIL",
+    "lines": [
+      33,
+      33
+    ],
+    "source_sha256": "e9a4d08dba74674712dff75aa038f06fa6f9526e28d3829f6983f82e0ed65c3e",
+    "fresh_sha256": "e9a4d08dba74674712dff75aa038f06fa6f9526e28d3829f6983f82e0ed65c3e"
+  },
+  {
+    "file": "swebench/harness/log_parsers/python.py",
+    "name": "_SKIP_SUMMARY_COUNT",
+    "lines": [
+      6,
+      6
+    ],
+    "source_sha256": "d48764d18fc4f692fe4d8ce7c069582ac980e2b4bd137f88cb639aa8d85dbdac",
+    "fresh_sha256": "d48764d18fc4f692fe4d8ce7c069582ac980e2b4bd137f88cb639aa8d85dbdac"
+  },
+  {
+    "file": "swebench/harness/log_parsers/python.py",
+    "name": "_is_skip_summary",
+    "lines": [
+      9,
+      18
+    ],
+    "source_sha256": "9ffdbfd4088c6d031831990ae970bf602ae50a42793b5195ce40ff118dfe3bc4",
+    "fresh_sha256": "9ffdbfd4088c6d031831990ae970bf602ae50a42793b5195ce40ff118dfe3bc4"
+  },
+  {
+    "file": "swebench/harness/log_parsers/python.py",
+    "name": "parse_log_pytest_options",
+    "lines": [
+      45,
+      79
+    ],
+    "source_sha256": "83ce832717d3d9b5843ffa10a77cbe2df109868a06781aa185948dbf7e7a56bf",
+    "fresh_sha256": "83ce832717d3d9b5843ffa10a77cbe2df109868a06781aa185948dbf7e7a56bf"
+  },
+  {
+    "file": "swebench/harness/grading.py",
+    "name": "_resolve_case",
+    "lines": [
+      61,
+      82
+    ],
+    "source_sha256": "873999cbdcf17e47b0817517eec5c41882f8bf443d2e8b76eeb56e1d9489e48c",
+    "fresh_sha256": "873999cbdcf17e47b0817517eec5c41882f8bf443d2e8b76eeb56e1d9489e48c"
+  },
+  {
+    "file": "swebench/harness/grading.py",
+    "name": "test_passed",
+    "lines": [
+      85,
+      90
+    ],
+    "source_sha256": "de9cf1cae3c180bac29a1a280e33c4a04499ded2fca11c85a066dea9811da220",
+    "fresh_sha256": "de9cf1cae3c180bac29a1a280e33c4a04499ded2fca11c85a066dea9811da220"
+  },
+  {
+    "file": "swebench/harness/grading.py",
+    "name": "test_maintained",
+    "lines": [
+      93,
+      98
+    ],
+    "source_sha256": "459d691973a3258483b67984b3e3f800c560a90fd6b1962623cfa4c6e7a0586a",
+    "fresh_sha256": "459d691973a3258483b67984b3e3f800c560a90fd6b1962623cfa4c6e7a0586a"
+  },
+  {
+    "file": "swebench/harness/grading.py",
+    "name": "test_failed",
+    "lines": [
+      101,
+      109
+    ],
+    "source_sha256": "882c4267a1d8d46c2b2763d1a092ed755b14b19e11be28e1b20e458ac81c819a",
+    "fresh_sha256": "882c4267a1d8d46c2b2763d1a092ed755b14b19e11be28e1b20e458ac81c819a"
+  },
+  {
+    "file": "swebench/harness/grading.py",
+    "name": "get_eval_tests_report",
+    "lines": [
+      179,
+      285
+    ],
+    "source_sha256": "24d2e587e7c6f66d467fdbe8d10c8d8f8e30ce0d982aeacbbae98c6e28120f0f",
+    "fresh_sha256": "24d2e587e7c6f66d467fdbe8d10c8d8f8e30ce0d982aeacbbae98c6e28120f0f"
+  },
+  {
+    "file": "swebench/harness/grading.py",
+    "name": "compute_fail_to_pass",
+    "lines": [
+      288,
+      295
+    ],
+    "source_sha256": "4e136eba2ece44d753afb773924aea11b11e20930552871ad3cf6621bee4172d",
+    "fresh_sha256": "4e136eba2ece44d753afb773924aea11b11e20930552871ad3cf6621bee4172d"
+  },
+  {
+    "file": "swebench/harness/grading.py",
+    "name": "compute_pass_to_pass",
+    "lines": [
+      298,
+      306
+    ],
+    "source_sha256": "339e3e13e525c5787aca7b477f02a064a22d95f7ebee7d03cd53cc6cd3b62fe1",
+    "fresh_sha256": "339e3e13e525c5787aca7b477f02a064a22d95f7ebee7d03cd53cc6cd3b62fe1"
+  },
+  {
+    "file": "swebench/harness/grading.py",
+    "name": "get_resolution_status",
+    "lines": [
+      309,
+      326
+    ],
+    "source_sha256": "482b856b7b89bf98540f43cac9c918a102a278aab524616c614682c5b758df64",
+    "fresh_sha256": "482b856b7b89bf98540f43cac9c918a102a278aab524616c614682c5b758df64"
+  }
+]

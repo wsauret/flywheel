@@ -1,0 +1,29 @@
+---
+interface Props {
+  /* Unique per instance: the DOM id of the widget and the base for its tab and panel ids. */
+  id: string;
+}
+
+const { id } = Astro.props;
+---
+
+<div class="install" id={id}>
+  <div class="install-head" role="tablist">
+    <button id={`${id}-tab-unix`} role="tab" aria-selected="true" aria-controls={`${id}-panel-unix`}>macOS / Linux</button>
+    <button id={`${id}-tab-windows`} role="tab" aria-selected="false" aria-controls={`${id}-panel-windows`}>Windows</button>
+    <span class="support">darwin-arm64/x64 &middot; linux-x64/arm64 (glibc, musl) &middot; win32-x64/arm64</span>
+  </div>
+  <div id={`${id}-panel-unix`} class="install-body" role="tabpanel" aria-labelledby={`${id}-tab-unix`}>
+    <code><span class="p">$</span> curl -fsSL https://github.com/wsauret/flywheel/releases/latest/download/install.sh | bash</code>
+    <button class="copy-btn" type="button" aria-label="Copy install command">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="1.5" /><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" /></svg>
+    </button>
+  </div>
+  <div id={`${id}-panel-windows`} class="install-body" role="tabpanel" aria-labelledby={`${id}-tab-windows`}>
+    <code><span class="p">&gt;</span> irm https://github.com/wsauret/flywheel/releases/latest/download/install.ps1 | iex</code>
+    <button class="copy-btn" type="button" aria-label="Copy install command">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="1.5" /><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" /></svg>
+    </button>
+  </div>
+  <span class="visually-hidden copy-status" aria-live="polite"></span>
+</div>

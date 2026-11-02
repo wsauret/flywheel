@@ -1,0 +1,27 @@
+			// Global servers without an override can be turned on or off for the trusted project alone.
+			const inProject = entry.scope === "global" && !entry.override && projectConfig !== undefined;
+			const inProjectSaved = "saved to the project mcp.json";
+			const items: SelectItem[] = [];
+			if (!isEnabled(server)) {
+				items.push({ value: "enable", label: "Enable", description: saved });
+				if (inProject) {
+					items.push({ value: "enable-project", label: "Enable in this project", description: inProjectSaved });
+				}
+			} else {
+				const state = connection?.state;
+				if (state === "needs-auth")
+					items.push({ value: "signin", label: "Sign in", description: "opens the browser" });
+				if (state === "connected" && connection) {
+					items.push({ value: "tools", label: "Tools", description: `${connection.tools.length} offered` });
+				}
+				if (state === "failed" || state === "disconnected" || state === "connected" || state === "needs-auth") {
+					items.push({ value: "reconnect", label: "Reconnect" });
+				}
+				if (state === "connected" && connection?.oauthUrl) {
+					items.push({ value: "signout", label: "Sign out", description: "deletes the stored credentials" });
+				}
+				items.push({ value: "exposure", label: "Exposure", description: exposureOf(entry) });
+				items.push({ value: "disable", label: "Disable", description: saved });
+				if (inProject) {
+					items.push({ value: "disable-project", label: "Disable in this project", description: inProjectSaved });
+				}

@@ -1,0 +1,261 @@
+diff --git a/api.ts b/api.ts
+index 047e662de..1b3c6d22a 100644
+--- a/api.ts
++++ b/api.ts
+@@ -1,17 +1,86 @@
+-import type { DocumentSource, ListRequest, Page, Query } from "./types.ts";
++import { SwrCache } from "./cache.ts";
++import { issueCursor, resolveCursor } from "./cursor.ts";
++import type { Document, DocumentSource, ListRequest, Page, Query } from "./types.ts";
++
++/** Cache key for one page of one viewer's listing. Keys are prefixed with the
++ *  viewer id so permission changes can invalidate everything a viewer sees. */
++function pageCacheKey(query: Query, offset: number, pageSize: number): string {
++  return `${query.viewerId}:${query.sort}:${query.filter}:${offset}:${pageSize}`;
++}
+ 
+ export class DocumentListApi {
+-  constructor(private readonly source: DocumentSource) {}
++  private revalidating = new Set<string>();
++
++  constructor(
++    private readonly source: DocumentSource,
++    private readonly cache: SwrCache<readonly Document[]>,
++  ) {}
+ 
+-  /** List documents for a viewer, one zero-indexed page at a time. */
++  /** List documents for a viewer, one page at a time. First call omits the
++   *  cursor; subsequent calls pass the `nextCursor` from the previous page. */
+   async list(request: ListRequest): Promise<Page> {
+-    const query: Query = {
+-      viewerId: request.viewerId,
+-      filter: request.filter ?? "",
+-      sort: request.sort,
+-    };
+-    const offset = request.page * request.pageSize;
+-    const items = await this.source.fetch(query, offset, request.pageSize);
+-    return { items };
++    const state = request.cursor
++      ? resolveCursor(request.cursor)
++      : {
++          query: {
++            viewerId: request.viewerId,
++            filter: request.filter ?? "",
++            sort: request.sort,
++            includeArchived: request.includeArchived,
++          },
++          offset: 0,
++        };
++
++    const items = await this.pageAt(state.query, state.offset, request.pageSize);
++    const hasMore = items.length >= request.pageSize;
++    let nextCursor: string | null = null;
++    if (hasMore) {
++      state.offset += items.length;
++      nextCursor = issueCursor(state);
++    }
++    return { items, nextCursor, hasMore };
++  }
++
++  /** Serve a page from cache when possible; refresh stale pages in the
++   *  background so hot listings never block on the source. */
++  private async pageAt(query: Query, offset: number, pageSize: number): Promise<readonly Document[]> {
++    const key = pageCacheKey(query, offset, pageSize);
++    if (this.cache.isKnownEmpty(key)) {
++      return [];
++    }
++    const cached = this.cache.get(key);
++    if (cached.kind === "hit") {
++      return cached.value;
++    }
++    if (cached.kind === "stale") {
++      this.revalidate(query, offset, pageSize, key);
++      return cached.value;
++    }
++    const rows = await this.source.fetch(query, offset, pageSize);
++    this.store(key, rows);
++    return rows;
++  }
++
++  private revalidate(query: Query, offset: number, pageSize: number, key: string): void {
++    if (this.revalidating.has(key)) return;
++    this.revalidating.add(key);
++    void this.source
++      .fetch(query, offset, pageSize)
++      .then((rows) => this.store(key, rows))
++      .finally(() => this.revalidating.delete(key));
++  }
++
++  private store(key: string, rows: readonly Document[]): void {
++    if (rows.length === 0) {
++      this.cache.markEmpty(key);
++    } else {
++      this.cache.set(key, rows);
++    }
++  }
++
++  /** Called by the permissions service whenever a viewer's document access
++   *  changes; every cached page for that viewer must be dropped. */
++  onPermissionsChanged(viewerId: string): void {
++    this.cache.invalidatePrefix(`${viewerId}:`);
+   }
+ }
+diff --git a/cache.ts b/cache.ts
+new file mode 100644
+index 000000000..eaef410fa
+--- /dev/null
++++ b/cache.ts
+@@ -0,0 +1,84 @@
++import type { CacheClock } from "./types.ts";
++
++interface Entry<T> {
++  value: T;
++  storedAt: number;
++}
++
++export type Lookup<T> =
++  | { kind: "hit"; value: T }
++  | { kind: "stale"; value: T }
++  | { kind: "miss" };
++
++const TTL_SECONDS = 30;
++const STALE_GRACE_SECONDS = 120;
++const NEGATIVE_TTL_SECONDS = 5;
++
++/** Two-tier read cache. Fresh entries live in the primary map; when an entry
++ *  ages past its TTL it moves to the stale tier, where it can still be served
++ *  while a revalidation is in flight. The stale tier bounds primary-map churn
++ *  under thundering-herd revalidation. */
++export class SwrCache<T> {
++  private readonly fresh = new Map<string, Entry<T>>();
++  private readonly stale = new Map<string, Entry<T>>();
++  private readonly empty = new Map<string, Entry<null>>();
++
++  constructor(private readonly clock: CacheClock) {}
++
++  get(key: string): Lookup<T> {
++    const now = this.clock.now();
++    const entry = this.fresh.get(key);
++    if (entry) {
++      if (now - entry.storedAt < TTL_SECONDS * 1000) {
++        return { kind: "hit", value: entry.value };
++      }
++      this.fresh.delete(key);
++      this.stale.set(key, entry);
++    }
++    const staleEntry = this.stale.get(key);
++    if (staleEntry) {
++      if (now - staleEntry.storedAt < (TTL_SECONDS + STALE_GRACE_SECONDS) * 1000) {
++        return { kind: "stale", value: staleEntry.value };
++      }
++      this.stale.delete(key);
++    }
++    return { kind: "miss" };
++  }
++
++  set(key: string, value: T): void {
++    this.stale.delete(key);
++    this.fresh.set(key, { value, storedAt: this.clock.now() });
++  }
++
++  /** Cache "no results" separately so repeated misses do not hammer the
++   *  source. Negative entries use a short TTL because absence changes fast. */
++  markEmpty(key: string): void {
++    this.empty.set(key, { value: null, storedAt: this.clock.now() });
++  }
++
++  isKnownEmpty(key: string): boolean {
++    const entry = this.empty.get(key);
++    if (!entry) return false;
++    const ageSeconds = (this.clock.now() - entry.storedAt) / 1000;
++    if (ageSeconds < NEGATIVE_TTL_SECONDS * 1000) {
++      return true;
++    }
++    this.empty.delete(key);
++    return false;
++  }
++
++  /** Remove every entry whose key starts with `prefix`. Called when a
++   *  viewer's permissions change so revoked documents stop being served. */
++  invalidatePrefix(prefix: string): void {
++    for (const key of this.fresh.keys()) {
++      if (key.startsWith(prefix)) {
++        this.fresh.delete(key);
++      }
++    }
++    for (const key of this.empty.keys()) {
++      if (key.startsWith(prefix)) {
++        this.empty.delete(key);
++      }
++    }
++  }
++}
+diff --git a/cursor.ts b/cursor.ts
+new file mode 100644
+index 000000000..61a5c0ee8
+--- /dev/null
++++ b/cursor.ts
+@@ -0,0 +1,31 @@
++import type { Query } from "./types.ts";
++
++export interface PageState {
++  query: Query;
++  offset: number;
++}
++
++/** Cursor tokens are opaque handles into server-side page state, so clients
++ *  cannot tamper with offsets or another viewer's query. */
++const live = new Map<string, PageState>();
++
++let counter = 0;
++
++export function issueCursor(state: PageState): string {
++  const token = `cur_${(++counter).toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
++  live.set(token, state);
++  return token;
++}
++
++export function resolveCursor(token: string): PageState {
++  const state = live.get(token);
++  if (!state) {
++    throw new Error(`Unknown or expired cursor: ${token}`);
++  }
++  return state;
++}
++
++/** Drop server-side state for cursors a client will no longer use. */
++export function releaseCursor(token: string): void {
++  live.delete(token);
++}
+diff --git a/types.ts b/types.ts
+index 71302dbec..6670c597f 100644
+--- a/types.ts
++++ b/types.ts
+@@ -11,11 +11,16 @@ export interface ListRequest {
+   filter?: string;
+   sort: "updated" | "title";
+   pageSize: number;
+-  page: number;
++  /** Opaque token from a previous page's `nextCursor`. */
++  cursor?: string;
++  /** Admin-only: include archived documents in results. */
++  includeArchived: boolean;
+ }
+ 
+ export interface Page {
+   items: readonly Document[];
++  nextCursor: string | null;
++  hasMore: boolean;
+ }
+ 
+ export interface DocumentSource {
+@@ -28,4 +33,9 @@ export interface Query {
+   viewerId: string;
+   filter: string;
+   sort: "updated" | "title";
++  includeArchived: boolean;
++}
++
++export interface CacheClock {
++  now(): number;
+ }

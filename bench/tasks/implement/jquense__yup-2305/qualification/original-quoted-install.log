@@ -1,0 +1,5 @@
+# This file contains the result of Yarn building a package (hookem@npm:2.0.1)
+# Script name: install
+
+<repo>/.flywheel/sessions/d08a819f60d6/scratch/quoted ' " prepare/.bench-home/tmp/xfs-5d1e4f90/node: line 2: unexpected EOF while looking for matching `"'
+<repo>/.flywheel/sessions/d08a819f60d6/scratch/quoted ' " prepare/.bench-home/tmp/xfs-5d1e4f90/node: line 3: syntax error: unexpected end of file

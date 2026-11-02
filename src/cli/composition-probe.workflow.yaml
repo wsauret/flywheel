@@ -1,0 +1,18 @@
+id: composition-probe
+name: Composition probe
+description: Exercise worker skill composition and inline handoff contracts.
+phases:
+  - phase: fix
+    brief: Fix the confirmed bug and verify the result.
+    dependencies: [test-driven-development]
+    output:
+      summary: The fix and its verification.
+      fields:
+        cause:
+          type: string
+          description: The confirmed cause of the bug.
+        verified:
+          type: boolean
+          description: Whether the verification passed.
+      commands:
+        min: 1

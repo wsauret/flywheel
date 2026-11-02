@@ -1,0 +1,171 @@
+{
+  "task": "rust-react",
+  "date": "2026-10-12",
+  "model": "gpt-6.1-sol",
+  "effort": "high",
+  "access": "ChatGPT subscription",
+  "candidateBudgetMinutes": 25,
+  "sampleCount": 1,
+  "durationMs": 225073,
+  "functionalPass": true,
+  "completeHealthyAttempt": false,
+  "originalCommand": [
+    "cargo",
+    "test",
+    "--",
+    "--include-ignored"
+  ],
+  "originalExitCode": 0,
+  "originalSelected": [
+    {
+      "name": "adder_with_boolean_values",
+      "status": "ok"
+    },
+    {
+      "name": "an_input_cells_value_can_be_set",
+      "status": "ok"
+    },
+    {
+      "name": "callbacks_can_be_added_and_removed",
+      "status": "ok"
+    },
+    {
+      "name": "callbacks_can_be_called_from_multiple_cells",
+      "status": "ok"
+    },
+    {
+      "name": "callbacks_can_be_called_multiple_times",
+      "status": "ok"
+    },
+    {
+      "name": "callbacks_only_fire_on_change",
+      "status": "ok"
+    },
+    {
+      "name": "callbacks_should_not_be_called_if_dependencies_change_but_output_value_doesnt_change",
+      "status": "ok"
+    },
+    {
+      "name": "callbacks_should_only_be_called_once_even_if_multiple_dependencies_change",
+      "status": "ok"
+    },
+    {
+      "name": "compute_cells_calculate_initial_value",
+      "status": "ok"
+    },
+    {
+      "name": "compute_cells_can_depend_on_other_compute_cells",
+      "status": "ok"
+    },
+    {
+      "name": "compute_cells_fire_callbacks",
+      "status": "ok"
+    },
+    {
+      "name": "compute_cells_take_inputs_in_the_right_order",
+      "status": "ok"
+    },
+    {
+      "name": "compute_cells_update_value_when_dependencies_are_changed",
+      "status": "ok"
+    },
+    {
+      "name": "do_not_break_cell_if_creating_compute_cell_with_valid_and_invalid_input",
+      "status": "ok"
+    },
+    {
+      "name": "error_adding_callback_to_nonexistent_cell",
+      "status": "ok"
+    },
+    {
+      "name": "error_creating_compute_cell_if_input_doesnt_exist",
+      "status": "ok"
+    },
+    {
+      "name": "error_removing_callback_from_nonexisting_cell",
+      "status": "ok"
+    },
+    {
+      "name": "error_setting_a_nonexistent_input_cell",
+      "status": "ok"
+    },
+    {
+      "name": "input_cells_have_a_value",
+      "status": "ok"
+    },
+    {
+      "name": "removing_a_callback_multiple_times_doesnt_interfere_with_other_callbacks",
+      "status": "ok"
+    }
+  ],
+  "doctests": {
+    "src/lib.rs - ComputeCellId (line 13) - compile fail": "ok",
+    "src/lib.rs - ComputeCellId (line 8) - compile fail": "ok"
+  },
+  "codeIdentity": "539cf5ba0e51bcd34f3804a5a708706a13e7c010f858886a900eb72fdb68d3ab",
+  "patchIdentity": "8d386c2c448fb4ae578f62bc1af0ea94727b8aa5842f3bcb4530261f3296ac02",
+  "originalTestsRestored": true,
+  "accounting": {
+    "estimatedUsd": {
+      "kind": "unavailable",
+      "reason": "indexed requests have no canonical settlement"
+    },
+    "billedUsd": {
+      "kind": "unavailable",
+      "reason": "indexed requests have no canonical settlement"
+    },
+    "tokens": {
+      "kind": "unavailable",
+      "reason": "indexed requests have no canonical settlement"
+    },
+    "providers": {
+      "kind": "unavailable",
+      "reason": "indexed requests have no canonical settlement"
+    },
+    "pricedEntryCount": 11,
+    "unpricedEntryCount": 0
+  },
+  "knownSubtotal": {
+    "estimatedUsd": {
+      "kind": "observed",
+      "value": 0.1329296
+    },
+    "billedUsd": {
+      "kind": "observed",
+      "value": 0
+    },
+    "tokens": {
+      "kind": "observed",
+      "value": 257119
+    },
+    "providers": {
+      "kind": "observed",
+      "value": [
+        "chatgpt"
+      ]
+    },
+    "pricedEntryCount": 11,
+    "unpricedEntryCount": 0
+  },
+  "missingUsageCount": 1,
+  "warning": "11 of 12 requests settled. Known subtotal is not a full-run cost or billed total.",
+  "sources": [
+    {
+      "artifact": "rust-react-0-result.json",
+      "sha256": "51dd6850e98a73e61a791c9b7e10cb9b65bd7017a7dd6d97830d6f1fe2f231f6"
+    },
+    {
+      "artifact": "grade.json",
+      "sha256": "862e7975031e910028d639e6d2b5614675824543453f43bac0d3a071bfae85a3"
+    },
+    {
+      "artifact": "attempts.jsonl",
+      "sha256": "17e5ad24907da2ac6e81cf0627434c6b0134dec0f4895b4c33c2b51d0e4ccbae"
+    },
+    {
+      "artifact": "rust-react-0-recovered-canonical-usage.json",
+      "sha256": "f5306a2195d3fb97b15a9f4d800302d5aa20ca8ba1da1ac688bf18b3206b07e8"
+    }
+  ],
+  "fixtureOnlyProbesAreModelSamples": false
+}

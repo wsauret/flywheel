@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "role": "reserved-evaluation",
+  "family": "tool-argument-completeness",
+  "source": {
+    "repository": "flywheel",
+    "ref": "f77cd52b328a4009d54b105411202d586d18427d",
+    "paths": [
+      {
+        "path": "src/orchestration/agent-runtime/llm/json-parse.ts",
+        "sha256": "33672f6dc572595bfa19778a969aae024a2dfa57ec02f4d1f9561266af8d0043"
+      }
+    ]
+  },
+  "seed": {
+    "kind": "synthetic-regression",
+    "description": "Synthetic regression: retain only the final 600 code units for long raw snippets and drop omission metadata. This is not a claim of a historical production defect.",
+    "patch": "sandbox.patch",
+    "moduleSha256": "54fd75e53ee81f7ee081339d468aa5637bc0376c278ed395ec0718364798cbb5"
+  },
+  "fix": {
+    "ref": "f77cd52b328a4009d54b105411202d586d18427d",
+    "patch": "qualification/reference.patch",
+    "scope": "Restore the unmodified pinned native parser, not a stub.",
+    "moduleSha256": "33672f6dc572595bfa19778a969aae024a2dfa57ec02f4d1f9561266af8d0043"
+  },
+  "dependencyClosure": {
+    "sourceModules": [
+      "src/orchestration/agent-runtime/llm/json-parse.ts"
+    ],
+    "externalDependencies": {
+      "partial-json": "0.1.7"
+    },
+    "setup": [
+      "bun",
+      "install",
+      "--frozen-lockfile"
+    ]
+  },
+  "scope": "The actual parseToolArguments module boundary. No dispatcher or agent-loop claim.",
+  "priorInspection": {
+    "reservedMeaning": "A newly authored behavioral holdout fixed before candidate tuning, not a claim of unseen source.",
+    "knownInspection": "The family fixture, pinned native parser, task loader, and qualification runner were inspected. A native counterexample confirmed that a different omission marker preserves the supported contract. No candidate prompts or campaign results were read.",
+    "distinction": "Keep bounded raw evidence in refused tool arguments without truncating valid input."
+  },
+  "grading": {
+    "contract": "Grade bounded raw-prefix evidence, refusal, failure categories, and complete successful values without requiring an omission marker or count format.",
+    "alternativeControl": "The second valid repair uses a different omission marker to prevent format-only false negatives."
+  },
+  "candidateArchive": {
+    "paths": [
+      "src/orchestration/agent-runtime/llm/json-parse.ts"
+    ],
+    "addedBySandboxPatch": [
+      "package.json",
+      "bun.lock"
+    ],
+    "excludes": [
+      "acceptance",
+      "qualification",
+      "qualification.json",
+      "provenance.json"
+    ]
+  }
+}

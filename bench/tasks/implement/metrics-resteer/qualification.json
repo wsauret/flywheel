@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "role": "development",
+  "contentIdentity": "6022e59b8687df0eef6738fbe35eae3b44a0d662cd76b1220a4105694980a4e8",
+  "testIds": [
+    "metrics.test.ts > store metrics pipeline > computes percentiles for sorted input",
+    "metrics.test.ts > store metrics pipeline > collector handles samples that arrive out of timestamp order",
+    "metrics.test.ts > store metrics pipeline > report reads retained rollups and normalizes seconds",
+    "acceptance/metrics-pipeline.test.ts > keyed store > retains every rollup for a metric in append order and keeps metric keys independent",
+    "acceptance/metrics-pipeline.test.ts > collector integration > drainWindow writes rollups to the store",
+    "acceptance/metrics-pipeline.test.ts > collector integration > one drain groups the same metric with different units into independent rollups",
+    "acceptance/metrics-pipeline.test.ts > collector integration > uses (windowStartMs, windowEndMs], retains future samples, and publishes each sample once",
+    "acceptance/metrics-pipeline.test.ts > collector integration > out-of-order samples still produce numeric percentiles",
+    "acceptance/metrics-pipeline.test.ts > collector integration > computePercentiles accepts unsorted values directly",
+    "acceptance/metrics-pipeline.test.ts > reports > uses an inclusive 60,000 ms cutoff and selects newest in either insertion order",
+    "acceptance/metrics-pipeline.test.ts > reports > preserves the exact report shape for s values",
+    "acceptance/metrics-pipeline.test.ts > reports > preserves the exact report shape for ms values",
+    "acceptance/metrics-pipeline.test.ts > reports > preserves the exact report shape for count values"
+  ],
+  "cases": [
+    {
+      "id": "reference",
+      "patches": [
+        "qualification/reference.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "Implements the keyed store, consumed windows, sorted percentiles and report contract; migrates visible tests from the removed callback API.",
+      "expectedFailures": []
+    },
+    {
+      "id": "alternative",
+      "patches": [
+        "qualification/reference.patch",
+        "qualification/alternative.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "Implements the same contract with an alternative store representation and latest-rollup selection.",
+      "expectedFailures": []
+    },
+    {
+      "id": "retention-60",
+      "patches": [
+        "qualification/reference.patch",
+        "qualification/retention-60.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Changes the report cutoff from 60,000 ms to 60 ms.",
+      "expectedFailures": [
+        "acceptance/metrics-pipeline.test.ts > reports > uses an inclusive 60,000 ms cutoff and selects newest in either insertion order",
+        "acceptance/metrics-pipeline.test.ts > reports > preserves the exact report shape for s values",
+        "acceptance/metrics-pipeline.test.ts > reports > preserves the exact report shape for ms values",
+        "acceptance/metrics-pipeline.test.ts > reports > preserves the exact report shape for count values"
+      ]
+    },
+    {
+      "id": "unsorted-percentiles",
+      "patches": [
+        "qualification/reference.patch",
+        "qualification/unsorted-percentiles.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Calculates percentiles without sorting incoming values.",
+      "expectedFailures": [
+        "acceptance/metrics-pipeline.test.ts > collector integration > out-of-order samples still produce numeric percentiles",
+        "acceptance/metrics-pipeline.test.ts > collector integration > computePercentiles accepts unsorted values directly"
+      ]
+    },
+    {
+      "id": "no-consumption",
+      "patches": [
+        "qualification/reference.patch",
+        "qualification/no-consumption.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Leaves consumed samples available for later drains.",
+      "expectedFailures": [
+        "acceptance/metrics-pipeline.test.ts > collector integration > uses (windowStartMs, windowEndMs], retains future samples, and publishes each sample once"
+      ]
+    },
+    {
+      "id": "insertion-newest",
+      "patches": [
+        "qualification/reference.patch",
+        "qualification/insertion-newest.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Uses insertion order instead of timestamp to select the newest rollup.",
+      "expectedFailures": [
+        "acceptance/metrics-pipeline.test.ts > reports > uses an inclusive 60,000 ms cutoff and selects newest in either insertion order"
+      ]
+    },
+    {
+      "id": "future-bound-regression",
+      "patches": [
+        "qualification/reference.patch",
+        "qualification/future-bound-regression.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Adds an upper time bound that changes the original lower-cutoff reader behavior during a preservation-only refactor.",
+      "expectedFailures": [
+        "acceptance/metrics-pipeline.test.ts > reports > uses an inclusive 60,000 ms cutoff and selects newest in either insertion order"
+      ]
+    }
+  ]
+}

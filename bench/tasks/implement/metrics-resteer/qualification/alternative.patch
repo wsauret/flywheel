@@ -1,0 +1,43 @@
+===================================================================
+--- a/reader.ts
++++ b/reader.ts
+@@ -13,10 +13,14 @@
+ export function createReader(options: ReaderOptions): MetricsReader {
+   return {
+     latest(metric, nowMs) {
+       const cutoffMs = nowMs - options.retentionMs;
+-      return options.store.read(metric)
+-        .filter((rollup) => rollup.windowEndMs >= cutoffMs)
+-        .sort((left, right) => right.windowEndMs - left.windowEndMs)[0];
++      let newest: Rollup | undefined;
++      for (const rollup of options.store.read(metric)) {
++        if (rollup.windowEndMs >= cutoffMs && (!newest || rollup.windowEndMs > newest.windowEndMs)) {
++          newest = rollup;
++        }
++      }
++      return newest;
+     },
+   };
+ }
+===================================================================
+--- a/store.ts
++++ b/store.ts
+@@ -1,15 +1,13 @@
+ import type { Rollup } from "./types.js";
+ 
+ export class MetricsStore {
+-  private readonly byMetric = new Map<string, Rollup[]>();
++  private readonly rollups: Rollup[] = [];
+ 
+   append(rollup: Rollup): void {
+-    const retained = this.byMetric.get(rollup.metric);
+-    if (retained) retained.push(rollup);
+-    else this.byMetric.set(rollup.metric, [rollup]);
++    this.rollups.push(rollup);
+   }
+ 
+   read(metric: string): readonly Rollup[] {
+-    return this.byMetric.get(metric) ?? [];
++    return this.rollups.filter((rollup) => rollup.metric === metric);
+   }
+ }

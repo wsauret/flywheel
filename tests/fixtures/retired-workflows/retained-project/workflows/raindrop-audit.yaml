@@ -1,0 +1,17 @@
+id: raindrop-audit
+name: Raindrop Audit
+description: Audit one Raindrop bookmark against Flywheel and propose only the improvements the source justifies.
+use_when: >
+  The user wants to process the Raindrop inspiration queue: "audit my
+  bookmarks", "run a raindrop audit", "process the inspiration queue", or
+  names one bookmark to audit. Follows the inspiration-audit playbook, writes
+  the research artifact and any warranted plan, and emits batched memory and
+  definition proposals a deterministic consumer records; a no-op audit is a
+  valid outcome.
+disable-model-invocation: true
+requires_description: false
+phases:
+  - phase: raindrop-audit
+    runs: fly.raindrop-audit
+    writes:
+      - inspiration-audit

@@ -1,0 +1,145 @@
+===================================================================
+--- a/collector.ts
++++ b/collector.ts
+@@ -1,10 +1,11 @@
+ import { rollupSamples } from "./rollup.js";
+-import type { Rollup, Sample } from "./types.js";
++import type { MetricsStore } from "./store.js";
++import type { Sample } from "./types.js";
+ 
+ export interface CollectorOptions {
+   windowMs: number;
+-  onRollup(rollup: Rollup): void;
++  store: MetricsStore;
+ }
+ 
+ export interface Collector {
+   add(sample: Sample): void;
+@@ -32,9 +33,9 @@
+         if (group) group.push(sample);
+         else byMetric.set(key, [sample]);
+       }
+       for (const samples of byMetric.values()) {
+-        options.onRollup(rollupSamples(samples, windowStartMs, windowEndMs));
++        options.store.append(rollupSamples(samples, windowStartMs, windowEndMs));
+       }
+     },
+   };
+ }
+===================================================================
+--- a/metrics.test.ts
++++ b/metrics.test.ts
+@@ -2,27 +2,28 @@
+ import { describe, expect, test } from "bun:test";
+ import { createCollector } from "./collector.js";
+ import { computePercentiles } from "./percentiles.js";
+ import { createReportSource } from "./report.js";
++import { MetricsStore } from "./store.js";
+ import type { Rollup } from "./types.js";
+ 
+ function sample(value: number, timestampMs: number) {
+   return { metric: "latency", value, timestampMs, unit: "ms" as const };
+ }
+ 
+-describe("callback metrics pipeline", () => {
++describe("store metrics pipeline", () => {
+   test("computes percentiles for sorted input", () => {
+     expect(computePercentiles([1, 2, 3, 4, 5])).toEqual({ p50: 3, p95: 5 });
+   });
+ 
+   test("collector handles samples that arrive out of timestamp order", () => {
+-    const rollups: Rollup[] = [];
+-    const collector = createCollector({ windowMs: 100, onRollup: (rollup) => rollups.push(rollup) });
++    const store = new MetricsStore();
++    const collector = createCollector({ windowMs: 100, store });
+     collector.add(sample(90, 90));
+     collector.add(sample(10, 10));
+     collector.add(sample(50, 50));
+     collector.drainWindow(100);
+-    expect(rollups).toHaveLength(1);
++    expect(store.read("latency")).toHaveLength(1);
+   });
+ 
+   test("report reads retained rollups and normalizes seconds", () => {
+     const rollups: Rollup[] = [{
+@@ -35,7 +36,9 @@
+       p50: 0.1,
+       p95: 0.2,
+       unit: "s",
+     }];
+-    expect(createReportSource(() => rollups).report("latency", 2_000)).toEqual({ metric: "latency", count: 2, p95: 200 });
++    const store = new MetricsStore();
++    for (const rollup of rollups) store.append(rollup);
++    expect(createReportSource(store).report("latency", 2_000)).toEqual({ metric: "latency", count: 2, p95: 200 });
+   });
+ });
+===================================================================
+--- a/reader.ts
++++ b/reader.ts
+@@ -1,8 +1,9 @@
++import type { MetricsStore } from "./store.js";
+ import type { Rollup } from "./types.js";
+ 
+ export interface ReaderOptions {
+-  readRollups(): readonly Rollup[];
++  store: MetricsStore;
+   retentionMs: number;
+ }
+ 
+ export interface MetricsReader {
+@@ -12,10 +13,10 @@
+ export function createReader(options: ReaderOptions): MetricsReader {
+   return {
+     latest(metric, nowMs) {
+       const cutoffMs = nowMs - options.retentionMs;
+-      return options.readRollups()
+-        .filter((rollup) => rollup.metric === metric && rollup.windowEndMs >= cutoffMs)
++      return options.store.read(metric)
++        .filter((rollup) => rollup.windowEndMs >= cutoffMs)
+         .sort((left, right) => right.windowEndMs - left.windowEndMs)[0];
+     },
+   };
+ }
+===================================================================
+--- a/report.ts
++++ b/report.ts
+@@ -1,6 +1,6 @@
+ import { createReader } from "./reader.js";
+-import type { Rollup } from "./types.js";
++import type { MetricsStore } from "./store.js";
+ import { UNIT_NORMALIZERS } from "./units.js";
+ 
+ export const RETENTION_MS = 60_000;
+ 
+@@ -13,10 +13,10 @@
+ export interface ReportSource {
+   report(metric: string, nowMs: number): MetricReport | undefined;
+ }
+ 
+-export function createReportSource(readRollups: () => readonly Rollup[]): ReportSource {
+-  const reader = createReader({ readRollups, retentionMs: RETENTION_MS });
++export function createReportSource(store: MetricsStore): ReportSource {
++  const reader = createReader({ store, retentionMs: RETENTION_MS });
+   return {
+     report(metric, nowMs) {
+       const rollup = reader.latest(metric, nowMs);
+       if (!rollup) return undefined;
+===================================================================
+--- /dev/null
++++ b/store.ts
+@@ -0,0 +1,15 @@
++import type { Rollup } from "./types.js";
++
++export class MetricsStore {
++  private readonly byMetric = new Map<string, Rollup[]>();
++
++  append(rollup: Rollup): void {
++    const retained = this.byMetric.get(rollup.metric);
++    if (retained) retained.push(rollup);
++    else this.byMetric.set(rollup.metric, [rollup]);
++  }
++
++  read(metric: string): readonly Rollup[] {
++    return this.byMetric.get(metric) ?? [];
++  }
++}

@@ -1,0 +1,56 @@
+[
+  {
+    "file": "test_outputs.py",
+    "original": "\"/app/eval.scm\\n\"",
+    "native": "JSON.stringify(JSON.stringify(${ABSOLUTE_EVALUATOR_OR_SCOPED_ALIAS}) + '\\n')",
+    "occurrences": 1
+  },
+  {
+    "file": "test_outputs.py",
+    "original": "\"/app/eval.scm\"",
+    "native": "JSON.stringify(${WORKSPACE}/eval.scm)",
+    "occurrences": 1
+  },
+  {
+    "file": "test_outputs.py",
+    "original": "\"/tests/test\"",
+    "native": "JSON.stringify(${WORKSPACE}/.bench-home/verifier/tests/test)",
+    "occurrences": 1
+  },
+  {
+    "file": "test_outputs.py",
+    "original": "\"/tests/shadow_test\"",
+    "native": "JSON.stringify(${WORKSPACE}/.bench-home/verifier/tests/shadow_test)",
+    "occurrences": 1
+  },
+  {
+    "file": "test.sh",
+    "original": "#!/bin/bash\n\n# Install curl\napt-get update\napt-get install -y curl\n\n# Install uv\ncurl -LsSf https://astral.sh/uv/0.9.5/install.sh | sh\n\nsource $HOME/.local/bin/env\n\n# Check if we're in a valid working directory\nif [ \"$PWD\" = \"/\" ]; then\n    echo \"Error: No working directory set. Please set a WORKDIR in your Dockerfile before running this script.\"\n    exit 1\nfi\n\n",
+    "native": "",
+    "occurrences": 1
+  },
+  {
+    "file": "test.sh",
+    "original": "uvx \\\n  -p 3.13 \\\n  -w pytest==8.4.1 \\\n  -w pytest-json-ctrf==0.3.5 \\\n  pytest",
+    "native": "Bun.$.escape(${WORKSPACE}/.bench-home/python/bin/python) + ' -I ' + Bun.$.escape(${WORKSPACE}/.bench-home/python/bin/pytest)",
+    "occurrences": 1
+  },
+  {
+    "file": "test.sh",
+    "original": "/logs/verifier/ctrf.json",
+    "native": "Bun.$.escape(${WORKSPACE}/.bench-home/verifier/logs/ctrf.json)",
+    "occurrences": 1
+  },
+  {
+    "file": "test.sh",
+    "original": "/logs/verifier/reward.txt",
+    "native": "Bun.$.escape(${WORKSPACE}/.bench-home/verifier/logs/reward.txt)",
+    "occurrences": 2
+  },
+  {
+    "file": "test.sh",
+    "original": "/tests/test_outputs.py",
+    "native": "Bun.$.escape(${WORKSPACE}/.bench-home/verifier/tests/test_outputs.py)",
+    "occurrences": 1
+  }
+]

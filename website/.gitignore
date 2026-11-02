@@ -1,0 +1,2 @@
+# Astro's generated type directory; dist/ and node_modules/ are ignored by the root .gitignore.
+.astro/

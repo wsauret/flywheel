@@ -1,0 +1,148 @@
+/* Dialogs and toasts. A dialog is the one surface that interrupts, so it is
+   also the one place the client spends a scrim and a shadow. */
+
+.scrim {
+  /* Follow the host-sized client when the phone keyboard reduces its height. */
+  position: absolute;
+  inset: 0;
+  z-index: var(--fw-z-sheet);
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  place-items: center;
+  padding: var(--fw-s4);
+  background: var(--fw-scrim);
+  animation: dialog-scrim var(--fw-motion) var(--fw-ease);
+}
+
+.dialog {
+  width: min(100%, 26rem);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: var(--fw-s4);
+  background: var(--fw-menu-bg);
+  color: var(--fw-fg);
+  border: 1px solid var(--fw-menu-border);
+  border-radius: var(--fw-radius-lg);
+  box-shadow: var(--fw-shadow-sheet);
+  animation: dialog-rise var(--fw-motion) var(--fw-ease);
+}
+
+.dialog-title {
+  margin: 0;
+  font-size: var(--fw-text);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.dialog-detail {
+  margin: var(--fw-s2) 0 0;
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-sm);
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+.dialog-field {
+  display: grid;
+  gap: var(--fw-s1);
+  margin-top: var(--fw-s3);
+  color: var(--fw-fg-muted);
+  font-size: var(--fw-text-sm);
+}
+
+.dialog-input {
+  width: 100%;
+  padding: 7px var(--fw-s3);
+  font: inherit;
+  font-size: var(--fw-text-sm);
+  color: var(--fw-input-fg);
+  background: var(--fw-input-bg);
+  border: 1px solid var(--fw-input-border);
+  border-radius: var(--fw-radius);
+}
+.dialog-input:focus { outline: none; border-color: var(--fw-focus); }
+.dialog-input[aria-invalid="true"] { border-color: var(--fw-error); }
+
+.dialog-problem {
+  margin: 0;
+  color: var(--fw-error);
+  font-size: var(--fw-text-xs);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--fw-s2);
+  margin-top: var(--fw-s4);
+}
+
+/* Toasts stack at the top of the client, under the header, over any open
+   sheet, and never take focus: they inform, and the composer keeps the
+   keyboard. */
+.toasts {
+  position: absolute;
+  top: calc(var(--fw-s6) + var(--fw-s2));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--fw-z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fw-s2);
+  width: min(calc(100% - var(--fw-s5)), 28rem);
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fw-s2);
+  padding: var(--fw-s2) var(--fw-s2) var(--fw-s2) var(--fw-s3);
+  background: var(--fw-hover-bg);
+  color: var(--fw-hover-fg);
+  border: 1px solid var(--fw-hover-border);
+  border-left-width: 2px;
+  border-radius: var(--fw-radius);
+  box-shadow: var(--fw-shadow-popover);
+  font-size: var(--fw-text-sm);
+  pointer-events: auto;
+  animation: dialog-rise var(--fw-motion) var(--fw-ease);
+}
+.toast-info { border-left-color: var(--fw-info); }
+.toast-warning { border-left-color: var(--fw-warning); }
+
+.toast-mark {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--fw-radius-pill);
+  background: var(--fw-bg-raised-strong);
+  font-size: var(--fw-text-2xs);
+  font-weight: 700;
+  line-height: 1;
+}
+.toast-warning .toast-mark { color: var(--fw-warning); }
+.toast-info .toast-mark { color: var(--fw-info); }
+/* A report such as /doctor states one fact per line and indents the facts under their section. */
+.toast-text { flex: 1 1 auto; min-width: 0; word-break: break-word; white-space: pre-wrap; }
+
+.toast-dismiss {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  color: var(--fw-fg-muted);
+  border-radius: var(--fw-radius-sm);
+}
+.toast-dismiss svg { width: 12px; height: 12px; }
+.toast-dismiss:hover { background: var(--fw-bg-raised-strong); color: var(--fw-fg); }
+
+@keyframes dialog-scrim { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dialog-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .scrim, .dialog, .toast { animation: none; }
+}

@@ -1,0 +1,269 @@
+/* The ground every component stands on: the reset, the body, the shared
+   controls, and the tooltip. Everything reads tokens; nothing here names a
+   host. */
+
+/* A fast second tap is a second tap, never a double-tap zoom. Every element
+   carries the rule, not only the root: a scroll container starts a new
+   touch-action chain, so a root rule would not reach a control inside the
+   transcript or the session list. Pinch zoom and panning stay. */
+* {
+  box-sizing: border-box;
+  touch-action: manipulation;
+  scrollbar-width: thin;
+  scrollbar-color: var(--fw-scrollbar-thumb) var(--fw-scrollbar-track);
+}
+
+::selection { background: var(--fw-selection-bg); color: var(--fw-selection-fg); }
+
+/* The shared ref marks only edges with content beyond them. The transcript
+   does not register, so selecting prose never passes under this mask. */
+.scroll-edges {
+  scroll-padding-block: var(--fw-scroll-fade);
+  --fw-fade-top: 0px;
+  --fw-fade-bottom: 0px;
+  mask-image: linear-gradient(to bottom, transparent, var(--fw-fg) var(--fw-fade-top), var(--fw-fg) calc(100% - var(--fw-fade-bottom)), transparent);
+}
+.scroll-edges.scroll-above { --fw-fade-top: var(--fw-scroll-fade); }
+.scroll-edges.scroll-below { --fw-fade-bottom: var(--fw-scroll-fade); }
+
+/* The client draws its own gutters on every host. A host's default body
+   padding, such as the 20px each side that a VS Code webview injects, would
+   add a second gutter and take that width from a narrow sidebar. */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+/* The press state below replaces the browser's own tap highlight, which on a
+   phone covers some controls and not others. */
+html { -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: var(--fw-font);
+  font-size: var(--fw-text);
+  line-height: var(--fw-leading);
+  color: var(--fw-fg);
+  background: var(--fw-bg);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+button {
+  font-family: inherit;
+  font-size: var(--fw-text-sm);
+  border: 1px solid transparent;
+  border-radius: var(--fw-radius);
+  cursor: pointer;
+  transition: background var(--fw-motion-fast) ease, border-color var(--fw-motion-fast) ease, opacity var(--fw-motion-fast) ease;
+}
+:where(button, label:has(input), [role="button"], [role="menuitem"], [role="option"], .changes-file-header) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+button:disabled { cursor: default; opacity: 0.4; }
+
+/* The press state: a control answers the moment a finger or pointer goes down,
+   before any handler runs. It is an inset tint over the control's own ground,
+   so one rule reads on a plain, hovered, selected, or accent control, and a
+   hover rule that sets the background cannot hide it. It has no transition,
+   because a press that fades in is late. Only the innermost pressed control
+   shows it, so a button on a row does not also light the row. A static disclosure has nothing to do, so it shows no press. iOS
+   applies :active only while the page listens for touchstart, which
+   mountClient does. */
+:where(button, [role="button"], [role="option"], [role="menuitem"], label:has(input[type="checkbox"], input[type="radio"]), summary, a[href], .changes-file-header):active:not(:disabled, [aria-disabled="true"], .static, :has(:where(button, [role="button"], [role="option"], [role="menuitem"], label, summary, a[href]):active)) {
+  box-shadow: inset 0 0 0 100vmax var(--fw-press);
+}
+/* A recognized swipe moves what is under the finger, so no control it
+   carries reads as pressed. The browser does not clear :active for a pan
+   that the page tracks itself: the screen stack marks the client while a
+   swipe back runs, and a session row marks itself while its tray is dragged.
+   Only controls are named, so a card or a status dot under the finger keeps
+   its own shadow. */
+.client.dragging :where(button, [role="button"], [role="option"], [role="menuitem"], label, summary, a[href], .changes-file-header):active,
+.session-row.dragging,
+.session-row.dragging :where(button, [role="button"]):active { box-shadow: none; }
+
+/* The working state: a control whose action waits on the runtime says so
+   from the tap until the result arrives. The press tint stays on it and
+   breathes, so the control reads as busy in place without a spinner that
+   would move its label. A second tap joins the running action, so the
+   control stays enabled. The open chat's title shows it too, for an action
+   on the chat whose control has closed. Reduced motion keeps the tint
+   still. */
+:where(button, [role="button"], [role="option"], [role="menuitem"], label, summary, a[href], .toolbar-title)[aria-busy="true"] {
+  cursor: progress;
+  animation: working 1.2s ease-in-out infinite;
+}
+@keyframes working {
+  0%, 100% { box-shadow: inset 0 0 0 100vmax var(--fw-press); }
+  50% { box-shadow: inset 0 0 0 100vmax transparent; }
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible { outline: 2px solid var(--fw-focus); outline-offset: 1px; }
+
+.icon { flex: 0 0 auto; }
+
+/* The one primary action on screen. */
+.primary {
+  background: var(--fw-accent);
+  color: var(--fw-accent-fg);
+  padding: 5px 14px;
+  font-weight: 500;
+}
+.primary:hover:not(:disabled) { background: var(--fw-accent-hover); }
+
+/* A filled action beside the primary one, or a destructive one that the
+   surrounding copy names. */
+.secondary,
+.danger {
+  background: var(--fw-secondary);
+  color: var(--fw-secondary-fg);
+  padding: 5px 14px;
+  font-weight: 500;
+}
+.secondary:hover:not(:disabled),
+.danger:hover:not(:disabled) { background: var(--fw-secondary-hover); }
+
+/* A square icon button that shows its ground only on hover. */
+.ghost {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  flex: 0 0 auto;
+  background: transparent;
+  color: var(--fw-fg);
+  font-size: var(--fw-text-lg);
+  line-height: 1;
+  opacity: 0.75;
+}
+.ghost:hover:not(:disabled) { background: var(--fw-bg-raised-strong); opacity: 1; }
+
+/* A text button that reads as a secondary choice beside a primary one. */
+.ghost-text {
+  background: transparent;
+  color: var(--fw-fg-muted);
+  padding: 5px var(--fw-s3);
+}
+.ghost-text:hover:not(:disabled) { background: var(--fw-bg-raised); color: var(--fw-fg); }
+
+.link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  color: var(--fw-link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.link:hover { color: var(--fw-link-active); }
+
+/* A small action that lives on a row and shows on hover or focus. */
+.row-action {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  border-radius: var(--fw-radius-sm);
+  opacity: 0.7;
+}
+.row-action:hover { background: var(--fw-bg-raised-strong); opacity: 1; }
+.row-action.danger-action:hover {
+  background: color-mix(in srgb, var(--fw-error) 22%, transparent);
+  color: var(--fw-error);
+}
+
+/* The switch: a track at half-height radius, the thumb inset 2px, the on
+   state carrying the accent. Shared by the command panel and the sheets. */
+.panel-toggle {
+  flex: 0 0 auto;
+  position: relative;
+  width: 32px;
+  height: 18px;
+  border-radius: var(--fw-radius-pill);
+  background: var(--fw-input-border);
+  transition: background var(--fw-motion) ease;
+}
+.panel-toggle::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--fw-radius-pill);
+  background: var(--fw-fg);
+  box-shadow: var(--fw-shadow-tooltip);
+  transition: left var(--fw-motion) ease;
+}
+.panel-toggle.on { background: var(--fw-accent); }
+.panel-toggle.on::after { left: 16px; }
+
+/* Tooltips. Neither host surfaces native title bubbles reliably, so a title
+   attribute alone would leave every icon-only control unexplained until it
+   was clicked. This bubble renders the same attribute, so the tooltip and the
+   accessible name cannot drift apart. The :has guard keeps a hovered inner
+   titled element from also raising its ancestor's bubble. The delay keeps
+   ordinary mouse travel from raising a trail of labels. Touch has no hover,
+   so a coarse pointer never sees one. */
+@media (hover: hover) {
+  [title] { position: relative; }
+  [title]:hover:not(:has([title]:hover))::after {
+    content: attr(title);
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: var(--fw-z-tooltip);
+    width: max-content;
+    max-width: min(260px, calc(100cqw - 24px));
+    padding: 3px 8px;
+    border-radius: var(--fw-radius-sm);
+    font-family: var(--fw-font);
+    font-size: var(--fw-text-xs);
+    font-weight: 400;
+    line-height: var(--fw-leading-tight);
+    text-align: left;
+    white-space: pre-line;
+    pointer-events: none;
+    background: var(--fw-hover-bg);
+    color: var(--fw-hover-fg);
+    border: 1px solid var(--fw-hover-border);
+    box-shadow: var(--fw-shadow-tooltip);
+    opacity: 0;
+    animation: tooltip-in 100ms ease 450ms forwards;
+  }
+  /* Clusters against the right edge grow leftward to stay inside the container. */
+  .toolbar [title]:hover:not(:has([title]:hover))::after { left: auto; right: 0; }
+  footer [title]:hover:not(:has([title]:hover))::after { top: auto; bottom: calc(100% + 6px); }
+}
+@keyframes tooltip-in { to { opacity: 1; } }
+
+@keyframes breathe {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.82); }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [title]:hover::after { animation-duration: 0ms; }
+  .panel-toggle, .panel-toggle::after, button { transition: none; }
+  :where(button, [role="button"], [role="option"], [role="menuitem"], label, summary, a[href], .toolbar-title)[aria-busy="true"] { animation: none; box-shadow: inset 0 0 0 100vmax var(--fw-press); }
+}
+
+/* On a touch device every field reads the floored field size from tokens.css.
+   The selector outranks a component's own field size, so no component can set
+   a field small enough for iOS to zoom the page. */
+@media (pointer: coarse) {
+  .client :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea) { font-size: var(--fw-text-field); }
+}

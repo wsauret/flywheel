@@ -1,0 +1,24 @@
+/* Notification cards in the notifications sheet. */
+.notification {
+  padding: var(--fw-s3) var(--fw-s2);
+  border-left: 2px solid var(--fw-warning);
+  margin: 0 0 var(--fw-s2);
+}
+.notification-alert { border-left-color: var(--fw-error); }
+.notification-head { display: flex; align-items: baseline; gap: var(--fw-s2); }
+.notification-severity {
+  font-size: var(--fw-text-2xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fw-warning);
+}
+.notification-alert .notification-severity { color: var(--fw-error); }
+.notification-resolved { border-left-color: var(--fw-fg-muted); }
+.notification-resolved .notification-severity { color: var(--fw-fg-muted); }
+.notification-title { font-weight: 600; font-size: var(--fw-text-sm); }
+/* When it was raised, at the row's far edge: a reader opening the sheet later
+   needs to know whether this is fresh or from this morning. */
+.notification-time { margin-left: auto; color: var(--fw-fg-muted); font-size: var(--fw-text-xs); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.notification-message { margin: var(--fw-s1) 0 var(--fw-s2); color: var(--fw-fg-muted); font-size: var(--fw-text-sm); word-break: break-word; }
+.notification-actions { display: flex; gap: var(--fw-s2); }

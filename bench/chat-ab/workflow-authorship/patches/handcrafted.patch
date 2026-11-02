@@ -1,0 +1,60 @@
+diff --git a/src/orchestration/modules/workflows/orchestration.ts b/src/orchestration/modules/workflows/orchestration.ts
+--- a/src/orchestration/modules/workflows/orchestration.ts
++++ b/src/orchestration/modules/workflows/orchestration.ts
+@@ -1,3 +1,7 @@
++import { resolve } from "node:path"
++
++const HANDCRAFTED_WORKFLOW_DIRECTORY = resolve(import.meta.dir, "../../../../bench/chat-ab/workflow-authorship/handcrafted")
++
+ /** How the root chat runs substantive work while Workflows is On:
+  *  through workflows by default, with a file written for the task (PI-AGENT-031). The chat body's sizing rule says to start a workflow only on
+  *  a named trigger, so this section states that it comes first for that one
+@@ -12,11 +16,28 @@
+ 
+ Use a workflow only when it runs at least two agents and a later agent reads the output of an earlier one, such as finders and then verifiers. Give the work of one agent to a subagent. Give agents that can all run at the same time to parallel subagents.
+ 
+-- Write a workflow file for the task and launch it by content or path with the workflow tool.
++- Choose the predefined workflow whose purpose fits the task and launch it by path with the workflow tool; do not write workflow files.
+-- Run the parts of one task, such as understand, design, and implement, as several dispatches in sequence, one for each part, and read each result before you start the next part. A part holds all of its own agents: the implement workflow builds, reviews by lens, repairs the confirmed findings, and verifies the repair, never in later subagents or a second workflow (\`examples/build-review-loop.workflow.yaml\` in \`workflow-authoring\`). Its result is a first draft: read it against the Design intent, and revise what drifts from it. End a part only where the person must decide, such as approval of a design or whether to pay for a run: ask with \`ask_user\`, and pass the answer as \`input\` to the next workflow.
++- Run the stages of one task, such as understand, design, and implement, as several dispatches in sequence, one for each stage, and read each result before you start the next stage. A stage holds all of its own agents: the implement workflow builds, reviews by lens, repairs the confirmed findings, and verifies the repair, never in later subagents or a second workflow. Its result is a first draft: read it against the Design intent, and revise what drifts from it. End a stage only where the person must decide, such as approval of a design or whether to pay for a run: ask with \`ask_user\`, and pass the answer as \`input\` to the next workflow.
+ - Start independent units of work at the same time. Before a plan of several units starts, list the prerequisites of each unit and the files that it changes. Start every unit whose prerequisites are complete and whose files do not overlap the files of a running unit. A unit waits only for a named prerequisite or a named file overlap; the order in which units commit is not a reason to wait. Do not wait on a running dispatch while a unit that can start is still unstarted.
+-- Prefer workflows that verify their findings adversarially, unless the work is trivial or already verified.`
++- Prefer workflows that verify their findings adversarially, unless the work is trivial or already verified.
+ 
++# Predefined workflows
++
++Implement
++Description: Turn a settled design into a reviewed implementation spec, then implement it.
++Use when: Use when the design is already settled in chat and the work is substantial: multiple dependent phases or architectural decisions whose mistakes would invalidate later phases. Launch only when no user choice or technical uncertainty remains and no phase needs discovery, experiments, or proof-of-concept work; the workflow inspects the repository only to ground the settled design in exact files, callers, and tests. Do not use it to start designing, for a bounded change, for routine ticket-sized work, or for bulk homogeneous work such as mass lint fixes, codemods, or renames. When you can launch a workflow file, run bulk work as one that fans out over the sites and verifies each one; otherwise drive it from chat as waves of implementer subagents with per-batch verification. Once the workflow is running, newly exposed implementation uncertainty belongs to the active step: troubleshoot it, run a focused experiment or proof of concept, and continue. The fact that work remains is not a blocker.
++Path: ${resolve(HANDCRAFTED_WORKFLOW_DIRECTORY, "implement.workflow.yaml")}
++
++QA
++Description: Inventory the user-visible surface, exercise every entry from scratch in each verification pass, fix reproducible issues, and record blocking findings.
++Use when: The user wants an exhaustive QA pass on the current project: "QA the app", "do a full quality pass", "test every surface". Every follow-up pass also exercises the complete surface from scratch. Produces a timestamped run directory under docs/qa/runs/ with a changelog and unclear-findings document, and applies fixes in the same pass.
++Path: ${resolve(HANDCRAFTED_WORKFLOW_DIRECTORY, "qa.workflow.yaml")}
++
++Debug
++Description: Investigate, fix, and verify a small reported issue.
++Use when: Use for a small investigation and fix when the user reports a specific bug and the root cause is not known. The workflow separates root-cause analysis, the fix, and verification. Keep obvious fixes and clear local changes in-process.
++Path: ${resolve(HANDCRAFTED_WORKFLOW_DIRECTORY, "debug.workflow.yaml")}`
++
+ /** The same mode stated beside the person's turns. The prompt section alone did
+  *  not move the model: on plain requests it read the sizing rule and worked
+  *  alone on 24 of 24 tasks, and this reminder made it launch (ARCH-CONTEXT-022). */
+diff --git a/src/orchestration/agent-runtime/tools/workflow.ts b/src/orchestration/agent-runtime/tools/workflow.ts
+--- a/src/orchestration/agent-runtime/tools/workflow.ts
++++ b/src/orchestration/agent-runtime/tools/workflow.ts
+@@ -52,10 +52,10 @@
+ 
+ const LAUNCH_DESCRIPTION = "Launch a workflow as a background child of this chat. Open its activity row to inspect it. Interrupting this chat or closing the viewer does not stop the workflow. Its launching call stays pending while interrupted work can continue. Completion or Stop settles that call and delivers one hidden runtime notification. Continue the conversation in this chat; completed workflows are read-only.";
+ 
+-const FILE_DESCRIPTION = `${LAUNCH_DESCRIPTION} It launches a workflow file that you wrote.
++const FILE_DESCRIPTION = `${LAUNCH_DESCRIPTION} It launches a predefined workflow file.
+ 
+-Write a workflow file for substantive work that needs its own phases, agent mix, verification, or synthesis. A workflow file runs at least two agents, and a later agent reads the output of an earlier one; dispatch one agent, or agents that can all run at the same time, as subagents instead. Read a result yourself when you must judge it against the design. A result that you would read only to brief the next agent belongs inside the workflow, passed with \`reads\`: each relay adds that result to your context and waits for a turn of yours. When several units each need the same chain, such as build, review, and fix, and you revise, commit, or unblock each unit on its own, write the file once with an \`input\` contract and launch it by path for each unit with that unit as \`input\`. When you read the results of all units together, run one workflow over the list instead, as the canonical file below does.
++Choose a predefined workflow for substantive work that needs its own phases, agent mix, verification, or synthesis. A workflow file runs at least two agents, and a later agent reads the output of an earlier one; dispatch one agent, or agents that can all run at the same time, as subagents instead.
+ 
+-Launch a workflow file that you write in one call: workflow({ source: { kind: "content", content }, summary, description, input }). Flywheel saves the content as scratch/workflows/<id>.workflow.yaml in this session's directory, replacing a file of that name, and launches the saved file. Name a saved file with { kind: "path", path } to launch it again or after you edit it. A path names any workflow file, also one in the project: Flywheel saves a copy of a file outside that directory there and launches the copy, so do not read a file only to pass its content. The launch decodes, admits, and verifies the file before any agent starts; a refused launch starts nothing, keeps the saved file, and lists each problem. Before you write a workflow file, load the \`workflow-authoring\` skill. Keep each phase and agent name to one or two words, at most 10 characters, such as \`rename\`, \`rewrites\`, or \`verify\`, because the workflow card shows them. For the same reason, give a phase over a list of objects a \`label\` that names a short descriptive field of each item, such as \`path\` or a \`name\` like \`runbook\`; without one, its agents show only as numbers.
++Launch a predefined workflow file in one call: workflow({ source: { kind: "path", path }, summary, description, input }). Flywheel saves the content as scratch/workflows/<id>.workflow.yaml in this session's directory, replacing a file of that name, and launches the saved file. Name a saved file with { kind: "path", path } to launch it again or after you edit it. A path names any workflow file, also one in the project: Flywheel saves a copy of a file outside that directory there and launches the copy, so do not read a file only to pass its content. The launch decodes, admits, and verifies the file before any agent starts; a refused launch starts nothing, keeps the saved file, and lists each problem. Before you write a workflow file, load the \`workflow-authoring\` skill. Keep each phase and agent name to one or two words, at most 10 characters, such as \`rename\`, \`rewrites\`, or \`verify\`, because the workflow card shows them. For the same reason, give a phase over a list of objects a \`label\` that names a short descriptive field of each item, such as \`path\` or a \`name\` like \`runbook\`; without one, its agents show only as numbers.
+ 
+ The canonical workflow file reviews each changed file, merges duplicate findings, and verifies each kept finding. Launch it with input { "files": [{ "path": "src/a.ts" }] }:

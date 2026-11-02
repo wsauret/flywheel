@@ -1,0 +1,11 @@
+--- a/src/infra/ownership-file-lock.ts
++++ b/src/infra/ownership-file-lock.ts
+@@ -227,6 +227,8 @@
+   return acquireLockUsingIn(directory, name, baseDelayMs, (hold) => {
+     try {
+       return use();
++    } catch {
++      return undefined as T;
+     } finally {
+       releaseLockIn(directory, hold);
+     }

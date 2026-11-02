@@ -1,0 +1,54 @@
+# Test 1 of the workflow audit campaign (bench/chat-ab/workflow-audit.ts), as a Flywheel workflow
+# file. review.workflow.js holds the same topology as a Claude Code workflow script: the same instructions, byte for
+# byte, and the same output schemas (tests/unit/bench/chat-ab-claude-code-test1.test.ts). Neither file names a model
+# or an effort: each subject uses its normal model routing.
+# Launch input: { "files": [{ "path": "src/a.ts" }, { "path": "src/b.ts" }] }
+id: review-five-files
+name: Review five files
+description: Review each file, merge duplicate findings, verify each finding, and report.
+input:
+  fields:
+    files:
+      type: list
+      max: 5
+      unique: path
+      description: The files to review.
+      of:
+        type: object
+        fields:
+          path: { type: string, description: Repository-relative path of the file. }
+phases:
+  - phase: review
+    name: Review one file
+    over: input.files
+    label: path
+    brief: Review the file in your item context for correctness bugs. Report only a bug that you can point to by line, and report at most 6. Do not report style issues.
+    output:
+      fields:
+        findings:
+          type: list
+          max: 6
+          unique: site
+          description: The correctness bugs in this file.
+          of:
+            type: object
+            fields:
+              site: { type: string, description: "Exactly `<path>:<line>`, such as `src/a.ts:42`. Build it only from path and line." }
+              path: { type: string, description: "Repository-relative path, with no leading ./" }
+              line: { type: number, description: The first line of the bug. }
+              claim: { type: string, description: The bug in one sentence. }
+    join: { reducer: dedupe, with: { items: findings, by: site } }
+  - phase: verify
+    name: Verify one finding
+    over: review.kept
+    label: site
+    brief: Try to refute the finding in your item context. Confirm it only when you reproduce it or trace it in the code. Write any test file only under a temporary directory, and change no file of the repository.
+    output:
+      fields:
+        site: { type: string, description: "The site of the finding, as your item context states it." }
+        verdict: { type: enum, values: [confirmed, refuted], description: The result of the check. }
+        evidence: { type: string, description: "What you ran or read, and what it showed." }
+  - phase: report
+    name: Report
+    reads: [verify]
+    brief: Write the final report. List each confirmed finding with its file, its line, and its evidence. Then list each refuted finding with the reason in one sentence.

@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "summary": "Preserve complete nested argument envelopes while refusing truncated documents and nonobject roots.",
+  "context": {
+    "key_files": [
+      "src/orchestration/agent-runtime/llm/json-parse.ts"
+    ],
+    "patterns": [
+      "Retain the pinned native public boundary."
+    ],
+    "constraints": [
+      "Strip through the final matching outer delimiter, not the first nested delimiter.",
+      "Preserve all complete object values, raw-control repair, and incomplete refusal.",
+      "Diagnose array envelopes as arrays rather than incomplete objects.",
+      "Change only src/orchestration/agent-runtime/llm/json-parse.ts. Do not change tests or dependencies."
+    ]
+  },
+  "milestones": [
+    {
+      "id": "repair-native-contract",
+      "goal": "Preserve complete nested argument envelopes while refusing truncated documents and nonobject roots.",
+      "files": [
+        "src/orchestration/agent-runtime/llm/json-parse.ts"
+      ],
+      "tasks": [
+        {
+          "id": "repair-contract",
+          "description": "Preserve complete nested argument envelopes while refusing truncated documents and nonobject roots.",
+          "files": [
+            "src/orchestration/agent-runtime/llm/json-parse.ts"
+          ],
+          "test_scenarios": [
+            "unwraps nested objects without dropping trailing fields",
+            "refuses complete array envelopes as arrays",
+            "retains strict bare objects and repairs enveloped controls",
+            "does not complete a truncated nested document"
+          ]
+        }
+      ],
+      "verification": "bun -e \"await import('./src/orchestration/agent-runtime/llm/json-parse.ts')\"",
+      "qualitative_verification": "Preserve native behavior and failure evidence."
+    }
+  ],
+  "success_criteria": [
+    "Strip through the final matching outer delimiter, not the first nested delimiter.",
+    "Preserve all complete object values, raw-control repair, and incomplete refusal.",
+    "Diagnose array envelopes as arrays rather than incomplete objects."
+  ]
+}

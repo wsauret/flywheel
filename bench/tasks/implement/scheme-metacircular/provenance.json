@@ -1,0 +1,49 @@
+{
+  "repository": "https://github.com/harbor-framework/terminal-bench-2-1",
+  "commit": "7131e4375048a0e408a8fb404b5f499d726b695b",
+  "task": "schemelike-metacircular-eval",
+  "author": "Nicholas Carlini",
+  "license": "Apache-2.0; original LICENSE retained",
+  "sourceArchive": {
+    "url": "https://codeload.github.com/harbor-framework/terminal-bench-2-1/tar.gz/7131e4375048a0e408a8fb404b5f499d726b695b",
+    "bytes": 52664805,
+    "sha256": "aa992a8848a1f3ed5191a34fa72ed5700d67dd9f968413a0e0a567b6188cb527"
+  },
+  "copies": "copy-ledger.json records exact original task files, instructions, license, and extracted controls",
+  "reference": "controls/reference-eval.scm is the exact evaluator extracted from original/solution/solve.sh",
+  "fault": "controls/fault.json records the single captured lexical-environment mutation",
+  "candidateContext": ["original/environment/tests/interp.py", "original/environment/tests/test", "LICENSE"],
+  "runtime": {
+    "platform": "macOS arm64 only",
+    "publicInputs": "public-inputs.json",
+    "installation": "fresh hash-verified public acquisition per workspace; tar extraction, CPython standard-library venv and ensurepip, offline pip wheel installation",
+    "archiveInspection": "1836 regular files and 8 relative symlinks confined to python/; no hard links or other member types",
+    "runtimeLocation": ".bench-home/python/bin/python3",
+    "candidateBoundary": "Preparation does not override the Agent tool environment. Candidate commands must use the private interpreter explicitly, or prepend .bench-home/python/bin to PATH. Original instructions are unchanged.",
+    "graderBoundary": "The owned grader prepends the private interpreter to PATH. Its absolute isolated pytest console script prevents captured pytest.py from shadowing pytest.",
+    "notices": "The Python archive and each wheel retain their upstream license files in the private runtime."
+  },
+  "nativeAdaptations": [
+    "Replace the apt/curl/uv installation prefix with pinned private Python 3.13.9, pytest 8.4.1 and pytest-json-ctrf 0.3.5 provisioning.",
+    "Replace the original uvx executable prefix with the absolute private Python isolated pytest console script; retain original --ctrf, selected test path, -rA, and reward branch.",
+    "Map complete Python path literals to the reconstructed workspace and verifier tree. Encode META input as a Scheme quoted absolute filename inside a Python string literal.",
+    "The original Scheme read retains escape bytes. For workspace filenames containing double quotes, backslashes or line breaks, create a unique mkdtemp directory under the native macOS /private/tmp root and symlink eval.scm to the same absolute candidate file. Reads and in-place writes retain file authority. Remove the owned directory in finally on success and failure; TMPDIR and normal workspace/cache paths remain unchanged.",
+    "Use Bun.$.escape for complete shell arguments and CTRF/reward redirection filenames. Actual Bash probes cover spaces, apostrophes, dollar signs, backticks, double quotes and backslashes.",
+    "Restore original interp.py, visible programs, hidden programs, and test_outputs.py after captured patch application. Remove only pytest configuration and conftest files on selected test ancestor paths.",
+    "Add observational conftest instrumentation that records original interpreter subprocess results and rethrows original timeout exceptions unchanged."
+  ],
+  "replacementLedger": "Every grade report retains exact removed prefix, replacement strings and occurrence counts.",
+  "acceptance": "Original pytest exit status zero AND reward.txt equal to 1. A settled verifier, captured original pytest status, consistent 0/1 reward and valid original CTRF artifact are required infrastructure evidence before any score is written. Missing or invalid authority and verifier timeouts throw, not failed-test scores. Aggregate criterion total is 1. Program and metacircular observations are optional evidence, not substitute acceptance criteria.",
+  "limits": {
+    "originalDirectSeconds": 10,
+    "originalMetacircularSeconds": 60,
+    "originalVerifierSeconds": 2400,
+    "originalContainerAgentSeconds": 2400,
+    "nativeAdapterSeconds": 2700,
+    "historicalCandidateMinutes": 25
+  },
+  "budgetDifference": "The outer adapter adds 300 seconds for acquisition, installation and report settlement. The original 2400-second verifier budget is unchanged. The historical 25-minute candidate calibration is not the original container agent budget.",
+  "qualification": "Run bun run bench/ab-steps/tasks-implement/scheme-metacircular/qualify.ts <external-evidence-directory>. This exercises the shared native loader, provisioner and capturer without provider, model, judge, or auth Usage calls.",
+  "equivalence": "Native macOS arm64 qualification only; no claim of original container, leaderboard, Linux, or Windows equivalence.",
+  "pathQualification": "Shared provision/capture controls cover spaces, apostrophe, dollar, backticks and double quote. A separate actual owned adapter reference grade covers those characters plus backslash. Bun 1.4.0 realpath returns ENOENT for existing macOS backslash filenames, so shared capture through a backslash TMPDIR remains unavailable outside this fixture-only change."
+}

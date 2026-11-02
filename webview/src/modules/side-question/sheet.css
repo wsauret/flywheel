@@ -1,0 +1,10 @@
+.side-question { display: flex; flex-direction: column; gap: var(--fw-s3); min-width: 0; }
+.side-question-note { color: var(--fw-fg-muted); font-size: var(--fw-text-sm); margin: 0; }
+.side-question-source { font-size: var(--fw-text-lg); overflow-wrap: anywhere; margin: 0; }
+.side-question-answer { min-width: 0; overflow-wrap: anywhere; }
+.side-question-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--fw-s2); }
+.side-question-form { display: flex; flex-direction: column; gap: var(--fw-s2); width: 100%; }
+.side-question-footer { display: flex; flex-direction: column; gap: var(--fw-s2); width: 100%; min-width: 0; }
+.side-question-form textarea { width: 100%; resize: vertical; box-sizing: border-box; font-family: var(--fw-font); font-size: var(--fw-text-field); color: var(--fw-input-fg); background: var(--fw-input-bg); border: 1px solid var(--fw-input-border); border-radius: var(--fw-radius); padding: var(--fw-s2); }
+.side-question-form button { align-self: flex-end; }
+.side-question-error { color: var(--fw-error); margin: 0; }

@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# Module: Subprocess Reliability — native verification,
+# observer wiring (repetition guard, tool failure, no-action), post-turn hook
+source "$(dirname "$0")/lib/e2e-framework.sh"
+init_e2e "subprocess-reliability" "$@"
+install_e2e_workflow
+start_app
+
+# SR-01: workflow file completion and observer firing
+echo "SR-01: Completion + Observer Injection"
+send_text "Use the workflow tool to launch e2e-work.workflow.yaml by path with description \"create $UAT_DIR/e2e-sr01.txt containing exactly sr01-passed\"."
+
+# 15s: worker starting
+sleep 15
+capture "SR-01a-worker-starting.log"
+
+# 60s: Worker running, tools executing
+sleep 45
+capture "SR-01b-worker-running.log"
+
+# 120s: Worker finishing
+sleep 60
+capture "SR-01c-finishing.log"
+
+# 180s: Should be complete by now
+sleep 60
+capture "SR-01d-final.log"
+
+# Capture scrollback for full output
+tmux capture-pane -t "$SESSION" -p -S -500 > "$LOG_DIR/SR-01e-scrollback.log" 2>/dev/null || true
+
+# Step completed — "✓ Execute work" or "✓ 1/1 steps"
+assert_contains "SR-01d-final.log" "✓" "SR-01d-step-completed" || true
+
+# No-action observer may have fired (depends on timing)
+# This is informational — not a hard assertion
+grep -q "No tool calls were made" "$LOG_DIR/SR-01e-scrollback.log" 2>/dev/null \
+  && echo "INFO  SR-01f-no-action-observer-fired — observer injected message" >> "$SUMMARY" \
+  || echo "INFO  SR-01f-no-action-observer-silent — no idle turn detected" >> "$SUMMARY"
+
+# Worker created the file
+if [ -f "$UAT_DIR/e2e-sr01.txt" ]; then
+  echo "PASS  SR-01g-file-created — e2e-sr01.txt exists" >> "$SUMMARY"
+  PASS_COUNT=$((PASS_COUNT + 1))
+else
+  echo "FAIL  SR-01g-file-created — file missing" >> "$SUMMARY"
+  FAIL_COUNT=$((FAIL_COUNT + 1))
+fi
+
+# Completion evidence: ✓ in final state or "1/1 steps" somewhere in the captures
+assert_contains "SR-01-all.log" "1/1 steps\|✓\|done" "SR-01h-completion-status" || true
+
+send_keys C-n; sleep "$WAIT_MEDIUM"
+
+# ── SR-02: Chat with observers — no false positives ──
+echo "SR-02: Chat with Observers Active"
+send_text "say exactly: sr02-chat-ok"
+wait_and_capture "$WAIT_RESPONSE" "SR-02a-chat.log"
+assert_contains "SR-02a-chat.log" "sr02-chat-ok" "SR-02a-correct-answer" || true
+
+# No observer noise in chat mode (observers are workflow-only)
+assert_not_contains "SR-02a-chat.log" "Doom loop" "SR-02b-no-doom-loop" || true
+assert_not_contains "SR-02a-chat.log" "No tool calls were made" "SR-02c-no-observer-noise" || true
+
+send_keys C-n; sleep "$WAIT_MEDIUM"
+
+# SR-03: workflow file with pause and resume
+echo "SR-03: Workflow Pause and Resume"
+send_text "Use the workflow tool to launch e2e-work.workflow.yaml by path with description \"create $UAT_DIR/e2e-sr03.txt containing exactly sr03-passed\"."
+sleep 20
+capture "SR-03a-working.log"
+
+# Pause
+send_keys Escape
+wait_and_capture 5 "SR-03b-paused.log"
+
+# Resume
+send_text "keep going"
+sleep 5
+capture "SR-03c-resumed.log"
+
+# Wait for completion
+sleep 120
+capture "SR-03d-completed.log"
+tmux capture-pane -t "$SESSION" -p -S -500 > "$LOG_DIR/SR-03e-scrollback.log" 2>/dev/null || true
+
+# SR-03: completion may appear before the final scrollback snapshot after
+# pause/resume, so search the full capture sequence.
+cat "$LOG_DIR"/SR-03*.log > "$LOG_DIR/SR-03-all.log" 2>/dev/null || true
+assert_contains "SR-03-all.log" "1/1 steps\|✓\|done" "SR-03f-completion-status" || true
+
+if [ -f "$UAT_DIR/e2e-sr03.txt" ]; then
+  echo "PASS  SR-03g-file-after-resume — file exists after pause/resume" >> "$SUMMARY"
+  PASS_COUNT=$((PASS_COUNT + 1))
+else
+  echo "FAIL  SR-03g-file-after-resume — file missing after pause/resume" >> "$SUMMARY"
+  FAIL_COUNT=$((FAIL_COUNT + 1))
+fi
+
+send_keys C-n; sleep "$WAIT_MEDIUM"
+
+# ── SR-04: Chat after workflow — no state leaks ──
+echo "SR-04: Chat After Workflow"
+send_text "say exactly: sr04-post-workflow-chat"
+wait_and_capture "$WAIT_RESPONSE" "SR-04a-chat-after.log"
+assert_contains "SR-04a-chat-after.log" "sr04-post-workflow-chat" "SR-04a-chat-works-after-workflow" || true
+assert_not_contains "SR-04a-chat-after.log" "running\|⠧\|⠙\|Doom loop" "SR-04b-no-workflow-leaks" || true
+
+# ── Cleanup test artifacts ──
+# UAT_DIR cleanup handled by framework
+
+stop_app
+finish_e2e

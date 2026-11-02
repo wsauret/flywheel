@@ -1,0 +1,14 @@
+===================================================================
+--- a/render.ts
++++ b/render.ts
+@@ -39,9 +39,9 @@
+ }
+ 
+ function variableText(value: unknown, escaped: boolean): string {
+   const text = value === null || value === undefined ? "" : String(value);
+-  return escaped ? text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;") : text;
++  return text;
+ }
+ 
+ function evaluate(nodes: readonly Node[], scope: unknown): string {
+   let output = "";

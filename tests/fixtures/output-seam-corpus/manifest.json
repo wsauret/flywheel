@@ -1,0 +1,98 @@
+{
+  "version": 3,
+  "source": ".flywheel/flywheel.sqlite",
+  "cases": [
+    {
+      "id": "chat-tool-outcomes",
+      "source": {
+        "kind": "extracted",
+        "sessionId": "c03ffd004b28",
+        "conversationId": "e16b7ea995c9",
+        "maxPosition": 48831
+      },
+      "coverage": {
+        "failed-tool": ["range", "toolBody"],
+        "partial-tool": ["range"],
+        "esc-tombstone": ["liveDeltas", "liveSignals"],
+        "bounded-seed-eviction": ["boundedRange", "liveDeltas"],
+        "queued-message-recall": ["liveDeltas", "liveSignals"]
+      },
+      "artifacts": ["history", "range", "boundedRange", "toolBody", "liveDeltas", "liveSignals"]
+    },
+    {
+      "id": "chat-compaction",
+      "source": {
+        "kind": "extracted",
+        "sessionId": "a0186bc12be6",
+        "conversationId": "3b70e5aac1d2",
+        "maxPosition": 75758
+      },
+      "coverage": {
+        "compaction": ["history", "range"]
+      },
+      "artifacts": ["history", "range"]
+    },
+    {
+      "id": "workflow-workers",
+      "source": {
+        "kind": "extracted",
+        "sessionId": "336768c3860a",
+        "maxPosition": 2141871
+      },
+      "coverage": {
+        "tool-group": ["agentRange", "groupChildren"],
+        "tool-body-preview": ["agentRange", "toolBody"],
+        "workflow-output": ["history", "range", "agentRange"]
+      },
+      "artifacts": ["history", "range", "agentRange", "groupChildren", "toolBody"]
+    },
+    {
+      "id": "old-session-created-v1",
+      "source": { "kind": "inline", "fixtureId": "old-session-created-v1" },
+      "coverage": { "old-session-created-v1": ["metadataOutcome", "range"] },
+      "artifacts": ["metadataOutcome", "range"]
+    },
+    {
+      "id": "retired-field",
+      "source": { "kind": "inline", "fixtureId": "retired-field" },
+      "coverage": { "retired-field": ["metadataOutcome", "range"] },
+      "artifacts": ["metadataOutcome", "range"]
+    },
+    {
+      "id": "unknown-version",
+      "source": { "kind": "inline", "fixtureId": "unknown-version" },
+      "coverage": { "unknown-version": ["metadataOutcome", "range"] },
+      "artifacts": ["metadataOutcome", "range"]
+    },
+    {
+      "id": "newer-version-fence",
+      "source": { "kind": "inline", "fixtureId": "newer-version-fence" },
+      "coverage": { "newer-version-fence": ["metadataOutcome", "range"] },
+      "artifacts": ["metadataOutcome", "range"]
+    },
+    {
+      "id": "corrupt-json-creation",
+      "source": { "kind": "inline", "fixtureId": "corrupt-json-creation" },
+      "coverage": { "corrupt-json-creation": ["metadataOutcome", "range"] },
+      "artifacts": ["metadataOutcome", "range"]
+    },
+    {
+      "id": "decoration-fact-failure",
+      "source": { "kind": "inline", "fixtureId": "decoration-fact-failure" },
+      "coverage": { "decoration-fact-failure": ["decorationOutcomes"] },
+      "artifacts": ["decorationOutcomes"]
+    },
+    {
+      "id": "mutation-before-creation",
+      "source": { "kind": "inline", "fixtureId": "mutation-before-creation" },
+      "coverage": { "mutation-before-creation": ["metadataOutcome", "range"] },
+      "artifacts": ["metadataOutcome", "range"]
+    },
+    {
+      "id": "reconcile-tombstone",
+      "source": { "kind": "inline", "fixtureId": "reconcile-tombstone" },
+      "coverage": { "reconcile-tombstone": ["metadataOutcome", "range"] },
+      "artifacts": ["metadataOutcome", "range"]
+    }
+  ]
+}

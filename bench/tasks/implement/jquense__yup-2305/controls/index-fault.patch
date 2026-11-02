@@ -1,0 +1,12 @@
+diff --git a/src/array.ts b/src/array.ts
+--- a/src/array.ts
++++ b/src/array.ts
+@@ -85,7 +85,7 @@
+         parent: value,
+         originalValue: v,
+         value: v,
+-        index: idx,
++        index: idx + 1,
+ 
+       });
+       

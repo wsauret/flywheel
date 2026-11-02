@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "role": "reserved-evaluation",
+  "contentIdentity": "b3f9a3e8398b0fd4ee67393f76c23e9910de64a02334ca01e21274902709c6f6",
+  "testIds": [
+    "acceptance/tool-argument-completeness.test.ts > tool argument completeness > rejects a string cut before its closing quote",
+    "acceptance/tool-argument-completeness.test.ts > tool argument completeness > rejects a cut between fields",
+    "acceptance/tool-argument-completeness.test.ts > tool argument completeness > rejects partial enveloped JSON",
+    "acceptance/tool-argument-completeness.test.ts > tool argument completeness > rejects unparseable text",
+    "acceptance/tool-argument-completeness.test.ts > tool argument completeness > rejects non-object roots",
+    "acceptance/tool-argument-completeness.test.ts > tool argument completeness > preserves complete strict JSON and escaped characters",
+    "acceptance/tool-argument-completeness.test.ts > tool argument completeness > repairs complete raw control characters",
+    "acceptance/tool-argument-completeness.test.ts > tool argument completeness > repairs complete invalid escapes",
+    "acceptance/tool-argument-completeness.test.ts > tool argument completeness > accepts complete fenced and prose-enveloped JSON",
+    "acceptance/tool-argument-completeness.test.ts > tool argument completeness > accepts absent and empty argument buffers"
+  ],
+  "cases": [
+    {
+      "id": "reference",
+      "patches": [
+        "qualification/reference.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "Exact shipped parser module fix.",
+      "expectedFailures": []
+    },
+    {
+      "id": "alternative",
+      "patches": [
+        "qualification/alternative.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "Complete strict and repaired candidates only, without tolerant completion or partial-json classification.",
+      "expectedFailures": []
+    },
+    {
+      "id": "original-bug",
+      "patches": [
+        "qualification/reference.patch",
+        "qualification/original-bug.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Restore the exact original module; tolerant completion accepts shortened inputs and malformed values.",
+      "expectedFailures": [
+        "acceptance/tool-argument-completeness.test.ts > tool argument completeness > rejects a string cut before its closing quote",
+        "acceptance/tool-argument-completeness.test.ts > tool argument completeness > rejects a cut between fields",
+        "acceptance/tool-argument-completeness.test.ts > tool argument completeness > rejects partial enveloped JSON",
+        "acceptance/tool-argument-completeness.test.ts > tool argument completeness > rejects unparseable text"
+      ]
+    },
+    {
+      "id": "guard-regression",
+      "patches": [
+        "qualification/reference.patch",
+        "qualification/guard-regression.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Keep completeness refusal and strict JSON but remove raw control-character repair.",
+      "expectedFailures": [
+        "acceptance/tool-argument-completeness.test.ts > tool argument completeness > repairs complete raw control characters",
+        "acceptance/tool-argument-completeness.test.ts > tool argument completeness > accepts complete fenced and prose-enveloped JSON"
+      ]
+    }
+  ]
+}

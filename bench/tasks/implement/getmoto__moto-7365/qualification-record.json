@@ -1,0 +1,311 @@
+{
+  "platform": "darwin",
+  "arch": "arm64",
+  "controls": [
+    {
+      "name": "base",
+      "preparedMs": 13494,
+      "captureAndGradeMs": 17293,
+      "acceptance": {
+        "passed": 1,
+        "failed": 1,
+        "total": 2
+      },
+      "resolution": "RESOLVED_NO",
+      "classification": "semantic-failure",
+      "statuses": {
+        "tests/test_dynamodb/test_dynamodb_update_expressions.py::test_update_different_map_elements_in_single_request": "PASSED",
+        "tests/test_dynamodb/test_dynamodb_update_expressions.py::test_update_item_add_float": "FAILED"
+      },
+      "missing": [],
+      "errors": [],
+      "pytestMs": 3217,
+      "sourceIdentity": {
+        "files": 2170,
+        "archiveSha256": "4e3093e85f0067ea5ac31f7a3f80d1661728c3bbc56a99ccb70b85bdf370b950"
+      },
+      "acquired": {
+        "inputs": 31,
+        "allHTTP200": true,
+        "pins": "public-inputs.json"
+      },
+      "snapshot": {
+        "python": "3.12.13 (main, May 10 2026, 19:20:41) [Clang 22.1.3 ]",
+        "prefix": "<repo>/.flywheel/sessions/caf49f37d64c/scratch/corrected-qualification/owned tmp $ ' \"/flywheel-bench-grade-KxHDsc/.bench-home/venv",
+        "packages": {
+          "packaging": "26.3",
+          "requests": "2.34.2",
+          "urllib3": "2.0.7",
+          "iniconfig": "2.3.1",
+          "cryptography": "50.0.2",
+          "s3transfer": "0.10.4",
+          "jmespath": "1.1.0",
+          "boto3": "1.34.43",
+          "botocore": "1.34.44",
+          "pip": "25.0.1",
+          "python-dateutil": "2.9.0.post0",
+          "pyyaml": "6.0.3",
+          "pytest": "8.0.0",
+          "cffi": "2.1.1",
+          "certifi": "2026.7.22",
+          "execnet": "2.1.2",
+          "jinja2": "3.1.6",
+          "pycparser": "3.11",
+          "pluggy": "1.6.0",
+          "pytest-xdist": "3.5.0",
+          "responses": "0.26.3",
+          "markupsafe": "3.0.4",
+          "charset-normalizer": "3.5.2",
+          "xmltodict": "1.0.4",
+          "six": "1.17.0",
+          "idna": "3.20",
+          "werkzeug": "3.1.9"
+        }
+      },
+      "evidence": {
+        "file": "qualification/base-grade.json.gz",
+        "bytes": 74544,
+        "sha256": "2cc44c47ddf3442fa3b4613b931aafcc187e6415b3b7ace495af200723ef6800",
+        "decompressedBytes": 236900,
+        "decompressedSha256": "653a03038f0570d2152b57c23f4472cf39ac0f197d89a2537129797aaf7bd93c"
+      },
+      "candidateImports": {
+        "moto": "<repo>/.flywheel/sessions/caf49f37d64c/scratch/corrected-qualification/owned tmp $ ' \"/flywheel-bench-grade-KxHDsc/moto/__init__.py",
+        "moto.dynamodb.models.dynamo_type": "<repo>/.flywheel/sessions/caf49f37d64c/scratch/corrected-qualification/owned tmp $ ' \"/flywheel-bench-grade-KxHDsc/moto/dynamodb/models/dynamo_type.py"
+      }
+    },
+    {
+      "name": "reference",
+      "preparedMs": 16330,
+      "captureAndGradeMs": 15368,
+      "acceptance": {
+        "passed": 2,
+        "failed": 0,
+        "total": 2
+      },
+      "resolution": "RESOLVED_FULL",
+      "classification": "passed",
+      "statuses": {
+        "tests/test_dynamodb/test_dynamodb_update_expressions.py::test_update_different_map_elements_in_single_request": "PASSED",
+        "tests/test_dynamodb/test_dynamodb_update_expressions.py::test_update_item_add_float": "PASSED"
+      },
+      "missing": [],
+      "errors": [],
+      "pytestMs": 2066,
+      "sourceIdentity": {
+        "files": 2170,
+        "archiveSha256": "4e3093e85f0067ea5ac31f7a3f80d1661728c3bbc56a99ccb70b85bdf370b950"
+      },
+      "acquired": {
+        "inputs": 31,
+        "allHTTP200": true,
+        "pins": "public-inputs.json"
+      },
+      "snapshot": {
+        "python": "3.12.13 (main, May 10 2026, 19:20:41) [Clang 22.1.3 ]",
+        "prefix": "<repo>/.flywheel/sessions/caf49f37d64c/scratch/corrected-qualification/owned tmp $ ' \"/flywheel-bench-grade-JBRMsf/.bench-home/venv",
+        "packages": {
+          "packaging": "26.3",
+          "requests": "2.34.2",
+          "urllib3": "2.0.7",
+          "iniconfig": "2.3.1",
+          "cryptography": "50.0.2",
+          "s3transfer": "0.10.4",
+          "jmespath": "1.1.0",
+          "boto3": "1.34.43",
+          "botocore": "1.34.44",
+          "pip": "25.0.1",
+          "python-dateutil": "2.9.0.post0",
+          "pyyaml": "6.0.3",
+          "pytest": "8.0.0",
+          "cffi": "2.1.1",
+          "certifi": "2026.7.22",
+          "execnet": "2.1.2",
+          "jinja2": "3.1.6",
+          "pycparser": "3.11",
+          "pluggy": "1.6.0",
+          "pytest-xdist": "3.5.0",
+          "responses": "0.26.3",
+          "markupsafe": "3.0.4",
+          "charset-normalizer": "3.5.2",
+          "xmltodict": "1.0.4",
+          "six": "1.17.0",
+          "idna": "3.20",
+          "werkzeug": "3.1.9"
+        }
+      },
+      "evidence": {
+        "file": "qualification/reference-grade.json.gz",
+        "bytes": 74928,
+        "sha256": "6bc3e6a593699ec59303e6fc20e9732b8dd9868fd122729c573d0660728afa22",
+        "decompressedBytes": 238842,
+        "decompressedSha256": "a606d64e4cd9ca6456f49bb1af399814f7cea9509d0b63e97e232887aae8e49f"
+      },
+      "candidateImports": {
+        "moto": "<repo>/.flywheel/sessions/caf49f37d64c/scratch/corrected-qualification/owned tmp $ ' \"/flywheel-bench-grade-JBRMsf/moto/__init__.py",
+        "moto.dynamodb.models.dynamo_type": "<repo>/.flywheel/sessions/caf49f37d64c/scratch/corrected-qualification/owned tmp $ ' \"/flywheel-bench-grade-JBRMsf/moto/dynamodb/models/dynamo_type.py"
+      }
+    },
+    {
+      "name": "grading-tamper",
+      "preparedMs": 13366,
+      "captureAndGradeMs": 15491,
+      "acceptance": {
+        "passed": 1,
+        "failed": 1,
+        "total": 2
+      },
+      "resolution": "RESOLVED_NO",
+      "classification": "semantic-failure",
+      "statuses": {
+        "tests/test_dynamodb/test_dynamodb_update_expressions.py::test_update_different_map_elements_in_single_request": "PASSED",
+        "tests/test_dynamodb/test_dynamodb_update_expressions.py::test_update_item_add_float": "FAILED"
+      },
+      "missing": [],
+      "errors": [],
+      "pytestMs": 2516,
+      "sourceIdentity": {
+        "files": 2170,
+        "archiveSha256": "4e3093e85f0067ea5ac31f7a3f80d1661728c3bbc56a99ccb70b85bdf370b950"
+      },
+      "acquired": {
+        "inputs": 31,
+        "allHTTP200": true,
+        "pins": "public-inputs.json"
+      },
+      "snapshot": {
+        "python": "3.12.13 (main, May 10 2026, 19:20:41) [Clang 22.1.3 ]",
+        "prefix": "<repo>/.flywheel/sessions/caf49f37d64c/scratch/corrected-qualification/owned tmp $ ' \"/flywheel-bench-grade-B2k19o/.bench-home/venv",
+        "packages": {
+          "packaging": "26.3",
+          "requests": "2.34.2",
+          "urllib3": "2.0.7",
+          "iniconfig": "2.3.1",
+          "cryptography": "50.0.2",
+          "s3transfer": "0.10.4",
+          "jmespath": "1.1.0",
+          "boto3": "1.34.43",
+          "botocore": "1.34.44",
+          "pip": "25.0.1",
+          "python-dateutil": "2.9.0.post0",
+          "pyyaml": "6.0.3",
+          "pytest": "8.0.0",
+          "cffi": "2.1.1",
+          "certifi": "2026.7.22",
+          "execnet": "2.1.2",
+          "jinja2": "3.1.6",
+          "pycparser": "3.11",
+          "pluggy": "1.6.0",
+          "pytest-xdist": "3.5.0",
+          "responses": "0.26.3",
+          "markupsafe": "3.0.4",
+          "charset-normalizer": "3.5.2",
+          "xmltodict": "1.0.4",
+          "six": "1.17.0",
+          "idna": "3.20",
+          "werkzeug": "3.1.9"
+        }
+      },
+      "evidence": {
+        "file": "qualification/grading-tamper-grade.json.gz",
+        "bytes": 77740,
+        "sha256": "af044334621555ab85fc9ae860d06ed39b19c85778fc4d205ae7e06201588873",
+        "decompressedBytes": 247968,
+        "decompressedSha256": "c9cf470e629b2fbe10f246f31d2e546416215cf38c9620b5e7b9b89728e6d49a"
+      },
+      "candidateImports": {
+        "moto": "<repo>/.flywheel/sessions/caf49f37d64c/scratch/corrected-qualification/owned tmp $ ' \"/flywheel-bench-grade-B2k19o/moto/__init__.py",
+        "moto.dynamodb.models.dynamo_type": "<repo>/.flywheel/sessions/caf49f37d64c/scratch/corrected-qualification/owned tmp $ ' \"/flywheel-bench-grade-B2k19o/moto/dynamodb/models/dynamo_type.py"
+      }
+    },
+    {
+      "name": "compile-failure",
+      "preparedMs": 11701,
+      "captureAndGradeMs": 13096,
+      "acceptance": {
+        "passed": 0,
+        "failed": 2,
+        "total": 2
+      },
+      "resolution": "RESOLVED_NO",
+      "classification": "missing-or-runtime-error",
+      "statuses": {},
+      "missing": [
+        "tests/test_dynamodb/test_dynamodb_update_expressions.py::test_update_item_add_float",
+        "tests/test_dynamodb/test_dynamodb_update_expressions.py::test_update_different_map_elements_in_single_request"
+      ],
+      "errors": [],
+      "pytestMs": 1363,
+      "sourceIdentity": {
+        "files": 2170,
+        "archiveSha256": "4e3093e85f0067ea5ac31f7a3f80d1661728c3bbc56a99ccb70b85bdf370b950"
+      },
+      "acquired": {
+        "inputs": 31,
+        "allHTTP200": true,
+        "pins": "public-inputs.json"
+      },
+      "snapshot": {
+        "python": "3.12.13 (main, May 10 2026, 19:20:41) [Clang 22.1.3 ]",
+        "prefix": "<repo>/.flywheel/sessions/caf49f37d64c/scratch/corrected-qualification/owned tmp $ ' \"/flywheel-bench-grade-NJSGr4/.bench-home/venv",
+        "packages": {
+          "packaging": "26.3",
+          "requests": "2.34.2",
+          "urllib3": "2.0.7",
+          "iniconfig": "2.3.1",
+          "cryptography": "50.0.2",
+          "s3transfer": "0.10.4",
+          "jmespath": "1.1.0",
+          "boto3": "1.34.43",
+          "botocore": "1.34.44",
+          "pip": "25.0.1",
+          "python-dateutil": "2.9.0.post0",
+          "pyyaml": "6.0.3",
+          "pytest": "8.0.0",
+          "cffi": "2.1.1",
+          "certifi": "2026.7.22",
+          "execnet": "2.1.2",
+          "jinja2": "3.1.6",
+          "pycparser": "3.11",
+          "pluggy": "1.6.0",
+          "pytest-xdist": "3.5.0",
+          "responses": "0.26.3",
+          "markupsafe": "3.0.4",
+          "charset-normalizer": "3.5.2",
+          "xmltodict": "1.0.4",
+          "six": "1.17.0",
+          "idna": "3.20",
+          "werkzeug": "3.1.9"
+        }
+      },
+      "evidence": {
+        "file": "qualification/compile-failure-grade.json.gz",
+        "bytes": 78335,
+        "sha256": "bd5f2817488bbf70fda6ad59089e6264bb6de55675be7416e5cf811c71491399",
+        "decompressedBytes": 255015,
+        "decompressedSha256": "3f267e6fba9f87d2cb45be25092b41ae8fa124150d68e3c26d86f91079a8595e"
+      },
+      "candidateImports": {
+        "moto": "<repo>/.flywheel/sessions/caf49f37d64c/scratch/corrected-qualification/owned tmp $ ' \"/flywheel-bench-grade-NJSGr4/moto/__init__.py"
+      }
+    }
+  ],
+  "tmpClean": true,
+  "loaderInstructionBytes": 2421,
+  "taskIdentity": "1f5a9e82c3929631b785765f6084cbe83a656d5c6433b9038e98802c297f73bd",
+  "modelCalls": 0,
+  "semanticFault": "The original base is the decimal-conversion fault; no invented mutant.",
+  "historicalModelAccounting": "calibration.json contains historical runs only",
+  "timeoutProbe": {
+    "file": "qualification/timeout-probe.json.gz",
+    "bytes": 137546,
+    "sha256": "71e3ebd791df772abf5791332ca7e04f4dccc3c98b8c6d626460587974b4fb26",
+    "decompressedBytes": 421011,
+    "decompressedSha256": "53ec4a0c329b74eb66dd927dbd0677548a7472f142b971ac087130a3a14bfbe8",
+    "scratchDeadlineMs": 5000,
+    "productionDeadlineMs": 300000,
+    "partialStdoutCapture": "-s in scratch only",
+    "result": "Import-loop and test-loop timeouts remain unresolved with 0/2 selected tests, including partial PASSED stdout. Setup timeout throws."
+  },
+  "note": "Task identity records the fixture before these retained evidence copies were added. Public pins and third-party copy hashes are unchanged. Candidate import identities come only from the owned pytest lifecycle; trusted snapshots do not import Moto."
+}

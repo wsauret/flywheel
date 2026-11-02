@@ -1,0 +1,60 @@
+import { mcpCursor, mcpProtocol, type McpManagementResult } from "../../../protocol/modules/mcp.js"
+import type { ModuleProtocolRuntime, ModuleProtocolServices } from "../../app-service/module-protocol-host.js"
+import type { ConfigMutationResult } from "../../config/runtime-config-owner.js"
+import { mcpMutationMessage } from "./config-mutation.js"
+import { mcpService } from "./service.js"
+
+/** The module's protocol runtime. Every manager transition publishes the
+ *  whole server list, so the newest patch supersedes any it overtook. While
+ *  the module is off, whether from composition or a live toggle, the snapshot
+ *  is empty and a reauthentication is refused: a client shows no server from
+ *  its next snapshot. */
+export function createMcpProtocol(services: ModuleProtocolServices): ModuleProtocolRuntime<typeof mcpProtocol> {
+  const service = () => (services.enabled() ? services.modules.get(mcpService) : undefined)
+  const unsubscribe = services.modules.get(mcpService)?.subscribe(() => {
+    const current = service()
+    services.publish({ cursor: mcpCursor(), payload: { kind: "mcp.changed", servers: current?.status() ?? [] } })
+  })
+  return {
+    serve: {
+      mcpStatusSnapshot: async () => ({ servers: service()?.status() ?? [], snapshotPosition: services.snapshotPosition({ kind: "cursor", cursor: mcpCursor() }) }),
+    },
+    mutate: {
+      "mcp.setEnabled": async (mutation) => {
+        const current = service()
+        if (!current) return { ok: false, error: "MCP servers are off" }
+        return manage(() => current.setEnabled(mutation))
+      },
+      "mcp.remove": async (mutation) => {
+        const current = service()
+        if (!current) return { ok: false, error: "MCP servers are off" }
+        return manage(() => current.remove(mutation))
+      },
+      "mcp.authenticate": async (mutation) => {
+        const current = service()
+        if (!current) return { ok: false, error: "MCP servers are off" }
+        try {
+          await current.authentication.authenticate(mutation.server)
+          return { ok: true }
+        } catch {
+          // The browser handoff and the token exchange can fail with a
+          // provider URL in the message; the person gets the repair, not the URL.
+          return { ok: false, error: "MCP authentication failed. Try again." }
+        }
+      },
+    },
+    dispose() { unsubscribe?.() },
+  }
+}
+
+async function manage(operation: () => Promise<ConfigMutationResult>): Promise<McpManagementResult> {
+  try {
+    const result = await operation()
+    const message = mcpMutationMessage(result)
+    // SAFETY: mcpMutationMessage returns guidance for every rejected outcome.
+    return result.ok ? { ok: true, ...(message === undefined ? {} : { warning: message }) }
+      : { ok: false, error: message! }
+  } catch {
+    return { ok: false, error: "MCP management failed. Check the server status and try again." }
+  }
+}

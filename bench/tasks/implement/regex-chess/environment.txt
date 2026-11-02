@@ -1,0 +1,2 @@
+The original /app directory maps to the current workspace directory. The original /app/re.json path maps to re.json in this workspace. The supplied check.py uses that workspace path.
+The private Python interpreter is .bench-home/python/bin/python3. It has chess 1.11.2 installed. Use this interpreter for Python commands, or prepend .bench-home/python/bin to PATH. The host Python installation is not the task runtime.

@@ -1,0 +1,17 @@
+# r17 A/B redo of trials the input.content rejection killed. Immutable: copy this file for any change. Candidate arm: 30 s foreground hold, 260 s Luna wait cap.
+# Pins the arm's original commit plus the fix ce9d65c56.
+headless:
+  model: gpt-6-luna
+  runtime_source_commit: 6b48aa609b21164c72eae3e9b9d04e59666807df
+agents:
+- import_path: "bench.terminal_bench.flywheel_agent:FlywheelHeadless"
+datasets:
+- name: terminal-bench/terminal-bench-2-1
+  ref: sha256:7d7bdc1cbedad549fc1140404bd4dc45e5fd0ea7c4186773687d177ad3a0699a
+  task_names:
+  - terminal-bench/build-pmars
+  - terminal-bench/sqlite-with-gcov
+n_attempts: 3
+n_concurrent_trials: 2
+jobs_dir: jobs
+job_name: r17-redo-candidate-k3

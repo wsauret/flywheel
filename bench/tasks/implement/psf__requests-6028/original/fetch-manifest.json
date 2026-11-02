@@ -1,0 +1,50 @@
+[
+  {
+    "name": "requests.tar.gz",
+    "url": "https://codeload.github.com/psf/requests/tar.gz/0192aac24123735b3eaf9b08df46429bb770c283",
+    "status": 200,
+    "bytes": 4032864,
+    "sha256": "acf8041195a5fdd1177612ddb93b159424de40d95b7156567c162405864a3cb8",
+    "seconds": 0.801705708
+  },
+  {
+    "name": "harness.tar.gz",
+    "url": "https://codeload.github.com/SWE-bench/SWE-bench/tar.gz/02e7a74ffd0b707aab73d203fe87bdc7c76afc8e",
+    "status": 200,
+    "bytes": 1322109,
+    "sha256": "d06181d5365b51fc7ff490171581b9ee87d77e19b3a739a8d574bf25d9ef9479",
+    "seconds": 0.3020878329999999
+  },
+  {
+    "name": "dataset.parquet",
+    "url": "https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified/resolve/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/data/test-00000-of-00001.parquet",
+    "status": 200,
+    "bytes": 2096679,
+    "sha256": "a45b1fe4e2f0c8390b2b2938ac83e92ed5979000856808f3679c07812e9e6dcd",
+    "seconds": 0.9405968330000003
+  },
+  {
+    "name": "dataset-api.json",
+    "url": "https://huggingface.co/api/datasets/princeton-nlp/SWE-bench_Verified/revision/c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+    "status": 200,
+    "bytes": 1994,
+    "sha256": "f313908201cdf3640fbb70c6c6fd5dad2889d98971a40f52494f914f4d19aec9",
+    "seconds": 0.269199709
+  },
+  {
+    "name": "requests-pr.json",
+    "url": "https://api.github.com/repos/psf/requests/pulls/6028",
+    "status": 200,
+    "bytes": 16809,
+    "sha256": "c025c1195912c89a32465159500217bee7df043316bc369bfc3d3916701639c1",
+    "seconds": 0.3973466669999998
+  },
+  {
+    "name": "requests-issue.json",
+    "url": "https://api.github.com/repos/psf/requests/issues/6025",
+    "status": 200,
+    "bytes": 3011,
+    "sha256": "8a0a4789677261ca99bca235e808fcfd51a129e2a714c82dabf76cea586a3508",
+    "seconds": 0.17679279199999973
+  }
+]

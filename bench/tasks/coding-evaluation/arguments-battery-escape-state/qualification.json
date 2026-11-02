@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "role": "reserved-evaluation",
+  "contentIdentity": "9f683b334a55ebf734722efcc62b0018bb312ec23acc1e19b84cd115122a2769",
+  "testIds": [
+    "acceptance/escape-state.test.ts > escape state > preserves escaped quotes beside raw control characters",
+    "acceptance/escape-state.test.ts > escape state > preserves backslash parity and nested delimiter text",
+    "acceptance/escape-state.test.ts > escape state > refuses unfinished repair candidates without shortened values",
+    "acceptance/escape-state.test.ts > escape state > retains strict JSON unicode and empty buffer behavior"
+  ],
+  "cases": [
+    {
+      "id": "reference",
+      "patches": [
+        "qualification/reference.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "Restore the pinned native behavior.",
+      "expectedFailures": []
+    },
+    {
+      "id": "alternative",
+      "patches": [
+        "qualification/alternative.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "Use an independently expressed repair at the same native boundary.",
+      "expectedFailures": []
+    },
+    {
+      "id": "original-bug",
+      "patches": [
+        "qualification/reference.patch",
+        "qualification/original-bug.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "The seeded escape consumer visits the second character twice and corrupts string state.",
+      "expectedFailures": [
+        "acceptance/escape-state.test.ts > escape state > preserves escaped quotes beside raw control characters",
+        "acceptance/escape-state.test.ts > escape state > preserves backslash parity and nested delimiter text"
+      ]
+    },
+    {
+      "id": "completion-regression",
+      "patches": [
+        "qualification/reference.patch",
+        "qualification/completion-regression.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Return tolerant prefix completion as a successful argument object.",
+      "expectedFailures": [
+        "acceptance/escape-state.test.ts > escape state > refuses unfinished repair candidates without shortened values"
+      ]
+    },
+    {
+      "id": "repair-regression",
+      "patches": [
+        "qualification/reference.patch",
+        "qualification/repair-regression.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Disable complete character repair instead of repairing scanner state.",
+      "expectedFailures": [
+        "acceptance/escape-state.test.ts > escape state > preserves escaped quotes beside raw control characters",
+        "acceptance/escape-state.test.ts > escape state > preserves backslash parity and nested delimiter text",
+        "acceptance/escape-state.test.ts > escape state > retains strict JSON unicode and empty buffer behavior"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+.remote-pairing { display: grid; justify-items: center; gap: var(--fw-s3); }
+.remote-qr { width: min(100%, 20rem); background: var(--fw-qr-ground); fill: var(--fw-qr-ink); }
+.remote-pairing-link { overflow-wrap: anywhere; }
+.remote-notice { display: block; }
+.remote-notice.warn { color: var(--fw-warning); }

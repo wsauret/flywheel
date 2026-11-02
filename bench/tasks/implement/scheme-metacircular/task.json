@@ -1,0 +1,14 @@
+{
+  "kind": "native",
+  "id": "scheme-metacircular",
+  "stratum": "medium",
+  "family": "terminal-bench",
+  "split": "development",
+  "instruction": "instruction.txt",
+  "timeoutMinutes": 25,
+  "native": {
+    "path": [".bench-home/python/bin"],
+    "command": ["bun", "adapter.ts"],
+    "timeoutMs": 2700000
+  }
+}

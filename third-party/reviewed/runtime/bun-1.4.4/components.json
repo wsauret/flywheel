@@ -1,0 +1,1013 @@
+[
+  {
+    "name": "boringssl",
+    "license": "several licenses",
+    "source": "https://github.com/oven-sh/boringssl/tree/41bf9b59c2ebf277a7aa427e1ecad5cc80dd4d4f",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/boringssl/AUTHORS",
+      "third-party/reviewed/runtime/bun-1.4.4/components/boringssl/LICENSE"
+    ]
+  },
+  {
+    "name": "brotli",
+    "license": "MIT",
+    "source": "https://github.com/google/brotli/tree/db24a98aed38a16de78cc05ca15cdd8dc2a0d92d",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/brotli/LICENSE"
+    ]
+  },
+  {
+    "name": "libarchive",
+    "license": "several licenses",
+    "source": "https://github.com/libarchive/libarchive/tree/27cbc7827172698143e440801fc0ba39ccb4f1f5",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/libarchive/COPYING",
+      "third-party/reviewed/runtime/bun-1.4.4/components/libarchive/source-file-notices.txt"
+    ]
+  },
+  {
+    "name": "lol-html",
+    "license": "BSD-3-Clause",
+    "source": "https://github.com/oven-sh/lol-html/tree/725ce499aa9b71e38b7a2d0a9fbb6d7294a4079e",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/lol-html/LICENSE"
+    ]
+  },
+  {
+    "name": "ls-hpack",
+    "license": "MIT",
+    "source": "https://github.com/litespeedtech/ls-hpack/tree/cf0f70dd10b352194c97448eb5d00b4aa484f531",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/ls-hpack/LICENSE"
+    ]
+  },
+  {
+    "name": "ls-qpack",
+    "license": "MIT",
+    "source": "https://github.com/litespeedtech/ls-qpack/tree/91567706c41c0d97ab8dc576873ecd472d7869fa",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/ls-qpack/LICENSE"
+    ]
+  },
+  {
+    "name": "lsquic",
+    "license": "MIT, with portions under BSD-3-Clause",
+    "source": "https://github.com/litespeedtech/lsquic/tree/f812ceb9529e26717df78c6064a2ff648b949f3e",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/lsquic/LICENSE",
+      "third-party/reviewed/runtime/bun-1.4.4/components/lsquic/LICENSE.chrome"
+    ]
+  },
+  {
+    "name": "mimalloc",
+    "license": "MIT",
+    "source": "https://github.com/oven-sh/mimalloc/tree/92ef6587c57b262f6e6abf513f7776a2f8d12aeb",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/mimalloc/LICENSE"
+    ]
+  },
+  {
+    "name": "picohttpparser",
+    "license": "MIT (dual-licensed with the Perl License)",
+    "source": "https://github.com/h2o/picohttpparser/tree/f4d94b48b31e0abae029ebeafcfd9ca0680ede58",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/picohttpparser/source-file-notices.txt"
+    ]
+  },
+  {
+    "name": "zstd",
+    "license": "BSD-3-Clause (dual-licensed with GPL-2.0)",
+    "source": "https://github.com/facebook/zstd/tree/f8745da6ff1ad1e7bab384bd1f9d742439278e99",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/zstd/LICENSE"
+    ]
+  },
+  {
+    "name": "simdutf",
+    "license": "MIT (dual-licensed with Apache-2.0; WebKit carries the MIT text)",
+    "source": "https://github.com/oven-sh/WebKit/tree/d6375c72affe0f70222cdcb45012b10f0bf3a9d5",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/simdutf/LICENSE-simdutf.txt"
+    ]
+  },
+  {
+    "name": "uSockets",
+    "license": "Apache-2.0",
+    "source": "https://github.com/oven-sh/bun/tree/38afee6c84fcf48c0edb2466aa4b27d287a59c30/packages/bun-usockets",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/usockets/LICENSE"
+    ]
+  },
+  {
+    "name": "zlib-ng",
+    "license": "Zlib",
+    "source": "https://github.com/zlib-ng/zlib-ng/tree/12731092979c6d07f42da27da673a9f6c7b13586",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/zlib-ng/LICENSE.md"
+    ]
+  },
+  {
+    "name": "c-ares",
+    "license": "MIT",
+    "source": "https://github.com/c-ares/c-ares/tree/c7a3138dcfe3bb0eaaf10c0c24c36dc66dc790ab",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/c-ares/AUTHORS",
+      "third-party/reviewed/runtime/bun-1.4.4/components/c-ares/LICENSE.md"
+    ]
+  },
+  {
+    "name": "libicu 78.3 (Linux and Windows)",
+    "license": "Unicode-3.0 and others",
+    "source": "https://github.com/unicode-org/icu/tree/21d1eb0f306e1141c10931e914dfc038c06121da",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/libicu-78-3-linux-and-windows/LICENSE"
+    ]
+  },
+  {
+    "name": "libbase64",
+    "license": "BSD-2-Clause",
+    "source": "https://github.com/aklomp/base64/tree/5d5074cb856b9a53fe64f04ddf47812a85f4fb5a",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/libbase64/LICENSE"
+    ]
+  },
+  {
+    "name": "libuv (Windows)",
+    "license": "MIT",
+    "source": "https://github.com/oven-sh/libuv/tree/8023581113b276e7c1aee3f82da57ca0893faab1",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/libuv-windows/LICENSE",
+      "third-party/reviewed/runtime/bun-1.4.4/components/libuv-windows/LICENSE-extra"
+    ]
+  },
+  {
+    "name": "libdeflate",
+    "license": "MIT",
+    "source": "https://github.com/ebiggers/libdeflate/tree/92e6a0db9fa848d742f9eb286c92afc60f2c3dda",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/libdeflate/COPYING"
+    ]
+  },
+  {
+    "name": "libjpeg-turbo",
+    "license": "BSD-3-Clause, IJG, and Zlib",
+    "source": "https://github.com/libjpeg-turbo/libjpeg-turbo/tree/c85e6b905bf237038faa936dab160ebfc5da0344",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/libjpeg-turbo/LICENSE.md",
+      "third-party/reviewed/runtime/bun-1.4.4/components/libjpeg-turbo/README.ijg"
+    ]
+  },
+  {
+    "name": "libspng",
+    "license": "BSD-2-Clause",
+    "source": "https://github.com/randy408/libspng/tree/fb768002d4288590083a476af628e51c3f1d47cd",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/libspng/LICENSE"
+    ]
+  },
+  {
+    "name": "libwebp",
+    "license": "BSD-3-Clause",
+    "source": "https://github.com/webmproject/libwebp/tree/4fa21912338357f89e4fd51cf2368325b59e9bd9",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/libwebp/AUTHORS",
+      "third-party/reviewed/runtime/bun-1.4.4/components/libwebp/COPYING",
+      "third-party/reviewed/runtime/bun-1.4.4/components/libwebp/PATENTS"
+    ]
+  },
+  {
+    "name": "highway",
+    "license": "Apache-2.0",
+    "source": "https://github.com/google/highway/tree/2607d3b5b0113992fe84d3848859eae13b3b52c1",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/highway/LICENSE"
+    ]
+  },
+  {
+    "name": "uucode",
+    "license": "MIT",
+    "source": "https://github.com/jacobsandlund/uucode/tree/1fb73433bba5d93366c57f23ff2e9d7939746500",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/uucode/LICENSE.md"
+    ]
+  },
+  {
+    "name": "uWebSockets (Bun fork)",
+    "license": "Apache-2.0",
+    "source": "https://github.com/oven-sh/bun/tree/38afee6c84fcf48c0edb2466aa4b27d287a59c30/packages/bun-uws",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/uwebsockets-bun-fork/LICENSE"
+    ]
+  },
+  {
+    "name": "Tigerbeetle IO code",
+    "license": "Apache-2.0",
+    "source": "https://github.com/tigerbeetle/tigerbeetle/tree/532c8b70b9142c17e07737ab6d3da68d7500cbca",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/tigerbeetle-io-code/LICENSE"
+    ]
+  },
+  {
+    "name": "LLVM libc++abi",
+    "license": "Apache-2.0 WITH LLVM-exception",
+    "source": "https://github.com/llvm/llvm-project/tree/a4bf6cd7cfb1a1421ba92bca9d017b49936c55e4/libcxxabi",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/llvm-libc-abi/LICENSE.TXT"
+    ]
+  },
+  {
+    "name": "typescript-go",
+    "license": "Apache-2.0",
+    "source": "https://github.com/microsoft/typescript-go/tree/89d5d5b2849a0db0957065889ca58536fa6d2e4a",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/typescript-go/LICENSE",
+      "third-party/reviewed/runtime/bun-1.4.4/components/typescript-go/NOTICE.txt"
+    ]
+  },
+  {
+    "name": "TypeScript",
+    "license": "Apache-2.0",
+    "source": "https://github.com/microsoft/TypeScript/tree/60cab4b37a1e2fdb0e41fc2f9c606a60b1965184",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/typescript/LICENSE.txt",
+      "third-party/reviewed/runtime/bun-1.4.4/components/typescript/NOTICE.txt"
+    ]
+  },
+  {
+    "name": "ESLint",
+    "license": "MIT",
+    "source": "https://github.com/eslint/eslint/tree/12cbff4125db3f6446f72fa0c48c46b92b120427",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/eslint/LICENSE"
+    ]
+  },
+  {
+    "name": "typescript-eslint",
+    "license": "MIT",
+    "source": "https://github.com/typescript-eslint/typescript-eslint/tree/bdf0a9c5fc58bbba7199106b7fb1346d4cfef822",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/typescript-eslint/LICENSE"
+    ]
+  },
+  {
+    "name": "esquery",
+    "license": "BSD-3-Clause",
+    "source": "https://github.com/estools/esquery/tree/444da2c9b1f973555102b0e3a2c62f5d607dc6fe",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/esquery/license.txt"
+    ]
+  },
+  {
+    "name": "@eslint-community/regexpp",
+    "license": "MIT",
+    "source": "https://github.com/eslint-community/regexpp/tree/76b6a3aef2d53972e0a3ca5dd9e83f6bb6ec6e78",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/eslint-community-regexpp/LICENSE"
+    ]
+  },
+  {
+    "name": "@eslint-community/eslint-utils",
+    "license": "MIT",
+    "source": "https://github.com/eslint-community/eslint-utils/tree/3d8d9476c382318bf1a620fc1f6a1ac14dabaaf4",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/eslint-community-eslint-utils/LICENSE"
+    ]
+  },
+  {
+    "name": "levn",
+    "license": "MIT",
+    "source": "https://github.com/gkz/levn/tree/bfe5bbd351804304d12adc0de70e512b5f7709f3",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/levn/LICENSE"
+    ]
+  },
+  {
+    "name": "natural-compare-lite",
+    "license": "MIT",
+    "source": "https://github.com/litejs/natural-compare-lite/tree/a8e1e32c85713ba7d079445207a808ce6f4852f9",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/natural-compare-lite/LICENSE"
+    ]
+  },
+  {
+    "name": "ts-api-utils",
+    "license": "MIT",
+    "source": "https://github.com/JoshuaKGoldberg/ts-api-utils/tree/e59a11b8d93e85e5049d2ec335c9c7134dfd7e73",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/ts-api-utils/LICENSE.md"
+    ]
+  },
+  {
+    "name": "@eslint/eslintrc",
+    "license": "MIT",
+    "source": "https://github.com/eslint/eslintrc/tree/e88532581c1125ccdc27d500a8171fbc89dc7893",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/eslint-eslintrc/LICENSE"
+    ]
+  },
+  {
+    "name": "ajv",
+    "license": "MIT",
+    "source": "https://github.com/ajv-validator/ajv/tree/f177fe323420ccb23e1a79445fd470cbf80aee7c",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/ajv/LICENSE"
+    ]
+  },
+  {
+    "name": "acorn",
+    "license": "MIT",
+    "source": "https://github.com/acornjs/acorn/tree/69788e23ca00483aef84005502dc3b88f2af38df/acorn",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/acorn/LICENSE"
+    ]
+  },
+  {
+    "name": "optionator",
+    "license": "MIT",
+    "source": "https://github.com/gkz/optionator/tree/4babe25432de186943d78f8f69875d1255802f72",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/optionator/LICENSE"
+    ]
+  },
+  {
+    "name": "globals",
+    "license": "MIT",
+    "source": "https://github.com/sindresorhus/globals/tree/ce512bc1949f918ad6c17cc864a63ab6b077764f",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/globals/license"
+    ]
+  },
+  {
+    "name": "is-core-module",
+    "license": "MIT",
+    "source": "https://github.com/inspect-js/is-core-module/tree/9b50b2d1bf457b56ab4f547b4ea744da1502cf74",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/is-core-module/LICENSE"
+    ]
+  },
+  {
+    "name": "espree",
+    "license": "BSD-2-Clause",
+    "source": "https://github.com/eslint/js/tree/50d7a50b23a9310d4732de09ecb817400042af2c/packages/espree",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/espree/LICENSE"
+    ]
+  },
+  {
+    "name": "V8",
+    "license": "BSD-3-Clause",
+    "source": "https://github.com/v8/v8/tree/5dba721424b54adbc27d51b7d95e066058722a14",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/v8/LICENSE"
+    ]
+  },
+  {
+    "name": "@eslint/plugin-kit, @eslint/config-array, @eslint/config-helpers, @eslint/compat",
+    "license": "Apache-2.0",
+    "source": "https://github.com/eslint/rewrite/tree/9aa97f2d08bfc04be62a918f1b2a67082cf03f96",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/eslint-plugin-kit-eslint-config-array-eslint-config-helpers-eslint-compat/LICENSE"
+    ]
+  },
+  {
+    "name": "ignore",
+    "license": "MIT",
+    "source": "https://github.com/kaelzhang/node-ignore/tree/edbaa52437931225c601d678fc0acd76853d3104",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/ignore/LICENSE-MIT"
+    ]
+  },
+  {
+    "name": "is-glob",
+    "license": "MIT",
+    "source": "https://github.com/micromatch/is-glob/tree/789e8bbc62e1fff7a2762449b3a7bac75c08916d",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/is-glob/LICENSE"
+    ]
+  },
+  {
+    "name": "is-extglob",
+    "license": "MIT",
+    "source": "https://github.com/jonschlinkert/is-extglob/tree/d508f2ed92ddaf8deef6d64d2f749ca1322f883e",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/is-extglob/LICENSE"
+    ]
+  },
+  {
+    "name": "glob-parent",
+    "license": "ISC",
+    "source": "https://github.com/gulpjs/glob-parent/tree/e6aecfc257ba6d1bd863b7e1066cf7aa3adc4b0b",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/glob-parent/LICENSE"
+    ]
+  },
+  {
+    "name": "eslint-plugin-react-hooks",
+    "license": "MIT",
+    "source": "https://github.com/facebook/react/tree/16453bcd12becf76340caa793d185cec1b80ebef",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/eslint-plugin-react-hooks/LICENSE"
+    ]
+  },
+  {
+    "name": "eslint-plugin-import",
+    "license": "MIT",
+    "source": "https://github.com/import-js/eslint-plugin-import/tree/a60d71548b0d12b750f7a7040285774fed25975a",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/eslint-plugin-import/LICENSE"
+    ]
+  },
+  {
+    "name": "eslint-plugin-n",
+    "license": "MIT",
+    "source": "https://github.com/eslint-community/eslint-plugin-n/tree/6e1353be12a49ca570b750eb7386215d881ee6a3",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/eslint-plugin-n/LICENSE"
+    ]
+  },
+  {
+    "name": "eslint-plugin-es-x",
+    "license": "MIT",
+    "source": "https://github.com/eslint-community/eslint-plugin-es-x/tree/db5e0305ec9b48594968fd9964f2177222f84219",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/eslint-plugin-es-x/LICENSE"
+    ]
+  },
+  {
+    "name": "eslint-plugin-react",
+    "license": "MIT",
+    "source": "https://github.com/jsx-eslint/eslint-plugin-react/tree/da5431790717d95dc7f5865eb907a79b4786d095",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/eslint-plugin-react/LICENSE"
+    ]
+  },
+  {
+    "name": "eslint-plugin-prettier",
+    "license": "MIT",
+    "source": "https://github.com/prettier/eslint-plugin-prettier/tree/e6dd27a4e4015748b2e87c646be2c1a530789343",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/eslint-plugin-prettier/LICENSE.md"
+    ]
+  },
+  {
+    "name": "jsx-ast-utils",
+    "license": "MIT",
+    "source": "https://github.com/jsx-eslint/jsx-ast-utils/tree/7cc40c4d2b88f221eae5ec2868754d31a85d8d71",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/jsx-ast-utils/LICENSE.md"
+    ]
+  },
+  {
+    "name": "prettier-linter-helpers",
+    "license": "MIT",
+    "source": "https://github.com/prettier/prettier-linter-helpers/tree/f29e489a48ad57b8efd518673d1796bbf282ac03",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/prettier-linter-helpers/LICENSE.md"
+    ]
+  },
+  {
+    "name": "diff-match-patch",
+    "license": "Apache-2.0",
+    "source": "https://github.com/google/diff-match-patch/tree/62f2e689f498f9c92dbc588c58750addec9b1654",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/diff-match-patch/AUTHORS",
+      "third-party/reviewed/runtime/bun-1.4.4/components/diff-match-patch/LICENSE"
+    ]
+  },
+  {
+    "name": "fast-diff",
+    "license": "Apache-2.0",
+    "source": "https://github.com/jhchen/fast-diff/tree/0e27223f8792083f5a49a193eb1ddbf26125fdb2",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/fast-diff/LICENSE"
+    ]
+  },
+  {
+    "name": "oxc (oxlint, oxc_jsdoc, oxc_react_compiler, oxc_formatter)",
+    "license": "MIT",
+    "source": "https://github.com/oxc-project/oxc/tree/eaa8e9005d9f8ec2b7770c43a496d19d7ca353dd",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/oxc-oxlint-oxc-jsdoc-oxc-react-compiler-oxc-formatter/LICENSE",
+      "third-party/reviewed/runtime/bun-1.4.4/components/oxc-oxlint-oxc-jsdoc-oxc-react-compiler-oxc-formatter/THIRD-PARTY-LICENSE"
+    ]
+  },
+  {
+    "name": "tsgolint",
+    "license": "MIT",
+    "source": "https://github.com/oxc-project/tsgolint/tree/9081583bd5c02c1b42bdebedf38e268fb68602c8",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/tsgolint/LICENSE",
+      "third-party/reviewed/runtime/bun-1.4.4/components/tsgolint/THIRD-PARTY-LICENSE"
+    ]
+  },
+  {
+    "name": "eslint-plugin-unicorn",
+    "license": "MIT",
+    "source": "https://github.com/sindresorhus/eslint-plugin-unicorn/tree/a8a814a08f6928f595eb578122f9d020f3a1c6a9",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/eslint-plugin-unicorn/license"
+    ]
+  },
+  {
+    "name": "eslint-plugin-react-perf",
+    "license": "MIT",
+    "source": "https://github.com/cvazac/eslint-plugin-react-perf/tree/811b182f60294377dbb8c7d671d15052e5b2b177",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/eslint-plugin-react-perf/LICENSE"
+    ]
+  },
+  {
+    "name": "eslint-plugin-jsx-a11y",
+    "license": "MIT",
+    "source": "https://github.com/jsx-eslint/eslint-plugin-jsx-a11y/tree/8f75961d965e47afb88854d324bd32fafde7acfe",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/eslint-plugin-jsx-a11y/LICENSE.md"
+    ]
+  },
+  {
+    "name": "@next/eslint-plugin-next",
+    "license": "MIT",
+    "source": "https://github.com/vercel/next.js/tree/4fed142e56e174947868f4566765d3f1897aa3b3",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/next-eslint-plugin-next/license.md"
+    ]
+  },
+  {
+    "name": "eslint-plugin-jest",
+    "license": "MIT",
+    "source": "https://github.com/jest-community/eslint-plugin-jest/tree/af4ad59a1e03423dd87bf737a8f3edc49dea4689",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/eslint-plugin-jest/LICENSE"
+    ]
+  },
+  {
+    "name": "@vitest/eslint-plugin",
+    "license": "MIT",
+    "source": "https://github.com/vitest-dev/eslint-plugin-vitest/tree/c5df1054a25044a7ca5baf07461b7aee1f15f5f2",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/vitest-eslint-plugin/LICENSE"
+    ]
+  },
+  {
+    "name": "eslint-plugin-promise",
+    "license": "ISC",
+    "source": "https://github.com/eslint-community/eslint-plugin-promise/tree/51c6308694dacaf338c42c4a3e5031583416b877",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/eslint-plugin-promise/LICENSE.md"
+    ]
+  },
+  {
+    "name": "aria-query",
+    "license": "Apache-2.0",
+    "source": "https://github.com/A11yance/aria-query/tree/c151dafa6ab17143479e5aeaa0826a3d657cc5be",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/aria-query/AUTHORS",
+      "third-party/reviewed/runtime/bun-1.4.4/components/aria-query/LICENSE"
+    ]
+  },
+  {
+    "name": "Prettier",
+    "license": "MIT",
+    "source": "https://github.com/prettier/prettier/tree/bed4edbb1cf2a9db4004215b0ce5707cdb02b5d9",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/prettier/LICENSE"
+    ]
+  },
+  {
+    "name": "Biome",
+    "license": "MIT",
+    "source": "https://github.com/biomejs/biome/tree/1db7c0d725178c53f1db9075c3711a873b0da754",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/biome/LICENSE-MIT"
+    ]
+  },
+  {
+    "name": "postcss",
+    "license": "MIT",
+    "source": "https://github.com/postcss/postcss/tree/2455ac8212fe66bc3248aa01186a52c27c87da5a",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/postcss/LICENSE"
+    ]
+  },
+  {
+    "name": "postcss-scss",
+    "license": "MIT",
+    "source": "https://github.com/postcss/postcss-scss/tree/028380809e01f5f40367464524b64f1101ae270f",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/postcss-scss/LICENSE"
+    ]
+  },
+  {
+    "name": "postcss-less",
+    "license": "MIT",
+    "source": "https://github.com/shellscape/postcss-less/tree/e13ad0146352458da3247386949435b32dec13a4",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/postcss-less/LICENSE"
+    ]
+  },
+  {
+    "name": "postcss-selector-parser",
+    "license": "MIT",
+    "source": "https://github.com/postcss/postcss-selector-parser/tree/1343320971957824a066207a534f9b69ac4faf53",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/postcss-selector-parser/LICENSE-MIT"
+    ]
+  },
+  {
+    "name": "postcss-media-query-parser",
+    "license": "MIT (declared; no license text published)",
+    "source": "https://github.com/dryoma/postcss-media-query-parser/tree/640b0a662b8e918561b69ab79f7723327b3bbcbb",
+    "files": []
+  },
+  {
+    "name": "postcss-values-parser",
+    "license": "MIT",
+    "source": "https://github.com/shellscape/postcss-values-parser/tree/c00f858ab8c86ce9f06fdb702e8f26376f467248",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/postcss-values-parser/LICENSE"
+    ]
+  },
+  {
+    "name": "angular-html-parser",
+    "license": "MIT",
+    "source": "https://github.com/prettier/angular-html-parser/tree/0b9e1364456375554a28547c094e31afbcdf06ce",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/angular-html-parser/LICENSE"
+    ]
+  },
+  {
+    "name": "graphql-js",
+    "license": "MIT",
+    "source": "https://github.com/graphql/graphql-js/tree/805fadd286dea7053b875f71c91222444c5d1228",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/graphql-js/LICENSE"
+    ]
+  },
+  {
+    "name": "@glimmer/syntax",
+    "license": "MIT",
+    "source": "https://github.com/glimmerjs/glimmer-vm/tree/3c206686cea0c2dafad98eb4c3a8dc65cc572318",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/glimmer-syntax/LICENSE"
+    ]
+  },
+  {
+    "name": "simple-html-tokenizer",
+    "license": "MIT",
+    "source": "https://github.com/tildeio/simple-html-tokenizer/tree/f6190ebf9296154bbf065894e768eaa0795cd119",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/simple-html-tokenizer/LICENSE"
+    ]
+  },
+  {
+    "name": "@angular/compiler",
+    "license": "MIT",
+    "source": "https://github.com/angular/angular/tree/458303fe94d75ea94a662fa45d2030041bf10ea8",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/angular-compiler/LICENSE"
+    ]
+  },
+  {
+    "name": "yaml-unist-parser",
+    "license": "MIT",
+    "source": "https://github.com/prettier/yaml-unist-parser/tree/481e535d15305cabd8395514c036a2e0ac97e29c",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/yaml-unist-parser/license"
+    ]
+  },
+  {
+    "name": "angular-estree-parser",
+    "license": "MIT",
+    "source": "https://github.com/prettier/angular-estree-parser/tree/0736295c913d564340e570fc81d1eb70398c7b70",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/angular-estree-parser/LICENSE"
+    ]
+  },
+  {
+    "name": "@handlebars/parser",
+    "license": "ISC (declared; no license text published)",
+    "source": "https://github.com/handlebars-lang/handlebars-parser/tree/c3c048f8fdd5039840351ef81aaa45309c9c66e1",
+    "files": []
+  },
+  {
+    "name": "yaml",
+    "license": "ISC",
+    "source": "https://github.com/eemeli/yaml/tree/528ef30d6ded4bd9f2c3521b670eb2b29d503c5c",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/yaml/LICENSE"
+    ]
+  },
+  {
+    "name": "@trivago/prettier-plugin-sort-imports",
+    "license": "Apache-2.0",
+    "source": "https://github.com/trivago/prettier-plugin-sort-imports/tree/d9c690fdbfe46334ec2bfb86a75ebde43c6a0fc6",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/trivago-prettier-plugin-sort-imports/LICENSE"
+    ]
+  },
+  {
+    "name": "@ianvs/prettier-plugin-sort-imports",
+    "license": "Apache-2.0",
+    "source": "https://github.com/ianvs/prettier-plugin-sort-imports/tree/26bc50bd2f9846898fa3f8f4bac82cc1f55d7480",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/ianvs-prettier-plugin-sort-imports/LICENSE"
+    ]
+  },
+  {
+    "name": "jest-docblock",
+    "license": "MIT",
+    "source": "https://github.com/jestjs/jest/tree/61050e9323e742539dc2360236671110e37329e6",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/jest-docblock/LICENSE"
+    ]
+  },
+  {
+    "name": "sort-package-json (crate)",
+    "license": "MIT",
+    "source": "https://github.com/oxc-project/sort-package-json/tree/f493a866b42552a61f83295d232ee2c52dcf9d01",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/sort-package-json-crate/LICENSE"
+    ]
+  },
+  {
+    "name": "oxc-toml (crate)",
+    "license": "MIT",
+    "source": "https://github.com/oxc-project/oxc-toml/tree/3239e42bad4dd0616901f1781961e9874e1f1157",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/oxc-toml-crate/LICENSE"
+    ]
+  },
+  {
+    "name": "@babel/generator",
+    "license": "MIT",
+    "source": "https://github.com/babel/babel/tree/633b97541f68d7baa8dafc2864561da84971cfab",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/babel-generator/LICENSE"
+    ]
+  },
+  {
+    "name": "micromark",
+    "license": "MIT",
+    "source": "https://github.com/micromark/micromark/tree/6577c200155e9c6b85a42b26d298f8affc348f2f",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/micromark/license"
+    ]
+  },
+  {
+    "name": "editorconfig-without-wasm",
+    "license": "MIT",
+    "source": "https://github.com/fisker/editorconfig-core-js-without-wasm/tree/496eb07822711195926fe88d83ae6fbb41aba3e0",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/editorconfig-without-wasm/LICENSE"
+    ]
+  },
+  {
+    "name": "emoji-regex",
+    "license": "MIT",
+    "source": "https://github.com/mathiasbynens/emoji-regex/tree/28a10d9e23663582faed522853d2ddae38868ca9",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/emoji-regex/LICENSE-MIT.txt"
+    ]
+  },
+  {
+    "name": "get-east-asian-width",
+    "license": "MIT",
+    "source": "https://github.com/sindresorhus/get-east-asian-width/tree/a1b1c31d2347d10667c4bcad34c58bc531db3b41",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/get-east-asian-width/license"
+    ]
+  },
+  {
+    "name": "narrow-emojis",
+    "license": "MIT",
+    "source": "https://github.com/fisker/narrow-emojis/tree/ec5e1a1fd9a6d51f8b5d63fdb5c7fee2b50401f1",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/narrow-emojis/license"
+    ]
+  },
+  {
+    "name": "prettier-plugin-tailwindcss",
+    "license": "MIT",
+    "source": "https://github.com/tailwindlabs/prettier-plugin-tailwindcss/tree/5b27f947f5d3e6de8702dc40d4054e02fbf4cdd8",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/prettier-plugin-tailwindcss/LICENSE"
+    ]
+  },
+  {
+    "name": "prettier-plugin-svelte",
+    "license": "MIT",
+    "source": "https://github.com/sveltejs/prettier-plugin-svelte/tree/7809486a9716faa2234c8a45d88b601034de52d8",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/prettier-plugin-svelte/LICENSE"
+    ]
+  },
+  {
+    "name": "Svelte",
+    "license": "MIT",
+    "source": "https://github.com/sveltejs/svelte/tree/fe21fce019e7797a9eeb5066211ff42e4e7cca8d",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/svelte/LICENSE.md"
+    ]
+  },
+  {
+    "name": "sort-package-json (npm)",
+    "license": "MIT",
+    "source": "https://github.com/keithamus/sort-package-json/tree/c09b95d1ae966a38e5036287d23629641f86d33e",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/sort-package-json-npm/LICENSE"
+    ]
+  },
+  {
+    "name": "git-hooks-list",
+    "license": "MIT",
+    "source": "https://github.com/fisker/git-hooks-list/tree/79ffa6ce10ef9b5b1c7f898de19cedffd36b7e93",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/git-hooks-list/license"
+    ]
+  },
+  {
+    "name": "acorn-walk",
+    "license": "MIT",
+    "source": "https://github.com/acornjs/acorn/tree/69788e23ca00483aef84005502dc3b88f2af38df/acorn-walk",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/acorn-walk/LICENSE"
+    ]
+  },
+  {
+    "name": "assert",
+    "license": "MIT",
+    "source": "https://github.com/browserify/commonjs-assert/tree/fc65923fdbbc3ae72de1ddb15ee54088d201b4f9",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/assert/LICENSE"
+    ]
+  },
+  {
+    "name": "browserify-zlib",
+    "license": "MIT",
+    "source": "https://github.com/devongovett/browserify-zlib/tree/6257713c1dc3b69d781a43c10e58a6d75875eef8",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/browserify-zlib/LICENSE"
+    ]
+  },
+  {
+    "name": "buffer",
+    "license": "MIT",
+    "source": "https://github.com/feross/buffer/tree/706a59cbb6bf2e7de701aefba437951ec6c0fb2a",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/buffer/AUTHORS.md",
+      "third-party/reviewed/runtime/bun-1.4.4/components/buffer/LICENSE"
+    ]
+  },
+  {
+    "name": "constants-browserify",
+    "license": "MIT",
+    "source": "https://github.com/juliangruber/constants-browserify/tree/6072360f955fe92be032b1772eb5145a6332d90d",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/constants-browserify/LICENSE.md"
+    ]
+  },
+  {
+    "name": "crypto-browserify",
+    "license": "MIT",
+    "source": "https://github.com/browserify/crypto-browserify/tree/55476aca92a99c81fcc438519a4d55817fb455fc",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/crypto-browserify/LICENSE"
+    ]
+  },
+  {
+    "name": "domain-browser",
+    "license": "Artistic-2.0",
+    "source": "https://github.com/bevry/domain-browser/tree/e40ec3d274ff42bb1dc7762b0698a1a21a12e17e",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/domain-browser/LICENSE.md"
+    ]
+  },
+  {
+    "name": "events",
+    "license": "MIT",
+    "source": "https://github.com/browserify/events/tree/aed9f91fee236bdedab8d593f7aa418ae6ed2718",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/events/LICENSE"
+    ]
+  },
+  {
+    "name": "https-browserify",
+    "license": "MIT",
+    "source": "https://registry.npmjs.org/https-browserify/-/https-browserify-1.0.0.tgz",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/https-browserify/LICENSE"
+    ]
+  },
+  {
+    "name": "os-browserify",
+    "license": "MIT",
+    "source": "https://github.com/CoderPuppy/os-browserify/tree/9e931aec1131f02a582f715b23c8f6d157622554",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/os-browserify/LICENSE"
+    ]
+  },
+  {
+    "name": "path-browserify",
+    "license": "MIT",
+    "source": "https://github.com/browserify/path-browserify/tree/872fec31a8bac7b9b43be0e54ef3037e0202c5fb",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/path-browserify/LICENSE"
+    ]
+  },
+  {
+    "name": "process",
+    "license": "MIT",
+    "source": "https://github.com/defunctzombie/node-process/tree/557aa46f283caccce603dbb9c376b3d81067c510",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/process/LICENSE"
+    ]
+  },
+  {
+    "name": "punycode",
+    "license": "MIT",
+    "source": "https://github.com/mathiasbynens/punycode.js/tree/9e1b2cda98d215d3a73fcbfe93c62e021f4ba768",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/punycode/LICENSE-MIT.txt"
+    ]
+  },
+  {
+    "name": "querystring-es3",
+    "license": "MIT",
+    "source": "https://github.com/SpainTrain/querystring-es3/tree/76baa10afbbc7a46461c06748e8c1b183802d105",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/querystring-es3/License.md"
+    ]
+  },
+  {
+    "name": "stream-browserify",
+    "license": "MIT",
+    "source": "https://github.com/browserify/stream-browserify/tree/a3625cb4181c4bcdf09884e677d4320c641b8724",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/stream-browserify/LICENSE"
+    ]
+  },
+  {
+    "name": "stream-http",
+    "license": "MIT",
+    "source": "https://github.com/jhiesey/stream-http/tree/cd697901d132cc20ea698079ac400b7cc11a7999",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/stream-http/LICENSE"
+    ]
+  },
+  {
+    "name": "string_decoder",
+    "license": "MIT",
+    "source": "https://github.com/nodejs/string_decoder/tree/60db81e031c126112039157ba9437484b1329dff",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/string-decoder/LICENSE"
+    ]
+  },
+  {
+    "name": "timers-browserify",
+    "license": "MIT",
+    "source": "https://github.com/browserify/timers-browserify/tree/d8de8dddaf43f826111cf972423a16649bda479b",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/timers-browserify/LICENSE.md"
+    ]
+  },
+  {
+    "name": "tty-browserify",
+    "license": "MIT",
+    "source": "https://github.com/browserify/tty-browserify/tree/402e52bc734b0bb7adbfcc2e8ccddb75b4b74ae9",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/tty-browserify/LICENSE"
+    ]
+  },
+  {
+    "name": "url",
+    "license": "MIT",
+    "source": "https://github.com/defunctzombie/node-url/tree/455a3e2106bf254498615efc50a8dd5527be4132",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/url/LICENSE"
+    ]
+  },
+  {
+    "name": "util",
+    "license": "MIT",
+    "source": "https://github.com/browserify/node-util/tree/ef984721db7150f651800e051de4314c9517d42c",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/util/LICENSE"
+    ]
+  },
+  {
+    "name": "vm-browserify",
+    "license": "MIT",
+    "source": "https://github.com/browserify/vm-browserify/tree/033537b20cec686adecaa4dde61c91134d59bc41",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/vm-browserify/LICENSE"
+    ]
+  },
+  {
+    "name": "esbuild",
+    "license": "MIT",
+    "source": "https://github.com/evanw/esbuild/tree/f6058f8364fe7ab91ca57a83e02577ed74c9cae4",
+    "files": [
+      "third-party/reviewed/runtime/bun-1.4.4/components/esbuild/LICENSE.md"
+    ]
+  }
+]

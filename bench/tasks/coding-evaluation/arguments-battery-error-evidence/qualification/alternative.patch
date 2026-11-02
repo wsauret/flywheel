@@ -1,0 +1,13 @@
+--- a/src/orchestration/agent-runtime/llm/json-parse.ts
++++ b/src/orchestration/agent-runtime/llm/json-parse.ts
+@@ -191,6 +191,8 @@
+ const RAW_SNIPPET_MAX = 600;
+ 
+ function rawSnippet(raw: string): string {
+-  if (raw.length <= RAW_SNIPPET_MAX) return raw;
+-  return raw.slice(-RAW_SNIPPET_MAX);
++  const omitted = raw.length - RAW_SNIPPET_MAX;
++  return omitted > 0
++    ? `${raw.substring(0, RAW_SNIPPET_MAX)} [${omitted} code units omitted]`
++    : raw;
+ }

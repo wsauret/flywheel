@@ -1,0 +1,55 @@
+/* The browser hosts' theme: the local page and the phone app both follow the
+   system setting. Dark is the client's default set from tokens.css; this file
+   replaces every palette assignment when the browser requests light, so no
+   dark value survives onto a light ground. The light set is the dark set's
+   warm family: warm off-white ground, warm near-black text, warm greys. */
+
+:root { color-scheme: light dark; }
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --fw-bg: #faf9f7;
+    --fw-fg: #2b2926;
+    --fw-fg-muted: #5f5a53;
+    --fw-fg-prose: #1c1b19;
+    --fw-accent: #2563eb;
+    --fw-accent-hover: #1d4fc2;
+    --fw-accent-fg: #ffffff;
+    --fw-secondary: #ebe9e4;
+    --fw-secondary-hover: #e1ded8;
+    --fw-secondary-fg: #2b2926;
+    --fw-focus: #2563eb;
+    --fw-link: #1d4fc2;
+    --fw-link-active: #163d99;
+    --fw-error: #a72e28;
+    --fw-warning: #7c5300;
+    --fw-success: #1b6942;
+    --fw-info: #1d4fc2;
+    --fw-purple: #6f42c1;
+    --fw-teal: #0b7a84;
+    --fw-orange: #8c4800;
+    --fw-tool-name: #8a5a00;
+    --fw-input-bg: #ffffff;
+    --fw-input-backdrop: var(--fw-input-backdrop-light);
+    --fw-input-border: #dedad3;
+    --fw-menu-bg: #ffffff;
+    --fw-menu-border: #dedad3;
+    --fw-list-hover: #f0eee9;
+    --fw-hover-bg: #ffffff;
+    --fw-hover-border: #d6d2ca;
+    --fw-code-bg: #f1efeb;
+    --fw-diff-add-bg: rgb(31 122 77 / 0.14);
+    --fw-diff-del-bg: rgb(194 54 47 / 0.14);
+    --fw-diff-add-standard-bg: rgb(46 160 67 / 0.2);
+    --fw-diff-del-standard-bg: rgb(218 54 51 / 0.18);
+    --fw-chat-code-keyword: #0b57d0;
+    --fw-chat-code-string: #a3461f;
+    --fw-chat-code-number: #116329;
+    --fw-chat-code-function: #6f42c1;
+    --fw-chat-code-type: #0f766e;
+    --fw-shadow-popover: 0 4px 14px rgb(40 32 24 / 0.12);
+    --fw-shadow-tooltip: 0 2px 8px rgb(40 32 24 / 0.10);
+    --fw-shadow-sheet: 0 12px 40px rgb(40 32 24 / 0.18);
+    --fw-scrim: rgb(28 27 25 / 0.35);
+  }
+}

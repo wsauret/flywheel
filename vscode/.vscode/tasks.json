@@ -1,0 +1,12 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "type": "shell",
+      "command": "bun run scripts/build.ts",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build"
+    }
+  ]
+}

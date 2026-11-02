@@ -1,0 +1,41 @@
+{
+  "title": "Rate-limited job execution, transient-failure retry, and graceful shutdown",
+  "defects": [
+    {
+      "id": "double-claim-race",
+      "title": "Await between the claim check and the claim write lets overlapping polls run a job twice",
+      "category": "concurrency",
+      "files": ["scheduler.ts"],
+      "catch_criteria": "The review must identify that pollOnce awaits limiter.acquire() between checking job.state/this.claimed and marking the job claimed, while start() fires pollOnce on a setInterval without awaiting the previous pass, so two overlapping poll passes can both pass the checks for the same job during the await and both execute it. A generic 'possible race' claim without locating the check-then-act gap across the acquire() await does not count."
+    },
+    {
+      "id": "dispose-drops-inflight-flush",
+      "title": "WriteBuffer.dispose returns early without awaiting an in-flight sink write",
+      "category": "lifecycle",
+      "files": ["write-buffer.ts"],
+      "catch_criteria": "The review must identify that dispose() returns early when this.pending is empty without awaiting this.inflight, so when the flush timer has already fired and handed a batch to the sink (emptying pending), dispose resolves before the sink acknowledges and the batch can be lost if the process exits after shutdown. Noting the empty-pending early-return branch skipping the inflight await is required."
+    },
+    {
+      "id": "timeout-resets-backoff",
+      "title": "Timeout failures reset the attempt counter, defeating backoff and the attempt cap",
+      "category": "correctness",
+      "files": ["scheduler.ts"],
+      "catch_criteria": "The review must identify that handleFailure's JobTimeoutError branch requeues the job with attempt: 0 and a fixed backoffMs(1) delay, so a job that keeps timing out never escalates its backoff and never reaches MAX_ATTEMPTS: it retries forever at the base delay instead of carrying its attempt count forward like other transient failures."
+    },
+    {
+      "id": "abort-listener-leak",
+      "title": "Per-execution abort listener is only removed on the aborted path",
+      "category": "resource-management",
+      "files": ["scheduler.ts"],
+      "catch_criteria": "The review must identify that execute() adds an 'abort' listener to the long-lived controller signal for every job but removes it only in the signal.aborted catch branch, so success and non-abort failure paths leak one listener per executed job; the listeners accumulate for the life of the scheduler and, when stop() calls controller.abort(), the stale handlers fire and rewrite already-completed jobs back to pending."
+    },
+    {
+      "id": "checkpoint-lost-on-stop",
+      "title": "stop() clears the debounced checkpoint timer without a final save",
+      "category": "lifecycle",
+      "files": ["scheduler.ts"],
+      "catch_criteria": "The review must identify that markDirty() defers the checkpoint write behind a trailing debounce timer and stop() clears that timer without calling checkpoints.save, so any claim/finish transitions inside the final debounce window are never checkpointed and the snapshot on disk is stale after a graceful shutdown."
+    }
+  ],
+  "review_prompt_hint": "The change adds rate-limited execution, retry with exponential backoff, buffered result writes, and graceful shutdown to an async job scheduler. Pay close attention to interleavings across await points, retry state carried between attempts, and what is flushed or lost during disposal"
+}

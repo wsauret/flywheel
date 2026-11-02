@@ -1,0 +1,685 @@
+/** Descriptor-contained storage for account-global authentication profiles. */
+
+import { lstatSync, readdirSync, watch as watchDirectory } from "node:fs";
+import { basename, dirname, join, relative, resolve } from "node:path";
+import { acquireLockIn, releaseLockIn } from "../ownership-file-lock.js";
+import { ContainedDirectory } from "../descriptor-directory.js";
+import { lockedJsonRevision } from "./locked-json-store.js";
+import { AUTH_STORE_FILE } from "./auth-store.js";
+import { AUTH_PROFILE_RETIREMENTS_FILE, readAuthProfileRetirements, retireAuthProfile, type AuthProfileRetirements } from "./auth-profile-retirements.js";
+import { ensurePrivateRootDirectory } from "../private-path.js";
+import { isAuthProfileDisplayName, requireAuthProfileDisplayName, requireAuthProfileName } from "../paths.js";
+import { heldDirectoryDerivation, leaseDirectoryWatch, noteDirectoryChange, type DirectoryWatchLease } from "../watched-directory-values.js";
+
+const AUTH_DIRECTORY = "auth";
+const PROFILES_DIRECTORY = "profiles";
+const PROFILE_LOCKS_DIRECTORY = "profile-locks";
+const LOCK_FILE = ".profiles.lock";
+const STICKY_FILE = ".active-profile";
+const MANIFEST_FILE = ".profile-operation.json";
+const PROFILE_FILE = "profile.json";
+const MAX_MARKER_BYTES = 1024;
+const MAX_MANIFEST_BYTES = 16 * 1024;
+const MAX_PROFILE_BYTES = 16 * 1024;
+const LEGACY_PROFILE_FILES = [AUTH_STORE_FILE] as const;
+const LEGACY_MIGRATION_MANIFEST = { kind: "legacy-profile-migration", operationId: "legacy-to-default-v1", from: "account-root", to: "default" } as const;
+const RETIRED_PROFILE_FILES = ["openai-models.json", "copilot-models.json"] as const;
+const DEFAULT_PROFILE = "default";
+const MAX_LEGACY_FILE_BYTES = 16 * 1024 * 1024;
+const AUTHORITY_WATCH_DEBOUNCE_MS = 25;
+const AUTHORITY_WATCH_REVALIDATE_MS = 250;
+/** What a catalog inspection reads: the markers, the profile listing, and each listed profile's metadata. */
+const CATALOG_INSPECTION = heldDirectoryDerivation<AuthProfileInspection>([STICKY_FILE, AUTH_PROFILE_RETIREMENTS_FILE, PROFILES_DIRECTORY], { listed: listedProfileMetadata });
+
+type LegacyProfileFile = typeof LEGACY_PROFILE_FILES[number];
+type MigrationFaultStage = `before:${LegacyProfileFile}` | `after:${LegacyProfileFile}`;
+
+export interface AuthProfileDescriptor {
+  readonly id: string;
+  readonly displayName: string;
+}
+
+export interface AuthProfileInspection {
+  readonly profiles: readonly AuthProfileDescriptor[];
+  readonly stickyProfile: string | undefined;
+  readonly retirements: AuthProfileRetirements;
+}
+
+/** Find a live stored profile or the unretired logical Default, without creating a directory. */
+export function findLogicalAuthProfile(profiles: readonly AuthProfileDescriptor[], retirements: AuthProfileRetirements, id: string): AuthProfileDescriptor | undefined {
+  return profiles.find((profile) => profile.id === id)
+    ?? (id === DEFAULT_PROFILE && retirements[id] === undefined ? { id, displayName: "Default" } : undefined);
+}
+
+export interface AuthProfileStoreOptions {
+  /** Test seam for simulating process failure around durable migration moves. */
+  readonly migrationFault?: (stage: MigrationFaultStage) => void;
+}
+
+export interface ActiveProfileWatcherOptions {
+  readonly debounceMs?: number;
+  readonly revalidateMs?: number;
+  readonly watchDirectory?: (directory: string, onChanged: (name?: string) => void) => { close: () => void };
+}
+
+export interface ActiveProfileWatcher {
+  dispose(): void;
+}
+
+/** A path-based mutation names a profile directory that no longer exists. */
+export class AuthProfileDirectoryNotFoundError extends Error {
+  readonly _tag = "AuthProfileDirectoryNotFoundError" as const;
+  readonly directory: string;
+
+  constructor(directory: string) {
+    super(`auth profile directory does not exist: ${directory}`);
+    this.directory = directory;
+  }
+}
+
+/** Access to one admitted immutable profile directory. The caller closes it. */
+export class AuthProfileAccess {
+  readonly #directory: ContainedDirectory;
+  readonly #lockDirectory: ContainedDirectory;
+  readonly #lockName: string;
+  readonly authDirectory: string;
+
+  constructor(directory: ContainedDirectory, lockDirectory: ContainedDirectory, profileId: string, authDirectory: string) {
+    this.#directory = directory;
+    this.#lockDirectory = lockDirectory;
+    this.#lockName = profileLockName(profileId);
+    this.authDirectory = authDirectory;
+  }
+
+  readFile(name: string, maxBytes: number): Buffer | undefined {
+    return this.#directory.readFile(name, maxBytes);
+  }
+
+  /** A returned failure follows a publication that may have landed; a throw precedes it. */
+  writeFile(name: string, content: string): void {
+    const failure = this.#directory.writeFile(name, content);
+    noteDirectoryChange(this.authDirectory, name);
+    if (failure !== undefined) throw failure;
+  }
+
+  /** The entry can be gone when the directory sync after it throws. */
+  removeFile(name: string): void {
+    try { this.#directory.removeFile(name); } finally { noteDirectoryChange(this.authDirectory, name); }
+  }
+
+  async withLock<T>(use: () => T | Promise<T>): Promise<T> {
+    const hold = await acquireLockIn(this.#lockDirectory, this.#lockName);
+    try {
+      return await use();
+    } finally {
+      releaseLockIn(this.#lockDirectory, hold);
+    }
+  }
+
+  close(): void {
+    this.#directory.close();
+    this.#lockDirectory.close();
+  }
+}
+
+/** Admit an existing profile directory without creating a missing component. */
+export function openExistingAuthProfileDirectory(directory: string): AuthProfileAccess {
+  const resolved = resolve(directory);
+  const id = requireAuthProfileName(basename(resolved));
+  const parentPath = dirname(resolved);
+  const profile = ContainedDirectory.openExisting(parentPath, [id], { noFollowBase: true, privateDirectories: true });
+  if (profile === undefined) throw new AuthProfileDirectoryNotFoundError(resolved);
+  const parent = ContainedDirectory.openExisting(dirname(parentPath), [basename(parentPath)], { noFollowBase: true });
+  if (parent === undefined) {
+    profile.close();
+    throw new AuthProfileDirectoryNotFoundError(resolved);
+  }
+  const locks = parent.openChild(PROFILE_LOCKS_DIRECTORY, { privateDirectories: true });
+  parent.close();
+  return new AuthProfileAccess(profile, locks, id, resolved);
+}
+
+export type AuthProfilePreRemove = (id: string) => Promise<() => void>;
+/** Profile operations available only while the store owns its cross-process lock. */
+export interface AuthProfileOperation {
+  list(): readonly AuthProfileDescriptor[];
+  retirements(): AuthProfileRetirements;
+  /** Commit the transfer before cleanup. The destination must be stored; the source may be synthetic Default. */
+  retire(id: string, successorId: string): void;
+  /** Remove only an unpublished profile that still contains metadata alone. */
+  discardUnpublished(id: string): Promise<void>;
+  create(id: string, displayName?: string): AuthProfileAccess;
+  open(id: string): AuthProfileAccess | undefined;
+  rename(id: string, displayName: string): void;
+  delete(id: string, preRemove?: AuthProfilePreRemove): Promise<void>;
+  readStickyProfile(): string | undefined;
+  writeStickyProfile(id: string): void;
+}
+
+/** Owns profile enumeration, metadata, and descriptor-backed access. */
+export class AuthProfileStore {
+  readonly #userDataRoot: string;
+  /** The directory whose files `inspect` derives from. */
+  readonly #catalogPath: string;
+  readonly #migrationFault: ((stage: MigrationFaultStage) => void) | undefined;
+
+  constructor(userDataRoot: string, options: AuthProfileStoreOptions = {}) {
+    this.#userDataRoot = userDataRoot;
+    this.#catalogPath = resolve(userDataRoot, AUTH_DIRECTORY);
+    this.#migrationFault = options.migrationFault;
+  }
+
+  /** Observe catalog metadata publications, including creation of a missing auth directory.
+   * The watcher carries no catalog state and never creates storage. While it watches the
+   * auth directory itself, it also holds the selection data that `inspect` reads. */
+  watchCatalog(onChange: () => void, onError: (error: unknown) => void, options: { readonly revalidateMs?: number } = {}): ActiveProfileWatcher {
+    const authPath = this.#catalogPath;
+    let disposed = false;
+    let watchedPath = "";
+    let watcher: ReturnType<typeof watchDirectory> | undefined;
+    let lease: DirectoryWatchLease | undefined;
+    let revalidation: ReturnType<typeof setInterval> | undefined;
+    const stopHolding = (): void => { clearInterval(revalidation); lease?.release(); };
+    const arm = (): void => {
+      let directory = authPath;
+      while (lstatSync(directory, { throwIfNoEntry: false }) === undefined) directory = dirname(directory);
+      if (directory === watchedPath) return;
+      watcher?.close();
+      stopHolding();
+      watchedPath = directory;
+      lease = undefined;
+      watcher = watchDirectory(directory, { recursive: directory === authPath }, (_event, filename) => {
+        if (disposed) return;
+        try {
+          if (watchedPath !== authPath) {
+            const nextComponent = relative(watchedPath, authPath).replaceAll("\\", "/").split("/")[0];
+            if (filename !== null && filename.toString() !== nextComponent) return;
+            arm();
+            onChange();
+            return;
+          }
+          const name = filename?.toString().replaceAll("\\", "/");
+          if (name === `${PROFILES_DIRECTORY}/${PROFILE_LOCKS_DIRECTORY}`) return;
+          const catalogEntry = name === undefined || name === AUTH_PROFILE_RETIREMENTS_FILE || name === PROFILES_DIRECTORY
+            || /^profiles\/[^/]+(?:\/profile\.json)?$/.test(name);
+          if (catalogEntry || name === STICKY_FILE) lease?.changed();
+          if (catalogEntry) onChange();
+        } catch (error) { onError(error); }
+      });
+      watcher.on("error", (error) => { stopHolding(); onError(error); });
+      watcher.unref();
+      if (directory !== authPath) return;
+      const held = leaseDirectoryWatch(authPath);
+      lease = held;
+      revalidation = setInterval(() => { held.revalidate(true); }, options.revalidateMs ?? AUTHORITY_WATCH_REVALIDATE_MS).unref();
+    };
+    arm();
+    return { dispose: () => { disposed = true; watcher?.close(); stopHolding(); } };
+  }
+
+  /** Observe active-profile marker publications. */
+  watchActiveProfile(onChange: () => void, options: ActiveProfileWatcherOptions = {}): ActiveProfileWatcher {
+    const stickyFile = resolve(this.#userDataRoot, AUTH_DIRECTORY, STICKY_FILE);
+    let observed = publishedIdentity(stickyFile);
+    return revalidatingDirectoryWatch(dirname(stickyFile), {
+      revalidate: () => {
+        const next = publishedIdentity(stickyFile);
+        if (next === observed) return;
+        observed = next;
+        onChange();
+      },
+    }, options);
+  }
+
+  /** Observe one admitted profile's exact auth bytes without following a replacement directory.
+   *  While it watches, it also holds the values that requests derive from the profile's files
+   *  (`heldDirectoryDerivation`), and its periodic revalidation keeps them fresh. */
+  watchAuthFile(profileDirectory: string, onChange: () => void, options: ActiveProfileWatcherOptions = {}): ActiveProfileWatcher {
+    const access = openExistingAuthProfileDirectory(profileDirectory);
+    const revision = (): string => {
+      try {
+        return lockedJsonRevision(access.readFile(AUTH_STORE_FILE, MAX_LEGACY_FILE_BYTES));
+      } catch {
+        return "unreadable";
+      }
+    };
+    const lease = leaseDirectoryWatch(profileDirectory);
+    let observed = revision();
+    const watcher = revalidatingDirectoryWatch(profileDirectory, {
+      event: (name) => { lease.changed(name); },
+      failed: () => { lease.release(); },
+      tick: (watching) => { lease.revalidate(watching); },
+      revalidate: () => {
+        const next = revision();
+        if (next === observed) return;
+        observed = next;
+        lease.changed(AUTH_STORE_FILE);
+        onChange();
+      },
+    }, options);
+    let disposed = false;
+    return { dispose: () => { if (disposed) return; disposed = true; watcher.dispose(); lease.release(); access.close(); } };
+  }
+
+  /** Own one uninterrupted profile mutation window. */
+  async withOperation<T>(use: (operation: AuthProfileOperation) => T | Promise<T>): Promise<T> {
+    const auth = this.#openAuth(true);
+    if (auth === undefined) throw new Error("created auth directory is absent");
+    try {
+      const hold = await acquireLockIn(auth, LOCK_FILE);
+      try {
+        readAuthProfileRetirements(auth);
+        await this.#migrateLegacyFiles(auth);
+        return await use(this.#operation(auth));
+      } finally {
+        releaseLockIn(auth, hold);
+      }
+    } finally {
+      auth.close();
+    }
+  }
+
+  async list(): Promise<readonly AuthProfileDescriptor[]> {
+    const auth = this.#openAuth(false);
+    if (auth === undefined) return [];
+    try {
+      return await this.#withLock(auth, async () => {
+        await this.#migrateLegacyFiles(auth);
+        return this.#list(auth);
+      });
+    } finally {
+      auth.close();
+    }
+  }
+
+  /** Read profile selection data without creating, locking, migrating, or changing permissions.
+   *  Every session change inspects, so the result is held while a catalog watch confirms the auth directory. */
+  inspect(): AuthProfileInspection {
+    return CATALOG_INSPECTION.read(this.#catalogPath, () => this.#inspectNow());
+  }
+
+  #inspectNow(): AuthProfileInspection {
+    const auth = ContainedDirectory.openExisting(this.#userDataRoot, [AUTH_DIRECTORY], { noFollowBase: true });
+    if (auth === undefined) return { profiles: [], stickyProfile: undefined, retirements: Object.freeze(Object.create(null)) };
+    try {
+      const bytes = auth.readFile(STICKY_FILE, MAX_MARKER_BYTES);
+      return {
+        profiles: this.#list(auth),
+        retirements: readAuthProfileRetirements(auth),
+        stickyProfile: bytes === undefined ? undefined : requireAuthProfileName(bytes.toString("utf8")),
+      };
+    } finally {
+      auth.close();
+    }
+  }
+
+  async create(id: string, displayName?: string): Promise<AuthProfileAccess> {
+    return this.withOperation((operation) => operation.create(id, displayName));
+  }
+
+  async open(id: string): Promise<AuthProfileAccess | undefined> {
+    return this.withOperation((operation) => operation.open(id));
+  }
+
+  async rename(id: string, displayName: string): Promise<void> {
+    await this.withOperation((operation) => operation.rename(id, displayName));
+  }
+
+  async delete(id: string, preRemove?: AuthProfilePreRemove): Promise<void> {
+    await this.withOperation((operation) => operation.delete(id, preRemove));
+  }
+
+  async readStickyProfile(): Promise<string | undefined> {
+    const auth = this.#openAuth(false);
+    if (auth === undefined) return undefined;
+    try {
+      return this.#operation(auth).readStickyProfile();
+    } finally {
+      auth.close();
+    }
+  }
+
+  async writeStickyProfile(id: string): Promise<void> {
+    requireAuthProfileName(id);
+    const auth = this.#openAuth(true);
+    if (auth === undefined) throw new Error("created auth directory is absent");
+    try {
+      await this.#withLock(auth, () => { this.#operation(auth).writeStickyProfile(id); });
+    } finally {
+      auth.close();
+    }
+  }
+
+  #list(auth: ContainedDirectory): readonly AuthProfileDescriptor[] {
+    const retired = readAuthProfileRetirements(auth);
+    const profiles = auth.openExistingChild(PROFILES_DIRECTORY);
+    if (profiles === undefined) return [];
+    try {
+      return profiles.directoryEntryNames()
+        .filter((entry) => entry !== PROFILE_LOCKS_DIRECTORY && !Object.hasOwn(retired, entry))
+        .map((entry) => {
+          const id = requireAuthProfileName(entry);
+          const profile = profiles.openExistingChild(id);
+          if (profile === undefined) throw new Error(`auth profile does not exist: ${id}`);
+          try {
+            return readProfileDescriptor(profile, id);
+          } finally {
+            profile.close();
+          }
+        }).sort((left, right) => left.id.localeCompare(right.id));
+    } finally {
+      profiles.close();
+    }
+  }
+
+  async #migrateLegacyFiles(auth: ContainedDirectory): Promise<void> {
+    const manifestBytes = auth.readFile(MANIFEST_FILE, MAX_MANIFEST_BYTES);
+    const recovering = manifestBytes === undefined ? false : decodeLegacyManifest(manifestBytes);
+    const sources = LEGACY_PROFILE_FILES.filter((name) => auth.hasEntry(name));
+    const retiredAtRoot = RETIRED_PROFILE_FILES.some((name) => auth.hasEntry(name));
+    const profiles = auth.openChild(PROFILES_DIRECTORY, { privateDirectories: true });
+    try {
+      const existingDefault = profiles.openExistingChild(DEFAULT_PROFILE);
+      const retiredInProfile = existingDefault === undefined ? false : RETIRED_PROFILE_FILES.some((name) => existingDefault.hasEntry(name));
+      existingDefault?.close();
+      if (sources.length === 0 && !recovering && !retiredAtRoot && !retiredInProfile) return;
+
+      const defaultProfile = profiles.openChild(DEFAULT_PROFILE, { privateDirectories: true });
+      const locks = this.#profileLocks(auth);
+      const hold = await acquireLockIn(locks, profileLockName(DEFAULT_PROFILE));
+      try {
+        for (const name of RETIRED_PROFILE_FILES) {
+          auth.removeFile(name);
+          defaultProfile.removeFile(name);
+        }
+        if (!recovering && sources.some((name) => defaultProfile.hasEntry(name))) throw new Error("unrecognized legacy profile migration conflict");
+        if (sources.length === 0) {
+          auth.removeFile(MANIFEST_FILE);
+          return;
+        }
+        if (!recovering) {
+          const failure = auth.writeFile(MANIFEST_FILE, JSON.stringify(LEGACY_MIGRATION_MANIFEST));
+          if (failure !== undefined) throw failure;
+        }
+        for (const name of LEGACY_PROFILE_FILES) {
+          const source = auth.readFile(name, MAX_LEGACY_FILE_BYTES);
+          if (source === undefined) continue;
+          const destination = defaultProfile.readFile(name, MAX_LEGACY_FILE_BYTES);
+          if (destination !== undefined) {
+            if (!source.equals(destination)) throw new Error(`legacy profile migration conflict: ${name}`);
+            auth.removeFile(name);
+            continue;
+          }
+          this.#migrationFault?.(`before:${name}`);
+          auth.renameInto(name, defaultProfile, name);
+          this.#migrationFault?.(`after:${name}`);
+        }
+        auth.removeFile(MANIFEST_FILE);
+      } finally {
+        // The writes since the lock run without a yield, so one note after them is before any reader.
+        noteDirectoryChange(this.#catalogPath);
+        noteDirectoryChange(resolve(this.#catalogPath, PROFILES_DIRECTORY, DEFAULT_PROFILE));
+        releaseLockIn(locks, hold);
+        locks.close();
+        defaultProfile.close();
+      }
+    } finally {
+      profiles.close();
+    }
+  }
+
+  #profileLocks(auth: ContainedDirectory): ContainedDirectory {
+    const profiles = auth.openChild(PROFILES_DIRECTORY, { privateDirectories: true });
+    const locks = profiles.openChild(PROFILE_LOCKS_DIRECTORY, { privateDirectories: true });
+    profiles.close();
+    return locks;
+  }
+
+  /** Each mutation notes its catalog change before it returns, because a caller
+   *  can yield between mutations of one operation while `inspect` reads. */
+  #operation(auth: ContainedDirectory): AuthProfileOperation {
+    const profiles = () => auth.openChild(PROFILES_DIRECTORY, { privateDirectories: true });
+    const authDirectory = (id: string): string => resolve(this.#catalogPath, PROFILES_DIRECTORY, id);
+    const changed = (name?: string): void => { noteDirectoryChange(this.#catalogPath, name); };
+    return {
+      list: () => this.#list(auth),
+      retirements: () => readAuthProfileRetirements(auth),
+      retire: (id, successorId) => {
+        requireAuthProfileName(id);
+        requireAuthProfileName(successorId);
+        const live = this.#list(auth);
+        const source = findLogicalAuthProfile(live, readAuthProfileRetirements(auth), id);
+        if (id === successorId || source === undefined || !live.some((profile) => profile.id === successorId)) throw new Error("profile transfer requires distinct live source and destination");
+        try { retireAuthProfile(auth, id, successorId); } finally { changed(AUTH_PROFILE_RETIREMENTS_FILE); }
+      },
+      discardUnpublished: async (id) => {
+        requireAuthProfileName(id);
+        const directory = profiles();
+        const locks = this.#profileLocks(auth);
+        const hold = await acquireLockIn(locks, profileLockName(id));
+        try {
+          const profile = directory.openExistingChild(id);
+          if (profile === undefined) return;
+          let safe: boolean;
+          try {
+            safe = profile.entryNames().every((name) => name === PROFILE_FILE);
+          } finally {
+            profile.close();
+          }
+          if (!safe) return;
+          try { directory.removeTree(id); } finally { changed(); }
+        } finally {
+          releaseLockIn(locks, hold);
+          locks.close();
+          directory.close();
+        }
+      },
+      open: (id) => {
+        requireAuthProfileName(id);
+        if (Object.hasOwn(readAuthProfileRetirements(auth), id)) return undefined;
+        const directory = profiles();
+        const profile = directory.openExistingChild(id);
+        directory.close();
+        return profile === undefined ? undefined : new AuthProfileAccess(profile, this.#profileLocks(auth), id, authDirectory(id));
+      },
+      create: (id, displayName) => {
+        requireAuthProfileName(id);
+        if (Object.hasOwn(readAuthProfileRetirements(auth), id)) throw new Error(`auth profile id is retired: ${id}`);
+        if (displayName !== undefined) requireAuthProfileDisplayName(displayName);
+        const directory = profiles();
+        const existing = directory.openExistingChild(id);
+        if (existing !== undefined) {
+          existing.close();
+          directory.close();
+          throw new Error(`auth profile already exists: ${id}`);
+        }
+        const profile = directory.openChild(id, { privateDirectories: true });
+        directory.close();
+        // The metadata write follows without a yield, so this note is before any reader.
+        changed();
+        try {
+          if (displayName !== undefined) writeProfileMetadata(profile, displayName);
+          return new AuthProfileAccess(profile, this.#profileLocks(auth), id, authDirectory(id));
+        } catch (error) {
+          profile.close();
+          throw error;
+        }
+      },
+      delete: async (id, preRemove) => {
+        requireAuthProfileName(id);
+        const directory = profiles();
+        const profile = directory.openExistingChild(id);
+        if (profile === undefined) {
+          directory.close();
+          if (Object.hasOwn(readAuthProfileRetirements(auth), id)) return;
+          throw new Error(`auth profile does not exist: ${id}`);
+        }
+        profile.close();
+        const locks = this.#profileLocks(auth);
+        const hold = await acquireLockIn(locks, profileLockName(id));
+        try {
+          const removed = await preRemove?.(id);
+          try {
+            directory.removeTree(id);
+          } finally {
+            changed();
+            noteDirectoryChange(authDirectory(id));
+            removed?.();
+          }
+        } finally {
+          releaseLockIn(locks, hold);
+          locks.close();
+          directory.close();
+        }
+      },
+      rename: (id, displayName) => {
+        requireAuthProfileName(id);
+        requireAuthProfileDisplayName(displayName);
+        const directory = profiles();
+        try {
+          const profile = directory.openExistingChild(id);
+          if (profile === undefined) throw new Error(`auth profile does not exist: ${id}`);
+          try {
+            writeProfileMetadata(profile, displayName);
+          } finally {
+            changed(`${PROFILES_DIRECTORY}/${id}/${PROFILE_FILE}`);
+            profile.close();
+          }
+        } finally {
+          directory.close();
+        }
+      },
+      readStickyProfile: () => {
+        const bytes = auth.readFile(STICKY_FILE, MAX_MARKER_BYTES);
+        return bytes === undefined ? undefined : requireAuthProfileName(bytes.toString("utf8"));
+      },
+      writeStickyProfile: (id) => {
+        requireAuthProfileName(id);
+        const failure = auth.writeFile(STICKY_FILE, id);
+        changed(STICKY_FILE);
+        if (failure !== undefined) throw failure;
+      },
+    };
+  }
+
+  #openAuth(create: boolean): ContainedDirectory | undefined {
+    if (create) ensurePrivateRootDirectory(this.#userDataRoot);
+    return create
+      ? ContainedDirectory.open(this.#userDataRoot, [AUTH_DIRECTORY], { noFollowBase: true, privateDirectories: true })
+      : ContainedDirectory.openExisting(this.#userDataRoot, [AUTH_DIRECTORY], { noFollowBase: true, privateDirectories: true });
+  }
+
+  async #withLock<T>(auth: ContainedDirectory, use: () => T | Promise<T>): Promise<T> {
+    const hold = await acquireLockIn(auth, LOCK_FILE);
+    try {
+      return await use();
+    } finally {
+      releaseLockIn(auth, hold);
+    }
+  }
+}
+
+/** Runs `revalidate` after each burst of directory events and once each
+ *  revalidation period, which stays the freshness guarantee when the platform
+ *  watch cannot arm or stops delivering. `tick` runs first in each period
+ *  only, with `watching` stating that the watch armed. */
+function revalidatingDirectoryWatch(directory: string, handlers: {
+  readonly event?: (name?: string) => void;
+  readonly failed?: () => void;
+  readonly tick?: (watching: boolean) => void;
+  readonly revalidate: () => void;
+}, options: ActiveProfileWatcherOptions): ActiveProfileWatcher {
+  let pending: ReturnType<typeof setTimeout> | undefined;
+  let disposed = false;
+  let close: (() => void) | undefined;
+  const revalidate = (): void => {
+    if (disposed) return;
+    pending = undefined;
+    handlers.revalidate();
+  };
+  const schedule = (name?: string): void => {
+    if (disposed) return;
+    handlers.event?.(name);
+    clearTimeout(pending);
+    pending = setTimeout(revalidate, options.debounceMs ?? AUTHORITY_WATCH_DEBOUNCE_MS);
+    pending.unref();
+  };
+  const watch = options.watchDirectory ?? ((watched: string, onChanged: (name?: string) => void) => {
+    const watcher = watchDirectory(watched, (_event, name) => { onChanged(name ?? undefined); });
+    watcher.on("error", () => { handlers.failed?.(); });
+    watcher.unref();
+    return { close: () => watcher.close() };
+  });
+  try {
+    close = watch(directory, schedule).close;
+  } catch {
+    // Revalidation remains the freshness guarantee when a platform watch cannot arm.
+  }
+  const revalidation = setInterval(() => { handlers.tick?.(close !== undefined); revalidate(); }, options.revalidateMs ?? AUTHORITY_WATCH_REVALIDATE_MS);
+  revalidation.unref();
+  return {
+    dispose: () => {
+      if (disposed) return;
+      disposed = true;
+      clearInterval(revalidation);
+      clearTimeout(pending);
+      close?.();
+    },
+  };
+}
+
+/** The metadata file of each profile listed in the auth directory `authPath`. */
+function listedProfileMetadata(authPath: string): readonly string[] {
+  const profiles = join(authPath, PROFILES_DIRECTORY);
+  const ids = lstatSync(profiles, { throwIfNoEntry: false })?.isDirectory() === true ? readdirSync(profiles).filter((id) => id !== PROFILE_LOCKS_DIRECTORY) : [];
+  return ids.map((id) => `${PROFILES_DIRECTORY}/${id}/${PROFILE_FILE}`);
+}
+
+function profileLockName(id: string): string {
+  return `.profile.${id}.lock`;
+}
+
+function publishedIdentity(file: string): string {
+  try {
+    const stats = lstatSync(file, { throwIfNoEntry: false });
+    return stats === undefined ? "" : `${stats.ino}:${stats.size}:${stats.mtimeMs}`;
+  } catch {
+    return "";
+  }
+}
+
+function readProfileDescriptor(profile: ContainedDirectory, id: string): AuthProfileDescriptor {
+  const bytes = profile.readFile(PROFILE_FILE, MAX_PROFILE_BYTES);
+  if (bytes === undefined) return { id, displayName: defaultDisplayName(id) };
+  try {
+    const metadata: unknown = JSON.parse(bytes.toString("utf8"));
+    if (typeof metadata === "object" && metadata !== null && Object.keys(metadata).length === 1 && "displayName" in metadata && typeof metadata.displayName === "string" && isAuthProfileDisplayName(metadata.displayName)) {
+      return { id, displayName: metadata.displayName };
+    }
+  } catch {
+    // Invalid metadata must not put terminal control characters on a display surface.
+  }
+  return { id, displayName: defaultDisplayName(id) };
+}
+
+function writeProfileMetadata(profile: ContainedDirectory, displayName: string): void {
+  const failure = profile.writeFile(PROFILE_FILE, JSON.stringify({ displayName }));
+  if (failure !== undefined) throw failure;
+}
+
+function defaultDisplayName(id: string): string {
+  return id === DEFAULT_PROFILE ? "Default" : id;
+}
+
+function decodeLegacyManifest(bytes: Buffer): true {
+  let value: unknown;
+  try {
+    value = JSON.parse(bytes.toString("utf8"));
+  } catch {
+    throw new Error("auth profile operation manifest is malformed");
+  }
+  if (typeof value !== "object" || value === null || Object.keys(value).length !== 4 || !("kind" in value) || !("operationId" in value) || !("from" in value) || !("to" in value) || value.kind !== LEGACY_MIGRATION_MANIFEST.kind || value.operationId !== LEGACY_MIGRATION_MANIFEST.operationId || value.from !== LEGACY_MIGRATION_MANIFEST.from || value.to !== LEGACY_MIGRATION_MANIFEST.to) {
+    throw new Error("auth profile operation manifest is malformed");
+  }
+  return true;
+}

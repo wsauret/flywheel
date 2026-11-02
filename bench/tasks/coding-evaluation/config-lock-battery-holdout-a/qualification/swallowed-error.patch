@@ -1,0 +1,22 @@
+--- a/src/infra/ownership-file-lock.ts
++++ b/src/infra/ownership-file-lock.ts
+@@ -242,7 +242,7 @@
+   const record = ownRecord();
+   for (let attempt = 0; ; attempt++) {
+     const result = attemptLock(directory, name, record);
+-    if (result.kind === "acquired" || result.kind === "foreign") return acquired({ name, owner: record.owner });
++    if (result.kind === "acquired") return acquired({ name, owner: record.owner });
+     if (result.kind === "foreign" || attempt === MAX_RETRIES) throw refusal(name, result);
+     await Bun.sleep(backoffMs(baseDelayMs, attempt));
+   }
+--- a/src/orchestration/config/config-file.ts
++++ b/src/orchestration/config/config-file.ts
+@@ -134,7 +134,7 @@
+ export async function withConfigOwnership<T>(location: ConfigFileLocation, use: (config: ConfigOwnership) => T): Promise<T> {
+   const held = openConfigDirectory(location);
+   try {
+-    return await withLockIn(held.directory, `${held.fileName}.lock`, () => use(configOwnership(held)));
++    return await withLockIn(held.directory, `${held.fileName}.lock`, () => use(configOwnership(held))).catch(() => undefined as T);
+   } finally {
+     held.directory.close();
+   }

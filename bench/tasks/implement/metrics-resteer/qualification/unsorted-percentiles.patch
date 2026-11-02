@@ -1,0 +1,14 @@
+===================================================================
+--- a/percentiles.ts
++++ b/percentiles.ts
+@@ -10,9 +10,9 @@
+   return value;
+ }
+ 
+ export function computePercentiles(values: readonly number[]): Percentiles {
+-  const sorted = [...values].sort((left, right) => left - right);
++  const sorted = [...values];
+   return {
+     p50: nearestRank(sorted, 0.5),
+     p95: nearestRank(sorted, 0.95),
+   };

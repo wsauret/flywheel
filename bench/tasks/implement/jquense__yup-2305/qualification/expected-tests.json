@@ -1,0 +1,178 @@
+[
+  {
+    "file": "test/array.ts",
+    "id": "Array types casting should parse json strings"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types casting should failed casts return input"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types casting should recursively cast fields"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types casting should pass array options to descendants when casting"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types should handle DEFAULT"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types should type check"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types should cast children"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types should concat subType correctly"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types should pass options to children"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types validation Basic validations fail: required undefined"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types validation Basic validations fail: required null"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types validation Basic validations fail: null null"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types validation Basic validations fail: length [1, 2, 3]"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types validation Basic validations pass: required []"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types validation Basic validations pass: nullable null"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types validation Basic validations pass: length [1, 2, 3]"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types validation should allow undefined"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types validation max should replace earlier tests"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types validation min should replace earlier tests"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types validation should respect subtype validations"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types validation should prevent recursive casting"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types should respect abortEarly"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types should respect disableStackTrace"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types should compact arrays"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types should ensure arrays"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types should pass resolved path to descendants"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types should pass deeply resolved path to descendants"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types should maintain array sparseness through validation"
+  },
+  {
+    "file": "test/array.ts",
+    "id": "Array types should validate empty slots in sparse array"
+  },
+  {
+    "file": "test/tuple.ts",
+    "id": "Array types casting should failed casts return input"
+  },
+  {
+    "file": "test/tuple.ts",
+    "id": "Array types casting should recursively cast fields"
+  },
+  {
+    "file": "test/tuple.ts",
+    "id": "Array types casting should pass array options to descendants when casting"
+  },
+  {
+    "file": "test/tuple.ts",
+    "id": "Array types should handle DEFAULT"
+  },
+  {
+    "file": "test/tuple.ts",
+    "id": "Array types should type check"
+  },
+  {
+    "file": "test/tuple.ts",
+    "id": "Array types should pass options to children"
+  },
+  {
+    "file": "test/tuple.ts",
+    "id": "Array types validation Basic validations fail: required undefined"
+  },
+  {
+    "file": "test/tuple.ts",
+    "id": "Array types validation Basic validations fail: required null"
+  },
+  {
+    "file": "test/tuple.ts",
+    "id": "Array types validation Basic validations fail: null null"
+  },
+  {
+    "file": "test/tuple.ts",
+    "id": "Array types validation Basic validations pass: required [\"any\"]"
+  },
+  {
+    "file": "test/tuple.ts",
+    "id": "Array types validation Basic validations pass: nullable null"
+  },
+  {
+    "file": "test/tuple.ts",
+    "id": "Array types validation should allow undefined"
+  },
+  {
+    "file": "test/tuple.ts",
+    "id": "Array types validation should respect subtype validations"
+  },
+  {
+    "file": "test/tuple.ts",
+    "id": "Array types validation should use labels"
+  },
+  {
+    "file": "test/tuple.ts",
+    "id": "Array types validation should throw useful type error for length"
+  }
+]

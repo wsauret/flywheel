@@ -1,0 +1,788 @@
+{
+  "refusedContinuation": [
+    {
+      "type": "workflow.control.initialized",
+      "version": 10,
+      "actor": "flywheel",
+      "payload": {
+        "control": {
+          "definitionIdentity": {
+            "workflowDefinitionId": "workflow",
+            "vmVersion": "2",
+            "skills": [],
+            "personas": [],
+            "graphSha256": "c88e2368f8f784aafa6403c9122f64fda7100f48b3f9958b942a314e2e00e2b4",
+            "steps": [
+              {
+                "stepId": "work",
+                "policySha256": "bd76cbb85bdddf3308a272a550d1efdc39a498129ae647ace4d4a339013c7341",
+                "contentSha256": "1bf31cd9ea0281cd8c1800bd10b099cd9a85586ef14e5f8d2cd45dc97c91a53f",
+                "outputSha256": "f35cd02cd97b67077a86f78eb15ec16044957e3420ff5787bcf1b5a715f40d06"
+              }
+            ]
+          },
+          "workflowName": "Host test",
+          "graph": {
+            "nodes": [
+              {
+                "kind": "step",
+                "id": "workflow:node:1",
+                "workflowDefinitionId": "workflow",
+                "order": 0,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "workflow"
+                },
+                "state": {
+                  "_tag": "ready"
+                },
+                "definitionId": "work",
+                "name": "Work",
+                "then": {
+                  "step": "work",
+                  "when": null,
+                  "then": null
+                },
+                "retry": null
+              }
+            ],
+            "dependencies": [],
+            "joins": [],
+            "budgets": []
+          },
+          "attempts": [
+            {
+              "id": "workflow:node:1:attempt:1",
+              "logicalNodeId": "workflow:node:1",
+              "workflowDefinitionId": "workflow",
+              "definitionId": "work",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "workflow"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            }
+          ],
+          "frontier": [
+            "workflow:node:1"
+          ],
+          "guardrails": {
+            "maxQueueLength": 1,
+            "maxMutationsPerAttempt": 3,
+            "maxSessionInserts": 20,
+            "sessionInsertsUsed": 0,
+            "attemptMutationsUsed": [
+              {
+                "attemptId": "workflow:node:1:attempt:1",
+                "used": 0
+              }
+            ]
+          },
+          "status": "ready",
+          "followUp": null,
+          "aggregateSeq": 4
+        }
+      }
+    },
+    {
+      "type": "context.input.seeded",
+      "version": 1,
+      "actor": "flywheel",
+      "payload": {
+        "workflowDefinitionId": "workflow",
+        "userRequest": "Host test canonical request"
+      }
+    },
+    {
+      "type": "queue.created",
+      "version": 9,
+      "actor": "flywheel",
+      "payload": {
+        "queue": {
+          "steps": [
+            {
+              "id": "workflow:node:1:attempt:1",
+              "definitionId": "work",
+              "contentId": "workflow.work",
+              "workflowDefinitionId": "workflow",
+              "name": "Work",
+              "status": "pending",
+              "writes": [
+                "artifact"
+              ],
+              "resumeRevertCount": 0,
+              "then": {
+                "step": "work"
+              }
+            }
+          ],
+          "cursor": 0,
+          "status": "idle",
+          "mutationLog": [],
+          "maxSteps": 50
+        }
+      }
+    },
+    {
+      "type": "queue.tree.changed",
+      "version": 3,
+      "actor": "flywheel",
+      "payload": {
+        "tree": {
+          "nodes": [
+            {
+              "id": "workflow:node:1",
+              "label": "Work",
+              "parentId": null,
+              "disposition": "pending",
+              "attempts": 0,
+              "kind": "chain"
+            },
+            {
+              "id": "workflow:node:1:attempt:1",
+              "label": "Work",
+              "parentId": "workflow:node:1",
+              "disposition": "pending",
+              "attempts": 1,
+              "currentAttemptId": "workflow:node:1:attempt:1",
+              "kind": "step",
+              "stepId": "work"
+            },
+            {
+              "id": "workflow:node:1:attempt:1:planned:1",
+              "label": "Work",
+              "parentId": "workflow:node:1",
+              "disposition": "pending",
+              "attempts": 0,
+              "kind": "step",
+              "stepId": "work"
+            }
+          ],
+          "currentLeafId": "workflow:node:1:attempt:1"
+        }
+      }
+    },
+    {
+      "type": "queue.state.changed",
+      "version": 1,
+      "actor": "flywheel",
+      "payload": {
+        "status": "idle",
+        "cursor": 0,
+        "maxSteps": 1
+      }
+    },
+    {
+      "type": "workflow.control.committed",
+      "version": 9,
+      "actor": "flywheel",
+      "payload": {
+        "proposalId": "workflow:proposal:5:start",
+        "event": {
+          "type": "START"
+        }
+      }
+    },
+    {
+      "type": "step.status.changed",
+      "version": 1,
+      "actor": "flywheel",
+      "payload": {
+        "stepId": "workflow:node:1:attempt:1",
+        "status": "running",
+        "previousStatus": "pending"
+      }
+    },
+    {
+      "type": "step.resume_state.recorded",
+      "version": 1,
+      "actor": "flywheel",
+      "payload": {
+        "stepId": "workflow:node:1:attempt:1",
+        "conversationId": "conversation-1"
+      }
+    },
+    {
+      "type": "queue.state.changed",
+      "version": 1,
+      "actor": "flywheel",
+      "payload": {
+        "status": "running",
+        "cursor": 0,
+        "maxSteps": 1
+      }
+    },
+    {
+      "type": "queue.tree.changed",
+      "version": 3,
+      "actor": "flywheel",
+      "payload": {
+        "tree": {
+          "nodes": [
+            {
+              "id": "workflow:node:1",
+              "label": "Work",
+              "parentId": null,
+              "disposition": "running",
+              "attempts": 0,
+              "kind": "chain"
+            },
+            {
+              "id": "workflow:node:1:attempt:1",
+              "label": "Work",
+              "parentId": "workflow:node:1",
+              "disposition": "running",
+              "attempts": 1,
+              "currentAttemptId": "workflow:node:1:attempt:1",
+              "kind": "step",
+              "stepId": "work"
+            },
+            {
+              "id": "workflow:node:1:attempt:1:planned:1",
+              "label": "Work",
+              "parentId": "workflow:node:1",
+              "disposition": "pending",
+              "attempts": 0,
+              "kind": "step",
+              "stepId": "work"
+            }
+          ],
+          "currentLeafId": "workflow:node:1:attempt:1"
+        }
+      }
+    },
+    {
+      "type": "attempt.started",
+      "version": 1,
+      "actor": "flywheel",
+      "payload": {
+        "attemptId": "workflow:node:1:attempt:1"
+      }
+    },
+    {
+      "type": "workflow.control.committed",
+      "version": 9,
+      "actor": "flywheel",
+      "payload": {
+        "proposalId": "workflow:proposal:7:attempt-started:workflow:node:1:attempt:1",
+        "event": {
+          "type": "ATTEMPT_STARTED",
+          "attemptId": "workflow:node:1:attempt:1",
+          "conversationId": "conversation-1"
+        }
+      }
+    },
+    {
+      "type": "handoff.written",
+      "version": 1,
+      "actor": "worker",
+      "payload": {
+        "stepId": "workflow:node:1:attempt:1",
+        "stepName": "Work",
+        "definitionId": "work",
+        "workflowDefinitionId": "workflow",
+        "content": {
+          "summary": "Source completed"
+        },
+        "bytes": 30,
+        "sha256": "16fad979d9f4cac6fd9af562a085f2912db6c5f82d44d51050b8cdfc32f8f477",
+        "preview": "{\"summary\":\"Source completed\"}"
+      }
+    },
+    {
+      "type": "handoff.validated",
+      "version": 1,
+      "actor": "flywheel",
+      "payload": {
+        "stepId": "workflow:node:1:attempt:1",
+        "stepName": "Work",
+        "definitionId": "work",
+        "workflowDefinitionId": "workflow",
+        "status": "passed",
+        "issues": []
+      }
+    },
+    {
+      "type": "context.accumulated",
+      "version": 4,
+      "actor": "flywheel",
+      "payload": {
+        "entry": {
+          "stepId": "workflow:node:1:attempt:1",
+          "stepName": "Work",
+          "definitionId": "work",
+          "workflowDefinitionId": "workflow",
+          "recipientStepId": null,
+          "writes": [
+            {
+              "id": "artifact",
+              "lifetime": "transient"
+            }
+          ],
+          "timestamp": 10,
+          "handoff": {
+            "summary": "Source completed"
+          }
+        }
+      }
+    },
+    {
+      "type": "step.status.changed",
+      "version": 1,
+      "actor": "flywheel",
+      "payload": {
+        "stepId": "workflow:node:1:attempt:1",
+        "status": "completed",
+        "previousStatus": "running"
+      }
+    },
+    {
+      "type": "queue.state.changed",
+      "version": 1,
+      "actor": "flywheel",
+      "payload": {
+        "status": "failed",
+        "cursor": 1,
+        "maxSteps": 1
+      }
+    },
+    {
+      "type": "queue.tree.changed",
+      "version": 3,
+      "actor": "flywheel",
+      "payload": {
+        "tree": {
+          "nodes": [
+            {
+              "id": "workflow:node:1",
+              "label": "Work",
+              "parentId": null,
+              "disposition": "failed",
+              "reason": "Workflow control \"then\" rejected insert_after: max queue length (1)",
+              "attempts": 0,
+              "kind": "chain"
+            },
+            {
+              "id": "workflow:node:1:attempt:1",
+              "label": "Work",
+              "parentId": "workflow:node:1",
+              "disposition": "completed",
+              "attempts": 1,
+              "currentAttemptId": "workflow:node:1:attempt:1",
+              "evidence": {
+                "summary": "Source completed"
+              },
+              "kind": "step",
+              "stepId": "work"
+            },
+            {
+              "id": "workflow:node:1:attempt:1:planned:1",
+              "label": "Work",
+              "parentId": "workflow:node:1",
+              "disposition": "skipped",
+              "reason": "Workflow control \"then\" rejected insert_after: max queue length (1)",
+              "attempts": 0,
+              "kind": "step",
+              "stepId": "work"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "attempt.succeeded",
+      "version": 3,
+      "actor": "flywheel",
+      "payload": {
+        "attemptId": "workflow:node:1:attempt:1"
+      }
+    },
+    {
+      "type": "attempt.insertion_rejected",
+      "version": 1,
+      "actor": "flywheel",
+      "payload": {
+        "attemptId": "workflow:node:1:attempt:1",
+        "reason": "Workflow control \"then\" rejected insert_after: max queue length (1)"
+      }
+    },
+    {
+      "type": "workflow.failed",
+      "version": 1,
+      "actor": "flywheel",
+      "payload": {}
+    },
+    {
+      "type": "workflow.control.committed",
+      "version": 9,
+      "actor": "flywheel",
+      "payload": {
+        "proposalId": "workflow:proposal:13:attempt-succeeded:workflow:node:1:attempt:1",
+        "event": {
+          "type": "ATTEMPT_SUCCEEDED",
+          "outcome": {
+            "attemptId": "workflow:node:1:attempt:1",
+            "conversationId": "conversation-1",
+            "handoff": {
+              "summary": "Source completed"
+            },
+            "reassessment": null
+          }
+        }
+      }
+    }
+  ],
+  "gatedCompletion": [
+    {
+      "type": "workflow.control.initialized",
+      "version": 10,
+      "actor": "flywheel",
+      "payload": {
+        "control": {
+          "definitionIdentity": {
+            "workflowDefinitionId": "workflow",
+            "vmVersion": "2",
+            "skills": [],
+            "personas": [],
+            "graphSha256": "c955ff7fb46f42958fd04e5c22de7e36e050f6605de06ae15b65fe4cc9f8106d",
+            "steps": [
+              {
+                "stepId": "work",
+                "policySha256": "bd76cbb85bdddf3308a272a550d1efdc39a498129ae647ace4d4a339013c7341",
+                "contentSha256": "1bf31cd9ea0281cd8c1800bd10b099cd9a85586ef14e5f8d2cd45dc97c91a53f",
+                "outputSha256": "f35cd02cd97b67077a86f78eb15ec16044957e3420ff5787bcf1b5a715f40d06"
+              }
+            ]
+          },
+          "workflowName": "Host test",
+          "graph": {
+            "nodes": [
+              {
+                "kind": "step",
+                "id": "workflow:node:1",
+                "workflowDefinitionId": "workflow",
+                "order": 0,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "workflow"
+                },
+                "state": {
+                  "_tag": "ready"
+                },
+                "definitionId": "work",
+                "name": "Work",
+                "then": {
+                  "step": "work",
+                  "when": "summary",
+                  "then": null
+                },
+                "retry": null
+              }
+            ],
+            "dependencies": [],
+            "joins": [],
+            "budgets": []
+          },
+          "attempts": [
+            {
+              "id": "workflow:node:1:attempt:1",
+              "logicalNodeId": "workflow:node:1",
+              "workflowDefinitionId": "workflow",
+              "definitionId": "work",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "workflow"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            }
+          ],
+          "frontier": [
+            "workflow:node:1"
+          ],
+          "guardrails": {
+            "maxQueueLength": 50,
+            "maxMutationsPerAttempt": 3,
+            "maxSessionInserts": 20,
+            "sessionInsertsUsed": 0,
+            "attemptMutationsUsed": [
+              {
+                "attemptId": "workflow:node:1:attempt:1",
+                "used": 0
+              }
+            ]
+          },
+          "status": "ready",
+          "followUp": null,
+          "aggregateSeq": 4
+        }
+      }
+    },
+    {
+      "type": "context.input.seeded",
+      "version": 1,
+      "actor": "flywheel",
+      "payload": {
+        "workflowDefinitionId": "workflow",
+        "userRequest": "Host test canonical request"
+      }
+    },
+    {
+      "type": "queue.created",
+      "version": 9,
+      "actor": "flywheel",
+      "payload": {
+        "queue": {
+          "steps": [
+            {
+              "id": "workflow:node:1:attempt:1",
+              "definitionId": "work",
+              "contentId": "workflow.work",
+              "workflowDefinitionId": "workflow",
+              "name": "Work",
+              "status": "pending",
+              "writes": [
+                "artifact"
+              ],
+              "resumeRevertCount": 0,
+              "then": {
+                "step": "work",
+                "when": "summary"
+              }
+            }
+          ],
+          "cursor": 0,
+          "status": "idle",
+          "mutationLog": [],
+          "maxSteps": 50
+        }
+      }
+    },
+    {
+      "type": "queue.plan.changed",
+      "version": 2,
+      "actor": "flywheel",
+      "payload": {
+        "plan": {
+          "conditionalStepIds": [],
+          "steps": []
+        }
+      }
+    },
+    {
+      "type": "workflow.control.committed",
+      "version": 9,
+      "actor": "flywheel",
+      "payload": {
+        "proposalId": "workflow:proposal:5:start",
+        "event": {
+          "type": "START"
+        }
+      }
+    },
+    {
+      "type": "step.status.changed",
+      "version": 1,
+      "actor": "flywheel",
+      "payload": {
+        "stepId": "workflow:node:1:attempt:1",
+        "status": "running",
+        "previousStatus": "pending"
+      }
+    },
+    {
+      "type": "step.resume_state.recorded",
+      "version": 1,
+      "actor": "flywheel",
+      "payload": {
+        "stepId": "workflow:node:1:attempt:1",
+        "conversationId": "conversation-1"
+      }
+    },
+    {
+      "type": "queue.state.changed",
+      "version": 1,
+      "actor": "flywheel",
+      "payload": {
+        "status": "running",
+        "cursor": 0,
+        "maxSteps": 50
+      }
+    },
+    {
+      "type": "queue.plan.changed",
+      "version": 2,
+      "actor": "flywheel",
+      "payload": {
+        "plan": {
+          "conditionalStepIds": [],
+          "steps": []
+        }
+      }
+    },
+    {
+      "type": "attempt.started",
+      "version": 1,
+      "actor": "flywheel",
+      "payload": {
+        "attemptId": "workflow:node:1:attempt:1"
+      }
+    },
+    {
+      "type": "workflow.control.committed",
+      "version": 9,
+      "actor": "flywheel",
+      "payload": {
+        "proposalId": "workflow:proposal:6:attempt-started:workflow:node:1:attempt:1",
+        "event": {
+          "type": "ATTEMPT_STARTED",
+          "attemptId": "workflow:node:1:attempt:1",
+          "conversationId": "conversation-1"
+        }
+      }
+    },
+    {
+      "type": "handoff.written",
+      "version": 1,
+      "actor": "worker",
+      "payload": {
+        "stepId": "workflow:node:1:attempt:1",
+        "stepName": "Work",
+        "definitionId": "work",
+        "workflowDefinitionId": "workflow",
+        "content": {
+          "summary": ""
+        },
+        "bytes": 14,
+        "sha256": "db77fe88f7a8317d3601f53c229094c0eb779a13894c76cd3154387ed8bcd132",
+        "preview": "{\"summary\":\"\"}"
+      }
+    },
+    {
+      "type": "handoff.validated",
+      "version": 1,
+      "actor": "flywheel",
+      "payload": {
+        "stepId": "workflow:node:1:attempt:1",
+        "stepName": "Work",
+        "definitionId": "work",
+        "workflowDefinitionId": "workflow",
+        "status": "passed",
+        "issues": []
+      }
+    },
+    {
+      "type": "context.accumulated",
+      "version": 4,
+      "actor": "flywheel",
+      "payload": {
+        "entry": {
+          "stepId": "workflow:node:1:attempt:1",
+          "stepName": "Work",
+          "definitionId": "work",
+          "workflowDefinitionId": "workflow",
+          "recipientStepId": null,
+          "writes": [
+            {
+              "id": "artifact",
+              "lifetime": "transient"
+            }
+          ],
+          "timestamp": 10,
+          "handoff": {
+            "summary": ""
+          }
+        }
+      }
+    },
+    {
+      "type": "step.status.changed",
+      "version": 1,
+      "actor": "flywheel",
+      "payload": {
+        "stepId": "workflow:node:1:attempt:1",
+        "status": "completed",
+        "previousStatus": "running"
+      }
+    },
+    {
+      "type": "queue.state.changed",
+      "version": 1,
+      "actor": "flywheel",
+      "payload": {
+        "status": "completed",
+        "cursor": 1,
+        "maxSteps": 50
+      }
+    },
+    {
+      "type": "queue.plan.changed",
+      "version": 2,
+      "actor": "flywheel",
+      "payload": {
+        "plan": {
+          "conditionalStepIds": [],
+          "steps": []
+        }
+      }
+    },
+    {
+      "type": "attempt.succeeded",
+      "version": 3,
+      "actor": "flywheel",
+      "payload": {
+        "attemptId": "workflow:node:1:attempt:1"
+      }
+    },
+    {
+      "type": "workflow.completed",
+      "version": 1,
+      "actor": "flywheel",
+      "payload": {}
+    },
+    {
+      "type": "workflow.control.committed",
+      "version": 9,
+      "actor": "flywheel",
+      "payload": {
+        "proposalId": "workflow:proposal:12:attempt-succeeded:workflow:node:1:attempt:1",
+        "event": {
+          "type": "ATTEMPT_SUCCEEDED",
+          "outcome": {
+            "attemptId": "workflow:node:1:attempt:1",
+            "conversationId": "conversation-1",
+            "handoff": {
+              "summary": ""
+            },
+            "reassessment": null
+          }
+        }
+      }
+    }
+  ]
+}

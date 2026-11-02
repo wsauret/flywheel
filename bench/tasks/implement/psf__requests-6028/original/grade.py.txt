@@ -1,0 +1,58 @@
+import ast
+from enum import Enum
+import hashlib
+import json
+from pathlib import Path
+import re
+import sys
+from typing import Any
+
+root = Path(__file__).resolve().parent
+output = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else root
+namespace = {"Enum": Enum, "re": re, "Any": Any, "TestSpec": object}
+identities = []
+def load_nodes(relative, names):
+    path = root / "harness" / relative
+    text = path.read_text()
+    nodes = []
+    for node in ast.parse(text).body:
+        name = getattr(node, "name", None)
+        if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name):
+            name = node.targets[0].id
+        if name in names:
+            nodes.append(node)
+            exact = ast.get_source_segment(text, node)
+            identities.append({"file": relative, "name": name, "lines": [node.lineno, node.end_lineno], "source_sha256": hashlib.sha256(exact.encode()).hexdigest()})
+    assert len(nodes) == len(names), (relative, names)
+    exec(compile(ast.Module(body=nodes, type_ignores=[]), str(path), "exec"), namespace)
+
+load_nodes("swebench/harness/constants/__init__.py", {"TestStatus", "EvalType", "ResolvedStatus", "FAIL_TO_PASS", "PASS_TO_PASS", "FAIL_TO_FAIL", "PASS_TO_FAIL"})
+load_nodes("swebench/harness/log_parsers/python.py", {"_SKIP_SUMMARY_COUNT", "_is_skip_summary", "parse_log_pytest_options"})
+load_nodes("swebench/harness/grading.py", {"_resolve_case", "test_passed", "test_maintained", "test_failed", "get_eval_tests_report", "compute_fail_to_pass", "compute_pass_to_pass", "get_resolution_status"})
+(root / "harness-functions.json").write_text(json.dumps(identities, indent=2))
+row = json.loads((root / "row.json").read_text())
+groups = {key: json.loads(row[key]) for key in ["FAIL_TO_PASS", "PASS_TO_PASS"]}
+assert len(groups["FAIL_TO_PASS"]) == 2 and len(groups["PASS_TO_PASS"]) == 185
+results = {}
+for variant in ["base", "gold"]:
+    raw = (output / (variant + "-pytest.stdout")).read_text()
+    statuses = namespace["parse_log_pytest_options"](raw, None)
+    report = namespace["get_eval_tests_report"](statuses, groups)
+    selected = {}
+    for group, ids in groups.items():
+        selected[group] = {}
+        for case in ids:
+            key = namespace["_resolve_case"](case, statuses)
+            assert key is not None, (variant, case, "missing")
+            status = statuses[key]
+            assert status in ["PASSED", "FAILED"], (variant, case, status)
+            selected[group][case] = {"resolved_id": key, "status": status}
+    assert not [key for key, status in statuses.items() if status == "ERROR"]
+    expected_failures = set(groups["FAIL_TO_PASS"]) if variant == "base" else set()
+    assert set(report["FAIL_TO_PASS"]["failure"]) == expected_failures
+    assert len(report["PASS_TO_PASS"]["success"]) == 185
+    assert not report["PASS_TO_PASS"]["failure"]
+    results[variant] = {"report": report, "resolution": namespace["get_resolution_status"](report), "selected_statuses": selected, "all_raw_parsed_statuses": statuses, "status_counts": {status: list(statuses.values()).count(status) for status in sorted(set(statuses.values()))}}
+    (output / (variant + "-grade.json")).write_text(json.dumps(results[variant], indent=2))
+    print(json.dumps({"variant": variant, "resolution": results[variant]["resolution"], "counts": results[variant]["status_counts"], "selected": 187}))
+(output / "grades.json").write_text(json.dumps(results, indent=2))

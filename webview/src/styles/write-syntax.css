@@ -1,0 +1,30 @@
+/* Write source owns a catalog palette. Chat code and diff chrome stay on their
+   host tokens because this scope exists only on Write source containers. */
+.write-syntax .diff-line {
+  grid-template-columns: calc(2 * var(--fw-diff-line-number-width)) max-content;
+  column-gap: var(--fw-diff-marker-width);
+}
+
+.write-syntax .code,
+.write-syntax .diff-line > span:last-child {
+  color: var(--fw-write-syntax-text);
+}
+
+.write-syntax .hljs-comment,
+.write-syntax .hljs-quote { color: var(--fw-write-syntax-comment); font-style: italic; }
+.write-syntax .hljs-keyword,
+.write-syntax .hljs-selector-tag,
+.write-syntax .hljs-built_in { color: var(--fw-write-syntax-keyword); }
+.write-syntax .hljs-title,
+.write-syntax .hljs-function .hljs-title { color: var(--fw-write-syntax-function); }
+.write-syntax .hljs-variable,
+.write-syntax .hljs-params,
+.write-syntax .hljs-property { color: var(--fw-write-syntax-variable); }
+.write-syntax .hljs-string,
+.write-syntax .hljs-attr { color: var(--fw-write-syntax-string); }
+.write-syntax .hljs-number,
+.write-syntax .hljs-literal { color: var(--fw-write-syntax-number); }
+.write-syntax .hljs-type,
+.write-syntax .hljs-class .hljs-title { color: var(--fw-write-syntax-type); }
+.write-syntax .hljs-operator { color: var(--fw-write-syntax-operator); }
+.write-syntax .hljs-punctuation { color: var(--fw-write-syntax-punctuation); }

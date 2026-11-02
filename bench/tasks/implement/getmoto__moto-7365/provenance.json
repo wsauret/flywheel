@@ -1,0 +1,59 @@
+{
+  "task": "getmoto__moto-7365",
+  "dataset": {
+    "url": "https://huggingface.co/datasets/SWE-Gym/SWE-Gym/tree/bb94ed9e39bbeb96a7fcbfb533b80f25a7fd59cb",
+    "pin": "bb94ed9e39bbeb96a7fcbfb533b80f25a7fd59cb",
+    "record": "original/task-row.json",
+    "licenseDeclaration": "MIT in original/dataset-README.md.txt and original/dataset-info.json; no standalone dataset MIT license file",
+    "caveat": "The dataset declaration does not relicense embedded upstream code."
+  },
+  "source": {
+    "url": "https://github.com/getmoto/moto/tree/7f6c9cb1deafb280fe7fcc7551c38e397f11a706",
+    "commit": "7f6c9cb1deafb280fe7fcc7551c38e397f11a706",
+    "license": "Apache-2.0",
+    "notice": "licenses/moto-LICENSE",
+    "contributors": "Moto contributors; original issue author jtherrmann",
+    "issue": "https://github.com/getmoto/moto/issues/7349",
+    "reference": "https://github.com/getmoto/moto/pull/7365",
+    "archive": "public-inputs.json",
+    "files": 2170
+  },
+  "grader": {
+    "url": "https://github.com/SWE-Gym/SWE-Bench-Fork/tree/e440817248cf29bee71ca9ab3c3a762177ab8f7c",
+    "pin": "e440817248cf29bee71ca9ab3c3a762177ab8f7c",
+    "license": "MIT",
+    "notice": "licenses/swebench-LICENSE",
+    "parserSelection": "original/log_parsers.py:315,319 aliases getmoto/moto to parse_log_pytest",
+    "execution": "Original constants execute unchanged. Exact AST function bodies execute without unused container imports.",
+    "criterion": "RESOLVED_FULL from the original get_resolution_status",
+    "selectedTests": "original/task-row.json FAIL_TO_PASS and PASS_TO_PASS",
+    "invocation": "pytest -n0 -rA tests/test_dynamodb/test_dynamodb_update_expressions.py",
+    "stdoutOnly": true,
+    "missingAndErrors": "Original grader semantics are unchanged. Selected missing or nonpassing statuses are failures, not setup successes.",
+    "counts": "Observed selected original statuses only; counts are not assertion or subcase counts.",
+    "timeoutPolicy": "original/grading.py:54-70 and 230-248 reject TESTS_TIMEOUT before parsing and leave resolved false. Owned pytest timedOut maps to the same unresolved outcome, even with partial PASSED stdout. Raw command output and exit are retained.",
+    "runnerOwnership": "Python -I loads pinned pytest and installed pytest11 plugins before adding current workspace source. Root pytest.py cannot replace the runner."
+  },
+  "runtime": {
+    "version": "CPython 3.12.13+20260510",
+    "publicPins": "public-inputs.json",
+    "dependencies": "26 exact original application lock entries, with hashes in requirements-hashed.txt",
+    "bootstrap": "stdlib venv and runtime-embedded ensurepip pip 25.0.1, separate from the application lock",
+    "notices": "licenses/public-notices.json",
+    "sourceImports": "Only the owned 300-second pytest lifecycle adds the current workspace to sys.path, after trusted runner imports. Candidate import identities are collected from already loaded modules when pytest returns. Trusted helper, venv and pip operations use Python -I; snapshots import no candidate code. No Moto wheel, editable loader, uv, private cache, system install or container is required."
+  },
+  "scope": {
+    "qualifiedPlatform": "macOS arm64",
+    "candidateMinutes": 25,
+    "pytestSeconds": 300,
+    "adapterSeconds": 1800,
+    "modelCalls": 0,
+    "historicalCalibration": "calibration.json",
+    "claimsNotMade": [
+      "Original Linux container or leaderboard equivalence",
+      "Linux or Windows runtime portability",
+      "OS-level network confinement",
+      "Fresh model difficulty or a population pass-rate estimate"
+    ]
+  }
+}

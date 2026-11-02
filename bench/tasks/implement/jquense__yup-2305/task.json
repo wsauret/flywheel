@@ -1,0 +1,15 @@
+{
+  "kind": "native",
+  "id": "jquense__yup-2305",
+  "stratum": "medium",
+  "family": "swe-derived",
+  "split": "development",
+  "instruction": "instruction.txt",
+  "environment": "environment.txt",
+  "timeoutMinutes": 25,
+  "native": {
+    "path": [".bench-home/bin", ".bench-home/tooling/runtime/bin"],
+    "command": ["bun", "adapter.ts"],
+    "timeoutMs": 1920000
+  }
+}

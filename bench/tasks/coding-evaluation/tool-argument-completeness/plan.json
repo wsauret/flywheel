@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "summary": "Refuse incomplete tool argument documents without losing complete JSON repair at the parser boundary.",
+  "context": {
+    "key_files": ["src/orchestration/agent-runtime/llm/json-parse.ts"],
+    "patterns": [
+      "parseToolArguments returns an object input and an optional parseError without throwing.",
+      "Strict JSON parsing and control-character or invalid-escape repair accept complete documents.",
+      "The parser accepts complete JSON inside a fence or prose envelope."
+    ],
+    "constraints": [
+      "Change only src/orchestration/agent-runtime/llm/json-parse.ts.",
+      "Preserve parseToolArguments, ParsedToolArguments, and the existing parseJsonWithRepair helper contract.",
+      "Do not return values manufactured by completing an incomplete document.",
+      "Keep empty, whitespace-only, and absent argument buffers as a successful empty object.",
+      "Do not change tests, dependency setup, or runtime composition. This task covers only the parser module, not adapter or dispatch behavior."
+    ]
+  },
+  "milestones": [
+    {
+      "id": "refuse-incomplete-arguments",
+      "goal": "Accept complete objects and existing complete repairs while returning an empty input and parseError for incomplete, unparseable, or non-object payloads.",
+      "files": ["src/orchestration/agent-runtime/llm/json-parse.ts"],
+      "tasks": [
+        {
+          "id": "repair-completeness",
+          "description": "Revise the final argument parsing path so tolerant prefix completion cannot become tool input. Preserve complete strict JSON, escaped characters, raw control-character and invalid-escape repair, complete fences and prose envelopes, and the existing empty-buffer contract. Reject truncated strings, cuts between fields, partial enveloped JSON, unparseable text, and non-object roots without throwing.",
+          "files": ["src/orchestration/agent-runtime/llm/json-parse.ts"],
+          "test_scenarios": [
+            "A buffer cut inside a string or between fields returns input {} and a nonempty parseError.",
+            "Partial JSON inside a fence or prose envelope returns input {} and a nonempty parseError.",
+            "Complete JSON retains every field and value, including nested values and escaped characters.",
+            "Complete raw control characters and invalid escapes are repaired without completing truncated documents.",
+            "Complete fenced and prose-enveloped objects remain accepted.",
+            "Unparseable text and non-object JSON roots return input {} and a nonempty parseError.",
+            "Absent, empty, and whitespace-only buffers remain successful empty inputs."
+          ]
+        }
+      ],
+      "verification": "bun -e 'import { parseToolArguments } from \"./src/orchestration/agent-runtime/llm/json-parse.ts\"; const result = parseToolArguments(\"{\\\"content\\\":\\\"cut\"); if (!result.parseError || Object.keys(result.input).length) throw new Error(\"incomplete arguments accepted\"); const complete = parseToolArguments(\"{\\\"content\\\":\\\"line1\\nline2\\\"}\"); if (complete.parseError || complete.input.content !== \"line1\\nline2\") throw new Error(\"complete repair failed\");'",
+      "qualitative_verification": "No tolerant prefix completion becomes a successful argument object."
+    }
+  ],
+  "success_criteria": [
+    "Incomplete buffers never return a shortened argument object.",
+    "All complete supported forms retain their values.",
+    "Rejected buffers return input {} with a nonempty parseError and never throw.",
+    "Empty supported buffers remain successful empty inputs.",
+    "No adapter, dispatcher, or full agent-loop claim is made by this module repair."
+  ]
+}

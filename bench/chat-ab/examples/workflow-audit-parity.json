@@ -1,0 +1,42 @@
+{
+  "name": "workflow-audit-parity",
+  "tasks": ["test1", "test2", "test3", "test4", "test5", "test6", "test7", "test8", "test9", "test10", "test11"],
+  "repeats": 4,
+  "model": "claude-sonnet-5-5",
+  "effort": "medium",
+  "treatments": {
+    "fw-nosub": {
+      "revision": "HEAD",
+      "disabledTools": ["subagent"],
+      "roles": { "workflow-agent": { "model": "claude-sonnet-5-5", "effort": "medium" } }
+    },
+    "fw-sub-default": {
+      "revision": "HEAD",
+      "roles": { "workflow-agent": { "model": "claude-sonnet-5-5", "effort": "medium" } }
+    },
+    "fw-sub-sonnet": {
+      "revision": "HEAD",
+      "roles": {
+        "workflow-agent": { "model": "claude-sonnet-5-5", "effort": "medium" },
+        "reviewer": { "model": "claude-sonnet-5-5", "effort": "medium" },
+        "reviewer-quality": { "model": "claude-sonnet-5-5", "effort": "medium" },
+        "reviewer-elegance": { "model": "claude-sonnet-5-5", "effort": "medium" },
+        "reviewer-design": { "model": "claude-sonnet-5-5", "effort": "medium" },
+        "reviewer-data-integrity": { "model": "claude-sonnet-5-5", "effort": "medium" },
+        "reviewer-performance": { "model": "claude-sonnet-5-5", "effort": "medium" },
+        "reviewer-security": { "model": "claude-sonnet-5-5", "effort": "medium" },
+        "reviewer-mechanism": { "model": "claude-sonnet-5-5", "effort": "medium" },
+        "reviewer-uat": { "model": "claude-sonnet-5-5", "effort": "medium" },
+        "explorer": { "model": "claude-sonnet-5-5", "effort": "medium" },
+        "implementer": { "model": "claude-sonnet-5-5", "effort": "medium" },
+        "ship": { "model": "claude-sonnet-5-5", "effort": "medium" },
+        "advisor": { "model": "claude-sonnet-5-5", "effort": "medium" },
+        "learning-review": { "model": "claude-sonnet-5-5", "effort": "medium" },
+        "title-generation": { "model": "claude-sonnet-5-5", "effort": "medium" },
+        "subagent-summary": { "model": "claude-sonnet-5-5", "effort": "medium" },
+        "benchmark-judge": { "model": "claude-sonnet-5-5", "effort": "medium" }
+      }
+    },
+    "claude-code": { "subject": "claude-code", "ultracode": true }
+  }
+}

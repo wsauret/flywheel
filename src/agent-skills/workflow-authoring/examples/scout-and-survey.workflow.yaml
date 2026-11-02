@@ -1,0 +1,47 @@
+# A scheduler-shaped audit. A scout phase reads the request and lists the
+# work: the modules to audit, each with a priority, and the modules that the
+# scope leaves out. The modules phase then runs one agent per module, and the
+# coverage join counts which required modules the audit reached. A failed
+# agent stays in the denominator, so the summary cannot claim full coverage
+# that it did not reach. A join reads only the last phase of each stream, so
+# the audit agent states both its problems and its outcome. The summary
+# names the scout in `reads`, so it receives the module list beside the
+# coverage join. Prefer `over: input.<field>` when you can list the work
+# yourself before the launch; use a scout phase when the listing needs an
+# agent of its own.
+id: scout-and-survey
+name: Scout and survey
+description: List the modules that the request covers, audit each one, and report the coverage.
+phases:
+  - phase: scout
+    brief: Read the request. List each module that the audit must cover once, and mark it required or supporting. Then list each module that the request leaves out once. Never list a module in both lists, because the coverage join refuses an exclusion that is also a target.
+    output:
+      fields:
+        modules:
+          type: list
+          max: 12
+          unique: path
+          of:
+            type: object
+            fields:
+              path: { type: string, description: Repository-relative directory of the module. }
+              priority: { type: enum, values: [required, supporting], description: Whether the audit must reach this module. }
+        excluded:
+          type: list
+          max: 20
+          description: The modules that the request leaves out, each once.
+          of: { type: string }
+  - phase: modules
+    over: scout.modules
+    label: path
+    brief: Audit the module in your item against the request. Record each problem with its file and line. Then state what the audit reached. Use inaccessible when you could not read the module, and excluded when it is out of scope after all.
+    output:
+      fields:
+        problems: { type: string, description: "The problems found, one per line, or none." }
+        outcome: { type: enum, values: [surveyed, inaccessible, excluded] }
+    join:
+      reducer: coverage
+      with: { priority: priority, outcome: outcome, exclusions: excluded }
+  - phase: summarize
+    reads: [scout]
+    brief: Report the problems by module. State the coverage of the required modules, and name each module that the audit did not reach. Name the modules that the scout output leaves out.

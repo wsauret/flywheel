@@ -1,0 +1,14 @@
+{
+  "source": {
+    "url": "https://codeload.github.com/redis/redis/tar.gz/e88f6acb94c77c9a5b81f0b2a8bd132b2a5c3d3c",
+    "revision": "e88f6acb94c77c9a5b81f0b2a8bd132b2a5c3d3c",
+    "sha256": "bb708103f123021e78c1b94da1ee6028c60087b18249349fc3c014175a670469",
+    "bytes": 2834089,
+    "manifest": "source-manifest.json"
+  },
+  "privateScorer": {
+    "url": "https://raw.githubusercontent.com/SWE-bench/SWE-bench/02e7a74ffd0b707aab73d203fe87bdc7c76afc8e/swebench/harness/infra_failure.py",
+    "bytes": 2840,
+    "sha256": "72eaca5e8f76390ff9ac1d2d606f5390820b88efe6eed56efed8ff520c593eac"
+  }
+}

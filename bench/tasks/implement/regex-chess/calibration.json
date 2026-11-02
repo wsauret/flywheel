@@ -1,0 +1,88 @@
+{
+  "date": "2026-10-12",
+  "model": "gpt-6.1-sol",
+  "effort": "high",
+  "accessProvider": "chatgpt",
+  "kind": "completed",
+  "attempts": 1,
+  "completedRuns": 1,
+  "durationMs": 512412,
+  "capturedCode": {
+    "accepted": true,
+    "pytestExitCode": 0,
+    "reward": "1",
+    "statuses": [
+      {
+        "id": "tests/test_outputs.py::test_immortal_game",
+        "status": "passed"
+      },
+      {
+        "id": "tests/test_outputs.py::test_game_of_century",
+        "status": "passed"
+      },
+      {
+        "id": "tests/test_outputs.py::test_naroditsky_ivanchuk",
+        "status": "passed"
+      },
+      {
+        "id": "tests/test_outputs.py::test_not_long",
+        "status": "passed"
+      }
+    ],
+    "positionsObserved": 108
+  },
+  "accounting": {
+    "estimatedUsd": {
+      "kind": "observed",
+      "value": 0.2126476
+    },
+    "billedUsd": {
+      "kind": "observed",
+      "value": 0
+    },
+    "tokens": {
+      "kind": "observed",
+      "value": 283163
+    },
+    "providers": {
+      "kind": "observed",
+      "value": [
+        "chatgpt"
+      ]
+    },
+    "pricedEntryCount": 10,
+    "unpricedEntryCount": 0
+  },
+  "knownSubtotal": {
+    "estimatedUsd": {
+      "kind": "observed",
+      "value": 0.2126476
+    },
+    "billedUsd": {
+      "kind": "observed",
+      "value": 0
+    },
+    "tokens": {
+      "kind": "observed",
+      "value": 283163
+    },
+    "providers": {
+      "kind": "observed",
+      "value": [
+        "chatgpt"
+      ]
+    },
+    "pricedEntryCount": 10,
+    "unpricedEntryCount": 0
+  },
+  "missingCanonicalMeasurementCount": 0,
+  "uncommittedCanonicalMeasurementCount": 0,
+  "caveat": "Historical completed native pass, not a new model run or original environment equivalence. Estimated USD is API-equivalent pricing. The recovered canonical ledger establishes observed billed USD zero across ten indexed requests; it does not establish an external invoice. Preserve the original zero-move newline split behavior.",
+  "sourceHashes": {
+    "regex-chess-0-result.json": "c04d5fe3938567335a92d070a5296b047b672b858f9d8dff9f7c9b04a19bd267",
+    "regex-chess-0-grade.json": "d0d852f199c32bed9d8e14c2a620e7f27028dba8edd9ee575320c5afedbeef58",
+    "regex-chess-0-recovered-canonical-usage.json": "2d785b69804e126279a055f56ad9238acc05db63721b59dee5ed49e5b45233b5",
+    "regex-chess-0-model.patch": "81cadcd8090aa6be8667211b714409d0d1e96b5989597e9aefa09478954d8fa8",
+    "parent-zero-move-observation.json": "ef465fca67d196f1db8313374d1bc42599a74e1881c58fad376e79fc25d0e51b"
+  }
+}

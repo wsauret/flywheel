@@ -1,0 +1,193 @@
+/* The transcript region: the scroller, its rhythm, and the rows that are the
+   transcript's own rather than a block's (dividers, the status row, the
+   jump-to-latest pill). Block appearance lives in blocks.css. */
+
+.transcript {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--fw-s4) var(--fw-column-inset) 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  /* The scroller keeps the pane's full width, so the wheel and the scrollbar
+     work over the margins too; its padding holds the reading column. */
+  /* A landing centers its row between these paddings, so the row lands in
+     the part of the pane that nothing covers: the find hits stay open over
+     the top after a pick, and the composer floats over the bottom. */
+  scroll-padding-top: var(--fw-find-hits-height, 0px);
+  scroll-padding-bottom: var(--fw-composer-height, 0px);
+  /* The transcript keeps the reader's row in place itself: the reader anchor
+     on each DOM mutation and each resize of the scroller or its content, and
+     the older-page landing. The browser's own anchoring must not correct the
+     same layout change a second time. */
+  overflow-anchor: none;
+}
+/* One measurable content box follows layout changes between DOM mutations,
+   including status transitions. It fills short transcripts so the intro's
+   auto margins still centre it above the composer. */
+.transcript-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+  /* Tool rows keep the terminal's tight rhythm; prose owns its wider gaps. */
+  gap: 2px;
+}
+.transcript-content > * { min-width: 0; max-width: 100%; }
+/* The composer floats over this scroller's bottom edge. This final flex item
+   keeps the newest output clear of it and starts overflow at the card's top.
+   Safari 26 can exclude a flex column's end padding from scrollHeight. */
+.transcript-clearance {
+  flex: 0 0 calc(var(--fw-composer-height, 0px) + var(--fw-s5) + 1lh);
+}
+
+/* A wide pane widens the inset; past the reading column the rest is margin. */
+@container client (min-width: 60rem) {
+  .pane { --fw-pane-inset: var(--fw-s5); }
+}
+
+.load-older {
+  align-self: center;
+  background: transparent;
+  color: var(--fw-link);
+  padding: var(--fw-s1) var(--fw-s2);
+  font-size: var(--fw-text-sm);
+}
+
+/* Contextual work boundary: a full-width rule before a user redirect or
+   before narration resuming after tool work, so a tight transcript still
+   reads in blocks. The divider owns the space on both of its sides; the
+   margin-stripping rules that make its neighbours yield live in blocks.css,
+   after the block margins they override. */
+.work-divider {
+  height: 1px;
+  flex: 0 0 auto;
+  background: var(--fw-hairline);
+  margin: var(--fw-s3) 0;
+}
+
+/* The live status row: the runtime's own activity phase, following the bottom
+   of the transcript on the same gutter as every other entry. The whole row
+   speaks in the activity blue, brightened a step toward the foreground so it
+   reads as live work rather than muted metadata. */
+.activity-status {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition: grid-template-rows var(--fw-motion) var(--fw-ease), opacity var(--fw-motion) var(--fw-ease);
+}
+.activity-status.hidden {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+.activity-status.hidden .working { padding-block: 0; }
+.activity-status.hidden .working-marker::before { animation: none; }
+.working {
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+  align-items: center;
+  gap: var(--fw-s2);
+  font-size: var(--fw-text-sm);
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--fw-info) 75%, var(--fw-fg));
+  padding: 3px var(--fw-s2);
+}
+.working-aside { color: var(--fw-fg-muted); font-style: italic; }
+.working-marker {
+  width: 10px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.working-marker::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: var(--fw-radius-pill);
+  background: currentColor;
+  animation: breathe 1.4s ease-in-out infinite;
+}
+/* The shell exists so the way back to the tail can float over the scroller's
+   bottom edge without taking a row of the transcript's own height. */
+.transcript-shell {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* What passes beneath the composer is dimmed, never hidden: transparent a
+   little above the card's top edge, under half page colour at that edge, and
+   still readable at the bottom, so scrolled transcript reads as continuing
+   under the prompt rather than being cut off by it. The composer, a later
+   sibling, paints above this; the jump control lifts itself above both. */
+.transcript-shell::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--fw-composer-height, 0px) + var(--fw-s5));
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--fw-bg) 60%, transparent) var(--fw-s5), color-mix(in srgb, var(--fw-bg) 80%, transparent));
+}
+/* The destination a tap moved to covers the whole pane until it can show,
+   the gutters around the composer included, so no line of the session the
+   tap left stays readable there. The composer, a later sibling, paints over
+   it, and the stage centres in the room above the composer. It has no
+   entrance motion: it is the tap's answer, so it must be whole in the first
+   frame. */
+.transcript-opening {
+  position: absolute;
+  inset: 0;
+  padding-bottom: var(--fw-composer-height, 0px);
+  display: flex;
+  flex-direction: column;
+  background: var(--fw-bg);
+}
+.transcript-opening .stage { animation: none; }
+
+/* One compact pill, centred a hair above the composer, present only while
+   the reader is away from the tail. A tap goes to the bottom and resumes
+   following. It sits on the page's own colour with a lighter ring, a quiet
+   affordance rather than a call to action. */
+.jump-latest {
+  position: absolute;
+  left: 50%;
+  /* Above the composer that floats over the scroller, and above its fade. */
+  bottom: calc(var(--fw-composer-height, 0px) + var(--fw-s1));
+  z-index: var(--fw-z-popover);
+  transform: translateX(-50%);
+  max-width: calc(100% - (2 * var(--fw-s3)));
+  width: max-content;
+  min-height: calc(var(--fw-s5) + var(--fw-s3));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fw-s2);
+  padding: var(--fw-s1) var(--fw-s3);
+  border: 1px solid var(--fw-input-border);
+  background: var(--fw-bg);
+  color: var(--fw-fg);
+  border-radius: var(--fw-radius-pill);
+  box-shadow: var(--fw-shadow-popover);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.jump-latest:hover { background: var(--fw-bg-raised-strong); }
+/* The shared press tint replaces the box shadow, so the floating pill keeps
+   its own shadow under the tint. */
+.jump-latest:active:not(:disabled) { box-shadow: inset 0 0 0 100vmax var(--fw-press), var(--fw-shadow-popover); }
+@media (pointer: coarse) {
+  .jump-latest { min-height: calc(2 * var(--fw-s5)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .transcript { scroll-behavior: auto; }
+  .activity-status { transition: none; }
+  .working-marker::before { animation: none; }
+}

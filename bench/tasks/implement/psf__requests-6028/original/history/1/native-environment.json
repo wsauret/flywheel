@@ -1,0 +1,117 @@
+{
+  "baseline": "87f3fa67eeefdff02b341c3b779e8b746e09ee4d",
+  "resolved": {
+    "python": {
+      "python": "3.12.13 (main, May 10 2026, 19:20:41) [Clang 22.1.3 ]",
+      "prefix": "<repo>/.flywheel/sessions/0626ab51281e/scratch/requests-ready/public-native-run-2026-10-12T02-47-16-639Z/psf__requests-6028-1/tooling/python",
+      "packages": [
+        [
+          "certifi",
+          "2024.8.30"
+        ],
+        [
+          "charset-normalizer",
+          "2.0.12"
+        ],
+        [
+          "idna",
+          "3.10"
+        ],
+        [
+          "iniconfig",
+          "1.1.1"
+        ],
+        [
+          "packaging",
+          "24.1"
+        ],
+        [
+          "pip",
+          "24.2"
+        ],
+        [
+          "pluggy",
+          "1.0.0"
+        ],
+        [
+          "pytest",
+          "7.4.4"
+        ],
+        [
+          "pytest-mock",
+          "2.0.0"
+        ],
+        [
+          "setuptools",
+          "75.1.0"
+        ],
+        [
+          "urllib3",
+          "1.26.20"
+        ],
+        [
+          "wheel",
+          "0.44.0"
+        ]
+      ]
+    },
+    "nativeTools": {
+      "git": "git version 2.49.0",
+      "bash": "GNU bash, version 3.2.57(1)-release (arm64-apple-darwin25)\nCopyright (C) 2007 Free Software Foundation, Inc.",
+      "stagingPython": "Python 3.9.6",
+      "operatingSystem": "ProductName:\t\tmacOS\nProductVersion:\t\t26.3\nBuildVersion:\t\t25D125",
+      "bun": "1.4.0",
+      "platform": "darwin",
+      "architecture": "arm64"
+    },
+    "trees": {
+      "source": "88af0c1a71b7d1089f0bc8f878f7cc39f2d917c41a0c1cac7939ae1d46014c64",
+      "sourceFiles": 97,
+      "tooling": "a4377a53de0310a8c6e3be58f244769d44108f3259e3ade6b9842484509843f2",
+      "toolingFiles": 2427,
+      "applicationImport": "$CELL/app/requests/__init__.py",
+      "resolvedImports": {
+        "idna": "$CELL/tooling/python/lib/python3.12/site-packages/idna/__init__.py",
+        "certifi": "$CELL/tooling/python/lib/python3.12/site-packages/certifi/__init__.py",
+        "urllib3": "$CELL/tooling/python/lib/python3.12/site-packages/urllib3/__init__.py",
+        "pytest": "$CELL/tooling/python/lib/python3.12/site-packages/pytest/__init__.py",
+        "pytest_mock": "$CELL/tooling/python/lib/python3.12/site-packages/pytest_mock/__init__.py",
+        "pluggy": "$CELL/tooling/python/lib/python3.12/site-packages/pluggy/__init__.py",
+        "packaging": "$CELL/tooling/python/lib/python3.12/site-packages/packaging/__init__.py",
+        "iniconfig": "$CELL/tooling/python/lib/python3.12/site-packages/iniconfig/__init__.py",
+        "charset_normalizer": "$CELL/tooling/python/lib/python3.12/site-packages/charset_normalizer/__init__.py",
+        "pip": "$CELL/tooling/python/lib/python3.12/site-packages/pip/__init__.py",
+        "wheel": "$CELL/tooling/python/lib/python3.12/site-packages/wheel/__init__.py"
+      },
+      "interpreterPrefix": "$CELL/tooling/python"
+    }
+  },
+  "identity": "ac99544d56707a84d02caa279d7b0e3b29312a9d432e98c0e1be30eb2002e450",
+  "env": {
+    "LANG": "en_US.UTF-8",
+    "TERM": "xterm-256color",
+    "COLORTERM": "truecolor",
+    "USER": "<user>",
+    "LOGNAME": "<user>",
+    "HOME": "<repo>/.flywheel/sessions/0626ab51281e/scratch/requests-ready/public-native-run-2026-10-12T02-47-16-639Z/psf__requests-6028-1/home",
+    "TMPDIR": "<repo>/.flywheel/sessions/0626ab51281e/scratch/requests-ready/public-native-run-2026-10-12T02-47-16-639Z/psf__requests-6028-1/home/tmp",
+    "TMUX_TMPDIR": "<repo>/.flywheel/sessions/0626ab51281e/scratch/requests-ready/public-native-run-2026-10-12T02-47-16-639Z/psf__requests-6028-1/home/tmp",
+    "GH_CONFIG_DIR": "<repo>/.flywheel/sessions/0626ab51281e/scratch/requests-ready/public-native-run-2026-10-12T02-47-16-639Z/psf__requests-6028-1/home/gh",
+    "PATH": "<repo>/.flywheel/sessions/0626ab51281e/scratch/requests-ready/public-native-run-2026-10-12T02-47-16-639Z/psf__requests-6028-1/tooling/python/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "FLYWHEEL_AUTH_PROFILE": "<profile>",
+    "GIT_CONFIG_NOSYSTEM": "1",
+    "GIT_CONFIG_GLOBAL": "<repo>/.flywheel/sessions/0626ab51281e/scratch/requests-ready/public-native-run-2026-10-12T02-47-16-639Z/psf__requests-6028-1/home/.gitconfig",
+    "GIT_CONFIG_COUNT": "1",
+    "GIT_CONFIG_KEY_0": "core.hooksPath",
+    "GIT_CONFIG_VALUE_0": "<repo>/.flywheel/sessions/0626ab51281e/scratch/requests-ready/public-native-run-2026-10-12T02-47-16-639Z/psf__requests-6028-1/home/disabled-hooks",
+    "PYTHONPATH": "<repo>/.flywheel/sessions/0626ab51281e/scratch/requests-ready/public-native-run-2026-10-12T02-47-16-639Z/psf__requests-6028-1/app",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PYTHONNOUSERSITE": "1",
+    "PIP_CACHE_DIR": "<repo>/.flywheel/sessions/0626ab51281e/scratch/requests-ready/public-native-run-2026-10-12T02-47-16-639Z/psf__requests-6028-1/home/pip-cache",
+    "XDG_CACHE_HOME": "<repo>/.flywheel/sessions/0626ab51281e/scratch/requests-ready/public-native-run-2026-10-12T02-47-16-639Z/psf__requests-6028-1/home/.cache",
+    "PYTHONPYCACHEPREFIX": "<repo>/.flywheel/sessions/0626ab51281e/scratch/requests-ready/public-native-run-2026-10-12T02-47-16-639Z/psf__requests-6028-1/home/pycache",
+    "PYTEST_ADDOPTS": "-o cache_dir=<repo>/.flywheel/sessions/0626ab51281e/scratch/requests-ready/public-native-run-2026-10-12T02-47-16-639Z/psf__requests-6028-1/home/pytest-cache",
+    "BUN_RUNTIME_TRANSPILER_CACHE_PATH": "<repo>/.flywheel/sessions/0626ab51281e/scratch/requests-ready/public-native-run-2026-10-12T02-47-16-639Z/psf__requests-6028-1/home/bun-cache",
+    "BUN_INSTALL_CACHE_DIR": "<repo>/.flywheel/sessions/0626ab51281e/scratch/requests-ready/public-native-run-2026-10-12T02-47-16-639Z/psf__requests-6028-1/home/bun-install-cache"
+  }
+}

@@ -1,0 +1,92 @@
+diff --git a/src/orchestration/agent-runtime/llm/json-parse.ts b/src/orchestration/agent-runtime/llm/json-parse.ts
+index 79f57a05f..9ef8fe47a 100644
+--- a/src/orchestration/agent-runtime/llm/json-parse.ts
++++ b/src/orchestration/agent-runtime/llm/json-parse.ts
+@@ -5,8 +5,13 @@
+  * because providers don't always escape correctly mid-stream.
+  *
+  * Ported from `upstream llm/utils/json-parse.ts` for sharing across Flywheel agent runtime adapters.
+- * Three-tier fallback: strict JSON.parse → repair control chars + bad
+- * escapes → partial-json's tolerant parse.
++ * Two repair tiers: strict JSON.parse, then repair control chars and bad
++ * escapes. A buffer neither tier accepts is classified, not salvaged: when
++ * partial-json can complete it, the text is a prefix of a document the model
++ * never finished (an output-length cut or a dropped stream), and executing a
++ * tool on a completed prefix runs it with silently shortened input. Such a
++ * call is refused with a parse error the dispatcher turns into an error
++ * result, so the model re-sends it whole.
+  */
+ 
+ import { parse as partialParse } from "partial-json";
+@@ -133,45 +138,48 @@ function isJsonObject(value: unknown): value is UnknownFields {
+ export function parseToolArguments(raw: string | undefined): ParsedToolArguments {
+   if (!raw || raw.trim() === "") return { input: {} };
+   const salvaged = salvageJson(raw);
+-  if (isJsonObject(salvaged)) {
+-    return { input: salvaged };
++  if (salvaged.kind === "complete" && isJsonObject(salvaged.value)) {
++    return { input: salvaged.value };
+   }
+-  const reason = salvaged === undefined
+-    ? "the argument text is not parseable as JSON"
+-    : `the argument text parsed to ${describeJsonValue(salvaged)} instead of an object`;
++  const reason = salvaged.kind === "complete"
++    ? `the argument text parsed to ${describeJsonValue(salvaged.value)} instead of an object`
++    : salvaged.kind === "incomplete"
++      ? "the argument text is incomplete JSON: it ends before the arguments are closed, so the call was cut off before its arguments were finished"
++      : "the argument text is not parseable as JSON";
+   return { input: {}, parseError: `${reason}. Raw argument text received: ${rawSnippet(raw)}` };
+ }
+ 
+-/** Three-tier salvage: strict parse -> repair -> partial parse, each tried on
+- *  the raw text and an envelope-stripped candidate. `undefined` = total failure. */
+-// oxlint-disable-next-line anti-slop/no-unknown-returns -- boundary: Salvaged provider JSON has no trusted shape before runtime narrowing.
+-function salvageJson(raw: string): unknown {
++type SalvagedJson =
++  | { readonly kind: "complete"; readonly value: unknown }
++  | { readonly kind: "incomplete" }
++  | { readonly kind: "unparseable" };
++
++/** Strict parse, then repair, each tried on the raw text and an
++ *  envelope-stripped candidate. Text neither accepts is `incomplete` when it
++ *  is a parseable prefix (partial-json completes it) and `unparseable`
++ *  otherwise; a prefix is never returned as a value. */
++function salvageJson(raw: string): SalvagedJson {
+   const candidates = [raw];
+   const stripped = stripJsonEnvelope(raw);
+   if (stripped !== raw && stripped.trim() !== "") candidates.push(stripped);
+ 
+   for (const candidate of candidates) {
+     try {
+-      return parseJsonWithRepair(candidate);
++      return { kind: "complete", value: parseJsonWithRepair(candidate) };
+     } catch {
+-      // fall through to the next candidate / tolerant tiers
++      // fall through to the next candidate / the classification below
+     }
+   }
+   for (const candidate of candidates) {
+-    try {
+-      const result = partialParse(candidate);
+-      if (result) return result;
+-    } catch {
+-      // try repaired form below
+-    }
+-    try {
+-      const result = partialParse(repairJson(candidate));
+-      if (result) return result;
+-    } catch {
+-      // next candidate
++    for (const text of [candidate, repairJson(candidate)]) {
++      try {
++        if (partialParse(text)) return { kind: "incomplete" };
++      } catch {
++        // next form
++      }
+     }
+   }
+-  return undefined;
++  return { kind: "unparseable" };
+ }
+ 
+ function describeJsonValue(value: unknown): string {

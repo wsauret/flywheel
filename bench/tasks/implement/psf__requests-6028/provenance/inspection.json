@@ -1,0 +1,380 @@
+{
+  "source_files": 97,
+  "source_hashes": {
+    "pytest.ini": "b044db9f7c5abde27b895d150d3a893847918f6e5bc1c21cdbb70d4c22a2f0f7",
+    "LICENSE": "09e8a9bcec8067104652c168685ab0931e7868f9c8284b66f5ae6edae5f1130b",
+    "Makefile": "1a47c9917fca518f90be25b5a800da04c4aa921b5250e33d0c2759d9b28613a0",
+    "HISTORY.md": "93e7b47a0bd2f980e069572b5be38a0ba40f31640a861b4fce287a89f3b54e02",
+    "MANIFEST.in": "7caa1d6b5f562ee868f8719eb9a311b00c1baec207d65fa65ab087664dcaf3c4",
+    ".coveragerc": "2252d126b776b23c6664830885765035d7e06cfdbd6178c557de348038dcb8d5",
+    "NOTICE": "f5110972dedad2b4e9d314518daf3b7d72d6e02e499acd802181de6f74571dcc",
+    "README.md": "301f72762931ba53f6789938808219336503842b899c2ec6a173890016116490",
+    "setup.py": "afd03934f72d32ec4fc0bf4f4e355fe76fca93a88b61c0aafafcd6e88a53af0e",
+    "requirements-dev.txt": "595174b1b1e440ce3685ebb044f8a24a0dd95b596b85b7d2cf417b74cbce122f",
+    ".gitignore": "0d87c78c285d5f3a9f83c7b9a09c42aa566c771a7e35d0da1ed0dabcd5831b6c",
+    "tox.ini": "54a128b0287a154ff3a2b61d0e22d5f387ed1f6b5917be6ecc1d3b4e5d40a68e",
+    "AUTHORS.rst": "aa54915f55a8aab0e94574aba60e7a761bbc6be5750ed3998e5297d78978a401",
+    "setup.cfg": "9dd20a5ada090b01dd22055f32bdaa56315d3a14b0fd168dbe12013fa09fe5b1",
+    "ext/requests-logo.png": "c9ea2210c884700dc0f05266170c056c1dbae2181f68a74c5b8d63ac042c9263",
+    "ext/requests-logo.ai": "ada5899494a2fbd06b6a1a6062dc1b755eaef9dee8ae833a864712b1671fd604",
+    "ext/psf.png": "7a0bf447edc2b67b9138d1ffa64b2f62af05c4dd2da37429584e6b3f5ac84683",
+    "ext/kr-compressed.png": "6607917997aaa337f9ab9f1d3ff54d0a2c3177e5e10444d1e2d34a3912632871",
+    "ext/LICENSE": "3172d399cbd8f10609e73fec73d0e0b33eecd3c572a68b0722229d8c7059f725",
+    "ext/kr.png": "245f38d6101ce40366c1a30aec5a86b8b8885524ef86968162bf7cf3907307f3",
+    "ext/requests-logo.svg": "b1e7fd86516c1e925191a41ee1efdb2489654548c7756881c311f50b79233af0",
+    "ext/flower-of-life.jpg": "1b155652b7a20734dc0c056d4d0fb91d1a7951cb99142adaed5316302daeb3df",
+    "ext/ss.png": "c769ab657e25fbda10791d30c9c114d40ea84da2a23a7b446c7adbf9c2569fcc",
+    "ext/ss-compressed.png": "c769ab657e25fbda10791d30c9c114d40ea84da2a23a7b446c7adbf9c2569fcc",
+    "ext/psf-compressed.png": "9d4148ae5024484659fc8ccf9dacb92c6ee1d5b367104e97c0df1ed9524ad9a5",
+    "ext/requests-logo-compressed.png": "c9ea2210c884700dc0f05266170c056c1dbae2181f68a74c5b8d63ac042c9263",
+    "tests/test_utils.py": "87c468e405cda3f3e3ba78faaae1720dc11da2ab7a6ad6a8274aede0f83ec7e3",
+    "tests/conftest.py": "ed316b95aacbef5b534b7d389df0fdad56d471d7da6d7e3e686496c223f960df",
+    "tests/test_structures.py": "f26f8702aee16cdba4152a76c456669199a5b9fd3899a5b96d1b033cc37138ba",
+    "tests/test_packages.py": "90875423db059d65b39416d7b6d01b18938851b8071279877400beb506e08676",
+    "tests/test_testserver.py": "ede9f99c7a0645bcf37a1dd09d64f6bf65199abaf0682354a94c063d4d8a2e72",
+    "tests/compat.py": "f0d759088eaea9caf469465e88589e8af2485ac63257de86619481e4a7ac678f",
+    "tests/__init__.py": "c8ab77e22835e6fade87775e5a32a16ef5135c591a5362b9497fa9025fab9104",
+    "tests/test_hooks.py": "051dd8f381e959f3fac9247a6d7991c2459be88a6d2f4bf605759c7374fa6e71",
+    "tests/test_requests.py": "34a857d3ce6eb50653a07ca4855dc08cbc9ecbf6f7b3757b9c5397963f818887",
+    "tests/utils.py": "b131b5b05b82de365aa41c820ff92d80fc70f9578dc49d728b4894128388d0af",
+    "tests/test_help.py": "298d717f8d54a9137ff7860457c61f361211310b3f4864ee4cb77dbc2d56acf2",
+    "tests/test_lowlevel.py": "96b0af34e34da09b0cd146bb1600bd8a2c85b0cdffbbb6a75e0f43d7bae58e98",
+    "docs/index.rst": "77c0b98392cfd74f7c4313941f204582d7d820e86058f8e6001ef80453293b1c",
+    "docs/requirements.txt": "f92e256d9789c16a167b9b50d21a426c59084afae29112f1ae2bbd0d74957e9f",
+    "docs/Makefile": "a1f210795aefeaa886bbfa6122779ba4c8e52b0e8445b62dcecbb82d308d305e",
+    "docs/conf.py": "7288e50389e89cc24cd7ac6b96d8108438ff9d5e0191a950907be392a5458478",
+    "docs/.nojekyll": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "docs/make.bat": "d65d3af3fd9f81bfa4dd7b773d057125af36f4df5e5bc4234fe3127ccf6c6dcc",
+    "docs/api.rst": "abc3ec1d004fcbe4ac2c232ca7f31f7020b7d5da244bea9d1e27afeb81d6da47",
+    "requests/cookies.py": "63e6ca5fa4ef5b716762513a02ed125ed55559c68d745bee030431c3e1b48932",
+    "requests/auth.py": "38ca092152b244bcbd4c7afdd72f2bc72b19b9c9703c1f8ad57835cc1a265214",
+    "requests/sessions.py": "66ef98f583e5c1322cc85c7586f22b737ce2c9e169b853ea70eb92bb3f01356b",
+    "requests/hooks.py": "411786cb2d1b45caf9ae4c02b8e6cd6a46d8b1cec492229e0701b8a877a4af64",
+    "requests/compat.py": "c32ddb50eabc68a384ee631988b2493171426976e1a12f9b68e37ad040ef0088",
+    "requests/models.py": "45f5df806519e57e8259485438392eefe30e40d595b3b94364f57a6c30b9ddc6",
+    "requests/certs.py": "74e079ad5d83675ddd121abd0546bfe21779900aa0e7d7bfcd4641d347da633f",
+    "requests/__init__.py": "060341ac062bdc3751583b64735230a12ada541073d7bd7673f797e06f21f9a9",
+    "requests/status_codes.py": "813efd3dbb3f7108c1829f9fbeb520835767d8340edf66c38f84c89e39cc3d27",
+    "requests/packages.py": "92bf49f5d619afd11fe099b01db084520c158b0702c8e50f81f5d9bc82fce0eb",
+    "requests/__version__.py": "1687a5be192ee870eaff81c51593a237d3a57e9c61658d922ff76b1eac16eff5",
+    "requests/api.py": "863ba83fbf48004997e83cacaf0f2dd37d9c2dfc0b1f16c8ff0338802e46f6dd",
+    "requests/_internal_utils.py": "671dcf9c451c7327ec07e89ed759d95405bca82949cb4831d6a34c13bae04f5f",
+    "requests/utils.py": "7938f802679da01f5768d41526f22b63fcef2a96c491ec030b755c87bab3958d",
+    "requests/exceptions.py": "5542b27cd6665e3b2390f822a59ba91df91c1373957582b1f06a9fbd67247f00",
+    "requests/structures.py": "9ac02dafd9aad49c4777e251ca220b7dd165a5b270bef16e3f7adf5104ff4311",
+    "requests/help.py": "cb03cdb2c3e886b721fd0feae3f24b24cd73d9b3f44e2ac7900f509e8385d2c6",
+    "requests/adapters.py": "6097ffd12d892f97c4b3ac8f282de243e22ed146710dbf47e96e62a5506b2171",
+    ".github/FUNDING.yml": "203cc6fc6930c94572f841b0924808acc9ad4f1c0cbb1574875221e4a22fc815",
+    ".github/CODE_OF_CONDUCT.md": "0216c86755ca264f605593cc82deadc13c3e84b97a60bf461fcda7b4b8b23242",
+    ".github/ISSUE_TEMPLATE.md": "4a21d9bed3242d2fc1dd631aac70c2cd2612baa0fb6bc852809c9eee86abb0ef",
+    ".github/CONTRIBUTING.md": "6ce203a20b7bc3c87eccdb9be5888bded1bcb7743a598b3cf91b7be65f41f4e0",
+    ".github/SECURITY.md": "d829bca715473cd6460083460346f8f4dd223fc282908fa5f001f8bc0f594892",
+    "tests/testserver/server.py": "136ca6c6b9bc10bd36fc3ad106450489d62f77bc5890bb1a603eb378cd0c41ee",
+    "tests/testserver/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "docs/_themes/LICENSE": "6afc9d58f919ab52f4806a895a37aefe4d263f8e52278e6a1e87c5d7ec82299c",
+    "docs/_themes/flask_theme_support.py": "bba3677c6eeb99f678e808e90142a025b798b7658bac1ab4632591df8441d209",
+    "docs/_themes/.gitignore": "f27660c4ec6efa86aac4d61036c5f495e9438805a6f63be44f17db003979a06f",
+    "docs/_templates/sidebarintro.html": "997e22e54c4bc8c0afafb091769651288271a963292e23bbdecbfb928f261b41",
+    "docs/_templates/sidebarlogo.html": "80ecc9a99a17db86db40e3f11ce392de51e9a995f5cbcb7f23de554477dfc54d",
+    "docs/_templates/hacks.html": "14590290d56e931e1db77681dfe0c08554df988d60e0a4b94d336b7ba0fdfb33",
+    "docs/_static/custom.css": "ec1d99bc2726a46b938e2342cde4c4aa39b3fcab99ce5957ab6893b22010b618",
+    "docs/_static/requests-sidebar.png": "da8951134a14d06287616abe84749d04960d5c2a4e8493dab018f87d8eae8d12",
+    "docs/user/install.rst": "0033feb63f22f2f5e907da42af9d939cc27df1df2f9d9f8f0099fda40eff8ab8",
+    "docs/user/authentication.rst": "cf7f9d1159c02747f64009c629ac546cd7332b8eba5a0712230022b132d85194",
+    "docs/user/quickstart.rst": "2e972cdbadfa7c4e8a1cf085796e8b9e3672ca407b8d571759628ad6a6ce489d",
+    "docs/user/advanced.rst": "e536fd1ad33367ed062bb566c6bc182787bbd882637dce7bea7488611a7763d2",
+    "docs/dev/contributing.rst": "8fe120abbd4a9fc2e55065176ffa2801508de45c93627c3c704c921108e836b7",
+    "docs/dev/authors.rst": "711bde324e69bf390c914fcb1e5d4aa17174deb2093b8c7865a7103391716d07",
+    "docs/community/support.rst": "7f1a8ee725fce4ef5bc51568d51b54ba1611e518975463bb11d2cd2c20309fd0",
+    "docs/community/release-process.rst": "a7a8e987bf671a79e4b44e8722b7446fd429922e7d0bde50dd2fba578b966485",
+    "docs/community/out-there.rst": "9779ecdd1a5b73cff0d17651b08cb95f6f285278262159832b315296d0cf2c95",
+    "docs/community/vulnerabilities.rst": "1f0d8095ec84a42307abd03b9ae6cad62e030c02c1aad9715dd47f9deb7a76bc",
+    "docs/community/recommended.rst": "99c8004abf493d6ad2018352dbdf923a790dfbe1a45dd90b214f1e29b08034d1",
+    "docs/community/faq.rst": "9f252f96a086a665a0bb74f0ab94f5b633c58c261de9f826015c6036afc06191",
+    "docs/community/updates.rst": "202f5d2f2ac8b76c77f00fb0085886510350623873bb2626ef6cb192c84d385b",
+    ".github/workflows/codeql-analysis.yml": "6bb512da31b87ec3345ed36b5cab804cf29694e4ab663650b7c674d132f40afe",
+    ".github/workflows/run-tests.yml": "61141094b0ef1675859456154ec673b86ce6e15cfd379e0f55092fa36d0579d1",
+    ".github/workflows/lock-issues.yml": "2cca89c59a629d49ab55ace400753d5cfa470b68060feaa92b71335900a9e954",
+    ".github/ISSUE_TEMPLATE/Feature_request.md": "bf9bb647959c79e1c64243696e17cdf3788deea3e002793375eac0227e2f0ba2",
+    ".github/ISSUE_TEMPLATE/Bug_report.md": "4887dbec17c9e2fd703c0c8ae3e20882f9be53f7fe4a36d61c130838576afe35",
+    ".github/ISSUE_TEMPLATE/Custom.md": "d28111df346e5549a60d86e8c473f1a2ef1009ce3c1653441c9d1bb4c31e592b"
+  },
+  "changed": {
+    "base": {
+      "tests/test_utils.py": "ee75e15b6d5338db46eaa56fde5e2e34ab21fe5c97ccb6d3d7ce9c1a50a126cf"
+    },
+    "gold": {
+      "tests/test_utils.py": "ee75e15b6d5338db46eaa56fde5e2e34ab21fe5c97ccb6d3d7ce9c1a50a126cf",
+      "requests/utils.py": "30a4cadddbbf5a698eda7bff4a4795f3cd15c1f2188496ef7752f3eee0e2a0ff"
+    }
+  },
+  "unchanged_archive_copies": {
+    "row.json": "edf938312deac464b6c76f233642aa7bf99a7afb16599f86799bf299d8c52a4e",
+    "problem.txt": "1d82b6998adb429d6d13a59c0c321de5ea24889a19843d4de7ea4dff06739cc0",
+    "gold.patch": "9cd3e2a2c10cc8b9555156f0e9cda00c67aa4e08f40ebd125f417bbeb41b2fb3",
+    "test.patch": "cc4b0007afd140c1737b08e14d0cbb9dbccfbee483146d5112971dd7b9bcb142",
+    "requirements-native.txt": "d254cad949cc9dc4d7fba6f181aa7df486062fd7e87048fa140d531224c4cd1b",
+    "original-eval.sh": "bd1f0181942f1aab50797169a4c706c3f841eafb235d833d6fecdcaef85933ba",
+    "original-grading.py.txt": "a095273010175001a6779e365b3b77abb8657c7ac2e4f80b4bc360faa6f09483",
+    "harness-functions.json": "2f2b805298067b07e7128f4fb250557f1034fcc9351cb90bdc2328dc1bfc6f52",
+    "fetch-manifest.json": "91ef62d513c17e4e2308864d2e14f7bca081c94c8cbc89e0828d1a26ce1cb56f",
+    "provision.py.txt": "5c03102593bd7b21863b4453ca93af399b5a97d50d5b012a9f7a975349d74a4c",
+    "qualify.py.txt": "cbd69c32f0758cadd39bea388ca95ac6fd8b193e7f1a1fd03dbe7acc36c4524b",
+    "final-verify.py.txt": "b7de746cfed886bb9caebf9093883b7ef457c3de05c691b2c7e2590e873265fe"
+  },
+  "fresh_full_grader_and_parser_match": true,
+  "notices": [
+    {
+      "path": "source/LICENSE",
+      "bytes": 10142,
+      "sha256": "09e8a9bcec8067104652c168685ab0931e7868f9c8284b66f5ae6edae5f1130b",
+      "first_lines": [
+        "",
+        "                                 Apache License",
+        "                           Version 2.0, January 2004",
+        "                        http://www.apache.org/licenses/"
+      ]
+    },
+    {
+      "path": "source/NOTICE",
+      "bytes": 38,
+      "sha256": "f5110972dedad2b4e9d314518daf3b7d72d6e02e499acd802181de6f74571dcc",
+      "first_lines": [
+        "Requests",
+        "Copyright 2019 Kenneth Reitz"
+      ]
+    },
+    {
+      "path": "harness/LICENSE",
+      "bytes": 1159,
+      "sha256": "2bd2e08df7147f67a69b42c10efae09bd4bf119df397371036187d5dd1b02f57",
+      "first_lines": [
+        "MIT License",
+        "",
+        "Copyright (c) 2023 Carlos E Jimenez, John Yang, Alexander Wettig, Shunyu Yao, Kexin Pei, Ofir Press, Karthik R Narasimhan",
+        ""
+      ]
+    },
+    {
+      "path": "python/lib/python3.12/LICENSE.txt",
+      "bytes": 13936,
+      "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf",
+      "first_lines": [
+        "A. HISTORY OF THE SOFTWARE",
+        "==========================",
+        "",
+        "Python was created in the early 1990s by Guido van Rossum at Stichting"
+      ]
+    },
+    {
+      "wheel": "certifi-2024.8.30-py3-none-any.whl",
+      "member": "certifi-2024.8.30.dist-info/LICENSE",
+      "bytes": 989,
+      "sha256": "e93716da6b9c0d5a4a1df60fe695b370f0695603d21f6f83f053e42cfc10caf7"
+    },
+    {
+      "wheel": "charset_normalizer-2.0.12-py3-none-any.whl",
+      "member": "charset_normalizer-2.0.12.dist-info/LICENSE",
+      "bytes": 1070,
+      "sha256": "eb31a0c5a4fb09b8a4e32055d25c1e5f9c358a2752fef3cd720213d1ccfee241"
+    },
+    {
+      "wheel": "idna-3.10-py3-none-any.whl",
+      "member": "idna-3.10.dist-info/LICENSE.md",
+      "bytes": 1541,
+      "sha256": "a59f0b0ef3635874109a4461ca44ff7a70d50696e814767bfaf721d4c9b0db0f"
+    },
+    {
+      "wheel": "iniconfig-1.1.1-py2.py3-none-any.whl",
+      "member": "iniconfig-1.1.1.dist-info/LICENSE",
+      "bytes": 1061,
+      "sha256": "2af680c39ef493fb82830356d1d3df1acb5a06033cba2dec7a19e21caa77a866"
+    },
+    {
+      "wheel": "packaging-24.1-py3-none-any.whl",
+      "member": "packaging-24.1.dist-info/LICENSE",
+      "bytes": 197,
+      "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48"
+    },
+    {
+      "wheel": "packaging-24.1-py3-none-any.whl",
+      "member": "packaging-24.1.dist-info/LICENSE.APACHE",
+      "bytes": 10174,
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+    },
+    {
+      "wheel": "packaging-24.1-py3-none-any.whl",
+      "member": "packaging-24.1.dist-info/LICENSE.BSD",
+      "bytes": 1344,
+      "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5"
+    },
+    {
+      "wheel": "pip-24.2-py3-none-any.whl",
+      "member": "pip-24.2.dist-info/LICENSE.txt",
+      "bytes": 1093,
+      "sha256": "634300a669d49aeae65b12c6c48c924c51a4cdf3d1ff086dc3456dc8bcaa2104"
+    },
+    {
+      "wheel": "pluggy-1.0.0-py2.py3-none-any.whl",
+      "member": "pluggy-1.0.0.dist-info/LICENSE",
+      "bytes": 1110,
+      "sha256": "d6b65e6c213a5d0b577911d34d6e5949b9f59d76c238c5071a2f3fc16cfb2606"
+    },
+    {
+      "wheel": "pytest-7.4.4-py3-none-any.whl",
+      "member": "pytest-7.4.4.dist-info/LICENSE",
+      "bytes": 1091,
+      "sha256": "ca836a5f9ecca3b2f350230faa20a48fb8b145653b5568d784862df864706b9b"
+    },
+    {
+      "wheel": "pytest_mock-2.0.0-py2.py3-none-any.whl",
+      "member": "pytest_mock-2.0.0.dist-info/LICENSE",
+      "bytes": 1075,
+      "sha256": "b5cdf9221033a63366515bde3e85b52c1fb2db293c1d9857784c5563a54419c3"
+    },
+    {
+      "wheel": "setuptools-75.1.0-py3-none-any.whl",
+      "member": "setuptools/_vendor/platformdirs-4.2.2.dist-info/licenses/LICENSE",
+      "bytes": 1089,
+      "sha256": "29e0fd62e929850e86eb28c3fdccf0cefdf4fa94879011cffb3d0d4bed6d4db6"
+    },
+    {
+      "wheel": "setuptools-75.1.0-py3-none-any.whl",
+      "member": "setuptools/config/NOTICE",
+      "bytes": 493,
+      "sha256": "2dddf08818297a3b89d43d95ff659d8da85741108c9136dfa3a4d856c0623bd8"
+    },
+    {
+      "wheel": "setuptools-75.1.0-py3-none-any.whl",
+      "member": "setuptools/config/_validate_pyproject/NOTICE",
+      "bytes": 18737,
+      "sha256": "09c9bcea95ca086f8bc5bed174e40bc835b297d40fb5f86bbbb570fe0a5581a7"
+    },
+    {
+      "wheel": "setuptools-75.1.0-py3-none-any.whl",
+      "member": "setuptools-75.1.0.dist-info/LICENSE",
+      "bytes": 1023,
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "wheel": "setuptools-75.1.0-py3-none-any.whl",
+      "member": "setuptools/_vendor/autocommand-2.2.2.dist-info/LICENSE",
+      "bytes": 7634,
+      "sha256": "ade78d04982d69972d444a8e14a94f87a2334dd3855cc80348ea8e240aa0df2d"
+    },
+    {
+      "wheel": "setuptools-75.1.0-py3-none-any.whl",
+      "member": "setuptools/_vendor/backports.tarfile-1.2.0.dist-info/LICENSE",
+      "bytes": 1023,
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "wheel": "setuptools-75.1.0-py3-none-any.whl",
+      "member": "setuptools/_vendor/importlib_metadata-8.0.0.dist-info/LICENSE",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "wheel": "setuptools-75.1.0-py3-none-any.whl",
+      "member": "setuptools/_vendor/importlib_resources-6.4.0.dist-info/LICENSE",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "wheel": "setuptools-75.1.0-py3-none-any.whl",
+      "member": "setuptools/_vendor/inflect-7.3.1.dist-info/LICENSE",
+      "bytes": 1023,
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "wheel": "setuptools-75.1.0-py3-none-any.whl",
+      "member": "setuptools/_vendor/jaraco.collections-5.1.0.dist-info/LICENSE",
+      "bytes": 1023,
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "wheel": "setuptools-75.1.0-py3-none-any.whl",
+      "member": "setuptools/_vendor/jaraco.context-5.3.0.dist-info/LICENSE",
+      "bytes": 1023,
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "wheel": "setuptools-75.1.0-py3-none-any.whl",
+      "member": "setuptools/_vendor/jaraco.functools-4.0.1.dist-info/LICENSE",
+      "bytes": 1023,
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "wheel": "setuptools-75.1.0-py3-none-any.whl",
+      "member": "setuptools/_vendor/jaraco.text-3.12.1.dist-info/LICENSE",
+      "bytes": 1023,
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "wheel": "setuptools-75.1.0-py3-none-any.whl",
+      "member": "setuptools/_vendor/more_itertools-10.3.0.dist-info/LICENSE",
+      "bytes": 1053,
+      "sha256": "09f1c8c9e941af3e584d59641ea9b87d83c0cb0fd007eb5ef391a7e2643c1a46"
+    },
+    {
+      "wheel": "setuptools-75.1.0-py3-none-any.whl",
+      "member": "setuptools/_vendor/packaging-24.1.dist-info/LICENSE",
+      "bytes": 197,
+      "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48"
+    },
+    {
+      "wheel": "setuptools-75.1.0-py3-none-any.whl",
+      "member": "setuptools/_vendor/packaging-24.1.dist-info/LICENSE.APACHE",
+      "bytes": 10174,
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+    },
+    {
+      "wheel": "setuptools-75.1.0-py3-none-any.whl",
+      "member": "setuptools/_vendor/packaging-24.1.dist-info/LICENSE.BSD",
+      "bytes": 1344,
+      "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5"
+    },
+    {
+      "wheel": "setuptools-75.1.0-py3-none-any.whl",
+      "member": "setuptools/_vendor/tomli-2.0.1.dist-info/LICENSE",
+      "bytes": 1072,
+      "sha256": "b80816b0d530b8accb4c2211783790984a6e3b61922c2b5ee92f3372ab2742fe"
+    },
+    {
+      "wheel": "setuptools-75.1.0-py3-none-any.whl",
+      "member": "setuptools/_vendor/typeguard-4.3.0.dist-info/LICENSE",
+      "bytes": 1130,
+      "sha256": "6163f7987dfb38d6bc320ce2b70b2f02b862bc41126516d552ef1cd43247e758"
+    },
+    {
+      "wheel": "setuptools-75.1.0-py3-none-any.whl",
+      "member": "setuptools/_vendor/typing_extensions-4.12.2.dist-info/LICENSE",
+      "bytes": 13936,
+      "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf"
+    },
+    {
+      "wheel": "setuptools-75.1.0-py3-none-any.whl",
+      "member": "setuptools/_vendor/wheel-0.43.0.dist-info/LICENSE.txt",
+      "bytes": 1107,
+      "sha256": "30c23618679108f3e8ea1d2a658c7ca417bdfc891c98ef1a89fa4ff0c9828654"
+    },
+    {
+      "wheel": "setuptools-75.1.0-py3-none-any.whl",
+      "member": "setuptools/_vendor/zipp-3.19.2.dist-info/LICENSE",
+      "bytes": 1023,
+      "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741"
+    },
+    {
+      "wheel": "urllib3-1.26.20-py2.py3-none-any.whl",
+      "member": "urllib3-1.26.20.dist-info/LICENSE.txt",
+      "bytes": 1115,
+      "sha256": "c37bf186e27cf9dbe9619e55edfe3cea7b30091ceb3da63c7dacbe0e6d77907b"
+    },
+    {
+      "wheel": "wheel-0.44.0-py3-none-any.whl",
+      "member": "wheel-0.44.0.dist-info/LICENSE.txt",
+      "bytes": 1107,
+      "sha256": "30c23618679108f3e8ea1d2a658c7ca417bdfc891c98ef1a89fa4ff0c9828654"
+    }
+  ]
+}

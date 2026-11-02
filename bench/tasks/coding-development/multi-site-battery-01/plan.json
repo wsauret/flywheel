@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "summary": "Fix four independent regressions: truncateField returns multi-byte text that is longer than its byte budget, repeat-coalescer summaries keep more sampled repeats than their 256 cap, releasing a session-fair admission permit twice admits extra queued work, and skill ids that only begin with the letters \"learned\" (such as learned-notes) are refused as reserved.",
+  "context": {
+    "key_files": [
+      "src/infra/truncate-field.ts",
+      "src/infra/repeat-coalescer.ts",
+      "src/infra/session-fair-admission.ts",
+      "src/infra/skill-id.ts"
+    ],
+    "patterns": [
+      "Each module states its contract in its doc comments. Restore the documented behavior."
+    ],
+    "constraints": [
+      "Change only src/infra/truncate-field.ts, src/infra/repeat-coalescer.ts, src/infra/session-fair-admission.ts, and src/infra/skill-id.ts.",
+      "Keep each public export and its signature.",
+      "Do not change tests or dependencies."
+    ]
+  },
+  "milestones": [
+    {
+      "id": "truncate-field-budget",
+      "goal": "truncateField never returns more bytes than its budget.",
+      "files": [
+        "src/infra/truncate-field.ts"
+      ],
+      "tasks": [
+        {
+          "id": "repair-truncate-field",
+          "description": "Make multi-byte values that exceed the byte budget truncate at a character boundary.",
+          "files": [
+            "src/infra/truncate-field.ts"
+          ],
+          "test_scenarios": [
+            "keeps multi-byte text within the byte budget",
+            "passes values that fit the budget through unchanged"
+          ]
+        }
+      ],
+      "verification": "bun -e \"await import('./src/infra/truncate-field.ts')\"",
+      "qualitative_verification": "Byte budgets hold for every encoding width."
+    },
+    {
+      "id": "repeat-coalescer-sample",
+      "goal": "Repeat summaries keep at most the documented sample of repeats.",
+      "files": [
+        "src/infra/repeat-coalescer.ts"
+      ],
+      "tasks": [
+        {
+          "id": "repair-repeat-coalescer",
+          "description": "Keep the sample of repeats within its cap while the count stays exact.",
+          "files": [
+            "src/infra/repeat-coalescer.ts"
+          ],
+          "test_scenarios": [
+            "keeps at most 256 sampled repeats in arrival order",
+            "keeps every repeat when the sample is not full"
+          ]
+        }
+      ],
+      "verification": "bun -e \"await import('./src/infra/repeat-coalescer.ts')\"",
+      "qualitative_verification": "The sample cap and the exact count both hold."
+    },
+    {
+      "id": "session-fair-admission-release",
+      "goal": "Each admission permit frees capacity once.",
+      "files": [
+        "src/infra/session-fair-admission.ts"
+      ],
+      "tasks": [
+        {
+          "id": "repair-session-fair-admission",
+          "description": "Make a repeated release call do nothing, for acquired and taken permits.",
+          "files": [
+            "src/infra/session-fair-admission.ts"
+          ],
+          "test_scenarios": [
+            "a repeated release frees its permit only once",
+            "a taken permit released twice creates no capacity",
+            "each single release admits the next session in turn"
+          ]
+        }
+      ],
+      "verification": "bun -e \"await import('./src/infra/session-fair-admission.ts')\"",
+      "qualitative_verification": "Capacity never grows from overlapping cleanup paths."
+    },
+    {
+      "id": "skill-id-learned-root",
+      "goal": "Only the learned root and its dotted namespace are reserved.",
+      "files": [
+        "src/infra/skill-id.ts"
+      ],
+      "tasks": [
+        {
+          "id": "repair-skill-id",
+          "description": "Accept ids that only begin with the letters of the learned root, and keep the learned namespace reserved.",
+          "files": [
+            "src/infra/skill-id.ts"
+          ],
+          "test_scenarios": [
+            "accepts ids that only begin with the letters of the learned root",
+            "still reserves the learned root and its namespace"
+          ]
+        }
+      ],
+      "verification": "bun -e \"await import('./src/infra/skill-id.ts')\"",
+      "qualitative_verification": "The reservation matches the documented learned-skill namespace."
+    }
+  ],
+  "success_criteria": [
+    "truncateField output never exceeds its byte budget.",
+    "Repeat summaries sample at most 256 repeats and count every repeat.",
+    "A repeated permit release creates no admission capacity.",
+    "Only learned and learned.* ids are reserved by the learned root."
+  ]
+}

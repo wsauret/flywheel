@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "role": "development",
+  "contentIdentity": "ab79ede9a466b7d829df67abb248fcd32746d26578ffc53b376f81fd5733898a",
+  "testIds": [
+    "config-smoke.test.ts > a synchronous config write is readable",
+    "acceptance/config-ownership.test.ts > an asynchronous config read does not block the next synchronous settings write",
+    "acceptance/config-ownership.test.ts > a failed config callback releases ownership before a sibling write",
+    "acceptance/config-ownership.test.ts > asynchronous config ownership waits for a lock released by the event loop"
+  ],
+  "cases": [
+    {
+      "id": "reference",
+      "patches": [
+        "qualification/reference.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "Exact shipped repair of both production files.",
+      "expectedFailures": []
+    },
+    {
+      "id": "alternative",
+      "patches": [
+        "qualification/alternative.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "Extend the existing acquisition ladder with a synchronous acquired callback; config uses it to run and release on every successful attempt.",
+      "expectedFailures": []
+    },
+    {
+      "id": "original-bug",
+      "patches": [
+        "qualification/reference.patch",
+        "qualification/original.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Reverse the shipped fix to restore the real original same-turn ownership bug.",
+      "expectedFailures": [
+        "acceptance/config-ownership.test.ts > an asynchronous config read does not block the next synchronous settings write",
+        "acceptance/config-ownership.test.ts > a failed config callback releases ownership before a sibling write",
+        "acceptance/config-ownership.test.ts > asynchronous config ownership waits for a lock released by the event loop"
+      ]
+    },
+    {
+      "id": "queued-yield-regression",
+      "patches": [
+        "qualification/queued-yield-regression.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "The former alternative handles immediate acquisition but yields after contended native publication, before callback and release. A queued synchronous sibling is refused.",
+      "expectedFailures": [
+        "acceptance/config-ownership.test.ts > asynchronous config ownership waits for a lock released by the event loop"
+      ]
+    },
+    {
+      "id": "swallowed-callback",
+      "patches": [
+        "qualification/reference.patch",
+        "qualification/swallowed-callback.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "A plausible catch-and-return regression loses the original callback error while still releasing the lock.",
+      "expectedFailures": [
+        "acceptance/config-ownership.test.ts > a failed config callback releases ownership before a sibling write"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "repository": "https://github.com/harbor-framework/terminal-bench-2-1",
+  "commit": "7131e4375048a0e408a8fb404b5f499d726b695b",
+  "task": "regex-chess",
+  "author": "Nicholas Carlini",
+  "license": "Apache-2.0; original root LICENSE retained",
+  "sourceArchive": {
+    "url": "https://codeload.github.com/harbor-framework/terminal-bench-2-1/tar.gz/7131e4375048a0e408a8fb404b5f499d726b695b",
+    "bytes": 52664805,
+    "sha256": "aa992a8848a1f3ed5191a34fa72ed5700d67dd9f968413a0e0a567b6188cb527"
+  },
+  "copies": "copy-ledger.json records exact original task files, instruction, license, dependency notices, public input metadata, and controls",
+  "reference": "controls/reference-re.json is the exact public original reference solution output captured during prior native qualification",
+  "fault": "controls/fault.json records the one replacement mutation at pair 19959; controls/fault-re.json retains the captured bytes",
+  "candidateContext": ["original/environment/check.py"],
+  "runtime": {
+    "platform": "macOS arm64 only",
+    "publicInputs": "public-inputs.json",
+    "installation": "Fresh hash-verified public acquisition per workspace. CPython 3.13.9 standard-library venv supplies pip. Install six exact wheels, then build chess 1.11.2 offline with isolated pip and setuptools 80.9.0 from the pinned local input directory. Pip config-settings passes install --prefix=. to the wheel backend. This sets only the wheel staging prefix, so setuptools does not expand literal dollar signs in the venv path. Pip still installs the wheel into the private venv.",
+    "buildOnlyDependency": "setuptools 80.9.0; not installed in the candidate venv",
+    "runtimeLocation": ".bench-home/python/bin/python3",
+    "candidateBoundary": "environment.txt provides only the original /app to workspace mapping and private interpreter location. The original instruction is a separate byte-exact file.",
+    "graderBoundary": "The owned grader uses absolute Python -I and its absolute pytest console script. Candidate pytest.py cannot shadow pytest.",
+    "notices": "licenses/ retains original installed package notices, including chess GPL-3.0-or-later. The downloaded CPython archive, chess source archive, and setuptools wheel retain their upstream notices in the private runtime."
+  },
+  "nativeAdaptations": [
+    "Replace the apt/curl/uv provisioning prefix with public pinned private runtime provisioning. No system package installation or /app alias is used.",
+    "Replace the original uvx prefix with absolute private Python -I and the pytest console script. Preserve --ctrf, selected test path, -rA, and the original reward if-branch.",
+    "Replace only complete Python string literals for /app/re.json with JSON-encoded absolute workspace paths in check.py and test_outputs.py.",
+    "Escape each complete shell argument and redirection filename with Bun.$.escape.",
+    "Exclude candidate check.py patches because its absolute preparation path differs from the fresh grading path. Restore the original path-adapted checker after applying all other candidate changes.",
+    "Reconstruct original hidden tests after patch application. Remove candidate pytest discovery configuration and conftest files from the selected test's ancestor directories.",
+    "Capture original stdout, stderr, CTRF, unique pytest exit status, reward, test IDs, position counts, and completed game groups. Positions and groups are observations only; original early failures can stop them."
+  ],
+  "replacementLedger": "replacement-ledger.json fixes original strings and occurrence counts. Every grade report includes actual native replacements, hashes, acquisition identities, versions, and complete command output.",
+  "acceptance": "Original pytest exit status zero AND reward.txt equal to 1. Infrastructure requires a settled verifier, unique original pytest status, consistent reward 0 or 1, and original valid pytest CTRF. Infrastructure failures throw. Original test failures score zero. Aggregate criterion total is 1; four test IDs and three games are evidence, not new admission requirements.",
+  "originalQuirks": "Keep the original newline split, nonempty empty-string result at zero moves, queen-only promotions, ignored final two FEN fields, and en-passant comparison tolerance unchanged.",
+  "limits": {
+    "originalVerifierSeconds": 3600,
+    "originalAgentSeconds": 3600,
+    "nativeCandidateMinutes": 25,
+    "nativeAdapterSeconds": 3900,
+    "originalBuildSeconds": 600
+  },
+  "budgetDifference": "The adapter adds 300 seconds for provisioning and report settlement. The original verifier budget remains 3600 seconds. The native candidate budget is the historical 25-minute calibration budget, not the original 3600-second agent budget. Native execution does not impose the original container CPU, memory, or storage quotas.",
+  "qualification": "bun run bench/ab-steps/tasks-implement/regex-chess/qualify.ts <external-evidence-directory> uses the existing catalog, sandbox provisioner, and implementation capturer without model calls.",
+  "equivalence": "Native macOS arm64 qualification only. No original environment, leaderboard, Linux, or Windows equivalence claim.",
+  "historicalQualificationSource": "Original qualification artifacts under session 7c061b5b674d/scratch/qualification; historical calibration under session 0626ab51281e/scratch/chess-ready-v2. Scratch artifacts are evidence sources, never runtime dependencies."
+}

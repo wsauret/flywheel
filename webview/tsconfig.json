@@ -1,0 +1,12 @@
+{
+  "//": "Strictness comes from the root config: the client compiles the repository's protocol modules directly, so it must compile them the way the repository compiles them. Overrides carry only what a browser bundle and its local, editor, and phone hosts genuinely need: Solid's JSX, no emit because the hosts' bundlers produce the output, and the bun types for the build and test runners.",
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "jsxImportSource": "solid-js",
+    "noEmit": true,
+    "rootDir": "..",
+    "types": ["bun"]
+  },
+  "include": ["src", "local", "editor", "phone"],
+  "exclude": ["node_modules"]
+}

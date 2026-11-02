@@ -1,0 +1,173 @@
+{
+  "status": "Historical completed candidates only, not fresh qualification or population pass-rate evidence",
+  "date": "2026-10-11",
+  "candidateMinutes": 25,
+  "taskPasses": 2,
+  "completedRuns": 2,
+  "modelCallsInPromotion": 0,
+  "runs": [
+    {
+      "repeat": 0,
+      "model": "gpt-6.1-sol",
+      "effort": "high",
+      "durationMs": 129314,
+      "accounting": {
+        "estimatedUsd": {
+          "kind": "observed",
+          "value": 0.1537492
+        },
+        "billedUsd": {
+          "kind": "observed",
+          "value": 0
+        },
+        "tokens": {
+          "kind": "observed",
+          "value": 412173
+        },
+        "providers": {
+          "kind": "observed",
+          "value": [
+            "chatgpt"
+          ]
+        },
+        "pricedEntryCount": 13,
+        "unpricedEntryCount": 0
+      },
+      "acceptance": {
+        "acceptancePassed": 2,
+        "acceptanceFailed": 0,
+        "acceptanceTotal": 2
+      },
+      "grade": {
+        "original_report": {
+          "FAIL_TO_PASS": {
+            "success": [
+              "tests/test_dynamodb/test_dynamodb_update_expressions.py::test_update_item_add_float"
+            ],
+            "failure": []
+          },
+          "PASS_TO_PASS": {
+            "success": [
+              "tests/test_dynamodb/test_dynamodb_update_expressions.py::test_update_different_map_elements_in_single_request"
+            ],
+            "failure": []
+          },
+          "FAIL_TO_FAIL": {
+            "success": [],
+            "failure": []
+          },
+          "PASS_TO_FAIL": {
+            "success": [],
+            "failure": []
+          }
+        },
+        "original_resolution": "RESOLVED_FULL",
+        "expected": {
+          "FAIL_TO_PASS": [
+            "tests/test_dynamodb/test_dynamodb_update_expressions.py::test_update_item_add_float"
+          ],
+          "PASS_TO_PASS": [
+            "tests/test_dynamodb/test_dynamodb_update_expressions.py::test_update_different_map_elements_in_single_request"
+          ]
+        },
+        "statuses": {
+          "tests/test_dynamodb/test_dynamodb_update_expressions.py::test_update_different_map_elements_in_single_request": "PASSED",
+          "tests/test_dynamodb/test_dynamodb_update_expressions.py::test_update_item_add_float": "PASSED"
+        },
+        "missing": [],
+        "errors": [],
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "resolved": true,
+        "classification": "passed",
+        "exitCode": 0,
+        "timedOut": false
+      }
+    },
+    {
+      "repeat": 1,
+      "model": "gpt-6.1-sol",
+      "effort": "high",
+      "durationMs": 240705,
+      "accounting": {
+        "estimatedUsd": {
+          "kind": "observed",
+          "value": 0.31493160000000003
+        },
+        "billedUsd": {
+          "kind": "observed",
+          "value": 0
+        },
+        "tokens": {
+          "kind": "observed",
+          "value": 1223284
+        },
+        "providers": {
+          "kind": "observed",
+          "value": [
+            "chatgpt"
+          ]
+        },
+        "pricedEntryCount": 23,
+        "unpricedEntryCount": 0
+      },
+      "acceptance": {
+        "acceptancePassed": 2,
+        "acceptanceFailed": 0,
+        "acceptanceTotal": 2
+      },
+      "grade": {
+        "original_report": {
+          "FAIL_TO_PASS": {
+            "success": [
+              "tests/test_dynamodb/test_dynamodb_update_expressions.py::test_update_item_add_float"
+            ],
+            "failure": []
+          },
+          "PASS_TO_PASS": {
+            "success": [
+              "tests/test_dynamodb/test_dynamodb_update_expressions.py::test_update_different_map_elements_in_single_request"
+            ],
+            "failure": []
+          },
+          "FAIL_TO_FAIL": {
+            "success": [],
+            "failure": []
+          },
+          "PASS_TO_FAIL": {
+            "success": [],
+            "failure": []
+          }
+        },
+        "original_resolution": "RESOLVED_FULL",
+        "expected": {
+          "FAIL_TO_PASS": [
+            "tests/test_dynamodb/test_dynamodb_update_expressions.py::test_update_item_add_float"
+          ],
+          "PASS_TO_PASS": [
+            "tests/test_dynamodb/test_dynamodb_update_expressions.py::test_update_different_map_elements_in_single_request"
+          ]
+        },
+        "statuses": {
+          "tests/test_dynamodb/test_dynamodb_update_expressions.py::test_update_different_map_elements_in_single_request": "PASSED",
+          "tests/test_dynamodb/test_dynamodb_update_expressions.py::test_update_item_add_float": "PASSED"
+        },
+        "missing": [],
+        "errors": [],
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "resolved": true,
+        "classification": "passed",
+        "exitCode": 0,
+        "timedOut": false
+      }
+    }
+  ],
+  "limitations": [
+    "The historical prompt included private paths. The promoted task uses the exact raw dataset instruction and a separate neutral appendix.",
+    "Historical grading used copied runtime packages. Current public provisioning is separately qualified.",
+    "No new model/provider loop was run."
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "originalAuthority": "original/adaptation-ledger.json preserves historical adaptation details without making them current prerequisites.",
+  "replacements": [
+    {
+      "original": "Private uv-created runtime and copied site-packages in the historical pilot",
+      "current": "Public hash-verified CPython archive, stdlib venv, offline pip and 26 hash-locked public wheels",
+      "semantics": "Runtime patch version and application lock stay fixed. Embedded pip 25.0.1 provisions the environment but is not an application dependency."
+    },
+    {
+      "original": "Editable Moto install",
+      "current": "Current workspace source imports only within the owned pytest lifecycle, after isolated pinned runner imports",
+      "semantics": "No build or editable loader points to another workspace. Loaded candidate import identities are observed when pytest returns, without a separate candidate preflight."
+    },
+    {
+      "original": "Original container preparation and development extras",
+      "current": "Observed native public recipe",
+      "semantics": "Provisioning differs. The original full test file, test patch, selected IDs, parser, grader and resolution criterion do not change."
+    },
+    {
+      "original": "Historical prompt with appended private paths",
+      "current": "Exact raw dataset problem_statement and a separate neutral environment appendix",
+      "semantics": "No solution hints are added. The appendix names only the workspace and private Python."
+    },
+    {
+      "original": "Source cloning and original test reset before grading",
+      "current": "Fresh pinned source archive, captured candidate patch, full original tests package and configuration restoration",
+      "semantics": "The full tests package owns imported decorators and fixtures. All candidate conftest and pytest configuration files are removed before original owners are restored."
+    },
+    {
+      "original": "Original full-file pytest output and selected grader",
+      "current": "The same full-file flags and original stdout parser, without a JUnit dependency",
+      "semantics": "Collection, candidate compile and import failures reach original missing/error semantics. The original 300-second test timeout remains unresolved under original/grading.py:54-70 and 230-248, regardless of partial PASSED output. Raw timeout, exit and stdout remain evidence. Infrastructure acquisition or setup errors throw."
+    }
+  ],
+  "semanticFault": {
+    "control": "unmodified base",
+    "mechanism": "DynamoType.__add__ converts decimal strings to float, producing Decimal('11.700000000000003') instead of Decimal('11.7').",
+    "reference": "Unchanged original gold.patch",
+    "separateMutant": "None. The original base is the credible semantic fault."
+  },
+  "environment": {
+    "owner": "Existing runSandboxCommand supplies isolated HOME, TMPDIR and Git configuration. The adapter supplies an explicit Python and Moto environment.",
+    "defaults": {
+      "MOTO_TEST_ALLOW_AWS_REQUEST": "false",
+      "TEST_SERVER_MODE": "false",
+      "AWS_EC2_METADATA_DISABLED": "true",
+      "PYTHONNOUSERSITE": "1"
+    },
+    "network": "No credential, endpoint or proxy inheritance. This is not an OS network sandbox.",
+    "pythonOwnership": "Trusted helper, venv and pip commands use Python -I. Pinned pytest and installed plugins load before the current workspace is exposed. Root pytest.py and pip.py remain captured candidate files but do not own trusted imports."
+  },
+  "capture": "Existing owned supervisor, sandbox-command and implementation capture APIs only. Candidate commits and untracked files are captured.",
+  "copyAdaptation": "adapter.ts and native-support.py adapt the existing FITS native fixture pattern. Exact third-party byte copies are in copy-ledger.json."
+}

@@ -1,0 +1,29 @@
+{
+  "id": "metrics-resteer",
+  "stratum": "broad",
+  "timeoutMinutes": 45,
+  "sandbox": {
+    "commit": "64d9b75aeaa02fb5d00d2f75d01ea8a50df0d743",
+    "paths": [
+      ".gitignore"
+    ],
+    "patch": "sandbox.patch"
+  },
+  "acceptanceBaseline": {
+    "failToPass": [
+      "acceptance/metrics-pipeline.test.ts > collector integration > drainWindow writes rollups to the store",
+      "acceptance/metrics-pipeline.test.ts > collector integration > one drain groups the same metric with different units into independent rollups",
+      "acceptance/metrics-pipeline.test.ts > collector integration > out-of-order samples still produce numeric percentiles",
+      "acceptance/metrics-pipeline.test.ts > collector integration > uses (windowStartMs, windowEndMs], retains future samples, and publishes each sample once",
+      "acceptance/metrics-pipeline.test.ts > keyed store > retains every rollup for a metric in append order and keeps metric keys independent",
+      "acceptance/metrics-pipeline.test.ts > reports > preserves the exact report shape for count values",
+      "acceptance/metrics-pipeline.test.ts > reports > preserves the exact report shape for ms values",
+      "acceptance/metrics-pipeline.test.ts > reports > preserves the exact report shape for s values",
+      "acceptance/metrics-pipeline.test.ts > reports > uses an inclusive 60,000 ms cutoff and selects newest in either insertion order"
+    ],
+    "passToPass": [
+      "acceptance/metrics-pipeline.test.ts > collector integration > computePercentiles accepts unsorted values directly",
+      "acceptance/metrics-pipeline.test.ts > computes percentiles for sorted input"
+    ]
+  }
+}

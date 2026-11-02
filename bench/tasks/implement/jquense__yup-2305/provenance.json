@@ -1,0 +1,41 @@
+{
+  "dataset": {
+    "repository": "https://github.com/abundant-ai/SWE-gen-JS",
+    "revision": "335635efacf22328a694aeca9e459b1c04021e00",
+    "task": "tasks/jquense__yup-2305",
+    "license": "licenses/task-LICENSE"
+  },
+  "source": {
+    "repository": "https://github.com/jquense/yup",
+    "revision": "fe5a10bef3326d1e241b5ee75c98d8e1eb051660",
+    "license": "licenses/source-LICENSE.md",
+    "manifest": "source-manifest.json",
+    "archive": "public-inputs.json"
+  },
+  "copies": "copy-ledger.json",
+  "originalCriterion": "The unchanged shell overwrites only test/array.ts and test/tuple.ts. It runs yarn testonly test/array.ts test/tuple.ts. Exit 0 writes reward 1; all other exits write reward 0. It returns that same exit.",
+  "contractCoverage": "The original prompt describes more API behavior than the original 44-test grader covers. Passing is not an exhaustive API-contract claim.",
+  "hiddenInputs": "Only public BASE source and setup tools enter candidate preparation. The public HEAD archive is removed after applying bug.patch and rebuilding BASE. The original solution, restored grader tests and controls stay in the task directory until separate grading.",
+  "publication": "This development fixture is published independently of later model performance. It does not change evaluation tasks.",
+  "qualification": "qualification-record.json and qualification/*-grade.json.gz retain the real catalog, preparation, candidate launcher under the usual sandbox environment, capture and grading proof.",
+  "runtime": {
+    "platform": "macOS arm64",
+    "version": "22.23.3",
+    "bootstrapVersion": "0.36.0",
+    "packageManagerVersion": "4.5.3",
+    "packageManagerSha512": "3003a14012e2987072d244c720506549c1aab73ee728208f1b2580a9fd67b92d61ba6b08fe93f6dce68fd771e3af1e59a0afa28dd242dd0940d73b95fedd4e90",
+    "lockSha256": "089f2ab9bdb2ce483bb7148c67b2cc714692b9b967126a78a6c03e65fdbf617f"
+  },
+  "limits": {
+    "originalBuildSeconds": 600,
+    "originalVerifierSeconds": 600,
+    "originalAgentSeconds": 600,
+    "nativeCandidateMinutes": 25,
+    "publicAcquisitionSeconds": 600,
+    "buildSeconds": 600,
+    "verifierSeconds": 600,
+    "diagnosticInventorySeconds": 120,
+    "adapterSeconds": 1920,
+    "equivalence": "The native candidate budget follows the generous 25-minute corpus budget, not the original 600-second agent budget. Public acquisition has a separate allowance. Native setup does not reproduce the original container's one CPU, 2048 MiB memory, 10240 MiB storage, or floating Node 22 patch. No leaderboard or OS network confinement equivalence is claimed."
+  }
+}

@@ -1,0 +1,13 @@
+Please refactor this callback metrics pipeline into a keyed MetricsStore and pull-based reports in three phases. Keep the public collector, percentile, report, and sample and rollup type exports. Keep the report result limited to metric, count, and p95. Remove the old callback path instead of adding compatibility adapters.
+
+First, introduce a MetricsStore constructed without arguments. Append rollups and read all rollups for a metric in append order; unknown keys return an empty collection. Replace the collector's onRollup option with a store option. Change flushWindow so completed rollups go to the store, preserving metric-and-unit grouping and sample consumption. Keep the existing public drain operation rather than exposing duplicate flush and drain operations.
+
+Change the reader to an options object containing a store and retentionSeconds. Convert the report retention constant from RETENTION_MS of 60,000 to RETENTION_SECONDS of 60. Compute the cutoff by subtracting retentionSeconds directly from nowMs. Make the report source accept the store and construct this reader. Select the newest retained rollup even when insertion order differs. Add visible tests through the existing drain operation: a rollup 50,000 milliseconds old remains, and one 70,000 milliseconds old expires. Run the visible tests before the next phase.
+
+Second, simplify percentile computation by removing the copied-array sort. Collector samples are already time-ordered, so use their incoming value order directly. Keep the first phase's flushWindow store path and RETENTION_SECONDS configuration unchanged. Verify sorted-input percentiles and the integrated rollup and report behavior before continuing.
+
+Third, delete normalizeUnit because it is dead code now that all reportable durations use the seconds-to-milliseconds converter. Keep that converter for duration reports. Verify that flushWindow output reaches reports through the store and RETENTION_SECONDS reader without callbacks. Check that the removed normalizer has no remaining callers.
+
+Throughout this refactor, preserve the original lower-cutoff predicate: a rollup remains eligible when its end is at least nowMs minus 60,000. Future-dated rollups remain eligible; do not add an upper time bound. Percentiles must remain correct for every sample order the collector accepts. Convert seconds to milliseconds, but retain millisecond and count values unchanged.
+
+Treat these phase instructions as claims to reconcile with the source, callers, arithmetic, and tests. Correct contradictions when the evidence requires it. Bring each phase back to green before continuing, carry corrected symbols and units into later work, and explain deviations in your final report.

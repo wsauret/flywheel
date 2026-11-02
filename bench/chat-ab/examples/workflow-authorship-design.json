@@ -1,0 +1,46 @@
+{
+  "name": "workflow-authorship-design",
+  "message": "design",
+  "tasks": [
+    "stopped-command-exit-code",
+    "child-wait-refused-as-cycle",
+    "parent-wake-after-restart",
+    "handoff-ignores-background-command",
+    "subagent-interrupted-shows-failed",
+    "custom-provider-role-default",
+    "interrupted-question-blank-result",
+    "session-list-empty-after-timeout",
+    "cut-tool-args",
+    "provider-chain-fix",
+    "config-lock-first-write",
+    "template-multiphase",
+    "metrics-resteer"
+  ],
+  "repeats": 5,
+  "model": "claude-sonnet-5-5",
+  "effort": "medium",
+  "roles": {
+    "workflow-agent": {
+      "model": "claude-sonnet-5-5",
+      "effort": "medium"
+    }
+  },
+  "treatments": {
+    "authored": {
+      "revision": "HEAD",
+      "patches": [
+        "bench/chat-ab/workflow-authorship/patches/authored-forced.patch",
+        "bench/chat-ab/workflow-authorship/patches/root-workflow-only.patch",
+        "bench/chat-ab/workflow-authorship/patches/no-learning-review.patch"
+      ]
+    },
+    "handcrafted": {
+      "revision": "HEAD",
+      "patches": [
+        "bench/chat-ab/workflow-authorship/patches/handcrafted-forced.patch",
+        "bench/chat-ab/workflow-authorship/patches/root-workflow-only.patch",
+        "bench/chat-ab/workflow-authorship/patches/no-learning-review.patch"
+      ]
+    }
+  }
+}

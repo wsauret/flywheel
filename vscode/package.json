@@ -1,0 +1,404 @@
+{
+  "name": "flywheel",
+  "displayName": "Flywheel",
+  "description": "The coding agent that keeps working, inside VS Code. Durable workflows run phases of agents that build, review, repair, and verify, and a run survives a window reload, a crash, an update, or an empty quota. Sign in with the subscriptions you already pay for (Claude, ChatGPT, GitHub Copilot, SuperGrok, OpenCode Go), add several accounts of the same paid subscription, and fall back to API keys only when no subscription can serve. Flywheel installs itself the first time the extension starts.",
+  "version": "0.0.3",
+  "publisher": "flywheel-core-team",
+  "author": "Wesley Sauret",
+  "license": "Apache-2.0",
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "AI",
+    "Chat",
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "agent",
+    "coding agent",
+    "ai",
+    "llm",
+    "flywheel",
+    "chat",
+    "pair programming",
+    "copilot",
+    "chatgpt",
+    "claude",
+    "workflows",
+    "mcp",
+    "autonomous"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "secondarySidebar": [
+        {
+          "id": "flywheel-secondary",
+          "title": "Flywheel",
+          "icon": "assets/flywheel.svg",
+          "when": "!flywheel:doesNotSupportSecondarySidebar"
+        }
+      ],
+      "activitybar": [
+        {
+          "id": "flywheel",
+          "title": "Flywheel",
+          "icon": "assets/flywheel.svg",
+          "when": "flywheel:doesNotSupportSecondarySidebar"
+        }
+      ]
+    },
+    "views": {
+      "flywheel-secondary": [
+        {
+          "id": "flywheel.chatSecondary",
+          "name": "Chat",
+          "type": "webview",
+          "when": "!flywheel:doesNotSupportSecondarySidebar"
+        }
+      ],
+      "flywheel": [
+        {
+          "id": "flywheel.chat",
+          "name": "Chat",
+          "type": "webview",
+          "when": "flywheel:doesNotSupportSecondarySidebar"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "flywheel.newSession",
+        "title": "Flywheel: New chat",
+        "icon": "$(add)"
+      },
+      {
+        "command": "flywheel.focusChat",
+        "title": "Flywheel: Open chat",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "flywheel.addSelectionToChat",
+        "title": "Flywheel: Add selection to chat"
+      },
+      {
+        "command": "flywheel.interrupt",
+        "title": "Flywheel: Interrupt"
+      },
+      {
+        "command": "flywheel.revertTurn",
+        "title": "Flywheel: Review changes to undo"
+      },
+      {
+        "command": "flywheel.reconnect",
+        "title": "Flywheel: Reconnect"
+      },
+      {
+        "command": "flywheel.showRuntimeLog",
+        "title": "Flywheel: Runtime log"
+      },
+      {
+        "command": "flywheel.openChangeDiff",
+        "title": "Flywheel: Review file changes"
+      },
+      {
+        "command": "flywheel.revertFile",
+        "title": "Flywheel: Review file to undo",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "flywheel.explainSelection",
+        "title": "Flywheel: Explain selection"
+      },
+      {
+        "command": "flywheel.fixProblem",
+        "title": "Flywheel: Fix this problem"
+      },
+      {
+        "command": "flywheel.addFiles",
+        "title": "Flywheel: Mention a project file",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "flywheel.addSymbol",
+        "title": "Flywheel: Add symbol to message",
+        "icon": "$(symbol-method)"
+      },
+      {
+        "command": "flywheel.addProblems",
+        "title": "Flywheel: Add problems to message",
+        "icon": "$(warning)"
+      },
+      {
+        "command": "flywheel.signIn",
+        "title": "Flywheel: Authentication",
+        "icon": "$(account)"
+      },
+      {
+        "command": "flywheel.pickModel",
+        "title": "Flywheel: Model and effort"
+      },
+      {
+        "command": "flywheel.showUsage",
+        "title": "Flywheel: Usage",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "flywheel.showWelcome",
+        "title": "Flywheel: How Flywheel works",
+        "icon": "$(question)"
+      },
+      {
+        "command": "flywheel.renameSession",
+        "title": "Flywheel: Rename chat",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "flywheel.deleteSession",
+        "title": "Flywheel: Delete chat",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "flywheel.closeSession",
+        "title": "Flywheel: Close chat"
+      },
+      {
+        "command": "flywheel.switchSession",
+        "title": "Flywheel: Switch chat"
+      },
+      {
+        "command": "flywheel.compact",
+        "title": "Flywheel: Compact conversation"
+      },
+      {
+        "command": "flywheel.learn",
+        "title": "Flywheel: Learn"
+      },
+      {
+        "command": "flywheel.drainPapercuts",
+        "title": "Flywheel: Papercuts"
+      },
+      {
+        "command": "flywheel.settings",
+        "title": "Flywheel: Settings",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "flywheel.status",
+        "title": "Flywheel: Status",
+        "icon": "$(pulse)"
+      },
+      {
+        "command": "flywheel.pickProviderModels",
+        "title": "Flywheel: Available models"
+      },
+      {
+        "command": "flywheel.showSetupChecklist",
+        "title": "Flywheel: Setup checklist"
+      },
+      {
+        "command": "flywheel.enableSshAutoInstall",
+        "title": "Flywheel: Install automatically on SSH hosts"
+      },
+      {
+        "command": "flywheel.disableSshAutoInstall",
+        "title": "Flywheel: Stop installing automatically on SSH hosts"
+      },
+      {
+        "command": "flywheel.browseModels",
+        "title": "Flywheel: Models",
+        "icon": "$(package)"
+      },
+      {
+        "command": "flywheel.profiles",
+        "title": "Flywheel: Auth profiles"
+      },
+      {
+        "command": "flywheel.interruptWorkflow",
+        "title": "Flywheel: Interrupt workflow"
+      },
+      {
+        "command": "flywheel.openAllChanges",
+        "title": "Flywheel: Changes",
+        "icon": "$(diff-multiple)"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "flywheel.addSelectionToChat",
+          "when": "editorHasSelection",
+          "group": "flywheel@1"
+        },
+        {
+          "command": "flywheel.explainSelection",
+          "when": "editorHasSelection",
+          "group": "flywheel@2"
+        }
+      ],
+      "view/title": [],
+      "view/item/context": [],
+      "commandPalette": [
+        {
+          "command": "flywheel.openChangeDiff",
+          "when": "false"
+        },
+        {
+          "command": "flywheel.fixProblem",
+          "when": "false"
+        },
+        {
+          "command": "flywheel.showUsage",
+          "when": "!flywheel.modulesKnown || flywheel.module.subscription-usage"
+        },
+        {
+          "command": "flywheel.learn",
+          "when": "!flywheel.modulesKnown || flywheel.module.learning"
+        },
+        {
+          "command": "flywheel.drainPapercuts",
+          "when": "!flywheel.modulesKnown || flywheel.module.papercuts"
+        },
+        {
+          "command": "flywheel.interruptWorkflow",
+          "when": "!flywheel.modulesKnown || flywheel.module.workflows"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "flywheel.focusChat",
+        "key": "ctrl+shift+f",
+        "mac": "cmd+shift+f"
+      },
+      {
+        "command": "flywheel.addSelectionToChat",
+        "key": "ctrl+shift+l",
+        "mac": "cmd+shift+l",
+        "when": "editorHasSelection"
+      },
+      {
+        "command": "flywheel.addFiles",
+        "key": "ctrl+shift+u",
+        "mac": "cmd+shift+u"
+      }
+    ],
+    "configuration": {
+      "title": "Flywheel",
+      "properties": {
+        "flywheel.executablePath": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Absolute path to the `flywheel` executable. When empty, the extension uses the Flywheel its installer placed, then `flywheel` on PATH, and installs the current release when there is neither. Machine-scoped on purpose: this names a program the extension runs, and a workspace that could set it would choose what a cloned repository executes.",
+          "scope": "machine"
+        },
+        "flywheel.projectRoot": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Overrides the project root the runtime opens. When empty, Flywheel applies its own project selection."
+        }
+      }
+    },
+    "walkthroughs": [
+      {
+        "id": "flywheel.setup",
+        "title": "Get started with Flywheel",
+        "description": "Connect a provider, ask for a change, and see exactly what it did.",
+        "steps": [
+          {
+            "id": "flywheel.what",
+            "title": "What Flywheel is",
+            "description": "The coding agent that keeps working, and records every call and tool run as evidence you can replay.\n[Read how Flywheel works](command:flywheel.showWelcome)",
+            "media": {
+              "markdown": "walkthroughs/what.md"
+            },
+            "completionEvents": [
+              "onStepSelected"
+            ]
+          },
+          {
+            "id": "flywheel.connect",
+            "title": "Connect a provider",
+            "description": "Flywheel runs the model you already pay for. Pick one and it will ask for just what that provider needs.\n[Connect a provider](command:flywheel.signIn)",
+            "media": {
+              "markdown": "walkthroughs/connect.md"
+            },
+            "completionEvents": [
+              "onContext:flywheel.hasProvider"
+            ]
+          },
+          {
+            "id": "flywheel.ask",
+            "title": "Ask for a change",
+            "description": "Ask in plain language and Flywheel edits the files. It is not a window that prints suggestions to copy.\n[Open the Flywheel panel](command:flywheel.focusChat)",
+            "media": {
+              "markdown": "walkthroughs/ask.md"
+            },
+            "completionEvents": [
+              "onCommand:flywheel.focusChat"
+            ]
+          },
+          {
+            "id": "flywheel.review",
+            "title": "Review and undo anything",
+            "description": "Review every file this session changed as one net diff against how it looked before the session, and undo a file with one click. The runtime restores only changes it can prove safe.\n[Show all session changes](command:flywheel.openAllChanges)",
+            "media": {
+              "markdown": "walkthroughs/review.md"
+            },
+            "completionEvents": [
+              "onContext:flywheel.reviewedChanges"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "build": "bun run scripts/build.ts",
+    "test": "bun test src",
+    "e2e": "bun run scripts/e2e-live.ts",
+    "e2e:bootstrap": "bun run scripts/e2e-bootstrap.ts",
+    "package": "bun run scripts/package.ts",
+    "notes:draft": "bun run ../scripts/release-notes.ts --surface vscode",
+    "publish:marketplace": "bun run scripts/publish.ts",
+    "install:local": "bun run scripts/install-local.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.4",
+    "@types/node": "^22.10.0",
+    "@types/vscode": "^1.96.0",
+    "@vscode/vsce": "^3.9.2"
+  },
+  "dependencies": {
+    "effect": "4.0.0-beta.84"
+  },
+  "icon": "assets/icon.png",
+  "galleryBanner": {
+    "color": "#0d3b8f",
+    "theme": "dark"
+  },
+  "qna": false,
+  "homepage": "https://flywl.sh",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wsauret/flywheel.git",
+    "directory": "vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/wsauret/flywheel/issues"
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Flywheel reads, modifies, and runs code in this workspace. Trust the workspace to use Flywheel."
+    }
+  },
+  "extensionKind": [
+    "workspace"
+  ]
+}

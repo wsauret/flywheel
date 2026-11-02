@@ -1,0 +1,23 @@
+// Flywheel code that the main `lint:oxlint` pass does not lint yet, because it
+// carries style debt that the pass would reject: the test support directories
+// and the benchmark tooling outside `bench/chat-ab`. This pass
+// holds that code to the rules whose breach is not style. A type assertion or
+// an explicit `any` hides a type error, and a suppression with no reason hides
+// why it exists.
+// In tests, a leak into the literal `/tmp` escapes the test temporary-directory
+// guard. The benchmark task corpora are frozen inputs, not Flywheel code.
+{
+  "jsPlugins": [{ "name": "flywheel", "specifier": "./oxlint-plugin-flywheel.js" }],
+  "plugins": ["typescript"],
+  "categories": { "correctness": "off" },
+  "ignorePatterns": ["bench/tasks/*/**", "bench/*/tasks/**", "bench/*/fixtures/**"],
+  "rules": {
+    // "never" bans `as Type` and angle-bracket assertions; `as const` stays legal.
+    "typescript/consistent-type-assertions": ["error", { "assertionStyle": "never" }],
+    "typescript/no-explicit-any": "error",
+    "flywheel/require-suppression-reason": "error"
+  },
+  "overrides": [
+    { "files": ["**/tests/**"], "rules": { "flywheel/no-tmp-literal-path": "error" } }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "sourceSha256": "46fbf9307fa878cdf975457ff516e1dc2643465c0e47588be53ea92f2f500a4c",
+  "files": {
+    "flywheel-launcher.win32-arm64.exe": {
+      "sha256": "aa8c5388b4b5fe291f02f765b95f15070aa451f26fdc9a527820a898a061c5aa",
+      "bytes": 23552
+    },
+    "flywheel-service-launcher.win32-arm64.exe": {
+      "sha256": "aafaea835819a4fb2e166a9bf0a03697bbbbade9cc80810b732fb31887ea31fd",
+      "bytes": 23552
+    },
+    "flywheel-launcher.win32-x64.exe": {
+      "sha256": "97411d076f7402e93589e6e8dff54ad1510ad92cad26212996ff00122a6e1399",
+      "bytes": 27136
+    },
+    "flywheel-service-launcher.win32-x64.exe": {
+      "sha256": "f2da2a7f1ad7f6d5725af1f66db570d388a8f92d70e55fc18dcc3df31eedd8c7",
+      "bytes": 27136
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "stopped-command-exit-code",
+  "stratum": "production-history",
+  "timeoutMinutes": 45,
+  "sandbox": {
+    "commit": "7954a94ade78ec5093f37e4cc0e83dea9fd4dcd7",
+    "paths": ["src", "crates/tokenizer/tokenizer-prebuilt.json", "crates/tokenizer/flywheel-tokenizer.wasm.zst", "tests", "docs", "scripts", "package.json", "bun.lock", "tsconfig.json", "oxlint.config.ts", "knip.jsonc", "AGENTS.md", ".gitignore", "bunfig.toml", "relay/package.json", "vscode/package.json", "webview/package.json", "website/package.json", ".env.test"],
+    "patch": "sandbox.patch",
+    "setup": [["bun", "install"]]
+  },
+  "acceptanceBaseline": {
+    "failToPass": [
+      "acceptance/stopped-command.test.ts > a background command that a signal ends > records a command that a person stops by a signal as stopped, with no exit code, and names the signal to the model",
+      "acceptance/stopped-command.test.ts > a background command that a signal ends > records a command that a signal ends on its own as failed, with no made-up exit code",
+      "acceptance/stopped-command.test.ts > background index row detail > shows a stopped or canceled command with its status and duration, never an exit code"
+    ],
+    "passToPass": [
+      "acceptance/stopped-command.test.ts > a background command that a signal ends > still records the exit code of a command that exits by itself",
+      "acceptance/stopped-command.test.ts > background index row detail > shows the exit code of a command that ended by itself"
+    ]
+  }
+}

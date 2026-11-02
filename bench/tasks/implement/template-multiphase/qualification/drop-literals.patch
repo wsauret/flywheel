@@ -1,0 +1,12 @@
+===================================================================
+--- a/tokenizer.ts
++++ b/tokenizer.ts
+@@ -1,7 +1,8 @@
+ import type { TemplateToken } from "./types.js";
+ 
+ export function tokenize(template: string): TemplateToken[] {
++  if (!template.includes("{{")) return [];
+   const tokens: TemplateToken[] = [];
+   let offset = 0;
+   for (const match of template.matchAll(/\{\{\{[^{}]*\}\}\}|\{\{[^{}]*\}\}/g)) {
+     const position = match.index;

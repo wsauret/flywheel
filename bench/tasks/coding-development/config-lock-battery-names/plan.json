@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "summary": "Restore file-specific ownership when configPath selects multiple config files in one private directory.",
+  "context": {
+    "key_files": [
+      "src/orchestration/config/config-file.ts",
+      "src/infra/ownership-file-lock.ts"
+    ],
+    "patterns": [
+      "Config callbacks are synchronous and operate through native contained directories."
+    ],
+    "constraints": [
+      "Derive the same native lock name from the selected config basename in both entry points.",
+      "Retain asynchronous waiting, synchronous refusal, and callback error identity.",
+      "Preserve the public entry points and native ownership protocol. Do not replace file operations with stubs."
+    ]
+  },
+  "milestones": [
+    {
+      "id": "repair-config-contract",
+      "goal": "Restore file-specific ownership when configPath selects multiple config files in one private directory.",
+      "files": [
+        "src/orchestration/config/config-file.ts",
+        "src/infra/ownership-file-lock.ts"
+      ],
+      "tasks": [
+        {
+          "id": "repair-native-contract",
+          "description": "Restore file-specific ownership when configPath selects multiple config files in one private directory.",
+          "files": [
+            "src/orchestration/config/config-file.ts",
+            "src/infra/ownership-file-lock.ts"
+          ],
+          "test_scenarios": [
+            "Different config basenames can be edited inside one synchronous callback without a lock collision.",
+            "An asynchronous caller waits for the selected file lock while a different file remains writable.",
+            "A synchronous caller cannot bypass the selected file lock, and callback errors release ownership."
+          ]
+        }
+      ],
+      "verification": "bun test config-smoke.test.ts",
+      "qualitative_verification": "Confirm the implementation retains descriptor-bound native operations."
+    }
+  ],
+  "success_criteria": [
+    "Different config basenames can be edited inside one synchronous callback without a lock collision.",
+    "An asynchronous caller waits for the selected file lock while a different file remains writable.",
+    "A synchronous caller cannot bypass the selected file lock, and callback errors release ownership."
+  ],
+  "implementation_contract": {
+    "directives": [
+      {
+        "id": "native-contract",
+        "text": "Derive the same native lock name from the selected config basename in both entry points.",
+        "completion_check": "Native acceptance scenarios pass without weakening ownership."
+      }
+    ]
+  }
+}

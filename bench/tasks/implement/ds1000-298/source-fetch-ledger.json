@@ -1,0 +1,155 @@
+[
+  {
+    "source_url": "https://api.github.com/repos/xlang-ai/DS-1000/commits/main",
+    "resolved_url": "https://api.github.com/repos/xlang-ai/DS-1000/commits/main",
+    "status": 200,
+    "bytes": 3876,
+    "sha256": "34eca7290d702dccad41ccb313b8f446ca480439fbb565d7dd432c4c1909dd4d",
+    "seconds": 0.5030409158207476,
+    "path": "github-commit.json"
+  },
+  {
+    "source_url": "https://api.github.com/repos/xlang-ai/DS-1000/git/trees/b39aab71da6d23ef8d3cac59a7c5f834516ab334?recursive=1",
+    "resolved_url": "https://api.github.com/repos/xlang-ai/DS-1000/git/trees/b39aab71da6d23ef8d3cac59a7c5f834516ab334?recursive=1",
+    "status": 200,
+    "bytes": 5904,
+    "sha256": "05219297bcdeb1df853b582ba544185a84b61cffb7538ec00b52ac7331b21450",
+    "seconds": 0.3033213750459254,
+    "path": "github-tree.json"
+  },
+  {
+    "source_url": "https://api.github.com/repos/xlang-ai/DS-1000/tarball/b39aab71da6d23ef8d3cac59a7c5f834516ab334",
+    "resolved_url": "https://codeload.github.com/xlang-ai/DS-1000/legacy.tar.gz/b39aab71da6d23ef8d3cac59a7c5f834516ab334",
+    "status": 200,
+    "bytes": 805294,
+    "sha256": "9e3232eb7060c7dee44e69c12bd3025b4175b1fd67bbbdfb328d2a18cdfbfc46",
+    "seconds": 1.0004189170431346,
+    "path": "upstream.tar.gz"
+  },
+  {
+    "source_url": "https://api.github.com/repos/xlang-ai/DS-1000/commits/original_format",
+    "resolved_url": "https://api.github.com/repos/xlang-ai/DS-1000/commits/original_format",
+    "status": 200,
+    "bytes": 9347,
+    "sha256": "697320b3c2ab09066337d000a96ba72aa8fcbc8710d8de6a3934b3003fe6d385",
+    "seconds": 0.5281277080066502,
+    "path": "original-commit.json"
+  },
+  {
+    "source_url": "https://raw.githubusercontent.com/xlang-ai/DS-1000/2d4608847e37baf0607222bb334e8c84b9239e4b/README.md",
+    "resolved_url": "https://raw.githubusercontent.com/xlang-ai/DS-1000/2d4608847e37baf0607222bb334e8c84b9239e4b/README.md",
+    "status": 200,
+    "bytes": 8030,
+    "sha256": "6b7dbb9ca3accf6a6fa25f38fe8c9c42a5fc27143d50ecc603ad98fa59791760",
+    "seconds": 0.3572315410710871,
+    "path": "original-README.txt"
+  },
+  {
+    "source_url": "https://api.github.com/repos/xlang-ai/DS-1000/git/trees/2d4608847e37baf0607222bb334e8c84b9239e4b?recursive=1",
+    "resolved_url": "https://api.github.com/repos/xlang-ai/DS-1000/git/trees/2d4608847e37baf0607222bb334e8c84b9239e4b?recursive=1",
+    "status": 200,
+    "bytes": 90816,
+    "sha256": "d35a05708599225bf626faa4e36098c60b08e16f7c3100c16f7a19e8832c838a",
+    "seconds": 0.4343192910309881,
+    "path": "original-tree.json"
+  },
+  {
+    "source_url": "https://raw.githubusercontent.com/xlang-ai/DS-1000/2d4608847e37baf0607222bb334e8c84b9239e4b/ds1000_data.zip",
+    "resolved_url": "https://raw.githubusercontent.com/xlang-ai/DS-1000/2d4608847e37baf0607222bb334e8c84b9239e4b/ds1000_data.zip",
+    "status": 200,
+    "bytes": 72814710,
+    "sha256": "c51b5600c942ee00d75f6069d8aec3db247e5f98046d14a540c88a6d76adf37a",
+    "seconds": 2.855407499941066,
+    "path": "original-ds1000_data.zip"
+  },
+  {
+    "source_url": "https://api.stackexchange.com/2.3/questions/29831489?site=stackoverflow&filter=withbody",
+    "resolved_url": "https://api.stackexchange.com/2.3/questions/29831489?site=stackoverflow&filter=withbody",
+    "status": 200,
+    "bytes": 1097,
+    "sha256": "7d3902d5ebcbeb5cf29dc63136342d5502378677077e88a0ad906c4e52bd96bd",
+    "seconds": 0.2961464589461684,
+    "path": "so-question-29831489.json"
+  },
+  {
+    "source_url": "https://api.stackexchange.com/2.3/questions/29831489/answers?site=stackoverflow&filter=withbody&pagesize=100&sort=votes",
+    "resolved_url": "https://api.stackexchange.com/2.3/questions/29831489/answers?site=stackoverflow&filter=withbody&pagesize=100&sort=votes",
+    "status": 200,
+    "bytes": 26888,
+    "sha256": "24ca291e41df07cb51e10d14af19203d55098ceeb2f484656ce40e830e9f6666",
+    "seconds": 0.14652516692876816,
+    "path": "so-answers-29831489.json"
+  },
+  {
+    "source_url": "https://stackoverflow.com/help/licensing",
+    "resolved_url": "https://stackoverflow.com/help/licensing",
+    "status": 200,
+    "bytes": 79602,
+    "sha256": "0a4f12dbac252251d64cccba3993d48c8504e44aecc933c4158e0a2079b9127c",
+    "seconds": 0.27823524991981685,
+    "path": "so-licensing.html"
+  },
+  {
+    "source_url": "https://creativecommons.org/licenses/by-sa/3.0/legalcode.txt",
+    "resolved_url": "https://creativecommons.org/licenses/by-sa/3.0/legalcode.txt",
+    "status": 200,
+    "bytes": 22240,
+    "sha256": "3f941b3b89cf7b8370ceb83cc76d2120d471b58735d8ca60238a751a48d7f72f",
+    "seconds": 0.31356604187749326,
+    "path": "cc-by-sa-3.0.txt"
+  },
+  {
+    "source_url": "https://creativecommons.org/licenses/by-sa/4.0/legalcode.txt",
+    "resolved_url": "https://creativecommons.org/licenses/by-sa/4.0/legalcode.txt",
+    "status": 200,
+    "bytes": 20138,
+    "sha256": "28a9529c7d0bb4dc51f4bf5c116a3d16ef247a052f7591466768ddf563fd1cf5",
+    "seconds": 0.20714600011706352,
+    "path": "cc-by-sa-4.0.txt"
+  },
+  {
+    "source_url": "https://api.stackexchange.com/2.3/posts/29831489/revisions?site=stackoverflow&filter=withbody&pagesize=100",
+    "resolved_url": "https://api.stackexchange.com/2.3/posts/29831489/revisions?site=stackoverflow&filter=withbody&pagesize=100",
+    "status": 200,
+    "bytes": 7571,
+    "sha256": "b03f8419b413947c0d94c3f5ac6a3381486d71d89d3e46b6601d1fc48e49fa19",
+    "seconds": 0.2226069171447307,
+    "path": "so-question-revisions-29831489.json"
+  },
+  {
+    "source_url": "https://api.stackexchange.com/2.3/posts/29831596/revisions?site=stackoverflow&filter=withbody&pagesize=100",
+    "resolved_url": "https://api.stackexchange.com/2.3/posts/29831596/revisions?site=stackoverflow&filter=withbody&pagesize=100",
+    "status": 200,
+    "bytes": 5110,
+    "sha256": "50b2ac1f12e14ba59185da8e818f8f5c0d2c2e98e958509df7d256afe78f9018",
+    "seconds": 0.14283829205669463,
+    "path": "so-answer-revisions-29831596.json"
+  },
+  {
+    "source_url": "https://pypi.org/pypi/numpy/1.26.4/json",
+    "resolved_url": "https://pypi.org/pypi/numpy/1.26.4/json",
+    "status": 200,
+    "bytes": 83489,
+    "sha256": "002438c3d838b619bcf65c154e9de59e546ae819d5819fc74dc1a34926446be2",
+    "seconds": 0.14572449983097613,
+    "path": "numpy-1.26.4-pypi.json"
+  },
+  {
+    "source_url": "https://files.pythonhosted.org/packages/20/f7/b24208eba89f9d1b58c1668bc6c8c4fd472b20c45573cb767f59d49fb0f6/numpy-1.26.4-cp310-cp310-macosx_11_0_arm64.whl",
+    "resolved_url": "https://files.pythonhosted.org/packages/20/f7/b24208eba89f9d1b58c1668bc6c8c4fd472b20c45573cb767f59d49fb0f6/numpy-1.26.4-cp310-cp310-macosx_11_0_arm64.whl",
+    "status": 200,
+    "bytes": 13966411,
+    "sha256": "2e4ee3380d6de9c9ec04745830fd9e2eccb3e6cf790d39d7b98ffd19b0dd754a",
+    "seconds": 0.43952879100106657,
+    "path": "numpy-1.26.4-cp310-cp310-macosx_11_0_arm64.whl"
+  },
+  {
+    "source_url": "https://raw.githubusercontent.com/xlang-ai/DS-1000/b39aab71da6d23ef8d3cac59a7c5f834516ab334/data/ds1000.jsonl.gz",
+    "resolved_url": "https://raw.githubusercontent.com/xlang-ai/DS-1000/b39aab71da6d23ef8d3cac59a7c5f834516ab334/data/ds1000.jsonl.gz",
+    "status": 200,
+    "bytes": 418089,
+    "sha256": "e8c6daa9d7223976bce0296644f3933f78d7f47830669ff05cd61da62c6ba9b3",
+    "seconds": 0.46386525011621416,
+    "path": "official-ds1000.jsonl.gz"
+  }
+]

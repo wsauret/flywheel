@@ -1,0 +1,5178 @@
+{
+  "then": {
+    "root": {
+      "type": "workflow.control.initialized",
+      "version": 10,
+      "actor": "flywheel",
+      "payload": {
+        "control": {
+          "definitionIdentity": {
+            "workflowDefinitionId": "then",
+            "vmVersion": "2",
+            "skills": [],
+            "personas": [],
+            "graphSha256": "a663c475cb4c341aa0da040ea7bd5b6c41067403f5dbcafbd2050e7c9e9a5517",
+            "steps": [
+              {
+                "stepId": "a",
+                "policySha256": "11d0e81b840d258f4e241f1d601e5ee6f01349e4f25880540166a2f05336ac02",
+                "contentSha256": "a7db5869f7722cd9151e96080383fab6c213a33bdc855f0164d8c11a7d838bdb",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "b",
+                "policySha256": "646b4e0a77648100042e17d073d6e4631aa8517aceb6c42d74e15175b7a5a648",
+                "contentSha256": "c06fd0c69164ac122068a56497a2c3d441003922abd41b42035f178c80e9ea75",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "c",
+                "policySha256": "80487281370a293c0eecb2dde8a9b95d5c9b14cdc75f47e5e718b68e6bb19db2",
+                "contentSha256": "3175535e1f0230b80d059433c51e6fced4b168cff0cfb868657f8705a1ca429d",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "source",
+                "policySha256": "fe71b96d636bc7445fcf702e89c71a87da082f6ba1abc3c9bc94b4df2f92377c",
+                "contentSha256": "c58cbf113a20997bcb132096fc5b12a671dfff022545c3835c70f68a818e305c",
+                "outputSha256": "82e6e6d43ef7e334919a5488e66e354228337565ca2a0d881d8f7ea3de645f2b"
+              }
+            ]
+          },
+          "workflowName": "Then",
+          "graph": {
+            "nodes": [
+              {
+                "kind": "step",
+                "id": "then:node:1",
+                "workflowDefinitionId": "then",
+                "order": 0,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "then"
+                },
+                "state": {
+                  "_tag": "ready"
+                },
+                "definitionId": "source",
+                "name": "source",
+                "then": {
+                  "step": "a",
+                  "when": "items",
+                  "then": null
+                },
+                "retry": null
+              },
+              {
+                "kind": "step",
+                "id": "then:node:2",
+                "workflowDefinitionId": "then",
+                "order": 1,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "then"
+                },
+                "state": {
+                  "_tag": "pending"
+                },
+                "definitionId": "b",
+                "name": "b",
+                "then": null,
+                "retry": null
+              }
+            ],
+            "dependencies": [
+              {
+                "nodeId": "then:node:2",
+                "dependsOn": "then:node:1"
+              }
+            ],
+            "joins": [],
+            "budgets": []
+          },
+          "attempts": [
+            {
+              "id": "then:node:1:attempt:1",
+              "logicalNodeId": "then:node:1",
+              "workflowDefinitionId": "then",
+              "definitionId": "source",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "then"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            },
+            {
+              "id": "then:node:2:attempt:1",
+              "logicalNodeId": "then:node:2",
+              "workflowDefinitionId": "then",
+              "definitionId": "b",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "then"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            }
+          ],
+          "frontier": [
+            "then:node:1"
+          ],
+          "guardrails": {
+            "maxQueueLength": 50,
+            "maxMutationsPerAttempt": 3,
+            "maxSessionInserts": 20,
+            "sessionInsertsUsed": 0,
+            "attemptMutationsUsed": [
+              {
+                "attemptId": "then:node:1:attempt:1",
+                "used": 0
+              },
+              {
+                "attemptId": "then:node:2:attempt:1",
+                "used": 0
+              }
+            ]
+          },
+          "status": "ready",
+          "followUp": null,
+          "aggregateSeq": 1
+        }
+      }
+    },
+    "run": [
+      {
+        "attemptId": "then:node:1:attempt:1",
+        "definitionId": "source",
+        "logicalNodeId": "then:node:1",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": []
+        },
+        "item": null,
+        "handoff": {
+          "summary": "two",
+          "items": [
+            {
+              "id": "x"
+            },
+            {
+              "id": "y"
+            }
+          ]
+        }
+      },
+      {
+        "attemptId": "then:node:1:attempt:2",
+        "definitionId": "a",
+        "logicalNodeId": "then:node:1",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "then:node:1:attempt:1"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      },
+      {
+        "attemptId": "then:node:2:attempt:1",
+        "definitionId": "b",
+        "logicalNodeId": "then:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "then:node:1:attempt:1",
+            "then:node:1:attempt:2"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      }
+    ],
+    "status": "completed",
+    "attempts": [
+      {
+        "id": "then:node:1:attempt:1",
+        "definitionId": "source",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "then:node:1:attempt:2",
+        "definitionId": "a",
+        "provenance": {
+          "_tag": "then"
+        },
+        "parentAttemptId": "then:node:1:attempt:1",
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "then:node:2:attempt:1",
+        "definitionId": "b",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "then:node:1",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "then:node:2",
+        "kind": "step",
+        "state": "completed"
+      }
+    ]
+  },
+  "forChain": {
+    "root": {
+      "type": "workflow.control.initialized",
+      "version": 10,
+      "actor": "flywheel",
+      "payload": {
+        "control": {
+          "definitionIdentity": {
+            "workflowDefinitionId": "loop",
+            "vmVersion": "2",
+            "skills": [],
+            "personas": [],
+            "graphSha256": "41c80b04153bbd601ee13a07724e08bb796ec7dc2243097a92fa6fc311da4f67",
+            "steps": [
+              {
+                "stepId": "a",
+                "policySha256": "11d0e81b840d258f4e241f1d601e5ee6f01349e4f25880540166a2f05336ac02",
+                "contentSha256": "e1e8a02a0bdbb1fbe9c1ddffbedbe1ef7e158d3a0e27624819f4fa58824053e5",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "b",
+                "policySha256": "646b4e0a77648100042e17d073d6e4631aa8517aceb6c42d74e15175b7a5a648",
+                "contentSha256": "a6985948b485a5c52293456fc116a9f6c098948feefeb55d424c2df21f339cc8",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "c",
+                "policySha256": "80487281370a293c0eecb2dde8a9b95d5c9b14cdc75f47e5e718b68e6bb19db2",
+                "contentSha256": "0568efe921d8102beb5219bfcd3f7eeff0450c14558c313e7c04b67bdabfb405",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "source",
+                "policySha256": "fe71b96d636bc7445fcf702e89c71a87da082f6ba1abc3c9bc94b4df2f92377c",
+                "contentSha256": "10f94c3e0c868845c648d63e4da8c4313db36ceee54ab53ecb0104c87e656b25",
+                "outputSha256": "82e6e6d43ef7e334919a5488e66e354228337565ca2a0d881d8f7ea3de645f2b"
+              }
+            ]
+          },
+          "workflowName": "Loop",
+          "graph": {
+            "nodes": [
+              {
+                "kind": "step",
+                "id": "loop:node:1",
+                "workflowDefinitionId": "loop",
+                "order": 0,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "loop"
+                },
+                "state": {
+                  "_tag": "ready"
+                },
+                "definitionId": "source",
+                "name": "source",
+                "then": null,
+                "retry": null
+              },
+              {
+                "kind": "for",
+                "id": "loop:node:2",
+                "workflowDefinitionId": "loop",
+                "order": 1,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "loop"
+                },
+                "state": {
+                  "_tag": "pending"
+                },
+                "source": {
+                  "step": "source",
+                  "field": "items"
+                },
+                "body": [
+                  {
+                    "step": "a"
+                  },
+                  {
+                    "step": "b"
+                  },
+                  {
+                    "step": "c"
+                  }
+                ]
+              }
+            ],
+            "dependencies": [
+              {
+                "nodeId": "loop:node:2",
+                "dependsOn": "loop:node:1"
+              }
+            ],
+            "joins": [],
+            "budgets": []
+          },
+          "attempts": [
+            {
+              "id": "loop:node:1:attempt:1",
+              "logicalNodeId": "loop:node:1",
+              "workflowDefinitionId": "loop",
+              "definitionId": "source",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "loop"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            }
+          ],
+          "frontier": [
+            "loop:node:1"
+          ],
+          "guardrails": {
+            "maxQueueLength": 50,
+            "maxMutationsPerAttempt": 3,
+            "maxSessionInserts": 20,
+            "sessionInsertsUsed": 0,
+            "attemptMutationsUsed": [
+              {
+                "attemptId": "loop:node:1:attempt:1",
+                "used": 0
+              }
+            ]
+          },
+          "status": "ready",
+          "followUp": null,
+          "aggregateSeq": 1
+        }
+      }
+    },
+    "run": [
+      {
+        "attemptId": "loop:node:1:attempt:1",
+        "definitionId": "source",
+        "logicalNodeId": "loop:node:1",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": []
+        },
+        "item": null,
+        "handoff": {
+          "summary": "two",
+          "items": [
+            {
+              "id": "x"
+            },
+            {
+              "id": "y"
+            }
+          ]
+        }
+      },
+      {
+        "attemptId": "loop:node:2:attempt:1",
+        "definitionId": "a",
+        "logicalNodeId": "loop:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "loop:node:1:attempt:1"
+          ]
+        },
+        "item": {
+          "id": "x"
+        },
+        "handoff": {
+          "summary": "done"
+        }
+      },
+      {
+        "attemptId": "loop:node:2:attempt:3",
+        "definitionId": "b",
+        "logicalNodeId": "loop:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "loop:node:1:attempt:1",
+            "loop:node:2:attempt:1"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      },
+      {
+        "attemptId": "loop:node:2:attempt:4",
+        "definitionId": "c",
+        "logicalNodeId": "loop:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "loop:node:1:attempt:1",
+            "loop:node:2:attempt:1",
+            "loop:node:2:attempt:3"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      },
+      {
+        "attemptId": "loop:node:2:attempt:2",
+        "definitionId": "a",
+        "logicalNodeId": "loop:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "loop:node:1:attempt:1",
+            "loop:node:2:attempt:1",
+            "loop:node:2:attempt:3",
+            "loop:node:2:attempt:4"
+          ]
+        },
+        "item": {
+          "id": "y"
+        },
+        "handoff": {
+          "summary": "done"
+        }
+      },
+      {
+        "attemptId": "loop:node:2:attempt:5",
+        "definitionId": "b",
+        "logicalNodeId": "loop:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "loop:node:1:attempt:1",
+            "loop:node:2:attempt:1",
+            "loop:node:2:attempt:3",
+            "loop:node:2:attempt:4",
+            "loop:node:2:attempt:2"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      },
+      {
+        "attemptId": "loop:node:2:attempt:6",
+        "definitionId": "c",
+        "logicalNodeId": "loop:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "loop:node:1:attempt:1",
+            "loop:node:2:attempt:1",
+            "loop:node:2:attempt:3",
+            "loop:node:2:attempt:4",
+            "loop:node:2:attempt:2",
+            "loop:node:2:attempt:5"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      }
+    ],
+    "status": "completed",
+    "attempts": [
+      {
+        "id": "loop:node:1:attempt:1",
+        "definitionId": "source",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2:attempt:1",
+        "definitionId": "a",
+        "provenance": {
+          "_tag": "for",
+          "itemIndex": 0
+        },
+        "parentAttemptId": null,
+        "item": {
+          "id": "x"
+        },
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2:attempt:3",
+        "definitionId": "b",
+        "provenance": {
+          "_tag": "then"
+        },
+        "parentAttemptId": "loop:node:2:attempt:1",
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2:attempt:4",
+        "definitionId": "c",
+        "provenance": {
+          "_tag": "then"
+        },
+        "parentAttemptId": "loop:node:2:attempt:3",
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2:attempt:2",
+        "definitionId": "a",
+        "provenance": {
+          "_tag": "for",
+          "itemIndex": 1
+        },
+        "parentAttemptId": null,
+        "item": {
+          "id": "y"
+        },
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2:attempt:5",
+        "definitionId": "b",
+        "provenance": {
+          "_tag": "then"
+        },
+        "parentAttemptId": "loop:node:2:attempt:2",
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2:attempt:6",
+        "definitionId": "c",
+        "provenance": {
+          "_tag": "then"
+        },
+        "parentAttemptId": "loop:node:2:attempt:5",
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "loop:node:1",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2",
+        "kind": "for",
+        "state": "completed"
+      }
+    ]
+  },
+  "forTwice": {
+    "root": {
+      "type": "workflow.control.initialized",
+      "version": 10,
+      "actor": "flywheel",
+      "payload": {
+        "control": {
+          "definitionIdentity": {
+            "workflowDefinitionId": "loop",
+            "vmVersion": "2",
+            "skills": [],
+            "personas": [],
+            "graphSha256": "800e5eb456d6a4b9338d0f2b67014f9c0529b03415dbf888e9f7b943c3c2ed7e",
+            "steps": [
+              {
+                "stepId": "a",
+                "policySha256": "11d0e81b840d258f4e241f1d601e5ee6f01349e4f25880540166a2f05336ac02",
+                "contentSha256": "e1e8a02a0bdbb1fbe9c1ddffbedbe1ef7e158d3a0e27624819f4fa58824053e5",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "b",
+                "policySha256": "646b4e0a77648100042e17d073d6e4631aa8517aceb6c42d74e15175b7a5a648",
+                "contentSha256": "a6985948b485a5c52293456fc116a9f6c098948feefeb55d424c2df21f339cc8",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "c",
+                "policySha256": "80487281370a293c0eecb2dde8a9b95d5c9b14cdc75f47e5e718b68e6bb19db2",
+                "contentSha256": "0568efe921d8102beb5219bfcd3f7eeff0450c14558c313e7c04b67bdabfb405",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "source",
+                "policySha256": "fe71b96d636bc7445fcf702e89c71a87da082f6ba1abc3c9bc94b4df2f92377c",
+                "contentSha256": "10f94c3e0c868845c648d63e4da8c4313db36ceee54ab53ecb0104c87e656b25",
+                "outputSha256": "82e6e6d43ef7e334919a5488e66e354228337565ca2a0d881d8f7ea3de645f2b"
+              }
+            ]
+          },
+          "workflowName": "Loop",
+          "graph": {
+            "nodes": [
+              {
+                "kind": "step",
+                "id": "loop:node:1",
+                "workflowDefinitionId": "loop",
+                "order": 0,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "loop"
+                },
+                "state": {
+                  "_tag": "ready"
+                },
+                "definitionId": "source",
+                "name": "source",
+                "then": null,
+                "retry": null
+              },
+              {
+                "kind": "for",
+                "id": "loop:node:2",
+                "workflowDefinitionId": "loop",
+                "order": 1,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "loop"
+                },
+                "state": {
+                  "_tag": "pending"
+                },
+                "source": {
+                  "step": "source",
+                  "field": "items"
+                },
+                "body": [
+                  {
+                    "step": "a"
+                  },
+                  {
+                    "step": "a"
+                  }
+                ]
+              }
+            ],
+            "dependencies": [
+              {
+                "nodeId": "loop:node:2",
+                "dependsOn": "loop:node:1"
+              }
+            ],
+            "joins": [],
+            "budgets": []
+          },
+          "attempts": [
+            {
+              "id": "loop:node:1:attempt:1",
+              "logicalNodeId": "loop:node:1",
+              "workflowDefinitionId": "loop",
+              "definitionId": "source",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "loop"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            }
+          ],
+          "frontier": [
+            "loop:node:1"
+          ],
+          "guardrails": {
+            "maxQueueLength": 50,
+            "maxMutationsPerAttempt": 3,
+            "maxSessionInserts": 20,
+            "sessionInsertsUsed": 0,
+            "attemptMutationsUsed": [
+              {
+                "attemptId": "loop:node:1:attempt:1",
+                "used": 0
+              }
+            ]
+          },
+          "status": "ready",
+          "followUp": null,
+          "aggregateSeq": 1
+        }
+      }
+    },
+    "run": [
+      {
+        "attemptId": "loop:node:1:attempt:1",
+        "definitionId": "source",
+        "logicalNodeId": "loop:node:1",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": []
+        },
+        "item": null,
+        "handoff": {
+          "summary": "two",
+          "items": [
+            {
+              "id": "x"
+            },
+            {
+              "id": "y"
+            }
+          ]
+        }
+      },
+      {
+        "attemptId": "loop:node:2:attempt:1",
+        "definitionId": "a",
+        "logicalNodeId": "loop:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "loop:node:1:attempt:1"
+          ]
+        },
+        "item": {
+          "id": "x"
+        },
+        "handoff": {
+          "summary": "done"
+        }
+      },
+      {
+        "attemptId": "loop:node:2:attempt:3",
+        "definitionId": "a",
+        "logicalNodeId": "loop:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "loop:node:1:attempt:1",
+            "loop:node:2:attempt:1"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      },
+      {
+        "attemptId": "loop:node:2:attempt:2",
+        "definitionId": "a",
+        "logicalNodeId": "loop:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "loop:node:1:attempt:1",
+            "loop:node:2:attempt:1",
+            "loop:node:2:attempt:3"
+          ]
+        },
+        "item": {
+          "id": "y"
+        },
+        "handoff": {
+          "summary": "done"
+        }
+      },
+      {
+        "attemptId": "loop:node:2:attempt:4",
+        "definitionId": "a",
+        "logicalNodeId": "loop:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "loop:node:1:attempt:1",
+            "loop:node:2:attempt:1",
+            "loop:node:2:attempt:3",
+            "loop:node:2:attempt:2"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      }
+    ],
+    "status": "completed",
+    "attempts": [
+      {
+        "id": "loop:node:1:attempt:1",
+        "definitionId": "source",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2:attempt:1",
+        "definitionId": "a",
+        "provenance": {
+          "_tag": "for",
+          "itemIndex": 0
+        },
+        "parentAttemptId": null,
+        "item": {
+          "id": "x"
+        },
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2:attempt:3",
+        "definitionId": "a",
+        "provenance": {
+          "_tag": "then"
+        },
+        "parentAttemptId": "loop:node:2:attempt:1",
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2:attempt:2",
+        "definitionId": "a",
+        "provenance": {
+          "_tag": "for",
+          "itemIndex": 1
+        },
+        "parentAttemptId": null,
+        "item": {
+          "id": "y"
+        },
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2:attempt:4",
+        "definitionId": "a",
+        "provenance": {
+          "_tag": "then"
+        },
+        "parentAttemptId": "loop:node:2:attempt:2",
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "loop:node:1",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2",
+        "kind": "for",
+        "state": "completed"
+      }
+    ]
+  },
+  "whileBound2": {
+    "root": {
+      "type": "workflow.control.initialized",
+      "version": 10,
+      "actor": "flywheel",
+      "payload": {
+        "control": {
+          "definitionIdentity": {
+            "workflowDefinitionId": "loop",
+            "vmVersion": "2",
+            "skills": [],
+            "personas": [],
+            "graphSha256": "6123cb93089c9a5441e723d7f03bef2023768d77d050cd3653851ceb80ae87dd",
+            "steps": [
+              {
+                "stepId": "a",
+                "policySha256": "11d0e81b840d258f4e241f1d601e5ee6f01349e4f25880540166a2f05336ac02",
+                "contentSha256": "e1e8a02a0bdbb1fbe9c1ddffbedbe1ef7e158d3a0e27624819f4fa58824053e5",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "b",
+                "policySha256": "646b4e0a77648100042e17d073d6e4631aa8517aceb6c42d74e15175b7a5a648",
+                "contentSha256": "a6985948b485a5c52293456fc116a9f6c098948feefeb55d424c2df21f339cc8",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "c",
+                "policySha256": "80487281370a293c0eecb2dde8a9b95d5c9b14cdc75f47e5e718b68e6bb19db2",
+                "contentSha256": "0568efe921d8102beb5219bfcd3f7eeff0450c14558c313e7c04b67bdabfb405",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "source",
+                "policySha256": "fe71b96d636bc7445fcf702e89c71a87da082f6ba1abc3c9bc94b4df2f92377c",
+                "contentSha256": "10f94c3e0c868845c648d63e4da8c4313db36ceee54ab53ecb0104c87e656b25",
+                "outputSha256": "82e6e6d43ef7e334919a5488e66e354228337565ca2a0d881d8f7ea3de645f2b"
+              }
+            ]
+          },
+          "workflowName": "Loop",
+          "graph": {
+            "nodes": [
+              {
+                "kind": "step",
+                "id": "loop:node:1",
+                "workflowDefinitionId": "loop",
+                "order": 0,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "loop"
+                },
+                "state": {
+                  "_tag": "ready"
+                },
+                "definitionId": "source",
+                "name": "source",
+                "then": null,
+                "retry": null
+              },
+              {
+                "kind": "while",
+                "id": "loop:node:2",
+                "workflowDefinitionId": "loop",
+                "order": 1,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "loop"
+                },
+                "state": {
+                  "_tag": "pending"
+                },
+                "evaluator": {
+                  "step": "b",
+                  "field": "findings"
+                },
+                "body": [
+                  {
+                    "step": "a"
+                  },
+                  {
+                    "step": "b"
+                  },
+                  {
+                    "step": "c"
+                  }
+                ],
+                "maxIterations": 2,
+                "detectStuck": false,
+                "iteration": 1,
+                "priorNormalizedSignal": null
+              }
+            ],
+            "dependencies": [
+              {
+                "nodeId": "loop:node:2",
+                "dependsOn": "loop:node:1"
+              }
+            ],
+            "joins": [],
+            "budgets": []
+          },
+          "attempts": [
+            {
+              "id": "loop:node:1:attempt:1",
+              "logicalNodeId": "loop:node:1",
+              "workflowDefinitionId": "loop",
+              "definitionId": "source",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "loop"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            },
+            {
+              "id": "loop:node:2:attempt:1",
+              "logicalNodeId": "loop:node:2",
+              "workflowDefinitionId": "loop",
+              "definitionId": "a",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "loop"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            },
+            {
+              "id": "loop:node:2:attempt:2",
+              "logicalNodeId": "loop:node:2",
+              "workflowDefinitionId": "loop",
+              "definitionId": "b",
+              "sequence": 2,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "loop"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            },
+            {
+              "id": "loop:node:2:attempt:3",
+              "logicalNodeId": "loop:node:2",
+              "workflowDefinitionId": "loop",
+              "definitionId": "c",
+              "sequence": 3,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "loop"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            }
+          ],
+          "frontier": [
+            "loop:node:1"
+          ],
+          "guardrails": {
+            "maxQueueLength": 50,
+            "maxMutationsPerAttempt": 3,
+            "maxSessionInserts": 20,
+            "sessionInsertsUsed": 0,
+            "attemptMutationsUsed": [
+              {
+                "attemptId": "loop:node:1:attempt:1",
+                "used": 0
+              },
+              {
+                "attemptId": "loop:node:2:attempt:1",
+                "used": 0
+              },
+              {
+                "attemptId": "loop:node:2:attempt:2",
+                "used": 0
+              },
+              {
+                "attemptId": "loop:node:2:attempt:3",
+                "used": 0
+              }
+            ]
+          },
+          "status": "ready",
+          "followUp": null,
+          "aggregateSeq": 1
+        }
+      }
+    },
+    "run": [
+      {
+        "attemptId": "loop:node:1:attempt:1",
+        "definitionId": "source",
+        "logicalNodeId": "loop:node:1",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": []
+        },
+        "item": null,
+        "handoff": {
+          "summary": "two",
+          "items": [
+            {
+              "id": "x"
+            },
+            {
+              "id": "y"
+            }
+          ]
+        }
+      },
+      {
+        "attemptId": "loop:node:2:attempt:1",
+        "definitionId": "a",
+        "logicalNodeId": "loop:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "loop:node:1:attempt:1"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "open",
+          "findings": [
+            {
+              "id": "f"
+            }
+          ]
+        }
+      },
+      {
+        "attemptId": "loop:node:2:attempt:2",
+        "definitionId": "b",
+        "logicalNodeId": "loop:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "loop:node:1:attempt:1",
+            "loop:node:2:attempt:1"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "open",
+          "findings": [
+            {
+              "id": "f"
+            }
+          ]
+        }
+      },
+      {
+        "attemptId": "loop:node:2:attempt:3",
+        "definitionId": "c",
+        "logicalNodeId": "loop:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "loop:node:1:attempt:1",
+            "loop:node:2:attempt:1",
+            "loop:node:2:attempt:2"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "open",
+          "findings": [
+            {
+              "id": "f"
+            }
+          ]
+        }
+      },
+      {
+        "attemptId": "loop:node:2:attempt:4",
+        "definitionId": "a",
+        "logicalNodeId": "loop:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "loop:node:1:attempt:1",
+            "loop:node:2:attempt:1",
+            "loop:node:2:attempt:2",
+            "loop:node:2:attempt:3"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "open",
+          "findings": [
+            {
+              "id": "f"
+            }
+          ]
+        }
+      },
+      {
+        "attemptId": "loop:node:2:attempt:5",
+        "definitionId": "b",
+        "logicalNodeId": "loop:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "loop:node:1:attempt:1",
+            "loop:node:2:attempt:1",
+            "loop:node:2:attempt:2",
+            "loop:node:2:attempt:3",
+            "loop:node:2:attempt:4"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "open",
+          "findings": [
+            {
+              "id": "f"
+            }
+          ]
+        }
+      },
+      {
+        "attemptId": "loop:node:2:attempt:6",
+        "definitionId": "c",
+        "logicalNodeId": "loop:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "loop:node:1:attempt:1",
+            "loop:node:2:attempt:1",
+            "loop:node:2:attempt:2",
+            "loop:node:2:attempt:3",
+            "loop:node:2:attempt:4",
+            "loop:node:2:attempt:5"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "open",
+          "findings": [
+            {
+              "id": "f"
+            }
+          ]
+        }
+      }
+    ],
+    "status": "completed",
+    "attempts": [
+      {
+        "id": "loop:node:1:attempt:1",
+        "definitionId": "source",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2:attempt:1",
+        "definitionId": "a",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2:attempt:2",
+        "definitionId": "b",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2:attempt:3",
+        "definitionId": "c",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2:attempt:4",
+        "definitionId": "a",
+        "provenance": {
+          "_tag": "while"
+        },
+        "parentAttemptId": "loop:node:2:attempt:2",
+        "item": null,
+        "iteration": 2,
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2:attempt:5",
+        "definitionId": "b",
+        "provenance": {
+          "_tag": "while"
+        },
+        "parentAttemptId": "loop:node:2:attempt:2",
+        "item": null,
+        "iteration": 2,
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2:attempt:6",
+        "definitionId": "c",
+        "provenance": {
+          "_tag": "while"
+        },
+        "parentAttemptId": "loop:node:2:attempt:5",
+        "item": null,
+        "iteration": 2,
+        "state": "completed"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "loop:node:1",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2",
+        "kind": "while",
+        "state": "completed"
+      }
+    ]
+  },
+  "whileBound3": {
+    "root": {
+      "type": "workflow.control.initialized",
+      "version": 10,
+      "actor": "flywheel",
+      "payload": {
+        "control": {
+          "definitionIdentity": {
+            "workflowDefinitionId": "loop",
+            "vmVersion": "2",
+            "skills": [],
+            "personas": [],
+            "graphSha256": "75d59e63be942a39ed8d3487778e1c57d8f3103d4b36b94896e28e383578d0d0",
+            "steps": [
+              {
+                "stepId": "a",
+                "policySha256": "11d0e81b840d258f4e241f1d601e5ee6f01349e4f25880540166a2f05336ac02",
+                "contentSha256": "e1e8a02a0bdbb1fbe9c1ddffbedbe1ef7e158d3a0e27624819f4fa58824053e5",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "b",
+                "policySha256": "646b4e0a77648100042e17d073d6e4631aa8517aceb6c42d74e15175b7a5a648",
+                "contentSha256": "a6985948b485a5c52293456fc116a9f6c098948feefeb55d424c2df21f339cc8",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "c",
+                "policySha256": "80487281370a293c0eecb2dde8a9b95d5c9b14cdc75f47e5e718b68e6bb19db2",
+                "contentSha256": "0568efe921d8102beb5219bfcd3f7eeff0450c14558c313e7c04b67bdabfb405",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "source",
+                "policySha256": "fe71b96d636bc7445fcf702e89c71a87da082f6ba1abc3c9bc94b4df2f92377c",
+                "contentSha256": "10f94c3e0c868845c648d63e4da8c4313db36ceee54ab53ecb0104c87e656b25",
+                "outputSha256": "82e6e6d43ef7e334919a5488e66e354228337565ca2a0d881d8f7ea3de645f2b"
+              }
+            ]
+          },
+          "workflowName": "Loop",
+          "graph": {
+            "nodes": [
+              {
+                "kind": "step",
+                "id": "loop:node:1",
+                "workflowDefinitionId": "loop",
+                "order": 0,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "loop"
+                },
+                "state": {
+                  "_tag": "ready"
+                },
+                "definitionId": "source",
+                "name": "source",
+                "then": null,
+                "retry": null
+              },
+              {
+                "kind": "while",
+                "id": "loop:node:2",
+                "workflowDefinitionId": "loop",
+                "order": 1,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "loop"
+                },
+                "state": {
+                  "_tag": "pending"
+                },
+                "evaluator": {
+                  "step": "b",
+                  "field": "findings"
+                },
+                "body": [
+                  {
+                    "step": "a"
+                  },
+                  {
+                    "step": "b"
+                  },
+                  {
+                    "step": "c"
+                  }
+                ],
+                "maxIterations": 3,
+                "detectStuck": false,
+                "iteration": 1,
+                "priorNormalizedSignal": null
+              }
+            ],
+            "dependencies": [
+              {
+                "nodeId": "loop:node:2",
+                "dependsOn": "loop:node:1"
+              }
+            ],
+            "joins": [],
+            "budgets": []
+          },
+          "attempts": [
+            {
+              "id": "loop:node:1:attempt:1",
+              "logicalNodeId": "loop:node:1",
+              "workflowDefinitionId": "loop",
+              "definitionId": "source",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "loop"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            },
+            {
+              "id": "loop:node:2:attempt:1",
+              "logicalNodeId": "loop:node:2",
+              "workflowDefinitionId": "loop",
+              "definitionId": "a",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "loop"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            },
+            {
+              "id": "loop:node:2:attempt:2",
+              "logicalNodeId": "loop:node:2",
+              "workflowDefinitionId": "loop",
+              "definitionId": "b",
+              "sequence": 2,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "loop"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            },
+            {
+              "id": "loop:node:2:attempt:3",
+              "logicalNodeId": "loop:node:2",
+              "workflowDefinitionId": "loop",
+              "definitionId": "c",
+              "sequence": 3,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "loop"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            }
+          ],
+          "frontier": [
+            "loop:node:1"
+          ],
+          "guardrails": {
+            "maxQueueLength": 50,
+            "maxMutationsPerAttempt": 3,
+            "maxSessionInserts": 20,
+            "sessionInsertsUsed": 0,
+            "attemptMutationsUsed": [
+              {
+                "attemptId": "loop:node:1:attempt:1",
+                "used": 0
+              },
+              {
+                "attemptId": "loop:node:2:attempt:1",
+                "used": 0
+              },
+              {
+                "attemptId": "loop:node:2:attempt:2",
+                "used": 0
+              },
+              {
+                "attemptId": "loop:node:2:attempt:3",
+                "used": 0
+              }
+            ]
+          },
+          "status": "ready",
+          "followUp": null,
+          "aggregateSeq": 1
+        }
+      }
+    },
+    "run": [
+      {
+        "attemptId": "loop:node:1:attempt:1",
+        "definitionId": "source",
+        "logicalNodeId": "loop:node:1",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": []
+        },
+        "item": null,
+        "handoff": {
+          "summary": "two",
+          "items": [
+            {
+              "id": "x"
+            },
+            {
+              "id": "y"
+            }
+          ]
+        }
+      },
+      {
+        "attemptId": "loop:node:2:attempt:1",
+        "definitionId": "a",
+        "logicalNodeId": "loop:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "loop:node:1:attempt:1"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "open",
+          "findings": [
+            {
+              "id": "f"
+            }
+          ]
+        }
+      },
+      {
+        "attemptId": "loop:node:2:attempt:2",
+        "definitionId": "b",
+        "logicalNodeId": "loop:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "loop:node:1:attempt:1",
+            "loop:node:2:attempt:1"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "open",
+          "findings": [
+            {
+              "id": "f"
+            }
+          ]
+        }
+      },
+      {
+        "attemptId": "loop:node:2:attempt:3",
+        "definitionId": "c",
+        "logicalNodeId": "loop:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "loop:node:1:attempt:1",
+            "loop:node:2:attempt:1",
+            "loop:node:2:attempt:2"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "open",
+          "findings": [
+            {
+              "id": "f"
+            }
+          ]
+        }
+      },
+      {
+        "attemptId": "loop:node:2:attempt:4",
+        "definitionId": "a",
+        "logicalNodeId": "loop:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "loop:node:1:attempt:1",
+            "loop:node:2:attempt:1",
+            "loop:node:2:attempt:2",
+            "loop:node:2:attempt:3"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "clean",
+          "findings": []
+        }
+      },
+      {
+        "attemptId": "loop:node:2:attempt:5",
+        "definitionId": "b",
+        "logicalNodeId": "loop:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "loop:node:1:attempt:1",
+            "loop:node:2:attempt:1",
+            "loop:node:2:attempt:2",
+            "loop:node:2:attempt:3",
+            "loop:node:2:attempt:4"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "clean",
+          "findings": []
+        }
+      }
+    ],
+    "status": "completed",
+    "attempts": [
+      {
+        "id": "loop:node:1:attempt:1",
+        "definitionId": "source",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2:attempt:1",
+        "definitionId": "a",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2:attempt:2",
+        "definitionId": "b",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2:attempt:3",
+        "definitionId": "c",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2:attempt:4",
+        "definitionId": "a",
+        "provenance": {
+          "_tag": "while"
+        },
+        "parentAttemptId": "loop:node:2:attempt:2",
+        "item": null,
+        "iteration": 2,
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2:attempt:5",
+        "definitionId": "b",
+        "provenance": {
+          "_tag": "while"
+        },
+        "parentAttemptId": "loop:node:2:attempt:2",
+        "item": null,
+        "iteration": 2,
+        "state": "completed"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "loop:node:1",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2",
+        "kind": "while",
+        "state": "completed"
+      }
+    ]
+  },
+  "rounds": {
+    "root": {
+      "type": "workflow.control.initialized",
+      "version": 10,
+      "actor": "flywheel",
+      "payload": {
+        "control": {
+          "definitionIdentity": {
+            "workflowDefinitionId": "rounds",
+            "vmVersion": "2",
+            "skills": [],
+            "personas": [],
+            "graphSha256": "4ef0fc564f94b8b564132258933e7b1e0ec316b8ab58a5aaa8cea924c45f587b",
+            "steps": [
+              {
+                "stepId": "hunt",
+                "policySha256": "494ae3dd44b7e98dea2c61ab3ebb02fb4c649bddd7ce8704a419adec1a672f79",
+                "contentSha256": "b4677b2010195d05c99fb1dfc47eb8b1057b4caecad0c951f950d3250840a352",
+                "outputSha256": "560d9951b728d9e5abbbe19683cb02f407f6023421ff5a1a4f5a35e8427add7d"
+              },
+              {
+                "stepId": "report",
+                "policySha256": "093d61a956be3c1b161e055216262ab4361270542b0df0782298ec68c0ad4a17",
+                "contentSha256": "59b0d261fdaf20aea060c3c9a42b1e5a3342284c6f42c28fff6e44f2c1f313fe",
+                "outputSha256": "f35cd02cd97b67077a86f78eb15ec16044957e3420ff5787bcf1b5a715f40d06"
+              },
+              {
+                "stepId": "source",
+                "policySha256": "fe71b96d636bc7445fcf702e89c71a87da082f6ba1abc3c9bc94b4df2f92377c",
+                "contentSha256": "ac942dd345316b0c496ea57657fbe6c81f82163800ee8b8792d62149ca360cc2",
+                "outputSha256": "28b32623fe329e2338473ed7486c3ee3734d8815084f5e6b47f65cc107ffe437"
+              }
+            ]
+          },
+          "workflowName": "Rounds",
+          "graph": {
+            "nodes": [
+              {
+                "kind": "step",
+                "id": "rounds:node:1",
+                "workflowDefinitionId": "rounds",
+                "order": 0,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "rounds"
+                },
+                "state": {
+                  "_tag": "ready"
+                },
+                "definitionId": "source",
+                "name": "source",
+                "then": null,
+                "retry": null
+              },
+              {
+                "kind": "rounds",
+                "id": "rounds:node:2",
+                "workflowDefinitionId": "rounds",
+                "order": 1,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "rounds"
+                },
+                "state": {
+                  "_tag": "pending"
+                },
+                "mapId": "finds",
+                "field": "kept",
+                "maxIterations": 2
+              },
+              {
+                "kind": "group",
+                "id": "rounds:node:2:round:1",
+                "workflowDefinitionId": "rounds",
+                "order": 2,
+                "ownership": {
+                  "_tag": "rounds",
+                  "workflowDefinitionId": "rounds",
+                  "parentNodeId": "rounds:node:2",
+                  "round": 1
+                },
+                "state": {
+                  "_tag": "pending"
+                },
+                "mapId": "finds",
+                "name": "finds",
+                "source": {
+                  "nodeId": "rounds:node:1",
+                  "field": "items"
+                },
+                "key": "id",
+                "label": null,
+                "width": 3,
+                "stages": [
+                  {
+                    "step": "hunt",
+                    "name": "hunt"
+                  }
+                ],
+                "retry": null,
+                "reducer": {
+                  "id": "dedupe",
+                  "version": 2,
+                  "params": {
+                    "items": "bugs",
+                    "by": "site"
+                  },
+                  "contract": {
+                    "kept": {
+                      "type": "list",
+                      "description": "The first item per \"site\" that no earlier round of the loop kept or dropped, in branch-key order and then list order, each with the key of its branch.",
+                      "max": 9,
+                      "unique": "site",
+                      "of": {
+                        "type": "object",
+                        "fields": {
+                          "site": {
+                            "type": "string",
+                            "description": "Key."
+                          },
+                          "branch": {
+                            "type": "string",
+                            "description": "The key of the branch that reported the item."
+                          }
+                        }
+                      }
+                    },
+                    "dropped": {
+                      "type": "list",
+                      "description": "Every entry that the join did not keep, in fold order, each with the reason.",
+                      "max": 9,
+                      "of": {
+                        "type": "object",
+                        "fields": {
+                          "key": {
+                            "type": "string",
+                            "description": "The key of the entry, or null when the item states none.",
+                            "nullable": true
+                          },
+                          "branch": {
+                            "type": "string",
+                            "description": "The key of the branch that reported the item."
+                          },
+                          "reason": {
+                            "type": "string",
+                            "description": "Why the join dropped the entry."
+                          }
+                        }
+                      }
+                    },
+                    "failed": {
+                      "type": "list",
+                      "description": "The keys of the branches that failed or did not settle, ordered by key. They reported no entries.",
+                      "max": 3,
+                      "of": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "write": {
+                  "id": "finds",
+                  "lifetime": "transient"
+                },
+                "admittedContext": null,
+                "settlement": null
+              },
+              {
+                "kind": "step",
+                "id": "rounds:node:3",
+                "workflowDefinitionId": "rounds",
+                "order": 3,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "rounds"
+                },
+                "state": {
+                  "_tag": "pending"
+                },
+                "definitionId": "report",
+                "name": "report",
+                "then": null,
+                "retry": null
+              }
+            ],
+            "dependencies": [
+              {
+                "nodeId": "rounds:node:2",
+                "dependsOn": "rounds:node:1"
+              },
+              {
+                "nodeId": "rounds:node:3",
+                "dependsOn": "rounds:node:2"
+              }
+            ],
+            "joins": [],
+            "budgets": []
+          },
+          "attempts": [
+            {
+              "id": "rounds:node:1:attempt:1",
+              "logicalNodeId": "rounds:node:1",
+              "workflowDefinitionId": "rounds",
+              "definitionId": "source",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "rounds"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            },
+            {
+              "id": "rounds:node:3:attempt:1",
+              "logicalNodeId": "rounds:node:3",
+              "workflowDefinitionId": "rounds",
+              "definitionId": "report",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "rounds"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            }
+          ],
+          "frontier": [
+            "rounds:node:1"
+          ],
+          "guardrails": {
+            "maxQueueLength": 50,
+            "maxMutationsPerAttempt": 3,
+            "maxSessionInserts": 20,
+            "sessionInsertsUsed": 0,
+            "attemptMutationsUsed": [
+              {
+                "attemptId": "rounds:node:1:attempt:1",
+                "used": 0
+              },
+              {
+                "attemptId": "rounds:node:3:attempt:1",
+                "used": 0
+              }
+            ]
+          },
+          "status": "ready",
+          "followUp": null,
+          "aggregateSeq": 1
+        }
+      }
+    },
+    "run": [
+      {
+        "attemptId": "rounds:node:1:attempt:1",
+        "definitionId": "source",
+        "logicalNodeId": "rounds:node:1",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": []
+        },
+        "item": null,
+        "handoff": {
+          "summary": "two",
+          "items": [
+            {
+              "id": "x"
+            },
+            {
+              "id": "y"
+            }
+          ]
+        }
+      },
+      {
+        "attemptId": "rounds:node:2:round:1:branch:1:stage:1:attempt:1",
+        "definitionId": "hunt",
+        "logicalNodeId": "rounds:node:2:round:1:branch:1:stage:1",
+        "scope": {
+          "_tag": "branch",
+          "groupNodeId": "rounds:node:2:round:1",
+          "branchNodeId": "rounds:node:2:round:1:branch:1",
+          "key": "x",
+          "sharedEntryIds": [
+            "rounds:node:1:attempt:1"
+          ],
+          "bundleOrder": true
+        },
+        "item": {
+          "id": "x"
+        },
+        "handoff": {
+          "summary": "found",
+          "bugs": [
+            {
+              "site": "src/1.ts:1"
+            }
+          ]
+        }
+      },
+      {
+        "attemptId": "rounds:node:2:round:1:branch:2:stage:1:attempt:1",
+        "definitionId": "hunt",
+        "logicalNodeId": "rounds:node:2:round:1:branch:2:stage:1",
+        "scope": {
+          "_tag": "branch",
+          "groupNodeId": "rounds:node:2:round:1",
+          "branchNodeId": "rounds:node:2:round:1:branch:2",
+          "key": "y",
+          "sharedEntryIds": [
+            "rounds:node:1:attempt:1"
+          ],
+          "bundleOrder": true
+        },
+        "item": {
+          "id": "y"
+        },
+        "handoff": {
+          "summary": "found",
+          "bugs": [
+            {
+              "site": "src/2.ts:1"
+            }
+          ]
+        }
+      },
+      {
+        "attemptId": "rounds:node:2:round:2:branch:1:stage:1:attempt:1",
+        "definitionId": "hunt",
+        "logicalNodeId": "rounds:node:2:round:2:branch:1:stage:1",
+        "scope": {
+          "_tag": "branch",
+          "groupNodeId": "rounds:node:2:round:2",
+          "branchNodeId": "rounds:node:2:round:2:branch:1",
+          "key": "x",
+          "sharedEntryIds": [
+            "rounds:node:1:attempt:1",
+            "rounds:node:2:round:1:join"
+          ],
+          "bundleOrder": true
+        },
+        "item": {
+          "id": "x"
+        },
+        "handoff": {
+          "summary": "found",
+          "bugs": [
+            {
+              "site": "src/1.ts:1"
+            }
+          ]
+        }
+      },
+      {
+        "attemptId": "rounds:node:2:round:2:branch:2:stage:1:attempt:1",
+        "definitionId": "hunt",
+        "logicalNodeId": "rounds:node:2:round:2:branch:2:stage:1",
+        "scope": {
+          "_tag": "branch",
+          "groupNodeId": "rounds:node:2:round:2",
+          "branchNodeId": "rounds:node:2:round:2:branch:2",
+          "key": "y",
+          "sharedEntryIds": [
+            "rounds:node:1:attempt:1",
+            "rounds:node:2:round:1:join"
+          ],
+          "bundleOrder": true
+        },
+        "item": {
+          "id": "y"
+        },
+        "handoff": {
+          "summary": "found",
+          "bugs": [
+            {
+              "site": "src/1.ts:1"
+            }
+          ]
+        }
+      },
+      {
+        "attemptId": "rounds:node:3:attempt:1",
+        "definitionId": "report",
+        "logicalNodeId": "rounds:node:3",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "rounds:node:1:attempt:1",
+            "rounds:node:2:round:1:join",
+            "rounds:node:2:round:2:join",
+            "rounds:node:2:join"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      }
+    ],
+    "status": "completed",
+    "attempts": [
+      {
+        "id": "rounds:node:1:attempt:1",
+        "definitionId": "source",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "rounds:node:2:round:1:branch:1:stage:1:attempt:1",
+        "definitionId": "hunt",
+        "provenance": {
+          "_tag": "branch",
+          "ordinal": 1
+        },
+        "parentAttemptId": null,
+        "item": {
+          "id": "x"
+        },
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "rounds:node:2:round:1:branch:2:stage:1:attempt:1",
+        "definitionId": "hunt",
+        "provenance": {
+          "_tag": "branch",
+          "ordinal": 2
+        },
+        "parentAttemptId": null,
+        "item": {
+          "id": "y"
+        },
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "rounds:node:2:round:2:branch:1:stage:1:attempt:1",
+        "definitionId": "hunt",
+        "provenance": {
+          "_tag": "branch",
+          "ordinal": 1
+        },
+        "parentAttemptId": null,
+        "item": {
+          "id": "x"
+        },
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "rounds:node:2:round:2:branch:2:stage:1:attempt:1",
+        "definitionId": "hunt",
+        "provenance": {
+          "_tag": "branch",
+          "ordinal": 2
+        },
+        "parentAttemptId": null,
+        "item": {
+          "id": "y"
+        },
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "rounds:node:3:attempt:1",
+        "definitionId": "report",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "rounds:node:1",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "rounds:node:2",
+        "kind": "rounds",
+        "state": "completed"
+      },
+      {
+        "id": "rounds:node:2:round:1",
+        "kind": "group",
+        "state": "completed"
+      },
+      {
+        "id": "rounds:node:2:round:1:branch:1",
+        "kind": "branch",
+        "state": "completed"
+      },
+      {
+        "id": "rounds:node:2:round:1:branch:1:stage:1",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "rounds:node:2:round:1:branch:2",
+        "kind": "branch",
+        "state": "completed"
+      },
+      {
+        "id": "rounds:node:2:round:1:branch:2:stage:1",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "rounds:node:2:round:2",
+        "kind": "group",
+        "state": "completed"
+      },
+      {
+        "id": "rounds:node:2:round:2:branch:1",
+        "kind": "branch",
+        "state": "completed"
+      },
+      {
+        "id": "rounds:node:2:round:2:branch:1:stage:1",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "rounds:node:2:round:2:branch:2",
+        "kind": "branch",
+        "state": "completed"
+      },
+      {
+        "id": "rounds:node:2:round:2:branch:2:stage:1",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "rounds:node:3",
+        "kind": "step",
+        "state": "completed"
+      }
+    ]
+  },
+  "phaseBudget": {
+    "root": {
+      "type": "workflow.control.initialized",
+      "version": 10,
+      "actor": "flywheel",
+      "payload": {
+        "control": {
+          "definitionIdentity": {
+            "workflowDefinitionId": "budget",
+            "vmVersion": "2",
+            "skills": [],
+            "personas": [],
+            "graphSha256": "2a00206bd2b6605a3138ae4da1d7564ccd3d975102dfedbc462f56ca2219d59a",
+            "phases": [
+              {
+                "phaseId": "build",
+                "sha256": "324d6f2223c890da371a68ec2d63d584f64b00aa2ebf71b14ebefa0fd0e51dea"
+              }
+            ],
+            "steps": [
+              {
+                "stepId": "a",
+                "policySha256": "11d0e81b840d258f4e241f1d601e5ee6f01349e4f25880540166a2f05336ac02",
+                "contentSha256": "0a03e3bef23ab4f6bfbd84b9418fcd270134e9dbef7af1140ad6264666fa27ad",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "b",
+                "policySha256": "646b4e0a77648100042e17d073d6e4631aa8517aceb6c42d74e15175b7a5a648",
+                "contentSha256": "6d6575d683667d9f2ca7250ffb2182533eb8d4c5208c258b35cd16c120fbfe81",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "c",
+                "policySha256": "80487281370a293c0eecb2dde8a9b95d5c9b14cdc75f47e5e718b68e6bb19db2",
+                "contentSha256": "46f98ad6a247c67443d120a7ae445fe6a266c18e21c4efcb104376730fb605be",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "source",
+                "policySha256": "fe71b96d636bc7445fcf702e89c71a87da082f6ba1abc3c9bc94b4df2f92377c",
+                "contentSha256": "76883ed13f662732951894df1f9670bf8576a706af2b2245be83a047235e5f35",
+                "outputSha256": "82e6e6d43ef7e334919a5488e66e354228337565ca2a0d881d8f7ea3de645f2b"
+              }
+            ]
+          },
+          "workflowName": "Budget",
+          "graph": {
+            "nodes": [
+              {
+                "kind": "phase",
+                "id": "budget:node:1",
+                "workflowDefinitionId": "budget",
+                "order": 0,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "budget"
+                },
+                "state": {
+                  "_tag": "ready"
+                },
+                "phaseId": "build",
+                "name": "build"
+              },
+              {
+                "kind": "step",
+                "id": "budget:node:1:node:1",
+                "workflowDefinitionId": "budget",
+                "order": 1,
+                "ownership": {
+                  "_tag": "phase",
+                  "workflowDefinitionId": "budget",
+                  "phaseId": "build",
+                  "parentNodeId": "budget:node:1"
+                },
+                "state": {
+                  "_tag": "pending"
+                },
+                "definitionId": "a",
+                "name": "a",
+                "then": null,
+                "retry": null
+              },
+              {
+                "kind": "step",
+                "id": "budget:node:1:node:2",
+                "workflowDefinitionId": "budget",
+                "order": 2,
+                "ownership": {
+                  "_tag": "phase",
+                  "workflowDefinitionId": "budget",
+                  "phaseId": "build",
+                  "parentNodeId": "budget:node:1"
+                },
+                "state": {
+                  "_tag": "pending"
+                },
+                "definitionId": "b",
+                "name": "b",
+                "then": null,
+                "retry": null
+              },
+              {
+                "kind": "step",
+                "id": "budget:node:2",
+                "workflowDefinitionId": "budget",
+                "order": 3,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "budget"
+                },
+                "state": {
+                  "_tag": "pending"
+                },
+                "definitionId": "c",
+                "name": "c",
+                "then": null,
+                "retry": null
+              }
+            ],
+            "dependencies": [
+              {
+                "nodeId": "budget:node:2",
+                "dependsOn": "budget:node:1"
+              }
+            ],
+            "joins": [],
+            "budgets": [
+              {
+                "parentNodeId": "budget:node:1",
+                "limits": {
+                  "nodes": 4,
+                  "depth": 2
+                }
+              }
+            ]
+          },
+          "attempts": [
+            {
+              "id": "budget:node:1:node:1:attempt:1",
+              "logicalNodeId": "budget:node:1:node:1",
+              "workflowDefinitionId": "budget",
+              "definitionId": "a",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "phase",
+                "workflowDefinitionId": "budget",
+                "phaseId": "build",
+                "parentNodeId": "budget:node:1"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            },
+            {
+              "id": "budget:node:1:node:2:attempt:1",
+              "logicalNodeId": "budget:node:1:node:2",
+              "workflowDefinitionId": "budget",
+              "definitionId": "b",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "phase",
+                "workflowDefinitionId": "budget",
+                "phaseId": "build",
+                "parentNodeId": "budget:node:1"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            },
+            {
+              "id": "budget:node:2:attempt:1",
+              "logicalNodeId": "budget:node:2",
+              "workflowDefinitionId": "budget",
+              "definitionId": "c",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "budget"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            }
+          ],
+          "frontier": [],
+          "guardrails": {
+            "maxQueueLength": 50,
+            "maxMutationsPerAttempt": 3,
+            "maxSessionInserts": 20,
+            "sessionInsertsUsed": 0,
+            "attemptMutationsUsed": [
+              {
+                "attemptId": "budget:node:1:node:1:attempt:1",
+                "used": 0
+              },
+              {
+                "attemptId": "budget:node:1:node:2:attempt:1",
+                "used": 0
+              },
+              {
+                "attemptId": "budget:node:2:attempt:1",
+                "used": 0
+              }
+            ]
+          },
+          "status": "ready",
+          "followUp": null,
+          "aggregateSeq": 1
+        }
+      }
+    },
+    "run": [
+      {
+        "attemptId": "budget:node:1:node:1:attempt:1",
+        "definitionId": "a",
+        "logicalNodeId": "budget:node:1:node:1",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": []
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      },
+      {
+        "attemptId": "budget:node:1:node:2:attempt:1",
+        "definitionId": "b",
+        "logicalNodeId": "budget:node:1:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": []
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      },
+      {
+        "attemptId": "budget:node:2:attempt:1",
+        "definitionId": "c",
+        "logicalNodeId": "budget:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "budget:node:1:node:1:attempt:1",
+            "budget:node:1:node:2:attempt:1"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      }
+    ],
+    "status": "completed",
+    "attempts": [
+      {
+        "id": "budget:node:1:node:1:attempt:1",
+        "definitionId": "a",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "budget:node:1:node:2:attempt:1",
+        "definitionId": "b",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "budget:node:2:attempt:1",
+        "definitionId": "c",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "budget:node:1",
+        "kind": "phase",
+        "state": "completed"
+      },
+      {
+        "id": "budget:node:1:node:1",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "budget:node:1:node:2",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "budget:node:2",
+        "kind": "step",
+        "state": "completed"
+      }
+    ]
+  },
+  "stageReads": {
+    "root": {
+      "type": "workflow.control.initialized",
+      "version": 10,
+      "actor": "flywheel",
+      "payload": {
+        "control": {
+          "definitionIdentity": {
+            "workflowDefinitionId": "reads",
+            "vmVersion": "2",
+            "skills": [],
+            "personas": [],
+            "graphSha256": "5f1edc10b6825c7de4c19363d7ed0d335832f0def4f8291eaf931cc03454cb74",
+            "steps": [
+              {
+                "stepId": "check",
+                "policySha256": "e92671f8d95f7fda8de89f3bbfaaff1a33b01b82997b00a9aef6d236f73910ec",
+                "contentSha256": "8f7145af9d5f3d5cc340d03323eda7023cd8ea5f8124a679b1661c51d1dcb76f",
+                "outputSha256": "f35cd02cd97b67077a86f78eb15ec16044957e3420ff5787bcf1b5a715f40d06"
+              },
+              {
+                "stepId": "report",
+                "policySha256": "093d61a956be3c1b161e055216262ab4361270542b0df0782298ec68c0ad4a17",
+                "contentSha256": "1ceb7077c66d179c458fd9c9d649c7f7ee26df049a9faf9d3d8950b1ed4ad273",
+                "outputSha256": "f35cd02cd97b67077a86f78eb15ec16044957e3420ff5787bcf1b5a715f40d06"
+              },
+              {
+                "stepId": "review",
+                "policySha256": "fe17b82ea7bbbd38db98d724aa33354dc73381ee04d97e3885dd12219e7b473b",
+                "contentSha256": "12afec6248c81f95090ae3590335732fc944d7f2f64ef218a1cab4f57cb157f3",
+                "outputSha256": "f35cd02cd97b67077a86f78eb15ec16044957e3420ff5787bcf1b5a715f40d06"
+              },
+              {
+                "stepId": "scope",
+                "policySha256": "aa880a4c6252fbec246731bd1cc380b33e69137c9d96c51432aefb26e0c2568d",
+                "contentSha256": "0bf905598c86514b49c3dfd3673878275ca6615d1c3bc07696b21ac6dc793e3f",
+                "outputSha256": "f35cd02cd97b67077a86f78eb15ec16044957e3420ff5787bcf1b5a715f40d06"
+              },
+              {
+                "stepId": "source",
+                "policySha256": "fe71b96d636bc7445fcf702e89c71a87da082f6ba1abc3c9bc94b4df2f92377c",
+                "contentSha256": "8e675e4607cc1cf5c03a0064d6a674a1a1c36dbb5b7d524c0167c981e5966be7",
+                "outputSha256": "28b32623fe329e2338473ed7486c3ee3734d8815084f5e6b47f65cc107ffe437"
+              }
+            ]
+          },
+          "workflowName": "Reads",
+          "graph": {
+            "nodes": [
+              {
+                "kind": "step",
+                "id": "reads:node:1",
+                "workflowDefinitionId": "reads",
+                "order": 0,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "reads"
+                },
+                "state": {
+                  "_tag": "ready"
+                },
+                "definitionId": "scope",
+                "name": "scope",
+                "then": null,
+                "retry": null
+              },
+              {
+                "kind": "step",
+                "id": "reads:node:2",
+                "workflowDefinitionId": "reads",
+                "order": 1,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "reads"
+                },
+                "state": {
+                  "_tag": "pending"
+                },
+                "definitionId": "source",
+                "name": "source",
+                "then": null,
+                "retry": null
+              },
+              {
+                "kind": "group",
+                "id": "reads:node:3",
+                "workflowDefinitionId": "reads",
+                "order": 2,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "reads"
+                },
+                "state": {
+                  "_tag": "pending"
+                },
+                "mapId": "reviews",
+                "name": "reviews",
+                "source": {
+                  "nodeId": "reads:node:2",
+                  "field": "items"
+                },
+                "key": "id",
+                "label": null,
+                "width": 3,
+                "stages": [
+                  {
+                    "step": "review",
+                    "name": "review"
+                  },
+                  {
+                    "step": "check",
+                    "name": "check"
+                  }
+                ],
+                "retry": null,
+                "reducer": {
+                  "id": "collect",
+                  "version": 1,
+                  "params": {},
+                  "contract": {
+                    "total": {
+                      "type": "number",
+                      "description": "How many branches the frozen manifest admitted."
+                    },
+                    "completed": {
+                      "type": "number",
+                      "description": "How many branches completed every stage."
+                    },
+                    "failed": {
+                      "type": "number",
+                      "description": "How many branches failed a stage."
+                    },
+                    "items": {
+                      "type": "list",
+                      "description": "One item per branch, ordered by key.",
+                      "max": 3,
+                      "unique": "key",
+                      "of": {
+                        "type": "object",
+                        "fields": {
+                          "key": {
+                            "type": "string",
+                            "description": "The branch identity: the item's unique key."
+                          },
+                          "disposition": {
+                            "type": "enum",
+                            "description": "How the branch ended.",
+                            "values": [
+                              "completed",
+                              "failed"
+                            ]
+                          },
+                          "handoff": {
+                            "type": "object",
+                            "description": "The handoff of the branch's last stage, or null when the branch failed.",
+                            "nullable": true,
+                            "fields": {
+                              "step_id": {
+                                "type": "string",
+                                "description": "The attempt that wrote the handoff."
+                              },
+                              "sha256": {
+                                "type": "string",
+                                "description": "The sha256 of the handoff content."
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "write": {
+                  "id": "reviews",
+                  "lifetime": "transient"
+                },
+                "admittedContext": null,
+                "settlement": null
+              },
+              {
+                "kind": "step",
+                "id": "reads:node:4",
+                "workflowDefinitionId": "reads",
+                "order": 3,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "reads"
+                },
+                "state": {
+                  "_tag": "pending"
+                },
+                "definitionId": "report",
+                "name": "report",
+                "then": null,
+                "retry": null
+              }
+            ],
+            "dependencies": [
+              {
+                "nodeId": "reads:node:2",
+                "dependsOn": "reads:node:1"
+              },
+              {
+                "nodeId": "reads:node:3",
+                "dependsOn": "reads:node:2"
+              },
+              {
+                "nodeId": "reads:node:4",
+                "dependsOn": "reads:node:3"
+              }
+            ],
+            "joins": [],
+            "budgets": []
+          },
+          "attempts": [
+            {
+              "id": "reads:node:1:attempt:1",
+              "logicalNodeId": "reads:node:1",
+              "workflowDefinitionId": "reads",
+              "definitionId": "scope",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "reads"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            },
+            {
+              "id": "reads:node:2:attempt:1",
+              "logicalNodeId": "reads:node:2",
+              "workflowDefinitionId": "reads",
+              "definitionId": "source",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "reads"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            },
+            {
+              "id": "reads:node:4:attempt:1",
+              "logicalNodeId": "reads:node:4",
+              "workflowDefinitionId": "reads",
+              "definitionId": "report",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "reads"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            }
+          ],
+          "frontier": [
+            "reads:node:1"
+          ],
+          "guardrails": {
+            "maxQueueLength": 50,
+            "maxMutationsPerAttempt": 3,
+            "maxSessionInserts": 20,
+            "sessionInsertsUsed": 0,
+            "attemptMutationsUsed": [
+              {
+                "attemptId": "reads:node:1:attempt:1",
+                "used": 0
+              },
+              {
+                "attemptId": "reads:node:2:attempt:1",
+                "used": 0
+              },
+              {
+                "attemptId": "reads:node:4:attempt:1",
+                "used": 0
+              }
+            ]
+          },
+          "status": "ready",
+          "followUp": null,
+          "aggregateSeq": 1
+        }
+      }
+    },
+    "run": [
+      {
+        "attemptId": "reads:node:1:attempt:1",
+        "definitionId": "scope",
+        "logicalNodeId": "reads:node:1",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": []
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      },
+      {
+        "attemptId": "reads:node:2:attempt:1",
+        "definitionId": "source",
+        "logicalNodeId": "reads:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "reads:node:1:attempt:1"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "two",
+          "items": [
+            {
+              "id": "x"
+            },
+            {
+              "id": "y"
+            }
+          ]
+        }
+      },
+      {
+        "attemptId": "reads:node:3:branch:1:stage:1:attempt:1",
+        "definitionId": "review",
+        "logicalNodeId": "reads:node:3:branch:1:stage:1",
+        "scope": {
+          "_tag": "branch",
+          "groupNodeId": "reads:node:3",
+          "branchNodeId": "reads:node:3:branch:1",
+          "key": "x",
+          "sharedEntryIds": [
+            "reads:node:1:attempt:1",
+            "reads:node:2:attempt:1"
+          ],
+          "bundleOrder": true
+        },
+        "item": {
+          "id": "x"
+        },
+        "handoff": {
+          "summary": "done"
+        }
+      },
+      {
+        "attemptId": "reads:node:3:branch:1:stage:2:attempt:1",
+        "definitionId": "check",
+        "logicalNodeId": "reads:node:3:branch:1:stage:2",
+        "scope": {
+          "_tag": "branch",
+          "groupNodeId": "reads:node:3",
+          "branchNodeId": "reads:node:3:branch:1",
+          "key": "x",
+          "sharedEntryIds": [
+            "reads:node:1:attempt:1",
+            "reads:node:2:attempt:1"
+          ],
+          "bundleOrder": true
+        },
+        "item": {
+          "id": "x"
+        },
+        "handoff": {
+          "summary": "done"
+        }
+      },
+      {
+        "attemptId": "reads:node:3:branch:2:stage:1:attempt:1",
+        "definitionId": "review",
+        "logicalNodeId": "reads:node:3:branch:2:stage:1",
+        "scope": {
+          "_tag": "branch",
+          "groupNodeId": "reads:node:3",
+          "branchNodeId": "reads:node:3:branch:2",
+          "key": "y",
+          "sharedEntryIds": [
+            "reads:node:1:attempt:1",
+            "reads:node:2:attempt:1"
+          ],
+          "bundleOrder": true
+        },
+        "item": {
+          "id": "y"
+        },
+        "handoff": {
+          "summary": "done"
+        }
+      },
+      {
+        "attemptId": "reads:node:3:branch:2:stage:2:attempt:1",
+        "definitionId": "check",
+        "logicalNodeId": "reads:node:3:branch:2:stage:2",
+        "scope": {
+          "_tag": "branch",
+          "groupNodeId": "reads:node:3",
+          "branchNodeId": "reads:node:3:branch:2",
+          "key": "y",
+          "sharedEntryIds": [
+            "reads:node:1:attempt:1",
+            "reads:node:2:attempt:1"
+          ],
+          "bundleOrder": true
+        },
+        "item": {
+          "id": "y"
+        },
+        "handoff": {
+          "summary": "done"
+        }
+      },
+      {
+        "attemptId": "reads:node:4:attempt:1",
+        "definitionId": "report",
+        "logicalNodeId": "reads:node:4",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "reads:node:1:attempt:1",
+            "reads:node:2:attempt:1",
+            "reads:node:3:join"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      }
+    ],
+    "status": "completed",
+    "attempts": [
+      {
+        "id": "reads:node:1:attempt:1",
+        "definitionId": "scope",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "reads:node:2:attempt:1",
+        "definitionId": "source",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "reads:node:3:branch:1:stage:1:attempt:1",
+        "definitionId": "review",
+        "provenance": {
+          "_tag": "branch",
+          "ordinal": 1
+        },
+        "parentAttemptId": null,
+        "item": {
+          "id": "x"
+        },
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "reads:node:3:branch:1:stage:2:attempt:1",
+        "definitionId": "check",
+        "provenance": {
+          "_tag": "branch",
+          "ordinal": 1
+        },
+        "parentAttemptId": null,
+        "item": {
+          "id": "x"
+        },
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "reads:node:3:branch:2:stage:1:attempt:1",
+        "definitionId": "review",
+        "provenance": {
+          "_tag": "branch",
+          "ordinal": 2
+        },
+        "parentAttemptId": null,
+        "item": {
+          "id": "y"
+        },
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "reads:node:3:branch:2:stage:2:attempt:1",
+        "definitionId": "check",
+        "provenance": {
+          "_tag": "branch",
+          "ordinal": 2
+        },
+        "parentAttemptId": null,
+        "item": {
+          "id": "y"
+        },
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "reads:node:4:attempt:1",
+        "definitionId": "report",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "reads:node:1",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "reads:node:2",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "reads:node:3",
+        "kind": "group",
+        "state": "completed"
+      },
+      {
+        "id": "reads:node:3:branch:1",
+        "kind": "branch",
+        "state": "completed"
+      },
+      {
+        "id": "reads:node:3:branch:1:stage:1",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "reads:node:3:branch:1:stage:2",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "reads:node:3:branch:2",
+        "kind": "branch",
+        "state": "completed"
+      },
+      {
+        "id": "reads:node:3:branch:2:stage:1",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "reads:node:3:branch:2:stage:2",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "reads:node:4",
+        "kind": "step",
+        "state": "completed"
+      }
+    ]
+  },
+  "span": {
+    "root": {
+      "type": "workflow.control.initialized",
+      "version": 10,
+      "actor": "flywheel",
+      "payload": {
+        "control": {
+          "definitionIdentity": {
+            "workflowDefinitionId": "span",
+            "vmVersion": "2",
+            "skills": [],
+            "personas": [],
+            "graphSha256": "a7fe1dc124bbf5c51f28059c0f36d694e217de7cf816da2e7f0dc2e2fdcf758c",
+            "steps": [
+              {
+                "stepId": "a",
+                "policySha256": "11d0e81b840d258f4e241f1d601e5ee6f01349e4f25880540166a2f05336ac02",
+                "contentSha256": "f55456a1b06785dee3d96992325ff2d2167ac3a9859f1d2028ab5e197e36384a",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "b",
+                "policySha256": "646b4e0a77648100042e17d073d6e4631aa8517aceb6c42d74e15175b7a5a648",
+                "contentSha256": "b8bdc8bc5602d32fdacc65bd9583f9ecf43a992c57cc455105fff6db1b6433e2",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "c",
+                "policySha256": "80487281370a293c0eecb2dde8a9b95d5c9b14cdc75f47e5e718b68e6bb19db2",
+                "contentSha256": "9e8fbea4281f9b0c625ec18796b29a17d40d2c5fa03eb617a0bc0548a8eb008a",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "source",
+                "policySha256": "fe71b96d636bc7445fcf702e89c71a87da082f6ba1abc3c9bc94b4df2f92377c",
+                "contentSha256": "6ac89cb7005479161e628e575fdac84caf0bf4e1b98cfd95f19b95e5665ced63",
+                "outputSha256": "82e6e6d43ef7e334919a5488e66e354228337565ca2a0d881d8f7ea3de645f2b"
+              }
+            ]
+          },
+          "workflowName": "Span",
+          "graph": {
+            "nodes": [
+              {
+                "kind": "step",
+                "id": "span:node:1",
+                "workflowDefinitionId": "span",
+                "order": 0,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "span"
+                },
+                "state": {
+                  "_tag": "ready"
+                },
+                "definitionId": "source",
+                "name": "source",
+                "then": null,
+                "retry": null
+              },
+              {
+                "kind": "step",
+                "id": "span:node:2",
+                "workflowDefinitionId": "span",
+                "order": 1,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "span"
+                },
+                "state": {
+                  "_tag": "pending"
+                },
+                "definitionId": "a",
+                "name": "a",
+                "then": null,
+                "retry": null
+              },
+              {
+                "kind": "step",
+                "id": "span:node:3",
+                "workflowDefinitionId": "span",
+                "order": 2,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "span"
+                },
+                "state": {
+                  "_tag": "pending"
+                },
+                "definitionId": "b",
+                "name": "b",
+                "then": null,
+                "retry": null
+              },
+              {
+                "kind": "step",
+                "id": "span:node:4",
+                "workflowDefinitionId": "span",
+                "order": 3,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "span"
+                },
+                "state": {
+                  "_tag": "pending"
+                },
+                "definitionId": "c",
+                "name": "c",
+                "then": null,
+                "retry": null
+              }
+            ],
+            "dependencies": [
+              {
+                "nodeId": "span:node:2",
+                "dependsOn": "span:node:1"
+              },
+              {
+                "nodeId": "span:node:3",
+                "dependsOn": "span:node:1"
+              },
+              {
+                "nodeId": "span:node:4",
+                "dependsOn": "span:node:2"
+              },
+              {
+                "nodeId": "span:node:4",
+                "dependsOn": "span:node:3"
+              }
+            ],
+            "joins": [],
+            "budgets": []
+          },
+          "attempts": [
+            {
+              "id": "span:node:1:attempt:1",
+              "logicalNodeId": "span:node:1",
+              "workflowDefinitionId": "span",
+              "definitionId": "source",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "span"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            },
+            {
+              "id": "span:node:2:attempt:1",
+              "logicalNodeId": "span:node:2",
+              "workflowDefinitionId": "span",
+              "definitionId": "a",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "span"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            },
+            {
+              "id": "span:node:3:attempt:1",
+              "logicalNodeId": "span:node:3",
+              "workflowDefinitionId": "span",
+              "definitionId": "b",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "span"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            },
+            {
+              "id": "span:node:4:attempt:1",
+              "logicalNodeId": "span:node:4",
+              "workflowDefinitionId": "span",
+              "definitionId": "c",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "span"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            }
+          ],
+          "frontier": [
+            "span:node:1"
+          ],
+          "guardrails": {
+            "maxQueueLength": 50,
+            "maxMutationsPerAttempt": 3,
+            "maxSessionInserts": 20,
+            "sessionInsertsUsed": 0,
+            "attemptMutationsUsed": [
+              {
+                "attemptId": "span:node:1:attempt:1",
+                "used": 0
+              },
+              {
+                "attemptId": "span:node:2:attempt:1",
+                "used": 0
+              },
+              {
+                "attemptId": "span:node:3:attempt:1",
+                "used": 0
+              },
+              {
+                "attemptId": "span:node:4:attempt:1",
+                "used": 0
+              }
+            ]
+          },
+          "status": "ready",
+          "followUp": null,
+          "aggregateSeq": 1
+        }
+      }
+    },
+    "run": [
+      {
+        "attemptId": "span:node:1:attempt:1",
+        "definitionId": "source",
+        "logicalNodeId": "span:node:1",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": []
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      },
+      {
+        "attemptId": "span:node:2:attempt:1",
+        "definitionId": "a",
+        "logicalNodeId": "span:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "span:node:1:attempt:1"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      },
+      {
+        "attemptId": "span:node:3:attempt:1",
+        "definitionId": "b",
+        "logicalNodeId": "span:node:3",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "span:node:1:attempt:1"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      },
+      {
+        "attemptId": "span:node:4:attempt:1",
+        "definitionId": "c",
+        "logicalNodeId": "span:node:4",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "span:node:1:attempt:1",
+            "span:node:2:attempt:1",
+            "span:node:3:attempt:1"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      }
+    ],
+    "status": "completed",
+    "attempts": [
+      {
+        "id": "span:node:1:attempt:1",
+        "definitionId": "source",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "span:node:2:attempt:1",
+        "definitionId": "a",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "span:node:3:attempt:1",
+        "definitionId": "b",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "span:node:4:attempt:1",
+        "definitionId": "c",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "span:node:1",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "span:node:2",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "span:node:3",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "span:node:4",
+        "kind": "step",
+        "state": "completed"
+      }
+    ]
+  },
+  "fork": {
+    "root": {
+      "type": "workflow.control.initialized",
+      "version": 10,
+      "actor": "flywheel",
+      "payload": {
+        "control": {
+          "definitionIdentity": {
+            "workflowDefinitionId": "fork",
+            "vmVersion": "2",
+            "skills": [],
+            "personas": [],
+            "graphSha256": "9f98d80776e5428f12a6b922d949f54e1c9de37fb700423f10e5fad717acad46",
+            "phases": [
+              {
+                "phaseId": "fork",
+                "sha256": "103cce255dcd2d5822dac0413654131ce97f3a251a0debf31db81ec0f1b655ae"
+              }
+            ],
+            "steps": [
+              {
+                "stepId": "a",
+                "policySha256": "11d0e81b840d258f4e241f1d601e5ee6f01349e4f25880540166a2f05336ac02",
+                "contentSha256": "661a44ff4b15b4b89ea6d5d971eff35b2150da7f2e2c473bd7f0b76825b81517",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "b",
+                "policySha256": "646b4e0a77648100042e17d073d6e4631aa8517aceb6c42d74e15175b7a5a648",
+                "contentSha256": "e3add1d1718a8114573b90c7e9880203cde85fb5fa8a663e0fe9e5421bf4ec6b",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "c",
+                "policySha256": "80487281370a293c0eecb2dde8a9b95d5c9b14cdc75f47e5e718b68e6bb19db2",
+                "contentSha256": "673d4511e8fa1681d8230e6ebef1a1e10e5bf2025e267f53a7dbd56c20e99973",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "source",
+                "policySha256": "fe71b96d636bc7445fcf702e89c71a87da082f6ba1abc3c9bc94b4df2f92377c",
+                "contentSha256": "3c349c2748d7a8350f9c3714f7d5cf6ee4c14c3d70630e00af42fa0c0a907508",
+                "outputSha256": "82e6e6d43ef7e334919a5488e66e354228337565ca2a0d881d8f7ea3de645f2b"
+              }
+            ]
+          },
+          "workflowName": "Fork",
+          "graph": {
+            "nodes": [
+              {
+                "kind": "phase",
+                "id": "fork:node:1",
+                "workflowDefinitionId": "fork",
+                "order": 0,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "fork"
+                },
+                "state": {
+                  "_tag": "ready"
+                },
+                "phaseId": "fork",
+                "name": "fork"
+              },
+              {
+                "kind": "step",
+                "id": "fork:node:1:node:1",
+                "workflowDefinitionId": "fork",
+                "order": 1,
+                "ownership": {
+                  "_tag": "phase",
+                  "workflowDefinitionId": "fork",
+                  "phaseId": "fork",
+                  "parentNodeId": "fork:node:1"
+                },
+                "state": {
+                  "_tag": "pending"
+                },
+                "definitionId": "a",
+                "name": "a",
+                "then": null,
+                "retry": null
+              },
+              {
+                "kind": "step",
+                "id": "fork:node:1:node:2",
+                "workflowDefinitionId": "fork",
+                "order": 2,
+                "ownership": {
+                  "_tag": "phase",
+                  "workflowDefinitionId": "fork",
+                  "phaseId": "fork",
+                  "parentNodeId": "fork:node:1"
+                },
+                "state": {
+                  "_tag": "pending"
+                },
+                "definitionId": "b",
+                "name": "b",
+                "then": null,
+                "retry": null
+              },
+              {
+                "kind": "step",
+                "id": "fork:node:1:node:3",
+                "workflowDefinitionId": "fork",
+                "order": 3,
+                "ownership": {
+                  "_tag": "phase",
+                  "workflowDefinitionId": "fork",
+                  "phaseId": "fork",
+                  "parentNodeId": "fork:node:1"
+                },
+                "state": {
+                  "_tag": "pending"
+                },
+                "definitionId": "c",
+                "name": "c",
+                "then": null,
+                "retry": null
+              }
+            ],
+            "dependencies": [
+              {
+                "nodeId": "fork:node:1:node:3",
+                "dependsOn": "fork:node:1:node:1"
+              }
+            ],
+            "joins": [],
+            "budgets": []
+          },
+          "attempts": [
+            {
+              "id": "fork:node:1:node:1:attempt:1",
+              "logicalNodeId": "fork:node:1:node:1",
+              "workflowDefinitionId": "fork",
+              "definitionId": "a",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "phase",
+                "workflowDefinitionId": "fork",
+                "phaseId": "fork",
+                "parentNodeId": "fork:node:1"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            },
+            {
+              "id": "fork:node:1:node:2:attempt:1",
+              "logicalNodeId": "fork:node:1:node:2",
+              "workflowDefinitionId": "fork",
+              "definitionId": "b",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "phase",
+                "workflowDefinitionId": "fork",
+                "phaseId": "fork",
+                "parentNodeId": "fork:node:1"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            },
+            {
+              "id": "fork:node:1:node:3:attempt:1",
+              "logicalNodeId": "fork:node:1:node:3",
+              "workflowDefinitionId": "fork",
+              "definitionId": "c",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "phase",
+                "workflowDefinitionId": "fork",
+                "phaseId": "fork",
+                "parentNodeId": "fork:node:1"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            }
+          ],
+          "frontier": [],
+          "guardrails": {
+            "maxQueueLength": 50,
+            "maxMutationsPerAttempt": 3,
+            "maxSessionInserts": 20,
+            "sessionInsertsUsed": 0,
+            "attemptMutationsUsed": [
+              {
+                "attemptId": "fork:node:1:node:1:attempt:1",
+                "used": 0
+              },
+              {
+                "attemptId": "fork:node:1:node:2:attempt:1",
+                "used": 0
+              },
+              {
+                "attemptId": "fork:node:1:node:3:attempt:1",
+                "used": 0
+              }
+            ]
+          },
+          "status": "ready",
+          "followUp": null,
+          "aggregateSeq": 1
+        }
+      }
+    },
+    "run": [
+      {
+        "attemptId": "fork:node:1:node:1:attempt:1",
+        "definitionId": "a",
+        "logicalNodeId": "fork:node:1:node:1",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": []
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      },
+      {
+        "attemptId": "fork:node:1:node:2:attempt:1",
+        "definitionId": "b",
+        "logicalNodeId": "fork:node:1:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": []
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      },
+      {
+        "attemptId": "fork:node:1:node:3:attempt:1",
+        "definitionId": "c",
+        "logicalNodeId": "fork:node:1:node:3",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "fork:node:1:node:1:attempt:1"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      }
+    ],
+    "status": "completed",
+    "attempts": [
+      {
+        "id": "fork:node:1:node:1:attempt:1",
+        "definitionId": "a",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "fork:node:1:node:2:attempt:1",
+        "definitionId": "b",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "fork:node:1:node:3:attempt:1",
+        "definitionId": "c",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "fork:node:1",
+        "kind": "phase",
+        "state": "completed"
+      },
+      {
+        "id": "fork:node:1:node:1",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "fork:node:1:node:2",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "fork:node:1:node:3",
+        "kind": "step",
+        "state": "completed"
+      }
+    ]
+  },
+  "ordered": {
+    "root": {
+      "type": "workflow.control.initialized",
+      "version": 10,
+      "actor": "flywheel",
+      "payload": {
+        "control": {
+          "definitionIdentity": {
+            "workflowDefinitionId": "ordered",
+            "vmVersion": "2",
+            "skills": [],
+            "personas": [],
+            "graphSha256": "c8b741a530f552f9e4f00835f96473ef6b7e773be981ef68c8ee18f50acf4cd8",
+            "steps": [
+              {
+                "stepId": "a",
+                "policySha256": "11d0e81b840d258f4e241f1d601e5ee6f01349e4f25880540166a2f05336ac02",
+                "contentSha256": "055bf617e28f6484d344c5e836104a842d5c5c10166db725432cdefeba882c3b",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "b",
+                "policySha256": "646b4e0a77648100042e17d073d6e4631aa8517aceb6c42d74e15175b7a5a648",
+                "contentSha256": "77cf12df182ddd05072d3dbbb1002d2a6f9fe6157b5eff3340a0807f049249ff",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "c",
+                "policySha256": "80487281370a293c0eecb2dde8a9b95d5c9b14cdc75f47e5e718b68e6bb19db2",
+                "contentSha256": "86e38c9873e0c7a8ae3ed736bb66f767e5d715a9389f032d786901b8836860c0",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "source",
+                "policySha256": "fe71b96d636bc7445fcf702e89c71a87da082f6ba1abc3c9bc94b4df2f92377c",
+                "contentSha256": "08fcbea9830eaae19bfc2ece911d7c3b276d0e9cbc78f3e3721a5e37321f00dd",
+                "outputSha256": "82e6e6d43ef7e334919a5488e66e354228337565ca2a0d881d8f7ea3de645f2b"
+              }
+            ]
+          },
+          "workflowName": "Ordered",
+          "graph": {
+            "nodes": [
+              {
+                "kind": "step",
+                "id": "ordered:node:1",
+                "workflowDefinitionId": "ordered",
+                "order": 0,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "ordered"
+                },
+                "state": {
+                  "_tag": "pending"
+                },
+                "definitionId": "a",
+                "name": "a",
+                "then": null,
+                "retry": null
+              },
+              {
+                "kind": "step",
+                "id": "ordered:node:2",
+                "workflowDefinitionId": "ordered",
+                "order": 1,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "ordered"
+                },
+                "state": {
+                  "_tag": "ready"
+                },
+                "definitionId": "b",
+                "name": "b",
+                "then": null,
+                "retry": null
+              },
+              {
+                "kind": "step",
+                "id": "ordered:node:3",
+                "workflowDefinitionId": "ordered",
+                "order": 2,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "ordered"
+                },
+                "state": {
+                  "_tag": "pending"
+                },
+                "definitionId": "c",
+                "name": "c",
+                "then": null,
+                "retry": null
+              }
+            ],
+            "dependencies": [
+              {
+                "nodeId": "ordered:node:1",
+                "dependsOn": "ordered:node:2"
+              },
+              {
+                "nodeId": "ordered:node:3",
+                "dependsOn": "ordered:node:1"
+              }
+            ],
+            "joins": [],
+            "budgets": []
+          },
+          "attempts": [
+            {
+              "id": "ordered:node:1:attempt:1",
+              "logicalNodeId": "ordered:node:1",
+              "workflowDefinitionId": "ordered",
+              "definitionId": "a",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "ordered"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            },
+            {
+              "id": "ordered:node:2:attempt:1",
+              "logicalNodeId": "ordered:node:2",
+              "workflowDefinitionId": "ordered",
+              "definitionId": "b",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "ordered"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            },
+            {
+              "id": "ordered:node:3:attempt:1",
+              "logicalNodeId": "ordered:node:3",
+              "workflowDefinitionId": "ordered",
+              "definitionId": "c",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "ordered"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            }
+          ],
+          "frontier": [
+            "ordered:node:2"
+          ],
+          "guardrails": {
+            "maxQueueLength": 50,
+            "maxMutationsPerAttempt": 3,
+            "maxSessionInserts": 20,
+            "sessionInsertsUsed": 0,
+            "attemptMutationsUsed": [
+              {
+                "attemptId": "ordered:node:1:attempt:1",
+                "used": 0
+              },
+              {
+                "attemptId": "ordered:node:2:attempt:1",
+                "used": 0
+              },
+              {
+                "attemptId": "ordered:node:3:attempt:1",
+                "used": 0
+              }
+            ]
+          },
+          "status": "ready",
+          "followUp": null,
+          "aggregateSeq": 1
+        }
+      }
+    },
+    "run": [
+      {
+        "attemptId": "ordered:node:2:attempt:1",
+        "definitionId": "b",
+        "logicalNodeId": "ordered:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": []
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      },
+      {
+        "attemptId": "ordered:node:1:attempt:1",
+        "definitionId": "a",
+        "logicalNodeId": "ordered:node:1",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "ordered:node:2:attempt:1"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      },
+      {
+        "attemptId": "ordered:node:3:attempt:1",
+        "definitionId": "c",
+        "logicalNodeId": "ordered:node:3",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "ordered:node:1:attempt:1",
+            "ordered:node:2:attempt:1"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      }
+    ],
+    "status": "completed",
+    "attempts": [
+      {
+        "id": "ordered:node:1:attempt:1",
+        "definitionId": "a",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "ordered:node:2:attempt:1",
+        "definitionId": "b",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "ordered:node:3:attempt:1",
+        "definitionId": "c",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "ordered:node:1",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "ordered:node:2",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "ordered:node:3",
+        "kind": "step",
+        "state": "completed"
+      }
+    ]
+  },
+  "blockedFor": {
+    "root": {
+      "type": "workflow.control.initialized",
+      "version": 10,
+      "actor": "flywheel",
+      "payload": {
+        "control": {
+          "definitionIdentity": {
+            "workflowDefinitionId": "blocked-recovery",
+            "vmVersion": "2",
+            "skills": [],
+            "personas": [],
+            "graphSha256": "c5cd3e2975c9d14ce9da86aa499cabb0195148673c2f889a34106c79798c8164",
+            "steps": [
+              {
+                "stepId": "implement",
+                "policySha256": "7ddf33f55998d4c9bcfe92260662e48440fb6fcda4cd86a165e9a4319ce59eea",
+                "contentSha256": "5374f520fa90bfbcb91379a54e3610a13909c39acc6b76be4e21733d2a2c4a68",
+                "outputSha256": "ed75530af4754f32533da4a093f2bfbbc83e82bd7b34c341bebe9ffb02a2106c"
+              },
+              {
+                "stepId": "reassess",
+                "policySha256": "715b530bba1cb5493ef8164cf67655034d7e92e3cccab97caf1808a5578b513c",
+                "contentSha256": "640b162688f10b1110eb865f8614d4ebad6c2fe1f7866f237b6a41d631157fc7",
+                "outputSha256": "2e1f42e39872b14fc2417d1b533325c3995c1a9b799b1fd1f096a22d1725da96"
+              },
+              {
+                "stepId": "source",
+                "policySha256": "fe71b96d636bc7445fcf702e89c71a87da082f6ba1abc3c9bc94b4df2f92377c",
+                "contentSha256": "a258808939dbcfc04d5cce1946317a367fe76a03d148941d30f4233f32466f42",
+                "outputSha256": "861d078f4cdb5bf3a5fd833bb8d1ef1a4b5c43aa01c8e360cd92ea5c3f4873c1"
+              },
+              {
+                "stepId": "tail",
+                "policySha256": "bfacdf7bb3e0a31cd80893334a0c7128518a693a84493ef598f53ad2253a0e73",
+                "contentSha256": "55d250e7367df460dfbd08906df958667e679d2877228521b4ddcb40147c4861",
+                "outputSha256": "f35cd02cd97b67077a86f78eb15ec16044957e3420ff5787bcf1b5a715f40d06"
+              }
+            ]
+          },
+          "workflowName": "Blocked recovery",
+          "graph": {
+            "nodes": [
+              {
+                "kind": "step",
+                "id": "blocked-recovery:node:1",
+                "workflowDefinitionId": "blocked-recovery",
+                "order": 0,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "blocked-recovery"
+                },
+                "state": {
+                  "_tag": "ready"
+                },
+                "definitionId": "source",
+                "name": "source",
+                "then": null,
+                "retry": null
+              },
+              {
+                "kind": "for",
+                "id": "blocked-recovery:node:2",
+                "workflowDefinitionId": "blocked-recovery",
+                "order": 1,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "blocked-recovery"
+                },
+                "state": {
+                  "_tag": "pending"
+                },
+                "source": {
+                  "step": "source",
+                  "field": "phases"
+                },
+                "body": [
+                  {
+                    "step": "implement"
+                  },
+                  {
+                    "step": "reassess"
+                  }
+                ]
+              },
+              {
+                "kind": "step",
+                "id": "blocked-recovery:node:3",
+                "workflowDefinitionId": "blocked-recovery",
+                "order": 2,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "blocked-recovery"
+                },
+                "state": {
+                  "_tag": "pending"
+                },
+                "definitionId": "tail",
+                "name": "tail",
+                "then": null,
+                "retry": null
+              }
+            ],
+            "dependencies": [
+              {
+                "nodeId": "blocked-recovery:node:2",
+                "dependsOn": "blocked-recovery:node:1"
+              },
+              {
+                "nodeId": "blocked-recovery:node:3",
+                "dependsOn": "blocked-recovery:node:2"
+              }
+            ],
+            "joins": [],
+            "budgets": []
+          },
+          "attempts": [
+            {
+              "id": "blocked-recovery:node:1:attempt:1",
+              "logicalNodeId": "blocked-recovery:node:1",
+              "workflowDefinitionId": "blocked-recovery",
+              "definitionId": "source",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "blocked-recovery"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            },
+            {
+              "id": "blocked-recovery:node:3:attempt:1",
+              "logicalNodeId": "blocked-recovery:node:3",
+              "workflowDefinitionId": "blocked-recovery",
+              "definitionId": "tail",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "blocked-recovery"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            }
+          ],
+          "frontier": [
+            "blocked-recovery:node:1"
+          ],
+          "guardrails": {
+            "maxQueueLength": 50,
+            "maxMutationsPerAttempt": 3,
+            "maxSessionInserts": 20,
+            "sessionInsertsUsed": 0,
+            "attemptMutationsUsed": [
+              {
+                "attemptId": "blocked-recovery:node:1:attempt:1",
+                "used": 0
+              },
+              {
+                "attemptId": "blocked-recovery:node:3:attempt:1",
+                "used": 0
+              }
+            ]
+          },
+          "status": "ready",
+          "followUp": null,
+          "aggregateSeq": 1
+        }
+      }
+    },
+    "run": [
+      {
+        "attemptId": "blocked-recovery:node:1:attempt:1",
+        "definitionId": "source",
+        "logicalNodeId": "blocked-recovery:node:1",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": []
+        },
+        "item": null,
+        "handoff": {
+          "summary": "The plan.",
+          "phases": [
+            {
+              "id": "phase-1",
+              "goal": "Implement phase-1",
+              "files": [
+                "src/x.ts"
+              ],
+              "tasks": [
+                {
+                  "id": "phase-1-task",
+                  "description": "Implement phase-1",
+                  "files": [
+                    "src/x.ts"
+                  ],
+                  "test_scenarios": [
+                    "works"
+                  ]
+                }
+              ],
+              "verification": "bun run test"
+            }
+          ]
+        }
+      },
+      {
+        "attemptId": "blocked-recovery:node:2:attempt:1",
+        "definitionId": "implement",
+        "logicalNodeId": "blocked-recovery:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "blocked-recovery:node:1:attempt:1"
+          ]
+        },
+        "item": {
+          "id": "phase-1",
+          "goal": "Implement phase-1",
+          "files": [
+            "src/x.ts"
+          ],
+          "tasks": [
+            {
+              "id": "phase-1-task",
+              "description": "Implement phase-1",
+              "files": [
+                "src/x.ts"
+              ],
+              "test_scenarios": [
+                "works"
+              ]
+            }
+          ],
+          "verification": "bun run test"
+        },
+        "handoff": {
+          "summary": "done"
+        }
+      },
+      {
+        "attemptId": "blocked-recovery:node:2:attempt:2",
+        "definitionId": "reassess",
+        "logicalNodeId": "blocked-recovery:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "blocked-recovery:node:1:attempt:1",
+            "blocked-recovery:node:2:attempt:1"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      },
+      {
+        "attemptId": "blocked-recovery:node:3:attempt:1",
+        "definitionId": "tail",
+        "logicalNodeId": "blocked-recovery:node:3",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "blocked-recovery:node:1:attempt:1",
+            "blocked-recovery:node:2:attempt:1",
+            "blocked-recovery:node:2:attempt:2"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "done"
+        }
+      }
+    ],
+    "status": "completed",
+    "attempts": [
+      {
+        "id": "blocked-recovery:node:1:attempt:1",
+        "definitionId": "source",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "blocked-recovery:node:2:attempt:1",
+        "definitionId": "implement",
+        "provenance": {
+          "_tag": "for",
+          "itemIndex": 0
+        },
+        "parentAttemptId": null,
+        "item": {
+          "id": "phase-1",
+          "goal": "Implement phase-1",
+          "files": [
+            "src/x.ts"
+          ],
+          "tasks": [
+            {
+              "id": "phase-1-task",
+              "description": "Implement phase-1",
+              "files": [
+                "src/x.ts"
+              ],
+              "test_scenarios": [
+                "works"
+              ]
+            }
+          ],
+          "verification": "bun run test"
+        },
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "blocked-recovery:node:2:attempt:2",
+        "definitionId": "reassess",
+        "provenance": {
+          "_tag": "then"
+        },
+        "parentAttemptId": "blocked-recovery:node:2:attempt:1",
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "blocked-recovery:node:3:attempt:1",
+        "definitionId": "tail",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "blocked-recovery:node:1",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "blocked-recovery:node:2",
+        "kind": "for",
+        "state": "completed"
+      },
+      {
+        "id": "blocked-recovery:node:3",
+        "kind": "step",
+        "state": "completed"
+      }
+    ]
+  },
+  "whileFirstClean": {
+    "root": {
+      "type": "workflow.control.initialized",
+      "version": 10,
+      "actor": "flywheel",
+      "payload": {
+        "control": {
+          "definitionIdentity": {
+            "workflowDefinitionId": "loop",
+            "vmVersion": "2",
+            "skills": [],
+            "personas": [],
+            "graphSha256": "75d59e63be942a39ed8d3487778e1c57d8f3103d4b36b94896e28e383578d0d0",
+            "steps": [
+              {
+                "stepId": "a",
+                "policySha256": "11d0e81b840d258f4e241f1d601e5ee6f01349e4f25880540166a2f05336ac02",
+                "contentSha256": "e1e8a02a0bdbb1fbe9c1ddffbedbe1ef7e158d3a0e27624819f4fa58824053e5",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "b",
+                "policySha256": "646b4e0a77648100042e17d073d6e4631aa8517aceb6c42d74e15175b7a5a648",
+                "contentSha256": "a6985948b485a5c52293456fc116a9f6c098948feefeb55d424c2df21f339cc8",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "c",
+                "policySha256": "80487281370a293c0eecb2dde8a9b95d5c9b14cdc75f47e5e718b68e6bb19db2",
+                "contentSha256": "0568efe921d8102beb5219bfcd3f7eeff0450c14558c313e7c04b67bdabfb405",
+                "outputSha256": "dc23a39f8bc320c5c6a8371673bebd540319b2a7ea5acbadd050d026ab4f3de9"
+              },
+              {
+                "stepId": "source",
+                "policySha256": "fe71b96d636bc7445fcf702e89c71a87da082f6ba1abc3c9bc94b4df2f92377c",
+                "contentSha256": "10f94c3e0c868845c648d63e4da8c4313db36ceee54ab53ecb0104c87e656b25",
+                "outputSha256": "82e6e6d43ef7e334919a5488e66e354228337565ca2a0d881d8f7ea3de645f2b"
+              }
+            ]
+          },
+          "workflowName": "Loop",
+          "graph": {
+            "nodes": [
+              {
+                "kind": "step",
+                "id": "loop:node:1",
+                "workflowDefinitionId": "loop",
+                "order": 0,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "loop"
+                },
+                "state": {
+                  "_tag": "ready"
+                },
+                "definitionId": "source",
+                "name": "source",
+                "then": null,
+                "retry": null
+              },
+              {
+                "kind": "while",
+                "id": "loop:node:2",
+                "workflowDefinitionId": "loop",
+                "order": 1,
+                "ownership": {
+                  "_tag": "workflow",
+                  "workflowDefinitionId": "loop"
+                },
+                "state": {
+                  "_tag": "pending"
+                },
+                "evaluator": {
+                  "step": "b",
+                  "field": "findings"
+                },
+                "body": [
+                  {
+                    "step": "a"
+                  },
+                  {
+                    "step": "b"
+                  },
+                  {
+                    "step": "c"
+                  }
+                ],
+                "maxIterations": 3,
+                "detectStuck": false,
+                "iteration": 1,
+                "priorNormalizedSignal": null
+              }
+            ],
+            "dependencies": [
+              {
+                "nodeId": "loop:node:2",
+                "dependsOn": "loop:node:1"
+              }
+            ],
+            "joins": [],
+            "budgets": []
+          },
+          "attempts": [
+            {
+              "id": "loop:node:1:attempt:1",
+              "logicalNodeId": "loop:node:1",
+              "workflowDefinitionId": "loop",
+              "definitionId": "source",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "loop"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            },
+            {
+              "id": "loop:node:2:attempt:1",
+              "logicalNodeId": "loop:node:2",
+              "workflowDefinitionId": "loop",
+              "definitionId": "a",
+              "sequence": 1,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "loop"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            },
+            {
+              "id": "loop:node:2:attempt:2",
+              "logicalNodeId": "loop:node:2",
+              "workflowDefinitionId": "loop",
+              "definitionId": "b",
+              "sequence": 2,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "loop"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            },
+            {
+              "id": "loop:node:2:attempt:3",
+              "logicalNodeId": "loop:node:2",
+              "workflowDefinitionId": "loop",
+              "definitionId": "c",
+              "sequence": 3,
+              "iteration": 1,
+              "resumeRevertCount": 0,
+              "provenance": {
+                "_tag": "authored"
+              },
+              "ownership": {
+                "_tag": "workflow",
+                "workflowDefinitionId": "loop"
+              },
+              "state": {
+                "_tag": "pending"
+              },
+              "parentAttemptId": null,
+              "conversationId": null,
+              "handoff": null,
+              "priorRetryFeedback": null,
+              "forItem": null
+            }
+          ],
+          "frontier": [
+            "loop:node:1"
+          ],
+          "guardrails": {
+            "maxQueueLength": 50,
+            "maxMutationsPerAttempt": 3,
+            "maxSessionInserts": 20,
+            "sessionInsertsUsed": 0,
+            "attemptMutationsUsed": [
+              {
+                "attemptId": "loop:node:1:attempt:1",
+                "used": 0
+              },
+              {
+                "attemptId": "loop:node:2:attempt:1",
+                "used": 0
+              },
+              {
+                "attemptId": "loop:node:2:attempt:2",
+                "used": 0
+              },
+              {
+                "attemptId": "loop:node:2:attempt:3",
+                "used": 0
+              }
+            ]
+          },
+          "status": "ready",
+          "followUp": null,
+          "aggregateSeq": 1
+        }
+      }
+    },
+    "run": [
+      {
+        "attemptId": "loop:node:1:attempt:1",
+        "definitionId": "source",
+        "logicalNodeId": "loop:node:1",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": []
+        },
+        "item": null,
+        "handoff": {
+          "summary": "two",
+          "items": [
+            {
+              "id": "x"
+            },
+            {
+              "id": "y"
+            }
+          ]
+        }
+      },
+      {
+        "attemptId": "loop:node:2:attempt:1",
+        "definitionId": "a",
+        "logicalNodeId": "loop:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "loop:node:1:attempt:1"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "clean",
+          "findings": []
+        }
+      },
+      {
+        "attemptId": "loop:node:2:attempt:2",
+        "definitionId": "b",
+        "logicalNodeId": "loop:node:2",
+        "scope": {
+          "_tag": "workflow",
+          "sharedEntryIds": [
+            "loop:node:1:attempt:1",
+            "loop:node:2:attempt:1"
+          ]
+        },
+        "item": null,
+        "handoff": {
+          "summary": "clean",
+          "findings": []
+        }
+      }
+    ],
+    "status": "completed",
+    "attempts": [
+      {
+        "id": "loop:node:1:attempt:1",
+        "definitionId": "source",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2:attempt:1",
+        "definitionId": "a",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2:attempt:2",
+        "definitionId": "b",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2:attempt:3",
+        "definitionId": "c",
+        "provenance": {
+          "_tag": "authored"
+        },
+        "parentAttemptId": null,
+        "item": null,
+        "iteration": 1,
+        "state": "skipped"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "loop:node:1",
+        "kind": "step",
+        "state": "completed"
+      },
+      {
+        "id": "loop:node:2",
+        "kind": "while",
+        "state": "completed"
+      }
+    ]
+  }
+}

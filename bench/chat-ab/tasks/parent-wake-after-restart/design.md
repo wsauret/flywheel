@@ -1,0 +1,7 @@
+My chat started a subagent and waited for it. The service restarted, the subagent continued and finished, but the parent stayed interrupted. Please make the parent read the result automatically after a service stop, a crash, or an update. If I press Escape myself, the parent must still wait for me.
+
+Keep this decision in the interpretation of the saved conversation, rather than making completion delivery bypass interruption rules. A service interruption can cut either a parent waiting for background work or a turn that still needs a model request. Distinguish those cases from the last model step before the interruption. Treat an answer or a finished tool batch containing a background wait as waiting for background work. An interrupted tool result does not qualify. A turn cut while it still needs a model request must continue to wait for me.
+
+The saved-history reader must reach that preceding model step even when the interruption record occupies a separate stored batch. Later system notices must not hide the evidence. Recover the distinction from the existing conversation rather than adding another persisted status.
+
+Reattaching the parent must not start a model request before the child finishes. Its completion must then wake the parent with the result in context. Keep the normal completion wake without a restart, and keep my own interruption in force even when the child finishes. Run the relevant tests and verify these cases.

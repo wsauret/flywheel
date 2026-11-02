@@ -1,0 +1,12 @@
+diff --git a/src/orchestration/agent-runtime/llm/json-parse.ts b/src/orchestration/agent-runtime/llm/json-parse.ts
+--- a/src/orchestration/agent-runtime/llm/json-parse.ts
++++ b/src/orchestration/agent-runtime/llm/json-parse.ts
+@@ -76,7 +76,7 @@ function repairJson(json: string): string {
+       continue;
+     }
+ 
+-    repaired += isControlCharacter(char) ? escapeControlCharacter(char) : char;
++    repaired += char;
+   }
+ 
+   return repaired;

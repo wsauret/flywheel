@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "role": "development",
+  "contentIdentity": "23ecfbd697f02ac03c98ac1ea1aebb28ff9f9b7b067449abee32c95dfeeb24fa",
+  "testIds": [
+    "render.test.ts > literal templates > renders plain text unchanged",
+    "render.test.ts > literal templates > renders an empty template",
+    "render.test.ts > literal templates > preserves whitespace and line breaks",
+    "render.test.ts > literal templates > tokenizes literal text with its source position",
+    "render.test.ts > template errors > exports an error with its detail and source position",
+    "acceptance/template-engine.test.ts > public error contract > preserves the exact message, name, and source position",
+    "acceptance/template-engine.test.ts > tokenizer > recognizes every tag form with trimmed paths and exact opening offsets",
+    "acceptance/template-engine.test.ts > tokenizer > preserves literal spans and omits empty text tokens",
+    "acceptance/template-engine.test.ts > variables > substitutes variables and preserves untagged text",
+    "acceptance/template-engine.test.ts > variables > walks a dot path",
+    "acceptance/template-engine.test.ts > variables > renders missing and intermediate nullish paths as empty text",
+    "acceptance/template-engine.test.ts > variables > uses ordinary string conversion while retaining false and zero",
+    "acceptance/template-engine.test.ts > variables > escapes all supported HTML characters",
+    "acceptance/template-engine.test.ts > variables > triple braces render raw text",
+    "acceptance/template-engine.test.ts > variables > escaped and raw substitutions remain independent",
+    "acceptance/template-engine.test.ts > variables > a missing raw path renders empty text",
+    "acceptance/template-engine.test.ts > blocks > renders a truthy if body",
+    "acceptance/template-engine.test.ts > blocks > omits a false if body",
+    "acceptance/template-engine.test.ts > blocks > uses ordinary JavaScript truthiness",
+    "acceptance/template-engine.test.ts > blocks > iterates object items with item scope",
+    "acceptance/template-engine.test.ts > blocks > an empty collection renders no body",
+    "acceptance/template-engine.test.ts > blocks > a missing or non-array each value renders no body",
+    "acceptance/template-engine.test.ts > blocks > resolves dot paths from an each item",
+    "acceptance/template-engine.test.ts > blocks > nests if inside each",
+    "acceptance/template-engine.test.ts > blocks > nests each inside if",
+    "acceptance/template-engine.test.ts > blocks > supports nested blocks of the same kind",
+    "acceptance/template-engine.test.ts > blocks > uses item-only scope without leaking parent fields",
+    "acceptance/template-engine.test.ts > blocks > does not evaluate a nested body when its parent is false",
+    "acceptance/template-engine.test.ts > blocks > trims whitespace in block tags",
+    "acceptance/template-engine.test.ts > structural errors > reports an unclosed if at its opening position",
+    "acceptance/template-engine.test.ts > structural errors > reports an unclosed each at its opening position",
+    "acceptance/template-engine.test.ts > structural errors > reports a mismatched closing at the closing position",
+    "acceptance/template-engine.test.ts > structural errors > reports crossed mismatches at the innermost closing position",
+    "acceptance/template-engine.test.ts > structural errors > reports the only outstanding outer block after its nested block closes",
+    "acceptance/template-engine.test.ts > structural errors > reports an unexpected closing at its position"
+  ],
+  "cases": [
+    {
+      "id": "reference",
+      "patches": [
+        "qualification/reference.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "Implements the final public tokenizer, error and rendering contracts with a private block AST and recursive evaluation; labels do not measure phase or transcript adherence.",
+      "expectedFailures": []
+    },
+    {
+      "id": "alternative",
+      "patches": [
+        "qualification/reference.patch",
+        "qualification/alternative.patch"
+      ],
+      "expectation": "pass",
+      "rationale": "Implements the same final public contracts with an iterative work-stack evaluator, including lazy false blocks and item-only each scope.",
+      "expectedFailures": []
+    },
+    {
+      "id": "drop-literals",
+      "patches": [
+        "qualification/reference.patch",
+        "qualification/drop-literals.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Returns no tokens for templates without tags, dropping plain text and whitespace through the public tokenizer and renderer.",
+      "expectedFailures": [
+        "render.test.ts > literal templates > renders plain text unchanged",
+        "render.test.ts > literal templates > preserves whitespace and line breaks",
+        "render.test.ts > literal templates > tokenizes literal text with its source position",
+        "acceptance/template-engine.test.ts > tokenizer > preserves literal spans and omits empty text tokens",
+        "acceptance/template-engine.test.ts > variables > substitutes variables and preserves untagged text"
+      ]
+    },
+    {
+      "id": "unescaped-values",
+      "patches": [
+        "qualification/reference.patch",
+        "qualification/unescaped-values.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Returns variable text without HTML escaping, including ordinary escaped substitutions.",
+      "expectedFailures": [
+        "acceptance/template-engine.test.ts > variables > escapes all supported HTML characters",
+        "acceptance/template-engine.test.ts > variables > escaped and raw substitutions remain independent"
+      ]
+    },
+    {
+      "id": "leaked-parent-scope",
+      "patches": [
+        "qualification/reference.patch",
+        "qualification/leaked-parent-scope.patch"
+      ],
+      "expectation": "fail",
+      "rationale": "Merges the parent context into each item scope, exposing parent-only fields in each bodies.",
+      "expectedFailures": [
+        "acceptance/template-engine.test.ts > blocks > uses item-only scope without leaking parent fields"
+      ]
+    }
+  ]
+}
