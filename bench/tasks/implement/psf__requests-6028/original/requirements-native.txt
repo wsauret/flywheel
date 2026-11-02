@@ -9,4 +9,4 @@ packaging==24.1
 certifi==2024.8.30
 charset-normalizer==2.0.12
 idna==3.10
-urllib3==1.26.20
+urllib3==2.8.0
