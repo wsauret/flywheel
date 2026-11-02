@@ -94,7 +94,7 @@ export function createComposerBorderLayout(deps: ComposerBorderLayoutDeps): Comp
     sessionsHint: { key: deps.chordFor("sessions"), label: "sessions" },
     resumeHint: deps.resumeOffered() ? { key: deps.chordFor("resume"), label: "resume" } : undefined,
     newHint: { key: deps.chordFor("new"), label: "new" },
-    closeHint: { key: deps.chordFor("tab.close"), label: "close" },
+    closeHint: { key: deps.chordFor("tab.close"), label: "close tab" },
   }))
   return { layout, dismissUpdate: updateStatus.dismiss }
 }

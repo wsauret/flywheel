@@ -184,7 +184,7 @@ For Copilot models described by models.dev, context capacity comes from that cat
 
 Ordinary terminal action buttons have consistent padding, readable default styling, and visible hover and keyboard-focus feedback.
 
-Terminal prompt-bar controls share the context control's subtle background highlight on hover. Clicking Remote Control opens its modal; New, Close, Tab, and Sessions perform their displayed actions. Clicking a visible background-process count opens the background modal. Clickable areas include the adjacent spacing without changing the bar's layout.
+Terminal prompt-bar controls share the context control's subtle background highlight on hover. Clicking Remote Control opens its modal; New, Close tab, Switch, and Sessions perform their displayed actions. The prompt bar names the close of a tab "close tab", because "close" alone names Close chat (PI-INTERACTION-082). Clicking a visible background-process count opens the background modal. Clickable areas include the adjacent spacing without changing the bar's layout.
 
 ## PI-INTERACTION-022: Workflows belong to their parent chat
 
@@ -492,4 +492,4 @@ Each command has one slash token and one name, and the terminal, desktop web, ph
 
 Closing a chat's tab only stops showing the chat. Its running turn, its background commands, its subagents, and its workflows go on, and the chat stays active and shows as working while they do. When its turn comes to rest, the chat closes as Close chat closes it. Opening the chat again before then keeps it open.
 
-Close chat is the one action that ends a chat's work now. The session row of every client offers it for an active chat: the terminal Sessions list, the web and phone session list, and the editor's command palette. It interrupts the running turn as the runtime, so Resume can continue it, stops the chat's background commands, pauses its subagents, and closes the chat. Workflows that the chat started keep running, each with its own Stop. A chat with no name that the person gave and no message from the person is removed when it closes (PI-INTERACTION-075).
+Close chat is the one action that ends a chat's work now. It is the command `/close`, which acts on the chat in front in every client and is refused in a subagent or a workflow agent, and the session row of every client offers it for an active chat: the terminal Sessions list, the web and phone session list, and the editor's command palette. It asks for no confirmation. It interrupts the running turn as the runtime, so Resume can continue it, stops the chat's background commands, pauses its subagents, and closes the chat. Workflows that the chat started keep running, each with its own Stop. A chat with no name that the person gave and no message from the person is removed when it closes (PI-INTERACTION-075). Close chat in the terminal, by `/close` or the Sessions list, also removes the chat's tab there.

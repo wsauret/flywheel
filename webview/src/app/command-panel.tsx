@@ -171,9 +171,6 @@ function buildGroups(deps: PanelDeps, settingRows: () => readonly InPlaceSetting
       description: `Copy this ${noun}'s full debugging identifier`,
       run: () => { void copySessionId(writeClipboardText, client.report, sessionId) },
     }]),
-    ...(sessionId === undefined || childActions !== undefined ? [] : [
-      { id: "close-session", label: HOST_ACTION_NAMES["flywheel.closeSession"], description: "Close this session's runtime; its history stays.", run: () => actions.closeSession(sessionId) },
-    ]),
     // Interrupt for every session kind while a turn runs (PI-INTERACTION-043,
     // PI-AGENT-020). Stop is terminal and exists only for a session that
     // answers a parent's tool call.

@@ -283,17 +283,12 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
   }
 
   /** Close chat ends the chat's work now, unlike the close of its tab
-   *  (PI-INTERACTION-082). A tab that shows the chat stays open. */
+   *  (PI-INTERACTION-082), and a tab that shows the chat goes with it. */
   function closeChat(session: SessionCatalogRow): void {
     const subject = sessionSubject(session)
-    void deps.appService.dispatch({ type: "session.close", sessionId: session.id })
-      .then((result) => {
-        if (!result.ok) throw new Error(result.error)
-        if (result.sessionCatalogRow) deps.seedSessionCatalogRow(result.sessionCatalogRow)
-      })
-      .catch((err) => {
-        showToast({ message: `Close failed for ${subject}: ${extractErrorMessage(err)}`, variant: "error" })
-      })
+    void deps.closeChat(session.id).catch((err) => {
+      showToast({ message: `Close failed for ${subject}: ${extractErrorMessage(err)}`, variant: "error" })
+    })
   }
 
   function actionsForSession(session: SessionCatalogRow): SessionModalAction[] {

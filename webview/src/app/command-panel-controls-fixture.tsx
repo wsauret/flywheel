@@ -55,13 +55,16 @@ function childConnection(dispatched: unknown[], childStatus: ChildStatus, kind: 
       statusSnapshot: (request) => ({ snapshotPosition: 0, views: request.sessionIds.map((sessionId) => ({ sessionId, view: status })) }),
     },
     onDispatch: (mutation) => { dispatched.push(mutation) },
-    mutations: { "background.terminate": () => ({ ok: true }), "subagent.interrupt": () => ({ ok: true }), "session.delete": () => ({ ok: true }) },
+    mutations: { "background.terminate": () => ({ ok: true }), "subagent.interrupt": () => ({ ok: true }), "session.delete": () => ({ ok: true }), "session.close": () => ({ ok: true }) },
   }, { reconnect() {} })
 }
 
 /** Mounts the real command panel over the real session and client actions,
- *  with a running child open (a subagent unless `kind` says otherwise), and
- *  records every mutation the panel's rows dispatch and every sheet it opens.
+ *  with a running child open (a subagent unless `kind` says otherwise), or
+ *  its parent chat when `chat` is set, and records every mutation the panel's
+ *  rows dispatch, every sheet it opens, and every notice it reports. The
+ *  panel's command rows record their invocation in `invoked`, and
+ *  `openSurface` opens the surface such a command names.
  *  `builtInCommands` the runtime's published commands, which the footer
  *  counts, `settings` whether the settings were read, `background` how many
  *  background commands run, `keyboardShortcuts` whether the host takes
@@ -74,13 +77,14 @@ export async function mountChildCommandPanel(options: {
   readonly settings?: boolean
   readonly background?: number
   readonly keyboardShortcuts?: boolean
+  readonly chat?: boolean
 } = {}) {
   const { status = { activity: "generating", waitingOnBackgroundWork: false, replyWaits: [] }, kind = "subagent", query = "" } = options
   const dispatched: unknown[] = []
   const connection = childConnection(dispatched, status, kind)
   const session = createRuntimeSession({ connection })
   await settle()
-  await session.select("child")
+  await session.select(options.chat ? "parent-chat" : "child")
   await settle()
   const reports: string[] = []
   const actions = createClientActions({ session, connection, capabilities: {}, report: (_severity, message) => { reports.push(message) }, captureSurfaceOpener: () => () => {} })
@@ -121,6 +125,7 @@ export async function mountChildCommandPanel(options: {
     // The clipboard lets the panel offer Copy session ID.
     host: fakeClientHost({ capabilities: { writeClipboardText: async () => {}, ...(options.keyboardShortcuts ? { keyboardShortcuts: true } : {}) } }),
     openSheet: (sheet) => { sheets.push(sheet) },
+    report: (_severity, message) => { reports.push(message) },
     confirm: async () => false,
     prompt: async (request) => { prompts.push(request); return undefined },
   })
@@ -140,6 +145,11 @@ export async function mountChildCommandPanel(options: {
       settingWrites,
       prompts,
       invoked,
+      /** Opens the surface `id` as the command that names it does. */
+      async openSurface(id: string) {
+        client.surface(id)?.open()
+        await settle()
+      },
       labels: () => rows().map(labelOf),
       /** The list as it reads top to bottom: each section heading, then the
        *  name of each row under it, setting rows by their own label. */

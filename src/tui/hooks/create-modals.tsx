@@ -108,6 +108,8 @@ interface ModalsDeps {
   activateSession: (session: SessionCatalogRow) => Promise<SessionActivationResult>
   activateSessionById: (sessionId: string) => Promise<void>
   closeSessionTab: (sessionId: string) => void
+  /** Close chat, which also removes the tab that shows the chat. */
+  closeChat: (sessionId: string) => Promise<void>
   settings: SettingsStore
   runtimeConfig: RuntimeConfigCache
   settingsOperations: SettingsOperations
@@ -348,12 +350,12 @@ export function createModalModals(deps: ModalsDeps) {
     signals,
     appService: deps.appService,
     showToast: services.showToast,
-    seedSessionCatalogRow: services.seedSessionCatalogRow,
     clipboard,
     sessions: signals.listedSessions,
     sessionCatalogErrors: deps.sessionCatalogErrors,
     activateSession: deps.activateSession,
     activateSessionById: deps.activateSessionById,
+    closeChat: deps.closeChat,
     deleteActiveSession: createActiveSessionDelete({
       appService: deps.appService,
       signals,

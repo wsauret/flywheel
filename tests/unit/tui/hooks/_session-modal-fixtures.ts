@@ -76,6 +76,7 @@ export function createModal(options: {
   now?: () => number
   activateSession?: (session: SessionCatalogRow) => Promise<SessionActivationResult>
   deleteActiveSession?: (sessionId: string) => Promise<void>
+  closeChat?: (sessionId: string) => Promise<void>
   dispatch?: (command: { type: string; sessionId?: string }) => Promise<{ ok: true } | { ok: false; error: string }>
   showToast?: (opts: { message: string; variant: "info" | "warning" | "error" | "success"; duration?: number }) => void
 }) {
@@ -83,6 +84,7 @@ export function createModal(options: {
   const appService = createAppService(options.dispatch)
   const activateSession = options.activateSession ?? mock(async () => ({ ok: true as const }))
   const activateSessionById = mock(async (_id: string) => {})
+  const closeChat = mock(options.closeChat ?? (async (_id: string) => {}))
   const signals = createSignals(options.queueViews, options.foregroundId)
   if (options.now) signals.now = options.now
   const hook = useSessionModal({
@@ -91,15 +93,15 @@ export function createModal(options: {
     signals,
     appService,
     showToast: options.showToast ?? mock(() => {}),
-    seedSessionCatalogRow: () => {},
     sessions: () => options.sessions,
     sessionCatalogErrors: () => options.errors ?? [],
     activateSession,
     activateSessionById,
+    closeChat,
     deleteActiveSession: options.deleteActiveSession ?? mock(async () => {}),
     clipboard: { copy: mockClipboardCopy, readImage: async () => null },
   }, 0)
-  return { hook, modals, appService, activateSession, activateSessionById }
+  return { hook, modals, appService, activateSession, activateSessionById, closeChat }
 }
 
 export function rowLabels(hook: ReturnType<typeof useSessionModal>): string[] {

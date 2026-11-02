@@ -52,6 +52,18 @@ function kernelSurfaces(client: ClientContextValue): KernelSurfaceTable {
     resume: { open: () => client.actions.resume() },
     "attach-files": { open: () => client.pickFiles() },
     find: { open: (opening) => client.openFind(opening?.argument) },
+    // Close chat acts on the chat in front only, so a pane with no session
+    // lists none, and an agent's view refuses it as a chat-only command.
+    "close-chat": {
+      open: () => {
+        const state = client.state()
+        const kind = summaryOf(state, state.sessionId)?.kind
+        if (kind === "subagent" || kind === "workflow-agent") client.report("warning", chatOnlyCommandNotice("close", kind))
+        else if (state.sessionId === undefined) client.report("warning", "No active chat session")
+        else client.actions.closeSession(state.sessionId)
+      },
+      listed: () => client.state().sessionId !== undefined,
+    },
   }
 }
 

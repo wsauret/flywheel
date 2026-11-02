@@ -27,7 +27,7 @@ describe("the published command menu", () => {
       "Usage", "Model and effort", "Models", "Authentication", "Settings", "Notifications", "Background work",
       "Remote access", "MCP servers", "Status", "Auth profiles", "Doctor", "Stats", "Keyboard shortcuts",
     ])
-    expect(chat.map((command) => command.title)).toEqual(["New chat", "Sessions", "Changes", "Compact conversation", "Resume", "Attach files", "Find in transcripts"])
+    expect(chat.map((command) => command.title)).toEqual(["New chat", "Sessions", "Changes", "Compact conversation", "Resume", "Attach files", "Find in transcripts", "Close chat"])
     expect(more.map((command) => command.title)).toEqual(["Commands"])
   })
 

@@ -259,7 +259,7 @@ describe("createSessionCreator", () => {
     const key = h.frames.at(-1)!.key!
     h.signals.setForegroundId("chosen")
     h.draftCache.set(key, { text: "discard me", pastes: [], attachments: [] })
-    const closeTab = createTabCloser({
+    const { closeTab } = createTabCloser({
       tabs: h.tabState.tabs,
       appService: { dispatch: async () => { throw new Error("pending close must not dispatch") } },
       switchForeground: async () => {}, startChat: h.startChat,

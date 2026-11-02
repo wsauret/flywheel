@@ -157,7 +157,7 @@ function promptHintsDisplay(theme: TuiTheme, layout: ComposerBorderLayout) {
       ? "sessions"
       : hint.label === "new"
         ? "new"
-        : hint.label === "close"
+        : hint.label === "close tab"
           ? "close"
           : hint.label === "switch"
             ? "switch"

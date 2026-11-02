@@ -786,7 +786,16 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
       } finally { deleting.delete(target) }
       await refreshCatalog()
     },
-    close: (target) => settleCatalog({ type: "session.close", sessionId: target }),
+    async close(target) {
+      // A close removes a chat that holds nothing of the person's
+      // (PI-INTERACTION-075). A pane that still shows it then moves as after
+      // a delete, with no notice: the person did this.
+      deleting.add(target)
+      try {
+        await settleCatalog({ type: "session.close", sessionId: target })
+        if (target === sessionId && !catalog.records(target)) navigation.leave(target, undefined, false)
+      } finally { deleting.delete(target) }
+    },
     async dismissNotice(target, scope) {
       if (scope === PANE_NOTICE_SCOPE) { navigation.dismissNotice(); return }
       if (target !== undefined) await settleCatalog({ type: "session.dismiss_notice", sessionId: target, scope })

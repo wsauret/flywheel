@@ -96,6 +96,10 @@ const KERNEL_COMMANDS: readonly KernelCommand[] = [
       return { kind: "focus-session", sessionId: await host.session.fork() }
     },
   },
+  // A client surface, not a handler: Close chat is the published session.close
+  // that every client already sends, so it never waits behind a command of
+  // the chat and works while the project's runtime is paused.
+  { id: "close", title: KERNEL_COMMAND_NAMES.close, description: "End this chat's work now and close it; Resume can continue its turn", aliases: [], menu: chat(80), opens: "close-chat" },
   { id: "help", title: KERNEL_COMMAND_NAMES.help, description: "List every command", aliases: [], opens: "commands", menu: { group: "more", rank: 10 } },
 ]
 

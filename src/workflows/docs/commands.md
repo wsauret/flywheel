@@ -11,6 +11,7 @@ Type a command at the start of the prompt, or choose it in the command palette (
 | `/bg` | `/tasks` |  | Show the work this chat runs in the background |
 | `/btw` |  |  | Ask the question that follows the command on the side, without interrupting the main chat |
 | `/changes` |  |  | Review the file changes of this session and the agents it launched, and undo them per file |
+| `/close` |  |  | End this chat's work now and close it; Resume can continue its turn |
 | `/compact` |  |  | Compact the conversation context |
 | `/doctor` |  |  | Check what Flywheel needs from this machine and report what to repair |
 | `/exit` | `/quit` |  | Exit Flywheel |

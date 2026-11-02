@@ -284,6 +284,18 @@ test("a delete made here moves the pane without a notice, even when the runtime'
   } finally { gate.resolve(); session.dispose() }
 })
 
+test("Close chat on an empty chat in view moves the pane to the next chat without a notice", async () => {
+  const runtime = navigationConnection({ rows: ["chat", "second"] })
+  const session = createRuntimeSession({ connection: runtime.connection })
+  try {
+    await settle()
+    await session.close("chat")
+    await settle()
+    assert.equal(session.sessionId, "second")
+    assert.deepEqual(session.notices, [])
+  } finally { session.dispose() }
+})
+
 test("New chat opens a pending destination at once and the created chat shows its intro under the New chat name", async () => {
   const gate = Promise.withResolvers<void>()
   const listed = Promise.withResolvers<void>()

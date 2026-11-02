@@ -226,18 +226,24 @@ describe("useSessionModal", () => {
     })
   })
 
-  it("offers x close chat for an active chat only, and closes it now", async () => {
+  it("offers x close chat for an active chat only, closes it now, and names a refusal", async () => {
     await createRoot(async (dispose) => {
-      const { hook, modals, appService } = createModal({ sessions: [session({ id: "chat-active", lifecycleState: "active" })] })
+      const showToast = mock(() => {})
+      const { hook, modals, closeChat } = createModal({
+        sessions: [session({ id: "chat-active", lifecycleState: "active" })],
+        closeChat: async () => { throw new Error("refused") },
+        showToast,
+      })
 
       hook.openSessionsModal()
       expect(hook.sessionModalActions().find((action) => action.key === "x")?.label).toBe("close chat")
 
       modals.input({ name: "x", raw: "x" })
       modals.input({ name: "x", raw: "x" })
-      await Promise.resolve()
+      await Bun.sleep(1)
 
-      expect(appService.dispatch).toHaveBeenCalledWith({ type: "session.close", sessionId: "chat-active" })
+      expect(closeChat).toHaveBeenCalledWith("chat-active")
+      expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining("Close failed"), variant: "error" }))
       dispose()
     })
     createRoot((dispose) => {

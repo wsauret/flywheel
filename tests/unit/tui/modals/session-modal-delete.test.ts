@@ -90,10 +90,10 @@ describe("useSessionModal delete", () => {
           showToast: mock(() => {}),
           sessions: () => sessions,
           sessionCatalogErrors: () => [],
-          seedSessionCatalogRow: () => {},
           clipboard: { copy: async () => {}, readImage: async () => null },
           activateSession: mock(async () => ({ ok: true as const })),
           activateSessionById: mock(async () => {}),
+          closeChat: async () => {},
           deleteActiveSession: mock(async () => {}),
         })
 
@@ -138,10 +138,10 @@ describe("useSessionModal delete", () => {
           showToast: mock(() => {}),
           sessions: () => sessions,
           sessionCatalogErrors: () => [],
-          seedSessionCatalogRow: () => {},
           clipboard: { copy: async () => {}, readImage: async () => null },
           activateSession: mock(async () => ({ ok: true as const })),
           activateSessionById: mock(async () => {}),
+          closeChat: async () => {},
           deleteActiveSession,
         })
 

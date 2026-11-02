@@ -20,10 +20,12 @@ type BuiltInCommandId = string
  *  - `changes`: Changes of the chat in front and the agents it launched.
  *  - `resume`: the chat in front, continued from where it stopped.
  *  - `attach-files`: this computer's file chooser, which attaches to the prompt.
- *  - `find`: Find in transcripts; the argument is the query. */
+ *  - `find`: Find in transcripts; the argument is the query.
+ *  - `close-chat`: Close chat on the chat in front, which ends its work now
+ *    (PI-INTERACTION-082); refused in an agent's view. */
 export type KernelSurface =
   | "background" | "models" | "settings" | "auth-profiles" | "status" | "keyboard-shortcuts" | "commands"
-  | "new-chat" | "sessions" | "changes" | "resume" | "attach-files" | "find"
+  | "new-chat" | "sessions" | "changes" | "resume" | "attach-files" | "find" | "close-chat"
 
 /** A place inside a surface that a command opens at. */
 export type SurfacePlace = "authentication"

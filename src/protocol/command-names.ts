@@ -21,5 +21,6 @@ export const KERNEL_COMMAND_NAMES = {
   attach: "Attach files",
   find: "Find in transcripts",
   fork: "Fork conversation",
+  close: "Close chat",
   help: "Commands",
 } as const

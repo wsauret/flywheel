@@ -46,6 +46,7 @@ import { createModalModals } from "./hooks/create-modals.js"
 import { createModuleSlots } from "./hooks/create-module-slots.js"
 import { TUI_MODULES, tuiFaultNotice } from "./modules.js"
 import { createSurfaceRouter, type KernelSurfaceTable } from "./commands/command-surfaces.js"
+import { closeChatSurface } from "./commands/close-chat-surface.js"
 import { settingsPlace } from "./settings-destination.js"
 import { createAsyncReporter } from "./hooks/report-async.js"
 import { createTranscriptInView } from "./hooks/transcript-in-view.js"
@@ -319,12 +320,16 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     if (action.kind === "command") dispatchPaletteCommand(`/${action.id}`)
     else openSurface(action.id)
   }
+  const { closeTab, closeChat } = createTabCloser({
+    tabs, appService, switchForeground, startChat, closeSessionTab, removePendingTab, draftCache, seedSessionCatalogRow: services.seedSessionCatalogRow,
+    showToast: services.showToast,
+  })
   const {
     commandPalette, themeModal, profileModal, sessionModal, authModal, openSettingsDestination, openSubscriptionSpendReview, reviewCachedActiveProfile,
     statusModal, helpModal, backgroundModal, modelModal, findModal, sessionChangesModal, activeSessionCount, sessionCount, activeModelLabel,
   } = createModalModals({
     directories, launcher, clipboard, modal, signals, services, appService, sessions: signals.sessionCatalogRows, sessionCatalogErrors: signals.sessionCatalogErrors, sessionCount: signals.sessionCount, tabs, appVersion, chat, startChat, switchForeground,
-    activateSession, activateSessionById, closeSessionTab, settings, runtimeConfig, settingsOperations,
+    activateSession, activateSessionById, closeSessionTab, closeChat, settings, runtimeConfig, settingsOperations,
     signInPage: signInPage(attach),
     onPaletteActivate: dispatchPaletteCommand,
     commands: commandCatalog,
@@ -337,10 +342,6 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
       if (target.kind === "session") { await activateSessionById(target.sessionId); return }
       for (const client of moduleClients) if (await client.openTarget?.(target)) return
     },
-  })
-  const closeTab = createTabCloser({
-    tabs, appService, switchForeground, startChat, closeSessionTab, removePendingTab, draftCache, seedSessionCatalogRow: services.seedSessionCatalogRow,
-    showToast: services.showToast,
   })
 
   const place = createLaunchState({ projectRoot: stateRoot, handed: launchState, catalogReady: signals.catalogReady, signals, tabs, openSessionTab, draftCache, outbox: submissions, composer: () => composer, transcripts: services.transcripts, layout: transcriptLayout, overlay, activateSessionById,
@@ -367,7 +368,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     const settlement = await startChat()
     if (settlement.kind === "foregrounded") {
       services.showToast({
-        message: `Sessions are tabs: this is a fresh one. Chats with content keep their tabs; unused empty tabs are replaced. ${keymap.chordFor("new")} new, ${keymap.chordFor("tab.close")} close.`,
+        message: `Sessions are tabs: this is a fresh one. Chats with content keep their tabs; unused empty tabs are replaced. ${keymap.chordFor("new")} new, ${keymap.chordFor("tab.close")} close tab.`,
         variant: "info",
         duration: 8000,
       })
@@ -392,6 +393,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     "resume": () => sessionControlsHook.resume(),
     "attach-files": createAttachFilesCommand({ launcher, showToast: services.showToast, slot: promptAttachSlot }),
     "find": ({ argument }) => findModal.openFindModal(argument),
+    "close-chat": closeChatSurface({ agentInView: transcriptInView.agentInView, chatInFront: () => signals.sessionInputMode()?.kind === "chat" ? signals.foregroundId() : undefined, closeChat, showToast: services.showToast }),
   }
   const openSurface = createSurfaceRouter({ kernel: kernelSurfaces, modules: slots.surfaces, report: createAsyncReporter(services.showToast),
     missing: (surface) => services.showToast({ message: `This client has no "${surface}" surface`, variant: "warning" }) })

@@ -184,7 +184,7 @@ describe("computeComposerBorderLayout", () => {
     const hints: KeyHintSpec[] = [
       { key: "ctrl+r", label: "resume" },
       { key: "ctrl+n", label: "new" },
-      { key: "ctrl+w", label: "close" },
+      { key: "ctrl+w", label: "close tab" },
       { key: "tab", label: "switch" },
       { key: "ctrl+s", label: "5 sessions", separatorStyle: "border" },
     ]
@@ -218,7 +218,7 @@ describe("computeComposerBorderLayout", () => {
       const targets = [
         ["ctrl+r resume", "resume"],
         ["ctrl+n new", "new"],
-        ["ctrl+w close", "close"],
+        ["ctrl+w close tab", "close"],
         ["tab switch", "switch"],
         ["ctrl+s 5 sessions", "sessions"],
         ["2 background processes", "background"],
@@ -436,7 +436,7 @@ describe("computeComposerBorderLayout", () => {
   it("includes all bottom-right hints when the terminal is wide", () => {
     const result = computeComposerBorderLayout({ ...baseInput, terminalWidth: 200 })
     expect(result.modelLabel).toBe("claude-opus-4")
-    expect(result.hints.map((h) => h.label)).toEqual(["cancel", "new", "close", "switch", "5 sessions"])
+    expect(result.hints.map((h) => h.label)).toEqual(["cancel", "new", "close tab", "switch", "5 sessions"])
     expect(result.sessionsClickHint).toEqual({ key: "ctrl+s", label: "5 sessions" })
   })
 
@@ -447,12 +447,12 @@ describe("computeComposerBorderLayout", () => {
   })
 
   it("degrades instead of selecting a level the border renderer would suppress", () => {
-    // Full hint text is 73 cells; the renderer needs terminalWidth >= 78 to
+    // Full hint text is 77 cells; the renderer needs terminalWidth >= 82 to
     // splice it into the bottom border (padding + corners + one rule cell).
-    const fits = computeComposerBorderLayout({ ...baseInput, terminalWidth: 78 })
-    expect(fits.hints.map((h) => h.label)).toEqual(["cancel", "new", "close", "switch", "5 sessions"])
-    const boundary = computeComposerBorderLayout({ ...baseInput, terminalWidth: 77 })
-    expect(boundary.hints.map((h) => h.label)).toEqual(["cancel", "new", "close", "5 sessions"])
+    const fits = computeComposerBorderLayout({ ...baseInput, terminalWidth: 82 })
+    expect(fits.hints.map((h) => h.label)).toEqual(["cancel", "new", "close tab", "switch", "5 sessions"])
+    const boundary = computeComposerBorderLayout({ ...baseInput, terminalWidth: 81 })
+    expect(boundary.hints.map((h) => h.label)).toEqual(["cancel", "new", "close tab", "5 sessions"])
   })
 
   it("drops ctrl+s sessions before primary hints", () => {
@@ -499,7 +499,7 @@ describe("computeComposerBorderLayout", () => {
 
     it("appears only while the foreground row admits Resume and no turn runs", () => {
       const shown = computeComposerBorderLayout({ ...baseInput, terminalWidth: 200, resumeHint: hintFor(interrupted, false) })
-      expect(shown.hints.map((h) => h.label)).toEqual(["cancel", "resume", "new", "close", "switch", "5 sessions"])
+      expect(shown.hints.map((h) => h.label)).toEqual(["cancel", "resume", "new", "close tab", "switch", "5 sessions"])
 
       for (const resumeHintInput of [
         hintFor(interrupted, true),
@@ -518,7 +518,7 @@ describe("computeComposerBorderLayout", () => {
 
     it("outlives Tab switch, the tab verbs, and sessions under width pressure, and yields before primary hints", () => {
       const labels = (terminalWidth: number) => computeComposerBorderLayout({ ...baseInput, terminalWidth, resumeHint }).hints.map((h) => h.label)
-      expect(labels(80)).toEqual(["cancel", "resume", "new", "close", "5 sessions"])
+      expect(labels(84)).toEqual(["cancel", "resume", "new", "close tab", "5 sessions"])
       expect(labels(60)).toEqual(["cancel", "resume", "5 sessions"])
       expect(labels(35)).toEqual(["cancel", "resume"])
       expect(labels(20)).toEqual(["cancel"])
@@ -527,7 +527,7 @@ describe("computeComposerBorderLayout", () => {
 
   it("omits Tab switch when fewer than 2 active sessions", () => {
     const result = computeComposerBorderLayout({ ...baseInput, terminalWidth: 200, activeSessionCount: 1 })
-    expect(result.hints.map((h) => h.label)).toEqual(["cancel", "new", "close", "5 sessions"])
+    expect(result.hints.map((h) => h.label)).toEqual(["cancel", "new", "close tab", "5 sessions"])
   })
 
   it("keeps sessions visible when contextual global hints are blocked", () => {

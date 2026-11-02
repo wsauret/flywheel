@@ -13,14 +13,14 @@ export interface SessionModalDeps {
   signals: ShellSignals
   appService: Pick<RuntimeClient, "dispatch">
   showToast: ShellServices["showToast"]
-  /** Immediate client-cache overlay of a command result's fresh catalog row. */
-  seedSessionCatalogRow: (row: SessionCatalogRow) => void
   clipboard: Clipboard
   /** The rows the list shows (`ShellSignals.listedSessions`). */
   sessions: Accessor<readonly SessionCatalogRow[]>
   sessionCatalogErrors: Accessor<readonly SessionCatalogError[]>
   activateSession: (session: SessionCatalogRow) => Promise<SessionActivationResult>
   activateSessionById: (sessionId: string) => Promise<void>
+  /** Close chat, which also removes the tab that shows the chat. */
+  closeChat: (sessionId: string) => Promise<void>
   deleteActiveSession: (sessionId: string) => Promise<void>
 }
 

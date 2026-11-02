@@ -26,7 +26,7 @@ export interface TailRead {
  *  `open` answers each `chat.open`, `created` holds every
  *  catalog read after the first and every detail read of a created chat,
  *  `remove` answers each `session.delete`, and `tail` answers each tail
- *  read of a session's transcript. */
+ *  read of a session's transcript. A `session.close` removes its chat. */
 export function navigationConnection(options: {
   readonly rows?: readonly string[]
   readonly tail?: (sessionId: string) => TailRead
@@ -82,6 +82,16 @@ export function navigationConnection(options: {
       if (refused) return refused
       const listed = rows.findIndex((row) => row.id === command.sessionId)
       if (listed >= 0) rows.splice(listed, 1)
+      return { ok: true }
+    },
+    // Close removes a chat that holds nothing of the person's, as each
+    // chat here is (PI-INTERACTION-075), and publishes the removal first.
+    "session.close": async (command) => {
+      const listed = rows.findIndex((row) => row.id === command.sessionId)
+      if (listed >= 0) rows.splice(listed, 1)
+      for (const listener of listeners) listener({ type: "patch", patch: {
+        cursor: { scope: "session", domain: "session", sessionId: command.sessionId }, position: 1, prevPosition: 0, payload: { kind: "session.removed" },
+      } })
       return { ok: true }
     },
     "chat.open": async () => {

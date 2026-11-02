@@ -13,7 +13,7 @@ import type { ComposerBorderUpdate } from "../../../../src/tui/components/compos
 export const primary: KeyHintSpec[] = [{ key: "esc", label: "cancel" }]
 const sessionsHint: KeyHintSpec = { key: "ctrl+s", label: "sessions" }
 const newHint: KeyHintSpec = { key: "ctrl+n", label: "new" }
-const closeHint: KeyHintSpec = { key: "ctrl+w", label: "close" }
+const closeHint: KeyHintSpec = { key: "ctrl+w", label: "close tab" }
 export const resolvedTheme = resolveTheme(flywheelTheme, "dark")
 
 export const baseInput = {

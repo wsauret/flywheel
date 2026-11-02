@@ -120,6 +120,25 @@ test("a bare slash lists the top commands, every in-place setting in catalog ord
   } finally { typed.dispose() }
 })
 
+test("Close chat is one row, the catalog command that /close finds, which closes the chat now and is refused in an agent's view", async () => {
+  const close = { id: "close", title: "Close chat", description: "End this chat's work now", aliases: [], opens: "close-chat", menu: { group: "chat", rank: 80 } } as const
+  const closes = (dispatched: readonly unknown[]) => dispatched.filter((mutation) => typeof mutation === "object" && mutation !== null && "type" in mutation && mutation.type === "session.close")
+  const chat = await fixture.mountChildCommandPanel({ builtInCommands: [close], chat: true, query: "close" })
+  try {
+    assert.equal(chat.labels().filter((label) => label === "Close chat").length, 1, chat.labels().join(", "))
+    await chat.pick("Close chat")
+    assert.deepEqual(chat.invoked, ["close"])
+    await chat.openSurface("close-chat")
+    assert.deepEqual(closes(chat.dispatched), [{ type: "session.close", sessionId: "parent-chat" }])
+  } finally { chat.dispose() }
+  const agent = await fixture.mountChildCommandPanel({ builtInCommands: [close], query: "close" })
+  try {
+    await agent.openSurface("close-chat")
+    assert.deepEqual(closes(agent.dispatched), [])
+    assert.deepEqual(agent.reports, ["/close works in a chat, not in this subagent"])
+  } finally { agent.dispose() }
+})
+
 test("an in-place setting row shows its value and changes it from the keyboard without leaving the panel", async () => {
   const mounted = await fixture.mountChildCommandPanel({ settings: true })
   try {

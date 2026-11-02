@@ -19,30 +19,48 @@ interface TabCloserDeps {
   showToast: ShellServices["showToast"]
 }
 
-/** Closes a tab. The tab removal itself is pure UI intent and structurally
- *  unrefusable: it happens first, synchronously, no matter how broken the
- *  session behind it is. The runtime close that follows is durable cleanup --
- *  its failure surfaces as a toast, never as a tab that refuses to close. It
- *  ends no work: the chat closes when its turn comes to rest (PI-INTERACTION-082).
- *  When the foreground closes, falls back to the adjacent tab or a fresh chat. */
-export function createTabCloser(deps: TabCloserDeps): (tabId: string) => void {
-  return function closeTab(tabId: string): void {
+export interface TabCloser {
+  /** Closes a tab as the person asks: removes it, then closes its chat at rest. */
+  closeTab(tabId: string): void
+  /** Close chat: ends the chat's work now (PI-INTERACTION-082), then removes
+   *  the tab that shows it, if one does. Rejects with the runtime's refusal,
+   *  and then keeps the tab. */
+  closeChat(sessionId: string): Promise<void>
+}
+
+/** Closes tabs and chats. The removal of a closed tab itself is pure UI intent and
+ *  structurally unrefusable: it happens first, synchronously, no matter how
+ *  broken the session behind it is. When the foreground goes, it falls back to
+ *  the adjacent tab or a fresh chat. The runtime close that a tab close adds is
+ *  durable cleanup -- its failure surfaces as a toast, never as a tab that
+ *  refuses to close. It ends no work: the chat closes when its turn comes to
+ *  rest (PI-INTERACTION-082). */
+export function createTabCloser(deps: TabCloserDeps): TabCloser {
+  const toastError = (err: unknown): void => { deps.showToast({ message: errorMessage(err), variant: "error" }) }
+
+  /** Removes the tab, if this shell shows one, and answers the removed tab. */
+  function remove(tabId: string): TabInfo | undefined {
     const list = deps.tabs()
     const idx = list.findIndex((t) => t.id === tabId)
     const target = list[idx]
-    if (!target) return
-    if (target.kind === "session" && list.length === 1 && target.title === "New Chat" && !target.isBusy && !target.isBlocked) return
+    if (!target) return undefined
     const fallback = list[idx + 1] ?? list[idx - 1]
-    const toastError = (err: Error): void => { deps.showToast({ message: errorMessage(err), variant: "error" }) }
     // Foreground fallback and runtime close are independent chains: neither
     // failing may prevent the other, and neither may resurrect the tab.
     batch(() => {
       if (target.kind === "pending") deps.removePendingTab(tabId)
       else deps.closeSessionTab(tabId)
-      if (target.isForeground) {
-        void (fallback ? deps.switchForeground(fallback.id) : deps.startChat()).catch((err) => toastError(err instanceof Error ? err : new Error(String(err))))
-      }
+      if (target.isForeground) void (fallback ? deps.switchForeground(fallback.id) : deps.startChat()).catch(toastError)
     })
+    return target
+  }
+
+  function closeTab(tabId: string): void {
+    const list = deps.tabs()
+    const only = list.length === 1 ? list[0] : undefined
+    if (only?.id === tabId && only.kind === "session" && only.title === "New Chat" && !only.isBusy && !only.isBlocked) return
+    const target = remove(tabId)
+    if (!target) return
     if (target.kind === "pending") {
       // Focus changes flush the old composer buffer; clear its retired key last.
       deps.draftCache.clear(tabId)
@@ -53,6 +71,16 @@ export function createTabCloser(deps: TabCloserDeps): (tabId: string) => void {
       if (!result.ok) throw new Error(result.error)
       if (result.sessionCatalogRow) deps.seedSessionCatalogRow(result.sessionCatalogRow)
     }
-    void cleanup().catch((err) => toastError(err instanceof Error ? err : new Error(String(err))))
+    void cleanup().catch(toastError)
   }
+
+  async function closeChat(sessionId: string): Promise<void> {
+    const result = await deps.appService.dispatch({ type: "session.close", sessionId })
+    if (!result.ok) throw new Error(result.error)
+    if (result.sessionCatalogRow) deps.seedSessionCatalogRow(result.sessionCatalogRow)
+    // Even a sole idle New Chat tab goes: Close chat removes an empty chat.
+    remove(sessionId)
+  }
+
+  return { closeTab, closeChat }
 }

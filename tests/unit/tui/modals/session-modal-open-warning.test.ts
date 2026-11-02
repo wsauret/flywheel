@@ -73,10 +73,10 @@ async function openSessionAndCollectToasts(sessionCatalogErrors: (sessionId: str
         showToast: (opts) => { toasts.push(opts) },
         sessions: () => sessions,
         sessionCatalogErrors: () => sessionCatalogErrors(sessionId),
-        seedSessionCatalogRow: () => {},
         clipboard: { copy: async () => {}, readImage: async () => null },
             activateSession,
         activateSessionById: mock(async () => {}),
+        closeChat: async () => {},
         deleteActiveSession: mock(async () => {}),
       })
 

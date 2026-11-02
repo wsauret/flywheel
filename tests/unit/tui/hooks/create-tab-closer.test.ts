@@ -43,6 +43,7 @@ function recordingDispatch(answer: () => Promise<MutationResult>) {
 
 interface CloserMocks {
   closeTab: (tabId: string) => void
+  closeChat: (sessionId: string) => Promise<void>
   calls: string[]
   dispatch: ReturnType<typeof mock>
   showToast: ReturnType<typeof mock>
@@ -59,7 +60,7 @@ function makeCloser(
     return await dispatchImpl()
   })
   const showToast = mock((toast: { message: string }) => { calls.push(`toast:${toast.message}`) })
-  const closeTab = createTabCloser({
+  const { closeTab, closeChat } = createTabCloser({
     tabs: () => tabs,
     appService: { dispatch },
     switchForeground: overrides.switchForeground ?? mock(async (id: string) => { calls.push(`foreground:${id}`) }),
@@ -70,7 +71,7 @@ function makeCloser(
     seedSessionCatalogRow: mock((row: SessionCatalogRow) => { calls.push(`seed:${row.id}:${row.lifecycleState}`) }),
     showToast,
   })
-  return { closeTab, calls, dispatch: commands, showToast }
+  return { closeTab, closeChat, calls, dispatch: commands, showToast }
 }
 
 describe("createTabCloser", () => {
@@ -82,7 +83,7 @@ describe("createTabCloser", () => {
       const frames: boolean[] = []
       createComputed(() => { frames.push(tabs().some((row) => row.isForeground)) })
       const { dispatch, commands } = recordingDispatch(async () => ({ ok: true }))
-      const close = createTabCloser({
+      const { closeTab: close } = createTabCloser({
         tabs, appService: { dispatch }, switchForeground: async (key) => { setForeground(key) },
         startChat: async () => ({ kind: "foregrounded" }), closeSessionTab: () => {},
         removePendingTab: (key) => { setRows((list) => list.filter((row) => row.id !== key)) },
@@ -207,5 +208,28 @@ describe("createTabCloser", () => {
     await settle()
 
     expect(calls).toEqual(["close:chat-1", "startChat", "dispatch"])
+  })
+
+  // Close chat ends the work now, then its tab goes with the same foreground
+  // fallback, even a sole idle New Chat, because the close removed that chat.
+  it("closes a chat now, then removes its tab with the foreground fallback", async () => {
+    const { closeChat, calls, dispatch } = makeCloser(
+      [tab("chat-1", { isForeground: true, title: "New Chat" })],
+      async () => ({ ok: true as const, sessionId: "chat-1", sessionCatalogRow: catalogRow("chat-1") }),
+    )
+
+    await closeChat("chat-1")
+    await settle()
+
+    expect(dispatch.mock.calls[0]?.[0]).toEqual({ type: "session.close", sessionId: "chat-1" })
+    expect(calls).toEqual(["dispatch", "seed:chat-1:inactive", "close:chat-1", "startChat"])
+  })
+
+  it("keeps the tab of a chat whose close the runtime refused", async () => {
+    const { closeChat, calls } = makeCloser([tab("chat-1", { isForeground: true }), tab("chat-2")], async () => ({ ok: false as const, error: "refused" }))
+
+    await expect(closeChat("chat-1")).rejects.toThrow("refused")
+
+    expect(calls).toEqual(["dispatch"])
   })
 })
