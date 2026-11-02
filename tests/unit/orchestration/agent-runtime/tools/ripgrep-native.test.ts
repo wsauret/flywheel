@@ -109,16 +109,20 @@ describe("native ripgrep", () => {
     expect(result.totalMatches).toBe(1);
     expect(performance.now() - start).toBeLessThan(100);
 
-    // More long searches than the host has threads must not hold a waiting
-    // call past its own wall limit, and that call reports busy workers, not
-    // slow storage.
+    // More long searches than the native search pool holds must not hold a
+    // waiting call past its own wall limit, and that call reports busy
+    // workers, not slow storage. The waiting call's deadline leaves room for
+    // its supervisor thread to start: on a saturated 4-core Windows Server
+    // runner a new thread can first run more than 20 ms later, and a
+    // supervisor that starts past its deadline reports the wall limit instead.
+    // The bound stays far below the 2 s at which a busy worker frees.
     const saturating = new AbortController();
     const long = Array.from({ length: os.availableParallelism() + 4 }, () =>
       grep({ pattern: "(?=a)a+(?<!a)", engine: "pcre2", path: target, timeoutMs: 2_000, maxCount: 1 }, saturating.signal).catch((error: unknown) => error));
     try {
       const waited = performance.now();
-      await expect(grep({ pattern: "needle", path: literal, timeoutMs: 20 })).rejects.toEqual(new SearchStoppedError("no-worker"));
-      expect(performance.now() - waited).toBeLessThan(250);
+      await expect(grep({ pattern: "needle", path: literal, timeoutMs: 200 })).rejects.toEqual(new SearchStoppedError("no-worker"));
+      expect(performance.now() - waited).toBeLessThan(1_000);
     } finally {
       saturating.abort();
     }
