@@ -188,15 +188,21 @@ describe("settleTurn", () => {
   })
 
   it("does not append conversation results or continue before display evidence is durable", async () => {
+    const barrierEntered = Promise.withResolvers<void>()
     const barrier = Promise.withResolvers<void>()
     const turn = harness({
       tools: [makeTool(async () => ({ content: "done", outcome: "ok" }), "worker")],
-      displayBarrier: () => barrier.promise,
+      displayBarrier: () => { barrierEntered.resolve(); return barrier.promise },
     })
     const tc = toolCall("tool_1", "worker")
 
     turn.onToolUse(tc)
     const settling = Effect.runPromise(turn.settle([tc]))
+    // Wait for the barrier itself, not a fixed delay: the work before it takes
+    // real timers that a saturated CI runner can stretch past any short sleep.
+    // The sleep after it gives a settlement that did not await the barrier
+    // time to append results, so that this test can see it.
+    await barrierEntered.promise
     await Bun.sleep(5)
 
     expect(turn.log).toEqual(["assistant-appended", "assistant-canonical:tool_1", "projection:tool_1"])

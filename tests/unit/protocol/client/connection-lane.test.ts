@@ -605,15 +605,19 @@ describe("runtime connection read deadlines", () => {
   test("a read that times out while the lane still hears the runtime is the read's own failure", async () => {
     const runtime = await heartbeatRuntime({ answersQueries: false })
     const connection = createRuntimeConnection({ socket: runtime.client, random: () => 0, waitForBackoff: async () => {} })
+    let heardPatch = false
     try {
-      connection.subscribe(() => {})
+      connection.subscribe((event) => { if (event.type === "patch") heardPatch = true })
       await runtime.heartbeat()
       await waitFor(() => connection.state === "connected")
       await withHeldDeadlines(CONTROL_RPC_DEADLINE_MS, async (expire) => {
         const answer = settled(connection.query({ type: "commandUsageSnapshot" }))
         await waitFor(() => runtime.arrivals.includes("query:commandUsageSnapshot"))
-        await runtime.heartbeat()
-        await new Promise((resolve) => setTimeout(resolve, 10))
+        // The deadline passes only once the connection has heard the runtime
+        // after the read: a heartbeat is not shown to receivers, so the
+        // runtime sends a frame that they hear.
+        await runtime.emit({ type: "patch", patch: { cursor: { scope: "workspace", domain: "executor" }, position: 1, prevPosition: 0, payload: { kind: "executor.changed", executor: { kind: "serving" } } } })
+        await waitFor(() => heardPatch)
         expire()
         const outcome = await answer
         assert.equal(outcome.ok, false)
