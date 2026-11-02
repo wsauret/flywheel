@@ -1,0 +1,72 @@
+docs/product-intent/interaction.md
+  h_4b47e9e4a8b456 187,495
+src/orchestration/app-service/kernel-commands.ts
+  h_4b47e9e4a8b456 99-102
+src/protocol/client/host-action-names.ts
+  h_4b47e9e4a8b456 1-2,6-7,14
+src/protocol/command-catalog-protocol-types.ts
+  h_4b47e9e4a8b456 23-25,28
+src/protocol/command-names.ts
+  h_4b47e9e4a8b456 24
+src/tui/commands/close-chat-surface.ts
+  h_4b47e9e4a8b456 1-21
+src/tui/components/composer-border-labels.tsx
+  h_4b47e9e4a8b456 160
+src/tui/hooks/create-composer-border-layout.ts
+  h_4b47e9e4a8b456 97
+src/tui/hooks/create-modals.tsx
+  h_4b47e9e4a8b456 111-112,358
+src/tui/hooks/create-tab-closer.ts
+  h_4b47e9e4a8b456 22-42,46,53,55-63,74,76-85
+src/tui/hooks/use-session-modal-types.ts
+  h_4b47e9e4a8b456 22-23
+src/tui/hooks/use-session-modal.ts
+  h_4b47e9e4a8b456 286,289-291
+src/tui/shell.tsx
+  h_4b47e9e4a8b456 49,323-326,332,371,396
+src/workflows/docs/commands.md
+  h_4b47e9e4a8b456 14
+tests/unit/orchestration/app-service/kernel-commands.test.ts
+  h_4b47e9e4a8b456 30
+tests/unit/tui/commands/close-chat-surface.test.ts
+  h_4b47e9e4a8b456 1-32
+tests/unit/tui/components/prompt-border-fixtures.ts
+  h_4b47e9e4a8b456 16
+tests/unit/tui/components/prompt-border-layout.test.ts
+  h_4b47e9e4a8b456 187,221,439,450,452-455,502,521,530
+tests/unit/tui/hooks/_session-modal-fixtures.ts
+  h_4b47e9e4a8b456 79,87,100,104
+tests/unit/tui/hooks/create-session-creator.test.ts
+  h_4b47e9e4a8b456 262
+tests/unit/tui/hooks/create-tab-closer.test.ts
+  h_4b47e9e4a8b456 46,63,74,86,212-234
+tests/unit/tui/hooks/use-session-modal.test.ts
+  h_4b47e9e4a8b456 229,231-236,243,245-246
+tests/unit/tui/modals/session-modal-delete.test.ts
+  h_4b47e9e4a8b456 96,144
+tests/unit/tui/modals/session-modal-open-warning.test.ts
+  h_4b47e9e4a8b456 79
+webview/src/app/command-panel-controls-fixture.tsx
+  h_4b47e9e4a8b456 58,63-67,80,87,128,148-152
+webview/src/app/command-panel-controls.test.ts
+  h_4b47e9e4a8b456 123-141
+webview/src/app/surfaces.ts
+  h_4b47e9e4a8b456 55-66
+webview/src/client/session-navigation-fixture.ts
+  h_4b47e9e4a8b456 29,87-96
+webview/src/client/session-navigation.test.ts
+  h_4b47e9e4a8b456 287-298
+webview/src/client/session.ts
+  h_4b47e9e4a8b456 789-798
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "02bec54669211ba48db1af11c9a010f553857ab0",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
