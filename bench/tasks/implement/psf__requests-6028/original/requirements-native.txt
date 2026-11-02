@@ -6,7 +6,7 @@ pytest-mock==2.0.0
 iniconfig==1.1.1
 pluggy==1.0.0
 packaging==24.1
-certifi==2024.8.30
+certifi==2026.10.18
 charset-normalizer==2.0.12
 idna==3.10
 urllib3==1.26.20
