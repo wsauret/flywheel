@@ -19,7 +19,7 @@ export interface ChatMutationDeps {
     sendChat(sessionId: string, input: ChatInputLike): Promise<SendChatOutcome>
     activateSession(sessionId: string, options?: { readonly shown?: true }): Promise<boolean>
     releaseSession(sessionId: string): Promise<void>
-    closeChat(sessionId: string): Promise<boolean>
+    closeChat(sessionId: string, atRest?: true): Promise<boolean>
     discardTransientChat(sessionId: string): Promise<DiscardTransientOutcome>
     deleteSession(sessionId: string, inactiveBefore?: number): Promise<boolean>
     renameSession(sessionId: string, patch: SessionTitlePatch): Promise<boolean>
@@ -103,7 +103,7 @@ async function routeStateful(mutation: Exclude<ChatMutation, { type: "chat.inter
       await deps.supervisor.releaseSession(mutation.sessionId)
       return { ok: true }
     case "session.close":
-      return commandResult(mutation.sessionId, await deps.supervisor.closeChat(mutation.sessionId), "close chat session")
+      return commandResult(mutation.sessionId, await deps.supervisor.closeChat(mutation.sessionId, mutation.atRest), "close chat session")
     case "session.discard_transient": {
       const outcome = await deps.supervisor.discardTransientChat(mutation.sessionId)
       return { ok: true, sessionId: mutation.sessionId, sessionRemoved: outcome.removed }

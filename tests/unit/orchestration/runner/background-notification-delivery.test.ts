@@ -197,6 +197,7 @@ describe("workflow background notification delivery", () => {
         } },
         eventWriter: writer,
         admitsDelivery: () => admitted,
+        sweepAfterCommit: () => {},
       })
 
       await delivery.drainHeld(chatEntry({ conversationId, runner: null }))

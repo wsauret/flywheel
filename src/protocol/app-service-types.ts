@@ -408,7 +408,11 @@ export type FrontendMutation =
    *  account service's protocol boundary serves it. */
   | { type: "output.watch"; sessionIds: readonly string[] }
   | { type: "session.fork"; sessionId: string }
-  | { type: "session.close"; sessionId: string }
+  /** Closes the chat: it ends the chat's work now, then removes an empty
+   *  chat and keeps any other chat inactive. With `atRest`, the close of the
+   *  chat's tab, it ends no work: the chat closes when its turn comes to
+   *  rest, and an activation before then cancels the close (PI-INTERACTION-082). */
+  | { type: "session.close"; sessionId: string; atRest?: true }
   /** An optional epoch-millisecond cutoff requires the owned tree to prove inactivity. */
   | { type: "session.delete"; sessionId: string; inactiveBefore?: number }
   | { type: "session.discard_transient"; sessionId: string }

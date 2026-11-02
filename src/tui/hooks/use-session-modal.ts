@@ -282,6 +282,20 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
     shortTitleEditor.resetEphemeralState({ cursor: shortTitle.length })
   }
 
+  /** Close chat ends the chat's work now, unlike the close of its tab
+   *  (PI-INTERACTION-082). A tab that shows the chat stays open. */
+  function closeChat(session: SessionCatalogRow): void {
+    const subject = sessionSubject(session)
+    void deps.appService.dispatch({ type: "session.close", sessionId: session.id })
+      .then((result) => {
+        if (!result.ok) throw new Error(result.error)
+        if (result.sessionCatalogRow) deps.seedSessionCatalogRow(result.sessionCatalogRow)
+      })
+      .catch((err) => {
+        showToast({ message: `Close failed for ${subject}: ${extractErrorMessage(err)}`, variant: "error" })
+      })
+  }
+
   function actionsForSession(session: SessionCatalogRow): SessionModalAction[] {
     const actions: SessionModalAction[] = [
       { key: "d", label: "delete", onTrigger: () => triggerDelete(session) },
@@ -297,6 +311,8 @@ export function useSessionModal(deps: SessionModalDeps, shortcutDelayMs = defaul
     const offered = offeredSessionControls(session, status ? isInterruptible(status) : isActiveActivity(session.activity))
     if (offered.primary === "resume") actions.push({ key: "r", label: "resume", onTrigger: () => resumeSession(session) })
     if (offered.primary === "interrupt") actions.push({ key: "i", label: "interrupt", onTrigger: () => interruptSession(session) })
+    // Last, so the footer's one line truncates it before the primary control.
+    if (session.lifecycleState === "active") actions.push({ key: "x", label: "close chat", onTrigger: () => closeChat(session) })
     return actions
   }
 

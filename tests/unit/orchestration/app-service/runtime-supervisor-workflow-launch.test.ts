@@ -102,6 +102,30 @@ describe("a model workflow launch through its parent chat actor", () => {
     expect(ctx.store.readInFlight(parentId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND)).toEqual([])
   })
 
+  test("acknowledges a workflow that ended while its parent was closed once the parent opens again", async () => {
+    const outcome = Promise.withResolvers<{ servedRequests: 0, durationMs: number; terminal: { kind: "api_error"; message: string, recovery: { kind: "none" } } }>()
+    const started = Promise.withResolvers<void>()
+    const ctx = context()
+    const composition = compose(ctx, { realChat: true, reconcilesThroughParentActor: true, runsWorkflows: (options) => {
+      if (options.purpose.kind !== "workflow-agent") return quietAgent(options)
+      started.resolve()
+      return { send() {}, end() {}, abort() {}, done: outcome.promise }
+    } })
+    const parentId = await parentChat(ctx)
+    await composition.supervisor.activateSession(parentId)
+    const launch = await modelCall(ctx, composition, parentId)
+    await started.promise
+    await composition.supervisor.closeChat(parentId)
+    outcome.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "api_error", message: "terminal failure while closed", recovery: { kind: "none" } } })
+    await until(() => ctx.store.readInFlight(parentId, QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND).length === 1, "the held result")
+    expect(ctx.workflowHosts.isRunning(launch.workflowId)).toBe(true)
+    await composition.supervisor.activateSession(parentId)
+    // A runner that stays live after its completion is committed is tracked
+    // again by the reopened parent as work its turn waits on.
+    await until(() => !ctx.workflowHosts.isRunning(launch.workflowId), "the workflow runner's acknowledgement")
+    expect((await branch(ctx, parentId)).some(({ id }) => id === `workflow-completion:${launch.workflowId}`)).toBe(true)
+  })
+
   test("reconciles already-admitted work durably without waking a closing real Chat", async () => {
     const gate = Promise.withResolvers<void>()
     const reached = Promise.withResolvers<void>()

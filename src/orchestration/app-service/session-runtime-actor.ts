@@ -59,9 +59,11 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
   // The actor owns its session's completion index for its whole life, and
   // every way the actor ends vacates the store, which releases it.
   const releaseReconciliationIndex = holdChildReconciliationIndex(ctx.projectionReader, sessionId)
-  // Set while no client shows the chat and its turn is not at rest: the
-  // store watch that ends the runner once the turn comes to rest.
-  let releaseWatch: (() => void) | undefined
+  // Set while no client shows the chat, or its tab closed, and its turn is
+  // not at rest: the store watch that ends the runner, or closes the chat
+  // when `closeAtRest`, once the turn comes to rest.
+  let restWatch: (() => void) | undefined
+  let closeAtRest = false
   let failedMessage: string | undefined
   let pending: PendingDelivery[] = []
   const deliveredEntryIds = new Set<string>()
@@ -79,7 +81,11 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
   let undo: { readonly controller: AbortController; readonly settled: Promise<SessionChangesUndoResult> } | undefined
 
   const durability: ChatDurabilityContext = chatDurabilityContext(ctx, sessionId)
-  const backgroundNotifications = createBackgroundNotificationDelivery({ sessionId, projectRoot: ctx.directories.projectRoot, eventStore: ctx.eventStore, projectionReader: ctx.projectionReader, eventWriter: ctx.eventWriter, admitsDelivery: () => !closing && !ctx.isDisposed() })
+  const backgroundNotifications = createBackgroundNotificationDelivery({ sessionId, projectRoot: ctx.directories.projectRoot, eventStore: ctx.eventStore, projectionReader: ctx.projectionReader, eventWriter: ctx.eventWriter, admitsDelivery: () => !closing && !ctx.isDisposed(),
+    // A send or activation can commit while its own reconciliation holds the
+    // lane, so the sweep runs after it rather than inside it.
+    sweepAfterCommit: () => { void reconcileChildSessionCompletions().catch((error: unknown) => { recordBackgroundFailure(log, "sweep after a held workflow completion", { sessionId }, error) }) },
+  })
   const continuation = createSessionContinuation(sessionId, ctx, {
     isClosing: () => closing,
     clearFailure: () => { failedMessage = undefined },
@@ -177,8 +183,8 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
       // the next activation or message starts the runner again. An entry that
       // no client shows any more leaves the store; input already committed
       // stays in the conversation.
-      if (releaseWatch) {
-        void mailbox.run(() => vacateFailedStart(id)).catch((error: unknown) => { recordBackgroundFailure(log, "vacate failed start", { sessionId }, error) })
+      if (restWatch) {
+        void mailbox.run(() => vacateFailedStart(id)).then((tail) => tail()).catch((error: unknown) => { recordBackgroundFailure(log, "vacate failed start", { sessionId }, error) })
       }
       throw err
     }
@@ -211,16 +217,20 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
   /** Removes the session's store entry, which ends its runner, and drops the
    *  transcript state and conversation trees the entry kept resident here. */
   async function vacateStore(): Promise<void> {
-    cancelRelease()
+    cancelRestWork()
     inputControl.vacate()
     await ctx.sessionStore.remove(sessionId)
     await ctx.transcriptCache.release(sessionId)
     releaseReconciliationIndex()
   }
 
+  /** A start that failed and has settled is at rest: its input already
+   *  committed waits in the conversation, not in a turn, until the next
+   *  activation or message starts the runner again. */
   function turnAtRest(): boolean {
     const entry = ctx.sessionStore.get(sessionId)
-    return entry?.kind !== "chat" || (pending.length === 0 && isTurnAtRest({ activity: entryActivity(entry), waitingOnBackgroundWork: entry.waitingOnBackgroundWork }))
+    if (entry?.kind !== "chat" || (failedMessage !== undefined && startup === undefined)) return true
+    return pending.length === 0 && isTurnAtRest({ activity: entryActivity(entry), waitingOnBackgroundWork: entry.waitingOnBackgroundWork })
   }
 
   /** No client shows the chat any more (ARCH-RUNTIME-023). Its runner ends now when
@@ -230,18 +240,56 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
    *  conversation for the next runner. The durable session stays as it is:
    *  its lifecycle, name, and conversation, and an empty chat is kept. */
   async function runRelease(): Promise<void> {
-    if (ctx.sessionStore.get(sessionId)?.kind !== "chat") return
+    // A closed tab's close already waits for the turn, and ends the runner with the chat.
+    if (closeAtRest || ctx.sessionStore.get(sessionId)?.kind !== "chat") return
     if (turnAtRest()) {
       await endRunner()
       return
     }
-    if (releaseWatch) return
-    log.debug("session release deferred", { sessionId, pending: pending.length })
-    releaseWatch = ctx.sessionStore.onChange((changed) => {
+    awaitRest()
+  }
+
+  /** The chat's tab closed (PI-INTERACTION-082). Nothing ends now: the turn,
+   *  its background commands, and its subagents go on, and the chat stays
+   *  active while they do. When the turn is at rest, the chat closes as an
+   *  explicit close does. An activation before then cancels the close. */
+  async function runCloseAtRest(): Promise<() => Promise<boolean>> {
+    closeAtRest = true
+    if (turnAtRest()) return closeNow()
+    awaitRest()
+    return ready(true)
+  }
+
+  function closeNow(): Promise<() => Promise<boolean>> {
+    stopForClose()
+    return runLifecycle("close")
+  }
+
+  /** A close ends the chat's work: no startup attaches any more, and the
+   *  runtime interrupts a turn that runs. */
+  function stopForClose(): void {
+    markClosing()
+    ctx.sessionStore.prepareForShutdown(sessionId, "runtime")
+  }
+
+  /** What waits for the turn's rest: the chat's close when its tab closed,
+   *  else the end of the runner. Runs in the mailbox; a close's tail runs after it. */
+  async function settleAtRest(): Promise<() => Promise<boolean>> {
+    if (closeAtRest) return closeNow()
+    await endRunner()
+    return ready(true)
+  }
+
+  function awaitRest(): void {
+    if (restWatch) return
+    log.debug("session end deferred to rest", { sessionId, close: closeAtRest, pending: pending.length })
+    restWatch = ctx.sessionStore.onChange((changed) => {
       if ((changed && !changed.has(sessionId)) || !turnAtRest()) return
-      void mailbox.run(async () => { if (releaseWatch) await runRelease() })
-        .catch((error: unknown) => { recordBackgroundFailure(log, "end released runner", { sessionId }, error) })
-    }, "session-release")
+      // A send ahead in the mailbox can start a new turn after this check, so
+      // the turn must still be at rest when its turn in the mailbox comes.
+      void mailbox.run(async () => restWatch && turnAtRest() ? settleAtRest() : ready(true)).then((tail) => tail())
+        .catch((error: unknown) => { recordBackgroundFailure(log, "end the runner at rest", { sessionId }, error) })
+    }, "session-rest")
   }
 
   /** Tells the attached runner whether a client shows the chat (`SessionRuntimeActorContext.isShown`). A runner that
@@ -250,10 +298,11 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
     ctx.sessionStore.get(sessionId)?.runner?.setShown(next)
   }
 
-  /** A new activation shows the chat again, so its runner stays. */
-  function cancelRelease(): void {
-    releaseWatch?.()
-    releaseWatch = undefined
+  /** A new activation shows the chat again, so its runner stays and the chat stays open. */
+  function cancelRestWork(): void {
+    restWatch?.()
+    restWatch = undefined
+    closeAtRest = false
   }
 
   async function endRunner(): Promise<void> {
@@ -269,9 +318,9 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
     log.info("session released", { sessionId, runner, durationMs: durationMs(start) })
   }
 
-  async function vacateFailedStart(id: number): Promise<void> {
+  async function vacateFailedStart(id: number): Promise<() => Promise<boolean>> {
     // A close owns its own teardown, and a newer startup owns the entry.
-    if (!closing && startups === id) await endRunner()
+    return !closing && startups === id ? settleAtRest() : ready(false)
   }
 
   async function teardown(disposition: "delete" | "close"): Promise<ChildSessionDeletionPlan | null> {
@@ -433,7 +482,7 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
   }
 
   function markClosing(disposition: ClosingDisposition = "close"): void {
-    cancelRelease()
+    cancelRestWork()
     inputControl.vacate()
     stopStartup()
     shutdownDisposition = disposition
@@ -620,7 +669,7 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
       case "session.changes.undo":
         return ready(await runUndo(command.request))
       case "session.activate":
-        cancelRelease()
+        cancelRestWork()
         if (command.shown) show(true)
         return runActivation()
       case "session.release":
@@ -657,7 +706,7 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
         await finishChat(command.message)
         return ready(true)
       case "session.close":
-        return runLifecycle("close")
+        return command.atRest ? runCloseAtRest() : runLifecycle("close")
       case "session.delete":
         return runLifecycle("delete", command.inactiveBefore)
       case "session.discard_transient":
@@ -671,13 +720,13 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
     // Lifecycle commands run a synchronous preflight the instant they are
     // dispatched, before their ordered body waits behind the mailbox. Chat close
     // preserves durable input waits; workflow shutdown is awaited in teardown.
+    // A tab's close ends no work, so it waits its turn in the mailbox.
     if (command.kind === "chat.finish") {
       // Report the failure at once, even when Undo delays the terminal cleanup.
       if (ctx.sessionStore.get(sessionId)?.kind === "chat" && command.message) failedMessage = command.message
       markClosing()
-    } else if (command.kind === "session.close") {
-      markClosing()
-      ctx.sessionStore.prepareForShutdown(sessionId, "runtime")
+    } else if (command.kind === "session.close" && !command.atRest) {
+      stopForClose()
     } else if ((command.kind === "session.delete" && command.inactiveBefore === undefined) || command.kind === "session.discard_transient") {
       markClosing("delete")
     }

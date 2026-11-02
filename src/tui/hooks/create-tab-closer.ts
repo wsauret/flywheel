@@ -22,7 +22,8 @@ interface TabCloserDeps {
 /** Closes a tab. The tab removal itself is pure UI intent and structurally
  *  unrefusable: it happens first, synchronously, no matter how broken the
  *  session behind it is. The runtime close that follows is durable cleanup --
- *  its failure surfaces as a toast, never as a tab that refuses to close.
+ *  its failure surfaces as a toast, never as a tab that refuses to close. It
+ *  ends no work: the chat closes when its turn comes to rest (PI-INTERACTION-082).
  *  When the foreground closes, falls back to the adjacent tab or a fresh chat. */
 export function createTabCloser(deps: TabCloserDeps): (tabId: string) => void {
   return function closeTab(tabId: string): void {
@@ -48,7 +49,7 @@ export function createTabCloser(deps: TabCloserDeps): (tabId: string) => void {
       return
     }
     const cleanup = async () => {
-      const result = await deps.appService.dispatch({ type: "session.close", sessionId: tabId })
+      const result = await deps.appService.dispatch({ type: "session.close", sessionId: tabId, atRest: true })
       if (!result.ok) throw new Error(result.error)
       if (result.sessionCatalogRow) deps.seedSessionCatalogRow(result.sessionCatalogRow)
     }

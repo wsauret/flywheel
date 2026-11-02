@@ -225,7 +225,7 @@ function SessionRow(props: {
           </button>
         </Show>
         <Show when={session().active && props.actions.onClose}>
-          <button class="row-action" title="Close session" aria-label={`Close ${session().title}`} onClick={(event) => { event.stopPropagation(); props.actions.onClose?.(session().id) }}>
+          <button class="row-action" title="Close chat" aria-label={`Close chat ${session().title}`} onClick={(event) => { event.stopPropagation(); props.actions.onClose?.(session().id) }}>
             <Icon path={ICONS.close} size={13} />
           </button>
         </Show>

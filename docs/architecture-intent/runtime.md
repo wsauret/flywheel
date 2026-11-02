@@ -119,7 +119,7 @@ Runtime event subscriptions select their event types before queue admission, and
 
 ## ARCH-RUNTIME-023: Client holds decide a session runner's lifetime
 
-Each client connection holds the sessions it shows, and the account service orders each session's activations and releases on one lane, so the executor learns once when the last hold ends. The executor then ends the runner only when its turn is at rest, and a new activation cancels that end. A release never closes, renames, removes, or changes the lifecycle of a session.
+Each client connection holds the sessions it shows, and the account service orders each session's activations and releases on one lane, so the executor learns once when the last hold ends. The executor then ends the runner only when its turn is at rest, and a new activation cancels that end. A release never closes, renames, removes, or changes the lifecycle of a session. The close of a chat's tab adds a close at rest: the executor closes the chat as an explicit close does only once its turn is at rest, and a new activation cancels that close too, so a chat is never inactive while its runner works. Only an explicit close, Close chat, ends a chat's work at once.
 
 Not: Ending a runner when its surface closes while a turn is in flight.
 

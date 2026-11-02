@@ -213,15 +213,17 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
     shownSessions.delete(sessionId)
     await actors.get(sessionId)?.dispatch({ kind: "session.hide" })
   }
-  async function closeChat(sessionId: string): Promise<boolean> {
+  async function closeChat(sessionId: string, atRest?: true): Promise<boolean> {
     // Close is idempotent user intent: nothing may refuse it. A session unknown
     // to both the resident store and the durable record is already closed, so
     // report success. A durable but non-resident session (e.g. a workflow that
     // went inactive under an open tab) still gets its real teardown through the
-    // actor, which no-ops the parts that no longer exist.
-    shownSessions.delete(sessionId)
+    // actor, which no-ops the parts that no longer exist. A tab's close ends
+    // no work, so the release of its last holder decides whether a client
+    // still shows the chat.
+    if (!atRest) shownSessions.delete(sessionId)
     if (!deps.sessionStore.get(sessionId) && await deps.manager.read(sessionId) === null) return true
-    return ensureActor(sessionId).dispatch({ kind: "session.close" })
+    return ensureActor(sessionId).dispatch(atRest ? { kind: "session.close", atRest } : { kind: "session.close" })
   }
   async function discardTransientChat(sessionId: string): Promise<{ readonly removed: boolean }> {
     const entry = deps.sessionStore.get(sessionId)

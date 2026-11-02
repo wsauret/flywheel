@@ -32,7 +32,8 @@ export interface AgentInputAnswers {
  *  command with a cold-start path; the delegated commands act on the attached
  *  runner. `session.close`/`session.delete`/`session.discard_transient` are the
  *  lifecycle commands: `dispatch` marks them closing before mailbox entry, and
- *  the ordered body awaits runner stop and resource teardown. `session.discard_transient` is the tombstone
+ *  the ordered body awaits runner stop and resource teardown. A close `atRest`
+ *  is marked closing only once its turn is at rest. `session.discard_transient` is the tombstone
  *  disposition the supervisor reaches only after its synchronous
  *  `shouldTombstone` guard passes. */
 export type SessionMutation =
@@ -53,7 +54,8 @@ export type SessionMutation =
   | { readonly kind: "chat.learn" }
   | { readonly kind: "chat.finish"; readonly message?: string }
   | { readonly kind: "recall-input" }
-  | { readonly kind: "session.close" }
+  /** `atRest` when the chat's tab closed: no work ends, and the chat closes once its turn is at rest. */
+  | { readonly kind: "session.close"; readonly atRest?: true }
   | { readonly kind: "session.delete"; readonly inactiveBefore?: number }
   | { readonly kind: "session.discard_transient" }
   | ({ readonly kind: "session.rename" } & SessionTitlePatch)

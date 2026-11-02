@@ -62,7 +62,7 @@ function createAppService(dispatch?: (command: { type: string; sessionId?: strin
   const appService = { dispatch: runtimeDispatch({
     "workflow.interrupt": async () => ({ kind: "interrupt", interrupted: true }),
     "workflow.resume": accept, "chat.resume": accept, "chat.interrupt": accept,
-    "session.delete": answer, "session.rename": answer,
+    "session.delete": answer, "session.rename": answer, "session.close": answer,
   }) }
   spyOn(appService, "dispatch")
   return appService

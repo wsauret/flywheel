@@ -289,7 +289,7 @@ describe("subagent completion delivery", () => {
 
     // The durable path: a later drain of held notifications and a later
     // reconciliation see the same completion again.
-    const delivery = createBackgroundNotificationDelivery({ sessionId: parentSessionId, projectRoot, eventStore: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), eventWriter: writer, admitsDelivery: () => true })
+    const delivery = createBackgroundNotificationDelivery({ sessionId: parentSessionId, projectRoot, eventStore: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), eventWriter: writer, admitsDelivery: () => true, sweepAfterCommit: () => {} })
     const entry = chatEntry({ conversationId, runner: null })
     await delivery.drainHeld(entry)
     await reconcileChildSessionCompletions({

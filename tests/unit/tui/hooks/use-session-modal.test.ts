@@ -192,7 +192,8 @@ describe("useSessionModal", () => {
       const { hook, modals, appService } = createModal({ sessions: [session({ id: "chat-running", lifecycleState: "active", activity: "generating", admittedActions: ["chat.interrupt", "session.delete"] })] })
 
       hook.openSessionsModal()
-      expect(hook.sessionModalActions().find((action) => action.key === "i")?.label).toBe("interrupt")
+      // The footer's one line truncates from the end, so Close chat comes after the primary control.
+      expect(hook.sessionModalActions().map((action) => action.key)).toEqual(["d", "n", "c", "i", "x"])
 
       modals.input({ name: "i", raw: "i" })
       modals.input({ name: "i", raw: "i" })
@@ -221,6 +222,28 @@ describe("useSessionModal", () => {
       hook.openSessionsModal()
       expect(hook.sessionModalActions().some((action) => action.key === "i")).toBe(false)
       expect(hook.sessionModalActions().some((action) => action.label === "resume")).toBe(false)
+      dispose()
+    })
+  })
+
+  it("offers x close chat for an active chat only, and closes it now", async () => {
+    await createRoot(async (dispose) => {
+      const { hook, modals, appService } = createModal({ sessions: [session({ id: "chat-active", lifecycleState: "active" })] })
+
+      hook.openSessionsModal()
+      expect(hook.sessionModalActions().find((action) => action.key === "x")?.label).toBe("close chat")
+
+      modals.input({ name: "x", raw: "x" })
+      modals.input({ name: "x", raw: "x" })
+      await Promise.resolve()
+
+      expect(appService.dispatch).toHaveBeenCalledWith({ type: "session.close", sessionId: "chat-active" })
+      dispose()
+    })
+    createRoot((dispose) => {
+      const { hook } = createModal({ sessions: [chatSummary("chat-inactive")] })
+      hook.openSessionsModal()
+      expect(hook.sessionModalActions().some((action) => action.key === "x")).toBe(false)
       dispose()
     })
   })

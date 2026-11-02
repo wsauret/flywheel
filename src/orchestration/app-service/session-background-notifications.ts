@@ -1,9 +1,11 @@
 import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../infra/event-store-types.js"
+import { completionWorkIds } from "../agent-runtime/background-work-notifications.js"
 import type { ChatRunner } from "../chat/runner-types.js"
 import { createConversationTreeWriterController } from "../chat/tree-writer.js"
 import type { SessionEntry, SessionStore } from "../session-store/types.js"
 import type { ParentNotificationDelivery } from "../module-seams.js"
 import { readConversationBackgroundNotifications, type HeldBackgroundNotification } from "../session/conversation/queued-background-notifications.js"
+import { liveWorkflowControl } from "../session/live-session-control.js"
 
 type NotifiableEntry = SessionEntry
 
@@ -15,6 +17,9 @@ interface BackgroundNotificationDeliveryContext {
   readonly eventWriter: AsyncEventWriter
   /** The session owner closes admission before teardown joins durable work. */
   readonly admitsDelivery: () => boolean
+  /** The parent's reconciliation, which reads a committed completion and
+   *  acknowledges the child's end. */
+  readonly sweepAfterCommit: () => void
 }
 
 /** Where a child's completion notice reaches one parent session. An attached
@@ -48,9 +53,15 @@ export function createBackgroundNotificationDelivery(ctx: BackgroundNotification
 
   async function deliver(entry: NotifiableEntry, notification: HeldBackgroundNotification): Promise<boolean> {
     if (!ctx.admitsDelivery()) return false
-    return entry.runner
-      ? entry.runner.deliverBackgroundNotification(notification)
-      : commit(entry.conversationId, notification)
+    if (entry.runner) return entry.runner.deliverBackgroundNotification(notification)
+    const committed = await commit(entry.conversationId, notification)
+    // A workflow's runner waits for a parent sweep that reads its completion
+    // in the conversation (`offerChildCompletion`). Without one, the next
+    // runner of this session tracks the finished workflow again as work it
+    // waits on, and its turn never comes to rest.
+    const { key } = notification
+    if (committed && key !== undefined && completionWorkIds(key).some((id) => liveWorkflowControl(ctx.eventStore, id))) ctx.sweepAfterCommit()
+    return committed
   }
 
   async function drainHeld(entry: NotifiableEntry): Promise<void> {

@@ -331,7 +331,7 @@ export const FrontendMutationSchema: Schema.Codec<FrontendMutation, FrontendMuta
   Schema.Struct({ type: Schema.Literal("session_detail.release"), sessionId: Schema.String }),
   Schema.Struct({ type: Schema.Literal("output.watch"), sessionIds: Schema.Array(Schema.String) }),
   SessionForkMutationSchema,
-  Schema.Struct({ type: Schema.Literal("session.close"), sessionId: Schema.String }),
+  Schema.Struct({ type: Schema.Literal("session.close"), sessionId: Schema.String, atRest: Schema.optionalKey(Schema.Literal(true)) }),
   Schema.Struct({ type: Schema.Literal("session.discard_transient"), sessionId: Schema.String }),
   Schema.Struct({ type: Schema.Literal("session.delete"), sessionId: Schema.String, inactiveBefore: Schema.optionalKey(Schema.Number) }),
   Schema.Struct({ type: Schema.Literal("session.reorder"), sessionId: Schema.String, beforeSessionId: Schema.NullOr(Schema.String) }),

@@ -725,6 +725,10 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
       await state.sessions.interruptOwed(command.sessionId)
       return { ok: true }
     }
+    // A tab's close takes its place in the session's lane, so an activation
+    // asked for before it reaches the executor first and cannot cancel it.
+    // Close chat stays out of the lane: it ends work now.
+    if (command.type === "session.close" && command.atRest) return holds.serialize(command.sessionId, () => send(command))
     return send(command)
   }
 

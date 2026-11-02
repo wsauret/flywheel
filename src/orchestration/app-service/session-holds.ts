@@ -67,7 +67,7 @@ export interface SessionHolds {
   drop(holder: SessionHolder): void
   /** Runs `work` after every runner change already asked for `sessionId`.
    *  A caller reserves its place synchronously, before its first await. */
-  serialize(sessionId: string, work: () => Promise<void>): Promise<void>
+  serialize<T>(sessionId: string, work: () => Promise<T>): Promise<T>
   /** Ends every grace with no release: the project closes, and its executor
    *  ends every runner. */
   dispose(): void
@@ -95,7 +95,7 @@ export function createSessionHolds(options: SessionHoldsOptions): SessionHolds {
   const graces = new Set<Grace>()
   let disposed = false
 
-  function serialize(sessionId: string, work: () => Promise<void>): Promise<void> {
+  function serialize<T>(sessionId: string, work: () => Promise<T>): Promise<T> {
     let lane = lanes.get(sessionId)
     if (!lane) {
       lane = createOrderedLane(() => { lanes.delete(sessionId) })

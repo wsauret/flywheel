@@ -200,7 +200,12 @@ export interface RuntimeSupervisor {
    *  holds has nothing to stop, and this creates no actor. Resolves when the
    *  session's actor has taken the hide. */
   hideSession(sessionId: string): Promise<void>
-  closeChat(sessionId: string): Promise<boolean>
+  /** Closes the chat now: its work ends, an empty chat is removed, and any
+   *  other chat turns inactive. With `atRest`, the close of its tab, no work
+   *  ends: the chat closes when its turn comes to rest, unless an activation
+   *  comes first. Resolves when the close is done or, with `atRest`, when it
+   *  waits for the turn. */
+  closeChat(sessionId: string, atRest?: true): Promise<boolean>
   discardTransientChat(sessionId: string): Promise<DiscardTransientOutcome>
   deleteSession(sessionId: string, inactiveBefore?: number): Promise<boolean>
   renameSession(sessionId: string, patch: SessionTitlePatch): Promise<boolean>

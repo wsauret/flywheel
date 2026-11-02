@@ -115,7 +115,7 @@ describe("createTabCloser", () => {
     expect(h.dispatch).not.toHaveBeenCalled()
   })
 
-  it("removes the tab first, then keeps the closed durable session in the local catalog as inactive", async () => {
+  it("removes the tab first, asks the runtime to close the chat at rest, and keeps the answered row in the local catalog", async () => {
     const inactiveRow = catalogRow("chat-1")
     const { closeTab, calls, dispatch } = makeCloser(
       [tab("chat-1"), tab("chat-2", { isForeground: true })],
@@ -125,7 +125,7 @@ describe("createTabCloser", () => {
     closeTab("chat-1")
     await settle()
 
-    expect(dispatch).toHaveBeenCalledWith({ type: "session.close", sessionId: "chat-1" })
+    expect(dispatch).toHaveBeenCalledWith({ type: "session.close", sessionId: "chat-1", atRest: true })
     expect(calls).toEqual(["close:chat-1", "dispatch", "seed:chat-1:inactive"])
   })
 

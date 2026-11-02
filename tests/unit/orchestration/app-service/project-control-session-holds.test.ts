@@ -20,6 +20,7 @@ function holdingExecutor() {
   executor.client.dispatch = recordedDispatch((command) => { executor.commands.push(command) }, runtimeDispatch({
     "session.activate": async (command) => ({ ok: true, sessionId: command.sessionId }),
     "session.release": async () => ({ ok: true }),
+    "session.close": async (command) => ({ ok: true, sessionId: command.sessionId }),
   }))
   // The account asks this executor only for the detail of the sessions it holds, which it does not know.
   executor.client.query = runtimeQuery({ sessionDetail: async () => ({ view: null }) })
@@ -166,6 +167,33 @@ describe("account project control client session holds", () => {
     await settled()
     expect(runnerChanges(executor, "chat")).toEqual(["session.activate", "session.release"])
     expect(runnerChanges(executor, "other")).toEqual(["session.activate", "hide", "session.release"])
+    expect(f.failures).toEqual([])
+    await client.close()
+    await executor.bus.clear()
+  })
+
+  test("a tab's close during an activation's durable work reaches the executor after the activation, so the activation cannot cancel it", async () => {
+    const executor = holdingExecutor()
+    const f = fixture(executor.client)
+    f.metadata.set("chat", durableRow("chat"))
+    const metadataRead = Promise.withResolvers<void>()
+    const sessions: ProjectControlClientOptions["state"]["sessions"] = {
+      ...f.options.state.sessions,
+      read: async (id) => { await metadataRead.promise; return f.options.state.sessions.read(id) },
+    }
+    const client = createProjectControlClient({ ...f.options, ...graceClock().options, state: { ...f.options.state, sessions } })
+    const terminal = new Rpc.ServerClient(1)
+    const activation = client.dispatch({ type: "session.activate", sessionId: "chat" }, terminal)
+    await client.dispatch({ type: "session.release", sessionId: "chat" }, terminal)
+    const close = client.dispatch({ type: "session.close", sessionId: "chat", atRest: true }, terminal)
+    await settled()
+    expect(runnerChanges(executor, "chat")).toEqual([])
+
+    metadataRead.resolve()
+    expect((await activation).ok).toBe(true)
+    expect(await close).toEqual({ ok: true, sessionId: "chat" })
+    await settled()
+    expect(runnerChanges(executor, "chat")).toEqual(["session.activate", "session.release", "session.close"])
     expect(f.failures).toEqual([])
     await client.close()
     await executor.bus.clear()

@@ -234,6 +234,109 @@ describe("RuntimeSupervisor actor mailbox", () => {
     expect(ctx.sessionStore.get(sessionId)).toBeUndefined()
   })
 
+  test("a tab's close ends no work while the turn waits on background work, and closes the chat once the turn comes to rest", async () => {
+    const stops: string[] = []
+    const runner = mockRunner("pending", { prepareForShutdown: (by) => { stops.push(by) } })
+    const supervisor = supervisorWithRunner(ctx, async () => runner)
+    const sessionId = await supervisor.openSessionRuntime()
+    await expect(supervisor.sendChat(sessionId, "start the build")).resolves.toEqual({ ok: true })
+    await settled()
+    ctx.sessionStore.updateChatEntry(sessionId, { runnerState: "idle", waitingOnBackgroundWork: true })
+
+    await expect(supervisor.closeChat(sessionId, true)).resolves.toBe(true)
+    await supervisor.releaseSession(sessionId)
+    await settled()
+    // The turn, its commands, and its subagents go on, and the chat stays active while they do.
+    expect(chatEntry(sessionId).runner).toBe(runner)
+    expect(stops).toEqual([])
+    expect(runner.disposeCalls()).toBe(0)
+    expect((await ctx.manager.read(sessionId))?.lifecycleState).toBe("active")
+
+    ctx.sessionStore.updateChatEntry(sessionId, { waitingOnBackgroundWork: false })
+    await settled()
+    expect(ctx.sessionStore.get(sessionId)).toBeUndefined()
+    expect(runner.disposeCalls()).toBe(1)
+    expect((await ctx.manager.read(sessionId))?.lifecycleState).toBe("inactive")
+  })
+
+  test("an activation before the turn comes to rest cancels a tab's close", async () => {
+    const supervisor = supervisorWithRunner(ctx, async (deps) => mockRunner(deps.sessionId))
+    const sessionId = await supervisor.openSessionRuntime()
+    await supervisor.sendChat(sessionId, "keep working")
+    await settled()
+    ctx.sessionStore.updateChatEntry(sessionId, { runnerState: "streaming" })
+
+    await supervisor.closeChat(sessionId, true)
+    await supervisor.activateSession(sessionId, { shown: true })
+    ctx.sessionStore.updateChatEntry(sessionId, { runnerState: "idle" })
+    await settled()
+    expect(chatEntry(sessionId).runner).not.toBeNull()
+    expect((await ctx.manager.read(sessionId))?.lifecycleState).toBe("active")
+  })
+
+  test("a send that starts a new turn ahead of a tab's close at rest keeps the chat open until that turn rests", async () => {
+    const stops: string[] = []
+    let sessionId = ""
+    const runner = mockRunner("pending", {
+      prepareForShutdown: (by) => { stops.push(by) },
+      send: async () => { ctx.sessionStore.updateChatEntry(sessionId, { runnerState: "streaming" }); return "accepted" },
+    })
+    const base = supervisorBaseDeps(ctx, ctx.sessionStore, { createRunner: async () => runner })
+    let admission: Promise<void> = Promise.resolve()
+    const supervisor = createRuntimeSupervisor({ ...base, runnerCapabilities: async () => { await admission; return base.runnerCapabilities() } })
+    sessionId = await supervisor.openSessionRuntime()
+    await supervisor.sendChat(sessionId, "first")
+    await settled()
+    ctx.sessionStore.updateChatEntry(sessionId, { runnerState: "streaming" })
+    await supervisor.closeChat(sessionId, true)
+
+    // Another client's send holds the mailbox while the first turn comes to rest.
+    const held = createDeferred<void>()
+    admission = held.promise
+    const send = supervisor.sendChat(sessionId, "second")
+    await settled()
+    ctx.sessionStore.updateChatEntry(sessionId, { runnerState: "idle" })
+    held.resolve()
+    await send
+    await settled()
+    expect(stops).toEqual([])
+    expect(chatEntry(sessionId).runner).toBe(runner)
+    expect((await ctx.manager.read(sessionId))?.lifecycleState).toBe("active")
+
+    ctx.sessionStore.updateChatEntry(sessionId, { runnerState: "idle" })
+    await settled()
+    expect(ctx.sessionStore.get(sessionId)).toBeUndefined()
+    expect((await ctx.manager.read(sessionId))?.lifecycleState).toBe("inactive")
+  })
+
+  test("a tab's close and release after a failed startup close the chat and leave nothing resident", async () => {
+    const supervisor = createRuntimeSupervisor({ ...supervisorBaseDeps(ctx), runnerCapabilities: async () => { throw new Error("capabilities unavailable") } })
+    const sessionId = await supervisor.openSessionRuntime()
+    const conversationId = chatConversationId(sessionId)
+    await expect(supervisor.sendChat(sessionId, "kept")).resolves.toEqual({ ok: true })
+    await settled()
+    expect(supervisor.runtimeState(sessionId)).toEqual({ kind: "failed", message: "capabilities unavailable" })
+
+    await supervisor.closeChat(sessionId, true)
+    await supervisor.releaseSession(sessionId)
+    await settled()
+    expect(ctx.sessionStore.get(sessionId)).toBeUndefined()
+    expect((await ctx.manager.read(sessionId))?.lifecycleState).toBe("inactive")
+    expect(await durableUserTexts(sessionId, conversationId)).toEqual(["kept"])
+  })
+
+  test("a tab's close removes an empty chat at once", async () => {
+    const runner = mockRunner("pending")
+    const supervisor = supervisorWithRunner(ctx, async () => runner)
+    const sessionId = await supervisor.openSessionRuntime()
+    await supervisor.activateSession(sessionId)
+
+    await expect(supervisor.closeChat(sessionId, true)).resolves.toBe(true)
+    expect(ctx.sessionStore.get(sessionId)).toBeUndefined()
+    expect(runner.disposeCalls()).toBe(1)
+    expect(await ctx.manager.read(sessionId)).toBeNull()
+  })
+
   test("a failed startup that an activation waits for keeps the entry the client shows and the input already sent", async () => {
     const held = createDeferred<Awaited<ReturnType<ReturnType<typeof supervisorBaseDeps>["runnerCapabilities"]>>>()
     const supervisor = createRuntimeSupervisor({ ...supervisorBaseDeps(ctx), runnerCapabilities: () => held.promise })

@@ -487,3 +487,9 @@ In the terminal, a transcript item has two kinds of click target. A header, such
 ## PI-INTERACTION-081: Each command and setting has one name and one way in
 
 Each command has one slash token and one name, and the terminal, desktop web, phone, and editor show that name in menus, palettes, and the heading of the surface it opens. Typing a command's token opens the same surface on every client that offers that surface. A typed token that names no command is refused with the same notice on every client and is never sent as a message. Settings shows the same sections, order, and row names on every client, apart from rows that describe the terminal or the browser itself.
+
+## PI-INTERACTION-082: Closing a tab ends no work, and Close chat ends it now
+
+Closing a chat's tab only stops showing the chat. Its running turn, its background commands, its subagents, and its workflows go on, and the chat stays active and shows as working while they do. When its turn comes to rest, the chat closes as Close chat closes it. Opening the chat again before then keeps it open.
+
+Close chat is the one action that ends a chat's work now. The session row of every client offers it for an active chat: the terminal Sessions list, the web and phone session list, and the editor's command palette. It interrupts the running turn as the runtime, so Resume can continue it, stops the chat's background commands, pauses its subagents, and closes the chat. Workflows that the chat started keep running, each with its own Stop. A chat with no name that the person gave and no message from the person is removed when it closes (PI-INTERACTION-075).
