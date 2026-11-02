@@ -24,3 +24,13 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+  # Benchmark tasks pin the historical Python environment of each task by hash,
+  # and their copy ledgers check those bytes, so a bump breaks the task rather
+  # than fixing a shipped dependency. `ignore` also governs security updates;
+  # `exclude-paths` governs version updates only.
+  - package-ecosystem: pip
+    directories: ["/bench/tasks/**"]
+    schedule:
+      interval: monthly
+    ignore:
+      - dependency-name: "*"
