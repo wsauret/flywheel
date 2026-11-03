@@ -1,0 +1,20 @@
+src/orchestration/modules/workflows/history/tool-summary.ts
+  h_4b47e9e4a8b456 16,318
+src/orchestration/workflow-host/started-agent-states.ts
+  h_4b47e9e4a8b456 8,85-87,91
+tests/unit/orchestration/modules/workflows/live-protocol.test.ts
+  h_4b47e9e4a8b456 10,390-397,400
+tests/unit/orchestration/workflow-host/started-agent-states.test.ts
+  h_4b47e9e4a8b456 10,20-24,38,46,228-242
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "db58699c2bf9ea26fa8d490acce887790570dd9f",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
