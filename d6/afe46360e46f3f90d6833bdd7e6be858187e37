@@ -1,0 +1,14 @@
+.github/workflows/ci.yml
+  h_4b47e9e4a8b456 45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d6afe46360e46f3f90d6833bdd7e6be858187e37",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
