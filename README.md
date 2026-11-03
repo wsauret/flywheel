@@ -40,26 +40,6 @@ irm https://github.com/wsauret/flywheel/releases/latest/download/install.ps1 | i
 
 Then run `flywheel` in a project directory. On first launch, the provider picker opens so that you can sign in.
 
-## Status and requirements
-
-Flywheel is early software. The version is 0.x, and interfaces, commands, and settings can still change from one release to the next.
-
-- **Platforms:** macOS, Linux, and Windows. [Platforms](#platforms) lists each build.
-- **A model provider:** a subscription to Claude, ChatGPT, GitHub Copilot, SuperGrok, or OpenCode Go, or an API key for Anthropic, OpenAI, Google, DeepSeek, OpenRouter, or an OpenAI-compatible endpoint. Flywheel has no model service of its own.
-- **No runtime:** the release archive holds everything that Flywheel needs, including the Claude engine. You do not install Bun, Node, or another runtime.
-
-## What's new
-
-The [Releases page](https://github.com/wsauret/flywheel/releases) lists the changes in each release. While the version is 0.x, any release can include a breaking change. The notes of that release mark each breaking change and tell you what to do.
-
-## Safety
-
-Flywheel agents work without asking you to approve each step. They run shell commands and edit files with your user account's permissions.
-
-- Guards catch ordinary mistakes, but they are not a sandbox. They do not confine the programs that an agent runs.
-- `/changes` shows the session's file edits, with undo for each file. A shell command can also change files outside that record.
-- For an untrusted repository, or work where a mistake would be costly, run Flywheel inside a boundary: a container, a virtual machine, a low-privilege account, or a disposable checkout.
-
 ## Every subscription you pay for, in one pool
 
 Sign in with **Claude, ChatGPT, GitHub Copilot, SuperGrok, or OpenCode Go**, and add several paid accounts of each. Add API keys for **Anthropic, OpenAI, Google, DeepSeek, OpenRouter**, or any OpenAI-compatible endpoint.
@@ -159,6 +139,26 @@ Flywheel ships about 40 themes, from Catppuccin to Gruvbox, and a new theme appl
 - **Side questions.** `/btw` asks a quick question about the chat without interrupting its work. The answer stays out of the transcript.
 - **Background commands.** Builds, test suites, and dev servers run while the agent keeps working, and each result reaches the agent when it ends.
 - **Training-route consent.** Model routes that may train on your data stay off unless you allow them for that profile. Other requests follow your provider's terms.
+
+## Status and requirements
+
+Flywheel is early software. The version is 0.x, and interfaces, commands, and settings can still change from one release to the next.
+
+- **Platforms:** macOS, Linux, and Windows. [Platforms](#platforms) lists each build.
+- **A model provider:** a subscription to Claude, ChatGPT, GitHub Copilot, SuperGrok, or OpenCode Go, or an API key for Anthropic, OpenAI, Google, DeepSeek, OpenRouter, or an OpenAI-compatible endpoint. Flywheel has no model service of its own.
+- **No runtime:** the release archive holds everything that Flywheel needs, including the Claude engine. You do not install Bun, Node, or another runtime.
+
+## What's new
+
+The [Releases page](https://github.com/wsauret/flywheel/releases) lists the changes in each release. While the version is 0.x, any release can include a breaking change. The notes of that release mark each breaking change and tell you what to do.
+
+## Safety
+
+Flywheel agents work without asking you to approve each step. They run shell commands and edit files with your user account's permissions.
+
+- Guards catch ordinary mistakes, but they are not a sandbox. They do not confine the programs that an agent runs.
+- `/changes` shows the session's file edits, with undo for each file. A shell command can also change files outside that record.
+- For an untrusted repository, or work where a mistake would be costly, run Flywheel inside a boundary: a container, a virtual machine, a low-privilege account, or a disposable checkout.
 
 ## Platforms
 
