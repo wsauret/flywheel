@@ -641,7 +641,24 @@ export async function retirePlannedSessionContinuation(input: {
     if (input.capacity && (continuation.handoffId !== undefined || continuation.continuesAt === undefined)) continue
     if (await writer.swapInFlight(sessionId, PLANNED_SESSION_CONTINUATION_IN_FLIGHT_KIND, row.key, row.raw, null)) retired = true
   }
+  if (retired) for (const listener of retirementListeners.get(reader) ?? []) listener(sessionId)
   return retired
+}
+
+/** The listeners of each project's retirements, by the reader that the
+ *  retirement reads its rows through. */
+const retirementListeners = new WeakMap<object, Set<(sessionId: string) => void>>()
+
+/** Calls `listener` with the session each time a continuation row of the
+ *  project that `reader` reads retires. A retirement writes no fact: a
+ *  refused resume leaves committed control as the cut left it, so a reader
+ *  that presents an owed session as running (`awaitsPlannedContinuation`)
+ *  reads it again only after this call. */
+export function onPlannedContinuationRetired(reader: Pick<AsyncEventStateReadSurface, "readInFlight">, listener: (sessionId: string) => void): () => void {
+  const listeners = retirementListeners.get(reader) ?? new Set<(sessionId: string) => void>()
+  retirementListeners.set(reader, listeners)
+  listeners.add(listener)
+  return () => { listeners.delete(listener) }
 }
 
 /** Prepares a person's Resume of a child that still holds continuation

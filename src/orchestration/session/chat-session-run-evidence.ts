@@ -367,8 +367,9 @@ interface WorkflowActionEvidence {
  *  its committed control is not terminal: paused by the runtime, or left
  *  running by an unexpected exit; a listed one with an unread launching call
  *  admits neither Resume nor Stop, because a listing cannot tell whether a
- *  Stop ended it. An inactive workflow a successor owes its continuation
- *  admits Interrupt whatever else holds (`continuationOwed`). A workflow
+ *  Stop ended it. A workflow a successor owes its continuation admits
+ *  Interrupt and no Resume, whatever its lifecycle (`continuationOwed`), as
+ *  a chat does (`chatSessionActions`). A workflow
  *  whose last Resume met a changed definition still admits Resume, which
  *  checks the definition again. A workflow whose saved progress cannot
  *  execute admits Restart while its recorded request can run again
@@ -382,11 +383,12 @@ export function workflowSessionActions(lifecycleState: SessionLifecycleState, wo
   const retry = workflowState === "failed" && evidence.retriesFailedAgents === true
   if (!retry && (evidence.message === false || workflowInteractionRefusal(workflowState) !== undefined)) return ["session.delete"]
   const message = evidence.message === true ? ["session.send" as const] : []
-  const owed = evidence.continuationOwed === true ? ["workflow.interrupt" as const] : []
+  const owed = evidence.continuationOwed === true
   // A Resume after a changed definition checks the definition again, so
   // a person who restored it continues with the same control
-  // (PI-AGENT-015).
-  const executable = evidence.executable !== false
+  // (PI-AGENT-015). A successor that owes the run its continuation resumes
+  // it itself, so the run offers no Resume of its own until that settles.
+  const executable = evidence.executable !== false && !owed
   const restart = evidence.executable === false && evidence.restartable === true ? ["workflow.restart" as const] : []
   const stop = toolCall !== undefined && (toolCall.read === false || toolCall.settled !== true) ? ["background.terminate" as const] : []
   if (lifecycleState === "active") {
@@ -400,5 +402,5 @@ export function workflowSessionActions(lifecycleState: SessionLifecycleState, wo
   }
   if (toolCall?.read === false) return ["session.delete"]
   const resumable = executable && (workflowState !== "failed" || retry) && isWorkflowResumeCandidate({ kind: "workflow", lifecycleState, ...(workflowState ? { workflowState } : {}) })
-  return [...owed, ...message, ...(resumable ? ["workflow.resume" as const] : []), ...restart, ...stop, "session.delete"]
+  return [...(owed ? ["workflow.interrupt" as const] : []), ...message, ...(resumable ? ["workflow.resume" as const] : []), ...restart, ...stop, "session.delete"]
 }

@@ -96,7 +96,7 @@ export function WorkflowAgentViewer(props: WorkflowAgentViewerProps) {
   const live = workflow.live
   const view = createMemo(() => { const loaded = workflow.view(); return loaded?.attemptsStatus === "loaded" ? loaded : undefined })
   const parked = () => workflowParked(live(), row())
-  const cut = () => workflowStateLabel(view()?.state, row()?.stoppedBy, row()?.definitionDrift, parked())
+  const cut = () => workflowStateLabel(view()?.state, row(), parked())
   const outline = createMemo(() => { const loaded = view(); return loaded === undefined ? undefined : workflowOutline(loaded, cut(), live()) })
 
   // The agent that the view shows: a link's agent takes `follow` from its

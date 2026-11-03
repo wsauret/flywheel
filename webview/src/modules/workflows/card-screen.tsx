@@ -38,7 +38,7 @@ export function WorkflowCardScreen(props: {
   const live = () => props.reading().live
   const parked = () => workflowParked(live(), row())
   const status = createMemo(() => workflowViewCardStatus(props.view()?.state, row(), parked()))
-  const stateWord = () => workflowStateLabel(props.view()?.state, row()?.stoppedBy, row()?.definitionDrift, parked())
+  const stateWord = () => workflowStateLabel(props.view()?.state, row(), parked())
   const outline = createMemo(() => { const view = props.view(); return view === undefined ? undefined : workflowOutline(view, stateWord(), live(), row() ?? undefined) })
   const [choices, setChoices] = createSignal<WorkflowCardChoices>()
   const card = createMemo(() => {

@@ -78,16 +78,20 @@ describe("output projection child cards", () => {
 
   // A workflow card states its run's time from whether its agents run and
   // from its workflow's control, so it follows both while its parent idles.
-  test.each(["agent", "workflow"] as const)("a workflow card follows a change of its %s", async (source) => {
+  // A refused resume retires the continuation row and commits nothing, so
+  // the card of a run that read as owed follows the retirement itself.
+  test.each(["agent", "workflow", "continuation"] as const)("a workflow card follows a change of its %s", async (source) => {
     const store = createSessionStore(runtime, runtime.runSync(EventReaderService))
     const s = sink()
     let projections = 0
     let duration = 0
     let stored: (events: readonly StoredFact[]) => void = () => {}
+    let retired: (sessionId: string) => void = () => {}
     const projection = createOutputProjection({
       sessionStore: store,
       shipped: s.shipped,
       onStored: (listener) => { stored = listener; return () => {} },
+      onContinuationRetired: (listener) => { retired = listener; return () => {} },
       projectBlock: async (sessionId, block) => {
         if (sessionId !== "parent" || block.kind !== "tool") return block
         projections += 1
@@ -107,6 +111,8 @@ describe("output projection child cards", () => {
       if (source === "agent") {
         store.updateChatEntry("agent", { runnerState: "streaming", streamingStartedAt: 5 })
         await projection.flush("agent")
+      } else if (source === "continuation") {
+        retired("wf")
       } else {
         stored([{ id: "event-1", position: 1, seq: 1, aggregateId: "workflow:wf", sessionId: "wf", actor: "flywheel", type: "workflow.control.committed", version: 1, timestamp: 1, payload: {} }])
       }

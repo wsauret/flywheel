@@ -11,7 +11,7 @@ import { isAgentInFlight, type AgentGroupBlock, type ToolPresentation, type Work
 import type { FrontendActivity, WorkflowDefinitionDrift } from "../app-service-types.js"
 import type { LoadedWorkflowView, WorkflowAgentLive } from "../workflow-view-protocol-types.js"
 import { workflowDriftExplanation } from "./workflow-drift-copy.js"
-import { runStatusLabel, CONDITIONAL_PHASE_LABEL } from "./session-controls.js"
+import { presentedWorkflowState, runStatusLabel, CONDITIONAL_PHASE_LABEL, type WorkflowStateRow } from "./session-controls.js"
 import { formatActivity, formatDuration, formatElapsed } from "./format.js"
 import { activeTimeMs } from "./session-time.js"
 import { workflowUnitCounts, type WorkflowUnitCounts } from "./workflow-chits.js"
@@ -205,10 +205,11 @@ export function workflowCardChoice(current: WorkflowCardChoices | undefined, sel
 
 /** The status that a card without a block shows, as the full-size card and
  *  the agent view read it from the workflow's view and row: a Stop, the
- *  run's end, or an interrupt that holds it. */
-export function workflowViewCardStatus(state: LoadedWorkflowView["state"], row: { readonly stoppedBy?: unknown } | null | undefined, parked: boolean): CardStatus {
+ *  run's end, or an interrupt that holds it. A run that a successor owes its
+ *  continuation is active (`presentedWorkflowState`). */
+export function workflowViewCardStatus(state: LoadedWorkflowView["state"], row: Pick<WorkflowStateRow, "stoppedBy" | "continuationOwed"> | null | undefined, parked: boolean): CardStatus {
   if (row?.stoppedBy !== undefined) return "stopped"
-  switch (state) {
+  switch (presentedWorkflowState(state, row)) {
     case "completed": return "completed"
     case "failed": return "error"
     case "paused": return "paused"

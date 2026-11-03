@@ -47,8 +47,8 @@ describe("session controls", () => {
     expect(workflowParked([settled])).toBe(false)
     // Saved progress that cannot run holds the run, as an interrupt does.
     expect(workflowParked([], { workflowId: "w", admittedActions: ["workflow.restart", "workflow.stop"] })).toBe(true)
-    expect(workflowStateLabel("running", undefined, undefined, true)).toBe("interrupted")
-    expect(workflowStateLabel("running", "person", undefined, true)).toBe("Stopped")
+    expect(workflowStateLabel("running", undefined, true)).toBe("interrupted")
+    expect(workflowStateLabel("running", { stoppedBy: "person" }, true)).toBe("Stopped")
   })
   test("one Interrupt and one Resume for every kind, read from the row's admitted actions", () => {
     expect(sessionControls({ kind: "chat", admittedActions: ["chat.interrupt", "session.delete"] })).toEqual({ message: true, interrupt: true, resume: false, restart: false, stop: false })
@@ -149,11 +149,14 @@ describe("session controls", () => {
     expect(workflowStateLabel("running", undefined)).toBeUndefined()
     expect(workflowStateLabel("idle", undefined)).toBeUndefined()
     expect(workflowStateLabel(undefined, undefined)).toBeUndefined()
-    expect(workflowStateLabel("paused", "person")).toBe("Stopped")
-    expect(workflowStateLabel("completed", "agent")).toBe("Canceled")
+    expect(workflowStateLabel("paused", { stoppedBy: "person" })).toBe("Stopped")
+    expect(workflowStateLabel("completed", { stoppedBy: "agent" })).toBe("Canceled")
     const drift = { workflowDefinitionId: "implement", changes: [{ component: "graph" as const }] }
-    expect(workflowStateLabel("paused", undefined, drift)).toBe("cannot continue")
-    expect(workflowStateLabel("paused", "person", drift)).toBe("Stopped")
+    expect(workflowStateLabel("paused", { definitionDrift: drift })).toBe("cannot continue")
+    expect(workflowStateLabel("paused", { stoppedBy: "person", definitionDrift: drift })).toBe("Stopped")
+    // A planned replacement's pause runs on in its successor, unless an agent's own interrupt holds it.
+    expect(workflowStateLabel("paused", { continuationOwed: true })).toBeUndefined()
+    expect(workflowStateLabel("paused", { continuationOwed: true }, true)).toBe("interrupted")
   })
 
   test("says that the Resume of a failed workflow keeps only the finished work that reads no failed agent's output", () => {

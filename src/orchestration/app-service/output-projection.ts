@@ -32,6 +32,10 @@ export interface OutputProjection {
 export interface OutputProjectionDeps {
   readonly projectBlock?: (sessionId: string, block: AnyBlock) => Promise<AnyBlock>
   readonly onStored?: (listener: (events: readonly StoredFact[]) => void) => () => void
+  /** Each retirement of a session's continuation row
+   *  (`onPlannedContinuationRetired`), which commits no fact: a card that
+   *  read its child as owed reads it again. */
+  readonly onContinuationRetired?: (listener: (sessionId: string) => void) => () => void
   readonly sessionStore: SessionStore
   readonly keptOutput?: Pick<CommandKeeper, "liveOutput">
   /** The one publisher of the output cursor and owner of what the session's
@@ -312,6 +316,7 @@ export function createOutputProjection(deps: OutputProjectionDeps): OutputProjec
     const renamed = new Set(events.flatMap((event) => event.type === SESSION_TITLE_FACT_TYPE ? [event.sessionId] : []))
     refreshParents(new Set(events.map((event) => event.sessionId)), storedWorkflowCard, true, renamed)
   })
+  const unsubscribeRetired = deps.onContinuationRetired?.((sessionId) => { refreshParents([sessionId], () => undefined) })
   return {
     flush,
     watch(sessionIds) {
@@ -327,6 +332,7 @@ export function createOutputProjection(deps: OutputProjectionDeps): OutputProjec
       disposed = true
       unsubscribe()
       unsubscribeStored?.()
+      unsubscribeRetired?.()
       parentsByChild.clear()
       rowsByNamedSession.clear()
       unlinkedByParent.clear()

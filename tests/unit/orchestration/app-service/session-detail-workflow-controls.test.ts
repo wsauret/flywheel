@@ -26,6 +26,7 @@ import { readEpisodeEvidenceEnd } from "../../../../src/orchestration/session-st
 import { readWorkflowMemberEvidence } from "../../../../src/orchestration/workflow-host/member-totals.js"
 import { workflowMembershipReader } from "../../../../src/orchestration/session/workflow-membership.js"
 import { countStateRequests, factsRead } from "../../../helpers/state-requests.js"
+import { authorizePlannedSessionContinuation, retirePlannedSessionContinuation } from "../../../../src/orchestration/session/planned-session-continuation.js"
 
 const tmp = temporaryDirectories()
 function register(store: EventStore) {
@@ -385,6 +386,26 @@ describe("workflow aggregate detail controls", () => {
       expect(rejected?.admittedActions).toEqual(first?.admittedActions)
       expect(rejected?.definitionDrift).toEqual({ workflowDefinitionId: "fixture-workflow", changes: [{ component: "graph" }, { component: "skill", id: "fixture-step" }] })
       expect(Schema.decodeUnknownSync(runtimeQueryResultSchema("workflowDetail"))({ snapshotPosition: 0, view: rejected })).toEqual({ snapshotPosition: 0, view: rejected })
+    } finally { store.close() }
+  })
+
+  test("a workflow a successor owes its continuation publishes that it is owed, and offers its Interrupt instead of its Resume until the row retires", async () => {
+    const store = createSqliteEventStore(resolveEventStoreDbFile(tmp("workflow-owed-detail-")))
+    try {
+      for (const event of workflowLaunchEvents("child-flow", 0)) store.append(event)
+      register(store)
+      const reader = asAsyncEventReadSurface(store)
+      const writer = asAsyncEventWriter(store)
+      await authorizePlannedSessionContinuation({ reader, writer, continuation: { target: { kind: "workflow", workflowId: "child-flow" }, handoffId: "handoff" } })
+      const owed = await detailReader(store)("child-flow")
+      expect(owed?.continuationOwed).toBe(true)
+      expect(owed?.admittedActions).toContain("workflow.interrupt")
+      expect(owed?.admittedActions).not.toContain("workflow.resume")
+      expect(Schema.decodeUnknownSync(runtimeQueryResultSchema("workflowDetail"))({ snapshotPosition: 0, view: owed })).toEqual({ snapshotPosition: 0, view: owed })
+      await retirePlannedSessionContinuation({ reader, writer, sessionId: "child-flow" })
+      const settled = await detailReader(store)("child-flow")
+      expect(settled).not.toHaveProperty("continuationOwed")
+      expect(settled?.admittedActions).toContain("workflow.resume")
     } finally { store.close() }
   })
 

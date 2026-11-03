@@ -11,6 +11,7 @@ import { createConversationTree } from "../../../../../src/orchestration/session
 import { interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId } from "../../../../../src/orchestration/session/conversation/turn-end-record.js"
 import { createSessionManager, type SessionManager } from "../../../../../src/orchestration/session/manager.js"
 import { prepareSessionFactAppend } from "../../../../../src/orchestration/session/session-fact-writer.js"
+import { authorizePlannedSessionContinuation, PLANNED_SESSION_CONTINUATION_IN_FLIGHT_KIND, retirePlannedSessionContinuation } from "../../../../../src/orchestration/session/planned-session-continuation.js"
 import { loadQueueSnapshotFromReader } from "../../../../../src/workflows/view/view-store.js"
 import { frontendAttempts, readWorkflowRunRecords } from "../../../../../src/orchestration/workflow-host/frontend-attempts.js"
 import { workflowCard, workflowCardCut, workflowCardSettled } from "../../../../../src/protocol/client/workflow-card.js"
@@ -285,6 +286,109 @@ describe("workflow card summaries", () => {
     expect(completed.summaries.get("workflow-tool")).toMatchObject({ status: "completed" })
     settle("failed")
     expect((await summaries.replay()).summaries.get("workflow-tool")).toMatchObject({ status: "error", failure: expect.objectContaining({ message: expect.any(String) }) })
+  })
+
+  /** The launched workflow as a planned replacement leaves it: its agent
+   *  started, the cut recorded in the agent's conversation, and the abort
+   *  returned the attempt to pending under paused control. */
+  async function cutByReplacement(reader: AsyncEventStateReadSurface) {
+    const writer = asAsyncEventWriter(store)
+    const attemptId = (await loadQueueSnapshotFromReader(reader, "workflow-child"))?.attempts[0]?.id
+    if (attemptId === undefined) throw new Error("expected an attempt")
+    store.append({ ...childControl, type: "step.status.changed", version: 2, timestamp: 42_000, payload: { attemptId, status: "running" } })
+    store.append({ ...childControl, type: "step.resume_state.recorded", version: 1, timestamp: 42_000, payload: { stepId: attemptId, conversationId: "step-conversation" } })
+    store.append({ ...childControl, type: "step.status.changed", version: 2, timestamp: 43_000, payload: { attemptId, status: "pending" } })
+    store.append({ ...childControl, type: "queue.tree.changed", version: 4, timestamp: 43_000, payload: { tree: { currentAgentNodeId: "work", nodes: [
+      { id: "work:phase", kind: "phase", form: "single", phaseId: "work", label: "Work", parentId: null, disposition: "pending" },
+      { id: "work", kind: "agent", definitionId: "work", label: "Work", parentId: "work:phase", disposition: "pending", attempts: 1, currentAttemptId: attemptId },
+    ] } } })
+    const tree = await createConversationTree({ conversationId: "step-conversation", sessionId: "workflow-child", store: reader, writer })
+    await tree.appendMessage({ kind: "user", content: "Review the change.", origin: "human" })
+    const cut = interruptedTurnEnd("replacement")
+    await tree.appendMessage({ kind: "user", content: interruptedTurnMessage(cut.pausedBy, false), origin: "system" }, turnEndEntryId(cut, "cut"))
+    return tree
+  }
+  const childControl = { aggregateId: "workflow:workflow-child", sessionId: "workflow-child", actor: "flywheel" } as const
+
+  test("a workflow that a planned replacement paused reads running while its successor owes it the continuation, and interrupted once a refused resume retires the row", async () => {
+    const { parent } = await parentWithChildren()
+    const reader = asAsyncEventReadSurface(store)
+    const writer = asAsyncEventWriter(store)
+    const summaries = createWorkflowToolSummaryReader(reader, parent)
+    const tree = await cutByReplacement(reader)
+    expect((await measuredCard(summaries))?.status).toBe("paused")
+
+    await authorizePlannedSessionContinuation({ reader, writer, continuation: { target: { kind: "workflow", workflowId: "workflow-child" }, handoffId: "handoff" } })
+    store.append({ ...childControl, type: "queue.state.changed", version: 1, timestamp: 44_000, payload: { status: "paused", cursor: 0 } })
+    const owed = await measuredCard(summaries)
+    expect(owed).toMatchObject({ status: "active" })
+    expect(owed?.card?.phases).toMatchObject([{ key: "work:phase", state: "running", agents: [{ state: "running" }] }])
+
+    // A refused resume commits nothing: only the retired row says the run waits for a person again.
+    await retirePlannedSessionContinuation({ reader, writer, sessionId: "workflow-child" })
+    const refused = await summaries.replay()
+    expect([...refused.changedToolUseIds]).toEqual(["workflow-tool"])
+    expect(refused.summaries.get("workflow-tool")).toMatchObject({ status: "paused", pausedBy: "runtime" })
+
+    // A person's interrupt over the cut still names the person while a successor owes the run.
+    await authorizePlannedSessionContinuation({ reader, writer, continuation: { target: { kind: "workflow", workflowId: "workflow-child" }, handoffId: "handoff-2" } })
+    const end = interruptedTurnEnd("person")
+    await tree.appendMessage({ kind: "user", content: interruptedTurnMessage(end.pausedBy, false), origin: "system" }, turnEndEntryId(end, "person"))
+    tree.getStorage().dispose()
+    expect((await summaries.replay()).summaries.get("workflow-tool")).toMatchObject({ status: "paused", pausedBy: "person" })
+  })
+
+  test.each([
+    ["first", "ends"],
+    ["later", "ends"],
+    // The racing read stores the card's key and then fails when it totals
+    // the members.
+    ["later", "fails"],
+  ] as const)("a refused resume that retires the row while the %s read of an owed card runs, and that read %s, shows the run interrupted on the next read", async (read, outcome) => {
+    const { parent } = await parentWithChildren()
+    const base = asAsyncEventReadSurface(store)
+    // Holds the next read of the child's continuation rows after it read
+    // them, until the test releases it.
+    let hold: { readonly reached: () => void; readonly release: Promise<void> } | undefined
+    let failNextPosition = false
+    const reader: AsyncEventStateReadSurface = {
+      ...base,
+      async capturePosition() {
+        if (!failNextPosition) return base.capturePosition()
+        failNextPosition = false
+        throw new Error("store read failed")
+      },
+      async readInFlight(id, kind, keyPrefix) {
+        const rows = await base.readInFlight(id, kind, keyPrefix)
+        const held = hold
+        if (held && id === "workflow-child" && kind === PLANNED_SESSION_CONTINUATION_IN_FLIGHT_KIND) {
+          hold = undefined
+          held.reached()
+          await held.release
+        }
+        return rows
+      },
+    }
+    const writer = asAsyncEventWriter(store)
+    const summaries = createWorkflowToolSummaryReader(reader, parent)
+    const tree = await cutByReplacement(reader)
+    tree.getStorage().dispose()
+    await authorizePlannedSessionContinuation({ reader, writer, continuation: { target: { kind: "workflow", workflowId: "workflow-child" }, handoffId: "handoff" } })
+    if (read === "later") {
+      // A measured card holds its members' totals, which the next read advances.
+      expect((await measuredCard(summaries))?.status).toBe("active")
+      store.append({ ...childControl, type: "queue.state.changed", version: 1, timestamp: 44_000, payload: { status: "paused", cursor: 0 } })
+    }
+    let release = () => {}
+    const reached = new Promise<void>((resolve) => { hold = { reached: resolve, release: new Promise((done) => { release = done }) } })
+    const racing = summaries.replay()
+    await reached
+    await retirePlannedSessionContinuation({ reader, writer, sessionId: "workflow-child" })
+    failNextPosition = outcome === "fails"
+    release()
+    if (outcome === "fails") await expect(racing).rejects.toThrow("store read failed")
+    else expect((await racing).summaries.get("workflow-tool")?.status).toBe("active")
+    expect((await summaries.replay()).summaries.get("workflow-tool")).toMatchObject({ status: "paused", pausedBy: "runtime" })
   })
 
   test("a workflow child with a fact this build cannot read never stops the parent's transcript", async () => {

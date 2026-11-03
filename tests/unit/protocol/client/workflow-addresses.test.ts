@@ -135,14 +135,14 @@ describe("the addresses of a workflow", () => {
       "phase Tail: one agent",
       "- tail | Tail | queued | queued",
     ])
-    // An interrupt returns t2's started attempt to pending, and its row keeps the time it first ran. Only the cut word tells it from an agent that never started.
+    // An interrupt returns t2's started attempt to pending, and its row keeps the time it first ran. The cut word holds it; with no cut, as while a planned replacement's successor owes the run, it runs on.
     const interruptedView = frontendView(interrupt(fourLaneControl()), wideBindings)
     const held = { ...interruptedView, attempts: interruptedView.attempts.map((attempt) => attempt.agentNodeId === wideStage(2, 1) ? { ...attempt, startedAt: 1 } : attempt) }
     const line = (lines: readonly string[], key: string) => lines.find((text) => text.startsWith(`- ${key} | `))
     const interrupted = workflowAddressLines(held, "interrupted")
     expect(line(interrupted, "t2")).toContain("| Implement | interrupted |")
     expect(line(interrupted, "t3")).toContain("| Implement | queued |")
-    expect(line(workflowAddressLines(held), "t2")).toContain("| Implement | queued |")
+    expect(line(workflowAddressLines(held), "t2")).toContain("| Implement | running |")
   })
 
   it("reads a list whose items all finished as one line, so a finished workflow's targets stay short", () => {

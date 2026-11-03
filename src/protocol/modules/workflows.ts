@@ -112,6 +112,10 @@ const WorkflowDetailSchema = Schema.Struct({
   authProfileId: Schema.optionalKey(Id),
   auth: Schema.NullOr(RuntimeAuthViewSchema),
   workflowState: Schema.optionalKey(state),
+  /** Present while a planned replacement's successor owes the run its
+   *  continuation: committed control can read paused, and the run still
+   *  goes on (ARCH-SESSIONS-039). */
+  continuationOwed: Schema.optionalKey(Schema.Literal(true)),
   readability: Schema.Literals(["readable", "unavailable"]),
   definitionDrift: Schema.optionalKey(Schema.Struct({ workflowDefinitionId: Id, changes: Schema.Array(change) })),
   admittedActions: Schema.Array(Schema.Literals(["workflow.send", "workflow.interrupt", "workflow.resume", "workflow.restart", "workflow.stop", "workflow.delete"])),

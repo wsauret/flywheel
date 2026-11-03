@@ -265,10 +265,27 @@ export function runStatusLabel(block: RunState): string | undefined {
  *  "Canceled" exactly as every other card names it, because the product
  *  names stopped work by who stopped it. The phase line of the web client and
  *  of the terminal both read this. */
-export function workflowStateLabel(state: LoadedWorkflowView["state"], stoppedBy: StoppedBy | undefined, definitionDrift?: WorkflowDefinitionDrift, parked = false): string | undefined {
-  if (stoppedBy !== undefined) return stoppedLabel(stoppedBy)
-  if (state === "paused") return definitionDrift === undefined ? "interrupted" : "cannot continue"
-  return state === "completed" || state === "failed" ? state : parked ? "interrupted" : undefined
+export function workflowStateLabel(state: LoadedWorkflowView["state"], row: WorkflowStateRow | null | undefined, parked = false): string | undefined {
+  if (row?.stoppedBy !== undefined) return stoppedLabel(row.stoppedBy)
+  const presented = presentedWorkflowState(state, row)
+  if (presented === "paused") return row?.definitionDrift === undefined ? "interrupted" : "cannot continue"
+  return presented === "completed" || presented === "failed" ? presented : parked ? "interrupted" : undefined
+}
+
+/** What a workflow's held detail row adds to its view's state. */
+export interface WorkflowStateRow {
+  readonly stoppedBy?: StoppedBy
+  readonly definitionDrift?: WorkflowDefinitionDrift
+  readonly continuationOwed?: true
+}
+
+/** The state a workflow presents: its committed state, except that a run a
+ *  planned replacement paused runs on while the successor owes it its
+ *  continuation (`continuationOwed`, ARCH-SESSIONS-039). Committed control
+ *  stays the view's state; the row's owed record is the only source of the
+ *  difference. */
+export function presentedWorkflowState(state: LoadedWorkflowView["state"], row: Pick<WorkflowStateRow, "continuationOwed"> | null | undefined): LoadedWorkflowView["state"] {
+  return state === "paused" && row?.continuationOwed === true ? "running" : state
 }
 
 /** What a workflow's Resume does, in the words its control shows: a failed

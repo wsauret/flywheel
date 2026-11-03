@@ -23,7 +23,7 @@ import type { CommandKeeper } from "./command-keeper.js"
 import { createRuntimeSummaryProjection } from "./runtime-summary-projection.js"
 import { createSessionPlacements } from "../session/session-metadata-store.js"
 import { workflowPlacements } from "../module-catalog.js"
-import { awaitsPlannedContinuation } from "../session/planned-session-continuation.js"
+import { awaitsPlannedContinuation, onPlannedContinuationRetired } from "../session/planned-session-continuation.js"
 import { keptCommandsOf } from "../session/command-handover.js"
 import { readSessionDurationFromReader } from "../session/session-duration-projection.js"
 import { sharedProcessorClaims } from "../agent-runtime/tools/processor-claims.js"
@@ -59,7 +59,7 @@ export async function createFrontendProjections(scope: RuntimeOwnership, deps: F
   // The session store's output and the keeper's live tails publish on one
   // cursor, so they share the one owner of what that cursor's clients hold.
   const shippedOutput = createShippedOutput({ publish: bus.publish })
-  const outputProjection = scope.own("output-projection", createOutputProjection({ sessionStore, keptOutput: deps.keeper, shipped: shippedOutput, projectBlock: transcriptCache.projectBlock, onStored: deps.onStored }), (owned) => { owned.dispose() })
+  const outputProjection = scope.own("output-projection", createOutputProjection({ sessionStore, keptOutput: deps.keeper, shipped: shippedOutput, projectBlock: transcriptCache.projectBlock, onStored: deps.onStored, onContinuationRetired: (listener) => onPlannedContinuationRetired(projectionReader, listener) }), (owned) => { owned.dispose() })
   const statusProjection = scope.own("status-projection", createStatusProjection({
     sessionStore,
     publish: bus.publish,

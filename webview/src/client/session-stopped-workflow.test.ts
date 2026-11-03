@@ -49,7 +49,7 @@ test("a directly selected workflow agent whose detail says a person stopped it r
 
   const summary = summaryOf(createViewProjection()(session), "wf")
   assert.equal(summary?.stoppedBy, "person")
-  assert.equal(workflowStateLabel("paused", summary?.stoppedBy), "Stopped")
+  assert.equal(workflowStateLabel("paused", summary), "Stopped")
   assert.equal(offeredSessionControls(summary, false).primary, null)
   session.dispose()
 })

@@ -458,7 +458,7 @@ describe("createSessionSurface", () => {
       await Bun.sleep(0)
       const summary = surface.summary()
       expect(summary?.stoppedBy).toBe("person")
-      expect(workflowStateLabel("paused", summary?.stoppedBy)).toBe("Stopped")
+      expect(workflowStateLabel("paused", summary)).toBe("Stopped")
       expect(offeredSessionControls(summary, false).primary).toBeNull()
       dispose()
     })

@@ -19,6 +19,8 @@ import { createWorkflowDurationReader } from "../duration.js"
 import { readHeldWorkflowMemberTotals, readWorkflowMemberTotals, type WorkflowMemberTotals } from "../../../workflow-host/member-totals.js"
 import { memoizeSuccess } from "../../../../infra/success-memo.js"
 import { workflowMembershipReader, type WorkflowMember } from "../../../session/workflow-membership.js"
+import { awaitsPlannedContinuation, onPlannedContinuationRetired } from "../../../session/planned-session-continuation.js"
+import { readSessionMetadata } from "../../../session/session-metadata-store.js"
 
 /** Resolve workflow cards from current ownership, independent of invocation origin.
  * The parent tool result remains the settlement owner; until it settles, the
@@ -29,6 +31,7 @@ export function createWorkflowToolSummaryReader(reader: AsyncEventStateReadSurfa
   const runs = createWorkflowRunReader(reader)
   const durationOf = createWorkflowDurationReader(reader)
   const members = workflowMembershipReader(reader)
+  const continuationEvidence = { reader, projectionReader: reader, manager: { read: (id: string) => readSessionMetadata(reader, id) } }
   const summaries = new Map<string, ToolHistorySummary>()
   // What each card was last read from: its members, workflow control, and
   // its current agent's conversation, where an interrupt records the agent's
@@ -67,9 +70,20 @@ export function createWorkflowToolSummaryReader(reader: AsyncEventStateReadSurfa
   // The store's head when the last read ran: one card per transcript block
   // asks again, and an unmoved head has nothing new to read.
   let readThrough = -1
+  // A retired continuation row moves no aggregate: the card of a run that a
+  // planned replacement paused reads again when its successor's resume
+  // settles, so a refused resume shows the run interrupted again. A read
+  // that runs while a row retires may have read the row before it retired,
+  // so it keeps neither that child's key nor the head it read through.
+  const retiredDuringRead = new Set<string>()
+  const offRetired = onPlannedContinuationRetired(reader, (childId) => {
+    retiredDuringRead.add(childId)
+    sequences.delete(childId)
+    readThrough = -1
+  })
   // A transcript refresh asks again while a slow read runs; the refreshes
   // that wait share the next read, so a burst reads the children once more.
-  return { replay: createReadQueue(replay).read }
+  return { replay: createReadQueue(replay).read, dispose: offRetired }
 
   async function stopOf(childId: string, toolUseId: string, at: number): Promise<StoppedBy | undefined> {
     const known = stops.get(childId)
@@ -79,7 +93,19 @@ export function createWorkflowToolSummaryReader(reader: AsyncEventStateReadSurfa
     return by
   }
 
+  // A read that fails may already have stored a retired child's stale key,
+  // so the retirements it saw apply whether or not it completes.
   async function replay(): Promise<SessionToolSummarySnapshot> {
+    retiredDuringRead.clear()
+    try {
+      return await readCards()
+    } finally {
+      for (const id of retiredDuringRead) sequences.delete(id)
+      if (retiredDuringRead.size > 0) readThrough = -1
+    }
+  }
+
+  async function readCards(): Promise<SessionToolSummarySnapshot> {
     const head = await reader.capturePosition()
     if (head === readThrough) return { position, summaries, changedToolUseIds: new Set(), measure }
     const changedToolUseIds = new Set<string>()
@@ -114,17 +140,19 @@ export function createWorkflowToolSummaryReader(reader: AsyncEventStateReadSurfa
       ])
       const queue = queueRead === UNREADABLE_QUEUE ? null : queueRead
       const current = queue?.attempts[queue.cursor]?.lastConversationId
-      const [run, currentSeq, agentTurnEnd] = await Promise.all([
+      const [run, currentSeq, agentTurnEnd, owed] = await Promise.all([
         recordsOf(childId),
         current === knownConversation ? knownConversationSeq : conversationSeq(current),
         current === undefined ? undefined : readChatTurnEnd(reader, current),
+        // Only control that a planned replacement paused can be owed.
+        queue?.status === "paused" && !stoppedBy ? awaitsPlannedContinuation(continuationEvidence, childId) : false,
       ])
       // The key names the agent this read found, so the next replay compares
       // the same conversation and an unmoved card is not read again.
       const key = `${workflowSeq}:${currentSeq}:${stop}`
       const cardState: WorkflowCardState = stoppedBy
         ? { status: stoppedBy === "person" ? "stopped" : "cancelled" }
-        : queueRead === UNREADABLE_QUEUE ? UNREADABLE_PROGRESS_STATE : workflowCardState(queue?.status, agentTurnEnd, cut?.by)
+        : queueRead === UNREADABLE_QUEUE ? UNREADABLE_PROGRESS_STATE : workflowCardState(owed ? "running" : queue?.status, agentTurnEnd, cut?.by)
       const summary: UntotalledSummary = {
         toolUseId,
         linkUri: `flywheel://workflow/${childId}`,
@@ -297,8 +325,10 @@ type WorkflowCardState =
  *  runner holds (an unexpected exit), or a recorded interrupt or crash of its
  *  agent. The agent's turn end names who interrupted it; anything else is the
  *  runtime's. A planned replacement's cut of a running workflow reads as the
- *  running workflow that its successor continues, as it does for a subagent.
- *  A Resume records its continuation before the agent's first request, so a
+ *  running workflow that its successor continues, as it does for a subagent,
+ *  and so does the paused control that the cut's abort commits while the
+ *  successor owes the run its continuation (the caller passes it as
+ *  running). A Resume records its continuation before the agent's first request, so a
  *  resumed agent reads interrupted here until its first reply commits. This
  *  reader holds only durable evidence; the transcript's card join lays the
  *  child's live run over it, as a row's live status wins over its evidence. */

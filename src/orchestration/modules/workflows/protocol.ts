@@ -16,6 +16,7 @@ import { errorMessage } from "../../../infra/error-message.js"
 import { composeWorkflowDetail, createWorkflowDetailPartsReader, createWorkflowDetailReader, WORKFLOW_DETAIL_INPUTS, type WorkflowDetailInput, type WorkflowDetailParts } from "./detail.js"
 import { createStartedAgentStates } from "../../workflow-host/started-agent-states.js"
 import { advanceWorkflowMemberTotals } from "../../workflow-host/member-totals.js"
+import { onPlannedContinuationRetired } from "../../session/planned-session-continuation.js"
 import { BUDGET_FACT_TYPES } from "../../session/budget-projection.js"
 import { composeModuleServices, moduleServiceHandle } from "../../../infra/module-service.js"
 import type { ModuleWorkflowRuns } from "../../module-seams.js"
@@ -100,9 +101,18 @@ export function createWorkflowsProtocol(services: Pick<ModuleProtocolServices, "
   const log = Log.create({ service: "workflow-protocol" })
   let pending: Promise<void> | undefined
   let disposed = false
+  /** The inputs that a change moved while each query read its detail. A
+   *  query holds the detail only once its read ends, and a change that
+   *  commits no fact, such as a retired continuation row, is never seen
+   *  again, so the query reads these inputs again after it holds it. */
+  const querying = new Map<string, Set<Set<WorkflowDetailInput>>>()
+  const observed = (id: string) => held.has(id) || querying.has(id)
   const publish = (workflowId: string, view: WorkflowDetail | null): RuntimeUiPatchInput => ({ cursor: workflowDetailCursor(workflowId), payload: { kind: "workflow_detail.changed", view } })
-  const changed = (ids: Iterable<string>, inputs: Iterable<WorkflowDetailInput>) => {
+  const changed = (ids: Iterable<string>, changedInputs: Iterable<WorkflowDetailInput>) => {
+    const inputs = [...changedInputs]
     for (const id of ids) {
+      for (const queried of querying.get(id) ?? []) for (const input of inputs) queried.add(input)
+      if (!held.has(id)) continue
       let stale = dirty.get(id)
       if (!stale) dirty.set(id, stale = new Set())
       for (const input of inputs) stale.add(input)
@@ -143,9 +153,10 @@ export function createWorkflowsProtocol(services: Pick<ModuleProtocolServices, "
       if (BUDGET_FACT_TYPES.some(type => type === fact.type)) { budgetChanged = true; continue }
       if (fact.aggregateId.startsWith("workflow:")) {
         const id = fact.aggregateId.slice("workflow:".length)
-        if (held.has(id)) ids.add(id)
+        if (observed(id)) ids.add(id)
       }
-      if (fact.type === "tool.result.recorded") for (const id of heldByParent.get(fact.sessionId) ?? []) calls.add(id)
+      // A detail that a query reads has no known parent yet.
+      if (fact.type === "tool.result.recorded") for (const id of [...heldByParent.get(fact.sessionId) ?? [], ...querying.keys()]) calls.add(id)
     }
     if (ids.size > 0) changed(ids, WORKFLOW_DETAIL_INPUTS)
     if (calls.size > 0) changed(calls, ["record"])
@@ -154,13 +165,17 @@ export function createWorkflowsProtocol(services: Pick<ModuleProtocolServices, "
     // It also moves the duration of a workflow that no host here runs, whose
     // open interval ends at its members' newest evidence.
     if (budgetChanged) void advanceWorkflowMemberTotals(services.projectionReader)
-      .then(moved => changed(moved.filter(id => held.has(id)), ["usage", "duration"]))
+      .then(moved => changed(moved.filter(observed), ["usage", "duration"]))
       .catch((error: unknown) => recordBackgroundFailure(log, "invalidate workflow usage", { workflows: held.size }, error))
   })
-  const offAgents = agents.onChange((moved) => changed([...moved].filter(id => held.has(id)), ["agents"]))
-  const offAuth = port.onAuthChanged(() => changed(held.keys(), ["auth"]))
+  const offAgents = agents.onChange((moved) => changed([...moved].filter(observed), ["agents"]))
+  // A retired continuation row commits nothing, so a refused resume moves
+  // only whether the run is owed, which the record reads.
+  const offRetired = onPlannedContinuationRetired(services.projectionReader, (id) => changed([id], ["record"]))
+  const everyDetail = () => [...held.keys(), ...querying.keys()]
+  const offAuth = port.onAuthChanged(() => changed(everyDetail(), ["auth"]))
   // A host that starts or stops moves only whether the clock runs.
-  const offHosts = port.onHostChanged(() => changed(held.keys(), ["duration"]))
+  const offHosts = port.onHostChanged(() => changed(everyDetail(), ["duration"]))
   const ok = { ok: true as const }
   const sent = (result: Awaited<ReturnType<typeof port.controller.sendWorkflow>>) =>
     result.kind === "delivered" || result.kind === "retained"
@@ -170,7 +185,20 @@ export function createWorkflowsProtocol(services: Pick<ModuleProtocolServices, "
     serve: {
       async workflowDetail(query) {
         const snapshotPosition = services.snapshotPosition({ kind: "cursor", cursor: workflowDetailCursor(query.workflowId) })
-        const { view } = retain(query.workflowId, await read(query.workflowId))
+        const id = query.workflowId
+        const moved = new Set<WorkflowDetailInput>()
+        let reads = querying.get(id)
+        if (!reads) querying.set(id, reads = new Set())
+        reads.add(moved)
+        let parts: WorkflowDetailParts | null
+        try {
+          parts = await read(id)
+        } finally {
+          reads.delete(moved)
+          if (reads.size === 0) querying.delete(id)
+        }
+        const { view } = retain(id, parts)
+        if (moved.size > 0) changed([id], moved)
         return { snapshotPosition, view }
       },
       async workflowViewSnapshot(query) {
@@ -231,7 +259,7 @@ export function createWorkflowsProtocol(services: Pick<ModuleProtocolServices, "
         return sent(await port.controller.sendWorkflow(membership.workflowId, input, { attemptId: membership.attemptId }))
       },
     },
-    dispose() { disposed = true; offFacts(); offAgents(); offAuth(); offHosts(); held.clear(); heldByParent.clear(); viewProjection.dispose(); liveProjection.dispose(); agents.dispose() },
+    dispose() { disposed = true; offFacts(); offAgents(); offRetired(); offAuth(); offHosts(); held.clear(); heldByParent.clear(); viewProjection.dispose(); liveProjection.dispose(); agents.dispose() },
   }
 }
 

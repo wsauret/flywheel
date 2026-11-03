@@ -84,6 +84,11 @@ describe("workflow session admission", () => {
     expect(workflowSessionActions("inactive", "completed", { toolCall: { read: true } })).toEqual(["session.delete"])
   })
 
+  test("a workflow a successor owes its continuation admits Interrupt and never Resume, whatever its lifecycle", () => {
+    expect(workflowSessionActions("inactive", "paused", { continuationOwed: true, toolCall: { read: true } })).toEqual(["workflow.interrupt", "background.terminate", "session.delete"])
+    expect(workflowSessionActions("active", "running", { continuationOwed: true, stepTurnEnd: interrupted })).toEqual(["workflow.interrupt", "session.delete"])
+  })
+
   test("a run that a failed step ended admits Resume, which runs its failed steps again, and takes no message", () => {
     expect(workflowSessionActions("inactive", "failed", { message: false, retriesFailedAgents: true, toolCall: { read: true, settled: true } })).toEqual(["workflow.resume", "session.delete"])
     // A refusal or an older build ended it, or its row is listed without its detail.

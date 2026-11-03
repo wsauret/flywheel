@@ -85,8 +85,7 @@ export function WorkflowCardViewer(props: WorkflowCardViewerProps) {
   const view = createMemo(() => { const loaded = surface.view(); return loaded?.attemptsStatus === "loaded" ? loaded : undefined })
   const parked = () => workflowParked(live(), row())
   const status = createMemo(() => workflowViewCardStatus(view()?.state, row(), parked()))
-  const drift = () => row()?.definitionDrift
-  const stateWord = () => workflowStateLabel(view()?.state, row()?.stoppedBy, drift(), parked())
+  const stateWord = () => workflowStateLabel(view()?.state, row(), parked())
   const outline = createMemo(() => { const loaded = view(); return loaded === undefined ? undefined : workflowOutline(loaded, stateWord(), live(), row() ?? undefined) })
   const modelLabel = createWorkflowServingLabels(() => outline(), props)
   const [choices, setChoices] = createSignal<WorkflowCardChoices>()

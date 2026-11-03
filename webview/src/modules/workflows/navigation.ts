@@ -77,7 +77,7 @@ function entry(state: unknown, place: WorkflowPlace | undefined, shown: string |
 export function workflowCut(reading: WorkflowReading) {
   const detail = reading.detail
   const parked = workflowParked(reading.live, detail)
-  return workflowStateLabel(reading.view?.attemptsStatus === "loaded" ? reading.view.state : undefined, detail?.stoppedBy, detail?.definitionDrift, parked)
+  return workflowStateLabel(reading.view?.attemptsStatus === "loaded" ? reading.view.state : undefined, detail, parked)
 }
 
 /** History records workflow places, but only actual conversation sessions are selected. */

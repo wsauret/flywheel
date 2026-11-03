@@ -92,6 +92,16 @@ describe("the outline of a workflow", () => {
       agents: ["t1 parked: implement", "t2 queued: implement", "t3 queued: implement"],
     })
     expect(workflowOutline(parked(), "interrupted").cut).toBe("interrupted")
+    // The abort returns the started attempt to pending: a cut parks it, and
+    // with no cut, as while a planned replacement's successor owes the run,
+    // it runs on.
+    const view = parked()
+    const returned = { ...view, attempts: view.attempts.map((attempt) => attempt.id === attemptOf(inputStage(1, 1)) ? { ...attempt, startedAt: 1 } : attempt) }
+    expect(outlineLines(workflowOutline(returned, "interrupted"))[0]?.agents[0]).toBe("t1 parked: implement")
+    expect(outlineLines(workflowOutline(returned))[0]).toEqual({
+      phase: "list implement running 0/3",
+      agents: ["t1 running: implement", "t2 queued: implement", "t3 queued: implement"],
+    })
   })
 
   it("reuses the fold until its attempt carriers change, and keeps running while a sibling is parked", () => {

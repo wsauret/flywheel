@@ -128,6 +128,7 @@ export function composeWorkflowDetail(workflowId: string, parts: WorkflowDetailP
     ...(childCall?.stoppedBy ? { stoppedBy: childCall.stoppedBy } : {}),
     auth: parts.auth,
     ...(controlState ? { workflowState: controlState } : {}),
+    ...(record.continuationOwed ? { continuationOwed: true as const } : {}),
     readability: plan.executable ? "readable" : "unavailable",
     ...(rejection && !childCall?.stoppedBy ? { definitionDrift: publishedDefinitionDrift(rejection.workflowId, rejection.changes) } : {}),
     admittedActions, totals: publishedUsage(usage.display), policyUsage: publishedUsage(usage.policy),

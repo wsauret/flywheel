@@ -1,6 +1,6 @@
 import { describe, expect, test, spyOn } from "bun:test"
 import { temporaryDirectories } from "../../../helpers/directories.js"
-import { asAsyncEventReadSurface, asAsyncEventWriter, type EventStore } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type EventStore } from "../../../../src/infra/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
 import { createSessionManager } from "../../../../src/orchestration/session/manager.js"
@@ -24,6 +24,7 @@ import { publishWorkerAttempt } from "../workflow-host/_workflow-host-fixtures.j
 import { workflowMembershipReader } from "../../../../src/orchestration/session/workflow-membership.js"
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
 import { interruptedTurnMessage, turnEndEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
+import { authorizePlannedSessionContinuation, PLANNED_SESSION_CONTINUATION_IN_FLIGHT_KIND, retirePlannedSessionContinuation } from "../../../../src/orchestration/session/planned-session-continuation.js"
 
 const tmp = temporaryDirectories()
 function loaded(view: FrontendWorkflowView | null): LoadedWorkflowView {
@@ -206,6 +207,61 @@ describe("workflow-scoped view projection", () => {
       expect(details).toHaveLength(1)
       expect(details[0]).toMatchObject({ auth: { authRevision: 1 } })
     } finally { warn.mockRestore(); protocol.dispose(); f.store.close() }
+  })
+  test.each(["after", "during"] as const)("a detail that reads a run as owed publishes it at rest once a refused resume retires the row %s its first read, though the retirement commits no fact", async (when) => {
+    const f = await setup()
+    const writer = asAsyncEventWriter(f.store)
+    const sequencer = createRuntimeUiPatchSequencer()
+    const details: WorkflowDetail[] = []
+    // Holds the next read of continuation rows after it read them, until the
+    // test releases it.
+    let hold: { readonly reached: () => void; readonly release: Promise<void> } | undefined
+    const reader: AsyncEventStateReadSurface = {
+      ...f.reader,
+      async readInFlight(sessionId, kind, keyPrefix) {
+        const rows = await f.reader.readInFlight(sessionId, kind, keyPrefix)
+        const held = hold
+        if (held && kind === PLANNED_SESSION_CONTINUATION_IN_FLIGHT_KIND) {
+          hold = undefined
+          held.reached()
+          await held.release
+        }
+        return rows
+      },
+    }
+    const protocol = createWorkflowsProtocol({
+      projectionReader: reader, eventStore: reader, eventWriter: writer, manager: f.manager,
+      sessionStore: { onChange: () => () => {}, get: () => undefined, remove: async () => {} },
+      modules: composeModuleServices([["workflows", {
+        projectRoot: f.root, onAuthChanged: () => () => {}, onHostChanged: () => () => {}, isRunning: () => false,
+        auth: { snapshot: async () => ({}) }, authStatus: { view: () => null },
+      }]]),
+      onStored: f.store.onStored, snapshotPosition: sequencer.snapshotPosition,
+      publish: (patch: RuntimeUiPatchInput) => {
+        if (patch.payload.kind === "workflow_detail.changed" && patch.payload.view) details.push(patch.payload.view)
+        return sequencer.publish(patch)
+      },
+    })
+    try {
+      const id = await publishTestWorkflow(f.manager, { id: "owed" })
+      await authorizePlannedSessionContinuation({ reader, writer, continuation: { target: { kind: "workflow", workflowId: id }, handoffId: "handoff" } })
+      if (when === "after") {
+        expect((await protocol.serve.workflowDetail({ type: "workflowDetail", workflowId: id })).view?.continuationOwed).toBe(true)
+        await retirePlannedSessionContinuation({ reader, writer, sessionId: id })
+      } else {
+        let release = () => {}
+        const reached = new Promise<void>((resolve) => { hold = { reached: resolve, release: new Promise((done) => { release = done }) } })
+        const first = protocol.serve.workflowDetail({ type: "workflowDetail", workflowId: id })
+        await reached
+        await retirePlannedSessionContinuation({ reader, writer, sessionId: id })
+        release()
+        expect((await first).view?.continuationOwed).toBe(true)
+      }
+      for (let tick = 0; tick < 200 && details.length === 0; tick++) await Bun.sleep(1)
+      expect(details).toHaveLength(1)
+      expect(details[0]).not.toHaveProperty("continuationOwed")
+      expect(details[0]?.admittedActions).toContain("workflow.resume")
+    } finally { protocol.dispose(); f.store.close() }
   })
   test("pending agents have no invented session; started members publish their real conversation address", async () => {
     const f = await setup()

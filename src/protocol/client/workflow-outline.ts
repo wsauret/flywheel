@@ -346,9 +346,11 @@ function phaseAgent(fold: Fold, agent: WorkflowTreeAgent): WorkflowPhaseAgent {
   const live = agent.currentAttemptId === undefined ? undefined : fold.live.get(agent.currentAttemptId)
   const agentState = workflowAgentState(fold.tree, agent, fold.cut, live)
   // Once a cut settles, the runtime returns each attempt it cut to pending;
-  // the attempt that started marks the agent the cut holds.
-  const cut = fold.cut !== undefined && (agentState === "queued" || agentState === "waiting") && attempt?.startedAt !== undefined && attempt.status !== "completed"
-  const state = cut ? "parked" : agentState
+  // the attempt that started marks the agent the cut holds. With no cut, the
+  // run goes on, as while a planned replacement's successor owes it, after
+  // a recovery, or before a Resume restarts the agent, so it runs.
+  const returned = (agentState === "queued" || agentState === "waiting") && attempt?.startedAt !== undefined && attempt.status !== "completed"
+  const state = !returned ? agentState : fold.cut === undefined ? "running" : "parked"
   const started = attempt?.startedAt !== undefined || (state !== "waiting" && state !== "queued" && state !== "conditional")
   // Convert summaries written before 2026-10-17; remove after 2027-04-17.
   const detail = state === "done" ? agent.evidence?.summary === undefined ? undefined : summaryLine(agent.evidence.summary)

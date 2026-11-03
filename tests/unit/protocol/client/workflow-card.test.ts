@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import type { AgentGroupBlock, WorkflowCard } from "../../../../src/infra/output-blocks.js"
-import { workflowCard, workflowCardBar, workflowCardDisplayState, workflowCardHeaderParts, workflowCardLines, workflowCardTime, workflowPlanAbsence, type WorkflowCardChoices, type WorkflowCardLine } from "../../../../src/protocol/client/workflow-card.js"
+import { workflowCard, workflowCardBar, workflowCardDisplayState, workflowCardHeaderParts, workflowCardLines, workflowCardTime, workflowPlanAbsence, workflowViewCardStatus, type WorkflowCardChoices, type WorkflowCardLine } from "../../../../src/protocol/client/workflow-card.js"
 import { workflowOutline } from "../../../../src/protocol/client/workflow-outline.js"
 import type { LoadedWorkflowView, WorkflowAgentLive, WorkflowTreeNode } from "../../../../src/protocol/workflow-view-protocol-types.js"
 import { FANOUT, FANOUT_COMPLETED, FANOUT_FAILED, fanoutView, REVIEW_KEYS, type FanoutFixture } from "./_workflow-card-fixtures.js"
@@ -171,6 +171,13 @@ describe("the workflow card", () => {
     expect(workflowCardDisplayState("parked", "active")).toBe("running")
     // An agent that its own interrupt holds stays parked in a running card.
     expect(workflowCardDisplayState("parked", "active", true)).toBe("parked")
+  })
+
+  it("reads a run that a planned replacement paused as running while its successor owes the continuation, with every agent that the cut returned to pending running", () => {
+    expect(workflowViewCardStatus("paused", { continuationOwed: true }, false)).toBe("active")
+    expect(workflowViewCardStatus("paused", { continuationOwed: true }, true)).toBe("paused")
+    expect(workflowViewCardStatus("paused", {}, false)).toBe("paused")
+    expect(lines(fanout(FANOUT.reviewsCut), "active")[4]).toBe(`  ├ running ${REVIEW_KEYS[3]} | Working`)
   })
 
   it("counts a phase's time only while its run was active, so a resume hours later adds none of the wait", () => {
