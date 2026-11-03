@@ -47,7 +47,7 @@ const AskUserInputSchema = Schema.StructWithRest(Schema.Struct({
   options: Schema.optionalKey(Schema.Array(OptionInputSchema).check(Schema.isNonEmpty())),
   multi_select: Schema.optionalKey(Schema.Boolean),
   multiSelect: Schema.optionalKey(Schema.Boolean),
-  questions: Schema.optionalKey(Schema.Array(QuestionInputSchema).check(Schema.isLengthBetween(1, 5))),
+  questions: Schema.optionalKey(Schema.Array(QuestionInputSchema).check(Schema.isBetweenLength(1, 5))),
 }), [Schema.Record(Schema.String, Schema.Unknown)]);
 
 type AskUserInput = typeof AskUserInputSchema.Type;

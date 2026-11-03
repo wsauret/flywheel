@@ -1,5 +1,5 @@
 import { Layer } from "effect"
-import { Socket } from "effect/unstable/socket"
+import { Socket } from "effect/socket"
 
 import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
 import { fakeLanes } from "../../../tests/helpers/fake-lanes.js"

@@ -1,5 +1,5 @@
 import { Effect, Exit } from "effect"
-import { Socket } from "effect/unstable/socket"
+import { Socket } from "effect/socket"
 
 import type { PairedRuntime } from "./relay-device.js"
 import { openPairingChannel } from "./relay-channel.js"

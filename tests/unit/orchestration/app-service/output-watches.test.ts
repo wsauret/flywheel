@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { Effect, Fiber, Stream } from "effect"
-import { Rpc, RpcTest } from "effect/unstable/rpc"
+import { Rpc, RpcTest } from "effect/rpc"
 import { createOutputWatches } from "../../../../src/orchestration/app-service/output-watches.js"
 import { runtimeHandlers } from "../../../../src/orchestration/app-service/runtime-protocol-handlers.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../../src/protocol/runtime-liveness.js"

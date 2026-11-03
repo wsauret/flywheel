@@ -130,6 +130,9 @@ export function decodeConfigObject(raw: UnknownObject, warnings: string[], guide
   const decode = Schema.decodeUnknownResult(installedConfigSchema(), {
     errors: "all",
     onExcessProperty: "error",
+    // The diagnostic states what the person wrote for a public setting, so the
+    // issues keep the value they refuse; `safeFound` decides what is shown.
+    reportInput: true,
   });
   let result = decode(raw);
   if (Result.isFailure(result)) {
@@ -346,8 +349,8 @@ function collectSchemaIssues(issue: unknown, prefix: readonly string[] = []): Co
   }
   if (Array.isArray(issue.issues) && issue.issues.length > 0) return issue.issues.flatMap((child) => collectSchemaIssues(child, prefix));
   if (isRecord(issue.issue)) return collectSchemaIssues(issue.issue, prefix);
-  if (issue._tag === "UnexpectedKey") return [{ path: prefix, actual: issue.actual, unknownKey: true }];
-  const actual = isRecord(issue.actual) && issue.actual._tag === "Some" ? issue.actual.value : isRecord(issue.actual) ? undefined : issue.actual;
+  const actual = issue.input;
+  if (issue._tag === "UnexpectedKey") return [{ path: prefix, actual, unknownKey: true }];
   return [{ path: prefix, ...(actual === undefined ? {} : { actual }) }];
 }
 

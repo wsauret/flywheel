@@ -1,5 +1,5 @@
 import type { Layer } from "effect"
-import type { Socket } from "effect/unstable/socket"
+import type { Socket } from "effect/socket"
 
 import type { FrontendMutation } from "../../src/protocol/app-service-types.js"
 import type { MachinePicker, MachinePickerSnapshot } from "../../src/protocol/modules/remote/machine-picker.js"

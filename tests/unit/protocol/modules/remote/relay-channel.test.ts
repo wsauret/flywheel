@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test"
-import { Cause, Effect, Exit } from "effect"
-import { Socket } from "effect/unstable/socket"
+import { Cause, Effect, Exit, Stream } from "effect"
+import { Socket } from "effect/socket"
 
 import { keepAlive, relayChannelStreams, type HeartbeatClock } from "../../../../../src/protocol/modules/remote/relay-channel.js"
 import { RELAY_PING, RELAY_PONG } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
@@ -176,7 +176,7 @@ describe("relayChannelStreams", () => {
     const streams = relayChannelStreams(ws, { ...TIMING, clock: heartbeat.clock })
     const reading = Effect.runPromiseExit(Effect.flatMap(
       Socket.fromTransformStream(Effect.succeed(streams)),
-      (socket) => socket.run(() => {}),
+      (socket) => Stream.runDrain(Socket.toStream(socket)),
     ))
     ws.deliver()
     heartbeat.advance(TIMING.intervalMs)
@@ -189,7 +189,9 @@ describe("relayChannelStreams", () => {
     expect(ws.closes).toEqual([{ code: 4000, reason: "heartbeat timeout" }])
     const exit = await reading
     expect(Exit.isFailure(exit)).toBe(true)
-    if (Exit.isFailure(exit)) expect(Cause.squash(exit.cause)).toMatchObject({ reason: { _tag: "SocketCloseError", code: 4000 } })
+    // The socket reports a failed stream as a read error, with the close
+    // the channel failed it with as its cause.
+    if (Exit.isFailure(exit)) expect(Cause.squash(exit.cause)).toMatchObject({ reason: { _tag: "SocketReadError", cause: { reason: { _tag: "SocketCloseError", code: 4000 } } } })
     const pings = ws.sent.length
     heartbeat.advance(TIMING.deadlineMs * 2)
     expect(ws.sent).toHaveLength(pings)
@@ -304,7 +306,7 @@ describe("relayChannelStreams", () => {
     const streams = relayChannelStreams(ws)
     const reading = Effect.runPromiseExit(Effect.flatMap(
       Socket.fromTransformStream(Effect.succeed(streams)),
-      (socket) => socket.run(() => {}),
+      (socket) => Stream.runDrain(Socket.toStream(socket)),
     ))
     ws.close(4321, "bye")
     expect(await streams.closed).toEqual({ code: 4321, reason: "bye", abrupt: false })
@@ -312,7 +314,7 @@ describe("relayChannelStreams", () => {
     expect(Exit.isFailure(exit)).toBe(true)
     if (Exit.isFailure(exit)) {
       expect(Cause.squash(exit.cause)).toMatchObject({
-        reason: { _tag: "SocketCloseError", code: 4321, closeReason: "bye" },
+        reason: { _tag: "SocketReadError", cause: { reason: { _tag: "SocketCloseError", code: 4321, closeReason: "bye" } } },
       })
     }
   })

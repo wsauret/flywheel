@@ -1,5 +1,5 @@
 import { Effect, Layer } from "effect"
-import { Socket } from "effect/unstable/socket"
+import { Socket } from "effect/socket"
 
 import { reconnectBackoffMs } from "../../client/connection.js"
 import { attachDeviceChannel, RelayRefusal, watchPresence, type PresenceWatch } from "./relay-channel.js"

@@ -256,7 +256,7 @@ describe("workflow VM launch atomicity", () => {
     }
     expect(await refusal(FIXTURE_WORKFLOW_ID, { goal: "Ship." })).toMatch(/declares no input contract, so it takes no input\. Launch it again without input/)
     expect(await refusal(inputMapWorkflow.id, { items: items("a") })).toMatch(/- input\.goal: Missing key\nCorrect the input/)
-    expect(await refusal(inputMapWorkflow.id, { goal: 7, items: items("a") })).toContain("- input.goal: Expected string, got 7")
+    expect(await refusal(inputMapWorkflow.id, { goal: 7, items: items("a") })).toContain("- input.goal: Expected string\n")
     expect(await refusal(inputMapWorkflow.id, { goal: "Ship.", items: items("a", "b", "c", "d") })).toContain("- input.items: Expected a value with a length of at most 3")
     expect(await refusal(inputMapWorkflow.id, { goal: "Ship.", items: items("a", "a") })).toContain("- input.items: each item must have a different \"id\"")
     // A launch that passed no input, such as a person's slash launch, learns

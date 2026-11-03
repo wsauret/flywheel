@@ -39,7 +39,7 @@ const ruleCases: RuleCases = {
   ],
   "no-schema-class": [
     { file: "schema.ts", source: `${schemaImport}export class X extends Schema.Class<X>("X")({ id: Schema.String }) {}\n`, expect: "fires-once" },
-    { file: "error.ts", source: `${schemaImport}export class E extends Schema.TaggedErrorClass<E>()("E", { reason: Schema.String }) {}\n`, expect: "silent" },
+    { file: "error.ts", source: `${schemaImport}export class E extends Schema.TaggedError<E>()("E", { reason: Schema.String }) {}\n`, expect: "silent" },
   ],
   "no-unsupported-effect-api": [
     ...["async", "zipRight", "zipLeft", "timeoutFail", "orDieWith", "dieMessage"].map((member): RuleCase => (

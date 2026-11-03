@@ -16,7 +16,7 @@ import { writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { createRuntimeConfigOwner } from "../../../../../src/orchestration/config/runtime-config-owner.js"
 import { Effect, ManagedRuntime } from "effect"
-import { Socket, SocketServer } from "effect/unstable/socket"
+import { Socket, SocketServer } from "effect/socket"
 import { createModuleTransports, type ModuleTransports } from "../../../../../src/orchestration/app-service/module-transports.js"
 
 /** The account's report of the module services it could not start, as the

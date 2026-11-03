@@ -53,7 +53,7 @@ describe("errorMessage", () => {
     ]);
   });
 
-  it("describes a schema decode failure by path and received kind, never by the value", () => {
+  it("describes a schema decode failure by path and expected shape, never by the value", () => {
     const Block = Schema.Union([Schema.Struct({ kind: Schema.Literal("tool") }), Schema.Struct({ kind: Schema.Literal("text") })]);
     const content = "model-written ".repeat(50_000);
     let failure: unknown;
@@ -64,7 +64,7 @@ describe("errorMessage", () => {
     }
 
     const message = errorMessage(failure);
-    expect(message).toBe('Expected { readonly "kind": "tool", ... } | { readonly "kind": "text", ... }, got kind "workflowRoster"\n  at ["blocks"][0]');
+    expect(message).toBe('Expected { readonly "kind": "tool", ... } | { readonly "kind": "text", ... }\n  at ["blocks"][0]');
     expect(JSON.stringify(errorDetail(failure))).not.toContain("model-written");
 
     // A transformation's own message can quote the input, as a JSON parse error does.
@@ -74,7 +74,7 @@ describe("errorMessage", () => {
     } catch (error) {
       parseFailure = error;
     }
-    expect(errorMessage(parseFailure)).toBe("Invalid data string of 13 chars");
+    expect(errorMessage(parseFailure)).toBe("Expected a valid JSON string");
     expect(JSON.stringify(errorDetail(parseFailure))).not.toContain("model-written");
   });
 });

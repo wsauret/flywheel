@@ -1,5 +1,5 @@
 import { Cause, Deferred, Effect, FiberSet, Layer, Scope } from "effect"
-import { Worker as EffectWorker, WorkerError, WorkerRunner } from "effect/unstable/workers"
+import { Worker as EffectWorker, WorkerError, WorkerRunner } from "effect/workers"
 import { terminateWorker } from "../../infra/worker-termination.js"
 
 /** Bun adapters for Effect's worker RPC transport, one per side of the

@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { Effect, FiberSet, Layer, ManagedRuntime, Redacted, Schema, Scope, Stream } from "effect";
-import { Rpc, RpcClient, type RpcClientError, RpcGroup, RpcSerialization, RpcServer } from "effect/unstable/rpc";
-import { Socket, SocketServer } from "effect/unstable/socket";
+import { Rpc, RpcClient, type RpcClientError, RpcGroup, RpcSerialization, RpcServer } from "effect/rpc";
+import { NetAddress } from "effect/net";
+import { Socket, SocketServer } from "effect/socket";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -10,6 +11,7 @@ import { type BunRawSocketConnection, bunSocketClientLayer, bunSocketServerLayer
 import { runtimeProtocolSocketServer } from "../../../../src/orchestration/app-service/runtime-protocol-socket-server.js";
 import { createAccountSocketRouter } from "../../../../src/orchestration/app-service/account-socket-router.js";
 import { encodeAccountAttach, newAccountAttachCredential } from "../../../../src/protocol/account-attach.js";
+import { stringRequestId } from "../../../../src/protocol/rpc-request-id.js";
 
 /** The socket placement of the runtime protocol server carries the three shapes
  *  the protocol itself is made of: unary calls, a typed error channel, and one
@@ -21,7 +23,7 @@ import { encodeAccountAttach, newAccountAttachCredential } from "../../../../src
  *  failure here names the transport rather than the runtime composition behind
  *  it. */
 
-class ProtocolProbeError extends Schema.TaggedErrorClass<ProtocolProbeError>()("ProtocolProbeError", {
+class ProtocolProbeError extends Schema.TaggedError<ProtocolProbeError>()("ProtocolProbeError", {
   message: Schema.String,
 }) {}
 
@@ -109,7 +111,7 @@ async function withProbeServer<A>(run: (client: RpcClient.RpcClient<RpcGroup.Rpc
       ),
     );
     try {
-      return await client.runPromise(Effect.scoped(Effect.flatMap(RpcClient.make(ProbeRpc), run)));
+      return await client.runPromise(Effect.scoped(Effect.flatMap(RpcClient.make(ProbeRpc, { generateRequestId: stringRequestId }), run)));
     } finally {
       await client.dispose();
     }
@@ -270,7 +272,7 @@ describe("runtime protocol over a Bun unix socket", () => {
       ),
     );
     try {
-      client.runFork(Effect.scoped(Effect.flatMap(RpcClient.make(ProbeRpc), (rpc) => rpc.Echo({ text: "x" }))));
+      client.runFork(Effect.scoped(Effect.flatMap(RpcClient.make(ProbeRpc, { generateRequestId: stringRequestId }), (rpc) => rpc.Echo({ text: "x" }))));
       await prefaced.promise;
       await client.dispose();
       await new Promise((resolve) => setTimeout(resolve, 20));
@@ -341,7 +343,7 @@ describe("runtime protocol over a Bun unix socket", () => {
           Layer.provide(RpcSerialization.layerNdjson),
         ),
       );
-      await client.runPromise(Effect.scoped(Effect.flatMap(RpcClient.make(ProbeRpc), (rpc) => rpc.Echo({ text: "x" }))));
+      await client.runPromise(Effect.scoped(Effect.flatMap(RpcClient.make(ProbeRpc, { generateRequestId: stringRequestId }), (rpc) => rpc.Echo({ text: "x" }))));
       await client.dispose();
       await new Promise((resolve) => setTimeout(resolve, 25));
     } finally {
@@ -371,7 +373,7 @@ describe("runtime protocol over a Bun unix socket", () => {
       path,
       onOpen: (connection: BunRawSocketConnection) => {
         const singletonSocketServer = Layer.succeed(SocketServer.SocketServer, SocketServer.SocketServer.of({
-          address: { _tag: "UnixAddress", path },
+          address: NetAddress.unixPathAddress(path),
           run: <R, E, A>(handler: (socket: Socket.Socket) => Effect.Effect<A, E, R>) =>
             Effect.scopedWith((scope) =>
               Effect.gen(function*() {
@@ -411,7 +413,7 @@ describe("runtime protocol over a Bun unix socket", () => {
       // account service; the server's farewell for that request is the write
       // that must settle.
       client.runFork(Effect.scoped(Effect.gen(function*() {
-        const rpc = yield* RpcClient.make(ProbeRpc);
+        const rpc = yield* RpcClient.make(ProbeRpc, { generateRequestId: stringRequestId });
         expect(yield* rpc.Echo({ text: "x" })).toBe("echo:x");
         yield* Stream.runDrain(rpc.Idle());
       })));

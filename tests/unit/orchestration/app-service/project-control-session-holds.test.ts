@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { Rpc } from "effect/unstable/rpc"
+import { Rpc } from "effect/rpc"
 import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { createProjectControlClient, type ProjectControlClientOptions } from "../../../../src/orchestration/app-service/project-control-client.js"

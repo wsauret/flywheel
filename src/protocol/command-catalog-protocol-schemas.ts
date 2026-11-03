@@ -1,9 +1,9 @@
 import { Schema } from "effect"
+import { exactStruct } from "../infra/exact-struct.js"
 import type { CommandCatalogPatchPayload, CommandOutcome, RuntimeCommandCatalogResult, RuntimeCommandInvocation } from "./command-catalog-protocol-types.js"
 
 const NonNegativeInt = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
 const RuntimePositionSchema = Schema.Number
-const strict = <S extends Schema.Top>(schema: S) => schema.pipe(Schema.annotate({ parseOptions: { onExcessProperty: "error" } }))
 
 const CommandSurfaceTargetSchema = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("place"), place: Schema.Literal("authentication") }),
@@ -26,7 +26,7 @@ const RuntimeCommandCatalogSchema = Schema.Struct({
 export const RuntimeCommandCatalogResultSchema: Schema.Codec<RuntimeCommandCatalogResult> = RuntimeCommandCatalogSchema.pipe(Schema.fieldsAssign({ snapshotPosition: RuntimePositionSchema }))
 export const CommandCatalogPatchPayloadSchema: Schema.Codec<CommandCatalogPatchPayload> = Schema.Struct({ kind: Schema.Literal("commands.updated"), catalog: RuntimeCommandCatalogSchema })
 
-export const RuntimeCommandInvocationSchema: Schema.Codec<RuntimeCommandInvocation> = strict(Schema.Struct({
+export const RuntimeCommandInvocationSchema: Schema.Codec<RuntimeCommandInvocation> = exactStruct(Schema.Struct({
   type: Schema.Literal("command.invoke"),
   id: Schema.NonEmptyString,
   revision: NonNegativeInt,
@@ -34,11 +34,11 @@ export const RuntimeCommandInvocationSchema: Schema.Codec<RuntimeCommandInvocati
   argument: Schema.optionalKey(Schema.String),
 }))
 export const CommandOutcomeSchema: Schema.Codec<CommandOutcome> = Schema.Union([
-  strict(Schema.Struct({ kind: Schema.Literal("none") })),
-  strict(Schema.Struct({ kind: Schema.Literal("message"), message: Schema.String })),
-  strict(Schema.Struct({ kind: Schema.Literal("warning"), message: Schema.String })),
-  strict(Schema.Struct({ kind: Schema.Literal("open"), surface: Schema.NonEmptyString, sessionId: Schema.optionalKey(Schema.NonEmptyString) })),
-  strict(Schema.Struct({ kind: Schema.Literal("focus-session"), sessionId: Schema.NonEmptyString })),
-  strict(Schema.Struct({ kind: Schema.Literal("stale") })),
-  strict(Schema.Struct({ kind: Schema.Literal("unavailable"), message: Schema.String })),
+  exactStruct(Schema.Struct({ kind: Schema.Literal("none") })),
+  exactStruct(Schema.Struct({ kind: Schema.Literal("message"), message: Schema.String })),
+  exactStruct(Schema.Struct({ kind: Schema.Literal("warning"), message: Schema.String })),
+  exactStruct(Schema.Struct({ kind: Schema.Literal("open"), surface: Schema.NonEmptyString, sessionId: Schema.optionalKey(Schema.NonEmptyString) })),
+  exactStruct(Schema.Struct({ kind: Schema.Literal("focus-session"), sessionId: Schema.NonEmptyString })),
+  exactStruct(Schema.Struct({ kind: Schema.Literal("stale") })),
+  exactStruct(Schema.Struct({ kind: Schema.Literal("unavailable"), message: Schema.String })),
 ])

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
 import { Layer } from "effect"
-import { Socket } from "effect/unstable/socket"
+import { Socket } from "effect/socket"
 import { createRoot, createSignal, onCleanup } from "solid-js"
 
 import type { ModuleId } from "../../../src/protocol/module-ids.js"

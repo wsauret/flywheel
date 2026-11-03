@@ -6,7 +6,7 @@ import { checkpointOutbox, type InputReloadCheckpoint } from "./input-reload-che
 import { headlessClient } from "./session-host-loader-fixture.js"
 import { selectionConnection } from "./session-selection-fixture.js"
 import { Layer } from "effect"
-import { Socket } from "effect/unstable/socket"
+import { Socket } from "effect/socket"
 import { createInputFocus } from "./input-reload-dom.js"
 
 test("semantic focus survives an involuntary blur and follows explicit focus changes", () => {

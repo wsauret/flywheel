@@ -1,5 +1,5 @@
 import type { Layer } from "effect"
-import type { SocketServer } from "effect/unstable/socket"
+import type { SocketServer } from "effect/socket"
 import { Log } from "../../infra/log.js"
 
 /** A module supplies the transport adapter. The kernel serves the same RPC

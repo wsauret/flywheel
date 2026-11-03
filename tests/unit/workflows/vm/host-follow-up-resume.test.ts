@@ -134,7 +134,7 @@ describe("workflow VM host historical follow-up", () => {
   // then, never from this tree.
   it("keeps the version 4 event union identical to the one v0.0.12 reads", () => {
     const document = JSON.stringify(Schema.toJsonSchemaDocument(WorkflowProposalEventV4Schema))
-    expect(new Bun.CryptoHasher("sha256").update(document).digest("hex")).toBe("72c9be6e84621e631fca285d0a8ee9cd862b86f9e2da5708206d324c1bb61277")
+    expect(new Bun.CryptoHasher("sha256").update(document).digest("hex")).toBe("039ec9fb3bd44aefeefa76111316531e0a764b49494d8c366b5e37f92e0b66d3")
   })
 
   it.each(["follow_up", "paused"] as const)("proposes transfer from a pending %s control without executing work", async (status) => {

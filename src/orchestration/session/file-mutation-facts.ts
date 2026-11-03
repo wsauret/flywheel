@@ -4,7 +4,7 @@ import { MutationDiffSchema } from "../../infra/mutation-diff.js"
 import { MutationFileEvidenceSchema } from "../../infra/mutation-evidence-schema.js"
 import { FileAccessProofSchema } from "./file-mutation-access.js"
 
-const Sha256Schema = Schema.String.check(Schema.isLengthBetween(64, 64))
+const Sha256Schema = Schema.String.check(Schema.isBetweenLength(64, 64))
 const ContentPolicySchema = Schema.Struct({
   bytes: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   sha256: Sha256Schema,

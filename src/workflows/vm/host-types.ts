@@ -12,47 +12,47 @@ import type { AttemptExecutionInput } from "./commands.js"
 const IdSchema = Schema.NonEmptyString
 const MessageSchema = Schema.NonEmptyString
 
-export class WorkflowHostStorageError extends Schema.TaggedErrorClass<WorkflowHostStorageError>()(
+export class WorkflowHostStorageError extends Schema.TaggedError<WorkflowHostStorageError>()(
   "WorkflowHostStorageError",
   { operation: Schema.NonEmptyString, message: MessageSchema },
 ) {}
 
-export class WorkflowHostWorkerError extends Schema.TaggedErrorClass<WorkflowHostWorkerError>()(
+export class WorkflowHostWorkerError extends Schema.TaggedError<WorkflowHostWorkerError>()(
   "WorkflowHostWorkerError",
   { attemptId: IdSchema, message: MessageSchema },
 ) {}
 
-export class WorkflowAttemptRefusedError extends Schema.TaggedErrorClass<WorkflowAttemptRefusedError>()(
+export class WorkflowAttemptRefusedError extends Schema.TaggedError<WorkflowAttemptRefusedError>()(
   "WorkflowAttemptRefusedError",
   { attemptId: IdSchema, message: MessageSchema },
 ) {}
 
-export class WorkflowHostFollowUpError extends Schema.TaggedErrorClass<WorkflowHostFollowUpError>()(
+export class WorkflowHostFollowUpError extends Schema.TaggedError<WorkflowHostFollowUpError>()(
   "WorkflowHostFollowUpError",
   { conversationId: IdSchema, message: MessageSchema },
 ) {}
 
-export class WorkflowHostInterruptionError extends Schema.TaggedErrorClass<WorkflowHostInterruptionError>()(
+export class WorkflowHostInterruptionError extends Schema.TaggedError<WorkflowHostInterruptionError>()(
   "WorkflowHostInterruptionError",
   { operation: Schema.NonEmptyString, message: MessageSchema },
 ) {}
 
-export class WorkflowHostLifecycleError extends Schema.TaggedErrorClass<WorkflowHostLifecycleError>()(
+export class WorkflowHostLifecycleError extends Schema.TaggedError<WorkflowHostLifecycleError>()(
   "WorkflowHostLifecycleError",
   { operation: Schema.NonEmptyString, message: MessageSchema, failures: Schema.Array(Schema.String) },
 ) {}
 
-export class WorkflowPreCutoverError extends Schema.TaggedErrorClass<WorkflowPreCutoverError>()(
+export class WorkflowPreCutoverError extends Schema.TaggedError<WorkflowPreCutoverError>()(
   "WorkflowPreCutoverError",
   { sessionId: IdSchema, message: MessageSchema },
 ) {}
 
-export class WorkflowMalformedStateError extends Schema.TaggedErrorClass<WorkflowMalformedStateError>()(
+export class WorkflowMalformedStateError extends Schema.TaggedError<WorkflowMalformedStateError>()(
   "WorkflowMalformedStateError",
   { sessionId: IdSchema, message: MessageSchema },
 ) {}
 
-export class WorkflowDriftEvidencePersistenceError extends Schema.TaggedErrorClass<WorkflowDriftEvidencePersistenceError>()(
+export class WorkflowDriftEvidencePersistenceError extends Schema.TaggedError<WorkflowDriftEvidencePersistenceError>()(
   "WorkflowDriftEvidencePersistenceError",
   { workflowId: IdSchema, message: MessageSchema },
 ) {}

@@ -1,6 +1,6 @@
 import { Cause, Context, Deferred, Effect, Exit, Layer, Result, Schema, Stream } from "effect"
-import type { RpcGroup } from "effect/unstable/rpc"
-import { Rpc } from "effect/unstable/rpc"
+import type { RpcGroup } from "effect/rpc"
+import { Rpc } from "effect/rpc"
 import { DebugLog } from "../../infra/debug-log.js"
 import type { OperationLogger } from "../../infra/operation-log.js"
 import { errorMessage } from "../../infra/error-message.js"

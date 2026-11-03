@@ -2,7 +2,8 @@ import { afterEach, describe, expect, spyOn, test } from "bun:test"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { Effect, Redacted } from "effect"
+import { Effect, Redacted, Stream } from "effect"
+import { Socket } from "effect/socket"
 import * as store from "../../../../../src/orchestration/modules/remote/remote-pairing-store.js"
 import { createRemoteAccess, type RemoteAccess } from "../../../../../src/orchestration/modules/remote/remote-access.js"
 import type { AccountServiceInstallation } from "../../../../../src/orchestration/app-service/account-service-installation.js"
@@ -306,7 +307,7 @@ describe("remote data ownership", () => {
     const signature = Promise.withResolvers<Uint8Array>()
     const signing = Promise.withResolvers<void>()
     const f = await fixture(async () => ({ ...identity, sign: () => { signing.resolve(); return signature.promise } }))
-    f.remote.acceptChannels(async (socket) => { await Effect.runPromiseExit(socket.run(() => {})) })
+    f.remote.acceptChannels(async (socket) => { await Effect.runPromiseExit(Stream.runDrain(Socket.toStream(socket))) })
     const ws = await openData(f)
     ws.open()
     await signing.promise

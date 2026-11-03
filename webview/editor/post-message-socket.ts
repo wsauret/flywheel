@@ -1,5 +1,5 @@
 import { Effect, Layer, Scope } from "effect"
-import { Socket } from "effect/unstable/socket"
+import { Socket } from "effect/socket"
 
 import type { HostMessage, ViewMessage } from "../../src/protocol/client/editor-host.js"
 

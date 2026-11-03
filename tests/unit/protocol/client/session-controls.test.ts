@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import { RpcClientError } from "effect/unstable/rpc"
-import { Socket } from "effect/unstable/socket"
+import { RpcClientError } from "effect/rpc"
+import { Socket } from "effect/socket"
 import type { FrontendMutation, MutationResult } from "../../../../src/protocol/app-service-types.js"
 import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
 import {

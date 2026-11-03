@@ -9,6 +9,8 @@ export function controlledClock() {
     currentTimeMillis: Effect.sync(() => now),
     currentTimeNanosUnsafe: () => BigInt(now) * 1_000_000n,
     currentTimeNanos: Effect.sync(() => BigInt(now) * 1_000_000n),
+    monotonicTimeNanosUnsafe: () => BigInt(now) * 1_000_000n,
+    monotonicTimeNanos: Effect.sync(() => BigInt(now) * 1_000_000n),
     sleep: (duration) => Effect.callback<void>((resume) => {
       sleepCalls += 1;
       const sleeper = { at: now + Duration.toMillis(duration), resume };

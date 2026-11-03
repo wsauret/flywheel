@@ -18,7 +18,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261030.1",
     "@types/bun": "^1.4.4",
-    "effect": "4.0.0-beta.84",
+    "effect": "4.1.2",
     "miniflare": "5.20260825.0-alpha",
     "sharp": "^0.35.3",
     "wrangler": "^4.156.0"

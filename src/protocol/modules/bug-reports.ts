@@ -28,7 +28,7 @@ export const BugReportSchema = Schema.Struct({
   sessionId: Schema.NullOr(text(200)),
   note: Schema.optionalKey(text(2000)),
   diagnostics: Schema.Struct({ tui: records, executor: records, account: records }),
-}).pipe(Schema.annotate({ parseOptions: { onExcessProperty: "error" } }))
+})
 export type BugReport = typeof BugReportSchema.Type
 export type BugReportDiagnostic = typeof DiagnosticRecordSchema.Type
 export const BUG_REPORT_MAX_BYTES = 48_000

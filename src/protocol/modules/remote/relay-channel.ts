@@ -1,4 +1,4 @@
-import { Socket } from "effect/unstable/socket"
+import { Socket } from "effect/socket"
 import { decodeJsonFrame, decodeRelayDeviceFrame, deviceAttachSigningBytes, ownedBytes, RELAY_HEARTBEAT_INTERVAL_MS, RELAY_MISSED_HEARTBEATS, RELAY_PING, toBase64Url, type DeviceFrame, type Placement, type RelayRejectReason } from "./relay-protocol.js"
 
 /** A WebSocket as the two web streams `Socket.fromTransformStream` consumes,

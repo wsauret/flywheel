@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 
 import { Layer } from "effect"
-import { Socket } from "effect/unstable/socket"
+import { Socket } from "effect/socket"
 import { headlessClient } from "./session-host-loader-fixture.js"
 import { selectionConnection } from "./session-selection-fixture.js"
 

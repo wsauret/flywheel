@@ -166,7 +166,7 @@ export async function runHeadlessChatChannel(runtime: ChatChannelRuntime, transp
                   let raw: unknown
                   try { raw = JSON.parse(line) } catch { throw new Error("Invalid headless chat JSON") }
                   if (typeof raw === "object" && raw !== null && "id" in raw && typeof raw.id === "string") id = raw.id
-                  const decoded = Schema.decodeUnknownOption(HeadlessChatRequestSchema)(raw)
+                  const decoded = Schema.decodeUnknownOption(HeadlessChatRequestSchema, { onExcessProperty: "error" })(raw)
                   if (decoded._tag === "None") throw new Error("Invalid headless chat request")
                   const request = decoded.value
                   const completion = request.type === "dispatch" && submitsWork(request.command) ? transport.completion?.invocation : undefined

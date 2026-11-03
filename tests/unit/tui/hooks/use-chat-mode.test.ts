@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import { RpcClientError } from "effect/unstable/rpc"
-import { Socket } from "effect/unstable/socket"
+import { RpcClientError } from "effect/rpc"
+import { Socket } from "effect/socket"
 import { useChatMode } from "../../../../src/tui/hooks/use-chat-mode.js"
 import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
 

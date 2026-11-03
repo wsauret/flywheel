@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { Deferred, Effect, Fiber, Layer, ManagedRuntime, Schema, Stream } from "effect"
-import { RpcTest } from "effect/unstable/rpc"
+import { RpcTest } from "effect/rpc"
 import { TestClock } from "effect/testing"
 import type { FrontendEvent, RuntimeEventFrame } from "../../../../src/protocol/app-service-types.js"
 import { runtimeHandlers, type RuntimeHandlerOptions } from "../../../../src/orchestration/app-service/runtime-protocol-handlers.js"
@@ -394,14 +394,21 @@ describe("RuntimeEvents bounded per-connection queue", () => {
       const events: { type: string }[] = []
       const fiber = yield* Stream.runForEach(client.RuntimeEvents(ATTACH).pipe(Stream.map((event) => decodeFrame(event))), (event) => Effect.sync(() => { events.push(event) })).pipe(Effect.forkScoped)
       yield* awaitListener(stub)
+      while (events.length < 1) yield* Effect.yieldNow
       yield* Effect.yieldNow
+      const heartbeats = () => events.filter((event) => event.type === "runtime.heartbeat").length
+      const beforeInterval = heartbeats()
       yield* TestClock.adjust(RUNTIME_EVENT_HEARTBEAT_INTERVAL_MS)
-      while (events.length < 2) yield* Effect.yieldNow
+      while (heartbeats() === beforeInterval) yield* Effect.yieldNow
       yield* Fiber.interrupt(fiber)
       return events
     }).pipe(Effect.scoped, Effect.provide(layer), Effect.provide(TestClock.layer())))
 
-    expect(received.map((event) => event.type)).toEqual(["runtime.connected", "runtime.heartbeat"])
+    // No patch moves the lane, so every frame after the first is a heartbeat,
+    // and one more arrives each interval.
+    expect(received[0]?.type).toBe("runtime.connected")
+    expect(received.slice(1).map((event) => event.type)).toContain("runtime.heartbeat")
+    expect(received.slice(1).every((event) => event.type === "runtime.heartbeat")).toBe(true)
   })
 
   test("a client that cannot drain a burst keeps its lane and receives the newest frames", async () => {

@@ -311,7 +311,7 @@ describe("the content of a workflow file", () => {
     expect(refused.reason).toBe("the file is not valid")
     expect(refused.diagnostics).toContainEqual(expect.objectContaining({ file: "scratch/workflows/survey.workflow.yaml", keyPath: "phases.0.retries" }))
     expect(refused.diagnostics?.some(({ keyPath }) => keyPath === "phases.2.runs")).toBe(!malformed)
-    if (malformed) expect(refused.diagnostics).toContainEqual(expect.objectContaining({ keyPath: "name", message: "Expected string, got 12" }))
+    if (malformed) expect(refused.diagnostics).toContainEqual(expect.objectContaining({ keyPath: "name", message: "Expected string" }))
 
     // An element with the keys of both kinds is the kind that its
     // discriminating key names; inside a repeat, every element is a phase.
@@ -333,7 +333,7 @@ describe("the content of a workflow file", () => {
       const keyPath = nested || !malformed ? "phases.0.phases.0" : "phases.0"
       expect(competingRefusal.diagnostics).toContainEqual(expect.objectContaining({
         keyPath: malformed ? `${keyPath}.over` : `${keyPath}.join`,
-        message: malformed ? "Expected string, got 12" : "join names unknown reducer \"merge-all\"",
+        message: malformed ? "Expected string" : "join names unknown reducer \"merge-all\"",
       }))
       expect(competingRefusal.diagnostics?.some(({ message }) => message.includes("brief"))).toBe(false)
     }
@@ -598,7 +598,7 @@ phases:
 
     expect((await refusal({ path: file, sessionDir })).diagnostics).toEqual([
       { file: "scratch/workflows/kinds.workflow.yaml", keyPath: "phases.0.phases", message: "Missing key" },
-      { file: "scratch/workflows/kinds.workflow.yaml", entry: 'Phase "again"', keyPath: "phases.1.colour", message: "Unexpected key with value \"red\"" },
+      { file: "scratch/workflows/kinds.workflow.yaml", entry: 'Phase "again"', keyPath: "phases.1.colour", message: "Expected no excess property" },
     ])
   })
 
@@ -623,7 +623,7 @@ ${several ? "  - phase: summarize\n    brief: Summarize.\n    writes: [{ id: not
     const file = write(dir, "join.workflow.yaml", content)
 
     const diagnostics = [
-      ...(several ? [expect.objectContaining({ keyPath: "colour", message: "Unexpected key with value \"red\"" })] : []),
+      ...(several ? [expect.objectContaining({ keyPath: "colour", message: "Expected no excess property" })] : []),
       ...(several ? [expect.objectContaining({ entry: 'Phase "summarize"', keyPath: "phases.1", message: "mixes transient and durable write lifetimes" })] : []),
       { file: "scratch/workflows/join.workflow.yaml", entry: 'Phase "reads"', keyPath: "phases.0.join", message: "join names unknown reducer \"merge-all\"" },
     ]

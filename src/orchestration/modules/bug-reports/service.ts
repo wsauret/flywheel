@@ -66,7 +66,7 @@ export function createBugReportsService(options: {
         else report.error = { ...report.error, message: report.error.message.slice(0, Math.floor(report.error.message.length / 2)) }
         body = JSON.stringify(report)
       }
-      Schema.decodeUnknownSync(BugReportSchema)(JSON.parse(body))
+      Schema.decodeUnknownSync(BugReportSchema, { onExcessProperty: "error" })(JSON.parse(body))
       bytes = Buffer.byteLength(body)
       reportText = body
       const endpoint = reportEndpoint()

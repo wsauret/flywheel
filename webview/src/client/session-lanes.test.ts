@@ -7,7 +7,7 @@ import { RuntimeCallTimeout } from "../../../src/protocol/runtime-client-deadlin
 import { jest } from "bun:test"
 import { fakeLanes, LANE_BREAK } from "../../../tests/helpers/fake-lanes.js"
 import { Layer } from "effect"
-import { Socket } from "effect/unstable/socket"
+import { Socket } from "effect/socket"
 import { createRuntimeSession } from "./session.js"
 import { headlessClient } from "./session-host-loader-fixture.js"
 import { fakeConnection } from "./session-connection-fixture.js"

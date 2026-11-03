@@ -6,8 +6,9 @@ import { ChatInputObjectSchema } from "../infra/chat-input-schema.js"
 import { SessionBackgroundWorkQuerySchema, SessionBackgroundWorkResultSchema } from "./background-index-protocol-types.js"
 import { MutationFilesQuerySchema, MutationFilesResultSchema, MutationPatchWindowQuerySchema, MutationPatchWindowResultSchema } from "./mutation-evidence-protocol-types.js"
 import { SessionChangeSummaryQuerySchema, SessionChangeSummaryResultSchema, SessionFileChangeCountsSchema, SessionChangesQuerySchema, SessionChangesResultSchema, SessionChangeDiffQuerySchema, SessionChangeDiffResultSchema, SessionChangesSetViewedSchema, SessionChangesUndoSchema } from "./session-changes-protocol-types.js"
-import { Rpc, RpcGroup } from "effect/unstable/rpc"
+import { Rpc, RpcGroup } from "effect/rpc"
 import { InvariantViolation } from "../infra/invariant.js"
+import { exactStruct } from "../infra/exact-struct.js"
 import { isSessionId } from "../infra/session-id.js"
 import { ToolStreamingTextSchema } from "../infra/output-blocks.js"
 import { EffortSchema } from "../infra/workflow-types.js"
@@ -70,10 +71,10 @@ const RuntimePositionSchema = Schema.Number
 const NonNegativeInt = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
 const ProtocolChatInputSchema = Schema.Union([Schema.String, ChatInputObjectSchema])
 export const RuntimeChatDefaultSchema: Schema.Codec<RuntimeChatDefault> = Schema.Union([
-  Schema.Struct({ kind: Schema.Literal("pending") }),
-  Schema.Struct({ kind: Schema.Literal("none") }),
-  Schema.Struct({ kind: Schema.Literal("model"), model: Schema.NonEmptyString, effort: EffortSchema }),
-]).pipe(Schema.annotate({ parseOptions: { onExcessProperty: "error" } }))
+  exactStruct(Schema.Struct({ kind: Schema.Literal("pending") })),
+  exactStruct(Schema.Struct({ kind: Schema.Literal("none") })),
+  exactStruct(Schema.Struct({ kind: Schema.Literal("model"), model: Schema.NonEmptyString, effort: EffortSchema })),
+])
 const RuntimeFaultReportOutcomeSchema: Schema.Codec<RuntimeFaultReportOutcome> = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("sent"), reportId: Schema.String }),
   Schema.Struct({ kind: Schema.Literal("failed") }),
@@ -94,7 +95,7 @@ const RuntimeUiSnapshotSchema: Schema.Codec<RuntimeUiSnapshot> = SessionCatalogS
 const RuntimeBackgroundSummaryRequestSchema = Schema.Struct({
   projectRoot: Schema.NonEmptyString,
   sessionIds: Schema.Array(Schema.String),
-}).pipe(Schema.annotate({ parseOptions: { onExcessProperty: "error" } }))
+})
 
 // A path step and the JSON value an edit carries. The value is the shape the
 // edited entry or block holds at that path; the client checks the edited
@@ -308,10 +309,10 @@ const SubscriptionSpendConsentMutationBaseSchema = {
   clientSnapshotPosition: RuntimePositionSchema,
   envelopeIds: Schema.Array(Schema.NonEmptyString),
 }
-const SessionForkMutationSchema = Schema.Struct({
+const SessionForkMutationSchema = exactStruct(Schema.Struct({
   type: Schema.Literal("session.fork"),
   sessionId: Schema.String,
-}).pipe(Schema.annotate({ parseOptions: { onExcessProperty: "error" } }))
+}))
 
 export const FrontendMutationSchema: Schema.Codec<FrontendMutation, FrontendMutationEncoded> = Schema.Union([
   Schema.Struct({ type: Schema.Literal("session.claim_composer_returns"), sessionId: Schema.String, submissionIds: Schema.Array(Schema.NonEmptyString) }),
@@ -410,12 +411,12 @@ export const RuntimeQuerySchema: Schema.Codec<RuntimeQuery> = Schema.Union([
   RuntimeProviderModelsQuerySchema.pipe(Schema.fieldsAssign({ type: Schema.Literal("provider_models.query") })),
   ...PROTOCOL_MODULE_QUERY_SCHEMAS,
 ])
-const AuthProfileDescriptorSchema = Schema.Struct({ id: Schema.String, displayName: Schema.String }).pipe(Schema.annotate({ parseOptions: { onExcessProperty: "error" } }))
+const AuthProfileDescriptorSchema = exactStruct(Schema.Struct({ id: Schema.String, displayName: Schema.String }))
 const AuthProfileDeletionPreviewSchema: Schema.Codec<RuntimeAuthProfileDeletionPreview> = Schema.Union([
-  Schema.Struct({ kind: Schema.Literal("fresh-default"), source: AuthProfileDescriptorSchema }),
-  Schema.Struct({ kind: Schema.Literal("automatic"), source: AuthProfileDescriptorSchema, successor: AuthProfileDescriptorSchema }),
-  Schema.Struct({ kind: Schema.Literal("choose"), source: AuthProfileDescriptorSchema, candidates: Schema.Array(AuthProfileDescriptorSchema) }),
-]).pipe(Schema.annotate({ parseOptions: { onExcessProperty: "error" } }))
+  exactStruct(Schema.Struct({ kind: Schema.Literal("fresh-default"), source: AuthProfileDescriptorSchema })),
+  exactStruct(Schema.Struct({ kind: Schema.Literal("automatic"), source: AuthProfileDescriptorSchema, successor: AuthProfileDescriptorSchema })),
+  exactStruct(Schema.Struct({ kind: Schema.Literal("choose"), source: AuthProfileDescriptorSchema, candidates: Schema.Array(AuthProfileDescriptorSchema) })),
+])
 const RuntimeSessionDetailResultSchema = runtimeSessionDetailResultSchema({
   status: StatusViewSchema,
   budget: BudgetViewSchema,
@@ -460,7 +461,7 @@ const RuntimeEventsAttachSchema = Schema.Struct({
   clientIdentity: Schema.optional(ClientIdentitySchema),
 })
 
-export class RuntimeProtocolError extends Schema.TaggedErrorClass<RuntimeProtocolError>()("RuntimeProtocolError", {
+export class RuntimeProtocolError extends Schema.TaggedError<RuntimeProtocolError>()("RuntimeProtocolError", {
   message: Schema.String,
   kind: Schema.Union([Schema.Literal("invariant-violation"), Schema.Literal("internal"), Schema.Literal("client-mismatch"), Schema.Literal("protocol-mismatch"), Schema.Literal("not-running"), Schema.Literal("superseded")]),
   /** Set on `protocol-mismatch` alone: the release the refusing runtime runs. */
@@ -566,13 +567,17 @@ export const RuntimeProtocolRpc = RpcGroup.make(
   Rpc.make("RuntimeClientDiagnostic", { payload: RuntimeClientDiagnosticSchema, error: RuntimeProtocolError }),
 )
 
+// Both ends of the Worker lane run the same build, so the recall and summary
+// calls refuse any key their payload or result does not declare, at every depth.
+const strictParse = { onExcessProperty: "error" } as const
+
 export const RuntimeBackgroundRpc = RpcGroup.make(
-  Rpc.make("RuntimeBackgroundRecall", { payload: Schema.Struct({ projectRoot: Schema.NonEmptyString, conversationId: Schema.NonEmptyString, contract: RecallInputSchema }).pipe(Schema.annotate({ parseOptions: { onExcessProperty: "error" } })), success: RecallResultSchema, error: RuntimeProtocolError }),
+  Rpc.make("RuntimeBackgroundRecall", { payload: Schema.Struct({ projectRoot: Schema.NonEmptyString, conversationId: Schema.NonEmptyString, contract: RecallInputSchema }), success: RecallResultSchema, error: RuntimeProtocolError }).annotate(Rpc.ParseOptions, strictParse),
   Rpc.make("RuntimeBackgroundTranscriptSearch", { payload: Schema.Struct({ projectRoot: Schema.NonEmptyString, request: TranscriptSearchRequestSchema }), success: TranscriptSearchResultSchema, error: RuntimeProtocolError }),
   Rpc.make("RuntimeBackgroundSessionChangeSummary", { payload: Schema.Struct({ projectRoot: Schema.NonEmptyString, sessionId: Schema.NonEmptyString }), success: SessionFileChangeCountsSchema, error: RuntimeProtocolError }),
-  Rpc.make("RuntimeBackgroundSnapshot", { payload: Schema.Struct({ projectRoot: Schema.NonEmptyString }), success: RuntimeBackgroundSummaryResultSchema, error: RuntimeProtocolError }),
-  Rpc.make("RuntimeBackgroundSessionSummaryImmediate", { payload: RuntimeBackgroundSummaryRequestSchema, success: RuntimeBackgroundSummaryResultSchema, error: RuntimeProtocolError }),
-  Rpc.make("RuntimeBackgroundWaitForTotals", { payload: RuntimeBackgroundSummaryRequestSchema, success: RuntimeBackgroundSummaryResultSchema, error: RuntimeProtocolError }),
+  Rpc.make("RuntimeBackgroundSnapshot", { payload: Schema.Struct({ projectRoot: Schema.NonEmptyString }), success: RuntimeBackgroundSummaryResultSchema, error: RuntimeProtocolError }).annotate(Rpc.ParseOptions, strictParse),
+  Rpc.make("RuntimeBackgroundSessionSummaryImmediate", { payload: RuntimeBackgroundSummaryRequestSchema, success: RuntimeBackgroundSummaryResultSchema, error: RuntimeProtocolError }).annotate(Rpc.ParseOptions, strictParse),
+  Rpc.make("RuntimeBackgroundWaitForTotals", { payload: RuntimeBackgroundSummaryRequestSchema, success: RuntimeBackgroundSummaryResultSchema, error: RuntimeProtocolError }).annotate(Rpc.ParseOptions, strictParse),
   Rpc.make("RuntimeBackgroundSessionDetail", { payload: Schema.Struct({ projectRoot: Schema.NonEmptyString, sessionId: Schema.String }), success: RuntimeSessionDetailResultSchema, error: RuntimeProtocolError }),
   // One RPC serves every module domain that declares a background codec; the
   // Worker encodes and the client decodes with `protocolBackgroundSchema(domain)`.

@@ -49,12 +49,19 @@ export const solidWebPlugin: BunPlugin = {
   },
 }
 
-/** Builds a Solid browser bundle with artifact policies supplied by its host. */
+/** Builds a Solid browser bundle with artifact policies supplied by its host.
+ *
+ *  The bundle must load as a classic script: every shipped editor extension
+ *  loads it that way, and `import.meta` is a syntax error there. A dependency
+ *  can still read it, as effect's environment config provider does with
+ *  `import.meta?.env`, so the build gives it an empty object; a browser bundle
+ *  has no module metadata to read. */
 export function buildWebview(options: WebviewBuildOptions) {
   return Bun.build({
     ...options,
     target: "browser",
     format: "iife",
+    define: { "import.meta": "{}" },
     plugins: [solidWebPlugin],
   })
 }

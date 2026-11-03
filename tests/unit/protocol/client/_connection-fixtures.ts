@@ -2,8 +2,10 @@ import net from "node:net"
 import { Duplex } from "node:stream"
 
 import { Effect, FiberSet, Layer, ManagedRuntime, Queue, Schema, Scope, Stream } from "effect"
-import { Rpc, RpcGroup, RpcSerialization, RpcServer } from "effect/unstable/rpc"
-import { Socket, SocketServer } from "effect/unstable/socket"
+import { Rpc, RpcGroup, RpcServer } from "effect/rpc"
+import { layerMsgPack } from "../../../../src/protocol/rpc-msgpack.js"
+import { NetAddress } from "effect/net"
+import { Socket, SocketServer } from "effect/socket"
 import { runtimeProtocolSocketServer } from "../../../../src/orchestration/app-service/runtime-protocol-socket-server.js"
 import type { FrontendEvent } from "../../../../src/protocol/app-service-types.js"
 import { runtimeQuery } from "../../../helpers/runtime-dispatch.js"
@@ -72,7 +74,7 @@ async function memoryServed(serve: (sockets: Layer.Layer<SocketServer.SocketServ
   // The RPC protocol forks `run`; the first client must not dial before it starts.
   const accepting = Promise.withResolvers<(socket: Socket.Socket) => void>()
   const sockets = Layer.succeed(SocketServer.SocketServer)(SocketServer.SocketServer.of({
-    address: { _tag: "TcpAddress", hostname: "memory", port: 0 },
+    address: NetAddress.unixPathAddress("memory"),
     run: <R, E, _>(handler: (socket: Socket.Socket) => Effect.Effect<_, E, R>) => Effect.scopedWith((scope) => Effect.gen(function*() {
       const fiberSet = yield* FiberSet.make<unknown, unknown>().pipe(Scope.provide(scope))
       const runFork = yield* FiberSet.runtime(fiberSet)<R>()
@@ -89,9 +91,15 @@ async function memoryServed(serve: (sockets: Layer.Layer<SocketServer.SocketServ
     const serverSide = yield* Socket.fromTransformStream(Effect.succeed({ readable: toServer.readable, writable: toClient.writable }))
     // A clean close ends both directions, so the runtime's side of the lane
     // ends too and stops taking events that belong to the next lane.
-    dialed.push({ sever: () => { toServer.sever(); toClient.sever() }, mute: () => { toServer.mute(); toClient.mute() }, end: (cause) => { toClient.end(cause); toServer.end() } })
+    let ended: { readonly cause: unknown } | undefined
+    dialed.push({ sever: () => { toServer.sever(); toClient.sever() }, mute: () => { toServer.mute(); toClient.mute() }, end: (cause) => { if (cause !== undefined) ended = { cause }; toClient.end(cause); toServer.end() } })
     accept(serverSide)
-    return yield* Socket.fromTransformStream(Effect.succeed({ readable: toClient.readable, writable: toServer.writable }))
+    const inner = yield* Socket.fromTransformStream(Effect.succeed({ readable: toClient.readable, writable: toServer.writable }))
+    // A failed web stream reaches its reader as a read error whatever failed
+    // it. The cause a test ends a lane with stands for the transport's own
+    // failure, so the read ends with that cause, a defect for a plain error.
+    const failRead = (error: Socket.SocketError) => ended === undefined ? Effect.fail(error) : Socket.isSocketError(ended.cause) ? Effect.fail(ended.cause) : Effect.die(ended.cause)
+    return Socket.make({ writer: inner.writer, reader: Effect.map(inner.reader, (reader) => ({ ...reader, pull: reader.pull.pipe(Effect.catch(failRead)) })) })
   }))
   return { client, dialed, server }
 }
@@ -134,7 +142,7 @@ export async function servedRuntime(options: Omit<RuntimeHandlerOptions, "versio
   const { client, server } = await memoryServed((sockets) => RpcServer.layer(RuntimeProtocolRpc).pipe(
     Layer.provide(observed),
     Layer.provide(runtimeProtocolSocketServer),
-    Layer.provide(RpcSerialization.layerMsgPack),
+    Layer.provide(layerMsgPack),
     Layer.provide(sockets),
   ))
   return {
@@ -206,7 +214,7 @@ export async function heartbeatRuntime(options: { readonly identity?: string; re
   const { client, dialed, server } = await memoryServed((sockets) => RpcServer.layer(protocol).pipe(
     Layer.provide(handlers),
     Layer.provide(runtimeProtocolSocketServer),
-    Layer.provide(RpcSerialization.layerMsgPack),
+    Layer.provide(layerMsgPack),
     Layer.provide(sockets),
   ))
   return {

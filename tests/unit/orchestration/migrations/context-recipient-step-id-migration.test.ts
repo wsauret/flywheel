@@ -32,7 +32,7 @@ afterEach(() => {
 describe("migrateContextRecipientStepId", () => {
   it("addresses an ordinary historical handoff to no specific attempt", () => {
     const dbFile = seed({ entry: LEGACY_ENTRY })
-    expect(() => parse(readRow(dbFile))).toThrow("Expected 4, got 3")
+    expect(() => parse(readRow(dbFile))).toThrow('readonly "type": "context.accumulated", readonly "version": 4')
 
     expect(migrateContextRecipientStepId(dbFile)).toEqual({ repaired: 1 })
 

@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { describe, test } from "node:test"
 
 import { Effect, Layer } from "effect"
-import { Socket } from "effect/unstable/socket"
+import { Socket } from "effect/socket"
 import { AccountAttachFailedError } from "../../../../src/protocol/app-service-types.js"
 import { createRuntimeConnection } from "../../../../src/protocol/client/connection.js"
 import { RUNTIME_LIVENESS_POLICY } from "../../../../src/protocol/runtime-liveness.js"

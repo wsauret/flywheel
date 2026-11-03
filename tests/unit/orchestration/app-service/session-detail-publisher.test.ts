@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { Rpc } from "effect/unstable/rpc"
+import { Rpc } from "effect/rpc"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type StoredFact } from "../../../../src/infra/event-store-types.js"
 import { resolveEventStoreDbFile } from "../../../../src/infra/paths.js"
 import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"

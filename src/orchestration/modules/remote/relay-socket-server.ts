@@ -1,5 +1,6 @@
 import { Effect, Fiber, FiberSet, Layer, Scope } from "effect"
-import { SocketServer, type Socket } from "effect/unstable/socket"
+import { NetAddress } from "effect/net"
+import { SocketServer, type Socket } from "effect/socket"
 
 import type { RemoteAccess } from "./remote-access.js"
 
@@ -16,7 +17,7 @@ import type { RemoteAccess } from "./remote-access.js"
  *  handler set, and no new listener on the host. */
 
 export interface RelaySocketServerOptions {
-  readonly remote: Pick<RemoteAccess, "acceptChannels" | "view">
+  readonly remote: Pick<RemoteAccess, "acceptChannels">
   /** Called as each device channel opens and closes. The idle reaper counts
    *  these beside local connections: a phone reading a transcript holds the
    *  runtime up the way an editor window does. */
@@ -26,7 +27,9 @@ export interface RelaySocketServerOptions {
 export function relaySocketServerLayer(options: RelaySocketServerOptions): Layer.Layer<SocketServer.SocketServer> {
   return Layer.effect(SocketServer.SocketServer)(Effect.sync(() =>
     SocketServer.SocketServer.of({
-      address: { _tag: "TcpAddress", hostname: relayHost(options.remote.view().relayUrl), port: 443 },
+      // No listener on this host accepts these channels, so the address is
+      // the unspecified one.
+      address: NetAddress.inetAddressFromIpStringUnsafe("0.0.0.0", 0),
       run: <R, E, _>(handler: (socket: Socket.Socket) => Effect.Effect<_, E, R>) =>
         Effect.scopedWith((scope) =>
           Effect.gen(function*() {
@@ -56,12 +59,4 @@ export function relaySocketServerLayer(options: RelaySocketServerOptions): Layer
         ),
     })
   ))
-}
-
-function relayHost(relayUrl: string): string {
-  try {
-    return new URL(relayUrl).hostname
-  } catch {
-    return relayUrl
-  }
 }

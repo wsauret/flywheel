@@ -2,8 +2,9 @@ import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 
 import { Effect, Layer, ManagedRuntime, Schema, Stream } from "effect"
-import { Rpc, RpcClient, RpcGroup, RpcSerialization } from "effect/unstable/rpc"
-import { Socket } from "effect/unstable/socket"
+import { Rpc, RpcClient, RpcGroup } from "effect/rpc"
+import { layerMsgPack } from "../../../../src/protocol/rpc-msgpack.js"
+import { Socket } from "effect/socket"
 import { AccountAttachFailedError, type FrontendEvent, type FrontendMutation } from "../../../../src/protocol/app-service-types.js"
 import { createRuntimeConnection } from "../../../../src/protocol/client/connection.js"
 import { explainedByConnection, laneEndCause, lostWithLane } from "../../../../src/protocol/client/connection-failures.js"
@@ -15,6 +16,7 @@ import { RuntimeProtocolError } from "../../../../src/protocol/runtime-protocol-
 import { outputCursor } from "../../../../src/protocol/output-protocol-types.js"
 import { heartbeatRuntime, heldBackoff, SERVED_VERSION, servedRuntime, waitFor, withHeldDeadlines } from "./_connection-fixtures.js"
 import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
+import { stringRequestId } from "../../../../src/protocol/rpc-request-id.js"
 
 const settled = (promise: Promise<unknown>) => promise.then((value) => ({ ok: true as const, value }), (cause: unknown) => ({ ok: false as const, cause }))
 
@@ -288,17 +290,21 @@ describe("runtime connection lanes", () => {
     }
   })
 
-  // A socket whose run ends with no typed error, such as a relay channel
+  // A socket whose read ends with no typed error, such as a relay channel
   // that breaks under a dropped connection, ends the lane as surely as a
   // close does. The call it carried is lost with the lane, so its owner
   // treats it as it treats any call a lane took down, and the lane-end
   // record still names the defect.
-  test("a call in flight when its socket's run fails with no typed error is lost with the lane", async () => {
+  test("a call in flight when its socket's read fails with no typed error is lost with the lane", async () => {
     const written = Promise.withResolvers<void>()
-    // The run fails once the client has sent the call and waits on it.
+    const write = () => Effect.sync(() => written.resolve())
+    // The read fails once the client has sent the call and waits on it.
     const breaking = Layer.succeed(Socket.Socket)(Socket.make({
-      runRaw: () => Effect.promise(() => written.promise).pipe(Effect.andThen(Effect.sleep("20 millis")), Effect.andThen(Effect.die(new Error("the relay channel broke")))),
-      writer: Effect.succeed(() => Effect.sync(() => written.resolve())),
+      reader: Effect.succeed({
+        pull: Effect.promise(() => written.promise).pipe(Effect.andThen(Effect.sleep("20 millis")), Effect.andThen(Effect.die(new Error("the relay channel broke")))),
+        upgrade: Socket.SocketUpgradeError.unsupported,
+      }),
+      writer: Effect.succeed({ write, writeAll: write }),
     }))
     const connection = createRuntimeConnection({ socket: breaking })
     try {
@@ -381,9 +387,9 @@ describe("runtime connection lanes", () => {
       Rpc.make("RuntimeQuery", { payload: Schema.Unknown, success: Schema.Unknown, error: RuntimeProtocolError }),
       Rpc.make("RuntimeEvents", { payload: Schema.Unknown, success: Schema.Unknown, error: RuntimeProtocolError, stream: true }),
     )
-    const client = ManagedRuntime.make(RpcClient.layerProtocolSocket().pipe(Layer.provide(runtime.client), Layer.provide(RpcSerialization.layerMsgPack)))
+    const client = ManagedRuntime.make(RpcClient.layerProtocolSocket().pipe(Layer.provide(runtime.client), Layer.provide(layerMsgPack)))
     try {
-      const [refusal, read] = await client.runPromise(Effect.scoped(Effect.flatMap(RpcClient.make(later), (rpc) => Effect.all([
+      const [refusal, read] = await client.runPromise(Effect.scoped(Effect.flatMap(RpcClient.make(later, { generateRequestId: stringRequestId }), (rpc) => Effect.all([
         Stream.runDrain(rpc.RuntimeEvents({ protocolVersion: RUNTIME_PROTOCOL_VERSION + 1, clientIdentity: "b".repeat(64), attachedFrom: "a later field" })).pipe(Effect.flip),
         rpc.RuntimeQuery({ type: "commandUsageSnapshot" }).pipe(Effect.flip),
         Effect.promise(() => waitFor(() => runtime.arrivals.includes("query:commandUsageSnapshot"))).pipe(Effect.andThen(Effect.sync(() => own.resolve(undefined)))),

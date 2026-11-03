@@ -1,6 +1,7 @@
 import type { Server, ServerWebSocket } from "bun"
 import { Effect, Fiber, FiberSet, Layer, Scope } from "effect"
-import { Socket, SocketServer } from "effect/unstable/socket"
+import { NetAddress } from "effect/net"
+import { Socket, SocketServer } from "effect/socket"
 
 import { Log } from "../../infra/log.js"
 import { isServedOrigin } from "./web-serving/origin-check.js"
@@ -216,7 +217,7 @@ export function webSocketServerLayer(options: WebSocketServerOptions): Layer.Lay
     options.onListening?.({ origin: `http://${HOSTNAME}:${port}`, port })
 
     return SocketServer.SocketServer.of({
-      address: { _tag: "TcpAddress", hostname: HOSTNAME, port },
+      address: NetAddress.inetAddressFromIpStringUnsafe(HOSTNAME, port),
       run: <R, E, _>(handler: (socket: Socket.Socket) => Effect.Effect<_, E, R>) =>
         Effect.scopedWith((scope) => Effect.gen(function*() {
           const fibers = yield* FiberSet.make<unknown, unknown>().pipe(Scope.provide(scope))

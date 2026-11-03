@@ -99,7 +99,7 @@ export async function executeHeadlessBenchmark(input: HeadlessBenchmarkInput): P
     }
   };
   const send = async (record: unknown) => {
-    const validated = Schema.decodeUnknownSync(HeadlessChatRequestSchema)(record);
+    const validated = Schema.decodeUnknownSync(HeadlessChatRequestSchema, { onExcessProperty: "error" })(record);
     if (!owned?.stdin) throw new Error("subject has no JSONL input pipe");
     owned.stdin.write(`${JSON.stringify(validated)}\n`);
     await owned.stdin.flush();

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
-import { Effect, ManagedRuntime } from "effect"
-import { SocketServer } from "effect/unstable/socket"
+import { Effect, ManagedRuntime, Stream } from "effect"
+import { NetAddress } from "effect/net"
+import { Socket, SocketServer } from "effect/socket"
 
 import { webSocketServerLayer } from "../../../../src/orchestration/app-service/web-socket-server"
 
@@ -30,7 +31,7 @@ describe("authenticated loopback web socket server", () => {
         const server = yield* SocketServer.SocketServer
         const endpoint = yield* Effect.promise(() => listening.promise)
         expect(endpoint.port).toBe(preferred)
-        expect(server.address).toEqual({ _tag: "TcpAddress", hostname: "127.0.0.1", port: endpoint.port })
+        expect(server.address).toEqual(NetAddress.inetAddressFromIpStringUnsafe("127.0.0.1", endpoint.port))
         // The IPv6 loopback is another address; nothing answers there.
         const ipv6 = yield* Effect.promise(() => fetch(`http://[::1]:${endpoint.port}/`).then(() => "answered", () => "refused"))
         expect(ipv6).toBe("refused")
@@ -90,8 +91,8 @@ describe("authenticated loopback web socket server", () => {
         const server = yield* SocketServer.SocketServer
         const endpoint = yield* Effect.promise(() => listening.promise)
         yield* Effect.forkScoped(server.run((socket) => Effect.gen(function*() {
-          const write = yield* socket.writer
-          yield* Effect.forkScoped(socket.runRaw(() => {}))
+          const { write } = yield* socket.writer
+          yield* Effect.forkScoped(Stream.runDrain(Socket.toStream(socket)))
           for (let index = 0; index < frames; index += 1) yield* write(new Uint8Array(frameBytes).fill(index + 1))
           yield* Effect.never
         }).pipe(Effect.scoped)))
@@ -135,7 +136,7 @@ describe("authenticated loopback web socket server", () => {
         const server = yield* SocketServer.SocketServer
         const endpoint = yield* Effect.promise(() => listening.promise)
         expect(endpoint.port).not.toBe(taken)
-        expect(server.address).toEqual({ _tag: "TcpAddress", hostname: "127.0.0.1", port: endpoint.port })
+        expect(server.address).toEqual(NetAddress.inetAddressFromIpStringUnsafe("127.0.0.1", endpoint.port))
         // The other program keeps its port; nothing was displaced.
         expect(yield* Effect.promise(async () => (await fetch(`http://127.0.0.1:${taken}/`)).text())).toBe("other program")
       }))

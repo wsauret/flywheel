@@ -172,11 +172,33 @@ function numericConstraint(value: ConfigDictionary, key: string): number | undef
 
 const CONSTRAINT_KEYS = new Set(["type", "enum", "anyOf", "oneOf", "allOf", "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "minLength", "maxLength", "pattern", "items", "properties", "additionalProperties", "required", "description"]);
 
+/** The JSON Schema constraint of a configuration value, as the reference
+ *  states it. Effect's JSON Schema of a number describes its JSON codec: it
+ *  adds the strings that encode the non-finite numbers, which TOML never
+ *  writes, and it leaves out the bounds of a number that may be non-finite.
+ *  So a number states its type and bounds from its own checks. */
 function constraintOracle(ast: SchemaAST.AST): ConfigDictionary {
+  if (SchemaAST.isNumber(ast)) return numberConstraint(ast);
+  if (SchemaAST.isUnion(ast) && ast.types.some(SchemaAST.isNumber)) {
+    return { anyOf: ast.types.filter((member) => !isNever(member)).map(constraintOracle) };
+  }
   const schema = Schema.toJsonSchemaDocument(Schema.make(ast)).schema;
   if (!isDictionary(schema)) throw new Error(`JSON Schema oracle returned an invalid constraint for ${ast._tag}`);
   assertSupportedConstraint(schema);
   return schema;
+}
+
+const NUMBER_BOUNDS = ["minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum"] as const;
+
+function numberConstraint(ast: SchemaAST.AST): ConfigDictionary {
+  const constraint: ConfigDictionary = { type: "number" };
+  for (const check of ast.checks ?? []) {
+    const facts = check.annotations?.arbitraryConstraint;
+    if (!isDictionary(facts)) continue;
+    if (facts.number === "integer") constraint.type = "integer";
+    for (const bound of NUMBER_BOUNDS) if (typeof facts[bound] === "number") constraint[bound] = facts[bound];
+  }
+  return constraint;
 }
 
 function assertSupportedConstraint(value: unknown, propertyMap = false): void {

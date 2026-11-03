@@ -455,7 +455,7 @@ describe("transcript store", () => {
     for (let turn = 0; turn < 10 && store.status !== "recovery-failed"; turn += 1) await new Promise((resolve) => { setTimeout(resolve, 5) })
     assert.equal(store.status, "recovery-failed")
     assert.equal(store.unavailable?.message, "Could not read this session's transcript.")
-    assert.equal(store.unavailable?.diagnostic, 'Expected "text", got string of 14 chars\n  at ["kind"]')
+    assert.equal(store.unavailable?.diagnostic, 'Expected "text"\n  at ["kind"]')
     assert.equal(reads, 3)
     store.dispose()
   })

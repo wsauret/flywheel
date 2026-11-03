@@ -29,7 +29,7 @@ const NonNegativeIntSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
 
 type WorkflowCommitProposal = Extract<WorkflowMutation, { kind: "commit" }>["proposal"]
 
-export class WorkflowCommitConflictError extends Schema.TaggedErrorClass<WorkflowCommitConflictError>()(
+export class WorkflowCommitConflictError extends Schema.TaggedError<WorkflowCommitConflictError>()(
   "WorkflowCommitConflictError",
   {
     proposalId: IdSchema,
@@ -40,7 +40,7 @@ export class WorkflowCommitConflictError extends Schema.TaggedErrorClass<Workflo
   },
 ) {}
 
-export class WorkflowCommitStorageError extends Schema.TaggedErrorClass<WorkflowCommitStorageError>()(
+export class WorkflowCommitStorageError extends Schema.TaggedError<WorkflowCommitStorageError>()(
   "WorkflowCommitStorageError",
   { proposalId: IdSchema, message: Schema.NonEmptyString },
 ) {}

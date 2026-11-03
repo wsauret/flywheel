@@ -1,7 +1,7 @@
 import net from "node:net"
 import { Duplex } from "node:stream"
 import { Effect, Layer, Scope } from "effect"
-import { Socket } from "effect/unstable/socket"
+import { Socket } from "effect/socket"
 import {
   createAccountAttachResponseReader,
   encodeAccountAttach,

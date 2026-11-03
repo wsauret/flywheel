@@ -25,32 +25,34 @@ import {
 import { runtimeDispatchResultSchema } from "../../protocol/runtime-dispatch-result-schemas.js"
 
 const CorrelationIdSchema = Schema.String.check(Schema.isMinLength(1))
+// Every envelope, and the query, mutation, or result it carries, refuses a key
+// it does not declare at every depth.
 const Strict = { onExcessProperty: "error" } as const
 
 const QueryEnvelopeSchema = Schema.Struct({
   kind: Schema.Literal("query"),
   id: CorrelationIdSchema,
   query: RuntimeQuerySchema,
-}).pipe(Schema.annotate({ parseOptions: Strict }))
+})
 const DispatchEnvelopeSchema = Schema.Struct({
   kind: Schema.Literal("dispatch"),
   id: CorrelationIdSchema,
   mutation: FrontendMutationSchema,
-}).pipe(Schema.annotate({ parseOptions: Strict }))
+})
 const ResultEnvelopeSchema = Schema.Struct({
   kind: Schema.Literal("result"),
   id: CorrelationIdSchema,
   result: Schema.Unknown,
-}).pipe(Schema.annotate({ parseOptions: Strict }))
+})
 const ErrorEnvelopeSchema = Schema.Struct({
   kind: Schema.Literal("error"),
   id: CorrelationIdSchema,
   message: Schema.String,
-}).pipe(Schema.annotate({ parseOptions: Strict }))
+})
 const RefusedEnvelopeSchema = Schema.Struct({
   kind: Schema.Literal("refused"),
   id: CorrelationIdSchema,
-}).pipe(Schema.annotate({ parseOptions: Strict }))
+})
 // Each frame is the MessagePack encoding of one runtime event frame, in
 // publication order. The executor encodes each event once, bounds its queue by
 // those bytes, and sends the events queued together as one message whose
@@ -59,8 +61,8 @@ const RefusedEnvelopeSchema = Schema.Struct({
 const EventsEnvelopeSchema = Schema.Struct({
   kind: Schema.Literal("events"),
   frames: Schema.Array(Schema.Uint8Array),
-}).pipe(Schema.annotate({ parseOptions: Strict }))
-const GapEnvelopeSchema = Schema.Struct({ kind: Schema.Literal("gap") }).pipe(Schema.annotate({ parseOptions: Strict }))
+})
+const GapEnvelopeSchema = Schema.Struct({ kind: Schema.Literal("gap") })
 
 // The account's whole union of watched sessions. It asks for no answer, and
 // the executor applies it as it reads it, so every call the account sends
@@ -68,7 +70,7 @@ const GapEnvelopeSchema = Schema.Struct({ kind: Schema.Literal("gap") }).pipe(Sc
 const WatchEnvelopeSchema = Schema.Struct({
   kind: Schema.Literal("watch"),
   sessionIds: Schema.Array(Schema.String),
-}).pipe(Schema.annotate({ parseOptions: Strict }))
+})
 
 // No client of the account shows the session any more, while its hold waits
 // for a reattach (`ProjectExecutionClient.hideSession`). It is a call, so it
@@ -78,22 +80,22 @@ const HideEnvelopeSchema = Schema.Struct({
   kind: Schema.Literal("hide"),
   id: CorrelationIdSchema,
   sessionId: Schema.String,
-}).pipe(Schema.annotate({ parseOptions: Strict }))
+})
 
 const RequestEnvelopeSchema = Schema.Union([QueryEnvelopeSchema, DispatchEnvelopeSchema, WatchEnvelopeSchema, HideEnvelopeSchema])
 const ResponseEnvelopeSchema = Schema.Union([ResultEnvelopeSchema, ErrorEnvelopeSchema, RefusedEnvelopeSchema, EventsEnvelopeSchema, GapEnvelopeSchema])
 type RequestEnvelope = typeof RequestEnvelopeSchema.Type
 type ResponseEnvelope = typeof ResponseEnvelopeSchema.Type
 
-const decodeRequest = Schema.decodeUnknownSync(RequestEnvelopeSchema)
-const decodeResponse = Schema.decodeUnknownSync(ResponseEnvelopeSchema)
-const encodeQuery = Schema.encodeUnknownSync(QueryEnvelopeSchema)
-const encodeDispatch = Schema.encodeUnknownSync(DispatchEnvelopeSchema)
-const encodeResult = Schema.encodeUnknownSync(ResultEnvelopeSchema)
-const encodeError = Schema.encodeUnknownSync(ErrorEnvelopeSchema)
-const encodeRefused = Schema.encodeUnknownSync(RefusedEnvelopeSchema)
-const encodeWatch = Schema.encodeUnknownSync(WatchEnvelopeSchema)
-const encodeHide = Schema.encodeUnknownSync(HideEnvelopeSchema)
+const decodeRequest = Schema.decodeUnknownSync(RequestEnvelopeSchema, Strict)
+const decodeResponse = Schema.decodeUnknownSync(ResponseEnvelopeSchema, Strict)
+const encodeQuery = Schema.encodeUnknownSync(QueryEnvelopeSchema, Strict)
+const encodeDispatch = Schema.encodeUnknownSync(DispatchEnvelopeSchema, Strict)
+const encodeResult = Schema.encodeUnknownSync(ResultEnvelopeSchema, Strict)
+const encodeError = Schema.encodeUnknownSync(ErrorEnvelopeSchema, Strict)
+const encodeRefused = Schema.encodeUnknownSync(RefusedEnvelopeSchema, Strict)
+const encodeWatch = Schema.encodeUnknownSync(WatchEnvelopeSchema, Strict)
+const encodeHide = Schema.encodeUnknownSync(HideEnvelopeSchema, Strict)
 
 type ExecutionRuntime = Pick<RuntimeClient, "query" | "dispatch" | "subscribe"> & {
   /** Applies the account's union of watched sessions to the output gate. */

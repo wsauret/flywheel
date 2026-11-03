@@ -106,4 +106,4 @@ export const RuntimeBackgroundSummaryResultSchema: Schema.Codec<RuntimeBackgroun
   errors: Schema.Array(SessionCatalogErrorSchema),
   totalsLoading: Schema.Boolean,
   generationSpeeds: Schema.Record(Schema.String, Schema.Number.check(Schema.isFinite(), Schema.isGreaterThanOrEqualTo(0))),
-}).pipe(Schema.annotate({ parseOptions: { onExcessProperty: "error" } }))
+})

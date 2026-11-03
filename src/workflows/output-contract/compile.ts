@@ -1,4 +1,5 @@
-import { Result, Schema } from "effect";
+import { Array as Arr, Effect, Result, Schema, SchemaIssue } from "effect";
+import { exactStruct } from "../../infra/exact-struct.js";
 import { isRecord, type UnknownRecord } from "../../infra/record.js";
 import { hashDefinition } from "../definition-hash.js";
 import { envelope, modelFacingFields } from "./envelope.js";
@@ -80,8 +81,10 @@ const INPUT_WORDS: ContractWords = {
   unknownTopLevelRemedy: "The workflow input contract does not declare them.",
 };
 
-function nestedKeys(words: ContractWords) {
-  return { parseOptions: { onExcessProperty: "error" }, messageUnexpectedKey: words.unexpectedKey } as const;
+/** A declared object of the contract, which refuses every key it does not
+ *  declare in the contract's own words. */
+function contractObject(fields: FieldMap, words: ContractWords, extra: { readonly [key: string]: Schema.Codec<unknown> } = {}): Schema.Codec<unknown> {
+  return exactStruct(Schema.Struct({ ...extra, ...memberSchemas(fields, words) }).annotate({ messageUnexpectedKey: words.unexpectedKey }));
 }
 
 const NonEmptyTextSchema = Schema.String.check(Schema.makeFilter((text: string) => text.trim() !== "" || "expected a non-empty string"));
@@ -112,14 +115,13 @@ function baseSchema(field: Field, words: ContractWords): Schema.Codec<unknown> {
       const [first, ...rest] = listChecks(field);
       return first ? list.check(first, ...rest) : list;
     }
-    case "object": return Schema.Struct(memberSchemas(field.fields ?? {}, words)).annotate(nestedKeys(words));
+    case "object": return contractObject(field.fields ?? {}, words);
     case "variant": return variantSchema(field.tag ?? "", field.cases ?? {}, words);
   }
 }
 
 function variantSchema(tag: string, cases: { readonly [value: string]: FieldMap }, words: ContractWords): Schema.Codec<unknown> {
-  const members = Object.entries(cases).map(([value, fields]) =>
-    Schema.Struct({ [tag]: Schema.Literal(value), ...memberSchemas(fields, words) }).annotate(nestedKeys(words)));
+  const members = Object.entries(cases).map(([value, fields]) => contractObject(fields, words, { [tag]: Schema.Literal(value) }));
   return Schema.Union(members).annotate({ message: `expected "${tag}" to be one of: ${Object.keys(cases).join(", ")}` });
 }
 
@@ -164,16 +166,28 @@ function strictFields(fields: FieldMap): FieldMap {
   return { ...fields, commands_run: uncounted };
 }
 
+/** The payload object. Its undeclared keys are reported in one issue that
+ *  names them all and states the remedy, in the same report as every other
+ *  problem of the payload. */
 function topLevelSchema(fields: FieldMap, words: ContractWords): Schema.Decoder<unknown> {
-  const known = new Set(Object.keys(fields));
-  // The structural mark runs this check even when a declared key failed, so
-  // one report names the unknown keys beside every other problem. The top
-  // level preserves extra keys only so that this check, not a bare
-  // "unexpected key" issue for each key, reports them.
-  return Schema.Struct(memberSchemas(fields, words)).check(Schema.makeFilter((input: UnknownRecord) => {
-    const unknown = isRecord(input) ? Object.keys(input).filter((key) => !known.has(key)) : [];
-    return unknown.length === 0 || `unknown top-level fields: ${unknown.join(", ")}. ${words.unknownTopLevelRemedy}`;
-  }, { "~structural": true, parseOptions: { onExcessProperty: "preserve" } }));
+  return contractObject(fields, words).pipe(Schema.middlewareDecoding((decoded) =>
+    Effect.mapError(decoded, (issue) => withUnknownTopLevelFields(issue, words))));
+}
+
+function withUnknownTopLevelFields(issue: SchemaIssue.Issue, words: ContractWords): SchemaIssue.Issue {
+  if (issue._tag !== "Composite") return issue;
+  const unknown: string[] = [];
+  const kept: SchemaIssue.Issue[] = [];
+  for (const entry of issue.issues) {
+    // exactStruct reports an undeclared key through its rest signature, so the
+    // key's issue is the encoding issue of that signature's value.
+    const keyIssue = entry._tag === "Pointer" && entry.issue._tag === "Encoding" ? entry.issue.issue : undefined;
+    if (entry._tag === "Pointer" && keyIssue?._tag === "UnexpectedKey") unknown.push(String(entry.path[0]));
+    else kept.push(entry);
+  }
+  if (unknown.length === 0) return issue;
+  const report = new SchemaIssue.InvalidValue({ message: `unknown top-level fields: ${unknown.join(", ")}. ${words.unknownTopLevelRemedy}` });
+  return new SchemaIssue.Composite(issue.ast, Arr.append(kept, report));
 }
 
 function withNull(schema: JsonSchema): JsonSchema {

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, jest, mock, spyOn, test } from "bun:test"
-import { Effect, Exit } from "effect"
-import { Socket } from "effect/unstable/socket"
+import { Effect, Exit, Stream } from "effect"
+import { Socket } from "effect/socket"
 
 import * as connection from "../../../../../src/protocol/client/connection.js"
 import * as channel from "../../../../../src/protocol/modules/remote/relay-channel.js"
@@ -89,7 +89,7 @@ function endedChannel(): channel.DeviceChannel {
 function runSocket(relay: RelayClient) {
   return Effect.runPromiseExit(Effect.gen(function*() {
     const socket = yield* Socket.Socket
-    yield* socket.run(() => {})
+    yield* Stream.runDrain(Socket.toStream(socket))
   }).pipe(Effect.provide(relay.socket)))
 }
 

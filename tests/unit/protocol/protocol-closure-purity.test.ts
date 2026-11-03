@@ -117,6 +117,7 @@ describe("protocol package closure", () => {
         "infra/chat-input-schema.ts",
         "infra/error-message.ts",
         "infra/error-presentation.ts",
+      "infra/exact-struct.ts",
         "infra/invariant.ts",
         "infra/llm/model-id.ts",
         "infra/llm/provider-options.ts",

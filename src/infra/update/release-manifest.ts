@@ -27,7 +27,7 @@ const SHA256_HEX = /^[0-9a-f]{64}$/;
 
 /** The manifest, the repository it names, or a URL it publishes does not
  *  state what this client needs to act on. */
-export class ReleaseManifestError extends Schema.TaggedErrorClass<ReleaseManifestError>()("ReleaseManifest", {
+export class ReleaseManifestError extends Schema.TaggedError<ReleaseManifestError>()("ReleaseManifest", {
   message: Schema.String,
   reason: Schema.String,
 }) {}

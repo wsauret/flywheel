@@ -1,7 +1,8 @@
 import { expect, test } from "bun:test"
 import { Database } from "bun:sqlite"
 import { Layer, ManagedRuntime } from "effect"
-import { RpcSerialization, RpcServer } from "effect/unstable/rpc"
+import { RpcServer } from "effect/rpc"
+import { layerMsgPack } from "../../../src/protocol/rpc-msgpack.js"
 import { mkdtemp, mkdir, readFile, readdir, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { basename, join } from "node:path"
@@ -188,7 +189,7 @@ test("a locked transcript index leaves public control and executor admission res
     Layer.fresh(RpcServer.layer(RuntimeProtocolRpc)).pipe(
       Layer.provide(runtimeHandlers(runtime, Log.create({ service: "control-test" }), { version: "0.1.0", liveness })),
       Layer.provide(Layer.fresh(runtimeProtocolSocketServer)),
-      Layer.provide(RpcSerialization.layerMsgPack),
+      Layer.provide(layerMsgPack),
       Layer.provide(bunSocketServerLayer({ path: "public.sock" })),
     ),
   )
@@ -325,7 +326,7 @@ test("a stalled executor start ends on its own wedge proof, every account record
     Layer.fresh(RpcServer.layer(RuntimeProtocolRpc)).pipe(
       Layer.provide(runtimeHandlers(runtime, Log.create({ service: "control-startup-test" }), { version: "0.1.0", liveness })),
       Layer.provide(Layer.fresh(runtimeProtocolSocketServer)),
-      Layer.provide(RpcSerialization.layerMsgPack),
+      Layer.provide(layerMsgPack),
       Layer.provide(bunSocketServerLayer({ path: "public.sock" })),
     ),
   )
@@ -516,7 +517,7 @@ test("provider-issued recall stays in the executor background Worker while accou
     Layer.fresh(RpcServer.layer(RuntimeProtocolRpc)).pipe(
       Layer.provide(runtimeHandlers(runtime, Log.create({ service: "control-recall-test" }), { version: "0.1.0", liveness })),
       Layer.provide(Layer.fresh(runtimeProtocolSocketServer)),
-      Layer.provide(RpcSerialization.layerMsgPack),
+      Layer.provide(layerMsgPack),
       Layer.provide(bunSocketServerLayer({ path: "public.sock" })),
     ),
     )

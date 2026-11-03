@@ -403,7 +403,7 @@ const StructuralFindingSchema = Schema.Struct({
 
 /** A graph that structural admission refused. It names each finding and
  *  what the author can do about it. */
-export class WorkflowStructureRejectedError extends Schema.TaggedErrorClass<WorkflowStructureRejectedError>()(
+export class WorkflowStructureRejectedError extends Schema.TaggedError<WorkflowStructureRejectedError>()(
   "WorkflowStructureRejectedError",
   {
     workflowDefinitionId: Schema.String,

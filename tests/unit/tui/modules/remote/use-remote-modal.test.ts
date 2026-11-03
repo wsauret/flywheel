@@ -1,6 +1,6 @@
 import { expect, it, spyOn } from "bun:test"
 import { createRoot } from "solid-js"
-import { Socket } from "effect/unstable/socket"
+import { Socket } from "effect/socket"
 import { UNANSWERED_ACTION } from "../../../../../src/protocol/client/runtime-fault-copy.js"
 import type { FrontendMutation, RuntimeClient } from "../../../../../src/protocol/app-service-types.js"
 import type { RuntimeRemoteView } from "../../../../../src/protocol/modules/remote.js"

@@ -36,12 +36,12 @@ export interface LockedJsonStoreOptions<T> {
   readonly maxBytes?: number;
 }
 
-export class MalformedLockedJsonError extends Schema.TaggedErrorClass<MalformedLockedJsonError>()(
+export class MalformedLockedJsonError extends Schema.TaggedError<MalformedLockedJsonError>()(
   "MalformedLockedJsonError",
   { message: Schema.String, path: Schema.String },
 ) {}
 
-export class AccountStorageAccessError extends Schema.TaggedErrorClass<AccountStorageAccessError>()(
+export class AccountStorageAccessError extends Schema.TaggedError<AccountStorageAccessError>()(
   "AccountStorageAccessError",
   {
     message: Schema.String,

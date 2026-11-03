@@ -1,5 +1,5 @@
 import { Layer } from "effect"
-import { Socket } from "effect/unstable/socket"
+import { Socket } from "effect/socket"
 
 import { mountClient } from "../src/index.js"
 import type { RuntimeHealth } from "../../src/protocol/app-service-types.js"

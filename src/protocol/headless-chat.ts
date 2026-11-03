@@ -19,7 +19,7 @@ export const HeadlessChatRequestSchema = Schema.Union([
     version: Schema.Literal(1), type: Schema.Literal("query"),
     id: Schema.NonEmptyString, query: RuntimeQuerySchema,
   }),
-]).pipe(Schema.annotate({ parseOptions: { onExcessProperty: "error" } }))
+])
 
 export type HeadlessChatOutcome = "complete" | "input_required" | "incomplete" | "failed"
 

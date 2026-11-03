@@ -1,6 +1,6 @@
 import { expect, spyOn, test } from "bun:test"
-import { Effect } from "effect"
-import { Socket } from "effect/unstable/socket"
+import { Effect, Stream } from "effect"
+import { Socket } from "effect/socket"
 import fs from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -328,7 +328,7 @@ test("a starting phone attaches before presence arrives and keeps its returned c
     client.onChange((snapshot) => { if (snapshot.start?.status === "starting") starting.resolve() })
     run = Effect.runPromiseExit(Effect.gen(function*() {
       const socket = yield* Socket.Socket
-      yield* socket.run(() => {})
+      yield* Stream.runDrain(Socket.toStream(socket))
     }).pipe(Effect.provide(client.socket)))
     const initialOpen = decodeRelayControlFrame(JSON.parse(await dormant.frames.next()))
     if (initialOpen.type !== "open") throw new Error(`expected an open, got ${initialOpen.type}`)

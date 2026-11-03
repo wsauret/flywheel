@@ -1,4 +1,5 @@
 import { Result, Schema, SchemaIssue } from "effect";
+import { exactStruct } from "../../infra/exact-struct.js";
 
 /** The closed field grammar of an output contract.
  *
@@ -19,6 +20,14 @@ const FieldKeySchema = Schema.String.check(Schema.isPattern(fieldKeyPattern, {
 const DescriptionSchema = Schema.String.check(Schema.makeFilter((text: string) => text.trim() !== "" || "expected a non-empty description"));
 
 const CaseValueSchema = Schema.String.check(Schema.makeFilter((value: string) => value.trim() !== "" || "expected a non-empty case value"));
+
+/** A record key that the decode reports when it fails its check. A record
+ *  selects its keys by the encoded side of its key schema, so a checked key
+ *  schema would silently drop a key that fails the check; a plain string
+ *  selects every key, and decoding it to the checked key reports the failure. */
+function reportedKey(key: Schema.String) {
+  return Schema.String.pipe(Schema.decodeTo(key));
+}
 
 /** The members of a field that do not refer back to a field. */
 const FieldLeafMembers = {
@@ -63,11 +72,11 @@ const envelopeKeyRemedy = {
   files_modified: "is an envelope key; every inline output already carries it",
 } as const satisfies { readonly [Key in (typeof envelopeKeys)[number]]: string };
 
-/** The parser reads `parseOptions` from the last check of a schema and the
- *  unexpected-key message from the struct itself, so a checked struct takes
- *  `ClosedStruct` on the struct and `StrictKeys` on its filter. */
-const ClosedStruct = { messageUnexpectedKey: "is not a key of the output contract grammar" } as const;
-const StrictKeys = { parseOptions: { onExcessProperty: "error" } } as const;
+/** A struct of the grammar, which refuses every key the grammar does not
+ *  declare. */
+function closedStruct<const Fields extends Schema.Struct.Fields>(fields: Fields) {
+  return exactStruct(Schema.Struct(fields).annotate({ messageUnexpectedKey: "is not a key of the output contract grammar" }));
+}
 
 /** Which grammar keys each field type admits beside the common keys, and
  *  which of them it requires. */
@@ -144,16 +153,16 @@ function fieldIssues(field: Field, position: "keyed" | "item"): GrammarIssue[] {
 }
 
 function fieldSchema(position: "keyed" | "item"): Schema.Codec<Field> {
-  return Schema.Struct({
+  return closedStruct({
     ...FieldLeafMembers,
     of: Schema.optionalKey(Schema.suspend((): Schema.Codec<Field> => ItemFieldSchema)),
     fields: Schema.optionalKey(Schema.suspend((): Schema.Codec<FieldMap> => FieldMapSchema)),
-    cases: Schema.optionalKey(Schema.Record(CaseValueSchema, Schema.suspend((): Schema.Codec<FieldMap> => FieldMapSchema))),
-  }).annotate(ClosedStruct).check(
+    cases: Schema.optionalKey(Schema.Record(reportedKey(CaseValueSchema), Schema.suspend((): Schema.Codec<FieldMap> => FieldMapSchema))),
+  }).check(
     Schema.makeFilter((field: Field) => {
       const issues = fieldIssues(field, position);
       return issues.length === 0 ? undefined : issues;
-    }, StrictKeys),
+    }),
   );
 }
 
@@ -162,7 +171,7 @@ const ItemFieldSchema: Schema.Codec<Field> = fieldSchema("item");
 /** Keyed fields under the closed grammar. Control decodes the output
  *  contract that compilation pins on a map's group with it, so a pinned
  *  contract obeys the same grammar as an authored one. */
-export const FieldMapSchema = Schema.Record(FieldKeySchema, KeyedFieldSchema);
+export const FieldMapSchema = Schema.Record(reportedKey(FieldKeySchema), KeyedFieldSchema);
 
 /** The dotted key path of the first `commands_run` key in a field map. */
 function nestedCommandsRun(fields: FieldMap): string | undefined {
@@ -185,15 +194,15 @@ function commandsRunBelow(field: Field): string | undefined {
   return field.of ? commandsRunBelow(field.of) : undefined;
 }
 
-const OutputObjectSchema = Schema.Struct({
+const OutputObjectSchema = closedStruct({
   /** Description of the envelope `summary`. */
   summary: Schema.optionalKey(DescriptionSchema),
   /** The least number of cited command runs the agent must return. */
-  commands: Schema.optionalKey(Schema.Struct({ min: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)) }).annotate({ ...ClosedStruct, ...StrictKeys })),
+  commands: Schema.optionalKey(closedStruct({ min: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)) })),
   /** The worker writes the payload as a JSON file in session scratch. */
   submit: Schema.optionalKey(Schema.Literal("file")),
   fields: Schema.optionalKey(FieldMapSchema),
-}).annotate(ClosedStruct).check(Schema.makeFilter((output) => {
+}).check(Schema.makeFilter((output) => {
   const issues: GrammarIssue[] = [];
   for (const key of envelopeKeys) {
     if (output.fields && Object.hasOwn(output.fields, key)) issues.push({ path: ["fields", key], issue: envelopeKeyRemedy[key] });
@@ -205,7 +214,7 @@ const OutputObjectSchema = Schema.Struct({
     issues.push({ path: ["commands"], issue: "is not allowed with submit: file; a file payload carries no command citations" });
   }
   return issues.length === 0 ? undefined : issues;
-}, StrictKeys));
+}));
 
 /** An authored output contract after the grammar accepted it. */
 export type OutputObject = typeof OutputObjectSchema.Type;

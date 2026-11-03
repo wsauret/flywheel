@@ -23,7 +23,7 @@ describe("Step.model cleanup", () => {
       status: "idle",
       mutationLog: [],
     };
-    expect(() => parseSchema(WorkflowRowsSchema, rows)).toThrow(/Unexpected key/);
+    expect(() => parseSchema(WorkflowRowsSchema, rows)).toThrow(/Expected no excess property/);
   });
 
   it("the version 9 queue schema rejects defaultable external tool scoping on persisted steps", () => {

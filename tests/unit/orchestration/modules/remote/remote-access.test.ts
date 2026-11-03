@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { hostname, tmpdir } from "node:os"
 import { basename, join } from "node:path"
-import { Deferred, Effect, Redacted } from "effect"
-import { Socket } from "effect/unstable/socket"
+import { Deferred, Effect, Redacted, Stream } from "effect"
+import { Socket } from "effect/socket"
 
 import * as pairingStore from "../../../../../src/orchestration/modules/remote/remote-pairing-store.js"
 import { mutateRemotePairingStore, readRemotePairingStore } from "../../../../../src/orchestration/modules/remote/remote-pairing-store.js"
@@ -216,8 +216,8 @@ describe("remote access against a relay", () => {
     remote.acceptChannels(async (socket: Socket.Socket, paired: PairedDevice) => {
       expect(paired.id).toBe(device.id)
       await Effect.runPromise(Effect.scoped(Effect.gen(function*() {
-        const write = yield* socket.writer
-        yield* socket.run((bytes) => Effect.andThen(Effect.sync(() => Deferred.doneUnsafe(echoed, Effect.succeed(fromText(bytes)))), write(text(`echo:${fromText(bytes)}`))))
+        const { write } = yield* socket.writer
+        yield* Stream.runForEach(Socket.toStream(socket), (bytes) => Effect.andThen(Effect.sync(() => Deferred.doneUnsafe(echoed, Effect.succeed(fromText(bytes)))), write(text(`echo:${fromText(bytes)}`))))
       })).pipe(Effect.exit))
     })
     const runtimePublicKey = fromBase64Url(readRemotePairingStore(userDataRoot, "installed").identity!.publicKey)
@@ -258,7 +258,7 @@ describe("remote access against a relay", () => {
     const { device, runtimeId } = await pairDevice(remote)
     await viewWhere(remote, (view) => view.devices.length === 1)
     remote.acceptChannels(async (socket: Socket.Socket) => {
-      await Effect.runPromise(Effect.scoped(socket.run(() => Effect.void)).pipe(Effect.exit))
+      await Effect.runPromise(Stream.runDrain(Socket.toStream(socket)).pipe(Effect.exit))
     })
     const runtimePublicKey = fromBase64Url(readRemotePairingStore(userDataRoot, "installed").identity!.publicKey)
     const ws = await attachDeviceChannel(stub.url, runtimeId, placementId(projectRoot), { ...device, deviceId: device.id })
@@ -281,7 +281,7 @@ describe("remote access against a relay", () => {
     const { device, runtimeId } = await pairDevice(remote)
     await viewWhere(remote, (view) => view.devices.length === 1)
     remote.acceptChannels(async (socket: Socket.Socket) => {
-      await Effect.runPromise(Effect.scoped(socket.run(() => Effect.void)).pipe(Effect.exit))
+      await Effect.runPromise(Stream.runDrain(Socket.toStream(socket)).pipe(Effect.exit))
     })
     const runtimePublicKey = fromBase64Url(readRemotePairingStore(userDataRoot, "installed").identity!.publicKey)
     const ws = await attachDeviceChannel(stub.url, runtimeId, placementId(projectRoot), { ...device, deviceId: device.id })
@@ -436,7 +436,7 @@ describe("remote access against a relay", () => {
     try {
       const second = createRemote({ projectRoot: otherProject })
       await viewWhere(second, (view) => view.connection === "connected" && view.devices.length === 1)
-      second.acceptChannels((socket) => Effect.runPromise(Effect.scoped(socket.run(() => {})).pipe(Effect.ignore)))
+      second.acceptChannels((socket) => Effect.runPromise(Stream.runDrain(Socket.toStream(socket)).pipe(Effect.ignore)))
       const runtimePublicKey = fromBase64Url(readRemotePairingStore(userDataRoot, "installed").identity!.publicKey)
       const ws = await attachDeviceChannel(stub.url, runtimeId, placementId(otherProject), { ...device, deviceId: device.id })
       const channel = await sealDevice(ws, device, { kind: "paired", publicKey: runtimePublicKey })

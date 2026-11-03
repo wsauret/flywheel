@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 
-import { RpcClientError } from "effect/unstable/rpc"
+import { RpcClientError } from "effect/rpc"
 import { describeFailure } from "./failure-message.js"
 
 // Every failure the transport raises shows in the same plain words, whatever

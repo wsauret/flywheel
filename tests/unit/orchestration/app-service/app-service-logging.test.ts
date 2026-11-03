@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import { RpcClientError } from "effect/unstable/rpc"
-import { Socket } from "effect/unstable/socket"
+import { RpcClientError } from "effect/rpc"
+import { Socket } from "effect/socket"
 import { withLoggedRuntimeClient } from "../../../../src/orchestration/app-service/app-service-logging.js"
 import type { OperationLogger } from "../../../../src/infra/operation-log.js"
 import type { RuntimeClient } from "../../../../src/protocol/app-service-types.js"

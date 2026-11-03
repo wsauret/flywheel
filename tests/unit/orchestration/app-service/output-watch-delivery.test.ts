@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { Rpc } from "effect/unstable/rpc"
+import { Rpc } from "effect/rpc"
 import { EventReaderService } from "../../../../src/infra/event-store-effect.js"
 import { createOutputProjection } from "../../../../src/orchestration/app-service/output-projection.js"
 import { createOutputWatches } from "../../../../src/orchestration/app-service/output-watches.js"

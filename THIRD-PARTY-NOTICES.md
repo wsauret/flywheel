@@ -51,6 +51,7 @@ These Flywheel files adapt source, tests, or text from the projects named. Each 
 - **Hermes** (MIT): the phone keyboard inset in `webview/phone/keyboard-inset.ts` and its test `webview/phone/keyboard-inset.test.ts`; the tool-name fuzzy-match cutoff in `src/orchestration/agent-runtime/tools/tool-dispatch.ts`; and the escape-normalized tier of the string edit planner in `src/infra/file-edit/string-edit.ts`.
 - **anti-slop** (MIT, Copyright (c) 2026 Dillon Mulroy, https://github.com/dmmulroy/anti-slop): the Oxlint rule plugin in `scripts/oxlint-plugin-anti-slop/`, vendored and adapted from its `src/` directory.
 - **fff** (MIT, Copyright (c) 2025 Dmitriy Kovalenko, https://github.com/dmtrKovalenko/fff.nvim): the definition and import line classifiers in `src/orchestration/agent-runtime/tools/search-ranking.ts`, adapted from its `grep.rs`, and the output budget grain in `src/orchestration/agent-runtime/tools/search-pipeline.ts`.
+- **Effect** (MIT, Copyright (c) 2023 Effectful Technologies Inc., https://github.com/Effect-TS/effect-smol): the MessagePack RPC serialization in `src/protocol/rpc-msgpack.ts`, ported from `src/unstable/rpc/RpcSerialization.ts` of effect 4.0.0-beta.84 and changed only as the ledger at the top of that file states.
 
 ## Terminal system theme
 

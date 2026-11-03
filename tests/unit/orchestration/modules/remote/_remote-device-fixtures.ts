@@ -1,5 +1,5 @@
-import { Effect, Exit, Fiber, Scope } from "effect"
-import { Socket } from "effect/unstable/socket"
+import { Effect, Exit, Fiber, Scope, Stream } from "effect"
+import { Socket } from "effect/socket"
 
 import type { RemoteAccess } from "../../../../../src/orchestration/modules/remote/remote-access.js"
 import type { DeviceChannel } from "../../../../../src/protocol/modules/remote/relay-channel.js"
@@ -53,8 +53,8 @@ export async function sealDevice({ ws, streams }: DeviceChannel, identity: Seale
     const inner = yield* Socket.fromTransformStream(Effect.succeed(streams))
     const sealed = sealedSocket(inner, identity, peer)
     const received: Uint8Array[] = []
-    const fiber = yield* Effect.forkScoped(sealed.socket.run((bytes) => { received.push(bytes) }), { startImmediately: true })
-    const write = yield* sealed.socket.writer
+    const fiber = yield* Effect.forkScoped(Stream.runForEach(Socket.toStream(sealed.socket), (bytes) => Effect.sync(() => { received.push(bytes) })), { startImmediately: true })
+    const { write } = yield* sealed.socket.writer
     return { received, write, ended: Effect.exit(Fiber.join(fiber)), established: sealed.established }
   }).pipe(Scope.provide(scope))
   const channel = await Effect.runPromise(program)

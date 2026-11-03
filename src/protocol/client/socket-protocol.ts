@@ -1,15 +1,15 @@
-import { Cause, Effect, Layer, Result } from "effect"
-import { RpcClient, RpcClientError, type RpcMessage, RpcSerialization } from "effect/unstable/rpc"
-import { Socket } from "effect/unstable/socket"
+import { Cause, Effect, FiberSet, Layer, Result } from "effect"
+import { RpcClient, RpcClientError, type RpcMessage, RpcSerialization } from "effect/rpc"
+import { Socket } from "effect/socket"
 import { RuntimeLaneLost } from "./connection-failures.js"
 
 /** The RPC client's transport over the current `Socket`, with no liveness
  *  clock of its own.
  *
  *  Effect's `RpcClient.layerProtocolSocket` is this same pump plus a pinger:
- *  it writes a request-level ping every five seconds and fails the whole
- *  socket when the pong has not arrived by the next tick. That clock is not
- *  configurable, and five seconds is less than a phone on a relay takes to
+ *  it writes a request-level ping every five seconds by default and fails the
+ *  whole socket when no frame has arrived by the next tick. That clock can be
+ *  slowed but not removed, and five seconds is less than a phone on a relay takes to
  *  answer while it is painting a turn: the pong sits behind the frames it is
  *  decrypting and rendering, the socket is declared dead, and a healthy lane
  *  reconnects from scratch about once a minute. The lane already has one
@@ -50,9 +50,9 @@ export function socketProtocolLayer(options: SocketProtocolOptions = {}): Layer.
   return Layer.effect(RpcClient.Protocol)(RpcClient.Protocol.make(Effect.fnUntraced(function*(writeResponse, clientIds) {
     const socket = yield* Socket.Socket
     const serialization = yield* RpcSerialization.RpcSerialization
-    const requestClientMap = new Map<string, number>()
-    const write = yield* socket.writer
-    let parser = serialization.makeUnsafe()
+    const requestClientMap = new Map<string | number, number>()
+    const writer = yield* socket.writer
+    const parser = serialization.makeUnsafe()
     let currentError: RpcClientError.RpcClientError | undefined
 
     const broadcast = (response: FromServer) => Effect.forEach(clientIds, (clientId) => writeResponse(clientId, response), { discard: true })
@@ -82,15 +82,22 @@ export function socketProtocolLayer(options: SocketProtocolOptions = {}): Layer.
       return Effect.forEach(responses, deliver, { discard: true })
     }
 
-    yield* Effect.suspend(() => {
-      parser = serialization.makeUnsafe()
-      currentError = undefined
-      return socket.runRaw(onMessage)
+    // Each frame is delivered in a fiber of its own, in arrival order. A
+    // stream whose consumer lags parks its chunks in their fibers, bounded by
+    // the runtime's stream window, and every other frame on the lane still
+    // reaches its call. Every close fails the pull, a clean one included, so
+    // to the requests still waiting on the socket a clean close is a failure
+    // like any other.
+    const deliveries = yield* FiberSet.make<void>()
+    yield* Effect.gen(function*() {
+      const { pull } = yield* socket.reader
+      while (true) {
+        const frames = yield* pull
+        for (const frame of frames) yield* FiberSet.run(deliveries, onMessage(frame))
+      }
     }).pipe(
-      // A run that returns is a socket that closed cleanly; to the requests
-      // still waiting on it that is a failure like any other.
-      Effect.flatMap(() => Effect.fail(new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1000 }) }))),
-      // A run that ends with no typed error, by a defect such as a relay
+      Effect.scoped,
+      // A read that ends with no typed error, by a defect such as a relay
       // channel that breaks under a dropped connection, or by interruption,
       // stopped reading the socket all the same: the lane is gone, and each
       // request on it was lost with the lane. The cause stays inside, so a
@@ -112,13 +119,14 @@ export function socketProtocolLayer(options: SocketProtocolOptions = {}): Layer.
         if (request._tag === "Request") requestClientMap.set(request.id, clientId)
         const encoded = parser.encode(request)
         if (encoded === undefined) return Effect.void
-        const written = Effect.orDie(write(encoded))
+        const written = Effect.orDie(writer.write(encoded))
         const onRequestWritten = options.onRequestWritten
         if (request._tag !== "Request" || onRequestWritten === undefined) return written
         return Effect.tap(written, () => Effect.sync(() => onRequestWritten(request)))
       },
       supportsAck: true,
       supportsTransferables: false,
+      codecFor: serialization.codecFor,
     }
   })))
 }

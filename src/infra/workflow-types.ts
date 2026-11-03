@@ -28,8 +28,8 @@ export const WorkflowLaunchAgentModelsSchema = Schema.Record(Schema.NonEmptyStri
 
 export type WorkflowLaunchAgentModels = typeof WorkflowLaunchAgentModelsSchema.Type
 
-// User-authored workflow and agent config (external boundary): an absent tier config means
-// "no overrides".
+// User-authored workflow and agent config (external boundary): a role with no tier config has
+// no overrides.
 const CanonicalModelIdSchema = Schema.String.pipe(Schema.decodeTo(
   Schema.String,
   SchemaTransformation.transform({
@@ -42,7 +42,7 @@ export const TierConfigSchema = Schema.Struct({
   model: Schema.optionalKey(CanonicalModelIdSchema.pipe(Schema.annotate({ description: "Select the model id for this role." }))),
   effort: Schema.optionalKey(EffortSchema.pipe(Schema.annotate({ description: "Select the reasoning effort for this role." }))),
   provider_options: Schema.optionalKey(ProviderRequestOptionsSchema.pipe(Schema.annotate({ description: "Set provider-specific request options for this role." }))),
-}).pipe(Schema.withDecodingDefaultType(Effect.succeed({})))
+})
 
 const TOOL_ACTIONS = [
   "handoff_write",

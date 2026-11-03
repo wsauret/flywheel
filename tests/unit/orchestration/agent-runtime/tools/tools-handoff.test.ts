@@ -99,9 +99,9 @@ describe("handoff tool", () => {
     );
 
     expect(result.outcome).toBe("error");
-    expect(result.content).toContain("- summary: Expected string, got 1");
-    expect(result.content).toContain("- details.files.0: Expected string, got false");
-    expect(result.content).toContain('- details.count: Expected number, got "two"');
+    expect(result.content).toContain("- summary: Expected string\n");
+    expect(result.content).toContain("- details.files.0: Expected string\n");
+    expect(result.content).toContain('- details.count: Expected number\n');
     expect(result.content).toContain("Call handoff again with one JSON object");
     expect(captured).toBeNull();
   });
@@ -206,10 +206,10 @@ describe("handoff tool", () => {
       expect(invalid.content).toContain(`- ${key} (line 1): Missing key`);
     }
     const fieldErrors = await tool.execute({ path: fieldErrorsPath }, ctx);
-    expect(fieldErrors.content).toContain("- schema_version (line 2): Expected 1, got 2");
-    expect(fieldErrors.content).toContain("- context.key_files.0 (line 6): Expected string, got false");
-    expect(fieldErrors.content).toContain("- milestones.0.goal (line 15): Expected string, got 2");
-    expect(fieldErrors.content).toContain("- success_criteria.0 (line 22): Expected string, got 6");
+    expect(fieldErrors.content).toContain("- schema_version (line 2): Expected 1\n");
+    expect(fieldErrors.content).toContain("- context.key_files.0 (line 6): Expected string\n");
+    expect(fieldErrors.content).toContain("- milestones.0.goal (line 15): Expected string\n");
+    expect(fieldErrors.content).toContain("- success_criteria.0 (line 22): Expected string\n");
     expect(captured).toEqual([]);
   });
 
@@ -239,7 +239,7 @@ describe("handoff tool", () => {
 
     const schema = await tool.execute({ path: schemaPath }, ctx);
     expect(schema.outcome).toBe("error");
-    expect(schema.content).toContain(`- milestones.1.verification (line ${verificationLine}): Expected string, got 7`);
+    expect(schema.content).toContain(`- milestones.1.verification (line ${verificationLine}): Expected string\n`);
 
     // A list filter runs only on items that decode, so the duplicate id is
     // reported once the items themselves are valid.
@@ -284,7 +284,7 @@ describe("handoff tool", () => {
     expect(missing.outcome).toBe("error");
     const problems = String(missing.content).split("\n").filter((line) => line.startsWith("- "));
     expect(problems).toHaveLength(2);
-    expect(problems).toContain("- summary: Expected string, got 7");
+    expect(problems).toContain("- summary: Expected string");
     expect(problems.some((line) => line.startsWith("- report: "))).toBe(true);
     // A path field can name an existing directory.
     const directory = await createHandoffTool({ schema: toolFor(reportField) }).execute({ summary: "Probed.", report: "probe" }, ctx);

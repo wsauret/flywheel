@@ -85,7 +85,7 @@ export function applyRuntimeCallPolicy<A, E, R>(
  *  error union in runtime-protocol-schemas.ts because it belongs to the client layer.
  *  The worker client raises it on the Effect error channel, while the background
  *  lane converts infra's DeadlineExceeded into the same tagged error. */
-export class RuntimeCallTimeout extends Schema.TaggedErrorClass<RuntimeCallTimeout>()("RuntimeCallTimeout", { message: Schema.String }) {
+export class RuntimeCallTimeout extends Schema.TaggedError<RuntimeCallTimeout>()("RuntimeCallTimeout", { message: Schema.String }) {
   /** The action-oriented message shared by both bounded client lanes, so a
    *  timed-out read never surfaces as a contentless toast. */
   static forDeadline(deadlineMs: number): RuntimeCallTimeout {

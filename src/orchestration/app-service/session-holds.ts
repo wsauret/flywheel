@@ -1,4 +1,4 @@
-import type { Rpc } from "effect/unstable/rpc"
+import type { Rpc } from "effect/rpc"
 import { Log } from "../../infra/log.js"
 import { createOrderedLane, type OrderedLane } from "../../infra/ordered-lane.js"
 

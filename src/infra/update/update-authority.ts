@@ -131,13 +131,13 @@ export interface UpdateAuthority {
 
 /** The stored state cannot mean anything. The file is left exactly as it is
  *  and this handle fails closed. */
-class UpdateAuthorityCorruptError extends Schema.TaggedErrorClass<UpdateAuthorityCorruptError>()("UpdateAuthorityCorrupt", {
+class UpdateAuthorityCorruptError extends Schema.TaggedError<UpdateAuthorityCorruptError>()("UpdateAuthorityCorrupt", {
   message: Schema.String,
   reason: Schema.String,
 }) {}
 
 /** The file belongs to a binary this one cannot coordinate with. */
-class UpdateAuthorityProtocolError extends Schema.TaggedErrorClass<UpdateAuthorityProtocolError>()("UpdateAuthorityProtocol", {
+class UpdateAuthorityProtocolError extends Schema.TaggedError<UpdateAuthorityProtocolError>()("UpdateAuthorityProtocol", {
   message: Schema.String,
   expected: Schema.Number,
   found: Schema.Number,
@@ -146,7 +146,7 @@ class UpdateAuthorityProtocolError extends Schema.TaggedErrorClass<UpdateAuthori
 /** Contention, permissions, or I/O. Nothing about the file is suspect and the
  *  caller may ask again later; an update check that cannot coordinate simply
  *  does not happen. */
-class UpdateAuthorityTransientError extends Schema.TaggedErrorClass<UpdateAuthorityTransientError>()("UpdateAuthorityTransient", {
+class UpdateAuthorityTransientError extends Schema.TaggedError<UpdateAuthorityTransientError>()("UpdateAuthorityTransient", {
   message: Schema.String,
   at: Schema.String,
   reason: Schema.String,

@@ -1,7 +1,9 @@
 import { expect, test } from "bun:test"
 import { Effect, Layer, ManagedRuntime, Schema } from "effect"
-import { Rpc, RpcGroup, RpcSerialization, RpcServer } from "effect/unstable/rpc"
-import { Socket, SocketServer } from "effect/unstable/socket"
+import { Rpc, RpcGroup, RpcServer } from "effect/rpc"
+import { layerMsgPack, msgPack } from "../../../../src/protocol/rpc-msgpack.js"
+import { NetAddress } from "effect/net"
+import { Socket, SocketServer } from "effect/socket"
 import { dirname, join, sep } from "node:path"
 import { buildSessionContent, buildSessionContentManifest, readSessionContentRange, type SessionContentNode, type StageSessionContentNodes } from "../../../../src/infra/session-content.js"
 import type { MutationEvidenceEntry } from "../../../../src/infra/mutation-evidence.js"
@@ -242,8 +244,8 @@ test("the public socket codec fits the complete actual response including arbitr
   const reference = await buildSessionContent("€".repeat(30_000), f.stage)
   const entries = Array.from({ length: 50 }, (_, index) => descriptor(index, reference))
   const manifest = await buildSessionContentManifest(entries.map(entry => JSON.stringify(entry)), f.stage)
-  const decoder = RpcSerialization.msgPack.makeUnsafe()
-  const encoder = RpcSerialization.msgPack.makeUnsafe()
+  const decoder = msgPack.makeUnsafe()
+  const encoder = msgPack.makeUnsafe()
   const pending = new Map<string, { resolve: (response: { bytes: number; frame: ExitFrame }) => void }>()
   const outgoing = pipe(bytes => {
     for (const raw of decoder.decode(bytes)) {
@@ -259,9 +261,9 @@ test("the public socket codec fits the complete actual response including arbitr
         catch: String,
       }),
     })))),
-    Layer.provide(runtimeProtocolSocketServer), Layer.provide(RpcSerialization.layerMsgPack),
+    Layer.provide(runtimeProtocolSocketServer), Layer.provide(layerMsgPack),
     Layer.provide(Layer.succeed(SocketServer.SocketServer, SocketServer.SocketServer.of({
-      address: { _tag: "UnixAddress", path: "memory" },
+      address: NetAddress.unixPathAddress("memory"),
       run: handler => Effect.flatMap(Effect.orDie(handler(socket)), () => Effect.never),
     }))),
   ))

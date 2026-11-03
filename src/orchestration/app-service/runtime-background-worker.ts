@@ -1,5 +1,5 @@
 import { Effect, Layer, ManagedRuntime, Schema } from "effect"
-import { RpcServer } from "effect/unstable/rpc"
+import { RpcServer } from "effect/rpc"
 import { installCrashPolicy, recordFatal } from "../../infra/crash-policy.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"

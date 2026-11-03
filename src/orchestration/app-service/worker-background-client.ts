@@ -1,5 +1,5 @@
 import { Cause, Context, Effect, Exit, Layer, ManagedRuntime, Schema } from "effect"
-import { RpcClient, RpcClientError, RpcGroup } from "effect/unstable/rpc"
+import { RpcClient, RpcClientError, RpcGroup } from "effect/rpc"
 import { isAbortError } from "../../infra/abort.js"
 import { createBoundedWorkerSpawner, WorkerGenerationBudgetExhausted } from "../../infra/bounded-worker-spawner.js"
 import { errorDetail, errorMessage } from "../../infra/error-message.js"
@@ -9,6 +9,7 @@ import { createOrderedLane } from "../../infra/ordered-lane.js"
 import { bunWorkerClientLayers } from "./bun-worker-rpc.js"
 import type { RuntimeSessionDetailQuery, RuntimeSessionDetailResult } from "../../protocol/session-detail-protocol-types.js"
 import { RuntimeBackgroundRpc, type RuntimeBackgroundSummaryResult } from "../../protocol/runtime-protocol-schemas.js"
+import { stringRequestId } from "../../protocol/rpc-request-id.js"
 import type { SessionFileChangeCounts } from "../../protocol/session-changes-protocol-types.js"
 import { protocolBackgroundSchema, type ProtocolBackgroundDomain, type ProtocolBackgroundSnapshot } from "../../protocol/modules.js"
 import type { RuntimeBackgroundWorkerInit } from "./runtime-background-worker.js"
@@ -87,7 +88,7 @@ export function createProcessBackgroundClient(options: ProcessBackgroundClientOp
     worker.postMessage(init, [])
   }
   const runtime = ManagedRuntime.make(
-    Layer.effect(RuntimeBackgroundProtocolClientService, RpcClient.make(RuntimeBackgroundRpc)).pipe(
+    Layer.effect(RuntimeBackgroundProtocolClientService, RpcClient.make(RuntimeBackgroundRpc, { generateRequestId: stringRequestId })).pipe(
       Layer.provide(RpcClient.layerProtocolWorker({ size: 1, concurrency: 8 })),
       Layer.provide(bunWorkerClientLayers(spawn, initializeWorker)),
     ),

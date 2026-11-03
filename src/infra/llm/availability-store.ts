@@ -202,7 +202,7 @@ interface AvailabilitySnapshot {
 /** A current-schema row that fails strict decoding, or a SQLite corruption
  *  result. The database is left untouched and the authority fails closed:
  *  every later operation throws this same error. */
-export class AvailabilityCorruptError extends Schema.TaggedErrorClass<AvailabilityCorruptError>()("AvailabilityCorrupt", {
+export class AvailabilityCorruptError extends Schema.TaggedError<AvailabilityCorruptError>()("AvailabilityCorrupt", {
   message: Schema.String,
   at: Schema.String,
   reason: Schema.String,
@@ -211,7 +211,7 @@ export class AvailabilityCorruptError extends Schema.TaggedErrorClass<Availabili
 /** The file was written by a binary this one cannot coordinate with. Failing
  *  closed is the only safe answer: issuing uncoordinated provider requests
  *  would spend an account the other binary believes it is metering. */
-export class AvailabilityProtocolError extends Schema.TaggedErrorClass<AvailabilityProtocolError>()("AvailabilityProtocol", {
+export class AvailabilityProtocolError extends Schema.TaggedError<AvailabilityProtocolError>()("AvailabilityProtocol", {
   message: Schema.String,
   expected: Schema.Number,
   found: Schema.Number,
@@ -219,7 +219,7 @@ export class AvailabilityProtocolError extends Schema.TaggedErrorClass<Availabil
 
 /** Contention, permissions, or I/O. The caller keeps its in-memory projection
  *  and retries at its next observation; nothing about the file is suspect. */
-export class AvailabilityTransientError extends Schema.TaggedErrorClass<AvailabilityTransientError>()("AvailabilityTransient", {
+export class AvailabilityTransientError extends Schema.TaggedError<AvailabilityTransientError>()("AvailabilityTransient", {
   message: Schema.String,
   at: Schema.String,
   reason: Schema.String,

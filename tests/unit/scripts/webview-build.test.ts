@@ -3,8 +3,9 @@ import { createHash } from "node:crypto"
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { Script } from "node:vm"
 import { HOST_CONTRACT_VERSION } from "../../../src/protocol/client/host-contract.js"
-import { buildWebviewHosts, clientIdentity, localManifest, renderLocalIndex, solidWebPlugin } from "../../../webview/build.js"
+import { buildWebview, buildWebviewHosts, clientIdentity, localManifest, renderLocalIndex, solidWebPlugin } from "../../../webview/build.js"
 import { buildBootstrapBundles } from "../../../relay/app/build.js"
 import { buildExtension } from "../../../vscode/scripts/build.js"
 
@@ -58,6 +59,18 @@ describe("shared Solid browser build", () => {
     await rm(outdir, { recursive: true, force: true })
   })
 
+  test("emits a bundle that loads as a classic script when a dependency reads import.meta", async () => {
+    const root = await mkdtemp(join(tmpdir(), "flywheel-classic-script-"))
+    await writeFile(join(root, "entry.ts"), "export const env = globalThis.process?.env ?? import.meta?.env\nconsole.log(env)\n")
+
+    const result = await buildWebview({ entrypoints: [join(root, "entry.ts")], outdir: join(root, "out"), minify: true, naming: "[name].[ext]", sourcemap: "none" })
+
+    expect(result.success).toBe(true)
+    const bundle = await result.outputs[0]!.text()
+    expect(() => new Script(bundle)).not.toThrow()
+    await rm(root, { recursive: true, force: true })
+  })
+
   test("builds only the bootstrap and the service worker for the hosted phone page", async () => {
     const build = spyOn(Bun, "build").mockResolvedValue(successfulBuild)
 
@@ -74,6 +87,7 @@ describe("shared Solid browser build", () => {
       sourcemap: "linked",
       target: "browser",
       format: "iife",
+      define: { "import.meta": "{}" },
       plugins: [solidWebPlugin],
     })
   })

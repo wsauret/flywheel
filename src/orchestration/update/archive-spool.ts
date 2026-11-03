@@ -36,7 +36,7 @@ const TAR_LINKNAME_FIELD = { offset: 157, length: 100 } as const;
 const TAR_PREFIX_FIELD = { offset: 345, length: 155 } as const;
 
 /** The verified archive does not hold a build this reader can place. */
-export class UpdateArchiveError extends Schema.TaggedErrorClass<UpdateArchiveError>()("UpdateArchive", {
+export class UpdateArchiveError extends Schema.TaggedError<UpdateArchiveError>()("UpdateArchive", {
   message: Schema.String,
   reason: Schema.String,
 }) {}

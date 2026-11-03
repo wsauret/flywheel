@@ -1,5 +1,5 @@
-import { Cause, Deferred, Effect, Exit, Scope } from "effect"
-import { Socket } from "effect/unstable/socket"
+import { Cause, Deferred, Effect, Exit, Scope, Stream } from "effect"
+import { Socket } from "effect/socket"
 
 import type { ServeLane } from "../../../infra/cli-subprocess.js"
 import type { AccountProjectClone, ClonedProject } from "../../app-service/account-project-clone.js"
@@ -264,14 +264,14 @@ export function createAccountRelayService(options: {
     const inner = yield* Socket.fromTransformStream(Effect.succeed(streams))
     const sealed = sealedSocket(inner, { role: "runtime", publicKey: runtimeIdentity.publicKey, sign: runtimeIdentity.sign }, { kind: "paired", publicKey: fromBase64Url(device.publicKey) })
     const request = yield* Deferred.make<ProjectCreateRequest, Error>()
-    yield* Effect.forkScoped(sealed.socket.run((bytes) => {
+    yield* Effect.forkScoped(Stream.runForEach(Socket.toStream(sealed.socket), (bytes) => Effect.sync(() => {
       try {
         Deferred.doneUnsafe(request, Effect.succeed(decodeJsonFrame(decodeProjectCreateRequest, new TextDecoder().decode(bytes))))
       } catch {
         Deferred.doneUnsafe(request, Effect.fail(new Error("the device sent a request this machine cannot read")))
       }
-    }), { startImmediately: true })
-    const write = yield* sealed.socket.writer
+    })), { startImmediately: true })
+    const { write } = yield* sealed.socket.writer
     // A device that left meanwhile hears nothing; the creation goes on.
     const answer = (message: ProjectCreationAnswer) => write(new TextEncoder().encode(JSON.stringify(message))).pipe(Effect.ignore)
     yield* sealed.established.pipe(Effect.timeoutOrElse({ duration: CREATE_REQUEST_TIMEOUT_MS, orElse: () => Effect.fail(new Error("the device did not complete the handshake in time")) }))

@@ -437,7 +437,7 @@ test("reads the retired gpt-6-luna profile ids that earlier builds recorded, and
     // A v6 fact that a build before 2026-10-30 wrote for gpt-6-luna.
     const current = { ...written, payload: { ...written.payload, interactionProfileId: neutral } }
     expect(parseProviderRequestAuditFact(current).payload).toMatchObject({ interactionProfileId: neutral })
-    expect(() => parseProviderRequestAuditFact({ ...current, payload: { ...current.payload, interactionProfileId: legacy } })).toThrow(legacy)
+    expect(() => parseProviderRequestAuditFact({ ...current, payload: { ...current.payload, interactionProfileId: legacy } })).toThrow('at ["payload"]["interactionProfileId"]')
     const stored = facts.map((fact, position) => ({
       ...(fact.type === "model.requested" ? { ...fact, payload: { ...fact.payload, interactionProfileId: neutral } } : fact),
       id: `event-${position}`, aggregateId: "session:test", sessionId: "test", seq: position + 1,

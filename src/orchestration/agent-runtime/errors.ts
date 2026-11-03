@@ -9,13 +9,13 @@ import { classifyProviderFailure, ProviderAttemptFailure, providerRecovery, type
 import { ThinkingStallError } from "./llm/thinking-stall.js"
 import type { AgentFailureReason } from "./types.js"
 
-export class ContextOverflow extends Schema.TaggedErrorClass<ContextOverflow>()("ContextOverflow", {}) {}
-export class OutputOverflow extends Schema.TaggedErrorClass<OutputOverflow>()("OutputOverflow", {}) {}
+export class ContextOverflow extends Schema.TaggedError<ContextOverflow>()("ContextOverflow", {}) {}
+export class OutputOverflow extends Schema.TaggedError<OutputOverflow>()("OutputOverflow", {}) {}
 /** A provider request failed. `copy`, when present, is the presentation the
  *  failing attempt settled from facts the message does not carry, such as
  *  which provider refused its credential. `recovery` states whether a later
  *  run can send again or the failure needs a person. */
-export class ApiError extends Schema.TaggedErrorClass<ApiError>()("ApiError", { message: Schema.String }) {
+export class ApiError extends Schema.TaggedError<ApiError>()("ApiError", { message: Schema.String }) {
   readonly copy?: ProviderErrorCopy
   readonly recovery: ProviderRecovery
 
@@ -28,29 +28,29 @@ export class ApiError extends Schema.TaggedErrorClass<ApiError>()("ApiError", { 
 /** No configured provider offers the model, so no provider was called. Apart
  *  from ApiError so that a caller can tell a wrong model id from a provider
  *  failure. */
-export class ModelUnavailable extends Schema.TaggedErrorClass<ModelUnavailable>()("ModelUnavailable", { message: Schema.String, missing: Schema.Literals(["provider", "offering", "access"]) }) {}
-export class TransientDisconnect extends Schema.TaggedErrorClass<TransientDisconnect>()("TransientDisconnect", { message: Schema.String }) {}
+export class ModelUnavailable extends Schema.TaggedError<ModelUnavailable>()("ModelUnavailable", { message: Schema.String, missing: Schema.Literals(["provider", "offering", "access"]) }) {}
+export class TransientDisconnect extends Schema.TaggedError<TransientDisconnect>()("TransientDisconnect", { message: Schema.String }) {}
 const StallAttributionSchema = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("provider"), provider: AccessProviderIdSchema }),
   Schema.Struct({ kind: Schema.Literal("unattributed") }),
 ]);
 
-export class StreamStalled extends Schema.TaggedErrorClass<StreamStalled>()("StreamStalled", {
+export class StreamStalled extends Schema.TaggedError<StreamStalled>()("StreamStalled", {
   message: Schema.String,
   attribution: StallAttributionSchema,
 }) {}
-export class ApiOverloaded extends Schema.TaggedErrorClass<ApiOverloaded>()("ApiOverloaded", { message: Schema.String }) {}
+export class ApiOverloaded extends Schema.TaggedError<ApiOverloaded>()("ApiOverloaded", { message: Schema.String }) {}
 /** The provider refused the request because of conversation content. `message` is the provider failure text
  *  the person reads, `reason` the provider's own words, and `part` the canonical tool result part it names. */
-export class ContentRefused extends Schema.TaggedErrorClass<ContentRefused>()("ContentRefused", {
+export class ContentRefused extends Schema.TaggedError<ContentRefused>()("ContentRefused", {
   message: Schema.String,
   reason: Schema.String,
   part: Schema.optionalKey(Schema.Struct({ toolUseId: Schema.String, partIndex: Schema.Int, kind: RefusedPartKindSchema })),
 }) {}
 /** The provider's content filter stopped the response after the request was accepted. */
-class ContentFiltered extends Schema.TaggedErrorClass<ContentFiltered>()("ContentFiltered", { message: Schema.String }) {}
-export class AgentAborted extends Schema.TaggedErrorClass<AgentAborted>()("AgentAborted", {}) {}
-export class ProviderAuditSettlementError extends Schema.TaggedErrorClass<ProviderAuditSettlementError>()("ProviderAuditSettlementError", { message: Schema.String }) {}
+class ContentFiltered extends Schema.TaggedError<ContentFiltered>()("ContentFiltered", { message: Schema.String }) {}
+export class AgentAborted extends Schema.TaggedError<AgentAborted>()("AgentAborted", {}) {}
+export class ProviderAuditSettlementError extends Schema.TaggedError<ProviderAuditSettlementError>()("ProviderAuditSettlementError", { message: Schema.String }) {}
 // The agent broke its handoff contract: every correction the bounded loop
 // allowed was rejected (see agent-loop-handoff.ts). It is a plain Error outside
 // AgentRuntimeError because the model request did not fail, so it must never

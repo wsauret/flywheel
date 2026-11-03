@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import { Effect, Exit, Fiber, Scope } from "effect"
-import { Socket } from "effect/unstable/socket"
+import { Effect, Exit, Fiber, Scope, Stream } from "effect"
+import { Socket } from "effect/socket"
 
 import { deriveSealedKeys, SEALED_FRAME_MAX_BYTES, SealedChannelError, sealedSocket, type SealedIdentity, type SealedPeer, type SealedSocket } from "../../../../../src/protocol/modules/remote/sealed-socket.js"
 import { fromBase64Url, keyDigest, ownedBytes, toBase64Url } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
@@ -78,8 +78,8 @@ async function connectPair(options: {
     Effect.gen(function*() {
       const sealed = sealedSocket(inner, identity, peer)
       const received: Uint8Array[] = []
-      const fiber = yield* Effect.forkScoped(sealed.socket.run((bytes) => { received.push(bytes) }), { startImmediately: true })
-      const write = yield* sealed.socket.writer
+      const fiber = yield* Effect.forkScoped(Stream.runForEach(Socket.toStream(sealed.socket), (bytes) => Effect.sync(() => { received.push(bytes) })), { startImmediately: true })
+      const { write } = yield* sealed.socket.writer
       return { sealed, received, write, ended: Effect.exit(Fiber.join(fiber)) }
     })
   const program = Effect.gen(function*() {

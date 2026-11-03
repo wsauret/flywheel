@@ -247,6 +247,9 @@ test("a change costs the same requests, facts, aggregate ids, and members whatev
     const aggregateIds = requests.reduce((total, request) => total + (request.query?.types?.includes("child_run.created") ? 0 : request.query?.aggregateIds?.length ?? 0), 0)
     return { requests: requests.length, facts: factsRead(requests), aggregateIds, members }
   }
+  // Effect builds and memoizes the parser of a schema on its first decode, so
+  // the first change pays a one-time cost that no later change repeats.
+  await changeCost(1, 2)
   const base = await changeCost(1, 2)
   expect(await changeCost(50, 2)).toEqual(base)
   // Past the bound of held measures, the first child measured is the least

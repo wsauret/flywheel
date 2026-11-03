@@ -282,10 +282,10 @@ describe("persona tool grants", () => {
   });
 
   it("rejects an unknown legacy tool name", () => {
-    expect(() => Schema.decodeUnknownSync(PersonaDefinitionSchema)({ ...BASE_PERSONA, tools: ["typo_tool"] })).toThrow(/typo_tool/);
+    expect(() => Schema.decodeUnknownSync(PersonaDefinitionSchema)({ ...BASE_PERSONA, tools: ["typo_tool"] })).toThrow(/at \["tools"\]\[0\]/);
   });
 
   it("rejects an unknown excluded action", () => {
-    expect(() => Schema.decodeUnknownSync(PersonaDefinitionSchema)({ ...BASE_PERSONA, excludeActions: ["unknown_action"] })).toThrow(/unknown_action/);
+    expect(() => Schema.decodeUnknownSync(PersonaDefinitionSchema)({ ...BASE_PERSONA, excludeActions: ["unknown_action"] })).toThrow(/at \["excludeActions"\]\[0\]/);
   });
 });

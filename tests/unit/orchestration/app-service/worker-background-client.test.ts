@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import { Effect, Layer, ManagedRuntime } from "effect"
-import { RpcServer } from "effect/unstable/rpc"
+import { RpcServer } from "effect/rpc"
 import { isAbortError } from "../../../../src/infra/abort.js"
 import { errorMessage } from "../../../../src/infra/error-message.js"
 import { bunWorkerRunnerLayer } from "../../../../src/orchestration/app-service/bun-worker-rpc.js"

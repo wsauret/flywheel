@@ -448,7 +448,7 @@ export const DefinitionIdentityMigrationSchema = Schema.Struct({
   || `reason must be the registered reason of migration "${payload.migrationId}"`))
 export type DefinitionIdentityMigration = typeof DefinitionIdentityMigrationSchema.Type
 
-export class WorkflowDefinitionDriftError extends Schema.TaggedErrorClass<WorkflowDefinitionDriftError>()(
+export class WorkflowDefinitionDriftError extends Schema.TaggedError<WorkflowDefinitionDriftError>()(
   "WorkflowDefinitionDriftError",
   {
     workflowId: IdSchema,

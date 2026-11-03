@@ -17,8 +17,10 @@ import { createStartupTimeline } from "../../infra/startup-timeline.js"
 import { ownedCommandRunner } from "../../infra/owned-command.js"
 import { accountProjectsDir, CURRENT_BUILD_LINK, globalConfigFile, projectWebPort, projectWebTokenPath } from "../../infra/paths.js"
 import { ManagedRuntime, Effect, FiberSet, Layer, Redacted, Scope } from "effect"
-import { RpcSerialization, RpcServer } from "effect/unstable/rpc"
-import { Socket, SocketServer } from "effect/unstable/socket"
+import { RpcServer } from "effect/rpc"
+import { layerMsgPack } from "../../protocol/rpc-msgpack.js"
+import { NetAddress } from "effect/net"
+import { Socket, SocketServer } from "effect/socket"
 
 import type { RuntimeServiceState } from "../../protocol/app-service-types.js"
 import { RuntimeProtocolRpc } from "../../protocol/runtime-protocol-schemas.js"
@@ -383,7 +385,7 @@ export async function createAccountServiceRuntime(options: AccountServiceRuntime
             Layer.fresh(RpcServer.layer(RuntimeProtocolRpc)).pipe(
               Layer.provide(runtimeHandlers(composition, log, handlerOptions)),
               Layer.provide(Layer.fresh(runtimeProtocolSocketServer)),
-              Layer.provide(RpcSerialization.layerMsgPack),
+              Layer.provide(layerMsgPack),
               Layer.provide(listener((open) => {
                 while (releases.length < open) releases.push(projectRuntime.holdClient())
                 while (releases.length > open) releases.pop()?.()
@@ -417,7 +419,7 @@ export async function createAccountServiceRuntime(options: AccountServiceRuntime
             Layer.fresh(RpcServer.layer(RuntimeProtocolRpc)).pipe(
               Layer.provide(runtimeHandlers(composition, log, handlerOptions)),
               Layer.provide(Layer.fresh(runtimeProtocolSocketServer)),
-              Layer.provide(RpcSerialization.layerMsgPack),
+              Layer.provide(layerMsgPack),
               Layer.provide(webSocketServerLayer({
                 token: webToken,
                 port: preferredWebPort,
@@ -596,7 +598,7 @@ export async function createAccountServiceRuntime(options: AccountServiceRuntime
           }
         }
         const singletonSocketServer = Layer.succeed(SocketServer.SocketServer, SocketServer.SocketServer.of({
-          address: { _tag: "UnixAddress", path: options.socketPath },
+          address: NetAddress.unixPathAddress(options.socketPath),
           run: <R, E, A>(handler: (socket: Socket.Socket) => Effect.Effect<A, E, R>) =>
             Effect.scopedWith((scope) =>
               Effect.gen(function*() {
@@ -611,7 +613,7 @@ export async function createAccountServiceRuntime(options: AccountServiceRuntime
           Layer.fresh(RpcServer.layer(RuntimeProtocolRpc)).pipe(
             Layer.provide(runtimeHandlers(project.composition, log, handlerOptions)),
             Layer.provide(Layer.fresh(runtimeProtocolSocketServer)),
-            Layer.provide(RpcSerialization.layerMsgPack),
+            Layer.provide(layerMsgPack),
             Layer.provide(singletonSocketServer),
           ),
         )

@@ -51,7 +51,7 @@ export const RecallInputSchema: Schema.Codec<RecallInput> = Schema.Struct({
   offset: Schema.optionalKey(NonNegativeInteger),
   limit: Schema.optionalKey(PositiveInteger.check(Schema.isLessThanOrEqualTo(RECALL_READ_MAX_LIMIT))),
   page: Schema.optionalKey(PositiveInteger),
-}).pipe(Schema.annotate({ parseOptions: { onExcessProperty: "error" } }))
+})
 
 const RecallHitSchema: Schema.Codec<RecallHit> = Schema.Struct({
   index: NonNegativeInteger,
@@ -64,12 +64,12 @@ const RecallHitSchema: Schema.Codec<RecallHit> = Schema.Struct({
   totalLength: Schema.optionalKey(NonNegativeInteger),
   nextOffset: Schema.optionalKey(NonNegativeInteger),
   files: Schema.optionalKey(Schema.Array(Schema.String)),
-}).pipe(Schema.annotate({ parseOptions: { onExcessProperty: "error" } }))
+})
 
 export const RecallResultSchema: Schema.Codec<RecallResult> = Schema.Struct({
   hits: Schema.Array(RecallHitSchema),
   totalMatches: Schema.optionalKey(NonNegativeInteger),
   invalidExpand: Schema.optionalKey(Schema.Array(RecallEntryReferenceSchema)),
-}).pipe(Schema.annotate({ parseOptions: { onExcessProperty: "error" } }))
+})
 
 export type RecallPort = (input: RecallInput) => Promise<RecallResult>

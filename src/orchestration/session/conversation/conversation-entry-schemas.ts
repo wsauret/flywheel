@@ -1,5 +1,5 @@
 import { ReferenceReviewNoticeFields, ReviewNoticeMutationSchema } from "../../../infra/review-notice.js";
-import { Effect, Option, Schema, SchemaIssue, SchemaTransformation } from "effect";
+import { Effect, Schema, SchemaIssue, SchemaTransformation } from "effect";
 import { LlmToolOutputPartSchema } from "../../../infra/llm/tool-output-part-schema.js";
 import { ToolContentReferencePartSchema } from "../../../infra/tool-content.js";
 import { AccessProviderIdSchema } from "../../../infra/llm/access-provider.js";
@@ -159,10 +159,10 @@ const ProducerV5VocabularySchema = Schema.Union([HumanProducerSchema, SessionPro
 /** Every version 5 producer is a current one, so it decodes unchanged. No
  *  writer encodes into an earlier version, and a launch producer has no
  *  version 5 shape, so its encoding is refused. */
-const producerV5ToCurrent = SchemaTransformation.transformOrFail<typeof CurrentProducerSchema.Type, typeof ProducerV5VocabularySchema.Type>({
+const producerV5ToCurrent = SchemaTransformation.transformEffect<typeof CurrentProducerSchema.Type, typeof ProducerV5VocabularySchema.Type>({
   decode: (producer) => Effect.succeed(producer),
   encode: (producer) => producer.kind === "launch"
-    ? Effect.fail(new SchemaIssue.Forbidden(Option.some(producer), { message: "chat.entries.appended version 5 cannot store a launch producer" }))
+    ? Effect.fail(new SchemaIssue.Forbidden({ message: "chat.entries.appended version 5 cannot store a launch producer" }))
     : Effect.succeed(producer),
 });
 

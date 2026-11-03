@@ -1,7 +1,8 @@
 import { test, expect } from "bun:test"
 import { Effect, Layer, ManagedRuntime } from "effect"
-import { RpcSerialization, RpcServer } from "effect/unstable/rpc"
-import { Socket } from "effect/unstable/socket"
+import { RpcServer } from "effect/rpc"
+import { layerMsgPack, msgPack } from "../../../src/protocol/rpc-msgpack.js"
+import { Socket } from "effect/socket"
 import { mkdtempSync, rmSync } from "node:fs"
 import net from "node:net"
 import { Duplex } from "node:stream"
@@ -45,7 +46,7 @@ function idleService(): Parameters<typeof runtimeHandlers>[0]["client"] {
 }
 
 function isPingOnly(chunk: Uint8Array): boolean {
-  const parser = RpcSerialization.msgPack.makeUnsafe()
+  const parser = msgPack.makeUnsafe()
   const messages = parser.decode(chunk)
   return messages.length > 0 && messages.every((message) => typeof message === "object" && message !== null && "_tag" in message && message._tag === "Ping")
 }
@@ -98,7 +99,7 @@ test("the event lane stays attached when request-level pings are never answered"
     RpcServer.layer(RuntimeProtocolRpc).pipe(
       Layer.provide(runtimeHandlers({ client: idleService(), outputWatches: createOutputWatches({ onUnionChange: () => {} }) }, log, { version: "0.1.0" })),
       Layer.provide(runtimeProtocolSocketServer),
-      Layer.provide(RpcSerialization.layerMsgPack),
+      Layer.provide(layerMsgPack),
       Layer.provide(bunSocketServerLayer({ path: socketPath, onListening: () => listening.resolve() })),
     ),
   )

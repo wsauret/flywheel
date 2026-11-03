@@ -1,6 +1,6 @@
 import { Cause, Effect, Exit, Layer, ManagedRuntime, Schema, Stream } from "effect"
-import { RpcClient, RpcClientError, type RpcGroup, RpcSerialization } from "effect/unstable/rpc"
-import { Socket } from "effect/unstable/socket"
+import { RpcClient, RpcClientError, type RpcGroup } from "effect/rpc"
+import { Socket } from "effect/socket"
 
 import type {
   AttachedRuntimeClient,
@@ -14,6 +14,8 @@ import type {
 } from "../app-service-types.js"
 import type { RuntimeInvalidationReason } from "../runtime-ui-protocol-types.js"
 import { RuntimeProtocolError, RuntimeProtocolRpc, runtimeQueryResultSchema } from "../runtime-protocol-schemas.js"
+import { layerMsgPack } from "../rpc-msgpack.js"
+import { stringRequestId } from "../rpc-request-id.js"
 import { runtimeDispatchResultSchema } from "../runtime-dispatch-result-schemas.js"
 import { RUNTIME_LIVENESS_POLICY, RUNTIME_PROTOCOL_VERSION, type RuntimeLivenessPolicy } from "../runtime-liveness.js"
 import { applyRuntimeCallPolicy, RuntimeCallTimeout, runtimeCallPolicies, type RuntimeCallPolicy } from "../runtime-client-deadlines.js"
@@ -306,7 +308,7 @@ export function createRuntimeConnection(options: RuntimeConnectionOptions): Runt
     const made: ManagedRuntime.ManagedRuntime<RpcClient.Protocol, never> = ManagedRuntime.make(
       socketProtocolLayer({ onRequestWritten: (request) => requestWritten(made, request.tag, request.payload) }).pipe(
         Layer.provide(options.socket),
-        Layer.provide(RpcSerialization.layerMsgPack),
+        Layer.provide(layerMsgPack),
         Layer.provideMerge(laneSchedulerLayer(options.schedulerHost)),
       ),
     )
@@ -571,7 +573,7 @@ export function createRuntimeConnection(options: RuntimeConnectionOptions): Runt
     if (closing) throw new Error("runtime connection is closed")
     // The time spent waiting for the lane counts against the call's deadline.
     const remaining: RuntimeCallPolicy = policy._tag === "BestEffort" ? { _tag: "BestEffort", deadlineMs: Math.max(0, policy.deadlineMs - (now() - askedAt)) } : policy
-    const operation = Effect.scoped(Effect.flatMap(RpcClient.make(RuntimeProtocolRpc), run))
+    const operation = Effect.scoped(Effect.flatMap(RpcClient.make(RuntimeProtocolRpc, { generateRequestId: stringRequestId }), run))
     const running = runtime.runPromiseExit(applyRuntimeCallPolicy(operation, remaining))
     inFlight.add(running)
     let exit: Exit.Exit<A, unknown>
@@ -625,7 +627,7 @@ export function createRuntimeConnection(options: RuntimeConnectionOptions): Runt
   /** One subscription attempt. Settles when the stream ends for any reason; the
    *  loop above decides whether that becomes a reconnect. */
   function consumeEvents(signal: AbortSignal): Promise<void> {
-    return runtime.runPromise(Effect.scoped(Effect.flatMap(RpcClient.make(RuntimeProtocolRpc), (client) =>
+    return runtime.runPromise(Effect.scoped(Effect.flatMap(RpcClient.make(RuntimeProtocolRpc, { generateRequestId: stringRequestId }), (client) =>
       client.RuntimeEvents({ protocolVersion: RUNTIME_PROTOCOL_VERSION, ...(options.clientIdentity === undefined ? {} : { clientIdentity: options.clientIdentity }) }).pipe(
         Stream.timeoutOrElse({
           duration: liveness.silenceDeadlineMs,

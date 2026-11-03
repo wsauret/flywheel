@@ -31,32 +31,32 @@ export class ProviderAuthenticationError extends Error {
 }
 
 /** Provider says back off (429 or a rate-limit frame): prefers the carried hint. */
-class RateLimitFailure extends Schema.TaggedErrorClass<RateLimitFailure>()("RateLimitFailure", failureFields) {}
+class RateLimitFailure extends Schema.TaggedError<RateLimitFailure>()("RateLimitFailure", failureFields) {}
 /** Adapter-classified saturation (LlmStreamError kind "overload"): terminal for
  *  the in-stream retry loop; the outer resilience layer owns recovery. */
-class OverloadedFailure extends Schema.TaggedErrorClass<OverloadedFailure>()("OverloadedFailure", failureFields) {}
+class OverloadedFailure extends Schema.TaggedError<OverloadedFailure>()("OverloadedFailure", failureFields) {}
 /** Network resets, torn streams, timeouts: retryable with exponential backoff. */
-class TransientNetworkFailure extends Schema.TaggedErrorClass<TransientNetworkFailure>()("TransientNetworkFailure", failureFields) {}
+class TransientNetworkFailure extends Schema.TaggedError<TransientNetworkFailure>()("TransientNetworkFailure", failureFields) {}
 /** 401/403: credentials are wrong or expired; retrying cannot help. */
-class AuthFailure extends Schema.TaggedErrorClass<AuthFailure>()("AuthFailure", failureFields) {}
+class AuthFailure extends Schema.TaggedError<AuthFailure>()("AuthFailure", failureFields) {}
 /** 400/404 or provider-declared do-not-retry: the request itself is malformed. */
-class InvalidRequestFailure extends Schema.TaggedErrorClass<InvalidRequestFailure>()("InvalidRequestFailure", failureFields) {}
-class ContextOverflowFailure extends Schema.TaggedErrorClass<ContextOverflowFailure>()("ContextOverflowFailure", failureFields) {}
-class OutputOverflowFailure extends Schema.TaggedErrorClass<OutputOverflowFailure>()("OutputOverflowFailure", failureFields) {}
+class InvalidRequestFailure extends Schema.TaggedError<InvalidRequestFailure>()("InvalidRequestFailure", failureFields) {}
+class ContextOverflowFailure extends Schema.TaggedError<ContextOverflowFailure>()("ContextOverflowFailure", failureFields) {}
+class OutputOverflowFailure extends Schema.TaggedError<OutputOverflowFailure>()("OutputOverflowFailure", failureFields) {}
 /** The account does not grant this model, or this model at its extended
  *  context window. A retry on the same candidate would repeat it, and the
  *  provider's other models are unaffected, so nothing retries and nothing
  *  marks. Another account can grant the model, so the walk tries the next
  *  candidate. */
-class ModelAccessFailure extends Schema.TaggedErrorClass<ModelAccessFailure>()("ModelAccessFailure", failureFields) {}
+class ModelAccessFailure extends Schema.TaggedError<ModelAccessFailure>()("ModelAccessFailure", failureFields) {}
 /** The candidate's route cannot run on this machine, such as a provider whose local program is missing. Nothing
  *  reached the provider, so nothing retries on this candidate and nothing marks; the walk tries the next one. */
-class RouteUnavailableFailure extends Schema.TaggedErrorClass<RouteUnavailableFailure>()("RouteUnavailableFailure", failureFields) {}
+class RouteUnavailableFailure extends Schema.TaggedError<RouteUnavailableFailure>()("RouteUnavailableFailure", failureFields) {}
 /** Quota, credit, or plan entitlement is spent: retrying cannot pay for it. */
-class QuotaExhaustedFailure extends Schema.TaggedErrorClass<QuotaExhaustedFailure>()("QuotaExhaustedFailure", failureFields) {}
+class QuotaExhaustedFailure extends Schema.TaggedError<QuotaExhaustedFailure>()("QuotaExhaustedFailure", failureFields) {}
 /** The account's availability could not be coordinated across processes:
  *  retrying would spend an account the other processes are still metering. */
-class QuotaCoordinationFailure extends Schema.TaggedErrorClass<QuotaCoordinationFailure>()("QuotaCoordinationFailure", failureFields) {}
+class QuotaCoordinationFailure extends Schema.TaggedError<QuotaCoordinationFailure>()("QuotaCoordinationFailure", failureFields) {}
 /** A strict credential-store mutation refused bytes that this request captured. */
 class AuthConditionFailure extends Error {
   readonly _tag = "AuthConditionFailure" as const;
@@ -64,9 +64,9 @@ class AuthConditionFailure extends Error {
     super(cause.message, { cause });
   }
 }
-class RequestAbortedFailure extends Schema.TaggedErrorClass<RequestAbortedFailure>()("RequestAbortedFailure", failureFields) {}
+class RequestAbortedFailure extends Schema.TaggedError<RequestAbortedFailure>()("RequestAbortedFailure", failureFields) {}
 /** Unrecognized failures stay outside the automatic provider failover walk. */
-class UnknownProviderFailure extends Schema.TaggedErrorClass<UnknownProviderFailure>()("UnknownProviderFailure", failureFields) {}
+class UnknownProviderFailure extends Schema.TaggedError<UnknownProviderFailure>()("UnknownProviderFailure", failureFields) {}
 
 export type ProviderFailure =
   | RateLimitFailure

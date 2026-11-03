@@ -1,5 +1,5 @@
-import { Deferred, Effect, Schema } from "effect"
-import { Socket } from "effect/unstable/socket"
+import { Deferred, Effect, Schema, Stream } from "effect"
+import { Socket } from "effect/socket"
 
 import { attachDeviceChannel, type DeviceIdentity } from "./relay-channel.js"
 import { decodeJsonFrame, fromBase64Url, type Placement } from "./relay-protocol.js"
@@ -84,7 +84,7 @@ export async function requestProjectCreation(request: ProjectCreationRequest): P
       const sealed = sealedSocket(inner, { role: "device", publicKey: request.device.publicKey, sign: request.device.sign }, { kind: "paired", publicKey: fromBase64Url(request.runtimePublicKey) })
       const outcome = yield* Deferred.make<CreatedProject, Error>()
       const ended = new Error("The machine stopped answering. If it finished the clone, the project appears in its list.")
-      yield* Effect.forkScoped(sealed.socket.run((bytes) => {
+      yield* Effect.forkScoped(Stream.runForEach(Socket.toStream(sealed.socket), (bytes) => Effect.sync(() => {
         let answer: ProjectCreationAnswer
         try {
           answer = decodeJsonFrame(decodeProjectCreationAnswer, new TextDecoder().decode(bytes))
@@ -103,8 +103,8 @@ export async function requestProjectCreation(request: ProjectCreationRequest): P
             Deferred.doneUnsafe(outcome, Effect.fail(new Error(answer.message)))
             return
         }
-      }).pipe(Effect.ensuring(Effect.sync(() => { Deferred.doneUnsafe(outcome, Effect.fail(ended)) }))), { startImmediately: true })
-      const write = yield* sealed.socket.writer
+      })).pipe(Effect.ensuring(Effect.sync(() => { Deferred.doneUnsafe(outcome, Effect.fail(ended)) }))), { startImmediately: true })
+      const { write } = yield* sealed.socket.writer
       yield* sealed.established
       const ask: ProjectCreateRequest = { type: "project.create", repository: request.repository }
       yield* write(new TextEncoder().encode(JSON.stringify(ask)))

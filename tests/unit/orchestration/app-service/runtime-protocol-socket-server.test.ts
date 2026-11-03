@@ -1,10 +1,13 @@
 import { describe, expect, test } from "bun:test"
 import { type Cause, Effect, Layer, ManagedRuntime, Queue, Schema, Stream } from "effect"
-import { Rpc, RpcClient, RpcGroup, type RpcMessage, RpcSerialization, RpcServer } from "effect/unstable/rpc"
-import { Socket, SocketServer } from "effect/unstable/socket"
+import { Rpc, RpcClient, RpcGroup, type RpcMessage, RpcServer } from "effect/rpc"
+import { layerMsgPack, msgPack } from "../../../../src/protocol/rpc-msgpack.js"
+import { NetAddress } from "effect/net"
+import { Socket, SocketServer } from "effect/socket"
 
 import { runtimeProtocolSocketServer } from "../../../../src/orchestration/app-service/runtime-protocol-socket-server.js"
 import { socketProtocolLayer } from "../../../../src/protocol/client/socket-protocol.js"
+import { stringRequestId } from "../../../../src/protocol/rpc-request-id.js"
 
 /** The runtime's server protocol lets a stream's chunks travel ahead of the
  *  client's acknowledgements up to a byte window, and holds the stream only
@@ -104,7 +107,7 @@ function isServerMessage(raw: unknown): raw is ServerMessage {
 async function serve() {
   const finalized = { count: 0 }
   const fromServer: Array<ServerMessage> = []
-  const observer = RpcSerialization.msgPack.makeUnsafe()
+  const observer = msgPack.makeUnsafe()
   const toServer = pipe()
   const toClient = pipe((bytes) => {
     for (const raw of observer.decode(bytes)) {
@@ -114,17 +117,17 @@ async function serve() {
   })
   const serverSocket = await Effect.runPromise(Socket.fromTransformStream(Effect.succeed({ readable: toServer.readable, writable: toClient.writable })))
   const socketServer = Layer.succeed(SocketServer.SocketServer, SocketServer.SocketServer.of({
-    address: { _tag: "UnixAddress", path: "memory" },
+    address: NetAddress.unixPathAddress("memory"),
     run: (handler) => Effect.flatMap(Effect.orDie(handler(serverSocket)), () => Effect.never),
   }))
   const server = ManagedRuntime.make(RpcServer.layer(Probe).pipe(
     Layer.provide(probeHandlers(finalized)),
     Layer.provide(runtimeProtocolSocketServer),
-    Layer.provide(RpcSerialization.layerMsgPack),
+    Layer.provide(layerMsgPack),
     Layer.provide(socketServer),
   ))
   await server.runPromise(Effect.void)
-  const encoder = RpcSerialization.msgPack.makeUnsafe()
+  const encoder = msgPack.makeUnsafe()
   let writer: WritableStreamDefaultWriter<Uint8Array> | undefined
   return {
     finalized,
@@ -234,10 +237,15 @@ describe("runtime protocol socket server", () => {
 
   test("every chunk reaches a slow client before the stream ends", async () => {
     const lane = await serve()
-    const client = ManagedRuntime.make(socketProtocolLayer().pipe(Layer.provide(lane.clientSocket), Layer.provide(RpcSerialization.layerMsgPack)))
+    const client = ManagedRuntime.make(socketProtocolLayer().pipe(Layer.provide(lane.clientSocket), Layer.provide(layerMsgPack)))
     try {
       const received = await client.runPromise(Effect.scoped(Effect.gen(function*() {
-        const rpc = yield* RpcClient.make(Probe)
+        const rpc = yield* RpcClient.make(Probe, { generateRequestId: stringRequestId })
+        // Effect's client protocol buffers what arrives before the client's
+        // reader starts and lets later frames pass that buffer while it drains,
+        // which an in-memory pipe can reach and a real socket's round trip
+        // cannot. One answered call first starts the reader, as an attach does.
+        yield* rpc.Echo({ text: "ready" })
         // A two-value buffer and a consumer that yields after every value
         // keep chunks parked in the client while the stream's exit arrives.
         return yield* rpc.Frames({ count: 40 }, { streamBufferSize: 2 }).pipe(

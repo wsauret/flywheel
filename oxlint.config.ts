@@ -70,6 +70,7 @@ const permanentlyDisabledRules = {
   "promise/prefer-await-to-then": "off", // `.then` is sometimes the cleanest bridge form.
   "promise/prefer-catch": "off", // Catch placement is part of bridge/error-channel design.
   "unicorn/no-thenable": "off", // `then` is a Flywheel workflow schema term, not a thenable bug.
+  "unicorn/throw-new-error": "off", // Effect's `Schema.TaggedError<E>()(...)` class factory ends in Error, and `Error()` equals `new Error()`.
 
   // JSDoc is not Flywheel's source of truth for API contracts.
   "jsdoc/check-tag-names": "off",

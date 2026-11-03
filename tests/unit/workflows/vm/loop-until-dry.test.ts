@@ -75,7 +75,7 @@ describe("repeat over a list compilation", () => {
   });
 
   it("refuses a key that a repeat does not take at decode", () => {
-    expect(() => Schema.decodeUnknownSync(WorkflowDefinitionSchema, { onExcessProperty: "error" })(dryDefinition({ loop: { then: "report" } }))).toThrow("Unexpected key");
+    expect(() => Schema.decodeUnknownSync(WorkflowDefinitionSchema, { onExcessProperty: "error" })(dryDefinition({ loop: { then: "report" } }))).toThrow("Expected no excess property");
   });
 
   it("counts every round in the worst case, and a file's launch takes it as its attempt limit", () => {

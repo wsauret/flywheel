@@ -1,21 +1,24 @@
 import { describe, expect, test } from "bun:test"
 import { Context, Effect, Layer, ManagedRuntime, Schema, type Scope, Stream } from "effect"
-import { Rpc, RpcClient, type RpcClientError, RpcGroup, RpcSerialization, RpcServer } from "effect/unstable/rpc"
-import { Socket } from "effect/unstable/socket"
+import { Rpc, RpcClient, type RpcClientError, RpcGroup, RpcServer } from "effect/rpc"
+import { layerMsgPack } from "../../../../../src/protocol/rpc-msgpack.js"
+import { Socket } from "effect/socket"
 
 import { relaySocketServerLayer } from "../../../../../src/orchestration/modules/remote/relay-socket-server.js"
 import { runtimeProtocolSocketServer } from "../../../../../src/orchestration/app-service/runtime-protocol-socket-server.js"
+import { socketProtocolLayer } from "../../../../../src/protocol/client/socket-protocol.js"
 import { sealedSocket, type SealedIdentity } from "../../../../../src/protocol/modules/remote/sealed-socket.js"
 import { asKeyPair, ownedBytes } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
 import type { RemoteAccess, RemoteChannelAccept } from "../../../../../src/orchestration/modules/remote/remote-access.js"
 import type { RuntimeRemoteView } from "../../../../../src/protocol/modules/remote.js"
+import { stringRequestId } from "../../../../../src/protocol/rpc-request-id.js"
 
 /** The relay placement of the protocol server is a `SocketServer` whose
  *  accepts come from the remote-access service. These tests hand it in-memory
  *  sockets in place of sealed relay channels and check the three shapes the
  *  protocol is made of, plus the count the idle reaper reads. */
 
-class ProbeError extends Schema.TaggedErrorClass<ProbeError>()("ProbeError", { message: Schema.String }) {}
+class ProbeError extends Schema.TaggedError<ProbeError>()("ProbeError", { message: Schema.String }) {}
 
 const ProbeRpc = RpcGroup.make(
   Rpc.make("Echo", { payload: Schema.Struct({ text: Schema.String }), success: Schema.String, error: ProbeError }),
@@ -111,7 +114,7 @@ async function withRelayServer<A>(run: (client: RpcClient.RpcClient<RpcGroup.Rpc
   const server = ManagedRuntime.make(RpcServer.layer(ProbeRpc).pipe(
     Layer.provide(probeHandlers),
     Layer.provide(runtimeProtocolSocketServer),
-    Layer.provide(RpcSerialization.layerMsgPack),
+    Layer.provide(layerMsgPack),
     Layer.provide(relaySocketServerLayer({ remote, onConnectionCountChanged: (open) => { counts.push(open) } })),
   ))
   try {
@@ -120,9 +123,9 @@ async function withRelayServer<A>(run: (client: RpcClient.RpcClient<RpcGroup.Rpc
     const handler = await registered(accept)
     const pair = await socketPair()
     void handler(pair.server, { id: "dev", label: "phone", publicKey: "k", pairedAt: 0 })
-    const client = ManagedRuntime.make(RpcClient.layerProtocolSocket().pipe(Layer.provide(pair.client), Layer.provide(RpcSerialization.layerMsgPack)))
+    const client = ManagedRuntime.make(socketProtocolLayer().pipe(Layer.provide(pair.client), Layer.provide(layerMsgPack)))
     try {
-      return await client.runPromise(Effect.scoped(Effect.flatMap(RpcClient.make(ProbeRpc), (rpc) => run(rpc, counts))))
+      return await client.runPromise(Effect.scoped(Effect.flatMap(RpcClient.make(ProbeRpc, { generateRequestId: stringRequestId }), (rpc) => run(rpc, counts))))
     } finally {
       await client.dispose()
     }
@@ -145,7 +148,7 @@ async function withSealedServer<A>(run: (client: RpcClient.RpcClient<RpcGroup.Rp
   const server = ManagedRuntime.make(RpcServer.layer(ProbeRpc).pipe(
     Layer.provide(probeHandlers),
     Layer.provide(runtimeProtocolSocketServer),
-    Layer.provide(RpcSerialization.layerMsgPack),
+    Layer.provide(layerMsgPack),
     Layer.provide(relaySocketServerLayer({ remote })),
   ))
   try {
@@ -154,9 +157,9 @@ async function withSealedServer<A>(run: (client: RpcClient.RpcClient<RpcGroup.Rp
     const pair = await socketPair()
     void handler(sealedSocket(pair.server, runtime, { kind: "paired", publicKey: device.publicKey }).socket, { id: "dev", label: "phone", publicKey: "k", pairedAt: 0 })
     const sealedClient = Layer.effect(Socket.Socket)(Effect.map(Layer.build(pair.client).pipe(Effect.map((context) => Context.get(context, Socket.Socket))), (inner) => sealedSocket(inner, device, { kind: "paired", publicKey: runtime.publicKey }).socket))
-    const client = ManagedRuntime.make(RpcClient.layerProtocolSocket().pipe(Layer.provide(sealedClient), Layer.provide(RpcSerialization.layerMsgPack)))
+    const client = ManagedRuntime.make(socketProtocolLayer().pipe(Layer.provide(sealedClient), Layer.provide(layerMsgPack)))
     try {
-      return await client.runPromise(Effect.scoped(Effect.flatMap(RpcClient.make(ProbeRpc), run)))
+      return await client.runPromise(Effect.scoped(Effect.flatMap(RpcClient.make(ProbeRpc, { generateRequestId: stringRequestId }), run)))
     } finally {
       await client.dispose()
     }
@@ -190,7 +193,7 @@ describe("runtime protocol over a relay channel", () => {
     const server = ManagedRuntime.make(RpcServer.layer(ProbeRpc).pipe(
       Layer.provide(probeHandlers),
       Layer.provide(runtimeProtocolSocketServer),
-      Layer.provide(RpcSerialization.layerMsgPack),
+      Layer.provide(layerMsgPack),
       Layer.provide(relaySocketServerLayer({ remote })),
     ))
     await server.runPromise(Effect.void)
@@ -231,13 +234,13 @@ describe("runtime protocol over a relay channel", () => {
     const local = RpcServer.layer(ProbeRpc).pipe(
       Layer.provide(probeHandlers),
       Layer.provide(runtimeProtocolSocketServer),
-      Layer.provide(RpcSerialization.layerMsgPack),
+      Layer.provide(layerMsgPack),
       Layer.provide(relaySocketServerLayer({ remote: fakeRemote().remote })),
     )
     const relay = RpcServer.layer(ProbeRpc).pipe(
       Layer.provide(probeHandlers),
       Layer.provide(Layer.fresh(runtimeProtocolSocketServer)),
-      Layer.provide(RpcSerialization.layerMsgPack),
+      Layer.provide(layerMsgPack),
       Layer.provide(relaySocketServerLayer({ remote })),
     )
     const server = ManagedRuntime.make(Layer.merge(local, relay))

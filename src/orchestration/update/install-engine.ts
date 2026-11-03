@@ -163,12 +163,12 @@ export interface InstallOutcome {
 }
 
 /** A coordinated update lost activation permission while it was staged. */
-export class InstallRevokedError extends Schema.TaggedErrorClass<InstallRevokedError>()("InstallRevoked", {
+export class InstallRevokedError extends Schema.TaggedError<InstallRevokedError>()("InstallRevoked", {
   message: Schema.String,
 }) {}
 
 /** Installation refused. The account is left exactly as it was found. */
-class InstallError extends Schema.TaggedErrorClass<InstallError>()("Install", {
+class InstallError extends Schema.TaggedError<InstallError>()("Install", {
   message: Schema.String,
   reason: Schema.String,
 }) {}

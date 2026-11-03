@@ -486,7 +486,7 @@ describe("provider-request-audit reconstruction (historical-fold)", () => {
 
     await expect(
       reconstructProviderRequestPrompt({ entry: entry!, store, sessionEvents: doctored }),
-    ).rejects.toThrow(/Expected 2/)
+    ).rejects.toThrow(/prompt\.assembled@3: version 1/)
     store.close()
   })
 })

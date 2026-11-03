@@ -94,7 +94,7 @@ export function extendedContextRefusal(message: string, options?: { cause?: unkn
  *  state alone would spend a second account while every other process still
  *  believes the first one can serve, so the request fails instead - never
  *  retried, never treated as a connection blip. */
-export class QuotaCoordinationError extends Schema.TaggedErrorClass<QuotaCoordinationError>()("QuotaCoordination", {
+export class QuotaCoordinationError extends Schema.TaggedError<QuotaCoordinationError>()("QuotaCoordination", {
   message: Schema.String,
   /** The provider whose account could not be coordinated, or every provider
    *  the binding names when the authority itself is what failed. */
@@ -130,7 +130,7 @@ export const SUBSCRIPTION_PAID_REVIEW_DETAIL = "Subscription paid capacity requi
 
 /** The walk exhausted its candidates. Copy is request-local presentation;
  * message and detail retain their existing control and legacy contracts. */
-export class AllCandidatesExhaustedError extends Schema.TaggedErrorClass<AllCandidatesExhaustedError>()("AllCandidatesExhausted", {
+export class AllCandidatesExhaustedError extends Schema.TaggedError<AllCandidatesExhaustedError>()("AllCandidatesExhausted", {
   message: Schema.String,
   detail: Schema.optional(Schema.String),
 }) {

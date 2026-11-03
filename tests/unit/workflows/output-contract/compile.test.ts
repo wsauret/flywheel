@@ -60,7 +60,7 @@ describe("compileOutput strict schema", () => {
       "(root): unknown top-level fields: warnings, extra. Put this content in summary.",
     ]);
     expect(decodeIssues(compiled, { ...valid, hypothesis: 3, warnings: [] })).toEqual([
-      "hypothesis: Expected string | null, got 3",
+      "hypothesis: Expected string | null",
       "(root): unknown top-level fields: warnings. Put this content in summary.",
     ]);
   });
@@ -94,7 +94,7 @@ describe("compileOutput strict schema", () => {
   test("enforces list min, max, and unique", () => {
     const withDirectives = (list: readonly { readonly [key: string]: string }[]) => ({ ...valid, contract_result: { directives: list } });
     const satisfied = (id: string) => ({ status: "satisfied", id, evidence: "x" });
-    expect(decodeIssues(compiled, withDirectives([]))).toEqual(["contract_result.directives: Expected a value with a length of at least 1, got []"]);
+    expect(decodeIssues(compiled, withDirectives([]))).toEqual(["contract_result.directives: Expected a value with a length of at least 1"]);
     expect(decodeIssues(compiled, withDirectives([satisfied("a"), satisfied("b"), satisfied("c")])).join("\n")).toContain("at most 2");
     expect(decodeIssues(compiled, withDirectives([satisfied("a"), satisfied("a")]))).toEqual(['contract_result.directives: each item must have a different "id"']);
   });

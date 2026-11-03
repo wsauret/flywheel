@@ -1,9 +1,3 @@
-// Module paths, not the package index or `effect/Schema`: every process logs
-// through this module, and `effect/Schema` loads most of Effect. The guardian
-// and each command supervisor decode nothing with it, and it would add about
-// 14 MB to each of them.
-import * as Option from "effect/Option";
-import * as SchemaIssue from "effect/SchemaIssue";
 import { redactSecrets } from "./redact-secrets.js";
 
 /** The code a Node or Bun system error names, such as `ENOENT`, or nothing
@@ -42,9 +36,6 @@ function isPlainRecord(value: unknown): value is object {
  *  text for a message. */
 function describe(err: unknown, seen: Set<unknown>): string {
   if (!(err instanceof Error)) return String(err);
-  // A decode failure carries its issue, and its own message quotes the value.
-  const issue = "issue" in err ? err.issue : undefined;
-  if (SchemaIssue.isIssue(issue)) return formatIssue(withoutValues(issue));
   // Effect tagged errors and a bare `new Error()` can carry an empty message;
   // fall back to the error name so a caught error never renders as a blank log
   // line or (worse) a contentless error toast.
@@ -111,56 +102,5 @@ function safeStringify(value: unknown): string {
     return JSON.stringify(value)
   } catch {
     return Object.prototype.toString.call(value)
-  }
-}
-
-const formatIssue = SchemaIssue.makeFormatterDefault();
-
-/** Stands in for a value that failed to decode. Effect's formatter prints a
- *  value through its own `toString`, so a decode message names what arrived
- *  and never quotes it: the value can be a whole transcript block. */
-class ReceivedKind {
-  constructor(private readonly kind: string) {}
-  toString(): string {
-    return this.kind;
-  }
-}
-
-const MAX_DISCRIMINANT_LENGTH = 64;
-const DISCRIMINANT_KEYS = ["kind", "type", "_tag"] as const;
-
-function receivedKind(value: unknown): ReceivedKind {
-  if (value === null || value === undefined) return new ReceivedKind(String(value));
-  if (typeof value === "string") return new ReceivedKind(`string of ${value.length} chars`);
-  if (Array.isArray(value)) return new ReceivedKind(`array of ${value.length}`);
-  if (typeof value !== "object") return new ReceivedKind(typeof value);
-  for (const key of DISCRIMINANT_KEYS) {
-    // An own data property only: a getter on a received value never runs here.
-    const discriminant: unknown = Object.getOwnPropertyDescriptor(value, key)?.value;
-    if (typeof discriminant === "string" && discriminant.length <= MAX_DISCRIMINANT_LENGTH) return new ReceivedKind(`${key} ${JSON.stringify(discriminant)}`);
-  }
-  return new ReceivedKind("object");
-}
-
-/** The same issue with every received value replaced by its kind. */
-function withoutValues(issue: SchemaIssue.Issue): SchemaIssue.Issue {
-  const kindOf = (actual: Option.Option<unknown>): Option.Option<unknown> => Option.map(actual, receivedKind);
-  switch (issue._tag) {
-    case "Filter": return new SchemaIssue.Filter(receivedKind(issue.actual), issue.filter, withoutValues(issue.issue));
-    case "Encoding": return new SchemaIssue.Encoding(issue.ast, kindOf(issue.actual), withoutValues(issue.issue));
-    case "Pointer": return new SchemaIssue.Pointer(issue.path, withoutValues(issue.issue));
-    case "MissingKey": return issue;
-    case "UnexpectedKey": return new SchemaIssue.UnexpectedKey(issue.ast, receivedKind(issue.actual));
-    case "Composite": {
-      const [first, ...rest] = issue.issues;
-      return new SchemaIssue.Composite(issue.ast, kindOf(issue.actual), [withoutValues(first), ...rest.map(withoutValues)]);
-    }
-    case "InvalidType": return new SchemaIssue.InvalidType(issue.ast, kindOf(issue.actual));
-    // A transformation's message can quote its input, as a JSON parse error
-    // does, so it goes with the value. A filter keeps its schema's message.
-    case "InvalidValue": return new SchemaIssue.InvalidValue(kindOf(issue.actual));
-    case "Forbidden": return new SchemaIssue.Forbidden(kindOf(issue.actual), issue.annotations);
-    case "AnyOf": return new SchemaIssue.AnyOf(issue.ast, receivedKind(issue.actual), issue.issues.map(withoutValues));
-    case "OneOf": return new SchemaIssue.OneOf(issue.ast, receivedKind(issue.actual), issue.successes);
   }
 }

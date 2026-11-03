@@ -48,7 +48,7 @@ export interface BuildIdentity {
 
 /** An installed build does not describe itself, or does not describe the
  *  place it was found in. */
-export class BuildIdentityError extends Schema.TaggedErrorClass<BuildIdentityError>()("BuildIdentity", {
+export class BuildIdentityError extends Schema.TaggedError<BuildIdentityError>()("BuildIdentity", {
   message: Schema.String,
   reason: Schema.String,
 }) {}

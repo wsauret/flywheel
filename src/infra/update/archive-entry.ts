@@ -17,7 +17,7 @@
 
 import { Schema } from "effect";
 
-export class ArchiveEntryError extends Schema.TaggedErrorClass<ArchiveEntryError>()("ArchiveEntry", {
+export class ArchiveEntryError extends Schema.TaggedError<ArchiveEntryError>()("ArchiveEntry", {
   message: Schema.String,
   reason: Schema.String,
 }) {}

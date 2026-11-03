@@ -3,7 +3,7 @@ import { createHash } from "node:crypto"
 import { collapseHome } from "../../../infra/home-path.js"
 import { basename } from "node:path"
 import { Effect, Exit, Scope } from "effect"
-import { Socket } from "effect/unstable/socket"
+import { Socket } from "effect/socket"
 
 import { importLegacyRemotePlacements, mutateRemotePairingStore, mutateRemotePushStore, readRemotePairingStore, readRemotePushStore, onRemoteStoresWritten, watchRemotePushStore, type PairedDevice, type RemotePairingStore, type StoredKeyPair } from "./remote-pairing-store.js"
 import { errorMessage } from "../../../infra/error-message.js"

@@ -1,6 +1,6 @@
 import { Schema } from "effect";
 
-export class ThinkingStallError extends Schema.TaggedErrorClass<ThinkingStallError>()("ThinkingStall", {
+export class ThinkingStallError extends Schema.TaggedError<ThinkingStallError>()("ThinkingStall", {
   blockKey: Schema.optionalKey(Schema.String),
   elapsedMs: Schema.Number,
   summary: Schema.String,

@@ -27,7 +27,7 @@ import type { BuildRef } from "./build-identity.js";
 export const PENDING_ACTIVATION = /^\.current\.([1-9][0-9]*)\.[0-9a-f]{16}$/;
 
 /** `current` does not name an installed build. */
-export class ActivationError extends Schema.TaggedErrorClass<ActivationError>()("Activation", {
+export class ActivationError extends Schema.TaggedError<ActivationError>()("Activation", {
   message: Schema.String,
 }) {}
 

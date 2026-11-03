@@ -1,6 +1,7 @@
 import type { Socket as BunSocket } from "bun"
 import { Effect, Fiber, FiberSet, Layer, Scope } from "effect"
-import { Socket, SocketServer } from "effect/unstable/socket"
+import { NetAddress } from "effect/net"
+import { Socket, SocketServer } from "effect/socket"
 import { ACCOUNT_ATTACH_LATER_MAX_BYTES, createAccountAttachResponseReader } from "../../protocol/account-attach.js"
 import type { RuntimeStartupPhase } from "../../protocol/app-service-types.js"
 import { AccountAttachFailedError } from "../../protocol/app-service-types.js"
@@ -347,7 +348,7 @@ export interface BunSocketServerOptions {
 export function bunSocketServerLayer(options: BunSocketServerOptions): Layer.Layer<SocketServer.SocketServer> {
   return Layer.effect(SocketServer.SocketServer)(Effect.sync(() =>
     SocketServer.SocketServer.of({
-      address: { _tag: "UnixAddress", path: options.path },
+      address: NetAddress.unixPathAddress(options.path),
       run: <R, E, _>(handler: (socket: Socket.Socket) => Effect.Effect<_, E, R>) =>
         Effect.scopedWith((scope) =>
           Effect.gen(function*() {

@@ -1,6 +1,6 @@
 import { hostname } from "node:os"
 import { Effect, Exit } from "effect"
-import { Socket } from "effect/unstable/socket"
+import { Socket } from "effect/socket"
 
 import type { ServeLane } from "../../../infra/cli-subprocess.js"
 import type { RelayChannelStreams } from "../../../protocol/modules/remote/relay-channel.js"

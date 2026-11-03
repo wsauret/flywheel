@@ -6,7 +6,8 @@ import { Log } from "../../../../src/infra/log.js"
 import { createRuntimeBackgroundLane, serveRuntimeBackgroundQuery } from "../../../../src/orchestration/app-service/runtime-background-lane.js"
 import { RuntimeCallTimeout } from "../../../../src/protocol/runtime-client-deadlines.js"
 import type { RuntimeBackgroundClient } from "../../../../src/orchestration/app-service/worker-background-client.js"
-import { Schema } from "effect"
+import { Context, Schema } from "effect"
+import { Rpc } from "effect/rpc"
 import { RuntimeBackgroundRpc } from "../../../../src/protocol/runtime-protocol-schemas.js"
 import { protocolBackgroundSchema } from "../../../../src/protocol/modules.js"
 import type { TranscriptSearchResult } from "../../../../src/protocol/transcript-protocol-types.js"
@@ -43,6 +44,9 @@ function macrotaskTimer(fire: () => void): () => void {
   const handle = setTimeout(fire, 0)
   return () => clearTimeout(handle)
 }
+
+/** The parse options the RPC server and client decode this call with. */
+const served = (rpc: Rpc.AnyWithProps) => Context.get(rpc.annotations, Rpc.ParseOptions)
 
 describe("runtime background Worker lane", () => {
   test("detail and status share the history detail port", async () => {
@@ -151,8 +155,8 @@ describe("runtime background Worker lane", () => {
       invalidExpand: [9, "missing"],
     }
 
-    expect(Schema.decodeUnknownSync(rpc.payloadSchema)(payload)).toEqual(payload)
-    expect(Schema.decodeUnknownSync(rpc.successSchema)(result)).toEqual(result)
+    expect(Schema.decodeUnknownSync(rpc.payloadSchema, served(rpc))(payload)).toEqual(payload)
+    expect(Schema.decodeUnknownSync(rpc.successSchema, served(rpc))(result)).toEqual(result)
     for (const invalid of [
       { ...payload, excess: true },
       { ...payload, contract: { ...payload.contract, excess: true } },
@@ -162,10 +166,10 @@ describe("runtime background Worker lane", () => {
       { ...payload, contract: { ...payload.contract, offset: -1 } },
       { ...payload, contract: { ...payload.contract, page: 0 } },
     ]) {
-      expect(() => Schema.decodeUnknownSync(rpc.payloadSchema)(invalid)).toThrow()
+      expect(() => Schema.decodeUnknownSync(rpc.payloadSchema, served(rpc))(invalid)).toThrow()
     }
-    expect(() => Schema.decodeUnknownSync(rpc.successSchema)({ ...result, excess: true })).toThrow()
-    expect(() => Schema.decodeUnknownSync(rpc.successSchema)({ hits: [{ ...result.hits[0], excess: true }] })).toThrow()
+    expect(() => Schema.decodeUnknownSync(rpc.successSchema, served(rpc))({ ...result, excess: true })).toThrow()
+    expect(() => Schema.decodeUnknownSync(rpc.successSchema, served(rpc))({ hits: [{ ...result.hits[0], excess: true }] })).toThrow()
   })
 
   test("recall outlives the passive history deadline and preserves its result or original error", async () => {
@@ -242,10 +246,10 @@ describe("runtime background Worker lane", () => {
     }
     for (const name of ["RuntimeBackgroundSessionSummaryImmediate", "RuntimeBackgroundWaitForTotals"] as const) {
       const rpc = RuntimeBackgroundRpc.requests.get(name)!
-      expect(Schema.decodeUnknownSync(rpc.payloadSchema)(payload)).toEqual(payload)
-      expect(Schema.decodeUnknownSync(rpc.successSchema)(result)).toEqual(result)
-      expect(() => Schema.decodeUnknownSync(rpc.payloadSchema)({ ...payload, excess: true })).toThrow()
-      expect(() => Schema.decodeUnknownSync(rpc.successSchema)({ ...result, excess: true })).toThrow()
+      expect(Schema.decodeUnknownSync(rpc.payloadSchema, served(rpc))(payload)).toEqual(payload)
+      expect(Schema.decodeUnknownSync(rpc.successSchema, served(rpc))(result)).toEqual(result)
+      expect(() => Schema.decodeUnknownSync(rpc.payloadSchema, served(rpc))({ ...payload, excess: true })).toThrow()
+      expect(() => Schema.decodeUnknownSync(rpc.successSchema, served(rpc))({ ...result, excess: true })).toThrow()
     }
   })
 

@@ -8,7 +8,9 @@ import type { BoundedStringCodeModeOutput, RuntimeTool } from "../../agent-runti
 /** What a script sees from every bridged call. */
 export const CodeToolResult = Schema.Struct({
   outcome: Schema.Literals(["ok", "error", "interrupted"]),
-  content: Schema.Unknown.annotate({
+  // A key annotation: Effect's JSON Schema of `Schema.Unknown` is `{}` and
+  // drops the schema's own description.
+  content: Schema.Unknown.annotateKey({
     description: "Parsed data when the tool's text output is a JSON object or array; otherwise the raw string.",
   }),
 })

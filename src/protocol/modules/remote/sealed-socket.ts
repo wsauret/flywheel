@@ -1,5 +1,5 @@
-import { Deferred, Effect, Exit, Schema, Semaphore, type Scope } from "effect"
-import { Socket } from "effect/unstable/socket"
+import { type Array as Arr, Deferred, Effect, Exit, Schema, type Scope, Semaphore, Stream } from "effect"
+import { Socket } from "effect/socket"
 
 import { asKeyPair, decodeJsonFrame, decodeSealedHello, fromBase64Url, ownedBytes, sealedHelloSigningBytes, toBase64Url } from "./relay-protocol.js"
 
@@ -67,7 +67,7 @@ type SealedChannelFailure =
   | "out_of_order"
   | "open_failed"
 
-export class SealedChannelError extends Schema.TaggedErrorClass<SealedChannelError>()("SealedChannelError", {
+export class SealedChannelError extends Schema.TaggedError<SealedChannelError>()("SealedChannelError", {
   failure: Schema.Literals(["hello_malformed", "hello_role", "unexpected_identity", "bad_signature", "frame_before_hello", "frame_malformed", "out_of_order", "open_failed"]),
   message: Schema.String,
 }) {}
@@ -159,10 +159,6 @@ interface ChannelState {
   /** The first refusal. A channel that refused a frame delivers nothing after
    *  it, whatever else was already in flight behind the refused frame. */
   failed: SealedChannelError | undefined
-  /** Serializes inbound frames. The inner socket forks one fiber per frame,
-   *  and the counter check only means something when frames are opened in the
-   *  order they arrived. */
-  tail: Promise<void>
   /** Serializes outbound frames from counter claim through to the write.
    *  WebCrypto finishes a small encryption before a large one that started
    *  earlier, so concurrent writers would otherwise put counter N+1 on the
@@ -171,7 +167,7 @@ interface ChannelState {
 }
 
 function freshState(): ChannelState {
-  return { established: Deferred.makeUnsafe(), ended: Deferred.makeUnsafe(), keys: undefined, sendCounter: 0n, receiveCounter: 0n, failed: undefined, tail: Promise.resolve(), sendLock: Semaphore.makeUnsafe(1) }
+  return { established: Deferred.makeUnsafe(), ended: Deferred.makeUnsafe(), keys: undefined, sendCounter: 0n, receiveCounter: 0n, failed: undefined, sendLock: Semaphore.makeUnsafe(1) }
 }
 
 export function sealedSocket(inner: Socket.Socket, identity: SealedIdentity, peer: SealedPeer): SealedSocket {
@@ -244,109 +240,119 @@ export function sealedSocket(inner: Socket.Socket, identity: SealedIdentity, pee
     return frame
   }
 
-  /** Opens one inbound frame in arrival order and hands the plaintext on. A
-   *  refusal fails the deferred as well as the run, so a caller waiting on
-   *  `established` learns why. */
-  const inbound = <_, E, R>(current: ChannelState, ephemeral: CryptoKeyPair, ownEphemeralPublic: Uint8Array, frame: Uint8Array, handler: (bytes: Uint8Array) => Effect.Effect<_, E, R> | void): Effect.Effect<void, SealedChannelError | E, R> => {
-    const step = current.tail.then(async (): Promise<Uint8Array | undefined> => {
-      if (current.failed) throw current.failed
-      const tag = frame[0]
-      if (tag === HELLO_TAG) {
-        if (current.keys !== undefined) throw sealedError("frame_malformed", "a second hello arrived on an established channel")
-        await establish(current, ephemeral, ownEphemeralPublic, frame)
-        return undefined
-      }
-      if (tag !== FRAME_TAG || frame.byteLength < HEADER_BYTES) throw sealedError("frame_malformed", "a frame carried neither a hello nor a sealed body")
-      if (current.keys === undefined) throw sealedError("frame_before_hello", "a sealed frame arrived before the peer's hello")
-      const counter = readCounter(frame)
-      if (counter !== current.receiveCounter) throw sealedError("out_of_order", `expected frame ${current.receiveCounter}, received ${counter}`)
-      current.receiveCounter += 1n
-      return open(current.keys, frame)
-    }).catch((cause: unknown) => {
-      // Recorded inside the chain, in arrival order: the next frame's step runs
-      // as soon as this one settles, which can be a microtask before the Effect
-      // continuation below observes the refusal. A frame behind a refused one
-      // must never be opened and delivered.
-      current.failed ??= cause instanceof SealedChannelError ? cause : sealedError("frame_malformed", String(cause))
-      throw current.failed
-    })
-    current.tail = step.then(() => undefined, () => undefined)
-    // Uninterruptible for the one frame: the transport forks a fiber per frame
-    // and interrupts them all when the socket closes, and a close can follow
-    // the last frame in the same turn. A frame that arrived is delivered.
-    return Effect.uninterruptible(Effect.flatMap(
-      Effect.promise(() => step.then((plaintext) => ({ ok: true as const, plaintext }), (cause: unknown) => ({ ok: false as const, cause }))),
-      (outcome): Effect.Effect<void, SealedChannelError | E, R> => {
-        if (!outcome.ok) {
-          const failure = outcome.cause instanceof SealedChannelError ? outcome.cause : sealedError("frame_malformed", String(outcome.cause))
-          Deferred.doneUnsafe(current.established, Effect.fail(failure))
-          return Effect.fail(failure)
-        }
-        if (outcome.plaintext === undefined) return Effect.void
-        const result = handler(outcome.plaintext)
-        return Effect.isEffect(result) ? Effect.asVoid(result) : Effect.void
-      },
-    ))
+  /** Opens one inbound frame: a hello settles the handshake and carries no
+   *  plaintext, and a sealed frame must carry the next counter. */
+  const openFrame = async (current: ChannelState, ephemeral: CryptoKeyPair, ownEphemeralPublic: Uint8Array, frame: string | Uint8Array): Promise<Uint8Array | undefined> => {
+    // Text frames are what the relay speaks before admission; none may reach
+    // a sealed channel, so one is the same failure as a malformed frame.
+    if (typeof frame === "string") throw sealedError("frame_malformed", "a text frame arrived on a sealed channel")
+    const tag = frame[0]
+    if (tag === HELLO_TAG) {
+      if (current.keys !== undefined) throw sealedError("frame_malformed", "a second hello arrived on an established channel")
+      await establish(current, ephemeral, ownEphemeralPublic, frame)
+      return undefined
+    }
+    if (tag !== FRAME_TAG || frame.byteLength < HEADER_BYTES) throw sealedError("frame_malformed", "a frame carried neither a hello nor a sealed body")
+    if (current.keys === undefined) throw sealedError("frame_before_hello", "a sealed frame arrived before the peer's hello")
+    const counter = readCounter(frame)
+    if (counter !== current.receiveCounter) throw sealedError("out_of_order", `expected frame ${current.receiveCounter}, received ${counter}`)
+    current.receiveCounter += 1n
+    return open(current.keys, frame)
   }
 
-  const runRaw = <_, E, R>(handler: (bytes: string | Uint8Array) => Effect.Effect<_, E, R> | void, options?: { readonly onOpen?: Effect.Effect<void> | undefined }): Effect.Effect<void, Socket.SocketError | E, R> =>
-    Effect.scoped(Effect.gen(function*() {
-      const current = freshState()
-      Deferred.doneUnsafe(currentRun, Effect.succeed(current))
-      // When this run ends, the next write waits for the next run.
-      yield* Effect.addFinalizer(() => Effect.sync(() => {
-        Deferred.doneUnsafe(current.ended, Effect.fail(new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1000 }) })))
-        currentRun = Deferred.makeUnsafe<ChannelState>()
-        if (!current.failed) Deferred.doneUnsafe(current.established, Effect.fail(sealedError("frame_before_hello", "the channel closed")))
-      }))
-      const ephemeral = asKeyPair(yield* Effect.promise(() => subtle.generateKey({ name: "X25519" }, false, ["deriveBits"])))
-      const ownEphemeralPublic = new Uint8Array(yield* Effect.promise(() => subtle.exportKey("raw", ephemeral.publicKey)))
-      const hello = yield* Effect.promise(() => buildHello(ownEphemeralPublic))
-      const write = yield* inner.writer
-      const onOpen = Effect.andThen(Effect.orDie(write(hello)), options?.onOpen ?? Effect.void)
-      // Text frames are what the relay speaks before admission; none may reach
-      // a sealed channel, so one is the same failure as a malformed frame.
-      const onFrame = (frame: string | Uint8Array): Effect.Effect<void, SealedChannelError | E, R> =>
-        typeof frame === "string"
-          ? Effect.fail(sealedError("frame_malformed", "a text frame arrived on a sealed channel"))
-          : inbound(current, ephemeral, ownEphemeralPublic, frame, handler)
-      return yield* inner.runRaw(onFrame, { onOpen }).pipe(Effect.catch((error) =>
-        error instanceof SealedChannelError
-          ? Effect.fail(new Socket.SocketError({ reason: new Socket.SocketReadError({ cause: error }) }))
-          : Effect.fail(error)
-      ))
+  /** One run of the socket: one transport connection, one handshake, and one
+   *  pair of channel keys. */
+  const reader: Socket.Socket["reader"] = Effect.gen(function*() {
+    const current = freshState()
+    Deferred.doneUnsafe(currentRun, Effect.succeed(current))
+    // When this run ends, the next write waits for the next run.
+    yield* Effect.addFinalizer(() => Effect.sync(() => {
+      Deferred.doneUnsafe(current.ended, Effect.fail(new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1000 }) })))
+      currentRun = Deferred.makeUnsafe<ChannelState>()
+      if (!current.failed) Deferred.doneUnsafe(current.established, Effect.fail(sealedError("frame_before_hello", "the channel closed")))
     }))
+    const ephemeral = asKeyPair(yield* Effect.promise(() => subtle.generateKey({ name: "X25519" }, false, ["deriveBits"])))
+    const ownEphemeralPublic = new Uint8Array(yield* Effect.promise(() => subtle.exportKey("raw", ephemeral.publicKey)))
+    const hello = yield* Effect.promise(() => buildHello(ownEphemeralPublic))
+    // The writer is taken before the reader so that the end of a run cancels
+    // the read first and closes the transport's write half last. A close that
+    // ran first waited on a write that nothing would read, and the run never
+    // ended.
+    const { write } = yield* inner.writer
+    const { pull } = yield* inner.reader
+    // Sent beside the first pull, not before it: a transport with
+    // backpressure finishes a write only once the peer reads, and the peer
+    // reads only after its own hello went out. Started at once, the hello is
+    // queued ahead of any sealed frame, which waits for the peer's hello. A
+    // hello that cannot be written is a transport that failed, which the next
+    // pull reports.
+    yield* Effect.forkScoped(Effect.ignore(write(hello)), { startImmediately: true })
 
-  const writer: Effect.Effect<(chunk: Uint8Array | string | Socket.CloseEvent) => Effect.Effect<void, Socket.SocketError>, never, Scope.Scope> = Effect.map(inner.writer, (write) => (chunk) => {
-    if (Socket.isCloseEvent(chunk)) return write(chunk)
-    return Effect.suspend(() => Deferred.await(currentRun)).pipe(
-      Effect.flatMap((current) => Deferred.await(current.established).pipe(
-        Effect.mapError((error) => new Socket.SocketError({ reason: new Socket.SocketWriteError({ cause: error }) })),
-        // Uninterruptible once the permit is held: a claimed counter must reach
-        // the wire, or the next writer's frame arrives as a gap. Waiting for
-        // the permit stays interruptible.
-        Effect.flatMap(() => current.sendLock.withPermit(Effect.uninterruptible(Effect.suspend(() => {
-          const keys = current.keys
-          if (keys === undefined) return Effect.fail(new Socket.SocketError({ reason: new Socket.SocketWriteError({ cause: sealedError("frame_before_hello", "write before the channel established") }) }))
-          const plaintext = typeof chunk === "string" ? textEncoder.encode(chunk) : chunk
-          const sealOne = (start: number): Effect.Effect<void, Socket.SocketError> => {
-            const counter = current.sendCounter
-            current.sendCounter += 1n
-            return Effect.flatMap(
-              Effect.promise(() => seal(keys, counter, plaintext.subarray(start, start + SEALED_FRAME_MAX_BYTES))),
-              (frame) => Effect.raceFirst(write(frame), Deferred.await(current.ended)),
-            )
-          }
-          const starts: number[] = []
-          for (let start = 0; start === 0 || start < plaintext.byteLength; start += SEALED_FRAME_MAX_BYTES) starts.push(start)
-          return Effect.forEach(starts, sealOne, { discard: true })
-        })))),
-      )),
-    )
+    // Plaintext of frames already taken from the transport. A pull opens a
+    // whole batch before it returns, so a frame that arrived is delivered even
+    // when the transport closes right behind it, and a refusal ends delivery
+    // only after the frames in front of it.
+    let ready: Array<Uint8Array> = []
+    const openBatch = (frames: Arr.NonEmptyReadonlyArray<string | Uint8Array>): Effect.Effect<void> => Effect.promise(async () => {
+      for (const frame of frames) {
+        if (current.failed) return
+        try {
+          const plaintext = await openFrame(current, ephemeral, ownEphemeralPublic, frame)
+          if (plaintext !== undefined) ready.push(plaintext)
+        } catch (cause) {
+          current.failed = cause instanceof SealedChannelError ? cause : sealedError("frame_malformed", String(cause))
+          // A caller waiting on `established` learns why.
+          Deferred.doneUnsafe(current.established, Effect.fail(current.failed))
+        }
+      }
+    })
+    const sealedPull: Effect.Effect<Arr.NonEmptyReadonlyArray<Uint8Array>, Socket.SocketError> = Effect.suspend(() => {
+      const [first, ...rest] = ready
+      if (first !== undefined) {
+        ready = []
+        return Effect.succeed([first, ...rest])
+      }
+      if (current.failed) return Effect.fail(new Socket.SocketError({ reason: new Socket.SocketReadError({ cause: current.failed }) }))
+      // Uninterruptible once a batch is taken: its frames advance the receive
+      // counter, so each must reach `ready` or the next pull reads a gap.
+      return Effect.uninterruptibleMask((restore) => Effect.flatMap(restore(pull), openBatch)).pipe(Effect.andThen(sealedPull))
+    })
+    return { pull: sealedPull, upgrade: Socket.SocketUpgradeError.unsupported }
+  })
+
+  const writer: Socket.Socket["writer"] = Effect.map(inner.writer, (transport) => {
+    const write = (chunk: Uint8Array | string | Socket.CloseEvent): Effect.Effect<void, Socket.SocketError> => {
+      if (Socket.isCloseEvent(chunk)) return transport.write(chunk)
+      return Effect.suspend(() => Deferred.await(currentRun)).pipe(
+        Effect.flatMap((current) => Deferred.await(current.established).pipe(
+          Effect.mapError((error) => new Socket.SocketError({ reason: new Socket.SocketWriteError({ cause: error }) })),
+          // Uninterruptible once the permit is held: a claimed counter must reach
+          // the wire, or the next writer's frame arrives as a gap. Waiting for
+          // the permit stays interruptible.
+          Effect.flatMap(() => current.sendLock.withPermit(Effect.uninterruptible(Effect.suspend(() => {
+            const keys = current.keys
+            if (keys === undefined) return Effect.fail(new Socket.SocketError({ reason: new Socket.SocketWriteError({ cause: sealedError("frame_before_hello", "write before the channel established") }) }))
+            const plaintext = typeof chunk === "string" ? textEncoder.encode(chunk) : chunk
+            const sealOne = (start: number): Effect.Effect<void, Socket.SocketError> => {
+              const counter = current.sendCounter
+              current.sendCounter += 1n
+              return Effect.flatMap(
+                Effect.promise(() => seal(keys, counter, plaintext.subarray(start, start + SEALED_FRAME_MAX_BYTES))),
+                (frame) => Effect.raceFirst(transport.write(frame), Deferred.await(current.ended)),
+              )
+            }
+            const starts: number[] = []
+            for (let start = 0; start === 0 || start < plaintext.byteLength; start += SEALED_FRAME_MAX_BYTES) starts.push(start)
+            return Effect.forEach(starts, sealOne, { discard: true })
+          })))),
+        )),
+      )
+    }
+    return { write, writeAll: (chunks) => Effect.forEach(chunks, write, { discard: true }) }
   })
 
   return {
-    socket: Socket.make({ runRaw, writer }),
+    socket: Socket.make({ reader, writer }),
     established: Effect.flatMap(Effect.suspend(() => Deferred.await(currentRun)), (current) => Deferred.await(current.established)),
   }
 }
@@ -375,14 +381,14 @@ export const runSealedExchange = <A>(sealed: SealedSocket, ended: Error, receive
   Effect.gen(function*() {
     const outcome = yield* Deferred.make<A, Error>()
     const runEnded = yield* Deferred.make<never, Error>()
-    yield* Effect.forkScoped(sealed.socket.run((message) => {
+    yield* Effect.forkScoped(Stream.runForEach(Socket.toStream(sealed.socket), (message) => Effect.sync(() => {
       const settled = receive(message)
       if (settled !== undefined) Deferred.doneUnsafe(outcome, settled)
-    }).pipe(Effect.ensuring(Effect.sync(() => {
+    })).pipe(Effect.ensuring(Effect.sync(() => {
       Deferred.doneUnsafe(outcome, Exit.fail(ended))
       Deferred.doneUnsafe(runEnded, Exit.fail(ended))
     }))), { startImmediately: true })
-    const write = yield* sealed.socket.writer
+    const { write } = yield* sealed.socket.writer
     return {
       send: (message) => Effect.raceFirst(write(message).pipe(Effect.mapError(() => ended)), Deferred.await(runEnded)),
       outcome: Deferred.await(outcome),

@@ -1,7 +1,7 @@
 import { Effect, Latch, Layer, Queue, Schema, Scope } from "effect"
-import { RpcMessage, RpcSerialization, RpcServer } from "effect/unstable/rpc"
-import type { Socket } from "effect/unstable/socket"
-import { SocketServer } from "effect/unstable/socket"
+import { RpcMessage, RpcSerialization, RpcServer } from "effect/rpc"
+import type { Socket } from "effect/socket"
+import { SocketServer } from "effect/socket"
 
 import { Log } from "../../infra/log.js"
 import { MutationFilesQuerySchema, MutationFilesResultSchema, MutationPatchWindowQuerySchema, MutationPatchWindowResultSchema } from "../../protocol/mutation-evidence-protocol-types.js"
@@ -33,8 +33,8 @@ const isEvidenceQuery = Schema.is(Schema.Union([MutationFilesQuerySchema, Mutati
  *  serving of `RuntimeProtocolRpc`, with a byte window in place of
  *  stop-and-wait stream acknowledgements.
  *
- *  This is Effect's `RpcServer.layerProtocolSocketServer` (effect
- *  4.0.0-beta.84, `RpcServer.ts` `makeSocketProtocol`) with one change. Effect
+ *  This is Effect's `RpcServer.layerProtocolSocketServer` (effect 4.1.2,
+ *  `RpcServer.ts` `makeSocketProtocol`) with one change. Effect
  *  sends one stream chunk and then waits for the client's `Ack` before it
  *  takes the next batch, so a lane carries at most one batch for each round
  *  trip, and every frame of a batch waits for the round trip before it. Here
@@ -52,6 +52,7 @@ const isEvidenceQuery = Schema.is(Schema.Union([MutationFilesQuerySchema, Mutati
 export const runtimeProtocolSocketServer: Layer.Layer<RpcServer.Protocol, never, RpcSerialization.RpcSerialization | SocketServer.SocketServer> = Layer.effect(RpcServer.Protocol)(Effect.gen(function*() {
   const server = yield* SocketServer.SocketServer
   const serialization = yield* RpcSerialization.RpcSerialization
+  const encodeDefect = Schema.encodeSync(serialization.codecFor(Schema.Defect()))
   const disconnects = yield* Queue.make<number>()
 
   let nextClientId = 0
@@ -67,8 +68,8 @@ export const runtimeProtocolSocketServer: Layer.Layer<RpcServer.Protocol, never,
     // The window state lives in the connection's scope and ends with it. A
     // stream still held at the connection's end is interrupted by RpcServer
     // when it reads the disconnect.
-    const credits = new Map<string, StreamCredit>()
-    const evidenceQueries = new Map<string, { readonly type: "mutationFiles" | "mutationPatchWindow" | "sessionChanges"; readonly maxBytes: number }>()
+    const credits = new Map<string | number, StreamCredit>()
+    const evidenceQueries = new Map<string | number, { readonly type: "mutationFiles" | "mutationPatchWindow" | "sessionChanges"; readonly maxBytes: number }>()
     const stats = { chunks: 0, holds: 0, maxUnacknowledgedBytes: 0 }
     yield* Scope.addFinalizerExit(scope, () => {
       clients.delete(id)
@@ -79,7 +80,7 @@ export const runtimeProtocolSocketServer: Layer.Layer<RpcServer.Protocol, never,
       return Queue.offer(disconnects, id)
     })
 
-    const writeRaw = yield* socket.writer
+    const writer = yield* socket.writer
     const encodeAndWrite = (response: FromServerEncoded, onEncoded?: (length: number) => void): Effect.Effect<void> => {
       let encoded: string | Uint8Array | undefined
       const evidence = response._tag === "Exit" ? evidenceQueries.get(response.requestId) : undefined
@@ -107,12 +108,12 @@ export const runtimeProtocolSocketServer: Layer.Layer<RpcServer.Protocol, never,
         // SAFETY: the parser encodes every defect response; only a response
         // the serialization drops, which a defect never is, encodes to nothing.
         encoded = parser.encode(evidence && response._tag === "Exit"
-          ? RpcMessage.ResponseExitDieEncoded({ requestId: RpcMessage.RequestId(response.requestId), defect: cause })
-          : RpcMessage.ResponseDefectEncoded(cause))!
+          ? RpcMessage.ResponseExitDieEncoded({ requestId: RpcMessage.RequestId(response.requestId), encodedDefect: encodeDefect(cause) })
+          : RpcMessage.ResponseDefectEncoded(encodeDefect(cause)))!
       }
       // As in Effect's protocol, a write to a socket that failed is a defect:
       // the connection's run fails with the same socket and ends the client.
-      return Effect.orDie(writeRaw(encoded)) // oxlint-disable-line flywheel/no-effect-escape-hatch -- boundary: RpcServer.Protocol send has no error channel; the socket run reports the failure
+      return Effect.orDie(writer.write(encoded)) // oxlint-disable-line flywheel/no-effect-escape-hatch -- boundary: RpcServer.Protocol send has no error channel; the socket run reports the failure
     }
 
     // Write first, then hold. RpcServer takes a stream's next batch only after
@@ -148,7 +149,7 @@ export const runtimeProtocolSocketServer: Layer.Layer<RpcServer.Protocol, never,
 
     // Each `Ack` returns the oldest unacknowledged chunk of its request. An
     // `Ack` for a request that already exited has nothing left to return.
-    const acknowledge = (requestId: string): void => {
+    const acknowledge = (requestId: string | number): void => {
       const credit = credits.get(requestId)
       if (!credit) return
       credit.unacknowledged -= credit.sizes.shift() ?? 0
@@ -158,9 +159,9 @@ export const runtimeProtocolSocketServer: Layer.Layer<RpcServer.Protocol, never,
     clients.set(id, { write })
     clientIds.add(id)
 
-    // Every inbound frame reaches `writeRequest` synchronously, in arrival
-    // order; an `Ack` is consumed here and never forwarded.
-    yield* socket.runRaw((data) => {
+    // Every inbound frame reaches `writeRequest` in arrival order; an `Ack` is
+    // consumed here and never forwarded.
+    const processData = (data: string | Uint8Array): Effect.Effect<void, Socket.SocketError> => {
       try {
         // SAFETY: The RPC serialization parser validates the client frame
         // before it returns the decoded protocol messages.
@@ -183,7 +184,15 @@ export const runtimeProtocolSocketServer: Layer.Layer<RpcServer.Protocol, never,
         })
       } catch (cause) {
         // SAFETY: the parser encodes every defect response, as above.
-        return writeRaw(parser.encode(RpcMessage.ResponseDefectEncoded(cause))!)
+        return writer.write(parser.encode(RpcMessage.ResponseDefectEncoded(encodeDefect(cause)))!)
+      }
+    }
+
+    yield* Effect.gen(function*() {
+      const { pull } = yield* socket.reader
+      while (true) {
+        const frames = yield* pull
+        for (const frame of frames) yield* processData(frame)
       }
     }).pipe(
       Effect.catchReason("SocketError", "SocketCloseError", () => Effect.void),
@@ -207,6 +216,8 @@ export const runtimeProtocolSocketServer: Layer.Layer<RpcServer.Protocol, never,
       supportsAck: false,
       supportsTransferables: false,
       supportsSpanPropagation: true,
+      supportsNotifications: true,
+      codecFor: serialization.codecFor,
     })
   })
   yield* Effect.forkScoped(server.run(Effect.fnUntraced(onSocket, Effect.scoped)))

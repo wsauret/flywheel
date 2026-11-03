@@ -1,4 +1,4 @@
-import { Socket } from "effect/unstable/socket"
+import { Socket } from "effect/socket"
 
 import { AccountAttachFailedError, type RuntimeProtocolRefusal } from "../app-service-types.js"
 import type { RuntimeCallTimeout } from "../runtime-client-deadlines.js"

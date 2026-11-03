@@ -3,7 +3,8 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Effect, Layer, ManagedRuntime } from "effect"
-import { RpcSerialization, RpcServer } from "effect/unstable/rpc"
+import { RpcServer } from "effect/rpc"
+import { layerMsgPack } from "../../../../src/protocol/rpc-msgpack.js"
 
 import type { FrontendEvent, FrontendMutation, MutationResult, RuntimeTransportHealth } from "../../../../src/protocol/app-service-types.js"
 import { ServeStartupFailure } from "../../../../src/protocol/serve-handshake.js"
@@ -44,7 +45,7 @@ async function heldRuntime() {
   const server = ManagedRuntime.make(RpcServer.layer(RuntimeProtocolRpc).pipe(
     Layer.provide(runtimeHandlers({ client: service, outputWatches: createOutputWatches({ onUnionChange: () => {} }) }, log, { version: "0.1.0" })),
     Layer.provide(runtimeProtocolSocketServer),
-    Layer.provide(RpcSerialization.layerMsgPack),
+    Layer.provide(layerMsgPack),
     Layer.provide(bunSocketServerLayer({ path: socketPath, onListening: () => listening.resolve() })),
   ))
   await server.runPromise(Effect.void)

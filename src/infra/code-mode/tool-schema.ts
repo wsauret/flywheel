@@ -9,11 +9,15 @@ export const identifierSegment = /^[A-Za-z_$][A-Za-z0-9_$]*$/
 
 const renderKey = (name: string): string => (identifierSegment.test(name) ? name : JSON.stringify(name))
 
+const numberSentinels: ReadonlySet<unknown> = new Set(["NaN", "Infinity", "-Infinity"])
+
+/** The string enum beside `number` in Effect's JSON Schema of `Schema.Number`,
+ *  which states the non-finite values its JSON encoding writes as strings. */
 const effectNumberSentinel = (schema: JsonSchema) =>
   schema.type === "string" &&
   Array.isArray(schema.enum) &&
-  schema.enum.length === 1 &&
-  (schema.enum[0] === "NaN" || schema.enum[0] === "Infinity" || schema.enum[0] === "-Infinity")
+  schema.enum.length > 0 &&
+  schema.enum.every((value) => numberSentinels.has(value))
 
 const intersection = (members: ReadonlyArray<string>): string => {
   const concrete = members.filter((member) => member !== "unknown")

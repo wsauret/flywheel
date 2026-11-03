@@ -92,7 +92,7 @@ const DOWNLOAD_FILE = "download";
 const SPOOL_DIR_NAME = "spool";
 
 /** The transfer could not produce an installable build. */
-class UpdateTransferError extends Schema.TaggedErrorClass<UpdateTransferError>()("UpdateTransfer", {
+class UpdateTransferError extends Schema.TaggedError<UpdateTransferError>()("UpdateTransfer", {
   message: Schema.String,
   reason: Schema.String,
 }) {}

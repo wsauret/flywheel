@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { Effect, Exit, Fiber } from "effect"
-import { Worker as EffectWorker } from "effect/unstable/workers"
+import { Worker as EffectWorker } from "effect/workers"
 import { bunWorkerClientLayers } from "../../../../src/orchestration/app-service/bun-worker-rpc.js"
 import { applyRuntimeCallPolicy } from "../../../../src/protocol/runtime-client-deadlines.js"
 

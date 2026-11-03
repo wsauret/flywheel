@@ -30,7 +30,7 @@ import { isProfileModelRole } from "../../protocol/brief-role-id.js";
 import { Schema } from "effect";
 
 /** Persistent brief seats are retained for compatibility, not editable defaults. */
-export class PerBriefDefaultsRetiredError extends Schema.TaggedErrorClass<PerBriefDefaultsRetiredError>()(
+export class PerBriefDefaultsRetiredError extends Schema.TaggedError<PerBriefDefaultsRetiredError>()(
   "PerBriefDefaultsRetiredError",
   { message: Schema.String },
 ) {}
