@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { Schema } from "effect"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
 import { composeModuleServices } from "../../../../../src/infra/module-service.js"
-import { DebugLog } from "../../../../../src/infra/debug-log.js"
+import { DebugLog, type DebugLogRecordInput } from "../../../../../src/infra/debug-log.js"
 import { bugReportsModule } from "../../../../../src/orchestration/modules/bug-reports/module.js"
 import { bugReportsService, createBugReportsService } from "../../../../../src/orchestration/modules/bug-reports/service.js"
 import { BugReportSchema, type BugReportInput } from "../../../../../src/protocol/modules/bug-reports.js"
@@ -30,6 +30,16 @@ const setReportEnvironment = ({ FLYWHEEL_REPORT_ENDPOINT, FLYWHEEL_INTERNAL_RELE
   if (FLYWHEEL_INTERNAL_RELEASE_HARNESS === undefined) delete process.env.FLYWHEEL_INTERNAL_RELEASE_HARNESS
   else process.env.FLYWHEEL_INTERNAL_RELEASE_HARNESS = FLYWHEEL_INTERNAL_RELEASE_HARNESS
 }
+/** Collects the records the bug-reports service logs from now until `DebugLog.close()`. The debug log is process-global, so the
+ *  sink also receives a record from any other work that still runs in the test process, such as work an earlier test file left. */
+const captureServiceRecords = async (): Promise<DebugLogRecordInput[]> => {
+  const records: DebugLogRecordInput[] = []
+  await DebugLog.forward((record) => {
+    const { payload } = record
+    if (typeof payload === "object" && payload !== null && "service" in payload && payload.service === "bug-reports") records.push(record)
+  })
+  return records
+}
 beforeEach(() => { setReportEnvironment({ FLYWHEEL_REPORT_ENDPOINT: ENDPOINT }) })
 afterEach(() => { setReportEnvironment(reportEnvironment) })
 
@@ -46,8 +56,7 @@ describe("account bug reports", () => {
     await writeFile(join(projectLog, "02.jsonl"), `${makeRecord("executor", "log.warn", 3)}\n${makeRecord("executor", "log.info", 4, { durationMs: 300, slowMs: 100 })}\n`)
     await writeFile(join(accountLog, "03.jsonl"), `${makeRecord("account", "log.error", 5)}\n`)
     const requests: Request[] = []
-    const logs: unknown[] = []
-    await DebugLog.forward((record) => { logs.push(record) })
+    const logs = await captureServiceRecords()
     const service = createBugReportsService({ projectRoot, userDataRoot, enabled: () => true, fetch: fakeFetch(async (request) => { requests.push(request); return Response.json({ reportId: "42" }) }) })
     const protocol = composeAccountModuleProtocolRuntimes([bugReportsModule], {
       modules: composeModuleServices([[bugReportsService.moduleId, service]]),
@@ -110,8 +119,7 @@ describe("account bug reports", () => {
     const userDataRoot = temporary("bug-reports-refusal-")
     let enabled = false
     let calls = 0
-    const logs: unknown[] = []
-    await DebugLog.forward((record) => { logs.push(record) })
+    const logs = await captureServiceRecords()
     const service = createBugReportsService({ userDataRoot, enabled: () => enabled, fetch: fakeFetch(async () => {
       calls += 1
       if (calls === 1) return new Response(null, { status: 429 })
@@ -142,8 +150,7 @@ describe("account bug reports", () => {
   test("a build without the official report endpoint sends no report, and the release harness withholds only crash reports", async () => {
     const userDataRoot = temporary("bug-reports-release-")
     let calls = 0
-    const logs: unknown[] = []
-    await DebugLog.forward((record) => { logs.push(record) })
+    const logs = await captureServiceRecords()
     const service = createBugReportsService({ userDataRoot, enabled: () => true, fetch: fakeFetch(async () => { calls += 1; return Response.json({ reportId: "44" }) }) })
     const expectWithheld = async (kind: BugReportInput["kind"]) => {
       const withheld = await service.submit({ ...input, kind })
