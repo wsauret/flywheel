@@ -1,0 +1,58 @@
+tests/unit/bench/chat-ab-claude-code-test1.test.ts
+  h_4b47e9e4a8b456 91-92,156
+tests/unit/cli/workflow-verify.test.ts
+  h_4b47e9e4a8b456 149-152,459-461
+tests/unit/infra/line-channel.test.ts
+  h_4b47e9e4a8b456 27-29
+tests/unit/infra/owned-command-supervisor.test.ts
+  h_4b47e9e4a8b456 624
+tests/unit/orchestration/agent-runtime/background-execution-owner.test.ts
+  h_4b47e9e4a8b456 1,517-529
+tests/unit/orchestration/agent-runtime/tools/bash-private-copy-reuse.test.ts
+  h_4b47e9e4a8b456 117-122
+tests/unit/orchestration/app-service/project-execution-runtime.test.ts
+  h_4b47e9e4a8b456 84-90,167,188
+tests/unit/orchestration/app-service/workflow-view-protocol-projection.test.ts
+  h_4b47e9e4a8b456 169-172
+tests/unit/orchestration/chat/chat-session-agent-runtime-queue.test.ts
+  h_4b47e9e4a8b456 81-84,86-92,121
+tests/unit/orchestration/fixtures/prepare-workspace-state-worker.ts
+  h_4b47e9e4a8b456 3,9-11,28,30-31
+tests/unit/orchestration/headless/headless-run.test.ts
+  h_4b47e9e4a8b456 17,245-266,268-281
+tests/unit/orchestration/runner/output-session-phase-flush.test.ts
+  h_4b47e9e4a8b456 146-161,163-173,175-178,180-184
+tests/unit/orchestration/runner/output-session-write.test.ts
+  h_4b47e9e4a8b456 194-197,199-201,203-221
+tests/unit/orchestration/session/child-reconciliation-work-count.test.ts
+  h_4b47e9e4a8b456 30-35,80,214,277
+tests/unit/orchestration/session/conversation-block-projection-failures.test.ts
+  h_4b47e9e4a8b456 1,9-17
+tests/unit/orchestration/update/build-fallback.test.ts
+  h_4b47e9e4a8b456 20-23
+tests/unit/orchestration/update/update-install-transfer.test.ts
+  h_4b47e9e4a8b456 161-163,177
+tests/unit/orchestration/workspace-state.test.ts
+  h_4b47e9e4a8b456 28,489-499,505-506,508,511-517,520-521,524
+tests/unit/protocol/client/connection-reattach.test.ts
+  h_4b47e9e4a8b456 221-223,239
+tests/unit/protocol/client/lane-scheduler.test.ts
+  h_4b47e9e4a8b456 23-36
+tests/unit/tui/context/toast-state.test.ts
+  h_4b47e9e4a8b456 1,14-21,23-31
+webview/src/app/changes-folders.test.ts
+  h_4b47e9e4a8b456 5,21
+webview/src/app/turn-features.test.ts
+  h_4b47e9e4a8b456 99-103,107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "509b5a934ccb337fb773e83c2320a611153251da",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
