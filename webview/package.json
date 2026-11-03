@@ -11,7 +11,7 @@
   "dependencies": {
     "@solid-primitives/keyed": "^1.5.3",
     "effect": "4.0.0-beta.84",
-    "entities": "7.0.1",
+    "entities": "9.0.0",
     "highlight.js": "^11.12.0",
     "jsqr": "^1.4.0",
     "marked": "^18.0.10",
