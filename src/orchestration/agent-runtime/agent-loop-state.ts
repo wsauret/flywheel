@@ -9,8 +9,33 @@ export interface AgentLoopState {
   readonly overflowRecoveryAttempted: boolean;
   /** Settled output overflows since the last successful response or new user request. */
   readonly consecutiveOutputOverflows: number;
-  readonly waitRequested: boolean;
-  readonly waitTimeoutSeconds?: number;
+  /** The loop's one explicit wait, independent of model requests. */
+  readonly wait?: OpenWait;
+}
+
+/** An explicit wait that parked on live work: a `process` wait, a yield
+ *  placeholder, a call that holds a reply wait, the runtime's own wait for
+ *  pending work, or a wait restored after a restart. It outlives the model
+ *  requests that follow it (a runtime notice, the reply nudge, a compaction),
+ *  so the turn end that follows parks on it. Only a wake from the work, its
+ *  expiry, a person's message or Resume, or an interrupt ends it, and a later
+ *  wait replaces it. `expiry` holds the requested duration, which the expiry
+ *  notice states, and the deadline that each park arms the rest of; it is
+ *  absent for a park-only wait. `replyWaitIds` names the reply waits it
+ *  holds: their reply, a message from another session, is its wake. */
+export interface OpenWait {
+  readonly expiry?: WaitExpiry;
+  readonly replyWaitIds: readonly string[];
+}
+
+export interface WaitExpiry {
+  readonly seconds: number;
+  readonly deadlineMs: number;
+}
+
+/** A wait of `seconds` from now, or park-only when `seconds` is undefined. */
+export function openWaitFor(seconds: number | undefined, replyWaitIds: readonly string[] = []): OpenWait {
+  return { ...(seconds === undefined ? {} : { expiry: { seconds, deadlineMs: Date.now() + seconds * 1000 } }), replyWaitIds };
 }
 
 export const initialAgentLoopState: AgentLoopState = {
@@ -18,12 +43,12 @@ export const initialAgentLoopState: AgentLoopState = {
   llmCalls: 0,
   overflowRecoveryAttempted: false,
   consecutiveOutputOverflows: 0,
-  waitRequested: false,
 };
 
 /** Pure state transitions shared by every loop iteration. */
 export const agentLoopTransition = {
-  turnStarted: (state: AgentLoopState): AgentLoopState => ({ ...state, turn: state.turn + 1, waitRequested: false, waitTimeoutSeconds: undefined }),
+  turnStarted: (state: AgentLoopState): AgentLoopState => ({ ...state, turn: state.turn + 1 }),
+  /** The open wait meets the input that starts the turn on its own rule (`endsOpenWait`). */
   logicalTurnStarted: (state: AgentLoopState, origin: "user" | "background"): AgentLoopState => ({
     ...state,
     overflowRecoveryAttempted: false,
@@ -37,7 +62,8 @@ export const agentLoopTransition = {
     consecutiveOutputOverflows: outcome.kind === "ok" ? 0 : state.consecutiveOutputOverflows + (outcome.kind === "output_overflow" ? 1 : 0),
   }),
   overflowRecoveryStarted: (state: AgentLoopState): AgentLoopState => ({ ...state, overflowRecoveryAttempted: true }),
-  waitRequested: (state: AgentLoopState, seconds: number | undefined): AgentLoopState => ({ ...state, waitRequested: true, waitTimeoutSeconds: seconds }),
+  waitOpened: (state: AgentLoopState, wait: OpenWait): AgentLoopState => ({ ...state, wait }),
+  waitClosed: (state: AgentLoopState): AgentLoopState => ({ ...state, wait: undefined }),
 };
 
 /** What one run did, for the one record of its completion. The loop keeps it

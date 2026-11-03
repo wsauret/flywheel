@@ -8,6 +8,46 @@ import type { ToolResultEntry } from "./agent-state.js";
 import type { TurnOutcome } from "./assistant-turn-result.js";
 import { createRepetitionGuard } from "./doom-loop.js";
 
+/** The tag of the notice that a wait's expiry delivers, which ends the wait. */
+export const WAIT_EXPIRED_TAG = "wait_expired";
+
+/** Whether a stored message's content is the notice of a wait's expiry. */
+function isWaitExpiredNotice(content: unknown): boolean {
+  return typeof content === "string" && content.startsWith(`<${WAIT_EXPIRED_TAG}>`);
+}
+
+/** One input that an open wait meets: a Resume, or a message in the live
+ *  loop's input shape (`origin` `human`, `session`, or `silent-system`) or in
+ *  its stored shape (`origin` `human` or `system`; a notification keeps
+ *  `replyRequired` where the ids it carried live are gone). */
+export type OpenWaitInput =
+  | { readonly kind: "resume"; readonly continuesWait: boolean }
+  | {
+      readonly kind: "message";
+      readonly origin?: string;
+      readonly producer?: { readonly kind: string };
+      readonly backgroundNotificationIds?: readonly string[];
+      readonly replyRequired?: true;
+      readonly content?: unknown;
+    };
+
+/** Whether one input ends the open wait that holds `replyWaitIds`: a
+ *  background notification, the notice of the wait's expiry, a person's
+ *  message, a Resume that does not continue a planned cut's wait, or, for a
+ *  message from another session, the reply that ends a reply wait the open
+ *  wait holds (the registry ends that reply wait before the message
+ *  commits, so `holdsWait` no longer names it). Every other input, such as a
+ *  runtime or module notice, the reply nudge, or an unrelated session's
+ *  message, only re-drives the turn. The live loop and the restore reader
+ *  both decide by this rule, so a restart restores the wait the live loop
+ *  held. */
+export function endsOpenWait(input: OpenWaitInput, replyWaitIds: readonly string[], holdsWait: (toolUseId: string) => boolean): boolean {
+  if (input.kind === "resume") return !input.continuesWait;
+  if ((input.backgroundNotificationIds?.length ?? 0) > 0 || input.replyRequired === true || isWaitExpiredNotice(input.content)) return true;
+  if (input.producer?.kind === "session") return replyWaitIds.some((id) => !holdsWait(id));
+  return input.origin !== "system" && input.origin !== "silent-system";
+}
+
 /** Restores the original deadline only while work can still wake the turn.
  *  A park-only start (`RestoredAgentWait.parkOnly`) arms no deadline, since
  *  an expiry notice starts a request, and with no work left it delivers no
@@ -19,7 +59,7 @@ export function restoreAgentLoopWait(
   tasks: Pick<BackgroundWorkRegistry, "waitableTaskCount"> | undefined,
   enqueueRuntimeNotice: ((text: string) => void) | undefined,
 ): AgentLoopState {
-  if ((tasks?.waitableTaskCount() ?? 0) > 0) return agentLoopTransition.waitRequested(state, wait.parkOnly ? undefined : Math.max(0, (wait.deadlineMs - Date.now()) / 1000));
+  if ((tasks?.waitableTaskCount() ?? 0) > 0) return agentLoopTransition.waitOpened(state, { ...(wait.parkOnly || !wait.expiry ? {} : { expiry: wait.expiry }), replyWaitIds: wait.replyWaitIds });
   if (!wait.parkOnly) enqueueRuntimeNotice?.(formatWaitNoopNotification());
   return state;
 }
@@ -32,7 +72,7 @@ export interface WaitToolPolicy {
 
 export function createWaitToolPolicy(
   hasLiveBackgroundWork: () => boolean,
-  markWaitRequested: (seconds: number | undefined) => void,
+  markWaitRequested: (seconds: number | undefined, replyWaitIds: readonly string[]) => void,
   enqueueRuntimeNotice?: (content: string) => void,
   /** Whether a call opened a reply wait that is still open. Such a call is a
    *  wait: the turn parks after its batch until the reply or another end. */
@@ -46,7 +86,12 @@ export function createWaitToolPolicy(
       if (calls.length === 0) return false;
       if (hasLiveBackgroundWork()) {
         const seconds = calls.map((call) => isParkingWaitCall(call) ? processWaitSeconds(call.input) : undefined).find((duration) => duration !== undefined);
-        markWaitRequested(seconds ?? (calls.some((call) => isYieldPlaceholderToolCall(call, true)) ? DEFAULT_WAIT_SECONDS : undefined));
+        markWaitRequested(
+          seconds ?? (calls.some((call) => isYieldPlaceholderToolCall(call, true)) ? DEFAULT_WAIT_SECONDS : undefined),
+          // A process wait or a placeholder is a wait by its own input; asking
+          // whether it holds a reply wait would cost a restore a read.
+          calls.flatMap((call) => !isParkingWaitCall(call) && !isYieldPlaceholderToolCall(call, true) && holdsWait?.(call.id) === true ? [call.id] : []),
+        );
         return true;
       }
       enqueueRuntimeNotice?.(formatWaitNoopNotification());
@@ -60,8 +105,9 @@ export interface SettledBatchObservation {
    *  not fail, shows the batch to the repetition guard and runs the batch
    *  hook. A notice enqueued here reaches the next request with this batch's
    *  results. A failed response settles first: a notice must never turn a
-   *  request failure into another request. */
-  readonly observe: (calls: readonly ToolCall[], results: readonly Pick<ToolResultEntry, "toolUseId" | "outcome">[], outcome: TurnOutcome["kind"]) => Promise<void>;
+   *  request failure into another request. Returns whether the batch's own
+   *  wait calls parked on live work, so the turn parks after the batch. */
+  readonly observe: (calls: readonly ToolCall[], results: readonly Pick<ToolResultEntry, "toolUseId" | "outcome">[], outcome: TurnOutcome["kind"]) => Promise<boolean>;
   /** Starts the repetition history again, at a person message or Resume. */
   readonly reset: () => void;
 }
@@ -77,11 +123,12 @@ export function createSettledBatchObservation(
   return {
     observe: async (calls, results, outcome) => {
       const waitCalls = calls.filter((call) => waits.isWaitCall(call) && results.some((result) => result.toolUseId === call.id && result.outcome === "ok"));
-      const parkedWaitIds = new Set(waits.settleWaitCalls(waitCalls) ? waitCalls.map((call) => call.id) : []);
-      if (outcome === "stream_error" || outcome === "context_overflow") return;
-      const repetitionNotice = repetitionGuard.observeBatch(calls, parkedWaitIds);
+      const parks = waits.settleWaitCalls(waitCalls);
+      if (outcome === "stream_error" || outcome === "context_overflow") return parks;
+      const repetitionNotice = repetitionGuard.observeBatch(calls, new Set(parks ? waitCalls.map((call) => call.id) : []));
       if (repetitionNotice) enqueueRuntimeNotice(repetitionNotice);
       await onToolBatchSettled();
+      return parks;
     },
     reset: () => { repetitionGuard.reset(); },
   };

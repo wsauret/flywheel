@@ -160,6 +160,11 @@ export interface AgentLifecycleCallbacks {
   readonly onHandoffStarted?: () => void;
   /** A runtime-cut background wait, rebuilt from its committed tool batch. */
   readonly restoredWait?: RestoredAgentWait;
+  /** The open wait of a running turn that a planned replacement cut
+   *  (`continuedWaitOf`). The successor's Resume continues the turn, and
+   *  this wait with it, where a person's Resume would end the wait. A
+   *  child's continuation, which has no Resume input, opens it at its start. */
+  readonly continuedWait?: RestoredAgentWait;
   /** Set for a maintenance runner (`AgentLoopMaintenance`). */
   readonly maintenance?: AgentLoopMaintenance;
   readonly onCompactionContinuation?: () => void | Promise<void>;

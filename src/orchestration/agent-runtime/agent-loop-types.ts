@@ -33,7 +33,7 @@ import type { PersistentProcessClient } from "../../infra/persistent-process-man
 import type { BridgedPersistentProcessClient } from "../../infra/persistent-process-bridge.js";
 import type { ReadCommandEvidence } from "../../workflows/output-contract/evidence.js";
 import type { StreamingEditValidationService } from "./tools/streaming-edit-validation.js";
-import type { AgentRunTally } from "./agent-loop-state.js";
+import type { AgentRunTally, WaitExpiry } from "./agent-loop-state.js";
 
 interface HandoffContent {
   [key: string]: unknown;
@@ -152,10 +152,18 @@ export interface AgentLoopMaintenance {
  *  then parks the turn on its work with no expiry and never starts a request
  *  itself: the completion of work that runs or that registers later, a
  *  message, or the person's Resume wakes the turn. A chain of planned cuts
- *  alone keeps the original deadline and the nothing-pending notice. */
+ *  alone keeps the original deadline and the nothing-pending notice.
+ *  `expiry` is the duration that the wait call asked for and its original
+ *  deadline, absent for a reply wait, which has none, and `replyWaitIds`
+ *  names the reply waits that the wait holds (`OpenWait`). `requestOwed`
+ *  says that input committed after the wait that no request answered, so
+ *  the loop runs that request instead of parking first. `woken` says that
+ *  such input ended the wait (`endsOpenWait`), so the loop opens no wait. */
 export interface RestoredAgentWait {
-  readonly deadlineMs: number;
-  readonly wakePending?: true;
+  readonly expiry?: WaitExpiry;
+  readonly replyWaitIds: readonly string[];
+  readonly requestOwed?: true;
+  readonly woken?: true;
   readonly parkOnly?: true;
 }
 
@@ -163,6 +171,13 @@ interface AgentLoopLifecycle {
   onHandoffStarted?: () => void;
   /** A runtime-cut background wait, rebuilt from its committed tool batch. */
   readonly restoredWait?: RestoredAgentWait;
+  /** The open wait of a running turn that a planned replacement cut
+   *  (`continuedWaitOf`). The successor's Resume continues the turn, and
+   *  this wait with it, where a person's Resume would end the wait. A run
+   *  that continues the turn with no Resume input, as a child's
+   *  continuation does, opens it before its first request. Input that
+   *  starts the turn first supersedes the cut and drops it. */
+  readonly continuedWait?: RestoredAgentWait;
   /** Set for a maintenance runner (`AgentLoopMaintenance`). */
   readonly maintenance?: AgentLoopMaintenance;
   onCompactionContinuation?: () => void | Promise<void>;

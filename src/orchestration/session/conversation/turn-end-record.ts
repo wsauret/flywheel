@@ -2,9 +2,10 @@ import type { PausedBy } from "../../../infra/output-blocks.js"
 import { toolOutcomeFromProvider } from "../../../infra/tool-outcome.js"
 import { CONTINUATION_MESSAGES } from "../../agent-runtime/continuation-messages.js"
 import { DEFAULT_WAIT_SECONDS } from "../../agent-runtime/tools/process.js"
+import { MESSAGE_SESSION_TOOL_NAME } from "../../agent-runtime/tools/message-session.js"
 import type { ConversationMessage } from "../../agent-runtime/llm/types.js"
 import type { RestoredAgentWait } from "../../agent-runtime/agent-loop-types.js"
-import { createWaitToolPolicy } from "../../agent-runtime/agent-loop-wait.js"
+import { createWaitToolPolicy, endsOpenWait, type OpenWaitInput } from "../../agent-runtime/agent-loop-wait.js"
 import { messageDisposition } from "../live-session-control.js"
 import type { SessionRelation } from "../../../infra/chat-input-schema.js"
 
@@ -16,7 +17,7 @@ export interface TurnEndEntry {
   readonly kind: string
   readonly id: string
   readonly displayOnly?: boolean
-  readonly message?: { readonly kind: string; readonly origin?: string; readonly producer?: { readonly kind: string; readonly hop?: number; readonly envelope?: { readonly relation: SessionRelation } }; readonly content?: unknown; readonly interrupted?: boolean; readonly isError?: boolean; readonly toolUseId?: string }
+  readonly message?: { readonly kind: string; readonly origin?: string; readonly replyRequired?: true; readonly producer?: { readonly kind: string; readonly sessionId?: string; readonly hop?: number; readonly envelope?: { readonly relation: SessionRelation } }; readonly content?: unknown; readonly interrupted?: boolean; readonly isError?: boolean; readonly toolUseId?: string }
 }
 
 /** How a turn ended without an assistant answer, recorded as an entry at the
@@ -265,75 +266,272 @@ export function chatTurnEndOf(tail: readonly TurnEndEntry[], holdsWait?: (id: st
 
 /** The decisive turn end and the timestamp of its original entry. Unrecorded
  *  exits carry no timestamp because no producer recorded their end. */
-export function chatTurnEndEvidenceOf(tail: readonly (TurnEndEntry & { readonly timestamp: string })[], holdsWait?: (id: string) => boolean): { readonly turnEnd: ChatTurnEnd; readonly timestamp?: number; readonly restoredWait?: RestoredAgentWait } | undefined {
+export function chatTurnEndEvidenceOf(tail: readonly (TurnEndEntry & { readonly timestamp: string })[], holdsWait?: (id: string) => boolean): { readonly turnEnd: ChatTurnEnd; readonly timestamp?: number; readonly restoredWait?: RestoredAgentWait; readonly continuedWait?: RestoredAgentWait } | undefined {
   const decision = chatTurnEndDecision(tail, holdsWait)
   if (decision === undefined) return undefined
   const timestamp = decision.entry?.timestamp
   const wait = decision.wait
   const restoredWait = wait ? {
-    deadlineMs: Date.parse(wait.finished.timestamp) + wait.seconds * 1000,
-    ...(wait.wakePending ? { wakePending: true as const } : {}),
+    ...restoredWaitOf(wait.finished, wait.opened),
+    ...(wait.requestOwed ? { requestOwed: true as const } : {}),
+    ...(wait.woken ? { woken: true as const } : {}),
     ...(wait.parkOnly ? { parkOnly: true as const } : {}),
   } : undefined
-  return { turnEnd: decision.turnEnd, ...(timestamp === undefined ? {} : { timestamp: Date.parse(timestamp) }), ...(restoredWait ? { restoredWait } : {}) }
+  const continued = continuedWaitOf(tail, decision, holdsWait)
+  const continuedWait = typeof continued === "object" ? restoredWaitOf(continued.finished, continued.opened) : undefined
+  return { turnEnd: decision.turnEnd, ...(timestamp === undefined ? {} : { timestamp: Date.parse(timestamp) }), ...(restoredWait ? { restoredWait } : {}), ...(continuedWait ? { continuedWait } : {}) }
 }
 
-/** Replays the live wait and message policies over the last completed batch.
+/** The wait that `opened` opened, dated from the end of its batch. A reply
+ *  wait has no expiry. */
+function restoredWaitOf(finished: { readonly timestamp: string }, opened: OpenedWait): RestoredAgentWait {
+  return { ...(opened.seconds === undefined ? {} : { expiry: { seconds: opened.seconds, deadlineMs: Date.parse(finished.timestamp) + opened.seconds * 1000 } }), replyWaitIds: opened.replyWaitIds }
+}
+
+/** Whether the wait that a restore reads may have opened before the first
+ *  entry of `tail`: nothing in the tail decides whether an older wait call
+ *  still holds (`openWaitBefore`), or the tail starts inside the last model
+ *  step before a runtime cut. A restore read then pages back further. */
+export function restoredWaitReadsOlder(tail: readonly TurnEndEntry[]): boolean {
+  const decision = chatTurnEndDecision(tail)
+  return decision?.readsOlder === true || decision?.wait?.readsOlder === true
+    || (decision !== undefined && continuedWaitOf(tail, decision) === "older")
+}
+
+/** The open wait of a running turn that a planned replacement cut, which
+ *  the successor's Resume continues (`RestoredAgentWait`): the cut came
+ *  between the turn's requests, not at its park, so the turn reads as
+ *  interrupted, and the wait that its earlier wait call opened still holds
+ *  by the live loop's rule (`openWaitBefore`). A chain with an unexpected
+ *  exit or an ordinary stop has no continuation authority, and a person's
+ *  Resume ends the wait. */
+function continuedWaitOf<Entry extends TurnEndEntry>(tail: readonly Entry[], decision: ChatTurnEndDecision<Entry>, holdsWait?: (id: string) => boolean): ReturnType<typeof openWaitBefore<Entry>> {
+  if (decision.wait !== undefined || !isPlannedCut(decision.turnEnd.end)) return "none"
+  const open = openWaitBefore(tail, tail.length, holdsWait)
+  return typeof open === "object" && open.parkOnly ? "none" : open
+}
+
+/** A user-role message that the walks below read as input to the open wait. */
+type StoredInput = NonNullable<TurnEndEntry["message"]>
+
+/** Replays the live wait and message policies over the turn's last wait.
  * Runtime cuts do not move its finish time or extend its deadline. The wait
  * parks only (`RestoredAgentWait.parkOnly`) when any cut since that batch was
  * an unexpected exit or an ordinary stop: no continuation authority covers
  * that chain, even under the successor of a later planned replacement. A new
- * wait batch starts a new chain. */
-function backgroundWaitOf<Entry extends TurnEndEntry>(tail: readonly Entry[], holdsWait?: (id: string) => boolean): BackgroundWait<Entry> | undefined {
+ * wait batch starts a new chain. A turn that ended in text still waits on
+ * the open wait of an earlier wait call (`openWaitBefore`); without one, it
+ * waits the runtime's default duration from that text. A compaction, such as
+ * a person's /compact while the turn waited, re-drove nothing, so the walk
+ * reads past it. Input committed after the turn's end owes a request
+ * (`requestOwed`), and it ended the wait only when the live rule says so
+ * (`woken`). A Resume after the turn's end already continues the turn, so
+ * nothing is restored. `older` means the tail starts before the walk
+ * could decide. */
+function backgroundWaitOf<Entry extends TurnEndEntry>(tail: readonly Entry[], holdsWait?: (id: string) => boolean): BackgroundWait<Entry> | "older" | undefined {
   let finished: Entry | undefined
-  let wakePending = false
+  let requestOwed = false
   let interrupted = false
   let parkOnly = false
+  const inputs: StoredInput[] = []
+  const succeeded = new Set<string>()
   for (let index = tail.length - 1; index >= 0; index -= 1) {
     const entry = tail[index]
-    if (!entry || entry.kind === "label" || entry.kind === "session_info" || entry.displayOnly || isSettledRecord(entry)) continue
+    if (!entry || isSkippedByWalk(entry)) continue
     const end = turnEndOfEntry(entry)
     if (end?.reason === "crash" || (end?.reason === "paused" && end.pausedBy === "runtime")) {
       parkOnly ||= !isPlannedCut(end)
       continue
     }
+    if (entry.kind === "compaction") {
+      if (finished !== undefined || !parkedReset(tail, index)) return undefined
+      return endedTurnWait(tail, index, entry, holdsWait, { inputs, requestOwed, parkOnly })
+    }
     if (end || entry.kind !== "message" || !entry.message) return undefined
-    if (isTurnContinuation(entry.message)) return undefined
-    if (entry.message.kind === "user") {
-      const producer = entry.message.producer
-      wakePending ||= messageDisposition({
+    const message = entry.message
+    if (isTurnContinuation(message)) return undefined
+    if (message.kind === "user") {
+      inputs.push(message)
+      const producer = message.producer
+      requestOwed ||= messageDisposition({
         state: "waiting_on_work", origin: producer?.kind === "session" ? "session" : "human",
         hop: producer?.hop ?? 0, relation: producer?.envelope?.relation, self: false,
       }).status === "delivered"
     }
-    if (entry.message.kind === "toolResult") {
+    if (message.kind === "toolResult") {
       finished ??= entry
-      interrupted ||= entry.message.interrupted === true
+      interrupted ||= message.interrupted === true
+      noteSucceeded(succeeded, message)
     }
-    if (entry.message.kind !== "assistant") continue
+    if (message.kind !== "assistant") continue
     if (interrupted) return undefined
-    let seconds = DEFAULT_WAIT_SECONDS
-    const policy = createWaitToolPolicy(() => true, (duration) => { seconds = duration ?? DEFAULT_WAIT_SECONDS }, undefined, holdsWait)
-    const calls = toolUses(entry.message)
-    const waits = calls.filter(policy.isWaitCall)
-    if (calls.length === 0 ? finished !== undefined : waits.length === 0) return undefined
-    policy.settleWaitCalls(waits)
-    return { finished: finished ?? entry, seconds, wakePending, parkOnly }
+    const calls = toolUses(message)
+    if (calls.length > 0) {
+      const opened = waitOpenedBy(calls.filter((call) => succeeded.has(call.id)), inputs, holdsWait)
+      return opened && { finished: finished ?? entry, opened: opened.wait, requestOwed, woken: inputs.some(opened.wokenBy), parkOnly, readsOlder: false }
+    }
+    if (finished !== undefined) return undefined
+    return endedTurnWait(tail, index, entry, holdsWait, { inputs, requestOwed, parkOnly })
   }
-  return undefined
+  return "older"
+}
+
+/** What a restore walk collected after the end of a turn: the input that
+ *  came after it, whether that input owes a request, and whether a cut since
+ *  it parks only. */
+interface AfterTurnEnd {
+  readonly inputs: readonly StoredInput[]
+  readonly requestOwed: boolean
+  readonly parkOnly: boolean
+}
+
+/** The wait of a turn that ended at `index`, in text or in a reset that
+ *  no request followed: the open wait of an earlier wait call
+ *  (`openWaitBefore`), or else the runtime's default duration from that
+ *  end. */
+function endedTurnWait<Entry extends TurnEndEntry>(tail: readonly Entry[], index: number, entry: Entry, holdsWait: ((id: string) => boolean) | undefined, after: AfterTurnEnd): BackgroundWait<Entry> {
+  const open = openWaitBefore(tail, index, holdsWait, after.inputs)
+  const { requestOwed } = after
+  if (typeof open === "object") return { finished: open.finished, opened: open.opened, requestOwed, woken: after.inputs.some(open.wokenBy), parkOnly: after.parkOnly || open.parkOnly, readsOlder: false }
+  const opened = { seconds: DEFAULT_WAIT_SECONDS, replyWaitIds: [] }
+  const woken = after.inputs.some((input) => endsOpenWait(storedWaitInput(input), [], () => true))
+  return { finished: entry, opened, requestOwed, woken, parkOnly: after.parkOnly, readsOlder: open === "older" }
+}
+
+/** Whether the reset at `index` parked where the turn had ended, as a
+ *  person's /compact does during a wait: its opening messages are settled
+ *  records (`contextResetRecordId`). A reset that a request follows opens
+ *  with ordinary messages, so a cut after it came in the middle of a turn,
+ *  and a reset that opens with a copy of a turn-end record carried a turn
+ *  that waits for the person (`carriedTurnEndRecord`). */
+function parkedReset(tail: readonly TurnEndEntry[], index: number): boolean {
+  const opening = tail[index + 1]
+  return opening !== undefined && isSettledRecord(opening)
+}
+
+/** Records a tool result that the live loop counts as a successful call
+ *  (`createSettledBatchObservation` settles only those as waits). A refused
+ *  call, such as a wait that a compaction's save round refused, opens no
+ *  wait. */
+function noteSucceeded(succeeded: Set<string>, message: NonNullable<TurnEndEntry["message"]>): void {
+  if (message.toolUseId !== undefined && toolOutcomeFromProvider(message.isError, message.interrupted) === "ok") succeeded.add(message.toolUseId)
+}
+
+/** The wait that one assistant message's successful calls open, by the
+ *  live policy, with the rule by which an input committed after them ends
+ *  it (`endsOpenWait`), or nothing when no call is a wait. `later` is the
+ *  input committed after the calls. A reply wait that its addressee answered
+ *  no longer holds, so the answer is the evidence that its call was a wait,
+ *  and only an answer from that addressee ended it: a restore reads which
+ *  reply waits hold now, not when each message came. */
+function waitOpenedBy(calls: ReturnType<typeof toolUses>, later: readonly StoredInput[], holdsWait?: (id: string) => boolean): { readonly wait: OpenedWait; readonly wokenBy: (input: StoredInput) => boolean } | undefined {
+  const answeredBy = (id: string, input: StoredInput): boolean => input.producer?.kind === "session" && input.producer.sessionId !== undefined
+    && calls.some((call) => call.id === id && call.name === MESSAGE_SESSION_TOOL_NAME && call.input.wait === true && call.input.to === input.producer?.sessionId)
+  let wait: OpenedWait | undefined
+  const policy = createWaitToolPolicy(() => true, (seconds, replyWaitIds) => { wait = { ...(seconds === undefined ? {} : { seconds }), replyWaitIds } }, undefined,
+    (id) => holdsWait?.(id) === true || later.some((input) => answeredBy(id, input)))
+  policy.settleWaitCalls(calls.filter(policy.isWaitCall))
+  if (wait === undefined) return undefined
+  const { replyWaitIds } = wait
+  return { wait, wokenBy: (input) => endsOpenWait(storedWaitInput(input), replyWaitIds, (id) => holdsWait?.(id) === true || !answeredBy(id, input)) }
+}
+
+/** A stored input in the shape the wait rule reads. */
+function storedWaitInput(input: StoredInput): OpenWaitInput {
+  return { ...input, kind: "message" }
+}
+
+/** Whether the Resume at `index` is the one that a planned replacement's
+ *  successor commits: it follows the planned cut's record directly, past
+ *  the entries that the walks read past. */
+function continuesPlannedCut(tail: readonly TurnEndEntry[], index: number): boolean {
+  for (let earlier = index - 1; earlier >= 0; earlier -= 1) {
+    const entry = tail[earlier]
+    if (!entry || isSkippedByWalk(entry)) continue
+    return isPlannedCut(turnEndOfEntry(entry))
+  }
+  return false
+}
+
+/** Entries that no restore walk reads: labels, notices, settled records. */
+function isSkippedByWalk(entry: TurnEndEntry): boolean {
+  return entry.kind === "label" || entry.kind === "session_info" || entry.displayOnly === true || isSettledRecord(entry)
+}
+
+/** The open wait that the history before `end` still holds, read by the
+ *  live loop's rule (`endsOpenWait`): the newest older successful wait call
+ *  opened it, and the requests since it only re-drove the turn. A reply
+ *  nudge, a runtime or module notice, a compaction, a message from another
+ *  session that is not the awaited reply, the successor's Resume of a
+ *  planned cut, text answers, and tool batches without a wait call keep it.
+ *  A background notification, a wait's expiry notice, the awaited reply, a
+ *  person's message or other Resume, and an interrupt end it, so the walk
+ *  stops there with `none`. `after` is the input committed after `end`,
+ *  which the caller judges; it is evidence of the replies that the wait
+ *  call's reply waits got. Work that drained with no trace in the tree, such
+ *  as work that the agent stopped or a child that a person interrupted,
+ *  leaves the walk the older wait. `older` means the tail starts before the
+ *  walk could decide. */
+function openWaitBefore<Entry extends TurnEndEntry>(tail: readonly Entry[], end: number, holdsWait?: (id: string) => boolean, after: readonly StoredInput[] = []): { readonly finished: Entry; readonly opened: OpenedWait; readonly wokenBy: (input: StoredInput) => boolean; readonly parkOnly: boolean } | "none" | "older" {
+  let finished: Entry | undefined
+  let parkOnly = false
+  const crossed: StoredInput[] = []
+  const succeeded = new Set<string>()
+  for (let index = end - 1; index >= 0; index -= 1) {
+    const entry = tail[index]
+    if (!entry || entry.kind === "compaction" || isSkippedByWalk(entry)) continue
+    const turnEnd = turnEndOfEntry(entry)
+    if (turnEnd?.reason === "crash" || (turnEnd?.reason === "paused" && turnEnd.pausedBy === "runtime" && turnEnd.closed !== true)) {
+      parkOnly ||= !isPlannedCut(turnEnd)
+      continue
+    }
+    const message = entry.message
+    if (turnEnd || entry.kind !== "message" || !message) return "none"
+    if (message.kind === "toolResult") {
+      finished ??= entry
+      noteSucceeded(succeeded, message)
+      continue
+    }
+    if (message.kind === "user") {
+      // Only the awaited reply depends on which reply waits the opener
+      // holds, so every other wake stops the walk here.
+      const input: OpenWaitInput = isTurnContinuation(message) ? { kind: "resume", continuesWait: continuesPlannedCut(tail, index) } : storedWaitInput(message)
+      if (endsOpenWait(input, [], () => true)) return "none"
+      if (input.kind === "message") crossed.push(message)
+      continue
+    }
+    if (message.kind !== "assistant") continue
+    const calls = toolUses(message).filter((call) => succeeded.has(call.id))
+    succeeded.clear()
+    const opened = waitOpenedBy(calls, [...crossed, ...after], holdsWait)
+    if (opened !== undefined) return crossed.some(opened.wokenBy) ? "none" : { finished: finished ?? entry, opened: opened.wait, wokenBy: opened.wokenBy, parkOnly }
+    finished = undefined
+  }
+  return "older"
+}
+
+interface OpenedWait {
+  /** Absent for a reply wait, which has no expiry. */
+  readonly seconds?: number
+  readonly replyWaitIds: readonly string[]
 }
 
 interface BackgroundWait<Entry extends TurnEndEntry> {
   readonly finished: Entry
-  readonly seconds: number
-  readonly wakePending: boolean
+  readonly opened: OpenedWait
+  readonly requestOwed: boolean
+  readonly woken: boolean
   readonly parkOnly: boolean
+  /** The opener may sit before the tail (`restoredWaitReadsOlder`). */
+  readonly readsOlder: boolean
 }
 
 interface ChatTurnEndDecision<Entry extends TurnEndEntry> {
   readonly turnEnd: ChatTurnEnd
   readonly entry?: Entry
   readonly wait?: BackgroundWait<Entry>
+  /** The tail starts inside the last model step before a runtime cut. */
+  readonly readsOlder?: true
 }
 
 function chatTurnEndDecision<Entry extends TurnEndEntry>(tail: readonly Entry[], holdsWait?: (id: string) => boolean): ChatTurnEndDecision<Entry> | undefined {
@@ -355,9 +553,10 @@ function chatTurnEndDecision<Entry extends TurnEndEntry>(tail: readonly Entry[],
     }
     if (end) {
       if (produced && !isResumableTurnEnd(end)) return unanswered
-      const wait = end.reason === "crash" || (end.reason === "paused" && end.pausedBy === "runtime" && end.closed !== true)
+      const found = end.reason === "crash" || (end.reason === "paused" && end.pausedBy === "runtime" && end.closed !== true)
         ? backgroundWaitOf(tail, holdsWait) : undefined
-      return { turnEnd: wait ? { end, recorded: true, backgroundWait: true } : { end, recorded: true }, entry, ...(wait ? { wait } : {}) }
+      const wait = found === "older" ? undefined : found
+      return { turnEnd: wait ? { end, recorded: true, backgroundWait: true } : { end, recorded: true }, entry, ...(wait ? { wait } : {}), ...(found === "older" ? { readsOlder: true as const } : {}) }
     }
     if (entry.displayOnly === true) continue
     if (isProducedInput(entry.message)) {

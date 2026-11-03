@@ -8,13 +8,13 @@ import { createBudgetNudge } from "./budget-nudge.js";
 import { attemptContextOverflowRecovery, type PlannedCompactionOperation } from "./compaction/triggers.js";
 import { captureForkMessages, recordInterruptedTurn, seedAgentLoopTurn } from "./agent-loop-history.js";
 import { createPendingWorkNudge } from "./pending-work-nudge.js";
-import { agentLoopTransition as loopTransition, createAgentRunTally, initialAgentLoopState as initialLoopState, OUTPUT_OVERFLOW_CONTINUATION_LIMIT, tallyToolResults } from "./agent-loop-state.js";
+import { agentLoopTransition as loopTransition, createAgentRunTally, initialAgentLoopState as initialLoopState, openWaitFor, OUTPUT_OVERFLOW_CONTINUATION_LIMIT, tallyToolResults } from "./agent-loop-state.js";
 import { createHandoffTracker, HANDOFF_OWED_NOTICE } from "./agent-loop-handoff.js";
 import type { PersistenceWriteRefused } from "../../infra/event-store-types.js";
 import { createContentFilterRecovery } from "./agent-loop-content-filter.js";
 import { createAgentLoopToolContext } from "./agent-loop-tool-context.js";
 import { hasAssistantOutput } from "./assistant-output.js";
-import { createSettledBatchObservation, createWaitToolPolicy, restoreAgentLoopWait } from "./agent-loop-wait.js";
+import { createSettledBatchObservation, createWaitToolPolicy, endsOpenWait, restoreAgentLoopWait, type OpenWaitInput } from "./agent-loop-wait.js";
 import { finalReplyText, hasLiveBackgroundWork, inputClosedTerminal, missingHandoffReminder, resolveAgentLoopClosureMode } from "./agent-loop-closure.js";
 import { streamAssistantTurn, type AssistantTurnRequest } from "./assistant-turn-stream.js";
 import { openRequestPreparation } from "./request-preparation.js";
@@ -126,11 +126,24 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     turnHop,
     canCompact: canPlan,
     refuseCompaction: () => options.onSystemMessage?.("Compaction is unavailable: this execution requires scoped checkpoint_read, checkpoint_replace, and checkpoint_decide tools and enough of its turn budget to save. Context has been kept.", "error"),
-    consumeMessage: (message, start, preserve) => {
+    consumeMessage: async (message, start, preserve) => {
       if (input?.kind === "request-context") logicalTurnRequestContext = input.text;
-      return consumeAgentLoopMessageInput(message, start, preserve, messageInputEffects);
+      const consumed = await consumeAgentLoopMessageInput(message, start, preserve, messageInputEffects);
+      // Input that starts the turn before the Resume does supersedes the cut.
+      if (start) continuedWait = undefined;
+      meetOpenWait({ ...message, content: message.text });
+      return consumed;
     },
-    consumeResume: (start) => consumeAgentLoopResumeInput(start, messageInputEffects),
+    consumeResume: async (start) => {
+      const consumed = await consumeAgentLoopResumeInput(start, messageInputEffects);
+      // The successor's Resume of a planned cut continues the turn with its
+      // wait; a person's Resume ends the open wait.
+      const continued = continuedWait;
+      continuedWait = undefined;
+      meetOpenWait({ kind: "resume", continuesWait: continued !== undefined });
+      if (continued) state = restoreAgentLoopWait(state, continued, options.background?.tasks, undefined);
+      return consumed;
+    },
     scheduleCompaction: compactionState.schedule,
     onCompactionContinuation: lifecycle?.onCompactionContinuation,
     }, inputOptions);
@@ -148,12 +161,14 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   // the conversation still reads as waiting for the person (ARCH-SESSIONS-035). A
   // stall waits for the person too, but records no turn end to carry.
   let turnEndRecorded = lifecycle?.maintenance?.turnEndWaits === true;
+  let continuedWait = lifecycle?.continuedWait;
   const awaitNextLoopInput = createAgentLoopInputWaiter({
     runSignal: signal,
     providerSessionKey: options.providerSessionKey,
     prepareWaitForInput: options.inputSource?.prepareWaitForInput?.bind(options.inputSource),
     consume: consumeLoopInput,
-    state: () => ({ turnCount: state.turn, handoffWritten: false, waitRequested: state.waitRequested, waitTimeoutSeconds: state.waitTimeoutSeconds }),
+    state: () => ({ turnCount: state.turn, handoffWritten: false, ...(state.wait ? { wait: state.wait } : {}) }),
+    closeWait: () => { state = loopTransition.waitClosed(state); },
     backgroundTasks: options.background?.tasks,
     scheduleWaitExpiry: options.scheduleWaitExpiry,
     onTurnParked: (context) => {
@@ -181,13 +196,14 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     const pending = await consumeLoopInput(options.inputSource?.drainPending()); interrupted = interruption();
     if (interrupted) return await interrupted;
     if (pending === "continue") return "continue";
-    if (hasLiveBackgroundWork(options.background?.tasks, state.waitRequested) && !state.waitRequested && options.inputSource?.prepareWaitForInput) {
+    closeSpentWait();
+    if (!state.wait && hasLiveBackgroundWork(options.background?.tasks, false) && options.inputSource?.prepareWaitForInput) {
       const runtimeWaitSeconds = await pendingWorkNudge.turnEndedWithoutWait(state.turn);
       if (runtimeWaitSeconds === undefined) return "continue";
-      state = loopTransition.waitRequested(state, runtimeWaitSeconds);
+      state = loopTransition.waitOpened(state, openWaitFor(runtimeWaitSeconds));
     }
     // Completion incorporates every settled result.
-    if (closureMode === "oneshot" && hasLiveBackgroundWork(options.background?.tasks, state.waitRequested) && options.inputSource?.prepareWaitForInput) {
+    if (closureMode === "oneshot" && hasLiveBackgroundWork(options.background?.tasks, state.wait !== undefined) && options.inputSource?.prepareWaitForInput) {
       if ((await awaitNextLoopInput(true, waitSignal)) === "continue") return "continue";
       return inputClosedTerminal(signal?.aborted);
     }
@@ -200,14 +216,23 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       if (options.completeOnIdle?.seal?.(finalReplyText(preparation.messages)) === false) return (await awaitNextLoopInput(false, waitSignal)) === "continue" ? "continue" : inputClosedTerminal(signal?.aborted);
       return { kind: "completed" };
     }
-    const reminder = missingHandoffReminder(closureMode, options.inputSource?.prepareWaitForInput !== undefined, hasLiveBackgroundWork(options.background?.tasks, state.waitRequested), surface.current().tools);
+    const reminder = missingHandoffReminder(closureMode, options.inputSource?.prepareWaitForInput !== undefined, hasLiveBackgroundWork(options.background?.tasks, state.wait !== undefined), surface.current().tools);
     if (reminder) {
       log.warn("turn ended without a handoff; injecting a reminder instead of parking", { turnCount: state.turn, providerSessionKey: options.providerSessionKey });
       await pushUser(reminder);
       return "continue";
     }
-    if ((await awaitNextLoopInput(state.waitRequested, waitSignal)) === "continue") return "continue";
+    if ((await awaitNextLoopInput(state.wait !== undefined, waitSignal)) === "continue") return "continue";
     return inputClosedTerminal(signal?.aborted);
+  };
+  // An open wait with no waitable work left has nothing to wake it: an
+  // interrupt of the agent's own child, for one, ends that work without a
+  // notification (`waitableWork`). It ends here instead of parking.
+  const closeSpentWait = (): void => {
+    if (state.wait && (options.background?.tasks.waitableTaskCount() ?? 0) === 0) state = loopTransition.waitClosed(state);
+  };
+  const meetOpenWait = (input: OpenWaitInput): void => {
+    if (state.wait && endsOpenWait(input, state.wait.replyWaitIds, (id) => options.background?.tasks.holdsWait(id) === true)) state = loopTransition.waitClosed(state);
   };
   // An interrupt gives the person the turn. The waiter records the turn end
   // first, in the tree and in this loop's history alike, so a live resume and
@@ -244,7 +269,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   const enqueueRuntimeNotice = (text: string) => options.inputSource?.enqueueRuntimeNotice?.(text);
   const batchObservation = createSettledBatchObservation(createWaitToolPolicy(
     () => (options.background?.tasks.waitableTaskCount() ?? 0) > 0,
-    (seconds) => { pendingWorkNudge.reset(); state = loopTransition.waitRequested(state, seconds); },
+    (seconds, replyWaitIds) => { pendingWorkNudge.reset(); state = loopTransition.waitOpened(state, openWaitFor(seconds, replyWaitIds)); },
     enqueueRuntimeNotice,
     (toolUseId) => options.background?.tasks.holdsWait(toolUseId) === true,
   ), enqueueRuntimeNotice, () => lifecycle?.onToolBatchSettled?.());
@@ -272,7 +297,8 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       await pushUser(SILENT_REPLY_NUDGE);
       return "continue";
     }
-    if (!state.waitRequested || closureMode !== "handoff") await endCompletedTurn();
+    closeSpentWait();
+    if (!state.wait || closureMode !== "handoff") await endCompletedTurn();
     return resolveTurnEnd(turnSignal);
   };
   // What follows the compaction a plan asked for, whether its checkpoint
@@ -295,13 +321,25 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   let terminal: AgentLoopTerminal;
   execution: try {
   const initialInput = options.inputSource?.drainPending();
-  const initialConsumed = await consumeLoopInput(initialInput, lifecycle?.maintenance ? { compactAfter: "park" } : {});
   const restoredWait = lifecycle?.restoredWait;
-  if (restoredWait && !restoredWait.wakePending && initialConsumed === "empty" && !awaitsPerson) state = restoreAgentLoopWait(state, restoredWait, options.background?.tasks, (text) => options.inputSource?.enqueueRuntimeNotice?.(text));
+  // The restored wait opens before the input queued at the start, so that
+  // input meets it as it would meet the live wait: only a wake, a person's
+  // message, or their Resume ends it. Input that starts a request owes no
+  // nothing-pending notice.
+  const restoreNotices: string[] = [];
+  if (restoredWait && !restoredWait.woken && !awaitsPerson) state = restoreAgentLoopWait(state, restoredWait, options.background?.tasks, (text) => { restoreNotices.push(text); });
+  const initialConsumed = await consumeLoopInput(initialInput, lifecycle?.maintenance ? { compactAfter: "park" } : {});
+  if (initialConsumed === "empty" && !restoredWait?.requestOwed) for (const notice of restoreNotices) enqueueRuntimeNotice(notice);
   // A maintenance start parks or completes after its input without a request.
-  if (!restoredWait?.wakePending && initialConsumed === "empty" && (restoredWait || ((initialInput?.kind === "compact" || initialInput?.kind === "hold") && lifecycle?.maintenance))) {
+  if (!restoredWait?.requestOwed && initialConsumed === "empty" && (restoredWait || ((initialInput?.kind === "compact" || initialInput?.kind === "hold") && lifecycle?.maintenance))) {
     const end = awaitsPerson && !signal?.aborted ? await parkForPerson("recorded") : await resolveTurnEnd(signal);
     if (end !== "continue") return end;
+  }
+  // A run that continues the cut turn with no Resume input, as a child's
+  // continuation does, takes the continued wait before its first request.
+  if (continuedWait && !awaitsPerson) {
+    state = restoreAgentLoopWait(state, continuedWait, options.background?.tasks, undefined);
+    continuedWait = undefined;
   }
 
   while (true) {
@@ -537,7 +575,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         const stagedUserContent = batch.published.flatMap((call) => call.nextUserContent ?? []);
         if (stagedUserContent.length > 0) await pushUser(stagedUserContent);
         // Its notices reach the next request with this batch's results, through the drain below.
-        await batchObservation.observe(toolCalls, batch.toolResults, attemptSettled.turn.outcome.kind);
+        const batchWaits = await batchObservation.observe(toolCalls, batch.toolResults, attemptSettled.turn.outcome.kind);
         tallyToolResults(tally, batch.toolResults);
         const handoffWritten = handoffTracker.recordBatch(toolCalls, batch.toolResults, attemptSettled.turn.outcome.kind);
         const askUserIds = new Set(toolCalls.filter((call) => call.name === "ask_user").map((call) => call.id));
@@ -552,7 +590,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           // the notification that wakes the park. Another request here would
           // follow an acknowledgement that promised a park, and a model left
           // waiting on a promised notification writes one itself.
-          else if (!compactionState.hasPlanned() && state.waitRequested) policy = finishTurn;
+          else if (!compactionState.hasPlanned() && batchWaits) policy = finishTurn;
         }
       }
       // After handoff admission no input enters, so only a served response

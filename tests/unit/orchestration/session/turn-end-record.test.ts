@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import {
   carriedTurnEndRecord,
+  chatTurnEndEvidenceOf,
   chatTurnEndOf,
   cutRunningToolCall,
   endsAtTurnEnd,
@@ -18,6 +19,8 @@ import {
 import { CONTINUATION_MESSAGES } from "../../../../src/orchestration/agent-runtime/continuation-messages.js"
 import { toolResultMessages } from "../../../../src/orchestration/agent-runtime/agent-state.js"
 import { TOOL_OUTCOME_VALUES } from "../../../../src/infra/tool-outcome.js"
+import { DEFAULT_WAIT_SECONDS } from "../../../../src/orchestration/agent-runtime/tools/process.js"
+import { SILENT_REPLY_NUDGE } from "../../../../src/orchestration/agent-runtime/reply-nudge.js"
 
 /** The display-only content Escape markers carried before interrupt became resumable. */
 const LEGACY_USER_INTERRUPT_CONTENT = "Interrupted by user."
@@ -234,7 +237,8 @@ describe("the turn end a branch tail reads", () => {
   test("a turn that the runtime or an unexpected exit cut while it waited on background work still waits on that work, not on the person", () => {
     const runtimeCut = () => message("user", { id: turnEndEntryId({ reason: "paused", pausedBy: "runtime" }, `r${seq}`), origin: "system" })
     const call = (name: string, input: { readonly [key: string]: unknown } = {}, registrationId?: string): TurnEndEntry => ({ kind: "message", id: `a-${name}`, message: { kind: "assistant", content: [{ type: "tool_use", id: `${name}-1`, name, input, ...(registrationId === undefined ? {} : { registrationId }) }] } })
-    const result = (interrupted = false): TurnEndEntry => ({ kind: "message", id: "r-1", message: { kind: "toolResult", toolUseId: "t-1", ...(interrupted ? { interrupted: true } : {}) } })
+    // The batches below hold one call each, whose id `call` derives from its name.
+    const result = (interrupted = false): TurnEndEntry => ({ kind: "message", id: "r-1", message: { kind: "toolResult", toolUseId: "process-1", ...(interrupted ? { interrupted: true } : {}) } })
     const waitCall = () => call("process", { action: "wait" })
     const notification = () => message("user", { origin: "system", content: "A background task finished." })
     // A wait call's batch finished, or the turn answered, and the park waited on background work.
@@ -321,5 +325,93 @@ describe("the turn end a branch tail reads", () => {
     expect(carriedTurnEndRecord([record, message("user", { origin: "human" }), message("assistant"), ...checkpoint])).toBeUndefined()
     expect(carriedTurnEndRecord([record, { kind: "compaction", id: "c0" }, ...checkpoint])).toBeUndefined()
     expect(carriedTurnEndRecord(checkpoint)).toBeUndefined()
+  })
+
+  describe("the wait that a restore reads follows the live loop's lifetime rule", () => {
+    type Timed = TurnEndEntry & { readonly timestamp: string }
+    let at = 0
+    const timed = (entry: TurnEndEntry): Timed => ({ ...entry, timestamp: new Date(Date.UTC(2026, 10, 3) + (at += 1000)).toISOString() })
+    const person = () => timed(message("user", { origin: "human" }))
+    const calls = (...uses: readonly { readonly id: string; readonly name: string; readonly input: { readonly [key: string]: unknown } }[]) =>
+      timed({ kind: "message", id: `a-${uses.map((use) => use.id).join("-")}`, message: { kind: "assistant", content: uses.map((use) => ({ type: "tool_use", ...use })) } })
+    const result = (toolUseId: string, isError = false) => timed({ kind: "message", id: `r-${toolUseId}`, message: { kind: "toolResult", toolUseId, ...(isError ? { isError: true } : {}) } })
+    const text = () => timed(message("assistant"))
+    const moduleNotice = () => timed(message("user", { origin: "system", content: "<skill_recommendation>notice</skill_recommendation>" }))
+    const fromSession = (sessionId: string) => timed({ kind: "message", id: `s-${sessionId}-${at}`, message: { kind: "user", content: "A message.", producer: { kind: "session", sessionId, hop: 0, envelope: { relation: "other" } } } })
+    const cut = (end: Parameters<typeof turnEndEntryId>[0]) => timed(message("user", { id: turnEndEntryId(end, `cut-${at}`), origin: "system" }))
+    const planned = interruptedTurnEnd("replacement")
+    const processWait = (id: string, seconds: number) => ({ id, name: "process", input: { action: "wait", soft_timeout: seconds } })
+    const waited = (id = "wait-1", seconds = 7200) => [calls(processWait(id, seconds)), result(id)]
+    const expiryOf = (tail: readonly Timed[], holdsWait?: (id: string) => boolean) => chatTurnEndEvidenceOf(tail, holdsWait)?.restoredWait?.expiry
+    const from = (entry: Timed, seconds: number) => ({ seconds, deadlineMs: Date.parse(entry.timestamp) + seconds * 1000 })
+
+    test("a refused wait call opens no wait, so the open wait of the earlier call holds", () => {
+      const opened = waited()
+      const tail = [person(), ...opened, calls(processWait("wait-2", 60)), result("wait-2", true), text(), cut(planned)]
+      expect(expiryOf(tail)).toEqual(from(opened[1]!, 7200))
+    })
+
+    test("the reply that a superseding reply wait got ends the wait, and an unrelated session message keeps the reply wait, which has no expiry", () => {
+      const ask = { id: "ask-1", name: "message_session", input: { target: "session", to: "child", wait: true } }
+      const replied = [person(), ...waited(), calls(ask), result("ask-1"), fromSession("child"), text()]
+      const answer = replied.at(-1)!
+      expect(expiryOf([...replied, cut(planned)], () => false)).toEqual(from(answer, DEFAULT_WAIT_SECONDS))
+      const unrelated = [person(), ...waited(), calls(ask), result("ask-1"), fromSession("other"), text(), cut(planned)]
+      expect(chatTurnEndEvidenceOf(unrelated, (id) => id === "ask-1")?.restoredWait).toEqual({ replyWaitIds: ["ask-1"] })
+    })
+
+    test.each([
+      { input: "the reply nudge", make: () => timed(message("user", { origin: "system", content: SILENT_REPLY_NUDGE })) },
+      { input: "a module notice", make: moduleNotice },
+      { input: "an unrelated session's message", make: () => fromSession("other") },
+    ])("$input committed before the answer owes a request and keeps the open wait", ({ make }) => {
+      const opened = waited()
+      const kept = { expiry: from(opened[1]!, 7200), replyWaitIds: [], requestOwed: true as const }
+      expect(chatTurnEndEvidenceOf([person(), ...opened, make(), cut(planned)])?.restoredWait).toEqual(kept)
+      expect(chatTurnEndEvidenceOf([person(), ...opened, text(), make(), cut(planned)])?.restoredWait).toEqual(kept)
+    })
+
+    test("a background notification committed before the answer owes a request and ends the wait", () => {
+      const opened = waited()
+      const notification = timed({ kind: "message", id: "n-1", message: { kind: "user", origin: "system", content: "<background_command_notification>ended</background_command_notification>", replyRequired: true } })
+      expect(chatTurnEndEvidenceOf([person(), ...opened, notification, cut(planned)])?.restoredWait).toEqual({ expiry: from(opened[1]!, 7200), replyWaitIds: [], requestOwed: true, woken: true })
+    })
+
+    test("a targeted interrupt of work and a text answer leave the original wait open, as the live loop keeps it while any work runs", () => {
+      const interrupt = { id: "interrupt-1", name: "process", input: { action: "interrupt", process_id: "child-1" } }
+      const launch = { id: "bash-2", name: "bash", input: { command: "serve", background: true } }
+      const opened = waited()
+      expect(expiryOf([person(), ...opened, calls(interrupt), result("interrupt-1"), text(), moduleNotice(), calls(launch), result("bash-2"), text(), cut(planned)])).toEqual(from(opened[1]!, 7200))
+    })
+
+    test("a person's /compact while the turn waited re-drove nothing, so a cut after its reset restores the open wait", () => {
+      const opened = waited()
+      const save = { id: "save-1", name: "checkpoint_replace", input: {} }
+      const reset = timed({ kind: "compaction", id: "reset" })
+      const opening = timed(message("user", { id: turnEndEntryId({ reason: "settled" }, "context-reset:1"), origin: "system" }))
+      const tail = [person(), ...opened, text(), timed(message("user", { origin: "system", content: "Save one concise checkpoint" })), calls(save), result("save-1"), text(), reset, opening, cut(planned)]
+      expect(chatTurnEndOf(tail)?.backgroundWait).toBe(true)
+      expect(expiryOf(tail)).toEqual(from(opened[1]!, 7200))
+    })
+
+    test("a planned cut in the middle of a turn hands its open wait to the successor's Resume; any other cut does not", () => {
+      const opened = waited()
+      const search = { id: "search-1", name: "search", input: {} }
+      const midTurn = [person(), ...opened, text(), moduleNotice(), calls(search), result("search-1")]
+      const continued = chatTurnEndEvidenceOf([...midTurn, cut(planned)])
+      expect(continued?.restoredWait).toBeUndefined()
+      expect(continued?.continuedWait).toEqual({ expiry: from(opened[1]!, 7200), replyWaitIds: [] })
+      for (const end of [{ reason: "crash" } as const, interruptedTurnEnd("runtime"), interruptedTurnEnd("person")]) {
+        expect(chatTurnEndEvidenceOf([...midTurn, cut(end)])?.continuedWait).toBeUndefined()
+      }
+      // The successor's Resume continued the turn and its wait, so a second
+      // planned cut, at the turn's end or in its middle, keeps the original
+      // deadline. A person's Resume ended the wait.
+      const resumed = () => timed(message("user", { origin: "system", content: CONTINUATION_MESSAGES.resumed }))
+      expect(expiryOf([...midTurn, cut(planned), resumed(), text(), cut(planned)])).toEqual(from(opened[1]!, 7200))
+      expect(chatTurnEndEvidenceOf([...midTurn, cut(planned), resumed(), calls({ ...search, id: "search-2" }), result("search-2"), cut(planned)])?.continuedWait?.expiry).toEqual(from(opened[1]!, 7200))
+      const personResumed = [...midTurn, cut(interruptedTurnEnd("runtime")), resumed(), text(), cut(planned)]
+      expect(expiryOf(personResumed)).toEqual(from(personResumed.at(-2)!, DEFAULT_WAIT_SECONDS))
+    })
   })
 })

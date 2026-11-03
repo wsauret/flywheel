@@ -45,6 +45,7 @@ import { refusingLauncher } from "../../../helpers/launcher-fake"
 import { WHOLE_WORKFLOW } from "../../../../src/orchestration/session/conversation/addressed-workflow-messages"
 import { registerCapacityWaits } from "../../../../src/orchestration/session/capacity-wait"
 import { liveSessionControl, messageDisposition } from "../../../../src/orchestration/session/live-session-control"
+import type { RestoredAgentWait } from "../../../../src/orchestration/agent-runtime/agent-loop-types"
 
 const temporary = temporaryDirectories()
 const WORKFLOW = "workflow-1"
@@ -258,7 +259,7 @@ describe("a step's loop notices", () => {
     const requested = Promise.withResolvers<void>()
     const task = Promise.withResolvers<BackgroundWorkResult>()
     let requests = 0
-    let restored: { readonly deadlineMs: number } | undefined
+    let restored: RestoredAgentWait | undefined
     const worker = handoverWorker(dir, (options) => {
       restored = options.lifecycle.restoredWait
       options.runtimeSurfaces?.background?.tasks.track({ done: task.promise, meta: { id: "pending", type: "background_command", description: "pending" }, kill: { run: () => { task.resolve({ status: "completed", content: "" }) } } })
@@ -276,7 +277,7 @@ describe("a step's loop notices", () => {
       await parked.promise
       expect(requests).toBe(0)
       if (by === "runtime") {
-        expect(restored).toEqual({ deadlineMs: at + 60_000 })
+        expect(restored).toEqual({ expiry: { seconds: 60, deadlineMs: at + 60_000 }, replyWaitIds: [] })
         task.resolve({ status: "completed", content: "command completed" })
         await requested.promise
         expect(requests).toBe(1)
@@ -284,6 +285,51 @@ describe("a step's loop notices", () => {
         expect(restored).toBeUndefined()
         expect(inputs.agentInputs.stateOf(STEP.id)).toBe("interrupted")
       }
+    } finally { stop.abort(); task.resolve({ status: "completed", content: "" }); await run; store.close() }
+  })
+
+  // The continuation has no Resume input, so the run takes the open wait of
+  // the turn that the planned cut ended between its requests.
+  it("a planned cut in the middle of a turn continues its open wait through the workflow worker", async () => {
+    const dir = temporary("worker-continued-wait-")
+    const store = await agentStore(dir)
+    const authority = handoverAuthority({ reader: store, writer: asAsyncEventWriter(store) })
+    const at = Date.now() - 30_000
+    const tree = await tryOpenConversationTree({ conversationId: CONVERSATION, sessionId, store: authority.projectionReader, writer: authority.writer })
+    if (!tree) throw new Error("Missing worker conversation")
+    setSystemTime(at)
+    try {
+      await tree.appendMessage({ kind: "assistant", content: [{ type: "tool_use", id: "wait-command", name: "process", input: { action: "wait", soft_timeout: 7200 } }] })
+      await tree.appendMessage({ kind: "toolResult", toolUseId: "wait-command", content: [{ type: "text", text: "Wait acknowledged." }] })
+      await tree.appendMessage({ kind: "assistant", content: [{ type: "tool_use", id: "read-1", name: "read", input: { path: "notes.md" } }] })
+      await tree.appendMessage({ kind: "toolResult", toolUseId: "read-1", content: [{ type: "text", text: "notes" }] })
+      const end = interruptedTurnEnd("replacement")
+      await tree.appendMessage({ kind: "user", origin: "system", content: interruptedTurnMessage(end.pausedBy, false) }, turnEndEntryId(end, "planned-cut"))
+    } finally { setSystemTime() }
+    tree.getStorage().dispose()
+    const stop = new AbortController()
+    const parked = Promise.withResolvers<string>()
+    const task = Promise.withResolvers<BackgroundWorkResult>()
+    let requests = 0
+    let continued: RestoredAgentWait | undefined
+    const worker = handoverWorker(dir, (options) => {
+      continued = options.lifecycle.continuedWait
+      options.runtimeSurfaces?.background?.tasks.track({ done: task.promise, meta: { id: "pending", type: "background_command", description: "pending" }, kill: { run: () => { task.resolve({ status: "completed", content: "" }) } } })
+      return newTestRunner({
+        ...options, agentsMd: "", memorySnapshot: null, resolveEnvSnapshot: undefined,
+        lifecycle: { ...options.lifecycle, onTurnParked: async (context) => { parked.resolve(context.park); stop.abort() } },
+      }, async () => asModelClient({
+        accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test-model", contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },
+        priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
+        async *streamWithTools() { requests += 1; yield { kind: "text_delta", text: "Read the notes.", blockKey: "text-0" }; yield { kind: "done", stopReason: "end_turn" } },
+      }))
+    }, authority, undefined, workflowAgentInputs(authority.projectionReader, WORKFLOW))
+    const run = worker(STEP, "work", "", stop.signal, CONVERSATION)
+    try {
+      expect(await parked.promise).toBe("waiting_on_work")
+      expect(continued).toEqual({ expiry: { seconds: 7200, deadlineMs: at + 7_200_000 }, replyWaitIds: [] })
+      // Without the wait, the text answer would draw the pending-work nudge first.
+      expect(requests).toBe(1)
     } finally { stop.abort(); task.resolve({ status: "completed", content: "" }); await run; store.close() }
   })
 

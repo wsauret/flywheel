@@ -11,20 +11,21 @@ function waiter(overrides: Partial<Parameters<typeof createAgentLoopInputWaiter>
       throw new Error("prepareWaitForInput not provided")
     },
     consume: async () => "continue",
-    state: () => ({ turnCount: 1, handoffWritten: false, waitRequested: false }),
+    state: () => ({ turnCount: 1, handoffWritten: false }),
     ...overrides,
   })
 }
 
 describe("agent loop input wait reservations", () => {
-  it("expires each managed wait once, joins its reservation, and uses a fresh estimate on rewait", async () => {
+  it("expires each managed wait once at the rest of its deadline, states the requested duration, joins its reservation, and uses a fresh estimate on rewait", async () => {
     const mailbox = new ChatTurnMailbox()
     const timers: { seconds: number; expire: () => void; cleared: boolean }[] = []
     const consumed: AgentLoopInput[] = []
-    let seconds: number | undefined = 7200
+    // The wait asked for 7200 seconds, and 200 of them passed before this park.
+    let openWait = { expiry: { seconds: 7200, deadlineMs: Date.now() + 7_000_000 }, replyWaitIds: [] }
     const parked = Promise.withResolvers<void>()
     const wait = waiter({
-      state: () => ({ turnCount: 1, handoffWritten: false, waitRequested: true, waitTimeoutSeconds: seconds }),
+      state: () => ({ turnCount: 1, handoffWritten: false, wait: openWait }),
       prepareWaitForInput: (signal) => mailbox.prepareWaitForInput(signal),
       scheduleWaitExpiry: (duration, expire) => {
         const timer = { seconds: duration, expire, cleared: false }
@@ -36,18 +37,19 @@ describe("agent loop input wait reservations", () => {
     })
     const first = wait(true, undefined)
     await parked.promise
-    expect(timers[0]?.seconds).toBe(7200)
+    expect(timers[0]?.seconds).toBeCloseTo(7000, 0)
     timers[0]!.expire()
     await expect(first).resolves.toBe("continue")
     expect(mailbox.parked).toBe(false)
     expect(timers[0]?.cleared).toBe(true)
     expect(consumed).toEqual([expect.objectContaining({ kind: "message", origin: "silent-system", runtimeNotice: true, text: expect.stringContaining("wait_expired") })])
+    expect(consumed[0]).toMatchObject({ text: expect.stringContaining("<seconds>7200</seconds>") })
     expect(timers).toHaveLength(1)
 
-    seconds = 180
+    openWait = { expiry: { seconds: 180, deadlineMs: Date.now() + 180_000 }, replyWaitIds: [] }
     const secondPark = Promise.withResolvers<void>()
     const second = waiter({
-      state: () => ({ turnCount: 2, handoffWritten: false, waitRequested: true, waitTimeoutSeconds: seconds }),
+      state: () => ({ turnCount: 2, handoffWritten: false, wait: openWait }),
       prepareWaitForInput: (signal) => mailbox.prepareWaitForInput(signal),
       consume: async (raw) => { consumed.push(raw); return "continue" },
       scheduleWaitExpiry: (duration, expire) => {
@@ -58,7 +60,7 @@ describe("agent loop input wait reservations", () => {
       },
     })(true, undefined)
     await secondPark.promise
-    expect(timers[1]?.seconds).toBe(180)
+    expect(timers[1]?.seconds).toBeCloseTo(180, 0)
     mailbox.enqueueNextTurn("a person's message")
     timers[1]!.expire()
     await expect(second).resolves.toBe("continue")
@@ -77,7 +79,7 @@ describe("agent loop input wait reservations", () => {
       let scheduled = 0
       let cleared = 0
       const wait = waiter({
-        state: () => ({ turnCount: 1, handoffWritten: false, waitRequested: true, waitTimeoutSeconds: 240 }),
+        state: () => ({ turnCount: 1, handoffWritten: false, wait: { expiry: { seconds: 240, deadlineMs: Date.now() + 240_000 }, replyWaitIds: [] } }),
         runSignal: run.signal,
         prepareWaitForInput: (signal) => mailbox.prepareWaitForInput(signal),
         onTurnParked: () => { parked.resolve() },
@@ -99,7 +101,7 @@ describe("agent loop input wait reservations", () => {
     const failure = new Error("input failed")
     let cleared = false
     const result = waiter({
-      state: () => ({ turnCount: 1, handoffWritten: false, waitRequested: true, waitTimeoutSeconds: 240 }),
+      state: () => ({ turnCount: 1, handoffWritten: false, wait: { expiry: { seconds: 240, deadlineMs: Date.now() + 240_000 }, replyWaitIds: [] } }),
       prepareWaitForInput: () => ({
         commit: async () => { throw failure },
         cancel: async () => {},
@@ -120,7 +122,7 @@ describe("agent loop input wait reservations", () => {
       let recorded = 0
       const consumed: AgentLoopInput[] = []
       const wait = waiter({
-        state: () => ({ turnCount: 1, handoffWritten: false, waitRequested: true }),
+        state: () => ({ turnCount: 1, handoffWritten: false, wait: { replyWaitIds: ["ask"] } }),
         backgroundTasks: { waitableTaskCount: () => 1, awaitedTaskCount: () => 1, flushSettledNotifications: () => {} },
         prepareWaitForInput: (signal) => mailbox.prepareWaitForInput(signal),
         onTurnParked: (context) => { (context.userResumeRequired ? takenBack : parked).resolve() },

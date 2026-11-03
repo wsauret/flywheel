@@ -51,6 +51,11 @@ interface RunningChatTurn {
   preparatoryContextBuilt: boolean
   /** A maintenance start's decision: whether the last turn waits for the person. */
   readonly maintenance?: Promise<AgentLoopMaintenance>
+  /** The start consumes a Resume, which continues the open wait of a turn
+   *  that a planned replacement cut (`AgentLifecycleCallbacks.continuedWait`).
+   *  A maintenance start that parks for the person carries it as well, for
+   *  the Resume that the parked loop consumes. */
+  readonly resumes?: true
 }
 
 type TurnStartupPurpose = "interactive" | "maintenance"
@@ -205,8 +210,12 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
     }
     // A maintenance start parks where the last turn ended (`decideMaintenance`).
     const maintenance = turn.maintenance ? await turn.maintenance : undefined
-    const restoredWait = maintenance && !maintenance.awaitsPerson
-      ? (await readChatTurnEndEvidence(deps.infra.projectionReader, deps.conversationId, { restoreWait: true }))?.restoredWait : undefined
+    // A start that parks for the person or consumes their Resume carries
+    // the open wait that a Resume of a planned cut continues.
+    const restored = maintenance || turn.resumes
+      ? await readChatTurnEndEvidence(deps.infra.projectionReader, deps.conversationId, { restoreWait: true }) : undefined
+    const restoredWait = maintenance && !maintenance.awaitsPerson ? restored?.restoredWait : undefined
+    const continuedWait = maintenance?.awaitsPerson || turn.resumes ? restored?.continuedWait : undefined
     if (!isLiveTurn(turn)) throw new AgentTurnAborted()
     await moduleHosts.replay(treeContext.messages)
 
@@ -250,6 +259,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
         inputSource: mailbox,
         ...(maintenance ? { maintenance } : {}),
         ...(restoredWait ? { restoredWait } : {}),
+        ...(continuedWait ? { continuedWait } : {}),
         // The tree writer's phase follows the logical turn, not the runner's
         // life: a parked runner consuming queued input opens a turn, and a
         // park closes one. An interrupt parks without onTurnEnded, so the
@@ -306,12 +316,13 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
       reason?: "new_input" | "queued_input"
       skipLogicalStart?: boolean
       purpose?: TurnStartupPurpose
+      resumes?: true
     } = {},
   ): void {
     const lease = host.takeReservedTurn() ?? host.reserveTurn()
     if (!lease) throw new Error("startTurn requires an idle or reserved runner host")
     engines.turnStarted()
-    const turn: RunningChatTurn = { lease, completion: deps.rootChatCompletion ?? createChatInvocationCompletion(undefined), preparatoryContextBuilt: false, ...(opts.purpose === "maintenance" ? { maintenance: wait.decideMaintenance(lease) } : {}) }
+    const turn: RunningChatTurn = { lease, completion: deps.rootChatCompletion ?? createChatInvocationCompletion(undefined), preparatoryContextBuilt: false, ...(opts.purpose === "maintenance" ? { maintenance: wait.decideMaintenance(lease) } : {}), ...(opts.resumes ? { resumes: true as const } : {}) }
     let runnerStarted = false
     let userInputAfterStartupStop: (() => boolean) | undefined
     const observeStartupInterrupt = (): void => {
@@ -616,7 +627,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
       return true
     }
     emit("agent.turn.resumed", { sessionId, data: {} })
-    startTurn(wakeInput(), { skipLogicalStart: true })
+    startTurn(wakeInput(), { skipLogicalStart: true, ...(options?.explicit ? { resumes: true as const } : {}) })
     return true
   }
 

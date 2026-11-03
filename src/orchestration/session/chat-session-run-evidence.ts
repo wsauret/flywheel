@@ -4,7 +4,7 @@ import type { ChatSessionAction, StoppedBy, WorkflowSessionAction } from "../../
 import type { WorkflowView } from "../../workflows/view/types.js"
 import { loadQueueSnapshotFromReader } from "../../workflows/view/view-store.js"
 import { parseConversationTreeFact, type ConversationTreeFact } from "./conversation/conversation-facts.js"
-import { chatTurnEndEvidenceOf, isPlannedCut, isProducedInput, isResumableTurnEnd, isSettledRecord, pendingTurnEndEntry, turnEndOfEntry, waitsAtRuntimeInterrupt, waitsForPerson, type ChatTurnEnd, type TurnEnd, type TurnEndEntry } from "./conversation/turn-end-record.js"
+import { chatTurnEndEvidenceOf, isPlannedCut, isProducedInput, isResumableTurnEnd, isSettledRecord, pendingTurnEndEntry, restoredWaitReadsOlder, turnEndOfEntry, waitsAtRuntimeInterrupt, waitsForPerson, type ChatTurnEnd, type TurnEnd, type TurnEndEntry } from "./conversation/turn-end-record.js"
 import { isWorkflowResumeCandidate } from "./resumable.js"
 import { startedAgents, type StartedAgent } from "../../workflows/vm/host-commit-controller.js"
 import { holdsInterruptedGuess, readToolExecution } from "./tool-execution-projection.js"
@@ -84,6 +84,20 @@ function tailDecision(restore = false): (tail: readonly TurnEndEntry[]) => boole
   }
 }
 
+/** Whether a restore's tail reaches back to the wait call whose open wait
+ *  the turn still holds, past the requests that only re-drove the turn
+ *  (`restoredWaitReadsOlder`). That walk reads the whole tail, so it runs
+ *  only after the 1st, 2nd, 4th, 8th, and so on page: the folds of one
+ *  restore then cost at most twice its entries, and the read stops at most
+ *  one doubling past the deciding entry. */
+function restoreDecision(): (tail: readonly TurnEndEntry[]) => boolean {
+  let pages = 0
+  return (tail) => {
+    pages += 1
+    return (pages & (pages - 1)) === 0 && tailDecision(true)(tail) && !restoredWaitReadsOlder(tail)
+  }
+}
+
 /** One tail batch, or nothing when this release cannot parse it. */
 function parseTailBatch(batch: StoredFact): ConversationTreeFact | undefined {
   try {
@@ -112,7 +126,9 @@ export async function readChatTurnEnd(reader: AsyncEventStateReadSurface, conver
  * and `waitsOf` names the waiter whose waits decided the evidence: a change
  * of those waits can change it, and a change of any other waits cannot. */
 export async function readChatTurnEndEvidence(reader: AsyncEventStateReadSurface, conversationId: string, options?: { readonly restoreWait: true }): Promise<(NonNullable<ReturnType<typeof chatTurnEndEvidenceOf>> & { readonly waitsOf?: string }) | undefined> {
-  const tail = await readConversationTail(reader, conversationId, tailDecision(options?.restoreWait))
+  const tail = options?.restoreWait
+    ? await readConversationTail(reader, conversationId, restoreDecision(), true)
+    : await readConversationTail(reader, conversationId, tailDecision())
   if (tail === undefined) return undefined
   let asksWaits = false
   const evidence = chatTurnEndEvidenceOf(tail.entries, () => { asksWaits = true; return false })
@@ -122,14 +138,20 @@ export async function readChatTurnEndEvidence(reader: AsyncEventStateReadSurface
   return decided && { ...decided, waitsOf: tail.sessionId }
 }
 
-/** The restored wait of a workflow agent or a subagent. Each restores its
- *  wait only under a Resume or a continuation, and that authority admits a
- *  request, so the original deadline and the nothing-pending notice apply
- *  whatever cut the wait. Only a chat's attach parks only
- *  (`RestoredAgentWait.parkOnly`). */
-export async function readAuthorizedRestoredWait(reader: AsyncEventStateReadSurface, conversationId: string): Promise<RestoredAgentWait | undefined> {
-  const wait = (await readChatTurnEndEvidence(reader, conversationId, { restoreWait: true }))?.restoredWait
-  return wait && { deadlineMs: wait.deadlineMs, ...(wait.wakePending ? { wakePending: true as const } : {}) }
+/** The restored and continued waits of a workflow agent or a subagent. Each
+ *  restores its wait only under a Resume or a continuation, and that
+ *  authority admits a request, so the original deadline and the
+ *  nothing-pending notice apply whatever cut the wait. Only a chat's attach
+ *  parks only (`RestoredAgentWait.parkOnly`). The continued wait is the open
+ *  wait of a turn that a planned cut ended between its requests
+ *  (`AgentLifecycleCallbacks.continuedWait`). */
+export async function readAuthorizedRestoredWait(reader: AsyncEventStateReadSurface, conversationId: string): Promise<{ readonly restoredWait?: RestoredAgentWait; readonly continuedWait?: RestoredAgentWait }> {
+  const evidence = await readChatTurnEndEvidence(reader, conversationId, { restoreWait: true })
+  if (evidence?.restoredWait) {
+    const { parkOnly: _parkOnly, ...restoredWait } = evidence.restoredWait
+    return { restoredWait }
+  }
+  return evidence?.continuedWait ? { continuedWait: evidence.continuedWait } : {}
 }
 
 /** The turn end that the newest record of a conversation names while no

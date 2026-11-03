@@ -272,7 +272,8 @@ describe("agent loop silent-system subagent batches", () => {
   test("a legacy sleep asks to wait, while text over remaining work needs a fresh explicit estimate before parking", async () => {
     const mailbox = new ChatTurnMailbox();
     const lifecycle = new RunLifecycle<AgentLoopTerminal>();
-    const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: (notification) => mailbox.enqueueSilentSystem(notification) });
+    // As in production: the registry always keys a notification, and the chat delivers it as a background notification.
+    const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: (text, key) => mailbox.enqueueBackgroundNotification({ text, ...(key ? { key } : {}) }) });
     const first = Promise.withResolvers<BackgroundWorkResult>();
     registry.track({ done: first.promise, meta: { id: "build-1", type: "background_command", description: "first build", toolUseId: "tool-build-1" } });
     registry.track({ done: Promise.withResolvers<BackgroundWorkResult>().promise, meta: { id: "build-2", type: "background_command", description: "second build", toolUseId: "tool-build-2" } });

@@ -497,7 +497,7 @@ export function createWorkerCallback(
       // Build context per attempt (resilience may rebuild the runner mid-turn):
       // a retry must see entries flushed by the prior attempt, never stale
       // history.
-      const restoredWait = agentInput.cut === undefined ? await readAuthorizedRestoredWait(opts.projectionReader, conversationId) : undefined
+      const { restoredWait, continuedWait } = agentInput.cut === undefined ? await readAuthorizedRestoredWait(opts.projectionReader, conversationId) : {}
       const priorContext = await buildPriorContext(restoredWait !== undefined)
       // beginTurn after buildContext so subsequent canonical messages buffer
       // until the next save point.
@@ -573,7 +573,7 @@ export function createWorkerCallback(
         },
         onChildEvent: (childSessionId, event) => { opts.emit(event.type, { sessionId: childSessionId, data: event.data }) },
         lifecycle: {
-          kind: "parkable", ...(restoredWait ? { restoredWait } : {}),
+          kind: "parkable", ...(restoredWait ? { restoredWait } : {}), ...(continuedWait ? { continuedWait } : {}),
           ...busBridge.lifecycle,
           signal, inputSource: observers.inputSource,
           onConnectionState: setRecoveredConnectionState,

@@ -419,8 +419,8 @@ export function createChildExecution(options: {
       }
       const selectedModel = resolveChildRole(agent, await published.resolveRoles(await deps.captureProviderConnection?.()), deps.briefScope);
       {
-        const restoredWait = continuation
-          ? await readAuthorizedRestoredWait(published.projectionReader, childConversationId) : undefined;
+        const { restoredWait, continuedWait } = continuation
+          ? await readAuthorizedRestoredWait(published.projectionReader, childConversationId) : {};
         let priorMessages;
         try {
           priorMessages = (await childConversation.buildContext(restoredWait ? { allowAssistantTail: true } : undefined)).messages;
@@ -451,7 +451,7 @@ export function createChildExecution(options: {
         return {
           ...runnerOptions,
           ...(intent === undefined ? {} : { purpose: { ...runnerOptions.purpose, inheritedIntent: intent } }),
-          lifecycle: { ...runnerOptions.lifecycle, ...(restoredWait ? { restoredWait } : {}) },
+          lifecycle: { ...runnerOptions.lifecycle, ...(restoredWait ? { restoredWait } : {}), ...(continuedWait ? { continuedWait } : {}) },
           model: selectedModel?.model ?? (modelString === undefined ? undefined : canonicalModelId(modelString)),
           providerOptions: selectedModel?.providerOptions ?? providerOptionsForRunner,
           standingBrief: async () => {

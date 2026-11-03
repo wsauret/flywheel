@@ -153,6 +153,7 @@ export async function assembleRuntimeForTurn(input: AssembleInput): Promise<Agen
     lifecycle: {
       onHandoffStarted: options.lifecycle.onHandoffStarted,
       restoredWait: options.lifecycle.restoredWait,
+      continuedWait: options.lifecycle.continuedWait,
       maintenance: options.lifecycle.maintenance,
       onCompactionContinuation: options.lifecycle.onCompactionContinuation,
       onTurnEnded: options.lifecycle.onTurnEnded,

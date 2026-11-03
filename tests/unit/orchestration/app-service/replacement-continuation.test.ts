@@ -457,7 +457,7 @@ describe("continuing a planned replacement's work", () => {
 
   test.each((["ahead", "expired"] as const).flatMap((deadline) => [false, true].map((reply) => ({ deadline, reply }))))("reattaches a chat's $deadline background wait (reply: $reply) without Resume and retires its owed continuation", async ({ deadline, reply }) => {
     const writer = ctx.runtime.runSync(EventStoreWriterService)
-    const duration = reply ? 240_000 : 60_000
+    const duration = 60_000
     const at = Date.now() - (deadline === "ahead" ? 30_000 : duration + 30_000)
     setSystemTime(at)
     const waiting = await interruptedChat("replacement", "waiting-handoff", { seconds: 60, reply })
@@ -465,8 +465,10 @@ describe("continuing a planned replacement's work", () => {
     setSystemTime()
     const session = await ctx.manager.read(waiting)
     if (session?.kind !== "chat") throw new Error("missing chat")
+    // A reply wait has no expiry, as the live loop opens it.
+    const restored = reply ? { replyWaitIds: ["wait"] } : { expiry: { seconds: duration / 1000, deadlineMs: at + duration }, replyWaitIds: [] }
     ctx.sessionStore.openSessionRuntime({ sessionId: waiting, conversationId: session.conversationId, description: "Waiting chat" })
-    expect((await readChatTurnEndEvidence(asAsyncEventReadSurface(ctx.store), session.conversationId, { restoreWait: true }))?.restoredWait).toEqual({ deadlineMs: at + duration })
+    expect((await readChatTurnEndEvidence(asAsyncEventReadSurface(ctx.store), session.conversationId, { restoreWait: true }))?.restoredWait).toEqual(restored)
     expect(await owed(waiting)).toBe(true)
     const held: string[] = []
     const supervisor = supervisorWithRunner(ctx, async ({ sessionId }) => mockRunner(sessionId, {
@@ -485,13 +487,13 @@ describe("continuing a planned replacement's work", () => {
     expect(held).toEqual([waiting])
     expect(await owed(waiting)).toBe(false)
     expect(await owed(person)).toBe(false)
-    expect((await readChatTurnEndEvidence(asAsyncEventReadSurface(ctx.store), session.conversationId, { restoreWait: true }))?.restoredWait).toEqual({ deadlineMs: at + duration })
+    expect((await readChatTurnEndEvidence(asAsyncEventReadSurface(ctx.store), session.conversationId, { restoreWait: true }))?.restoredWait).toEqual(restored)
     const tree = await tryOpenConversationTree({ conversationId: session.conversationId, sessionId: waiting, now: () => new Date().toISOString(), store: asAsyncEventReadSurface(ctx.store), writer })
     if (!tree) throw new Error("missing tree")
     const end = interruptedTurnEnd("replacement")
     await tree.appendMessage({ kind: "user", content: interruptedTurnMessage(end.pausedBy, false), origin: "system" }, turnEndEntryId(end, "second-cut"))
     tree.getStorage().dispose()
-    expect((await readChatTurnEndEvidence(asAsyncEventReadSurface(ctx.store), session.conversationId, { restoreWait: true }))?.restoredWait).toEqual({ deadlineMs: at + duration })
+    expect((await readChatTurnEndEvidence(asAsyncEventReadSurface(ctx.store), session.conversationId, { restoreWait: true }))?.restoredWait).toEqual(restored)
     await supervisor.disposeAll()
   })
 
@@ -516,7 +518,7 @@ describe("continuing a planned replacement's work", () => {
     else expect(await run).toEqual([])
     expect(await owed(waiting)).toBe(recordFails)
     expect((await readChatTurnEnd(reader, session.conversationId))?.end).toEqual(interruptedTurnEnd(recordFails ? "replacement" : "runtime"))
-    expect((await readChatTurnEndEvidence(reader, session.conversationId, { restoreWait: true }))?.restoredWait).toEqual({ deadlineMs: at + 60_000, ...(recordFails ? {} : { parkOnly: true }) })
+    expect((await readChatTurnEndEvidence(reader, session.conversationId, { restoreWait: true }))?.restoredWait).toEqual({ expiry: { seconds: 60, deadlineMs: at + 60_000 }, replyWaitIds: [], ...(recordFails ? {} : { parkOnly: true }) })
   })
 
   test("a session is owed its continuation from the cut until its resume settles, and never once a person's interrupt or a refusal ends it", async () => {

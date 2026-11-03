@@ -159,11 +159,12 @@ export interface TurnParkedContext extends TurnEndedContext {
    *  placeholder), or a handoff-gated worker parked on tracked background
    *  tasks. False for a plain end-of-turn park with no tracked work. */
   parkedOnBackgroundWork: boolean;
-  /** The agent asked to wait: the last tool batch of the turn held a wait
-   *  call (the `process` wait action, a no-op bash placeholder such as a
-   *  `sleep` while work runs, or a `message_session` wait). The agent then
-   *  waits inside its turn. False when the turn ended in text or by a
-   *  terminating call, also when the park still waits on background work. */
+  /** The agent waits inside its turn: a wait call (the `process` wait
+   *  action, a no-op bash placeholder such as a `sleep` while work runs, or a
+   *  `message_session` wait) opened a wait that no wake, expiry, person's
+   *  message or Resume, or interrupt has ended yet. Requests in between, such
+   *  as a reply nudge or a compaction, keep it. False when no wait is open,
+   *  also when the park still waits on background work. */
   waitRequested: boolean;
   /** True after an interrupt gives control back to the user. Background input
    *  is retained but cannot authorize another model request. */
