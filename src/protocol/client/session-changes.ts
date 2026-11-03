@@ -71,7 +71,8 @@ export interface SessionChangesController {
   canConfirmUndo(): boolean
   /** Short reason beside a held Undo action or confirmation, even when Viewed hides the diff. */
   undoUnavailableReason(fileId: string): string | undefined
-  /** True when no Viewed mutation is in flight and this file's review authority is known. */
+  /** True when no Viewed mutation is in flight, this file's review authority is known,
+   * and an unviewed file's net diff is proven for its latest edit, which Viewed records. */
   canSetViewed(fileId: string): boolean
   /** Opens the confirmation for one file. False means Undo is not offered for it right now. */
   requestUndo(fileId: string): boolean
@@ -462,7 +463,8 @@ export function createSessionChangesController(options: {
   function canSetViewed(fileId: string): boolean {
     if (disposed || state.viewed?.status === "submitting" || state.list.status !== "ready") return false
     const file = state.list.data.files.find(candidate => candidate.fileId === fileId)
-    return file !== undefined && file.review.status !== "unknown"
+    return file?.review.status === "viewed"
+      || (file?.review.status === "unviewed" && sameToken(diffTokens.get(fileId), file.editToken))
   }
 
   function canConfirmUndo(): boolean {
@@ -558,7 +560,6 @@ export function createSessionChangesController(options: {
       if (!canSetViewed(fileId) || state.list.status !== "ready") return false
       const file = state.list.data.files.find(candidate => candidate.fileId === fileId)
       if (!file || (file.review.status === "viewed") === reviewed) return false
-      if (reviewed && !sameToken(diffTokens.get(fileId), file.editToken)) return false
       state = { ...state, viewed: { fileId, status: "submitting", reviewed } }
       emit()
       try {

@@ -362,14 +362,22 @@ describe("mounted Changes boundary", () => {
     } finally { mounted.dispose(); controller.dispose() }
   })
 
-  test("Viewed shows on the tapped file that its write works until the runtime answers", async () => {
+  test("Viewed holds until the file's evidence arrives, then shows on the tapped file that its write works until the runtime answers", async () => {
     const server = runtime()
-    server.current.files = [fileA, fileB]
+    const evidence = deferred<SessionChangeDiffResult>()
+    server.diffReplies.push(evidence.promise)
     const controller = createSessionChangesController({ client: server.client, sessionId: "cold" })
     const mounted = mountReview(controller)
     try {
       await controller.start()
       await settle()
+      assert.equal(mounted.viewedDisabled(fileA.path), true)
+      mounted.setViewed(fileA.path, true)
+      await settle()
+      assert.equal(server.mutations.length, 0)
+      evidence.resolve(retainedDiff(fileA.path, "+viewed evidence", 1, 0))
+      await waitForDiff(controller, fileA.fileId)
+      assert.equal(mounted.viewedDisabled(fileA.path), false)
       const answer = deferred<SessionChangesSetViewedResult>()
       server.viewedReplies.push(answer.promise)
       mounted.setViewed(fileA.path, true)
@@ -466,10 +474,8 @@ describe("mounted Changes boundary", () => {
       assert.equal(callbacks.size, 0, "user scroll cancels the scheduled callback")
       assert.equal(mounted.scrollTop(), 333, "user scroll cancels pending restoration")
     } finally {
-      mounted.dispose()
-      controller.dispose()
-      reviewWindow.requestAnimationFrame = originalRequest
-      reviewWindow.cancelAnimationFrame = originalCancel
+      mounted.dispose(); controller.dispose()
+      reviewWindow.requestAnimationFrame = originalRequest; reviewWindow.cancelAnimationFrame = originalCancel
     }
   })
 
@@ -528,11 +534,7 @@ describe("mounted Changes boundary", () => {
       await settle()
       frames.run()
       assert.equal(mounted.scrolled(fileB.path), false, "a person's scroll lets the target go")
-    } finally {
-      mounted.dispose()
-      controller.dispose()
-      frames.restore()
-    }
+    } finally { mounted.dispose(); controller.dispose(); frames.restore() }
   })
 
   test("an omitted display diff states the omission under one header while server reconstruction permits Undo", async () => {
