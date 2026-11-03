@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { isAbortError } from "../../../src/infra/abort.js"
+import { awaitWithAbortSignal, isAbortError } from "../../../src/infra/abort.js"
 
 describe("isAbortError", () => {
   test("returns true for a DOMException named AbortError", () => {
@@ -26,5 +26,27 @@ describe("isAbortError", () => {
     expect(isAbortError({ name: "AbortError" })).toBe(false)
     expect(isAbortError(null)).toBe(false)
     expect(isAbortError(undefined)).toBe(false)
+  })
+})
+
+describe("awaitWithAbortSignal", () => {
+  test("rejects with the reason of a signal that aborted before the call and still observes the abandoned operation", async () => {
+    const controller = new AbortController()
+    const reason = new DOMException("The caller left", "AbortError")
+    controller.abort(reason)
+    const operation = Promise.withResolvers<string>()
+    const unhandled: unknown[] = []
+    const record = (error: unknown) => { unhandled.push(error) }
+    process.on("unhandledRejection", record)
+    try {
+      const waited = awaitWithAbortSignal(operation.promise, controller.signal)
+      operation.reject(new Error("Query closed before response received"))
+
+      expect(await waited.then(() => undefined, (error: unknown) => error)).toBe(reason)
+      await Bun.sleep(0)
+      expect(unhandled).toEqual([])
+    } finally {
+      process.off("unhandledRejection", record)
+    }
   })
 })

@@ -60,12 +60,12 @@ describe("conversation-first delivery guidance", () => {
     expect(result).toContain("A design that you show the user rests on a spike that tested it");
   });
 
-  it("gives a shape guide after publication and answers review questions on published code", () => {
+  it("states design changes and proof after publication and answers review questions on published code", () => {
     const result = chatPrompt([tool("read"), tool("edit"), tool("subagent"), tool("ask_user")]);
 
-    expect(result).toContain("After each publication, your reply ends with a section headed Shape guide that you write from the reviewed deviations and fresh verification, with four labeled items");
-    expect(result).toContain("Departures, each departure from the approved design with its reason, or None; Proof, what ran and what it showed");
-    expect(result).toContain("A pull request description gives the same guide");
+    expect(result).toContain("After each publication, end your reply with two things that you write from the reviewed deviations and fresh verification");
+    expect(result).toContain("what changed from the approved design during development, with the reason for each change, or None; and the proof that the change works, meaning what ran and what it showed");
+    expect(result).toContain("A pull request description gives the same two things");
     expect(result).toContain("Do not stop before publication to ask for a shape review");
     expect(result).toContain("Answer a question about published code by explaining the code first; a question that needs only an explanation ends there");
     expect(result).toContain("A local objection gets a fix, verified and published to the same change, and an objection to the structure starts a reshape");

@@ -42,13 +42,15 @@ export function abortableSleep(ms: number, signal: AbortSignal): Promise<void> {
   })
 }
 
-/** Waits for shared work without giving one caller ownership of the shared operation's lifetime. */
+/** Waits for shared work without giving one caller ownership of the shared operation's lifetime.
+ *  An abort, also one that happened before the call, rejects with the signal's reason. The operation stays
+ *  observed either way, so its own later failure never becomes an unhandled rejection that ends the process. */
 export function awaitWithAbortSignal<T>(operation: Promise<T>, signal?: AbortSignal): Promise<T> {
   if (!signal) return operation
-  signal.throwIfAborted()
   return new Promise<T>((resolve, reject) => {
     const aborted = () => { reject(signal.reason) }
-    signal.addEventListener("abort", aborted, { once: true })
+    if (signal.aborted) aborted()
+    else signal.addEventListener("abort", aborted, { once: true })
     void operation.then(
       (value) => { signal.removeEventListener("abort", aborted); resolve(value) },
       (error: unknown) => { signal.removeEventListener("abort", aborted); reject(error) },

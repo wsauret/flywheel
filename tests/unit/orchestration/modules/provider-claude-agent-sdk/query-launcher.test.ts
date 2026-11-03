@@ -498,16 +498,15 @@ describe("describing the CLI login for the model listing", () => {
     expect(stopped?.payload).toMatchObject({ ended: "aborted", lockTimedOut: false, terminated: false, settled: true });
   });
 
-  test("a signal that aborted before the start still stops the CLI it started", async () => {
+  test("a signal that aborted before the start starts no CLI", async () => {
     const query = describingQuery(new Promise(() => {}));
     const controller = new AbortController();
     const reason = new DOMException("The caller left", "AbortError");
     controller.abort(reason);
 
     expect(await describeCliLogin(launcherConfig(), controller.signal, query.sdkQuery, noLock).then(() => undefined, (error: unknown) => error)).toBe(reason);
-    const [stopped] = await stopRecords(1);
-    expect(query.events).toEqual(["close"]);
-    expect(stopped?.payload).toMatchObject({ ended: "aborted" });
+    expect(await readCliUsage(launcherConfig(), controller.signal, query.sdkQuery, noLock).then(() => undefined, (error: unknown) => error)).toBe(reason);
+    expect(query.options).toEqual([]);
   });
 
   test("a reply returns by the listing deadline while the stop still waits for a token refresh to end", async () => {

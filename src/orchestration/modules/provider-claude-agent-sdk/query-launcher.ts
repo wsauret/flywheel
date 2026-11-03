@@ -464,6 +464,8 @@ async function askIdleCli<A>(
   ask: (started: Query, init: Awaited<ReturnType<Query["initializationResult"]>>) => Promise<A>, sdkQuery: QueryFunction, files: StopFiles,
   classifyReply?: (value: A) => UsageReplyKind,
 ): Promise<A> {
+  // A caller that already left wants no answer, so no CLI starts for it.
+  signal.throwIfAborted();
   const engine = idleEngine(config, purpose);
   const owned = ownedClaudeProcess(config.launcher, () => {}, refreshStopHold(config.configDir));
   const sessionId = randomUUID();
@@ -487,8 +489,7 @@ async function askIdleCli<A>(
     sessionId,
   } });
   const asked = async () => ask(started, await started.initializationResult());
-  // Inside a promise chain, so a signal that aborted before the start rejects here and the CLI is still stopped.
-  const answer = Promise.resolve().then(() => awaitWithAbortSignal(asked(), signal))
+  const answer = awaitWithAbortSignal(asked(), signal)
     .then((value) => ({ ended: "reply" as const, value, usageReply: classifyReply?.(value) }), (error: unknown) => ({ ended: signal.aborted ? "aborted" as const : "failed" as const, error }));
   const stopped = answer.then((result) => stopIdleCli({
     interrupt: () => started.interrupt(),

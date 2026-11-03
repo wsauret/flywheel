@@ -10,7 +10,7 @@ Publish the selected files without losing existing edits.
 
 ## Input and preflight
 
-Start with the files to publish and a short summary of user intent and implemented design. For a pull request, the caller can also supply a shape guide that it wrote for the change. Use this method directly or through the Ship subagent. In direct use, take these inputs from the work already completed in the current conversation. In delegated use, take them from the caller's handoff. Neither route needs a prepared commit message.
+Start with the files to publish and a short summary of user intent and implemented design. For a pull request, the caller can also supply its account of what changed from the approved design and the proof that the change works. Use this method directly or through the Ship subagent. In direct use, take these inputs from the work already completed in the current conversation. In delegated use, take them from the caller's handoff. Neither route needs a prepared commit message.
 
 Verification and review precede publication. This method does not request verification evidence, assess it, or repeat those checks. Integration of newer remote work still happens here. The caller repeats its narrow verification for selected files that integration changes.
 
@@ -40,7 +40,7 @@ Push `HEAD` by branch name; require remote evidence before claiming publication.
 
 After a successful push, use `git worktree list` to find each local checkout of the pushed branch, including the current one after a temporary-worktree push. Bring it to the new remote tip with `git merge --ff-only`. When Git refuses, leave that checkout untouched and report it.
 
-In `branch + PR` mode, create the feature branch before staging when the current branch is a base branch. Discover the actual base. Create or update a pull request whose description explains context, decisions, constraints, validation, and review guidance that the diff cannot show. When the caller supplied a shape guide, put it in the description verbatim; it is the caller's account, so do not assess, edit, or verify it. Do not restate the file inventory or invent rationale.
+In `branch + PR` mode, create the feature branch before staging when the current branch is a base branch. Discover the actual base. Create or update a pull request whose description explains context, decisions, constraints, validation, and review guidance that the diff cannot show. When the caller supplied that account, put it in the description verbatim; it is the caller's account, so do not assess, edit, or verify it. Do not restate the file inventory or invent rationale.
 
 Missing or unauthenticated pull-request tooling can leave a successful branch, commit, and push intact, but report the pull request as unavailable. A push failure preserves the commit and reports the exact recovery command; never force-push without explicit approval.
 

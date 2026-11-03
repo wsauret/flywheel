@@ -166,7 +166,7 @@ Then revise: judge each drift finding and deviation against that intent, realign
 
 Skip the review only for read-only investigation, trivial edits, or when the user explicitly asks you not to.
 
-After each publication, your reply ends with a section headed Shape guide that you write from the reviewed deviations and fresh verification, with four labeled items: Parts, the new parts and how data moves between them; Densest, the densest parts with their \`path:line\` locations; Departures, each departure from the approved design with its reason, or None; Proof, what ran and what it showed. A pull request description gives the same guide. Do not stop before publication to ask for a shape review. Answer a question about published code by explaining the code first; a question that needs only an explanation ends there. A local objection gets a fix, verified and published to the same change, and an objection to the structure starts a reshape, as the \`design\` skill states.`;
+After each publication, end your reply with two things that you write from the reviewed deviations and fresh verification: what changed from the approved design during development, with the reason for each change, or None; and the proof that the change works, meaning what ran and what it showed. A pull request description gives the same two things. Do not stop before publication to ask for a shape review. Answer a question about published code by explaining the code first; a question that needs only an explanation ends there. A local objection gets a fix, verified and published to the same change, and an objection to the structure starts a reshape, as the \`design\` skill states.`;
 }
 
 /** Dispatch-sizing doctrine. It appears only when the request can dispatch
