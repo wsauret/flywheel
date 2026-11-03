@@ -130,16 +130,29 @@ describe("EventBus", () => {
     const record = spyOn(DebugLog, "record").mockImplementation(() => {})
     try {
       for (const deliveryClass of ["diagnostic", "ui"] as const) {
-        record.mockClear()
         const count = 50
-        const buses = Array.from({ length: count }, () => new EventBus())
-        await Promise.all(buses.map((disposed) => disposed.dispose()))
-        Bun.gc(true)
-        const before = heapStats().heapSize
-        const unsubscribes = buses.map((disposed) => disposed.subscribe(() => {}, { deliveryClass }))
-        Bun.gc(true)
-        expect((heapStats().heapSize - before) / count).toBeLessThan(2 * 1024)
-        for (const unsubscribe of unsubscribes) unsubscribe()
+        const limit = 2 * 1024
+        // A refused subscription retains well under 2 KiB per bus, and an
+        // opened delivery retains more than 10 KiB. A process with few cores
+        // can still be compiling the code that set up the measurement, and the
+        // compiler's heap cells then land in the measured window: on a 4-core
+        // Windows runner they added up to 6 KiB per bus to the first
+        // measurement of the process. That noise only adds bytes, so one of
+        // up to three measurements under the limit is the refusal's own cost.
+        let retainedPerBus = Number.POSITIVE_INFINITY
+        let buses: EventBus[] = []
+        for (let measurement = 0; measurement < 3 && retainedPerBus >= limit; measurement++) {
+          record.mockClear()
+          buses = Array.from({ length: count }, () => new EventBus())
+          await Promise.all(buses.map((disposed) => disposed.dispose()))
+          Bun.gc(true)
+          const before = heapStats().heapSize
+          const unsubscribes = buses.map((disposed) => disposed.subscribe(() => {}, { deliveryClass }))
+          Bun.gc(true)
+          retainedPerBus = (heapStats().heapSize - before) / count
+          for (const unsubscribe of unsubscribes) unsubscribe()
+        }
+        expect(retainedPerBus).toBeLessThan(limit)
         for (const disposed of buses) {
           disposed.subscribe(() => {}, { deliveryClass })()
           disposed.subscribeToType("agent.run.started", () => {}, { deliveryClass })()
