@@ -1,0 +1,17 @@
+README.md
+  h_4b47e9e4a8b456 29-45,56,71,73,75,78-83,107,109,111,116,118-121,123,143-145,157,159
+  h_4b47e9e4a8b456 9,46-48,54,58,60,67,69,74,76,84-86,101,103,105,110,112,114,122,124,126,128,138-139,146-148,155
+AGENTS.md
+  h_4b47e9e4a8b456 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b1e2276a82a53b3e3c081cb0f84a3b46c583f44c",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
