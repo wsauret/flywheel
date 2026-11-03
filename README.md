@@ -53,9 +53,9 @@ Flywheel agents work without asking you to approve each step. They run shell com
 Describe the work in chat. The agent writes a workflow and launches it: phases of agents that build, review, repair, and verify, with independent work running at the same time. The run lives in a background service, not in your terminal window.
 
 - Close the terminal. The run continues.
-- Update Flywheel mid-run. Running agents and shell commands move to the new build.
+- Update Flywheel mid-run. Running shell commands keep going, and agents continue on the new build.
 - Out of quota at 2 a.m.? The agent waits for the reset, then continues.
-- After a crash, Resume restarts only the agents that were in flight. Finished work stays finished.
+- After a crash, press Resume: agents that were mid-task continue where they stopped, and finished work stays finished.
 
 ## Every model you pay for. No lock-in.
 
