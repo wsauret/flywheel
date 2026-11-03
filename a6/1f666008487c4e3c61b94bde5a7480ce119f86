@@ -1,0 +1,21 @@
+tests/unit/infra/event-bus.test.ts
+  s_2c4cb32a60dbec::t_d661d406493719 136-143
+  s_2c4cb32a60dbec::t_3d14ae45c059b4 134-135
+  s_2c4cb32a60dbec::t_5f14b56f2e3571 144-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a61f666008487c4e3c61b94bde5a7480ce119f86",
+  "prompts": {},
+  "sessions": {
+    "s_2c4cb32a60dbec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14f6cf26-4014-4ae7-aa26-8737220a7135",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
