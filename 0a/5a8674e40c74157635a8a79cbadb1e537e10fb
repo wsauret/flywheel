@@ -1,0 +1,16 @@
+src/protocol/client/session-changes.ts
+  h_4b47e9e4a8b456 74-75,466-467
+webview/src/app/render-ownership.test.ts
+  h_4b47e9e4a8b456 365,367-368,374-380,477-478,537
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0a5a8674e40c74157635a8a79cbadb1e537e10fb",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
