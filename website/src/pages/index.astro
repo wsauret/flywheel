@@ -277,8 +277,7 @@ const description = "Flywheel pools every subscription you pay for, Claude inclu
         <InstallCommand id="install-footer" />
         <p class="matrix">darwin-arm64 &middot; darwin-x64 &middot; linux-x64 &middot; linux-arm64 &middot; linux-x64-musl &middot; linux-arm64-musl &middot; win32-x64 &middot; win32-arm64</p>
         <p class="matrix-note">On Alpine, run <code>apk add libstdc++ curl</code> before you install.</p>
-        <p class="privacy">Flywheel agents run shell commands and edit files with your permissions, without asking before each step. Its guards catch ordinary mistakes but are not a sandbox, so run untrusted repositories inside a container, a virtual machine, or a disposable checkout.</p>
-        <p class="privacy">For model inference, Flywheel sends your prompts and code only to the providers that you configure. Agent tools, such as MCP servers, web search, and shell commands, can send content to other destinations. Release builds send an automatic crash report with no conversation or file content. Turn off the Bug reports setting to stop it. <a href="https://github.com/wsauret/flywheel/blob/main/docs/privacy.md">What Flywheel sends over the network</a> lists every request it makes on its own.</p>
+        <p class="privacy">Agents run without asking before each step. <a href="https://github.com/wsauret/flywheel#safety">Safety</a> &middot; <a href="https://github.com/wsauret/flywheel/blob/main/docs/privacy.md">What Flywheel sends over the network</a></p>
       </div>
     </section>
   </main>
