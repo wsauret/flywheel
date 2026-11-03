@@ -1,0 +1,48 @@
+src/orchestration/app-service/runtime-supervisor-types.ts
+  h_4b47e9e4a8b456 33,98
+src/orchestration/app-service/runtime-supervisor.ts
+  h_4b47e9e4a8b456 539
+src/orchestration/app-service/session-runtime-actor.ts
+  h_4b47e9e4a8b456 269-270,273
+src/orchestration/chat/controls.ts
+  h_4b47e9e4a8b456 107
+src/orchestration/chat/session.ts
+  h_4b47e9e4a8b456 324-325,340
+src/orchestration/chat/tree-writer.ts
+  h_4b47e9e4a8b456 2,308
+src/orchestration/modules/workflows/host-collection.ts
+  h_4b47e9e4a8b456 4,27
+src/orchestration/session/conversation/conversation-tree-writer.ts
+  h_4b47e9e4a8b456 11,70,177-178,409,411
+src/orchestration/session/conversation/turn-end-record.ts
+  h_4b47e9e4a8b456 26,55,60-65,68-71,74-77,87,106-108,133-134,140,154,157,195-197,358,537-540,545-553
+src/orchestration/session/planned-session-continuation.ts
+  h_4b47e9e4a8b456 14,599
+src/orchestration/workflow-host/host-collection.ts
+  h_4b47e9e4a8b456 10,51,54
+src/orchestration/workflow-host/runner-types.ts
+  h_4b47e9e4a8b456 5,95
+src/orchestration/workflow-host/runner.ts
+  h_4b47e9e4a8b456 7,44,294
+tests/unit/orchestration/app-service/runtime-supervisor-immediacy.test.ts
+  h_4b47e9e4a8b456 160,162,165,172-173
+tests/unit/orchestration/chat/chat-controls.test.ts
+  h_4b47e9e4a8b456 176,179,185
+tests/unit/orchestration/chat/chat-session-replacement-interrupt.test.ts
+  h_4b47e9e4a8b456 37-39,41-44,47,54,58,68-79,81
+tests/unit/orchestration/session/interrupted-turn-record.test.ts
+  h_4b47e9e4a8b456 66,69-71
+tests/unit/orchestration/session/turn-end-record.test.ts
+  h_4b47e9e4a8b456 74-84,109-110,253-260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d48b8ba47a65a997021f7a758710c33ca989f22f",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
