@@ -1,0 +1,18 @@
+AGENTS.md
+  h_4b47e9e4a8b456 19
+website/src/components/SiteHeader.astro
+  h_4b47e9e4a8b456 11,16
+website/src/pages/index.astro
+  h_4b47e9e4a8b456 10,13,30-31,51-69,73-75,77-79,83-84,86-88,90-108,111-117,121-137,140-142,144,148-167,172,175-177,179-181,185-186,188-190,192,198,201-203,205-208,212-213,215-220,222,228,231-233,241,252,256-267,274
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "651793f92d165bbd8e42c6d437b1d7b159acafe4",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
