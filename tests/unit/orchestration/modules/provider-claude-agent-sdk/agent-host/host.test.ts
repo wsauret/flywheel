@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, jest, test } from "bun:test";
 import type { SDKMessage, SDKTaskNotificationMessage, SDKTaskStartedMessage } from "@anthropic-ai/claude-agent-sdk";
 import { Cause, Effect, Queue } from "effect";
 import { classifyAnthropicError } from "../../../../../../src/orchestration/agent-runtime/llm/anthropic-adapter-helpers.js";
@@ -37,10 +37,20 @@ function fakeEngineHost(options: { readonly dispatcherStepDeadlineMs?: number; r
   const quotaMarks: (number | undefined)[] = [];
   const usageStops: ExtraUsageStop[] = [];
   const configDir = directory("host-login-");
+  // The host asks for the engine's next message only after it read every earlier one, so a request past the emitted
+  // count tells the test that the host read them all.
+  let emitted = 0;
+  let asked = 0;
+  let readAll = Promise.withResolvers<void>();
   const launchHost = (input: HostLaunch): LaunchedHost => {
     launch = input;
+    const reader = queueIterable(messages)[Symbol.asyncIterator]();
     return {
-      messages: queueIterable(messages),
+      messages: { [Symbol.asyncIterator]: () => ({ next: () => {
+        asked += 1;
+        if (asked > emitted) readAll.resolve();
+        return reader.next();
+      } }) },
       process: { spawn: unused, exited: unused, running: unused, cannotStart: () => false, terminate: unused, close: unused },
       stopTask: async () => {},
       reloadPlugins: async () => {},
@@ -74,7 +84,13 @@ function fakeEngineHost(options: { readonly dispatcherStepDeadlineMs?: number; r
     host, quotaMarks, usageStops, configDir, ask,
     /** The engine ends its output. */
     end: () => { Effect.runSync(Queue.end(messages)); },
-    emit: (...sent: SDKMessage[]) => { for (const message of sent) Queue.offerUnsafe(messages, message); },
+    emit: (...sent: SDKMessage[]) => {
+      for (const message of sent) Queue.offerUnsafe(messages, message);
+      emitted += sent.length;
+      if (asked <= emitted) readAll = Promise.withResolvers<void>();
+    },
+    /** Resolves once the host read every message that the engine sent. */
+    read: () => readAll.promise,
     /** Writes lines of the engine's debug output. */
     stderr: (lines: readonly string[]) => { for (const line of lines) launch?.onStderrLine(line); },
     nextFrame: async () => (await nextFrame())?.uuid ?? "",
@@ -176,20 +192,29 @@ describe("the shared agent host", () => {
     ["between its steps", 2, 1],
   ] as const)("a dispatcher that makes no progress %s within the deadline closes the host once as stalled and fails the waiting dispatch as transient", async (_position, admittedSteps, messages) => {
     const deadlineMs = 25;
-    const { host, emit, ask, openFrame } = fakeEngineHost({ dispatcherStepDeadlineMs: deadlineMs });
-    const dispatched = host.dispatch("a0000000000000001", noListener).then(() => undefined, (error: unknown) => error);
-    emit(cliInit({ session_id: host.sessionId, plugins: [{ name: AGENT_HOST_PLUGIN, path: "/plugins/agent-host" }] }));
-    await openFrame("frame");
-    // Each progress comes within the deadline and the frame outlives it, so each one armed the watchdog again.
-    await Bun.sleep(15);
-    if (admittedSteps > 0) expect(await ask("/step", { turnId: "frame", index: 0, messageCount: 1, agentId: null })).toMatchObject({ admit: true });
-    if (messages > 0) {
-      await Bun.sleep(15);
-      emit(dispatcherMessage("msg_step_0"));
-      await Bun.sleep(15);
-      expect(await ask("/step", { turnId: "frame", index: 1, messageCount: 3, agentId: null })).toMatchObject({ admit: true });
+    // The watchdog's clock is faked, so a slow runner cannot stretch a gap between two progresses past the deadline.
+    jest.useFakeTimers();
+    const { host, emit, read, ask, openFrame } = fakeEngineHost({ dispatcherStepDeadlineMs: deadlineMs });
+    let failure: unknown;
+    try {
+      const dispatched = host.dispatch("a0000000000000001", noListener).then(() => undefined, (error: unknown) => error);
+      emit(cliInit({ session_id: host.sessionId, plugins: [{ name: AGENT_HOST_PLUGIN, path: "/plugins/agent-host" }] }));
+      await openFrame("frame");
+      // Each progress comes within the deadline and the frame outlives it, so each one armed the watchdog again.
+      jest.advanceTimersByTime(deadlineMs - 1);
+      if (admittedSteps > 0) expect(await ask("/step", { turnId: "frame", index: 0, messageCount: 1, agentId: null })).toMatchObject({ admit: true });
+      if (messages > 0) {
+        jest.advanceTimersByTime(deadlineMs - 1);
+        emit(dispatcherMessage("msg_step_0"));
+        await read();
+        jest.advanceTimersByTime(deadlineMs - 1);
+        expect(await ask("/step", { turnId: "frame", index: 1, messageCount: 3, agentId: null })).toMatchObject({ admit: true });
+      }
+      jest.advanceTimersByTime(deadlineMs);
+      failure = await dispatched;
+    } finally {
+      jest.useRealTimers();
     }
-    const failure = await dispatched;
     if (!(failure instanceof LlmStreamError)) throw new Error("the dispatch did not fail as a stream error");
     expect(failure.kind).toBe("transient");
     expect(await host.ended).toBe(failure);
