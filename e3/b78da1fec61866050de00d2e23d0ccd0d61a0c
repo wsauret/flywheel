@@ -1,0 +1,20 @@
+src/infra/abort.ts
+  h_4b47e9e4a8b456 45-47,52-53
+src/orchestration/modules/provider-claude-agent-sdk/query-launcher.ts
+  h_4b47e9e4a8b456 467-468,492
+tests/unit/infra/abort.test.ts
+  h_4b47e9e4a8b456 3,31-52
+tests/unit/orchestration/modules/provider-claude-agent-sdk/query-launcher.test.ts
+  h_4b47e9e4a8b456 501,508-509
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e3b78da1fec61866050de00d2e23d0ccd0d61a0c",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
