@@ -29,7 +29,7 @@
         "solid-js": "1.9.12",
         "string-width": "7.2.0",
         "web-tree-sitter": "0.25.10",
-        "xstate": "6.0.0-alpha.21",
+        "xstate": "6.0.0-alpha.71",
         "zod": "4.6.7",
       },
       "devDependencies": {
@@ -1987,7 +1987,7 @@
 
     "xmlbuilder": ["xmlbuilder@11.0.1", "", {}, "sha512-fDlsI/kFEx7gLvbecc0/ohLG50fugQp8ryHzMTuW9vSa1GJ0XYWKnhsUx7oie3G98+r56aTQIUB4kht42R3JvA=="],
 
-    "xstate": ["xstate@6.0.0-alpha.21", "", { "bin": { "xstate": "./bin/xstate.js" } }, "sha512-R5zlOWEVip0R0nKbTpbrnYQ6cS60obOg3b8xWSUKx5oH2NQfZup2JPRTWh9dygxgqOGLnLAY5K0sRkiTTNh1Ww=="],
+    "xstate": ["xstate@6.0.0-alpha.71", "", { "bin": { "xstate": "./bin/xstate.js" } }, "sha512-ABNE8jHjqzpQd/gX8huQYvSlbrOEaJcvzBtt6qWMooQuvxKoarkEKT0JFr3ymhI5Jza72YmfsWnFEophersmhQ=="],
 
     "xxhash-wasm": ["xxhash-wasm@1.1.0", "", {}, "sha512-147y/6YNh+tlp6nd/2pWq38i9h6mz/EuQ6njIrmW8D1BS5nCqs0P6DG+m6zTGnNz5I+uhZ0SHxBs9BsPrwcKDA=="],
 
