@@ -104,24 +104,34 @@ describe("native ripgrep", () => {
     } finally {
       clearTimeout(timer);
     }
-    const start = performance.now();
-    const result = await grep({ pattern: "needle", path: literal, timeoutMs: 100 });
+    // A stopped search's worker frees when its thread next runs, after the
+    // promise settled. Its wall limit is hard, so a result proves that the
+    // call found a worker within 1 s, far below the 10 s and 30 s at which
+    // the stopped searches' workers would free on their own.
+    const result = await grep({ pattern: "needle", path: literal, timeoutMs: 1_000 });
     expect(result.totalMatches).toBe(1);
-    expect(performance.now() - start).toBeLessThan(100);
 
     // More long searches than the native search pool holds must not hold a
     // waiting call past its own wall limit, and that call reports busy
-    // workers, not slow storage. The waiting call's deadline leaves room for
-    // its supervisor thread to start: on a saturated 4-core Windows Server
-    // runner a new thread can first run more than 20 ms later, and a
-    // supervisor that starts past its deadline reports the wall limit instead.
-    // The bound stays far below the 2 s at which a busy worker frees.
+    // workers, not slow storage. A long search takes its worker only when its
+    // supervisor thread runs, and on a loaded runner the waiting call's
+    // supervisor can run first; a call that still finds a free worker shows
+    // that the pool is not full yet, so it is sent again. The waiting call's
+    // deadline leaves room for its supervisor thread to start: on a saturated
+    // 4-core Windows Server runner a new thread can first run more than 20 ms
+    // later, and a supervisor that starts past its deadline reports the wall
+    // limit instead.
     const saturating = new AbortController();
     const long = Array.from({ length: os.availableParallelism() + 4 }, () =>
-      grep({ pattern: "(?=a)a+(?<!a)", engine: "pcre2", path: target, timeoutMs: 2_000, maxCount: 1 }, saturating.signal).catch((error: unknown) => error));
+      grep({ pattern: "(?=a)a+(?<!a)", engine: "pcre2", path: target, timeoutMs: 10_000, maxCount: 1 }, saturating.signal).catch((error: unknown) => error));
     try {
-      const waited = performance.now();
-      await expect(grep({ pattern: "needle", path: literal, timeoutMs: 200 })).rejects.toEqual(new SearchStoppedError("no-worker"));
+      let waited: number;
+      let stopped: unknown;
+      do {
+        waited = performance.now();
+        stopped = await grep({ pattern: "needle", path: literal, timeoutMs: 200 }).then(() => undefined, (error: unknown) => error);
+      } while (stopped === undefined);
+      expect(stopped).toEqual(new SearchStoppedError("no-worker"));
       expect(performance.now() - waited).toBeLessThan(1_000);
     } finally {
       saturating.abort();
