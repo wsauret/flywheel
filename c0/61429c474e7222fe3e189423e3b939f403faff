@@ -1,0 +1,14 @@
+tests/unit/orchestration/chat/chat-runner-lifecycle-capacity.test.ts
+  h_4b47e9e4a8b456 43,46-52,55-58,61-64,66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c061429c474e7222fe3e189423e3b939f403faff",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
