@@ -1,0 +1,14 @@
+tests/unit/orchestration/agent-runtime/tools/ripgrep-native.test.ts
+  h_4b47e9e4a8b456 107-111,116-123,126,128-134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d2833ec04ce16774c0d3969acc5b167dab141676",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
