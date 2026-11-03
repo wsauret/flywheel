@@ -241,7 +241,7 @@ describe("bundled skill packages", () => {
     expect(lifecycle?.body).not.toMatch(/git (?:checkout --|reset --hard|stash|clean)/);
     expect(ship?.body).toContain("Leave uncommitted edits outside the supplied list untouched");
     expect(ship?.body).toContain("never use `--autostash`");
-    expect(ship?.body).toContain("When the caller supplied a shape guide, put it in the description verbatim");
+    expect(ship?.body).toContain("When the caller supplied that account, put it in the description verbatim");
     expect(ship?.body).toContain("do not assess, edit, or verify it");
     expect(ship?.body).toContain("Use `commit + push` to the current branch's normal push target by default");
   });
