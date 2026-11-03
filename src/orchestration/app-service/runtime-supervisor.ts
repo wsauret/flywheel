@@ -536,7 +536,7 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
    *  turn, and every turn of a stop that no replacement planned, takes the
    *  ordinary runtime interrupt, which every surface shows with its Resume,
    *  since no successor continues it. */
-  async function stopInterruption(handoffId: string | undefined): Promise<(sessionId: string) => RuntimeInterruption> {
+  async function stopInterruption(handoffId: string | undefined): Promise<(sessionId: string) => Exclude<RuntimeInterruption, "close">> {
     if (handoffId === undefined) return () => "runtime"
     // A failed read must not skip the ordered teardown after it. A turn the
     // cut reached still ends as the cut ends it, and a turn it did not reach

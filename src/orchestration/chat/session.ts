@@ -321,8 +321,8 @@ export function createChatSession(callbacks: ChatCallbacks, deps: ChatSessionDep
 
   /** The runtime's stop of this runner. A stop that a planned replacement
    *  owns (`replacement`) ends a running turn as the cut ends it, with the
-   *  planned record, which no surface shows. Anything else, and a runner
-   *  with no turn to cut, takes the ordinary stop below. */
+   *  planned record, which no surface shows. Any other stop, and a runner
+   *  with no turn to cut, takes the stop below, which records `by`. */
   function prepareForShutdown(by: RuntimeInterruption): void {
     if (by === "replacement" && interruptForReplacementCut()) return
     // A pending question survives the stop for the person to answer after
@@ -337,7 +337,7 @@ export function createChatSession(callbacks: ChatCallbacks, deps: ChatSessionDep
     // runtime interrupted it (ARCH-SESSIONS-018). An idle runner, or one whose turn
     // has answered, has nothing to interrupt and shelves queued input as
     // before, recording nothing.
-    if (!controls.interruptForRuntime("runtime")) controls.abort()
+    if (!controls.interruptForRuntime(by)) controls.abort()
   }
 
   /** A planned replacement interrupts running work and settles its durable record. */

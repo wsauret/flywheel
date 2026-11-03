@@ -63,10 +63,12 @@ async function runToolTurn(result: ConversationMessage): Promise<void> {
   await writer.recordCanonicalMessage(result);
 }
 
-const INTERRUPTERS: TurnInterruption[] = ["person", "runtime", "replacement"];
+const INTERRUPTERS: TurnInterruption[] = ["person", "runtime", "replacement", "close"];
 
 describe.each(INTERRUPTERS)("the record of a turn interrupted by the %s", (by) => {
-  const who = by === "person" ? "The user interrupted this turn" : "The runtime interrupted this turn";
+  const who = by === "person" ? "The user interrupted this turn"
+    : by === "close" ? "The runtime interrupted this turn before it finished, because the user closed the chat."
+    : "The runtime interrupted this turn";
 
   it("a cut running tool call is stated, in the loop's copy and the tree alike (chat, step, and follow-up park)", async () => {
     await runToolTurn(interruptedResult("call-1"));

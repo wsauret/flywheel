@@ -266,10 +266,11 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
   }
 
   /** A close ends the chat's work: no startup attaches any more, and the
-   *  runtime interrupts a turn that runs. */
+   *  runtime interrupts a turn that runs with Close chat's cut, which waits
+   *  for the person's Resume. */
   function stopForClose(): void {
     markClosing()
-    ctx.sessionStore.prepareForShutdown(sessionId, "runtime")
+    ctx.sessionStore.prepareForShutdown(sessionId, "close")
   }
 
   /** What waits for the turn's rest: the chat's close when its tab closed,

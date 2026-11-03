@@ -71,6 +71,17 @@ describe("turn-end records", () => {
     expect(isVisibleTurnEnd(interruptedTurnEnd("runtime"))).toBe(true)
   })
 
+  test("Close chat's cut is the runtime's visible, resumable interrupt, marked closed, under the prefix older releases read", () => {
+    const closed = interruptedTurnEnd("close")
+    expect(closed).toEqual({ reason: "paused", pausedBy: "runtime", closed: true })
+    const id = turnEndEntryId(closed, "k")
+    expect(id).toBe("itb-paused-runtime-closed-k")
+    expect(id.startsWith("itb-paused-runtime-")).toBe(true)
+    expect(turnEndOfEntry(message("user", { id, origin: "system" }))).toEqual(closed)
+    expect(isResumableTurnEnd(closed)).toBe(true)
+    expect(isVisibleTurnEnd(closed)).toBe(true)
+  })
+
   test("converts records written before ids carried a reason: the discarded record by its opening sentence, every other one a crash", () => {
     // Remove with the conversion after 2027-03-22.
     expect(turnEndOfEntry(message("user", { id: "itb-0123abcd", origin: "system", content: "The process running this turn exited before the turn finished. Its reply was lost." }))).toEqual({ reason: "crash" })
@@ -95,7 +106,8 @@ describe("turn-end records", () => {
   test("the interrupt record states who interrupted the turn, that a tool call was cut only when one was, and never asks to continue", () => {
     expect(interruptedTurnMessage("person", false)).toBe("The user interrupted this turn before it finished.")
     expect(interruptedTurnMessage("runtime", false)).toBe("The runtime interrupted this turn before it finished, at a planned stop.")
-    for (const by of ["person", "runtime"] as const) {
+    expect(interruptedTurnMessage("close", false)).toBe("The runtime interrupted this turn before it finished, because the user closed the chat.")
+    for (const by of ["person", "runtime", "close"] as const) {
       expect(interruptedTurnMessage(by, true)).toBe(`${interruptedTurnMessage(by, false)} A tool call that was running was cut and may have partially executed.`)
       expect(interruptedTurnMessage(by, false)).not.toContain("tool call")
       for (const cut of [true, false]) expect(interruptedTurnMessage(by, cut).toLowerCase()).not.toContain("continue")
@@ -238,9 +250,14 @@ describe("the turn end a branch tail reads", () => {
       expect(waitsForPerson(chatTurnEndOf([user(), call("process", { action: "wait", process_id: "p1" }, "process.luna"), result(), end()]))).toBe(true)
       expect(waitsForPerson(chatTurnEndOf([user(), call("process", { action: "wait" }, "process.luna"), result(), end()]))).toBe(false)
     }
-    // A person's interrupt of the same wait waits for the person (PI-INTERACTION-043).
-    expect(waitsForPerson(chatTurnEndOf([user(), waitCall(), result(), paused()]))).toBe(true)
-    expect(waitsForPerson(chatTurnEndOf([user(), message("assistant"), paused()]))).toBe(true)
+    // A person's interrupt of the same wait, or Close chat's, waits for the
+    // person, also once the killed work's notice lands (PI-INTERACTION-043).
+    const closedCut = () => message("user", { id: turnEndEntryId(interruptedTurnEnd("close"), `c${seq}`), origin: "system" })
+    for (const end of [paused, closedCut]) {
+      expect(waitsForPerson(chatTurnEndOf([user(), waitCall(), result(), end()]))).toBe(true)
+      expect(waitsForPerson(chatTurnEndOf([user(), waitCall(), result(), end(), notification()]))).toBe(true)
+      expect(waitsForPerson(chatTurnEndOf([user(), message("assistant"), end()]))).toBe(true)
+    }
   })
 
   test("a newer human message after a record is the turn that waits, not the record", () => {

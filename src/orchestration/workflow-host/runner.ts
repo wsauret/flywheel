@@ -4,7 +4,7 @@ import { EventReaderService, EventStoreWriterService } from "../../infra/event-s
 import { Log } from "../../infra/log.js"
 import { hydrateToolContentFact } from "../../infra/tool-content-hydration.js"
 import { DEFAULT_BUDGET, toBudgetLimits } from "../../workflows/budget.js"
-import { interruptedTurnEnd, isRuntimeInterruption, type ControlInterruption, type PlannedCutInterrupt, type TurnInterruption } from "../session/conversation/turn-end-record.js"
+import { interruptedTurnEnd, isRuntimeInterruption, type ControlInterruption, type PlannedCutInterrupt, type TurnInterruption, type WorkflowInterruption } from "../session/conversation/turn-end-record.js"
 import { readWorkflowAgentTurnEnds } from "../session/chat-session-run-evidence.js"
 import { startedAgents } from "../../workflows/vm/host-commit-controller.js"
 import { parentMayContinue, workflowStepCut, type ChildCut } from "../session/child-continuation.js"
@@ -41,7 +41,7 @@ const ABORT_REASONS = {
   agent: "Workflow stopped by its parent agent",
   runtime: "Workflow paused because the runtime stopped",
   replacement: "Workflow paused for a runtime replacement",
-} as const satisfies { readonly [cause in TurnInterruption]: string }
+} as const satisfies { readonly [cause in WorkflowInterruption]: string }
 
 export function createWorkflowRunner(opts: WorkflowRunnerFactoryOptions): WorkflowRunner {
   const { sessionId, description, projectRoot, executionCwd, workflowDeps: deps } = opts
@@ -291,7 +291,7 @@ export function createWorkflowRunner(opts: WorkflowRunnerFactoryOptions): Workfl
     return promise
   }
 
-  async function abort(cause: TurnInterruption): Promise<void> {
+  async function abort(cause: WorkflowInterruption): Promise<void> {
     await Log.runWithSession(sessionId, async () => {
       abortPromise ??= createdRuntime?.host.abort(ABORT_REASONS[cause]) ?? Promise.resolve(false)
       await abortPromise

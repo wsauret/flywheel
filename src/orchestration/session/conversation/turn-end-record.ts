@@ -23,7 +23,7 @@ export interface TurnEndEntry {
  *  point it ended so every later turn and every client read the same fact:
  *  - `paused`: an interrupt, by a person (Escape or any surface's control),
  *    by a child's parent agent through its `process` tool, or by the runtime
- *    at a planned stop; Resume continues it. An agent's interrupt decides as
+ *    at a planned stop or a Close chat; Resume continues it. An agent's interrupt decides as
  *    a person's does in every rule but one: the parent may continue it. So
  *    every rule tests for the runtime's interrupt, never for the person's.
  *    The saved name predates the interrupt vocabulary and stays for durable
@@ -52,19 +52,28 @@ export interface TurnEndEntry {
  *  schema change every reader of the conversation pays for, and the
  *  interruption sweep already recognized its records by prefix. */
 export type TurnEnd =
-  | { readonly reason: "paused"; readonly pausedBy: PausedBy; readonly planned?: true }
+  | { readonly reason: "paused"; readonly pausedBy: PausedBy; readonly planned?: true; readonly closed?: true }
   | { readonly reason: "crash" | "discarded" | "settled" }
 
 /** Who interrupted a turn. `replacement` is the runtime's planned cut before
  *  a successor continues the same work: it is saved as the runtime's
- *  interrupt, marked planned, and no surface shows it or its Resume. */
-export type TurnInterruption = PausedBy | "replacement"
+ *  interrupt, marked planned, and no surface shows it or its Resume.
+ *  `close` is the runtime's cut when a person closes the chat: it is saved
+ *  as the runtime's interrupt, marked closed, and waits for the person even
+ *  when the turn waited on background work, because the close ended that
+ *  work (PI-INTERACTION-082). */
+export type TurnInterruption = PausedBy | "replacement" | "close"
 
 /** How the runtime ends a running turn when it stops: `runtime` for an
- *  ordinary stop, whose interrupt every surface shows with its Resume, or
- *  `replacement` for a turn that a planned replacement's successor
- *  continues, which no surface shows. */
+ *  ordinary stop, whose interrupt every surface shows with its Resume,
+ *  `close` for Close chat's stop, shown the same way, or `replacement` for
+ *  a turn that a planned replacement's successor continues, which no
+ *  surface shows. */
 export type RuntimeInterruption = Exclude<TurnInterruption, "person" | "agent">
+
+/** Who can end a workflow's run. Close chat ends only its chat's own work,
+ *  and workflows keep running (PI-INTERACTION-082). */
+export type WorkflowInterruption = Exclude<TurnInterruption, "close">
 
 /** Who can make the one Interrupt of a control: a person, or a child's
  *  parent agent. Both decide alike in every rule but one: the parent may
@@ -75,7 +84,7 @@ export type ControlInterruption = Exclude<PausedBy, "runtime">
  *  turn asks this, never whether a person did, so an agent's interrupt
  *  decides as a person's does. */
 export function isRuntimeInterruption(by: TurnInterruption): by is RuntimeInterruption {
-  return by === "runtime" || by === "replacement"
+  return by === "runtime" || by === "replacement" || by === "close"
 }
 
 /** A live runner's answer to a person's interrupt of the turn a planned
@@ -94,7 +103,9 @@ export type PlannedCutInterrupt = "recorded" | "running" | "ended"
 
 /** The turn end an interruption records. */
 export function interruptedTurnEnd(by: TurnInterruption): Extract<TurnEnd, { reason: "paused" }> {
-  return by === "replacement" ? { reason: "paused", pausedBy: "runtime", planned: true } : { reason: "paused", pausedBy: by }
+  return by === "replacement" ? { reason: "paused", pausedBy: "runtime", planned: true }
+    : by === "close" ? { reason: "paused", pausedBy: "runtime", closed: true }
+    : { reason: "paused", pausedBy: by }
 }
 
 /** Whether a planned replacement's cut recorded this turn end. Its
@@ -119,14 +130,14 @@ export const TURN_END_ID_PREFIX = "itb-"
 const LEGACY_USER_INTERRUPT_CONTENT = "Interrupted by user."
 
 export function turnEndEntryId(end: TurnEnd, key: string): string {
-  // A planned cut keeps the `paused-runtime-` prefix, so a release that
-  // predates the marker still reads it as the runtime's interrupt. An
+  // A planned or closed cut keeps the `paused-runtime-` prefix, so a release
+  // that predates its marker still reads it as the runtime's interrupt. An
   // agent's interrupt keeps the `paused-person-` prefix, so a release that
   // predates the agent actor reads it as the person's interrupt, which
   // decides the same way in every rule but the parent's continuation.
   const reason = end.reason !== "paused" ? end.reason
     : end.pausedBy === "agent" ? AGENT_INTERRUPT_REASON
-    : `paused-${end.pausedBy}${end.planned ? "-planned" : ""}`
+    : `paused-${end.pausedBy}${end.planned ? "-planned" : end.closed ? "-closed" : ""}`
   return `${TURN_END_ID_PREFIX}${reason}-${key}`
 }
 
@@ -140,9 +151,10 @@ const AGENT_INTERRUPT_REASON = "paused-person-agent"
  *  after every command finished would repeat work that already completed. It
  *  never asks the model to continue; a Resume records its own continuation,
  *  and a new message starts a fresh turn. */
-export function interruptedTurnMessage(by: PausedBy, cutToolCall: boolean): string {
+export function interruptedTurnMessage(by: TurnInterruption, cutToolCall: boolean): string {
   const who = by === "person" ? "The user interrupted this turn before it finished."
     : by === "agent" ? "Your parent session interrupted this turn before it finished."
+    : by === "close" ? "The runtime interrupted this turn before it finished, because the user closed the chat."
     : "The runtime interrupted this turn before it finished, at a planned stop."
   return cutToolCall ? `${who} A tool call that was running was cut and may have partially executed.` : who
 }
@@ -180,6 +192,9 @@ export function turnEndOfEntry(entry: TurnEndEntry): TurnEnd | undefined {
   if (tagged.startsWith(`${AGENT_INTERRUPT_REASON}-`)) return { reason: "paused", pausedBy: "agent" }
   if (tagged.startsWith("paused-person-")) return { reason: "paused", pausedBy: "person" }
   if (tagged.startsWith("paused-runtime-planned-")) return { reason: "paused", pausedBy: "runtime", planned: true }
+  // Added 2026-11-02; a record written before it has no marker and keeps
+  // its meaning, so no conversion exists.
+  if (tagged.startsWith("paused-runtime-closed-")) return { reason: "paused", pausedBy: "runtime", closed: true }
   if (tagged.startsWith("paused-runtime-")) return { reason: "paused", pausedBy: "runtime" }
   if (tagged.startsWith("crash-")) return { reason: "crash" }
   if (tagged.startsWith("discarded-")) return { reason: "discarded" }
@@ -340,7 +355,7 @@ function chatTurnEndDecision<Entry extends TurnEndEntry>(tail: readonly Entry[],
     }
     if (end) {
       if (produced && !isResumableTurnEnd(end)) return unanswered
-      const wait = isResumableTurnEnd(end) && (end.reason !== "paused" || end.pausedBy === "runtime")
+      const wait = end.reason === "crash" || (end.reason === "paused" && end.pausedBy === "runtime" && end.closed !== true)
         ? backgroundWaitOf(tail, holdsWait) : undefined
       return { turnEnd: wait ? { end, recorded: true, backgroundWait: true } : { end, recorded: true }, entry, ...(wait ? { wait } : {}) }
     }
@@ -519,10 +534,21 @@ export function carriedTurnEndRecord(branch: readonly TurnEndEntry[]): CarriedTu
  *  (PI-INTERACTION-043). A turn that the runtime or an unexpected exit cut
  *  while it waited on background work (`backgroundWait`) does not wait for
  *  the person: it still waits on that work, so a completion wakes it, as it
- *  wakes a turn that no restart cut. The unrecorded crash shape does not
- *  wait: an idle tail that a notification follows reads the same way. */
+ *  wakes a turn that no restart cut. Close chat's cut is not such a cut: the
+ *  close ended that work, so the turn waits for the person. The unrecorded
+ *  crash shape does not wait: an idle tail that a notification follows
+ *  reads the same way. */
 export function waitsForPerson(turnEnd: ChatTurnEnd | undefined): boolean {
   return turnEnd?.recorded === true && isResumableTurnEnd(turnEnd.end) && turnEnd.backgroundWait !== true
+}
+
+/** Whether a person sees the last turn as interrupted: it waits for the
+ *  person (`waitsForPerson`), and no planned replacement cut it
+ *  (`isVisibleTurnEnd`). A planned replacement's successor continues its
+ *  turn, so that agent still runs, as an agent does whose runtime cut came
+ *  while it waited on background work (PI-REMOTE-012). */
+export function holdsForPerson(turnEnd: ChatTurnEnd | undefined): boolean {
+  return isVisibleTurnEnd(turnEnd?.end) && waitsForPerson(turnEnd)
 }
 
 /** Whether the branch still waits where the runtime interrupted it: its last

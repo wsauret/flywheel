@@ -173,16 +173,16 @@ describe("createChatControls", () => {
     ])
   })
 
-  it("the runtime's ordinary stop cuts the turn through the teardown abort and shows and records a runtime interrupt", () => {
+  it.each(["runtime", "close"] as const)("the runtime's %s stop cuts the turn through the teardown abort, shows a runtime interrupt, and records its own cut", (by) => {
     const { controls, calls } = createControls(true)
 
-    expect(controls.interruptForRuntime("runtime")).toBe(true)
+    expect(controls.interruptForRuntime(by)).toBe(true)
 
     expect(calls).toEqual([
       "runnerAbortRunningTurn",
       "endTurn:paused",
       "system:Interrupted by the runtime",
-      "recordInterruption:runtime",
+      `recordInterruption:${by}`,
       "flush",
     ])
   })

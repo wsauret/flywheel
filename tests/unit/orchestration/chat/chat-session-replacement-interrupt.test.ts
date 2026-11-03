@@ -34,23 +34,28 @@ const ASK_ID = "ask-1"
 
 describe("a restored background wait", () => {
   const temporary = temporaryDirectories()
+  // Close chat's row: the cut came while the turn waited on a background
+  // command, and the close killed that command, whose notice lands before
+  // the reopen's hold (PI-INTERACTION-082). It waits for the person.
   it.each([
-    { label: "a completion", message: "The build completed while the runtime was down.", requests: 1 },
-    { label: "a Resume that already began", message: CONTINUATION_MESSAGES.resumed, requests: 0 },
-  ])("reads $label committed during downtime without an unsolicited request or continuation", async ({ message, requests }) => {
+    { label: "a completion", end: interruptedTurnEnd("replacement"), message: "The build completed while the runtime was down.", requests: 1 },
+    { label: "a Resume that already began", end: interruptedTurnEnd("replacement"), message: CONTINUATION_MESSAGES.resumed, requests: 0 },
+    { label: "the notice of the command Close chat ended", end: interruptedTurnEnd("close"), message: "Background command ended by signal SIGTERM", requests: 0 },
+  ])("reads $label committed during downtime without an unsolicited request or continuation", async ({ end, message, requests }) => {
     const projectRoot = temporary("chat-restored-completion-")
     const store = createSqliteEventStore(resolveEventStoreDbFile(projectRoot))
-    const { chat, calls, parked } = await createStoredChatSession({
+    const { chat, calls, parks, parked } = await createStoredChatSession({
       sessionId: "chat-restored", conversationId: "conversation-restored", projectRoot,
       reader: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store),
       seed: async (tree) => {
         await tree.appendMessage({ kind: "user", content: "wait for the build", origin: "human" })
         await tree.appendMessage({ kind: "assistant", content: [{ type: "tool_use", id: "wait", name: "process", input: { action: "wait", soft_timeout: 60 } }] })
         await tree.appendMessage({ kind: "toolResult", toolUseId: "wait", content: [{ type: "text", text: "Wait acknowledged." }] })
-        await appendTurnEnd(tree, interruptedTurnEnd("replacement"))
+        await appendTurnEnd(tree, end)
         await tree.appendMessage({ kind: "user", origin: "system", content: message })
       },
     })
+    const later = Promise.withResolvers<BackgroundWorkResult>()
     try {
       await chat.hold()
       await parked(1)
@@ -60,7 +65,20 @@ describe("a restored background wait", () => {
         expect(JSON.stringify(calls[0])).not.toContain("nothing_pending")
         expect(JSON.stringify(calls[0])).not.toContain(CONTINUATION_MESSAGES.resumed)
       }
+      if (end.closed !== true) return
+      // A later completion, such as a workflow's, is recorded too; Resume continues with both.
+      expect(await chat.messageState()).toBe("interrupted")
+      chat.backgroundTasks.track({ done: later.promise, meta: { id: "workflow", type: "background_command", description: "workflow" } })
+      later.resolve({ status: "completed", content: "the workflow finished" })
+      await parked(2)
+      expect(parks).toEqual([true, true])
+      expect(calls).toHaveLength(0)
+      expect(chat.resume({ announce: false })).toBe(true)
+      await parked(3)
+      expect(calls).toHaveLength(1)
+      for (const text of [message, "the workflow finished", CONTINUATION_MESSAGES.resumed]) expect(JSON.stringify(calls[0])).toContain(text)
     } finally {
+      later.resolve({ status: "completed", content: "" })
       await chat.dispose()
       store.close()
     }

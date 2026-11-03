@@ -157,19 +157,20 @@ describe("RuntimeSupervisor preemptive immediacy and two-phase lifecycle", () =>
     expect(await ctx.manager.read(sessionId)).toBeNull()
   })
 
-  test("close prepares the active runner for durable shutdown before tearing it down", async () => {
+  test("close prepares the active runner for durable shutdown with Close chat's cut before tearing it down", async () => {
     let abortCalls = 0
-    let prepareCalls = 0
+    const stops: string[] = []
     const supervisor = supervisorWithRunner(ctx, async (deps) => mockRunner(deps.sessionId, {
       abort: () => { abortCalls += 1 },
-      prepareForShutdown: () => { prepareCalls += 1 },
+      prepareForShutdown: (by) => { stops.push(by) },
     }))
     const sessionId = await supervisor.openSessionRuntime()
     await expect(supervisor.sendChat(sessionId, "keep me")).resolves.toEqual({ ok: true })
     await supervisor.ensureChatRunner(sessionId)
 
     await expect(supervisor.closeChat(sessionId)).resolves.toBe(true)
-    expect(prepareCalls).toBe(1)
+    // Its record waits for the person even when the turn waited on background work.
+    expect(stops).toEqual(["close"])
     expect(abortCalls).toBe(0)
     expect((await ctx.manager.read(sessionId))?.lifecycleState).toBe("inactive")
   })

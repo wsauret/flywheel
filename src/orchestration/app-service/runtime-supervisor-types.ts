@@ -30,7 +30,7 @@ import type { ModelWorkflowLaunchRequest, WorkflowLaunchRefusal } from "../workf
 import type { TranscriptProjectionCache } from "./transcript-projection-cache.js"
 import type { ChatRunnerLoader } from "./chat-runner-loader.js"
 import type { RecallInput, RecallResult } from "../../protocol/conversation-recall.js"
-import type { ControlInterruption, RuntimeInterruption } from "../session/conversation/turn-end-record.js"
+import type { ControlInterruption, WorkflowInterruption } from "../session/conversation/turn-end-record.js"
 import type { ContinuationLanes } from "../session/planned-session-continuation.js"
 import type { ModuleRetainedOperationAuthority, RetainedOperationAcceptance } from "../module-seams.js"
 import type { SessionStops } from "../session/module-session-operations.js"
@@ -95,7 +95,7 @@ export interface RuntimeSupervisorDeps {
   readonly lifecycle: {
     /** Aborts every workflow run with the interruption `causeOf` names for
      *  it, then settles the session store. */
-    settleSessionStore(causeOf: (sessionId: string) => RuntimeInterruption): Promise<void>
+    settleSessionStore(causeOf: (sessionId: string) => WorkflowInterruption): Promise<void>
     settleAuthAdmission(): Promise<void>
   }
   readonly onRunnerDone?: (id: string) => void

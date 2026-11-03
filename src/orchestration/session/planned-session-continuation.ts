@@ -11,7 +11,7 @@ import { whenLiveChildRun, type LiveChildControl } from "./live-session-control.
 import { readWaitsAtRuntimeInterrupt } from "./chat-session-run-evidence.js"
 import { tryOpenConversationTree } from "./conversation/conversation-tree-handle.js"
 import { createConversationTreeWriter } from "./conversation/conversation-tree-writer.js"
-import { interruptedTurnEnd, turnEndEntryId, type ControlInterruption, type PlannedCutInterrupt } from "./conversation/turn-end-record.js"
+import type { ControlInterruption, PlannedCutInterrupt } from "./conversation/turn-end-record.js"
 import type { PausedBy } from "../../infra/output-blocks.js"
 import type { SessionManager } from "./manager.js"
 import { readSessionMetadata } from "./session-metadata-store.js"
@@ -596,8 +596,7 @@ export async function recordInterrupt(input: Pick<SessionInterrupt, "projectionR
   const tree = await tryOpenConversationTree({ conversationId, sessionId, store: input.projectionReader, writer: input.writer })
   if (tree === null) throw new Error(`Conversation ${conversationId} has no tree to record the interrupt in`)
   try {
-    const end = interruptedTurnEnd(by)
-    await createConversationTreeWriter({ tree }).commitTurnEnd(end.pausedBy, turnEndEntryId(end, crypto.randomUUID()))
+    await createConversationTreeWriter({ tree }).commitTurnEnd(by)
   } finally {
     tree.getStorage().dispose()
   }

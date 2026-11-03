@@ -104,7 +104,7 @@ export function createChatControls(controlsInput: ChatControlsInput): ChatContro
     log.info("chat interrupted by the runtime", { by })
     interruptedBy = by
     session.endTurn("paused")
-    if (by === "runtime") session.pushSystemMessage(interruptedLabel("runtime"), Date.now())
+    if (by !== "replacement") session.pushSystemMessage(interruptedLabel("runtime"), Date.now())
     recordInterruption(by)
     session.flush()
     return true

@@ -1,7 +1,7 @@
 import type { EventStoreRuntime } from "../../../infra/event-store-effect.js"
 import type { AsyncEventStateReadSurface } from "../../../infra/event-store-types.js"
 import type { AttachChildSessionProjection } from "../../module-seams.js"
-import type { TurnInterruption } from "../../session/conversation/turn-end-record.js"
+import type { WorkflowInterruption } from "../../session/conversation/turn-end-record.js"
 import type { WorkflowHosts } from "../../workflow-host/host-collection.js"
 import { WorkflowPreflightError, type WorkflowRunner } from "../../workflow-host/runner-types.js"
 import { Log } from "../../../infra/log.js"
@@ -24,7 +24,7 @@ export function createWorkflowHosts(input: {
   let disposed = false
   const listeners = new Set<() => void>()
   const changed = () => { for (const listener of listeners) listener() }
-  async function remove(id: string, cause: TurnInterruption): Promise<void> {
+  async function remove(id: string, cause: WorkflowInterruption): Promise<void> {
     const existing = closing.get(id)
     if (existing) return existing
     if (!hosts.has(id) && !pending.has(id)) return

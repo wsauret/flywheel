@@ -1,5 +1,5 @@
 import type { ConversationMessage } from "../agent-runtime/llm/types.js"
-import { carriedTurnEndRecord, contextResetRecordId, interruptedTurnEnd, turnEndEntryId, type TurnInterruption } from "../session/conversation/turn-end-record.js"
+import { carriedTurnEndRecord, contextResetRecordId, type TurnInterruption } from "../session/conversation/turn-end-record.js"
 import { redactMessage } from "../agent-runtime/agent-loop-history.js"
 import type { AsyncEventStateReadSurface, AsyncEventWriter } from "../../infra/event-store-types.js"
 import type { ChatInputLike } from "../../infra/chat-input.js"
@@ -305,8 +305,7 @@ export function createConversationTreeWriterController(
     // An attached writer takes the record in the caller's tick, so a record
     // asked for while the turn runs is queued when this call returns.
     const { writer } = resolved ?? await ensureResolved()
-    const end = interruptedTurnEnd(by)
-    return writer.commitTurnEnd(end.pausedBy, turnEndEntryId(end, crypto.randomUUID()))
+    return writer.commitTurnEnd(by)
   }
 
   function beginTurn(): void {

@@ -7,7 +7,7 @@ import type { EventStoreRuntime } from "../../infra/event-store-effect.js"
 import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
 import type { AttachChildSessionProjection } from "../module-seams.js"
 import type { StoppedBy } from "../../protocol/app-service-types.js"
-import type { TurnInterruption } from "../session/conversation/turn-end-record.js"
+import type { WorkflowInterruption } from "../session/conversation/turn-end-record.js"
 import type { WorkflowCompletionAcknowledgement, WorkflowResult, WorkflowWake, WorkflowRunner } from "./runner-types.js"
 
 /** Admitted inputs of an aggregate host. Started attempts publish their own sessions. */
@@ -48,8 +48,8 @@ export interface WorkflowHosts {
   /** The Stop of a run, by a person or its parent agent. */
   abort(workflowId: string, by: StoppedBy): Promise<boolean>
   /** Aborts the run with `cause` and releases its host. */
-  remove(workflowId: string, cause: TurnInterruption): Promise<void>
+  remove(workflowId: string, cause: WorkflowInterruption): Promise<void>
   refreshDeps(): Promise<void>
   /** Closes the collection and aborts every run with the cause `causeOf` names for it. */
-  disposeAll(causeOf: (workflowId: string) => TurnInterruption): Promise<void>
+  disposeAll(causeOf: (workflowId: string) => WorkflowInterruption): Promise<void>
 }

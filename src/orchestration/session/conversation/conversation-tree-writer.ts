@@ -3,13 +3,12 @@ import { PersistenceWriteRefused } from "../../../infra/event-store-types.js";
 import { Log } from "../../../infra/log.js";
 import { createOrderedLane } from "../../../infra/ordered-lane.js";
 import { runInTaskSlices } from "../../../infra/task-scheduling.js";
-import type { PausedBy } from "../../../infra/output-blocks.js";
 import type { ConversationMessage } from "../../agent-runtime/llm/types.js";
 import { repairToolAdjacencyWork } from "./conversation-tool-adjacency.js";
 import type { ConversationTree } from "./conversation-tree.js";
 import type { FinalizedCheckpointSwap } from "../../agent-runtime/agent-loop-types.js";
 import type { QueuedUserInputCell, QueuedUserInputCommitResult } from "./queued-user-inputs.js";
-import { cutRunningToolCall, interruptedTurnMessage, type TurnEndEntry } from "./turn-end-record.js";
+import { cutRunningToolCall, interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId, type TurnEndEntry, type TurnInterruption } from "./turn-end-record.js";
 import type { HeldRetainedOperation } from "../../module-seams.js";
 
 const log = Log.create({ service: "conversation-tree-writer" });
@@ -68,7 +67,7 @@ export interface ConversationTreeWriter {
    *  returned message is the record as the conversation reads now, which is
    *  what lands unless more of the turn arrives first; a parked loop, which
    *  has already enqueued all of its turn, holds it as its own history. */
-  commitTurnEnd(by: PausedBy, id: string): Promise<ConversationMessage>;
+  commitTurnEnd(by: TurnInterruption): Promise<ConversationMessage>;
   /** Commit held input only while idle, after finalized-result and interruption
    * recovery. Active turns reject rather than buffer. Append failures propagate. */
   commitQueuedUserInput(cell: QueuedUserInputCell): Promise<QueuedUserInputCommitResult>;
@@ -175,7 +174,8 @@ export function createConversationTreeWriter(deps: ConversationTreeWriterDeps): 
     return null;
   }
 
-  async function commitTurnEnd(by: PausedBy, id: string): Promise<ConversationMessage> {
+  async function commitTurnEnd(by: TurnInterruption): Promise<ConversationMessage> {
+    const id = turnEndEntryId(interruptedTurnEnd(by), crypto.randomUUID());
     // Held before the branch read, so held records keep the order they were
     // asked for: a person's interrupt of a turn the runtime cut is the last
     // turn end even when the cut's read of the branch is slower.
@@ -406,9 +406,9 @@ function heldEntryKey(message: Extract<ConversationMessage, { kind: "user" }>): 
  *  turn-end record whose text waits for the results that land ahead of it. */
 type HeldCommit =
   | { readonly message: ConversationMessage; readonly id?: string }
-  | { readonly turnEnd: PausedBy; readonly id: string };
+  | { readonly turnEnd: TurnInterruption; readonly id: string };
 
-function turnEndRecord(by: PausedBy, tail: readonly TurnEndEntry[]): ConversationMessage {
+function turnEndRecord(by: TurnInterruption, tail: readonly TurnEndEntry[]): ConversationMessage {
   return { kind: "user", content: interruptedTurnMessage(by, cutRunningToolCall(tail)), origin: "system" };
 }
 

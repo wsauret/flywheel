@@ -2,7 +2,7 @@ import type { WorkflowView } from "../../workflows/view/types.js"
 import type { WorkflowVmHostFailure } from "../../workflows/vm/host-types.js"
 import type { Runner } from "../runner/types.js"
 import type { ModuleRuntimes } from "../../infra/module-runtime.js"
-import type { ControlInterruption, PlannedCutInterrupt, TurnInterruption } from "../session/conversation/turn-end-record.js"
+import type { ControlInterruption, PlannedCutInterrupt, WorkflowInterruption } from "../session/conversation/turn-end-record.js"
 import type { ChildCut } from "../session/child-continuation.js"
 import type { BackgroundWorkTracking } from "../agent-runtime/background-work.js"
 import type { WorkflowDeliveryAddress } from "../session/conversation/addressed-workflow-messages.js"
@@ -92,7 +92,7 @@ export interface WorkflowRunner extends Omit<Runner, "abort" | "interrupt" | "re
    *  stop or a replacement leaves it to resume. `cause` names who ended it,
    *  and the run records it as the reason of its abort, so a runtime pause
    *  never reads as a person's Stop. */
-  abort(cause: TurnInterruption): Promise<void>
+  abort(cause: WorkflowInterruption): Promise<void>
   /** A planned replacement's cut: each running agent's worker is
    *  interrupted by the runtime. A running shell command is never cut: the caller moves
    *  held foreground commands to the background first, and the agent's owner
