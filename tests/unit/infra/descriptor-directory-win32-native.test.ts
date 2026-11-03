@@ -14,7 +14,6 @@ import {
   objectAttributesFor,
   openNativeWindowsDirectory,
   renameInformationFor,
-  unicodeStringFor,
   WIN32_LAYOUT,
 } from "../../../src/infra/descriptor-directory-win32-native.js";
 
@@ -23,24 +22,31 @@ const ROOT_HANDLE = 0x0000_0000_0000_01c4n;
 const NAME_ADDRESS = 0x0000_7ff6_1234_5678n;
 
 describe("win32 structure layouts", () => {
-  it("lays out UNICODE_STRING as two u16 lengths, padding, and a pointer", () => {
-    const name = encodeComponentName("ab");
-    expect(Buffer.from(unicodeStringFor(name, NAME_ADDRESS))).toEqual(Buffer.from([
-      0x04, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00,
-      0x78, 0x56, 0x34, 0x12, 0xf6, 0x7f, 0x00, 0x00,
-    ]));
-    expect(WIN32_LAYOUT.unicodeString).toEqual({ size: 16, length: 0, maximumLength: 2, buffer: 8 });
-  });
-
-  it("lays out OBJECT_ATTRIBUTES with the root handle and the case-insensitive flag", () => {
-    expect(Buffer.from(objectAttributesFor(ROOT_HANDLE, NAME_ADDRESS))).toEqual(Buffer.from([
+  // The kernel follows these pointers and the garbage collector does not, so
+  // each one addresses the one buffer that the call keeps alive.
+  it("lays out OBJECT_ATTRIBUTES, its UNICODE_STRING, and the name in one buffer whose pointers address itself", () => {
+    const attributes = objectAttributesFor(ROOT_HANDLE, encodeComponentName("ab"));
+    const base = BigInt(ptr(attributes));
+    const view = new DataView(attributes.buffer, attributes.byteOffset, attributes.byteLength);
+    expect(view.getBigUint64(16, true)).toBe(base + 48n);
+    expect(view.getBigUint64(56, true)).toBe(base + 64n);
+    view.setBigUint64(16, NAME_ADDRESS, true);
+    view.setBigUint64(56, NAME_ADDRESS, true);
+    expect(Buffer.from(attributes)).toEqual(Buffer.from([
+      // OBJECT_ATTRIBUTES: length, root handle, object name, case-insensitive flag, no security fields.
       0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0xc4, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x78, 0x56, 0x34, 0x12, 0xf6, 0x7f, 0x00, 0x00,
       0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      // UNICODE_STRING: two u16 byte lengths, padding, and the name pointer.
+      0x04, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x78, 0x56, 0x34, 0x12, 0xf6, 0x7f, 0x00, 0x00,
+      // The name, UTF-16LE without a terminator.
+      0x61, 0x00, 0x62, 0x00,
     ]));
+    expect(WIN32_LAYOUT.unicodeString).toEqual({ size: 16, length: 0, maximumLength: 2, buffer: 8 });
     expect(WIN32_LAYOUT.objectAttributes.size).toBe(48);
     expect(WIN32_LAYOUT.ioStatusBlock).toEqual({ size: 16, status: 0, information: 8 });
   });

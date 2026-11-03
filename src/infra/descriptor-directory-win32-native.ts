@@ -178,26 +178,33 @@ export function encodeWidePath(value: string): Uint8Array {
   return new Uint8Array(Buffer.from(`${value}\0`, "utf16le"));
 }
 
-/** `UNICODE_STRING` over an encoded component that the caller keeps alive for the call. */
-export function unicodeStringFor(name: Uint8Array, nameAddress: bigint): Uint8Array {
-  const layout = WIN32_LAYOUT.unicodeString;
-  const buffer = new Uint8Array(layout.size);
+/** `OBJECT_ATTRIBUTES` naming one child of `root`, case-insensitively as Windows names are.
+ *
+ *  The structure, its `UNICODE_STRING`, and the encoded name share this one
+ *  buffer, and the inner pointers address the buffer itself. The kernel follows
+ *  those pointers, but the garbage collector does not: a name or string kept in
+ *  a separate buffer is garbage once only its address is left, and a collection
+ *  before the call can hand its memory to the next allocation, so the kernel
+ *  reads another name (seen as STATUS_OBJECT_NAME_NOT_FOUND for a child that
+ *  exists). One buffer is alive exactly as long as the argument that carries it. */
+export function objectAttributesFor(root: bigint, name: Uint8Array): Uint8Array {
+  const attributes = WIN32_LAYOUT.objectAttributes;
+  const unicode = WIN32_LAYOUT.unicodeString;
+  const unicodeOffset = attributes.size;
+  const nameOffset = unicodeOffset + unicode.size;
+  const buffer = new Uint8Array(nameOffset + name.byteLength);
+  // `buffer.buffer` moves the bytes of a small typed array to their own
+  // allocation, so it is read before `ptr` takes the address.
   const view = new DataView(buffer.buffer);
-  view.setUint16(layout.length, name.byteLength, true);
-  view.setUint16(layout.maximumLength, name.byteLength, true);
-  view.setBigUint64(layout.buffer, nameAddress, true);
-  return buffer;
-}
-
-/** `OBJECT_ATTRIBUTES` naming one child of `root`, case-insensitively as Windows names are. */
-export function objectAttributesFor(root: bigint, unicodeStringAddress: bigint): Uint8Array {
-  const layout = WIN32_LAYOUT.objectAttributes;
-  const buffer = new Uint8Array(layout.size);
-  const view = new DataView(buffer.buffer);
-  view.setUint32(layout.length, layout.size, true);
-  view.setBigUint64(layout.rootDirectory, root, true);
-  view.setBigUint64(layout.objectName, unicodeStringAddress, true);
-  view.setUint32(layout.attributes, OBJ_CASE_INSENSITIVE, true);
+  const base = address(buffer);
+  view.setUint32(attributes.length, attributes.size, true);
+  view.setBigUint64(attributes.rootDirectory, root, true);
+  view.setBigUint64(attributes.objectName, base + BigInt(unicodeOffset), true);
+  view.setUint32(attributes.attributes, OBJ_CASE_INSENSITIVE, true);
+  view.setUint16(unicodeOffset + unicode.length, name.byteLength, true);
+  view.setUint16(unicodeOffset + unicode.maximumLength, name.byteLength, true);
+  view.setBigUint64(unicodeOffset + unicode.buffer, base + BigInt(nameOffset), true);
+  buffer.set(name, nameOffset);
   return buffer;
 }
 
@@ -282,9 +289,7 @@ export function createWin32NativeDirectoryApi(libraries: Win32FileLibraries) {
 
   /** Opens `name` relative to `parent`; a status is returned to the caller so absence can be distinguished. */
   const ntCreateRelative = (parent: Handle, name: string, access: number, disposition: number, directory: boolean | undefined): { readonly handle: Handle } | { readonly status: number } => {
-    const wide = encodeComponentName(name);
-    const unicode = unicodeStringFor(wide, address(wide));
-    const attributes = objectAttributesFor(parent, address(unicode));
+    const attributes = objectAttributesFor(parent, encodeComponentName(name));
     const io = new Uint8Array(WIN32_LAYOUT.ioStatusBlock.size);
     const out = new BigUint64Array([INVALID_HANDLE_VALUE]);
     const options = FILE_SYNCHRONOUS_IO_NONALERT | FILE_OPEN_REPARSE_POINT | (directory === undefined ? 0 : directory ? FILE_DIRECTORY_FILE : FILE_NON_DIRECTORY_FILE);
