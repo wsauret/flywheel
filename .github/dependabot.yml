@@ -7,16 +7,50 @@
 # needs a live Claude engine test, so it stays a deliberate change.
 version: 2
 updates:
+  # Only minor and patch bumps of ordinary packages share the routine group, so
+  # one breaking package never blocks the rest. Every package that the routine
+  # group excludes and no other group claims, and every major bump, arrives as
+  # its own pull request. That pull request is the notice that an update is
+  # available: closing it skips only that release, and the next release opens
+  # a new one. Such packages break on minor releases or need a live check, so
+  # their upgrade is a deliberate change: effect, web-tree-sitter (its 0.x
+  # minor releases move its wasm asset), and the provider SDKs, whose bumps
+  # change provider traffic. Update types alone cannot separate them, because
+  # Dependabot counts a 0.x bump and a prerelease-to-release bump as minor.
+  #
+  # @types/vscode is ignored because it must not exceed engines.vscode, which
+  # vsce enforces; raising it raises the oldest supported editor.
   - package-ecosystem: bun
     directory: /
     schedule:
       interval: monthly
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 15
     groups:
-      bun:
+      routine:
         patterns: ["*"]
+        exclude-patterns:
+          - "effect"
+          - "web-tree-sitter"
+          - "@anthropic-ai/sdk"
+          - "openai"
+          - "@opentui/*"
+          - "solid-js"
+          - "babel-preset-solid"
+          - "oxlint"
+          - "@oxlint/*"
+          - "ultracite"
+          - "knip"
+          - "eslint-plugin-solid"
+        update-types: ["minor", "patch"]
+      # @opentui/solid pins solid-js exactly, so they move together.
+      opentui:
+        patterns: ["@opentui/*", "solid-js", "babel-preset-solid"]
+      # Lint tool bumps add findings, which one pull request fixes together.
+      lint:
+        patterns: ["oxlint", "@oxlint/*", "ultracite", "knip", "eslint-plugin-solid"]
     ignore:
       - dependency-name: "@anthropic-ai/claude-agent-sdk"
+      - dependency-name: "@types/vscode"
   - package-ecosystem: github-actions
     directory: /
     schedule:
