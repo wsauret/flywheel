@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from "bun:test"
 import { join } from "node:path"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventStateReadSurface, type EventStoreAppend, type StoredFact } from "../../../src/infra/event-store-types.js"
-import { attachProjectionFoldCache, openProjectionFoldCache, type FoldSavePolicy } from "../../../src/infra/projection-fold-cache.js"
+import { attachProjectionFoldCache, openProjectionFoldCache, type FoldSavePolicy, type ProjectionFoldCache } from "../../../src/infra/projection-fold-cache.js"
 import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js"
 import { createSessionMetadataProjection, createSessionPlacementProjection } from "../../../src/orchestration/session/session-metadata-projection.js"
 import { sessionMessageSources } from "../../../src/orchestration/session/session-message-sources.js"
@@ -33,9 +33,34 @@ const SAVE_AT_ONCE: FoldSavePolicy = { afterFacts: 1, quietMs: 0 }
 
 type LocalSqliteEventStore = ReturnType<typeof createSqliteEventStore>
 
-async function saves(...replays: (() => Promise<object | null>)[]): Promise<void> {
-  await Bun.sleep(1)
-  for (const replay of replays) await replay()
+/** `cache`, and a wait until every fold that it was asked to save is written.
+ *  The wait reads no projection: a save gives up for a read that waits on
+ *  its projection and asks again later, so a read would race the save. */
+function observedCache(cache: ProjectionFoldCache) {
+  const unwritten = new Set<string>()
+  return {
+    cache: {
+      ...cache,
+      slot(role, key) {
+        const slot = cache.slot(role, key)
+        return {
+          ...slot,
+          folded(facts, foldMs, save) {
+            unwritten.add(key)
+            slot.folded(facts, foldMs, save)
+          },
+          async save(fold) {
+            const written = await slot.save(fold)
+            if (written) unwritten.delete(key)
+            return written
+          },
+        }
+      },
+    } satisfies ProjectionFoldCache,
+    async saved() {
+      while (unwritten.size > 0) await Bun.sleep(1)
+    },
+  }
 }
 
 interface Family {
@@ -182,17 +207,17 @@ test("each cached family, restored and caught up, equals a full rebuild and read
   const processReader = () => {
     const local = asAsyncEventReadSurface(store)
     const reader: AsyncEventStateReadSurface = { ...local, readPage: (...args) => { if (args[2] === 0) historyReads.push(JSON.stringify(args[0])); return local.readPage(...args) } }
-    const cache = openProjectionFoldCache(cachePath, "build-a", SAVE_AT_ONCE)
+    const { cache, saved } = observedCache(openProjectionFoldCache(cachePath, "build-a", SAVE_AT_ONCE))
     opened.push(cache)
     attachProjectionFoldCache([reader], cache, "executor")
-    return reader
+    return { reader, saved }
   }
-  const first = processReader()
+  const { reader: first, saved } = processReader()
   for (const family of families) await family.read(first, root)
-  await saves(...families.map((family) => () => family.read(first, root)))
+  await saved()
 
   historyReads.splice(0)
-  const second = processReader()
+  const { reader: second } = processReader()
   for (const family of families) {
     await family.read(second, root)
     expect({ family: family.name, historyReads }).toEqual({ family: family.name, historyReads: [] })
