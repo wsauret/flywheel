@@ -10,8 +10,7 @@ import { workflowViewCursor } from "../../../src/protocol/modules/workflows.js"
 import { createModuleDomainMonitor } from "./module-domain-monitor.js"
 import { fakeLanes, LANE_BREAK } from "../../../tests/helpers/fake-lanes.js"
 import { runtimeQuery } from "../../../tests/helpers/runtime-dispatch.js"
-import { backgroundReads } from "../../../src/protocol/client/background-reads.js"
-import { spyOn } from "bun:test"
+import { backgroundReads, type ReadTimers } from "../../../src/protocol/client/background-reads.js"
 import type { RuntimeClientDiagnostic } from "../../../src/protocol/runtime-client-diagnostics.js"
 
 const settle = () =>
@@ -94,13 +93,15 @@ describe("module domain monitor", () => {
     // A real handle, already cleared, stands in for each manually delivered timer.
     const inert = setTimeout(() => {}, 0)
     clearTimeout(inert)
-    const clock = spyOn(globalThis, "setTimeout").mockImplementation(new Proxy(globalThis.setTimeout, {
-      apply(_target, _receiver, [callback, delay]: Parameters<typeof setTimeout>) {
-        timers.push({ callback: () => callback(), delay: delay ?? 0 })
+    // The monitors' own clock, not the global one: other files of the same
+    // test process can leave readers whose timers fire during this test.
+    const clock: ReadTimers = {
+      setTimeout(callback, delay) {
+        timers.push({ callback, delay })
         return inert
       },
-    }))
-    const clear = spyOn(globalThis, "clearTimeout").mockImplementation(() => {})
+      clearTimeout() {},
+    }
     const fake = fakeConnection({ a: [{ view: view("a", 1) }], b: [{ view: view("b", 1) }] })
     const originalQuery = fake.connection.query
     const failed = new Set<string>()
@@ -114,8 +115,8 @@ describe("module domain monitor", () => {
     const recorded: RuntimeClientDiagnostic[] = []
     const reads = backgroundReads(fake.connection)
     reads.diagnose(message => { diagnostics.push(message) }, record => { recorded.push(record) })
-    const a = createModuleDomainMonitor({ binding, connection: fake.connection, ownerId: "a" })
-    const b = createModuleDomainMonitor({ binding, connection: fake.connection, ownerId: "b" })
+    const a = createModuleDomainMonitor({ binding, connection: fake.connection, ownerId: "a", timers: clock })
+    const b = createModuleDomainMonitor({ binding, connection: fake.connection, ownerId: "b", timers: clock })
     try {
       await settle()
       failed.add("a"); failed.add("b")
@@ -169,7 +170,6 @@ describe("module domain monitor", () => {
       assert.equal(attempts, beforeGap + 1, "gap recovery and timer recovery coalesce into one read")
     } finally {
       a.dispose(); b.dispose()
-      clock.mockRestore(); clear.mockRestore()
     }
   })
   test("seeds from the selected session's snapshot through the registry binding, null when the session has no view", async () => {

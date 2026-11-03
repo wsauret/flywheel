@@ -1,5 +1,5 @@
 import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
-import { createReadRetry } from "../../../src/protocol/client/background-reads.js"
+import { createReadRetry, type ReadTimers } from "../../../src/protocol/client/background-reads.js"
 import { createCursorIntake, type CursorIntake } from "../../../src/protocol/client/cursor-intake.js"
 import type { ModuleDomainBinding } from "../../../src/protocol/client/module-domain.js"
 
@@ -20,17 +20,20 @@ export interface ModuleDomainMonitorOptions<Domain extends string, Scope extends
   readonly connection: Pick<RuntimeConnection, "query" | "subscribe" | "onLane">
   /** Required for a session- or workflow-scoped domain. */
   readonly ownerId?: string
+  /** The clock of the read backoff and the gap deadline; the global timers when absent. */
+  readonly timers?: ReadTimers
 }
 
 export function createModuleDomainMonitor<Domain extends string, Scope extends "session" | "workspace" | "workflow", Patch, View>(
   options: ModuleDomainMonitorOptions<Domain, Scope, Patch, View>,
 ): ModuleDomainMonitor<View> {
   const { binding, connection } = options
+  const timers: ReadTimers = options.timers ?? globalThis
   const listeners = new Set<() => void>()
   let view: View | null = null
   let disposed = false
   let work: Promise<void> = Promise.resolve()
-  const retry = createReadRetry(connection, binding.domain, () => { void resnapshot() })
+  const retry = createReadRetry(connection, binding.domain, () => { void resnapshot() }, undefined, timers)
 
   const emit = (): void => {
     for (const listener of listeners) listener()
@@ -38,6 +41,8 @@ export function createModuleDomainMonitor<Domain extends string, Scope extends "
 
   const intake: CursorIntake = createCursorIntake({
     cursor: binding.cursor(options.ownerId),
+    setTimer: (run, ms) => timers.setTimeout(run, ms),
+    clearTimer: (timer) => timers.clearTimeout(timer),
     onApply: ({ payload }) => {
       if (!binding.isPayload(payload)) return
       view = binding.payloadView(payload, view ?? undefined)

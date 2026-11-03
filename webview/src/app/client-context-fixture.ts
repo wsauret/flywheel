@@ -24,7 +24,10 @@ import { createWebSurfaces } from "./surfaces.js"
 /** The real session over `connection`, with `members` in place of its own.
  *  The real session's own code keeps its own members; the replacements are
  *  what its callers, such as the actions layer, reach. The default connection
- *  never opens a lane, so the session stays idle and reads nothing. */
+ *  never opens a lane, so the session reads nothing on its own. A reading
+ *  that a caller starts, such as a mounted surface's role or detail
+ *  subscription, fails on the fake connection and retries on real timers
+ *  until the caller disposes the session. */
 export function fakeRuntimeSession(members: Partial<RuntimeSession> = {}, connection: RuntimeConnection = fakeRuntimeConnection({}, fakeLanes({ open: false }).client)): RuntimeSession {
   return Object.defineProperties(createRuntimeSession({ connection }), Object.getOwnPropertyDescriptors(members))
 }

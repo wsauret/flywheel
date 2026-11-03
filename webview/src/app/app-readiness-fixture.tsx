@@ -114,7 +114,10 @@ export function createAppReadiness(options: { readonly phone?: boolean; readonly
       })) }
       for (const listener of remoteChanges) listener(remoteSnapshot)
     },
-    dispose: () => actions.dispose(),
+    dispose() {
+      actions.dispose()
+      session.dispose()
+    },
   }
 }
 

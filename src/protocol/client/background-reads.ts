@@ -33,15 +33,24 @@ export function backgroundReads(connection: { readonly query: object }) {
   }
 }
 
+type Timer = ReturnType<typeof setTimeout>
+
+/** The clock a reader waits on. A test passes its own, so that a timer that
+ *  other work in the same process starts never reaches the test's queue. */
+export interface ReadTimers {
+  setTimeout(fire: () => void, ms: number): Timer
+  clearTimeout(timer: Timer): void
+}
+
 /** Owns one reader's admission, backoff, and failure episode. `read` holds queries
  * through backoff; `request` coalesces recovery requests. A new lane or person
  * action can expedite admission. Success and disposal release the notice. */
-export function createReadRetry(connection: { readonly query: object }, label: string, retry: () => void, onFailure?: (cause: unknown) => void) {
+export function createReadRetry(connection: { readonly query: object }, label: string, retry: () => void, onFailure?: (cause: unknown) => void, timers: ReadTimers = globalThis) {
   const { state } = backgroundReads(connection)
   const key = {}
   let attempt = 0
   let repeats = 0
-  let timer: ReturnType<typeof setTimeout> | undefined
+  let timer: Timer | undefined
   let disposed = false
   let errorKind = "unknown"
   let waiting = Promise.withResolvers<void>()
@@ -76,7 +85,7 @@ export function createReadRetry(connection: { readonly query: object }, label: s
     })
   }
   function clear(phase: "recovered" | "disposed" = "recovered"): void {
-    if (timer !== undefined) clearTimeout(timer)
+    if (timer !== undefined) timers.clearTimeout(timer)
     timer = undefined
     releaseWaiters()
     attempt = 0
@@ -89,7 +98,7 @@ export function createReadRetry(connection: { readonly query: object }, label: s
     read,
     request,
     expedite(): void {
-      if (timer !== undefined) clearTimeout(timer)
+      if (timer !== undefined) timers.clearTimeout(timer)
       timer = undefined
       releaseWaiters()
     },
@@ -100,7 +109,7 @@ export function createReadRetry(connection: { readonly query: object }, label: s
       // runtime was silent still reads again, because its lane may live on.
       if (!explainedByConnection(cause)) noticeFailure(cause)
       if (timer !== undefined) return
-      timer = setTimeout(() => {
+      timer = timers.setTimeout(() => {
         timer = undefined
         request()
         releaseWaiters()
