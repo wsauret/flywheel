@@ -7,7 +7,7 @@ import { factRowsChanged } from "../../../../src/infra/sqlite-event-store-core.j
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js"
 import { createConversationTreeProjection, releaseConversationTreeProjection } from "../../../../src/orchestration/session/conversation/conversation-projection.js"
 import { tryOpenConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
-import { interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
+import { interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId, type TurnInterruption } from "../../../../src/orchestration/session/conversation/turn-end-record.js"
 import { openReplyWait, suspendReplyWaits } from "../../../../src/orchestration/session/reply-waits.js"
 import { workflowMembershipReader } from "../../../../src/orchestration/session/workflow-membership.js"
 import { conversationToolUseIds, createStartedAgentStates, readStartedAgentsLive } from "../../../../src/orchestration/workflow-host/started-agent-states.js"
@@ -17,10 +17,11 @@ import { publishWorkerAttempt } from "./_workflow-host-fixtures.js"
 
 const temporary = temporaryDirectories()
 
-/** Two started agents of workflow `wf`. The runtime cut a batch of agent
- *  `a` whose message_session call only an open reply wait of `a` marks as a
- *  wait. The owner and the waits read through `gate(reader)`. */
-async function cutOnWait(gate: (reader: AsyncEventStateReadSurface) => AsyncEventStateReadSurface = (reader) => reader) {
+/** Two started agents of workflow `wf`. The interruption `by`, a planned
+ *  replacement unless named, cut a batch of agent `a` whose message_session
+ *  call only an open reply wait of `a` marks as a wait. The owner and the
+ *  waits read through `gate(reader)`. */
+async function cutOnWait(gate: (reader: AsyncEventStateReadSurface) => AsyncEventStateReadSurface = (reader) => reader, by: TurnInterruption = "replacement") {
   const dir = temporary("flywheel-started-agents-")
   const store = createSqliteEventStore(resolveEventStoreDbFile(dir))
   const reader = asAsyncEventReadSurface(store)
@@ -34,7 +35,7 @@ async function cutOnWait(gate: (reader: AsyncEventStateReadSurface) => AsyncEven
   if (!tree || !other) throw new Error("Expected both agents")
   await tree.appendMessage({ kind: "assistant", content: [{ type: "tool_use", id: "ask", name: "message_session", input: { to: other.sessionId, wait: true } }] })
   await tree.appendMessage({ kind: "toolResult", toolUseId: "ask", content: [{ type: "text", text: "Waiting." }] })
-  const end = interruptedTurnEnd("replacement")
+  const end = interruptedTurnEnd(by)
   await tree.appendMessage({ kind: "user", origin: "system", content: interruptedTurnMessage(end.pausedBy, false) }, turnEndEntryId(end, "cut"))
   // The waits key their listeners by the project's reader, which the owner reads through.
   const deps = { projectionReader: read, eventWriter: writer, addresseeState: async () => "running" as const, lineage: async (sessionId: string) => [sessionId] }
@@ -42,6 +43,7 @@ async function cutOnWait(gate: (reader: AsyncEventStateReadSurface) => AsyncEven
   return {
     store, reader, counter, states, member, other, end, deps, tasks,
     turnEndOfA: async () => (await states.turnEnds("wf")).find(({ attemptId }) => attemptId === "a")?.turnEnd,
+    interruptedAtOfA: async () => (await states.conversations("wf", ["conv-a"], () => false)).get("conv-a")?.interruptedAt,
     dispose() { suspendReplyWaits(read); states.dispose(); store.close() },
   }
 }
@@ -221,6 +223,21 @@ describe("started agent states", () => {
       expect(moved).toEqual([["wf"], ["wf"]])
       expect(await turnEndOfA()).toEqual({ end, recorded: true })
     } finally { f.dispose() }
+  })
+
+  test("an agent reads as interrupted only while its turn end holds it for a person, not after a planned replacement or a runtime cut of a background wait", async () => {
+    const interruptedAt = async (by: TurnInterruption, waiting: boolean) => {
+      const f = await cutOnWait(undefined, by)
+      try {
+        const opened = waiting ? await openReplyWait(f.deps, { waiter: f.tasks(f.member.sessionId), addressee: { sessionId: f.other.sessionId, name: "B" }, toolUseId: "ask" }) : undefined
+        try { return await f.interruptedAtOfA() } finally { opened?.withdraw() }
+      } finally { f.dispose() }
+    }
+    expect(await interruptedAt("replacement", false)).toBeUndefined()
+    expect(await interruptedAt("replacement", true)).toBeUndefined()
+    expect(await interruptedAt("runtime", true)).toBeUndefined()
+    expect(await interruptedAt("runtime", false)).toEqual(expect.any(Number))
+    expect(await interruptedAt("person", true)).toEqual(expect.any(Number))
   })
 
   test("a wait that opens after a turn-end read took the waits, and before that read finished, reads the agent again", async () => {

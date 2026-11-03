@@ -7,7 +7,7 @@ import { createWorkflowRunWriter } from "../../../../../src/orchestration/module
 import { createStartedAgentStates, type StartedAgentStates } from "../../../../../src/orchestration/workflow-host/started-agent-states.js"
 import type { StartedAgent } from "../../../../../src/workflows/vm/host-commit-controller.js"
 import { tryOpenConversationTree } from "../../../../../src/orchestration/session/conversation/conversation-tree-handle.js"
-import { interruptedTurnMessage, turnEndEntryId } from "../../../../../src/orchestration/session/conversation/turn-end-record.js"
+import { interruptedTurnEnd, interruptedTurnMessage, turnEndEntryId } from "../../../../../src/orchestration/session/conversation/turn-end-record.js"
 import { workflowMembershipReader } from "../../../../../src/orchestration/session/workflow-membership.js"
 import type { SessionEntry } from "../../../../../src/orchestration/session-store/types.js"
 import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
@@ -387,9 +387,17 @@ describe("workflow live protocol projection", () => {
         await treeA.appendMessage(toolUse("a-1"))
         expect(agents(await latest())).toEqual({ a: { operations: 1, revision: 0 }, b: { operations: 0, revision: 0 } })
 
+        // A planned replacement that cuts an agent in a process wait leaves
+        // it running: its successor continues the wait.
+        await treeA.appendMessage({ kind: "assistant", content: [{ type: "tool_use", id: "a-wait", name: "process", input: { action: "wait" } }] })
+        await treeA.appendMessage({ kind: "toolResult", toolUseId: "a-wait", content: [{ type: "text", text: "Waiting." }] })
+        const planned = interruptedTurnEnd("replacement")
+        await treeA.appendMessage({ kind: "user", content: interruptedTurnMessage(planned.pausedBy, false), origin: "system" }, turnEndEntryId(planned, "planned"))
+        expect(agents(await latest()).a).toEqual({ operations: 2, revision: 0 })
+
         await treeA.appendMessage({ kind: "user", content: interruptedTurnMessage("person", true), origin: "system" }, turnEndEntryId({ reason: "paused", pausedBy: "person" }, "k"))
         const interrupted = agents(await latest()).a!
-        expect(interrupted).toEqual({ operations: 1, revision: 0, interruptedAt: expect.any(Number) })
+        expect(interrupted).toEqual({ operations: 2, revision: 0, interruptedAt: expect.any(Number) })
 
         // A fact can reach the projection before the runner opens the runtime
         // entry; the entry that opens later composes with the durable count.

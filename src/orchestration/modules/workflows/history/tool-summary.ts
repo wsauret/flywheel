@@ -13,7 +13,7 @@ import { workflowAggregateId } from "../../../../workflows/vm/session-facts.js"
 import type { AgentFailureDisplay, PausedBy } from "../../../../infra/output-blocks.js"
 import type { SessionToolSummaryReader, SessionToolSummarySnapshot, ToolHistorySummary } from "../../../module-seams.js"
 import { readChatTurnEnd, readChildStop } from "../../../session/chat-session-run-evidence.js"
-import { isVisibleTurnEnd, waitsForPerson, type ChatTurnEnd } from "../../../session/conversation/turn-end-record.js"
+import { holdsForPerson, type ChatTurnEnd } from "../../../session/conversation/turn-end-record.js"
 import { createWorkflowRunReader } from "../run-record.js"
 import { createWorkflowDurationReader } from "../duration.js"
 import { readHeldWorkflowMemberTotals, readWorkflowMemberTotals, type WorkflowMemberTotals } from "../../../workflow-host/member-totals.js"
@@ -315,8 +315,7 @@ function workflowCardState(status: WorkflowView["status"] | undefined, agentTurn
       return { status: "paused", pausedBy: interruptedBy(agentTurnEnd) }
     case "running": {
       if (cut !== undefined && cut !== "replacement") return { status: "paused", pausedBy: cut }
-      if (!isVisibleTurnEnd(agentTurnEnd?.end)) return { status: "active" }
-      return waitsForPerson(agentTurnEnd) ? { status: "paused", pausedBy: interruptedBy(agentTurnEnd) } : { status: "active" }
+      return holdsForPerson(agentTurnEnd) ? { status: "paused", pausedBy: interruptedBy(agentTurnEnd) } : { status: "active" }
     }
   }
 }

@@ -5,6 +5,7 @@ import type { WorkflowAgentLive } from "../../protocol/workflow-view-protocol-ty
 import type { StartedAgent } from "../../workflows/vm/host-commit-controller.js"
 import { readChatTurnEndEvidence, readStartedWorkflowAgents, workflowAgentTurnEnd, type WorkflowAgentTurnEnd } from "../session/chat-session-run-evidence.js"
 import { entryLink } from "../session/conversation/conversation-entry-admission.js"
+import { holdsForPerson } from "../session/conversation/turn-end-record.js"
 import { admitTreeFact, CHAT_TREE_FACT_TYPES, newConversationTopology, type ConversationTopology, type ConversationTreeProjectionState } from "../session/conversation/conversation-projection.js"
 import { onReplyWaitsChanged } from "../session/reply-waits.js"
 
@@ -81,10 +82,13 @@ async function readToolUses(reader: AsyncEventStateReadSurface, conversationId: 
   return fold.ids.size
 }
 
+/** An agent reads as interrupted only while an interrupt holds it for a
+ *  person, as its workflow card reads; an unexpected exit is not an
+ *  interrupt. */
 function liveOf(evidence: TurnEndEvidence, operations: number | undefined): ConversationLive {
   return {
     ...(operations === undefined ? {} : { operations }),
-    ...(evidence?.turnEnd.end.reason === "paused" && evidence.timestamp !== undefined ? { interruptedAt: evidence.timestamp } : {}),
+    ...(evidence?.turnEnd.end.reason === "paused" && holdsForPerson(evidence.turnEnd) && evidence.timestamp !== undefined ? { interruptedAt: evidence.timestamp } : {}),
   }
 }
 
