@@ -1,0 +1,34 @@
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 43
+src/agent-skills/ship/SKILL.md
+  h_4b47e9e4a8b456 13,43
+src/orchestration/agent-runtime/claude-5-chat-prompt.ts
+  h_4b47e9e4a8b456 108
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 169
+src/orchestration/modules/subagents/execution/prompts.ts
+  h_4b47e9e4a8b456 26
+src/workflows/agents/personas/ship.md
+  h_4b47e9e4a8b456 15
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 1258
+tests/unit/orchestration/agent-runtime/claude-5-chat-prompt.test.ts
+  h_4b47e9e4a8b456 38,48
+tests/unit/orchestration/agent-runtime/conversation-first-delivery.test.ts
+  h_4b47e9e4a8b456 63,66-68
+tests/unit/orchestration/agent-runtime/subagent/prompts.test.ts
+  h_4b47e9e4a8b456 88
+tests/unit/workflows/built-in-skills.test.ts
+  h_4b47e9e4a8b456 244
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8f69a7443403bf862351e14221578a47050c07c4",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
