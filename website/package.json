@@ -11,8 +11,8 @@
     "deploy": "bunx wrangler deploy"
   },
   "devDependencies": {
-    "astro": "^7.2.8",
+    "astro": "^7.4.4",
     "typescript": "^7.0.2",
-    "wrangler": "^4.126.0"
+    "wrangler": "^4.156.0"
   }
 }

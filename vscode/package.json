@@ -372,7 +372,7 @@
     "@types/bun": "^1.4.4",
     "@types/node": "^22.10.0",
     "@types/vscode": "^1.96.0",
-    "@vscode/vsce": "^3.9.2"
+    "@vscode/vsce": "^4.1.0"
   },
   "dependencies": {
     "effect": "4.0.0-beta.84"
