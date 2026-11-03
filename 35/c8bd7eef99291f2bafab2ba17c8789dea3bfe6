@@ -1,0 +1,22 @@
+src/protocol/client/background-reads.ts
+  h_4b47e9e4a8b456 36-44,48,53,88,101,112
+webview/src/app/app-readiness-fixture.tsx
+  h_4b47e9e4a8b456 117-120
+webview/src/app/client-context-fixture.ts
+  h_4b47e9e4a8b456 27-30
+webview/src/client/module-domain-monitor.test.ts
+  h_4b47e9e4a8b456 13,96-100,103-104,118-119
+webview/src/client/module-domain-monitor.ts
+  h_4b47e9e4a8b456 2,23-24,31,36,44-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "35c8bd7eef99291f2bafab2ba17c8789dea3bfe6",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
