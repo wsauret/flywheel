@@ -621,7 +621,7 @@ describe("the cause a supervisor's termination decision names", () => {
     probe.say("stop")
 
     try {
-      expect(await Promise.race([retry.promise.then(() => "retry"), Bun.sleep(30).then(() => "waiting")])).toBe("retry")
+      await retry.promise
       expect(signals).toEqual(["SIGTERM"])
       expect(container.populated()).toBe(true)
       recovered = true

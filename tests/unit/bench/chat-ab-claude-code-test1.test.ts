@@ -88,6 +88,8 @@ function declaredSchema(output: Parameters<typeof compileOutput>[0]): DeclaredSc
 }
 
 describe("chat A/B comparison with Claude Code, test 1", () => {
+  // The launch pipeline's verifier costs about 400 ms of CPU on an idle machine, and a test shard on an oversubscribed
+  // CI runner stretches it past Bun's 5000 ms default, so the deadline only catches a hang.
   it("writes one topology twice: the Claude Code script gives each agent the Flywheel step's instructions byte for byte, its declared schema, and the same dedupe, and neither file pins a model or an effort", async () => {
     const launched = await launchedFlywheelFile();
     const steps = resolveWorkflowAgents(launched.workflow);
@@ -151,7 +153,7 @@ describe("chat A/B comparison with Claude Code, test 1", () => {
       for (const call of calls) expect(Object.keys(call.options).filter((key) => key === "model" || key === "effort")).toEqual([]);
     }
     expect(readFileSync(TEST1_WORKFLOW.flywheel, "utf8")).not.toMatch(/^\s*(?:model|effort):/mu);
-  });
+  }, 30_000);
 
   it("states that a report names a shipped bug site only when it names the file and a line inside the site", () => {
     const [parser, completions] = SHIPPED_SITES;

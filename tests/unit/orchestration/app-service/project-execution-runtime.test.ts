@@ -81,6 +81,13 @@ function fixture() {
   }
 }
 
+// A composed executor that serves a chat or a summary read boots its real
+// background Worker, and its disposal waits until that Worker releases the
+// project. The Worker loads the runtime module graph in a fresh isolate: well
+// under a second here, but over 5 s on a loaded 4-CPU runner. A test that
+// waits for that boot owns this deadline instead of Bun's 5 s default.
+const WORKER_BOOT_TEST_TIMEOUT_MS = 60_000
+
 function composeExecution(f: ReturnType<typeof fixture>, persistent: ReturnType<typeof createPersistentProcessManager>) {
   return createProjectExecutionRuntime({
     ...f.paths, state: f.state,
@@ -157,7 +164,7 @@ test("execution composition opens no primary state connection and leaves its aut
     persistent.releaseAll()
     await f.close()
   }
-})
+}, WORKER_BOOT_TEST_TIMEOUT_MS)
 
 test("a chat opened in the executor records the profile that serves it, not the saved default", async () => {
   const f = fixture()
@@ -178,7 +185,7 @@ test("a chat opened in the executor records the profile that serves it, not the 
     persistent.releaseAll()
     await f.close()
   }
-})
+}, WORKER_BOOT_TEST_TIMEOUT_MS)
 
 test("remote kernel uses the existing supervisor and chat runner delivery path", async () => {
   const f = fixture()

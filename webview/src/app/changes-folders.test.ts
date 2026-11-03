@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 
 import { createSessionChangesController } from "../../../src/protocol/client/session-changes.js"
-import { fileA, fileB, fileC, runtime, settle } from "../../../tests/unit/protocol/client/_session-changes-fixtures.js"
+import { fileA, fileB, fileC, runtime, settle, waitForDiff } from "../../../tests/unit/protocol/client/_session-changes-fixtures.js"
 import { mountReview } from "./render-ownership-loader-fixture.js"
 
 test("groups deleted files under their removed folder across pages, and the folder header discloses each file with its own controls", async () => {
@@ -18,6 +18,7 @@ test("groups deleted files under their removed folder across pages, and the fold
     await controller.start()
     await controller.loadMoreFiles()
     await settle()
+    await waitForDiff(controller, fileB.fileId)
     assert.match(mounted.fileText("/work/dl"), /dl\/ \(2 files\)/)
     assert.throws(() => mounted.fileNode("/work/dl/x.bin"))
     assert.equal(mounted.disabled("Undo", fileB.path), false)

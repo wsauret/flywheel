@@ -146,7 +146,10 @@ describe("workflow verification input resolution", () => {
       readText: async (file) => fs.readFileSync(file, "utf8"),
     })
     expect(report.result).not.toBe("invalid")
-  })
+    // Exploring the example's state space is about 0.4 s of CPU work on an
+    // idle machine, and a contended 4-CPU runner stretches it past the
+    // 5 s default, so the budget covers the work instead of the machine.
+  }, 30_000)
 
   it("accepts an agent's model and effort in files inside and outside former definition roots", async () => {
     const keyed = "id: keyed\nname: Keyed\nphases:\n  - phase: work\n    name: Work\n    brief: Do the work.\n    model: mid\n    effort: low\n"
@@ -453,7 +456,9 @@ describe("workflow verification of a stored session", () => {
     } finally {
       vm.close()
     }
-  })
+    // Driving and replaying three rounds of a map is CPU work that a
+    // contended 4-CPU runner stretches past the 5 s default.
+  }, 30_000)
 
   it("explores a wide list's replayed state through its sampled items instead of every order of outcomes", () => {
     // Every order of outcomes of 12 unfinished branches is more than the

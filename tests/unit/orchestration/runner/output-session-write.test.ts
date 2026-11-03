@@ -191,25 +191,34 @@ describe("createOutputSession — write/push behaviors", () => {
     expect(blocks.some((b) => b.kind === "text")).toBe(true)
   })
 
+  // The sync throttle reads performance.now(). A stubbed clock keeps a stall of
+  // the test process between flush and the first delta from making the first
+  // delta overdue, and moves time past the throttle without letting the
+  // pending timer fire, which is the overdue state under test.
   it("forces an overdue pending sync from the next streamed update", () => {
+    const realNow = performance.now
+    let now = 1000
+    performance.now = () => now
     const { updateEntry } = createMocks()
-    session = createOutputSession({ updateEntry, executionCwd: "/workspace" })
-    session.flush()
-    ;updateEntry.mockClear()
+    try {
+      session = createOutputSession({ updateEntry, executionCwd: "/workspace" })
+      session.flush()
+      ;updateEntry.mockClear()
 
-    session.dispatchRuntimeEvent({
-      type: "model.content.delta",
-      data: { type: "model.content.delta", delta: { type: "text_delta", text: "first " }, block_key: "answer" },
-    })
-    expect(updateEntry.mock.calls).toHaveLength(0)
+      session.dispatchRuntimeEvent({
+        type: "model.content.delta",
+        data: { type: "model.content.delta", delta: { type: "text_delta", text: "first " }, block_key: "answer" },
+      })
+      expect(updateEntry.mock.calls).toHaveLength(0)
 
-    const start = performance.now()
-    while (performance.now() - start < 25) {}
-
-    session.dispatchRuntimeEvent({
-      type: "model.content.delta",
-      data: { type: "model.content.delta", delta: { type: "text_delta", text: "second" }, block_key: "answer" },
-    })
+      now += 25
+      session.dispatchRuntimeEvent({
+        type: "model.content.delta",
+        data: { type: "model.content.delta", delta: { type: "text_delta", text: "second" }, block_key: "answer" },
+      })
+    } finally {
+      performance.now = realNow
+    }
 
     const blockCalls = blockSnapshots(updateEntry)
     expect(blockCalls).toHaveLength(1)

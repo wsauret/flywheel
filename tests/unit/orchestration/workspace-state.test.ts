@@ -25,6 +25,7 @@ import { retiredFixtureWorkflow } from "../../helpers/retired-fixture-briefs.js"
 import { retiredStepIdentity } from "../../../src/workflows/vm/retired-step-identity.js"
 import { retiredBuiltInDefinition } from "../../../src/workflows/vm/retired-built-in-definitions.js"
 import { prePhaseControl } from "./migrations/_pre-phase-control.js"
+import { LockRefusal } from "../../../src/infra/ownership-file-lock.js"
 import { resolveWorkflowAgents } from "../../../src/workflows/agent-resolution.js"
 import { workflowAggregateId } from "../../../src/workflows/vm/session-facts.js"
 import { testDirectories } from "../../helpers/directories.js"
@@ -485,25 +486,42 @@ function seedLegacyWorkflowControl(dbFile: string, sessionId: string): void {
   }
 }
 
-/** Prepare the workspace from a second thread while this one prepares it too. */
+type StartOutcome = "admitted" | "refused"
+
+/** Prepare the workspace from a second thread while this one prepares it too,
+ *  and require that at least one of the two starts was admitted.
+ *
+ *  A start waits for the generation gate only through the lock ladder, about
+ *  two seconds (`acquireLockSyncIn`). A peer whose migrations hold the gate
+ *  longer, as on a loaded machine, refuses the waiting start with a
+ *  `LockRefusal` that clears itself, and that refusal changes nothing in the
+ *  store. Both outcomes keep the contract that this race proves: the legacy
+ *  control is adopted once. */
 async function raceWithSecondStart(directories: ProjectDirectories): Promise<void> {
   const worker = new Worker(new URL("fixtures/prepare-workspace-state-worker.ts", import.meta.url), {
     workerData: { directories },
   })
   try {
-    await new Promise<void>((resolve, reject) => {
+    const outcomes = await new Promise<StartOutcome[]>((resolve, reject) => {
+      let own: StartOutcome | undefined
       worker.on("error", reject)
-      worker.on("message", (message: { ready?: boolean; prepared?: boolean; error?: string }) => {
+      worker.on("message", (message: { ready?: boolean; outcome?: StartOutcome | "failed"; error?: string }) => {
         if (message.ready) {
           worker.postMessage("prepare", [])
-          const prepared = prepareWorkspaceState(directories)
-          prepared.generation.release()
+          try {
+            prepareWorkspaceState(directories).generation.release()
+            own = "admitted"
+          } catch (error) {
+            if (!(error instanceof LockRefusal && error.clearsItself)) return reject(error)
+            own = "refused"
+          }
           return
         }
-        if (message.prepared) resolve()
-        else reject(new Error(message.error ?? "second start failed"))
+        if (message.outcome === "failed" || message.outcome === undefined) reject(new Error(message.error ?? "second start failed"))
+        else if (own) resolve([own, message.outcome])
       })
     })
+    expect(outcomes).toContain("admitted")
   } finally {
     await worker.terminate()
   }

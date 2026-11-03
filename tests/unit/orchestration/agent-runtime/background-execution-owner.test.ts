@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test"
+import { describe, expect, it, jest } from "bun:test"
 import { existsSync } from "node:fs"
 import { Effect } from "effect"
 
@@ -514,11 +514,19 @@ describe("BackgroundExecutionOwner command handover", () => {
     const events: string[] = []
     const container = fakeContainer(events)
     const fixture = handoverOwner({ adopt: () => ({ kind: "adopted", owned: container.owned }) })
-    const startedAtMs = Date.now() - 1_000
-    storeRow(fixture, handedOverRow(fixture.dir, OWNER, { startedAtMs, deadlineAtMs: Date.now() + 20 }))
+    // The clock is faked, so a slow adoption on a loaded runner cannot use up the 20 ms that remain of the deadline.
+    jest.useFakeTimers()
+    try {
+      const startedAtMs = Date.now() - 1_000
+      storeRow(fixture, handedOverRow(fixture.dir, OWNER, { startedAtMs, deadlineAtMs: Date.now() + 20 }))
 
-    await fixture.owner.adoptHandedOver()
-    expect(events).toEqual([])
+      await fixture.owner.adoptHandedOver()
+      jest.advanceTimersByTime(19)
+      expect(events).toEqual([])
+      jest.advanceTimersByTime(1)
+    } finally {
+      jest.useRealTimers()
+    }
     await settled(fixture)
 
     expect(events).toEqual(["terminate"])

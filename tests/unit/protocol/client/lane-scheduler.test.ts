@@ -20,11 +20,20 @@ test("in a browser, the burst a lane opens with yields without the nested-timer 
     // The first burst starts the channel; a page has done that long before
     // a reattach.
     await runtime.runPromise(burst)
-    const startedAt = performance.now()
-    // One yield per call a reattach writes: the RPC client yields once for
-    // each request it sends.
-    await runtime.runPromise(burst)
-    assert.ok(performance.now() - startedAt < 10, `27 yields took ${performance.now() - startedAt} ms`)
+    // A burst takes well under 1 ms through the channel, and more than 100 ms
+    // through a clamped timer. A process that the machine deschedules or
+    // collects during the burst only adds time, so one of up to three bursts
+    // under the limit is the scheduler's own cost.
+    const limit = 10
+    let elapsed = Number.POSITIVE_INFINITY
+    for (let measurement = 0; measurement < 3 && elapsed >= limit; measurement++) {
+      const startedAt = performance.now()
+      // One yield per call a reattach writes: the RPC client yields once for
+      // each request it sends.
+      await runtime.runPromise(burst)
+      elapsed = performance.now() - startedAt
+    }
+    assert.ok(elapsed < limit, `27 yields took ${elapsed} ms`)
   } finally {
     await runtime.dispose()
   }

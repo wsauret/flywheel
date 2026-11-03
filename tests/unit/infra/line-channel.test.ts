@@ -24,10 +24,9 @@ describe("a line connection", () => {
 
       expect(await connection?.next()).toBe("go");
       server.stop();
-      expect(await Promise.race([
-        connection?.ended.then(() => true),
-        Bun.sleep(30).then(() => false),
-      ])).toBe(true);
+      // A connection that never ends fails on the test timeout; a wall-clock race
+      // against the socket close fails whenever the runner stalls.
+      expect(await connection?.ended.then(() => true)).toBe(true);
       expect(await connection?.next()).toBeUndefined();
     } finally {
       connection?.close();

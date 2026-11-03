@@ -114,6 +114,12 @@ function contents(directory: string): Map<string, string> {
 describe("reusing a private copy", () => {
   it("refreshes a released copy in its own home with a new private Git directory and no record while it runs", async () => {
     const fixture = project();
+    // A take pins the hash of a file changed within RACY_WINDOW_NS of its own
+    // start, which the copy Worker reads from the real clock. A future
+    // modification time keeps the file inside that window for both takes,
+    // however long a loaded machine takes between them, so both record the same state.
+    const future = new Date(Date.now() + HOUR_MS);
+    fs.utimesSync(path.join(fixture.root, "src", "a.ts"), future, future);
     const pool = createPrivateCopyPool({ probe: noSurvivor });
     const first = await fixture.take(pool);
     expect(first.refresh).toBeUndefined();

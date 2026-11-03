@@ -166,7 +166,10 @@ describe("workflow-scoped view projection", () => {
     const wide = await costs(150)
     expect({ usage: wide.usage, entry: wide.entry }).toEqual({ usage: narrow.usage, entry: narrow.entry })
     expect([narrow.usagePublished, narrow.entryPublished, wide.usagePublished, wide.entryPublished]).toEqual([true, true, true, true])
-  }, 30_000)
+    // Starting 150 agents is about three seconds of CPU work on an idle
+    // machine, and a contended runner stretches it several times over, so the
+    // deadline only ends a hang.
+  }, 120_000)
   test("after a failed read of a held detail, the next change of a different input reads every part again", async () => {
     const f = await setup()
     const sequencer = createRuntimeUiPatchSequencer()

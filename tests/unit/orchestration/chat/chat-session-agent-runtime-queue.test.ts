@@ -78,8 +78,18 @@ describe("chat session with agent runtime — queued message delivery", () => {
       onEnded: () => {},
     }
 
+    // The queued send publishes the pending follow-up asynchronously, so the
+    // test waits for the patch that carries it rather than for a wall-clock
+    // duration that a stalled runner can outlast.
+    const pendingFollowUpShown = Promise.withResolvers<Extract<AnyBlock, { kind: "userMessage" }>>()
     const blockView = captureBlocks((patch) => {
-      if (patch.outputBlocks) liveViews.push({ blocks: [...patch.outputBlocks] })
+      if (!patch.outputBlocks) return
+      liveViews.push({ blocks: [...patch.outputBlocks] })
+      const pendingFollowUp = patch.outputBlocks.find(
+        (block): block is Extract<AnyBlock, { kind: "userMessage" }> =>
+          block.kind === "userMessage" && block.content === "follow up" && block.pending,
+      )
+      if (pendingFollowUp) pendingFollowUpShown.resolve(pendingFollowUp)
     })
     session = await createChatSession(callbacks, createTestChatSessionDeps({
       sessionId: "chat-agent-test",
@@ -108,16 +118,7 @@ describe("chat session with agent runtime — queued message delivery", () => {
     const liveViewCountBeforeFollowUp = liveViews.length
     void session.send("follow up")
 
-    const liveDeadline = Date.now() + 500
-    let pendingLiveBlock: Extract<AnyBlock, { kind: "userMessage" }> | undefined
-    while (Date.now() < liveDeadline) {
-      pendingLiveBlock = liveViews.at(-1)?.blocks.find(
-        (block): block is Extract<AnyBlock, { kind: "userMessage" }> =>
-          block.kind === "userMessage" && block.content === "follow up" && block.pending,
-      )
-      if (pendingLiveBlock) break
-      await Bun.sleep(2)
-    }
+    const pendingLiveBlock = await pendingFollowUpShown.promise
     expect(pendingLiveBlock).toMatchObject({ pending: true, injected: false })
     expect(liveViews.length).toBeGreaterThan(liveViewCountBeforeFollowUp)
     await session.send("second follow up")

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test"
+import { beforeAll, describe, expect, it } from "bun:test"
 import { buildMutationDiff } from "../../../../src/infra/mutation-diff"
 import { buildMutationDiffEvidence } from "../../../../src/infra/mutation-diff-evidence.js"
 import { createRecordingFileMutationStore } from "../agent-runtime/tools/_fixtures.js"
@@ -6,6 +6,15 @@ import { projectBlocksFromEntries } from "../../../../src/orchestration/session/
 import type { MessageEntry } from "../../../../src/orchestration/session/conversation/conversation-entry-types"
 import { formatAgentFailureDisplay } from "../../../../src/infra/output/output-formatter"
 import type { ToolHistorySummary } from "../../../../src/orchestration/module-seams"
+import { installedModules } from "../../../../src/orchestration/module-catalog"
+
+// Projection reads the module catalog, and the first read in a test process
+// loads the whole module registry: about 0.5 s here, and over 5 s on a loaded
+// 4-CPU runner. That one-time cost belongs to the process, so it is paid here
+// under its own deadline instead of inside a test body's 5 s timeout.
+beforeAll(() => {
+  installedModules()
+}, 60_000)
 
 const CWD = "/scratch/project"
 const T0 = "2026-07-02T10:00:00.000Z"

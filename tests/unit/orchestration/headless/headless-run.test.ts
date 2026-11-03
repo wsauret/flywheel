@@ -14,6 +14,7 @@ import { QuotaCoordinationError } from "../../../../src/orchestration/agent-runt
 import type { AgentFactory, AgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
 import { AuthProfileManager } from "../../../../src/orchestration/auth/auth-profile-manager.js"
 import * as headlessDeadline from "../../../../src/orchestration/headless/headless-deadline.js"
+import type { HeadlessDeadlineController } from "../../../../src/orchestration/headless/headless-deadline.js"
 import { runHeadlessTask } from "../../../../src/orchestration/headless/run-headless-task.js"
 import { readSessionMetadata } from "../../../../src/orchestration/session/session-metadata-store.js"
 import { prepareWorkspaceState } from "../../../../src/orchestration/workspace-state.js"
@@ -241,18 +242,43 @@ describe("runHeadlessTask ownership", () => {
       return { send() {}, end() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal }) }
     }
     const write = spyOn(process.stderr, "write").mockImplementation(() => true)
+    const realSleep = abort.abortableSleep
+    const capacityWait = Promise.withResolvers<void>()
+    const sleep = spyOn(abort, "abortableSleep").mockImplementation((ms, signal) => {
+      if (ms >= 60_000) capacityWait.resolve()
+      return realSleep(ms, signal)
+    })
+    // A real deadline also counts setup, whose duration a loaded runner
+    // decides. The real deadline arms at once when the capacity wait starts,
+    // so it fires inside that wait however long setup took.
+    const create = headlessDeadline.createHeadlessDeadline
+    let armed: HeadlessDeadlineController | undefined
+    const deadline = spyOn(headlessDeadline, "createHeadlessDeadline").mockImplementation(() => ({
+      get expired() { return armed?.expired ?? false },
+      get expiry() { return armed?.expiry },
+      awaitSetup: (operation) => operation,
+      awaitActive: async (operation, interrupt) => {
+        await Promise.race([operation, capacityWait.promise])
+        armed = create(0)
+        return await armed.awaitActive(operation, interrupt)
+      },
+      dispose: () => armed?.dispose(),
+    }))
     const startedAt = performance.now()
-    // The deadline also counts setup, which takes over 2 s on a saturated
-    // 4-core runner; a deadline that fires before the first attempt never
-    // reaches the capacity wait under test.
-    const result = await runHeadlessTask("work", {
-      modelsClient: fakeModelsClient, directories: testDirectories(projectRoot), launcher, printErrorsToStderr: false, deadlineSeconds: 3,
-      prepareWorkflowDeps: async () => makeWorkflowDeps(createAgent),
-    }).finally(() => { write.mockRestore() })
-    expect(result.completed).toBe(false)
-    expect(result.termination).toMatchObject({ terminal: { kind: "aborted" }, deadlineFired: true })
-    expect(runs).toBe(1)
-    expect(performance.now() - startedAt).toBeLessThan(10_000)
+    try {
+      const result = await runHeadlessTask("work", {
+        modelsClient: fakeModelsClient, directories: testDirectories(projectRoot), launcher, printErrorsToStderr: false,
+        prepareWorkflowDeps: async () => makeWorkflowDeps(createAgent),
+      })
+      expect(result.completed).toBe(false)
+      expect(result.termination).toMatchObject({ terminal: { kind: "aborted" }, deadlineFired: true })
+      expect(runs).toBe(1)
+      expect(performance.now() - startedAt).toBeLessThan(10_000)
+    } finally {
+      deadline.mockRestore()
+      sleep.mockRestore()
+      write.mockRestore()
+    }
   }, 20_000)
 
   test("a deadline that fires in setup that nothing races ends the task as aborted", async () => {

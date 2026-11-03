@@ -143,37 +143,45 @@ describe("createOutputSession — model phase + flush", () => {
   // ── Flush interval ──
 
   it("flushes terminal tool availability through a pending coalesced sync without a second sync", async () => {
-    const { updateEntry } = createMocks()
-    session = createOutputSession({ updateEntry, executionCwd: "/workspace" })
-    session.flush()
-    updateEntry.mockClear()
+    // The sync stays pending only inside the 16 ms frame after the last one.
+    // A frozen clock keeps both events inside that frame, so a stall of this
+    // process cannot turn the coalesced sync into an immediate one.
+    const clock = spyOn(performance, "now").mockReturnValue(1_000)
+    try {
+      const { updateEntry } = createMocks()
+      session = createOutputSession({ updateEntry, executionCwd: "/workspace" })
+      session.flush()
+      updateEntry.mockClear()
 
-    session.dispatchRuntimeEvent({
-      type: "model.assistant_message.recorded",
-      data: {
-        message: {
-          content: [{ type: "tool_use", id: "toolu_bash", name: "bash", input: { command: "printf final" } }],
+      session.dispatchRuntimeEvent({
+        type: "model.assistant_message.recorded",
+        data: {
+          message: {
+            content: [{ type: "tool_use", id: "toolu_bash", name: "bash", input: { command: "printf final" } }],
+          },
         },
-      },
-    })
-    expect(updateEntry.mock.calls).toHaveLength(0)
+      })
+      expect(updateEntry.mock.calls).toHaveLength(0)
 
-    session.dispatchRuntimeEvent({
-      type: "tool.result.available",
-      data: {
-        tool_use_id: "toolu_bash",
-        content: [{ type: "text", text: "final" }],
-        outcome: "ok",
-      },
-    })
+      session.dispatchRuntimeEvent({
+        type: "tool.result.available",
+        data: {
+          tool_use_id: "toolu_bash",
+          content: [{ type: "text", text: "final" }],
+          outcome: "ok",
+        },
+      })
 
-    expect(updateEntry.mock.calls).toHaveLength(1)
-    expect(updateEntry.mock.calls[0]?.[0].outputBlocks).toContainEqual(
-      expect.objectContaining({ kind: "tool", id: "toolu_bash", status: "completed", content: "final" }),
-    )
+      expect(updateEntry.mock.calls).toHaveLength(1)
+      expect(updateEntry.mock.calls[0]?.[0].outputBlocks).toContainEqual(
+        expect.objectContaining({ kind: "tool", id: "toolu_bash", status: "completed", content: "final" }),
+      )
 
-    await flushMicrotasks()
-    expect(updateEntry.mock.calls).toHaveLength(1)
+      await flushMicrotasks()
+      expect(updateEntry.mock.calls).toHaveLength(1)
+    } finally {
+      clock.mockRestore()
+    }
   })
 
   it("onChange -> updateEntry({ outputBlocks }) called only when projected output changes", async () => {

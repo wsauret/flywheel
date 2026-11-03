@@ -158,6 +158,9 @@ describe.skipIf(!POSIX_HOST)("bounded waiting", () => {
     expect(versionsEntries()).toEqual([VERSION]);
   });
 
+  // The exact waits need one-second steps, so ten fake minutes take more than
+  // 600 real timer turns of `settleOnFakeTime`: about one second on an idle
+  // machine, and past Bun's five-second default on a loaded four-core runner.
   test("gives up on failing requests only once no byte has arrived for ten minutes, waiting longer between them", async () => {
     const archive = await buildArchive();
     const askedAtMs: number[] = [];
@@ -171,7 +174,7 @@ describe.skipIf(!POSIX_HOST)("bounded waiting", () => {
     const waits = askedAtMs.slice(1).map((atMs, index) => atMs - (askedAtMs[index] ?? 0));
     expect(waits.slice(0, 4)).toEqual([1_000, 10_000, 60_000, 60_000]);
     expect(versionsEntries()).toEqual([]);
-  });
+  }, 60_000);
 
   test("a withdrawal while the transfer waits to ask again ends the wait at once", async () => {
     const archive = await buildArchive();

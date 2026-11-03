@@ -218,7 +218,9 @@ describe("runtime connection health", () => {
     // is longer ago than the fault window, so the fault lands one heartbeat
     // interval after that attach and does not wait for it to end.
     const runtime = await heartbeatRuntime()
-    const unanswered = Layer.effect(Socket.Socket)(Socket.fromTransformStream(Effect.never))
+    // A dial that never connects, so the attach on it never ends on its own:
+    // a fault that waited for the attach to end would never land.
+    const unanswered = Layer.effect(Socket.Socket)(Effect.never)
     let dials = 0
     const connection = createRuntimeConnection({
       socket: Layer.unwrap(Effect.sync(() => {
@@ -234,9 +236,7 @@ describe("runtime connection health", () => {
       await runtime.heartbeat()
       await waitFor(() => connection.state === "connected")
       const lastFrameAt = Date.now()
-      await waitFor(() => connection.health.kind === "faulted", 2_000)
-      // Before the second attach's own silence deadline could end it.
-      assert.ok(Date.now() - lastFrameAt < 800)
+      await waitFor(() => connection.health.kind === "faulted", 10_000)
       assert.equal(dials, 2)
       assert.ok(connection.health.kind === "faulted" && connection.health.since <= lastFrameAt)
     } finally {

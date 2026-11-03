@@ -96,10 +96,15 @@ test("folded answers load unique file metadata only and disclose one file's orde
     assert.match(mounted.text(), /not shown: sensitive/)
     assert.doesNotMatch(mounted.text(), /inspection/)
     assert.deepEqual(mounted.hydrationRequests, [])
+    // A final patch window shows only after its SHA-256 check, which runs off the thread and can land
+    // after any fixed number of event-loop turns, so wait for the reader publication that renders it.
+    const patchesShown = new Promise<void>((resolve) => {
+      const stop = reader.onChange(() => { void settle().then(() => { if (mounted.html().includes("second")) { stop(); resolve() } }) })
+    })
     mounted.disclosure.setOpen("render-ownership", "turn:changes:src/a.ts", true)
     // Visibility callbacks can replace proposal and continuation nodes in this registry.
     for (const observer of Array.from(observers)) if (observer.tag === "section") observer.show()
-    await settle()
+    await patchesShown
     assert.equal(requests.filter(request => request.type === "mutationPatchWindow").length, 2)
     assert.ok(mounted.html().indexOf("first") < mounted.html().indexOf("second"))
     assert.doesNotMatch(mounted.html(), /unrelated/)

@@ -27,6 +27,12 @@ import { registerLiveSessionControl, registerLiveWorkflowControl } from "../../.
 const temporaryDirectory = temporaryDirectories()
 const stores: LocalSqliteEventStore[] = []
 afterEach(() => { for (const store of stores.splice(0)) store.close() })
+// The scale tests below write dozens of children through synchronous SQLite
+// before they count one sweep. That setup takes about a second on an idle
+// machine and has taken over 7 s on a contended 4-CPU runner, past Bun's 5 s
+// default. They assert request counts, never time, so a wide deadline only
+// stops a slow machine from failing them.
+const scaleSetupTimeoutMs = 30_000
 
 async function setup(status: "completed" | "paused" = "completed", suffix = "") {
   const projectRoot = temporaryDirectory("child-reconciliation-cost-")
@@ -71,7 +77,7 @@ describe("child reconciliation work", () => {
       } finally { unregister() }
     }
     expect(costs[1]).toEqual(costs[0])
-  })
+  }, scaleSetupTimeoutMs)
   test("control advances after workflow renames without folding prior settings history", async () => {
     for (const length of [2, 40]) {
       const { store } = await setup("paused", `-control-${length}`)
@@ -205,7 +211,7 @@ describe("child reconciliation work", () => {
     }
     const [base] = costs
     expect(costs).toEqual(costs.map(() => base ?? { first: 0, changed: 0, changedFacts: 0 }))
-  })
+  }, scaleSetupTimeoutMs)
 
   test("a held parent's index and runs outlive registry churn until its last owner releases them, and an unheld one's do not", async () => {
     const costs: Array<{ requests: number; facts: number }> = []
@@ -268,7 +274,7 @@ describe("child reconciliation work", () => {
       expect(evicted()).toBe(true)
     }
     expect(costs[1]).toEqual(costs[0])
-  })
+  }, scaleSetupTimeoutMs)
 
   /** Sweeps the parent of a completed workflow, after `prepare`, with a
    *  reader that holds nothing yet, as a reopen in a new process does. */

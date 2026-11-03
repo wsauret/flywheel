@@ -1,8 +1,6 @@
-import { describe, expect, it, spyOn } from "bun:test"
+import { describe, expect, it, jest, spyOn } from "bun:test"
 
 import { createToastState } from "../../../../src/tui/context/toast.js"
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 describe("createToastState", () => {
   it("replaces a different toast immediately", () => {
@@ -13,15 +11,24 @@ describe("createToastState", () => {
     expect(toast.current).toEqual({ message: "second", variant: "error" })
   })
 
-  it("extends the remaining time instead of restarting an identical toast", async () => {
-    const toast = createToastState()
-    toast.show({ message: "saved", variant: "info", duration: 24 })
-    toast.show({ message: "saved", variant: "info", duration: 24 })
+  it("extends the remaining time instead of restarting an identical toast", () => {
+    // The clock is faked, so a stall of a slow runner between the two shows
+    // cannot use up the extended deadline before the check runs.
+    jest.useFakeTimers()
+    try {
+      const toast = createToastState()
+      toast.show({ message: "saved", variant: "info", duration: 24 })
+      toast.show({ message: "saved", variant: "info", duration: 24 })
 
-    await sleep(30)
-    // Both the old clobber behavior and a plain restart would have expired by
-    // now (~24ms from the second show); the dedupe extension holds it to ~48ms.
-    expect(toast.current).toEqual({ message: "saved", variant: "info" })
+      jest.advanceTimersByTime(30)
+      // Both the old clobber behavior and a plain restart would have expired by
+      // now (24ms from the second show); the dedupe extension holds it to 48ms.
+      expect(toast.current).toEqual({ message: "saved", variant: "info" })
+      jest.advanceTimersByTime(18)
+      expect(toast.current).toBeNull()
+    } finally {
+      jest.useRealTimers()
+    }
   })
 
   it("keeps an error without a stated duration longer than a success", () => {

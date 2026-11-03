@@ -17,6 +17,10 @@ import { activeBuildDir } from "../../../../src/infra/update/active-build.js";
 import { provedBuild, recordBuildProved } from "../../../../src/infra/update/service-start-record.js";
 import { createUpdateAuthority, UPDATE_PROTOCOL_VERSION } from "../../../../src/infra/update/update-authority.js";
 import { type BuildFallbackTrigger, type BuildProof, createBuildFallback, type FallbackBuild } from "../../../../src/orchestration/update/build-fallback.js";
+// The fallback loads the install engine lazily on its first return. Its cold
+// load takes seconds on a loaded runner, so it happens here, with the file,
+// and not inside the timeout of the first test that returns.
+import "../../../../src/orchestration/update/install-engine.js";
 import { refusedBuild } from "../../../../src/orchestration/update/refused-build.js";
 import { temporaryDirectories } from "../../../helpers/directories.js";
 import { activatePlacedBuild, placeBuild } from "../../../helpers/placed-build.js";
