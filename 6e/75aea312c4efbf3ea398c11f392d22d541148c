@@ -1,0 +1,14 @@
+website/src/pages/index.astro
+  h_4b47e9e4a8b456 280
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6e75aea312c4efbf3ea398c11f392d22d541148c",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
