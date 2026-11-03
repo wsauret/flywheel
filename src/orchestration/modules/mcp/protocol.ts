@@ -7,7 +7,7 @@ import { mcpService } from "./service.js"
 /** The module's protocol runtime. Every manager transition publishes the
  *  whole server list, so the newest patch supersedes any it overtook. While
  *  the module is off, whether from composition or a live toggle, the snapshot
- *  is empty and a reauthentication is refused: a client shows no server from
+ *  is empty and every mutation is refused: a client shows no server from
  *  its next snapshot. */
 export function createMcpProtocol(services: ModuleProtocolServices): ModuleProtocolRuntime<typeof mcpProtocol> {
   const service = () => (services.enabled() ? services.modules.get(mcpService) : undefined)
@@ -40,6 +40,22 @@ export function createMcpProtocol(services: ModuleProtocolServices): ModuleProto
           // The browser handoff and the token exchange can fail with a
           // provider URL in the message; the person gets the repair, not the URL.
           return { ok: false, error: "MCP authentication failed. Try again." }
+        }
+      },
+      "mcp.reconnect": async ({ server }) => {
+        const current = service()
+        if (!current) return { ok: false, error: "MCP servers are off" }
+        try {
+          // A failed, retryable server starts a new attempt here; a failure
+          // whose cleanup failed rethrows, because a new attempt is not safe.
+          await current.manager.acquire(server)
+          return { ok: true }
+        } catch {
+          // Connection errors can carry a URL or a host, so only the outcome travels.
+          const state = current.manager.entries().find((entry) => entry.name === server)?.state
+          if (state?.tag === "needs_auth") return { ok: false, error: `${server} needs authentication. Authenticate it to connect.` }
+          if (state?.tag === "failed" && !state.retryable) return { ok: false, error: `${server} cannot reconnect because its last connection did not close. Restart Flywheel to reconnect it.` }
+          return { ok: false, error: `${server} could not connect. Check the server settings and try again.` }
         }
       },
     },

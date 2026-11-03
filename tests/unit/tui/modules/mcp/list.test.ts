@@ -17,7 +17,7 @@ function harness(initial: readonly McpStatusRow[] = [needsAuth], answer: () => P
   let closed = 0
   const read = moduleDomainReader((domain) => domain.domain === mcpDomain.domain ? rows() : undefined)
   const answered = (command: FrontendMutation) => { commands.push(command); return answer() }
-  const dispatch = runtimeDispatch({ "mcp.authenticate": answered, "mcp.setEnabled": answered, "mcp.remove": answered })
+  const dispatch = runtimeDispatch({ "mcp.authenticate": answered, "mcp.reconnect": answered, "mcp.setEnabled": answered, "mcp.remove": answered })
   const list = createRoot((dispose) => { disposers.push(dispose); return createMcpList({ read, client: { dispatch }, showToast: (toast) => { toasts.push(toast) }, close: () => { closed++ } }) })
   return { list, commands, toasts, rows: setRows, closed: () => closed }
 }
@@ -55,7 +55,7 @@ describe("the MCP surface list", () => {
   test("dispatches one authentication until settlement and reports failures and success", async () => {
     const result = Promise.withResolvers<Answer>()
     const h = harness(undefined, () => result.promise)
-    h.list.authenticate(); h.list.authenticate()
+    h.list.repair(); h.list.repair()
     expect(h.commands).toEqual([{ type: "mcp.authenticate", server: "work" }])
     expect(h.list.pending()).toContain("Authenticating")
     result.resolve({ ok: false, error: "MCP authentication failed. Try again." })
@@ -63,13 +63,26 @@ describe("the MCP surface list", () => {
     expect(h.toasts).toEqual([{ message: "MCP authentication failed. Try again.", variant: "error" }])
     expect(h.list.pending()).toBeUndefined()
     const success = harness()
-    success.list.authenticate()
+    success.list.repair()
     await settle()
     expect(success.toasts).toEqual([{ message: "work authenticated", variant: "success" }])
   })
+  test("Enter and r reconnect a failed row and report its connection; r ignores other rows", async () => {
+    const h = harness([{ ...needsAuth, status: "failed", error: "Connection failed" }])
+    h.list.key({ name: "enter" })
+    expect(h.commands).toEqual([{ type: "mcp.reconnect", server: "work" }])
+    expect(h.list.pending()).toBe("Reconnecting work...")
+    await settle()
+    expect(h.toasts).toEqual([{ message: "work connected", variant: "success" }])
+    h.list.key({ name: "r" })
+    expect(h.commands).toEqual([{ type: "mcp.reconnect", server: "work" }, { type: "mcp.reconnect", server: "work" }])
+    const authentication = harness()
+    authentication.list.key({ name: "r" })
+    expect(authentication.commands).toEqual([])
+  })
   test("wraps arrows and j/k, clamps removed rows, ignores ineligible authentication and closes", () => {
     const h = harness([{ ...needsAuth, name: "first", status: "ready" }, needsAuth])
-    h.list.authenticate()
+    h.list.repair()
     expect(h.commands).toEqual([])
     h.list.key({ name: "down" }); expect(h.list.cursor()).toBe(1)
     h.list.key({ name: "j" }); expect(h.list.cursor()).toBe(0)
@@ -136,7 +149,7 @@ describe("the MCP surface list", () => {
     }
     const completion = Promise.withResolvers<Answer>()
     const old = harness(undefined, () => completion.promise)
-    old.list.authenticate()
+    old.list.repair()
     for (const dispose of disposers.splice(0)) dispose()
     const fresh = harness()
     expect(fresh.list.cursor()).toBe(0)

@@ -11,6 +11,7 @@ import type { LauncherScope } from "../../../../../src/infra/process-supervisor.
 import { createRuntimeConfigOwner } from "../../../../../src/orchestration/config/runtime-config-owner.js"
 import { ConfigWriteError } from "../../../../../src/orchestration/config/writer.js"
 import type { McpConnection } from "../../../../../src/orchestration/modules/mcp/connection.js"
+import { McpNeedsAuthError } from "../../../../../src/orchestration/modules/mcp/errors.js"
 import { createMcpManager, type McpManager } from "../../../../../src/orchestration/modules/mcp/manager.js"
 import { createMcpProtocol } from "../../../../../src/orchestration/modules/mcp/protocol.js"
 import { createMcpService, type McpService } from "../../../../../src/orchestration/modules/mcp/service.js"
@@ -136,6 +137,7 @@ describe("MCP protocol runtime", () => {
     const { runtime, patches } = protocolOver(manager, { enabled: false })
     expect((await runtime.serve.mcpStatusSnapshot({ type: "mcpStatusSnapshot" })).servers).toEqual([])
     expect(await runtime.mutate["mcp.authenticate"]({ type: "mcp.authenticate", server: "work" })).toEqual({ ok: false, error: "MCP servers are off" })
+    expect(await runtime.mutate["mcp.reconnect"]({ type: "mcp.reconnect", server: "work" })).toEqual({ ok: false, error: "MCP servers are off" })
     expect(await runtime.mutate["mcp.remove"]({ type: "mcp.remove", server: "work", scope: "global", expected: "test" })).toEqual({ ok: false, error: "MCP servers are off" })
     expect(await runtime.mutate["mcp.setEnabled"]({ type: "mcp.setEnabled", server: "work", scope: "project", enabled: false, expected: "test" })).toEqual({ ok: false, error: "MCP servers are off" })
     expect(patches).toEqual([])
@@ -154,6 +156,53 @@ describe("MCP protocol runtime", () => {
     expect(await runtime.mutate["mcp.authenticate"]({ type: "mcp.authenticate", server: "work" })).toEqual({ ok: false, error: "MCP authentication failed. Try again." })
     runtime.dispose()
     await manager.dispose()
+  })
+
+  test("reconnects only the named failed server and answers each failure without its cause", async () => {
+    const rawFailure = "https://private.example/mcp?token=query-token"
+    const ready = (): McpConnection => ({ instructions: undefined, tools: () => [], callTool: async () => ({ content: [], isError: false }), onClose: () => {}, onToolsChanged: () => {}, close: async () => {} })
+    let closeStuck = (): void => {}
+    let steadyCloses = 0
+    const outcomes = new Map<string, () => McpConnection>([
+      ["work", () => { throw new Error(rawFailure) }],
+      ["other", () => { throw new Error(rawFailure) }],
+      ["steady", () => ({ ...ready(), close: async () => { steadyCloses++ } })],
+      // A connection whose close rejects leaves its server failed without a safe retry.
+      ["stuck", () => ({ ...ready(), onClose(callback) { closeStuck = callback }, close: async () => { throw new Error(rawFailure) } })],
+    ])
+    const connects = new Map<string, number>()
+    const command = { command: "server", args: [], env: {}, enabled: true }
+    const manager = createMcpManager({
+      executionCwd: "/scratch",
+      authDir: AUTH_DIR,
+      servers: { work: command, other: command, steady: command, stuck: command },
+      connect: async ({ server }) => { connects.set(server, (connects.get(server) ?? 0) + 1); return outcomes.get(server)!() },
+    })
+    const { runtime } = protocolOver(manager)
+    const reconnect = (server: string) => runtime.mutate["mcp.reconnect"]({ type: "mcp.reconnect", server })
+    const statuses = () => Object.fromEntries(manager.status().map((row) => [row.name, row.status]))
+    await expect(manager.acquire("work")).rejects.toThrow("query-token")
+    await expect(manager.acquire("other")).rejects.toThrow("query-token")
+    await manager.acquire("steady")
+    await manager.acquire("stuck")
+    closeStuck()
+    await expect(manager.acquire("stuck")).rejects.toThrow("MCP attempt retirement failed")
+    const before = new Map(connects)
+    const attemptsSince = (server: string) => (connects.get(server) ?? 0) - (before.get(server) ?? 0)
+    try {
+      expect(await reconnect("work")).toEqual({ ok: false, error: "work could not connect. Check the server settings and try again." })
+      outcomes.set("work", () => { throw new McpNeedsAuthError("work") })
+      expect(await reconnect("work")).toEqual({ ok: false, error: "work needs authentication. Authenticate it to connect." })
+      outcomes.set("other", ready)
+      expect(await reconnect("other")).toEqual({ ok: true })
+      expect(await reconnect("stuck")).toEqual({ ok: false, error: "stuck cannot reconnect because its last connection did not close. Restart Flywheel to reconnect it." })
+      expect(["work", "other", "steady", "stuck"].map(attemptsSince)).toEqual([2, 1, 0, 0])
+      expect(steadyCloses).toBe(0)
+      expect(statuses()).toEqual({ work: "needs_auth", other: "ready", steady: "ready", stuck: "failed" })
+    } finally {
+      runtime.dispose()
+      await expect(manager.dispose()).rejects.toThrow("MCP manager disposal failed")
+    }
   })
 
   test("scoped mutations settle real persistence, patches and attention without exposing configuration", async () => {

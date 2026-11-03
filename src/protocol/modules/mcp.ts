@@ -72,11 +72,22 @@ export const mcpDomain = defineProtocolDomain({
 
 export const mcpCursor = (): RuntimeCursorIdentity => ({ scope: "workspace", domain: mcpDomain.domain })
 
+const McpRepairResultSchema = Schema.Union([Schema.Struct({ ok: Schema.Literal(true) }), Schema.Struct({ ok: Schema.Literal(false), error: Schema.String })])
+
 /** Reauthenticate one server: a user action that drives a browser handoff, so it is lossless (ARCH-PROTOCOL-020). */
 const mcpAuthenticate = defineProtocolMutation({
   type: "mcp.authenticate",
   fields: { server: Schema.String },
-  result: Schema.Union([Schema.Struct({ ok: Schema.Literal(true) }), Schema.Struct({ ok: Schema.Literal(false), error: Schema.String })]),
+  result: McpRepairResultSchema,
+  policy: "lossless",
+})
+
+/** Start a new connection attempt for one failed server. Configuration and
+ *  every other server stay as they are. */
+const mcpReconnect = defineProtocolMutation({
+  type: "mcp.reconnect",
+  fields: { server: Schema.String },
+  result: McpRepairResultSchema,
   policy: "lossless",
 })
 
@@ -158,7 +169,7 @@ function mcpServersNeedingAttention(servers: readonly McpStatusRow[]): readonly 
 export const mcpProtocol = defineProtocolModule({
   id: "mcp",
   domains: [mcpDomain],
-  mutations: [mcpAuthenticate, mcpSetEnabled, mcpRemove],
+  mutations: [mcpAuthenticate, mcpReconnect, mcpSetEnabled, mcpRemove],
   rows: {
     // Healthy servers render nothing on the intro card; the row exists only to alert.
     intro: (read) => {

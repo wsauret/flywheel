@@ -36,6 +36,7 @@ export function createMcpMutation(client: McpMutationClient, active: () => boole
         if (!result.ok) client.report("warning", result.error)
         else if ("warning" in result && result.warning !== undefined) client.report("warning", result.warning)
         else if (mutation.type === "mcp.authenticate") client.report("info", `${row.name} authenticated.`)
+        else if (mutation.type === "mcp.reconnect") client.report("info", `${row.name} connected.`)
       } catch {
         if (admitted()) client.report("warning", "Flywheel could not complete the MCP action. Check the server status and try again.")
       }
@@ -44,6 +45,7 @@ export function createMcpMutation(client: McpMutationClient, active: () => boole
   return {
     working: (name: string) => client.actions.working(key(name)),
     authenticate: (row: McpStatusRow) => run(row, { type: "mcp.authenticate", server: row.name }),
+    reconnect: (row: McpStatusRow) => run(row, { type: "mcp.reconnect", server: row.name }),
     enabled: (row: McpStatusRow, action: McpEnabledAction) => run(row, { type: "mcp.setEnabled", server: row.name, scope: action.scope, enabled: action.enabled, expected: row.expected }),
     remove: (row: McpStatusRow) => run(row, { type: "mcp.remove", server: row.name, scope: row.definitionScope, expected: row.expected }, true),
   }

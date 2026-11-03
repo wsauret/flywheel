@@ -515,7 +515,7 @@ function createMcpManagerResource(options: McpManagerOptions): McpManagerResourc
     async call({ server, ...request }) {
       const state = states.get(server)?.tag;
       if (state === "needs_auth") throw new Error(`MCP server '${server}' needs authentication; ask the user to run /mcp and reauthenticate it`);
-      if (state === "failed") throw new Error(`MCP server '${server}' failed; ask the user to run /mcp and inspect it`);
+      if (state === "failed") throw new Error(`MCP server '${server}' failed to connect; ask the user to run /mcp and reconnect it`);
       return await (await acquire(server)).callTool(request);
     },
     tools: () => [...states.values()].flatMap((state) => state.tag === "ready" ? [...state.connection.tools()] : []),

@@ -20,11 +20,11 @@ describe("MCP modal", () => {
   test("renders scope, sibling controls, pointer disable and Cancel-first review with one footer", async () => {
     const [rows, setRows] = createSignal<readonly McpStatusRow[]>([global])
     const [hydrated, setHydrated] = createSignal(false)
-    const commands: unknown[] = []
+    const commands: FrontendMutation[] = []
     const result = Promise.withResolvers<{ ok: true }>()
     const read = moduleDomainReader((domain) => domain.domain === mcpDomain.domain && hydrated() ? rows() : undefined)
     const answered = (request: FrontendMutation) => { commands.push(request); return result.promise }
-    const dispatch = runtimeDispatch({ "mcp.authenticate": answered, "mcp.setEnabled": answered, "mcp.remove": answered })
+    const dispatch = runtimeDispatch({ "mcp.authenticate": answered, "mcp.reconnect": answered, "mcp.setEnabled": answered, "mcp.remove": answered })
     let list: ReturnType<typeof createMcpList> | undefined
     let colors: ReturnType<typeof useTheme>["theme"] | undefined
     function Harness() {
@@ -59,6 +59,7 @@ describe("MCP modal", () => {
       const frame = rendered.captureCharFrame()
       expect(frame).toContain("Global")
       expect(frame).toContain("enter  Authenticate")
+      expect(frame).not.toContain("Reconnect")
       expect(frame).toContain("e      Disable in all projects")
       expect(frame).toContain("p      Disable in this project")
       expect(frame.split("\n").find((line) => line.includes("Global server"))?.indexOf("Global server")).toBe(frame.split("\n").find((line) => line.includes("> work"))!.indexOf("> work") + 2)
@@ -112,14 +113,22 @@ describe("MCP modal", () => {
       setRows([{ ...global, name: "long-server-name-".repeat(8), status: "failed", error: "Connection failed", enabledScope: "project" }])
       await rendered.renderOnce()
       expect(rendered.captureCharFrame()).toContain("Global server · project enabled override")
-      expect(rendered.captureCharFrame()).toContain("e  Disable in this project")
+      expect(rendered.captureCharFrame()).toContain("e        Disable in this project")
       expect(rendered.captureCharFrame()).toContain("failed: Connection failed")
       expect(rendered.captureCharFrame()).not.toContain("p  ")
       expect(rendered.captureCharFrame()).not.toContain("enter  Authenticate")
+      expect(rendered.captureCharFrame()).toContain("enter/r  Reconnect")
       setRows([{ ...global, name: "c-failed", status: "failed", error: "Connection failed. Check the server settings and try again." }])
       await rendered.renderOnce()
       expect(rendered.captureCharFrame()).toContain("c-failed")
       expect(rendered.captureCharFrame()).toContain("failed: Connection failed")
+      await press("Reconnect")
+      expect(commands.at(-1)).toEqual({ type: "mcp.reconnect", server: "c-failed" })
+      await Promise.resolve(); await Promise.resolve(); await Promise.resolve()
+      await press("c-failed")
+      expect(commands.at(-1)).toEqual({ type: "mcp.reconnect", server: "c-failed" })
+      expect(commands.filter((command) => command.type === "mcp.reconnect")).toHaveLength(2)
+      await Promise.resolve(); await Promise.resolve(); await Promise.resolve()
       const longName = "long-server-name-".repeat(8)
       setRows([{ ...global, name: longName }])
       await rendered.renderOnce()
@@ -163,7 +172,7 @@ describe("MCP modal", () => {
     const modal = createModalStack()
     const result = Promise.withResolvers<{ ok: true }>()
     const closing = Promise.withResolvers<{ ok: true }>()
-    const commands: unknown[] = []
+    const commands: FrontendMutation[] = []
     const toasts: unknown[] = []
     const read = moduleDomainReader((domain) => domain.domain === mcpDomain.domain ? [global] : undefined)
     const answered = (request: FrontendMutation) => { commands.push(request); return commands.length === 3 ? closing.promise : result.promise }

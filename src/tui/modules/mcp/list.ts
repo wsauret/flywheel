@@ -9,7 +9,7 @@ export interface McpRemovalState {
   readonly focus: number
 }
 
-type McpRequest = Extract<Parameters<TuiSurfaceHost["client"]["dispatch"]>[0], { type: "mcp.authenticate" | "mcp.setEnabled" | "mcp.remove" }>
+type McpRequest = Extract<Parameters<TuiSurfaceHost["client"]["dispatch"]>[0], { type: "mcp.authenticate" | "mcp.reconnect" | "mcp.setEnabled" | "mcp.remove" }>
 
 /** The cached surface owns unsettled operations across modal openings. */
 export function createMcpOperations(host: Pick<TuiSurfaceHost, "client" | "showToast">) {
@@ -40,9 +40,12 @@ export function createMcpList(host: Pick<TuiSurfaceHost, "read" | "client" | "sh
   let active = true
   onCleanup(() => { active = false })
   const select = (index: number) => { if (!pending() && !review()) selection.select(Math.max(0, index)) }
-  const authenticate = () => {
+  /** Runs the one action that repairs the selected row's connection, when its status has one. */
+  const repair = () => {
     const row = selected()
-    if (!review() && row?.status === "needs_auth") operations.run(`Authenticating ${row.name}...`, { type: "mcp.authenticate", server: row.name }, `${row.name} authenticated`, () => active)
+    if (!row || review()) return
+    if (row.status === "needs_auth") operations.run(`Authenticating ${row.name}...`, { type: "mcp.authenticate", server: row.name }, `${row.name} authenticated`, () => active)
+    else if (row.status === "failed") operations.run(`Reconnecting ${row.name}...`, { type: "mcp.reconnect", server: row.name }, `${row.name} connected`, () => active)
   }
   const setEnabled = (project = false) => {
     const row = selected()
@@ -77,7 +80,8 @@ export function createMcpList(host: Pick<TuiSurfaceHost, "read" | "client" | "sh
     if (name === "up" || name === "k" || name === "down" || name === "j") {
       const count = rows()?.length ?? 0
       if (count) select((cursor() + (name === "up" || name === "k" ? count - 1 : 1)) % count)
-    } else if (name === "enter" || name === "return") authenticate()
+    } else if (name === "enter" || name === "return") repair()
+    else if (name === "r") { if (selected()?.status === "failed") repair() }
     else if (name === "e") setEnabled()
     else if (name === "p") setEnabled(true)
     else if (name === "d") remove()
@@ -86,7 +90,7 @@ export function createMcpList(host: Pick<TuiSurfaceHost, "read" | "client" | "sh
     event.preventDefault?.()
     return true
   }
-  return { rows, cursor, selected, select, navigationRevision: selection.revision, pending, review, authenticate, setEnabled, remove, cancel, confirm, close, key }
+  return { rows, cursor, selected, select, navigationRevision: selection.revision, pending, review, repair, setEnabled, remove, cancel, confirm, close, key }
 }
 
 export type McpList = ReturnType<typeof createMcpList>

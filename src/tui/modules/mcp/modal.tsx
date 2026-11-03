@@ -52,7 +52,7 @@ export function McpModal(props: { list: McpList }) {
       <Show when={servers().length > 0} fallback={<text fg={theme.textMuted}>No MCP servers configured.</text>}>
         <scrollbox ref={setViewport} height={Math.min(review() ? Math.max(2, listMaxHeight() - 8) : listMaxHeight(), servers().length * 2 + menu().length)} scrollbarOptions={{ visible: false }}>
           <Key each={servers()} by="name">{(row, index) => <box id={`mcp:${row().name}`}>
-            <McpRow row={row()} active={cursor() === index()} width={modalWidth() - 9} onSelect={() => { props.list.select(index()); props.list.authenticate() }} />
+            <McpRow row={row()} active={cursor() === index()} width={modalWidth() - 9} onSelect={() => { props.list.select(index()); props.list.repair() }} />
             <box paddingLeft={4}><text fg={theme.textMuted}>{mcpScopeDetail(row())}</text></box>
             <Show when={cursor() === index()}>
               <Key each={menu()} by="key">{(action) => <McpActionLine action={action()} keyWidth={keyWidth()} />}</Key>
@@ -84,8 +84,9 @@ interface McpMenuAction {
 
 function menuActions(row: McpStatusRow, list: McpList): readonly McpMenuAction[] {
   const project = mcpProjectEnabledAction(row)
+  const repair = row.status === "needs_auth" ? { key: "enter", label: "Authenticate" } : row.status === "failed" ? { key: "enter/r", label: "Reconnect" } : undefined
   return [
-    ...(row.status === "needs_auth" ? [{ key: "enter", label: "Authenticate", destructive: false, run: list.authenticate }] : []),
+    ...(repair ? [{ ...repair, destructive: false, run: list.repair }] : []),
     { key: "e", label: mcpEnabledAction(row).label, destructive: false, run: () => list.setEnabled() },
     ...(project ? [{ key: "p", label: project.label, destructive: false, run: () => list.setEnabled(true) }] : []),
     { key: "d", label: "Remove", destructive: true, run: list.remove },

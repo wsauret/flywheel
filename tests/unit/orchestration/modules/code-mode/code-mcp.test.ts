@@ -21,7 +21,7 @@ function ports(state: "ready" | "needs_auth" | "failed" = "ready"): McpPorts {
     tools: () => [hit],
     call: async ({ signal, onProgress }) => {
       if (state === "needs_auth") throw new Error("MCP server 'work' needs authentication; ask the user to run /mcp and reauthenticate it");
-      if (state === "failed") throw new Error("MCP server 'work' failed; ask the user to run /mcp and inspect it");
+      if (state === "failed") throw new Error("MCP server 'work' failed to connect; ask the user to run /mcp and reconnect it");
       expect(signal).toBeDefined();
       onProgress?.({ progress: 1, total: 2, message: "working" });
       return { content: [{ type: "text", text: "mcp-result" }], isError: false };

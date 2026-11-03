@@ -20,6 +20,20 @@ const javascript = build.outputs.find((output) => output.kind === "entry-point")
 if (javascript === undefined) throw new Error("SSR build produced no JavaScript entry point")
 const { renderMcpSheet }: typeof import("./sheet-fixture.js") = await importBuiltModule(javascript)
 
+const interactive = await Bun.build({
+  entrypoints: [fileURLToPath(new URL("sheet-interaction-fixture.ts", import.meta.url))], target: "bun", conditions: ["browser"], format: "esm",
+  plugins: [{ name: "mcp-sheet-memory-host", setup(builder) {
+    builder.onLoad({ filter: /[\\/]focus-trap\.ts$/ }, () => ({ contents: "export function trapFocus() {}", loader: "js" }))
+    builder.onLoad({ filter: /\.css$/ }, () => ({ contents: "", loader: "js" }))
+    builder.onLoad({ filter: /[\\/]client-context\.ts$/ }, () => ({ contents: "export function useClient() { return Reflect.get(globalThis, '__flywheelMcpSheetTestClient') }", loader: "js" }))
+    builder.onLoad({ filter: /\.tsx$/ }, loadSolidFixture("memory-host"))
+  } }],
+})
+if (!interactive.success) throw new Error(interactive.logs.map(String).join("\n"))
+const interactiveJavascript = interactive.outputs.find((output) => output.kind === "entry-point")
+if (interactiveJavascript === undefined) throw new Error("Interactive build produced no JavaScript entry point")
+const { mountMcpSheet }: typeof import("./sheet-interaction-fixture.js") = await importBuiltModule(interactiveJavascript)
+
 const row: McpStatusRow = { name: "server", status: "needs_auth", toolCount: 0, definitionScope: "global", enabledScope: "project", enabled: true, hasGlobalFallback: false, expected: "reviewed" }
 
 test("Remove reviews Cancel-first before dispatch and shares one server action owner", async () => {
@@ -100,7 +114,8 @@ test("scoped native controls render without interactive row wrappers or private 
     { ...row, name: "local", status: "disabled", definitionScope: "project", enabled: false, hasGlobalFallback: true },
     { ...row, name: "failed", status: "failed", error: "Connection failed" },
   ])
-  assert.match(html, /Authenticate/)
+  assert.equal((html.match(/>Authenticate<\/button>/g) ?? []).length, 1)
+  assert.equal((html.match(/>Reconnect<\/button>/g) ?? []).length, 1)
   assert.match(html, /Disable in this project/)
   assert.match(html, /Enable/)
   assert.match(html, /Project/)
@@ -112,6 +127,18 @@ test("scoped native controls render without interactive row wrappers or private 
   const busy = renderMcpSheet([row, { ...row, name: "other", status: "ready" }], row.name)
   assert.equal((busy.match(/aria-busy="true"/g) ?? []).length, 1)
   assert.match(busy, /Working/)
+})
+
+test("Reconnect appears only on a failed row, and pressing it reconnects that server", async () => {
+  const mounted = mountMcpSheet([row, { ...row, name: "ready", status: "ready" }, { ...row, name: "failed", status: "failed", error: "Connection failed" }])
+  try {
+    assert.deepEqual(mounted.buttons(row.name), ["Authenticate", "Disable in this project", "Remove"])
+    assert.deepEqual(mounted.buttons("ready"), ["Disable in this project", "Remove"])
+    assert.deepEqual(mounted.buttons("failed"), ["Reconnect", "Disable in this project", "Remove"])
+    mounted.click("failed", "Reconnect")
+    await mounted.ready()
+    assert.deepEqual(mounted.mutations(), [{ type: "mcp.reconnect", server: "failed" }])
+  } finally { mounted.dispose() }
 })
 
 test("different rows remain usable and refused or thrown mutations settle safely", async () => {
@@ -139,7 +166,7 @@ test("different rows remain usable and refused or thrown mutations settle safely
   assert.equal(operation.working(row.name), false)
 })
 
-test("project Remove explains fallback and preserved credentials; authentication stays explicit", async () => {
+test("project Remove explains fallback and preserved credentials; authentication and reconnection stay explicit", async () => {
   const reports: string[] = []
   const dispatched: unknown[] = []
   const operation = createMcpMutation({
@@ -155,9 +182,11 @@ test("project Remove explains fallback and preserved credentials; authentication
   }, () => true, new AbortController().signal)
   await operation.remove({ ...row, definitionScope: "project", hasGlobalFallback: true })
   await operation.authenticate(row)
+  await operation.reconnect({ ...row, name: "failed", status: "failed" })
   assert.deepEqual(dispatched, [
     { type: "mcp.remove", server: "server", scope: "project", expected: "reviewed" },
     { type: "mcp.authenticate", server: "server" },
+    { type: "mcp.reconnect", server: "failed" },
   ])
-  assert.deepEqual(reports, ["server authenticated."])
+  assert.deepEqual(reports, ["server authenticated.", "failed connected."])
 })
