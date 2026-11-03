@@ -1,0 +1,40 @@
+docs/product-intent/capabilities.md
+  h_4b47e9e4a8b456 15
+src/orchestration/modules/mcp/manager.ts
+  h_4b47e9e4a8b456 518
+src/orchestration/modules/mcp/protocol.ts
+  h_4b47e9e4a8b456 10,45-60
+src/protocol/modules/mcp.ts
+  h_4b47e9e4a8b456 75-76,81-90,172
+src/tui/modules/mcp/list.ts
+  h_4b47e9e4a8b456 12,43-44,46-48,83-84,93
+src/tui/modules/mcp/modal.tsx
+  h_4b47e9e4a8b456 55,87,89
+tests/unit/orchestration/modules/code-mode/code-mcp.test.ts
+  h_4b47e9e4a8b456 24
+tests/unit/orchestration/modules/mcp/protocol.test.ts
+  h_4b47e9e4a8b456 14,140,161-207
+tests/unit/tui/modules/mcp/list.test.ts
+  h_4b47e9e4a8b456 20,58,66,70-82,85,152
+tests/unit/tui/modules/mcp/modal.test.tsx
+  h_4b47e9e4a8b456 23,27,62,116,120,125-131,175
+webview/src/modules/mcp/mutation.ts
+  h_4b47e9e4a8b456 39,48
+webview/src/modules/mcp/sheet-interaction-fixture.ts
+  h_4b47e9e4a8b456 1-43
+webview/src/modules/mcp/sheet.test.ts
+  h_4b47e9e4a8b456 23-36,117-118,132-143,169,185,189,191
+webview/src/modules/mcp/sheet.tsx
+  h_4b47e9e4a8b456 64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7ad5fd5790d67d6e130d3b775e955bebd0b441c7",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
