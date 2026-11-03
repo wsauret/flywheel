@@ -255,12 +255,16 @@ function notificationBody(notification: string): UnknownRecord {
   return record(JSON.parse(body));
 }
 
+/** Before its first cell, a run hashes the whole loaded `src/` tree for its
+ *  source identity: about 200 ms here, and seconds on a loaded CI runner. The
+ *  deadline stays below the 30 s timeout of the tests that wait, so a run that
+ *  never gets there still fails with the name of what it waited for. */
 async function waitFor(condition: () => boolean, what: string): Promise<void> {
-  for (let attempt = 0; attempt < 400; attempt++) {
-    if (condition()) return;
+  const deadline = performance.now() + 20_000;
+  while (!condition()) {
+    if (performance.now() > deadline) throw new Error(`timed out waiting for ${what}`);
     await Bun.sleep(5);
   }
-  throw new Error(`timed out waiting for ${what}`);
 }
 
 const roots: string[] = [];
