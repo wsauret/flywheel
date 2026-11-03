@@ -1,0 +1,14 @@
+.github/dependabot.yml
+  h_4b47e9e4a8b456 10-22,27,29,31-50,53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "25b7d1ffb031f9cad76cf1633e5f3ed8b2ca023a",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
