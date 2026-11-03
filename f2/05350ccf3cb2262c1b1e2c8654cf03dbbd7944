@@ -1,0 +1,300 @@
+THIRD-PARTY-LICENSES.txt
+  h_4b47e9e4a8b456 33720-33721,33747-33810
+THIRD-PARTY-NOTICES.md
+  h_4b47e9e4a8b456 54
+bun.lock
+  h_4b47e9e4a8b456 19,54,64,85,1050
+oxlint.config.ts
+  h_4b47e9e4a8b456 73
+package.json
+  h_4b47e9e4a8b456 121
+relay/package.json
+  h_4b47e9e4a8b456 21
+relay/worker/test/relay-runtime.test.ts
+  h_4b47e9e4a8b456 2-3,331
+src/infra/auth/locked-json-store.ts
+  h_4b47e9e4a8b456 39,44
+src/infra/code-mode/tool-error.ts
+  h_4b47e9e4a8b456 4
+src/infra/code-mode/tool-schema.ts
+  h_4b47e9e4a8b456 12-15,19-20
+src/infra/exact-struct.ts
+  h_4b47e9e4a8b456 1-25
+src/infra/llm/availability-store.ts
+  h_4b47e9e4a8b456 205,214,222
+src/infra/tools/displays/ask-user.ts
+  h_4b47e9e4a8b456 50
+src/infra/update/active-build.ts
+  h_4b47e9e4a8b456 30
+src/infra/update/archive-entry.ts
+  h_4b47e9e4a8b456 20
+src/infra/update/build-identity.ts
+  h_4b47e9e4a8b456 51
+src/infra/update/release-manifest.ts
+  h_4b47e9e4a8b456 30
+src/infra/update/update-authority.ts
+  h_4b47e9e4a8b456 134,140,149
+src/infra/workflow-types.ts
+  h_4b47e9e4a8b456 31-32,45
+src/orchestration/agent-runtime/errors.ts
+  h_4b47e9e4a8b456 12-13,18,31-32,38,42,45,51-53
+src/orchestration/agent-runtime/llm/errors.ts
+  h_4b47e9e4a8b456 97,133
+src/orchestration/agent-runtime/llm/provider-failure.ts
+  h_4b47e9e4a8b456 34,37,39,41,43-45,51,54,56,59,67,69
+src/orchestration/agent-runtime/llm/thinking-stall.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/app-service/account-service-runtime.ts
+  h_4b47e9e4a8b456 20-23,388,422,601,616
+src/orchestration/app-service/bun-socket-rpc.ts
+  h_4b47e9e4a8b456 3-4,351
+src/orchestration/app-service/bun-worker-rpc.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/app-service/module-transports.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/app-service/project-execution-channel.ts
+  h_4b47e9e4a8b456 28-29,36,41,46,51,55,64-65,73,83,90-98
+src/orchestration/app-service/runtime-background-worker.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/app-service/runtime-protocol-handlers.ts
+  h_4b47e9e4a8b456 2-3
+src/orchestration/app-service/runtime-protocol-socket-server.ts
+  h_4b47e9e4a8b456 2-4,36-37,55,71-72,83,111-112,116,152,162-164,187-195,219-220
+src/orchestration/app-service/session-holds.ts
+  h_4b47e9e4a8b456 1
+src/orchestration/app-service/web-socket-server.ts
+  h_4b47e9e4a8b456 3-4,220
+src/orchestration/app-service/worker-background-client.ts
+  h_4b47e9e4a8b456 2,12,91
+src/orchestration/config/config-reference.ts
+  h_4b47e9e4a8b456 175-179,181-184,191-203
+src/orchestration/config/loader.ts
+  h_4b47e9e4a8b456 133-135,352-353
+src/orchestration/config/model-assignment-controller.ts
+  h_4b47e9e4a8b456 33
+src/orchestration/headless/run-headless-chat.ts
+  h_4b47e9e4a8b456 169
+src/orchestration/modules/bug-reports/service.ts
+  h_4b47e9e4a8b456 69
+src/orchestration/modules/code-mode/descriptors.ts
+  h_4b47e9e4a8b456 11-13
+src/orchestration/modules/development/benchmark/headless-execution.ts
+  h_4b47e9e4a8b456 102
+src/orchestration/modules/remote/account-relay-service.ts
+  h_4b47e9e4a8b456 1-2,267,273-274
+src/orchestration/modules/remote/relay-socket-server.ts
+  h_4b47e9e4a8b456 2-3,20,30-32
+src/orchestration/modules/remote/remote-access.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/modules/remote/remote-pairing-exchange.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/session/conversation/conversation-entry-schemas.ts
+  h_4b47e9e4a8b456 2,162,165
+src/orchestration/session/file-mutation-facts.ts
+  h_4b47e9e4a8b456 7
+src/orchestration/update/archive-spool.ts
+  h_4b47e9e4a8b456 39
+src/orchestration/update/install-engine.ts
+  h_4b47e9e4a8b456 166,171
+src/orchestration/update/update-install.ts
+  h_4b47e9e4a8b456 95
+src/orchestration/workflow-host/publish.ts
+  h_4b47e9e4a8b456 34,46
+src/protocol/client/connection-failures.ts
+  h_4b47e9e4a8b456 1
+src/protocol/client/connection.ts
+  h_4b47e9e4a8b456 2-3,17-18,311,576,630
+src/protocol/client/socket-protocol.ts
+  h_4b47e9e4a8b456 1-3,10-12,53-55,85-97,99-100,122,129
+src/protocol/command-catalog-protocol-schemas.ts
+  h_4b47e9e4a8b456 2,29,37-43
+src/protocol/conversation-recall.ts
+  h_4b47e9e4a8b456 54,67,73
+src/protocol/headless-chat.ts
+  h_4b47e9e4a8b456 22
+src/protocol/modules/bug-reports.ts
+  h_4b47e9e4a8b456 31
+src/protocol/modules/remote/project-creation.ts
+  h_4b47e9e4a8b456 1-2,87,106-107
+src/protocol/modules/remote/relay-channel.ts
+  h_4b47e9e4a8b456 1
+src/protocol/modules/remote/relay-client.ts
+  h_4b47e9e4a8b456 2
+src/protocol/modules/remote/relay-pairing.ts
+  h_4b47e9e4a8b456 2
+src/protocol/modules/remote/sealed-socket.ts
+  h_4b47e9e4a8b456 1-2,70,170,243-260,263-272,274-321,323-351,355,384,387,391
+src/protocol/mutation-evidence-protocol-types.ts
+  h_4b47e9e4a8b456 2,16,24,30,36,53-57,70,74-75,78-79,85,91-92,95-96
+src/protocol/rpc-msgpack.ts
+  h_4b47e9e4a8b456 1-95
+src/protocol/rpc-request-id.ts
+  h_4b47e9e4a8b456 1-13
+src/protocol/runtime-client-deadlines.ts
+  h_4b47e9e4a8b456 88
+src/protocol/runtime-protocol-schemas.ts
+  h_4b47e9e4a8b456 9,11,74-77,98,312,315,414,416-419,464,570-573,575,578-580
+src/protocol/session-catalog-protocol-schemas.ts
+  h_4b47e9e4a8b456 109
+src/workflows/output-contract/compile.ts
+  h_4b47e9e4a8b456 1-2,84-87,118,124,169-171,173-190
+src/workflows/output-contract/grammar.ts
+  h_4b47e9e4a8b456 2,24-31,75-79,156,160-161,165,174,197,201,205,217
+src/workflows/vm/commit-host.ts
+  h_4b47e9e4a8b456 32,43
+src/workflows/vm/definition-identity.ts
+  h_4b47e9e4a8b456 451
+src/workflows/vm/host-types.ts
+  h_4b47e9e4a8b456 15,20,25,30,35,40,45,50,55
+src/workflows/vm/structural-admission.ts
+  h_4b47e9e4a8b456 406
+tests/integration/local/project-control-runtime.test.ts
+  h_4b47e9e4a8b456 4-5,192,329,520
+tests/integration/local/rpc-lane-pong-tolerance.test.ts
+  h_4b47e9e4a8b456 3-5,49,102
+tests/integration/oxlint-plugin-flywheel.test.ts
+  h_4b47e9e4a8b456 42
+tests/unit/infra/code-mode/codemode.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/infra/error-message.test.ts
+  h_4b47e9e4a8b456 56,67,77
+tests/unit/orchestration/agent-runtime/llm/_stream-deadline-clock.ts
+  h_4b47e9e4a8b456 12-13
+tests/unit/orchestration/agent-runtime/persona-tool-grants.test.ts
+  h_4b47e9e4a8b456 285,289
+tests/unit/orchestration/agent-runtime/tools/tools-handoff.test.ts
+  h_4b47e9e4a8b456 102-104,209-212,242,287
+tests/unit/orchestration/app-service/app-service-logging.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/orchestration/app-service/bun-socket-rpc.test.ts
+  h_4b47e9e4a8b456 3-5,14,26,114,275,346,376,416
+tests/unit/orchestration/app-service/bun-worker-rpc.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/app-service/mutation-evidence-service.test.ts
+  h_4b47e9e4a8b456 3-6,247-248,264,266
+tests/unit/orchestration/app-service/output-watch-delivery.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/app-service/output-watches.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/app-service/project-control-session-holds.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/app-service/runtime-background-lane.test.ts
+  h_4b47e9e4a8b456 9-10,48-50,158-159,169,171-172,249-252
+tests/unit/orchestration/app-service/runtime-event-stream.test.ts
+  h_4b47e9e4a8b456 3,397,399-400,402,407-411
+tests/unit/orchestration/app-service/runtime-protocol-socket-server.test.ts
+  h_4b47e9e4a8b456 3-6,10,110,120,126,130,240,243-248
+tests/unit/orchestration/app-service/session-change-summary.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/orchestration/app-service/session-detail-publisher.test.ts
+  h_4b47e9e4a8b456 2
+tests/unit/orchestration/app-service/socket-runtime-client.test.ts
+  h_4b47e9e4a8b456 6-7,48
+tests/unit/orchestration/app-service/web-socket-rpc.test.ts
+  h_4b47e9e4a8b456 2-4,34,94-95,139
+tests/unit/orchestration/app-service/worker-background-client.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/config/config-models-step-cleanup.test.ts
+  h_4b47e9e4a8b456 26
+tests/unit/orchestration/migrations/context-recipient-step-id-migration.test.ts
+  h_4b47e9e4a8b456 35
+tests/unit/orchestration/modules/remote/_remote-device-fixtures.ts
+  h_4b47e9e4a8b456 1-2,56-57
+tests/unit/orchestration/modules/remote/relay-socket-rpc.test.ts
+  h_4b47e9e4a8b456 3-5,9,14,21,117,126,128,151,160,162,196,237,243
+tests/unit/orchestration/modules/remote/remote-access-ownership.test.ts
+  h_4b47e9e4a8b456 5-6,310
+tests/unit/orchestration/modules/remote/remote-access.test.ts
+  h_4b47e9e4a8b456 5-6,219-220,261,284,439
+tests/unit/orchestration/modules/remote/service.test.ts
+  h_4b47e9e4a8b456 19
+tests/unit/orchestration/modules/subagents/tool-summary.test.ts
+  h_4b47e9e4a8b456 250-252
+tests/unit/orchestration/session/provider-request-audit-reconstruction.test.ts
+  h_4b47e9e4a8b456 489
+tests/unit/orchestration/session/provider-request-audit-store.test.ts
+  h_4b47e9e4a8b456 440
+tests/unit/orchestration/workflow-host/path-workflow.test.ts
+  h_4b47e9e4a8b456 314,336,601,626
+tests/unit/protocol/client/_connection-fixtures.ts
+  h_4b47e9e4a8b456 5-8,77,94-95,97-102,145,217
+tests/unit/protocol/client/connection-lane.test.ts
+  h_4b47e9e4a8b456 5-7,19,293,298,300-301,303-307,390,392
+tests/unit/protocol/client/connection-reattach.test.ts
+  h_4b47e9e4a8b456 8
+tests/unit/protocol/client/connection.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/protocol/client/open-session-keeper.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/protocol/client/session-controls.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/protocol/client/transcript-store.test.ts
+  h_4b47e9e4a8b456 458
+tests/unit/protocol/modules/remote/relay-channel.test.ts
+  h_4b47e9e4a8b456 2-3,179,192-194,309,317
+tests/unit/protocol/modules/remote/relay-client.test.ts
+  h_4b47e9e4a8b456 2-3,92
+tests/unit/protocol/modules/remote/sealed-socket.test.ts
+  h_4b47e9e4a8b456 2-3,81-82
+tests/unit/protocol/protocol-closure-purity.test.ts
+  h_4b47e9e4a8b456 120
+tests/unit/scripts/webview-build.test.ts
+  h_4b47e9e4a8b456 6,8,62-73,90
+tests/unit/tui/hooks/use-chat-mode.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/tui/hooks/use-session-controls.test.ts
+  h_4b47e9e4a8b456 2-3
+tests/unit/tui/modules/remote/use-remote-modal.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/workflows/output-contract/compile.test.ts
+  h_4b47e9e4a8b456 63,97
+tests/unit/workflows/vm/compile.test.ts
+  h_4b47e9e4a8b456 426-427,433
+tests/unit/workflows/vm/historical-replay.test.ts
+  h_4b47e9e4a8b456 227-277
+tests/unit/workflows/vm/host-follow-up-resume.test.ts
+  h_4b47e9e4a8b456 137
+tests/unit/workflows/vm/launch-atomicity.test.ts
+  h_4b47e9e4a8b456 259
+tests/unit/workflows/vm/loop-until-dry.test.ts
+  h_4b47e9e4a8b456 78
+vscode/package.json
+  h_4b47e9e4a8b456 378
+vscode/src/runtime/node-socket.ts
+  h_4b47e9e4a8b456 4
+webview/build.ts
+  h_4b47e9e4a8b456 52-58,64
+webview/editor/post-message-socket.ts
+  h_4b47e9e4a8b456 2
+webview/local/main.tsx
+  h_4b47e9e4a8b456 2
+webview/package.json
+  h_4b47e9e4a8b456 13
+webview/src/app/client-context-fixture.ts
+  h_4b47e9e4a8b456 2
+webview/src/app/module-host-presence.test.ts
+  h_4b47e9e4a8b456 3
+webview/src/client/failure-message.test.ts
+  h_4b47e9e4a8b456 4
+webview/src/client/host-commands.test.ts
+  h_4b47e9e4a8b456 5
+webview/src/client/input-reload.test.ts
+  h_4b47e9e4a8b456 9
+webview/src/client/session-lanes.test.ts
+  h_4b47e9e4a8b456 10
+webview/src/client/session-selection.test.ts
+  h_4b47e9e4a8b456 7
+webview/src/host.ts
+  h_4b47e9e4a8b456 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f205350ccf3cb2262c1b1e2c8654cf03dbbd7944",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
