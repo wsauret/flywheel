@@ -1,0 +1,14 @@
+tests/unit/orchestration/modules/development/benchmark-tool-execution.test.ts
+  h_4b47e9e4a8b456 258-261,263-265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2a91c83be8f93fcaddd956293a117397f63f664e",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
