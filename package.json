@@ -119,7 +119,7 @@
     "amaro": "1.3.0",
     "diff": "9.0.0",
     "effect": "4.1.2",
-    "fuzzysort": "^3.1.0",
+    "fuzzysort": "^4.0.2",
     "highlight.js": "^11.12.0",
     "js-yaml": "^4.1.1",
     "jsonc-parser": "3.3.1",
