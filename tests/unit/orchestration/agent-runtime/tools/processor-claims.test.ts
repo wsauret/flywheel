@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, jest } from "bun:test";
 import type { CommandHandover } from "../../../../../src/infra/command-handover.js";
 import type { HandoverAnswer } from "../../../../../src/infra/owned-subprocess.js";
 import { armUnheldDeadline, createProcessorClaims } from "../../../../../src/orchestration/agent-runtime/tools/processor-claims.js";
@@ -79,23 +79,32 @@ describe("processor claims", () => {
 
 describe("a deadline that counts only time not held", () => {
   it("moves later by the hold, at the release of the hold", async () => {
-    const claims = createProcessorClaims();
-    const { owned } = running("owned:a");
-    claims.claim(owned, { order: 1, exempt: false });
-    claims.applyHolds([{ token: "owned:a", ahead: 0 }]);
-    let expired = false;
-    const cancel = armUnheldDeadline(Date.now() + 5, claims.heldTime("owned:a"), () => { expired = true; });
+    // The clock is faked, so a stall of a slow runner's event loop cannot use up the deadline that remains after the
+    // release.
+    jest.useFakeTimers();
     try {
-      await Bun.sleep(25);
-      expect(expired).toBe(false);
-      claims.applyHolds([]);
-      await Bun.sleep(1);
-      // About 25 ms were held, so about 5 ms of the deadline remain.
-      expect(expired).toBe(false);
-      await Bun.sleep(25);
-      expect(expired).toBe(true);
+      const claims = createProcessorClaims();
+      const { owned } = running("owned:a");
+      claims.claim(owned, { order: 1, exempt: false });
+      claims.applyHolds([{ token: "owned:a", ahead: 0 }]);
+      let expired = false;
+      const cancel = armUnheldDeadline(Date.now() + 5, claims.heldTime("owned:a"), () => { expired = true; });
+      try {
+        jest.advanceTimersByTime(25);
+        expect(expired).toBe(false);
+        claims.applyHolds([]);
+        // The deadline arms again when the release settles.
+        await claims.heldTime("owned:a").released();
+        // 25 ms were held, so 5 ms of the deadline remain.
+        jest.advanceTimersByTime(4);
+        expect(expired).toBe(false);
+        jest.advanceTimersByTime(1);
+        expect(expired).toBe(true);
+      } finally {
+        cancel();
+      }
     } finally {
-      cancel();
+      jest.useRealTimers();
     }
   });
 
