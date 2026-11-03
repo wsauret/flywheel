@@ -1,0 +1,16 @@
+src/infra/descriptor-directory-win32-native.ts
+  h_4b47e9e4a8b456 181-197,199-207,292
+tests/unit/infra/descriptor-directory-win32-native.test.ts
+  h_4b47e9e4a8b456 25-36,43-47,49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "da6876b439c7e3a9afd28af294cbc38e90518b62",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
