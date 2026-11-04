@@ -1,0 +1,24 @@
+bun.lock
+  h_4b47e9e4a8b456 40,1358
+knip.jsonc
+  h_4b47e9e4a8b456 35
+package.json
+  h_4b47e9e4a8b456 142
+src/orchestration/app-service/app-service.ts
+  h_4b47e9e4a8b456 52-53,112-113
+src/orchestration/app-service/project-execution-runtime.ts
+  h_4b47e9e4a8b456 93-94,511,516
+src/orchestration/app-service/runtime-maintenance-worker.ts
+  h_4b47e9e4a8b456 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "116f3cafde250d8189f9cf799edda9a7c58285ce",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
