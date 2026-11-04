@@ -1,0 +1,24 @@
+THIRD-PARTY-LICENSES.txt
+  h_4b47e9e4a8b456 37536-37537
+bun.lock
+  h_4b47e9e4a8b456 26,1468
+package.json
+  h_4b47e9e4a8b456 128
+src/orchestration/agent-runtime/llm/openai-helpers.ts
+  h_4b47e9e4a8b456 17,70-72,74,83,101,108,358-362
+src/orchestration/agent-runtime/llm/provider-failure.ts
+  h_4b47e9e4a8b456 258-260
+tests/unit/orchestration/agent-runtime/llm/openai-error-classification.test.ts
+  h_4b47e9e4a8b456 230-258,270-287
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "acfbb24dd9b67068045d185308a891f832dace3a",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
