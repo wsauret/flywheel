@@ -1,0 +1,18 @@
+docs/architecture-intent/protocol.md
+  h_4b47e9e4a8b456 75
+src/orchestration/app-service/runtime-event-delivery.ts
+  h_4b47e9e4a8b456 57-61,63,136
+tests/unit/orchestration/app-service/runtime-event-stream.test.ts
+  h_4b47e9e4a8b456 12-13,272,274-283,317-320,333-334
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "776fad2050d29aa194fbeb0eb7f9d34cc2debfbd",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
