@@ -1,7 +1,6 @@
 import { StyledText, bold as stBold, fg as stFg, type TextChunk } from "@opentui/core"
 import type { TuiTheme } from "@tui/context/theme/resolve"
-import stringWidth from "string-width"
-import { truncateToWidth } from "../utils/text.js"
+import { displayWidth, truncateToWidth } from "../utils/text.js"
 import type { ModelAssignmentRow, ModelOptionRow, ModelSelectionEffort } from "../../protocol/model-assignment-protocol-types.js"
 import type { RuntimeAuthView } from "../../protocol/auth-status-protocol-types.js"
 import { isModelTierReference } from "../../protocol/model-tier-reference.js"
@@ -18,11 +17,11 @@ export function modelAssignmentText(row: ModelAssignmentRow, selected: boolean, 
   const model = unresolved ? unresolvedAssignmentLabel(auth) : row.model
   const effortSuffix = unresolved ? "" : ` ${effortDisplayLabel(row.effort)}`
   // Exact model identity affects capability and cost, so the assignment label yields space first.
-  const fixedWidth = (headingLabel ? 2 : 3) /* cursor and field separators */ + stringWidth(effortSuffix) + stringWidth(sourceLabel)
+  const fixedWidth = (headingLabel ? 2 : 3) /* cursor and field separators */ + displayWidth(effortSuffix) + displayWidth(sourceLabel)
   const fieldsWidth = Math.max(0, width - fixedWidth)
-  const renderedLabelWidth = Math.min(labelWidth + (headingLabel ? 1 : 0), Math.max(0, fieldsWidth - stringWidth(model)))
+  const renderedLabelWidth = Math.min(labelWidth + (headingLabel ? 1 : 0), Math.max(0, fieldsWidth - displayWidth(model)))
   const renderedLabel = truncateToWidth(row.label, renderedLabelWidth)
-  const labelText = `${headingLabel ? "" : " "}${renderedLabel}${" ".repeat(renderedLabelWidth - stringWidth(renderedLabel))}`
+  const labelText = `${headingLabel ? "" : " "}${renderedLabel}${" ".repeat(renderedLabelWidth - displayWidth(renderedLabel))}`
   const modelLabel = truncateToWidth(model, fieldsWidth - renderedLabelWidth)
   const chunks: TextChunk[] = [
     stFg(selected ? theme.primary : theme.textMuted)(selected ? ">" : " "),
@@ -49,8 +48,8 @@ export interface ModelLabelColumn {
 
 export function modelLabelColumn(rows: readonly ModelOptionRow[]): ModelLabelColumn {
   return {
-    labelWidth: Math.max(MIN_LABEL_CELLS, ...rows.map((row) => stringWidth(modelOptionLabel(row)))),
-    markersWidth: Math.max(0, ...rows.map((row) => stringWidth(rowMarkers(row).map((marker) => marker.text).join("")))),
+    labelWidth: Math.max(MIN_LABEL_CELLS, ...rows.map((row) => displayWidth(modelOptionLabel(row)))),
+    markersWidth: Math.max(0, ...rows.map((row) => displayWidth(rowMarkers(row).map((marker) => marker.text).join("")))),
   }
 }
 
@@ -91,12 +90,12 @@ export function modelText(
   const compact = fullLabelCell < MIN_LABEL_CELLS
   const markers = compact ? [] : rowMarkers(row).map((marker) => stFg(theme[marker.tone])(marker.text))
   // The refusal must keep space beside the name even when the badges yield.
-  const reasonWidth = compact && reason ? Math.min(stringWidth(reason) + 1, Math.max(0, width - 2 - MIN_LABEL_CELLS)) : 0
+  const reasonWidth = compact && reason ? Math.min(displayWidth(reason) + 1, Math.max(0, width - 2 - MIN_LABEL_CELLS)) : 0
   const labelCell = compact
     ? Math.max(0, Math.min(column.labelWidth, width - 2 - (showsEffort ? 1 + EFFORT_WORD_CELLS : 0) - reasonWidth))
     : fullLabelCell
   const label = labelChunks(row, labelCell, theme)
-  const labelPad = labelCell - label.reduce((total, chunk) => total + stringWidth(chunk.text), 0)
+  const labelPad = labelCell - label.reduce((total, chunk) => total + displayWidth(chunk.text), 0)
   const chunks: TextChunk[] = [
     stFg(selected ? theme.primary : theme.textMuted)(selected ? ">" : " "),
     stFg(theme.text)(" "),
@@ -115,7 +114,7 @@ export function modelText(
   }
   chunks.push(...markers)
   if (reason) {
-    const usedWidth = chunks.reduce((total, chunk) => total + stringWidth(chunk.text), 0)
+    const usedWidth = chunks.reduce((total, chunk) => total + displayWidth(chunk.text), 0)
     const reasonText = truncateToWidth(` ${reason}`, width - usedWidth)
     if (reasonText) chunks.push(stFg(theme.warning)(reasonText))
   }
@@ -127,7 +126,7 @@ function labelChunks(row: ModelOptionRow, labelCell: number, theme: TuiTheme): T
   if (!row.inherit) return [stFg(row.selectable ? theme.text : theme.textMuted)(label)]
   return [
     stFg(theme.primary)(label),
-    stFg(theme.textSubtle)(truncateToWidth(inheritDetail(row), labelCell - stringWidth(label))),
+    stFg(theme.textSubtle)(truncateToWidth(inheritDetail(row), labelCell - displayWidth(label))),
   ]
 }
 

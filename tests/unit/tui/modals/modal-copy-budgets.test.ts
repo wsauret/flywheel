@@ -1,6 +1,6 @@
 import { usageFooterRows } from "../../../../src/tui/modules/subscription-usage/footer.js"
 import { describe, expect, it } from "bun:test"
-import stringWidth from "string-width"
+import { displayWidth } from "../../../../src/tui/utils/text.js"
 import { SETTING_ROWS, SETTING_SECTIONS } from "../../../../src/protocol/setting-catalog.js"
 import { DEFAULT_ROLES } from "../../../../src/orchestration/config/roles.js"
 import { SHIPPED_MODULES } from "../../../../src/orchestration/modules.js"
@@ -86,7 +86,7 @@ describe("modal authored copy budgets", () => {
   it("keeps every production-authored description and control row within its modal content width", () => {
     const offenders = [...standardControls, ...settingDescriptions, ...moduleDescriptions, ...modelDescriptions, ...modelHelpRows, ...usageRows, ...subscriptionSpendConsentCopy].flatMap(([modal, text, frameWidth]) => {
       const limit = modalCopyLimit(frameWidth ?? MODAL_FRAME_WIDTHS[modal])
-      const width = stringWidth(text)
+      const width = displayWidth(text)
       return width > limit ? [`${modal}: ${width}/${limit} cells: ${JSON.stringify(text)}`] : []
     })
     expect(offenders).toEqual([])

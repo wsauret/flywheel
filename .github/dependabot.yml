@@ -13,13 +13,21 @@ updates:
   # its own pull request. That pull request is the notice that an update is
   # available: closing it skips only that release, and the next release opens
   # a new one. Such packages break on minor releases or need a live check, so
-  # their upgrade is a deliberate change: effect, web-tree-sitter (its 0.x
-  # minor releases move its wasm asset), and the provider SDKs, whose bumps
-  # change provider traffic. Update types alone cannot separate them, because
-  # Dependabot counts a 0.x bump and a prerelease-to-release bump as minor.
+  # their upgrade is a deliberate change: effect and the provider SDKs, whose
+  # bumps change provider traffic. Update types alone cannot separate them,
+  # because Dependabot counts a 0.x bump and a prerelease-to-release bump as
+  # minor.
   #
   # @types/vscode is ignored because it must not exceed engines.vscode, which
   # vsce enforces; raising it raises the oldest supported editor.
+  #
+  # Major Babel bumps are ignored because babel-preset-solid, which the web
+  # client compiles with, declares a peer of @babel/core 7. Remove the rule
+  # once the preset accepts the new major.
+  #
+  # web-tree-sitter is ignored because @opentui/core pins it as an exact peer
+  # and builds that version into its parser worker; it moves by hand in the
+  # opentui upgrade that raises the peer.
   - package-ecosystem: bun
     directory: /
     schedule:
@@ -30,7 +38,6 @@ updates:
         patterns: ["*"]
         exclude-patterns:
           - "effect"
-          - "web-tree-sitter"
           - "@anthropic-ai/sdk"
           - "openai"
           - "@opentui/*"
@@ -51,6 +58,9 @@ updates:
     ignore:
       - dependency-name: "@anthropic-ai/claude-agent-sdk"
       - dependency-name: "@types/vscode"
+      - dependency-name: "web-tree-sitter"
+      - dependency-name: "@babel/*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:

@@ -24,8 +24,7 @@ import { AUTH_CONTROL_COPY, AUTH_LIST_ACTION_COPY, MODAL_FRAME_WIDTHS, SUBSCRIPT
 import type { SubscriptionSpendConsentControlState } from "../hooks/use-subscription-spend-consent-control.js"
 import { CONSENT_ACTION_CURSOR } from "../hooks/use-subscription-spend-consent-modal.js"
 import { paidUseQuestionFooterRows, paidUseQuestionLines, subscriptionSpendConsentDetail, subscriptionSpendFooterRows, subscriptionSpendWarnsPrepaid } from "./subscription-spend-consent-modal.js"
-import stringWidth from "string-width"
-import { truncateToWidth } from "../utils/text.js"
+import { displayWidth, truncateToWidth } from "../utils/text.js"
 import { providerCatalogRequiresReconnect, providerCatalogStatusText } from "./provider-catalog-text.js"
 import { useKeyedListScroll } from "../hooks/use-keyed-list-scroll.js"
 import { BOLD } from "../utils/text-attributes.js"
@@ -224,8 +223,8 @@ function AccountRow(props: { row: Extract<AuthRow, { kind: "account" }>; index: 
     const accountState = authStatusPresentation(accountStatusInput(props.row.option, props.row.account))
     const capabilityStatus = props.row.capabilityAccount === undefined ? undefined : `usage ${usageStatusLabel(props.row.capabilityAccount.providerStatus)}`
     const status = props.row.saving ? "Saving..." : capabilityStatus === undefined ? accountState.text : `${accountState.text} · ${capabilityStatus}`
-    const label = truncateToWidth(`  └ ${accountTitle(props.row.account)}`, Math.max(0, props.rowWidth - stringWidth(status) - 2))
-    const pad = Math.max(1, props.rowWidth - stringWidth(label) - stringWidth(status) - 1)
+    const label = truncateToWidth(`  └ ${accountTitle(props.row.account)}`, Math.max(0, props.rowWidth - displayWidth(status) - 2))
+    const pad = Math.max(1, props.rowWidth - displayWidth(label) - displayWidth(status) - 1)
     const statusColor = accountState.tone === "healthy" ? theme.success : accountState.tone === "warning" ? theme.warning : theme.textMuted
     return new StyledText([stFg(active() ? theme.primary : theme.textMuted)(active() ? ">" : " "), stFg(theme.text)(label), stFg(theme.text)(" ".repeat(pad)), stFg(statusColor)(status)])
   })
@@ -239,9 +238,9 @@ function providerRowContent(row: Extract<AuthRow, { kind: "provider" }>, active:
   const capabilityStatus = row.capabilityAccount === undefined ? undefined : `usage ${usageStatusLabel(row.capabilityAccount.providerStatus)}`
   const status = capabilityStatus === undefined ? presentation.text : `${presentation.text} · ${capabilityStatus}`
   const statusDisplay = row.saving ? "Saving..." : presentation.tone === "healthy" ? `✓ ${status}` : status
-  const label = truncateToWidth(rawLabel, Math.max(0, rowWidth - stringWidth(cursor) - stringWidth(statusDisplay) - 1))
+  const label = truncateToWidth(rawLabel, Math.max(0, rowWidth - displayWidth(cursor) - displayWidth(statusDisplay) - 1))
   const statusColor = presentation.tone === "healthy" ? theme.success : presentation.tone === "warning" ? theme.warning : theme.textMuted
-  const pad = Math.max(1, rowWidth - stringWidth(cursor) - stringWidth(label) - stringWidth(statusDisplay))
+  const pad = Math.max(1, rowWidth - displayWidth(cursor) - displayWidth(label) - displayWidth(statusDisplay))
 
   return new StyledText([
     stFg(active ? theme.primary : theme.textMuted)(cursor),
@@ -309,14 +308,14 @@ function ProviderModelRowView(props: { row: ProviderModelRow; index: number; cur
   const content = createMemo(() => {
     const cursor = active() ? "> " : "  "
     const marker = props.row.optInAvailable ? `${props.row.checked ? "[x]" : "[ ]"} ` : "    "
-    const contentWidth = Math.max(0, props.width - stringWidth(cursor) - stringWidth(marker))
+    const contentWidth = Math.max(0, props.width - displayWidth(cursor) - displayWidth(marker))
     const label = truncateToWidth(props.row.modelId, contentWidth)
-    const reasonWidth = Math.max(0, contentWidth - stringWidth(label))
+    const reasonWidth = Math.max(0, contentWidth - displayWidth(label))
     const suffix = props.row.unavailableReason !== undefined ? " · Unavailable" : props.row.accessState === "pending" ? " · Access pending" : ""
     const detail = props.row.unavailableReason === undefined ? "" : ` · ${props.row.unavailableReason}`
-    const detailWidth = reasonWidth - stringWidth(suffix)
-    const renderedDetail = detail !== "" && detailWidth >= stringWidth(" · x...") ? truncateToWidth(detail, detailWidth) : ""
-    const reason = suffix === "" || reasonWidth < stringWidth(suffix) ? "" : `${suffix}${renderedDetail}`
+    const detailWidth = reasonWidth - displayWidth(suffix)
+    const renderedDetail = detail !== "" && detailWidth >= displayWidth(" · x...") ? truncateToWidth(detail, detailWidth) : ""
+    const reason = suffix === "" || reasonWidth < displayWidth(suffix) ? "" : `${suffix}${renderedDetail}`
     return new StyledText([
       stFg(active() ? theme.primary : theme.textMuted)(cursor),
       stFg(props.row.optInAvailable ? theme.text : theme.textMuted)(`${marker}${label}`),

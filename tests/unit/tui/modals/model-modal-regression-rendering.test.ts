@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { modelAssignmentText, modelLabelColumn, modelText, providerChainText } from "../../../../src/tui/modals/model-modal-text.js";
 import { contextLine } from "../../../../src/tui/modals/model-modal-chrome.js";
-import stringWidth from "string-width";
+import { displayWidth } from "../../../../src/tui/utils/text.js";
 import { styledTextContent, theme } from "./_model-modal-fixtures";
 import type { ModelOptionRow } from "../../../../src/protocol/model-assignment-protocol-types.js";
 
@@ -184,7 +184,7 @@ describe("model modal rendering structure", () => {
 
     expect(content).toContain("gpt-6.1-sol Low ↳");
     expect(content).not.toContain("inherited");
-    expect(stringWidth(content)).toBeLessThanOrEqual(32);
+    expect(displayWidth(content)).toBeLessThanOrEqual(32);
   });
 
   test("assignments show no indicator when either value differs", () => {
@@ -225,7 +225,7 @@ describe("model modal rendering structure", () => {
     const compact = modelText(row, true, theme, 26);
     expect(styledTextContent(compact)).toContain("Inherit Reviewer");
     expect(styledTextContent(compact)).toContain("Low");
-    expect(stringWidth(styledTextContent(compact))).toBeLessThanOrEqual(26);
+    expect(displayWidth(styledTextContent(compact))).toBeLessThanOrEqual(26);
     expect(compact.chunks.find((chunk) => chunk.text.includes("Inherit"))?.fg).toEqual(theme.primary);
     expect(compact.chunks.find((chunk) => chunk.text.includes("Low"))?.fg).toEqual(theme.textMuted);
   });
@@ -286,10 +286,10 @@ describe("model modal rendering structure", () => {
     expect(new Set(rendered.map((text) => text.indexOf("■"))).size).toBe(1);
     expect(rendered[0]!.indexOf("■")).toBe(18);
     expect(rendered[1]).toEndWith("High   default current");
-    for (const text of rendered) expect(stringWidth(text)).toBeLessThanOrEqual(48);
+    for (const text of rendered) expect(displayWidth(text)).toBeLessThanOrEqual(48);
     const compact = modelText(rows[1]!, true, theme, 26, column, "low");
     expect(styledTextContent(compact)).toMatch(/^> gpt-6\.1-sol\s+Low   $/);
-    expect(stringWidth(styledTextContent(compact))).toBe(26);
+    expect(displayWidth(styledTextContent(compact))).toBe(26);
     expect(compact.chunks.find((chunk) => chunk.text === "gpt-6.1-sol")?.fg).toEqual(theme.text);
     expect(compact.chunks.find((chunk) => chunk.text.includes("Low"))?.fg).toEqual(theme.primary);
   });
@@ -316,12 +316,12 @@ describe("model modal rendering structure", () => {
     expect(rendered[0]).toContain("gpt-6.1-sol");
     expect(rendered[1]).toContain("gpt-5.4");
     expect(rendered[1]).toContain("not available");
-    for (const text of rendered) expect(stringWidth(text)).toBeLessThanOrEqual(52);
+    for (const text of rendered) expect(displayWidth(text)).toBeLessThanOrEqual(52);
     const compact = modelText(rows[1]!, true, theme, 26, column);
     expect(styledTextContent(compact)).toContain("gpt-5.4");
     expect(styledTextContent(compact)).toContain("not avai");
     expect(styledTextContent(compact)).not.toContain("Medium");
-    expect(stringWidth(styledTextContent(compact))).toBeLessThanOrEqual(26);
+    expect(displayWidth(styledTextContent(compact))).toBeLessThanOrEqual(26);
     expect(compact.chunks.find((chunk) => chunk.text === "gpt-5.4")?.fg).toEqual(theme.textMuted);
     expect(compact.chunks.find((chunk) => chunk.text.includes("not avai"))?.fg).toEqual(theme.warning);
   });
@@ -360,7 +360,7 @@ describe("model modal rendering structure", () => {
     }, false, theme, 26, 48));
 
     expect(content).toBe("  審査🚀 Implementation ... gpt-6.1-sol Medium ↳");
-    expect(stringWidth(content)).toBe(48);
+    expect(displayWidth(content)).toBe(48);
   });
 
   test("unresolved assignment rows wait for scoped auth before naming a missing provider", () => {
