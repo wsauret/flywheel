@@ -1,0 +1,40 @@
+THIRD-PARTY-LICENSES.txt
+  h_4b47e9e4a8b456 10871-10872,10876-11082,26775-26982
+bun.lock
+  h_4b47e9e4a8b456 9,120
+package.json
+  h_4b47e9e4a8b456 111
+src/orchestration/agent-runtime/llm/anthropic-usage.ts
+  h_4b47e9e4a8b456 74-76,78-79,81
+src/orchestration/agent-runtime/llm/anthropic.ts
+  h_4b47e9e4a8b456 23,69-78,80,254-257,261,263,294-295,297,442
+src/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-stream.ts
+  h_4b47e9e4a8b456 99-100,108
+src/orchestration/modules/provider-claude-agent-sdk/cli-images.ts
+  h_4b47e9e4a8b456 1,24-25,27
+src/orchestration/modules/provider-claude-agent-sdk/cli-view.ts
+  h_4b47e9e4a8b456 2,15,211
+tests/unit/orchestration/agent-runtime/llm/anthropic-adapter-config.test.ts
+  h_4b47e9e4a8b456 479-504
+tests/unit/orchestration/agent-runtime/request-owned-fallback.test.ts
+  h_4b47e9e4a8b456 130,141
+tests/unit/orchestration/modules/provider-claude-agent-sdk/_bridge-harness.ts
+  h_4b47e9e4a8b456 36,85,100
+tests/unit/orchestration/modules/provider-claude-agent-sdk/assistant-assembler.test.ts
+  h_4b47e9e4a8b456 11,26
+tests/unit/orchestration/modules/provider-claude-agent-sdk/bridge.test.ts
+  h_4b47e9e4a8b456 459,464
+tests/unit/orchestration/modules/provider-claude-agent-sdk/sdk-events.test.ts
+  h_4b47e9e4a8b456 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4749d44b4f4b3016d80485f3a834d9f942470bce",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
