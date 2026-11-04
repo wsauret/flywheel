@@ -1,19 +1,25 @@
-import { TextBuffer, TextBufferView, type TextChunk } from "@opentui/core"
+import { measureEditText, TextBuffer, TextBufferView, type TextChunk } from "@opentui/core"
 import { useRenderer } from "@opentui/solid"
 import { onCleanup } from "solid-js"
-import stringWidth from "string-width"
 
 const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" })
 
 const NON_ASCII_PRINTABLE = /[^\x20-\x7E]/
+/** Control characters other than tab. A text renderable draws them in no
+ *  column, where OpenTUI's edit measure counts each as a visible escape. */
+// oxlint-disable-next-line no-control-regex -- boundary: the renderer draws these controls in no column, and OpenTUI's measure counts them
+const ZERO_WIDTH_CONTROLS = /[\x00-\x08\x0A-\x1F\x7F-\x9F]/g
 
-/** Terminal display width. Printable ASCII - the overwhelming case for tool
- *  output and streaming logs - is width-per-char with no Unicode machinery.
- *  Anything else takes string-width's full path (ANSI strip, emoji sequences,
- *  east-asian width, grapheme segmentation), which costs an Intl.Segmenter
- *  pass per call and must stay off per-character hot paths. */
+/** The columns that the renderer draws `text` in. Printable ASCII, the
+ *  overwhelming case for tool output and streaming logs, is one column per
+ *  character. Anything else takes OpenTUI's own native measure with its
+ *  default `unicode` width method, so that layout agrees cell for cell with
+ *  what the renderer draws. A JavaScript width table does not: string-width
+ *  counts text-style symbols such as U+2764 as one column, which the
+ *  renderer draws in two. The renderer draws the text of an ANSI escape
+ *  after its ESC, so this measure counts that text too. */
 export function displayWidth(text: string): number {
-  return NON_ASCII_PRINTABLE.test(text) ? stringWidth(text) : text.length
+  return NON_ASCII_PRINTABLE.test(text) ? measureEditText(text.replace(ZERO_WIDTH_CONTROLS, ""), { widthMethod: "unicode" }) : text.length
 }
 
 /** Measures word-wrapped rows with the renderer's native width rules.
@@ -82,8 +88,8 @@ export function truncateText(text: string, maxLen: number): string {
 /** Truncate text to a terminal display width without splitting grapheme clusters. */
 export function truncateToWidth(text: string, maxWidth: number, marker = "..."): string {
   if (maxWidth <= 0) return ""
-  if (stringWidth(text) <= maxWidth) return text
-  const markerWidth = stringWidth(marker)
+  if (displayWidth(text) <= maxWidth) return text
+  const markerWidth = displayWidth(marker)
   if (maxWidth <= markerWidth) return sliceToWidth(text, maxWidth)
   return `${sliceToWidth(text, maxWidth - markerWidth)}${marker}`
 }
@@ -112,7 +118,7 @@ function sliceToWidth(text: string, maxWidth: number): string {
   let result = ""
   let width = 0
   for (const { segment } of graphemeSegmenter.segment(text)) {
-    const segmentWidth = stringWidth(segment)
+    const segmentWidth = displayWidth(segment)
     if (width + segmentWidth > maxWidth) break
     result += segment
     width += segmentWidth

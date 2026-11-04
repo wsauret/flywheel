@@ -227,6 +227,35 @@ describe("classifyOpenAIStreamError folds ChatGptAdapterApiError into the stream
     expect(classified.kind).toBe("transient");
   });
 
+  test.each([
+    { code: "server_error", expected: "overload" },
+    { code: "rate_limit_exceeded", expected: "rate_limit" },
+    { code: "context_length_exceeded", expected: "ContextLengthExceededError" },
+  ])("a named Responses error frame with $code classifies like the frame it carries", async ({ code, expected }) => {
+    const classified = classify(await namedErrorFrameFailure({ type: "error", sequence_number: 1, code, message: "frame failure", param: null }));
+    expect(classified instanceof LlmStreamError ? classified.kind : classified.name).toBe(expected);
+    expect(classified.message).toContain("frame failure");
+  });
+
+  test.each([
+    { type: "rate_limit_exceeded", expected: "rate_limit" },
+    { type: "overloaded_error", expected: "overload" },
+  ])("a named error frame that names $type only as its type is classified by it", async ({ type, expected }) => {
+    const classified = classify(await namedErrorFrameFailure({ error: { type, message: "frame failure" } }));
+    expect(classified).toBeInstanceOf(LlmStreamError);
+    if (!(classified instanceof LlmStreamError)) throw new Error("expected LlmStreamError");
+    expect(classified.kind).toBe(expected);
+  });
+
+  test("a named rate-limit error frame keeps the retry-after-ms delay of its response", async () => {
+    const thrown = await namedErrorFrameFailure({ type: "error", sequence_number: 1, code: "rate_limit_exceeded", message: "frame failure", param: null }, "4200");
+    const classified = classify(thrown);
+    expect(classified).toBeInstanceOf(LlmStreamError);
+    if (!(classified instanceof LlmStreamError)) throw new Error("expected LlmStreamError");
+    expect(classified.retryDelayMs).toBe(4200);
+    expect(classified.cause).toBe(thrown);
+  });
+
   test("a coordination failure thrown inside the SDK fetch is unwrapped, terminal, and never a connection blip", () => {
     const coordination = new QuotaCoordinationError({
       message: "the chatgpt quota suppression did not reach the account's availability authority",
@@ -237,6 +266,24 @@ describe("classifyOpenAIStreamError folds ChatGptAdapterApiError into the stream
     expect(classified).toBe(coordination);
   });
 });
+
+/** The error the real SDK throws when a Responses stream sends `data` as a named `event: error` frame. */
+async function namedErrorFrameFailure(data: UnknownRecord, retryAfterMs?: string): Promise<Error> {
+  const sdk = new OpenAI({
+    apiKey: "test-key",
+    maxRetries: 0,
+    fetch: async () => new Response(`event: error\ndata: ${JSON.stringify(data)}\n\n`, { headers: { "content-type": "text/event-stream", ...(retryAfterMs === undefined ? {} : { "retry-after-ms": retryAfterMs }) } }),
+  });
+  try {
+    for await (const _ of await createOpenAIStream(sdk, { model: "gpt-5.4", input: "hi", stream: true }, new AbortController().signal)) {
+      // exhaust
+    }
+  } catch (err) {
+    if (err instanceof Error) return err;
+    throw new Error("the Responses stream threw a non-error value", { cause: err });
+  }
+  throw new Error("the Responses stream did not fail");
+}
 
 /** The error the chat-completions adapter raises when the real SDK meets `error` as an HTTP response with
  *  `status`, or as an in-stream error frame when `status` is undefined. */

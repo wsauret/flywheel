@@ -8,7 +8,7 @@ import { useModalDimensions } from "@tui/hooks/use-modal-dimensions"
 import { BOLD } from "@tui/utils/text-attributes"
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js"
 import { useKeyedListScroll } from "../hooks/use-keyed-list-scroll.js"
-import stringWidth from "string-width"
+import { displayWidth } from "@tui/utils/text"
 import { isSelectableItem } from "./model-modal-helpers.js"
 import { contextLine, descriptionLine, modalHelpRows, modalTitle } from "./model-modal-chrome.js"
 import { modelAssignmentText, modelLabelColumn, modelText, providerChainText, type ModelLabelColumn } from "./model-modal-text.js"
@@ -150,7 +150,7 @@ function assignmentRows(items: readonly ModelAssignmentItem[]): ModalRow[] {
   const rowIndent = (item: ModelAssignmentItem): number => item.depth * 2
   const labelWidth = Math.max(
     12,
-    ...items.map((item) => item.kind === "assignment" ? stringWidth(item.row.label) + rowIndent(item) : 0),
+    ...items.map((item) => item.kind === "assignment" ? displayWidth(item.row.label) + rowIndent(item) : 0),
   )
   return items.map((item) => ({
     kind: "assignment",

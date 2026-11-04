@@ -255,7 +255,9 @@ export function isTransientNetworkError(error: unknown): boolean {
   return NETWORK_ERROR_PATTERN.test(error.message);
 }
 
-function getRetryAfterMs(error: unknown): number | undefined {
+/** The provider's backoff hint, in milliseconds, from the `retry-after-ms` or `retry-after` response header of
+ *  `error`, or undefined when it has no headers or no usable hint. */
+export function getRetryAfterMs(error: unknown): number | undefined {
   if (!hasHeaders(error)) return undefined;
 
   // Anthropic and OpenAI/ChatGPT backend both emit `retry-after-ms` for millisecond-resolution

@@ -42,10 +42,9 @@ const BAND_GAP = "  "
  *  on a band of one line, unless the text is shorter. */
 const NAME_MIN_WIDTH = 8
 /** The workflow's glyph before its name, as the full-size card's title
- *  draws it, and the columns it takes with its space. The terminal draws
- *  the gear in one cell, where string-width counts the emoji as two. */
+ *  draws it, and the columns it takes with its space. */
 const NAME_GLYPH = `${WORKFLOW_GLYPH} `
-const NAME_GLYPH_WIDTH = 2
+const NAME_GLYPH_WIDTH = displayWidth(NAME_GLYPH)
 
 export interface WorkflowAgentViewerProps {
   readonly workflowId: string

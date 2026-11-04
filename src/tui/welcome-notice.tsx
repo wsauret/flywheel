@@ -6,7 +6,7 @@ import { useTheme } from "@tui/context/theme"
 import type { TuiTheme } from "@tui/context/theme/resolve.js"
 import { createEffect, createMemo, Show, type Accessor, untrack } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
-import stringWidth from "string-width"
+import { displayWidth } from "./utils/text.js"
 import { fontTipMessage } from "../orchestration/font-installer.js"
 import { collapseHome } from "../infra/home-path.js"
 import type { ModuleRow } from "../protocol/protocol-module.js"
@@ -155,7 +155,7 @@ function titleContent(identity: string | undefined, theme: TuiTheme): StyledText
 function commandRowContent(label: string, value: string, command: string, verb: string, width: number, theme: TuiTheme, valueColor: TuiTheme["text"] = theme.text): StyledText {
   const prefix = labelPrefix(label)
   const suffix = verb.length === 0 ? "" : ` ${verb}`
-  const fixedWidth = stringWidth(prefix) + stringWidth("   ") + stringWidth(command) + stringWidth(suffix)
+  const fixedWidth = displayWidth(prefix) + displayWidth("   ") + displayWidth(command) + displayWidth(suffix)
   const visibleValue = fitEnd(value, width - fixedWidth)
   return new StyledText([
     stFg(theme.textMuted)(prefix),
@@ -174,7 +174,7 @@ function moduleRowContent(row: ModuleRow, width: number, theme: TuiTheme): Style
   if (row.action?.kind === "command") return commandRowContent(label, row.value, `/${row.action.id}`, row.hint ?? "", width, theme, valueColor)
   const prefix = labelPrefix(label)
   const hint = row.hint === undefined ? "" : `   ${row.hint}`
-  const visibleValue = fitEnd(row.value, width - stringWidth(prefix) - stringWidth(hint))
+  const visibleValue = fitEnd(row.value, width - displayWidth(prefix) - displayWidth(hint))
   return new StyledText([
     stFg(theme.textMuted)(prefix),
     stFg(valueColor)(visibleValue),
@@ -194,12 +194,12 @@ function labelPrefix(label: string): string {
 }
 
 function valueWidth(innerWidth: number): number {
-  return innerWidth - stringWidth(labelPrefix("directory:"))
+  return innerWidth - displayWidth(labelPrefix("directory:"))
 }
 
 function formatDirectory(directory: string, home: string, maxWidth: number): string {
   const formatted = abbreviatePath(collapseHome(directory, home))
-  if (stringWidth(formatted) <= maxWidth) return formatted
+  if (displayWidth(formatted) <= maxWidth) return formatted
   return fitEnd(formatted, maxWidth)
 }
 
@@ -214,11 +214,11 @@ function abbreviatePath(inputPath: string): string {
 
 function fitEnd(text: string, maxWidth: number): string {
   if (maxWidth <= 0) return ""
-  if (stringWidth(text) <= maxWidth) return text
+  if (displayWidth(text) <= maxWidth) return text
   if (maxWidth === 1) return "…"
   let out = ""
   for (const char of text) {
-    if (stringWidth(`${out}${char}…`) > maxWidth) break
+    if (displayWidth(`${out}${char}…`) > maxWidth) break
     out += char
   }
   return `${out}…`

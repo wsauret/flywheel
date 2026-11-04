@@ -268,7 +268,7 @@ describe("workflow full-size card", () => {
     const wide = await renderCard(paused, { admittedActions: ["workflow.resume", "session.delete"] }, { title: () => chat }, 160)
     expect(wide.frame()).toContain(`‹ ${chat}  ⚙ Probe each surface · Interrupted · 1m 20s`)
     const full = await renderCard(paused, { admittedActions: ["workflow.resume", "session.delete"] }, { title: () => chat }, 100)
-    expect(full.frame()).toMatch(/‹ Investigate the flaky login te…\s+⚙ Probe each surface · Interrupted · 1m 20s\s+Resume\s+x/)
+    expect(full.frame()).toMatch(/‹ Investigate the flaky login tes…\s+⚙ Probe each surface · Interrupted · 1m 20s\s+Resume\s+x/)
     const { frame } = await renderCard({ ...paused, name: "Run workflow with supplied surfaces and files for every reviewer" }, { admittedActions: ["workflow.resume", "background.terminate", "session.delete"], totalTokens: 18_000 }, {}, 60)
     expect(frame()).toMatch(/‹ \S+\s+⚙ \S+ · Interrupted · 1m 20s\s+Resume\s+Stop\s+x/)
   })

@@ -1,4 +1,5 @@
 import type { Renderable, Selection } from "@opentui/core"
+import { displayWidth } from "./text.js"
 
 type SelectedRenderable = Pick<Renderable, "x" | "y" | "width" | "isDestroyed" | "getSelectedText">
 
@@ -99,7 +100,7 @@ function joinRow(pieces: readonly { x: number; text: string }[]): string {
     if (piece.text === "") continue
     if (end !== undefined) line += " ".repeat(Math.max(0, piece.x - end))
     line += piece.text
-    end = piece.x + Bun.stringWidth(piece.text)
+    end = piece.x + displayWidth(piece.text)
   }
   return line
 }
