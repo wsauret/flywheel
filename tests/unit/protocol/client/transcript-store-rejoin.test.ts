@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
+import { jest } from "bun:test"
 
 import { outputCursor } from "../../../../src/protocol/output-protocol-types.js"
 import { createTranscriptStore, type TranscriptChange } from "../../../../src/protocol/client/transcript-store.js"
@@ -498,5 +499,62 @@ describe("transcript store rejoin", () => {
     await settle()
     assert.equal(store.view.streamingOutputChars, 2)
     store.dispose()
+  })
+
+  // While the first read is out, live output is held unseeded and the hold's
+  // own deadline asks for recovery. That read already answers it: discarding
+  // it for another would leave the pane loading for as long as each read
+  // outlasts the deadline and the session streams.
+  test("a read that outlasts the hold deadline still seeds and drains the output that arrived meanwhile", async () => {
+    const pending = Promise.withResolvers<WindowSpec>()
+    const fake = fakeConnection({ windows: [pending.promise] })
+    jest.useFakeTimers()
+    const store = createTranscriptStore({ connection: fake.connection, sessionId: SESSION })
+    try {
+      await settle()
+      fake.emit({ type: "patch", patch: deltaPatch(101, 100, 1, textBlock("live1")) })
+      jest.advanceTimersByTime(2_000)
+      fake.emit({ type: "patch", patch: deltaPatch(102, 101, 2, textBlock("live2")) })
+      pending.resolve({ blocks: [textBlock("a")], startBlockIndex: 0, totalBlocks: 1, snapshotPosition: 100 })
+      await settle()
+      assert.deepEqual(store.view.blocks, [textBlock("a"), textBlock("live1"), textBlock("live2")])
+      assert.equal(store.view.appliedOutputPosition, 102)
+      assert.equal(fake.windowCalls, 1)
+    } finally { store.dispose(); jest.useRealTimers() }
+  })
+
+  // A rejoin queued behind another read unanchors the intake, but that earlier
+  // read seeds it again before the rejoin read goes out. A gap held over that
+  // seed can open on a patch the rejoin read does not cover, so its deadline
+  // must still ask for one more read rather than wait on the rejoin.
+  test("a gap held over an earlier read's seed while a queued rejoin reads still recovers every patch", async () => {
+    const around = Promise.withResolvers<WindowSpec>()
+    const rejoinRead = Promise.withResolvers<WindowSpec>()
+    const fake = fakeConnection({ windows: [
+      { blocks: [textBlock("a")], startBlockIndex: 0, totalBlocks: 1, snapshotPosition: 100 },
+      around.promise,
+      rejoinRead.promise,
+      { blocks: ["a", "b", "c", "d"].map((id) => textBlock(id)), startBlockIndex: 0, totalBlocks: 4, snapshotPosition: 202 },
+    ] })
+    const store = createTranscriptStore({ connection: fake.connection, sessionId: SESSION })
+    try {
+      await settle()
+      const opening = store.openAround("entry-elsewhere")
+      fake.emit({ type: "patch", patch: { cursor: outputCursor(SESSION), position: 150, prevPosition: 0, payload: { kind: "runtime.invalidate", reason: "overflow" } } })
+      around.resolve({ blocks: [textBlock("a"), textBlock("b")], startBlockIndex: 0, totalBlocks: 2, snapshotPosition: 200 })
+      await opening
+      await settle()
+      jest.useFakeTimers()
+      // Position 201 never reaches this client.
+      fake.emit({ type: "patch", patch: deltaPatch(202, 201, 3, textBlock("d")) })
+      jest.advanceTimersByTime(2_000)
+      fake.emit({ type: "patch", patch: deltaPatch(203, 202, 4, textBlock("e")) })
+      rejoinRead.resolve({ blocks: ["a", "b", "c"].map((id) => textBlock(id)), startBlockIndex: 0, totalBlocks: 3, snapshotPosition: 201 })
+      await settle()
+      await settle()
+      assert.deepEqual(store.view.blocks, ["a", "b", "c", "d", "e"].map((id) => textBlock(id)))
+      assert.equal(store.view.appliedOutputPosition, 203)
+      assert.equal(fake.windowCalls, 4)
+    } finally { store.dispose(); jest.useRealTimers() }
   })
 })

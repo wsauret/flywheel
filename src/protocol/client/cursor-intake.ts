@@ -127,7 +127,11 @@ export function createCursorIntake(options: CursorIntakeOptions): CursorIntake {
 
   const recover = (reason: RecoveryReason, invalidation?: RuntimeInvalidationReason): void => {
     cancelGapTimer()
-    clearHeld()
+    // An unseeded hold holds only early patches. The seed that ends the
+    // recovery reclassifies them, and a read already out when the deadline
+    // passed answers from before some of them, so dropping them would open a
+    // gap that seed cannot close. Only overflow drops them, to bound the hold.
+    if (held !== null || reason === "held_overflow") clearHeld()
     // Held position is not cleared here. The recovering read answers with its
     // own snapshot position and seeds over this one; clearing first would make
     // every patch that arrives mid-recovery look like it belongs to a fresh

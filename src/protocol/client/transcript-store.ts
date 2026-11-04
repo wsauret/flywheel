@@ -314,6 +314,13 @@ export function createTranscriptStore(options: TranscriptStoreOptions): Transcri
     cursor,
     onApply: (patch) => { if (isOutputPayload(patch.payload)) applyDelta(patch.payload.delta, patch.position, patch.prevPosition) },
     onRecover: (request) => {
+      // An unseeded hold past its deadline asks for the read a pending rejoin
+      // already makes, and that read's seed drains what the intake kept.
+      // Reading again instead would keep the pane loading for as long as each
+      // read outlasts the deadline while the session streams. A seeded hold
+      // means an earlier queued read seeded the intake and its gap may predate
+      // the rejoin read, so that one still repairs.
+      if (request.reason === "gap_unclosed" && rejoinPending && intake.heldPosition === null) return
       options.onDiagnostic?.("transcript recovering", { reason: request.reason, policy: request.policy, invalidation: request.invalidation })
       // Only a rebase moves the block coordinates. Every other recovery repairs
       // missed frames over the same coordinates.
