@@ -1,0 +1,44 @@
+docs/architecture-intent/agency.md
+  h_4b47e9e4a8b456 93
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 25,31,43
+src/agent-skills/code-review/SKILL.md
+  h_4b47e9e4a8b456 126-127
+src/agent-skills/design/SKILL.md
+  h_4b47e9e4a8b456 25,28,40,63
+src/agent-skills/implementation/SKILL.md
+  h_4b47e9e4a8b456 54
+src/agent-skills/ship/SKILL.md
+  h_4b47e9e4a8b456 13
+src/agent-skills/workflow-authoring/examples/build-review-loop.workflow.yaml
+  h_4b47e9e4a8b456 54
+src/agent-skills/workflow-authoring/references/implement-briefs.md
+  h_4b47e9e4a8b456 12
+src/orchestration/agent-runtime/claude-5-chat-prompt.ts
+  h_4b47e9e4a8b456 108
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 169
+src/orchestration/modules/subagents/execution/prompts.ts
+  h_4b47e9e4a8b456 26
+src/workflows/agents/personas/ship.md
+  h_4b47e9e4a8b456 15
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 1258
+tests/unit/orchestration/agent-runtime/claude-5-chat-prompt.test.ts
+  h_4b47e9e4a8b456 38,48
+tests/unit/orchestration/agent-runtime/conversation-first-delivery.test.ts
+  h_4b47e9e4a8b456 66-71
+tests/unit/orchestration/agent-runtime/subagent/prompts.test.ts
+  h_4b47e9e4a8b456 88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "04c1997c4db072c6b1423f3c64368bf1fce0d396",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
