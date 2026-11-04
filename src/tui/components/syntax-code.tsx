@@ -39,6 +39,8 @@ export function SyntaxCode(props: SyntaxCodeProps): JSX.Element {
           content={props.content}
           syntaxStyle={props.dimColor ? themeCtx.subtleSyntax : themeCtx.syntax}
           streaming={props.streaming === true}
+          // While streaming, OpenTUI keeps the last highlight until the next one lands only when unstyled drawing is off; on, every delta paints a plain frame.
+          drawUnstyledText={props.streaming !== true}
           conceal={true}
           wrapMode="word"
           fg={props.dimColor ? themeCtx.subtleTheme.text : themeCtx.theme.text}

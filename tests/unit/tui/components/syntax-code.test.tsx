@@ -45,7 +45,6 @@ describe("SyntaxCode", () => {
           expect(contrastRatio(span.fg, span.bg)).toBeGreaterThanOrEqual(4.5)
         }
       }
-      expectReadableSpans()
       expect(native.fg.equals(theme.theme.text)).toBe(true)
       expect(native.content).toBe(content())
       expect(native.streaming).toBe(true)
@@ -55,17 +54,22 @@ describe("SyntaxCode", () => {
       await result.renderOnce()
       expectReadableSpans()
 
-      setContent((previous) => `${previous}\nconst third = 3`)
-      await result.renderOnce()
-      expect(nativeCode()).toBe(native)
-      expect(native.content).toBe(content())
+      // Each delta paints a frame before tree-sitter answers; already highlighted lines must keep their spans in it.
+      const highlightedFirstLine = result.captureSpans().lines[0]?.spans
+      expect(highlightedFirstLine?.find((span) => span.text === "const")?.fg.equals(theme.theme.text)).toBe(false)
+      for (const delta of ["\ncon", "st th", "ird = 3"]) {
+        setContent((previous) => `${previous}${delta}`)
+        await result.renderOnce()
+        expect(nativeCode()).toBe(native)
+        expect(native.content).toBe(content())
+        expect(result.captureSpans().lines[0]?.spans).toEqual(highlightedFirstLine)
+        await native.highlightingDone
+        await result.renderOnce()
+      }
       expect(result.captureCharFrame()).toContain("const third = 3")
       expect(highlight).not.toHaveBeenCalled()
       expectReadableSpans()
       expect(native.fg.equals(theme.theme.text)).toBe(true)
-      await native.highlightingDone
-      await result.renderOnce()
-      expectReadableSpans()
 
       batch(() => { setStreaming(false); setDimColor(true) })
       await result.renderOnce()
