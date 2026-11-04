@@ -1,7 +1,8 @@
 // Rewrites one bundled script so its native asset references resolve next to
 // the executable on disk instead of inside Bun's standalone-binary virtual FS.
 //
-// Bun.build() emits sibling wasm/scm/dylib/so/dll assets with hashed names and
+// Bun.build() emits sibling wasm/scm/dylib/so/dll assets, and Worker scripts
+// such as OpenTUI's tree-sitter parser worker, with hashed names and
 // rewrites each asset import into a module-level string binding, e.g.
 // `var tree_sitter_default = "./tree-sitter-abc.wasm";`. `bun build --compile`
 // only embeds files referenced via `with { type: "file" }` in source, so the
@@ -27,7 +28,8 @@ export interface BundleAssetPatchResult {
   readonly canonicalizedAssets: ReadonlySet<string>
 }
 
-const assetBindingPattern = /(var \w+_default = )"\.\/([^"\\]+\.(?:wasm|scm|dylib|so|dll))"/g
+// Bun numbers a binding (`highlights_default2`) when asset basenames collide.
+const assetBindingPattern = /(var \w+_default\d* = )"\.\/([^"\\]+\.(?:wasm|scm|dylib|so|dll|js))"/g
 
 // Splitting moves a dynamically imported asset into its own chunk but keeps
 // the import attribute on the rewritten specifier, e.g.
@@ -37,6 +39,10 @@ const assetBindingPattern = /(var \w+_default = )"\.\/([^"\\]+\.(?:wasm|scm|dyli
 // absolute path as its default, so the attribute is dropped and the chunk is
 // imported as code.
 const attributedChunkImportPattern = /import\("(\.\/chunk-[^"]+\.js)", \{ with: \{ type: "(?:file|wasm)" \} \}\)/g
+
+// Every relative string binding Bun emits for a `type: "file"` import,
+// whatever its extension.
+const relativeAssetBindingPattern = /var \w+_default\d* = "(\.\/[^"\\]+)"/g
 
 const hashedAssetPattern = /-[a-z0-9]{8}(\.[a-z0-9]+)$/
 
@@ -65,4 +71,11 @@ export function patchBundleScript(source: string, options: BundleAssetPatchOptio
       return `import(${JSON.stringify(specifier)})`
     })
   return { source: patched, assetReferences, attributedChunkImports, canonicalizedAssets }
+}
+
+/** The relative paths of file-asset bindings left in a patched script. Each
+ *  one resolves inside the executable's virtual FS, where no asset exists, so
+ *  any result means the asset never loads at runtime. */
+export function unrewrittenAssetBindings(source: string): string[] {
+  return [...source.matchAll(relativeAssetBindingPattern)].map((match) => match[1] ?? "")
 }

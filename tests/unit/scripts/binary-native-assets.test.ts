@@ -15,6 +15,7 @@ import {
   hostPlatformArch,
   nativeEnv,
   nativeRuntimePackages,
+  OPENTUI_PARSER_WORKER_FILE,
   platformArchForTarget,
   resolveRipgrepStagingPath,
   resolveNativeAddonStagingPath,
@@ -205,6 +206,11 @@ describe("native asset staging", () => {
     await expect(verifyNativeAssets(nativeDir, "win32-x64", repo)).rejects.toThrow("flywheel-git-forwarder.exe");
   });
 
+  it("requires the tree-sitter parser worker, which highlighting cannot run without", async () => {
+    const nativeDir = temporaryDirectory("flywheel-native-worker-missing-");
+    await expect(verifyNativeAssets(nativeDir, hostPlatformArch(), repo)).rejects.toThrow(OPENTUI_PARSER_WORKER_FILE);
+  });
+
   it("patches its own copy of a runtime package that the checkout installs as a link, never the linked package", async () => {
     const root = temporaryDirectory("flywheel-native-linked-");
     // A checkout whose packages are links, as a linker that links each
@@ -229,6 +235,9 @@ describe("native asset staging", () => {
 
     expect(readFileSync(join(nativeDir, "tree-sitter-python.wasm"))).toEqual(
       readFileSync(join(repo, "node_modules", "@vscode", "tree-sitter-wasm", "wasm", "tree-sitter-python.wasm")),
+    );
+    expect(readFileSync(join(nativeDir, OPENTUI_PARSER_WORKER_FILE))).toEqual(
+      readFileSync(join(repo, "node_modules", "@opentui", "core", "parser.worker.js")),
     );
     expect(colour(linkedSharp)).toBe(installed);
     expect(colour(join(nativeDir, "node_modules", "sharp"))).toContain("require('../../@img/colour/index.cjs')");

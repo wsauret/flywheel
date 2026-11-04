@@ -84,6 +84,9 @@ export const TREE_SITTER_WASM_FILES = [
   "tree-sitter-python.wasm",
 ] as const;
 
+/** OpenTUI's tree-sitter Worker script, staged under its package name. */
+export const OPENTUI_PARSER_WORKER_FILE = "parser.worker.js";
+
 export const TOKENIZER_ASSET_FILE = "flywheel-tokenizer.wasm.zst";
 
 /** The launchd program for the macOS account service, as the application
@@ -397,6 +400,7 @@ export async function copyNativeAssets(
     await copyFile(forwarderSource, join(nativeDir, WINDOWS_GIT_FORWARDER_EXECUTABLE));
   }
   await copyFile(await openTuiLibraryPath(root, platformArch), join(nativeDir, `libopentui${nativeLibraryExt(platformArch)}`));
+  await copyFile(join(root, "node_modules", "@opentui", "core", OPENTUI_PARSER_WORKER_FILE), join(nativeDir, OPENTUI_PARSER_WORKER_FILE));
   await copyTreeSitterWasmAssets(root, nativeDir);
 
   const runtimeNodeModulesDir = join(nativeDir, "node_modules");
@@ -433,6 +437,7 @@ export async function verifyNativeAssets(nativeDir: string, platformArch: string
   for (const asset of TREE_SITTER_WASM_ASSETS) {
     if (!entries.includes(asset.destination)) missing.push(asset.destination);
   }
+  if (!entries.includes(OPENTUI_PARSER_WORKER_FILE)) missing.push(OPENTUI_PARSER_WORKER_FILE);
 
   const openTuiExt = nativeLibraryExt(platformArch);
   if (!entries.some((entry) => isOpenTuiLibrary(entry, openTuiExt))) {

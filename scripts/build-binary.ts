@@ -16,12 +16,13 @@ import {
   ensureTargetNativePackages,
   type NativeProvenance,
   nativeLibraryExt,
+  OPENTUI_PARSER_WORKER_FILE,
   platformArchForTarget,
   TREE_SITTER_WASM_FILES,
   verifyNativeAssets,
 } from "./binary-native-assets.js";
 import { BINARY_COMPILE_FLAGS, BINARY_ENTRIES, bundledEntryName } from "./binary-entries.js";
-import { patchBundleScript } from "./bundle-asset-patch.js";
+import { patchBundleScript, unrewrittenAssetBindings } from "./bundle-asset-patch.js";
 import { GENERATED_MANIFESTS, manifestRestoreSource } from "./build-manifest.js";
 import { patchOpenTuiNativePackageImportFiles, restorePatchedFiles } from "./opentui-native-package-patch.js";
 import { BUILD_METADATA_FILE, buildExecutable, computeBuildId } from "../src/infra/update/build-identity.js";
@@ -177,20 +178,30 @@ console.log("Patching asset paths...");
 const canonicalAssetNames = new Set([
   `libopentui${nativeLibraryExt(platformArch)}`,
   ...TREE_SITTER_WASM_FILES,
+  OPENTUI_PARSER_WORKER_FILE,
 ]);
 let patchCount = 0;
 let attributedChunkImportCount = 0;
 const canonicalizedAssets = new Set<string>();
+const unrewritten: string[] = [];
 for (const output of bundleResult.outputs) {
   if (!output.path.endsWith(".js")) continue;
   const patched = patchBundleScript(await readFile(output.path, "utf-8"), { platformArch, canonicalAssetNames });
   patchCount += patched.assetReferences;
   attributedChunkImportCount += patched.attributedChunkImports;
   for (const name of patched.canonicalizedAssets) canonicalizedAssets.add(name);
+  for (const path of unrewrittenAssetBindings(patched.source)) unrewritten.push(`${basename(output.path)}: ${path}`);
   await Bun.write(output.path, patched.source);
 }
 if (patchCount === 0) {
   console.error("Asset path patch matched 0 references — bundle output format changed.");
+  process.exit(1);
+}
+// A file-asset binding the patch missed resolves inside the executable's
+// virtual FS at runtime, where the asset is absent, so the feature behind it
+// silently stops working in every installed build.
+if (unrewritten.length > 0) {
+  console.error(`Asset path patch left ${unrewritten.length} relative file-asset binding(s): ${unrewritten.join(", ")}`);
   process.exit(1);
 }
 console.log(`  patched ${patchCount} asset reference(s), ${attributedChunkImportCount} attributed chunk import(s)`);
