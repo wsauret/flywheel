@@ -1,0 +1,16 @@
+src/protocol/client/transcript-empty-render.ts
+  h_4b47e9e4a8b456 1-35
+src/protocol/client/transcript-store.ts
+  h_4b47e9e4a8b456 14,341,436,482,832
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a784bb09f73f193303f15828c98a5096e7a95cef",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
