@@ -27,7 +27,6 @@
         "qrcode": "1.5.4",
         "sharp": "^0.35.3",
         "solid-js": "1.9.12",
-        "string-width": "7.2.0",
         "web-tree-sitter": "0.25.10",
         "xstate": "6.0.0-alpha.71",
         "zod": "4.6.7",
