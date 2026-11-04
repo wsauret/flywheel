@@ -28,7 +28,7 @@ export function retiredBuiltInDefinition(workflowId: string): StepGrammarWorkflo
   if (known !== undefined) return known;
   const text = RETIRED_BUILT_IN_TEXTS.get(workflowId);
   if (text === undefined) return undefined;
-  const workflow = Schema.decodeUnknownSync(StepGrammarWorkflowSchema, { onExcessProperty: "error" })(parseWorkflowYaml(text));
+  const workflow = Schema.decodeUnknownSync(StepGrammarWorkflowSchema, { onExcessProperty: "error" })(parseWorkflowYaml(text).document);
   decoded.set(workflowId, workflow);
   return workflow;
 }

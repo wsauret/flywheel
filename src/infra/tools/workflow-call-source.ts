@@ -38,7 +38,7 @@ export function workflowSource(value: unknown): WorkflowCallSource | undefined {
 export function workflowContentFileName(content: string): string {
   let id: unknown;
   try {
-    const document: unknown = parseWorkflowYaml(content);
+    const { document } = parseWorkflowYaml(content);
     id = isRecord(document) ? document.id : undefined;
   } catch {
     id = undefined;

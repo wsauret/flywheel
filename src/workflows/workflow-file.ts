@@ -6,6 +6,7 @@ import type { DefinitionProvenance } from "./definition-provenance.js";
 import { validateWorkflowDefinition } from "./definition-validation.js";
 import { normalizeAuthoredDocument, withLoadedContent, type NormalizedAuthoredDocument } from "./loader.js";
 import { parseWorkflowYaml, UnsupportedWorkflowYamlError } from "../infra/workflow-yaml.js";
+import type { LoadedYaml } from "../infra/yaml-load.js";
 import type { AuthoredRepair } from "./authored-repairs.js";
 import type { SkillRegistryRevision } from "./skill-schema.js";
 import {
@@ -292,11 +293,18 @@ function yamlErrorMessage(error: unknown): string {
   return `The file is not valid YAML${at}: ${error.reason}${remedy}`;
 }
 
-/** What the loader's boundary rules changed in one document. */
-function conversions(normalized: NormalizedAuthoredDocument): Omit<DecodedWorkflowFile, "definition"> {
+/** What the loader's boundary rules changed in one document, with each line
+ *  whose indentation the YAML parse raised. */
+function conversions(normalized: NormalizedAuthoredDocument, raisedLines: readonly number[]): Omit<DecodedWorkflowFile, "definition"> {
   return {
     retiredKeys: normalized.retiredKeys,
-    repairs: normalized.repairs,
+    repairs: [
+      ...raisedLines.map((line) => ({
+        keyPath: "(root)",
+        message: `line ${line} continues a flow collection or quoted text with less indentation than its key, so Flywheel read it as indented deeper; indent the line past its key`,
+      })),
+      ...normalized.repairs,
+    ],
     ...(normalized.stepGrammar ? { stepGrammar: normalized.stepGrammar } : {}),
   };
 }
@@ -310,12 +318,13 @@ function conversions(normalized: NormalizedAuthoredDocument): Omit<DecodedWorkfl
  *  recorded workflow cannot rebuild skill-derived content ids. */
 export function decodeWorkflowFile(input: { readonly file: string; readonly content: string; readonly skills?: SkillRegistryRevision; readonly retiredBindings?: "refuse" }): WorkflowFileDecode {
   const { file } = input;
-  let raw: unknown;
+  let parsed: LoadedYaml;
   try {
-    raw = parseWorkflowYaml(input.content);
+    parsed = parseWorkflowYaml(input.content);
   } catch (error) {
     return { ok: false, diagnostics: [{ file, keyPath: "(root)", message: yamlErrorMessage(error) }] };
   }
+  const { document: raw, raisedLines } = parsed;
   if (input.retiredBindings === "refuse" && isNode(raw) && "bindings" in raw) {
     return { ok: false, diagnostics: [{ file, keyPath: "(root)", message: "the file uses the retired bindings form; write it in the phase grammar" }] };
   }
@@ -338,11 +347,11 @@ export function decodeWorkflowFile(input: { readonly file: string; readonly cont
       ok: false,
       diagnostics,
       ...(recovered ? {
-        recovered: { definition: recovered, ...conversions(normalized) },
+        recovered: { definition: recovered, ...conversions(normalized, raisedLines) },
       } : {}),
     };
   }
-  return { ok: true, definition: decoded.success, ...conversions(normalized) };
+  return { ok: true, definition: decoded.success, ...conversions(normalized, raisedLines) };
 }
 
 export type WorkflowFileLoad =

@@ -266,7 +266,35 @@ describe("loadWorkflowDefinitions", () => {
     const { results, errors, decoded } = load();
     expect(errors).toEqual([]);
     expect(results.get("split-wf")?.phases[0]).toMatchObject({ output: { fields: { note: { type: "string", description: "The change, in one sentence." } } } });
-    expect(decoded.get("split-wf")?.repairs).toEqual([expect.objectContaining({ keyPath: "phases.0.output.fields.note.description", message: expect.stringContaining("an unquoted comma split this text") })]);
+    // The second line of the flow mapping sits at its key's column, which
+    // js-yaml 5 refuses and js-yaml 4 read.
+    expect(decoded.get("split-wf")?.repairs).toEqual([
+      { keyPath: "(root)", message: expect.stringContaining("line 10 continues a flow collection or quoted text with less indentation than its key") },
+      expect.objectContaining({ keyPath: "phases.0.output.fields.note.description", message: expect.stringContaining("an unquoted comma split this text") }),
+    ]);
+  });
+
+  it("reports a YAML error on a line whose indentation it raised at the column of the file", () => {
+    const decoded = decodeWorkflowFile({ file: "raised.yaml", content: workflowYaml("raised", ["name: Inline", "brief: Do it.", "output:", "  fields:", "    note: { type: string,\n        description: [ }"]) });
+    if (decoded.ok) throw new Error("invalid YAML decoded");
+    expect(decoded.diagnostics).toEqual([expect.objectContaining({ keyPath: "(root)", message: expect.stringMatching(/^The file is not valid YAML at line 10, column 24: /) })]);
+  });
+
+  // Each raise parses the whole file again, so an unbounded count of raised
+  // lines costs time that grows with the square of the file.
+  it("refuses a file with more under-indented flow lines than the parse raises, at the line it refused", () => {
+    const items = Array.from({ length: 100 }, (_, index) => `step${index},`).join("\n");
+    const decoded = decodeWorkflowFile({ file: "many.yaml", content: workflowYaml("many", ["name: Inline", "brief: Do it.", `dependencies: [first,\n${items}\nlast]`]) });
+    if (decoded.ok) throw new Error("a file with 100 raised lines decoded");
+    expect(decoded.diagnostics).toEqual([expect.objectContaining({ keyPath: "(root)", message: expect.stringMatching(/^The file is not valid YAML at line \d+, column 1: deficient indentation$/) })]);
+  });
+
+  it("reads a sequence used as a mapping key as the key that its items join to", () => {
+    write("key.yaml", workflowYaml("key-wf", ["name: Inline", "brief: Do it.", "output:", "  fields:", "    ? [note]", "    : { type: string, description: The change. }"]));
+
+    const { results, errors } = load();
+    expect(errors).toEqual([]);
+    expect(results.get("key-wf")?.phases[0]).toMatchObject({ output: { fields: { note: { type: "string", description: "The change." } } } });
   });
 
   it("refuses a null block-mapping key after a description instead of reading it as text", () => {

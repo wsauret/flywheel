@@ -1,4 +1,5 @@
 import * as yaml from "js-yaml";
+import { loadYaml, type LoadedYaml } from "./yaml-load.js";
 
 /** The largest workflow file a launch reads. It also bounds the expanded
  *  size of a parsed document, which counts each value once and each
@@ -19,30 +20,44 @@ const expandedSizeError = (): UnsupportedWorkflowYamlError => new UnsupportedWor
  *  workflow file refuses. Its message names the feature and the fix. */
 export class UnsupportedWorkflowYamlError extends Error {}
 
+/** The js-yaml 4 mapping, which joins a sequence used as a mapping key into
+ *  one string key, charged for each key that it joins before the join. The
+ *  mapping joins a key once to find a duplicate and again to add it, so
+ *  each join is charged. */
+function chargedLegacyMapTag(): typeof yaml.legacyMapTag {
+  let joined = 0;
+  const charge = (key: unknown): void => {
+    if (!Array.isArray(key)) return;
+    for (const element of key) joined += typeof element === "string" ? element.length + 1 : SEQUENCE_KEY_ELEMENT_MAX;
+    if (joined > WORKFLOW_FILE_MAX_BYTES) throw expandedSizeError();
+  };
+  return {
+    ...yaml.legacyMapTag,
+    has: (carrier, key) => {
+      charge(key);
+      return yaml.legacyMapTag.has(carrier, key);
+    },
+    addPair: (carrier, key, value) => {
+      charge(key);
+      return yaml.legacyMapTag.addPair(carrier, key, value);
+    },
+  };
+}
+
 /** Parse the YAML of a workflow document, which a model or a person wrote,
- *  so that every later walk over it sees a bounded tree. The core schema
- *  keeps dates as strings and has no merge type: js-yaml expands each `<<`
- *  merge inside the parse, and repeated merges of a large anchor cost
- *  minutes there. A `<<` key, an alias tree whose expanded size passes
+ *  so that every later walk over it sees a bounded tree, and name each line
+ *  whose indentation the parse raised (refer to {@link loadYaml}). The core
+ *  schema keeps dates as strings and has no merge type: js-yaml expands each
+ *  `<<` merge inside the parse, and repeated merges of a large anchor cost
+ *  minutes there. Its mapping is the js-yaml 4 one, so a file that loaded
+ *  before still loads. A `<<` key, an alias tree whose expanded size passes
  *  {@link WORKFLOW_FILE_MAX_BYTES}, and a cyclic alias each throw an error
  *  that names the YAML feature and its fix. An ordinary anchor and alias
- *  still parse: a shared value counts at each place it occurs. js-yaml joins
- *  a sequence used as a mapping key into one string while it parses, so the
- *  parse charges each sequence it closes, alias or not, before that join. */
-// oxlint-disable-next-line anti-slop/no-unknown-returns -- boundary: authored YAML has no trusted shape until the workflow schema decodes it.
-export function parseWorkflowYaml(content: string): unknown {
-  let sequences = 0;
-  const document: unknown = yaml.load(content, {
-    schema: yaml.CORE_SCHEMA,
-    listener(event, state) {
-      const result: unknown = state.result;
-      if (event !== "close" || !Array.isArray(result)) return;
-      for (const element of result) sequences += typeof element === "string" ? element.length + 1 : SEQUENCE_KEY_ELEMENT_MAX;
-      if (sequences > WORKFLOW_FILE_MAX_BYTES) throw expandedSizeError();
-    },
-  });
+ *  still parse: a shared value counts at each place it occurs. */
+export function parseWorkflowYaml(content: string): LoadedYaml {
+  const loaded = loadYaml(content, { schema: yaml.CORE_SCHEMA.withTags(chargedLegacyMapTag()) });
   const ancestors = new Set<object>();
-  const stack: ({ value: unknown; exit: false } | { value: object; exit: true })[] = [{ value: document, exit: false }];
+  const stack: ({ value: unknown; exit: false } | { value: object; exit: true })[] = [{ value: loaded.document, exit: false }];
   let size = 0;
   const charge = (units: number): void => {
     size += units;
@@ -68,5 +83,5 @@ export function parseWorkflowYaml(content: string): unknown {
       stack.push({ value, exit: false });
     }
   }
-  return document;
+  return loaded;
 }

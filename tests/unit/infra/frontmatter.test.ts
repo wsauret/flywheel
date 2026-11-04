@@ -92,7 +92,7 @@ describe("parseFrontmatter", () => {
     expect(parseFrontmatter(content)).toBeNull();
   });
 
-  it("default schema coerces YAML types (dates, booleans)", () => {
+  it("reads a date-like value as its text", () => {
     const content = [
       "---",
       "date_val: 2026-03-14",
@@ -102,8 +102,29 @@ describe("parseFrontmatter", () => {
 
     const result = parseFrontmatter(content);
     expect(result).not.toBeNull();
-    // Default schema coerces date-like strings to Date objects
-    expect(result!.frontmatter.date_val).toBeInstanceOf(Date);
+    expect(result!.frontmatter.date_val).toBe("2026-03-14");
+  });
+
+  it("reads frontmatter written for js-yaml 4: a flow line below its key, a merge key, and a sequence key", () => {
+    const content = [
+      "---",
+      "tags: [one,",
+      "two]",
+      "base: &base { disable-model-invocation: true, dependencies: [research] }",
+      "<<: *base",
+      "? [joined, key]",
+      ": value",
+      "---",
+      "Body",
+    ].join("\n");
+
+    expect(parseFrontmatter(content)?.frontmatter).toEqual({
+      tags: ["one", "two"],
+      base: { "disable-model-invocation": true, dependencies: ["research"] },
+      "disable-model-invocation": true,
+      dependencies: ["research"],
+      "joined,key": "value",
+    });
   });
 
   it("does not match --- that is not at the start of the string", () => {

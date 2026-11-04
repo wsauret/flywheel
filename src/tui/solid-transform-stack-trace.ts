@@ -8,8 +8,8 @@ import type { OnLoadCallback } from "bun"
  *  and replaces `Error.prepareStackTrace` with a wrapper that passes every
  *  captured object to Bun's own formatter. That formatter throws "First
  *  argument must be an Error object" for an object that only inherits from
- *  `Error.prototype`, such as a js-yaml `YAMLException`, so the error that
- *  such a library throws is replaced. The product runs prebuilt JSX and never
+ *  `Error.prototype`, so the error that a library with such an error type
+ *  throws is replaced. The product runs prebuilt JSX and never
  *  runs Babel, so a source run and a test process must not keep the change.
  *
  *  The settings are read once, here, and not around each compile: compiles

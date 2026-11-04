@@ -1,5 +1,6 @@
 import * as yaml from "js-yaml";
 import { isRecord } from "./record.js";
+import { loadYaml } from "./yaml-load.js";
 
 interface FrontmatterFields { [key: string]: unknown }
 
@@ -30,9 +31,14 @@ export function parseFrontmatter(content: string): ParsedDoc | null {
   return frontmatter ? { frontmatter, body } : null;
 }
 
+/** The js-yaml 4 default schema that frontmatter written before js-yaml 5
+ *  relies on: `<<` merges and a sequence key joined into a string. A date
+ *  stays its text, which no frontmatter reader takes as a date. */
+const FRONTMATTER_SCHEMA = yaml.CORE_SCHEMA.withTags(yaml.legacyMapTag, yaml.mergeTag);
+
 function loadYamlRecord(yamlStr: string): FrontmatterFields | null {
   try {
-    const parsed: unknown = yaml.load(yamlStr);
+    const parsed: unknown = loadYaml(yamlStr, { schema: FRONTMATTER_SCHEMA }).document;
     return isRecord(parsed) ? parsed : null;
   } catch {
     // User-authored markdown is an external boundary: malformed YAML means

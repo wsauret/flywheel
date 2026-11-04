@@ -80,7 +80,7 @@ describe("createDefinitionAssetReader in manifest mode", () => {
   });
 
   it("loads a workflow with its inline brief and contract files from the manifest", () => {
-    const solo = withLoadedContent(decodeAuthoredWorkflow(parseWorkflowYaml(reader.read({ root: { kind: "core" }, path: "solo.yaml" }))), {
+    const solo = withLoadedContent(decodeAuthoredWorkflow(parseWorkflowYaml(reader.read({ root: { kind: "core" }, path: "solo.yaml" })).document), {
       reader, location: { root: { kind: "core" }, path: "solo.yaml" }, provenance: { id: "solo", layer: "bundled", filePath: "bundled:solo.yaml" },
     });
     expect(solo?.provenance?.filePath).toBe("bundled:solo.yaml");
@@ -97,7 +97,7 @@ describe("createDefinitionAssetReader in manifest mode", () => {
       ...FAKE_MANIFEST,
       "workflows/contracts/targets.json": JSON.stringify({ summary: "Not an input key.", fields: {} }),
     }, join("/scratch", "no-core-tree"));
-    expect(() => withLoadedContent(decodeAuthoredWorkflow(parseWorkflowYaml(invalidReader.read({ root: { kind: "core" }, path: "solo.yaml" }))), {
+    expect(() => withLoadedContent(decodeAuthoredWorkflow(parseWorkflowYaml(invalidReader.read({ root: { kind: "core" }, path: "solo.yaml" })).document), {
       reader: invalidReader, location: { root: { kind: "core" }, path: "solo.yaml" }, provenance: { id: "solo", layer: "bundled", filePath: "bundled:solo.yaml" },
     })).toThrow(/Workflow "solo" input: bundled:contracts\/targets\.json: invalid input contract:\nsummary: /);
   });

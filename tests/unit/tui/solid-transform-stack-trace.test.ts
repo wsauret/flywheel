@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test"
 import type { OnLoadArgs } from "bun"
-import yaml from "js-yaml"
 
 import { keepingStackTraceSettings } from "../../../src/tui/solid-transform-stack-trace.js"
 
@@ -23,14 +22,13 @@ function babelFirstCompile(): void {
 const args: OnLoadArgs = { path: "/source/view.tsx", namespace: "file", loader: "tsx", defer: async () => {} }
 
 describe("keepingStackTraceSettings", () => {
-  test("a compile leaves the stack trace settings as they were, so a library error that only inherits from Error keeps its type", async () => {
+  test("a compile leaves the stack trace settings as they were", async () => {
     await keepingStackTraceSettings(async () => {
       babelFirstCompile()
       return { contents: "", loader: "js" }
     })(args)
 
     expect({ prepareStackTrace: Error.prepareStackTrace, stackTraceLimit: Error.stackTraceLimit }).toEqual(original)
-    expect(() => yaml.load("a: [")).toThrow(yaml.YAMLException)
   })
 
   test("a compile that starts while another is under way also leaves the settings as they were before both", async () => {
@@ -56,6 +54,5 @@ describe("keepingStackTraceSettings", () => {
     await second
 
     expect({ prepareStackTrace: Error.prepareStackTrace, stackTraceLimit: Error.stackTraceLimit }).toEqual(original)
-    expect(() => yaml.load("a: [")).toThrow(yaml.YAMLException)
   })
 })
