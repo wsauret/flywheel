@@ -8,7 +8,7 @@ const DECLARED = new Map([["mcp__runtime__read", { type: "object", properties: {
 const start: BetaRawMessageStreamEvent = { type: "message_start", message: {
   id: "msg_1", type: "message", role: "assistant", model: "claude-sonnet-5-5", content: [], stop_reason: null, stop_sequence: null,
   container: null, context_management: null, diagnostics: null, stop_details: null,
-  usage: { input_tokens: 10, output_tokens: 1, cache_read_input_tokens: 900, cache_creation_input_tokens: 40, cache_creation: null, inference_geo: null, iterations: null, server_tool_use: null, service_tier: null, speed: null },
+  usage: { input_tokens: 10, output_tokens: 1, cache_read_input_tokens: 900, cache_creation_input_tokens: 40, cache_creation: null, inference_geo: null, iterations: null, fallback_credit: null, output_tokens_details: null, server_tool_use: null, service_tier: null, speed: null },
 } };
 const textBlock = (index: number, text: string): BetaRawMessageStreamEvent[] => [
   { type: "content_block_start", index, content_block: { type: "text", text: "", citations: null } },
@@ -23,7 +23,7 @@ const toolBlock = (index: number, id: string, name: string, json: string[]): Bet
 const delta = (stop_reason: BetaStopReason | null, output_tokens = 25): BetaRawMessageStreamEvent => ({
   type: "message_delta", context_management: null,
   delta: { stop_reason, stop_sequence: null, container: null, stop_details: null },
-  usage: { output_tokens, input_tokens: null, cache_read_input_tokens: null, cache_creation_input_tokens: null, iterations: null, server_tool_use: null },
+  usage: { output_tokens, input_tokens: null, cache_read_input_tokens: null, cache_creation_input_tokens: null, iterations: null, fallback_credit: null, output_tokens_details: null, server_tool_use: null },
 });
 const stop: BetaRawMessageStreamEvent = { type: "message_stop" };
 
