@@ -1,0 +1,16 @@
+src/tui/components/syntax-code.tsx
+  h_4b47e9e4a8b456 42-43
+tests/unit/tui/components/syntax-code.test.tsx
+  h_4b47e9e4a8b456 57-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fbd0992d69a01a54ee0c5bbddbdbccb0d1334fa7",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
