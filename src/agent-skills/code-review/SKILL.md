@@ -100,8 +100,6 @@ Use these severities:
 - **P2:** a concrete defect or structural debt that must be corrected now, including missing tests for changed behavior or an unsafe assumption with a real trigger.
 - **P3:** a bounded correctness or elegance improvement with concrete evidence. Drop style preferences, hypothetical hardening, optional robustness, and changes with no behavioral or structural consequence.
 
-Tag findings that contradict the user's explicit choice instead of silently integrating them. Apply actual-size scaling when reviewers return more issues than the change warrants.
-
 ## Remedy arbitration
 
 Explicit requirements and verified correctness, security, data-integrity, performance, and runtime constraints are hard gates. Among remedies that satisfy those gates, choose the simplest feature-complete correction with the fewest owners, states, layers, abstractions, and failure branches.
@@ -124,6 +122,8 @@ Conclude with one of:
 - `Findings:` actionable findings ordered by severity, each with Title, Severity, Location, Failure, and Fix.
 - `Clean:` the reviewed target and evidence when no actionable finding remains.
 - `Blocked:` the missing intent, diff, repository access, or decisive evidence and the narrowest action that unblocks review.
+
+After the result, list under `Set aside:` each P1 or P2 finding that you rejected or deferred, with a one-line reason; omit dropped P3 findings.
 
 P1 findings block acceptance. For a review-only request, report and stop without editing. When the original request authorizes implementation, resume that task after the review result is complete: fix valid findings, verify each correction with the smallest complete check, and do not rerun the whole review unless the correction materially changes the design or creates a new triggered review surface.
 

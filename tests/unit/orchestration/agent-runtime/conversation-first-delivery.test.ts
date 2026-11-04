@@ -63,9 +63,12 @@ describe("conversation-first delivery guidance", () => {
   it("states design changes and proof after publication and answers review questions on published code", () => {
     const result = chatPrompt([tool("read"), tool("edit"), tool("subagent"), tool("ask_user")]);
 
-    expect(result).toContain("After each publication, end your reply with two things that you write from the reviewed deviations and fresh verification");
-    expect(result).toContain("what changed from the approved design during development, with the reason for each change, or None; and the proof that the change works, meaning what ran and what it showed");
-    expect(result).toContain("A pull request description gives the same two things");
+    expect(result).toContain("After each publication, end your reply with three things that you write from the reviewed deviations, the review, and fresh verification");
+    expect(result).toContain("what changed from the approved design during development, with the reason for each change, or None; the proof that the change works, meaning what ran and what it showed; and what that proof does not cover");
+    expect(result).toContain("each material choice made where the design and the brief were silent");
+    expect(result).toContain("each P1 or P2 review finding set aside, with its reason");
+    expect(result).toContain("When you cannot say what your checks would miss, say so and recommend that the user review the change");
+    expect(result).toContain("A pull request description gives the same three things");
     expect(result).toContain("Do not stop before publication to ask for a shape review");
     expect(result).toContain("Answer a question about published code by explaining the code first; a question that needs only an explanation ends there");
     expect(result).toContain("A local objection gets a fix, verified and published to the same change, and an objection to the structure starts a reshape");

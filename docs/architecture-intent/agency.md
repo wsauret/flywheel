@@ -90,7 +90,7 @@ Because: Activity is not proof, and only the agent that holds the intent can jud
 
 ## ARCH-AGENCY-021: Deviations travel in the owning result contract
 
-Every material deviation from implementation design travels with the draft in its typed result: what the plan said, what was done instead, why, and the evidence. Each route carries them in its own existing result contract. A recorded deviation is expected drift; a hidden one is goalpost drift.
+Every material deviation from implementation design travels with the draft in its typed result: what the plan said, what was done instead, why, and the evidence. Each material choice that the design and the brief left open travels the same way, with the option taken and why. Each route carries them in its own existing result contract. A recorded deviation is expected drift; a hidden one is goalpost drift.
 Not: A parallel drift record or one universal deviation schema beside the existing result contracts.
 
 ## ARCH-AGENCY-022: Judgment-heavy completion has a separate evaluator

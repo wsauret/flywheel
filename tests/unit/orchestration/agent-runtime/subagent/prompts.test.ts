@@ -85,7 +85,7 @@ describe("subagent prompt", () => {
     expect(prompt).toContain("user intent and implemented design");
     expect(prompt).toContain("Do not run Git analysis");
     expect(prompt).toContain("Do not send verification evidence");
-    expect(prompt).toContain("For a PR, also send what changed from the approved design and the proof that the change works");
+    expect(prompt).toContain("For a PR, also send what changed from the approved design, the proof that the change works, and what that proof does not cover");
     expect(prompt).toContain("Ship puts it in the pull request description as written, without assessing it");
     expect(prompt).toContain("writes the commit message");
     expect(prompt).toContain("complete selected files, including concurrent edits");

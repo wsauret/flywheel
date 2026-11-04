@@ -35,7 +35,7 @@ describe("Claude 5 chat body", () => {
       expect(general).toContain(replaced);
       expect(tuned).not.toContain(replaced);
     }
-    for (const commitment of ["**Chat leads a change through delivery.**", "load the `code-review` skill", "**Orchestration pays for itself.**", "Use `ask_user` only after the discussion has settled", "**User messages come first.**", "**One coherent change at a time.**", "no change is needed is a successful result", "Understand the code before you change it", "Do only what the request needs, and still finish it", "Never test a copy of production code", "Never recommend that the user accept a narrowed draft", "rests on a spike that tested it", "end your reply with two things", "A pull request description gives the same two things", "Do not stop before publication to ask for a shape review", "explaining the code first; a question that needs only an explanation ends there", "A local objection gets a fix, verified and published to the same change, and an objection to the structure starts a reshape", "never send the user to read a file", "restate their model, name the exact premise where you differ"]) {
+    for (const commitment of ["**Chat leads a change through delivery.**", "load the `code-review` skill", "**Orchestration pays for itself.**", "Use `ask_user` only after the discussion has settled", "**User messages come first.**", "**One coherent change at a time.**", "no change is needed is a successful result", "Understand the code before you change it", "Do only what the request needs, and still finish it", "Never test a copy of production code", "Never recommend that the user accept a narrowed draft", "rests on a spike that tested it", "end your reply with three things", "and what that proof does not cover", "A pull request description gives the same three things", "Do not stop before publication to ask for a shape review", "explaining the code first; a question that needs only an explanation ends there", "A local objection gets a fix, verified and published to the same change, and an objection to the structure starts a reshape", "never send the user to read a file", "restate their model, name the exact premise where you differ"]) {
       expect(tuned).toContain(commitment);
     }
     expect(tuned).toContain("Available tools:");
@@ -45,7 +45,7 @@ describe("Claude 5 chat body", () => {
   it("states only the commitments that the request surface can honor", () => {
     const tuned = build({ tools: TOOLS, chatPrompt: "sonnet-5.5" });
     expect(tuned).not.toContain("**Chat leads a change through delivery.**");
-    expect(tuned).not.toContain("end your reply with two things");
+    expect(tuned).not.toContain("end your reply with three things");
     expect(tuned).not.toContain("**Orchestration pays for itself.**");
     expect(tuned).toContain("review it yourself against the intent");
     expect(tuned).toContain("number them and state the one you recommend");

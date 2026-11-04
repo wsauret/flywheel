@@ -51,7 +51,7 @@ phases:
       summary: "What changed, each warning, and each file that needs a careful review."
       fields:
         criteria: { type: list, of: { type: string }, description: "One entry for each criterion id: done with its evidence, replaced by named work, or deviated with the reason and risk." }
-        deviations: { type: list, of: { type: string }, description: "Each material deviation: the original choice, the evidence, the replacement, and its verification." }
+        deviations: { type: list, of: { type: string }, description: "Each material deviation: the original choice, the evidence, the replacement, and its verification. Also each material choice that the brief left open, with the option taken and why." }
         files: { type: list, of: { type: string }, description: "Every repository file that the unit changed or created." }
   - phase: review
     reads: [build]

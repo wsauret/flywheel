@@ -10,7 +10,7 @@ Publish the selected files without losing existing edits.
 
 ## Input and preflight
 
-Start with the files to publish and a short summary of user intent and implemented design. For a pull request, the caller can also supply its account of what changed from the approved design and the proof that the change works. Use this method directly or through the Ship subagent. In direct use, take these inputs from the work already completed in the current conversation. In delegated use, take them from the caller's handoff. Neither route needs a prepared commit message.
+Start with the files to publish and a short summary of user intent and implemented design. For a pull request, the caller can also supply its account of what changed from the approved design, the proof that the change works, and what that proof does not cover. Use this method directly or through the Ship subagent. In direct use, take these inputs from the work already completed in the current conversation. In delegated use, take them from the caller's handoff. Neither route needs a prepared commit message.
 
 Verification and review precede publication. This method does not request verification evidence, assess it, or repeat those checks. Integration of newer remote work still happens here. The caller repeats its narrow verification for selected files that integration changes.
 

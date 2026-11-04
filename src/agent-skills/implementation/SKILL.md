@@ -51,7 +51,7 @@ Dispatch only when it saves more work than it adds. When you dispatch, you own t
 
 ## Stop and result
 
-Return the best complete, directly verified implementation of the requested outcome. A no-change result is complete when decisive evidence proves the outcome is already satisfied or the proposed work is unnecessary; report that evidence instead of fabricating edits. This is a reviewable first draft, not a claim of perfect fidelity to the initial spec. Report material deviations with the original choice, discovered evidence, revised choice, and verification. The parent reviews the draft against user intent and owns further iteration. Do not omit requested behavior or weaken checks to claim completion.
+Return the best complete, directly verified implementation of the requested outcome. A no-change result is complete when decisive evidence proves the outcome is already satisfied or the proposed work is unnecessary; report that evidence instead of fabricating edits. This is a reviewable first draft, not a claim of perfect fidelity to the initial spec. Report material deviations with the original choice, discovered evidence, revised choice, and verification. Report each material choice that the brief left open the same way, with the option taken and why. The parent reviews the draft against user intent and owns further iteration. Do not omit requested behavior or weaken checks to claim completion.
 
 ## Failure
 
