@@ -1,0 +1,42 @@
+src/tui/modals/auth-modal.tsx
+  h_4b47e9e4a8b456 27,226-227,241,243,311,313,316-318
+src/tui/modals/model-modal-text.ts
+  h_4b47e9e4a8b456 3,20,22,24,51-52,93,98,117,129
+src/tui/modals/model-modal.tsx
+  h_4b47e9e4a8b456 11,153
+src/tui/modals/settings-modal.tsx
+  h_4b47e9e4a8b456 8,39,206-207
+src/tui/modules/workflows/agent-viewer.tsx
+  h_4b47e9e4a8b456 45,47
+src/tui/output-blocks/markdown/markdown-table-helpers.ts
+  h_4b47e9e4a8b456 3,127,158,187
+src/tui/utils/selection.ts
+  h_4b47e9e4a8b456 2,103
+src/tui/utils/text.ts
+  h_4b47e9e4a8b456 1,8-11,13-20,22,91-92,121
+src/tui/welcome-notice.tsx
+  h_4b47e9e4a8b456 9,158,177,197,202,217,221
+tests/unit/tui/components/workflow-card-viewer.test.tsx
+  h_4b47e9e4a8b456 271
+tests/unit/tui/modals/modal-copy-budgets.test.ts
+  h_4b47e9e4a8b456 3,89
+tests/unit/tui/modals/model-modal-regression-rendering.test.ts
+  h_4b47e9e4a8b456 4,187,228,289,292,319,324,363
+tests/unit/tui/modules/experiments.test.tsx
+  h_4b47e9e4a8b456 7,130,225,234
+tests/unit/tui/utils/text-utils.test.ts
+  h_4b47e9e4a8b456 4,73-96,99,101-112
+tests/unit/tui/welcome-notice.test.tsx
+  h_4b47e9e4a8b456 6,103,223,253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a4d22805dee787a5a21252fa4a0a05443dc50ba5",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
