@@ -9,7 +9,7 @@ import type { HydratedOutputBlockBody, OutputRangeAnchor, TranscriptUnavailable 
 import type { RuntimePosition } from "../runtime-ui-protocol-types.js"
 import { createCursorIntake, isLaneBreak, type CursorIntake } from "../client/cursor-intake.js"
 import type { RuntimeConnection } from "./connection.js"
-import { bodyId, boundedWindow, coversResidentSpan, detachedDelta, EMPTY_TRANSCRIPT_VIEW, historicalThrough, pageSplice, protectedCut, readerAccepts, recoveryAnchor, retainPayloads, rewrittenWindow, unchangedOwner, foldHydratedGroups, totalAfterDelta, transcriptRangeRequest, windowFromRead, type ReadWindow } from "./transcript-store-paging.js"
+import { bodyId, boundedWindow, coversResidentSpan, detachedDelta, detachedWindowFromRead, EMPTY_TRANSCRIPT_VIEW, showsNothingOfOutput, historicalThrough, pageSplice, protectedCut, readerAccepts, recoveryAnchor, retainPayloads, rewrittenWindow, unchangedOwner, foldHydratedGroups, totalAfterDelta, transcriptRangeRequest, windowFromRead, type ReadWindow } from "./transcript-store-paging.js"
 import { readTranscriptGroupChildren } from "./transcript-group-children.js"
 import { createMutationEvidenceReader, type MutationEvidenceReader } from "./mutation-evidence.js"
 import { retainTranscriptEvidence } from "./transcript-evidence-lifetime.js"
@@ -153,6 +153,15 @@ export interface TranscriptStore {
   /** Refresh the live end for a following reader, or recover the protected
    * visible span in current coordinates for a reader in history. */
   refresh(): Promise<void>
+  /** A person opens the transcript. A ready store that shows blocks, or whose
+   *  counts say the session has no output, shows what it holds and reads
+   *  nothing. A store still on its first read resolves with that read. Any
+   *  other store reads again and keeps its window on screen until the
+   *  replacement lands, because a client keeps it resident across opens and
+   *  nothing else would read it: one whose last read failed or answered
+   *  unavailable, and a ready one that shows no blocks for a session with
+   *  output. */
+  open(): Promise<void>
   /** Answers the identity of the block a chat entry produced, as a search hit
    *  names it, so the view can mark it. A block already in the resident window
    *  answers at once: no read, and the window and its generation stay.
@@ -774,6 +783,9 @@ export function createTranscriptStore(options: TranscriptStoreOptions): Transcri
     refresh() {
       return rejoin("attach")
     },
+    open() {
+      return status === "ready" && !showsNothingOfOutput(view) ? Promise.resolve() : rejoin("attach")
+    },
     async openAround(entryId) {
       let found: string | undefined
       await enqueue(async () => {
@@ -795,23 +807,7 @@ export function createTranscriptStore(options: TranscriptStoreOptions): Transcri
           if (range.anchor.kind === "tail" || !range.window.hasAfter) {
             install(window, range.anchor.kind === "around" ? "around" : "install")
           } else {
-            commitWindow({
-              appliedOutputPosition: null,
-              atTail: false,
-              hasNewer: true,
-              blocks: range.blocks,
-              streamingToolText: range.streamingToolText,
-              bodies: view.bodies,
-              groups: view.groups,
-              groupRequests: view.groupRequests,
-              startBlockIndex: range.window.startBlockIndex,
-              totalBlocks: snapshot.totalBlocks,
-              visibleMessageCount: snapshot.visibleMessageCount,
-              streamingOutputChars: range.streamingOutputChars,
-              hasBefore: range.window.hasBefore,
-              consistencyToken: range.consistencyToken,
-              historicalThroughIndex: historicalThrough(range, -1),
-            })
+            commitWindow(detachedWindowFromRead(window, view))
             // Seeded at the read's own position even though the window is not
             // the tail: the intake then counts the live end as newer rather
             // than as a gap that would resnapshot away from where the person

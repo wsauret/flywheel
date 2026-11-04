@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
+import { jest } from "bun:test"
 
 import type { ChildSessionRow, FrontendEvent, FrontendOutputBlock, RuntimeQuery, SessionCatalogRow } from "../../../src/protocol/app-service-types.js"
 import { blockIdentity } from "../../../src/protocol/block-identity.js"
@@ -44,6 +45,8 @@ function residentConnection(count: number, bodyBytes = BODY_BYTES) {
   const tails = new Map<string, FrontendOutputBlock[]>([...rows, child].map((row) => [row.id, [text(`${row.id}-1`)]]))
   /** Window reads that wait for the test, by session. */
   const heldWindows = new Map<string, PromiseWithResolvers<void>>()
+  /** How many of each session's next window reads fail. */
+  const failingWindows = new Map<string, number>()
   let position = 10
   const base = fakeRuntimeConnection()
   const record = (request: RuntimeQuery) => {
@@ -59,6 +62,11 @@ function residentConnection(count: number, bodyBytes = BODY_BYTES) {
     }) }),
     outputWindow: async (request) => {
       await heldWindows.get(request.sessionId)?.promise
+      const failures = failingWindows.get(request.sessionId) ?? 0
+      if (failures > 0) {
+        failingWindows.set(request.sessionId, failures - 1)
+        throw new Error("the window read failed")
+      }
       return tailWindow([...tails.get(request.sessionId) ?? []], { snapshotPosition: position })
     },
     outputBlockBody: async (request) => ({ blockId: request.request.blockId, content: "x".repeat(bodyBytes) }),
@@ -95,6 +103,7 @@ function residentConnection(count: number, bodyBytes = BODY_BYTES) {
     readsSince: (from: number) => reads.slice(from).map((read) => `${read.type}${read.sessionId === undefined ? "" : ` ${read.sessionId}`}`),
     /** The session activations and releases dispatched, as `type sessionId`. */
     claims: () => [...claims],
+    failWindows(sessionId: string, times: number) { failingWindows.set(sessionId, times) },
     holdWindow(sessionId: string) {
       const gate = Promise.withResolvers<void>()
       heldWindows.set(sessionId, gate)
@@ -166,6 +175,42 @@ test("a return to a resident session shows its kept window and seat in the tap a
     assert.deepEqual(fake.readsSince(from), [])
     assert.equal(fake.claims().length, claims, "the runner of a resident session is already held")
   } finally { session.dispose() }
+})
+
+test("a return to a resident whose recovery failed keeps its window and memory on screen and reads it again", async () => {
+  const fake = residentConnection(2)
+  const session = createRuntimeSession({ connection: fake.connection })
+  try {
+    await settle()
+    const transcript = session.transcript
+    const memory = session.memory("chat-0")
+    assert.ok(transcript !== undefined && memory !== undefined)
+    fake.failWindows("chat-0", 4)
+    jest.useFakeTimers()
+    const recovering = transcript.refresh()
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      await settle()
+      jest.advanceTimersByTime(4_000)
+    }
+    await recovering
+    jest.useRealTimers()
+    assert.equal(transcript.status, "recovery-failed")
+    await session.select("chat-1")
+    await settle()
+    const release = fake.holdWindow("chat-0")
+    const from = fake.reads.length
+
+    void session.select("chat-0")
+    await settle()
+    assert.deepEqual(fake.readsSince(from).filter((read) => read.startsWith("outputWindow")), ["outputWindow chat-0"])
+    assert.equal(session.transcript, transcript, "the resident stays")
+    assert.equal(session.memory("chat-0"), memory)
+    assert.deepEqual(blockIds(session), ["chat-0-1"])
+    release()
+    await settle()
+    assert.equal(transcript.status, "ready")
+    assert.deepEqual(blockIds(session), ["chat-0-1"])
+  } finally { jest.useRealTimers(); session.dispose() }
 })
 
 test("a hidden resident applies its output while hidden, so a return shows it without a read", async () => {

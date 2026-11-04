@@ -98,7 +98,7 @@ While historical aggregate statistics are unknown, the session picker leaves the
 
 ## PI-INTERACTION-007: The transcript stays on screen through recovery
 
-A transcript with content never shows as empty. When Flywheel's view of a session disagrees with the runtime, it keeps showing the current transcript until the replacement arrives, then shows the newest transcript in its place.
+A transcript with content never shows as empty. When Flywheel's view of a session disagrees with the runtime, it keeps showing the current transcript until the replacement arrives, then shows the newest transcript in its place. When Flywheel cannot read a session's transcript, every client says so in place of an empty transcript, and it reads the transcript again when the person opens the session again.
 
 ## PI-INTERACTION-008: Session changes are reviewable in one place
 

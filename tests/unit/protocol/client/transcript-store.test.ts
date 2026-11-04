@@ -460,6 +460,28 @@ describe("transcript store", () => {
     store.dispose()
   })
 
+  // A client keeps a store resident across opens, so an open is the one
+  // moment that reads a transcript the store could not show again.
+  for (const { first, reads } of [
+    { first: { blocks: [textBlock("a")], startBlockIndex: 0, totalBlocks: 1 }, reads: 1 },
+    { first: { blocks: [], startBlockIndex: 0, totalBlocks: 0 }, reads: 1 },
+    { first: { blocks: [], startBlockIndex: 0, totalBlocks: 2 }, reads: 2 },
+    { first: { blocks: [], startBlockIndex: 0, totalBlocks: 0, visibleMessageCount: 1 }, reads: 2 },
+    { first: { blocks: [], startBlockIndex: 0, totalBlocks: 0, unavailable: { title: "Unavailable", message: "Unavailable", diagnostic: "Unavailable" } }, reads: 2 },
+  ]) test(`an open after a read of ${first.blocks.length} blocks, ${first.totalBlocks} total, ${first.visibleMessageCount ?? first.totalBlocks} messages, ${first.unavailable ? "unavailable" : "ok"} reads ${reads - 1} more`, async () => {
+    const fake = fakeConnection({ windows: [first, { blocks: [textBlock("a"), textBlock("b")], startBlockIndex: 0, totalBlocks: 2 }] })
+    const store = createTranscriptStore({ connection: fake.connection, sessionId: SESSION })
+    try {
+      await settle()
+      const shown = store.view.blocks
+      await store.open()
+      assert.equal(fake.windowCalls, reads)
+      assert.equal(store.status, "ready")
+      if (reads === 1) assert.equal(store.view.blocks, shown)
+      else assert.deepEqual(store.view.blocks, [textBlock("a"), textBlock("b")])
+    } finally { store.dispose() }
+  })
+
 
   test("shrinks the total when a delta truncates the transcript", async () => {
     const fake = fakeConnection({ windows: [{ blocks: [textBlock("a"), textBlock("b"), textBlock("c")], startBlockIndex: 0, totalBlocks: 3 }] })

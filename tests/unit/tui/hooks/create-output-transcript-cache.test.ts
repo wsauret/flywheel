@@ -7,7 +7,7 @@ import { blockIdentity } from "../../../../src/protocol/block-identity.js"
 import { createOutputTranscriptCache } from "../../../../src/tui/transcript-store/create-output-transcript-cache.js"
 import { atTranscriptHead } from "../../../../src/tui/transcript-store/output-transcript-cache-types.js"
 import { createTranscriptWindowProjector } from "../../../../src/tui/output-window/output-window-projection.js"
-import { INSTANT_BACKOFF, content, fakeRuntimeClient, flushRecovery, gen, liveView, rangeOk, seedComplete, seedTail, textBlock, toolEntry, userMessageBlock, windowTotal } from "./_output-transcript-cache-fixtures.js"
+import { INSTANT_BACKOFF, content, fakeRuntimeClient, flushRecovery, gen, liveView, rangeOk, rangeUnavailable, seedComplete, seedTail, textBlock, toolEntry, userMessageBlock, windowTotal } from "./_output-transcript-cache-fixtures.js"
 
 const run = (scenario: (dispose: () => void) => Promise<void>): Promise<void> => createRoot(async (dispose) => { try { await scenario(dispose) } finally { dispose() } })
 
@@ -117,6 +117,31 @@ describe("createOutputTranscriptCache (one shared store per resident session)", 
       expect(fake.outputWindowCalls()).toBe(2)
       expect(content(cache.visibleRange("s1")!.blocks[0])).toBe("fresh")
       expect(cache.visibleRange("s1")!.status.kind).toBe("complete")
+    })
+  })
+
+  it.each(["recovery-failed", "unavailable"] as const)("open reads a resident again whose last read was %s", async (outcome) => {
+    await run(async () => {
+      const fake = fakeRuntimeClient()
+      const cache = createOutputTranscriptCache({ appService: fake.client, now: () => 1000, recoveryBackoff: INSTANT_BACKOFF })
+      if (outcome === "recovery-failed") {
+        fake.setOutputWindow("s1", [])
+        fake.failOutputWindow(4)
+        await expect(cache.open("s1")).rejects.toThrow()
+      } else {
+        const opening = cache.open("s1")
+        fake.settleTotal(0, 0)
+        await Promise.resolve()
+        fake.settleRange(0, rangeUnavailable())
+        await opening
+      }
+      expect(cache.visibleRange("s1")?.status.kind).toBe(outcome)
+      fake.setOutputWindow("s1", [textBlock("b0", "answer")])
+      const reads = fake.outputWindowCalls()
+      await cache.open("s1")
+      expect(fake.outputWindowCalls()).toBe(reads + 1)
+      expect(cache.visibleRange("s1")?.blocks.map(content)).toEqual(["answer"])
+      expect(cache.visibleRange("s1")?.status.kind).toBe("complete")
     })
   })
 

@@ -593,12 +593,9 @@ export function createOutputTranscriptCache(deps: {
     },
     reportProjectionFailure,
     startKnownEmpty: (id) => { ensureResident(id, true) },
-    // A resident session is open already; a session still reading resolves
-    // with that read, which `refresh` on an in-flight read is.
     open: async (id) => {
       const { store } = ensureResident(id)
-      if (store.status !== "idle" && store.status !== "loading") return
-      await store.refresh()
+      await store.open()
       // A first read that exhausted its retries is the caller's to report as
       // well as the pane's: the shell toasts the cause.
       if (recoveryFailed(store)) throw new Error(store.unavailable?.diagnostic ?? "Could not read this session's transcript.")

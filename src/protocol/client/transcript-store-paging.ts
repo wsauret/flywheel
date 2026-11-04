@@ -79,6 +79,35 @@ export function windowFromRead(tail: ReadWindow, previous: TranscriptView, index
   }
 }
 
+/** A read around an entry that does not reach the live end, as a page of
+ *  history: it proves no live coverage and keeps every fetched payload. */
+export function detachedWindowFromRead(read: ReadWindow, previous: TranscriptView): TranscriptView {
+  const { range } = read
+  return {
+    appliedOutputPosition: null,
+    atTail: false,
+    hasNewer: true,
+    blocks: range.blocks,
+    streamingToolText: range.streamingToolText,
+    bodies: previous.bodies,
+    groups: previous.groups,
+    groupRequests: previous.groupRequests,
+    startBlockIndex: range.window.startBlockIndex,
+    totalBlocks: read.totalBlocks,
+    visibleMessageCount: read.visibleMessageCount,
+    streamingOutputChars: range.streamingOutputChars,
+    hasBefore: range.window.hasBefore,
+    consistencyToken: range.consistencyToken,
+    historicalThroughIndex: historicalThrough(range, -1),
+  }
+}
+
+/** Whether the view shows no blocks while its counts say the session has
+ *  output: an empty pane that a person would read as a lost transcript. */
+export function showsNothingOfOutput(view: TranscriptView): boolean {
+  return view.blocks.length === 0 && (view.totalBlocks > 0 || view.visibleMessageCount > 0)
+}
+
 /** Exact identities, not the old coordinate revision, choose recovery. */
 export function recoveryAnchor(view: TranscriptView, index: ReadonlyMap<string, number>, reader: TranscriptReader | undefined, latest: boolean): OutputRangeAnchor {
   if (latest || view.blocks.length === 0 || reader?.following !== false || reader.blockIds.length === 0) return { kind: "tail" }
