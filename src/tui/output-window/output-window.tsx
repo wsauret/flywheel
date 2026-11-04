@@ -18,6 +18,7 @@ import { parseSessionLink } from "../../protocol/client/session-links.js"
 import { useTheme } from "@tui/context/theme"
 import { type Accessor, createEffect, createMemo, createSignal, Index, onCleanup, Show, untrack } from "solid-js"
 import { probe } from "../../infra/render-probe.js"
+import { noticeText } from "../../infra/session-notice.js"
 import type { DiffColorMode } from "../../orchestration/config/schema.js"
 import { createOutputScrollController, type TranscriptSelectionAutoScroll } from "../hooks/create-output-scroll-controller.js"
 import type { WheelProfile } from "./output-window-wheel.js"
@@ -101,7 +102,13 @@ export function OutputWindow(props: OutputWindowProps) {
     })
     props.ensureChildViews?.([...new Set(sessionIds)])
   })
-  const recoveryFailed = createMemo(() => snapshot()?.status.kind === "recovery-failed")
+  // An empty pane says why it shows nothing when the transcript could not be
+  // read or the runtime has none to give.
+  const emptyNotice = createMemo(() => {
+    const status = snapshot()?.status
+    if (status?.kind === "recovery-failed") return "Output recovery failed. The transcript may be stale."
+    return status?.kind === "unavailable" ? noticeText(status.notice) : undefined
+  })
   // The intro renders inside the scrollbox above the transcript rows; its
   // measured height is the leading extent the scroll controller's anchor math
   // subtracts (and re-adds) so offsets stay block-accurate at the head. Seeded
@@ -274,10 +281,10 @@ export function OutputWindow(props: OutputWindowProps) {
               </box>
             ) : null}
 
-            {!hasContent() && recoveryFailed() ? (
+            {!hasContent() && emptyNotice() ? (
               <box paddingLeft={1} paddingTop={1}>
                 <text fg={themeCtx.theme.warning} wrapMode="word">
-                  Output recovery failed. The transcript may be stale.
+                  {emptyNotice()}
                 </text>
               </box>
             ) : null}

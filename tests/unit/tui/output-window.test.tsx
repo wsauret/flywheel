@@ -377,6 +377,25 @@ describe("OutputWindow", () => {
     }
   })
 
+  it.each([
+    { status: { kind: "recovery-failed" as const, message: "offline", updatedAt: 0 }, says: "Output recovery failed. The transcript may be stale." },
+    { status: { kind: "unavailable" as const, notice: { id: "n", scope: "output", presentation: "transcript.unavailable", severity: "error", title: "Session history unavailable", message: "Its history cannot be read.", startedAt: 0, updatedAt: 0 } as const, diagnostic: "no metadata" }, says: "Session history unavailable. Its history cannot be read." },
+  ])("says why an empty $status.kind transcript shows nothing, as a warning", async ({ status, says }) => {
+    const complete = transcriptOf([]).visibleRange()!
+    const transcript = { ...transcriptOf([]), visibleRange: () => ({ ...complete, status }) }
+    const result = await mountOutputWindow([], 20, undefined, "subagent", undefined, transcript)
+    const theme = resolveTheme(flywheelTheme, "dark")
+
+    try {
+      await result.renderOnce()
+      expect(result.captureCharFrame()).toContain(says)
+      const first = result.captureSpans().lines.flatMap((line) => line.spans).find((span) => says.startsWith(span.text.trim()) && span.text.trim().length > 0)
+      expect(first?.fg.equals(theme.warning)).toBe(true)
+    } finally {
+      result.renderer.destroy()
+    }
+  })
+
   it.each(["workflow-agent", "subagent"] as const)("starts %s transcripts with their first entry", async (sessionKind) => {
     const frame = await renderOutputWindow([{
       kind: "userMessage",
