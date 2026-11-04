@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.29.7",
-    "@babel/preset-typescript": "^7.27.1",
+    "@babel/preset-typescript": "^7.29.7",
     "@types/babel__core": "^7.20.5",
     "@types/bun": "^1.4.4",
     "babel-preset-solid": "^1.9.15"
