@@ -1,0 +1,16 @@
+src/tui/output-window/output-window.tsx
+  h_4b47e9e4a8b456 21,105-111,284,287
+tests/unit/tui/output-window.test.tsx
+  h_4b47e9e4a8b456 380-398
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ef357ddae376eee4e6b48a10c7394167a91b5e22",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
