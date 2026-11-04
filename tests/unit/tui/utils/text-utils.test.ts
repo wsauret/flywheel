@@ -1,8 +1,7 @@
 import { describe, it, expect } from "bun:test"
-import stringWidth from "string-width"
 import { BoxRenderable, TextRenderable, fg } from "@opentui/core"
 import { testRender } from "@opentui/solid"
-import { displayWidth, fitChunks, shareWidth, truncateText, useWrappedLineCount } from "../../../../src/tui/utils/text"
+import { displayWidth, fitChunks, shareWidth, truncateText, truncateToWidth, useWrappedLineCount } from "../../../../src/tui/utils/text"
 
 describe("wrappedLineCount", () => {
   for (const wrapMode of ["word", undefined] as const) {
@@ -71,22 +70,48 @@ describe("displayWidth", () => {
     expect(displayWidth("hello world 123 ~!@#")).toBe(20)
   })
 
-  it("agrees with string-width on the strings the fast path skips", () => {
-    // Wide CJK, emoji sequences, combining marks, box drawing, ANSI escapes,
-    // control characters: everything non-ASCII must take the exact path.
-    for (const text of ["日本語", "👩‍👩‍👧‍👦", "e\u0301", "└ rail │", "\u001B[31mred\u001B[0m", "tab\there", "line\nbreak"]) {
-      expect(displayWidth(text)).toBe(stringWidth(text))
+  it("counts the columns that the renderer draws, so a mark after the text fits in exactly that many columns plus one", async () => {
+    // Wide CJK, an emoji sequence, a combining mark, box drawing, an ANSI
+    // escape that the renderer draws as text, symbols that the renderer draws
+    // wide (U+2764, U+203C) or narrow (U+2699), a soft hyphen, a tab, and
+    // controls that the renderer draws in no column, among them 0x1f and
+    // DEL, which bracket the printable-ASCII fast path.
+    const char = String.fromCodePoint
+    const texts = ["日本語", "👩‍👩‍👧‍👦", `e${char(0x301)}`, "└ rail │", `${char(0x1b)}[31mred`, `${char(0x2764)} love`, `${char(0x203c)}!`, `${char(0x2699)} gear`, `a${char(0xad)}b`, `a${char(9)}b`, `a${char(7)}b`, `a${char(0x1f)}b`, `a${char(0x7f)}b`, `a${char(0x9b)}b`]
+    const result = await testRender(() => null, { width: 40, height: 2 })
+    const markShown = async (text: string, width: number) => {
+      const host = new BoxRenderable(result.renderer, { width })
+      host.add(new TextRenderable(result.renderer, { content: `${text}|`, wrapMode: "none" }))
+      result.renderer.root.add(host)
+      await result.renderOnce()
+      const shown = result.captureCharFrame().split("\n")[0]?.includes("|")
+      host.destroy()
+      return shown
+    }
+    try {
+      for (const text of texts) {
+        expect({ text, fits: await markShown(text, displayWidth(text) + 1), clipped: !await markShown(text, displayWidth(text)) }).toEqual({ text, fits: true, clipped: true })
+      }
+    } finally {
+      await result.renderer.destroy()
     }
   })
+})
 
-  it("locks the fast-path predicate boundaries against string-width", () => {
-    // 0x1f (below space), space, tilde, and DEL bracket the printable-ASCII
-    // range; each must agree exactly with string-width.
-    for (const text of ["\u001f", " ", "~", "\u007f", "a\u001fb", "a\u007fb"]) {
-      expect(displayWidth(text)).toBe(stringWidth(text))
+describe("truncateToWidth", () => {
+  it("keeps a symbol that the renderer draws wide inside the width, with its ellipsis shown", async () => {
+    const heart = String.fromCodePoint(0x2764)
+    const result = await testRender(() => null, { width: 10, height: 2 })
+    try {
+      const host = new BoxRenderable(result.renderer, { width: 3 })
+      host.add(new TextRenderable(result.renderer, { content: truncateToWidth(`${heart}${heart}${heart}abc`, 3, "…"), wrapMode: "none" }))
+      result.renderer.root.add(host)
+      await result.renderOnce()
+      expect(result.captureCharFrame().split("\n")[0]?.trimEnd()).toBe(`${heart}…`)
+    } finally {
+      await result.renderer.destroy()
     }
   })
-
 })
 
 describe("shareWidth", () => {

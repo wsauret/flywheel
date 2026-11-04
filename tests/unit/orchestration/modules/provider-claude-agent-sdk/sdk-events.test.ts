@@ -23,7 +23,7 @@ describe("the SDK message classification", () => {
   test("separates the main stream's events from pings and subagent events", () => {
     const delta: BetaRawMessageStreamEvent = {
       type: "message_delta", context_management: null, delta: { stop_reason: "end_turn", stop_sequence: null, container: null, stop_details: null },
-      usage: { output_tokens: 3, input_tokens: null, cache_read_input_tokens: null, cache_creation_input_tokens: null, iterations: null, server_tool_use: null },
+      usage: { output_tokens: 3, input_tokens: null, cache_read_input_tokens: null, cache_creation_input_tokens: null, iterations: null, fallback_credit: null, output_tokens_details: null, server_tool_use: null },
     };
     expect(classifySdkMessage(event(delta))).toEqual({ kind: "event", event: delta });
     expect(classifySdkMessage(cliOnlyMessage({ type: "stream_event", parent_tool_use_id: null, event: { type: "ping" } }))).toEqual({ kind: "ping" });

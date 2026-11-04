@@ -1,4 +1,4 @@
-import type { Base64ImageSource, URLImageSource } from "@anthropic-ai/sdk/resources/messages.js";
+import type { ImageBlockParam } from "@anthropic-ai/sdk/resources/messages.js";
 
 // CLI 2.1.294 and 2.1.295 run every top-level image of a pushed user message through a resize step. The step
 // decodes the base64, names the media type from the bytes, and passes the bytes unchanged only when the format is
@@ -21,10 +21,10 @@ interface ImageHeader {
 
 /**
  * Whether the CLI would change this image if the bridge pushed it as a top-level block. It is true also when the
- * header cannot be read, because the bridge must never push an image that the CLI could change. A URL source is
- * passed unchanged.
+ * header cannot be read, because the bridge must never push an image that the CLI could change. A URL or file source
+ * is passed unchanged.
  */
-export function cliRewritesImage(source: Base64ImageSource | URLImageSource): boolean {
+export function cliRewritesImage(source: ImageBlockParam["source"]): boolean {
   if (source.type !== "base64") return false;
   if (source.data.length > MAX_BASE64_LENGTH) return true;
   const bytes = Buffer.from(source.data, "base64");

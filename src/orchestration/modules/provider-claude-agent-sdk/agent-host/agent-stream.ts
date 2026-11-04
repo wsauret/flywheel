@@ -96,8 +96,8 @@ export async function* hostedStreamEvents(events: AsyncIterable<StepEvent>, rows
       started = true;
       // The usage comes with the stop chunk, which the stream sends in its `message_delta`.
       yield { type: "message_start", message: {
-        id: `msg_host_${randomUUID()}`, type: "message", role: "assistant", model, content: [], container: null, stop_details: null, stop_reason: null, stop_sequence: null,
-        usage: { input_tokens: 0, output_tokens: 0, cache_creation: null, cache_creation_input_tokens: null, cache_read_input_tokens: null, inference_geo: null, server_tool_use: null, service_tier: null },
+        id: `msg_host_${randomUUID()}`, type: "message", role: "assistant", model, content: [], container: null, diagnostics: null, stop_details: null, stop_reason: null, stop_sequence: null,
+        usage: { input_tokens: 0, output_tokens: 0, cache_creation: null, cache_creation_input_tokens: null, cache_read_input_tokens: null, inference_geo: null, output_tokens_details: null, server_tool_use: null, service_tier: null, speed: null },
       } };
     }
     if (item.kind === "stop") {
@@ -105,7 +105,7 @@ export async function* hostedStreamEvents(events: AsyncIterable<StepEvent>, rows
       const usage = item.usage;
       yield {
         type: "message_delta", delta: { stop_reason: stopReason(item.stopReason), stop_sequence: null, stop_details: null, container: null },
-        usage: { output_tokens: usage?.output_tokens ?? 0, input_tokens: usage?.input_tokens ?? 0, cache_read_input_tokens: usage?.cache_read_input_tokens ?? 0, cache_creation_input_tokens: usage?.cache_creation_input_tokens ?? 0, server_tool_use: null },
+        usage: { output_tokens: usage?.output_tokens ?? 0, input_tokens: usage?.input_tokens ?? 0, cache_read_input_tokens: usage?.cache_read_input_tokens ?? 0, cache_creation_input_tokens: usage?.cache_creation_input_tokens ?? 0, output_tokens_details: null, server_tool_use: null },
       };
       yield { type: "message_stop" };
       onAnswer({ message: { role: "assistant", content }, stopReason: item.stopReason });

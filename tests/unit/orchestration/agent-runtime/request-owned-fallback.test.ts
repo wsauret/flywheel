@@ -127,7 +127,7 @@ async function fixture(scenario: Scenario) {
                 controller: new AbortController(),
                 async *[Symbol.asyncIterator](): AsyncGenerator<RawMessageStreamEvent> {
                   const ordinal = failureIndex >= 0 ? failureIndex + 1 : accounts.length + 1
-                  yield { type: "message_start", message: { id: `response-${account}`, type: "message", role: "assistant", model: candidateModel, content: [], container: null, stop_details: null, stop_reason: null, stop_sequence: null, usage: { input_tokens: 10 * ordinal, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, cache_creation: null, inference_geo: null, server_tool_use: null, service_tier: null } } }
+                  yield { type: "message_start", message: { id: `response-${account}`, type: "message", role: "assistant", model: candidateModel, content: [], container: null, diagnostics: null, stop_details: null, stop_reason: null, stop_sequence: null, usage: { input_tokens: 10 * ordinal, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, cache_creation: null, inference_geo: null, output_tokens_details: null, server_tool_use: null, service_tier: null, speed: null } } }
                   if (failureIndex >= 0) {
                     if (scenario.eagerTool) {
                       yield* textFrames("retained partial")
@@ -138,7 +138,7 @@ async function fixture(scenario: Scenario) {
                     throw scenario.failures[failureIndex]
                   }
                   yield* textFrames(scenario.responseText ?? "finished on authorized API")
-                  yield { type: "message_delta", delta: { stop_reason: "end_turn", stop_sequence: null, container: null, stop_details: null }, usage: { output_tokens: 7, input_tokens: null, cache_creation_input_tokens: null, cache_read_input_tokens: null, server_tool_use: null } }
+                  yield { type: "message_delta", delta: { stop_reason: "end_turn", stop_sequence: null, container: null, stop_details: null }, usage: { output_tokens: 7, input_tokens: null, cache_creation_input_tokens: null, cache_read_input_tokens: null, output_tokens_details: null, server_tool_use: null } }
                   yield { type: "message_stop" }
                 },
               },
