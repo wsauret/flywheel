@@ -1,0 +1,34 @@
+THIRD-PARTY-LICENSES.txt
+  h_4b47e9e4a8b456 34643-34644
+bun.lock
+  h_4b47e9e4a8b456 20,1174
+package.json
+  h_4b47e9e4a8b456 122
+src/orchestration/app-service/project-files.ts
+  h_4b47e9e4a8b456 89
+src/tui/components/modal-select-helpers.ts
+  h_4b47e9e4a8b456 25-27
+src/tui/hooks/create-slash-suggestions.ts
+  h_4b47e9e4a8b456 84-85
+src/tui/hooks/use-session-modal.ts
+  h_4b47e9e4a8b456 557-560
+tests/unit/orchestration/app-service/project-files.test.ts
+  h_4b47e9e4a8b456 39-40
+tests/unit/tui/components/modal-select-helpers.test.ts
+  h_4b47e9e4a8b456 47-51
+tests/unit/tui/hooks/slash-suggestions.test.ts
+  h_4b47e9e4a8b456 83-86
+tests/unit/tui/hooks/use-session-modal-catalog.test.ts
+  h_4b47e9e4a8b456 112,129-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "406944b47653a4816b15c36a691403ea4c603be0",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
