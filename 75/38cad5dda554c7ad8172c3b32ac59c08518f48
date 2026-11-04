@@ -1,0 +1,22 @@
+src/orchestration/modules/development/definitions/skills/session-debugging/references/records.md
+  h_4b47e9e4a8b456 37-38
+src/protocol/client/transcript-store.ts
+  h_4b47e9e4a8b456 12,14,341,342,435,436,482,816,832
+tests/unit/protocol/client/transcript-store.test.ts
+  h_4b47e9e4a8b456 3,49-52,53,54-72,496
+src/protocol/client/transcript-store-paging.ts
+  h_4b47e9e4a8b456 82-110
+src/protocol/client/transcript-empty-render.ts
+  h_4b47e9e4a8b456 1-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7538cad5dda554c7ad8172c3b32ac59c08518f48",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
