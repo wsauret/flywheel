@@ -1,0 +1,40 @@
+THIRD-PARTY-LICENSES.txt
+  h_4b47e9e4a8b456 31459-31460,31477,35904-35905
+bun.lock
+  h_4b47e9e4a8b456 22,873,1283
+package.json
+  h_4b47e9e4a8b456 124
+src/infra/frontmatter.ts
+  h_4b47e9e4a8b456 3,34-38,41
+src/infra/tools/workflow-call-source.ts
+  h_4b47e9e4a8b456 41
+src/infra/workflow-yaml.ts
+  h_4b47e9e4a8b456 2,23-46,48-53,56-58,60,86
+src/infra/yaml-load.ts
+  h_4b47e9e4a8b456 1-53
+src/tui/solid-transform-stack-trace.ts
+  h_4b47e9e4a8b456 11-12
+src/workflows/vm/retired-built-in-definitions.ts
+  h_4b47e9e4a8b456 31
+src/workflows/workflow-file.ts
+  h_4b47e9e4a8b456 9,296-298,301-307,321,323,327,350,354
+tests/unit/infra/frontmatter.test.ts
+  h_4b47e9e4a8b456 95,105-127
+tests/unit/tui/solid-transform-stack-trace.test.ts
+  h_4b47e9e4a8b456 25
+tests/unit/workflows/definitions/definition-assets.test.ts
+  h_4b47e9e4a8b456 83,100
+tests/unit/workflows/definitions/definition-loader.test.ts
+  h_4b47e9e4a8b456 269-297
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a2f9d0178bee620275d432620a90a4163795d46a",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
