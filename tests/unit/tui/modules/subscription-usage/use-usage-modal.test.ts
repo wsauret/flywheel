@@ -5,7 +5,7 @@ import type { RuntimeAuthStatusScope } from "../../../../../src/protocol/auth-st
 import { createModalStack } from "../../../../../src/tui/components/modal-stack.js"
 import { useUsageModal, type UsageModalView } from "../../../../../src/tui/modules/subscription-usage/use-usage-modal.js"
 import { usageAccounts, usageHistory, usageOpenResult, usageRefreshResult, usageSpend } from "../../usage-fixtures.js"
-import { fakeFrameHookHost } from "../../../../helpers/scroll-frame-hook.js"
+import { fakeFrameHookHost, fakeScrollPart } from "../../../../helpers/scroll-frame-hook.js"
 
 const defaultsScope = { kind: "defaults" } as const
 const tick = async () => { await new Promise((resolve) => setTimeout(resolve, 0)) }
@@ -58,7 +58,7 @@ describe("useUsageModal unified usage protocol", () => {
       expect(fixture.dispatch).not.toHaveBeenCalled()
       fixture.hook.setUsageView("spend"); await tick()
       const scrollTo = mock((_row: number) => {})
-      fixture.hook.spendScroll.attach(Object.assign(Object.create(null), { ...fakeFrameHookHost(), content: {}, scrollTop: 4, scrollHeight: 20, viewport: { height: 4 }, scrollBy: () => {}, scrollTo }))
+      fixture.hook.spendScroll.attach(Object.assign(Object.create(null), { ...fakeFrameHookHost(), scrollTop: 4, scrollHeight: 20, viewport: fakeScrollPart({ height: 4 }), scrollBy: () => {}, scrollTo }))
       scrollTo.mockClear()
       const selected = fixture.hook.selectedSourceId()
       const pending = Promise.withResolvers<Result>()
@@ -161,7 +161,7 @@ describe("useUsageModal unified usage protocol", () => {
     fixture.hook.openUsageModal(); await tick()
     expect(fixture.hook.usageSpend()).toEqual(usageSpend)
     const scrollTo = mock((_row: number) => {})
-    fixture.hook.spendScroll.attach(Object.assign(Object.create(null), { ...fakeFrameHookHost(), content: {}, scrollTop: 4, scrollHeight: 20, viewport: { height: 4 }, scrollBy: () => {}, scrollTo }))
+    fixture.hook.spendScroll.attach(Object.assign(Object.create(null), { ...fakeFrameHookHost(), scrollTop: 4, scrollHeight: 20, viewport: fakeScrollPart({ height: 4 }), scrollBy: () => {}, scrollTo }))
     scrollTo.mockClear()
     fixture.query.mockResolvedValueOnce({ ...usageSpend, estimatedBilledUsd: 42 })
     opening.resolve(usageOpenResult); await tick()
@@ -250,7 +250,7 @@ describe("useUsageModal unified usage protocol", () => {
   it("pages the selected Account without moving the source", async () => {
     const fixture = harness()
     const scrollBy = mock((_rows: number) => {})
-    const renderable: Parameters<typeof fixture.hook.currentScroll.attach>[0] = Object.assign(Object.create(null), { ...fakeFrameHookHost(), content: {}, scrollTop: 0, scrollHeight: 20, viewport: { height: 4 }, scrollBy, scrollTo: () => {} })
+    const renderable: Parameters<typeof fixture.hook.currentScroll.attach>[0] = Object.assign(Object.create(null), { ...fakeFrameHookHost(), scrollTop: 0, scrollHeight: 20, viewport: fakeScrollPart({ height: 4 }), scrollBy, scrollTo: () => {} })
     fixture.hook.openUsageModal(); await tick(); fixture.hook.currentScroll.attach(renderable)
     fixture.modal.input({ name: "pagedown" }); fixture.modal.input({ name: "pageup" })
     expect(scrollBy.mock.calls).toEqual([[4], [-4]])
@@ -261,7 +261,7 @@ describe("useUsageModal unified usage protocol", () => {
   it("resets the selected Account when detail metrics are toggled", async () => {
     const fixture = harness()
     const scrollTo = mock((_row: number) => {})
-    const renderable: Parameters<typeof fixture.hook.currentScroll.attach>[0] = Object.assign(Object.create(null), { ...fakeFrameHookHost(), content: {}, scrollTop: 4, scrollHeight: 20, viewport: { height: 4 }, scrollBy: () => {}, scrollTo })
+    const renderable: Parameters<typeof fixture.hook.currentScroll.attach>[0] = Object.assign(Object.create(null), { ...fakeFrameHookHost(), scrollTop: 4, scrollHeight: 20, viewport: fakeScrollPart({ height: 4 }), scrollBy: () => {}, scrollTo })
     fixture.hook.openUsageModal(); await tick(); fixture.hook.currentScroll.attach(renderable); scrollTo.mockClear()
     expect(fixture.hook.usageShowDetailMetrics()).toBe(false)
     fixture.modal.input({ name: "c" })
@@ -275,7 +275,7 @@ describe("useUsageModal unified usage protocol", () => {
   it("does not toggle or reset when the selected Account is selected again", async () => {
     const fixture = harness()
     const scrollTo = mock((_row: number) => {})
-    const renderable: Parameters<typeof fixture.hook.currentScroll.attach>[0] = Object.assign(Object.create(null), { ...fakeFrameHookHost(), content: {}, scrollTop: 0, scrollHeight: 20, viewport: { height: 4 }, scrollBy: () => {}, scrollTo })
+    const renderable: Parameters<typeof fixture.hook.currentScroll.attach>[0] = Object.assign(Object.create(null), { ...fakeFrameHookHost(), scrollTop: 0, scrollHeight: 20, viewport: fakeScrollPart({ height: 4 }), scrollBy: () => {}, scrollTo })
     fixture.hook.openUsageModal(); await tick(); fixture.hook.currentScroll.attach(renderable); scrollTo.mockClear()
     fixture.hook.setSelectedSourceId("chatgpt:work")
     expect(scrollTo).not.toHaveBeenCalled()

@@ -649,13 +649,13 @@ describe("OutputWindow virtualization", () => {
   })
 
   it("removes the scroll frame hook on unmount", async () => {
-    // OutputWindow appends a frame hook node to the scrollbox wrapper. On
+    // OutputWindow keeps a frame hook node as the scrollbox's last child. On
     // teardown it must destroy it, so the hook never outlives the component.
     const blocks = Array.from({ length: 4 }, (_, i) => textBlock(`b${i}`, `row ${i}`))
     const { view } = makeView(snapshot({ blocks, totalBlocks: 4, window: windowOf({ endBlockIndex: 3, estimatedRows: 4 }) }))
     const { scrollbox, result } = await renderWindow(view)
     scrollFrameHook(scrollbox)
-    const frameHook = scrollbox.wrapper.getChildren().at(-1)
+    const frameHook = scrollbox.getChildren().at(-1)
     result.renderer.destroy()
     expect(frameHook?.isDestroyed).toBe(true)
   })

@@ -23,9 +23,9 @@ describe("incremental window recompute (live delta path)", () => {
         const box = fakeScrollBox()
         controller.attach(asScrollBox(box))
         box.scrollHeight = 60
-        box.onUpdate?.(16)
+        box.frame(16)
         controller.page("page-up")
-        box.onUpdate?.(16)
+        box.frame(16)
         const anchor = slot.scroll?.anchorIdentity
         const baseline = controller.returnToLatestBaseline()
         const top = box.scrollTop
@@ -33,14 +33,14 @@ describe("incremental window recompute (live delta path)", () => {
         cache.protectReader("s1", { following: false, blockIds: [anchor] })
         fake.invalidate("s1", "rebase")
         await flushRecovery()
-        box.onUpdate?.(16)
+        box.frame(16)
         expect(slot.scroll?.anchorIdentity).toBe(anchor)
         expect(box.scrollTop).toBe(top)
         fake.setOutputWindow("s1", [textBlock("inserted", "older"), ...blocks])
         fake.invalidate("s1", "rebase")
         await flushRecovery()
         box.scrollHeight = 63
-        box.onUpdate?.(16)
+        box.frame(16)
         expect(slot.scroll?.anchorIdentity).toBe(anchor)
         expect(box.scrollTop).toBe(top + 3)
         expect(controller.returnToLatestBaseline()).toBe(baseline)

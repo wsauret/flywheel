@@ -99,15 +99,17 @@ describe("displayWidth", () => {
 })
 
 describe("truncateToWidth", () => {
-  it("keeps a symbol that the renderer draws wide inside the width, with its ellipsis shown", async () => {
+  it("keeps a text-style symbol inside the width as the renderer draws it, with its ellipsis shown", async () => {
     const heart = String.fromCodePoint(0x2764)
     const result = await testRender(() => null, { width: 10, height: 2 })
     try {
+      const truncated = truncateToWidth(`${heart}${heart}${heart}abc`, 3, "…")
       const host = new BoxRenderable(result.renderer, { width: 3 })
-      host.add(new TextRenderable(result.renderer, { content: truncateToWidth(`${heart}${heart}${heart}abc`, 3, "…"), wrapMode: "none" }))
+      host.add(new TextRenderable(result.renderer, { content: truncated, wrapMode: "none" }))
       result.renderer.root.add(host)
       await result.renderOnce()
-      expect(result.captureCharFrame().split("\n")[0]?.trimEnd()).toBe(`${heart}…`)
+      expect(truncated.endsWith("…")).toBe(true)
+      expect(result.captureCharFrame().split("\n")[0]?.trimEnd()).toBe(truncated)
     } finally {
       await result.renderer.destroy()
     }

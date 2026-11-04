@@ -339,9 +339,7 @@ export function QuestionDock(props: QuestionDockProps) {
   // not the border of a box taller than its viewport. The vertical padding
   // moves inside the scrollbox as spacing slots, so a short dock spends its
   // rows on content first. The dock scrolls only when even its content
-  // without spacing is taller than its rows. The viewport overflows as a
-  // scroll container, because Yoga then measures the content at its full
-  // height, which the scroll range needs.
+  // without spacing is taller than its rows.
   return (
     <OpaqueBox
       flexDirection="column"
@@ -370,7 +368,7 @@ export function QuestionDock(props: QuestionDockProps) {
       customBorderChars={VerticalBarBorder}
     >
       <scrollbox ref={scroll.attach}
-        onSizeChange={function (this: BoxRenderable) { if (Number.isFinite(this.height) && measured()) setAllottedRows(this.height) }} minHeight={1} flexBasis={0} flexGrow={1} scrollY={true} scrollX={false} viewportOptions={{ overflow: "scroll" }} verticalScrollbarOptions={{ visible: overflowing() }}>
+        onSizeChange={function (this: BoxRenderable) { if (Number.isFinite(this.height) && measured()) setAllottedRows(this.height) }} minHeight={1} flexBasis={0} flexGrow={1} scrollY={true} scrollX={false} verticalScrollbarOptions={{ visible: overflowing() }}>
         {content()}
       </scrollbox>
     </OpaqueBox>

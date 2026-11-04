@@ -1,19 +1,20 @@
+import { EventEmitter } from "node:events"
 import type { RenderContext, ScrollBoxRenderable } from "@opentui/core"
 import { createTestRenderer } from "@opentui/core/testing"
 
 /** Runs the frame hooks of a scrollbox whose layout hooks are patched, in
- *  frame order: the content update hook when one is patched, then the update
- *  hook of the node that patchScrollBoxLayoutHooks appends to the scrollbox
- *  wrapper, after its viewport. */
+ *  frame order: the box's own update hook when one is patched, then the
+ *  update hook of the node that patchScrollBoxLayoutHooks keeps as the
+ *  scrollbox's last child. */
 export function scrollFrameHook(scrollbox: ScrollBoxRenderable): (deltaTime: number) => void {
-  const host = scrollbox.wrapper.getChildren().at(-1)
+  const host = scrollbox.getChildren().at(-1)
   // oxlint-disable-next-line anti-slop/no-reflect-get -- boundary: the OpenTUI update hook is protected but is the controller's actual installed callback.
-  const update: unknown = host && host !== scrollbox.viewport ? Reflect.get(host, "onUpdate") : undefined
+  const update: unknown = host && Object.hasOwn(host, "onUpdate") ? Reflect.get(host, "onUpdate") : undefined
   if (typeof update !== "function") throw new Error("scrollbox frame hook was not patched")
   // oxlint-disable-next-line anti-slop/no-reflect-get -- boundary: the OpenTUI update hook is protected but is the controller's actual installed callback.
-  const start: unknown = Object.hasOwn(scrollbox.content, "onUpdate") ? Reflect.get(scrollbox.content, "onUpdate") : undefined
+  const start: unknown = Object.hasOwn(scrollbox, "onUpdate") ? Reflect.get(scrollbox, "onUpdate") : undefined
   return (deltaTime) => {
-    if (typeof start === "function") start.call(scrollbox.content, deltaTime)
+    if (typeof start === "function") start.call(scrollbox, deltaTime)
     update.call(host, deltaTime)
   }
 }
@@ -26,10 +27,21 @@ export function scrollFrameHook(scrollbox: ScrollBoxRenderable): (deltaTime: num
 // renderer of a later test file and fail its native frame step (OutputBusy).
 const { renderer } = await createTestRenderer({ width: 10, height: 10 })
 
+/** A scrollbox part, the viewport or the content, whose size changes reach
+ *  the resize listeners that patchScrollBoxLayoutHooks adds. */
+export type FakeScrollPart<Fields extends object> = Fields & EventEmitter
+
+export function fakeScrollPart<Fields extends object>(fields: Fields): FakeScrollPart<Fields> {
+  return Object.assign(new EventEmitter(), fields)
+}
+
 export interface FakeFrameHookHost {
   readonly ctx: RenderContext
   /** Holds the frame hook node that patchScrollBoxLayoutHooks appends. */
-  readonly wrapper: { add(node: object): void }
+  add(node: object): number
+  refreshHooks(): void
+  readonly viewport: FakeScrollPart<object>
+  readonly content: FakeScrollPart<object>
   /** Runs the update hook of the appended frame hook node, when there is one. */
   runFrame(deltaTime: number, beforeUpdate?: () => void): void
 }
@@ -42,7 +54,13 @@ export function fakeFrameHookHost(): FakeFrameHookHost {
   Object.defineProperty(ctx, "requestRender", { value: () => {} })
   return {
     ctx,
-    wrapper: { add(node) { frameHook = node } },
+    add(node) {
+      frameHook = node
+      return 0
+    },
+    refreshHooks() {},
+    viewport: fakeScrollPart({}),
+    content: fakeScrollPart({}),
     runFrame(deltaTime, beforeUpdate) {
       ctx.frameId += 1
       beforeUpdate?.()

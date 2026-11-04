@@ -144,12 +144,12 @@ describe("createOutputScrollController handed place", () => {
           controller.attach(asScrollBox(box))
           expect(renderRequests).toHaveBeenCalledTimes(0)
           box.scrollHeight = 40
-          box.onUpdate?.(16)
+          box.frame(16)
           // Block 5 of two-row blocks starts at row 10; one row into it.
           expect(box.scrollTop).toBe(11)
           setSnap(snapshotFor("gen-2", 20))
-          box.onUpdate?.(16)
-          box.onUpdate?.(16)
+          box.frame(16)
+          box.frame(16)
           expect(box.scrollTop).toBe(11)
           expect(slot.restoreAnchor).toEqual({ blockIndex: 5, rowOffsetWithinBlock: 1 })
 
@@ -158,12 +158,12 @@ describe("createOutputScrollController handed place", () => {
           expect(box.scrollTop).toBe(16)
           const baseline = controller.returnToLatestBaseline()
           setSnap(snapshotFor("gen-3", 20))
-          box.onUpdate?.(16)
-          box.onUpdate?.(16)
+          box.frame(16)
+          box.frame(16)
           expect(box.scrollTop).toBe(16)
           expect(controller.returnToLatestBaseline()).toBe(baseline)
           controller.returnToLatest()
-          box.onUpdate?.(16)
+          box.frame(16)
           expect(box.scrollTop).toBe(30)
         } finally {
           dispose()
@@ -190,7 +190,7 @@ describe("createOutputScrollController remount restore", () => {
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
       box.scrollHeight = TOTAL_ROWS
-      box.onUpdate?.(16) // fresh generation tails to the bottom
+      box.frame(16) // fresh generation tails to the bottom
       expect(box.scrollTop).toBe(MAX_TOP)
       controller.page("half-page-up") // explicit input: scroll 5 rows up
       expect(box.scrollTop).toBe(MAX_TOP - 5)
@@ -204,12 +204,12 @@ describe("createOutputScrollController remount restore", () => {
       controller.attach(asScrollBox(box))
       // First frame: nothing laid out yet. The degenerate extent must not be
       // adopted as "user is at the bottom".
-      box.onUpdate?.(16)
+      box.frame(16)
       // Layout catches up: the restored offset is enforced, not the tail.
       box.scrollHeight = TOTAL_ROWS
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(saved)
-      box.onUpdate?.(16) // and stays put: no spurious tail-follow after the restore
+      box.frame(16) // and stays put: no spurious tail-follow after the restore
       expect(box.scrollTop).toBe(saved)
       dispose()
     })
@@ -224,7 +224,7 @@ describe("createOutputScrollController remount restore", () => {
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
       box.scrollHeight = TOTAL_ROWS
-      box.onUpdate?.(16) // live generation tails to the bottom
+      box.frame(16) // live generation tails to the bottom
       expect(box.scrollTop).toBe(MAX_TOP)
       controller.page("half-page-up")
       expect(box.scrollTop).toBe(MAX_TOP - 5)
@@ -240,11 +240,11 @@ describe("createOutputScrollController remount restore", () => {
       const controller = mountController(slot, snap)
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
-      box.onUpdate?.(16) // degenerate remount frame
+      box.frame(16) // degenerate remount frame
       box.scrollHeight = TOTAL_ROWS
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(saved)
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(saved)
       dispose()
     })
@@ -263,12 +263,12 @@ describe("createOutputScrollController remount restore", () => {
       box.viewport.height = viewportRows
       controller.attach(asScrollBox(box))
       box.scrollHeight = totalRows
-      box.onUpdate?.(16) // fresh generation tails to maxScrollTop 80
+      box.frame(16) // fresh generation tails to maxScrollTop 80
       expect(box.scrollTop).toBe(80)
       controller.page("page-up") // explicit input parks at 50 with content below
       expect(box.scrollTop).toBe(parkedOffset)
       box.scrollHeight = parkedOffset + viewportRows // transient extent: maxScrollTop collapses to 50
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(parkedOffset)
       dispose()
     })
@@ -278,11 +278,11 @@ describe("createOutputScrollController remount restore", () => {
       const box = fakeScrollBox()
       box.viewport.height = viewportRows
       controller.attach(asScrollBox(box))
-      box.onUpdate?.(16) // degenerate remount frame
+      box.frame(16) // degenerate remount frame
       box.scrollHeight = totalRows
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(parkedOffset)
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(parkedOffset)
       dispose()
     })
@@ -297,7 +297,7 @@ describe("createOutputScrollController remount restore", () => {
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
       box.scrollHeight = TOTAL_ROWS
-      box.onUpdate?.(16) // fresh generation tails to the bottom
+      box.frame(16) // fresh generation tails to the bottom
       expect(box.scrollTop).toBe(MAX_TOP)
       controller.toTop() // explicit input parks at the transcript head
       expect(box.scrollTop).toBe(0)
@@ -308,12 +308,12 @@ describe("createOutputScrollController remount restore", () => {
       const controller = mountController(slot, snap)
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
-      box.onUpdate?.(16) // degenerate frame: maxScrollTop is 0
+      box.frame(16) // degenerate frame: maxScrollTop is 0
       expect(box.scrollTop).toBe(0)
       box.scrollHeight = TOTAL_ROWS
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(0)
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(0)
       dispose()
     })
@@ -333,11 +333,11 @@ describe("createOutputScrollController remount restore", () => {
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
       box.scrollHeight = TOTAL_ROWS
-      box.onUpdate?.(16)
+      box.frame(16)
       if (landed) {
         controller.toBlock(19)
-        box.onUpdate?.(16)
-        box.onUpdate?.(16)
+        box.frame(16)
+        box.frame(16)
       }
       expect(box.scrollTop).toBe(MAX_TOP) // at the bottom
       dispose()
@@ -350,7 +350,7 @@ describe("createOutputScrollController remount restore", () => {
       // Content grew while backgrounded; the remounted tree's extent is laid
       // out by the first frame (spacers come from the persisted height index).
       box.scrollHeight = TOTAL_ROWS + 20
-      box.onUpdate?.(16)
+      box.frame(16)
       // The FIRST frame pins the new tail: no intermediate painted frame at
       // the stale pre-background offset (the visible tab-switch flicker).
       expect(box.scrollTop).toBe(top)
@@ -368,7 +368,7 @@ describe("createOutputScrollController remount restore", () => {
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
       box.scrollHeight = TOTAL_ROWS
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(MAX_TOP)
       dispose()
     })
@@ -377,9 +377,9 @@ describe("createOutputScrollController remount restore", () => {
       const controller = mountController(slot, snap)
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
-      box.onUpdate?.(16) // degenerate frame: nothing laid out yet
+      box.frame(16) // degenerate frame: nothing laid out yet
       box.scrollHeight = TOTAL_ROWS + 20
-      box.onUpdate?.(16) // positional tail rule lands the real bottom
+      box.frame(16) // positional tail rule lands the real bottom
       expect(box.scrollTop).toBe(MAX_TOP + 20)
       dispose()
     })
@@ -394,10 +394,10 @@ describe("createOutputScrollController remount restore", () => {
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
       box.scrollHeight = TOTAL_ROWS
-      box.onUpdate?.(16)
+      box.frame(16)
       controller.page("half-page-up") // explicit input captures an anchor
       controller.toBottom() // back at the tail, anchor stays captured
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(MAX_TOP)
       dispose()
     })
@@ -406,18 +406,18 @@ describe("createOutputScrollController remount restore", () => {
       const controller = mountController(slot, snap)
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
-      box.onUpdate?.(16) // degenerate frame: the tail pin clamps to 0
+      box.frame(16) // degenerate frame: the tail pin clamps to 0
       box.scrollHeight = TOTAL_ROWS + 20
       // The degenerate pin must have adopted 0 as the new bottom (not kept the
       // persisted pre-remount bottom): otherwise this frame reads offset 0 as
       // off-tail and the follow is permanently lost.
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(MAX_TOP + 20)
       dispose()
     })
   })
 
-  it("reasserts the native extent and offset after bar recalculation reclamps them", () => {
+  it("reasserts the offset after a later layout round reclamps it", () => {
     const slot: TranscriptLayoutSlot = {}
     const [snap] = createSignal<TranscriptSnapshot | undefined>(snapshotFor("gen-1", 20))
     createRoot((dispose) => {
@@ -425,15 +425,13 @@ describe("createOutputScrollController remount restore", () => {
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
       box.scrollHeight = TOTAL_ROWS
-      box.contentHeight = TOTAL_ROWS
-      box.onUpdate?.(16) // fresh generation tails to the bottom
+      box.frame(16) // fresh generation tails to the bottom
       expect(box.scrollTop).toBe(MAX_TOP)
-      // Later native layout rounds can recalculate the bars after onFrame.
-      // The native extent remains authoritative over the bar's cached pair.
-      box.scrollHeight = 0
+      // A later native layout round after onFrame shrinks the content for a
+      // moment and clamps the offset; the round that restores the extent
+      // reports the size change, and the decided offset stands again.
       box.scrollTop = 0
-      box.recalculateBarProps?.()
-      expect(box.scrollHeight).toBe(TOTAL_ROWS)
+      box.content.emit("resize")
       expect(box.scrollTop).toBe(MAX_TOP)
       dispose()
     })
@@ -493,7 +491,7 @@ describe("createOutputScrollController same-frame measurement", () => {
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
       box.scrollHeight = 40
-      box.onUpdate?.(16) // fresh generation tails to the bottom (30)
+      box.frame(16) // fresh generation tails to the bottom (30)
       controller.page("half-page-up") // offset 25: anchor over block 12
       expect(box.scrollTop).toBe(25)
       // Block 0 lays out at 5 rows (estimate was 2). Its size callback runs
@@ -503,14 +501,14 @@ describe("createOutputScrollController same-frame measurement", () => {
       slot.heightIndex!.index.reportMeasured(0, 5)
       box.scrollHeight = 43
       if (wheel) box.onMouseEvent?.({ type: "scroll", scroll: { direction: "up", delta: 1 } })
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(wheel ? 26 : 28)
       if (wheel) {
         slot.heightIndex!.index.reportMeasured(1, 4)
         box.scrollHeight = 45
-        box.onUpdate?.(16)
+        box.frame(16)
         expect(box.scrollTop).toBe(27)
-        box.onUpdate?.(16)
+        box.frame(16)
         expect(box.scrollTop).toBe(27)
       }
       dispose()
@@ -528,15 +526,14 @@ describe("createOutputScrollController same-frame tail growth", () => {
       const controller = mountController(slot, snap)
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
-      box.contentHeight = 40 // yoga's fresh extent; the element lags a frame behind
-      box.onUpdate?.(16) // sync adopts it, fresh generation tails to the bottom
+      box.scrollHeight = 40
+      box.frame(16) // fresh generation tails to the bottom
       expect(box.scrollTop).toBe(30)
-      // A subagent preview grows one row: yoga lays out 41 rows THIS frame;
-      // the element's own extent would only catch up next frame. The pin must
-      // land in the same onUpdate, pushing the transcript up with the tail
-      // pinned instead of painting pushed down and popping back.
-      box.contentHeight = 41
-      box.onUpdate?.(16)
+      // A subagent preview grows one row: native layout holds 41 rows THIS
+      // frame. The pin must land in the same frame, pushing the transcript up
+      // with the tail pinned instead of painting pushed down and popping back.
+      box.scrollHeight = 41
+      box.frame(16)
       expect(box.scrollTop).toBe(31)
       dispose()
     })
@@ -551,20 +548,20 @@ describe("createOutputScrollController same-frame tail growth", () => {
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
       box.scrollHeight = 40
-      box.onUpdate?.(16) // fresh generation tails to the bottom
+      box.frame(16) // fresh generation tails to the bottom
       controller.page("half-page-up") // explicit input captures an anchor
       controller.toBottom() // back at the tail, anchor stays captured
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(30)
       // A block above re-measures smaller: the extent shrinks for a frame.
       // The tail pin follows down and must adopt the shrunken extent as the
       // new bottom -- preserving the stale bottom would classify the next
       // frame as off-tail and drop the follow for good.
       box.scrollHeight = 34
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(24)
       box.scrollHeight = 44 // appended output must tail as before
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(34)
       dispose()
     })
@@ -581,16 +578,16 @@ describe("createOutputScrollController same-frame tail growth", () => {
       box.viewport.height = 7
       controller.attach(asScrollBox(box))
       box.scrollHeight = 40
-      box.onUpdate?.(16) // fresh generation tails to the bottom
+      box.frame(16) // fresh generation tails to the bottom
       controller.page("half-page-up") // the reader leaves the tail by 3 rows
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(30)
       expect(controller.returnToLatestBaseline()).toBeDefined()
       box.viewport.height = 10 // the dock closes: maxScrollTop drops to 30
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(controller.returnToLatestBaseline()).toBeUndefined()
       box.scrollHeight = 44 // appended output must tail
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(34)
       dispose()
     })
@@ -606,16 +603,16 @@ describe("createOutputScrollController preserveScroll with fresh extents", () =>
       const controller = mountController(slot, snap)
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
-      box.contentHeight = 40
-      box.onUpdate?.(16) // fresh generation tails to the bottom
+      box.scrollHeight = 40
+      box.frame(16) // fresh generation tails to the bottom
       expect(box.scrollTop).toBe(30)
       controller.preserveScroll(() => {}) // expand a box at the pinned tail
-      box.contentHeight = 50 // with the extent sync the expansion lays out frame N
-      box.onUpdate?.(16) // frame N: release window holds the offset
+      box.scrollHeight = 50 // the expansion lays out frame N
+      box.frame(16) // frame N: release window holds the offset
       expect(box.scrollTop).toBe(30)
-      box.onUpdate?.(16) // frame N+1: still suppressed
+      box.frame(16) // frame N+1: still suppressed
       expect(box.scrollTop).toBe(30)
-      box.onUpdate?.(16) // frame N+2: release is positional now (offset < new max)
+      box.frame(16) // frame N+2: release is positional now (offset < new max)
       expect(box.scrollTop).toBe(30)
       controller.toBottom() // and End still reaches the true tail
       expect(box.scrollTop).toBe(40)
@@ -634,15 +631,15 @@ describe("createOutputScrollController preserveScroll at the tail", () => {
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
       box.scrollHeight = 40
-      box.onUpdate?.(16) // fresh generation tails to the bottom
+      box.frame(16) // fresh generation tails to the bottom
       expect(box.scrollTop).toBe(30)
       controller.preserveScroll(() => {}) // expand a box at the pinned tail
-      box.onUpdate?.(16) // frame N: element extent still stale, offset enforced
+      box.frame(16) // frame N: element extent still stale, offset enforced
       expect(box.scrollTop).toBe(30)
       box.scrollHeight = 50 // the expansion lands in layout one frame later
-      box.onUpdate?.(16) // frame N+1: without the release this frame re-pins to 40
+      box.frame(16) // frame N+1: without the release this frame re-pins to 40
       expect(box.scrollTop).toBe(30)
-      box.onUpdate?.(16) // frame N+2: release is positional now (offset < new max)
+      box.frame(16) // frame N+2: release is positional now (offset < new max)
       expect(box.scrollTop).toBe(30)
       dispose()
     })
@@ -656,15 +653,15 @@ describe("createOutputScrollController preserveScroll at the tail", () => {
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
       box.scrollHeight = 40
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(30)
       controller.preserveScroll(() => {}) // expand at the tail: release window opens
       box.scrollHeight = 50
       controller.toBottom() // End: explicit input cancels the release
       expect(box.scrollTop).toBe(40)
       box.scrollHeight = 60 // appended output tails again
-      box.onUpdate?.(16)
-      box.onUpdate?.(16)
+      box.frame(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(50)
       dispose()
     })
@@ -678,16 +675,16 @@ describe("createOutputScrollController preserveScroll at the tail", () => {
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
       box.scrollHeight = 40
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(30)
       controller.preserveScroll(() => {}) // collapse a box at the pinned tail
-      box.onUpdate?.(16) // frame N: extent stale
+      box.frame(16) // frame N: extent stale
       box.scrollHeight = 34 // collapsed content shrinks the extent
-      box.onUpdate?.(16) // frame N+1: enforce clamps to the shrunk max
+      box.frame(16) // frame N+1: enforce clamps to the shrunk max
       expect(box.scrollTop).toBe(24)
-      box.onUpdate?.(16) // frame N+2: still at the (new) bottom -> tail again
+      box.frame(16) // frame N+2: still at the (new) bottom -> tail again
       box.scrollHeight = 44 // appended output must tail as before
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(34)
       dispose()
     })

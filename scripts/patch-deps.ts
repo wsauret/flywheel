@@ -108,28 +108,6 @@ const patches: Patch[] = [{
       }`,
   expectedOccurrences: 1,
 }, {
-  // A scroll box's content has a minimum width of 100%, so its row overflows
-  // by the scrollbar's width. With the default flexShrink of 1, Yoga shrinks
-  // the scrollbar and the content in proportion, both get fractional widths,
-  // and every text in the content rounds one column wider than its box. Text
-  // then wraps and draws one column past its box background.
-  name: "keep a scrollbar at its own width",
-  glob: "node_modules/@opentui/core/index.*.js",
-  find: `  constructor(ctx, { trackOptions, arrowOptions, orientation, showArrows = false, ...options }) {
-    super(ctx, {
-      flexDirection: orientation === "vertical" ? "column" : "row",
-      alignSelf: "stretch",
-      alignItems: "stretch",
-      ...options`,
-  replace: `  constructor(ctx, { trackOptions, arrowOptions, orientation, showArrows = false, ...options }) {
-    super(ctx, {
-      flexDirection: orientation === "vertical" ? "column" : "row",
-      alignSelf: "stretch",
-      alignItems: "stretch",
-      flexShrink: 0,
-      ...options`,
-  expectedOccurrences: 1,
-}, {
   // After each frame OpenTUI hit-tests the still pointer again but tells the
   // leaf under it nothing when that leaf is unchanged. A hover that covers only
   // part of its leaf, such as a text's drawn glyphs, then goes stale when the

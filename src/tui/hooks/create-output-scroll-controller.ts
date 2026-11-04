@@ -1,5 +1,4 @@
 import type { BaseRenderable, MouseEvent, ScrollBoxRenderable } from "@opentui/core"
-import { allowSelectionStart } from "@tui/utils/selection.js"
 import { type Accessor, batch, createEffect, createSignal, onCleanup, untrack } from "solid-js"
 import type { HeightIndex } from "./create-height-index.js"
 import type { TranscriptSnapshot } from "../transcript-store/output-transcript-cache-types.js"
@@ -20,7 +19,6 @@ import {
   type MountedRowRegistry,
   type TranscriptLayoutSlot,
   type TranscriptScrollState,
-  syncScrollExtent,
   upstreamCorrectionRows,
   RESIDENT_BLOCK_BUDGET,
   windowGeometry,
@@ -141,13 +139,12 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
   // The block a taken landing centres. It stays set until the block's
   // laid-out row places the offset, before the frame that mounts it paints.
   let landing: number | undefined
-  // The scrollbar must adopt extent and offset together. Reactive spacers can
-  // trigger another native layout round after onFrame; bar recalculation then
-  // reconciles this pair against that round's geometry and reading anchor.
+  // The extent the frame decision stood on. Reactive spacers can trigger
+  // another native layout round after onFrame; its size callbacks then
+  // reconcile the offset against that round's extent and reading anchor.
   let frameExtent = Number.NaN
-  // The viewport size callback precedes the frame decision. OpenTUI advances
-  // frameId before that callback, invalidating the prior decision without
-  // another hook. Only rounds after this frame's decision may reconcile it.
+  // A frame's size callbacks run after its decision. Only callbacks of the
+  // frame that this decision belongs to may reconcile it.
   let decidedFrameId = -1
   // Whether this frame's decision placed the reading position on mounted
   // text, which already stands on this frame's native row heights.
@@ -263,7 +260,9 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
   function writeScroll(e: ScrollBoxRenderable, target: number, source: string): void {
     const beforeTop = e.scrollTop
     const applied = Math.max(0, Math.min(target, maxScrollTop(e)))
-    if (applied !== e.scrollTop) e.scrollTo(applied)
+    // The controller owns the offset and writes it again each frame, so the
+    // write must not reapply after the next layout as scrollTo does.
+    if (applied !== e.scrollTop) e.scrollTop = applied
     if (beforeTop === e.scrollTop) return
     lastWriteSource = source
     telemetry.changed(source, e, beforeTop)
@@ -451,14 +450,12 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
       updateSelectionFocus(e)
     }
 
-    // Adopt the frame's freshly laid-out content extent before any decision
-    // (see syncScrollExtent): the tail pin and every clamp below must see the
-    // true bottom in the same frame live growth paints, so a block growing at
-    // the pinned tail pushes the transcript UP instead of painting pushed
-    // down and popping back next frame.
-    syncScrollExtent(e)
-    // Bar recalculation reconciles this extent with any later layout round
-    // and resolves the matching reading offset before either can paint.
+    // The native extent is this frame's layout: the tail pin and every clamp
+    // below see the true bottom in the same frame live growth paints, so a
+    // block growing at the pinned tail pushes the transcript UP instead of
+    // painting pushed down and popping back next frame. Size callbacks
+    // reconcile this extent with any later layout round and resolve the
+    // matching reading offset before either can paint.
     frameExtent = e.scrollHeight
 
     const viewportGrowth = adoptViewportSize(e, index)
@@ -715,7 +712,7 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
     if (el) onWheel(el, event)
   }
 
-  /** Scrollbar drag: the base slider handler already applied the drag to
+  /** Scrollbar press or drag: the base handler already applied it to
    *  scrollTop; a drag is EXPLICIT input, so adopting the applied position is
    *  intent, not inference. */
   function onScrollbarDrag(e: ScrollBoxRenderable): void {
@@ -816,8 +813,7 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
       deps.mountedRows?.reportHeights(index)
       index.flushMeasurements()
       index.takeCorrections()
-      const extent = syncScrollExtent(e)
-      if (extent !== undefined) frameExtent = extent
+      frameExtent = e.scrollHeight
       state.offset = Math.max(0, Math.min(centredTop(rows.top, rows.height, e.viewport.height), maxScrollTop(e)))
       writeScroll(e, state.offset, "command.block")
       state.anchor = { kind: "block", blockIndex, rowOffsetWithinBlock: state.offset - rows.top }
@@ -847,7 +843,14 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
 
   function attach(e: ScrollBoxRenderable): void {
     el = e
-    allowSelectionStart(e)
+    // A press anywhere in the transcript starts a selection, except on the
+    // scrollbar: OpenTUI paints the bar inside the box, and a selection that
+    // starts there takes the drag from the thumb.
+    e.selectable = true
+    e.shouldStartSelection = (x, y) => {
+      const bar = e.verticalScrollBar
+      return !bar.visible || x < bar.x || x >= bar.x + bar.width || y < bar.y || y >= bar.y + bar.height
+    }
     const restore = patchScrollBoxHooks(e, {
       onFrameStart: () => untrack(onFrame),
       onFrame: () => untrack(() => batch(onRowsMeasured)),
@@ -856,27 +859,21 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
       onSelectionDrag: (event) => untrack(() => updateSelectionDrag(event.x, event.y)),
       onSelectionEnd: () => untrack(stopSelectionDrag),
       // Later native layout rounds can move reactive spacers and re-clamp the
-      // pair after onFrame. When such a round moved the extent, resolve the
-      // reading anchor on its geometry before reasserting extent and offset,
-      // without applying frame input again. An unchanged extent leaves the
-      // decided pair standing. Keep the frame's mounted range: publishing
-      // another viewport here can remount rows and cycle layout before their
+      // offset after onFrame. When such a round moved the extent, resolve the
+      // reading anchor on its geometry before reasserting the offset, without
+      // applying frame input again. An unchanged extent leaves the decided
+      // offset standing. Keep the frame's mounted range: publishing another
+      // viewport here can remount rows and cycle layout before their
       // measurements reach the index.
-      onBarsRecalculated: () => untrack(() => {
-        if (Number.isFinite(frameExtent)) {
-          // The viewport resize callback precedes onFrame. Publishing a new
-          // offset before its height-index rescale can unmount the anchor.
-          if (decidedFrameId === e.ctx.frameId && e.viewport.width === state.lastViewportWidth && e.viewport.height === state.lastViewportRows && !landOnLayout(e)) {
-            const extent = syncScrollExtent(e)
-            if (extent !== undefined && extent !== frameExtent) {
-              frameExtent = extent
-              if (tailingNow && returnToLatestBaseline() === undefined) state.offset = maxScrollTop(e)
-              else resolveMountedReadingAnchor()
-            }
-          }
-          e.verticalScrollBar.scrollSize = frameExtent
+      onResize: () => untrack(() => {
+        // A viewport that changed size since the decision needs the height-index
+        // rescale of the next decision first: a new offset can unmount the anchor.
+        if (Number.isFinite(frameExtent) && decidedFrameId === e.ctx.frameId && e.viewport.width === state.lastViewportWidth && e.viewport.height === state.lastViewportRows && !landOnLayout(e) && e.scrollHeight !== frameExtent) {
+          frameExtent = e.scrollHeight
+          if (tailingNow && returnToLatestBaseline() === undefined) state.offset = maxScrollTop(e)
+          else resolveMountedReadingAnchor()
         }
-        writeScroll(e, state.offset, "bars.reassert")
+        writeScroll(e, state.offset, "resize.reassert")
       }),
     })
     onCleanup(() => { stopSelectionDrag(); restore(); el = undefined })

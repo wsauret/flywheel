@@ -85,7 +85,7 @@ export function createModalScrollController(): ModalScrollController {
       let top = -scroll.scrollTop
       let left = -scroll.scrollLeft
       let descendant: Renderable | null = element
-      while (descendant !== scroll.content) {
+      while (descendant !== scroll) {
         if (!descendant) return
         const layout = descendant.getLayout()
         top += layout.top + descendant.translateY
@@ -140,7 +140,6 @@ export function createModalScrollController(): ModalScrollController {
       }
       restoreHooks = patchScrollBoxLayoutHooks(scroll, {
         onFrame: () => {
-          scroll.verticalScrollBar.scrollSize = scroll.content.getLayout().height
           if (target && (target.kind === "row" || target.pending || scroll.viewport.width !== appliedViewport.width || scroll.viewport.height !== appliedViewport.height)) {
             applyTarget(scroll)
             if (target.kind === "row") target = undefined
@@ -150,7 +149,7 @@ export function createModalScrollController(): ModalScrollController {
           restoreAnchor()
           if (anchor && --anchor.frames <= 0) anchor = undefined
         },
-        onBarsRecalculated: restoreAnchor,
+        onResize: restoreAnchor,
       })
       if (resetPending) {
         scroll.scrollTo(0)

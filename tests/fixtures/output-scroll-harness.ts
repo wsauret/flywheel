@@ -4,7 +4,7 @@ import type { TranscriptSnapshot } from "../../src/tui/transcript-store/output-t
 import type { TranscriptWindowProjection } from "../../src/tui/output-window/output-window-projection.js"
 import type { TranscriptLayoutSlot } from "../../src/tui/output-window/output-window-scroll.js"
 import { LINE_WHEEL } from "../../src/tui/output-window/output-window-wheel.js"
-import { fakeFrameHookHost } from "../helpers/scroll-frame-hook.js"
+import { fakeFrameHookHost, fakeScrollPart, type FakeScrollPart } from "../helpers/scroll-frame-hook.js"
 
 // Distinct keys get distinct generations, matching the model's contract: a
 // repave is a new generation, continuity keeps the resident one.
@@ -43,47 +43,36 @@ export const emptyProjection: TranscriptWindowProjection = {
 
 export interface FakeScrollBox {
   scrollTop: number
+  /** The native extent of the frame's layout. */
   scrollHeight: number
-  /** The frame's freshly computed yoga extent; syncScrollExtent adopts it into
-   *  scrollHeight each onUpdate. NaN = "between layouts" (sync skipped), which
-   *  lets tests drive scrollHeight by hand to simulate the element lag. */
-  contentHeight: number
-  viewport: { width: number; height: number }
+  viewport: FakeScrollPart<{ width: number; height: number }>
+  /** Its resize listeners run in a frame whose extent changed. */
+  content: FakeScrollPart<object>
   scrollTo(target: number): void
   updateAutoScroll(x: number, y: number): void
   stopAutoScroll(): void
-  verticalScrollBar: { slider: FakeSlider; scrollSize: number }
-  content: { getLayout(): { height: number }; onUpdate?: (dt: number) => void }
   ctx: RenderContext
   /** Holds the frame hook node that patchScrollBoxLayoutHooks appends. */
-  wrapper: { add(node: object): void }
-  /** Drives one frame: the update hook of the appended frame hook node. */
+  add(node: object): number
+  refreshHooks(): void
+  /** The box's own update hook, which patchScrollBoxLayoutHooks wraps. */
   onUpdate(dt: number): void
+  /** Drives one frame in OpenTUI's order: the box's update hook, the content
+   *  resize when the extent changed, then the update of the frame hook node. */
+  frame(dt: number): void
   /** Installed by patchScrollBoxHooks; wheel events route here. */
   onMouseEvent?: (event: { type: string; scroll?: { direction: string; delta: number } }) => void
   requestRender(): void
-  /** Wrapped by patchScrollBoxHooks; simulates OpenTUI's bar-recalc cascade. */
-  recalculateBarProps?: () => void
-}
-
-/** Enough of SliderRenderable's virtual-thumb geometry for tests to read the
- *  painted thumb: a 10-cell track (20 virtual units) with a 2-unit thumb, so
- *  maxStartVirtual = 18. getVirtualThumbStart computes the TRUE start from the
- *  box's scroll state, exactly like OpenTUI's slider. */
-export interface FakeSlider {
-  height: number
-  getVirtualThumbSize(): number
-  getVirtualThumbStart(): number
 }
 
 export function fakeScrollBox(): FakeScrollBox {
   const host = fakeFrameHookHost()
-  let lastContentHeight = Number.NaN
+  let lastScrollHeight = 0
   const box: FakeScrollBox = {
     scrollTop: 0,
     scrollHeight: 0,
-    contentHeight: Number.NaN,
-    viewport: { width: 80, height: 10 },
+    viewport: fakeScrollPart({ width: 80, height: 10 }),
+    content: host.content,
     scrollTo(target: number) {
       box.scrollTop = Math.max(0, Math.min(target, Math.max(0, box.scrollHeight - box.viewport.height)))
     },
@@ -91,40 +80,25 @@ export function fakeScrollBox(): FakeScrollBox {
     stopAutoScroll() {},
     requestRender() {},
     ctx: host.ctx,
-    wrapper: host.wrapper,
-    onUpdate(deltaTime) {
+    add: host.add,
+    refreshHooks: host.refreshHooks,
+    onUpdate() {},
+    frame(deltaTime) {
       host.runFrame(deltaTime, () => {
-        box.content.onUpdate?.(deltaTime)
-        if (!Object.is(box.contentHeight, lastContentHeight)) {
-          lastContentHeight = box.contentHeight
-          box.recalculateBarProps?.()
+        box.onUpdate(deltaTime)
+        if (box.scrollHeight !== lastScrollHeight) {
+          lastScrollHeight = box.scrollHeight
+          box.content.emit("resize")
         }
       })
     },
-    verticalScrollBar: {
-      slider: {
-        height: 10,
-        getVirtualThumbSize: () => 2,
-        getVirtualThumbStart: () => {
-          const range = Math.max(0, box.scrollHeight - box.viewport.height)
-          return range === 0 ? 0 : Math.round((box.scrollTop / range) * 18)
-        },
-      },
-      get scrollSize() {
-        return box.scrollHeight
-      },
-      set scrollSize(v: number) {
-        box.scrollHeight = v
-      },
-    },
-    content: { getLayout: () => ({ height: box.contentHeight }) },
   }
   return box
 }
 
 /** The fake as the controller receives it. The controller touches only the
- *  faked surface: scrollTop, scrollHeight, viewport, scrollTo, content,
- *  verticalScrollBar, and the protected hooks it patches. */
+ *  faked surface: scrollTop, scrollHeight, viewport, scrollTo, content, and
+ *  the protected hooks it patches. */
 // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: OpenTUI's ScrollBoxRenderable declares private and protected members, so only a real instance has its type, a real one cannot hold the frame and layout lag these tests set by hand, and a Pick cannot name the protected hooks the controller patches.
 export const asScrollBox = (box: FakeScrollBox) => box as unknown as ScrollBoxRenderable
 

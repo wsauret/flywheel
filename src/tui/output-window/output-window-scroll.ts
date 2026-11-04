@@ -266,24 +266,24 @@ export function upstreamCorrectionRows(corrections: readonly ExtentCorrection[],
 }
 
 interface ScrollBoxHookHandlers {
-  /** The frame decision: runs before the rows lay out, so rows it mounts
-   *  join this frame's layout. */
+  /** The frame decision: runs before the rows report this frame's layout, so
+   *  rows it mounts join this frame's later layout rounds. */
   readonly onFrameStart: (dt: number) => void
   /** Runs after the rows report their sizes and before paint: measurements
    *  and corrections apply before paint, so no uncompensated position paints. */
   readonly onFrame: (dt: number) => void
   /** Wheel input, routed to the controller INSTEAD of OpenTUI's base handler. */
   readonly onWheel: (event: MouseEvent) => void
-  /** Scrollbar slider interaction (after the base slider handler applied it). */
+  /** Scrollbar press or drag (after the base handler applied it). */
   readonly onScrollbarDrag: () => void
   /** Native selection dragging, observed after OpenTUI updates its auto-scroll target. */
   readonly onSelectionDrag: (event: MouseEvent) => void
   readonly onSelectionEnd: () => void
-  /** Runs after every OpenTUI recalculateBarProps. Later native layout rounds
-   *  can resize reactive spacers after onFrame and re-clamp scrollPosition.
+  /** Runs after every viewport or content size change. Later native layout
+   *  rounds can resize reactive spacers after onFrame and re-clamp the offset.
    *  The controller reconciles the extent and reading anchor on that geometry,
-   *  then reasserts their pair before paint without consuming frame input again. */
-  readonly onBarsRecalculated: () => void
+   *  then reasserts the offset before paint without consuming frame input again. */
+  readonly onResize: () => void
 }
 
 function readMouseEvent<Target extends object>(target: Target): ((event: MouseEvent) => void) | undefined {
@@ -297,12 +297,10 @@ function readMouseEvent<Target extends object>(target: Target): ((event: MouseEv
  *  through one pre-paint decision. Returns the function that restores the hooks. */
 export function patchScrollBoxHooks(e: ScrollBoxRenderable, handlers: ScrollBoxHookHandlers): () => void {
   const baseMouseEvent = readMouseEvent(e)
-  const slider = e.verticalScrollBar.slider
-  const baseSliderMouseEvent = readMouseEvent(slider)
   const restoreLayoutHooks = patchScrollBoxLayoutHooks(e, {
     onFrameStart: handlers.onFrameStart,
     onFrame: handlers.onFrame,
-    onBarsRecalculated: handlers.onBarsRecalculated,
+    onResize: handlers.onResize,
   })
   Reflect.set(e, "onMouseEvent", (event: MouseEvent) => {
     // Ownership inversion: wheel input never reaches OpenTUI's base scroll
@@ -313,17 +311,15 @@ export function patchScrollBoxHooks(e: ScrollBoxRenderable, handlers: ScrollBoxH
       return
     }
     baseMouseEvent?.(event)
-    if (event.type === "drag" && event.isDragging) handlers.onSelectionDrag(event)
+    // The base handler stops the propagation of each press, drag, and release
+    // that it applies to a scrollbar.
+    if (event.propagationStopped) handlers.onScrollbarDrag()
+    else if (event.type === "drag" && event.isDragging) handlers.onSelectionDrag(event)
     else if (event.type === "up" || event.type === "drag-end") handlers.onSelectionEnd()
-  })
-  Reflect.set(slider, "onMouseEvent", (event: MouseEvent) => {
-    baseSliderMouseEvent?.(event)
-    if (event.type === "down" || event.type === "drag" || event.type === "drag-end" || event.type === "up") handlers.onScrollbarDrag()
   })
   return () => {
     restoreLayoutHooks()
-    Reflect.set(e, "onMouseEvent", baseMouseEvent)
-    Reflect.set(slider, "onMouseEvent", baseSliderMouseEvent)
+    Reflect.deleteProperty(e, "onMouseEvent")
   }
 }
 
@@ -604,17 +600,4 @@ export interface ScrollGeometryElement {
 
 export function maxScrollTop(el: ScrollGeometryElement): number {
   return Math.max(0, el.scrollHeight - el.viewport.height)
-}
-
-/** Adopt the current native extent. The controller calls this after viewport
- *  resize and again when later layout rounds recalculate the bars, so the
- *  reading offset and extent use the same geometry before paint. Returns the
- *  adopted extent, or undefined between native layouts. */
-export function syncScrollExtent(e: ScrollBoxRenderable): number | undefined {
-  const height = e.content.getLayout().height
-  // NaN between layouts (see RowMount's onSizeChange guard): keep the last
-  // real extent; the next laid-out frame re-syncs.
-  if (!Number.isFinite(height)) return
-  e.verticalScrollBar.scrollSize = height
-  return height
 }

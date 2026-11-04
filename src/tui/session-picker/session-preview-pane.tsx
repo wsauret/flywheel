@@ -11,7 +11,7 @@ import { useTheme } from "../context/theme.js"
 import { ScrollPreserveProvider } from "../context/scroll-preserve.js"
 import { BlockDisclosureProvider, createBlockDisclosureChannel } from "../context/block-disclosure.js"
 import type { SessionPreviewReader, SessionPreviewState } from "./use-session-preview.js"
-import { createMountedRowRegistry, syncScrollExtent } from "../output-window/output-window-scroll.js"
+import { createMountedRowRegistry } from "../output-window/output-window-scroll.js"
 import { patchScrollBoxLayoutHooks } from "../components/scrollbox-layout-hooks.js"
 import { blockIdentity } from "../../protocol/block-identity.js"
 import type { PresentedTerminalRow } from "../output-blocks/visible-output-blocks.js"
@@ -72,24 +72,15 @@ function PreviewTranscript(props: SessionPreviewPaneProps & { bodyHeight: number
   untrack(() => props.onReader?.(undefined))
   onCleanup(() => props.onReader?.(undefined))
   createEffect(on(scrollbox, scroll => {
-    if (scroll) onCleanup(patchScrollBoxLayoutHooks(scroll, {
-      onFrame: () => untrack(() => frame(scroll)),
-      // OpenTUI can recalculate with cached, pre-layout heights after the frame correction.
-      onBarsRecalculated: () => {
-        if (!initialized) return
-        scroll.verticalScrollBar.scrollSize = frameExtent
-        scroll.scrollTo(placedOffset)
-      },
-    }))
+    if (scroll) onCleanup(patchScrollBoxLayoutHooks(scroll, { onFrame: () => untrack(() => frame(scroll)) }))
   }))
 
   function frame(scroll: ScrollBoxRenderable): void {
     const ordered = [...rows.entries()].sort((a, b) => a[1].el.getLayout().top - b[1].el.getLayout().top)
     if (ordered.length === 0) return
-    syncScrollExtent(scroll)
     if (scroll.content.height <= 0 || scroll.viewport.height <= 0) return
-    const reflow = scroll.verticalScrollBar.scrollSize !== frameExtent || scroll.viewport.width !== viewportWidth || scroll.viewport.height !== viewportHeight
-    frameExtent = scroll.verticalScrollBar.scrollSize
+    const reflow = scroll.scrollHeight !== frameExtent || scroll.viewport.width !== viewportWidth || scroll.viewport.height !== viewportHeight
+    frameExtent = scroll.scrollHeight
     if (!initialized) {
       scroll.scrollTo(Math.max(0, scroll.content.height - scroll.viewport.height))
       initialized = true

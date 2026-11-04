@@ -71,7 +71,7 @@ export function useSessionChangesModal(deps: {
     stopViewport?.()
     scrollbox = scroll
     listScroll.attach(scroll)
-    stopViewport = patchScrollBoxLayoutHooks(scroll, { onFrame: syncViewport, onBarsRecalculated: syncViewport })
+    stopViewport = patchScrollBoxLayoutHooks(scroll, { onFrame: syncViewport, onResize: syncViewport })
     syncViewport()
   }
   const registerHeader = (key: string, renderable: Renderable): (() => void) => {

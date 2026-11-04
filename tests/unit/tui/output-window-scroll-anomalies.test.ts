@@ -53,27 +53,27 @@ describe("createOutputScrollController fight record", () => {
         const controller = mountController(slot, snap)
         const box = fakeScrollBox()
         controller.attach(asScrollBox(box))
-        box.contentHeight = 40
-        box.onUpdate(16)
+        box.scrollHeight = 40
+        box.frame(16)
         controller.page("half-page-up")
-        box.onUpdate(16)
+        box.frame(16)
         const written = () => records.mock.calls.map(([record]) => record).filter(record => record.type.startsWith("tui."))
         // Steady frames and the person's own scrolling write nothing.
         for (let frame = 0; frame < 5; frame += 1) {
           box.onMouseEvent?.({ type: "scroll", scroll: { direction: "up", delta: 1 } })
-          box.onUpdate(16)
+          box.frame(16)
         }
         expect(written()).toEqual([])
         // A row mounts and unmounts on alternate frames: the extent swings between 40 and 41.
         for (let frame = 0; frame < 10; frame += 1) {
-          box.contentHeight = 40 + (frame % 2)
-          box.onUpdate(16)
+          box.scrollHeight = 40 + (frame % 2)
+          box.frame(16)
         }
         expect(written().map(record => record.type)).toEqual(["tui.scroll.fight.detected"])
         expect(written()[0]).toMatchObject({ sessionId: "s-fight", payload: { kind: "extent-oscillation", extents: [40, 41, 40], nativeExtent: 40, indexRows: 40, unindexedRows: 0, unaccountedRows: 0, viewportRows: 10, anchorKind: "block" } })
         expect(written()[0]?.payload).toHaveProperty("previousScrollTop")
-        box.contentHeight = 40
-        for (let frame = 0; frame < 40; frame += 1) box.onUpdate(16)
+        box.scrollHeight = 40
+        for (let frame = 0; frame < 40; frame += 1) box.frame(16)
         expect(written().map(record => record.type)).toEqual(["tui.scroll.fight.detected", "tui.scroll.fight.ended"])
         // Nine returns: frames 2 to 9, and the settle back to 40.
         expect(written()[1]).toMatchObject({ sessionId: "s-fight", payload: { kind: "extent-oscillation", count: 9 } })

@@ -22,7 +22,7 @@ describe("wheel coalescing", () => {
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
       box.scrollHeight = 400
-      box.onUpdate?.(16) // fresh generation tails to the bottom
+      box.frame(16) // fresh generation tails to the bottom
       expect(box.scrollTop).toBe(MAX_TOP)
 
       // A burst of 12 notches (12 rows) between paints: nothing moves inline...
@@ -30,9 +30,9 @@ describe("wheel coalescing", () => {
       expect(box.scrollTop).toBe(MAX_TOP)
       // ...then the next frame applies the whole backlog at once: position
       // tracks input; the backlog coalesces, it never animates.
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(MAX_TOP - 12)
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(MAX_TOP - 12) // and stays put off-tail
       dispose()
     })
@@ -46,15 +46,15 @@ describe("wheel coalescing", () => {
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
       box.scrollHeight = 400
-      box.onUpdate?.(16)
+      box.frame(16)
       controller.page("page-up") // park off-tail so both directions have room
       const parked = box.scrollTop
       wheel(box, "up", 10)
       wheel(box, "down")
-      box.onUpdate?.(16)
+      box.frame(16)
       // Every report moves the view: ten rows up and one row down.
       expect(box.scrollTop).toBe(parked - 9)
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(parked - 9)
       dispose()
     })
@@ -68,10 +68,10 @@ describe("wheel coalescing", () => {
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
       box.scrollHeight = 800 // maxScrollTop 790
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(790)
       wheel(box, "up", 300)
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(790 - 300)
       dispose()
     })
@@ -85,11 +85,11 @@ describe("wheel coalescing", () => {
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
       box.scrollHeight = 400
-      box.onUpdate?.(16)
+      box.frame(16)
       wheel(box, "up", 20) // 20-row backlog, none applied yet
       controller.page("page-down") // explicit input wins; stale fling dropped
       const landed = box.scrollTop
-      for (let i = 0; i < 5; i += 1) box.onUpdate?.(16)
+      for (let i = 0; i < 5; i += 1) box.frame(16)
       expect(box.scrollTop).toBe(landed) // no leftover backlog drags upward
       dispose()
     })
@@ -111,7 +111,7 @@ describe("notch wheel reports (Windows Terminal)", () => {
       controller.attach(asScrollBox(box))
     })
     box.scrollHeight = 800
-    box.onUpdate?.(16) // fresh generation tails to the bottom
+    box.frame(16) // fresh generation tails to the bottom
     return {
       box,
       at: (ms: number) => { clock = ms },
@@ -121,7 +121,7 @@ describe("notch wheel reports (Windows Terminal)", () => {
         let moving = 0
         for (let frame = 0; frame < 50; frame += 1) {
           const before = box.scrollTop
-          box.onUpdate?.(16)
+          box.frame(16)
           if (box.scrollTop === before) return moving
           moving += 1
         }
@@ -140,17 +140,17 @@ describe("notch wheel reports (Windows Terminal)", () => {
     const { box, at, report } = mountNotch()
     at(1000)
     report("up")
-    box.onUpdate?.(16)
+    box.frame(16)
     expect(box.scrollTop).toBe(MAX_TOP - 2)
-    box.onUpdate?.(16)
+    box.frame(16)
     expect(box.scrollTop).toBe(MAX_TOP - 3)
-    box.onUpdate?.(16)
+    box.frame(16)
     expect(box.scrollTop).toBe(MAX_TOP - 3)
     for (const ms of [1100, 1200, 1300]) {
       at(ms)
       report("up")
-      box.onUpdate?.(16)
-      box.onUpdate?.(16)
+      box.frame(16)
+      box.frame(16)
     }
     expect(box.scrollTop).toBe(MAX_TOP - 12)
   })
@@ -160,7 +160,7 @@ describe("notch wheel reports (Windows Terminal)", () => {
     for (const [index, ms] of [1000, 1020, 1040, 1060, 1080].entries()) {
       at(ms)
       report("up")
-      box.onUpdate?.(16)
+      box.frame(16)
       if (index === 0) expect(box.scrollTop).toBe(MAX_TOP - 2)
     }
     expect(settle()).toBeLessThanOrEqual(8)
@@ -234,9 +234,9 @@ describe("return to latest", () => {
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
       box.scrollHeight = 400
-      box.onUpdate?.(16)
+      box.frame(16)
       box.onMouseEvent?.({ type: "scroll", scroll: { direction: "up", delta: 1 } })
-      box.onUpdate?.(16)
+      box.frame(16)
 
       expect(controller.returnToLatestBaseline()).toBe(12)
       expect(slot.returnToLatestBaseline).toBe(12)
@@ -259,41 +259,35 @@ describe("return to latest", () => {
 })
 
 describe("thumb honesty", () => {
-  it("attach leaves the slider's thumb paint untouched and corrections land same-frame", () => {
+  it("lands an upstream correction in the same painted frame", () => {
     const slot: TranscriptLayoutSlot = {}
     const [snap] = createSignal<TranscriptSnapshot | undefined>(snapshotFor("gen-1", 400))
     createRoot((dispose) => {
       const controller = mountController(slot, snap)
       const box = fakeScrollBox()
-      // The slider computes the TRUE thumb start from scroll state. The old
-      // display slew intercepted it via a getVirtualThumbStart patch, banking
-      // correction hops during flicks and paying them back as a visible
-      // catch-up glide at rest. attach must not intercept the paint path.
-      const unpatchedThumbStart = box.verticalScrollBar.slider.getVirtualThumbStart
       controller.attach(asScrollBox(box))
-      expect(box.verticalScrollBar.slider.getVirtualThumbStart).toBe(unpatchedThumbStart)
 
-      // And the model the thumb reads stays truthful: a +100 upstream
+      // The thumb paints from the offset, so the offset stays truthful: a +100 upstream
       // correction (block 0 estimated 2 rows, measures 102) hops the offset
       // 100 -> 200 in the same painted frame, no deferred settling.
       box.scrollHeight = 800 // 400 blocks x 2 rows; viewport 10 => range 790
-      box.onUpdate?.(16)
+      box.frame(16)
       controller.toTop()
       for (let i = 0; i < 10; i += 1) controller.page("page-down") // park at offset 100
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(100)
       controller.heightIndex().reportMeasured(0, 102)
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(200)
-      box.onUpdate?.(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(200) // converged: nothing left to settle
       dispose()
     })
   })
 })
 
-describe("createOutputScrollController bar reconciliation work", () => {
-  it("resolves the reading anchor in bar recalculation only when a later layout moved the extent", () => {
+describe("createOutputScrollController resize reconciliation work", () => {
+  it("resolves the reading anchor in a size callback only when a later layout moved the extent", () => {
     // 20 blocks x 2 estimated rows = 40 content rows; viewport 10 => maxScrollTop 30.
     const slot: TranscriptLayoutSlot = {}
     const [snap] = createSignal<TranscriptSnapshot | undefined>(snapshotFor("gen-1", 20))
@@ -316,18 +310,18 @@ describe("createOutputScrollController bar reconciliation work", () => {
       })
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
-      box.contentHeight = 40
-      box.onUpdate(16) // fresh generation tails to the bottom (30)
+      box.scrollHeight = 40
+      box.frame(16) // fresh generation tails to the bottom (30)
       controller.page("half-page-up") // off the tail: a source anchor holds the place
-      box.onUpdate(16)
-      // OpenTUI recalculates the bars several times in a frame. With the
-      // extent unchanged, each one only reasserts the decided pair.
-      const resolvesPerFrame = (barsPerFrame: number) => {
+      box.frame(16)
+      // Size callbacks can run several times in a frame. With the extent
+      // unchanged, each one only reasserts the decided offset.
+      const resolvesPerFrame = (callbacksPerFrame: number) => {
         const before = resolves
         for (let step = 0; step < 6; step += 1) {
           box.onMouseEvent?.({ type: "scroll", scroll: { direction: "up", delta: 1 } })
-          box.onUpdate(16)
-          for (let bar = 0; bar < barsPerFrame; bar += 1) box.recalculateBarProps?.()
+          box.frame(16)
+          for (let callback = 0; callback < callbacksPerFrame; callback += 1) box.content.emit("resize")
         }
         return (resolves - before) / 6
       }
@@ -336,8 +330,8 @@ describe("createOutputScrollController bar reconciliation work", () => {
       // A later layout round that moved the extent resolves the anchor once.
       const offset = box.scrollTop
       const before = resolves
-      box.contentHeight = 43
-      box.recalculateBarProps?.()
+      box.scrollHeight = 43
+      box.content.emit("resize")
       expect(resolves - before).toBe(1)
       expect(box.scrollTop).toBe(offset)
       dispose()
@@ -367,22 +361,22 @@ describe("createOutputScrollController leading rows", () => {
       })
       const box = fakeScrollBox()
       controller.attach(asScrollBox(box))
-      box.contentHeight = 43
-      box.onUpdate(16)
+      box.scrollHeight = 43
+      box.frame(16)
       controller.page("half-page-up") // the text row of block 12 at the viewport top
-      box.onUpdate(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(28)
       // One frame: the intro lays out a row taller, and one wheel row lands on block 12's margin row.
       nativeLeading = 4
-      box.contentHeight = 44
+      box.scrollHeight = 44
       box.onMouseEvent?.({ type: "scroll", scroll: { direction: "up", delta: 1 } })
-      box.onUpdate(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(28)
       // The next frame: the intro's size report arrives. Its rows already stand under the text.
       setLeading(4)
-      box.onUpdate(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(28)
-      box.onUpdate(16)
+      box.frame(16)
       expect(box.scrollTop).toBe(28)
       dispose()
     })

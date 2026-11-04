@@ -242,18 +242,18 @@ function nativeFamilySource(root: string, pkg: LockedPackage): ReviewedSource | 
       files: ["third-party/reviewed/npm/msgpackr-extract-3.0.4/LICENSE"],
     };
   }
-  if (pkg.name.startsWith("@opentui/core-") && pkg.version === "0.6.8") {
+  if (pkg.name.startsWith("@opentui/core-") && pkg.version === "0.8.0") {
     return {
-      source: "https://github.com/anomalyco/opentui/tree/v0.6.8",
+      source: "https://github.com/anomalyco/opentui/tree/v0.8.0",
       files: [
-        "third-party/reviewed/npm/opentui-core-0.6.8/LICENSE",
-        "third-party/reviewed/npm/opentui-core-0.6.8/LICENSE-GHOSTTY",
-        "third-party/reviewed/npm/opentui-core-0.6.8/LICENSE-LCMS2",
-        "third-party/reviewed/npm/opentui-core-0.6.8/LICENSE-LIBWEBP",
-        "third-party/reviewed/npm/opentui-core-0.6.8/LICENSE-STB",
-        "third-party/reviewed/npm/opentui-core-0.6.8/LICENSE-WUFFS",
-        "third-party/reviewed/npm/opentui-core-0.6.8/PATENTS-LIBWEBP",
-        "third-party/reviewed/npm/opentui-core-0.6.8/AUTHORS-LIBWEBP",
+        "third-party/reviewed/npm/opentui-core-0.8.0/LICENSE",
+        "third-party/reviewed/npm/opentui-core-0.8.0/LICENSE-GHOSTTY",
+        "third-party/reviewed/npm/opentui-core-0.8.0/LICENSE-LCMS2",
+        "third-party/reviewed/npm/opentui-core-0.8.0/LICENSE-LIBWEBP",
+        "third-party/reviewed/npm/opentui-core-0.8.0/LICENSE-STB",
+        "third-party/reviewed/npm/opentui-core-0.8.0/LICENSE-WUFFS",
+        "third-party/reviewed/npm/opentui-core-0.8.0/PATENTS-LIBWEBP",
+        "third-party/reviewed/npm/opentui-core-0.8.0/AUTHORS-LIBWEBP",
       ],
     };
   }

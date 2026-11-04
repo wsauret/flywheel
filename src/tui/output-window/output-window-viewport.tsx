@@ -525,7 +525,13 @@ function RowMount(props: RowMountProps) {
       }}
       width="100%"
       flexDirection="column"
-      onSizeChange={function (this: BoxRenderable) { report(this) }}
+      onSizeChange={function (this: BoxRenderable) {
+        report(this)
+        // The scroll controller flushes reports once per frame, and a size
+        // callback can land after this frame's flush. OpenTUI requests no frame
+        // for a size change, so this one asks for the frame that applies it.
+        this.requestRender()
+      }}
     >
       <Show when={props.hasBoundaryBefore()}>
         <Divider />

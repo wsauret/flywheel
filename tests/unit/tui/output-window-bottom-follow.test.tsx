@@ -283,9 +283,11 @@ describe("OutputWindow bottom follow", () => {
       expect(scrollbox.scrollTop).toBeLessThan(scrollbox.scrollHeight - scrollbox.viewport.height)
       await result.waitForFrame((frame) => frame.includes("Latest ↓"))
 
+      // The track is the bar's last column. A press on its top cell takes the
+      // thumb there, and a drag below the bar takes it past the end.
       const scrollBar = scrollbox.verticalScrollBar
-      const slider = scrollBar.slider
-      await result.mockMouse.drag(slider.x, slider.y, slider.x, scrollBar.y + scrollBar.height + 4)
+      const track = scrollBar.x + scrollBar.width - 1
+      await result.mockMouse.drag(track, scrollBar.y, track, scrollBar.y + scrollBar.height + 4)
       await result.waitForFrame((frame) => !frame.includes("Latest ↓"))
       await result.renderOnce()
 
