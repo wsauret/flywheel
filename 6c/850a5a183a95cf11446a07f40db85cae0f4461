@@ -1,0 +1,22 @@
+scripts/binary-native-assets.ts
+  h_4b47e9e4a8b456 87-89,403,440
+scripts/build-binary.ts
+  h_4b47e9e4a8b456 19,25,181,186,193,200-206
+scripts/bundle-asset-patch.ts
+  h_4b47e9e4a8b456 4-5,31-32,43-46,75-81
+tests/unit/scripts/binary-native-assets.test.ts
+  h_4b47e9e4a8b456 18,209-213,239-241
+tests/unit/scripts/bundle-asset-patch.test.ts
+  h_4b47e9e4a8b456 3,5,12-13,19,30,35-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6c850a5a183a95cf11446a07f40db85cae0f4461",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
