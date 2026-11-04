@@ -107,8 +107,7 @@ export function modelText(
     // the selected emphasis: the arrows do not act on it.
     const emphasized = selected && !row.inherit
     if (!compact) {
-      chunks.push(stFg(theme.text)("  "))
-      chunks.push(...effortMeter(row, effort, emphasized, theme))
+      chunks.push(stFg(theme.text)("  "), ...effortMeter(row, effort, emphasized, theme))
     }
     chunks.push(stFg(emphasized ? theme.primary : theme.textMuted)(`${compact ? " " : "  "}${effortDisplayLabel(effort).padEnd(EFFORT_WORD_CELLS)}`))
   }

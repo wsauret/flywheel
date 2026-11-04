@@ -117,13 +117,17 @@ test.each(["bytes", "identity", "parent"] as const)("target %s drift during queu
     mkdirSync(directory)
     const path = join(directory, "a")
     await change(fixture, path, "new a\n")
-    const held = createDeferred<void>(), release = createDeferred<void>(), admitted = createDeferred<void>()
+    const held = createDeferred<void>()
+    const release = createDeferred<void>()
+    const admitted = createDeferred<void>()
     const holding = withMutationQueueKeys([path], async () => { held.resolve(); await release.promise })
     await held.promise
-    let writes = 0, closes = 0
+    let writes = 0
+    let closes = 0
     const undo = undoSessionChanges({ ...context(fixture), admit(target) {
       const authority = RetainedFileEditAuthority.admitWritable(target)
-      const remove = authority.delete.bind(authority), close = authority.close.bind(authority)
+      const remove = authority.delete.bind(authority)
+      const close = authority.close.bind(authority)
       authority.delete = () => { writes++; return remove() }
       authority.close = () => { closes++; close() }
       admitted.resolve()
@@ -282,8 +286,10 @@ test("recovery queued ahead of a prepared Undo retires first and prevents the wr
     const path = join(fixture.root, "a")
     await change(fixture, path, "new\n")
     const base = context(fixture)
-    const held = createDeferred<void>(), release = createDeferred<void>()
-    const prepared = createDeferred<void>(), reserveUndo = createDeferred<void>()
+    const held = createDeferred<void>()
+    const release = createDeferred<void>()
+    const prepared = createDeferred<void>()
+    const reserveUndo = createDeferred<void>()
     const holding = withMutationQueueKeys([path], async () => { held.resolve(); await release.promise })
     await held.promise
     let writes = 0

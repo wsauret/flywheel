@@ -164,7 +164,7 @@ export async function loginWithApiKey(providerId: CredentialProviderId, key: str
   }
   const credential = { type: "api_key", key: original } as const;
   let account: AccessProviderAccountIdentity = { kind: "singleton", providerId };
-  let rollback: () => Promise<boolean>;
+  let receipt: AuthStoreMutationReceipt | undefined;
   const target = destination(authDir, writeAccess);
   if (installedCredentialSlotClassifier()(providerId) === "subscription") {
     const resolved = await resolveKey(original);
@@ -172,11 +172,8 @@ export async function loginWithApiKey(providerId: CredentialProviderId, key: str
     const value = Redacted.value(resolved);
     const persisted = await appendSubscription(providerId, `••••${value.slice(-4)}`, credential, authDir, writeAccess, persistSubscription);
     account = { kind: "subscription", providerId, instanceId: persisted.instanceId };
-    if (persisted.receipt === undefined) throw new Error(`Credential mutation receipt is unavailable for ${providerId}`);
-    const receipt = persisted.receipt;
-    rollback = () => rollbackAuthStoreMutation(receipt, target, installedCredentialSlotClassifier());
+    receipt = persisted.receipt;
   } else {
-    let receipt: AuthStoreMutationReceipt | undefined;
     try {
       receipt = await setMeteredCredentialWithReceipt(providerId, credential, target, installedCredentialSlotClassifier());
     } catch (error) {
@@ -184,10 +181,9 @@ export async function loginWithApiKey(providerId: CredentialProviderId, key: str
       receipt = await replaceRejectedProviderCredentialsWithReceipt(providerId, credential, target, installedCredentialSlotClassifier());
       if (receipt === undefined) throw error;
     }
-    if (receipt === undefined) throw new Error(`Credential mutation receipt is unavailable for ${providerId}`);
-    rollback = () => rollbackAuthStoreMutation(receipt, target, installedCredentialSlotClassifier());
   }
-  await settleOrRollback(settle, account, authDir, rollback);
+  if (receipt === undefined) throw new Error(`Credential mutation receipt is unavailable for ${providerId}`);
+  await settleOrRollback(settle, account, authDir, () => rollbackAuthStoreMutation(receipt, target, installedCredentialSlotClassifier()));
   return freshContext(authDir, resolveKey);
 }
 

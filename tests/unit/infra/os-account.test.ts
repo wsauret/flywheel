@@ -22,14 +22,14 @@ function nativeSetter(): (name: string, value: string | undefined) => void {
   if (process.platform === "win32") {
     const { symbols } = dlopen("kernel32.dll", { SetEnvironmentVariableW: { args: [FFIType.ptr, FFIType.ptr], returns: FFIType.i32 } });
     const wide = (text: string) => Buffer.from(`${text}\0`, "utf16le");
-    return (name, value) => void symbols.SetEnvironmentVariableW(wide(name), value === undefined ? null : wide(value));
+    return (name, value) => { symbols.SetEnvironmentVariableW(wide(name), value === undefined ? null : wide(value)) };
   }
   const { symbols } = dlopen(process.platform === "darwin" ? "libSystem.B.dylib" : "libc.so.6", {
     setenv: { args: [FFIType.cstring, FFIType.cstring, FFIType.i32], returns: FFIType.i32 },
     unsetenv: { args: [FFIType.cstring], returns: FFIType.i32 },
   });
   const c = (text: string) => Buffer.from(`${text}\0`);
-  return (name, value) => void (value === undefined ? symbols.unsetenv(c(name)) : symbols.setenv(c(name), c(value), 1));
+  return (name, value) => { if (value === undefined) symbols.unsetenv(c(name)); else symbols.setenv(c(name), c(value), 1) };
 }
 
 describe("the OS account", () => {

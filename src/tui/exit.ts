@@ -33,7 +33,7 @@ export function exitTUI(): void {
     // idle event loop can still exit before the deadline fires.
     const forceExitTimer = setTimeout(() => { exit() }, 3_000)
     forceExitTimer.unref?.()
-    Promise.all(cleanups.map(fn => fn().catch((err) => {
+    void Promise.all(cleanups.map(fn => fn().catch((err) => {
       log.warn("pre-exit cleanup failed", { error: errorMessage(err), errorDetail: errorDetail(err) })
     })))
       .finally(() => { clearTimeout(forceExitTimer); exit() })

@@ -200,7 +200,7 @@ export function ModelSheet() {
             {(chosen) => (
               <For each={chosen().efforts}>
                 {(effort) => (
-                  <SheetRow label={<>{effort.current === true ? "✓ " : ""}{effort.label}</>} working={client.actions.working(effortKey(chosen().option, effort.effort))} onClick={() => void save(chosen().option, effort.effort)} />
+                  <SheetRow label={<>{effort.current === true ? "✓ " : ""}{effort.label}</>} working={client.actions.working(effortKey(chosen().option, effort.effort))} onClick={() => { void save(chosen().option, effort.effort) }} />
                 )}
               </For>
             )}

@@ -290,7 +290,7 @@ async function serveCallback(fetch: (req: Request) => Response | Promise<Respons
 function closeCallback(servers: readonly ReturnType<typeof Bun.serve>[]): void {
   for (const server of servers) {
     void server.stop();
-    setTimeout(() => void server.stop(true), 2_000).unref();
+    setTimeout(() => { void server.stop(true) }, 2_000).unref();
   }
 }
 

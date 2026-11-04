@@ -66,11 +66,14 @@ describe("measured production lines", () => {
   test("streams chunked summaries using the lane's aggregation and ignores long diagnostic lines", () => {
     const unit = coverageSummary("unit");
     unit.push("2 pass\n1 fail\n" + "x".repeat(300));
+    // oxlint-disable-next-line unicorn/prefer-single-call -- the summary takes one stream chunk per call, so each call is one chunk boundary
     unit.push("12 pass\n123 pa");
+    // oxlint-disable-next-line unicorn/prefer-single-call -- the summary takes one stream chunk per call, so each call is one chunk boundary
     unit.push("ss\n0 fail");
     expect(unit.finish()).toEqual({ passed: 123, failed: 0 });
     const integration = coverageSummary("integration");
     integration.push("1200 pass\n1 fail\n");
+    // oxlint-disable-next-line unicorn/prefer-single-call -- the summary takes one stream chunk per call, so each call is one chunk boundary
     integration.push("25 pass\n0 fail\n");
     expect(integration.finish()).toEqual({ passed: 1225, failed: 1 });
   });

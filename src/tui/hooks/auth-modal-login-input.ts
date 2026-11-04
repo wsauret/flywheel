@@ -15,7 +15,9 @@ export function createAuthModalLoginInput(deps: {
 }) {
   let textAnswer: ((answer: string) => void) | undefined
   function submit(): void {
-    const answer = textAnswer, view = deps.view(), text = deps.text().trim()
+    const answer = textAnswer
+    const view = deps.view()
+    const text = deps.text().trim()
     if (view.kind === "browser-auth" && deps.submitQuestion(text)) {
       if (text !== "") { deps.reset(); deps.show({ ...view, submitted: true }, "") }
       return
@@ -51,7 +53,8 @@ export function createAuthModalLoginInput(deps: {
     return answer.promise
   }
   function answerConfirmation(replace: boolean): void {
-    const answer = confirmation, view = deps.view()
+    const answer = confirmation
+    const view = deps.view()
     confirmation = undefined
     if (answer !== undefined && replace && view.kind === "login-confirmation") deps.show({ ...view, submitting: true })
     answer?.(replace)

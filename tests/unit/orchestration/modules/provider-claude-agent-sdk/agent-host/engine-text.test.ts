@@ -91,9 +91,9 @@ describe("the hosted view", () => {
   test("takes out only the engine's text that the runtime wrote, so a person's message with the same bytes reaches the agent", () => {
     const entries = createHostedAgentEntries(() => true);
     const history: ConversationMessage[] = [brief];
-    history.push(...entries(request(history)), { kind: "assistant", content: [{ type: "text", text: "Done." }] });
-    history.push({ kind: "user", origin: "human", content: ENGINE_INSTRUCTIONS }, { kind: "user", origin: "human", content: DISPATCH_TEXT });
-    history.push(...entries(request(history)));
+    history.push(...entries(request(history)), { kind: "assistant", content: [{ type: "text", text: "Done." }] }, { kind: "user", origin: "human", content: ENGINE_INSTRUCTIONS }, { kind: "user", origin: "human", content: DISPATCH_TEXT });
+    const dispatched = entries(request(history));
+    history.push(...dispatched);
     const text = (value: string) => ({ type: "text" as const, text: value });
     const view = preparedHostedView(history);
 

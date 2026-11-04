@@ -49,8 +49,7 @@ function labeledRule(theme: TuiTheme, width: number, left: readonly TextChunk[],
     chunks.push(...right)
     cursor += rightWidth
   }
-  chunks.push(...borderChunks(theme, BORDER_HORIZONTAL.repeat(Math.max(0, centerWidth - cursor))))
-  chunks.push(...borderChunks(theme, close))
+  chunks.push(...borderChunks(theme, BORDER_HORIZONTAL.repeat(Math.max(0, centerWidth - cursor))), ...borderChunks(theme, close))
 
   return new StyledText(chunks)
 }

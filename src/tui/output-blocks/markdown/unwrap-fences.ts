@@ -75,10 +75,8 @@ function splitUnescapedPipe(content: string): string[] {
     if (content[i] === "|") {
       segments.push(content.slice(start, i))
       start = i + 1
-      i += 1
-    } else {
-      i += 1
     }
+    i += 1
   }
   segments.push(content.slice(start))
   return segments

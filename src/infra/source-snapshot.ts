@@ -626,6 +626,7 @@ export async function enterSourceSnapshot(checkout: string, seams: SourceEntrySe
   }
   let temporary: string | undefined
   try {
+    // oxlint-disable-next-line no-unreachable-loop -- false positive: `continue` repeats this loop, which oxlint misreads inside a try with catch and finally
     for (let attempt = 0; attempt < READ_ATTEMPTS; attempt++) {
       const files = await listSourceFiles(real)
       const signature = signatureOf(files)

@@ -489,34 +489,34 @@ interface RecordedFollowUp {
   readonly then: RecordedFollowUp | null
 }
 
-const RecordedFollowUp: Schema.Codec<RecordedFollowUp> = Schema.Struct({
+const RecordedFollowUpSchema: Schema.Codec<RecordedFollowUp> = Schema.Struct({
   step: Schema.String,
-  then: Schema.NullOr(Schema.suspend((): Schema.Codec<RecordedFollowUp> => RecordedFollowUp)),
+  then: Schema.NullOr(Schema.suspend((): Schema.Codec<RecordedFollowUp> => RecordedFollowUpSchema)),
 })
 
-const RecordedNode = Schema.Struct({
+const RecordedNodeSchema = Schema.Struct({
   kind: Schema.String,
   definitionId: Schema.optional(Schema.String),
-  then: Schema.optional(Schema.NullOr(RecordedFollowUp)),
+  then: Schema.optional(Schema.NullOr(RecordedFollowUpSchema)),
 })
-type RecordedNode = typeof RecordedNode.Type
+type RecordedNode = typeof RecordedNodeSchema.Type
 
-const RecordedChange = Schema.Struct({ kind: Schema.String, node: Schema.optional(RecordedNode) })
-type RecordedChange = typeof RecordedChange.Type
+const RecordedChangeSchema = Schema.Struct({ kind: Schema.String, node: Schema.optional(RecordedNodeSchema) })
+type RecordedChange = typeof RecordedChangeSchema.Type
 
 /** The members of a historical control fact that name graph positions. The
  *  fixture decodes them with its own schema rather than the current decoder,
  *  and ignores every other member the fact records. */
 const RecordedControlPayload = Schema.fromJsonString(Schema.Struct({
   control: Schema.optional(Schema.Struct({
-    graph: Schema.Struct({ nodes: Schema.Array(RecordedNode) }),
+    graph: Schema.Struct({ nodes: Schema.Array(RecordedNodeSchema) }),
     attempts: Schema.Array(Schema.Struct({ definitionId: Schema.String })),
   })),
-  changes: Schema.optional(Schema.Array(RecordedChange)),
+  changes: Schema.optional(Schema.Array(RecordedChangeSchema)),
   event: Schema.optional(Schema.Struct({
     type: Schema.String,
     correctiveDefinitionId: Schema.optional(Schema.NullOr(Schema.String)),
-    proposal: Schema.optional(Schema.Struct({ changes: Schema.Array(RecordedChange) })),
+    proposal: Schema.optional(Schema.Struct({ changes: Schema.Array(RecordedChangeSchema) })),
   })),
 }))
 

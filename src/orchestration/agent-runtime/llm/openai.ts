@@ -244,7 +244,8 @@ export async function createOpenAIAdapter(
           // position on the completed refold defeats the id key (absent) and
           // the index key (changed), and the same call yields twice.
           const emittedToolCallIds = new Set<string>();
-          let reasoningBuf = "", currentReasoningBlockKey = "";
+          let reasoningBuf = "";
+          let currentReasoningBlockKey = "";
           let receivedCompleted = false;
           let earlyResponseId: string | undefined;
           let responseStarted = false;

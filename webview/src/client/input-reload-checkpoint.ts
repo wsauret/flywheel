@@ -14,14 +14,14 @@ const Question = Schema.Struct({
   otherOpen: Schema.Record(Schema.String, Schema.Boolean),
   collapsed: Schema.Boolean,
 })
-export const ComposerCheckpoint = Schema.Struct({
+export const ComposerCheckpointSchema = Schema.Struct({
   sessionId: Schema.optional(Schema.String),
   active: Draft,
   newChat: Schema.optional(Draft),
   drafts: Schema.Record(Schema.String, Draft),
   questions: Schema.Record(Schema.String, Question),
 })
-export type ComposerCheckpoint = typeof ComposerCheckpoint.Type
+export type ComposerCheckpoint = typeof ComposerCheckpointSchema.Type
 const Focus = Schema.Struct({
   key: Schema.String,
   start: Schema.optional(Schema.Number), end: Schema.optional(Schema.Number),
@@ -44,10 +44,10 @@ const Unsent = Schema.Struct({
 /** Transfer artifact only. Live input remains in the surface owners until
  *  replacement. Between replacements the store holds only the outbox, which
  *  the mount keeps current, so any end of the page hands it on. */
-export const InputReloadCheckpoint = Schema.Struct({
+const InputReloadCheckpointSchema = Schema.Struct({
   version: Schema.Literal(1),
   scope: Schema.String,
-  composer: Schema.optional(ComposerCheckpoint),
+  composer: Schema.optional(ComposerCheckpointSchema),
   reading: Schema.optional(ReadingStateSchema),
   focus: Schema.optional(Focus),
   /** The messages on their way or waiting for the connection, which the
@@ -55,7 +55,7 @@ export const InputReloadCheckpoint = Schema.Struct({
    *  the field when nothing waits, so an older page still reads it. */
   outbox: Schema.optional(Schema.Array(Unsent)),
 })
-export type InputReloadCheckpoint = typeof InputReloadCheckpoint.Type
+export type InputReloadCheckpoint = typeof InputReloadCheckpointSchema.Type
 
 /** The messages a checkpoint hands over unanswered, none when the field is
  *  absent. This reads the shape that pages before 2026-10-22 save, which
@@ -75,6 +75,6 @@ export interface InputReloadStorage {
 
 export function decodeInputReloadCheckpoint(bytes: unknown, scope: string): InputReloadCheckpoint | undefined {
   if (bytes === undefined) return undefined
-  const checkpoint = Schema.decodeUnknownSync(InputReloadCheckpoint)(bytes)
+  const checkpoint = Schema.decodeUnknownSync(InputReloadCheckpointSchema)(bytes)
   return checkpoint.scope === scope ? checkpoint : undefined
 }

@@ -225,7 +225,8 @@ function createProjectRecovery(input: {
       await recoverSessionUsageSettlements(usage, createSessionUsageSettlement(usage))
       const pendingFiles = await loadSessionPendingFileMutations(projectionReader, sessionId)
       errors.push(...pendingFiles.unreadableCells.map((cell) => new Error(`File mutation ${cell.key}: ${cell.reason}`)))
-      errors.push(...await reconcilePendingFileMutations({ sessionId, store: projectionReader, writer, initial: pendingFiles }))
+      const reconcileErrors = await reconcilePendingFileMutations({ sessionId, store: projectionReader, writer, initial: pendingFiles })
+      errors.push(...reconcileErrors)
       if (!workflow) {
         const settled = row?.kind === "workflow-agent" && await isSettledMember(projectionReader, row.workflowMembership.workflowId, sessionId)
         await recoverSessionConversations(sessionId, cause, row?.conversationId, settled)

@@ -9,6 +9,7 @@ import { FLYWHEEL_DIR_NAME } from "../../../src/infra/directory-authorities.js"
 import { sharedHoldersIn } from "../../../src/infra/ownership-file-lock.js"
 import { accountServeRecordPath, accountServeSocketPath, resolveOwnerPidPath } from "../../../src/infra/paths.js"
 import { unixProcessIdentity, windowsProcessIdentity } from "../../../src/infra/process-container.js"
+import { decodeHolderText } from "../../../src/infra/process-holder.js"
 import { isProcessAlive } from "../../../src/infra/process-liveness.js"
 import { isSessionOwnerGone } from "../../../src/orchestration/session/pid-lock.js"
 import type { RuntimeClient } from "../../../src/protocol/app-service-types.js"
@@ -220,8 +221,7 @@ function liveHolders(projectRoot: string, gate: string): readonly number[] {
 function ownerPid(sessionId: string, projectRoot: string): number | undefined {
   const pidPath = resolveOwnerPidPath(sessionId, projectRoot)
   if (!fs.existsSync(pidPath)) return undefined
-  const pid = Number.parseInt(fs.readFileSync(pidPath, "utf8").trim(), 10)
-  return Number.isInteger(pid) && pid > 0 ? pid : undefined
+  return decodeHolderText(fs.readFileSync(pidPath, "utf8"))?.pid
 }
 
 /** A second account service started against the same account home and lane

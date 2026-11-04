@@ -131,7 +131,7 @@ function RuntimeList(props: { readonly remote: RemoteHostCapability; readonly sn
             <div class="runtime-head">
               <span class="runtime-name">{runtime().label}</span>
               <span class="runtime-presence" classList={{ online: machineStatus(runtime()).kind === "awake" }}>{presenceLabel(runtime())}</span>
-              <button class="row-action" title={`Forget ${runtime().label}`} aria-label={`Forget ${runtime().label}`} aria-busy={client.actions.working(forgetKey(runtime())) || undefined} onClick={() => void forget(runtime())}>
+              <button class="row-action" title={`Forget ${runtime().label}`} aria-label={`Forget ${runtime().label}`} aria-busy={client.actions.working(forgetKey(runtime())) || undefined} onClick={() => { void forget(runtime()) }}>
                 <Icon path={ICONS.close} size={13} />
               </button>
             </div>
@@ -149,7 +149,7 @@ function RuntimeList(props: { readonly remote: RemoteHostCapability; readonly sn
                           <span class="placement-version">{placement().state === "live" ? placement().version : "asleep"}</span>
                         </button>
                         <Show when={placement().state === "dormant" && attachedTo(runtime()) !== undefined}>
-                          <button class="row-action" title={`Stop offering ${placement().projectLabel}`} aria-label={`Stop offering ${placement().projectLabel}`} aria-busy={client.actions.working(forgetProjectKey(placement())) || undefined} onClick={() => void forgetProject(placement())}>
+                          <button class="row-action" title={`Stop offering ${placement().projectLabel}`} aria-label={`Stop offering ${placement().projectLabel}`} aria-busy={client.actions.working(forgetProjectKey(placement())) || undefined} onClick={() => { void forgetProject(placement()) }}>
                             <Icon path={ICONS.close} size={13} />
                           </button>
                         </Show>
@@ -211,7 +211,7 @@ function PairPanel(props: { readonly remote: RemoteHostCapability; readonly snap
       </div>
       <div class="pair-actions">
         <Show when={props.remote.scan}>
-          <button class="primary" disabled={pairing().status === "pairing"} onClick={() => void scan()}>Scan a code</button>
+          <button class="primary" disabled={pairing().status === "pairing"} onClick={() => { void scan() }}>Scan a code</button>
         </Show>
         <form class="pair-form" onSubmit={(event) => { event.preventDefault(); void pair(code()) }}>
           <input class="pair-input" type="text" inputmode="url" autocomplete="off" placeholder="or paste the link from the code" aria-label="Pairing link" value={code()} onInput={(event) => setCode(event.currentTarget.value)} />

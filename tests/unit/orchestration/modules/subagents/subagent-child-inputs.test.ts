@@ -14,7 +14,8 @@ import { liveSessionControl } from "../../../../../src/orchestration/session/liv
 const createHarness = subagentChildHarnesses()
 describe("subagent private input at handoff", () => {
   test.each(["drain", "wait"] as const)("handoff start holds every input through %s and returns unread human input to the parent's composer", async (mode) => {
-    const runs = heldRunner(), harness = createHarness(runs.createAgent)
+    const runs = heldRunner()
+    const harness = createHarness(runs.createAgent)
     try {
       const { sessionId: parent, conversationId: parentConversation } = await createRoot(harness.manager)
       await harness.tool(parent).execute({ persona: "delegator", description: "input test", rationale: TEST_RATIONALE, prompt: "inspect" }, makeContext({ toolUseId: "dispatch" }))
@@ -56,8 +57,10 @@ describe("subagent private input at handoff", () => {
     } finally { for (const result of runs.results) result.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }); await harness.close() }
   })
   test("handoff close waits for a pending recall without also returning its input to the parent", async () => {
-    const runs = heldRunner(), harness = createHarness(runs.createAgent)
-    const retiring = Promise.withResolvers<void>(), retirement = Promise.withResolvers<void>()
+    const runs = heldRunner()
+    const harness = createHarness(runs.createAgent)
+    const retiring = Promise.withResolvers<void>()
+    const retirement = Promise.withResolvers<void>()
     const released = Promise.withResolvers<void>()
     const drop = harness.writer.dropInFlight!
     harness.writer.dropInFlight = async (...args) => {
@@ -104,8 +107,10 @@ describe("subagent private input at handoff", () => {
     }
   })
   test("handoff close waits for pending admission to drop its refused hold before settlement", async () => {
-    const runs = heldRunner(), harness = createHarness(runs.createAgent)
-    const holding = Promise.withResolvers<void>(), admission = Promise.withResolvers<void>()
+    const runs = heldRunner()
+    const harness = createHarness(runs.createAgent)
+    const holding = Promise.withResolvers<void>()
+    const admission = Promise.withResolvers<void>()
     const released = Promise.withResolvers<void>()
     const swap = harness.writer.swapInFlight!
     harness.writer.swapInFlight = async (...args) => {

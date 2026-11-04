@@ -356,8 +356,7 @@ describe("createFamilyIntake", () => {
     harness.emit({ type: "patch", patch: after })
     harness.snapshotRequests[0]!.resolve({ snapshotPosition: 10, cursors: [sessionCursor("s1")] })
     await Promise.resolve()
-    order.push(...harness.snapshots.map((snapshot) => `snapshot:${snapshot.snapshotPosition}`))
-    order.push(`apply:${harness.applied.at(-1)}`)
+    order.push(...harness.snapshots.map((snapshot) => `snapshot:${snapshot.snapshotPosition}`), `apply:${harness.applied.at(-1)}`)
 
     expect(harness.applied).toEqual([1, 11])
     expect(order).toEqual(["snapshot:10", "apply:11"])

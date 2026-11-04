@@ -361,8 +361,7 @@ describe("refreshAccessToken", () => {
       openBrowser,
       onAuthorizeUrl: ({ url }) => {
         const handle = listeners.handler();
-        pages.push(Promise.resolve(handle(new Request("http://localhost:1455/auth/callback?state=stale-attempt&code=stale-code"))));
-        pages.push(Promise.resolve(handle(new Request(`http://localhost:1455/auth/callback?state=${stateOf(url)}&code=browser-code`))));
+        pages.push(Promise.resolve(handle(new Request("http://localhost:1455/auth/callback?state=stale-attempt&code=stale-code"))), Promise.resolve(handle(new Request(`http://localhost:1455/auth/callback?state=${stateOf(url)}&code=browser-code`))));
       },
     });
     expect(Redacted.value(result.accessToken)).toBe("browser-access");

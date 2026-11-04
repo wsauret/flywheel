@@ -60,11 +60,11 @@ export function McpSheet() {
               </>}
             >
               <div class="sheet-row-main" ref={(element) => register(server().name, element)} aria-busy={operation.working(server().name) || undefined}>
-                <Show when={server().status === "needs_auth"}><button class="secondary" disabled={operation.working(server().name)} onClick={(event) => void runAction(server().name, event.currentTarget, () => operation.authenticate(server()))}>Authenticate</button></Show>
-                <Show when={server().status === "failed"}><button class="secondary" disabled={operation.working(server().name)} onClick={(event) => void runAction(server().name, event.currentTarget, () => operation.reconnect(server()))}>Reconnect</button></Show>
-                <button class="secondary" disabled={operation.working(server().name)} onClick={(event) => void runAction(server().name, event.currentTarget, () => operation.enabled(server(), mcpEnabledAction(server())))}>{mcpEnabledAction(server()).label}</button>
-                <Show when={mcpProjectEnabledAction(server())}>{(action) => <button class="secondary" disabled={operation.working(server().name)} onClick={(event) => void runAction(server().name, event.currentTarget, () => operation.enabled(server(), action()))}>{action().label}</button>}</Show>
-                <button class="ghost" disabled={operation.working(server().name)} onClick={(event) => void runAction(server().name, event.currentTarget, () => operation.remove(server()))}>Remove</button>
+                <Show when={server().status === "needs_auth"}><button class="secondary" disabled={operation.working(server().name)} onClick={(event) => { void runAction(server().name, event.currentTarget, () => operation.authenticate(server())) }}>Authenticate</button></Show>
+                <Show when={server().status === "failed"}><button class="secondary" disabled={operation.working(server().name)} onClick={(event) => { void runAction(server().name, event.currentTarget, () => operation.reconnect(server())) }}>Reconnect</button></Show>
+                <button class="secondary" disabled={operation.working(server().name)} onClick={(event) => { void runAction(server().name, event.currentTarget, () => operation.enabled(server(), mcpEnabledAction(server()))) }}>{mcpEnabledAction(server()).label}</button>
+                <Show when={mcpProjectEnabledAction(server())}>{(action) => <button class="secondary" disabled={operation.working(server().name)} onClick={(event) => { void runAction(server().name, event.currentTarget, () => operation.enabled(server(), action())) }}>{action().label}</button>}</Show>
+                <button class="ghost" disabled={operation.working(server().name)} onClick={(event) => { void runAction(server().name, event.currentTarget, () => operation.remove(server())) }}>Remove</button>
                 <Show when={operation.working(server().name)}><span>Working…</span></Show>
               </div>
             </SheetRow>

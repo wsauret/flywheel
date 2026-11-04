@@ -91,7 +91,7 @@ function ChildActivityBlock(props: AgentGroupBlockProps) {
     const parts = initializing()
       ? subagentHeaderParts({ ...props.block, model: "" }).filter(({ kind }) => kind === "persona" || kind === "goal")
       : subagentHeaderParts(summaryBlock(), summaryBlock().model, line().time)
-    const chunksFor = (selected: typeof parts): TextChunk[] => selected.map((part, index) => part.kind === "persona"
+    const chunksFor = (selected: ReturnType<typeof subagentHeaderParts>): TextChunk[] => selected.map((part, index) => part.kind === "persona"
       ? stBold(stFg(action.hovered() ? theme.textBright : theme.text)(part.text))
       : stFg(theme.textSubtle)(`${index === 0 ? "" : " · "}${part.text}`))
     let shown = parts

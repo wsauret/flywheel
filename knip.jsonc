@@ -33,8 +33,6 @@
       // build and dev scripts that produce and serve it.
       "entry": ["worker/src/index.ts", "worker/test/counting-relay.ts", "app/bootstrap.ts", "app/sw/sw.ts", "app/serve.ts", "**/*.test.ts"],
       "project": ["worker/src/**/*.ts", "worker/test/**/*.ts", "app/sw/*.ts", "app/*.ts"],
-      // Ambient declarations for the Worker bindings and CSS imports.
-      "ignore": ["**/*.d.ts"],
       // `cloudflare:workers` is the Worker runtime's own module, not a package.
       "ignoreDependencies": ["cloudflare"]
     }

@@ -68,7 +68,8 @@ test("review can open before readiness without acquiring history", async () => {
 test("a ready list fans out requested diffs in order with at most two in flight", async () => {
   const server = runtime()
   server.current.files = [fileA, fileB, fileC]
-  const first = deferred<SessionChangeDiffResult>(), second = deferred<SessionChangeDiffResult>()
+  const first = deferred<SessionChangeDiffResult>()
+  const second = deferred<SessionChangeDiffResult>()
   server.diffReplies.push(first.promise, second.promise)
   const controller = createSessionChangesController({ client: server.client, sessionId: "cold" })
   controller.setVisibleFiles([fileA.fileId, fileB.fileId, fileC.fileId])

@@ -104,7 +104,6 @@ export async function renderWorkflowAuditReport(directory: string): Promise<stri
       "Only verdicts matching the current artifacts and judge identity count. Judge replay is offline and makes no model call.");
     else lines.push("Judge ledger: unavailable.");
   }
-  lines.push("", "Site naming, blinded quality, and elapsed time are separate observations. Step evidence remains in the execution artifacts.", "");
-  lines.push(renderCampaignRoleChanges(await campaignRoleComparisons(directory, store.manifest.treatments, [...completed.values()])));
+  lines.push("", "Site naming, blinded quality, and elapsed time are separate observations. Step evidence remains in the execution artifacts.", "", renderCampaignRoleChanges(await campaignRoleComparisons(directory, store.manifest.treatments, [...completed.values()])));
   return lines.join("\n");
 }

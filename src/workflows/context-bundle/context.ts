@@ -23,7 +23,7 @@ export const BLOCKED_WORK_ARTIFACT_ID = "blocked_work";
  *  rounds reported. */
 export const JOIN_EXPANSION_CAP_BYTES = 64 * 1024;
 
-export type { HandoffEntry };
+export type { HandoffEntry } from "./context-facts.js";
 
 /** The launch seed in the artifact index: the verbatim request, and the
  *  structured input when the launch passed one. */

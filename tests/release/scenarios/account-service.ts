@@ -205,8 +205,7 @@ export async function runAccountServiceScenario(context: ScenarioContext): Promi
     metrics["accountService.secondProjectIncrementalRssMb"] = two.rssMb - one.rssMb
     writeFileSync(join(context.evidenceDir, "processes-two-projects.txt"), two.evidence)
 
-    openDurations.push(await timeline.time("open-2", () => wakeProject(context.workDir, project(2), cookie, hubOrigin)))
-    openDurations.push(await timeline.time("open-3", () => wakeProject(context.workDir, project(3), cookie, hubOrigin)))
+    openDurations.push(await timeline.time("open-2", () => wakeProject(context.workDir, project(2), cookie, hubOrigin)), await timeline.time("open-3", () => wakeProject(context.workDir, project(3), cookie, hubOrigin)))
     const [open1Ms, open2Ms, open3Ms] = openDurations
     if (open1Ms === undefined || open2Ms === undefined || open3Ms === undefined) throw new Error("account service did not record three warm opens")
     metrics["accountService.open1Ms"] = open1Ms

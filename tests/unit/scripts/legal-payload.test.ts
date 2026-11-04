@@ -121,6 +121,27 @@ describe("release legal payload", () => {
     }
   });
 
+  test("finds a locked version that the hoisted linker nested under a dependent", async () => {
+    const root = fixtureRoot();
+    try {
+      for (const [directory, version, license] of [["node_modules/width", "8.0.0", "hoisted\n"], ["node_modules/tui/node_modules/width", "7.0.0", "nested\n"]] as const) {
+        mkdirSync(join(root, directory), { recursive: true });
+        writeFileSync(join(root, directory, "package.json"), JSON.stringify({ name: "width", version }));
+        writeFileSync(join(root, directory, "LICENSE"), license);
+      }
+      mkdirSync(join(root, "node_modules", "tui"), { recursive: true });
+      writeFileSync(join(root, "node_modules", "tui", "package.json"), JSON.stringify({ name: "tui", version: "1.0.0" }));
+      writeFileSync(join(root, "node_modules", "tui", "LICENSE"), "tui\n");
+      const lock = shippingLock({ tui: "1.0.0" }, { tui: ["tui@1.0.0", "", { dependencies: { width: "7.0.0" } }], width: ["width@7.0.0", "", {}] });
+
+      const sections = await generateNpmLicenseSections(root, lock);
+
+      expect(sections.find((section) => section.includes("width@7.0.0"))).toContain("nested\n");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   test("native family attribution does not depend on foreign optional packages", async () => {
     const root = fixtureRoot();
     try {

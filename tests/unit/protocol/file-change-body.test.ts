@@ -219,13 +219,8 @@ describe("file change body protocol", () => {
 
     const settled = output.getBlocks().find((block): block is FrontendToolEntry => block.kind === "tool")
     expect(settled?.fileChangeKind).toBe("replace")
-    if (mutationEvidence === undefined) {
-      expect(settled?.proposedDiff).toBeUndefined()
-      expect(settled && selectFileChangeBody(settled, undefined)).toEqual({ kind: "unavailable" })
-    } else {
-      expect(settled?.proposedDiff).toBeUndefined()
-      expect(settled && selectFileChangeBody(settled, undefined)).toEqual({ kind: "actual", mutationEvidence })
-    }
+    expect(settled?.proposedDiff).toBeUndefined()
+    expect(settled && selectFileChangeBody(settled, undefined)).toEqual(mutationEvidence === undefined ? { kind: "unavailable" } : { kind: "actual", mutationEvidence })
   })
 
   it("keeps a successful file tool without mutation exclusive from its proposal", () => {

@@ -38,7 +38,8 @@ describe("Usage runtime coordination", () => {
     const work = createUsageAuthority({ profileDir: workRoot, profileId: "work", now: () => Date.parse("2025-01-20T00:00:00.000Z") })
     personal.append(entry("personal", 1)); work.append(entry("work", 9))
     const services = new Map([["personal", usageService(personal, "personal")], ["work", usageService(work, "work")]])
-    const store = fakeSessionStore(new Map()), manager = fakeManager()
+    const store = fakeSessionStore(new Map())
+    const manager = fakeManager()
     const deps = {
       projectRoot: "/project", projection: createFrontendProjection({ sessionStore: store, manager, projectRoot: "/project" }), bus: createRuntimeUiBus(),
       ...fakeProjections(), runtimeSupervisor: runtimeSupervisor(),

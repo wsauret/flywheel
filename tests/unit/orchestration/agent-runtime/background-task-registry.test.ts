@@ -474,7 +474,7 @@ describe("createBackgroundWorkRegistry (chat)", () => {
   });
 
   it("keeps a subagent that a person interrupted as the parent's work in silence until its end is delivered, releases one that the parent interrupted, and announces the runtime's interrupt", async () => {
-    const notes: string[] = [], labels: Array<boolean | undefined> = [];
+    const [notes, labels]: [string[], Array<boolean | undefined>] = [[], []];
     const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: (text, _key, runtimeNotice) => { notes.push(text); labels.push(runtimeNotice); } });
     const child = (id: string) => ({ id, type: "subagent", description: `Review ${id}`, settlementOwner: "child_session", roleSessionId: `session-${id}`, model: "test-model" }) as const;
     const interrupted = (by: PausedBy): Promise<BackgroundWorkResult> => Promise.resolve({ status: "interrupted", content: "", interruptedBy: by });

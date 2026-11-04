@@ -19,10 +19,10 @@ const LINE_RANGE_RE = /^L?(\d+)(?:([-+])L?(\d+)?)?$/i;
 function parseLineRangeChunk(sel: string): LineRange | null {
   const m = LINE_RANGE_RE.exec(sel);
   if (!m?.[1]) return null;
-  const rawStart = Number.parseInt(m[1], 10);
+  const rawStart = Number(m[1]);
   if (rawStart < 1) return null;
   const sep = m[2];
-  const rhs = m[3] ? Number.parseInt(m[3], 10) : undefined;
+  const rhs = m[3] ? Number(m[3]) : undefined;
   let rawEnd: number | undefined;
   if (sep === "+") {
     if (rhs === undefined || rhs < 1) return null;

@@ -9,6 +9,7 @@ describe("modals stack", () => {
       const firstClose = mock(() => {})
       const secondClose = mock(() => {})
       stack.push("first", { onClose: firstClose })
+      // oxlint-disable-next-line unicorn/prefer-single-call -- the modal stack takes one modal per call, not Array#push arguments
       stack.push("second", { onClose: secondClose })
 
       expect(stack.dismiss()).toBe(true)
@@ -122,6 +123,7 @@ describe("overlay layers", () => {
     createRoot((dispose) => {
       const overlays = createOverlayLayers()
       overlays.dialog.push("settings")
+      // oxlint-disable-next-line unicorn/prefer-single-call -- the overlay layer takes one dialog per call, not Array#push arguments
       overlays.dialog.push("auth")
 
       expect(overlays.dialog.stack.at(-1)?.element).toBe("auth")
@@ -282,6 +284,7 @@ describe("overlay layers", () => {
       overlays.viewer.push("child", { route: { kind: "child", sessionId: "child-1" } })
       expect(overlays.route()).toEqual({ kind: "child", sessionId: "child-1" })
       overlays.dialog.push("sessions", { route: { kind: "sessions" } })
+      // oxlint-disable-next-line unicorn/prefer-single-call -- the overlay layer takes one dialog per call, not Array#push arguments
       overlays.dialog.push("confirm")
       expect(overlays.route()).toEqual({ kind: "sessions" })
       overlays.dialog.clear()

@@ -111,7 +111,7 @@ async function withModal(foreground: string | undefined, run: (harness: ModalHar
         foregroundSessionId,
         foregroundTitle: () => opts.title,
       })
-      Promise.resolve(run({ modals, modelModal, loads, resets, saves, toasts, refreshes }))
+      void Promise.resolve(run({ modals, modelModal, loads, resets, saves, toasts, refreshes }))
         .then(resolve, reject)
         .finally(dispose)
     })

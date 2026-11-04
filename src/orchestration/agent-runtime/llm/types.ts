@@ -7,7 +7,7 @@ import type { ToolOutcome } from "../../../infra/tool-outcome.js";
 import type { ReasoningEffort } from "../../../infra/llm/models.js";
 import type { MutationEvidence } from "../../../infra/mutation-evidence.js";
 import type { ContentRepair } from "../../../infra/llm/content-repair.js";
-export type { CompletedStopReason, LlmStopReason };
+export type { CompletedStopReason, LlmStopReason } from "./messages.js";
 import type { StreamAttemptStartEvent } from "./stream-attempt.js";
 import type { FailoverFailure, ProviderFailure } from "./provider-failure.js";
 import type { RequestAdmission } from "./provider-availability-types.js";

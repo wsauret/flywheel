@@ -353,19 +353,16 @@ export function ToolEntry(props: ToolEntryProps) {
     }
 
     if (props.block.status === "error" && !messageOutcome()) {
-      suffix.push(stFg(theme.text)(" "))
-      suffix.push(stFg(theme.error)(props.block.errorMessage))
+      suffix.push(stFg(theme.text)(" "), stFg(theme.error)(props.block.errorMessage))
     }
 
     if (props.block.status === "blocked" && !messageOutcome()) {
-      suffix.push(stFg(theme.text)(" "))
-      suffix.push(stFg(theme.warning)(props.block.statusMessage))
+      suffix.push(stFg(theme.text)(" "), stFg(theme.warning)(props.block.statusMessage))
     }
 
     const chevron = headerChevron()
     if (chevron) {
-      suffix.push(stFg(theme.text)(" "))
-      suffix.push(hovered
+      suffix.push(stFg(theme.text)(" "), hovered
         ? stBold(stFg(theme.primaryBright)(chevron))
         : stFg(theme.primary)(chevron))
     }

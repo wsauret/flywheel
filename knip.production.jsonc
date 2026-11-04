@@ -35,7 +35,6 @@
       "entry": ["worker/src/index.ts", "app/bootstrap.ts", "app/sw/sw.ts"],
       "project": ["worker/src/**/*.ts", "app/client-choice.ts", "app/device-store.ts", "app/sw/*.ts", "app/icon.ts"],
       "ignoreDependencies": ["cloudflare"],
-      "ignore": ["**/*.d.ts"],
     }
   },
   // The grammar loader resolves these assets from runtime strings.

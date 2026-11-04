@@ -57,8 +57,7 @@ export function renderWorkflowVerificationReport(report: WorkflowVerificationRep
     lines.push("Findings:")
     for (const finding of report.findings) {
       const target = finding.target === null ? "" : ` [${finding.target}]`
-      lines.push(`- ${finding.name}${target}: ${finding.message}`)
-      lines.push(finding.witness === null
+      lines.push(`- ${finding.name}${target}: ${finding.message}`, finding.witness === null
         ? `  No path: ${finding.noPathReason}`
         : `  Event witness: ${finding.witness.length === 0 ? "(initial state)" : finding.witness.join(" -> ")}`)
     }
@@ -164,8 +163,7 @@ function verifyWorkflowRun(workflowId: string, facts: readonly (StoredFact | Cor
     lines.push("Tree: unavailable, no workflow view is stored")
     return { workflowId, text: lines.join("\n"), sound: false }
   }
-  lines.push("Tree:", ...treeLines(queue.tree, settledJoins(stored, control)))
-  lines.push("", ...contextExclusionLines(stored))
+  lines.push("Tree:", ...treeLines(queue.tree, settledJoins(stored, control)), "", ...contextExclusionLines(stored))
   return { workflowId, text: lines.join("\n"), sound: report.result !== "invalid" }
 }
 

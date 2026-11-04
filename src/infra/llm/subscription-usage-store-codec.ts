@@ -1,7 +1,6 @@
 import { Schema } from "effect";
 import { SQLiteError } from "bun:sqlite";
 import { errorMessage } from "../error-message.js";
-import { createSubscriptionAccountIdentity, subscriptionAccountIdentityFromRef, subscriptionAccountIdentityKey, subscriptionSubjectDigest } from "./subscription-account-identity.js";
 import type {
   SubscriptionUsageAccountKey,
   SubscriptionUsageAlert,
@@ -264,11 +263,12 @@ function optionalText(value: unknown, at: string): string | undefined {
   return value;
 }
 
-export const accountKeyFromIdentity = createSubscriptionAccountIdentity;
-export const quotaSubjectDigest = subscriptionSubjectDigest;
-export const accountKeyFromRef = subscriptionAccountIdentityFromRef;
-
-export const keyString = subscriptionAccountIdentityKey;
+export {
+  createSubscriptionAccountIdentity as accountKeyFromIdentity,
+  subscriptionSubjectDigest as quotaSubjectDigest,
+  subscriptionAccountIdentityFromRef as accountKeyFromRef,
+  subscriptionAccountIdentityKey as keyString,
+} from "./subscription-account-identity.js";
 
 export function bindings(key: SubscriptionUsageAccountKey) {
   return { $provider: key.providerId, $instance: key.instanceId, $subject: key.subjectDigest } satisfies SqlBinding;

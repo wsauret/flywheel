@@ -6,7 +6,7 @@ import type { Tools } from "../../../infra/code-mode/tools.js"
 import type { BoundedStringCodeModeOutput, RuntimeTool } from "../../agent-runtime/tools/types.js"
 
 /** What a script sees from every bridged call. */
-export const CodeToolResult = Schema.Struct({
+export const CodeToolResultSchema = Schema.Struct({
   outcome: Schema.Literals(["ok", "error", "interrupted"]),
   // A key annotation: Effect's JSON Schema of `Schema.Unknown` is `{}` and
   // drops the schema's own description.
@@ -14,7 +14,7 @@ export const CodeToolResult = Schema.Struct({
     description: "Parsed data when the tool's text output is a JSON object or array; otherwise the raw string.",
   }),
 })
-export type CodeToolResult = typeof CodeToolResult.Type
+export type CodeToolResult = typeof CodeToolResultSchema.Type
 
 /** Plain data that names one callable tool. It crosses to the guest and
  *  grants nothing: the host resolves every call against its own map. */
@@ -120,7 +120,7 @@ export function toolTrie(descriptors: readonly CodeModeToolDescriptor[], execute
     group[leaf] = Tool.make({
       description: descriptor.description,
       input: descriptor.inputSchema,
-      output: CodeToolResult,
+      output: CodeToolResultSchema,
       execute: (input) => execute(descriptor, input),
     })
   }

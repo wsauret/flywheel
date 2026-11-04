@@ -68,6 +68,7 @@ const permanentlyDisabledRules = {
   "promise/param-names": "off", // Parameter names are convention, not a semantic Flywheel invariant.
   "promise/prefer-await-to-callbacks": "off", // Callback APIs exist at external bridge edges.
   "promise/prefer-await-to-then": "off", // `.then` is sometimes the cleanest bridge form.
+  "promise/always-return": "off", // TypeScript types each chain value, and void `.then` bridges and barriers are deliberate.
   "promise/prefer-catch": "off", // Catch placement is part of bridge/error-channel design.
   "unicorn/no-thenable": "off", // `then` is a Flywheel workflow schema term, not a thenable bug.
   "unicorn/throw-new-error": "off", // Effect's `Schema.TaggedError<E>()(...)` class factory ends in Error, and `Error()` equals `new Error()`.
@@ -190,6 +191,8 @@ export default defineConfig({
     // target is to lower this global max to 30.
     complexity: ["error", { max: 60 }],
     eqeqeq: ["error", "smart"],
+    // The two-argument `.then(onOk, onErr)` form is a deliberate bridge, as for promise/prefer-catch.
+    "promise/catch-or-return": ["error", { allowThen: true }],
     // Index signatures are the sanctioned replacement under flywheel/no-record;
     // the core default prefers Record and would fight the ban.
     "typescript/consistent-indexed-object-style": ["error", "index-signature"],
@@ -259,8 +262,12 @@ export default defineConfig({
         "no-console": "off",
         "no-duplicate-imports": "off",
         "no-empty": "off",
+        "no-redeclare": "off",
         "no-shadow": "off",
         "no-template-curly-in-string": "off",
+        // The guest interpreter loops on the evaluated AST test node, which the rule cannot see change.
+        "no-unmodified-loop-condition": "off",
+        "no-void": "off",
         "prefer-exponentiation-operator": "off",
         radix: "off",
         "typescript/ban-types": "off",
@@ -280,6 +287,8 @@ export default defineConfig({
         "unicorn/no-useless-fallback-in-spread": "off",
         "unicorn/prefer-math-trunc": "off",
         "unicorn/prefer-native-coercion-functions": "off",
+        // The guest stdlib implements parseInt and parseFloat, whose prefix parsing Number() does not share.
+        "unicorn/prefer-number-coercion": "off",
         "unicorn/prefer-number-properties": "off",
         "unicorn/prefer-string-slice": "off",
       },

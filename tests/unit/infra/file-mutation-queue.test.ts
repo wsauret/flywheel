@@ -20,8 +20,7 @@ describe("withFileMutationQueue", () => {
       return "slow";
     });
     const fast = withFileMutationQueue(path, async () => {
-      observed.push("fast-start");
-      observed.push("fast-end");
+      observed.push("fast-start", "fast-end");
       return "fast";
     });
 
@@ -46,8 +45,7 @@ describe("withFileMutationQueue", () => {
       observed.push("a-end");
     });
     const onB = withFileMutationQueue(b, async () => {
-      observed.push("b-start");
-      observed.push("b-end");
+      observed.push("b-start", "b-end");
     });
 
     await Promise.all([onA, onB]);
@@ -71,8 +69,7 @@ describe("withFileMutationQueue", () => {
       observed.push("real-end");
     });
     const onLink = withFileMutationQueue(link, async () => {
-      observed.push("link-start");
-      observed.push("link-end");
+      observed.push("link-start", "link-end");
     });
 
     await Promise.all([onReal, onLink]);
@@ -93,8 +90,7 @@ describe("withFileMutationQueue", () => {
       observed.push("first-end");
     });
     const second = withFileMutationQueue(path, async () => {
-      observed.push("second-start");
-      observed.push("second-end");
+      observed.push("second-start", "second-end");
     });
 
     await Promise.all([first, second]);

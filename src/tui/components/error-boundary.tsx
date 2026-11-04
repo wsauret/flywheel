@@ -50,7 +50,7 @@ export function ErrorComponent(props: ErrorComponentProps) {
     <box flexDirection="column" gap={1} padding={2}>
       <box flexDirection="row" gap={2} alignItems="center">
         <text fg={theme.error} attributes={BOLD} flexShrink={0}>Fatal Error</text>
-        <Button label={copied() ? "Copied!" : "Copy Report"} onPress={() => void copyError()} />
+        <Button label={copied() ? "Copied!" : "Copy Report"} onPress={() => { void copyError() }} />
       </box>
       <For each={reports}>{(report) => <Show when={report.status()}>{(status) => <text fg={report.failed() ? theme.error : theme.textMuted}>{status()}</text>}</Show>}</For>
       <box flexDirection="row" gap={2}>

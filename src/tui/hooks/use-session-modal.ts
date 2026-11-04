@@ -531,8 +531,7 @@ function withCorruptRows(rows: PickerRow[], corrupt: readonly PickerCorruptRow[]
   if (corrupt.length === 0) return rows
   const combined: PickerRow[] = [...rows]
   if (combined.length > 0) combined.push({ kind: "header", id: "spacer:unreadable", label: "" })
-  combined.push({ kind: "header", id: "header:unreadable", label: "Unreadable" })
-  combined.push(...corrupt)
+  combined.push({ kind: "header", id: "header:unreadable", label: "Unreadable" }, ...corrupt)
   return combined
 }
 

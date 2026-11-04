@@ -54,7 +54,7 @@ const RetrySchema = Schema.Struct({
  *  `dependencies`, and `subagents` belong to an inline `brief`, because
  *  an in-file reused brief owns its own contract. `model` and
  *  `effort` belong only to a workflow file that a chat launches by path. */
-export const AgentRecordKeys = {
+export const AgentRecordFields = {
   name: Schema.optionalKey(Schema.NonEmptyString),
   runs: Schema.optionalKey(Schema.NonEmptyString),
   brief: Schema.optionalKey(Schema.String),
@@ -70,12 +70,12 @@ export const AgentRecordKeys = {
 } as const;
 
 /** The record keys as one type, which a phase and a named agent share. */
-export type AgentRecordKeys = Schema.Struct.Type<typeof AgentRecordKeys>;
+export type AgentRecordKeys = Schema.Struct.Type<typeof AgentRecordFields>;
 
 /** A named agent in its long form: its id and its own record keys. */
 const NamedAgentSchema = Schema.Struct({
   agent: LocalIdSchema,
-  ...AgentRecordKeys,
+  ...AgentRecordFields,
 });
 export type NamedAgent = typeof NamedAgentSchema.Type;
 
@@ -120,7 +120,7 @@ const WorkflowPhaseSchema = Schema.Struct({
   join: Schema.optionalKey(JoinSchema),
   agents: Schema.optionalKey(Schema.Array(Schema.Union([LocalIdSchema, NamedAgentSchema])).check(Schema.makeFilter((agents) =>
     agents.length >= 2 || "agents names at least 2 agents; a phase of one agent needs no agents key"))),
-  ...AgentRecordKeys,
+  ...AgentRecordFields,
 });
 export type WorkflowPhase = typeof WorkflowPhaseSchema.Type;
 
@@ -353,7 +353,7 @@ export interface AgentRecordRef {
 const NAMED_AGENT_DEFAULT_KEYS = ["runs", "brief", "output", "dependencies", "subagents", "persona", "model", "effort", "retry", "reads", "writes"] as const satisfies readonly (keyof AgentRecordKeys)[];
 
 function isRecordKey(key: string): key is keyof AgentRecordKeys {
-  return Object.hasOwn(AgentRecordKeys, key);
+  return Object.hasOwn(AgentRecordFields, key);
 }
 
 /** The record keys of a phase or a named agent, without its other keys. */

@@ -118,7 +118,7 @@ function showPairing(root: HTMLElement, store: DeviceStore, request: PairingRequ
   }
   const name = element("input", { type: "text", autocomplete: "off", value: store.label() })
   name.setAttribute("enterkeyhint", "done")
-  name.addEventListener("change", () => void store.setLabel(name.value))
+  name.addEventListener("change", () => { void store.setLabel(name.value) })
   const link = element("input", { type: "text", autocomplete: "off", placeholder: "or paste the link from the code" })
   link.setAttribute("inputmode", "url")
   link.setAttribute("aria-label", "Pairing link")

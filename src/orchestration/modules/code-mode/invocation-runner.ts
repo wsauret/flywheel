@@ -8,7 +8,7 @@ import type { NestedToolDispatchBatch } from "../../agent-runtime/tools/nested-t
 import { boundedStringCodeModeOutput, type ToolContext, type ToolResult } from "../../agent-runtime/tools/types.js"
 import { repairToolName } from "../../agent-runtime/tools/tool-dispatch.js"
 import type { CodeModeToolSet } from "./descriptors.js"
-import { GuestMessage, type CallReply, type HostMessage } from "./invocation-protocol.js"
+import { GuestMessageSchema, type CallReply, type GuestMessage, type HostMessage } from "./invocation-protocol.js"
 import type { CodeModeLimits } from "./limits.js"
 import { formatCodeModeResult } from "./result-format.js"
 import type { InvocationWorker, InvocationWorkerPool, RetireReason } from "./worker-pool.js"
@@ -162,7 +162,7 @@ function attachBridge(worker: InvocationWorker, signal: AbortSignal | undefined,
   }
   const onMessage = (event: MessageEvent): void => {
     if (closed) return
-    const decoded = Schema.decodeUnknownExit(GuestMessage)(event.data)
+    const decoded = Schema.decodeUnknownExit(GuestMessageSchema)(event.data)
     if (Exit.isFailure(decoded)) return end({ kind: "failed", message: "Code runtime failed: it sent a malformed message." })
     const message = decoded.value
     if (message.type === "log") return logs.receive(message.lines, message.dropped)

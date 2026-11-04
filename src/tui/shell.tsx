@@ -192,7 +192,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
     moduleRows: slots.introRows,
     fontTipDismissed: () => runtimeConfig.view()?.values.fontTipDismissed ?? false,
     tabsHintDismissed: tabsHint.dismissed,
-    onDismissTabsHint: () => void tabsHint.dismiss(),
+    onDismissTabsHint: () => { void tabsHint.dismiss() },
   }
   const [firstFrame, setFirstFrame] = createSignal(false)
   const afterFrame = (): void => { setFirstFrame(true); renderer.off("frame", afterFrame) }
@@ -573,7 +573,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
                 modelLabel: activeModelLabel,
                 availableWidth: () => Math.max(1, dimensions().width - 4),
                 noProviderReady: () => setup() === "none",
-                releaseNotice: { notice: releaseNotice, dismiss: () => void releaseNoticeActions.dismiss() }
+                releaseNotice: { notice: releaseNotice, dismiss: () => { void releaseNoticeActions.dismiss() }}
               }}
             />
           )}

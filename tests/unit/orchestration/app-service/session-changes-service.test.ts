@@ -117,7 +117,10 @@ const roundTrip = (rpc: { readonly successSchema: Schema.Codec<unknown, unknown,
 
 test("list reports net-changed files in path order with the execution directory", async () => {
   await withService(async (service, fixture, change) => {
-    const a = join(fixture.root, "a"), b = join(fixture.root, "b"), c = join(fixture.root, "c"), internal = join(fixture.root, ".flywheel", "note.md")
+    const a = join(fixture.root, "a")
+    const b = join(fixture.root, "b")
+    const c = join(fixture.root, "c")
+    const internal = join(fixture.root, ".flywheel", "note.md")
     writeFileSync(b, "old\n")
     writeFileSync(c, "gone\n")
     await change(c, undefined)
@@ -139,7 +142,8 @@ test("list reports net-changed files in path order with the execution directory"
 
 test("list names the topmost removed directory of each deleted file under a directory that no longer exists", async () => {
   await withService(async (service, fixture, change) => {
-    const removed = join(fixture.root, "d"), kept = join(fixture.root, "keep")
+    const removed = join(fixture.root, "d")
+    const kept = join(fixture.root, "keep")
     fs.mkdirSync(join(removed, "sub"), { recursive: true })
     fs.mkdirSync(kept)
     const paths = [join(removed, "b"), join(removed, "sub", "a"), join(kept, "gone"), join(kept, "stays")]
@@ -410,7 +414,8 @@ test("a background mutation command's settled record carries its diff to the ori
 
 test("Viewed replays durably, survives unrelated edits, manually clears, and refuses stale same-byte tokens", async () => {
   await withService(async (service, fixture, change) => {
-    const a = join(fixture.root, "a"), b = join(fixture.root, "b")
+    const a = join(fixture.root, "a")
+    const b = join(fixture.root, "b")
     writeFileSync(a, "one\n")
     await change(a, "two\n")
     let entry = (await service.list({ type: "sessionChanges", sessionId: fixture.sessionId, offset: 0, maxFiles: 128, maxBytes: 65536 })).files[0]!
@@ -473,7 +478,8 @@ test("Viewed makes one guarded append attempt and refuses aggregate contention",
 
 test("Viewed point validation hashes only the selected file", async () => {
   await withService(async (service, fixture, change) => {
-    const a = join(fixture.root, "point-a"), b = join(fixture.root, "point-b")
+    const a = join(fixture.root, "point-a")
+    const b = join(fixture.root, "point-b")
     writeFileSync(a, "before-a")
     writeFileSync(b, "before-b")
     await change(a, "after-a")

@@ -68,9 +68,7 @@ export function highlightExecuteInputs(detail: string, theme: TuiTheme): TextChu
       chunks.push(stFg(theme.text)(pair))
       continue
     }
-    chunks.push(stFg(theme.chatCodeFunction)(pair.slice(0, eq)))
-    chunks.push(stFg(theme.textMuted)("="))
-    chunks.push(stFg(theme.text)(pair.slice(eq + 1)))
+    chunks.push(stFg(theme.chatCodeFunction)(pair.slice(0, eq)), stFg(theme.textMuted)("="), stFg(theme.text)(pair.slice(eq + 1)))
   }
   chunks.push(stFg(theme.textMuted)("]"))
   return chunks

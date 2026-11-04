@@ -129,8 +129,7 @@ function convertWorkflow(db: Database, workflowId: string, readSources: () => Se
       workflowMembership: generation.membership, importedResources: { workflowId, conversationId: generation.conversationId },
       launchedFrom: { parentSessionId: binding.parentSessionId, conversationId: parent.conversationId, toolUseId: binding.toolUseId },
       label: source.label, lifecycleState: "inactive", createdAt: settings.createdAt, lastUpdated: source.lastUpdated,
-    }), timestamp))
-    events.push(buildSessionMetadataAppend(binding.parentSessionId, buildSessionChildLinkedFact(generation.sessionId, source.lastUpdated), timestamp))
+    }), timestamp), buildSessionMetadataAppend(binding.parentSessionId, buildSessionChildLinkedFact(generation.sessionId, source.lastUpdated), timestamp))
   }
   const inserter = createSqliteEventInserter(db)
   inserter.insertEventRows(events.map(event => ({ ...event, id: randomUUID() })))

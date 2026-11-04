@@ -286,8 +286,7 @@ export function ToolRow(props: ToolRowProps) {
     }
     if (hasExpandableOutput()) {
       const chevron = outputExpanded() ? "▾" : "▸"
-      chunks.push(stFg(theme.text)(" "))
-      chunks.push(toggle.hovered() ? stBold(stFg(theme.primaryBright)(chevron)) : stFg(theme.primary)(chevron))
+      chunks.push(stFg(theme.text)(" "), toggle.hovered() ? stBold(stFg(theme.primaryBright)(chevron)) : stFg(theme.primary)(chevron))
     }
     // The hover rail continues below the first line, so a terminating corner
     // becomes a tee (same rule as rowChunks).

@@ -37,8 +37,8 @@ class GripElement extends EventTarget {
   releasePointerCapture(id: number) { this.captures.delete(id) }
   getBoundingClientRect() {
     if (this === this.ownerDocument.scroller) return { x: 0, y: 0, left: 0, top: 0, right: 400, bottom: 600, width: 400, height: 600 }
-    const x = Number.parseFloat(this.style.left)
-    const y = Number.parseFloat(this.style.top)
+    const x = Number(this.style.left.replace("px", ""))
+    const y = Number(this.style.top.replace("px", ""))
     return { x: x - 32, y: y - 32, left: x - 32, top: y - 32, right: x + 32, bottom: y + 32, width: 64, height: 64 }
   }
   closest(): GripElement | null { return null }

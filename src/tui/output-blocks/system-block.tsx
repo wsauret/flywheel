@@ -46,8 +46,7 @@ export function SystemBlock(props: SystemBlockProps) {
     const chunks: TextChunk[] = [stFg(fg)(hasCode ? line.replace(/`/g, "") : (line || " "))]
     const marker = index === messageLines().length - 1 ? chevron() : null
     if (marker) {
-      chunks.push(stFg(theme.text)(" "))
-      chunks.push(toggle.hovered() ? stBold(stFg(theme.primaryBright)(marker)) : stFg(theme.primary)(marker))
+      chunks.push(stFg(theme.text)(" "), toggle.hovered() ? stBold(stFg(theme.primaryBright)(marker)) : stFg(theme.primary)(marker))
     }
     return new StyledText(chunks)
   }
@@ -112,8 +111,7 @@ export function DividerBlock(props: DividerBlockProps) {
   const boundaryContent = createMemo(() => {
     const chunks: TextChunk[] = []
     if (props.block.label) {
-      chunks.push(stBold(stFg(themeCtx.theme.accent)(props.block.label)))
-      chunks.push(stFg(themeCtx.theme.borderSubtle)(` ${"\u2500".repeat(200)}`))
+      chunks.push(stBold(stFg(themeCtx.theme.accent)(props.block.label)), stFg(themeCtx.theme.borderSubtle)(` ${"\u2500".repeat(200)}`))
     } else {
       chunks.push(stFg(themeCtx.theme.borderSubtle)("\u2500".repeat(200)))
     }

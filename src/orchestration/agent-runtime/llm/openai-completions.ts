@@ -403,7 +403,8 @@ export async function createOpenAIChatCompletionsAdapter(
         try {
           let hasText = false;
           let textCompleteEmitted = false;
-          let textRunOrdinal = 0, thinkingRunOrdinal = 0;
+          let textRunOrdinal = 0;
+          let thinkingRunOrdinal = 0;
           let thinkingBuf = "";
           let thinkingField: string | undefined;
           const toolCalls: StreamingToolCallRegistry = { byIndex: new Map(), byId: new Map(), ordered: [] };

@@ -109,7 +109,7 @@ export const RENAMED_THEME_IDS: ReadonlyMap<string, string> = new Map([["amp", "
 
 type ThemeMode = "dark" | "light"
 
-interface ThemeContext {
+interface ThemeContextValue {
   theme: TuiTheme
   get subtleTheme(): Readonly<TuiTheme>
   /** Background base surfaces paint: undefined where cells stay on the
@@ -131,7 +131,7 @@ interface ThemeContext {
   get cursorColor(): RGBA
 }
 
-const ThemeContext = createContext<ThemeContext>()
+const ThemeContext = createContext<ThemeContextValue>()
 
 interface ThemeProviderProps {
   mode: ThemeMode
@@ -219,7 +219,7 @@ export function ThemeProvider(props: ThemeProviderProps): JSX.Element {
     return rendering === "auto" ? baseSurfacesUseDefaultBackground() : rendering === "on"
   }
 
-  const context: ThemeContext = {
+  const context: ThemeContextValue = {
     theme: reactiveTheme,
     get subtleTheme() { return subdued() },
     get baseBackground(): RGBA | undefined {
@@ -239,7 +239,7 @@ export function ThemeProvider(props: ThemeProviderProps): JSX.Element {
   return <ThemeContext.Provider value={context}>{props.children}</ThemeContext.Provider>
 }
 
-export function useTheme(): ThemeContext {
+export function useTheme(): ThemeContextValue {
   const context = useContext(ThemeContext)
   if (!context) throw new Error("Theme context is missing")
   return context

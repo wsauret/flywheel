@@ -100,7 +100,8 @@ test.each(["closing", "closed"] as const)("a command that settles while its host
 test("closing a child cancels an already scheduled delivery retry and leaves recovery to the next conversation", async () => {
   const projectRoot = temporaryDirectory("child-notification-retry-close-")
   const store = createSqliteEventStore(join(projectRoot, "facts.sqlite"))
-  const reader = asAsyncEventReadSurface(store), writer = asAsyncEventWriter(store)
+  const reader = asAsyncEventReadSurface(store)
+  const writer = asAsyncEventWriter(store)
   const deps = { conversationId: "conversation", sessionId: "child", projectRoot, store: reader, projectionReader: reader, writer }
   const conversation = createConversationTreeWriterController(deps)
   const hold = conversation.holdBackgroundNotification.bind(conversation)

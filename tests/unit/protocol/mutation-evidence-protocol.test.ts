@@ -55,15 +55,9 @@ describe("public mutation evidence queries", () => {
 
   test.each([...queries])("roundtrips explicit unavailable $type evidence with its requested identity", (query) => {
     const common = { kind: "unavailable" as const, sessionId: query.sessionId, requestedOffset: query.offset, reason: "corrupt" as const }
-    if (query.type === "mutationFiles") {
-      const result = { ...common, manifest }
-      const codec = runtimeQueryResultSchema("mutationFiles")
-      expect(Schema.decodeUnknownSync(codec)(Schema.encodeUnknownSync(codec)(result))).toEqual(result)
-    } else {
-      const result = { ...common, reference }
-      const codec = runtimeQueryResultSchema("mutationPatchWindow")
-      expect(Schema.decodeUnknownSync(codec)(Schema.encodeUnknownSync(codec)(result))).toEqual(result)
-    }
+    const result = query.type === "mutationFiles" ? { ...common, manifest } : { ...common, reference }
+    const codec = runtimeQueryResultSchema(query.type)
+    expect(Schema.decodeUnknownSync(codec)(Schema.encodeUnknownSync(codec)(result))).toEqual(result)
   })
 
   test("rejects invalid roots, unbounded windows, and whole evidence summaries at the read boundary", () => {

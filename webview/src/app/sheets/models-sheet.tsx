@@ -281,7 +281,7 @@ export function ModelsSheet() {
           <Show when={effortPage()}>
             {(current) => (
               <For each={current().efforts}>
-                {(effort) => <SheetRow label={<>{effort.current === true ? "✓ " : ""}{effort.label}</>} working={client.actions.working(effortKey(current().seat, current().option, effort.effort))} onClick={() => void save(current(), current().seat, current().option, effort.effort)} />}
+                {(effort) => <SheetRow label={<>{effort.current === true ? "✓ " : ""}{effort.label}</>} working={client.actions.working(effortKey(current().seat, current().option, effort.effort))} onClick={() => { void save(current(), current().seat, current().option, effort.effort) }} />}
               </For>
             )}
           </Show>

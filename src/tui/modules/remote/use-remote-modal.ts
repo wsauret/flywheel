@@ -116,13 +116,14 @@ export function useRemoteModal(deps: {
     target: () => {
       const state = renaming()
       if (!state) return undefined
-      const current = () => devices().find((device) => device.id === state.deviceId)?.label ?? ""
-      return { id: state.deviceId, edit: {
+      const deviceId = state.deviceId
+      const current = () => devices().find((device) => device.id === deviceId)?.label ?? ""
+      return { id: deviceId, edit: {
         hint: "Enter a device name.", current, initialDraft: current,
         submit: (draft: string): SettingsEditResult | Promise<SettingsEditResult> => {
           const label = draft.trim()
           if (!label) return { ok: false, error: "Enter a device name" }
-          return deps.appService.dispatch({ type: "remote.device.rename", deviceId: state.deviceId, label }).then((result): SettingsEditResult =>
+          return deps.appService.dispatch({ type: "remote.device.rename", deviceId, label }).then((result): SettingsEditResult =>
             result.kind === "committed" ? { ok: true } : { ok: false, error: result.message },
           ).catch((error: unknown): SettingsEditResult => ({ ok: false, error: lostWithLane(error) ? UNANSWERED_ACTION : errorMessage(error) }))
         },

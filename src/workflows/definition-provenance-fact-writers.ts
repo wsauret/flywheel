@@ -62,19 +62,16 @@ export function buildWorkflowCompilationFacts(input: WorkflowCompilationInput): 
   // A file in the retired step grammar also records its step-grammar
   // record, which a Resume converts again to read the same briefs.
   const retired = input.workflow.retiredStepGrammar?.workflow
-  facts.push(loadedFact("workflow", workflow.id, workflow, provenance, retired === undefined ? undefined : canonicalStepWorkflowRecord(retired)))
-  facts.push(parseDefinitionProvenanceFact(hashRecordedFact("workflow", workflow.id, workflowHash)))
+  facts.push(loadedFact("workflow", workflow.id, workflow, provenance, retired === undefined ? undefined : canonicalStepWorkflowRecord(retired)), parseDefinitionProvenanceFact(hashRecordedFact("workflow", workflow.id, workflowHash)))
 
   for (const { definition, hash } of agents) {
     // An agent record is authored inside the workflow file, so it carries
     // the workflow's provenance rather than one of its own.
-    facts.push(loadedFact("agent", definition.definitionId, definition, provenance))
-    facts.push(parseDefinitionProvenanceFact(hashRecordedFact("agent", definition.definitionId, hash)))
+    facts.push(loadedFact("agent", definition.definitionId, definition, provenance), parseDefinitionProvenanceFact(hashRecordedFact("agent", definition.definitionId, hash)))
   }
 
   for (const { definition, hash } of skills) {
-    facts.push(loadedFact("skill", definition.id, definition))
-    facts.push(parseDefinitionProvenanceFact(hashRecordedFact("skill", definition.id, hash)))
+    facts.push(loadedFact("skill", definition.id, definition), parseDefinitionProvenanceFact(hashRecordedFact("skill", definition.id, hash)))
   }
 
   facts.push(parseDefinitionProvenanceFact({

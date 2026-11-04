@@ -13,7 +13,8 @@ const completed: SessionChangesUndoResult = { status: "completed" }
 
 test("Undo holds the ordered mailbox until settlement without constructing a runner", async () => {
   const ctx = createSupervisorTestContext()
-  const started = createDeferred<void>(), settle = createDeferred<SessionChangesUndoResult>()
+  const started = createDeferred<void>()
+  const settle = createDeferred<SessionChangesUndoResult>()
   let runners = 0
   const supervisor = createRuntimeSupervisor({ ...supervisorBaseDeps(ctx, ctx.sessionStore, { createRunner: async () => { runners++; throw new Error("No agent allowed") } }), undoChanges: async () => { started.resolve(); return settle.promise } })
   try {
@@ -37,8 +38,10 @@ test("Undo holds the ordered mailbox until settlement without constructing a run
 
 test.each(["close", "delete", "shutdown"] as const)("%s aborts and joins Undo before teardown and denies a queued Undo", async action => {
   const ctx = createSupervisorTestContext()
-  const started = createDeferred<AbortSignal>(), settle = createDeferred<SessionChangesUndoResult>()
-  let calls = 0, tornDown = false
+  const started = createDeferred<AbortSignal>()
+  const settle = createDeferred<SessionChangesUndoResult>()
+  let calls = 0
+  let tornDown = false
   const supervisor = createRuntimeSupervisor({ ...supervisorBaseDeps(ctx, ctx.sessionStore, { createRunner: async () => { throw new Error("No agent allowed") } }), undoChanges: async (_request, signal) => { calls++; started.resolve(signal); return settle.promise } })
   try {
     await ctx.manager.createChat({ id: "s", name: "Before", initialState: "inactive" })
@@ -66,8 +69,12 @@ test.each(["close", "delete", "shutdown"] as const)("%s aborts and joins Undo be
 
 test.each(["close", "delete"] as const)("%s cannot be undone by a queued cold-send activation", async action => {
   const ctx = createSupervisorTestContext()
-  const started = createDeferred<AbortSignal>(), settle = createDeferred<SessionChangesUndoResult>()
-  let calls = 0, loads = 0, runners = 0, tornDown = false
+  const started = createDeferred<AbortSignal>()
+  const settle = createDeferred<SessionChangesUndoResult>()
+  let calls = 0
+  let loads = 0
+  let runners = 0
+  let tornDown = false
   const supervisor = createRuntimeSupervisor({
     ...supervisorBaseDeps(ctx, ctx.sessionStore, { createRunner: async deps => { runners++; return mockRunner(deps.sessionId) } }),
     sessionViewLoader: { load: id => { loads++; return loadSessionView(id, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) } },
@@ -126,10 +133,13 @@ test.each(["close", "delete"] as const)("%s cannot be undone by a queued cold-se
 for (const terminal of ["error", "ended"] as const) {
   test.each(["close", "delete", "shutdown"] as const)(`${terminal} callback aborts Undo synchronously and stays joinable by %s`, async action => {
     const ctx = createSupervisorTestContext()
-    const started = createDeferred<AbortSignal>(), settle = createDeferred<SessionChangesUndoResult>()
+    const started = createDeferred<AbortSignal>()
+    const settle = createDeferred<SessionChangesUndoResult>()
     const attached = createDeferred<ChatRunnerDeps>()
     const notifications: string[] = []
-    let calls = 0, removals = 0, tornDown = false
+    let calls = 0
+    let removals = 0
+    let tornDown = false
     const supervisor = createRuntimeSupervisor({
       ...supervisorBaseDeps(ctx, { ...ctx.sessionStore, remove: async id => { removals++; await ctx.sessionStore.remove(id) } }, {
         createRunner: async deps => { attached.resolve(deps); return mockRunner(deps.sessionId) },
@@ -183,7 +193,8 @@ for (const terminal of ["error", "ended"] as const) {
 // not durable, so an empty chat stays empty (PI-INTERACTION-075).
 test("a tree-flush failure is reported at once, and a stop that no client holds removes the empty chat once it joins Undo", async () => {
   const ctx = createSupervisorTestContext()
-  const started = createDeferred<AbortSignal>(), settle = createDeferred<SessionChangesUndoResult>()
+  const started = createDeferred<AbortSignal>()
+  const settle = createDeferred<SessionChangesUndoResult>()
   const attached = createDeferred<ChatRunnerDeps>()
   const supervisor = createRuntimeSupervisor({
     ...supervisorBaseDeps(ctx, ctx.sessionStore, { createRunner: async deps => { attached.resolve(deps); return mockRunner(deps.sessionId) } }),
@@ -238,7 +249,9 @@ test("runner callback cleanup rejection is contained and does not poison the mai
 
 test("Undo on a cold workflow agent does not load, resume, or start agent work", async () => {
   const ctx = createSupervisorTestContext()
-  let calls = 0, loads = 0, runners = 0
+  let calls = 0
+  let loads = 0
+  let runners = 0
   const supervisor = createRuntimeSupervisor({
     ...supervisorBaseDeps(ctx, ctx.sessionStore, {
       createRunner: async () => { runners++; throw new Error("No agent allowed") },

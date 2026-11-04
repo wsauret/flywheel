@@ -363,6 +363,7 @@ describe("a hosted agent's request that its consumer leaves", () => {
   test("stops that agent's task once when the adapter releases the unfinished stream, also when the caller's signal aborts after it", async () => {
     const { agent, stops, caller, open } = scriptedAgent([{ kind: "text", index: 0, text: "Partial" }]);
     const { data } = await open();
+    // oxlint-disable-next-line no-unreachable-loop -- the adapter reads one chunk and leaves the loop, which releases the unfinished stream
     for await (const _ of data) break;
     data.controller.abort();
     expect(stops).toEqual([[expect.any(String), "abort"]]);

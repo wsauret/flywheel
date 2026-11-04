@@ -7,12 +7,12 @@ import type { DarwinExecutable } from "../../infra/darwin-process-api.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
 import type { AccountServiceRegistrationControl } from "./account-service-installation.js"
-import { ACCOUNT_SYSTEMD_UNIT, REGISTRATION_FINGERPRINT_ENV, RegistrationReloadRecord } from "./account-service-registration.js"
+import { ACCOUNT_SYSTEMD_UNIT, REGISTRATION_FINGERPRINT_ENV, RegistrationReloadRecordSchema, type RegistrationReloadRecord } from "./account-service-registration.js"
 
 const log = Log.create({ service: "service-registration-refresh" })
 
 const GUARD_FILE = "registration-reload.json"
-const decodeReloadRecord = Schema.decodeUnknownOption(Schema.fromJsonString(RegistrationReloadRecord))
+const decodeReloadRecord = Schema.decodeUnknownOption(Schema.fromJsonString(RegistrationReloadRecordSchema))
 
 type LaunchdControl = NonNullable<AccountServiceRegistrationControl["launchd"]>
 

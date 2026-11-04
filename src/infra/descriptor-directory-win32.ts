@@ -546,7 +546,7 @@ class Win32ContainedDirectory implements ContainedDirectoryContract {
   }
 
   renameInto(name: string, target: ContainedDirectoryContract, targetName: string): void {
-    if (!(target instanceof Win32ContainedDirectory)) throw new Error("contained directories must use the same platform backend");
+    if (!(target instanceof Win32ContainedDirectory)) throw new TypeError("contained directories must use the same platform backend");
     const sourcePath = this.#entry(name);
     const targetPath = target.#entry(targetName);
     if (this.#native && target.#native) {

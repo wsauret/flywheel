@@ -51,12 +51,12 @@ export const SCHEDULED_TASK_ARGUMENT = "--scheduled-task"
  *    stale start serves as it is.
  *  A build before `proven` reads that record as a shape it does not know,
  *  warns, and ignores it, so a rollback only asks the login home again. */
-export const RegistrationReloadRecord = Schema.Struct({
+export const RegistrationReloadRecordSchema = Schema.Struct({
   fingerprint: Schema.String,
   outcome: Schema.Literals(["proven", "requested", "reloaded", "failed"]),
   error: Schema.optionalKey(Schema.String),
 })
-export type RegistrationReloadRecord = typeof RegistrationReloadRecord.Type
+export type RegistrationReloadRecord = typeof RegistrationReloadRecordSchema.Type
 
 /** How long a manager waits for the service to stop before it kills it. It
  *  is above the account's drain bound (ACCOUNT_DRAIN_HARD_EXIT_MS), so the

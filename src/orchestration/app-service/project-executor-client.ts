@@ -698,9 +698,7 @@ export function createProjectExecutorClient(input: {
     disposers.push(servePersistentProcessBridge({
       endpoint: createInternalProcessSubchannel(channelSet.control, "persistent"),
       manager: input.persistentProcesses, allowLaunch: input.allowPersistentLaunch,
-    }))
-    disposers.push(serveProjectStateChannel(input.state, channelSet.state, { kind: "executor", projectId: input.projectId, generation: input.generation }))
-    disposers.push(serveProjectNotifyChannel(createInternalProcessSubchannel(channelSet.control, "notify"), input.notify))
+    }), serveProjectStateChannel(input.state, channelSet.state, { kind: "executor", projectId: input.projectId, generation: input.generation }), serveProjectNotifyChannel(createInternalProcessSubchannel(channelSet.control, "notify"), input.notify))
     const runtime = connectProjectExecutionChannel(channels.output, { watchedOutput: input.watchedOutput })
     disposers.push(() => runtime.close())
     step = "first heartbeat"

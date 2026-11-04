@@ -7,7 +7,7 @@
 // In tests, a leak into the literal `/tmp` escapes the test temporary-directory
 // guard. The benchmark task corpora are frozen inputs, not Flywheel code.
 {
-  "jsPlugins": [{ "name": "flywheel", "specifier": "./oxlint-plugin-flywheel.js" }],
+  "jsPlugins": [{ "name": "flywheel", "specifier": "./scripts/oxlint-plugin-flywheel.js" }],
   "plugins": ["typescript"],
   "categories": { "correctness": "off" },
   "ignorePatterns": ["bench/tasks/*/**", "bench/*/tasks/**", "bench/*/fixtures/**"],

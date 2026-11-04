@@ -61,7 +61,7 @@ interface KeyboardHandlerDeps {
 /** ESC ownership below the pre-handler key consumers, in priority order. */
 export type EscapeModeId = "interrupt"
 
-export interface PromptBarActions {
+interface PromptBarActions {
   newChat: () => void
   closeTab: () => void
   nextTab: () => void

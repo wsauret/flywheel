@@ -187,16 +187,14 @@ export async function generateFixtureWorkspace(workDir: string, workload: Fixtur
     }
     const giantUpdatedMs = baseMs - 60 * 1000
     await writeChatSession(store, writer, projectRoot, GIANT_SESSION_ID, GIANT_SESSION_NAME, giantUpdatedMs, giant)
-    sessionIds.push(GIANT_SESSION_ID)
-    sessionIds.push(...await writeWorkflowFamily(store, writer, projectRoot, baseMs, {
+    sessionIds.push(GIANT_SESSION_ID, ...await writeWorkflowFamily(store, writer, projectRoot, baseMs, {
       id: "fixture-reconciliation",
       parentName: RECONCILIATION_PARENT_NAME,
       parentMarker: RECONCILIATION_PARENT_MARKER,
       childDescription: "Reconciliation child",
       childCount: RECONCILIATION_CHILD_COUNT,
       historyToolCalls: 0,
-    }))
-    sessionIds.push(...await writeWorkflowFamily(store, writer, projectRoot, baseMs - 2 * 60 * 1000, {
+    }), ...await writeWorkflowFamily(store, writer, projectRoot, baseMs - 2 * 60 * 1000, {
       id: "fixture-history-heavy",
       parentName: "History-heavy parent",
       parentMarker: "History-heavy fixture",
@@ -426,8 +424,7 @@ function lightMessages(random: () => number, index: number): ConversationMessage
   const turns = 2 + Math.floor(random() * 3)
   const messages: ConversationMessage[] = []
   for (let t = 0; t < turns; t++) {
-    messages.push({ kind: "user", content: `Question ${t} in fixture chat ${index}: ${filler(random, 80)}` })
-    messages.push({ kind: "assistant", content: `Answer ${t} in fixture chat ${index}: ${filler(random, 200)}` })
+    messages.push({ kind: "user", content: `Question ${t} in fixture chat ${index}: ${filler(random, 80)}` }, { kind: "assistant", content: `Answer ${t} in fixture chat ${index}: ${filler(random, 200)}` })
   }
   return messages
 }
@@ -444,18 +441,15 @@ export function giantTranscript(entryCount: number = RELEASE_WORKLOAD.giantEntri
       // Every fifth turn is a tool round trip with an oversized result, so the
       // giant transcript exercises tool rendering and content hydration.
       const toolUseId = `giant-tool-${turn}`
-      messages.push({ kind: "user", content: `Run step ${turn}: ${filler(random, 60)}` })
-      messages.push({
+      messages.push({ kind: "user", content: `Run step ${turn}: ${filler(random, 60)}` }, {
         kind: "assistant",
         content: [
           { type: "text", text: `Running step ${turn}.` },
           { type: "tool_use", id: toolUseId, name: "bash", input: { command: `echo step-${turn}` } },
         ],
-      })
-      messages.push({ kind: "toolResult", toolUseId, content: [{ type: "text", text: filler(random, LARGE_TOOL_TEXT_BYTES) }] })
+      }, { kind: "toolResult", toolUseId, content: [{ type: "text", text: filler(random, LARGE_TOOL_TEXT_BYTES) }] })
     } else {
-      messages.push({ kind: "user", content: `Giant turn ${turn}: ${filler(random, 100)}` })
-      messages.push({ kind: "assistant", content: content === "rich" ? richAnswer(random, turn) : `Giant answer ${turn}: ${filler(random, 300 + Math.floor(random() * 400))}` })
+      messages.push({ kind: "user", content: `Giant turn ${turn}: ${filler(random, 100)}` }, { kind: "assistant", content: content === "rich" ? richAnswer(random, turn) : `Giant answer ${turn}: ${filler(random, 300 + Math.floor(random() * 400))}` })
     }
     turn++
   }

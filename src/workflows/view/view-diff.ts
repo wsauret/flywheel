@@ -25,10 +25,7 @@ function factsFromDiff(current: WorkflowView, target: WorkflowView): WorkflowQue
   const facts: WorkflowQueueFact[] = []
   const newMutations = target.mutationLog.slice(current.mutationLog.length)
   for (const mutation of newMutations) facts.push(mutationFact(current, target, mutation))
-  facts.push(...attemptStatusFacts(current, target, newMutations))
-  facts.push(...resumeStateFacts(current, target))
-  facts.push(...resumeRevertFacts(current, target))
-  facts.push(...followUpResumeStateFacts(current, target))
+  facts.push(...attemptStatusFacts(current, target, newMutations), ...resumeStateFacts(current, target), ...resumeRevertFacts(current, target), ...followUpResumeStateFacts(current, target))
   if (runStateChanged(current, target)) facts.push(runStateFact(target))
   facts.push(...treeFacts(current.tree, target.tree))
   return facts

@@ -61,8 +61,7 @@ describe("the release's own bounds", () => {
   test("an archive that lists more entries, a larger extended header, or a larger build.json than the bounds is refused", async () => {
     const entries: TarEntrySpec[] = [...BUILD];
     for (let index = 0; index < RELEASE_BOUNDS.archiveEntries; index += 1) entries.push({ name: `flywheel-darwin-arm64/build/webview/${index}.js`, typeflag: "0", mode: 0o644 });
-    entries.push({ name: "PaxHeaders/x", typeflag: "x", mode: 0o644, content: "y".repeat(RELEASE_BOUNDS.extendedHeaderBytes + 1) });
-    entries.push({ name: "flywheel-darwin-arm64/build/build.json", typeflag: "0", mode: 0o644, content: "z".repeat(RELEASE_BOUNDS.metadataBytes + 1) });
+    entries.push({ name: "PaxHeaders/x", typeflag: "x", mode: 0o644, content: "y".repeat(RELEASE_BOUNDS.extendedHeaderBytes + 1) }, { name: "flywheel-darwin-arm64/build/build.json", typeflag: "0", mode: 0o644, content: "z".repeat(RELEASE_BOUNDS.metadataBytes + 1) });
 
     expect(await releaseBoundViolations(stage(entries))).toEqual([
       `${ASSET} lists entries: ${RELEASE_BOUNDS.archiveEntries + 4}; the release bound is ${RELEASE_BOUNDS.archiveEntries}`,

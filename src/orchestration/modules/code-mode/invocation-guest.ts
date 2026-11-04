@@ -3,8 +3,8 @@ import { CodeMode } from "../../../infra/code-mode/index.js"
 import { toolError, type ToolError } from "../../../infra/code-mode/tool-error.js"
 import { errorMessage } from "../../../infra/error-message.js"
 import { redactDeep, redactSecrets } from "../../../infra/redact-secrets.js"
-import { CodeToolResult, toolTrie } from "./descriptors.js"
-import { GuestMessage, HostMessage, type CallReply } from "./invocation-protocol.js"
+import { CodeToolResultSchema, toolTrie, type CodeToolResult } from "./descriptors.js"
+import { HostMessageSchema, type CallReply, type GuestMessage, type HostMessage } from "./invocation-protocol.js"
 import { formatCodeModeResult } from "./result-format.js"
 
 /** The guest's side of its Worker's channel: the Worker global scope, or a
@@ -35,7 +35,7 @@ function replyEffect(reply: CallReply): Effect.Effect<CodeToolResult, ToolError>
   if (reply.kind === "refused") return Effect.fail(toolError(reply.message))
   // Parse before redacting: JSON escapes can hide a credential from the text
   // redactor and re-materialize it after JSON.parse.
-  return Effect.sync(() => Schema.decodeUnknownSync(CodeToolResult)({ outcome: reply.outcome, content: redactDeep(parseJsonDocument(reply.content)) }))
+  return Effect.sync(() => Schema.decodeUnknownSync(CodeToolResultSchema)({ outcome: reply.outcome, content: redactDeep(parseJsonDocument(reply.content)) }))
 }
 
 /** Streams newly retained console lines to the host. Lines leave in a
@@ -158,7 +158,7 @@ export function runGuest(port: GuestPort): () => void {
   }
 
   port.addEventListener("message", (event) => {
-    const message = Schema.decodeUnknownSync(HostMessage)(event.data)
+    const message = Schema.decodeUnknownSync(HostMessageSchema)(event.data)
     if (message.type === "call-result") {
       const resume = invocation?.pending.get(message.id)
       invocation?.pending.delete(message.id)

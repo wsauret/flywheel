@@ -33,6 +33,7 @@ function agentLineDrops(element: HTMLElement, line: WorkflowAgentLine): Readonly
   }
   const sep = 2 * measure("0")
   const side = (widths: readonly number[]) => widths.length === 0 ? 0 : widths.reduce((sum, part) => sum + sep + part, -sep)
+  // oxlint-disable-next-line unicorn/prefer-number-coercion -- boundary: a computed CSS length carries a unit suffix that only parseFloat skips
   const gap = Number.parseFloat(style.columnGap) || 0
   return workflowAgentHeaderDrops("agent", dropped => side([
     ...(line.phase === undefined ? [] : [measure(line.phase)]),

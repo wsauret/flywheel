@@ -34,7 +34,11 @@ export function formatPlanningReport(input: PlanningReportInput): string {
     const tasks = input.tasks.filter((task) => stratum === "all" || task.stratum === stratum);
     for (const treatment of input.manifest.treatments) {
       const cells = input.outcomes.filter(({ cell }) => cell.treatment === treatment.id && tasks.some(({ id }) => id === cell.task));
-      let addressed = 0, opportunities = 0, uncertain = 0, premisesAddressed = 0, premises = 0;
+      let addressed = 0;
+      let opportunities = 0;
+      let uncertain = 0;
+      let premisesAddressed = 0;
+      let premises = 0;
       for (const outcome of cells) {
         const reply = input.recall.get(outcome.attemptId);
         const manifest = tasks.find(({ id }) => id === outcome.cell.task)!.manifest;

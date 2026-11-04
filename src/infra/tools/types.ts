@@ -3,7 +3,7 @@ import type { LlmToolOutputPart } from "../llm/tool-output-part-schema.js";
 import type { StandaloneHandler } from "../output/output-tool-projection-types.js";
 import type { ToolAction } from "../workflow-types.js";
 
-export type { ToolPresentation };
+export type { ToolPresentation } from "../output-blocks.js";
 
 export type ToolDiffInfo = {
   diff?: string;

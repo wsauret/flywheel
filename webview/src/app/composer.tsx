@@ -27,7 +27,7 @@ import { sessionServingSelection, type RoleAssignmentView } from "../../../src/p
 import type { ActiveModel } from "../client/active-model.js"
 import type { SessionRow } from "../../../src/protocol/app-service-types.js"
 import "../styles/composer.css"
-import { ComposerCheckpoint } from "../client/input-reload-checkpoint.js"
+import { ComposerCheckpointSchema, type ComposerCheckpoint } from "../client/input-reload-checkpoint.js"
 import { Schema } from "effect"
 import { createComposerSessionDrafts } from "./composer-session-drafts.js"
 
@@ -457,7 +457,7 @@ export function Composer(props: {
     settled: attachments.settled,
     capture: () => ({ ...drafts.capture(), active: activeDraft(), questions: questionInteractions.capture() }),
     adopt: (bytes) => {
-      const saved = Schema.decodeUnknownSync(ComposerCheckpoint)(bytes)
+      const saved = Schema.decodeUnknownSync(ComposerCheckpointSchema)(bytes)
       const active = drafts.adopt(saved)
       questionInteractions.adopt(saved.questions)
       attachments.adopt(active?.attachments ?? [])

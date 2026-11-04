@@ -221,8 +221,7 @@ export function generationSpeedLines(generation: GenerationStatistics) {
     `${totals.measuredRequests.toLocaleString("en-US")} measured requests · ${totals.unmeasuredRequests.toLocaleString("en-US")} known unmeasured requests · ${totals.excludedBlocks.toLocaleString("en-US")} excluded output blocks`,
   ]
   if (!generation.coverageComplete) {
-    coverageLines.push("Some output has no measurement. Historical request coverage can be unknown.")
-    coverageLines.push("Single-chunk output has no measurable streaming duration. Historical requests are not backfilled.")
+    coverageLines.push("Some output has no measurement. Historical request coverage can be unknown.", "Single-chunk output has no measurable streaming duration. Historical requests are not backfilled.")
   }
   return {
     rows, coverageLines,

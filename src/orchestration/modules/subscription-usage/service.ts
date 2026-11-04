@@ -65,8 +65,7 @@ export function createSubscriptionUsageService(services: UsageServicePorts): Sub
     start() {
       if (started || !accepting) return
       started = true
-      unsubscribe.push(services.onSelectionChanged(follow), services.config.subscribe(subscriptionUsageConfigSection, follow))
-      unsubscribe.push(accounting().subscriptionUsage.subscribePublications((_profile, _scopes, service) => {
+      unsubscribe.push(services.onSelectionChanged(follow), services.config.subscribe(subscriptionUsageConfigSection, follow), accounting().subscriptionUsage.subscribePublications((_profile, _scopes, service) => {
         if (!accepting || !services.enabled()) return
         const generation = service.generation()
         const store = service.store()

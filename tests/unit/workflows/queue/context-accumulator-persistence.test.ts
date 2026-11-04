@@ -54,8 +54,7 @@ describe("context accumulator persistence", () => {
     const projectionReader = asAsyncEventReadSurface(reader);
     const held = mode === "cold" ? null : createWorkflowContextProjection(projectionReader, "session");
     const snapshot = held ? accumulatorStateFromProjection(await held.replay()) : null;
-    events.push({ ...storedWorkflowFacts([buildContextInputSeededFact("wf", "poison")], 4)[0]!, payload: {} });
-    events.push(...storedWorkflowFacts([
+    events.push({ ...storedWorkflowFacts([buildContextInputSeededFact("wf", "poison")], 4)[0]!, payload: {} }, ...storedWorkflowFacts([
       recoveredWorkflowRoot(initializedWorkflowRoot.payload.control, 7),
       buildContextInputSeededFact("wf", "recovered request"),
     ], 5));

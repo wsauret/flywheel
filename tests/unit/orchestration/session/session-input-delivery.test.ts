@@ -68,7 +68,8 @@ describe("deliverSessionInput", () => {
     const root = makeTmpDir()
     const { deps, store } = makeDepsWithStore(root)
     const manager = createSessionManager(deps)
-    const reader = asAsyncEventReadSurface(store), writer = asAsyncEventWriter(store)
+    const reader = asAsyncEventReadSurface(store)
+    const writer = asAsyncEventWriter(store)
     const parent = await manager.createChat({ id: "parent", conversationId: "parent-conversation", name: "Parent" })
     const child = await publishTestSubagent(manager, root, "child", parent, "parent-conversation")
     const text = "the person's unread words"

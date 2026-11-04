@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import {
-  AgentRecordKeys,
+  AgentRecordFields,
   isRepeat,
   namedAgents,
   WorkflowDefinitionSchema,
@@ -22,11 +22,11 @@ import {
  *  the recorded policy and its hash describe the same content. */
 export const AgentPolicyRecordSchema = Schema.Struct({
   definitionId: Schema.String,
-  name: AgentRecordKeys.name,
-  runs: AgentRecordKeys.runs,
-  persona: AgentRecordKeys.persona,
-  writes: AgentRecordKeys.writes,
-  reads: AgentRecordKeys.reads,
+  name: AgentRecordFields.name,
+  runs: AgentRecordFields.runs,
+  persona: AgentRecordFields.persona,
+  writes: AgentRecordFields.writes,
+  reads: AgentRecordFields.reads,
 })
 export type AgentPolicyRecord = typeof AgentPolicyRecordSchema.Type
 

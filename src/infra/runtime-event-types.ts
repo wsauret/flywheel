@@ -1,13 +1,8 @@
 import { Result, Schema } from "effect";
-import type {
-  AssistantEventData,
-  GenericEventData,
-  RateLimitEventData,
-  UsageData,
-} from "./runtime-event-payload-types.js";
+import type { GenericEventData } from "./runtime-event-payload-types.js";
 import { RUNTIME_EVENT_DEFINITIONS as runtimeEventDefinitions } from "./runtime-fact-mapper.js";
 
-export type { AssistantEventData, RateLimitEventData, UsageData };
+export type { AssistantEventData, RateLimitEventData, UsageData } from "./runtime-event-payload-types.js";
 export type RuntimeEventActor = "agent" | "flywheel" | "provider" | "workflow";
 export const RUNTIME_EVENT_DEFINITIONS = runtimeEventDefinitions;
 

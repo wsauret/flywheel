@@ -100,8 +100,8 @@ export function SideQuestionSheet() {
       </Show>
       <Show when={problem()}><p role="alert" class="side-question-error">{problem()}</p></Show>
       <div class="side-question-actions">
-        <button class="secondary" disabled={!selected()?.answer} onClick={() => void copy()}>Copy</button>
-        <button class="secondary" disabled={working() || !retained()} onClick={() => void keep()}>Keep as fork</button>
+        <button class="secondary" disabled={!selected()?.answer} onClick={() => { void copy() }}>Copy</button>
+        <button class="secondary" disabled={working() || !retained()} onClick={() => { void keep() }}>Keep as fork</button>
         <button class="ghost-text" disabled={working() || !view() || exchanges().length === 0} onClick={() => {
           const source = view()
           if (sessionId && source) void mutate({ type: "side-question.clear", sessionId, revision: source.revision })

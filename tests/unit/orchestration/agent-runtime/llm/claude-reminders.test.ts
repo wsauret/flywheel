@@ -33,8 +33,7 @@ test("reminders are ordinary history and a model change reaches the next request
   expect(history).toEqual([{ kind: "user", origin: "human", content: "Keep my words." }]);
   history.push(...structuredClone(initial));
   expect(haiku(history, "/scratch")).toEqual([]);
-  history.push({ kind: "assistant", content: [{ type: "tool_use", id: "call", name: "read", input: {} }] });
-  history.push({ kind: "toolResult", toolUseId: "call", content: [{ type: "text", text: "Read." }] });
+  history.push({ kind: "assistant", content: [{ type: "tool_use", id: "call", name: "read", input: {} }] }, { kind: "toolResult", toolUseId: "call", content: [{ type: "text", text: "Read." }] });
   const sonnet = createClaudeReminders("claude-sonnet-4-6", 200_000);
   const update = [{ kind: "user", origin: "system", content: "<system-reminder>\nThe model that answers is Sonnet 4.6, with the model ID claude-sonnet-4-6. Its training data ends in August 2025.\n</system-reminder>\n", framing: "claude" }] satisfies ConversationMessage[];
   expect(sonnet(history, "/scratch")).toEqual(update);
@@ -103,8 +102,7 @@ test("a new local date and a new model reach the next request, a tool round incl
   setSystemTime(new Date("2026-10-09T12:00:00Z"));
   const haiku = createClaudeReminders("claude-haiku-4-5", 200_000);
   const history: ConversationMessage[] = [{ kind: "user", origin: "human", content: "Read the note." }];
-  history.push(...haiku(history, "/scratch"));
-  history.push({ kind: "assistant", content: [{ type: "tool_use", id: "call", name: "read", input: {} }] }, { kind: "toolResult", toolUseId: "call", content: [{ type: "text", text: "Read." }] });
+  history.push(...haiku(history, "/scratch"), { kind: "assistant", content: [{ type: "tool_use", id: "call", name: "read", input: {} }] }, { kind: "toolResult", toolUseId: "call", content: [{ type: "text", text: "Read." }] });
   expect(haiku(history, "/scratch")).toEqual([]);
 
   setSystemTime(tomorrow);

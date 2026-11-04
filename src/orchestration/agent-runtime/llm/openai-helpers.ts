@@ -59,7 +59,7 @@ function parseRetryAfterMs(message: string): number | undefined {
   const rawValue = match?.[1];
   const rawUnit = match?.[2];
   if (rawValue === undefined || rawUnit === undefined) return undefined;
-  const value = Number.parseFloat(rawValue);
+  const value = Number(rawValue);
   const unit = rawUnit.toLowerCase();
   if (unit === "ms") return Math.round(value);
   return Math.round(value * 1000);

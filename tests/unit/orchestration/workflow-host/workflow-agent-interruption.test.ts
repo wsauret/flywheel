@@ -201,7 +201,8 @@ test("an agent view's attempt names its agent's address, and an attempt that a r
 test("targeted Interrupt and Resume leave a streaming sibling untouched and require per-agent parent authority", async () => {
   const f = await fixture()
   try {
-    const a = await f.address("a"), b = await f.address("b")
+    const a = await f.address("a")
+    const b = await f.address("b")
     const queue = await f.runner.readQueue()
     const first = queue.attempts.find(({ definitionId }) => definitionId === "a")!.id
     const second = queue.attempts.find(({ definitionId }) => definitionId === "b")!.id
@@ -276,7 +277,8 @@ test("the parent's whole-run Interrupt after a person's targeted Interrupt leave
 test("a planned successor restores person and parent parks independently and targeted Resume leaves its sibling parked", async () => {
   const f = await fixture()
   try {
-    const a = await f.address("a"), b = await f.address("b")
+    const a = await f.address("a")
+    const b = await f.address("b")
     const queue = await f.runner.readQueue()
     const first = queue.attempts.find(({ definitionId }) => definitionId === "a")!.id
     const second = queue.attempts.find(({ definitionId }) => definitionId === "b")!.id
@@ -300,7 +302,8 @@ test("a planned successor restores person and parent parks independently and tar
 test.each(["whole", "automatic"] as const)("a %s hand-back with a held message releases only its authorized coverage", async (kind) => {
   const f = await fixture()
   try {
-    const a = await f.address("a"), b = await f.address("b")
+    const a = await f.address("a")
+    const b = await f.address("b")
     await f.runner.interrupt("person", WHOLE_WORKFLOW)
     await Promise.all([...f.parks.values()].map(({ promise }) => promise))
     expect(await holdAddressedWorkflowMessage(f.store, "session", "held-a", { text: "continue a" }, a)).toBe(true)
@@ -354,7 +357,9 @@ test("a person's addressed hand-back that starts its turn before the cut is clea
 test.each(["grouped", "individual"] as const)("a %s Resume releases whole-cut authority over the agents it continues", async (kind) => {
   const f = await fixture(true)
   try {
-    const a = await f.address("a"), b = await f.address("b"), c = await f.address("c")
+    const a = await f.address("a")
+    const b = await f.address("b")
+    const c = await f.address("c")
     await f.runner.interrupt("person", WHOLE_WORKFLOW)
     await Promise.all([...f.parks.values()].map(({ promise }) => promise))
     if (kind === "grouped") {
@@ -380,7 +385,9 @@ test.each(["grouped", "individual"] as const)("a %s Resume releases whole-cut au
 test("a queued target refuses Interrupt without changing the running agents' authority", async () => {
   const f = await fixture(true)
   try {
-    const a = await f.address("a"), b = await f.address("b"), c = await f.address("c")
+    const a = await f.address("a")
+    const b = await f.address("b")
+    const c = await f.address("c")
     expect(await f.runner.interrupt("person", c)).toBe(false)
     expect(await f.runner.interrupt("person", { addressedTo: [...a.addressedTo, ...c.addressedTo], label: "a and c" })).toBe(false)
     expect(await f.runner.cut(a)).toBeUndefined()
@@ -397,7 +404,9 @@ test("a queued target refuses Interrupt without changing the running agents' aut
 test.each(["before", "assembling", "running"] as const)("a whole person Interrupt %s generation survives a planned restart without cutting queued successors", async (when) => {
   const f = await fixture(true, when === "running" ? undefined : when)
   try {
-    const a = await f.address("a"), b = await f.address("b"), c = await f.address("c")
+    const a = await f.address("a")
+    const b = await f.address("b")
+    const c = await f.address("c")
     if (when === "running") expect(await f.runner.interrupt("person")).toBe(true)
     await Promise.all([...f.parks.values()].map(({ promise }) => promise))
     await f.runner.interruptForReplacement()
@@ -433,7 +442,8 @@ test("a sibling's completion leaves only the parked agent interrupted and Resume
 test.each(["person", "agent"] as const)("a restart preserves a %s park and starts only its runtime-cut sibling", async (by) => {
   const f = await fixture()
   try {
-    const a = await f.address("a"), b = await f.address("b")
+    const a = await f.address("a")
+    const b = await f.address("b")
     const queue = await f.runner.readQueue()
     const first = queue.attempts.find(({ definitionId }) => definitionId === "a")!.id
     const second = queue.attempts.find(({ definitionId }) => definitionId === "b")!.id

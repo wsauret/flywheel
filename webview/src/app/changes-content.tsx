@@ -257,7 +257,7 @@ export function ChangesContent(props: {
 
   return <div class="changes-content" ref={element => { root = element }}>
     <div class="changes-controls">
-      <button onClick={() => void controller.refresh()}>Refresh</button>
+      <button onClick={() => { void controller.refresh() }}>Refresh</button>
       <span role="status">{changesLabel(state().summary)}</span>
     </div>
     <Show when={summaryError()}>{error => <p role="alert">Changes unavailable: {error()}</p>}</Show>

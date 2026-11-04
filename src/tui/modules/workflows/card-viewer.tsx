@@ -223,7 +223,8 @@ export function WorkflowCardViewer(props: WorkflowCardViewerProps) {
       time: detail && !detail.totalsLoading && durationMs >= 1000 ? formatElapsed(durationMs) : "",
       cost: detail?.totalsLoading ? "totals loading" : totals ? formatCostSplit(totals.totalCost, totals.totalBilledCost) : "",
     }
-    const state = [stateWord() === undefined ? "" : capitalized(stateWord() ?? ""), stats.time].filter(Boolean)
+    const word = stateWord()
+    const state = [word === undefined ? "" : capitalized(word), stats.time].filter(Boolean)
     const shown = controls()
     const room = contentWidth() - (1 + shown.reduce((sum, control) => sum + displayWidth(control.label) + 2, 0) + Math.max(0, shown.length - 1)) - MODAL_FRAME_CLOSE_WIDTH
     const words = (name: string, ...stat: readonly string[]) => [`⚙ ${name}`, ...state, ...stat].filter(Boolean).join(" · ")

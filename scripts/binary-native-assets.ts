@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { copyFile, cp, mkdir, readdir, readFile, rm } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
-import { hostLibcSuffix, MACOS_LAUNCHER_BUNDLE, MACOS_LAUNCHER_EXECUTABLE, WINDOWS_GIT_FORWARDER_EXECUTABLE, WINDOWS_LAUNCHER_EXECUTABLE, WINDOWS_SERVICE_LAUNCHER_EXECUTABLE } from "../src/infra/native-assets.js";
+import { hostLibcSuffix, MACOS_LAUNCHER_BUNDLE, WINDOWS_GIT_FORWARDER_EXECUTABLE, WINDOWS_LAUNCHER_EXECUTABLE, WINDOWS_SERVICE_LAUNCHER_EXECUTABLE } from "../src/infra/native-assets.js";
 import { trackedNativeAddonIsCurrent } from "./native-addon-fingerprint.js";
 import { RELEASE_TARGETS } from "./release-contract.js";
 import { buildExecutable } from "../src/infra/update/build-identity.js";
@@ -90,7 +90,7 @@ export const TOKENIZER_ASSET_FILE = "flywheel-tokenizer.wasm.zst";
  *  bundle macOS names and pictures as Flywheel. Its bytes are the identity
  *  the privacy consent is granted to, so the tracked bundle ships unchanged in
  *  every release and is only ever rebuilt on purpose (`bun run build:macos-launcher`). */
-export { MACOS_LAUNCHER_BUNDLE, MACOS_LAUNCHER_EXECUTABLE };
+export { MACOS_LAUNCHER_BUNDLE, MACOS_LAUNCHER_EXECUTABLE } from "../src/infra/native-assets.js";
 export const MACOS_LAUNCHER_IDENTIFIER = "sh.flywl.flywheel.launcher";
 
 export function macosLauncherDir(root: string): string {

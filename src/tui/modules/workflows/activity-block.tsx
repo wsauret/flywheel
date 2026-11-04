@@ -134,8 +134,7 @@ export function WorkflowActivityBlock(props: AgentGroupBlockProps) {
   const activeHeader = (): TextChunk[] => {
     const chunks: TextChunk[] = []
     if (props.block.status === "queued") {
-      chunks.push(stFg(theme.text)(" "))
-      chunks.push(stFg(theme.warning)("· queued"))
+      chunks.push(stFg(theme.text)(" "), stFg(theme.warning)("· queued"))
     }
     return chunks
   }

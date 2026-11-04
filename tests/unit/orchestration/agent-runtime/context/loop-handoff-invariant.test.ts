@@ -40,7 +40,9 @@ function tempHandoffPath(): string {
 describe("agent-loop handoff invariant", () => {
   test("an admitted handoff completes after its durable result without consuming input or executing later calls", async () => {
     const queue = new WorkflowInjectionQueue();
-    let executed = 0, closed = 0, readsAfterStart = 0;
+    let executed = 0;
+    let closed = 0;
+    let readsAfterStart = 0;
     const writes: string[] = [];
     const extra: RuntimeTool = { name: "later", action: "ui_meta", description: "later", inputSchema: { type: "object", properties: {} }, isConcurrencySafe: true,
       execute: async () => { executed++; return { content: "ran", outcome: "ok" }; } };

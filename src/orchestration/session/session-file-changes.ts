@@ -79,7 +79,8 @@ export function sessionChangeCounts(lane: Pick<FileLane, "netFiles" | "gaps">, p
 /** The file's first recorded `before` against its last recorded `after`.
  * Undefined means the session left no net change, including after an Undo. */
 export function netChange(file: FileRow): NetChange | undefined {
-  const first = file.changes[0], last = file.changes.at(-1)
+  const first = file.changes[0]
+  const last = file.changes.at(-1)
   if (!first || !last || sameEndpoint(first.before, last.after)) return undefined
   return first.before === null ? "added" : last.after === null ? "removed" : "modified"
 }

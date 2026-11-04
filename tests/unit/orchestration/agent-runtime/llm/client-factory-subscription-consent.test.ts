@@ -137,8 +137,7 @@ describe("subscription consent serving composition", () => {
         admissionOrder.push("allowance-start")
         allowanceStarted.resolve()
         await allowanceRelease.promise
-        admissionOrder.push("allowance-settled")
-        admissionOrder.push("consent")
+        admissionOrder.push("allowance-settled", "consent")
         captures += 1
         capturedRevisions.push(authorityRevision)
         return Object.freeze({

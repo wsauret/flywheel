@@ -13,7 +13,7 @@ if (typeof data !== "object" || data === null || !("file" in data) || !("started
 }
 const { file, started, holdMs } = data
 if (typeof file !== "string" || !(started instanceof SharedArrayBuffer) || typeof holdMs !== "number") {
-  throw new Error("worker data has the wrong types")
+  throw new TypeError("worker data has the wrong types")
 }
 
 const db = new Database(file)

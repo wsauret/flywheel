@@ -219,7 +219,7 @@ function classifyAnthropicApiError(err: InstanceType<typeof Anthropic.APIError>)
   }
   if (err.status === 429) {
     const retryAfter = err.headers?.get?.("retry-after");
-    const delayMs = retryAfter ? Number.parseFloat(retryAfter) * 1000 : undefined;
+    const delayMs = retryAfter ? Number(retryAfter) * 1000 : undefined;
     return new LlmStreamError(err.message, "rate_limit", Number.isFinite(delayMs) ? delayMs : undefined, { cause: err });
   }
   if (err.status === 408 || err.status === 409) return new LlmStreamError(err.message, "transient", undefined, { cause: err });

@@ -177,9 +177,7 @@ export function buildSubagentWorkLog(records: ReadonlyArray<SubagentToolCallReco
   if (records.length === 0) return "";
   const lines: string[] = [];
   for (const [i, record] of records.entries()) {
-    lines.push(`## Tool call ${i + 1}`);
-    lines.push(formatSubagentToolCall(record));
-    lines.push("\n---\n");
+    lines.push(`## Tool call ${i + 1}`, formatSubagentToolCall(record), "\n---\n");
   }
   return lines.join("\n");
 }

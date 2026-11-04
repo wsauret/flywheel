@@ -21,8 +21,10 @@ describe("workflow background notification delivery", () => {
   test("member adoption leaves a notice the agent's own live input holds to that input, which commits it once, and still recovers a notice nobody holds", async () => {
     const projectRoot = temporary("member-notices-")
     const store = createSqliteEventStore(resolveEventStoreDbFile(projectRoot))
-    const read = asAsyncEventReadSurface(store), writer = asAsyncEventWriter(store)
-    const sessionId = "member", conversationId = "member-notices"
+    const read = asAsyncEventReadSurface(store)
+    const writer = asAsyncEventWriter(store)
+    const sessionId = "member"
+    const conversationId = "member-notices"
     const tree = createConversationTreeWriterController({ sessionId, conversationId, projectRoot, store: read, projectionReader: read, writer })
     const queue = new WorkflowInjectionQueue()
     const notifications = createBackgroundNotificationDelivery({ conversation: tree, queue, abort() { throw new Error("notice delivery failed") } })
@@ -49,7 +51,8 @@ describe("workflow background notification delivery", () => {
     const projectRoot = temporary("background-notification-handoff-")
     const store = createSqliteEventStore(resolveEventStoreDbFile(projectRoot))
     const conversation = createConversationTreeWriterController({ conversationId: "handoff", sessionId: "parent", projectRoot, store: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) })
-    const held = Promise.withResolvers<void>(), release = Promise.withResolvers<void>()
+    const held = Promise.withResolvers<void>()
+    const release = Promise.withResolvers<void>()
     const queue = new WorkflowInjectionQueue()
     let aborted = false
     const hold = conversation.holdBackgroundNotification.bind(conversation)

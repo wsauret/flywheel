@@ -34,7 +34,8 @@ describe("workflow parent restoration", () => {
     await manager.createChat({ id: "parent", conversationId: "parent-conversation", name: "Parent" })
     let unregister: (() => void) | undefined
     const hold = mock(async () => NO_MODULE_RUNTIMES)
-    const send = mock(async () => "accepted" as const), resume = mock(() => true)
+    const send = mock(async () => "accepted" as const)
+    const resume = mock(() => true)
     const openChatRunner = mock(async () => {
       unregister ??= registerLiveSessionControl(deps.projectionReader, {
         sessionId: "parent", state: async () => "waiting_on_work",

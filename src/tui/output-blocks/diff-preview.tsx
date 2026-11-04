@@ -221,11 +221,9 @@ export function DiffPreview(props: DiffPreviewProps) {
       const path = fileProps.file.path
       return resolveSyntaxLanguage(path === undefined ? undefined : getFiletype(path))?.highlightJs
     })
-    const renderRows = createMemo(() => {
-      const syntaxLanguage = language()
-      const fileSyntaxColors = syntaxColors()
-      const highlight = highlighter()
-      const diffColors = colors()
+    // Each run of the memo builds a renderer over that run's inputs, and its
+    // syntax cache carries one render to the next of the same renderer.
+    const rowRenderer = (syntaxLanguage: string | undefined, fileSyntaxColors: ReturnType<typeof syntaxColors>, highlight: ReturnType<typeof highlighter>, diffColors: ReturnType<typeof colors>) => {
       let previous = new Map<string, ReturnType<DiffSyntaxHighlighter>>()
       return (file: DiffFile) => {
         const current = new Map<string, ReturnType<DiffSyntaxHighlighter>>()
@@ -238,7 +236,8 @@ export function DiffPreview(props: DiffPreviewProps) {
         previous = current
         return rows
       }
-    })
+    }
+    const renderRows = createMemo(() => rowRenderer(language(), syntaxColors(), highlighter(), colors()))
     const remoteOmitted = () => fileRemoteOmittedLines(fileProps.index)
     const retainedOmitted = () => fileProps.file.renderedLines - fileProps.file.visibleLines
     const sourceOmitted = () => fileProps.file.omittedLines

@@ -80,16 +80,13 @@ export function statusRows(input: StatusRowsInput): readonly StatusRow[] {
       : budget && budget.contextPromptTokens > 0
       ? `${Math.min(100, Math.round(budget.contextPercent))}% of window · ${formatTokens(budget.contextPromptTokens)} prompt tokens`
       : "no usage yet",
-  })
-  rows.push({
+  }, {
     label: "Usage",
     value: budget?.totalsLoading ? "totals loading"
       : budget && budget.tokens > 0
       ? `${formatTokens(budget.tokens)} tokens · ${formatCostSplit(budget.cost, budget.billedCost)}${budget.priceUnavailable ? " · price unavailable" : ""}`
       : "no usage yet",
-  })
-  rows.push({ label: "Sessions", value: `${input.activeSessionCount} open · ${input.sessionCount} total` })
-  rows.push({ label: "Project Root", value: input.projectRoot })
+  }, { label: "Sessions", value: `${input.activeSessionCount} open · ${input.sessionCount} total` }, { label: "Project Root", value: input.projectRoot })
   if (input.executionCwd) rows.push({ label: "Working Directory", value: input.executionCwd })
   rows.push({ label: "Version", value: `Flywheel ${input.appVersion} · Bun ${Bun.version}` })
   if (input.update !== undefined) rows.push({ label: "Updates", value: updatesSummary(input.update) })

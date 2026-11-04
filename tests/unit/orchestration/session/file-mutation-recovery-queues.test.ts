@@ -17,11 +17,13 @@ import {
 describe("file mutation recovery queues", () => {
   it("holds suffix queues until the current item's guarded retirement commits", async () => {
     await withStore(async ({ root, store, writer, sessionId }) => {
-      const a = join(root, "a"), b = join(root, "b")
+      const a = join(root, "a")
+      const b = join(root, "b")
       for (const path of [a, b]) writeFileSync(path, "before")
       const [first] = await prepareBatch(writer, [a, b].map(path => ({ path, beforeContent: "before", afterContent: "after" })))
       const base = asAsyncEventWriter(store)
-      let suffixAcquired = false, suffixAcquiredBeforeCommit = false
+      let suffixAcquired = false
+      let suffixAcquiredBeforeCommit = false
       let suffix: Promise<void> | undefined
       expect(await reconcilePendingFileMutations({
         sessionId,
@@ -46,11 +48,13 @@ describe("file mutation recovery queues", () => {
 
   it("waits for every unretired target and rereads the filesystem inside the queues", async () => {
     await withStore(async ({ root, store, writer, sessionId }) => {
-      const a = join(root, "a"), b = join(root, "b")
+      const a = join(root, "a")
+      const b = join(root, "b")
       for (const path of [a, b]) writeFileSync(path, "before")
       await prepareBatch(writer, [a, b].map(path => ({ path, beforeContent: "before", afterContent: "after" })))
       const row = store.readInFlight(sessionId, "file.mutation")[0]!
-      const held = createDeferred<void>(), release = createDeferred<void>()
+      const held = createDeferred<void>()
+      const release = createDeferred<void>()
       const holding = withMutationQueueKeys([b], async () => { held.resolve(); await release.promise })
       await held.promise
       const recovery = reconcilePendingFileMutations({ sessionId, store: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store) })
@@ -68,7 +72,8 @@ describe("file mutation recovery queues", () => {
 
   it("retries a changed cell with its new target keys rather than retiring under the old queues", async () => {
     await withStore(async ({ root, store, writer, sessionId }) => {
-      const a = join(root, "a"), z = join(root, "z")
+      const a = join(root, "a")
+      const z = join(root, "z")
       for (const path of [a, z]) writeFileSync(path, "before")
       await prepare(writer, a, "before", "after")
       const row = store.readInFlight(sessionId, "file.mutation")[0]!
@@ -77,8 +82,10 @@ describe("file mutation recovery queues", () => {
       const precondition = snapshotToFileObjectProof(authority.existingSnapshot())
       authority.close()
       const changed = await stageFileMutationOperation({ ...cell, items: [{ ...cell.items[0]!, candidateEvidence: undefined, evidence: { ...cell.items[0]!.evidence, mutationId: "new-target", path: z, displayPath: z }, precondition }] }, nodes => writer.stageSessionContentNodes!(nodes))
-      const heldA = createDeferred<void>(), heldZ = createDeferred<void>()
-      const releaseA = createDeferred<void>(), releaseZ = createDeferred<void>()
+      const heldA = createDeferred<void>()
+      const heldZ = createDeferred<void>()
+      const releaseA = createDeferred<void>()
+      const releaseZ = createDeferred<void>()
       const holdingA = withMutationQueueKeys([a], async () => { heldA.resolve(); await releaseA.promise })
       const holdingZ = withMutationQueueKeys([z], async () => { heldZ.resolve(); await releaseZ.promise })
       await Promise.all([heldA.promise, heldZ.promise])

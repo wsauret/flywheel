@@ -68,7 +68,7 @@ function convertUser(content: string | ContentBlock[], supportsImages: boolean):
 function supportsMultimodalFunctionResponse(modelId: string): boolean {
   const match = modelId.toLowerCase().match(/^gemini(?:-live)?-(\d+)/); // provider-model-literal-allow: payload -- Google multimodal response wire compatibility
   if (!match?.[1]) return true;
-  return Number.parseInt(match[1], 10) >= 3;
+  return Number(match[1]) >= 3;
 }
 
 function convertAssistantBlock(

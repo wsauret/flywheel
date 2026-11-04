@@ -99,6 +99,18 @@ export namespace Log {
     return result
   }
 
+  /** The logger of one service. The base logger is cached per service and
+   *  carries no other tag: context that belongs to one instance, such as a
+   *  project or an executor generation, is added with `with()`, which makes
+   *  a logger of its own. */
+  export const create = (tags: { readonly service: string }): Logger => {
+    const cached = loggers.get(tags.service)
+    if (cached) return cached
+    const base = bind({ service: tags.service })
+    loggers.set(tags.service, base)
+    return base
+  }
+
   // Why a singleton: a record written before Log.init() names the project
   // directory, as the CLI entry and the launcher write before config is
   // loaded, still needs a destination. After init(), all loggers of a thread
@@ -144,7 +156,7 @@ export namespace Log {
    *  overwrites the drawn screen, and a redraw does not remove it. So while
    *  the TUI holds the terminal, a line for a terminal stderr is dropped. A
    *  stderr redirected to a file or a pipe still gets every line. */
-  export function holdTerminal(): () => void {
+  export const holdTerminal = (): (() => void) => {
     terminalDrawn = true
     return () => {
       terminalDrawn = false
@@ -156,14 +168,14 @@ export namespace Log {
     process.stderr.write(msg)
   }
 
-  export function writeDiagnosticStderr(msg: string): void {
+  export const writeDiagnosticStderr = (msg: string): void => {
     writeStderr(redactSecrets(msg))
   }
 
   /** Drop every record this realm writes while it has no configured sink,
    *  for a realm that must write no log file and no stderr line, such as a
    *  test process or a supervisor whose output channel is gone. */
-  export function suppress() {
+  export const suppress = (): void => {
     unconfigured = "none"
   }
 
@@ -171,17 +183,17 @@ export namespace Log {
    *  passes the level, and the realm has a sink or a stderr fallback. For a
    *  caller that durably records that a person was shown a record. The debug
    *  log stays non-durable, so true does not prove that a file write landed. */
-  export function delivers(input: Level): boolean {
+  export const delivers = (input: Level): boolean => {
     return shouldLog(input) && (DebugLog.isOpen() || openAccountLog() || unconfigured === "stderr")
   }
 
   const sessionContext = new AsyncLocalStorage<string>()
 
-  export function runWithSession<T>(sessionId: string, fn: () => T): T {
+  export const runWithSession = <T>(sessionId: string, fn: () => T): T => {
     return sessionContext.run(sessionId, fn)
   }
 
-  export function currentSessionId(): string | undefined {
+  export const currentSessionId = (): string | undefined => {
     return sessionContext.getStore()
   }
 
@@ -193,7 +205,7 @@ export namespace Log {
     return undefined
   }
 
-  export async function init(options: Options) {
+  export const init = async (options: Options): Promise<void> => {
     // Each Bun Worker realm re-inits its own Log singleton; resolving the env
     // level here keeps that policy in one place instead of at every boot site.
     const resolved = options.level ?? envLevel()
@@ -226,25 +238,13 @@ export namespace Log {
   /** The level that `FLYWHEEL_LOG_LEVEL` names, in any letter case and
    *  with surrounding spaces ignored, or undefined when it is unset or names
    *  no level. `init` warns about a value that names no level. */
-  export function envLevel(): Level | undefined {
+  export const envLevel = (): Level | undefined => {
     const value = process.env.FLYWHEEL_LOG_LEVEL?.trim().toUpperCase()
     return value && isLevel(value) ? value : undefined
   }
 
-  export async function closeGlobal(): Promise<void> {
+  export const closeGlobal = async (): Promise<void> => {
     await DebugLog.close()
-  }
-
-  /** The logger of one service. The base logger is cached per service and
-   *  carries no other tag: context that belongs to one instance, such as a
-   *  project or an executor generation, is added with `with()`, which makes
-   *  a logger of its own. */
-  export function create(tags: { readonly service: string }): Logger {
-    const cached = loggers.get(tags.service)
-    if (cached) return cached
-    const base = bind({ service: tags.service })
-    loggers.set(tags.service, base)
-    return base
   }
 
 }

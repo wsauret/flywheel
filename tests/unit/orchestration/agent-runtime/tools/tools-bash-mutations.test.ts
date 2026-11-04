@@ -541,7 +541,8 @@ describe("bash tool: mutation commands", () => {
 
   it.each([1, 2, 3] as const)("retains a literal V%s Git-backed copy and its original record even when interrupted", async version => {
     const root = project([["a.txt", "a\n"]]);
-    let home = "", originalRecord = "";
+    let home = "";
+    let originalRecord = "";
     const run = await runHandedOverMutation(root, (cwd) => fs.writeFileSync(path.join(cwd, "a.txt"), "mine\n"), {
       crossing: copyHome => {
         home = copyHome;

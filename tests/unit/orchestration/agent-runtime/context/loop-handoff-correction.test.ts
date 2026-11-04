@@ -57,7 +57,8 @@ function failingHandoffTurn(id: string) {
 
 describe("agent-loop bounded handoff correction", () => {
   test.each(["text-only", "blocked-tool"] as const)("exhausts admitted corrections after %s responses without a handoff", async (kind) => {
-    let ran = 0, closed = 0;
+    let ran = 0;
+    let closed = 0;
     const extra: RuntimeTool = {
       name: "later", action: "ui_meta", description: "later", isConcurrencySafe: true,
       inputSchema: { type: "object", properties: {} },
@@ -112,7 +113,8 @@ describe("agent-loop bounded handoff correction", () => {
   });
 
   test("an invalid admitted handoff allows only a correction, not ordinary tools in this or the next response", async () => {
-    let ran = 0, closed = 0;
+    let ran = 0;
+    let closed = 0;
     const extra: RuntimeTool = { name: "later", action: "ui_meta", description: "later", isConcurrencySafe: true, inputSchema: { type: "object", properties: {} },
       execute: async () => { ran++; return { content: "ran", outcome: "ok" }; } };
     const { client, capturedMessages } = makeCaptureClient([

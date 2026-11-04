@@ -74,7 +74,12 @@ describe("subscription admission capture", () => {
   test("holds each account's future reset of the expiring window its provider declares", async () => {
     const resolved = { id: "default", directory: profile("expiring-reset-admission") }
     const declaring = (id: string) => ({ ...definition(id), usage: { expiringWindow: "seven_day" } })
-    const future = declaring("future"), exact = declaring("exact"), passed = declaring("passed"), unknown = declaring("unknown"), exhausted = declaring("exhausted"), undeclared = definition("undeclared")
+    const future = declaring("future")
+    const exact = declaring("exact")
+    const passed = declaring("passed")
+    const unknown = declaring("unknown")
+    const exhausted = declaring("exhausted")
+    const undeclared = definition("undeclared")
     const providers = [future, exact, passed, unknown, exhausted, undeclared]
     writeAccounts(resolved.directory, providers)
     const soon = Date.now() + 86_400_000

@@ -81,7 +81,9 @@ async function fixtureWorkflowRun(root: string, streamWithTools: (options: Strea
     await commitWorkflowEvent(deps, "session", selectedWorkflow, { type: "ATTEMPT_STARTED", attemptId, conversationId: "reentered-step" })
     await commitWorkflowEvent(deps, "session", selectedWorkflow, { type: "ABORT", reason: "replacement" })
   }
-  const shown: string[] = [], injected: unknown[] = [], placed: { readonly text: string; readonly runId?: string }[] = []
+  const shown: string[] = []
+  const injected: unknown[] = []
+  const placed: { readonly text: string; readonly runId?: string }[] = []
   const runner = createWorkflowRunner({
     sessionId: "session", workflow: selectedWorkflow, description: "task", startMode: reenter ? "operator_resume" : "launch", projectRoot: root, executionCwd: root, runtime, projectionReader: store,
     manager,

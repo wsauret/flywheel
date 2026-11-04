@@ -474,11 +474,7 @@ function scanTargets(repoRoot: string): string[] {
   walk(path.join(repoRoot, "webview", "src"), files);
   walk(path.join(repoRoot, "docs", "architecture-intent"), files);
   walk(path.join(repoRoot, "docs", "product-intent"), files);
-  files.push(path.join(repoRoot, "docs", "elegance.md"));
-  files.push(path.join(repoRoot, "docs", "architecture.md"));
-  files.push(path.join(repoRoot, "docs", "terminology.md"));
-  files.push(path.join(repoRoot, "AGENTS.md"));
-  files.push(path.join(repoRoot, "README.md"));
+  files.push(path.join(repoRoot, "docs", "elegance.md"), path.join(repoRoot, "docs", "architecture.md"), path.join(repoRoot, "docs", "terminology.md"), path.join(repoRoot, "AGENTS.md"), path.join(repoRoot, "README.md"));
   // A clone without the maintainer's private companion checkout has neither.
   const maintainerInstructions = path.join(repoRoot, "private", "AGENTS.maintainer.md");
   if (fs.existsSync(maintainerInstructions)) files.push(maintainerInstructions);

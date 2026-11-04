@@ -169,8 +169,7 @@ function sessionStats(session: SessionCatalogRow): string {
   parts.push(formatDuration(session.durationMs))
   const cost = formatCostSplit(session.totalCost, session.totalBilledCost)
   if (cost) parts.push(`${cost}${session.priceUnavailable ? " · price unavailable" : ""}`)
-  parts.push(`${formatTokens(session.totalTokens)} tokens`)
-  parts.push(`${formatContextPercent(session.contextPercent)} ctx`)
+  parts.push(`${formatTokens(session.totalTokens)} tokens`, `${formatContextPercent(session.contextPercent)} ctx`)
   return parts.join(" · ")
 }
 

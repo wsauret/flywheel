@@ -262,6 +262,7 @@ function isDirectory(path: string): boolean {
 }
 
 export function isVersionAtLeast(version: string, minimum: string): boolean {
+  // oxlint-disable-next-line unicorn/prefer-number-coercion -- boundary: a probed version piece can carry build metadata after its leading digits
   const parts = (value: string): number[] => value.split("-")[0]!.split(".").map((piece) => Number.parseInt(piece, 10) || 0)
   const actual = parts(version)
   const required = parts(minimum)

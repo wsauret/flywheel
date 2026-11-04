@@ -91,7 +91,10 @@ export async function fatalExitCode(error: unknown, kind: FatalKind): Promise<nu
     if (repeat) Log.Default.debug("fatal", fields)
     else Log.Default.error("fatal", fields)
   }
-  let failServiceStart, serviceListened, ServeStartupFailure, SERVE_EXIT
+  let failServiceStart
+  let serviceListened
+  let ServeStartupFailure
+  let SERVE_EXIT
   try {
     ;({ failServiceStart, serviceListened } = await import("../orchestration/update/service-start.js"))
     ;({ ServeStartupFailure } = await import("../protocol/serve-handshake.js"))

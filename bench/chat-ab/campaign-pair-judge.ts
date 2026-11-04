@@ -19,12 +19,12 @@ function judgeSchemas<Arm extends string>(arms: readonly Arm[]) {
   const StartSchema = Schema.Struct({ kind: Schema.Literal("pair"), id: Text, at: Text, pair: Text, identity: Hash, profileId: Text, authorityIncarnation: Text });
   const CallSchema = Schema.Struct({ kind: Schema.Literal("call"), id: Text, at: Text, pairAttempt: Text, promptHash: Hash });
   const SettlementSchema = Schema.Struct({ kind: Schema.Literal("settlement"), id: Text, at: Text, text: Schema.String, error: Schema.NullOr(Schema.String), accounting: BenchmarkAccountingSchema });
-  const Arm = Schema.Literals(arms);
+  const ArmSchema = Schema.Literals(arms);
   const Winner = Schema.NullOr(Schema.Literals([...arms, "tie" as const]));
   const Correct = Schema.Literals(["yes", "partial", "no"]);
   const OrderSchema = Schema.Struct({
-    slotA: Arm, winner: Winner,
-    correct: Schema.NullOr(Schema.Record(Arm, Correct)),
+    slotA: ArmSchema, winner: Winner,
+    correct: Schema.NullOr(Schema.Record(ArmSchema, Correct)),
     rationale: Schema.NullOr(Schema.String), error: Schema.NullOr(Schema.String),
     refutation: Schema.NullOr(Schema.Struct({ refuted: Schema.NullOr(Schema.Boolean), reason: Schema.NullOr(Schema.String), error: Schema.NullOr(Schema.String) })),
   });
@@ -32,7 +32,7 @@ function judgeSchemas<Arm extends string>(arms: readonly Arm[]) {
     kind: Schema.Literal("verdict"), at: Text, pairAttempt: Text, calls: Schema.Array(Text),
     result: Schema.Struct({
       test: Text, repeat: Count, orders: Schema.Array(OrderSchema), winner: Winner,
-      sites: Schema.Record(Arm, Schema.Record(Schema.String, Schema.Boolean)),
+      sites: Schema.Record(ArmSchema, Schema.Record(Schema.String, Schema.Boolean)),
       usd: Schema.NullOr(Schema.Number),
     }),
   });

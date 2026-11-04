@@ -181,8 +181,7 @@ export function interruptedWorkMessage(work: InterruptedWork, reason: Interrupte
     parts.push(`Tools that were called but whose results were lost, so they may not have run: ${summarize(work.unconfirmedTools)}.`)
   }
   if (work.paths.length > 0) parts.push(`Files that were already modified: ${summarize(work.paths)}.`)
-  parts.push("Its reply was lost.")
-  parts.push("Inspect the current state rather than assuming the work above is unfinished, and do not repeat work that finished.")
+  parts.push("Its reply was lost.", "Inspect the current state rather than assuming the work above is unfinished, and do not repeat work that finished.")
   return parts.join(" ")
 }
 

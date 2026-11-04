@@ -36,6 +36,7 @@ describe("writeOwnerPid", () => {
     expect(text).toBe(text.trim());
     expect(Buffer.byteLength(text)).toBeLessThanOrEqual(63);
     // An earlier build reads at most 64 bytes and takes the leading pid.
+    // oxlint-disable-next-line unicorn/prefer-number-coercion -- the earlier build parses the leading digits only, which Number() does not
     expect(Number.parseInt(text, 10)).toBe(process.pid);
   });
 

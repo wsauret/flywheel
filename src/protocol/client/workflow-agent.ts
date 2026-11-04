@@ -130,8 +130,7 @@ export function workflowAgentModel(view: View, target: WorkflowAgentTarget, cut?
   return {
     agentNodeId: agent.agentNodeId,
     ...(attempt?.sessionId ? { sessionId: attempt.sessionId } : {}),
-    history: view.attempts.filter((candidate) => candidate.agentNodeId === agent.agentNodeId || candidate === attempt)
-      .flatMap((candidate) => [...candidate.history ?? [], ...(candidate !== attempt && candidate.sessionId && candidate.conversationId ? [{ sessionId: candidate.sessionId, conversationId: candidate.conversationId }] : [])]),
+    history: view.attempts.flatMap((candidate) => candidate.agentNodeId !== agent.agentNodeId && candidate !== attempt ? [] : [...candidate.history ?? [], ...(candidate !== attempt && candidate.sessionId && candidate.conversationId ? [{ sessionId: candidate.sessionId, conversationId: candidate.conversationId }] : [])]),
     follow: target.follow,
     ...(attemptId === undefined ? {} : { attemptId }),
     kind: form,

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { readFile, readdir, rename } from "node:fs/promises";
 import { join } from "node:path";
 import { parse } from "jsonc-parser";
@@ -140,18 +140,45 @@ function packageTokens(key: string): string[] {
   return tokens;
 }
 
-function packageDirectory(root: string, pkg: LockedPackage): string | undefined {
+function manifestVersion(directory: string): string | undefined {
+  if (!existsSync(join(directory, "package.json"))) return undefined;
+  try {
+    const manifest: unknown = JSON.parse(readFileSync(join(directory, "package.json"), "utf8"));
+    return isRecord(manifest) && typeof manifest["version"] === "string" ? manifest["version"] : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Every installed package directory under the shipping workspaces, keyed by `name@version`. Bun's hoisted linker
+ *  does not always install a package at its bun.lock key path: when most dependents want another version, it hoists
+ *  that one and nests the locked one under a dependent. Every copy of one version holds the same legal files. */
+function installedPackageDirectories(root: string): ReadonlyMap<string, string> {
+  const found = new Map<string, string>();
+  const visit = (modules: string): void => {
+    if (!existsSync(modules)) return;
+    for (const entry of readdirSync(modules, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
+      const names = entry.name.startsWith("@")
+        ? readdirSync(join(modules, entry.name), { withFileTypes: true }).filter((child) => child.isDirectory()).map((child) => `${entry.name}/${child.name}`)
+        : [entry.name];
+      for (const name of names) {
+        const directory = join(modules, name);
+        const version = manifestVersion(directory);
+        if (version !== undefined && !found.has(`${name}@${version}`)) found.set(`${name}@${version}`, directory);
+        visit(join(directory, "node_modules"));
+      }
+    }
+  };
+  for (const workspace of SHIPPING_WORKSPACES) visit(join(root, workspace, "node_modules"));
+  return found;
+}
+
+function packageDirectory(root: string, pkg: LockedPackage, installed: () => ReadonlyMap<string, string>): string | undefined {
   let nested = root;
   for (const token of packageTokens(pkg.key)) nested = join(nested, "node_modules", ...token.split("/"));
-  return [nested, join(root, "node_modules", ...pkg.name.split("/"))].find((candidate) => {
-    if (!existsSync(join(candidate, "package.json"))) return false;
-    try {
-      const manifest: unknown = JSON.parse(readFileSync(join(candidate, "package.json"), "utf8"));
-      return isRecord(manifest) && manifest["version"] === pkg.version;
-    } catch {
-      return false;
-    }
-  });
+  return [nested, join(root, "node_modules", ...pkg.name.split("/"))].find((candidate) => manifestVersion(candidate) === pkg.version)
+    ?? installed().get(`${pkg.name}@${pkg.version}`);
 }
 
 async function legalDocuments(directory: string, relativeFiles?: readonly string[]): Promise<LegalDocument[]> {
@@ -327,6 +354,11 @@ export async function generateNpmLicenseSections(root: string, lock: unknown): P
   const reviewed = await reviewedSources(root);
   const selected = [...keys].map((key) => packages.get(key)).filter((pkg): pkg is LockedPackage => pkg !== undefined).sort((left, right) => left.identity.localeCompare(right.identity));
   const sections: string[] = [];
+  let installed: ReadonlyMap<string, string> | undefined;
+  const installedDirectories = (): ReadonlyMap<string, string> => {
+    installed ??= installedPackageDirectories(root);
+    return installed;
+  };
   for (const pkg of selected) {
     const authority = nativeFamilySource(root, pkg) ?? reviewed.get(pkg.identity);
     let source: string;
@@ -335,7 +367,7 @@ export async function generateNpmLicenseSections(root: string, lock: unknown): P
       source = authority.source;
       documents = await Promise.all(authority.files.map(async (relative) => ({ name: relative, text: await readFile(join(root, relative), "utf8") })));
     } else {
-      const directory = packageDirectory(root, pkg);
+      const directory = packageDirectory(root, pkg, installedDirectories);
       if (directory === undefined) throw new Error(`${pkg.identity} is not installed and has no exact reviewed legal source`);
       documents = await legalDocuments(directory);
       if (documents.length === 0) throw new Error(`${pkg.identity} has no legal file and no exact reviewed legal source`);

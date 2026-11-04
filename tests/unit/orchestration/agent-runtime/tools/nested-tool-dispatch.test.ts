@@ -47,7 +47,8 @@ describe("nested tool dispatch batch", () => {
   it.each(["before dispatch", "while queued", "with malformed input"] as const)("refuses a nested call after handoff starts %s", async (when) => {
     const events: string[] = [];
     let executions = 0;
-    const tracker = createHandoffTracker(), admission = tracker.request();
+    const tracker = createHandoffTracker();
+    const admission = tracker.request();
     const gate = createToolConcurrencyGate(1);
     const release = await gate.acquire({ kind: "safe" });
     const entered = Promise.withResolvers<void>();

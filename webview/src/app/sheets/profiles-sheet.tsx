@@ -218,7 +218,7 @@ export function ProfilesSheet() {
           <Show when={!pending()} fallback={<div class="sheet-section" role="status">Deleting...</div>}>
             <button class="ghost-text" ref={(button) => createEffect(on(confirmationPhase, () => button.focus()))} onClick={cancelDelete}>Cancel</button>
             <Show when={current().phase !== "preview-error"} fallback={<button class="ghost-text" onClick={() => remove(current().id, current().displayName)}>Retry</button>}>
-              <button class="ghost-text" disabled={current().phase !== "ready" || (current().preview?.kind === "choose" && !current().successorId)} onClick={() => void submitDelete()}>Delete</button>
+              <button class="ghost-text" disabled={current().phase !== "ready" || (current().preview?.kind === "choose" && !current().successorId)} onClick={() => { void submitDelete() }}>Delete</button>
             </Show>
           </Show>
         </>}

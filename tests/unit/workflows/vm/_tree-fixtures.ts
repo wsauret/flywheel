@@ -239,4 +239,4 @@ async function completedFacts(workflow: WorkflowDefinition, answer: (attemptId: 
   return source.events.map((event) => parseProjectionFact(event, parseWorkflowSessionFact))
 }
 
-export { items }
+export { items } from "./_map-fixtures.js"

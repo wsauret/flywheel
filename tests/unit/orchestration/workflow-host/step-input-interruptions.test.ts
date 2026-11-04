@@ -27,7 +27,8 @@ function fixture(wake: WorkflowWake = WHOLE_WORKFLOW) {
 
 test("targeted cuts and hand-back preserve sibling coverage before generation opening", () => {
   const { inputs, open } = fixture()
-  const a = open(0), b = open(1)
+  const a = open(0)
+  const b = open(1)
   inputs.interrupt(WHOLE_WORKFLOW, "person")
   expect(a.cut?.by).toBe("person")
   expect(b.cut?.by).toBe("person")
@@ -43,7 +44,8 @@ test("targeted cuts and hand-back preserve sibling coverage before generation op
 
 test("a handing-off workflow member admits no further direction or control, while its sibling still reads input", () => {
   const { inputs, open, attempts } = fixture()
-  const a = open(0), b = open(1)
+  const a = open(0)
+  const b = open(1)
   a.queue.handoffStarted()
   expect(inputs.stateOf(attempts[0]!.attemptId)).toBe("handing_off")
   expect(a.resumeFromParent()).toBe(false)
@@ -68,7 +70,8 @@ test("a handing-off workflow member admits no further direction or control, whil
 
 test("private parent hand-back resumes exactly the asking member, never its sibling or a person cut", () => {
   const { inputs, open } = fixture()
-  const a = open(0), b = open(1)
+  const a = open(0)
+  const b = open(1)
   inputs.interrupt(WHOLE_WORKFLOW, "agent")
   expect(a.resumeFromParent()).toBe(true)
   expect(a.cut).toBeUndefined()
@@ -88,7 +91,8 @@ test.each([true, false])("person authority wins overlapping pending cuts in eith
   const { inputs, open } = fixture()
   inputs.interrupt(personFirst ? item(1) : WHOLE_WORKFLOW, personFirst ? "person" : "agent")
   inputs.interrupt(personFirst ? WHOLE_WORKFLOW : item(1), personFirst ? "agent" : "person")
-  const a = open(0), b = open(1)
+  const a = open(0)
+  const b = open(1)
   expect(a.cut?.by).toBe("person")
   expect(b.cut?.by).toBe("agent")
   inputs.resume(item(2))
@@ -112,7 +116,8 @@ test("initialization records uncut evidence and restores only non-reached contro
 
 test("planned wake preserves each control park, and replacement cannot downgrade parent or person authority", () => {
   const { inputs, open } = fixture("planned")
-  const a = open(0, "person"), b = open(1, "agent")
+  const a = open(0, "person")
+  const b = open(1, "agent")
   expect(a.interrupt("agent")).toBe(false)
   expect(a.interrupt("replacement")).toBe(false)
   expect(b.interrupt("replacement")).toBe(false)
@@ -152,7 +157,8 @@ test("a capacity wake of a live run continues each named agent the runtime cut, 
 
 test("released initialized uncut evidence cannot inherit a pending cut before its success commits", () => {
   const { inputs, open, attempts } = fixture()
-  const a = open(0), b = open(1)
+  const a = open(0)
+  const b = open(1)
   a.release()
   inputs.interrupt(WHOLE_WORKFLOW, "person")
   expect(inputs.evidence(attempts[0]!.attemptId)).toEqual({ cut: undefined })
@@ -172,7 +178,8 @@ test("hand-back before either generation exists releases only its pending addres
 
 test.each(["grouped", "individual"] as const)("a %s hand-back subtracts the same leaves from a whole cut", (kind) => {
   const { inputs, open } = fixture()
-  const a = open(0), b = open(1)
+  const a = open(0)
+  const b = open(1)
   inputs.interrupt(WHOLE_WORKFLOW, "person")
   if (kind === "grouped") inputs.resume({ addressedTo: [...item(1).addressedTo, ...item(2).addressedTo], label: "both" })
   else { inputs.resume(item(1)); inputs.resume(item(2)) }

@@ -679,8 +679,7 @@ export function prepareWorkflowAdoption(reader: EventStoreReadSurface, id: strin
     // A held completion retires only in the batch that records the
     // completion under the workflow's new parent.
     const holds = (ownerId: string) => content === undefined ? [] : completionHoldRetirements(reader, ownerId, id)
-    events.push(carrying(buildSessionMetadataAppend(id, buildSessionOwnershipAdoptedFact(parent.id, parent.conversationId, toolUseId, now), timestamp), transfer ? [] : cellRetirements))
-    events.push(carrying(buildSessionMetadataAppend(parent.id, buildSessionChildLinkedFact(id, now), timestamp), holds(parent.id)))
+    events.push(carrying(buildSessionMetadataAppend(id, buildSessionOwnershipAdoptedFact(parent.id, parent.conversationId, toolUseId, now), timestamp), transfer ? [] : cellRetirements), carrying(buildSessionMetadataAppend(parent.id, buildSessionChildLinkedFact(id, now), timestamp), holds(parent.id)))
     if (previousId !== undefined && previousId !== parent.id && previous?.childSessionIds?.includes(id)) {
       guards.add(previousId)
       events.push(carrying(buildSessionMetadataAppend(previousId, buildSessionChildUnlinkedFact(id, now), timestamp), holds(previousId)))

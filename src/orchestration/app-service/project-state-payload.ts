@@ -5,27 +5,27 @@ import type { ProjectStateControlOperation, ProjectStateOperation } from "./proj
 import { SessionContentNodeRowSchema } from "../../infra/session-content.js"
 
 const WireSwap = InFlightSwapSchema.mapFields(({ payload: _payload, payloadJson: _json, ...fields }) => ({ ...fields, payloadJson: Schema.NullOr(Schema.String) }))
-const WireCell = Schema.Union([
+const WireCellSchema = Schema.Union([
   Schema.Struct({ op: Schema.Literal("put"), kind: Schema.String, key: Schema.String, payloadJson: Schema.String }),
   Schema.Struct({ op: Schema.Literal("drop"), kind: Schema.String, key: Schema.String, sessionId: Schema.optionalKey(Schema.String) }),
   Schema.Struct({ op: Schema.Literal("clear"), kind: Schema.String }),
   Schema.Struct({ op: Schema.Literal("clear_session") }),
   WireSwap,
 ])
-const WireAppend = EventStoreAppendSchema.mapFields(({ payload: _payload, payloadJson: _json, inFlight: _cells, ...fields }) => ({
-  ...fields, payloadJson: Schema.String, inFlight: Schema.optionalKey(Schema.Array(WireCell)),
+const WireAppendSchema = EventStoreAppendSchema.mapFields(({ payload: _payload, payloadJson: _json, inFlight: _cells, ...fields }) => ({
+  ...fields, payloadJson: Schema.String, inFlight: Schema.optionalKey(Schema.Array(WireCellSchema)),
 }))
 export const WireWriteItem = Schema.Struct({
-  sessionId: Schema.String, events: Schema.Array(WireAppend), inFlight: Schema.optionalKey(Schema.Array(WireCell)),
+  sessionId: Schema.String, events: Schema.Array(WireAppendSchema), inFlight: Schema.optionalKey(Schema.Array(WireCellSchema)),
   sessionContentNodes: Schema.optionalKey(Schema.Array(SessionContentNodeRowSchema)),
 })
 export const WireSessionCommand = projectStateSessionCommandSchema(
   PublishWorkflowInputSchema.mapFields((fields) => ({ ...fields, retainedOperation: Schema.optionalKey(WireSwap) })),
-  PublishSubagentInputSchema.mapFields((fields) => ({ ...fields, runBinding: WireAppend, promptFact: WireAppend })),
-  WireAppend,
+  PublishSubagentInputSchema.mapFields((fields) => ({ ...fields, runBinding: WireAppendSchema, promptFact: WireAppendSchema })),
+  WireAppendSchema,
 )
-type WireCell = typeof WireCell.Type
-type WireAppend = typeof WireAppend.Type
+type WireCell = typeof WireCellSchema.Type
+type WireAppend = typeof WireAppendSchema.Type
 type WireItem = typeof WireWriteItem.Type
 type WireCommand = typeof WireSessionCommand.Type
 type WireControl = Exclude<WireOperation, { kind: "execution.operation" | "generation.admit" | "generation.close" | "generation.recover" }>

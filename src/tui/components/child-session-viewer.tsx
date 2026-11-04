@@ -202,6 +202,7 @@ export function ChildSessionViewer(props: ChildSessionViewerProps) {
   // Stop terminates the parent's tool call, so it names the parent session,
   // not this child.
   const stop = createMemo(() => stopMutation(summary() ?? undefined))
+  const stopControl = (mutation: ReturnType<typeof stopMutation>) => mutation === undefined ? {} : { stop: () => { void props.appService.dispatch(mutation).then(report) } }
   const messageable = createMemo(() => controls().message)
   createEffect(() => {
     const row = summary()
@@ -249,14 +250,11 @@ export function ChildSessionViewer(props: ChildSessionViewerProps) {
         } : undefined,
         recall }}
       placeholder="Message this subagent"
-      controls={() => {
-        const mutation = stop()
-        return {
-          ...(offered().primary === "interrupt" ? { interrupt } : {}),
-          ...(offered().primary === "resume" ? { resume } : {}),
-          ...(mutation === undefined ? {} : { stop: () => { void props.appService.dispatch(mutation).then(report) } }),
-        }
-      }}
+      controls={() => ({
+        ...(offered().primary === "interrupt" ? { interrupt } : {}),
+        ...(offered().primary === "resume" ? { resume } : {}),
+        ...stopControl(stop()),
+      })}
       navigation={<Button label="Close" hotkey="esc" muted onPress={props.onClose} />}
       header={<box flexDirection="row" justifyContent="space-between" flexShrink={0}>
         <text fg={theme.textMuted}>{props.sessionId}</text>

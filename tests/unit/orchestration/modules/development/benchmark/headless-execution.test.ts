@@ -135,8 +135,8 @@ function subject(options: {
           } } });
           if (record.id === "task") {
             for (const event of options.events ?? []) emit({ version: 1, type: "event", event });
-            if (options.taskRefused) { emit({ version: 1, type: "result", id: "task", result: { ok: false, error: "refused" } }); emitOutcome(); }
-            else { emit({ version: 1, type: "result", id: "task", result: { ok: true } }); emitOutcome(); }
+            emit({ version: 1, type: "result", id: "task", result: options.taskRefused ? { ok: false, error: "refused" } : { ok: true } });
+            emitOutcome();
           }
           return bytesWritten;
         },

@@ -138,8 +138,8 @@ async function createChatRunnerInner(deps: ChatRunnerDeps): Promise<ChatRunner> 
   })
 
   const chatCallbacks: ChatCallbacks = {
-    onError: (message) => void deps.onError(message),
-    onEnded: () => void deps.onEnded(),
+    onError: (message) => { void deps.onError(message) },
+    onEnded: () => { void deps.onEnded() },
   }
 
   const eventBus = new EventBus()

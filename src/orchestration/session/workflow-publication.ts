@@ -149,8 +149,7 @@ export function createWorkflowPublication(ports: WorkflowPublicationPorts) {
       const memberSeq = await ports.reader.aggregateSeq(`session:${member.sessionId}`) + 1
       appends.push({ ...buildSessionMetadataAppend(member.sessionId, buildSessionOwnershipAdoptedFact(nextParentId, parent.conversationId, input.launchedFrom.toolUseId, now)), expectedSeq: memberSeq })
       if (previousParentId !== nextParentId) {
-        appends.push(buildSessionMetadataAppend(previousParentId, buildSessionChildUnlinkedFact(member.sessionId, now)))
-        appends.push(buildSessionMetadataAppend(nextParentId, buildSessionChildLinkedFact(member.sessionId, now)))
+        appends.push(buildSessionMetadataAppend(previousParentId, buildSessionChildUnlinkedFact(member.sessionId, now)), buildSessionMetadataAppend(nextParentId, buildSessionChildLinkedFact(member.sessionId, now)))
       }
     }
     const result = await ports.append(appends)

@@ -122,7 +122,7 @@ async function withHarness(run: (harness: Harness) => Promise<void>): Promise<vo
         } satisfies Pick<AttachedRuntimeClient, "query" | "dispatch" | "subscribe" | "onLane">,
         foregroundSessionId,
       })
-      Promise.resolve(run({ overlay, modal, modelModal, assignmentCalls, optionCalls, optionSlots, saveCalls, toasts, scopes, slots, commands, publishCatalog }))
+      void Promise.resolve(run({ overlay, modal, modelModal, assignmentCalls, optionCalls, optionSlots, saveCalls, toasts, scopes, slots, commands, publishCatalog }))
         .then(resolve, reject)
         .finally(dispose)
     })

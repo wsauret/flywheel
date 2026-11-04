@@ -1,7 +1,7 @@
 import { Schema } from "effect"
 import type { RuntimeClient } from "../app-service-types.js"
 import { isProtocolModuleDomain, PROTOCOL_MODULE_DOMAINS, protocolDomain, protocolModuleQuery, type ProtocolModuleDomain, type ProtocolModuleDomainName, type ProtocolModuleEntry, type ProtocolModuleView } from "../modules.js"
-import { protocolDomainTable, type AnyProtocolDomain, type DomainReader, type ProtocolDomain, type ProtocolDomainView, type ProtocolSnapshotSpec } from "../protocol-module.js"
+import { protocolDomainTable, type AnyProtocolDomain, type DomainReader, type ProtocolDomain, type ProtocolDomainView } from "../protocol-module.js"
 import { sessionDomainCursor, workspaceDomainCursor, type RuntimeCursorIdentity, type RuntimeDeliveryPolicy, type RuntimePosition } from "../runtime-ui-protocol-types.js"
 
 /** A registry entry as a client consumes it: one object whose read, patch
@@ -24,7 +24,7 @@ export interface ModuleDomainBinding<Domain extends string, Scope extends "sessi
   payloadView(payload: Patch, current: View | undefined): View | null
 }
 
-export type ModuleDomainBindingOf<D extends AnyProtocolDomain> = D extends ProtocolDomain<infer Domain, infer Scope, ProtocolSnapshotSpec<string, Schema.Struct.Fields, infer _Snapshot>, infer _Snapshot, infer Patch, infer View>
+export type ModuleDomainBindingOf<D extends AnyProtocolDomain> = D extends ProtocolDomain<infer Domain, infer Scope, infer _Spec, infer _Snapshot, infer Patch, infer View>
   ? ModuleDomainBinding<Domain, Scope, Patch, View>
   : never
 

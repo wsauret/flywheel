@@ -10,6 +10,7 @@ export function PersonText(props: { content: string; sessionId: string; blockId:
   const expanded = () => props.disclosure.state(props.sessionId, key())().open
   const measure = () => {
     if (!text) return
+    // oxlint-disable-next-line unicorn/prefer-number-coercion -- boundary: a computed CSS length carries a unit suffix that only parseFloat skips
     const lineHeight = Number.parseFloat(getComputedStyle(text).lineHeight)
     setOverflowing(text.scrollHeight > lineHeight * 8 + 1)
   }

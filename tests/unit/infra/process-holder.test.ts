@@ -148,6 +148,7 @@ describe("owner record text", () => {
     const text = encodeHolderText(4_194_304, { v: 1, start: "18446744073709551615", boot: BOOT })
 
     expect(new TextEncoder().encode(text).byteLength).toBeLessThanOrEqual(63)
+    // oxlint-disable-next-line unicorn/prefer-number-coercion -- the earlier build parses the leading digits only, which Number() does not
     expect(Number.parseInt(text, 10)).toBe(4_194_304)
     expect(decodeHolderText(text)).toEqual({ kind: "identified", pid: 4_194_304, identity: { v: 1, start: "18446744073709551615", boot: BOOT } })
   })

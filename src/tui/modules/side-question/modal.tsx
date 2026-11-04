@@ -46,11 +46,11 @@ export function SideQuestionModal(props: { model: SideQuestionModel }) {
     </box>
     <Show when={props.model.draft().trim().length > props.model.questionLimit}><text flexShrink={0} fg={theme.error}>{`Use at most ${props.model.questionLimit} characters.`}</text></Show>
     <box flexDirection="row" flexShrink={0} gap={compact() ? 0 : 1} flexWrap="wrap">
-      <Button label="Ask" disabled={!canAsk()} onPress={() => void props.model.ask()} />
-      <Button label="Copy" focused={props.model.focus() === 3} disabled={!row()?.answer} onPress={() => void props.model.copy()} />
-      <Button label="Clear" focused={props.model.focus() === 4} disabled={disabled() || !props.model.rows().length} onPress={() => void props.model.clear()} />
-      <Button label="Stop" focused={props.model.focus() === 5} disabled={disabled() || !props.model.running()} onPress={() => void props.model.stop()} />
-      <Button label="Keep as fork" focused={props.model.focus() === 6} disabled={disabled() || !props.model.retained()} onPress={() => void props.model.keep()} />
+      <Button label="Ask" disabled={!canAsk()} onPress={() => { void props.model.ask() }} />
+      <Button label="Copy" focused={props.model.focus() === 3} disabled={!row()?.answer} onPress={() => { void props.model.copy() }} />
+      <Button label="Clear" focused={props.model.focus() === 4} disabled={disabled() || !props.model.rows().length} onPress={() => { void props.model.clear() }} />
+      <Button label="Stop" focused={props.model.focus() === 5} disabled={disabled() || !props.model.running()} onPress={() => { void props.model.stop() }} />
+      <Button label="Keep as fork" focused={props.model.focus() === 6} disabled={disabled() || !props.model.retained()} onPress={() => { void props.model.keep() }} />
       <Button label="Close" focused={props.model.focus() === 7} onPress={props.model.close} />
     </box>
   </ModalFrame>

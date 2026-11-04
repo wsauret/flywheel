@@ -152,10 +152,8 @@ function normalizeBashScriptCommands(command: string): string {
     if (word.raw) {
       out += word.raw;
       i = word.end;
-      atCommandStart = false;
-    } else {
-      atCommandStart = false;
     }
+    atCommandStart = false;
   }
   return out;
 }

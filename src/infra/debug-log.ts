@@ -280,7 +280,7 @@ export namespace DebugLog {
 
   /** Whether records have a destination: a log directory, open or still to
    *  be opened by the first record, or a thread that writes them. */
-  export function isOpen(): boolean {
+  export const isOpen = (): boolean => {
     return logDirectory !== null || forwardRecord !== null
   }
 
@@ -343,7 +343,7 @@ export namespace DebugLog {
    *  long launch rolls to further files as each reaches MAX_FILE_BYTES. A
    *  record that arrives while a re-init closes the previous sink goes
    *  where it would after close(), and the new directory replaces that. */
-  export async function init(options: DirectoryOptions): Promise<void> {
+  export const init = async (options: DirectoryOptions): Promise<void> => {
     await close()
     openDirectory(options)
   }
@@ -360,7 +360,7 @@ export namespace DebugLog {
   /** Make `options.dir` this thread's destination at once, in place of any
    *  other: `Log` calls it inside a record call, which cannot wait. Throws
    *  when the directory cannot be made. */
-  export function openDirectory(options: DirectoryOptions): void {
+  export const openDirectory = (options: DirectoryOptions): void => {
     detach()
     warned = false
     maxFileBytes = options.maxFileBytes ?? MAX_FILE_BYTES
@@ -381,7 +381,7 @@ export namespace DebugLog {
    *  rule of that file (tier, volume, roll) is applied once, where it is written.
    *  The tier is also checked here, so a record the level drops never crosses
    *  the thread boundary. */
-  export async function forward(send: (input: DebugLogRecordInput) => void): Promise<void> {
+  export const forward = async (send: (input: DebugLogRecordInput) => void): Promise<void> => {
     await close()
     detach()
     warned = false
@@ -391,7 +391,7 @@ export namespace DebugLog {
   /** Whether the verbose diagnostic families are written. `Log.init` ties this
    *  to the DEBUG level, so one control turns on both `log.debug` records and
    *  the per-event fact families rather than two unrelated knobs. */
-  export function setVerbose(enabled: boolean): void {
+  export const setVerbose = (enabled: boolean): void => {
     verbose = enabled
   }
 
@@ -423,7 +423,7 @@ export namespace DebugLog {
    *  so a producer never chooses its own verbosity and an undeclared family
    *  stays quiet. The check runs before serialization: a dropped record costs
    *  a map lookup, not a JSON encode. */
-  export function record(input: DebugLogRecordInput): void {
+  export const record = (input: DebugLogRecordInput): void => {
     if (!passesTier(input, verbose)) return
     if (forwardRecord) {
       try {
@@ -472,7 +472,7 @@ export namespace DebugLog {
    *  marked file names, already marked ones included, so the caller's exit
    *  record can name them. A file that cannot be renamed keeps its ordinary
    *  name and is not returned. */
-  export function markUnexpectedExit(logDir: string, pid: number, openedBefore?: number): string[] {
+  export const markUnexpectedExit = (logDir: string, pid: number, openedBefore?: number): string[] => {
     let names: string[]
     try {
       names = readdirSync(logDir)
@@ -504,7 +504,7 @@ export namespace DebugLog {
   /** End the sink: its file closes at once, and the returned promise settles
    *  when every retention sweep it started has finished, so no sweep outlives
    *  it. Records have no destination until the next init or forward. */
-  export async function close(): Promise<void> {
+  export const close = async (): Promise<void> => {
     detach()
     await sweeps.settled()
   }

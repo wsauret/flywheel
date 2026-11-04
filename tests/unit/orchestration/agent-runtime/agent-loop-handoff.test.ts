@@ -22,7 +22,9 @@ function batch(outcome: ToolResultEntry["outcome"], errorText = "schema mismatch
 
 describe("createHandoffTracker", () => {
   test("decides each handoff once at stream start and admits only a later response's correction after closing", () => {
-    let block = true, reads = 0, admissions = 0;
+    let block = true;
+    let reads = 0;
+    let admissions = 0;
     const tracker = createHandoffTracker({
       background: {
         assertHandoffReady() { reads++; return block ? { active: 1, pending: 0, services: 0, activeDescriptions: ["review"], pendingDescriptions: [], serviceDescriptions: [] } : null; },

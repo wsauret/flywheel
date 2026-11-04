@@ -190,7 +190,7 @@ async function selectProvider(verb: string, providers: readonly CredentialProvid
   while (true) {
     const answer = await deps.prompt(question)
     if (answer === "q" || answer === "") throw new PromptCancelled("no-answer")
-    const selected = /^\d+$/.test(answer) ? providers[Number.parseInt(answer, 10) - 1] : undefined
+    const selected = /^\d+$/.test(answer) ? providers[Number(answer) - 1] : undefined
     if (selected !== undefined) return selected.id
     question = `${answer} is not a choice. Enter a number from 1 to ${providers.length} (or q to cancel): `
   }

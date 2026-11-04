@@ -607,7 +607,7 @@ class PosixContainedDirectory implements ContainedDirectoryContract {
 
   renameInto(name: string, target: ContainedDirectoryContract, targetName: string): void {
     if (!(target instanceof PosixContainedDirectory)) {
-      throw new Error("contained directories must use the same platform backend");
+      throw new TypeError("contained directories must use the same platform backend");
     }
     const libc = descriptorCalls();
     if (libc.renameat(this.#fd, componentBuffer(name), target.#fd, componentBuffer(targetName)) < 0) {

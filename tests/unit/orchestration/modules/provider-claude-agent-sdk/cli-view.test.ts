@@ -44,12 +44,7 @@ describe("the CLI view of a request", () => {
   test("removes cache marks and splits out every Flywheel reminder at its position", () => {
     const reminders = createClaudeReminders("claude-sonnet-5-5", 1_000_000);
     const history: ConversationMessage[] = [{ kind: "user", origin: "human", content: "Read a." }];
-    history.push(...reminders(history, "/work/project"));
-    history.push(
-      { kind: "assistant", content: [{ type: "text", text: "Reading." }, { type: "tool_use", id: "toolu_1", name: "read", input: { path: "a" } }] },
-      { kind: "toolResult", toolUseId: "toolu_1", content: [{ type: "text", text: "A." }] },
-      { kind: "user", origin: "human", content: "Then b." },
-    );
+    history.push(...reminders(history, "/work/project"), { kind: "assistant", content: [{ type: "text", text: "Reading." }, { type: "tool_use", id: "toolu_1", name: "read", input: { path: "a" } }] }, { kind: "toolResult", toolUseId: "toolu_1", content: [{ type: "text", text: "A." }] }, { kind: "user", origin: "human", content: "Then b." });
     const { params, origins } = prepared(history);
     // The shared projection gives a call from another provider a wire id of its own.
     const callId = JSON.stringify(params.messages).match(/"(call_toolu_1_[0-9a-f]+)"/u)?.[1] ?? "no projected call id";
@@ -81,7 +76,8 @@ describe("the CLI view of a request", () => {
     const reminders = createClaudeReminders("claude-sonnet-5-5", 200_000);
     const history: ConversationMessage[] = [{ kind: "user", origin: "human", content: "Start." }];
     history.push(...reminders(history, "/work/one"), { kind: "assistant", content: "Ok." }, { kind: "user", origin: "human", content: "Move." });
-    history.push(...reminders(history, "/work/two (was here)"));
+    const moved = reminders(history, "/work/two (was here)");
+    history.push(...moved);
     const view = preparedView(history);
 
     expect(view.identity.cwd).toBe("/work/two (was here)");

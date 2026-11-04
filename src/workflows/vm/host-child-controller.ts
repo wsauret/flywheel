@@ -48,7 +48,7 @@ export function createWorkflowHostChildController<A, E>(): WorkflowHostChildCont
     const settled = new Promise<void>((resolve) => { settle = resolve })
     unsettled.add(settled)
     const child = Effect.callback<A, E>((resume, signal) => {
-      start(signal).then(
+      void start(signal).then(
         (value) => resume(Effect.succeed(value)),
         (error) => resume(Effect.fail(mapError(error))),
       ).finally(() => {

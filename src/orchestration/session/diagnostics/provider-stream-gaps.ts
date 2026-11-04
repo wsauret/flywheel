@@ -400,10 +400,7 @@ export function formatStreamGapReport(report: StreamGapReport, options: { json: 
   if (options.json) return JSON.stringify(report)
 
   const lines: string[] = []
-  lines.push(`stream gap analysis over ${report.requests} request(s) (${report.rawRequests} raw, ${report.summarizedRequests} summarized) in ${report.dbPath}`)
-  lines.push("")
-  lines.push("warmup (request sent -> first visible token):")
-  lines.push(`  ${formatStatsLine(report.warmup)}`)
+  lines.push(`stream gap analysis over ${report.requests} request(s) (${report.rawRequests} raw, ${report.summarizedRequests} summarized) in ${report.dbPath}`, "", "warmup (request sent -> first visible token):", `  ${formatStatsLine(report.warmup)}`)
   for (const { provider, stats } of report.warmupByProvider) {
     lines.push(`    ${provider.padEnd(9)} ${formatStatsLine(stats)}`)
   }
@@ -414,16 +411,12 @@ export function formatStreamGapReport(report: StreamGapReport, options: { json: 
         `${count} turns (${(clusterShare * 100).toFixed(1)}%), likely a fixed timeout/retry, not server latency`,
     )
   }
-  lines.push("")
-  lines.push("inter-delta gaps (visible delta -> next visible delta, same stream):")
-  lines.push(`  ${formatStatsLine(report.interDelta)}`)
+  lines.push("", "inter-delta gaps (visible delta -> next visible delta, same stream):", `  ${formatStatsLine(report.interDelta)}`)
   if (report.bigGapTransitions.length > 0) {
     lines.push(`  transitions straddled by gaps >= ${formatDuration(BIG_GAP_MS)}:`)
     for (const { transition, count } of report.bigGapTransitions) lines.push(`    ${count}× ${transition}`)
   }
-  lines.push("")
-  lines.push("watchdog stalls (silence the watchdog flagged):")
-  lines.push(`  ${formatStatsLine(report.watchdogStalls)}`)
+  lines.push("", "watchdog stalls (silence the watchdog flagged):", `  ${formatStatsLine(report.watchdogStalls)}`)
   return lines.join("\n")
 }
 

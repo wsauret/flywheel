@@ -171,7 +171,7 @@ describe("MCP stdio integration", () => {
     const pidResult = await first.callTool({ name: "child_pid" });
     const pidPart = pidResult.content[0];
     if (!pidPart || pidPart.type !== "text") throw new Error("fixture did not return its child pid");
-    const descendantPid = Number.parseInt(pidPart.text, 10);
+    const descendantPid = Number(pidPart.text);
     strayPids.add(descendantPid);
     expect(processExists(descendantPid)).toBe(true);
 
@@ -186,7 +186,7 @@ describe("MCP stdio integration", () => {
     const secondPidResult = await second.callTool({ name: "child_pid" });
     const secondPidPart = secondPidResult.content[0];
     if (!secondPidPart || secondPidPart.type !== "text") throw new Error("fixture did not return its second child pid");
-    const secondDescendantPid = Number.parseInt(secondPidPart.text, 10);
+    const secondDescendantPid = Number(secondPidPart.text);
     strayPids.add(secondDescendantPid);
     let disposed = false;
     const disposal = manager.dispose().then(() => { disposed = true; });

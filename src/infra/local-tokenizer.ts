@@ -19,11 +19,11 @@ const Encoding = {
   ClaudeV5Sonnet: 4,
 } as const
 
-type Encoding = (typeof Encoding)[keyof typeof Encoding]
+type EncodingId = (typeof Encoding)[keyof typeof Encoding]
 
 const ENCODING_IDENTITIES = ["O200kBase", "ClaudeV3", "ClaudeV47", "ClaudeV5", "ClaudeV5Sonnet"] as const
 
-export type LocalTokenizerIdentity = (typeof ENCODING_IDENTITIES)[Encoding]
+export type LocalTokenizerIdentity = (typeof ENCODING_IDENTITIES)[EncodingId]
 
 export interface LocalTokenizer {
   readonly identity: LocalTokenizerIdentity
@@ -59,9 +59,9 @@ const CLAUDE_ENCODINGS = {
   ClaudeV47: Encoding.ClaudeV47,
   ClaudeV5: Encoding.ClaudeV5,
   ClaudeV5Sonnet: Encoding.ClaudeV5Sonnet,
-} as const satisfies Readonly<{ [Identity in ClaudeTokenizerIdentity]: Encoding }>
+} as const satisfies Readonly<{ [Identity in ClaudeTokenizerIdentity]: EncodingId }>
 
-function encodingForCanonicalModel(model: string, claudeIdentity?: ClaudeTokenizerIdentity): Encoding | undefined {
+function encodingForCanonicalModel(model: string, claudeIdentity?: ClaudeTokenizerIdentity): EncodingId | undefined {
   if (claudeIdentity) return CLAUDE_ENCODINGS[claudeIdentity]
   return O200K_MODEL_ENCODINGS.some((pattern) => pattern.test(model)) ? Encoding.O200k : undefined
 }
@@ -132,7 +132,7 @@ export function commonLocalTokenizer(): LocalTokenizer {
   return tokenizerForEncoding(Encoding.O200k)
 }
 
-function tokenizerForEncoding(encoding: Encoding): LocalTokenizer {
+function tokenizerForEncoding(encoding: EncodingId): LocalTokenizer {
   if (!tokenizer) throw new Error("Local tokenizer is not prepared")
   const engine = tokenizer
   return {

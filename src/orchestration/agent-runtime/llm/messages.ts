@@ -53,5 +53,4 @@ export function isSameAccessProviderReplay(
   return message.accessProvider === options.accessProvider;
 }
 
-import type { LlmToolOutputPart } from "../../../infra/llm/tool-output-part-schema.js";
-export type { LlmToolOutputPart };
+export type { LlmToolOutputPart } from "../../../infra/llm/tool-output-part-schema.js";

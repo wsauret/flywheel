@@ -191,8 +191,7 @@ describe("commit window", () => {
     expect(projection.getState().positions).toEqual(expected)
     // A lost broadcast below a later one: the later one shows the gap.
     dropNextStored()
-    expected.push((await client.writer.append(appendOf("session:s"))).position)
-    expected.push((await client.writer.append(appendOf("session:s"))).position)
+    expected.push((await client.writer.append(appendOf("session:s"))).position, (await client.writer.append(appendOf("session:s"))).position)
     requests()
     await projection.replay()
     expect(projection.getState().positions).toEqual(expected)

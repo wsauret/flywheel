@@ -21,6 +21,7 @@ export function createInputReload(options: {
     let committed = false
     try {
       await options.prepare()
+      // oxlint-disable-next-line no-unreachable-loop -- false positive: `continue` repeats this loop, which oxlint misreads inside a try with catch and finally
       for (;;) {
         await options.settled()
         if (options.signal?.aborted) return

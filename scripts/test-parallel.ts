@@ -504,7 +504,7 @@ async function main(): Promise<void> {
   // every band for longer than a hang would take here, so it sets
   // TEST_HANG_GUARD_SECONDS.
   const hangGuardMs = hangGuardSeconds * 1000;
-  const hangGuard = setTimeout(() => void (async () => {
+  const hangGuard = setTimeout(() => { void (async () => {
     hung = true;
     process.stderr.write(`\nTest execution passed ${hangGuardSeconds} seconds, which only a hung or stalled shard can do on a development machine. On a machine with fewer or slower cores, set TEST_HANG_GUARD_SECONDS to allow more time. Unfinished shards:\n`);
     const killed = [...shardProcs];
@@ -538,7 +538,7 @@ async function main(): Promise<void> {
         process.exit(1);
       }
     }
-  })(), hangGuardMs);
+  })() }, hangGuardMs);
 
   const results = await runTestBands<ShardResult>(
     bands, shardCount, async (shardFiles, bandIndex, index) => {

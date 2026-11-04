@@ -100,7 +100,8 @@ export function mergeLcov(chunks: readonly string[], root: string): CoverageLine
       else if (path && entry.startsWith("DA:")) {
         const match = /^DA:(\d+),(\d+)(?:,\S+)?$/.exec(entry);
         if (!match || Number(match[1]) < 1) throw new Error(`Invalid LCOV line: ${entry}`);
-        const file = (lines[path] ??= {});
+        const file = lines[path] ?? {};
+        lines[path] = file;
         file[match[1]!] ||= Number(match[2]) > 0;
       }
     }

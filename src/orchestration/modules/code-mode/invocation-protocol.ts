@@ -24,27 +24,27 @@ const GuestLimits = Schema.Struct({
   heapSampleMs: Schema.Number,
 })
 
-export const CallReply = Schema.Union([
+const CallReplySchema = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("ok"), outcome: Schema.Literals(TOOL_OUTCOME_VALUES), content: Schema.String }),
   Schema.Struct({ kind: Schema.Literal("refused"), message: Schema.String }),
 ])
-export type CallReply = typeof CallReply.Type
+export type CallReply = typeof CallReplySchema.Type
 
-export const HostMessage = Schema.Union([
+export const HostMessageSchema = Schema.Union([
   Schema.Struct({ type: Schema.Literal("start"), source: Schema.String, descriptors: Schema.Array(Descriptor), limits: GuestLimits }),
-  Schema.Struct({ type: Schema.Literal("call-result"), id: Schema.Number, reply: CallReply }),
+  Schema.Struct({ type: Schema.Literal("call-result"), id: Schema.Number, reply: CallReplySchema }),
   /** Drops the ended invocation's state, collects the Worker's heap, and
    *  takes the heap baseline the next invocation measures against. */
   Schema.Struct({ type: Schema.Literal("reset") }),
 ])
-export type HostMessage = typeof HostMessage.Type
+export type HostMessage = typeof HostMessageSchema.Type
 
 /** How a program ended. Only `returned` leaves a Worker the host may reuse:
  *  the program ran to its own result or diagnostic. `heap-limit` means the
  *  heap watchdog stopped it, and `crashed` means the guest runtime failed. */
 const Ending = Schema.Literals(["returned", "heap-limit", "crashed"])
 
-export const GuestMessage = Schema.Union([
+export const GuestMessageSchema = Schema.Union([
   /** Console lines the guest newly retained, in order, and the current
    *  drop marker once the retention budget has dropped a line. */
   Schema.Struct({ type: Schema.Literal("log"), lines: Schema.Array(Schema.String), dropped: Schema.optionalKey(Schema.String) }),
@@ -55,4 +55,4 @@ export const GuestMessage = Schema.Union([
    *  baseline of the Worker's next invocation. */
   Schema.Struct({ type: Schema.Literal("ready"), heapBytes: Schema.Number }),
 ])
-export type GuestMessage = typeof GuestMessage.Type
+export type GuestMessage = typeof GuestMessageSchema.Type

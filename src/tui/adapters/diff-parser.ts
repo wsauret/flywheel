@@ -53,10 +53,10 @@ export function parseUnifiedDiff(diffStr: string, limit: number): ParsedHunks {
       if (current) hunks.push(current)
       current = renderedLines < limit
         ? {
-          oldStart: Number.parseInt(oldStart, 10),
-          oldLines: Number.parseInt(oldLines ?? "1", 10),
-          newStart: Number.parseInt(newStart, 10),
-          newLines: Number.parseInt(newLines ?? "1", 10),
+          oldStart: Number(oldStart),
+          oldLines: Number(oldLines ?? "1"),
+          newStart: Number(newStart),
+          newLines: Number(newLines ?? "1"),
           lines: [],
         }
         : undefined

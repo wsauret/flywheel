@@ -267,8 +267,7 @@ function tableLines(view: FrontendExperimentView, width: number, { fg, bold, fit
     headerLine.push(fg("muted", sm.name.padEnd(colW)))
   }
   headerLine.push(fg("muted", "status".padEnd(col.status)), fg("muted", "description"))
-  lines.push(fit(headerLine))
-  lines.push(fit([fg("borderMuted", `  ${"─".repeat(Math.max(0, width - 4))}`)]))
+  lines.push(fit(headerLine), fit([fg("borderMuted", `  ${"─".repeat(Math.max(0, width - 4))}`)]))
 
   // Baseline values for delta display (current segment only)
   const baselinePrimary = findBaselineMetric(results, segment)

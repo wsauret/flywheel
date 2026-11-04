@@ -42,10 +42,10 @@ export function RemoteSheet() {
               <Show when={remote().lingerOffFor}>{(user) => <span class="remote-notice warn">{lingerNotice(user())}</span>}</Show>
             </>}>
               <Show when={allowed("remote.process_initiation.set")}>
-                <button class="secondary" aria-busy={working("remote.process_initiation.set") || undefined} onClick={() => void mutate({ type: "remote.process_initiation.set", enabled: processInitiation() !== "on" }, processInitiation() === "unavailable")}>{processInitiation() === "unavailable" && working("remote.process_initiation.set") ? "Repairing…" : processInitiation() === "unavailable" ? "Repair" : processInitiation() === "on" ? "Turn off" : "Turn on"}</button>
+                <button class="secondary" aria-busy={working("remote.process_initiation.set") || undefined} onClick={() => { void mutate({ type: "remote.process_initiation.set", enabled: processInitiation() !== "on" }, processInitiation() === "unavailable") }}>{processInitiation() === "unavailable" && working("remote.process_initiation.set") ? "Repairing…" : processInitiation() === "unavailable" ? "Repair" : processInitiation() === "on" ? "Turn off" : "Turn on"}</button>
               </Show>
             </SheetRow>}</Show>
-            <Show when={allowed("remote.pair.open")}><button class="secondary" aria-busy={working("remote.pair.open") || undefined} onClick={() => void mutate({ type: "remote.pair.open" })}>Pair a device</button></Show>
+            <Show when={allowed("remote.pair.open")}><button class="secondary" aria-busy={working("remote.pair.open") || undefined} onClick={() => { void mutate({ type: "remote.pair.open" }) }}>Pair a device</button></Show>
             <div class="sheet-section">Paired devices</div>
             <Show when={remote().devices.length > 0} fallback={<SheetEmpty>No paired devices.</SheetEmpty>}>
               <Key each={remote().devices} by="id">{(device) => <SheetRow label={
@@ -68,7 +68,7 @@ export function RemoteSheet() {
           </>
         }>{(pairing) => <>
           <PairingCode code={pairing().code} expiresAt={pairing().expiresAt} />
-          <Show when={allowed("remote.pair.cancel")}><button class="secondary" aria-busy={working("remote.pair.cancel") || undefined} onClick={() => void mutate({ type: "remote.pair.cancel" })}>Cancel pairing</button></Show>
+          <Show when={allowed("remote.pair.cancel")}><button class="secondary" aria-busy={working("remote.pair.cancel") || undefined} onClick={() => { void mutate({ type: "remote.pair.cancel" }) }}>Cancel pairing</button></Show>
         </>}</Show>}
       </Show>
     </Sheet>

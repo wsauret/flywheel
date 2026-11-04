@@ -51,7 +51,7 @@ function resolves(repoRoot: string, cited: string): boolean {
   const pattern = bare.replace(/<[^>]+>/g, "*");
   if (pattern.includes("*")) {
     const glob = new Bun.Glob(pattern);
-    for (const _match of glob.scanSync({ cwd: repoRoot })) return true;
+    if (!glob.scanSync({ cwd: repoRoot }).next().done) return true;
     // A glob over directories (e.g. `src/foo/*/`) is not matched by file
     // scanning; accept it when its static prefix exists.
     const staticPrefix = pattern.slice(0, pattern.indexOf("*"));

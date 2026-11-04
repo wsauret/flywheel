@@ -17,13 +17,13 @@ function bypassesProxy(target: URL, environment: ProxyEnvironment): boolean {
 	if (!noProxy) return false;
 	if (noProxy.trim() === "*") return true;
 	const protocol = target.protocol.slice(0, -1);
-	const port = Number.parseInt(target.port, 10) || DEFAULT_PORTS[protocol] || 0;
+	const port = Number(target.port) || DEFAULT_PORTS[protocol] || 0;
 	const hostname = target.hostname.toLowerCase();
 	return noProxy.split(/[,\s]+/).some((entry) => {
 		if (!entry) return false;
 		const match = entry.match(/^(.+):(\d+)$/);
 		const entryHostname = (match?.[1] ?? entry).replace(/^\*/, "");
-		const entryPort = match?.[2] ? Number.parseInt(match[2], 10) : 0;
+		const entryPort = match?.[2] ? Number(match[2]) : 0;
 		if (entryPort && entryPort !== port) return false;
 		if (entryHostname.startsWith(".")) return hostname.endsWith(entryHostname) || hostname === entryHostname.slice(1);
 		return hostname === entryHostname;

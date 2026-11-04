@@ -33,6 +33,7 @@ function expectSanitizedAtEveryBoundary(control: string): void {
     const sanitizer = createStreamingSanitizer((text) => { output += text; });
     const raw = `before${control}after`;
     sanitizer.push(raw.slice(0, "before".length + split));
+    // oxlint-disable-next-line unicorn/prefer-single-call -- the sanitizer takes one chunk per call, so each call is one stream boundary
     sanitizer.push(raw.slice("before".length + split));
     sanitizer.finish();
     expect(output).toBe("beforeafter");

@@ -4,7 +4,7 @@ import { embeddedEntrySpecifier, runsThroughBun } from "../../../infra/cli-subpr
 import { DebugLog } from "../../../infra/debug-log.js"
 import { trackLoopSpan } from "../../../infra/event-loop-lag.js"
 import { terminateWorker } from "../../../infra/worker-termination.js"
-import { GuestMessage, type HostMessage } from "./invocation-protocol.js"
+import { GuestMessageSchema, type HostMessage } from "./invocation-protocol.js"
 
 /** The host's view of one invocation Worker. A Bun `Worker` satisfies it,
  *  and a test can host the guest on its own thread behind it. */
@@ -109,7 +109,7 @@ function resetGuest(worker: InvocationWorker, timeoutMs: number): Promise<number
     resolve(heapBytes)
   }
   const onMessage = (event: MessageEvent): void => {
-    const decoded = Schema.decodeUnknownExit(GuestMessage)(event.data)
+    const decoded = Schema.decodeUnknownExit(GuestMessageSchema)(event.data)
     settle(Exit.isSuccess(decoded) && decoded.value.type === "ready" ? decoded.value.heapBytes : undefined)
   }
   const onEnd = (): void => settle(undefined)
