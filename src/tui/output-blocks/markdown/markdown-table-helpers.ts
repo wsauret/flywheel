@@ -1,6 +1,6 @@
 import type { BorderCharacters, TextChunk } from "@opentui/core"
 import type { Token, Tokens } from "marked"
-import stringWidth from "string-width"
+import { displayWidth } from "@tui/utils/text.js"
 import { BOLD } from "@tui/utils/text-attributes.js"
 import { renderMarkdownToken, plainOf } from "./format-token.js"
 import type { MarkdownStyles } from "./markdown-styles.js"
@@ -124,7 +124,7 @@ function columnSpec(token: Tokens.Table, col: number, cells: TableCell[]): Colum
   let maxContentWidth = MIN_COLUMN_WIDTH
   for (const cell of cells) {
     minContentWidth = Math.max(minContentWidth, longestWordWidth(cell.plain))
-    maxContentWidth = Math.max(maxContentWidth, stringWidth(cell.plain))
+    maxContentWidth = Math.max(maxContentWidth, displayWidth(cell.plain))
   }
 
   const protectedContent = Math.min(maxContentWidth, COLUMN_MIN_CONTENT_CAP)
@@ -155,7 +155,7 @@ function bodyAlign(align: TableColumnAlign): TableCellAlign {
 function longestWordWidth(text: string): number {
   let max = 0
   for (const word of text.split(/\s+/)) {
-    if (word.length > 0) max = Math.max(max, stringWidth(word))
+    if (word.length > 0) max = Math.max(max, displayWidth(word))
   }
   return max
 }
@@ -184,7 +184,7 @@ function projectedColumnWidths(model: TableModel, measuredContentWidth: number):
 function projectedLineCount(text: string, columnWidth: number): number {
   const width = Math.max(1, Math.floor(columnWidth))
   return text.split("\n").reduce((sum, line) => {
-    const lineWidth = stringWidth(line)
+    const lineWidth = displayWidth(line)
     return sum + Math.max(1, Math.ceil(lineWidth / width))
   }, 0)
 }

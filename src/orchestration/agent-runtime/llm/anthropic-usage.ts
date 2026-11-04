@@ -71,13 +71,12 @@ export function foldAnthropicMessageDeltaUsage(u: Anthropic.RawMessageDeltaEvent
   if (u.input_tokens != null) c.input = u.input_tokens;
   if (u.cache_read_input_tokens != null) c.cacheRead = u.cache_read_input_tokens;
   if (u.cache_creation_input_tokens != null) c.cacheCreate = u.cache_creation_input_tokens;
-  // The 1h cache-write split and the thinking-token subset ride the final
-  // message_delta usage; the SDK's MessageDeltaUsage declares neither field
-  // (pi `anthropic-messages.ts:582,:731-738`).
-  // SAFETY: narrow read of beta wire fields the SDK type omits; cache
+  // The 1h cache-write split rides the final message_delta usage; the SDK's
+  // MessageDeltaUsage does not declare it (pi `anthropic-messages.ts:582`).
+  // SAFETY: narrow read of a beta wire field the SDK type omits; cache
   // creation is normalized at this boundary before it supplies retention evidence.
-  // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: Anthropic beta usage fields are absent from the external SDK type
-  const extra = u as { cache_creation?: unknown; output_tokens_details?: { thinking_tokens?: number } | null };
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: the Anthropic beta cache_creation usage field is absent from the external SDK type
+  const extra = u as { cache_creation?: unknown };
   foldAnthropicCacheCreation(extra.cache_creation, c);
-  if (extra.output_tokens_details?.thinking_tokens != null) c.reasoning = extra.output_tokens_details.thinking_tokens;
+  if (u.output_tokens_details?.thinking_tokens != null) c.reasoning = u.output_tokens_details.thinking_tokens;
 }

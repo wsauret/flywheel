@@ -3,7 +3,7 @@ import { testRender } from "@opentui/solid"
 import { TextRenderable, type Renderable } from "@opentui/core"
 import { createSignal, type Accessor } from "solid-js"
 import { createComponent } from "solid-js/web"
-import stringWidth from "string-width"
+import { displayWidth } from "../../../src/tui/utils/text.js"
 import type { ModuleRow } from "../../../src/protocol/protocol-module.js"
 import type { RuntimeIdentity } from "../../../src/protocol/client/runtime-identity.js"
 import type { UpdateStatusView } from "../../../src/protocol/update-protocol-types.js"
@@ -100,7 +100,7 @@ describe("SessionIntroBlock", () => {
     const narrow = await renderSessionIntroSpans({ releaseNotice: () => notice, availableWidth: 28, frameWidth: 40, frameHeight: 32, tabsHintDismissed: true, fontTipDismissed: () => true })
     const lines = narrow.frame.split("\n").map((line) => line.trimEnd())
     expect(narrow.links).toContain(notice.url)
-    for (const line of lines.slice(lines.findIndex((candidate) => candidate.includes("Updated to")))) expect(stringWidth(line.trimStart())).toBeLessThanOrEqual(28)
+    for (const line of lines.slice(lines.findIndex((candidate) => candidate.includes("Updated to")))) expect(displayWidth(line.trimStart())).toBeLessThanOrEqual(28)
   })
 
   it("updates module counts and command affordances on the same renderable", async () => {
@@ -220,7 +220,7 @@ describe("SessionIntroBlock", () => {
 
     expect(hintLines.length).toBeGreaterThan(1)
     for (const line of hintLines) {
-      expect(stringWidth(line.trimStart())).toBeLessThanOrEqual(28)
+      expect(displayWidth(line.trimStart())).toBeLessThanOrEqual(28)
     }
   })
 
@@ -250,7 +250,7 @@ describe("SessionIntroBlock", () => {
     const row = frame.split("\n").find((line) => line.includes("papercuts:"))
 
     expect(row).toBeDefined()
-    expect(stringWidth((row?.split("│")[1] ?? "").trimEnd())).toBeLessThanOrEqual(26)
+    expect(displayWidth((row?.split("│")[1] ?? "").trimEnd())).toBeLessThanOrEqual(26)
     expect(row).toContain("/papercuts")
   })
 })

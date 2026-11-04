@@ -80,6 +80,10 @@ describe("createSlashSuggestions ranking", () => {
     withHook("/review", (hook) => {
       expect(hook.matches().map((m) => m.value)).toContain("/diff")
     })
+    // A loose abbreviation of the title is a weak match, and still offered.
+    withHook("/rvc", (hook) => {
+      expect(hook.matches().map((m) => m.value)).toEqual(["/diff"])
+    })
   })
 })
 

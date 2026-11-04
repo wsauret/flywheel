@@ -22,6 +22,9 @@ export function filterOptions<T>(
         // SAFETY: fuzzysort yields one Result per key, so the 3 keys above guarantee r[0..2] are present.
         return Math.max(title!.score * 2, footer!.score * 2) + category!.score
       },
+      // flattenWithCategories counts every match before it applies the row cap.
+      limit: 0,
+      threshold: 0,
     })
     .map((r) => r.obj)
 }

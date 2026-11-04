@@ -456,12 +456,12 @@ describe("the bridge request machine", () => {
 
   test("a model refusal ends the request at the service's refusal stop reason, as on native, and the CLI's error report of it is no failure", () => withBridge(async ({ ops, queries }) => {
     const first = await send(ops, request([U1]));
-    const stopDetails: BetaRefusalStopDetails = { type: "refusal", category: "cyber", explanation: "This request was flagged." };
+    const stopDetails: BetaRefusalStopDetails = { type: "refusal", category: "cyber", explanation: "This request was flagged.", fallback_credit_token: null, fallback_has_prefill_claim: null, recommended_model: null };
     // CLI 2.1.295 announces the refusal and reports it as an API error before it forwards the stream's stop reason.
     queries[0]?.emit(init, ...admittedStart(), ...text(0, "I can"), { type: "system", subtype: "model_refusal_no_fallback", original_model: "claude-haiku-5-5", request_id: null, content: "", ...ENVELOPE },
       assistantError("invalid_request", "API Error: Haiku 5.5's safeguards flagged this message."),
       event({ type: "message_delta", context_management: null, delta: { stop_reason: "refusal", stop_sequence: null, container: null, stop_details: stopDetails },
-        usage: { output_tokens: 5, input_tokens: null, cache_read_input_tokens: null, cache_creation_input_tokens: null, iterations: null, server_tool_use: null } }), messageStop,
+        usage: { output_tokens: 5, input_tokens: null, cache_read_input_tokens: null, cache_creation_input_tokens: null, iterations: null, fallback_credit: null, output_tokens_details: null, server_tool_use: null } }), messageStop,
       turnResult({ is_error: true, api_error_status: null, terminal_reason: "api_error", stop_reason: "refusal", result: "API Error: Haiku 5.5's safeguards flagged this message." }));
 
     expect(await first.error).toBeUndefined();

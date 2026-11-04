@@ -20,7 +20,7 @@ import { dashedModelId } from "../../../infra/llm/model-id.js";
 import { computeUsagePrice, createModelInfoCache } from "../../../infra/llm/llm-helpers.js";
 import { providerRequestHeaders } from "../../../infra/llm/provider-request-identity.js";
 import type { ModelInfo, ModelsClient, ReasoningEffort } from "../../../infra/llm/models.js";
-import { ANTHROPIC_RESERVED_BODY_KEYS, applyProviderExtraBody } from "../../../infra/llm/provider-options.js";
+import { ANTHROPIC_RESERVED_BODY_KEYS, applyProviderExtraBody, type AnthropicThinkingDisplay } from "../../../infra/llm/provider-options.js";
 import { Log } from "../../../infra/log.js";
 import { ContextLengthExceededError, LlmStreamError, OutputLengthExceededError } from "./errors.js";
 import type { CompletedStopReason } from "./messages.js";
@@ -66,10 +66,18 @@ interface StringHeaders {
 interface AdditionalRequestFields {
   [key: string]: unknown;
 }
-type ThinkingConfig = Exclude<Anthropic.MessageCreateParamsStreaming["thinking"], undefined>;
-type AnthropicStreamRequest = Omit<Anthropic.MessageCreateParamsStreaming, "thinking" | "messages"> & {
-  thinking?: ThinkingConfig | { type: "adaptive"; display: "updates" } | { type: "enabled"; budget_tokens: number; display: "updates" };
+/** The thinking field that Flywheel sends. Its display also takes the `updates` value of the progress-updates beta,
+ *  which the SDK's non-beta type lacks. */
+type ThinkingConfig =
+  | { type: "adaptive"; display?: AnthropicThinkingDisplay }
+  | { type: "enabled"; budget_tokens: number; display?: AnthropicThinkingDisplay }
+  | Anthropic.ThinkingConfigDisabled;
+/** The request that Flywheel sends: the SDK's streaming request with Flywheel's own thinking field, messages, and
+ *  function tools. */
+type AnthropicStreamRequest = Omit<Anthropic.MessageCreateParamsStreaming, "thinking" | "messages" | "tools"> & {
+  thinking?: ThinkingConfig;
   messages: AnthropicWireMessage[];
+  tools?: Anthropic.Tool[];
 };
 type MutableRequestBody = AnthropicStreamRequest & AdditionalRequestFields;
 
@@ -243,12 +251,16 @@ export interface AnthropicOperations {
   preparedBlock?: PreparedBlockLocation;
 }
 
+/** The Messages API version that Flywheel states. SDK 1.x defaults to 2026-10-21, which rejects `top_p` and `top_k`
+ *  with a 400; a user's `extra_body` can still send them, so the request keeps the version that accepts them. */
+const ANTHROPIC_API_VERSION = "2023-06-01";
+
 export function operationsFromAnthropicClient(client: Anthropic): AnthropicOperations {
   return {
     async createStream(params, { signal, headers }) {
-      // SAFETY: the public updates beta extends display; this SDK predates its type declaration.
+      // SAFETY: the public updates beta extends display; the SDK declares that value only on its beta request type.
       // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: the SDK serializes the documented updates display unchanged.
-      const response = await client.messages.create(params as Anthropic.MessageCreateParamsStreaming, { signal, headers }).withResponse();
+      const response = await client.messages.create(params as Anthropic.MessageCreateParamsStreaming, { signal, headers: { ...headers, "anthropic-version": ANTHROPIC_API_VERSION } }).withResponse();
       return { data: response.data, response: response.response };
     },
     isBadRequestError: (error: Error): boolean => error instanceof Anthropic.BadRequestError,
@@ -279,8 +291,10 @@ export async function createAnthropicAdapter(
   },
 ): Promise<LLMClient> {
   const transport = resolveAdapterTransport({ client: overrides?.operations, resetIdleConnections: overrides?.resetIdleConnections });
+  // SDK 1.x sends `apiKey` as `Authorization: Bearer`; OpenCode Go rejects that with a 401, so the key keeps its
+  // `x-api-key` header. Null credentials stop the SDK from reading ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN.
   const operations = overrides?.operations ?? operationsFromAnthropicClient(
-    new Anthropic({ apiKey: Redacted.value(apiKey), maxRetries: 0, timeout: ANTHROPIC_SDK_HEADER_TIMEOUT_MS, fetch: transport.fetch, ...(overrides?.baseURL ? { baseURL: overrides.baseURL } : {}) }),
+    new Anthropic({ apiKey: null, authToken: null, defaultHeaders: { "x-api-key": Redacted.value(apiKey) }, maxRetries: 0, timeout: ANTHROPIC_SDK_HEADER_TIMEOUT_MS, fetch: transport.fetch, ...(overrides?.baseURL ? { baseURL: overrides.baseURL } : {}) }),
   );
   const accessProvider = overrides?.accessProvider ?? "anthropic_api";
   const extraHeaders = overrides?.extraHeaders;
@@ -425,7 +439,7 @@ export async function createAnthropicAdapter(
           const canonicalNames = new Map(descriptor.params.tools?.map((tool, index) => [tool.name, options.tools[index]?.name ?? tool.name]));
           // Keyed by the canonical name, so a call by the tool's own name, which the claude-agent-sdk engine takes as
           // an alias of the presented name, is read against the same schema.
-          const inputSchemas = new Map(descriptor.params.tools?.map((tool) => [canonicalNames.get(tool.name) ?? tool.name, "input_schema" in tool ? tool.input_schema : undefined]));
+          const inputSchemas = new Map(descriptor.params.tools?.map((tool) => [canonicalNames.get(tool.name) ?? tool.name, tool.input_schema]));
           const thinkingBuffers = new Map<number, { thinking: string; signature: string; redacted?: boolean }>();
           let receivedMessageStop = false;
           let stopReason: CompletedStopReason = "unknown";
@@ -659,7 +673,6 @@ function buildRequestTelemetryMetadata(
     toolCount,
     ...(thinking ? { thinkingType: thinking.type, thinkingBudget: thinking.type === "enabled" ? thinking.budget_tokens : undefined } : {}),
     ...(effort != null ? { effort } : {}),
-    ...(params.temperature !== undefined ? { temperature: params.temperature } : {}),
     ...(params.tool_choice ? { toolChoiceType: params.tool_choice.type } : {}),
   };
 }

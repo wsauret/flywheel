@@ -86,6 +86,7 @@ export function createProjectFiles(deps: ProjectFilesDeps): ProjectFilesService 
         // where it lives.
         scoreFn: (result) => Math.max((result[0]?.score ?? 0) * 2, result[1]?.score ?? 0),
         limit,
+        threshold: 0,
       })
       return { entries: ranked.map((result) => publicEntry(result.obj)), total: ranked.total }
     },

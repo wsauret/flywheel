@@ -253,9 +253,9 @@ describe("MarkdownBody copied text", () => {
 
   it("keeps the blank line after a heading that closes a full text segment", async () => {
     // The heading's own trailing blank line falls one line past a segment cut.
-    const run = Array.from({ length: TEXT_SEGMENT_LINES - 2 }, (_, i) => `line ${i}`)
-    const { rows, copied } = await dragCopy(`${run.join("\n")}\n# Heading\n\n\`\`\`\nzz\n\`\`\``)
-    expect(rows).toEqual([...run, "Heading", "", "", "zz"])
-    expect(copied).toBe([...run, "Heading", "", "", "zz"].join("\n"))
+    const run = Array.from({ length: TEXT_SEGMENT_LINES - 1 }, (_, i) => `line ${i}`)
+    const { rows, copied } = await dragCopy(`${run.join("\n")}\n# Heading\n\`\`\`\nzz\n\`\`\``)
+    expect(rows).toEqual([...run, "Heading", "", "zz"])
+    expect(copied).toBe([...run, "Heading", "", "zz"].join("\n"))
   })
 })

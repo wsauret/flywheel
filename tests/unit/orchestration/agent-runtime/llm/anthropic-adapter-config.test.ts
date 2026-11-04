@@ -476,5 +476,31 @@ describe("Anthropic adapter request configuration", () => {
     const beta = new Headers(lastCreateOptions?.headers).get("anthropic-beta") ?? "";
     expect(beta).not.toContain("fast-mode-2026-02-01");
   });
+
+  it("sends extra_body sampling parameters under the API version that accepts them", async () => {
+    const client = await createTestAnthropicAdapter("test-key", "claude-opus-4-6", stubModelsClient({ ...MODEL_INFO, id: "claude-opus-4-6" }));
+
+    await collect(client, { providerOptions: { anthropic: { extra_body: { top_p: 0.9, top_k: 5 } } } });
+
+    expect(lastCreateParams).toMatchObject({ top_p: 0.9, top_k: 5 });
+    expect(lastCreateOptions?.headers.get("anthropic-version")).toBe("2023-06-01");
+  });
+
+  it("sends the API key as x-api-key, which an Anthropic-protocol proxy requires, and never as a bearer token", async () => {
+    const seen: Headers[] = [];
+    const server = Bun.serve({ port: 0, hostname: "127.0.0.1", fetch(request) {
+      seen.push(request.headers);
+      return Response.json({ type: "error", error: { type: "invalid_request_error", message: "captured" } }, { status: 400 });
+    } });
+    try {
+      const client = await createAnthropicAdapter(Redacted.make("proxy-key"), "claude-opus-4-6", stubModelsClient(), { resolvedModelMetadata: MODEL_INFO, baseURL: `http://127.0.0.1:${server.port}` });
+      await collect(client).catch(() => {});
+    } finally {
+      await server.stop(true);
+    }
+
+    expect(seen[0]?.get("x-api-key")).toBe("proxy-key");
+    expect(seen[0]?.get("authorization")).toBeNull();
+  });
 });
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";

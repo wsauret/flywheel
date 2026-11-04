@@ -109,7 +109,7 @@ describe("useSessionModal catalog lifecycle", () => {
     }
   })
 
-  it("matches the full catalog before applying the 200-row cap", () => {
+  it("matches the full catalog, weak matches included, before applying the 200-row cap", () => {
     createRoot((dispose) => {
       try {
         const sessions = Array.from({ length: 250 }, (_, index) => session({
@@ -126,6 +126,8 @@ describe("useSessionModal catalog lifecycle", () => {
         hook.handleSessionFilter("Needle")
         expect(rowLabels(hook)).toEqual(["session-249"])
         expect(hook.modalCursor()).toBe(0)
+        hook.handleSessionFilter("ndt")
+        expect(rowLabels(hook)).toEqual(["session-249"])
         hook.handleSessionFilter("task")
         expect(hook.sessionModalResult().totalMatches).toBe(250)
         expect(hook.sessionModalResult().rows).toHaveLength(200)

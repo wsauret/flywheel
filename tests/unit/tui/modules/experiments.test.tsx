@@ -4,7 +4,7 @@ import { describe, expect, it } from "bun:test"
 import { testRender } from "@opentui/solid"
 import { TextRenderable, type Renderable } from "@opentui/core"
 import { createRoot, createSignal } from "solid-js"
-import stringWidth from "string-width"
+import { displayWidth } from "../../../../src/tui/utils/text.js"
 import type { AttachedRuntimeClient, FrontendEvent } from "../../../../src/protocol/app-service-types.js"
 import { moduleDomainReader } from "../../../../src/protocol/client/module-domain.js"
 import type { FrontendExperimentRun, FrontendExperimentView } from "../../../../src/protocol/modules/experiments.js"
@@ -127,7 +127,7 @@ describe("experiments terminal home", () => {
     expect(experimentsTui.surfaces.map((surface) => surface.id)).toEqual(["experiment-dashboard"])
     const [surface] = experimentsTui.surfaces
     for (const key of ["↑↓", "j/k", "pageup/pagedown", "u/d", "g/G", "esc", "q"]) expect(surface.controls[0]).toContain(key)
-    expect(stringWidth(surface.controls[0])).toBeLessThanOrEqual(modalCopyLimit(surface.width))
+    expect(displayWidth(surface.controls[0])).toBeLessThanOrEqual(modalCopyLimit(surface.width))
   })
 })
 
@@ -222,7 +222,7 @@ describe("ExperimentStrip", () => {
       const conf = spans.find((span) => span.text.includes("conf:"))
       expect(kept?.fg.equals(theme.accent)).toBe(true)
       expect(conf?.fg.equals(theme.success)).toBe(true)
-      for (const line of frame.split("\n")) expect(stringWidth(line)).toBeLessThanOrEqual(100)
+      for (const line of frame.split("\n")) expect(displayWidth(line)).toBeLessThanOrEqual(100)
     } finally {
       rendered.renderer.destroy()
     }
@@ -231,7 +231,7 @@ describe("ExperimentStrip", () => {
   it("fits every line at a narrow composer width", async () => {
     const rendered = await renderStrip(() => historyView, 48)
     try {
-      for (const line of rendered.captureCharFrame().split("\n")) expect(stringWidth(line)).toBeLessThanOrEqual(48)
+      for (const line of rendered.captureCharFrame().split("\n")) expect(displayWidth(line)).toBeLessThanOrEqual(48)
     } finally {
       rendered.renderer.destroy()
     }

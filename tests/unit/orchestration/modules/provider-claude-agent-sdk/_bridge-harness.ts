@@ -33,7 +33,7 @@ export const ENVELOPE = { uuid: "00000000-0000-4000-8000-000000000000", session_
 /** Usage and cost of a turn that served nothing, as an engine that spent nothing reports them. */
 const NO_USAGE: NonNullableUsage = {
   input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0,
-  cache_creation: { ephemeral_1h_input_tokens: 0, ephemeral_5m_input_tokens: 0 }, inference_geo: "", iterations: [], server_tool_use: { web_search_requests: 0, web_fetch_requests: 0 }, service_tier: "standard", speed: "standard",
+  cache_creation: { ephemeral_1h_input_tokens: 0, ephemeral_5m_input_tokens: 0 }, inference_geo: "", iterations: [], fallback_credit: null, output_tokens_details: { thinking_tokens: 0 }, server_tool_use: { web_search_requests: 0, web_fetch_requests: 0 }, service_tier: "standard", speed: "standard",
 };
 const TURN_TOTALS: Pick<SDKResultSuccess, "duration_ms" | "duration_api_ms" | "num_turns" | "stop_reason" | "total_cost_usd" | "usage" | "modelUsage" | "permission_denials"> = {
   duration_ms: 0, duration_api_ms: 0, num_turns: 1, stop_reason: null, total_cost_usd: 0, usage: NO_USAGE, modelUsage: {}, permission_denials: [],
@@ -82,7 +82,7 @@ export const turnDone = turnResult({ api_error_status: null, terminal_reason: "c
 
 export const messageStart = (cacheRead = 0) => event({ type: "message_start", message: { id: "msg", type: "message", role: "assistant", model: "claude-sonnet-5-5", content: [], stop_reason: null, stop_sequence: null,
   container: null, context_management: null, diagnostics: null, stop_details: null,
-  usage: { input_tokens: 10, output_tokens: 1, cache_read_input_tokens: cacheRead, cache_creation_input_tokens: 0, cache_creation: null, inference_geo: null, iterations: null, server_tool_use: null, service_tier: null, speed: null } } });
+  usage: { input_tokens: 10, output_tokens: 1, cache_read_input_tokens: cacheRead, cache_creation_input_tokens: 0, cache_creation: null, inference_geo: null, iterations: null, fallback_credit: null, output_tokens_details: null, server_tool_use: null, service_tier: null, speed: null } } });
 /** A model request that the gate admitted: the hook asks, then the request streams. */
 export const admittedStart = (cacheRead = 0): CliOutput[] => [REQUEST_STEP, messageStart(cacheRead)];
 export const text = (index: number, value: string) => [
@@ -97,7 +97,7 @@ export const toolUse = (index: number, id: string) => [
 ];
 export const stopReason = (reason: BetaStopReason | null) => event({
   type: "message_delta", context_management: null, delta: { stop_reason: reason, stop_sequence: null, container: null, stop_details: null },
-  usage: { output_tokens: 5, input_tokens: null, cache_read_input_tokens: null, cache_creation_input_tokens: null, iterations: null, server_tool_use: null },
+  usage: { output_tokens: 5, input_tokens: null, cache_read_input_tokens: null, cache_creation_input_tokens: null, iterations: null, fallback_credit: null, output_tokens_details: null, server_tool_use: null },
 });
 export const messageStop = event({ type: "message_stop" });
 export const ping = cliOnlyMessage({ type: "stream_event", parent_tool_use_id: null, event: { type: "ping" } });

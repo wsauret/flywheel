@@ -1,5 +1,5 @@
 import type { EffortLevel } from "@anthropic-ai/claude-agent-sdk";
-import type { Base64ImageSource, ContentBlockParam, URLImageSource } from "@anthropic-ai/sdk/resources/messages.js";
+import type { ContentBlockParam, ImageBlockParam } from "@anthropic-ai/sdk/resources/messages.js";
 import type { AnthropicOperations } from "../../agent-runtime/llm/anthropic.js";
 import { parseClaudeReminder, type ClaudeReminder } from "../../agent-runtime/llm/claude-reminders.js";
 import type { BlockOrigin, BlockOrigins } from "../../agent-runtime/llm/conversions/anthropic-messages.js";
@@ -12,7 +12,7 @@ export type BridgeRequest = Parameters<AnthropicOperations["createStream"]>[0];
 
 type CliResultBlock =
   | { readonly type: "text"; readonly text: string }
-  | { readonly type: "image"; readonly source: Base64ImageSource | URLImageSource };
+  | { readonly type: "image"; readonly source: ImageBlockParam["source"] };
 
 /** The blocks that the shared Anthropic projection sends, without cache marks. */
 export type CliBlock =
@@ -208,7 +208,7 @@ function cliBlock(block: ContentBlockParam): CliBlock {
 }
 
 function cliTool(tool: NonNullable<BridgeRequest["tools"]>[number]): CliTool {
-  if (!("input_schema" in tool) || !tool.name.startsWith(TOOL_MCP_PREFIX)) throw invalid(`the tool ${tool.name} is not a runtime MCP tool`);
+  if (!tool.name.startsWith(TOOL_MCP_PREFIX)) throw invalid(`the tool ${tool.name} is not a runtime MCP tool`);
   return { name: tool.name.slice(TOOL_MCP_PREFIX.length), description: tool.description ?? "", inputSchema: tool.input_schema };
 }
 

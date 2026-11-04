@@ -5,12 +5,11 @@ import { modalDisclosureHelp, modalDisclosureMarker } from "../components/modal-
 import { useTheme } from "@tui/context/theme"
 import { useModalDimensions } from "@tui/hooks/use-modal-dimensions"
 import { ModalFrame } from "@tui/components/modal-frame"
-import { truncateToWidth, useWrappedLineCount } from "@tui/utils/text"
+import { displayWidth, truncateToWidth, useWrappedLineCount } from "@tui/utils/text"
 import { createEffect, createMemo, createSignal, For, Match, onCleanup, Show, Switch } from "solid-js"
 import { ModalSelect } from "../components/modal-select.js"
 import type { FilteredResult } from "../components/modal-select-types.js"
 import { refusalReason, type SettingsView, type SettingsVisibleRow } from "../hooks/settings-modal-types.js"
-import stringWidth from "string-width"
 
 import { ModalFooter } from "../components/modal-footer.js"
 import { MODAL_CONTROL_COPY, MODAL_FRAME_WIDTHS } from "../components/modal-copy.js"
@@ -37,7 +36,7 @@ export function SettingsModal(props: SettingsModalProps) {
   const rowContentWidth = createMemo(() => Math.max(0, modalWidth() - 9))
   const visibleItems = createMemo<readonly SettingsVisibleRow[]>(() => props.view.kind === "list" ? props.view.rows : [])
   const valueColumn = createMemo(() => {
-    const widestLabel = Math.max(0, ...visibleItems().map((row) => row.kind === "separator" ? 0 : stringWidth(row.label) + (row.warning === undefined ? 0 : 4)))
+    const widestLabel = Math.max(0, ...visibleItems().map((row) => row.kind === "separator" ? 0 : displayWidth(row.label) + (row.warning === undefined ? 0 : 4)))
     return Math.min(widestLabel + 4, Math.max(4, rowContentWidth() - 7))
   })
   const title = createMemo(() => props.view.label === undefined ? KERNEL_COMMAND_NAMES.settings : `${KERNEL_COMMAND_NAMES.settings} › ${props.view.label}`)
@@ -204,8 +203,8 @@ function rowChunks(row: SettingsVisibleRow, active: boolean, theme: ReturnType<t
 
   const marker = stFg(active ? theme.primary : theme.textMuted)(active ? ">" : " ")
   const warning = row.warning === undefined ? "" : "[!] "
-  const label = truncateToWidth(row.label, Math.max(0, valueColumn - 4 - stringWidth(warning)))
-  const gap = " ".repeat(Math.max(2, valueColumn - 2 - stringWidth(warning) - stringWidth(label)))
+  const label = truncateToWidth(row.label, Math.max(0, valueColumn - 4 - displayWidth(warning)))
+  const gap = " ".repeat(Math.max(2, valueColumn - 2 - displayWidth(warning) - displayWidth(label)))
   const value = rowValue(row)
   const displayValue = row.kind === "cycle" && row.onStep !== undefined && refusalReason(row) === undefined ? `‹ ${value} ›` : value
 
