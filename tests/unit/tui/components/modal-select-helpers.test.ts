@@ -44,6 +44,11 @@ describe("filterOptions", () => {
     expect(result.length).toBe(1)
     expect(result[0]?.id).toBe("active")
   })
+
+  it("keeps every match so the row cap can count them", () => {
+    const large = Array.from({ length: 30 }, (_, i) => option(`opt-${i}`, `Option ${i}`))
+    expect(filterOptions(large, "opt")).toHaveLength(30)
+  })
 })
 
 describe("flattenWithCategories", () => {

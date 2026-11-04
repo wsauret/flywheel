@@ -554,6 +554,10 @@ function fuzzyRowsFor(sessionRows: readonly PickerSessionRow[], corrupt: readonl
   const matches = fuzzysort.go(query.toLowerCase(), candidates, {
     keys: ["title", "id"],
     scoreFn: (result) => Math.max(result[0]?.score ?? -Infinity, result[1]?.score ?? -Infinity),
+    // Every match counts toward the total and the 200-row cap applies later,
+    // so the search keeps all matches, however weak.
+    limit: 0,
+    threshold: 0,
   })
   const capped = matches.length > MAX_RENDERED_ROWS
   return {

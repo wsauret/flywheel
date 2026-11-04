@@ -34640,8 +34640,8 @@ THE SOFTWARE.
 
 
 ================================================================================
-fuzzysort@3.1.0
-License source: published package fuzzysort@3.1.0
+fuzzysort@4.0.2
+License source: published package fuzzysort@4.0.2
 ================================================================================
 
 --- LICENSE ---

@@ -81,6 +81,8 @@ export function createSlashSuggestions(opts: SlashSuggestionsOptions): SlashSugg
           // SAFETY: fuzzysort yields one Result per key, so both keys above are present.
           return Math.max(footer!.score * 2, title!.score)
         },
+        limit: 0,
+        threshold: 0,
       })
       .map((r) => r.obj)
   })

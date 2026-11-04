@@ -36,6 +36,8 @@ describe("project files for mentions", () => {
     expect(ranked.entries.map((entry) => entry.path)).not.toContain("README.md")
     // A folder on a file's path is offered too, so a mention can name it.
     expect((await service.search({ query: "app", limit: 10 })).entries[0]).toEqual({ path: "src/app", directory: true })
+    // A loose abbreviation that only the path matches is a weak match, and still offered.
+    expect((await service.search({ query: "apcr", limit: 10 })).entries.map((entry) => entry.path)).toContain("src/app/composer.tsx")
     expect((await service.search({ query: "zzz", limit: 10 })).entries).toEqual([])
   })
 
