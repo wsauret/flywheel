@@ -29,7 +29,7 @@ export interface RuntimeMaintenanceWorkerInit {
 }
 
 /** The frames the maintenance Worker posts to its owner. */
-export type RuntimeMaintenanceWorkerFrame = { readonly flywheel: "maintenance.log"; readonly record: DebugLogRecordInput }
+type RuntimeMaintenanceWorkerFrame = { readonly flywheel: "maintenance.log"; readonly record: DebugLogRecordInput }
 
 const log = Log.create({ service: "runtime-maintenance" })
 

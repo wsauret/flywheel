@@ -90,6 +90,8 @@ import type { NotificationEpisodeInput } from "../../infra/notification-episode.
 import { createRuntimeWorkSettlement, createSettledRuntimeDispatch, workflowSettlementOwners, type RuntimeWorkSettlement } from "./runtime-work-settlement.js"
 import { readChatTurnEnd } from "../session/chat-session-run-evidence.js"
 import { isResumableTurnEnd } from "../session/conversation/turn-end-record.js"
+import type { MutationEvidenceService } from "./mutation-evidence-service.js"
+import type { SessionChangesService } from "./session-changes-service.js"
 const log = Log.create({ service: "runtime-composition" })
 
 export interface RuntimeCompositionOptions extends StartupDirectories {
@@ -506,12 +508,12 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
   })
   startupTrace("runtime workflow proxy created")
   scope.own("startup-recovery", queueStartupRecovery(manager, log), (cancel) => { cancel() })
-  let changesService: Promise<import("./session-changes-service.js").SessionChangesService> | undefined
+  let changesService: Promise<SessionChangesService> | undefined
   const sessionChanges = () => {
     changesService ??= import("./session-changes-service.js").then(({ createSessionChangesService }) => createSessionChangesService({ reader: eventReader, projectionReader, writer: eventWriter, manager, projectRoot }))
     return changesService
   }
-  let evidenceService: Promise<import("./mutation-evidence-service.js").MutationEvidenceService> | undefined
+  let evidenceService: Promise<MutationEvidenceService> | undefined
   const mutationEvidence = () => {
     evidenceService ??= import("./mutation-evidence-service.js").then(({ createMutationEvidenceService }) => createMutationEvidenceService({ reader: eventReader, manager, projectRoot }))
     return evidenceService

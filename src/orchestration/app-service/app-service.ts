@@ -49,6 +49,8 @@ import type { CommandUsageProjection } from "./command-usage-projection.js"
 import { changesCursor } from "../../protocol/session-changes-protocol-types.js"
 import { backgroundCursor } from "../../protocol/background-index-protocol-types.js"
 import type { BackgroundIndex } from "./background-index.js"
+import type { MutationEvidenceService } from "./mutation-evidence-service.js"
+import type { SessionChangesService } from "./session-changes-service.js"
 import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
 
 /** Why an executor refuses a held detail read or its release: only the
@@ -107,8 +109,8 @@ export interface FlywheelAppServiceDeps {
   /** The account-held public projection's resolved assignment. Snapshot reads
    * use this explicit input and never query the executor during render. */
   readonly chatDefault: () => import("../../protocol/app-service-types.js").RuntimeChatDefault
-  readonly sessionChanges: () => Promise<import("./session-changes-service.js").SessionChangesService>
-  readonly mutationEvidence: () => Promise<import("./mutation-evidence-service.js").MutationEvidenceService>
+  readonly sessionChanges: () => Promise<SessionChangesService>
+  readonly mutationEvidence: () => Promise<MutationEvidenceService>
   /** The background index of each chat, read only while a client shows it. */
   readonly backgroundIndex: BackgroundIndex
   readonly projection: FrontendProjection

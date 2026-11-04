@@ -32,9 +32,7 @@
       // tests serve by path, the bootstrap the hosted page bundles, and the
       // build and dev scripts that produce and serve it.
       "entry": ["worker/src/index.ts", "worker/test/counting-relay.ts", "app/bootstrap.ts", "app/sw/sw.ts", "app/serve.ts", "**/*.test.ts"],
-      "project": ["worker/src/**/*.ts", "worker/test/**/*.ts", "app/sw/*.ts", "app/*.ts"],
-      // `cloudflare:workers` is the Worker runtime's own module, not a package.
-      "ignoreDependencies": ["cloudflare"]
+      "project": ["worker/src/**/*.ts", "worker/test/**/*.ts", "app/sw/*.ts", "app/*.ts"]
     }
   },
   // These dependencies are loaded by tools from strings or resolved file paths,
