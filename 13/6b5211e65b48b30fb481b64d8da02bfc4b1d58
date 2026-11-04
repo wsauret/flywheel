@@ -1,0 +1,20 @@
+src/protocol/client/cursor-intake.ts
+  h_4b47e9e4a8b456 130-134
+src/protocol/client/transcript-store.ts
+  h_4b47e9e4a8b456 317-323
+tests/unit/protocol/client/transcript-store-rejoin.test.ts
+  h_4b47e9e4a8b456 3,503-559
+tests/unit/protocol/cursor-intake.test.ts
+  h_4b47e9e4a8b456 248-251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "136b5211e65b48b30fb481b64d8da02bfc4b1d58",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
