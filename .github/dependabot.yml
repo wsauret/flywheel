@@ -20,6 +20,10 @@ updates:
   #
   # @types/vscode is ignored because it must not exceed engines.vscode, which
   # vsce enforces; raising it raises the oldest supported editor.
+  #
+  # Major Babel bumps are ignored because babel-preset-solid, which the web
+  # client compiles with, declares a peer of @babel/core 7. Remove the rule
+  # once the preset accepts the new major.
   - package-ecosystem: bun
     directory: /
     schedule:
@@ -51,6 +55,8 @@ updates:
     ignore:
       - dependency-name: "@anthropic-ai/claude-agent-sdk"
       - dependency-name: "@types/vscode"
+      - dependency-name: "@babel/*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
