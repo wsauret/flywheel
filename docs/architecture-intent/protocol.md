@@ -72,7 +72,7 @@ Not: A client that restates ordering locally or adds an alternate patch-applicat
 
 ## ARCH-PROTOCOL-013: Overflow becomes an invalidation, never a dropped connection
 
-When the runtime bus drops a patch at its pending-delivery limit, every live domain receives a cursor invalidation on the same ordered lane after the queued backlog, and recovery reads the domain's authoritative snapshot, not the last published payload. A connection's outbound queue slides, dropping its oldest frames rather than the connection, and appends one overflow invalidation that the sliding queue cannot discard. Repeated drops before a drain share one invalidation, with no reconnect and no polling timer.
+When the runtime bus drops a patch at its pending-delivery limit, every live domain receives a cursor invalidation on the same ordered lane after the queued backlog, and recovery reads the domain's authoritative snapshot, not the last published payload. A connection's outbound queue slides, dropping its oldest frames rather than the connection, and appends one overflow invalidation that the sliding queue cannot discard, stamped with the position of the newest patch the queue was offered, so a receiver whose read already covers the dropped frames ignores it and every receiver behind it reads again. Repeated drops before a drain share one invalidation, with no reconnect and no polling timer.
 
 Because: A client that falls behind must stay attached and catch up in place.
 

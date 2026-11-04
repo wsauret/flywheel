@@ -9,6 +9,8 @@ import { runtimeEventDelivery } from "../../../../src/orchestration/app-service/
 import { RuntimeEventFrameSchema, RuntimeProtocolRpc } from "../../../../src/protocol/runtime-protocol-schemas.js"
 import { RUNTIME_EVENT_HEARTBEAT_INTERVAL_MS, RUNTIME_LIVENESS_POLICY, RUNTIME_PROTOCOL_VERSION } from "../../../../src/protocol/runtime-liveness.js"
 import { createFamilyIntake } from "../../../../src/protocol/client/family-intake.js"
+import { createCursorIntake } from "../../../../src/protocol/client/cursor-intake.js"
+import { outputCursor } from "../../../../src/protocol/output-protocol-types.js"
 import { sessionCursor } from "../../../../src/protocol/runtime-ui-protocol-types.js"
 import { catalogRow, readyCatalogRow } from "../../../helpers/session-catalog.js"
 import { DebugLog, listDebugLogFiles, resolveDebugLogDirectory, scanDebugLogFiles } from "../../../../src/infra/debug-log.js"
@@ -267,8 +269,18 @@ describe("RuntimeEvents bounded per-connection queue", () => {
     expect(stub.listenerCount()).toBe(0)
   })
 
-  test("overflow recovers quiet session cursors without waiting for successor patches", async () => {
+  test("overflow recovers quiet session cursors and ordered cursors without waiting for successor patches", async () => {
     const { stub, layer } = harness()
+    // A transcript seeded from a read answered before the dropped frames.
+    // Its intake orders by position, so the invalidation must name a
+    // position past what it holds for it to read again.
+    const transcriptRecoveries: unknown[] = []
+    const transcript = createCursorIntake({ cursor: outputCursor("s0"), onApply: () => {}, onRecover: (request) => { transcriptRecoveries.push(request.invalidation) } })
+    transcript.seed(1)
+    // A receiver whose read already covers every dropped frame lost nothing.
+    const current: unknown[] = []
+    const covered = createCursorIntake({ cursor: outputCursor("s1"), onApply: () => {}, onRecover: (request) => { current.push(request.invalidation) } })
+    covered.seed(1_000_000)
     const rows = Array.from({ length: 2200 }, (_, index) => readyCatalogRow(`s${index}`, `Session ${index}`))
     const loading = new Map<string, boolean>()
     const recovered = Promise.withResolvers<void>()
@@ -302,6 +314,10 @@ describe("RuntimeEvents bounded per-connection queue", () => {
           if (event.type === "patch" && event.patch.payload.kind === "executor.changed") markers.get(event.patch.position)?.resolve()
           if (event.type === "patch" && event.patch.payload.kind === "runtime.invalidate") invalidations += 1
           intake.handle(event)
+          if (event.type === "patch" && event.patch.cursor.domain === "runtime") {
+            transcript.accept(event.patch)
+            covered.accept(event.patch)
+          }
         })).pipe(Effect.forkScoped)
         yield* awaitListener(stub)
         for (const [index, row] of rows.entries()) {
@@ -314,6 +330,8 @@ describe("RuntimeEvents bounded per-connection queue", () => {
         }
         expect(invalidations).toBe(1)
         expect(reads).toBe(2)
+        expect(transcriptRecoveries).toEqual(["overflow"])
+        expect(current).toEqual([])
         yield* Effect.promise(() => recovered.promise)
         expect([...loading.values()].filter(Boolean)).toHaveLength(0)
         yield* Fiber.interrupt(fiber)
