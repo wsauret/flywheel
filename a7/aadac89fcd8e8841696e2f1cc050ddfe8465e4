@@ -1,0 +1,32 @@
+docs/product-intent/interaction.md
+  h_4b47e9e4a8b456 101
+src/protocol/client/transcript-store.ts
+  h_4b47e9e4a8b456 156-164,227-232,792-794
+src/tui/transcript-store/create-output-transcript-cache.ts
+  h_4b47e9e4a8b456 598
+tests/unit/protocol/client/transcript-store.test.ts
+  h_4b47e9e4a8b456 463-470,472-484
+tests/unit/tui/hooks/create-output-transcript-cache.test.ts
+  h_4b47e9e4a8b456 10,123-147
+webview/src/client/session-residency.test.ts
+  h_4b47e9e4a8b456 3,48-49,65-69,106,180-215
+webview/src/client/session.ts
+  h_4b47e9e4a8b456 480,495-497
+webview/src/client/view-state.test.ts
+  h_4b47e9e4a8b456 43
+src/tui/output-window/output-window.tsx
+  h_4b47e9e4a8b456 21,105-111,284,287
+tests/unit/tui/output-window.test.tsx
+  h_4b47e9e4a8b456 380-398
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a7aadac89fcd8e8841696e2f1cc050ddfe8465e4",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
