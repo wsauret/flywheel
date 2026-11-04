@@ -11,6 +11,7 @@ import { createCursorIntake, isLaneBreak, type CursorIntake } from "../client/cu
 import type { RuntimeConnection } from "./connection.js"
 import { bodyId, boundedWindow, coversResidentSpan, detachedDelta, detachedWindowFromRead, EMPTY_TRANSCRIPT_VIEW, showsNothingOfOutput, historicalThrough, pageSplice, protectedCut, readerAccepts, recoveryAnchor, retainPayloads, rewrittenWindow, unchangedOwner, foldHydratedGroups, totalAfterDelta, transcriptRangeRequest, windowFromRead, type ReadWindow } from "./transcript-store-paging.js"
 import { readTranscriptGroupChildren } from "./transcript-group-children.js"
+import { createEmptyRenderEpisodes } from "./transcript-empty-render.js"
 import { createMutationEvidenceReader, type MutationEvidenceReader } from "./mutation-evidence.js"
 import { retainTranscriptEvidence } from "./transcript-evidence-lifetime.js"
 import { readTranscriptWindow } from "./transcript-window-read.js"
@@ -337,6 +338,8 @@ export function createTranscriptStore(options: TranscriptStoreOptions): Transcri
     },
   })
 
+  const emptyRenders = createEmptyRenderEpisodes(options.sessionId, options.onDiagnostic, () => ({ status, heldPosition: intake.heldPosition, pendingCount: intake.pendingCount }))
+
   function setStatus(next: TranscriptStatus, detail?: TranscriptUnavailable): void {
     if (status === next && unavailable === detail) return
     status = next
@@ -429,6 +432,8 @@ export function createTranscriptStore(options: TranscriptStoreOptions): Transcri
     }, "newest", draftIndex, slotsOnly ? replaced : undefined)
     const structural = delta.truncateTo !== undefined || droppedHead > 0 || displaced || draft.blocks.length !== view.blocks.length
     emit({ kind: "deltas", replaced, structural, streamingChanged })
+    // A patch that a seed drains belongs to that read's render.
+    if (seedingAdopted === undefined) emptyRenders.note(view, "patch")
   }
 
   /** Reads an authoritative window, retrying failures on a bounded backoff.
@@ -474,6 +479,7 @@ export function createTranscriptStore(options: TranscriptStoreOptions): Transcri
     if (reason !== "merge") windowGeneration += 1
     emit({ kind: "window", reason, adopted })
     setStatus("ready")
+    emptyRenders.note(view, "read")
   }
 
   /** Adopt authoritative coordinates before draining pending deltas. Anchored
@@ -823,6 +829,7 @@ export function createTranscriptStore(options: TranscriptStoreOptions): Transcri
     },
     onChange(listener) { listeners.add(listener); return () => { listeners.delete(listener) } },
     dispose() {
+      emptyRenders.end()
       disposed = true
       mutationEvidence.dispose()
       settlement.dispose()
