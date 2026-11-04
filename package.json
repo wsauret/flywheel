@@ -121,7 +121,7 @@
     "effect": "4.1.2",
     "fuzzysort": "^3.1.0",
     "highlight.js": "^11.12.0",
-    "js-yaml": "^4.1.1",
+    "js-yaml": "^5.5.0",
     "jsonc-parser": "3.3.1",
     "marked": "18.1.2",
     "msgpackr": "^2.1.3",
