@@ -40,6 +40,7 @@ function transcript(view: Partial<TranscriptView>): TranscriptStore {
     hydrateGroup: unused,
     jumpToLatest: unused,
     refresh: unused,
+    open: unused,
     openAround: unused,
     loadOlder: unused,
     loadNewer: unused,

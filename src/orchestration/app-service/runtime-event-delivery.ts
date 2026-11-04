@@ -54,7 +54,13 @@ export function runtimeEventDelivery(
     // behind, and the rate of later drops is not a fact anyone acts on.
     let dropped = false
     let overflowPending = false
+    // The newest patch position offered, dropped or not. The bus delivers in
+    // publish order, so it covers every frame the sliding queue dropped. An
+    // ordered receiver whose read answered at or past it lost nothing and
+    // ignores the invalidation; every receiver behind it reads again.
+    let newestPosition = 0
     const offer = (event: RuntimeEventFrame): void => {
+      if (event.type === "patch") newestPosition = event.patch.position
       if (Queue.sizeUnsafe(queue) >= EVENT_QUEUE_CAPACITY) {
         overflowPending = true
         if (!dropped) {
@@ -127,7 +133,7 @@ export function runtimeEventDelivery(
           type: "patch",
           patch: {
             cursor: { scope: "workspace", domain: "runtime" },
-            position: 0,
+            position: newestPosition,
             prevPosition: 0,
             payload: { kind: "runtime.invalidate", reason: "overflow" },
           },

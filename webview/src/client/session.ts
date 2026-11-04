@@ -477,8 +477,7 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
     readings.select(next)
     shown = undefined
     if (next !== undefined) {
-      // A transcript that could not be read is read again from nothing.
-      if (residents.get(next)?.transcript.status === "recovery-failed") residents.evict(next)
+      const kept = residents.get(next) !== undefined
       const resident = residents.use(next, (lanes) => createResidentSession({
         connection, lanes, sessionId: next, roles,
         // A chat the runtime just created is empty, so its intro shows without a read.
@@ -493,6 +492,9 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
         ...diagnostic,
       }))
       shown = { id: next, resident, handle: residents.retain(next) }
+      // A kept transcript decides whether this open reads it again, once the
+      // retain has woken it; a new one reads when its lane opens.
+      if (kept) void resident.transcript.open()
     }
     left?.handle.release()
     if (left !== undefined && left.id !== next) left.resident.show(false)

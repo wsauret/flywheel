@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
+import { jest } from "bun:test"
 import { Schema } from "effect"
 
 import type { FrontendOutputBlock, FrontendToolEntry } from "../../../../src/protocol/app-service-types.js"
@@ -43,6 +44,30 @@ describe("transcript store", () => {
     assert.deepEqual(store.view.blocks, [textBlock("live")])
     assert.equal(store.view.appliedOutputPosition, 101)
     store.dispose()
+  })
+
+  test("records an empty render of a session with output once per episode, however long it lasts, with its intake evidence and repeat count", async () => {
+    const fake = fakeConnection({ windows: [{ blocks: [], startBlockIndex: 0, totalBlocks: 3, snapshotPosition: 100 }] })
+    const diagnostics: Array<[string, unknown]> = []
+    const store = createTranscriptStore({ connection: fake.connection, sessionId: SESSION, onDiagnostic: (message, detail) => diagnostics.push([message, detail]) })
+    const output = (position: number, delta: { visibleMessageCount: number; truncateTo?: number }) => fake.emit({ type: "patch", patch: { cursor: outputCursor(SESSION), position, prevPosition: position - 1, payload: { kind: "output.delta", delta: { blocks: [], ...delta } } } })
+    try {
+      await settle()
+      jest.useFakeTimers()
+      // A quiet pane is still empty: silence does not end the episode.
+      jest.advanceTimersByTime(61_000)
+      output(101, { visibleMessageCount: 3 })
+      fake.emit({ type: "patch", patch: deltaPatch(102, 101, 0, textBlock("a")) })
+      output(103, { visibleMessageCount: 1, truncateTo: 0 })
+      output(104, { visibleMessageCount: 2 })
+      store.dispose()
+      assert.deepEqual(diagnostics, [
+        ["transcript rendered no blocks for a session with output", { sessionId: SESSION, source: "read", status: "ready", heldPosition: 100, pendingCount: 0, totalBlocks: 3, visibleMessageCount: 3 }],
+        ["transcript rendered no blocks again", { sessionId: SESSION, count: 1 }],
+        ["transcript rendered no blocks for a session with output", { sessionId: SESSION, source: "patch", status: "ready", heldPosition: 103, pendingCount: 0, totalBlocks: 0, visibleMessageCount: 1 }],
+        ["transcript rendered no blocks again", { sessionId: SESSION, count: 1 }],
+      ])
+    } finally { store.dispose(); jest.useRealTimers() }
   })
 
   test("hydrates user image bodies once without delaying transcript recovery", async () => {
@@ -458,6 +483,28 @@ describe("transcript store", () => {
     assert.equal(store.unavailable?.diagnostic, 'Expected "text"\n  at ["kind"]')
     assert.equal(reads, 3)
     store.dispose()
+  })
+
+  // A client keeps a store resident across opens, so an open is the one
+  // moment that reads a transcript the store could not show again.
+  for (const { first, reads } of [
+    { first: { blocks: [textBlock("a")], startBlockIndex: 0, totalBlocks: 1 }, reads: 1 },
+    { first: { blocks: [], startBlockIndex: 0, totalBlocks: 0 }, reads: 1 },
+    { first: { blocks: [], startBlockIndex: 0, totalBlocks: 2 }, reads: 2 },
+    { first: { blocks: [], startBlockIndex: 0, totalBlocks: 0, visibleMessageCount: 1 }, reads: 2 },
+    { first: { blocks: [], startBlockIndex: 0, totalBlocks: 0, unavailable: { title: "Unavailable", message: "Unavailable", diagnostic: "Unavailable" } }, reads: 2 },
+  ]) test(`an open after a read of ${first.blocks.length} blocks, ${first.totalBlocks} total, ${first.visibleMessageCount ?? first.totalBlocks} messages, ${first.unavailable ? "unavailable" : "ok"} reads ${reads - 1} more`, async () => {
+    const fake = fakeConnection({ windows: [first, { blocks: [textBlock("a"), textBlock("b")], startBlockIndex: 0, totalBlocks: 2 }] })
+    const store = createTranscriptStore({ connection: fake.connection, sessionId: SESSION })
+    try {
+      await settle()
+      const shown = store.view.blocks
+      await store.open()
+      assert.equal(fake.windowCalls, reads)
+      assert.equal(store.status, "ready")
+      if (reads === 1) assert.equal(store.view.blocks, shown)
+      else assert.deepEqual(store.view.blocks, [textBlock("a"), textBlock("b")])
+    } finally { store.dispose() }
   })
 
 

@@ -245,6 +245,10 @@ describe("cursor intake", () => {
     h.elapseGapDeadline()
     expect(h.recovered.length).toBe(1)
     expect(h.recovered[0]?.reason).toBe("gap_unclosed")
+    // The read already out may answer from before the held patch, so its seed
+    // still drains it.
+    h.intake.seed(10)
+    expect(h.ids()).toEqual(["b11"])
   })
 
   test("does not ask for recovery when the seed arrives in time", () => {
