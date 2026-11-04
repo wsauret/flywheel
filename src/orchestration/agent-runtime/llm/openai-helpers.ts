@@ -14,7 +14,7 @@ import { clampReasoningEffort, openAIReasoningEffort, type ReasoningEffortTier, 
 import { applyOpenAIResponsesOptions, openAIReasoningSummary } from "./openai-options.js";
 import { clampOpenAIPromptCacheKey } from "./openai-prompt-cache.js";
 import { cacheWriteTokens } from "./openai-usage-normalization.js";
-import { isTransientNetworkError, normalizeProviderAttemptFailure } from "./provider-failure.js";
+import { getRetryAfterMs, isTransientNetworkError, normalizeProviderAttemptFailure } from "./provider-failure.js";
 import type { ConversationMessage, ProviderStreamEvent, StreamOptions, ToolChoice } from "./types.js";
 
 /** Map canonical ToolChoice to OpenAI Responses wire form. `any` becomes
@@ -67,8 +67,11 @@ function parseRetryAfterMs(message: string): number | undefined {
 
 const REQUEST_VALIDATION_CODES: ReadonlySet<string> = new Set(["invalid_prompt", "invalid_request_error", "bad_request_error", "missing_required_parameter", "unsupported_parameter"]);
 
+/** Classify a Responses failure frame. `error` is the frame's error payload, or the SDK `APIError` that a
+ *  streamed error frame became: its `type` stands in for a missing `code`, its response headers supply the
+ *  retry delay, and it stays the `cause` of the classified error. */
 export function classifyResponseFailed(
-  error: { code?: string | null; message?: string | null } | undefined,
+  error: { code?: string | null; type?: string | null; message?: string | null; headers?: Headers } | undefined,
   incompleteReason: string | undefined,
   quotaObservation?: QuotaExhaustedError["quotaObservation"],
 ): Error {
@@ -77,7 +80,7 @@ export function classifyResponseFailed(
     return new LlmStreamError(msg, "transient");
   }
 
-  const code = error.code ?? undefined;
+  const code = error.code ?? error.type ?? undefined;
   const message = error.message ?? "Unknown error";
   // Preserve the original response.failed payload so downstream rendering /
   // logging can inspect `.cause` for response.id, model, etc.
@@ -95,14 +98,14 @@ export function classifyResponseFailed(
   }
 
   if (code === "rate_limit_exceeded") {
-    return new LlmStreamError(message, "rate_limit", parseRetryAfterMs(message), { cause });
+    return new LlmStreamError(message, "rate_limit", getRetryAfterMs(error) ?? parseRetryAfterMs(message), { cause });
   }
   // A spent quota, a plan that does not include the model, or a hit usage
   // ceiling cannot clear within any retry window: only billing or a plan change
   // pays for the next request. `usage_limit_reached` is the ChatGPT backend's
   // name for the ceiling.
   if (code !== undefined && QUOTA_CODES.has(code)) return new QuotaExhaustedError(message, { cause, quotaObservation });
-  if (code === "server_is_overloaded" || code === "slow_down") {
+  if (code === "server_is_overloaded" || code === "slow_down" || code === "overloaded_error") {
     return new LlmStreamError(message, "overload", undefined, { cause });
   }
   // OpenAI's capacity failures also arrive as a response.failed frame with
@@ -351,6 +354,11 @@ export function classifyOpenAIStreamError(err: unknown, quotaObservation?: Quota
   const backendFrame = err instanceof ChatGptAdapterApiError ? err : err instanceof ChatGptAdapterTransportError && err.cause instanceof ChatGptAdapterApiError ? err.cause : undefined;
   if (backendFrame) {
     throw classifyResponseFailed({ code: backendFrame.code, message: backendFrame.message }, undefined, quotaObservation);
+  }
+  // The SDK throws an SSE `error` frame as an `APIError` with no HTTP status and
+  // the frame as its `error` body; its connection and abort errors have no body.
+  if (err instanceof APIError && err.status === undefined && err.error !== undefined) {
+    throw classifyResponseFailed(err, undefined, quotaObservation);
   }
   // A 402, or a 429 whose body names a terminal quota code, cannot clear
   // within any retry window; retrying it at the HTTP level burns the whole
