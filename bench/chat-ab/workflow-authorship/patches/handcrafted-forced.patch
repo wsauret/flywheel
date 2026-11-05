@@ -27,7 +27,7 @@ index 4e537cf..7466f6a 100644
 +const HANDCRAFTED_WORKFLOW_DIRECTORY = resolve(import.meta.dir, "../../../../bench/chat-ab/workflow-authorship/handcrafted")
 +
  /** How the root chat runs substantive work while Workflows is On:
-  *  through workflows by default, with a file written for the task (PI-AGENT-031). The chat body's sizing rule says to start a workflow only on
+  *  through workflows by default, with a file written for the task (PI-AGENT-031, PI-AGENT-110). The chat body's sizing rule says to start a workflow only on
   *  a named trigger, so this section states that it comes first for that one
 @@ -12,16 +16,33 @@ Workflows is On: aim for the most complete and correct result, not the cheapest
  
