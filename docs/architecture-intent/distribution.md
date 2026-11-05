@@ -26,8 +26,7 @@ One source rebuild per release produces and verifies the universal local-tokeniz
 
 ## ARCH-DISTRIBUTION-005: Native payloads are built fresh and launchers are staged unchanged
 
-Each release target builds and verifies the repository-owned native addons from current source, and every third-party native dependency is a verified prebuilt. Darwin native payloads are signed and verified before the build identity is computed, and installation never changes those bytes. The macOS account-service launcher is one release-invariant program at a stable account path that runs the installed command as its child and passes signals and exit status through; it and the Windows launchers are tracked binaries that every build verifies against their manifest and stages unchanged.
-
+Each release target builds and verifies the repository-owned native addons from current source, and every third-party native dependency is a verified prebuilt. Darwin native payloads are signed and verified before the build identity is computed, and installation never changes those bytes. The macOS account-service launcher is one release-invariant program at a stable account path. It runs the installed command as its child and passes signals and exit status through. It and the Windows launchers are tracked binaries that every build verifies against their manifest and stages unchanged.
 Because: macOS privacy consent is granted to the exact bytes of the account-service launcher, so it must hold across every update.
 Not: Rebuilding or re-signing the launchers in each release.
 
@@ -37,15 +36,13 @@ The third-party license bundle is generated from the locked production dependenc
 
 ## ARCH-DISTRIBUTION-007: The release repository is the publisher trust root
 
-The configured release repository and ordinary HTTPS validation are the publisher trust boundary; the default is the repository that the build's release compiled in (ARCH-DISTRIBUTION-034), and a repository override is configuration that changes the trust root. The release manifest binds each asset to its size and SHA-256 digest, which proves integrity and is never described as a signature or publisher authentication.
-
+The configured release repository and ordinary HTTPS validation are the publisher trust boundary. The default is the repository that the build's release compiled in (ARCH-DISTRIBUTION-034). A repository override is configuration that changes the trust root. The release manifest binds each asset to its size and SHA-256 digest, which proves integrity and is never described as a signature or publisher authentication.
 Because: An application signing key adds private-key custody, rotation, and recovery without a separate distribution trust requirement.
 Not: An embedded application-level release-signing key.
 
 ## ARCH-DISTRIBUTION-008: An installed updater refuses only what a correct release can never fail
 
-An installed updater refuses a release only for a hop that is not HTTPS, an archive whose size or digest differs from the manifest, an entry that escapes its own staging, or a staged build that does not start. It reads only the manifest fields that it acts on, treats every other field and asset as opaque, and follows redirects to any HTTPS host. Every other restriction on what a release may hold lives on the release side.
-
+An installed updater refuses a release in four cases only. These are a hop that is not HTTPS, an archive whose size or digest differs from the manifest, an entry that escapes its staging, and a staged build that does not start. It reads only the manifest fields that it acts on, treats every other field and asset as opaque, and follows redirects to any HTTPS host. Every other restriction on a release lives on the release side.
 Because: A client already in the field cannot learn a rule that a later release needs, so any extra client rule can strand an installation.
 Not: Client-side limits on redirect hosts, sizes, entry counts, or total transfer time.
 
@@ -63,8 +60,7 @@ The updater stages the compressed asset in one bounded file and proves its size 
 
 ## ARCH-DISTRIBUTION-012: Update transfers are bounded by stalls, not by total time
 
-An update transfer has no total-time bound: a stall bound abandons a silent connection, and stalls, transport failures, short bodies, server errors, and rate limits are retried and resumed from the delivered byte when the host supports it. The updater gives up only after a long period with no byte across a complete backoff ladder, and the next scheduled check starts again.
-
+An update transfer has no total-time bound. A stall bound abandons a silent connection. Stalls, transport failures, short bodies, server errors, and rate limits are retried and resumed from the delivered byte when the host supports it. The updater gives up only after a long period with no byte across a complete backoff ladder, and the next scheduled check starts again.
 Because: Ordinary outages such as a Wi-Fi reconnect must not fail an update, and a slow link that keeps delivering must finish.
 
 ## ARCH-DISTRIBUTION-013: Bootstrap resolves one immutable tag, and builds state their own target
@@ -79,11 +75,11 @@ Not: Shell or PowerShell installers that own layout or activation.
 
 ## ARCH-DISTRIBUTION-015: Installed builds are immutable and named by content
 
-Every installed build lives once in an account-global directory named by its version and a content-derived build identity, is written once, and is never replaced; a repeated install of the same build is a no-op, and a same-version rebuild gets a new identity. The installer proves that what it stages, places, and activates digests the same as the verified payload. Every installed-data path derives from the account data root.
+Each installed build is written once, never replaced, and lives in one account-global directory named by its version and a content-derived build identity. Reinstalling the same build is a no-op, and a same-version rebuild gets a new identity. The installer proves that what it stages, places, and activates digests the same as the verified payload. Every installed-data path derives from the account data root.
 
 ## ARCH-DISTRIBUTION-016: A build runs on this host before it takes a name
 
-The install engine runs a staged build once with its own native directory and requires it to answer its version before the build takes its name, and it asks a build already in place the same question before activation. A refused build leaves no named tree, and the active build and the launcher stay as they were.
+The install engine runs a staged build once with its own native directory. The build must answer its version before it takes its name. The engine asks a build already in place the same question before activation. A refused build leaves no named tree, and the active build and the launcher stay as they were.
 
 ## ARCH-DISTRIBUTION-017: Activation is one atomic replacement of the active-build entry
 
@@ -101,8 +97,7 @@ Every process that runs an installed build declares that build for its whole lif
 
 ## ARCH-DISTRIBUTION-020: One fenced account lease serializes update work
 
-One account-global update authority owns the last successful check and one fenced update lease, and every claimant reaches it: the account service, the manual update command, installers, the service of each lane, and an older service that has not retired. The fence is the authority, so a claimant whose fence another claimant advanced can neither publish a check nor activate. The filesystem rename precedes the database commit, so the authority never claims an activation that the filesystem has not made, and the next claimant repairs a stale check from the filesystem, which is the truth for the active build.
-
+One account-global update authority owns the last successful check and one fenced update lease. Every claimant reaches it: the account service, the manual update command, installers, the service of each lane, and an older service that has not retired. The fence is the authority, so a claimant whose fence another claimant advanced can neither publish a check nor activate. The filesystem rename precedes the database commit, so the authority never claims an activation that the filesystem has not made. The next claimant repairs a stale check from the filesystem, which is the truth for the active build.
 Because: An atomic rename prevents a torn link but does not order two valid candidates, and project-local coordination cannot serialize an account-global mutation.
 Not: A per-project cache, lock, or timer, or an atomic rename without a fenced authority.
 
@@ -118,25 +113,22 @@ Activation refuses a candidate older by SemVer precedence than the physical acti
 
 ## ARCH-DISTRIBUTION-024: A build is proved only by a project that opens
 
-A build is proved on an account only when one of its project executors reports ready, never by its account service's listen. An unproved build rolls back under the update lease to the last proved build after repeated service starts that end before they listen or repeated project opens that fail by the build's own failure; a requested stop, an outside signal, or an account-side error never counts. The rolled-back build stays installed but refused, no release that is not newer than it installs, and a proved build is never rolled back. A refused build is never recorded as proved, and a proof never clears a refusal.
-
+A build is proved on an account only when one of its project executors reports ready. An unproved build rolls back under the update lease to the last proved build after repeated service starts that end before they listen. So do repeated project opens that fail by the build's own failure. A requested stop, an outside signal, or an account-side error never counts. The rolled-back build stays installed but refused, and only a release newer than it installs. A proved build is never rolled back. A refused build is never recorded as proved, and a proof never clears a refusal.
 Not: Proving a build by its account service's listen.
 
 ## ARCH-DISTRIBUTION-025: Update bookkeeping never keeps a working build from starting
 
-The start record and the refused-build record never keep a working build from starting. A record of a shape that a build does not know is reported once and is either replaced with that build's own shape or read as naming no refused build, and the proof of a build is written fail-open.
+The start record and the refused-build record never keep a working build from starting. A build that meets a record of an unknown shape reports it once. It replaces that record with its own shape or reads it as naming no refused build. The proof of a build is written fail-open.
 
 ## ARCH-DISTRIBUTION-026: Builds are kept by proof of use, never by age
 
-A build is removed only when no reason to keep it holds: the active-build entry names it, the collecting process runs it, a live declaration names it, the start record names it as the last proved build, or it is among the newest builds of the retention band. Modification time only orders that band and never decides that a build is unused. An account whose active-build entry cannot be read keeps every build, and a directory that states no build metadata is never touched.
-
+A build is kept while the active-build entry names it, the collecting process runs it, or a live declaration names it. It is also kept as the start record's last proved build or as one of the retention band's newest builds. Any other build may be removed. Modification time only orders that band and never decides that a build is unused. An account whose active-build entry cannot be read keeps every build, and a directory that states no build metadata is never touched.
 Because: Age is not liveness: a sleeping process outlives any freshness window.
 Not: Timestamp-based garbage collection.
 
 ## ARCH-DISTRIBUTION-027: Collection runs under the update lease inside the update flow
 
-Collection runs inside an update run, takes the account update lease itself, removes nothing when it cannot win the lease, and has no second scheduler. A build leaves the installed set by rename before it is unlinked, so an interruption leaves a remainder that a later sweep reclaims, and a staging remainder is removed only when the process that its name states is gone. A sweep is bounded by its lease term and stops between removals when withdrawn.
-
+Collection runs inside an update run, takes the account update lease itself, removes nothing when it cannot win the lease, and has no second scheduler. A build leaves the installed set by rename before it is unlinked, so a later sweep reclaims any remainder that an interruption leaves. A staging remainder is removed only when the process that its name states is gone. A sweep is bounded by its lease term and stops between removals when withdrawn.
 Because: The lease is what stops an activation from pointing at a tree that the sweep already chose to remove.
 Not: Collecting at launch.
 
@@ -149,12 +141,11 @@ Not: A junction as the activation link.
 
 ## ARCH-DISTRIBUTION-029: Legacy layout cleanup requires exact ownership proof
 
-An installer removes or converts a legacy flat installation only under the exact manifest or wrapper that the earlier installer wrote, keeps its entries until nothing runs them, and leaves an unrecognized entry unchanged with a remediation message. An install record of a shape that the engine does not know refuses the installation with a warning, and cleanup never follows a link or deletes a directory by its name alone.
+An installer removes or converts a legacy flat installation only under the exact manifest or wrapper that the earlier installer wrote. It keeps the installation's entries until nothing runs them, and leaves an unrecognized entry unchanged with a remediation message. An install record of a shape that the engine does not know refuses the installation with a warning. Cleanup never follows a link or deletes a directory by its name alone.
 
 ## ARCH-DISTRIBUTION-030: A dev service runs one source snapshot under the build proof rule
 
-Every command of the dev entry runs from one snapshot of its checkout's source fixed when the command starts, and every process of a dev service, including its Workers, guardian, executors, supervisors, and bundled engine programs, loads that same snapshot and its web client. Each snapshot is a build of the dev lane under the same proof and refusal rules as an installed build, and an unreadable proof record lets no sweep remove a snapshot.
-
+Every command of the dev entry runs from one snapshot of its checkout's source, fixed when the command starts. Every process of a dev service, including its Workers, guardian, executors, supervisors, and bundled engine programs, loads that same snapshot and its web client. Each snapshot is a build of the dev lane under the same proof and refusal rules as an installed build, and an unreadable proof record lets no sweep remove a snapshot.
 Because: Agents edit the checkout, so a running service must never restart onto a half-written tree.
 
 ## ARCH-DISTRIBUTION-031: A terminal's launch state crosses a re-execution once
@@ -165,14 +156,13 @@ Because: A build that predates the contract must still start, so the state trave
 
 ## ARCH-DISTRIBUTION-032: The editor extension carries no runtime
 
-The editor extension carries no runtime and installs only by running the platform's bootstrap installer, unpinned, on a machine with no Flywheel, and it finds the result by the installer's placement rule rather than by PATH. Verification, placement, activation, and registration stay with the installer and the install engine. One universal extension package serves every platform and publishes only after the release whose protocol it speaks is public.
-
+The editor extension carries no runtime. It installs only on a machine with no Flywheel, and only by running the platform's bootstrap installer, unpinned. It finds the result by the installer's placement rule, not by PATH. Verification, placement, activation, and registration stay with the installer and the install engine. One universal extension package serves every platform and publishes only after the release whose protocol it speaks is public.
 Because: Installing over an older installation from the extension would bypass the auto-install policy.
 Not: Bundling a runtime in the extension.
 
 ## ARCH-DISTRIBUTION-033: The relay deploys on its own and its hostname is permanent
 
-The relay Worker and the phone's hosted bootstrap deploy manually from the same tree as the binary, separately from every release, and nothing deploys a client to hosting. The relay hostname is a permanent commitment that pairing codes and the binary default carry. The relay speaks one protocol version and deploys before any build that speaks a new version reaches the main branch or a release, and the release gate probes the deployed relay's version before it publishes a binary that expects another.
+The relay Worker and the phone's hosted bootstrap deploy manually from the same tree as the binary, separately from every release, and nothing deploys a client to hosting. The relay hostname is a permanent commitment that pairing codes and the binary default carry. The relay speaks one protocol version. It deploys before any build that speaks a new version reaches the main branch or a release. The release gate probes the deployed relay's version before it publishes a binary that expects another.
 
 ## ARCH-DISTRIBUTION-034: Only the release build compiles in the publisher inputs
 

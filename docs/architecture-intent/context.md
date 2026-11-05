@@ -4,14 +4,12 @@ This file states how Flywheel assembles model-visible context, keeps it inspecta
 
 ## ARCH-CONTEXT-001: Every context source has one owner
 
-Everything that enters a model request comes from one owning source, such as a conversation, a workflow context projection, a definition, a package, a project file, the memory store, the tool surface, or a runtime setting. The owner decides the source's content and contract. Prompt assembly selects and renders sources; it never becomes a second authority for their content.
-
+Everything that enters a model request comes from one owning source, such as a conversation, a workflow context projection, a definition, a package, a project file, memory, the tool surface, or a runtime setting. The owner decides the source's content and contract. Prompt assembly selects and renders sources; it never becomes a second authority for their content.
 Not: prompt-specific stores that copy source content for assembly.
 
 ## ARCH-CONTEXT-002: One shared assembly path per domain
 
-Every model request goes through its domain's shared context assembly and the request-audit boundary. The active branch is projected deterministically into the runtime's message history, and every resumable caller, chat, subagent, and workflow agent alike, uses that one assembly path; a provider-side continuation token can shorten a request but is never semantic history and never replaces the conversation tree. A local filter or a separate prompt path that changes model-visible context without recording the decision is a second context authority and is forbidden.
-
+Every model request goes through its domain's shared context assembly and the request-audit boundary. The active branch is projected deterministically into the runtime's message history. Every resumable caller (chat, subagent, or workflow agent) uses that one assembly path. A provider-side continuation token can shorten a request, but it is never semantic history and never replaces the conversation tree. A local filter or a separate prompt path that changes model-visible context without recording the decision is a second context authority and is forbidden.
 Not: An ephemeral conversation cache for child execution.
 
 ## ARCH-CONTEXT-003: Hidden authority is forbidden
@@ -20,8 +18,7 @@ Hooks, automatic checks, background tasks, and runtime coordination can attach e
 
 ## ARCH-CONTEXT-004: Provenance travels with selection
 
-A selected source carries enough provenance to identify what supplied it and which version or content identity was used, so that two different files, package revisions, definitions, tool surfaces, facts, or settings are distinguishable. Bulk prompt content is content-addressed and deduplicated per conversation. Context transformer records hold only stable application, transformer, seam, order, outcome, and input and output hash identities, never copied prompt, message, memory, tool-schema, or replacement bytes, and a context application records its ordered transformer sequence once for later requests to reference.
-
+A selected source carries provenance that identifies what supplied it and which version or content identity was used, so two different files, package revisions, definitions, tool surfaces, facts, or settings stay distinguishable. Bulk prompt content is content-addressed and deduplicated per conversation. Context transformer records hold only stable application, transformer, seam, order, and outcome identities and input and output hashes. They never copy prompt, message, memory, tool-schema, or replacement bytes. A context application records its ordered transformer sequence once for later requests to reference.
 Not: storing every full prompt independently, which makes storage grow quadratically with repeated conversation prefixes.
 
 ## ARCH-CONTEXT-005: Durability claims match the boundary
@@ -40,17 +37,20 @@ Request reconstruction rebuilds the prompt from the unchanged durable conversati
 
 ## ARCH-CONTEXT-008: A transport that changes a request states its changes
 
-A transport that changes a request after Flywheel prepared it records each addition by part, kind, and position without its content, and lists the requests that it sent by itself. An addition that the transport did not state is marked as not recorded. Text that a provider engine adds to an agent's request is recorded in that agent's canonical history as hidden system-origin entries, so the request that a provider received stays inspectable and reproducible. A transport that serves several agents in one process attributes each request that it sent, and each failure that the service returned, to the agent that it served by the engine's own per-request key or the service's request id, never by order of announcement.
+A transport that changes a request after Flywheel prepared it records each addition by part, kind, and position, without content. It also lists the requests it sent by itself. An unstated addition is marked as not recorded. Text that a provider engine adds to an agent's request becomes hidden system-origin entries in that agent's canonical history. This keeps each provider request inspectable and reproducible. A transport that serves several agents in one process attributes each sent request and each service failure to its agent. It uses the engine's per-request key or the service's request id, never the order of announcement.
 
 ## ARCH-CONTEXT-009: Only recorded conversation content is model history
 
-A rendered pane or live output buffer is not model history unless its owning domain records it as such. Display-only entries, cache markers, and retry bookkeeping are not model-visible conversation content. No fabricated assistant tool call or unmatched tool result ever enters provider history. Runtime-originated activity, such as a workflow invocation that the runtime starts, is anchored to an ordinary conversation entry and renders from its own facts only on branches that hold that anchor, and a change of its result refreshes the row without a new conversation entry.
+A rendered pane or live output buffer is not model history unless its owning domain records it as such. Display-only entries, cache markers, and retry bookkeeping are not model-visible conversation content. No fabricated assistant tool call or unmatched tool result ever enters provider history. Runtime-originated activity, such as a workflow invocation that the runtime starts, is anchored to an ordinary conversation entry and renders from its own facts only on branches that hold that anchor. A change of its result refreshes the row without a new conversation entry.
 
 ## ARCH-CONTEXT-010: Exclusion and transformation are recorded
 
-Content that is withheld from the model, truncated, summarized, compacted, superseded, masked, or lowered across incompatible model contracts carries a recorded decision and reason, not a silent filter. A recorded transformation keeps enough identity that reconstruction can replay the same provider-facing history from the unchanged conversation. Each canonical tool call keeps the registration that produced it, and outbound history lowers calls from registrations that the pinned request does not hold into neutral operation context with their recorded results, while the durable conversation stays exact and request evidence records what was lowered. A provider's refusal of conversation content is repaired by the agent loop and never retried by the walk or the runner: the loop appends one decision entry whose note replaces the withheld content for the model, every later request applies the decisions its branch holds, and each decision withholds a new part of a finite set.
-
+Content withheld from the model, truncated, summarized, compacted, superseded, masked, or lowered across incompatible model contracts carries a recorded decision and reason, not a silent filter. A recorded transformation keeps enough identity that reconstruction replays the same provider-facing history from the unchanged conversation. The agent loop repairs a provider's refusal of conversation content, and neither the walk nor the runner retries it. The loop appends one decision entry whose note replaces the withheld content for the model. Every later request applies the decisions its branch holds, and each decision withholds a new part of a finite set.
 Not: Failing over to another provider on a content refusal.
+
+## ARCH-CONTEXT-031: Unheld tool registrations lower to neutral context
+
+Each canonical tool call keeps the registration that produced it. Outbound history lowers calls whose registrations the pinned request does not hold into neutral operation context with their recorded results. The durable conversation stays exact, and request evidence records what was lowered.
 
 ## ARCH-CONTEXT-011: Stale tool masking is a reversible request-time tier
 
@@ -112,28 +112,31 @@ An external skill package remains the source of its upstream instruction bytes. 
 
 ## ARCH-CONTEXT-024: The project root bounds project instructions
 
-The project root bounds which project instructions are authoritative. When the execution directory is inside the project root, the contained instruction chain from the root to that directory loads; when it is outside, only the project-root chain loads, and loading never walks into an enclosing or unrelated repository.
+The project root bounds which project instructions are authoritative. When the execution directory is inside the project root, the contained instruction chain from the root to that directory loads. When it is outside, only the project-root chain loads. Loading never walks into an enclosing or unrelated repository.
 
 ## ARCH-CONTEXT-025: Instruction sources are selections with identity-checked reads
 
-User-global and project instruction files and their explicit imports are source selections, not recursive discovery: they follow links, keep the logical path for attribution, resolve nested imports from the canonical target, and deduplicate by canonical target. A project-scoped source cannot reach, through an alias, account-home content outside the project, Flywheel-owned state, or dotenv credentials. The authorized file identity must still hold for the opened file before any bytes enter model context, and every omitted import of one load is reported in one diagnostic without changing the authored text. A discovered instruction file that cannot be read, is not a regular file, is not valid UTF-8, or changes during the read is omitted with its logical path and reason, and its labelled section states that it is unavailable; a failed instruction source never fails the run.
+User-global and project instruction files and their explicit imports are source selections. Selection follows links but keeps the logical path for attribution. Sources deduplicate by canonical target, and nested imports resolve from it. Bytes enter model context only while the opened file matches the authorized identity. A discovered file that is unreadable, not a regular file, not valid UTF-8, or changed during the read is omitted with its logical path and reason. Its labelled section states it is unavailable, and the source never fails the run. One diagnostic reports every omitted import of a load without changing the authored text.
+Not: recursive discovery of instruction files and imports.
+
+## ARCH-CONTEXT-032: Project instruction aliases cannot reach account-home content, Flywheel state, or dotenv credentials
+
+A project-scoped instruction source cannot reach, through an alias, account-home content outside the project, Flywheel-owned state, or dotenv credentials.
 
 ## ARCH-CONTEXT-026: Request context is assembled once and evidenced before provider I/O
 
-Request admission computes the request-stable prompt, the module transformer chain's result, and the provider tool definitions once, and each attempt reuses them and adds only attempt-local provider notes. Before provider I/O, one immutable prepared-attempt record binds the interaction profile, executable tool registrations, prompt hash, schemas, omissions, transformer identity, models, catalog and pricing provenance, tokenizer, and provider, and neither an adapter nor profile projection can change it after admission.
+Request admission computes the request-stable prompt, the module transformer chain's result, and the provider tool definitions once, and each attempt reuses them and adds only attempt-local provider notes. Before provider I/O, one immutable prepared-attempt record binds the interaction profile, executable tool registrations, prompt hash, schemas, omissions, transformer identity, models, catalog and pricing provenance, tokenizer, and provider. Neither an adapter nor profile projection can change it after admission.
 
 ## ARCH-CONTEXT-027: A compaction reset records its boundary and reopens context in one commit
 
-A compaction entry records its source leaf boundary and the replaced context size and never rewrites earlier messages, and reconstruction continues from it with the later branch entries. The reset opens fresh context in the same commit with one recorded opening message that holds the current checkpoint, the unattended brief when the run has one, the save state (saved, not saved, or empty), and recovery instructions, and the transcript shows that message as the compaction report. While a planned compaction waits for its save, only the checkpoint tools run. A missing or cross-branch source boundary is an invariant violation.
+A compaction entry records its source leaf boundary and the replaced context size and never rewrites earlier messages. Reconstruction continues from it with the later branch entries. The reset opens fresh context in the same commit with one recorded opening message. That message holds the current checkpoint, the unattended brief when the run has one, the save state (saved, not saved, or empty), and recovery instructions. The transcript shows it as the compaction report. While a planned compaction waits for its save, only the checkpoint tools run. A missing or cross-branch source boundary is an invariant violation.
 
 ## ARCH-CONTEXT-028: Deliberation persists byte-exact and is never rendered
 
-The durable conversation holds everything needed to rebuild the next request, including provider deliberation byte-exact with the serving attribution that same-provider replay reads. Deliberation replays only to the access provider, API, and model that produced it: one shared lowering of provider history withholds all other deliberation from the request, sends blocks marked as user-facing progress as assistant text, and records what it withheld in the request evidence, and the context estimate applies the same rule. Display projections never render deliberation, and provider blocks marked as user-facing progress keep their signed envelope and render as assistant text.
-
-Because: Provider signatures bind to the original bytes and the producing model, a rebuilt context must replay what the live loop held, and a model reads another model's deliberation in plain assistant text as its own visible reply.
-
+The durable conversation holds everything needed to rebuild the next request. That includes provider deliberation, byte-exact, with the serving attribution that same-provider replay reads. Deliberation replays only to the access provider, API, and model that produced it. One shared lowering of provider history withholds all other deliberation from the request and records what it withheld in the request evidence. The context estimate applies the same rule. Display projections never render deliberation. Provider blocks marked as user-facing progress keep their signed envelope and go to the request and the display as assistant text.
+Because: Provider signatures bind to the original bytes and producing model, a rebuilt context must replay what the live loop held, and a model reads foreign deliberation in assistant text as its own reply.
 Not: Stripping or masking provider reasoning at write time, or demoting foreign deliberation to assistant text.
 
 ## ARCH-CONTEXT-029: One admission budget bounds context between requests
 
-One context admission budget bounds what enters the next request between requests: tool results of a batch and subagent results delivered with it draw from the headroom that the next planned save needs, so content that lands below the compaction trigger never pushes the save request past the context window. Reads keep their exemption only inside the fixed share of the window. Each finalized result records the bound in force, so recovery replays the same bound.
+One context admission budget bounds what enters the next request between requests. Tool results of a batch and subagent results delivered with it draw from the headroom that the next planned save needs. Content that lands below the compaction trigger therefore never pushes the save request past the context window. Reads keep their exemption only inside the fixed share of the window. Each finalized result records the bound in force, so recovery replays the same bound.

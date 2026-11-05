@@ -9,7 +9,7 @@ Not: An orchestration session that owns a workflow's agents.
 
 ## ARCH-SESSIONS-002: Each session concern has exactly one authority
 
-Session metadata alone owns a session's kind, label, lifecycle, conversation identity, workflow membership, local choices, and relationships. The conversation tree owns resumable messages; the workflow aggregate owns the run's configuration, launch binding, request, and control; and the session store owns the active runner pool and the runtime projection of live output, tokens, cost, and activity. Cross-references between these owners are pointers, never copies.
+Session metadata alone owns a session's kind, label, lifecycle, conversation identity, workflow membership, local choices, and relationships. The conversation tree owns resumable messages. The workflow aggregate owns the run's configuration, launch binding, request, and control. The session store owns the active runner pool and the runtime projection of live output, tokens, cost, and activity. Cross-references between these owners are pointers, never copies.
 Because: Labels, lifecycle, and launch relationships are not conversational history.
 Not: The conversation tree or the session store as owner of lifecycle or relationships.
 
@@ -41,7 +41,7 @@ Not: Silently truncating a checkpoint to fit its limit.
 
 ## ARCH-SESSIONS-009: Every started child has a durable child session before it runs
 
-Every new subagent and every started workflow attempt receives its own durable child session, conversation, and run binding before it acquires a slot or a runner, and an agent that never starts creates no session. A subagent's publication binds it to the parent tool call atomically and records its task and complete instructions first; a workflow attempt's session publishes directly under the launching chat in the same commit as the attempt start, with immutable workflow and attempt membership. Workflow scheduling stays in the workflow host, outside subagent admission.
+Every new subagent and every started workflow attempt receives its own durable child session, conversation, and run binding before it acquires a slot or a runner. An agent that never starts creates no session. A subagent's publication binds it to the parent tool call atomically and records its task and complete instructions first. A workflow attempt's session publishes directly under the launching chat, in the same commit as the attempt start. Its workflow and attempt membership is immutable. Workflow scheduling stays in the workflow host, outside subagent admission.
 Not: Ephemeral or inline child conversations, or conversation persistence as a runtime mode.
 
 ## ARCH-SESSIONS-010: A child owns its own state, and the parent owns only the call
@@ -57,7 +57,7 @@ Not: A synchronized copy of the run's choices in each member session.
 
 ## ARCH-SESSIONS-012: A new workflow attempt is a new session; a subagent's later run is not
 
-Each workflow retry, overflow continuation, or failed-run reopen runs in a new attempt session, and earlier attempt sessions stay immutable history, not resumable workers. Each subagent run binds to one parent session, conversation, and tool call before it executes, and a Resume after a non-completed outcome is a new run in the same child session under the original binding that never rewrites an earlier run or a settled parent result. Interrupt, planned replacement, crash recovery, and in-run provider recovery keep the current run, and a completed workflow admits no new conversation.
+Each workflow retry, overflow continuation, or failed-run reopen runs in a new attempt session, and earlier attempt sessions stay immutable history, not resumable workers. Each subagent run binds to one parent session, conversation, and tool call before it executes. A Resume after a non-completed outcome starts a new run in the same child session under the original binding. That run never rewrites an earlier run or a settled parent result. Interrupt, planned replacement, crash recovery, and in-run provider recovery keep the current run, and a completed workflow admits no new conversation.
 
 ## ARCH-SESSIONS-013: Live ownership is distinct from immutable ancestry
 
@@ -66,7 +66,7 @@ Because: Launch, adoption, and fork lineage is history, not current ownership.
 
 ## ARCH-SESSIONS-014: Deletion follows current work ownership under one fence
 
-Recursive and automatic deletion follow current work ownership: workflow launch bindings, immutable membership, and current child bindings, including a workflow's members and their nested children. Deletion admission, activation, and child publication serialize under one structural mutation fence, so no child publishes under a parent whose deletion was admitted, and deletion settles from leaves to root with recovery keeping the admitted target set. Automatic deletion of unused chats is an account-scheduled lifetime owner that deletes through the public delete path and never opens a dormant project for cleanup.
+Recursive and automatic deletion follow current work ownership: workflow launch bindings, immutable membership, and current child bindings, including a workflow's members and their nested children. Deletion admission, activation, and child publication serialize under one structural mutation fence, so no child publishes under a parent whose deletion was admitted. Deletion settles from leaves to root, and recovery keeps the admitted target set. Automatic deletion of unused chats is an account-scheduled lifetime owner that deletes through the public delete path and never opens a dormant project for cleanup.
 Not: A generic cascade over launch and fork lineage.
 
 ## ARCH-SESSIONS-015: Each child kind's owner controls its children
@@ -80,7 +80,7 @@ Not: A child-specific Stop control or a Stop through the child's chat interrupt.
 
 ## ARCH-SESSIONS-017: Child controls run only after their call commits
 
-Interrupt, resume, and stop of a child are not concurrency-safe and run only after the assistant message that calls them commits, so a crash never leaves a child control without its call in the parent's history. The runtime and crash recovery read a call's contract from the tool registration recorded with that call, never from its input alone.
+Interrupt, resume, and stop of a child are not concurrency-safe. They run only after the assistant message that calls them commits, so a crash never leaves a child control without its call in parent history. The runtime and crash recovery read a call's contract from the tool registration recorded with that call, never from its input alone.
 
 ## ARCH-SESSIONS-018: Interrupt is the one resumable cut, and its actor is a parameter
 
@@ -93,7 +93,7 @@ One admission predicate decides both whether a parent may resume its child and w
 
 ## ARCH-SESSIONS-020: A child runs only under its direct parent's live runtime
 
-Every subagent run, including a Resume, a parent's message, and a planned-replacement continuation, runs in the shared runner host through its direct parent's live host, borrowing the parent's execution environment, child slots, and foreground command control while keeping its own session identity, role, and profile. Without a matching live parent host, Resume refuses, and a child ends when its parent's host closes. An unsettled run without continuation authority becomes crash-interrupted and inactive, and its binding, saved task, capabilities, limits, conversation, and queued input supply resume authority.
+Every subagent run, including a Resume, a parent's message, and a planned-replacement continuation, runs in the shared runner host through its direct parent's live host. It borrows the parent's execution environment, child slots, and foreground command control but keeps its session identity, role, and profile. Without a matching live parent host, Resume refuses, and a child ends when its parent's host closes. An unsettled run without continuation authority becomes crash-interrupted and inactive. Its binding, saved task, capabilities, limits, conversation, and queued input supply resume authority.
 Because: The session actor, runner host, and durable run binding already own continuation and recovery.
 Not: A private host, adoption path, child-specific coordinator, or child process for a subagent.
 
@@ -135,7 +135,7 @@ Every submitted input carries one opaque client submission identity, and merged 
 
 ## ARCH-SESSIONS-031: Unread input returns to its sender without becoming model input
 
-When a recipient ends, input that no intended reader can consume settles: parent input can ride the terminal result, and each other session sender receives one durable notice. A successful handoff withdraws unread human input before recovery can adopt it and keeps it as a display-only notice in the root chat, with a pending return that only a lossless atomic claim naming a submission identity of the sending window can release. An unclaimed return stays claimable until the session is deleted, and returned input never becomes child or parent model input.
+When a recipient ends, input that no intended reader can consume settles. Parent input can ride the terminal result, and each other session sender receives one durable notice. A successful handoff withdraws unread human input before recovery can adopt it and keeps it as a display-only notice in the root chat. Only a lossless atomic claim naming a submission identity of the sending window can release its pending return. An unclaimed return stays claimable until the session is deleted, and returned input never becomes child or parent model input.
 Not: Reservations, takeovers, or a separate replay domain for returned input.
 
 ## ARCH-SESSIONS-032: Reply waits exist only between parent and child
@@ -155,7 +155,7 @@ Because: An empty buffer after the tool-call barrier is not the end of the turn,
 
 ## ARCH-SESSIONS-035: Turn ends are recorded in the conversation
 
-A turn that ends without an answer records one turn-end entry where it ended, naming its reason and, for an interrupt, its actor. An exchange that the runtime answers itself records a settled entry that closes only that exchange. Resumability and every client's interrupted, crashed, and resumed state derive from these records, never from what began a process end or whether a stop finished, and the live parked loop and the durable conversation hold the same record.
+A turn that ends without an answer records one turn-end entry where it ended, naming its reason and, for an interrupt, its actor. An exchange that the runtime answers itself records a settled entry that closes only that exchange. Resumability and every client's interrupted, crashed, and resumed state derive from these records. They never derive from what began a process end or whether a stop finished. The live parked loop and the durable conversation hold the same record.
 
 ## ARCH-SESSIONS-036: New turn-end spellings degrade to a known reason
 
@@ -163,22 +163,22 @@ A new turn-end reason or actor is spelled so that an older release reads it as t
 
 ## ARCH-SESSIONS-038: Attachment and passive reads never continue work
 
-A session that a client shows has its runner attached on open and on every reattach, and a session that no client shows stays paused unless continuation authority owes it continuation: a planned replacement, or a capacity wait whose time has come. Startup, catalog, detail, transcript, render, and runner attachment append nothing and start no model request; attachment may start the provider engine processes that the session needs, which send none. A turn cut while it waited on background work parks again when it attaches. Outside continuation authority, only an explicit act of the person, a message, Resume, or an answer to a pending question, continues execution.
+A session that a client shows has its runner attached on open and every reattach. A session that no client shows stays paused unless continuation authority owes it continuation for a planned replacement or a due capacity wait. Startup, catalog, detail, transcript, render, and runner attachment append nothing and start no model request. Attachment may start the provider engine processes the session needs, which send none. A turn cut while it waited on background work parks again when it attaches. Outside continuation authority, only the person continues execution, with a message, Resume, or an answer to a pending question.
 Not: Resuming interrupted work as a side effect of attaching a runner.
 
 ## ARCH-SESSIONS-039: Continuation authority records authority, not progress
 
-A planned replacement records one durable continuation authority, never progress, for each session it interrupts, children included, before it interrupts work, and ordinary shutdown records none. Only the successor that consumes it resumes those sessions through their owning hosts, nested children after their parents, and a person's whole-session interrupt withdraws any continuation authority without discarding accepted input. A capacity wait records one durable continuation authority that names its continue time before it waits, and its continuation, a person's message, an interrupt, or a Stop withdraws it. The resident account service owns that wake, also after a restart or sleep, and continues the session through its owning host, opening a closed project through the canonical account project lifecycle.
+A planned replacement records one durable continuation authority, never progress, for each interrupted session and child before interrupting. Ordinary shutdown records none. Only the consuming successor resumes them through their owning hosts, children after parents. A person's whole-session interrupt withdraws continuation authority but keeps accepted input. A capacity wait records one durable continuation authority naming its continue time before waiting. Its continuation, a person's message, an interrupt, or a Stop withdraws it. The resident account service owns that wake across restart and sleep. It continues the session through its owning host, opening a closed project through the account project lifecycle.
 Because: Conversations, retained input, and committed child control already show what ran.
 Not: A dispatch ledger or resumed marker beside the conversation.
 
 ## ARCH-SESSIONS-040: Session close is the ordinary-work boundary
 
-Session close stops new admission, aborts foreground and queued shell operations, hands running managed commands to the next build when the close belongs to a planned replacement, waits for every admitted dispatch to settle, ends every remaining registry task, and closes the host shell runtime only after its active work settles. Settlement callbacks, which close later completion notifications, drain last, and one failed callback never stops the others. Runtime-generation disposal and final host disposal close ordinary work in the same order before they release the process guardian, and no close reports settlement while the shell runtime still has active work.
+Session close stops new admission and aborts foreground and queued shell operations. For a planned replacement, it hands running managed commands to the next build. It waits for every admitted dispatch to settle and ends every remaining registry task. It closes the host shell runtime only after its active work settles. Settlement callbacks, which close later completion notifications, drain last, and one failed callback never stops the others. Runtime-generation disposal and final host disposal close ordinary work in the same order before they release the process guardian. No close reports settlement while the shell runtime still has active work.
 
 ## ARCH-SESSIONS-042: A fork carries complete causal state and publishes only when valid
 
-A fork begins at a coherent committed boundary and inherits every durable state slice that can affect later context, including the conversation checkpoint, or explicitly invalidates and rebuilds that slice, and resume does the same by verifying a complete durable prefix. A fork writes the selected branch into a new conversation and validates it before it publishes the destination session and fork relationship, so a failure leaves no half-listed session, and a fork point that would orphan tool-call structure is refused. Workflow-agent conversations are resumable but are not chat forks.
+A fork begins at a coherent committed boundary. It inherits every durable state slice that can affect later context, including the conversation checkpoint, or it invalidates and rebuilds that slice. Resume does the same by verifying a complete durable prefix. A fork writes the selected branch into a new conversation and validates it before it publishes the destination session and fork relationship. A failure leaves no half-listed session. A fork point that would orphan tool-call structure is refused. Workflow-agent conversations are resumable but are not chat forks.
 Not: Forking only the conversation messages while keeping incompatible workflow, handoff, file, or tool state.
 
 ## ARCH-SESSIONS-043: A side conversation never writes into the main conversation
@@ -196,7 +196,7 @@ A person's message carries explicit human provenance on its canonical entry thro
 
 ## ARCH-SESSIONS-046: Turn-end records are facts, never instructions
 
-Interrupt and crash records are model-visible facts, never instructions to continue. An interrupt record says that a tool call may have partially executed only when the turn's last results include an interrupted result. Recovery writes a crash record for an open turn before any other write lands in the session, and writes none over a branch that already ends at a turn-end record or for a settled workflow attempt.
+Interrupt and crash records are model-visible facts, never instructions to continue. An interrupt record says that a tool call may have partially executed only when the turn's last results include an interrupted result. Recovery writes a crash record for an open turn before any other write lands in the session. It writes none over a branch that already ends at a turn-end record, or for a settled workflow attempt.
 
 ## ARCH-SESSIONS-047: Each session owns an append-only conversation tree
 
@@ -206,10 +206,10 @@ Not: A flat message log, or one project-wide tree that couples session durabilit
 
 ## ARCH-SESSIONS-048: Concurrent appends chain off the leaf they guarded
 
-Several writers can extend one conversation. Every append that extends the active branch chains its entries off the leaf of the state that its sequence guard read, so a concurrent commit fails the guard and the append rebuilds from the newer leaf. No append attaches to a leaf that no longer ends the branch.
+Several writers can extend one conversation. Every append that extends the active branch chains its entries off the leaf that its sequence guard read. A concurrent commit then fails the guard, and the append rebuilds from the newer leaf. No append attaches to a leaf that no longer ends the branch.
 Because: An append to a stale leaf drops another writer's entry off the active branch.
 
 ## ARCH-SESSIONS-049: Turns commit at save points
 
-A user turn commits before its provider request begins. Assistant output and tool plumbing accumulate in the writing process and commit as one validated batch at a save point (ARCH-SESSIONS-034); the store append is the durability boundary, and the in-memory projection advances only after it succeeds. Unflushed output is visible only to the writing process, forks and compaction operate on committed history, and ordered disposal performs a final flush.
+A user turn commits before its provider request begins. Assistant output and tool plumbing accumulate in the writing process and commit as one validated batch at a save point (ARCH-SESSIONS-034). The store append is the durability boundary, and the in-memory projection advances only after it succeeds. Unflushed output is visible only to the writing process, forks and compaction operate on committed history, and ordered disposal performs a final flush.
 Not: Fire-and-forget disposal of the conversation, which loses data.

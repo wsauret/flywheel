@@ -4,7 +4,7 @@ This document states the current intended experience for reaching a Flywheel run
 
 ## PI-REMOTE-001: Pairing is the only credential
 
-A user pairs a device, which is a phone, a browser, or a terminal on another machine, by scanning a code that Flywheel shows on the machine, or by opening or pasting the link the code carries. No account, password, or login exists for remote access. A paired device lists the machine's open projects, reads their transcripts as they stream, and sends messages that appear as the next turn.
+A user pairs a device by scanning a code that Flywheel shows on the machine, or by opening or pasting the link the code carries. Devices are phones, browsers, or terminals on other machines. No account, password, or login exists for remote access. A paired device lists the machine's open projects, reads their transcripts as they stream, and sends messages that appear as the next turn.
 
 ## PI-REMOTE-002: Nothing on the machine listens
 
@@ -76,7 +76,7 @@ Tapping a notification opens its machine and project on the chat or workflow it 
 
 ## PI-REMOTE-011: The machine's Remote view shows a code or the remote state, never both
 
-While a pairing code is showing, the machine's Remote view carries only the code, its link, and how long it lasts. The view returns to the remote state on its own when a phone pairs or the code expires. The remote state lists each paired phone by the name the person gave it on the phone before pairing or on the machine after, with whether it is attached now and when it paired. It also lists each known project a phone can open, with paths under the account home shortened to ~, and repeats no relay reachability reading that the prompt frame already shows.
+While a pairing code is showing, the machine's Remote view shows only the code, its link, and its lifetime. The view returns to the remote state when a phone pairs or the code expires. The remote state lists each paired phone, whether it is attached, and when it paired. A phone appears under the name the person gave it on the phone before pairing or on the machine after. The remote state also lists each known project a phone can open, with paths under the account home shortened to ~. It omits relay reachability, which the prompt frame already shows.
 
 ## PI-REMOTE-029: Process initiation decides whether Flywheel starts at login
 
@@ -100,11 +100,11 @@ No running command, turn, subagent, or workflow delays a planned replacement. A 
 
 ## PI-REMOTE-013: One account service opens projects on demand
 
-While a person is logged in, a machine with Flywheel installed keeps one lightweight Flywheel service running for that account; on Linux with lingering on, the service also runs while the person is logged out. The service runs without a window: starting it at login or from any surface opens no terminal or console window, and it never depends on one staying open. A project backend is open only while a surface is attached, for up to 20 minutes after a surface that showed sessions leaves so that its return finds them ready, or while work is active, and any surface can open an asleep project through that service.
+While a person is logged in, each machine with Flywheel installed runs one lightweight Flywheel service for the account. On Linux with lingering on, it also runs while the person is logged out. It opens no terminal or console window when it starts, and never needs one to stay open. A project backend is open only while a surface is attached or work is active, or for up to 20 minutes after a surface that showed sessions leaves. A surface that returns within that time finds its sessions ready. Any surface can open an asleep project through the service.
 
 ## PI-REMOTE-014: The phone shows the client of the machine it reaches
 
-The phone shows the client that belongs to the runtime serving the chosen project, loaded from that machine through the relay; nothing publishes a client to the phone app. A newer release on the machine replaces the phone's client without an update of the phone app and without the person doing anything: the page draws again in the same place, with the same session, reading position, and opened rows, and says nothing about the change. A phone that has loaded a machine's client before, or whose relay has served it, still opens while that machine or its projects sleep, and offers wake as PI-REMOTE-009 describes. Pairing a phone for the first time needs the machine awake.
+The phone shows the client of the runtime serving the chosen project, loaded from that machine through the relay. A newer release on the machine replaces the phone's client without a phone app update or any action by the person. The page redraws in place with the same session, reading position, and opened rows, and says nothing about the change. A phone that loaded a machine's client before, or whose relay has served it, still opens while that machine or its projects sleep, and offers wake as PI-REMOTE-009 describes. Pairing a phone for the first time needs the machine awake.
 
 ## PI-REMOTE-015: A phone is told when a chat needs it
 
@@ -116,7 +116,7 @@ Flywheel has no notification setting of its own, so allowing notifications on th
 
 ## PI-REMOTE-016: A terminal on another machine reaches the runtime through the relay
 
-A person pairs a terminal on another machine with the same code or link as a phone, and the terminal then lists that machine's projects as open or asleep and opens or wakes them. It opens one with `--remote` or as an added answer to its directory question, and creates nothing in a local project directory. A terminal that runs an older release than the machine updates itself to the machine's release and continues, and a newer terminal says the machine has not updated yet and attaches once it has. A terminal on the runtime's own machine attaches locally without the relay, and a remote terminal never stops, replaces, or retires that machine's runtime.
+A paired terminal on another machine lists the projects of the runtime's machine as open or asleep, and opens or wakes them. It opens one with `--remote` or as an added answer to its directory question, and creates nothing in a local project directory. A terminal on an older release than the machine updates itself to the machine's release and continues. A newer terminal says the machine has not updated yet and attaches once it has. A terminal on the runtime's own machine attaches locally without the relay. A remote terminal never stops, replaces, or retires that machine's runtime.
 
 ## PI-REMOTE-017: A version mismatch is explained, not hidden
 

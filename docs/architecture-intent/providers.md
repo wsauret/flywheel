@@ -22,7 +22,7 @@ Declarative custom providers materialize from validated configuration as provide
 
 ## ARCH-PROVIDERS-004: Authentication is a strategy on the provider definition
 
-Each provider definition declares one authentication strategy: API key, OAuth with a device-code or browser flow, or an external login that the owning program performs without Flywheel reading its tokens. One generic login and one generic reconnect run every flow, and a client answers a flow by its kind, never by its provider. Every singleton provider and subscription login has one canonical account identity, which owns credentials, model catalogs, and eligibility across all of that account's spend modes, while request and availability identity include the spend mode. The auth store decoder rejects unknown credential keys by name instead of silently keeping them.
+Each provider definition declares one authentication strategy: API key, OAuth with a device-code or browser flow, or an external login that the owning program performs without Flywheel reading its tokens. One generic login and one generic reconnect run every flow, and a client answers a flow by its kind, never by its provider. Every singleton provider and subscription login has one canonical account identity. It owns credentials, model catalogs, and eligibility across all spend modes of that account. Request and availability identity also include the spend mode. The auth store decoder rejects unknown credential keys by name.
 
 ## ARCH-PROVIDERS-005: A provider subprocess carries only admitted requests
 
@@ -36,8 +36,12 @@ Flywheel reads the output, diagnostics, and end of each provider engine process 
 
 ## ARCH-PROVIDERS-006: A shared engine host never takes ownership from Flywheel
 
-A chat tree runs at most two Claude engine processes: the chat's own engine, and one shared host that runs every other Claude call of the tree, side calls included, as one of its agents. Every agent of the host shares each value that the engine fixes at launch, and each difference that starts another engine is a named exception, with its reason, in one enforced list. Each agent runs on the model, effort, and working directory that its own definition states, and a grant, depth limit, or disabled module narrows only its calls, never what it sees. Flywheel writes each agent's complete history before each start and keeps its tools, request control, step admission, failure classification, and restart from that history, with no concurrency cap.
+A chat tree runs at most two Claude engines, the chat's own and one shared host. The host runs every other Claude call of the tree, side calls included, as one of its agents. Its agents share every value fixed at engine launch. Only a named exception with its reason, in one enforced list, starts another engine. Flywheel writes each agent's complete history before each start. Flywheel owns the agent's tools, request control, step admission, failure classification, and restart from that history, with no concurrency cap.
 Not: A hook or proxy that writes a model reply.
+
+## ARCH-PROVIDERS-073: Each host agent keeps its own definition and view
+
+Each host agent runs on its own definition's model, effort, and working directory. A grant, depth limit, or disabled module narrows only its calls, never what it sees.
 
 ## ARCH-PROVIDERS-070: A tree's engines run only while a client shows a session that needs them
 
@@ -60,8 +64,7 @@ Not: A transport that recognizes runtime-owned text by its bytes.
 
 ## ARCH-PROVIDERS-068: An anticipation returns a claim, and the provider owns what the claim holds
 
-A provider that can prepare for a request before it is sent returns a claim from anticipation. Whoever anticipated holds the claim and releases it: a shown session when it is hidden or a newer plan replaces it, new claims first, and a request when it settles. The provider decides what a claim holds, keeps it while any claim or running work holds it, classifies every end of what it holds, and asks the session to plan again at most once per end. Neutral code holds no engine state.
-
+A provider that can prepare ahead of a request returns a claim from anticipation. Whoever anticipated holds the claim and releases it: a shown session when it is hidden or a newer plan replaces it, new claims first, and a request when it settles. The provider decides what a claim holds and keeps it while any claim or running work holds it. It classifies every end of what it holds and asks the session to plan again at most once per end. Neutral code holds no engine state.
 Because: A neutral mirror of a provider's engines counts units that it cannot see, and drives the provider back through it.
 Not: Engine liveness, end kinds, or served flags in provider-neutral layers.
 
@@ -84,8 +87,7 @@ Not: Letting each credential consumer resolve the profile.
 
 ## ARCH-PROVIDERS-010: A session owns its captured profile selection
 
-Session metadata is the authority for the auth profile of an independently configured chat or subagent, recorded once when the session has none, and workflow members read the run's selection through membership. Account-default changes and process-local environment overrides change effective credentials without rewriting that selection or its role snapshot. An explicit switch materializes the target profile's roles and records selection and role snapshot together or not at all. Deleting a profile records its successor in the account profile store, which resolves the retired identity for every saved session, and admission materializes the successor with its current role assignments before that session's next request.
-
+Session metadata owns the auth profile of an independently configured chat or subagent and records it once when absent. Workflow members read the run's selection through membership. Account-default changes and process-local environment overrides change effective credentials without rewriting that selection or its role snapshot. An explicit switch materializes the target profile's roles and records selection and role snapshot together or not at all. Deleting a profile records its successor in the account profile store, which resolves the retired identity for every saved session. Before that session's next request, admission materializes the successor with its current role assignments.
 Because: Sessions in offline or forgotten projects cannot be rewritten when a profile is deleted.
 Not: Rewriting each saved session's selection at profile deletion.
 
@@ -105,8 +107,7 @@ Every continuing sign-in flow reports progress and settles exactly once, with su
 
 ## ARCH-PROVIDERS-014: The external provider owns each project's login condition
 
-An external provider owns each project's in-memory account login condition, its question identity, its single accepted answer, and its request waiters; auth views and login questions derive from that condition, never from notification or session-question history. Each question's opaque id is its only answer authority: an answer, including an automatic Yes, claims that exact episode once and signs in its captured profile and account, and a duplicate or stale answer is ignored. Cancellation is scoped to its own question and operation, and questions and waiters stay project-local.
-
+An external provider owns each project's in-memory account login condition, its question identity, its single accepted answer, and its request waiters. Auth views and login questions derive from that condition, never from notification or session-question history. Each question's opaque id is its only answer authority. An answer, including an automatic Yes, claims that exact episode once and signs in its captured profile and account. A duplicate or stale answer is ignored. Cancellation is scoped to its own question and operation, and questions and waiters stay project-local.
 Not: Answering a login question against the foreground or default profile.
 
 ## ARCH-PROVIDERS-066: A refused login parks the request, not the walk
@@ -115,7 +116,7 @@ An interactive request whose external login is refused waits in its provider wal
 
 ## ARCH-PROVIDERS-015: Auth, usage, and provider-model views are scoped and secret-free
 
-Auth status and usage reads are scoped to defaults or one session, profile mutations declare defaults, session, or both as one operation, and the runtime resolves that scope from profile state and session metadata; a client never sends a profile id for usage, resolves profile identity, or combines responses. Provider-model state is addressed only by a provider's singleton account or by provider and an opaque, profile-bound account correlation id, and stale-sensitive mutations carry the profile and eligibility revision. Internal credential instances, routing candidates, credential lineage, provider subjects, credentials, and filesystem paths never cross the client boundary.
+Auth status and usage reads are scoped to defaults or one session. Profile mutations declare defaults, session, or both as one operation. The runtime resolves that scope from profile state and session metadata. A client never sends a profile id for usage, resolves profile identity, or combines responses. Provider-model state is addressed only by a provider's singleton account or by provider and an opaque, profile-bound account correlation id, and stale-sensitive mutations carry the profile and eligibility revision. Internal credential instances, routing candidates, credential lineage, provider subjects, credentials, and filesystem paths never cross the client boundary.
 
 ## ARCH-PROVIDERS-016: Model preferences are profile-local deltas
 
@@ -135,7 +136,7 @@ A valid catalog saved for the exact canonical account and credential generation 
 
 ## ARCH-PROVIDERS-019: Model identity fields stay separate
 
-Each usable provider row derives one stable canonical model identity from shared cleanup and the grammar its contribution evidences, or from the shared metadata snapshot identity when the contribution declares that its wire ids move between snapshots. Aggregation keys, exact wire ids, route classes, and data-use classes stay separate fields, and moving aliases stay unresolved. The shared model metadata map validates and enriches rows but is never general membership, and missing map evidence never removes a usable row.
+Each usable provider row derives one stable canonical model identity from shared cleanup and the grammar its contribution evidences. When a contribution declares its wire ids move between snapshots, the row uses the shared metadata snapshot identity. Aggregation keys, exact wire ids, route classes, and data-use classes stay separate fields, and moving aliases stay unresolved. The shared model metadata map validates and enriches rows but is never general membership, and missing map evidence never removes a usable row.
 
 ## ARCH-PROVIDERS-020: The model catalog owns tokenizer identity
 
@@ -145,7 +146,7 @@ Not: Letting the access provider or a wire model alias select the tokenizer.
 
 ## ARCH-PROVIDERS-021: Eligibility is one immutable decision per profile
 
-Provider-model eligibility is one immutable, pure decision per auth profile over serveability, settled catalog evidence, and that profile's account-keyed enable and disable deltas, with exact eligible-model sets per canonical account and one revision that advances when the decision changes. The serving runtime prepares and publishes that decision as one value; provider and picker availability are derived unions, never stored. The complete discovered inventory stays inside the provider-settings owner, and no runtime selection, role, tier, pricing, or request path receives it. Clients, auth status, runners, roles, and selected models are consumers, never eligibility authorities.
+Provider-model eligibility is one immutable, pure decision per auth profile. It reads serveability, settled catalog evidence, and that profile's account-keyed enable and disable deltas. It holds exact eligible-model sets per canonical account and one revision that each change advances. The serving runtime prepares and publishes that decision as one value; provider and picker availability are derived unions, never stored. The complete discovered inventory stays inside the provider-settings owner, and no runtime selection, role, tier, pricing, or request path receives it. Clients, auth status, runners, roles, and selected models are consumers, never eligibility authorities.
 
 ## ARCH-PROVIDERS-022: Catalog evidence is not routing
 
@@ -156,8 +157,7 @@ Not: Treating the effective catalog as the router, or letting an explicit enable
 
 ## ARCH-PROVIDERS-023: The model client admits each request exactly once
 
-Every real provider request, from chat, workflow workers, subagents, compaction, or embedded model work, passes through one model-client admission. Admission captures the registry, immutable credentials, exact-account eligibility, training-route permission, paid-use consent, included-allowance evidence, fixed candidate order, and account-bound availability together, and that capture alone governs planning, construction, retries, and failover for the request. No failover step, planning read, or adapter captures any of it again, and each prepared attempt records the exact provider and account that served it. A publication of profile, account, preference, selection, or configuration affects only later requests, never captured work; a change of selection, module composition, config revision, or profile before dispatch discards the prepared request, and a committed session profile switch invalidates reusable captures before it settles.
-
+Every real provider request, including compaction and embedded model work, passes through one model-client admission. Admission captures the registry, immutable credentials, exact-account eligibility, training-route permission, paid-use consent, included-allowance evidence, fixed candidate order, and account-bound availability together. That capture alone governs planning, construction, retries, and failover, and no later step recaptures it. Each prepared attempt records the provider and account that served it. Later publications of profile, account, preference, selection, or configuration affect only later requests. Changing selection, module composition, config revision, or profile before dispatch discards the prepared request. A committed session profile switch invalidates reusable captures before it settles.
 Not: Candidate-list admission diagnostics standing in for the identity that actually served an attempt.
 
 ## ARCH-PROVIDERS-024: Model selection is captured per request
@@ -207,7 +207,7 @@ Not: Retry loops inside provider adapters.
 
 ## ARCH-PROVIDERS-033: Only the named failover class advances after work starts
 
-Before provider work starts, captured authentication, compatibility, authorization, availability, quota, proven unaffordability, or a route that cannot run on this machine can skip a candidate. After work starts, only the named failover class advances the walk: spent quota, throttling, overload, a provider-stated outage, or an account's refusal of a model or its extended window. Authentication rejection, provider rejection, malformed requests, and unknown failures end under their own classification, and no classification invents a quota or service observation. The walk scans the complete remaining order before it waits, and waits only when no candidate can serve now and a relevant recheck is pending.
+Before provider work starts, captured authentication, compatibility, authorization, availability, quota, proven unaffordability, or a route this machine cannot run can skip a candidate. After work starts, only the named failover class advances the walk: spent quota, throttling, overload, a provider-stated outage, or an account's refusal of a model or its extended window. Authentication rejection, provider rejection, malformed requests, and unknown failures end under their own classification, and no classification invents a quota or service observation. The walk scans the whole remaining order and waits only when no candidate can serve now and a relevant recheck is pending.
 
 ## ARCH-PROVIDERS-034: Candidate rejection has no side effects
 
@@ -230,7 +230,7 @@ Request content is prepared once per revision, and affordability, audit, and dis
 
 ## ARCH-PROVIDERS-038: Availability partitions never alias
 
-Availability owns routing suppression only. Account quota and account-mode availability are keyed by the effective auth profile and the exact candidate, which is the account and its spend mode, so one account or mode never suppresses another, while provider service outages are keyed by provider and shared across profiles. A durable outage mark rests only on a failure that the provider stated, never on a lost connection.
+Availability owns routing suppression only. Account quota and account-mode availability are keyed by the effective auth profile and the exact candidate, which is the account and its spend mode. One account or mode never suppresses another. Provider service outages are keyed by provider and shared across profiles. A durable outage mark rests only on a failure that the provider stated, never on a lost connection.
 
 ## ARCH-PROVIDERS-039: The shared availability authority fails closed and never replaces itself
 
@@ -261,7 +261,7 @@ Not: Persisting an explicit unreviewed state or provider evidence in the consent
 
 ## ARCH-PROVIDERS-043: Envelopes derive from verified identity and supported modes
 
-Every paid mode that a provider declares as supported yields an envelope for every verified account with included quota, established from verified auth identity before any usage read and ordered canonically by account and then prepaid before automatic. Missing mode evidence is an explicit unknown value that is information only: it never restricts editing, acceptance, revocation, or admission.
+Every paid mode that a provider declares as supported yields an envelope for every verified account with included quota. The envelopes derive from verified auth identity before any usage read and sort by account, then prepaid before automatic. Missing mode evidence is an explicit unknown value that is information only: it never restricts editing, acceptance, revocation, or admission.
 
 ## ARCH-PROVIDERS-044: Consent mutations are stale-safe and write only reviewed envelopes
 
@@ -281,7 +281,7 @@ Included allowance, affordability checks, and profile-local pooled-seat ceilings
 
 ## ARCH-PROVIDERS-048: Explicit paid credentials bypass the consent authority
 
-Direct API keys and aggregator credentials authorize their paid paths by their presence and never enter the consent authority, and included subscription quota bypasses the consent gate. An external account that its engine explicitly classifies as usage-only also bypasses it: it routes as one metered candidate that keeps its subscription account identity and derives no envelopes or questions, while consent decisions already stored for it remain. A plan name, billing platform, or missing allowance window never establishes that classification. The free-plan classification of PI-MODEL-038 is a separate exact-account eligibility fact that a provider's reported plan establishes; it removes the account from candidates and never routes it as metered.
+Direct API keys and aggregator credentials authorize paid paths by their presence and never enter the consent authority. Included subscription quota bypasses the consent gate. So does an external account that its engine explicitly classifies as usage-only. It routes as one metered candidate under its subscription account identity and derives no envelopes or questions. Its stored consent decisions remain. A plan name, billing platform, or missing allowance window never establishes that classification. Free-plan classification (PI-MODEL-038) is a separate exact-account eligibility fact that the provider's reported plan establishes. It removes the account from candidates and never routes it as metered.
 
 ## ARCH-PROVIDERS-049: A notification is never consent or admission authority
 
@@ -323,12 +323,11 @@ Not: Deriving request accounting from provider observations.
 
 ## ARCH-PROVIDERS-055: Ledger entries attribute their source and aggregate by canonical source
 
-Each ledger entry records one provider attempt that a provider may have served, with its exact serving-candidate attribution or an explicit unattributed state, its spend mode, credential lineage, model, tokens, and price evidence, and it classifies its value as subscription-equivalent or real spend. Each entry states its coverage: complete, partial with lower bounds, or unmeasured; a detail that the provider did not report is recorded as unreported, never as zero, and a refusal before a response started has no entry. Aggregation groups by canonical source identity, so a credential replacement never splits one account window, and lineage stays for provenance only.
+Each ledger entry records one provider attempt that may have been served. It carries its exact serving-candidate attribution or an explicit unattributed state, its spend mode, credential lineage, model, tokens, and price evidence. It classifies its value as subscription-equivalent or real spend. Each entry states its coverage as complete, partial with lower bounds, or unmeasured. A detail that the provider did not report is recorded as unreported, never as zero. A refusal before a response started has no entry. Aggregation groups by canonical source identity, so a credential replacement never splits one account window. Lineage stays for provenance only.
 
 ## ARCH-PROVIDERS-056: The profile ledger precedes its session mirror
 
-Request settlement records before it acts: the complete ledger draft is checkpointed in the session, the entry is appended to the exact profile ledger, and only then are the session usage and budget records published together with the checkpoint's retirement. The ledger is idempotent by attempt, so a replayed identical entry is a no-op and a differing one is a conflict, and startup replays interrupted checkpoints before new provider work. The checkpoint written before the wire attempt is the attempt's complete unmeasured record, and recovery never settles a checkpoint whose attempt still runs in this process. One shared settlement path covers every served model request, so session budgets and profile usage derive from the same entry without the session becoming a second ledger.
-
+Settlement first checkpoints the complete ledger draft in the session, then appends it to the exact profile ledger. It then publishes session usage and budget records with the checkpoint's retirement. Appends are idempotent by attempt, so an identical replay is a no-op and a differing entry conflicts. Startup replays interrupted checkpoints before new provider work. The pre-wire checkpoint is the attempt's complete unmeasured record. Recovery skips checkpoints whose attempt still runs in this process. One path settles every served model request. Session budgets and profile usage derive from that one entry, so the session is never a second ledger.
 Because: A session mirror that could precede its ledger entry lets budgets and profile accounting disagree after a crash.
 
 ## ARCH-PROVIDERS-057: Usage authority changes are atomic and fail closed
@@ -348,8 +347,7 @@ The profile service pool owns one immutable generation per leased profile that c
 
 ## ARCH-PROVIDERS-060: Only interactive runtimes poll provider observations
 
-Only the enabled Usage module in an interactive runtime polls provider observations; headless and child runtimes still settle served requests into the ledger but never poll. Explicit auth refresh and provider admission refresh only the evidence they require, an ordinary check reads an account only when its evidence is stale, and after a read that gave no evidence an ordinary check waits a bounded back-off before it reads that account again. Disabling the module stops polling at once while already admitted work settles.
-
+Only the enabled Usage module in an interactive runtime polls provider observations. Headless and child runtimes still settle served requests into the ledger but never poll. Explicit auth refresh and provider admission refresh only the evidence they require. An ordinary check reads an account only when its evidence is stale. After a read that gave no evidence, an ordinary check waits a bounded back-off before it reads that account again. Disabling the module stops polling at once while already admitted work settles.
 Because: Without the throttle, an account whose reads fail costs one provider read per model request.
 
 ## ARCH-PROVIDERS-061: Threshold alerts are observation state delivered once
@@ -358,8 +356,7 @@ Threshold crossings are provider-observation state in the profile usage authorit
 
 ## ARCH-PROVIDERS-062: Reset credits stay inside the provider and Usage boundary
 
-Banked reset credits are provider-observation evidence, and each provider contribution owns its optional reset consumer beside its usage reader; the generic Usage service captures that consumer for the exact account and never constructs one. Applying a credit targets an opaque account source and the reviewed authority incarnation and revision, and the usage authority selects the exact credit, records a durable in-flight checkpoint before any provider call, owns the provider idempotency key across uncertain results, and ends with an observation refresh. Raw credit identifiers never enter the request ledger, spend accounting, or the client protocol.
-
+Banked reset credits are provider-observation evidence. Each provider contribution owns its optional reset consumer beside its usage reader. The generic Usage service captures that consumer for the exact account and never constructs one. A credit application targets an opaque account source and the reviewed authority incarnation and revision. The usage authority selects the exact credit and records a durable in-flight checkpoint before any provider call. It owns the provider idempotency key across uncertain results and ends with an observation refresh. Raw credit identifiers never enter the request ledger, spend accounting, or the client protocol.
 Not: Predicting from usage readings or provider hints whether a limit can reset, because the provider's redeem outcome is the sole applicability authority.
 
 ## ARCH-PROVIDERS-063: Usage is persisted once, where it was performed

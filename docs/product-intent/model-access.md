@@ -24,7 +24,7 @@ Background process lists prioritize the full, wrapped goal and show the current 
 
 ## PI-MODEL-003: Actionable unsafe account storage
 
-When unsafe account storage blocks model access, Flywheel identifies the affected provider and storage path, marks that provider as needing attention in Authentication, raises one actionable provider-specific notification, stops retrying affected candidates until the credential store changes, preserves completed work, and lets the session retry after storage is repaired. When the file cannot identify an affected provider, Flywheel reports the authentication file itself.
+When unsafe account storage blocks model access, Flywheel identifies the affected provider and storage path. It marks that provider as needing attention in Authentication and raises one actionable provider-specific notification. It stops retrying affected candidates until the credential store changes, keeps completed work, and lets the session retry after repair. If the file names no affected provider, Flywheel reports the authentication file itself.
 
 ## PI-MODEL-005: Subscription usage threshold crossings
 
@@ -36,7 +36,7 @@ Usage lists every available banked reset with its expiration, earliest first. It
 
 ## PI-MODEL-004: Consolidated model identity
 
-Equivalent provider spellings and stable route variants of one model appear and persist as one dotted model choice, while each provider receives the exact identifier of the selected eligible route. A dash between numbers becomes a dot only when a version follows it, so claude-opus-4-5 appears as claude-opus-4.5 while qwen3-8b and llama-3.3-70b-instruct keep their parameter size apart. Dated snapshots of a model appear under its undated identity, which routes to the provider's undated identifier when one exists and otherwise to the newest dated one. A moving provider alias, such as a DeepSeek identifier, is never a model identity, so the model behind it takes the snapshot name that models.dev records, or else the alias itself.
+Equivalent provider spellings and stable route variants of one model appear and persist as one dotted model choice. Each provider receives the exact identifier of the selected eligible route. A dash between numbers becomes a dot only when a version follows it. For example, claude-opus-4-5 appears as claude-opus-4.5, but qwen3-8b stays unchanged. Dated snapshots appear under the model's undated identity. It routes to the provider's undated identifier if one exists, else the newest dated one. A moving provider alias is never a model identity. The model behind it takes the snapshot name that models.dev records, or else the alias.
 
 ## PI-MODEL-047: Saved model choices survive identity changes
 
@@ -80,7 +80,7 @@ Arrow-key navigation in the authentication list keeps the selected row visible. 
 
 ## PI-MODEL-012: Complete searchable provider catalogs
 
-Every provider account's model controls show at once every usable stable model in that account's latest valid catalog, even one that no other catalog matches. That catalog is the account's saved first-party catalog, which fresh discovery replaces in the background, or models.dev when first-party discovery is unavailable or unusable, but never a separate provider or picker section. People can search the complete list, sorted newest release first, edit it, and deselect all of the account's models, even when discovery fails or the account cannot send requests. An account whose discovery has not yet run shows as still being discovered, never as failed or unavailable.
+Every provider account's model controls show at once every usable stable model in that account's latest valid catalog, even one no other catalog matches. That catalog is the account's saved first-party catalog, which discovery refreshes in the background, or models.dev when first-party discovery is unavailable or unusable, but never a separate provider or picker section. People can search the complete list, sorted newest release first, edit it, and deselect all its models, even when discovery fails or the account cannot send requests. An account whose discovery has not yet run shows as still being discovered, never as failed or unavailable.
 
 ## PI-MODEL-064: Only checked models of a current account serve requests
 
@@ -104,7 +104,7 @@ Flywheel never maintains or curates which models a provider offers. New models d
 
 ## PI-MODEL-010: Usage reads the same way on every client
 
-Usage is one view with Accounts, Spend, and History a tap apart, and a line beside that switch says when the reading is from, that it is refreshing, or that it failed. Each account is one row with its name, one reading of what is left or why there is none, and beneath it the plan, the signed-in identity, and whether paid use is allowed. Every account starts closed, and a tap opens one account at a time or closes the open one. An open account shows one bar per provider window with its reading and reset time, its banked reset with the action to apply it, and what Flywheel did in the window.
+Usage is one view with Accounts, Spend, and History a tap apart. A line beside the switch gives the reading's time, or says it is refreshing or failed. Each account row shows its name and one reading of what is left or why there is none. Beneath it are the plan, signed-in identity, and whether paid use is allowed. Accounts start closed, and a tap opens one at a time or closes the open one. An open account shows a bar per provider window with its reading and reset time, its banked reset and Apply action, and Flywheel's activity there.
 
 ## PI-MODEL-052: Usage account rows fit each account's provider
 
@@ -124,11 +124,11 @@ History offers every account, metered keys included, and for a metered key it ch
 
 ## PI-MODEL-015: Model picker names the providers that can serve each model
 
-The model picker names each model's eligible providers once each, in resolution order for the active auth profile, and never names a model's API format. The provider that would serve the model when the picker reads its models stands out, and no provider stands out when none can serve it. The terminal shows the highlighted model's providers by full name beneath its price details, joined by arrows. The web client shows one line under each model's name with the short names of the providers up to the serving one and a count of the rest, or every provider when none can serve.
+The model picker names each model's eligible providers once each, in resolution order for the active auth profile. It never names a model's API format. The provider that would serve the model when the picker reads its models stands out. No provider stands out when none can serve. The terminal shows the highlighted model's providers by full name beneath its price details, joined by arrows. The web client shows one line under each model's name. It lists short provider names up to the serving one and counts the rest, or lists every provider when none can serve.
 
 ## PI-MODEL-044: Model picker shows effort and price in place
 
-The model picker shows each eligible model with the effort levels it supports and the effort that will apply, and the user can adjust that effort before confirming both together. Effort belongs to the selected role, so each option shows that role's effort adjusted to the model's levels, and changing one role never changes another role's effort. The picker shows the highlighted model's input, cached input, and output prices per million tokens and where they fall in the price range of the listed models. A model offered through several providers shows one price and one effort set, each value taken from the first provider in selection order that states it, then from models.dev.
+The model picker shows each eligible model with its supported effort levels and the effort that will apply, which the user can adjust before confirming both. Each option shows the selected role's effort adjusted to the model's levels, and changing one role never changes another role's effort. The picker shows the highlighted model's input, cached input, and output prices per million tokens and their place in the listed models' price range. A model offered through several providers shows one price and one effort set, each value taken from the first provider in selection order that states it, else from models.dev.
 
 ## PI-MODEL-045: Confirming a model that cannot serve now keeps the choice
 
@@ -250,11 +250,11 @@ The Anthropic Subscription provider keeps Flywheel's tool capabilities, tool exe
 
 ## PI-MODEL-080: Claude routes give the model the same environment facts
 
-At the start of each conversation context, the Anthropic Subscription and API-key providers give the model hidden reminders that state the working directory, git state, platform, shell, operating-system version, model, knowledge cutoff, and local date. Later reminders state each change in the working directory, git state, model, or local date, and on every route the system prompt states the date on which the turn started. The local date agrees with the Claude engine's date on every route, in the `TZ` zone on macOS and Linux and in the system zone on Windows. Each request that the engine sends states the environment once, also after a rotation and at each dispatch of a hosted agent, so the model never reads two shell lines.
+At the start of each conversation context, the Anthropic Subscription and API-key providers give the model hidden reminders of the working directory, git state, platform, shell, operating-system version, model, knowledge cutoff, and local date. Later reminders state each change of working directory, git state, model, or local date. On every route, the system prompt states the turn's start date, and the local date matches the Claude engine's date. The local date's zone is `TZ` on macOS and Linux and the system zone on Windows. Each engine request states the environment once, also after rotation and at each hosted agent dispatch.
 
 ## PI-MODEL-081: Context text from the Claude engine stays hidden history
 
-Reminders are saved in model history but hidden from the visible transcript, survive resume and forks, reset with the active context, and stay when the person switches providers. On a Claude login the engine also gives the model the account's email address, which Flywheel does not record and the API-key provider never sends. An agent in a shared Claude engine also receives the engine's identity line, agent instructions, environment, and resume lines, which Flywheel records in that agent's history, hidden from the transcript. On Windows with Git for Windows, the engine states the shell as bash, and the description of Flywheel's shell tool, which says PowerShell, is the authority.
+Reminders stay in model history but hidden from the transcript. They survive resume and forks, reset with the active context, and stay across a provider switch. On a Claude login the engine also gives the model the account's email address, which Flywheel does not record and the API-key provider never sends. A shared Claude engine also gives each agent the engine's identity line, agent instructions, environment, and resume lines, which Flywheel records hidden in that agent's history. On Windows with Git for Windows, the engine names the shell bash, but Flywheel's shell tool description, which says PowerShell, is the authority.
 
 ## PI-MODEL-028: A workflow file can set each agent's model
 
@@ -290,7 +290,7 @@ Each time a provider refuses content in the conversation that Flywheel has not y
 
 ## PI-MODEL-032: The environment and the project select the auth profile
 
-Flywheel uses the auth profile that `FLYWHEEL_AUTH_PROFILE` names, by exact ID or else by a unique case-insensitive display name; otherwise the profile bound to the current project; otherwise the last profile the person chose; otherwise Default. A profile named by the environment applies to that process only and never changes a saved choice; while the environment names the profile, that process cannot switch to another profile or delete the named one. A project's profile binding is private to the person's account and is never stored in the project.
+Flywheel uses the auth profile that `FLYWHEEL_AUTH_PROFILE` names, by exact ID or else by a unique case-insensitive display name. Otherwise it uses the current project's bound profile, then the last profile the person chose, then Default. A profile named by the environment applies to that process only and never changes a saved choice. While the environment names the profile, that process cannot switch to another profile or delete the named one. A project's profile binding is private to the person's account and is never stored in the project.
 
 ## PI-MODEL-033: A session keeps the auth profile it uses
 
@@ -298,11 +298,11 @@ Each session keeps the auth profile it started with until the person switches th
 
 ## PI-MODEL-034: Sign-in from any client signs in the machine that runs the runtime
 
-Signing in, disconnecting, or renaming an account from any client changes the accounts of the runtime that the client is attached to, never those of the device the person holds. A terminal on the runtime's own machine opens each sign-in page on that machine, so a sign-in that returns to the machine finishes without pasting a code. A terminal or phone attached through the relay shows the sign-in address to open in the person's own browser. For a sign-in that returns to the machine, it also takes the code or the final address that the page ends on; for a device-code sign-in, it shows the code that the person enters on the provider's page.
+Signing in, disconnecting, or renaming an account from any client changes the attached runtime's accounts, never those of the person's device. A terminal on the runtime's machine opens each sign-in page there, so a sign-in that returns to the machine needs no pasted code. A terminal or phone attached through the relay shows the sign-in address to open in the person's own browser. When the sign-in returns to the machine, that client also takes the code or final address the page ends on. For a device-code sign-in, it shows the code that the person enters on the provider's page.
 
 ## PI-MODEL-035: An API key for another provider is refused
 
-When a person enters an API key for a provider whose own keys carry a known prefix, and the key visibly carries another installed provider's prefix, Flywheel refuses the key and names the provider that the key belongs to. A key with no known prefix is accepted, and a provider whose keys carry no known prefix accepts any key.
+When a person enters an API key for a provider whose keys carry a known prefix, and the key carries another installed provider's prefix, Flywheel refuses it. The refusal names the provider that the key belongs to. A key with no known prefix is accepted, and a provider whose keys carry no known prefix accepts any key.
 
 ## PI-MODEL-036: Custom OpenAI-compatible providers come from configuration
 
@@ -318,11 +318,11 @@ Only paid subscription accounts rotate, and a free-plan account serves only whil
 
 ## PI-MODEL-069: Sign-in keeps one free-plan account per provider
 
-On every client and in `flywheel auth login`, a sign-in to a free-plan account is refused when the profile already holds an account of that provider, and Flywheel stores nothing and says why. When Flywheel cannot read the plan of a new account in that case, it refuses the account the same way and says to try again later. A paid sign-in beside a free-plan account of its provider first asks: "This will replace your attached free subscription because we only allow multiple copies of paid subscriptions." Confirming stores the paid account and disconnects every free-plan account of that provider, and declining stores nothing.
+On every client and in `flywheel auth login`, Flywheel refuses a free-plan sign-in when the profile already holds an account of that provider, stores nothing, and says why. When Flywheel cannot read the plan of a new account in that case, it refuses the account the same way and says to try again later. A paid sign-in beside a free-plan account of its provider first asks: "This will replace your attached free subscription because we only allow multiple copies of paid subscriptions." Confirming stores the paid account and disconnects every free-plan account of that provider, and declining stores nothing.
 
 ## PI-MODEL-039: Every agent waits out spent capacity and continues
 
-When no candidate can serve an agent until a stated time, such as a usage-limit reset, the agent waits until that time and continues its turn on its own. This holds for every agent: a chat, a workflow agent, a subagent, and a headless task. If every candidate is still spent then, the agent waits again, and a spent candidate that states no time is checked again after a short interval. A wait that the runtime serves continues across a restart, an unexpected exit, a reboot, or sleep, also when no client shows the session, and reopens its project if it closed.
+When no candidate can serve an agent until a stated time, such as a usage-limit reset, the agent waits until that time and continues its turn on its own. This holds for a chat, a workflow agent, a subagent, and a headless task. If every candidate is still spent then, the agent waits again. A spent candidate that states no time is checked again after a short interval. A wait that the runtime serves continues across a restart, an unexpected exit, a reboot, or sleep, also when no client shows the session, and reopens its project if it closed.
 
 ## PI-MODEL-063: Capacity wait status and end
 

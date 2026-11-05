@@ -16,7 +16,7 @@ While a user extends a mouse selection beyond the visible transcript, the transc
 
 ## PI-INTERACTION-003: Startup reaches an interactive chat promptly
 
-Flywheel shows an interactive prompt and makes chat ready promptly after launch in empty and populated workspaces. While the terminal waits for its first chat, it names what it is starting now over one progress bar for the whole start, and a startup failure of the background service or the project appears there with its reason.
+Flywheel shows an interactive prompt and makes chat ready promptly after launch in empty and populated workspaces. While the terminal waits for its first chat, it names what it is starting now over one progress bar for the whole start. A startup failure of the background service or the project appears there with its reason.
 
 ## PI-INTERACTION-004: Ask User options can require text
 
@@ -24,7 +24,7 @@ Ask User options can require text. Every text entry starts immediately after its
 
 ## PI-INTERACTION-005: Tool work appears as it happens
 
-Flywheel shows each transcript-visible tool call and its available input, output, and mutation evidence as soon as it can do so accurately, without waiting for sibling calls or the rest of the model turn. A shell command appears once its command text arrives and streams its output on every client as it runs, in the foreground or the background and across turns. A settled command shows its settled output, and a mutating command with no mutation evidence adds Flywheel's bounded landing report once, with recovery instructions when they apply. The output area stays empty until output or a landing report arrives and never shows transfer notices or other process-management instructions.
+Flywheel shows each transcript-visible tool call with its available input, output, and mutation evidence as soon as it can do so accurately, without waiting for sibling calls or the turn's end. A shell command appears once its text arrives and streams output on every client as it runs, in the foreground or background and across turns. A settled command shows its settled output. A mutating command without mutation evidence adds one bounded landing report, plus applicable recovery instructions. The output area stays empty until output or a landing report arrives. It never shows transfer notices or other process-management instructions.
 
 ## PI-INTERACTION-139: A running command can be detached or stopped
 
@@ -156,7 +156,7 @@ In the terminal, a clickable Changes label sits in the prompt bar beside the rem
 
 ## PI-INTERACTION-111: Each changed file has one header line
 
-Each file in the review has one clearly marked header line with the kind of change, the path, the lines added and removed, and the file's controls. The path is shortened from its start so the file name stays, and a host with an editor offers to open the file there. The header names the launched agents that changed the file by the titles their own views show, in the agent-name color, and names no agent for the session's own changes. Files deleted under a directory that no longer exists share one header for that directory with their count, and expanding it shows each file with its own diff and controls.
+Each file in the review has one header line with the change kind, the path, the lines added and removed, and the file controls. The path is shortened from its start to keep the file name. A host with an editor offers to open the file there. The header names each launched agent that changed the file by its view title, in the agent-name color. It names no agent for the session's own changes. Files deleted under a removed directory share one directory header with their count. Expanding it shows each file with its own diff and controls.
 
 ## PI-INTERACTION-112: Undo restores a file to its content before the session
 
@@ -164,7 +164,7 @@ Each file offers Undo, which asks for confirmation and then restores the file to
 
 ## PI-INTERACTION-009: A pending question docks at the prompt
 
-While a chat waits on a question, the question and its choices appear at the prompt, in the frame the command menu uses, and leave once answered or skipped. On every client, Escape skips the question at the prompt, and an answer or skip that no longer applies says why. The transcript then records the question as an Ask User entry with one row per question, titled by its header and carrying the answer, with a skipped question marked as cancelled. A pending question stays pending when its session closes or Flywheel stops, and reopening the session shows it at the prompt again, where an answer continues the turn.
+While a chat waits on a question, the question and its choices appear at the prompt in the command menu's frame, and leave once answered or skipped. On every client, Escape skips the question, and an answer or skip that no longer applies says why. The transcript then records an Ask User entry with one row per question, titled by its header and showing the answer, and marks a skipped question cancelled. A pending question survives a closed session or a stopped Flywheel, and reopening the session shows it at the prompt again, where an answer continues the turn.
 
 ## PI-INTERACTION-085: Ask User entries read in full in the transcript
 
@@ -172,7 +172,7 @@ Ask User context appears immediately before its question entry as a normal assis
 
 ## PI-INTERACTION-010: Typing anywhere goes to the prompt
 
-A printable key pressed while no editable control or dialog has the keyboard goes to the prompt, so `/` opens the command menu and a letter starts a message from anywhere in the client without a click first, as in the TUI. Shortcuts with a modifier, space, and keys inside an editable control or an open sheet stay where they landed.
+A printable key pressed while no editable control or dialog has the keyboard goes to the prompt. So `/` opens the command menu and a letter starts a message from anywhere in the client, with no click first, as in the TUI. Shortcuts with a modifier, space, and keys inside an editable control or an open sheet stay where they landed.
 
 ## PI-INTERACTION-011: The transcript follows new output until the user leaves the bottom
 
@@ -214,7 +214,7 @@ The card shows the currently connected backend's version, including at the top o
 
 ## PI-INTERACTION-017: The web command menu opens on settings in expected-use order and shows commands to typing
 
-On the web client a bare `/` opens a menu of settings and frequent actions in one expected-use order that Flywheel ships, with the most-used settings first. Each setting that changes one value in place appears in that menu with its control, and the menu lists no other slash command or skill. Typing after the slash searches that menu and the full command catalog by name and description, and picking an entry puts it in the composer. A line under the menu states how many commands are available, and that line and the Commands row open a sheet of the whole catalog in menu order, with descriptions and use counts.
+On the web client a bare `/` opens a menu of settings and frequent actions in one expected-use order that Flywheel ships, most-used settings first. Each setting that changes one value in place appears there with its control, and the menu lists no other slash command or skill. Typing after the slash searches that menu and the full command catalog by name and description. Picking an entry puts it in the composer. A line under the menu counts the available commands. That line and the Commands row open a sheet of the whole catalog in menu order, with descriptions.
 
 ## PI-INTERACTION-083: The terminal command menu ranks commands by account-wide use
 
@@ -254,7 +254,7 @@ Deleting a parent chat stops and deletes its workflows, their agent sessions, an
 
 ## PI-INTERACTION-023: A chat can fork without changing its source
 
-Running `/fork` in a chat copies its committed active conversation branch and its current checkpoint into an independent paused chat, leaves the source unchanged, gives the copy a distinct derived title, and opens the copy as the current chat. In the terminal, the copy opens in a new tab.
+Running `/fork` in a chat copies its committed active conversation branch and its current checkpoint into an independent paused chat. The source stays unchanged. The copy gets a distinct derived title and opens as the current chat. In the terminal, the copy opens in a new tab.
 
 ## PI-INTERACTION-024: Submitted messages appear immediately
 
@@ -278,11 +278,11 @@ On the web client the transcript reads in one centred column of comfortable line
 
 ## PI-INTERACTION-026: The session list is furniture the user arranges
 
-On a web pane wide enough to show the session list beside the transcript, the user drags the list's edge to resize it, folds it away and back with a toolbar button or Mod+B, and finds it the same way next time in that browser. With the list folded, the toolbar title opens the list, as it does on a narrow pane.
+On a web pane wide enough to show the session list beside the transcript, the user can resize the list by dragging its edge. A toolbar button or Mod+B folds it away and back. The list keeps its width and fold state in that browser. With the list folded, the toolbar title opens the list, as it does on a narrow pane.
 
 ## PI-INTERACTION-027: The web client answers a small set of chords from anywhere
 
-On the web client, Mod+K opens the session list with its search ready to type into on a keyboard-and-mouse device, Mod+B folds the session list on a wide pane, and Mod+/ opens a sheet that lists every key the client answers, including the composer's own. Mod is the platform's command key. The command menu also offers the shortcuts sheet by name.
+On the web client, Mod+K opens the session list with its search ready to type into on a keyboard-and-mouse device. Mod+B folds the session list on a wide pane. Mod+/ opens a sheet that lists every key the client answers, including the composer's own. Mod is the platform's command key. The command menu also offers the shortcuts sheet by name.
 
 ## PI-INTERACTION-028: Messages and code blocks can be copied on the web client
 
@@ -294,7 +294,7 @@ On the web client, every message, tool call, and group of calls shows the clock 
 
 ## PI-INTERACTION-029: Words in any transcript can be found and opened
 
-On every client, the user searches the words of the current session's transcript or of every session in the project. Hits are ranked by relevance and each shows who said it, the matching words in context, and in project scope the session's title; the search covers what people and the agent said and what tools returned, as recorded, including while a session works. Opening a hit lands its transcript on the block that holds it, in whichever session, marks that block briefly, and keeps the search open so the next hit is one key away. On the web client Mod+F and the command menu open the search; in the terminal a command does.
+On every client, the user searches the current session or every session in the project. The search covers people's and the agent's words and tool results, as recorded, also while a session works. Each hit, ranked by relevance, shows the speaker, the matching words in context, and in project scope the session's title. Opening a hit lands its session's transcript on the block that holds it and briefly marks that block. The search stays open with the next hit one key away. Mod+F or the command menu opens it on the web client. A command opens it in the terminal.
 
 ## PI-INTERACTION-030: Files are mentioned from a picker on every client
 
@@ -306,7 +306,7 @@ On the web client, choosing mention from the `+` menu or the command menu opens 
 
 ## PI-INTERACTION-031: Files and photos attach to a message on every client
 
-On the web client, files or photos chosen from the `+` control, pasted into the composer, or dropped onto it attach to the next message as removable chips until it is sent. In the terminal, a pasted clipboard image, one or more dragged or pasted local image paths, or files chosen through `/attach` attach to the next message the same way. The model sees an attached image as an image and an attached text file as its text with its name, and a message can consist only of attachments. A file of another kind or over the size limit is refused with a notice that names the file and what is accepted.
+On the web client, files or photos chosen from the `+` control, pasted into the composer, or dropped onto it attach to the next message as removable chips until sent. In the terminal, a pasted clipboard image, dragged or pasted local image paths, or files chosen through `/attach` attach the same way. The model sees an attached image as an image and a text file as its text and name. A message may have attachments and no text. A file of another kind or over the size limit is refused with a notice naming the file and what is accepted.
 
 ## PI-INTERACTION-120: A terminal image attachment shows at once and sends complete
 
@@ -396,7 +396,7 @@ People can edit a session's tab title and longer description independently. Tab 
 
 ## PI-INTERACTION-042: An open session is always served
 
-A session open in a tab is always served. After a runtime restart it comes back on its own, idle or still waiting for model capacity, with any interrupted work marked in the transcript, and the person never sees it as unserved or is asked to do anything to bring it back. If its runner cannot start, such as when its auth profile is gone, the tab stays open and its transcript shows one notice of the failure, which the next successful start removes; the next activation or message tries again, and a message sent meanwhile stays in the conversation. Escape on an idle chat with no question at the prompt does nothing.
+A session open in a tab is always served. After a runtime restart it returns on its own, idle or waiting for model capacity, with interrupted work marked in the transcript. The person never sees it unserved or has to act to bring it back. If its runner cannot start, as when its auth profile is gone, the tab stays open. The transcript shows one failure notice until the next successful start. The next activation or message retries, and a message sent meanwhile stays in the conversation. Escape on an idle chat with no question at the prompt does nothing.
 
 ## PI-INTERACTION-043: A chat turn is interrupted, never stopped
 
@@ -436,15 +436,15 @@ In the terminal, Escape in a workflow's views goes back one level and never inte
 
 ## PI-INTERACTION-051: A workflow shows its whole plan on its card
 
-The parent chat shows every workflow that it launched, built in or written for the task, as a card in its transcript, in the terminal and on the web client. A workflow has no transcript of its own, so its card is the one place that shows its plan and progress, and each of its agents opens in an agent view. Opening the card from its header, the background list, or a link shows it full-size over its chat, with no composer, and on a phone as the workflow's screen. The card has its final height from its first frame, and only the run's progress and the person's choices change it, never its width.
+In the terminal and on the web client, the parent chat shows every workflow it launched as a card in its transcript. A workflow has no transcript of its own, so its card alone shows its plan and progress. Each agent opens in an agent view. Opening the card from its header, the background list, or a link shows it full-size over its chat, with no composer. On a phone, the full-size card is the workflow's screen. The card's height is final from its first frame. Only run progress and the person's choices change it; width does not.
 
 ## PI-INTERACTION-161: A workflow card names each phase and round of its plan
 
-The card lists every phase that the workflow can reach, in run order, from launch, by its short id, and shows the phase's longer name when the person points at it. Each phase of a stream and each round of a repeat shows as a phase of its own, and each round after the first carries its number, such as `verify · round 2`. A phase that repairs what a check found belongs to the round of the check that it leads to. A phase that may not run reads "if needed" until an earlier phase decides, and a phase that the workflow can no longer reach reads skipped.
+From launch, the card lists every phase that the workflow can reach, in run order, by its short id. Pointing at a phase shows its longer name. Each stream phase and each repeat round shows as its own phase, and each later round carries its number, such as `verify · round 2`. A phase that repairs what a check found belongs to the round of the check that it leads to. A phase that may not run reads "if needed" until an earlier phase decides, and a phase that the workflow can no longer reach reads skipped.
 
 ## PI-INTERACTION-162: Workflow progress reads as chits and a count
 
-Progress reads as one chit for each agent, colored by its state, followed by a count of the agents that finished well, so a failed agent never reads as done. A phase whose list is not known yet shows no chits and counts as one unit until the list arrives, and each new round of a repeat adds its units. While the run goes on, an agent that its own interrupt holds counts as interrupted on the plan bar, on its phase line, and in the agent view alike. When a phase has more agents than its chit slots, its chits fill in proportion, with at least one for each state present, and the exact count follows.
+Progress shows one chit per agent, colored by its state, then a count of agents that finished well. A failed agent never reads as done. A phase with an unknown list shows no chits and counts as one unit until the list arrives. Each repeat round adds its units. While the run goes on, an agent held by its own interrupt counts as interrupted on the plan bar, its phase line, and the agent view. When agents outnumber a phase's chit slots, its chits fill in proportion with at least one per present state, and the exact count follows.
 
 ## PI-INTERACTION-163: Phase and agent lines show state, name, and time
 
@@ -472,7 +472,11 @@ A settled phase's line and the plan bar show a survey's coverage in the same wor
 
 ## PI-INTERACTION-169: A workflow card's header names the run and holds its controls
 
-The card's header names the run by its launch title, or by the workflow's name when the launch gave none, and shows its elapsed time and, at full size, its cost. At both sizes it shows the run's state when it is not running, Open on the inline card, Interrupt, Resume, or Restart as the run admits, and Stop while the parent's call can stop it. Every surface of the run uses its name, and a narrow header shortens that name first and its state next, never hides the time, and keeps every control reachable from its action menu. The card shows none of the tool calls inside the workflow, and one notice line at its top says when the workflow's definition changed or its saved progress is damaged.
+The header names the run by its launch title, or else by the workflow's name, and every surface of the run uses that name. It shows the elapsed time and, at full size, the cost. At both sizes it shows the state of a run that is not running, and Interrupt, Resume, or Restart as the run admits. It also shows Open on the inline card, and Stop while the parent's call can stop the run. A narrow header shortens the name, then the state, but keeps the time and keeps every control reachable from its action menu.
+
+## PI-INTERACTION-175: A workflow card hides inner tool calls and flags a changed or damaged run
+
+The card shows no tool calls from inside the workflow. One notice line at the card's top says when the workflow's definition changed or its saved progress is damaged.
 
 ## PI-INTERACTION-170: Selecting a workflow agent opens it and follows its item
 
@@ -480,11 +484,11 @@ Selecting a started agent on either card opens its agent view in place of any op
 
 ## PI-INTERACTION-171: The agent view's header separates the workflow from the agent
 
-The agent view's header has a workflow band with a back control that names where it returns, the workflow's name, and the workflow's progress, and a rule under it. Under the rule, the agent line names the phase, the agent's item key or id, its persona, its brief when the agent is not named after it, and its model and effort. At the right of that line are the agent's state, its elapsed time, its operations, and its own Interrupt or Resume, which act on that agent alone. No line lists the agent's siblings, and a Next agent control opens the next agent and shows the open agent's place in its phase.
+The agent view's header has a workflow band with a back control that names its destination, the workflow's name and progress, then a rule. Below the rule, the agent line names the phase, the agent's item key or id, persona, brief unless the agent is named after it, model, and effort. The line's right end shows the agent's state, elapsed time, operations, and own Interrupt or Resume, which act on that agent alone. No line lists the agent's siblings. A Next agent control opens the next agent and shows the open agent's place in its phase.
 
 ## PI-INTERACTION-172: Workflow lines give way on narrow screens without losing what matters
 
-No text on a workflow surface is cut while its line has room, and the workflow's name takes the free space. A narrow line drops its least needed parts one at a time, only while it has no room, and never drops the way back, a name, the count, the state, or a control. A band too narrow for one line moves the progress to a second line, and a web agent line that still does not fit wraps at a part instead of cutting it. On every client, a phase's name and an agent's name each have their own color, which is never the color of a state.
+Workflow surface text is never cut while its line has room, and the workflow's name takes the free space. A narrow line drops its least needed parts one at a time, only while it has no room. It never drops the way back, a name, the count, the state, or a control. A band too narrow for one line moves the progress to a second line. A web agent line that still does not fit wraps at a part instead of cutting it. On every client, phase and agent names each have their own color, never a state's color.
 
 ## PI-INTERACTION-173: An agent view shows the agent's brief and takes its messages
 
@@ -492,7 +496,7 @@ The agent's transcript opens with one closed line for the brief that it received
 
 ## PI-INTERACTION-174: Workflow surfaces answer the keyboard
 
-In the terminal, the full-size card selects with Up and Down, opens an agent with Enter, expands and folds a phase with Enter, Right, and Left, and scrolls by page. Left goes back from an agent view with an empty composer, and Tab and Shift+Tab move from agent to agent in run order. On the web client, the full-size card's list answers the arrow keys, Home, End, and Enter, and `[` and `]` open the previous and next agent outside a text field. The back control looks and acts as a button with hover and keyboard-focus feedback, and the keyboard shortcuts sheet lists all these keys.
+In the terminal, the full-size card selects with Up and Down, opens an agent with Enter, expands and folds a phase with Enter, Right, and Left, and scrolls by page. With an empty composer, Left leaves an agent view. Tab and Shift+Tab move between agents in run order. On the web client, the full-size card's list answers the arrow keys, Home, End, and Enter. Outside a text field, `[` and `]` open the previous and next agent. The back control looks and acts as a button with hover and keyboard-focus feedback. The keyboard shortcuts sheet lists them all.
 
 ## PI-INTERACTION-045: A running workflow agent keeps its own model seat
 
@@ -508,7 +512,7 @@ On the web client, every tap or click shows a response at once on any connection
 
 ## PI-INTERACTION-050: Sessions send each other messages
 
-An agent in a chat, a subagent, or a workflow can send a message to another session or to a workflow in the same project, and it names which of the two it addresses. A message reaches a working session after its current action and starts a turn in an idle session that a client shows. A chat that no client shows and an interrupted or unexpectedly stopped session hold the message without starting work and tell the sender at once. A person's message continues interrupted work, and a parent's message continues its child unless a person made the latest interrupt.
+An agent in a chat, a subagent, or a workflow can message another session or a workflow in the same project, and it names which of the two it addresses. A message reaches a working session after its current action and starts a turn in an idle session that a client shows. A chat that no client shows and an interrupted or unexpectedly stopped session hold the message without starting work and tell the sender at once. A person's message continues interrupted work, and a parent's message continues its child unless a person made the latest interrupt.
 
 ## PI-INTERACTION-131: Senders find and address their message targets
 
@@ -520,7 +524,7 @@ A deleted or finished target refuses messages. The same message sent again from 
 
 ## PI-INTERACTION-133: Session messages show as compact rows
 
-Each sent or received session message shows in its transcript as a collapsed row that expands to show the message, and a delivered message adds no receipt. The row names the direction and the other session by its type and current name, or by its name at sending once that session is deleted. An agent of a workflow is labeled with its workflow, and a message to a workflow names the workflow at its sender and shows in the transcript of each agent that reads it. A failed send shows why it failed, and a held send shows a notice with the reason, in the same words on every client.
+Each session message, sent or received, shows in its transcript as a collapsed row that expands to show it. A delivered message adds no receipt. The row names the direction and the other session by its type and current name, or by its name at sending once that session is deleted. A workflow agent is labeled with its workflow. A message to a workflow names the workflow at the sender and shows in each reading agent's transcript. A failed send shows its cause, and a held send shows a notice with its reason, in the same words on every client.
 
 ## PI-INTERACTION-134: A parent's message stands out in its child's transcript
 
@@ -540,7 +544,7 @@ When the parent or the runtime interrupts a child, every reply wait on that chil
 
 ## PI-INTERACTION-138: A child reads no input after its handoff starts
 
-A subagent or an agent of a workflow ends its session when an admitted handoff starts. From then on it reads no input of any kind and makes no tool call or model request, except to write again a handoff that was not valid. Its unread words stay in the parent transcript and return only to the sending window's open parent composer, after any draft and a blank line. The finished subagent viewer hides its composer and says where those words are kept, a refused send keeps its draft, and an unsent draft moves to the parent composer once its pending send settles.
+A subagent or workflow agent ends its session when an admitted handoff starts. After that it reads no input and makes no tool call or model request, except to rewrite an invalid handoff. Its unread words stay in the parent transcript. They return only to the sending window's open parent composer, after any draft and a blank line. The finished subagent viewer hides its composer and says where those words are kept. A refused send keeps its draft. An unsent draft moves to the parent composer once its pending send settles.
 
 ## PI-INTERACTION-052: Desktop notifications page the person only when a session asks a question
 
@@ -552,7 +556,7 @@ A web page asks the browser for permission once, when the person turns the Deskt
 
 ## PI-INTERACTION-053: A finished turn on the web client folds to its answer
 
-On the web client, once the agent has answered and stopped working without an error, everything between the person's message and the final answer folds into one line, but the terminal never folds turns. The line gives when the work started, how long it took, and what was run, edited, and delegated, such as "Worked 6m 12s · ran 14 commands, edited 5 files, 2 subagents". Cards of workflows that the turn launched stay in view after the line, in their finished form, before the answer. Opening the line, or a search hit inside it, shows every other row as it was.
+On the web client, once the agent has answered and finished without an error, everything between the person's message and the final answer folds into one line. The terminal never folds turns. The line gives the start time, the duration, and what was run, edited, and delegated, such as "Worked 6m 12s · ran 14 commands, edited 5 files, 2 subagents". Cards of workflows that the turn launched stay visible after the line, in their finished form, before the answer. Opening the line, or a search hit inside it, shows every other row as it was.
 
 ## PI-INTERACTION-099: Long durations count hours
 
@@ -616,7 +620,7 @@ When a client cannot read data for a surface in the background, the surface keep
 
 ## PI-INTERACTION-064: Crashes report themselves
 
-When a client of an official Flywheel release crashes or its runtime reports a fault, Flywheel sends a bug report to the Flywheel maintainers on its own. The crash screen or fault notice says that it sent the report automatically, shows a short report id the person can quote, and says that turning off Bug reports in Settings stops automatic reports. Bug reports are on by default, and while they are on, the person can also send a report with an optional note at any time with the report command. A build that is not an official Flywheel release sends no report, and when no report is sent, the screen says why and offers to copy the report.
+When a client of an official Flywheel release crashes or its runtime reports a fault, Flywheel sends a bug report to the maintainers automatically. The crash screen or fault notice says so, shows a short report id to quote, and says that turning off Bug reports in Settings stops automatic reports. Bug reports are on by default. While they are on, the person can also send a report with an optional note at any time through the report command. Unofficial builds send no report. When no report is sent, the screen says why and offers to copy the report.
 
 ## PI-INTERACTION-107: A bug report carries no conversation content
 
@@ -624,7 +628,7 @@ A bug report holds the error name, message, and stack, the app version and build
 
 ## PI-INTERACTION-065: Unused chats can delete themselves
 
-Settings offers automatic deletion of unused chats, off by default. When a person turns it on with a whole number of days, Flywheel deletes each chat that no one has used and that has done no work for that many days, with the workflows and child sessions its deletion removes, the same as a person's delete. A chat that is open in a tab, working, or owning running work is never deleted this way. Flywheel deletes in a project when the project opens, once a day while it stays open, and when the setting changes.
+Settings offers automatic deletion of unused chats, off by default. When a person sets it to a whole number of days, Flywheel deletes each chat that no one has used and has done no work for that many days. This deletion is the same as a person's delete, including the workflows and child sessions it removes. A chat that is open in a tab, working, or owning running work is never deleted this way. Flywheel deletes in a project when the project opens, once a day while it stays open, and when the setting changes.
 
 ## PI-INTERACTION-066: An activity turns red only for a real stall
 
@@ -640,11 +644,11 @@ Each settings control shows the saved value, and while a change is being saved t
 
 ## PI-INTERACTION-068: A launch opens the nearest established project
 
-A launch with `--project-root`, or else with a nonempty `FLYWHEEL_PROJECT_ROOT`, opens exactly that existing directory as the project. Otherwise Flywheel opens the nearest directory that already has a `.flywheel` folder, searching from the starting directory up to and including the nearest Git root, or only the starting directory outside Git, so a package of a monorepo with its own folder stays its own project. When no such directory exists, an interactive terminal launch asks the person to choose between the Git root and the starting directory when they differ; every other launch uses the Git root when there is one, else the starting directory. After a project's `.flywheel` folder is deleted, a later launch chooses again.
+A launch with `--project-root`, else a nonempty `FLYWHEEL_PROJECT_ROOT`, opens exactly that existing directory as the project. Otherwise Flywheel opens the nearest directory with a `.flywheel` folder. It searches up from the starting directory through the nearest Git root, or only the starting directory outside Git. A monorepo package with its own folder stays its own project. When none exists and the Git root differs from the starting directory, an interactive terminal launch asks the person which to use. Otherwise the launch uses the Git root, else the starting directory. Deleting a project's `.flywheel` folder makes a later launch choose again.
 
 ## PI-INTERACTION-069: The account home opens as a project only when named
 
-A launch that opens a project, such as a terminal launch, a headless launch, or `flywheel web`, never finds or falls back to the account home as its project. Such a launch refuses when the account home is the only candidate, says that the account home holds the account's settings, and says that running Flywheel in any other directory starts a project there; a paired terminal can open a project on a paired machine instead. Commands that work on the account, such as `flywheel serve` and `flywheel kill`, still run from the account home.
+A launch that opens a project, such as a terminal launch, a headless launch, or `flywheel web`, never finds or falls back to the account home as its project. Such a launch refuses when the account home is the only candidate. The refusal says that the account home holds the account's settings and that running Flywheel elsewhere starts a project there. A paired terminal can open a project on a paired machine instead. Commands that work on the account, such as `flywheel serve` and `flywheel kill`, still run from the account home.
 
 ## PI-INTERACTION-070: Status names the working directory apart from the project
 
@@ -664,7 +668,7 @@ The terminal shows one summary of open notifications at startup and one toast fo
 
 ## PI-INTERACTION-075: An empty chat leaves no row behind
 
-A chat with no name that the person gave and no message from the person is removed when its tab closes and when its project stops with no client holding it, so opening a chat and leaving it leaves no empty row. A runtime restart, planned or not, keeps every empty chat, and each open tab reattaches to the same chat.
+An empty chat has no name that the person gave and no message from the person. It is removed when its tab closes and when its project stops with no client holding it. A runtime restart, planned or not, keeps every empty chat, and each open tab reattaches to the same chat.
 
 ## PI-INTERACTION-076: A malformed configuration file keeps the last valid settings
 

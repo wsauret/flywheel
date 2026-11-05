@@ -4,7 +4,7 @@ This document states the current intended experience for Flywheel's optional cap
 
 ## PI-CAP-001: Capabilities are modular and uniform
 
-Every optional capability is one module that a user can turn off, and a module adds the same tools, commands, command-line verbs, views, and notices to every client. Turning a module off removes its contributions everywhere but keeps its saved data, viewable history, and settings, which have no effect until the module is on again. Turning a module on or off applies at once in every client without a restart, and work that already started finishes and can still be stopped or deleted. Every refusal or omission that an off module causes names the module and says to turn it on in Settings or remove it from `disabled_modules` in `flywheel.toml`.
+Every optional capability is one module that a user can turn off. A module adds the same tools, commands, command-line verbs, views, and notices to every client. Turning a module off removes its contributions everywhere. It keeps the module's saved data, viewable history, and settings, which stay inactive until the module is on again. A module change applies at once in every client without a restart. Work already started finishes and can still be stopped or deleted. An off module's refusals and omissions name the module and say to turn it on in Settings or remove it from `disabled_modules`.
 
 ## PI-CAP-017: Flywheel's own tooling is the development module
 

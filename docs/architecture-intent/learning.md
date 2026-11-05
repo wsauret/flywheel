@@ -11,8 +11,7 @@ Not: Hidden prompt patches, opaque accumulated chat, or compacted session memory
 
 ## ARCH-LEARNING-002: Every learning has one canonical class
 
-The learning system classifies each observation before it chooses storage, and each part of a signal goes to the one destination of its class. Preferences, stable context, and short lessons go to memory; repeatable procedures go to skills; shared repository guidance goes to its existing repository authority; session working context goes to session notes; enforceable invariants become code, tests, schemas, validators, tools, or definitions; and information that a current authority supplies is read fresh and never copied. Personal and general coding preferences never become skills, and a repeated lesson goes to the destination of its class, not automatically to a skill or a definition change.
-
+The learning system classifies each observation before it chooses storage. Each part of a signal goes to the one destination of its class. Preferences, stable context, and short lessons go to memory. Repeatable procedures go to skills. Shared repository guidance goes to its existing repository authority. Session working context goes to session notes. Enforceable invariants become code, tests, schemas, validators, tools, or definitions. Information that a current authority supplies is read fresh and never copied. Personal and general coding preferences never become skills. A repeated lesson goes to the destination of its class.
 Because: Without one taxonomy, preferences become procedures, one-off facts become oversized skills, and project conventions leak into unrelated repositories.
 Not: Writing a skill or changing a definition automatically whenever a failure repeats.
 
@@ -66,8 +65,7 @@ Not: Routing bundled-skill improvements through learning signals.
 
 ## ARCH-LEARNING-013: Autonomous skill content requires a semantic audit
 
-An autonomous learning review writes memory directly, but every autonomous mutation that adds or reactivates model-visible skill content, including create, rewrite, patch, support-file addition, and restore, requires a semantic audit of the complete resulting candidate before admission. A background actor never edits repository files or session notes.
-
+An autonomous learning review writes memory directly. Every autonomous mutation that adds or reactivates model-visible skill content requires a semantic audit of the complete resulting candidate before admission. This covers create, rewrite, patch, support-file addition, and restore. A background actor never edits repository files or session notes.
 Because: Project scope limits reach but does not prevent duplicated, contradictory, or falsely specialized model-visible procedure.
 Not: Letting autonomous reviews write project skills directly.
 
@@ -121,5 +119,5 @@ The cleanup campaign runs under one renewable claim recorded in the project's du
 
 ## ARCH-LEARNING-024: Dependency packages are host-neutral
 
-A dependency states one method and the shape of its own report, never who dispatches it, how findings route, or what is synthesized, so the same package reads correctly in a brief, a persona, or a chat turn. A persona declares the packages its lens always needs and otherwise carries only short role instructions.
+A dependency states one method and its own report shape. It never states who dispatches it, how findings route, or what is synthesized. The same package thus reads correctly in a brief, a persona, or a chat turn. A persona declares the packages its lens always needs and otherwise carries only short role instructions.
 Not: A dependency package that dispatches, routes findings, or synthesizes for its host.

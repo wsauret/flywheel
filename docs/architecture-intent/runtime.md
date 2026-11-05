@@ -20,7 +20,7 @@ Not: A recovery policy that retries or fails over inside a request.
 
 ## ARCH-RUNTIME-004: Headless chat is a frontend over the production runtime
 
-Headless chat is a frontend over the production project runtime, not a second chat composition: its commands reach the ordinary client mutation and query boundaries, and its output derives from the same session and conversation projections. The runtime owns profile admission, failover, questions, child supervision, durable history, and the decision that the agent is done. The frontend owns only framing, correlation, and input-stream lifetime, and never answers a question on the person's behalf.
+Headless chat is a frontend over the production project runtime, not a second chat composition. Its commands reach the ordinary client mutation and query boundaries, and its output derives from the same session and conversation projections. The runtime owns profile admission, failover, questions, child supervision, durable history, and the decision that the agent is done. The frontend owns only framing, correlation, and input-stream lifetime, and never answers a question on the person's behalf.
 
 ## ARCH-RUNTIME-005: One account service is the sole public serving placement
 
@@ -31,8 +31,7 @@ Not: A runtime inside the terminal process, which gives a project one runtime pe
 
 ## ARCH-RUNTIME-006: Interactive production runs in three placements
 
-Each open project runs in three placements: the account process owns the public protocol, control, the public UI sequence, passive history reads, and startup maintenance; one state Worker owns the primary store, session lifecycle, ordered writes, generation fencing, and recovery; and one lower-priority executor process owns the runner host, providers, tools, transcripts, model resolution, and conversation search. Placement and transport change without creating another logical runtime. A focused test may host a composition in-process to remove transport cost, but it substitutes placement or transport only: no production backend selector or alternative runtime semantics exists for tests, and an in-process test proves neither process isolation nor socket lifetime.
-
+Each open project runs in three placements. The account process owns the public protocol, control, the public UI sequence, passive history reads, and startup maintenance. One state Worker owns the primary store, session lifecycle, ordered writes, generation fencing, and recovery. One lower-priority executor process owns the runner host, providers, tools, transcripts, model resolution, and conversation search. Placement and transport change without creating another logical runtime. A focused test may host a composition in-process, substituting only placement or transport. Production has no backend selector, and tests get no alternative runtime semantics. An in-process test proves neither process isolation nor socket lifetime.
 Because: Provider and store bursts must not starve public control and rendering, and a turn must outlive the client that started it.
 Not: Running the runtime on the terminal's render event loop.
 
@@ -45,7 +44,7 @@ Not: Running the executor on a different machine from its state Worker and prima
 
 ## ARCH-RUNTIME-008: Installed and dev lanes never share account state
 
-A compiled build serves the installed lane and a checkout run serves the dev lane, and the running executable alone decides which, once at startup. Every lane-scoped account resource, such as discovery, the attach credential, the identity record, the start lock, the hub port, relay identity, and remote pairings, derives from the account data root and the lane, and a client dials and starts only its own lane's service. Resources that serve one device across both lanes, such as the terminal's paired-device record and each device's push subscription, are machine-wide and independent of either lane's pairings. The dev-lane service is never resident and retires soon after nothing holds it.
+A compiled build serves the installed lane and a checkout run the dev lane. The running executable alone decides the lane, once at startup. Lane-scoped account resources derive from the account data root and the lane. These include discovery, the attach credential, the identity record, the start lock, the hub port, relay identity, and remote pairings. A client dials and starts only its own lane's service. Resources serving one device across both lanes, such as paired-device records and push subscriptions, are machine-wide and independent of lane pairings. The dev-lane service is never resident and retires soon after nothing holds it.
 
 ## ARCH-RUNTIME-009: A project is open in one process of one lane
 
@@ -57,8 +56,7 @@ The account placement constructs and invokes no runners, providers, tools, or pr
 
 ## ARCH-RUNTIME-011: Auxiliary Workers are bounded owned resources, not runtimes
 
-Auxiliary Workers, such as those for history, maintenance, update installation, edit copies, model documents, Code Mode, and hard-exit timing, are owned resources inside one process lifetime, never agent runtimes or detached services, and none shares the primary write connection. One reviewed Worker construction authority and one registry of per-role generation budgets bound every role, so no restart path can create unbounded native handles. Filesystem and interpreter work run on these Workers so they never block the executor event loop.
-
+Auxiliary Workers, such as history, maintenance, update installation, edit copies, model documents, Code Mode, and hard-exit timing, are owned resources inside one process lifetime. They are never agent runtimes or detached services, and none shares the primary write connection. One reviewed Worker construction authority and one registry of per-role generation budgets bound every role, so no restart path can create unbounded native handles. Filesystem and interpreter work run on these Workers so they never block the executor event loop.
 Because: Each Worker retains a native resource for its lifetime on some platforms, so construction is a safety contract, not only retry policy.
 
 ## ARCH-RUNTIME-012: Startup protects two foreground milestones
@@ -67,14 +65,12 @@ Startup has two foreground milestones, the first interactive frame and chat runn
 
 ## ARCH-RUNTIME-013: Warming uses the admission owner that serves real sessions
 
-Initial warming is shared per runtime, reuses its success, and permits retry after failure. Chat warming prepares the effective auth profile through the same admission owner that serves real sessions, and the first send reuses what it prepared. A provider engine pre-start prepares its request through the same request preparation that a send executes and hands the prepared request to the provider; it builds no turn, settles no usage, records nothing durable, and claims no recheck or routing state. Shutdown joins admitted warming and reference publication before it releases runtime projections.
-
+Initial warming is shared per runtime, reuses its success, and permits retry after failure. Chat warming prepares the effective auth profile through the same admission owner that serves real sessions, and the first send reuses what it prepared. A provider engine pre-start prepares its request through the same request preparation that a send executes and hands it to the provider. The pre-start builds no turn, settles no usage, records nothing durable, and claims no recheck or routing state. Shutdown joins admitted warming and reference publication before it releases runtime projections.
 Not: A warming-only profile selector or dependency cache.
 
 ## ARCH-RUNTIME-014: Startup status precedes the protocol and comes from one step catalog
 
-Startup status reaches clients before the protocol serves: the account service reports process startup and any death before it can serve on its handshake output, and each accepted socket answers account attach with phases, failure, or ready before protocol framing begins. Every phase is one step of an ordered startup catalog in the published protocol; producers name only a step, and only the account service turns it into words, so a skipped step keeps its place. Concurrent callers join one start, and startup status never enters the event lane.
-
+Startup status reaches clients before the protocol serves. The account service reports process startup, and any death before it can serve, on its handshake output. Each accepted socket answers account attach with phases, failure, or ready before protocol framing begins. Every phase is one step of an ordered startup catalog in the published protocol. Producers name only a step, and only the account service turns it into words, so a skipped step keeps its place. Concurrent callers join one start. Startup status never enters the event lane.
 Because: The blocking window is exactly the time before the protocol server exists, so the event lane cannot carry it.
 
 ## ARCH-RUNTIME-015: Nothing converts durable state before a start is confirmed
@@ -92,7 +88,7 @@ Because: Browsing history must not wake lower-priority execution, and live tail 
 
 ## ARCH-RUNTIME-017: Executor readiness never resolves a serving profile
 
-Executor readiness never resolves or prepares a serving profile. The account retains the resolved chat default as pending, none, or an exact model and effort across executor generations, seeds each generation with it, and publishes it as a latest-collapsible view; tier vocabulary never crosses the client boundary. Profile choice and provider admission are captured only when the person sends or resumes work.
+Executor readiness never resolves or prepares a serving profile. The account retains the resolved chat default as pending, none, or an exact model and effort across executor generations. It seeds each generation with that default and publishes a latest-collapsible view. Tier vocabulary never crosses the client boundary. Profile choice and provider admission are captured only when the person sends or resumes work.
 
 ## ARCH-RUNTIME-018: Generation acquisition is the one owner of executor restarts
 
@@ -129,7 +125,7 @@ The account's surface registrations, including holds the service takes on a surf
 
 ## ARCH-RUNTIME-025: Project open and close affect only that project
 
-A project open is one acquire-or-release boundary: a failure closes every partial bridge and channel before failure is published or a retry is permitted. Closing a project withdraws its maintenance, settles or recovers its executor, and releases its state while leaving the account's shared resources and sibling projects intact; a close that cannot settle leaves the project failed, and the next attempt retries only the owners that did not settle. Idle reaping closes a project only after its local, browser, and relay holds are gone and it reports no live work, and never stops the account service or a sibling project.
+A project open acquires all or nothing. A failure closes every partial bridge and channel before the failure is published or a retry is permitted. Closing a project withdraws its maintenance, settles or recovers its executor, and releases its state. It leaves the account's shared resources and sibling projects intact. A close that cannot settle leaves the project failed, and the next attempt retries only the unsettled owners. Idle reaping closes a project only after its local, browser, and relay holds are gone and it reports no live work. Reaping never stops the account service or a sibling project.
 
 ## ARCH-RUNTIME-026: Every open project owns its browser endpoint off the critical path
 
@@ -151,29 +147,26 @@ Not: Fire-and-forget disposal.
 
 ## ARCH-RUNTIME-030: Floating aborts are contained; other uncaught failures end the process
 
-A floating abort on the account, executor, background, or maintenance thread is contained with one coalesced warning, because an abort proves that its owner withdrew the work. Every other uncaught failure there ends its process or Worker with one redacted record and no ordered shutdown, because the state it would stop from is not trustworthy; an executor first flushes its durable writers briefly.
+A floating abort on the account, executor, background, or maintenance thread is contained with one coalesced warning, because an abort proves that its owner withdrew the work. Every other uncaught failure there ends its process or Worker with one redacted record and no ordered shutdown, because its state is not trustworthy. An executor first flushes its durable writers briefly.
 
 ## ARCH-RUNTIME-031: One replacement owner decides when a service makes way
 
-The account service makes way for a successor through one replacement owner, for a newer installed build, a changed registration, a changed dev-lane source, a return to the lane's last proved build, or a person's restart. A service is superseded by a build only when the build it executes, read from its own executable at start, differs from the installed current build; a client's cutover request is a hint that the service checks, and no running process replaces its own executable. A replacement waits, with no deadline, only for an admitted call that has not returned and a project still opening or recovering; no running work or idle client delays it, and an executor proven wedged meanwhile is ended as after a crash.
-
+The account service makes way through one replacement owner for a newer build, a changed registration or dev-lane source, a return to the lane's last proved build, or a person's restart. A build supersedes a service only when the installed current build differs from its executing build, read from its own executable at start. A client's cutover request is a hint that the service checks. No running process replaces its own executable. A replacement waits, with no deadline, only for unreturned admitted calls and projects still opening or recovering. An executor proven wedged meanwhile is ended as after a crash.
 Not: Retiring a service on protocol difference or when its connection count reaches zero.
 
 ## ARCH-RUNTIME-032: A replacement handoff is lane-scoped account state
 
-A replacement's handoff is one lane-scoped account record naming the open projects, never a copy in each executor, and every generation that serves while it exists joins it before serving input; work admitted after the cut is never refused and receives the same cut. The successor of the same lane consumes each handoff after it listens and off the attach path, opens only projects with work to continue, a command to adopt, or a surface to serve again, and continues each owed session at most once through that session's ordinary resume. The other lane never reads it.
+A replacement's handoff is one lane-scoped account record naming the open projects, never a copy in each executor. Every generation that serves while it exists joins it before serving input. Work admitted after the cut is never refused and receives the same cut. The same-lane successor consumes each handoff after it listens and off the attach path. It opens only projects with work to continue, a command to adopt, or a surface to serve again. It continues each owed session at most once, through that session's ordinary resume. The other lane never reads a handoff.
 
 ## ARCH-RUNTIME-033: Running commands cross a replacement and are never rerun
 
-A planned replacement never waits for, ends, or reruns a running shell command, including a child session's; it first moves held foreground commands to the background and hands each running command, through the command's own supervisor, to the successor build's owner, which adopts it before it resumes any session. Only the command crosses: its output is a log file, and its exit status and deadline belong to its supervisor, which keeps its build declared live until the command ends. An adopting owner proves the supervisor alive before it takes the command, so a reused process id is never adopted.
-
+A planned replacement never waits for, ends, or reruns a running shell command, including a child session's. It first moves held foreground commands to the background. It hands each running command, through the command's own supervisor, to the successor build's owner, which adopts it before it resumes any session. Only the command crosses. Its output is a log file, and its supervisor owns its exit status and deadline and keeps its build declared live until the command ends. An adopting owner proves the supervisor alive before it takes the command, so a reused process id is never adopted.
 Because: Waiting would keep every project and client of the account on the previous build for as long as one command runs.
 Not: Waiting for running commands before a replacement.
 
 ## ARCH-RUNTIME-034: Cross-build handover state carries versions
 
-Every record and channel word that two builds read across a replacement carries a version from its first release. A supervisor answers a word of a version it does not speak by naming the versions it does, and a reader that meets an unknown version reports it, leaves it unchanged, and offers no control that nothing could answer.
-
+Every record and channel word that two builds read across a replacement carries a version from its first release. A supervisor answers a word of a version it does not speak by naming the versions it does. A reader that meets an unknown version reports it, leaves it unchanged, and offers no control that nothing could answer.
 Because: Two builds read the same in-flight state across a replacement.
 
 ## ARCH-RUNTIME-035: A Windows executor container releases its members' children
@@ -186,8 +179,7 @@ An attached terminal follows the serving account service's announced build ident
 
 ## ARCH-RUNTIME-037: The registered job is the only starter where it is registered
 
-A client finds the account service or starts it. Where a service-manager registration in the login home is loaded and enabled, that job is the only starter: a client asks the manager to start it and never launches a twin beside it, and it launches the service itself only where nothing is registered and enabled. A client launch is the explicitly authorized persistent kind and uses the installed build, and a client that has begun to exit starts no service.
-
+A client finds the account service or starts it. Where a service-manager registration in the login home is loaded and enabled, that job is the only starter. The client asks the manager to start it and never launches a twin beside it. A client launches the service itself only where nothing is registered and enabled. That launch is the explicitly authorized persistent kind and uses the installed build. A client that has begun to exit starts no service.
 Not: A client-launched service beside a registered job, which holds the address while the job parks or respawns against it.
 
 ## ARCH-RUNTIME-038: Only a proven login home registers or changes a registration
@@ -198,26 +190,24 @@ Because: A registration made from another home would run against the login home 
 
 ## ARCH-RUNTIME-039: Registration changes never cut running work
 
-Only an installation a person asked for creates a missing registration; an update refreshes an existing registration and never creates one, and a healthy running service is left undisturbed. A changed registration applies without cutting running work: no process inside the service's own tree stops or unloads its own job, and a stop that a step needs is performed by a transient service-manager job outside the tree. Uninstall and turning Process initiation off share one path.
+Only an installation a person asked for creates a missing registration. An update refreshes an existing registration and never creates one, and a healthy running service is left undisturbed. A changed registration applies without cutting running work. No process inside the service's own tree stops or unloads its own job. A stop that a step needs runs as a transient service-manager job outside the tree. Uninstall and turning Process initiation off share one path.
 
 ## ARCH-RUNTIME-040: Only a proven-gone holder is reclaimed
 
-A start lock, holder record, or owner record is reclaimed or swept only when its holder is proven gone; a holder the kernel does not answer for, or a record that cannot be read, still holds. Residency and manager-start decisions rest on what the kernel and service manager state, never on a probe that can fail open.
+A start lock, holder record, or owner record is reclaimed or swept only when its holder is proven gone. A holder the kernel does not answer for, or a record that cannot be read, still holds. Residency and manager-start decisions rest on what the kernel and service manager state, never on a probe that can fail open.
 
 ## ARCH-RUNTIME-041: One exit-code contract drives every service manager
 
-One exit-code contract tells every service manager whether to start the service again: a start that must not run again exits as success, a retirement for a successor or a refusal that can clear exits with a dedicated restart code, and any other failure exits as an error. Flywheel ends its own process tree on stop, so no registration lets the manager kill the tree or stop the whole service for one process's out-of-memory end.
-
+One exit-code contract tells every service manager whether to start the service again. A start that must not run again exits as success. A retirement for a successor, or a refusal that can clear, exits with a dedicated restart code. Any other failure exits as an error. Flywheel ends its own process tree on stop, so no registration lets the manager kill the tree or stop the whole service for one process's out-of-memory end.
 Not: A control-group kill on stop, which ends persistent work and kills executors in the middle of their drain.
 
 ## ARCH-RUNTIME-042: Only a build's own start failures park its service
 
-Every start of the installed account service counts itself toward its build's rollback before command composition loads and takes the count back when it ends for a cause that is not its build's, such as another owner already serving, a busy port or lock, or a signal; a failure after the listen never counts toward that rollback. A start that fails before it listens or within its first minute of serving joins the lane's failing streak, and a sustained failing streak parks the lane's job until a start serves, but a self-clearing refusal or a build that the release rollback can still replace never parks. A parked service runs one start per client start request, and repeats of one park condition coalesce into one count.
+Each installed account service start counts toward its build's rollback before command composition loads. A start that ends for a cause outside its build takes its count back. A failure after listening never counts toward rollback. A start that fails before listening or within its first serving minute joins the lane's failing streak. A sustained streak parks the lane's job until a start serves. A self-clearing refusal never parks, nor does a build that the release rollback can still replace. A parked service starts once per client start request. Repeats of one park condition coalesce into one count.
 
 ## ARCH-RUNTIME-043: Update work has one account owner, off startup and render
 
-The account service composes one update coordinator for the account, which runs whether or not a project is open, and no project executor, client component, or detached daemon owns update work. Checks begin only after the start is confirmed and a deferral passes, byte-heavy file work runs on an owned Worker that starts only for an admitted install or a collection with something to remove, and an install's commands launch in a guardian generation of the account service that the job opens and closes. Disposal awaits the timer's cancellation, the job in flight, its processes, and the removal of uncommitted staging; the manual update command composes the same coordinator for one run.
-
+The account service composes one update coordinator, which runs with or without an open project. No project executor, client component, or detached daemon owns update work. Checks begin only after a startup deferral. Byte-heavy file work runs on an owned Worker, started only for an admitted install or a collection with something to remove. An install's commands launch in a guardian generation of the account service that the job opens and closes. Disposal awaits the timer's cancellation, the job in flight, its processes, and removal of uncommitted staging. The manual update command composes the same coordinator for one run.
 Because: An executor's exit would cut an install, and an account with no open project would never update.
 Not: Update work in each project runtime.
 
@@ -235,7 +225,7 @@ Because: A service started by a service manager has only that manager's minimal 
 
 ## ARCH-RUNTIME-046: Shell load is admitted by processor use, not by container count
 
-No project runtime bounds how many shell containers run. Each project executor registers every shell container it launches or adopts with the account's processor admission (ARCH-TOOLS-051) until its owned exit observes an empty container or it hands its command to the next build, and the account releases every container of an executor generation that closes. Stop, Detach, and owner shutdown never wait for admission, and admission changes no ownership, persistence, or containment.
+No project runtime bounds how many shell containers run. Each project executor registers every shell container it launches or adopts with the account's processor admission (ARCH-TOOLS-051). Registration lasts until the owned exit observes an empty container or the executor hands the command to the next build. The account releases every container of a closed executor generation. Stop, Detach, and owner shutdown never wait for admission. Admission changes no ownership, persistence, or containment.
 Not: A per-project count of shell containers, which bounds no processor use and queues cheap commands behind idle services.
 
 ## ARCH-RUNTIME-047: Engine child-completion notices never reach the parent
@@ -246,7 +236,7 @@ Because: Each child notice reaches a running parent as new input, so a parent ca
 
 ## ARCH-RUNTIME-048: Module process services are built in dependency order
 
-A module can declare a process-scoped service that one owner constructs in dependency order when activation reaches it (ARCH-STRUCTURE-027), and a module reaches another module's service only through that module's exported handle after declaring the dependency. Optional monitoring starts after kernel authorities exist, not during construction. At shutdown the owner closes admission and disposes every instance once in reverse dependency order before the event store writer closes, and one disposal failure does not stop the others.
+A module can declare a process-scoped service that one owner constructs in dependency order when activation reaches it (ARCH-STRUCTURE-027). A module reaches another module's service only through that module's exported handle after declaring the dependency. Optional monitoring starts after kernel authorities exist, not during construction. At shutdown the owner closes admission and disposes every instance once in reverse dependency order before the event store writer closes, and one disposal failure does not stop the others.
 
 ## ARCH-RUNTIME-049: Portable services serve every composition that builds runners
 
@@ -262,7 +252,7 @@ Not: A separate module registry for each host placement.
 
 ## ARCH-RUNTIME-051: Account services reconcile on declared inputs
 
-An account-lifetime service declares the configuration inputs its constructor reads. Reconciliation keeps each selected instance, with its live project resources, while those inputs stay unchanged, and a selection or input change disposes only the affected instances before constructing their replacements. A service that cannot start is contained to its module: the account service keeps serving without it, records the cause once, and hands the cause to that module in every open project, which states it where the module's state already shows. The failed service retries when its inputs or selection change.
+An account-lifetime service declares the configuration inputs its constructor reads. Reconciliation keeps each selected instance, with its live project resources, while those inputs stay unchanged, and a selection or input change disposes only the affected instances before constructing replacements. A service that cannot start is contained to its module. The account service keeps serving without it and records the cause once. In every open project, it hands the cause to that module, which states it where the module's state already shows. The failed service retries when its inputs or selection change.
 
 ## ARCH-RUNTIME-052: One notification service per serving host
 
@@ -272,7 +262,7 @@ Not: A second notification service inside each executor.
 
 ## ARCH-RUNTIME-053: The Remote module contributes one account-lifetime relay service
 
-While enabled and paired, the Remote module contributes one account-lifetime relay service that announces each project's state and the machine placement, routes remote wake and remote creation through the canonical account project lifecycle, and serves admitted device channels without another coordinator. A relay service that cannot start leaves the local surfaces served, and turning the module off closes its channels and releases only its project holds.
+While enabled and paired, the Remote module contributes one account-lifetime relay service. It announces each project's state and the machine placement, and serves admitted device channels without another coordinator. It routes remote wake and remote creation through the canonical account project lifecycle. A relay service that cannot start leaves the local surfaces served. Turning the module off closes its channels and releases only its project holds.
 
 ## ARCH-RUNTIME-054: Modules register transports without the kernel naming them
 
@@ -291,7 +281,7 @@ Not: A config decoder or cache per feature.
 
 ## ARCH-RUNTIME-057: Config publications are immutable revisions with a closed status set
 
-The config projection publishes immutable snapshots with monotonic revisions, a source identity, warnings, diagnostics, and one status from a closed set: missing, valid, malformed, or disposed. A malformed publication carries the fallback that PI-INTERACTION-076 requires and records which fallback is in force, and an invalid module selection alone retains the last valid selection for only its own fields while every other valid setting applies. A reread equal to the current publication does not republish, and disposal retains the final value and refuses later mutation.
+The config projection publishes immutable snapshots with monotonic revisions, a source identity, warnings, diagnostics, and one status from a closed set: missing, valid, malformed, or disposed. A malformed publication carries the fallback that PI-INTERACTION-076 requires and records which fallback is in force. An invalid module selection alone retains the last valid selection for its own fields only, and every other valid setting applies. A reread equal to the current publication does not republish, and disposal retains the final value and refuses later mutation.
 
 ## ARCH-RUNTIME-058: One general watcher, and every change notice is a reread hint
 
@@ -308,8 +298,7 @@ Because: The reverse order lets two processes deadlock.
 
 ## ARCH-RUNTIME-060: Config mutations compare and swap against fresh bytes
 
-Every config mutation states the value it expects, or that the setting is not authored, and applies only when a fresh reread under the ownership lock matches. A stale expectation, a decode failure, or a failed write publishes nothing; a committed write publishes exactly one revision from the committed bytes, and a later durability warning rides on that publication without rolling it back.
-
+Every config mutation states the value it expects, or that the setting is not authored, and applies only when a fresh reread under the ownership lock matches. A stale expectation, a decode failure, or a failed write publishes nothing. A committed write publishes exactly one revision from the committed bytes. A later durability warning rides on that publication without rolling it back.
 Because: A client value can diverge from a stale or failed cross-process mutation.
 Not: Optimistic client state for configuration.
 
@@ -352,8 +341,7 @@ Because: Taking the lock writes and syncs to disk on the calling thread, and adm
 
 ## ARCH-RUNTIME-068: A module disable is an admission decision, not an interruption
 
-Every seam reads the live module selection, which changes only after validated policy adopts a config change, and turning a module off removes its contributions, settings, commands, and observers at once while its protocol runtime answers empty and refuses mutations. Admitted work settles with its captured modules, schemas, and gates, and every new operation requests a new grant. An activated service instance stays owned until runtime shutdown. The agents of one shared engine host settle with the module capture that the host took when it opened; a module turned off while that host runs stays advertised there and refuses its calls.
-
+Every seam reads the live module selection, which changes only after validated policy adopts a config change. Turning a module off removes its contributions, settings, commands, and observers at once. Its protocol runtime answers empty and refuses mutations. Admitted work settles with its captured modules, schemas, and gates, and every new operation requests a new grant. An activated service instance stays owned until runtime shutdown. The agents of one shared engine host settle with the module capture the host took when it opened. A module turned off while that host runs stays advertised there and refuses its calls.
 Not: Cancelling running work when its module turns off.
 
 ## ARCH-RUNTIME-069: Model-config pruning reads the complete authoritative schema
@@ -374,7 +362,7 @@ Because: Startup responsiveness is load-bearing, and an established project need
 
 ## ARCH-RUNTIME-072: A handed-over command is adopted once and completes once
 
-The successor's host for the same conversation adopts each command handed over by a replacement (ARCH-RUNTIME-033) before its first model request, and the executor keeps every command that no attached chat adopts as the one durable record of a command that runs with no host holding it. Exactly one consumer retires each handover, and the consumer that retires an ended command holds its completion for the conversation in the same step. Publications are keyed by command, so a repeated delivery adds nothing, and a held completion is the one path a background outcome takes into a conversation with no running turn.
+The successor's host for the same conversation adopts each command that a replacement hands over (ARCH-RUNTIME-033) before its first model request. The executor keeps each command that no attached chat adopts as the one durable record of a running command that no host holds. Exactly one consumer retires each handover. The consumer that retires an ended command holds its completion for the conversation in the same step. Publications are keyed by command, so a repeated delivery adds nothing. A held completion is the one path that a background outcome takes into a conversation with no running turn.
 
 ## ARCH-RUNTIME-073: Role and root-command selection precede composition
 
@@ -386,14 +374,12 @@ One account-level clone owner creates a project from a device-named repository t
 
 ## ARCH-RUNTIME-075: Diagnostic records carry identities, never content
 
-A diagnostic record carries ids, byte counts, hashes, and kinds, never conversation content, tool output, prompt text, file content, or model-written text, and it is secret-redacted. One piece of information has one home: the content lives in the project store, which the debugging search merges with the diagnostics into one timeline, so a diagnostic names a fact by its identity instead of restating its payload.
-
+A diagnostic record carries ids, byte counts, hashes, and kinds, never conversation content, tool output, prompt text, file content, or model-written text, and it is secret-redacted. Content has one home in the project store. A diagnostic names a fact by its identity instead of restating its payload. The debugging search merges the store and the diagnostics into one timeline.
 Because: A copied message or payload makes the diagnostics stream a second, unbounded store of the content.
 
 ## ARCH-RUNTIME-076: One record marks each decision, and per-call paths stay below the default level
 
-Each decision, state change, or finished unit of work writes one record at the default level with the evidence it rested on, and every kill, termination, restart, replacement step, registration change, update outcome, and refusal that a person could ask about names its cause once. A record whose rate scales with calls, requests, tokens, stream events, reads, store changes, or tool calls stays below the default level, and a start and its end are one completion record with its duration that reaches the default level only when the work failed or ran slow. Steady-state volume is a guarded budget: an idle service writes nothing, and a turn's records do not grow with its tool calls.
-
+Each decision, state change, or finished unit of work writes one default-level record with the evidence it rested on. Every kill, termination, restart, replacement step, registration change, update outcome, and refusal names its cause once. A record whose rate scales with calls, requests, tokens, stream events, reads, or store changes stays below the default level. A start and end pair is one completion record with its duration, at the default level only on failure or slow work. Steady-state volume is a guarded budget: an idle service writes nothing, and a turn's records do not grow with its tool calls.
 Because: A per-call record at the default level can fill the disk, and a full disk makes the store refuse model turns.
 
 ## ARCH-RUNTIME-077: Repeated conditions coalesce into one count

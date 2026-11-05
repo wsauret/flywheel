@@ -4,7 +4,7 @@ This file states how agents, evidence, and deterministic code divide authority o
 
 ## ARCH-AGENCY-001: Agent output is evidence, deterministic owners are authority
 
-Every form of agent work, including chat, exploration, subagents, workflow agents, hook checks, and self-review, produces evidence and never directly changes durable Flywheel state. Agents and external systems produce nondeterministic observations and effects; only a named deterministic owner, such as a validator, a projection, the session manager, a tool contract, or workflow control, decides whether recorded evidence changes owned state, and that owner appends or derives the resulting fact, projection, or transition. A completion claim rests on recorded observation that lands as durable facts or inspectable artifacts, never on unrecorded agent assertion.
+Every form of agent work, including chat, exploration, subagents, workflow agents, hook checks, and self-review, produces evidence and never directly changes durable Flywheel state. Agents and external systems produce nondeterministic observations and effects. Only a named deterministic owner, such as a validator, a projection, the session manager, a tool contract, or workflow control, decides whether recorded evidence changes owned state. That owner appends or derives the resulting fact, projection, or transition. A completion claim rests on recorded observation that lands as durable facts or inspectable artifacts, never on unrecorded agent assertion.
 Because: An agent that both produces work and commits its consequences approves its own output and becomes an unauditable authority.
 Not: Letting an agent declaration, such as a handoff that says work is done, set durable state directly.
 
@@ -15,7 +15,7 @@ Not: Treating an accepted, faithfully recorded model review as proof that the re
 
 ## ARCH-AGENCY-003: Every capability names both sides of its boundary
 
-A capability design is complete only when it names where nondeterminism enters, what records the evidence that crosses that boundary, which deterministic owner consumes the evidence, which fact, projection, recorded external transition, or rebuildable cache follows, which versioned definition controls the behavior, and how success is evaluated. A design that cannot name both the nondeterministic input and its deterministic authority has unbounded nondeterminism, unrecorded evidence, or a durable value with no owner.
+A complete capability design names where nondeterminism enters and what records the evidence crossing that boundary. It names the deterministic owner consuming the evidence and the fact, projection, recorded external transition, or rebuildable cache that follows. It names the versioned definition that controls behavior and how success is evaluated. A design that cannot name both the nondeterministic input and its deterministic authority has unbounded nondeterminism, unrecorded evidence, or an unowned durable value.
 
 ## ARCH-AGENCY-004: Autonomy scales with recording and structure
 
@@ -30,7 +30,7 @@ Not: Treating orchestration scaffolding such as subagents or handoffs as a perma
 
 ## ARCH-AGENCY-006: Agent-facing features use existing observable primitives
 
-A new agent-facing feature is first expressed as a typed event, an attempt row, a handoff, a file artifact, a documented command-line tool, or a projection over existing state. A capability that no existing primitive can express adds a typed event, projection, or workflow phase before any bespoke subsystem. No feature hides work, injects context invisibly, or keeps private state outside the durable substrate. A child run's record at the parent boundary covers its launch identity, task, tool scope, parent causation, completion status, and result identity, and its parent-visible result is folded into the parent's completion notification and recorded as facts, with no side file or second hidden history.
+A new agent-facing feature is first expressed as a typed event, an attempt row, a handoff, a file artifact, a documented command-line tool, or a projection over existing state. A capability that no existing primitive can express adds a typed event, projection, or workflow phase before any bespoke subsystem. No feature hides work, injects context invisibly, or keeps private state outside the durable substrate. A child run's parent-visible result is folded into the parent's completion notification and recorded as facts, with no side file or second hidden history.
 Because: Fewer built-ins mean less hidden prompt surface, fewer state machines, cleaner replay, and visible lineage.
 Not: A subagent handoff file or a separate result store beside the event history.
 
@@ -40,12 +40,12 @@ Agents observe real environment outputs: test and lint results, handoffs and ses
 
 ## ARCH-AGENCY-008: Repeated failures become durable structure
 
-When agents fail repeatedly at the same task, the remedy is durable structure that makes the missing capability or invariant visible: a test, a validator, a workflow phase, a tool or script, a context selection rule, a typed fact or projection, or an inspection surface. Prompt lengthening and blind retry are not remedies.
+Durable structure that makes the missing capability or invariant visible remedies repeated agent failure at one task. This may be a test, a validator, a workflow phase, a tool or script, a context selection rule, a typed fact or projection, or an inspection surface. Prompt lengthening and blind retry are not remedies.
 Not: Adding more instructions to a prompt each time an agent repeats a failure.
 
 ## ARCH-AGENCY-012: Intent, claims, evidence, evaluation, and proof are distinct roles
 
-Every unit of autonomous work keeps five distinct roles: the intent contract that states the current target, the claim mapping that assigns contract items to responsible work or evaluators, the evidence that supports or contradicts a claim, the evaluation record that judges evidence against a contract item, and the proof that explains the resulting state. The owning product or workflow chooses the representation of each role, which may be lightweight at small grain, but the roles never merge at any grain.
+Every unit of autonomous work keeps five distinct roles. The intent contract states the current target. The claim mapping assigns contract items to responsible work or evaluators. Evidence supports or contradicts a claim. The evaluation record judges evidence against a contract item. The proof explains the resulting state. The owning product or workflow chooses the representation of each role, which may be lightweight at small grain, but the roles never merge at any grain.
 Because: Different grains need different structures, while the roles and their invariants are shared.
 Not: One universal contract schema or one universal handoff schema that every brief must fill.
 
@@ -81,7 +81,7 @@ Because: Without the line, either every implementation adjustment needs approval
 
 ## ARCH-AGENCY-019: Autonomous designs name their intent and proof chain
 
-A design that adds autonomous work or a new completion claim names the source of intent, how the current target is reconstructed, which work claims which parts of it, what evidence can satisfy or contradict each material claim, who evaluates judgment-heavy evidence, which deterministic owner consumes the evaluation, and what proof the user sees. A design whose answer is that the model will know from context is not ready.
+A design adding autonomous work or a new completion claim names its source of intent, how it reconstructs the current target, and which work claims which part. It names what evidence can satisfy or contradict each material claim and who evaluates judgment-heavy evidence. It names the deterministic owner that consumes the evaluation and the proof the user sees. A design that leaves this to model context is not ready.
 
 ## ARCH-AGENCY-020: Every route returns a first draft, and a handoff is evidence
 
@@ -117,7 +117,7 @@ Because: Reviewing code that is about to be removed is waste, and editing a conc
 
 ## ARCH-AGENCY-026: Route definitions answer the tier design test
 
-Every definition of an implementation route, a brief, a persona, a dispatch prompt, or a result contract states the tier that each instruction addresses, where the implementer records a deviation, and whether the receiver of the draft holds the intent. An instruction that tells an implementer to stop for a wrong file list or to ask the user directly, or that tells a receiver to trust a handoff as completion, violates this rule.
+Every definition of an implementation route, a brief, a persona, a dispatch prompt, or a result contract states the tier that each instruction addresses. It also states where the implementer records a deviation and whether the draft's receiver holds the intent. An instruction violates this rule when it tells an implementer to stop for a wrong file list or ask the user directly, or tells a receiver to trust a handoff as completion.
 
 ## ARCH-AGENCY-030: Passing checks are quiet, failing checks are concise
 

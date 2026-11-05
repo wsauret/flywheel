@@ -9,7 +9,7 @@ Not: Repair, normalization, or legacy branches on internal data downstream of it
 
 ## ARCH-BOUNDARIES-002: Normalization lives in the adapter and repairs only clear meaning
 
-Tolerance belongs in the boundary adapter, never in downstream consumers, and what the adapter publishes satisfies the internal contract. The adapter repairs only syntax, framing, ordering, or representation damage whose meaning is unambiguous; otherwise it rejects the input or routes it through an explicit retry or clarification path, and it never invents intent or defaults. Raw external evidence may be kept for audit but never becomes an alternate source of truth. Data that Flywheel sends to an external system uses the narrowest complete documented shape.
+Tolerance belongs in the boundary adapter, never in downstream consumers, and what the adapter publishes satisfies the internal contract. The adapter repairs only syntax, framing, ordering, or representation damage whose meaning is unambiguous. Otherwise it rejects the input or routes it through an explicit retry or clarification path. It never invents intent or defaults. Raw external evidence may be kept for audit but never becomes an alternate source of truth. Data that Flywheel sends to an external system uses the narrowest complete documented shape.
 Not: Handling provider or model quirks after canonicalization, or relying on a receiver's tolerance for malformed output.
 
 ## ARCH-BOUNDARIES-004: The writer enforces invariants and the reader fails loudly
@@ -32,7 +32,7 @@ A workflow file is untrusted external input. It is read once, bounded in size, f
 
 ## ARCH-BOUNDARIES-008: External packages are untrusted at every crossing
 
-An external skill package is untrusted content that stays the source of its own bytes (ARCH-CONTEXT-023) under the contained-directory authority of ARCH-DIRECTORIES-012. Each load uses only bytes from the directory identity that it bound when it read the package, and a platform that cannot make this binding serves no filesystem package. Its prompt contribution is marked as third-party data whose provenance never names a local absolute path, and no helper from a package outlives its run as a durable copy. When a person makes a package entry a directory link, the load binds the package to the link target's identity, but Flywheel's skill writes never pass through the link.
+An external skill package is untrusted content that stays the source of its own bytes (ARCH-CONTEXT-023) under the contained-directory authority (ARCH-DIRECTORIES-012). Each load uses only bytes from the directory identity it bound when reading the package. A platform that cannot make this binding serves no filesystem package. A package's prompt contribution is marked as third-party data, and its provenance never names a local absolute path. No package helper outlives its run as a durable copy. When a person makes a package entry a directory link, the load binds to the target's identity. Flywheel's skill writes never pass through the link.
 Not: Vendoring or translating external package bodies into local skills.
 
 ## ARCH-BOUNDARIES-009: Secrets stay redacted outside one crossing
@@ -54,7 +54,7 @@ A program that owns an external login runs the sign-in and stores and refreshes 
 
 ## ARCH-BOUNDARIES-013: Request evidence holds only declared nonsensitive config
 
-A configuration section enters request evidence only through a nonsensitive projection that the section explicitly declares over its own schema, and request evidence is frozen at the provider request boundary and read back only through the owning section's schema. Undeclared sections and secret sections never enter request evidence. Client settings use a separate declared UI-safe projection.
+A configuration section enters request evidence only through a nonsensitive projection that the section explicitly declares over its own schema. Request evidence is frozen at the provider request boundary and read back only through the owning section's schema. Undeclared sections and secret sections never enter request evidence. Client settings use a separate declared UI-safe projection.
 Not: Copying whole configuration sections into request evidence or client snapshots.
 
 ## ARCH-BOUNDARIES-014: Published config snapshots carry no secrets or authored content

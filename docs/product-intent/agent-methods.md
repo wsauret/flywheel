@@ -28,7 +28,7 @@ A workflow can repeat a phase over a list until a round finds nothing new, or un
 
 ## PI-AGENT-003: Chat leads requests through delivery
 
-In chat, Flywheel leads a change request from exploration through design, approval, implementation, verification, and review without the user asking for each next part. The design labels the part that the user fixed as Design intent, and that label travels with the work into every checkpoint, brief, and review that later agents read. A delegated implementation returns to chat as a first draft, and a review checks it for drift from the design beside defects. The chat agent that designed the change then revises the draft until it realizes the design and nothing beyond it, and expected drift never reaches the user as a question.
+In chat, Flywheel leads a change request through exploration, design, approval, implementation, verification, and review without the user asking for each next part. The design labels the part that the user fixed as Design intent, and that label travels into every checkpoint, brief, and review that later agents read. A delegated implementation returns to chat as a first draft, and a review checks it for drift from the design beside defects. The chat agent that designed the change revises the draft until it realizes the design and nothing beyond it. Expected drift never reaches the user as a question.
 
 ## PI-AGENT-093: Implementation follows the user's intent, not the plan
 
@@ -40,7 +40,7 @@ Flywheel agents work on one coherent change at a time and decide each next step 
 
 ## PI-AGENT-095: Designs are spiked before the user sees them
 
-Before Flywheel shows a design, it treats the diagnosis and the design as hypotheses and tests feasibility and the proposed mechanism with throwaway probes against the real code and systems. When inspection cannot tell viable approaches apart, it prototypes and compares them, and it says what it is testing while the tests run. The design supports each claim about what code does with a code citation and every other claim with a spike observation, and labels an unsupported claim as untested theory. A spike that disproves the approach changes it before the user sees a design, and a spike that shows the request is not feasible returns that finding with its evidence.
+Before Flywheel shows a design, it tests its diagnosis and design as hypotheses with throwaway probes of feasibility and mechanism against real code and systems. When inspection cannot tell viable approaches apart, it prototypes and compares them and says what it tests while the tests run. The design backs each claim about what code does with a code citation and every other claim with a spike observation, and labels an unsupported claim as untested theory. A disproving spike changes the approach before the user sees a design. A spike showing the request is infeasible returns that finding with its evidence.
 
 ## PI-AGENT-096: Uncovered work gets a complete design to approve
 
@@ -80,11 +80,11 @@ The chat reply that reports a publication ends with the changes from the approve
 
 ## PI-AGENT-055: Agents explain their work in conversation
 
-Flywheel agents explain designs, results, and other artifacts in the conversation in plain terms, so the user never has to open an artifact to understand it. When the user challenges a claim, often by saying they are confused and offering a simpler model, the agent restates the user's model, names the exact premise where they differ, and settles that premise with evidence; it neither defends its claim nor concedes by reflex. The challenge ends when the agent shows why its approach is better or gives a justification that the user accepts.
+Flywheel agents explain designs, results, and other artifacts in the conversation in plain terms, so the user never has to open an artifact to understand it. When the user challenges a claim, often by voicing confusion and offering a simpler model, the agent restates the user's model. It names the exact premise where the models differ and settles that premise with evidence. It neither defends its claim nor concedes by reflex. The challenge ends when the agent shows why its approach is better or gives a justification that the user accepts.
 
 ## PI-AGENT-004: Paper-cut campaigns resolve verified pain
 
-When the user invokes `/papercuts`, Flywheel validates every live project paper cut against current evidence, closes records whose pain is resolved, no longer relevant, or not worth fixing, investigates and prioritizes the remaining work, and resolves one root-cause fix at a time until the captured backlog is resolved or the user defers it. Approval can cover the campaign's scope; separate fixes do not require separate approval when that consent already covers them.
+When the user invokes `/papercuts`, Flywheel validates every live project paper cut against current evidence. It closes records whose pain is resolved, no longer relevant, or not worth fixing. It investigates and prioritizes the remaining work, and resolves one root-cause fix at a time. The campaign continues until the captured backlog is resolved or the user defers it. When approval covers the campaign's scope, fixes inside that scope need no separate approval.
 
 ## PI-AGENT-005: File editing fits the serving model
 
@@ -140,15 +140,15 @@ Flywheel uses limited memory selectively for durable cross-session understanding
 
 ## PI-AGENT-012: Experiment loops start from an approved charter
 
-When the user invokes `/experiment design`, Flywheel leads a charter design conversation that settles the objective and its decomposition into a primary metric, secondary metrics, hard gates, anti-gaming rules, files in scope, protected and sealed paths, the measure and checks commands, the baseline procedure, and the search strategy, and proves that the measure command emits the declared metrics before the charter is complete. The transcript presents the charter conversation after an `/experiment design` divider and shows the supplied goal as the first user message after that divider. The charter and its scripts are repository files the user owns. An experiment loop cannot start without a complete charter whose primary metric has been produced at least once.
+When the user invokes `/experiment design`, Flywheel leads a charter design conversation. The transcript shows it after an `/experiment design` divider, with the goal as the first user message. The charter states the objective, primary and secondary metrics, hard gates, anti-gaming rules, files in scope, protected and sealed paths, measure and checks commands, baseline procedure, and search strategy. Before the charter is complete, Flywheel proves that the measure command emits the declared metrics. The charter and its scripts are user-owned repository files. An experiment loop cannot start without a complete charter whose primary metric has been produced at least once.
 
 ## PI-AGENT-013: Experiment loops measure, keep, and revert autonomously
 
-When the user starts an experiment loop, Flywheel runs it without further prompts: the agent proposes one change at a time, Flywheel measures each attempt by running the charter's measure command itself, runs the charter's checks after a passing measurement, records every run, commits an attempt only when the agent keeps it after passing checks, and reverts the working tree for every discarded, crashed, or checks-failed attempt. The charter's protected paths cannot be written and its sealed paths cannot be read by the loop. Results, including the best kept result and a noise-floor confidence score, are visible live in every client. The loop continues until the user stops it, the charter's iteration cap is reached, or repeated failures stall it, and it never destroys work outside its own dedicated working tree.
+An experiment loop runs without further prompts. The agent proposes one change at a time. Flywheel itself runs the measure command on each attempt and the checks after each passing measurement. It records every run and commits only kept attempts that pass checks. It reverts discarded, crashed, or checks-failed attempts. The loop cannot write protected paths or read sealed paths. Every client shows live results with the best kept result and a noise-floor confidence score. Only a user stop, the charter's iteration cap, or a stall from repeated failures ends the loop. It never destroys work outside its working tree.
 
 ## PI-AGENT-014: Kept experiments become reviewable branches
 
-When the person runs `/experiment finalize`, Flywheel groups kept experiments into independent changesets that share no files, proposes the grouping for approval, and creates one clean branch per group from the merge base so each can be reviewed and merged on its own.
+When the person runs `/experiment finalize`, Flywheel groups kept experiments into independent changesets that share no files. It proposes the grouping, and after approval creates one clean branch per group from the merge base, so each can be reviewed and merged alone.
 
 ## PI-AGENT-015: Workflows resume across compatible method changes
 
@@ -160,7 +160,7 @@ When a conversation continues with a model that has a different tool contract, F
 
 ## PI-AGENT-017: Shell changes remain inspectable
 
-When an agent declares that a shell command mutates files, Flywheel shows its changes as file tool changes: a created file reads as a write, and a changed or deleted file reads as an edit. While the command's input arrives and while it runs, its row reads as an edit with one line that says a bash command is running, without the command text. When it settles without landed changes, its row reads as the ordinary shell command it ran. Flywheel never shows the changes of a shell command that is not declared as mutating as file writes or edits, and never includes them in the session's changes.
+When an agent declares that a shell command mutates files, Flywheel shows its changes as file tool changes. A created file reads as a write, and a changed or deleted file reads as an edit. While the command's input arrives and while it runs, its row reads as an edit with one line saying a bash command is running, without the command text. When it settles without landed changes, its row reads as the shell command it ran. Changes of a shell command not declared as mutating never show as file writes or edits, and never join the session's changes.
 
 ## PI-AGENT-065: A mutating command captures only its own changes
 
@@ -208,7 +208,7 @@ Interactive agents create and change managed global skills without a separate ap
 
 ## PI-AGENT-022: Bash analysis does not depend on warmup
 
-Flywheel makes command analysis ready when an agent uses Bash or exec. Recognized writes and deletes with outside or unplaceable targets are refused before the command runs. If analysis cannot load or complete, including exhaustion of its work or nesting budget, that failure does not block the command, regardless of agent role or available file-editing tools, and Flywheel reports the analysis failure without repeated warning noise. Restrictions on commands that Flywheel can identify independently still apply.
+Flywheel makes command analysis ready when an agent uses Bash or exec. Recognized writes and deletes with outside or unplaceable targets are refused before the command runs. If analysis cannot load or complete, including exhaustion of its work or nesting budget, that failure does not block the command. This holds regardless of agent role or available file-editing tools. Flywheel reports the failure without repeated warning noise. Restrictions on commands that Flywheel can identify independently still apply.
 
 ## PI-AGENT-023: Output-limit recovery is bounded
 
@@ -216,7 +216,7 @@ When a model response reaches its output limit, Flywheel makes only bounded auto
 
 ## PI-AGENT-024: Only the root chat asks the person
 
-Only a chat that no other session started asks the person questions. A subagent or workflow agent asks its parent with the evidence and waits for the reply only when the design and evidence cannot settle a choice or a missing prerequisite blocks every next action. The parent answers from what it knows, or it asks its own parent or its person, in its own words, and then replies. When no parent can answer now, as in an unattended run with no connected parent chat, the child learns this at once, continues on its own judgment, and states its assumptions in its result.
+Only a chat that no other session started asks the person. A subagent or workflow agent asks its parent with the evidence and waits for the reply only when the design and evidence cannot settle a choice or a missing prerequisite blocks every next action. The parent answers from what it knows, or asks its own parent or its person in its own words, then replies. When no parent can answer now, as in an unattended run with no connected parent chat, the child learns this at once, continues on its own judgment, and states its assumptions in its result.
 
 ## PI-AGENT-082: A child never stops as blocked
 
@@ -224,7 +224,7 @@ A child never stops as blocked. A child run ends only as completed, as partial a
 
 ## PI-AGENT-083: Agents message other sessions only with a purpose
 
-An agent messages another session only to ask a blocking question that its tools cannot answer, answer a question, direct its own child or workflow, or send what its person asked. A root chat can also tell another root chat once that a check fails in a file that the other chat owns. Agents send no acknowledgements, thanks, confirmations, status reports, promises of a later update, requests to be told later, "are you done?" checks, or copies of a message that the recipient already has. A recipient replies only when a message asks it a question or its sender waits, one answer ends the exchange, and silence is not agreement.
+An agent messages another session only to ask a blocking question its tools cannot answer, answer a question, direct its own child or workflow, or send what its person asked. A root chat can also report a check that fails in a file another root chat owns. Agents send no acknowledgements, thanks, confirmations, status reports, promises of later updates, requests to be told later, "are you done?" checks, or copies of messages the recipient already has. A recipient replies only to a question or a waiting sender, one answer ends the exchange, and silence is not agreement.
 
 ## PI-AGENT-084: A session message is complete and sent once
 
@@ -232,11 +232,11 @@ One message carries everything that the recipient needs, opens with what it is a
 
 ## PI-AGENT-085: A message's authority follows its sender
 
-Each session message names the sender's relation as parent, child, sibling with the same parent, or other, and a sender that is neither parent nor child is a peer. A message from the parent applies to the recipient's current work at once, and a person's message applies to the agent or address that receives it. A peer message carries no authority, and the recipient finishes its current work first and weighs it as information unless attached words show that the person requested it. An agent never asks a session other than its own child to fix, commit, publish, or revert files.
+Each session message names the sender's relation as parent, child, sibling with the same parent, or other. A sender that is neither parent nor child is a peer. A parent's message applies to the recipient's current work at once, and a person's message applies to the agent or address that receives it. A peer message carries no authority. The recipient finishes its current work first and weighs the peer message as information, unless attached words show that the person requested it. An agent never asks a session other than its own child to fix, commit, publish, or revert files.
 
 ## PI-AGENT-086: Root chats exchange messages only when needed
 
-A root chat starts an exchange with another root chat only when its person asks, when it needs a fact only that chat has, or when a check fails in a file that chat owns. It reports such a failure once, with the file, the check, and the exact error, asks nothing, and then treats failures in that file as not its own without waiting for the fix. It answers another root chat's question about commits, publication, integration, or progress once from its own state, and its person's progress questions from its own state and tools. When its person writes to it, it stops any exchange with another root chat that the person did not ask for.
+A root chat contacts another root chat only when its person asks, it needs a fact only that chat has, or a check fails in that chat's file. It reports such a failure once with the file, check, and exact error. It asks nothing, then treats that file's failures as not its own without waiting for a fix. It answers another root chat's question about commits, publication, integration, or progress once from its state. It answers its person's progress questions from its state and tools. When its person writes, it stops every root-chat exchange that its person did not request.
 
 ## PI-AGENT-087: Workflow direction adds to the original request
 
@@ -256,7 +256,7 @@ An agent can read the progress of its own child without waking it or sending it 
 
 ## PI-AGENT-026: A child hands off only after its background work ends
 
-A subagent or an agent of a workflow hands off only when none of its background work remains: no command that it started still runs, including a server or another service, and no subagent or workflow that it started still runs or has a result that has not reached it. It waits for work that finishes on its own, and it stops a service before it hands off. A handoff that it tries earlier is refused, and the refusal names each item of work. While it waits on its background work, it is still working and never ends because of inactivity.
+A subagent or an agent of a workflow hands off only when none of its background work remains. No command that it started still runs, including a server or other service. No subagent or workflow that it started still runs or has a result that has not reached it. It waits for work that finishes on its own and stops a service before it hands off. A handoff that it tries earlier is refused, and the refusal names each item of work. While it waits on its background work, it is still working and never ends because of inactivity.
 
 ## PI-AGENT-027: A message to a workflow reaches the agents that it is for
 
@@ -276,7 +276,7 @@ A skill or persona definition saved into the project's or account's Flywheel def
 
 ## PI-AGENT-029: A workflow is phases of agents that run briefs
 
-A workflow file lists phases that run in order, and each phase runs one agent, several named agents at once, or one agent for each item of a list. A phase can follow the phase before it item by item, so each item moves through both phases at its own pace. A phase can run only when an earlier phase completed or an output field is not empty, and otherwise it is skipped while later phases still run. Each agent's task is its own brief and the inputs that it declares, and the request that started the workflow is background that bounds its scope.
+A workflow file lists phases that run in order. Each phase runs one agent, several named agents at once, or one agent for each item of a list. A phase can follow the phase before it item by item, so each item moves through both phases at its own pace. A phase can run only when an earlier phase completed or an output field is not empty. Otherwise it is skipped, and later phases still run. Each agent's task is its own brief and declared inputs. The request that started the workflow is background that bounds the agent's scope.
 
 ## PI-AGENT-103: A repeat runs phases in rounds
 
@@ -300,7 +300,7 @@ A handoff records each command that it cites with its directory and the exit cod
 
 ## PI-AGENT-108: A workflow agent receives only the context it builds on
 
-An agent receives the output of the phase just before it and the durable outputs, and no other earlier output unless it names that output in its `reads`. Only the agent that names an output receives it, labeled with that id, and a workflow that names an output that cannot finish before that agent starts is refused before it runs. An agent sees the file changes that each earlier agent it builds on made, itself or through its own subagents and workflows, and never changes by others. It sees the current state of those files separately, and it is told when a change cannot be shown whole.
+An agent receives the output of the phase just before it and the durable outputs. It receives another earlier output only when it names that output in its `reads`, labeled with that id. A workflow is refused before it runs when an agent names an output that cannot finish before that agent starts. An agent sees the file changes made by each earlier agent it builds on, directly or through its subagents and workflows, and never changes by others. It also sees the current state of those files separately, and it is told when a change cannot be shown whole.
 
 ## PI-AGENT-109: A plain file read shows the file, not a summary
 
@@ -308,11 +308,11 @@ A plain read of any text file shows the file from its first line, up to 2000 lin
 
 ## PI-AGENT-110: A chat launches a workflow file it saves
 
-A launch by content saves the workflow's text in the session's scratch workflow folder, named by the workflow's id and replacing an earlier file of that name, and launches that file. A launch by path from elsewhere, such as the project, launches a copy saved in that folder, so the agent never reads a file only to pass its text. The agent knows the folder's full location, so it can edit a saved file and launch it again, and Flywheel offers no launch by name. Before it writes a file, the agent can load an authoring reference that teaches only what the installed Flywheel runs, with examples that launch as written, and loading it launches nothing.
+A launch by content saves the workflow's text to the session's scratch workflow folder, named by its id and overwriting any same-named file, and launches it. A launch by path from elsewhere launches a copy saved there, so the agent never reads a file only to pass its text. The agent knows the folder's full path, so it can edit and relaunch a saved file. Flywheel offers no launch by name. Before writing a file, the agent can load an authoring reference that teaches only what the installed Flywheel runs. Its examples launch as written, and loading it launches nothing.
 
 ## PI-AGENT-111: A launch reports problems and warnings to the agent
 
-A file that is invalid, asks for more than the chat has, or is too large for the launch input starts nothing, stays saved, and is named in the refusal. The refusal lists every independent problem with its file, phase, agent, or repeat, and key, and tells the agent to load the authoring reference first. Any other finding, such as a part that the launch cannot check or a key that does nothing, does not stop the workflow and reaches only the agent as one short located line. The launch also tells the agent each agent's starting model, effort, and persona, and the parent's workflow card shows no launch line or warning.
+A launch refuses a file that is invalid, asks for more than the chat has, or is too large for the launch input. The file stays saved, and nothing starts. The refusal lists every independent problem with its file, phase, agent, or repeat, and key. It tells the agent to load the authoring reference first. Other findings do not stop the workflow and reach only the agent as one short located line. The launch tells the agent each agent's starting model, effort, and persona. The parent's workflow card shows no launch line or warning.
 
 ## PI-AGENT-112: A run keeps the file that it launched
 
@@ -336,11 +336,11 @@ A failed run tells its parent at once and stays resumable, unless it failed beca
 
 ## PI-AGENT-117: The completion result gives the parent every agent's result
 
-The completion result gives the parent each agent's result in workflow order, labeled by phase or agent id and item, and names each agent that failed, was skipped, or did not run. A finished agent's result is its handoff with each command that it recorded and its result, and each join's output appears too. The results share one size limit that the latest results take first, and the completion names each result that did not fit and how to read it. Each failed agent appears with its reason, the card shows it as failed, and the completion says that a Resume runs the failed agents again.
+The completion gives the parent each agent's result in workflow order, labeled by phase or agent id and item. It names each agent that failed, was skipped, or did not run. A finished agent's result is its handoff with its recorded commands and their results. Each join's output appears too. The results share one size limit, which the latest results take first. The completion names each result that did not fit and how to read it. Each failed agent appears with its reason, and the card shows it as failed. The completion says that a Resume reruns the failed agents.
 
 ## PI-AGENT-118: An unattended agent recovers from provider faults on its own
 
-A workflow agent, a subagent, and a headless task recover from provider faults on their own, wait while their model's access is checked, and never ask the person to act. A fault that only a person can fix, such as a rejected request, an unconfigured model, or an unrepairable content refusal, ends the agent at once. A fault that can clear, such as a stall, dropped connection, overload, unexplained failure, or stopped engine, makes the agent continue its recorded conversation on a fresh attempt after a growing pause. The agent fails only when the fault repeats on six fresh attempts in a row with no served request between them.
+A workflow agent, subagent, or headless task recovers from provider faults alone, waits while its model's access is checked, and never asks the person to act. A fault that only a person can fix, such as a rejected request, an unconfigured model, or an unrepairable content refusal, ends the agent at once. When a fault can clear, such as a stall, dropped connection, overload, unexplained failure, or stopped engine, the agent continues its recorded conversation on a fresh attempt after a growing pause. The agent fails only after six fresh attempts in a row fail without a served request.
 
 ## PI-AGENT-030: Headless chat uses standard input and output
 
@@ -380,27 +380,27 @@ Independent units of work start at the same time. A unit waits only for a named 
 
 ## PI-AGENT-032: Tool calls are read for what they mean
 
-Flywheel carries out a tool call whose meaning is clear even when its form is wrong, such as a value in the wrong type or encoding, a misspelled key or option, a wrapped argument object, or a path that identifies exactly one existing file in another form. The result begins with a note that states how Flywheel read the call. Flywheel never changes a value that is already valid, never invents missing content, never chooses between two possible meanings, and never relaxes a safety, permission, or containment check; it refuses such a call with what the agent needs to correct it.
+Flywheel carries out a tool call whose meaning is clear even when its form is wrong. Examples are a value in the wrong type or encoding, a misspelled key or option, a wrapped argument object, or another form of a path to exactly one existing file. The result begins with a note that states how Flywheel read the call. Flywheel never changes an already valid value, invents missing content, or chooses between two meanings. It never relaxes a safety, permission, or containment check. It refuses a call that needs any of these, with what the agent needs to correct it.
 
 ## PI-AGENT-033: Every finished background task reaches its parent
 
-When a subagent, workflow, or background command ends, its result always reaches the conversation of the agent that started it, including after contention, a restart, a planned replacement, or a stop, and while that agent is mid-turn or waiting. Until it arrives, it counts as that agent's outstanding work.
+When a subagent, workflow, or background command ends, its result reaches the conversation of the agent that started it. This holds after contention, a restart, a planned replacement, or a stop, and while that agent is mid-turn or waiting. Until it arrives, it counts as that agent's outstanding work.
 
 ## PI-AGENT-034: Each model request is inspectable
 
-For any session, a person can inspect each model request: which context sources it used, what each one contributed, or its identity when the content was not kept, what was left out, cut short, summarized, compacted, or withheld and why, and which request, agent, or subagent produced later work. Inspection says which evidence it shows exactly and names each part that was not kept, instead of presenting a guess as exact. Each retry and each fallback to another provider appears as its own request.
+A person can inspect which context sources each model request used and what each one contributed. When a source's content was not kept, inspection shows its identity. Inspection also shows what was left out, cut short, summarized, compacted, or withheld, and why. It shows which request, agent, or subagent produced later work. It says which evidence is exact and names each part not kept, instead of presenting a guess as exact. Each retry and each fallback to another provider appears as its own request.
 
 ## PI-AGENT-035: Subagent results are condensed and cited
 
-A subagent takes bounded, noisy work off its parent, such as locating definitions, tracing a flow, inspecting logs, reviewing, summarizing a large artifact, or running an isolated experiment. Its parent receives a condensed result rather than every intermediate message, and the result cites the evidence needed to recover detail, such as file paths with line numbers, artifact or event IDs, URLs, or session IDs. A result larger than the parent's share of its remaining context is cut to fit; the parent reads which parts were cut and where the full result is kept, and the subagent row still shows the first sentence of its summary.
+A subagent takes bounded, noisy work off its parent, such as locating definitions, tracing a flow, inspecting logs, reviewing, summarizing a large artifact, or running an isolated experiment. The parent receives a condensed result, not every intermediate message. The result cites evidence that recovers detail, such as file paths with line numbers, artifact or event IDs, URLs, or session IDs. A result that exceeds the parent's share of its remaining context is cut to fit. The parent reads which parts were cut and where the full result is kept. The subagent row still shows the first sentence of its summary.
 
 ## PI-AGENT-036: Outcomes explain themselves
 
-When Flywheel reports autonomous work as done, blocked, failed, superseded, or overridden, it shows a concise explanation of why that outcome follows from the work's target and evidence, linked to that evidence, so the person never reads raw history to learn why. The explanation can compress evidence, but it always names each criterion that is missing, failed, superseded, or overridden, and who overrode it.
+When Flywheel reports autonomous work as done, blocked, failed, superseded, or overridden, it shows a concise explanation linked to the evidence. The explanation shows how the outcome follows from the target and evidence, so the person never reads raw history to learn why. The explanation can compress evidence but always names each criterion that is missing, failed, superseded, or overridden, and who overrode it.
 
 ## PI-AGENT-037: Instruction files stack from global to the working directory
 
-Every agent turn follows the person's global instruction file first, then the repository's instruction files from the repository root down to that agent's own working directory, and the more specific file takes precedence. Each section names where it came from, and a file that an instruction file names with @ is included as its own section. Edits to memory and instruction files take effect at the person's next message in a chat, and when a workflow agent or subagent starts. Instruction files below the working directory do not load, and an agent reads the governing file before it changes files there.
+Every agent turn follows the person's global instruction file first, then the repository's instruction files from the repository root down to the agent's working directory. The more specific file takes precedence. Each section names where it came from, and a file that an instruction file names with @ is included as its own section. Edits to memory and instruction files take effect at the person's next message in a chat, and when a workflow agent or subagent starts. Instruction files below the working directory do not load, and an agent reads the governing file before it changes files there.
 
 ## PI-AGENT-064: Linked instruction files stay inside trusted places
 
@@ -416,7 +416,7 @@ Every memory entry and learned skill applies either to the current project or to
 
 ## PI-AGENT-040: Learned skills never duplicate or change built-in skills
 
-A skill that Flywheel learns on its own is saved only when an independent check finds that it neither duplicates nor contradicts a built-in skill, or that it correctly narrows one; when the check fails or is unclear, nothing is saved. Learned project skills that conflict with built-in skills are archived recoverably, and unclear cases are kept. Learning never changes or suggests changes to built-in skills. An installed skill with the same name as a built-in skill is used instead of it, and the built-in skill stays unchanged.
+Flywheel saves a skill it learns on its own only when an independent check approves it. The check approves a skill that neither duplicates nor contradicts a built-in skill, or that correctly narrows one. If the check fails or is unclear, nothing is saved. Flywheel recoverably archives learned project skills that conflict with built-in skills, and keeps unclear cases. Learning never changes or suggests changes to built-in skills. An installed skill that shares a built-in skill's name is used instead of it, and the built-in skill stays unchanged.
 
 ## PI-AGENT-041: A spent workflow budget pauses before the next attempt
 
@@ -452,11 +452,11 @@ On macOS and Linux, an agent's shell commands find the same programs as the pers
 
 ## PI-AGENT-053: Agent searches stop when they grow too broad
 
-An agent's search and list tool calls stop after 30 seconds of processor time, or after 120 seconds spent waiting on reads, and tell the agent to narrow the search. On macOS and Linux, the `grep`, `egrep`, `fgrep`, `rg`, `find`, `fd`, and `du` programs of agent shell commands stop after 30 processor seconds with that advice, except `find` or `fd` running a per-result command. Searches other than `du` never report or delete anything inside artifact directories, such as `node_modules`, `.git`, and the project state directory, or inside ignored directories, unless the call names one. The shell programs otherwise keep their own arguments, matching, and output.
+An agent's search and list tool calls stop after 30 processor seconds, or 120 seconds waiting on reads, and tell the agent to narrow the search. On macOS and Linux, the shell programs `grep`, `egrep`, `fgrep`, `rg`, `find`, `fd`, and `du` that agents run get the same processor limit and advice, except `find` or `fd` running a per-result command. Searches other than `du` never report or delete anything inside artifact directories, such as `node_modules`, `.git`, and the project state directory, or inside ignored directories, unless the call names one. The shell programs otherwise keep their own arguments, matching, and output.
 
 ## PI-AGENT-049: Agent file changes keep what they did not change
 
-A file change by an agent tool keeps every byte it did not change: text decodes as strict UTF-8, an existing byte-order mark stays, existing line endings stay exact, and a new line ending follows the replaced line ending, then the nearest local style, then the file style. An update, overwrite, or move keeps the file's existing permissions without widening them, and a project file or directory that a tool creates gets the permissions that the person's own tools would give it.
+A file change by an agent tool keeps every byte it did not change. Text decodes as strict UTF-8. An existing byte-order mark and existing line endings stay exact. A new line ending follows the replaced line ending, then the nearest local style, then the file style. An update, overwrite, or move keeps the file's existing permissions without widening them. A project file or directory that a tool creates gets the permissions that the person's own tools would give it.
 
 ## PI-AGENT-050: Skills install by link
 

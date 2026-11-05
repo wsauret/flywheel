@@ -4,7 +4,7 @@ This document states the current intended experience for reaching a Flywheel run
 
 ## PI-LOCAL-001: One command opens the project in the browser
 
-A user opens a project's sessions in their own browser with one command on the machine, and sees the same web client the editor and phone show, attached to the same live runtime the terminal and editor use. The command starts the project's runtime when none is serving.
+A user opens a project's sessions in their own browser with one command on the machine. The page shows the same web client as the editor and phone, attached to the same live runtime as the terminal and editor. The command starts the project's runtime when none is serving.
 
 ## PI-LOCAL-002: The page is reachable only from that machine, through the project's own link
 
@@ -16,11 +16,11 @@ A page whose browser never opened the project's link, or whose link no longer op
 
 ## PI-LOCAL-003: The browser tab names the session and shows its state
 
-In the browser, the tab's title names the selected session and says up front when that session is working or when the page has lost the runtime, and the tab's icon is Flywheel's tile, marked while the session works and dimmed while the runtime is lost. The page can be installed from the browser as an app with that name and icon.
+In the browser, the tab's title names the selected session. The title says up front when that session is working or when the page has lost the runtime. The tab's icon is Flywheel's tile, marked while the session works and dimmed while the runtime is lost. The page can be installed from the browser as an app with that name and icon.
 
 ## PI-LOCAL-004: The page's address names the session
 
-In the browser, the address names the session in view, so a reload, a bookmark, or a link opens that session, even a subagent or workflow agent that the session list does not show, and the back button returns to the one before. A reload also returns to the reader's place in the session. Only when the runtime says that the named session no longer exists does the page open the project's usual first session, correct the address, and say so in a notice.
+In the browser, the address names the session in view. A reload, a bookmark, or a link opens that session, even a subagent or workflow agent that the session list does not show. The back button returns to the previous session. A reload also returns to the reader's place in the session. Only when the runtime says that the named session no longer exists does the page open the project's usual first session, correct the address, and say so in a notice.
 
 ## PI-LOCAL-005: One fixed local address reaches every open project
 

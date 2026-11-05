@@ -15,7 +15,7 @@ Not: A verification-specific reducer, or a mutable queue whose cursor and rows e
 
 ## ARCH-WORKFLOWS-003: Models, workers, hooks, and timing supply evidence, not control
 
-Within the evidence rule of ARCH-AGENCY-001, a model returns typed handoff or reassessment data, the async host returns typed results, and hooks and automatic checks enter as typed, inspectable evidence; only the oracle decides whether that evidence changes control, and the resulting facts commit before the change is visible. No model, worker, hook, or completion order chooses a control event, applies a transition, or dispatches a worker. Intent contracts and evaluation records also schedule nothing: control consumes them only through its normal verified transition boundary.
+Within the evidence rule of ARCH-AGENCY-001, models return typed handoff or reassessment data, and the async host returns typed results. Hooks and automatic checks enter as typed, inspectable evidence. Only the oracle decides whether that evidence changes control, and the resulting facts commit before the change is visible. No model, worker, hook, or completion order chooses a control event, applies a transition, or dispatches a worker. Intent contracts and evaluation records also schedule nothing: control consumes them only through its normal verified transition boundary.
 Because: Letting model output or async timing select transitions makes control non-reproducible on replay.
 Not: A dedicated runtime, planner, or engine for intent and evaluation, or a hook that changes state or injects instructions without a typed record.
 
@@ -31,7 +31,7 @@ A workflow is an orchestration aggregate that owns its control and its run confi
 
 ## ARCH-WORKFLOWS-006: The workflow aggregate is the only workflow authority
 
-Workflow progress, terminal state (completion, pause, and failure), Resume eligibility, publication, replay, and recovery come only from the committed control facts of the workflow's own aggregate, which also owns the current binding to the launching chat; session metadata owns only member lifecycle and relationships. The published workflow state, workflow views, accumulated context, statechart state, runtime fields, provider continuations, and rendered caches are deterministic projections of that aggregate and never a recovery source or an independent terminal authority. Clients render those projections and send actions, and never advance control.
+Workflow progress, terminal state (completion, pause, and failure), Resume eligibility, publication, replay, and recovery come only from the committed control facts of the workflow aggregate. The aggregate also owns the current binding to the launching chat. Session metadata owns only member lifecycle and relationships. The published workflow state, workflow views, accumulated context, statechart state, runtime fields, provider continuations, and rendered caches are deterministic projections of that aggregate and never a recovery source or an independent terminal authority. Clients render those projections and send actions, and never advance control.
 Because: Snapshots and provider state duplicate the ledger and do not survive provider changes and restarts.
 Not: Persisted statechart snapshots as a recovery source.
 
@@ -51,7 +51,8 @@ Not: A named workflow catalog or a name-keyed brief registry.
 
 ## ARCH-WORKFLOWS-010: Output contracts have one closed grammar and bind by content hash
 
-Brief output contracts share one closed field grammar with one compiler, one envelope and citation check, one acceptance, and one rendering for later agents. Each contract compiles once, a handoff is validated against its brief's compiled contract before it is recorded, and no name or named check joins a brief to its contract. A module that consumes agent output is built from the admitted composition before workers start, selects outputs by compiled contract hash, adds only checks a contract cannot state, and reconciles consumed outputs from committed facts so a crash between a commit and its consumption recovers. A declared path field is checked for existence and syntax only and is no filesystem containment boundary, because the tools that access a file own containment.
+Brief output contracts share one closed field grammar, compiler, envelope and citation check, acceptance, and later-agent rendering. Each contract compiles once, and each handoff is checked against its brief's compiled contract before recording. No name or named check joins a brief to its contract. A module consuming agent output is built from the admitted composition before workers start. It selects outputs by compiled contract hash and adds only checks a contract cannot state. It reconciles consumed outputs from committed facts, so a crash between commit and consumption recovers. A declared path field gets existence and syntax checks only, not containment.
+Because: The tools that access a file own containment.
 Not: A name-keyed contract registry that modules extend with custom checks, or selecting outputs by brief name.
 
 ## ARCH-WORKFLOWS-011: One ordered walk of one grammar serves every reader
@@ -68,7 +69,7 @@ Admission resolves a workflow's definition once and captures one preassembled re
 
 ## ARCH-WORKFLOWS-014: Definition identity separates graph, policy, content, and contract
 
-Definitions, briefs, output contracts, tool surfaces, model assignments, rubrics, and acceptance criteria are versioned contracts with stable identity, and every run and every definition consumer records the exact identity of each contract it used, so file drift never makes a historical run's contract unknowable. Identity hashes the canonical graph separately from each agent's policy, effective brief content, and output contract, with the oracle version, composed skill membership, and reachable personas as further identities; display names and descriptions affect none of them. A change limited to composed skill or brief content is adopted through a recorded, sequence-guarded fact, and any other change is rejected as drift before a worker starts, without changing control.
+Definitions, briefs, output contracts, tool surfaces, model assignments, rubrics, and acceptance criteria have stable, versioned identities. Every run and definition consumer records each exact contract identity it used, so file drift never hides a historical run's contract. Identity hashes the canonical graph apart from each agent's policy, effective brief content, and output contract. Oracle version, composed skill membership, and reachable personas are further identities. Display names and descriptions affect no identity. A change only to composed skill or brief content is adopted through a recorded, sequence-guarded fact. Other changes are rejected as drift before a worker starts, without changing control.
 
 ## ARCH-WORKFLOWS-015: A launch originates only from an attested chat tool call
 
@@ -121,11 +122,11 @@ A list expands once in each run, from a frozen source, into its items under one 
 
 ## ARCH-WORKFLOWS-027: Joins fold through pinned, pure reducers
 
-A join folds its slots through a versioned, pure reducer from one closed registry. Compilation pins the reducer version, its parameters, and its output contract on the node, so a later reducer version never changes a running join, and replay folds the join again and compares it to the recorded output. A reducer that reports coverage or selection derives it from its own output.
+A join folds its slots through a versioned, pure reducer from one closed registry. Compilation pins the reducer version, its parameters, and its output contract on the node. A later reducer version never changes a running join. Replay folds the join again and compares it to the recorded output. A reducer that reports coverage or selection derives it from its own output.
 
 ## ARCH-WORKFLOWS-028: Continuation work keeps its charge lineage
 
-Every attempt that continues earlier work, such as a recovery restart, a Resume of failed work, a rerun of a reader of changed work, or a continuation after context overflow, links to the charge lineage of the work it continues (ARCH-SESSIONS-012). Lineage, not a fresh count, decides retry, insertion, and attempt-limit accounting. Superseded items and rounds stay as history and count toward no limit.
+Every attempt that continues earlier work links to the charge lineage of that work (ARCH-SESSIONS-012). Such attempts include a recovery restart, a Resume of failed work, a rerun of a reader of changed work, and a continuation after context overflow. Lineage, not a fresh count, decides retry, insertion, and attempt-limit accounting. Superseded items and rounds stay as history and count toward no limit.
 
 ## ARCH-WORKFLOWS-029: Blocked work settles only through lineage-linked correction
 
@@ -133,7 +134,7 @@ A stored blocked attempt is durable and immutable and never becomes a success. O
 
 ## ARCH-WORKFLOWS-030: Resume records its rerun closure
 
-A Resume that reruns the readers of changed work derives once, from the definitions the run is pinned to, which agents read which outputs, and records that map in its proposal so the oracle computes the closure and replay sees the same input. Control itself holds no read relationships.
+A Resume that reruns the readers of changed work derives which agents read which outputs once, from the run's pinned definitions. It records that map in its proposal so the oracle computes the closure and replay sees the same input. Control itself holds no read relationships.
 Because: Compiled edges follow phase order, so a closure derived from them also reruns unrelated later work.
 Not: Computing the rerun closure from compiled phase-order edges.
 

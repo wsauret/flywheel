@@ -61,7 +61,7 @@ One source of truth per value, durable state as facts and projections, and the o
 
 ## Postel Boundary Discipline
 
-Liberal external boundaries, strict internal state, historical recovery, and durable user state: ARCH-BOUNDARIES-001, ARCH-BOUNDARIES-002, ARCH-BOUNDARIES-004, ARCH-BOUNDARIES-005, ARCH-BOUNDARIES-006, ARCH-SUBSTRATE-013, ARCH-SUBSTRATE-014, ARCH-SUBSTRATE-027, ARCH-SUBSTRATE-030, ARCH-SUBSTRATE-031, ARCH-DIRECTORIES-007, ARCH-PROVIDERS-039, UPD-003, UPD-023, PI-CAP-011.
+Liberal external boundaries, strict internal state, historical recovery, and durable user state: ARCH-BOUNDARIES-001, ARCH-BOUNDARIES-002, ARCH-BOUNDARIES-004, ARCH-BOUNDARIES-005, ARCH-BOUNDARIES-006, ARCH-SUBSTRATE-013, ARCH-SUBSTRATE-014, ARCH-SUBSTRATE-027, ARCH-SUBSTRATE-047, ARCH-SUBSTRATE-030, ARCH-SUBSTRATE-031, ARCH-DIRECTORIES-007, ARCH-PROVIDERS-039, UPD-003, UPD-023, PI-CAP-011.
 
 ## Secret Handling
 
@@ -69,7 +69,7 @@ Redaction, the one serialization crossing, and external logins: ARCH-BOUNDARIES-
 
 ## Retry and Idempotency
 
-The conversation as the retry ledger, the one provider fallback owner, and unattended recovery: ARCH-SUBSTRATE-038, ARCH-SUBSTRATE-037, ARCH-PROVIDERS-032, ARCH-RUNTIME-003, ARCH-CONTEXT-010, PI-MODEL-031.
+The conversation as the retry ledger, the one provider fallback owner, and unattended recovery: ARCH-SUBSTRATE-038, ARCH-SUBSTRATE-037, ARCH-PROVIDERS-032, ARCH-RUNTIME-003, ARCH-CONTEXT-010, ARCH-CONTEXT-031, PI-MODEL-031.
 
 ## Reactive Architecture
 

@@ -41,7 +41,7 @@ A client-to-runtime request is a query or a mutation, never a command. Its type 
 
 ## ARCH-NAMING-009: One concept id derives every surface spelling
 
-One concept id derives each surface spelling mechanically: snake_case for config keys and fact segments, camelCase for values and PascalCase for types in TypeScript, kebab-case for role, module, and skill ids and CLI flags, and screaming snake case with the product prefix for environment variables. A setting has one id, and its config key, accessor, protocol field, and label all derive from it.
+One concept id derives each surface spelling mechanically. Config keys and fact segments use snake_case. TypeScript values use camelCase, and TypeScript types use PascalCase. Role, module, and skill ids and CLI flags use kebab-case. Environment variables use screaming snake case with the product prefix. A setting has one id, and its config key, accessor, protocol field, and label all derive from it.
 Not: A parallel row id, store key, or label key beside the setting's one id.
 
 ## ARCH-NAMING-010: An exported name is the shortest unique search address

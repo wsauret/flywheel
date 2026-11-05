@@ -17,8 +17,7 @@ Because: A redirected home must move every account-global path together, and a s
 
 ## ARCH-DIRECTORIES-003: Project identity is selected once at the composition boundary
 
-The composition root selects and canonicalizes the project root before any project-scoped log, store, configuration, registry, migration, worker, runtime, or client service starts. After that, the project root and the optional canonical repository root are injected values: no downstream consumer reads the project-root environment value, searches for a repository or a state directory, or derives project identity from the execution directory. The repository root keys repository-scoped services and is not a fourth directory authority.
-
+The composition root selects and canonicalizes the project root before any project-scoped log, store, configuration, registry, migration, worker, runtime, or client service starts. After that, the project root and the optional canonical repository root are injected values. No downstream consumer reads the project-root environment value, searches for a repository or a state directory, or derives project identity from the execution directory. The repository root keys repository-scoped services and is not a fourth directory authority.
 Because: Repeated discovery can disagree with an explicit or interactive selection and lets a nested sandbox escape to an enclosing repository.
 Not: Rediscovering the project at each consumer.
 
@@ -58,8 +57,7 @@ Not: A client that computes a session's directory from its own working directory
 
 ## ARCH-DIRECTORIES-010: A remote project keeps only terminal state locally
 
-A terminal that opens a project on another machine selects no project on this machine. Its project root and execution directory are a directory under the account data root keyed by the remote runtime and the project placement, which holds only the terminal's own state for that project, such as its log, prompt history, and restore point.
-
+A terminal that opens a project on another machine selects no project on this machine. Its project root and execution directory are one directory under the account data root, keyed by the remote runtime and the project placement. That directory holds only the terminal's own state, such as its log, prompt history, and restore point.
 Because: The project's store, sessions, and tools stay on the machine that serves it.
 
 ## ARCH-DIRECTORIES-011: Project identity is not execution containment
@@ -70,14 +68,12 @@ Not: Treating the project root as a security sandbox.
 
 ## ARCH-DIRECTORIES-012: One contained-directory authority guards owned trees
 
-One platform-neutral contained-directory authority owns every access to Flywheel-owned state, auth, package, and session trees and other untrusted owned trees, together with their filesystem durability. It validates one path component at a time, rejects links below the directory it opens, never recurses through a linked target on deletion, and bounds enumeration by depth, entries, resources, and bytes. The one link it follows is a package entry that a person placed in an external skill root (ARCH-BOUNDARIES-008): it opens the link's target as that package's own contained directory, and no write passes through the link. Callers never join paths and repeat link checks themselves.
-
+One platform-neutral contained-directory authority owns all access to, and filesystem durability of, Flywheel-owned state, auth, package, and session trees and other untrusted owned trees. It validates one path component at a time and rejects links below the directory it opens. It never recurses through a linked target on deletion, and it bounds enumeration by depth, entries, resources, and bytes. It follows only a package link that a person placed in an external skill root, and opens its target as that package's contained directory (ARCH-BOUNDARIES-008). No write passes through the link. Callers never join paths or repeat link checks themselves.
 Not: Path-based filesystem calls that create a second containment authority.
 
 ## ARCH-DIRECTORIES-013: Containment states each platform's real guarantee
 
-On POSIX, owned-tree containment holds directory handles, operates relative to them without following links, and syncs files and their parent directories. On Windows, it holds resolved paths, rejects every reparse point, rechecks held directory identity, and syncs files only; it accepts a same-user check-to-use race and a bounded fallback when Windows refuses an operation for file sharing. No document or test claims parity between the two.
-
+On POSIX, owned-tree containment holds directory handles, operates relative to them without following links, and syncs files and their parent directories. On Windows, it holds resolved paths, rejects every reparse point, rechecks held directory identity, and syncs files only. It accepts a same-user check-to-use race and a bounded fallback when Windows refuses an operation for file sharing. No document or test claims parity.
 Because: Windows exposes no handle-relative no-follow operations and no portable directory sync.
 
 ## ARCH-DIRECTORIES-014: Account-level override metadata does not own override content
@@ -96,8 +92,7 @@ Because: No lost diffs is stronger than unconditional removal.
 
 ## ARCH-DIRECTORIES-017: Definition override reconciliation has one authority per datum
 
-Definition overrides reconcile against one authority per datum. A non-bundled definition is an override exactly when it sits at the catalog location of a bundled default; any other definition belongs to the user and is never reconciled. One machine-owned manifest under the account data root is the sole authority for the acknowledged default identity of each override, the bundled catalog is the sole authority for shipped defaults, and every identity is a digest of exact file bytes. Conflict and staleness are derived by comparison and never persisted, and an unreadable manifest is moved aside with a warning and rebuilt, never blocking a project from opening.
-
+Definition overrides reconcile against one authority per datum. A non-bundled definition is an override exactly when it sits at a bundled default's catalog location. Any other definition belongs to the user and is never reconciled. The bundled catalog is the sole authority for shipped defaults. One machine-owned manifest in the account data root is the sole authority for each override's acknowledged default identity. Every identity is a digest of exact file bytes. Conflict and staleness are derived by comparison and never persisted. An unreadable manifest is moved aside with a warning and rebuilt, never blocking a project from opening.
 Not: Identity metadata inside override files, or a persisted conflict status field.
 
 ## ARCH-DIRECTORIES-018: A benchmark campaign records its source identity

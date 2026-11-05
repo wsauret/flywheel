@@ -60,28 +60,23 @@ Because: A missing intake otherwise surfaces only as a silent stale-state bug at
 
 ## ARCH-PROTOCOL-011: Publication is on change, and every read states the domains it seeds
 
-The account's public bus publishes a whole-value patch only when it differs from what receivers last saw on that cursor, from a patch or from a later read; a declined patch mints no position, so no receiver sees a gap. Change patches and invalidations always publish. Every query names the domains that its answer seeds, and a read resets the bus's last-published value for exactly those domains, so a value that a read computed live is never suppressed afterwards.
-
+The account's public bus publishes a whole-value patch only when it differs from what receivers last saw on that cursor, from a patch or a later read. A declined patch mints no position, so no receiver sees a gap. Change patches and invalidations always publish. Every query names the domains that its answer seeds, and a read resets the bus's last-published value for exactly those domains, so a value that a read computed live is never suppressed afterwards.
 Because: The executor's private bus is the exception and publishes every patch, since its one reader merges patches and answers some reads from history.
 
 ## ARCH-PROTOCOL-012: Ordered intake is one shared classification with one recovery path
 
-Every receiver, runtime and client alike, evaluates the one shared patch classification: a cursor identity mismatch or a predecessor beyond the held position is a gap, a patch at or below the held position is stale, and anything else applies, with held patches replayed in position order. A gap that cannot close within the receiver's bounds recovers by the domain's policy, and overflow, reconnection, store divergence, and freshness failure enter that same path. Only a whole-family snapshot replaces the family baseline; concrete snapshots and partial batches update only their named cursors. Held patches are bounded, and their overflow releases held data and recovers by a fresh snapshot.
-
+Runtime and client receivers evaluate one shared patch classification. A cursor identity mismatch or a predecessor beyond the held position is a gap. A patch at or below the held position is stale, and anything else applies. Held patches replay in position order. A gap that cannot close within the receiver's bounds recovers by the domain's policy. Overflow, reconnection, store divergence, and freshness failure enter that same path. Only a whole-family snapshot replaces the family baseline. Concrete snapshots and partial batches update only their named cursors. Held patches are bounded, and overflow releases them and recovers by a fresh snapshot.
 Not: A client that restates ordering locally or adds an alternate patch-application path for one failure kind.
 
 ## ARCH-PROTOCOL-013: Overflow becomes an invalidation, never a dropped connection
 
-When the runtime bus drops a patch at its pending-delivery limit, every live domain receives a cursor invalidation on the same ordered lane after the queued backlog, and recovery reads the domain's authoritative snapshot, not the last published payload. A connection's outbound queue slides, dropping its oldest frames rather than the connection, and appends one overflow invalidation that the sliding queue cannot discard, stamped with the position of the newest patch the queue was offered, so a receiver whose read already covers the dropped frames ignores it and every receiver behind it reads again. Repeated drops before a drain share one invalidation, with no reconnect and no polling timer.
-
+When the runtime bus drops a patch at its pending-delivery limit, every live domain receives a cursor invalidation on the same ordered lane after the queued backlog. Recovery reads the domain's authoritative snapshot, not the last published payload. A connection's outbound queue drops its oldest frames, never the connection. It appends one overflow invalidation that the sliding queue cannot discard, stamped with the newest patch position it was offered. Receivers whose read already covers the dropped frames ignore it, and receivers behind it read again. Repeated drops before a drain share one invalidation, with no reconnect or polling timer.
 Because: A client that falls behind must stay attached and catch up in place.
-
 Not: Dropping a slow connection, or recovering from the last published payload.
 
 ## ARCH-PROTOCOL-014: A lane is the unit of attach and of seed reads
 
-A lane is one attach of a client connection: it opens when the event subscription reaches an open socket and ends when that subscription ends. A lane's end reaches every receiver as one reconnect invalidation; the receiver voids what the lane covered, reads nothing during the break, and reads its whole view once when the next lane opens, never at construction. Every other invalidation reads at once, and a read lost with its lane reports no failure and does not retry, because the next lane reads it again.
-
+A lane is one attach of a client connection: it opens when the event subscription reaches an open socket and ends when that subscription ends. A lane's end reaches every receiver as one reconnect invalidation. The receiver voids what the lane covered, reads nothing during the break, and reads its whole view once when the next lane opens, never at construction. Every other invalidation reads at once, and a read lost with its lane reports no failure and does not retry, because the next lane reads it again.
 Because: Reading during a break or at construction multiplies reads and races the attach.
 
 ## ARCH-PROTOCOL-015: A read started at lane open sees everything the lane does not carry
@@ -92,8 +87,7 @@ Not: Carrying a start position in the connected frame to stitch the first read t
 
 ## ARCH-PROTOCOL-016: Calls wait for the next lane instead of failing
 
-While a connection is connecting or recovering, it holds each call until the next lane rather than failing it, and a best-effort call's wait counts against its deadline. When the lane opens, a session's output watch reaches the runtime before any of that session's transcript reads on the lane. A session hold that waited for the lane is dropped, because a hold lasts only as long as its connection and every holder holds again on the new lane. A mutation lost with its lane has an unknown outcome, and its owner sends it again only when the runtime answers a repeated copy as a receipt of the first.
-
+While a connection is connecting or recovering, it holds each call for the next lane instead of failing it. A best-effort call's wait counts against its deadline. On the new lane, a session's output watch reaches the runtime before that session's transcript reads. A session hold that waited for the lane is dropped, because holds end with their connection and every holder holds again. A mutation lost with its lane has an unknown outcome. Its owner resends it only when the runtime answers a repeated copy as a receipt of the first.
 Not: Replaying every call that was in flight when a lane ended.
 
 ## ARCH-PROTOCOL-017: Residency decides what a client keeps live
@@ -102,15 +96,13 @@ A client that keeps several sessions resident has one shared residency, which is
 
 ## ARCH-PROTOCOL-018: The shared client core owns all client-independent behavior
 
-The protocol's shared client core owns the self-recovering connection with its lanes, health, and silence deadline, the held views and cursor intake, the session reading family and held detail, and the transcript store, delta application, and fold into rows, read runs, and dividers. Every client, the terminal included, uses that core and adds only presentation bindings. A rule about what the transcript contains or where a divider falls lives in the fold, never in a client.
-
+The protocol's shared client core owns the self-recovering connection with its lanes, health, and silence deadline. It owns the held views, cursor intake, the session reading family, and held detail. It owns the transcript store, delta application, and the fold into rows, read runs, and dividers. Every client, the terminal included, uses that core and adds only presentation bindings. Rules on transcript content and divider placement live in the fold, never in a client.
 Because: Two clients that each restate reading, recovery, or transcript rules drift apart.
-
 Not: A per-client copy of recovery, residency, delta, or transcript-fold logic.
 
 ## ARCH-PROTOCOL-019: Background read retry has one owner in the client core
 
-The shared held views own retry admission for background reads. A failed read that was not lost with its lane retries with backoff while the lane stays open, a lane break or disposal cancels pending retries, and the last view stays visible until a read or patch replaces it. Readers on one query transport share one failure notice that reports each read episode once, subject to the runtime-health rule in ARCH-PROTOCOL-025.
+The shared held views own retry admission for background reads. A failed read that its lane did not lose retries with backoff while the lane stays open. A lane break or disposal cancels pending retries. The last view stays visible until a read or patch replaces it. Readers on one query transport share one failure notice that reports each read episode once, subject to the runtime-health rule in ARCH-PROTOCOL-025.
 
 ## ARCH-PROTOCOL-020: Every unary call declares lossless or best-effort delivery
 
@@ -130,7 +122,7 @@ Not: A request-level ping or per-call liveness deadline beside the lane heartbea
 
 ## ARCH-PROTOCOL-022: Lane backpressure is an end-to-end byte window
 
-The client acknowledges each stream chunk once, in order, after it enters its bounded buffer, and the runtime sends a stream's batches at once while less than a fixed byte window per stream per connection is unacknowledged. A link that keeps up never waits for a round trip, and a hold takes no writer lock, so query replies on the same connection continue during it. The runtime's server protocol owns the window and the client transport owns the acknowledgements. Below the window, each transport writer waits while its socket holds more than a fixed high-water mark of unsent bytes and resumes on drain, so no transport discards or truncates a frame of an open connection.
+The client transport acknowledges each stream chunk once, in order, after it enters its bounded buffer. The runtime's server protocol owns a fixed byte window per stream per connection. It sends batches at once while less than the window is unacknowledged, so a link that keeps up never waits for a round trip. A hold takes no writer lock, so query replies on the same connection continue. Below the window, each transport writer waits while its socket's unsent bytes exceed a fixed high-water mark, then resumes on drain. No transport discards or truncates a frame of an open connection.
 
 ## ARCH-PROTOCOL-023: Relay sockets prove liveness by heartbeat
 
@@ -144,13 +136,12 @@ Runtime failures cross the client boundary as the smallest typed discriminant th
 
 ## ARCH-PROTOCOL-025: Runtime health is derived once
 
-The runtime publishes the executor's state and the account service's state as latest-collapsible workspace views, and the shared client core derives the one runtime health that every surface renders from those two and the connection's own health, ranked by what a person can act on. A reconnect that heals is not a health state, and a best-effort read that times out while the lane is silent is explained by the connection, not reported on its own. Recovery uses the ordinary invalidation and resnapshot path, never a parallel mechanism.
-
+The runtime publishes the executor's state and the account service's state as latest-collapsible workspace views. The shared client core derives the one runtime health that every surface renders from those two views and the connection's health. It ranks health by what a person can act on. A reconnect that heals is not a health state. A best-effort read that times out while the lane is silent is explained by the connection, not reported separately. Recovery uses the ordinary invalidation and resnapshot path, never a parallel mechanism.
 Not: Each surface deriving its own health or rendering a reconnecting state.
 
 ## ARCH-PROTOCOL-026: Protocol evolution is additive and unknown frames are skipped safely
 
-The public event boundary and the private executor intake skip an unknown event type, cursor scope, domain, or patch kind without ending the connection, while known frames stay strictly validated and every writer validates a frame before publication. Skipping never advances a cursor, so a resulting gap recovers through the ordinary snapshot path. A client reports a skipped event once per signature and session, with only its descriptor and session identity, and that report never blocks rendering or actions.
+The public event boundary and the private executor intake skip an unknown event type, cursor scope, domain, or patch kind without ending the connection. Known frames stay strictly validated, and every writer validates a frame before publication. Skipping never advances a cursor, so a resulting gap recovers through the ordinary snapshot path. A client reports a skipped event once per signature and session, with only its descriptor and session identity. That report never blocks rendering or actions.
 
 ## ARCH-PROTOCOL-027: Query results decode by discriminant
 
@@ -168,46 +159,38 @@ Not: A version check in a transport preface.
 
 ## ARCH-PROTOCOL-029: Each runtime serves the web client of its own build
 
-A runtime serves only the web client of its own build, addressed by the one identity that the build alone authors, so a page of another build fails its next asset request and reloads itself through its host. A development service builds the client inside its own source snapshot, so client edits and runtime edits change the same identity.
-
+A runtime serves only the web client of its own build, addressed by the one identity that the build alone authors. A page of another build fails its next asset request and reloads itself through its host. A development service builds the client inside its own source snapshot, so client edits and runtime edits change the same identity.
 Not: A separately versioned web deployment.
 
 ## ARCH-PROTOCOL-030: Client replacement is one client-owned transaction
 
-A web client answers a bundle refusal with one client-owned replacement transaction: it prepares the successor while input stays live, captures every input owner into one versioned checkpoint, and holds new input only for the final commit. A failure in preparation, storage, or the host releases the hold and leaves the live owners and saved bytes intact. The checkpoint embeds the existing reading state, hosts store it without decoding it, and unknown or malformed bytes stay saved and show a failure. Ordinary lane recovery never replaces a client.
-
+A web client answers a bundle refusal with one client-owned replacement transaction. It prepares the successor while input stays live, captures every input owner into one versioned checkpoint, and holds new input only for the final commit. A failure in preparation, storage, or the host releases the hold and leaves the live owners and saved bytes intact. The checkpoint embeds the existing reading state, hosts store it without decoding it, and unknown or malformed bytes stay saved and show a failure. Ordinary lane recovery never replaces a client.
 Not: A second reading-state format for reloads, or replacing the client on ordinary reconnect.
 
 ## ARCH-PROTOCOL-031: The web client is one hosted bundle, and hosts relay its bytes
 
-The web client is one bundle, hosted rather than ported: the editor, the machine-local browser host, and the phone's bootstrap all mount the bundle that the serving runtime built, and the web client imports no host module. A host supplies only a socket layer, a capability object, and a theme, never reconciles session or transcript state of its own, and the client branches on capability and container width, never on host identity. The editor host supervises the account service, relays the client's protocol bytes without decoding them, and answers the client's capability requests. It keeps one connection of its own only for editor notifications while the client is hidden and for editor commands such as the chat and file pickers, and that connection never reconciles chat state.
-
+The editor, the machine-local browser host, and the phone's bootstrap mount the one bundle that the serving runtime built. The web client imports no host module. A host supplies only a socket layer, a capability object, and a theme, and never reconciles session or transcript state. The client branches on capability and container width, never on host identity. The editor host supervises the account service, relays protocol bytes undecoded, and answers capability requests. It keeps one connection only for editor commands and for editor notifications while the client is hidden. That connection never reconciles chat state.
 Not: Porting the client per host, or letting a host keep its own session state.
 
 ## ARCH-PROTOCOL-032: One relay device client serves every relay-reached client
 
-The Remote module's protocol home holds the device side of the relay as one client that every client reaching a runtime through the relay uses for pairing, presence, the machine and project picker, wake, project creation, and the sealed socket. It holds no device storage; its host supplies the device key, paired machines, and last selection through one device store contract. Turning Remote off removes its contributions, and the kernel loopback browser path remains.
-
+The Remote module's protocol home holds the device side of the relay as one client. Every client reaching a runtime through the relay uses it for pairing, presence, the machine and project picker, wake, project creation, and the sealed socket. It holds no device storage. Its host supplies the device key, paired machines, and last selection through one device store contract. Turning Remote off removes its contributions, and the kernel loopback browser path remains.
 Not: A per-client relay implementation, or device storage inside the shared relay client.
 
 ## ARCH-PROTOCOL-033: Protocol domains are declared once, and every installed module has a protocol runtime
 
-The kernel declares its domains in the protocol core, and a module declares its domains, queries, and mutations once in its protocol home against the generic module protocol contract, each declaration carrying its whole delivery policy. The protocol registry derives every table from the declarations and imports only pure schema values, so every client can hold it, and the runtime routes each read and mutation by discriminant with no module case. Composition constructs each installed module's protocol runtime, disabled or not. External hosts reach only a module's published protocol contract, never its runtime or rendering code.
-
+The kernel declares its domains in the protocol core. A module declares its domains, queries, and mutations once in its protocol home against the generic module protocol contract. Each declaration carries its whole delivery policy. The protocol registry derives every table from the declarations and imports only pure schema values, so every client can hold it. The runtime routes each read and mutation by discriminant with no module case. Composition constructs each installed module's protocol runtime, disabled or not. External hosts reach only a module's published protocol contract, never its runtime or rendering code.
 Because: Disabling a module must not make its retained history unreadable in any client.
-
 Not: Constructing protocol runtimes only for enabled modules.
 
 ## ARCH-PROTOCOL-034: Modules reach a client only through its slot map
 
-A module reaches a client only through the slot map: declarative intro and status rows computed by pure selectors in its protocol home, a strip above the composer, surfaces opened by id, a terminal presence hook, and a web toolbar badge. Its terminal and web client homes each export one module object that the client's one module registry lists. The client's slot host names no module, renders every registered contribution through one reader over its intake, and contains a render failure to its slot.
-
+A module reaches clients only through the slot map. Its slots are declarative intro and status rows from pure selectors in its protocol home, a strip above the composer, surfaces opened by id, a terminal presence hook, and a web toolbar badge. Its terminal and web homes each export one module object that the client's one module registry lists. The client's slot host names no module, renders every registered contribution through one reader over its intake, and contains a render failure to its slot.
 Not: A client host that branches on a module id.
 
 ## ARCH-PROTOCOL-035: An unknown module selection admits module contributions
 
-An unknown module selection is not an opt-out: every client admits a module's surfaces and contributions until a published selection excludes it, so a runtime-published command can open its surface while the selection is still loading. A known exclusion removes the module's contributions and closes its open surfaces. Host-owned acquisition and bug-report surfaces remain available before the first connection.
-
+Until a published module selection excludes a module, every client admits that module's surfaces and contributions. This lets a runtime-published command open its surface while the selection is still loading. A known exclusion removes the module's contributions and closes its open surfaces. Host-owned acquisition and bug-report surfaces remain available before the first connection.
 Not: Hiding every module contribution until the selection loads.
 
 ## ARCH-PROTOCOL-036: The module projection that clients receive is display-only
@@ -216,11 +199,11 @@ The runtime publishes the selected modules, the derived Workflows mode, catalog 
 
 ## ARCH-PROTOCOL-037: Commands cross as published descriptors that the runtime executes
 
-The runtime publishes every built-in command, kernel and module alike, as a descriptor under a catalog revision. The descriptor carries the command's one name, its aliases, its menu position, and an optional nested or contextual target of the surface it opens; clients keep no copy of a command's name or order, and only commands that act on the terminal itself stay terminal built-ins. A client invokes one through a lossless invocation that carries the descriptor id, the argument text, and the revision it rendered; the runtime refuses a stale revision, executes the handler in the composition that published it, and answers one closed outcome. A client never executes a module handler or special-cases a command id, and a command whose whole effect is opening one client surface names that surface in its descriptor and opens without a round trip.
+The runtime publishes every built-in command, kernel or module, as a descriptor under a catalog revision. A descriptor carries the command's one name, aliases, menu position, and any surface it opens. Clients copy no command name or order. Only commands acting on the terminal itself stay terminal built-ins. A client invokes one with the descriptor id, argument text, and rendered revision. The runtime refuses a stale revision, runs the publishing composition's handler, and answers one closed outcome. Clients never run module handlers or special-case command ids. A command that only opens a surface opens it without a round trip.
 
 ## ARCH-PROTOCOL-038: Skills never cross the protocol as commands
 
-The protocol carries no skill invocation and publishes no skill in the command catalog. A command that starts a method resolves the skill from the registry the runtime owns inside its handler and commits the rendered context as the session's next turn, and no package id or body crosses from the client. The turn renders through the ordinary transcript path, with no private display channel.
+The protocol carries no skill invocation and publishes no skill in the command catalog. A command that starts a method resolves the skill inside its handler, from the registry the runtime owns. The handler commits the rendered context as the session's next turn. No package id or body crosses from the client. The turn renders through the ordinary transcript path, with no private display channel.
 
 ## ARCH-PROTOCOL-039: The protocol transports, never redefines, config and consent semantics
 
@@ -254,26 +237,22 @@ Project notifications reach clients as a durable-resnapshot workspace domain who
 
 ## ARCH-PROTOCOL-045: Invalidation domains anchor their reads before awaiting
 
-The changes and background domains publish invalidations, not copies of their state, and their publishers read no history except to place sessions in the launch tree and need no live runner. A summary or index read captures its cursor position before it awaits durable data, so an invalidation that arrives during the read stays newer than the returned anchor. A session's changes review folds the session and every session it launched, so a change that a launched session records invalidates the changes domain of each session that launched it. A client reads such an index only while it shows it, and unavailable durable metadata is an error, never an empty summary.
+The changes and background domains publish invalidations, not copies of their state. Their publishers need no live runner and read no history beyond placing sessions in the launch tree. A summary or index read captures its cursor before it awaits durable data, so an invalidation during the read stays newer than the returned anchor. A session's changes review folds the session and every session it launched. A launched session's change invalidates the changes domain of every session that launched it. A client reads such an index only while showing it. Unavailable durable metadata is an error, never an empty summary.
 
 ## ARCH-PROTOCOL-046: Review validity is proven by exact source identity
 
-The full changes review returns each file's exact latest edit source identity with its review projection, and a lossless Viewed mutation echoes that identity, which the runtime refuses when any concurrent session write invalidates the proof. A Viewed record names one exact edit and belongs to the session whose review records it, so a later edit by a session it launched shows the file unviewed again. Summary reads are best-effort, while Viewed and confirmed Undo are lossless.
-
+The full changes review returns each file's exact latest edit source identity with its review projection. A lossless Viewed mutation echoes that identity. The runtime refuses it when any concurrent session write invalidates the proof. A Viewed record names one exact edit and belongs to the session whose review records it, so a later edit by a session it launched shows the file unviewed again. Summary reads are best-effort, while Viewed and confirmed Undo are lossless.
 Not: Validating a review by list revision or content hash.
 
 ## ARCH-PROTOCOL-047: Session detail is held, never polled
 
-Only the account's project control publishes session detail, as whole-row replacements. A connection holds a session's detail while it shows the session or reads one snapshot, and each hold ends only by its own release or the end of the connection. The publisher reads only held sessions, reads one again only when an input of its row can have changed, never on ordinary conversation appends, runs one read at a time, and publishes only rows that differ from what holders last received. Detail patches never reseed status, budget, workflow, or output domains.
-
+Only the account's project control publishes session detail, as whole-row replacements. A connection holds a session's detail while it shows the session or reads one snapshot, and each hold ends only on its release or when the connection ends. The publisher reads only held sessions. It rereads one only when an input of its row can have changed, never on ordinary conversation appends. It runs one read at a time and publishes only rows that differ from what holders last received. Detail patches never reseed status, budget, workflow, or output domains.
 Not: A per-parent child-list domain or periodic polling of detail.
 
 ## ARCH-PROTOCOL-048: Children use ordinary session surfaces
 
-The runtime exposes a child session through ordinary session projections, transcript reads, and admitted mutations, with no child-specific transcript or card contract; the child owns its viewport, and cards and activity rows link it instead of copying its transcript into the parent. The session catalog carries chats only, and that rule is enforced at its producer, never by filtering in each client. Workflow cards read workflow domains, never synthetic session rows, and client placement of a child changes navigation only, never runner, transcript, or lifecycle authority.
-
+The runtime exposes a child session only through ordinary session projections, transcript reads, and admitted mutations. The child owns its viewport, and cards and activity rows link it instead of copying its transcript into the parent. The session catalog carries chats only, and that rule is enforced at its producer, never by filtering in each client. Workflow cards read workflow domains, never synthetic session rows, and client placement of a child changes navigation only, never runner, transcript, or lifecycle authority.
 Because: The child is a real session, so ordinary projections are its single source of truth.
-
 Not: A child-specific transcript or card model.
 
 ## ARCH-PROTOCOL-049: Clients hold child detail through passive resolution
@@ -302,10 +281,8 @@ One runtime status projection owns the displayed activity's start time and sends
 
 ## ARCH-PROTOCOL-054: Transcript output has one absolute coordinate
 
-Historical output derives from the authoritative conversation and workflow facts, and active output is the uncommitted tail of that same transcript. One read path serves windows across the durable prefix and the live tail, deltas are minted in absolute coordinates at their write boundary, and recovery resolves exact block identities rather than content, timestamps, or old indices. A delta that does not apply against the held base is a divergence that recovers from the bounded authority, and the live tail is a serving tier, not a replay authority.
-
+Historical output derives from the authoritative conversation and workflow facts, and active output is the uncommitted tail of that same transcript. One read path serves windows across the durable prefix and the live tail. Deltas are minted in absolute coordinates at their write boundary, and recovery resolves exact block identities rather than content, timestamps, or old indices. A delta that does not apply against the held base is a divergence that recovers from the bounded authority, and the live tail is a serving tier, not a replay authority.
 Because: Separate coordinates force offset translation, seeding, and restitching at every boundary movement.
-
 Not: Separate durable and live coordinates, full-transcript snapshot recovery, or an in-memory replay ring or second output index without a measured requirement.
 
 ## ARCH-PROTOCOL-055: A transcript row keeps one identity from live to durable
@@ -314,11 +291,11 @@ Before a message publishes public output, its owner reserves the conversation en
 
 ## ARCH-PROTOCOL-056: Output ships as the smallest true change from what clients hold
 
-Every output change ships as the smallest true change from the copy that the session's clients last received, measured by one owner of the shipped copies per output cursor through which every publisher ships in one synchronous step. An edit ships as a delta only when every read of the block gives the same base as the delta copy; otherwise the block ships whole, and while a read is in flight every change ships whole. Appends, sliding windows, and pushes name their base so redelivery is idempotent, and nothing on the wire scales with a stream's accumulated state per change.
+Every output change ships as the smallest true change from the copy that the session's clients last received. One owner per output cursor measures that change from the shipped copies. Every publisher ships through that owner in one synchronous step. An edit ships as a delta only when every read of the block gives the same base as the delta copy. Otherwise the block ships whole. While a read is in flight, every change ships whole. Appends, sliding windows, and pushes name their base so redelivery is idempotent. Nothing on the wire scales with a stream's accumulated state per change.
 
 ## ARCH-PROTOCOL-057: Output deltas reach only watching connections, and invalidations reach all
 
-A transcript store states a watch on its session on each lane before it reads it, and a connection states its whole watch set at once, which the account restates to each executor generation ahead of later calls and on each reattach. The runtime sends output deltas only to watching connections, and the executor measures and publishes deltas only for the union of watched sessions, forgetting shipped copies of a session that leaves it. Output invalidations are never filtered, so a dormant session that wakes still hears a rebase. An executor that has received no watch statement ships every session's output.
+A transcript store watches its session on each lane before it reads it. A connection states its whole watch set at once. The account restates that set to each executor generation before later calls and on each reattach. The runtime sends output deltas only to watching connections. The executor measures and publishes deltas only for the union of watched sessions and forgets shipped copies of a session that leaves it. Output invalidations are never filtered, so a dormant session that wakes still hears a rebase. An executor that has received no watch statement ships every session's output.
 
 ## ARCH-PROTOCOL-058: Status settlement names real output publications
 
@@ -332,7 +309,7 @@ A live tool body over the inline limit leaves its row with a line count, and a u
 
 ## ARCH-PROTOCOL-060: Transcript recovery protects the reader's span
 
-Before the shared store commits or trims a window, the client supplies whether the reader follows the live end and the identities of the visible blocks. Recovery for a reader away from the live end asks for that protected span, and the runtime returns every surviving protected block in one contiguous interval at one snapshot position; budgets and the resident bound trim surrounding rows, never the protected span. A page omission is not deletion evidence, an incomplete or failed response leaves the presentation non-current, and only authoritative absence retires a protected block.
+Before the shared store commits or trims a window, the client supplies whether the reader follows the live end and the identities of the visible blocks. Recovery for a reader away from the live end asks for that protected span. The runtime returns every surviving protected block in one contiguous interval at one snapshot position. Budgets and the resident bound trim surrounding rows, never the protected span. A page omission is not deletion evidence. An incomplete or failed response leaves the presentation non-current. Only authoritative absence retires a protected block.
 
 ## ARCH-PROTOCOL-061: Headless machine output is an ephemeral stream, not a projection
 
@@ -346,8 +323,7 @@ Not: Replacing surface state with a fresh snapshot after reconnect.
 
 ## ARCH-PROTOCOL-063: Client effects track causes, not the state they reconcile
 
-A client store reflects domain slices fed by the protocol, not component trees. A client effect's tracked reads are its input contract: an effect that writes a target never also tracks that target, reconciliation is idempotent, and a fresh but semantically equal object from a snapshot or patch is never new authority. Pure derivation is a memo, not an effect.
-
+A client store reflects domain slices fed by the protocol, not component trees. A client effect's tracked reads are its input contract. An effect that writes a target never also tracks that target. Reconciliation is idempotent. A fresh but semantically equal object from a snapshot or patch is never new authority. Pure derivation is a memo, not an effect.
 Because: Runtime snapshots routinely republish unchanged meaning under fresh identity, and an effect that tracks its own target feeds back into itself.
 
 ## ARCH-PROTOCOL-064: Web styling values come from one token source

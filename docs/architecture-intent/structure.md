@@ -8,15 +8,13 @@ Source layers depend one way: infra, then protocol, then workflows, then orchest
 
 ## ARCH-STRUCTURE-043: The source tree holds the binary, and other hosts are workspace members
 
-The source tree holds the runtime and the terminal client, which compile together into the Flywheel binary. A host that runs on another platform is its own workspace member beside the source tree, with its own runtime types, dependencies, and deploy: the web client in a browser, the editor extension in the editor, and the relay service on its edge platform with the hosted phone page that it serves.
-
+The source tree holds the runtime and the terminal client, which compile into the Flywheel binary. A host that runs on another platform is its own workspace member beside the source tree, with its own runtime types, dependencies, and deploy. These hosts are the web client in a browser, the editor extension in the editor, and the relay service on its edge platform with its hosted phone page.
 Because: The source layers, their type checks, and the release archive assume one runtime, and a host for another platform or another deploy schedule would bring foreign types and dependencies into all three.
-
 Not: A source layer or a module for the relay or another separately deployed host.
 
 ## ARCH-STRUCTURE-002: Each layer owns one kind of concern
 
-Infra holds logging, error utilities, output blocks, and events. Protocol holds the published wire contract and the shared client core, with no runtime composition, tool execution, or rendering. Workflows hold definitions, the compiler, workflow control and verification, typed workflow facts, attempts, projections, and handoffs, with no config, sessions, agent runtime, or rendering; orchestration holds config, sessions, the agent runtime, runners, worker spawning, and workflow host wiring, with no rendering or workflow control policy. Clients hold presentation and input only, with no domain logic, session mutation, workflow control, or projection building.
+Infra holds logging, error utilities, output blocks, and events. Protocol holds the published wire contract and the shared client core, with no runtime composition, tool execution, or rendering. Workflows hold definitions, the compiler, workflow control and verification, typed workflow facts, attempts, projections, and handoffs, with no config, sessions, agent runtime, or rendering. Orchestration holds config, sessions, the agent runtime, runners, worker spawning, and workflow host wiring, with no rendering or workflow control policy. Clients hold presentation and input only, with no domain logic, session mutation, workflow control, or projection building.
 
 ## ARCH-STRUCTURE-003: One domain has one home
 
@@ -48,8 +46,7 @@ Not: Producers that filter events in advance for particular consumers.
 
 ## ARCH-STRUCTURE-008: A capability is a module unless it is kernel
 
-The kernel is the event store, the session manager, the conversation and its recovery, the runner, provider admission and the failover walk, the protocol core, the transcript, the composer, the session catalog, config, and the auth store. Every other capability is a module with one id, one home in each layer it reaches, and one entry in each registry it reaches.
-
+The kernel is the event store, session manager, conversation and its recovery, and runner. It also includes provider admission and the failover walk, protocol core, transcript, composer, session catalog, config, and auth store. Every other capability is a module with one id, one home in each layer it reaches, and one entry in each registry it reaches.
 Not: Adding a non-kernel capability directly into kernel code.
 
 ## ARCH-STRUCTURE-009: The module system is internal and static
@@ -74,7 +71,7 @@ Because: Auth actions load at a client's first login, and the whole module graph
 
 ## ARCH-STRUCTURE-012: The first read fixes each catalog half
 
-An entry may install an override of either catalog half before the first read, and the first read fixes that half for the process; a second install or an install after a read is a defect. A launch that does not need composition leaves the optional module graph unloaded.
+An entry may install an override of either catalog half before the first read. The first read fixes that half for the process. A second install, or an install after a read, is a defect. A launch that does not need composition leaves the optional module graph unloaded.
 
 ## ARCH-STRUCTURE-013: Development tooling is a module that releases never install
 
@@ -102,8 +99,7 @@ Not: Deriving delivery or routing order from the position of a module in a list.
 
 ## ARCH-STRUCTURE-017: Behavior arrives by registration and hosts name no module
 
-New behavior registers with its owning system instead of adding a case to a switch in another layer. Each layer has one static module registry with no module-specific branches, and every host composes from contributions: the command host exposes kernel primitives only, kernel commands use the module command shape, and the tool planner, runtime read and mutation routing, health checks, and each client host read registries. Adding a command, tool, health check, or view therefore adds no host routing case.
-
+New behavior registers with its owning system instead of adding a case to a switch in another layer. Each layer has one static module registry with no module-specific branches. Every host composes from contributions. The command host exposes kernel primitives only, and kernel commands use the module command shape. The tool planner, runtime read and mutation routing, health checks, and each client host read registries. Adding a command, tool, health check, or view therefore adds no host routing case.
 Not: A switch over module ids in kernel, host, or registry code.
 
 ## ARCH-STRUCTURE-018: Module homes split by layer
@@ -190,10 +186,8 @@ Not: Placing the ledger, the observation pool, or spend consent inside the usage
 
 ## ARCH-STRUCTURE-034: Producers state conditions through the notify seam
 
-A kernel or module producer states a condition that a person should see as a raise, a resolve, or a reconcile through the composition's notify seam, which hands it to every enabled observer, and the notifications module records it. A producer never reads the notification journal or names the notifications module.
-
+A kernel or module producer states a condition that a person should see as a raise, resolve, or reconcile through the composition's notify seam. The seam hands it to every enabled observer, and the notifications module records it. A producer never reads the notification journal or names the notifications module.
 Because: A kernel producer must keep working when the notifications module is off.
-
 Not: Giving producers the journal so that each decides its own raises and resolves.
 
 ## ARCH-STRUCTURE-040: The notify seam reports whether a statement landed
