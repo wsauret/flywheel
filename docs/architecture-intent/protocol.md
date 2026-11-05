@@ -254,7 +254,7 @@ Project notifications reach clients as a durable-resnapshot workspace domain who
 
 ## ARCH-PROTOCOL-045: Invalidation domains anchor their reads before awaiting
 
-The changes and background domains publish invalidations, not copies of their state. A summary or index read captures its cursor position before it awaits durable data, so an invalidation that arrives during the read stays newer than the returned anchor. Their publishers read no history except where sessions sit in the launch tree, and do not depend on a live runner. A change that a launched session records also invalidates the changes domain of every session that launched it, because a session's review folds the session and every session it launched, in one held fold per reviewed session that reads the facts of all its members in one query and folds a joining member's history once. A client reads such an index only while it shows it, and unavailable durable metadata is an error, never an empty summary.
+The changes and background domains publish invalidations, not copies of their state, and their publishers read no history except to place sessions in the launch tree and need no live runner. A summary or index read captures its cursor position before it awaits durable data, so an invalidation that arrives during the read stays newer than the returned anchor. A session's changes review folds the session and every session it launched, so a change that a launched session records invalidates the changes domain of each session that launched it. A client reads such an index only while it shows it, and unavailable durable metadata is an error, never an empty summary.
 
 ## ARCH-PROTOCOL-046: Review validity is proven by exact source identity
 

@@ -15,7 +15,8 @@ The runner host owns runner-context construction, one logical turn lease, explic
 
 ## ARCH-RUNTIME-003: One recovery policy restarts unattended runs
 
-One unattended recovery policy decides whether a failed run of a workflow agent, subagent, or headless task runs again from its recorded conversation, and it never retries or fails over inside a request. It is the single recovery hook of those turns, so no other layer keeps a restart count, and it counts served requests in memory without reading durable state. A run that the policy starts again keeps the limits that the failed run used: its model-call budget continues from the calls already made, and a failure that a limit ended, such as the output-limit continuation limit, stands and does not start again. A run that every candidate refused until a stated time waits as a capacity wait, which, in a run that a project executor serves, records its continuation authority before it waits (ARCH-SESSIONS-039), so the wait outlives its process; a headless task's wait lives and ends with its own process. A chat takes only the capacity wait from this policy: any other failed chat run ends, because a person decides whether to send again.
+One unattended recovery policy, the only restart owner, decides from its in-memory count of served requests whether a failed run of a workflow agent, subagent, or headless task runs again from its recorded conversation. A run that it starts again keeps the failed run's limits, so its model-call budget continues and a failure that a limit ended stands. A run that every candidate refused until a stated time takes a capacity wait, which for a headless task lasts only as long as its process. A chat takes only the capacity wait, because a person decides whether to send again.
+Not: A recovery policy that retries or fails over inside a request.
 
 ## ARCH-RUNTIME-004: Headless chat is a frontend over the production runtime
 
@@ -119,8 +120,7 @@ Runtime event subscriptions select their event types before queue admission, and
 
 ## ARCH-RUNTIME-023: Client holds decide a session runner's lifetime
 
-Each client connection holds the sessions it shows, and the account service orders each session's activations and releases on one lane, so the executor learns once when the last hold ends. The executor then ends the runner only when its turn is at rest, and a new activation cancels that end. A release never closes, renames, removes, or changes the lifecycle of a session. The close of a chat's tab adds a close at rest: the executor closes the chat as an explicit close does only once its turn is at rest, and a new activation cancels that close too, so a chat is never inactive while its runner works. Only an explicit close, Close chat, ends a chat's work at once.
-
+Each client connection holds the sessions it shows, and the account service orders each session's activations and releases on one lane, so the executor learns once when the last hold ends. The executor then ends the runner only when its turn is at rest, and a new activation cancels that end. A release alone never closes, renames, removes, or changes the lifecycle of a session. When a chat's tab closes, the executor closes the chat once its turn is at rest, unless a new activation cancels that close.
 Not: Ending a runner when its surface closes while a turn is in flight.
 
 ## ARCH-RUNTIME-024: Project holds decide whether a stop is a restart or a close

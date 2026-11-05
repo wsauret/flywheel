@@ -101,7 +101,7 @@ Behavior arrives by registration, and workflows carry no registry: ARCH-STRUCTUR
 
 ## Skill Packages
 
-The instruction stack, progressive disclosure of packages, registry revisions, commands that start an agent method, and external package trust: ARCH-CONTEXT-016, ARCH-LEARNING-005, ARCH-LEARNING-010, ARCH-BOUNDARIES-008, ARCH-TOOLS-038, PI-AGENT-028, PI-AGENT-037, PI-AGENT-038.
+The instruction stack, progressive disclosure of packages, registry revisions, commands that start an agent method, and external package trust: ARCH-CONTEXT-016, ARCH-CONTEXT-030, ARCH-LEARNING-005, ARCH-LEARNING-010, ARCH-BOUNDARIES-008, ARCH-TOOLS-038, PI-AGENT-028, PI-AGENT-037, PI-AGENT-038.
 
 ## Harness Minimalism
 

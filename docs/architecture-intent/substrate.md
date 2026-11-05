@@ -228,8 +228,7 @@ The notification journal replays its aggregate strictly and stops on malformed f
 
 ## ARCH-SUBSTRATE-044: Crash recovery invents no turn and gives no standing orders
 
-An incomplete assistant message left by a dead process stays canonical history at a continuation or tail boundary, without an invented user turn. The interruption record is phrased as history, not as an instruction (ARCH-SESSIONS-046), and separates tools with a recorded result from tools that were only called. A turn that stopped on a question gets no interruption record. Restored queued user words return as user entries, and restored background notifications return as model-visible system entries that never authorize resuming a turn. Only recorded continuation authority (ARCH-SESSIONS-039) continues a recovered turn, never a history entry.
-
+An incomplete assistant message from a dead process stays canonical history at a continuation or tail boundary, without an invented user turn. Its interruption record separates tools with a recorded result from tools that were only called, and a turn that stopped on a question gets no such record. Restored queued user words return as user entries, and restored background notifications return as model-visible system entries. Only recorded continuation authority (ARCH-SESSIONS-039) continues a recovered turn, never a history entry.
 Because: Claiming that a call without a recorded result ran would steer the resuming model to skip work that never happened, and a standing order to continue would outlive its turn.
 
 ## ARCH-SUBSTRATE-045: The kernel orders migrations and modules transform

@@ -220,4 +220,4 @@ Handoff exposure derives only from handoff capture, and process exposure derives
 
 ## ARCH-STRUCTURE-042: Hooks are typed callbacks on their owning boundary
 
-A runtime or workflow hook is a typed callback that its owning boundary declares and calls. A hook that affects model-visible context or durable state follows ARCH-CONTEXT-003.
+A runtime or workflow hook is a typed callback that its owning boundary declares and calls. Tool dispatch adds a post-call hook only where a concrete consumer reads it. A hook that affects model-visible context or durable state follows ARCH-CONTEXT-003.

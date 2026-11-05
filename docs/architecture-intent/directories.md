@@ -42,8 +42,7 @@ A chat or subagent records its canonical execution directory in its own session 
 
 ## ARCH-DIRECTORIES-007: One use-time resolution gives paths their meaning
 
-At each path-sensitive use, one resolver selects the owner's recorded execution directory when it is present, else the project root, and every use resolves paths against that one result, so a relative path means the same thing before and after a restart. History, such as historical tool rendering and projections that read the project store, uses the recorded directory whether or not it still exists. Live execution, resume, workers, and children require it to exist: starting or resuming agent work in a missing directory is refused with a message that names it, and the work never moves to another directory. Resolution never reads the current process directory, never writes fallback metadata or a fact, and never changes project identity. Session replay keeps every loadable session whose metadata lacks a directory.
-
+At each path-sensitive use, one resolver selects the owner's recorded execution directory, else the project root, and every use resolves paths against that one result. History, such as tool rendering and projections of the project store, uses the recorded directory whether or not it still exists. Live execution, resume, workers, and children that would start in a missing directory are refused with a message that names it, and the work never moves to another directory. Resolution never reads the current process directory, writes fallback metadata or a fact, or changes project identity.
 Because: Where state is stored does not decide what a path means, and a fallback to the process directory would change what recorded relative paths mean after a restart.
 Not: Letting resume adopt the current process directory.
 

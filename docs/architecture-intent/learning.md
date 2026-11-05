@@ -46,8 +46,12 @@ Bounded memory enters context as an eager, scope-labeled snapshot. A chat captur
 
 ## ARCH-LEARNING-010: The runtime publishes immutable skill registry revisions
 
-The runtime owns the installed skill registry and publishes it as immutable whole revisions, and each request reads one revision. A write the runtime performs itself publishes the next revision through the same ordered reload as a watched change before the write reports success; the root watch covers writes by other processes and editors. For each project, one revision keeps the complete bundled corpus and derives the core corpus, its identity manifest, the model catalog, the slash catalog, and every composed prompt section, so no consumer keeps its own package list or body copy. A failed reload keeps the last complete revision, and removing a package requires a successful reading of its root. A malformed bundled package is a build defect, and a malformed external package that never loaded is skipped with a warning.
+The runtime owns the installed skill registry and publishes it as immutable whole revisions, and each request reads one revision. Runtime writes and watched changes from other processes publish through one ordered reload, and a runtime write reports success only after its revision is published. Each project's revision holds the complete bundled corpus and derives every corpus view, catalog, manifest, and composed prompt section, so no consumer keeps its own package list or body copy. A failed reload keeps the last complete revision, and removing a package requires a successful reading of its root.
 Because: An editor's partial write must never delete a package or expose a shadowed install.
+
+## ARCH-LEARNING-025: Malformed skill packages fail by origin
+
+A malformed bundled package is a build defect. A malformed external package that never loaded is skipped with a warning.
 
 ## ARCH-LEARNING-011: Promotion moves one package
 

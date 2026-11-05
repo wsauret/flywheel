@@ -37,7 +37,7 @@ Every agent loop owns one repeated-call observer that checks each tool batch. A 
 
 ## ARCH-TOOLS-008: The module execution gate changes behavior, not ownership
 
-One singleton module execution gate runs only after input validation, deterministic execution policy, capability admission, and concurrency admission, so a stale, disabled, refused, invalid, or unadmitted call never reaches it. Its input is immutable normalized call data plus read access to the runtimes of its runner's enabled modules, with no effect authority. It has exactly three answers: allow, which takes the exact core path as its absence does; veto with a complete reason; or replace the execution with a complete function. Its failure is a fail-closed refusal. A replacement runs under the same dispatcher owner, watchdog, permit lifetime, publication, and observation as core execution, and the gate cannot publish, launch processes, dispatch nested calls, hold permits, or bypass earlier admission. Post-call hooks exist only where a concrete consumer reads them.
+One module execution gate runs after input validation, deterministic execution policy, capability admission, and concurrency admission, so no stale, disabled, refused, invalid, or unadmitted call reaches it. It reads only immutable normalized call data and its runner's enabled module runtimes, with no effect authority. It gives one of three answers: allow the unchanged core path, veto with a complete reason, or replace execution with a complete function, and its failure refuses the call. A replacement runs under the dispatcher owner, watchdog, permit lifetime, publication, and observation of core execution, and the gate cannot publish, launch processes, dispatch nested calls, hold permits, or bypass earlier admission.
 Not: Treating the gate as an approval step or as containment.
 
 ## ARCH-TOOLS-009: Code Mode is an ordinary tool whose nested calls admit separately
@@ -46,9 +46,13 @@ Code Mode's outer invocation holds no concurrency permit, and each nested call e
 
 ## ARCH-TOOLS-010: The shell write-target guard catches mistakes and contains nothing
 
-Every tool that runs arbitrary commands, in every execution mode, answers to the same tree-safety, forbidden-Git, worktree-lifecycle, write-target, and read-only rules through one analyzer that places write and delete targets statically before any process is created, and it enforces the allowance that PI-AGENT-017 states. Analysis loads at its point of use with no warmup prerequisite, and tool availability stays separate from it. When analysis cannot load or complete, the command runs and the failure is recorded once, because the guard is not a boundary; independent command restrictions still apply. Scripts, interpreters, build tools, and dynamic command names can still write outside the allowance, and command redirection toward first-class tools is ergonomics, not security, that applies only to tools whose affordances it names. A module rule that protects paths, such as an experiment charter, judges the targets that this analyzer places under its own admission predicate, and adds no command patterns of its own; a target the analyzer cannot place is refused by the shell's own rule.
+Every tool that runs arbitrary commands, in every execution mode, answers to the tree-safety, forbidden-Git, worktree-lifecycle, write-target, and read-only rules through one analyzer that enforces the allowance of PI-AGENT-017. The analyzer places write and delete targets statically before any process starts, loads at its point of use without warmup, and never decides tool availability. When analysis cannot load or complete, the command runs, the failure is recorded once, and independent command restrictions still apply. A module rule that protects paths applies its own admission to the targets this analyzer places and adds no command patterns, and the shell's own rule refuses a target the analyzer cannot place.
 Because: Shell syntax routes around command patterns, so only resolved targets of recognized effects support a decision.
 Not: A hardcoded command deny-list.
+
+## ARCH-TOOLS-054: Command redirection covers only the tools it names
+
+Command redirection toward first-class tools applies only to the tools whose affordances it names.
 
 ## ARCH-TOOLS-011: Read-only follows the persona's own grants
 
@@ -93,9 +97,14 @@ Attribution receives only mutations whose durable publication settled, as one im
 
 ## ARCH-TOOLS-020: Only a declared mutating shell command lands its file changes
 
-A command declared as mutating runs in a private copy that holds the project as it was when the command starts. It lands only its accepted file-content changes through the shared publication path and removes each directory the command removed once it is empty, and an interrupted command publishes nothing. A session keeps its copy between its own mutating commands: before each command, every entry that differs from the project returns to the project's state, and everything the previous command left is removed. A copy is never used again when another command is using it, when its command was interrupted, rejected, or handed over, when its landing did not finish, when its refresh failed or found its directories replaced, or when a process its command started may still run. Work that the command hands to a service that already runs, such as an existing tmux server, launchd, systemd, or a task scheduler, is not a process the command started, and the check does not see it; such work can already write into the real project too. Where the host allows it, Linux runs a mutating command in its own process namespace, so every process the command started ends when the command ends. A plain shell command writes in place and enters no file-change record or attribution. A mutating command shares the running session's own folder instead of copying it, and its writes there are observed against a before image at every settlement and kept as the command's evidence, never published as project file changes. Its evidence names each directory the command removed, once. PI-AGENT-017 states what a person sees of both.
+A command declared as mutating runs in a private copy of the project as it was when the command started. An interrupted command lands nothing, and any other lands only its accepted file-content changes and removes each directory it removed once that directory is empty. Its evidence names each removed directory once and records, at every settlement, its writes to the session's own folder, which it shares instead of copying and never publishes. A plain shell command writes in place and enters no file-change record or attribution.
 Because: A private copy is the only way that another agent's concurrent writes never appear in the command or get attributed to it.
-Not: Diffing the shared working tree after a command, which attributes concurrent work to it. Reusing a copy across sessions, or reusing one without bringing it back to the project's current state.
+Not: Diffing the shared working tree after a command, which attributes concurrent work to it.
+
+## ARCH-TOOLS-053: A session reuses its mutating-command copy only from a clean, settled state
+
+A session keeps its copy between its own mutating commands, and before each command it returns every entry that differs from the project to the project's state and removes what the previous command left. A copy is never used again while another command uses it, or after its command was interrupted, rejected, or handed over, or its landing did not finish. Nor is it used again after its refresh failed or found its directories replaced, or while a process its command started may still run. Where the host allows it, Linux runs a mutating command in its own process namespace, so every process the command started ends with the command.
+Not: Reusing a copy across sessions.
 
 ## ARCH-TOOLS-021: A mutating command's copy never publishes repository state
 
@@ -201,8 +210,12 @@ Not: Modeling attribution as a tool-execution gate or a module.
 
 ## ARCH-TOOLS-044: A tool states its policy once, and the serving model selects its registration
 
-A tool declares its policy once, its action, category, persona grant, clone inheritance, and order, and settings, persona grants, allowlists, and gates name the tool, never one of its registrations. A tool can carry one registration per presentation, such as the two file edit grammars, each declaring its own wire shape and provider-visible name, and admission selects exactly one registration for each exposed name, which dispatch uses and history and the request audit record. Interaction profile resolution is serving-model policy shared by chat, workflow workers, subagents, retries, capped requests, failover, and direct headless tasks, and a literal headless system prompt bypasses profile guidance and provider notes byte for byte. Serving-model presentation projects guidance and descriptions from the admitted entries, including the description a registration declares for each wire form it can take, and cannot create, rename, reschema, or widen a tool. Every rule that names a tool, including post-call hooks, prompt assembly, history readers, and the gate's normalized call data, resolves a provider-visible or recorded name to its tool through the registry; a tool with a shell registration declares the command and directory of a call, and no rule names a registration, such as the apply_patch edit grammar, to mean its tool.
-Not: Rewriting a registration in place for a model, or aliasing a provider-visible name to another executable.
+A tool declares its action, category, persona grant, clone inheritance, and order once, and a tool with a shell registration also declares the command and directory of each call. Each registration of a tool declares one presentation with its wire shape, its provider-visible name, and a description for each wire form it can take. For each exposed name, the serving model's admission selects exactly one registration, which dispatch uses and history and the request audit record. Settings, grants, allowlists, gate call data, hooks, prompt assembly, and history readers name a tool, never a registration, and resolve a recorded or provider-visible name to it through the registry.
+Not: Rewriting one registration in place for each model.
+
+## ARCH-TOOLS-056: Every caller resolves the interaction profile through serving-model policy
+
+Interaction profile resolution is serving-model policy, shared by chat, workflow workers, subagents, retries, capped requests, failover, and direct headless tasks. A literal headless system prompt reaches the provider byte for byte, without profile guidance or provider notes.
 
 ## ARCH-TOOLS-045: Tool contributions settle against the planned set
 
@@ -231,9 +244,9 @@ A remote call that ends without an answer has an unknown outcome. Its result say
 
 ## ARCH-TOOLS-051: Processor admission is measured, never declared
 
-One governor in the account service measures the processor demand of every owned command container, the threads that are ready to run, against a budget of the machine's logical core count. While Flywheel's processor-heavy containers exceed the budget, it holds the newest heavy containers and releases the oldest held one when the budget frees. A container that a chat's own turn starts is never held and counts toward the budget. A hold stops a container's payload processes and never its supervisor. A held or blocked container has no runnable threads and frees budget, so a hold never deadlocks running work. Agent and workflow caps stay separate from this admission.
-Because: A saturated scheduler shares processor time among all runnable work, so every command slows and none finishes, and an agent cap does not bound the processes that each agent's tools start. Processor time cannot measure demand: on a saturated machine it measures each container's share, and the shares always add up to the machine.
-Not: Launch-time command slots or a cost that the agent declares, because a command's cost is unknown before it runs; machine load average, because other programs keep it high without Flywheel; or priority alone, because a lower priority orders Flywheel's work behind other programs but never orders commands among themselves, and on macOS it measurably changed neither completion nor responsiveness.
+Independent of agent and workflow caps, one governor in the account service measures the processor demand of each owned command container, its ready threads, against a budget of the machine's logical core count. While Flywheel's processor-heavy containers exceed that budget, it holds the newest by stopping their payload processes, never their supervisor, and releases the oldest held one when budget frees. A held or blocked container has no ready threads and frees budget, so a hold never deadlocks running work. A container that a chat's own turn starts is never held and counts toward the budget.
+Because: On a saturated machine every command slows and none finishes, and processor time then measures only each container's share of the machine, not its demand.
+Not: Launch-time command slots or a cost that the agent declares, because a command's cost is unknown before it runs.
 
 ## ARCH-TOOLS-052: One rule set bounds every agent file search
 

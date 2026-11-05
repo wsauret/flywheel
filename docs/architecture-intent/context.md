@@ -58,8 +58,7 @@ Stale tool-result masking changes only the outgoing provider request, never the 
 
 ## ARCH-CONTEXT-012: Compaction is a recorded reset
 
-Compaction records an explicit context reset and makes no summarizer request. Only a run that holds the scoped checkpoint authority and tools resets; any other run never resets or truncates its own context in place. Voluntary idle compaction belongs to the chat runtime, requires a successful checkpoint write before the reset, and derives its deadline only from supported retention evidence of the request that actually served, so unknown retention sets no deadline. Supported retention evidence is a minimum lifetime that the provider states for the served request; a policy name that bounds only the maximum or describes a typical lifetime, such as an echoed default retention policy, is unknown retention. An interrupt withdraws a reset before its append is accepted, and an accepted reset completes.
-
+Compaction is a recorded context reset with no summarizer request, and an interrupt withdraws it only before its append is accepted. Only a run that holds the scoped checkpoint authority and tools resets, and no other run truncates its own context in place. Voluntary idle compaction belongs to the chat runtime and resets only after a successful checkpoint write. Its deadline comes only from a minimum cache lifetime that the provider states for the request that served.
 Because: A deadline guessed from a model name resets chats whose cache is still present or misses ones that expired.
 
 ## ARCH-CONTEXT-013: Working context has distinct owners and lifetimes
@@ -72,9 +71,12 @@ The checkpoint tools bind to the owning conversation, and no tool input selects 
 
 ## ARCH-CONTEXT-016: Large optional context is disclosed progressively
 
-Large manuals, references, documentation, provider notes, and package bodies enter context only when the model or a definition selects them. A roster may advertise their triggers as their authors wrote them; admission limits bound the roster, and a person controls its cost by uninstalling packages. Loading a package renders one canonical package context, grants no authority, creates no active-package state, and causes no reinjection. Small bounded context, such as a memory snapshot, loads eagerly when that is the simpler measured design. A rule enters the always-loaded instruction kernel only when every turn needs it, a package body is never copied into the kernel, a brief, or a persona, and packages reach context only through declared composition, model loading, and user commands, so a declaration that names an uninstalled package is a definition error.
+Large references, manuals, documentation, provider notes, and package bodies enter context only when the model or a definition selects them. A roster may advertise package triggers in their authors' words within admission limits, and a person cuts its cost by uninstalling packages. Small bounded context, such as a memory snapshot, loads eagerly when that is the simpler measured design. A rule enters the always-loaded instruction kernel only when every turn needs it.
+Not: Eagerly injecting every available reference.
 
-Not: eagerly injecting every available reference, or requiring semantic retrieval for bounded memory.
+## ARCH-CONTEXT-030: Packages reach context only through declared paths
+
+A package reaches context only through declared composition, model loading, or a user command. Its body is never copied into the instruction kernel, a brief, or a persona. Loading renders one canonical package context, grants no authority, creates no active-package state, and causes no reinjection. A declaration that names an uninstalled package is a definition error.
 
 ## ARCH-CONTEXT-017: Learned context is fallible evidence
 
@@ -82,11 +84,9 @@ User-global and project instructions, memory, and loaded skills are point-in-tim
 
 ## ARCH-CONTEXT-018: Agents share one stable prompt prefix
 
-Every agent of a workflow and every subagent gets the same tools, the same generic handoff schema, and the same stable system-prompt tier, so sibling agents share one cached prefix. What is an agent's own, its brief, instructions, context bundle, output contract, and the advertised tools that its grant refuses, goes in its opening user turn, never in the system prompt. Every route reads it there, and a fork does not copy the grant of another agent. Material shared by one workflow or session, such as approved parent intent or the dispatchable persona catalog, renders once in the session tier after the stable prefix. The tools are byte for byte the same for every agent and side call of a chat tree, including each description and schema, because the shared host fixes them at launch (ARCH-PROVIDERS-006).
-
+Every workflow agent and subagent gets one generic handoff schema and one stable system-prompt tier, and every agent and side call of a chat tree gets byte-identical tools, descriptions and schemas included. An agent's own material, its brief, instructions, context bundle, output contract, and the advertised tools that its grant refuses, goes in its opening user turn on every route, never in the system prompt. A fork does not copy another agent's grant. Material shared by one workflow or session, such as approved parent intent or the dispatchable persona catalog, renders once in the session tier after the stable prefix.
 Because: tools come first in a cached request, so a per-agent tool set or system prompt breaks cache reuse across siblings.
-
-Not: per-agent tool sets or per-agent system prompts; a persona narrows calls through a grant, never what the agent sees.
+Not: narrowing an agent's tool set by persona instead of refusing ungranted calls at execution.
 
 ## ARCH-CONTEXT-019: Workflow context flows in one direction
 

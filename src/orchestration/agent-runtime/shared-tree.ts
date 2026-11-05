@@ -1,7 +1,7 @@
 import type { FirstPartyModuleComposition } from "../modules.js";
 
 /**
- * What every agent of one chat tree shares while the tree's shared agent host can serve it (ARCH-PROVIDERS-006,
+ * What every agent of one chat tree shares while the tree's shared agent host can serve it (ARCH-PROVIDERS-006, ARCH-PROVIDERS-031,
  * ARCH-RUNTIME-068). The host's launch fixes the tool list byte for byte, so every agent of the tree plans its tools
  * from one module capture, and a module turned off later narrows only what an agent may call. Each request of the
  * tree prefers the login of the tree's live host among logins whose included quota expires at the same moment, so the

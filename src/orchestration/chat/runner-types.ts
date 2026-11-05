@@ -52,7 +52,7 @@ export interface ChatRunner extends Runner {
    *  assembled module runtimes; answers at once when a turn has assembled. */
   hold(): Promise<ModuleRuntimes>
   /** A client shows the session (`true`), also again at a reattach, or the last client released it (`false`). The
-   *  session's engines run only while it is shown (ARCH-PROVIDERS-006). */
+   *  session's engines run only while it is shown (ARCH-PROVIDERS-070). */
   setShown(shown: boolean): void
   answerQuestion(toolUseId: string, answers: AgentInputAnswers): void
   cancelQuestion(toolUseId: string): void

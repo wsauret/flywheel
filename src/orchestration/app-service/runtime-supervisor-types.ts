@@ -195,7 +195,7 @@ export interface RuntimeSupervisor {
    *  ends. */
   releaseSession(sessionId: string): Promise<void>
   /** No client shows the session, while its runner stays for a client that
-   *  comes back: its idle engines stop (ARCH-PROVIDERS-006), and a later
+   *  comes back: its idle engines stop (ARCH-PROVIDERS-070), and a later
    *  activation that shows it starts them again. A session that no actor
    *  holds has nothing to stop, and this creates no actor. Resolves when the
    *  session's actor has taken the hide. */

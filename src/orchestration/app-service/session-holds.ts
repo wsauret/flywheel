@@ -39,7 +39,7 @@ export interface SessionHoldsOptions extends SessionHoldGrace {
   readonly release: (sessionId: string) => Promise<void>
   /** Tells the executor that no live connection shows the session while its
    *  hold waits out a grace. The executor stops the session's idle engines
-   *  and keeps its runner (ARCH-PROVIDERS-006). Runs in the session's lane. */
+   *  and keeps its runner (ARCH-PROVIDERS-070). Runs in the session's lane. */
   readonly hide: (sessionId: string) => Promise<void>
   /** Takes ownership of work that no caller waits on. */
   readonly own: (work: Promise<void>) => void
