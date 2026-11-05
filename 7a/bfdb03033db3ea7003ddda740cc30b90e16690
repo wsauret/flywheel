@@ -1,0 +1,108 @@
+docs/architecture-intent/providers.md
+  h_4b47e9e4a8b456 29
+scripts/check-boundaries.ts
+  h_4b47e9e4a8b456 122,126
+src/infra/claude-engine-process.ts
+  h_4b47e9e4a8b456 5-7,53,58-59,61,77
+src/infra/claude-engine.ts
+  h_4b47e9e4a8b456 1-2,4-160
+src/orchestration/modules/mcp/authentication.ts
+  h_4b47e9e4a8b456 25
+src/orchestration/modules/mcp/claude-engine-session.ts
+  h_4b47e9e4a8b456 1-222
+src/orchestration/modules/mcp/claude-engine.ts
+  h_4b47e9e4a8b456 1-408
+src/orchestration/modules/mcp/cli/args.ts
+  h_4b47e9e4a8b456 1-2,6,52-68,118,129-134,181-182,184
+src/orchestration/modules/mcp/cli/mcp.ts
+  h_4b47e9e4a8b456 3,10,14-16,106,111-112,139,145,152,156-157,160-164,173,176-177,184-199
+src/orchestration/modules/mcp/clients.ts
+  h_4b47e9e4a8b456 1-81
+src/orchestration/modules/mcp/config-mutation.ts
+  h_4b47e9e4a8b456 4,8,70-86
+src/orchestration/modules/mcp/config.ts
+  h_4b47e9e4a8b456 21,43-46,66,92,212-213
+src/orchestration/modules/mcp/errors.ts
+  h_4b47e9e4a8b456 30-46
+src/orchestration/modules/mcp/manager.ts
+  h_4b47e9e4a8b456 4-5,95-97,373-379,446-465,557-560
+src/orchestration/modules/mcp/oauth.ts
+  h_4b47e9e4a8b456 7,19,60-61,208-211,215-221,223,245,250,270-275
+src/orchestration/modules/mcp/protocol.ts
+  h_4b47e9e4a8b456 1,5,29-33,45,48,72-78
+src/orchestration/modules/mcp/registry-owner.ts
+  h_4b47e9e4a8b456 12
+src/orchestration/modules/mcp/service.ts
+  h_4b47e9e4a8b456 10-11,13,37,43,50-51,55,59,62-74,113,121
+src/orchestration/modules/provider-claude-agent-sdk/cli-environment.ts
+  h_4b47e9e4a8b456 1-2,56-57,59
+src/orchestration/modules/provider-claude-agent-sdk/cli-launch.ts
+  h_4b47e9e4a8b456 1,7-8,61-62,64
+src/orchestration/modules/provider-claude-agent-sdk/cli-login.ts
+  h_4b47e9e4a8b456 12-13
+src/orchestration/modules/provider-claude-agent-sdk/engine-environment.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/modules/provider-claude-agent-sdk/login-status.ts
+  h_4b47e9e4a8b456 8
+src/orchestration/modules/provider-claude-agent-sdk/observed-engine.ts
+  h_4b47e9e4a8b456 3
+src/orchestration/modules/provider-claude-agent-sdk/query-launcher.ts
+  h_4b47e9e4a8b456 13
+src/protocol/modules/mcp.ts
+  h_4b47e9e4a8b456 28-34,43-44,65-69,122-128,158-189,225
+src/tui/modules/mcp/list.ts
+  h_4b47e9e4a8b456 2,12,56-61,93,100
+src/tui/modules/mcp/modal.tsx
+  h_4b47e9e4a8b456 6,16,36-39,43,57,60-61,92-93,98
+src/workflows/docs/configuration.md
+  h_4b47e9e4a8b456 345-372,674-701
+tests/integration/mcp-claude-engine.test.ts
+  h_4b47e9e4a8b456 1-180
+tests/integration/mcp-oauth.test.ts
+  h_4b47e9e4a8b456 141
+tests/integration/orchestration/modules/provider-claude-agent-sdk/engine-separation.test.ts
+  h_4b47e9e4a8b456 18
+tests/unit/infra/claude-engine-process.test.ts
+  h_4b47e9e4a8b456 3-6
+tests/unit/infra/claude-engine.test.ts
+  h_4b47e9e4a8b456 5-8,10,12
+tests/unit/orchestration/modules/mcp/claude-engine.test.ts
+  h_4b47e9e4a8b456 1-245
+tests/unit/orchestration/modules/mcp/cli/args.test.ts
+  h_4b47e9e4a8b456 84-95,116,120-127,137,197-216
+tests/unit/orchestration/modules/mcp/config-mutation.test.ts
+  h_4b47e9e4a8b456 6,67-80
+tests/unit/orchestration/modules/mcp/config.test.ts
+  h_4b47e9e4a8b456 40,103-105
+tests/unit/orchestration/modules/mcp/oauth.test.ts
+  h_4b47e9e4a8b456 16-17,126,220-245,247-248,264,269-270
+tests/unit/orchestration/modules/mcp/protocol.test.ts
+  h_4b47e9e4a8b456 18,50,241-249,287-303,315
+tests/unit/orchestration/modules/provider-claude-agent-sdk/cli-login.test.ts
+  h_4b47e9e4a8b456 12
+tests/unit/orchestration/modules/provider-claude-agent-sdk/client.test.ts
+  h_4b47e9e4a8b456 12
+tests/unit/orchestration/modules/provider-claude-agent-sdk/module.test.ts
+  h_4b47e9e4a8b456 17
+tests/unit/tui/modules/mcp/list.test.ts
+  h_4b47e9e4a8b456 20,137-149
+tests/unit/tui/modules/mcp/modal.test.tsx
+  h_4b47e9e4a8b456 171-215
+webview/src/modules/mcp/mutation.ts
+  h_4b47e9e4a8b456 2,50
+webview/src/modules/mcp/sheet.test.ts
+  h_4b47e9e4a8b456 144-160
+webview/src/modules/mcp/sheet.tsx
+  h_4b47e9e4a8b456 4,59-60,64,68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7abfdb03033db3ea7003ddda740cc30b90e16690",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
