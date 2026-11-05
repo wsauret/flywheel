@@ -103,39 +103,40 @@ describe("check-intent-corpora", () => {
     ]);
   });
 
-  it("caps a statement at four sentences, outside code spans, with one single-sentence rationale per label", () => {
-    const four = "One owner decides. It writes the value. Readers wait. Writers stop.";
+  it("caps a statement at 100 body words in sentences of at most 35 words, with one single-sentence rationale per label", () => {
+    // A sentence of exactly `count` words that ends with `end`.
+    const sentence = (count: number, end = "now."): string => ["Readers", ...Array.from({ length: count - 2 }, () => "wait"), end].join(" ");
     const statement = (heading: string, ...body: string[]): string => `## ${heading}: Bounded\n\n${body.join("\n")}\n\n`;
     expect(check({
       ...CLEAN,
       "docs/architecture-intent/alpha.md": [
         ALPHA,
-        statement(arch("ALPHA-002"), four, "Because: Two owners disagree, e.g. on replay.", "Not: A shared value."),
-        statement(arch("ALPHA-003"), four, "Readers wait again."),
+        statement(arch("ALPHA-002"), "One owner decides. It writes the value. Readers wait. Writers stop. Nothing else runs.", "Because: Two owners disagree, e.g. on replay.", "Not: A shared value."),
+        statement(arch("ALPHA-003"), Array.from({ length: 5 }, () => sentence(21)).join(" ")),
+        statement(arch("ALPHA-004"), `One owner decides. ${sentence(36, "now")}`),
         statement(arch("ALPHA-005"), "One owner decides.", "Because: Two owners disagree.", "Because: Replay drifts."),
         statement(arch("ALPHA-006"), "One owner decides.", "Not: A shared value. A copy."),
         statement(arch("ALPHA-007"), "Because: Two owners disagree."),
-        statement(arch("ALPHA-008"), "One owner decides.", "Because: Two owners disagree. Replay drifts."),
+        statement(arch("ALPHA-008"), "One owner decides.", `Because: ${sentence(36)}`),
         statement(arch("ALPHA-009"), "One owner decides.", "Not: A shared value.", "Not: A copy."),
       ].join(""),
       "docs/product-intent/beta.md": [
         BETA,
-        statement(intent("BETA-002"), "Press `stop. Then. Go.` once.", "It writes the value. Readers wait. Writers stop."),
+        statement(intent("BETA-002"), `${sentence(34, "`git log --oneline --all`")} now.`),
         statement(intent("BETA-003"), "Work stays visible.", "Because: People lose track."),
-        statement(intent("BETA-004"), "The client says \"Stopped.\""),
-        statement(intent("BETA-006"), "Work stays visible.", "Not: A hidden queue."),
-        statement(intent("BETA-005"), "It says \"One.\" It says \"Two.\" It says \"Three.\" It says \"Four.\" It stops."),
+        statement(intent("BETA-004"), `${sentence(20, "\"Stopped.\"")} ${sentence(20)}`),
+        statement(intent("BETA-005"), "Work stays visible.", "Not: A hidden queue."),
       ].join(""),
     })).toEqual([
       { file: "docs/architecture-intent/alpha.md", line: 12, rule: "length" },
-      { file: "docs/architecture-intent/alpha.md", line: 17, rule: "length" },
-      { file: "docs/architecture-intent/alpha.md", line: 23, rule: "length" },
-      { file: "docs/architecture-intent/alpha.md", line: 28, rule: "length" },
-      { file: "docs/architecture-intent/alpha.md", line: 32, rule: "length" },
-      { file: "docs/architecture-intent/alpha.md", line: 37, rule: "length" },
-      { file: "docs/product-intent/beta.md", line: 11, rule: "length" },
-      { file: "docs/product-intent/beta.md", line: 20, rule: "length" },
-      { file: "docs/product-intent/beta.md", line: 25, rule: "length" },
+      { file: "docs/architecture-intent/alpha.md", line: 16, rule: "length" },
+      { file: "docs/architecture-intent/alpha.md", line: 20, rule: "length" },
+      { file: "docs/architecture-intent/alpha.md", line: 26, rule: "length" },
+      { file: "docs/architecture-intent/alpha.md", line: 31, rule: "length" },
+      { file: "docs/architecture-intent/alpha.md", line: 35, rule: "length" },
+      { file: "docs/architecture-intent/alpha.md", line: 40, rule: "length" },
+      { file: "docs/product-intent/beta.md", line: 10, rule: "length" },
+      { file: "docs/product-intent/beta.md", line: 19, rule: "length" },
     ]);
   });
 

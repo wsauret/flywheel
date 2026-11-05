@@ -17,7 +17,7 @@ A statement belongs here only when a user cannot observe it. A rule that a perso
 ## Corpus contract
 
 - Give every statement one stable identifier of the form `ARCH-<DOMAIN>-<NNN>` and one canonical domain file. Keep the identifier through wording changes and file moves.
-- Write each statement as a heading `## ARCH-<DOMAIN>-<NNN>: <title>` followed by a concise, present-tense rule of one to four sentences.
+- Write each statement as a heading `## ARCH-<DOMAIN>-<NNN>: <title>` followed by a concise, present-tense rule of at most 100 words, in sentences of at most 35 words.
 - After the rule, a statement may carry one line `Because: <one sentence>` and one line `Not: <one rejected alternative>`. Add them only when a reader without them is likely to propose the rejected design again.
 - Name boundaries, owners, invariants, layers, and modules. Do not name functions, types, file paths, fact versions, or other implementation details, and do not record history, delivery mechanics, or acceptance criteria.
 - Add a statement only when no current statement owns the rule. Rewrite the current statement when its intended meaning changes. Git history is the archive of prior wording.

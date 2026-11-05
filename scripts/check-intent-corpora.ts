@@ -5,10 +5,11 @@ import * as path from "node:path";
 // the living authorities that code, tests, and documents cite by statement id,
 // so a malformed or duplicated id, an unlinked domain file, a statement that
 // names implementation detail, or a citation that resolves to nothing is a
-// build failure. A statement stays short enough to read as one contract: one
-// to four sentences, and an architecture statement adds at most one sentence of
-// rationale and one of rejected alternative. The retired architecture decision records are no authority,
-// so a citation of them fails too.
+// build failure. A statement stays short enough to read as one contract: a body
+// of at most 100 words in sentences of at most 35 words, and an architecture
+// statement adds at most one sentence of rationale and one of rejected
+// alternative. The retired architecture decision records are no authority, so a
+// citation of them fails too.
 //
 // The citing scope is every tracked and unignored text file, listed by Git
 // rather than a directory crawl, because ignored worktrees under the
@@ -51,7 +52,8 @@ const CODE_SPAN = /`[^`]*`/g;
 // before the end of the text or before a word that can open one, so "e.g. the"
 // stays inside its sentence and `says "Stop." Then` ends one.
 const SENTENCE_END = /[.?!]["'\u201D)\]]*(?=\s+[A-Z`"'\u201C([]|\s*$)/g;
-const MAX_SENTENCES = 4;
+const MAX_BODY_WORDS = 100;
+const MAX_SENTENCE_WORDS = 35;
 const TOKEN_EDGE = /^[("'[]+|[)"'\],.;:!?]+$/g;
 
 // Historical records and frozen benchmark inputs keep the wording they were
@@ -114,19 +116,40 @@ function grainProblem(line: string, repoPaths: ReadonlySet<string>): string | nu
   return null;
 }
 
-function sentenceCount(text: string): number {
-  return text.replace(CODE_SPAN, "`c`").match(SENTENCE_END)?.length ?? 0;
+/** The sentences of `text`, with each code span reduced to one word. Text after
+ *  the last terminator is a final sentence, so every word of the text is counted. */
+function sentences(text: string): string[] {
+  const plain = text.replace(CODE_SPAN, "`c`");
+  const out: string[] = [];
+  let start = 0;
+  for (const end of plain.matchAll(SENTENCE_END)) {
+    out.push(plain.slice(start, end.index + end[0].length).trim());
+    start = end.index + end[0].length;
+  }
+  const rest = plain.slice(start).trim();
+  if (rest.length > 0) out.push(rest);
+  return out;
+}
+
+function wordCount(text: string): number {
+  return text.split(/\s+/).filter((word) => word.length > 0).length;
 }
 
 /** The length rule for the statement whose heading is `lines[index]`: a body
- *  of one to four sentences, and for architecture at most one single-sentence
- *  `Because:` and `Not:` line each. Product statements carry no rationale. */
+ *  of 1 to 100 words, every sentence of at most 35 words, and for architecture
+ *  at most one single-sentence `Because:` and `Not:` line each. Product
+ *  statements carry no rationale. */
 function lengthProblems(lines: readonly string[], index: number, architecture: boolean): string[] {
   const out: string[] = [];
   const next = lines.findIndex((candidate, at) => at > index && candidate.startsWith("## "));
   const body = lines.slice(index + 1, next === -1 ? undefined : next).map((line) => line.trim()).filter((line) => line.length > 0);
-  const sentences = sentenceCount(body.filter((line) => !RATIONALE_LINE.test(line)).join(" "));
-  if (sentences < 1 || sentences > MAX_SENTENCES) out.push(`body has ${sentences} sentences; expected 1 to ${MAX_SENTENCES}`);
+  const rule = sentences(body.filter((line) => !RATIONALE_LINE.test(line)).join(" "));
+  const words = wordCount(rule.join(" "));
+  if (words < 1 || words > MAX_BODY_WORDS) out.push(`body has ${words} words; expected 1 to ${MAX_BODY_WORDS}`);
+  for (const sentence of rule) {
+    const count = wordCount(sentence);
+    if (count > MAX_SENTENCE_WORDS) out.push(`sentence of ${count} words; expected at most ${MAX_SENTENCE_WORDS}: "${sentence.slice(0, 40)}"`);
+  }
   for (const label of ["Because", "Not"]) {
     const labeled = body.filter((line) => line.startsWith(`${label}:`));
     if (!architecture) {
@@ -135,8 +158,10 @@ function lengthProblems(lines: readonly string[], index: number, architecture: b
     }
     if (labeled.length > 1) out.push(`has ${labeled.length} ${label}: lines; expected at most 1`);
     for (const line of labeled) {
-      const count = sentenceCount(line.slice(label.length + 1));
-      if (count !== 1) out.push(`${label}: line has ${count} sentences; expected 1`);
+      const parts = sentences(line.slice(label.length + 1));
+      if (parts.length !== 1) out.push(`${label}: line has ${parts.length} sentences; expected 1`);
+      const count = wordCount(parts.join(" "));
+      if (count > MAX_SENTENCE_WORDS) out.push(`${label}: line has ${count} words; expected at most ${MAX_SENTENCE_WORDS}`);
     }
   }
   return out;
