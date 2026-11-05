@@ -1,0 +1,16 @@
+bench/chat-ab/workflow-authorship/patches/handcrafted-forced.patch
+  h_4b47e9e4a8b456 30
+bench/chat-ab/workflow-authorship/patches/handcrafted.patch
+  h_4b47e9e4a8b456 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c6bd644496af996f26884c2f1f75ee0132bef417",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
