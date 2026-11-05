@@ -18,6 +18,7 @@ const McpStdioServerConfigSchema = Schema.Struct({
   url: Schema.optionalKey(Schema.Never),
   headers: Schema.optionalKey(Schema.Never),
   oauth: Schema.optionalKey(Schema.Never),
+  client: Schema.optionalKey(Schema.Never),
 }).pipe(Schema.annotate({ description: "An MCP server started as a stdio subprocess." }));
 
 const McpOAuthClientConfigSchema = Schema.Struct({
@@ -39,6 +40,10 @@ const McpHttpServerConfigSchema = Schema.Struct({
   url: described(Schema.NonEmptyString, "URL of the MCP HTTP server."),
   headers: described(defaultRecord.pipe(Schema.annotate({ sensitive: true })), "HTTP headers sent to the MCP server."),
   oauth: Schema.optionalKey(McpOAuthClientConfigSchema),
+  client: Schema.optionalKey(described(
+    Schema.Literals(["flywheel", "claude"]),
+    "The MCP client that connects to this server. `claude` connects through the Claude engine that ships with Flywheel, for a server that accepts only approved apps; the server's sign-in page then names Claude. Without it, Flywheel's built-in list decides, and every other server uses `flywheel`.",
+  )),
   enabled: described(defaultTrue, "Enable this MCP server."),
   command: Schema.optionalKey(Schema.Never),
   args: Schema.optionalKey(Schema.Never),
@@ -58,6 +63,7 @@ const McpEnabledOverrideSchema = Schema.Struct({
   env: Schema.optionalKey(Schema.Never),
   headers: Schema.optionalKey(Schema.Never),
   oauth: Schema.optionalKey(Schema.Never),
+  client: Schema.optionalKey(Schema.Never),
 }).pipe(Schema.annotate({ description: "An enabled-only project override of a global MCP server." }));
 const McpProjectServerSchema = Schema.Union([...McpServerConfigSchema.members, McpEnabledOverrideSchema]);
 const McpProjectSchema = Schema.Struct({
@@ -83,7 +89,7 @@ export type McpServerConfig = typeof McpServerConfigSchema.Type;
 export type McpConfig = typeof McpConfigSchema.Type;
 export type McpProjectServer = typeof McpProjectServerSchema.Type;
 export type McpScope = "global" | "project";
-interface McpServerSource {
+export interface McpServerSource {
   readonly definitionScope: McpScope;
   readonly enabledScope: McpScope;
   readonly enabled: boolean;
@@ -203,8 +209,8 @@ function mcpOwnerIssues(raw: unknown): readonly ConfigOwnerIssue[] {
       else if (servers === undefined || !Object.hasOwn(servers, name)) issues.push({ path, message: "expected a global MCP server for this enabled override; default: not applicable." });
     } else if (hasCommand === hasUrl) {
       issues.push({ path, message: "found table; expected exactly one MCP transport (command or url); default: not applicable." });
-    } else if (hasCommand && (Object.hasOwn(value, "headers") || Object.hasOwn(value, "oauth"))) {
-      issues.push({ path, message: "found table; expected an MCP stdio server without url, headers, or oauth; default: not applicable." });
+    } else if (hasCommand && (Object.hasOwn(value, "headers") || Object.hasOwn(value, "oauth") || Object.hasOwn(value, "client"))) {
+      issues.push({ path, message: "found table; expected an MCP stdio server without url, headers, oauth, or client; default: not applicable." });
     } else if (hasUrl && (Object.hasOwn(value, "args") || Object.hasOwn(value, "env"))) {
       issues.push({ path, message: "found table; expected an MCP HTTP server without command, args, or env; default: not applicable." });
     }

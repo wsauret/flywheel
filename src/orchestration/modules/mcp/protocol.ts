@@ -1,7 +1,8 @@
-import { mcpCursor, mcpProtocol, type McpManagementResult } from "../../../protocol/modules/mcp.js"
+import { MCP_REGISTRATION_HINT, mcpCursor, mcpProtocol, type McpManagementResult } from "../../../protocol/modules/mcp.js"
 import type { ModuleProtocolRuntime, ModuleProtocolServices } from "../../app-service/module-protocol-host.js"
 import type { ConfigMutationResult } from "../../config/runtime-config-owner.js"
 import { mcpMutationMessage } from "./config-mutation.js"
+import { McpRegistrationRefusedError, McpSignInPortBusyError } from "./errors.js"
 import { mcpService } from "./service.js"
 
 /** The module's protocol runtime. Every manager transition publishes the
@@ -25,6 +26,11 @@ export function createMcpProtocol(services: ModuleProtocolServices): ModuleProto
         if (!current) return { ok: false, error: "MCP servers are off" }
         return manage(() => current.setEnabled(mutation))
       },
+      "mcp.setClient": async (mutation) => {
+        const current = service()
+        if (!current) return { ok: false, error: "MCP servers are off" }
+        return manage(() => current.setClient(mutation))
+      },
       "mcp.remove": async (mutation) => {
         const current = service()
         if (!current) return { ok: false, error: "MCP servers are off" }
@@ -36,10 +42,10 @@ export function createMcpProtocol(services: ModuleProtocolServices): ModuleProto
         try {
           await current.authentication.authenticate(mutation.server)
           return { ok: true }
-        } catch {
+        } catch (error) {
           // The browser handoff and the token exchange can fail with a
           // provider URL in the message; the person gets the repair, not the URL.
-          return { ok: false, error: "MCP authentication failed. Try again." }
+          return { ok: false, error: mcpSignInFailure(error) }
         }
       },
       "mcp.reconnect": async ({ server }) => {
@@ -61,6 +67,13 @@ export function createMcpProtocol(services: ModuleProtocolServices): ModuleProto
     },
     dispose() { unsubscribe?.() },
   }
+}
+
+/** What a person reads when a sign-in fails: the repair, never the cause, which can hold a provider URL. */
+export function mcpSignInFailure(error: unknown): string {
+  if (error instanceof McpSignInPortBusyError) return error.message
+  if (error instanceof McpRegistrationRefusedError) return `MCP authentication failed. ${MCP_REGISTRATION_HINT}`
+  return "MCP authentication failed. Try again."
 }
 
 async function manage(operation: () => Promise<ConfigMutationResult>): Promise<McpManagementResult> {

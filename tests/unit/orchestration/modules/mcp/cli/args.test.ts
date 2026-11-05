@@ -81,6 +81,18 @@ describe("MCP CLI arguments", () => {
     expect(parseMcpArgs(["login", "slack", "--bogus"]).kind).toBe("error")
   })
 
+  test("parses the client of an HTTP server and refuses it where it does not apply", () => {
+    expect(parseMcpArgs(["add", "notes", "https://notes.example/mcp", "--client", "claude", "--client-id", "abc"])).toEqual({
+      kind: "add",
+      spec: { name: "notes", server: { url: "https://notes.example/mcp", headers: {}, oauth: { client_id: "abc" }, client: "claude" }, askClientSecret: false },
+    })
+    expect(parseMcpArgs(["add", "slack", "https://mcp.slack.com/mcp", "--client", "flywheel"])).toMatchObject({ spec: { server: { client: "flywheel" } } })
+    expect(parseMcpArgs(["add", "notes", "https://notes.example/mcp", "--client", "other"]).kind).toBe("error")
+    expect(parseMcpArgs(["add", "notes", "https://notes.example/mcp", "--client"]).kind).toBe("error")
+    expect(parseMcpArgs(["add", "local", "--client", "claude", "--", "cmd"]).kind).toBe("error")
+    expect(parseMcpArgs(["add", "notes", "https://notes.example/mcp", "--client", "claude", "--client-id", "abc", "--client-secret"]).kind).toBe("error")
+  })
+
   test("rejects malformed add invocations", () => {
     expect(parseMcpArgs(["add"]).kind).toBe("error")
     expect(parseMcpArgs(["add", "--url", "https://mcp.example"]).kind).toBe("error")
@@ -101,11 +113,18 @@ describe("MCP CLI arguments", () => {
   test("status lists every configured server state", async () => {
     const dir = temporaryDirectory("flywheel-mcp-status-")
     const config = join(dir, "flywheel.toml")
-    await writeFile(config, '[mcp.servers.alpha]\ncommand = "alpha"\nenabled = false\n\n[mcp.servers.beta]\nurl = "https://mcp.example"\nenabled = false\n')
+    await writeFile(config, '[mcp.servers.alpha]\ncommand = "alpha"\nenabled = false\n\n[mcp.servers.beta]\nurl = "https://mcp.example"\nenabled = false\n\n[mcp.servers.slack]\nurl = "https://mcp.slack.com/mcp"\nenabled = false\n\n[mcp.servers.notes]\nurl = "https://notes.example/mcp"\nclient = "claude"\nenabled = false\n')
 
     await runMcp(["status"], testDirectories(dir), { configPath: config })
 
-    expect(lines).toEqual(["alpha [global]: disabled", "beta [global]: disabled"])
+    expect(lines).toEqual([
+      "alpha [global]: disabled",
+      "beta [global, client: Flywheel]: disabled",
+      "slack [global, client: Claude]: disabled",
+      "  Slack only accepts approved apps, so Flywheel connects through Claude. Slack's sign-in page will name Claude, not Flywheel.",
+      "notes [global, client: Claude]: disabled",
+      "  You chose Claude as this server's client.",
+    ])
     expect(process.exitCode).toBe(0)
   })
 
@@ -115,7 +134,7 @@ describe("MCP CLI arguments", () => {
     const config = join(dir, "flywheel.toml")
     await writeFile(config, `mcp = { servers.work = { url = "https://global.example", enabled = false }, projects.${JSON.stringify(directories.projectRoot)}.servers = { work = { url = "https://project.example", enabled = false }, extra = { command = "extra", enabled = false } } }\n`)
     await runMcp(["list", "--local"], directories, { configPath: config })
-    expect(lines).toEqual(["work [project]: disabled", "extra [project]: disabled"])
+    expect(lines).toEqual(["work [project, client: Flywheel]: disabled", "extra [project]: disabled"])
     const observed: string[] = []
     const createManager: typeof import("../../../../../../src/orchestration/modules/mcp/manager.js").createMcpManager = (options) => {
       observed.push(options.servers.work?.url ?? "")
@@ -172,6 +191,26 @@ describe("MCP CLI arguments", () => {
     ])
     expect(lines.at(-1)).toContain("authenticated")
     expect(lines.at(-1)).toContain("A separately running Flywheel TUI does not live-refresh")
+    expect(process.exitCode).toBe(0)
+  })
+
+  test("login of a Claude server states why and opens no browser when the engine is already signed in", async () => {
+    const dir = temporaryDirectory("flywheel-mcp-claude-login-")
+    const config = join(dir, "flywheel.toml")
+    await writeFile(config, '[mcp.servers.slack]\nurl = "https://mcp.slack.com/mcp"\nenabled = false\n')
+    const opened: string[] = []
+
+    await runMcp(["login", "slack"], testDirectories(dir), {
+      configPath: config,
+      openBrowser: async (url) => { opened.push(url); return true },
+      createManager: () => ({ ...emptyManager, authorize: async () => ({ url: undefined, redirectUrl: "", complete: async () => {}, close: async () => {} }) }),
+    })
+
+    expect(opened).toEqual([])
+    expect(lines.slice(0, 2)).toEqual([
+      "Slack only accepts approved apps, so Flywheel connects through Claude. Slack's sign-in page will name Claude, not Flywheel.",
+      "slack is already signed in.",
+    ])
     expect(process.exitCode).toBe(0)
   })
 

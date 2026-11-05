@@ -9,7 +9,8 @@ import type { ExternalAccount, ExternalLoginPorts } from "../../../infra/llm/acc
 import { runOwnedCommand } from "../../../infra/owned-command.js";
 import { isAuthProfileName } from "../../../infra/paths.js";
 import type { LauncherScope } from "../../../infra/process-supervisor.js";
-import { cliLoginEnvironment, type EngineHost } from "./cli-environment.js";
+import type { EngineHost } from "../../../infra/claude-engine.js";
+import { cliLoginEnvironment } from "./cli-environment.js";
 import type { LoginKey } from "./login-observations.js";
 import { globalConfigPath, LOGIN_ACCOUNTS_DIRECTORY } from "./names.js";
 

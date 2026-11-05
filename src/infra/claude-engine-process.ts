@@ -2,9 +2,9 @@ import { EventEmitter, once } from "node:events";
 import { PassThrough, Writable } from "node:stream";
 import type { SpawnedProcess, SpawnOptions } from "@anthropic-ai/claude-agent-sdk";
 import type { FileSink } from "bun";
-import type { StopHold } from "../../../infra/stop-hold.js";
-import type { LauncherScope, OwnershipClosure } from "../../../infra/process-supervisor.js";
-import { launchFailed, type OwnedProcess, type OwnedProcessExit } from "../../../infra/owned-subprocess.js";
+import type { StopHold } from "./stop-hold.js";
+import type { LauncherScope, OwnershipClosure } from "./process-supervisor.js";
+import { launchFailed, type OwnedProcess, type OwnedProcessExit } from "./owned-subprocess.js";
 
 /** The longest stderr line the sink receives. Most of the CLI's debug lines are
  *  short, but an HTTP error line holds the whole response body, which the bridge
@@ -50,14 +50,15 @@ export interface OwnedClaudeProcess {
  *
  * The SDK calls the seam once for each query, so one value serves one query.
  *
- * The launch declares `stopHold`, the login's token-refresh lock, so no end of
+ * A launch on a Claude login declares `stopHold`, the login's token-refresh lock, so no end of
  * the CLI signals it while a refresh holds the login (bridge rule 3): the
  * SDK's own kill, this seam's `terminate`, the close of the nested scope or of
  * any scope above it, the end of the runtime generation, and the guardian's
  * sweep after a host crash all end the container through the launch
- * authority, which honors the hold.
+ * authority, which honors the hold. An engine with no login, such as the MCP
+ * engine, has no such lock and declares none.
  */
-export function ownedClaudeProcess(parent: LauncherScope, onStderrLine: (line: string) => void, stopHold: StopHold): OwnedClaudeProcess {
+export function ownedClaudeProcess(parent: LauncherScope, onStderrLine: (line: string) => void, stopHold: StopHold | undefined): OwnedClaudeProcess {
   const scope = parent.open();
   let launched: Promise<OwnedProcess | undefined> | undefined;
   let alive = false;
@@ -73,7 +74,7 @@ export function ownedClaudeProcess(parent: LauncherScope, onStderrLine: (line: s
     let killed = false;
     let exitCode: number | null = null;
     let signalCode: NodeJS.Signals | null = null;
-    const ready = scope.spawnOwned([options.command, ...options.args], { ...(options.cwd === undefined ? {} : { cwd: options.cwd }), env: options.env, stopHold });
+    const ready = scope.spawnOwned([options.command, ...options.args], { ...(options.cwd === undefined ? {} : { cwd: options.cwd }), env: options.env, ...(stopHold === undefined ? {} : { stopHold }) });
     launched = ready.then((owned) => owned, () => undefined);
 
     /** Connects the container's pipes, then reports its exit. Node buffers

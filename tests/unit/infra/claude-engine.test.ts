@@ -2,14 +2,14 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import { buildPlatformArch, checkoutClaudeEngine } from "../../../../../src/infra/native-assets.js";
-import { enterSourceSnapshot } from "../../../../../src/infra/source-snapshot.js";
-import { temporaryDirectories } from "../../../../helpers/directories.js";
-import { snapshotFixture } from "../../../../helpers/source-snapshot-fixture.js";
+import { buildPlatformArch, checkoutClaudeEngine } from "../../../src/infra/native-assets.js";
+import { enterSourceSnapshot } from "../../../src/infra/source-snapshot.js";
+import { temporaryDirectories } from "../../helpers/directories.js";
+import { snapshotFixture } from "../../helpers/source-snapshot-fixture.js";
 
-type EngineModule = typeof import("../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine.js");
+type EngineModule = typeof import("../../../src/infra/claude-engine.js");
 
-const ENGINE_MODULE = "src/orchestration/modules/provider-claude-agent-sdk/engine.ts";
+const ENGINE_MODULE = "src/infra/claude-engine.ts";
 const temporaryDirectory = temporaryDirectories();
 
 function write(root: string, files: ReadonlyMap<string, string>): void {

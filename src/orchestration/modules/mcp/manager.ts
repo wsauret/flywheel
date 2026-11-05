@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { Deferred, Effect, Exit, Fiber, Redacted, Scope } from "effect";
 import type { McpConnectionStatusRow } from "../../../protocol/modules/mcp.js";
+import type { McpClaudeEngine } from "./claude-engine.js";
+import { resolveMcpClient, type ClaudeClientOAuth } from "./clients.js";
 import type { McpServerConfig, McpServerRegistry } from "./config.js";
 import { MCP_STARTUP_TIMEOUT_MS, redactMcpError, resolveMcpTemplate } from "./config.js";
 import type { McpCallResult, McpConnection, McpConnectionOptions, McpToolHit } from "./connection.js";
@@ -90,6 +92,9 @@ export interface McpManagerOptions {
   readonly connect?: (options: McpConnectionOptions) => Promise<McpConnection>;
   readonly startupTimeoutMs?: number;
   readonly credentialStore?: McpCredentialStore;
+  /** The process's MCP engine, which connects every server that uses Claude as its client. Absent for a
+   *  runtime with no launch authority, where such a server fails closed as a stdio server does. */
+  readonly claudeEngine?: McpClaudeEngine;
 }
 
 function createMcpManagerResource(options: McpManagerOptions): McpManagerResource {
@@ -365,7 +370,13 @@ function createMcpManagerResource(options: McpManagerOptions): McpManagerResourc
       spawnOwned: options.spawnOwned,
     };
     if (config.url === undefined) return await connect(connectionOptions);
-    const url = Redacted.value(resolveMcpTemplate(config.url, options.env ?? process.env));
+    const env = options.env ?? process.env;
+    const client = resolveMcpClient(config, env);
+    if (client?.kind === "claude") {
+      const engine = requireClaudeEngine(name);
+      return await engine.connect({ ...claudeServer(name, { ...config, url: config.url }, client.oauth), signal, deadline: attempt.deadline });
+    }
+    const url = Redacted.value(resolveMcpTemplate(config.url, env));
     const key = credentialKey(name, url);
     return await credentialLanes.run(key, signal, async () => {
       const credential = credentialStore.get(name, url);
@@ -430,6 +441,26 @@ function createMcpManagerResource(options: McpManagerOptions): McpManagerResourc
       close: () => connection.close(),
     };
     return wrapped;
+  }
+
+  function requireClaudeEngine(server: string): McpClaudeEngine {
+    if (options.claudeEngine === undefined) throw new Error(`MCP server '${server}' connects through Claude, but this runtime has no launch authority`);
+    return options.claudeEngine;
+  }
+
+  /** The HTTP server as the engine takes it: URL and headers with their templates resolved, the secret headers that
+   *  the credential store keeps for it, and every secret its output must not show, the URL's substitutions too.
+   *  Throws when a template names an unset variable. */
+  function claudeServer(name: string, config: McpServerConfig & { readonly url: string }, oauth: ClaudeClientOAuth) {
+    const secrets: Redacted.Redacted<string>[] = [];
+    const env = options.env ?? process.env;
+    const url = Redacted.value(resolveMcpTemplate(config.url, env, secrets));
+    const headers: { [name: string]: string } = Object.fromEntries(Object.entries(config.headers ?? {}).map(([header, value]) => [header, Redacted.value(resolveMcpTemplate(value, env, secrets))]));
+    for (const [header, value] of Object.entries(credentialStore.get(name, url)?.headers ?? {})) {
+      secrets.push(value);
+      headers[header] = Redacted.value(value);
+    }
+    return { server: name, url, headers, oauth, secrets };
   }
 
   function requireConfig(server: string): McpServerConfig {
@@ -523,7 +554,10 @@ function createMcpManagerResource(options: McpManagerOptions): McpManagerResourc
     async authorize(server) {
       const config = requireConfig(server);
       if (config.url === undefined) throw new Error(`MCP server '${server}' does not use HTTP`);
-      const url = Redacted.value(resolveMcpTemplate(config.url, options.env ?? process.env));
+      const env = options.env ?? process.env;
+      const client = resolveMcpClient(config, env);
+      if (client?.kind === "claude") return await requireClaudeEngine(server).authorize(claudeServer(server, { ...config, url: config.url }, client.oauth));
+      const url = Redacted.value(resolveMcpTemplate(config.url, env));
       const { authorizeMcpServer } = await import("./oauth.js");
       const authorization = await authorizeMcpServer({
         server,

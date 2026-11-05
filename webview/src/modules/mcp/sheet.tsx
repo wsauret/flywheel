@@ -1,7 +1,7 @@
 import { createComputed, createEffect, on, onCleanup, Show } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
 
-import { mcpDomain, mcpEnabledAction, mcpProjectEnabledAction, mcpScopeDetail, type McpStatusRow, MCP_COMMAND_NAME } from "../../../../src/protocol/modules/mcp.js"
+import { mcpClientAction, mcpClientDetail, mcpClientReason, mcpDomain, mcpEnabledAction, mcpProjectEnabledAction, mcpScopeDetail, mcpSignInLabel, type McpStatusRow, MCP_COMMAND_NAME } from "../../../../src/protocol/modules/mcp.js"
 import { useClient } from "../../app/client-context.js"
 import { Sheet, SheetEmpty, SheetLoading, SheetRow } from "../../app/sheets/sheet.js"
 import { createMcpMutation } from "./mutation.js"
@@ -56,14 +56,16 @@ export function McpSheet() {
               tone={tone(server())}
               detail={<>
                 {`${server().status} · ${server().toolCount} tool${server().toolCount === 1 ? "" : "s"}`}<br />
-                {mcpScopeDetail(server())}<Show when={server().error}>{(error) => <> · {error()}</>}</Show>
+                {mcpScopeDetail(server())}<Show when={mcpClientDetail(server())}>{(detail) => <> · {detail()}</>}</Show><Show when={server().error}>{(error) => <> · {error()}</>}</Show>
+                <Show when={mcpClientReason(server())}>{(reason) => <><br />{reason()}</>}</Show>
               </>}
             >
               <div class="sheet-row-main" ref={(element) => register(server().name, element)} aria-busy={operation.working(server().name) || undefined}>
-                <Show when={server().status === "needs_auth"}><button class="secondary" disabled={operation.working(server().name)} onClick={(event) => { void runAction(server().name, event.currentTarget, () => operation.authenticate(server())) }}>Authenticate</button></Show>
+                <Show when={server().status === "needs_auth"}><button class="secondary" disabled={operation.working(server().name)} onClick={(event) => { void runAction(server().name, event.currentTarget, () => operation.authenticate(server())) }}>{mcpSignInLabel(server())}</button></Show>
                 <Show when={server().status === "failed"}><button class="secondary" disabled={operation.working(server().name)} onClick={(event) => { void runAction(server().name, event.currentTarget, () => operation.reconnect(server())) }}>Reconnect</button></Show>
                 <button class="secondary" disabled={operation.working(server().name)} onClick={(event) => { void runAction(server().name, event.currentTarget, () => operation.enabled(server(), mcpEnabledAction(server()))) }}>{mcpEnabledAction(server()).label}</button>
                 <Show when={mcpProjectEnabledAction(server())}>{(action) => <button class="secondary" disabled={operation.working(server().name)} onClick={(event) => { void runAction(server().name, event.currentTarget, () => operation.enabled(server(), action())) }}>{action().label}</button>}</Show>
+                <Show when={mcpClientAction(server())}>{(action) => <button class="secondary" disabled={operation.working(server().name)} onClick={(event) => { void runAction(server().name, event.currentTarget, () => operation.client(server(), action())) }}>{action().label}</button>}</Show>
                 <button class="ghost" disabled={operation.working(server().name)} onClick={(event) => { void runAction(server().name, event.currentTarget, () => operation.remove(server())) }}>Remove</button>
                 <Show when={operation.working(server().name)}><span>Working…</span></Show>
               </div>

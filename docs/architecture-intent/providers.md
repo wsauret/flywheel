@@ -26,7 +26,7 @@ Each provider definition declares one authentication strategy: API key, OAuth wi
 
 ## ARCH-PROVIDERS-005: A provider subprocess carries only admitted requests
 
-A provider can serve requests through a program that it runs as a subprocess, but Flywheel alone owns request assembly, retries, timeouts, stream buffering, and cancellation. The subprocess sends only admitted requests, retries nothing, never executes a tool that a model requested, yields stream liveness to Flywheel's watchdog, and starts and stops through the owned launcher. The one Claude engine that the MCP module runs as an MCP client carries only MCP tool calls that Flywheel's tool dispatch admitted, sends no model request, and holds no Claude login. An engine that cannot start fails its request as an unavailable route.
+A provider can serve requests through a program that it runs as a subprocess, but Flywheel alone owns request assembly, retries, timeouts, stream buffering, and cancellation. The subprocess sends only admitted requests, retries nothing, never executes a tool that a model requested, yields stream liveness to Flywheel's watchdog, and starts and stops through the owned launcher. A Claude engine that the MCP module runs as an MCP client carries only MCP tool calls that Flywheel's tool dispatch admitted, sends no model request, and holds no Claude login. An engine that cannot start fails its request as an unavailable route.
 Because: A subprocess that decides its own retries, timeouts, continuation, or cancellation separates a stream from its consumer and makes a second owner of each.
 Not: A provider subprocess that owns its stream.
 

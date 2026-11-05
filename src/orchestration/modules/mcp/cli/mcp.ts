@@ -1,16 +1,19 @@
 import { createInterface } from "node:readline"
 import { Redacted } from "effect"
-import { mcpRemovalConfirmation } from "../../../../protocol/modules/mcp.js"
+import { MCP_REGISTRATION_HINT, mcpClientReason, mcpRemovalConfirmation, type McpConnectionStatusRow } from "../../../../protocol/modules/mcp.js"
 import type { AccountDirectories, StartupDirectories } from "../../../../infra/directory-authorities.js"
 import { openExternalUrl, type ExternalUrlOpener } from "../../../../infra/open-external-url.js"
 import type { LauncherScope } from "../../../../infra/process-supervisor.js"
 import { accountAuthDir, globalConfigFile } from "../../../../infra/paths.js"
 import { createRuntimeConfigOwner, type RuntimeConfigOwner } from "../../../config/runtime-config-owner.js"
 import { configSection } from "../../../config/config-section.js"
-import { mcpConfigSection, resolveMcpConfig, resolveMcpTemplate, isMcpEnabledOverride, type McpServerConfig, type McpConfig, type McpScope } from "../config.js"
+import { mcpConfigSection, resolveMcpConfig, resolveMcpTemplate, isMcpEnabledOverride, type McpServerConfig, type McpConfig, type McpScope, type McpServerSource } from "../config.js"
 import { addMcpServers, removeMcpServer, mcpExpectedToken, mcpMutationMessage } from "../config-mutation.js"
 import { createMcpCredentialStore, type McpCredential, type McpCredentialStore } from "../credentials.js"
 import { createMcpManager } from "../manager.js"
+import { processClaudeEngine } from "../claude-engine.js"
+import { resolveMcpClient } from "../clients.js"
+import { McpRegistrationRefusedError } from "../errors.js"
 import { MCP_USAGE, parseMcpArgs } from "./args.js"
 
 const SENSITIVE_HEADER = /^(authorization|proxy-authorization|cookie|.*(?:token|api[-_]?key|secret).*)$/i
@@ -100,11 +103,13 @@ export async function runMcp(
       if ("url" in server) {
         const split = splitSecretHeaders(name, server.headers)
         secretHeaders = split.secret
-        configServer = { url: server.url, headers: split.safe, ...(server.oauth === undefined ? {} : { oauth: server.oauth }), enabled: true }
+        configServer = { url: server.url, headers: split.safe, ...(server.oauth === undefined ? {} : { oauth: server.oauth }), ...(server.client === undefined ? {} : { client: server.client }), enabled: true }
       }
       const result = await addMcpServers(runtimeConfig, directories.projectRoot, scope, { [name]: configServer })
       if (!result.ok) throw new Error(mcpMutationMessage(result))
       console.log(`Added MCP server '${name}' to ${scope} configuration.`)
+      const reason = mcpClientReason({ client: clientOf(configServer) })
+      if (reason !== undefined) console.log(reason)
       const warning = mcpMutationMessage(result)
       if (warning) console.warn(warning)
       if ("url" in server) {
@@ -131,30 +136,32 @@ export async function runMcp(
       if (server?.oauth?.client_id === undefined || server.url === undefined) throw new Error(`--client-secret requires oauth.client_id in the config of MCP server '${action.name}'`)
       await storeClientSecret(action.name, server.url, await readClientSecret(options), options, accountAuthDir(directories.userDataRoot))
     }
+    const claudeEngine = launcher ? processClaudeEngine(accountAuthDir(directories.userDataRoot), launcher) : undefined
     const manager = (options.createManager ?? createMcpManager)({
       servers,
       executionCwd: directories.executionCwd,
       authDir: accountAuthDir(directories.userDataRoot),
       ...(launcher ? { spawnOwned: launcher.spawnOwned } : {}),
+      ...(claudeEngine ? { claudeEngine } : {}),
     })
     try {
       if (action.kind === "status") {
         await Promise.allSettled(manager.entries()
           .filter((entry) => entry.state.tag !== "disabled")
           .map((entry) => manager.acquire(entry.name)))
-        for (const row of manager.status()) {
-          const source = action.local ? effective.metadata[row.name] : undefined
-          const label = source?.definitionScope ?? "global"
-          const override = source?.definitionScope === "global" && source.enabledScope === "project" ? ", project enabled override" : ""
-          console.log(`${row.name} [${label}${override}]: ${row.status}${row.status === "ready" ? ` (${row.toolCount} tools)` : ""}${row.error ? ` - ${row.error}` : ""}`)
-        }
+        for (const row of manager.status()) printStatusRow(row, servers[row.name], action.local ? effective.metadata[row.name] : undefined)
         if (manager.status().length === 0) console.log("No MCP servers configured.")
         return
       }
+      const reason = mcpClientReason({ client: clientOf(servers[action.name]) })
+      if (reason !== undefined) console.log(reason)
       const authorization = await manager.authorize(action.name)
       try {
-        console.log(`Open this URL to authenticate ${action.name}:\n  ${authorization.url}\n\nWaiting for authorization...`)
-        await openAuthorizationUrl(authorization.url)
+        if (authorization.url === undefined) console.log(`${action.name} is already signed in.`)
+        else {
+          console.log(`Open this URL to authenticate ${action.name}:\n  ${authorization.url}\n\nWaiting for authorization...`)
+          await openAuthorizationUrl(authorization.url)
+        }
         await authorization.complete()
         await manager.credentialUpdated(action.name)
         console.log(`${action.name} authenticated. A separately running Flywheel TUI does not live-refresh; use /mcp there to reauthenticate or restart it.`)
@@ -163,13 +170,31 @@ export async function runMcp(
       }
     } finally {
       await manager.dispose()
+      await claudeEngine?.dispose()
     }
   } catch (error) {
-    console.error(`MCP command failed: ${error instanceof Error ? error.message : String(error)}`)
+    const hint = error instanceof McpRegistrationRefusedError ? `. ${MCP_REGISTRATION_HINT}` : ""
+    console.error(`MCP command failed: ${error instanceof Error ? error.message : String(error)}${hint}`)
     process.exitCode = 1
   } finally {
     await runtimeConfig.dispose()
   }
+}
+
+/** The client of one configured server, or nothing for a stdio server. */
+function clientOf(server: McpServerConfig | undefined) {
+  return server === undefined ? undefined : resolveMcpClient(server, process.env)?.choice
+}
+
+/** One status line, and for a server that connects through Claude the reason on the next line. */
+function printStatusRow(row: McpConnectionStatusRow, server: McpServerConfig | undefined, source: McpServerSource | undefined): void {
+  const label = source?.definitionScope ?? "global"
+  const override = source?.definitionScope === "global" && source.enabledScope === "project" ? ", project enabled override" : ""
+  const client = clientOf(server)
+  const clientLabel = client === undefined ? "" : `, client: ${client.kind === "claude" ? "Claude" : "Flywheel"}`
+  console.log(`${row.name} [${label}${override}${clientLabel}]: ${row.status}${row.status === "ready" ? ` (${row.toolCount} tools)` : ""}${row.error ? ` - ${row.error}` : ""}`)
+  const reason = mcpClientReason({ client })
+  if (reason !== undefined) console.log(`  ${reason}`)
 }
 
 async function removeConfiguredServer(owner: RuntimeConfigOwner, config: McpConfig, projectRoot: string, scope: McpScope, name: string, options: RunMcpOptions): Promise<void> {

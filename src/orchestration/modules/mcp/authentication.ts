@@ -22,7 +22,7 @@ export function createMcpAuthenticationService(options: {
     async authenticate(server): Promise<void> {
       const authorization = await options.manager.authorize(server)
       try {
-        if (!await openUrl(options.launcher, authorization.url)) throw new Error("Browser handoff failed")
+        if (authorization.url !== undefined && !await openUrl(options.launcher, authorization.url)) throw new Error("Browser handoff failed")
         await authorization.complete()
       } finally {
         await authorization.close()

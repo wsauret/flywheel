@@ -9,7 +9,7 @@ import type { LauncherScope } from "../../../../../src/infra/process-supervisor.
 import { cliLogin, cliLoginAccount, loginClaudeAccount, logoutClaudeAccount, logoutProfileClaudeAccounts, profileClaudeAccounts, type ClaudeProfile } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-login.js";
 import type { LoginKey } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/login-observations.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
-import type { EngineHost } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-environment.js";
+import type { EngineHost } from "../../../../../src/infra/claude-engine.js";
 import { DebugLog } from "../../../../../src/infra/debug-log.js";
 import { Log } from "../../../../../src/infra/log.js";
 import { LOGIN_ACCOUNTS_DIRECTORY } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";

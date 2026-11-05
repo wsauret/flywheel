@@ -138,6 +138,7 @@ describe("MCP OAuth integration", () => {
     expect(registrations).toBe(0);
     const authorization = await manager.authorize("fixture");
     expect(registrations).toBe(1);
+    if (authorization.url === undefined) throw new Error("Fixture was already authorized");
     const redirect = await fetch(authorization.url, { redirect: "manual" });
     const callback = redirect.headers.get("location");
     if (callback === null) throw new Error("Fixture did not redirect");

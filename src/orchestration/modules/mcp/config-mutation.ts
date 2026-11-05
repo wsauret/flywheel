@@ -1,9 +1,11 @@
 import { Schema } from "effect";
 import { removeSemanticSubtree, upsertSemanticAssignment } from "../../config/config-assignment.js";
 import type { ConfigMutationResult, RuntimeConfigOwner } from "../../config/runtime-config-owner.js";
+import { resolveMcpClient } from "./clients.js";
 import { isMcpEnabledOverride, mcpConfigSection, McpServerConfigSchema, type McpConfig, type McpScope, type McpServerRegistry } from "./config.js";
 
 type SemanticValue = null | string | number | boolean | readonly SemanticValue[] | { readonly [key: string]: SemanticValue | undefined };
+type Environment = { readonly [K in string]: string | undefined };
 type TomlValue = string | number | boolean | readonly TomlValue[] | { readonly [key: string]: TomlValue | undefined };
 
 function ownEntry<T>(entries: { readonly [key: string]: T }, key: string): T | undefined {
@@ -62,6 +64,23 @@ export function setMcpEnabled(owner: Pick<RuntimeConfigOwner, "mutateSection">, 
       const selected = request.scope === "global" ? global : local ?? global;
       if (selected === undefined) throw new Error("MCP server no longer exists");
       return upsertSemanticAssignment(source, [...pathFor(request.projectRoot, request.scope, request.server), "enabled"], literal(request.enabled));
+    });
+}
+
+/** Set the MCP client of an HTTP server in the scope that defines it. A choice equal to the client that the server
+ *  gets without one is not stored, so the built-in list's reason shows and later list changes still apply. An
+ *  enabled-only override and a stdio server have no client, so they refuse. */
+export function setMcpClient(owner: Pick<RuntimeConfigOwner, "mutateSection">, request: McpSelectedMutation & { readonly client: "flywheel" | "claude" }, env: Environment): Promise<ConfigMutationResult> {
+  return owner.mutateSection(mcpConfigSection, request.expected,
+    (config) => mcpExpectedToken(config, request.projectRoot, request.server),
+    (source, config) => {
+      const project = ownEntry(config.projects, request.projectRoot);
+      const selected = request.scope === "global" ? ownEntry(config.servers, request.server) : project ? ownEntry(project.servers, request.server) : undefined;
+      if (selected === undefined || isMcpEnabledOverride(selected)) throw new Error("MCP definition no longer exists in this scope");
+      if (selected.url === undefined) throw new Error("A stdio MCP server has no client choice");
+      const path = [...pathFor(request.projectRoot, request.scope, request.server), "client"];
+      const { client: _chosen, ...unchosen } = selected;
+      return resolveMcpClient(unchosen, env)?.kind === request.client ? removeSemanticSubtree(source, path) : upsertSemanticAssignment(source, path, literal(request.client));
     });
 }
 

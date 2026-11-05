@@ -17,7 +17,7 @@ function harness(initial: readonly McpStatusRow[] = [needsAuth], answer: () => P
   let closed = 0
   const read = moduleDomainReader((domain) => domain.domain === mcpDomain.domain ? rows() : undefined)
   const answered = (command: FrontendMutation) => { commands.push(command); return answer() }
-  const dispatch = runtimeDispatch({ "mcp.authenticate": answered, "mcp.reconnect": answered, "mcp.setEnabled": answered, "mcp.remove": answered })
+  const dispatch = runtimeDispatch({ "mcp.authenticate": answered, "mcp.reconnect": answered, "mcp.setEnabled": answered, "mcp.setClient": answered, "mcp.remove": answered })
   const list = createRoot((dispose) => { disposers.push(dispose); return createMcpList({ read, client: { dispatch }, showToast: (toast) => { toasts.push(toast) }, close: () => { closed++ } }) })
   return { list, commands, toasts, rows: setRows, closed: () => closed }
 }
@@ -133,6 +133,19 @@ describe("the MCP surface list", () => {
       if (keyboard) h.list.key({ name: "e" }); else h.list.setEnabled()
       expect(h.commands.at(-1)).toEqual({ type: "mcp.setEnabled", server: "work", scope: "project", enabled: true, expected: "reviewed" })
     }
+  })
+  test("c switches the client of an HTTP server in its defining scope and does nothing for a stdio server", async () => {
+    const h = harness([{ ...needsAuth, definitionScope: "project", enabledScope: "project", client: { kind: "claude", source: "built-in", service: "Slack", reason: "Slack only accepts approved apps" } }])
+    h.list.key({ name: "c" })
+    expect(h.commands).toEqual([{ type: "mcp.setClient", server: "work", scope: "project", client: "flywheel", expected: "reviewed" }])
+    await settle()
+    expect(h.toasts).toEqual([{ message: "work uses Flywheel as client", variant: "success" }])
+    h.rows([{ ...needsAuth, client: { kind: "flywheel" } }])
+    h.list.key({ name: "c" })
+    expect(h.commands.at(-1)).toEqual({ type: "mcp.setClient", server: "work", scope: "global", client: "claude", expected: "reviewed" })
+    const stdio = harness()
+    stdio.list.key({ name: "c" })
+    expect(stdio.commands).toEqual([])
   })
   test("reports saved warnings, unverifiable rejection and thrown failure without reviving disposed openings", async () => {
     for (const answer of [

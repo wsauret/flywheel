@@ -342,6 +342,34 @@ args = []
 example = "example"
 ```
 
+### `mcp.projects."*".servers."*".client`
+
+- Type: `string`
+- Allowed values: `"flywheel"`, `"claude"`
+- Default: unset
+- Application: `replace-resource`. Applies after the replacement resource is ready.
+- Branch: An MCP server reached over HTTP.
+
+The MCP client that connects to this server. `claude` connects through the Claude engine that ships with Flywheel, for a server that accepts only approved apps; the server's sign-in page then names Claude. Without it, Flywheel's built-in list decides, and every other server uses `flywheel`.
+
+```toml
+[mcp.servers."local tool-3"]
+command = "example"
+args = []
+enabled = true
+
+[mcp.servers."local tool-3".env]
+example = "example"
+
+[mcp.projects."/workspace/project".servers."local tool-2"]
+url = "example"
+enabled = true
+client = "flywheel"
+
+[mcp.projects."/workspace/project".servers."local tool-2".headers]
+example = "example"
+```
+
 ### `mcp.projects."*".servers."*".command`
 
 - Type: `string`
@@ -640,6 +668,34 @@ enabled = true
 args = []
 
 [mcp.servers."local tool-3-1".env]
+example = "example"
+```
+
+### `mcp.servers."*".client`
+
+- Type: `string`
+- Allowed values: `"flywheel"`, `"claude"`
+- Default: unset
+- Application: `replace-resource`. Applies after the replacement resource is ready.
+- Branch: An MCP server reached over HTTP.
+
+The MCP client that connects to this server. `claude` connects through the Claude engine that ships with Flywheel, for a server that accepts only approved apps; the server's sign-in page then names Claude. Without it, Flywheel's built-in list decides, and every other server uses `flywheel`.
+
+```toml
+[mcp.projects."/workspace/project".servers."local tool"]
+command = "example"
+args = []
+enabled = true
+
+[mcp.projects."/workspace/project".servers."local tool".env]
+example = "example"
+
+[mcp.servers."local tool-3-2"]
+url = "example"
+enabled = true
+client = "flywheel"
+
+[mcp.servers."local tool-3-2".headers]
 example = "example"
 ```
 

@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Schema, Redacted } from "effect";
 import { createRuntimeConfigOwner } from "../../../../../src/orchestration/config/runtime-config-owner.js";
-import { addMcpServers, mcpExpectedToken, mcpMutationMessage, removeMcpServer, setMcpEnabled } from "../../../../../src/orchestration/modules/mcp/config-mutation.js";
+import { addMcpServers, mcpExpectedToken, mcpMutationMessage, removeMcpServer, setMcpClient, setMcpEnabled } from "../../../../../src/orchestration/modules/mcp/config-mutation.js";
 import { McpConfigSchema, mcpConfigSection, resolveMcpConfig } from "../../../../../src/orchestration/modules/mcp/config.js";
 import { configSection } from "../../../../../src/orchestration/config/config-section.js";
 import { createMcpCredentialStore } from "../../../../../src/orchestration/modules/mcp/credentials.js";
@@ -61,6 +61,20 @@ describe("scoped MCP mutations", () => {
       const admitted = readFileSync(file);
       expect(await removeMcpServer(owner, { projectRoot: "/c", server: "work", scope: "global", expected: stale })).toMatchObject({ ok: false, kind: "stale" });
       expect(readFileSync(file)).toEqual(admitted);
+    } finally { await owner.dispose(); }
+  });
+
+  test("stores a client choice only when it differs from the server's default client", async () => {
+    const file = join(temporaryDirectory("mcp-mutation-"), "flywheel.toml");
+    writeFileSync(file, '[mcp.servers.slack]\nurl = "https://mcp.slack.com/mcp"\n');
+    const owner = await createRuntimeConfigOwner({ configPath: file, watch: false });
+    const set = (client: "flywheel" | "claude") => setMcpClient(owner, { projectRoot: "/a", server: "slack", scope: "global", client, expected: mcpExpectedToken(currentMcpConfig(owner), "/a", "slack") }, {});
+    try {
+      expect((await set("flywheel")).ok).toBe(true);
+      expect(currentMcpConfig(owner).servers.slack).toMatchObject({ client: "flywheel" });
+      expect((await set("claude")).ok).toBe(true);
+      expect(currentMcpConfig(owner).servers.slack?.client).toBeUndefined();
+      expect(readFileSync(file, "utf8")).not.toContain("client");
     } finally { await owner.dispose(); }
   });
 

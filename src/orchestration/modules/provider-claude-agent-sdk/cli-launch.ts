@@ -1,13 +1,11 @@
-import { homedir, tmpdir } from "node:os";
+import { homedir } from "node:os";
 import { isAbsolute } from "node:path";
 import type { RuntimeCredential } from "../../../infra/auth/auth-context.js";
-import { localDateZone } from "../../../infra/env-detection.js";
 import { errorMessage } from "../../../infra/error-message.js";
 import { osAccount, type OsAccount } from "../../../infra/os-account.js";
-import { privateTemporaryRoot } from "../../../infra/private-temporary-root.js";
 import type { LauncherScope } from "../../../infra/process-supervisor.js";
-import { loginOwnerHome, type EngineHost } from "./cli-environment.js";
-import { enginePath } from "./engine.js";
+import { processEngineHost, type EngineHost } from "../../../infra/claude-engine.js";
+import { loginOwnerHome } from "./cli-environment.js";
 import type { InPlaceGate, SelfTestConfig } from "./in-place-check.js";
 import type { UsageReadings } from "./account-usage.js";
 import { processLoginObservations, type LoginObservations } from "./login-observations.js";
@@ -60,15 +58,10 @@ export function cliAccount(seams: ClaudeAgentSdkSeams): OsAccount {
  *  the account database names no account for this process, or when the temporary directory's name belongs to
  *  another user (`privateTemporaryRoot`). */
 export function engineHost(seams: ClaudeAgentSdkSeams): EngineHost {
-  return {
-    enginePath: seams.enginePath ?? enginePath(),
-    account: cliAccount(seams),
-    platform: process.platform,
-    hostEnvironment: process.env,
-    timeZone: localDateZone(),
-    temporaryDirectory: privateTemporaryRoot(tmpdir(), "fw-claude"),
+  return processEngineHost(cliAccount(seams), {
+    ...(seams.enginePath === undefined ? {} : { enginePath: seams.enginePath }),
     ...(seams.cliEnvironment === undefined ? {} : { cliEnvironment: seams.cliEnvironment }),
-  };
+  });
 }
 
 /** The engine launch for one credential, or why no engine can start for it. */

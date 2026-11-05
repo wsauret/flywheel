@@ -9,7 +9,7 @@ function serverRegistryFingerprint(servers: McpServerRegistry): string {
     .toSorted(([left], [right]) => left.localeCompare(right))
     .map(([name, config]) => [name, "command" in config
       ? { command: config.command, args: config.args, env: Object.entries(config.env ?? {}).toSorted(([left], [right]) => left.localeCompare(right)), enabled: config.enabled }
-      : { url: config.url, headers: Object.entries(config.headers).toSorted(([left], [right]) => left.localeCompare(right)), oauth: config.oauth, enabled: config.enabled }]));
+      : { url: config.url, headers: Object.entries(config.headers).toSorted(([left], [right]) => left.localeCompare(right)), oauth: config.oauth, client: config.client, enabled: config.enabled }]));
 }
 
 /** Owns one published MCP registry. Candidate registries warm in isolation, but

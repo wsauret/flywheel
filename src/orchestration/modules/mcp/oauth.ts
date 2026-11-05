@@ -4,6 +4,7 @@ import {
   type OAuthClientProvider,
 } from "@modelcontextprotocol/sdk/client/auth.js";
 import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
+import { OAuthError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
 import type {
   OAuthClientInformationMixed,
   OAuthTokens,
@@ -15,7 +16,7 @@ import type {
   McpOAuthClientInformation,
   McpOAuthTokens,
 } from "./credentials.js";
-import { McpOAuthNeedsAuthError } from "./errors.js";
+import { McpOAuthNeedsAuthError, McpRegistrationRefusedError } from "./errors.js";
 
 const REFRESH_SKEW_MS = 30_000;
 
@@ -56,7 +57,8 @@ export interface McpSilentOAuth {
 }
 
 export interface McpOAuthAuthorization {
-  readonly url: string;
+  /** The page the person opens to sign in, or nothing when the server is already signed in. */
+  readonly url: string | undefined;
   readonly redirectUrl: string;
   complete(): Promise<void>;
   close(): Promise<void>;
@@ -203,13 +205,22 @@ export async function authorizeMcpServer(input: {
   const port = await listen(server, input.callbackPort);
   const redirectUrl = `http://127.0.0.1:${port}/callback`;
   let authorizationUrl: URL | undefined;
+  // The SDK reads the client information after discovery and registers a client when there is none, then saves it.
+  // A failure between the two is a refused registration (`McpRegistrationRefusedError`) when the server answered
+  // with an OAuth error or its metadata names no registration endpoint; a network failure is not.
+  let registering = false;
   const store: OAuthArtifactStore = {
     tokens: async () => credential.current.tokens === undefined ? undefined : toSdkTokens(credential.current.tokens),
     saveTokens: async (tokens) => { credential.current = { ...credential.current, tokens: fromSdkTokens(tokens) }; },
-    clientInformation: async () => credential.current.clientInformation === undefined
-      ? undefined
-      : toSdkClientInformation(credential.current.clientInformation),
+    clientInformation: async () => {
+      if (credential.current.clientInformation === undefined) {
+        registering = input.client === undefined;
+        return undefined;
+      }
+      return toSdkClientInformation(credential.current.clientInformation);
+    },
     saveClientInformation: async (clientInformation) => {
+      registering = false;
       credential.current = { ...credential.current, clientInformation: fromSdkClientInformation(clientInformation) };
     },
     codeVerifier: async () => credential.current.codeVerifier === undefined
@@ -231,11 +242,12 @@ export async function authorizeMcpServer(input: {
     const result = await auth(provider, { serverUrl: input.url, scope: input.scope });
     if (result === "AUTHORIZED") {
       await input.credentialStore.save(input.server, input.url, credential.current);
-      return { url: input.url, redirectUrl, complete: async () => {}, close: () => closeServer(server) };
+      return { url: undefined, redirectUrl, complete: async () => {}, close: () => closeServer(server) };
     }
     if (authorizationUrl === undefined) throw new Error(`MCP server '${input.server}' did not provide an authorization URL`);
   } catch (error) {
     await closeServer(server);
+    if (registering && registrationRefused(error)) throw new McpRegistrationRefusedError(input.server, { cause: error });
     throw error;
   }
   return {
@@ -253,6 +265,12 @@ export async function authorizeMcpServer(input: {
     },
     close: () => closeServer(server),
   };
+}
+
+/** Whether a failure during client registration came from the authorization server: an OAuth error answer, or
+ *  metadata with no registration endpoint, which the SDK reports only in its message (SDK 1.x `registerClient`). */
+function registrationRefused(error: unknown): boolean {
+  return error instanceof OAuthError || error instanceof Error && error.message.includes("does not support dynamic client registration");
 }
 
 export function toSdkTokens(tokens: McpOAuthTokens): OAuthTokens {

@@ -3,7 +3,7 @@
 import { StyledText, fg as stFg, type TextRenderable, type ScrollBoxRenderable } from "@opentui/core"
 import { createEffect, createMemo, createSignal, Show } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
-import { mcpEnabledAction, mcpProjectEnabledAction, mcpRemovalConfirmation, mcpScopeDetail, type McpStatusRow, MCP_COMMAND_NAME } from "../../../protocol/modules/mcp.js"
+import { mcpClientAction, mcpClientDetail, mcpClientReason, mcpEnabledAction, mcpProjectEnabledAction, mcpRemovalConfirmation, mcpScopeDetail, mcpSignInLabel, type McpStatusRow, MCP_COMMAND_NAME } from "../../../protocol/modules/mcp.js"
 import { Button } from "../../components/button.js"
 import { ModalFooter } from "../../components/modal-footer.js"
 import { ModalFrame } from "../../components/modal-frame.js"
@@ -13,7 +13,7 @@ import type { TuiTheme } from "../../context/theme/resolve.js"
 import { useHoverHighlight } from "../../hooks/use-hover-highlight.js"
 import { useModalDimensions } from "../../hooks/use-modal-dimensions.js"
 import { BOLD } from "../../utils/text-attributes.js"
-import { displayWidth, truncateToWidth } from "../../utils/text.js"
+import { displayWidth, truncateToWidth, useWrappedLineCount } from "../../utils/text.js"
 import type { McpList } from "./list.js"
 
 /** Scoped server management uses protocol rows and opening-owned review state. */
@@ -33,10 +33,14 @@ export function McpModal(props: { list: McpList }) {
     return row && !review() && !props.list.pending() ? menuActions(row, props.list) : []
   })
   const keyWidth = () => Math.max(0, ...menu().map((action) => displayWidth(action.key)))
+  /** Why the selected server connects through Claude; it word-wraps inside the row indent, `modalWidth() - 10` columns. */
+  const reason = createMemo(() => { const row = props.list.selected(); return row && !review() ? mcpClientReason(row) : undefined })
+  const wrappedLines = useWrappedLineCount()
+  const reasonHeight = () => { const text = reason(); return text === undefined ? 0 : wrappedLines(text, Math.max(1, modalWidth() - 10)) }
   useListSelectionReveal({
     viewport,
     revision: () => props.list.navigationRevision(),
-    layout: () => [rows(), menu().length, modalWidth(), listMaxHeight()],
+    layout: () => [rows(), menu().length, reasonHeight(), modalWidth(), listMaxHeight()],
     elements: (scroll) => rows()?.flatMap((row) => { const element = scroll.content.findDescendantById(`mcp:${row.name}`); return element ? [element] : [] }) ?? [],
     reveal: (scroll) => {
       const row = props.list.selected()
@@ -50,10 +54,11 @@ export function McpModal(props: { list: McpList }) {
       <box height={1} />
       <Show when={rows()} fallback={<text fg={theme.textMuted}>Loading MCP servers...</text>}>{(servers) =>
       <Show when={servers().length > 0} fallback={<text fg={theme.textMuted}>No MCP servers configured.</text>}>
-        <scrollbox ref={setViewport} height={Math.min(review() ? Math.max(2, listMaxHeight() - 8) : listMaxHeight(), servers().length * 2 + menu().length)} scrollbarOptions={{ visible: false }}>
+        <scrollbox ref={setViewport} height={Math.min(review() ? Math.max(2, listMaxHeight() - 8) : listMaxHeight(), servers().length * 2 + reasonHeight() + menu().length)} scrollbarOptions={{ visible: false }}>
           <Key each={servers()} by="name">{(row, index) => <box id={`mcp:${row().name}`}>
             <McpRow row={row()} active={cursor() === index()} width={modalWidth() - 9} onSelect={() => { props.list.select(index()); props.list.repair() }} />
-            <box paddingLeft={4}><text fg={theme.textMuted}>{mcpScopeDetail(row())}</text></box>
+            <box paddingLeft={4}><text fg={theme.textMuted} wrapMode="none" overflow="hidden">{[mcpClientDetail(row()), mcpScopeDetail(row())].filter((part) => part !== undefined).join(" · ")}</text></box>
+            <Show when={cursor() === index() && reason()}>{(text) => <box paddingLeft={4}><text fg={theme.textMuted} wrapMode="word">{text()}</text></box>}</Show>
             <Show when={cursor() === index()}>
               <Key each={menu()} by="key">{(action) => <McpActionLine action={action()} keyWidth={keyWidth()} />}</Key>
             </Show>
@@ -84,11 +89,13 @@ interface McpMenuAction {
 
 function menuActions(row: McpStatusRow, list: McpList): readonly McpMenuAction[] {
   const project = mcpProjectEnabledAction(row)
-  const repair = row.status === "needs_auth" ? { key: "enter", label: "Authenticate" } : row.status === "failed" ? { key: "enter/r", label: "Reconnect" } : undefined
+  const client = mcpClientAction(row)
+  const repair = row.status === "needs_auth" ? { key: "enter", label: mcpSignInLabel(row) } : row.status === "failed" ? { key: "enter/r", label: "Reconnect" } : undefined
   return [
     ...(repair ? [{ ...repair, destructive: false, run: list.repair }] : []),
     { key: "e", label: mcpEnabledAction(row).label, destructive: false, run: () => list.setEnabled() },
     ...(project ? [{ key: "p", label: project.label, destructive: false, run: () => list.setEnabled(true) }] : []),
+    ...(client ? [{ key: "c", label: client.label, destructive: false, run: list.setClient }] : []),
     { key: "d", label: "Remove", destructive: true, run: list.remove },
   ]
 }

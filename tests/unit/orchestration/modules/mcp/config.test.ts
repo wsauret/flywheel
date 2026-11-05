@@ -37,6 +37,7 @@ describe("MCP config", () => {
       ['enabled = true', "global MCP server"],
       ['enabled = "yes"', "enabled-only boolean"],
       ['enabled = true\nextra = 1', "enabled-only boolean"],
+      ['enabled = true\nclient = "claude"', "enabled-only boolean"],
       ['command = "bun"\nurl = "https://example.test"', "exactly one MCP transport"],
     ]) {
       const source = `[mcp.projects."/a".servers.orphan]\n${entry}\n`;
@@ -99,6 +100,9 @@ describe("MCP config", () => {
     expect(decodes({ url: "https://example.test", args: ["serve"] })).toBe(false);
     expect(decodes({ command: "bun", oauth: { client_id: "client" } })).toBe(false);
     expect(decodes({ url: "https://example.test", oauth: { callback_port: 70000 } })).toBe(false);
+    expect(decodes({ url: "https://example.test", client: "claude" })).toBe(true);
+    expect(decodes({ url: "https://example.test", client: "other" })).toBe(false);
+    expect(decodes({ command: "bun", client: "claude" })).toBe(false);
   });
 
   it("reports targeted loader errors", () => {

@@ -141,6 +141,23 @@ test("Reconnect appears only on a failed row, and pressing it reconnects that se
   } finally { mounted.dispose() }
 })
 
+test("a Claude server states its client and reason, signs in with Claude, and switches its client", async () => {
+  const slack: McpStatusRow = { ...row, name: "slack", client: { kind: "claude", source: "built-in", service: "Slack", reason: "Slack only accepts approved apps" } }
+  const linear: McpStatusRow = { ...row, name: "linear", status: "ready", client: { kind: "flywheel" } }
+  const html = renderMcpSheet([slack, linear])
+  assert.match(html, /Connects through Claude/)
+  assert.match(html, /Slack only accepts approved apps, so Flywheel connects through Claude\. Slack(&#39;|')s sign-in page will name Claude, not Flywheel\./)
+  assert.equal((html.match(/Connects through Claude/g) ?? []).length, 1)
+  const mounted = mountMcpSheet([slack, linear])
+  try {
+    assert.deepEqual(mounted.buttons("slack"), ["Sign in with Claude", "Disable in this project", "Use Flywheel as client", "Remove"])
+    assert.deepEqual(mounted.buttons("linear"), ["Disable in this project", "Use Claude as client", "Remove"])
+    mounted.click("linear", "Use Claude as client")
+    await mounted.ready()
+    assert.deepEqual(mounted.mutations(), [{ type: "mcp.setClient", server: "linear", scope: "global", client: "claude", expected: "reviewed" }])
+  } finally { mounted.dispose() }
+})
+
 test("different rows remain usable and refused or thrown mutations settle safely", async () => {
   const pending = Promise.withResolvers<{ readonly ok: false; readonly error: string }>()
   const reports: string[] = []

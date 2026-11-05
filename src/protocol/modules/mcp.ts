@@ -25,6 +25,13 @@ export interface McpConnectionStatusRow {
 
 type McpScope = "global" | "project"
 
+/** The MCP client that connects to an HTTP server, and why. Flywheel connects by default. Claude connects when
+ *  a person chose it, or when Flywheel's built-in list names the server, with the list's one-line reason. */
+export type McpClientChoice =
+  | { readonly kind: "flywheel" }
+  | { readonly kind: "claude"; readonly source: "chosen" }
+  | { readonly kind: "claude"; readonly source: "built-in"; readonly service: string; readonly reason: string }
+
 /** Applied connection status and private, opaque management expectations.
  * No connection configuration or canonical project path crosses this boundary. */
 export interface McpStatusRow extends McpConnectionStatusRow {
@@ -33,6 +40,8 @@ export interface McpStatusRow extends McpConnectionStatusRow {
   readonly enabled: boolean
   readonly hasGlobalFallback: boolean
   readonly expected: string
+  /** Present for an HTTP server only: a stdio server has no client choice. */
+  readonly client?: McpClientChoice
 }
 
 interface RuntimeMcpStatusSnapshotResult {
@@ -53,6 +62,11 @@ const McpStatusRowSchema: Schema.Codec<McpStatusRow> = Schema.Struct({
   enabled: Schema.Boolean,
   hasGlobalFallback: Schema.Boolean,
   expected: Schema.String,
+  client: Schema.optionalKey(Schema.Union([
+    Schema.Struct({ kind: Schema.Literal("flywheel") }),
+    Schema.Struct({ kind: Schema.Literal("claude"), source: Schema.Literal("chosen") }),
+    Schema.Struct({ kind: Schema.Literal("claude"), source: Schema.Literal("built-in"), service: Schema.String, reason: Schema.String }),
+  ])),
 })
 const RuntimeMcpStatusSnapshotResultSchema: Schema.Codec<RuntimeMcpStatusSnapshotResult> = Schema.Struct({ snapshotPosition: Schema.Number, servers: Schema.Array(McpStatusRowSchema) })
 const McpPatchPayloadSchema: Schema.Codec<McpPatchPayload> = Schema.Struct({ kind: Schema.Literal("mcp.changed"), servers: Schema.Array(McpStatusRowSchema) })
@@ -105,6 +119,13 @@ const mcpSetEnabled = defineProtocolMutation({
   result: McpManagementResultSchema,
   policy: "lossless",
 })
+/** Choose the MCP client of one HTTP server in the scope that defines it. */
+const mcpSetClient = defineProtocolMutation({
+  type: "mcp.setClient",
+  fields: { ...selectedFields, client: Schema.Literals(["flywheel", "claude"]) },
+  result: McpManagementResultSchema,
+  policy: "lossless",
+})
 const mcpRemove = defineProtocolMutation({
   type: "mcp.remove",
   fields: selectedFields,
@@ -133,6 +154,38 @@ export function mcpScopeDetail(row: McpStatusRow): string {
   return row.definitionScope === "project" ? "Project server"
     : row.enabledScope === "project" ? "Global server · project enabled override" : "Global server"
 }
+
+/** The row detail of a server that connects through Claude, or nothing for one that Flywheel connects. */
+export function mcpClientDetail(row: Pick<McpStatusRow, "client">): string | undefined {
+  return row.client?.kind === "claude" ? "Connects through Claude" : undefined
+}
+
+/** Why a server connects through Claude, or nothing for one that Flywheel connects. */
+export function mcpClientReason(row: Pick<McpStatusRow, "client">): string | undefined {
+  const client = row.client
+  if (client?.kind !== "claude") return undefined
+  return client.source === "chosen" ? "You chose Claude as this server's client."
+    : `${client.reason}, so Flywheel connects through Claude. ${client.service}'s sign-in page will name Claude, not Flywheel.`
+}
+
+/** The label of the sign-in action of one server. */
+export function mcpSignInLabel(row: Pick<McpStatusRow, "client">): string {
+  return row.client?.kind === "claude" ? "Sign in with Claude" : "Authenticate"
+}
+
+export interface McpClientAction {
+  readonly client: "flywheel" | "claude"
+  readonly label: string
+}
+
+/** The row action that switches the client of an HTTP server, or nothing for a stdio server. */
+export function mcpClientAction(row: Pick<McpStatusRow, "client">): McpClientAction | undefined {
+  if (row.client === undefined) return undefined
+  return row.client.kind === "claude" ? { client: "flywheel", label: "Use Flywheel as client" } : { client: "claude", label: "Use Claude as client" }
+}
+
+/** Added to a failed Flywheel sign-in when the server has no client registration endpoint or refused registration. */
+export const MCP_REGISTRATION_HINT = "This server may accept only approved apps. You can try Use Claude as client."
 
 /** Removal always targets the defining scope, never an enabled-only override. */
 export function mcpRemovalConfirmation(row: Pick<McpStatusRow, "name" | "definitionScope" | "hasGlobalFallback">): McpRemovalReview {
@@ -169,7 +222,7 @@ function mcpServersNeedingAttention(servers: readonly McpStatusRow[]): readonly 
 export const mcpProtocol = defineProtocolModule({
   id: "mcp",
   domains: [mcpDomain],
-  mutations: [mcpAuthenticate, mcpReconnect, mcpSetEnabled, mcpRemove],
+  mutations: [mcpAuthenticate, mcpReconnect, mcpSetEnabled, mcpSetClient, mcpRemove],
   rows: {
     // Healthy servers render nothing on the intro card; the row exists only to alert.
     intro: (read) => {

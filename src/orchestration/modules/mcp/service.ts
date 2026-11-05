@@ -7,8 +7,10 @@ import type { ModuleServiceInstance, PortableModuleServices } from "../../app-se
 import { configSection } from "../../config/config-section.js"
 import type { ConfigMutationResult, RuntimeConfigSnapshot } from "../../config/runtime-config-owner.js"
 import { createMcpAuthenticationService, type McpAuthenticationService } from "./authentication.js"
+import { processClaudeEngine } from "./claude-engine.js"
+import { resolveMcpClient } from "./clients.js"
 import { mcpConfigSection, resolveMcpConfig } from "./config.js"
-import { mcpExpectedToken, removeMcpServer, setMcpEnabled, type McpSelectedMutation } from "./config-mutation.js"
+import { mcpExpectedToken, removeMcpServer, setMcpClient, setMcpEnabled, type McpSelectedMutation } from "./config-mutation.js"
 import { createMcpManager, type McpManager, type McpManagerOptions, type McpPorts } from "./manager.js"
 
 const log = Log.create({ service: "mcp" })
@@ -32,34 +34,44 @@ export interface McpService extends ModuleServiceInstance {
   settleStartup(): Promise<readonly string[]>
   subscribe(listener: () => void): () => void
   setEnabled(request: Omit<McpSelectedMutation, "projectRoot"> & { readonly enabled: boolean }): Promise<ConfigMutationResult>
+  setClient(request: Omit<McpSelectedMutation, "projectRoot"> & { readonly client: "flywheel" | "claude" }): Promise<ConfigMutationResult>
   remove(request: Omit<McpSelectedMutation, "projectRoot">): Promise<ConfigMutationResult>
 }
 
 export const mcpService = moduleServiceHandle<McpService>("mcp")
 
-export function createMcpService(services: PortableModuleServices, options: Pick<McpManagerOptions, "connect"> = {}): McpService {
+export function createMcpService(services: PortableModuleServices, options: Pick<McpManagerOptions, "connect" | "claudeEngine"> = {}): McpService {
   const projectRoot = services.directories.projectRoot
   // Scope and expectations describe settled resources, not the latest desired publication.
   let applied = configSection(services.config.snapshot().config, mcpConfigSection)
   let replacing = false
   const applications = createOrderedLane()
   const listeners = new Set<() => void>()
+  const authDir = accountAuthDir(services.directories.userDataRoot)
+  const claudeEngine = options.claudeEngine ?? processClaudeEngine(authDir, services.launcher)
   const manager = createMcpManager({
     servers: services.enabled() ? resolveMcpConfig(applied, projectRoot).servers : {},
     executionCwd: services.directories.executionCwd,
-    authDir: accountAuthDir(services.directories.userDataRoot),
+    authDir,
     log: (message, fields) => log.info(message, fields),
     spawnOwned: services.launcher.spawnOwned,
     ...options,
+    claudeEngine,
   })
   const observe = (): readonly McpStatusRow[] => {
-    const { metadata } = resolveMcpConfig(applied, projectRoot)
-    // SAFETY: Applied source describes the manager's settled registry, including retained rows after refusal.
-    return Object.freeze(manager.status().map((row) => Object.freeze({
-      ...row,
-      ...metadata[row.name]!,
-      expected: mcpExpectedToken(applied, projectRoot, row.name),
-    })))
+    const { servers, metadata } = resolveMcpConfig(applied, projectRoot)
+    return Object.freeze(manager.status().map((row) => {
+      // SAFETY: Applied source describes the manager's settled registry, including retained rows after refusal.
+      const client = resolveMcpClient(servers[row.name]!, process.env)?.choice
+      // SAFETY: As above, every row of the settled registry has its applied metadata.
+      const source = metadata[row.name]!
+      return Object.freeze({
+        ...row,
+        ...source,
+        expected: mcpExpectedToken(applied, projectRoot, row.name),
+        ...(client === undefined ? {} : { client }),
+      })
+    }))
   }
   let status = observe()
   const publish = (): void => {
@@ -98,6 +110,7 @@ export function createMcpService(services: PortableModuleServices, options: Pick
     },
     subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener) } },
     setEnabled: (request) => setMcpEnabled(services.config, { ...request, projectRoot }),
+    setClient: (request) => setMcpClient(services.config, { ...request, projectRoot }, process.env),
     remove: (request) => removeMcpServer(services.config, { ...request, projectRoot }),
     async dispose() {
       await Promise.all(unsubscribe.map((stop) => stop()))
@@ -105,6 +118,7 @@ export function createMcpService(services: PortableModuleServices, options: Pick
       stopManager()
       listeners.clear()
       await manager.dispose()
+      await claudeEngine.dispose()
     },
   }
 }

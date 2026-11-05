@@ -15,7 +15,7 @@ import { McpNeedsAuthError } from "../../../../../src/orchestration/modules/mcp/
 import { createMcpManager, type McpManager } from "../../../../../src/orchestration/modules/mcp/manager.js"
 import { createMcpProtocol } from "../../../../../src/orchestration/modules/mcp/protocol.js"
 import { createMcpService, type McpService } from "../../../../../src/orchestration/modules/mcp/service.js"
-import { mcpCursor, mcpDomain, mcpEnabledAction, mcpProjectEnabledAction, mcpRemovalConfirmation, mcpProtocol, type McpStatusRow } from "../../../../../src/protocol/modules/mcp.js"
+import { mcpClientAction, mcpClientDetail, mcpClientReason, mcpCursor, mcpDomain, mcpEnabledAction, mcpSignInLabel, mcpProjectEnabledAction, mcpRemovalConfirmation, mcpProtocol, type McpStatusRow } from "../../../../../src/protocol/modules/mcp.js"
 import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
 import { testDirectories, temporaryDirectories } from "../../../../helpers/directories.js"
 import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.js"
@@ -47,6 +47,7 @@ function protocolOver(manager: McpManager, options: { readonly enabled?: boolean
     settleStartup: async () => [],
     subscribe: manager.subscribe,
     setEnabled: async () => { throw new Error("status fixture does not mutate") },
+    setClient: async () => { throw new Error("status fixture does not mutate") },
     remove: async () => { throw new Error("status fixture does not mutate") },
     dispose: () => manager.dispose(),
   }
@@ -237,8 +238,15 @@ describe("MCP protocol runtime", () => {
       const removed = await runtime.serve.mcpStatusSnapshot({ type: "mcpStatusSnapshot" })
       expect(removed.servers.map((current) => current.name)).toEqual(["other", "local"])
       const local = removed.servers.find((current) => current.name === "local")!
-      expect(local).toMatchObject({ definitionScope: "project", hasGlobalFallback: true, status: "disabled" })
-      expect(await runtime.mutate["mcp.remove"]({ type: "mcp.remove", server: local.name, scope: local.definitionScope, expected: local.expected })).toEqual({ ok: true })
+      expect(local).toMatchObject({ definitionScope: "project", hasGlobalFallback: true, status: "disabled", client: { kind: "flywheel" } })
+      const other = removed.servers.find((current) => current.name === "other")!
+      expect(other.client).toBeUndefined()
+      expect(await runtime.mutate["mcp.setClient"]({ type: "mcp.setClient", server: other.name, scope: other.definitionScope, client: "claude", expected: other.expected })).toMatchObject({ ok: false })
+      expect(await runtime.mutate["mcp.setClient"]({ type: "mcp.setClient", server: local.name, scope: local.definitionScope, client: "claude", expected: local.expected })).toEqual({ ok: true })
+      const switched = (await runtime.serve.mcpStatusSnapshot({ type: "mcpStatusSnapshot" })).servers.find((current) => current.name === "local")!
+      expect(switched.client).toEqual({ kind: "claude", source: "chosen" })
+      expect(Bun.TOML.parse(readFileSync(configPath, "utf8"))).toMatchObject({ mcp: { servers: { local: { command: "inherited-secret" } }, projects: { [projectRoot]: { servers: { local: { client: "claude", enabled: false } } } } } })
+      expect(await runtime.mutate["mcp.remove"]({ type: "mcp.remove", server: switched.name, scope: switched.definitionScope, expected: switched.expected })).toEqual({ ok: true })
       const fallback = await runtime.serve.mcpStatusSnapshot({ type: "mcpStatusSnapshot" })
       expect(fallback.servers.find((current) => current.name === "local")).toMatchObject({ definitionScope: "global", status: "failed", enabled: true })
       expect(mcpProtocol.rows.intro(readMcp(fallback.servers))[0]?.value).toBe("2 need attention")
@@ -276,6 +284,23 @@ describe("MCP protocol runtime", () => {
     expect(mcpRemovalConfirmation({ ...local, hasGlobalFallback: false }).message).not.toContain("inherited")
   })
 
+  test("client copy names Claude only for a server that connects through it, with the reason a person reads", () => {
+    const stdio: McpStatusRow = { ...globalMetadata, name: "local", status: "ready", toolCount: 1 }
+    const flywheel: McpStatusRow = { ...stdio, name: "linear", client: { kind: "flywheel" } }
+    const listed: McpStatusRow = { ...stdio, name: "slack", status: "needs_auth", client: { kind: "claude", source: "built-in", service: "Slack", reason: "Slack only accepts approved apps" } }
+    const chosen: McpStatusRow = { ...listed, name: "notes", client: { kind: "claude", source: "chosen" } }
+    expect([stdio, flywheel, listed, chosen].map(mcpClientDetail)).toEqual([undefined, undefined, "Connects through Claude", "Connects through Claude"])
+    expect([stdio, flywheel, listed, chosen].map(mcpSignInLabel)).toEqual(["Authenticate", "Authenticate", "Sign in with Claude", "Sign in with Claude"])
+    expect([stdio, flywheel, listed, chosen].map(mcpClientReason)).toEqual([
+      undefined,
+      undefined,
+      "Slack only accepts approved apps, so Flywheel connects through Claude. Slack's sign-in page will name Claude, not Flywheel.",
+      "You chose Claude as this server's client.",
+    ])
+    expect([stdio, flywheel, listed].map(mcpClientAction)).toEqual([undefined, { client: "claude", label: "Use Claude as client" }, { client: "flywheel", label: "Use Flywheel as client" }])
+    for (const row of [flywheel, listed]) expect(Schema.decodeUnknownSync(mcpDomain.patch)({ kind: "mcp.changed", servers: [row] })).toEqual({ kind: "mcp.changed", servers: [row] })
+  })
+
   test("reports saved degradation and unknown outcome without exposing raw failures", async () => {
     const manager = createMcpManager({ executionCwd: "/scratch", authDir: AUTH_DIR, servers: {} })
     const snapshot = await createRuntimeConfigOwner({ configPath: join(temporary("mcp-reply-"), "flywheel.toml"), watch: false })
@@ -287,6 +312,7 @@ describe("MCP protocol runtime", () => {
       settleStartup: async () => [],
       subscribe: manager.subscribe,
       setEnabled: async () => ({ ok: true, snapshot: snapshot.snapshot(), subscriberOutcome: { kind: "committed-but-degraded", errors: ["raw-secret"] } }),
+      setClient: async () => ({ ok: true, snapshot: snapshot.snapshot(), subscriberOutcome: { kind: "committed-but-degraded", errors: ["raw-secret"] } }),
       remove: async () => ({ ok: false, kind: "write-outcome-unknown", error: new ConfigWriteError("raw-secret") }),
       dispose: () => manager.dispose(),
     }

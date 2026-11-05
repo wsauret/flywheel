@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { win32 } from "node:path";
-import type { EngineHost } from "./cli-environment.js";
+import type { EngineHost } from "../../../infra/claude-engine.js";
 
 /** The machine reads that the engine's Git Bash rule makes. Tests replace it. */
 export interface ShellProbe {

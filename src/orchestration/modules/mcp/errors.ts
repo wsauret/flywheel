@@ -27,3 +27,20 @@ export class McpOAuthNeedsAuthError extends Error {
     this.name = "McpOAuthNeedsAuthError";
   }
 }
+
+/** Flywheel's own sign-in failed at client registration: the authorization server has no registration endpoint, or it
+ *  refused or failed the registration request. Such a server can accept only approved apps. */
+export class McpRegistrationRefusedError extends Error {
+  constructor(server: string, options?: ErrorOptions) {
+    super(`MCP server '${server}' did not register Flywheel as an OAuth client`, options);
+    this.name = "McpRegistrationRefusedError";
+  }
+}
+
+/** Another sign-in holds the fixed local callback port that a server's OAuth client requires. */
+export class McpSignInPortBusyError extends Error {
+  constructor(port: number) {
+    super(`Another sign-in is using local port ${port}. Finish or cancel it, then try again.`);
+    this.name = "McpSignInPortBusyError";
+  }
+}

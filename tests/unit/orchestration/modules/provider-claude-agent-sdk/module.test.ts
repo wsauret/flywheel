@@ -14,7 +14,7 @@ import { MODULE_IDS } from "../../../../../src/protocol/module-ids.js";
 import { temporaryDirectories, testDirectories } from "../../../../helpers/directories.js";
 import { createLoginObservations } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/login-observations.js";
 import type { ClaudeAgentSdkSeams } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-launch.js";
-import { enginePath } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine.js";
+import { enginePath } from "../../../../../src/infra/claude-engine.js";
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../../src/infra/owned-command.js";
 import { registerHostDrain, registerLiveBridge } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/live-bridges.js";
 import { moduleProcessServices } from "../../../../helpers/module-kernel.js";

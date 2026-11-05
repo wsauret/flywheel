@@ -1,7 +1,9 @@
+import { BUILT_IN_CLAUDE_SERVER_NAMES } from "../clients.js"
+
 interface McpAddSpec {
   readonly name: string
   readonly server:
-    | { readonly url: string; readonly headers: StringDictionary; readonly oauth?: McpOAuthClientSpec }
+    | { readonly url: string; readonly headers: StringDictionary; readonly oauth?: McpOAuthClientSpec; readonly client?: "flywheel" | "claude" }
     | { readonly command: string; readonly args: string[]; readonly env: StringDictionary }
   /** Ask for the OAuth client secret and keep it in the credential store. */
   readonly askClientSecret: boolean
@@ -47,6 +49,23 @@ Options for add:
   --client-id <id>         Use a pre-registered OAuth client (for servers without dynamic registration)
   --client-secret          Ask for the OAuth client secret (or read MCP_CLIENT_SECRET); also on login
   --callback-port <port>   Fixed OAuth callback port (for a registered redirect URL)
+  --client claude|flywheel The MCP client of an HTTP server. claude connects through the
+                           Claude engine that ships with Flywheel, for a server that
+                           accepts only approved apps; its sign-in page then names Claude.
+                           Default: Flywheel, except for the servers on Flywheel's built-in
+                           list. With claude, --client-id and --callback-port set
+                           the OAuth settings of the Claude engine.
+
+Servers that use Claude:
+  Some servers accept only approved apps. They accept the Claude engine that
+  ships with Flywheel, but not Flywheel itself. Flywheel connects to such a server
+  through Claude, so the server's sign-in page names Claude, not Flywheel.
+  Flywheel still runs and records every tool call, and the engine connects from
+  this computer straight to the server. You do not need a Claude account.
+  Flywheel's built-in list names these servers: ${BUILT_IN_CLAUDE_SERVER_NAMES}.
+  Every other server uses Flywheel unless you add it with --client claude. Change
+  the client of a server with "Use Claude as client" or "Use Flywheel as
+  client" in /mcp.
 
 Examples:
   flywheel mcp add linear --url https://mcp.linear.app/mcp
@@ -96,6 +115,7 @@ function parseAdd(args: readonly string[]): McpCliAction {
   let clientId: string | undefined
   let callbackPort: number | undefined
   let askClientSecret = false
+  let client: "flywheel" | "claude" | undefined
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i]
     if (arg === undefined) continue
@@ -106,6 +126,12 @@ function parseAdd(args: readonly string[]): McpCliAction {
     }
     if (arg === "--client-secret") { askClientSecret = true; continue }
     const value = args[i + 1]
+    if (arg === "--client") {
+      if (value !== "claude" && value !== "flywheel") return { kind: "error", message: `--client expects claude or flywheel, got: ${value ?? "nothing"}` }
+      i += 1
+      client = value
+      continue
+    }
     if (arg === "--client-id" || arg === "--callback-port") {
       if (value === undefined) return { kind: "error", message: `${arg} requires a value` }
       i += 1
@@ -152,9 +178,10 @@ function parseAdd(args: readonly string[]): McpCliAction {
       ...(clientId === undefined ? {} : { client_id: clientId }),
       ...(callbackPort === undefined ? {} : { callback_port: callbackPort }),
     }
-    return { kind: "add", spec: { name, server: { url, headers, ...(Object.keys(oauth).length === 0 ? {} : { oauth }) }, askClientSecret } }
+    if (askClientSecret && client === "claude") return { kind: "error", message: "--client-secret does not apply to a server that uses Claude as its client" }
+    return { kind: "add", spec: { name, server: { url, headers, ...(Object.keys(oauth).length === 0 ? {} : { oauth }), ...(client === undefined ? {} : { client }) }, askClientSecret } }
   }
-  if (clientId !== undefined || callbackPort !== undefined) return { kind: "error", message: "--client-id and --callback-port only apply to remote servers" }
+  if (clientId !== undefined || callbackPort !== undefined || client !== undefined) return { kind: "error", message: "--client, --client-id, and --callback-port only apply to remote servers" }
   const [stdioCommand, ...stdioArgs] = stdio ?? []
   if (stdioCommand === undefined) return { kind: "error", message: "mcp add requires a URL or -- <command> [args...]" }
   if (Object.keys(headers).length > 0) return { kind: "error", message: "--header only applies to remote servers; use --env for stdio servers" }

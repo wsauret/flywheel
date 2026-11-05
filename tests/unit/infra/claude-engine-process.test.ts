@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { FileSink } from "bun";
-import type { StopHold } from "../../../../../src/infra/stop-hold.js";
-import type { LauncherScope } from "../../../../../src/infra/process-supervisor.js";
-import type { OwnedProcess, OwnedProcessExit } from "../../../../../src/infra/owned-subprocess.js";
-import { ownedClaudeProcess } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/owned-spawn.js";
+import type { StopHold } from "../../../src/infra/stop-hold.js";
+import type { LauncherScope } from "../../../src/infra/process-supervisor.js";
+import type { OwnedProcess, OwnedProcessExit } from "../../../src/infra/owned-subprocess.js";
+import { ownedClaudeProcess } from "../../../src/infra/claude-engine-process.js";
 
 const EXIT: OwnedProcessExit = { code: 0, signal: null, statusOf: "payload", ownership: "surrendered" };
 

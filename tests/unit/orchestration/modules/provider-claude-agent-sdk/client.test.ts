@@ -9,7 +9,7 @@ import { createClaudeReminders } from "../../../../../src/orchestration/agent-ru
 import type { AccessProviderBuild } from "../../../../../src/orchestration/agent-runtime/llm/client-factory.js";
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { createClaudeAgentSdkClient } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/client.js";
-import { enginePath } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine.js";
+import { enginePath } from "../../../../../src/infra/claude-engine.js";
 import type { QueryLaunch, QueryLauncherConfig } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
 import { fakeAvailability } from "../../agent-runtime/llm/_provider-chain-harness.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";

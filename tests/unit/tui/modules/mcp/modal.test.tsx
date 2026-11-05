@@ -168,6 +168,51 @@ describe("MCP modal", () => {
       expect(rendered.captureCharFrame().match(/navigate/g)).toHaveLength(1)
     } finally { rendered.renderer.destroy() }
   })
+  test("renders a Claude server with its client detail, its reason, its sign-in label and the client switch", async () => {
+    const commands: FrontendMutation[] = []
+    const slack: McpStatusRow = { ...global, name: "slack", enabledScope: "project", client: { kind: "claude", source: "built-in", service: "Slack", reason: "Slack only accepts approved apps" } }
+    const notes: McpStatusRow = { ...global, name: "notes", status: "ready", definitionScope: "project", enabledScope: "project" }
+    const [rows, setRows] = createSignal<readonly McpStatusRow[]>([slack, notes])
+    const read = moduleDomainReader((domain) => domain.domain === mcpDomain.domain ? rows() : undefined)
+    const dispatch = runtimeDispatch({ "mcp.setClient": async (request: FrontendMutation) => { commands.push(request); return { ok: true } } })
+    let list: ReturnType<typeof createMcpList> | undefined
+    function Harness() {
+      list = createMcpList({ read, client: { dispatch }, showToast: () => {}, close: () => {} })
+      return <McpModal list={list} />
+    }
+    // A terminal of 100 columns gives the widest modal, 72 columns, where the scope detail of a global server with a
+    // project enabled override leaves the client detail no room after it.
+    const rendered = await testRender(() => <ThemeProvider mode="dark"><Harness /></ThemeProvider>, { width: 100, height: 40 })
+    try {
+      await rendered.renderOnce()
+      const frame = rendered.captureCharFrame()
+      expect(frame).toContain("Connects through Claude · Global server")
+      const lines = frame.split("\n")
+      const text = lines.map((line) => line.replace(/[│ ]+$/u, "").replace(/^[│ ]+/u, ""))
+      const first = text.findIndex((line) => line.startsWith("Slack only accepts"))
+      const last = text.findIndex((line) => line.endsWith("not Flywheel."))
+      expect(text.slice(first, last + 1).join(" ")).toBe("Slack only accepts approved apps, so Flywheel connects through Claude. Slack's sign-in page will name Claude, not Flywheel.")
+      // The list is exactly as tall as its rows: the first server stays in view, no blank row follows the reason, and
+      // the next server follows the last action.
+      expect(text[first - 2]).toStartWith("> slack")
+      expect(text[last + 1]).toStartWith("enter  Sign in with Claude")
+      expect(frame).toContain("c      Use Flywheel as client")
+      const next = text.findIndex((line) => line.startsWith("d      Remove")) + 1
+      expect(text[next]).toStartWith("notes")
+      expect(text[next + 1]).toBe("Project server")
+      expect(text[next + 3]).toContain("navigate")
+      const y = lines.findIndex((line) => line.includes("Use Flywheel as client"))
+      await rendered.mockMouse.pressDown(lines[y]!.indexOf("Use Flywheel"), y)
+      await rendered.mockMouse.release(lines[y]!.indexOf("Use Flywheel"), y)
+      expect(commands).toEqual([{ type: "mcp.setClient", server: "slack", scope: "global", client: "flywheel", expected: "reviewed" }])
+      await Promise.resolve(); await Promise.resolve(); await Promise.resolve()
+      setRows([{ ...slack, status: "ready", client: { kind: "flywheel" } }])
+      await rendered.renderOnce()
+      const flywheel = rendered.captureCharFrame()
+      expect(flywheel).not.toContain("Connects through")
+      expect(flywheel).toContain("c  Use Claude as client")
+    } finally { rendered.renderer.destroy() }
+  })
   test("cached opener replaces its opening and ignores old completion after close and reopen", async () => {
     const modal = createModalStack()
     const result = Promise.withResolvers<{ ok: true }>()

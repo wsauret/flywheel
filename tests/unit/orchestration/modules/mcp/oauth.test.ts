@@ -13,7 +13,8 @@ import type {
   McpCredential,
   McpCredentialStore,
 } from "../../../../../src/orchestration/modules/mcp/credentials.js";
-import { McpOAuthNeedsAuthError } from "../../../../../src/orchestration/modules/mcp/errors.js";
+import { McpOAuthNeedsAuthError, McpRegistrationRefusedError } from "../../../../../src/orchestration/modules/mcp/errors.js";
+import { mcpSignInFailure } from "../../../../../src/orchestration/modules/mcp/protocol.js";
 
 function memoryCredentialStore(initial?: McpCredential): McpCredentialStore & { saves(): number } {
   let credential = initial;
@@ -122,6 +123,7 @@ describe("MCP OAuth with a pre-registered client", () => {
         scope: "a",
         callbackPort,
       });
+      if (authorization.url === undefined) throw new Error("The fixture was already authorized");
       const authorizeUrl = new URL(authorization.url);
       expect(authorization.redirectUrl).toBe(`http://127.0.0.1:${callbackPort}/callback`);
       expect(authorizeUrl.searchParams.get("client_id")).toBe("123.456");
@@ -215,9 +217,35 @@ describe("MCP OAuth issuer binding", () => {
   });
 });
 
+describe("MCP OAuth client registration", () => {
+  it("fails a sign-in as a registration refusal only when the server has no registration endpoint or refuses registration", async () => {
+    for (const registration of ["absent", "refused"] as const) {
+      const fixture = await authorizationServerFixture(registration);
+      try {
+        const failed = authorizeMcpServer({ server: "slack", url: `${fixture.baseUrl}/mcp`, credentialStore: memoryCredentialStore(), client: undefined });
+        await expect(failed).rejects.toBeInstanceOf(McpRegistrationRefusedError);
+        expect(mcpSignInFailure(await failed.catch((error: unknown) => error))).toBe("MCP authentication failed. This server may accept only approved apps. You can try Use Claude as client.");
+      } finally {
+        await fixture.close();
+      }
+    }
+    const preregistered = await authorizationServerFixture("absent");
+    try {
+      const authorization = await authorizeMcpServer({ server: "slack", url: `${preregistered.baseUrl}/mcp`, credentialStore: memoryCredentialStore(), client: { clientId: "approved-app" } });
+      expect(new URL(authorization.url ?? "").searchParams.get("client_id")).toBe("approved-app");
+      await authorization.close();
+    } finally {
+      await preregistered.close();
+    }
+    const unreachable = authorizeMcpServer({ server: "gone", url: "http://127.0.0.1:1/mcp", credentialStore: memoryCredentialStore(), client: undefined });
+    await expect(unreachable).rejects.not.toBeInstanceOf(McpRegistrationRefusedError);
+    expect(mcpSignInFailure(await unreachable.catch((error: unknown) => error))).toBe("MCP authentication failed. Try again.");
+  });
+});
+
 /** A resource server whose metadata names itself as the only authorization server, with
- *  dynamic registration. It records every request it receives. */
-async function authorizationServerFixture(): Promise<{
+ *  dynamic registration unless `registration` says otherwise. It records every request it receives. */
+async function authorizationServerFixture(registration: "accepted" | "absent" | "refused" = "accepted"): Promise<{
   readonly baseUrl: string;
   readonly requests: { readonly path: string; readonly authorization: string; readonly body: string }[];
   close(): Promise<void>;
@@ -233,11 +261,13 @@ async function authorizationServerFixture(): Promise<{
         issuer: baseUrl,
         authorization_endpoint: `${baseUrl}/authorize`,
         token_endpoint: `${baseUrl}/token`,
-        registration_endpoint: `${baseUrl}/register`,
+        ...(registration === "absent" ? {} : { registration_endpoint: `${baseUrl}/register` }),
         response_types_supported: ["code"],
         token_endpoint_auth_methods_supported: ["client_secret_post"],
         code_challenge_methods_supported: ["S256"],
       });
+    } else if (url.pathname === "/register" && registration === "refused") {
+      response.writeHead(400, { "Content-Type": "application/json" }).end(JSON.stringify({ error: "invalid_client_metadata", error_description: "unapproved app" }));
     } else if (url.pathname === "/register") {
       json(response, { client_id: "client-b", client_secret: "client-secret-b", redirect_uris: ["http://127.0.0.1/callback"] });
     } else if (url.pathname === "/token") {

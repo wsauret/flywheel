@@ -119,10 +119,11 @@ const rules: BoundaryRule[] = [
   },
   {
     id: "agent-sdk-values-are-quarantined",
-    description: "Only the Agent SDK bridge's query launcher imports a value from @anthropic-ai/claude-agent-sdk (bridge rule 10). lint:owned-processes cannot see a launch inside the SDK package, and the launcher always passes the owned spawn seam; other files import its types only.",
+    description: "Only the Agent SDK bridge's query launcher and the MCP engine's session launcher import a value from @anthropic-ai/claude-agent-sdk (bridge rule 10). lint:owned-processes cannot see a launch inside the SDK package, and both launchers always pass the owned spawn seam; other files import its types only.",
     matches(importRef): boolean {
       if (importRef.isTypeOnly) return false;
       if (importRef.sourcePath === "src/orchestration/modules/provider-claude-agent-sdk/query-launcher.ts") return false;
+      if (importRef.sourcePath === "src/orchestration/modules/mcp/claude-engine-session.ts") return false;
       return importRef.specifier === "@anthropic-ai/claude-agent-sdk" || importRef.specifier.startsWith("@anthropic-ai/claude-agent-sdk/");
     },
   },

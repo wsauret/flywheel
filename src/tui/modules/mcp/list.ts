@@ -1,5 +1,5 @@
 import { createSignal, onCleanup } from "solid-js"
-import { mcpDomain, mcpEnabledAction, mcpProjectEnabledAction, type McpStatusRow } from "../../../protocol/modules/mcp.js"
+import { mcpClientAction, mcpDomain, mcpEnabledAction, mcpProjectEnabledAction, type McpStatusRow } from "../../../protocol/modules/mcp.js"
 import type { ListModalKeyEvent } from "../../components/modal-list-keys.js"
 import type { TuiSurfaceHost } from "../../tui-module.js"
 import { createKeyedListSelection } from "../../hooks/create-keyed-list-selection.js"
@@ -9,7 +9,7 @@ export interface McpRemovalState {
   readonly focus: number
 }
 
-type McpRequest = Extract<Parameters<TuiSurfaceHost["client"]["dispatch"]>[0], { type: "mcp.authenticate" | "mcp.reconnect" | "mcp.setEnabled" | "mcp.remove" }>
+type McpRequest = Extract<Parameters<TuiSurfaceHost["client"]["dispatch"]>[0], { type: "mcp.authenticate" | "mcp.reconnect" | "mcp.setEnabled" | "mcp.setClient" | "mcp.remove" }>
 
 /** The cached surface owns unsettled operations across modal openings. */
 export function createMcpOperations(host: Pick<TuiSurfaceHost, "client" | "showToast">) {
@@ -53,6 +53,12 @@ export function createMcpList(host: Pick<TuiSurfaceHost, "read" | "client" | "sh
     const action = project ? mcpProjectEnabledAction(row) : mcpEnabledAction(row)
     if (action) operations.run(`${action.enabled ? "Enabling" : "Disabling"} ${row.name}...`, { type: "mcp.setEnabled", server: row.name, scope: action.scope, enabled: action.enabled, expected: row.expected }, `${row.name} ${action.enabled ? "enabled" : "disabled"}`, () => active)
   }
+  const setClient = () => {
+    const row = selected()
+    if (!row || review()) return
+    const action = mcpClientAction(row)
+    if (action) operations.run(`Switching ${row.name}...`, { type: "mcp.setClient", server: row.name, scope: row.definitionScope, client: action.client, expected: row.expected }, `${row.name} uses ${action.client === "claude" ? "Claude" : "Flywheel"} as client`, () => active)
+  }
   const remove = () => { const row = selected(); if (active && row && !pending() && !review()) setReview({ row, focus: 0 }) }
   const cancel = () => { if (!pending()) setReview(undefined) }
   const confirm = () => {
@@ -84,13 +90,14 @@ export function createMcpList(host: Pick<TuiSurfaceHost, "read" | "client" | "sh
     else if (name === "r") { if (selected()?.status === "failed") repair() }
     else if (name === "e") setEnabled()
     else if (name === "p") setEnabled(true)
+    else if (name === "c") setClient()
     else if (name === "d") remove()
     else if (name === "escape" || name === "q") close()
     else return false
     event.preventDefault?.()
     return true
   }
-  return { rows, cursor, selected, select, navigationRevision: selection.revision, pending, review, repair, setEnabled, remove, cancel, confirm, close, key }
+  return { rows, cursor, selected, select, navigationRevision: selection.revision, pending, review, repair, setEnabled, setClient, remove, cancel, confirm, close, key }
 }
 
 export type McpList = ReturnType<typeof createMcpList>

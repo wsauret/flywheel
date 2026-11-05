@@ -1,5 +1,5 @@
 import type { FrontendMutation, MutationResult } from "../../../../src/protocol/app-service-types.js"
-import { mcpRemovalConfirmation, type McpEnabledAction, type McpStatusRow } from "../../../../src/protocol/modules/mcp.js"
+import { mcpRemovalConfirmation, type McpClientAction, type McpEnabledAction, type McpStatusRow } from "../../../../src/protocol/modules/mcp.js"
 import type { ConfirmRequest } from "../../app/client-context.js"
 import type { ClientActions } from "../../client/actions.js"
 import { actionKey } from "../../client/action-key.js"
@@ -47,6 +47,7 @@ export function createMcpMutation(client: McpMutationClient, active: () => boole
     authenticate: (row: McpStatusRow) => run(row, { type: "mcp.authenticate", server: row.name }),
     reconnect: (row: McpStatusRow) => run(row, { type: "mcp.reconnect", server: row.name }),
     enabled: (row: McpStatusRow, action: McpEnabledAction) => run(row, { type: "mcp.setEnabled", server: row.name, scope: action.scope, enabled: action.enabled, expected: row.expected }),
+    client: (row: McpStatusRow, action: McpClientAction) => run(row, { type: "mcp.setClient", server: row.name, scope: row.definitionScope, client: action.client, expected: row.expected }),
     remove: (row: McpStatusRow) => run(row, { type: "mcp.remove", server: row.name, scope: row.definitionScope, expected: row.expected }, true),
   }
 }

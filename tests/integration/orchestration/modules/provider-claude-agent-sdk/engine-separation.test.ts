@@ -15,7 +15,7 @@ import { join, relative } from "node:path";
 import { createLauncherScope, createProcessSupervisor } from "../../../../../src/infra/process-supervisor.js";
 import { privateTemporaryRoot } from "../../../../../src/infra/private-temporary-root.js";
 import type { ExternalAccount } from "../../../../../src/infra/llm/access-provider.js";
-import { enginePath } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/engine.js";
+import { enginePath } from "../../../../../src/infra/claude-engine.js";
 import { createClaudeAgentSdkModule } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/module.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { assistantMessage, removeEngineProbes, streamedToolCalls, withSdkClient } from "./_claude-sdk-client.js";

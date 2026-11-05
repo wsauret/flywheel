@@ -1,54 +1,9 @@
-import { readFileSync } from "node:fs";
-import { basename, dirname, join, resolve } from "node:path";
-import { writeFileAtomic } from "../../../infra/atomic-write.js";
-import type { OsAccount } from "../../../infra/os-account.js";
+import { basename, dirname, resolve } from "node:path";
+import { separatedEngineEnvironment, type EngineHost } from "../../../infra/claude-engine.js";
 import { MAX_TIMER_MS } from "../../../infra/timers.js";
 import type { BridgeRequest } from "./cli-view.js";
 import { LOGIN_ACCOUNTS_DIRECTORY } from "./names.js";
 import { STEP_GATE_SOCKET_VARIABLE } from "./step-gate.js";
-
-/** The host variables the engine inherits. `USER` comes from the OS account, the home variables name the engine's
- *  own home, and `TZ` names the zone of Flywheel's own dates where they have one (not on Windows). Everything else,
- *  including `LANG`, `LC_ALL`, every `XDG_*` variable, every `CLAUDE_*` and `ANTHROPIC_*` variable, and every
- *  credential, stays out. The engine finds `security`, `git`, and `ps` on the PATH. */
-const INHERITED_VARIABLES = ["PATH", "SHELL"] as const;
-
-/**
- * Fixed toggles of every engine that Flywheel starts: a query, the listing and usage engines, a login, and a logout.
- * With the separation toggles, the engine's home,
- * `CLAUDE_CONFIG_DIR`, and `CLAUDE_CODE_TMPDIR` in directories that Flywheel owns, an engine reads and writes
- * nothing of the person's own `claude` installation, and that installation finds nothing of the engine's. The machine's
- * `claude` policy
- * (managed settings) is the one thing both read: the public engine has no switch that moves it. The usage engine runs
- * with all of them except the switch that stops nonessential traffic (`planUsageEnvironment`).
- */
-const ENGINE_TOGGLES = {
-  // The engine never checks for an update, downloads one, or installs one, and it refuses `claude update`. The
-  // engine is the binary that the build verified; a newer one comes only with a Flywheel release.
-  DISABLE_UPDATES: "1",
-  // The background updater's own switch. DISABLE_UPDATES already stops it (CLI 2.1.296), and the CLI's own isolated
-  // environment sets this one too.
-  DISABLE_AUTOUPDATER: "1",
-  // Without it, engine 2.1.296 fetches account data at its start (/api/claude_cli/bootstrap and the Grove, guest
-  // pass, and fast mode settings) and writes it into the .claude.json of its CLAUDE_CONFIG_DIR. Later engines read
-  // those caches: the bootstrap's client data can add request headers, system prompt sections, and output limits to
-  // the requests of the model it was fetched for, and its model options change the model list of the initialize
-  // reply. Only the usage engine runs without it, on a private copy of the login's settings (`planUsageEnvironment`).
-  CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
-  DISABLE_TELEMETRY: "1",
-  // No CLAUDE.md of the project or of the account reaches the engine.
-  CLAUDE_CODE_DISABLE_CLAUDE_MDS: "1",
-  // The engine never connects to an IDE that the person's own editor extension for `claude` serves, and never installs that
-  // extension into an editor.
-  CLAUDE_CODE_AUTO_CONNECT_IDE: "false",
-  CLAUDE_CODE_IDE_SKIP_AUTO_INSTALL: "1",
-  // The engine's switch for its cross-session messaging inbox (CLI 2.1.296). Off, the engine opens no inbox socket
-  // that another `claude` session can find. On, a socket path longer than 103 bytes moves to `/tmp/cc-socks-<uid>`,
-  // which every `claude` session shares, whatever the engine's temporary directory variable names.
-  CLAUDE_CODE_HARBOR_KITE: "0",
-  // Without this switch, plugin hooks use a dedicated Worker, about 23 MB of private memory per engine.
-  CLAUDE_CODE_HOOKS_SAME_THREAD: "1",
-} as const;
 
 /** Documented engine toggles that every query sets. */
 const QUERY_TOGGLES = {
@@ -84,30 +39,6 @@ const QUERY_TOGGLES = {
   ANTHROPIC_LOG: "debug",
 } as const;
 
-/** What every engine that this process starts shares, whichever login it runs on. */
-export interface EngineHost {
-  /** The `claude` engine that ships with Flywheel (`enginePath`). */
-  readonly enginePath: string;
-  /** The account the engine runs on (`cliAccount`). The engine names its keychain item for `USER`, and on macOS the
-   *  system `security` command finds the login keychain through the account's home (`keychainFolder`). */
-  readonly account: OsAccount;
-  /** The platform the engine runs on, which decides how the engine reaches its keychain (`keychainFolder`). */
-  readonly platform: NodeJS.Platform;
-  /** The host environment the allowlist reads from. */
-  readonly hostEnvironment: { readonly [name: string]: string | undefined };
-  /** The time zone of Flywheel's own dates, as an IANA name (`localDateZone`). The engine states the local date in its
-   *  date reminder, and Flywheel states it in its shared reminders and its `<env>` block, so both read the one zone.
-   *  On Windows there is none: Flywheel's dates follow the system zone, as the engine's own do there. */
-  readonly timeZone: string | undefined;
-  /** This user's private directory for the engines' temporary files and inbox sockets, `fw-claude-<uid>` in the
-   *  temporary directory. The engine's default, `/tmp`, holds the `claude-<uid>` and `cc-socks` directories that
-   *  every `claude` session shares, and each session scans `cc-socks` for the sockets of other sessions. */
-  readonly temporaryDirectory: string;
-  /** Variables added after the allowlist. Only fake-host scripts and tests set
-   *  it, to point the engine at a local host with a dummy key. */
-  readonly cliEnvironment?: { readonly [name: string]: string };
-}
-
 /** What the host fixes in the environment of every engine it runs on one login. */
 export interface CliEnvironmentConfig extends EngineHost {
   /** The account's absolute `CLAUDE_CONFIG_DIR`. The engine owns the login there. */
@@ -122,53 +53,10 @@ export function projectConfigRoot(config: Pick<CliEnvironmentConfig, "configDir"
   return config.configDir;
 }
 
-/** What every engine on the login in `config.configDir` gets: the allowlist, the OS account's user, the engine's own
- *  home, the directories that Flywheel owns, and the separation toggles. `CLAUDE_CONFIG_DIR` is always set, so no
- *  engine that Flywheel starts reads or writes the default directory, which the person's own `claude` installation uses. The
- *  engine names its keychain item after that exact path, so each login keeps an item of its own. On macOS it also
- *  places the login's `security` launcher (`keychainFolder`). */
+/** The shared separated environment (`separatedEngineEnvironment`) of the login in `config.configDir`, whose
+ *  keychain is the one of the home that owns the login. */
 function separatedEnvironment(config: CliEnvironmentConfig) {
-  const inherited = Object.fromEntries(INHERITED_VARIABLES.flatMap((name) => {
-    const value = config.hostEnvironment[name];
-    return value === undefined ? [] : [[name, value] as const];
-  }));
-  const home = join(config.configDir, "home");
-  const hostPath = config.hostEnvironment["PATH"];
-  return {
-    // The engine's own home, the `home` folder in the login's directory, by each name that the engine reads it by:
-    // `HOME` and `USERPROFILE`, and `LOCALAPPDATA` and `APPDATA` for its Windows folders. The engine puts every folder
-    // that no other variable names in its home, as the person's own `claude` installation does in the person's home: its cache
-    // and MCP logs (`claude-cli-nodejs`), the native installer's folders, and the Anthropic profile store
-    // (`.config/anthropic`), which is never created. So no engine writes, reads, or cleans up a file of the person's
-    // own `claude` installation there, and that installation finds none of the engine's. The process that supervises the engine gets the
-    // same environment, so the cache of its Bun runtime is in this home too.
-    HOME: home,
-    USERPROFILE: home,
-    LOCALAPPDATA: join(home, "AppData", "Local"),
-    APPDATA: join(home, "AppData", "Roaming"),
-    USER: config.account.user,
-    ...inherited,
-    ...(config.timeZone === undefined ? {} : { TZ: config.timeZone }),
-    ...(config.platform === "darwin" ? { PATH: hostPath === undefined ? keychainFolder(config) : `${keychainFolder(config)}:${hostPath}` } : {}),
-    CLAUDE_CONFIG_DIR: config.configDir,
-    CLAUDE_CODE_TMPDIR: config.temporaryDirectory,
-    ...ENGINE_TOGGLES,
-  };
-}
-
-/**
- * The folder of the login's `security` launcher, which the engine on macOS finds first on its PATH. The system command
- * finds the login keychain only through `HOME`, and the engine's `HOME` is its own home, so the launcher runs
- * `/usr/bin/security` in the home that owns the login. Every keychain read, write, and delete of the engine then reaches the
- * login keychain as before, and its items keep their names, which come from `CLAUDE_CONFIG_DIR` and `USER`. The
- * launcher is written whenever its text differs, so a login that an earlier Flywheel made gets it at its next engine.
- */
-function keychainFolder(config: CliEnvironmentConfig): string {
-  const folder = join(config.configDir, "keychain");
-  const launcher = join(folder, "security");
-  const script = `#!/bin/sh\nHOME=${shellQuoted(loginOwnerHome(config.configDir, config.account.home))} exec /usr/bin/security "$@"\n`;
-  if (fileText(launcher) !== script) writeFileAtomic(launcher, script, { mode: 0o755 });
-  return folder;
+  return separatedEngineEnvironment(config, config.configDir, loginOwnerHome(config.configDir, config.account.home));
 }
 
 /** The home owning a profile login. Non-profile directories keep the host's home, as existing test and benchmark seams require. */
@@ -181,20 +69,6 @@ export function loginOwnerHome(configDir: string, hostHome: string): string {
   return basename(accounts) === LOGIN_ACCOUNTS_DIRECTORY && basename(profiles) === "profiles" && basename(auth) === "auth" && basename(flywheel) === ".flywheel"
     ? dirname(flywheel)
     : hostHome;
-}
-
-/** `text` as one single-quoted word of a POSIX shell. */
-function shellQuoted(text: string): string {
-  return `'${text.replaceAll("'", `'\\''`)}'`;
-}
-
-/** The text of the file at `path`, or nothing when it cannot be read. */
-function fileText(path: string): string | undefined {
-  try {
-    return readFileSync(path, "utf8");
-  } catch {
-    return undefined;
-  }
 }
 
 /** The environment of the login and logout commands: the separated environment, then the test override. */

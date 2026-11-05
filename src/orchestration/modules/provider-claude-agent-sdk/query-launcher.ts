@@ -10,7 +10,7 @@ import { engineModelId } from "../../agent-runtime/llm/claude-reminders.js";
 import { SYSTEM_PROMPT_SEPARATOR } from "../../agent-runtime/llm/system-prompt-tiers.js";
 import type { LauncherScope } from "../../../infra/process-supervisor.js";
 import { TOOL_MCP_SERVER, TOOL_MCP_PREFIX, globalConfigPath, legacyRefreshLockPath, mcpToolAliases, REFRESH_LOCK_BOUND_MS, REFRESH_LOCK_POLL_MS, refreshLockPath, refreshStopHold } from "./names.js";
-import { ownedClaudeProcess, type OwnedClaudeProcess } from "./owned-spawn.js";
+import { ownedClaudeProcess, type OwnedClaudeProcess } from "../../../infra/claude-engine-process.js";
 import { agentHostEnvironment, cliEnvironment, planUsageEnvironment, projectConfigRoot, type CliEnvironmentConfig } from "./cli-environment.js";
 import type { BridgeRequest, CliBlock } from "./cli-view.js";
 import { serveStepGate, type PluginGateServer, type StepGate, type StepGateEvidence } from "./step-gate.js";
