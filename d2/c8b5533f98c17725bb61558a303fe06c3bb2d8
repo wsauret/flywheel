@@ -1,0 +1,174 @@
+AGENTS.md
+  h_4b47e9e4a8b456 85
+docs/architecture-intent/providers.md
+  h_4b47e9e4a8b456 169
+docs/architecture-intent/tools.md
+  h_4b47e9e4a8b456 49
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 11,13,15-27,31-41,43,45,47,49,51,53,55,57,59,61-71,75-79,103-105,107,115-121,123,125,127,129,131-135,163-181,183,195,197-203,219-233,235,237,239,241,243,245,247,249,251-255,259,263,265,267,269,271,275,279-319,321,323,325,327,329,331,333-343,347-359,361,363,367-379,403-407,423,435,443,447,455,469-473,475
+docs/product-intent/capabilities.md
+  h_4b47e9e4a8b456 7-19,23-35,37,39,43
+docs/product-intent/interaction.md
+  h_4b47e9e4a8b456 7,9,27,29,31,33,35,37,39,41,43,45,47,49,51,53,55,57,59,61,63,65,67,69,71,73,75,77-115,119,121,123,125,127,129,131,133,135,143,145,147,149-153,155,157,159,161-171,179,181,183,195-198,211-213,217-219,221,229,233,235,237,241,245-247,249-253,261-265,267,269,271,273,289-293,301-305,309-317,339-343,345-349,353-363,365,367,369,371-373,389,395,403-419,423-429,431-435,439-469,471,473,475,477,479,481,483,485,487-495,503,507,511-517,519,521,523,525,527,529,531,533,535-543,547-551,555-559,563-567,579-583,599-603,607-611,619-623,631,635-639,695,703-705,707
+docs/product-intent/local-access.md
+  h_4b47e9e4a8b456 11-15,27-35
+docs/product-intent/model-access.md
+  h_4b47e9e4a8b456 7-19,35,39-51,75,77-79,83-87,89,91,93-103,107-111,113,115,117,119,121,123,125,127,129-139,143-151,159-163,165-167,171,179-183,193,197,201,203,205,207,209,211,213-221,223,225,227,229,231,233,235,237,239,241,243,245,247-257,261-265,267-277,281,289,309,317,319,321,325-329
+docs/product-intent/remote-access.md
+  h_4b47e9e4a8b456 19-23,27-29,31,33-35,43,47,51-67,71-75,79-87,91-99,111-115,119
+docs/provider-terms.md
+  h_4b47e9e4a8b456 3,10,29,75,109-111,129,150,163,213-220
+docs/terminology.md
+  h_4b47e9e4a8b456 76-77,80
+src/infra/llm/access-provider.ts
+  h_4b47e9e4a8b456 332
+src/infra/llm/free-plan-accounts.ts
+  h_4b47e9e4a8b456 3
+src/infra/output/run-labels.ts
+  h_4b47e9e4a8b456 6
+src/orchestration/agent-runtime/agent-loop-types.ts
+  h_4b47e9e4a8b456 310
+src/orchestration/agent-runtime/llm/failover-client.ts
+  h_4b47e9e4a8b456 304
+src/orchestration/agent-runtime/unattended-recovery.ts
+  h_4b47e9e4a8b456 337
+src/orchestration/app-service/background-index.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/app-service/project-execution-runtime.ts
+  h_4b47e9e4a8b456 139
+src/orchestration/app-service/project-state-recovery.ts
+  h_4b47e9e4a8b456 160
+src/orchestration/app-service/replacement-blockers.ts
+  h_4b47e9e4a8b456 29,32,105,245
+src/orchestration/app-service/replacement-continuation.ts
+  h_4b47e9e4a8b456 46
+src/orchestration/app-service/replacement-handoffs.ts
+  h_4b47e9e4a8b456 209
+src/orchestration/app-service/replacement-owner.ts
+  h_4b47e9e4a8b456 16
+src/orchestration/app-service/runtime-supervisor.ts
+  h_4b47e9e4a8b456 382
+src/orchestration/app-service/web-serving/hub.ts
+  h_4b47e9e4a8b456 146
+src/orchestration/auth/auth-actions.ts
+  h_4b47e9e4a8b456 219,227,270
+src/orchestration/config/module-selection-writer.ts
+  h_4b47e9e4a8b456 30
+src/orchestration/headless/run-headless-task.ts
+  h_4b47e9e4a8b456 293
+src/orchestration/modules/development/definitions/skills/webview-rendering/SKILL.md
+  h_4b47e9e4a8b456 10
+src/orchestration/modules/remote/terminal-remote.ts
+  h_4b47e9e4a8b456 120,205
+src/orchestration/modules/subagents/execution/child-execution.ts
+  h_4b47e9e4a8b456 231
+src/orchestration/modules/workflows/orchestration.ts
+  h_4b47e9e4a8b456 2
+src/orchestration/session/agent-input-facts.ts
+  h_4b47e9e4a8b456 106
+src/orchestration/session/capacity-wait.ts
+  h_4b47e9e4a8b456 60
+src/orchestration/session/chat-session-run-evidence.ts
+  h_4b47e9e4a8b456 113,383
+src/orchestration/session/conversation/turn-end-record.ts
+  h_4b47e9e4a8b456 65,76,256,733
+src/orchestration/session/planned-session-continuation.ts
+  h_4b47e9e4a8b456 333,409,541
+src/orchestration/session/reply-waits.ts
+  h_4b47e9e4a8b456 65,70
+src/orchestration/session/session-catalog-row.ts
+  h_4b47e9e4a8b456 16
+src/orchestration/session/session-input-delivery.ts
+  h_4b47e9e4a8b456 121,491
+src/orchestration/subscription-spend-consent/subscription-spend-consent-service.ts
+  h_4b47e9e4a8b456 117
+src/orchestration/update/install-engine.ts
+  h_4b47e9e4a8b456 199,233
+src/orchestration/workflow-host/agent-callback.ts
+  h_4b47e9e4a8b456 383
+src/orchestration/workflow-host/launch-lifecycle.ts
+  h_4b47e9e4a8b456 235
+src/protocol/app-service-types.ts
+  h_4b47e9e4a8b456 382,644
+src/protocol/auth-status-protocol-types.ts
+  h_4b47e9e4a8b456 100,115
+src/protocol/client/auth-login.ts
+  h_4b47e9e4a8b456 89
+src/protocol/client/process-initiation-copy.ts
+  h_4b47e9e4a8b456 2
+src/protocol/client/session-controls.ts
+  h_4b47e9e4a8b456 5-6
+src/protocol/command-catalog-protocol-types.ts
+  h_4b47e9e4a8b456 25
+src/protocol/modules/remote/machine-picker.ts
+  h_4b47e9e4a8b456 7
+src/protocol/modules/remote/project-creation.ts
+  h_4b47e9e4a8b456 8
+src/protocol/repository-reference.ts
+  h_4b47e9e4a8b456 2
+src/tui/commands/close-chat-surface.ts
+  h_4b47e9e4a8b456 5
+src/tui/hooks/auth-modal-options.ts
+  h_4b47e9e4a8b456 64
+src/tui/hooks/create-session-creator.ts
+  h_4b47e9e4a8b456 116
+src/tui/hooks/spinner-status-animation.ts
+  h_4b47e9e4a8b456 25
+src/tui/hooks/use-session-controls.ts
+  h_4b47e9e4a8b456 34
+src/workflows/output-contract/workflow-completion.ts
+  h_4b47e9e4a8b456 493
+tests/integration/local/replacement-continuation.test.ts
+  h_4b47e9e4a8b456 184
+tests/integration/local/replacement-hold.test.ts
+  h_4b47e9e4a8b456 10,70
+tests/integration/local/subagent-interrupt-resume.test.ts
+  h_4b47e9e4a8b456 124,392
+tests/integration/orchestration/modules/provider-claude-agent-sdk/agent-host.test.ts
+  h_4b47e9e4a8b456 649
+tests/unit/cli/cli-auth.test.ts
+  h_4b47e9e4a8b456 299
+tests/unit/orchestration/agent-runtime/workflow-agent-system-prompt.test.ts
+  h_4b47e9e4a8b456 52
+tests/unit/orchestration/app-service/app-service-replacement-admission.test.ts
+  h_4b47e9e4a8b456 14
+tests/unit/orchestration/app-service/auth-login-requests.test.ts
+  h_4b47e9e4a8b456 137,175
+tests/unit/orchestration/app-service/frontend-projection.test.ts
+  h_4b47e9e4a8b456 246
+tests/unit/orchestration/auth/login-abort.test.ts
+  h_4b47e9e4a8b456 200
+tests/unit/orchestration/chat/chat-session-restored-wait.test.ts
+  h_4b47e9e4a8b456 30
+tests/unit/orchestration/session/project-directory-semantics.test.ts
+  h_4b47e9e4a8b456 198
+tests/unit/orchestration/session/turn-end-record.test.ts
+  h_4b47e9e4a8b456 258,283
+tests/unit/protocol/client/auth-login.test.ts
+  h_4b47e9e4a8b456 109
+tests/unit/protocol/repository-reference.test.ts
+  h_4b47e9e4a8b456 7
+tests/unit/tui/modals/auth-modal.test.ts
+  h_4b47e9e4a8b456 211
+webview/src/app/composer.tsx
+  h_4b47e9e4a8b456 139
+webview/src/app/providers-sheet-interaction.test.ts
+  h_4b47e9e4a8b456 502,531
+webview/src/app/sheets/providers-sheet.tsx
+  h_4b47e9e4a8b456 28
+webview/src/client/session.ts
+  h_4b47e9e4a8b456 217
+webview/src/modules/remote/runtimes.tsx
+  h_4b47e9e4a8b456 51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d2c8b5533f98c17725bb61558a303fe06c3bb2d8",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
