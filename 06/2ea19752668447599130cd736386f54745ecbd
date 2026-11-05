@@ -1,0 +1,48 @@
+docs/architecture-intent/boundaries.md
+  h_4b47e9e4a8b456 35
+docs/architecture-intent/context.md
+  h_4b47e9e4a8b456 61,74-77,79,87,89
+docs/architecture-intent/directories.md
+  h_4b47e9e4a8b456 45
+docs/architecture-intent/distribution.md
+  h_4b47e9e4a8b456 179-180
+docs/architecture-intent/learning.md
+  h_4b47e9e4a8b456 49,52-55
+docs/architecture-intent/protocol.md
+  h_4b47e9e4a8b456 257
+docs/architecture-intent/providers.md
+  h_4b47e9e4a8b456 29,33-36,39-52,70,169,198
+docs/architecture-intent/runtime.md
+  h_4b47e9e4a8b456 18-19,123
+docs/architecture-intent/sessions.md
+  h_4b47e9e4a8b456 171-172
+docs/architecture-intent/structure.md
+  h_4b47e9e4a8b456 223
+docs/architecture-intent/substrate.md
+  h_4b47e9e4a8b456 231
+docs/architecture-intent/tools.md
+  h_4b47e9e4a8b456 40,49,53-56,100,102-107,213-218,247-249
+docs/elegance.md
+  h_4b47e9e4a8b456 104
+src/orchestration/agent-runtime/shared-tree.ts
+  h_4b47e9e4a8b456 4
+src/orchestration/app-service/runtime-supervisor-types.ts
+  h_4b47e9e4a8b456 198
+src/orchestration/app-service/session-holds.ts
+  h_4b47e9e4a8b456 42
+src/orchestration/chat/runner-types.ts
+  h_4b47e9e4a8b456 55
+src/orchestration/chat/session-engines.ts
+  h_4b47e9e4a8b456 39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "062ea19752668447599130cd736386f54745ecbd",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
