@@ -1,0 +1,20 @@
+docs/architecture-intent/README.md
+  h_4b47e9e4a8b456 20
+docs/product-intent/README.md
+  h_4b47e9e4a8b456 17
+scripts/check-intent-corpora.ts
+  h_4b47e9e4a8b456 8-12,55-56,119-135,139-141,146-152,161-164
+tests/unit/scripts/check-intent-corpora.test.ts
+  h_4b47e9e4a8b456 106-108,114-116,120,125,127-128,132-139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f68c9136814ea78045cf28c3887ccd1ce4000d15",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
