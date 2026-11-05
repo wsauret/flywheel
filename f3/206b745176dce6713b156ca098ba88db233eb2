@@ -1,0 +1,14 @@
+docs/product-intent/updates.md
+  h_4b47e9e4a8b456 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f3206b745176dce6713b156ca098ba88db233eb2",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
