@@ -307,7 +307,7 @@ export interface AgentLoopOptions {
   /** Scoped checkpoint authority, independent of the current conversation branch. */
   checkpoint?: import("../session/conversation-checkpoint.js").ConversationCheckpointOwner;
   /** The recorded brief of an unattended agent, which every reset opening
-   *  restates (PI-AGENT-010). Read once per reset; absent or undefined omits it. */
+   *  restates (PI-AGENT-089). Read once per reset; absent or undefined omits it. */
   standingBrief?: () => Promise<string | undefined>;
   /** Launch authority handed to the tool context. See AgentOptions. */
   launcher?: LauncherScope;

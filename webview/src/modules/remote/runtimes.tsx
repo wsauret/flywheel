@@ -48,7 +48,7 @@ function placementDetail(placement: Placement, snapshot: RemoteHostSnapshot, run
   }
 }
 
-/** Creating a project on a machine from a repository (PI-REMOTE-009): the
+/** Creating a project on a machine from a repository (PI-REMOTE-021): the
  *  row of the project being created, and the form that names a repository.
  *  The machine clones it with its own git access and derives the folder, so
  *  the person names only the repository. */

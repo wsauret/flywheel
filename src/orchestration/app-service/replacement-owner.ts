@@ -13,7 +13,7 @@ const log = Log.create({ service: "replacement-owner" })
  *  so this only covers a report that was lost with its channel. */
 const REPOLL_MS = 5_000
 
-/** The account's one replacement state (PI-REMOTE-012, ARCH-RUNTIME-031). It lives
+/** The account's one replacement state (PI-REMOTE-012, PI-REMOTE-019, PI-REMOTE-020, ARCH-RUNTIME-031). It lives
  *  here and nowhere else: every executor learns it from the value this owner
  *  last published, and no client ever sees it. The owner never refuses work,
  *  never asks a person anything, and shows nothing. It waits only for what

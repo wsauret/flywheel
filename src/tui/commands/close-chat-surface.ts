@@ -2,7 +2,7 @@ import { chatOnlyCommandNotice, type AgentViewKind } from "../../protocol/client
 import type { ShellServices } from "../hooks/shell-state.js"
 
 /** The terminal's `close-chat` surface: Close chat on the chat in front, which
- *  ends its work now and removes its tab (PI-INTERACTION-082). An agent's
+ *  ends its work now and removes its tab (PI-INTERACTION-082, PI-INTERACTION-119). An agent's
  *  view has no chat in front, so the surface refuses there and closes nothing. */
 export function closeChatSurface(deps: {
   readonly agentInView: () => AgentViewKind | undefined

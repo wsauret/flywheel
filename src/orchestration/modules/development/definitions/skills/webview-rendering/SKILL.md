@@ -7,7 +7,7 @@ related: webview-uat
 
 Input: the web client surface under change, the runtime publications that update it, and the reader's interactions with it. The desktop browser page, the phone, and the editor all mount the one SolidJS bundle under `webview/`, so a flicker here is a flicker on every surface.
 
-PI-INTERACTION-062 states the behavior a person observes, ARCH-PROTOCOL-062 the surface ownership of UI state, and ARCH-PROTOCOL-063 the effect contract. These constraints apply to every change:
+PI-INTERACTION-062, PI-INTERACTION-098 states the behavior a person observes, ARCH-PROTOCOL-062 the surface ownership of UI state, and ARCH-PROTOCOL-063 the effect contract. These constraints apply to every change:
 
 - Render a node one time, then update it in place. A row, a card, a label, or a paragraph keeps the same DOM node for as long as the thing it shows exists. A change of state changes attributes, classes, and text on that node; it never removes the node and inserts a new one. A remount is a flicker even when the new node looks the same, and the new node loses focus, the text selection, hover and press state, an open disclosure, a scroll anchor, and any live subscription.
 - The scroll position belongs to the reader. When content above the reader changes, the row that the reader looks at stays at the same place on the screen.

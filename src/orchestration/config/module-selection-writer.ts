@@ -27,7 +27,7 @@ export async function updateModuleMember(moduleId: ModuleId, expected: boolean, 
 }
 
 /** The Workflows control and its durable confirmation preference, changed as one
- *  commit (PI-CAP-001). OFF removes the capability and leaves the recorded
+ *  commit (PI-CAP-019, PI-CAP-001). OFF removes the capability and leaves the recorded
  *  confirmation preference untouched, so returning to ASK or ON restores what
  *  the user chose. */
 export async function updateWorkflowsMode(expected: WorkflowsMode, mode: WorkflowsMode, options: UpdateModelSelectionOptions): Promise<ConfigWriteResult> {

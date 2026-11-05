@@ -57,7 +57,7 @@ export function recordCapacityWait(event: CapacityWaitEvent, fields: { readonly 
 
 /** The one notice of a session's capacity wait, which every client shows
  *  while it waits: the live wait raises it, and a detail read derives it
- *  from the durable row while no run of the session waits (PI-MODEL-039).
+ *  from the durable row while no run of the session waits (PI-MODEL-063).
  *  One id per session, so the two are the same notice. */
 export function capacityWaitNotice(input: { readonly sessionId: string; readonly agentName: string; readonly atMs: number; readonly now: number }): SessionNotice {
   const id = `capacity-wait:${input.sessionId}`

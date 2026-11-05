@@ -110,7 +110,7 @@ function parseTailBatch(batch: StoredFact): ConversationTreeFact | undefined {
 /** The turn-end evidence of a chat, read from the newest entry batches of
  *  its conversation instead of a replay of the whole tree: the one source
  *  the row builder, the resume admission, and the replacement blockers
- *  read (PI-INTERACTION-043). A conversation this release cannot read
+ *  read (PI-INTERACTION-103). A conversation this release cannot read
  *  proves nothing, so it admits no Resume. */
 export async function readChatTurnEnd(reader: AsyncEventStateReadSurface, conversationId: string): Promise<ChatTurnEnd | undefined> {
   return (await readChatTurnEndEvidence(reader, conversationId))?.turnEnd
@@ -380,7 +380,7 @@ interface WorkflowActionEvidence {
 /** The actions a workflow's row admits. A workflow a Stop ended admits
  *  nothing but deletion: it is terminal for its parent. In every lifecycle
  *  a workflow admits Stop while its parent's tool call waits on it, because
- *  each child has its own Stop (PI-INTERACTION-043, PI-INTERACTION-044): a
+ *  each child has its own Stop (PI-INTERACTION-043, PI-INTERACTION-115): a
  *  call that holds another result, such as a start failure, has no Stop left
  *  to record, so a Resume of its workflow brings back Interrupt but no Stop.
  *  A running workflow admits Interrupt and Resume while any started agent's

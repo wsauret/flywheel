@@ -243,7 +243,7 @@ describe("frontend projection", () => {
   })
 
   test("durable and live catalog rows keep the recorded directory after it is removed", async () => {
-    // A row's paths mean what they meant when recorded (PI-INTERACTION-005):
+    // A row's paths mean what they meant when recorded (PI-INTERACTION-147):
     // removing the directory never re-reads them against the project root.
     const recorded = mkdtempSync(join(tmpdir(), "flywheel-catalog-cwd-"))
     rmSync(recorded, { recursive: true, force: true })

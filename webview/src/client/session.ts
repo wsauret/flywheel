@@ -214,7 +214,7 @@ export interface RuntimeSession {
   unsent(): readonly UnsentChatSubmission[]
   /** Interrupts the open session, whatever its kind: a chat turn, a
    *  workflow agent, or a child's run. It keeps everything committed, and
-   *  Resume continues it (PI-INTERACTION-043, PI-INTERACTION-044,
+   *  Resume continues it (PI-INTERACTION-043, PI-INTERACTION-103, PI-INTERACTION-044,
    *  PI-AGENT-020). Workflow targets select items or agents; omitted targets act on the whole workflow. */
   interrupt(targets?: readonly string[]): Promise<void>
   /** Continues the open session with no new message, using the same optional workflow targets as Interrupt. */

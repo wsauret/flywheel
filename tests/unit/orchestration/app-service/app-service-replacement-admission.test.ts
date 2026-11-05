@@ -11,7 +11,7 @@ import { FIXTURE_EXECUTION_CWD } from "../../../helpers/directories.js";
 
 /** The service while the account waits to replace it: its executor holds the
  *  account's requested replacement, wired as the project execution runtime
- *  wires it, and nothing a person does is refused for it (PI-REMOTE-012). */
+ *  wires it, and nothing a person does is refused for it (PI-REMOTE-020). */
 function harness() {
   const store = fakeSessionStore(new Map([["chat-1", chatEntry()]]))
   const manager = managerWithSessions([durableRow("chat-1")])

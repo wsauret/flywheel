@@ -216,7 +216,7 @@ export interface OAuthLoginOptions {
   /** The claimed external-login episode. Its owner renews only after catalog settlement. */
   readonly loginQuestionId?: string;
   readonly authDir: string;
-  /** The auth profile that `authDir` holds, whose usage authority keeps the plan of each account (PI-MODEL-038). */
+  /** The auth profile that `authDir` holds, whose usage authority keeps the plan of each account (PI-MODEL-038, PI-MODEL-069). */
   readonly profileId: string;
   /** Resolves the stored key of the fresh snapshot this flow returns. */
   readonly resolveKey: KeyResolver;
@@ -224,7 +224,7 @@ export interface OAuthLoginOptions {
   readonly settle: AuthCatalogSettlement;
   readonly launcher: LauncherScope;
   /** Asks the person `question` before a paid account replaces the free-plan accounts of its provider
-   *  (PI-MODEL-038). Resolves true to replace them. Absent, such a login stores nothing. */
+   *  (PI-MODEL-069). Resolves true to replace them. Absent, such a login stores nothing. */
   readonly confirmReplace?: (question: string, signal?: AbortSignal) => Promise<boolean>;
 }
 
@@ -267,7 +267,7 @@ export async function loginWithOAuth(definition: OAuthDefinition, options: OAuth
 }
 
 /** Runs the flow and stores its account. A new account of a provider that declares a free plan first passes the
- *  free-plan rule (PI-MODEL-038), and the plan that its sign-in read is saved in the profile's usage authority under
+ *  free-plan rule (PI-MODEL-069), and the plan that its sign-in read is saved in the profile's usage authority under
  *  the stored account; a reconnect replaces an account in its own place and adds none. */
 async function storeOAuthLogin(definition: OAuthDefinition, options: OAuthLoginOptions & DeviceCodeLoginPorts & BrowserLoginPorts, deps: OAuthLoginDeps, adds: boolean): Promise<AuthContext> {
   const result = await deps.start(options);

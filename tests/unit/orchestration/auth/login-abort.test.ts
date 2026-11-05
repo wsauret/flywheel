@@ -197,7 +197,7 @@ describe("OAuth reconnect identity", () => {
   });
 });
 
-describe("free-plan sign-in (PI-MODEL-038)", () => {
+describe("free-plan sign-in (PI-MODEL-069)", () => {
   const temporaryDirectory = temporaryDirectories();
   const makeAuthDir = (): string => {
     const dir = join(temporaryDirectory("free-plan-login-test-"), "profile");

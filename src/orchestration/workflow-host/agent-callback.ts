@@ -380,7 +380,7 @@ export function createWorkerCallback(
           injectionQueue.enqueueMessage(input, { held: heldAtWakeLimit(outcome) })
           resources.projection?.queueUserMessage(input)
           // A person's message ends a capacity wait at once, and the run
-          // that continues reads it (PI-MODEL-039).
+          // that continues reads it (PI-MODEL-063).
           if (input.producer?.kind !== "session" && recovery.continueNow()) return { status: "delivered", startsTurn: true }
         }
         if (outcome.status === "held" && outcome.reason === "interrupted" && input.producer?.kind === "session" && input.producer.envelope?.relation === "parent" && await liveWorkflowControl(eventStore, workflowId)?.handBackMember(() => agentInput.resumeFromParent()) === true) {

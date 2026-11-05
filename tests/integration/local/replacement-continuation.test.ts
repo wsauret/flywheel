@@ -181,7 +181,7 @@ describe("planned interruption and automatic continuation", () => {
       expect(rowsA.get(sessionId)).toEqual([expect.objectContaining({ version: 3, target: kind === "workflow" ? { kind, workflowId: sessionId } : { kind, sessionId }, handoffId: handoff.handoffId })])
     }
     // A turn that waits on a question is the person's, not running work, so
-    // the cut leaves its question open (PI-REMOTE-012).
+    // the cut leaves its question open (PI-REMOTE-020).
     expect(rowsA.get(sessions.ask)).toEqual([])
     // The parent waiting on its child is cut in silence and continues on the
     // successor, where it waits for the child's result again.

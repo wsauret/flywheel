@@ -46,7 +46,7 @@ Code Mode's outer invocation holds no concurrency permit, and each nested call e
 
 ## ARCH-TOOLS-010: The shell write-target guard catches mistakes and contains nothing
 
-Every tool that runs arbitrary commands, in every execution mode, answers to the tree-safety, forbidden-Git, worktree-lifecycle, write-target, and read-only rules through one analyzer that enforces the allowance of PI-AGENT-017. The analyzer places write and delete targets statically before any process starts, loads at its point of use without warmup, and never decides tool availability. When analysis cannot load or complete, the command runs, the failure is recorded once, and independent command restrictions still apply. A module rule that protects paths applies its own admission to the targets this analyzer places and adds no command patterns, and the shell's own rule refuses a target the analyzer cannot place.
+Every tool that runs arbitrary commands, in every execution mode, answers to the tree-safety, forbidden-Git, worktree-lifecycle, write-target, and read-only rules through one analyzer that enforces the allowance of PI-AGENT-068. The analyzer places write and delete targets statically before any process starts, loads at its point of use without warmup, and never decides tool availability. When analysis cannot load or complete, the command runs, the failure is recorded once, and independent command restrictions still apply. A module rule that protects paths applies its own admission to the targets this analyzer places and adds no command patterns, and the shell's own rule refuses a target the analyzer cannot place.
 Because: Shell syntax routes around command patterns, so only resolved targets of recognized effects support a decision.
 Not: A hardcoded command deny-list.
 

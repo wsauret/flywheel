@@ -208,7 +208,7 @@ describe("useAuthModal", () => {
     })
   })
 
-  it("asks the runtime's replace question after sign-in: return replaces, escape keeps the free account and stores nothing (PI-MODEL-038)", async () => {
+  it("asks the runtime's replace question after sign-in: return replaces, escape keeps the free account and stores nothing (PI-MODEL-069)", async () => {
     await createRoot(async (dispose) => {
       const { modal, modals, showToast, sent, ask } = createModal()
       await openCopilotPrompt(modal)

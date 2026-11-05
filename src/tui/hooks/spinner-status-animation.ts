@@ -22,7 +22,7 @@ interface MetadataSegment {
 
 /** A status segment a person can press: the background process list. The
  *  status line never carries session controls; Resume is a prompt key hint
- *  and Interrupt is Escape (PI-INTERACTION-043). */
+ *  and Interrupt is Escape (PI-INTERACTION-043, PI-INTERACTION-103). */
 type StatusAction = "background"
 
 export interface SpinnerStatus {

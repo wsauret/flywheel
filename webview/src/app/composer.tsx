@@ -136,7 +136,7 @@ export function Composer(props: {
   const displayedModel = () => composerModel(selectedRow()?.kind, childRoles(), state().activeModel)
   // Interrupt, Resume, and Stop for the open session, whatever its kind,
   // from its row, the one reader of what the runtime admits (ARCH-PROTOCOL-050,
-  // PI-INTERACTION-043, PI-INTERACTION-044, PI-AGENT-020); the composer
+  // PI-INTERACTION-043, PI-INTERACTION-103, PI-INTERACTION-044, PI-INTERACTION-115, PI-AGENT-020); the composer
   // holds no control state of its own. Interrupt is offered only while
   // there is something to interrupt and Resume only while there is not: the
   // row admits both from durable evidence, and the live status says which

@@ -4,7 +4,7 @@ import { parseRepository } from "../../../src/protocol/repository-reference.js"
 
 /** What a person may type to name a repository on a phone or a terminal, and
  *  what the machine clones from it. A device never names a path on the
- *  machine (PI-REMOTE-009), so everything that is not an https or ssh
+ *  machine (PI-REMOTE-009, PI-REMOTE-021), so everything that is not an https or ssh
  *  repository is refused before anything runs. */
 
 describe("naming a repository to clone", () => {

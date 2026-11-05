@@ -2,8 +2,8 @@
  * The one composition of a session's interrupt, resume, and stop controls and
  * of the copy that names an interrupted, resumed, or stopped run, so the
  * terminal and the web client admit the same controls from the same row and
- * describe the same state in the same words (PI-AGENT-020,
- * PI-INTERACTION-043, PI-INTERACTION-044).
+ * describe the same state in the same words (PI-AGENT-020, PI-AGENT-072,
+ * PI-INTERACTION-043, PI-INTERACTION-101, PI-INTERACTION-103, PI-INTERACTION-044, PI-INTERACTION-115, PI-INTERACTION-140).
  */
 
 import { isActiveActivity, type FrontendMutation, type RuntimeClient, type ChatSessionAction, type SessionCatalogRow, type SessionRow, type StoppedBy, type SubagentSessionAction, type WorkflowDefinitionDrift, type WorkflowSessionAction } from "../app-service-types.js"

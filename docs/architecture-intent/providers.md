@@ -166,7 +166,7 @@ Each model request owns the selection that PI-MODEL-021 fixes for it: it capture
 
 ## ARCH-PROVIDERS-025: The runtime owns each session's serving model seat
 
-Each session's roles reading carries its assignments and a runtime-owned serving seat, resolved with the runner's rules, that states the selection for its next request. The reading is transient and adds no durable model-binding record. A model-assignment save answers by reading the saved seat again through the roles reading's capture, and says when the saved model does not serve and which selection serves, if any. The runtime records the serving-selection notices of PI-MODEL-016 as display-only system entries in the session's conversation.
+Each session's roles reading carries its assignments and a runtime-owned serving seat, resolved with the runner's rules, that states the selection for its next request. The reading is transient and adds no durable model-binding record. A model-assignment save answers by reading the saved seat again through the roles reading's capture, and says when the saved model does not serve and which selection serves, if any. The runtime records the serving-selection notices of PI-MODEL-056 as display-only system entries in the session's conversation.
 Not: A client that computes the serving model from role inheritance.
 
 ## ARCH-PROVIDERS-026: Request identity is separate from prompt-cache keys

@@ -646,7 +646,7 @@ describe("the engine text that Flywheel records for a hosted agent", () => {
         expect({ model, wrapper: lastUserTexts(sent).at(-1) }).toEqual({ model, wrapper: DISPATCH_TEXT });
         // Each reminder that history records reaches the model, in the user blocks or the system message of the model's
         // layout. The engine words each reminder itself from the facts of the agent file, so the wire is read by its facts.
-        // The environment states the shell that the engine names, which on Windows with Git Bash is bash (PI-MODEL-027).
+        // The environment states the shell that the engine names, which on Windows with Git Bash is bash (PI-MODEL-081).
         const shell = engineShell({ platform: process.platform, hostEnvironment: process.env });
         const texts = wireMessages(sent).flatMap((message) => typeof message.content === "string" ? [message.content] : message.content.flatMap((block) => block.text === undefined ? [] : [block.text]));
         const reminders = agent.history.flatMap((message) => {

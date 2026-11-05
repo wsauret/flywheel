@@ -31,7 +31,7 @@ export interface SessionControlsHook {
 }
 
 /** One Interrupt, one Resume, and one Stop for every session kind
- *  (PI-INTERACTION-043, PI-INTERACTION-044, PI-AGENT-020): the row's kind
+ *  (PI-INTERACTION-043, PI-INTERACTION-103, PI-INTERACTION-044, PI-INTERACTION-115, PI-AGENT-020, PI-AGENT-072): the row's kind
  *  picks the mutation, and the runtime's refusal is shown in its own words. */
 export function useSessionControls(deps: SessionControlsDeps): SessionControlsHook {
   const offered = () => offeredSessionControls(deps.row(), isInterruptible(deps.status()))

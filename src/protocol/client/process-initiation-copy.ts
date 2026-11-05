@@ -1,5 +1,5 @@
 /** The notice every surface of Process initiation shows on a Linux machine
- *  where lingering is off for the account (PI-REMOTE-011): the terminal and
+ *  where lingering is off for the account (PI-REMOTE-030): the terminal and
  *  web Remote views, the phone, `flywheel remote status`, and `flywheel serve
  *  install`. `user` is the account's name as logind states it. Registering
  *  the service turns lingering on itself where logind allows it, so the

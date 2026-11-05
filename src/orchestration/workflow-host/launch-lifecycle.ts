@@ -232,7 +232,7 @@ export function createWorkflowLaunchLifecycle(deps: WorkflowControllerDeps): Wor
     if (!stopped) return
     await answerStop(id, stoppedBy)
     // An interrupted child has no live run to report its end, so each wait
-    // on it learns of the Stop here (PI-INTERACTION-050).
+    // on it learns of the Stop here (PI-INTERACTION-136).
     void observeSessionChanged(projectionReader, id).catch((error: unknown) => {
       log.warn("workflow stop could not end the waits on the child", { sessionId: id, error: errorMessage(error) })
     })

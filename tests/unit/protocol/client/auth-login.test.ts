@@ -106,7 +106,7 @@ describe("loginSettlement", () => {
     expect(loginSettlement(undefined, "op-1")).toBe(undefined)
   })
 
-  test("the runtime's question after sign-in becomes a step of its own operation that still waits for the end (PI-MODEL-038)", () => {
+  test("the runtime's question after sign-in becomes a step of its own operation that still waits for the end (PI-MODEL-069)", () => {
     const target = { providerId: "copilot", displayName: "GitHub Copilot" }
     const confirmation = { kind: "confirmation" as const, operationId: "op-1", providerId: "copilot", message: "Replace?" }
     const step = loginConfirmation({ ...auth, confirmation }, target, "op-1")

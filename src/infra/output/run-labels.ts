@@ -3,7 +3,7 @@ import type { PausedBy } from "../output-blocks.js"
 /** The words every surface uses for how a turn or a child's run ended or
  *  continued. They live with the output blocks whose states they name, so the
  *  projections that write a row's text and the clients that label a card read
- *  the same words (PI-AGENT-020, PI-INTERACTION-043, PI-INTERACTION-044). */
+ *  the same words (PI-AGENT-020, PI-INTERACTION-101, PI-INTERACTION-044, PI-INTERACTION-140). */
 
 /** An interrupted turn or run: who interrupted it is the one fact a person needs. */
 export function interruptedLabel(by: PausedBy): string {

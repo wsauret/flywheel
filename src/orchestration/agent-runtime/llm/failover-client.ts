@@ -301,7 +301,7 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
     const preferred = deps.preferredAccount?.();
     const resetFor = deps.requestAdmission?.expiringResetFor;
     // Runs of one provider's accounts in one spend mode keep their order, so
-    // class and rank still decide first (PI-MODEL-001). Inside a run, included
+    // class and rank still decide first (PI-MODEL-058). Inside a run, included
     // use spends the account whose quota expires soonest first, and the tree's
     // login, which pins an account and never a spend mode, breaks ties.
     const runs: AccessProviderCandidateAttribution[][] = [];

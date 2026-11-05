@@ -13,7 +13,7 @@ import type { SessionNotice } from "../../infra/session-notice.js"
  *  needs. */
 export interface SessionActionEvidence {
   /** The notice of a capacity wait the session owes and no run of it shows
-   *  live, derived from its durable row, from the detail read (PI-MODEL-039). */
+   *  live, derived from its durable row, from the detail read (PI-MODEL-063). */
   readonly capacityNotice?: SessionNotice
   readonly memberActive?: boolean
   readonly workflowMessage?: boolean

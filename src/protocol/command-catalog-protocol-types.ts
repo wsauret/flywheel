@@ -22,7 +22,7 @@ type BuiltInCommandId = string
  *  - `attach-files`: this computer's file chooser, which attaches to the prompt.
  *  - `find`: Find in transcripts; the argument is the query.
  *  - `close-chat`: Close chat on the chat in front, which ends its work now
- *    (PI-INTERACTION-082); refused in an agent's view. */
+ *    (PI-INTERACTION-082, PI-INTERACTION-119); refused in an agent's view. */
 export type KernelSurface =
   | "background" | "models" | "settings" | "auth-profiles" | "status" | "keyboard-shortcuts" | "commands"
   | "new-chat" | "sessions" | "changes" | "resume" | "attach-files" | "find" | "close-chat"

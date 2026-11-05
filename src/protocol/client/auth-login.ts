@@ -86,7 +86,7 @@ export function loginConfirmation(auth: RuntimeAuthView | undefined, provider: L
 }
 
 /** What every client says when the person keeps the free-plan account instead of the paid account that would replace
- *  it (PI-MODEL-038). It is an outcome the person chose, not a failure. */
+ *  it (PI-MODEL-069). It is an outcome the person chose, not a failure. */
 export function keptFreePlanMessage(displayName: string): string {
   return `${displayName} was not connected, and the free-plan account stays. Nothing was stored.`
 }

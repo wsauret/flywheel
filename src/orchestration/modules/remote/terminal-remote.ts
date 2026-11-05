@@ -117,7 +117,7 @@ export interface PickerView {
 
 /** The picker as lines: every paired machine with what it is doing, and
  *  under each machine that is awake its projects, numbered, open or asleep
- *  (PI-REMOTE-009), then, while the machine offers it, the project this
+ *  (PI-REMOTE-009, PI-REMOTE-021), then, while the machine offers it, the project this
  *  terminal is creating there and the choice of a new project from a
  *  repository. A machine that is offline or has not answered lists nothing
  *  to choose, and the machine placement, through which the machine creates
@@ -202,7 +202,7 @@ async function ask(client: RelayClient, request: TerminalRemoteRequest): Promise
 }
 
 /** Creates a project on a machine from the repository the person names
- *  (PI-REMOTE-009), printing what the machine is doing as the phone's row
+ *  (PI-REMOTE-021), printing what the machine is doing as the phone's row
  *  says it, and answers the project, chosen as starting, once the machine
  *  has opened it. The picker has no project on screen, so the new project is
  *  chosen over the one opened last. The person names only the repository:

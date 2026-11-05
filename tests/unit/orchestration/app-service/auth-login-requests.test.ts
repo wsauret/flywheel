@@ -134,7 +134,7 @@ describe("auth login requests", () => {
     login.dispose();
   });
 
-  test("a replace question after sign-in is a notice: an answer confirms it, and a cancel ends the flow before it stores (PI-MODEL-038)", async () => {
+  test("a replace question after sign-in is a notice: an answer confirms it, and a cancel ends the flow before it stores (PI-MODEL-069)", async () => {
     const replies: boolean[] = [];
     const flow: ProviderOAuthLogin = {
       flow: "device-code",
@@ -172,7 +172,7 @@ describe("auth login requests", () => {
     login.dispose();
   });
 
-  test("a sign-in that a rule refuses settles as a refusal whose message is complete (PI-MODEL-038)", async () => {
+  test("a sign-in that a rule refuses settles as a refusal whose message is complete (PI-MODEL-069)", async () => {
     const refused: ProviderOAuthLogin = {
       flow: "device-code",
       login: async (ports) => { ports.onUserCode?.({ url: "https://example.invalid/device" }); throw new LoginRefusedError("This GitHub Copilot account is on a free plan. Nothing was stored.") },

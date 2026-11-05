@@ -296,7 +296,7 @@ describe("auth cli", () => {
       expect(lines.join("\n")).toContain("Logged in via ChatGPT Subscription")
     })
 
-    it("login --chatgpt closes the code prompt before it asks the replace question, and a no keeps the free-plan account (PI-MODEL-038)", async () => {
+    it("login --chatgpt closes the code prompt before it asks the replace question, and a no keeps the free-plan account (PI-MODEL-069)", async () => {
       const seen: { pasteClosed?: boolean; flowCancelled?: boolean }[] = []
       const flow = async (options: Parameters<typeof mockLoginWithChatGPT>[0]) => {
         void options.onManualCodeInput?.().catch(() => {})

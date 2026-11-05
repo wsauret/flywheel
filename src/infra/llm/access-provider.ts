@@ -329,7 +329,7 @@ interface AccessProviderUsage {
   readonly allowanceCap?: (settings: ProviderSettingValues) => number | undefined;
   /** The metric of the window whose included quota expires at its reset,
    *  for a provider whose accounts reset it at different moments. Included
-   *  use spends the account that resets it soonest first (PI-MODEL-001). */
+   *  use spends the account that resets it soonest first (PI-MODEL-058). */
   readonly expiringWindow?: string;
   /** Whether the plan that a usage reading of an account names is a free plan. A free-plan account never rotates
    *  (PI-MODEL-038). Absent, every account of the provider counts as paid. */

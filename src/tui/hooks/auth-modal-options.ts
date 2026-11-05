@@ -61,7 +61,7 @@ export type AuthView =
   ))
   /** A question the provider's login flow asks before it starts. */
   | { kind: "login-prompt"; providerId: CredentialProviderId; label: string; prompt: RuntimeAuthLoginPrompt }
-  /** The runtime asks before a new paid account replaces the free-plan accounts of its provider (PI-MODEL-038). */
+  /** The runtime asks before a new paid account replaces the free-plan accounts of its provider (PI-MODEL-069). */
   | { kind: "login-confirmation"; providerId: CredentialProviderId; label: string; message: string; choice: "replace" | "keep"; submitting?: true }
   | { kind: "device-code"; providerId: CredentialProviderId; label: string; userCode?: string; url: string; question?: RuntimeAuthLoginQuestion }
   /** A browser login, with the field for the code or address that the provider's page shows; `submitted` once the

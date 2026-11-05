@@ -49,7 +49,7 @@ describe("buildSystemPrompt -- agent of a workflow", () => {
     expect(result).not.toContain("CHAT CHANGE REVIEW:");
   });
 
-  // Only a root chat asks the person (PI-AGENT-024): an agent reaches its
+  // Only a root chat asks the person (PI-AGENT-024, PI-AGENT-082): an agent reaches its
   // parent, and the block names no question tool and no blocked handoff.
   it("tells the agent it runs unattended and that its channel is message_session to its parent", () => {
     const result = build({ tools: [...TOOLS, spec("message_session")] });

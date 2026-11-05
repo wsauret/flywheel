@@ -97,7 +97,7 @@ export interface RuntimeAuthProfileView extends RuntimeAuthProfileDescriptor {
 
 /** The end of one long login. A client that started the login waits for it on
  *  the auth cursor. A `refused` failure is a rule that refused the account, such as the free-plan rule
- *  (PI-MODEL-038): its message states why and what the person can do, so a client adds no repair of its own. */
+ *  (PI-MODEL-069): its message states why and what the person can do, so a client adds no repair of its own. */
 export type AuthOperationSettlement =
   | { readonly kind: "completed"; readonly operationId: string; readonly providerId: string }
   | { readonly kind: "failed"; readonly operationId: string; readonly providerId: string; readonly message: string; readonly refused?: true }
@@ -112,7 +112,7 @@ interface AuthOperationProgress {
 }
 
 /** A question a long login asks after the person signed in and before it stores the account: a paid account that
- *  replaces the free-plan accounts of its provider (PI-MODEL-038). `auth.login.answer` with any answer confirms, and
+ *  replaces the free-plan accounts of its provider (PI-MODEL-069). `auth.login.answer` with any answer confirms, and
  *  `auth.login.cancel` declines, which stores nothing. */
 export interface AuthOperationConfirmation {
   readonly kind: "confirmation"

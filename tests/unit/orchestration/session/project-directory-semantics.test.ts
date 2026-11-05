@@ -195,7 +195,7 @@ describe("a restart from the repository root", () => {
         expect(await requireSessionExecutionCwd(manager, sessionId, restart.projectRoot)).toBe(repo.pkg)
 
         // History reads the same before and after its directory is removed
-        // (PI-INTERACTION-005): nothing re-reads it against the project root.
+        // (PI-INTERACTION-147): nothing re-reads it against the project root.
         for (const removed of [false, true]) {
           if (removed) rmSync(repo.pkg, { recursive: true, force: true })
           const projection = historyProjection(reopened, restart.projectRoot, manager)

@@ -113,7 +113,7 @@ export function createSessionCreator(deps: SessionCreatorDeps): SessionCreator {
   /** Opens a chat, with its first message when there is one: a message sent
    *  while no chat tab is open. That message rides `chat.open` itself, so it
    *  is not sent again by itself when the connection ends first, as a
-   *  waiting message is (PI-INTERACTION-024): a second `chat.open` would
+   *  waiting message is (PI-INTERACTION-024, PI-INTERACTION-124): a second `chat.open` would
    *  start a second chat. It fails, and the person recalls it for editing.
    *  The runtime may have opened the chat and taken the message before the
    *  answer was lost, so a resubmission can leave that chat beside a new

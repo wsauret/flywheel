@@ -228,7 +228,7 @@ export function createChildExecution(options: {
   // background work, the keep-alive feeds the watchdog.
   const inFlightToolIds = new Set<string>();
   // A child that waits on a reply is not stalled, so the keep-alive holds
-  // while the wait is open. The end rules bound the wait (PI-INTERACTION-050):
+  // while the wait is open. The end rules bound the wait (PI-INTERACTION-136):
   // its addressee replies, yields, or can no longer read, and a park of the
   // addressee on this child's run alone is a yield.
   let stopReplyWaitKeepAlive: (() => void) | undefined;

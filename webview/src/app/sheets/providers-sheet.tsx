@@ -25,7 +25,7 @@ import { KERNEL_COMMAND_NAMES } from "../../../../src/protocol/command-names.js"
  *  runtime keeps the credentials and publishes the view; this sheet holds only
  *  the step of a login in progress. Consent boxes show the runtime's saved decisions. */
 
-/** Why an unanswered paid mode is highlighted: it is off, and only the person can turn it on (PI-MODEL-018). */
+/** Why an unanswered paid mode is highlighted: it is off, and only the person can turn it on (PI-MODEL-018, PI-MODEL-050). */
 const PAID_USE_PENDING_NOTE = "Off. Flywheel keeps paid use off until you tick this box."
 
 const REFUSALS = {

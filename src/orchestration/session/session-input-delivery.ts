@@ -118,7 +118,7 @@ export async function deliverSessionInput(
       return decide(after)
     }
     // The message is durable in the recipient now, so each wait of the
-    // recipient on its sender ends (PI-INTERACTION-050). Its cell goes
+    // recipient on its sender ends (PI-INTERACTION-136). Its cell goes
     // before the recipient can read the message.
     if (producer) await endReplyWaitsByMessage({ reader: deps.projectionReader, writer: deps.eventWriter }, producer.sessionId, recipientSessionId)
     const control = after === "live" ? liveSessionControl(deps.projectionReader, recipientSessionId) : undefined
@@ -488,7 +488,7 @@ async function endedSenderConversation(
  *  which keys their controls and reply waits by `reader`. Each returned
  *  notice reaches the live run of its sender; a sender with no live run here
  *  reads it at its next run. Then each wait on the ended recipient ends
- *  (PI-INTERACTION-050): a recipient that an interrupt paused or a
+ *  (PI-INTERACTION-136, PI-INTERACTION-137): a recipient that an interrupt paused or a
  *  delete removed has no live run to report its end, so its waits learn of
  *  it only here. */
 export async function wakeAfterSettlement(reader: AsyncEventStateReadSurface, recipientSessionId: string, returned: readonly ReturnedNotice[]): Promise<void> {

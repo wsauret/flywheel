@@ -255,7 +255,7 @@ describe("the turn end a branch tail reads", () => {
       expect(waitsForPerson(chatTurnEndOf([user(), call("process", { action: "wait" }, "process.luna"), result(), end()]))).toBe(false)
     }
     // A person's interrupt of the same wait, or Close chat's, waits for the
-    // person, also once the killed work's notice lands (PI-INTERACTION-043).
+    // person, also once the killed work's notice lands (PI-INTERACTION-102).
     const closedCut = () => message("user", { id: turnEndEntryId(interruptedTurnEnd("close"), `c${seq}`), origin: "system" })
     for (const end of [paused, closedCut]) {
       expect(waitsForPerson(chatTurnEndOf([user(), waitCall(), result(), end()]))).toBe(true)
@@ -280,7 +280,7 @@ describe("the turn end a branch tail reads", () => {
     expect(chatTurnEndOf(midTurn)).toEqual(unanswered)
     expect(endsAtTurnEnd(midTurn)).toBe(false)
     expect(chatTurnEndOf([message("assistant"), user(), settled()])).toEqual(unanswered)
-    // An interrupt older than it stays resumable (PI-INTERACTION-043).
+    // An interrupt older than it stays resumable (PI-INTERACTION-103).
     expect(chatTurnEndOf([user(), paused(), settled()])).toEqual({ end: { reason: "paused", pausedBy: "person" }, recorded: true })
     expect(chatTurnEndOf([user(), paused(), message("user", { origin: "system" }), settled()])).toEqual({ end: { reason: "paused", pausedBy: "person" }, recorded: true })
     expect(endsAtTurnEnd([user(), paused(), settled(), notice()])).toBe(true)

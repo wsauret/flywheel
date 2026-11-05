@@ -5,7 +5,7 @@ import { attachDeviceChannel, type DeviceIdentity } from "./relay-channel.js"
 import { decodeJsonFrame, fromBase64Url, type Placement } from "./relay-protocol.js"
 import { sealedSocket } from "./sealed-socket.js"
 
-/** Creating a project on a paired machine from a repository (PI-REMOTE-009).
+/** Creating a project on a paired machine from a repository (PI-REMOTE-021).
  *
  *  A machine's account service announces one placement of its own beside its
  *  projects: the machine placement, whose id is the machine's runtime id. A

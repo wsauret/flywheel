@@ -499,7 +499,7 @@ test("the shared Authentication sheet asks a flow's pre-flight question and cont
   }
 })
 
-test("the shared Authentication sheet asks before a paid account replaces the free-plan account: Replace confirms, Keep free account stores nothing (PI-MODEL-038)", async () => {
+test("the shared Authentication sheet asks before a paid account replaces the free-plan account: Replace confirms, Keep free account stores nothing (PI-MODEL-069)", async () => {
   const question = "This will replace your attached free subscription because we only allow multiple copies of paid subscriptions."
   const replacing = mountProviderBrowserLogin()
   try {
@@ -528,7 +528,7 @@ test("the shared Authentication sheet asks before a paid account replaces the fr
   }
 })
 
-test("the shared Authentication sheet shows a free-plan refusal as the runtime states it, with no Log in again (PI-MODEL-038)", async () => {
+test("the shared Authentication sheet shows a free-plan refusal as the runtime states it, with no Log in again (PI-MODEL-069)", async () => {
   const mounted = mountProviderBrowserLogin()
   try {
     await mounted.ready()

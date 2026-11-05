@@ -103,7 +103,7 @@ const AgentInputCancelledSchema = defineFact({
 /** History only: an earlier build wrote this when a planned replacement cut
  *  a turn that waited on a question. The question closed without an answer
  *  from anyone; the ask still reads as an interrupted tool call, so a turn
- *  resumed over it asks again. No current writer produces it (PI-REMOTE-012). */
+ *  resumed over it asks again. No current writer produces it (PI-REMOTE-020). */
 const AgentInputWithdrawnV1Schema = defineFact({
   type: "agent_input.withdrawn",
   version: 1,

@@ -7,7 +7,7 @@ import { toolResult } from "./_replacement-provider.js"
 
 /** POC 8, first half: one account service, two projects, and one replacement
  *  that waits for no shell command, refuses nothing, and shows nothing
- *  (PI-REMOTE-012). The busy project's command crosses to the next build,
+ *  (PI-REMOTE-012, PI-REMOTE-019, PI-REMOTE-020). The busy project's command crosses to the next build,
  *  which serves every project at once. Which sessions delay a replacement is
  *  proven by the replacement-blockers unit tests, and what the replacement
  *  does to each owner kind by replacement-continuation.test.ts. */
@@ -67,7 +67,7 @@ describe("a replacement across two projects while a command runs", () => {
       // The successor adopts project B's command, which keeps running under
       // the new build. Project A's question is the person's, so nothing
       // continues it: the successor shows it unanswered, and the answer
-      // continues the turn (PI-REMOTE-012).
+      // continues the turn (PI-REMOTE-019, PI-REMOTE-020).
       await until("project B command adopted", async () => handoverSessions(projectB), (sessions) => sessions.length === 0)
       expect(provider.commandPid("shell-1")).toBe(shellPid)
       const status = await until("the adopted command shown", () => sessionStatus(second.client, shell), (view) => (view?.activeBackgroundCommands.length ?? 0) > 0)

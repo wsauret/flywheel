@@ -8,7 +8,11 @@ A user opens a project's sessions in their own browser with one command on the m
 
 ## PI-LOCAL-002: The page is reachable only from that machine, through the project's own link
 
-The runtime listens for the browser on the loopback address alone. A project has one link, the same on every start, and only a page opened through that link can connect; a page from any other site or origin cannot. A browser that opened the link once reaches the project again from a bookmark, a new tab, a reload, or a tab left open across a runtime restart, without running the command again. A page that has no way in, because its browser never opened the link or the link no longer opens the project, says so and names the command that opens the project with a fresh link. Opening the link of a known project that is asleep starts the project, and the page says it is starting until the project serves. A project that failed to open shows the cause and a link to the project list, and does not start again. Two known projects never share a link.
+The runtime listens for the browser on the loopback address alone. Each known project has its own link, the same on every start and never shared with another project, and only a page opened through that link can connect. A browser that opened the link once reaches the project again from a bookmark, a new tab, a reload, or a tab left open across a runtime restart, without the command. Opening the link of a known project that is asleep starts it, and the page says it is starting until the project serves.
+
+## PI-LOCAL-006: A project page that cannot reach its project says why
+
+A page whose browser never opened the project's link, or whose link no longer opens the project, says so and names the command that opens the project with a fresh link. A project that failed to open shows the cause and a link to the project list, and does not start again.
 
 ## PI-LOCAL-003: The browser tab names the session and shows its state
 
@@ -20,4 +24,12 @@ In the browser, the address names the session in view, so a reload, a bookmark, 
 
 ## PI-LOCAL-005: One fixed local address reaches every open project
 
-A machine has one fixed local address that lists every known project as open or asleep, opens an open project, and starts an asleep project before opening it. The list tells a starting project from a closing one. When an open project's browser page cannot start, the list shows the cause and a Retry control, and the project stays usable from the terminal and editor. While an asleep project starts, the page keeps Flywheel's visual theme and shows the animated Flywheel tile with the project name. With exactly one known project, the address opens or starts it directly. When that project failed to start, the address retries it once, and when the retry fails too, the address shows the list with the cause and a Retry control. With no known project, the address says how to open one. The list removes an asleep or failed project on request, so no surface offers it again until the machine opens it. The list page shows Flywheel's tile as its icon, so a bookmark of it carries the same icon as a project page.
+A machine has one fixed local address that lists every known project and tells open, asleep, starting, and closing projects apart. The address opens an open project and starts an asleep project before opening it. With exactly one known project, the address opens or starts it directly, and retries it once when it failed to start. With no known project, the address says how to open one.
+
+## PI-LOCAL-007: The project list offers Retry and Remove for projects that do not open
+
+When an open project's browser page cannot start, the list shows the cause and a Retry control, and the project stays usable from the terminal and editor. When the automatic retry of the only known project fails too, the address shows the list with that cause and a Retry control. The list removes an asleep or failed project on request, so no surface offers it again until the machine opens it.
+
+## PI-LOCAL-008: The local address looks like Flywheel
+
+While an asleep project starts, the page keeps Flywheel's visual theme and shows the animated Flywheel tile with the project name. The list page shows Flywheel's tile as its icon, so its bookmark carries the same icon as a project page.

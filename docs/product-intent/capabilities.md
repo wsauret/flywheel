@@ -4,19 +4,43 @@ This document states the current intended experience for Flywheel's optional cap
 
 ## PI-CAP-001: Capabilities are modular and uniform
 
-Every optional capability is one module a user can turn off. A module contributes the same commands, views, and notices to every client, and turning it off removes all of them everywhere: its tools leave the agent, its commands leave every command list, the palette, and completion, its command-line verbs leave the `flywheel` command, and its views and notices leave every screen, but its saved data and history stay. Recorded work stays viewable, stoppable, and deletable: while Workflows is off, past runs and their cards remain, and only new launches are gone. Turning a module off keeps its settings unchanged, and they have no effect until the module is on again. Turning a module on or off applies at once in every client, without a restart, even for a module that was off at startup. Work that already started when a module turns off finishes; only new work sees the change. Every refusal or omission that an off module causes, to a person in any client, at the command line, or to an agent, names the module and says to turn it on in Settings or remove it from `disabled_modules` in `flywheel.toml`. Flywheel's own tooling is the `development` module: in a source run it is one module like any other, and released builds do not contain it. A module that builds on another, such as Workflows on Skills, is off while that module is off, and Settings says which module to turn on first. Turning that module on again restores the person's choice. Workflows has one Off, Ask, or On setting. Off removes workflow launch. Ask lets a chat write and launch workflows with the person's approval for each launch. Ask needs Ask User on, because each launch asks the person; On does not. On also tells the root chat to orchestrate substantive work.
+Every optional capability is one module that a user can turn off, and a module adds the same tools, commands, command-line verbs, views, and notices to every client. Turning a module off removes its contributions everywhere but keeps its saved data, viewable history, and settings, which have no effect until the module is on again. Turning a module on or off applies at once in every client without a restart, and work that already started finishes and can still be stopped or deleted. Every refusal or omission that an off module causes names the module and says to turn it on in Settings or remove it from `disabled_modules` in `flywheel.toml`.
+
+## PI-CAP-017: Flywheel's own tooling is the development module
+
+Flywheel's own tooling is the `development` module. In a source run it is one module like any other, and released builds do not contain it.
+
+## PI-CAP-018: A module that builds on another is off while that module is off
+
+A module that builds on another, such as Workflows on Skills, is off while that module is off, and Settings says which module to turn on first. Turning that module on again restores the person's choice.
+
+## PI-CAP-019: Workflows has one Off, Ask, or On setting
+
+Workflows has one setting with the values Off, Ask, and On. Ask needs Ask User on, but On does not.
 
 ## PI-CAP-002: Modules stay on unless the person turns them off
 
-Every module is enabled by default, and each one turns on and off with no confirmation. `flywheel.toml` records only the modules that the person turned off, in `disabled_modules`, so a module that a newer release adds is on, even when the person saved a module selection before. An invalid module selection is not an opt-out: it follows the configuration-file rules of PI-INTERACTION-076, so Flywheel keeps the last valid selection, or the default selection when no selection was ever valid.
+Every module is enabled by default, and each one turns on and off with no confirmation, except that a bulk change that turns off every module asks first. `flywheel.toml` records only the modules that the person turned off, in `disabled_modules`, so a module that a newer release adds is on, even when the person saved a module selection before. An invalid module selection is not an opt-out: it follows the configuration-file rules of PI-INTERACTION-076, so Flywheel keeps the last valid selection, or the default selection when no selection was ever valid.
 
-## PI-CAP-003: MCP connections have explicit scope and account identity
+## PI-CAP-003: An HTTP MCP server can use Claude as its client
 
-Users can manage global MCP servers and project-specific definitions and enabled-state overrides on every client. Project-specific choices are private to the user's account. Distinct server names can use separate accounts at the same endpoint; the same name and URL share a sign-in across projects. Removal identifies its scope. A project definition replaces a global definition of the same name; an enabled-state override keeps the global connection details. Removing a global server also removes the project overrides that depend on it but keeps full project definitions, and removing a project definition can reveal the global definition. Removal keeps the server's sign-in. Removing or disabling a connection clears that connection's attention warning. A server that failed to connect can be reconnected from every client without a change to its configuration or to the other servers.
+Flywheel is the MCP client of a server by default, but an HTTP server can use Claude as its client instead. Flywheel chooses Claude for known servers that accept only approved apps that include Claude, and a person's choice for any HTTP server wins. Such a server connects through the Claude engine that ships with Flywheel, needs no Claude sign-in, and gives its tools to every provider. Its row and its sign-in action say that it connects through Claude and why.
+
+## PI-CAP-014: MCP connections have explicit scope and account identity
+
+Users can manage global MCP servers and project-specific definitions and enabled-state overrides on every client. Project-specific choices are private to the user's account. Distinct server names can use separate accounts at the same endpoint, and the same name and URL share one sign-in across projects. Removing a server keeps its sign-in.
+
+## PI-CAP-015: A project MCP definition takes precedence over the global one
+
+A project definition replaces a global definition of the same name, and an enabled-state override keeps the global connection details. Removal names its scope. Removing a global server also removes its project overrides but keeps full project definitions. Removing a project definition can reveal the global definition.
+
+## PI-CAP-016: A failed MCP connection can be repaired from every client
+
+A server that failed to connect can be reconnected from every client without a change to its configuration or to other servers. Removing or disabling a connection clears its attention warning. When Flywheel's own sign-in fails because the server allows no client registration, the error names the choice of Claude as the client.
 
 ## PI-CAP-004: Headless runs reach the same MCP servers
 
-A headless chat, the agents of the workflows it launches, and its subagents can use the project's enabled MCP servers, as an interactive session can. A direct headless task has the same access. Each run waits for the servers to connect before its first request, but never longer than the connection deadline. A server that needs a sign-in or fails to connect does not stop the run: the run names that server on standard error with the command that repairs it. The servers the run starts stop when the run ends.
+A headless chat, the agents of its workflows, its subagents, and a direct headless task can use the project's enabled MCP servers, as an interactive session can. Each run waits for the servers to connect before its first request, but never longer than the connection deadline. A server that needs a sign-in or fails to connect does not stop the run, which names that server on standard error with the command that repairs it. The servers the run starts stop when the run ends.
 
 ## PI-CAP-005: Full and Minimal presets set every module at once
 

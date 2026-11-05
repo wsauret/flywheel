@@ -379,7 +379,7 @@ export type FrontendMutation =
   | { type: "background.terminate"; sessionId: string; toolUseId: string }
   /** Cuts the running turn and any running tool call, keeps what it
    *  committed, and records the turn end as interrupted by a person;
-   *  `chat.resume` continues it (PI-INTERACTION-043). */
+   *  `chat.resume` continues it (PI-INTERACTION-043, PI-INTERACTION-103). */
   | { type: "chat.interrupt"; sessionId: string }
   /** Continues an interrupted or unexpectedly exited turn from its committed
    *  context with no new message. */
@@ -641,7 +641,7 @@ export interface WorkflowDefinitionChange {
 }
 /** Why a workflow cannot continue: its last Resume found that the definition
  *  changed after the workflow started, and its control has not moved since
- *  (ARCH-WORKFLOWS-014, PI-INTERACTION-044). */
+ *  (ARCH-WORKFLOWS-014, PI-AGENT-015). */
 export interface WorkflowDefinitionDrift {
   readonly workflowDefinitionId: string
   readonly changes: readonly WorkflowDefinitionChange[]

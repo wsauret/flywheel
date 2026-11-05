@@ -62,7 +62,7 @@ export type TurnEnd =
  *  `close` is the runtime's cut when a person closes the chat: it is saved
  *  as the runtime's interrupt, marked closed, and waits for the person even
  *  when the turn waited on background work, because the close ended that
- *  work (PI-INTERACTION-082). */
+ *  work (PI-INTERACTION-119). */
 export type TurnInterruption = PausedBy | "replacement" | "close"
 
 /** How the runtime ends a running turn when it stops: `runtime` for an
@@ -73,7 +73,7 @@ export type TurnInterruption = PausedBy | "replacement" | "close"
 export type RuntimeInterruption = Exclude<TurnInterruption, "person" | "agent">
 
 /** Who can end a workflow's run. Close chat ends only its chat's own work,
- *  and workflows keep running (PI-INTERACTION-082). */
+ *  and workflows keep running (PI-INTERACTION-119). */
 export type WorkflowInterruption = Exclude<TurnInterruption, "close">
 
 /** Who can make the one Interrupt of a control: a person, or a child's
@@ -253,7 +253,7 @@ export interface ChatTurnEnd {
  *  or the continuation a Resume records; or a message from another session)
  *  after an interrupt or an unexpected
  *  exit does not hide that record: the session folds such input into its
- *  history and still waits for the person (PI-INTERACTION-043). After any
+ *  history and still waits for the person (PI-INTERACTION-102). After any
  *  other end it is an unanswered message, the crash shape, which an idle
  *  tail that a notification follows also reads as.
  *
@@ -730,7 +730,7 @@ export function carriedTurnEndRecord(branch: readonly TurnEndEntry[]): CarriedTu
  *  did not cut (`parentMayContinue`).
  *  Nothing produced starts a turn then, so a background completion is folded
  *  into the history and lands on Resume or the next message
- *  (PI-INTERACTION-043). A turn that the runtime or an unexpected exit cut
+ *  (PI-INTERACTION-102). A turn that the runtime or an unexpected exit cut
  *  while it waited on background work (`backgroundWait`) does not wait for
  *  the person: it still waits on that work, so a completion wakes it, as it
  *  wakes a turn that no restart cut. Close chat's cut is not such a cut: the

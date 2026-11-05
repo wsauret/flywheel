@@ -490,7 +490,7 @@ function completionHead(input: WorkflowCompletionInput, review: string): string 
  *  settles: the terminal verdict, each agent that failed and why, whether a
  *  Resume runs those agents again, the coverage that each survey's join
  *  reports, each bound or stuck loop stop, and each agent's result in graph order, as a subagent's
- *  completion carries its handoff (ARCH-WORKFLOWS-035, PI-AGENT-029). Each result carries the checks
+ *  completion carries its handoff (ARCH-WORKFLOWS-035, PI-AGENT-117, PI-AGENT-103). Each result carries the checks
  *  that its agent recorded, so the parent sees what the run already checked
  *  and decides what it verifies itself. Incomplete coverage and loop stops
  *  do not change the workflow's terminal status. The notification's words

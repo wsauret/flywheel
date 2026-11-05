@@ -27,7 +27,7 @@ describe("a restored background wait", () => {
   const temporary = temporaryDirectories()
   // Close chat's row: the cut came while the turn waited on a background
   // command, and the close killed that command, whose notice lands before
-  // the reopen's hold (PI-INTERACTION-082). It waits for the person.
+  // the reopen's hold (PI-INTERACTION-119). It waits for the person.
   it.each([
     { label: "a completion", end: interruptedTurnEnd("replacement"), message: "The build completed while the runtime was down.", requests: 1 },
     { label: "a Resume that already began", end: interruptedTurnEnd("replacement"), message: CONTINUATION_MESSAGES.resumed, requests: 0 },

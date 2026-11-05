@@ -62,12 +62,12 @@ type UnavailableState = (typeof UNAVAILABLE_STATES)[number]
 type WaitRelation = "parent" | "child" | "other"
 
 /** How `state` ends a wait on an addressee in `relation` to the waiter, or
- *  nothing while the addressee can still answer it (PI-INTERACTION-050).
+ *  nothing while the addressee can still answer it (PI-INTERACTION-136).
  *  The wait ends with a notice when nothing runs the addressee
  *  (`at_rest`) or it ended or is gone. It ends with no notice when the
  *  addressee is the waiter's own child and its parent or the runtime
  *  interrupted it. A crash that Resume continues reads the same way
- *  (PI-INTERACTION-050). The parent's own call
+ *  (PI-INTERACTION-137). The parent's own call
  *  says what it did, the parent's background work announces the runtime's
  *  interrupt, and a child that a person interrupted stays that background
  *  work, so its reply wait pauses until Resume (PI-AGENT-025), as an

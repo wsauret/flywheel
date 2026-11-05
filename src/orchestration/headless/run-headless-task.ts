@@ -290,7 +290,7 @@ export async function runHeadlessTask(task: string, options: RunHeadlessTaskOpti
 
           const runnerHost = createAgentHost({ createRunner: wfDeps.createAgent })
           // A capacity wait lives and ends with this process, within the
-          // task's own deadline, so it records no durable authority (PI-MODEL-039).
+          // task's own deadline, so it records no durable authority (PI-MODEL-063).
           const recovery = createUnattendedRecovery({
             sessionId: activeSessionId,
             runId: conversationId,

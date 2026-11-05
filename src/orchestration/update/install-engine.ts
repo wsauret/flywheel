@@ -196,7 +196,7 @@ export async function installBuild(request: InstallRequest): Promise<InstallOutc
     // holds the account lease, and names no requester. Its conversion is the
     // one installation whose lease another process holds, and it is an
     // update, so it creates no registration a person turned off
-    // (PI-REMOTE-009). The process table proves the flat build started it.
+    // (PI-REMOTE-024). The process table proves the flat build started it.
     // Remove after 2026-12-28 with the flat conversion.
     const flatConversion = launcher.platform === "win32"
       && (launcher.ownership.kind === "flat"
@@ -230,7 +230,7 @@ export async function installBuild(request: InstallRequest): Promise<InstallOutc
     const wrapperPath = path.join(request.wrapperDir, launcherName(request.platform));
     // An update states itself, so the service boundary refreshes a
     // registration that exists and creates none: a person's Process
-    // initiation Off holds through every update (PI-REMOTE-009). An
+    // initiation Off holds through every update (PI-REMOTE-024). An
     // installation nobody coordinates is one a person asked for, and it
     // creates a missing registration.
     const update = request.activation !== undefined || underFlatUpdater;

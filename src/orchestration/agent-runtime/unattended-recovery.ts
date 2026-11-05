@@ -334,7 +334,7 @@ export function createUnattendedRecovery(deps: UnattendedRecoveryDeps): Unattend
 }
 
 /** `deliver` that also ends the recovery's capacity wait when it accepts a
- *  person's message, so the turn starts at once with it (PI-MODEL-039). A
+ *  person's message, so the turn starts at once with it (PI-MODEL-063). A
  *  message of another session leaves the wait as it is. */
 export function endingCapacityWaitOnPersonMessage<M extends { readonly producer?: { readonly kind: string } }, D>(
   recovery: Pick<UnattendedRecovery, "continueNow">,

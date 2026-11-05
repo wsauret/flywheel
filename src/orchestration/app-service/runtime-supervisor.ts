@@ -379,7 +379,7 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
   function warmChatRunner(): Promise<void> {
     return deps.runnerCapabilities().then(({ runnerLoader }) => runnerLoader.warm(), () => {})
   }
-  /** A planned replacement's cut of everything running (PI-REMOTE-012):
+  /** A planned replacement's cut of everything running (PI-REMOTE-012, PI-REMOTE-019, PI-REMOTE-020):
    *  every child an owner here runs, every chat turn including one parked on
    *  a question, and every agent of a workflow, each by its step below. A session
    *  a person interrupted is idle and gets no row. A running shell command

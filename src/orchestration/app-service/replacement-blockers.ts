@@ -26,10 +26,10 @@ import type { ReplacementState } from "./replacement-owner.js"
  *  `recovery` delay a replacement, because the cut cannot carry them across:
  *  a replacement interrupts turns, questions, children, and workflows, and
  *  the successor resumes them, and it hands every running shell command to
- *  the successor, which adopts it (PI-REMOTE-012). */
+ *  the successor, which adopts it (PI-REMOTE-012, PI-REMOTE-019, PI-REMOTE-020). */
 const ReplacementBlockerReasonSchema = Schema.Literals(["shell", "turn", "question", "subagent", "workflow", "call", "opening", "recovery"])
 
-/** One unit of live work in one project (PI-REMOTE-012). The account service
+/** One unit of live work in one project (PI-REMOTE-012, PI-REMOTE-019, PI-REMOTE-020). The account service
  *  collects every blocker across every open project from its project
  *  executors, over the executor lifecycle frames: the idle reaper keeps a
  *  project open while any remains, and a replacement waits on those whose
@@ -102,7 +102,7 @@ export interface ExecutorBlockerDeps {
   readonly storeHealth: { readonly failed: (error: unknown) => void; readonly recovered: () => void }
 }
 
-/** What this executor owns that is live (PI-REMOTE-012). Ownership, not
+/** What this executor owns that is live (PI-REMOTE-012, PI-REMOTE-020). Ownership, not
  *  records, decides: a child whose run an owner in this process holds, a
  *  runner whose activity is streaming, a turn parked on a question, a running
  *  shell command, the keeper's included, and an admitted call that has not
@@ -242,7 +242,7 @@ export interface ReplacementReport {
   blockers(): Promise<ReplacementBlocker[]>
   /** The account's replacement state, as its owner last published it. It
    *  starts or stops this executor's change watch and publishes nothing to
-   *  clients: a waiting replacement is invisible (PI-REMOTE-012). */
+   *  clients: a waiting replacement is invisible (PI-REMOTE-020). */
   set(state: ReplacementState): void
   /** The handoff of the account's cut, once this executor has heard it: from
    *  the `draining` state, or from the cut itself, which can reach this

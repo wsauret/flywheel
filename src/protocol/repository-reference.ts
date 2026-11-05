@@ -1,5 +1,5 @@
 /** A repository a person names for a machine to clone into a new project
- *  (PI-REMOTE-009): what a device checks before it asks, and what the account
+ *  (PI-REMOTE-021): what a device checks before it asks, and what the account
  *  service checks again before it runs git. Bun-free and DOM-free. */
 
 /** A repository a device named, as the machine clones it. */

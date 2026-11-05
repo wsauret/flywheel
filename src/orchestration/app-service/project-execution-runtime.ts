@@ -136,7 +136,7 @@ export interface RuntimeComposition {
    *  resources after the outer one moved on. */
   readonly shutdown: RuntimeShutdownRequest
   /** What this project owns that is live, each with the reason that says
-   *  whether it delays a replacement; empty means idle (PI-REMOTE-012). */
+   *  whether it delays a replacement; empty means idle (PI-REMOTE-020). */
   blockers(): Promise<ReplacementBlocker[]>
   /** The account's replacement state, as its owner last published it. It
    *  only decides whether this project watches its own blocker changes: no

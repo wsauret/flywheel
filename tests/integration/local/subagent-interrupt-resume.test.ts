@@ -121,7 +121,7 @@ function startProvider() {
         notificationRequests += 1
         delta = { content: "Parent finished." }
       } else if (requestHasTools(body) && text.includes("child_interrupted_notification")) {
-        // Only the runtime's interrupt reaches the parent as a notice (PI-INTERACTION-050); a person's interrupt must not.
+        // Only the runtime's interrupt reaches the parent as a notice (PI-AGENT-025); a person's interrupt must not.
         interruptNotices += 1
         delta = { content: "Parent left the interrupted child." }
       } else if (requestHasTools(body) && hasToolResult(body, DISPATCH_CALL_ID)) {
@@ -389,7 +389,7 @@ describe("subagent interrupt and resume", () => {
       const pausedCard = await until("parent card interrupted", () => parentCard(client, parent), (card) => card?.status === "paused")
       expect(pausedCard).toMatchObject({ status: "paused", pausedBy: "person" })
       // A person's interrupt does not change what the parent waits on: no
-      // notice reaches it, and no completion either (PI-INTERACTION-050).
+      // notice reaches it, and no completion either (PI-INTERACTION-137, PI-AGENT-025).
       expect(provider.interruptNotices()).toBe(0)
       expect(provider.notificationRequests()).toBe(0)
 

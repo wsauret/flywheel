@@ -114,7 +114,7 @@ function protocolView(capture: SubscriptionSpendConsentCapture, options: Subscri
   for (const row of capture.rows) {
     const accountCorrelationId = subscriptionSpendAccountCorrelationId(capture.profileId, row.envelope.providerId, row.envelope.instanceId);
     const state = usageAccounts.get(`${row.envelope.providerId}\0${row.envelope.instanceId}`);
-    // Any retained reading of this subject is shown, whatever its age: readings track spend and never gate it (PI-MODEL-018).
+    // Any retained reading of this subject is shown, whatever its age: readings track spend and never gate it (PI-MODEL-051).
     const snapshot = state !== undefined && "snapshot" in state && state.snapshot?.subjectDigest === row.envelope.subjectDigest ? state.snapshot : undefined;
     let account = accounts.get(accountCorrelationId);
     if (account === undefined) {

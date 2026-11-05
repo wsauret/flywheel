@@ -1,5 +1,5 @@
 /** How the root chat runs substantive work while Workflows is On:
- *  through workflows by default, with a file written for the task (PI-AGENT-031). The chat body's sizing rule says to start a workflow only on
+ *  through workflows by default, with a file written for the task (PI-AGENT-031, PI-AGENT-110). The chat body's sizing rule says to start a workflow only on
  *  a named trigger, so this section states that it comes first for that one
  *  choice. A subagent or an agent of a workflow does not get it, so a workflow
  *  never launches another workflow only because it was launched. In Ask mode every launch waits

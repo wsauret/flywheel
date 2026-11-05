@@ -206,7 +206,7 @@ export function createReplacementHandoffs(options: ReplacementHandoffsOptions): 
    *  has settled, so an attempt that repeats a continuation resumes nothing
    *  twice. A project the phone held awake under the previous build while
    *  that build handed its commands over is held awake the same way here
-   *  (PI-REMOTE-009). The release returns the project to its idle grace: a
+   *  (PI-REMOTE-023). The release returns the project to its idle grace: a
    *  surface that reattaches within it holds the project, and a project
    *  that nothing holds and no work keeps closes, as any idle project does
    *  (PI-REMOTE-013). */

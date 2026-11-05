@@ -43,7 +43,7 @@ interface ReplacementContinuationInput extends ChatHostAttach, Pick<ExecutorComm
  *  retires the row with no resume: no session resumes twice.
  *  A row whose session ended any other way, such as a turn a person
  *  interrupted after the cut, is retired and the session is left as it is
- *  (PI-REMOTE-012). A person's interrupt that arrives before the resume is
+ *  (PI-REMOTE-020). A person's interrupt that arrives before the resume is
  *  dispatched wins, and the session is not resumed. A refused resume is
  *  reported and never holds the others, and neither does a session whose
  *  continuation evidence cannot be read: it keeps its row, and the others

@@ -4,7 +4,7 @@ import type { Placement } from "./relay-protocol.js"
 
 /** The machine and project picker every relay-attached client draws: the
  *  shapes the relay client (`relay-client.ts`) publishes, and the states
- *  PI-REMOTE-009 and PI-REMOTE-010 name, derived from them. Pure and free of
+ *  PI-REMOTE-009, PI-REMOTE-021 and PI-REMOTE-010 name, derived from them. Pure and free of
  *  transport, so a client can draw the picker without loading the relay's
  *  socket code. */
 

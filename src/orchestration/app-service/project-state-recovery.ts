@@ -157,7 +157,7 @@ function createProjectRecovery(input: {
 
   /** `interruptedSessionIds` names the sessions a person was interrupting
    *  when the account ended the closed generation to stop them: the turn it
-   *  cut is the person's interrupt, not an unexpected exit (PI-INTERACTION-043). */
+   *  cut is the person's interrupt, not an unexpected exit (PI-INTERACTION-101). */
   async function claim(scope: ProjectRecoveryScope, interruptedSessionIds: readonly string[] = []): Promise<{ readonly owed: readonly OwedRecovery[]; readonly degraded: readonly Degraded[] }> {
     const interruptedByPerson = new Set(interruptedSessionIds)
     // Each candidate's owner kind is read on its own: listing every workflow

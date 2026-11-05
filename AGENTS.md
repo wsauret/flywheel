@@ -82,7 +82,7 @@ Reaching a skill: `action:"load"` returns one skill's instructions and names the
 - Keep workflow terminal state (`paused | completed | failed`) in committed `workflow:<sessionId>` control, never in session metadata or workflow-view state (ARCH-WORKFLOWS-006).
 - The session store owns the active runner pool and the runtime projection: output blocks, tokens, cost, and the derived `activity` axis. It has no persisted lifecycle state and no workflow-result authority (ARCH-SESSIONS-002).
 - The UI derives `sessionState()` from the protocol-fed session catalog and never reads `SessionManager` or the session store directly (ARCH-PROTOCOL-002).
-- Attach the runner of a session open in a client tab eagerly on open and again on every reattach; attaching never resumes a turn (ARCH-SESSIONS-038). A session no client shows stays paused, only an explicit user message restarts work, and completed workflows remain viewable history (PI-INTERACTION-042, PI-INTERACTION-043, PI-INTERACTION-022).
+- Attach the runner of a session open in a client tab eagerly on open and again on every reattach; attaching never resumes a turn (ARCH-SESSIONS-038). A session no client shows stays paused, only an explicit user message restarts work, and completed workflows remain viewable history (PI-INTERACTION-042, PI-INTERACTION-102, PI-INTERACTION-022).
 - Delete is an action, not a state. Add no `archived` or `trashed` states (ARCH-SESSIONS-003).
 - Never add status fields, shadow signals, or new state stores. Read lifecycle from the owning projection (ARCH-SUBSTRATE-001, ARCH-SESSIONS-003).
 

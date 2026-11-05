@@ -1,5 +1,5 @@
 /**
- * The background index of a session (PI-INTERACTION-037): its background commands and
+ * The background index of a session (PI-INTERACTION-037, PI-INTERACTION-093): its background commands and
  * every child it started, each child followed by the children that it
  * started. Each row is one call whose work continues in the background. A
  * workflow is one call, and interrupt and Stop act on the whole workflow,

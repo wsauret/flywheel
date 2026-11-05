@@ -330,7 +330,7 @@ export async function plannedContinuationWork(input: ContinuationEvidence, sessi
 /** Whether a successor will continue `sessionId`, or is continuing it now,
  *  or its agent waits for model capacity: until that continuation settles
  *  every surface shows the session working and offers its Interrupt, never
- *  its Resume, across an unexpected exit too (PI-REMOTE-012, PI-MODEL-039). */
+ *  its Resume, across an unexpected exit too (PI-REMOTE-012, PI-MODEL-039, PI-MODEL-063). */
 export async function awaitsPlannedContinuation(input: ContinuationEvidence, sessionId: string): Promise<boolean> {
   return await plannedContinuationWork(input, sessionId) !== undefined
     || (await capacityContinuations(input.projectionReader, [sessionId])).length > 0
@@ -406,7 +406,7 @@ interface InterruptLane {
  *  live or one that has ended, through the conversation's writer, and then
  *  retires the session's row for a whole-session interrupt, so no successor
  *  resumes it, and every surface shows it interrupted by the person, with
- *  its Resume (PI-REMOTE-012). While a step of the lane is in flight, the
+ *  its Resume (PI-REMOTE-012, PI-REMOTE-020). While a step of the lane is in flight, the
  *  interrupt takes its turn after it. After a step of the cut, the cut's own
  *  or the stop's, the interrupt finds the cut turn at rest and records the
  *  person's turn end over it: an ordinary interrupt during the cut would
@@ -538,7 +538,7 @@ async function interruptPastLane(input: SessionInterrupt): Promise<boolean> {
  *  executor resumes nothing. A session whose agent waits for model capacity
  *  is owed its continuation alike: the person's turn end is recorded at the
  *  tail of the agent's conversation, and the capacity row is retired, so no
- *  wake continues it (PI-MODEL-039). Answers whether it recorded one. */
+ *  wake continues it (PI-MODEL-063). Answers whether it recorded one. */
 export async function recordOwedPersonInterrupt(input: ContinuationEvidence & { readonly writer: AsyncEventWriter; readonly sessionId: string }): Promise<boolean> {
   const { writer, sessionId } = input
   const work = await plannedContinuationWork(input, sessionId)

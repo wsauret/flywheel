@@ -143,7 +143,7 @@ function renderAccountPage(projects: readonly AccountHubProject[], notice: HubNo
     body: `<h1>Flywheel projects</h1>${lead}${body}`,
     style: LIST_STYLE,
     ...projects.some((project) => project.state === "starting" || project.state === "closing") ? { refreshSeconds: 1 } : {},
-    // PI-LOCAL-005: the address starts the one known project when it sleeps,
+    // PI-LOCAL-005, PI-LOCAL-007: the address starts the one known project when it sleeps,
     // and retries it once when it failed to start. A retry that fails again
     // returns with the failed notice, which starts nothing.
     ...notice === undefined && projects.length === 1 && (projects[0]?.state === "asleep" || projects[0]?.state === "failed") ? { script: "/hub.js" } : {},
