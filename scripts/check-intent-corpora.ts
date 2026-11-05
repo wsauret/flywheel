@@ -5,14 +5,16 @@ import * as path from "node:path";
 // the living authorities that code, tests, and documents cite by statement id,
 // so a malformed or duplicated id, an unlinked domain file, a statement that
 // names implementation detail, or a citation that resolves to nothing is a
-// build failure. The retired architecture decision records are no authority,
+// build failure. A statement stays short enough to read as one contract: one
+// to four sentences, and an architecture statement adds at most one sentence of
+// rationale and one of rejected alternative. The retired architecture decision records are no authority,
 // so a citation of them fails too.
 //
 // The citing scope is every tracked and unignored text file, listed by Git
 // rather than a directory crawl, because ignored worktrees under the
 // repository hold whole copies of the tree.
 
-type IntentRule = "statement-format" | "duplicate-id" | "domain-link" | "grain" | "dangling-id" | "adr-reference";
+type IntentRule = "statement-format" | "duplicate-id" | "domain-link" | "grain" | "length" | "dangling-id" | "adr-reference";
 
 interface IntentViolation {
   file: string;
@@ -43,6 +45,13 @@ const GENERIC_ADR_PATH_FILES = new Set([
 const DOMAIN_LINK = /\]\(([^)/#\s]+\.md)\)/g;
 const INLINE_CODE = /`[^`]+`/;
 const FILE_EXTENSION = /\.(?:ts|tsx|js|jsx|mjs|cjs|json|jsonl|md|toml|ya?ml|sqlite|db|sh|ps1|exe|lock|txt|pid|log|plist)$/i;
+const RATIONALE_LINE = /^(Because|Not):/;
+const CODE_SPAN = /`[^`]*`/g;
+// A terminator, with any closing quote or bracket after it, ends a sentence only
+// before the end of the text or before a word that can open one, so "e.g. the"
+// stays inside its sentence and `says "Stop." Then` ends one.
+const SENTENCE_END = /[.?!]["'\u201D)\]]*(?=\s+[A-Z`"'\u201C([]|\s*$)/g;
+const MAX_SENTENCES = 4;
 const TOKEN_EDGE = /^[("'[]+|[)"'\],.;:!?]+$/g;
 
 // Historical records and frozen benchmark inputs keep the wording they were
@@ -105,6 +114,34 @@ function grainProblem(line: string, repoPaths: ReadonlySet<string>): string | nu
   return null;
 }
 
+function sentenceCount(text: string): number {
+  return text.replace(CODE_SPAN, "`c`").match(SENTENCE_END)?.length ?? 0;
+}
+
+/** The length rule for the statement whose heading is `lines[index]`: a body
+ *  of one to four sentences, and for architecture at most one single-sentence
+ *  `Because:` and `Not:` line each. Product statements carry no rationale. */
+function lengthProblems(lines: readonly string[], index: number, architecture: boolean): string[] {
+  const out: string[] = [];
+  const next = lines.findIndex((candidate, at) => at > index && candidate.startsWith("## "));
+  const body = lines.slice(index + 1, next === -1 ? undefined : next).map((line) => line.trim()).filter((line) => line.length > 0);
+  const sentences = sentenceCount(body.filter((line) => !RATIONALE_LINE.test(line)).join(" "));
+  if (sentences < 1 || sentences > MAX_SENTENCES) out.push(`body has ${sentences} sentences; expected 1 to ${MAX_SENTENCES}`);
+  for (const label of ["Because", "Not"]) {
+    const labeled = body.filter((line) => line.startsWith(`${label}:`));
+    if (!architecture) {
+      if (labeled.length > 0) out.push(`has ${labeled.length} ${label}: lines; product statements carry no rationale`);
+      continue;
+    }
+    if (labeled.length > 1) out.push(`has ${labeled.length} ${label}: lines; expected at most 1`);
+    for (const line of labeled) {
+      const count = sentenceCount(line.slice(label.length + 1));
+      if (count !== 1) out.push(`${label}: line has ${count} sentences; expected 1`);
+    }
+  }
+  return out;
+}
+
 function repositoryPaths(files: readonly string[]): Set<string> {
   const paths = new Set<string>();
   for (const file of files) {
@@ -134,10 +171,13 @@ function checkCorpus(repoRoot: string, files: readonly string[], dir: string, st
   const architecture = dir === ARCHITECTURE_DIR;
   for (const file of domainFiles) {
     if (!linked.has(file)) out.push({ file, line: 1, rule: "domain-link", detail: `domain file is not linked from ${readme}` });
-    for (const [index, text] of readLines(repoRoot, file).entries()) {
+    const lines = readLines(repoRoot, file);
+    for (const [index, text] of lines.entries()) {
       const line = index + 1;
       const format = formatProblem(file, text);
       if (format !== null) out.push({ file, line, rule: "statement-format", detail: format });
+      const statementHeading = format === null && file !== UPDATES_FILE && text.startsWith("## ");
+      for (const detail of statementHeading ? lengthProblems(lines, index, architecture) : []) out.push({ file, line, rule: "length", detail });
       const id = format === null ? STATEMENT_ID.exec(text)?.[1] : undefined;
       if (id !== undefined) {
         const first = statements.get(id);

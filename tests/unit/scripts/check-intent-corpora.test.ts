@@ -75,7 +75,7 @@ describe("check-intent-corpora", () => {
   it("rejects a statement id stated twice", () => {
     expect(check({
       ...CLEAN,
-      "docs/architecture-intent/alpha.md": `${ALPHA}## ${arch("ALPHA-001")}: Restated\n`,
+      "docs/architecture-intent/alpha.md": `${ALPHA}## ${arch("ALPHA-001")}: Restated\n\nRestated.\n`,
     })).toEqual([{ file: "docs/architecture-intent/alpha.md", line: 6, rule: "duplicate-id" }]);
   });
 
@@ -83,7 +83,7 @@ describe("check-intent-corpora", () => {
     expect(check({
       ...CLEAN,
       "docs/architecture-intent/README.md": `${ARCHITECTURE_README}- [Gamma](gamma.md): missing.\n`,
-      "docs/product-intent/delta.md": `# Delta\n\n## ${intent("DELTA-001")}: Unlinked\n`,
+      "docs/product-intent/delta.md": `# Delta\n\n## ${intent("DELTA-001")}: Unlinked\n\nUnlinked.\n`,
     })).toEqual([
       { file: "docs/architecture-intent/README.md", line: 6, rule: "domain-link" },
       { file: "docs/product-intent/delta.md", line: 1, rule: "domain-link" },
@@ -94,12 +94,48 @@ describe("check-intent-corpora", () => {
     expect(check({
       ...CLEAN,
       "bin/launch": "#!/bin/sh\n",
-      "docs/architecture-intent/alpha.md": `${ALPHA}The \`owner\` decides.\nIt lives in src/owner/.\nIt reads owner.ts first.\nThe reader and/or writer decides.\nIt starts from bin/launch.\n`,
+      "docs/architecture-intent/alpha.md": `${ALPHA}The \`owner\` decides,\nlives in src/owner/,\nreads owner.ts first,\nand the reader and/or writer decides.\nIt starts from bin/launch.\n`,
     })).toEqual([
       { file: "docs/architecture-intent/alpha.md", line: 6, rule: "grain" },
       { file: "docs/architecture-intent/alpha.md", line: 7, rule: "grain" },
       { file: "docs/architecture-intent/alpha.md", line: 8, rule: "grain" },
       { file: "docs/architecture-intent/alpha.md", line: 10, rule: "grain" },
+    ]);
+  });
+
+  it("caps a statement at four sentences, outside code spans, with one single-sentence rationale per label", () => {
+    const four = "One owner decides. It writes the value. Readers wait. Writers stop.";
+    const statement = (heading: string, ...body: string[]): string => `## ${heading}: Bounded\n\n${body.join("\n")}\n\n`;
+    expect(check({
+      ...CLEAN,
+      "docs/architecture-intent/alpha.md": [
+        ALPHA,
+        statement(arch("ALPHA-002"), four, "Because: Two owners disagree, e.g. on replay.", "Not: A shared value."),
+        statement(arch("ALPHA-003"), four, "Readers wait again."),
+        statement(arch("ALPHA-005"), "One owner decides.", "Because: Two owners disagree.", "Because: Replay drifts."),
+        statement(arch("ALPHA-006"), "One owner decides.", "Not: A shared value. A copy."),
+        statement(arch("ALPHA-007"), "Because: Two owners disagree."),
+        statement(arch("ALPHA-008"), "One owner decides.", "Because: Two owners disagree. Replay drifts."),
+        statement(arch("ALPHA-009"), "One owner decides.", "Not: A shared value.", "Not: A copy."),
+      ].join(""),
+      "docs/product-intent/beta.md": [
+        BETA,
+        statement(intent("BETA-002"), "Press `stop. Then. Go.` once.", "It writes the value. Readers wait. Writers stop."),
+        statement(intent("BETA-003"), "Work stays visible.", "Because: People lose track."),
+        statement(intent("BETA-004"), "The client says \"Stopped.\""),
+        statement(intent("BETA-006"), "Work stays visible.", "Not: A hidden queue."),
+        statement(intent("BETA-005"), "It says \"One.\" It says \"Two.\" It says \"Three.\" It says \"Four.\" It stops."),
+      ].join(""),
+    })).toEqual([
+      { file: "docs/architecture-intent/alpha.md", line: 12, rule: "length" },
+      { file: "docs/architecture-intent/alpha.md", line: 17, rule: "length" },
+      { file: "docs/architecture-intent/alpha.md", line: 23, rule: "length" },
+      { file: "docs/architecture-intent/alpha.md", line: 28, rule: "length" },
+      { file: "docs/architecture-intent/alpha.md", line: 32, rule: "length" },
+      { file: "docs/architecture-intent/alpha.md", line: 37, rule: "length" },
+      { file: "docs/product-intent/beta.md", line: 11, rule: "length" },
+      { file: "docs/product-intent/beta.md", line: 20, rule: "length" },
+      { file: "docs/product-intent/beta.md", line: 25, rule: "length" },
     ]);
   });
 

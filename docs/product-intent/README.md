@@ -14,7 +14,7 @@ A product-intent statement can describe behavior that the implementation does no
 ## Corpus contract
 
 - Give every statement one stable identifier and one canonical domain file. Keep the identifier through wording changes and file moves.
-- Write concise, present-tense, user-observable statements. Exclude implementation, rationale, history, acceptance criteria, file paths, and delivery mechanics.
+- Write concise, present-tense, user-observable statements of one to four sentences each. Exclude implementation, rationale, history, acceptance criteria, file paths, and delivery mechanics, so a statement carries no `Because:` or `Not:` line.
 - Add a statement only when no current statement owns the behavior. Rewrite the current statement when its intended meaning or behavior changes. Git history is the archive of prior wording.
 - When a changed intent contradicts or narrows any other statement, rewrite each of those statements so that it states the current intent on its own terms. Do not keep the old wording and add an exception or a pointer to the changed statement.
 - Do not edit the corpus for work that only restores or preserves current intent.
