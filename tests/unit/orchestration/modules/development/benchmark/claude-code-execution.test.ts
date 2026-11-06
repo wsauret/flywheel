@@ -91,6 +91,12 @@ test("turns on Ultracode through the session settings when the treatment asks fo
   expect(JSON.parse(command[command.indexOf("--settings") + 1]!)).toEqual({ plansDirectory: ".claude/plans", ultracode: true });
 });
 
+test("loads a plugin directory after the ordinary arguments when the treatment names one", async () => {
+  const fixture = await subject();
+  await executeClaudeCodeBenchmark({ ...fixture.input, pluginDir: "/scratch/plugin" });
+  expect(fixture.launches[0]!.command).toEqual(["sandbox", "/scratch/claude-real", "-p", "fix", "--output-format", "stream-json", "--verbose", "--model", "claude-sonnet-5-5", "--effort", "medium", "--permission-mode", "bypassPermissions", "--settings", '{"plansDirectory":".claude/plans"}', "--plugin-dir", "/scratch/plugin"]);
+});
+
 test.each(["missing-main", "missing-projects"] as const)("keeps a successful stream outcome and reports a missing transcript: %s", async (transcripts) => {
   const fixture = await subject({}, 0, undefined, transcripts);
   const execution = await executeClaudeCodeBenchmark(fixture.input);

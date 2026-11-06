@@ -1,0 +1,12 @@
+{
+  "name": "coding-claude-plugin",
+  "tasks": ["config-lock-first-write", "multi-site-battery-01"],
+  "repeats": 2,
+  "model": "claude-sonnet-5-5",
+  "effort": "medium",
+  "treatments": {
+    "flywheel": "HEAD",
+    "claude-code-plugin": { "subject": "claude-code", "plugin": "HEAD" },
+    "claude-code": { "subject": "claude-code" }
+  }
+}

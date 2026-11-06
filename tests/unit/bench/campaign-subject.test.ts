@@ -1,8 +1,10 @@
 import { expect, test } from "bun:test";
+import { createHash } from "node:crypto";
 import { chmod, realpath, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { captureCampaignEventSearch, resolveCampaignSubject } from "../../../bench/chat-ab/campaign-subject.js";
 import type { LauncherScope } from "../../../src/infra/process-supervisor.js";
+import { structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/content-identity.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 import { fakeOwnedCommandRunner, ownedCommandResult } from "../../helpers/owned-command-fake.js";
 import { challengeConversationEvidence } from "../../../bench/chat-ab/challenge-reply.js";
@@ -61,20 +63,32 @@ test("streams public step searches larger than the command buffer before cleanup
   expect(order).toEqual(["handoff.written", "closed", "chat.entries.appended", "closed", "cleanup"]);
 });
 
-test("pins the real version binary and refuses changed bytes without a paid preflight", async () => {
+/** Put a synthetic claude binary first on PATH for `body`. */
+async function withClaudeOnPath(body: (binary: string, resolvedBinary: string, directory: string) => Promise<void>) {
   const directory = temporary("campaign-subject-");
   const binary = join(directory, "version");
   await writeFile(binary, "synthetic version binary");
   await chmod(binary, 0o700);
   // Windows resolves a command on PATH only through an executable extension, as the native claude.exe.
   await symlink(binary, join(directory, process.platform === "win32" ? "claude.exe" : "claude"));
-  const resolvedBinary = await realpath(binary);
   const path = process.env.PATH;
-  const { run, calls } = fakeOwnedCommandRunner(() => Promise.resolve(ownedCommandResult("2.1.296 (Claude Code)\n")));
   try {
     process.env.PATH = directory;
-    const resolved = await resolveCampaignSubject({ subject: "claude-code" }, { model: "claude-sonnet-5.5", effort: "medium", authProfile: "Personal" }, run);
-    expect(resolved.identity).toMatchObject({ subject: "claude-code", binaryPath: resolvedBinary, binaryVersion: "2.1.296 (Claude Code)", model: "claude-sonnet-5-5" });
+    await body(binary, await realpath(binary), directory);
+  } finally {
+    if (path === undefined) delete process.env.PATH;
+    else process.env.PATH = path;
+  }
+}
+const settings = { model: "claude-sonnet-5.5", effort: "medium", authProfile: "Personal" } as const;
+const binarySha256 = createHash("sha256").update("synthetic version binary").digest("hex");
+
+test("pins the real version binary and refuses changed bytes without a paid preflight", async () => {
+  await withClaudeOnPath(async (binary, resolvedBinary, directory) => {
+    const { run, calls } = fakeOwnedCommandRunner(() => Promise.resolve(ownedCommandResult("2.1.296 (Claude Code)\n")));
+    const resolved = await resolveCampaignSubject({ subject: "claude-code" }, settings, run);
+    const identity = { subject: "claude-code", binaryPath: resolvedBinary, binarySha256, binaryVersion: "2.1.296 (Claude Code)", model: "claude-sonnet-5-5", effort: "medium" } as const;
+    expect(resolved.identity).toEqual(identity);
     const prepared = await resolved.prepare(join(directory, "unused"));
     expect(prepared.isolationAgent).toEqual({ kind: "claude-code" });
     expect(prepared.environment).toEqual({});
@@ -83,13 +97,27 @@ test("pins the real version binary and refuses changed bytes without a paid pref
       launcher: { open: () => { throw new Error("no paid preflight"); }, spawnOwned: async () => { throw new Error("no paid preflight"); }, adoptOwned: async () => { throw new Error("no adoption"); }, close: async () => ({ settled: true }) },
       projectRoot: directory, artifactDir: directory, env: {}, wrapCommand: (command) => command,
     });
-    expect(prepared.record("candidate", settingsIdentity)).toMatchObject({ subject: "claude-code", binaryPath: resolvedBinary });
+    expect(settingsIdentity).toBe(structuredIdentity(identity));
+    expect(prepared.record("candidate", settingsIdentity)).toEqual({ id: "candidate", ...identity, settingsIdentity });
     expect(calls).toHaveLength(1);
     await prepared.validate();
     await writeFile(binary, "changed version binary");
     await expect(prepared.validate()).rejects.toThrow("binary changed");
-  } finally {
-    if (path === undefined) delete process.env.PATH;
-    else process.env.PATH = path;
-  }
+  });
+});
+
+test("pins a plugin revision in the treatment identity and refuses a revision without the plugin builder", async () => {
+  await withClaudeOnPath(async () => {
+    const commit = "c".repeat(40);
+    const answer = (builder: boolean) => fakeOwnedCommandRunner(async (command) => {
+      if (command[0] !== "git") return ownedCommandResult("2.1.296 (Claude Code)\n");
+      if (command[1] === "cat-file") return ownedCommandResult("", builder ? 0 : 128);
+      return ownedCommandResult(command[1] === "rev-parse" ? `${commit}\n` : "");
+    });
+    const { run } = answer(true);
+    const resolved = await resolveCampaignSubject({ subject: "claude-code", plugin: "HEAD" }, settings, run);
+    expect(resolved.identity).toMatchObject({ subject: "claude-code", binarySha256, plugin: { revision: commit } });
+    await expect(resolveCampaignSubject({ subject: "claude-code", plugin: "HEAD" }, settings, answer(false).run))
+      .rejects.toThrow(`Plugin revision HEAD (${commit}) has no scripts/build-claude-plugin.ts`);
+  });
 });

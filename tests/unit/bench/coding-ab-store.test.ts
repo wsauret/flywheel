@@ -131,6 +131,9 @@ describe("coding campaign resume", () => {
     expect(() => parseCodingDesign({ ...design, treatments: { control: { revision: "HEAD", disabledTools: ["subagent", "subagent"] } } })).toThrow();
     expect(parseCodingDesign({ ...design, roles: pinned, treatments: { ...design.treatments, control: { revision: "HEAD", roles: { chat: { effort: "low" as const } } } } })).toMatchObject({ roles: pinned, treatments: { control: { roles: { chat: { effort: "low" } } } } });
     expect(() => parseCodingDesign({ ...design, treatments: { ...design.treatments, candidate: { subject: "claude-code", roles: pinned } } })).toThrow();
+    expect(parseCodingDesign({ ...design, treatments: { ...design.treatments, candidate: { subject: "claude-code", plugin: "HEAD" } } }).treatments.candidate).toEqual({ subject: "claude-code", plugin: "HEAD" });
+    expect(() => parseCodingDesign({ ...design, treatments: { ...design.treatments, candidate: { subject: "claude-code", plugin: "" } } })).toThrow();
+    expect(() => parseCodingDesign({ ...design, treatments: { control: { revision: "HEAD", plugin: "HEAD" } } })).toThrow();
     expect(() => parseCodingDesign({ ...design, roles: { "workflow-agent": { model: "claude-sonnet-5-5", temperature: 1 } } })).toThrow();
     expect(parseCodingDesign({ ...design, treatments: { control: "HEAD", candidate: { revision: "HEAD", patches: ["bench/probe.patch"] } } }).treatments.candidate).toEqual({ revision: "HEAD", patches: ["bench/probe.patch"] });
     for (const path of ["/outside.patch", "src/change.patch", "bench/../outside.patch"]) {
@@ -145,6 +148,11 @@ describe("coding campaign resume", () => {
     const store = await codingLedger.open(directory, manifest);
     expect((await codingLedger.open(directory)).manifest).toEqual(manifest);
     expect(campaignIdentity({ ...manifest, treatments: [{ ...manifest.treatments[0]!, disabledTools: ["web"] }, external] })).not.toBe(campaignIdentity(manifest));
+    const plugged = temporary("coding-plugin-");
+    const withPlugin = (identity: string) => ({ ...manifest, treatments: [manifest.treatments[0]!, { ...external, plugin: { revision: "revision", identity } }] });
+    await codingLedger.open(plugged, withPlugin(hash));
+    expect((await codingLedger.open(plugged)).manifest).toEqual(withPlugin(hash));
+    await expect(codingLedger.open(plugged, withPlugin("b".repeat(64)))).rejects.toThrow("Campaign identity changed");
     const externalAttempt = { ...attempt, cell: { ...cell, treatment: "candidate" } };
     await store.append(externalAttempt);
     const accounting = { ...unavailableBenchmarkAccounting("not billed"), tokens: { kind: "observed" as const, value: 42 }, estimatedUsd: { kind: "observed" as const, value: 0.25 } };

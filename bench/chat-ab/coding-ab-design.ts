@@ -21,6 +21,7 @@ const DesignSchema = Schema.Struct({
       model: Schema.optionalKey(Schema.NonEmptyString),
       effort: Schema.optionalKey(EffortSchema),
       ultracode: Schema.optionalKey(Schema.Literal(true)),
+      plugin: Schema.optionalKey(Schema.NonEmptyString),
     }),
     Schema.Struct({
       subject: Schema.optionalKey(Schema.Literal("flywheel")),
@@ -37,7 +38,8 @@ const DesignSchema = Schema.Struct({
 export type CodingDesign = typeof DesignSchema.Type & { readonly authProfile: string };
 
 /**
- * Decode source revisions, reviewed source deltas pinned by content hash, or an external Claude Code subject.
+ * Decode source revisions, reviewed source deltas pinned by content hash, or an external Claude Code subject,
+ * optionally with the Flywheel plugin that a named Flywheel revision builds.
  * The operator profile comes from `authProfile` (the `--auth-profile` flag), then the design file, then
  * FLYWHEEL_AUTH_PROFILE, so a shared design file need not name anyone's profile.
  */

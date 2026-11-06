@@ -186,6 +186,8 @@ const RETIRED_TERMS: readonly RetiredTerm[] = [
       "src/orchestration/modules/provider-github-copilot/auth-types.ts",
       // The Agent SDK bridge loads an engine plugin through the SDK's `plugins` option.
       "src/orchestration/modules/provider-claude-agent-sdk/",
+      // A benchmark comparison arm loads an external CLI's plugin through its `--plugin-dir` option.
+      "src/orchestration/modules/development/benchmark/",
       // A Babel plugin package is named by its published package name.
       "webview/src/test-support/solid-transform.ts",
       // Rejection prose: these statements name plugin to reject it as the module noun.

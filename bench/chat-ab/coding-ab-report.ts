@@ -24,7 +24,7 @@ export async function renderCodingReport(directory: string): Promise<string> {
   for (const treatment of store.manifest.treatments) {
     const runs = [...completed.values()].filter((outcome) => outcome.cell.treatment === treatment.id);
     const outcomes = [...settled.values()].filter((outcome) => outcome.cell.treatment === treatment.id);
-    const identity = "subject" in treatment && treatment.subject === "claude-code" ? `Claude Code ${treatment.binaryVersion} (${treatment.binarySha256}); ${treatment.model} / ${treatment.effort}` : `Flywheel ${treatment.revision}`;
+    const identity = "subject" in treatment && treatment.subject === "claude-code" ? `Claude Code ${treatment.binaryVersion} (${treatment.binarySha256}); ${treatment.model} / ${treatment.effort}${treatment.plugin ? `; Flywheel plugin ${treatment.plugin.revision} (${treatment.plugin.identity})` : ""}` : `Flywheel ${treatment.revision}`;
     lines.push(`| ${treatment.id} | ${identity} | ${runs.length}/${store.manifest.tasks.length * store.manifest.repeats} | ${runs.filter((outcome) => outcome.acceptance?.allPass).length}/${runs.length} | ${average(runs.flatMap((outcome) => "runs" in outcome ? [outcome.runs.reduce((total, run) => total + run.wallMs, 0) / 1000] : outcome.wallMs === null ? [] : [outcome.wallMs / 1000]))} | ${outcomes.filter((outcome) => outcome.status === "failed").length} | ${dollars(outcomes, "estimatedUsd")} | ${dollars(outcomes, "billedUsd")} |`);
   }
   const unresolved = [...attempts.keys()].filter((id) => !settled.has(id));

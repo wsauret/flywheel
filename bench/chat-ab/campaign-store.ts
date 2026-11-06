@@ -42,6 +42,8 @@ export const ClaudeCodeTreatmentFields = {
   id: CampaignId, subject: Schema.Literal("claude-code"), binaryPath: CampaignText, binarySha256: CampaignHash,
   binaryVersion: CampaignText, model: CampaignText, effort: CampaignText, settingsIdentity: CampaignHash,
   ultracode: Schema.optionalKey(Schema.Literal(true)),
+  /** The Flywheel commit that built the plugin directory, and that directory's content identity. */
+  plugin: Schema.optionalKey(Schema.Struct({ revision: CampaignText, identity: CampaignHash })),
 };
 const CampaignTreatmentSchema = Schema.Union([
   Schema.Struct(CampaignTreatmentFields), Schema.Struct(ClaudeCodeTreatmentFields),

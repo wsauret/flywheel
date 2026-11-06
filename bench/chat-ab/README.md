@@ -334,6 +334,18 @@ For a coding design JSON, keep a Flywheel source revision as one treatment and u
 }
 ```
 
+`"plugin": "<revision>"` runs Claude Code with the Flywheel Claude plugin, which makes Flywheel's chat agent the main agent and adds Flywheel's exportable skills and agents. The value is a Flywheel source revision in the same forms as a Flywheel treatment. Before any cell runs, the harness prepares that revision's own tree under the results' `sources/<treatment>/source`, runs `bun run build:claude-plugin --out sources/<treatment>/plugin` there, and gives each cell `--plugin-dir` and read access to the built directory. So the plugin can never drift from a Flywheel treatment of the same revision. A revision without `scripts/build-claude-plugin.ts` is refused at plan time. The plugin's commit and the content identity of the built directory are part of the treatment identity, so resume refuses a different plugin. The plugin's agents carry Flywheel's shipped role defaults as their models, not the auth profile's role settings, so compare the roles of a Flywheel treatment with them. `examples/coding-claude-plugin.json` compares Flywheel, Claude Code with the plugin, and plain Claude Code at one revision:
+
+```json
+"treatments": {
+  "flywheel": "HEAD",
+  "claude-code-plugin": { "subject": "claude-code", "plugin": "HEAD" },
+  "claude-code": { "subject": "claude-code" }
+}
+```
+
+The coding judge hides the plugin's `flywheel:` name prefix and the paths of its built files, so the judge cannot tell the plugin arm from the others by them.
+
 Chat uses `bench.ts --subject claude-code` for a single treatment, or `paired.ts --a-subject flywheel --b-subject claude-code`. A Claude Code treatment uses the baseline arm, not a Flywheel skill overlay.
 
 Claude Code uses the person's normal environment: their own login, configuration, hooks, and plugins. There is no dedicated bench Claude configuration. These sessions appear in the person's Claude Code history. Isolation still denies Flywheel state, task answers, and other cells' artifacts. Estimated spend comes from the stream's `modelUsage`; billed spend and canonical request and child-session evidence are unavailable, not zero. There is no no-progress kill or private-runner metric substitution.

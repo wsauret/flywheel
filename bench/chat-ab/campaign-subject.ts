@@ -5,7 +5,7 @@ import type { OwnedCommandRunner } from "../../src/infra/owned-command.js";
 import { ownedCommandRunner } from "../../src/infra/owned-command.js";
 import type { LauncherScope } from "../../src/infra/process-supervisor.js";
 import type { Effort } from "../../src/infra/workflow-types.js";
-import { bytesIdentity, structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
+import { bytesIdentity, directoryIdentity, structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
 import { canonicalModelId } from "../../src/infra/llm/model-id.js";
 import { executeClaudeCodeBenchmark } from "../../src/orchestration/modules/development/benchmark/claude-code-execution.js";
 import { executeHeadlessBenchmark, type HeadlessBenchmarkInput } from "../../src/orchestration/modules/development/benchmark/headless-execution.js";
@@ -31,7 +31,9 @@ interface SubjectSettings {
 }
 export type CampaignTreatment =
   | { readonly subject?: "flywheel"; readonly revision: string; readonly patches?: readonly string[]; readonly model?: string; readonly effort?: Effort; readonly authProfile?: string; readonly roles?: CampaignRoles; readonly disabledTools?: readonly string[] }
-  | { readonly subject: "claude-code"; readonly model?: string; readonly effort?: Effort; readonly ultracode?: true };
+  | { readonly subject: "claude-code"; readonly model?: string; readonly effort?: Effort; readonly ultracode?: true; readonly plugin?: string };
+
+const PLUGIN_BUILDER = "scripts/build-claude-plugin.ts";
 
 export interface CampaignSubjectContext {
   readonly launcher: LauncherScope;
@@ -116,22 +118,39 @@ export async function resolveCampaignSubject(treatment: CampaignTreatment, setti
     const binarySha256 = await binaryIdentity(binaryPath);
     const version = await run([binaryPath, "--version"], { cwd: REPO_ROOT });
     if (version.exitCode !== 0 || version.timedOut || version.stdoutTruncated || !version.stdout.trim()) throw new Error("Claude Code --version failed");
-    const identity = { subject: "claude-code" as const, binaryPath, binarySha256, binaryVersion: version.stdout.trim(), model: claudeCodeModelId(settings.model), effort: settings.effort,
+    const pluginSource = treatment.plugin === undefined ? undefined : await resolveSourceTreatment(REPO_ROOT, treatment.plugin, run);
+    if (pluginSource) {
+      const builder = await run(["git", "cat-file", "-e", `${pluginSource.revision}:${PLUGIN_BUILDER}`], { cwd: REPO_ROOT });
+      if (builder.exitCode !== 0) throw new Error(`Plugin revision ${treatment.plugin} (${pluginSource.revision}) has no ${PLUGIN_BUILDER}; name a Flywheel revision that builds the Claude plugin`);
+    }
+    const binary = { subject: "claude-code" as const, binaryPath, binarySha256, binaryVersion: version.stdout.trim(), model: claudeCodeModelId(settings.model), effort: settings.effort,
       ...(treatment.ultracode ? { ultracode: true as const } : {}) };
+    // The built plugin's content identity joins the record once preparation builds it.
+    const identity = { ...binary, ...(pluginSource ? { plugin: { revision: pluginSource.revision } } : {}) };
     return {
       kind: "claude-code" as const, identity,
-      async prepare(): Promise<PreparedCampaignSubject> {
+      async prepare(directory: string): Promise<PreparedCampaignSubject> {
+        // Build from the revision's own tree, so the plugin cannot drift from a Flywheel treatment of the same revision.
+        // The build is deterministic, so a resumed campaign rebuilds it and its manifest refuses a different result.
+        const plugin = pluginSource && await (async () => {
+          const prepared = await prepareSourceTreatment({ repoRoot: REPO_ROOT, harnessRoot: REPO_ROOT, directory: join(directory, "source"), source: pluginSource, run });
+          const dir = join(directory, "plugin");
+          const build = await run(["bun", "run", "build:claude-plugin", "--out", dir], { cwd: prepared.root, timeoutMs: 600_000 });
+          if (build.exitCode !== 0 || build.timedOut) throw new Error(`Claude plugin build failed at ${pluginSource.revision} (exit ${build.exitCode})\n${build.stderr}`);
+          return { dir, record: { revision: pluginSource.revision, identity: await directoryIdentity(dir) } };
+        })();
         return {
           kind: "claude-code", isolationAgent: { kind: "claude-code" }, environment: {},
-          confinement: () => ({ hidden: [], own: [], readonly: [binaryPath], writeDenied: controllerWriteDenied() }),
+          confinement: () => ({ hidden: [], own: [], readonly: [binaryPath, ...(plugin ? [plugin.dir] : [])], writeDenied: controllerWriteDenied() }),
           preflight: async () => structuredIdentity({ ...identity, ...(family ? { family } : {}) }),
-          record: (id, settingsIdentity) => ({ id, ...identity, settingsIdentity }),
+          record: (id, settingsIdentity) => ({ id, ...binary, ...(plugin ? { plugin: plugin.record } : {}), settingsIdentity }),
           async validate() {
             if (await binaryIdentity(binaryPath) !== binarySha256) throw new Error(`Claude Code binary changed during campaign: ${binaryPath}`);
+            if (plugin && await directoryIdentity(plugin.dir) !== plugin.record.identity) throw new Error(`Claude plugin changed during campaign: ${plugin.dir}`);
           },
           async execute(context, message, capture) {
             if (typeof message !== "string") throw new Error("Claude Code accepts baseline task messages, not Flywheel inline skills");
-            const execution = await executeClaudeCodeBenchmark({ ...context, sessionId: context.claudeCodeSessionId, artifactDir: join(context.artifactDir, "run-0"), binaryPath, model: identity.model, effort: settings.effort, ultracode: treatment.ultracode === true, message });
+            const execution = await executeClaudeCodeBenchmark({ ...context, sessionId: context.claudeCodeSessionId, artifactDir: join(context.artifactDir, "run-0"), binaryPath, model: identity.model, effort: settings.effort, ultracode: treatment.ultracode === true, ...(plugin ? { pluginDir: plugin.dir } : {}), message });
             capture.executions.push(execution);
             return execution;
           },

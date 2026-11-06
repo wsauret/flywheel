@@ -46,7 +46,7 @@ async function fixture(treatments: readonly string[] = ["before", "after"], vers
     const report = `${treatment}-report.txt`;
     const diff = `${treatment}-diff.txt`;
     const selectedModel = overrideModel ? treatment === "after" ? overrideModel : "claude-sonnet-5-5" : manifest.model;
-    const summary = `Claude Code used ${selectedModel} .flywheel/sessions/private ${treatment}-role-model later-role-model lost-role-model`;
+    const summary = `Claude Code used ${selectedModel} .flywheel/sessions/private ${treatment}-role-model later-role-model lost-role-model; read /results/sources/plugged/plugin/skills/code-review/SKILL.md and ran \`flywheel:code-review\``;
     const planPath = `${treatment}/plan.json`;
     await mkdir(join(directory, treatment));
     const plan = JSON.stringify({
@@ -100,7 +100,8 @@ test("judges version two handoff and diff artifacts without requiring private ru
   expect(result.judged).toBe(1);
   expect(prompts[0]).toContain('"summary"');
   expect(prompts[0]).toContain("const value");
-  expect(prompts.join("\n")).not.toMatch(/before-role-model|after-role-model|later-role-model|lost-role-model/);
+  expect(prompts.join("\n")).not.toMatch(/before-role-model|after-role-model|later-role-model|lost-role-model|flywheel:|\/plugin\//);
+  expect(prompts[0]).toContain("read <skill path> and ran `code-review`");
   expect(result.roleComparisons[0]?.changes).toContainEqual({ kind: "normal", role: "workflow-agent", before: { model: "before-role-model", effort: "high" }, after: { model: "after-role-model", effort: "high" } });
   expect(await renderCodingReport(directory)).toContain("before-role-model / high");
 });

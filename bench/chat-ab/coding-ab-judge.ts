@@ -11,6 +11,12 @@ import { readAvailableCampaignArtifact, readCampaignArtifact } from "./campaign-
 import { judgeCampaignPairs, type CampaignJudgeOptions, type CampaignJudgeDependencies } from "./campaign-pair-judge.js";
 import { campaignBlinding, campaignRoleComparisons } from "./campaign-role-evidence.js";
 const hash = (bytes: string | Uint8Array) => new Bun.CryptoHasher("sha256").update(bytes).digest("hex");
+/** The marks of a Claude Code treatment with the Flywheel plugin: the paths of the built skill and agent files, and
+ *  the `flywheel:` prefix of the plugin's skill and agent names, which a Flywheel treatment writes bare. */
+const PLUGIN_MARKS: readonly (readonly [RegExp, string])[] = [
+  [/[\w./-]*\/plugin\/(?:skills|agents)\/[^\s)`'"]*/g, "<skill path>"],
+  [/\bflywheel:(?=[a-z0-9-])/g, ""],
+];
 
 /** Validate all candidate and judge evidence before admission. Dry runs neither admit nor write.
  * Completed execution remains eligible when acceptance fails. Failed judge calls retain their costs on retry. */
@@ -59,7 +65,10 @@ export async function judgeCodingCampaign(options: CampaignJudgeOptions, depende
   const native = [...completed.values()].filter((outcome) => "runs" in outcome);
   const inherited = campaign.manifest.version === 2 ? await campaignBlinding(directory, campaign.manifest.treatments, native, [campaign.manifest.model]) : null;
   const base = codingRedaction([...models, campaign.manifest.model]);
-  const redaction = { identity: inherited?.identity ?? base.identity, redact: (text: string) => base.redact(inherited ? inherited.redact(text) : text) };
+  const redaction = {
+    identity: structuredIdentity({ blinding: inherited?.identity ?? base.identity, plugin: PLUGIN_MARKS.map(([pattern, replacement]) => [pattern.source, pattern.flags, replacement]) }),
+    redact: (text: string) => PLUGIN_MARKS.reduce((current, [pattern, replacement]) => current.replace(pattern, replacement), base.redact(inherited ? inherited.redact(text) : text)),
+  };
   const roleComparisons = campaign.manifest.version === 2 ? await campaignRoleComparisons(directory, campaign.manifest.treatments.filter(({ id }) => id === a || id === b), native) : [];
   const code = await Promise.all([
     "./coding-ab-judge.ts", "./campaign-pair-judge.ts", "./campaign-artifacts.ts", "./campaign-role-evidence.ts", "./block-judge.ts", "./judge-inputs.ts", "./pair-judge.ts", "./coding-task.ts",

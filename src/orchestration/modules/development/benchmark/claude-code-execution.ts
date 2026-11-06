@@ -32,6 +32,8 @@ export interface ClaudeCodeBenchmarkInput {
   readonly message: string;
   /** Turn on Ultracode, Claude Code's standing opt-in to author and run a workflow for every substantive task. */
   readonly ultracode?: boolean;
+  /** A plugin directory that the session loads with `--plugin-dir`. The plugin's `settings.json` can name the main agent. */
+  readonly pluginDir?: string;
   readonly wrapCommand: (command: readonly string[]) => readonly string[];
   readonly sessionId?: string;
 }
@@ -103,6 +105,7 @@ export async function executeClaudeCodeBenchmark(input: ClaudeCodeBenchmarkInput
         ...(input.sessionId ? ["--session-id", input.sessionId] : []),
         // Plans have random names, so keep them with this project instead of opening the shared plans store.
         "--settings", JSON.stringify({ plansDirectory: ".claude/plans", ...(input.ultracode ? { ultracode: true } : {}) }),
+        ...(input.pluginDir ? ["--plugin-dir", input.pluginDir] : []),
       ]), {
         cwd: input.projectRoot, env: input.env,
         // The normal CLI holds this lock while saving refreshed credentials (ARCH-TOOLS-028).
