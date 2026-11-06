@@ -1,0 +1,102 @@
+docs/architecture-intent/providers.md
+  h_4b47e9e4a8b456 29,33-38,79
+docs/product-intent/capabilities.md
+  h_4b47e9e4a8b456 41-44
+docs/provider-terms.md
+  h_4b47e9e4a8b456 3,11,31,52,220,223-230
+src/cli/subcommands.ts
+  h_4b47e9e4a8b456 265
+src/infra/claude-engine.ts
+  h_4b47e9e4a8b456 4,163-199
+src/orchestration/cli-contribution.ts
+  h_4b47e9e4a8b456 20-21
+src/orchestration/modules/mcp/claude-engine-session.ts
+  h_4b47e9e4a8b456 9-14,16-17,21,32-35,48-55,128,161,175-189
+src/orchestration/modules/mcp/claude-engine.ts
+  h_4b47e9e4a8b456 10,12,73,99-100,170,288,356-377,385
+src/orchestration/modules/mcp/cli/args.ts
+  h_4b47e9e4a8b456 70-75
+src/orchestration/modules/mcp/cli/mcp.ts
+  h_4b47e9e4a8b456 10-12,51-58,150-152,154,159,166,170-171,189,200-209,215-222
+src/orchestration/modules/mcp/config-mutation.ts
+  h_4b47e9e4a8b456 5,33-35,37,39,42-43,59-62,64,66,93-97,116
+src/orchestration/modules/mcp/config.ts
+  h_4b47e9e4a8b456 69-75,81,94-99,112-113,118-122,127-157,225-229
+src/orchestration/modules/mcp/connector-tools-capture.ts
+  h_4b47e9e4a8b456 1-179
+src/orchestration/modules/mcp/connectors.ts
+  h_4b47e9e4a8b456 1-338
+src/orchestration/modules/mcp/errors.ts
+  h_4b47e9e4a8b456 40-56
+src/orchestration/modules/mcp/manager.ts
+  h_4b47e9e4a8b456 6-8,11,99-100,126-128,191,222,330,363,367-370,475,565
+src/orchestration/modules/mcp/module.ts
+  h_4b47e9e4a8b456 9-11,15,17-27
+src/orchestration/modules/mcp/protocol.ts
+  h_4b47e9e4a8b456 1,17,21-24,37-41,62,64-65,73
+src/orchestration/modules/mcp/registry-owner.ts
+  h_4b47e9e4a8b456 2,10
+src/orchestration/modules/mcp/service.ts
+  h_4b47e9e4a8b456 1,13-15,33-37,45,51-56,60-68,74-76,78,85,88,91,94-97,106-109,116-125,128,133-134,136-166,169-170,177-188,190-192,196,203,205,209,214
+src/orchestration/modules/provider-claude-agent-sdk/module.ts
+  h_4b47e9e4a8b456 1,10,93,95-107,112-135,152
+src/orchestration/modules/provider-claude-agent-sdk/query-launcher.ts
+  h_4b47e9e4a8b456 9,422-424,426-428,551-617
+src/protocol/modules/mcp.ts
+  h_4b47e9e4a8b456 16,35-41,52-53,56-57,59-63,66,73,84,86-87,99-102,147-153,179-181,184-193,197-200,207-222,274,278,282
+src/tui/modules/mcp/list.ts
+  h_4b47e9e4a8b456 2,12,36-38,49-51,65-70,98,103,109
+src/tui/modules/mcp/modal.tsx
+  h_4b47e9e4a8b456 6,40-41,45,57-60,62,73,83,98-99,105,125-140
+src/workflows/docs/configuration.md
+  h_4b47e9e4a8b456 317-421,433-435,444-446,467-469,478-480,501-503,512-514,534-536,545-547,566-568,577-579,599-601,610-612,627-629,638-640,660-662,671-673,693-695,704-706,729-731,740-742,765-767,776-778,801-803,812-814,834-836,845-850,871-873,882-887,908-910,919-924,944-946,955-960,979-981,990-995,1015-1017,1026-1031,1051-1053,1062-1067,1087-1089,1098-1103,1126-1128,1137-1142,1165-1167,1176-1181,1204-1206,1215-1220
+tests/integration/providers/claude-sdk-subscription-real.test.ts
+  h_4b47e9e4a8b456 25-27,29-30,234-277
+tests/unit/cli/module-nouns.test.ts
+  h_4b47e9e4a8b456 86
+tests/unit/orchestration/modules/mcp/claude-engine.test.ts
+  h_4b47e9e4a8b456 172-175
+tests/unit/orchestration/modules/mcp/cli/args.test.ts
+  h_4b47e9e4a8b456 140-141
+tests/unit/orchestration/modules/mcp/connector-tools-capture.test.ts
+  h_4b47e9e4a8b456 1-109
+tests/unit/orchestration/modules/mcp/connectors.test.ts
+  h_4b47e9e4a8b456 1-204
+tests/unit/orchestration/modules/mcp/fixtures/connector-count-tokens.log
+  h_4b47e9e4a8b456 1-483
+tests/unit/orchestration/modules/mcp/protocol.test.ts
+  h_4b47e9e4a8b456 18,36,47-48,53,96-97,104-105,296,304-314,325-326,329,339
+tests/unit/orchestration/modules/provider-claude-agent-sdk/query-launcher.test.ts
+  h_4b47e9e4a8b456 12,671-695,705-706
+tests/unit/protocol/runtime-ui-patch-fixtures.ts
+  h_4b47e9e4a8b456 91
+tests/unit/tui/modules/mcp/list.test.ts
+  h_4b47e9e4a8b456 15,19,21,23,151-181
+tests/unit/tui/modules/mcp/modal.test.tsx
+  h_4b47e9e4a8b456 25,176,216-280,287
+webview/src/app/sheets/settings-sheet.test.ts
+  h_4b47e9e4a8b456 9
+webview/src/app/stability.test.ts
+  h_4b47e9e4a8b456 461
+webview/src/modules/mcp/mutation.ts
+  h_4b47e9e4a8b456 2,18-20,22-23,38-39,46-53
+webview/src/modules/mcp/sheet-fixture.ts
+  h_4b47e9e4a8b456 10,12
+webview/src/modules/mcp/sheet-interaction-fixture.ts
+  h_4b47e9e4a8b456 11,16,20,35-41
+webview/src/modules/mcp/sheet.test.ts
+  h_4b47e9e4a8b456 161-191,201
+webview/src/modules/mcp/sheet.tsx
+  h_4b47e9e4a8b456 4,6,13-14,52-57,69,73,80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b7cc40c591d07bf1a646fb4bee1a68230cb9f996",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
