@@ -1,0 +1,36 @@
+package.json
+  h_4b47e9e4a8b456 40
+scripts/build-claude-plugin.ts
+  h_4b47e9e4a8b456 1-248
+scripts/build-release-manifest.ts
+  h_4b47e9e4a8b456 5-7,27,53,62,66
+scripts/claude-plugin-host.ts
+  h_4b47e9e4a8b456 1-109
+scripts/release-contract.ts
+  h_4b47e9e4a8b456 23-37,40,45-60
+scripts/release.ts
+  h_4b47e9e4a8b456 30,153-163,208-210,212
+scripts/zip-archive.ts
+  h_4b47e9e4a8b456 1-60
+src/orchestration/agent-runtime/claude-5-chat-prompt.ts
+  h_4b47e9e4a8b456 39-52,107,115,122,129,135-146,150,154
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 21,292
+tests/integration/local/claude-plugin-export.test.ts
+  h_4b47e9e4a8b456 1-170
+tests/unit/scripts/build-claude-plugin.test.ts
+  h_4b47e9e4a8b456 1-125
+tests/unit/scripts/build-release-manifest.test.ts
+  h_4b47e9e4a8b456 13,39-42,51-52,65,84,91,98,105,112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9afd912a4446f8dd155b1a365fdc06608a9700b7",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
