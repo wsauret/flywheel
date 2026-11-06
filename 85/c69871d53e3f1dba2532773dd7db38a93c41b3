@@ -1,0 +1,38 @@
+bench/chat-ab/README.md
+  h_4b47e9e4a8b456 337-348
+bench/chat-ab/campaign-store.ts
+  h_4b47e9e4a8b456 45-46
+bench/chat-ab/campaign-subject.ts
+  h_4b47e9e4a8b456 8,34-36,121-126,128-129,132-141,144,146,149,153
+bench/chat-ab/coding-ab-design.ts
+  h_4b47e9e4a8b456 24,41-42
+bench/chat-ab/coding-ab-judge.ts
+  h_4b47e9e4a8b456 14-19,68-71
+bench/chat-ab/coding-ab-report.ts
+  h_4b47e9e4a8b456 27
+bench/chat-ab/examples/coding-claude-plugin.json
+  h_4b47e9e4a8b456 1-12
+scripts/check-terminology.ts
+  h_4b47e9e4a8b456 189-190
+src/orchestration/modules/development/benchmark/claude-code-execution.ts
+  h_4b47e9e4a8b456 35-36,108
+tests/unit/bench/campaign-subject.test.ts
+  h_4b47e9e4a8b456 2,7,66-67,77-91,100-101,106-122
+tests/unit/bench/coding-ab-judge.test.ts
+  h_4b47e9e4a8b456 49,103-104
+tests/unit/bench/coding-ab-store.test.ts
+  h_4b47e9e4a8b456 134-136,151-155
+tests/unit/orchestration/modules/development/benchmark/claude-code-execution.test.ts
+  h_4b47e9e4a8b456 94-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "85c69871d53e3f1dba2532773dd7db38a93c41b3",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
