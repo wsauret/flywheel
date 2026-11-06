@@ -10,7 +10,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { composeReleaseManifest } from "../../../scripts/build-release-manifest.js";
-import { RELEASE_TARGETS } from "../../../scripts/release-contract.js";
+import { CLAUDE_PLUGIN_ARCHIVE, RELEASE_TARGETS } from "../../../scripts/release-contract.js";
 import { platformAssetName, selectReleaseAsset } from "../../../src/infra/update/release-manifest.js";
 
 const VERSION = "1.4.2";
@@ -36,6 +36,10 @@ interface ReleaseManifest {
 function archives(): readonly Archive[] {
   return RELEASE_TARGETS.map((target) => ({ name: `flywheel-${target}.tar.gz`, bytes: `payload of ${target}` }));
 }
+/** Every checksummed asset: the archives and the Claude plugin, which release.json leaves out. */
+function checksummed(): readonly Archive[] {
+  return [...archives(), { name: CLAUDE_PLUGIN_ARCHIVE, bytes: "plugin payload" }];
+}
 
 function digest(bytes: string): string {
   return createHash("sha256").update(bytes).digest("hex");
@@ -44,8 +48,8 @@ function digest(bytes: string): string {
 async function withDist(run: (distDir: string) => Promise<void>, options: { readonly built?: readonly Archive[]; readonly checksums?: readonly Archive[] } = {}): Promise<void> {
   const distDir = mkdtempSync(join(tmpdir(), "flywheel-release-"));
   try {
-    for (const archive of options.built ?? archives()) writeFileSync(join(distDir, archive.name), archive.bytes);
-    const lines = (options.checksums ?? options.built ?? archives()).map((archive) => `${digest(archive.bytes)}  ${archive.name}`);
+    for (const archive of options.built ?? checksummed()) writeFileSync(join(distDir, archive.name), archive.bytes);
+    const lines = (options.checksums ?? options.built ?? checksummed()).map((archive) => `${digest(archive.bytes)}  ${archive.name}`);
     writeFileSync(join(distDir, "SHASUMS256.txt"), `${lines.join("\n")}\n`);
     await run(distDir);
   } finally {
@@ -58,7 +62,7 @@ function compose(distDir: string): Promise<string> {
 }
 
 describe("the release manifest", () => {
-  test("states every published archive with its immutable URL, size, and digest", async () => {
+  test("states every published archive with its immutable URL, size, and digest, and no other asset", async () => {
     await withDist(async (distDir) => {
       const manifest: ReleaseManifest = JSON.parse(await compose(distDir));
       expect(manifest).toMatchObject({ version: VERSION, tag: `v${VERSION}` });
@@ -77,35 +81,35 @@ describe("the release manifest", () => {
   test("refuses an archive the checksum file does not state", async () => {
     await withDist(
       async (distDir) => { await expect(compose(distDir)).rejects.toThrow(/SHASUMS256/); },
-      { checksums: archives().slice(1) },
+      { checksums: checksummed().slice(1) },
     );
   });
 
   test("refuses a checksum stated twice", async () => {
     await withDist(
       async (distDir) => { await expect(compose(distDir)).rejects.toThrow(/twice/); },
-      { checksums: [...archives(), archives()[0] ?? (() => { throw new Error("release fixture needs an archive") })()] },
+      { checksums: [...checksummed(), archives()[0] ?? (() => { throw new Error("release fixture needs an archive") })()] },
     );
   });
 
   test("refuses a target that was not built", async () => {
     await withDist(
       async (distDir) => { await expect(compose(distDir)).rejects.toThrow(/flywheel-linux-x64\.tar\.gz/); },
-      { built: archives().filter((archive) => !archive.name.includes("linux-x64")), checksums: archives() },
+      { built: checksummed().filter((archive) => !archive.name.includes("linux-x64")), checksums: checksummed() },
     );
   });
 
   test("refuses an archive that is not one of the five published targets", async () => {
     await withDist(
       async (distDir) => { await expect(compose(distDir)).rejects.toThrow(/flywheel-linux-riscv64\.tar\.gz/); },
-      { checksums: [...archives(), { name: "flywheel-linux-riscv64.tar.gz", bytes: "surprise" }] },
+      { checksums: [...checksummed(), { name: "flywheel-linux-riscv64.tar.gz", bytes: "surprise" }] },
     );
   });
 
   test("refuses an archive whose bytes are not the ones the checksum states", async () => {
     await withDist(
       async (distDir) => { await expect(compose(distDir)).rejects.toThrow(/digest/); },
-      { built: archives(), checksums: archives().map((archive, index) => (index === 0 ? { ...archive, bytes: "other" } : archive)) },
+      { built: checksummed(), checksums: checksummed().map((archive, index) => (index === 0 ? { ...archive, bytes: "other" } : archive)) },
     );
   });
 });

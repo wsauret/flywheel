@@ -20,13 +20,44 @@ export type ReleaseTargetName = ReleaseTarget["platformArch"];
 
 export const RELEASE_TARGETS = RELEASE_TARGET_MATRIX.map(({ platformArch }) => platformArch);
 export const RELEASE_ARCHIVES = RELEASE_TARGET_MATRIX.map(({ platformArch }) => `flywheel-${platformArch}.tar.gz`);
+/** The Claude plugin that each release ships beside the binaries (scripts/build-claude-plugin.ts). The repository's
+ *  marketplace offers it under the same name. */
+export const CLAUDE_PLUGIN = {
+  name: "flywheel",
+  description: "Flywheel's chat agent, engineering method, skills, and specialist agents.",
+} as const;
+export const CLAUDE_PLUGIN_ARCHIVE = "flywheel-claude-plugin.zip";
+/** The marketplace manifest at the repository root, which the host reads when a person adds the repository as a
+ *  marketplace. */
+export const CLAUDE_MARKETPLACE_FILE = ".claude-plugin/marketplace.json";
+
+/** The assets that SHASUMS256.txt states. Only the archives enter release.json, the update contract of the
+ *  installed clients; the plugin has its own consumer, which the marketplace pins to its digest. */
+export const CHECKSUMMED_ASSETS = [...RELEASE_ARCHIVES, CLAUDE_PLUGIN_ARCHIVE] as const;
+
 export const RELEASE_ASSETS = [
   "SHASUMS256.txt",
-  ...RELEASE_ARCHIVES,
+  ...CHECKSUMMED_ASSETS,
   "install.ps1",
   "install.sh",
   "release.json",
 ] as const;
+
+/** The marketplace manifest that offers the plugin archive of release `version` from `repository`. The host checks
+ *  the archive against `sha256` on every download and takes the version from the archive's own plugin.json, so the
+ *  entry states no version. */
+export function claudeMarketplace(repository: string, version: string, owner: string, sha256: string): string {
+  return `${JSON.stringify({
+    name: CLAUDE_PLUGIN.name,
+    owner: { name: owner },
+    description: CLAUDE_PLUGIN.description,
+    plugins: [{
+      name: CLAUDE_PLUGIN.name,
+      description: CLAUDE_PLUGIN.description,
+      source: { source: "archive", url: `https://github.com/${repository}/releases/download/v${version}/${CLAUDE_PLUGIN_ARCHIVE}`, sha256 },
+    }],
+  }, null, 2)}\n`;
+}
 /** The official release repository: the publisher trust root that official builds check and install updates from
  *  (ARCH-DISTRIBUTION-007). It is the one place the repository names it. */
 export const OFFICIAL_RELEASE_REPOSITORY = "wsauret/flywheel";

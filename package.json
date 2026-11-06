@@ -37,6 +37,7 @@
     "test:all": "bun run test && bun run test:integration:all",
     "build": "bun run scripts/build.ts",
     "build:tokenizer": "bun run scripts/build-tokenizer.ts",
+    "build:claude-plugin": "bun run scripts/build-claude-plugin.ts",
     "build:macos-launcher": "bun run scripts/build-macos-launcher.ts",
     "build:windows-launcher": "bun run scripts/build-windows-launcher.ts",
     "build:windows-git-forwarder": "bun run scripts/build-windows-git-forwarder.ts",

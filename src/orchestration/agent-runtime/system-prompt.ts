@@ -18,7 +18,7 @@ import { systemPromptText as bundledSystemPrompt } from "../../infra/agent-asset
 import type { RuntimeTool } from "./tools/types.js";
 import type { SessionIdentity } from "../session/session-messaging.js";
 import { renderSessionIdentity } from "./session-identity-prompt.js";
-import { renderClaude5ChatBody, type Claude5ChatVariant } from "./claude-5-chat-prompt.js";
+import { FLYWHEEL_CHAT_HOST, renderClaude5ChatBody, type Claude5ChatVariant } from "./claude-5-chat-prompt.js";
 import { MESSAGE_SESSION_TOOL_NAME } from "./tools/message-session.js";
 import { ASK_USER_DISCUSSION_RULE } from "./tools/ask-user.js";
 import { SCRATCH_ENTRY_LIMIT_BYTES, SCRATCH_IDLE_DAYS } from "../session/session-artifacts.js";
@@ -289,7 +289,7 @@ export function buildSystemPromptParts(opts: BuildSystemPromptOptions): SystemPr
       hasDispatch: hasDispatchSurface,
       canDeliver: hasImplementationSurface,
       reviewSkill: reviewSkillAvailable,
-    }));
+    }, FLYWHEEL_CHAT_HOST));
     if (opts.engineeringDoctrine) stable("engineering doctrine", opts.engineeringDoctrine);
     if (toolContext) stable("tool context", toolContext);
   } else {

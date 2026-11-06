@@ -2,7 +2,9 @@
  *
  *  A release publishes exactly one archive per release target. This script
  *  states each one once: its immutable tag-addressed URL, its exact size, and
- *  its exact SHA-256. The digest is what makes a download verifiable against a
+ *  its exact SHA-256. The checksum file also states the Claude plugin archive,
+ *  whose digest is verified here like an archive's, but the manifest leaves it
+ *  out: no installed client reads it. The digest is what makes a download verifiable against a
  *  manifest a client fetched separately (ARCH-DISTRIBUTION-007), so nothing here is
  *  inferred: an archive with no checksum line, a checksum stated twice, an
  *  archive that is not one of the release targets, a target that was not
@@ -22,7 +24,7 @@ import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { sha256File } from "../src/infra/update/file-digest.js";
 import { parseRepositoryIdentity, platformAssetName, selectReleaseAsset } from "../src/infra/update/release-manifest.js";
-import { RELEASE_ARCHIVES, RELEASE_TARGETS, releaseRepository } from "./release-contract.js";
+import { CHECKSUMMED_ASSETS, RELEASE_ARCHIVES, RELEASE_TARGETS, releaseRepository } from "./release-contract.js";
 
 const CHECKSUM_FILE = "SHASUMS256.txt";
 const CHECKSUM_LINE = /^([0-9a-f]{64})\s+\*?(\S+)$/;
@@ -48,7 +50,7 @@ export async function composeReleaseManifest(inputs: ReleaseManifestInputs): Pro
   const stated = readChecksums(join(inputs.distDir, CHECKSUM_FILE));
 
   const assets = [];
-  for (const name of RELEASE_ARCHIVES) {
+  for (const name of CHECKSUMMED_ASSETS) {
     const sha256 = stated.get(name);
     if (sha256 === undefined) throw new ReleaseManifestBuildError(`${CHECKSUM_FILE} states no ${name}`);
     stated.delete(name);
@@ -57,11 +59,11 @@ export async function composeReleaseManifest(inputs: ReleaseManifestInputs): Pro
     const size = fileSize(file, name);
     const found = await sha256File(file);
     if (found !== sha256) throw new ReleaseManifestBuildError(`${name} holds the digest ${found}, not the ${sha256} ${CHECKSUM_FILE} states`);
-    assets.push({ name, url: `https://github.com/${repository.owner}/${repository.repo}/releases/download/${tag}/${name}`, size, sha256 });
+    if (RELEASE_ARCHIVES.some((archive) => archive === name)) assets.push({ name, url: `https://github.com/${repository.owner}/${repository.repo}/releases/download/${tag}/${name}`, size, sha256 });
   }
 
   const [unexpected] = stated.keys();
-  if (unexpected !== undefined) throw new ReleaseManifestBuildError(`${CHECKSUM_FILE} states ${unexpected}, which is not one of the ${RELEASE_TARGETS.length} archives a release publishes`);
+  if (unexpected !== undefined) throw new ReleaseManifestBuildError(`${CHECKSUM_FILE} states ${unexpected}, which is not one of the ${CHECKSUMMED_ASSETS.length} assets a release checksums`);
 
   const manifest = `${JSON.stringify({ version: inputs.version, tag, assets }, null, 2)}\n`;
   for (const target of RELEASE_TARGETS) selectReleaseAsset(manifest, { assetName: platformAssetName(target) });

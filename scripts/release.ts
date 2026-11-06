@@ -27,7 +27,7 @@ import { tmpdir } from "node:os";
 import { join, posix } from "node:path";
 
 import { compareSemanticVersions, parseSemanticVersion } from "./release-version.js";
-import { officialReleaseRefusal, RELEASE_ARCHIVES, RELEASE_ASSETS, RELEASE_BUILD_COMMANDS, RELEASE_TARGETS } from "./release-contract.js";
+import { CHECKSUMMED_ASSETS, CLAUDE_MARKETPLACE_FILE, CLAUDE_PLUGIN_ARCHIVE, officialReleaseRefusal, RELEASE_ARCHIVES, RELEASE_ASSETS, RELEASE_BUILD_COMMANDS, RELEASE_TARGETS } from "./release-contract.js";
 import { publishReleaseToMain } from "./release-main.js";
 import { publishRelease, rollbackToRelease } from "./release-publish.js";
 import { PUBLIC_REPO, latestReleaseTag } from "./release-repo.js";
@@ -150,9 +150,17 @@ const packageText = await packageFile.text();
 const versionLine = /^(\s*"version":\s*)"[^"]*"/m;
 if (!versionLine.test(packageText)) fail("package.json has no version line to update");
 const bumped = packageText.replace(versionLine, `$1"${next}"`);
-if (bumped !== packageText) {
-  await Bun.write(packageFile, bumped);
-  run(["git", "add", "package.json"]);
+if (bumped !== packageText) await Bun.write(packageFile, bumped);
+
+// The plugin's marketplace entry pins the digest of the exact zip this release
+// uploads, and the host refuses a download that differs. The zip is built from
+// the bundled prompt sources and the version alone, byte for byte the same on
+// every build, so it is built here and its pin rides in the release commit:
+// main never names a digest that the tagged tree does not produce.
+step("building the Claude plugin and pinning it in the marketplace (bun run build:claude-plugin)", ["bun", "run", "build:claude-plugin", "--marketplace", PUBLIC_REPO]);
+const pluginBytes = await Bun.file(join(DIST, CLAUDE_PLUGIN_ARCHIVE)).arrayBuffer();
+if (run(["git", "status", "--porcelain=v1", "--untracked-files=all", "--", "package.json", CLAUDE_MARKETPLACE_FILE]) !== "") {
+  run(["git", "add", "package.json", CLAUDE_MARKETPLACE_FILE]);
   run(["git", "commit", "-m", `release: ${tag}`]);
 }
 
@@ -197,11 +205,11 @@ for (const [index, command] of RELEASE_BUILD_COMMANDS.entries()) {
 }
 step("verifying production composition", ["bun", "run", "scripts/verify-production-composition.ts", "--binary", hostBinaryPath(ROOT)]);
 
-// The digest file, the manifest (which verifies every archive against its
-// stated digest and size), the installers, and the model-written notes.
-const archives = RELEASE_ARCHIVES;
+// The digest file, the manifest (which verifies every archive and the plugin
+// against its stated digest), the installers, and the model-written notes.
+archiveBytes.set(CLAUDE_PLUGIN_ARCHIVE, pluginBytes);
 const digestLines = await Promise.all(
-  archives.map(async (name) => {
+  CHECKSUMMED_ASSETS.map(async (name) => {
     const bytes = archiveBytes.get(name);
     if (bytes === undefined) fail(`${name} was not built in this release run`);
     const hasher = new Bun.CryptoHasher("sha256");
