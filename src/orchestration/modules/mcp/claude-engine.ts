@@ -7,9 +7,9 @@ import { osAccount } from "../../../infra/os-account.js";
 import type { LauncherScope } from "../../../infra/process-supervisor.js";
 import { createOrderedLane } from "../../../infra/ordered-lane.js";
 import type { ClaudeClientOAuth } from "./clients.js";
-import { EngineServerAnswer, launchClaudeEngineSession, type CapturedTool, type ClaudeEngineSession, type EngineServerConfig, type EngineServerStatus } from "./claude-engine-session.js";
+import { EngineServerAnswer, launchClaudeEngineSession, type CapturedTool, type ClaudeEngineControl, type ClaudeEngineSession, type EngineServerConfig, type EngineServerStatus } from "./claude-engine-session.js";
 import { redactMcpError } from "./config.js";
-import type { McpConnection, McpToolHit } from "./connection.js";
+import type { McpCallResult, McpConnection, McpToolHit } from "./connection.js";
 import { McpNeedsAuthError, McpOutcomeUnknownError, McpSignInPortBusyError } from "./errors.js";
 import type { McpOAuthAuthorization } from "./oauth.js";
 
@@ -70,7 +70,7 @@ interface HeldServer {
 }
 
 /** One server's tools, and the engine's name of each tool by its Flywheel name. */
-interface EngineTools {
+export interface EngineTools {
   readonly tools: readonly McpToolHit[];
   readonly qualified: ReadonlyMap<string, string>;
 }
@@ -96,8 +96,8 @@ export function engineServerName(server: string, url: string): string {
   return `fw_${createHash("sha256").update(`${server}\0${url}`).digest("hex").slice(0, 16)}`;
 }
 
-/** The engine's tool name part: every character outside `[a-zA-Z0-9_-]` becomes `_`. */
-function engineToolPart(name: string): string {
+/** The engine's name part of a server or tool: every character outside `[a-zA-Z0-9_-]` becomes `_`. */
+export function engineToolPart(name: string): string {
   return name.replace(/[^a-zA-Z0-9_-]/gu, "_");
 }
 
@@ -167,7 +167,7 @@ export function createMcpClaudeEngine(options: McpClaudeEngineOptions): McpClaud
     if (disposed) throw new Error("The MCP engine was disposed");
     const engineName = engineServerName(request.server, request.url);
     const config: EngineServerConfig = {
-      type: "http",
+      type: "http" as const,
       url: request.url,
       headers: request.headers,
       ...(Object.keys(request.oauth).length === 0 ? {} : { oauth: request.oauth }),
@@ -285,26 +285,7 @@ export function createMcpClaudeEngine(options: McpClaudeEngineOptions): McpClaud
     return {
       instructions: undefined,
       tools: () => current.tools,
-      async callTool(input) {
-        const tool = current.qualified.get(input.name);
-        if (tool === undefined) throw new Error(`MCP tool not found: ${input.name}`);
-        const startedAt = Date.now();
-        try {
-          const result = await engine.call(tool, input.arguments ?? {}, input.signal);
-          log.debug("MCP engine call settled", { outcome: "answered", durationMs: Date.now() - startedAt });
-          // connection.ts loads the MCP SDK client, which stays off the service's load path, as in the manager.
-          const { normalizeMcpCallResult } = await import("./connection.js");
-          return normalizeMcpCallResult(result, request.secrets);
-        } catch (error) {
-          const redacted = redactMcpError(error, request.secrets);
-          // Only the server's own JSON-RPC answer is definite. An interrupt, and every other rejection, leaves the
-          // outcome unknown, because the server may have run the call (ARCH-TOOLS-050).
-          const answered = error instanceof EngineServerAnswer && input.signal?.aborted !== true;
-          log.debug("MCP engine call settled", { outcome: answered ? "refused" : "unknown", durationMs: Date.now() - startedAt });
-          if (answered) throw redacted;
-          throw new McpOutcomeUnknownError(redacted.message);
-        }
-      },
+      callTool: (input) => callThroughEngine(engine, current.qualified, input, request.secrets),
       onClose(callback) { closeCallback = callback; },
       onToolsChanged(callback) { toolsCallback = callback; },
       async close() {
@@ -372,6 +353,28 @@ export function createMcpClaudeEngine(options: McpClaudeEngineOptions): McpClaud
   };
 }
 
+/** Calls one tool of a server that an engine connects, by the engine's name of the tool in `qualified`. Only the
+ *  server's own JSON-RPC answer is definite. An interrupt, and every other rejection, leaves the outcome unknown,
+ *  because the server may have run the call (ARCH-TOOLS-050). No output shows one of `secrets`. */
+export async function callThroughEngine(engine: Pick<ClaudeEngineControl, "call">, qualified: ReadonlyMap<string, string>, input: Parameters<McpConnection["callTool"]>[0], secrets: ReadonlyArray<Redacted.Redacted<string>>): Promise<McpCallResult> {
+  const tool = qualified.get(input.name);
+  if (tool === undefined) throw new Error(`MCP tool not found: ${input.name}`);
+  const startedAt = Date.now();
+  try {
+    const result = await engine.call(tool, input.arguments ?? {}, input.signal);
+    log.debug("MCP engine call settled", { outcome: "answered", durationMs: Date.now() - startedAt });
+    // connection.ts loads the MCP SDK client, which stays off the service's load path, as in the manager.
+    const { normalizeMcpCallResult } = await import("./connection.js");
+    return normalizeMcpCallResult(result, secrets);
+  } catch (error) {
+    const redacted = redactMcpError(error, secrets);
+    const answered = error instanceof EngineServerAnswer && input.signal?.aborted !== true;
+    log.debug("MCP engine call settled", { outcome: answered ? "refused" : "unknown", durationMs: Date.now() - startedAt });
+    if (answered) throw redacted;
+    throw new McpOutcomeUnknownError(redacted.message);
+  }
+}
+
 function toolNamesOf(status: EngineServerStatus): string {
   return JSON.stringify((status.tools ?? []).map((tool) => tool.name).toSorted());
 }
@@ -379,7 +382,7 @@ function toolNamesOf(status: EngineServerStatus): string {
 /** The tools of one server: the engine's status names them and gives their annotations, and the captured token count
  *  gives each one's description and input schema. A status tool with no captured definition fails the whole list,
  *  because a tool without its schema cannot be called. */
-function toolsOf(server: string, engineName: string, status: EngineServerStatus, captured: readonly CapturedTool[]): EngineTools {
+export function toolsOf(server: string, engineName: string, status: EngineServerStatus, captured: readonly CapturedTool[]): EngineTools {
   const prefix = `mcp__${engineName}__`;
   const definitions = new Map(captured.filter((tool) => tool.name.startsWith(prefix)).map((tool) => [tool.name, tool]));
   const listed = status.tools ?? [...definitions.keys()].map((name) => ({ name: name.slice(prefix.length) }));

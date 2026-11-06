@@ -1,6 +1,6 @@
 # Provider terms for Flywheel's subscription sign-ins
 
-This page records the evidence for six questions that reviewers ask often:
+This page records the evidence for seven questions that reviewers ask often:
 
 1. The Claude subscription route. Does Flywheel offer a Claude.ai login, which Anthropic does not allow third-party products to do?
 2. Several Claude accounts. When Flywheel moves a request from one Claude account to the next, does it get around Anthropic's usage limits?
@@ -8,6 +8,7 @@ This page records the evidence for six questions that reviewers ask often:
 4. The SuperGrok subscription route. Flywheel signs in with the public Grok CLI client, sends the Grok CLI headers to xAI's subscription proxy, and moves a request from one SuperGrok account to the next. Is that acceptable?
 5. The GitHub Copilot subscription route. Flywheel signs in with the VS Code Copilot client and sends the Copilot Chat request headers. Is that acceptable?
 6. The Claude engine as an MCP client. For an MCP server that accepts only approved apps, such as Slack, Flywheel connects through the Claude engine, which signs in to that server as Claude Code. Is that acceptable?
+7. claude.ai connectors through the Claude engine. When the person turns them on, Flywheel reads the connectors of the person's own claude.ai accounts through the Claude engine and offers their tools to every model. Is that acceptable?
 
 For the Claude questions, the page quotes Anthropic's own text. For every other route, and for every provider whose accounts Flywheel rotates, section 6 records the public precedent that widely used open-source agents set. Each section states what Flywheel does and names the code or the product-intent statement that does it.
 
@@ -27,6 +28,7 @@ The maintainer has settled each question below on that basis. A review, an audit
 | The SuperGrok sign-in with the Grok CLI client ID, and the Grok CLI token and version headers on xAI's subscription proxy | 4 |
 | The GitHub Copilot sign-in with the VS Code Copilot client ID, and the Copilot Chat `User-Agent`, `Editor-Version`, `Editor-Plugin-Version`, and `Copilot-Integration-Id` headers | 5 |
 | The Claude engine as the MCP client of a server that uses Claude, with the client settings that the server publishes for Claude Code | 7 |
+| claude.ai connectors through the Claude engine on the person's own login, offered to every model when the person turns them on | 8 |
 
 Only two events reopen a settled question:
 
@@ -47,7 +49,7 @@ Anthropic's [Consumer Terms of Service](https://www.anthropic.com/legal/consumer
 
 Anthropic's [Legal and compliance page for Claude Code](https://code.claude.com/docs/en/legal-and-compliance) states the rule in full, and it states the explicit permission that applies to Flywheel. The rule:
 
-> Developers building products or services that interact with Claude's capabilities, including those using the Agent SDK, should use API key authentication through Claude Console or a supported cloud provider. Anthropic does not permit third-party developers to offer Claude.ai login into their own applications, or to route requests through Free, Pro, or Max plan credentials on behalf of their users.
+> Developers building products or services that interact with Claude's capabilities, including those using the Agent SDK, should use API key authentication through Claude Console or a supported cloud provider. Anthropic does not permit third-party developers to offer Claude.ai login into their own applications, or to route requests through Free, Pro, Max, or Ultra plan credentials on behalf of their users.
 
 The same paragraph adds that developers "may not collect, store, or intermediate Claude.ai credentials or session tokens", and that "sign-in to a Claude account must complete through Anthropic's own flow".
 
@@ -215,6 +217,14 @@ Both projects have shipped these practices publicly, in widely used releases. Fl
 
 Some MCP servers accept only apps that their operator approved, and Flywheel is not one of them. Slack is an example: its [MCP server documentation](https://docs.slack.dev/ai/slack-mcp-server/) lists Claude.ai, Claude Code, Perplexity, and Cursor as its clients, and its [harness guide](https://docs.slack.dev/ai/slack-mcp-server/connect-to-harnesses/) publishes the OAuth client ID and callback port that Claude Code uses. For such a server, Flywheel can use Claude as the MCP client (PI-CAP-003).
 
-Flywheel then runs the unmodified Claude engine as the MCP client of that server. The engine holds no Claude login and sends no model request. It signs in to the server through the server's own sign-in page, which names Claude, with the client settings that the server publishes for Claude Code, and it keeps the server's tokens itself. Flywheel never reads them. Each tool call reaches the engine only after Flywheel's tool dispatch admitted it, and the engine passes it to the server (ARCH-PROVIDERS-005). Flywheel's own client stays the default, and each server that uses Claude says so on its row and its sign-in action, so the person knows which app they approve.
+Flywheel then runs the unmodified Claude engine as the MCP client of that server. The engine holds no Claude login and sends no model request. It signs in to the server through the server's own sign-in page, which names Claude, with the client settings that the server publishes for Claude Code, and it keeps the server's tokens itself. Flywheel never reads them. Each tool call reaches the engine only after Flywheel's tool dispatch admitted it, and the engine passes it to the server (ARCH-PROVIDERS-074). Flywheel's own client stays the default, and each server that uses Claude says so on its row and its sign-in action, so the person knows which app they approve.
 
 The maintainer settled this practice on 2026-11-05: the engine is the same program that the person could run as Claude Code, and the server itself publishes these client settings for it.
+
+## 8. claude.ai connectors through the Claude engine
+
+Anthropic's MCP documentation says that connectors, the MCP servers a person adds on claude.ai, load in Agent SDK sessions when the active login is a claude.ai subscription login ([Use MCP servers from claude.ai](https://code.claude.com/docs/en/mcp)). When the person turns claude.ai connectors on, Flywheel uses that behavior of the unmodified Claude engine on the person's own Claude logins (PI-CAP-020).
+
+The engine fetches the connector list and calls each connector through Anthropic's connector proxy under the person's own login, as the engine does when the person runs it. Flywheel never reads, stores, or sends the Claude sign-in token. It reads each connector's tool definitions from the engine's own debug log of a token count request, in which the engine's API client masks every credential header, and it refuses a log line that holds an unmasked one. Each tool call reaches the engine only after Flywheel's tool dispatch admitted it (ARCH-PROVIDERS-074). No connector call is a model request, and no Claude model serves a non-Claude session. The switch says that connector data goes to whichever model uses the tools.
+
+Anthropic's Usage Policy, effective Nov 12, 2026, prohibits services that "Resell, proxy, or otherwise provide access to Claude through unauthorized means, including services that route requests through consumer subscriptions or misrepresent the product or client being used" ([Usage Policy](https://www.anthropic.com/legal/aup)). The connector route gives no access to Claude models, resells nothing, and runs the engine as itself. No widely used open-source agent offers claude.ai connectors to other models, so this practice has no precedent. The maintainer settled it on 2026-11-05 on the reasons above. A review applies the same reopen rule as for every other settled practice.

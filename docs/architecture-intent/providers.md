@@ -26,9 +26,15 @@ Each provider definition declares one authentication strategy: API key, OAuth wi
 
 ## ARCH-PROVIDERS-005: A provider subprocess carries only admitted requests
 
-A provider can serve requests through a program that it runs as a subprocess, but Flywheel alone owns request assembly, retries, timeouts, stream buffering, and cancellation. The subprocess sends only admitted requests, retries nothing, never executes a tool that a model requested, yields stream liveness to Flywheel's watchdog, and starts and stops through the owned launcher. A Claude engine that the MCP module runs as an MCP client carries only MCP tool calls that Flywheel's tool dispatch admitted, sends no model request, and holds no Claude login. An engine that cannot start fails its request as an unavailable route.
+A provider can serve requests through a program that it runs as a subprocess, but Flywheel alone owns request assembly, retries, timeouts, stream buffering, and cancellation. The subprocess sends only admitted requests, retries nothing, never executes a tool that a model requested, yields stream liveness to Flywheel's watchdog, and starts and stops through the owned launcher. An engine that cannot start fails its request as an unavailable route.
 Because: A subprocess that decides its own retries, timeouts, continuation, or cancellation separates a stream from its consumer and makes a second owner of each.
 Not: A provider subprocess that owns its stream.
+
+## ARCH-PROVIDERS-074: A Claude engine as MCP client carries only admitted MCP calls
+
+A Claude engine that the MCP module runs as an MCP client carries only MCP tool calls that Flywheel's tool dispatch admitted, and it sends no model request. An engine for claude.ai connectors holds a Claude login. Its only Anthropic API requests are the connector list and the token counts from which Flywheel reads tool definitions.
+Because: The engine reaches servers that accept Claude, while Flywheel stays the one owner of tool admission and records.
+Not: An MCP engine that runs a tool that a model requested, or that sends a model request.
 
 ## ARCH-PROVIDERS-069: An engine process is one resource from its launch, and its files belong to its session's owner
 
@@ -70,7 +76,7 @@ Not: Engine liveness, end kinds, or served flags in provider-neutral layers.
 
 ## ARCH-PROVIDERS-007: Provider credentials and evidence live in the auth profile
 
-Provider credentials, catalog evidence, the usage authority, model preferences, and paid-use consent live in the resolved named auth profile under the account auth root, so the same provider account in two profiles shares nothing. MCP credentials stay account-global, because MCP server authorization belongs to the account and not to a provider login profile. This includes the sign-ins that the Claude engine keeps for the MCP servers that use Claude as their client; Flywheel never reads them.
+Provider credentials, catalog evidence, the usage authority, model preferences, and paid-use consent live in the resolved named auth profile under the account auth root, so the same provider account in two profiles shares nothing. MCP credentials stay account-global, because MCP server authorization belongs to the account and not to a provider login profile. This includes the sign-ins that the Claude engine keeps for the MCP servers that use Claude as their client, while claude.ai connectors follow the Claude logins of the resolved profile; Flywheel never reads either.
 
 Not: A provider-wide catalog or credential cache that reads across profiles.
 

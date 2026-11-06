@@ -83,7 +83,7 @@ describe("a synthetic module noun", () => {
     expect(process.exitCode).toBe(originalExitCode)
     expect(invocations).toHaveLength(1)
     expect(invocations[0]?.args).toEqual(["--json", "x"])
-    expect(invocations[0]?.context).toEqual({ directories, launcher, resources, accountRequest: expect.any(Function) })
+    expect(invocations[0]?.context).toEqual({ directories, launcher, resources, accountRequest: expect.any(Function), enabledModuleIds: expect.any(Array) })
   })
 
   it("answers a missing or unknown verb with the noun's usage and exit code 2", async () => {

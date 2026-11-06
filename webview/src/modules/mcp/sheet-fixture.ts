@@ -7,9 +7,9 @@ import { McpSheet } from "./sheet.js"
 import { actionKey } from "../../client/action-key.js"
 
 /** SSR supplies the real sheet with its protocol rows and action owner. DOM focus is verified in installed UAT. */
-export function renderMcpSheet(servers: readonly McpStatusRow[] | null | undefined, working?: string): string {
+export function renderMcpSheet(servers: readonly McpStatusRow[] | null | undefined, working?: string, claudeAiConnectors = false): string {
   const idle = fakeViewState()
-  const modules = { ...idle.modules, mcp: servers ?? null }
+  const modules = { ...idle.modules, mcp: servers ? { servers, claudeAiConnectors } : null }
   const view = { ...idle, projectRoot: "/repo", modules, settings: fakePanelSettings({ moduleIds: ["mcp"] }) }
   const client = fakeClient({
     state: () => view,

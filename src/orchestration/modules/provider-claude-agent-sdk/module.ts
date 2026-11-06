@@ -1,3 +1,4 @@
+import type { ClaudeLoginEngines } from "../../../infra/claude-engine.js";
 import type { AccessProviderDefinition, ExternalAccount, ExternalLoginPorts } from "../../../infra/llm/access-provider.js";
 import type { AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
 import { moduleServiceHandle } from "../../../infra/module-service.js";
@@ -6,7 +7,7 @@ import type { FirstPartyModule } from "../../modules.js";
 import { SEVEN_DAY_METRIC } from "./account-usage.js";
 import { historicalEngineFraming } from "./agent-host/engine-text.js";
 import { claudeSdkDynamicCatalog } from "./catalog.js";
-import { engineHost, observationsOf, type ClaudeAgentSdkSeams } from "./cli-launch.js";
+import { cliLaunch, engineHost, observationsOf, type ClaudeAgentSdkSeams } from "./cli-launch.js";
 import { profileClaudeAccounts, loginClaudeAccount, logoutClaudeAccount, logoutProfileClaudeAccounts, type ClaudeProfile } from "./cli-login.js";
 import { drainAgentHosts, releaseLiveBridges, resumeLiveBridges } from "./live-bridges.js";
 import { claudeLoginHealth, loginProblems } from "./login-status.js";
@@ -89,23 +90,49 @@ function providerDefinition(seams: ClaudeAgentSdkSeams) {
   } as const satisfies AccessProviderDefinition;
 }
 
-const claudeAgentSdkService = moduleServiceHandle<ModuleServiceInstance>(CLAUDE_AGENT_SDK_MODULE_ID);
+const claudeAgentSdkService = moduleServiceHandle<ModuleServiceInstance & ClaudeLoginEngines>(CLAUDE_AGENT_SDK_MODULE_ID);
 
-/** Turning the module off ends its effect (ARCH-STRUCTURE-026) without cancelling admitted work (ARCH-RUNTIME-063):
- *  every live engine use of the process lets its engine go, at once when idle and as soon as its open request ends
- *  otherwise, so a shared host closes when its last running request settled. The runner's next request then routes
- *  elsewhere. Any other selection change leaves the engines running: a host keeps the module capture that it took
- *  when it opened, whose gates refuse the calls of a module turned off since. Only the service's end at the process's
- *  shutdown closes every host at once. */
-function createBridgeReleaseService(services: Pick<PortableModuleServices, "enabled" | "onSelectionChanged">): ModuleServiceInstance {
+/**
+ * The module's process service. Turning the module off ends its effect (ARCH-STRUCTURE-026) without cancelling
+ * admitted work (ARCH-RUNTIME-063): every live engine use of the process lets its engine go, at once when idle and as
+ * soon as its open request ends otherwise, so a shared host closes when its last running request settled. The runner's
+ * next request then routes elsewhere. Any other selection change leaves the engines running: a host keeps the module
+ * capture that it took when it opened, whose gates refuse the calls of a module turned off since. Only the service's
+ * end at the process's shutdown closes every host at once.
+ *
+ * The service also offers the Claude logins of the project's resolved auth profile to the MCP module, which runs the
+ * person's claude.ai connectors on them (PI-CAP-020). It reads the logins when asked, so a login added or ended since
+ * counts at the next read, and offers none while the module is off.
+ */
+function createClaudeAgentSdkService(services: Pick<PortableModuleServices, "enabled" | "onSelectionChanged" | "directories" | "config" | "launcher">, seams: ClaudeAgentSdkSeams): ModuleServiceInstance & ClaudeLoginEngines {
   const stop = services.onSelectionChanged(() => {
     if (services.enabled()) resumeLiveBridges();
     else releaseLiveBridges();
   });
-  return { dispose: async () => {
-    await stop();
-    await drainAgentHosts();
-  } };
+  return {
+    async logins() {
+      if (!services.enabled()) return [];
+      // The auth profile code stays off the module's load path, which the module registry is on.
+      const { AuthProfileManager } = await import("../../auth/auth-profile-manager.js");
+      const profile = new AuthProfileManager({ userDataRoot: services.directories.userDataRoot, projectRoot: services.directories.projectRoot, config: () => services.config.snapshot().config }).inspect();
+      return profileClaudeAccounts(profile.directory, seams.account?.().home).flatMap((account) => {
+        const launch = cliLaunch({ type: "external", configDir: account.configDir }, services.launcher, seams);
+        if (launch.kind !== "ready") return [];
+        return [{
+          // An engine runs on the login's config directory, so the directory names the login that its engines hold.
+          key: account.configDir,
+          accountId: account.accountId,
+          identity: account.identity,
+          // The launcher loads the Agent SDK, which stays off the start path until an engine starts.
+          start: async (engine) => (await import("./query-launcher.js")).startLoginEngine(launch.config, engine),
+        }];
+      });
+    },
+    dispose: async () => {
+      await stop();
+      await drainAgentHosts();
+    },
+  };
 }
 
 /**
@@ -122,7 +149,7 @@ export function createClaudeAgentSdkModule(seams: ClaudeAgentSdkSeams = {}) {
     id: CLAUDE_AGENT_SDK_MODULE_ID,
     dependencies: [],
     availability: { kind: "available" },
-    service: { handle: claudeAgentSdkService, portable: true, create: createBridgeReleaseService },
+    service: { handle: claudeAgentSdkService, portable: true, create: (services: PortableModuleServices) => createClaudeAgentSdkService(services, seams) },
     contributions: [
       { domain: "providers", id: definition.id, value: { definition, createClient, usageReader: claudeUsageReader(seams) } },
       { domain: "health", id: CLAUDE_AGENT_SDK_MODULE_ID, value: {

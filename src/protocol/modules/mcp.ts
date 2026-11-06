@@ -13,7 +13,7 @@ type McpServerStatus = "pending" | "ready" | "failed" | "needs_auth" | "disabled
 
 /** Stable identifier for a failure the client may want to present with its
  *  own wording; `error` stays the human-readable fallback. */
-type McpStatusErrorCode = "connection_failed"
+type McpStatusErrorCode = "connection_failed" | "tools_unreadable" | "login_unreachable"
 
 export interface McpConnectionStatusRow {
   readonly name: string
@@ -32,6 +32,13 @@ export type McpClientChoice =
   | { readonly kind: "claude"; readonly source: "chosen" }
   | { readonly kind: "claude"; readonly source: "built-in"; readonly service: string; readonly reason: string }
 
+/** Where a server comes from when no Flywheel configuration defines it: a connector that the person added on
+ *  claude.ai, served by the Claude login `login` (the login's identity as the person reads it). */
+interface McpConnectorSource {
+  readonly kind: "claude.ai"
+  readonly login: string
+}
+
 /** Applied connection status and private, opaque management expectations.
  * No connection configuration or canonical project path crosses this boundary. */
 export interface McpStatusRow extends McpConnectionStatusRow {
@@ -42,21 +49,28 @@ export interface McpStatusRow extends McpConnectionStatusRow {
   readonly expected: string
   /** Present for an HTTP server only: a stdio server has no client choice. */
   readonly client?: McpClientChoice
+  /** Present for a claude.ai connector only. */
+  readonly source?: McpConnectorSource
 }
 
-interface RuntimeMcpStatusSnapshotResult {
-  readonly snapshotPosition: RuntimePosition
+/** What every client reads of MCP: the server rows and whether the person turned claude.ai connectors on. */
+export interface McpStatusView {
   readonly servers: readonly McpStatusRow[]
+  readonly claudeAiConnectors: boolean
 }
 
-type McpPatchPayload = { readonly kind: "mcp.changed"; readonly servers: readonly McpStatusRow[] }
+interface RuntimeMcpStatusSnapshotResult extends McpStatusView {
+  readonly snapshotPosition: RuntimePosition
+}
+
+type McpPatchPayload = McpStatusView & { readonly kind: "mcp.changed" }
 
 const McpStatusRowSchema: Schema.Codec<McpStatusRow> = Schema.Struct({
   name: Schema.String,
   status: Schema.Literals(["pending", "ready", "failed", "needs_auth", "disabled"]),
   toolCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   error: Schema.optionalKey(Schema.String),
-  errorCode: Schema.optionalKey(Schema.Literal("connection_failed")),
+  errorCode: Schema.optionalKey(Schema.Literals(["connection_failed", "tools_unreadable", "login_unreachable"])),
   definitionScope: Schema.Literals(["global", "project"]),
   enabledScope: Schema.Literals(["global", "project"]),
   enabled: Schema.Boolean,
@@ -67,9 +81,10 @@ const McpStatusRowSchema: Schema.Codec<McpStatusRow> = Schema.Struct({
     Schema.Struct({ kind: Schema.Literal("claude"), source: Schema.Literal("chosen") }),
     Schema.Struct({ kind: Schema.Literal("claude"), source: Schema.Literal("built-in"), service: Schema.String, reason: Schema.String }),
   ])),
+  source: Schema.optionalKey(Schema.Struct({ kind: Schema.Literal("claude.ai"), login: Schema.String })),
 })
-const RuntimeMcpStatusSnapshotResultSchema: Schema.Codec<RuntimeMcpStatusSnapshotResult> = Schema.Struct({ snapshotPosition: Schema.Number, servers: Schema.Array(McpStatusRowSchema) })
-const McpPatchPayloadSchema: Schema.Codec<McpPatchPayload> = Schema.Struct({ kind: Schema.Literal("mcp.changed"), servers: Schema.Array(McpStatusRowSchema) })
+const RuntimeMcpStatusSnapshotResultSchema: Schema.Codec<RuntimeMcpStatusSnapshotResult> = Schema.Struct({ snapshotPosition: Schema.Number, servers: Schema.Array(McpStatusRowSchema), claudeAiConnectors: Schema.Boolean })
+const McpPatchPayloadSchema: Schema.Codec<McpPatchPayload> = Schema.Struct({ kind: Schema.Literal("mcp.changed"), servers: Schema.Array(McpStatusRowSchema), claudeAiConnectors: Schema.Boolean })
 
 /** The module's one domain, exported so its client homes read the view by
  *  this declaration and never by a domain literal. */
@@ -81,7 +96,10 @@ export const mcpDomain = defineProtocolDomain({
   content: "whole-value",
   snapshot: { query: "mcpStatusSnapshot", result: RuntimeMcpStatusSnapshotResultSchema, deadline: "control" },
   patch: McpPatchPayloadSchema,
-  view: { snapshot: (result) => result.servers, patch: (payload) => payload.servers },
+  view: {
+    snapshot: (result): McpStatusView => ({ servers: result.servers, claudeAiConnectors: result.claudeAiConnectors }),
+    patch: (payload): McpStatusView => ({ servers: payload.servers, claudeAiConnectors: payload.claudeAiConnectors }),
+  },
 })
 
 export const mcpCursor = (): RuntimeCursorIdentity => ({ scope: "workspace", domain: mcpDomain.domain })
@@ -126,6 +144,13 @@ const mcpSetClient = defineProtocolMutation({
   result: McpManagementResultSchema,
   policy: "lossless",
 })
+/** Turn the account's claude.ai connectors on or off for every project. */
+const mcpSetClaudeAiConnectors = defineProtocolMutation({
+  type: "mcp.setClaudeAiConnectors",
+  fields: { enabled: Schema.Boolean },
+  result: McpManagementResultSchema,
+  policy: "lossless",
+})
 const mcpRemove = defineProtocolMutation({
   type: "mcp.remove",
   fields: selectedFields,
@@ -151,26 +176,50 @@ export function mcpProjectEnabledAction(row: McpStatusRow): McpEnabledAction | u
 }
 
 export function mcpScopeDetail(row: McpStatusRow): string {
-  return row.definitionScope === "project" ? "Project server"
-    : row.enabledScope === "project" ? "Global server · project enabled override" : "Global server"
+  const override = row.enabledScope === "project" ? " · project enabled override" : ""
+  if (row.source !== undefined) return `${row.source.login}${override}`
+  return row.definitionScope === "project" ? "Project server" : `Global server${override}`
 }
 
-/** The row detail of a server that connects through Claude, or nothing for one that Flywheel connects. */
-export function mcpClientDetail(row: Pick<McpStatusRow, "client">): string | undefined {
+/** The switch that offers the person's claude.ai connectors as MCP servers, as every client and the config describe it. */
+export const MCP_CLAUDE_AI_CONNECTORS = {
+  label: "Use claude.ai connectors",
+  description: "Adds the connectors of your Claude logins as MCP servers. Connector data goes to whichever model uses their tools.",
+} as const
+
+/** The row detail of a server that connects through Claude or comes from claude.ai, or nothing for one that Flywheel
+ *  connects. */
+export function mcpClientDetail(row: Pick<McpStatusRow, "client" | "source">): string | undefined {
+  if (row.source !== undefined) return "From claude.ai"
   return row.client?.kind === "claude" ? "Connects through Claude" : undefined
 }
 
-/** Why a server connects through Claude, or nothing for one that Flywheel connects. */
-export function mcpClientReason(row: Pick<McpStatusRow, "client">): string | undefined {
+/** Why a server connects through Claude, or where a claude.ai connector is managed, or nothing for a server that
+ *  Flywheel connects. */
+export function mcpClientReason(row: Pick<McpStatusRow, "client"> & Partial<Pick<McpStatusRow, "source" | "status">>): string | undefined {
+  if (row.source !== undefined) return row.status === "needs_auth" ? "Sign in to this connector at claude.ai." : "Manage it at claude.ai."
   const client = row.client
   if (client?.kind !== "claude") return undefined
   return client.source === "chosen" ? "You chose Claude as this server's client."
     : `${client.reason}, so Flywheel connects through Claude. ${client.service}'s sign-in page will name Claude, not Flywheel.`
 }
 
-/** The label of the sign-in action of one server. */
-export function mcpSignInLabel(row: Pick<McpStatusRow, "client">): string {
-  return row.client?.kind === "claude" ? "Sign in with Claude" : "Authenticate"
+export interface McpRepairAction {
+  readonly kind: "authenticate" | "reconnect"
+  readonly label: string
+}
+
+/** The action that repairs a row's connection, or nothing for a row that needs none. A failed server reconnects, and
+ *  so does a claude.ai connector that needs a sign-in, once the person signed in to it at claude.ai. */
+export function mcpRepairAction(row: Pick<McpStatusRow, "status" | "client" | "source">): McpRepairAction | undefined {
+  if (row.status === "failed" || (row.status === "needs_auth" && row.source !== undefined)) return { kind: "reconnect", label: "Reconnect" }
+  if (row.status !== "needs_auth") return undefined
+  return { kind: "authenticate", label: row.client?.kind === "claude" ? "Sign in with Claude" : "Authenticate" }
+}
+
+/** Whether a client offers Remove: a claude.ai connector is removed on claude.ai, not in Flywheel. */
+export function mcpRemovable(row: Pick<McpStatusRow, "source">): boolean {
+  return row.source === undefined
 }
 
 export interface McpClientAction {
@@ -222,15 +271,15 @@ function mcpServersNeedingAttention(servers: readonly McpStatusRow[]): readonly 
 export const mcpProtocol = defineProtocolModule({
   id: "mcp",
   domains: [mcpDomain],
-  mutations: [mcpAuthenticate, mcpReconnect, mcpSetEnabled, mcpSetClient, mcpRemove],
+  mutations: [mcpAuthenticate, mcpReconnect, mcpSetEnabled, mcpSetClient, mcpSetClaudeAiConnectors, mcpRemove],
   rows: {
     // Healthy servers render nothing on the intro card; the row exists only to alert.
     intro: (read) => {
-      const attention = mcpServersNeedingAttention(read(mcpDomain) ?? []).length
+      const attention = mcpServersNeedingAttention(read(mcpDomain)?.servers ?? []).length
       return attention === 0 ? [] : [{ id: "mcp", label: "mcp", value: `${attention} need${attention === 1 ? "s" : ""} attention`, hint: "to fix", tone: "warning", action: { kind: "command", id: MCP_COMMAND } }]
     },
     status: (read) => {
-      const servers = read(mcpDomain)
+      const servers = read(mcpDomain)?.servers
       if (servers === undefined) return []
       if (servers.length === 0) return [{ id: "mcp", label: "MCP servers", value: "none configured", action: OPEN }]
       const attention = mcpServersNeedingAttention(servers).length

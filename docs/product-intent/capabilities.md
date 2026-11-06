@@ -38,6 +38,10 @@ A project definition replaces a global definition of the same name, and an enabl
 
 A server that failed to connect can be reconnected from every client without a change to its configuration or to other servers. Removing or disabling a connection clears its attention warning. When Flywheel's own sign-in fails because the server allows no client registration, the error names the choice of Claude as the client.
 
+## PI-CAP-020: The person's claude.ai connectors can reach every model
+
+When the person turns on claude.ai connectors, which are off by default, the connectors of the profile's Claude logins appear as MCP servers on every client and reach every provider, headless runs included. Connectors from several logins appear once by name, and each call runs on a login that has the connector. Flywheel reads connector tools through the Claude engine and never reads the Claude sign-in token, and the person manages connectors on claude.ai. A connector whose tools Flywheel cannot read fails with that reason, and the others still work.
+
 ## PI-CAP-004: Headless runs reach the same MCP servers
 
 A headless chat, the agents of its workflows, its subagents, and a direct headless task can use the project's enabled MCP servers, as an interactive session can. Each run waits for the servers to connect before its first request, but never longer than the connection deadline. A server that needs a sign-in or fails to connect does not stop the run, which names that server on standard error with the command that repairs it. The servers the run starts stop when the run ends.

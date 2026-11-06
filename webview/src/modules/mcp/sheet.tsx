@@ -1,15 +1,17 @@
 import { createComputed, createEffect, on, onCleanup, Show } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
 
-import { mcpClientAction, mcpClientDetail, mcpClientReason, mcpDomain, mcpEnabledAction, mcpProjectEnabledAction, mcpScopeDetail, mcpSignInLabel, type McpStatusRow, MCP_COMMAND_NAME } from "../../../../src/protocol/modules/mcp.js"
+import { mcpClientAction, mcpClientDetail, mcpClientReason, mcpDomain, mcpEnabledAction, mcpProjectEnabledAction, mcpRemovable, mcpRepairAction, mcpScopeDetail, type McpStatusRow, MCP_CLAUDE_AI_CONNECTORS, MCP_COMMAND_NAME } from "../../../../src/protocol/modules/mcp.js"
 import { useClient } from "../../app/client-context.js"
+import { SettingRow, SheetSwitch } from "../../app/sheets/controls.js"
 import { Sheet, SheetEmpty, SheetLoading, SheetRow } from "../../app/sheets/sheet.js"
 import { createMcpMutation } from "./mutation.js"
 
 /** Applied scope and connection state come from the current project's protocol view. */
 export function McpSheet() {
   const client = useClient()
-  const servers = () => client.state().modules[mcpDomain.domain]
+  const view = () => client.state().modules[mcpDomain.domain]
+  const servers = () => view()?.servers
   const projectRoot = client.state().projectRoot
   const lifetime = new AbortController()
   const active = () => client.state().projectRoot === projectRoot && client.state().settings?.moduleIds.includes("mcp") !== false
@@ -47,9 +49,12 @@ export function McpSheet() {
   const tone = (server: McpStatusRow) => (server.error !== undefined ? "error" : server.status === "ready" ? "ok" : "warn")
   return (
     <div ref={(element) => { sheet = element }}><Sheet title={MCP_COMMAND_NAME} onClose={client.closeSheet}>
-      <Show when={servers()} fallback={<SheetLoading />}>{(rows) =>
-      <Show when={rows().length > 0} fallback={<SheetEmpty>No MCP servers configured.</SheetEmpty>}>
-        <Key each={rows()} by="name">
+      <Show when={view()} fallback={<SheetLoading />}>{(current) => <>
+      <SettingRow label={MCP_CLAUDE_AI_CONNECTORS.label} detail={MCP_CLAUDE_AI_CONNECTORS.description}>
+        <SheetSwitch on={current().claudeAiConnectors} label={MCP_CLAUDE_AI_CONNECTORS.label} working={operation.claudeAiConnectorsWorking()} onChange={(enabled) => { void operation.claudeAiConnectors(enabled) }} />
+      </SettingRow>
+      <Show when={current().servers.length > 0} fallback={<SheetEmpty>No MCP servers configured.</SheetEmpty>}>
+        <Key each={current().servers} by="name">
           {(server) => (
             <SheetRow
               label={server().name}
@@ -61,19 +66,18 @@ export function McpSheet() {
               </>}
             >
               <div class="sheet-row-main" ref={(element) => register(server().name, element)} aria-busy={operation.working(server().name) || undefined}>
-                <Show when={server().status === "needs_auth"}><button class="secondary" disabled={operation.working(server().name)} onClick={(event) => { void runAction(server().name, event.currentTarget, () => operation.authenticate(server())) }}>{mcpSignInLabel(server())}</button></Show>
-                <Show when={server().status === "failed"}><button class="secondary" disabled={operation.working(server().name)} onClick={(event) => { void runAction(server().name, event.currentTarget, () => operation.reconnect(server())) }}>Reconnect</button></Show>
+                <Show when={mcpRepairAction(server())}>{(action) => <button class="secondary" disabled={operation.working(server().name)} onClick={(event) => { void runAction(server().name, event.currentTarget, () => action().kind === "authenticate" ? operation.authenticate(server()) : operation.reconnect(server())) }}>{action().label}</button>}</Show>
                 <button class="secondary" disabled={operation.working(server().name)} onClick={(event) => { void runAction(server().name, event.currentTarget, () => operation.enabled(server(), mcpEnabledAction(server()))) }}>{mcpEnabledAction(server()).label}</button>
                 <Show when={mcpProjectEnabledAction(server())}>{(action) => <button class="secondary" disabled={operation.working(server().name)} onClick={(event) => { void runAction(server().name, event.currentTarget, () => operation.enabled(server(), action())) }}>{action().label}</button>}</Show>
                 <Show when={mcpClientAction(server())}>{(action) => <button class="secondary" disabled={operation.working(server().name)} onClick={(event) => { void runAction(server().name, event.currentTarget, () => operation.client(server(), action())) }}>{action().label}</button>}</Show>
-                <button class="ghost" disabled={operation.working(server().name)} onClick={(event) => { void runAction(server().name, event.currentTarget, () => operation.remove(server())) }}>Remove</button>
+                <Show when={mcpRemovable(server())}><button class="ghost" disabled={operation.working(server().name)} onClick={(event) => { void runAction(server().name, event.currentTarget, () => operation.remove(server())) }}>Remove</button></Show>
                 <Show when={operation.working(server().name)}><span>Working…</span></Show>
               </div>
             </SheetRow>
           )}
         </Key>
       </Show>
-      }</Show>
+      </>}</Show>
     </Sheet></div>
   )
 }

@@ -3,7 +3,7 @@
 import { StyledText, fg as stFg, type TextRenderable, type ScrollBoxRenderable } from "@opentui/core"
 import { createEffect, createMemo, createSignal, Show } from "solid-js"
 import { Key } from "@solid-primitives/keyed"
-import { mcpClientAction, mcpClientDetail, mcpClientReason, mcpEnabledAction, mcpProjectEnabledAction, mcpRemovalConfirmation, mcpScopeDetail, mcpSignInLabel, type McpStatusRow, MCP_COMMAND_NAME } from "../../../protocol/modules/mcp.js"
+import { mcpClientAction, mcpClientDetail, mcpClientReason, mcpEnabledAction, mcpProjectEnabledAction, mcpRemovable, mcpRemovalConfirmation, mcpRepairAction, mcpScopeDetail, type McpStatusRow, MCP_CLAUDE_AI_CONNECTORS, MCP_COMMAND_NAME } from "../../../protocol/modules/mcp.js"
 import { Button } from "../../components/button.js"
 import { ModalFooter } from "../../components/modal-footer.js"
 import { ModalFrame } from "../../components/modal-frame.js"
@@ -37,10 +37,12 @@ export function McpModal(props: { list: McpList }) {
   const reason = createMemo(() => { const row = props.list.selected(); return row && !review() ? mcpClientReason(row) : undefined })
   const wrappedLines = useWrappedLineCount()
   const reasonHeight = () => { const text = reason(); return text === undefined ? 0 : wrappedLines(text, Math.max(1, modalWidth() - 10)) }
+  /** The switch line, its description word-wrapped under the label (`modalWidth() - 11` columns), and one blank line. */
+  const switchHeight = () => 2 + wrappedLines(MCP_CLAUDE_AI_CONNECTORS.description, Math.max(1, modalWidth() - 11))
   useListSelectionReveal({
     viewport,
     revision: () => props.list.navigationRevision(),
-    layout: () => [rows(), menu().length, reasonHeight(), modalWidth(), listMaxHeight()],
+    layout: () => [rows(), menu().length, reasonHeight(), switchHeight(), modalWidth(), listMaxHeight()],
     elements: (scroll) => rows()?.flatMap((row) => { const element = scroll.content.findDescendantById(`mcp:${row.name}`); return element ? [element] : [] }) ?? [],
     reveal: (scroll) => {
       const row = props.list.selected()
@@ -52,9 +54,12 @@ export function McpModal(props: { list: McpList }) {
   return (
     <ModalFrame title={MCP_COMMAND_NAME} width={modalWidth()} onClose={props.list.close}>
       <box height={1} />
-      <Show when={rows()} fallback={<text fg={theme.textMuted}>Loading MCP servers...</text>}>{(servers) =>
+      <Show when={rows()} fallback={<text fg={theme.textMuted}>Loading MCP servers...</text>}>{(servers) => <>
+      <ClaudeAiConnectorsLine on={props.list.claudeAiConnectors() === true} onToggle={props.list.toggleClaudeAiConnectors} />
+      <box paddingLeft={5}><text fg={theme.textMuted} wrapMode="word">{MCP_CLAUDE_AI_CONNECTORS.description}</text></box>
+      <box height={1} />
       <Show when={servers().length > 0} fallback={<text fg={theme.textMuted}>No MCP servers configured.</text>}>
-        <scrollbox ref={setViewport} height={Math.min(review() ? Math.max(2, listMaxHeight() - 8) : listMaxHeight(), servers().length * 2 + reasonHeight() + menu().length)} scrollbarOptions={{ visible: false }}>
+        <scrollbox ref={setViewport} height={Math.min(Math.max(2, listMaxHeight() - switchHeight() - (review() ? 8 : 0)), servers().length * 2 + reasonHeight() + menu().length)} scrollbarOptions={{ visible: false }}>
           <Key each={servers()} by="name">{(row, index) => <box id={`mcp:${row().name}`}>
             <McpRow row={row()} active={cursor() === index()} width={modalWidth() - 9} onSelect={() => { props.list.select(index()); props.list.repair() }} />
             <box paddingLeft={4}><text fg={theme.textMuted} wrapMode="none" overflow="hidden">{[mcpClientDetail(row()), mcpScopeDetail(row())].filter((part) => part !== undefined).join(" · ")}</text></box>
@@ -65,7 +70,7 @@ export function McpModal(props: { list: McpList }) {
           </box>}</Key>
         </scrollbox>
       </Show>
-      }</Show>
+      </>}</Show>
       <Show when={props.list.pending()}>{(pending) => <text fg={theme.textMuted} wrapMode="none" overflow="hidden">{pending()}</text>}</Show>
       <Show when={review()}>{(state) => <box paddingTop={1}>
         <text fg={theme.text} wrapMode="word">{removal()?.title}</text>
@@ -75,7 +80,7 @@ export function McpModal(props: { list: McpList }) {
           <Button label="Remove" focused={state().focus === 1} onPress={props.list.confirm} />
         </box>
       </box>}</Show>
-      <box paddingTop={1}><ModalFooter rows={[review() ? "←→/tab select · enter choose · esc cancel" : props.list.pending() ? "esc/q close" : "↑↓/j/k navigate · esc/q close"]} /></box>
+      <box paddingTop={1}><ModalFooter rows={[review() ? "←→/tab select · enter choose · esc cancel" : props.list.pending() ? "esc/q close" : "↑↓/j/k navigate · u connectors · esc/q close"]} /></box>
     </ModalFrame>
   )
 }
@@ -90,13 +95,14 @@ interface McpMenuAction {
 function menuActions(row: McpStatusRow, list: McpList): readonly McpMenuAction[] {
   const project = mcpProjectEnabledAction(row)
   const client = mcpClientAction(row)
-  const repair = row.status === "needs_auth" ? { key: "enter", label: mcpSignInLabel(row) } : row.status === "failed" ? { key: "enter/r", label: "Reconnect" } : undefined
+  const action = mcpRepairAction(row)
+  const repair = action === undefined ? undefined : { key: action.kind === "reconnect" ? "enter/r" : "enter", label: action.label }
   return [
     ...(repair ? [{ ...repair, destructive: false, run: list.repair }] : []),
     { key: "e", label: mcpEnabledAction(row).label, destructive: false, run: () => list.setEnabled() },
     ...(project ? [{ key: "p", label: project.label, destructive: false, run: () => list.setEnabled(true) }] : []),
     ...(client ? [{ key: "c", label: client.label, destructive: false, run: list.setClient }] : []),
-    { key: "d", label: "Remove", destructive: true, run: list.remove },
+    ...(mcpRemovable(row) ? [{ key: "d", label: "Remove", destructive: true, run: list.remove }] : []),
   ]
 }
 
@@ -111,6 +117,22 @@ function McpActionLine(props: { action: McpMenuAction; keyWidth: number }) {
         {...hover.handlers} onMouseDown={() => props.action.run()}>
         <text selectable={false} flexShrink={0} fg={theme.primary} attributes={BOLD}>{props.action.key.padEnd(props.keyWidth + 2)}</text>
         <text selectable={false} wrapMode="none" overflow="hidden" fg={props.action.destructive ? theme.error : theme.text}>{props.action.label}</text>
+      </box>
+    </box>
+  )
+}
+
+/** The account switch for claude.ai connectors: its key, its label, and its state, which a click also toggles. */
+function ClaudeAiConnectorsLine(props: { on: boolean; onToggle: () => void }) {
+  const { theme } = useTheme()
+  const hover = useHoverHighlight()
+  return (
+    <box paddingLeft={1} flexDirection="row">
+      <box flexDirection="row" paddingLeft={1} paddingRight={1} selectable={false} backgroundColor={hover.background()}
+        {...hover.handlers} onMouseDown={() => props.onToggle()}>
+        <text selectable={false} flexShrink={0} fg={theme.primary} attributes={BOLD}>{"u  "}</text>
+        <text selectable={false} wrapMode="none" overflow="hidden" fg={theme.text}>{`${MCP_CLAUDE_AI_CONNECTORS.label}  `}</text>
+        <text selectable={false} flexShrink={0} fg={props.on ? theme.success : theme.textMuted}>{props.on ? "on" : "off"}</text>
       </box>
     </box>
   )

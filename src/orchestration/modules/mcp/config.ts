@@ -66,11 +66,19 @@ const McpEnabledOverrideSchema = Schema.Struct({
   client: Schema.optionalKey(Schema.Never),
 }).pipe(Schema.annotate({ description: "An enabled-only project override of a global MCP server." }));
 const McpProjectServerSchema = Schema.Union([...McpServerConfigSchema.members, McpEnabledOverrideSchema]);
+const McpConnectorChoiceSchema = Schema.Struct({
+  enabled: described(Schema.Boolean, "Enable this claude.ai connector."),
+}).pipe(Schema.annotate({ description: "The person's choice for one claude.ai connector, which claude.ai defines." }));
+const McpConnectorChoicesSchema = Schema.Record(Schema.String, McpConnectorChoiceSchema).pipe(
+  Schema.withDecodingDefaultTypeKey(Effect.succeed({})),
+  Schema.annotate({ exampleKey: "claude_ai_Claude_Docs" }),
+);
 const McpProjectSchema = Schema.Struct({
   servers: described(Schema.Record(Schema.String, McpProjectServerSchema).pipe(
     Schema.withDecodingDefaultTypeKey(Effect.succeed({})),
     Schema.annotate({ exampleKey: "local tool" }),
   ), "Private project MCP definitions and enabled-only global overrides."),
+  connectors: Schema.optionalKey(described(McpConnectorChoicesSchema, "Enabled choices for claude.ai connectors in this project, keyed by connector server name.")),
 });
 
 export const McpConfigSchema = Schema.Struct({
@@ -83,7 +91,12 @@ export const McpConfigSchema = Schema.Struct({
     Schema.withDecodingDefaultTypeKey(Effect.succeed({})),
     Schema.annotate({ exampleKey: "/workspace/project" }),
   ), "Account-private MCP choices keyed by canonical project root."),
-}).pipe(Schema.withDecodingDefaultType(Effect.succeed({ servers: {}, projects: {} })));
+  claude_ai_connectors: described(
+    Schema.Boolean.pipe(Schema.withDecodingDefaultTypeKey(Effect.succeed(false))),
+    "Use claude.ai connectors: add the connectors of the Claude logins of the auth profile as MCP servers. Connector data goes to whichever model uses their tools.",
+  ),
+  connectors: described(McpConnectorChoicesSchema, "Enabled choices for claude.ai connectors in all projects, keyed by connector server name."),
+}).pipe(Schema.withDecodingDefaultType(Effect.succeed({ servers: {}, projects: {}, claude_ai_connectors: false, connectors: {} })));
 
 export type McpServerConfig = typeof McpServerConfigSchema.Type;
 export type McpConfig = typeof McpConfigSchema.Type;
@@ -96,13 +109,50 @@ export interface McpServerSource {
   readonly hasGlobalFallback: boolean;
 }
 interface McpSourceRegistry { [name: string]: McpServerSource }
-interface McpResolvedConfig {
+/** The servers that one manager connects, and the source of each. */
+export interface McpRegistry {
   readonly servers: McpServerRegistry;
+  readonly metadata: Readonly<McpSourceRegistry>;
+}
+
+export interface McpResolvedConfig {
+  readonly servers: McpConfiguredServers;
   readonly metadata: Readonly<McpSourceRegistry>;
 }
 
 export function isMcpEnabledOverride(value: McpProjectServer): value is typeof McpEnabledOverrideSchema.Type {
   return value.command === undefined && value.url === undefined;
+}
+
+/** One claude.ai connector as the registry holds it: the key of the Claude login that serves it, and that login as a
+ *  person reads it. */
+export interface McpConnectorServer {
+  readonly connector: { readonly login: string; readonly identity: string };
+  readonly enabled: boolean;
+}
+
+/** One server of the published registry: a configured server, or a claude.ai connector that claude.ai defines. */
+export type McpRegistryServer = McpServerConfig | McpConnectorServer;
+
+export function isMcpConnector(server: McpRegistryServer): server is McpConnectorServer {
+  return "connector" in server;
+}
+
+/** Add the read claude.ai connectors to a resolved config, each with the person's enabled choice: a project choice
+ *  wins over an all-projects choice, and a connector is on without either. A configured server keeps its name. */
+export function withMcpConnectors(resolved: McpResolvedConfig, config: McpConfig, projectRoot: string, connectors: { readonly [name: string]: McpConnectorServer["connector"] }): McpRegistry {
+  const project = Object.hasOwn(config.projects, projectRoot) ? config.projects[projectRoot] : undefined;
+  const added = Object.entries(connectors).filter(([name]) => !Object.hasOwn(resolved.servers, name)).map(([name, connector]) => {
+    const local = project?.connectors !== undefined && Object.hasOwn(project.connectors, name) ? project.connectors[name] : undefined;
+    const global = Object.hasOwn(config.connectors, name) ? config.connectors[name] : undefined;
+    const enabled = local?.enabled ?? global?.enabled ?? true;
+    const source: McpServerSource = { definitionScope: "global", enabledScope: local === undefined ? "global" : "project", enabled, hasGlobalFallback: false };
+    return { name, server: { connector, enabled } satisfies McpConnectorServer, source };
+  });
+  return {
+    servers: { ...resolved.servers, ...Object.fromEntries(added.map(({ name, server }) => [name, server])) },
+    metadata: { ...resolved.metadata, ...Object.fromEntries(added.map(({ name, source }) => [name, source])) },
+  };
 }
 
 /** Resolve the owner-validated account section for the startup-canonical project root. Full project definitions replace globals; overrides retain connection details. */
@@ -172,7 +222,11 @@ export function redactMcpError(error: unknown, secrets: ReadonlyArray<Redacted.R
 }
 
 /** The configured MCP servers keyed by name; the config file owns membership. */
-export type McpServerRegistry = { readonly [K in string]: McpServerConfig };
+export type McpConfiguredServers = { readonly [K in string]: McpServerConfig };
+
+/** The MCP servers that one manager connects, keyed by name: the config file owns the membership of configured
+ *  servers, and claude.ai the membership of connectors. */
+export type McpServerRegistry = { readonly [K in string]: McpRegistryServer };
 
 /** The `[mcp]` section of `flywheel.toml`, owned by this module through its
  *  `config` contribution. A replacement of the section replaces the

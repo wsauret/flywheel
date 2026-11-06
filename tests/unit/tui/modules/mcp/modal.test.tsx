@@ -22,7 +22,7 @@ describe("MCP modal", () => {
     const [hydrated, setHydrated] = createSignal(false)
     const commands: FrontendMutation[] = []
     const result = Promise.withResolvers<{ ok: true }>()
-    const read = moduleDomainReader((domain) => domain.domain === mcpDomain.domain && hydrated() ? rows() : undefined)
+    const read = moduleDomainReader((domain) => domain.domain === mcpDomain.domain && hydrated() ? { servers: rows(), claudeAiConnectors: false } : undefined)
     const answered = (request: FrontendMutation) => { commands.push(request); return result.promise }
     const dispatch = runtimeDispatch({ "mcp.authenticate": answered, "mcp.reconnect": answered, "mcp.setEnabled": answered, "mcp.remove": answered })
     let list: ReturnType<typeof createMcpList> | undefined
@@ -173,7 +173,7 @@ describe("MCP modal", () => {
     const slack: McpStatusRow = { ...global, name: "slack", enabledScope: "project", client: { kind: "claude", source: "built-in", service: "Slack", reason: "Slack only accepts approved apps" } }
     const notes: McpStatusRow = { ...global, name: "notes", status: "ready", definitionScope: "project", enabledScope: "project" }
     const [rows, setRows] = createSignal<readonly McpStatusRow[]>([slack, notes])
-    const read = moduleDomainReader((domain) => domain.domain === mcpDomain.domain ? rows() : undefined)
+    const read = moduleDomainReader((domain) => domain.domain === mcpDomain.domain ? { servers: rows(), claudeAiConnectors: false } : undefined)
     const dispatch = runtimeDispatch({ "mcp.setClient": async (request: FrontendMutation) => { commands.push(request); return { ok: true } } })
     let list: ReturnType<typeof createMcpList> | undefined
     function Harness() {
@@ -213,13 +213,78 @@ describe("MCP modal", () => {
       expect(flywheel).toContain("c  Use Claude as client")
     } finally { rendered.renderer.destroy() }
   })
+  test("renders the claude.ai connectors switch above the list and a connector row whose repair is Reconnect, with no sign-in, Remove or client switch", async () => {
+    const commands: FrontendMutation[] = []
+    const result = Promise.withResolvers<{ ok: true }>()
+    const connector: McpStatusRow = { ...global, name: "github", source: { kind: "claude.ai", login: "work@example.com" } }
+    const [rows, setRows] = createSignal<readonly McpStatusRow[]>([])
+    const [connectors, setConnectors] = createSignal(false)
+    const read = moduleDomainReader((domain) => domain.domain === mcpDomain.domain ? { servers: rows(), claudeAiConnectors: connectors() } : undefined)
+    const answered = (request: FrontendMutation) => { commands.push(request); return result.promise }
+    const dispatch = runtimeDispatch({ "mcp.setClaudeAiConnectors": answered, "mcp.authenticate": answered })
+    let list: ReturnType<typeof createMcpList> | undefined
+    let colors: ReturnType<typeof useTheme>["theme"] | undefined
+    function Harness() {
+      colors = useTheme().theme
+      list = createMcpList({ read, client: { dispatch }, showToast: () => {}, close: () => {} })
+      return <McpModal list={list} />
+    }
+    const rendered = await testRender(() => <ThemeProvider mode="dark"><Harness /></ThemeProvider>, { width: 100, height: 40 })
+    try {
+      await rendered.renderOnce()
+      if (!colors || !list) throw new Error("Harness did not mount")
+      const text = () => rendered.captureCharFrame().split("\n").map((line) => line.replace(/[│ ]+$/u, "").replace(/^[│ ]+/u, ""))
+      const lines = text()
+      const top = lines.findIndex((line) => line.startsWith("u  Use claude.ai connectors"))
+      expect(lines[top]).toBe("u  Use claude.ai connectors  off")
+      const empty = lines.indexOf("No MCP servers configured.")
+      expect(empty).toBeGreaterThan(top)
+      expect(lines.slice(top + 1, empty - 1).join(" ")).toBe("Adds the connectors of your Claude logins as MCP servers. Connector data goes to whichever model uses their tools.")
+      expect(lines.some((line) => line.includes("u connectors"))).toBe(true)
+      const spans = () => rendered.captureSpans().lines.flatMap((line) => line.spans)
+      expect(spans().some((span) => span.text.startsWith("u ") && span.fg.equals(colors!.primary))).toBe(true)
+      expect(spans().some((span) => span.text === "off" && span.fg.equals(colors!.textMuted))).toBe(true)
+      expect(spans().some((span) => span.text.includes("Adds the connectors") && span.fg.equals(colors!.textMuted))).toBe(true)
+      list.key({ name: "u" })
+      expect(commands).toEqual([{ type: "mcp.setClaudeAiConnectors", enabled: true }])
+      await rendered.renderOnce()
+      expect(rendered.captureCharFrame()).toContain("Turning on claude.ai connectors...")
+      result.resolve({ ok: true })
+      await Promise.resolve(); await Promise.resolve(); await Promise.resolve()
+      setConnectors(true)
+      setRows([connector])
+      await rendered.renderOnce()
+      expect(text()[top]).toBe("u  Use claude.ai connectors  on")
+      expect(spans().some((span) => span.text === "on" && span.fg.equals(colors!.success))).toBe(true)
+      const frame = rendered.captureCharFrame()
+      expect(frame).toContain("From claude.ai · work@example.com")
+      expect(frame).toContain("Sign in to this connector at claude.ai.")
+      expect(frame).toContain("enter/r  Reconnect")
+      expect(frame).toContain("e        Disable in all projects")
+      expect(frame).toContain("p        Disable in this project")
+      for (const absent of ["Remove", "Authenticate", "Sign in with Claude", "as client"]) expect(frame).not.toContain(absent)
+      list.key({ name: "enter" })
+      expect(commands).toHaveLength(1)
+      setRows([{ ...connector, status: "failed", error: "Connection failed" }])
+      await rendered.renderOnce()
+      const failed = rendered.captureCharFrame()
+      expect(failed).toContain("enter/r  Reconnect")
+      expect(failed).toContain("Manage it at claude.ai.")
+      expect(failed).not.toContain("Remove")
+      const raw = failed.split("\n")
+      const y = raw.findIndex((line) => line.includes("Use claude.ai connectors"))
+      await rendered.mockMouse.pressDown(raw[y]!.indexOf("Use claude.ai"), y)
+      await rendered.mockMouse.release(raw[y]!.indexOf("Use claude.ai"), y)
+      expect(commands.at(-1)).toEqual({ type: "mcp.setClaudeAiConnectors", enabled: false })
+    } finally { rendered.renderer.destroy() }
+  })
   test("cached opener replaces its opening and ignores old completion after close and reopen", async () => {
     const modal = createModalStack()
     const result = Promise.withResolvers<{ ok: true }>()
     const closing = Promise.withResolvers<{ ok: true }>()
     const commands: FrontendMutation[] = []
     const toasts: unknown[] = []
-    const read = moduleDomainReader((domain) => domain.domain === mcpDomain.domain ? [global] : undefined)
+    const read = moduleDomainReader((domain) => domain.domain === mcpDomain.domain ? { servers: [global], claudeAiConnectors: false } : undefined)
     const answered = (request: FrontendMutation) => { commands.push(request); return commands.length === 3 ? closing.promise : result.promise }
     const dispatch = runtimeDispatch({ "mcp.authenticate": answered, "mcp.setEnabled": answered, "mcp.remove": answered })
     let dispose: () => void = () => {}

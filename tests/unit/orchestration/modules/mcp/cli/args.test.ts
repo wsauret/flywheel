@@ -137,7 +137,8 @@ describe("MCP CLI arguments", () => {
     expect(lines).toEqual(["work [project, client: Flywheel]: disabled", "extra [project]: disabled"])
     const observed: string[] = []
     const createManager: typeof import("../../../../../../src/orchestration/modules/mcp/manager.js").createMcpManager = (options) => {
-      observed.push(options.servers.work?.url ?? "")
+      const work = options.servers.work
+      observed.push(work !== undefined && "url" in work ? work.url ?? "" : "")
       return { ...emptyManager, authorize: async () => ({ url: "https://identity.example", redirectUrl: "http://127.0.0.1/callback", complete: async () => {}, close: async () => {} }) }
     }
     await runMcp(["login", "work"], directories, { configPath: config, createManager })

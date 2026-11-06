@@ -1,5 +1,5 @@
 import { createSignal, onCleanup } from "solid-js"
-import { mcpClientAction, mcpDomain, mcpEnabledAction, mcpProjectEnabledAction, type McpStatusRow } from "../../../protocol/modules/mcp.js"
+import { mcpClientAction, mcpDomain, mcpEnabledAction, mcpProjectEnabledAction, mcpRemovable, mcpRepairAction, type McpStatusRow } from "../../../protocol/modules/mcp.js"
 import type { ListModalKeyEvent } from "../../components/modal-list-keys.js"
 import type { TuiSurfaceHost } from "../../tui-module.js"
 import { createKeyedListSelection } from "../../hooks/create-keyed-list-selection.js"
@@ -9,7 +9,7 @@ export interface McpRemovalState {
   readonly focus: number
 }
 
-type McpRequest = Extract<Parameters<TuiSurfaceHost["client"]["dispatch"]>[0], { type: "mcp.authenticate" | "mcp.reconnect" | "mcp.setEnabled" | "mcp.setClient" | "mcp.remove" }>
+type McpRequest = Extract<Parameters<TuiSurfaceHost["client"]["dispatch"]>[0], { type: "mcp.authenticate" | "mcp.reconnect" | "mcp.setEnabled" | "mcp.setClient" | "mcp.setClaudeAiConnectors" | "mcp.remove" }>
 
 /** The cached surface owns unsettled operations across modal openings. */
 export function createMcpOperations(host: Pick<TuiSurfaceHost, "client" | "showToast">) {
@@ -33,7 +33,9 @@ export function createMcpOperations(host: Pick<TuiSurfaceHost, "client" | "showT
 export function createMcpList(host: Pick<TuiSurfaceHost, "read" | "client" | "showToast" | "close">, operations = createMcpOperations(host)) {
   const [review, setReview] = createSignal<McpRemovalState>()
   const { pending } = operations
-  const rows = () => host.read(mcpDomain)
+  const view = () => host.read(mcpDomain)
+  const rows = () => view()?.servers
+  const claudeAiConnectors = () => view()?.claudeAiConnectors
   const selection = createKeyedListSelection(() => rows()?.map((row) => row.name) ?? [])
   const cursor = selection.cursor
   const selected = () => rows()?.[cursor()]
@@ -44,8 +46,9 @@ export function createMcpList(host: Pick<TuiSurfaceHost, "read" | "client" | "sh
   const repair = () => {
     const row = selected()
     if (!row || review()) return
-    if (row.status === "needs_auth") operations.run(`Authenticating ${row.name}...`, { type: "mcp.authenticate", server: row.name }, `${row.name} authenticated`, () => active)
-    else if (row.status === "failed") operations.run(`Reconnecting ${row.name}...`, { type: "mcp.reconnect", server: row.name }, `${row.name} connected`, () => active)
+    const action = mcpRepairAction(row)
+    if (action?.kind === "authenticate") operations.run(`Authenticating ${row.name}...`, { type: "mcp.authenticate", server: row.name }, `${row.name} authenticated`, () => active)
+    else if (action?.kind === "reconnect") operations.run(`Reconnecting ${row.name}...`, { type: "mcp.reconnect", server: row.name }, `${row.name} connected`, () => active)
   }
   const setEnabled = (project = false) => {
     const row = selected()
@@ -59,7 +62,12 @@ export function createMcpList(host: Pick<TuiSurfaceHost, "read" | "client" | "sh
     const action = mcpClientAction(row)
     if (action) operations.run(`Switching ${row.name}...`, { type: "mcp.setClient", server: row.name, scope: row.definitionScope, client: action.client, expected: row.expected }, `${row.name} uses ${action.client === "claude" ? "Claude" : "Flywheel"} as client`, () => active)
   }
-  const remove = () => { const row = selected(); if (active && row && !pending() && !review()) setReview({ row, focus: 0 }) }
+  const toggleClaudeAiConnectors = () => {
+    const on = claudeAiConnectors()
+    if (on === undefined || review()) return
+    operations.run(`Turning ${on ? "off" : "on"} claude.ai connectors...`, { type: "mcp.setClaudeAiConnectors", enabled: !on }, `claude.ai connectors ${on ? "off" : "on"}`, () => active)
+  }
+  const remove = () => { const row = selected(); if (active && row && mcpRemovable(row) && !pending() && !review()) setReview({ row, focus: 0 }) }
   const cancel = () => { if (!pending()) setReview(undefined) }
   const confirm = () => {
     const state = review()
@@ -87,17 +95,18 @@ export function createMcpList(host: Pick<TuiSurfaceHost, "read" | "client" | "sh
       const count = rows()?.length ?? 0
       if (count) select((cursor() + (name === "up" || name === "k" ? count - 1 : 1)) % count)
     } else if (name === "enter" || name === "return") repair()
-    else if (name === "r") { if (selected()?.status === "failed") repair() }
+    else if (name === "r") { const row = selected(); if (row && mcpRepairAction(row)?.kind === "reconnect") repair() }
     else if (name === "e") setEnabled()
     else if (name === "p") setEnabled(true)
     else if (name === "c") setClient()
     else if (name === "d") remove()
+    else if (name === "u") toggleClaudeAiConnectors()
     else if (name === "escape" || name === "q") close()
     else return false
     event.preventDefault?.()
     return true
   }
-  return { rows, cursor, selected, select, navigationRevision: selection.revision, pending, review, repair, setEnabled, setClient, remove, cancel, confirm, close, key }
+  return { rows, claudeAiConnectors, cursor, selected, select, navigationRevision: selection.revision, pending, review, repair, setEnabled, setClient, toggleClaudeAiConnectors, remove, cancel, confirm, close, key }
 }
 
 export type McpList = ReturnType<typeof createMcpList>

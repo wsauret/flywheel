@@ -314,6 +314,111 @@ help = "ctrl+g"
 
 ## `mcp`
 
+### `mcp.claude_ai_connectors`
+
+- Type: `boolean`
+- Default: `false`
+- Application: `replace-resource`. Applies after the replacement resource is ready.
+
+Use claude.ai connectors: add the connectors of the Claude logins of the auth profile as MCP servers. Connector data goes to whichever model uses their tools.
+
+```toml
+[mcp]
+claude_ai_connectors = false
+
+[mcp.servers."local tool-3"]
+command = "example"
+args = []
+enabled = true
+
+[mcp.servers."local tool-3".env]
+example = "example"
+
+[mcp.projects."/workspace/project".servers."local tool"]
+command = "example"
+args = []
+enabled = true
+
+[mcp.projects."/workspace/project".servers."local tool".env]
+example = "example"
+
+[mcp.projects."/workspace/project".connectors.claude_ai_Claude_Docs]
+enabled = true
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
+```
+
+### `mcp.connectors."*".enabled`
+
+- Type: `boolean`
+- Default: unset
+- Application: `replace-resource`. Applies after the replacement resource is ready.
+
+Enable this claude.ai connector.
+
+```toml
+[mcp]
+claude_ai_connectors = true
+
+[mcp.servers."local tool-3"]
+command = "example"
+args = []
+enabled = true
+
+[mcp.servers."local tool-3".env]
+example = "example"
+
+[mcp.projects."/workspace/project".servers."local tool"]
+command = "example"
+args = []
+enabled = true
+
+[mcp.projects."/workspace/project".servers."local tool".env]
+example = "example"
+
+[mcp.projects."/workspace/project".connectors.claude_ai_Claude_Docs]
+enabled = true
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
+```
+
+### `mcp.projects."*".connectors."*".enabled`
+
+- Type: `boolean`
+- Default: unset
+- Application: `replace-resource`. Applies after the replacement resource is ready.
+
+Enable this claude.ai connector.
+
+```toml
+[mcp]
+claude_ai_connectors = true
+
+[mcp.servers."local tool-3"]
+command = "example"
+args = []
+enabled = true
+
+[mcp.servers."local tool-3".env]
+example = "example"
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
+
+[mcp.projects."/workspace/project".servers."local tool"]
+command = "example"
+args = []
+enabled = true
+
+[mcp.projects."/workspace/project".servers."local tool".env]
+example = "example"
+
+[mcp.projects."/workspace/project".connectors.claude_ai_Claude_Docs]
+enabled = true
+```
+
 ### `mcp.projects."*".servers."*".args`
 
 - Type: `array`
@@ -325,6 +430,9 @@ help = "ctrl+g"
 Arguments passed to the MCP stdio command.
 
 ```toml
+[mcp]
+claude_ai_connectors = true
+
 [mcp.servers."local tool-3"]
 command = "example"
 args = []
@@ -332,6 +440,9 @@ enabled = true
 
 [mcp.servers."local tool-3".env]
 example = "example"
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
 
 [mcp.projects."/workspace/project".servers."local tool-1"]
 command = "example"
@@ -353,6 +464,9 @@ example = "example"
 The MCP client that connects to this server. `claude` connects through the Claude engine that ships with Flywheel, for a server that accepts only approved apps; the server's sign-in page then names Claude. Without it, Flywheel's built-in list decides, and every other server uses `flywheel`.
 
 ```toml
+[mcp]
+claude_ai_connectors = true
+
 [mcp.servers."local tool-3"]
 command = "example"
 args = []
@@ -360,6 +474,9 @@ enabled = true
 
 [mcp.servers."local tool-3".env]
 example = "example"
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
 
 [mcp.projects."/workspace/project".servers."local tool-2"]
 url = "example"
@@ -381,6 +498,9 @@ example = "example"
 Command to start the MCP stdio server.
 
 ```toml
+[mcp]
+claude_ai_connectors = true
+
 [mcp.servers."local tool-3"]
 command = "example"
 args = []
@@ -388,6 +508,9 @@ enabled = true
 
 [mcp.servers."local tool-3".env]
 example = "example"
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
 
 [mcp.projects."/workspace/project".servers."local tool-1"]
 args = []
@@ -408,6 +531,9 @@ example = "example"
 Enable this MCP server.
 
 ```toml
+[mcp]
+claude_ai_connectors = true
+
 [mcp.servers."local tool-3"]
 command = "example"
 args = []
@@ -415,6 +541,9 @@ enabled = true
 
 [mcp.servers."local tool-3".env]
 example = "example"
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
 
 [mcp.projects."/workspace/project".servers."local tool-2"]
 url = "example"
@@ -434,6 +563,9 @@ example = "example"
 Enable this MCP server.
 
 ```toml
+[mcp]
+claude_ai_connectors = true
+
 [mcp.servers."local tool-3"]
 command = "example"
 args = []
@@ -441,6 +573,9 @@ enabled = true
 
 [mcp.servers."local tool-3".env]
 example = "example"
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
 
 [mcp.projects."/workspace/project".servers."local tool-1"]
 command = "example"
@@ -461,6 +596,9 @@ example = "example"
 Override only the global server's enabled state in this project.
 
 ```toml
+[mcp]
+claude_ai_connectors = true
+
 [mcp.servers."local tool-3"]
 command = "example"
 args = []
@@ -468,6 +606,9 @@ enabled = true
 
 [mcp.servers."local tool-3".env]
 example = "example"
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
 
 [mcp.projects."/workspace/project".servers."local tool-3"]
 enabled = true
@@ -483,6 +624,9 @@ enabled = true
 Environment variables passed to the MCP stdio command.
 
 ```toml
+[mcp]
+claude_ai_connectors = true
+
 [mcp.servers."local tool-3"]
 command = "example"
 args = []
@@ -490,6 +634,9 @@ enabled = true
 
 [mcp.servers."local tool-3".env]
 example = "example"
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
 
 [mcp.projects."/workspace/project".servers."local tool-1"]
 command = "example"
@@ -510,6 +657,9 @@ example = "example"
 HTTP headers sent to the MCP server.
 
 ```toml
+[mcp]
+claude_ai_connectors = true
+
 [mcp.servers."local tool-3"]
 command = "example"
 args = []
@@ -517,6 +667,9 @@ enabled = true
 
 [mcp.servers."local tool-3".env]
 example = "example"
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
 
 [mcp.projects."/workspace/project".servers."local tool-2"]
 url = "example"
@@ -537,6 +690,9 @@ example = "example"
 Fixed local port for the OAuth redirect `http://127.0.0.1:<port>/callback`. Set it when the registered client allows only a fixed redirect URL.
 
 ```toml
+[mcp]
+claude_ai_connectors = true
+
 [mcp.servers."local tool-3"]
 command = "example"
 args = []
@@ -544,6 +700,9 @@ enabled = true
 
 [mcp.servers."local tool-3".env]
 example = "example"
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
 
 [mcp.projects."/workspace/project".servers."local tool-2"]
 url = "example"
@@ -567,6 +726,9 @@ callback_port = 1
 Client ID of an OAuth client registered with the server's authorization server. Set it when the server does not support dynamic client registration. `flywheel mcp add --client-secret` and `flywheel mcp login --client-secret` store the client secret in the credential store.
 
 ```toml
+[mcp]
+claude_ai_connectors = true
+
 [mcp.servers."local tool-3"]
 command = "example"
 args = []
@@ -574,6 +736,9 @@ enabled = true
 
 [mcp.servers."local tool-3".env]
 example = "example"
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
 
 [mcp.projects."/workspace/project".servers."local tool-2"]
 url = "example"
@@ -597,6 +762,9 @@ client_id = "example"
 Space-separated OAuth scopes to request. Without it, every scope that the server advertises is requested.
 
 ```toml
+[mcp]
+claude_ai_connectors = true
+
 [mcp.servers."local tool-3"]
 command = "example"
 args = []
@@ -604,6 +772,9 @@ enabled = true
 
 [mcp.servers."local tool-3".env]
 example = "example"
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
 
 [mcp.projects."/workspace/project".servers."local tool-2"]
 url = "example"
@@ -627,6 +798,9 @@ scope = "example"
 URL of the MCP HTTP server.
 
 ```toml
+[mcp]
+claude_ai_connectors = true
+
 [mcp.servers."local tool-3"]
 command = "example"
 args = []
@@ -634,6 +808,9 @@ enabled = true
 
 [mcp.servers."local tool-3".env]
 example = "example"
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
 
 [mcp.projects."/workspace/project".servers."local tool-2"]
 enabled = true
@@ -654,6 +831,9 @@ example = "example"
 Arguments passed to the MCP stdio command.
 
 ```toml
+[mcp]
+claude_ai_connectors = true
+
 [mcp.projects."/workspace/project".servers."local tool"]
 command = "example"
 args = []
@@ -661,6 +841,12 @@ enabled = true
 
 [mcp.projects."/workspace/project".servers."local tool".env]
 example = "example"
+
+[mcp.projects."/workspace/project".connectors.claude_ai_Claude_Docs]
+enabled = true
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
 
 [mcp.servers."local tool-3-1"]
 command = "example"
@@ -682,6 +868,9 @@ example = "example"
 The MCP client that connects to this server. `claude` connects through the Claude engine that ships with Flywheel, for a server that accepts only approved apps; the server's sign-in page then names Claude. Without it, Flywheel's built-in list decides, and every other server uses `flywheel`.
 
 ```toml
+[mcp]
+claude_ai_connectors = true
+
 [mcp.projects."/workspace/project".servers."local tool"]
 command = "example"
 args = []
@@ -689,6 +878,12 @@ enabled = true
 
 [mcp.projects."/workspace/project".servers."local tool".env]
 example = "example"
+
+[mcp.projects."/workspace/project".connectors.claude_ai_Claude_Docs]
+enabled = true
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
 
 [mcp.servers."local tool-3-2"]
 url = "example"
@@ -710,6 +905,9 @@ example = "example"
 Command to start the MCP stdio server.
 
 ```toml
+[mcp]
+claude_ai_connectors = true
+
 [mcp.projects."/workspace/project".servers."local tool"]
 command = "example"
 args = []
@@ -717,6 +915,12 @@ enabled = true
 
 [mcp.projects."/workspace/project".servers."local tool".env]
 example = "example"
+
+[mcp.projects."/workspace/project".connectors.claude_ai_Claude_Docs]
+enabled = true
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
 
 [mcp.servers."local tool-3-1"]
 args = []
@@ -737,6 +941,9 @@ example = "example"
 Enable this MCP server.
 
 ```toml
+[mcp]
+claude_ai_connectors = true
+
 [mcp.projects."/workspace/project".servers."local tool"]
 command = "example"
 args = []
@@ -744,6 +951,12 @@ enabled = true
 
 [mcp.projects."/workspace/project".servers."local tool".env]
 example = "example"
+
+[mcp.projects."/workspace/project".connectors.claude_ai_Claude_Docs]
+enabled = true
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
 
 [mcp.servers."local tool-3-2"]
 url = "example"
@@ -763,6 +976,9 @@ example = "example"
 Enable this MCP server.
 
 ```toml
+[mcp]
+claude_ai_connectors = true
+
 [mcp.projects."/workspace/project".servers."local tool"]
 command = "example"
 args = []
@@ -770,6 +986,12 @@ enabled = true
 
 [mcp.projects."/workspace/project".servers."local tool".env]
 example = "example"
+
+[mcp.projects."/workspace/project".connectors.claude_ai_Claude_Docs]
+enabled = true
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
 
 [mcp.servers."local tool-3-1"]
 command = "example"
@@ -790,6 +1012,9 @@ example = "example"
 Environment variables passed to the MCP stdio command.
 
 ```toml
+[mcp]
+claude_ai_connectors = true
+
 [mcp.projects."/workspace/project".servers."local tool"]
 command = "example"
 args = []
@@ -797,6 +1022,12 @@ enabled = true
 
 [mcp.projects."/workspace/project".servers."local tool".env]
 example = "example"
+
+[mcp.projects."/workspace/project".connectors.claude_ai_Claude_Docs]
+enabled = true
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
 
 [mcp.servers."local tool-3-1"]
 command = "example"
@@ -817,6 +1048,9 @@ example = "example"
 HTTP headers sent to the MCP server.
 
 ```toml
+[mcp]
+claude_ai_connectors = true
+
 [mcp.projects."/workspace/project".servers."local tool"]
 command = "example"
 args = []
@@ -824,6 +1058,12 @@ enabled = true
 
 [mcp.projects."/workspace/project".servers."local tool".env]
 example = "example"
+
+[mcp.projects."/workspace/project".connectors.claude_ai_Claude_Docs]
+enabled = true
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
 
 [mcp.servers."local tool-3-2"]
 url = "example"
@@ -844,6 +1084,9 @@ example = "example"
 Fixed local port for the OAuth redirect `http://127.0.0.1:<port>/callback`. Set it when the registered client allows only a fixed redirect URL.
 
 ```toml
+[mcp]
+claude_ai_connectors = true
+
 [mcp.projects."/workspace/project".servers."local tool"]
 command = "example"
 args = []
@@ -851,6 +1094,12 @@ enabled = true
 
 [mcp.projects."/workspace/project".servers."local tool".env]
 example = "example"
+
+[mcp.projects."/workspace/project".connectors.claude_ai_Claude_Docs]
+enabled = true
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
 
 [mcp.servers."local tool-3-2"]
 url = "example"
@@ -874,6 +1123,9 @@ callback_port = 1
 Client ID of an OAuth client registered with the server's authorization server. Set it when the server does not support dynamic client registration. `flywheel mcp add --client-secret` and `flywheel mcp login --client-secret` store the client secret in the credential store.
 
 ```toml
+[mcp]
+claude_ai_connectors = true
+
 [mcp.projects."/workspace/project".servers."local tool"]
 command = "example"
 args = []
@@ -881,6 +1133,12 @@ enabled = true
 
 [mcp.projects."/workspace/project".servers."local tool".env]
 example = "example"
+
+[mcp.projects."/workspace/project".connectors.claude_ai_Claude_Docs]
+enabled = true
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
 
 [mcp.servers."local tool-3-2"]
 url = "example"
@@ -904,6 +1162,9 @@ client_id = "example"
 Space-separated OAuth scopes to request. Without it, every scope that the server advertises is requested.
 
 ```toml
+[mcp]
+claude_ai_connectors = true
+
 [mcp.projects."/workspace/project".servers."local tool"]
 command = "example"
 args = []
@@ -911,6 +1172,12 @@ enabled = true
 
 [mcp.projects."/workspace/project".servers."local tool".env]
 example = "example"
+
+[mcp.projects."/workspace/project".connectors.claude_ai_Claude_Docs]
+enabled = true
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
 
 [mcp.servers."local tool-3-2"]
 url = "example"
@@ -934,6 +1201,9 @@ scope = "example"
 URL of the MCP HTTP server.
 
 ```toml
+[mcp]
+claude_ai_connectors = true
+
 [mcp.projects."/workspace/project".servers."local tool"]
 command = "example"
 args = []
@@ -941,6 +1211,12 @@ enabled = true
 
 [mcp.projects."/workspace/project".servers."local tool".env]
 example = "example"
+
+[mcp.projects."/workspace/project".connectors.claude_ai_Claude_Docs]
+enabled = true
+
+[mcp.connectors.claude_ai_Claude_Docs]
+enabled = true
 
 [mcp.servers."local tool-3-2"]
 enabled = true

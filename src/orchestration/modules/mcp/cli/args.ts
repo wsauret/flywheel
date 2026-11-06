@@ -67,6 +67,12 @@ Servers that use Claude:
   the client of a server with "Use Claude as client" or "Use Flywheel as
   client" in /mcp.
 
+claude.ai connectors:
+  Turn on "Use claude.ai connectors" in /mcp, or set claude_ai_connectors = true
+  in the [mcp] section of the config, to add the connectors of the Claude logins
+  of your auth profile as MCP servers. Connector data goes to whichever model uses
+  their tools. status lists them with their login; manage them at claude.ai.
+
 Examples:
   flywheel mcp add linear --url https://mcp.linear.app/mcp
   flywheel mcp login linear

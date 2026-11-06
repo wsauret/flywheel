@@ -6,20 +6,19 @@ import { separatedEngineEnvironment, type EngineHost } from "../../../infra/clau
 import type { LauncherScope } from "../../../infra/process-supervisor.js";
 import type { ClaudeClientOAuth } from "./clients.js";
 
-/** One server as the engine takes it in `mcp_set_servers`. `oauth` is the engine's own field, which the SDK type
- *  does not declare but passes through unchanged. */
-export interface EngineServerConfig {
-  readonly type: "http";
-  readonly url: string;
-  readonly headers: { readonly [name: string]: string };
-  readonly oauth?: ClaudeClientOAuth;
-}
+/** One server as the engine takes it in `mcp_set_servers`: an HTTP server that Flywheel configures, or one claude.ai
+ *  connector of the engine's login. `oauth` is the engine's own field, which the SDK type does not declare but passes
+ *  through unchanged. */
+export type EngineServerConfig =
+  | { readonly type: "http"; readonly url: string; readonly headers: { readonly [name: string]: string }; readonly oauth?: ClaudeClientOAuth }
+  | { readonly type: "claudeai-proxy"; readonly url: string; readonly id: string };
 
-/** One server as `mcp_status` reports it. Tools carry names and annotations only; their definitions come from
- *  `captureTools`. */
+/** One server as `mcp_status` reports it. Tools carry names and annotations only; their definitions come from a
+ *  capture. A claude.ai connector also states its config, which names the connector for a later `mcp_set_servers`. */
 export interface EngineServerStatus {
   readonly name: string;
   readonly status: "connected" | "failed" | "needs-auth" | "pending" | "disabled";
+  readonly config?: { readonly type?: string; readonly url?: string; readonly id?: string };
   readonly tools?: ReadonlyArray<{ readonly name: string; readonly annotations?: { readonly readOnly?: boolean; readonly destructive?: boolean; readonly openWorld?: boolean } }>;
 }
 
@@ -30,17 +29,13 @@ export interface CapturedTool {
   readonly input_schema: unknown;
 }
 
-/** The control requests of one running MCP engine. This is the one place that sends the requests the SDK does not
- *  type (`mcp_call`, `mcp_authenticate`) and casts the engine's `oauth` field. Each request rejects with the
- *  engine's own message. */
-export interface ClaudeEngineSession {
+/** The control requests of one running engine, whichever engine it is. This is the one place that sends the
+ *  requests the SDK does not type (`mcp_call`, `mcp_authenticate`) and casts the engine's `oauth` field. Each
+ *  request rejects with the engine's own message. */
+export interface ClaudeEngineControl {
   /** Replaces the engine's whole server set. */
   setServers(servers: { readonly [name: string]: EngineServerConfig }): Promise<void>;
   status(): Promise<readonly EngineServerStatus[]>;
-  /** The full definitions of every connected server's tools, read from the token count request that the engine
-   *  sends to Flywheel's local listener. A tool that the count left out, or every tool when no count arrived, is
-   *  missing from the list, which the caller checks against the status. */
-  captureTools(): Promise<readonly CapturedTool[]>;
   /** Calls `tool` (`mcp__<server>__<tool>`) and answers the server's result. A JSON-RPC error answer of the server
    *  rejects with `EngineServerAnswer`. Every other rejection leaves the outcome unknown: the engine rejects an
    *  `isError` result, a gateway or network failure, and a lost connection alike with nothing but a message, so no
@@ -50,6 +45,14 @@ export interface ClaudeEngineSession {
   /** Starts the engine's sign-in for one server: the URL the person opens, and the local port the engine listens on
    *  for the callback. */
   authenticate(server: string): Promise<{ readonly authUrl: string; readonly callbackPort?: number }>;
+}
+
+/** The MCP engine with no login, as the servers that use Claude as their client share it. */
+export interface ClaudeEngineSession extends ClaudeEngineControl {
+  /** The full definitions of every connected server's tools, read from the token count request that the engine
+   *  sends to Flywheel's local listener. A tool that the count left out, or every tool when no count arrived, is
+   *  missing from the list, which the caller checks against the status. */
+  captureTools(): Promise<readonly CapturedTool[]>;
   /** Settles when the engine process has ended, for any reason. */
   readonly ended: Promise<void>;
   close(): Promise<void>;
@@ -122,8 +125,7 @@ export async function launchClaudeEngineSession(launch: ClaudeEngineLaunch): Pro
     sessionId: randomUUID(),
   };
   const { query } = await import("@anthropic-ai/claude-agent-sdk");
-  // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: the runtime Query has the untyped request and mcpAuthenticate methods that the SDK type omits.
-  const engine = query({ prompt, options }) as RawQuery; // SAFETY: Every typed Query method wraps `request` (SDK 0.3.306), and `mcpAuthenticate` exists at runtime; the integration test fails when either stops working.
+  const engine = query({ prompt, options });
   // One release of the launch scope and the listener, whichever comes first: the engine's own end or `close`.
   let released: Promise<void> | undefined;
   const release = (): Promise<void> => {
@@ -156,11 +158,7 @@ export async function launchClaudeEngineSession(launch: ClaudeEngineLaunch): Pro
   }
   let captures = Promise.resolve<unknown>(undefined);
   return {
-    async setServers(servers) {
-      // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: the SDK type omits the engine's oauth field, which it passes through unchanged.
-      await engine.setMcpServers(servers as Parameters<Query["setMcpServers"]>[0]); // SAFETY: The engine's schema accepts `oauth` on an http server.
-    },
-    status: async () => await engine.mcpServerStatus(),
+    ...claudeEngineControl(engine),
     captureTools() {
       const run = captures.then(async () => {
         capture = [];
@@ -174,6 +172,21 @@ export async function launchClaudeEngineSession(launch: ClaudeEngineLaunch): Pro
       captures = run.catch(() => undefined);
       return run;
     },
+    ended,
+    close,
+  };
+}
+
+/** The control requests of the running engine `query`. */
+export function claudeEngineControl(query: Query): ClaudeEngineControl {
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: the runtime Query has the untyped request and mcpAuthenticate methods that the SDK type omits.
+  const engine = query as RawQuery; // SAFETY: Every typed Query method wraps `request` (SDK 0.3.306), and `mcpAuthenticate` exists at runtime; the integration test fails when either stops working.
+  return {
+    async setServers(servers) {
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- boundary: the SDK type omits the engine's oauth field, which it passes through unchanged.
+      await engine.setMcpServers(servers as Parameters<Query["setMcpServers"]>[0]); // SAFETY: The engine's schema accepts `oauth` on an http server.
+    },
+    status: async () => await engine.mcpServerStatus(),
     async call(tool, args, signal) {
       try {
         const answer = await engine.request({ subtype: "mcp_call", tool, arguments: args, result_not_for_model: true }, signal === undefined ? undefined : { signal });
@@ -187,8 +200,6 @@ export async function launchClaudeEngineSession(launch: ClaudeEngineLaunch): Pro
       if (!isRecord(answer) || typeof answer.authUrl !== "string") throw new Error("The Claude engine did not start a sign-in");
       return { authUrl: answer.authUrl, ...(typeof answer.callbackPort === "number" ? { callbackPort: answer.callbackPort } : {}) };
     },
-    ended,
-    close,
   };
 }
 

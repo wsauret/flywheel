@@ -15,7 +15,7 @@ import { McpNeedsAuthError } from "../../../../../src/orchestration/modules/mcp/
 import { createMcpManager, type McpManager } from "../../../../../src/orchestration/modules/mcp/manager.js"
 import { createMcpProtocol } from "../../../../../src/orchestration/modules/mcp/protocol.js"
 import { createMcpService, type McpService } from "../../../../../src/orchestration/modules/mcp/service.js"
-import { mcpClientAction, mcpClientDetail, mcpClientReason, mcpCursor, mcpDomain, mcpEnabledAction, mcpSignInLabel, mcpProjectEnabledAction, mcpRemovalConfirmation, mcpProtocol, type McpStatusRow } from "../../../../../src/protocol/modules/mcp.js"
+import { mcpClientAction, mcpClientDetail, mcpClientReason, mcpCursor, mcpDomain, mcpEnabledAction, mcpRepairAction, mcpProjectEnabledAction, mcpRemovable, mcpRemovalConfirmation, mcpProtocol, mcpScopeDetail, type McpStatusRow } from "../../../../../src/protocol/modules/mcp.js"
 import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui-protocol-types.js"
 import { testDirectories, temporaryDirectories } from "../../../../helpers/directories.js"
 import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.js"
@@ -33,7 +33,7 @@ const temporary = temporaryDirectories()
 const globalMetadata = { definitionScope: "global", enabledScope: "global", enabled: true, hasGlobalFallback: false, expected: "test-expectation" } as const
 
 function readMcp(rows: readonly McpStatusRow[]): DomainReader {
-  return moduleDomainReader((domain) => domain.domain === mcpDomain.domain ? rows : undefined)
+  return moduleDomainReader((domain) => domain.domain === mcpDomain.domain ? { servers: rows, claudeAiConnectors: false } : undefined)
 }
 
 /** The protocol runtime over one manager, with the module on or off. */
@@ -44,10 +44,13 @@ function protocolOver(manager: McpManager, options: { readonly enabled?: boolean
     ports: { servers: manager.servers, tools: manager.tools, call: manager.call },
     authentication: { authenticate: options.authenticate ?? (async () => {}) },
     status: () => manager.status().map((row) => ({ ...row, ...globalMetadata })),
+    claudeAiConnectors: () => false,
+    reconnectConnector: async () => {},
     settleStartup: async () => [],
     subscribe: manager.subscribe,
     setEnabled: async () => { throw new Error("status fixture does not mutate") },
     setClient: async () => { throw new Error("status fixture does not mutate") },
+    setClaudeAiConnectors: async () => { throw new Error("status fixture does not mutate") },
     remove: async () => { throw new Error("status fixture does not mutate") },
     dispose: () => manager.dispose(),
   }
@@ -90,16 +93,16 @@ describe("MCP protocol runtime", () => {
     })
     const { runtime, patches } = protocolOver(manager)
     await manager.acquire("work")
-    expect(await runtime.serve.mcpStatusSnapshot({ type: "mcpStatusSnapshot" })).toEqual({ servers: [{ name: "work", status: "ready", toolCount: 1, ...globalMetadata }], snapshotPosition: 37 })
-    expect(patches).toContainEqual({ cursor: mcpCursor(), payload: { kind: "mcp.changed", servers: [{ name: "work", status: "ready", toolCount: 1, ...globalMetadata }] } })
+    expect(await runtime.serve.mcpStatusSnapshot({ type: "mcpStatusSnapshot" })).toEqual({ servers: [{ name: "work", status: "ready", toolCount: 1, ...globalMetadata }], claudeAiConnectors: false, snapshotPosition: 37 })
+    expect(patches).toContainEqual({ cursor: mcpCursor(), payload: { kind: "mcp.changed", servers: [{ name: "work", status: "ready", toolCount: 1, ...globalMetadata }], claudeAiConnectors: false } })
     closeCallback()
     const count = patches.length
     closeCallback()
     expect(patches).toHaveLength(count)
     await manager.replaceServers({})
     expect(patches).toHaveLength(count + 1)
-    expect(patches.at(-1)).toEqual({ cursor: mcpCursor(), payload: { kind: "mcp.changed", servers: [] } })
-    expect(await runtime.serve.mcpStatusSnapshot({ type: "mcpStatusSnapshot" })).toEqual({ servers: [], snapshotPosition: 37 })
+    expect(patches.at(-1)).toEqual({ cursor: mcpCursor(), payload: { kind: "mcp.changed", servers: [], claudeAiConnectors: false } })
+    expect(await runtime.serve.mcpStatusSnapshot({ type: "mcpStatusSnapshot" })).toEqual({ servers: [], claudeAiConnectors: false, snapshotPosition: 37 })
     runtime.dispose()
     await manager.dispose()
   })
@@ -290,7 +293,7 @@ describe("MCP protocol runtime", () => {
     const listed: McpStatusRow = { ...stdio, name: "slack", status: "needs_auth", client: { kind: "claude", source: "built-in", service: "Slack", reason: "Slack only accepts approved apps" } }
     const chosen: McpStatusRow = { ...listed, name: "notes", client: { kind: "claude", source: "chosen" } }
     expect([stdio, flywheel, listed, chosen].map(mcpClientDetail)).toEqual([undefined, undefined, "Connects through Claude", "Connects through Claude"])
-    expect([stdio, flywheel, listed, chosen].map(mcpSignInLabel)).toEqual(["Authenticate", "Authenticate", "Sign in with Claude", "Sign in with Claude"])
+    expect([{ ...stdio, status: "needs_auth" as const }, { ...flywheel, status: "needs_auth" as const }, listed, chosen].map((row) => mcpRepairAction(row)?.label)).toEqual(["Authenticate", "Authenticate", "Sign in with Claude", "Sign in with Claude"])
     expect([stdio, flywheel, listed, chosen].map(mcpClientReason)).toEqual([
       undefined,
       undefined,
@@ -298,7 +301,17 @@ describe("MCP protocol runtime", () => {
       "You chose Claude as this server's client.",
     ])
     expect([stdio, flywheel, listed].map(mcpClientAction)).toEqual([undefined, { client: "claude", label: "Use Claude as client" }, { client: "flywheel", label: "Use Flywheel as client" }])
-    for (const row of [flywheel, listed]) expect(Schema.decodeUnknownSync(mcpDomain.patch)({ kind: "mcp.changed", servers: [row] })).toEqual({ kind: "mcp.changed", servers: [row] })
+    for (const row of [flywheel, listed]) expect(Schema.decodeUnknownSync(mcpDomain.patch)({ kind: "mcp.changed", servers: [row], claudeAiConnectors: false })).toEqual({ kind: "mcp.changed", servers: [row], claudeAiConnectors: false })
+  })
+
+  test("a claude.ai connector row names its source and login, points to claude.ai, and offers only the enabled choices", () => {
+    const connector: McpStatusRow = { ...globalMetadata, name: "claude_ai_Docs", status: "ready", toolCount: 8, source: { kind: "claude.ai", login: "work@example.com" } }
+    const signedOut: McpStatusRow = { ...connector, status: "needs_auth", toolCount: 0 }
+    expect([mcpClientDetail(connector), mcpScopeDetail(connector), mcpClientReason(connector), mcpClientReason(signedOut)]).toEqual(["From claude.ai", "work@example.com", "Manage it at claude.ai.", "Sign in to this connector at claude.ai."])
+    // A connector signs in at claude.ai; its row reconnects afterwards, on a fresh engine that sees the sign-in.
+    expect([mcpRepairAction(connector), mcpRepairAction(signedOut), mcpClientAction(connector), mcpRemovable(connector), mcpRemovable({ ...connector, source: undefined })]).toEqual([undefined, { kind: "reconnect", label: "Reconnect" }, undefined, false, true])
+    expect([mcpEnabledAction(connector).label, mcpProjectEnabledAction(connector)?.label]).toEqual(["Disable in all projects", "Disable in this project"])
+    expect(Schema.decodeUnknownSync(mcpDomain.patch)({ kind: "mcp.changed", servers: [connector], claudeAiConnectors: true })).toEqual({ kind: "mcp.changed", servers: [connector], claudeAiConnectors: true })
   })
 
   test("reports saved degradation and unknown outcome without exposing raw failures", async () => {
@@ -309,8 +322,11 @@ describe("MCP protocol runtime", () => {
       ports: { servers: manager.servers, tools: manager.tools, call: manager.call },
       authentication: { authenticate: async () => {} },
       status: () => [],
+      claudeAiConnectors: () => false,
+      reconnectConnector: async () => {},
       settleStartup: async () => [],
       subscribe: manager.subscribe,
+      setClaudeAiConnectors: async () => ({ ok: false, kind: "write-outcome-unknown", error: new ConfigWriteError("raw-secret") }),
       setEnabled: async () => ({ ok: true, snapshot: snapshot.snapshot(), subscriberOutcome: { kind: "committed-but-degraded", errors: ["raw-secret"] } }),
       setClient: async () => ({ ok: true, snapshot: snapshot.snapshot(), subscriberOutcome: { kind: "committed-but-degraded", errors: ["raw-secret"] } }),
       remove: async () => ({ ok: false, kind: "write-outcome-unknown", error: new ConfigWriteError("raw-secret") }),
@@ -320,6 +336,7 @@ describe("MCP protocol runtime", () => {
     try {
       expect(await runtime.mutate["mcp.setEnabled"]({ type: "mcp.setEnabled", server: "work", scope: "project", enabled: false, expected: "test" })).toEqual({ ok: true, warning: "MCP settings were saved, but connections could not fully update. Check their status." })
       expect(await runtime.mutate["mcp.remove"]({ type: "mcp.remove", server: "work", scope: "global", expected: "test" })).toEqual({ ok: false, error: "Saving could not be verified. Check MCP settings before trying again." })
+      expect(await runtime.mutate["mcp.setClaudeAiConnectors"]({ type: "mcp.setClaudeAiConnectors", enabled: true })).toEqual({ ok: false, error: "Saving could not be verified. Check MCP settings before trying again." })
     } finally {
       runtime.dispose()
       await manager.dispose()

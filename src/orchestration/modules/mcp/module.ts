@@ -6,13 +6,25 @@ import { MCP_USAGE } from "./cli/args.js"
 import { mcpConfigSection } from "./config.js"
 import { createMcpProtocol } from "./protocol.js"
 import { createMcpRuntime, mcpRuntime } from "./runtime.js"
-import { createMcpService, mcpService } from "./service.js"
+import type { RuntimeConfigOwner } from "../../config/runtime-config-owner.js"
+import type { CommandClaudeLogins } from "./cli/mcp.js"
+import { CLAUDE_PROVIDER_MODULE_ID, claudeLoginEngines, createMcpService, mcpService } from "./service.js"
 
 /** Each verb hands its argument vector back to the one parser, so the verb
  *  grammar lives in `cli/args.ts` and the noun table stays a listing. */
-const runMcpVerb = (verb: string) => async (args: readonly string[], { directories, launcher }: CliCommandContext) => {
+const runMcpVerb = (verb: string) => async (args: readonly string[], { directories, launcher, enabledModuleIds }: CliCommandContext) => {
   const { runMcp } = await import("./cli/mcp.js")
-  await runMcp([verb, ...args], directories, { launcher: launcher.scope })
+  await runMcp([verb, ...args], directories, { launcher: launcher.scope, claudeLogins: (config) => commandClaudeLogins(directories, launcher.scope, config, enabledModuleIds) })
+}
+
+/** The Claude logins of the resolved auth profile for one command, read through the Claude provider module's
+ *  service, as a runtime reads them. The command builds that one service, and none while the module is off. */
+async function commandClaudeLogins(directories: CliCommandContext["directories"], launcher: CliCommandContext["launcher"]["scope"], config: Pick<RuntimeConfigOwner, "snapshot" | "subscribe" | "mutateSection">, enabledModuleIds: readonly string[]): Promise<CommandClaudeLogins> {
+  const [{ installedModules }, { composePortableModuleServices }] = await Promise.all([import("../../module-catalog.js"), import("../../app-service/module-service-host.js")])
+  const provider = installedModules().filter((module) => module.id === CLAUDE_PROVIDER_MODULE_ID)
+  const services = composePortableModuleServices(provider, () => enabledModuleIds, { directories, config, launcher, onSelectionChanged: () => () => {} })
+  services.start()
+  return { logins: await services.services.get(claudeLoginEngines)?.logins() ?? [], dispose: () => services.dispose() }
 }
 
 /** External tool servers over the Model Context Protocol: the `[mcp]` config

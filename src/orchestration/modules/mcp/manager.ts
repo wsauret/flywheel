@@ -3,11 +3,12 @@ import { Deferred, Effect, Exit, Fiber, Redacted, Scope } from "effect";
 import type { McpConnectionStatusRow } from "../../../protocol/modules/mcp.js";
 import type { McpClaudeEngine } from "./claude-engine.js";
 import { resolveMcpClient, type ClaudeClientOAuth } from "./clients.js";
-import type { McpServerConfig, McpServerRegistry } from "./config.js";
-import { MCP_STARTUP_TIMEOUT_MS, redactMcpError, resolveMcpTemplate } from "./config.js";
+import type { McpRegistryServer, McpServerConfig, McpServerRegistry } from "./config.js";
+import { isMcpConnector, MCP_STARTUP_TIMEOUT_MS, redactMcpError, resolveMcpTemplate } from "./config.js";
+import type { McpConnectors } from "./connectors.js";
 import type { McpCallResult, McpConnection, McpConnectionOptions, McpToolHit } from "./connection.js";
 import { createMcpCredentialStore, credentialKey, type McpCredential, type McpCredentialStore } from "./credentials.js";
-import { McpNeedsAuthError, McpOAuthNeedsAuthError } from "./errors.js";
+import { McpConnectorError, McpNeedsAuthError, McpOAuthNeedsAuthError } from "./errors.js";
 import type { McpOAuthAuthorization, McpPreregisteredClient } from "./oauth.js";
 import { createMcpRegistryOwner } from "./registry-owner.js";
 
@@ -95,6 +96,8 @@ export interface McpManagerOptions {
   /** The process's MCP engine, which connects every server that uses Claude as its client. Absent for a
    *  runtime with no launch authority, where such a server fails closed as a stdio server does. */
   readonly claudeEngine?: McpClaudeEngine;
+  /** The person's claude.ai connectors, which connect every connector server of the registry. */
+  readonly connectors?: McpConnectors;
 }
 
 function createMcpManagerResource(options: McpManagerOptions): McpManagerResource {
@@ -120,7 +123,9 @@ function createMcpManagerResource(options: McpManagerOptions): McpManagerResourc
       name,
       status: state.tag,
       toolCount: state.tag === "ready" ? state.connection.tools().length : 0,
-      ...(state.tag === "failed" ? { error: MCP_CONNECTION_FAILED_MESSAGE, errorCode: "connection_failed" as const } : {}),
+      ...(state.tag !== "failed" ? {}
+        : state.error instanceof McpConnectorError ? { error: state.error.message, errorCode: state.error.code }
+        : { error: MCP_CONNECTION_FAILED_MESSAGE, errorCode: "connection_failed" as const }),
     };
   }
 
@@ -183,7 +188,7 @@ function createMcpManagerResource(options: McpManagerOptions): McpManagerResourc
   /** Publishes a fresh pending attempt for `name` and starts its work. A disposed
    *  manager owns no attempts, so every caller gates on `disposed` first and this
    *  throws rather than start work nothing will retire. */
-  function startAttempt(name: string, config: McpServerConfig): McpAttempt {
+  function startAttempt(name: string, config: McpRegistryServer): McpAttempt {
     if (disposed) throw new Error(`MCP manager was disposed before '${name}' could connect`);
     const settlement = Promise.withResolvers<void>();
     void settlement.promise.catch(() => {});
@@ -214,7 +219,7 @@ function createMcpManagerResource(options: McpManagerOptions): McpManagerResourc
     return attempt;
   }
 
-  async function runAttempt(name: string, config: McpServerConfig, attempt: McpAttempt): Promise<void> {
+  async function runAttempt(name: string, config: McpRegistryServer, attempt: McpAttempt): Promise<void> {
     if (attempt.controller.signal.aborted) {
       const cleanupFailure = await settleCleanup("attempt scope", () => Effect.runPromise(Scope.close(attempt.scope, Exit.void)));
       const error = cancellationError(name, attempt);
@@ -322,7 +327,7 @@ function createMcpManagerResource(options: McpManagerOptions): McpManagerResourc
 
   function beginPublishedTransition(
     name: string,
-    config: McpServerConfig,
+    config: McpRegistryServer,
     attempt: McpAttempt | undefined,
     reason: Error,
     outcome: "restart" | "fail" | "needs_auth",
@@ -355,10 +360,14 @@ function createMcpManagerResource(options: McpManagerOptions): McpManagerResourc
 
   async function connectWithCredentials(
     name: string,
-    config: McpServerConfig,
+    config: McpRegistryServer,
     attempt: McpAttempt,
   ): Promise<McpConnection> {
     const signal = attempt.controller.signal;
+    if (isMcpConnector(config)) {
+      if (options.connectors === undefined) throw new Error(`claude.ai connector '${name}' needs the connectors of a Claude login`);
+      return await options.connectors.connect(name, signal);
+    }
     const connectionOptions: McpConnectionOptions = {
       server: name,
       config,
@@ -463,7 +472,7 @@ function createMcpManagerResource(options: McpManagerOptions): McpManagerResourc
     return { server: name, url, headers, oauth, secrets };
   }
 
-  function requireConfig(server: string): McpServerConfig {
+  function requireConfig(server: string): McpRegistryServer {
     const config = options.servers[server];
     if (!config) throw new Error(`MCP server not found: ${server}`);
     return config;
@@ -553,6 +562,7 @@ function createMcpManagerResource(options: McpManagerOptions): McpManagerResourc
     credentialUpdated,
     async authorize(server) {
       const config = requireConfig(server);
+      if (isMcpConnector(config)) throw new Error(`claude.ai connector '${server}' signs in at claude.ai`);
       if (config.url === undefined) throw new Error(`MCP server '${server}' does not use HTTP`);
       const env = options.env ?? process.env;
       const client = resolveMcpClient(config, env);

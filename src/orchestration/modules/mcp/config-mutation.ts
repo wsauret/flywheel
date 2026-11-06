@@ -2,7 +2,7 @@ import { Schema } from "effect";
 import { removeSemanticSubtree, upsertSemanticAssignment } from "../../config/config-assignment.js";
 import type { ConfigMutationResult, RuntimeConfigOwner } from "../../config/runtime-config-owner.js";
 import { resolveMcpClient } from "./clients.js";
-import { isMcpEnabledOverride, mcpConfigSection, McpServerConfigSchema, type McpConfig, type McpScope, type McpServerRegistry } from "./config.js";
+import { isMcpEnabledOverride, mcpConfigSection, McpServerConfigSchema, type McpConfig, type McpConfiguredServers, type McpScope } from "./config.js";
 
 type SemanticValue = null | string | number | boolean | readonly SemanticValue[] | { readonly [key: string]: SemanticValue | undefined };
 type Environment = { readonly [K in string]: string | undefined };
@@ -30,14 +30,17 @@ function compareCodePoints(left: string, right: string): number {
   return a.length - b.length;
 }
 
+/** Where a server's entries live: `servers` for a configured server, `connectors` for a claude.ai connector. */
+type McpEntryKind = "servers" | "connectors";
+
 /** Opaque selected-state expectation. Includes local choice and global fallback, not unrelated names or settings. */
-export function mcpExpectedToken(config: McpConfig, projectRoot: string, name: string): string {
+export function mcpExpectedToken(config: McpConfig, projectRoot: string, name: string, kind: McpEntryKind = "servers"): string {
   const project = ownEntry(config.projects, projectRoot);
-  return new Bun.CryptoHasher("sha256").update(canonical({ global: ownEntry(config.servers, name) ?? null, project: project ? ownEntry(project.servers, name) ?? null : null })).digest("hex");
+  return new Bun.CryptoHasher("sha256").update(canonical({ ...(kind === "connectors" ? { kind } : {}), global: ownEntry(config[kind], name) ?? null, project: project ? ownEntry(project[kind] ?? {}, name) ?? null : null })).digest("hex");
 }
 
-function pathFor(projectRoot: string, scope: McpScope, name: string): string[] {
-  return scope === "global" ? ["mcp", "servers", name] : ["mcp", "projects", projectRoot, "servers", name];
+function pathFor(projectRoot: string, scope: McpScope, name: string, kind: McpEntryKind = "servers"): string[] {
+  return scope === "global" ? ["mcp", kind, name] : ["mcp", "projects", projectRoot, kind, name];
 }
 
 function literal(value: TomlValue): string {
@@ -53,11 +56,14 @@ export interface McpSelectedMutation {
   readonly expected: string;
 }
 
-/** Set an authored definition or a private enabled override. The fresh selected state is compared under account config ownership. */
-export function setMcpEnabled(owner: Pick<RuntimeConfigOwner, "mutateSection">, request: McpSelectedMutation & { readonly enabled: boolean }): Promise<ConfigMutationResult> {
+/** Set an authored definition or a private enabled override. A claude.ai connector, which claude.ai defines, keeps
+ *  only its enabled choice. The fresh selected state is compared under account config ownership. */
+export function setMcpEnabled(owner: Pick<RuntimeConfigOwner, "mutateSection">, request: McpSelectedMutation & { readonly enabled: boolean; readonly connector?: boolean }): Promise<ConfigMutationResult> {
+  const kind: McpEntryKind = request.connector === true ? "connectors" : "servers";
   return owner.mutateSection(mcpConfigSection, request.expected,
-    (config) => mcpExpectedToken(config, request.projectRoot, request.server),
+    (config) => mcpExpectedToken(config, request.projectRoot, request.server, kind),
     (source, config) => {
+      if (request.connector === true) return upsertSemanticAssignment(source, [...pathFor(request.projectRoot, request.scope, request.server, kind), "enabled"], literal(request.enabled));
       const project = ownEntry(config.projects, request.projectRoot);
       const local = project ? ownEntry(project.servers, request.server) : undefined;
       const global = ownEntry(config.servers, request.server);
@@ -84,6 +90,11 @@ export function setMcpClient(owner: Pick<RuntimeConfigOwner, "mutateSection">, r
     });
 }
 
+/** Turn the account's claude.ai connectors on or off for every project. */
+export function setMcpClaudeAiConnectors(owner: Pick<RuntimeConfigOwner, "mutateSection">, enabled: boolean): Promise<ConfigMutationResult> {
+  return owner.mutateSection(mcpConfigSection, true, () => true, (source) => upsertSemanticAssignment(source, ["mcp", "claude_ai_connectors"], literal(enabled)));
+}
+
 /** Remove the stated authored entry. Global removal also removes dependent enabled-only overrides in the same publication. Credentials are untouched. */
 export function removeMcpServer(owner: Pick<RuntimeConfigOwner, "mutateSection">, request: McpSelectedMutation): Promise<ConfigMutationResult> {
   return owner.mutateSection(mcpConfigSection, request.expected,
@@ -102,7 +113,7 @@ export function removeMcpServer(owner: Pick<RuntimeConfigOwner, "mutateSection">
 }
 
 /** Add definitions atomically, refusing same-scope duplicates. Project definitions can shadow global names. */
-export function addMcpServers(owner: RuntimeConfigOwner, projectRoot: string, scope: McpScope, servers: McpServerRegistry): Promise<ConfigMutationResult> {
+export function addMcpServers(owner: RuntimeConfigOwner, projectRoot: string, scope: McpScope, servers: McpConfiguredServers): Promise<ConfigMutationResult> {
   const names = Object.keys(servers).sort();
   const expected = names.map(() => false);
   const normalized = Object.fromEntries(Object.entries(servers).map(([name, value]) => [name, Schema.decodeUnknownSync(McpServerConfigSchema, { onExcessProperty: "error" })(value)]));

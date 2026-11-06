@@ -6,6 +6,7 @@ import { Effect, Option, Schedule } from "effect";
 import { awaitWithAbortSignal } from "../../../infra/abort.js";
 import { DebugLog } from "../../../infra/debug-log.js";
 import { isProcessAlive } from "../../../infra/process-liveness.js";
+import type { ClaudeLoginEngine, ClaudeLoginEngineLaunch } from "../../../infra/claude-engine.js";
 import { engineModelId } from "../../agent-runtime/llm/claude-reminders.js";
 import { SYSTEM_PROMPT_SEPARATOR } from "../../agent-runtime/llm/system-prompt-tiers.js";
 import type { LauncherScope } from "../../../infra/process-supervisor.js";
@@ -418,11 +419,13 @@ function initPlan(init: Awaited<ReturnType<Query["initializationResult"]>>): { r
   return typeof plan === "string" && plan.length > 0 ? { plan } : {};
 }
 
-/** Why the caller started an idle CLI, for its stop record. */
-type IdleCliPurpose = "models" | "usage";
+/** Why the caller started an idle CLI, for its stop record. The connector engines run for the MCP module's claude.ai
+ *  connectors: one that calls them, and one that reads their tool definitions. */
+type IdleCliPurpose = "models" | "usage" | "connector-calls" | "connector-discovery";
 
-/** How an idle CLI's answer ended, for its stop record. */
-type IdleCliEnd = "reply" | "failed" | "aborted";
+/** How an idle CLI's answer ended, for its stop record. A connector engine ends when its holder releases it, or
+ *  `exited` on its own. */
+type IdleCliEnd = "reply" | "failed" | "aborted" | "released" | "exited";
 
 type UsageReplyKind = UsageReply["kind"] | "logged-out";
 
@@ -543,6 +546,73 @@ function idleEngine(config: CliEnvironmentConfig, purpose: IdleCliPurpose): Idle
       }
     },
   };
+}
+
+/**
+ * Starts an engine on the login in `config.configDir` for the MCP module's claude.ai connectors. It runs like the usage
+ * engine (`idleEngine`), on a private copy of the login's settings with the login's own credential store, so it never
+ * writes to the login's directory, and with no nonessential traffic. It gets no tools, no settings, no project MCP
+ * servers, and a prompt that never yields, so it runs no turn; its connector fetch is on only when `launch.connectors`
+ * asks for it. A discovery engine (`launch.debugLog`) also writes its API client's debug log, inspected deep enough to
+ * hold whole tool schemas, to stderr. The engine stops by bridge rule 3. A stop and the engine's own end run the same
+ * release once: the stop procedure, the close of its launch scope, the removal of its settings copy, and one record.
+ */
+export async function startLoginEngine(config: QueryLauncherConfig, launch: ClaudeLoginEngineLaunch, sdkQuery: QueryFunction = query, files: StopFiles = configDirFiles(config)): Promise<ClaudeLoginEngine> {
+  const purpose: IdleCliPurpose = launch.debugLog === undefined ? "connector-calls" : "connector-discovery";
+  const engine = idleEngine(config, purpose);
+  const { ENABLE_CLAUDEAI_MCP_SERVERS: _connectorFetch, ...usageEnvironment } = engine.env;
+  const env = {
+    ...usageEnvironment,
+    CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
+    // The engine cuts MCP tool descriptions at 2048 characters by default; the model reads Flywheel's copy whole.
+    CLAUDE_CODE_MAX_MCP_DESCRIPTION_LENGTH: "100000",
+    ...(launch.connectors ? {} : { ENABLE_CLAUDEAI_MCP_SERVERS: "0" }),
+    // Bun's console inspection cuts objects past depth 2, which would cut every tool schema in the debug log.
+    ...(launch.debugLog === undefined ? {} : { BUN_OPTIONS: "--console-depth=64" }),
+  };
+  const owned = ownedClaudeProcess(config.launcher, launch.debugLog ?? (() => {}), refreshStopHold(config.configDir));
+  const sessionId = randomUUID();
+  const released = Promise.withResolvers<undefined>();
+  const prompt: AsyncIterable<SDKUserMessage> = {
+    [Symbol.asyncIterator]: () => ({ next: async () => ({ done: true, value: await released.promise }) }),
+  };
+  const started = sdkQuery({ prompt, options: {
+    cwd: config.temporaryDirectory,
+    env,
+    pathToClaudeCodeExecutable: config.enginePath,
+    spawnClaudeCodeProcess: owned.spawn,
+    tools: [],
+    settingSources: [],
+    // The engine loads claude.ai connectors only without the strict switch; `settingSources` and the project config
+    // root still keep every settings file and project MCP server out.
+    strictMcpConfig: false,
+    permissionMode: "default",
+    persistSession: false,
+    extraArgs: { "project-config-root": engine.projectConfigRoot, ...(launch.debugLog === undefined ? {} : { "debug-to-stderr": null }) },
+    sessionId,
+  } });
+  let stopping: Promise<void> | undefined;
+  const stop = (end: IdleCliEnd): Promise<void> => {
+    stopping ??= stopIdleCli({ interrupt: () => started.interrupt(), close: () => { released.resolve(undefined); started.close(); } }, owned, sessionId, files, purpose, end, engine);
+    return stopping;
+  };
+  const ended = (async () => {
+    try {
+      for await (const _message of started) { /* The engine runs no turn; its messages carry nothing to read. */ }
+    } catch {
+      // The end is the observation; its cause is the engine's exit, which `owned` records.
+    }
+    await owned.exited();
+    await stop("exited");
+  })();
+  try {
+    const init = await started.initializationResult();
+    if (init.account.tokenSource === "none") throw new Error("The Claude login is signed out");
+  } catch (error) {
+    await stop("failed");
+    throw error;
+  }
+  return { query: started, ended, stop: () => stop("released") };
 }
 
 /** Stops an idle CLI by bridge rule 3, closes its launch scope, and records the outcome with ids and counts only.

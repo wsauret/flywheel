@@ -169,7 +169,10 @@ describe("MCP servers that use Claude as their client", () => {
     const fake = fakeEngine({ [SLACK]: { status: "connected" } });
     const engine = fake.engine();
     const manager = managerOver({ slack: http(SLACK, { headers: { "X-Team": "old" } }) }, engine);
-    const team = (set: { readonly [name: string]: EngineServerConfig }) => set[engineServerName("slack", SLACK)]?.headers["X-Team"];
+    const team = (set: { readonly [name: string]: EngineServerConfig }) => {
+      const server = set[engineServerName("slack", SLACK)];
+      return server?.type === "http" ? server.headers["X-Team"] : undefined;
+    };
     try {
       await manager.acquire("slack");
       const before = fake.sets.length;

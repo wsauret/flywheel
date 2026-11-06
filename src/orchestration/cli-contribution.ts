@@ -17,6 +17,8 @@ export interface CliCommandContext {
   readonly directories: StartupDirectories
   readonly launcher: LauncherContext
   readonly resources: CommandProcessResources
+  /** The modules that the project's selection turns on for this invocation. */
+  readonly enabledModuleIds: readonly string[]
   /** Sends `request` to the noun's module service in the lane's one account
    *  service, which holds the module's account state live, and calls
    *  `onAnswer` with each answer until the service ends the request. It

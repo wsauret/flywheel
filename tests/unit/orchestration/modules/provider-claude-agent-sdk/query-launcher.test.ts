@@ -9,7 +9,7 @@ import { DebugLog, type DebugLogRecordInput } from "../../../../../src/infra/deb
 import type { LauncherScope } from "../../../../../src/infra/process-supervisor.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { bridgeSessionId } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/session-id.js";
-import { createHostLauncher, createQueryLauncher, describeCliLogin, readCliUsage, type CliFrame, type LaunchedQuery, type QueryFunction, type QueryLaunch, type QueryLauncherConfig, type StopFiles } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
+import { createHostLauncher, createQueryLauncher, describeCliLogin, readCliUsage, startLoginEngine, type CliFrame, type LaunchedQuery, type QueryFunction, type QueryLaunch, type QueryLauncherConfig, type StopFiles } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
 import { createStepGate, type StepAsk } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/step-gate.js";
 import { LOGIN_ACCOUNTS_DIRECTORY } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
 
@@ -668,6 +668,31 @@ describe("reading the account's usage from the CLI", () => {
   });
 });
 
+describe("the connector engines on a login", () => {
+  test("an engine that ends on its own releases what it ran on once, and a later stop records nothing more", async () => {
+    const root = temporaryDirectory("claude-connector-");
+    const config = { ...launcherConfig(), configDir: join(root, "login"), temporaryDirectory: join(root, "fw-claude") };
+    mkdirSync(config.configDir);
+    mkdirSync(config.temporaryDirectory);
+    const exit = Promise.withResolvers<void>();
+    const events: string[] = [];
+    const sdkQuery: QueryFunction = () => stubQuery({
+      async *[Symbol.asyncIterator]() { await exit.promise; },
+      initializationResult: async () => initReply([], { tokenSource: "claude.ai" }),
+      close: () => { events.push("close"); },
+    });
+    const engine = await startLoginEngine(config, { connectors: true }, sdkQuery, noLock);
+    exit.resolve();
+    await engine.ended;
+
+    const [stopped] = await stopRecords(1);
+    expect(stopped?.payload).toMatchObject({ purpose: "connector-calls", ended: "exited", settled: true, settingsRemoved: true });
+    await engine.stop();
+    expect(stops()).toHaveLength(1);
+    expect(events).toEqual(["close"]);
+  });
+});
+
 const records: DebugLogRecordInput[] = [];
 beforeEach(async () => {
   records.length = 0;
@@ -677,8 +702,9 @@ afterEach(async () => { await DebugLog.close(); });
 
 /** The listing stop records, once `count` of them exist. A stop that waits for the refresh lock reads it again
  *  after one poll. */
+const stops = () => records.filter(({ type }) => type === "provider.claude_sdk.idle_cli.stopped");
+
 async function stopRecords(count: number): Promise<readonly DebugLogRecordInput[]> {
-  const stops = () => records.filter(({ type }) => type === "provider.claude_sdk.idle_cli.stopped");
   while (stops().length < count) await Bun.sleep(5);
   return stops();
 }

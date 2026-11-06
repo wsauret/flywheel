@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Query } from "@anthropic-ai/claude-agent-sdk";
 import { writeFileAtomic } from "./atomic-write.js";
 import { checkoutProgram, runsThroughBun } from "./cli-subprocess.js";
 import { localDateZone } from "./env-detection.js";
@@ -157,6 +158,43 @@ function fileText(path: string): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+/** The Claude logins of the resolved auth profile, as the Claude provider module offers them to the MCP module for
+ *  claude.ai connectors. Each login starts engines that hold it; the login's token stays with those engines, and
+ *  nothing here carries it. */
+export interface ClaudeLoginEngines {
+  /** The logins in profile order, each account once; none while the Claude provider module is off. */
+  logins(): Promise<readonly ClaudeLoginHost[]>;
+}
+
+export interface ClaudeLoginHost {
+  /** An opaque key of this login location, which tells the logins of different auth profiles apart also when they
+   *  hold the same account. Engines that run on one key run on one login. */
+  readonly key: string;
+  /** The login's stable account id, which is no secret. */
+  readonly accountId: string;
+  /** The login as a person reads it, such as an email address. */
+  readonly identity: string;
+  /** Starts an engine on the login that runs no model turn. It never writes to the login's directory and stops by
+   *  the login's stop procedure. Rejects when the engine cannot start or the login is signed out. */
+  start(launch: ClaudeLoginEngineLaunch): Promise<ClaudeLoginEngine>;
+}
+
+export interface ClaudeLoginEngineLaunch {
+  /** Whether the engine fetches the login's claude.ai connectors and connects them. */
+  readonly connectors: boolean;
+  /** Receives each stderr line of an engine that writes its API client's debug log there, with every credential
+   *  header masked by that client. Without it the engine writes no such log and its stderr is dropped. */
+  readonly debugLog?: (line: string) => void;
+}
+
+export interface ClaudeLoginEngine {
+  readonly query: Query;
+  /** Settles when the engine process has ended, for any reason, and what it ran on was removed. */
+  readonly ended: Promise<void>;
+  /** Stops the engine, after any token refresh of the login ended, and removes what it ran on. */
+  stop(): Promise<void>;
 }
 
 /** A `--version` call takes about 150 ms. */

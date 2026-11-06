@@ -6,7 +6,7 @@ import { loadStabilityFixture } from "../../modules/workflows/stability-fixture-
 const fixture = await loadStabilityFixture()
 
 test("Settings shows every catalog row the browser shows, by its catalog name and in catalog order", async () => {
-  const mounted = fixture.mountModuleSheetIdentity("settings", { ids: ["remote", "mcp"], views: { mcp: [] } })
+  const mounted = fixture.mountModuleSheetIdentity("settings", { ids: ["remote", "mcp"], views: { mcp: { servers: [], claudeAiConnectors: false } } })
   try {
     await mounted.ready()
     const catalog: readonly string[] = SETTING_ROWS.filter((row) => shownOn(row, "browser")).map((row) => row.label)

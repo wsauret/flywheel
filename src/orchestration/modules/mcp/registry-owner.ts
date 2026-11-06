@@ -1,5 +1,5 @@
 import { createOrderedLane } from "../../../infra/ordered-lane.js";
-import type { McpServerRegistry } from "./config.js";
+import { isMcpConnector, type McpServerRegistry } from "./config.js";
 import type { McpManager, McpManagerOptions, McpManagerResource } from "./manager.js";
 
 type ResourceFactory = (options: McpManagerOptions) => McpManagerResource;
@@ -7,7 +7,7 @@ type ResourceFactory = (options: McpManagerOptions) => McpManagerResource;
 function serverRegistryFingerprint(servers: McpServerRegistry): string {
   return JSON.stringify(Object.entries(servers)
     .toSorted(([left], [right]) => left.localeCompare(right))
-    .map(([name, config]) => [name, "command" in config
+    .map(([name, config]) => [name, isMcpConnector(config) ? { connector: config.connector.login, enabled: config.enabled } : "command" in config
       ? { command: config.command, args: config.args, env: Object.entries(config.env ?? {}).toSorted(([left], [right]) => left.localeCompare(right)), enabled: config.enabled }
       : { url: config.url, headers: Object.entries(config.headers).toSorted(([left], [right]) => left.localeCompare(right)), oauth: config.oauth, client: config.client, enabled: config.enabled }]));
 }

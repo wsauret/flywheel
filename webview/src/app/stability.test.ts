@@ -458,7 +458,7 @@ test("toolbar badges keep DOM identity across equal client publishes and update 
 })
 
 /** Remote contributes a Settings row and MCP a status row. */
-const sheetModules = { ids: ["remote", "mcp"] as const, views: { mcp: [], remote: EMPTY_REMOTE_VIEW } }
+const sheetModules = { ids: ["remote", "mcp"] as const, views: { mcp: { servers: [], claudeAiConnectors: false }, remote: EMPTY_REMOTE_VIEW } }
 
 test("provider numeric drafts belong to a profile and survive that profile's reread", async () => {
   const mounted = fixture.mountModuleSheetIdentity("settings", sheetModules)

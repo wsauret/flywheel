@@ -262,7 +262,7 @@ export function moduleNounDispatch(noun: InstalledCliNoun, selection: (directori
         attach.close()
       }
     }
-    await dispatch.run(rest, { directories, launcher, resources, accountRequest })
+    await dispatch.run(rest, { directories, launcher, resources, accountRequest, enabledModuleIds: modules.enabledModuleIds })
   }
 }
 

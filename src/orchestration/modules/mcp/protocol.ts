@@ -1,4 +1,4 @@
-import { MCP_REGISTRATION_HINT, mcpCursor, mcpProtocol, type McpManagementResult } from "../../../protocol/modules/mcp.js"
+import { MCP_REGISTRATION_HINT, mcpClientReason, mcpCursor, mcpProtocol, type McpManagementResult } from "../../../protocol/modules/mcp.js"
 import type { ModuleProtocolRuntime, ModuleProtocolServices } from "../../app-service/module-protocol-host.js"
 import type { ConfigMutationResult } from "../../config/runtime-config-owner.js"
 import { mcpMutationMessage } from "./config-mutation.js"
@@ -14,11 +14,14 @@ export function createMcpProtocol(services: ModuleProtocolServices): ModuleProto
   const service = () => (services.enabled() ? services.modules.get(mcpService) : undefined)
   const unsubscribe = services.modules.get(mcpService)?.subscribe(() => {
     const current = service()
-    services.publish({ cursor: mcpCursor(), payload: { kind: "mcp.changed", servers: current?.status() ?? [] } })
+    services.publish({ cursor: mcpCursor(), payload: { kind: "mcp.changed", servers: current?.status() ?? [], claudeAiConnectors: current?.claudeAiConnectors() ?? false } })
   })
   return {
     serve: {
-      mcpStatusSnapshot: async () => ({ servers: service()?.status() ?? [], snapshotPosition: services.snapshotPosition({ kind: "cursor", cursor: mcpCursor() }) }),
+      mcpStatusSnapshot: async () => {
+        const current = service()
+        return { servers: current?.status() ?? [], claudeAiConnectors: current?.claudeAiConnectors() ?? false, snapshotPosition: services.snapshotPosition({ kind: "cursor", cursor: mcpCursor() }) }
+      },
     },
     mutate: {
       "mcp.setEnabled": async (mutation) => {
@@ -30,6 +33,11 @@ export function createMcpProtocol(services: ModuleProtocolServices): ModuleProto
         const current = service()
         if (!current) return { ok: false, error: "MCP servers are off" }
         return manage(() => current.setClient(mutation))
+      },
+      "mcp.setClaudeAiConnectors": async ({ enabled }) => {
+        const current = service()
+        if (!current) return { ok: false, error: "MCP servers are off" }
+        return manage(() => current.setClaudeAiConnectors(enabled))
       },
       "mcp.remove": async (mutation) => {
         const current = service()
@@ -51,7 +59,10 @@ export function createMcpProtocol(services: ModuleProtocolServices): ModuleProto
       "mcp.reconnect": async ({ server }) => {
         const current = service()
         if (!current) return { ok: false, error: "MCP servers are off" }
+        const source = current.status().find((row) => row.name === server)?.source
         try {
+          // A claude.ai connector reconnects on a fresh engine and a fresh read, which sees a sign-in made at claude.ai.
+          if (source !== undefined) await current.reconnectConnector(server)
           // A failed, retryable server starts a new attempt here; a failure
           // whose cleanup failed rethrows, because a new attempt is not safe.
           await current.manager.acquire(server)
@@ -59,6 +70,7 @@ export function createMcpProtocol(services: ModuleProtocolServices): ModuleProto
         } catch {
           // Connection errors can carry a URL or a host, so only the outcome travels.
           const state = current.manager.entries().find((entry) => entry.name === server)?.state
+          if (state?.tag === "needs_auth" && source !== undefined) return { ok: false, error: `${server} needs a sign-in. ${mcpClientReason({ source, status: "needs_auth" })}` }
           if (state?.tag === "needs_auth") return { ok: false, error: `${server} needs authentication. Authenticate it to connect.` }
           if (state?.tag === "failed" && !state.retryable) return { ok: false, error: `${server} cannot reconnect because its last connection did not close. Restart Flywheel to reconnect it.` }
           return { ok: false, error: `${server} could not connect. Check the server settings and try again.` }

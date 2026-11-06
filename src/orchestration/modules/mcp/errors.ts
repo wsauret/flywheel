@@ -37,6 +37,23 @@ export class McpRegistrationRefusedError extends Error {
   }
 }
 
+/** A claude.ai connector that cannot connect for a reason the person can act on. The message is that reason, which
+ *  the status row shows with `code`; it never holds captured content or a login's token. */
+export class McpConnectorError extends Error {
+  constructor(readonly code: "tools_unreadable" | "login_unreachable", message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "McpConnectorError";
+  }
+}
+
+/** The Claude login that serves a connector could not start an engine or list its connectors. */
+export class McpConnectorLoginError extends McpConnectorError {
+  constructor(options?: ErrorOptions) {
+    super("login_unreachable", "Flywheel could not reach this connector's Claude login. Check the login with /auth.", options);
+    this.name = "McpConnectorLoginError";
+  }
+}
+
 /** Another sign-in holds the fixed local callback port that a server's OAuth client requires. */
 export class McpSignInPortBusyError extends Error {
   constructor(port: number) {

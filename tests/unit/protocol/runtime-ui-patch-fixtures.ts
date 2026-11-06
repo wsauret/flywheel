@@ -88,7 +88,7 @@ export const RUNTIME_UI_PATCH_FIXTURES = {
   "definitionStaleness.changed": workspacePatch({ kind: "definitionStaleness.changed", definitionStaleness: { overrides: [], diagnostics: [], reviewCount: 0 } }, "definitionStaleness"),
   "experiment_view.updated": sessionPatch({ kind: "experiment_view.updated", experimentView }, "experiment_view"),
   "experiment_view.removed": sessionPatch({ kind: "experiment_view.removed" }, "experiment_view"),
-  "mcp.changed": workspacePatch({ kind: "mcp.changed", servers: [] }, "mcp"),
+  "mcp.changed": workspacePatch({ kind: "mcp.changed", servers: [], claudeAiConnectors: false }, "mcp"),
   "papercuts.changed": workspacePatch({ kind: "papercuts.changed", papercuts: { undisposedCount: 0 } }, "papercuts"),
   "project_notifications.raised": workspacePatch({ kind: "project_notifications.raised", episode: notification }, "project_notifications"),
   "project_notifications.resolved": workspacePatch({ kind: "project_notifications.resolved", sourceId: "fixture", episodeId: "episode-1", resolvedAt: 2 }, "project_notifications"),

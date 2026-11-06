@@ -22,7 +22,12 @@ import type { AssistantTurnResult } from "../../../src/orchestration/agent-runti
 import { estimateMessageTokens } from "../../../src/orchestration/agent-runtime/compaction/token-counter.js";
 import type { ConversationMessage, ServingAttempt, StreamOptions } from "../../../src/orchestration/agent-runtime/llm/types.js";
 import { resolveModelInteractionProfile } from "../../../src/orchestration/agent-runtime/model-interaction-profile.js";
+import { createLauncherScope, createProcessSupervisor } from "../../../src/infra/process-supervisor.js";
+import { composePortableModuleServices } from "../../../src/orchestration/app-service/module-service-host.js";
+import { createRuntimeConfigOwner } from "../../../src/orchestration/config/runtime-config-owner.js";
 import { installedModules } from "../../../src/orchestration/module-catalog.js";
+import { createMcpConnectors } from "../../../src/orchestration/modules/mcp/connectors.js";
+import { claudeLoginEngines } from "../../../src/orchestration/modules/mcp/service.js";
 import { createClaudeAgentSdkModule } from "../../../src/orchestration/modules/provider-claude-agent-sdk/module.js";
 import type { ClaudeAgentSdkSeams } from "../../../src/orchestration/modules/provider-claude-agent-sdk/cli-launch.js";
 import { CLAUDE_AGENT_SDK_LOGIN_COMMAND, CLAUDE_AGENT_SDK_MODULE_ID, CLAUDE_AGENT_SDK_PROVIDER_ID, REFRESH_LOCK_BOUND_MS, refreshLockPath } from "../../../src/orchestration/modules/provider-claude-agent-sdk/names.js";
@@ -225,5 +230,49 @@ describe(`the bundled Claude engine on the ${LIVE_AUTH_PROFILE} profile`, () => 
       expect(engines.size).toBe(3);
       expect(payloads("provider.claude_sdk.query.started").filter((payload) => engines.has(payload["sessionId"]))).toHaveLength(3);
     });
+  }, 180_000);
+
+  test("reads the login's claude.ai connectors, reads each one's tools from the masked debug log, and calls a read-only tool", async () => {
+    // The connectors run on the logins of the live profile, which the provider service resolves as a runtime does.
+    const previousProfile = process.env["FLYWHEEL_AUTH_PROFILE"];
+    process.env["FLYWHEEL_AUTH_PROFILE"] = LIVE_AUTH_PROFILE;
+    const supervisor = createProcessSupervisor();
+    const launcher = createLauncherScope(supervisor);
+    const config = await createRuntimeConfigOwner({ userDataRoot: liveDirectories.userDataRoot, watch: false });
+    // The test preload's Claude module runs on a test account home; the connectors need the person's keychain.
+    const services = composePortableModuleServices([createClaudeAgentSdkModule()], () => [CLAUDE_AGENT_SDK_MODULE_ID], { directories: liveDirectories, config, launcher, onSelectionChanged: () => () => {} });
+    services.start();
+    const connectors = createMcpConnectors(async () => await services.services.get(claudeLoginEngines)?.logins() ?? []);
+    try {
+      const listed = Object.keys((await connectors.read()).connectors);
+      if (listed.length === 0) throw new Error(`this test needs a claude.ai connector on a Claude login of the auth profile "${LIVE_AUTH_PROFILE}"; add one at claude.ai`);
+      const tools = [];
+      for (const name of listed) {
+        // A connection exists only when the capture found every credential header masked and every schema whole.
+        const connection = await connectors.connect(name, AbortSignal.timeout(60_000));
+        expect(connection.tools().length).toBeGreaterThan(0);
+        for (const tool of connection.tools()) {
+          expect(tool.inputSchema).toMatchObject({ type: "object" });
+          tools.push({ connection, tool });
+        }
+      }
+      const needsArguments = (schema: unknown): boolean => typeof schema === "object" && schema !== null && "required" in schema && Array.isArray(schema.required) && schema.required.length > 0;
+      // A connector can answer a call with no arguments as an error, which the engine reports like a lost call; the
+      // Claude Docs connector's guide answers it.
+      const callable = tools.filter(({ tool }) => tool.annotations?.readOnlyHint === true && !needsArguments(tool.inputSchema));
+      const readOnly = callable.find(({ tool }) => tool.name === "guide") ?? callable[0];
+      if (readOnly === undefined) throw new Error("no connector of the login has a read-only tool without required arguments");
+      const result = await readOnly.connection.callTool({ name: readOnly.tool.name, arguments: {} });
+      expect(result.isError).toBe(false);
+      expect(result.content.length).toBeGreaterThan(0);
+    } finally {
+      await connectors.stop();
+      await services.dispose();
+      await config.dispose();
+      await launcher.close();
+      await supervisor.dispose();
+      if (previousProfile === undefined) delete process.env["FLYWHEEL_AUTH_PROFILE"];
+      else process.env["FLYWHEEL_AUTH_PROFILE"] = previousProfile;
+    }
   }, 180_000);
 });

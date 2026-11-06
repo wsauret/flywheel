@@ -158,6 +158,37 @@ test("a Claude server states its client and reason, signs in with Claude, and sw
   } finally { mounted.dispose() }
 })
 
+test("the claude.ai connectors switch states its label, description and state above the list, and a press asks for the opposite state", async () => {
+  const off = renderMcpSheet([])
+  assert.match(off, /Use claude\.ai connectors/)
+  assert.match(off, /Adds the connectors of your Claude logins as MCP servers\. Connector data goes to whichever model uses their tools\./)
+  assert.match(off, /role="switch" aria-checked="false"/)
+  assert.ok(off.indexOf("Use claude.ai connectors") < off.indexOf("No MCP servers configured"))
+  assert.match(renderMcpSheet([row], undefined, true), /role="switch" aria-checked="true"/)
+  const mounted = mountMcpSheet([], true)
+  try {
+    assert.equal(mounted.connectors().checked, true)
+    mounted.connectors().press()
+    await mounted.ready()
+    assert.deepEqual(mounted.mutations(), [{ type: "mcp.setClaudeAiConnectors", enabled: false }])
+  } finally { mounted.dispose() }
+})
+
+test("a claude.ai connector states its origin and login, and offers enabled actions and Reconnect but no sign-in, Remove or client switch", async () => {
+  const connector: McpStatusRow = { ...row, name: "github", enabledScope: "global", source: { kind: "claude.ai", login: "work@example.com" } }
+  const html = renderMcpSheet([connector, { ...connector, name: "drive", status: "ready" }])
+  assert.match(html, /work@example\.com · (<!--!\$-->)?From claude\.ai/)
+  assert.match(html, /Sign in to this connector at claude\.ai\./)
+  assert.match(html, /Manage it at claude\.ai\./)
+  const failed: McpStatusRow = { ...connector, name: "failed", status: "failed", error: "Connection failed" }
+  const mounted = mountMcpSheet([connector, failed])
+  try {
+    // A connector that needs a sign-in reconnects once the person signed in at claude.ai.
+    assert.deepEqual(mounted.buttons("github"), ["Reconnect", "Disable in all projects", "Disable in this project"])
+    assert.deepEqual(mounted.buttons("failed"), ["Reconnect", "Disable in all projects", "Disable in this project"])
+  } finally { mounted.dispose() }
+})
+
 test("different rows remain usable and refused or thrown mutations settle safely", async () => {
   const pending = Promise.withResolvers<{ readonly ok: false; readonly error: string }>()
   const reports: string[] = []
@@ -167,7 +198,7 @@ test("different rows remain usable and refused or thrown mutations settle safely
     report: (_severity, message) => reports.push(message),
     dispatch: async (mutation) => {
       requests.push(mutation)
-      if (mutation.server === row.name) return pending.promise
+      if ("server" in mutation && mutation.server === row.name) return pending.promise
       throw new Error("private transport details")
     },
   }, () => true, new AbortController().signal)

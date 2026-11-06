@@ -7,7 +7,9 @@ import type { LauncherScope } from "../../../../infra/process-supervisor.js"
 import { accountAuthDir, globalConfigFile } from "../../../../infra/paths.js"
 import { createRuntimeConfigOwner, type RuntimeConfigOwner } from "../../../config/runtime-config-owner.js"
 import { configSection } from "../../../config/config-section.js"
-import { mcpConfigSection, resolveMcpConfig, resolveMcpTemplate, isMcpEnabledOverride, type McpServerConfig, type McpConfig, type McpScope, type McpServerSource } from "../config.js"
+import type { ClaudeLoginHost } from "../../../../infra/claude-engine.js"
+import { mcpConfigSection, resolveMcpConfig, resolveMcpTemplate, isMcpConnector, isMcpEnabledOverride, withMcpConnectors, type McpServerConfig, type McpConfig, type McpConfiguredServers, type McpRegistryServer, type McpScope, type McpServerRegistry, type McpServerSource } from "../config.js"
+import { createMcpConnectors } from "../connectors.js"
 import { addMcpServers, removeMcpServer, mcpExpectedToken, mcpMutationMessage } from "../config-mutation.js"
 import { createMcpCredentialStore, type McpCredential, type McpCredentialStore } from "../credentials.js"
 import { createMcpManager } from "../manager.js"
@@ -46,6 +48,14 @@ export interface RunMcpOptions {
   /** Launch authority of this command: the stdio servers it connects to and
    *  the browser handoff its login performs both run inside it. */
   readonly launcher?: LauncherScope
+  /** Reads the Claude logins whose claude.ai connectors `status` lists while the switch is on. */
+  readonly claudeLogins?: (config: RuntimeConfigOwner) => Promise<CommandClaudeLogins>
+}
+
+/** The Claude logins of one command, and the release of what reading them built. */
+export interface CommandClaudeLogins {
+  readonly logins: readonly ClaudeLoginHost[]
+  dispose(): Promise<void>
 }
 
 /** `directories` carries the account authorities the credential store and
@@ -137,23 +147,28 @@ export async function runMcp(
       await storeClientSecret(action.name, server.url, await readClientSecret(options), options, accountAuthDir(directories.userDataRoot))
     }
     const claudeEngine = launcher ? processClaudeEngine(accountAuthDir(directories.userDataRoot), launcher) : undefined
+    // Status lists the claude.ai connectors of the profile's Claude logins while the switch is on.
+    const command = await commandRegistry(servers, config, action.kind === "status" && config.claude_ai_connectors ? options.claudeLogins : undefined, runtimeConfig, action.local ? directories.projectRoot : "")
+    const registry = command.registry
     const manager = (options.createManager ?? createMcpManager)({
-      servers,
+      servers: registry,
       executionCwd: directories.executionCwd,
       authDir: accountAuthDir(directories.userDataRoot),
       ...(launcher ? { spawnOwned: launcher.spawnOwned } : {}),
       ...(claudeEngine ? { claudeEngine } : {}),
+      ...command.managerOptions,
     })
     try {
       if (action.kind === "status") {
         await Promise.allSettled(manager.entries()
           .filter((entry) => entry.state.tag !== "disabled")
           .map((entry) => manager.acquire(entry.name)))
-        for (const row of manager.status()) printStatusRow(row, servers[row.name], action.local ? effective.metadata[row.name] : undefined)
+        for (const row of manager.status()) printStatusRow(row, registry[row.name], action.local ? effective.metadata[row.name] : undefined)
         if (manager.status().length === 0) console.log("No MCP servers configured.")
         return
       }
-      const reason = mcpClientReason({ client: clientOf(servers[action.name]) })
+      const named = servers[action.name]
+      const reason = mcpClientReason({ client: clientOf(named) })
       if (reason !== undefined) console.log(reason)
       const authorization = await manager.authorize(action.name)
       try {
@@ -171,6 +186,7 @@ export async function runMcp(
     } finally {
       await manager.dispose()
       await claudeEngine?.dispose()
+      await command.release()
     }
   } catch (error) {
     const hint = error instanceof McpRegistrationRefusedError ? `. ${MCP_REGISTRATION_HINT}` : ""
@@ -181,13 +197,29 @@ export async function runMcp(
   }
 }
 
+/** The command's servers, with the connectors of the Claude logins that `claudeLogins` reads when it is given. The
+ *  connectors keep the person's choices for `projectRoot`. `release` stops what reading them started. */
+async function commandRegistry(servers: McpConfiguredServers, config: McpConfig, claudeLogins: RunMcpOptions["claudeLogins"], owner: RuntimeConfigOwner, projectRoot: string) {
+  if (claudeLogins === undefined) return { registry: servers, managerOptions: {}, release: async () => {} }
+  const logins = await claudeLogins(owner)
+  const connectors = createMcpConnectors(async () => logins.logins)
+  const registry: McpServerRegistry = withMcpConnectors({ servers, metadata: {} }, config, projectRoot, (await connectors.read()).connectors).servers
+  return { registry, managerOptions: { connectors }, release: async () => { await connectors.stop(); await logins.dispose() } }
+}
+
 /** The client of one configured server, or nothing for a stdio server. */
 function clientOf(server: McpServerConfig | undefined) {
   return server === undefined ? undefined : resolveMcpClient(server, process.env)?.choice
 }
 
-/** One status line, and for a server that connects through Claude the reason on the next line. */
-function printStatusRow(row: McpConnectionStatusRow, server: McpServerConfig | undefined, source: McpServerSource | undefined): void {
+/** One status line, and for a server that connects through Claude or comes from claude.ai the reason on the next
+ *  line. */
+function printStatusRow(row: McpConnectionStatusRow, server: McpRegistryServer | undefined, source: McpServerSource | undefined): void {
+  if (server !== undefined && isMcpConnector(server)) {
+    console.log(`${row.name} [claude.ai, ${server.connector.identity}]: ${row.status}${row.status === "ready" ? ` (${row.toolCount} tools)` : ""}${row.error ? ` - ${row.error}` : ""}`)
+    console.log(`  ${mcpClientReason({ source: { kind: "claude.ai", login: server.connector.identity }, status: row.status })}`)
+    return
+  }
   const label = source?.definitionScope ?? "global"
   const override = source?.definitionScope === "global" && source.enabledScope === "project" ? ", project enabled override" : ""
   const client = clientOf(server)

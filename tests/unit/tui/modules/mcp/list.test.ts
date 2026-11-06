@@ -12,14 +12,15 @@ const needsAuth: McpStatusRow = { name: "work", status: "needs_auth", toolCount:
 type Answer = { readonly ok: true; readonly warning?: string } | { readonly ok: false; readonly error: string }
 function harness(initial: readonly McpStatusRow[] = [needsAuth], answer: () => Promise<Answer> = async () => ({ ok: true })) {
   const [rows, setRows] = createSignal(initial)
+  const [connectors, setConnectors] = createSignal(false)
   const commands: unknown[] = []
   const toasts: unknown[] = []
   let closed = 0
-  const read = moduleDomainReader((domain) => domain.domain === mcpDomain.domain ? rows() : undefined)
+  const read = moduleDomainReader((domain) => domain.domain === mcpDomain.domain ? { servers: rows(), claudeAiConnectors: connectors() } : undefined)
   const answered = (command: FrontendMutation) => { commands.push(command); return answer() }
-  const dispatch = runtimeDispatch({ "mcp.authenticate": answered, "mcp.reconnect": answered, "mcp.setEnabled": answered, "mcp.setClient": answered, "mcp.remove": answered })
+  const dispatch = runtimeDispatch({ "mcp.authenticate": answered, "mcp.reconnect": answered, "mcp.setEnabled": answered, "mcp.setClient": answered, "mcp.setClaudeAiConnectors": answered, "mcp.remove": answered })
   const list = createRoot((dispose) => { disposers.push(dispose); return createMcpList({ read, client: { dispatch }, showToast: (toast) => { toasts.push(toast) }, close: () => { closed++ } }) })
-  return { list, commands, toasts, rows: setRows, closed: () => closed }
+  return { list, commands, toasts, rows: setRows, connectors: setConnectors, closed: () => closed }
 }
 const settle = async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve() }
 
@@ -146,6 +147,37 @@ describe("the MCP surface list", () => {
     const stdio = harness()
     stdio.list.key({ name: "c" })
     expect(stdio.commands).toEqual([])
+  })
+  test("u turns claude.ai connectors to the opposite state, also with no server configured", async () => {
+    const h = harness([])
+    h.list.key({ name: "u" })
+    expect(h.commands).toEqual([{ type: "mcp.setClaudeAiConnectors", enabled: true }])
+    expect(h.list.pending()).toBe("Turning on claude.ai connectors...")
+    await settle()
+    expect(h.toasts).toEqual([{ message: "claude.ai connectors on", variant: "success" }])
+    h.connectors(true)
+    h.list.key({ name: "u" })
+    expect(h.commands.at(-1)).toEqual({ type: "mcp.setClaudeAiConnectors", enabled: false })
+    expect(h.list.pending()).toBe("Turning off claude.ai connectors...")
+  })
+  test("a claude.ai connector has no sign-in and no Remove, reconnects after a sign-in at claude.ai, and keeps enabled actions", async () => {
+    const connector: McpStatusRow = { ...needsAuth, name: "github", source: { kind: "claude.ai", login: "work@example.com" } }
+    const h = harness([connector])
+    h.list.key({ name: "d" })
+    expect(h.commands).toEqual([])
+    expect(h.list.review()).toBeUndefined()
+    h.list.key({ name: "enter" })
+    expect(h.commands).toEqual([{ type: "mcp.reconnect", server: "github" }])
+    await settle()
+    h.list.key({ name: "e" })
+    expect(h.commands.at(-1)).toEqual({ type: "mcp.setEnabled", server: "github", scope: "global", enabled: false, expected: "reviewed" })
+    await settle()
+    h.list.key({ name: "p" })
+    expect(h.commands.at(-1)).toEqual({ type: "mcp.setEnabled", server: "github", scope: "project", enabled: false, expected: "reviewed" })
+    await settle()
+    h.rows([{ ...connector, status: "failed", error: "Connection failed" }])
+    h.list.key({ name: "r" })
+    expect(h.commands.at(-1)).toEqual({ type: "mcp.reconnect", server: "github" })
   })
   test("reports saved warnings, unverifiable rejection and thrown failure without reviving disposed openings", async () => {
     for (const answer of [
