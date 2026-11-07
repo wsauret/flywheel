@@ -73,7 +73,6 @@ describe("coding task", () => {
         prompts.push(prompt);
         return { text: '{"correctA":"yes","correctB":"yes","winner":"tie","rationale":"Same fix"}', accounting };
       } },
-      run: async () => { throw new Error("No reference lookup"); },
       [Symbol.asyncDispose]: async () => {},
     }, codingRedaction("claude-sonnet-5-5"), [{
       test: "blind", task: "blind", repeat: 0, request: `Repair this code: ${code}`,

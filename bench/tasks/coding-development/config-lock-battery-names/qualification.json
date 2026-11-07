@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "role": "development",
-  "contentIdentity": "30bc8dde835b807597e17d2f1f1674f1487498f18c2d1c10bc5221f2e35b822c",
+  "contentIdentity": "9f2ca989fcf6789aaa696d6d69f8c21d915c75bc10e18b83fa67e5b98600c24f",
   "testIds": [
     "config-smoke.test.ts > a synchronous config write is readable",
     "acceptance/config-battery.test.ts > different config names have independent synchronous ownership",

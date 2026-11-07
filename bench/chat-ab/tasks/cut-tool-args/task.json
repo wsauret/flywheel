@@ -3,7 +3,7 @@
   "stratum": "production-history",
   "timeoutMinutes": 45,
   "sandbox": {
-    "commit": "b6d624689385427eed079ea68815e8d6dce1b2e0",
+    "commit": "85c69871d53e3f1dba2532773dd7db38a93c41b3",
     "paths": [
       "src",
       "tests",

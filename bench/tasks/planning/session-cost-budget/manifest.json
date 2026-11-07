@@ -2,48 +2,58 @@
   "mustAddress": [
     {
       "id": "m1",
-      "title": "Configuration ownership and money validation",
-      "catchCriteria": "The plan adds the optional non-negative USD soft limit to `BudgetConfigSchema` in `src/orchestration/config/schema.ts` and its default to `DEFAULT_BUDGET` in `src/workflows/budget.ts`, with decimal TOML values accepted and invalid values rejected."
+      "title": "Configuration ownership, scope, and money validation",
+      "catchCriteria": "The plan adds the optional non-negative USD soft limit next to `BudgetConfigSchema` in `src/orchestration/config/setting-definitions.ts` and `DEFAULT_BUDGET` in `src/workflows/budget.ts`, accepts decimal TOML values and rejects invalid ones with an explicit schema choice instead of the integer fields' `NonNegativeInt`, and states how a session limit relates to the `[budget]` table, which PI-AGENT-041 in `docs/product-intent/agent-methods.md` defines as the workflow budget that a chat does not have."
     },
     {
       "id": "m2",
       "title": "TOML loading and configuration tests",
-      "catchCriteria": "The plan uses the existing `loadConfig` and `loadTomlFile` path in `src/orchestration/config/loader.ts` and updates `tests/unit/orchestration/config/config.test.ts` for the configured, omitted, zero, decimal, and invalid limit cases."
+      "catchCriteria": "The plan uses the existing `loadConfig` and `decodeConfigObject` path in `src/orchestration/config/loader.ts` and extends `tests/unit/orchestration/config/config.test.ts` for the configured, omitted, zero, decimal, and invalid limit cases."
     },
     {
       "id": "m3",
-      "title": "Existing durable cost projection",
-      "catchCriteria": "The plan derives spend from `BudgetProjectionState.totalCost` and `foldCumulativeReading` in `src/orchestration/session/budget-projection.ts`, including parent, subagent, and restarted runner streams without adding a second cost counter."
+      "title": "Existing hard cost limit",
+      "catchCriteria": "The plan finds the existing hard `max_cost_usd` field of `BudgetLimits` and its check in `budgetExhaustionReason` in `src/workflows/budget.ts`, which no configuration sets because `toBudgetLimits` omits it, and `checkExhausted` in `src/orchestration/session/budget-store.ts`, which emits `budget.exhausted`; it reuses or deliberately separates from that machinery so that crossing the soft limit never exhausts, pauses, or stops work, and it states what the warning shows when `priceUnavailable` is set."
     },
     {
       "id": "m4",
-      "title": "Store and event bus roles",
-      "catchCriteria": "The plan keeps projected session state authoritative in `createSessionBudgetStore` in `src/orchestration/session/budget-store.ts` and uses `budget.metrics.changed` plus `wireSessionSubscribers` in `src/orchestration/session/create-session-infra.ts` only to fan out updates into the session store."
+      "title": "Existing soft budget steering",
+      "catchCriteria": "The plan recognizes `createBudgetNudge` in `src/orchestration/agent-runtime/budget-nudge.ts` as the existing soft budget stage, which counts LLM calls of a capped handoff run and steers the model through tool-result text, and does not treat it as a spend warning or extend it to show the person a TUI warning."
     },
     {
       "id": "m5",
-      "title": "Protocol snapshot and patch contract",
-      "catchCriteria": "The plan carries the limit or derived warning through `BudgetView` in `src/orchestration/app-service/budget-protocol-types.ts`, `budgetView` and `sameBudget` in `src/orchestration/app-service/budget-protocol-projection.ts`, and `BudgetViewSchema` in `src/orchestration/app-service/protocol-schemas.ts` so snapshots and `budget.updated` patches agree."
+      "title": "Existing durable cost projection",
+      "catchCriteria": "The plan derives spend from `BudgetProjectionState.totalCost` and `foldCumulativeReading` in `src/orchestration/session/budget-projection.ts` and `budgetSummaryFromState` in `src/orchestration/session/budget-summary.ts`, including parent, subagent, and restarted runner streams, without adding a second cost counter, and states whether descendant spend counts toward the limit."
     },
     {
       "id": "m6",
-      "title": "TUI protocol intake",
-      "catchCriteria": "The plan keeps `createBudgetCache` in `src/tui/hooks/create-budget-cache.ts` and the `budgetView` binding in `src/tui/hooks/shell-state.ts` as the TUI's only budget intake instead of importing orchestration stores or creating a shadow signal."
+      "title": "Summary index and one budget builder",
+      "catchCriteria": "The plan derives the warning from the totals that the session summary index (`acquireSessionSummaryIndex` in `src/orchestration/session/session-summary-index.ts`) holds and builds every budget answer through `budgetViewFromRuntimeSummary` in `src/orchestration/app-service/runtime-summary-projection.ts`, instead of a latch, a new event, or the `budget.metrics.changed` notification that `wireSessionSubscribers` in `src/orchestration/session/create-session-infra.ts` only forwards."
     },
     {
       "id": "m7",
-      "title": "Existing warning presentation patterns",
-      "catchCriteria": "The plan reuses `createHeaderDisplay` in `src/tui/hooks/use-header-display.ts` or `statusRows` in `src/tui/hooks/use-status-dialog.ts`, formats money with `formatCost` from `src/infra/format.ts`, and preserves the existing width-aware header behavior."
+      "title": "Protocol contract for the limit",
+      "catchCriteria": "The plan carries the limit to clients through one owner and changes every representation of that shape together: either the runtime config protocol that already sends the `[budget]` table (`src/protocol/runtime-config-protocol-types.ts`, `src/protocol/runtime-config-protocol-schemas.ts`, and `projectRuntimeConfig` in `src/orchestration/app-service/runtime-config-projection.ts`), or `BudgetView` in `src/protocol/budget-protocol-types.ts` with `sameBudget` in `src/orchestration/app-service/budget-protocol-projection.ts` and `BudgetViewSchema` in `src/protocol/runtime-protocol-schemas.ts`, so snapshots and patches agree."
     },
     {
       "id": "m8",
-      "title": "Resumed and inactive session accuracy",
-      "catchCriteria": "The plan preserves reconstruction through `readBudgetSummaryFromReader` in `src/orchestration/session/budget-summary.ts` and `projectDurableHistorySessionView` in `src/orchestration/app-service/history-query-projection.ts` so resumed and inactive sessions use SQLite-derived total cost rather than session metadata."
+      "title": "TUI protocol intake",
+      "catchCriteria": "The plan keeps `createBudgetCache` in `src/tui/hooks/create-budget-cache.ts`, the `budgetView` binding, and the `runtimeConfig` accessor in `src/tui/hooks/shell-state.ts` as the TUI's only budget and limit intake, instead of importing orchestration stores or creating a shadow signal."
     },
     {
       "id": "m9",
+      "title": "Existing warning presentation patterns",
+      "catchCriteria": "The plan reuses `sessionHeaderParts` and `createHeaderDisplay` in `src/tui/hooks/create-header-display.ts`, following the compaction threshold that `src/tui/shell.tsx` reads from the runtime config, or `statusRows` in `src/tui/hooks/use-status-modal.ts`, formats money with `formatCostSplit` from `src/protocol/client/format.ts`, and preserves the existing width-aware header behavior."
+    },
+    {
+      "id": "m10",
+      "title": "Resumed and inactive session accuracy",
+      "catchCriteria": "The plan preserves reconstruction through `readBudgetSummaryFromReader` in `src/orchestration/session/budget-summary.ts` and `projectDurableHistorySessionView` in `src/orchestration/app-service/session-detail-projection.ts`, so resumed and inactive sessions compare the limit with SQLite-derived total cost rather than session metadata."
+    },
+    {
+      "id": "m11",
       "title": "Focused regression coverage",
-      "catchCriteria": "The plan extends `tests/unit/orchestration/session/budget-store-accumulation.test.ts`, `tests/unit/orchestration/app-service/budget-protocol-projection.test.ts`, `tests/unit/tui/hooks/create-budget-cache.test.ts`, and `tests/unit/tui/hooks/header-display.test.ts` to cover threshold crossing, durable cumulative cost, protocol recovery, and visible warning formatting."
+      "catchCriteria": "The plan extends `tests/unit/orchestration/session/budget-store-accumulation.test.ts`, `tests/unit/orchestration/app-service/budget-protocol-projection.test.ts`, `tests/unit/tui/hooks/create-budget-cache.test.ts`, and `tests/unit/tui/hooks/header-display.test.ts` to cover threshold crossing, durable cumulative cost, protocol recovery, and visible warning formatting, and shows that the soft limit never exhausts the budget in `tests/unit/orchestration/session/budget-store-limits.test.ts`."
     }
   ]
 }

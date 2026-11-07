@@ -11,7 +11,9 @@
       // entries by name and the exports only they reach stay accounted for.
       "entry": ["src/orchestration/app-service/worker-entry.ts", "src/infra/internal-process-channel.ts", "src/orchestration/app-service/project-executor-protocol.ts", "tests/integration/**/*.test.ts"],
       "project": ["src/**/*.{ts,tsx}"],
-      "ignore": ["src/infra/code-mode/**"]
+      // A vendored review fixture keeps the raw bytes of its source files,
+      // including tests whose imports name files left out of the copy.
+      "ignore": ["src/infra/code-mode/**", "bench/ab-persona/fixtures/reviews/*/project/**"]
     },
     "vscode": {
       "entry": ["src/extension.ts"],

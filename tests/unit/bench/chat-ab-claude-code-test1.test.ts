@@ -157,10 +157,11 @@ describe("chat A/B comparison with Claude Code, test 1", () => {
 
   it("states that a report names a shipped bug site only when it names the file and a line inside the site", () => {
     const [parser, completions] = SHIPPED_SITES;
-    expect(namesShippedSite("json-parse.ts:162 completes a cut prefix", parser!)).toBe(true);
-    expect(namesShippedSite("In `json-parse.ts` lines 150-170, the partial tier", parser!)).toBe(true);
-    expect(namesShippedSite("json-parse.ts:40 has a typo", parser!)).toBe(false);
-    expect(namesShippedSite("anthropic.ts:162 is wrong", parser!)).toBe(false);
-    expect(namesShippedSite("openai-completions.ts line 144 maps length to max_tokens", completions!)).toBe(true);
+    const [first] = parser!.lines;
+    expect(namesShippedSite(`json-parse.ts:${first} completes a cut prefix`, parser!)).toBe(true);
+    expect(namesShippedSite(`In \`json-parse.ts\` lines ${first - 10}-${first + 5}, the partial tier`, parser!)).toBe(true);
+    expect(namesShippedSite(`json-parse.ts:${first - 20} has a typo`, parser!)).toBe(false);
+    expect(namesShippedSite(`anthropic.ts:${first} is wrong`, parser!)).toBe(false);
+    expect(namesShippedSite(`openai-completions.ts line ${completions!.lines[0]} maps length to max_tokens`, completions!)).toBe(true);
   });
 });

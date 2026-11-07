@@ -1,0 +1,32 @@
+diff --git b/src/orchestration/config/model-tiers.ts a/src/orchestration/config/model-tiers.ts
+index 5e57050..1872e42 100644
+--- b/src/orchestration/config/model-tiers.ts
++++ a/src/orchestration/config/model-tiers.ts
+@@ -246,10 +246,17 @@ async function buildFamilyCatalog(
+ ): Promise<FamilyTierCatalog> {
+   const available = new Set(Array.from(availableModels).map(normalizeSelectableModelId));
+   const partialEntries: Omit<CatalogEntry, "tier">[] = [];
++  // Only a user-authored custom provider model is eligible without metadata.
++  // It carries no tier evidence, so it is the last resort after ranked models.
++  const undescribed: string[] = [];
+ 
+   for (const model of available) {
+     const info = resolveModelInfo(model, options.modelInfos);
+-    if (!info || !callsToolsOnText(info)) continue;
++    if (!info) {
++      undescribed.push(model);
++      continue;
++    }
++    if (!callsToolsOnText(info)) continue;
+     partialEntries.push({
+       model,
+       info,
+@@ -295,7 +302,7 @@ async function buildFamilyCatalog(
+     });
+   return {
+     tiers,
+-    unranked: unranked.sort((a, b) =>
++    unranked: [...unranked, ...undescribed].sort((a, b) =>
+       (sortRanks.get(b)?.releaseMs ?? 0) - (sortRanks.get(a)?.releaseMs ?? 0) || a.localeCompare(b)),
+     sortRanks,
+   };

@@ -44,7 +44,7 @@ Chat acceptance copies the task's frozen `acceptance/` folder into the sandbox a
 
 - Use macOS. Every cell runs in a `sandbox-exec` profile; other platforms fail rather than run without isolation.
 - Install Bun and run `bun install --frozen-lockfile` from the repository root.
-- Use a full Git checkout. Source treatments and task fixtures need their pinned commits to exist locally.
+- Use a full Git checkout. Source treatments and task fixtures that name a commit need it in local history. Every commit that a fixture names is in the public history; `bun run lint:bench-pins` checks this.
 - Run the harness from a current checkout; it refuses to start without strict descendant cleanup. Each treatment revision must support the official headless JSONL v1 protocol, `model.save_effort`, `sessionModelPlan`, and `events evidence`. Setup refuses a revision whose preflight cannot show them, before any task request. Only the reviewed patches named by the design are applied; there are no implicit compatibility patches.
 - Log in to the auth profile that the campaign names, as for normal use. No separate benchmark login is necessary.
 
@@ -150,7 +150,7 @@ Passing tests does not establish quality parity. Fewer findings does not establi
 
 ## Coding task menu
 
-All 13 qualified fixtures are runnable. Development tasks select treatments. Evaluation tasks require `--reserved-evaluation`; keep fresh holdouts for final evaluation. `auth-sibling-preservation` and `tool-argument-completeness` have prior experimental exposure and are not fresh holdouts.
+All 13 qualified fixtures are runnable in a public clone: each vendors its source files in `project/`. Development tasks select treatments. Evaluation tasks require `--reserved-evaluation`; keep fresh holdouts for final evaluation. `auth-sibling-preservation` and `tool-argument-completeness` have prior experimental exposure and are not fresh holdouts.
 
 | Task | Catalog role | Behavior |
 |---|---|---|
@@ -172,7 +172,7 @@ The example model is `claude-haiku-5-5` at low effort. Runtime, cost, and pass r
 
 ### Observed calibration
 
-On 2026-10-12, `coding-aa-calibration-20261012` ran `config-lock-first-write` with `claude-haiku-5-5`, low effort, and SDK execution. Both labels used revision `7eadc4308e6566bad0c170d6f994373a8ad2ca1a`. These are observations from four runs, not predicted runtimes or an A/B improvement.
+These are results from the earlier fixtures, which pinned commits from before the public history, and need a new baseline. On 2026-10-12, `coding-aa-calibration-20261012` ran `config-lock-first-write` with `claude-haiku-5-5`, low effort, and SDK execution. Both labels used revision `7eadc4308e6566bad0c170d6f994373a8ad2ca1a`. These are observations from four runs, not predicted runtimes or an A/B improvement.
 
 | Label | Completed | Acceptance all-pass | Mean candidate wall (s) | Range (s) | Estimated equivalent total | Recorded billed total |
 |---|---|---|---|---|---|---|
@@ -185,7 +185,7 @@ The [run and resume commands](#run-and-resume) select this task. The raw results
 
 ### Sonnet medium calibration
 
-On 2026-10-12, `coding-aa-sonnet-fixed-20261012` ran the same task with `claude-sonnet-5-5` at medium effort. Both labels used revision `271bb60da3a35895ae7188585ecffba434a5c8fe`, which includes the recorded workflow-source completion fix. Sonnet medium is the selected model for subsequent test runs.
+Results from the earlier fixtures, which need a new baseline. On 2026-10-12, `coding-aa-sonnet-fixed-20261012` ran the same task with `claude-sonnet-5-5` at medium effort. Both labels used revision `271bb60da3a35895ae7188585ecffba434a5c8fe`, which includes the recorded workflow-source completion fix. Sonnet medium is the selected model for subsequent test runs.
 
 | Label | Completed | Acceptance all-pass | Mean candidate wall (s) | Range (s) | Estimated equivalent total | Recorded billed total |
 |---|---|---|---|---|---|---|
@@ -284,30 +284,27 @@ Chat and workflow campaigns from the earlier private runner hold `run-config.jso
 
 ### Chat task menu
 
-Every task is a real Flywheel bug at the parent of its fix commit, with frozen acceptance tests (`bench/chat-ab/tasks/<id>/`). Every task has a 45-minute timeout and the `production-history` stratum. Runtime is the subject wall time of a cell. Cost is the estimated equivalent value from canonical evidence; recorded billed spend was $0.0000 for every observed cell. Pass rate counts cells that pass every acceptance test.
+Every task is a real Flywheel bug with frozen acceptance tests. Its source is a public base commit with a `sandbox.patch` that restores the defect, and `reference.patch` holds a known fix (`bench/chat-ab/tasks/<id>/`). The observed row is a result from the earlier fixture, which pinned a commit from before the public history, and needs a new baseline. Every task has a 45-minute timeout and the `production-history` stratum. Runtime is the subject wall time of a cell. Cost is the estimated equivalent value from canonical evidence; recorded billed spend was $0.0000 for every observed cell. Pass rate counts cells that pass every acceptance test.
 
 | Task | Behavior that the fix restores | Model / effort | Runtime | Cost | Pass rate |
 |---|---|---|---|---|---|
 | `auth-sibling-lost` | An API key login keeps healthy accounts when a stored sibling account is malformed. | Not yet observed | Not yet observed | Not yet observed | Not yet observed |
 | `catalog-overflow-hydration` | Session hydration recovers when the client event lane overflows. | Not yet observed | Not yet observed | Not yet observed | Not yet observed |
-| `child-wait-refused-as-cycle` | A child can wait again on a parent that waits on its children. | Not yet observed | Not yet observed | Not yet observed | Not yet observed |
 | `config-lock-first-write` | The first global settings change succeeds instead of a lock refusal. | Not yet observed | Not yet observed | Not yet observed | Not yet observed |
 | `custom-provider-role-default` | Every role gets a default model when only a custom provider is configured. | Not yet observed | Not yet observed | Not yet observed | Not yet observed |
 | `cut-tool-args` | A tool call whose arguments were cut off never runs. | Not yet observed | Not yet observed | Not yet observed | Not yet observed |
 | `handoff-ignores-background-command` | A running background command blocks handoff until it settles. | Not yet observed | Not yet observed | Not yet observed | Not yet observed |
-| `interrupt-stops-project` | Stopping one session does not end every turn in the project. | Not yet observed | Not yet observed | Not yet observed | Not yet observed |
 | `interrupted-question-blank-result` | An interrupted question does not break later model requests. | Not yet observed | Not yet observed | Not yet observed | Not yet observed |
 | `openai-duplicate-tool-call` | The OpenAI adapter removes duplicate tool calls by call id. | Not yet observed | Not yet observed | Not yet observed | Not yet observed |
 | `parent-wake-after-restart` | A parent wakes when its child completes after a service restart. | Not yet observed | Not yet observed | Not yet observed | Not yet observed |
 | `process-wait-loop-nudge` | Legitimate process waits do not trigger the repetition nudge. | Not yet observed | Not yet observed | Not yet observed | Not yet observed |
-| `provider-chain-fix` | The automatic provider chain gets the five fixes that a code review requested. | Not yet observed | Not yet observed | Not yet observed | Not yet observed |
 | `session-list-empty-after-timeout` | The session list stays complete after a failed first history read. | Not yet observed | Not yet observed | Not yet observed | Not yet observed |
 | `stopped-command-exit-code` | A background command that a signal ends shows as stopped, with no exit code. | `claude-sonnet-5-5` / medium, `delegate` arm | Mean 301.0 s (193.7 to 421.0) | Mean $2.1688 | 3/4 |
-| `subagent-interrupted-shows-failed` | An interrupted subagent shows as interrupted, not failed. | Not yet observed | Not yet observed | Not yet observed | Not yet observed |
+| `subagent-interrupted-shows-failed` | An interrupted subagent records as interrupted, and one the runtime interrupted no longer holds the parent's waits or handoff. | Not yet observed | Not yet observed | Not yet observed | Not yet observed |
 
 ### Observed Chat results
 
-Only campaigns of the headless runner (the `chat-*` runs) are listed. Private-runner results are not mixed in. All runs used the `delegate` arm, `claude-sonnet-5-5` at medium effort, and the maintainer's auth profile, on `stopped-command-exit-code`. Rows of different revisions are not pooled.
+These are results from the earlier fixtures, which need a new baseline. Only campaigns of the headless runner (the `chat-*` runs) are listed. Private-runner results are not mixed in. All runs used the `delegate` arm, `claude-sonnet-5-5` at medium effort, and the maintainer's auth profile, on `stopped-command-exit-code`. Rows of different revisions are not pooled.
 
 | Campaign | Revision | Cells | Runtime (s) | Cost | Pass rate |
 |---|---|---|---|---|---|
@@ -360,7 +357,7 @@ Set **Workflows On** in your account settings before setup and keep it On throug
 
 The pilot has three tasks (`debug-mutable-default`, `config-lock-first-write`, `cut-tool-args`), three repeats, and two arms: 18 cells. Run a two-cell smoke with one task and one repeat first. Inspect each root transcript for the arm's guidance and its launched source before starting the pilot. Use a separate results directory for smoke.
 
-`examples/workflow-authorship-design.json` selects `"message": "design"` for 13 explore-and-implement tasks, five repeats, and the two forced arms: 130 cells. Each task supplies the problem, approach, and key decisions in `design.md`; the agent finds the implementation details. `examples/workflow-authorship-calibration.json` uses those same tasks with one repeat and only the discretionary authored arm: 13 cells. Calibration measures unprompted workflow launches before the full comparison. Both examples keep the same model, effort, profile, and workflow-agent assignment as the forced pilot. The calibration arm applies only `no-learning-review.patch`; it does not force a launch or restrict root tools. Plan refuses either example until every selected task has its design variant.
+`examples/workflow-authorship-design.json` selects `"message": "design"` for 11 explore-and-implement tasks, five repeats, and the two forced arms: 110 cells. Each task supplies the problem, approach, and key decisions in `design.md`; the agent finds the implementation details. `examples/workflow-authorship-calibration.json` uses those same tasks with one repeat and only the discretionary authored arm: 11 cells. Calibration measures unprompted workflow launches before the full comparison. Both examples keep the same model, effort, profile, and workflow-agent assignment as the forced pilot. The calibration arm applies only `no-learning-review.patch`; it does not force a launch or restrict root tools. Plan refuses either example until every selected task has its design variant.
 
 ```bash
 bun run bench:workflow-authorship plan bench/chat-ab/examples/workflow-authorship.json
@@ -381,7 +378,7 @@ Across tasks, the report takes the mean of each task's paired-repeat differences
 
 ### Status and future directions
 
-The benchmark is paused. The pilots and a 13-task calibration (`bench/findings/workflow-authorship-results.md`) showed that its current tasks cannot answer its question. With Workflows On, Sonnet 5.5 at medium effort launched no workflow in 31 of 31 discretionary cells, including fixes that touch 10 files. With a design-given message, it solved 12 of the 13 tasks alone in 1 to 8 minutes. Forcing a workflow onto such tasks measures orchestration overhead, not the value of a workflow. Using a weaker model only to create headroom changes the question instead of answering it.
+The benchmark is paused. The pilots and a 13-task calibration (`bench/findings/workflow-authorship-results.md`), results from the earlier fixtures, showed that its current tasks cannot answer its question. With Workflows On, Sonnet 5.5 at medium effort launched no workflow in 31 of 31 discretionary cells, including fixes that touch 10 files. With a design-given message, it solved 12 of the 13 tasks alone in 1 to 8 minutes. Forcing a workflow onto such tasks measures orchestration overhead, not the value of a workflow. Using a weaker model only to create headroom changes the question instead of answering it.
 
 Ideas for a later campaign:
 
@@ -472,16 +469,14 @@ A treatment revision must speak today's headless protocol. The harness decodes s
 
 ## Planning
 
-This family measures how well a Chat plans before it implements: whether its plan finds the requirements that the repository imposes, and whether it catches false claims in the request. Each cell sends one brief from `bench/tasks/planning/` to the Chat agent of a Flywheel source treatment. The task contract is in `bench/tasks/README.md`.
+This family measures how well a Chat plans before it implements: whether its plan finds the requirements that the repository imposes, and, when a task carries them, whether it catches false claims in the request. Each cell sends one brief from `bench/tasks/planning/` to the Chat agent of a Flywheel source treatment. The task contract is in `bench/tasks/README.md`.
 
 | Task | Stratum | Tree | Known requirements | False premises |
 |---|---|---|---|---|
 | `healthz-greenfield` | small | empty repository | none | none |
-| `session-cost-budget` | medium | `e63bd9b6c9c602dcc2b0643fadfc75a7f947f0ff:flywheel-tui` | 9 | none |
-| `handoff-size-guard` | broad | `e63bd9b6c9c602dcc2b0643fadfc75a7f947f0ff:flywheel-tui` | 10 | none |
-| `retry-telemetry-refactor` | broad | `e63bd9b6c9c602dcc2b0643fadfc75a7f947f0ff:flywheel-tui` | 12 | m1 to m4 |
+| `session-cost-budget` | medium | `85c69871d53e3f1dba2532773dd7db38a93c41b3` (public) | 11 | none |
 
-The three repository tasks copy `src`, `tests`, `docs`, `scripts`, and the root configuration of the pinned tree, never `bench` or `inspiration`. They are pinned because the current source no longer holds every requirement that they cite.
+The repository task copies `src`, `tests`, `docs`, `scripts`, and the root configuration of a public commit, never `bench` or `inspiration`. It is pinned so that every requirement it cites stays at the cited path while the live tree moves.
 
 The brief is followed by one fixed instruction (`PLANNING_INSTRUCTION` in `planning-task.ts`, part of the task identity): write the complete plan to `PLAN.md` at the repository root, change no other file, treat the request as approved, and record each open question with the assumption chosen, because nobody answers questions. The instruction does not name a planning skill: choosing one is part of what a treatment measures.
 
@@ -494,7 +489,7 @@ Scoring has two parts, both by the pinned chat-ab judge (`CHAT_AB_JUDGE`, which 
 
 Judge accounting stays separate from candidate accounting. The report counts, for each stratum and treatment, plans written, addressed requirements over opportunities, uncertain points, false premises addressed, non-compliant cells, unanswered and incomplete cells, and pairwise wins, losses, and ties against each treatment it was compared with. It reads every comparison that `judge` wrote, whichever two treatments it named. It draws no interval.
 
-`examples/planning.json` compares Sonnet 5.5 at medium effort with Opus 5.5 at high effort on the four tasks, three repeats: 24 cells. Each arm applies `no-learning-review.patch`.
+`examples/planning.json` compares Sonnet 5.5 at medium effort with Opus 5.5 at high effort on the two tasks, three repeats: 12 cells. Each arm applies `no-learning-review.patch`.
 
 ```bash
 bun run bench:planning plan bench/chat-ab/examples/planning.json
@@ -512,7 +507,7 @@ Caveats:
 - The judge cannot read the repository, so it judges grounding only through the manifest. The greenfield task has no reference.
 - The judge-family rule refuses GPT treatments while the judge is a GPT model.
 - Headless Chats can still stop for design approval and write no plan, and can implement despite the instruction. Both are counted, not excluded.
-- The pinned tree is from July 2026 and has no `node_modules`; the Chat cannot run its tests.
+- The pinned tree has no `node_modules`; the Chat cannot run its tests.
 - The retired step benchmark of `fly.plan-create` exposed its answer key to the subject, so its results are not comparable with this family.
 
 ## Evidence and maintenance

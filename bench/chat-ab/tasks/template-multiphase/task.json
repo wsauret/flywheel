@@ -3,10 +3,8 @@
   "stratum": "medium",
   "timeoutMinutes": 45,
   "sandbox": {
-    "commit": "64d9b75aeaa02fb5d00d2f75d01ea8a50df0d743",
-    "paths": [
-      ".gitignore"
-    ],
+    "commit": "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+    "paths": [],
     "patch": "sandbox.patch"
   },
   "acceptanceBaseline": {

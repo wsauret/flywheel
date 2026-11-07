@@ -1,0 +1,243 @@
+diff --git a/src/orchestration/agent-runtime/background-work-processes.ts b/src/orchestration/agent-runtime/background-work-processes.ts
+index 17651ac..10d60df 100644
+--- a/src/orchestration/agent-runtime/background-work-processes.ts
++++ b/src/orchestration/agent-runtime/background-work-processes.ts
+@@ -31,8 +31,15 @@ export interface BackgroundOutputRequest {
+   query?: string;
+ }
+ 
+-/** How a command whose end was observed exited. */
+-export interface CommandExit { readonly code: number }
++/** How a command whose end was observed ended: with its own exit code, or
++ *  by a signal, which leaves it no exit code. `signal` is null when the
++ *  platform named none. */
++export type CommandExit = { readonly code: number } | { readonly signal: string | null };
++
++/** The exit code of an observed exit that has one. */
++function exitCodeOf(exit: CommandExit | undefined): number | undefined {
++  return exit !== undefined && "code" in exit ? exit.code : undefined;
++}
+ 
+ /** The background index record of work that the index lists as a command
+  *  (a background command or a benchmark, with the tool call that started
+@@ -53,7 +60,7 @@ export function commandIndexRecord(meta: BackgroundWorkMeta, startedAtMs: number
+   if (!settled) return { ...fields, state: "running" };
+   const { status, exit } = settled.result;
+   if (meta.type === "background_command" && exit === undefined) return undefined;
+-  const exitCode = exit?.code;
++  const exitCode = exitCodeOf(exit);
+   return {
+     ...fields,
+     state: "settled",
+@@ -147,7 +154,7 @@ export function createBackgroundProcessTable(): BackgroundProcessTable {
+     settle(id, end) {
+       const process = processes.get(id);
+       if (!process) return undefined;
+-      const exitCode = end.exit?.code;
++      const exitCode = exitCodeOf(end.exit);
+       process.record = {
+         ...process.record,
+         status: end.status,
+diff --git a/src/orchestration/agent-runtime/command-handover.ts b/src/orchestration/agent-runtime/command-handover.ts
+index 633daf4..125ffa6 100644
+--- a/src/orchestration/agent-runtime/command-handover.ts
++++ b/src/orchestration/agent-runtime/command-handover.ts
+@@ -358,5 +358,5 @@ function recordedEnd(read: Exclude<OutcomeRecordRead, { kind: "unreadable" }>):
+   if (read.kind === "absent") return { kind: "previous_runtime" }
+   const outcome = read.record.outcome
+   if (outcome === undefined) return { kind: "unrecorded" }
+-  return { kind: "exited", code: outcome.code, recorded: { deadlineExpired: outcome.deadlineExpired, endedAtMs: outcome.endedAtMs } }
++  return { kind: "exited", code: outcome.code, signal: outcome.signal, recorded: { deadlineExpired: outcome.deadlineExpired, endedAtMs: outcome.endedAtMs } }
+ }
+diff --git a/src/orchestration/agent-runtime/tools/managed-command.ts b/src/orchestration/agent-runtime/tools/managed-command.ts
+index b51dfc4..c66fa96 100644
+--- a/src/orchestration/agent-runtime/tools/managed-command.ts
++++ b/src/orchestration/agent-runtime/tools/managed-command.ts
+@@ -4,18 +4,21 @@ import type { HandoverAnswer, OwnedProcess } from "../../../infra/owned-subproce
+ import { formatDuration } from "../../../protocol/client/format.js";
+ import { formatNotAppliedFiles } from "../../../infra/not-applied-files.js";
+ import type { BackgroundKillSource, BackgroundWorkRegistry, BackgroundWorkResult, SettledProjectMutation, ToolCallIdentity } from "../background-work.js";
++import type { CommandExit } from "../background-work-processes.js";
+ import { boundedExecutionOutputTail, createShellOutputAccumulator, createTailEmitter, readBackgroundProcessOutput, readSpoolGrowth, type SettledShellOutput, shellObservation } from "./bash-output-tail.js";
+ import type { PrivateCopy, ProjectMutationLanding } from "./shell-runtime-types.js";
+ import { createStderrTail, drainStderr, silentFailureStderr } from "./shell-stderr.js";
+ import { armUnheldDeadline, NEVER_HELD, type HeldTime } from "./processor-claims.js";
+ 
+ /** How the owner of a managed command learned that it ended. `exited` carries
+- *  the exit code, and, when the command ended while no owner held it, the
+- *  outcome its supervisor recorded. `unrecorded`: its supervisor ended without
+- *  a readable record of the exit. `previous_runtime`: the command was never
+- *  handed over, so it ended with the runtime that launched it. */
++ *  the exit status as the platform reports it (an exit code, or the signal
++ *  that ended the command, with a null code), and, when the command ended
++ *  while no owner held it, the outcome its supervisor recorded. `unrecorded`:
++ *  its supervisor ended without a readable record of the exit.
++ *  `previous_runtime`: the command was never handed over, so it ended with
++ *  the runtime that launched it. */
+ export type ManagedCommandEnd =
+-  | { readonly kind: "exited"; readonly code: number | null; readonly recorded?: { readonly deadlineExpired: boolean; readonly endedAtMs: number } }
++  | { readonly kind: "exited"; readonly code: number | null; readonly signal: NodeJS.Signals | null; readonly recorded?: { readonly deadlineExpired: boolean; readonly endedAtMs: number } }
+   | { readonly kind: "unrecorded" | "previous_runtime" };
+ 
+ /** What this owner reaches of the command: its owned container, which it can
+@@ -148,7 +151,14 @@ function endLine(end: ManagedCommandEnd, durationMs: number, description: string
+       ? `Background command ended without a recorded exit status: ${description}`
+       : `Background command ended with the previous runtime: ${description}`;
+   }
+-  return `Background command exited with code ${end.code ?? "unknown"} after ${formatDuration(durationMs)}: ${description}`;
++  const how = end.code !== null ? `exited with code ${end.code}` : `ended by ${end.signal === null ? "a signal" : `signal ${end.signal}`}`;
++  return `Background command ${how} after ${formatDuration(durationMs)}: ${description}`;
++}
++
++/** The exit of a command whose end was observed. A command that a signal
++ *  ended has no exit code, so it states the signal and never a code. */
++function commandExit(end: Extract<ManagedCommandEnd, { kind: "exited" }>): CommandExit {
++  return end.code !== null ? { code: end.code } : { signal: end.signal };
+ }
+ 
+ export function startManagedCommand(input: ManagedCommandInput): ManagedCommand {
+@@ -236,7 +246,7 @@ export function startManagedCommand(input: ManagedCommandInput): ManagedCommand
+     return finishTailerPromise;
+   };
+   const ended: Promise<ManagedCommandEnd> = "owned" in source
+-    ? source.owned.exited.then((exit) => ({ kind: "exited", code: exit.code }))
++    ? source.owned.exited.then((exit) => ({ kind: "exited", code: exit.code, signal: exit.signal }))
+     : source.observed;
+   const settlement = (async (): Promise<ManagedSettlement> => {
+     const end = await ended;
+@@ -261,18 +271,20 @@ export function startManagedCommand(input: ManagedCommandInput): ManagedCommand
+       const { end, output, durationMs, landing } = await settlement;
+       const { notificationTail } = output;
+       const executionOutputTail = settledLandingOutput(output.executionOutputTail, landing);
+-      const code = end.kind === "exited" ? end.code : null;
++      const exit = end.kind === "exited" ? commandExit(end) : undefined;
+       const expired = deadlineExpired || (end.kind === "exited" && end.recorded?.deadlineExpired === true);
+       const content = [
+         expired && deadlineAtMs !== undefined ? `Background command reached its ${(deadlineAtMs - startedAtMs) / 1000}s hard deadline and was terminated.` : undefined,
+         endLine(end, durationMs, description),
+         notificationTail ? `Log tail (full log: ${logPath}):\n${notificationTail}` : `(log is empty; full log: ${logPath})`,
+-        end.kind === "exited" ? silentFailureStderr(code ?? 1, notificationTail.trim(), stderrTail.text()) : undefined,
++        // A launch that failed before the script ran exits with a code. A
++        // signal comes from outside the command, so its stderr explains nothing.
++        exit !== undefined && "code" in exit ? silentFailureStderr(exit.code, notificationTail.trim(), stderrTail.text()) : undefined,
+       ].filter((part) => part !== undefined).join("\n");
+       return {
+-        status: code === 0 ? "completed" : "failed",
++        status: exit !== undefined && "code" in exit && exit.code === 0 ? "completed" : "failed",
+         content: landing ? `${content}\n\n${landing.report}` : content,
+-        ...(end.kind === "exited" ? { exit: { code: code ?? 1 } } : {}),
++        ...(exit !== undefined ? { exit } : {}),
+         ...(executionOutputTail ? { executionOutputTail } : {}),
+         ...landingEvidence(landing),
+       };
+diff --git a/src/protocol/client/background-index.ts b/src/protocol/client/background-index.ts
+index 2722899..c89a816 100644
+--- a/src/protocol/client/background-index.ts
++++ b/src/protocol/client/background-index.ts
+@@ -85,12 +85,16 @@ function workflowProgressParts(progress: BackgroundWorkProgress, active: boolean
+ }
+ 
+ /** What a row states beside its title: its status, the exit code of a
+- *  finished command, the duration of a finished command or subagent, the
+- *  model of a running child, and a workflow's progress. */
++ *  command that ended by itself, the duration of a finished command or
++ *  subagent, the model of a running child, and a workflow's progress. A
++ *  stopped or canceled command shows no exit code: the code is the
++ *  command's reaction to the stop, such as 143 from a trapped SIGTERM or the
++ *  1 that Windows job termination sets, not its outcome. */
+ export function backgroundRowDetail(row: BackgroundWorkRow): string {
++  const endedByStop = row.status === "stopped" || row.status === "cancelled"
+   return [
+     backgroundStatusLabel(row),
+-    row.exitCode === undefined ? undefined : `exit ${row.exitCode}`,
++    row.exitCode === undefined || endedByStop ? undefined : `exit ${row.exitCode}`,
+     row.durationMs === undefined ? undefined : formatDuration(row.durationMs),
+     row.model === undefined ? undefined : row.effort === undefined ? row.model : `${row.model} · ${row.effort}`,
+     ...(row.progress === undefined ? [] : workflowProgressParts(row.progress, isActiveBackgroundRow(row))),
+diff --git a/tests/unit/orchestration/agent-runtime/background-command-records.test.ts b/tests/unit/orchestration/agent-runtime/background-command-records.test.ts
+index 7ff340b..2b4b072 100644
+--- a/tests/unit/orchestration/agent-runtime/background-command-records.test.ts
++++ b/tests/unit/orchestration/agent-runtime/background-command-records.test.ts
+@@ -1,7 +1,13 @@
+ import { describe, expect, it } from "bun:test";
++import { join } from "node:path";
+ 
+ import type { BackgroundCommandRecord } from "../../../../src/infra/runtime-fact-types.js";
+ import { createBackgroundWorkRegistry, type BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work.js";
++import { startManagedCommand } from "../../../../src/orchestration/agent-runtime/tools/managed-command.js";
++import { temporaryDirectories } from "../../../helpers/directories.js";
++import { makeMockOwnedProcess, type OwnedExit } from "./tools/_bash-fixtures.js";
++
++const temporaryDirectory = temporaryDirectories();
+ 
+ describe("createBackgroundWorkRegistry (background index records)", () => {
+   it("retries a recovered command's rejected output write and deduplicates only after acknowledgement", async () => {
+@@ -68,6 +74,35 @@ describe("createBackgroundWorkRegistry (background index records)", () => {
+     expect(records.filter((record) => record.state === "settled").map((record) => [record.toolUseId, record.state === "settled" ? record.status : undefined])).toEqual([["toolu_p", "stopped"], ["toolu_a", "cancelled"]]);
+   });
+ 
++  it("records a command that a person stops by a signal as stopped, with no exit code, and names the signal to the model", async () => {
++    const { registry, records } = recordingRegistry();
++    const exit = Promise.withResolvers<OwnedExit>();
++    const owned = makeMockOwnedProcess({
++      stderr: undefined,
++      exited: exit.promise,
++      terminate: async () => {
++        const ended: OwnedExit = { code: null, signal: "SIGTERM", statusOf: "payload", ownership: "surrendered" };
++        exit.resolve(ended);
++        return ended;
++      },
++    });
++    const command = startManagedCommand({
++      source: { owned }, processId: "bash-bg-stop", description: "tail -f /dev/null", logPath: join(temporaryDirectory("fw-stopped-command-"), "stop.log"),
++      startedAtMs: 1_000, identity: { toolUseId: "toolu_stop" }, registry, executionOutputThrottleMs: 0, postExitDrainGraceMs: 0,
++    });
++    await command.track();
++
++    expect(registry.terminate("toolu_stop")).toBe(true);
++    const result = await command.done;
++    await Bun.sleep(5);
++
++    const settled = records.at(-1);
++    expect(settled).toMatchObject({ toolUseId: "toolu_stop", state: "settled", status: "stopped" });
++    expect(settled !== undefined && "exitCode" in settled).toBe(false);
++    expect(result.content).toContain("ended by signal SIGTERM");
++    expect(result.content).not.toContain("exit code");
++  });
++
+   it("records the outcome of a command the host tears down and publishes its completion", async () => {
+     const notes: string[] = [];
+     const records: BackgroundCommandRecord[] = [];
+diff --git a/tests/unit/orchestration/agent-runtime/background-execution-owner.test.ts b/tests/unit/orchestration/agent-runtime/background-execution-owner.test.ts
+index bbbf08f..5c7e24c 100644
+--- a/tests/unit/orchestration/agent-runtime/background-execution-owner.test.ts
++++ b/tests/unit/orchestration/agent-runtime/background-execution-owner.test.ts
+@@ -414,9 +414,9 @@ describe("BackgroundExecutionOwner command handover", () => {
+       `retire with ${QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND}`,
+       "terminateAll",
+     ])
+-    expect(fixture.heldCompletions()).toEqual([{ key: `command:${processId}`, conversationId: CONVERSATION, text: expect.stringContaining("exited with code unknown") }])
++    expect(fixture.heldCompletions()).toEqual([{ key: `command:${processId}`, conversationId: CONVERSATION, text: expect.stringContaining("ended by signal SIGTERM") }])
+     expect(fixture.store.readInFlight(SESSION, COMMAND_HANDOVER_IN_FLIGHT_KIND)).toEqual([])
+-    expect(fixture.notifications).toEqual([{ key: `command:${processId}`, text: expect.stringContaining("exited with code unknown") }])
++    expect(fixture.notifications).toEqual([{ key: `command:${processId}`, text: expect.stringContaining("ended by signal SIGTERM") }])
+     fixture.store.close()
+   })
+ 
+diff --git a/tests/unit/protocol/client/background-index.test.ts b/tests/unit/protocol/client/background-index.test.ts
+index 9a9556d..b46373e 100644
+--- a/tests/unit/protocol/client/background-index.test.ts
++++ b/tests/unit/protocol/client/background-index.test.ts
+@@ -48,8 +48,11 @@ describe("background index rows", () => {
+     ])
+   })
+ 
+-  test("a row states its status, a finished command its exit code and duration, and a nested row lands on its top-level card", () => {
++  test("a row states its status, a finished command its exit code and duration, a stopped command no exit code, and a nested row lands on its top-level card", () => {
+     expect(ROWS.map(backgroundRowDetail)).toEqual(["Completed", "Waiting on parent", "Failed", "Running", "Failed · exit 2 · 1.5s"])
++    // A command that traps the stop signal still exits with a code, and Windows termination always exits 1: neither is the command's outcome.
++    expect(backgroundRowDetail(row({ id: "dev", status: "stopped", exitCode: 1, durationMs: 195_000 }))).toBe("Stopped · 3m 15s")
++    expect(backgroundRowDetail(row({ id: "build", status: "cancelled", exitCode: 143, durationMs: 1_500 }))).toBe("Canceled · 1.5s")
+     expect(ROWS.find((candidate) => candidate.id === "explorer")?.cardToolUseId).toBe("toolu_workflow")
+   })
+ 

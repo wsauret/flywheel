@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "role": "reserved-evaluation",
-  "contentIdentity": "ee39c9d20dbe478676118342d1b6e1cd606d5a45b2d731a3338ec734146f2e54",
+  "contentIdentity": "f9fb048abc2cbc3f187a52af3979aef3f7abca4bcedc61f89aa5841b9552d7cd",
   "testIds": [
     "config-smoke.test.ts > a synchronous config write is readable",
     "acceptance/config-battery.test.ts > asynchronous ownership stays on its admitted directory after a path replacement",

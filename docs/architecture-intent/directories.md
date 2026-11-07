@@ -82,7 +82,7 @@ The definition-override baseline manifest lives under the account data root so t
 
 ## ARCH-DIRECTORIES-015: Benchmark trials keep state in the task workspace
 
-A benchmark trial maps both the project root and the execution directory to the workspace that the benchmark harness supplies for that trial, with persistent processes disabled. A trial never runs in the live checkout: its workspace holds a snapshot of a pinned commit, limited to an explicit list of paths. The trial's store is exported as evidence only after the headless host settles, and that export is a copy, not another durable authority.
+A benchmark trial maps both the project root and the execution directory to the workspace that the benchmark harness supplies for that trial, with persistent processes disabled. A trial never runs in the live checkout: its workspace holds a copy of the task's fixture source. That source is a pinned commit limited to an explicit list of paths, the files inside the task, or an empty tree. The trial's store is exported as evidence only after the headless host settles, and that export is a copy, not another durable authority.
 
 ## ARCH-DIRECTORIES-016: The parent that makes a worktree owns its lifecycle
 
@@ -98,3 +98,10 @@ Not: Identity metadata inside override files, or a persisted conflict status fie
 ## ARCH-DIRECTORIES-018: A benchmark campaign records its source identity
 
 A benchmark campaign records the identity of the Flywheel source that runs its candidates. A resume under a different source identity is refused, and rescoring is not restricted. The identity detects a change of source; it does not prove which code one long-lived process loaded.
+
+## ARCH-DIRECTORIES-019: Benchmark fixtures depend only on the public repository
+
+A runnable benchmark fixture depends only on content in the public repository: a commit in its history, files inside the task, or an empty tree.
+
+Because: A contributor runs the benchmarks from a public clone, and a commit that only the maintainer's object store holds makes the fixture fail there.
+Not: Commits from before the public history, private folders, or snapshot archives outside the repository.

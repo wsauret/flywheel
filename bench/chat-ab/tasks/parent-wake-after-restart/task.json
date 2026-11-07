@@ -3,14 +3,14 @@
   "stratum": "production-history",
   "timeoutMinutes": 45,
   "sandbox": {
-    "commit": "6a15970e64b217a475a56b538034abeae0c1229d",
-    "paths": ["src","tests","docs","scripts","package.json","bun.lock","tsconfig.json","oxlint.config.ts","knip.jsonc","AGENTS.md",".gitignore","bunfig.toml",".env.test","relay/package.json","vscode/package.json","webview/package.json","website/package.json","crates/tokenizer/tokenizer-prebuilt.json","crates/tokenizer/flywheel-tokenizer.wasm.zst"],
+    "commit": "85c69871d53e3f1dba2532773dd7db38a93c41b3",
+    "paths": ["src", "tests", "docs", "scripts", "package.json", "bun.lock", "tsconfig.json", "oxlint.config.ts", "knip.jsonc", "AGENTS.md", ".gitignore", "bunfig.toml", ".env.test", "relay", "vscode", "webview", "website", "crates/tokenizer/tokenizer-prebuilt.json", "crates/tokenizer/flywheel-tokenizer.wasm.zst"],
     "patch": "sandbox.patch",
     "setup": [["bun", "install"]]
   },
   "acceptanceBaseline": {
     "failToPass": [
-      "acceptance/parent-wake-after-restart.test.ts > a parent that waited on its child when its service stopped > after an update replaced the service, the parent starts no model request before the child completes, and the completion starts one that reads it",
+      "acceptance/parent-wake-after-restart.test.ts > a parent that waited on its child when its service stopped > after an update replaced the service, the parent does not wait for the person, and the child's completion starts a model request that reads it",
       "acceptance/parent-wake-after-restart.test.ts > a parent that waited on its child when its service stopped > after the runtime stopped the service, the parent starts no model request before the child completes, and the completion starts one that reads it",
       "acceptance/parent-wake-after-restart.test.ts > a parent that waited on its child when its service stopped > after the service crashed, the parent starts no model request before the child completes, and the completion starts one that reads it"
     ],

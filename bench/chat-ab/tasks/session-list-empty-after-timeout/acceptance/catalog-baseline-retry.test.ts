@@ -25,7 +25,7 @@ describe("session list after a failed first history read", () => {
         ...f.options.history,
         async snapshot() {
           if (++baselines === 1) throw deadline
-          return { rows: [listedRow(durableRow("one", { label: "One" }))], errors: [], totalsLoading: true }
+          return { rows: [listedRow(durableRow("one", { label: "One" }))], errors: [], totalsLoading: true, generationSpeeds: {} }
         },
       },
       state: { ...f.options.state, sessions: { ...f.options.state.sessions, async listForIds(ids) {
@@ -66,7 +66,7 @@ describe("session list after a failed first history read", () => {
         ...f.options.history,
         async snapshot() {
           if (++baselines === 1) throw deadline
-          return { rows: [listedRow(durableRow("one", { label: "One" })), listedRow(durableRow("two", { label: "Two" }))], errors: [], totalsLoading: true }
+          return { rows: [listedRow(durableRow("one", { label: "One" })), listedRow(durableRow("two", { label: "Two" }))], errors: [], totalsLoading: true, generationSpeeds: {} }
         },
       },
     })

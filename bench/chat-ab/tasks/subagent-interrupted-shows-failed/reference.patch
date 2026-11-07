@@ -1,0 +1,104 @@
+diff --git b/src/orchestration/modules/subagents/execution/child-execution.ts a/src/orchestration/modules/subagents/execution/child-execution.ts
+index 0c71120..15222c6 100644
+--- b/src/orchestration/modules/subagents/execution/child-execution.ts
++++ a/src/orchestration/modules/subagents/execution/child-execution.ts
+@@ -682,6 +682,11 @@ export function createChildExecution(options: {
+       // the parent agent.
+       await published.eventWriter.record(buildSubagentPaused({ childRunId, pausedBy: end.pausedBy === "agent" ? "person" : end.pausedBy }));
+       if (isVisibleTurnEnd(end)) deps.onRenderEvent(createRuntimeEvent("agent.subagent.paused", { tool_use_id: toolUseId, paused_by: end.pausedBy }));
++      // The parent's process record reads the run as interrupted, the word
++      // every surface uses, and never as failed (PI-AGENT-020). A planned
++      // replacement's cut names nobody, so the parent gets no notice: the
++      // successor resumes the child.
++      backgroundResult = { ...settledResult, status: "interrupted", ...(isVisibleTurnEnd(end) ? { interruptedBy: end.pausedBy } : {}) };
+     } else {
+       // A recorded handoff returns unread human input before idle recovery can adopt it.
+       await deps.subagentSessions.settleUnreadMessages({
+diff --git b/tests/unit/orchestration/agent-runtime/subagent/durable-conversation.test.ts a/tests/unit/orchestration/agent-runtime/subagent/durable-conversation.test.ts
+index 64c0747..dc563bd 100644
+--- b/tests/unit/orchestration/agent-runtime/subagent/durable-conversation.test.ts
++++ a/tests/unit/orchestration/agent-runtime/subagent/durable-conversation.test.ts
+@@ -125,6 +125,9 @@ describe("subagent durable conversation", () => {
+       const first = liveChildRun(reader, launched.session_id)!
+       await first.child.interrupt("runtime")
+       expect(attempts).toHaveLength(1)
++      // The parent hears of the interrupt; no held completion reaches it.
++      expect(notification.notifications).toHaveLength(1)
++      expect(notification.notifications[0]).toContain("The runtime interrupted this child.")
+       expect(await readConversationBackgroundNotifications(reader, launched.session_id, run.conversationId)).toHaveLength(2)
+       let failedRun: Awaited<ReturnType<typeof readSubagentRuns>>[number] | undefined
+       if (injectFailure) {
+diff --git b/tests/unit/orchestration/agent-runtime/subagent/pause.test.ts a/tests/unit/orchestration/agent-runtime/subagent/pause.test.ts
+index eeddfed..ec8e56b 100644
+--- b/tests/unit/orchestration/agent-runtime/subagent/pause.test.ts
++++ a/tests/unit/orchestration/agent-runtime/subagent/pause.test.ts
+@@ -86,6 +86,9 @@ describe("subagent pause", () => {
+     await settled;
+     expect(run.facts.find((fact) => fact.type === "subagent.paused")?.payload).toMatchObject({ pausedBy: "runtime" });
+     expect(run.facts.some((fact) => fact.type === "subagent.completed")).toBe(false);
++    // An interrupted child is not active work: a notice that names the
++    // runtime wakes a parent that waits, and no result reaches it.
++    expect(run.notification.read()).toContain("The runtime interrupted this child.");
+     run.output.dispose();
+   });
+   it("cuts the run, records who paused it instead of a completion, takes the child inactive, and keeps it the parent's work without a notice", async () => {
+@@ -106,6 +109,9 @@ describe("subagent pause", () => {
+     expect(run.events.some((event) => event.type === "agent.subagent.paused" && event.data.paused_by === "person")).toBe(true);
+     expect(run.events.some((event) => event.type === "tool.result.available")).toBe(false);
+     expect(run.output.getBlocks().find((block) => block.kind === "agentGroup")).toMatchObject({ status: "paused", pausedBy: "person" });
++    // A person's interrupt does not change what the parent waits on: the
++    // child stays its active work, and no notice reaches it.
++    expect(run.notification.backgroundTasks.activeSubagentCount()).toBe(1);
+     expect(run.notification.backgroundTasks.awaitedTaskCount()).toBe(1);
+     expect(run.notification.read()).toBe("");
+     run.output.dispose();
+@@ -125,6 +131,7 @@ describe("subagent pause", () => {
+     await run.tool.execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "investigate" }, makeContext({ conversationId: "parent-conversation", toolUseId: "dispatch-call" }));
+     await run.control().child.interrupt("replacement");
+     expect(run.facts.find((fact) => fact.type === "subagent.paused")?.payload).toMatchObject({ pausedBy: "runtime" });
++    expect(run.notification.backgroundTasks.awaitedTaskCount()).toBe(0);
+     expect(run.notification.read()).toBe("");
+     run.output.dispose();
+   });
+diff --git b/tests/unit/orchestration/modules/subagents/subagent-child-controls.test.ts a/tests/unit/orchestration/modules/subagents/subagent-child-controls.test.ts
+index 4b5b3b6..e7fa479 100644
+--- b/tests/unit/orchestration/modules/subagents/subagent-child-controls.test.ts
++++ a/tests/unit/orchestration/modules/subagents/subagent-child-controls.test.ts
+@@ -601,6 +601,22 @@ describe("live child messages", () => {
+     }
+   });
+ 
++  test("a paused child lists as interrupted, not failed, and leaves the active work count", async () => {
++    const { harness, runs } = heldRuns();
++    try {
++      const { child } = await dispatchChild(harness);
++      expect(harness.backgroundTasks.activeBackgroundCommands()).toHaveLength(1);
++
++      await liveChildRun(harness.reader, child)?.child.interrupt("person");
++
++      expect(harness.backgroundTasks.processRecords()).toEqual([expect.objectContaining({ kind: "subagent", status: "interrupted" })]);
++      expect(harness.backgroundTasks.activeBackgroundCommands()).toEqual([]);
++    } finally {
++      for (const run of runs) run.done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } });
++      await harness.close();
++    }
++  });
++
+   test("a message that a resume takes at its start reaches the resumed run once", async () => {
+     const { harness, runs } = heldRuns();
+     try {
+diff --git b/tests/unit/orchestration/modules/subagents/subagent-process-control.test.ts a/tests/unit/orchestration/modules/subagents/subagent-process-control.test.ts
+index b796a8f..c5c2a65 100644
+--- b/tests/unit/orchestration/modules/subagents/subagent-process-control.test.ts
++++ a/tests/unit/orchestration/modules/subagents/subagent-process-control.test.ts
+@@ -320,6 +320,10 @@ describe("a parent's process control of its own children", () => {
+       const interrupted = await parent.process.execute({ action: "interrupt", process_id: parent.subagent }, parent.context("interrupt"))
+       expect(interrupted).toMatchObject({ outcome: "ok" })
+       expect(harness.backgroundTasks.holdsWait("wait-on-child")).toBe(false)
++      // An interrupted child is not active work: nothing waits on it.
++      expect(harness.backgroundTasks.awaitedTaskCount()).toBe(0)
++      // An interrupted child never blocks a handoff.
++      expect(harness.backgroundTasks.kind === "workflow" && harness.backgroundTasks.assertHandoffReady()).toBeNull()
+       // The turn end of the child names the parent as its interrupter.
+       expect(runs(harness.store, parent.subagent).at(-1)).toMatchObject({ status: "paused" })
+       const after = await parent.process.execute({ action: "status", process_id: parent.subagent }, parent.context("status-after"))

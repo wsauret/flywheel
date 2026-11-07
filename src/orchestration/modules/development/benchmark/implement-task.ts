@@ -56,7 +56,6 @@ interface NativeImplementTaskSpec extends ImplementTaskBase {
   environment?: string;
   family: string;
   split: "development" | "evaluation";
-  sandbox: "greenfield";
   /** Runtime, contained script, and optional fixed arguments. The runner appends
    * prepare, taskDir, workspace; or grade, taskDir, workspace, patch, report.
    * Prepare supplies source and dependencies without Git history. Grade rebuilds
@@ -128,31 +127,25 @@ async function loadImplementTask(taskDir: string, entryName: string, config: Imp
     traps: parseManifestPoints(manifestObject.traps, `${entryName}/manifest.json.traps`),
     judgment: parseManifestPoints(manifestObject.judgment, `${entryName}/manifest.json.judgment`),
   };
-  let source;
-  if ("commit" in sandbox) {
-    const patch = sandbox.patch
-      ? await realFileUnder(taskDir, join(taskDir, sandbox.patch), `${entryName}/${sandbox.patch}`)
-      : undefined;
-    source = {
-      kind: "commit",
-      commit: sandbox.commit,
-      paths: sandbox.paths,
-      ...(sandbox.setup ? { setup: sandbox.setup } : {}),
-      ...(patch ? {
-        patch: {
-          path: sandbox.patch,
-          identity: bytesIdentity(new Uint8Array(await Bun.file(patch).arrayBuffer())),
-        },
-      } : {}),
-    };
-  } else {
-    const projectDir = await realDirectoryUnder(taskDir, join(taskDir, sandbox.fixtureRepo), `${entryName}/${sandbox.fixtureRepo}`);
-    source = {
-      kind: "fixture",
-      path: sandbox.fixtureRepo,
-      identity: await directoryIdentity(projectDir),
-    };
-  }
+  const patch = sandbox.patch
+    ? await realFileUnder(taskDir, join(taskDir, sandbox.patch), `${entryName}/${sandbox.patch}`)
+    : undefined;
+  const source = {
+    ...("commit" in sandbox
+      ? { kind: "commit", commit: sandbox.commit, paths: sandbox.paths }
+      : {
+        kind: "fixture",
+        path: sandbox.fixtureRepo,
+        identity: await directoryIdentity(await realDirectoryUnder(taskDir, join(taskDir, sandbox.fixtureRepo), `${entryName}/${sandbox.fixtureRepo}`)),
+      }),
+    ...(sandbox.setup ? { setup: sandbox.setup } : {}),
+    ...(patch ? {
+      patch: {
+        path: sandbox.patch,
+        identity: bytesIdentity(new Uint8Array(await Bun.file(patch).arrayBuffer())),
+      },
+    } : {}),
+  };
   const timeoutMs = typeof timeoutMinutes === "number" ? Math.round(timeoutMinutes * 60_000) : undefined;
   const contentIdentity = structuredIdentity({
     id,
@@ -201,7 +194,7 @@ async function loadNativeTask(taskDir: string, id: string, stratum: string, conf
   if (typeof timeoutMs !== "number" || !Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) throw new Error(`${id}/task.json.native.timeoutMs must be a positive integer`);
   if (config.sandbox !== undefined) throw new Error(`${id}/task.json.sandbox is not supported: the native adapter owns source and runtime preparation`);
   return {
-    mode: "implement", kind: "native", id, stratum, family, split, instruction, taskDir, sandbox: "greenfield",
+    mode: "implement", kind: "native", id, stratum, family, split, instruction, taskDir,
     ...(environment === undefined ? {} : { environment }),
     ...(timeoutMsOverride === undefined ? {} : { timeoutMs: timeoutMsOverride }),
     native: { command: [command[0], script, ...command.slice(2)], timeoutMs, ...(path === undefined ? {} : { path }) },
@@ -226,7 +219,7 @@ type BenchmarkSandboxTask = {
   readonly id: string;
   readonly taskDir: string;
 } & (
-  | { readonly kind: "native"; readonly sandbox: "greenfield"; readonly native: NativeImplementTaskSpec["native"]; readonly plan?: never }
+  | { readonly kind: "native"; readonly sandbox?: never; readonly native: NativeImplementTaskSpec["native"]; readonly plan?: never }
   | { readonly kind?: "plan"; readonly sandbox: ImplementSandboxSpec; readonly plan?: ImplementTaskObject }
 );
 
@@ -237,7 +230,7 @@ function openSandboxAuthority(dir: string): ContainedDirectory {
 }
 
 async function materializeSandboxSource(projectRoot: string, task: BenchmarkSandboxTask, dir: string, run: OwnedCommandRunner): Promise<ContainedDirectory> {
-  if (task.sandbox === "greenfield") return openSandboxAuthority(dir);
+  if (task.kind === "native") return openSandboxAuthority(dir);
   const sandbox = task.sandbox;
   if (!("commit" in sandbox)) {
     await cp(await realDirectoryUnder(task.taskDir, join(task.taskDir, sandbox.fixtureRepo), "fixtureRepo"), dir, { recursive: true });
@@ -268,7 +261,7 @@ async function commitBaseline(dir: string, run: OwnedCommandRunner): Promise<voi
 }
 
 async function runSetupCommands(task: BenchmarkSandboxTask, dir: string, run: OwnedCommandRunner): Promise<void> {
-  if (typeof task.sandbox === "string" || !("commit" in task.sandbox)) return;
+  if (task.kind === "native") return;
   for (const command of task.sandbox.setup ?? []) {
     if (!command[0]) throw new Error(`Empty setup command for ${task.id}`);
     await runCheckedSandboxCommand(run, command, { cwd: dir, sandboxDir: dir });
@@ -296,7 +289,7 @@ export async function provisionTaskSandbox(projectRoot: string, task: BenchmarkS
       }
       // Before initialization, Git can discover an enclosing checkout and silently skip this sandbox's patch.
       await runCheckedSandboxCommand(run, ["git", "init", "-q"], { cwd: dir, sandboxDir: dir });
-      if (typeof task.sandbox === "object" && "commit" in task.sandbox && task.sandbox.patch) {
+      if (task.kind !== "native" && task.sandbox.patch) {
         const patch = await realFileUnder(task.taskDir, join(task.taskDir, task.sandbox.patch), "patch");
         await runCheckedSandboxCommand(run, ["git", "apply", "--whitespace=nowarn"], { cwd: dir, sandboxDir: dir, stdin: await Bun.file(patch).text() });
       }

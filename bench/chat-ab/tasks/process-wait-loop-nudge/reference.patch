@@ -1,0 +1,86 @@
+diff --git a/src/orchestration/agent-runtime/doom-loop.ts b/src/orchestration/agent-runtime/doom-loop.ts
+index 2ab32f91d..abd17a53a 100644
+--- a/src/orchestration/agent-runtime/doom-loop.ts
++++ b/src/orchestration/agent-runtime/doom-loop.ts
+@@ -1,6 +1,5 @@
+ import type { ToolCall } from "./llm/types.js";
+ import { formatRuntimeNotification } from "./runtime-notifications.js";
+-import { isParkingWaitCall } from "./tools/process.js";
+ 
+ const THRESHOLD = 3;
+ 
+@@ -25,7 +24,6 @@ function extractToolSignature(call: Pick<ToolCall, "name" | "input">): string {
+ 
+ interface HistoryEntry {
+   readonly signature: string;
+-  readonly processWait: boolean;
+   readonly version: number;
+ }
+ 
+@@ -42,11 +40,9 @@ interface DetectedPattern {
+  * pattern once, until a new call extends it.
+  *
+  * A wait that parked on live work is a wait by design, so the loop names it
+- * in `parkedWaitIds`. Such a wait never enters the history, except a
+- * `process` wait: it stays, and process waits do not count while the batch
+- * parked on live work. A wait that found nothing to wait for stays in it as
+- * evidence of a real loop. The history starts again at each person message
+- * or Resume (`reset`).
++ * in `parkedWaitIds` and it never enters the history. A wait that found
++ * nothing to wait for stays in it as evidence of a real loop. The history
++ * starts again at each person message or Resume (`reset`).
+  */
+ class RepetitionGuard {
+   private history: HistoryEntry[] = [];
+@@ -61,13 +57,12 @@ class RepetitionGuard {
+ 
+   observeBatch(calls: readonly Pick<ToolCall, "id" | "name" | "input">[], parkedWaitIds: ReadonlySet<string>): string | null {
+     for (const call of calls) {
+-      const processWait = isParkingWaitCall(call);
+-      if (parkedWaitIds.has(call.id) && !processWait) continue;
++      if (parkedWaitIds.has(call.id)) continue;
+       this.version++;
+-      this.history.push({ signature: extractToolSignature(call), processWait, version: this.version });
++      this.history.push({ signature: extractToolSignature(call), version: this.version });
+       if (this.history.length > MAX_HISTORY) this.history.shift();
+     }
+-    const pattern = this.detectPattern(parkedWaitIds.size > 0);
++    const pattern = this.detectPattern();
+     if (!pattern || this.lastReportedVersion === pattern.version) return null;
+     this.lastReportedVersion = pattern.version;
+     const repeated = pattern.signatures.length === 1 ? "tool call" : `sequence of ${pattern.signatures.length} tool calls`;
+@@ -77,10 +72,8 @@ class RepetitionGuard {
+     });
+   }
+ 
+-  private detectPattern(ignoreProcessWaits: boolean): DetectedPattern | undefined {
+-    const h = ignoreProcessWaits
+-      ? this.history.filter((entry) => !entry.processWait)
+-      : this.history;
++  private detectPattern(): DetectedPattern | undefined {
++    const h = this.history;
+     if (h.length < THRESHOLD) return undefined;
+ 
+     for (let patLen = 1; patLen <= MAX_PATTERN_LENGTH; patLen++) {
+diff --git a/tests/unit/orchestration/agent-runtime/context/loop-finite-wait.test.ts b/tests/unit/orchestration/agent-runtime/context/loop-finite-wait.test.ts
+index ba06dd6b0..e94e1df4e 100644
+--- a/tests/unit/orchestration/agent-runtime/context/loop-finite-wait.test.ts
++++ b/tests/unit/orchestration/agent-runtime/context/loop-finite-wait.test.ts
+@@ -450,6 +450,17 @@ describe("an open wait outlives every request that only re-drives the turn", ()
+     expect(r.expiries[0]).toBeCloseTo(7200, 0);
+   });
+ 
++  test("a repetition notice after the third identical wait batch keeps the wait that batch opened", async () => {
++    const r = await openWaitRun({
++      responses: [LAUNCH_WAIT, LAUNCH_WAIT, LAUNCH_WAIT, said("Still waiting.")],
++      atParks: [(world) => { world.finish(1); }, (world) => { world.finish(2); }],
++    });
++    expect(r.requests[3]).toContain("repetition_notice");
++    expect(r.parks.slice(0, 3)).toMatchObject([WAITING, WAITING, { ...WAITING, afterRequest: 4 }]);
++    expect(r.expiries).toHaveLength(3);
++    expect(r.expiries[2]).toBeCloseTo(7200, 0);
++  });
++
+   test.each([
+     { arrival: "a person's /compact", responses: [WAIT, SAVE, said("Compacted; still waiting.")], arrive: (world: OpenWaitWorld) => { world.mailbox.enqueueCompact(); } },
+     { arrival: "a module observer's notice", responses: [WAIT, said("Noted.")], arrive: (world: OpenWaitWorld) => { world.mailbox.enqueueSilentSystem("<skill_recommendation>runtime data</skill_recommendation>"); } },

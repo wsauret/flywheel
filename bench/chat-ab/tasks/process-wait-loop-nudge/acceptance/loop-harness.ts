@@ -6,10 +6,13 @@ import type { RuntimeTool } from "../src/orchestration/agent-runtime/tools/types
 import { composeFirstPartyModules } from "../src/orchestration/modules.js";
 import { CONFIG_DEFAULTS } from "../src/orchestration/config/schema.js";
 import { captureRuntimeConfigRequest, type CaptureRuntimeConfig } from "../src/orchestration/agent-runtime/request-config.js";
+import { modelFamilyApi } from "../src/orchestration/agent-runtime/llm/messages.js";
 import {
+  type AdmittedModelRequest,
   FUNCTION_TOOL_PRESENTATION,
   type LLMClient,
   type ModelClient,
+  type ServingAttempt,
   type StreamOptions,
 } from "../src/orchestration/agent-runtime/llm/types.js";
 
@@ -28,9 +31,10 @@ async function fixedRequestToolSurface(tools: ReadonlyMap<string, RuntimeTool>):
     eligibleTools: tools,
     tools,
     omitted: [],
+    usable: new Set(tools.keys()),
     registrationIds: new Map([...tools].map(([name, tool]) => [tool.name, name])),
     registrationIdentities: new Map([...tools].map(([name, tool]) => [tool.name, name])),
-  }), () => null, testCapabilityModules, testRuntimeConfigCapture);
+  }), testCapabilityModules, testRuntimeConfigCapture);
   return {
     async resolve() {
       const resolved = await surface.resolve();
@@ -65,22 +69,30 @@ export class RequestToolMap extends Map<string, RuntimeTool> {
   }
 }
 
+function attemptHistoryTarget(attempt: Pick<ServingAttempt, "accessProvider" | "modelFamily" | "model">): ReturnType<LLMClient["historyTarget"]> {
+  return { accessProvider: attempt.accessProvider, provider: attempt.modelFamily, api: modelFamilyApi(attempt.modelFamily), model: attempt.model, sharedHost: false };
+}
+
 function withRequestAdmission(client: Omit<ModelClient, "admitRequest"> & Pick<LLMClient, "streamWithTools">): ModelClient {
   const modelClient: ModelClient = {
     model: client.model,
     modelFamily: client.modelFamily,
     plannedAttempt: client.plannedAttempt,
     async admitRequest() {
+      const candidate = async ({ prepare, providerOptions }: Parameters<AdmittedModelRequest["prepare"]>[0]) => {
+        const attempt = await modelClient.plannedAttempt(providerOptions);
+        const prepared = await prepare(attempt);
+        return {
+          attempt: prepared.attempt,
+          client: { ...prepared.attempt, streamWithTools: client.streamWithTools, historyTarget: () => attemptHistoryTarget(prepared.attempt) },
+          prepared,
+        };
+      };
       return {
         candidateAttributions: [],
-        run: async ({ execute, prepare, providerOptions }) => {
-          const attempt = await modelClient.plannedAttempt(providerOptions);
-          const prepared = await prepare(attempt);
-          const result = await execute({
-            attempt: prepared.attempt,
-            client: { ...prepared.attempt, streamWithTools: client.streamWithTools },
-            prepared,
-          });
+        prepare: candidate,
+        run: async (request) => {
+          const result = await request.execute(await candidate(request));
           if (result.kind === "provider_failure") {
             throw result.failure;
           }
@@ -93,10 +105,8 @@ function withRequestAdmission(client: Omit<ModelClient, "admitRequest"> & Pick<L
   return modelClient;
 }
 
-export function asModelClient(
-  client: Omit<LLMClient, "toolPresentation"> & { readonly toolPresentation?: LLMClient["toolPresentation"] },
-): ModelClient {
-  const attempt: LLMClient = { ...client, toolPresentation: client.toolPresentation ?? FUNCTION_TOOL_PRESENTATION };
+export function asModelClient(client: Omit<LLMClient, "historyTarget">): ModelClient {
+  const attempt: ServingAttempt = { ...client, toolPresentation: client.toolPresentation ?? FUNCTION_TOOL_PRESENTATION };
   return withRequestAdmission({
     model: client.model,
     modelFamily: client.modelFamily,

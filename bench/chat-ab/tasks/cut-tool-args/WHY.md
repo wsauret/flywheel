@@ -1,8 +1,8 @@
 # cut-tool-args
 
-Fix commit: f77cd52b328a4009d54b105411202d586d18427d, "fix(providers): never run a tool call whose arguments were cut off".
+Reference: `reference.patch`, the fix against the bugged sandbox. It returns the tree to the base commit.
 
-Base commit: b6d624689385427eed079ea68815e8d6dce1b2e0 (the parent of the fix).
+Base commit: 85c69871d53e3f1dba2532773dd7db38a93c41b3, a public commit of `main` that holds the fix. `sandbox.patch` puts the defect back. The defect first shipped before the source became public, and its original fix was "fix(providers): never run a tool call whose arguments were cut off".
 
 ## The requirement
 
@@ -10,7 +10,7 @@ The message states two requirements. First, a tool call that the output limit cu
 
 ## The bug
 
-The tolerant JSON parser in `src/orchestration/agent-runtime/llm/json-parse.ts` had a third tier that used `partial-json` to complete a prefix. When the output-length cap cut a tool call's argument JSON, the parser closed the open string and object and returned a valid but shortened input. The dispatcher then ran the tool, so a write could land a truncated file. This happens on every wire, because each adapter emits a tool call before the loop sees the stop reason. On the Anthropic API the adapter emits `tool_use` at `content_block_stop`, before `message_delta` reports `stop_reason: max_tokens`, and the loop starts the call at once. Separately, the chat-completions adapter (`openai-completions.ts`, used by OpenRouter and Copilot) mapped `finish_reason: "length"` to an ordinary `max_tokens` stop. The Anthropic and Responses adapters raise `OutputLengthExceededError` for the same condition, which the loop treats as an output overflow and resumes. So on OpenRouter a cut response ended the turn.
+The tolerant JSON parser in `src/orchestration/agent-runtime/llm/json-parse.ts` had a third tier that used `partial-json` to complete a prefix. When the output-length cap cut a tool call's argument JSON, the parser closed the open string and object and returned a valid but shortened input. The dispatcher then ran the tool, so a write could land a truncated file. This happens on every wire, because each adapter emits a tool call before the loop sees the stop reason. On the Anthropic API the adapter emits `tool_use` at `content_block_stop`, before `message_delta` reports `stop_reason: max_tokens`, and the loop starts the call at once. Separately, the chat-completions adapter (`openai-completions.ts`, used by OpenRouter and Copilot) mapped `finish_reason: "length"` to an ordinary stop (`max_tokens` before the source became public, `end_turn` in the ported sandbox). The Anthropic and Responses adapters raise `OutputLengthExceededError` for the same condition, which the loop treats as an output overflow and resumes. So on OpenRouter a cut response ended the turn.
 
 ## Why it is a fair task
 
@@ -18,7 +18,7 @@ The user sees a truncated file and a turn that stops. The cause sits in places t
 
 ## What the tests check
 
-All tests except the last drive `runAgentLoop` with a real provider adapter over a fake `fetch`, and a recording `write` tool. The harness helpers are copied into the test file, so the tests depend on no file under `tests/`.
+All tests except the last drive `runAgentLoop` with a real provider adapter over a fake `fetch`, and a recording `write` tool. The harness helpers are copied into the test file, so the tests depend on no file under `tests/`. For the public base, the copied harness follows the current API: the models client stub is synchronous, system prompts are `SystemPromptTiers`, the request admission has `prepare`, the tool plan has `usable`, and the loop takes `userDataRoot` and `promptCacheKey`. The test bodies and their assertions did not change.
 
 1. Anthropic API, cut inside the content string: the first response sends a `tool_use` block, a cut `input_json_delta`, `content_block_stop`, then `stop_reason: max_tokens`. The second response is `end_turn` text. The test fails if any recorded execution received a cut-down copy of the full arguments: a leading run of its keys where the last value can be a string prefix, but not the full object.
 2. Anthropic API, cut between two arguments: the same, with the text cut after `"path":"a.ts",`.
@@ -32,14 +32,23 @@ All tests except the last drive `runAgentLoop` with a real provider adapter over
 
 They do not check where the guard lives (parser, adapter, or loop), the parser's return value, error wording, how the loop resumes after the overflow, or the Responses (`openai.ts`) wire. They do not require that a cut call is re-sent later.
 
-## How to apply the reference
+## The sandbox patch
 
-The sandbox patch (`sandbox.patch`) sets `bunfig.toml` `[test] root` to `.` so that `bun test acceptance` finds the acceptance directory. It changes nothing else. `task.json` adds `crates/tokenizer/tokenizer-prebuilt.json` and `crates/tokenizer/flywheel-tokenizer.wasm.zst`, because `runAgentLoop` loads the tokenizer.
+`sandbox.patch` sets `bunfig.toml` `[test] root` to `.` so that `bun test acceptance` finds the acceptance directory. It then restores the defect in the public tree with the smallest change that makes it real:
+
+- `src/orchestration/agent-runtime/llm/json-parse.ts`: when the syntax scanner finds an unfinished text, `partial-json` completes it and the parser returns the completed prefix as the input. The header comment describes three tiers again.
+- `src/orchestration/agent-runtime/llm/openai-completions.ts`: `finish_reason: "length"` maps to `end_turn`. The base commit's `CompletedStopReason` excludes `max_tokens`, so the original mapping to `max_tokens` does not type-check; `end_turn` has the same effect (the turn ends) and type-checks.
+- `package.json` and `bun.lock`: add `partial-json@0.1.7` again, with the lock entry of the original base.
+- Three unit test files under `tests/unit/orchestration/agent-runtime/llm/`: the tests that assert the fix go back to their state before the fix (`json-parse.test.ts` holds the original "salvages a truncated object via partial parse" test again; `openai-completions-converter.test.ts` no longer expects a parse error for a lone `{`; `openrouter-request-shape.test.ts` loses the length-overflow test). Without this, the unit suite fails on exactly the tests that describe the fix.
+
+`task.json` adds `crates/tokenizer/tokenizer-prebuilt.json` and `crates/tokenizer/flywheel-tokenizer.wasm.zst`, because `runAgentLoop` loads the tokenizer.
+
+## How to apply the reference
 
 From the bench worktree root:
 
 ```
-bun --conditions=browser bench/chat-ab/check-task.ts cut-tool-args --overlay f77cd52b3:. --overlay-files src/orchestration/agent-runtime/llm/json-parse.ts,src/orchestration/agent-runtime/llm/openai-completions.ts
+bun --env-file=.env.test --conditions=browser bench/chat-ab/check-task.ts cut-tool-args --apply-diff bench/chat-ab/tasks/cut-tool-args/reference.patch
 ```
 
 ## Scores
@@ -47,10 +56,11 @@ bun --conditions=browser bench/chat-ab/check-task.ts cut-tool-args --overlay f77
 | Source | Pass | Fail |
 |---|---|---|
 | Base | 2 (both guards) | 5 |
-| Reference f77cd52b3 | 7 | 0 |
-| Audit alternative `alt-adapter-holdback.patch` (adapter holdback, tolerant parser) | 7 | 0 |
-| Recorded run r0 (`baseline-r0-7ddf99ac`) | 5 | 2 (tests 1 and 2, Anthropic) |
-| Recorded run r1 (`baseline-r1-86a2e19c`) | 5 | 2 (tests 1 and 2, Anthropic) |
+| Reference (`reference.patch`) | 7 | 0 |
+| Audit alternative `alt-adapter-holdback.patch` (adapter holdback, tolerant parser; scored on the pre-public base) | 7 | 0 |
+| Parser half of the reference only | 6 | 1 (test 7) |
+| Recorded run r0 (`baseline-r0-7ddf99ac`, pre-public base) | 5 | 2 (tests 1 and 2, Anthropic) |
+| Recorded run r1 (`baseline-r1-86a2e19c`, pre-public base) | 5 | 2 (tests 1 and 2, Anthropic) |
 
 Both recorded runs fix only the chat-completions adapter. On the direct Anthropic path they still run the write with the cut content, so they fail tests 1 and 2.
 
@@ -60,6 +70,8 @@ The challenge claims that OpenRouter's stop-reason mapping is the only defect an
 
 Tests 1 and 2 decide the disputed cross-provider premise. They drive the direct Anthropic path, which emits the tool call before reporting the output limit. Both still record shortened writes after the adapter-only change. Tests 3 and 4 also fail because OpenRouter still emits cut calls. Test 7 recognizes the overflow but fails because the emitted input is not refused. Both complete-call guards pass.
 
-On 2026-10-23, a one-off verification script, run with `bun --env-file=.env.test --conditions=browser`, used the real sandbox helpers. The script overlaid only `src/orchestration/agent-runtime/llm/openai-completions.ts` from `f77cd52b3`. This adds the overflow-error import and changes the `length` mapping to throw that error. It leaves the shared parser unchanged. The unfixed baseline returned 2 pass, 5 fail, with no stored-baseline drift. The adapter-only patch also returned 2 pass, 5 fail, with acceptance exit 1. This is narrower than the recorded adapter-only solutions above, which also protected OpenRouter calls and returned 5 pass, 2 fail.
+On 2026-11-06, on the public base, `check-task.ts --apply-diff` with only the `openai-completions.ts` part of `reference.patch` returned 2 pass, 5 fail, with no stored-baseline drift.
+
+On 2026-10-23, on the pre-public base, a one-off verification script, run with `bun --env-file=.env.test --conditions=browser`, used the real sandbox helpers. The script overlaid only `src/orchestration/agent-runtime/llm/openai-completions.ts` from the original fix commit, which is not public. This adds the overflow-error import and changes the `length` mapping to throw that error. It leaves the shared parser unchanged. The unfixed baseline returned 2 pass, 5 fail, with no stored-baseline drift. The adapter-only patch also returned 2 pass, 5 fail, with acceptance exit 1. This is narrower than the recorded adapter-only solutions above, which also protected OpenRouter calls and returned 5 pass, 2 fail.
 
 The verification script exited 0 after checking all four challenge fixtures and disposing every sandbox and command home. It recorded the applied diff, per-test outcomes, and command exit codes.

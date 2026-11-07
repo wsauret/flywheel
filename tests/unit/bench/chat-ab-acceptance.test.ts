@@ -160,6 +160,7 @@ describe("chat A/B acceptance scoring", () => {
       await Bun.write(join(tasksDir, id, "task.json"), JSON.stringify({ id, stratum: "bug", sandbox, ...(acceptanceBaseline === undefined ? {} : { acceptanceBaseline }) }));
       await Bun.write(join(tasksDir, id, "message.md"), "Fix it.\n");
       await Bun.write(join(tasksDir, id, "WHY.md"), "Why.\n");
+      await Bun.write(join(tasksDir, id, "reference.patch"), "reference version one");
       await Bun.write(join(tasksDir, id, "acceptance", "a.test.ts"), "");
     };
     await writeTask("ready", baseline);
@@ -199,11 +200,30 @@ describe("chat A/B acceptance scoring", () => {
     await Bun.write(join(tasksDir, "ready", "design.md"), "Revised design.\n");
     const [revised] = await loadBenchTasks(tasksDir, ["ready"], "design");
     expect(revised?.contentIdentity).not.toBe(designed?.contentIdentity);
-    await Bun.write(join(tasksDir, "ready", "reference.patch"), "reference version one");
-    const [referenced] = await loadBenchTasks(tasksDir, ["ready"], "design");
-    expect(referenced?.contentIdentity).not.toBe(revised?.contentIdentity);
     await Bun.write(join(tasksDir, "ready", "reference.patch"), "reference version two");
-    expect((await loadBenchTasks(tasksDir, ["ready"], "design"))[0]?.contentIdentity).not.toBe(referenced?.contentIdentity);
+    expect((await loadBenchTasks(tasksDir, ["ready"], "design"))[0]?.contentIdentity).not.toBe(revised?.contentIdentity);
     await expect(loadBenchTasks(tasksDir, ["twice"])).rejects.toThrow("twice/task.json.acceptanceBaseline lists f > fix-1 twice");
+  });
+
+  it("loads a vendored fixture folder with its content in the identity, and the empty tree only with no paths", async () => {
+    const tasksDir = tempDir("chat-ab-sources-");
+    const writeTask = async (id: string, sandbox: unknown) => {
+      await Bun.write(join(tasksDir, id, "task.json"), JSON.stringify({ id, stratum: "bug", sandbox, acceptanceBaseline: baseline }));
+      await Bun.write(join(tasksDir, id, "message.md"), "Fix it.\n");
+      await Bun.write(join(tasksDir, id, "WHY.md"), "Why.\n");
+      await Bun.write(join(tasksDir, id, "reference.patch"), "reference");
+      await Bun.write(join(tasksDir, id, "acceptance", "a.test.ts"), "");
+    };
+    await writeTask("vendored", { fixtureRepo: "project", patch: "sandbox.patch" });
+    await Bun.write(join(tasksDir, "vendored", "sandbox.patch"), "");
+    await Bun.write(join(tasksDir, "vendored", "project", "a.ts"), "one\n");
+    const [vendored] = await loadBenchTasks(tasksDir, ["vendored"]);
+    expect(vendored?.sandbox).toEqual({ fixtureRepo: "project", patch: "sandbox.patch" });
+    await Bun.write(join(tasksDir, "vendored", "project", "a.ts"), "two\n");
+    expect((await loadBenchTasks(tasksDir, ["vendored"]))[0]?.contentIdentity).not.toBe(vendored?.contentIdentity);
+    await writeTask("empty", { commit: "4b825dc642cb6eb9a060e54bf8d69288fbee4904", paths: [] });
+    expect((await loadBenchTasks(tasksDir, ["empty"]))[0]?.sandbox).toEqual({ commit: "4b825dc642cb6eb9a060e54bf8d69288fbee4904", paths: [] });
+    await writeTask("whole", { commit: "660a22b5f26b3dcb8d62c6a75143000d0aa81c4c", paths: [] });
+    await expect(loadBenchTasks(tasksDir, ["whole"])).rejects.toThrow("whole/task.json.sandbox.paths must be a non-empty string array, or empty for the empty tree");
   });
 });

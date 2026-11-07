@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "role": "development",
-  "contentIdentity": "5ec6d5cbc20d44615198c06ba24df6296f109bfe31dce22b054df2490a029e0b",
+  "contentIdentity": "221603f81c89e754c27950e56f5ffede06c002d3c0b6fceb50d4f230d4c8de04",
   "testIds": [
     "acceptance/contract.test.ts > boolean refuses nonobject store roots without changing bytes",
     "acceptance/contract.test.ts > boolean refuses invalid JSON and remains usable after external correction",

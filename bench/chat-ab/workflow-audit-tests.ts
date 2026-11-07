@@ -49,18 +49,19 @@ const COMPARISON_FILES: readonly string[] = [
   "src/orchestration/agent-runtime/llm/heal-messages.ts",
 ];
 
-/** One site of the shipped fix: a file and the lines, at the task's base
- *  commit, that hold the bug. */
+/** One site of the shipped fix: a file and the lines, in the provisioned
+ *  fixture (the task's public base commit with its sandbox.patch applied),
+ *  that hold the bug. */
 export interface ShippedSite {
   readonly path: string;
   readonly lines: readonly [first: number, last: number];
   readonly bug: string;
 }
 
-/** The bug sites of the fix that shipped, at the base commit b6d62468. */
+/** The bug sites of the fix that shipped, in the provisioned fixture. */
 export const SHIPPED_SITES: readonly ShippedSite[] = [
-  { path: "src/orchestration/agent-runtime/llm/json-parse.ts", lines: [145, 175], bug: "salvageJson's partial-json tier completes a cut argument prefix into a valid, shortened tool input" },
-  { path: "src/orchestration/agent-runtime/llm/openai-completions.ts", lines: [142, 146], bug: "finish_reason length maps to an ordinary max_tokens stop instead of an output overflow" },
+  { path: "src/orchestration/agent-runtime/llm/json-parse.ts", lines: [177, 209], bug: "salvageJson's partial-json tier completes a cut argument prefix into a valid, shortened tool input" },
+  { path: "src/orchestration/agent-runtime/llm/openai-completions.ts", lines: [152, 156], bug: "finish_reason length maps to an ordinary end_turn stop instead of an output overflow" },
 ];
 
 const TEST1_DIR = join(HARNESS_DIR, "workflow-audit", "test1");
@@ -100,7 +101,7 @@ const REFERENCE_OF = { test4: "test4", test5: "test5", test7: "test4", test8: "t
 /** The written reference answer of an answer test, workflow-audit/<test>/reference.md: a correct trace
  *  for test 4, for test 5 the real risks and the behavior a good design keeps, and a short answer for
  *  each of tests 9 to 11. Tests 7 and 8 use the references of tests 4 and 5. Line numbers refer to the
- *  fixture's base commit. */
+ *  provisioned fixture, as SHIPPED_SITES does. */
 export async function answerReference(test: AnswerTest): Promise<string> {
   return (await readFile(join(HARNESS_DIR, "workflow-audit", REFERENCE_OF[test], "reference.md"), "utf8")).trim();
 }

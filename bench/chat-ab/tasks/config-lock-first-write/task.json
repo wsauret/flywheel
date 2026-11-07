@@ -3,7 +3,7 @@
   "stratum": "production-history",
   "timeoutMinutes": 45,
   "sandbox": {
-    "commit": "d681a265d1e11113a5ca92f1e4bcac73ab992eb7",
+    "commit": "85c69871d53e3f1dba2532773dd7db38a93c41b3",
     "paths": ["src", "tests", "docs", "scripts", "package.json", "bun.lock", "tsconfig.json", "oxlint.config.ts", "knip.jsonc", "AGENTS.md", ".gitignore", "bunfig.toml", ".env.test", "relay", "vscode", "webview", "website", "crates/tokenizer/tokenizer-prebuilt.json", "crates/tokenizer/flywheel-tokenizer.wasm.zst"],
     "patch": "sandbox.patch",
     "setup": [["bun", "install"]]

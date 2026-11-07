@@ -54,7 +54,7 @@ describe("canonical report accounting", () => {
       { persona: "implementer", variants: [{ id: "model@low", model: "model", effort: "low" }] },
       [task, {
         mode: "implement", kind: "native", id: "native", stratum: "small", prompt: "Original bug", timeoutMs: 1000,
-        taskDir: "/native", instruction: "Original bug", family: "python", split: "development", sandbox: "greenfield",
+        taskDir: "/native", instruction: "Original bug", family: "python", split: "development",
         native: { command: ["python3", "/native/adapter.py"], timeoutMs: 1000 },
         manifest: { traps: [], judgment: [] }, contentIdentity: "native-identity",
       }],

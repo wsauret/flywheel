@@ -1,20 +1,18 @@
 # session-list-empty-after-timeout
 
-## Source
+Reference: `reference.patch`, the fix against the bugged sandbox. It returns the tree to the base commit.
 
-- Fix commit: `441e7b698a2073848368c566e14bd2dd7f3f622d` "fix(app-service): keep the session list complete and its warnings" (2026-10-01).
-- Base commit: `217735ebeac0629ea024cbefa111be957469d3d8` (the parent of the fix).
-- Source files in the fix: 3 (`project-control-client.ts`, `project-state-recovery.ts`, `runtime-summary-projection.ts` under `src/orchestration/app-service/`), 118 changed lines.
+Base commit: `85c69871d53e3f1dba2532773dd7db38a93c41b3`, a public commit of `main` that holds the fix. `sandbox.patch` puts the defect back. The defect first shipped before the source became public, and its original fix was "fix(app-service): keep the session list complete and its warnings". That commit also fixed two smaller catalog issues (summary warnings and mutation rows). This task covers only the empty-list symptom.
 
 ## The bug
 
-The account's project control client builds the session catalog on one promise chain. The first link reads the history baseline. Every later metadata refresh and every `snapshot` query chains on that promise. When the first history read failed (for example, past its deadline on a large store), the chain stayed rejected for the life of the project. Every queued refresh was skipped, every heard change was lost, and the session list stayed empty until the account service restarted.
+The account's project control client builds the session catalog on one ordered lane in `src/orchestration/app-service/project-control-client.ts`. The first step, `syncCatalog`, reads the history baseline. Every later metadata refresh and every `snapshot` query runs a step that waits for that baseline. In the bugged tree the baseline read is one cached promise. When the first history read failed (for example, past its deadline on a large store), every later step awaited the same rejected promise for the life of the project. Every queued refresh was skipped, every heard change stayed unapplied, and the session list stayed empty until the account service restarted.
 
-The fix replaces the one-shot baseline with a `syncCatalog` step that reads the baseline again until one read succeeds, keeps the changes heard during a failure queued, and applies them after the next successful baseline. The same commit also fixes two smaller catalog issues (summary warnings and mutation rows). This task covers only the empty-list symptom.
+The fix reads the baseline again on each step until one read succeeds, keeps the changes heard during a failure queued, and applies them after the next successful baseline.
 
 ## Why it is a fair task
 
-The symptom (an empty list forever) is far from the cause (a cached rejected promise that every later step chains on). A solver must read the control client's catalog chain, the history lane, and the state client's change subscription, and must keep the changes heard during a failure. A naive fix that only catches the error makes the chain continue, but it drops the baseline rows or the queued changes. The tests do not require a specific answer for the failed request itself: it may reject or return no rows.
+The symptom (an empty list forever) is far from the cause (a cached rejected promise that every later step awaits). A solver must read the control client's catalog lane, the history lane, and the state client's change subscription, and must keep the changes heard during a failure. A naive fix that only catches the error lets the lane continue, but it drops the baseline rows or the queued changes. The tests do not require a specific answer for the failed request itself: it may reject or return no rows.
 
 ## Acceptance
 
@@ -23,14 +21,18 @@ The symptom (an empty list forever) is far from the cause (a cached rejected pro
 1. After a failed baseline, a change heard later causes a new baseline read, and the next snapshot lists the baseline row with the rename and both added sessions that were heard before and after the failure.
 2. After a failed baseline, the next snapshot request reads the baseline again and lists its rows, and a later snapshot does not read the baseline a third time.
 
-The sandbox applies `sandbox.patch` (bunfig test root set to `.`). The paths include `crates/tokenizer/tokenizer-prebuilt.json` and `.env.test`.
+The history fixtures return the current snapshot shape, `generationSpeeds` included.
 
 ## Validation
 
-Run from the sandbox root with `bun test acceptance`, sandbox built exactly from `task.json`:
+The sandbox is built from `task.json`: a git archive of the listed paths at the base, then `sandbox.patch`, `bun install`, and a baseline commit. `sandbox.patch` sets the bunfig test root to `.`. It caches the first baseline read in `syncCatalog`, replaces the doc comment that states the retry contract with one that describes a single baseline read, and removes the unit test in `tests/unit/orchestration/app-service/project-control-client-catalog.test.ts` that the fix added, so the unit suite passes on the bugged tree as it did before the fix.
 
-- Base: 0 pass, 2 fail (test 1 times out at 5 s waiting for the refresh, because the chain never runs; test 2 rejects with `history deadline` again).
-- Base plus the fix commit's `src` changes: 2 pass, 0 fail (repeated 4 times, stable, about 1.5 s).
+- Base: 0 pass, 2 fail. Every step after the failure awaits the same rejected read, so test 1 never sees the refresh of the later change and test 2's next snapshot rejects again.
+- Base plus `reference.patch`: 2 pass, 0 fail:
+
+```
+bun --env-file=.env.test --conditions=browser bench/chat-ab/check-task.ts session-list-empty-after-timeout --apply-diff bench/chat-ab/tasks/session-list-empty-after-timeout/reference.patch
+```
 
 ## Design variant
 
@@ -38,4 +40,4 @@ Run from the sandbox root with `bun test acceptance`, sandbox built exactly from
 - A failed baseline must leave later catalog work runnable. Read the baseline again on the next request or change until one read succeeds, then reuse it.
 - Retain queued changes across failed baseline attempts, including changes received during a read, and apply them after the successful baseline.
 - Preserve existing error reporting. The failed request itself need not return a populated list.
-- Limit the change to catalog recovery rather than the other session-list fixes in the source commit.
+- Limit the change to catalog recovery rather than other session-list behavior.

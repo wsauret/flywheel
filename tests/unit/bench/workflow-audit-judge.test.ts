@@ -5,17 +5,19 @@ import { judgeBlocks } from "../../../bench/chat-ab/block-judge.js";
 import { judgeWorkflowAuditCampaign } from "../../../bench/chat-ab/workflow-audit-judge.js";
 import { loadWorkflowAuditTasks, workflowAuditGrade, workflowAuditSites } from "../../../bench/chat-ab/workflow-audit-family.js";
 import { workflowAuditLedger } from "../../../bench/chat-ab/workflow-audit-store.js";
+import { answerReference, SHIPPED_SITES } from "../../../bench/chat-ab/workflow-audit-tests.js";
 import { renderWorkflowAuditReport } from "../../../bench/chat-ab/workflow-audit-report.js";
-import type { OwnedCommandRunner } from "../../../src/infra/owned-command.js";
 import { unavailableBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/evidence.js";
 import type { JudgeModel } from "../../../src/orchestration/modules/development/benchmark/judge.js";
 import type { ExecutionEvidence } from "../../../src/protocol/execution-evidence.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 
 const temporary = temporaryDirectories();
+// A report names a shipped site by the first line of each site, wherever the fixture puts it.
+const parserSite = `json-parse.ts:${SHIPPED_SITES[0]!.lines[0]}`;
+const completionsSite = `openai-completions.ts:${SHIPPED_SITES[1]!.lines[0]}`;
 const hash = (text: string) => new Bun.CryptoHasher("sha256").update(text).digest("hex");
 const accounting = { ...unavailableBenchmarkAccounting("no billed evidence"), estimatedUsd: { kind: "observed", value: 0.2 } as const };
-const run: OwnedCommandRunner = async () => ({ exitCode: 0, stdout: "Reference patch", stdoutBytes: new TextEncoder().encode("Reference patch"), stderr: "", timedOut: false });
 
 async function fixture(ids: readonly string[] = ["test1", "test2"], repeats = 1, flywheelIds = ["control"]) {
   const directory = temporary("audit-judge-");
@@ -33,7 +35,7 @@ async function fixture(ids: readonly string[] = ["test1", "test2"], repeats = 1,
   for (const treatment of [...flywheelIds, "candidate"]) {
     const cell = { treatment, task: tasks[0]!.id, repeat: 0 };
     const report = `${treatment}.json`;
-    const handoff = { summary: `${treatment === "control" ? "json-parse.ts:162 completes a cut prefix" : "No findings"} ${treatment}-role-model later-role-model lost-role-model`, other: "openai-completions.ts:144 is wrong" };
+    const handoff = { summary: `${treatment === "control" ? `${parserSite} completes a cut prefix` : "No findings"} ${treatment}-role-model later-role-model lost-role-model`, other: `${completionsSite} is wrong` };
     await mkdir(join(directory, treatment, "later"), { recursive: true });
     const roles = JSON.stringify({ "workflow-agent": { model: `${treatment}-role-model`, effort: "high" } });
     const laterRoles = JSON.stringify({ "workflow-agent": { model: "later-role-model", effort: "low" } });
@@ -57,7 +59,7 @@ async function fixture(ids: readonly string[] = ["test1", "test2"], repeats = 1,
 test("audit dry-run validates retained answers and missing pairs without admission or writes", async () => {
   const { directory, options } = await fixture();
   const before = await readdir(directory);
-  const result = await judgeWorkflowAuditCampaign({ ...options, dryRun: true }, { run, admit: async () => { throw new Error("No admission"); } });
+  const result = await judgeWorkflowAuditCampaign({ ...options, dryRun: true }, { admit: async () => { throw new Error("No admission"); } });
   expect(result.pending).toBe(1);
   expect(result.skipped).toEqual([{ task: "test2", repeat: 0, reason: "both treatments need completed execution" }]);
   expect(await readdir(directory)).toEqual(before);
@@ -72,23 +74,23 @@ test("audit dry-run validates retained answers and missing pairs without admissi
   expect(report).toContain("control-role-model / high");
   expect(report).toContain("candidate-role-model / high");
   await writeFile(join(directory, "control.json"), '{"summary":"changed"}');
-  await expect(judgeWorkflowAuditCampaign({ ...options, dryRun: true }, { run })).rejects.toThrow("Artifact hash changed");
+  await expect(judgeWorkflowAuditCampaign({ ...options, dryRun: true })).rejects.toThrow("Artifact hash changed");
 });
 
 test("audit judges each whole handoff answer in both slot orders with refutation and resumes a/b verdicts", async () => {
   const { directory, options } = await fixture();
   let calls = 0;
   const model: JudgeModel = { async complete(prompt) {
-    expect(prompt).toContain("openai-completions.ts:144");
+    expect(prompt).toContain(completionsSite);
     expect(prompt).not.toMatch(/control-role-model|candidate-role-model|later-role-model|lost-role-model/);
     calls++;
     return { text: calls % 2 === 0 ? '{"refuted":false,"reason":"Evidence holds"}' : JSON.stringify({ correctA: "yes", correctB: "no", winner: calls === 1 ? "A" : "B", rationale: "The parser site is real" }), accounting };
   } };
-  const dependencies = { run, admit: async () => ({ model, profileId: "judge", authorityIncarnation: "authority", run, [Symbol.asyncDispose]: async () => {} }) };
+  const dependencies = { admit: async () => ({ model, profileId: "judge", authorityIncarnation: "authority", [Symbol.asyncDispose]: async () => {} }) };
   const result = await judgeWorkflowAuditCampaign(options, dependencies);
   expect(result.wins.control).toBe(1);
   expect(result.recordedJudgements[0]?.result.orders.map(({ slotA }) => slotA)).toEqual(["a", "b"]);
-  expect(result.recordedJudgements[0]?.result.sites.a).toEqual(workflowAuditGrade({ summary: "json-parse.ts:162", other: "openai-completions.ts:144" }));
+  expect(result.recordedJudgements[0]?.result.sites.a).toEqual(workflowAuditGrade({ summary: parserSite, other: completionsSite }));
   expect(result.accounting.judge).toHaveLength(4);
   expect((await judgeWorkflowAuditCampaign(options, dependencies)).judged).toBe(1);
   expect(calls).toBe(4);
@@ -106,15 +108,14 @@ test("answer tests are judged against their own reference answer, with no shippe
     prompts.push(prompt);
     return { text: prompts.length % 2 === 0 ? '{"refuted":false,"reason":"Claims hold"}' : JSON.stringify({ correctA: "yes", correctB: "partial", winner: "A", rationale: "A traces every wire" }), accounting };
   } };
-  const noShippedFix: OwnedCommandRunner = async () => { throw new Error("An answer test must not read the shipped fix"); };
-  const result = await judgeWorkflowAuditCampaign(options, { run: noShippedFix, admit: async () => ({ model, profileId: "judge", authorityIncarnation: "authority", run: noShippedFix, [Symbol.asyncDispose]: async () => {} }) });
+  const result = await judgeWorkflowAuditCampaign(options, { admit: async () => ({ model, profileId: "judge", authorityIncarnation: "authority", [Symbol.asyncDispose]: async () => {} }) });
   expect(result.judged).toBe(1);
   expect(result.recordedJudgements[0]?.result.sites).toEqual({ a: {}, b: {} });
   expect(prompts).toHaveLength(4);
   const [understand] = await loadWorkflowAuditTasks(["test4"]);
   for (const prompt of prompts) {
     expect(prompt).toContain("## Reference answer (known good, for checking claims only)");
-    expect(prompt).toContain("json-parse.ts:133-143");
+    expect(prompt).toContain(await answerReference("test4"));
     expect(prompt).toContain("## ANSWER A");
     expect(prompt).not.toContain("Reference fix");
   }
@@ -137,7 +138,7 @@ test("answer tests are judged against their own reference answer, with no shippe
     calls++;
     return { text: calls % 2 === 0 ? '{"refuted":false,"reason":"Claims hold"}' : JSON.stringify({ correctA: "yes", correctB: "partial", winner: calls === 1 ? "B" : "A", rationale: "The second treatment is better" }), accounting };
   } };
-  await judgeWorkflowAuditCampaign(options, { run: noShippedFix, admit: async () => ({ model: winner, profileId: "judge", authorityIncarnation: "authority", run: noShippedFix, [Symbol.asyncDispose]: async () => {} }) });
+  await judgeWorkflowAuditCampaign(options, { admit: async () => ({ model: winner, profileId: "judge", authorityIncarnation: "authority", [Symbol.asyncDispose]: async () => {} }) });
   const winningReport = await renderWorkflowAuditReport(directory);
   expect(winningReport).toContain("| test4 | candidate | 1/1 | 2.0 | $0.2000 | not graded | unavailable | unavailable | 0/1/0 |");
   expect(winningReport).toContain("Judge control wins / candidate wins / ties: 0/1/0.");
@@ -215,7 +216,7 @@ test("audit report shows every Flywheel arm against Claude Code with independent
         : JSON.stringify({ correctA: "yes", correctB: "yes", winner: a === "fw-sonnet" ? "tie" : (calls === 1 || calls === 5) === (a === "control") ? "A" : "B", rationale: "The reference supports the verdict" }), accounting };
     } };
     await judgeWorkflowAuditCampaign({ directory, a, b: "candidate", authProfile: "Personal" }, {
-      run, admit: async () => ({ model, profileId: "judge", authorityIncarnation: "authority", run, [Symbol.asyncDispose]: async () => {} }),
+      admit: async () => ({ model, profileId: "judge", authorityIncarnation: "authority", [Symbol.asyncDispose]: async () => {} }),
     });
   }
   const before = await readdir(directory, { recursive: true });
@@ -254,8 +255,7 @@ test("a requirements job is judged as two plans against the known requirements a
     prompts.push(prompt);
     return { text: prompts.length % 2 === 0 ? '{"refuted":false,"reason":"Claims hold"}' : JSON.stringify({ correctA: "yes", correctB: "no", winner: prompt.includes("## PLAN A\nPlan one") ? "A" : "B", rationale: "The other plan repeats the false premise" }), accounting };
   } };
-  const noFix: OwnedCommandRunner = async () => { throw new Error("A plan job must not read a fix"); };
-  const judged = await judgeBlocks({ model, run: noFix, [Symbol.asyncDispose]: async () => {} }, { identity: "none", redact: (text) => text },
+  const judged = await judgeBlocks({ model, [Symbol.asyncDispose]: async () => {} }, { identity: "none", redact: (text) => text },
     [{ test: "plan", task: "plan", repeat: 0, request: "Add a guard.", requirements: "- m1: Guard. Reads `src/a.ts`.", reports: { a: "Plan one", b: "Plan two" } }], ["a", "b"]);
   expect(judged[0]?.winner).toBe("a");
   expect(judged[0]?.sites).toEqual({ a: {}, b: {} });

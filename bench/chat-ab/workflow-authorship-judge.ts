@@ -1,12 +1,10 @@
 import { readFile } from "node:fs/promises";
-import { createCliLauncher } from "../../src/cli/runtime-launch.js";
 import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
 import { codingRedaction, type JudgeJob } from "./block-judge.js";
 import { campaignBlinding, campaignRoleComparisons } from "./campaign-role-evidence.js";
 import { readCampaignArtifact } from "./campaign-artifacts.js";
 import { campaignCellKey, campaignIdentity } from "./campaign-store.js";
 import { judgeCampaignPairs, type CampaignJudgeOptions, type CampaignJudgeDependencies } from "./campaign-pair-judge.js";
-import { benchmarkCommandRunner } from "./benchmark-command.js";
 import { referenceFix } from "./pair-judge.js";
 import { loadBenchTasks } from "./tasks.js";
 import { TASKS_DIR } from "./harness-paths.js";
@@ -34,32 +32,29 @@ export async function judgeWorkflowAuthorshipCampaign(options: CampaignJudgeOpti
   const jobs = new Map<string, { job: JudgeJob<"a" | "b">; identity: string }>();
   const skipped: { task: string; repeat: number; reason: string }[] = [];
   const tasks = await loadBenchTasks(TASKS_DIR, campaign.manifest.tasks.map(({ id }) => id), campaign.manifest.message);
-  const launcher = await createCliLauncher();
-  try {
-    for (const spec of campaign.manifest.tasks) {
-      const task = tasks.find(({ id }) => id === spec.id)!;
-      if (task.contentIdentity !== spec.contentIdentity) throw new Error(`Workflow authorship task changed: ${spec.id}`);
-      let reference: string | undefined;
-      for (let repeat = 0; repeat < campaign.manifest.repeats; repeat++) {
-        const left = completed.get(campaignCellKey({ treatment: a, task: spec.id, repeat }));
-        const right = completed.get(campaignCellKey({ treatment: b, task: spec.id, repeat }));
-        if (!left || !right || !left.report || !right.report || !left.diff || !right.diff) {
-          skipped.push({ task: spec.id, repeat, reason: "Both treatments need completed reports and diffs" });
-          continue;
-        }
-        reference ??= await referenceFix(spec.id, benchmarkCommandRunner(launcher.scope), redaction);
-        const [reportA, reportB, diffA, diffB] = await Promise.all([left.report, right.report, left.diff, right.diff].map((artifact) => readCampaignArtifact(directory, artifact)));
-        const references = ({ workflow }: typeof left) => ({
-          ids: workflow.kind === "observed" ? workflow.workflows.map((run) => run.workflowId) : [],
-          labels: workflow.kind === "observed" ? workflow.workflows.flatMap((run) => [run.definitionId, run.name, ...run.labels]) : [],
-        });
-        const job: JudgeJob<"a" | "b"> = { test: spec.id, task: spec.id, repeat, request: task.judgeContext, reference,
-          reports: { a: reportA!, b: reportB! }, changes: { a: diffA!, b: diffB! },
-          workflowReferences: { a: references(left), b: references(right) } };
-        jobs.set(`${a}/${b}/${spec.id}/${repeat}`, { job, identity: structuredIdentity({ campaign: campaignIdentity(campaign.manifest), left, right, job, judge: CHAT_AB_JUDGE, redaction: redaction.identity, authProfile, code }) });
+  for (const spec of campaign.manifest.tasks) {
+    const task = tasks.find(({ id }) => id === spec.id)!;
+    if (task.contentIdentity !== spec.contentIdentity) throw new Error(`Workflow authorship task changed: ${spec.id}`);
+    let reference: string | undefined;
+    for (let repeat = 0; repeat < campaign.manifest.repeats; repeat++) {
+      const left = completed.get(campaignCellKey({ treatment: a, task: spec.id, repeat }));
+      const right = completed.get(campaignCellKey({ treatment: b, task: spec.id, repeat }));
+      if (!left || !right || !left.report || !right.report || !left.diff || !right.diff) {
+        skipped.push({ task: spec.id, repeat, reason: "Both treatments need completed reports and diffs" });
+        continue;
       }
+      reference ??= await referenceFix(spec.id, redaction);
+      const [reportA, reportB, diffA, diffB] = await Promise.all([left.report, right.report, left.diff, right.diff].map((artifact) => readCampaignArtifact(directory, artifact)));
+      const references = ({ workflow }: typeof left) => ({
+        ids: workflow.kind === "observed" ? workflow.workflows.map((run) => run.workflowId) : [],
+        labels: workflow.kind === "observed" ? workflow.workflows.flatMap((run) => [run.definitionId, run.name, ...run.labels]) : [],
+      });
+      const job: JudgeJob<"a" | "b"> = { test: spec.id, task: spec.id, repeat, request: task.judgeContext, reference,
+        reports: { a: reportA!, b: reportB! }, changes: { a: diffA!, b: diffB! },
+        workflowReferences: { a: references(left), b: references(right) } };
+      jobs.set(`${a}/${b}/${spec.id}/${repeat}`, { job, identity: structuredIdentity({ campaign: campaignIdentity(campaign.manifest), left, right, job, judge: CHAT_AB_JUDGE, redaction: redaction.identity, authProfile, code }) });
     }
-  } finally { await launcher.dispose(); }
+  }
   return judgeCampaignPairs(options, { jobs, skipped, redaction, roleComparisons, arms: ["a", "b"],
     accounting: events.filter((event) => event.kind === "outcome").map((event) => event.accounting) }, dependencies);
 }

@@ -8,7 +8,7 @@ import type { CampaignDesign, CampaignFamily } from "./campaign-runner.js";
 import type { CampaignTreatment } from "./campaign-subject.js";
 import { chatGrade } from "./chat-family.js";
 import { REPO_ROOT, TASKS_DIR } from "./harness-paths.js";
-import { captureSandbox, loadBenchTasks, provisionSandbox, taskReference, type BenchTask } from "./tasks.js";
+import { captureSandbox, loadBenchTasks, provisionSandbox, type BenchTask } from "./tasks.js";
 import { captureWorkflowAuthorship, WorkflowAuthorshipMetricsSchema } from "./workflow-authorship-metrics.js";
 import { campaignArtifactReference } from "./campaign-artifacts.js";
 import { workflowAuthorshipLedger, type WorkflowAuthorshipCampaign, type WorkflowAuthorshipOutcome } from "./workflow-authorship-store.js";
@@ -50,11 +50,7 @@ export function workflowAuthorshipFamily(design: CampaignDesign, tasksDir = TASK
         unavailable: [...external.failedSelectionIds].sort(), unreadableRoots: external.unreadableRoots,
       });
     },
-    async loadTasks(ids) {
-      const tasks = await loadBenchTasks(tasksDir, ids, design.message);
-      await Promise.all(tasks.map(taskReference));
-      return tasks;
-    },
+    loadTasks: (ids) => loadBenchTasks(tasksDir, ids, design.message),
     taskIdentity, qualify: async () => {},
     manifest: (fields, tasks) => ({
       ...fields, kind: "workflow-authorship", tasks: tasks.map(taskIdentity),

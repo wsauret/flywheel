@@ -4,7 +4,7 @@ This task ports `bench/tasks/implement/template-multiphase` into the chat A/B ca
 
 ## Provenance and sandbox
 
-The sandbox archives only `.gitignore` from commit `64d9b75aeaa02fb5d00d2f75d01ea8a50df0d743`, following the debug-mutable-default precedent. The additive `sandbox.patch` reproduces all four source `project/` files byte for byte. No dependency installation or setup command is needed. The sandbox contains no plan, qualification patches, manifest, or acceptance tests before capture.
+The sandbox source is the empty tree, following the debug-mutable-default precedent. The additive `sandbox.patch` creates `.gitignore`, with the bytes that earlier runs archived from commit `64d9b75aeaa02fb5d00d2f75d01ea8a50df0d743`, and reproduces all four source `project/` files byte for byte. No dependency installation or setup command is needed. The sandbox contains no plan, qualification patches, manifest, or acceptance tests before capture.
 
 The hidden template suite is copied unchanged from the source acceptance directory. The five original visible tests are also frozen under `acceptance/literal-guards.test.ts`, with only their relative imports adjusted. The campaign copies these tests after capturing the agent's diff, so edits to visible tests cannot remove the guards.
 

@@ -5,19 +5,21 @@ import { isAbsolute, join, relative } from "node:path";
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../src/infra/owned-command.js";
 import { containsSecret } from "../../src/infra/redact-secrets.js";
 import { bytesIdentity, directoryIdentity, structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
-import { objectValue, parseImplementSandbox, stringValue } from "../../src/orchestration/modules/development/benchmark/task-schema.js";
+import { objectValue, parseImplementSandbox, stringValue, type ImplementSandboxSpec } from "../../src/orchestration/modules/development/benchmark/task-schema.js";
 import { parseAcceptanceBaseline, parseJUnitReport, type AcceptanceBaseline, type TestOutcome } from "./acceptance.js";
 
 /** The task contract (one directory per task under bench/chat-ab/tasks/<id>/):
- *  task.json (id, stratum, timeoutMinutes, sandbox {commit, paths, setup,
- *  optional patch}; a top-level `patch` is also accepted; acceptanceBaseline,
+ *  task.json (id, stratum, timeoutMinutes, sandbox: the shared sandbox spec of
+ *  task-schema.ts, whose source is a commit with its paths, a task folder named
+ *  by fixtureRepo, or the empty tree with no paths, plus optional patch and
+ *  setup; a top-level `patch` is also accepted; acceptanceBaseline,
  *  which check-task.ts --write-baseline computes from the unfixed sandbox),
  *  message.md (the original chat message), optional design.md (the design-given
  *  variant), optional challenge.md (a second-turn challenge with
  *  task.json challenge.truth set to hold or change), acceptance/*.test.ts (run
  *  from the sandbox root with `bun test ./acceptance` after the diff is
- *  captured), and WHY.md. A task without a shipped fix commit in WHY.md
- *  carries reference.patch for the judge. When the pinned source loads the local tokenizer,
+ *  captured), WHY.md, and reference.patch (a known fix, which the judge reads
+ *  as a statement of intent). When the pinned source loads the local tokenizer,
  *  sandbox.paths names crates/tokenizer/tokenizer-prebuilt.json and
  *  crates/tokenizer/flywheel-tokenizer.wasm.zst; without them every test
  *  that loads the tokenizer fails, so the agent cannot verify its change.
@@ -53,13 +55,6 @@ export interface Sandbox {
   dispose(): Promise<void>;
 }
 
-interface CommitSandboxSpec {
-  readonly commit: string;
-  readonly paths: readonly string[];
-  readonly setup?: readonly (readonly string[])[];
-  readonly patch?: string;
-}
-
 export interface DraftTask {
   readonly id: string;
   readonly stratum: string;
@@ -71,7 +66,7 @@ export interface DraftTask {
   /** What the pairwise judge reads as the request the diffs answer. */
   readonly judgeContext: string;
   readonly contentIdentity: string;
-  readonly sandbox: CommitSandboxSpec;
+  readonly sandbox: ImplementSandboxSpec;
   readonly acceptanceDir: string;
   /** Absent only on a draft task that check-task.ts has not scored yet. */
   readonly acceptanceBaseline: AcceptanceBaseline | undefined;
@@ -91,18 +86,8 @@ export interface IncompleteTask {
   readonly missing: readonly string[];
 }
 
-const REQUIRED_ENTRIES = ["task.json", "message.md", "acceptance", "WHY.md"] as const;
+const REQUIRED_ENTRIES = ["task.json", "message.md", "acceptance", "WHY.md", "reference.patch"] as const;
 const MISSING_BASELINE = "task.json acceptanceBaseline";
-
-/** Selects the judge's reference without Git or reading patch content. Refuses tasks without either reference form. */
-export async function taskReference({ id, taskDir }: Pick<DraftTask, "id" | "taskDir">) {
-  const path = join(taskDir, "reference.patch");
-  if (existsSync(path)) return { kind: "patch" as const, path };
-  const why = await readFile(join(taskDir, "WHY.md"), "utf8");
-  const commit = /fix commit[^0-9a-f]*([0-9a-f]{7,40})/i.exec(why)?.[1];
-  if (!commit) throw new Error(`${id} has neither reference.patch nor a fix commit in WHY.md`);
-  return { kind: "commit" as const, commit };
-}
 
 /** Whether task.json names an acceptance baseline. Another author may still be
  *  writing the file, so unreadable JSON counts as no baseline, not an error. */
@@ -129,7 +114,8 @@ async function missingEntries(taskDir: string, message?: "design"): Promise<stri
   return missing;
 }
 
-function taskPath(taskDir: string, value: string, context: string): string {
+/** Resolves a task-relative path and refuses one that leaves the task directory. */
+export function taskPath(taskDir: string, value: string, context: string): string {
   if (isAbsolute(value)) throw new Error(`${context} must be relative to its task directory`);
   const path = join(taskDir, value);
   if (relative(taskDir, path).startsWith("..")) throw new Error(`${context} escapes its task directory`);
@@ -146,11 +132,11 @@ async function loadTask(tasksDir: string, id: string, variant?: "design", challe
     throw new Error(`${id}/task.json.timeoutMinutes must be a positive number`);
   }
   const parsed = parseImplementSandbox(config.sandbox, `${id}/task.json.sandbox`);
-  if (!("commit" in parsed)) throw new Error(`${id}/task.json.sandbox must pin a commit`);
   const topLevelPatch = config.patch === undefined ? undefined : stringValue(config.patch, `${id}/task.json.patch`);
   if (topLevelPatch && parsed.patch) throw new Error(`${id}/task.json names a patch twice`);
   const patch = topLevelPatch ?? parsed.patch;
-  const sandbox: CommitSandboxSpec = { commit: parsed.commit, paths: parsed.paths, ...(parsed.setup ? { setup: parsed.setup } : {}), ...(patch ? { patch } : {}) };
+  const sandbox: ImplementSandboxSpec = { ...parsed, ...(patch ? { patch } : {}) };
+  const fixtureIdentity = "fixtureRepo" in sandbox ? await directoryIdentity(taskPath(taskDir, sandbox.fixtureRepo, `${id}/fixtureRepo`)) : null;
   const messageFile = `${variant ?? "message"}.md`;
   const message = (await readFile(join(taskDir, messageFile), "utf8")).trim();
   if (!message) throw new Error(`${id}/${messageFile} is empty`);
@@ -180,7 +166,7 @@ async function loadTask(tasksDir: string, id: string, variant?: "design", challe
     judgeContext: message,
     // A changed baseline changes the identity, so results scored against an
     // older baseline never pair with new ones.
-    contentIdentity: structuredIdentity({ id, stratum, timeoutMs, sandbox, patch: patchIdentity ?? null, ...(referenceIdentity === null ? {} : { reference: referenceIdentity }), message, ...(challenge ? { challenge } : {}), acceptance: await directoryIdentity(acceptanceDir), acceptanceBaseline: acceptanceBaseline ?? null }),
+    contentIdentity: structuredIdentity({ id, stratum, timeoutMs, sandbox, ...(fixtureIdentity === null ? {} : { fixture: fixtureIdentity }), patch: patchIdentity ?? null, ...(referenceIdentity === null ? {} : { reference: referenceIdentity }), message, ...(challenge ? { challenge } : {}), acceptance: await directoryIdentity(acceptanceDir), acceptanceBaseline: acceptanceBaseline ?? null }),
     sandbox,
     acceptanceDir,
     acceptanceBaseline,
@@ -221,10 +207,10 @@ export async function loadBenchTasks(tasksDir: string, ids: readonly string[], m
   return tasks;
 }
 
-/** Loads one task that its author is still validating: its WHY.md and its
- *  acceptance baseline may be missing. */
+/** Loads one task that its author is still validating: its WHY.md, its
+ *  reference.patch, and its acceptance baseline may be missing. */
 export async function loadDraftTask(tasksDir: string, id: string): Promise<DraftTask> {
-  return await loadChecked(tasksDir, id, ["WHY.md", MISSING_BASELINE]);
+  return await loadChecked(tasksDir, id, ["WHY.md", "reference.patch", MISSING_BASELINE]);
 }
 
 /** The whole environment of a harness command (archive, setup, acceptance).
@@ -263,17 +249,18 @@ async function runChecked(run: OwnedCommandRunner, home: string, command: readon
   return result.stdout;
 }
 
-/** A commit archive must hold only directories and regular files. */
+/** A sandbox source must hold only directories and regular files. */
 async function rejectLinks(dir: string): Promise<void> {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) await rejectLinks(path);
-    else if (!entry.isFile()) throw new Error(`Commit archive contains a symlink or special entry at ${path}`);
+    else if (!entry.isFile()) throw new Error(`Sandbox source contains a symlink or special entry at ${path}`);
   }
 }
 
-/** Provisions the pinned archive in its own repository, applies the task patch,
- * and runs setup before committing the subject's clean baseline. */
+/** Provisions the task's source (the pinned archive or the task's fixture
+ * directory) in its own repository, applies the task patch, and runs setup
+ * before committing the subject's clean baseline. */
 export async function provisionSandbox(repoRoot: string, task: SandboxTask, run: OwnedCommandRunner, root: string = tmpdir()): Promise<Sandbox> {
   const dir = await mkdtemp(join(root, "flywheel-"));
   const home = await mkdtemp(join(root, "home-"));
@@ -282,10 +269,14 @@ export async function provisionSandbox(repoRoot: string, task: SandboxTask, run:
     await rm(home, { recursive: true, force: true });
   };
   try {
-    const archive = join(home, "source.tar");
-    await runChecked(run, home, ["git", "-C", repoRoot, "archive", "--format=tar", `--output=${archive}`, task.sandbox.commit, "--", ...task.sandbox.paths], repoRoot);
-    await runChecked(run, home, ["tar", "-xf", archive, "-C", dir], dir);
-    await rm(archive, { force: true });
+    if ("commit" in task.sandbox) {
+      const archive = join(home, "source.tar");
+      await runChecked(run, home, ["git", "-C", repoRoot, "archive", "--format=tar", `--output=${archive}`, task.sandbox.commit, "--", ...task.sandbox.paths], repoRoot);
+      await runChecked(run, home, ["tar", "-xf", archive, "-C", dir], dir);
+      await rm(archive, { force: true });
+    } else {
+      await cp(taskPath(task.taskDir, task.sandbox.fixtureRepo, `${task.id}/fixtureRepo`), dir, { recursive: true });
+    }
     await rejectLinks(dir);
     await runChecked(run, home, ["git", "init", "-q", "-b", "main"], dir);
     if (task.sandbox.patch) {

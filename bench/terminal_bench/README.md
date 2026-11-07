@@ -34,7 +34,7 @@ bench/terminal_bench/run-terminal-bench.sh \
   --execute
 ```
 
-Dirty Git provenance never blocks or changes a campaign grade. The manifest records the exact revision, clean boolean, and dirty paths for later manual audit. When `headless.runtime_source_commit` is set, the adapter builds the runtime archive only from regular Git blobs at that exact commit. It ignores modified, deleted, symlinked, and untracked worktree state. Without a pin, the existing worktree selection behavior remains active.
+Dirty Git provenance never blocks or changes a campaign grade. The manifest records the exact revision, clean boolean, and dirty paths for later manual audit. When `headless.runtime_source_commit` is set, the adapter builds the runtime archive only from regular Git blobs at that exact commit. It ignores modified, deleted, symlinked, and untracked worktree state. Without a pin, the existing worktree selection behavior remains active. A pin must name a commit in the public history, so that a public clone can build it; `bun run lint:bench-pins` fails on a profile whose pin is not an ancestor of HEAD. The checked-in profiles name no pin. The campaign profiles that pinned builds from before the public history were removed; results recorded with them come from those earlier builds and need a new baseline.
 
 The launcher rejects non-submission settings unless the matching local admission flag is explicit:
 

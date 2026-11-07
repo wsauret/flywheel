@@ -1,0 +1,62 @@
+diff --git b/src/orchestration/agent-runtime/llm/openai.ts a/src/orchestration/agent-runtime/llm/openai.ts
+index 06b0e6a..c1265cc 100644
+--- b/src/orchestration/agent-runtime/llm/openai.ts
++++ a/src/orchestration/agent-runtime/llm/openai.ts
+@@ -238,6 +238,11 @@ export async function createOpenAIAdapter(
+           // disagree with the completed response's array positions, so an
+           // index-only key would re-yield the same item on the terminal refold.
+           const terminalOutputItems = new Set<string>();
++          // The call id is the identity every downstream reader keys on, and
++          // the wire always carries it. The item keys above can both miss: a
++          // provider that omits the item id and also reports a different array
++          // position on the completed refold defeats the id key (absent) and
++          // the index key (changed), and the same call yields twice.
+           const emittedToolCallIds = new Set<string>();
+           let reasoningBuf = "";
+           let currentReasoningBlockKey = "";
+@@ -267,6 +272,10 @@ export async function createOpenAIAdapter(
+             terminalOutputItems.add(itemKey);
+             yield* flushReasoning();
+             if (item.type === "function_call") {
++              if (item.call_id) {
++                if (emittedToolCallIds.has(item.call_id)) return;
++                emittedToolCallIds.add(item.call_id);
++              }
+               const { input: toolInput, parseError } = parseToolArguments(item.arguments);
+               yield {
+                 kind: "tool_use",
+diff --git b/tests/unit/orchestration/agent-runtime/llm/openai-responses-item-dedup.test.ts a/tests/unit/orchestration/agent-runtime/llm/openai-responses-item-dedup.test.ts
+index 8d28022..8c60422 100644
+--- b/tests/unit/orchestration/agent-runtime/llm/openai-responses-item-dedup.test.ts
++++ a/tests/unit/orchestration/agent-runtime/llm/openai-responses-item-dedup.test.ts
+@@ -153,5 +153,30 @@ describe("OpenAI Responses terminal item dedup", () => {
+     expect(ids).toEqual(["call_1", "call_2"]);
+   });
+ 
++  it("deduplicates a function_call that has no wire id and moves index on the refold", async () => {
++    // The case both prior guards miss. A provider that omits the item id AND
++    // reports a different array position on the completed frame defeats the id
++    // key (absent) and the index key (changed), so the same call yielded twice
++    // and the session tree refused the turn with "assistant message 1 contains
++    // duplicate tool_use ids". Observed live on the Responses transport.
++    const noId = { ...FUNCTION_CALL, id: undefined };
++    state.streamEvents = [
++      { type: "response.created", response: { id: "resp_4" } },
++      { type: "response.output_item.added", item: MESSAGE_ITEM, output_index: 0 },
++      { type: "response.output_item.done", item: MESSAGE_ITEM, output_index: 0 },
++      { type: "response.output_item.done", item: noId, output_index: 1 },
++      // Completed lists the function_call first, so its array position is 0.
++      {
++        type: "response.completed",
++        response: { id: "resp_4", status: "completed", usage: USAGE, output: [noId, MESSAGE_ITEM] },
++      },
++    ];
++    const client = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", stubModelsClient());
++
++    const events = await collect(client);
++
++    expect(events.filter((event) => event.kind === "tool_use")).toHaveLength(1);
++  });
++
+ });
+ import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";

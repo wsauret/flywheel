@@ -12,7 +12,7 @@ The expected fix changes the function signature to use `None`, then creates a fr
 
 This task restores the historical Python project, not Flywheel source. `sandbox.patch` contains all six project files exactly as the script wrote them. This includes the empty package files and historical punctuation. The message is the original prompt with its em dash replaced by a comma.
 
-The existing loader needs no change. It archives only the pinned `.gitignore`, then applies the patch. The sandbox contains `.gitignore`, `src/`, and `tests/`, plus its fresh Git repository. It contains no Flywheel source, task metadata, or acceptance tests before capture. Python with `pytest` must already be available through `python3`; setup does not install dependencies or use the network.
+The sandbox source is the empty tree, and the patch creates every file, `.gitignore` included. That `.gitignore` keeps the bytes of the one that earlier runs archived from `64d9b75aeaa02fb5d00d2f75d01ea8a50df0d743`, a commit outside the public history, so the provisioned tree did not change. The sandbox contains `.gitignore`, `src/`, and `tests/`, plus its fresh Git repository. It contains no Flywheel source, task metadata, or acceptance tests before capture. Python with `pytest` must already be available through `python3`; setup does not install dependencies or use the network.
 
 ## Acceptance
 

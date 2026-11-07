@@ -3,7 +3,6 @@
   "message": "design",
   "tasks": [
     "stopped-command-exit-code",
-    "child-wait-refused-as-cycle",
     "parent-wake-after-restart",
     "handoff-ignores-background-command",
     "subagent-interrupted-shows-failed",
@@ -11,7 +10,6 @@
     "interrupted-question-blank-result",
     "session-list-empty-after-timeout",
     "cut-tool-args",
-    "provider-chain-fix",
     "config-lock-first-write",
     "template-multiphase",
     "metrics-resteer"

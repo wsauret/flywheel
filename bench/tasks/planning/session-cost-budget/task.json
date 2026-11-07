@@ -3,16 +3,16 @@
   "stratum": "medium",
   "timeoutMinutes": 30,
   "sandbox": {
-    "commit": "e63bd9b6c9c602dcc2b0643fadfc75a7f947f0ff:flywheel-tui",
+    "commit": "85c69871d53e3f1dba2532773dd7db38a93c41b3",
     "paths": [
       "src",
       "tests",
       "docs",
       "scripts",
-      "patches",
       "package.json",
       "bun.lock",
       "tsconfig.json",
+      "tsconfig.tests.json",
       "oxlint.config.ts",
       "knip.jsonc",
       "AGENTS.md",

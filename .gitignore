@@ -59,6 +59,9 @@ tests/e2e/results/
 bench/*/results/
 bench/terminal_bench/source-archive.lock
 
+# Vendored benchmark fixture sources stay out of code search; add new files with `git add -f`
+bench/**/project/
+
 # Logs
 logs/
 *.log

@@ -3,13 +3,7 @@
   "stratum": "synthetic-regression",
   "timeoutMinutes": 30,
   "sandbox": {
-    "commit": "82277c0c0788d584cb1fbadc04354808eb5878ac",
-    "paths": [
-      "src/infra/repeat-coalescer.ts",
-      "src/infra/session-fair-admission.ts",
-      "src/infra/skill-id.ts",
-      "src/infra/truncate-field.ts"
-    ],
+    "fixtureRepo": "project",
     "patch": "sandbox.patch",
     "setup": [
       [

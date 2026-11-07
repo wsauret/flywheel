@@ -1,0 +1,185 @@
+diff --git b/src/orchestration/agent-runtime/agent-loop-tools.ts a/src/orchestration/agent-runtime/agent-loop-tools.ts
+index f7da9de..fad7750 100644
+--- b/src/orchestration/agent-runtime/agent-loop-tools.ts
++++ a/src/orchestration/agent-runtime/agent-loop-tools.ts
+@@ -315,7 +315,7 @@ export function createTurnDispatcher(deps: TurnDispatcherDeps): TurnDispatcher {
+       catch (hookErr) { log.warn("afterToolCall hook threw", { tool: entry.tc.name, error: errorMessage(hookErr), errorDetail: errorDetail(hookErr) }); }
+     }
+     entry.result = finalResult;
+-    void finalizeEntryOnce(entry, finalizeCtx);
++    if (finalResult.suspendTurn !== true) void finalizeEntryOnce(entry, finalizeCtx);
+   }
+ 
+   /** Awaits the call's fiber and then its finalization, and fails with a
+diff --git b/src/orchestration/agent-runtime/llm/heal-messages.ts a/src/orchestration/agent-runtime/llm/heal-messages.ts
+index 25e93d2..f5c27c8 100644
+--- b/src/orchestration/agent-runtime/llm/heal-messages.ts
++++ a/src/orchestration/agent-runtime/llm/heal-messages.ts
+@@ -20,7 +20,8 @@
+  *
+  * 2. Drop toolResults no vendor accepts: orphans (no matching `tool_use` in
+  *    the immediately preceding assistant turn) and duplicates (a second
+- *    result for an already-answered id).
++ *    result for an already-answered id). Replace matching error results whose
++ *    text is blank and which have no image with a non-empty tombstone.
+  *
+  * 3. Synthesize an error `toolResult` for every `tool_use` that lacks a
+  *    matching result, placed before the next non-toolResult message. Without
+@@ -96,7 +97,8 @@ export function healConversation(history: ConversationMessage[]): ConversationMe
+     }
+ 
+     if (message.kind === "toolResult") {
+-      if (markPendingSatisfied(pending, message.toolUseId)) result.push(message);
++      const use = markPendingSatisfied(pending, message.toolUseId);
++      if (use) result.push(repairEmptyErrorToolResult(use, message));
+       continue;
+     }
+ 
+@@ -125,11 +127,22 @@ function pendingToolUses(message: Extract<ConversationMessage, { kind: "assistan
+   return { uses: toolUses, aborted: message.stopReason === "aborted" };
+ }
+ 
+-function markPendingSatisfied(pending: Pick<PendingToolUses, "uses">, toolUseId: string): boolean {
++function markPendingSatisfied(pending: Pick<PendingToolUses, "uses">, toolUseId: string): PendingToolUse | null {
+   const match = pending.uses.find((use) => use.id === toolUseId);
+-  if (!match || match.satisfied) return false;
++  if (!match || match.satisfied) return null;
+   match.satisfied = true;
+-  return true;
++  return match;
++}
++
++function repairEmptyErrorToolResult(use: PendingToolUse, message: ToolResultMessage): ToolResultMessage {
++  const hasContent = message.content.some((part) => part.type === "image" || part.text.trim().length > 0);
++  if (!message.isError || hasContent) return message;
++  if (message.interrupted) return interruptedToolResult(use);
++  return {
++    ...message,
++    isError: true,
++    content: [{ type: "text", text: `Tool '${use.name}' returned no result content.` }],
++  };
+ }
+ 
+ function unsatisfiedToolResults(pending: PendingToolUses): ToolResultMessage[] {
+diff --git b/tests/unit/orchestration/agent-runtime/agent-loop-tools.test.ts a/tests/unit/orchestration/agent-runtime/agent-loop-tools.test.ts
+index d8786f1..8f5b2a9 100644
+--- b/tests/unit/orchestration/agent-runtime/agent-loop-tools.test.ts
++++ a/tests/unit/orchestration/agent-runtime/agent-loop-tools.test.ts
+@@ -9,6 +9,7 @@ import { createBackgroundExecutionOwner, type BackgroundExecutionOwner } from ".
+ import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js"
+ import type { RuntimeTool, ToolContext, ToolResult } from "../../../../src/orchestration/agent-runtime/tools/types.js"
+ import type { LLMClient, ProviderStreamEvent, StreamEvent, StreamOptions, ToolCall } from "../../../../src/orchestration/agent-runtime/llm/types.js"
++import type { SessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
+ import { messageInput } from "../../../../src/infra/agent-loop-events.js"
+ import { runAgentLoop } from "../../../../src/orchestration/agent-runtime/agent-loop.js"
+ import { createRequestToolSurface } from "../../../../src/orchestration/agent-runtime/request-tool-surface.js"
+@@ -53,6 +54,7 @@ function harness(input: {
+   signal?: AbortSignal
+   background?: BackgroundExecutionOwner
+   commitAssistant?: () => void
++  toolContext?: ToolContext
+   outputBound?: TurnOutputBound
+ }) {
+   const events: StreamEvent[] = []
+@@ -63,7 +65,7 @@ function harness(input: {
+     executionAdmission: (toolName) => input.tools.has(toolName)
+       ? { ok: true }
+       : { ok: false, refusal: { content: `Tool '${toolName}' is not registered`, outcome: "error" } },
+-    toolContext: makeContext(),
++    toolContext: input.toolContext ?? makeContext(),
+     signal: input.signal,
+     background: input.background,
+     turnScope,
+@@ -261,13 +263,30 @@ describe("createTurnDispatcher", () => {
+ 
+   it("settles a suspended durable tool without emitting a tool result", async () => {
+     const toolCall: ToolCall = { id: "tool_wait", name: "waiter", input: {} }
++    const checkpoints: unknown[] = []
++    const writer: SessionFactWriter = {
++      record: async () => null,
++      recordBatch: async () => { throw new Error("unused request audit") },
++      recordGuarded: async () => null,
++      transaction: async (fn) => { fn() },
++      dispose: () => {},
++      putInFlight: async (_kind, _key, payload) => { checkpoints.push(payload) },
++    }
+ 
+     const tool = makeTool(async (): Promise<ToolResult> => ({
+       content: "",
+       outcome: "interrupted",
+       suspendTurn: true,
+     }))
+-    const turn = harness({ tools: new RequestToolMap([[tool.name, tool]]) })
++    const turn = harness({
++      tools: new RequestToolMap([[tool.name, tool]]),
++      toolContext: {
++        ...makeContext(),
++        conversationId: "conversation-suspended",
++        sessionEventWriter: writer,
++        flushCanonicalMessages: async () => {},
++      },
++    })
+ 
+     turn.onToolUse(toolCall)
+ 
+@@ -278,6 +297,7 @@ describe("createTurnDispatcher", () => {
+     // The suspended call gets neither a canonical result nor a projection; it
+     // stays available to the resume path.
+     expect(turn.events).toEqual([])
++    expect(checkpoints).toEqual([])
+   })
+ 
+   it.each([
+diff --git b/tests/unit/orchestration/agent-runtime/llm/conversions/anthropic-messages.test.ts a/tests/unit/orchestration/agent-runtime/llm/conversions/anthropic-messages.test.ts
+index 87f3169..ea80f87 100644
+--- b/tests/unit/orchestration/agent-runtime/llm/conversions/anthropic-messages.test.ts
++++ a/tests/unit/orchestration/agent-runtime/llm/conversions/anthropic-messages.test.ts
+@@ -94,6 +94,22 @@ describe("Anthropic Messages converter", () => {
+     expect(JSON.stringify(converted)).toContain("No result provided");
+   });
+ 
++  test("blank error tool results are repaired before Anthropic conversion", () => {
++    const history: ConversationMessage[] = [
++      { kind: "assistant", content: [{ type: "tool_use", id: "blank", name: "ask_user", input: {} }], ...anthropic, timestamp: 1 },
++      { kind: "toolResult", toolUseId: "blank", content: [{ type: "text", text: "" }], isError: true },
++    ];
++    const converted = toAnthropicMessagesRequest(anthropic, history);
++    const result = converted.messages.flatMap((message) => message.content).find((block) => block.type === "tool_result");
++
++    expect(result).toMatchObject({
++      type: "tool_result",
++      tool_use_id: "blank",
++      is_error: true,
++      content: [{ type: "text", text: "Tool 'ask_user' returned no result content." }],
++    });
++  });
++
+   test("orphan tool results are dropped before an Anthropic request is made", () => {
+     const history: ConversationMessage[] = [textResult("orphan", "bad")];
+     expect(toAnthropicMessagesRequest(anthropic, history).messages).toEqual([]);
+diff --git b/tests/unit/orchestration/agent-runtime/llm/heal-messages.test.ts a/tests/unit/orchestration/agent-runtime/llm/heal-messages.test.ts
+index e50a201..153e0b2 100644
+--- b/tests/unit/orchestration/agent-runtime/llm/heal-messages.test.ts
++++ a/tests/unit/orchestration/agent-runtime/llm/heal-messages.test.ts
+@@ -33,6 +33,21 @@ describe("healConversation", () => {
+     expect(toolResults[0].content).toEqual([{ type: "text", text: "ok" }]);
+   });
+ 
++  test("blank interrupted tool results are replaced with canonical tombstones", () => {
++    const history: ConversationMessage[] = [
++      { kind: "assistant", content: [{ type: "tool_use", id: "call_1", name: "ask_user", input: {} }], ...anthropic },
++      { kind: "toolResult", toolUseId: "call_1", content: [{ type: "text", text: "" }], isError: true, interrupted: true },
++    ];
++
++    expect(healConversation(history).at(-1)).toEqual({
++      kind: "toolResult",
++      toolUseId: "call_1",
++      isError: true,
++      interrupted: true,
++      content: [{ type: "text", text: "Tool 'ask_user' was interrupted before a result was recorded." }],
++    });
++  });
++
+   test("only unsatisfied ids from a parallel tool_use turn are synthesized", () => {
+     const history: ConversationMessage[] = [
+       { kind: "assistant", content: [

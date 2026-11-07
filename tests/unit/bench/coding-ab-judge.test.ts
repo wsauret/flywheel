@@ -87,7 +87,7 @@ async function fixture(treatments: readonly string[] = ["before", "after"], vers
 }
 
 function admitted(model: JudgeModel, authorityIncarnation = "judge-authority"): ChatAbJudge {
-  return { model, profileId: "judge-profile", authorityIncarnation, run: async () => { throw new Error("No commands"); }, [Symbol.asyncDispose]: async () => {} };
+  return { model, profileId: "judge-profile", authorityIncarnation, [Symbol.asyncDispose]: async () => {} };
 }
 const tie: JudgeModel = { async complete() { return { text: '{"correctA":"partial","correctB":"no","winner":"tie","rationale":"Both incomplete"}', accounting }; } };
 const judgeLedger = async (directory: string) => join(directory, (await readdir(directory)).find((name) => name.startsWith("judge-") && name.endsWith(".jsonl"))!);

@@ -1,6 +1,6 @@
 {
   "name": "planning-models",
-  "tasks": ["healthz-greenfield", "session-cost-budget", "handoff-size-guard", "retry-telemetry-refactor"],
+  "tasks": ["healthz-greenfield", "session-cost-budget"],
   "repeats": 3,
   "model": "claude-sonnet-5-5",
   "effort": "medium",

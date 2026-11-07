@@ -1,0 +1,78 @@
+diff --git b/src/infra/auth/auth-store-mutations.ts a/src/infra/auth/auth-store-mutations.ts
+index 5e9dc95..3f20f16 100644
+--- b/src/infra/auth/auth-store-mutations.ts
++++ a/src/infra/auth/auth-store-mutations.ts
+@@ -455,7 +455,7 @@ export async function appendCredentialInstance(
+   await appendCredentialInstanceWithReceipt(providerId, instance, destination, classifySlot, signal);
+ }
+ 
+-/** Replaces one rejected provider during an explicit login while preserving every sibling value. */
++/** Replaces a wholly rejected provider entry, never a damaged account collection. */
+ export async function replaceRejectedProviderCredentials(
+   providerId: CredentialProviderId,
+   replacement: Credential | CredentialCollection,
+@@ -478,9 +478,7 @@ export async function replaceRejectedProviderCredentials(
+       }
+       if (!isRecord(raw)) throw new AuthStoreMutationError([fileMalformedCondition(access.authDirectory, revision)]);
+       const decoded = decodeAuthStoreWithDiagnostics(raw, { classifySlot, rejectExcessProperties: true });
+-      const rejected = decoded.dropped.includes(providerId)
+-        || decoded.diagnostics.some((diagnostic) => diagnostic.kind === "invalid_instance" && diagnostic.providerId === providerId);
+-      if (!rejected) return false;
++      if (!decoded.dropped.includes(providerId)) return false;
+       const encoded = JSON.stringify({ ...raw, [providerId]: persistedLoginReplacement(replacement, classifySlot(providerId)) });
+       if (Buffer.byteLength(encoded) > MAX_AUTH_STORE_BYTES) throw new RangeError(`auth.json exceeds ${MAX_AUTH_STORE_BYTES} bytes`);
+       signal?.throwIfAborted();
+@@ -492,8 +490,8 @@ export async function replaceRejectedProviderCredentials(
+   }
+ }
+ 
+-/** Explicit login replaces a malformed provider entry and retains its exact
+- * bytes in a receipt so failed settlement can put that complete entry back. */
++/** Replaces a wholly rejected provider entry, never a damaged account collection.
++ * The receipt retains the original entry for failed catalog settlement. */
+ export async function replaceRejectedProviderCredentialsWithReceipt(
+   providerId: CredentialProviderId,
+   replacement: Credential | CredentialCollection,
+@@ -512,9 +510,7 @@ export async function replaceRejectedProviderCredentialsWithReceipt(
+       try { raw = JSON.parse(bytes.toString("utf8")); } catch { throw new AuthStoreMutationError([fileMalformedCondition(access.authDirectory, revision)]); }
+       if (!isRecord(raw)) throw new AuthStoreMutationError([fileMalformedCondition(access.authDirectory, revision)]);
+       const decoded = decodeAuthStoreWithDiagnostics(raw, { classifySlot, rejectExcessProperties: true });
+-      const rejected = decoded.dropped.includes(providerId)
+-        || decoded.diagnostics.some((diagnostic) => diagnostic.kind === "invalid_instance" && diagnostic.providerId === providerId);
+-      if (!rejected) return undefined;
++      if (!decoded.dropped.includes(providerId)) return undefined;
+       const before = raw[providerId];
+       const after = persistedLoginReplacement(replacement, classifySlot(providerId));
+       const encoded = JSON.stringify({ ...raw, [providerId]: after });
+diff --git b/tests/unit/orchestration/auth/auth-actions.test.ts a/tests/unit/orchestration/auth/auth-actions.test.ts
+index a12cf54..a65ed91 100644
+--- b/tests/unit/orchestration/auth/auth-actions.test.ts
++++ a/tests/unit/orchestration/auth/auth-actions.test.ts
+@@ -166,7 +166,7 @@ describe("auth-actions", () => {
+     expect(readStore(AUTH_DIR).opencode_go).toBeUndefined();
+   });
+ 
+-  it("explicit login replaces rejected provider data and preserves invalid siblings", async () => {
++  it("repairs a rejected provider without replacing a damaged account collection", async () => {
+     writeStore(AUTH_DIR, {
+       openai_api: { type: "api_key" },
+       removed_provider: { arbitrary: "preserved" },
+@@ -176,6 +176,18 @@ describe("auth-actions", () => {
+       openai_api: expect.objectContaining({ type: "api_key", key: "sk-valid-repair" }),
+       removed_provider: { arbitrary: "preserved" },
+     });
++
++    writeStore(AUTH_DIR, {
++      ...readStore(AUTH_DIR),
++      opencode_go: [
++        { id: "healthy", identity: "Healthy", lineageId: crypto.randomUUID(), credential: { type: "api_key", key: "healthy-key" } },
++        { id: "damaged", identity: "Damaged", lineageId: crypto.randomUUID(), credential: { type: "api_key", key: 7 } },
++      ],
++    });
++    const before = fs.readFileSync(authJsonPath(AUTH_DIR));
++    await expect(loginWithApiKey("opencode_go", "new-key", AUTH_DIR, resolveKey, undefined, settleCatalog))
++      .rejects.toThrow("Cannot update auth.json");
++    expect(fs.readFileSync(authJsonPath(AUTH_DIR))).toEqual(before);
+   });
+ 
+   it("reconnects an OpenCode Go instance without exposing its expected credential", async () => {

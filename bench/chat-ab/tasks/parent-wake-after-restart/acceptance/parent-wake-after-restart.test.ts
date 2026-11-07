@@ -54,16 +54,19 @@ const QUIET_MS = 200
 
 /** Opens the stored parent as a runner that attaches after a restart finds
  *  it, holds it as the child's resume does, and waits for the hold to
- *  settle. It then checks that no model request starts for about 200 ms
- *  before the child completes, and delivers the child's completion. */
-async function attachedParent(seed: (tree: Tree) => Promise<void>) {
+ *  settle. Unless `quiet` is false, it then checks that no model request
+ *  starts for about 200 ms before the child completes. It then delivers the
+ *  child's completion. */
+async function attachedParent(seed: (tree: Tree) => Promise<void>, quiet = true) {
   const { dir, reader, writer } = openStore()
   const stored = await createStoredChatSession({ sessionId: "chat-stored", conversationId: "conversation-chat-stored", projectRoot: dir, reader, writer, seed })
   chat = stored.chat
   await stored.chat.hold()
   await stored.parked(1)
-  await Bun.sleep(QUIET_MS)
-  expect(stored.calls).toEqual([])
+  if (quiet) {
+    await Bun.sleep(QUIET_MS)
+    expect(stored.calls).toEqual([])
+  }
   await stored.chat.deliverBackgroundNotification({ key: "subagent-completions:child-run-1", completionRunIds: ["child-run-1"], text: COMPLETION_TEXT })
   return stored
 }
@@ -80,7 +83,6 @@ async function until(done: () => boolean, ms: number): Promise<void> {
 const cuts = [
   ["the runtime stopped the service", { reason: "paused", pausedBy: "runtime" }],
   ["the service crashed", { reason: "crash" }],
-  ["an update replaced the service", { reason: "paused", pausedBy: "runtime", planned: true }],
 ] as const satisfies readonly (readonly [string, TurnEnd])[]
 
 describe("a parent that waited on its child when its service stopped", () => {
@@ -92,6 +94,17 @@ describe("a parent that waited on its child when its service stopped", () => {
       expect(carriesCompletion(stored.calls)).toBe(true)
     })
   }
+
+  // An update hands running work to the new service, which continues it with
+  // no visible interruption (PI-REMOTE-012). The successor re-enters the
+  // parent's wait at once, so this case does not require quiet before the
+  // completion: the store holds no live child for the wait to find.
+  test("after an update replaced the service, the parent does not wait for the person, and the child's completion starts a model request that reads it", async () => {
+    const stored = await attachedParent((tree) => seedBackgroundWait(tree, { reason: "paused", pausedBy: "runtime", planned: true }), false)
+    await until(() => carriesCompletion(stored.calls), 3000)
+    expect(carriesCompletion(stored.calls)).toBe(true)
+    expect(await stored.chat.messageState()).not.toBe("interrupted")
+  })
 
   // Regression guard: this passes before the fix and must keep passing.
   test("regression guard: after the person interrupted the wait, the child's completion starts no model request and the chat stays interrupted", async () => {

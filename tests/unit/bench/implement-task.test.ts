@@ -59,7 +59,7 @@ describe("shared implementation task loading", () => {
     });
   });
 
-  it("rejects malformed commit sandboxes", async () => {
+  it("rejects malformed sandboxes", async () => {
     const taskDir = join(temporaryDirectory("implement-task-"), "bad-task");
     await mkdir(join(taskDir, "acceptance"), { recursive: true });
     await Bun.write(join(taskDir, "plan.json"), JSON.stringify(PLAN));
@@ -71,12 +71,14 @@ describe("shared implementation task loading", () => {
     await rejects({ commit: "abc123", paths: [] }, "paths must be a non-empty string array");
     await rejects({ commit: "abc123", paths: ["src"], setup: [[]] }, "setup must be an array of non-empty string arrays");
     await rejects({ commit: "HEAD", paths: ["src"] }, "commit must be a hexadecimal Git object ID");
+    await rejects({ commit: "abc123", paths: ["src"], ptach: "pre-fix.patch" }, "sandbox.ptach is not a sandbox field");
+    await rejects({ fixtureRepo: "project", paths: ["src"] }, "sandbox.paths is not a sandbox field");
   });
 
   it("gives the direct persona benchmark the shared plan and native implement tasks", async () => {
     expect(catalog.implementTasksDir).toBe(IMPLEMENT_TASKS_DIR);
     const tasks = await catalog.implementTasks();
-    expect(tasks.map((task) => task.id)).toEqual(["astropy__astropy-14598", "ds1000-298", "getmoto__moto-7365", "httpx-streaming-json-iteration", "jquense__yup-2305", "metrics-resteer", "provider-chain-fix", "psf__requests-6028", "redis__redis-10068", "regex-chess", "rust-react", "scheme-metacircular", "template-multiphase"]);
+    expect(tasks.map((task) => task.id)).toEqual(["astropy__astropy-14598", "ds1000-298", "getmoto__moto-7365", "httpx-streaming-json-iteration", "jquense__yup-2305", "metrics-resteer", "psf__requests-6028", "redis__redis-10068", "regex-chess", "rust-react", "scheme-metacircular", "template-multiphase"]);
     for (const task of tasks) {
       if (task.kind === "native") {
         expect(task.prompt).toBe(task.instruction + (task.environment === undefined ? "" : `\n\n## Native environment context\n${task.environment}`));
@@ -84,7 +86,7 @@ describe("shared implementation task loading", () => {
         expect(task.prompt).toContain(PLAN_FILE);
       }
       expect(task.prompt).not.toContain("phase-level verification");
-      expect(task.timeoutMs).toBe(task.id === "provider-chain-fix" ? 45 * 60_000 : DEFAULT_IMPLEMENTER_TIMEOUT_MS);
+      expect(task.timeoutMs).toBe(DEFAULT_IMPLEMENTER_TIMEOUT_MS);
     }
   });
 

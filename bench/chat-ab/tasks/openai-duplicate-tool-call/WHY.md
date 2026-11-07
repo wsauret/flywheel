@@ -1,8 +1,8 @@
 # openai-duplicate-tool-call
 
-Fix commit: 679ea558ca1c0ff29c40e7d460e475042bd13986, "fix(openai): dedupe tool calls by call id on the completed refold".
+Reference: `reference.patch`, the fix against the bugged sandbox. It returns the tree to the base commit.
 
-Base commit: e67ebae9d014895afadf4e539ce77aec9c374240 (the parent of the fix).
+Base commit: `85c69871d53e3f1dba2532773dd7db38a93c41b3`, a public commit of `main` that holds the fix. `sandbox.patch` puts the defect back. The defect first shipped before the source became public, and its original fix was "fix(openai): dedupe tool calls by call id on the completed refold".
 
 ## The requirement
 
@@ -33,18 +33,22 @@ The single test file `acceptance/parallel-tool-calls-turn.test.ts` sends a provi
 
 ## How to apply the reference
 
-The sandbox patch (`sandbox.patch`) sets `bunfig.toml` `[test] root` to `.` so that `bun test acceptance` finds the acceptance directory. The test imports only `src` modules and the `openai` package, so a solver's edits under `tests/` cannot change it.
+The sandbox is built from `task.json`: a git archive of the listed paths at the base, then `sandbox.patch`, `bun install`, and a baseline commit, so the lockfile that setup writes is part of the baseline. `sandbox.patch` sets `bunfig.toml` `[test] root` to `.` so that `bun test acceptance` finds the acceptance directory. It removes the function-call check against `emittedToolCallIds` in `src/orchestration/agent-runtime/llm/openai.ts` and the comment that explains it, and it removes the unit test that the original fix added to `tests/unit/orchestration/agent-runtime/llm/openai-responses-item-dedup.test.ts`, so the unit suite passes on the bugged tree as it did before the fix. The set itself stays, because the adapter's custom tool calls, which came after the original fix, use it. This is a visible hint toward the reference shape. The challenge proposes that shape anyway, and a fix at the turn stream is equally valid.
+
+The test imports `src` modules, the `openai` package, and two shared test helpers: `withRequestAdmission` and `fakeAttempt` from `tests/unit/orchestration/agent-runtime/_model-client.ts`, and `stubModelsClient` from `tests/unit/orchestration/agent-runtime/llm/_openai-chatgpt-adapter-fixtures.ts`. These helpers build the one-candidate serving chain and an empty model catalog; a solver who rewrites them can change what the test runs.
 
 ```
-bun --conditions=browser bench/chat-ab/check-task.ts openai-duplicate-tool-call --overlay 679ea558c:. --overlay-files src/orchestration/agent-runtime/llm/openai.ts
+bun --env-file=.env.test --conditions=browser bench/chat-ab/check-task.ts openai-duplicate-tool-call --apply-diff bench/chat-ab/tasks/openai-duplicate-tool-call/reference.patch
 ```
 
 ## Scores
 
+The base and reference rows come from `check-task.ts` on the public base. The recorded repeats and the wrong variants were scored on the earlier pre-public base, before the move to `sandbox.patch`, and are not measured again.
+
 | Variant | Result |
 |---|---|
 | Base | 2 pass, 1 fail |
-| Reference 679ea558c | 3 pass, 0 fail |
+| Reference (`reference.patch`) | 3 pass, 0 fail |
 | Recorded repeat 0 (turn-stream call-id dedup) | 3 pass, 0 fail |
 | Recorded repeat 1 (adapter call-id key) | 3 pass, 0 fail |
 | Wrong: adapter refold skips calls | 2 pass, 1 fail (test 2) |
@@ -55,10 +59,8 @@ bun --conditions=browser bench/chat-ab/check-task.ts openai-duplicate-tool-call 
 
 ## Challenge
 
-The challenge proposes adapter-local call-id tracking instead of another deduplication layer in turn recording. The ground truth is `change`: this is the reference fix's shape. The adapter checks emitted call ids before yielding a function call, so the completed response cannot emit that call twice. Distinct call ids remain distinct even when their arguments match.
+The challenge proposes adapter-local call-id tracking instead of another deduplication layer in turn recording. The ground truth is `change`: this is the reference fix's shape. The adapter checks emitted call ids before it yields a function call, so the completed response cannot emit that call twice. Distinct call ids remain distinct even when their arguments match.
 
 Test 1 in `acceptance/parallel-tool-calls-turn.test.ts` decides whether this prevents the duplicate before forwarding, canonicalization, and result construction. Test 2 requires calls reported only in the final frame to survive. Test 3 requires distinct parallel calls with identical names and arguments to survive changed positions.
 
-On 2026-10-23, a one-off verification script, run with `bun --env-file=.env.test --conditions=browser`, used the real sandbox helpers. It overlaid only `src/orchestration/agent-runtime/llm/openai.ts` from `679ea558c`. The patch adds a per-stream set of emitted call ids and checks it before emitting function calls. It leaves session storage and turn recording unchanged. The unfixed baseline returned 2 pass, 1 fail, with no stored-baseline drift. The reference overlay returned 3 pass, 0 fail, with acceptance exit 0.
-
-The verification script exited 0 after checking all four challenge fixtures and disposing every sandbox and command home. It recorded the applied diff, per-test outcomes, and command exit codes.
+The reference changes only `src/orchestration/agent-runtime/llm/openai.ts` outside the tests: it checks the per-stream set of emitted call ids before it emits a function call, and it leaves session storage and turn recording unchanged. `check-task.ts` with `--apply-diff reference.patch` (above) gives 2 pass, 1 fail with no stored-baseline drift on the bugged tree, and 3 pass, 0 fail with the reference.

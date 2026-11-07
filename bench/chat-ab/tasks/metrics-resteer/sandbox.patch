@@ -1,3 +1,111 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..1e162cd
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,102 @@
++# macOS
++.DS_Store
++.AppleDouble
++.LSOverride
++._*
++.Spotlight-V100
++.Trashes
++
++# Editors and IDEs
++.idea/
++.vscode/
++*.swp
++*.swo
++*~
++.project
++.settings/
++
++# Node.js
++node_modules
++npm-debug.log*
++yarn-debug.log*
++yarn-error.log*
++.npm
++.yarn/
++package-lock.json
++yarn.lock
++pnpm-lock.yaml
++
++# Build outputs
++dist/
++build/
++out/
++*.tsbuildinfo
++
++# TypeScript
++*.js.map
++*.d.ts.map
++
++# Python
++__pycache__/
++*.pyc
++.venv/
++venv/
++*.pyo
++*.pyd
++*.egg-info/
++dist/
++build/
++.eggs/
++.pytest_cache/
++
++# Test coverage
++coverage/
++.nyc_output/
++*.lcov
++tests/e2e/results/
++
++# Benchmark run output (local machine paths, generated artifacts)
++bench/*/results/
++
++# Logs
++logs/
++*.log
++
++# Environment and secrets
++.env
++.env.local
++.env.*.local
++*.pem
++*.key
++secrets/
++
++# Temporary files
++tmp/
++temp/
++*.tmp
++*.temp
++*.bak
++
++# Rust
++target/
++Cargo.lock
++!crates/tokenizer/Cargo.lock
++!crates/ripgrep/Cargo.lock
++
++# LLM-related
++.flywheel/
++.claude/
++.factory/
++
++# Local research, audit, and QA material (not published)
++docs/research/
++docs/audits/
++docs/qa/
++jobs/
++terminal-bench-2-1/
++
++# Reference source of other tools (never published)
++inspiration/
++
++# Stray process artifacts
++/pid
 diff --git a/collector.ts b/collector.ts
 new file mode 100644
 --- /dev/null

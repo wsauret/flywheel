@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "role": "development",
-  "contentIdentity": "39c6ed690b8d5d25166f45dd128b69078638b3e7c73b206e6961d7c39fbe2e3c",
+  "contentIdentity": "cade693fb584232fccf6350d79744bea9bfd96bdf7ea9d421435c25532e39d16",
   "testIds": [
     "acceptance/contract.test.ts > unwraps nested objects without dropping trailing fields",
     "acceptance/contract.test.ts > refuses complete array envelopes as arrays",

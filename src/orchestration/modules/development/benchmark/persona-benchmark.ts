@@ -5,7 +5,7 @@ import type { OwnedCommandRunner } from "../../../../infra/owned-command.js";
 import { loadStandalonePersonaRegistry } from "../../../../workflows/agents/registry.js";
 import { benchmarkMode, RESEARCH_TASKS_CHANGED, resolveReviewFixture, type BenchmarkCatalog, type BenchmarkMode, type ImplementTask, type ResearchTask, type ReviewTask } from "./catalog.js";
 import { captureImplementation, provisionTaskSandbox } from "./implement-task.js";
-import { materializeCommitSnapshot, withSnapshotWorkspace, withTrialWorkspace } from "./snapshot-workspace.js";
+import { withSnapshotWorkspace, withTrialWorkspace } from "./snapshot-workspace.js";
 import { buildImplementRawResults, judgeImplementPairs, renderImplementReport, scoreImplementTraps, type ImplementCandidate } from "./implement-scoring.js";
 import { judgePairs, type JudgeAttemptReport, type JudgeModel, type JudgeVerdict } from "./judge.js";
 import { judgeOverhead, renderReport, renderReviewReport, unsuccessfulOverhead, type ReportCounts } from "./reports.js";
@@ -232,10 +232,9 @@ function isImplementCandidate(result: CellRunResult | ImplementCandidate): resul
   return "diff" in result;
 }
 
-async function materializeReviewSandbox(catalog: BenchmarkCatalog, task: ReviewTask, sandbox: string, run: OwnedCommandRunner): Promise<void> {
+async function materializeReviewSandbox(catalog: BenchmarkCatalog, task: ReviewTask, sandbox: string): Promise<void> {
   const fixture = await resolveReviewFixture(catalog.reviewFixturesDir, task);
-  if (fixture.kind === "archive") await materializeCommitSnapshot(catalog.projectRoot, fixture.snapshot, sandbox, run);
-  else await cp(fixture.projectDir, sandbox, { recursive: true });
+  await cp(fixture.projectDir, sandbox, { recursive: true });
   await cp(fixture.artifactPath, join(sandbox, task.artifact));
 }
 
@@ -549,7 +548,7 @@ async function runImplementCell(cell: BenchmarkCell, task: ImplementTask, contex
 async function runReviewCell(cell: BenchmarkCell, task: ReviewTask, context: CellContext): Promise<CellRunResult> {
   await Bun.write(join(context.cellDirectory, "diff.patch"), "");
   return await withTrialWorkspace(
-    (sandbox) => materializeReviewSandbox(context.deps.catalog, task, sandbox, context.scope.run),
+    (sandbox) => materializeReviewSandbox(context.deps.catalog, task, sandbox),
     (sandbox) => runOne(cell, context, sandbox, undefined, join(context.cellDirectory, "transcript.jsonl")),
   );
 }

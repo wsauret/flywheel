@@ -1,27 +1,21 @@
 // The pinned chat-ab judge and its pairwise call, shared by the comparison of
 // two campaigns (compare.ts) and the absolute scorer (score.ts), which admits
-// the same judge. A pairwise call reads the request, the fix that shipped (as a
-// statement of intent only), and two redacted changes under the neutral
+// the same judge. A pairwise call reads the request, the task's reference.patch
+// (as a statement of intent only), and two redacted changes under the neutral
 // labels A and B, each with its final handoff when it has one.
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Schema } from "effect";
-import type { OwnedCommandRunner } from "../../src/infra/owned-command.js";
 import { admitBenchmark } from "../../src/orchestration/modules/development/benchmark/admission.js";
 import { completeJudge, type JudgeModel } from "../../src/orchestration/modules/development/benchmark/judge.js";
 import { createBenchmarkRuntime } from "../shared/runtime.js";
 import { REPO_ROOT, TASKS_DIR } from "./harness-paths.js";
 import { CHAT_AB_JUDGE, type Redaction, type RunInputs } from "./judge-inputs.js";
-import { taskReference } from "./tasks.js";
 
 /** How many judge calls run at once. */
 const JUDGE_CONCURRENCY = 3;
 const JUDGE_TIMEOUT_MS = 600_000;
 const MAX_REFERENCE_CHARS = 80_000;
-/** A reference commit that mixes unrelated work names the files that hold the fix. */
-const REFERENCE_PATHS = new Map([
-  ["provider-chain-fix", ["flywheel-tui/src/infra/session-notice.ts", "flywheel-tui/src/orchestration/agent-runtime/llm/anthropic.ts", "flywheel-tui/src/orchestration/agent-runtime/llm/openai-completions.ts", "flywheel-tui/src/orchestration/agent-runtime/llm/openai.ts", "flywheel-tui/src/orchestration/agent-runtime/llm/provider-availability.ts", "flywheel-tui/src/orchestration/agent-runtime/llm/provider-chain-client.ts"]],
-]);
 
 export const PAIR_JUDGE_INSTRUCTIONS = [
   "You are a staff engineer judging two candidate changes made for the same request in the Flywheel repository (TypeScript on Bun). You do not know who wrote either change.",
@@ -42,10 +36,9 @@ export const VerdictSchema = Schema.Struct({ correctA: CorrectSchema, correctB: 
 type Verdict = typeof VerdictSchema.Type;
 const decodeVerdict = Schema.decodeUnknownSync(VerdictSchema);
 
-/** The admitted judge, with the runner its calls read the reference fix through. */
+/** The admitted judge and the authority it was admitted under. */
 export interface ChatAbJudge extends AsyncDisposable {
   readonly model: JudgeModel;
-  readonly run: OwnedCommandRunner;
   readonly profileId?: string;
   readonly authorityIncarnation?: string;
 }
@@ -64,24 +57,16 @@ export async function admitChatAbJudge(authProfile: string, validateModel?: (mod
       shell: runtime.shell,
     }, [{ role: "judge", ...CHAT_AB_JUDGE }]);
     const model = await admission.createJudge(CHAT_AB_JUDGE.model, "", CHAT_AB_JUDGE.effort, evidenceDirectory, validateModel);
-    return { model, run: runtime.runOwnedCommand, profileId: runtime.profileId, authorityIncarnation: runtime.usageAuthority.authorityIncarnation, [Symbol.asyncDispose]: () => runtime[Symbol.asyncDispose]() };
+    return { model, profileId: runtime.profileId, authorityIncarnation: runtime.usageAuthority.authorityIncarnation, [Symbol.asyncDispose]: () => runtime[Symbol.asyncDispose]() };
   } catch (cause) {
     await runtime[Symbol.asyncDispose]();
     throw cause;
   }
 }
 
-/** Reads and redacts reference.patch when present, or the shipped fix from WHY.md without docs or benchmark churn. */
-export async function referenceFix(task: string, run: OwnedCommandRunner, redaction: Redaction, tasksDir = TASKS_DIR): Promise<string> {
-  const reference = await taskReference({ id: task, taskDir: join(tasksDir, task) });
-  let diff: string;
-  if (reference.kind === "patch") diff = await readFile(reference.path, "utf8");
-  else {
-    const paths = REFERENCE_PATHS.get(task);
-    const shown = await run(["git", "-C", REPO_ROOT, "show", "--format=%s%n", reference.commit, "--", ...(paths ?? [".", ":(exclude)docs", ":(exclude)bench"])], { cwd: REPO_ROOT, env: { PATH: process.env.PATH ?? "/usr/bin:/bin" }, timeoutMs: 60_000 });
-    if (shown.exitCode !== 0 || shown.stdoutTruncated) throw new Error(`git show ${reference.commit} failed for ${task}: exit code ${shown.exitCode}`);
-    diff = shown.stdout;
-  }
+/** Reads and redacts the task's reference.patch, which the task contract requires. */
+export async function referenceFix(task: string, redaction: Redaction, tasksDir = TASKS_DIR): Promise<string> {
+  const diff = await readFile(join(tasksDir, task, "reference.patch"), "utf8");
   return redaction.redact(diff.length > MAX_REFERENCE_CHARS ? `${diff.slice(0, MAX_REFERENCE_CHARS)}\n[reference truncated]` : diff);
 }
 
@@ -107,7 +92,7 @@ export interface PairCall {
 
 /** Asks the judge which of two changes for `task` is better. A reply that does not parse is an error, not a verdict. */
 export async function judgePair(judge: ChatAbJudge, task: string, redaction: Redaction, slotA: RunInputs, slotB: RunInputs): Promise<PairCall> {
-  const settlement = await completeJudge(judge.model, redaction.redact(pairPrompt(await referenceFix(task, judge.run, redaction), slotA, slotB)), JUDGE_TIMEOUT_MS);
+  const settlement = await completeJudge(judge.model, redaction.redact(pairPrompt(await referenceFix(task, redaction), slotA, slotB)), JUDGE_TIMEOUT_MS);
   const usd = settlement.accounting.estimatedUsd.kind === "observed" ? settlement.accounting.estimatedUsd.value : null;
   if (settlement.error !== null) return { verdict: null, error: settlement.error, usd };
   try {

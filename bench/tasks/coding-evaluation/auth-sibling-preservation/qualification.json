@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "role": "reserved-evaluation",
-  "contentIdentity": "010eb9c5c544df8ea57044fb98a035289d3f804762f65041a8a1b87eeaf343f4",
+  "contentIdentity": "71dc45f2e0c5eb40ea1b6e757f384e2c4d51e40cc700a48d2d4c3d2a97543e42",
   "testIds": [
     "acceptance/auth-sibling-preservation.test.ts > replaceRejectedProviderCredentials > preserves every byte of a partially damaged account collection",
     "acceptance/auth-sibling-preservation.test.ts > replaceRejectedProviderCredentials > repairs a wholly rejected provider while preserving unknown siblings and receipt entries",

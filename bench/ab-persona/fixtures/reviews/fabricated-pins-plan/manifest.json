@@ -1,7 +1,5 @@
 {
   "title": "Plan review: dependency pin reproducibility and packaged-runbook alignment (real snapshot, fabricated claims seeded)",
-  "commit": "475945d1b",
-  "paths": ["package.json", "tests/unit/scripts", "vscode/.vscodeignore", "vscode/docs"],
   "defects": [
     {
       "id": "exact-pin-from-caret",

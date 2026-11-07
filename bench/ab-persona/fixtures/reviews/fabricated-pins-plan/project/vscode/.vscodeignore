@@ -1,0 +1,31 @@
+# Sources and tooling: the bundles in out/ are what runs. The runtime's own
+# source is outside this directory and so is never a candidate for the package
+# — the protocol it contributes is already compiled into out/extension.js.
+src/**
+webview/**
+scripts/**
+docs/**
+# Except the one docs file the extension opens at runtime. Ignored with the
+# rest, the help button would open a path that is not in the package.
+!docs/about-flywheel.md
+.vscode/**
+node_modules/**
+
+**/*.ts
+**/*.tsx
+**/*.map
+**/*.test.*
+tsconfig.json
+.gitignore
+.github/**
+
+# The runtime this package carries. Platform-targeted packages stage exactly
+# one of these; a universal package carries none and falls back to PATH.
+!runtime/**
+
+# Flywheel's state for whichever project this was built in: the session store,
+# its write-ahead log, diagnostics, and locks. `.gitignore` does not reach here
+# — vsce reads this file and nothing else — so ignoring it for git left it in
+# the package. The database holds the full text of every conversation and tool
+# result, and a published .vsix is downloadable by anyone.
+.flywheel/**

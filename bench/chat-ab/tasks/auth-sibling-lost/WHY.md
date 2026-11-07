@@ -1,8 +1,8 @@
 # auth-sibling-lost
 
-Fix commit: `def651a34848b23ffb4289b7faf5094d870b6e16` fix(auth): keep healthy accounts when a stored sibling is malformed
+Reference: `reference.patch`, the fix against the bugged sandbox. It returns the tree to the base commit.
 
-Base commit: `660a22b5f26b3dcb8d62c6a75143000d0aa81c4c` (the parent of the fix)
+Base commit: `85c69871d53e3f1dba2532773dd7db38a93c41b3`, a public commit of `main` that holds the fix. `sandbox.patch` puts the defect back. The defect first shipped before the source became public, and its original fix was "fix(auth): keep healthy accounts when a stored sibling is malformed".
 
 ## The bug
 
@@ -18,7 +18,11 @@ The user sees a lost account after a login. The cause is a decode classification
 
 ## Validation
 
-The sandbox was built from `task.json` (git archive of the listed paths at the base, `sandbox.patch` sets the bunfig test root to `.`, baseline commit, `bun install`).
+The sandbox is built from `task.json`: a git archive of the listed paths at the base, then `sandbox.patch`, `bun install`, and a baseline commit. `sandbox.patch` sets the bunfig test root to `.`. It restores the pre-fix predicate and doc comments of both replacement functions in `src/infra/auth/auth-store-mutations.ts`, and it returns the repair test in `tests/unit/orchestration/auth/auth-actions.test.ts` to its state before the fix (old name, no damaged-collection case), so the unit suite passes on the bugged tree as it did before the fix.
 
 - Base: 1 pass, 1 fail (the stored collection holds only the new account).
-- Base plus the fix commit's `src` changes: 2 pass, 0 fail. Two repeated runs gave the same result.
+- Base plus `reference.patch`: 2 pass, 0 fail:
+
+```
+bun --env-file=.env.test --conditions=browser bench/chat-ab/check-task.ts auth-sibling-lost --apply-diff bench/chat-ab/tasks/auth-sibling-lost/reference.patch
+```

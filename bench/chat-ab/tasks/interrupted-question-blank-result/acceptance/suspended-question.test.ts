@@ -9,6 +9,7 @@ import type { BackgroundExecutionOwner } from "../src/orchestration/agent-runtim
 import type { RuntimeTool, ToolContext, ToolResult } from "../src/orchestration/agent-runtime/tools/types.js"
 import type { SessionFactWriter } from "../src/orchestration/session/session-fact-writer.js"
 import type { StreamEvent, ToolCall } from "../src/orchestration/agent-runtime/llm/types.js"
+import { fixedTurnOutputBound } from "../src/orchestration/agent-runtime/compaction/compaction-policy.js"
 import { RequestToolMap } from "../tests/helpers/request-tool-surface.js"
 
 function makeTool(execute: RuntimeTool["execute"], name = "waiter", extra: Partial<RuntimeTool> = {}): RuntimeTool {
@@ -16,12 +17,8 @@ function makeTool(execute: RuntimeTool["execute"], name = "waiter", extra: Parti
     name,
     action: "shell_exec",
     description: "Wait for an abort signal",
-    inputSchema: {},
-    isOptimistic: false,
-    supportsStreamingContent: false,
-    displayName: "Waiter",
-    verbs: { progressive: "Waiting", past: "Waited" },
-    getDetail: () => null,
+    inputSchema: { type: "object" },
+    isConcurrencySafe: false,
     execute,
     ...extra,
   }
@@ -63,12 +60,13 @@ function harness(input: {
     afterToolCall: undefined,
     onEvent,
     artifactScopeId: "test-session",
+    outputBound: fixedTurnOutputBound(undefined),
   })
   return {
     events,
-    onToolUse: (tc) => dispatcher.onToolUse(tc),
+    onToolUse: (tc: ToolCall) => dispatcher.onToolUse(tc),
     onStreamRetry: () => dispatcher.onStreamRetry(),
-    settle: async (calls) => {
+    settle: async (calls: readonly ToolCall[]) => {
       try {
         const settled = await Effect.runPromise(settleTurn({
           dispatcher,
@@ -81,7 +79,6 @@ function harness(input: {
           commitAssistantBarrier: async () => {},
           commitResults: async () => {},
           commitDisplayBarrier: async () => {},
-          retireCheckpoints: async () => {},
           onEvent,
           publishTerminal: () => {},
           publishSettlement: () => {},
@@ -100,6 +97,7 @@ describe("a question that suspends the turn", () => {
     const checkpoints: unknown[] = []
     const writer: SessionFactWriter = {
       record: async () => null,
+      recordBatch: async () => { throw new Error("unused request audit") },
       recordGuarded: async () => null,
       transaction: async (fn) => { fn() },
       dispose: () => {},
@@ -144,6 +142,7 @@ describe("a question that suspends the turn", () => {
     const checkpointed: string[] = []
     const writer: SessionFactWriter = {
       record: async () => null,
+      recordBatch: async () => { throw new Error("unused request audit") },
       recordGuarded: async () => null,
       transaction: async (fn) => { fn() },
       dispose: () => {},

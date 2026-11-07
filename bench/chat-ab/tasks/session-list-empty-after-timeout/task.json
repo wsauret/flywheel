@@ -3,35 +3,10 @@
   "stratum": "production-history",
   "timeoutMinutes": 45,
   "sandbox": {
-    "commit": "217735ebeac0629ea024cbefa111be957469d3d8",
-    "paths": [
-      "src",
-      "tests",
-      "docs",
-      "scripts",
-      "package.json",
-      "bun.lock",
-      "tsconfig.json",
-      "oxlint.config.ts",
-      "knip.jsonc",
-      "AGENTS.md",
-      ".gitignore",
-      "bunfig.toml",
-      "relay/package.json",
-      "vscode/package.json",
-      "webview/package.json",
-      "website/package.json",
-      "crates/tokenizer/tokenizer-prebuilt.json",
-      "crates/tokenizer/flywheel-tokenizer.wasm.zst",
-      ".env.test"
-    ],
+    "commit": "85c69871d53e3f1dba2532773dd7db38a93c41b3",
+    "paths": ["src", "tests", "docs", "scripts", "package.json", "bun.lock", "tsconfig.json", "oxlint.config.ts", "knip.jsonc", "AGENTS.md", ".gitignore", "bunfig.toml", ".env.test", "relay", "vscode", "webview", "website", "crates/tokenizer/tokenizer-prebuilt.json", "crates/tokenizer/flywheel-tokenizer.wasm.zst"],
     "patch": "sandbox.patch",
-    "setup": [
-      [
-        "bun",
-        "install"
-      ]
-    ]
+    "setup": [["bun", "install"]]
   },
   "acceptanceBaseline": {
     "failToPass": [

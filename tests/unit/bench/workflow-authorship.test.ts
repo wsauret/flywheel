@@ -16,7 +16,6 @@ import { readCampaignArtifact } from "../../../bench/chat-ab/campaign-artifacts.
 import { loadBenchTasks } from "../../../bench/chat-ab/tasks.js";
 import { referenceFix } from "../../../bench/chat-ab/pair-judge.js";
 import { codingRedaction } from "../../../bench/chat-ab/block-judge.js";
-import { fakeOwnedCommandRunner, ownedCommandResult } from "../../helpers/owned-command-fake.js";
 
 const temporary = temporaryDirectories();
 const identity = "a".repeat(64);
@@ -202,23 +201,11 @@ test("requires explicit workflow-agent assignments and pins Workflows On without
   expect(calibration.workflowsMode).toBe("on");
 });
 
-test("reads and redacts a patch-built judge reference before considering a shipped fix", async () => {
+test("reads and redacts the task's reference patch as the judge reference", async () => {
   const tasksDir = temporary("workflow-reference-");
   await mkdir(join(tasksDir, "patch-task"), { recursive: true });
-  await writeFile(join(tasksDir, "patch-task", "WHY.md"), "This fixture has no shipped fix.\n");
   await writeFile(join(tasksDir, "patch-task", "reference.patch"), "+claude-sonnet-5-5\n");
-  const redaction = codingRedaction(["claude-sonnet-5-5"]);
-  const runner = fakeOwnedCommandRunner(async () => ownedCommandResult("shipped claude-sonnet-5-5"));
-  expect(await referenceFix("patch-task", runner.run, redaction, tasksDir)).toBe("+<model>\n");
-  expect(runner.calls).toHaveLength(0);
-  await writeFile(join(tasksDir, "patch-task", "WHY.md"), "Fix commit: `1234567`\n");
-  expect(await referenceFix("patch-task", runner.run, redaction, tasksDir)).toBe("+<model>\n");
-  expect(runner.calls).toHaveLength(0);
-  await mkdir(join(tasksDir, "shipped-task"), { recursive: true });
-  await writeFile(join(tasksDir, "shipped-task", "WHY.md"), "Fix commit: `abcdef0`\n");
-  expect(await referenceFix("shipped-task", runner.run, redaction, tasksDir)).toBe("shipped <model>");
-  expect(runner.calls).toHaveLength(1);
-  expect(runner.calls[0]?.command).toContain("abcdef0");
+  expect(await referenceFix("patch-task", codingRedaction(["claude-sonnet-5-5"]), tasksDir)).toBe("+<model>\n");
 });
 
 test("plan and run task loading refuse an unjudgeable task before any cell starts", async () => {
@@ -240,7 +227,7 @@ test("plan and run task loading refuse an unjudgeable task before any cell start
   const family = workflowAuthorshipFamily(design, tasksDir);
   for (const action of ["plan", "run"] as const) {
     await expect(family.loadTasks([id], { action, results: tasksDir, reservedEvaluation: false, keepSandboxes: false, dryRun: false }))
-      .rejects.toThrow("missing-reference has neither reference.patch nor a fix commit in WHY.md");
+      .rejects.toThrow("Task missing-reference is incomplete: reference.patch");
   }
   await writeFile(join(taskDir, "reference.patch"), "reference");
   expect(await family.loadTasks([id], { action: "plan", results: tasksDir, reservedEvaluation: false, keepSandboxes: false, dryRun: false })).toHaveLength(1);

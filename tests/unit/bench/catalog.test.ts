@@ -130,20 +130,6 @@ describe("review fixture containment", () => {
     expect(await identity()).not.toBe(original);
   });
 
-  it("refuses a mutable Git ref as a review snapshot selector", async () => {
-    const { fixtureDir } = await syntheticReviewFixture();
-    await Bun.write(join(fixtureDir, "manifest.json"), JSON.stringify({
-      title: "Ledger",
-      review_prompt_hint: "Read the ledger",
-      commit: "HEAD",
-      paths: ["ledger.ts"],
-      defects: [],
-    }));
-
-    await expect(createBenchmarkCatalog(syntheticRoot ?? "").reviewTasks())
-      .rejects.toThrow("commit must be a hexadecimal Git object ID");
-  });
-
   it("refuses a fixture whose project directory is a symlink out of the fixtures root", async () => {
     const { fixtureDir, outside } = await syntheticReviewFixture();
     await rm(join(fixtureDir, "project"), { recursive: true, force: true });

@@ -3,10 +3,10 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createSqliteEventStore } from "../src/infra/sqlite-event-store.js";
-import type { EventStore } from "../src/infra/event-store-types.js";
+import { asAsyncEventReadSurface } from "../src/infra/event-store-types.js";
 import { resolveEventStoreDbFile } from "../src/infra/paths.js";
 import { tryOpenConversationTree } from "../src/orchestration/session/conversation/conversation-tree-handle.js";
-import { convertMessages } from "../src/orchestration/agent-runtime/llm/anthropic-adapter-helpers.js";
+import { anthropicHistoryTarget, convertMessages } from "../src/orchestration/agent-runtime/llm/anthropic-adapter-helpers.js";
 
 const anthropicMeta = { api: "anthropic-messages" as const, provider: "anthropic" as const, model: "claude", timestamp: 1 };
 
@@ -16,7 +16,7 @@ type ToolResultBlock = RequestBlock & { type: "tool_result"; tool_use_id: string
 type RecordedMessage = Record<string, unknown> & { kind: string };
 
 let baseDir: string;
-let store: EventStore;
+let store: ReturnType<typeof createSqliteEventStore>;
 
 beforeEach(() => {
   baseDir = mkdtempSync(join(tmpdir(), "acceptance-blank-error-history-"));
@@ -36,7 +36,7 @@ afterEach(() => {
  *  Anthropic request. A repair in the fact decoder, the recovery boundary,
  *  `buildSessionContext`, `healConversation`, the converter, or
  *  `convertMessages` itself reaches this request. */
-function requestFromRecordedSession(conversationId: string, recorded: RecordedMessage[]): Request {
+async function requestFromRecordedSession(conversationId: string, recorded: RecordedMessage[]): Promise<Request> {
   const aggregateId = `conversation:${conversationId}`;
   const createdAt = new Date(0).toISOString();
   const entries = recorded.map((message, index) => ({
@@ -51,9 +51,9 @@ function requestFromRecordedSession(conversationId: string, recorded: RecordedMe
     { aggregateId, sessionId: conversationId, type: "chat.entries.appended", version: 3, actor: "flywheel", timestamp: 2, payload: { conversationId, entries } },
   ]);
 
-  const tree = tryOpenConversationTree({ conversationId, sessionId: conversationId, store });
+  const tree = await tryOpenConversationTree({ conversationId, sessionId: conversationId, store: asAsyncEventReadSurface(store) });
   if (!tree) throw new Error("expected the recorded conversation to open");
-  return convertMessages({ messages: tree.buildContext().messages, accessProvider: "anthropic_api", model: "claude" });
+  return convertMessages({ messages: (await tree.buildContext()).messages, target: anthropicHistoryTarget("anthropic_api", "claude", false) });
 }
 
 function blocksOf(request: Request): RequestBlock[] {
@@ -74,8 +74,8 @@ function wireText(result: ToolResultBlock): string {
 }
 
 describe("a recorded session with a blank error tool result", () => {
-  test.each(["", "  \n"])("a session that already holds a blank interrupted question sends its next message with a non-empty error result for that question (%j)", (blank) => {
-    const request = requestFromRecordedSession(`conv-interrupted-${blank.length}`, [
+  test.each(["", "  \n"])("a session that already holds a blank interrupted question sends its next message with a non-empty error result for that question (%j)", async (blank) => {
+    const request = await requestFromRecordedSession(`conv-interrupted-${blank.length}`, [
       { kind: "user", content: "Help me pick a name.", origin: "human" },
       { kind: "assistant", content: [{ type: "tool_use", id: "call_1", name: "ask_user", input: {} }], ...anthropicMeta },
       { kind: "toolResult", toolUseId: "call_1", content: [{ type: "text", text: blank }], isError: true, interrupted: true },
@@ -97,8 +97,8 @@ describe("a recorded session with a blank error tool result", () => {
   // Engineering care beyond the interrupt: the message names the rule that
   // Anthropic enforces, an error tool_result with empty content. A recorded
   // session that holds such a result for any reason must also send again.
-  test("a session that holds any blank error result sends its next message with non-empty error content", () => {
-    const request = requestFromRecordedSession("conv-blank-error", [
+  test("a session that holds any blank error result sends its next message with non-empty error content", async () => {
+    const request = await requestFromRecordedSession("conv-blank-error", [
       { kind: "user", content: "Check the file.", origin: "human" },
       { kind: "assistant", content: [{ type: "tool_use", id: "blank", name: "read", input: {} }], ...anthropicMeta },
       { kind: "toolResult", toolUseId: "blank", content: [{ type: "text", text: "" }], isError: true },
@@ -116,8 +116,8 @@ describe("a recorded session with a blank error tool result", () => {
 
   // Regression guard: this passes on the base. A fix must not rewrite an
   // error result that already carries text.
-  test("a recorded non-blank error result reaches Anthropic as written", () => {
-    const request = requestFromRecordedSession("conv-written-error", [
+  test("a recorded non-blank error result reaches Anthropic as written", async () => {
+    const request = await requestFromRecordedSession("conv-written-error", [
       { kind: "user", content: "Read the file.", origin: "human" },
       { kind: "assistant", content: [{ type: "tool_use", id: "call_2", name: "read", input: {} }], ...anthropicMeta },
       { kind: "toolResult", toolUseId: "call_2", content: [{ type: "text", text: "file not found" }], isError: true },
@@ -135,8 +135,8 @@ describe("a recorded session with a blank error tool result", () => {
   // Regression guard: this passes on the base. A repair keys on the error
   // flag. It must not turn a blank successful result into an error, because
   // the model then reads a tool that worked as a tool that failed.
-  test("a recorded blank successful result is not turned into an error", () => {
-    const request = requestFromRecordedSession("conv-blank-success", [
+  test("a recorded blank successful result is not turned into an error", async () => {
+    const request = await requestFromRecordedSession("conv-blank-success", [
       { kind: "user", content: "Create the file.", origin: "human" },
       { kind: "assistant", content: [{ type: "tool_use", id: "call_3", name: "write", input: {} }], ...anthropicMeta },
       { kind: "toolResult", toolUseId: "call_3", content: [{ type: "text", text: "" }], isError: false },

@@ -11,3 +11,288 @@ index d78a314..b029fbd 100644
  preload = ["./tests/preload.ts"]
  
  # The vscode workspace flips bun's default linker to "isolated", which stores
+diff --git a/src/orchestration/agent-runtime/background-work.ts b/src/orchestration/agent-runtime/background-work.ts
+index df1b5e5e6..54665677c 100644
+--- a/src/orchestration/agent-runtime/background-work.ts
++++ b/src/orchestration/agent-runtime/background-work.ts
+@@ -853,10 +853,13 @@ export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundW
+     ...lifecycle,
+     flushSettledNotifications: settling.flush,
+     track: (args) => track(args, settling.onSettled),
++    // Handoff waits for the children this agent dispatched. A command's
++    // result reaches the conversation through its own notification.
+     assertHandoffReady(): HandoffBlock | null {
+       const work = outstanding();
+-      return backgroundHandoffBlock(work.live, [
+-        ...work.pending.map((item) => item.description),
++      const command = (id: string): boolean => processes.record(id)?.kind === "background_command";
++      return backgroundHandoffBlock(work.live.filter((entry) => !command(entry.meta.id)), [
++        ...work.pending.filter((item) => !command(item.id)).map((item) => item.description),
+         ...(opts.pendingInput?.() ? ["queued Chat input"] : []),
+       ]);
+     },
+diff --git a/tests/unit/orchestration/agent-runtime/background-task-registry.test.ts b/tests/unit/orchestration/agent-runtime/background-task-registry.test.ts
+index 6670b8f..f52f314 100644
+--- a/tests/unit/orchestration/agent-runtime/background-task-registry.test.ts
++++ b/tests/unit/orchestration/agent-runtime/background-task-registry.test.ts
+@@ -1,7 +1,6 @@
+ import { describe, expect, it } from "bun:test";
+ 
+ import {
+-  awaitsWork,
+   createBackgroundWorkRegistry,
+   type BackgroundWorkResult,
+ } from "../../../../src/orchestration/agent-runtime/background-work.js";
+@@ -415,10 +414,7 @@ describe("createBackgroundWorkRegistry (chat)", () => {
+ 
+     // A command's completion is no runtime notice, so it dispatches a hosted agent that it reaches.
+     expect(published).toEqual([{ text: expect.stringContaining("exited with code 0"), key: "command:bash-bg-1", runtimeNotice: false }]);
+-    expect(registry.assertHandoffReady()).not.toBeNull();
+     committed.resolve();
+-    await delay(1);
+-    expect(registry.assertHandoffReady()).toBeNull();
+   });
+ 
+   it("keeps the start time a tracked command was given", () => {
+@@ -589,36 +585,6 @@ describe("createBackgroundWorkRegistry (workflow)", () => {
+     expect(registry.assertHandoffReady()).toBeNull();
+   });
+ 
+-  it("blocks handoff while a background command or a service runs, and parks only on the command", async () => {
+-    const registry = createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: () => {} });
+-    const done = deferred<BackgroundWorkResult>();
+-
+-    registry.track({
+-      done: done.promise,
+-      meta: { id: "command-1", type: "background_command", description: "bun run test:perf" },
+-    });
+-    registry.track({
+-      done: new Promise<never>(() => {}),
+-      meta: { id: "command-2", type: "background_command", description: "python3 server.py" },
+-      service: true,
+-    });
+-
+-    const blockers = registry.assertHandoffReady();
+-    expect(blockers).not.toBeNull();
+-    expect(blockers!.active).toBe(1);
+-    expect(blockers!.activeDescriptions).toEqual(["bun run test:perf"]);
+-    expect(blockers!.serviceDescriptions).toEqual(["python3 server.py"]);
+-    expect(awaitsWork(blockers)).toBe(true);
+-
+-    done.resolve({ status: "completed", content: "ok" });
+-    await delay(5);
+-
+-    expect(registry.activeTaskCount()).toBe(1);
+-    const serviceOnly = registry.assertHandoffReady();
+-    expect(serviceOnly).toMatchObject({ active: 0, pending: 0, services: 1, serviceDescriptions: ["python3 server.py"] });
+-    expect(awaitsWork(serviceOnly)).toBe(false);
+-  });
+-
+   it("preserves XML subagent batch format", async () => {
+     const notes: string[] = [];
+     const delivered = Promise.withResolvers<void>();
+diff --git a/tests/unit/orchestration/agent-runtime/context/loop-wait-placeholder.test.ts b/tests/unit/orchestration/agent-runtime/context/loop-wait-placeholder.test.ts
+index 24160c3..675f5be 100644
+--- a/tests/unit/orchestration/agent-runtime/context/loop-wait-placeholder.test.ts
++++ b/tests/unit/orchestration/agent-runtime/context/loop-wait-placeholder.test.ts
+@@ -428,7 +428,7 @@ describe("agent loop wait settlement", () => {
+       done: new Promise((resolve) => {
+         settleTask = () => { resolve({ status: "completed", content: "verifier passed" }); };
+       }),
+-      meta: { id: "bg_1", type: "background_command", description: "verifier" },
++      meta: { id: "bg_1", type: "subagent", description: "verifier" },
+     });
+ 
+     let parkCount = 0;
+@@ -548,44 +548,6 @@ describe("agent loop wait settlement", () => {
+     expect(registry.activeTaskCount()).toBe(running);
+   });
+ 
+-  test("a step that ends its turn over a running service gets the handoff nudge instead of parking, and hands off only after it stops the service", async () => {
+-    const call = (id: string, name: string, input: { [key: string]: unknown }) => ({ events: [{ kind: "tool_use" as const, toolCall: { id, name, input } }, { kind: "done" as const, stopReason: "tool_use" as const }] });
+-    const client = makeFakeLLMClient([
+-      call("tc_1", "start", {}),
+-      { events: [{ kind: "text_delta", text: "The server runs.", blockKey: "text" }, { kind: "done", stopReason: "end_turn" }] },
+-      call("tc_2", "handoff", { summary: "early" }),
+-      call("tc_3", "stop", {}),
+-      call("tc_4", "handoff", { summary: "served" }),
+-      { events: [{ kind: "text_delta", text: "Done.", blockKey: "text" }, { kind: "done", stopReason: "end_turn" }] },
+-    ]);
+-    const registry = createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: () => {} });
+-    const server = Promise.withResolvers<BackgroundWorkResult>();
+-    const start: RuntimeTool = { name: "start", action: "shell_exec", description: "starts a service", inputSchema: { type: "object" }, isConcurrencySafe: true, execute: async () => {
+-      registry.track({ done: server.promise, meta: { id: "bg_1", type: "background_command", description: "server" }, service: true });
+-      return { content: "Running in background as managed process bg_1.", outcome: "ok" };
+-    } };
+-    const stop: RuntimeTool = { name: "stop", action: "shell_exec", description: "stops the service", inputSchema: { type: "object" }, isConcurrencySafe: true, execute: async () => {
+-      server.resolve({ status: "cancelled", content: "" });
+-      await new Promise((resolve) => setTimeout(resolve, 0));
+-      return { content: "Stopped process bg_1.", outcome: "ok" };
+-    } };
+-    const handedOff: unknown[] = [];
+-    let parkCount = 0;
+-    const result = await runAgentLoop({
+-      client, tools: new RequestToolMap([["start", start], ["stop", stop], ["handoff", createHandoffTool({ schema: { input: { type: "object", properties: { summary: { type: "string", description: "summary" } }, required: ["summary"] } } })]]),
+-      systemPrompt: stableSystemPrompt("test"), instruction: "start the server, then hand off",
+-      executionCwd: "/scratch", userDataRoot: "/scratch/.test-account", projectRoot: "/scratch", providerSessionKey: "service-handoff", promptCacheKey: "service-handoff", artifactScopeId: "service-handoff", retrievalSessionId: "service-handoff",
+-      handoff: { onContent: (content) => { handedOff.push(content); } }, persistence: { history: { append: () => {} } }, seed: { kind: "fresh" }, background: createBackgroundExecutionOwner(registry),
+-      inputSource: { drainPending: () => null, prepareWaitForInput: () => ({ commit: async () => { parkCount++; return null; }, cancel: async () => {} }) },
+-      onEvent: () => {},
+-    });
+-
+-    expect(result.kind).toBe("completed");
+-    expect(parkCount).toBe(0);
+-    expect(handedOff).toEqual([{ summary: "served" }]);
+-    expect(registry.activeTaskCount()).toBe(0);
+-  });
+-
+   test("a running benchmark parks a wait, and its one notification wakes the loop", async () => {
+     // A benchmark is not a subagent: it settles alone, through the standalone
+     // notification path, and that single notification must be enough to wake a
+diff --git a/tests/unit/orchestration/agent-runtime/tools/tools-handoff.test.ts b/tests/unit/orchestration/agent-runtime/tools/tools-handoff.test.ts
+index 6144f5c..7da03bb 100644
+--- a/tests/unit/orchestration/agent-runtime/tools/tools-handoff.test.ts
++++ b/tests/unit/orchestration/agent-runtime/tools/tools-handoff.test.ts
+@@ -501,15 +501,10 @@ describe("handoff tool", () => {
+     expect<unknown>(captured).toEqual({ summary });
+   });
+ 
+-  it("blocks stream-start admission until task and service completion receipts commit", async () => {
++  it("blocks stream-start admission until subagent completion receipts commit", async () => {
+     let captured: { [key: string]: unknown } | null = null;
+-    let receipt = Promise.withResolvers<void>();
++    const receipt = Promise.withResolvers<void>();
+     const registry = createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: () => receipt.promise });
+-    const commandDone = Promise.withResolvers<BackgroundWorkResult>();
+-    registry.track({
+-      done: commandDone.promise,
+-      meta: { id: "command-1", type: "background_command", description: "bun run test:perf" },
+-    });
+     const ctx = makeContext({
+       handoff: { onContent: (content) => { captured = content; } },
+       backgroundTasks: registry,
+@@ -522,23 +517,6 @@ describe("handoff tool", () => {
+       return request.refuse(call) ?? submit(handoffDefinition, call.input, ctx);
+     };
+ 
+-    const commandBlocked = await attempt("Premature");
+-    expect(commandBlocked.outcome).toBe("blocked");
+-    expect(commandBlocked.content).toContain("bun run test:perf");
+-    expect(commandBlocked.content).toContain("Wait for it or stop it");
+-    expect(captured).toBeNull();
+-
+-    commandDone.resolve({ status: "completed", content: "ok" });
+-    await new Promise((resolve) => setTimeout(resolve, 5));
+-    const commandPending = await attempt("Still premature");
+-    expect(commandPending.outcome).toBe("blocked");
+-    expect(commandPending.content).toContain("Results still owed");
+-    expect(captured).toBeNull();
+-    receipt.resolve();
+-    await Promise.resolve();
+-    await Promise.resolve();
+-    receipt = Promise.withResolvers<void>();
+-
+     const reviewerDone = Promise.withResolvers<BackgroundWorkResult>();
+     registry.track({
+       done: reviewerDone.promise,
+@@ -561,24 +539,6 @@ describe("handoff tool", () => {
+     receipt.resolve();
+     await Promise.resolve();
+     await Promise.resolve();
+-    receipt = Promise.withResolvers<void>();
+-    const serviceDone = Promise.withResolvers<BackgroundWorkResult>();
+-    registry.track({
+-      done: serviceDone.promise,
+-      meta: { id: "command-2", type: "background_command", description: "python3 server.py" },
+-      service: true,
+-    });
+-    const serviceRunning = await attempt("Server still up");
+-    expect(serviceRunning.outcome).toBe("blocked");
+-    expect(serviceRunning.content).toContain("python3 server.py");
+-    expect(serviceRunning.content).toContain("Stop each service with the process tool");
+-    expect(captured).toBeNull();
+-
+-    serviceDone.resolve({ status: "completed", content: "" });
+-    await new Promise((resolve) => setTimeout(resolve, 5));
+-    receipt.resolve();
+-    await Promise.resolve();
+-    await Promise.resolve();
+     const ok = await attempt("Final");
+     expect(ok.outcome).toBe("ok");
+     expect<unknown>(captured).toEqual({ summary: "Final" });
+@@ -598,7 +558,6 @@ describe("handoff tool", () => {
+     const mailbox = new ChatTurnMailbox();
+     const held = Promise.withResolvers<void>();
+     const delivered = Promise.withResolvers<void>();
+-    const done = Promise.withResolvers<BackgroundWorkResult>();
+     const captured: unknown[] = [];
+     const registry = createBackgroundWorkRegistry({
+       kind: "chat", pendingInput: () => mailbox.hasPending,
+@@ -608,7 +567,6 @@ describe("handoff tool", () => {
+         mailbox.enqueueSilentSystem(text);
+       },
+     });
+-    registry.track({ done: done.promise, meta: { id: "chat-command", type: "background_command", description: "verification" } });
+     const ctx = makeContext({ backgroundTasks: registry, handoff: { onContent: (value) => { captured.push(value); } } });
+     const tracker = createHandoffTracker({ background: registry });
+     const attempt = async (summary: string) => {
+@@ -617,14 +575,6 @@ describe("handoff tool", () => {
+       request.start(call);
+       return request.refuse(call) ?? submit(handoffDefinition, call.input, ctx);
+     };
+-    expect((await attempt("early")).outcome).toBe("blocked");
+-    done.resolve({ status: "completed", content: "done" });
+-    await delivered.promise;
+-    expect((await attempt("holding")).outcome).toBe("blocked");
+-    held.resolve();
+-    await Promise.resolve();
+-    expect((await attempt("queued")).outcome).toBe("blocked");
+-    mailbox.drainPending();
+ 
+     const child = Promise.withResolvers<BackgroundWorkResult>();
+     registry.track({ done: child.promise, meta: { id: "child", type: "subagent", description: "review" } });
+@@ -634,19 +584,12 @@ describe("handoff tool", () => {
+     await Promise.resolve();
+     expect((await attempt("child pending")).outcome).toBe("blocked");
+     registry.flushSettledNotifications();
++    await delivered.promise;
++    expect((await attempt("holding")).outcome).toBe("blocked");
++    held.resolve();
+     await Promise.resolve();
+     await Promise.resolve();
+-    mailbox.drainPending();
+-
+-    const service = Promise.withResolvers<BackgroundWorkResult>();
+-    registry.track({ done: service.promise, service: true, meta: { id: "service", type: "background_command", description: "server" } });
+-    const blocked = await attempt("service active");
+-    expect(blocked.outcome).toBe("blocked");
+-    expect(blocked.content).toContain("Stop each");
+-    service.resolve({ status: "completed", content: "" });
+-    await Promise.resolve();
+-    await Promise.resolve();
+-    await Promise.resolve();
++    expect((await attempt("queued")).outcome).toBe("blocked");
+     mailbox.drainPending();
+     expect((await attempt("all done")).outcome).toBe("ok");
+     expect(captured).toEqual([{ summary: "all done" }]);
+diff --git a/tests/unit/orchestration/runner/background-notification-delivery.test.ts b/tests/unit/orchestration/runner/background-notification-delivery.test.ts
+index ff4360f..c601c5f 100644
+--- a/tests/unit/orchestration/runner/background-notification-delivery.test.ts
++++ b/tests/unit/orchestration/runner/background-notification-delivery.test.ts
+@@ -100,7 +100,6 @@ describe("workflow background notification delivery", () => {
+     await new Promise<void>((resolve) => setImmediate(resolve))
+     await delivery.settle()
+     expect(committed).toBe(false)
+-    expect(registry.assertHandoffReady()).not.toBeNull()
+     expect(heldAtEnqueue).toEqual([["command:bash-bg-1"]])
+     const delivered = queue.drain()
+     expect(delivered).toMatchObject({ origin: "silent-system", backgroundNotificationIds: ["command:bash-bg-1"] })
+@@ -112,8 +111,6 @@ describe("workflow background notification delivery", () => {
+     expect(committed).toBe(false)
+     await conversation.flushSavePoint()
+     expect(committed).toBe(true)
+-    // A model request that carries this result can hand off immediately.
+-    expect(registry.assertHandoffReady()).toBeNull()
+     expect(store.readInFlight("flow", QUEUED_BACKGROUND_NOTIFICATION_IN_FLIGHT_KIND)).toEqual([])
+ 
+     delivery.enqueue(text, "command:bash-bg-1")

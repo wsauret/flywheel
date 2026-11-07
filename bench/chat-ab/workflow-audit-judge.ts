@@ -1,7 +1,5 @@
 import { readFile } from "node:fs/promises";
 import { Schema } from "effect";
-import type { OwnedCommandRunner } from "../../src/infra/owned-command.js";
-import { createCliLauncher } from "../../src/cli/runtime-launch.js";
 import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
 import { readCampaignArtifact } from "./campaign-artifacts.js";
 import { campaignCellKey, campaignIdentity } from "./campaign-store.js";
@@ -9,23 +7,14 @@ import type { JudgeJob } from "./block-judge.js";
 import { campaignBlinding, campaignRoleComparisons } from "./campaign-role-evidence.js";
 import { COMPARISON_TASK } from "./workflow-audit-tests.js";
 import { judgeCampaignPairs, type CampaignJudgeDependencies, type CampaignJudgeOptions } from "./campaign-pair-judge.js";
-import { CHAT_AB_JUDGE, type Redaction } from "./judge-inputs.js";
+import { CHAT_AB_JUDGE } from "./judge-inputs.js";
 import { referenceFix } from "./pair-judge.js";
-import { benchmarkCommandRunner } from "./benchmark-command.js";
 import { loadWorkflowAuditTasks, workflowAuditAnswer, workflowAuditFamily } from "./workflow-audit-family.js";
 import { workflowAuditLedger } from "./workflow-audit-store.js";
 
-/** The shipped fix of the fixture, which every bug audit is judged against. */
-async function shippedFix(redaction: Redaction, run: OwnedCommandRunner | undefined): Promise<string> {
-  if (run) return referenceFix(COMPARISON_TASK, run, redaction);
-  const launcher = await createCliLauncher();
-  try { return await referenceFix(COMPARISON_TASK, benchmarkCommandRunner(launcher.scope), redaction); }
-  finally { await launcher.dispose(); }
-}
-
 /** Judge hash-verified handoff answers in both orders, with refutation and a resumable shared judge ledger.
- *  A bug audit is judged against the shipped fix; an answer test against its written reference answer. */
-export async function judgeWorkflowAuditCampaign(options: CampaignJudgeOptions, dependencies: CampaignJudgeDependencies & { readonly run?: OwnedCommandRunner } = {}) {
+ *  A bug audit is judged against the fixture's reference fix; an answer test against its written reference answer. */
+export async function judgeWorkflowAuditCampaign(options: CampaignJudgeOptions, dependencies: CampaignJudgeDependencies = {}) {
   const { directory, a, b, authProfile } = options;
   const campaign = await workflowAuditLedger.open(directory);
   const events = await campaign.load();
@@ -40,7 +29,7 @@ export async function judgeWorkflowAuditCampaign(options: CampaignJudgeOptions, 
     "../../src/orchestration/modules/development/benchmark/judge.ts",
   ].map(async (path) => structuredIdentity(await readFile(new URL(path, import.meta.url), "utf8"))));
   const tasks = await loadWorkflowAuditTasks(campaign.manifest.tasks.map(({ id }) => id));
-  // Only a bug audit reads the shipped fix, once; an answer test carries its own reference answer.
+  // Only a bug audit reads the reference fix, once; an answer test carries its own reference answer.
   let fix: Promise<string> | undefined;
   const jobs = new Map<string, { job: JudgeJob<"a" | "b">; identity: string }>();
   const skipped: { task: string; repeat: number; reason: string }[] = [];
@@ -58,7 +47,7 @@ export async function judgeWorkflowAuditCampaign(options: CampaignJudgeOptions, 
       const request = String(workflowAuditFamily.message(task, a, "flywheel"));
       const reports = { a: answers[0]!, b: answers[1]! };
       const job: JudgeJob<"a" | "b"> = task.reference === null
-        ? { test: spec.id, task: COMPARISON_TASK, repeat, request, reference: await (fix ??= shippedFix(redaction, dependencies.run)), reports }
+        ? { test: spec.id, task: COMPARISON_TASK, repeat, request, reference: await (fix ??= referenceFix(COMPARISON_TASK, redaction)), reports }
         : { test: spec.id, task: COMPARISON_TASK, repeat, request, referenceAnswer: task.reference, reports };
       jobs.set(`${a}/${b}/${spec.id}/${repeat}`, { job, identity: structuredIdentity({ campaign: campaignIdentity(campaign.manifest), a, b, spec, left, right, job, judge: CHAT_AB_JUDGE, redaction: redaction.identity, authProfile, code }) });
     }

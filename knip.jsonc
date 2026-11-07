@@ -7,7 +7,9 @@
       // corpora, not code this project builds.
       "entry": ["src/cli/auth.ts", "src/infra/llm/tool-output-part-schema.ts", "src/infra/internal-process-channel.ts", "src/orchestration/app-service/project-executor-protocol.ts", "scripts/dump-prompt.ts", "tests/**/*.ts", "bench/shared/native-persona-launcher.ts", "bench/shared/native-persona-worker.ts", "bench/ab-persona/bench.ts", "bench/ab-persona/compare.ts", "bench/ab-persona/strategy-bench.ts", "bench/chat-ab/bench.ts", "bench/chat-ab/compare.ts", "bench/chat-ab/check-task.ts", "bench/chat-ab/paired.ts", "bench/terminal_bench/analyze-tool-outcomes.ts", "bench/linux-runtime-verification/smoke.ts"],
       "project": ["src/**/*.{ts,tsx}", "bench/*/*.ts"],
-      "ignore": ["src/infra/code-mode/**"]
+      // A vendored review fixture keeps the raw bytes of its source files,
+      // including tests whose imports name files left out of the copy.
+      "ignore": ["src/infra/code-mode/**", "bench/ab-persona/fixtures/reviews/*/project/**"]
     },
     "vscode": {
       "entry": ["src/extension.ts", "scripts/*.ts", "src/**/*.test.ts"],

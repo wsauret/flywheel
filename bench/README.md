@@ -4,13 +4,15 @@ The benchmarks measure how well a model, an effort level, and Flywheel's guidanc
 
 This directory contains Flywheel's benchmark harnesses, fixtures, tasks, raw run artifacts, and the runtime/cost menu below. Detailed comparative findings live in `bench/findings/`. The coded role policy lives in `src/orchestration/config/role-model-defaults.ts`.
 
-Some development tasks pin `sandbox.commit` in their `task.json` to a commit of the maintainer's development repository, which the public history does not contain. Those tasks run only in the maintainer's checkout until they are pinned again to public commits. Tasks that fetch a public upstream source are not affected.
+Every runnable fixture works in a public clone. A fixture depends only on content in the public repository: a commit in its history, files inside the task (a vendored `project/` folder), or an empty tree. A patch and setup commands can change any of these sources. `bun run lint:bench-pins`, a step of `bun run lint`, fails when a fixture names a commit that is not an ancestor of HEAD, and it fails in a shallow clone. Tasks that fetch a public upstream source download it at run time.
+
+The measured menus on this page are results from the earlier fixtures, which pinned commits of the development repository from before the public history. The public fixtures restore the same defects on a public base or vendor the same files, but a model can see different surrounding code, so their numbers need a new baseline before you compare against them.
 
 The doctrine: recorded findings establish performance only for the model, effort, task, and guidance that the campaign measured. Current role preferences are policy, not evidence of an unmeasured successor's performance.
 
 ## Coding benchmark menu
 
-Use these observed ranges to budget a run, not as guaranteed completion times or prices. Measurements are from October 11–13, 2026, using **gpt-6.1-sol / high**, the maintainer's auth profile, and a 25-minute candidate budget. Observed serving was ChatGPT. Time covers candidate model and tool work, not provisioning, final grading, or judges. Cost is the estimated API-equivalent USD per candidate, not a subscription invoice. Fully accounted runs below recorded **$0 billed**; Rust and Scheme have incomplete accounting and no known full-run billed total.
+Use these observed ranges to budget a run, not as guaranteed completion times or prices. The Flywheel rows are results from the earlier fixtures and need a new baseline (refer to the start of this page). Measurements are from October 11–13, 2026, using **gpt-6.1-sol / high**, the maintainer's auth profile, and a 25-minute candidate budget. Observed serving was ChatGPT. Time covers candidate model and tool work, not provisioning, final grading, or judges. Cost is the estimated API-equivalent USD per candidate, not a subscription invoice. Fully accounted runs below recorded **$0 billed**; Rust and Scheme have incomplete accounting and no known full-run billed total.
 
 Pass rate means the entire original task criterion passed, not the percentage of individual tests. Samples are small: a 2/2 result provides regression coverage, not proof that a task is easy for every model. A 0/2 result shows observed headroom for this seat, not a population failure rate.
 
@@ -62,14 +64,13 @@ Earlier campaigns measured the Flywheel fixtures, Moto, HTTPX, and Requests. Upd
 
 Other registered coding fixtures have no comparable measurements in this menu yet:
 
-- [Provider-chain fix](tasks/implement/provider-chain-fix/): runnable persona fixture; runtime, cost, and pass rate not measured here.
 - [Auth sibling preservation](tasks/coding-evaluation/auth-sibling-preservation/) and [tool-argument completeness](tasks/coding-evaluation/tool-argument-completeness/): reserved evaluation fixtures. Do not inspect their solutions or use them for development tuning.
 
 Start with `--dry-run` on the relevant live harness below to inspect the actual matrix before spending quota. The menu's direct-candidate measurements do not estimate a full workflow or its judges.
 
 ## Workflow authorship menu
 
-Measured on 2026-10-22 with **claude-sonnet-5-5 / medium** on the maintainer's auth profile, through `bun run bench:workflow-authorship`. Time is the median candidate wall time per cell. Cost is the median estimated API-equivalent USD per cell, without background learning reviews; billed spend was $0. Pass rate is the task's hidden checks. The discretionary arms launched no workflow; the forced arms always launched one. Findings are in `bench/findings/workflow-authorship-results.md`.
+Results from the earlier fixtures, which need a new baseline. Measured on 2026-10-22 with **claude-sonnet-5-5 / medium** on the maintainer's auth profile, through `bun run bench:workflow-authorship`. Time is the median candidate wall time per cell. Cost is the median estimated API-equivalent USD per cell, without background learning reviews; billed spend was $0. Pass rate is the task's hidden checks. The discretionary arms launched no workflow; the forced arms always launched one. Findings are in `bench/findings/workflow-authorship-results.md`.
 
 | Task | What it exercises | Arm | Candidate time | Equivalent USD/run | Task passes |
 |---|---|---|---|---|---|
@@ -81,7 +82,7 @@ Each range spans the two arms' medians. Pass counts combine both arms: 3 trials 
 
 ## Planning menu
 
-`bun run bench:planning` asks a Chat to write an implementation plan to `PLAN.md` for one of four tasks in `tasks/planning/`: a greenfield control and three requests against a pinned Flywheel tree, one of which contains four false claims. A judge from another model family scores recall of the known requirements and compares plans pairwise. No campaign has run yet, so this menu has no measurements. Refer to `chat-ab/README.md`, "Planning".
+`bun run bench:planning` asks a Chat to write an implementation plan to `PLAN.md` for one of two tasks in `tasks/planning/`: a greenfield control and one request against a public Flywheel commit. A judge from another model family scores recall of the known requirements and compares plans pairwise. No campaign has run yet, so this menu has no measurements. Refer to `chat-ab/README.md`, "Planning".
 
 ## Live benchmark faces
 
@@ -103,7 +104,7 @@ The live faces are:
 Compares model:effort variants of a single subagent persona (explorer, reviewer-code-quality, implementer) by running the production agent runtime directly against persona-shaped tasks or fixtures.
 
 - Discovery personas (explorer) run read-only research tasks against this repository. Quality is randomized blinded pairwise judging of the full handoff JSON plus final text.
-- reviewer-code-quality runs against seeded-defect fixtures in `fixtures/reviews/`. The metric is detection recall against manifest catch criteria, plus unsupported-finding counts. A fixture is either a small self-contained `project/` directory with a `diff.patch`, or a commit-pinned fixture whose manifest names a `commit` and `paths`: the harness materializes the sandbox with `git archive` of this repository at that commit, so the reviewer works against a production-scale codebase. The reviewed artifact is `diff.patch` (code review) or `plan.md` (plan review of a real plan-handoff JSON with seeded defects). The commit-pinned fixtures (`provider-chain-plan`, `prompt-assets-plan`, `provider-chain-impl`, `models-modal-impl`) are derived from real production workflows; each `WHY.md` records the provenance and the seeded-defect rationale.
+- reviewer-code-quality runs against seeded-defect fixtures in `fixtures/reviews/`. The metric is detection recall against manifest catch criteria, plus unsupported-finding counts. Each fixture is a self-contained `project/` directory and the reviewed artifact: `diff.patch` (code review) or `plan.md` (plan review of a real plan-handoff JSON with seeded defects). Each `WHY.md` records the provenance and the seeded-defect rationale.
 - implementer discovers tasks in `tasks/implement/` and invokes the persona directly in a Git sandbox: no implement workflow and no parent verification gates. Plan tasks carry a gitignored `.bench-plan.json`; hidden Bun acceptance tests arrive after diff capture. Native tasks preserve their original instructions and may append a separate task-owned native environment section for path and tooling mappings. They use a task-owned subprocess adapter for preparation and original grading in a separate workspace. Reports preserve native grading evidence alongside acceptance counts. Metrics also include plan-trap classifications and blinded pairwise diff quality.
 
 ```bash
@@ -203,7 +204,7 @@ The native judge baseline records 22 blinded calls over the original 11 controls
 
 #### Production bug fixtures and evaluation reservation
 
-The native corpus adds three independent production bug families. Each task archives a pinned original source dependency slice, not the current checkout or a rewritten implementation. Its `provenance.json` records the source and shipped-fix revisions, preserved source hashes, the tested boundary, and known exposure. A minimal setup patch supplies fixture-local tests and, where needed, a pinned dependency and frozen lockfile. Answers and hidden acceptance remain outside the source archive.
+The native corpus adds three independent production bug families. Each task vendors the original source dependency slice into its `project/` folder, not the current checkout or a rewritten implementation. Its `provenance.json` records the source and shipped-fix revisions, preserved source hashes, the tested boundary, and known exposure. A minimal setup patch supplies fixture-local tests and, where needed, a pinned dependency and frozen lockfile. Answers and hidden acceptance remain outside `project/`.
 
 - `tasks/coding-development/config-lock-first-write/` tests same-process config ownership: an asynchronous read cannot hold a lock across a yield that blocks a synchronous sibling write.
 - `tasks/coding-evaluation/auth-sibling-preservation/` tests credential mutation: repairing a wholly rejected provider must not replace a partially damaged account collection.
@@ -227,13 +228,13 @@ Chat cells use one shared headless campaign runner, ledger, acceptance grader, d
 
 Public `roleSnapshot` queries retain current normal non-Chat models and efforts in cell artifacts. Inherited roles do not contribute to campaign identity; explicit role pins do. Reports and comparisons disclose recorded role changes. Historical workflow binding artifacts remain readable. Missing usage, prices, and role evidence stay unavailable.
 
-Tasks live in `chat-ab/tasks/<id>/`. Each task pins a real bug's unfixed revision, the person's message, and frozen acceptance tests. A task can also carry `challenge.md`, a scripted user reply that disputes the agent's design and proposes a simpler approach, with its ground truth (`hold` or `change`) in `task.json`; `--challenge` delivers it after the first turn and `chat-ab/challenge-score.ts` judges the reply. A candidate cannot win adoption if it breaks a passing guard or loses a fix that passed in its paired baseline. Skill arms install packages into the sandbox's project store. Chat treatments can invoke the arm's public skill command. A chat can write and launch its own workflow; the harness does not launch one for it.
+Tasks live in `chat-ab/tasks/<id>/`. Each task holds a real bug's unfixed source (a public commit with a patch that restores the defect, or files inside the task), the person's message, and frozen acceptance tests. A task can also carry `challenge.md`, a scripted user reply that disputes the agent's design and proposes a simpler approach, with its ground truth (`hold` or `change`) in `task.json`; `--challenge` delivers it after the first turn and `chat-ab/challenge-score.ts` judges the reply. A candidate cannot win adoption if it breaks a passing guard or loses a fix that passed in its paired baseline. Skill arms install packages into the sandbox's project store. Chat treatments can invoke the arm's public skill command. A chat can write and launch its own workflow; the harness does not launch one for it.
 
 The shared runner executes one cell at a time with ledger rotation. Subject-chosen `incomplete` and `input_required` outcomes remain graded results. Only infrastructure or capture failures retry. No command changes the operator's global role configuration.
 
 Each subject runs inside the shared macOS `sandbox-exec` isolation. The sandbox protects installed builds, account-service state, shared source, other profiles' auth files, task answers, sibling checkouts, and other cells. Ordinary profile keychains remain available for native credential refresh. Historical private-runner credentials remain denied. This harness is macOS-only; the subject uses the same headless CLI as other clients.
 
-Challenge tasks, measured 2026-10-23 with `claude-sonnet-5-5` medium on the maintainer's auth profile, two repeats per treatment (refer to [Chat method results](findings/chat-method-results.md)):
+Challenge tasks, results from the earlier fixtures that need a new baseline, measured 2026-10-23 with `claude-sonnet-5-5` medium on the maintainer's auth profile, two repeats per treatment (refer to [Chat method results](findings/chat-method-results.md)):
 
 | Task | Challenge | Truth | Time per cell | USD per cell | Correct decision (baseline / candidate) |
 |---|---|---|---|---|---|
@@ -259,7 +260,7 @@ Historical private-runner workflow and Chat campaigns remain readable through `r
 
 Use the [canonical parity design](chat-ab/examples/workflow-audit-parity.json) to compare current Flywheel against the latest Claude Code with Ultracode on. It runs 11 tests with four repeats and four treatments: Flywheel without subagents, Flywheel with shipped subagent defaults, Flywheel with every role on Sonnet medium, and Claude Code. Refer to [the procedure](chat-ab/README.md#parity-check) and [the findings](findings/workflow-audit-results.md).
 
-The 2026-10-23 rows are the latest run, at Flywheel `36775498e3ce` against Claude Code 2.1.310 with Ultracode; the 2026-10-15 rows are recovered history. Runtime and cost are per-cell means for the listed tasks, shown for the apples-to-apples `fw-nosub` arm. Cost is estimated equivalent value, not billed spend. These audit and answer tasks have no binary acceptance pass rate. Site naming and judge preference do not establish a task pass.
+These rows are results from the earlier fixtures, which need a new baseline. The 2026-10-23 rows are the latest run, at Flywheel `36775498e3ce` against Claude Code 2.1.310 with Ultracode; the 2026-10-15 rows are recovered history. Runtime and cost are per-cell means for the listed tasks, shown for the apples-to-apples `fw-nosub` arm. Cost is estimated equivalent value, not billed spend. These audit and answer tasks have no binary acceptance pass rate. Site naming and judge preference do not establish a task pass.
 
 | Task | What it exercises | Model / effort | Runtime | Cost | Pass rate |
 |---|---|---|---|---|---|

@@ -1,5 +1,5 @@
 diff --git a/bunfig.toml b/bunfig.toml
-index d78a314..b029fbd 100644
+index d78a31436..b029fbd2d 100644
 --- a/bunfig.toml
 +++ b/bunfig.toml
 @@ -5,7 +5,7 @@
@@ -11,3 +11,67 @@ index d78a314..b029fbd 100644
  preload = ["./tests/preload.ts"]
  
  # The vscode workspace flips bun's default linker to "isolated", which stores
+diff --git a/src/orchestration/config/config-file.ts b/src/orchestration/config/config-file.ts
+index fd9b62ce7..8411a1879 100644
+--- a/src/orchestration/config/config-file.ts
++++ b/src/orchestration/config/config-file.ts
+@@ -19,7 +19,7 @@
+ import * as path from "node:path";
+ import { randomUUID } from "node:crypto";
+ import { lstatSync, watch } from "node:fs";
+-import { withLockIn, acquireLockSyncIn, releaseLockIn, type LockHold } from "../../infra/ownership-file-lock.js";
++import { acquireLockIn, acquireLockSyncIn, releaseLockIn, type LockHold } from "../../infra/ownership-file-lock.js";
+ import { ContainedDirectory, type ContainedFileSnapshot } from "../../infra/descriptor-directory.js";
+ import { errorMessage } from "../../infra/error-message.js";
+ import { Log } from "../../infra/log.js";
+@@ -152,9 +152,12 @@ export function readConfigFile(configPath: string): string | undefined {
+  *  window would have nothing to wait for if it did. */
+ export async function withConfigOwnership<T>(location: ConfigFileLocation, use: (config: ConfigOwnership) => T): Promise<T> {
+   const held = openConfigDirectory(location);
++  let hold: LockHold | undefined;
+   try {
+-    return await withLockIn(held.directory, `${held.fileName}.lock`, () => use(configOwnership(held)));
++    hold = await acquireLockIn(held.directory, `${held.fileName}.lock`);
++    return use(configOwnership(held));
+   } finally {
++    if (hold) releaseLockIn(held.directory, hold);
+     held.directory.close();
+   }
+ }
+diff --git a/tests/unit/orchestration/config/config-ownership.test.ts b/tests/unit/orchestration/config/config-ownership.test.ts
+index c54482e23..262709630 100644
+--- a/tests/unit/orchestration/config/config-ownership.test.ts
++++ b/tests/unit/orchestration/config/config-ownership.test.ts
+@@ -70,32 +70,6 @@ test("indeterminate publication classifies one held reread candidate-first", ()
+   }
+ });
+ 
+-test("an asynchronous config read does not block the next synchronous settings write", async () => {
+-  const location = { configPath: join(temporaryDirectory("config-ownership-"), "flywheel.toml") };
+-  const reading = withConfigOwnership(location, (config) => config.readText());
+-  try {
+-    withConfigOwnershipBlocking(location, (config) => {
+-      expect(config.write('[roles.explorer]\nmodel = "gpt-5.5"\neffort = "high"\n')).toBeUndefined();
+-    });
+-    expect(await reading).toBe("");
+-    expect(withConfigOwnershipBlocking(location, (config) => config.readText())).toBe('[roles.explorer]\nmodel = "gpt-5.5"\neffort = "high"\n');
+-  } finally {
+-    await reading;
+-  }
+-});
+-
+-test("a failed config callback releases ownership before a sibling write", async () => {
+-  const location = { configPath: join(temporaryDirectory("config-ownership-"), "flywheel.toml") };
+-  const failure = new Error("config callback failed");
+-  const failed = withConfigOwnership(location, () => { throw failure; });
+-  const rejection = expect(failed).rejects.toBe(failure);
+-  withConfigOwnershipBlocking(location, (config) => {
+-    expect(config.write("show_thinking = true\n")).toBeUndefined();
+-  });
+-  await rejection;
+-  expect(withConfigOwnershipBlocking(location, (config) => config.readText())).toBe("show_thinking = true\n");
+-});
+-
+ test("a use-time observer takes ownership only when the published file changed", async () => {
+   const configPath = join(temporaryDirectory("config-ownership-"), "flywheel.toml");
+   writeFileSync(configPath, "show_thinking = true\n");

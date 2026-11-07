@@ -9,12 +9,14 @@ import { createAnthropicAdapter, operationsFromAnthropicClient } from "../src/or
 import { createOpenAIChatCompletionsAdapter } from "../src/orchestration/agent-runtime/llm/openai-completions.js";
 import { ProviderAttemptFailure } from "../src/orchestration/agent-runtime/llm/provider-failure.js";
 import {
+  type AdmittedModelRequest,
   FUNCTION_TOOL_PRESENTATION,
   type LLMClient,
   type ModelClient,
   type ProviderStreamEvent,
   type StreamOptions,
 } from "../src/orchestration/agent-runtime/llm/types.js";
+import { stableSystemPrompt } from "../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { createRequestToolSurface, type RequestToolSurfaceOwner } from "../src/orchestration/agent-runtime/request-tool-surface.js";
 import { captureRuntimeConfigRequest } from "../src/orchestration/agent-runtime/request-config.js";
 import type { RuntimeTool } from "../src/orchestration/agent-runtime/tools/types.js";
@@ -84,13 +86,13 @@ const ANTHROPIC_INFO: ModelInfo = {
 function stubModelsClient(): ModelsClient {
   return {
     async refresh() {},
-    async getProviderCatalog(providerIds) {
+    getProviderCatalog(providerIds) {
       return providerIds.includes(OPENROUTER_INFO.provider) ? [{
         providerId: OPENROUTER_INFO.provider, providerName: OPENROUTER_INFO.provider, wireModelId: OPENROUTER_INFO.id, metadata: OPENROUTER_INFO,
-        provenance: "bundled", canonical: { providerId: OPENROUTER_INFO.provider, modelId: OPENROUTER_INFO.id }, transport: null,
+        provenance: "bundled" as const, canonical: { providerId: OPENROUTER_INFO.provider, modelId: OPENROUTER_INFO.id }, transport: null,
       }] : [];
     },
-    async getTokenizerIdentity() { return undefined; },
+    getTokenizerIdentity() { return undefined; },
   };
 }
 
@@ -103,7 +105,7 @@ async function drain(
     for await (const event of client.streamWithTools({
       messages: [{ kind: "user", content: "hi" }],
       tools: [],
-      systemPrompt: "sys",
+      systemPrompt: stableSystemPrompt("sys"),
       ...overrides,
     })) {
       events.push(event);
@@ -124,24 +126,20 @@ function asModelClient(client: Omit<LLMClient, "toolPresentation">): ModelClient
     modelFamily: client.modelFamily,
     plannedAttempt: async () => attempt,
     async admitRequest() {
+      const candidate = async ({ prepare, providerOptions }: Parameters<AdmittedModelRequest["prepare"]>[0]) => {
+        const planned = await modelClient.plannedAttempt(providerOptions);
+        const prepared = await prepare(planned);
+        return {
+          attempt: prepared.attempt,
+          client: { ...prepared.attempt, streamWithTools: (options: StreamOptions) => client.streamWithTools(options), historyTarget: client.historyTarget },
+          prepared,
+        };
+      };
       return {
         candidateAttributions: [],
-        run: async ({ execute, prepare, providerOptions }) => {
-          const planned = await modelClient.plannedAttempt(providerOptions);
-          const prepared = prepare?.(planned) ?? {
-            attempt: planned,
-            messages: [],
-            tools: [],
-            systemPrompt: "",
-            providerOptions,
-            cacheRetention: undefined,
-            tokenClasses: { estimatedPromptTokens: undefined, cacheRetention: undefined },
-          };
-          const result = await execute({
-            attempt: prepared.attempt,
-            client: { ...prepared.attempt, streamWithTools: (options: StreamOptions) => client.streamWithTools(options) },
-            prepared,
-          });
+        prepare: candidate,
+        run: async (request) => {
+          const result = await request.execute(await candidate(request));
           if (result.kind === "provider_failure") throw result.failure;
           return result.value;
         },
@@ -157,9 +155,10 @@ async function toolSurface(tools: ReadonlyMap<string, RuntimeTool>): Promise<Req
     eligibleTools: tools,
     tools,
     omitted: [],
+    usable: new Set(tools.keys()),
     registrationIds: new Map([...tools].map(([name, tool]) => [tool.name, name])),
     registrationIdentities: new Map([...tools].map(([name, tool]) => [tool.name, name])),
-  }), () => null, () => composeFirstPartyModules(), () => captureRuntimeConfigRequest({
+  }), () => composeFirstPartyModules(), () => captureRuntimeConfigRequest({
     revision: 0, config: CONFIG_DEFAULTS, warnings: [], diagnostics: [], sourceIdentity: "test", status: { kind: "valid" },
   }, "default"));
   const admit = <T extends { executionAdmission: (toolName: string) => unknown }>(value: T): T => ({
@@ -188,15 +187,17 @@ async function runWithRecordedWrites(client: ModelClient): Promise<JsonObject[]>
   const loop = runAgentLoop({
     client,
     tools: await toolSurface(new Map([["write", write]])),
-    systemPrompt: () => "test",
+    systemPrompt: () => stableSystemPrompt("test"),
     instruction: "write the file",
     reasoningEffort: async () => "medium",
     executionCwd: tmpdir(),
+    userDataRoot: `${tmpdir()}/.test-account`,
     projectRoot: tmpdir(),
     providerSessionKey: "p",
+    promptCacheKey: "p",
     artifactScopeId: "p",
     retrievalSessionId: "p",
-    persistence: { history: { append: () => {}, rewrite: () => {} } },
+    persistence: { history: { append: () => {} } },
     seed: { kind: "fresh" },
     onEvent: () => {},
     inputSource: { drainPending: () => null, prepareWaitForInput: () => ({ commit: async () => null, cancel: async () => {} }) },
@@ -217,7 +218,7 @@ function isCutDownCopyOf(input: JsonObject, full: JsonObject): boolean {
   if (keys.length > fullKeys.length) return false;
   for (let index = 0; index < keys.length; index++) {
     const key = keys[index];
-    if (key !== fullKeys[index]) return false;
+    if (key === undefined || key !== fullKeys[index]) return false;
     const value = input[key];
     const expected = full[key];
     const last = index === keys.length - 1;

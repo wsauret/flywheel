@@ -1,59 +1,50 @@
 # process-wait-loop-nudge
 
-Fix commit: `aeb5193086d078f5fede5fddbc91957d52e52a33` fix(agent): stop the doom-loop nudge after legitimate process waits
+Reference: `reference.patch`, the fix against the bugged sandbox. It returns the tree to the base commit.
 
-Base commit: `d154a1354b9f4154f91c1473c47a9008ccd6590a` (the parent of the fix)
+Base commit: `85c69871d53e3f1dba2532773dd7db38a93c41b3`, a public commit of `main` that holds the fix. `sandbox.patch` puts the defect back. The defect first shipped before the source became public, and its original fix was "fix(agent): stop the doom-loop nudge after legitimate process waits". Since then the repetition guard moved into the agent loop, which shows it each settled tool batch, so the defect is re-authored for that shape. It poses the same problem.
 
 ## The requirement
 
-An agent that waits with the `process` tool on background work that is still running must not get the "Doom loop detected" nudge, also when the nudge would come at the turn end after that work has finished. A real loop must still get the nudge: waits when nothing is running, or the same failing command retried between waits.
+An agent that waits with the `process` tool on background work that is still running must not get the repetition notice, also when the notice would come after that work has finished. A real loop must still get the notice: waits when nothing is running, or the same failing command retried between waits.
 
 ## The bug
 
-The repetition guard in `src/orchestration/agent-runtime/doom-loop.ts` removed `process` waits from its history only when the current turn ended with live background work. A `process` wait parks the loop only while work is live, so each parked wait ends a turn with live work. The reply turn after the last completion ends with no live work. At that turn end, the guard read the liveness flag as false and counted all the earlier parked waits. Three waits on a long command or a subagent then produced "Doom loop detected ... Try a different approach."
+The loop (`createSettledBatchObservation` in `src/orchestration/agent-runtime/agent-loop-wait.ts`) names the wait calls of each batch that parked on live work. The repetition guard in `src/orchestration/agent-runtime/doom-loop.ts` leaves a named wait out of its history, except a `process` wait: it keeps every `process` wait, marked, and leaves the marked waits out of its detection only when the current batch parked. Each parked wait batch therefore hides all `process` waits, but the reply response after the last completion parks on nothing. At that point the guard counts all the earlier parked waits. Three waits on a long command or a subagent then produce "The same tool call has repeated 3 or more times ... try a different approach."
 
-The reference fix classifies each wait once, at the first turn end after it. A wait whose turn end had live work leaves the history. A wait whose turn end had no live work stays, so a real loop of waits and a repeated failing call between waits still trip the guard. Another correct design classifies each wait when the wait policy accepts it on live work and passes the accepted wait ids to the guard (recorded repeat 0 does this). The tests accept both.
+The reference fix classifies each wait once, when its own batch settles: a wait that the loop names as parked on live work never enters the history, `process` waits included. A wait that found nothing to wait for stays, so a real loop of waits and a repeated failing call between waits still trip the guard. Another correct design keeps the waits in the history and classifies each one at the first settle after it. The tests accept both.
 
 ## Why it is a fair task
 
-1. The symptom is a nudge text in the agent's context after legitimate waits. A user can describe it without the code.
-2. The cause is a timing error: liveness at a later turn end is applied to earlier waits. To find it, the solver must trace the background-liveness signal from the agent loop and the wait parking (`agent-loop-wait.ts`, `process.ts`, `stream-observers.ts`) into `doom-loop.ts`.
+1. The symptom is a notice text in the agent's context after legitimate waits. A user can describe it without the code.
+2. The cause is a timing error: liveness at a later batch is applied to earlier waits. To find it, the solver must trace the wait policy (`createWaitToolPolicy`, `settleWaitCalls`) and the park decision in `agent-loop-wait.ts` and `agent-loop.ts` into `doom-loop.ts`.
 3. The obvious fix, "never count process waits", fails the regression guards: waits that found nothing to wait for must still trip the guard.
 
 ## Acceptance
 
-`acceptance/process-wait-nudge.test.ts`, 7 tests. `acceptance/loop-harness.ts` holds copies of two base test fixtures (`RequestToolMap` and `asModelClient`), so the tests do not depend on test files that the solver can edit.
+`acceptance/process-wait-nudge.test.ts`, 7 tests. `acceptance/loop-harness.ts` holds copies of base test fixtures (`RequestToolMap` from `tests/helpers/request-tool-surface.ts` and `asModelClient` from `tests/unit/orchestration/agent-runtime/_model-client.ts`), so the tests do not depend on test files that the solver can edit.
 
-Each test runs the real `runAgentLoop` with the real `createWorkflowLoopObservers` wiring and `createObserverChain([createRepetitionGuard()])`. A scripted model makes the tool calls. Fake tools return ok or error. A fake background registry starts with N live tasks, and each park of the loop finishes one task and wakes the loop with a notification. The scripted model sends the guard the same `tool_use` and `text` stream events that the workflow host maps from runtime events. The tests never build a turn context themselves. They read only the nudges that the observers enqueue, and they count messages that contain "Doom loop detected".
+Each test runs the real `runAgentLoop` with the real background work registry, the real `process` tool, and the real `ChatTurnMailbox`. A scripted model makes the tool calls. Fake `Read` and `bash` tools return ok or error. The registry starts with N running background commands, and each park of the loop finishes the oldest one, whose completion notification wakes the loop. The first park with nothing running ends the session. The tests count `<repetition_notice>` in the last request that the model received.
 
 What the tests check:
 
-1. Three waits on three running tasks, then a reply: no nudge (fails on base).
-2. Four waits with a limit on four running tasks, then a reply: no nudge (fails on base).
-3. Three identical reads (one nudge), then three waits on running work, then a reply: exactly one nudge in total (fails on base, which sends a second nudge after the waits).
-4. Regression guard: three waits with nothing running get a nudge. It catches an exemption for every wait.
-5. Regression guard: one running task, four waits (the first parks, the other three find nothing), then a reply, get a nudge. It catches an exemption that lasts after the work ran.
-6. Regression guard: the same failing bash command and a wait in each of three turns on running work get a nudge. It catches an exemption that also hides the other calls in the turn.
-7. Regression guard: the same `process` list in three turns while work runs gets a nudge. It catches an exemption for every `process` action.
+1. Three waits on three running commands, then a reply: no notice (fails on base).
+2. Four waits with a `soft_timeout` on four running commands, then a reply: no notice (fails on base).
+3. Three identical reads (one notice), then three waits on running work, then a reply: exactly one notice in total (fails on base, which sends a second notice after the waits).
+4. Regression guard: three waits with nothing running get a notice. It catches an exemption for every wait.
+5. Regression guard: one running command, four waits (the first parks, the other three find nothing), then a reply, get a notice. It catches an exemption that lasts after the work ran.
+6. Regression guard: the same failing bash command and a wait in each of three batches on running work get a notice. It catches an exemption that also hides the other calls in the batch.
+7. Regression guard: the same `process` list in three batches while work runs gets a notice. It catches an exemption for every `process` action.
 
-What the tests do not check: the nudge wording (single call or sequence), how the guard learns that a wait parked (a turn-end liveness flag, wait ids, or another signal), the names or fields of the turn context, the chat runner wiring, and which file holds the fix.
+What the tests do not check: the notice wording, how the guard learns that a wait parked (wait ids, a per-wait classification, or another signal), the guard's method signature, and which file holds the fix.
 
-## Applying the reference
+## Validation
 
-The sandbox is `git archive` of the base at the task paths (including `crates/tokenizer`, which the agent loop needs for token counting), with `sandbox.patch` (bunfig test root set to `.` so that `bun test acceptance` finds the directory), then `bun install`.
+The sandbox is built from `task.json`: a git archive of the listed paths at the base, then `sandbox.patch`, `bun install`, and a baseline commit. `sandbox.patch` sets the bunfig test root to `.` so that `bun test acceptance` finds the directory. It restores the defect in `doom-loop.ts` only, so other parked waits (a bash yield placeholder, a call that holds a reply wait) stay out of the history as on the base. It also removes the case "a repetition notice after the third identical wait batch keeps the wait that batch opened" from `tests/unit/orchestration/agent-runtime/context/loop-finite-wait.test.ts`, which detects the defect through a second notice after the reply. So `loop-finite-wait.test.ts` and `core/batch-observers.test.ts` pass on the bugged tree, and `reference.patch` restores the removed case.
 
-Apply the fix commit's source change with:
+- Base: 4 pass, 3 fail. Tests 1 to 3 fail; the 4 regression guards pass.
+- Base plus `reference.patch`: 7 pass, 0 fail:
 
 ```
-bun --conditions=browser bench/chat-ab/check-task.ts process-wait-loop-nudge --overlay aeb5193086d0:. --overlay-files src/orchestration/agent-runtime/doom-loop.ts
+bun --env-file=.env.test --conditions=browser bench/chat-ab/check-task.ts process-wait-loop-nudge --apply-diff bench/chat-ab/tasks/process-wait-loop-nudge/reference.patch
 ```
-
-The fix commit changes only that file in `src`.
-
-## Validation evidence
-
-1. Base: 4 pass, 3 fail. Tests 1 to 3 fail; the 4 regression guards pass.
-2. Reference (fix commit overlay): 7 pass, 0 fail.
-3. Recorded run repeat 0 (wait ids from the wait policy): 7 pass, 0 fail.
-4. Recorded run repeat 1 (the reference design): 7 pass, 0 fail.
-5. Wrong patches built on the reference: every wait exempt, 5 pass and 2 fail (tests 4, 5); exemption that lasts after work ran, 6 pass and 1 fail (test 5); clear the whole history on live work, 4 pass and 3 fail (tests 3, 6, 7); drop every `process` call on live work, 6 pass and 1 fail (test 7).

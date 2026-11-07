@@ -30,7 +30,7 @@ test("answer tests send one read-only request to both subjects and carry their o
   }
   expect(await authoredTestMessage("test4")).toContain("Read each file in its own parallel lane");
   expect(await authoredTestMessage("test5")).toContain("three independent judges score every draft on correctness, risk, and size of change");
-  expect(understand!.reference).toContain("json-parse.ts:133-143");
+  expect(understand!.reference).toContain("json-parse.ts:155-162");
   expect(panel!.reference).toContain("What a good design must keep");
 });
 
@@ -66,11 +66,14 @@ test("bug audit identities stay fixed for recorded campaigns, and an answer test
   // The 2026-10-23 cut-tool-args Challenge section changed WHY.md, so audit campaigns recorded before it do not validate against the new identities.
   // The 2026-10-29 removal of unpublished scratch-path citations from cut-tool-args WHY.md breaks them again.
   // The 2026-10-29 rewrite of the prepared test 1 workflows in the phase grammar breaks them again.
+  // The 2026-11-06 move of the cut-tool-args fixture to a public base commit with a sandbox.patch, and the
+  // shipped sites remapped to that fixture, break them again: test 1 to 3 campaigns recorded before it ran
+  // on a commit that is not public, and they stay read-only evidence that no longer validates.
   const tasks = await loadWorkflowAuditTasks(["test1", "test2", "test3"]);
   expect(Object.fromEntries(tasks.map(({ id, contentIdentity }) => [id, contentIdentity]))).toEqual({
-    test1: "d349f21c7304340509c5fbd2f240c53922ca0c58b1015ce18c8388cb4a4500b6",
-    test2: "717230886d43aaf3111602d1e1a802477160d95ee4a37511c9d369ec6380250d",
-    test3: "5bcf977a0786a88b6740eca19fe2ba5366d6f79f93eb292ca34a35543558360c",
+    test1: "0509ac62a17916c2820e76a005c3f8040cd9bcccd928fca418c5d7ccfee02892",
+    test2: "9e3c14727b0b14c61dadd793705db578d7506999e667df5a04f963f396b42f3e",
+    test3: "82d1d106acde9c2df5adbcbeaded77470a08dda19a49930a569befb130a353be",
   });
   const why = await readFile(join(tasks[0]!.fixture.taskDir, "WHY.md"), "utf8");
   for (const task of await loadWorkflowAuditTasks(["test4", "test5"])) {
@@ -80,7 +83,7 @@ test("bug audit identities stay fixed for recorded campaigns, and an answer test
 });
 
 test("answer tests record no site grade, even when the answer names a shipped site", async () => {
-  const handoff = { summary: "json-parse.ts:162 completes a cut prefix; openai-completions.ts:145 maps length" };
+  const handoff = { summary: "json-parse.ts:189 completes a cut prefix; openai-completions.ts:155 maps length" };
   const [audit, understand, panel] = await loadWorkflowAuditTasks(["test2", "test4", "test5"]);
   expect(workflowAuditSites(audit!, handoff)).toEqual(workflowAuditGrade(handoff));
   expect(Object.values(workflowAuditSites(audit!, handoff) ?? {})).toEqual([true, true]);
@@ -101,9 +104,9 @@ test("prepared workflows are copied into each subject's sandbox project", async 
 test("audit grades count named shipped sites from the handoff summary, not other handoff fields", () => {
   const [parser, completions] = SHIPPED_SITES;
   const key = (site: typeof parser) => `${site!.path}:${site!.lines[0]}-${site!.lines[1]}`;
-  expect(workflowAuditGrade({ summary: "json-parse.ts:162 is wrong", detail: "openai-completions.ts:150" })).toEqual({ [key(parser)]: true, [key(completions)]: false });
+  expect(workflowAuditGrade({ summary: "json-parse.ts:189 is wrong", detail: "openai-completions.ts:160" })).toEqual({ [key(parser)]: true, [key(completions)]: false });
   // A finding in a result field beside a short summary is part of the answer.
-  expect(workflowAuditGrade({ summary: "Two bugs.", kept_bugs: [{ site: "json-parse.ts:162" }, { site: "openai-completions.ts:144" }] })).toEqual({ [key(parser)]: true, [key(completions)]: true });
+  expect(workflowAuditGrade({ summary: "Two bugs.", kept_bugs: [{ site: "json-parse.ts:189" }, { site: "openai-completions.ts:154" }] })).toEqual({ [key(parser)]: true, [key(completions)]: true });
   expect(Object.values(workflowAuditGrade(undefined))).toEqual([false, false]);
 });
 

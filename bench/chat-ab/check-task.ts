@@ -11,11 +11,12 @@
 // from the unfixed run and writes it into task.json: its failing tests become
 // the fail-to-pass set and its passing tests the guards.
 // `--overlay` copies each listed path from `<tree-ish>` (for example
-// `fc3aa6454:flywheel-tui`) in the repository into the sandbox, which is how
-// WHY.md proves the fix commit's non-test changes pass the acceptance suite.
-// `--apply-diff` applies a recorded cell's diff.patch instead, which rescores
-// that cell against the current acceptance tests. The overlaid fix must
-// resolve the task: every baseline test passes.
+// `fc3aa6454:flywheel-tui`) in the repository into the sandbox, which checks
+// that a fix revision's non-test changes pass the acceptance suite.
+// `--apply-diff` applies a patch instead, such as the task's reference.patch
+// or a recorded cell's diff.patch, and scores it against the current
+// acceptance tests. The overlaid fix must resolve the task: every baseline
+// test passes.
 // Prints one JSON object: the sandbox shape, the rendered message, the
 // per-test outcomes of the unfixed run, and the score of the fixed run.
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
@@ -110,7 +111,7 @@ async function main(argv: readonly string[]): Promise<void> {
       ...(fixed && fixedAcceptance && fixedScore ? { fixed: { overlay, files: overlayFiles, diffBytes: fixed.diff.length, filesTouched: fixed.filesTouched, linesAdded: fixed.linesAdded, linesRemoved: fixed.linesRemoved, acceptance: fixedAcceptance, score: fixedScore } } : {}),
     }, null, 2));
     if (drift.length > 0) throw new Error(`the unfixed run does not match the stored acceptance baseline:\n${drift.join("\n")}`);
-    // A recorded cell's diff is rescored whatever it scores; the shipped fix must resolve the task.
+    // A recorded cell's diff is rescored whatever it scores; an overlaid fix must resolve the task.
     if (fixedScore && !applyDiff && !fixedScore.resolved) throw new Error(`the overlaid fix does not resolve the task: ${fixedScore.fixed}/${fixedScore.fixable} fail-to-pass tests pass, ${fixedScore.brokenGuards.length} guards broken`);
   } finally {
     if (!keep) await sandbox.dispose();

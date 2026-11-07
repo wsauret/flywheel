@@ -1,8 +1,8 @@
 # interrupted-question-blank-result
 
-Fix commit: 5a7c2cd48ad1bf306b0b8b12080485a34410ed86, "fix(chat): prevent interrupted questions from breaking model requests".
+Reference: `reference.patch`, the fix against the bugged sandbox. It returns the tree to the base commit.
 
-Base commit: 806de1855e4b6dcfd9d8ebce1ae26806c1d6fcd4 (the parent of the fix).
+Base commit: `85c69871d53e3f1dba2532773dd7db38a93c41b3`, a public commit of `main` that holds the fix. `sandbox.patch` puts the defect back. The defect first shipped before the source became public, and its original fix was "fix(chat): prevent interrupted questions from breaking model requests".
 
 ## The bug
 
@@ -30,14 +30,21 @@ The tests do not check the tombstone wording, where the repair happens, or the n
 
 ## Validation
 
-The sandbox patch (`sandbox.patch`) sets `bunfig.toml` `[test] root` to `.` so that `bun test acceptance` finds the acceptance directory. The paths list adds `crates/tokenizer/tokenizer-prebuilt.json`, which `src/infra/local-tokenizer.ts` imports.
+The sandbox is built from `task.json`: a git archive of the listed paths at the base, then `sandbox.patch`, `bun install`, and a baseline commit. `sandbox.patch` sets the bunfig test root to `.` so that `bun test acceptance` finds the acceptance directory. It restores the defect in two places: the dispatcher in `src/orchestration/agent-runtime/agent-loop-tools.ts` again finalizes a suspended call as soon as its tool returns, and `healConversation` in `src/orchestration/agent-runtime/llm/heal-messages.ts` again passes blank error results through (with its doc comment returned to the pre-fix text). It also returns the unit tests that the fix changed to their state before the fix: the suspended-call test in `tests/unit/orchestration/agent-runtime/agent-loop-tools.test.ts` no longer checks checkpoints, and the blank-result tests in `tests/unit/orchestration/agent-runtime/llm/heal-messages.test.ts` and `tests/unit/orchestration/agent-runtime/llm/conversions/anthropic-messages.test.ts` are gone, so the unit suite passes on the bugged tree as it did before the fix.
 
-Prove the reference fix with `git diff 806de1855 5a7c2cd48 -- src > ref.patch`, then `bun --conditions=browser bench/chat-ab/check-task.ts interrupted-question-blank-result --apply-diff ref.patch`.
+The history tests write `chat.entries.appended` version 3, which the base writer still uses for these plain messages (`chatEntriesAppendedVersion`).
 
 - Base sandbox: 3 pass, 4 fail (the 3 passes are the regression guards).
-- Base plus the reference fix: 7 pass, 0 fail.
-- Base plus the dispatcher fix and a recovery-boundary repair in `persistedToConversationMessage` (`recovery-boundary.patch`): 7 pass, 0 fail.
-- Base plus the dispatcher fix and a repair inside `convertMessages` (`adapter-wrapper.patch`): 7 pass, 0 fail.
+- Base plus `reference.patch`: 7 pass, 0 fail:
+
+```
+bun --env-file=.env.test --conditions=browser bench/chat-ab/check-task.ts interrupted-question-blank-result --apply-diff bench/chat-ab/tasks/interrupted-question-blank-result/reference.patch
+```
+
+The results below were measured on the earlier fixture, which pinned a pre-public parent of the fix; they have not been measured again on the public base.
+
+- Base plus the dispatcher fix and a recovery-boundary repair in `persistedToConversationMessage`: 7 pass, 0 fail.
+- Base plus the dispatcher fix and a repair inside `convertMessages`: 7 pass, 0 fail.
 - Base plus a fix that deletes the eager finalization in `settle()` (plus a converter repair): 6 pass, 1 fail (the sibling guard).
 - Base plus the dispatcher fix and a `healConversation` repair that replaces every error result with the interrupted tombstone: 6 pass, 1 fail (the non-blank error guard).
 - Base plus the dispatcher fix and a converter repair that sends a blank error result as a non-error result with text: 4 pass, 3 fail.

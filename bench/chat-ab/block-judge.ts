@@ -105,7 +105,7 @@ function clipped(report: string | null): string {
   return report.length > MAX_REPORT_CHARS ? `${report.slice(0, MAX_REPORT_CHARS)}\n[report truncated]` : report;
 }
 
-/** What the judge compares: two audit reports against the shipped fix, two code changes (a coding task of
+/** What the judge compares: two audit reports against the reference fix, two code changes (a coding task of
  *  test 3), each with its final report, against the task's reference patch, two answers to a question
  *  that asks for no change against a written reference answer, or two implementation plans against the
  *  task's known requirements. */
@@ -268,7 +268,7 @@ export interface JudgeJob<Arm extends string = ComparisonArm> {
   /** Each arm's final diff. With it, the judge compares the two changes, each with its report, against
    *  `reference`, and makes no shipped-site check. */
   readonly changes?: { readonly [arm in Arm]: string };
-  /** The reference fix, which replaces the fix commit that the task's WHY.md names. */
+  /** The reference fix, which replaces the task's reference.patch. */
   readonly reference?: string;
   /** A written reference answer to a question that asks for no change. With it, the judge compares the two
    *  reports as answers against this text, and makes no shipped-site check. */
@@ -287,7 +287,7 @@ export async function judgeBlocks<Arm extends string>(judge: ChatAbJudge, redact
   await eachJudgeJob(jobs, async (job) => {
     const mode: JudgeMode = job.changes !== undefined ? "changes" : job.referenceAnswer !== undefined ? "answers" : job.requirements !== undefined ? "plans" : "reports";
     const written = job.referenceAnswer ?? job.requirements ?? job.reference;
-    if (written === undefined && !references.has(job.task)) references.set(job.task, referenceFix(job.task, judge.run, redaction));
+    if (written === undefined && !references.has(job.task)) references.set(job.task, referenceFix(job.task, redaction));
     const reference = written === undefined ? await references.get(job.task)! : redaction.redact(written);
     const request = redaction.redact(job.request);
     const slotText = (arm: Arm) => {

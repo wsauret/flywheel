@@ -17,7 +17,7 @@ import { temporaryDirectories } from "../../helpers/directories.js";
 import { fakeOwnedCommandRunner, ownedCommandResult } from "../../helpers/owned-command-fake.js";
 
 const temporary = temporaryDirectories();
-const CORPUS = ["healthz-greenfield", "session-cost-budget", "handoff-size-guard", "retry-telemetry-refactor"];
+const CORPUS = ["healthz-greenfield", "session-cost-budget"];
 
 async function taskFolder(task: unknown, manifest?: unknown): Promise<string> {
   const root = temporary("planning-tasks-");
@@ -32,21 +32,20 @@ const repositoryTask = { id: "fixture", stratum: "small", timeoutMinutes: 1, san
 const point = (id: string, catchCriteria: string) => ({ id, title: `Point ${id}`, catchCriteria });
 
 describe("planning tasks", () => {
-  test("the corpus loads: repository tasks pin a subtree without the answer key, and greenfield is the empty tree", async () => {
+  test("the corpus loads: repository tasks pin a tree without the answer key, and greenfield is the empty tree", async () => {
     const tasks = await loadPlanningTasks(PLANNING_TASKS_DIR, CORPUS);
     for (const task of tasks) {
       expect(task.message.split(PLANNING_INSTRUCTION)).toHaveLength(2);
       expect(task.message.startsWith(task.brief)).toBe(true);
       const ids = task.manifest?.mustAddress.map(({ id }) => id) ?? [];
       expect(task.manifest?.falsePremises.every((id) => ids.includes(id)) ?? true).toBe(true);
-      if (task.greenfield) continue;
-      expect(task.sandbox.commit).toMatch(/^[0-9a-f]{40}:[^:]+$/);
+      if (!("commit" in task.sandbox)) throw new Error(`${task.id} must pin a commit`);
+      expect(task.sandbox.commit).toMatch(/^[0-9a-f]{40}(:[^:]+)?$/);
       expect(task.sandbox.paths.some((path) => /^(bench|inspiration)(\/|$)/.test(path))).toBe(false);
     }
     const healthz = tasks.find(({ id }) => id === "healthz-greenfield")!;
     expect(healthz.sandbox).toEqual({ commit: "4b825dc642cb6eb9a060e54bf8d69288fbee4904", paths: [] });
     expect(healthz.manifest).toBeNull();
-    expect(tasks.find(({ id }) => id === "retry-telemetry-refactor")!.manifest!.falsePremises).toEqual(["m1", "m2", "m3", "m4"]);
   });
 
   test("the loader refuses a snapshot sandbox, an unknown key, empty paths, a copied answer key, and an unknown false premise", async () => {
@@ -71,6 +70,18 @@ describe("planning tasks", () => {
     const greenfield = fakeOwnedCommandRunner();
     await qualifyPlanningTask(healthz!, greenfield.run);
     expect(greenfield.calls).toEqual([]);
+  });
+
+  test("a vendored fixture folder qualifies against its own files and its content is in the identity", async () => {
+    const root = await taskFolder({ ...repositoryTask, sandbox: { fixtureRepo: "project" } }, { mustAddress: [point("m1", "Reads `src/a.ts` and `src/b.ts`.")] });
+    await mkdir(join(root, "fixture", "project", "src"), { recursive: true });
+    await writeFile(join(root, "fixture", "project", "src", "a.ts"), "one\n");
+    const [task] = await loadPlanningTasks(root, ["fixture"]);
+    const { run, calls } = fakeOwnedCommandRunner();
+    await expect(qualifyPlanningTask(task!, run)).rejects.toThrow("project does not hold:\nm1: src/b.ts");
+    expect(calls).toEqual([]);
+    await writeFile(join(root, "fixture", "project", "src", "a.ts"), "two\n");
+    expect((await loadPlanningTasks(root, ["fixture"]))[0]?.contentIdentity).not.toBe(task?.contentIdentity);
   });
 });
 
@@ -196,7 +207,7 @@ describe("planning judge", () => {
   test("the report shows a comparison of any two treatments judged under another profile", async () => {
     const directory = await campaign();
     const judged = await judgePlanningCampaign({ directory, a: "a", b: "c", authProfile: "Other" }, {
-      admit: async () => ({ model: prefersA, profileId: "judge", authorityIncarnation: "authority", run: async () => { throw new Error("No commands"); }, [Symbol.asyncDispose]: async () => {} }),
+      admit: async () => ({ model: prefersA, profileId: "judge", authorityIncarnation: "authority", [Symbol.asyncDispose]: async () => {} }),
     });
     expect(judged.pairwise?.judged).toBe(1);
     const report = await renderPlanningReport(directory);

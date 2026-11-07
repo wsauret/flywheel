@@ -1,95 +1,109 @@
 import { describe, expect, it } from "bun:test";
 
+import { createHandoffTracker } from "../src/orchestration/agent-runtime/agent-loop-handoff.js";
 import { createBackgroundWorkRegistry, type BackgroundWorkResult } from "../src/orchestration/agent-runtime/background-work.js";
-import { handoffDefinition } from "../src/orchestration/agent-runtime/tools/handoff.js";
-import { makeContext } from "../tests/unit/orchestration/agent-runtime/tools/_fixtures.js";
+import type { ToolCall } from "../src/orchestration/agent-runtime/llm/types.js";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+let nextCall = 0;
+const handoffCall = (): ToolCall => ({ id: `handoff-${nextCall++}`, name: "handoff", input: { summary: "Done" } });
+
+/** A workflow registry whose conversation commits each notification only when the test says so. */
+function workflowRegistry() {
+  const commits: Array<() => void> = [];
+  const registry = createBackgroundWorkRegistry({
+    kind: "workflow",
+    enqueueNotification: () => new Promise<void>((resolve) => { commits.push(resolve); }),
+  });
+  const commitAll = async () => {
+    for (const commit of commits.splice(0)) commit();
+    await delay(5);
+  };
+  return { registry, commitAll };
+}
+
+/** One model response that calls handoff: undefined admits it, a result refuses it. */
+function attemptHandoff(tracker: ReturnType<typeof createHandoffTracker>) {
+  return tracker.request().refuse(handoffCall());
+}
+
 describe("workflow handoff gate and background commands", () => {
   it("blocks handoff while a background command is still active, and until its result reaches the model", async () => {
-    const registry = createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: () => {} });
+    const { registry, commitAll } = workflowRegistry();
     const done = Promise.withResolvers<BackgroundWorkResult>();
-
     registry.track({
       done: done.promise,
       meta: { id: "command-1", type: "background_command", description: "bun run test:perf" },
     });
 
-    const blockers = registry.assertHandoffReady();
-    expect(blockers).not.toBeNull();
-    expect(blockers!.active).toBe(1);
-    expect(blockers!.activeDescriptions).toContain("bun run test:perf");
+    const running = registry.assertHandoffReady();
+    expect(running).not.toBeNull();
+    expect(running!.active).toBe(1);
+    expect(running!.activeDescriptions).toContain("bun run test:perf");
 
-    done.resolve({ status: "completed", content: "ok" });
+    done.resolve({ status: "completed", content: "ok", exit: { code: 0 } });
     await delay(5);
 
-    const pending = registry.assertHandoffReady();
-    expect(pending).not.toBeNull();
-    expect(pending!.active).toBe(0);
-    expect(pending!.pending).toBe(1);
-    registry.clearPending();
+    const owed = registry.assertHandoffReady();
+    expect(owed).not.toBeNull();
+    expect(owed!.active).toBe(0);
+    expect(owed!.pending).toBe(1);
+    expect(owed!.pendingDescriptions).toContain("bun run test:perf");
+
+    await commitAll();
     expect(registry.assertHandoffReady()).toBeNull();
   });
 
-  it("the handoff tool refuses while a background command runs or its result is not incorporated, then accepts", async () => {
-    let captured: { [key: string]: unknown } | null = null;
-    const registry = createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: () => {} });
-    const commandDone = Promise.withResolvers<BackgroundWorkResult>();
+  it("the handoff gate refuses while a background command runs or its result is not incorporated, then accepts", async () => {
+    const { registry, commitAll } = workflowRegistry();
+    const done = Promise.withResolvers<BackgroundWorkResult>();
     registry.track({
-      done: commandDone.promise,
+      done: done.promise,
       meta: { id: "command-1", type: "background_command", description: "bun run test:perf" },
     });
-    const ctx = makeContext({
-      handoff: { onContent: (content) => { captured = content; } },
-      backgroundTasks: registry,
-    });
+    let started = 0;
+    const tracker = createHandoffTracker({ background: registry, onStarted: () => { started++; } });
 
-    const commandBlocked = await handoffDefinition.execute({ summary: "Premature" }, ctx);
-    expect(commandBlocked.outcome).toBe("blocked");
-    expect(commandBlocked.content).toContain("bun run test:perf");
-    expect(captured).toBeNull();
+    const running = attemptHandoff(tracker);
+    expect(running?.outcome).toBe("blocked");
+    expect(String(running?.content)).toContain("bun run test:perf");
+    expect(started).toBe(0);
 
-    commandDone.resolve({ status: "completed", content: "ok" });
+    done.resolve({ status: "completed", content: "ok", exit: { code: 0 } });
     await delay(5);
-    const commandPending = await handoffDefinition.execute({ summary: "Still premature" }, ctx);
-    expect(commandPending.outcome).toBe("blocked");
-    expect(commandPending.content).toContain("bun run test:perf");
-    expect(captured).toBeNull();
+    const owed = attemptHandoff(tracker);
+    expect(owed?.outcome).toBe("blocked");
+    expect(String(owed?.content)).toContain("bun run test:perf");
+    expect(started).toBe(0);
 
-    registry.clearPending();
-    const ok = await handoffDefinition.execute({ summary: "Final" }, ctx);
-    expect(ok.outcome).toBe("ok");
-    expect(captured).toEqual({ summary: "Final" });
+    await commitAll();
+    expect(attemptHandoff(tracker)).toBeUndefined();
+    expect(started).toBe(1);
   });
 
   it("still gates handoff on subagents as before", async () => {
-    let captured: { [key: string]: unknown } | null = null;
-    const registry = createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: () => {} });
-    const reviewerDone = Promise.withResolvers<BackgroundWorkResult>();
+    const { registry, commitAll } = workflowRegistry();
+    const done = Promise.withResolvers<BackgroundWorkResult>();
     registry.track({
-      done: reviewerDone.promise,
+      done: done.promise,
       meta: { id: "reviewer-1", type: "subagent", description: "Architecture review" },
     });
-    const ctx = makeContext({
-      handoff: { onContent: (content) => { captured = content; } },
-      backgroundTasks: registry,
-    });
+    let started = 0;
+    const tracker = createHandoffTracker({ background: registry, onStarted: () => { started++; } });
 
-    const blocked = await handoffDefinition.execute({ summary: "Premature" }, ctx);
-    expect(blocked.outcome).toBe("blocked");
-    expect(blocked.content).toContain("Architecture review");
-    expect(captured).toBeNull();
+    const running = attemptHandoff(tracker);
+    expect(running?.outcome).toBe("blocked");
+    expect(String(running?.content)).toContain("Architecture review");
 
-    reviewerDone.resolve({ status: "completed", content: "ok" });
+    done.resolve({ status: "completed", content: "ok" });
     await delay(5);
-    const undelivered = await handoffDefinition.execute({ summary: "Still premature" }, ctx);
-    expect(undelivered.outcome).toBe("blocked");
-    expect(captured).toBeNull();
+    const owed = attemptHandoff(tracker);
+    expect(owed?.outcome).toBe("blocked");
+    expect(started).toBe(0);
 
-    registry.clearPending();
-    const ok = await handoffDefinition.execute({ summary: "Final" }, ctx);
-    expect(ok.outcome).toBe("ok");
-    expect(captured).toEqual({ summary: "Final" });
+    await commitAll();
+    expect(attemptHandoff(tracker)).toBeUndefined();
+    expect(started).toBe(1);
   });
 });

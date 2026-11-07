@@ -1,15 +1,17 @@
 # Benchmark task corpora
 
+Every runnable task in these corpora works in a public clone. Its source is a commit in the public history, files inside the task (a vendored `project/` folder), or an empty tree. `bun run lint:bench-pins` fails when a task names a commit that is not an ancestor of HEAD.
+
 ## Planning tasks
 
 Planning tasks live under `planning/<id>/`. The planning campaign family (`bun run bench:planning`, refer to `../chat-ab/README.md`, "Planning") loads them, and its `PLANNING_TASKS_DIR` constant names the folder. A task has four files:
 
 - `brief.md` is the person's request. The harness sends it unchanged, then one fixed instruction to write the plan to `PLAN.md`.
-- `task.json` is `{ "id", "stratum", "timeoutMinutes", "sandbox" }`, decoded strictly. `id` equals the folder name. `sandbox` is `"greenfield"`, which provisions an empty repository through the empty Git tree, or `{ "commit", "paths" }`: an immutable selector (a full commit hash, optionally `:<subtree>`) and the non-empty list of paths that `git archive` copies. There is no `patch`, `setup`, or snapshot sandbox, and no `bun install` runs.
+- `task.json` is `{ "id", "stratum", "timeoutMinutes", "sandbox" }`, decoded strictly. `id` equals the folder name. `sandbox` is the shared sandbox spec that the implement tasks below also use: `{ "commit", "paths" }` (an immutable selector, a full hash of a commit in the public history optionally followed by `:<subtree>`, and the non-empty list of paths that `git archive` copies), `{ "fixtureRepo" }`, or the empty source, each with an optional `patch` and `setup`. A greenfield task uses the empty source, which provisions an empty repository. The planning family provisions through the chat-ab provisioner, which applies the patch and runs setup before it commits the baseline.
 - `manifest.json` (optional) is `{ "mustAddress": [{ "id", "title", "catchCriteria" }], "falsePremises"?: ["<id>"] }`. The points are the known requirements that recall scoring and the pairwise judge read. `falsePremises` lists the ids of the points that refute a false claim of the brief. A task with no manifest, such as a greenfield task, has no recall score.
 - `WHY.md` explains why the task exists. Its section "Verification at the pinned tree" gives one `path:line` at the pinned tree for every claim of each point, and states that the requested feature is absent there. The evidence goes in `WHY.md`, never in the manifest, because the judge reads the manifest.
 
-`paths` never includes `bench` or `inspiration`: `bench` holds this answer key, and the loader refuses both. Before setup runs a cell, the harness checks that every backticked repository path of the manifest exists at the pinned tree.
+`paths` never includes `bench` or `inspiration`: `bench` holds this answer key, and the loader refuses both. Before setup runs a cell, the harness checks that every backticked repository path of the manifest exists in the sandbox source: the pinned tree, or the fixture folder.
 
 ## Implement tasks
 
@@ -19,9 +21,9 @@ Implement capture retains the diff before it installs the hidden acceptance test
 
 Implement task files:
 
-- `task.json` contains `{ "id", "stratum" }`. Optional: `sandbox` selects a commit-pinned sandbox `{ "commit", "paths", "patch"?, "setup"? }` instead of `project/`: the harness materializes `git archive` of this repository at that commit restricted to `paths`, applies the optional `patch` (task-dir relative) on top, commits the result as the baseline, then runs the optional `setup` commands (e.g. `[["bun", "install"]]`) so their artifacts stay out of the baseline and the diff.
+- `task.json` contains `{ "id", "stratum" }`. Optional: `sandbox` is `{ "fixtureRepo", "patch"?, "setup"? }` or `{ "commit", "paths", "patch"?, "setup"? }`. `fixtureRepo` names a task-dir relative folder that holds the source files verbatim; without `sandbox` it is `project/`. `commit` and `paths` instead materialize `git archive` of this repository at that commit restricted to `paths`; the commit must be in the public history. The empty tree (`4b825dc642cb6eb9a060e54bf8d69288fbee4904`) with `"paths": []` is the empty source; every other commit needs a non-empty path list. Either way the harness applies the optional `patch` (task-dir relative) on top, commits the result as the baseline, then runs the optional `setup` commands (e.g. `[["bun", "install"]]`) so their artifacts stay out of the baseline and the diff.
 - `plan.json` contains a plan that the `implementation-plan.json` output contract accepts.
-- `project/` is copied into the sandbox and committed as the baseline with `.flywheel/` ignored (unless `sandbox` names a commit).
+- The source folder is copied into the sandbox and committed as the baseline with `.flywheel/` ignored. Its files are frozen inputs: they keep the bytes of the commit they came from, and a change to them changes the task's content identity.
 - `acceptance/` contains hidden Bun tests. The harness copies it only after capturing the implementation diff, then runs `bun test acceptance`.
 - `manifest.json` contains `traps` and `judgment` arrays whose entries contain `id`, `title`, and `catchCriteria`.
 

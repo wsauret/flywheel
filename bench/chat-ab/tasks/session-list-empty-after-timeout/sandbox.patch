@@ -11,3 +11,77 @@ index d78a314..b029fbd 100644
  preload = ["./tests/preload.ts"]
  
  # The vscode workspace flips bun's default linker to "isolated", which stores
+diff --git a/src/orchestration/app-service/project-control-client.ts b/src/orchestration/app-service/project-control-client.ts
+index 59a7ac3..bf3862e 100644
+--- a/src/orchestration/app-service/project-control-client.ts
++++ b/src/orchestration/app-service/project-control-client.ts
+@@ -266,17 +266,17 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
+   const pendingMetadata = new Set<string>()
+   const catalogWork = createOrderedLane()
+   let queuedSync: Promise<void> | undefined
++  let baselineRead: ReturnType<typeof options.history.snapshot> | undefined
+   /** Queues one step on the catalog chain, or answers the step already
+-   *  queued: the history baseline until one succeeds, then the metadata
+-   *  changes heard since. A failed baseline, such as one past its history
+-   *  deadline, keeps those changes queued, and the next step reads it again. */
++   *  queued: the history baseline, then the metadata changes heard since. */
+   function syncCatalog(): Promise<void> {
+     if (queuedSync) return queuedSync
+     const step = catalogWork.run(async () => {
+       queuedSync = undefined
+       if (closing) return
+       if (!baselined) {
+-        const catalog = await fromHistory(() => options.history.snapshot())
++        baselineRead ??= fromHistory(() => options.history.snapshot())
++        const catalog = await baselineRead
+         if (closing) return
+         errors = catalog.errors
+         for (const row of catalog.rows) if (row.kind === "chat") rememberHistoryRow(row)
+diff --git a/tests/unit/orchestration/app-service/project-control-client-catalog.test.ts b/tests/unit/orchestration/app-service/project-control-client-catalog.test.ts
+index 73af156..b336d74 100644
+--- a/tests/unit/orchestration/app-service/project-control-client-catalog.test.ts
++++ b/tests/unit/orchestration/app-service/project-control-client-catalog.test.ts
+@@ -97,43 +97,6 @@ describe("account project control catalog", () => {
+     await bus.clear()
+   })
+ 
+-test("a failed history baseline keeps the changes heard meanwhile and is read again by the next catalog step", async () => {
+-    const f = fixture()
+-    f.metadata.set("one", durableRow("one", { label: "One" }))
+-    const deadline = new Error("history deadline")
+-    let baselines = 0
+-    const heard = Promise.withResolvers<void>()
+-    const client = createProjectControlClient({
+-      ...f.options,
+-      history: {
+-        ...f.options.history,
+-        async snapshot() {
+-          if (++baselines === 1) throw deadline
+-          return { rows: [listedRow(durableRow("one", { label: "One" }))], errors: [], totalsLoading: true, generationSpeeds: {} }
+-        },
+-      },
+-      state: { ...f.options.state, sessions: { ...f.options.state.sessions, async listForIds(ids) {
+-        if (ids.includes("three")) heard.resolve()
+-        return f.options.state.sessions.listForIds(ids)
+-      } } },
+-    })
+-    f.metadata.set("one", durableRow("one", { label: "Renamed" }))
+-    f.metadata.set("two", durableRow("two", { label: "Two" }))
+-    f.notify({ kind: "changed", sessionIds: ["one", "two"] })
+-    await expect(client.query({ type: "snapshot" })).rejects.toBe(deadline)
+-    expect(f.failures).toEqual([deadline])
+-
+-    // A change heard after the failure schedules its own step, which reads
+-    // the baseline again and then applies every change still queued.
+-    f.metadata.set("three", durableRow("three", { label: "Three" }))
+-    f.notify({ kind: "changed", sessionIds: ["three"] })
+-    await heard.promise
+-    const snapshot = await client.query({ type: "snapshot" })
+-    expect(baselines).toBe(2)
+-    expect(snapshot.rows.map((row) => [row.id, row.title])).toEqual([["one", "Renamed"], ["two", "Two"], ["three", "Three"]])
+-    await client.close()
+-  })
+-
+   test("a summary that completes after the baseline publishes its budget warning", async () => {
+     const f = fixture()
+     const bus = createRuntimeUiBus()

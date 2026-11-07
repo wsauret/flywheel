@@ -4,7 +4,7 @@ This task ports `bench/tasks/implement/metrics-resteer` into the chat A/B campai
 
 ## Provenance and sandbox
 
-The sandbox archives only `.gitignore` from commit `64d9b75aeaa02fb5d00d2f75d01ea8a50df0d743`, following the debug-mutable-default precedent. The additive `sandbox.patch` reproduces all eight source `project/` files byte for byte. No dependency installation or setup command is needed. The sandbox contains no plan, manifest, qualification patches, or acceptance tests before capture.
+The sandbox source is the empty tree, following the debug-mutable-default precedent. The additive `sandbox.patch` creates `.gitignore`, with the bytes that earlier runs archived from commit `64d9b75aeaa02fb5d00d2f75d01ea8a50df0d743`, and reproduces all eight source `project/` files byte for byte. No dependency installation or setup command is needed. The sandbox contains no plan, manifest, qualification patches, or acceptance tests before capture.
 
 All original hidden assertions are retained. The missing store import moves into each dependent test, with an asynchronous test body. The baseline intentionally has no store module: a static import prevents Bun from reporting individual test outcomes. Per-test imports produce nine ordinary failures while preserving the two passing percentile guards. The original visible sorted-input percentile assertion is frozen as the second guard. Callback-only visible tests are not frozen because this refactor explicitly removes that API; their collection and reporting behaviors remain covered through the requested store API.
 

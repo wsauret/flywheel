@@ -2,5 +2,5 @@
   "id": "healthz-greenfield",
   "stratum": "small",
   "timeoutMinutes": 30,
-  "sandbox": "greenfield"
+  "sandbox": { "commit": "4b825dc642cb6eb9a060e54bf8d69288fbee4904", "paths": [] }
 }

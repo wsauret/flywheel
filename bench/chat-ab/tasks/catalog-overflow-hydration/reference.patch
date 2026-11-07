@@ -1,0 +1,302 @@
+diff --git b/docs/architecture-intent/protocol.md a/docs/architecture-intent/protocol.md
+index 29cf8b9..f9e1135 100644
+--- b/docs/architecture-intent/protocol.md
++++ a/docs/architecture-intent/protocol.md
+@@ -70,7 +70,7 @@ Not: A client that restates ordering locally or adds an alternate patch-applicat
+ 
+ ## ARCH-PROTOCOL-013: Overflow becomes an invalidation, never a dropped connection
+ 
+-When the runtime bus drops a patch at its pending-delivery limit, every live domain receives a cursor invalidation on the same ordered lane after the queued backlog. Recovery reads the domain's authoritative snapshot, not the last published payload. A connection's outbound queue drops its oldest frames, never the connection, and each receiver answers the resulting gap with the ordinary resnapshot, with no reconnect or polling timer.
++When the runtime bus drops a patch at its pending-delivery limit, every live domain receives a cursor invalidation on the same ordered lane after the queued backlog. Recovery reads the domain's authoritative snapshot, not the last published payload. A connection's outbound queue drops its oldest frames, never the connection. It appends one overflow invalidation that the sliding queue cannot discard, stamped with the newest patch position it was offered. Receivers whose read already covers the dropped frames ignore it, and receivers behind it read again. Repeated drops before a drain share one invalidation, with no reconnect or polling timer.
+ Because: A client that falls behind must stay attached and catch up in place.
+ Not: Dropping a slow connection, or recovering from the last published payload.
+ 
+diff --git b/src/orchestration/app-service/runtime-event-delivery.ts a/src/orchestration/app-service/runtime-event-delivery.ts
+index 580fc1e..58a9b67 100644
+--- b/src/orchestration/app-service/runtime-event-delivery.ts
++++ a/src/orchestration/app-service/runtime-event-delivery.ts
+@@ -18,16 +18,12 @@ const QUEUE_PRESSURE_THRESHOLDS = [1000, 1500] as const
+  *  The consumer scope owns the subscription, heartbeat fiber, and sliding queue.
+  *  Stream completion or interruption awaits their release.
+  *
+- *  A client that falls behind keeps its lane. The queue is sliding: past the
+- *  bound the oldest frame is dropped rather than the connection, so a phone
+- *  that is slow to draw, or on a slow link, never sees its runtime hang up on
+- *  it and never has to reattach from scratch. What it does see is a gap in the
+- *  patch sequence, and every receiver already answers a gap with the ordinary
+- *  resnapshot, which is the same recovery a reconnect would have forced, minus
+- *  the reconnect. The backlog is still bounded in runtime memory.
++ *  A client that falls behind keeps its lane. A dropped cursor's final patch
++ *  has no successor to expose a gap, so an overflowed batch ends with an
++ *  explicit invalidation, outside the sliding queue that could drop it too.
+  *  Frames use the existing wire codec; invalid frames fail as schema defects.
+  *  An optional drain effect stops subscription and heartbeat admission, then
+- *  completes after the retained batch is consumed.
++ *  completes after the retained batch and overflow invalidation are consumed.
+  *  Interruption still cancels delivery immediately.
+  *
+  *  `watches` names the sessions whose `output.delta` this subscriber
+@@ -57,10 +53,20 @@ export function runtimeEventDelivery(
+     // Reported once per subscription: the first drop says this client fell
+     // behind, and the rate of later drops is not a fact anyone acts on.
+     let dropped = false
++    let overflowPending = false
++    // The newest patch position offered, dropped or not. The bus delivers in
++    // publish order, so it covers every frame the sliding queue dropped. An
++    // ordered receiver whose read answered at or past it lost nothing and
++    // ignores the invalidation; every receiver behind it reads again.
++    let newestPosition = 0
+     const offer = (event: RuntimeEventFrame): void => {
+-      if (!dropped && Queue.sizeUnsafe(queue) >= EVENT_QUEUE_CAPACITY) {
+-        dropped = true
+-        log.info("runtime event stream overflowed; dropping oldest frames, the client resnapshots on the gap", { streamId, capacity: EVENT_QUEUE_CAPACITY })
++      if (event.type === "patch") newestPosition = event.patch.position
++      if (Queue.sizeUnsafe(queue) >= EVENT_QUEUE_CAPACITY) {
++        overflowPending = true
++        if (!dropped) {
++          dropped = true
++          log.info("runtime event stream overflowed; invalidating after the retained batch", { streamId, capacity: EVENT_QUEUE_CAPACITY })
++        }
+       }
+       Queue.offerUnsafe(queue, event)
+       const queuedFrames = Queue.sizeUnsafe(queue)
+@@ -119,7 +125,21 @@ export function runtimeEventDelivery(
+       if (Queue.sizeUnsafe(queue) === 0) Queue.offerUnsafe(queue, end)
+     }).pipe(Effect.forkScoped)
+     return Stream.fromQueue(queue).pipe(
+-      Stream.mapArray((frames) => draining ? [...frames, end] as const : frames),
++      Stream.mapArray((frames) => {
++        const tail = draining ? [...frames, end] as const : frames
++        if (!overflowPending) return tail
++        overflowPending = false
++        const invalidation: RuntimeEventFrame = {
++          type: "patch",
++          patch: {
++            cursor: { scope: "workspace", domain: "runtime" },
++            position: newestPosition,
++            prevPosition: 0,
++            payload: { kind: "runtime.invalidate", reason: "overflow" },
++          },
++        }
++        return draining ? [...frames, invalidation, end] as const : [...frames, invalidation] as const
++      }),
+       Stream.takeWhile((frame): frame is RuntimeEventFrame => frame !== end),
+       Stream.map((frame) => decodeFrame(frame)),
+     )
+diff --git b/tests/unit/orchestration/app-service/runtime-event-stream.test.ts a/tests/unit/orchestration/app-service/runtime-event-stream.test.ts
+index 4eab00d..e5a5337 100644
+--- b/tests/unit/orchestration/app-service/runtime-event-stream.test.ts
++++ a/tests/unit/orchestration/app-service/runtime-event-stream.test.ts
+@@ -8,6 +8,11 @@ import { createOutputWatches } from "../../../../src/orchestration/app-service/o
+ import { runtimeEventDelivery } from "../../../../src/orchestration/app-service/runtime-event-delivery.js"
+ import { RuntimeEventFrameSchema, RuntimeProtocolRpc } from "../../../../src/protocol/runtime-protocol-schemas.js"
+ import { RUNTIME_EVENT_HEARTBEAT_INTERVAL_MS, RUNTIME_LIVENESS_POLICY, RUNTIME_PROTOCOL_VERSION } from "../../../../src/protocol/runtime-liveness.js"
++import { createFamilyIntake } from "../../../../src/protocol/client/family-intake.js"
++import { createCursorIntake } from "../../../../src/protocol/client/cursor-intake.js"
++import { outputCursor } from "../../../../src/protocol/output-protocol-types.js"
++import { sessionCursor } from "../../../../src/protocol/runtime-ui-protocol-types.js"
++import { catalogRow, readyCatalogRow } from "../../../helpers/session-catalog.js"
+ import { DebugLog, listDebugLogFiles, resolveDebugLogDirectory, scanDebugLogFiles } from "../../../../src/infra/debug-log.js"
+ import { temporaryDirectories } from "../../../helpers/directories.js"
+ import { runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"
+@@ -15,7 +20,7 @@ import { runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch
+ /** The per-connection outbound queue policy: a client that stops draining
+  *  keeps its lane. Past the bound the oldest frames are dropped rather than
+  *  the connection, the backlog stays bounded in runtime memory, and the
+- *  receiver answers the gap with an ordinary resnapshot. A phone that is slow
++ *  receiver answers the explicit invalidation with an ordinary resnapshot. A phone that is slow
+  *  to draw must never see its runtime hang up on it. */
+ 
+ function stubService() {
+@@ -194,15 +199,16 @@ describe("RuntimeEvents bounded per-connection queue", () => {
+       yield* Deferred.succeed(release, undefined)
+       yield* Fiber.join(fiber)
+     }).pipe(Effect.scoped))
+-    const retained = received.filter((frame) => frame.type !== "runtime.connected")
++    const retained = received.filter((frame) => frame.type !== "runtime.connected" && !(frame.type === "patch" && frame.patch.payload.kind === "runtime.invalidate"))
+     expect(retained.length).toBeLessThanOrEqual(2048)
+     if (count > 0) expect(retained.map(markerPosition)).toContain(count - 1)
++    if (count > 2048) expect(received.at(-1)).toMatchObject({ type: "patch", patch: { payload: { kind: "runtime.invalidate", reason: "overflow" } } })
+     expect(received.filter((frame) => frame.type === "runtime.heartbeat").length).toBeLessThanOrEqual(1)
+     expect(stub.listenerCount()).toBe(0)
+     expect(infos.filter((entry) => entry.message === "runtime event stream unsubscribed")).toHaveLength(1)
+   })
+ 
+-  test("a blocked delivery consumer admits a bounded newest batch and unsubscribes on interruption", async () => {
++  test("a blocked delivery consumer admits a bounded newest batch before recovery and unsubscribes on interruption", async () => {
+     const { stub, infos } = harness()
+     const subscribed = Promise.withResolvers<void>()
+     const log = { debug: () => {}, info: (message: unknown, fields?: unknown) => { infos.push({ message, fields }) }, error: () => {}, warn: () => {} }
+@@ -210,7 +216,7 @@ describe("RuntimeEvents bounded per-connection queue", () => {
+     await Effect.runPromise(Effect.gen(function*() {
+       const blocked = yield* Deferred.make<void>()
+       const release = yield* Deferred.make<void>()
+-      const drained = yield* Deferred.make<void>()
++      const recovered = yield* Deferred.make<void>()
+       const stream = runtimeEventDelivery(stub.service, log, RUNTIME_LIVENESS_POLICY, () => subscribed.resolve())
+       const fiber = yield* Stream.runForEach(stream, (event) => Effect.gen(function*() {
+         received.push(event)
+@@ -218,7 +224,9 @@ describe("RuntimeEvents bounded per-connection queue", () => {
+           yield* Deferred.succeed(blocked, undefined)
+           yield* Deferred.await(release)
+         }
+-        if (markerPosition(event) === 4999) yield* Deferred.succeed(drained, undefined)
++        if (event.type === "patch" && event.patch.payload.kind === "runtime.invalidate") {
++          yield* Deferred.succeed(recovered, undefined)
++        }
+       })).pipe(Effect.forkScoped)
+       yield* Effect.promise(() => subscribed.promise)
+       yield* Deferred.await(blocked)
+@@ -226,16 +234,20 @@ describe("RuntimeEvents bounded per-connection queue", () => {
+       expect(received.map((event) => event.type)).toEqual(["runtime.connected"])
+       expect(stub.listenerCount()).toBe(1)
+       yield* Deferred.succeed(release, undefined)
+-      yield* Deferred.await(drained)
++      yield* Deferred.await(recovered)
+       expect(received.map(markerPosition).filter((position) => position !== undefined)).toEqual(
+         Array.from({ length: 2048 }, (_, index) => 2952 + index),
+       )
++      expect(received.at(-1)).toMatchObject({
++        type: "patch",
++        patch: { cursor: { scope: "workspace", domain: "runtime" }, payload: { kind: "runtime.invalidate", reason: "overflow" } },
++      })
+       yield* Fiber.interrupt(fiber)
+       expect(stub.listenerCount()).toBe(0)
+       stub.emit(markerEvent(5000))
+     }).pipe(Effect.scoped))
+     expect(infos.filter((entry) => entry.message === "runtime event stream unsubscribed")).toHaveLength(1)
+-    expect(infos.filter((entry) => entry.message === "runtime event stream overflowed; dropping oldest frames, the client resnapshots on the gap")).toHaveLength(1)
++    expect(infos.filter((entry) => entry.message === "runtime event stream overflowed; invalidating after the retained batch")).toHaveLength(1)
+   })
+ 
+   test("a 654-session hydration-sized burst fits without dropping frames", async () => {
+@@ -257,6 +269,79 @@ describe("RuntimeEvents bounded per-connection queue", () => {
+     expect(stub.listenerCount()).toBe(0)
+   })
+ 
++  test("overflow recovers quiet session cursors and ordered cursors without waiting for successor patches", async () => {
++    const { stub, layer } = harness()
++    // A transcript seeded from a read answered before the dropped frames.
++    // Its intake orders by position, so the invalidation must name a
++    // position past what it holds for it to read again.
++    const transcriptRecoveries: unknown[] = []
++    const transcript = createCursorIntake({ cursor: outputCursor("s0"), onApply: () => {}, onRecover: (request) => { transcriptRecoveries.push(request.invalidation) } })
++    transcript.seed(1)
++    // A receiver whose read already covers every dropped frame lost nothing.
++    const current: unknown[] = []
++    const covered = createCursorIntake({ cursor: outputCursor("s1"), onApply: () => {}, onRecover: (request) => { current.push(request.invalidation) } })
++    covered.seed(1_000_000)
++    const rows = Array.from({ length: 2200 }, (_, index) => readyCatalogRow(`s${index}`, `Session ${index}`))
++    const loading = new Map<string, boolean>()
++    const recovered = Promise.withResolvers<void>()
++    let reads = 0
++    const intake = createFamilyIntake({
++      scopeKey: () => "catalog",
++      connectedScope: () => "catalog",
++      accept: (patch) => patch.cursor.domain === "session" ? { cursor: patch.cursor, scope: "catalog" } : null,
++      loadSnapshot: async () => ({
++        rows: ++reads === 1 ? rows.map((row) => catalogRow(row.id, row.title)) : rows,
++        position: reads === 1 ? 1 : 5000,
++      }),
++      applySnapshot: (snapshot) => {
++        for (const row of snapshot.rows) loading.set(row.id, row.totalsLoading)
++        if (reads > 1) recovered.resolve()
++        return { snapshotPosition: snapshot.position, clearHeld: true, cursors: snapshot.rows.map((row) => sessionCursor(row.id)) }
++      },
++      applyPayload: (patch) => {
++        if (patch.payload.kind === "session.updated") loading.set(patch.payload.row.id, patch.payload.row.totalsLoading)
++      },
++    })
++    try {
++      await intake.resnapshot("catalog")
++      await Effect.runPromise(Effect.gen(function*() {
++        const client = yield* RpcTest.makeClient(RuntimeProtocolRpc)
++        const markers = new Map([[5001, Promise.withResolvers<void>()], [5002, Promise.withResolvers<void>()]])
++        let invalidations = 0
++        const fiber = yield* Stream.runForEach(client.RuntimeEvents(ATTACH), (input) => Effect.sync(() => {
++          const event = decodeFrame(input)
++          if (event.type === "runtime.heartbeat" || event.type === "runtime.connected") return
++          if (event.type === "patch" && event.patch.payload.kind === "executor.changed") markers.get(event.patch.position)?.resolve()
++          if (event.type === "patch" && event.patch.payload.kind === "runtime.invalidate") invalidations += 1
++          intake.handle(event)
++          if (event.type === "patch" && event.patch.cursor.domain === "runtime") {
++            transcript.accept(event.patch)
++            covered.accept(event.patch)
++          }
++        })).pipe(Effect.forkScoped)
++        yield* awaitListener(stub)
++        for (const [index, row] of rows.entries()) {
++          stub.emit({ type: "patch", patch: { cursor: sessionCursor(row.id), position: index + 2, prevPosition: 0, payload: { kind: "session.updated", row } } })
++        }
++        // These ignored-domain markers prove the lane drained without a successor on any session cursor.
++        for (const [position, drained] of markers) {
++          stub.emit({ type: "patch", patch: { cursor: { scope: "workspace", domain: "executor" }, position, prevPosition: 0, payload: { kind: "executor.changed", executor: { kind: "serving" } } } })
++          yield* Effect.promise(() => drained.promise)
++        }
++        expect(invalidations).toBe(1)
++        expect(reads).toBe(2)
++        expect(transcriptRecoveries).toEqual(["overflow"])
++        expect(current).toEqual([])
++        yield* Effect.promise(() => recovered.promise)
++        expect([...loading.values()].filter(Boolean)).toHaveLength(0)
++        yield* Fiber.interrupt(fiber)
++      }).pipe(Effect.scoped, Effect.provide(layer)))
++    } finally {
++      intake.dispose()
++    }
++    expect(stub.listenerCount()).toBe(0)
++  })
++
+   test("the first frame says only that the runtime answers, and an unsupported event is logged with its session identity", async () => {
+     const { layer, warnings } = harness()
+     const logHome = makeDirectory("runtime-input-diagnostic-")
+@@ -349,9 +434,11 @@ describe("RuntimeEvents bounded per-connection queue", () => {
+     const outcome = await Effect.runPromise(Effect.gen(function*() {
+       const client = yield* RpcTest.makeClient(RuntimeProtocolRpc)
+       const received: number[] = []
++      const recoveredAfter: number[] = []
+       const fiber = yield* Stream.runForEach(client.RuntimeEvents(ATTACH).pipe(Stream.map((event) => decodeFrame(event))), (event) => Effect.sync(() => {
+         const position = markerPosition(event)
+         if (position !== undefined) received.push(position)
++        if (event.type === "patch" && event.patch.payload.kind === "runtime.invalidate") recoveredAfter.push(received.at(-1) ?? -1)
+       })).pipe(Effect.forkScoped)
+       yield* awaitListener(stub)
+       // The synchronous flood models a client that cannot drain during the
+@@ -367,12 +454,13 @@ describe("RuntimeEvents bounded per-connection queue", () => {
+       stub.emit(markerEvent(9_000))
+       while (received.at(-1) !== 9_000) yield* Effect.yieldNow
+       yield* Fiber.interrupt(fiber)
+-      return { received }
++      return { received, recoveredAfter }
+     }).pipe(Effect.scoped, Effect.provide(layer)))
+ 
+     expect(outcome.received.length).toBeLessThanOrEqual(2 * 2_048 + 1)
+     expect(outcome.received.at(-2)).toBe(6_199)
+     expect(outcome.received.at(-1)).toBe(9_000)
++    expect(outcome.recoveredAfter).toEqual([2199, 6199])
+     expect(warnings).toEqual([1000, 1500].map((threshold) => ({
+       message: "runtime event queue heavy load",
+       fields: {
+diff --git b/tests/unit/orchestration/headless-chat.test.ts a/tests/unit/orchestration/headless-chat.test.ts
+index a2c16b6..58bf143 100644
+--- b/tests/unit/orchestration/headless-chat.test.ts
++++ a/tests/unit/orchestration/headless-chat.test.ts
+@@ -98,7 +98,7 @@ function dispatchLine(id: string, command: FrontendMutation): string {
+ }
+ 
+ describe("headless Chat JSONL transport", () => {
+-  it("bounds slow stdout, dispatches Interrupt before drain, and retains control results", async () => {
++  it("bounds slow stdout, dispatches Interrupt before drain, and retains control results and overflow invalidation", async () => {
+     const fixture = channelFixture()
+     const input = new PassThrough()
+     const output = new PassThrough({ highWaterMark: 1 })
+@@ -166,7 +166,8 @@ describe("headless Chat JSONL transport", () => {
+       output.resume()
+       expect(await pending).toEqual({ sessionId: "root", outcome: "complete" })
+       const patches = fixture.records.filter((record) => record.type === "event" && record.event.type === "patch")
+-      expect(patches).toHaveLength(2048)
++      expect(patches).toHaveLength(2049)
++      expect(patches.at(-1)).toMatchObject({ type: "event", event: { patch: { payload: { kind: "runtime.invalidate", reason: "overflow" } } } })
+       expect(fixture.records.filter((record) => record.type === "result").map((record) => record.id)).toEqual([
+         "message", "interrupt", ...Array.from({ length: 10 }, (_, index) => `read-${index}`),
+       ])

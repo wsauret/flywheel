@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test"
 import { Effect, Fiber, Schema, Stream } from "effect"
-import { RpcTest } from "effect/unstable/rpc"
+import { RpcTest } from "effect/rpc"
 import type { FrontendEvent } from "../src/protocol/app-service-types.js"
-import type { FlywheelAppService } from "../src/orchestration/app-service/app-service.js"
 import { runtimeHandlers } from "../src/orchestration/app-service/runtime-protocol-handlers.js"
+import { createOutputWatches } from "../src/orchestration/app-service/output-watches.js"
 import { RuntimeEventFrameSchema, RuntimeProtocolRpc } from "../src/protocol/runtime-protocol-schemas.js"
+import { RUNTIME_PROTOCOL_VERSION } from "../src/protocol/runtime-liveness.js"
 import { createFamilyIntake } from "../src/protocol/client/family-intake.js"
 import { sessionCursor } from "../src/protocol/runtime-ui-protocol-types.js"
 import { catalogRow, readyCatalogRow } from "../tests/helpers/session-catalog.js"
@@ -13,12 +14,16 @@ import { catalogRow, readyCatalogRow } from "../tests/helpers/session-catalog.js
  *  overflows whatever bound the runtime keeps. */
 const BURST = 12_000
 
+/** The attach of a client of this runtime's protocol that runs no bundle. */
+const ATTACH = { protocolVersion: RUNTIME_PROTOCOL_VERSION }
+
 function stubService() {
   const listeners = new Set<(event: FrontendEvent) => void>()
   const unused = () => Promise.reject(new Error("not under test"))
-  const service: Pick<FlywheelAppService, "query" | "dispatch" | "subscribe"> = {
+  const service: Parameters<typeof runtimeHandlers>[0]["client"] = {
     query: unused,
     dispatch: unused,
+    disconnect: () => {},
     subscribe: (listener) => {
       listeners.add(listener)
       return () => { listeners.delete(listener) }
@@ -31,25 +36,30 @@ function stubService() {
   }
 }
 
-function connectedEvent(snapshotPosition = 1): FrontendEvent {
-  return { type: "runtime.connected", snapshotPosition }
+/** An ordinary workspace patch whose position the test reads back. */
+function markerEvent(position: number): FrontendEvent {
+  return { type: "patch", patch: { cursor: { scope: "workspace", domain: "executor" }, position, prevPosition: 0, payload: { kind: "executor.changed", executor: { kind: "serving" } } } }
 }
 
 function harness() {
   const stub = stubService()
   const log = { debug: () => {}, info: () => {}, error: () => {}, warn: () => {} }
-  const layer = runtimeHandlers(stub.service, log, {})
+  const layer = runtimeHandlers({ client: stub.service, outputWatches: createOutputWatches({ onUnionChange: () => {} }) }, log, { version: "0.1.0" })
   return { stub, layer }
 }
 
 const decodeFrame = Schema.decodeUnknownSync(RuntimeEventFrameSchema)
+type Frame = ReturnType<typeof decodeFrame>
 
 const awaitListener = (stub: ReturnType<typeof stubService>) =>
   Effect.gen(function*() {
     while (stub.listenerCount() === 0) yield* Effect.yieldNow
   })
 
-const isInvalidation = (event: ReturnType<typeof decodeFrame>): boolean =>
+const markerPosition = (event: Frame): number | undefined =>
+  event.type === "patch" && event.patch.payload.kind === "executor.changed" ? event.patch.position : undefined
+
+const isInvalidation = (event: Frame): boolean =>
   event.type === "patch" && event.patch.payload.kind === "runtime.invalidate"
 
 describe("a client that falls behind the runtime event lane", () => {
@@ -77,16 +87,19 @@ describe("a client that falls behind the runtime event lane", () => {
       },
     })
     try {
+      // The client's first read already happened, so the connected frame
+      // carries nothing this test asks the intake to do.
       await intake.resnapshot("catalog")
       expect([...loading.values()].filter(Boolean)).toHaveLength(BURST)
       await Effect.runPromise(Effect.gen(function*() {
         const client = yield* RpcTest.makeClient(RuntimeProtocolRpc)
         const markers = new Map([[50_001, Promise.withResolvers<void>()], [50_002, Promise.withResolvers<void>()]])
         let invalidations = 0
-        const fiber = yield* Stream.runForEach(client.RuntimeEvents({}), (input) => Effect.sync(() => {
+        const fiber = yield* Stream.runForEach(client.RuntimeEvents(ATTACH), (input) => Effect.sync(() => {
           const event = decodeFrame(input)
-          if (event.type === "runtime.heartbeat") return
-          if (event.type === "patch" && event.patch.payload.kind === "executor.changed") markers.get(event.patch.position)?.resolve()
+          if (event.type === "runtime.heartbeat" || event.type === "runtime.connected") return
+          const position = markerPosition(event)
+          if (position !== undefined) markers.get(position)?.resolve()
           if (isInvalidation(event)) invalidations += 1
           intake.handle(event)
         })).pipe(Effect.forkScoped)
@@ -98,7 +111,7 @@ describe("a client that falls behind the runtime event lane", () => {
         // These markers on another domain prove the lane drained with no
         // successor patch on any session cursor.
         for (const [position, drained] of markers) {
-          stub.emit({ type: "patch", patch: { cursor: { scope: "workspace", domain: "executor" }, position, prevPosition: 0, payload: { kind: "executor.changed", executor: { kind: "serving" } } } })
+          stub.emit(markerEvent(position))
           yield* Effect.promise(() => drained.promise)
         }
         expect(invalidations).toBeGreaterThanOrEqual(1)
@@ -119,22 +132,23 @@ describe("a client that falls behind the runtime event lane", () => {
       const client = yield* RpcTest.makeClient(RuntimeProtocolRpc)
       const received: number[] = []
       const invalidationsAt: number[] = []
-      const fiber = yield* Stream.runForEach(client.RuntimeEvents({}).pipe(Stream.map((event) => decodeFrame(event))), (event) => Effect.sync(() => {
-        if (event.type === "runtime.connected") received.push(event.snapshotPosition)
+      const fiber = yield* Stream.runForEach(client.RuntimeEvents(ATTACH).pipe(Stream.map((event) => decodeFrame(event))), (event) => Effect.sync(() => {
+        const position = markerPosition(event)
+        if (position !== undefined) received.push(position)
         if (isInvalidation(event)) invalidationsAt.push(received.at(-1) ?? -1)
       })).pipe(Effect.forkScoped)
       yield* awaitListener(stub)
       const afterBurst: number[] = []
       for (const offset of [0, 100_000]) {
         // The synchronous flood models a client that cannot drain during the burst.
-        for (let i = 0; i < BURST; i += 1) stub.emit(connectedEvent(offset + i))
+        for (let i = 0; i < BURST; i += 1) stub.emit(markerEvent(offset + i))
         while (received.at(-1) !== offset + BURST - 1) yield* Effect.yieldNow
         // A quiet frame after the burst proves everything queued before it has been delivered.
-        stub.emit(connectedEvent(offset + 90_000))
+        stub.emit(markerEvent(offset + 90_000))
         while (received.at(-1) !== offset + 90_000) yield* Effect.yieldNow
         afterBurst.push(invalidationsAt.length)
       }
-      stub.emit(connectedEvent(900_000))
+      stub.emit(markerEvent(900_000))
       while (received.at(-1) !== 900_000) yield* Effect.yieldNow
       yield* Fiber.interrupt(fiber)
       return { received, afterBurst }
@@ -154,15 +168,15 @@ describe("a client that falls behind the runtime event lane", () => {
     const { stub, layer } = harness()
     const received = await Effect.runPromise(Effect.gen(function*() {
       const client = yield* RpcTest.makeClient(RuntimeProtocolRpc)
-      const events: ReturnType<typeof decodeFrame>[] = []
-      const fiber = yield* Stream.runForEach(client.RuntimeEvents({}).pipe(Stream.map((event) => decodeFrame(event))), (event) => Effect.sync(() => { events.push(event) })).pipe(Effect.forkScoped)
+      const events: Frame[] = []
+      const fiber = yield* Stream.runForEach(client.RuntimeEvents(ATTACH).pipe(Stream.map((event) => decodeFrame(event))), (event) => Effect.sync(() => { events.push(event) })).pipe(Effect.forkScoped)
       yield* awaitListener(stub)
-      for (let i = 0; i < 200; i += 1) stub.emit(connectedEvent(i))
-      while (events.filter((event) => event.type === "runtime.connected").length < 200) yield* Effect.yieldNow
+      for (let i = 0; i < 200; i += 1) stub.emit(markerEvent(i))
+      while (events.filter((event) => markerPosition(event) !== undefined).length < 200) yield* Effect.yieldNow
       yield* Fiber.interrupt(fiber)
       return events
     }).pipe(Effect.scoped, Effect.provide(layer)))
-    expect(received.filter((event) => event.type === "runtime.connected").map((event) => event.type === "runtime.connected" ? event.snapshotPosition : -1))
+    expect(received.map(markerPosition).filter((position) => position !== undefined))
       .toEqual(Array.from({ length: 200 }, (_, index) => index))
     expect(received.some(isInvalidation)).toBe(false)
     expect(stub.listenerCount()).toBe(0)

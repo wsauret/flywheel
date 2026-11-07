@@ -12,7 +12,7 @@ mkdirSync(join(repoRoot, "node_modules/.cache"), { recursive: true });
 
 // Each step is declared as a `lint:*` script in package.json so its commands
 // and dependencies stay visible to knip's dependency analysis.
-const stepNames = ["tsc", "test-types", "bench", "model-catalog", "provider-model-literals", "oxlint", "knip", "knip-production", "files", "filenames", "terminal-io", "safety", "owned-processes", "worker-ownership", "generated-docs", "doc-coherence", "doc-src-paths", "terminology", "intent", "diagnostics", "fact-retention", "module-containment", "projections", "skills", "vscode", "webview", "relay", "licenses"] as const;
+const stepNames = ["tsc", "test-types", "bench", "bench-pins", "model-catalog", "provider-model-literals", "oxlint", "knip", "knip-production", "files", "filenames", "terminal-io", "safety", "owned-processes", "worker-ownership", "generated-docs", "doc-coherence", "doc-src-paths", "terminology", "intent", "diagnostics", "fact-retention", "module-containment", "projections", "skills", "vscode", "webview", "relay", "licenses"] as const;
 
 // The maintainer's private companion checkout adds its check that the public
 // tree names no other coding-agent harness. A checkout without private/ has no

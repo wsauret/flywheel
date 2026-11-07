@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "role": "development",
-  "contentIdentity": "53674e829d02acda906e6768c0bc78d7e9055246b5946aa43505b2dae0da4d1a",
+  "contentIdentity": "41ff8c7fe3be019a9924fb3f3fc3bb779b52404e1f1ca5793107ac6c84863320",
   "testIds": [
     "acceptance/truncate-field.test.ts > truncate-field: keeps multi-byte text within the byte budget",
     "acceptance/truncate-field.test.ts > truncate-field: passes values that fit the budget through unchanged",

@@ -434,17 +434,9 @@ describe("persona benchmark service", () => {
 
   it("stops every sandbox command it started and stays pending until they settle", async () => {
     const root = await syntheticProject();
-    await Bun.write(join(root, "src", "workflows", "agents", "personas", "reviewer-code-quality.md"), REVIEWER_DEFINITION);
-    const fixture = join(root, "bench", "ab-persona", "fixtures", "reviews", "billing-ledger");
-    await mkdir(fixture, { recursive: true });
-    await Bun.write(join(fixture, "diff.patch"), "diff --git a/ledger.ts b/ledger.ts\n");
-    await Bun.write(join(fixture, "manifest.json"), JSON.stringify({
-      title: "Billing ledger",
-      review_prompt_hint: "Read the ledger rounding path",
-      commit: "0123456789abcdef0123456789abcdef01234567",
-      paths: ["ledger.ts"],
-      defects: [{ id: "rounding-drift", title: "Rounding drift", category: "correctness", files: ["ledger.ts"], catch_criteria: "Names the drift" }],
-    }));
+    const catalog = createBenchmarkCatalog(root);
+    // A research task archives its pinned snapshot with a sandbox command, so each cell starts one.
+    const task = catalog.researchTasks("explorer")[0]!;
 
     const controller = new AbortController();
     const allStarted = Promise.withResolvers<void>();
@@ -462,7 +454,7 @@ describe("persona benchmark service", () => {
       runOwnedCommand: hangingCommand,
     };
 
-    const plan = await planPersonaBenchmark({ persona: "reviewer-code-quality", variants: VARIANTS, repeats: 1, operation: "run" }, createBenchmarkCatalog(root));
+    const plan = await planPersonaBenchmark({ persona: "explorer", variants: VARIANTS, repeats: 1, operation: "run", taskIds: [task.id] }, catalog);
     const outcome = runPersonaBenchmark(plan, deps(runtime, root, [], controller.signal));
 
     await allStarted.promise;

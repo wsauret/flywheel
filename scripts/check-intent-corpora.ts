@@ -67,6 +67,7 @@ const UNCITING_ROOTS = [
   "bench/findings/",
   "bench/ab-persona/fixtures/",
   "bench/chat-ab/tasks/",
+  "bench/tasks/",
   "tests/fixtures/output-seam-corpus/",
 ];
 

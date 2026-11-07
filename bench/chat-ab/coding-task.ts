@@ -10,7 +10,7 @@
 // request asks for one agent for each problem, each fixing and checking its
 // own, and a report of which ones are fixed. The plan's milestones are left
 // out, because they state the fix. Each
-// arm's working copy is provisioned from the task's commit, patch, and setup
+// arm's working copy is provisioned from the task's source, patch, and setup
 // alike (tasks.ts, provisionSandbox), and the hidden acceptance tests are
 // copied in only after the run (tasks.ts, captureSandbox). No cell reads the
 // task folders (`HIDDEN_TASK_DIRS`). The task's qualification (its reference
@@ -23,6 +23,7 @@ import { join } from "node:path";
 import { Schema } from "effect";
 import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
 import { loadImplementTasks } from "../../src/orchestration/modules/development/benchmark/implement-task.js";
+import type { ImplementSandboxSpec } from "../../src/orchestration/modules/development/benchmark/task-schema.js";
 import type { OwnedCommandRunner } from "../../src/infra/owned-command.js";
 import { parseQualification } from "../tasks/qualify.js";
 import { REPO_ROOT, RESULTS_ROOT, TASKS_DIR } from "./harness-paths.js";
@@ -46,7 +47,7 @@ export interface CodingTask {
   readonly tasksDir: string;
   readonly taskDir: string;
   readonly acceptanceDir: string;
-  readonly sandbox: { readonly commit: string; readonly paths: readonly string[]; readonly setup?: readonly (readonly string[])[]; readonly patch?: string };
+  readonly sandbox: ImplementSandboxSpec;
   readonly timeoutMs: number;
   readonly summary: string;
   readonly constraints: readonly string[];
@@ -73,7 +74,7 @@ export async function findCodingTask(id: string): Promise<CodingTask | undefined
     if (!existsSync(join(dir, id, "task.json"))) continue;
     const spec = (await loadImplementTasks(dir)).find((task) => task.id === id);
     if (!spec) continue;
-    if (spec.kind === "native" || !("commit" in spec.sandbox)) throw new Error(`${id}: a coding task must pin a commit sandbox`);
+    if (spec.kind === "native") throw new Error(`${id}: a coding task cannot be a native task`);
     const qualificationText = await readFile(join(spec.taskDir, "qualification.json"), "utf8");
     const qualification = parseQualification(JSON.parse(qualificationText), spec.contentIdentity);
     if (qualification.role !== role) throw new Error(`${id}: qualification.json names the role ${qualification.role}, and the task lies in the ${role} folder`);

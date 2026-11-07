@@ -11,3 +11,235 @@ index d78a314..b029fbd 100644
  preload = ["./tests/preload.ts"]
  
  # The vscode workspace flips bun's default linker to "isolated", which stores
+diff --git a/bun.lock b/bun.lock
+index 0c20c14..53e02e7 100644
+--- a/bun.lock
++++ b/bun.lock
+@@ -24,6 +24,7 @@
+         "marked": "18.1.2",
+         "msgpackr": "^2.1.3",
+         "openai": "^7.47.0",
++        "partial-json": "^0.1.7",
+         "qrcode": "1.5.4",
+         "sharp": "^0.35.3",
+         "solid-js": "1.9.18",
+@@ -1545,6 +1546,8 @@
+ 
+     "parseurl": ["parseurl@1.3.3", "", {}, "sha512-CiyeOxFT/JZyN5m0z9PfXw4SCBJ6Sygz1Dpl0wqjlhDEGGBP1GnsUVEL0p63hoG1fcj3fHynXi9NYO4nWOL+qQ=="],
+ 
++    "partial-json": ["partial-json@0.1.7", "", {}, "sha512-Njv/59hHaokb/hRUjce3Hdv12wd60MtM9Z5Olmn+nehe0QDAsRtRbJPvJ0Z91TusF0SuZRIvnM+S4l6EIP8leA=="],
++
+     "path-exists": ["path-exists@4.0.0", "", {}, "sha512-ak9Qy5Q7jYb2Wwcey5Fpvg2KoAc/ZIhLSLOSBmRmygPsGwkVVt0fZa0qrtMz+m6tJTAHfZQ8FnmB4MG4LWy7/w=="],
+ 
+     "path-key": ["path-key@4.0.0", "", {}, "sha512-haREypq7xkM7ErfgIyA0z+Bj4AGKlMSdlQE2jvJo6huWD1EdkKYV+G/T4nq0YEF2vgTT8kqMFKo1uHn950r4SQ=="],
+diff --git a/package.json b/package.json
+index 36f0d0e..1d974c9 100644
+--- a/package.json
++++ b/package.json
+@@ -127,6 +127,7 @@
+     "marked": "18.1.2",
+     "msgpackr": "^2.1.3",
+     "openai": "^7.47.0",
++    "partial-json": "^0.1.7",
+     "qrcode": "1.5.4",
+     "sharp": "^0.35.3",
+     "solid-js": "1.9.18",
+diff --git a/src/orchestration/agent-runtime/llm/json-parse.ts b/src/orchestration/agent-runtime/llm/json-parse.ts
+index da1988f..3286ca9 100644
+--- a/src/orchestration/agent-runtime/llm/json-parse.ts
++++ b/src/orchestration/agent-runtime/llm/json-parse.ts
+@@ -6,17 +6,17 @@
+  *
+  * Adapted from pi `packages/ai/src/utils/json-parse.ts` (MIT); credited in
+  * THIRD-PARTY-NOTICES.md.
+- * Two repair tiers: strict JSON.parse, then repair control chars and bad
+- * escapes. A buffer neither tier accepts is classified, not salvaged. When
+- * the text ends with no syntax error before its end, it is a prefix of a
+- * document the model never finished (an output-length cut or a dropped
+- * stream), and a tool that runs on a completed prefix gets silently shortened
+- * input. Otherwise the text is closed but invalid, and the message names the
+- * character where the syntax fails and shows the text around it. Either way
+- * the call is refused with a parse error that the dispatcher turns into an
+- * error result, so the model can send a corrected call.
++ * Three-tier fallback: strict JSON.parse, then repair control chars and bad
++ * escapes, then partial-json's tolerant parse of a text that ends with no
++ * syntax error before its end. A buffer no tier accepts is closed but
++ * invalid: the message names the character where the syntax fails and shows
++ * the text around it, and the call is refused with a parse error that the
++ * dispatcher turns into an error result, so the model can send a corrected
++ * call.
+  */
+ 
++import { parse as partialParse } from "partial-json";
++
+ const VALID_JSON_ESCAPES = new Set(['"', "\\", "/", "b", "f", "n", "r", "t", "u"]);
+ 
+ interface UnknownFields { [key: string]: unknown }
+@@ -173,7 +173,7 @@ type SalvagedJson = { readonly kind: "complete"; readonly value: unknown } | Jso
+ 
+ /** Strict parse, then repair, each tried on the raw text and an
+  *  envelope-stripped candidate. Text that neither accepts is classified by
+- *  the syntax scanner; a prefix is never returned as a value. */
++ *  the syntax scanner, and an unfinished text gets the tolerant tier. */
+ function salvageJson(raw: string): SalvagedJson {
+   const stripped = stripJsonEnvelope(raw);
+   const candidates = stripped !== raw && stripped.trim() !== "" ? [raw, stripped] : [raw];
+@@ -186,14 +186,28 @@ function salvageJson(raw: string): SalvagedJson {
+     }
+   }
+   const rawFault = findJsonSyntaxFault(raw);
+-  if (candidates.length === 1 || rawFault.kind === "unfinished") return rawFault;
++  if (rawFault.kind === "unfinished") return tolerantParse(raw) ?? rawFault;
++  if (candidates.length === 1) return rawFault;
+   // The stripped text is the part that the model meant as JSON, so its fault
+   // is the useful one. Its index moves back to a position in the raw text.
+   const strippedFault = findJsonSyntaxFault(stripped);
+-  if (strippedFault.kind === "unfinished") return strippedFault;
++  if (strippedFault.kind === "unfinished") return tolerantParse(stripped) ?? strippedFault;
+   return { ...strippedFault, index: raw.indexOf(stripped) + strippedFault.index };
+ }
+ 
++/** partial-json's tolerant parse, tried on the text and its repaired form. */
++function tolerantParse(text: string): SalvagedJson | undefined {
++  for (const form of [text, repairJson(text)]) {
++    try {
++      const value: unknown = partialParse(form);
++      if (value) return { kind: "complete", value };
++    } catch {
++      // next form
++    }
++  }
++  return undefined;
++}
++
+ const JSON_LITERALS = ["true", "false", "null"] as const;
+ const STRUCTURAL_CHARACTERS = new Set([",", ":", "{", "}", "[", "]", '"']);
+ const NUMBER = /-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/y;
+diff --git a/src/orchestration/agent-runtime/llm/openai-completions.ts b/src/orchestration/agent-runtime/llm/openai-completions.ts
+index 55788a0..3ab588c 100644
+--- a/src/orchestration/agent-runtime/llm/openai-completions.ts
++++ b/src/orchestration/agent-runtime/llm/openai-completions.ts
+@@ -21,7 +21,7 @@ import { computeUsagePrice, createModelInfoCache } from "../../../infra/llm/llm-
+ import { providerRequestHeaders } from "../../../infra/llm/provider-request-identity.js";
+ import type { ModelInfo, ModelsClient, ReasoningEffort } from "../../../infra/llm/models.js";
+ import { Log } from "../../../infra/log.js";
+-import { classifyQuotaError, ContentFilteredError, ContextLengthExceededError, LlmStreamError, OutputLengthExceededError } from "./errors.js";
++import { classifyQuotaError, ContentFilteredError, ContextLengthExceededError, LlmStreamError } from "./errors.js";
+ import type { CompletedStopReason } from "./messages.js";
+ import { parseToolArguments } from "./json-parse.js";
+ import { normalizeProviderAttemptFailure } from "./provider-failure.js";
+@@ -152,10 +152,7 @@ interface StreamingToolCall {
+ function mapChatCompletionsStopReason(finishReason: string): CompletedStopReason {
+   switch (finishReason) {
+     case "tool_calls": return "tool_use";
+-    // The output-length cap is an overflow, as on every other wire: the loop
+-    // resumes the response instead of finalizing a cut one as a turn whose
+-    // last tool call, flushed above from a partial buffer, was refused.
+-    case "length": throw new OutputLengthExceededError("Response truncated: length");
++    case "length": return "end_turn";
+     case "stop": return "end_turn";
+     case "content_filter": return "content_filter";
+     default:
+diff --git a/tests/unit/orchestration/agent-runtime/llm/json-parse.test.ts b/tests/unit/orchestration/agent-runtime/llm/json-parse.test.ts
+index 56201c8..b3b8816 100644
+--- a/tests/unit/orchestration/agent-runtime/llm/json-parse.test.ts
++++ b/tests/unit/orchestration/agent-runtime/llm/json-parse.test.ts
+@@ -15,39 +15,8 @@ describe("parseToolArguments", () => {
+     expect(parseToolArguments('{"a": "line1\nline2"}')).toEqual({ input: { a: "line1\nline2" } });
+   });
+ 
+-  describe("incomplete argument text", () => {
+-    // A buffer that is a prefix of a valid document is what an output-length
+-    // cut or a dropped stream leaves behind. Completing it would execute the
+-    // tool with a silently shortened value, so it is refused, not salvaged.
+-    test("refuses a truncated object instead of completing it", () => {
+-      const result = parseToolArguments('{"a": 1, "b": "incomplete');
+-      expect(result.input).toEqual({});
+-      expect(result.parseError).toContain("incomplete JSON");
+-      expect(result.parseError).toContain("cut off");
+-      expect(result.parseError).toContain('{"a": 1, "b": "incomplete');
+-    });
+-
+-    test("refuses a write whose content string was cut mid-value", () => {
+-      const cut = '{"path": "a.ts", "content": "export const a = 1;\nexport const b = ';
+-      const result = parseToolArguments(cut);
+-      expect(result.input).toEqual({});
+-      expect(result.parseError).toContain("incomplete JSON");
+-    });
+-
+-    test("refuses an object cut between members", () => {
+-      const result = parseToolArguments('{"a": 1,');
+-      expect(result.input).toEqual({});
+-      expect(result.parseError).toContain("incomplete JSON");
+-    });
+-
+-    test("shows the end of a long truncated text, where the cut is", () => {
+-      const cut = `{"summary": "${"x".repeat(900)} the last words before the cut`;
+-      const result = parseToolArguments(cut);
+-      expect(result.parseError).toContain("cut off");
+-      expect(result.parseError).toContain(`${cut.length} characters`);
+-      expect(result.parseError).toContain("the last words before the cut");
+-      expect((result.parseError ?? "").length).toBeLessThan(500);
+-    });
++  test("salvages a truncated object via partial parse", () => {
++    expect(parseToolArguments('{"a": 1, "b": "incomplete')).toEqual({ input: { a: 1, b: "incomplete" } });
+   });
+ 
+   describe("complete but invalid argument text", () => {
+diff --git a/tests/unit/orchestration/agent-runtime/llm/openai-completions-converter.test.ts b/tests/unit/orchestration/agent-runtime/llm/openai-completions-converter.test.ts
+index 1a0476e..7ebdeb3 100644
+--- a/tests/unit/orchestration/agent-runtime/llm/openai-completions-converter.test.ts
++++ b/tests/unit/orchestration/agent-runtime/llm/openai-completions-converter.test.ts
+@@ -461,8 +461,6 @@ describe("chat-completions stream normalization", () => {
+     expect(result.events.some(
+       (event) => event.kind === "tool_input_start" || event.kind === "tool_input_delta",
+     )).toBeFalse();
+-    // A lone `{` is a cut prefix, so the call carries the refusal the
+-    // dispatcher answers with instead of executing on empty input.
+     expect(result.events.find((event) => event.kind === "tool_use")).toEqual({
+       kind: "tool_use",
+       toolCall: {
+@@ -470,7 +468,6 @@ describe("chat-completions stream normalization", () => {
+         name: "",
+         input: {},
+         providerCallId: "call_unnamed",
+-        inputParseError: expect.stringContaining("incomplete JSON"),
+       },
+     });
+   });
+diff --git a/tests/unit/orchestration/agent-runtime/llm/openrouter-request-shape.test.ts b/tests/unit/orchestration/agent-runtime/llm/openrouter-request-shape.test.ts
+index b3e1261..cd69ac9 100644
+--- a/tests/unit/orchestration/agent-runtime/llm/openrouter-request-shape.test.ts
++++ b/tests/unit/orchestration/agent-runtime/llm/openrouter-request-shape.test.ts
+@@ -428,31 +428,6 @@ describe("chat-completions usage and finish reasons", () => {
+     });
+   });
+ 
+-  test("finish_reason length is an output overflow, not a completed max_tokens turn", async () => {
+-    const capture: Capture = {};
+-    const adapter = await createOpenAIChatCompletionsAdapter(
+-      capturingClient(capture, [
+-        { id: "c", choices: [{ index: 0, delta: { tool_calls: [{ index: 0, id: "call_cut", function: { name: "write", arguments: "{\"path\":\"a.ts\",\"content\":\"cut" } }] }, finish_reason: null }] },
+-        { id: "c", choices: [{ index: 0, delta: {}, finish_reason: "length" }], usage: { prompt_tokens: 1, completion_tokens: 1 } },
+-      ]),
+-      "claude-opus-4-8",
+-      stubModelsClient(),
+-      OPENROUTER,
+-    );
+-
+-    const { events, error } = await drain(adapter);
+-
+-    expect(error).toBeInstanceOf(ProviderAttemptFailure);
+-    if (!(error instanceof ProviderAttemptFailure)) throw new Error("expected ProviderAttemptFailure");
+-    expect(error.failure._tag).toBe("OutputOverflowFailure");
+-    // The cut call is still observed, but refused: its input is empty and
+-    // carries the parse error the dispatcher answers with.
+-    const toolUse = events.find((event) => event.kind === "tool_use");
+-    expect(toolUse).toMatchObject({ toolCall: { id: "call_cut", input: {} } });
+-    expect(toolUse && "toolCall" in toolUse ? toolUse.toolCall.inputParseError : undefined).toContain("incomplete JSON");
+-    expect(events.some((event) => event.kind === "done")).toBe(false);
+-  });
+-
+   test("an unexpected finish_reason throws instead of finalizing as end_turn", async () => {
+     const capture: Capture = {};
+     const adapter = await createOpenAIChatCompletionsAdapter(

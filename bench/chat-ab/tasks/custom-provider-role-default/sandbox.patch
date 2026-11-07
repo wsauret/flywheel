@@ -11,3 +11,105 @@ index d78a314..b029fbd 100644
  preload = ["./tests/preload.ts"]
  
  # The vscode workspace flips bun's default linker to "isolated", which stores
+diff --git a/src/orchestration/config/model-tiers.ts b/src/orchestration/config/model-tiers.ts
+index 1872e42..5e57050 100644
+--- a/src/orchestration/config/model-tiers.ts
++++ b/src/orchestration/config/model-tiers.ts
+@@ -246,17 +246,10 @@ async function buildFamilyCatalog(
+ ): Promise<FamilyTierCatalog> {
+   const available = new Set(Array.from(availableModels).map(normalizeSelectableModelId));
+   const partialEntries: Omit<CatalogEntry, "tier">[] = [];
+-  // Only a user-authored custom provider model is eligible without metadata.
+-  // It carries no tier evidence, so it is the last resort after ranked models.
+-  const undescribed: string[] = [];
+ 
+   for (const model of available) {
+     const info = resolveModelInfo(model, options.modelInfos);
+-    if (!info) {
+-      undescribed.push(model);
+-      continue;
+-    }
+-    if (!callsToolsOnText(info)) continue;
++    if (!info || !callsToolsOnText(info)) continue;
+     partialEntries.push({
+       model,
+       info,
+@@ -302,7 +295,7 @@ async function buildFamilyCatalog(
+     });
+   return {
+     tiers,
+-    unranked: [...unranked, ...undescribed].sort((a, b) =>
++    unranked: unranked.sort((a, b) =>
+       (sortRanks.get(b)?.releaseMs ?? 0) - (sortRanks.get(a)?.releaseMs ?? 0) || a.localeCompare(b)),
+     sortRanks,
+   };
+diff --git a/tests/unit/orchestration/config/config-models-roles.test.ts b/tests/unit/orchestration/config/config-models-roles.test.ts
+index 0a48369..6ce6208 100644
+--- a/tests/unit/orchestration/config/config-models-roles.test.ts
++++ b/tests/unit/orchestration/config/config-models-roles.test.ts
+@@ -5,7 +5,6 @@ import { join } from "node:path";
+ import { loadConfig } from "../../../../src/orchestration/config/loader.js";
+ import { listEffortOptionsForSlot, listModelAssignments, listModelOptionsForSlot } from "../../../../src/orchestration/config/model-assignments.js";
+ import { defaultRoleSlots, resolveWorkflowAgentRole, resolveSubagentRole, roleSlot } from "../../../../src/orchestration/config/role-selection.js";
+-import { DEFAULT_ROLES } from "../../../../src/orchestration/config/roles.js";
+ import { resolveRoles as resolveProfileRoles } from "../../../../src/orchestration/config/role-resolution.js";
+ import { FlywheelConfigSchema } from "../../../../src/orchestration/config/schema.js";
+ import { updateModelAssignment, updateModelAssignments } from "../../../../src/orchestration/config/writer.js";
+@@ -42,24 +41,6 @@ describe("roles config parsing and resolution", () => {
+       expect(tierFallback.get("reviewer-custom")).toMatchObject({ model: "gpt-5.4", effort: "high" });
+     });
+   });
+-  it("defaults every unassigned role to an eligible custom provider model that carries no catalog metadata", async () => {
+-    const available = new Map([["openai", new Set(["fixture-model", "fixture-model-small"])] as const]);
+-
+-    const roles = await resolveRoles(parseSchema(FlywheelConfigSchema, {}), available, tierOptions);
+-
+-    for (const roleId of Object.keys(DEFAULT_ROLES)) expect(roles.get(roleId)?.model).toBe("fixture-model");
+-    expect(roles.get("advisor")?.effort).toBe(DEFAULT_ROLES.advisor.effort);
+-  });
+-
+-  it("keeps tiered catalog models ahead of custom provider models without metadata", async () => {
+-    const available = new Map([["openai", new Set(["fixture-model", ...tierAvailableModels.get("openai")!])] as const]);
+-
+-    const withCustom = await resolveRoles(parseSchema(FlywheelConfigSchema, {}), available, tierOptions);
+-    const catalogOnly = await resolveRoles(parseSchema(FlywheelConfigSchema, {}), new Map([["openai", tierAvailableModels.get("openai")!]] as const), tierOptions);
+-
+-    for (const roleId of Object.keys(DEFAULT_ROLES)) expect(withCustom.get(roleId)?.model).toBe(catalogOnly.get(roleId)?.model);
+-  });
+-
+   it("lets the selected profile role override win", async () => {
+     const config = profileConfig({ chat: { model: "gpt-5-mini", effort: "low" } });
+     expect((await resolveRoles(config, tierAvailableModels, tierOptions)).get("chat")).toMatchObject({ model: "gpt-5-mini", effort: "low" });
+diff --git a/tests/unit/orchestration/config/model-tiers.test.ts b/tests/unit/orchestration/config/model-tiers.test.ts
+index 1150664..709f5fe 100644
+--- a/tests/unit/orchestration/config/model-tiers.test.ts
++++ b/tests/unit/orchestration/config/model-tiers.test.ts
+@@ -88,14 +88,6 @@ describe("dynamic tier catalog", () => {
+     expect(models).toEqual(["gpt-6"]);
+   });
+ 
+-  test("resolves unpriced custom models by stable id only after every ranked tier is empty", async () => {
+-    const custom = new Set(["fixture-model-small", "fixture-model"]);
+-    for (const tier of ["powerful", "mid", "cheap"] as const) {
+-      expect(await resolveModelForTier(tier, "openai", custom, tierOptions)).toBe("fixture-model");
+-      expect(await resolveModelForTier(tier, "openai", new Set([...custom, ...openaiAvailable]), tierOptions)).toBe(await resolveModelForTier(tier, "openai", openaiAvailable, tierOptions));
+-    }
+-  });
+-
+   test("selects the newest model across families without leaving a populated requested tier", async () => {
+     const client = makeModelsClient({
+       "older-mid": modelInfo("anthropic", "older-mid", "fixture", 3, 15, "2026-05-01"),
+@@ -134,13 +126,6 @@ describe("dynamic tier catalog", () => {
+     ] as const);
+     const options = { ...tierOptions, modelInfos: client.modelInfos };
+     expect(await resolveModelForTierAcrossFamilies("mid", available, options)).toEqual({ family: "openai", model: "newer-custom" });
+-    const undescribed = new Map([
+-      ["anthropic", new Set(["z-custom"])],
+-      ["openai", new Set(["a-custom"])],
+-    ] as const);
+-    expect(await resolveModelForTierAcrossFamilies("mid", undescribed, options)).toEqual({ family: "openai", model: "a-custom" });
+-    expect(await resolveModelForTierAcrossFamilies("mid", new Map([["openai", new Set(["a-custom"])]]), options))
+-      .toEqual({ family: "openai", model: "a-custom" });
+   });
+ 
+   test("dedupes dated snapshots when the stable alias is also listed", async () => {

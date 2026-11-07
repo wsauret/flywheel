@@ -12,12 +12,11 @@ import { afterAll, describe, expect, it, spyOn } from "bun:test";
 import { Redacted } from "effect";
 import * as RealOpenAIModule from "openai";
 import type { OpenAIAuth } from "../src/infra/auth/openai-auth-types.js";
-import type { ModelsClient } from "../src/infra/llm/models.js";
 import { streamAssistantTurn } from "../src/orchestration/agent-runtime/assistant-turn-stream.js";
 import { createOpenAIAdapter } from "../src/orchestration/agent-runtime/llm/openai.js";
-import { createRetryBudget } from "../src/orchestration/agent-runtime/llm/retry-budget.js";
-import type { ServingAttempt, TurnModelClient } from "../src/orchestration/agent-runtime/llm/types.js";
 import { resolveModelInteractionProfile } from "../src/orchestration/agent-runtime/model-interaction-profile.js";
+import { fakeAttempt, withRequestAdmission } from "../tests/unit/orchestration/agent-runtime/_model-client.js";
+import { stubModelsClient } from "../tests/unit/orchestration/agent-runtime/llm/_openai-chatgpt-adapter-fixtures.js";
 
 type Frame = Record<string, unknown>;
 
@@ -41,7 +40,6 @@ const openAiSpy = spyOn(RealOpenAIModule, "default").mockImplementation((() => n
 afterAll(() => openAiSpy.mockRestore());
 
 const API_KEY_AUTH: OpenAIAuth = { kind: "apiKey", apiKey: Redacted.make("[redacted secret]") };
-const MODELS: ModelsClient = { getModelInfo: async () => null };
 
 const USAGE = {
   input_tokens: 100,
@@ -63,16 +61,7 @@ const MESSAGE_ITEM = {
 const CALL_1 = { type: "function_call", call_id: "call_1", name: "echo", arguments: '{"text":"hi"}', status: "completed" };
 const CALL_2 = { ...CALL_1, call_id: "call_2" };
 
-const ATTEMPT: ServingAttempt = {
-  accessProvider: "openai_api",
-  modelFamily: "openai",
-  model: "gpt-5.4",
-  contextLimit: 400_000,
-  outputLimit: 128_000,
-  supportsReasoning: false,
-  promptNotes: { progress: "", modelNotes: "" },
-  costFor: () => 0,
-};
+const ATTEMPT = fakeAttempt("openai_api", "gpt-5.4");
 
 interface TurnObservation {
   forwarded: string[];
@@ -84,30 +73,29 @@ interface TurnObservation {
 
 async function runTurn(stream: Frame[]): Promise<TurnObservation> {
   frames = stream;
-  const adapter = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", MODELS, { authDir: "/scratch/flywheel-acceptance-auth" });
+  const adapter = await createOpenAIAdapter(API_KEY_AUTH, "gpt-5.4", stubModelsClient());
   // A one-candidate serving chain: the turn prepares its request for the
   // attempt, and the real adapter streams it.
-  const client: TurnModelClient = {
+  const client = withRequestAdmission({
     model: adapter.model,
     modelFamily: adapter.modelFamily,
     plannedAttempt: async () => ATTEMPT,
-    async *streamServed(request) {
-      yield* adapter.streamWithTools({ ...await request.prepare(ATTEMPT), retryBudget: createRetryBudget(4) });
-    },
-    streamWithTools: (options) => adapter.streamWithTools({ ...options, retryBudget: createRetryBudget(4) }),
-  };
+    streamWithTools: (options) => adapter.streamWithTools(options),
+  });
   const forwarded: string[] = [];
   const canonicalized: string[] = [];
   const result = await streamAssistantTurn({
     client,
-    interactionProfile: resolveModelInteractionProfile("gpt-5.4"),
+    executionCwd: process.cwd(),
+    interactionProfile: resolveModelInteractionProfile("gpt-5.4", "openai"),
     messages: [{ kind: "user", content: "Echo hi twice in parallel." }],
     tools: [{ name: "echo", description: "Echo text", input_schema: { type: "object", properties: { text: { type: "string" } }, required: ["text"] } }],
-    systemPrompt: "system",
+    systemPrompt: { stable: "system", session: "", conversation: "" },
     reasoningEffort: undefined,
     signal: undefined,
     cacheRetention: "1h",
-    cacheKey: undefined,
+    providerSessionKey: "acceptance",
+    promptCacheKey: "acceptance",
     providerOptions: undefined,
     requestContext: "main",
     requestAudit: undefined,

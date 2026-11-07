@@ -3,15 +3,15 @@
   "stratum": "production-history",
   "timeoutMinutes": 45,
   "sandbox": {
-    "commit": "9566f479561ba85f83d73907f1451b672e3ae741",
-    "paths": ["src", "tests", "docs", "scripts", "package.json", "bun.lock", "tsconfig.json", "oxlint.config.ts", "knip.jsonc", "AGENTS.md", ".gitignore", "bunfig.toml", "relay", "vscode", "webview", "website", "crates/tokenizer/tokenizer-prebuilt.json", "crates/tokenizer/flywheel-tokenizer.wasm.zst"],
+    "commit": "85c69871d53e3f1dba2532773dd7db38a93c41b3",
+    "paths": ["src", "tests", "docs", "scripts", "package.json", "bun.lock", "tsconfig.json", "oxlint.config.ts", "knip.jsonc", "AGENTS.md", ".gitignore", "bunfig.toml", ".env.test", "relay", "vscode", "webview", "website", "crates/tokenizer/tokenizer-prebuilt.json", "crates/tokenizer/flywheel-tokenizer.wasm.zst"],
     "patch": "sandbox.patch",
     "setup": [["bun", "install"]]
   },
   "acceptanceBaseline": {
     "failToPass": [
-      "acceptance/custom-provider-role-default.test.ts > roles when the only provider is a custom endpoint from flywheel.toml > follows a different config listing to its own first model",
-      "acceptance/custom-provider-role-default.test.ts > roles when the only provider is a custom endpoint from flywheel.toml > gives every role the user did not assign the first custom model listed in config"
+      "acceptance/custom-provider-role-default.test.ts > roles when the only provider is a custom endpoint from flywheel.toml > gives every role the first custom model of a different config listing",
+      "acceptance/custom-provider-role-default.test.ts > roles when the only provider is a custom endpoint from flywheel.toml > gives every role the user did not assign the custom model that the unranked order puts first"
     ],
     "passToPass": [
       "acceptance/custom-provider-role-default.test.ts > existing tier refusal > regression guard: never assigns a model described as unable to call tools on text",

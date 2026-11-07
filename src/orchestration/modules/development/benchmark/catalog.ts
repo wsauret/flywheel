@@ -37,13 +37,11 @@ export interface ReviewManifest {
   review_prompt_hint: string;
 }
 
-/** A review task with a `snapshot` reviews that commit of the benchmarked
- *  project instead of a copied `project/` directory: pinning a real commit gives
- *  review fixtures production-scale codebases without vendoring them. */
+/** A review task reviews its fixture's `project/` directory, which holds every
+ *  file the reviewer reads, so a public clone can run it. */
 export interface ReviewTask extends BenchmarkTask {
   fixtureDir: string;
   manifest: ReviewManifest;
-  snapshot?: CommitSnapshot;
   /** Reviewed artifact copied into the sandbox root: a code diff or an implementation plan. */
   artifact: "diff.patch" | "plan.md";
 }
@@ -63,7 +61,7 @@ interface TasksByPersona {
  *  fixed commit keeps every campaign comparable while the live tree moves.
  *  Prompts that name files name them as they exist at this commit. */
 export const RESEARCH_SNAPSHOT: CommitSnapshot = {
-  commit: immutableGitObjectSelector("1f61a2a0a9b8db36fed944b5eaff8cfbe9c1e830", "RESEARCH_SNAPSHOT.commit"),
+  commit: immutableGitObjectSelector("85c69871d53e3f1dba2532773dd7db38a93c41b3", "RESEARCH_SNAPSHOT.commit"),
   paths: ["src", "AGENTS.md", "docs/architecture.md", "docs/architecture-intent", "docs/product-intent", "docs/terminology.md"],
 };
 
@@ -92,11 +90,12 @@ const TASKS_BY_PERSONA: TasksByPersona = {
 };
 
 /** The fixture members one review cell copies into its sandbox. */
-export type ReviewFixturePaths =
-  | { readonly kind: "archive"; readonly artifactPath: string; readonly snapshot: CommitSnapshot }
-  | { readonly kind: "project"; readonly artifactPath: string; readonly projectDir: string };
+interface ReviewFixturePaths {
+  readonly artifactPath: string;
+  readonly projectDir: string;
+}
 
-type ReviewFixtureDescriptor = Pick<ReviewTask, "id" | "fixtureDir" | "artifact" | "snapshot">;
+type ReviewFixtureDescriptor = Pick<ReviewTask, "id" | "fixtureDir" | "artifact">;
 
 /** Resolve the fixture members of one review task, refusing anything that is not
  *  a real file or directory inside the fixtures root.
@@ -104,12 +103,9 @@ type ReviewFixtureDescriptor = Pick<ReviewTask, "id" | "fixtureDir" | "artifact"
  *  A fixture member is on disk and can change between the catalog load that
  *  first checked it and the copy that uses it, so both moments call this. */
 export async function resolveReviewFixture(fixturesRoot: string, task: ReviewFixtureDescriptor): Promise<ReviewFixturePaths> {
-  const artifactPath = await realFileUnder(fixturesRoot, join(task.fixtureDir, task.artifact), `${task.id}/${task.artifact}`);
-  if (task.snapshot) return { kind: "archive", artifactPath, snapshot: task.snapshot };
   return {
-    kind: "project",
+    artifactPath: await realFileUnder(fixturesRoot, join(task.fixtureDir, task.artifact), `${task.id}/${task.artifact}`),
     projectDir: await realDirectoryUnder(fixturesRoot, join(task.fixtureDir, "project"), `${task.id}/project`),
-    artifactPath,
   };
 }
 
@@ -145,16 +141,6 @@ function parseManifest(value: ReturnType<typeof objectValue>, fixtureId: string)
   if (typeof title !== "string") throw new Error(`${fixtureId}/manifest.json requires string title`);
   if (typeof reviewPromptHint !== "string") throw new Error(`${fixtureId}/manifest.json requires string review_prompt_hint`);
   return { title, defects: parsedDefects, review_prompt_hint: reviewPromptHint };
-}
-
-export function optionalSnapshot(object: ReturnType<typeof objectValue>, fixtureId: string): CommitSnapshot | undefined {
-  if (object.commit === undefined) return undefined;
-  const commit = immutableGitObjectSelector(object.commit, `${fixtureId}/manifest.json commit`);
-  const paths = object.paths;
-  if (!Array.isArray(paths) || paths.length === 0 || !paths.every((path) => typeof path === "string")) {
-    throw new Error(`${fixtureId}/manifest.json with a commit requires a non-empty string paths array`);
-  }
-  return { commit, paths };
 }
 
 export function reviewPrompt(artifact: ReviewTask["artifact"], hint: string): string {
@@ -231,7 +217,6 @@ export function createBenchmarkCatalog(projectRoot: string, options: {
         const manifestPath = await realFileUnder(reviewFixturesDir, join(fixtureDir, "manifest.json"), `${entry.name}/manifest.json`);
         const value = objectValue(JSON.parse(await Bun.file(manifestPath).text()), `${entry.name}/manifest.json`);
         const manifest = parseManifest(value, entry.name);
-        const snapshot = optionalSnapshot(value, entry.name);
         // A symlinked plan.md is present and rejected, not skipped in favor of
         // diff.patch: a fixture member that points outside the tree is a fault.
         const artifact: ReviewTask["artifact"] = await isPresent(join(fixtureDir, "plan.md")) ? "plan.md" : "diff.patch";
@@ -240,14 +225,12 @@ export function createBenchmarkCatalog(projectRoot: string, options: {
           fixtureDir,
           manifest,
           artifact,
-          ...(snapshot ? { snapshot } : {}),
           prompt: reviewPrompt(artifact, manifest.review_prompt_hint),
         };
         const fixture = await resolveReviewFixture(reviewFixturesDir, task);
-        // The archive source keeps its earlier serialized form, so review campaign identities do not change.
-        const source = fixture.kind === "archive"
-          ? { kind: fixture.kind, commit: fixture.snapshot.commit, archivePaths: fixture.snapshot.paths }
-          : { kind: fixture.kind, contentIdentity: await directoryIdentity(fixture.projectDir) };
+        // The source keeps the "project" kind it had beside the retired commit
+        // source, so the identities of earlier review campaigns do not change.
+        const source = { kind: "project", contentIdentity: await directoryIdentity(fixture.projectDir) };
         tasks.push({
           ...task,
           contentIdentity: structuredIdentity({

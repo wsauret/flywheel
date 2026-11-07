@@ -103,7 +103,7 @@ export async function judgeCampaignPairs<Arm extends string>(options: CampaignJu
         if (settlement.error !== null) throw new JudgeCallFailure(settlement.accounting, settlement.error);
         return { text: settlement.text, accounting: settlement.accounting };
       } };
-      const [result] = await judgeBlocks({ model: replay, run: async () => { throw new Error("Unexpected reference command"); }, [Symbol.asyncDispose]: async () => {} }, redaction, [jobs.get(start.pair)!.job], arms);
+      const [result] = await judgeBlocks({ model: replay, [Symbol.asyncDispose]: async () => {} }, redaction, [jobs.get(start.pair)!.job], arms);
       if (invalidPrompt || cursor !== owned.length || structuredIdentity(result) !== structuredIdentity(row.result)) throw new Error("Judge verdict disagrees with paid call evidence");
       results.set(row.pairAttempt, row);
     }
