@@ -1,0 +1,24 @@
+src/orchestration/headless/benchmark-auth-file.ts
+  h_4b47e9e4a8b456 6,54-56,101,105-113,306,319-320,428,441,443-444,450,479,534-535,537,565,568-579
+tests/unit/cli/headless-snapshot-auth.test.ts
+  h_4b47e9e4a8b456 54,72-73,83-86
+tests/unit/orchestration/headless/auth-profile.test.ts
+  h_4b47e9e4a8b456 118
+tests/unit/orchestration/headless/benchmark-auth-export.test.ts
+  h_4b47e9e4a8b456 29-30,32-33,71-73,92-94,177-194,292
+tests/unit/orchestration/headless/benchmark-auth-file.test.ts
+  h_4b47e9e4a8b456 14-15,21,78-79,81-82,116-122,124,203,239
+tests/unit/orchestration/headless/headless-cached-catalog-ownership.test.ts
+  h_4b47e9e4a8b456 139-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "85f9a41ab5e5f936901a80a42e841ed1e0fa278d",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
