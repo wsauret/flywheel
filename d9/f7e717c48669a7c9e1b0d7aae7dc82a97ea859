@@ -1,0 +1,24 @@
+bench/terminal_bench/METHODOLOGY.md
+  h_4b47e9e4a8b456 13
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 355
+src/orchestration/agent-runtime/background-work.ts
+  h_4b47e9e4a8b456 198-200,300,826
+src/orchestration/app-service/project-execution-runtime.ts
+  h_4b47e9e4a8b456 679-680
+src/orchestration/app-service/runtime-work-settlement.ts
+  h_4b47e9e4a8b456 11,105-106,142-151,153
+tests/unit/orchestration/headless-chat.test.ts
+  h_4b47e9e4a8b456 11,28,59,67,99-115,378-382,399-400,404-414
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d9f7e717c48669a7c9e1b0d7aae7dc82a97ea859",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
