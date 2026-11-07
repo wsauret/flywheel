@@ -42,8 +42,10 @@ describe("terminal bench config resolution", () => {
     const config = await resolveTerminalBenchConfig([...authArgs, "--config", path], { cwd: root });
     const sha256 = createHash("sha256").update(configText).digest("hex");
     expect(config.model).toBe("gpt-6.1-sol");
-    expect(config.flywheelConfig).toEqual({ path: configPath, absolutePath: configPath, sha256, chatEffort: "high" });
-    expect(config.harborConfig.agents).toEqual([{ name: "FlywheelHeadless", import_path: "bench.terminal_bench.flywheel_agent:FlywheelHeadless", model_name: "flywheel/gpt-6.1-sol", kwargs: { flywheel_config_path: configPath, flywheel_config_sha256: sha256, trial_auth_profile: "benchmark", project_root_mode: "task_workspace", evidence_export: "settled_sqlite", persistent_processes: true, profile_sha256: config.profileSha256 } }]);
+    const credentialProviders = config.flywheelConfig?.credentialProviders ?? [];
+    expect(credentialProviders).toContain("chatgpt");
+    expect(config.flywheelConfig).toEqual({ path: configPath, absolutePath: configPath, sha256, chatEffort: "high", credentialProviders });
+    expect(config.harborConfig.agents).toEqual([{ name: "FlywheelHeadless", import_path: "bench.terminal_bench.flywheel_agent:FlywheelHeadless", model_name: "flywheel/gpt-6.1-sol", kwargs: { flywheel_config_path: configPath, flywheel_config_sha256: sha256, trial_auth_profile: "benchmark", credential_providers: credentialProviders, project_root_mode: "task_workspace", evidence_export: "settled_sqlite", persistent_processes: true, profile_sha256: config.profileSha256 } }]);
   });
 
   test("refuses a Flywheel config that Flywheel would reject or ignore in part, or a second model source", async () => {
@@ -66,14 +68,29 @@ describe("terminal bench config resolution", () => {
     await expect(resolveWith(pinnedChat, "flywheel_config: bench/terminal_bench/configs/missing.toml")).rejects.toThrow("bench/terminal_bench/configs/missing.toml is not a valid Flywheel config");
   });
 
-  test("the checked-in OpenAI arm config passes host validation and pins Luna at max effort", async () => {
+  test("the checked-in OpenAI arm config passes host validation and pins Terra at medium effort", async () => {
     const root = temporaryDirectory("tb-openai-arm-");
     const path = join(root, "profile.yaml");
     await writeFile(path, "headless: { flywheel_config: bench/terminal_bench/configs/tb-mini-openai.toml }\ndatasets: [{ task_names: [one] }]\n");
     const config = await resolveTerminalBenchConfig([...authArgs, "--config", path], { cwd: root });
-    expect(config.model).toBe("gpt-6-luna");
-    expect(config.flywheelConfig?.chatEffort).toBe("max");
+    expect(config.model).toBe("gpt-6.1-terra");
+    expect(config.flywheelConfig?.chatEffort).toBe("medium");
     expect(config.flywheelConfig?.absolutePath).toBe(resolve(process.cwd(), "bench/terminal_bench/configs/tb-mini-openai.toml"));
+    expect(config.flywheelConfig?.credentialProviders).toEqual(["chatgpt"]);
+  });
+
+  test("a hosted run needs an agent repository and a Flywheel config, and refuses launcher-side trial inputs", async () => {
+    const root = temporaryDirectory("tb-hosted-config-");
+    const armProfile = join(root, "arm.yaml");
+    await writeFile(armProfile, "headless: { flywheel_config: bench/terminal_bench/configs/tb-mini-openai.toml }\ndatasets: [{ task_names: [one] }]\n");
+    const modelProfile = join(root, "model.yaml");
+    await writeFile(modelProfile, "headless: { model: gpt-6-luna }\ndatasets: [{ task_names: [one] }]\n");
+    const resolveHosted = (path: string, extra: string[], env: Record<string, string> = {}) => resolveTerminalBenchConfig([...authArgs, "--config", path, "--hosted", ...extra], { cwd: root, env });
+    expect((await resolveHosted(armProfile, [], { FLYWHEEL_TB_AGENT_REPO: "owner/agent" })).hosted).toEqual({ agentRepository: "owner/agent" });
+    expect((await resolveHosted(armProfile, ["--agent-repo", "owner/agent", "--organization", "org"])).hosted).toEqual({ agentRepository: "owner/agent", organization: "org" });
+    await expect(resolveHosted(armProfile, [])).rejects.toThrow("--agent-repo");
+    await expect(resolveHosted(armProfile, ["--agent-repo", "owner/agent", "--prebuild"])).rejects.toThrow("--prebuild");
+    await expect(resolveHosted(modelProfile, ["--agent-repo", "owner/agent"])).rejects.toThrow("requires headless.flywheel_config");
   });
 
   test("expects the shell tool of the profile the product selects for the model", async () => {

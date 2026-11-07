@@ -224,6 +224,27 @@ describe("terminal bench tool outcome analyzer", () => {
     expect(refused.analyzer_result).toBeNull();
   });
 
+  test("finalization records a hosted agent timeout without a summary as cancelled and refuses every other missing or malformed summary", async () => {
+    const finalize = async (executionMode: "hosted" | "local", summary: string | undefined, exception = "AgentTimeoutError") => {
+      const root = temporaryDirectory("tb-hosted-timeout-");
+      await mkdir(join(root, "trials", "trial", "agent"), { recursive: true });
+      await writeFile(join(root, "trials", "trial", "result.json"), JSON.stringify({ task_name: "terminal-bench/task", trial_name: "trial-1", verifier_result: { rewards: { reward: 0 } }, exception_info: { exception_type: exception } }));
+      if (summary !== undefined) await writeFile(join(root, "trials", "trial", "agent", "flywheel-run-summary.json"), summary);
+      const manifestPath = join(root, "run_manifest.json");
+      await writeFile(manifestPath, JSON.stringify({ ...manifest(), execution_mode: executionMode, source_archive_sha256: sourceDigest }));
+      const ledger = await finalizeTerminalBenchRun(manifestPath, join(root, "trials"), 0);
+      return { ledger, manifest: JSON.parse(await readFile(manifestPath, "utf8")) };
+    };
+    const hosted = await finalize("hosted", undefined);
+    expect(hosted.ledger).toMatchObject({ reconciled: true, outcome: "completed", counts: { cancelled: 1 } });
+    expect(hosted.manifest).toMatchObject({ state: "finalized", source_archive_sha256: sourceDigest });
+    expect(hosted.manifest.analyzer_result.analysis.rows[0]).toMatchObject({ failure: "hosted_agent_timeout" });
+    for (const refused of [await finalize("local", undefined), await finalize("hosted", "{not json"), await finalize("hosted", undefined, "RuntimeError")]) {
+      expect(refused.ledger).toMatchObject({ reconciled: false, outcome: "trials_unverified" });
+      expect(refused.manifest.state).toBe("refused");
+    }
+  });
+
   test("represents every missing expected trial and disables comparison", async () => {
     const fixture = await evidence();
     const analysis = await analyzeToolOutcomes(fixture.root, {

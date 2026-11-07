@@ -42,6 +42,7 @@ const tools = (await planToolExposure({
     backgroundTasks: background.tasks,
     foregroundBashHold,
     foregroundBashHoldSeconds: 10,
+    shellWriteGuard: true,
     capabilities: capabilityAccess,
     moduleSnapshot: composeFirstPartyModules(),
     runtimeConfig: captureRuntimeConfigRequest({ revision: 0, config: CONFIG_DEFAULTS, warnings: [], diagnostics: [], sourceIdentity: "smoke", status: { kind: "valid" } }, "default"),

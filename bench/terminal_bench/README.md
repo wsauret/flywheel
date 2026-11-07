@@ -64,6 +64,33 @@ bench/terminal_bench/run-terminal-bench.sh \
 
 This `k=1` smoke is `debug_only`. It checks one complete launcher, generated-config, Harbor, Flywheel agent, verifier, and finalization path. It is not benchmark evidence and must not be reported as submission-shaped results.
 
+## Run on Harbor Hub
+
+`--hosted` runs the campaign on Harbor Hub instead of local Docker, with every trial at once up to the profile's concurrency. It requires a profile with `headless.flywheel_config`, and it refuses `headless.disabled_tools`, `headless.system_prompt`, `--prebuild`, and resource overrides, because the trial gets only what the agent package holds. Name the public agent repository with `--agent-repo <owner/repo>` or `FLYWHEEL_TB_AGENT_REPO`, and optionally the Hub organization with `--organization <name>` or `FLYWHEEL_TB_HUB_ORG`; without one, the job is the signed-in Hub user's own.
+
+```bash
+bench/terminal_bench/run-terminal-bench.sh \
+  --auth-profile <profile> \
+  --config bench/terminal_bench/profiles/tb-mini-bringup-kv-store-grpc.yaml \
+  --allow-low-k --hosted --agent-repo <owner/repo> \
+  --dry-run
+```
+
+Preparation builds the Harbor ACP agent package and pushes it to the agent repository, also in a dry run, because Hub's dry run validates the published commit. The package holds only Git blobs of one exact Flywheel commit: the profile's `headless.runtime_source_commit`, or HEAD when the profile names no pin. Uncommitted and untracked files never enter it, so commit a change on a local branch or worktree before you launch it; the launcher prints the packaged commit. The package holds the shim project under `harbor_agent/`, the arm config as `flywheel.toml`, the runtime archive of that commit, `harbor-agent.json`, and `BUILD.json`, which names the Flywheel commit, version, release tag, archive digest, and config digest. The launcher refuses the run when the arm config bytes at the commit differ from the validated config.
+
+The launcher chooses the publication path from the source identity alone, and no flag changes it:
+
+- A package of a released Flywheel version, meaning a commit that a `vX.Y.Z` tag of the public repository names and that the public repository lists as a release, goes to the agent repository's `main` branch with the tag `flywheel-<vX.Y.Z>-<build id>`. The launcher reads the tags from the public repository with `git ls-remote`, never from local tags, so a local tag with a release name on a trial commit does not make it a release.
+- Every other package, including any unreleased commit or bring-up trial, goes only to its own branch `build/<build id>`, never to `main`.
+
+The build id is the first 12 hexadecimal characters of a digest of the commit, archive, config, and shim files, so the same inputs reuse the same published commit. Everything pushed to the agent repository is public at once. The publisher pushes only these package refs, with Git trace2 events off so that no tool that watches them pushes its own refs beside the package, and it fails when the agent repository then holds any other ref.
+
+Then the launcher exports the trial auth snapshot on this host. It carries only the credential providers of the provider modules that the arm config leaves enabled, under the trial profile id `benchmark`, with access tokens that stay valid for the job's worst-case length: every wave of trials at the slowest task's agent, verifier, and build timeouts, plus one hour. The snapshot reaches Hub only as the job secret `FLYWHEEL_AUTH_SNAPSHOT` with `credential_mode: direct`, and its host stage is removed in every outcome. Hub's free dry run runs first, and a dry run stops there. An executing run then launches the job, waits for it, downloads its trials under the artifact directory's `hub/` folder, and finalizes them.
+
+In the trial, the shim removes the snapshot from its environment, writes it to an owner-only file, installs Bun, the runtime, and the config, and runs `flywheel --headless --acp` with Harbor's ACP stdio passed through. Harbor's launcher changes into the package directory before it starts the shim, so the shim runs Flywheel in the cwd of Harbor's runner, which is the workspace that the runner sends in `session/new`. Flywheel keeps the task image's `PATH`, as in a local run. The shim writes `flywheel-run-summary.json` into the agent logs, and it exports the trial's event store there only when the store contains no snapshot token. The export runs in its own process and ends 2.5 seconds after Flywheel exits, or 1.5 seconds after Harbor's SIGTERM, so the summary is written before Harbor's SIGKILL; an export that the deadline ends leaves no store, and the summary names `export_deadline`.
+
+The bring-up profile `tb-mini-bringup-kv-store-grpc.yaml` runs one fast task once; iterate on it until it passes. The mini profile `tb-mini-openai-5x.yaml` runs the 12 non-cyber tasks of the subset at `k=5`. Every preparation, local or hosted, resolves each task name through Harbor's dataset resolution and refuses a name that matches no task.
+
 ## Artifacts
 
 Preparation creates one timestamped artifact directory under the configured jobs directory:

@@ -7,6 +7,7 @@ import json
 import os
 import re
 import shlex
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -58,9 +59,11 @@ sys.modules.update(modules)
 try:
     from . import flywheel_agent
     from .flywheel_agent import HARNESS_DIR, RUN_LOG, STATE_DIR, FlywheelHeadless, build_task_command
+    from .harbor_agent.flywheel_harbor_agent import trial_runtime
 except ImportError:
     import flywheel_agent
     from flywheel_agent import HARNESS_DIR, RUN_LOG, STATE_DIR, FlywheelHeadless, build_task_command
+    from harbor_agent.flywheel_harbor_agent import trial_runtime
 TEST_DISABLED_TOOLS = json.dumps(["web"])
 # Real Git runs read no global or system configuration, the same isolation that
 # .env.test gives `bun test`. A global trace2 daemon can otherwise write into a
@@ -537,6 +540,9 @@ class AuthSnapshotExportTest(unittest.IsolatedAsyncioTestCase):
         with patch.object(asyncio, "create_subprocess_exec", side_effect=create):
             await flywheel_agent._export_auth_snapshot("bench-profile", output, None, as_profile="benchmark")
         self.assertEqual(observed["argv"][-2:], ("--as-profile", "benchmark"))
+        with patch.object(asyncio, "create_subprocess_exec", side_effect=create):
+            await flywheel_agent._export_auth_snapshot("bench-profile", output, None, providers=("chatgpt", "exa"))
+        self.assertEqual(observed["argv"][-4:], ("--provider", "chatgpt", "--provider", "exa"))
 
     async def test_pinned_install_failure_timeout_and_cancellation_clean_stage(self) -> None:
         for outcome in ("failure", "timeout", "cancellation"):
@@ -697,7 +703,7 @@ class RunTest(unittest.IsolatedAsyncioTestCase):
         self.profile_environment = patch.dict(os.environ, {flywheel_agent.AUTH_PROFILE_ENV: "bench-profile", flywheel_agent.DISABLED_TOOLS_ENV: TEST_DISABLED_TOOLS, "HOME": self.home.name})
         self.profile_environment.start()
         self.addCleanup(self.profile_environment.stop)
-        async def export_auth_snapshot(selector, output, timeout, runtime_source_commit=None, as_profile=None):
+        async def export_auth_snapshot(selector, output, timeout, runtime_source_commit=None, as_profile=None, providers=()):
             output.write_text(json.dumps(self.snapshot_bundle))
             output.chmod(0o600)
             return "bench-profile"
@@ -804,7 +810,7 @@ class RunTest(unittest.IsolatedAsyncioTestCase):
         config_path.write_bytes(payload)
         digest = hashlib.sha256(payload).hexdigest()
         calls, root_calls, uploads = [], [], []
-        agent = FlywheelHeadless(flywheel_config_path=str(config_path), flywheel_config_sha256=digest, trial_auth_profile="benchmark")
+        agent = FlywheelHeadless(flywheel_config_path=str(config_path), flywheel_config_sha256=digest, trial_auth_profile="benchmark", credential_providers=["chatgpt"])
         agent._source_archive_sha256 = "a" * 64
 
         async def exec_as_agent(environment, **kwargs):
@@ -822,6 +828,7 @@ class RunTest(unittest.IsolatedAsyncioTestCase):
         await agent.run("task", types.SimpleNamespace(upload_file=upload_file, default_user="root"), object())
 
         self.assertEqual(self.export_snapshot_mock.await_args.kwargs["as_profile"], "benchmark")
+        self.assertEqual(self.export_snapshot_mock.await_args.kwargs["providers"], ("chatgpt",))
         config_upload = next(upload for upload in uploads if upload[1].endswith("/flywheel.toml"))
         self.assertEqual(config_upload[0], payload)
         self.assertEqual(config_upload[2], 0o600)
@@ -842,9 +849,9 @@ class RunTest(unittest.IsolatedAsyncioTestCase):
             await agent.run("task", types.SimpleNamespace(upload_file=upload_file, default_user="root"), object())
 
     def test_flywheel_config_kwargs_are_complete_and_exclude_a_second_model(self) -> None:
-        config = {"flywheel_config_path": "/repo/arm.toml", "flywheel_config_sha256": "a" * 64, "trial_auth_profile": "benchmark"}
+        config = {"flywheel_config_path": "/repo/arm.toml", "flywheel_config_sha256": "a" * 64, "trial_auth_profile": "benchmark", "credential_providers": ["chatgpt"]}
         self.assertEqual(FlywheelHeadless(**config).trial_auth_profile, "benchmark")
-        for invalid in ({**config, "flywheel_model": "gpt-6-luna"}, {**config, "flywheel_config_sha256": "bad"}, {**config, "flywheel_config_path": "arm.toml"}, {"flywheel_config_path": "/repo/arm.toml"}):
+        for invalid in ({**config, "flywheel_model": "gpt-6-luna"}, {**config, "flywheel_config_sha256": "bad"}, {**config, "flywheel_config_path": "arm.toml"}, {"flywheel_config_path": "/repo/arm.toml"}, {**config, "credential_providers": []}, {**config, "credential_providers": ["Bad Id"]}):
             with self.subTest(invalid=invalid), self.assertRaises(ValueError):
                 FlywheelHeadless(**invalid)
 
@@ -2459,7 +2466,7 @@ class SettledEvidenceExportTest(unittest.TestCase):
         evidence = root / "logs" / "agent" / "state"
         database.parent.mkdir(parents=True)
         evidence.mkdir(parents=True)
-        connection = flywheel_agent.sqlite3.connect(database)
+        connection = sqlite3.connect(database)
         connection.execute("CREATE TABLE facts (value TEXT NOT NULL)")
         connection.execute("INSERT INTO facts VALUES ('trusted')")
         connection.commit()
@@ -2473,14 +2480,14 @@ class SettledEvidenceExportTest(unittest.TestCase):
             exported = evidence / ".flywheel" / "flywheel.sqlite"
             self.assertEqual(publication.sha256, hashlib.sha256(exported.read_bytes()).hexdigest())
             self.assertEqual(exported.stat().st_mode & 0o777, 0o600)
-            connection = flywheel_agent.sqlite3.connect(exported)
+            connection = sqlite3.connect(exported)
             self.assertEqual(connection.execute("SELECT value FROM facts").fetchone(), ("trusted",))
             connection.close()
 
     def test_publishes_committed_rows_that_exist_only_in_wal(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             workspace, database, evidence = self._workspace(Path(directory))
-            connection = flywheel_agent.sqlite3.connect(database)
+            connection = sqlite3.connect(database)
             connection.execute("PRAGMA journal_mode=WAL")
             connection.execute("PRAGMA wal_autocheckpoint=0")
             connection.execute("INSERT INTO facts VALUES ('wal-only')")
@@ -2489,7 +2496,7 @@ class SettledEvidenceExportTest(unittest.TestCase):
 
             flywheel_agent._export_settled_sqlite(workspace, evidence)
 
-            exported = flywheel_agent.sqlite3.connect(evidence / ".flywheel" / "flywheel.sqlite")
+            exported = sqlite3.connect(evidence / ".flywheel" / "flywheel.sqlite")
             try:
                 self.assertEqual(
                     exported.execute("SELECT value FROM facts ORDER BY rowid").fetchall(),
@@ -2502,7 +2509,7 @@ class SettledEvidenceExportTest(unittest.TestCase):
     def test_rejects_unsafe_wal_sidecar_without_publication(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             workspace, database, evidence = self._workspace(Path(directory))
-            connection = flywheel_agent.sqlite3.connect(database)
+            connection = sqlite3.connect(database)
             connection.execute("PRAGMA journal_mode=WAL")
             connection.execute("INSERT INTO facts VALUES ('wal-only')")
             connection.commit()
@@ -2519,21 +2526,21 @@ class SettledEvidenceExportTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             workspace, database, evidence = self._workspace(root)
-            connection = flywheel_agent.sqlite3.connect(database)
+            connection = sqlite3.connect(database)
             connection.execute("PRAGMA journal_mode=WAL")
             connection.execute("INSERT INTO facts VALUES ('wal-only')")
             connection.commit()
             wal = database.with_name(f"{database.name}-wal")
             replacement = root / "replacement-wal"
             replacement.write_bytes(wal.read_bytes())
-            real_backup = flywheel_agent._backup_sqlite
+            real_backup = trial_runtime._backup_sqlite
 
             def replace_wal_then_backup(source_path, destination_path):
                 os.replace(replacement, wal)
                 real_backup(source_path, destination_path)
 
             try:
-                with patch.object(flywheel_agent, "_backup_sqlite", side_effect=replace_wal_then_backup), self.assertRaisesRegex(RuntimeError, "sidecar"):
+                with patch.object(trial_runtime, "_backup_sqlite", side_effect=replace_wal_then_backup), self.assertRaisesRegex(RuntimeError, "sidecar"):
                     flywheel_agent._export_settled_sqlite(workspace, evidence)
             finally:
                 connection.close()
@@ -2566,7 +2573,7 @@ class SettledEvidenceExportTest(unittest.TestCase):
     def test_backup_failure_does_not_publish(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             workspace, _, evidence = self._workspace(Path(directory))
-            with patch.object(flywheel_agent, "_backup_sqlite", side_effect=RuntimeError("backup failed")), self.assertRaisesRegex(RuntimeError, "backup failed"):
+            with patch.object(trial_runtime, "_backup_sqlite", side_effect=RuntimeError("backup failed")), self.assertRaisesRegex(RuntimeError, "backup failed"):
                 flywheel_agent._export_settled_sqlite(workspace, evidence)
             self.assertFalse((evidence / ".flywheel" / "flywheel.sqlite").exists())
 

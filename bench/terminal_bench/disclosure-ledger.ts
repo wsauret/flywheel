@@ -20,7 +20,7 @@ export interface DisclosureLedger {
   rows: LedgerRow[];
 }
 
-interface ReconcileOptions { trialsDirectory: string; taskNames?: string[]; attempts?: number; expectedTrials?: number; harborExitCode: number; infrastructureValid: boolean }
+interface ReconcileOptions { trialsDirectory: string; taskNames?: string[]; attempts?: number; expectedTrials?: number; harborExitCode: number; infrastructureValid: boolean; hosted?: boolean }
 interface JsonEvidence { value?: JsonMap; present: boolean; valid: boolean }
 
 function object(value: unknown): JsonMap | undefined {
@@ -51,6 +51,13 @@ function reward(result: JsonMap | undefined): number | null | undefined {
 function exceptionType(result: JsonMap | undefined): string | undefined {
   const value = object(result?.exception_info)?.exception_type;
   return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+/** Whether Harbor ended a hosted trial at its agent timeout. Harbor kills the
+ *  hosted agent at that deadline before the shim can write its run summary, so
+ *  such a trial is cancelled evidence without a summary, not missing evidence. */
+export function isHostedAgentTimeout(result: JsonMap | undefined): boolean {
+  return exceptionType(result) === "AgentTimeoutError";
 }
 
 function terminalKind(summary: JsonMap | undefined): string | undefined {
@@ -122,7 +129,8 @@ export async function reconcileDisclosureLedger(options: ReconcileOptions): Prom
     const task = result?.task_name;
     const trialName = result?.trial_name;
     const score = reward(result);
-    const valid = resultEvidence.present && resultEvidence.valid && summaryEvidence.present && summaryEvidence.valid && typeof task === "string" && task.length > 0 && typeof trialName === "string" && trialName.length > 0 && score !== undefined;
+    const summaryAdmitted = summaryEvidence.present ? summaryEvidence.valid : options.hosted === true && isHostedAgentTimeout(result);
+    const valid = resultEvidence.present && resultEvidence.valid && summaryAdmitted && typeof task === "string" && task.length > 0 && typeof trialName === "string" && trialName.length > 0 && score !== undefined;
     evidenceValid &&= valid;
     if (!valid || typeof task !== "string" || typeof trialName !== "string" || score === undefined) continue;
     if (seenTrials.has(trialName) || (expectedTasks.size > 0 && !expectedTasks.has(task))) evidenceValid = false;

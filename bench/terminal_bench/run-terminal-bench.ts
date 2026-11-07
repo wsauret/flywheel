@@ -1,13 +1,16 @@
-import { realpathSync } from "node:fs";
-import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { reconcileDisclosureLedger, type DisclosureLedger } from "./disclosure-ledger.js";
 import { analyzeToolOutcomes, TOOL_OUTCOME_ANALYZER_CONTRACT_VERSION, TOOL_OUTCOME_ANALYZER_RESULT_VERSION, type ToolOutcomeAnalysis } from "./analyze-tool-outcomes.js";
 import { resolveTerminalBenchConfig, terminalBenchDisplayModel, type JsonMap, type ResolvedTerminalBenchConfig } from "./terminal-bench-config.js";
+import { command, harborPython } from "./harbor-process.js";
+import { awaitHostedJob, defaultBuildAgentPackage, defaultPublishAgentPackage, defaultValidateHostedConfig, hostedJobConfig, launchedJobId, releaseTagFor, repositoryConfigPath, restrictDownloadedStores, SECRET_VALUE_LIMIT, SNAPSHOT_SECRET, snapshotCommand, worstCaseJobSeconds, type AgentPackageBuild, type AgentPackagePublication, type TaskTimeouts } from "./hosted-terminal-bench.js";
 
 const WHEELHOUSE_TARGET = "/opt/flywheel-verifier-wheelhouse";
 const CACHE_TARGET = "/opt/flywheel-download-cache";
+const REPOSITORY_ROOT = resolve(import.meta.dir, "../..");
 
 interface SeedInspection { clean: boolean; revision: string; dirtyPaths?: string[] }
 interface PrepareDependencies {
@@ -19,6 +22,12 @@ interface PrepareDependencies {
   validateConfig: (path: string) => Promise<void>;
   versionProbe: () => Promise<string>;
   harborPython: () => string;
+  /** Resolves every task name through Harbor's dataset resolution and refuses an unmatched name. */
+  resolveTasks: (dataset: string, ref: string | undefined, taskNames: readonly string[]) => Promise<Record<string, TaskTimeouts>>;
+  releaseTagFor: (commit: string) => Promise<string | null>;
+  buildAgentPackage: (commit: string, configPath: string, configSha256: string, releaseTag: string | null, output: string) => Promise<AgentPackageBuild>;
+  publishAgentPackage: (directory: string, repository: string) => Promise<AgentPackagePublication>;
+  validateHostedConfig: (path: string) => Promise<void>;
 }
 
 export interface PreparedTerminalBenchRun {
@@ -84,12 +93,21 @@ interface PreparationPlan {
   generated_config: string;
   manifest: string;
   metadata: string;
-  harbor_command: string[];
-  download_command: string[];
-  wheelhouse_command: string[];
+  execution_mode?: "local" | "hosted";
+  // Local Docker execution.
+  harbor_command?: string[];
+  download_command?: string[];
+  wheelhouse_command?: string[];
+  prebuild?: boolean;
+  // Harbor Hub execution.
+  source_commit?: string;
+  agent_package?: AgentPackagePublication;
+  launch_command?: string[];
+  snapshot_command?: string[];
+  worst_case_seconds?: number;
+  download_directory?: string;
   dataset: string;
   task_names: string[];
-  prebuild: boolean;
   concurrency: number;
   dry_run: boolean;
   auth_profile: string;
@@ -97,20 +115,13 @@ interface PreparationPlan {
   system_prompt: JsonMap;
   system_prompt_payload?: string;
   flywheel_config: FlywheelConfigRecord | null;
-  trials_directory: string;
+  trials_directory?: string;
   grade: string;
   warning: string;
 }
 
 function jsonBytes(value: unknown): string {
   return `${JSON.stringify(value, undefined, 2)}\n`;
-}
-
-async function command(argv: string[], cwd: string): Promise<string> {
-  const process = Bun.spawn(argv, { cwd, stdout: "pipe", stderr: "pipe", windowsHide: true });
-  const [stdout, stderr, exitCode] = await Promise.all([new Response(process.stdout).text(), new Response(process.stderr).text(), process.exited]);
-  if (exitCode !== 0) throw new Error(`${argv.join(" ")} failed: ${stderr.trim()}`);
-  return stdout;
 }
 
 async function defaultSeedInspection(cwd: string): Promise<SeedInspection> {
@@ -128,15 +139,15 @@ async function defaultResolveCommit(cwd: string, sha: string): Promise<string> {
   return resolved;
 }
 
-function harborPython(): string {
-  const binary = Bun.which("harbor");
-  if (binary === null) throw new Error("harbor CLI not found");
-  return join(dirname(realpathSync(binary)), "python");
-}
-
 async function defaultValidateConfig(path: string): Promise<void> {
   const source = "import json,sys\ntry:\n from harbor.models.job.config import JobConfig\nexcept ImportError:\n from harbor.models.job import JobConfig\ndata=json.load(open(sys.argv[1],encoding='utf-8'))\nJobConfig.model_validate(data)\n";
   await command([harborPython(), "-c", source, path], process.cwd());
+}
+
+async function defaultResolveTasks(dataset: string, ref: string | undefined, taskNames: readonly string[]): Promise<Record<string, TaskTimeouts>> {
+  const stdout = await command([harborPython(), "-I", resolve(import.meta.dir, "harbor_tasks.py"), dataset, ref ?? "", ...taskNames], process.cwd());
+  const resolved = cloneMap(JSON.parse(stdout), "task resolution");
+  return cloneMap(resolved.tasks, "resolved tasks") as Record<string, TaskTimeouts>;
 }
 
 async function defaultVersionProbe(): Promise<string> {
@@ -206,15 +217,26 @@ async function atomicWrite(path: string, value: unknown): Promise<void> {
   await rename(temporary, path);
 }
 
-async function trialSourceArchiveSha256(trialsDirectory: string, expectedTrials: number): Promise<string> {
+/** The one source archive digest that the trial summaries prove. A hosted
+ *  run's digest is the package's, recorded at build time, and every summary a
+ *  trial wrote must name it; a hosted trial that Harbor stopped at its agent
+ *  timeout wrote none, and the analyzer and ledger judge that trial. */
+async function trialSourceArchiveSha256(trialsDirectory: string, manifest: JsonMap): Promise<string> {
+  const hosted = manifest.execution_mode === "hosted";
   const entries = await readdir(trialsDirectory, { withFileTypes: true });
-  const digests = await Promise.all(entries.filter((entry) => entry.isDirectory() && !entry.isSymbolicLink()).map(async (entry) => {
-    const summary = cloneMap(JSON.parse(await readFile(join(trialsDirectory, entry.name, "agent", "flywheel-run-summary.json"), "utf8")), "trial summary");
-    return typeof summary.source_archive_sha256 === "string" ? summary.source_archive_sha256 : "";
-  }));
-  const unique = new Set(digests);
-  if (digests.length !== expectedTrials || unique.size !== 1 || !/^[a-f0-9]{64}$/.test(digests[0] ?? "")) throw new Error("trials do not prove one source archive digest");
-  return digests[0] ?? "";
+  const digests = (await Promise.all(entries.filter((entry) => entry.isDirectory() && !entry.isSymbolicLink()).map(async (entry) => {
+    const path = join(trialsDirectory, entry.name, "agent", "flywheel-run-summary.json");
+    const text = await readFile(path, "utf8").catch((error: unknown) => {
+      if (hosted && error instanceof Error && "code" in error && error.code === "ENOENT") return undefined;
+      throw error;
+    });
+    if (text === undefined) return [];
+    const summary = cloneMap(JSON.parse(text), "trial summary");
+    return [typeof summary.source_archive_sha256 === "string" ? summary.source_archive_sha256 : ""];
+  }))).flat();
+  const expected = hosted ? manifest.source_archive_sha256 : digests[0];
+  if ((!hosted && digests.length !== manifest.expected_trials) || typeof expected !== "string" || !/^[a-f0-9]{64}$/.test(expected) || digests.some((digest) => digest !== expected)) throw new Error("trials do not prove one source archive digest");
+  return expected;
 }
 
 function defaultDependencies(overrides: Partial<PrepareDependencies>): PrepareDependencies {
@@ -227,6 +249,11 @@ function defaultDependencies(overrides: Partial<PrepareDependencies>): PrepareDe
     validateConfig: overrides.validateConfig ?? defaultValidateConfig,
     versionProbe: overrides.versionProbe ?? defaultVersionProbe,
     harborPython: overrides.harborPython ?? harborPython,
+    resolveTasks: overrides.resolveTasks ?? defaultResolveTasks,
+    releaseTagFor: overrides.releaseTagFor ?? ((commit) => releaseTagFor(commit)),
+    buildAgentPackage: overrides.buildAgentPackage ?? defaultBuildAgentPackage,
+    publishAgentPackage: overrides.publishAgentPackage ?? defaultPublishAgentPackage,
+    validateHostedConfig: overrides.validateHostedConfig ?? defaultValidateHostedConfig,
   };
 }
 
@@ -236,13 +263,10 @@ export async function prepareTerminalBenchRun(args: string[], overrides: Partial
   const resolvedRuntimeCommit = config.runtimeSourceCommit === undefined ? undefined : await dependencies.resolveCommit(dependencies.cwd, config.runtimeSourceCommit);
   if (config.runtimeSourceCommit !== undefined && resolvedRuntimeCommit !== config.runtimeSourceCommit) throw new Error("runtime source commit did not resolve to the exact requested SHA");
   const seed = await dependencies.inspectSeed(dependencies.cwd);
+  const tasks = await dependencies.resolveTasks(config.dataset, config.datasetRef, config.taskNames);
   const effectiveGrade = config.grade;
   const warning = config.warning;
   const harborVersion = await dependencies.versionProbe().catch(() => "");
-  const selectedHarborPython = dependencies.harborPython();
-  const generated = generatedConfig(config);
-  const cacheDirectory = process.env.FLYWHEEL_TB_CACHE_DIR;
-  if (cacheDirectory !== undefined && cacheDirectory.length > 0) mergeMounts(generated, [{ type: "bind", source: resolve(cacheDirectory), target: CACHE_TARGET, read_only: false, bind: { create_host_path: false } }]);
   const artifactDirectory = join(config.jobsDirectory, `${config.jobName}-${dependencies.now().toISOString().replaceAll(":", "-")}`);
   const stage = `${artifactDirectory}.${crypto.randomUUID()}.tmp`;
   const generatedPath = join(stage, "generated.json");
@@ -252,89 +276,90 @@ export async function prepareTerminalBenchRun(args: string[], overrides: Partial
   const finalGeneratedPath = join(artifactDirectory, "generated.json");
   const finalManifestPath = join(artifactDirectory, "run_manifest.json");
   const finalMetadataPath = join(artifactDirectory, "metadata.yaml");
-  const harborCommand = ["harbor", "run", "-c", finalGeneratedPath];
   const systemPromptSha256 = config.systemPrompt === undefined ? undefined : createHash("sha256").update(config.systemPrompt).digest("hex");
   const systemPrompt = systemPromptSha256 === undefined ? { mode: "production" } : { mode: "override", sha256: systemPromptSha256 };
   const payloadDirectory = `${artifactDirectory}.system-prompt`;
   const flywheelConfig: FlywheelConfigRecord | null = config.flywheelConfig === undefined ? null : { path: config.flywheelConfig.path, sha256: config.flywheelConfig.sha256, chat_effort: config.flywheelConfig.chatEffort };
-  const runtimeSource = resolvedRuntimeCommit === undefined
+  // A hosted package holds only Git blobs of one commit, so a hosted run
+  // always has a commit source: the profile's pin, or HEAD.
+  const hostedCommit = config.hosted === undefined ? undefined : resolvedRuntimeCommit ?? seed.revision;
+  const sourceCommit = resolvedRuntimeCommit ?? hostedCommit;
+  const runtimeSource = sourceCommit === undefined
     ? { mode: "worktree" }
-    : { mode: "git_commit", requested_sha: config.runtimeSourceCommit, resolved_sha: resolvedRuntimeCommit };
-  const manifest: JsonMap = {
-    expected_rows: config.taskNames.flatMap((task) => Array.from({ length: config.attempts }, (_, index) => ({ task, attempt: index + 1 }))),
-    command_expectation: { version: 1, executable_tool_names: [config.expectedInteraction.executableToolName], minimum_cardinality: 1 },
-    expected_interaction_profile: config.expectedInteraction.profileId,
-    version: 1,
-    state: config.dryRun ? "finalized" : "prepared",
-    seed: dependencies.seed(),
-    seed_provenance: { revision: seed.revision, clean: seed.clean, dirty_paths: seed.dirtyPaths ?? [] },
-    harbor_binary: Bun.which("harbor") ?? "",
-    harbor_version: harborVersion,
-    exact_command: harborCommand,
-    expected_trials: config.expectedTrials,
-    requested_tasks: config.taskNames,
-    denominator: config.expectedTrials,
-    auth_profile: config.authProfile,
-    disabled_tools: config.disabledTools,
-    system_prompt: systemPrompt,
-    runtime_source: runtimeSource,
-    profile_sha256: config.profileSha256 ?? null,
-    flywheel_config: flywheelConfig,
-    execution_contract: { project_root: "task_workspace", execution_cwd: "task_workspace", evidence_export: "settled_sqlite", persistent_processes: true },
-    grade: effectiveGrade,
-    warning: warning ?? "",
-    model: config.model,
-    dataset: config.dataset,
-    task_names: config.taskNames,
-    attempts: config.attempts,
-    concurrency: config.concurrency,
-    methodology: { attempts_per_task: config.attempts, task_count: config.taskNames.length, concurrency: config.concurrency },
-    timeout_multipliers: config.timeoutMultipliers,
-    resource_overrides: config.resourceOverrides,
-    outcome: config.dryRun ? "dry_run" : null,
-    ledger_summary: null,
-    analyzer_result: null,
-  };
-  const plan: PreparationPlan = {
-    artifact_directory: artifactDirectory,
-    generated_config: finalGeneratedPath,
-    manifest: finalManifestPath,
-    metadata: finalMetadataPath,
-    harbor_command: harborCommand,
-    // Cache mode fills the content-addressed task cache that the wheelhouse
-    // step reads. Harbor 0.21 defaults to export mode in the current directory.
-    download_command: ["harbor", "download", config.dataset, "--cache"],
-    wheelhouse_command: [selectedHarborPython, resolve(dependencies.cwd, "bench/terminal_bench/verifier_wheelhouse.py"), "--dataset", config.dataset, "--task-cache", resolve(process.env.HOME ?? dependencies.cwd, ".cache/harbor/tasks/packages/terminal-bench"), ...config.taskNames.flatMap((name) => ["--task-name", name])],
-    dataset: config.dataset,
-    auth_profile: config.authProfile,
-    disabled_tools: [...config.disabledTools],
-    system_prompt: systemPrompt,
-    flywheel_config: flywheelConfig,
-    task_names: config.taskNames,
-    prebuild: config.prebuild,
-    concurrency: config.concurrency,
-    dry_run: config.dryRun,
-    grade: effectiveGrade,
-    warning: warning ?? "",
-    trials_directory: join(config.jobsDirectory, config.jobName),
-  };
+    : { mode: "git_commit", requested_sha: config.runtimeSourceCommit ?? sourceCommit, resolved_sha: sourceCommit };
   try {
     await mkdir(config.jobsDirectory, { recursive: true });
+    await mkdir(stage, { mode: 0o700 });
+    const execution = hostedCommit === undefined
+      ? localExecution(config, dependencies, finalGeneratedPath)
+      : await hostedExecution(config, dependencies, hostedCommit, tasks, join(stage, "agent-package"), finalGeneratedPath, join(artifactDirectory, "hub"));
+    const manifest: JsonMap = {
+      expected_rows: config.taskNames.flatMap((task) => Array.from({ length: config.attempts }, (_, index) => ({ task, attempt: index + 1 }))),
+      command_expectation: { version: 1, executable_tool_names: [config.expectedInteraction.executableToolName], minimum_cardinality: 1 },
+      expected_interaction_profile: config.expectedInteraction.profileId,
+      version: 1,
+      state: config.dryRun ? "finalized" : "prepared",
+      seed: dependencies.seed(),
+      seed_provenance: { revision: seed.revision, clean: seed.clean, dirty_paths: seed.dirtyPaths ?? [] },
+      harbor_binary: Bun.which("harbor") ?? "",
+      harbor_version: harborVersion,
+      exact_command: execution.command,
+      expected_trials: config.expectedTrials,
+      requested_tasks: config.taskNames,
+      denominator: config.expectedTrials,
+      auth_profile: config.authProfile,
+      disabled_tools: config.disabledTools,
+      system_prompt: systemPrompt,
+      runtime_source: runtimeSource,
+      profile_sha256: config.profileSha256 ?? null,
+      flywheel_config: flywheelConfig,
+      execution_contract: { project_root: "task_workspace", execution_cwd: "task_workspace", evidence_export: "settled_sqlite", persistent_processes: true },
+      grade: effectiveGrade,
+      warning: warning ?? "",
+      model: config.model,
+      dataset: config.dataset,
+      task_names: config.taskNames,
+      attempts: config.attempts,
+      concurrency: config.concurrency,
+      methodology: { attempts_per_task: config.attempts, task_count: config.taskNames.length, concurrency: config.concurrency },
+      timeout_multipliers: config.timeoutMultipliers,
+      resource_overrides: config.resourceOverrides,
+      outcome: config.dryRun ? "dry_run" : null,
+      ledger_summary: null,
+      analyzer_result: null,
+      ...execution.manifest,
+    };
+    const plan: PreparationPlan = {
+      artifact_directory: artifactDirectory,
+      generated_config: finalGeneratedPath,
+      manifest: finalManifestPath,
+      metadata: finalMetadataPath,
+      dataset: config.dataset,
+      auth_profile: config.authProfile,
+      disabled_tools: [...config.disabledTools],
+      system_prompt: systemPrompt,
+      flywheel_config: flywheelConfig,
+      task_names: config.taskNames,
+      concurrency: config.concurrency,
+      dry_run: config.dryRun,
+      grade: effectiveGrade,
+      warning: warning ?? "",
+      ...execution.plan,
+    };
     if (config.systemPrompt !== undefined) {
       await mkdir(payloadDirectory, { mode: 0o700 });
       const systemPromptPayload = join(payloadDirectory, "payload");
       await writeFile(systemPromptPayload, config.systemPrompt, { mode: 0o600 });
       plan.system_prompt_payload = systemPromptPayload;
     }
-    await mkdir(stage, { mode: 0o700 });
     await Promise.all([
-      writeFile(generatedPath, jsonBytes(generated), { mode: 0o600 }),
+      writeFile(generatedPath, jsonBytes(execution.generated), { mode: 0o600 }),
       writeFile(manifestPath, jsonBytes(manifest), { mode: 0o600 }),
       writeFile(metadataPath, jsonBytes({ agent: { name: "FlywheelHeadless", display_name: "Flywheel Headless", url: "https://github.com/wsauret/flywheel", organization: { display_name: "Flywheel" } }, models: [{ name: terminalBenchDisplayModel(config.model), role: "primary" }], runtime_source: runtimeSource }), { mode: 0o600 }),
       writeFile(planPath, jsonBytes(plan), { mode: 0o600 }),
     ]);
     try {
-      await dependencies.validateConfig(generatedPath);
+      await (config.hosted === undefined ? dependencies.validateConfig : dependencies.validateHostedConfig)(generatedPath);
     } catch (error) {
       manifest.state = "refused";
       manifest.outcome = "configuration_refused";
@@ -343,6 +368,7 @@ export async function prepareTerminalBenchRun(args: string[], overrides: Partial
       throw new Error(`generated Harbor config refused; grade=${effectiveGrade}; warning=${warning ?? "none"}; manifest=${finalManifestPath}; reason=${error instanceof Error ? error.message : String(error)}`);
     }
     await rename(stage, artifactDirectory);
+    return { artifactDirectory, generatedConfig: finalGeneratedPath, preparationPlan: join(artifactDirectory, "preparation-plan.json"), manifest: finalManifestPath, harborCommand: execution.command, dryRun: config.dryRun };
   } catch (error) {
     await Promise.allSettled([
       rm(stage, { recursive: true, force: true }),
@@ -350,7 +376,67 @@ export async function prepareTerminalBenchRun(args: string[], overrides: Partial
     ]);
     throw error;
   }
-  return { artifactDirectory, generatedConfig: finalGeneratedPath, preparationPlan: join(artifactDirectory, "preparation-plan.json"), manifest: finalManifestPath, harborCommand, dryRun: config.dryRun };
+}
+
+/** What one execution mode adds to the shared preparation: the config Harbor
+ *  reads, the command that runs it, and the mode's manifest and plan fields. */
+interface PreparedExecution { generated: JsonMap; command: string[]; manifest: JsonMap; plan: Partial<PreparationPlan> }
+
+function localExecution(config: ResolvedTerminalBenchConfig, dependencies: PrepareDependencies, finalGeneratedPath: string): PreparedExecution {
+  const generated = generatedConfig(config);
+  const cacheDirectory = process.env.FLYWHEEL_TB_CACHE_DIR;
+  if (cacheDirectory !== undefined && cacheDirectory.length > 0) mergeMounts(generated, [{ type: "bind", source: resolve(cacheDirectory), target: CACHE_TARGET, read_only: false, bind: { create_host_path: false } }]);
+  const harborCommand = ["harbor", "run", "-c", finalGeneratedPath];
+  return {
+    generated,
+    command: harborCommand,
+    manifest: { execution_mode: "local" },
+    plan: {
+      execution_mode: "local",
+      harbor_command: harborCommand,
+      // Cache mode fills the content-addressed task cache that the wheelhouse
+      // step reads. Harbor 0.21 defaults to export mode in the current directory.
+      download_command: ["harbor", "download", config.dataset, "--cache"],
+      wheelhouse_command: [dependencies.harborPython(), resolve(dependencies.cwd, "bench/terminal_bench/verifier_wheelhouse.py"), "--dataset", config.dataset, "--task-cache", resolve(process.env.HOME ?? dependencies.cwd, ".cache/harbor/tasks/packages/terminal-bench"), ...config.taskNames.flatMap((name) => ["--task-name", name])],
+      prebuild: config.prebuild,
+      trials_directory: join(config.jobsDirectory, config.jobName),
+    },
+  };
+}
+
+/** Builds and publishes the run's agent package, then writes the Hub job that
+ *  runs it. Publication happens also for a dry run, because Hub's free dry
+ *  run validates the published ref. */
+async function hostedExecution(config: ResolvedTerminalBenchConfig, dependencies: PrepareDependencies, sourceCommit: string, tasks: Readonly<Record<string, TaskTimeouts>>, packageDirectory: string, finalGeneratedPath: string, downloadDirectory: string): Promise<PreparedExecution> {
+  if (config.hosted === undefined || config.flywheelConfig === undefined) throw new Error("hosted execution requires a hosted run with a Flywheel config");
+  if (Object.keys(config.resourceOverrides).length > 0) throw new Error("--hosted does not support resource overrides");
+  await mkdir(packageDirectory, { mode: 0o700 });
+  const releaseTag = await dependencies.releaseTagFor(sourceCommit);
+  const build = await dependencies.buildAgentPackage(sourceCommit, repositoryConfigPath(config.flywheelConfig.absolutePath), config.flywheelConfig.sha256, releaseTag, packageDirectory);
+  const publication = await dependencies.publishAgentPackage(packageDirectory, config.hosted.agentRepository);
+  const worstCaseSeconds = worstCaseJobSeconds(config, tasks);
+  const launchCommand = ["harbor", "run", "--launch", "-c", finalGeneratedPath, "--yes"];
+  return {
+    generated: hostedJobConfig(config, publication),
+    command: launchCommand,
+    manifest: {
+      execution_mode: "hosted",
+      source_archive_sha256: build.runtime_archive.sha256,
+      agent_package: { ...publication, build_id: build.build_id, release_tag: build.flywheel_source.release_tag },
+      hosted_job_id: null,
+      worst_case_seconds: worstCaseSeconds,
+    },
+    plan: {
+      execution_mode: "hosted",
+      source_commit: sourceCommit,
+      agent_package: publication,
+      launch_command: launchCommand,
+      snapshot_command: snapshotCommand(config, worstCaseSeconds),
+      worst_case_seconds: worstCaseSeconds,
+      download_directory: downloadDirectory,
+      trials_directory: join(downloadDirectory, config.jobName),
+    },
+  };
 }
 
 async function addVerifierWheelhouse(planPath: string, wheelhouse: string, validateConfig: (path: string) => Promise<void> = defaultValidateConfig): Promise<void> {
@@ -375,11 +461,11 @@ export async function finalizeTerminalBenchRun(manifestPath: string, trialsDirec
   let ledger: DisclosureLedger;
   let analysis: ToolOutcomeAnalysis | undefined;
   try {
-    manifest.source_archive_sha256 = await trialSourceArchiveSha256(trialsDirectory, manifest.expected_trials);
+    manifest.source_archive_sha256 = await trialSourceArchiveSha256(trialsDirectory, manifest);
     analysis = await analyzeToolOutcomes(trialsDirectory, manifest);
     const taskNames = Array.isArray(manifest.requested_tasks) && manifest.requested_tasks.every((task) => typeof task === "string") ? manifest.requested_tasks : [];
     const attempts = typeof manifest.attempts === "number" ? manifest.attempts : 0;
-    ledger = await reconcileDisclosureLedger({ trialsDirectory, taskNames, attempts, harborExitCode, infrastructureValid: analysis.infrastructureValid });
+    ledger = await reconcileDisclosureLedger({ trialsDirectory, taskNames, attempts, harborExitCode, infrastructureValid: analysis.infrastructureValid, hosted: manifest.execution_mode === "hosted" });
     await atomicWrite(join(dirname(manifestPath), "disclosure-ledger.json"), ledger);
   } catch {
     const outcome = harborExitCode === 0 ? "trials_unverified" : "harness_nonzero_exit";
@@ -409,6 +495,60 @@ export async function finalizeTerminalBenchRun(manifestPath: string, trialsDirec
   manifest.ledger_summary = { denominator: ledger.denominator, scored_trials: ledger.scoredTrials, reconciled: ledger.reconciled, counts: ledger.counts, total_cost: ledger.totalCost };
   await atomicWrite(manifestPath, manifest);
   return ledger;
+}
+
+function stringArray(value: unknown, label: string): string[] {
+  if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) throw new Error(`${label} is not a string array`);
+  return value;
+}
+
+/** Runs one Harbor command with the snapshot in its environment, prints its
+ *  stdout, and returns that output with the exit code. */
+async function runHarbor(argv: string[], env: Record<string, string | undefined>): Promise<{ exitCode: number; output: string }> {
+  const child = Bun.spawn(argv, { cwd: REPOSITORY_ROOT, env, stdout: "pipe", stderr: "inherit", windowsHide: true });
+  const output = await new Response(child.stdout).text();
+  process.stdout.write(output);
+  return { exitCode: await child.exited, output };
+}
+
+/** Runs a prepared hosted campaign. It exports the trial snapshot on this
+ *  host and removes the snapshot stage in every outcome, then runs Hub's free
+ *  dry run and stops on any problem. Only an executing plan then launches the
+ *  job, waits for it, downloads its trials, and finalizes them. */
+async function runHostedTerminalBench(planPath: string): Promise<number> {
+  const plan = cloneMap(JSON.parse(await readFile(planPath, "utf8")), "preparation plan");
+  const launch = stringArray(plan.launch_command, "plan launch_command");
+  const stage = await mkdtemp(join(tmpdir(), "flywheel-auth-bundle-"));
+  let snapshot: string;
+  try {
+    await chmod(stage, 0o700);
+    await command([...stringArray(plan.snapshot_command, "plan snapshot_command"), "--output", join(stage, "auth.json")], REPOSITORY_ROOT);
+    snapshot = await readFile(join(stage, "auth.json"), "utf8");
+  } finally {
+    await rm(stage, { recursive: true, force: true });
+  }
+  if (snapshot.length > SECRET_VALUE_LIMIT) throw new Error(`the trial auth snapshot has ${snapshot.length} characters; Harbor Hub accepts at most ${SECRET_VALUE_LIMIT}`);
+  const environment = { ...process.env, [SNAPSHOT_SECRET]: snapshot };
+  const dryRun = await runHarbor([...launch, "--dry-run"], environment);
+  if (dryRun.exitCode !== 0 || plan.dry_run === true) return dryRun.exitCode;
+  const launched = await runHarbor(launch, environment);
+  if (launched.exitCode !== 0) return launched.exitCode;
+  const jobId = launchedJobId(launched.output);
+  if (typeof plan.manifest !== "string" || typeof plan.trials_directory !== "string" || typeof plan.download_directory !== "string" || typeof plan.worst_case_seconds !== "number") throw new Error("preparation plan lacks the hosted manifest, trial paths, or job deadline");
+  const manifest = cloneMap(JSON.parse(await readFile(plan.manifest, "utf8")), "run manifest");
+  await atomicWrite(plan.manifest, { ...manifest, hosted_job_id: jobId, state: "launched" });
+  let harborExitCode = 0;
+  try {
+    await awaitHostedJob(jobId, plan.worst_case_seconds);
+    await command(["harbor", "hub", "job", "download", jobId, "-o", plan.download_directory], REPOSITORY_ROOT);
+    await restrictDownloadedStores(plan.trials_directory);
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    harborExitCode = 1;
+  }
+  const ledger = await finalizeTerminalBenchRun(plan.manifest, plan.trials_directory, harborExitCode);
+  console.log(JSON.stringify(ledger));
+  return ledger.exitCode;
 }
 
 export async function createTerminalBenchComparisonManifest(
@@ -472,13 +612,18 @@ async function main(): Promise<number> {
     console.log(JSON.stringify(ledger));
     return ledger.exitCode;
   }
+  if (action === "run-hosted") {
+    const [plan] = args;
+    if (plan === undefined || args.length !== 1) throw new Error("run-hosted requires a hosted preparation plan");
+    return runHostedTerminalBench(plan);
+  }
   if (action === "compare") {
     const [control, candidate] = args;
     if (!control || !candidate || args.length !== 2) throw new Error("compare requires finalized control and candidate manifests");
     console.log(JSON.stringify(await createTerminalBenchComparisonManifest(control, candidate), undefined, 2));
     return 0;
   }
-  throw new Error("expected prepare, add-wheelhouse, finalize, or compare action");
+  throw new Error("expected prepare, add-wheelhouse, finalize, run-hosted, or compare action");
 }
 
 if (import.meta.main) {

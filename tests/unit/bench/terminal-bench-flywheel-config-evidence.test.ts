@@ -25,6 +25,7 @@ describe("terminal bench Flywheel config evidence", () => {
       validateConfig: async () => undefined,
       versionProbe: async () => "test",
       harborPython: () => "python",
+      resolveTasks: async () => ({}),
     });
     const manifest = JSON.parse(await readFile(result.manifest, "utf8"));
     const plan = JSON.parse(await readFile(result.preparationPlan, "utf8"));

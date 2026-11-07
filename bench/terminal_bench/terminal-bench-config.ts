@@ -8,6 +8,7 @@ import { detectModelFamily } from "../../src/infra/llm/model-family.js";
 import { DEFAULT_MODEL_INTERACTION_PROFILE, resolveModelInteractionProfile, type ModelInteractionProfileId } from "../../src/orchestration/agent-runtime/model-interaction-profile.js";
 import { exposedToolName, type ToolDeclaration } from "../../src/orchestration/agent-runtime/tools/tool-registry.js";
 import { bashModule } from "../../src/orchestration/modules/bash.js";
+import { CREDENTIAL_PROVIDER_MODULES } from "../../src/orchestration/credential-provider-modules.js";
 
 const AGENT_IMPORT = "bench.terminal_bench.flywheel_agent:FlywheelHeadless";
 const DEFAULT_MODEL = "gpt-6-luna";
@@ -16,7 +17,7 @@ const REPOSITORY_ROOT = resolve(import.meta.dir, "../..");
 /** The auth profile id a trial with a Flywheel config runs under. The trial's
  *  credentials are exported under this id, so the config's `[profiles.<id>]`
  *  tables name no host profile. */
-const TRIAL_AUTH_PROFILE = "benchmark";
+export const TRIAL_AUTH_PROFILE = "benchmark";
 
 type CampaignGrade = "leaderboard_valid" | "local_low_k" | "debug_only";
 export type JsonMap = Record<string, unknown>;
@@ -39,6 +40,10 @@ export interface ResolvedTerminalBenchConfig {
   model: string;
   dataset: string;
   runtimeSourceCommit?: string;
+  /** The dataset ref the profile pins, such as `sha256:<digest>`. */
+  datasetRef?: string;
+  /** Set when the run executes on Harbor Hub instead of local Docker. */
+  hosted?: TerminalBenchHosting;
   taskNames: string[];
   attempts: number;
   concurrency: number;
@@ -63,9 +68,21 @@ export interface TerminalBenchFlywheelConfig {
   absolutePath: string;
   sha256: string;
   chatEffort: string;
+  /** The credential provider ids of the provider modules the config leaves
+   *  enabled. A trial's snapshot carries exactly these, because a trial
+   *  refuses a snapshot that holds a credential its config disables. */
+  credentialProviders: readonly string[];
 }
 
-interface ResolveOptions { cwd: string }
+/** Where a hosted run publishes its agent package and which Hub organization
+ *  owns the job. The repository has no default: each run names it. */
+export interface TerminalBenchHosting {
+  agentRepository: string;
+  /** The Hub organization that owns the job; without one, the job is the signed-in user's own. */
+  organization?: string;
+}
+
+interface ResolveOptions { cwd: string; env?: Record<string, string | undefined> }
 interface HeadlessProfile { readonly disabledTools: readonly string[]; readonly model?: string; readonly systemPrompt?: string; readonly runtimeSourceCommit?: string; readonly flywheelConfig?: string }
 
 function map(value: unknown, label: string): JsonMap {
@@ -139,11 +156,25 @@ async function readFlywheelConfig(path: string): Promise<{ config: TerminalBench
   if (problems.length > 0) refuseFlywheelConfig(path, problems.join("; "));
   const chat = decoded.config.profiles[TRIAL_AUTH_PROFILE]?.roles.chat;
   if (chat?.model === undefined || chat.effort === undefined) return refuseFlywheelConfig(path, `it must pin model and effort in [profiles.${TRIAL_AUTH_PROFILE}.roles.chat]`);
-  return { config: { path, absolutePath, sha256: createHash("sha256").update(bytes).digest("hex"), chatEffort: chat.effort }, model: chat.model };
+  const enabled = new Set(decoded.config.modules);
+  const credentialProviders = CREDENTIAL_PROVIDER_MODULES.filter((module) => enabled.has(module.id))
+    .flatMap((module) => module.contributions.flatMap((contribution) => contribution.domain === "providers" || contribution.domain === "webAuthProviders" ? [contribution.id] : []));
+  return { config: { path, absolutePath, sha256: createHash("sha256").update(bytes).digest("hex"), chatEffort: chat.effort, credentialProviders }, model: chat.model };
 }
 
 function refuseFlywheelConfig(path: string, reason: string): never {
   throw new Error(`headless.flywheel_config ${path} is not a valid Flywheel config: ${reason}`);
+}
+
+/** Validates the hosted selection. The package carries only the arm config,
+ *  the runtime, and the shim, so a profile that needs launcher-side trial
+ *  inputs (disabled tools, a system prompt, local image prebuilds) or no
+ *  Flywheel config cannot run hosted. */
+function terminalBenchHosting(agentRepository: string | undefined, organization: string | undefined, headless: HeadlessProfile, prebuild: boolean): TerminalBenchHosting {
+  if (headless.flywheelConfig === undefined) throw new Error("--hosted requires headless.flywheel_config: the agent package ships the arm config");
+  if (headless.disabledTools.length > 0 || headless.systemPrompt !== undefined || prebuild) throw new Error("--hosted does not support headless.disabled_tools, headless.system_prompt, or --prebuild");
+  if (agentRepository === undefined || !/^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/.test(agentRepository)) throw new Error("--hosted requires --agent-repo <owner/repo> or FLYWHEEL_TB_AGENT_REPO");
+  return { agentRepository, ...(organization === undefined ? {} : { organization: requiredName(organization, "--organization or FLYWHEEL_TB_HUB_ORG") }) };
 }
 
 export function terminalBenchDisplayModel(model: string): string {
@@ -187,6 +218,10 @@ export async function resolveTerminalBenchConfig(args: string[], options: Resolv
   let allowLowK = false;
   let allowTimeoutMultipliers = false;
   let allowResourceOverrides = false;
+  let hosted = false;
+  const env = options.env ?? process.env;
+  let cliAgentRepository = env.FLYWHEEL_TB_AGENT_REPO;
+  let cliOrganization = env.FLYWHEEL_TB_HUB_ORG;
 
   for (let index = 0; index < args.length; index += 1) {
     const flag = args[index];
@@ -211,6 +246,9 @@ export async function resolveTerminalBenchConfig(args: string[], options: Resolv
       case "--allow-low-k": allowLowK = true; break;
       case "--allow-timeout-multipliers": allowTimeoutMultipliers = true; break;
       case "--allow-resource-overrides": allowResourceOverrides = true; break;
+      case "--hosted": hosted = true; break;
+      case "--agent-repo": cliAgentRepository = next(args, index); index += 1; break;
+      case "--organization": cliOrganization = next(args, index); index += 1; break;
       default: throw new Error(`unsupported Terminal-Bench option: ${flag}`);
     }
   }
@@ -226,6 +264,7 @@ export async function resolveTerminalBenchConfig(args: string[], options: Resolv
   delete harborConfig.headless;
   if (headless.flywheelConfig !== undefined && cliModel !== undefined) throw new Error("--model conflicts with headless.flywheel_config: the Flywheel config pins the chat model");
   const pinned = headless.flywheelConfig === undefined ? undefined : await readFlywheelConfig(headless.flywheelConfig);
+  const hosting = hosted ? terminalBenchHosting(cliAgentRepository, cliOrganization, headless, prebuild) : undefined;
   const flywheelConfig = pinned?.config;
   const profileAgents = harborConfig.agents === undefined ? [] : harborConfig.agents;
   if (!Array.isArray(profileAgents) || profileAgents.length > 1) throw new Error("Terminal-Bench config must select at most one agent");
@@ -278,11 +317,11 @@ export async function resolveTerminalBenchConfig(args: string[], options: Resolv
   const jobModel = model.replace(/[^A-Za-z0-9._-]+/g, "-");
   const jobName = cliJobName ?? (typeof harborConfig.job_name === "string" ? harborConfig.job_name : `flywheel-${jobModel}`);
   const jobsDirectory = resolve(options.cwd, cliJobsDirectory ?? (typeof harborConfig.jobs_dir === "string" ? harborConfig.jobs_dir : "jobs"));
-  const agent: JsonMap = { ...profileAgent, name: "FlywheelHeadless", import_path: AGENT_IMPORT, model_name: terminalBenchDisplayModel(model), kwargs: { ...(flywheelConfig ? { flywheel_config_path: flywheelConfig.absolutePath, flywheel_config_sha256: flywheelConfig.sha256, trial_auth_profile: TRIAL_AUTH_PROFILE } : { flywheel_model: model }), project_root_mode: "task_workspace", evidence_export: "settled_sqlite", persistent_processes: true, ...(profileSha256 ? { profile_sha256: profileSha256 } : {}), ...(headless.runtimeSourceCommit ? { runtime_source_commit: headless.runtimeSourceCommit } : {}) } };
+  const agent: JsonMap = { ...profileAgent, name: "FlywheelHeadless", import_path: AGENT_IMPORT, model_name: terminalBenchDisplayModel(model), kwargs: { ...(flywheelConfig ? { flywheel_config_path: flywheelConfig.absolutePath, flywheel_config_sha256: flywheelConfig.sha256, trial_auth_profile: TRIAL_AUTH_PROFILE, credential_providers: flywheelConfig.credentialProviders } : { flywheel_model: model }), project_root_mode: "task_workspace", evidence_export: "settled_sqlite", persistent_processes: true, ...(profileSha256 ? { profile_sha256: profileSha256 } : {}), ...(headless.runtimeSourceCommit ? { runtime_source_commit: headless.runtimeSourceCommit } : {}) } };
   delete agent.env;
   const datasetConfig = { ...profileDataset, name: dataset, task_names: selectedTasks };
   delete harborConfig.timeout_multiplier;
   delete harborConfig.environment_build_timeout_multiplier;
   harborConfig = { ...harborConfig, agents: [agent], datasets: [datasetConfig], environment: profileEnvironment, n_attempts: attempts, n_concurrent_trials: concurrency, jobs_dir: jobsDirectory, job_name: jobName };
-  return { harborConfig, disabledTools: headless.disabledTools, systemPrompt: headless.systemPrompt, expectedInteraction: terminalBenchInteraction(model), profileSha256, flywheelConfig, runtimeSourceCommit: headless.runtimeSourceCommit, authProfile, model, dataset, taskNames: selectedTasks, attempts, concurrency, expectedTrials: selectedTasks.length * attempts, dryRun, prebuild, grade, warning, jobName, jobsDirectory, timeoutMultiplier, environmentBuildTimeoutMultiplier, timeoutMultipliers, resourceOverrides };
+  return { harborConfig, disabledTools: headless.disabledTools, systemPrompt: headless.systemPrompt, expectedInteraction: terminalBenchInteraction(model), profileSha256, flywheelConfig, runtimeSourceCommit: headless.runtimeSourceCommit, ...(typeof profileDataset.ref === "string" ? { datasetRef: profileDataset.ref } : {}), ...(hosting ? { hosted: hosting } : {}), authProfile, model, dataset, taskNames: selectedTasks, attempts, concurrency, expectedTrials: selectedTasks.length * attempts, dryRun, prebuild, grade, warning, jobName, jobsDirectory, timeoutMultiplier, environmentBuildTimeoutMultiplier, timeoutMultipliers, resourceOverrides };
 }
