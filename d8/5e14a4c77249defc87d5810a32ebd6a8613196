@@ -1,0 +1,54 @@
+bench/terminal_bench/METHODOLOGY.md
+  h_4b47e9e4a8b456 78
+bench/terminal_bench/README.md
+  h_4b47e9e4a8b456 104
+bench/terminal_bench/trial-store-analysis.ts
+  h_4b47e9e4a8b456 8,101,129-132,137-139,142-162,212,214-215,218
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 369-372
+src/infra/agent-loop-events.ts
+  h_4b47e9e4a8b456 139-141
+src/orchestration/agent-runtime/agent-loop-content-filter.ts
+  h_4b47e9e4a8b456 11-18,35-37,57
+src/orchestration/agent-runtime/agent-loop.ts
+  h_4b47e9e4a8b456 285-286,294,301,705-706,712
+src/orchestration/agent-runtime/errors.ts
+  h_4b47e9e4a8b456 140
+src/orchestration/agent-runtime/types.ts
+  h_4b47e9e4a8b456 458-460
+src/orchestration/chat/runner-completion.ts
+  h_4b47e9e4a8b456 1,46-52,55-57,81-84,91-93
+src/orchestration/chat/runner-lifecycle.ts
+  h_4b47e9e4a8b456 294-297
+src/orchestration/headless/acp-chat.ts
+  h_4b47e9e4a8b456 8,10-11,31,33-36,41,45-55,72-73,180-182,187,198,258
+src/orchestration/headless/run-headless-chat.ts
+  h_4b47e9e4a8b456 14,71-73,77,94-96
+src/protocol/acp.ts
+  h_4b47e9e4a8b456 77-87,96,102,111-112
+tests/helpers/terminal-bench-trial-evidence.ts
+  h_4b47e9e4a8b456 73-74,142,148
+tests/unit/bench/terminal-bench-analyzer.test.ts
+  h_4b47e9e4a8b456 47-48,51-64,70-72
+tests/unit/bench/terminal-bench-ledger.test.ts
+  h_4b47e9e4a8b456 14
+tests/unit/orchestration/agent-runtime/context/loop-content-filter.test.ts
+  h_4b47e9e4a8b456 52,55,73,80,83,106-107
+tests/unit/orchestration/agent-runtime/errors.test.ts
+  h_4b47e9e4a8b456 40
+tests/unit/orchestration/chat/chat-invocation-completion.test.ts
+  h_4b47e9e4a8b456 4,59-82
+tests/unit/orchestration/headless/acp-chat.test.ts
+  h_4b47e9e4a8b456 14,25,55,57-59,89,129,264-305
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d85e14a4c77249defc87d5810a32ebd6a8613196",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
