@@ -1,0 +1,70 @@
+bench/terminal_bench/METHODOLOGY.md
+  h_4b47e9e4a8b456 13
+bench/terminal_bench/README.md
+  h_4b47e9e4a8b456 5
+bench/terminal_bench/harbor_agent/flywheel_harbor_agent/shim.py
+  h_4b47e9e4a8b456 1,17-18,445
+bench/terminal_bench/test_harbor_agent_shim.py
+  h_4b47e9e4a8b456 114-119
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 353-356
+scripts/prompt-assembly.ts
+  h_4b47e9e4a8b456 31,70-71,98
+src/cli/headless-args.ts
+  h_4b47e9e4a8b456 8,18
+src/cli/main.ts
+  h_4b47e9e4a8b456 143
+src/cli/root-args.ts
+  h_4b47e9e4a8b456 20,68
+src/cli/root-help.ts
+  h_4b47e9e4a8b456 56
+src/orchestration/agent-runtime/agent-purpose.ts
+  h_4b47e9e4a8b456 18
+src/orchestration/agent-runtime/request-kernel.ts
+  h_4b47e9e4a8b456 33
+src/orchestration/agent-runtime/request-system-prompt.ts
+  h_4b47e9e4a8b456 83-84
+src/orchestration/agent-runtime/session-run-observation.ts
+  h_4b47e9e4a8b456 11
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 231-248,329-330,346
+src/orchestration/agent-runtime/types.ts
+  h_4b47e9e4a8b456 64-65
+src/orchestration/chat/chat-request-options.ts
+  h_4b47e9e4a8b456 46
+src/orchestration/chat/runner-completion.ts
+  h_4b47e9e4a8b456 56-58,63
+src/orchestration/chat/runner.ts
+  h_4b47e9e4a8b456 33,129-131
+src/orchestration/headless/run-headless-chat.ts
+  h_4b47e9e4a8b456 22-23,97-99,109
+src/orchestration/modules.ts
+  h_4b47e9e4a8b456 264-265,771-775
+src/orchestration/modules/ask-user.ts
+  h_4b47e9e4a8b456 15,45
+src/orchestration/modules/skills.ts
+  h_4b47e9e4a8b456 47-48
+src/workflows/docs/cli.md
+  h_4b47e9e4a8b456 11,26,37
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 643-645
+tests/unit/cli/root-args.test.ts
+  h_4b47e9e4a8b456 35-36
+tests/unit/orchestration/agent-runtime/unattended-chat-prompt.test.ts
+  h_4b47e9e4a8b456 1-86
+tests/unit/orchestration/chat/chat-invocation-completion.test.ts
+  h_4b47e9e4a8b456 83-96
+tests/unit/orchestration/headless/acp-chat.test.ts
+  h_4b47e9e4a8b456 14-15,56,130,206-221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ccd139b478891cee3b1260412c08d664d69d825f",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
