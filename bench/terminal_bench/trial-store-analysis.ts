@@ -7,6 +7,10 @@ import { createSqliteEventReadSurface } from "../../src/infra/sqlite-event-read-
 import { loadProviderRequestAuditFromEvents } from "../../src/orchestration/session/provider-request-audit-projection.js"
 import { reconstructProviderRequestPrompt } from "../../src/orchestration/session/provider-request-audit-reconstruction.js"
 import type { ProviderRequestAuditEntry } from "../../src/orchestration/session/provider-request-audit-types.js"
+// Prompt reconstruction reads the installed module catalog to label the hidden
+// entries that each module wrote, such as the Claude engine's reminders. As in
+// a release, loading the module registry publishes the shipped catalog.
+import "../../src/orchestration/modules.js"
 
 /** The analysis of one Terminal-Bench trial store. The local driver exports
  *  the store and the host analyses it. A hosted trial runs this file inside
@@ -38,7 +42,7 @@ function ownerOnlyEvidence(stats: Stats): boolean {
   return stats.uid === process.getuid?.() && (stats.mode & 0o777) === 0o600
 }
 
-interface AuditedRequest { sessionId: string; entry: ProviderRequestAuditEntry; sessionEvents: readonly StoredFact[]; tools: ReadonlyMap<string, string> }
+interface AuditedRequest { sessionId: string; entry: ProviderRequestAuditEntry; sessionEvents: readonly StoredFact[]; tools: ReadonlySet<string> }
 interface RequestAudit { valid: boolean; requests: ReadonlyMap<string, AuditedRequest>; interactionProfiles: ReadonlySet<string | null> }
 
 const PROVIDER_REQUEST_AUDIT_TYPES = ["prompt.assembled", "tool_surface.selected", "model.requested", "model.request.dispatched", "model.response_received"] as const
@@ -62,7 +66,11 @@ function readRequestAudit(db: Database, readSurface: EventStoreReadSurface): Req
       // The projection resolves each request's tool surface, including a
       // surface the writer recorded once for an earlier request with the same
       // hash. Historical tools carry no executable identity and join nothing.
-      const tools = new Map((entry.toolSurface?.tools ?? []).flatMap((tool) => "executableId" in tool ? [[tool.name, tool.executableId] as const] : []))
+      // A tool's `name` is its wire form, which a route's tool presentation can
+      // rename (the Claude engine's `mcp__runtime__` prefix); the adapter maps a
+      // call back to the canonical name space before Flywheel records it, so a
+      // tool input's provider tool name joins the tool's `executableId`.
+      const tools = new Set((entry.toolSurface?.tools ?? []).flatMap((tool) => "executableId" in tool ? [tool.executableId] : []))
       requests.set(entry.requestId, { sessionId, entry, sessionEvents, tools })
     }
   }
@@ -135,7 +143,8 @@ export async function analyzeTrialStore(path: string): Promise<TrialStoreAnalysi
       const value = payload(row)
       if (![value.toolUseId, value.providerCallId, value.providerToolName, value.toolName, value.modelRequestId].every(nonempty)) { toolSettlement.identityConflicts += 1; continue }
       const id = String(value.toolUseId), requestId = String(value.modelRequestId), request = audit.requests.get(requestId), toolName = String(value.toolName)
-      const joined = request?.sessionId === row.session_id && request.tools.get(String(value.providerToolName)) === toolName
+      // A repaired call's provider tool name is the name the model wrote, which no tool of the surface has.
+      const joined = request?.sessionId === row.session_id && value.providerToolName === toolName && request.tools.has(toolName)
       if (!joined) toolSettlement.identityConflicts += 1
       toolSettlement.inputs += 1; inputCounts.set(id, (inputCounts.get(id) ?? 0) + 1); inputRequests.set(id, requestId)
       const alias = `${requestId}:${String(value.providerCallId)}`, prior = providerAliases.get(alias)

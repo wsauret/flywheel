@@ -1,151 +1,38 @@
 import { describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
-import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js";
-import { extractToolContentFact } from "../../../src/infra/tool-content-extraction.js";
 import type { ProviderRequestAuditFact } from "../../../src/orchestration/session/provider-request-audit-facts.js";
-import { recordProviderRequest, recordProviderRequestDispatched, recordProviderResponse, type ConversationDedup } from "../../../src/orchestration/session/provider-request-audit-recorder.js";
-import type { ProviderRequestAuditTool, RecordedInteractionProfileId } from "../../../src/orchestration/session/provider-request-audit-types.js";
-import { createHash } from "node:crypto";
-import { chmod, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import type { RecordedInteractionProfileId } from "../../../src/orchestration/session/provider-request-audit-types.js";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { analyzeToolOutcomes, TOOL_OUTCOME_ANALYZER_CONTRACT_VERSION } from "../../../bench/terminal_bench/analyze-tool-outcomes.js";
 import { finalizeTerminalBenchRun } from "../../../bench/terminal_bench/run-terminal-bench.js";
 import { analyzeTrialStore, TRIAL_STORE_ANALYSIS_NAME, type TrialStoreAnalysis } from "../../../bench/terminal_bench/trial-store-analysis.js";
+import { identity, manifest, requestIds, rewrite, sourceDigest, surface, trialEvidence, type AuditRow, type EvidenceOptions } from "../../helpers/terminal-bench-trial-evidence.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 
 const temporaryDirectory = temporaryDirectories();
-
-const profile = "default" satisfies RecordedInteractionProfileId;
-const sourceDigest = "a".repeat(64);
-const profileDigest = "b".repeat(64);
-const systemPrompt = "benchmark prompt";
-const tools: ProviderRequestAuditTool[] = [{ name: "shell", registrationId: "shell", executableId: "bash", description: "Run a command", input_schema: { type: "object" }, kind: "function", inputFormatSha256: "c".repeat(64) }];
-const sessionId = "session-1";
-const conversationId = "conversation-1";
-const identity = { providerSessionKey: "provider-session-1", conversationId };
-const requestIds = ["request-1", "request-2"] as const;
-
-interface TestEventPayload {
-  readonly [key: string]: unknown
-}
-
-/** A stored audit row. A rewrite can leave the writer's schema on purpose. */
-interface AuditRow {
-  readonly type: string
-  readonly version: number
-  readonly actor: string
-  readonly payload: TestEventPayload
-}
-
-interface EvidenceOptions {
-  /** Rewrites or drops one audit fact the real recorder built; undefined drops it. */
-  auditFact?: (fact: ProviderRequestAuditFact) => AuditRow | undefined
-  /** A profile that an earlier build recorded, in place of the expected one. */
-  requestProfile?: RecordedInteractionProfileId
-  providerToolName?: string
-  toolName?: string
-  toolVersion?: number
-  settled?: boolean
-  resultModelRequestId?: string | null
-  resultVersion?: number
-  includeMessages?: boolean
-  dispatched?: boolean
-  responded?: boolean
-  conflictingAuditSession?: boolean
-}
-
-function manifest() {
-  return {
-    version: 1,
-    state: "prepared",
-    expected_trials: 1,
-    requested_tasks: ["terminal-bench/task"],
-    attempts: 1,
-    expected_rows: [{ task: "terminal-bench/task", attempt: 1 }],
-    command_expectation: { version: 1, executable_tool_names: ["bash"], minimum_cardinality: 1 },
-    expected_interaction_profile: profile,
-    profile_sha256: profileDigest,
-  };
-}
-
-/** One reward-1 trial with two provider requests, each followed by one shell
- *  call. The audit facts come from the live recorder functions, so the
- *  fixture follows the current fact versions and identity shape. The recorder
- *  writes the tool surface only for the first request; the second request
- *  shares it by hash. The second tool result is large, so it is stored in the
- *  version 2 content-reference shape. */
-async function evidence(options: EvidenceOptions = {}): Promise<{ root: string; manifestPath: string }> {
-  const root = temporaryDirectory("tb-analyzer-");
-  const trial = join(root, "trial");
-  const agent = join(trial, "agent");
-  const store = join(agent, "state", ".flywheel", "flywheel.sqlite");
-  await mkdir(join(agent, "state", ".flywheel"), { recursive: true });
-  await writeFile(join(trial, "result.json"), JSON.stringify({ task_name: "terminal-bench/task", trial_name: "trial-1", verifier_result: { rewards: { reward: 1 } }, agent_result: { cost_usd: 1 } }));
-  const db = createSqliteEventStore(store);
-  const aggregateId = `session:${sessionId}`;
-  const append = (eventAggregateId: string, type: string, version: number, actor: string, payload: TestEventPayload, eventSessionId = sessionId) => db.append({ aggregateId: eventAggregateId, sessionId: eventSessionId, type, version, actor, payload, timestamp: Date.now() });
-  const appendAudit = (fact: ProviderRequestAuditFact) => {
-    const profiled = options.requestProfile !== undefined && fact.type === "model.requested" && fact.version === 6 ? { ...fact, payload: { ...fact.payload, interactionProfileId: options.requestProfile } } : fact;
-    const recorded: AuditRow | undefined = options.auditFact ? options.auditFact(profiled) : profiled;
-    if (recorded) append(aggregateId, recorded.type, recorded.version, recorded.actor, recorded.payload);
-  };
-  const messages = [{ kind: "user", content: "benchmark request" }] as const;
-  append(`conversation:${conversationId}`, "chat.tree.created", 1, "flywheel", { conversationId, createdAt: new Date().toISOString() });
-  if (options.includeMessages !== false) append(`conversation:${conversationId}`, "chat.entries.appended", 1, "flywheel", { conversationId, entries: [{ id: "entry-1", parentId: null, timestamp: new Date().toISOString(), kind: "message", message: messages[0] }] });
-  const dedup: ConversationDedup = {};
-  for (const [index, requestId] of requestIds.entries()) {
-    const last = index === requestIds.length - 1;
-    const audit = { observe: appendAudit };
-    await recordProviderRequest(audit, { requestId, identity, turn: 1, promptKind: "headless", systemPrompt, messages, messageCount: messages.length, estimatedContextTokens: 1, attemptStaticTokens: 1, contextWindow: 100, tools, omittedTools: [], interactionProfileId: profile, model: "gpt-6-luna", accessProvider: "openai", modelFamily: "gpt", treeLeafEntryId: "entry-1" }, dedup);
-    if (!last || options.dispatched !== false) await recordProviderRequestDispatched(audit, { requestId, identity, turn: 1 });
-    if (!last || options.responded !== false) await recordProviderResponse(audit, { requestId, identity, turn: 1, outcome: "ok", durationMs: 1 });
-    const toolUseId = `tool-${index + 1}`;
-    append(aggregateId, "tool.input.completed", options.toolVersion ?? 2, "agent", { toolUseId, providerCallId: `call-${index + 1}`, providerToolName: options.providerToolName ?? "shell", toolName: options.toolName ?? "bash", modelRequestId: requestId });
-    if (last && options.settled === false) continue;
-    const result = extractToolContentFact({ type: "tool.result.recorded", version: 1, actor: "flywheel", payload: { toolUseId, outcome: "ok", content: last ? "x".repeat(4096) : "done", ...(options.resultModelRequestId === null ? {} : { modelRequestId: options.resultModelRequestId ?? requestId }) } }).fact;
-    append(aggregateId, result.type, options.resultVersion ?? result.version, result.actor, result.payload);
-  }
-  if (options.conflictingAuditSession) await recordProviderResponse({ observe: (fact) => { append("session:session-2", fact.type, fact.version, fact.actor, fact.payload, "session-2"); } }, { requestId: requestIds[0], identity, turn: 1, outcome: "ok", durationMs: 1 });
-  db.close();
-  await chmod(store, 0o600);
-  const bytes = await readFile(store);
-  const storeStat = await stat(store);
-  await writeFile(join(agent, "flywheel-run-summary.json"), JSON.stringify({
-    version: 2,
-    adapter_settlement: "normal",
-    evidence_exported: true,
-    project_root: "task_workspace",
-    execution_cwd: "task_workspace",
-    profile_sha256: profileDigest,
-    source_archive_sha256: sourceDigest,
-    evidence_sha256: createHash("sha256").update(bytes).digest("hex"),
-    evidence_size: storeStat.size,
-  }));
-  const runManifest = { ...manifest(), source_archive_sha256: sourceDigest };
-  const manifestPath = join(root, "run_manifest.json");
-  await writeFile(manifestPath, JSON.stringify(runManifest));
-  return { root, manifestPath };
-}
-
-/** Rewrites the payload of one audit fact type and keeps every other fact. */
-function rewrite(type: ProviderRequestAuditFact["type"], change: (payload: TestEventPayload) => TestEventPayload, requestId: string = requestIds[0]) {
-  return (fact: ProviderRequestAuditFact): AuditRow => fact.type === type && fact.payload.requestId === requestId ? { ...fact, payload: change(fact.payload) } : fact;
-}
+const evidence = (options?: EvidenceOptions) => trialEvidence(temporaryDirectory("tb-analyzer-"), options);
+/** A profile that an earlier build recorded and the serving-model resolver no longer selects. */
+const retiredProfile = "luna-shell-v1" satisfies RecordedInteractionProfileId;
 
 describe("terminal bench tool outcome analyzer", () => {
   const analyze = (root: string) => analyzeToolOutcomes(root, { ...manifest(), source_archive_sha256: sourceDigest });
 
-  test("accepts current recorder evidence whose later request shares the first tool surface", async () => {
-    const valid = await evidence();
-    const store = new Database(join(valid.root, "trial", "agent", "state", ".flywheel", "flywheel.sqlite"), { readonly: true });
-    try {
-      // The coverage rests on these two writer behaviors, so the fixture states them.
-      expect(store.query("select payload ->> '$.requestId' as requestId from event where type = 'tool_surface.selected'").all()).toEqual([{ requestId: requestIds[0] }]);
-      expect(store.query("select version, count(*) as count from event where type = 'tool.result.recorded' group by version order by version").all()).toEqual([{ version: 1, count: 1 }, { version: 2, count: 1 }]);
-    } finally { store.close(); }
-    const analysis = await analyze(valid.root);
-    expect(analysis.infrastructureValid).toBeTrue();
-    expect(analysis.rows[0]).toMatchObject({ requestAuditValid: true, commandObserved: true, toolSettlement: { inputs: 2, results: 2, missing: 0, orphan: 0, identityConflicts: 0 }, failure: null });
+  test("accepts current recorder evidence whose later request shares the first tool surface, on every route", async () => {
+    for (const route of ["openai", "claude"] as const) {
+      const valid = await evidence({ route });
+      const storePath = join(valid.root, "trial", "agent", "state", ".flywheel", "flywheel.sqlite");
+      const store = new Database(storePath, { readonly: true });
+      try {
+        // The coverage rests on these two writer behaviors, so the fixture states them.
+        expect(store.query("select payload ->> '$.requestId' as requestId from event where type = 'tool_surface.selected'").all()).toEqual([{ requestId: requestIds[0] }]);
+        expect(store.query("select version, count(*) as count from event where type = 'tool.result.recorded' group by version order by version").all()).toEqual([{ version: 1, count: 1 }, { version: 2, count: 1 }]);
+      } finally { store.close(); }
+      expect(await analyzeTrialStore(storePath)).toMatchObject({ requestAuditComplete: true, executableToolInputs: { bash: 2 }, toolSettlement: { identityConflicts: 0 } });
+      const analysis = await analyze(valid.root);
+      expect(analysis.infrastructureValid).toBeTrue();
+      expect(analysis.rows[0]).toMatchObject({ requestAuditValid: true, commandObserved: true, toolSettlement: { inputs: 2, results: 2, missing: 0, orphan: 0, identityConflicts: 0 }, failure: null });
+    }
   });
 
   test("settles tool results that the current writer records at later fact versions", async () => {
@@ -157,7 +44,7 @@ describe("terminal bench tool outcome analyzer", () => {
 
   test("rejects a request profile, a refused audit chain, and unsettled tool evidence", async () => {
     for (const [invalid, failure] of [
-      [{ requestProfile: "luna-shell-v1" }, "request_audit_invalid"],
+      [{ requestProfile: retiredProfile }, "request_audit_invalid"],
       [{ auditFact: (fact: ProviderRequestAuditFact): AuditRow => fact.type === "model.requested" && fact.payload.requestId === requestIds[0] ? { ...fact, version: 4 } : fact }, "request_audit_invalid"],
       [{ dispatched: false }, "request_audit_invalid"],
       [{ responded: false }, "request_audit_invalid"],
@@ -173,10 +60,12 @@ describe("terminal bench tool outcome analyzer", () => {
 
   test("joins tool inputs to the audited provider and executable identities before counting command evidence", async () => {
     for (const invalid of [
-      { providerToolName: "bash", toolName: "bash" },
-      { providerToolName: "shell", toolName: "shell" },
-      { providerToolName: "unknown", toolName: "bash" },
-    ]) {
+      // A call that the dispatcher repaired: the model wrote a name that the surface does not offer.
+      { toolCall: { name: "bash", repairedFrom: "shell" } },
+      { toolCall: { name: "shell" } },
+      // The wire name is the presentation of a tool, not its canonical identity.
+      { route: "claude", toolCall: { name: "mcp__runtime__bash" } },
+    ] as const) {
       const fixture = await evidence(invalid);
       const row = (await analyze(fixture.root)).rows[0];
       expect(row).toMatchObject({ commandObserved: false, failure: "tool_settlement_invalid" });
@@ -200,7 +89,7 @@ describe("terminal bench tool outcome analyzer", () => {
       rewrite("prompt.assembled", ({ systemPrompt: _, ...payload }) => payload),
       rewrite("prompt.assembled", (payload) => ({ ...payload, systemPrompt: "tampered" })),
       (fact: ProviderRequestAuditFact) => fact.type === "tool_surface.selected" ? undefined : fact,
-      rewrite("tool_surface.selected", (payload) => ({ ...payload, tools: tools.map((tool) => ({ ...tool, description: "tampered" })) })),
+      rewrite("tool_surface.selected", (payload) => ({ ...payload, tools: surface("openai").map((tool) => ({ ...tool, description: "tampered" })) })),
       rewrite("tool_surface.selected", (payload) => ({ ...payload, identity: { ...identity, conversationId: "other-conversation" } })),
     ]) {
       const fixture = await evidence({ auditFact });
@@ -225,7 +114,7 @@ describe("terminal bench tool outcome analyzer", () => {
     expect(finalized.analyzer_result.summary.sha256).toMatch(/^[a-f0-9]{64}$/);
     expect(finalized.analyzer_result.analysis).toEqual(await analyzeToolOutcomes(valid.root, finalized));
 
-    const invalid = await evidence({ requestProfile: "luna-shell-v1" });
+    const invalid = await evidence({ requestProfile: retiredProfile });
     const rejected = await finalizeTerminalBenchRun(invalid.manifestPath, invalid.root, 0);
     const refused = JSON.parse(await readFile(invalid.manifestPath, "utf8"));
     expect(rejected.reconciled).toBeFalse();
