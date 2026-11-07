@@ -538,6 +538,7 @@ async function finalizeEntry(entry: ToolEntry, ctx: FinalizeContext): Promise<vo
     projectRoot: ctx.projectRoot,
     artifactScopeId: ctx.artifactScopeId,
     toolName: entry.tc.name,
+    ...(ctx.toolContext.capabilities ? { capabilities: ctx.toolContext.capabilities } : {}),
   });
   if (limited.truncated) {
     entry.outputRecovery = createToolOutputRecovery(entry.result.retainedFullContent ?? measureOriginalContent(entry.result.fullContent ?? textInput), limited);
@@ -777,6 +778,7 @@ async function applyTurnBudget(
     executionCwd: ctx.executionCwd,
     projectRoot: ctx.projectRoot,
     artifactScopeId: ctx.artifactScopeId,
+    ...(ctx.toolContext.capabilities ? { capabilities: ctx.toolContext.capabilities } : {}),
   });
   const replacementById = new Map(replacements.map((r) => [r.toolUseId, r.content]));
   if (replacements.length > 0) log.info("turn tool-output budget enforced", { replaced: replacementById.size, batchSize: results.length, budgetChars: ctx.outputBound.chars, readsExempt: ctx.outputBound.readsExempt });

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { KernelToolDeps } from "../../../../../src/orchestration/agent-runtime/tools/kernel-tool-deps.js";
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
-import { testBaseTools, testCapabilityModules, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
+import { testBaseTools, testCapabilityModules, testRuntimeConfigCapture, plannedRequest } from "../../../../helpers/request-tool-surface.js";
 import type { HandoffToolSchema } from "../../../../../src/orchestration/workflow-host/handoff-tool-schema.js";
 import { buildSystemPrompt } from "../../../../../src/orchestration/agent-runtime/system-prompt.js";
 import { renderSystemPrompt, stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
@@ -21,6 +21,7 @@ import type { WorkflowToolDeps } from "../../../../../src/orchestration/agent-ru
 import type { LearningRuntime } from "../../../../../src/orchestration/modules/learning.js";
 import type { WorkflowsRuntime } from "../../../../../src/orchestration/modules/workflows.js";
 import type { WorkflowsMode } from "../../../../../src/protocol/module-protocol-types.js";
+import type { ModuleId } from "../../../../../src/protocol/module-ids.js";
 import { createRecordingFileMutationStore, makeContext } from "./_fixtures.js";
 import { ALL_CAPABILITIES, askUserController, plan, skillRevision, subagentsRuntime, userDataRoot } from "./_planner-fixtures.js";
 import { composeFirstPartyModules, SHIPPED_MODULES } from "../../../../../src/orchestration/modules.js";
@@ -32,6 +33,7 @@ import { createRequestToolSurface } from "../../../../../src/orchestration/agent
 import { DEFAULT_MODEL_INTERACTION_PROFILE, resolveModelInteractionProfile } from "../../../../../src/orchestration/agent-runtime/model-interaction-profile.js";
 import { unusedSessionMessaging } from "../../../../helpers/child-session-control.js";
 import { asRecord } from "../../../../../src/infra/record.js";
+import { promptOptions } from "../../../../helpers/prompt-capabilities.js";
 
 const STATIC_TOOL_NAMES = ["bash", "read", "write", "edit", "search", "list"];
 /** A messaging authority the planner only has to see. */
@@ -157,7 +159,7 @@ describe("planToolExposure", () => {
     })).tools.get("skill");
     expect(skill).toBeDefined();
 
-    const result = await skill!.execute({ action: "load", skill_id: "alpha" }, makeContext());
+    const result = await skill!.execute({ action: "load", skill_id: "alpha" }, makeContext({ capabilities: () => true }));
 
     expect(result.outcome).toBe("ok");
     expect(result.content).toContain("Alpha procedure.");
@@ -174,12 +176,12 @@ describe("planToolExposure", () => {
     current = publishSkillRevision(2, new Map([[second.id, second]]));
     const oldTool = oldRequest.tools.get("skill");
     expect(oldRequest.skillRegistry).toBe(firstRevision);
-    expect((await oldTool!.execute({ action: "load", skill_id: "first" }, makeContext())).outcome).toBe("ok");
-    expect((await oldTool!.execute({ action: "load", skill_id: "second" }, makeContext())).outcome).toBe("error");
+    expect((await oldTool!.execute({ action: "load", skill_id: "first" }, makeContext({ capabilities: () => true }))).outcome).toBe("ok");
+    expect((await oldTool!.execute({ action: "load", skill_id: "second" }, makeContext({ capabilities: () => true }))).outcome).toBe("error");
 
     const nextRequest = await plan({ capabilities: ALL_CAPABILITIES, skills: current });
     expect(nextRequest.skillRegistry).toBe(current);
-    expect((await nextRequest.tools.get("skill")!.execute({ action: "load", skill_id: "second" }, makeContext())).outcome).toBe("ok");
+    expect((await nextRequest.tools.get("skill")!.execute({ action: "load", skill_id: "second" }, makeContext({ capabilities: () => true }))).outcome).toBe("ok");
   });
 
   it("filters down to the explicit selected set without mutating the base registry", async () => {
@@ -465,6 +467,17 @@ describe("planToolExposure", () => {
     expect(skill!.promptGuidelines!.join("\n")).toContain("pdf-processing");
   });
 
+  it("advertises a skill only while the tree's modules make it available", async () => {
+    const skills = skillRevision([testSkill("pdf-processing"), testSkill("dispatching", { agents: ["advisor"] })]);
+    const roster = async (disabled: readonly ModuleId[]) => (await plan({ capabilities: ALL_CAPABILITIES, skills, moduleSnapshot: composeFirstPartyModules(undefined, disabled) }))
+      .tools.get("skill")?.promptGuidelines?.join("\n") ?? "";
+
+    expect(await roster([])).toContain("- dispatching: ");
+    const withoutSubagents = await roster(["subagents"]);
+    expect(withoutSubagents).toContain("- pdf-processing: ");
+    expect(withoutSubagents).not.toContain("- dispatching: ");
+  });
+
   it("pins one skill revision for the advertised roster and request metadata", async () => {
     const revision = skillRevision([testSkill("fly.code-review"), testSkill("private", { modelInvocable: false })]);
     const planned = await plan({ capabilities: ALL_CAPABILITIES, skills: revision });
@@ -520,14 +533,14 @@ describe("chat change review guidance gating", () => {
 
   it("names the review skill only when the package and request skill tool are available in chat", () => {
     const loadSkill = "load the `code-review` skill";
-    expect(renderSystemPrompt(buildSystemPrompt({ ...base, chatChangeReviewSkillAvailable: true }))).toContain(loadSkill);
-    for (const opts of [{ ...base, tools: [], chatChangeReviewSkillAvailable: true }, { ...base, chatChangeReviewSkillAvailable: false }, { ...base }]) {
-      const prompt = renderSystemPrompt(buildSystemPrompt(opts));
+    expect(renderSystemPrompt(buildSystemPrompt(promptOptions({ ...base, skills: ["code-review"] })))).toContain(loadSkill);
+    for (const opts of [{ ...base, tools: [], skills: ["code-review"] }, { ...base, skills: [] }, { ...base }]) {
+      const prompt = renderSystemPrompt(buildSystemPrompt(promptOptions(opts)));
       expect(prompt).toContain("CHAT CHANGE REVIEW:");
       expect(prompt).not.toContain(loadSkill);
       expect(prompt).toContain("review the draft yourself");
     }
-    expect(renderSystemPrompt(buildSystemPrompt({ ...base, chatHost: undefined, promptKind: "subagent", chatChangeReviewSkillAvailable: true }))).not.toContain("CHAT CHANGE REVIEW:");
+    expect(renderSystemPrompt(buildSystemPrompt(promptOptions({ ...base, chatHost: undefined, promptKind: "subagent", skills: ["code-review"] })))).not.toContain("CHAT CHANGE REVIEW:");
   });
 });
 describe("Learning surfaces under capability policy", () => {
@@ -631,7 +644,7 @@ describe("every registered tool schema", () => {
       ["development", developmentRuntime()],
       ["mcp", mcpRuntimeOver(mcpPortsOver([]))],
     ]);
-    const owner = await createRequestToolSurface(() => planned, () => sourceModules, testRuntimeConfigCapture);
+    const owner = await createRequestToolSurface(() => plannedRequest(planned), () => sourceModules, testRuntimeConfigCapture);
     const surface = await owner.resolve();
     const prompt = await surface.prepareStablePrompt(() => stableSystemPrompt("prompt"), DEFAULT_MODEL_INTERACTION_PROFILE);
 
@@ -647,7 +660,7 @@ describe("every registered tool schema", () => {
     ["a workflow step whose binding grants no scoped tool", { kind: "workflow-agent", briefScope: { briefId: "fly.implement" }, workflowAttemptId: "step-1" }, new Set<string>()]];
   it.each(sessionKinds)("materializes both message tools with an object root in %s", async (_name, purpose, selected) => {
     const planned = await plan({ capabilities: ALL_CAPABILITIES, sessions: sessionMessaging, purpose }, [], selected ? { selected } : {});
-    const surface = await (await createRequestToolSurface(() => planned, testCapabilityModules, testRuntimeConfigCapture)).resolve();
+    const surface = await (await createRequestToolSurface(() => plannedRequest(planned), testCapabilityModules, testRuntimeConfigCapture)).resolve();
     const { definitions } = await surface.prepareStablePrompt(() => stableSystemPrompt("prompt"), DEFAULT_MODEL_INTERACTION_PROFILE);
     for (const name of ["message_session", "list_sessions"]) expect(definitions.find((definition) => definition.name === name)?.input_schema).toMatchObject({ type: "object" });
   });

@@ -35,6 +35,7 @@ import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { makeContext } from "../../../../unit/orchestration/agent-runtime/tools/_fixtures.js";
 import { assistantMessage, captureDiagnostics, onFakeHost, removeEngineProbes, streamedText, streamedToolCalls, until, type FakeHostOptions, type FakeHostRun, type StreamResult } from "./_claude-sdk-client.js";
 import { CREDENTIAL_BETAS, type FakeBlock, type FakeHost, type FakeReply, type RecordedRequest } from "./_fake-host.js";
+import { SHELL_CAPABILITIES } from "../../../../helpers/prompt-capabilities.js";
 
 const temporary = temporaryDirectories();
 const { payloads } = captureDiagnostics();
@@ -78,7 +79,7 @@ function request(messages: ConversationMessage[], extra: Partial<StreamOptions> 
 const REMINDERS = createClaudeReminders(MODEL, CONTEXT_LIMIT);
 /** The history with the reminders that the agent loop appends to it before a request, on both Anthropic routes. */
 function reminded(history: readonly ConversationMessage[], projectRoot: string): ConversationMessage[] {
-  return [...history, ...REMINDERS(history, projectRoot)];
+  return [...history, ...REMINDERS(history, projectRoot, SHELL_CAPABILITIES)];
 }
 
 /** The request that the native Anthropic API route prepares for the same conversation. On that route the native

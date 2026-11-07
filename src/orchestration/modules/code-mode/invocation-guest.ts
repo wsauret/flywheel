@@ -73,12 +73,12 @@ function createLogStream(port: GuestPort) {
   }
 }
 
-function heapLimitResult(maxHeapDeltaBytes: number): CodeMode.Result {
+function heapLimitResult(maxHeapDeltaBytes: number, bash: boolean): CodeMode.Result {
   return {
     ok: false,
     error: {
       kind: "ExecutionFailure",
-      message: `Execution exceeded the ${maxHeapDeltaBytes}-byte heap growth budget. Keep heavy computation in Bash scratch scripts.`,
+      message: `Execution exceeded the ${maxHeapDeltaBytes}-byte heap growth budget. ${bash ? "Keep heavy computation in Bash scratch scripts." : "Move heavy computation outside Code Mode."}`,
     },
     toolCalls: [],
   }
@@ -139,7 +139,7 @@ export function runGuest(port: GuestPort): () => void {
     const heapWatchdog = Effect.gen(function* () {
       while (true) {
         yield* Effect.sleep(heapSampleMs)
-        if (process.memoryUsage().heapUsed - baseline > maxHeapDeltaBytes) return { result: heapLimitResult(maxHeapDeltaBytes), ending: "heap-limit" as const }
+        if (process.memoryUsage().heapUsed - baseline > maxHeapDeltaBytes) return { result: heapLimitResult(maxHeapDeltaBytes, start.bash), ending: "heap-limit" as const }
       }
     })
     const { result, ending } = await Effect.runPromise(Effect.raceFirst(execution, heapWatchdog), { signal: stopped.signal })

@@ -12,6 +12,7 @@ import { budgetCaptureSurface, makeCaptureClient, withSessionNotes } from "./_lo
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { OutputLengthExceededError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
+import { promptCapabilities } from "../../../../helpers/prompt-capabilities.js";
 
 const text = (value: string, blockKey: string): ProviderStreamEvent => ({ kind: "text_delta", text: value, blockKey });
 const done = (stopReason: "end_turn" | "tool_use"): ProviderStreamEvent => ({ kind: "done", stopReason });
@@ -301,7 +302,7 @@ describe("planned agent-loop compaction", () => {
     const opening = renderCompactionOpening({
       checkpoint: state.checkpoint ? emptyConversationCheckpoint() : undefined,
       brief: state.brief ? "The brief." : undefined,
-      saved: state.saved, recallAvailable: state.recallAvailable,
+      saved: state.saved, recallAvailable: state.recallAvailable, capabilities: promptCapabilities([{ name: "skill" }]),
     });
     expect(opening).toEndWith(`A fresh context window has started without summarizing the prior conversation. ${recovery}`);
     if (!state.checkpoint) expect(opening).toStartWith("No checkpoint has been saved.");

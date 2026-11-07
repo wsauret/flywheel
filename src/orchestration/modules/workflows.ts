@@ -29,17 +29,19 @@ import { dropLegacyWorkflowPruneEvidence } from "./workflows/migrations/workflow
 import { DefinitionProvenanceFactSchemas } from "../../workflows/definition-provenance-facts.js"
 import { HandoffFactSchemas } from "../../workflows/output-contract/facts.js"
 import { isWorkflowExecutionFact } from "../../workflows/output-contract/workflow-completion.js"
+import { fileURLToPath } from "node:url"
 import { Log } from "../../infra/log.js"
 import { moduleRuntimeHandle, type ModuleRuntimes } from "../../infra/module-runtime.js"
 import type { KernelToolDeps } from "../agent-runtime/tools/kernel-tool-deps.js"
 import type { ModuleRuntimeServices } from "../agent-runtime/module-runtime-services.js"
 import type { RuntimeTool } from "../agent-runtime/tools/types.js"
-import { ORCHESTRATION_REMINDER, ORCHESTRATION_SECTION } from "./workflows/orchestration.js"
+import { ORCHESTRATION_REMINDER, orchestrationSection } from "./workflows/orchestration.js"
 import type { LaunchingSessionAuthority } from "../workflow-host/path-workflow.js"
 import type { ToolDeclaration } from "../agent-runtime/tools/tool-registry.js"
 import { moduleDisabledReason } from "../../protocol/module-ids.js"
 import type { WorkflowToolDeps } from "../agent-runtime/tools/workflow-tool.js"
 import { createWorkflowTool, WORKFLOW_RUNTIME_INVOCATION_TOOL } from "../agent-runtime/tools/workflow.js"
+import { createModelsTool, MODELS_TOOL_DEFINITION } from "./workflows/models.js"
 import type { FirstPartyModule } from "../modules.js"
 import type { CliNounContribution } from "../cli-contribution.js"
 import { workflowLaunchTargets } from "../workflow-host/launch-origin.js"
@@ -110,20 +112,20 @@ const workflow = {
   registrations: {
     workflow: {
       capabilities: ["workflows"],
-      create: ({ modules }) => {
+      create: ({ kernel, modules }) => {
         const runtime = modules.get(workflowsRuntime)
         if (!runtime) return { reason: "no workflow starter available" }
         const deps = runtime.deps()
         if (deps.mode === "off") return { reason: moduleDisabledReason(["workflows"]) }
         const mode = deps.mode
         return {
-          tool: createWorkflowTool({ ...deps, mode, askUserAvailable: false, authority: NO_AUTHORITY }),
+          tool: createWorkflowTool({ ...deps, mode, askUserAvailable: false, authority: NO_AUTHORITY, capabilities: kernel.treeCapabilities }),
           // A launch in Ask mode carries its approval through ask_user, so the
           // tool settles only once the planned set says whether that channel exists.
           refine: (planned) => {
             const askUserAvailable = planned.has("ask_user")
             if (mode === "ask" && !askUserAvailable) return { reason: "workflow Ask mode requires the Ask User capability, which only a root chat has; a child session messages its parent to ask for a launch" }
-            return { tool: createWorkflowTool({ ...deps, mode, askUserAvailable, authority: runtime.authority(planned) }) }
+            return { tool: createWorkflowTool({ ...deps, mode, askUserAvailable, authority: runtime.authority(planned), capabilities: kernel.treeCapabilities }) }
           },
         }
       },
@@ -131,6 +133,25 @@ const workflow = {
   },
 } as const satisfies ToolDeclaration<"workflows">
 
+/** The models table serves choosing a workflow agent's model and effort, so it
+ *  is offered while Workflows is Ask or On, also before the person approves. */
+const models = {
+  category: "ambient",
+  action: "ui_meta",
+  cloneInheritance: "reconstruct",
+  learningReviewExecutable: false,
+  semanticBundle: null,
+  personaBaseline: false,
+  registryOrder: 23,
+  registrations: {
+    models: {
+      capabilities: ["workflows"],
+      create: ({ kernel }) => kernel.captureProviderConnection
+        ? { tool: createModelsTool(kernel.captureProviderConnection, kernel.userDataRoot) }
+        : { unusable: { tool: MODELS_TOOL_DEFINITION, reason: "no live model access capture available" } },
+    },
+  },
+} as const satisfies ToolDeclaration<"workflows">
 
 const workflowBudgetObserver = {
   seam: "workflow",
@@ -277,9 +298,12 @@ export const workflowsModule = {
       },
     } },
     { domain: "tools", id: "workflow", value: { kind: "tool", name: "workflow", declaration: workflow } },
-    { domain: "promptFragments", id: "workflow-orchestration", value: { order: 2, render: (input) => orchestrates(input) ? ORCHESTRATION_SECTION : undefined } },
+    { domain: "tools", id: "models", value: { kind: "tool", name: "models", declaration: models } },
+    { domain: "promptFragments", id: "workflow-orchestration", value: { order: 2, render: (input) => orchestrates(input) ? orchestrationSection(input.capabilities) : undefined } },
     { domain: "turnReminders", id: "workflow-orchestration", value: { ...ORCHESTRATION_REMINDER, holds: orchestrates } },
     { domain: "definitions", id: "workflows", value: { kind: "workflows" } },
+    // The workflow-authoring method writes files that only the workflow tool runs (ARCH-STRUCTURE-031).
+    { domain: "definitions", id: "workflows-bundle", value: { kind: "bundle", root: fileURLToPath(new URL("workflows/definitions", import.meta.url)) } },
     { domain: "settings", id: "workflows", value: { control: "workflow-mode", label: "Workflows", description: "Allow agents to launch workflows" } },
     { domain: "cli", id: "workflow", value: workflowNoun },
   ],

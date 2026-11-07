@@ -28,6 +28,7 @@ import { wireSessionSubscribers } from "../session/create-session-infra.js"
 
 import type { SessionResources } from "../session/session-resources-service.js"
 import { createWorkerCallback } from "./agent-callback.js"
+import { disabledToolReason } from "../tool-catalog.js"
 import { readParentMessages } from "./request-addenda.js"
 import { readAddressedWorkflowMessages, retireAddressedWorkflowMessages } from "../session/conversation/addressed-workflow-messages.js"
 import { buildArtifactContext } from "./artifact-context.js"
@@ -161,6 +162,7 @@ export function createWorkflowHost(input: CreateWorkflowHostInput): CreateWorkfl
         return input.manager.updateLifecycleState(id, "inactive")
       },
       createAgent: deps.createAgent,
+      planCapabilities: deps.planCapabilities,
       createLLMClient: deps.createLLMClient,
       captureProviderConnection: deps.captureProviderConnection,
       auth: deps.auth,
@@ -207,7 +209,9 @@ export function createWorkflowHost(input: CreateWorkflowHostInput): CreateWorkfl
     worker: (...args) => getWorkerCallback().worker(...args),
     recordInvocation: async () => { await infra.budgetStore.recordInvocation() },
     buildArtifactContext: (writers, signal) => buildArtifactContext(writers, { executionCwd, projectRoot, reader: input.projectionReader, workflowId: sessionId }, signal),
-    earlierCheckpoint: (conversationId) => memberConversationCheckpoint(input.projectionReader, sessionId, conversationId),
+    // A tool that the live selection serves is refused by the persona that the agent runs as.
+    unavailableToolReason: (term) => disabledToolReason(term, moduleSelection) ?? `${term} is not one of the tools of its persona`,
+    earlierCheckpoint: (conversationId, capabilities) => memberConversationCheckpoint(input.projectionReader, sessionId, conversationId, capabilities),
   })
   const host = createWorkflowVmHost({
     startMode: input.startMode,

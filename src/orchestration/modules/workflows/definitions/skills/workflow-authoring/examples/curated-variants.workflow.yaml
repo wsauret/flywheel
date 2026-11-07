@@ -1,7 +1,7 @@
 # Curated variants, workflow 1 of 2. Each agent of the variants phase
 # drafts one variant of the same request. No agent chooses a variant. When
-# the run completes, the root chat reads the variants, asks the person with
-# ask_user which one to keep, and launches workflow 2 with the selected
+# the run completes, the root chat reads the variants, asks the person
+# which one to keep, and launches workflow 2 with the selected
 # variant as its input. Launch input:
 # { "variants": [{ "slot": "a", "direction": "plain" }, { "slot": "b", "direction": "playful" }] }
 id: curated-variants

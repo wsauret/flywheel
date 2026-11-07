@@ -8,7 +8,11 @@ import type { ModelInfo } from "../../../../src/infra/llm/models.js";
 import { prepareOpenAICompletionsRequest } from "../../../../src/orchestration/agent-runtime/llm/openai-completions.js";
 import { resolveOpenAISystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/openai-adapter-helpers.js";
 import type { AgentPurpose } from "../../../../src/orchestration/agent-runtime/types.js";
+import { promptOptions } from "../../../helpers/prompt-capabilities.js";
+import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../src/infra/agent-assets/system-prompt.js";
+import { fileTemporaryDirectory, testDirectories } from "../../../helpers/directories.js";
 
+const realm = testDirectories(fileTemporaryDirectory("system-prompt-tiers-"));
 const SESSION_DIR = "/realm/.flywheel/sessions/abc123def456/scratch";
 
 function spec(name: string, opts: Partial<ToolPromptFields> = {}): ToolPromptFields {
@@ -39,7 +43,7 @@ const chatOptions = {
 
 describe("system prompt cache tiers", () => {
   test("the stable parts precede the session parts, which precede the conversation parts", () => {
-    const parts = buildSystemPromptParts(chatOptions);
+    const parts = buildSystemPromptParts(promptOptions(chatOptions));
     const order = ["stable", "session", "conversation"];
     expect(parts.map((part) => order.indexOf(part.tier))).toEqual(parts.map((part) => order.indexOf(part.tier)).toSorted());
     expect(parts.filter((part) => part.tier === "session").map((part) => part.label)).toEqual([
@@ -50,7 +54,7 @@ describe("system prompt cache tiers", () => {
   });
 
   test("the stable tier carries no session path, and checkpoint guidance needs no filesystem path", () => {
-    const { stable, session, conversation } = buildSystemPrompt(chatOptions);
+    const { stable, session, conversation } = buildSystemPrompt(promptOptions(chatOptions));
     expect(stable).not.toContain("abc123def456");
     expect(stable).not.toContain(SESSION_DIR);
     expect(session).toContain(SESSION_DIR);
@@ -61,27 +65,30 @@ describe("system prompt cache tiers", () => {
   test("two sessions of one project share the stable tier byte for byte", () => {
     const other = { ...chatOptions, scratchDir: "/realm/.flywheel/sessions/ffff0000/scratch" };
     const otherTools = [...withSessionNotes().tools.values()];
-    const first = buildSystemPrompt(chatOptions);
-    const second = buildSystemPrompt({ ...other, tools: [spec("bash", { action: "shell_exec" }), spec("ask_user"), spec("recall"), spec("subagent"), ...otherTools] });
+    const first = buildSystemPrompt(promptOptions(chatOptions));
+    const second = buildSystemPrompt(promptOptions({ ...other, tools: [spec("bash", { action: "shell_exec" }), spec("ask_user"), spec("recall"), spec("subagent"), ...otherTools] }));
     expect(second.stable).toBe(first.stable);
     expect(second.session).not.toBe(first.session);
   });
 
   test("workflow-agent private identity and paths follow all shared request context", () => {
+    // The bundled assets carry capability markers, which render from the tree check alone.
     const options = {
       ...chatOptions,
+      corePrompt: loadSystemPrompt(realm),
+      engineeringDoctrine: loadEngineeringDoctrine(realm),
       chatHost: undefined,
       promptKind: "workflow-agent" as const,
       purpose: { kind: "workflow-agent", workflowAttemptId: "attempt-a", briefScope: { briefId: "review" } } satisfies AgentPurpose,
       tools: [...tools, spec("message_session")],
       sessionIdentity: { sessionId: "agent-a", rootSessionId: "chat", conversationId: "conversation-a", kind: "workflow-agent" as const, workflowMembership: { kind: "attempt" as const, workflowId: "run-a", attemptId: "attempt-a" }, parent: { sessionId: "chat", name: "Parent" } },
     };
-    const first = buildSystemPrompt(options);
-    const second = buildSystemPrompt({
+    const first = buildSystemPrompt(promptOptions(options));
+    const second = buildSystemPrompt(promptOptions({
       ...options,
       scratchDir: "/realm/agent-b/scratch",
       sessionIdentity: { ...options.sessionIdentity, sessionId: "agent-b" },
-    });
+    }));
     expect(second.stable).toBe(first.stable);
     expect(second.session).toBe(first.session);
     expect(second.conversation).not.toBe(first.conversation);
@@ -89,7 +96,7 @@ describe("system prompt cache tiers", () => {
     expect(first.conversation).toContain(SESSION_DIR);
     expect(first.conversation).toContain("checkpoint_replace");
     expect(first.conversation).toContain("agent-a");
-    const parts = buildSystemPromptParts(options);
+    const parts = buildSystemPromptParts(promptOptions(options));
     const order = ["stable", "session", "conversation"];
     expect(parts.map((part) => order.indexOf(part.tier))).toEqual(parts.map((part) => order.indexOf(part.tier)).toSorted());
     expect(parts.filter((part) => part.tier === "conversation").map((part) => part.label)).toEqual(["scratchpad", "session identity", "session checkpoint"]);
@@ -107,8 +114,8 @@ describe("system prompt cache tiers", () => {
       tools: [...tools, spec("message_session")],
       sessionIdentity: { sessionId: "child", rootSessionId: "chat", conversationId: "child-conversation", kind: "subagent" as const, parent: { sessionId: "chat", name: "Parent" } },
     };
-    const before = buildSystemPrompt(options);
-    expect(buildSystemPrompt({ ...options, purpose })).toEqual(before);
+    const before = buildSystemPrompt(promptOptions(options));
+    expect(buildSystemPrompt(promptOptions({ ...options, purpose }))).toEqual(before);
     expect(before.session).toContain(SESSION_DIR);
     expect(before.session).toContain("child");
     expect(before.conversation).not.toContain("# Session identity");

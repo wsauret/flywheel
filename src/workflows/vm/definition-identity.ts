@@ -600,8 +600,9 @@ export function buildDefinitionIdentity(
 
 /** The identity hash of one persona. It covers every field that shapes what
  *  the dispatch does - kind, name, description, system prompt, tools, role,
- *  grants, and required packages - so an edited
- *  persona body, a widened tool list, or a new grant reports as definition
+ *  grants, required packages, and the bundled mark that decides whether its
+ *  capability markers render - so an edited persona body, a widened tool
+ *  list, a new grant, or an override of a bundled persona reports as definition
  *  drift instead of running as a silently different procedure. The turn cap
  *  is left out: it is an execution budget, so a paused run resumes under a
  *  changed budget with the same procedure. */

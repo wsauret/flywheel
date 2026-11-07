@@ -1,5 +1,6 @@
 import { ExperimentFactSchemas } from "./experiments/facts.js"
 import { join } from "node:path"
+import { fileURLToPath } from "node:url"
 import type { ToolDeclaration } from "../agent-runtime/tools/tool-registry.js"
 import type { FirstPartyModule } from "../modules.js"
 import { createExperimentChatObserver } from "./experiments/chat-observer.js"
@@ -95,6 +96,8 @@ export const experimentsModule = {
         })
       },
     } },
+    // The experiment-charter and experiment-finalize methods run only on this module's tools (ARCH-STRUCTURE-031).
+    { domain: "definitions", id: "experiments", value: { kind: "bundle", root: fileURLToPath(new URL("experiments/definitions", import.meta.url)) } },
     { domain: "settings", id: "experiments", value: { control: "binary", group: "Tools", label: "Experiments", description: "Allow agents to run autonomous experiment loops" } },
   ],
   observers: [{

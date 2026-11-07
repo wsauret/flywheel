@@ -12,7 +12,7 @@ const EDIT_INPUT_SCHEMA = {
   type: "object",
   properties: {
     path: { type: "string", description: "Absolute or cwd-relative path of the existing file" },
-    old_string: { type: "string", description: "Exact text to replace, copied verbatim from a prior read or search result" },
+    old_string: { type: "string", description: "Exact text to replace, copied verbatim from file content shown earlier in this conversation" },
     new_string: { type: "string", description: "Replacement text" },
     replace_all: { type: "boolean", description: "Replace every match instead of requiring exactly one; use only when every exact occurrence must change" },
   },

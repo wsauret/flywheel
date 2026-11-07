@@ -401,7 +401,7 @@ export async function main(
   const { persona: explorer, registry } = await loadBenchmarkPersona({ ...admissionPlan, persona: "explorer" }, CATALOG, deps);
   // The facet brief is part of the task identity, so a protocol edit refuses resume.
   const taskIdentity = structuredIdentity({ snapshot: RESEARCH_SNAPSHOT, tasks: PLAN_TASKS, facetBrief });
-  const personaGuidanceIdentity = structuredIdentity([renderPersonaTaskGuidance(explorer, registry, deps.definitions.skills())]);
+  const personaGuidanceIdentity = structuredIdentity([renderPersonaTaskGuidance(explorer, registry, deps)]);
   const judgeIdentity = structuredIdentity({ model: ROLE_MODEL_DEFAULTS["benchmark-judge"].openai.model, template: buildPlanJudgePrompt("__TASK__", "__A__", "__B__") });
   const scoringVersion = "strategy-v1";
   const runningSource = await sourceIdentity();

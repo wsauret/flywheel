@@ -54,11 +54,8 @@ export function prepareChildExecutionOwner(sessionId: string, projectRoot: strin
   return { rollback }
 }
 
-/** Opens resources for an already published child conversation. This lease owns
- * no runner, admission, dispatch publication, or parent outcome policy.
- * Acquisition rejects after cleanup; settlement drains accepted facts and the
- * tree before disposing the observation projection and borrowed resources. */
-export async function acquireChildExecutionResources(input: ChildSessionKind & {
+/** What opens the resources of an already published child conversation. */
+type ChildExecutionInput = ChildSessionKind & {
   readonly sessionId: string
   readonly conversationId: string
   readonly description: string
@@ -68,12 +65,41 @@ export async function acquireChildExecutionResources(input: ChildSessionKind & {
   readonly projectionReader: AsyncEventStateReadSurface
   readonly writer: AsyncEventWriter
   readonly recall: (contract: RecallInput) => Promise<RecallResult>
-  /** Commits the child's opening turn. It runs before the live view
-   *  attaches, so the view's seed holds that turn: a turn the tree commits
-   *  later reaches the view only through a live event. */
-  readonly openConversation?: (conversation: ConversationTreeWriterController) => Promise<void>
-  readonly attachProjection?: AttachChildSessionProjection
-}): Promise<ChildExecutionResources> {
+}
+
+/** The resources of a child conversation before its live view attaches. A turn that the tree commits now is in the
+ *  view's seed when it attaches; a turn that it commits later reaches the view only through a live event. Events
+ *  emitted before `attach` reach no view. */
+export interface OpenedChildExecutionResources extends ChildExecutionResources {
+  /** Attaches the child's live view. Call once. */
+  attach(attachProjection: AttachChildSessionProjection | undefined): Promise<void>
+}
+
+/** Opens resources for an already published child conversation and attaches its live view (`openChildExecutionResources`). */
+export async function acquireChildExecutionResources(input: ChildExecutionInput & { readonly attachProjection?: AttachChildSessionProjection }): Promise<ChildExecutionResources> {
+  const resources = await openChildExecutionResources(input)
+  try {
+    await resources.attach(input.attachProjection)
+  } catch (error) {
+    await settleAfterFailure(error, resources.settle)
+  }
+  return resources
+}
+
+async function settleAfterFailure(error: unknown, settle: () => Promise<void>): Promise<never> {
+  try {
+    await settle()
+  } catch (cleanupError) {
+    // oxlint-disable-next-line preserve-caught-error -- boundary: AggregateError takes cause options in its third argument.
+    throw new AggregateError([error, cleanupError], "Child execution opening and cleanup failed", { cause: cleanupError })
+  }
+  throw error
+}
+
+/** Opens resources for an already published child conversation, without its live view. This lease owns no runner,
+ * admission, dispatch publication, or parent outcome policy. Opening rejects after cleanup; settlement drains
+ * accepted facts and the tree before disposing the observation projection and borrowed resources. */
+export async function openChildExecutionResources(input: ChildExecutionInput): Promise<OpenedChildExecutionResources> {
   const scope = Effect.runSync(Scope.make())
   const errors: unknown[] = []
   let projection: Awaited<ReturnType<AttachChildSessionProjection>> | undefined
@@ -130,23 +156,13 @@ export async function acquireChildExecutionResources(input: ChildSessionKind & {
   }))
   try {
     const resources = await Effect.runPromise(Effect.provideService(acquisition, Scope.Scope, scope))
-    await input.openConversation?.(resources.conversation)
-    const kind: ChildSessionKind = input.kind === "workflow-agent" ? { kind: input.kind, workflowId: input.workflowId } : {}
-    projection = await input.attachProjection?.({
-      ...kind,
-      sessionId: input.sessionId, conversationId: input.conversationId, description: input.description,
-      executionCwd: input.executionCwd, eventStore: input.eventStore, projectionReader: input.projectionReader,
-    })
-    projection?.updateMetrics(await resources.budgetStore.metrics())
     const emit = createEmit(resources.bus)
-    resources.bus.subscribeToTypes(FLYWHEEL_EVENT_TYPES, (event) => {
-      projection?.onEvent(event)
-    }, { delivery: "direct", deliveryClass: "critical", label: "child-session-output" })
     return {
       sessionId: input.sessionId, conversationId: input.conversationId,
       sessionDir: resolveSessionDir(input.sessionId, input.projectRoot),
       eventStore: input.eventStore, projectionReader: input.projectionReader,
-      eventWriter: resources.eventWriter, conversation: resources.conversation, projection,
+      eventWriter: resources.eventWriter, conversation: resources.conversation,
+      get projection() { return projection },
       emit,
       onEvent(event) {
         // Parent correlation belongs to the compact card, except budget stream
@@ -158,14 +174,20 @@ export async function acquireChildExecutionResources(input: ChildSessionKind & {
       waitForEventCapacity: (signal) => resources.bus.waitForCapacity(signal),
       awaitDurableFacts: () => resources.runtimeFacts.awaitDurableFacts(),
       settle,
+      async attach(attachProjection) {
+        const kind: ChildSessionKind = input.kind === "workflow-agent" ? { kind: input.kind, workflowId: input.workflowId } : {}
+        projection = await attachProjection?.({
+          ...kind,
+          sessionId: input.sessionId, conversationId: input.conversationId, description: input.description,
+          executionCwd: input.executionCwd, eventStore: input.eventStore, projectionReader: input.projectionReader,
+        })
+        projection?.updateMetrics(await resources.budgetStore.metrics())
+        resources.bus.subscribeToTypes(FLYWHEEL_EVENT_TYPES, (event) => {
+          projection?.onEvent(event)
+        }, { delivery: "direct", deliveryClass: "critical", label: "child-session-output" })
+      },
     }
   } catch (error) {
-    try {
-      await settle()
-    } catch (cleanupError) {
-      // oxlint-disable-next-line preserve-caught-error -- boundary: AggregateError takes cause options in its third argument.
-      throw new AggregateError([error, cleanupError], "Child execution opening and cleanup failed", { cause: cleanupError })
-    }
-    throw error
+    return await settleAfterFailure(error, settle)
   }
 }

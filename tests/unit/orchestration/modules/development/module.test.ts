@@ -51,10 +51,10 @@ describe("the development module", () => {
     const claudeSdk = installedCliNouns(SOURCE_CATALOG).get("claude-sdk");
     expect(claudeSdk?.module).toBe("development");
     expect(Object.keys(claudeSdk?.verbs ?? {}).sort()).toEqual(["scenario", "setup"]);
-    expect(installedDefinitionBundles(SOURCE_CATALOG)).toEqual([{ id: "development", root: join(process.cwd(), "src", "orchestration", "modules", "development", "definitions") }]);
+    expect(installedDefinitionBundles([developmentModule])).toEqual([{ id: "development", root: join(process.cwd(), "src", "orchestration", "modules", "development", "definitions") }]);
     expect(installedCliNouns(SHIPPED_MODULES).has("dev")).toBe(false);
     expect(installedCliNouns(SHIPPED_MODULES).has("claude-sdk")).toBe(false);
-    expect(installedDefinitionBundles(SHIPPED_MODULES)).toEqual([]);
+    expect(installedDefinitionBundles(SHIPPED_MODULES).map((bundle) => bundle.id)).not.toContain("development");
   });
 
   test("turning it off removes every contribution at once", () => {
@@ -130,12 +130,12 @@ describe("the development module runtime", () => {
       executionCwd: "/repo",
       conversation: { providerSessionKey: "test-conversation", artifactScopeId: "test-conversation" },
       promptKind: "chat",
-      model: "test-model",
       servingModel: { model: "test-model", modelFamily: "anthropic" },
       personas: new Map(),
       childSlots: createChildSlotRegistry(),
       definitions: registry(),
       createRunner: unused,
+      planChildCapabilities: unused,
       createLLMClient: unused,
       captureRuntimeConfig: testRuntimeConfigCapture,
       captureProviderConnection: unused,

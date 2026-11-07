@@ -193,7 +193,12 @@ describe("web search provider selection", () => {
       providers: [provider("chatgpt", false, []), provider("exa", false, [])],
     });
     expect(capability.available()).toBe(false);
-    expect(capability.run({ search_query: [{ q: "x" }] }, { retrievalSessionId: "s" })).rejects.toThrow("no web search provider is available");
+    expect(capability.run({ search_query: [{ q: "x" }] }, { retrievalSessionId: "s" })).rejects.toThrow("no web search provider is available: connect ChatGPT or Exa in /auth");
+  });
+
+  it("names only the captured providers when it refuses to run", async () => {
+    const capability = createWebSearch({ providers: [provider("exa", false, [])] });
+    expect(capability.run({ search_query: [{ q: "x" }] }, { retrievalSessionId: "s" })).rejects.toThrow("no web search provider is available: connect Exa in /auth");
   });
 });
 

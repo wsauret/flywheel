@@ -42,6 +42,7 @@ import { createRuntimeEvent } from "../../../src/infra/runtime-event-factory.js"
 import { captureRuntimeConfigRequest } from "../../../src/orchestration/agent-runtime/request-config.js";
 import { CONFIG_DEFAULTS } from "../../../src/orchestration/config/schema.js";
 import { authProviders } from "../../helpers/auth-context.js";
+import { planEveryCapability } from "../../helpers/attempt-brief.js";
 
 const REPO_ROOT = resolve(import.meta.dir, "../../..");
 const STRATEGY_VARIANTS = strategyVariants(seatFor("explorer"));
@@ -159,6 +160,7 @@ function fakeRuntime(options: {
       },
       createAgent: () => { throw new Error("only the admitted Agent factory may run"); },
       prepareRequest: () => { throw new Error("a benchmark prepares no pre-start"); },
+      planCapabilities: planEveryCapability,
       createLLMClient: () => { throw new Error("no provider request may run"); },
       // Each persona call snapshots the research corpus; by default the snapshot commands succeed and extract nothing.
       runOwnedCommand: async (command) => ({
@@ -200,7 +202,7 @@ async function strategyConfig(identity: RunConfig["identity"]): Promise<RunConfi
     tasks: [],
   }, createBenchmarkCatalog(REPO_ROOT), { definitions, moduleSelection: testCapabilityModules });
   const taskIdentity = structuredIdentity({ snapshot: RESEARCH_SNAPSHOT, tasks: PLAN_TASKS, facetBrief: await loadFacetBrief() });
-  const personaGuidanceIdentity = structuredIdentity([renderPersonaTaskGuidance(persona, registry, definitions.skills())]);
+  const personaGuidanceIdentity = structuredIdentity([renderPersonaTaskGuidance(persona, registry, { definitions, moduleSelection: testCapabilityModules })]);
   const judgeIdentity = structuredIdentity({ model: "gpt-6.1-sol", template: buildPlanJudgePrompt("__TASK__", "__A__", "__B__") });
   return {
     kind: "benchmark-config",

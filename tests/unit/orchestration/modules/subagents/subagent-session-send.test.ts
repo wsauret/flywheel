@@ -27,6 +27,7 @@ import { interruptLiveChild } from "../../../../helpers/live-child-run"
 import { asModelClient } from "../../agent-runtime/_model-client.js"
 import { createConversationTreeWriterController } from "../../../../../src/orchestration/chat/tree-writer.js"
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js"
+import { planEveryCapability } from "../../../../helpers/attempt-brief.js"
 
 const contexts: SupervisorTestContext[] = []
 afterEach(async () => {
@@ -208,6 +209,7 @@ describe("the registered Resume route", () => {
             moduleSelection: base.moduleSelection, captureRuntimeConfig: childCapture,
             createAgent: (input) => { runnerProfiles.push(profileId); return heldRunner(input) },
             prepareRequest: () => { throw new Error("This fixture prepares no pre-start") },
+            planCapabilities: planEveryCapability,
             createLLMClient: async () => asModelClient({
               model: base.parentModel, modelFamily: "anthropic", accessProvider: "anthropic_api", contextLimit: 100_000,
               outputLimit: 8_000, supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },

@@ -251,7 +251,7 @@ describe("a parent's process control of its own children", () => {
     const parent = await parentWithChildren(harness, runner.createAgent)
     try {
       const list = await parent.process.execute({ action: "list" }, parent.context("list"))
-      expect(list.content).toContain("Work that you started (subagent session ids and workflow ids):")
+      expect(list.content).toContain("Your children (each id is the child's process id):")
       expect(list.content).toContain(`${parent.subagent} | running | subagent |`)
       expect(list.content).toContain(`${parent.workflow} |`)
       expect(list.content).toContain("| workflow | Review")
@@ -260,6 +260,7 @@ describe("a parent's process control of its own children", () => {
 
       const status = await parent.process.execute({ action: "status", process_id: parent.subagent }, parent.context("status"))
       expect(status).toMatchObject({ outcome: "ok" })
+      expect(status.content).not.toContain("Never substitute an agent session id")
       expect(status.content).toContain("progress: attempt 1")
       const workflowStatus = await parent.process.execute({ action: "status", process_id: parent.workflow }, parent.context("workflow-status"))
       expect(workflowStatus.content).toContain("progress: 0/1 done")

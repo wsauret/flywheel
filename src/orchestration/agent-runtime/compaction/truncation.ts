@@ -24,8 +24,23 @@ import type { ContentBlock } from "../llm/types.js";
 import { truncateHeadTail } from "../../../infra/output/truncate-output.js";
 import { saveFullOutput } from "../tools/output-breadcrumb.js";
 import type { RetainedFullContent } from "../tools/types.js";
+import type { CapabilityCheck } from "../../../infra/capability-text.js";
 
 const DEFAULT_MAX_BYTES = 30_000;
+
+const UNAVAILABLE_REST = "The rest of the output is not available with your tools.";
+
+/** The ways that the reading agent's tools can retrieve a saved output file, most precise first
+ *  (ARCH-CONTEXT-033). */
+interface RetrievalWays {
+  readonly search: boolean;
+  readonly read: boolean;
+  readonly shell: boolean;
+}
+
+function retrievalWays(has: CapabilityCheck): RetrievalWays {
+  return { search: has("search"), read: has("read"), shell: has("bash") };
+}
 
 interface LimitOutputOptions {
   content: string;
@@ -43,6 +58,10 @@ interface LimitOutputOptions {
   artifactScopeId: string;
   /** Used as the breadcrumb filename prefix. Defaults to "output". */
   toolName?: string;
+  /** The agent check of the agent that reads the result, which decides how the notice says to retrieve the saved
+   *  file. Absent: the reader's tools are unknown, such as in crash recovery, so the notice names the file and no
+   *  tool. */
+  capabilities?: CapabilityCheck;
 }
 
 interface LimitedOutput {
@@ -65,6 +84,7 @@ export async function limitOutput(
     projectRoot,
     artifactScopeId,
     toolName = "output",
+    capabilities,
   } = options;
 
   const semanticDrop = fullContent !== undefined || retainedFullContent !== undefined;
@@ -79,7 +99,7 @@ export async function limitOutput(
 
   const savedPath = retainedFullContent?.path ?? await saveFullOutput(fullContent ?? content, toolName, projectRoot, artifactScopeId);
   const notice = savedPath
-    ? `[Full output saved to ${displayRelativePath(savedPath, executionCwd)}; grep it with the search tool if you need the removed content]`
+    ? savedOutputNotice(displayRelativePath(savedPath, executionCwd), capabilities)
     // Breadcrumb write failed: every shell drop still shows its own inline
     // marker, and this notice states that no recovery file exists.
     : "[Output was truncated and the full output could not be saved to disk]";
@@ -92,6 +112,13 @@ export async function limitOutput(
     byteTruncated: capped.truncated,
     ...(savedPath ? { fullContentPath: savedPath } : {}),
   };
+}
+
+function savedOutputNotice(path: string, has: CapabilityCheck | undefined): string {
+  if (has === undefined) return `[Full output saved to ${path}]`;
+  const ways = retrievalWays(has);
+  const way = ways.search ? "grep it with the search tool" : ways.read ? "read it with offset and limit" : ways.shell ? "inspect it with a shell command" : undefined;
+  return way ? `[Full output saved to ${path}; ${way} if you need the removed content]` : `[Output was truncated. ${UNAVAILABLE_REST}]`;
 }
 
 /** The head and tail of `content` around its omission marker, marker
@@ -139,7 +166,7 @@ export interface TurnBudgetReplacement {
  *  respect to its inputs; the caller applies the replacements. */
 export async function enforceTurnBudget(
   entries: ReadonlyArray<TurnBudgetEntry>,
-  options: { budgetChars: number; executionCwd: string; projectRoot: string; artifactScopeId: string },
+  options: { budgetChars: number; executionCwd: string; projectRoot: string; artifactScopeId: string; capabilities?: CapabilityCheck },
 ): Promise<TurnBudgetReplacement[]> {
   const budget = options.budgetChars;
   const sized = entries.map((entry) => ({ entry, chars: textChars(entry.content) }));
@@ -156,7 +183,7 @@ export async function enforceTurnBudget(
     const text = joinTextParts(entry.content);
     const savedPath = entry.fullContentPath
       ?? await saveFullOutput(text, entry.toolName, options.projectRoot, options.artifactScopeId);
-    const block = persistedPreviewBlock(text, savedPath ? displayRelativePath(savedPath, options.executionCwd) : null);
+    const block = persistedPreviewBlock(text, savedPath ? displayRelativePath(savedPath, options.executionCwd) : null, options.capabilities);
     const imageParts = entry.content.filter((part) => part.type === "image");
     replacements.push({ toolUseId: entry.toolUseId, content: [{ type: "text", text: block }, ...imageParts] });
     total = total - chars + block.length;
@@ -173,15 +200,17 @@ function generatePreview(content: string) {
   return { preview: truncated, hasMore: true };
 }
 
-function persistedPreviewBlock(text: string, savedPath: string | null): string {
+function persistedPreviewBlock(text: string, savedPath: string | null, has: CapabilityCheck | undefined): string {
   const { preview, hasMore } = generatePreview(text);
+  const ways = has === undefined ? undefined : retrievalWays(has);
+  const retrieval = ways === undefined ? undefined : [...(ways.read ? ["read that file with offset/limit"] : []), ...(ways.search ? ["grep it with the search tool"] : []), ...(!ways.read && !ways.search && ways.shell ? ["inspect it with a shell command"] : [])].join(", or ");
   const lines = [
     PERSISTED_OUTPUT_TAG,
     `This tool result was too large for the turn's aggregate tool-output budget (${text.length} chars).`,
     ...(savedPath
       ? [
           `Full output saved to: ${savedPath}`,
-          "Read that file with offset/limit, or grep it with the search tool, to access specific sections.",
+          ...(retrieval === undefined ? [] : [retrieval ? `${retrieval.charAt(0).toUpperCase()}${retrieval.slice(1)}, to access specific sections.` : UNAVAILABLE_REST]),
         ]
       : ["The full output could not be saved to disk; the preview below is all that was preserved."]),
     "",

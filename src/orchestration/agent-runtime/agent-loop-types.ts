@@ -218,7 +218,8 @@ export interface AgentLoopOptions {
   /** Builds the request-stable prompt from the planned serving attempt and the
    *  one interaction profile captured for this request. */
   systemPrompt: SystemPromptTiers | ((attempt: ServingAttempt, profile: ModelInteractionProfile) => SystemPromptTiers | Promise<SystemPromptTiers>);
-  /** The modules' standing-mode reminders for the next request, decided from the history (turn-reminders.ts). */
+  /** The system-origin messages for the next request, decided from the history: the modules' standing-mode
+   *  reminders (turn-reminders.ts), then the capability narrowing statement when one is due (capability-narrowing.ts). */
   turnReminders?: (messages: readonly ConversationMessage[]) => Promise<readonly ConversationMessage[]>;
   /** Literal headless prompts bypass model and provider guidance byte-for-byte. */
   literalSystemPrompt?: boolean;

@@ -32,8 +32,12 @@ export async function prepareProjectDefaults(directories: StartupDirectories, op
   const seeded = seedConfigDefaults({ userDataRoot: directories.userDataRoot })
   if (!seeded.ok) Log.Default.warn("config default seeding failed", { error: seeded.error.message })
   if (options.publishReferences) {
-    const { publishBundledReferences } = await import("../workflows/definitions/installer.js")
-    await publishBundledReferences(directories.userDataRoot)
+    const [{ publishBundledReferences }, { loadBundledDefaultCatalog }, { shippedDefinitionBundles }] = await Promise.all([
+      import("../workflows/definitions/installer.js"),
+      import("../workflows/definitions/bundled-defaults.js"),
+      import("../orchestration/modules.js"),
+    ])
+    await publishBundledReferences(directories.userDataRoot, loadBundledDefaultCatalog(shippedDefinitionBundles()))
   } else {
     try {
       const { removeLegacyAgentInstall } = await import("../workflows/definitions/installer.js")

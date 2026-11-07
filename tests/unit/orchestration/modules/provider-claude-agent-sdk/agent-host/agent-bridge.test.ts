@@ -21,10 +21,11 @@ import { temporaryDirectories } from "../../../../../helpers/directories.js";
 import { holdSharedTree } from "../../../../../../src/orchestration/agent-runtime/shared-tree.js";
 import { composeFirstPartyModules } from "../../../../../../src/orchestration/modules.js";
 import { silentVersions } from "../../../../../../src/orchestration/modules/provider-claude-agent-sdk/stderr-signals.js";
+import { SHELL_CAPABILITIES } from "../../../../../helpers/prompt-capabilities.js";
 
 const directory = temporaryDirectories();
 /** The chat tree of every agent of this suite, which the suite holds while it runs. */
-const TREE = holdSharedTree("tree", () => composeFirstPartyModules()).tree;
+const TREE = holdSharedTree("tree", () => ({ modules: composeFirstPartyModules(), shellWriteGuard: true, allowPersistentProcesses: false })).tree;
 
 /** The fields of an agent file row that the drift test reads. */
 const AgentFileRow = Schema.Struct({
@@ -37,7 +38,7 @@ const AgentFileRow = Schema.Struct({
 
 /** The environment reminder that canonical history holds for an agent in `cwd`. */
 function environment(cwd: string): string {
-  return environmentReminder({ kind: "environment", workingDirectory: cwd, isWorktree: false, isGitRepo: false, platform: "darwin", shell: "zsh", osVersion: "Darwin 25.3.0" });
+  return environmentReminder({ kind: "environment", workingDirectory: cwd, isWorktree: false, isGitRepo: false, platform: "darwin", shell: "zsh", osVersion: "Darwin 25.3.0" }, SHELL_CAPABILITIES);
 }
 
 const unused = (): never => { throw new Error("the bridge stops at the host it leased"); };

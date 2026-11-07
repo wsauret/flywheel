@@ -12,6 +12,7 @@ import type { ConversationEntry } from "../../../../src/orchestration/session/co
 import { ConversationTree } from "../../../../src/orchestration/session/conversation/conversation-tree";
 import { ConversationTreeStorage } from "../../../../src/orchestration/session/conversation/conversation-tree-storage";
 import { compaction, message, nextTimestamp, resetTimestamps } from "./_conversation-tree-entries";
+import { SHELL_CAPABILITIES } from "../../../helpers/prompt-capabilities.js";
 
 let baseDir: string;
 let store: EventStore;
@@ -72,7 +73,7 @@ describe("ConversationTree.appendMessage", () => {
   it("keeps the reminder label of an environment or date reminder, and gives it to one that a build before 2026-11-01 wrote without it", async () => {
     const tree = await openTree();
     const date = "<system-reminder>\nCurrent local date: 2026-10-30.\n</system-reminder>\n";
-    const environment = environmentReminder({ kind: "environment", workingDirectory: "/work/two", isWorktree: false, isGitRepo: false, platform: "darwin", shell: "zsh", osVersion: "Darwin 25.3.0" });
+    const environment = environmentReminder({ kind: "environment", workingDirectory: "/work/two", isWorktree: false, isGitRepo: false, platform: "darwin", shell: "zsh", osVersion: "Darwin 25.3.0" }, SHELL_CAPABILITIES);
     const entries = [
       { kind: "user", content: "Start.", origin: "human" },
       { kind: "user", content: date, origin: "system", framing: "reminder" },

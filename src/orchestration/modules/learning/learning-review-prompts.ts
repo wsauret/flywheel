@@ -1,3 +1,4 @@
+import type { CapabilityCheck } from "../../../infra/capability-text.js";
 import { SKILL_BODY_BUDGET_CHARS } from "../../../workflows/skill-schema.js";
 
 /** Review prompts for the learning fork: the read
@@ -12,31 +13,36 @@ import { SKILL_BODY_BUDGET_CHARS } from "../../../workflows/skill-schema.js";
  *  The classifier (ARCH-LEARNING-002, ARCH-LEARNING-013): every observation has one canonical
  *  destination and one reach, a review trigger is an obligation to evaluate
  *  rather than to write, and this background actor cannot mutate a global
- *  skill. `LEARNING_CLASSIFIER` is that contract in one place; each prompt
- *  includes it, so the three review halves cannot drift apart. */
+ *  skill. `learningClassifier` is that contract in one place; each prompt
+ *  includes it, so the three review halves cannot drift apart. Each text is a
+ *  function of the review's capability check, so a review that cannot write a
+ *  skill reads no skill guidance (ARCH-CONTEXT-033). */
 
-const LEARNING_CLASSIFIER = `Classify each observation before you write anything. Every observation has exactly one canonical destination:
+function learningClassifier(has: CapabilityCheck): string {
+  const skills = has("skill_manage");
+  return `Classify each observation before you write anything. Every observation has exactly one canonical destination:
 
 Memory is a scarce, selective profile of the user and their working context, not a session record. Save only evidenced facts likely to change an agent's decisions across many future sessions and absent from an existing authority. Prioritize lasting user preferences and context; saving nothing is often correct.
 
-- Preference (how the user wants interaction, code, or work presented) -> global memory when it applies everywhere; a preference about how work is done in this project -> project memory. A preference is never a skill.
+- Preference (how the user wants interaction, code, or work presented) -> global memory when it applies everywhere; a preference about how work is done in this project -> project memory.${skills ? " A preference is never a skill." : ""}
 - Stable user fact (who the user is, their role, how they work across projects) -> global memory.
 - Hard-won repository or tool fact (durable working context that is not an instruction or cheaply rediscovered) -> memory at the narrowest applicable reach, only when it meets the selective test above.
 - Repository instructions, commands, conventions, and architectural guidance -> AGENTS.md or their existing repository authority, not memory. This background review has no file-editing authority: do not edit repository files; identify the destination in your reply.
 - Session notes (progress, plans, handoffs, temporary findings, and completed-work summaries) -> the separate session-notes surface, never memory. Do not write session notes in this learning review.
-- Repeatable procedure (a method for a class of work, with a routing trigger, steps, verification, and failure guidance) -> a project skill.
+- Repeatable procedure (a method for a class of work, with a routing trigger, steps, verification, and failure guidance) -> ${skills ? "a project skill" : "not memory. Name it in your reply"}.
 - Enforceable rule (something code, a test, a schema, or the project instructions can guarantee) -> not durable learning. Say so in your reply.
 - Derivable information (available cheaply right now from the code, git, or configuration) -> not durable learning. A future session reads it fresh.
 
-Reach: project learning applies to this project root only; global learning follows the user into every project. Generated learning defaults to project, and ambiguous applicability stays project. Preferences and stable user facts are the exception only when their subject is the user across projects; a preference tied to this project or its tooling stays project.
+Reach: project learning applies to this project root only; global learning follows the user into every project. Generated learning defaults to project, and ambiguous applicability stays project. Preferences and stable user facts are the exception only when their subject is the user across projects; a preference tied to this project or its tooling stays project.${skills ? `
 
-Global skills: you are an autonomous actor with no user present, so you cannot create, rewrite, patch, archive, restore, or change support files in a global package. The storage boundary refuses those writes. Write a project skill instead. When a project skill you can see is genuinely a general procedure that belongs in every project, record the proposal with skill_manage action recommend (name only): it writes nothing global and hands the decision to the next interactive session, which asks the user.
+Global skills: you are an autonomous actor with no user present, so you cannot create, rewrite, patch, archive, restore, or change support files in a global package. The storage boundary refuses those writes. Write a project skill instead. When a project skill you can see is genuinely a general procedure that belongs in every project, record the proposal with skill_manage action recommend (name only): it writes nothing global and hands the decision to the next interactive session, which asks the user.` : ""}
 
 Save nothing for: transient failures that resolved before the session ended, unresolved failures where no working method was found, negative capability claims ("tool X does not work"), one-off task narratives, and anything a future session can rederive cheaply. A mistake or verified fix alone does not qualify as memory; classify it first.
 
 Write what the transcript evidences - user statements, tool outcomes, verified fixes - not what you asserted about yourself.
 
 'Nothing to save.' is a correct and complete outcome. A review is an obligation to evaluate the evidence, not an obligation to write.`;
+}
 
 const SKILL_REVIEW_CORE = `Target shape of the library: CLASS-LEVEL skills, each with a SKILL.md that carries the method and support files that carry the evidence. Not a long flat list of narrow one-session-one-skill entries. This shapes HOW you write a procedure down, not WHETHER the evidence establishes one.
 
@@ -47,7 +53,7 @@ Write the body small. A SKILL.md body enters an agent's context in full every ti
 Adding a case-specific block under a general heading is how a body silently grows past its budget: each session appends one, and none of them look large alone.
 
 Preference order - prefer the earliest action that fits:
-  1. UPDATE A CURRENTLY-LOADED SKILL. Look back through the conversation for skills loaded with the skill tool. If any of them covers the territory of the new procedure, PATCH that one first (skill_manage action patch). It is the skill that was in play, so it is the right one to extend - but only if it is managed (managed: flywheel). Bundled and user-pinned skills are off-limits no matter how relevant (see Protected skills below); for those, fall through to the next option.
+  1. UPDATE A CURRENTLY-LOADED SKILL. Look back through the conversation for skills that it loaded. If any of them covers the territory of the new procedure, PATCH that one first (skill_manage action patch). It is the skill that was in play, so it is the right one to extend - but only if it is managed (managed: flywheel). Bundled and user-pinned skills are off-limits no matter how relevant (see Protected skills below); for those, fall through to the next option.
   2. UPDATE AN EXISTING UMBRELLA (skill action list, then load the candidate). If no loaded skill fits but an existing class-level skill does, patch it. Add a subsection, a pitfall, or broaden a trigger.
   3. ADD A SUPPORT FILE under an existing umbrella (skill_manage action save with a path). Four kinds - use the right directory per kind:
      - references/<topic>.md - session-specific detail (error transcripts, reproduction recipes, provider quirks) AND condensed knowledge banks: quoted research, API docs, external authoritative excerpts, or domain notes you found while working on the problem. Write it concise and for the value of the task, not as a full mirror of upstream docs.
@@ -73,29 +79,41 @@ If the only skills that need updating are protected, say 'Nothing to save.' and 
 
 Record what cost this session time and would shorten the next session's trajectory.`;
 
-export const MEMORY_REVIEW_PROMPT = `Review the conversation above and decide what, if anything, it produced as durable memory.
+/** One half of the learning review: the memory half writes memory, the
+ *  skill half writes managed skills. */
+export type ReviewHalf = "memory" | "skill";
 
-${LEARNING_CLASSIFIER}
+const REVIEW_TOOLS = ["skill", "skill_manage", "memory"] as const;
 
-Save each qualifying item with the memory tool, setting target to the reach the classifier gives it. If nothing qualifies, say 'Nothing to save.' and stop.`;
+/** The review instruction for the halves that fire, with the tool-restriction
+ *  suffix. `has` is the check of the tools that the review's admitted grant
+ *  holds. The tool schema surface stays byte-stable for the prefix cache, so
+ *  the restriction is stated here and enforced at execution rather than by
+ *  unlisting tools. */
+export function reviewInstruction(halves: readonly ReviewHalf[], has: CapabilityCheck): string {
+  const classifier = learningClassifier(has);
+  const prompt = halves.length === 2
+    ? `Review the conversation above and decide what, if anything, it produced as durable learning.
 
-export const SKILL_REVIEW_PROMPT = `Review the conversation above and decide whether it established a repeatable procedure worth a skill.
+${classifier}
 
-${LEARNING_CLASSIFIER}
+${SKILL_REVIEW_CORE}
+
+Act on each destination the classifier selects: memory writes go through the memory tool at their reach, and a repeatable procedure goes through skill_manage as a project skill. If the evidence selects no destination, say 'Nothing to save.' and stop.`
+    : halves[0] === "memory"
+      ? `Review the conversation above and decide what, if anything, it produced as durable memory.
+
+${classifier}
+
+Save each qualifying item with the memory tool, setting target to the reach the classifier gives it. If nothing qualifies, say 'Nothing to save.' and stop.`
+      : `Review the conversation above and decide whether it established a repeatable procedure worth a skill.
+
+${classifier}
 
 ${SKILL_REVIEW_CORE}
 
 Only a repeatable procedure becomes a skill. Save a preference or fact with the memory tool only when it meets the classifier's selective memory test; otherwise leave memory and the skill library alone.`;
-
-export const COMBINED_REVIEW_PROMPT = `Review the conversation above and decide what, if anything, it produced as durable learning.
-
-${LEARNING_CLASSIFIER}
-
-${SKILL_REVIEW_CORE}
-
-Act on each destination the classifier selects: memory writes go through the memory tool at their reach, and a repeatable procedure goes through skill_manage as a project skill. If the evidence selects no destination, say 'Nothing to save.' and stop.`;
-
-/** Appended to every review instruction: the schema surface stays byte-stable
- *  for the prefix cache, so the restriction is stated and enforced at
- *  execution rather than by unlisting tools. */
-export const REVIEW_TOOL_RESTRICTION = "You can only use the skill, skill_manage, and memory tools. Other tools will be denied at runtime; do not attempt them.";
+  const tools = REVIEW_TOOLS.filter((tool) => has(tool));
+  const named = tools.length === 1 ? tools[0] : `${tools.slice(0, -1).join(", ")}, and ${tools.at(-1)}`;
+  return `${prompt}\n\nYou can only use the ${named} tool${tools.length === 1 ? "" : "s"}. Other tools will be denied at runtime; do not attempt them.`;
+}

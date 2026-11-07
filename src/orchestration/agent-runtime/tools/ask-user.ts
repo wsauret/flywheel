@@ -148,7 +148,7 @@ export type AnsweredAskUserResult =
  *  named by id. No answer grants a launch: the named workflow is retired.
  *  Remove after 2027-04-30. */
 export function retiredWorkflowLaunchText(definitionId: string): string {
-  return `The ${definitionId} workflow is retired. Flywheel no longer launches it. Write and launch a workflow file instead.`;
+  return `The ${definitionId} workflow is retired. Flywheel no longer launches it.`;
 }
 
 /** Build the model-visible result from the durable answer authority. Only the
@@ -317,11 +317,11 @@ function resolveDefinitionOverrideDecision(raw: DefinitionOverrideDecisionInput,
 /** Compose the launch approval of one source. The model names only the
  *  source; Flywheel resolves it and owns the question and choices, so an
  *  approval can only authorize that workflow file as it is now. */
-async function resolveWorkflowLaunchDecision(launch: WorkflowLaunchDecisionInput, resolve: ResolveWorkflowLaunchTarget | undefined): Promise<BoundDecision> {
-  if (resolve === undefined) return { error: "This session does not ask before launching a workflow, so a workflow_launch decision is not available. Call workflow directly." };
+async function resolveWorkflowLaunchDecision(launch: WorkflowLaunchDecisionInput, workflowLaunch: ResolveWorkflowLaunchTarget | undefined): Promise<BoundDecision> {
+  if (workflowLaunch === undefined) return { error: "This session does not ask before launching a workflow, so a workflow_launch decision is not available. Call workflow directly." };
   const source = workflowSource(launch.source);
   if (source === undefined) return { error: "workflow_launch requires source with kind 'path' and a path, or kind 'content' and content." };
-  const target = await resolve(source);
+  const target = await workflowLaunch(source);
   if ("error" in target) return { error: workflowRefusalText(target) };
   const launchDecision = workflowLaunchDecision(target);
   return {

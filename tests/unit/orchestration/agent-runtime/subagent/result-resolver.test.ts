@@ -95,7 +95,7 @@ describe("resolveSubagentResult — status derives from the typed result, not pr
     expect(out.content).toBe("Subagent 'general-purpose' (do a thing) reached its turn budget (10 LLM calls) before it wrote a result.");
   });
 
-  it("cuts a text result over the cap and names the file that keeps it whole", async () => {
+  it("cuts a text result over the cap and names the file that keeps it whole, and no tool to read it with", async () => {
     const dir = temporaryDirectory("flywheel-result-resolver-");
     const result: AgentRunResult = { servedRequests: 0, durationMs: 5, terminal: { kind: "completed" } };
     const text = `Opening conclusion.\n${"detail ".repeat(2_000)}\nClosing outcome.`;
@@ -107,7 +107,9 @@ describe("resolveSubagentResult — status derives from the typed result, not pr
     expect(out.content.length).toBeLessThanOrEqual(CAP);
     expect(out.content).toStartWith("Opening conclusion.");
     expect(out.content).toContain("Closing outcome.");
-    expect(out.content).toMatch(/\[Full output saved to \.flywheel\/agent-outputs\/session-1\/subagent-general-purpose_[^;]+; grep it with the search tool if you need the removed content\]$/);
+    // The parent can read a delayed result after its tools changed, such as after it lost search, so the notice
+    // names the file alone.
+    expect(out.content).toMatch(/\[Full output saved to \.flywheel\/agent-outputs\/session-1\/subagent-general-purpose_[^;\]]+\]$/);
   });
 
   it("bounds a failed run's work summary within the cap", async () => {

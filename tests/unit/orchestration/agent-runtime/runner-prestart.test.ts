@@ -10,7 +10,8 @@ import { testCapabilityModules, testRuntimeConfigCapture } from "../../../helper
 import type { AgentConversation, AgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
 import type { LLMClientFactory } from "../../../../src/orchestration/agent-runtime/factory.js"
 import { FUNCTION_TOOL_PRESENTATION, type Claim, type ConversationMessage, type ModelClient, type ProviderDemand, type StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types.js"
-import { prepareRunRequest, type AnticipatedRequest } from "../../../../src/orchestration/agent-runtime/request-preparation.js"
+import { planCapabilitiesOfRun, prepareRunRequest, type AnticipatedRequest } from "../../../../src/orchestration/agent-runtime/request-preparation.js"
+import { composeFirstPartyModules, SHIPPED_MODULES, type FirstPartyModule } from "../../../../src/orchestration/modules.js"
 import { openProviderSession, type HeldProviderSession } from "../../../../src/orchestration/agent-runtime/provider-runtime-cache.js"
 import { holdSharedTree, type SharedTree } from "../../../../src/orchestration/agent-runtime/shared-tree.js"
 import { captureProviderConnection } from "../../../../src/infra/auth/auth-context.js"
@@ -248,10 +249,10 @@ describe("a pre-start's request preparation", () => {
 
     await prepare(options, client).outcome
     await prepare(options, client).outcome
-    const later = holdSharedTree("prestart-tree", testCapabilityModules)
+    const later = holdSharedTree("prestart-tree", () => ({ modules: testCapabilityModules(), shellWriteGuard: true, allowPersistentProcesses: false }))
     later.release()
     await session.close()
-    const afterClose = holdSharedTree("prestart-tree", testCapabilityModules)
+    const afterClose = holdSharedTree("prestart-tree", () => ({ modules: testCapabilityModules(), shellWriteGuard: true, allowPersistentProcesses: false }))
     afterClose.release()
 
     expect(trees).toHaveLength(1)
@@ -286,6 +287,40 @@ describe("a pre-start's request preparation", () => {
     expect(clients).toBe(1)
     expect(histories).toBe(0)
     expect(environments).toBe(0)
+  })
+
+  test("a capability plan answers the agent check of the next request's tool plan, which its exposure gate narrows, and sends, writes, and builds nothing", async () => {
+    // The tool exposure gate of an active experiment, which omits Bash and the subagent tool from the next request.
+    const gated = {
+      id: "test-exposure-gate", dependencies: [], availability: { kind: "available" }, contributions: [], observers: [], transformers: [],
+      gates: [{ seam: "toolExposure", gate: () => new Map([["bash", "sealed paths"], ["subagent", "delegation"]]) }],
+    } as const satisfies FirstPartyModule
+    const withoutExperiments = SHIPPED_MODULES.filter((module) => module.id !== "experiments")
+    let streams = 0
+    const appended: ConversationMessage[] = []
+    const client: LLMClientFactory = async () => asModelClient({
+      accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test", toolPresentation: FUNCTION_TOOL_PRESENTATION,
+      contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },
+      priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
+      async *streamWithTools() { streams += 1; yield { kind: "done", stopReason: "end_turn" } },
+    })
+    const plan = (modules: readonly FirstPartyModule[]) => {
+      const options = makeOptions({ agentRegistry: new Map(), agentsMd: "", conversation: conversation(HISTORY, appended) })
+      return planCapabilitiesOfRun({
+        options: {
+          captureRuntimeConfig: testRuntimeConfigCapture, awaitModelAccessSettled: async () => {}, ...options,
+          runtimeSurfaces: {}, moduleSelection: () => composeFirstPartyModules(modules),
+        },
+        definitions: repoDefinitions(),
+        captureModelRuntime: async () => ({ generation: client, createLLMClient: client }),
+        createRunner: () => { throw new Error("a capability plan builds no run") },
+      })
+    }
+
+    expect((await plan(withoutExperiments))("bash")).toBe(true)
+    expect((await plan([...withoutExperiments, gated]))("bash")).toBe(false)
+    expect(streams).toBe(0)
+    expect(appended).toEqual([])
   })
 
   test("a pre-start that prepares reads its owner's history once and its environment once, and its draft holds that history", async () => {

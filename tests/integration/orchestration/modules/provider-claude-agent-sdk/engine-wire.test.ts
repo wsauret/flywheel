@@ -19,6 +19,7 @@ import { describeCliLogin, readCliUsage } from "../../../../../src/orchestration
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { assistantMessage, captureDiagnostics, onFakeHost, ownInPlaceGate, removeEngineProbes, streamedText, streamedToolCalls, until } from "./_claude-sdk-client.js";
 import { CREDENTIAL_BETAS, declaredTools, type RecordedRequest } from "./_fake-host.js";
+import { SHELL_CAPABILITIES } from "../../../../helpers/prompt-capabilities.js";
 
 const temporary = temporaryDirectories();
 const { records, payloads } = captureDiagnostics();
@@ -191,7 +192,7 @@ describe("the bundled Claude engine on a fake host", () => {
         ? { blocks: [{ text: "done" }] } : { blocks: [{ tool: "read", input: { path: "note.txt" } }] }, async ({ host, open, projectRoot }) => {
         const chat = await open();
         const base = { tools: [READ_TOOL], systemPrompt: SYSTEM, reasoningEffort: "medium" } as const;
-        let history: ConversationMessage[] = [U1, ...reminders([U1], projectRoot)];
+        let history: ConversationMessage[] = [U1, ...reminders([U1], projectRoot, SHELL_CAPABILITIES)];
         const first = await chat.stream({ ...base, messages: history });
         // An error result cannot pass through the parked handler, and a result with text beside it cannot either.
         history = [...history, assistantMessage(first), { kind: "toolResult", toolUseId: streamedToolCalls(first)[0]?.id ?? "", content: [{ type: "text", text: "no such file" }], isError: true }];

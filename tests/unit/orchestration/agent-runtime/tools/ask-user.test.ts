@@ -14,6 +14,7 @@ import type { AgentInputAnswer } from "../../../../../src/protocol/question-prot
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import type { SessionFact, SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
 import { asRecord, isRecord } from "../../../../../src/infra/record.js";
+import { promptCapabilities } from "../../../../helpers/prompt-capabilities.js";
 
 /** A session writer that stores each fact it records, appending it to `recorded`. */
 function recordingWriter(recorded: SessionFact[] = []): SessionFactWriter {
@@ -467,7 +468,7 @@ describe("ask_user tool", () => {
       const question = "Launch the Debug workflow?";
       const result = answeredAskUserResult([{ question, header: "Workflow", choices: [{ kind: "option", choiceId: "approve", label: "Start" }], multiSelect: false }], { [question]: { kind: "choice", selections: [{ choiceId: "approve" }], text: "Start" } }, { kind: "workflow_launch", source: { kind: "registered", definitionId: "debug" }, question, approve: { choiceId: "approve", label: "Start" }, reject: { choiceId: "inline", label: "Inline" } }, "old-approval");
       expect(result.outcome).toBe("cancelled");
-      expect(result.content).toContain("The debug workflow is retired. Flywheel no longer launches it. Write and launch a workflow file instead.");
+      expect(result.content).toContain("The debug workflow is retired. Flywheel no longer launches it.");
       expect(result.content).not.toContain("Confirmation id");
     });
   });
@@ -477,17 +478,22 @@ describe("ask_user tool", () => {
 // the module that owns the question tool names it, only where it is planned.
 describe("ask-user prompt fragment", () => {
   const fragment = askUserModule.contributions.find((contribution) => contribution.domain === "promptFragments");
+  const askUser = createAskUserTool({ ask: async () => ({ kind: "cancelled" }), answerQuestion: () => {}, cancelQuestion: () => {}, suspendAll: () => false }, {});
   const render = (tools: ReadonlyMap<string, RuntimeTool>) => {
     if (fragment?.domain !== "promptFragments") throw new Error("The ask-user module contributes no prompt fragment");
-    return fragment.value.render({ kernel: testKernelToolDeps({ userDataRoot: "/scratch" }), modules: NO_MODULE_RUNTIMES, tools, memorySnapshot: null });
+    return fragment.value.render({ kernel: testKernelToolDeps({ userDataRoot: "/scratch" }), modules: NO_MODULE_RUNTIMES, tools, memorySnapshot: null, capabilities: promptCapabilities([...tools.values()]) });
   };
+  const planned = (...names: string[]) => new Map(names.map((name) => [name, { ...askUser, name }]));
 
-  it("tells a root chat that plans ask_user to ask the person with it for a waiting child", () => {
-    const askUser = createAskUserTool({ ask: async () => ({ kind: "cancelled" }), answerQuestion: () => {}, cancelQuestion: () => {}, suspendAll: () => false }, {});
-    expect(render(new Map([["ask_user", askUser]]))).toContain("ask the person with ask_user, then reply to the child with message_session");
+  it("tells a root chat that plans ask_user and can start a child to ask the person with it for a waiting child", () => {
+    for (const starter of ["subagent", "workflow"]) {
+      expect(render(planned("ask_user", starter))).toContain("ask the person with ask_user, then reply to the child with message_session");
+    }
   });
 
-  it("says nothing where ask_user is not planned", () => {
+  it("says nothing where ask_user is not planned or no child can start", () => {
     expect(render(new Map())).toBeUndefined();
+    expect(render(planned("subagent", "workflow"))).toBeUndefined();
+    expect(render(planned("ask_user"))).toBeUndefined();
   });
 });

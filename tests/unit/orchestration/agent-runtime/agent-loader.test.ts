@@ -1,12 +1,15 @@
 import { describe, expect, it, spyOn } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Log } from "../../../../src/infra/log.js";
 import { loadStandalonePersonaRegistry } from "../../../../src/workflows/agents/registry.js";
+import { personaIdentitySha256 } from "../../../../src/workflows/vm/definition-identity.js";
 import { repoDefinitions } from "../../../helpers/project-definitions.js";
 
 const SKILL_REVISION = repoDefinitions().skills();
+const PERSONA_DIR = fileURLToPath(new URL("../../../../src/workflows/agents/personas", import.meta.url));
 
 describe("loadStandalonePersonaRegistry", () => {
   it("skips persona files that disappear between directory listing and read", async () => {
@@ -125,6 +128,26 @@ describe("loadStandalonePersonaRegistry", () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
       rmSync(plain, { recursive: true, force: true });
+    }
+  });
+
+  // An override renders its capability markers raw, so a byte-identical copy
+  // is a different procedure: a resumed workflow must report it as drift.
+  it("gives a byte-identical project override of a marker-bearing bundled persona its own identity, and the override hashes as an external persona", () => {
+    const projectDir = mkdtempSync(join(tmpdir(), "flywheel-agent-loader-"));
+    try {
+      copyFileSync(join(PERSONA_DIR, "ship.md"), join(projectDir, "ship.md"));
+      const bundled = loadStandalonePersonaRegistry(PERSONA_DIR, SKILL_REVISION).get("ship");
+      const override = loadStandalonePersonaRegistry(PERSONA_DIR, SKILL_REVISION, undefined, undefined, projectDir).get("ship");
+      if (bundled?.kind !== "persona" || override?.kind !== "persona") throw new Error("Missing persona: ship");
+
+      expect(override.systemPrompt).toBe(bundled.systemPrompt);
+      expect(override.systemPrompt).toContain("{{if:bash}}");
+      expect(personaIdentitySha256(override)).not.toBe(personaIdentitySha256(bundled));
+      const { bundled: _mark, ...external } = bundled;
+      expect(personaIdentitySha256(override)).toBe(personaIdentitySha256(external));
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true });
     }
   });
 });

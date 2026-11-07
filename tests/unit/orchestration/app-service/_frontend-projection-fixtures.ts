@@ -137,6 +137,7 @@ export function chatRunner(sessionId: string): ChatRunner {
     interruptForReplacement: async () => false,
     interruptPlannedCut: async () => "running",
     hold: async () => NO_MODULE_RUNTIMES,
+    capabilities: async () => () => true,
     terminateBackgroundWork: () => {},
     releaseForegroundBash: () => false,
     transferForegroundForReplacement: async () => {},

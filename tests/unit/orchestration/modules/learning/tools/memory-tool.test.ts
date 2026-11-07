@@ -8,11 +8,13 @@ import type { SessionNoticeOperation } from "../../../../../../src/infra/session
 import { readMutationEvidenceFiles } from "../../../../../../src/infra/mutation-evidence.js";
 import { MutationEvidenceSchema } from "../../../../../../src/infra/mutation-evidence-schema.js";
 import { readSessionContentRange, type SessionContentNode } from "../../../../../../src/infra/session-content.js";
+import type { CapabilityCheck } from "../../../../../../src/infra/capability-text.js";
 import { createMemoryTool } from "../../../../../../src/orchestration/modules/learning/tools/memory.js";
 import { capabilityAccessFor, type CapabilityAccess, type RuntimeTool, type ToolContext } from "../../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import type { CapabilityGrant } from "../../../../../../src/orchestration/config/module-policy.js";
-import type { ModuleId } from "../../../../../../src/orchestration/modules.js";
+import { composeFirstPartyModules, type ModuleId } from "../../../../../../src/orchestration/modules.js";
+import { testKernelToolDeps } from "../../../../../helpers/request-tool-surface.js";
 import { fileTemporaryDirectory } from "../../../../../helpers/directories.js";
 import { moduleDisabledReason } from "../../../../../../src/protocol/module-ids"
 
@@ -99,14 +101,17 @@ function memoryFile(): string {
   return join(TMP, "project", ".flywheel", "memory", "MEMORY.json");
 }
 
-function makeTool(overrides: { sessionId?: string } = {}): ReturnType<typeof createMemoryTool> {
+/** Every capability holds for the tree unless a test passes its own check. */
+const ALL_CAPABILITIES: CapabilityCheck = () => true;
+
+function makeTool(overrides: { sessionId?: string } = {}, has: CapabilityCheck = ALL_CAPABILITIES): ReturnType<typeof createMemoryTool> {
   const deps = {
     accountHome: join(TMP, "home"),
     sessionId: "sess-test",
     onNotice: (operation: SessionNoticeOperation) => notices.push(operation),
     ...overrides,
   };
-  return createMemoryTool(deps);
+  return createMemoryTool(deps, has);
 }
 
 /** The tool of a runtime that can also replay the outbox: it holds a reader of
@@ -118,7 +123,7 @@ function replayingTool(): ReturnType<typeof createMemoryTool> {
     onNotice: (operation: SessionNoticeOperation) => notices.push(operation),
     store: asAsyncEventReadSurface(inMemoryEventReader([])),
   };
-  return createMemoryTool(deps);
+  return createMemoryTool(deps, ALL_CAPABILITIES);
 }
 
 async function call(tool: ReturnType<typeof createMemoryTool>, input: UnknownRecord) {
@@ -176,7 +181,18 @@ describe("memory tool", () => {
     expect(properties.title).toBeDefined();
     expect(required).toContain("title");
     expect(tool.description).toContain("entries labeled [protected] are user-owned");
-    expect(tool.description).toContain("never use file-edit, shell, CLI, or other tools");
+    expect(tool.description).toContain("never use any other tool to alter their content");
+    expect(tool.description).not.toContain("shell");
+  });
+
+  it("sends a repeatable procedure to a skill only while the tree can write one", () => {
+    const treeCheck = (disabled: readonly ModuleId[]) => testKernelToolDeps({ moduleSnapshot: composeFirstPartyModules(undefined, disabled) }).treeCapabilities;
+    const withSkills = makeTool({}, treeCheck([])).description;
+    expect(withSkills).toContain("Repeatable procedures belong in skills.");
+    expect(withSkills).toContain("A repeatable procedure belongs in a skill, not memory.");
+    const withoutSkills = makeTool({}, treeCheck(["skills"])).description;
+    expect(withoutSkills).not.toContain("skill");
+    expect(withoutSkills).toContain("Maintain that authority rather than duplicating it in memory.\n\nMAKING ROOM");
   });
 
   it("offers the project and global reach vocabulary as an optional target", () => {
@@ -344,7 +360,7 @@ describe("memory tool", () => {
   });
 
   it("refuses a write no session can be named for", async () => {
-    const tool = createMemoryTool({ accountHome: join(TMP, "home") });
+    const tool = createMemoryTool({ accountHome: join(TMP, "home") }, ALL_CAPABILITIES);
 
     const result = await tool.execute({ title: "No session", action: "add", target: "project", content: "x" }, makeContext());
     const body = parseRecord(resultContent(result));

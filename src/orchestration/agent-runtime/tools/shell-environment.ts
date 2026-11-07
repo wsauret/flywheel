@@ -116,9 +116,8 @@ export async function runPersistentCommand(command: string, context: ToolContext
  *  whose grant already covers Background Commands continues on that grant. */
 export async function refuseBackgroundCommand(context: ToolContext): Promise<string | undefined> {
   const access = context.capabilityAccess ?? NO_CAPABILITY_ACCESS;
-  const required = backgroundShellModuleRequirements();
-  if (grantCovers(access.grant, required)) return undefined;
-  const admission = await access.admit({ operation: "a background shell command", required });
+  if (grantCovers(access.grant, backgroundShellModuleRequirements())) return undefined;
+  const admission = await access.admit({ operation: "a background shell command", required: backgroundShellModuleRequirements() });
   if (admission.ok) return undefined;
   return `${admission.reason}. Run the finite command in the foreground without background=true. It remains in this call until it completes, you select Detach, or it reaches the configured runtime cap.`;
 }

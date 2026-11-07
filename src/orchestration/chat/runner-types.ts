@@ -1,4 +1,5 @@
 import type { AnyBlock } from "../../infra/output-blocks.js"
+import type { CapabilityCheck } from "../../infra/capability-text.js"
 import type { ChatInput, ChatInputLike } from "../../infra/chat-input.js"
 import type { Runner } from "../runner/types.js"
 import type { AgentInputAnswers } from "../../protocol/question-protocol-types.js"
@@ -51,6 +52,9 @@ export interface ChatRunner extends Runner {
    *  child's resume) has the runtime it dispatches through. Resolves with the
    *  assembled module runtimes; answers at once when a turn has assembled. */
   hold(): Promise<ModuleRuntimes>
+  /** The agent check (ARCH-CONTEXT-033) of the tool surface that the chat's next request would use, planned as a
+   *  send plans it. It starts no turn, appends nothing to history, and changes no state. */
+  capabilities(): Promise<CapabilityCheck>
   /** A client shows the session (`true`), also again at a reattach, or the last client released it (`false`). The
    *  session's engines run only while it is shown (ARCH-PROVIDERS-070). */
   setShown(shown: boolean): void

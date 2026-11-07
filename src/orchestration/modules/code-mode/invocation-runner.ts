@@ -233,7 +233,7 @@ export function runInvocation(invocation: CodeModeInvocation, context: ToolConte
       (attached) => Effect.sync(() => attached.detach()),
     )
     const { maxToolCalls, maxLogBytes, maxHeapDeltaBytes, heapSampleMs } = limits
-    const start: HostMessage = { type: "start", source: invocation.source, descriptors: invocation.tools.descriptors, limits: { maxToolCalls, maxLogBytes, maxHeapDeltaBytes, heapSampleMs } }
+    const start: HostMessage = { type: "start", source: invocation.source, descriptors: invocation.tools.descriptors, limits: { maxToolCalls, maxLogBytes, maxHeapDeltaBytes, heapSampleMs }, bash: context.capabilities?.("bash") === true }
     // A descriptor schema that cannot be cloned fails this invocation only.
     // oxlint-disable-next-line unicorn/require-post-message-target-origin -- boundary: Bun Worker.postMessage has no target origin
     const posted = yield* Effect.exit(Effect.try({ try: () => worker.postMessage(start), catch: (cause) => cause }))

@@ -14,6 +14,7 @@ import { grantedSubagentTypes, personaToolNames } from "../../../../workflows/ag
 import { personaInstructions } from "../../../../workflows/agents/persona-instructions.js"
 import type { PromptKind } from "../../../agent-runtime/system-prompt.js"
 import { CHECKPOINT_TOOL_NAMES } from "../../../../infra/agent-assets/session-notes.js"
+import { availableToolNames, isReadOnlyPersona } from "../../../agent-runtime/persona-tool-rules.js"
 
 interface PreparedDispatch {
   readonly ok: true
@@ -34,13 +35,13 @@ interface PreparedDispatch {
 
 type DispatchPreparation = PreparedDispatch | { readonly ok: false; readonly error: SubagentResult }
 
-export function prepareSubagentTools(input: {
+export async function prepareSubagentTools(input: {
   readonly agent: AgentDefinition
   readonly context: SubagentContext
   readonly deps: SubagentDispatchDeps
   readonly childDepth: number
   readonly continuation?: ContinuationTarget
-}): {
+}): Promise<{
   readonly ok: true
   readonly toolNames: string[]
   /** Ambient tools that the grant would leave callable and the child may not call. */
@@ -49,7 +50,7 @@ export function prepareSubagentTools(input: {
   readonly task: string
   readonly maxTurns: number
   readonly grantedTypes: ReadonlySet<string>
-} | { readonly ok: false; readonly error: SubagentResult } {
+} | { readonly ok: false; readonly error: SubagentResult }> {
   const { agent, context, deps, childDepth, continuation } = input
   const grantedTypes = grantedSubagentTypes(agent, deps.agentRegistry)
   const allowNestedDispatch = childDepth < 3
@@ -74,29 +75,44 @@ export function prepareSubagentTools(input: {
   }
   // `toolNames` is the child's grant for both kinds: every agent of a chat
   // tree is advertised the same tools, so a general clone and a persona
-  // differ only in which of them their calls may reach.
+  // differ only in which of them their calls may reach. A persona's declared
+  // tools are a ceiling that the live selection narrows (ARCH-STRUCTURE-031).
   let toolNames: string[]
-  let instructions: string
   if (agent.kind === "general") {
     if (!context.availableTools) {
       return { ok: false, error: { content: "The 'general' subagent derives its tools from your registry-approved tool surface, but this context does not expose that surface. Dispatch a persona subagent instead.", outcome: "error" } }
     }
     toolNames = [...cloneInheritedToolNames(context.availableTools, toolRegistryFromComposition(deps.moduleSelection())), "handoff", ...CHECKPOINT_TOOL_NAMES]
     if (grantedTypes.size > 0) toolNames.push("subagent", "process")
-    // A general clone works from its assignment alone: the parent's prompt
-    // states what it needs.
-    instructions = ""
   } else {
-    toolNames = personaToolNames(agent, deps.agentRegistry)
-    instructions = personaInstructions(agent, deps.skills)
+    toolNames = availableToolNames(personaToolNames(agent, deps.agentRegistry), deps.moduleSelection())
   }
   if (!allowNestedDispatch) toolNames = toolNames.filter((name) => name !== "subagent" && name !== "process")
+  // The child's own first request plans its tools from this grant, so its
+  // text names what that plan lets it call, whatever the dispatcher's own
+  // grant: a tool whose module is enabled but that cannot run, such as web
+  // with no search backend, or a module turned off after its tree captured
+  // the composition, is left out. A declared tool that the plan cannot run is
+  // dropped from the grant; the handoff, checkpoint, and nested-dispatch tools
+  // that every child gets by construction are not declared and are kept.
+  const has = await deps.planChildCapabilities({
+    purpose: { kind: "subagent", renderAs: promptKind, parentToolUseId: context.toolUseId ?? "dispatch" },
+    toolGrant: toolNames,
+    ...(withheldTools.length > 0 ? { withheldTools } : {}),
+    allowedSubagentTypes: grantedTypes,
+    ...(isReadOnlyPersona(agent) ? { readOnly: true } : {}),
+  })
+  if (agent.kind === "persona") toolNames = toolNames.filter((name) => !agent.tools.includes(name) || has(name))
+  // A general clone works from its assignment alone: the parent's prompt
+  // states what it needs. A persona's instructions render for the child's
+  // own check.
+  const instructions = agent.kind === "general" ? "" : personaInstructions(agent, deps.skills, has)
   return {
     ok: true,
     toolNames,
     withheldTools,
     promptKind,
-    task: buildSubagentTask(instructions, toolNames, agent.maxTurns),
+    task: buildSubagentTask(instructions, has, agent.maxTurns),
     maxTurns: agent.maxTurns,
     grantedTypes,
   }
@@ -129,6 +145,10 @@ export async function prepareSubagentDispatch(
   }
 
   const { agentType, prompt, agent, fork } = validation.dispatch
+  const availability = deps.definitionAvailability.personas.get(agentType)
+  if (!continuation && availability?.available === false) {
+    return { ok: false, error: { outcome: "error", content: `Subagent '${agentType}' cannot run: ${availability.reason ?? "it is unavailable"}. Dispatch another agent type or do the work directly.` } }
+  }
   if (continuation) {
     if (agent.kind !== continuation.personaKind) return { ok: false, error: { content: `Subagent resume inputs no longer match the durable run: persona kind ${continuation.personaKind} is now ${agent.kind}`, outcome: "error" } }
     const composition = deps.moduleSelection()

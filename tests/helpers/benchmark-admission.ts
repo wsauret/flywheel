@@ -36,6 +36,7 @@ export function dryRunBenchmarkRuntime(dispose: () => void): OwnedBenchmarkRunti
       moduleSelection: composeFirstPartyModules,
       createAgent: paidCall,
       prepareRequest: paidCall,
+      planCapabilities: paidCall,
       createLLMClient: paidCall,
       captureProviderConnection: paidCall,
       runOwnedCommand: paidCall,

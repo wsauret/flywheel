@@ -66,6 +66,8 @@ export interface ChatSessionDeps {
   createAgent: AgentFactory
   /** Prepares the next request of the session's chat and its hosts for their pre-starts (`SessionEngines`). */
   prepareRequest: import("../agent-runtime/request-preparation.js").RequestPreparer
+  /** Answers the agent check of the chat's next request for `ChatRunner.capabilities`. */
+  planCapabilities: import("../agent-runtime/request-preparation.js").CapabilityPlanner
   createLLMClient: LLMClientFactory
   captureProviderConnection: import("../agent-runtime/factory.js").CaptureProviderConnection
   onNotification?: AgentOptions["onNotification"]
@@ -419,6 +421,7 @@ export function createChatSession(callbacks: ChatCallbacks, deps: ChatSessionDep
     chatModuleHosts: lifecycle.chatModuleHosts,
     onModuleRuntimesChange: lifecycle.onModuleRuntimesChange,
     hold: () => inSession(() => lifecycle.hold()),
+    capabilities: () => inSession(() => lifecycle.capabilities()),
     setShown: (shown) => inSession(() => { lifecycle.setShown(shown) }),
     seedDisplayBlocks: (blocks: readonly AnyBlock[]) => inSession(() => session.seedBlocks(blocks)),
     publishCommittedNotice: (notice) => inSession(() => { session.pushSystemMessage(notice.message, notice.timestamp, { id: notice.id }); session.flush() }),

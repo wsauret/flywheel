@@ -51,7 +51,7 @@ beforeEach(() => {
 
 describe("durable learning writes follow projectRoot, not executionCwd", () => {
   it("writes project memory into the project directory only", async () => {
-    const tool = createMemoryTool({ accountHome: HOME, sessionId: "sess-1" });
+    const tool = createMemoryTool({ accountHome: HOME, sessionId: "sess-1" }, () => true);
 
     const result = await tool.execute(
       { title: "Bun is the runtime", action: "add", content: "Bun is the runtime, never Node." },

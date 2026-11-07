@@ -24,13 +24,18 @@ const persona = (name: string, role: string, overrides: Partial<Extract<AgentDef
 })
 
 const reviewer = persona("reviewer", "reviewer", { tools: ["read", "search"], requiredSkills: ["code-review"] })
+/** Declares the memory tool, which Learning serves: a ceiling, not a requirement. */
 const writer = persona("writer", "implementer", { tools: ["read", "memory"] })
-/** Grants the implementer role, so it can reach `writer` and its memory tool. */
+/** Grants the implementer role, so it can reach `writer`. */
 const lead = persona("lead", "lead", { subagentRoles: ["implementer"] })
-/** Two grant hops from `writer`, and one from `reviewer`. */
+/** One grant hop from `reviewer`, which requires a skill. */
 const coordinator = persona("coordinator", "coordinator", { subagentRoles: ["lead", "reviewer"] })
+/** Requires a skill, two grant hops below `director`. */
+const drafter = persona("drafter", "drafter", { requiredSkills: ["code-review"] })
+const editor = persona("editor", "editor", { subagentRoles: ["drafter"] })
+const director = persona("director", "director", { subagentRoles: ["editor"] })
 const ping = persona("ping", "ping", { subagentRoles: ["pong"] })
-const pong = persona("pong", "pong", { tools: ["read", "memory"], subagentRoles: ["ping"] })
+const pong = persona("pong", "pong", { requiredSkills: ["code-review"], subagentRoles: ["ping"] })
 
 const plain = testSkill("plain")
 const codeReview = testSkill("code-review")
@@ -148,12 +153,13 @@ describe("definition availability", () => {
     expect(snapshot.skills.get("cyclic-b")?.available).toBe(true)
   })
 
-  test("a persona derives requirements from requiredSkills, tools, and dispatchability", async () => {
+  test("a persona derives requirements from requiredSkills and dispatchability, and its declared tools are a ceiling, not a requirement", async () => {
     const withSubagents = await snapshotOf(["skills", "subagents"])
     expect(withSubagents.personas.get("reviewer")?.available).toBe(true)
-    expect(withSubagents.personas.get("writer")?.missing).toEqual(["learning"])
+    // Learning, which serves the declared memory tool, is off: the persona stays.
+    expect(withSubagents.personas.get("writer")?.available).toBe(true)
 
-    const withoutSkills = await snapshotOf(["subagents", "learning"])
+    const withoutSkills = await snapshotOf(["subagents"])
     expect(withoutSkills.personas.get("reviewer")?.missing).toEqual(["skills"])
     expect(withoutSkills.personas.get("writer")?.available).toBe(true)
 
@@ -164,32 +170,29 @@ describe("definition availability", () => {
 
   test("a persona requires what the personas its roles grant require", async () => {
     const personas = personaRevision(reviewer, writer, lead, coordinator)
-    const snapshot = await snapshotOf(["skills", "subagents"], { personas })
-    // lead grants the implementer role, and the only implementer writes memory.
-    expect(snapshot.personas.get("lead")?.missing).toEqual(["learning"])
-    expect([...snapshot.availablePersonas.keys()].sort()).toEqual(["reviewer"])
+    const snapshot = await snapshotOf(["subagents"], { personas })
+    // coordinator grants the reviewer role, and the only reviewer requires a skill.
+    expect(snapshot.personas.get("coordinator")?.missing).toEqual(["skills"])
+    expect([...snapshot.availablePersonas.keys()].sort()).toEqual(["lead", "writer"])
   })
 
   test("a persona requirement carries through nested role grants", async () => {
-    const personas = personaRevision(reviewer, writer, lead, coordinator)
-    // coordinator -> lead -> writer for Learning, coordinator -> reviewer for Skills.
+    const personas = personaRevision(drafter, editor, director)
+    // director -> editor -> drafter for Skills.
     const nested = await snapshotOf(["subagents"], { personas })
-    expect(nested.personas.get("coordinator")?.missing).toEqual(["learning", "skills"])
+    expect(nested.personas.get("director")?.missing).toEqual(["skills"])
 
-    const withLearning = await snapshotOf(["subagents", "learning"], { personas })
-    expect(withLearning.personas.get("coordinator")?.missing).toEqual(["skills"])
-
-    const whole = await snapshotOf(["subagents", "learning", "skills"], { personas })
-    expect(whole.personas.get("coordinator")?.available).toBe(true)
+    const whole = await snapshotOf(["subagents", "skills"], { personas })
+    expect(whole.personas.get("director")?.available).toBe(true)
   })
 
   test("a role grant cycle terminates and folds both members' requirements", async () => {
     const personas = personaRevision(ping, pong)
     const snapshot = await snapshotOf(["subagents"], { personas })
-    expect(snapshot.personas.get("ping")?.missing).toEqual(["learning"])
-    expect(snapshot.personas.get("pong")?.missing).toEqual(["learning"])
+    expect(snapshot.personas.get("ping")?.missing).toEqual(["skills"])
+    expect(snapshot.personas.get("pong")?.missing).toEqual(["skills"])
 
-    const enabled = await snapshotOf(["subagents", "learning"], { personas })
+    const enabled = await snapshotOf(["subagents", "skills"], { personas })
     expect([...enabled.availablePersonas.keys()].sort()).toEqual(["ping", "pong"])
   })
 

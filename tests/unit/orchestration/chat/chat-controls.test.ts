@@ -49,6 +49,7 @@ function lifecycleStub(): ChatPorts {
     onModuleRuntimesChange: () => () => {},
     backgroundTasks: createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {}, onChange: () => {} }),
     hold: async () => NO_MODULE_RUNTIMES,
+    capabilities: async () => () => true,
     turnState: "active",
     enqueueInput(_input: ChatInputLike) {},
     deliverHeldMessage: async () => { throw new Error("unused") },

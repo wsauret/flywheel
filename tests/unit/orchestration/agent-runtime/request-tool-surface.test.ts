@@ -1,11 +1,11 @@
 import { describe, expect, spyOn, test } from "bun:test";
-import { createRequestToolSurface } from "../../../../src/orchestration/agent-runtime/request-tool-surface.js";
-import { planToolExposure, type ToolExposurePlan } from "../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
+import { createRequestToolSurface, type PlannedRequest } from "../../../../src/orchestration/agent-runtime/request-tool-surface.js";
+import { planToolExposure } from "../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
 import type { RuntimeTool } from "../../../../src/orchestration/agent-runtime/tools/types.js";
 import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../src/orchestration/agent-runtime/model-interaction-profile.js";
 import { NO_CAPABILITY_ACCESS } from "../../../../src/orchestration/agent-runtime/tools/types.js";
 import { executePreparedTool, prepareToolCall } from "../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
-import { fixedRequestToolSurface, testKernelToolDeps, testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.js";
+import { fixedRequestToolSurface, testDefinitionAvailability, testKernelToolDeps, testRuntimeConfigCapture, plannedRequest } from "../../../helpers/request-tool-surface.js";
 import { NO_MODULE_RUNTIMES } from "../../../../src/infra/module-runtime.js";
 import { composeFirstPartyModules, composeRealmModuleSnapshot, SHIPPED_MODULES, type FirstPartyModule } from "../../../../src/orchestration/modules.js";
 import { hashToolInputFormat } from "../../../../src/orchestration/session/provider-request-audit-hash.js";
@@ -34,9 +34,9 @@ function plan(
   tools: readonly RuntimeTool[],
   omitted: ReadonlyArray<{ name: string; reason: string }> = [],
   registrationIdentities = new Map(tools.map((tool) => [tool.name, tool.name])),
-): ToolExposurePlan {
+): PlannedRequest {
   const eligibleTools = new Map(tools.map((tool) => [tool.name, tool]));
-  return { eligibleTools, tools: eligibleTools, omitted, usable: new Set(eligibleTools.keys()), registrationIds: new Map(tools.map((tool) => [tool.name, tool.name])), registrationIdentities };
+  return { eligibleTools, tools: eligibleTools, omitted, usable: new Set(eligibleTools.keys()), turnedOff: [], registrationIds: new Map(tools.map((tool) => [tool.name, tool.name])), registrationIdentities, definitionAvailability: testDefinitionAvailability() };
 }
 
 describe("request tool surface", () => {
@@ -72,9 +72,9 @@ describe("request tool surface", () => {
 
     const moduleSnapshot = composeFirstPartyModules([...SHIPPED_MODULES, module]);
     const restrictedOwner = await createRequestToolSurface(
-      () => planToolExposure({
+      () => plannedRequest(planToolExposure({
         kernel: testKernelToolDeps({ moduleSnapshot }), modules: NO_MODULE_RUNTIMES, profile: "none",
-      }), () => moduleSnapshot, testRuntimeConfigCapture,
+      })), () => moduleSnapshot, testRuntimeConfigCapture,
     );
     const restricted = await restrictedOwner.resolve();
     const restrictedPrompt = await restricted.prepareStablePrompt(() => stableSystemPrompt("system"), DEFAULT_MODEL_INTERACTION_PROFILE);

@@ -9,6 +9,9 @@ import { prepareSubagentTools } from "../../../../src/orchestration/modules/suba
 import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution.js"
 import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
+import { composeFirstPartyModules, type ModuleId } from "../../../../src/orchestration/modules.js"
+import { definitionAvailabilityOf } from "../../../../src/orchestration/app-service/definition-availability.js"
+import { agentCapabilityCheck } from "../../../../src/orchestration/agent-runtime/capability-checks.js"
 import { makeContext, makeDeps } from "../agent-runtime/subagent/_fixtures.js"
 
 // A workflow agent whose record names a persona gets what a dispatch of
@@ -27,32 +30,34 @@ const sections = (text: string): readonly string[] => text.split(/\n\n(?=#{1,2} 
  *  brief and output contract take their place. */
 const SUBAGENT_ONLY = ["# Delegated Subtask", "## Closure", "## Turn Economy", "## Handoff"]
 
-function subagentRun(name: string) {
+async function subagentRun(name: string) {
   const persona = revision.personas.get(name)
   if (persona === undefined) throw new Error(`persona ${name} is not installed`)
   const deps = makeDeps({ agentRegistry: revision.personas, skills: revision.skills })
-  const prepared = prepareSubagentTools({ agent: persona, context: makeContext(), deps, childDepth: 1 })
+  const prepared = await prepareSubagentTools({ agent: persona, context: makeContext(), deps, childDepth: 1 })
   if (!prepared.ok) throw new Error(prepared.error.content)
   return { persona, ...prepared }
 }
 
-function workflowRun(name: string) {
+function workflowRun(name: string, disabledModuleIds: readonly ModuleId[] = [], planRuns: (tool: string) => boolean = () => true) {
   const workflow = Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
     id: "review", name: "Review",
     phases: [{ phase: "review", persona: name, brief: "Review the change.", name: "Review", writes: [] }],
   })
   const agent = resolveWorkflowAgents(workflow).get("review")
   if (agent === undefined) throw new Error("the review agent did not resolve")
-  const run = agentPersonaRun({ agent, personas: revision.personas, skills: revision.skills, sessionMessaging: false })
+  const modules = composeFirstPartyModules(undefined, disabledModuleIds)
+  const run = agentPersonaRun({ agent, personas: revision.personas, skills: revision.skills, sessionMessaging: false, modules })
   if (run === undefined) throw new Error("the review agent runs no persona")
-  return run
+  // The check of an agent that can call each tool of its grant that its run's plan runs (`planRuns`).
+  return { ...run, instructions: run.instructions(agentCapabilityCheck(new Set(run.toolGrant.filter(planRuns)), definitionAvailabilityOf(revision, modules.enabledModuleIds))) }
 }
 
 describe("a workflow agent that runs as a persona", () => {
   it.each(["reviewer-code-security", "reviewer-code-elegance", "implementer"].filter((name) => revision.personas.get(name)?.kind === "persona"))(
     "gets the instructions, tools, tool rules, shell, turn limit, and role of a %s subagent",
-    (name) => {
-      const subagent = subagentRun(name)
+    async (name) => {
+      const subagent = await subagentRun(name)
       const run = workflowRun(name)
       // The trial advisor default adds the advisor and the dispatch pair it needs.
       expect(run.allowedSubagentTypes.has("advisor")).toBe(true)
@@ -68,10 +73,40 @@ describe("a workflow agent that runs as a persona", () => {
     },
   )
 
-  it("does not get the advisor default when it runs as the advisor, so the advisor stays a leaf", () => {
+  it("does not get the advisor default when it runs as the advisor, so the advisor stays a leaf", async () => {
     const run = workflowRun("advisor")
     expect([...run.allowedSubagentTypes]).toEqual([])
-    expect(run.toolGrant).toEqual(subagentRun("advisor").toolNames)
+    expect(run.toolGrant).toEqual((await subagentRun("advisor")).toolNames)
+  })
+
+  it("runs with only the declared tools whose modules are on, and states no rule or line for a tool it lost", () => {
+    const all = workflowRun("implementer")
+    const withoutBash = workflowRun("implementer", ["bash"])
+    expect(all.toolGrant).toContain("bash")
+    expect(all.instructions).toContain("## Git Discipline")
+    expect(withoutBash.toolGrant).toEqual(all.toolGrant.filter((tool) => tool !== "bash"))
+    expect(withoutBash.instructions).not.toContain("## Git Discipline")
+    // The Git rule follows the run's planned check, not the grant: a tree that
+    // captured Bash off leaves bash in the grant and out of the plan.
+    const bashUnplanned = workflowRun("implementer", [], (tool) => tool !== "bash")
+    expect(bashUnplanned.toolGrant).toContain("bash")
+    expect(bashUnplanned.instructions).not.toContain("## Git Discipline")
+    const FILE_TOOLS_LINE = "- Use the read, file edit, and write tools for project files; shell sed, cat, and heredoc scripts are not substitutes."
+    const SEARCH_LINE = "- Use the search and list tools to find project files and text; shell grep and ls are not substitutes."
+    expect(all.instructions).toContain(FILE_TOOLS_LINE)
+    expect(all.instructions).toContain(SEARCH_LINE)
+    const withoutDiscovery = workflowRun("implementer", ["discovery"])
+    expect(withoutDiscovery.toolGrant).not.toContain("search")
+    expect(withoutDiscovery.instructions).toContain(FILE_TOOLS_LINE)
+    expect(withoutDiscovery.instructions).not.toContain(SEARCH_LINE)
+    // With File tools off and Discovery and Bash on, the implementer is not
+    // told to use file tools it lacks, nor that its shell is no substitute.
+    const withoutFileTools = workflowRun("implementer", ["file-tools"])
+    expect(withoutFileTools.toolGrant).not.toContain("read")
+    expect(withoutFileTools.toolGrant).toContain("bash")
+    expect(withoutFileTools.instructions).not.toContain(FILE_TOOLS_LINE)
+    expect(withoutFileTools.instructions).toContain("- Read and change project files with the tools you hold.")
+    expect(withoutFileTools.instructions).toContain(SEARCH_LINE)
   })
 })
 

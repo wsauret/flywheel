@@ -3,6 +3,7 @@ import type { ToolCall } from "../llm/types.js";
 import { bashCommandNodes, loadBashParser } from "./bash-parser.js";
 import { extractShellCommand, type ParsedCommand } from "./bash-command-parts.js";
 import { scopeAdmission, shellWriteViolation, type WriteScope } from "./bash-write-targets.js";
+import type { CapabilityCheck } from "../../../infra/capability-text.js";
 import { DebugLog } from "../../../infra/debug-log.js";
 import { WORKTREE_LIFECYCLE_SKILL_ID } from "../../../infra/directory-authorities.js";
 import { Log } from "../../../infra/log.js";
@@ -19,46 +20,54 @@ const PLAIN_BUN_RUN_PACKAGE_SCRIPT = /^\s*bun\s+run\s+([A-Za-z0-9:_-]+)(?:\s+[A-
 interface InteractiveRule {
   matches: (cmd: ParsedCommand) => boolean;
   fallbackPattern: RegExp;
-  guidance: string;
+  /** The alternative to name, from the tools that the calling agent holds. */
+  guidance: (has: CapabilityCheck) => string;
+}
+
+const EVERY_CAPABILITY: CapabilityCheck = () => true;
+
+function editorGuidance(has: CapabilityCheck): string {
+  const tools = [...(has("edit") ? ["the file edit tool for existing files"] : []), ...(has("write") ? ["`write` for new files"] : [])];
+  return tools.length > 0 ? `editors can't run interactively - use ${tools.join(", ")}` : "editors can't run interactively - use a non-interactive command";
 }
 
 const INTERACTIVE_RULES: readonly InteractiveRule[] = [
   {
     matches: (cmd) => new Set(["vim", "nvim", "nano", "emacs", "pico"]).has(cmd.name),
     fallbackPattern: /(?:^|[;&|(\n])\s*(?:vim|nvim|nano|emacs|pico)(?:\s|$|[;&|)])/,
-    guidance: "editors can't run interactively - use the file edit tool for existing files, `write` for new files",
+    guidance: editorGuidance,
   },
   {
     matches: (cmd) => new Set(["less", "more", "most"]).has(cmd.name),
     fallbackPattern: /(?:^|[;&|(\n])\s*(?:less|more|most)(?:\s|$|[;&|)])/,
-    guidance: "print the file with `cat` or `sed -n`, or use the read tool",
+    guidance: (has) => has("read") ? "print the file with `cat` or `sed -n`, or use the read tool" : "print the file with `cat` or `sed -n`",
   },
   {
     matches: (cmd) => new Set(["top", "htop", "btop", "atop"]).has(cmd.name),
     fallbackPattern: /(?:^|[;&|(\n])\s*(?:top|htop|btop|atop)(?:\s|$|[;&|)])/,
-    guidance: "use `ps aux` or `ps -eo ...` for a one-shot process snapshot",
+    guidance: () => "use `ps aux` or `ps -eo ...` for a one-shot process snapshot",
   },
   {
     matches: (cmd) => cmd.name === "man" && cmd.args.length > 0,
     fallbackPattern: /(?:^|[;&|(\n])\s*man\s+\S+/,
-    guidance: "use `--help` on the command or read the manpage source if needed",
+    guidance: () => "use `--help` on the command or read the manpage source if needed",
   },
   {
     matches: (cmd) => new Set(["python", "python2", "python3", "ipython", "node", "ruby", "irb", "php", "lua"]).has(cmd.name)
       && !cmd.hasHeredocRedirect
       && (cmd.args.length === 0 || (cmd.args.length === 1 && cmd.args[0] === "-i")),
     fallbackPattern: /^\s*(?:python3?|ipython|node|ruby|irb|php|lua)(?:\s+-i)?\s*$/,
-    guidance: "pass `-c 'code'` (or `-e`) to run inline, or write a script file and execute it",
+    guidance: () => "pass `-c 'code'` (or `-e`) to run inline, or write a script file and execute it",
   },
   {
     matches: (cmd) => cmd.name === "telnet" || cmd.name === "ftp",
     fallbackPattern: /(?:^|[;&|(\n])\s*(?:telnet|ftp)(?:\s|$|[;&|)])/,
-    guidance: "use non-interactive alternatives: `curl`, `wget`, `ncat --exec`",
+    guidance: () => "use non-interactive alternatives: `curl`, `wget`, `ncat --exec`",
   },
   {
     matches: (cmd) => cmd.name === "nc" && cmd.args.includes("-l"),
     fallbackPattern: /(?:^|[;&|(\n])\s*nc\s+[^;&|\n]*-l(?:\s|$)/,
-    guidance: "use non-interactive alternatives: `curl`, `wget`, `ncat --exec`",
+    guidance: () => "use non-interactive alternatives: `curl`, `wget`, `ncat --exec`",
   },
 ];
 
@@ -230,7 +239,7 @@ const SLEEP_RULE: ForbiddenRule = {
   matches: (c) => c.name === "sleep" && sleepSeconds(c.args) > MAX_SLEEP_SECONDS,
   fallbackPattern: /\bsleep\s+(?:3[1-9](?!\d)|[4-9]\d(?!\d)|\d{3,}|\d+(?:\.\d+)?[mhd]\b)/,
   message:
-    "Command blocked: sleeping longer than 30s is disallowed, foreground or backgrounded. A sleep guesses how long to wait; wait on the event instead. To wait for work to finish, run that command itself in the foreground: it blocks until it exits (bound slow ones with the timeout parameter, up to 3600s). To wait for a condition, loop on a check with short sleeps, such as `until <check>; do sleep 5; done`, bounded by the timeout parameter. To wait for a managed background command, subagent, or workflow, use `process` with `{ action: \"wait\" }` and a soft_timeout: its completion wakes you. Never use shell-level &, nohup, or disown.",
+    "Command blocked: sleeping longer than 30s is disallowed, foreground or backgrounded. A sleep guesses how long to wait; wait on the event instead. To wait for work to finish, run that command itself in the foreground: it blocks until it exits (bound slow ones with the timeout parameter, up to 3600s). To wait for a condition, loop on a check with short sleeps, such as `until <check>; do sleep 5; done`, bounded by the timeout parameter. To wait for managed work, use `process` with `{ action: \"wait\" }` and a soft_timeout: its completion wakes you. Never use shell-level &, nohup, or disown.",
 };
 
 interface BashCommandInspection {
@@ -279,19 +288,25 @@ export interface BashInterception {
 export interface BashPolicyOptions {
   /** Runner-local skill identities whose bodies loaded successfully. */
   effectiveBundledSkillIds?: ReadonlySet<string>;
-  /** Present at execution, after the tool resolves its per-call cwd. */
+  /** The agent check of the calling agent (ARCH-CONTEXT-033). Refusals name only the tools it holds, and while
+   *  the worktree-lifecycle skill is unavailable to it, for example with Skills off, no method exists for it to
+   *  load, so its worktree commands run without the lifecycle gate (PI-CAP-021). Absent: every term holds. */
+  capabilities?: CapabilityCheck;
+  /** Present at execution, after the tool resolves its per-call cwd, unless
+   *  the person turned the write guard off for a writing agent. */
   scope?: WriteScope;
   /** Content-free correlation for the one refusal diagnostic. */
   ids?: { readonly sessionId?: string; readonly toolUseId?: string; readonly modelRequestId?: string };
 }
 
 // Without parsed commands (analysis unavailable), the text patterns decide.
-function treeSafetyBlock(command: string, commands: readonly ParsedCommand[] | undefined, options: Pick<BashPolicyOptions, "effectiveBundledSkillIds"> | undefined): BashInterception | null {
+function treeSafetyBlock(command: string, commands: readonly ParsedCommand[] | undefined, options: Pick<BashPolicyOptions, "effectiveBundledSkillIds" | "capabilities"> | undefined): BashInterception | null {
   for (const rule of TREE_SAFETY_RULES) {
     if (commands ? commands.some((cmd) => rule.matches(cmd)) : rule.fallbackPattern.test(command)) return { message: rule.message };
   }
+  if (options?.capabilities?.(`skill:${WORKTREE_LIFECYCLE_SKILL_ID}`) === false || options?.effectiveBundledSkillIds?.has(WORKTREE_LIFECYCLE_SKILL_ID)) return null;
   const worktree = commands ? commands.some((cmd) => isGitWorktreeCommand(cmd)) : GIT_WORKTREE_FALLBACK_PATTERN.test(command);
-  if (worktree && !options?.effectiveBundledSkillIds?.has(WORKTREE_LIFECYCLE_SKILL_ID)) return { message: WORKTREE_LIFECYCLE_BLOCK_MESSAGE };
+  if (worktree) return { message: WORKTREE_LIFECYCLE_BLOCK_MESSAGE };
   return null;
 }
 
@@ -328,7 +343,7 @@ export async function interceptBashCommand(command: string, options?: BashPolicy
     if (isPlainBunRunPackageScript(command)) return null;
     for (const rule of INTERACTIVE_RULES) {
       const hit = command.match(rule.fallbackPattern);
-      if (hit) return interactiveBlock(hit[0], rule.guidance);
+      if (hit) return interactiveBlock(hit[0], rule.guidance(options?.capabilities ?? EVERY_CAPABILITY));
     }
     return null;
   }
@@ -340,7 +355,7 @@ export async function interceptBashCommand(command: string, options?: BashPolicy
     if (commands.some((cmd) => SLEEP_RULE.matches(cmd))) return { message: SLEEP_RULE.message };
     for (const cmd of commands) {
       for (const rule of INTERACTIVE_RULES) {
-        if (rule.matches(cmd)) return interactiveBlock([cmd.name, ...cmd.rawArgs].join(" "), rule.guidance);
+        if (rule.matches(cmd)) return interactiveBlock([cmd.name, ...cmd.rawArgs].join(" "), rule.guidance(options?.capabilities ?? EVERY_CAPABILITY));
       }
     }
     return await outsideWriteBlock(inspection, options);

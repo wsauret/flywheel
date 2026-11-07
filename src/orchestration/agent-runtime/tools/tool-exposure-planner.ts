@@ -21,7 +21,7 @@ import type { FirstPartyModuleComposition, ToolExposureGate } from "../../module
 import type { KernelToolDeps } from "./kernel-tool-deps.js";
 import { exposedToolName, toolRegistryFromComposition, type DeferredToolFactory, type RegisteredTool, type ToolFactoryResult, type ToolRegistry } from "./tool-registry.js";
 import type { AdvertisedTool, RuntimeTool, ToolProfile } from "./types.js";
-import { moduleDisabledReason } from "../../../protocol/module-ids.js";
+import { canonicalModuleIds, moduleDisabledReason, type ModuleId } from "../../../protocol/module-ids.js";
 
 const CONTRACT_MISMATCH_REASON = "not selected by the request file edit contract";
 const NO_GATE_OMISSIONS: ReadonlyMap<string, string> = new Map();
@@ -66,6 +66,12 @@ export interface ToolGrant {
   readonly withheld?: ReadonlySet<string>;
 }
 
+/** The grant of a caller that names a persona's tools. It leaves the ambient tools callable unless it names no tool
+ *  at all. */
+export function callerToolGrant(tools: readonly string[], withheld?: readonly string[]): ToolGrant {
+  return { tools: new Set(tools), ambient: tools.length > 0, ...(withheld ? { withheld: new Set(withheld) } : {}) };
+}
+
 export interface ToolExposurePlan {
   /** Provider-visible name to its exact registration id. */
   registrationIds: ReadonlyMap<string, string>;
@@ -81,6 +87,10 @@ export interface ToolExposurePlan {
    *  planned tool that is neither ungranted nor unusable. The one source of
    *  the agent's tool notice and of its refusals. */
   usable: ReadonlySet<string>;
+  /** The modules whose advertised tools, or advertised parts of a tool, this agent's calls are refused because its
+   *  own selection turned them off, in canonical order: exactly what execution refuses for a turned-off module. A
+   *  tree-hosted agent's narrowing statement names them (ARCH-CONTEXT-034). */
+  turnedOff: readonly ModuleId[];
   /** Complete skill revision advertised and executed by this request. */
   skillRegistry?: SkillRegistryRevision;
 }
@@ -99,6 +109,8 @@ interface Deferred {
   readonly granted: boolean;
   /** The reason that the agent may not call the deferred tool, which stays advertised. */
   readonly unusable?: string;
+  /** The turned-off modules that `unusable` names. */
+  readonly turnedOff?: readonly string[];
 }
 
 export async function planToolExposure(input: ToolExposureInput): Promise<ToolExposurePlan> {
@@ -111,6 +123,7 @@ export async function planToolExposure(input: ToolExposureInput): Promise<ToolEx
       registrationIds: new Map(),
       registrationIdentities: new Map(),
       usable: new Set(),
+      turnedOff: [],
       omitted: [...new Set([...registry].map(([id, registration]) => exposedToolName(id, registration)))]
         .map((name) => ({ name, reason: "excluded by the no-tool profile" })),
     };
@@ -132,8 +145,8 @@ export async function planToolExposure(input: ToolExposureInput): Promise<ToolEx
   let deferred: Deferred | undefined;
   const ungranted = new Set<string>();
   const unusable = new Set<string>();
+  const turnedOff = new Set<string>();
   const liveRegistry = input.live && toolRegistryFromComposition(input.live);
-  const liveModuleIds = new Set(input.live?.enabledModuleIds);
 
   for (const [registrationId, registration] of registry) {
     const exposedName = exposedToolName(registrationId, registration);
@@ -156,7 +169,7 @@ export async function planToolExposure(input: ToolExposureInput): Promise<ToolEx
       omitted.push({ name: exposedName, reason: admission.omitted });
       continue;
     }
-    const turnedOffReason = admission.turnedOff;
+    const turnedOffReason = admission.turnedOff && moduleDisabledReason(admission.turnedOff);
     const built = registration.create({ kernel, modules });
     const advertisedUnusable = kernel.treeHosted
       ? turnedOffReason !== undefined ? advertisedOf(built, turnedOffReason) : built.unusable
@@ -166,6 +179,7 @@ export async function planToolExposure(input: ToolExposureInput): Promise<ToolEx
     if (tool) {
       if (!grants(input.granted, registration)) ungranted.add(tool.name);
       if (advertisedUnusable) unusable.add(tool.name);
+      for (const id of advertisedUnusable && admission.turnedOff ? admission.turnedOff : built.turnedOff ?? []) turnedOff.add(id);
       tools.set(tool.name, tool);
       registrationIds.set(tool.name, registrationId);
       registrationIdentities.set(tool.name, identity);
@@ -175,7 +189,7 @@ export async function planToolExposure(input: ToolExposureInput): Promise<ToolEx
     if (built.omissions) omitted.push(...built.omissions);
     if (built.deferred) {
       if (deferred) throw new Error(`Tool registrations '${deferred.registrationId}' and '${registrationId}' both defer construction`);
-      deferred = { create: built.deferred, registrationId, identity, granted: grants(input.granted, registration), ...(turnedOffReason === undefined ? {} : { unusable: turnedOffReason }) };
+      deferred = { create: built.deferred, registrationId, identity, granted: grants(input.granted, registration), ...(turnedOffReason === undefined ? {} : { unusable: turnedOffReason, turnedOff: admission.turnedOff }) };
     }
   }
   for (const name of contractMismatches) {
@@ -203,21 +217,20 @@ export async function planToolExposure(input: ToolExposureInput): Promise<ToolEx
     if (tool) tools.set(name, ungrantedTool(tool));
   }
 
-  const namespaces = new Set<string>();
+  let namespaces: ReadonlySet<string> = new Set();
   if (deferred) {
-    for (const contribution of kernel.moduleSnapshot.contributions) {
-      if (contribution.domain !== "codeTools") continue;
-      for (const namespace of contribution.value.namespaces?.({ kernel, modules }) ?? []) namespaces.add(namespace);
-      const turnedOff = input.live && !liveModuleIds.has(contribution.module) ? moduleDisabledReason([contribution.module]) : undefined;
-      for (const created of contribution.value.create({ kernel, modules })) {
-        const tool = turnedOff === undefined ? created : unusableTool(created, turnedOff);
-        if (turnedOff !== undefined) unusable.add(tool.name);
-        tools.set(tool.name, tool);
-        // A module's code-only tools execute only through the deferred tool,
-        // so its registration is their capability authority for dispatch-time admission.
-        registrationIdentities.set(tool.name, deferred.identity);
-        registrationIds.set(tool.name, deferred.registrationId);
+    const codeOnly = codeOnlyTools(input);
+    namespaces = codeOnly.namespaces;
+    for (const { tool, turnedOff: module } of codeOnly.entries) {
+      if (module !== undefined) {
+        unusable.add(tool.name);
+        turnedOff.add(module);
       }
+      tools.set(tool.name, tool);
+      // A module's code-only tools execute only through the deferred tool,
+      // so its registration is their capability authority for dispatch-time admission.
+      registrationIdentities.set(tool.name, deferred.identity);
+      registrationIds.set(tool.name, deferred.registrationId);
     }
   }
   const eligibleTools = tools;
@@ -228,13 +241,17 @@ export async function planToolExposure(input: ToolExposureInput): Promise<ToolEx
     const tool = !deferred.granted ? ungrantedTool(built.tool) : deferred.unusable === undefined ? built.tool : unusableTool(built.tool, deferred.unusable);
     if (!deferred.granted) ungranted.add(tool.name);
     if (deferred.unusable !== undefined) unusable.add(tool.name);
+    for (const id of deferred.turnedOff ?? []) turnedOff.add(id);
     eligibleTools.set(tool.name, tool);
     providerTools.set(tool.name, tool);
     registrationIdentities.set(tool.name, deferred.identity);
     registrationIds.set(tool.name, deferred.registrationId);
   }
   const usable = new Set([...providerTools.keys()].filter((name) => !ungranted.has(name) && !unusable.has(name)));
-  return { eligibleTools, tools: providerTools, omitted, usable, registrationIds, registrationIdentities, ...(skillRegistry ? { skillRegistry } : {}) };
+  return {
+    eligibleTools, tools: providerTools, omitted, usable, turnedOff: canonicalModuleIds([...turnedOff]),
+    registrationIds, registrationIdentities, ...(skillRegistry ? { skillRegistry } : {}),
+  };
 }
 
 /** Whether the grant lets the agent call this registration's tool. */
@@ -254,13 +271,36 @@ function refusedTool(tool: AdvertisedTool, refusal: string): RuntimeTool {
  *  a tree-hosted agent, which omits only what its whole tree omits: a module that the tree's capture holds and the
  *  agent's own selection turned off (`ToolExposureInput.live`) leaves the tool advertised, and `turnedOff` names why
  *  the agent may not call it. */
-function moduleAdmission(kernel: KernelToolDeps, liveRegistry: ToolRegistry | undefined, registrationId: string, registration: RegisteredTool): { readonly omitted: string } | { readonly turnedOff?: string } {
+function moduleAdmission(kernel: KernelToolDeps, liveRegistry: ToolRegistry | undefined, registrationId: string, registration: RegisteredTool): { readonly omitted: string } | { readonly turnedOff?: readonly string[] } {
   const missing = registration.capabilities.filter((capability) => !kernel.capabilities.available(capability));
   if (missing.length > 0 && (!kernel.treeHosted || missing.some((capability) => !kernel.moduleSnapshot.enabledModuleIds.includes(capability)))) {
     return { omitted: moduleDisabledReason(missing) };
   }
   const turnedOff = [...liveRegistry?.has(registrationId) === false ? toolOwners(kernel.moduleSnapshot, registration.tool) : [], ...missing];
-  return turnedOff.length === 0 ? {} : { turnedOff: moduleDisabledReason(turnedOff) };
+  return turnedOff.length === 0 ? {} : { turnedOff };
+}
+
+interface CodeOnlyTools {
+  readonly namespaces: ReadonlySet<string>;
+  /** Each tool with the module that the agent's live selection turned off, when its call is refused for that. */
+  readonly entries: ReadonlyArray<{ readonly tool: RuntimeTool; readonly turnedOff?: string }>;
+}
+
+/** The code-only tools and namespaces that the modules' `codeTools` contributions give the deferred tool. A tool of a
+ *  module that the agent's own selection turned off (`ToolExposureInput.live`) stays advertised and refuses its calls. */
+function codeOnlyTools({ kernel, modules, live }: ToolExposureInput): CodeOnlyTools {
+  const namespaces = new Set<string>();
+  const entries: Array<CodeOnlyTools["entries"][number]> = [];
+  const liveModuleIds = new Set(live?.enabledModuleIds);
+  for (const contribution of kernel.moduleSnapshot.contributions) {
+    if (contribution.domain !== "codeTools") continue;
+    for (const namespace of contribution.value.namespaces?.({ kernel, modules }) ?? []) namespaces.add(namespace);
+    const off = live && !liveModuleIds.has(contribution.module) ? moduleDisabledReason([contribution.module]) : undefined;
+    for (const created of contribution.value.create({ kernel, modules })) {
+      entries.push(off === undefined ? { tool: created } : { tool: unusableTool(created, off), turnedOff: contribution.module });
+    }
+  }
+  return { namespaces, entries };
 }
 
 /** The modules whose tool contributions name `tool` in `composition`. */

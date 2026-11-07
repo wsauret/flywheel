@@ -8,6 +8,7 @@ import { createAttemptExecutor } from "../../../../src/workflows/vm/attempt-runn
 import { createWorkflowVmHost } from "../../../../src/workflows/vm/host.js"
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
 import { SqliteVmDriver } from "./_sqlite-vm-driver.js"
+import { EVERY_CAPABILITY } from "../../../helpers/attempt-brief.js"
 
 const drivers: SqliteVmDriver[] = []
 
@@ -51,11 +52,13 @@ describe("workflow VM production cutover", () => {
     const executed: string[] = []
     let reassessments = 0
     const runner = createAttemptExecutor({
+      unavailableToolReason: (term) => `${term} is off`,
       earlierCheckpoint: async () => null,
       resolvedAgents: vm.bindings,
       skills: vm.skills,
       context: stores.contextStore,
-      worker: async (step) => {
+      worker: async (step, brief) => {
+        await brief(EVERY_CAPABILITY)
         const itemId = step.item && typeof step.item === "object" && !Array.isArray(step.item) && "id" in step.item
           ? step.item.id
           : null

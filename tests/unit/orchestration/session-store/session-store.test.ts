@@ -61,6 +61,7 @@ function createMockChatRunner(sessionId: string): ChatRunner & { calls: string[]
     interruptForReplacement: async () => false,
     interruptPlannedCut: async () => "running",
     hold: async () => NO_MODULE_RUNTIMES,
+    capabilities: async () => () => true,
     seedDisplayBlocks: () => {},
     calls,
   }

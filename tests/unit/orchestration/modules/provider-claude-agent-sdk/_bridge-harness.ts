@@ -27,6 +27,7 @@ import { stopQuery, type CliFrame, type LaunchedQuery, type QueryLaunch } from "
 import { silentVersions } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/stderr-signals.js";
 import type { TranscriptFiles } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/transcript.js";
 import type { ProviderTransportContext } from "../../../../../src/orchestration/session/provider-request-audit-types.js";
+import { SHELL_CAPABILITIES } from "../../../../helpers/prompt-capabilities.js";
 
 /** The envelope fields that the CLI stamps on every message. The bridge reads none of them. */
 export const ENVELOPE = { uuid: "00000000-0000-4000-8000-000000000000", session_id: "s" } as const;
@@ -164,7 +165,7 @@ export const U2: MessageParam = { role: "user", content: [{ type: "text", text: 
  *  `U1_WITH_ENVIRONMENT` states. */
 export const MACOS_ENVIRONMENT = { kind: "environment", workingDirectory: "/work", isWorktree: false, isGitRepo: false, platform: "darwin", shell: "zsh", osVersion: "Darwin 25.3.0" } as const;
 
-export const U1_WITH_ENVIRONMENT: MessageParam = { role: "user", content: [{ type: "text", text: "Read a." }, { type: "text", text: environmentReminder(MACOS_ENVIRONMENT) }] };
+export const U1_WITH_ENVIRONMENT: MessageParam = { role: "user", content: [{ type: "text", text: "Read a." }, { type: "text", text: environmentReminder(MACOS_ENVIRONMENT, SHELL_CAPABILITIES) }] };
 
 /** The origins that preparation gives the blocks of a request that a test writes by hand, whose canonical entries the
  *  test does not state: each Flywheel reminder and each text of the shared host is the runtime's, and every other

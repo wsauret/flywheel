@@ -67,6 +67,7 @@ export function createAgentLoopToolContext(input: AgentLoopToolContextInput): Ag
     // and only the tools this agent may call, so a general clone inherits no
     // tool its parent's calls are refused.
     get availableTools() { return new Set(surface.current().usableToolNames) },
+    get capabilities() { return surface.current().capabilities },
     get toolNames() { return toolNameMap(surface.current().registrationIdentities) },
     get effectiveBundledSkillIds() { return options.effectiveBundledSkillIds },
     artifactScopeId: options.artifactScopeId,

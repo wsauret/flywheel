@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Deferred, Effect } from "effect";
-import type { ClaudeReminder } from "../../agent-runtime/llm/claude-reminders.js";
+import type { HostEnvironment } from "../../agent-runtime/llm/claude-reminders.js";
 import { cliRewritesImage } from "./cli-images.js";
 import { identityDifference, sameCliValue, type CliMessage, type CliView, type PlacedReminder, type QueryIdentity } from "./cli-view.js";
 import { inPlaceSystemPrompt, type CliFrame, type LaunchedQuery } from "./query-launcher.js";
@@ -84,7 +84,7 @@ export type ReloadDecision =
  *  (`environmentFacts`), which the engine states with its own shell exactly as a transcript does. */
 export interface OpeningStatement {
   readonly today: string;
-  environment(cwd: string): Extract<ClaudeReminder, { kind: "environment" }>;
+  environment(cwd: string): HostEnvironment;
 }
 
 /**
@@ -133,7 +133,8 @@ function openingReminders(reminders: readonly PlacedReminder[], statement: Openi
   if (!sameCliValue(kinds, ["date", "environment", "model"]) || reminders.some(({ message }) => message !== 0)) return false;
   const environment = statement.environment(cwd);
   return reminders.every(({ reminder }) => reminder.kind === "date" ? reminder.date === statement.today && !reminder.changed
-    : reminder.kind !== "environment" || sameCliValue(reminder, environment));
+    // A reminder for an agent without the shell states no shell; the engine names its own shell all the same.
+    : reminder.kind !== "environment" || sameCliValue({ shell: environment.shell, ...reminder }, environment));
 }
 
 /** The last message at or before `index` that is a user row the bridge wrote and that holds no tool result, with the

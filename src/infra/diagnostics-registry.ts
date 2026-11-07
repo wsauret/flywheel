@@ -149,6 +149,11 @@ const DIAGNOSTICS: ReadonlyMap<string, DiagnosticDeclaration> = new Map([
   ["agent.bash.mutation.uncaptured", { tier: "info" }],
   // One content-free record per command refused by static write-target analysis.
   ["agent.shell.write_refused", { tier: "info" }],
+  // One record per narrowing statement that a tree-hosted agent's history
+  // gains, alone or in its tool notice: the session, the turned-off module
+  // ids, and their count. It fires only when the turned-off set gains a
+  // module that the history had not named.
+  ["agent.capabilities.narrowed", { tier: "info" }],
   // One record per message_session refusal of a text that repeats the last
   // text of the sender to the same recipient less than 30 seconds before;
   // repeats coalesce into a count.

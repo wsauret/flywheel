@@ -8,6 +8,10 @@ import { agentRecords, type WorkflowDefinition } from "../../workflows/workflow-
 import type { WorkflowVerificationResult } from "../../workflows/vm/verify-types.js"
 import { workflowInputContract } from "../../workflows/brief.js"
 import { decodeWorkflowInput, type WorkflowInputValue } from "../../workflows/output-contract/compile.js"
+import { commandEvidenceRefusal } from "../../workflows/output-contract/envelope.js"
+import type { AgentDefinition } from "../../infra/agent-definition.js"
+import { disabledToolReason } from "../tool-catalog.js"
+import type { FirstPartyModuleComposition } from "../modules.js"
 import type { ProjectDefinitionRegistryRevision } from "../../workflows/definition-registry.js"
 import { compileWorkflowControl, launchGuardrailLimits } from "../../workflows/vm/compile.js"
 import { worstCaseAttempts } from "../../workflows/vm/structural-admission.js"
@@ -139,6 +143,7 @@ export async function prepareWorkflowLaunch(input: PrepareWorkflowLaunchInput): 
   }
   const launchInput = decodeLaunchInput(workflow, input.input)
   const { control: compiled, resolvedAgents } = prepareControl(workflow, input, null, launchInput)
+  refuseUncitableAgents(workflow, resolvedAgents, input.deps.moduleSelection(), revision.personas)
   const skills = revision.skills
   const initialQueue = flattenWorkflowView(compiled, resolvedAgents)
   const capture = await input.deps.captureProviderConnection()
@@ -224,7 +229,7 @@ function prepareControl(
  *  or dispatch. */
 function resolveLaunchAgents(
   workflow: WorkflowDefinition,
-  revision: Pick<ProjectDefinitionRegistryRevision, "skills" | "personas">,
+  revision: ProjectDefinitionRegistryRevision,
 ): ReadonlyMap<string, ResolvedAgent> {
   const refuse = (message: string): never => {
     throw new WorkflowRequiredSkillsMissingError({ workflowDefinitionId: workflow.id, message })
@@ -243,6 +248,28 @@ function resolveLaunchAgents(
     }
   }
   return resolvedAgents
+}
+
+/** Refuse a launch with an agent whose contract sets `commands.min` but that
+ *  cannot call bash: the workflow's modules leave Bash off, or the persona
+ *  it runs as declares no bash. No call of such an agent can be cited, so it
+ *  could never hand off. */
+function refuseUncitableAgents(
+  workflow: WorkflowDefinition,
+  resolvedAgents: ReadonlyMap<string, ResolvedAgent>,
+  modules: FirstPartyModuleComposition,
+  personas: ReadonlyMap<string, AgentDefinition>,
+): void {
+  const shellOff = disabledToolReason("bash", modules)
+  for (const agent of resolvedAgents.values()) {
+    if (!agent.output.requiresCommandEvidence) continue
+    const label = `Workflow "${workflow.id}" agent "${agent.definitionId}"`
+    if (shellOff !== undefined) throw new Error(commandEvidenceRefusal(label, shellOff))
+    const persona = agent.persona === undefined ? undefined : personas.get(agent.persona)
+    if (persona?.kind === "persona" && !new Set(persona.tools).has("bash")) {
+      throw new Error(`${label} needs command evidence, and its persona "${agent.persona}" declares no bash tool. Run it as a persona that declares bash, or remove commands from its output.`)
+    }
+  }
 }
 
 interface PublishWorkflowInput {

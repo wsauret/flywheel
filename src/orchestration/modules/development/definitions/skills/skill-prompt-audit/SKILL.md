@@ -5,16 +5,22 @@ related: workflow-authoring
 
 # Skill Prompt Audit
 
+{{if:workflow}}
 Input: the skill packages to audit, from `src/agent-skills/` and the development bundle under `src/orchestration/modules/development/definitions/skills/`, with their shared and package references, or the inline briefs of a workflow file. The deliverable is a directed, focused prompt: every rule stated once, in execution order, with mandatory constraints first.
+{{else}}
+Input: the skill packages to audit, from `src/agent-skills/` and the development bundle under `src/orchestration/modules/development/definitions/skills/`, with their shared and package references. The deliverable is a directed, focused prompt: every rule stated once, in execution order, with mandatory constraints first.
+{{end}}
 
 Run the audit when a prompt has grown through iteration, after merging packages or extracting references, or on a schedule.
 
 ## Procedure
 
 1. **Audit the rendered prompt, not the source files.** The model reads the assembled prompt: dependency closure, body, resolved `{{ref:...}}` includes, and host postamble. Render every host that applies:
-   - Direct invocation: `assembleSkillInvocation` (`src/workflows/skill-invocation.ts`). The model `skill` tool's load action, and a built-in command that starts a skill's method, such as `/experiment design`, return exactly this text in a source run.
+   - Direct invocation: `assembleSkillInvocation` (`src/workflows/skill-invocation.ts`). The model `skill` tool's load action, and a built-in command that starts a skill's method, such as `/bug-report-triage`, return exactly this text in a source run.
    - Persona: `personaInstructions` (`src/workflows/agents/persona-instructions.ts`), the dependency-first `renderSkillClosure` (`src/workflows/skill-context.ts`) followed by the persona instructions. `bun run scripts/dump-prompt.ts subagent <persona>` prints it.
+{{if:workflow}}
    - Agent of a workflow: `assembleAgentPrompt` (`src/workflows/context-bundle/prompt-assembly.ts`). `bun run scripts/dump-prompt.ts worker <workflow-file> <agent>` prints it; add `--sizes` for a per-layer size table.
+{{end}}
 2. **Build a restatement inventory.** For each rule, list every place it appears (dependency, body, reference, persona, template, postamble) with line numbers. A rule stated more than once for one audience is a finding.
 3. **Check the outline** (the headings in order) against the execution order of the work.
 4. Apply the rules below, then verify.

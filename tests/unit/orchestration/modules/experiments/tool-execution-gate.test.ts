@@ -181,7 +181,7 @@ describe("experiment omissions in the exposure plan", () => {
   it("omits bash and subagent with the charter reasons while the loop is active", async () => {
     const active = await plan({ active: true, initialized: true, workDir: "/repo", protectedPaths: [], sealedPaths: ["secret/**"] })
     expect(active.tools.has("bash")).toBe(false)
-    expect(active.omitted).toContainEqual({ name: "bash", reason: "sealed experiment paths cannot be exposed to Bash" })
+    expect(active.omitted).toContainEqual({ name: "bash", reason: "sealed experiment paths cannot be exposed to a shell" })
     expect(active.omitted).toContainEqual({ name: "subagent", reason: "active experiment policy cannot be delegated" })
   })
 

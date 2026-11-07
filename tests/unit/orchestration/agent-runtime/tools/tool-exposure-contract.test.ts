@@ -164,7 +164,7 @@ describe("runtime tool exposure contract", () => {
     const composition = composeFirstPartyModules();
     const ownership = composition.contributions.filter((entry) => entry.domain === "tools").map((entry) => entry.id);
     const toolNames = new Set(Object.values(toolRegistrations).map((registration) => registration.tool));
-    expect(ownership.toSorted()).toEqual([...toolNames].filter((name) => !["handoff", "list_sessions", "message_session", "models", "checkpoint_read", "checkpoint_replace", "checkpoint_decide", "process"].includes(name)).toSorted());
+    expect(ownership.toSorted()).toEqual([...toolNames].filter((name) => !["handoff", "list_sessions", "message_session", "checkpoint_read", "checkpoint_replace", "checkpoint_decide", "process"].includes(name)).toSorted());
     expect(new Set(ownership).size).toBe(ownership.length);
 
     const withoutFiles = toolRegistryFromComposition(composeFirstPartyModules(undefined, ["file-tools"]));
@@ -177,6 +177,8 @@ describe("runtime tool exposure contract", () => {
     for (const name of ["handoff", "process.native"]) expect(withoutRuntimeModules.has(name)).toBe(true);
 
     expect(toolRegistryFromComposition(composeFirstPartyModules(undefined, ["code-mode"])).has("code")).toBe(false);
+    const withoutWorkflows = toolRegistryFromComposition(composeFirstPartyModules(undefined, ["workflows"]));
+    expect([...withoutWorkflows.keys()]).not.toContainAnyValues(["workflow", "models"]);
     expect(toolRegistryFromComposition(composeFirstPartyModules(undefined, ["development"])).has("development")).toBe(false);
   });
 

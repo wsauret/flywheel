@@ -55,7 +55,7 @@ describe("Claude plugin export", () => {
     expect(document("agents/advisor.md").frontmatter).toMatchObject({ tools: "Bash, Read", model: "claude-fable-5-1" });
     expect(document("agents/explorer.md").frontmatter).toMatchObject({ tools: "Bash, Read, WebSearch, WebFetch, Skill", model: "haiku" });
     expect(document("agents/reviewer-plan-design.md").frontmatter).toMatchObject({ model: "opus", skills: ["plan-review", "interface-design"] });
-    expect(document("agents/advisor.md").body).toContain("Use `Read` and read-only shell commands such as `grep` and `find`");
+    expect(document("agents/implementer.md").body).toContain("Use `grep` and `find` through `Bash` to find project files and text.");
     expect(String(document("agents/explorer.md").frontmatter["description"])).toEndWith("dispatch general-purpose instead.");
     expect(document("agents/implementer.md").body).toContain("stop and return to your parent with the evidence and the decision that it needs");
   });
@@ -70,7 +70,6 @@ describe("Claude plugin export", () => {
     expect(body).toContain("# Skill: elegance-review-principles");
     expect(body).toContain("multiple `Agent` calls in one parent turn");
     expect(body).toContain("`flywheel:reviewer-code-quality`");
-    expect(document("skills/design/SKILL.md").body).toContain("`AskUserQuestion`");
   });
 
   test("a dispatched agent receives the approved intent in its prompt, because the host carries nothing else to it", () => {
@@ -80,15 +79,18 @@ describe("Claude plugin export", () => {
   });
 
   test("a unit that needs Flywheel's runtime, a tool the host lacks, or a unit left out is left out, with its reason", () => {
-    expect(plugin.exclusions).toContainEqual({ kind: "skill", id: "worktree-lifecycle", reason: "its text names ship, which is left out" });
-    for (const id of ["workflow-authoring", "experiment-charter", "experiment-finalize", "ship"]) {
-      expect(plugin.exclusions.some((exclusion) => exclusion.kind === "skill" && exclusion.id === id)).toBe(true);
-      expect(plugin.files.has(`skills/${id}/SKILL.md`)).toBe(false);
-    }
+    expect(plugin.exclusions).toContainEqual({ kind: "skill", id: "ship", reason: "it is the method of Flywheel's publication delegate" });
+    // The methods of a module bundle never reach the plugin.
+    for (const id of ["workflow-authoring", "experiment-charter", "experiment-finalize", "worktree-lifecycle", "ship"]) expect(plugin.files.has(`skills/${id}/SKILL.md`)).toBe(false);
     expect(plugin.files.has("agents/ship.md")).toBe(false);
-    expect(plugin.exclusions.map(({ kind, id }) => `${kind}:${id}`).toSorted()).toEqual([
-      "agent:ship", "skill:experiment-charter", "skill:experiment-finalize", "skill:ship", "skill:workflow-authoring", "skill:worktree-lifecycle",
-    ]);
+    expect(plugin.exclusions.map(({ kind, id }) => `${kind}:${id}`).toSorted()).toEqual(["agent:ship", "skill:ship"]);
+  });
+
+  test("exported text renders its capability markers for the host, which dispatches agents and runs no workflow file", () => {
+    for (const [path, text] of plugin.files) expect({ path, markers: /\{\{if:|\{\{else\}\}|\{\{end\}\}/.test(text) }).toEqual({ path, markers: false });
+    const design = document("skills/design/SKILL.md").body;
+    expect(design).toContain("   - inline;\n   - an agent dispatched with `Agent`;\n");
+    expect(design).not.toMatch(/workflow file/);
   });
 
   test("exported text names each plugin skill and agent by its plugin name, and no unit that is left out", () => {

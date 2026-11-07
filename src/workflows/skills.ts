@@ -85,6 +85,11 @@ type SkillPackageRoot =
     readonly sourceKind: BundledSkillSourceKind;
     /** The module definition bundle this root belongs to, by contribution id. */
     readonly bundle?: string;
+    /** The bundle's packages compiled into the binary, keyed `<package>/<path>`.
+     *  Read only when this root holds no package on disk, so the source tree
+     *  wins in development and a binary, which has no bundle directory, still
+     *  loads them. */
+    readonly manifest?: Iterable<readonly [string, string]>;
   };
 
 export interface SkillSources {
@@ -193,6 +198,7 @@ export function loadSkillDefinitions(sources: SkillSources): SkillLoad {
   }
 
   for (const root of sources.roots) {
+    const onDiskBefore = bundledOnDisk;
     // The limit is global, so once it is spent no later external root can add
     // a package to this load. Such a root is never opened, listed, or read.
     if (root.authority === "external" && externalCount >= SKILL_LIMITS.packages) continue;
@@ -234,10 +240,16 @@ export function loadSkillDefinitions(sources: SkillSources): SkillLoad {
       }
       reportPackageFailure(dirName, root.authority, location, err);
     }
+
+    if (root.authority === "bundled" && root.manifest !== undefined && bundledOnDisk === onDiskBefore) {
+      const manifest = loadManifestPackages(root.manifest, root.sourceKind, root.bundle);
+      loaded.push(...manifest.definitions);
+      for (const [id, pkg] of manifest.corpus) bundledCorpus.set(id, pkg);
+    }
   }
 
   if (bundledOnDisk === 0) {
-    const manifest = loadManifestPackages(sources.bundledEntries ?? []);
+    const manifest = loadManifestPackages(sources.bundledEntries ?? [], "agent");
     loaded.push(...manifest.definitions);
     for (const [id, pkg] of manifest.corpus) bundledCorpus.set(id, pkg);
   }
@@ -250,8 +262,9 @@ export function loadSkillDefinitions(sources: SkillSources): SkillLoad {
 
 /** Compiled bundled packages, keyed `<package>/<path>`. The manifest is written
  *  by the build, so a malformed key is an invariant violation, not user input.
- *  The build compiles only the agent source, so every package is of that kind. */
-function loadManifestPackages(entries: Iterable<readonly [string, string]>): ManifestPackages {
+ *  Every package carries the source kind and module bundle of the manifest
+ *  section that holds it. */
+function loadManifestPackages(entries: Iterable<readonly [string, string]>, sourceKind: BundledSkillSourceKind, bundle?: string): ManifestPackages {
   const packages = new Map<string, Map<string, string>>();
   for (const [key, content] of entries) {
     const separator = key.indexOf("/");
@@ -267,9 +280,9 @@ function loadManifestPackages(entries: Iterable<readonly [string, string]>): Man
   for (const [packageKey, files] of packages) {
     try {
       const contents = readManifestPackage(files);
-      const definition = buildDefinition(packageKey, contents, { kind: "manifest", authority: "bundled", reach: "global", packageKey, files });
+      const definition = buildDefinition(packageKey, contents, { kind: "manifest", authority: "bundled", reach: "global", packageKey, files, ...(bundle === undefined ? {} : { bundle }) });
       definitions.push(definition);
-      corpus.set(packageKey.toLowerCase(), bundledPackage(packageKey, contents, files, "agent"));
+      corpus.set(packageKey.toLowerCase(), bundledPackage(packageKey, contents, files, sourceKind));
     } catch (err) {
       reportPackageFailure(packageKey, "bundled", packageKey, err);
     }

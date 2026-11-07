@@ -18,7 +18,7 @@ import { createProjectDefinitionRegistry } from "../../../../src/workflows/defin
 import { temporaryDirectories, testDirectories } from "../../../helpers/directories.js"
 import { repoDefinitions, repoModules } from "../../../helpers/project-definitions.js"
 import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js"
-import { beforeBudgetCut } from "./_persona-budget.js"
+import { beforeBudgetCut, personasAtCapabilityTextBase } from "./_persona-budget.js"
 import { compilePreCutover } from "./_pre-cutover-control.js"
 
 const temporary = temporaryDirectories()
@@ -59,16 +59,17 @@ const IMPLEMENTER_CLOSING = {
   ].join("\n"),
 }
 
-/** The personas of the release realm, which the test catalog installs. */
-const personas = repoDefinitions().captureRevision().personas
+/** The personas of the release realm, which the test catalog installs, as
+ *  they read when the builds this pass proves recorded them. */
+const personas = personasAtCapabilityTextBase(repoDefinitions().captureRevision().personas)
 /** The personas of a source run, whose development module adds tools to the
  *  baseline personas, so the same body hashes differently there. */
-const sourcePersonas = createProjectDefinitionRegistry({
+const sourcePersonas = personasAtCapabilityTextBase(createProjectDefinitionRegistry({
   ...testDirectories(process.cwd()),
   skillRoots: [],
   bundles: installedDefinitionBundles(repoModules),
   personaToolEntries: personaToolEntries(createToolRegistry(repoModules)),
-}).captureRevision().personas
+}).captureRevision().personas)
 
 describe("migrateWorkflowDefinitionIdentityRetiredBlocked", () => {
   it("lets a paused workflow with the old handoff revisions and the old implementer resume with no drift, and keeps real drift", () => {

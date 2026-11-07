@@ -6,11 +6,22 @@ import { catalogOnlyCall, describeCodeModeTools, toolTrie } from "./descriptors.
 import { codeModeService } from "./service.js"
 import { createCodeTool } from "./tool.js"
 
+/** What the `code` tool's text may name. Both answers come from the tree's
+ *  capture, so every agent of one tree advertises the same bytes
+ *  (ARCH-CONTEXT-018). */
+interface CodeToolSurface {
+  /** Whether the capture contributes code-only tools, which scripts call
+   *  through `tools` and the catalog lists. */
+  readonly nestedTools: boolean
+  /** Whether the tree check holds `bash`. */
+  readonly bash: boolean
+}
+
 /** What one runner holds of Code Mode: the deferred `code` factory over the
  *  process service, with this runner's own catalog memo. A process without
  *  the service has no runtime, so its runners plan no `code` tool. */
 export interface CodeModeRuntime {
-  readonly createTool: DeferredToolFactory
+  readonly createTool: (surface: CodeToolSurface) => DeferredToolFactory
 }
 
 export const codeModeRuntime = moduleRuntimeHandle<CodeModeRuntime>("code-mode")
@@ -20,10 +31,11 @@ export function createCodeModeRuntime(services: Pick<ModuleRuntimeServices, "mod
   if (!service) return undefined
   const renderCatalog = createCatalogRenderer()
   return {
-    createTool: (eligible, namespaces) => {
+    createTool: (surface) => (eligible, namespaces) => {
       const tools = describeCodeModeTools(eligible)
+      const catalog = surface.nestedTools ? renderCatalog(toolTrie(tools.descriptors, catalogOnlyCall), namespaces) : undefined
       return {
-        tool: createCodeTool({ catalog: renderCatalog(toolTrie(tools.descriptors, catalogOnlyCall), namespaces), tools, service }),
+        tool: createCodeTool({ catalog, tools, service, bash: surface.bash }),
         omissions: tools.omissions.map(({ path, reason }) => ({ name: path, reason })),
       }
     },

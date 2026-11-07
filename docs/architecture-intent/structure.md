@@ -112,7 +112,7 @@ A module owns its complete implementation in its per-layer homes, and no consume
 
 ## ARCH-STRUCTURE-020: Module containment has no exceptions
 
-Registry identity, protocol ownership, canonical homes, imports into module homes, and module-owned vocabulary are enforced with an exception ledger that stays empty. Adding a capability means adding its home and its declarations.
+Registry identity, protocol ownership, canonical homes, imports into module homes, and module-owned vocabulary are enforced with an exception ledger that stays empty. A module's vocabulary includes its tool names and capability phrases in Flywheel-owned model text. Outside the module's own text, they appear only under a capability check for them. Adding a capability means adding its home and its declarations.
 
 Not: An allowance entry for a foreign import into a module home.
 
@@ -166,7 +166,7 @@ A module id that the protocol vocabulary knows but the installed catalog does no
 
 ## ARCH-STRUCTURE-031: Module definitions load when installed and show when enabled
 
-A module's skill and persona definitions load whenever the module is installed, and each one requires its module, so turning the module off hides them without unloading them. Workflow files have no catalog membership.
+A module's skill and persona definitions load whenever the module is installed, and each one requires its module, so turning the module off hides them without unloading them. A bundled method that only one module's capability can run ships in that module's definitions. A persona's declared tools are a ceiling, so a module that is off removes its tools from the persona and never hides the persona. The skill catalog, skill loads, skill commands, the persona roster, and dispatch read this one availability. Workflow files have no catalog membership.
 
 ## ARCH-STRUCTURE-041: Definition loading is kernel; optional reconciliation is declared
 

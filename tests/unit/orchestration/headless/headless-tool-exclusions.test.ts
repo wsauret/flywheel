@@ -4,6 +4,7 @@ import { composeFirstPartyModules } from "../../../../src/orchestration/modules.
 import { NO_MODULE_RUNTIMES } from "../../../../src/infra/module-runtime.js";
 import type { RuntimeTool } from "../../../../src/orchestration/agent-runtime/tools/types.js";
 import { testKernelToolDeps } from "../../../helpers/request-tool-surface.js";
+import { promptCapabilities } from "../../../helpers/prompt-capabilities.js";
 
 describe("headless tool exclusions", () => {
   test.each([
@@ -48,7 +49,7 @@ describe("headless tool exclusions", () => {
         isConcurrencySafe: true, execute: async () => { throw new Error("Rendering must not execute tools"); },
       }]] : []));
       const rendered = await fragment.value.render({
-        kernel: testKernelToolDeps({ moduleSnapshot: composition }), modules: NO_MODULE_RUNTIMES, tools, memorySnapshot: null,
+        kernel: testKernelToolDeps({ moduleSnapshot: composition }), modules: NO_MODULE_RUNTIMES, tools, memorySnapshot: null, capabilities: promptCapabilities([...tools.values()]),
       });
       if (disabledTools.length === 0) expect(rendered).toContain("# Subagents");
       else expect(rendered).toBeUndefined();

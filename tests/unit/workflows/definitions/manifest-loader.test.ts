@@ -1,5 +1,8 @@
 import { afterEach, describe, it, expect } from "bun:test";
 import { rmSync } from "node:fs";
+import { join } from "node:path";
+import { collectModuleSkillPackageFiles } from "../../../../scripts/build-manifest.js";
+import { shippedDefinitionBundles } from "../../../../src/orchestration/modules.js";
 import { loadWorkflowFiles } from "../../../helpers/workflow-files.js";
 import type { AssetLocation } from "../../../../src/workflows/definition-assets.js";
 import { loadSkillDefinitions } from "../../../../src/workflows/skills.js";
@@ -39,6 +42,22 @@ describe("manifest-backed skill loading", () => {
     const content = `base_default_hash: ${"a".repeat(64)}\n${BUNDLED_SKILL_MD}`;
 
     expect(() => loadSkillDefinitions({ roots: [], bundledEntries: [["compiled/SKILL.md", content]] })).toThrow('Bundled skill "compiled"');
+  });
+
+  it("loads a shipped module bundle from the release manifest alone, with the identity and bundle of its source tree", async () => {
+    const lanes = await collectModuleSkillPackageFiles();
+    for (const { id, root } of shippedDefinitionBundles()) {
+      const bundled = { authority: "bundled", reach: "global", sourceKind: "module", bundle: id } as const;
+      const source = loadSkillDefinitions({ roots: [{ ...bundled, dir: join(root, "skills") }] });
+      const release = loadSkillDefinitions({ roots: [{ ...bundled, dir: join(TMP, "absent", id), manifest: Object.entries(lanes[id] ?? {}) }] });
+
+      expect([...release.skills.keys()].toSorted()).toEqual([...source.skills.keys()].toSorted());
+      for (const [skillId, pkg] of source.bundledCorpus) expect(release.bundledCorpus.get(skillId)?.packageIdentity).toEqual(pkg.packageIdentity);
+      for (const skill of release.skills.values()) expect(skill.source.bundle).toBe(id);
+    }
+    const shipped = new Set(Object.values(lanes).flatMap((files) => Object.keys(files).map((path) => path.slice(0, path.indexOf("/")))));
+    expect([...shipped]).toEqual(expect.arrayContaining(["workflow-authoring", "experiment-charter", "experiment-finalize"]));
+    expect(shipped.has("typescript-bun")).toBe(false);
   });
 
   it("rejects a manifest key that is not <package>/<path>", () => {

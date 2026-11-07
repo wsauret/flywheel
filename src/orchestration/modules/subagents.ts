@@ -10,7 +10,7 @@ import { holdSubagentParentRuns, readSubagentParentReconciliationRuns } from "./
 import { recoverStaleSubagentRuns } from "./subagents/history/subagent-run-recovery.js"
 import type { ModuleRuntimeServices } from "../agent-runtime/module-runtime-services.js"
 import type { ServingModel } from "../agent-runtime/tools/kernel-tool-deps.js"
-import { createSubagentTool, createSubagentResume, SUBAGENT_TOOL_DEFINITION } from "./subagents/tool.js"
+import { createSubagentTool, createSubagentResume, SUBAGENT_TOOL_DEFINITION, subagentToolWith } from "./subagents/tool.js"
 import type { SubagentDispatchDeps } from "./subagents/execution/dispatch-deps.js"
 import { deliverSessionInput } from "../session/session-input-delivery.js"
 import { createSubagentContinuationService, subagentContinuationService } from "./subagents/execution/continuation-service.js"
@@ -24,9 +24,13 @@ import { loadSubagentRunsFromEvents, readSubagentRuns, SUBAGENT_RUN_FACT_TYPES }
 import { prepareSessionFactAppend } from "../session/session-fact-writer.js"
 import type { ToolDeclaration } from "../agent-runtime/tools/tool-registry.js"
 import type { RoleResolver } from "../config/roles.js"
-import type { ModuleId, FirstPartyModule } from "../modules.js"
+import type { ModuleId, FirstPartyModule, FirstPartyModuleComposition } from "../modules.js"
 import { moduleProtocol, type ModuleProtocolRuntime, type ModuleProtocolServices } from "../app-service/module-protocol-host.js"
 import { subagentsProtocol } from "../../protocol/modules/subagents.js"
+import type { DefinitionAvailabilitySnapshot } from "../app-service/definition-availability.js"
+import { availableToolNames } from "../agent-runtime/persona-tool-rules.js"
+import type { AgentDefinition } from "../../infra/agent-definition.js"
+import type { CapabilityCheck } from "../../infra/capability-text.js"
 
 const EMPTY_ROLE_RESOLVER: RoleResolver = async () => new Map()
 
@@ -85,6 +89,15 @@ function createSubagentsProtocol(services: ModuleProtocolServices): ModuleProtoc
   }
 }
 
+/** The agent types the roster names, from the tree check and the tree's
+ *  capture so every agent of the tree reads the same roster: each available
+ *  one, a persona with only the declared tools the capture can serve. */
+function rosterAgents(agents: ReadonlyMap<string, AgentDefinition>, has: CapabilityCheck, capture: FirstPartyModuleComposition): ReadonlyMap<string, AgentDefinition> {
+  return new Map([...agents].flatMap(([name, agent]) => has(`persona:${name}`)
+    ? [[name, agent.kind === "persona" ? { ...agent, tools: availableToolNames(agent.tools, capture) } : agent] as const]
+    : []))
+}
+
 /** Capabilities a child dispatch requires: this module and its dependencies. */
 function subagentModuleRequirements(): readonly ModuleId[] {
   return [subagentsModule.id, ...subagentsModule.dependencies]
@@ -98,13 +111,15 @@ function createSubagentsRuntime(services: ModuleRuntimeServices): SubagentsRunti
   if (!owner || !subagentSessions || !services.sessionId || !services.conversation.aggregateId) return undefined
   const { sessionId, usageProfile, purpose } = services
   const conversationId = services.conversation.aggregateId
-  const toolDeps = (serving: ServingModel): SubagentDispatchDeps => ({
+  const toolDeps = (serving: ServingModel, definitionAvailability: DefinitionAvailabilitySnapshot): SubagentDispatchDeps => ({
       userDataRoot: services.userDataRoot,
       accountHome: services.accountHome,
       agentRegistry: services.personas,
       capabilityRequirements: subagentModuleRequirements(),
       skills: services.boundSkills ?? services.definitions.skills(),
+      definitionAvailability,
       createRunner: services.createRunner,
+      planChildCapabilities: services.planChildCapabilities,
       modelFamily: serving.modelFamily,
       availableModels: services.availableModels?.get(serving.modelFamily) ?? serving.availableModels,
       parentModel: serving.model,
@@ -144,11 +159,21 @@ function createSubagentsRuntime(services: ModuleRuntimeServices): SubagentsRunti
   })
   return {
     conversationId,
-    resume: (childSessionId, admission) => createSubagentResume({ ...toolDeps(services.servingModel), ...admission })(childSessionId, {
-      executionCwd: services.executionCwd, projectRoot: services.projectRoot,
-      artifactScopeId: services.conversation.artifactScopeId, conversationId, signal: owner.signal,
-      capabilityAccess: services.capabilityAccess,
-    }),
+    // A Resume reopens the recorded run, so the current selection's
+    // availability is read only to complete its dependencies.
+    // The availability owner imports the module catalog, which installs this
+    // descriptor, so a Resume loads it on demand.
+    resume: async (childSessionId, admission) => {
+      // Only a running host's runtime is reachable for a Resume, and a capability plan registers with no host.
+      if (!services.servingModel) throw new Error("A capability plan has no serving model to resume a child on.")
+      const { definitionAvailabilityOf } = await import("../app-service/definition-availability.js")
+      const availability = definitionAvailabilityOf(services.definitions.captureRevision(), services.moduleSelection().enabledModuleIds)
+      return createSubagentResume({ ...toolDeps(services.servingModel, availability), ...admission })(childSessionId, {
+        executionCwd: services.executionCwd, projectRoot: services.projectRoot,
+        artifactScopeId: services.conversation.artifactScopeId, conversationId, signal: owner.signal,
+        capabilityAccess: services.capabilityAccess,
+      })
+    },
     toolDeps,
   }
 }
@@ -166,7 +191,10 @@ const subagent = {
       capabilities: ["subagents"],
       create: ({ kernel, modules }) => {
         const runtime = modules.get(subagentsRuntime)
-        return runtime ? { tool: createSubagentTool(runtime.toolDeps(kernel.servingModel)) } : { unusable: { tool: SUBAGENT_TOOL_DEFINITION, reason: "no subagent registry available" } }
+        if (!runtime) return { unusable: { tool: SUBAGENT_TOOL_DEFINITION, reason: "no subagent registry available" } }
+        // A capability plan (`planRunCapabilities`) reads only whether the tool is usable and calls nothing.
+        if (!kernel.servingModel) return { tool: subagentToolWith(() => Promise.reject(new Error("A capability plan runs no tool."))) }
+        return { tool: createSubagentTool(runtime.toolDeps(kernel.servingModel, kernel.definitionAvailability.live)) }
       },
     },
   },
@@ -242,8 +270,8 @@ export const subagentsModule = {
     // session tier and the dispatch tool's bytes stay shared (ARCH-CONTEXT-018).
     { domain: "promptFragments", id: "subagent-roster", value: {
       order: 0,
-      render: ({ kernel, tools }) => tools.has("subagent")
-        ? renderSubagentRoster(scopedAgentRegistry(kernel.personas ?? new Map(), kernel.allowedSubagentTypes))
+      render: ({ kernel, tools, capabilities }) => tools.has("subagent")
+        ? renderSubagentRoster(rosterAgents(scopedAgentRegistry(kernel.personas ?? new Map(), kernel.allowedSubagentTypes), capabilities, kernel.moduleSnapshot), capabilities)
         : undefined,
     } },
     { domain: "definitions", id: "subagents", value: { kind: "subagents", roles: true, retainInstalled: true } },

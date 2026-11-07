@@ -4,9 +4,10 @@
  *  Definitions stay registered whatever the selection is: history, provenance,
  *  and identity never depend on a preference. Availability is derived here from
  *  authored metadata alone - a skill's agent slots and dependencies, a persona's
- *  required packages, its tools, and every persona its role grants can reach, a
- *  workflow's phases - so no consumer copies a capability flag beside a
- *  definition.
+ *  required packages and every persona its role grants can reach, a workflow's
+ *  phases - so no consumer copies a capability flag beside a definition. A
+ *  persona's declared tools are a ceiling that dispatch narrows, never a
+ *  requirement here.
  *
  *  Two things change at different rates, so they are owned separately. The
  *  requirement graph is read from the sources and walked once per skill and
@@ -23,7 +24,6 @@
 import type { AgentDefinition } from "../../infra/agent-definition.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { definitionModuleRequirements, type FirstPartyModule, type ModuleId } from "../modules.js"
-import { createToolRegistry } from "../tool-catalog.js"
 import { installedModules } from "../module-catalog.js"
 import { Log } from "../../infra/log.js"
 import type { PersonaRegistryRevision } from "../../workflows/agents/registry.js"
@@ -35,7 +35,6 @@ import { workflowBriefs } from "../../workflows/brief.js"
 import { agentRecords } from "../../workflows/workflow-schema.js"
 import type { CapabilityGrant } from "../config/module-policy.js"
 import type { ModuleState } from "../config/module-descriptor.js"
-import { toolModuleRequirements } from "../agent-runtime/tools/tool-registry.js"
 import { moduleRequirementsForContribution } from "../module-requirements.js"
 
 import { canonicalModuleIds, missingModuleIds, moduleDisabledReason } from "../../protocol/module-ids.js"
@@ -221,7 +220,27 @@ async function loadGraph(
 ): Promise<DefinitionGraph> {
   const definitionRevision = inputs.definitions.captureRevision()
   if (current && current.definitionRevision === definitionRevision) return current
-  return buildGraph(definitionRevision, inputs.modules ?? installedModules())
+  return inputs.modules ? buildGraph(definitionRevision, inputs.modules) : installedGraph(definitionRevision)
+}
+
+/** The requirement graph of each definition revision under the installed catalog, walked once per revision. */
+const installedGraphs = new WeakMap<ProjectDefinitionRegistryRevision, DefinitionGraph>()
+
+function installedGraph(definitionRevision: ProjectDefinitionRegistryRevision): DefinitionGraph {
+  let graph = installedGraphs.get(definitionRevision)
+  if (!graph) {
+    graph = buildGraph(definitionRevision, installedModules())
+    installedGraphs.set(definitionRevision, graph)
+  }
+  return graph
+}
+
+/** The availability of one definition revision under one module selection, resolved against the installed
+ *  catalog. A request derives its capability checks here: the tree check from its tree's capture, the agent check
+ *  from its own selection (ARCH-CONTEXT-033). The graph and each selection's snapshot are memoized, so equal
+ *  inputs return the same snapshot as the published owner for that revision. */
+export function definitionAvailabilityOf(definitionRevision: ProjectDefinitionRegistryRevision, capabilities: Iterable<string>): DefinitionAvailabilitySnapshot {
+  return derive(installedGraph(definitionRevision), capabilities)
 }
 
 function buildGraph(definitionRevision: ProjectDefinitionRegistryRevision, modules: readonly FirstPartyModule[]): DefinitionGraph {
@@ -252,7 +271,7 @@ function buildGraph(definitionRevision: ProjectDefinitionRegistryRevision, modul
 
 /** Resolve one graph against one selection, or return the resolution it already
  *  holds. Nothing here reads a source. */
-function derive(graph: DefinitionGraph, selected: readonly ModuleId[]): DefinitionAvailabilitySnapshot {
+function derive(graph: DefinitionGraph, selected: Iterable<string>): DefinitionAvailabilitySnapshot {
   const capabilities = canonicalModuleIds(selected)
   const key = capabilities.join("+")
   const cached = graph.derived.get(key)
@@ -345,7 +364,6 @@ function createRequirementClosure(
   personas: ReadonlyMap<string, AgentDefinition>,
   modules: readonly FirstPartyModule[],
 ): RequirementClosure {
-  const toolRegistry = createToolRegistry(modules)
   const definitionRequirements = definitionModuleRequirements(modules)
   const skillMemo = new Map<string, readonly ModuleId[]>()
   const personaMemo = new Map<string, readonly ModuleId[]>()
@@ -376,7 +394,8 @@ function createRequirementClosure(
     const parts: Resolution[] = [own(...definitionRequirements.skills)]
     if (!definition) return parts
     // A package from a module's definition bundle needs that module (ARCH-STRUCTURE-031).
-    if (definition.source.kind === "filesystem" && definition.source.bundle !== undefined) parts.push(own(...moduleRequirementsForContribution("definitions", definition.source.bundle, modules)))
+    const bundle = definition.source.bundle
+    if (bundle !== undefined) parts.push(own(...moduleRequirementsForContribution("definitions", bundle, modules)))
     if (definition.agents.length > 0) parts.push(own(...definitionRequirements.subagents))
     for (const dependency of definition.dependencies) parts.push(skill(dependency))
     for (const name of definition.agents) parts.push(persona(name))
@@ -386,12 +405,13 @@ function createRequirementClosure(
   const persona = (name: string): Resolution => frame(personaMemo, name, `persona:${name}`, () => {
     const definition = personas.get(name)
     // A persona is reachable only through dispatch, so it is unavailable
-    // whenever dispatch is.
+    // whenever dispatch is. Its declared tools are a ceiling, not a
+    // requirement: a module that is off removes its tools from the persona,
+    // which stays available with the rest (ARCH-STRUCTURE-031).
     const parts: Resolution[] = [own(...definitionRequirements.subagents)]
     if (!definition) return parts
     if (definition.kind === "persona") {
       for (const id of definition.requiredSkills ?? []) parts.push(skill(id))
-      for (const tool of definition.tools) parts.push(own(...toolModuleRequirements(tool, toolRegistry)))
     }
     // Dispatch is reachability: whatever a granted persona needs, an agent that
     // may spawn it needs too, however deeply the grants nest.

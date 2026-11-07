@@ -47,7 +47,7 @@ Not: A hook or proxy that writes a model reply.
 
 ## ARCH-PROVIDERS-073: Each host agent keeps its own definition and view
 
-Each host agent runs on its own definition's model, effort, and working directory. A grant, depth limit, or disabled module narrows only its calls, never what it sees.
+Each host agent runs on its own definition's model, effort, and working directory. A grant, depth limit, or disabled module narrows its calls and the text that it alone reads, never the text that it shares with its chat tree.
 
 ## ARCH-PROVIDERS-070: A tree's engines run only while a client shows a session that needs them
 

@@ -2,7 +2,8 @@
 //
 // Two generated manifests carry runtime prompt assets inline:
 //   src/workflows/agents/manifest.ts   persona markdown, skill packages, shared
-//     reference assets and workflow output contract files
+//     reference assets, workflow output contract files, and the skill
+//     packages of every shipped module definition bundle
 //   src/infra/agent-assets/manifest.ts the runner-universal system prompt
 //
 // Invoked by scripts/build-binary.ts before bundling, then restored to the
@@ -40,6 +41,9 @@ const EMPTY_WORKFLOW_MANIFEST_SOURCE = [
   "",
   "export const skillDefinitions: WorkflowAssets = {};",
   "",
+  "export interface ModuleBundleAssets { [bundle: string]: WorkflowAssets }",
+  "export const moduleSkillDefinitions: ModuleBundleAssets = {};",
+  "",
 ].join("\n");
 
 const EMPTY_AGENT_ASSETS_MANIFEST_SOURCE = [
@@ -61,6 +65,8 @@ export async function writeWorkflowManifest(destPath: string): Promise<void> {
   const agents = filesUnderPrefix(workflowAssets, "agents/personas/");
   const skillDefinitions = await collectSkillPackageFiles();
   validateSkillReferenceManifest(skillDefinitions, workflowAssets);
+  const moduleSkillDefinitions = await collectModuleSkillPackageFiles();
+  for (const files of Object.values(moduleSkillDefinitions)) validateSkillReferenceManifest(files, workflowAssets);
 
   const code = [
     POPULATED_MANIFEST_HEADER,
@@ -70,6 +76,8 @@ export async function writeWorkflowManifest(destPath: string): Promise<void> {
     `export const agents: WorkflowAssets = ${JSON.stringify(agents, null, 2)};`,
     "",
     `export const skillDefinitions: WorkflowAssets = ${JSON.stringify(skillDefinitions, null, 2)};`,
+    "",
+    `export interface ModuleBundleAssets { [bundle: string]: WorkflowAssets }\nexport const moduleSkillDefinitions: ModuleBundleAssets = ${JSON.stringify(moduleSkillDefinitions, null, 2)};`,
     "",
   ].join("\n");
 
@@ -140,6 +148,18 @@ export async function collectSkillPackageFiles(packageDir = BUNDLED_SKILL_DIR): 
   return Object.fromEntries(
     Object.entries(await readTextFilesRecursive(packageDir)).filter(([path]) => !path.startsWith("references/")),
   );
+}
+
+/** The skill packages of every module definition bundle that a release
+ *  ships, keyed by bundle id and then `<package>/<path>`. A compiled binary
+ *  has no bundle directory on disk, so the loader reads a bundle from here.
+ *  The shipped catalog never names the development bundle, so no release
+ *  carries it. */
+export async function collectModuleSkillPackageFiles(): Promise<{ [bundle: string]: TextByPath }> {
+  const { shippedDefinitionBundles } = await import("../src/orchestration/modules.js");
+  const bundles: { [bundle: string]: TextByPath } = {};
+  for (const { id, root } of shippedDefinitionBundles()) bundles[id] = await collectSkillPackageFiles(join(root, "skills"));
+  return bundles;
 }
 
 async function collectReferenceFiles(): Promise<TextByPath> {

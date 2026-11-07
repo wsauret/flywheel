@@ -1,4 +1,5 @@
 import type { AgentDefinition } from "../infra/agent-definition.js"
+import type { CapabilityCheck } from "../infra/capability-text.js"
 import type { RuntimeEvent } from "../infra/runtime-event-types.js"
 import type { HandoffToolSchema } from "./workflow-host/handoff-tool-schema.js"
 import type { RuntimeTool } from "./agent-runtime/tools/types.js"
@@ -15,7 +16,8 @@ export interface ModuleAgentTasks {
   /** The dispatch tool exactly as the model sees it, with `execute` in place of
    *  a real dispatch. It needs no session, so a stateless caller can offer it. */
   tool(execute: RuntimeTool["execute"]): RuntimeTool
-  task(instructions: string, toolNames: readonly string[], maxTurns: number): string
+  /** The task of a dispatched agent whose agent check is `has` (ARCH-CONTEXT-033). */
+  task(instructions: string, has: CapabilityCheck, maxTurns: number): string
   validate(input: DispatchInput, agents: ReadonlyMap<string, AgentDefinition>): { readonly ok: true; readonly agentType: string } | { readonly ok: false }
   observe(agentType: string): { readonly onEvent: (event: RuntimeEvent) => void; readonly finalAssistantText: () => string }
 }

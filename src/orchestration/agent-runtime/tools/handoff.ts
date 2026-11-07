@@ -24,7 +24,7 @@ const HANDOFF_BASE: Pick<
   description: "Record the handoff JSON to complete your brief. Pass the handoff fields directly as the input to this tool; each key you provide becomes a top-level key. Do NOT wrap the fields in a 'content' or 'json' key. Follow the handoff instructions in your task message.",
   promptSnippet: "Submit the handoff JSON to complete your brief",
   promptGuidelines: [
-    "Finish reviews and verification before handoff: use process to wait for unfinished work, read and act on its results, and stop services you started. Never hand off first and verify later.",
+    "Finish reviews and verification before handoff: use process to wait for unfinished work, read and act on its results, and stop managed commands that you no longer need. Never hand off first and verify later.",
     "Pass handoff fields directly as the input; each key becomes a top-level key. Do NOT wrap in a 'content' or 'json' key. Follow the handoff instructions in your task message.",
   ],
   validatesOwnInput: true,

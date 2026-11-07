@@ -2,6 +2,7 @@ import { moduleRuntimeHandle } from "../../infra/module-runtime.js";
 import type { ToolDeclaration } from "../agent-runtime/tools/tool-registry.js";
 import { createWebTool, WEB_TOOL_DEFINITION } from "../agent-runtime/tools/web.js";
 import type { RuntimeToolSurfaces } from "../agent-runtime/types.js";
+import { webSearchRemedy } from "../agent-runtime/web-search/select.js";
 import type { FirstPartyModule } from "../modules.js";
 
 /** The generation's web retrieval port factory. Availability is read per plan,
@@ -23,7 +24,9 @@ const WEB_TOOL_CONTRIBUTION = {
       capabilities: [],
       create: ({ kernel, modules }) => {
         const port = modules.get(webRuntime)?.(kernel.moduleSnapshot, kernel.runtimeConfig.webSearchProvider);
-        return port?.available() ? { tool: createWebTool(port) } : { unusable: { tool: WEB_TOOL_DEFINITION, reason: "no web search provider available (connect ChatGPT or Exa in /auth)" } };
+        if (port?.available()) return { tool: createWebTool(port) };
+        const backends = kernel.moduleSnapshot.contributions.flatMap((contribution) => contribution.domain === "webBackends" ? [contribution.value.id] : []);
+        return { unusable: { tool: WEB_TOOL_DEFINITION, reason: `no web search provider available (${webSearchRemedy(backends)})` } };
       },
     },
   },

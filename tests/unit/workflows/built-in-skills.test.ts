@@ -9,24 +9,18 @@ import { createSkillTool } from "../../../src/orchestration/agent-runtime/tools/
 import { resolveWorkflowAgents } from "../../../src/workflows/agent-resolution.js";
 import { fixtureDefinitions, FIXTURE_WORKFLOW_ID, workflowIn } from "../../helpers/project-definitions.js";
 import { loadSkillDefinitions } from "../../../src/workflows/skills.js";
-import { BUNDLED_SKILL_DIR } from "../../../src/workflows/skill-source-inventory.js";
 import { DEVELOPMENT_MODULES } from "../../../src/orchestration/development-modules.js";
 import { installedDefinitionBundles } from "../../../src/orchestration/module-catalog.js";
 import { renderSkillClosure } from "../../../src/workflows/skill-context.js";
-import type { SkillRegistryRevision } from "../../../src/workflows/skill-schema.js";
-import { publishSkillRevision } from "../../../src/workflows/skill-schema.js";
+import { publishSkillRevision, type SkillRegistryRevision } from "../../../src/workflows/skill-schema.js";
+import { bodyFor, bundled, bundledLoad, bundleRoots, SKILL_ROOTS } from "./_bundled-skills.js";
 
 const REPO_ROOT = join(import.meta.dir, "..", "..", "..");
-const SKILL_ROOTS = [{ authority: "bundled" as const, dir: BUNDLED_SKILL_DIR, reach: "global" as const, sourceKind: "agent" as const }];
 const PERSONA_DIR = join(REPO_ROOT, "src", "workflows", "agents", "personas");
 
-// Bundled packages only: the installing user's external roots must not decide
-// whether Flywheel's own canonical packages are present and well-formed.
-const bundledLoad = loadSkillDefinitions({ roots: SKILL_ROOTS });
-const bundled = bundledLoad.skills;
 // The development module's bundle beside the shipped roots: Flywheel's own
 // methods live there and are held to the same contracts.
-const developmentLoad = loadSkillDefinitions({ roots: [...SKILL_ROOTS, ...installedDefinitionBundles(DEVELOPMENT_MODULES).map(({ id, root }) => ({ authority: "bundled" as const, dir: join(root, "skills"), reach: "global" as const, sourceKind: "module" as const, bundle: id }))] });
+const developmentLoad = loadSkillDefinitions({ roots: [...SKILL_ROOTS, ...bundleRoots(installedDefinitionBundles(DEVELOPMENT_MODULES))] });
 const development = developmentLoad.skills;
 const developmentRevision: SkillRegistryRevision = publishSkillRevision(1, development, developmentLoad.bundledCorpus);
 const revision: SkillRegistryRevision = publishSkillRevision(1, bundled, bundledLoad.bundledCorpus);
@@ -145,7 +139,7 @@ describe("bundled skill packages", () => {
     const design = bundled.get("design");
 
     expect(design?.body).toContain("## Recommended implementation route");
-    expect(design?.body).toContain("select exactly one implementation route: inline, subagent, or a workflow file that you write");
+    expect(design?.body).toContain("select exactly one implementation route:\n   - inline;");
     expect(design?.body).not.toContain("inline, subagent, implement,");
     expect(design?.body).toContain("a delivery commitment, not a suggestion for later");
     expect(design?.body).toContain("Approval covers the design and that route");
@@ -154,8 +148,9 @@ describe("bundled skill packages", () => {
     expect(design?.body).toContain("Do not stop at approval or intent publication");
     expect(design?.body).toContain("no open questions");
     expect(design?.body).toContain("discovery, experiments, spikes, or proof-of-concept work");
-    expect(design?.body).toContain("In the same turn, call `ask_user`");
-    expect(design?.body).toContain("call `ask_user` again");
+    expect(bodyFor(design)).toContain("in the same turn, ask the person to choose `Approve and continue` or `Revise design`, where `Revise design` takes their text.\nAlso offer `Advisor review first`");
+    expect(design?.body).toContain("ask the person again only when");
+    expect(design?.body).not.toContain("ask_user");
     expect(design?.body).toContain("Existing scope approval takes precedence over per-design approval");
     expect(design?.body).toContain("fix all broken lint and tests");
     expect(design?.body).toContain("An ordinary bug investigation still requires fix-design approval");
@@ -199,7 +194,7 @@ describe("bundled skill packages", () => {
     expect(debugging?.body).toContain("load the `design` skill");
     expect(debugging?.body).toContain("its scope check decides whether approval is needed");
     expect(debugging?.body).toContain("approval resumes this method");
-    expect(debugging?.body).toContain("Agents of a workflow and subagents follow their brief autonomously");
+    expect(debugging?.body).toContain("Any agent outside an interactive chat follows its brief autonomously");
     expect(debugging?.dependencies).not.toContain("design");
   });
 
@@ -252,6 +247,15 @@ describe("bundled skill packages", () => {
 
     expect(charter?.resources.map((resource) => resource.path)).toEqual(["references/loop-rules.md", "references/scripts.md"]);
     expect(finalize?.resources.map((resource) => resource.path)).toEqual(["finalize.sh", "references/groups-json.md"]);
+    // Each package ships in the bundle of the module whose tools it runs, so it leaves with that module.
+    for (const [skill, bundle] of [[charter, "experiments"], [finalize, "experiments"], [bundled.get("workflow-authoring"), "workflows-bundle"]] as const) {
+      expect(skill?.source.kind === "filesystem" ? skill.source.bundle : undefined).toBe(bundle);
+    }
+    // The person approves each section through whatever channel the agent holds.
+    expect(charter?.body).toContain("approved by the person before the next section starts");
+    expect(charter?.body).toContain("ask the person for final approval");
+    expect(charter?.body).not.toContain("ask_user");
+    expect(bundled.get("workflow-authoring")?.body).toContain("you ask the person which one to keep");
   });
 
   it("ships Flywheel's own methods only in the development module, model-loadable", () => {
@@ -269,6 +273,10 @@ describe("bundled skill packages", () => {
     expect(design).toContain("## Intent");
     expect(design).toContain("`docs/product-intent/`");
     expect(design).toContain("`docs/architecture-intent/`");
+    // Persisting intent gates every route, whichever ones this agent can take.
+    expect(design).toContain("Persist the approved wording before any implementation route starts, or before design-only completion.");
+    // The audit's example command must exist with every optional module off.
+    expect(development.get("skill-prompt-audit")?.body).toContain("such as `/bug-report-triage`, return");
     const uat = development.get("flywheel-uat")
     expect(uat?.body).toContain("Credential-backed UAT is the default")
     expect(uat?.body).toContain("Clone only that profile's `auth.json` and optional `profile.json`")
@@ -292,11 +300,11 @@ describe("bundled skill packages", () => {
   });
 
   it("composes Flywheel design after the generic design method", () => {
-    const rendered = renderSkillClosure(["flywheel-design"], developmentRevision, "Flywheel design").slice(1);
+    const rendered = renderSkillClosure(["flywheel-design"], developmentRevision, "Flywheel design", () => true).slice(1);
 
     expect(rendered).toHaveLength(2);
-    expect(rendered[0]).toContain(development.get("design")?.body);
-    expect(rendered[1]).toContain(development.get("flywheel-design")?.body);
+    expect(rendered[0]).toContain(bodyFor(development.get("design")));
+    expect(rendered[1]).toContain(bodyFor(development.get("flywheel-design")));
   });
 
   it("points only at installed packages", () => {
@@ -309,7 +317,7 @@ describe("bundled skill packages", () => {
   // tool call, so the advertisement carries every installed skill's trigger
   // line; a partial roster reads as complete and defeats scan-then-load.
   it("advertises every installed skill's trigger line", () => {
-    const guidelines = createSkillTool({ revision, personaIndex: getPersonaMetadataIndex() }).promptGuidelines?.join("\n") ?? "";
+    const guidelines = createSkillTool({ treeCapabilities: () => true, availability: { skills: new Map() }, revision, personaIndex: getPersonaMetadataIndex() }).promptGuidelines?.join("\n") ?? "";
 
     for (const skill of revision.modelInvocable) {
       expect(guidelines, skill.id).toContain(`- ${skill.id}: `);
@@ -393,7 +401,7 @@ describe("deterministic composition", () => {
       "security-review-principles",
     ];
     for (const target of ["code-review", "plan-review"]) {
-      const rendered = renderSkillClosure([target], revision, `Direct ${target}`);
+      const rendered = renderSkillClosure([target], revision, `Direct ${target}`, () => true);
       expect(renderedSkillCount(rendered, target), target).toBe(1);
       expect(renderedSkillCount(rendered, "elegance-review-principles"), target).toBe(1);
       expect(renderedSkillCount(rendered, target === "code-review" ? "plan-review" : "code-review"), target).toBe(0);
@@ -401,7 +409,7 @@ describe("deterministic composition", () => {
     }
 
     for (const principle of principleIds) {
-      const rendered = renderSkillClosure([principle], revision, `Direct ${principle}`);
+      const rendered = renderSkillClosure([principle], revision, `Direct ${principle}`, () => true);
       const prompt = rendered.join("\n\n");
       expect(renderedSkillCount(rendered, principle), principle).toBe(1);
       expect(renderedSkillCount(rendered, "code-review"), principle).toBe(0);
@@ -423,7 +431,7 @@ describe("deterministic composition", () => {
       const persona = personas.get(item.mandatory);
       if (!workflow || !persona || persona.kind !== "persona") throw new Error(`review closure not loaded: ${item.workflow}`);
       expect(workflow.agents, item.workflow).toContain(item.mandatory);
-      const rendered = renderSkillClosure([...workflow.dependencies, ...(persona.requiredSkills ?? [])], revision, `Workflow ${item.workflow}`);
+      const rendered = renderSkillClosure([...workflow.dependencies, ...(persona.requiredSkills ?? [])], revision, `Workflow ${item.workflow}`, () => true);
       expect(renderedSkillCount(rendered, item.target), item.workflow).toBe(1);
       expect(renderedSkillCount(rendered, "code-review"), item.workflow).toBe(item.orchestration);
       expect(renderedSkillCount(rendered, "elegance-review-principles"), item.workflow).toBe(1);
@@ -450,7 +458,7 @@ describe("deterministic composition", () => {
 
   it("requires inline revision text in the built-in design approval", () => {
     const body = bundled.get("design")?.body
-    expect(body).toContain("`Revise design` with `requires_text: true`")
+    expect(body).toContain("where `Revise design` takes their text")
     expect(body).toContain("A text answer that rejects the approach, not a detail, returns the work to step 1")
     expect(body).toContain("When you cannot tell a correction from a rethink, ask")
   })
@@ -505,7 +513,7 @@ describe("persona method composition", () => {
 
   it("composes every declared package and mandatory elegance exactly once", () => {
     for (const [name, ids] of Object.entries(REQUIRED_SKILLS)) {
-      const composed = renderSkillClosure(persona(name).requiredSkills, revision, `Persona "${name}"`);
+      const composed = renderSkillClosure(persona(name).requiredSkills, revision, `Persona "${name}"`, () => true);
       for (const id of ids) {
         expect(renderedSkillCount(composed, id), `${name}: ${id}`).toBe(1);
       }
@@ -525,7 +533,7 @@ describe("persona method composition", () => {
     const additiveIds = ["performance-review-principles", "data-integrity-review-principles", "security-review-principles", "interface-design"];
 
     for (const item of cases) {
-      const rendered = renderSkillClosure(persona(item.name).requiredSkills, revision, `Persona ${item.name}`);
+      const rendered = renderSkillClosure(persona(item.name).requiredSkills, revision, `Persona ${item.name}`, () => true);
       expect(renderedSkillCount(rendered, item.target), item.name).toBe(1);
       expect(renderedSkillCount(rendered, "elegance-review-principles"), item.name).toBe(1);
       expect(renderedSkillCount(rendered, item.target === "code-review-method" ? "plan-review" : "code-review-method"), item.name).toBe(0);
@@ -574,9 +582,9 @@ describe("persona method composition", () => {
     }
 
     const closures = [
-      ["code-review", renderSkillClosure(["code-review"], revision, "code-review")],
+      ["code-review", renderSkillClosure(["code-review"], revision, "code-review", () => true)],
       ...Object.keys(REQUIRED_SKILLS).filter((id) => id.startsWith("reviewer-code-") || id.startsWith("reviewer-plan-"))
-        .map((name) => [name, renderSkillClosure(persona(name).requiredSkills, revision, name)] as const),
+        .map((name) => [name, renderSkillClosure(persona(name).requiredSkills, revision, name, () => true)] as const),
     ] as const;
     for (const [label, rendered] of closures) {
       expect(renderedSkillCount(rendered, "elegance-review-principles"), label).toBe(1);
@@ -587,7 +595,7 @@ describe("persona method composition", () => {
 
   it("never gives individual code reviewers parent dispatch or fix instructions", () => {
     for (const name of Object.keys(REQUIRED_SKILLS).filter((id) => id.startsWith("reviewer-code-"))) {
-      const rendered = renderSkillClosure(persona(name).requiredSkills, revision, name);
+      const rendered = renderSkillClosure(persona(name).requiredSkills, revision, name, () => true);
       expect(renderedSkillCount(rendered, "code-review")).toBe(0);
       expect(rendered.join("\n")).toContain("Do not dispatch reviewers");
       expect(rendered.join("\n")).not.toContain("## Select the reviewer set");

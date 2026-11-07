@@ -1,3 +1,4 @@
+import { attemptBrief, planEveryCapability } from "../../../helpers/attempt-brief"
 import { workflowAgentInputs } from "../../../helpers/workflow-agent-inputs"
 import { afterEach, describe, expect, it } from "bun:test"
 import { mkdtempSync, rmSync } from "node:fs"
@@ -107,7 +108,7 @@ async function fixtureWorkflowRun(root: string, streamWithTools: (options: Strea
       }
     },
     workflowDeps: {
-      ...base, definitionRevision, ...(capabilityAccess ? { capabilityAccess } : {}),
+      ...base, definitionRevision, planCapabilities: planEveryCapability, ...(capabilityAccess ? { capabilityAccess } : {}),
       createAgent: (options) => {
         if (options.purpose.kind !== "workflow-agent") return { send() {}, end() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "completed" } }) }
         if (stepAgent) return stepAgent(options)
@@ -168,7 +169,7 @@ describe("workflow interruption ownership", () => {
 
       const controls = createWorkerCallback({
         ...makeWorkflowDeps(),
-        skills: fixtureSkills, personas: new Map(),
+        skills: fixtureSkills, personas: new Map(), planCapabilities: planEveryCapability,
         createAgent: () => {
           const runner = { done: Promise.withResolvers<AgentRunResult>(), interrupts: 0 }
           runners.push(runner)
@@ -196,8 +197,8 @@ describe("workflow interruption ownership", () => {
       })
       const step = (id: string): AttemptRow => ({ id, definitionId: "test-step", workflowDefinitionId: "test-workflow", name: "Test step", briefId: "test-step", status: "pending", writes: [], resumeRevertCount: 0 })
 
-      const first = controls.worker(step("step-1"), "Do the work", "", undefined, "conversation-1")
-      const second = controls.worker(step("step-2"), "Do the other work", "", undefined, "conversation-2")
+      const first = controls.worker(step("step-1"), attemptBrief("Do the work"), undefined, "conversation-1")
+      const second = controls.worker(step("step-2"), attemptBrief("Do the other work"), undefined, "conversation-2")
       await bothReady.promise
 
       // The two workers start concurrently, so the order they register in is

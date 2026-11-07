@@ -28,6 +28,8 @@ function papercutsCommand(ctx: SupervisorTestContext, supervisor: RuntimeSupervi
   return invoke({ type: "command.invoke", id: "papercuts", revision: 1, sessionId, ...(argument === undefined ? {} : { argument }) })
 }
 
+const allOn = async () => () => true
+
 function recorded(sessionId: string, observation: string, parentToolUseId?: string) {
   return {
     aggregateId: `session:${sessionId}`,
@@ -52,11 +54,11 @@ describe("papercut drain command", () => {
     const ctx = createSupervisorTestContext()
     try {
       const first = await ctx.store.append(recorded("owner-1", "First observation", "parent-1"))
-      const beforeSecondConnection = await buildPapercutDrain(asAsyncEventReadSurface(ctx.store), "drain-session")
+      const beforeSecondConnection = await buildPapercutDrain(asAsyncEventReadSurface(ctx.store), "drain-session", allOn)
       expect(beforeSecondConnection.kind).toBe("ready")
 
       await asAsyncEventAppender(ctx.store).append(recorded("owner-2", "Second observation"))
-      const refreshed = await buildPapercutDrain(asAsyncEventReadSurface(ctx.store), "drain-session")
+      const refreshed = await buildPapercutDrain(asAsyncEventReadSurface(ctx.store), "drain-session", allOn)
       expect(refreshed.kind).toBe("ready")
       if (refreshed.kind !== "ready") throw new Error("expected ready drain")
       expect(refreshed.context).toContain(`"id":"${first.id}"`)
@@ -65,7 +67,7 @@ describe("papercut drain command", () => {
       expect(refreshed.context).toContain("The user invoked /papercuts")
       expect(refreshed.context).toContain("Vet every record against current repository evidence")
       expect(refreshed.context).toContain("Judge the underlying pain")
-      expect(refreshed.context).toContain("Use bounded subagents")
+      expect(refreshed.context).toContain("Delegate bounded investigations")
       expect(refreshed.context).toContain("Immediately dispose")
       expect(refreshed.context).toContain("fixed when current evidence shows the pain is gone")
       expect(refreshed.context).toContain("Judge whether each valid record is worth fixing")
@@ -85,10 +87,10 @@ describe("papercut drain command", () => {
   test("zero and only-disposed backlogs produce a visible no-live outcome without a turn", async () => {
     const ctx = createSupervisorTestContext()
     try {
-      expect(await buildPapercutDrain(asAsyncEventReadSurface(ctx.store), "drain-session")).toEqual({ kind: "no-live", message: "No live project papercuts to drain." })
+      expect(await buildPapercutDrain(asAsyncEventReadSurface(ctx.store), "drain-session", allOn)).toEqual({ kind: "no-live", message: "No live project papercuts to drain." })
       const item = await ctx.store.append(recorded("owner", "Disposed observation"))
       await ctx.store.append({ aggregateId: "project:papercuts", type: "papercut.disposed", version: 1, timestamp: Date.now(), actor: "agent", sessionId: "drain-session", payload: { recordedFactId: item.id, disposition: "dismissed", disposingSessionId: "drain-session" } })
-      expect((await buildPapercutDrain(asAsyncEventReadSurface(ctx.store), "drain-session")).kind).toBe("no-live")
+      expect((await buildPapercutDrain(asAsyncEventReadSurface(ctx.store), "drain-session", allOn)).kind).toBe("no-live")
     } finally {
       await disposeSupervisorTestContext(ctx)
     }
@@ -99,7 +101,7 @@ describe("papercut drain command", () => {
     try {
       await ctx.store.append(recorded("owner", "x".repeat(8_000)))
       await ctx.store.append({ aggregateId: "session:drain-session", type: "model.context.measured", version: 1, timestamp: Date.now(), actor: "provider", sessionId: "drain-session", payload: { promptTokens: 90, contextWindow: 100 } })
-      const result = await buildPapercutDrain(asAsyncEventReadSurface(ctx.store), "drain-session")
+      const result = await buildPapercutDrain(asAsyncEventReadSurface(ctx.store), "drain-session", allOn)
       expect(result.kind).toBe("over-capacity")
       if (result.kind !== "over-capacity") throw new Error("expected capacity outcome")
       expect(result.message).toContain("fresh chat")
@@ -119,6 +121,33 @@ describe("papercut drain command", () => {
       expect(requests).toHaveLength(1)
       expect(requests[0]?.[0]).toEqual({ text: "Run the project papercut campaign.", invocation: { label: "/papercuts" } })
       expect(requests[0]?.[1]).toContain("Live observation")
+      expect(requests[0]?.[1]).toContain("Delegate bounded investigations")
+    } finally {
+      await supervisor.disposeAll()
+      await disposeSupervisorTestContext(ctx)
+    }
+  })
+
+  // The survey goes to the chat's own next request, so it offers delegation
+  // only when that request can call the subagent or workflow tool.
+  test.each([
+    [["subagent", "workflow"], false],
+    [["subagent"], true],
+    [["workflow"], true],
+  ] as const)("with %p off, the survey offers delegation: %p", async (off, delegates) => {
+    const ctx = createSupervisorTestContext()
+    const requests: unknown[][] = []
+    const supervisor = supervisorWithRunner(ctx, async ({ sessionId }) => mockRunner(sessionId, {
+      capabilities: async () => (term) => !off.some((refused) => refused === term),
+      requestWithContext: (...args: unknown[]) => { requests.push(args); return true },
+    }))
+    try {
+      const sessionId = await supervisor.openSessionRuntime()
+      await ctx.store.append(recorded("owner", "Live observation"))
+      expect(await papercutsCommand(ctx, supervisor, sessionId)).toEqual({ kind: "none" })
+      const context = String(requests[0]?.[1])
+      expect(context).toContain("Inspect the repository and relevant executable evidence.")
+      expect(context.includes("Delegate bounded investigations")).toBe(delegates)
     } finally {
       await supervisor.disposeAll()
       await disposeSupervisorTestContext(ctx)

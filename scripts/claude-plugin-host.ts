@@ -45,35 +45,24 @@ export const HOST_REWRITES: ReadonlyMap<string, string> = new Map([
     "- Design intent (fixed): use the approved intent and decisions that the runtime carries from the parent's checkpoint.",
     "- Design intent (fixed): [the approved Design intent and the user's dated decisions, verbatim]",
   ],
-  // The host runs no workflow files, and its general agent is general-purpose.
-  [
-    "select exactly one implementation route: inline, subagent, or a workflow file that you write when later agents read earlier results.",
-    "select exactly one implementation route: inline, or agents dispatched with `Agent`, one after another when later agents read earlier results.",
-  ],
-  ["Select an implementation workflow only when no open question remains and no milestone needs discovery, experiments, spikes, or proof-of-concept work. ", ""],
-  [" When you can launch a workflow file, run them as one workflow in the Review shape of `workflow-authoring`.", ""],
-  [" When you can launch a workflow file, run an explorer dispatch of two or more facets as one workflow instead of explorer subagents: one phase with one agent for each facet over the launch input, a `dedupe` join by source, and a synthesis phase, as the Research shape of `workflow-authoring` shows.", ""],
+  // The host's dispatched agents are agents, and its general agent is general-purpose. Workflow-file passages need no
+  // rewrite: the host check drops them, because the host runs no workflow files.
+  ["   - a subagent;", "   - an agent dispatched with `Agent`;"],
   ["Implementation subagents (`implementer`, `general`) inherit the parent model.", "Implementation agents (`general-purpose`) inherit the parent model."],
   ["dispatch general instead", "dispatch general-purpose instead"],
-  ["a subagent's or workflow's result", "an agent's result"],
-  ["Dispatch a subagent, add a reviewer, or start a workflow only", "Dispatch an agent or add a reviewer only"],
-  ["decide for each running subagent, workflow, or background command", "decide for each running agent or background command"],
+  ["Dispatch a subagent or add a reviewer only", "Dispatch an agent or add a reviewer only"],
   // A dispatched agent cannot message its parent mid-run, and it returns its result as its final message.
   ["message your parent with message_session and wait for its reply", "stop and return to your parent with the evidence and the decision that it needs"],
   ["submit your structured result using the completion tool provided by your environment", "end with a final message that holds your result"],
   ["stop reading and write your handoff", "stop reading and write your answer"],
   [
-    "Use the read, search, file edit, and write tools for project files; bash grep, sed, cat, ls, and heredoc scripts are not substitutes.",
-    "Use `Read`, `Edit`, and `Write` for project files, and `grep` and `find` through `Bash` to search; `sed`, `cat`, and heredoc scripts are not substitutes for `Read`, `Edit`, and `Write`.",
+    "Use the read, file edit, and write tools for project files; shell sed, cat, and heredoc scripts are not substitutes.",
+    "Use `Read`, `Edit`, and `Write` for project files; `sed`, `cat`, and heredoc scripts are not substitutes.",
   ],
+  ["Use the search and list tools to find project files and text; shell grep and ls are not substitutes.", "Use `grep` and `find` through `Bash` to find project files and text."],
   ["the bash tool's timeout parameter", "the `timeout` parameter of `Bash`"],
-  ["with the web tool", "with `WebSearch` and `WebFetch`"],
-  ["Use read, search, list, and read-only shell commands", "Use `Read` and read-only shell commands such as `grep` and `find`"],
-  ["Use search to locate relevant code", "Use `grep` through `Bash` to locate relevant code"],
-  ["use `symbol:` or `offset`/`limit` to read just what you need", "use the `offset` and `limit` of `Read` to read just what you need"],
-  ["with search and list", "with `grep` and `find`"],
   ["through bash or exec", "through `Bash`"],
-  ["Use web only when", "Use `WebSearch` and `WebFetch` only when"],
+  ["Use web only for", "Use `WebSearch` and `WebFetch` only for"],
 ]);
 
 /** `text` with every ledger sentence and every backticked Flywheel tool that the host serves rewritten for the host.
@@ -102,8 +91,8 @@ const SESSION = `# This session
 - Point at code as \`path:line\`.`;
 
 export const CLAUDE_PLUGIN_HOST: ChatHost = {
-  session: SESSION,
+  session: () => SESSION,
   commitmentsHeading: "# Working method",
-  sharedKnowledge: "- **Shared knowledge.** You may edit applicable CLAUDE.md files without asking; keep them and the existing repository authorities current with shared guidance.",
-  routingPreference: "",
+  sharedKnowledge: () => "- **Shared knowledge.** You may edit applicable CLAUDE.md files without asking; keep them and the existing repository authorities current with shared guidance.",
+  routingPreference: () => "",
 };

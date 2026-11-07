@@ -449,6 +449,14 @@ describe("search tool", () => {
     expect(result.outcome).toBe("error");
     expect(result.content).toContain("binary content detected");
     expect(result.content).toContain("blob.bin");
+    expect(result.content).toContain("use bash (rg/grep against the path directly) or read it via the read tool.");
+    // Only the alternatives that the agent holds are named.
+    const readOnly = await searchDefinition.execute(
+      { pattern: "Needle", path: "blob.bin", output_mode: "content" },
+      makeContext({ executionCwd: tmpDir, capabilities: (term) => term === "read" }),
+    );
+    expect(readOnly.content).toContain("If you need to inspect this file, read it via the read tool.");
+    expect(readOnly.content).not.toContain("bash");
   });
 
   it("composes skipped-file and traversal diagnostics once when no file matches", async () => {

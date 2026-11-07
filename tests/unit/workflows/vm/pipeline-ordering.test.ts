@@ -16,6 +16,7 @@ import { attemptOf, branch, INPUT_GROUP, INPUT_TAIL, inputBranch, inputMapWorkfl
 import { fourLaneControl, listJoin, targets, wideMapWorkflow } from "./_tree-fixtures.js";
 import type { AddressedAddendum } from "../../../../src/workflows/context-bundle/context-facts.js";
 import { mapHost, SqliteVmDriver } from "./_sqlite-vm-driver.js";
+import { EVERY_CAPABILITY } from "../../../helpers/attempt-brief.js";
 import { workflowTree } from "../../../../src/workflows/vm/view-tree.js";
 import { renderAgentOutput } from "../../../../src/workflows/output-contract/render.js";
 import { replayWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js";
@@ -70,11 +71,13 @@ async function run(
   const invocations = new Map<string, number>();
   let enrichmentCalls = 0;
   const runner = createAttemptExecutor({
+    unavailableToolReason: (term) => `${term} is off`,
     earlierCheckpoint: async () => null,
     resolvedAgents: vm.bindings,
     skills: vm.skills,
     context: contextStore,
-    worker: async (step, userPrompt, _task, signal) => {
+    worker: async (step, brief, signal) => {
+      const { userPrompt } = await brief(EVERY_CAPABILITY);
       order.push(step.definitionId);
       attempts.push(step.id);
       prompts.push(userPrompt);

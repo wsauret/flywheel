@@ -10,15 +10,15 @@ import { writeFileAtomic } from "../../infra/atomic-write.js"
 import { Log } from "../../infra/log.js"
 import { isProcessAlive } from "../../infra/process-liveness.js"
 import { workflowAssets } from "../agents/manifest.js"
-import { loadBundledDefaultCatalog, type BundledDefaultCatalog } from "./bundled-defaults.js"
+import type { BundledDefaultCatalog } from "./bundled-defaults.js"
 
 const log = Log.create({ service: "definitions-installer" })
 
 /** Publishes this build's reference definitions and guides. Reports failures
  * without refusing runtime startup or another owned background operation. */
-export async function publishBundledReferences(userDataRoot: string): Promise<void> {
+export async function publishBundledReferences(userDataRoot: string, catalog: BundledDefaultCatalog): Promise<void> {
   try {
-    const result = await installBundledDefaults({ userDataRoot, binaryVersion: await readAppVersion() })
+    const result = await installBundledDefaults({ userDataRoot, binaryVersion: await readAppVersion(), catalog })
     for (const error of result.errors) log.warn("defaults publication failed (non-fatal)", { error })
   } catch (error) {
     log.warn("defaults publication failed (non-fatal)", { error: errorMessage(error) })
@@ -40,7 +40,7 @@ interface DefaultsManifest {
 export interface InstallBundledDefaultsOptions {
   readonly userDataRoot: string
   readonly binaryVersion: string
-  readonly catalog?: BundledDefaultCatalog
+  readonly catalog: BundledDefaultCatalog
 }
 
 export interface InstallBundledDefaultsResult {
@@ -332,7 +332,7 @@ async function publishStage(defaultsDir: string, stageDir: string, priorDir: str
 /** Publishes the binary-owned reference definitions under `userDataRoot/defaults`.
  * Loading does not read this tree. Failures are returned so startup can continue. */
 export async function installBundledDefaults(options: InstallBundledDefaultsOptions): Promise<InstallBundledDefaultsResult> {
-  const catalog = options.catalog ?? loadBundledDefaultCatalog()
+  const { catalog } = options
   const manifest = expectedManifest(options.binaryVersion, catalog)
   const defaultsDir = join(options.userDataRoot, "defaults")
   const manifestPath = join(defaultsDir, ".manifest.json")

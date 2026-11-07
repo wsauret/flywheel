@@ -29,6 +29,7 @@ import { buildWorkflowControlInitializedFact, workflowAggregateId } from "../../
 import { fourLaneControl, wideBindings } from "../../workflows/vm/_tree-fixtures"
 import { countStateRequests, factsRead } from "../../../helpers/state-requests"
 import { openAIResponsesTarget } from "../../../../src/orchestration/agent-runtime/llm/openai-adapter-helpers.js";
+import { promptOptions } from "../../../helpers/prompt-capabilities.js";
 
 afterEach(() => {
   cleanupTmpRoot()
@@ -82,9 +83,9 @@ describe("message_session prompting", () => {
     const tool = createMessageSessionTool(messaging)
     const kinds: PromptKind[] = ["chat", "subagent", "workflow-agent", "headless"]
     for (const promptKind of kinds) {
-      const prompt = renderSystemPrompt(buildSystemPrompt({ tools: [tool], promptKind }))
-      expect(prompt).toContain("Ask a blocking question, answer one, or revise your own child or workflow's instructions")
-      expect(prompt).toContain("One message is one question, one answer, one revision of your own child or workflow's instructions, or one thing your person asked you to send.")
+      const prompt = renderSystemPrompt(buildSystemPrompt(promptOptions({ tools: [tool], promptKind })))
+      expect(prompt).toContain("Ask a blocking question, answer one, or revise your own child's instructions")
+      expect(prompt).toContain("One message is one question, one answer, one revision of your own child's instructions, or one thing your person asked you to send.")
       expect(prompt).toContain("Never acknowledge, confirm, promise a later update, or report status.")
       expect(prompt).toContain("Return delegated results through handoff, not message_session.")
     }

@@ -37,7 +37,7 @@ import { workflowLaunchHost } from "../workflow-host/launch-operation-contract.j
 import { createRuntimeConfigOwner } from "../config/runtime-config-owner.js"
 import { buildCustomProvidersFromConfig, logCustomProviderDiagnostics, publishCustomProvidersFromConfig } from "../config/custom-providers.js"
 import { startModulePolicy } from "../config/module-policy.js"
-import { prepareDefinitionReconciliation, type FirstPartyModuleComposition } from "../modules.js";
+import { prepareDefinitionReconciliation, shippedDefinitionBundles, type FirstPartyModuleComposition } from "../modules.js";
 import { createRuntimeModuleComposer } from "./runtime-module-composition.js"
 import { installedAccessProviderIds } from "../credential-provider-modules.js";
 import type { WorkflowsMode } from "../../protocol/module-protocol-types.js"
@@ -52,7 +52,7 @@ import { persistentProcessPolicy } from "../config/persistent-process-policy.js"
 import { createSessionViewLoader } from "../session-store/view.js"
 import { createFlywheelAppService, type FlywheelAppServiceDeps } from "./app-service.js"
 import { composeAuthLogin } from "./auth-login-composition.js"
-import { createAuthRuntime, type AuthRuntime } from "./auth-runtime.js"
+import { createAuthRuntime, type AuthRuntime, type HeadlessAuthSelection } from "./auth-runtime.js"
 import { createLazyWorkflowController } from "./lazy-workflow-controller.js"
 import { composeModuleProtocolRuntimes } from "./module-protocol-host.js"
 import { createSessionChangesPublisher } from "./session-changes-publisher.js"
@@ -109,10 +109,15 @@ export interface RuntimeCompositionOptions extends StartupDirectories {
   readonly launcher: LauncherScope
   readonly persistentProcesses: PersistentProcessClient | BridgedPersistentProcessClient
   readonly allowPersistentProcesses: boolean
-  /** Usage polling is enabled only for the explicit interactive TUI hosts. */
+  /** The composition serves attached clients: the account service's project
+   *  executor. Usage polling runs only there, and every other composition,
+   *  such as headless chat, is headless: its shell offers no mutating
+   *  declaration (PI-AGENT-119). */
   readonly interactive?: boolean
   /** Canonical active tools omitted from every runner and workflow admission in this run. */
   readonly disabledTools?: readonly string[]
+  /** A headless run's own profile selector and auth snapshot. */
+  readonly headlessAuth?: HeadlessAuthSelection
   /** Tells the account the project's earliest owed capacity time and
    *  resolves once it holds it. Absent where no account serves the project. */
   readonly recordCapacityWake?: (at: number | null) => Promise<void>
@@ -374,7 +379,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
     notify,
     settlePublication: async () => { await availability.settled() },
   }), async (projection) => { await projection.dispose() })
-  const definitionCatalog = loadBundledDefaultCatalog()
+  const definitionCatalog = loadBundledDefaultCatalog(shippedDefinitionBundles())
   const definitionBaselines = await createDefinitionOverrideBaselineOwner({ userDataRoot, resolutions: definitions.resolutions(), catalog: definitionCatalog })
   const definitionOverrides = createDefinitionOverrideService({
     catalog: definitionCatalog,
@@ -431,6 +436,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
     runtimeConfig,
     chatDefault: options.chatDefault ?? { kind: "pending" },
     persistentProcessesForcedByCli: options.allowPersistentProcesses,
+    ...(options.headlessAuth === undefined ? {} : { headlessAuth: options.headlessAuth }),
     workflowPreparation: {
       userDataRoot,
       accountHome,
@@ -447,6 +453,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
       ...(gitAiAttributionService ? { gitAiAttribution: gitAiAttributionService } : {}),
       streamingEditValidation,
       onNotification: notify,
+      ...(options.interactive === true ? {} : { headless: true }),
     },
   }), (owner) => owner.disposeCore())
   const subscriptionUsage = authRuntime.subscriptionUsage
@@ -629,7 +636,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
     commandInvoke,
     runtimeSupervisor,
     warmTools: async () => { await (await import("../agent-runtime/tools/bash-parser.js")).warmBashParser() },
-    publishReferences: async () => (await import("../../workflows/definitions/installer.js")).publishBundledReferences(userDataRoot),
+    publishReferences: async () => (await import("../../workflows/definitions/installer.js")).publishBundledReferences(userDataRoot, definitionCatalog),
     bus,
   } satisfies FlywheelAppServiceDeps
   startupTrace("runtime app-service deps created")

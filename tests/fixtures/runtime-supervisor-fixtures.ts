@@ -32,6 +32,7 @@ import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../src/infra/eve
 import { tryOpenConversationTree } from "../../src/orchestration/session/conversation/conversation-tree-handle.js"
 import { unusedChildSessionControl } from "../helpers/child-session-control.js"
 import { createBackgroundWorkRegistry } from "../../src/orchestration/agent-runtime/background-work.js"
+import { planEveryCapability } from "../helpers/attempt-brief.js"
 
 export interface SupervisorTestContext {
   readonly baseDir: string
@@ -186,6 +187,7 @@ export function testSessionAuthAdmission(): SessionAuthAdmission<WorkflowDeps> {
     captureRuntimeConfig: testRuntimeConfigCapture,
     createAgent: () => { throw new Error("Supervisor test must inject its runner") },
     prepareRequest: () => { throw new Error("Supervisor test must inject its runner") },
+    planCapabilities: planEveryCapability,
     createLLMClient: async () => { throw new Error("Supervisor test must not call a provider") },
     captureProviderConnection: async () => { throw new Error("Supervisor test must not capture a provider") },
     runOwnedCommand: async () => { throw new Error("Supervisor test must not launch a process") },
@@ -246,6 +248,7 @@ export function mockRunner(sessionId: string, overrides: Partial<ChatRunner> = {
     interruptForReplacement: async () => false,
     interruptPlannedCut: async () => "running",
     hold: async () => NO_MODULE_RUNTIMES,
+    capabilities: async () => () => true,
     seedDisplayBlocks: () => {},
     disposeCalls: () => disposed,
     ...overrides,

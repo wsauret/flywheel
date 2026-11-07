@@ -19,7 +19,7 @@ Present the proposed grouping to the user as a numbered list: title, commits, fi
 
 ## Step 2: Run the frozen groups
 
-Run the bundled finalizer through the skill tool: `skill` with `action:"child-run"`, `skill_id:"experiment-finalize"`, `script:"finalize.sh"`, and `input` set to the frozen groups object. The host reads the exact bundled finalize.sh, writes it and your approved groups into the session scratchpad, and runs it in the experiment working tree. Never run the script through Bash and never edit it.
+Run the bundled finalizer through the skill tool: `skill` with `action:"child-run"`, `skill_id:"experiment-finalize"`, `script:"finalize.sh"`, and `input` set to the frozen groups object. The host reads the exact bundled finalize.sh, writes it and your approved groups into the session scratchpad, and runs it in the experiment working tree. Never run the script another way and never edit it.
 
 The script creates one branch per group from the merge-base, verifies the union matches the original branch, and prints a summary with all branches and cleanup commands. On creation failure it rolls back (deletes branches, restores the original branch, pops the stash). On verification failure it exits non-zero and leaves the branches intact for inspection.
 

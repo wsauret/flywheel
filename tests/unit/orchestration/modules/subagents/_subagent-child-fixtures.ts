@@ -39,6 +39,7 @@ import type { CapabilityAccess } from "../../../../../src/orchestration/agent-ru
 import { roleCapture } from "../../../../helpers/role-capture.js"
 import { buildDurableSubagentCreated, buildSubagentPrompted } from "../../../../../src/orchestration/modules/subagents/history/subagent-run-fact-writers.js"
 import { createProviderRequestAuditWriter } from "../../../../../src/orchestration/agent-runtime/llm/provider-request-audit.js"
+import { planEveryCapability } from "../../../../helpers/attempt-brief.js"
 
 const delegator: AgentDefinition = {
   kind: "persona",
@@ -102,7 +103,7 @@ export function continuationParentHost(harness: SubagentChildHarness, sessionId:
     modules: NO_MODULE_SERVICES, childSlots: base.childSlots, purpose: { kind: "interactive-chat" },
     projectRoot: harness.projectRoot, executionCwd: harness.projectRoot,
     definitions: repoDefinitions(), personas: repoDefinitions().personas(), promptKind: "chat",
-    model: base.parentModel, servingModel: { model: base.parentModel, modelFamily: base.modelFamily, availableModels: base.availableModels },
+    servingModel: { model: base.parentModel, modelFamily: base.modelFamily, availableModels: base.availableModels },
     createLLMClient: () => { throw new Error("The parent host makes no model call") },
     budgetStreamId: sessionId, auxiliaryRequestAudit: createProviderRequestAuditWriter({ identity: { providerSessionKey: conversationId }, promptKind: "chat" }), loadedSkillIds: new Set(),
     availableModels: new Map([[base.modelFamily, base.availableModels ?? new Set<string>()]]),
@@ -130,6 +131,7 @@ export function continuationService(harness: SubagentChildHarness, createAgent: 
         availableModels: new Map(), modelInfos: new Map(), definitions: repoDefinitions(),
         moduleSelection: base.moduleSelection, captureRuntimeConfig: base.captureRuntimeConfig, createAgent,
         prepareRequest: () => { throw new Error("This fixture prepares no pre-start") },
+        planCapabilities: planEveryCapability,
         createLLMClient: async (model) => asModelClient({
           model, modelFamily: "anthropic", accessProvider: "anthropic_api", contextLimit: 100_000,
           outputLimit: 8_000, supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },

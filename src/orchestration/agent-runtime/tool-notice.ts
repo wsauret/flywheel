@@ -1,5 +1,6 @@
 import type { ConversationMessage } from "./llm/types.js";
 import type { AgentLoopSeed } from "./agent-loop-types.js";
+import { recordNarrowing, type CapabilityNarrowing } from "./capability-narrowing.js";
 import { toolGrantRules } from "./persona-tool-rules.js";
 import type { RequestToolSurfaceOwner } from "./request-tool-surface.js";
 import type { RuntimeConversation } from "./runtime-conversation.js";
@@ -35,18 +36,23 @@ export function toolNotice(request: Pick<ReturnType<RequestToolSurfaceOwner["cur
  *  The entry is `tool-notice` framing: every request reads it, whatever
  *  route serves it, but it states this agent's own grants, so the transcript
  *  echo and reply debt look past it to the task, and a fork does not copy it.
+ *  A due narrowing statement joins the notice, so the modules that the
+ *  first plan turned off are stated once and no later statement repeats them.
  *  A conversation that holds the entry, or does not end in a user turn (a
  *  restored wait), commits nothing. */
 export async function commitToolNotice(
   conversation: RuntimeConversation,
   seed: AgentLoopSeed,
   notice: string,
+  narrowing: CapabilityNarrowing | undefined,
 ): Promise<AgentLoopSeed> {
   const tree = conversation.persistence.committedTree;
   if (seed.kind !== "resume" || !tree || !conversation.aggregateId) return seed;
   const entryId = toolNoticeEntryId(conversation.aggregateId);
   if (seed.priorMessages.at(-1)?.kind !== "user" || (await tree()).entriesById[entryId]) return seed;
-  const message: ConversationMessage = { kind: "user", content: notice, origin: "system", framing: "tool-notice" };
+  const content = narrowing === undefined ? notice : `${notice}\n\n${narrowing.statement}`;
+  const message: ConversationMessage = { kind: "user", content, origin: "system", framing: "tool-notice" };
   await conversation.persistence.history.append(message, entryId);
+  if (narrowing !== undefined) recordNarrowing(conversation.sessionId, narrowing.moduleIds, "tool-notice");
   return { kind: "resume", priorMessages: [...seed.priorMessages, message] };
 }

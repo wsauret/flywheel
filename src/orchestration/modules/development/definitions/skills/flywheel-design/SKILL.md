@@ -16,7 +16,7 @@ Apply these steps to each corpus. A proposal can touch both.
 2. Compare the proposal with recorded intent. Search the whole corpus for every statement that the proposal contradicts, narrows, or extends, not only the statement that owns the rule. Classify the effect on each affected statement as `clarified` or `changed`, and add `new` for a rule that no statement owns. A corpus with no affected statement is `unchanged` or `not applicable`.
 3. When the proposal conflicts with recorded intent, show each conflicting statement and ask whether the user is approving an intent change, unless the user already stated the different intent. Do not silently reinterpret or replace it.
 4. For `clarified`, `changed`, or `new`, include the smallest present-tense statement in the design, in that corpus's format. Preserve stable statement identifiers.
-5. Treat approval of the complete design as approval of its stated intent update. Persist the approved wording before inline implementation, subagent dispatch, workflow launch, or design-only completion.
+5. Treat approval of the complete design as approval of its stated intent update. Persist the approved wording before any implementation route starts, or before design-only completion.
 6. Apply each corpus's lifecycle contract when deciding whether approved work changes a statement. Do not create a second lifecycle rule in the design.
 
 ## Design result extension

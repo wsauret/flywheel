@@ -13,8 +13,10 @@ import { loadSkillDefinitions } from "../../../../../src/workflows/skills.js";
 import { buildSystemPrompt } from "../../../../../src/orchestration/agent-runtime/system-prompt.js";
 import { renderSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { fileTemporaryDirectory, temporaryDirectories } from "../../../../helpers/directories.js";
+import { promptOptions } from "../../../../helpers/prompt-capabilities.js";
+import { moduleDisabledReason } from "../../../../../src/protocol/module-ids.js";
 
-const context = makeContext();
+const context = makeContext({ capabilities: () => true });
 const temporaryDirectory = temporaryDirectories();
 
 /** A bundled package whose declared resources hold `content of <path>`,
@@ -37,6 +39,8 @@ function revisionOf(revision: number, skills: readonly SkillDefinition[]): Skill
 
 function toolFor(revision: SkillRegistryRevision): ReturnType<typeof createSkillTool> {
   return createSkillTool({
+    treeCapabilities: () => true,
+    availability: { skills: new Map() },
     revision,
     personaIndex: {},
   });
@@ -152,6 +156,8 @@ describe("skill tool loading", () => {
     const effectiveBundledSkillIds = new Set<string>();
     const loaded = skill("worktree-lifecycle", { resources: [{ path: "reference.md", bytes: 21 }] });
     const tool = createSkillTool({
+      treeCapabilities: () => true,
+      availability: { skills: new Map() },
       revision: revisionOf(1, [loaded]),
       personaIndex: {},
       onLoad: (loadedSkill) => { if (loadedSkill.source.authority === "bundled") effectiveBundledSkillIds.add(loadedSkill.id); },
@@ -180,6 +186,8 @@ describe("skill tool loading", () => {
       roots: [{ authority: "external", dir: root, reach: "project" }],
     }).skills);
     const tool = createSkillTool({
+      treeCapabilities: () => true,
+      availability: { skills: new Map() },
       revision,
       personaIndex: {},
       onLoad: (loaded) => {
@@ -190,6 +198,62 @@ describe("skill tool loading", () => {
     expect((await tool.execute({ action: "load", skill_id: "worktree-lifecycle" }, context)).outcome).toBe("ok");
     expect(await interceptBashCommand("git worktree add ../feature feature", { effectiveBundledSkillIds })).not.toBeNull();
   });
+
+describe("skill tool capability availability", () => {
+  const conditioned = skill("conditioned", { body: "# conditioned\n\nAlways.\n{{if:bash}}\nRun the probe.\n{{else}}\nUse your tools.\n{{end}}\n" });
+  const offModule = skill("off-module");
+  const dispatching = skill("dispatching", { agents: ["advisor"] });
+  const wrapper = skill("wrapper", { dependencies: ["dispatching"] });
+  const revision = revisionOf(1, [conditioned, offModule, dispatching, wrapper]);
+  const tool = createSkillTool({
+    revision,
+    personaIndex: {},
+    treeCapabilities: (term) => term !== "skill:off-module",
+    availability: { skills: new Map([["off-module", { id: "off-module", requires: ["workflows"], missing: ["workflows"], available: false, modelInvocable: false, reason: moduleDisabledReason(["workflows"]) }]]) },
+  });
+  const agent = (...terms: string[]) => makeContext({ capabilities: (term) => terms.includes(term) });
+
+  it("lists only the skills the tree check makes available", () => {
+    const catalog = (tool.promptGuidelines ?? []).join("\n");
+
+    expect(catalog).toContain("- conditioned: ");
+    expect(catalog).not.toContain("- off-module: ");
+  });
+
+  it("refuses a load that the agent check refuses, naming the module that is off", async () => {
+    const result = await tool.execute({ action: "load", skill_id: "off-module" }, agent("skill:conditioned"));
+
+    expect(result.outcome).toBe("error");
+    expect(text(result.content)).toBe(`Skill "off-module" is unavailable: ${moduleDisabledReason(["workflows"])}.`);
+  });
+
+  it("refuses a skill that dispatches agents to an agent that cannot call the subagent tool", async () => {
+    const result = await tool.execute({ action: "load", skill_id: "dispatching" }, agent());
+
+    expect(result.outcome).toBe("error");
+    expect(text(result.content)).toBe('Skill "dispatching" is unavailable: it dispatches agents, and the agent that reads it cannot call the subagent tool.');
+  });
+
+  it("refuses a skill whose dependency dispatches agents to an agent that cannot call the subagent tool", async () => {
+    const without = await tool.execute({ action: "load", skill_id: "wrapper" }, agent("skill:wrapper"));
+    expect(without.outcome).toBe("error");
+    expect(text(without.content)).toBe('Skill "wrapper" is unavailable: it composes skill "dispatching", which dispatches agents, and the agent that reads it cannot call the subagent tool.');
+
+    const withSubagent = await tool.execute({ action: "load", skill_id: "wrapper" }, agent("skill:wrapper", "subagent"));
+    expect(withSubagent.outcome).toBe("ok");
+    expect(text(withSubagent.content)).toContain("# Skill: dispatching");
+  });
+
+  it("renders the loaded body for the loading agent's capabilities", async () => {
+    const without = text((await tool.execute({ action: "load", skill_id: "conditioned" }, agent("skill:conditioned"))).content);
+    const withBash = text((await tool.execute({ action: "load", skill_id: "conditioned" }, agent("skill:conditioned", "bash"))).content);
+
+    expect(without).toContain("conditions: bash=off");
+    expect(without.endsWith("Always.\nUse your tools.\n")).toBe(true);
+    expect(withBash).toContain("conditions: bash=on");
+    expect(withBash.endsWith("Always.\nRun the probe.\n")).toBe(true);
+  });
+});
 
 describe("skill tool resources", () => {
   const withResource = skill("pdf", { resources: [{ path: "references/api.md", bytes: 26 }] });
@@ -297,6 +361,8 @@ describe("skill tool resource containment", () => {
     const observed = new Promise<void>((resolve) => { loadObserved = resolve; });
     const release = new Promise<void>((resolve) => { releaseLoad = resolve; });
     const tool = createSkillTool({
+      treeCapabilities: () => true,
+      availability: { skills: new Map() },
       revision,
       personaIndex: {},
       onLoad: async () => {
@@ -331,6 +397,8 @@ describe("skill tool resource containment", () => {
     // tool fails this test instead of hanging it.
     const fallback = setTimeout(() => releaseAll?.(), 25);
     const tool = createSkillTool({
+      treeCapabilities: () => true,
+      availability: { skills: new Map() },
       revision,
       personaIndex: {},
       onLoad: async () => {
@@ -430,12 +498,12 @@ describe("skill tool prompt guidance", () => {
   // The roster guidance names skills only; the chat delivery sequence lives in
   // the conversation-first block, which a worker prompt never carries.
   it("carries no chat delivery sequence into a workflow worker's skill guidance", () => {
-    const rendered = renderSystemPrompt(buildSystemPrompt({
+    const rendered = renderSystemPrompt(buildSystemPrompt(promptOptions({
       corePrompt: "core",
       tools: [toolFor(revisionOf(1, [skill("pdf")]))],
       promptKind: "workflow-agent",
       unattended: true,
-    }));
+    })));
 
     expect(rendered).not.toContain("chat delivery sequence");
     expect(rendered).not.toContain("Err on the side of loading");

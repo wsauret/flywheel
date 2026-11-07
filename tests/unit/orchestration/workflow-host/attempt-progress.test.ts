@@ -61,12 +61,18 @@ describe("attempt progress", () => {
       launchedFrom: { parentSessionId: "chat", toolUseId: "launch" },
       workflowMembership: { kind: "attempt", workflowId: "workflow", attemptId: "node:attempt:1" },
     }), 1) })
-    expect(await memberConversationCheckpoint(reader, "workflow", "earlier")).toBeNull()
+    expect(await memberConversationCheckpoint(reader, "workflow", "earlier", () => true)).toBeNull()
 
     const checkpoint = { ...emptyConversationCheckpoint(), nextStep: "Finish the migration." }
     append({ aggregateId: "session:member-1", sessionId: "member-1", type: "conversation.checkpoint.updated", version: 1, actor: "flywheel", payload: { conversationId: "earlier", checkpoint } })
 
-    expect(await memberConversationCheckpoint(reader, "workflow", "earlier")).toContain("# Next step\n\nFinish the migration.")
-    expect(await memberConversationCheckpoint(reader, "workflow", "unknown")).toBeNull()
+    const allOn = await memberConversationCheckpoint(reader, "workflow", "earlier", () => true)
+    expect(allOn).toContain("# Next step\n\nFinish the migration.")
+    expect(allOn).toContain("# Relevant skills")
+    // An agent that cannot load skills, as an advisor, reads no empty skills section.
+    const withoutSkills = await memberConversationCheckpoint(reader, "workflow", "earlier", (term) => term !== "skill")
+    expect(withoutSkills).toContain("# Next step\n\nFinish the migration.")
+    expect(withoutSkills).not.toContain("# Relevant skills")
+    expect(await memberConversationCheckpoint(reader, "workflow", "unknown", () => true)).toBeNull()
   })
 })

@@ -11,7 +11,7 @@ import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-facto
 import { resolveSessionRoles } from "../../../../../src/orchestration/config/session-role-resolver.js";
 import { fakeModelsClient } from "../../../../helpers/model-tier-fixtures.js";
 import { createChildSlotRegistry } from "../../../../../src/orchestration/agent-runtime/child-slot-registry.js";
-import { repoDefinitions } from "../../../../helpers/project-definitions.js";
+import { fixedAvailability, repoDefinitions } from "../../../../helpers/project-definitions.js";
 import { testDirectories } from "../../../../helpers/directories.js";
 import { capabilityAccessFor, type CapabilityAccess } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { CapabilityAdmission, CapabilityGrant, CapabilityRequest } from "../../../../../src/orchestration/config/module-policy.js";
@@ -33,6 +33,7 @@ import { Schema } from "effect";
 import { EffortSchema } from "../../../../../src/infra/workflow-types.js";
 import { createEmit, EventBus } from "../../../../../src/infra/event-bus.js";
 import { subscribeSessionRuntimeFacts } from "../../../../../src/orchestration/session/create-session-infra.js";
+import { agentCapabilityCheck } from "../../../../../src/orchestration/agent-runtime/capability-checks.js";
 
 interface UnknownRecord { [key: string]: unknown }
 let nextTestChildId = 0;
@@ -262,6 +263,12 @@ export function makeDeps(overrides?: Partial<SubagentDispatchDeps>): SubagentDis
     agentRegistry: buildRegistry(),
     capabilityRequirements: ["subagents"],
     skills: repoDefinitions().skills(),
+    // The dispatcher's live availability follows the definitions and the
+    // selection that a test overrides.
+    definitionAvailability: fixedAvailability(
+      { skills: overrides?.skills ?? repoDefinitions().skills(), personas: overrides?.agentRegistry ?? buildRegistry() },
+      (overrides?.moduleSelection ?? composeFirstPartyModules)().enabledModuleIds,
+    ),
     modelFamily: "anthropic",
     availableModels: new Set(["claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5"]),
     modelsClient: fakeModelsClient,
@@ -290,6 +297,8 @@ export function makeDeps(overrides?: Partial<SubagentDispatchDeps>): SubagentDis
     inheritableRuntimeSurfaces: {},
     moduleSelection: () => composeFirstPartyModules(),
     createRunner: () => { throw new Error("createRunner not provided in test deps"); },
+    // A child's plan here lets it call every tool of its grant, under the dispatcher's live availability.
+    planChildCapabilities: async (child) => agentCapabilityCheck(new Set(child.toolGrant), deps.definitionAvailability),
     subagentSessions: testSubagentSessionAuthority(() => deps),
     ...overrides,
   };

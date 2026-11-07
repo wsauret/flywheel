@@ -37,6 +37,9 @@ interface ConsumeLoopInputOptions {
   readonly compactAfter?: "continue" | "park";
 }
 
+/** What the model does when its process wait expires: the handling of the wait-expired notice. */
+export const WAIT_EXPIRED_HANDLING = "This wait expired once. Expiry does not stop managed work. Inspect progress or interact if needed. If nothing needs action or a reply, call process(action='wait') again with a fresh remaining-work estimate in soft_timeout seconds and no visible text. Estimate all managed work. Do not send status chatter.";
+
 /** A park's consumption: whether the input starts a new turn of the session
  *  (the park's turn was answered, or a person resumed an interrupted one)
  *  instead of continuing the turn that waits on background work. */
@@ -232,7 +235,7 @@ export function createAgentLoopInputWaiter(input: LoopInputWaiter) {
               id: record.id, kind: record.kind, elapsed_seconds: Math.floor((Date.now() - record.startedAtMs) / 1000),
             })) ?? [])],
           ],
-          handling: "This wait expired once. Expiry does not stop managed work. Inspect progress or interact if needed. If nothing needs action or a reply, call process(action='wait') again with a fresh remaining-work estimate in soft_timeout seconds and no visible text. Include subagents and workflows. Do not send status chatter.",
+          handling: WAIT_EXPIRED_HANDLING,
         }), { origin: "silent-system", runtimeNotice: true })
         : null);
       if (!raw) {

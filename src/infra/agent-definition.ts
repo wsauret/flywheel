@@ -22,6 +22,13 @@ interface PersonaAgentDefinition extends AgentDefinitionBase {
   role: string;
   /** When false, dispatch rejects copied parent conversation history. */
   allowFork?: boolean;
+  /** Set on a persona of the bundled layer, the one layer whose body may
+   *  carry capability markers (ARCH-CONTEXT-033). A user or project persona
+   *  body is external text that renders byte for byte. It is part of the
+   *  procedure: every copy and serialization keeps it, and persona identity
+   *  covers it, so a byte-identical override of a bundled persona, which
+   *  renders its markers raw, reports as a different persona. */
+  bundled?: true;
 }
 
 /** Built-in clone of the dispatching agent. The model and system prompt inputs

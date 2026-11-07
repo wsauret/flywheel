@@ -46,7 +46,11 @@ The implication: **be surgical**. You are not running the full validation suite.
 
 ### Per-command timeouts (mandatory)
 
+{{if:bash}}
 Bound each bash invocation with the tool's timeout parameter. Do not use the `timeout` shell utility. A single command must remain bounded:
+{{else}}
+A single command must remain bounded:
+{{end}}
 
 - HTTP probes / CLI invocations: 60s timeout
 - Targeted unit test file or live integration probe: 180s timeout

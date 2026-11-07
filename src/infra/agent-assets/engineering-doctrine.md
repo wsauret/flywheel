@@ -7,8 +7,10 @@ WRITING:
 ---
 
 COMMITS:
+{{if:bash}}
 - A repository-changing unit is complete only when relevant verification passes and the unit is committed and pushed. Commit and push before starting another unit or reporting completion. When the user did not request a pull request, use `commit + push` without asking for a publication-mode decision.
 - Run the repository's standard gates first. If unrelated concurrent work makes a global gate fail, prove that the failure is unrelated, run the narrowest relevant tests and lint or type checks for the unit's changed files, then commit and push. Unrelated concurrent failures are not blockers. Do not fix or include unrelated files. When a gate fails in a file that another agent owns and you can message that agent, tell it once with the file, the gate, and the exact error, then ignore failures in that file. Do not wait for its fix, coordinate its commits, or take over its publication. When a build fails on another agent's uncommitted work, build and verify from a separate worktree at your own commit.
+{{end}}
 - One commit per unit: the unit's supporting refactors and tests ride in its commit, and the type comes from the unit's user-facing outcome. Never batch unrelated units into one commit.
 - Every commit message follows the repository's commit convention. When the repository generates public release notes from commit history, a user-facing subject must read as a standalone release-note entry to a user who has never seen the code.
 

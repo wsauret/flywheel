@@ -11,6 +11,9 @@ import { NO_MODULE_RUNTIMES } from "../../src/infra/module-runtime.js"
 import { captureRuntimeConfigRequest } from "../../src/orchestration/agent-runtime/request-config.js"
 import { CONFIG_DEFAULTS } from "../../src/orchestration/config/schema.js"
 import { composeFirstPartyModules } from "../../src/orchestration/modules.js"
+import { definitionAvailabilityOf } from "../../src/orchestration/app-service/definition-availability.js"
+import { contributedToolIdentities, treeCapabilityCheck } from "../../src/orchestration/agent-runtime/capability-checks.js"
+import { publishSkillRevision } from "../../src/workflows/skill-schema.js"
 
 const workspace = "/tmp/flywheel-linux-runtime-verification"
 const scratchDir = join(workspace, "scratch")
@@ -36,14 +39,26 @@ const capabilityAccess: CapabilityAccess = {
     },
   }),
 }
+const moduleSnapshot = composeFirstPartyModules()
+// The smoke runs file and shell tools only, so it holds no skill or persona.
+const definitionAvailability = definitionAvailabilityOf({
+  skills: publishSkillRevision(1, new Map()),
+  personaRevision: { revision: "none", personas: new Map(), resolutions: [] },
+  personas: new Map(),
+  resolutions: [],
+}, moduleSnapshot.enabledModuleIds)
 const tools = (await planToolExposure({
   kernel: {
     userDataRoot: workspace,
     backgroundTasks: background.tasks,
     foregroundBashHold,
     foregroundBashHoldSeconds: 10,
+    shellWriteGuard: true,
+    persistentProcessesAdvertised: false,
     capabilities: capabilityAccess,
-    moduleSnapshot: composeFirstPartyModules(),
+    definitionAvailability: { tree: definitionAvailability, live: definitionAvailability },
+    treeCapabilities: treeCapabilityCheck(moduleSnapshot, definitionAvailability, contributedToolIdentities(moduleSnapshot)),
+    moduleSnapshot,
     runtimeConfig: captureRuntimeConfigRequest({ revision: 0, config: CONFIG_DEFAULTS, warnings: [], diagnostics: [], sourceIdentity: "smoke", status: { kind: "valid" } }, "default"),
     purpose: { kind: "headless-task", prompt: { kind: "assembled", corePrompt: "You are a helpful AI Agent." } },
     servingModel: { model: "smoke", modelFamily: "anthropic" },

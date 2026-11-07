@@ -7,9 +7,9 @@ import { buildSystemPrompt } from "../../../../../src/orchestration/agent-runtim
 import { renderSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { resolveCapturedRole } from "../../../../../src/orchestration/config/role-resolution.js";
 import { roleCapture } from "../../../../helpers/role-capture.js";
-import { RequestToolMap, testKernelToolDeps, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
+import { RequestToolMap, testKernelToolDeps, testRuntimeConfigCapture, plannedRequest } from "../../../../helpers/request-tool-surface.js";
 import type { FlywheelConfig } from "../../../../../src/orchestration/config/schema.js";
-import { createModelsTool } from "../../../../../src/orchestration/agent-runtime/tools/models.js";
+import { createModelsTool } from "../../../../../src/orchestration/modules/workflows/models.js";
 import { Effect, Exit, Scope } from "effect";
 import { createTurnDispatcher } from "../../../../../src/orchestration/agent-runtime/agent-loop-tools.js";
 import { fixedTurnOutputBound } from "../../../../../src/orchestration/agent-runtime/compaction/compaction-policy.js";
@@ -18,6 +18,8 @@ import { temporaryDirectories } from "../../../../helpers/directories.js";
 import type { StreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { join } from "node:path";
 import { normalizeModelScores } from "../../../../../src/infra/llm/model-scores-document.js";
+import { promptOptions } from "../../../../helpers/prompt-capabilities.js";
+import { capabilityAccessHolding } from "../../agent-runtime/tools/_fixtures.js";
 
 function snapshot(models: readonly string[]) {
   return normalizeModelScores({
@@ -33,14 +35,14 @@ test("models reads live eligibility while its request prefix stays byte-identica
   const capture = async () => roleCapture(enabled, profileRoles);
   const root = temporaryDirectory("models-prefix-");
   await Bun.write(join(root, "models", "benchmark-tiers.json"), JSON.stringify({ attemptedAt: Date.now(), snapshot: null }));
-  const kernel = testKernelToolDeps({ captureProviderConnection: capture, userDataRoot: root });
+  const kernel = testKernelToolDeps({ captureProviderConnection: capture, userDataRoot: root, capabilities: capabilityAccessHolding(["workflows"]) });
   const owner = await createRequestToolSurface(
-    () => planToolExposure({ kernel, modules: NO_MODULE_RUNTIMES }), () => kernel.moduleSnapshot, testRuntimeConfigCapture,
+    () => plannedRequest(planToolExposure({ kernel, modules: NO_MODULE_RUNTIMES })), () => kernel.moduleSnapshot, testRuntimeConfigCapture,
   );
   const prefix = async () => {
     const request = await owner.resolve();
     const prepared = await request.prepareStablePrompt(
-      () => buildSystemPrompt({ corePrompt: "core", tools: [...request.tools.values()], promptKind: "chat" }),
+      () => buildSystemPrompt(promptOptions({ corePrompt: "core", tools: [...request.tools.values()], promptKind: "chat" })),
       DEFAULT_MODEL_INTERACTION_PROFILE,
     );
     return { request, bytes: JSON.stringify({ system: renderSystemPrompt(prepared.systemPrompt), tools: prepared.definitions }) };

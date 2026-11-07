@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test"
 
 import { createChatSession } from "../../../../src/orchestration/chat/session"
 import type { AgentRunResult, Agent, AgentOptions } from "../../../../src/orchestration/agent-runtime/types"
-import type { RequestPreparer } from "../../../../src/orchestration/agent-runtime/request-preparation"
+import type { CapabilityPlanner, RequestPreparer } from "../../../../src/orchestration/agent-runtime/request-preparation"
 import type { ResolvedRoles } from "../../../../src/orchestration/config/roles"
 import { createTestChatSessionDeps, makeMemoryTreeWriter } from "./_chat-session-agent-runtime-fixtures"
 import { flushMicrotasks } from "./_chat-runner-lifecycle-fixtures"
@@ -39,6 +39,10 @@ function makeChat() {
     }
     return { candidate: { attempt, client: { ...attempt, anticipate, streamWithTools: () => { throw new Error("a pre-start sends nothing") } }, prepared: preparedRequest(attempt) }, request: streamOptions }
   }
+  /** The options that each capability plan (`ChatRunner.capabilities`) planned, and the check it answers. */
+  const capabilityPlans: AgentOptions[] = []
+  const plannedCheck = (term: string) => term === "bash"
+  const planCapabilities: CapabilityPlanner = async (options) => { capabilityPlans.push(options); return plannedCheck }
   const createAgent = (options: AgentOptions): Agent => {
     sends.push(options)
     const done = Promise.withResolvers<AgentRunResult>()
@@ -64,6 +68,7 @@ function makeChat() {
     sessionId: "session-engines",
     createAgent,
     prepareRequest,
+    planCapabilities,
     treeWriter: makeMemoryTreeWriter(),
     resolveRoles: async () => roles,
     subscribeRoleChanges: (listener) => { roleChanged = listener; return async () => { roleChanged = undefined } },
@@ -73,7 +78,7 @@ function makeChat() {
   const planned = () => prestarts.map((options) => `${options.purpose.kind === "interactive-chat" ? "chat" : "host"} ${options.model}`)
   const settled = async () => { for (let i = 0; i < 4; i++) await flushMicrotasks() }
   return {
-    chat, prestarts, prestartRevisions, sends, planned, settled, released, claims,
+    chat, prestarts, prestartRevisions, sends, planned, settled, released, claims, capabilityPlans, plannedCheck,
     failSends: () => { failSends = true },
     failTurn: () => { failed?.() },
     switchChat: (model: string) => { roles = new Map([["chat", { roleId: "chat", model, effort: "high" }]]); roleChanged?.() },
@@ -119,6 +124,21 @@ describe("a chat runner's engines", () => {
     h.chat.setShown(true)
     await h.settled()
     expect(h.planned().slice(5)).toEqual(["chat claude-haiku", "host claude-haiku"])
+  })
+
+  it("answer the capabilities of the chat's next send without starting a turn or a pre-start", async () => {
+    const h = makeChat()
+
+    expect(await h.chat.capabilities()).toBe(h.plannedCheck)
+    expect(h.capabilityPlans.map((options) => `${options.purpose.kind} ${options.model}`)).toEqual(["interactive-chat claude-opus"])
+    expect(h.capabilityPlans[0]?.conversation.kind).toBe("durable-tree")
+    expect(h.sends).toEqual([])
+    expect(h.prestarts).toEqual([])
+
+    // The plan follows the chat's provider runtime, which its next send takes.
+    void h.chat.send("first")
+    await h.settled()
+    expect(h.capabilityPlans[0]?.providerSession).toBe(h.sends[0]?.providerSession)
   })
 
   it("plan again when the environment that serves them is refreshed, before the earlier claims go, and not while hidden", async () => {

@@ -55,7 +55,7 @@ const WORKFLOW_PATHS: readonly RegExp[] = [
   /^src\/protocol\/brief-role-id\.ts$/,
   /^src\/tui\/(.*\/)?workflow-/,
   /^webview\/src\/(.*\/)?workflow-/,
-  /^src\/agent-skills\/workflow-authoring\//,
+  /^src\/orchestration\/modules\/workflows\/definitions\/skills\/workflow-authoring\//,
   /^docs\/product-intent\//,
 ];
 

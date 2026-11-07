@@ -1,15 +1,19 @@
+import type { CapabilityCheck } from "../../infra/capability-text.js";
 import type { ConversationMessage } from "./llm/types.js";
 
 type SystemReminder = Extract<ConversationMessage, { kind: "user" }> & { origin: "system" };
 export type TurnReminderStatement = "on" | "still" | "off";
 
+/** The text of one statement for the agent check of the request that states it (ARCH-CONTEXT-033). */
+export type TurnReminderText = (has: CapabilityCheck) => string;
+
 /** One module's standing mode for this request: its id and three statements, how many person turns pass before
  *  it is stated again, whether it holds now, and the content of statements of an earlier shape. */
 export interface TurnReminderState {
   readonly id: string;
-  readonly on: string;
-  readonly still: string;
-  readonly off: string;
+  readonly on: TurnReminderText;
+  readonly still: TurnReminderText;
+  readonly off: TurnReminderText;
   readonly every: number;
   readonly holds: boolean;
   readonly retired?: { readonly [content: string]: TurnReminderStatement };
@@ -38,9 +42,10 @@ const isPersonTurn = (message: ConversationMessage | undefined): boolean =>
  * Returns the reminders to append before a request, as hidden system-origin user messages. The conversation is the
  * only record of what the model was told, so a resumed, forked, or compacted conversation decides from what it holds.
  * Only a new person turn gets a reminder: the first one while a mode holds gets `on`, one that comes more than `every` person turns after the latest statement gets `still`, and
- * the first one after the mode stopped holding gets `off`. Input is never changed.
+ * the first one after the mode stopped holding gets `off`. Each statement renders for `has`, the agent check of this
+ * request; the marker, not the wording, identifies it later. Input is never changed.
  */
-export function turnReminders(messages: readonly ConversationMessage[], states: readonly TurnReminderState[]): readonly SystemReminder[] {
+export function turnReminders(messages: readonly ConversationMessage[], states: readonly TurnReminderState[], has: CapabilityCheck): readonly SystemReminder[] {
   if (!isPersonTurn(messages.at(-1))) return [];
   return states.flatMap((state) => {
     let latest: TurnReminderStatement | undefined;
@@ -51,7 +56,7 @@ export function turnReminders(messages: readonly ConversationMessage[], states: 
       if (isPersonTurn(message)) turns++;
     }
     const stated = latest === "on" || latest === "still";
-    if (state.holds) return !stated ? [statement(state.id, "on", state.on)] : turns > state.every ? [statement(state.id, "still", state.still)] : [];
-    return stated ? [statement(state.id, "off", state.off)] : [];
+    if (state.holds) return !stated ? [statement(state.id, "on", state.on(has))] : turns > state.every ? [statement(state.id, "still", state.still(has))] : [];
+    return stated ? [statement(state.id, "off", state.off(has))] : [];
   });
 }

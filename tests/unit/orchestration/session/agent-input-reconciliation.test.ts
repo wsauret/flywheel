@@ -233,7 +233,7 @@ describe("agent input reconciliation", () => {
 
     expect(settled.outcome).toBe(kind === "registered" ? "cancelled" : "ok")
     if (kind === "registered") {
-      expect(settled.content).toContain("The debug workflow is retired. Flywheel no longer launches it. Write and launch a workflow file instead.")
+      expect(settled.content).toContain("The debug workflow is retired. Flywheel no longer launches it.")
       expect(settled.content).not.toContain("Confirmation id")
     } else expect(settled.content).toContain("Confirmation id for this decision: ask-approve")
     expect(leaf).toEqual({ kind: "toolResult", toolUseId: "ask-approve", content: [{ type: "text", text: settled.content }], ...(kind === "registered" ? { isError: true } : {}) })
@@ -286,7 +286,7 @@ describe("agent input reconciliation", () => {
     expect(outcome.completedLeaf).toBe(true)
     expect((await loadAgentInputProjection(asAsyncEventReadSurface(ctx.store), ctx.sessionId)).get("ask-launch"))
       .toMatchObject({ kind: "withdrawn", reason: "workflow_launch_retired", decision: WORKFLOW_DECISION })
-    const text = "The debug workflow is retired. Flywheel no longer launches it. Write and launch a workflow file instead."
+    const text = "The debug workflow is retired. Flywheel no longer launches it."
     expect(messages(again.entries ?? []).filter((message) => message.kind === "toolResult"))
       .toEqual([{ kind: "toolResult", toolUseId: "ask-launch", content: [{ type: "text", text }], isError: true }])
     expect(inputFacts().filter((event) => event.type === "agent_input.withdrawn")).toHaveLength(1)

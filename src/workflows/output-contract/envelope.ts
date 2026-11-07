@@ -8,6 +8,15 @@ const COMMAND_RUNS_DESCRIPTION = "The Bash commands whose results prove this han
 
 export const COMMAND_EVIDENCE_RULE = "**Command execution is recorded from the calls you cite; result descriptions are trusted reports.** Cite the Bash commands that prove your claims by their exact toolUseId; the runtime records each command and its exit code from the cited call. Never improve, infer, or fabricate evidence. A later agent re-runs commands only when its brief explicitly requires fresh verification.";
 
+/** Why an agent whose contract sets `commands.min` cannot run where Bash is
+ *  off: no call it makes can be cited. A launch refuses it, and an attempt
+ *  that meets it fails before the agent runs, with these words. `reason` is
+ *  why the agent may not call bash, from the owner that knows which module
+ *  turns it off. */
+export function commandEvidenceRefusal(agentLabel: string, reason: string): string {
+  return `${agentLabel} needs command evidence. ${reason}.`;
+}
+
 const defaultSummaryDescription = "Open with one short sentence, under ten words, that states the result. Then describe what you did and the current state.";
 
 /** The envelope keys as grammar fields. `commands_run` is optional here; a

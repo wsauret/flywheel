@@ -310,7 +310,7 @@ export async function runPersonaBenchmark(plan: BenchmarkPlan, deps: PersonaBenc
   const profileId = deps.runtime.profileId;
   const authorityIncarnation = deps.runtime.authorityIncarnation;
   if (!profileId || !authorityIncarnation) throw new Error("Persona benchmark requires an exact profile ID and Usage-authority incarnation");
-  const personaGuidanceIdentity = structuredIdentity(renderPersonaTaskGuidance(persona, registry, deps.runtime.definitions.skills()));
+  const personaGuidanceIdentity = structuredIdentity(renderPersonaTaskGuidance(persona, registry, deps.runtime));
   // Remove after 2027-10-16: retain the input identity of an earlier campaign on resume; selections live in request evidence.
   const judgeIdentity = stored?.judgeIdentity ?? structuredIdentity(JUDGE_IDENTITY_INPUT);
   const campaignInputs = {

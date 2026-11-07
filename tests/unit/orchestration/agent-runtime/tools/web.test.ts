@@ -10,6 +10,7 @@ import { createWebTool } from "../../../../../src/orchestration/agent-runtime/to
 import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.js";
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
 import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js";
+import { composeFirstPartyModules, type ModuleId } from "../../../../../src/orchestration/modules.js";
 import type { RuntimeToolInput, ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { WebSearchError, type WebSearchCommand, type WebSearchPort, type WebSearchProvider, type WebSearchResponse, type WebSearchRunOptions } from "../../../../../src/orchestration/agent-runtime/web-search/types.js";
 import { createChatGptWebSearch } from "../../../../../src/orchestration/agent-runtime/web-search/chatgpt.js";
@@ -39,10 +40,11 @@ function context(): ToolContext {
   return makeContext({ artifactScopeId: "session-1", sessionId: "session-1" });
 }
 
-/** One request planned over a web runtime that resolves to the given port. */
-function plan(port?: WebSearchPort, selected?: ReadonlySet<string>) {
+/** One request planned over a web runtime that resolves to the given port, for a tree whose modules `disabled`
+ *  leaves off. */
+function plan(port?: WebSearchPort, selected?: ReadonlySet<string>, disabled: readonly ModuleId[] = []) {
   return planToolExposure({
-    kernel: testKernelToolDeps({ userDataRoot }),
+    kernel: testKernelToolDeps({ userDataRoot, moduleSnapshot: composeFirstPartyModules(undefined, disabled) }),
     modules: composeModuleRuntimes(port ? [["web", () => port]] : []),
     ...(selected ? { selected } : {}),
   });
@@ -57,6 +59,12 @@ describe("web tool exposure", () => {
     const planned = await plan(capability({ available: () => false }));
     expect(planned.tools.has("web")).toBe(false);
     expect(planned.omitted).toContainEqual({ name: "web", reason: "no web search provider available (connect ChatGPT or Exa in /auth)" });
+  });
+
+  it("names only the web backends that the tree holds in its omission reason", async () => {
+    const unavailable = capability({ available: () => false });
+    expect((await plan(unavailable, undefined, ["web-chatgpt"])).omitted).toContainEqual({ name: "web", reason: "no web search provider available (connect Exa in /auth)" });
+    expect((await plan(unavailable, undefined, ["web-chatgpt", "web-exa"])).omitted).toContainEqual({ name: "web", reason: "no web search provider available (turn on a web retrieval backend in Settings)" });
   });
 
   it("is omitted when a selected allowlist does not name it, even with a login", async () => {

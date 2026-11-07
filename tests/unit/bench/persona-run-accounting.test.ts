@@ -216,9 +216,10 @@ describe("persona cell accounting", () => {
         done: Promise.resolve({ terminal: { kind: "completed" } }),
       };
     });
-    const outcome = await runPersonaTask({ ...runtime, moduleSelection: () => composeFirstPartyModules(undefined, ["subagents"]) }, request());
+    const benchmarkRuntime = { ...runtime, moduleSelection: () => composeFirstPartyModules(undefined, ["subagents"]) };
+    const outcome = await runPersonaTask(benchmarkRuntime, request());
     expect(outcome.summary).toBe("Exact completed answer.");
-    expect(String(sent)).toEndWith(`\n\n${renderPersonaTaskGuidance(PERSONA, new Map(), runtime.definitions.skills()).task}`);
+    expect(String(sent)).toEndWith(`\n\n${renderPersonaTaskGuidance(PERSONA, new Map(), benchmarkRuntime).task}`);
     expect(captured?.runtimeSurfaces?.handoff?.schema).toBeDefined();
   });
 

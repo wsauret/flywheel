@@ -14,7 +14,7 @@ import type { ProviderRequestAuditWriter } from "../../../../src/orchestration/a
 import type { RuntimeTool, ToolAttributionIdentity } from "../../../../src/orchestration/agent-runtime/tools/types.js"
 import { asModelClient, ownHistoryTarget } from "./_model-client.js"
 import { NO_MODULE_RUNTIMES } from "../../../../src/infra/module-runtime.js"
-import { RequestToolMap, testCapabilityModules, testKernelToolDeps, testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.js"
+import { RequestToolMap, testCapabilityModules, testDefinitionAvailability, testKernelToolDeps, testRuntimeConfigCapture, plannedRequest } from "../../../helpers/request-tool-surface.js"
 import type { GitAiAttributionService } from "../../../../src/orchestration/agent-runtime/git-ai-attribution-service.js"
 import { chain, fakeAvailability, fakeClient, singletonCandidate, textStream } from "./llm/_provider-chain-harness.js"
 import { normalizeProviderAttemptFailure } from "../../../../src/orchestration/agent-runtime/llm/provider-failure.js"
@@ -75,7 +75,7 @@ describe("logical tool authorization", () => {
       }),
     })
     const surface = await createRequestToolSurface(
-      () => ({ eligibleTools: new RequestToolMap(), tools: new RequestToolMap(), omitted: [], usable: new Set(), registrationIds: new Map(), registrationIdentities: new Map() }), testCapabilityModules, testRuntimeConfigCapture,
+      () => ({ eligibleTools: new RequestToolMap(), tools: new RequestToolMap(), omitted: [], usable: new Set(), turnedOff: [], registrationIds: new Map(), registrationIdentities: new Map(), definitionAvailability: testDefinitionAvailability() }), testCapabilityModules, testRuntimeConfigCapture,
     )
     await runAgentLoop({
       client, initialPlannedAttempt: attempt, tools: surface,
@@ -119,16 +119,17 @@ describe("per-request persistent-process policy", () => {
     const tasks = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} })
     const background = createBackgroundExecutionOwner(tasks)
     const foregroundBashHold = createForegroundBashHoldController(() => {})
-    const surface = await createRequestToolSurface(() => planToolExposure({
+    const surface = await createRequestToolSurface(() => plannedRequest(planToolExposure({
       kernel: testKernelToolDeps({
         userDataRoot: tmpdir(),
         capabilities: { available: (capability) => capability === "background-commands" },
         backgroundTasks: tasks,
         foregroundBashHold,
         persistentProcesses: true,
+        persistentProcessesAdvertised: true,
       }),
       modules: NO_MODULE_RUNTIMES,
-    }), testCapabilityModules, testRuntimeConfigCapture)
+    })), testCapabilityModules, testRuntimeConfigCapture)
     let allowed = true
     let launches = 0
     let calls = 0
@@ -207,9 +208,10 @@ describe("per-request persistent-process policy", () => {
         eligibleTools: new RequestToolMap([["bash", bash]]),
         tools: new RequestToolMap([["bash", bash]]),
         omitted: [],
-        usable: new Set(["bash"]),
+        usable: new Set(["bash"]), turnedOff: [],
         registrationIds: new Map([["bash", "bash"]]),
         registrationIdentities: new Map([["bash", "bash"]]),
+        definitionAvailability: testDefinitionAvailability(),
       }),
       testCapabilityModules,
       testRuntimeConfigCapture,
@@ -351,7 +353,7 @@ describe("per-request provider admission", () => {
       execute: async () => ({ content: "ok", outcome: "ok" }),
     }
     const surface = await createRequestToolSurface(
-      () => ({ eligibleTools: new RequestToolMap([["noop", noop]]), tools: new RequestToolMap([["noop", noop]]), omitted: [], usable: new Set(["noop"]), registrationIds: new Map([["noop", "noop"]]), registrationIdentities: new Map([["noop", "noop"]]) }),
+      () => ({ eligibleTools: new RequestToolMap([["noop", noop]]), tools: new RequestToolMap([["noop", noop]]), omitted: [], usable: new Set(["noop"]), turnedOff: [], registrationIds: new Map([["noop", "noop"]]), registrationIdentities: new Map([["noop", "noop"]]), definitionAvailability: testDefinitionAvailability() }),
       testCapabilityModules,
       testRuntimeConfigCapture,
     )

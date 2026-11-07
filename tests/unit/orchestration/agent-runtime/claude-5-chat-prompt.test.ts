@@ -7,6 +7,7 @@ import { buildSystemPrompt as buildSystemPromptTiers, type BuildSystemPromptOpti
 import { renderSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../src/infra/agent-assets/system-prompt.js";
 import { testDirectories } from "../../../helpers/directories.js";
+import { promptOptions } from "../../../helpers/prompt-capabilities.js";
 
 const spec = (name: string, opts: Partial<ToolPromptFields> = {}): ToolPromptFields => ({ action: "ui_meta", description: `${name} tool`, ...opts, name });
 const TOOLS: ToolPromptFields[] = [spec("bash"), spec("read")];
@@ -19,15 +20,15 @@ const promptRealm = testDirectories(promptRealmRoot);
 const corePrompt = loadSystemPrompt(promptRealm);
 const engineeringDoctrine = loadEngineeringDoctrine(promptRealm);
 const buildSystemPrompt = (options: BuildSystemPromptOptions): string => renderSystemPrompt(buildSystemPromptTiers(options));
-const build = (overrides: Partial<BuildSystemPromptOptions> = {}): string =>
-  buildSystemPrompt({ corePrompt, tools: TOOLS, promptKind: "chat", chatHost: { communication: true }, ...overrides });
+const build = (overrides: Partial<Parameters<typeof promptOptions>[0]> = {}): string =>
+  buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, promptKind: "chat", chatHost: { communication: true }, ...overrides }));
 
 /** The Claude 5 chat body is the tuned interactive prompt that replaces the general chat blocks. */
 describe("Claude 5 chat body", () => {
   it("replaces the general chat blocks with the tuned Claude 5 body and keeps every other part", () => {
     const tools = [...TOOLS, spec("skill"), spec("ask_user"), spec("subagent"), spec("edit", { action: "file_edit" })];
-    const general = build({ tools, engineeringDoctrine, agentsMd, chatChangeReviewSkillAvailable: true });
-    const tuned = build({ tools, engineeringDoctrine, agentsMd, chatChangeReviewSkillAvailable: true, chatPrompt: "opus-5.5" });
+    const general = build({ tools, engineeringDoctrine, agentsMd, skills: ["code-review"] });
+    const tuned = build({ tools, engineeringDoctrine, agentsMd, skills: ["code-review"], chatPrompt: "opus-5.5" });
 
     expect(tuned).toStartWith("You are Flywheel's chat agent.");
     for (const kept of DOCTRINE_SECTIONS) expect(tuned).toContain(kept);
@@ -49,6 +50,17 @@ describe("Claude 5 chat body", () => {
     expect(tuned).not.toContain("**Orchestration pays for itself.**");
     expect(tuned).toContain("review it yourself against the intent");
     expect(tuned).toContain("number them and state the one you recommend");
+    // No skill, memory, workflow, or subagent tool: the body names none of them and keeps each method.
+    for (const absent of ["`design` skill", "memory", "subagent", "workflow", "the recorded history"]) expect(tuned).not.toContain(absent);
+    expect(tuned).toContain("restate their model, name the exact premise where you differ");
+    expect(tuned).toContain("run it in the scratchpad before you design on the claim");
+    const noShell = build({ tools: [spec("read")], chatPrompt: "sonnet-5.5" });
+    expect(noShell).toContain("settle that with the tools you have, or report it as an unverified assumption");
+    expect(noShell).not.toContain("probe");
+    // Workflows alone: the orchestration commitment names only the workflow route.
+    const workflows = build({ tools: [...TOOLS, spec("workflow"), spec("ask_user")], chatPrompt: "sonnet-5.5" });
+    expect(workflows).toContain("**Orchestration pays for itself.** Add a reviewer or start a workflow only on a named trigger");
+    expect(workflows).toContain("**Chat leads a change through delivery.**");
   });
 
   it("adds each model's own sections and shell note, and the shell note only with a shell", () => {
@@ -58,15 +70,19 @@ describe("Claude 5 chat body", () => {
     const shellNote = (body: string): string | undefined => body.split("\n\n").find((paragraph) => paragraph.startsWith("The `bash` tool") || paragraph.startsWith("Use the `bash` tool"));
 
     // Opus may choose the shell or the file tools; Fable prefers the shell; Sonnet gets no shell note.
-    expect(shellNote(opus)).toContain("Use `edit` or `write` when a shell edit is fragile");
-    expect(shellNote(fable)).toContain("only when bash cannot do the job");
+    // The shell note names only the file tools that the request has.
+    expect(shellNote(opus)).not.toContain("when a shell edit is fragile");
+    expect(shellNote(build({ chatPrompt: "opus-5.5", tools: [...TOOLS, spec("edit"), spec("write")] }))).toContain("Use `edit` or `write` when a shell edit is fragile");
+    expect(shellNote(fable)).toContain("Use `read` only when bash cannot do the job");
+    expect(shellNote(build({ chatPrompt: "fable-5.1", tools: [...TOOLS, spec("edit"), spec("write")] }))).toContain("Use `read`, `edit`, or `write` only when bash cannot do the job");
     expect(shellNote(sonnet)).toBeUndefined();
     expect(shellNote(build({ chatPrompt: "opus-5.5", tools: TOOLS.filter((tool) => tool.name !== "bash") }))).toBeUndefined();
     expect(shellNote(build({ chatPrompt: "fable-5.1", tools: TOOLS.filter((tool) => tool.name !== "bash") }))).toBeUndefined();
 
-    for (const shared of ["# This session", "# Acting", "they/them", "session notes and the recorded history"]) {
+    for (const shared of ["# This session", "# Acting", "they/them", "you resume from your session notes. Never"]) {
       for (const body of [opus, sonnet, fable]) expect(body).toContain(shared);
     }
+    expect(build({ chatPrompt: "opus-5.5", tools: [...TOOLS, spec("recall")] })).toContain("session notes and the recorded history");
     for (const fableOnly of ["# Scope", "# The final message", "# Ending the turn", "Open with one line on what you will do"]) {
       expect(fable).toContain(fableOnly);
       expect(opus).not.toContain(fableOnly);
@@ -80,8 +96,8 @@ describe("Claude 5 chat body", () => {
   });
 
   it("keeps the general prompt outside interactive chat even for a tuned model", () => {
-    const subagent = buildSystemPrompt({ corePrompt, tools: TOOLS, promptKind: "subagent", chatPrompt: "opus-5.5" });
-    expect(subagent).toBe(buildSystemPrompt({ corePrompt, tools: TOOLS, promptKind: "subagent" }));
+    const subagent = buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, promptKind: "subagent", chatPrompt: "opus-5.5" }));
+    expect(subagent).toBe(buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, promptKind: "subagent" })));
   });
 
 });

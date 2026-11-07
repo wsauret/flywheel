@@ -1,6 +1,6 @@
 # Build, review, and repair until verified. One implementer owns the build
 # and sizes it by the `implementation` skill: it builds a bounded unit
-# itself, and sends separable parts to implementer subagents. One reviewer
+# itself, and delegates separable parts to more implementers. One reviewer
 # persona for each lens reviews the diff, a dedupe join merges findings that
 # share a site, and one refuter checks each kept finding. A triage agent
 # groups the confirmed findings by root cause, which gives the fix one list
@@ -46,7 +46,7 @@ phases:
   - phase: build
     persona: implementer
     subagents: [implementer]
-    brief: Deliver the unit that the design at design_path states. Size it by the sizing rule of the implementation skill, inline or through implementer subagents; your output accounts for the whole unit, including the work of each subagent. Everything below its intent is design that you may revise; record each revision as a deviation. Escalate a choice that belongs to the person, or evidence that contradicts the Design intent, to your parent. Search the tests for each symbol, field, and text that you remove or rename, and update each hit. Before handoff, run every command of gates and fix each failure in a file that you changed.
+    brief: Deliver the unit that the design at design_path states. Size it by the sizing rule of the implementation skill; your output accounts for the whole unit, including each part that you delegate. Everything below its intent is design that you may revise; record each revision as a deviation. Escalate a choice that belongs to the person, or evidence that contradicts the Design intent, to your parent. Search the tests for each symbol, field, and text that you remove or rename, and update each hit. Before handoff, run every command of gates and fix each failure in a file that you changed.
     output:
       summary: "What changed, each warning, and each file that needs a careful review."
       fields:

@@ -81,7 +81,9 @@ test("keeps inspection available but refuses resolution without Ask User, and na
   expect(result.outcome).toBe("error");
   expect(result.content).toContain("requires the Ask User capability");
   expect(result.content).toContain("In a child session, message your parent with message_session");
-  expect(result.content).not.toContain("Ask with ask_user");
+  // Every agent advertises the same description, so it names no ask_user mechanics; only the
+  // result of an agent that can ask carries them.
+  expect(`${tool.description} ${result.content}`).not.toContain("ask_user");
 
   // A child without message_session has no parent that can answer, so it decides alone.
   const alone = toolFor(false);

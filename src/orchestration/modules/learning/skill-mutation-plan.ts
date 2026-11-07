@@ -663,7 +663,7 @@ function rootOf(config: SkillStoreConfig, canonicalDir: string): SkillStoreRootN
 function requireReadBeforeWrite(origin: SkillWriteOrigin, name: string): string | undefined {
   if (origin.kind !== "review") return undefined;
   if (origin.loadedSkillIds.has(name)) return undefined;
-  return `Load skill "${name}" with the skill tool before changing it: the review may only patch content it has actually read in this run.`;
+  return `Load skill "${name}" before changing it: the review may only patch content it has actually read in this run.`;
 }
 
 function normalizeSave(mutation: Extract<SkillMutation, { kind: "save" }>): { description: string; body: string; dependencies: readonly string[] } | { error: string } {

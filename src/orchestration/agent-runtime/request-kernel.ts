@@ -1,5 +1,10 @@
 import { assertNever } from "../../infra/assert-never.js";
-import type { SkillDefinition, SkillRegistryRevision } from "../../workflows/skill-schema.js";
+import type { SkillDefinition } from "../../workflows/skill-schema.js";
+import type { ProjectDefinitionRegistryRevision } from "../../workflows/definition-registry.js";
+import { definitionAvailabilityOf } from "../app-service/definition-availability.js";
+import { canonicalModuleIds } from "../../protocol/module-ids.js";
+import { contributedToolIdentities, treeCapabilityCheck } from "./capability-checks.js";
+import type { CapabilityAccess } from "./tools/types.js";
 import type { AgentDefinition } from "../../infra/agent-definition.js";
 import type { FirstPartyModuleComposition, ModuleId } from "../modules.js";
 import type { BackgroundWorkRegistry } from "./background-work.js";
@@ -48,14 +53,31 @@ export interface KernelRunFacts {
 }
 
 /** What one request gives its kernel: its module snapshot and the modules that its own selection enables (`live`),
- *  its configuration capture, its skill revision, its serving model, and its file-edit contract. */
+ *  its configuration capture, the shell write guard that its tool bytes state, its definition revision, its serving
+ *  model, and its file-edit contract. */
 export interface KernelRequestFacts {
   readonly moduleSnapshot: FirstPartyModuleComposition;
   readonly live: FirstPartyModuleComposition;
   readonly runtimeConfig: RuntimeConfigRequestCapture;
-  readonly skills: SkillRegistryRevision | undefined;
-  readonly servingModel: KernelToolDeps["servingModel"];
-  readonly fileEditContract: ModelInteractionProfile["fileEditContract"];
+  /** The tree's captured value for a tree-hosted request, else the request's configuration (`SharedTreeCapture`). */
+  readonly shellWriteGuard: boolean;
+  /** The persistent-process policy that the shell schema states: the tree's captured value for a tree-hosted
+   *  request, else the request's configuration (`SharedTreeCapture`). */
+  readonly persistentProcessesAdvertised: boolean;
+  /** The definitions this request advertises and executes, read once when the request is planned. */
+  readonly definitions: ProjectDefinitionRegistryRevision;
+  /** Absent for a capability plan, which plans the run's tools with no model route (`planRunCapabilities`). */
+  readonly servingModel?: KernelToolDeps["servingModel"];
+  /** Absent for a capability plan, like `servingModel`; the tools then plan the default contract's registration. */
+  readonly fileEditContract?: ModelInteractionProfile["fileEditContract"];
+}
+
+/** What an agent's own selection holds now: a module that `live` enables and its capability access admits, and the
+ *  definitions those modules make available. */
+function liveSelection(live: FirstPartyModuleComposition, capabilityAccess: CapabilityAccess | undefined, definitions: ProjectDefinitionRegistryRevision) {
+  const moduleIds = new Set(live.enabledModuleIds);
+  const available = (capability: ModuleId): boolean => moduleIds.has(capability) && (capabilityAccess?.available(capability) ?? true);
+  return { available, definitions: definitionAvailabilityOf(definitions, canonicalModuleIds(live.enabledModuleIds).filter(available)) };
 }
 
 /** The kernel facts of one request (`KernelToolDeps`). A run builds them per request, not per turn, because the tools
@@ -63,7 +85,8 @@ export interface KernelRequestFacts {
  *  from the same facts, so it advertises what a live request advertises. */
 export function requestKernel(run: KernelRunFacts, request: KernelRequestFacts): KernelToolDeps {
   const { options, surfaces } = run;
-  const moduleIds = new Set(request.live.enabledModuleIds);
+  const { available, definitions: live } = liveSelection(request.live, options.capabilityAccess, request.definitions);
+  const tree = definitionAvailabilityOf(request.definitions, request.moduleSnapshot.enabledModuleIds);
   return {
     userDataRoot: options.userDataRoot,
     ...(run.captureProviderConnection ? { captureProviderConnection: run.captureProviderConnection } : {}),
@@ -76,20 +99,23 @@ export function requestKernel(run: KernelRunFacts, request: KernelRequestFacts):
     ...(surfaces.foregroundBashHold ? { foregroundBashHold: surfaces.foregroundBashHold } : {}),
     ...(request.runtimeConfig.foregroundBashHoldSeconds !== undefined ? { foregroundBashHoldSeconds: request.runtimeConfig.foregroundBashHoldSeconds } : {}),
     persistentProcesses: request.runtimeConfig.allowPersistentProcesses,
-    fileEditContract: request.fileEditContract,
-    capabilities: {
-      available: (capability: ModuleId) => moduleIds.has(capability) && (options.capabilityAccess?.available(capability) ?? true),
-    },
-    ...(request.skills ? { skills: request.skills } : {}),
+    shellWriteGuard: request.shellWriteGuard,
+    persistentProcessesAdvertised: request.persistentProcessesAdvertised,
+    ...(request.fileEditContract ? { fileEditContract: request.fileEditContract } : {}),
+    capabilities: { available },
+    definitionAvailability: { tree, live },
+    treeCapabilities: treeCapabilityCheck(request.moduleSnapshot, tree, contributedToolIdentities(request.moduleSnapshot)),
+    skills: request.definitions.skills,
     ...(run.onSkillLoad ? { onSkillLoad: run.onSkillLoad } : {}),
     ...(surfaces.externalSkillChildGrant ? { externalSkillChildGrant: surfaces.externalSkillChildGrant } : {}),
     moduleSnapshot: request.moduleSnapshot,
     runtimeConfig: request.runtimeConfig,
     purpose: options.purpose,
     ...(run.treeHosted ? { treeHosted: true } : {}),
+    ...(surfaces.headless ? { headless: true } : {}),
     ...(options.readOnly ? { readOnly: true } : {}),
     personas: run.personas,
     ...(options.allowedSubagentTypes ? { allowedSubagentTypes: options.allowedSubagentTypes } : {}),
-    servingModel: request.servingModel,
+    ...(request.servingModel ? { servingModel: request.servingModel } : {}),
   };
 }

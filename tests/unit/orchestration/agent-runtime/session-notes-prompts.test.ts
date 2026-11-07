@@ -10,6 +10,7 @@ import {
   SESSION_NOTES_GUIDANCE_TEMPLATE,
   SESSION_NOTES_REMINDER_TEMPLATE,
 } from "../../../../src/infra/agent-assets/session-notes.js";
+import { promptCapabilities } from "../../../helpers/prompt-capabilities.js";
 
 const TOKEN_BUDGET_KEYS = ["reminder_message_template", "guidance_message", "auto_compact_fallback_prompt"] as const;
 const CODEX_MODELS = resolve("inspiration/codex/codex-rs/models-manager/models.json");
@@ -53,7 +54,7 @@ const REPLACEMENTS = {
     ["If Previous context window id is present in `<context_window>`, it means a context reset occurred and this is a new window. After a reset, read the checkpoint and use the read-only `history` tool to recover any missing details. When a window ID and item ID are known, prefer `read_item` directly; when they are missing or uncertain, use `list_items`, or `search_contents` to locate the item first.", "{recovery_guidance}"],
     ["Treat notes and history as internal bookkeeping. Do not mention them in user-facing messages.", "Treat the checkpoint{recall_bookkeeping} as internal bookkeeping. Do not mention it in user-facing messages."],
     ["It is a good idea to take incremental notes while you work", "It is a good idea to update the checkpoint incrementally while you work"],
-    ["{recovery_guidance}", "{recovery_guidance} After reading the checkpoint during context recovery, reassess the listed skills and explicitly reload those that still apply with the `skill` tool before resuming work."],
+    ["{recovery_guidance}", "{recovery_guidance} {skill_reload_guidance}"],
   ],
   auto_compact_fallback_prompt: [
     ["The next window will not automatically include this conversation.", "Compaction starts a fresh context without a generated summary; prior conversation messages are not carried into it."],
@@ -74,8 +75,8 @@ function applyLedger(source: string, ledger: readonly (readonly [string, string]
 
 describe("session notes prompt adaptations", () => {
   it("preserves relevant skill references and restores their context in every recovery mode", () => {
-    for (const recallAvailable of [true, false]) {
-      const input = { recallAvailable };
+    for (const recall of [[{ name: "recall" }], []]) {
+      const input = { has: promptCapabilities([{ name: "skill" }, ...recall]) };
       for (const rendered of [
         renderSessionNotesReminder({ ...input, remainingTokens: 321 }),
         renderSessionNotesGuidance(input),
@@ -93,6 +94,20 @@ describe("session notes prompt adaptations", () => {
         expect(rendered).toContain("this section is the exact design intent you revise drafts against");
       }
       expect(renderSessionNotesGuidance(input)).toContain("reassess the listed skills and explicitly reload those that still apply with the `skill` tool before resuming work");
+    }
+  });
+
+  it("names no skill bookkeeping for an agent that cannot load skills, and keeps the design intent", () => {
+    const input = { has: promptCapabilities([{ name: "recall" }]) };
+    for (const rendered of [
+      renderSessionNotesReminder({ ...input, remainingTokens: 321 }),
+      renderSessionNotesGuidance(input),
+      renderSessionNotesAutoCompactFallback(input),
+    ]) {
+      expect(rendered).not.toContain('Keep a short "Relevant skills" section');
+      expect(rendered).not.toContain("with the `skill` tool");
+      expect(rendered).toContain('Keep a clearly labeled "Design intent" section and keep it first');
+      expect(rendered).not.toMatch(/ {2}| \n/);
     }
   });
 
@@ -114,7 +129,7 @@ describe("session notes prompt adaptations", () => {
   });
 
   it("renders token parameters and only available recovery capabilities", () => {
-    const input = { recallAvailable: true };
+    const input = { has: promptCapabilities([{ name: "recall" }, { name: "skill" }]) };
     const reminder = renderSessionNotesReminder({ ...input, remainingTokens: 321 });
     const guidance = renderSessionNotesGuidance(input);
     const fallback = renderSessionNotesAutoCompactFallback(input);
@@ -129,7 +144,7 @@ describe("session notes prompt adaptations", () => {
     expect(guidance).toContain("When a durable entry ID is known, prefer `expand` directly; when it is missing or uncertain, use `recall` with no query, or search terms to locate the item first.");
     expect(guidance).not.toContain("Recent session notes");
 
-    const withoutRecall = renderSessionNotesGuidance({ ...input, recallAvailable: false });
+    const withoutRecall = renderSessionNotesGuidance({ has: promptCapabilities([{ name: "skill" }]) });
     expect(withoutRecall).not.toContain("recall");
     expect(withoutRecall).toContain("After compaction, the recorded checkpoint opens the fresh context.");
   });

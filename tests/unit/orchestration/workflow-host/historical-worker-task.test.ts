@@ -1,3 +1,4 @@
+import { attemptBrief, planEveryCapability } from "../../../helpers/attempt-brief"
 import { workflowAgentInputs } from "../../../helpers/workflow-agent-inputs"
 import { testAuthContext } from "../../../helpers/auth-context.js"
 import { afterEach, beforeEach, expect, test } from "bun:test"
@@ -148,7 +149,7 @@ function worker(createAgent: AgentFactory, eventWriter = writer) {
     deactivateSession: id => createSessionManager({ projectRoot: baseDir, executionCwd: baseDir, projectionReader: asAsyncEventReadSurface(store), writer }).updateLifecycleState(id, "inactive"),
     sessionEventWriter: createSessionFactWriter({ sessionId, writer }),
     eventStore: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), eventWriter,
-    skills: publishSkillRevision(1, new Map()), personas: new Map(),
+    skills: publishSkillRevision(1, new Map()), personas: new Map(), planCapabilities: planEveryCapability,
     resolvedAgents: new Map([["work", definition]]),
     recall: noConversationRecall,
   }).worker
@@ -167,7 +168,7 @@ test("commits the missing canonical task before factory context and newly held i
   await worker((options) => {
     durableAtFactory = branch().then((entries) => entries.some((entry) => entry.id === key))
     return capturingFactory(captured)(options)
-  })(step, canonicalPrompt, "", undefined, conversationId)
+  })(step, attemptBrief(canonicalPrompt), undefined, conversationId)
 
   expect(await durableAtFactory).toBe(true)
   expect(captured).toHaveLength(1)
@@ -198,7 +199,7 @@ test("retains later assistant, tool-result, and operator history without replayi
   await opened.getStorage().dispose()
   const originalFacts = store.read({ aggregateId: `conversation:${conversationId}` })
   const captured: AgentOptions[] = []
-  await worker(capturingFactory(captured))(step, canonicalPrompt, "", undefined, conversationId)
+  await worker(capturingFactory(captured))(step, attemptBrief(canonicalPrompt), undefined, conversationId)
   expect(captured).toHaveLength(1)
   expect(prior(captured[0]!).slice(0, 5)).toEqual<unknown>(
     originalBranch.filter((entry) => entry.kind === "message").map((entry) => entry.message),
@@ -213,9 +214,9 @@ test("retains later assistant, tool-result, and operator history without replayi
 test("reentry after task commit keeps the first task even when the assembled prompt changes", async () => {
   const { key } = seed()
   const captured: AgentOptions[] = []
-  await worker(capturingFactory(captured))(step, canonicalPrompt, "", undefined, conversationId)
+  await worker(capturingFactory(captured))(step, attemptBrief(canonicalPrompt), undefined, conversationId)
   const committed = await branch()
-  await worker(capturingFactory(captured))(step, "Later enriched prompt must not replace the first committed task", "", undefined, conversationId)
+  await worker(capturingFactory(captured))(step, attemptBrief("Later enriched prompt must not replace the first committed task"), undefined, conversationId)
   expect(captured).toHaveLength(2)
   expect(await branch()).toEqual(committed)
   expect((await branch()).filter((entry) => entry.id === key)).toHaveLength(1)
@@ -250,11 +251,11 @@ test("crash after durable task append but before factory creation resumes withou
     },
   }
   const captured: AgentOptions[] = []
-  await worker(capturingFactory(captured), crashed)(step, canonicalPrompt, "", processEnd.signal, conversationId).catch(() => undefined)
+  await worker(capturingFactory(captured), crashed)(step, attemptBrief(canonicalPrompt), processEnd.signal, conversationId).catch(() => undefined)
   expect(captured).toHaveLength(0)
   const committed = await branch()
   expect(committed.at(-1)).toMatchObject({ id: key })
-  await worker(capturingFactory(captured))(step, "Later enrichment after restart", "", undefined, conversationId)
+  await worker(capturingFactory(captured))(step, attemptBrief("Later enrichment after restart"), undefined, conversationId)
   expect(captured).toHaveLength(1)
   expect(await branch()).toEqual(committed)
   expect(prior(captured[0]!)[1]!.content).toContain(canonicalPrompt)
@@ -263,13 +264,13 @@ test("crash after durable task append but before factory creation resumes withou
 test("compaction can remove the task from provider context without removing its idempotency evidence", async () => {
   const { key } = seed()
   const captured: AgentOptions[] = []
-  await worker(capturingFactory(captured))(step, canonicalPrompt, "", undefined, conversationId)
+  await worker(capturingFactory(captured))(step, attemptBrief(canonicalPrompt), undefined, conversationId)
   const opened = await tree()
   await opened.appendCompaction({ sourceLeafId: key, tokensBefore: 1000, tokensAfter: 0, opening: [] })
   await opened.appendMessage({ kind: "user", origin: "system", content: "Continue from the retained working notes." })
   const compacted = await opened.getBranch()
   await opened.getStorage().dispose()
-  await worker(capturingFactory(captured))(step, "Do not append this later prompt", "", undefined, conversationId)
+  await worker(capturingFactory(captured))(step, attemptBrief("Do not append this later prompt"), undefined, conversationId)
   expect(captured).toHaveLength(2)
   expect(prior(captured[1]!)).toEqual([{ kind: "user", origin: "system", content: "Continue from the retained working notes." }])
   expect(await branch()).toEqual(compacted)
@@ -315,7 +316,7 @@ test("a newer complete root supplies canonical context without erasing the older
   const userPrompt = `${currentContext.seed!.fact.payload.userRequest}\n\n# Current skill\nEnriched binding context`
   convertHistory()
   const captured: AgentOptions[] = []
-  await worker(capturingFactory(captured))(step, userPrompt, "", undefined, conversationId)
+  await worker(capturingFactory(captured))(step, attemptBrief(userPrompt), undefined, conversationId)
   expect(captured).toHaveLength(1)
   expect((await branch()).at(-1)).toMatchObject({ id: `workflow-task-recovery:${historical[0]!.id}:${step.id}` })
   expect(prior(captured[0]!)[1]!.content).toContain(userPrompt)
@@ -341,7 +342,7 @@ test("a failed append blocks agent creation and retains the original operator en
     appendGuarded: async () => refuse("guarded append failed"),
     appendBatchGuarded: async () => refuse("guarded append batch failed"),
   }
-  await worker(capturingFactory(captured), rejected)(step, canonicalPrompt, "", cancel.signal, conversationId).catch(() => undefined)
+  await worker(capturingFactory(captured), rejected)(step, attemptBrief(canonicalPrompt), cancel.signal, conversationId).catch(() => undefined)
   expect(captured).toHaveLength(0)
   expect(await branch()).toEqual(original)
 })
@@ -398,6 +399,6 @@ test.each([
   store.appendBatch(events)
   expect(await historicalWorkerTaskRootId(asAsyncEventReadSurface(store), sessionId, step.id, conversationId)).toBeNull()
   const captured: AgentOptions[] = []
-  await worker(capturingFactory(captured))(step, canonicalPrompt, "", undefined, conversationId).catch(() => undefined)
+  await worker(capturingFactory(captured))(step, attemptBrief(canonicalPrompt), undefined, conversationId).catch(() => undefined)
   expect(JSON.stringify(store.read({ aggregateId: `conversation:${conversationId}` }))).not.toContain("workflow-task-recovery:")
 })

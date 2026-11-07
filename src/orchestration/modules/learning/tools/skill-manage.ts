@@ -28,7 +28,7 @@ import type { RuntimeTool, RuntimeToolInput, ToolContext, ToolResult } from "../
 
 const log = Log.create({ service: "skill-manage" });
 
-const DESCRIPTION = `Create, update, and maintain managed skills: durable, user-visible packages of "how to do this class of task" instructions that future sessions load on demand through the skill tool.
+const DESCRIPTION = `Create, update, and maintain managed skills: durable, user-visible packages of "how to do this class of task" instructions that future sessions load on demand.
 
 Actions:
 - save: create a skill (name, description, body, optional reach project|global) or fully rewrite an existing one. With path and content, writes one support file (references/*, templates/*, scripts/*, assets/*) instead.

@@ -1,8 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Schema } from "effect";
-import { testDirectories } from "../../../helpers/directories.js";
+import { temporaryDirectories, testDirectories } from "../../../helpers/directories.js";
 import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js";
 import { createBackgroundExecutionOwner } from "../../../../src/orchestration/agent-runtime/background-execution-owner.js";
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work.js";
@@ -13,18 +14,27 @@ import { codeModeRuntimeOver } from "../../../helpers/code-mode-worker.js";
 import { mcpPortsOver, mcpRuntimeOver } from "../../../helpers/mcp.js";
 import { deriveChildRuntimeSurfaces, personaToolEntries } from "../../../../src/orchestration/agent-runtime/tools/tool-registry.js";
 import { createPersonaDefinitionSchema } from "../../../../src/workflows/agents/persona-schema.js";
+import { personaInstructions } from "../../../../src/workflows/agents/persona-instructions.js";
 import { loadStandalonePersonaRegistry } from "../../../../src/workflows/agents/registry.js";
 import { personaToolNames } from "../../../../src/workflows/agents/subagent-reachability.js";
 import { repoDefinitions } from "../../../helpers/project-definitions.js";
 import { createToolRegistry } from "../../../../src/orchestration/tool-catalog.js";
-import { SHIPPED_MODULES } from "../../../../src/orchestration/modules.js";
+import { composeFirstPartyModules, SHIPPED_MODULES, type ModuleId } from "../../../../src/orchestration/modules.js";
 import { renderSkillClosure } from "../../../../src/workflows/skill-context.js";
 import { isReadOnlyPersona, toolGrantRules } from "../../../../src/orchestration/agent-runtime/persona-tool-rules.js";
 import { toolNotice } from "../../../../src/orchestration/agent-runtime/tool-notice.js";
 import type { RuntimeTool } from "../../../../src/orchestration/agent-runtime/tools/types.js";
 import { makeContext } from "./tools/_fixtures.js";
+import { makeContext as makeDispatchContext, makeDeps } from "./subagent/_fixtures.js";
+import { prepareSubagentTools } from "../../../../src/orchestration/modules/subagents/execution/dispatch-preparation.js";
+import { agentCapabilityCheck } from "../../../../src/orchestration/agent-runtime/capability-checks.js";
+const temporaryDirectory = temporaryDirectories();
 const shippedToolRegistry = createToolRegistry(SHIPPED_MODULES);
 const toolRegistrations = Object.fromEntries(shippedToolRegistry);
+const advertisedTool = (name: string): RuntimeTool => ({
+  name, action: "ui_meta", description: name, inputSchema: { type: "object", properties: {} }, isConcurrencySafe: true,
+  execute: async () => ({ content: name, outcome: "ok" }),
+});
 const shippedPersonaToolEntries = personaToolEntries(shippedToolRegistry);
 const PersonaDefinitionSchema = createPersonaDefinitionSchema(shippedPersonaToolEntries.map(({ name }) => name));
 
@@ -98,9 +108,7 @@ describe("persona tool grants", () => {
     expect(advisor.systemPrompt).toContain("decisive rationale");
     expect(advisor.systemPrompt).toContain("strongest counterargument");
     expect(advisor.systemPrompt).toContain("evidence would reverse");
-    expect(advisor.systemPrompt).toContain("read-only shell commands")
-    expect(advisor.systemPrompt).toContain("Do not implement changes, run commands that change state")
-    expect(advisor.systemPrompt).toContain("read-only shell commands");
+    expect(advisor.systemPrompt).toContain("Inspect the repository read-only");
     expect(advisor.systemPrompt).toContain("Do not implement changes, run commands that change state");
   });
 
@@ -114,7 +122,7 @@ describe("persona tool grants", () => {
     expect(ship.requiredSkills).toEqual(["ship"]);
     expect(ship.allowFork).toBe(false);
     expect(personaToolNames(ship, registry)).toEqual(["bash", ...SHIP_TOOLS]);
-    const skillContext = renderSkillClosure(ship.requiredSkills, skills, "Ship test").slice(1);
+    const skillContext = renderSkillClosure(ship.requiredSkills, skills, "Ship test", () => true).slice(1);
     expect(skillContext).toHaveLength(1);
     expect(skillContext[0]).toContain("# Ship Changes");
     expect(skillContext[0]).not.toContain("# Verification");
@@ -134,6 +142,126 @@ describe("persona tool grants", () => {
     for (const skill of skills.skills.values()) {
       if (!skill.modelInvocable) expect(doctrine, skill.id).not.toContain(`\`${skill.id}\` skill`);
     }
+  });
+
+  // A persona's declared tools are a ceiling (ARCH-STRUCTURE-031): a module
+  // that is off removes its tools from the persona, which still dispatches.
+  it.each([
+    ["advisor", "discovery", ["search", "list"]],
+    ["ship", "bash", ["bash"]],
+    ["ship", "file-tools", ["write"]],
+  ] as const)("dispatches %s with %s off, granted its declared tools without that module's", async (name, off, lost) => {
+    const revision = repoDefinitions().captureRevision();
+    const persona = revision.personas.get(name);
+    if (persona?.kind !== "persona") throw new Error(`Missing bundled persona: ${name}`);
+    const prepare = async (disabled: readonly ModuleId[]) => {
+      const prepared = await prepareSubagentTools({
+        agent: persona,
+        context: makeDispatchContext(),
+        deps: makeDeps({ agentRegistry: revision.personas, skills: revision.skills, moduleSelection: () => composeFirstPartyModules(undefined, disabled) }),
+        childDepth: 1,
+      });
+      if (!prepared.ok) throw new Error(prepared.error.content);
+      return prepared;
+    };
+    const all = await prepare([]);
+    const narrowed = await prepare([off]);
+    for (const tool of lost) expect(all.toolNames).toContain(tool);
+    expect(narrowed.toolNames).toEqual(all.toolNames.filter((tool) => !lost.some((lostTool) => lostTool === tool)));
+    if (off === "bash") {
+      // Ship keeps running without a shell, so neither its body nor its
+      // composed method tells it to run Git; it reports the work unpublished.
+      for (const shellStep of ["## Git Discipline", "Keep commit-message drafts and other publication scratch files in your scratchpad directory.", "Preflight Bash, Git", "git merge"]) {
+        expect(all.task).toContain(shellStep);
+        expect(narrowed.task).not.toContain(shellStep);
+      }
+      expect(narrowed.task).toContain("return Not published, with the missing shell as the condition that stopped publication");
+      expect(all.task).not.toContain("You have no shell");
+    }
+    if (off === "file-tools") {
+      // Without Write, Ship still publishes through Bash, and no line of its
+      // task offers it the Write tool.
+      expect(narrowed.task).toContain("Preflight Bash, Git");
+      expect(narrowed.task).toContain("Keep commit-message drafts and other publication scratch files in your scratchpad directory.");
+      expect(narrowed.task).not.toMatch(/use Write|Write or Bash|Write tool/);
+    }
+  });
+
+  // The child's own plan shows what the captured composition cannot: web
+  // that has no search backend, or Bash turned off after a workflow captured
+  // its composition with Bash on. A declared tool that the child's plan
+  // cannot run leaves its grant and its text.
+  it.each(["web", "bash"])("drops a declared %s that the child's own plan cannot run from the explorer's grant and its text", async (unusable) => {
+    const revision = repoDefinitions().captureRevision();
+    const explorer = revision.personas.get("explorer");
+    if (explorer?.kind !== "persona") throw new Error("Missing bundled persona: explorer");
+    const prepare = async (runs: (tool: string) => boolean) => {
+      const deps = makeDeps({
+        agentRegistry: revision.personas, skills: revision.skills,
+        planChildCapabilities: async (child) => agentCapabilityCheck(new Set(child.toolGrant?.filter(runs)), deps.definitionAvailability),
+      });
+      const prepared = await prepareSubagentTools({ agent: explorer, context: makeDispatchContext({ availableTools: new Set(["read", "subagent"]) }), deps, childDepth: 1 });
+      if (!prepared.ok) throw new Error(prepared.error.content);
+      return prepared;
+    };
+    const line = { web: "- Use web only for data that your other tools cannot provide.", bash: "use read-only `gh` commands through bash" }[unusable] ?? "";
+    const all = await prepare(() => true);
+    expect(all.toolNames).toContain(unusable);
+    expect(all.toolNames).toContain("search");
+    expect(all.task).toContain(line);
+    const narrowed = await prepare((tool) => tool !== unusable);
+    expect(narrowed.toolNames).toEqual(all.toolNames.filter((tool) => tool !== unusable));
+    expect(narrowed.task).not.toContain(line);
+  });
+
+  it("dispatches a project persona's body byte for byte, capability markers included", async () => {
+    const projectDir = temporaryDirectory("project-personas");
+    const body = "Report what you find.\n{{if:bash}}\nThis line is literal.\n{{end}}\n{{end}}";
+    writeFileSync(join(projectDir, "literal.md"), `---\nname: literal\ndescription: Keeps its markers.\nrole: reviewer\ntools:\n  - read\n---\n${body}\n`);
+    const skills = repoDefinitions().skills();
+    const registry = loadStandalonePersonaRegistry(PERSONA_DIR, skills, shippedPersonaToolEntries, undefined, projectDir);
+    const persona = registry.get("literal");
+    if (persona?.kind !== "persona") throw new Error("Missing project persona: literal");
+    const prepared = await prepareSubagentTools({ agent: persona, context: makeDispatchContext(), deps: makeDeps({ agentRegistry: registry, skills }), childDepth: 1 });
+    if (!prepared.ok) throw new Error(prepared.error.content);
+    expect(prepared.task).toContain(body);
+  });
+
+  // The benchmark worker receives its persona registry through JSON, and a
+  // dispatch narrows a persona's tools through a spread.
+  it("renders a bundled persona's markers after a spread or a JSON round trip", () => {
+    const skills = repoDefinitions().skills();
+    const ship = repoDefinitions().personas().get("ship");
+    if (ship?.kind !== "persona") throw new Error("Missing bundled persona: ship");
+    const rendered = personaInstructions(ship, skills, () => true);
+    expect(ship.systemPrompt).toContain("{{if:bash}}");
+    expect(rendered).not.toMatch(/^\{\{(?:if:[^}]*|else|end)\}\}$/mu);
+    const transported: typeof ship = JSON.parse(JSON.stringify(ship));
+    for (const copy of [{ ...ship }, transported]) {
+      expect(personaInstructions(copy, skills, () => true)).toBe(rendered);
+    }
+  });
+
+  it("prints each persona's effective tools in the roster", async () => {
+    const revision = repoDefinitions().captureRevision();
+    const rosterLine = async (disabled: readonly ModuleId[]) => {
+      const composition = composeFirstPartyModules(undefined, disabled);
+      const fragment = composition.contributions.find((entry) => entry.domain === "promptFragments" && entry.id === "subagent-roster");
+      if (fragment?.domain !== "promptFragments") throw new Error("Missing subagent roster fragment");
+      const rendered = await fragment.value.render({
+        kernel: testKernelToolDeps({ moduleSnapshot: composition, personas: revision.personas }),
+        modules: composeModuleRuntimes([]),
+        tools: new Map([["subagent", advertisedTool("subagent")]]),
+        memorySnapshot: null,
+        capabilities: () => true,
+      });
+      return rendered?.split("\n").find((row, index, rows) => rows[index - 1]?.startsWith("- advisor ") === true) ?? "";
+    };
+    expect(await rosterLine([])).toContain("search, list");
+    const narrowed = await rosterLine(["discovery"]);
+    expect(narrowed).toStartWith("  Tools: ");
+    expect(narrowed).toContain("read");
+    expect(narrowed).not.toMatch(/\b(search|list)\b/);
   });
 
   it("enforces persona selection before dependency gating", async () => {
@@ -223,10 +351,6 @@ describe("persona tool grants", () => {
   it("states the read-only and shell rules from the agent's authority, whatever name its edit and shell tools carry", () => {
     // A patch-contract model is advertised edit as apply_patch and bash as exec.
     const advertised = ["read", "apply_patch", "exec", "write", "web"];
-    const advertisedTool = (name: string): RuntimeTool => ({
-      name, action: "ui_meta", description: name, inputSchema: { type: "object", properties: {} }, isConcurrencySafe: true,
-      execute: async () => ({ content: name, outcome: "ok" }),
-    });
     const request = {
       tools: new Map(advertised.map((name) => [name, advertisedTool(name)])),
       usableToolNames: new Set(["read", "edit", "bash"]),

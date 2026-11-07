@@ -282,7 +282,7 @@ describe("an explicit project root inside an enclosing repository", () => {
         expect((await manager.listMetadata()).sessions.map((session) => session.id)).toEqual([sessionId])
 
         await writeFileWithTool(await requireSessionExecutionCwd(manager, sessionId, directories.projectRoot), directories.projectRoot, "artifact.txt")
-        const memory = createMemoryTool({ accountHome: home, sessionId })
+        const memory = createMemoryTool({ accountHome: home, sessionId }, () => true)
         const stored = await memory.execute(
           { title: "Sandbox note", action: "add", content: "Project learning belongs to the project root." },
           toolContext(directories.executionCwd, directories.projectRoot),

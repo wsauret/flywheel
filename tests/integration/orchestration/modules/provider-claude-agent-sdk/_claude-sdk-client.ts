@@ -124,7 +124,7 @@ function sdkBuild(target: SdkClientTarget, launcher: AccessProviderBuild["launch
 
 /** The shared state of the chat tree `treeRootSessionId`, held while `lifetime` lives, as a runner holds it. */
 function heldTree(lifetime: Scope.Scope, treeRootSessionId: string): SharedTree {
-  const { tree, release } = holdSharedTree(treeRootSessionId, () => composeFirstPartyModules());
+  const { tree, release } = holdSharedTree(treeRootSessionId, () => ({ modules: composeFirstPartyModules(), shellWriteGuard: true, allowPersistentProcesses: false }));
   Effect.runSync(Scope.addFinalizer(lifetime, Effect.sync(release)));
   return tree;
 }

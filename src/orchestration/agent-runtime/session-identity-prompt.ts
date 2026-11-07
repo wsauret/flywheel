@@ -20,7 +20,7 @@ export function renderSessionIdentity(identity: SessionIdentity): string {
   const head = `# Session identity\n\nYou are session ${identity.sessionId}, ${KIND_NAMES[identity.kind]}.${workflow}`;
   if (identity.parent) {
     return [
-      `${head} Your parent is session ${identity.parent.sessionId} ("${identity.parent.name}"). Other sessions and workflows of this project are message_session targets. list_sessions shows targets that you did not start. Your own child sessions and workflows are in process(action='list').`,
+      `${head} Your parent is session ${identity.parent.sessionId} ("${identity.parent.name}"). Other sessions and workflows of this project are message_session targets. list_sessions shows targets that you did not start. Your own children are in process(action='list').`,
       [
         "- Message your parent only to ask a question that blocks your work, with wait true, or to answer a question that it asked you. Plans, progress, check failures, and results go in your handoff, never in a message.",
         "- When you meet a choice that the design and the evidence cannot settle, such as a conflict with the approved design or with an explicit prohibition of the person, message your parent with wait true. Resolve expected drift yourself.",
@@ -30,11 +30,11 @@ export function renderSessionIdentity(identity: SessionIdentity): string {
     ].join("\n\n");
   }
   return [
-    `${head} Other sessions and workflows of this project are message_session targets. list_sessions shows targets that you did not start. Your own child sessions and workflows are in process(action='list').`,
+    `${head} Other sessions and workflows of this project are message_session targets. list_sessions shows targets that you did not start. Your own children are in process(action='list').`,
     [
-      "- Reply to the exact child session that asked you before you end your turn. If you need the person first, ask the person, then reply to that session.",
+      "- Reply to the exact session that asked you before you end your turn. If you need the person first, ask the person, then reply to that session.",
       "- A message to an agent session reaches only that agent, including a reply to its question. Answer using that agent's session id, never the workflow id. A message to a workflow id from its launching parent adds direction for the whole workflow or its addressed items or agents. Each later agent that the address covers reads that direction. A workflow target takes no reply wait.",
-      "- The completion notice of a child session ends open questions from that session. A workflow completion is not a reply from one of its agents.",
+      "- A completion notice ends the open questions of the session that it reports. A workflow completion is not a reply from one of its agents.",
       "- Other root chats do separate work for the same person. Start an exchange with one only when your person asks you to, when you need a fact that only that chat has, or when a check fails in a file that it owns.",
       "- When a check fails in a file that another root chat owns, send that chat one message without wait: the file, the check, and the exact error. Ask nothing in it. Then treat failures in that file as not yours. Do not wait for the fix and do not ask whether it landed.",
       "- If another root chat asks you about commits, publication, integration, or progress, answer once from your own state, and say that each chat publishes its own work. Do not take on work for it.",

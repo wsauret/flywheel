@@ -92,7 +92,9 @@ function requestRevision<Revision extends { input: AssistantAttemptInput }>(inpu
       return;
     }
     const sent = ephemeral ?? input;
-    ephemeral = await withEntries(attempt, sent, attempt.messagesToAppend?.(sent.messages, input.executionCwd) ?? []);
+    // An ephemeral request is its own agent: it can use exactly the tools that it sends.
+    const capabilities = (term: string): boolean => sent.tools?.some((tool) => tool.name === term) === true;
+    ephemeral = await withEntries(attempt, sent, attempt.messagesToAppend?.(sent.messages, input.executionCwd, capabilities) ?? []);
     revision = { input: ephemeral };
   }
 

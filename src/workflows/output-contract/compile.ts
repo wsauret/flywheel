@@ -46,8 +46,14 @@ export interface CompiledOutput<Payload = StepPayload> {
   /** The runtime handoff input schema, not the provider-facing tool schema. Its root is one `type: "object"`. */
   readonly toolInput: JsonSchema;
   readonly fields: readonly CompiledField[];
-  /** The full postamble of a brief. */
-  readonly instructions: string;
+  /** The full postamble of a brief for an agent that can, or cannot, run
+   *  shell commands it cites. Without a shell, the postamble leaves out
+   *  `commands_run` and the citation rule; the schema still accepts an
+   *  optional `commands_run`. */
+  readonly instructions: (commandEvidence: boolean) => string;
+  /** Whether the contract sets `commands.min`, so its agent must cite shell
+   *  commands and cannot run without the shell tool. */
+  readonly requiresCommandEvidence: boolean;
   /** Path existence probes and, in inline mode, the citation check. */
   readonly check: (payload: UnknownRecord, context: OutputCheckContext) => Promise<readonly OutputIssue[]>;
   /** The contract in canonical form, descriptions included. Definition
@@ -339,6 +345,8 @@ export function compileOutput<const Output extends OutputObject>(output: Output)
   const declared = output.fields ?? {};
   const modelFields = modelFacingFields(fields);
   const schema = topLevelSchema(strictFields(fields), OUTPUT_WORDS);
+  const withCommands = renderOutputInstructions(output, modelFields, true);
+  const withoutCommands = renderOutputInstructions(output, modelFields, false);
   const canonical = canonicalOutput(output, true);
   // SAFETY: topLevelSchema and PayloadOf read the same contract, and tests/unit/workflows/output-contract/types.test.ts pins the decoded type to PayloadOf.
   const payloadSchema = schema as Schema.Decoder<PayloadOf<Output>>; // oxlint-disable-line typescript/consistent-type-assertions -- boundary: the schema is built from the same contract that PayloadOf reads, and the grammar tests pin the two together.
@@ -347,7 +355,8 @@ export function compileOutput<const Output extends OutputObject>(output: Output)
     schema: payloadSchema,
     toolInput: mode === "file" ? fileToolInput : inlineToolInput(modelFields),
     fields: compiledFields(declared),
-    instructions: renderOutputInstructions(output, modelFields),
+    instructions: (commandEvidence) => commandEvidence ? withCommands : withoutCommands,
+    requiresCommandEvidence: output.commands !== undefined,
     async check(payload, context) {
       const paths: LocatedPath[] = [];
       collectMapPaths(fields, payload, "", paths);

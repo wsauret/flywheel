@@ -1,9 +1,9 @@
 import { candidateProviderId } from "../../../infra/llm/access-provider.js";
 import { captureRoleCatalog, type CapturedRoleSelection } from "../../config/role-resolution.js";
-import { effortOptionsForMetadata } from "../llm/model-compat.js";
-import type { CaptureProviderConnection } from "../factory.js";
-import { claudeKnowledgeCutoff } from "../llm/claude-reminders.js";
-import type { AdvertisedTool, RuntimeTool } from "./types.js";
+import { effortOptionsForMetadata } from "../../agent-runtime/llm/model-compat.js";
+import type { CaptureProviderConnection } from "../../agent-runtime/factory.js";
+import { claudeKnowledgeCutoff } from "../../agent-runtime/llm/claude-reminders.js";
+import type { AdvertisedTool, RuntimeTool } from "../../agent-runtime/tools/types.js";
 import { readModelScores, scoresForModel } from "../../../infra/llm/model-scores.js";
 import type { ModelScoreSnapshot } from "../../../infra/llm/model-scores-document.js";
 import { scoreCatalogModels } from "../../config/model-score-scope.js";
@@ -13,8 +13,9 @@ function selection(result: CapturedRoleSelection): { readonly model: string; rea
   return result.kind === "selected" ? { model: result.role.model, effort: result.role.effort } : { unavailable: result.kind };
 }
 
-/** The advertised form of the models tool. It names no model access capture,
- *  so an agent without one advertises the same bytes. */
+/** The advertised form of the models tool, which serves choosing the models of
+ *  workflow agents, so it leaves with the Workflows module. It names no model
+ *  access capture, so an agent without one advertises the same bytes. */
 export const MODELS_TOOL_DEFINITION: AdvertisedTool = {
   name: "models",
   action: "ui_meta",

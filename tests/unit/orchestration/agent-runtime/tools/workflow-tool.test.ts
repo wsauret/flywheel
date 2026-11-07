@@ -19,6 +19,8 @@ import { buildSystemPrompt } from "../../../../../src/orchestration/agent-runtim
 import { renderSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import { capabilityAccessHolding, makeContext as makeToolContext } from "./_fixtures.js";
+import { promptOptions } from "../../../../helpers/prompt-capabilities.js";
+import type { CapabilityCheck } from "../../../../../src/infra/capability-text.js";
 
 // ---------------------------------------------------------------------------
 // Task 2: createWorkflowTool
@@ -37,7 +39,9 @@ const LAUNCH_TARGETS: ResolveWorkflowLaunchTarget = async () => ({ source: { kin
 
 const AUTHORITY = fullAuthority(["reviewer"]);
 
-function makeDeps(overrides?: Partial<LaunchableWorkflowToolDeps>): LaunchableWorkflowToolDeps {
+const EVERY_CAPABILITY: CapabilityCheck = () => true;
+
+function makeDeps(overrides?: Partial<LaunchableWorkflowToolDeps & { readonly capabilities: CapabilityCheck }>): LaunchableWorkflowToolDeps & { readonly capabilities: CapabilityCheck } {
   return {
     startWorkflow: async () =>
       ({ workflowId: "run-123", parentSessionId: "parent", done: Promise.resolve({ status: "completed" as const, content: "done" }), terminate: async () => {}, interruption: NOT_INTERRUPTED, stepModels: AGENT_MODELS }),
@@ -48,6 +52,7 @@ function makeDeps(overrides?: Partial<LaunchableWorkflowToolDeps>): LaunchableWo
     authority: AUTHORITY,
     sessionDir: "/session",
     executionCwd: "/project",
+    capabilities: EVERY_CAPABILITY,
     ...overrides,
   };
 }
@@ -348,6 +353,9 @@ describe("createWorkflowTool", () => {
     for (const reference of ["coverage", "quorum", "while:", "repeat:", "max_attempts", "Effective descriptions", "There are three tiers of execution", "Default to in-process work"]) {
       expect(toolDescription).not.toContain(reference);
     }
+    expect(toolDescription).toContain("as subagents instead.");
+    // Without the subagent tool the description sends no agent to it.
+    expect(createWorkflowTool(makeDeps({ capabilities: (term) => term !== "subagent" })).description).not.toContain("subagent");
 
   });
 
@@ -460,8 +468,8 @@ describe("createWorkflowTool", () => {
   });
 
   it("gives launch guidance for only the active workflow mode", () => {
-    const askPrompt = renderSystemPrompt(buildSystemPrompt({ tools: [createWorkflowTool(makeDeps({ mode: "ask" }))], promptKind: "chat" }));
-    const onPrompt = renderSystemPrompt(buildSystemPrompt({ tools: [createWorkflowTool(makeDeps({ mode: "on" }))], promptKind: "chat" }));
+    const askPrompt = renderSystemPrompt(buildSystemPrompt(promptOptions({ tools: [createWorkflowTool(makeDeps({ mode: "ask" }))], promptKind: "chat" })));
+    const onPrompt = renderSystemPrompt(buildSystemPrompt(promptOptions({ tools: [createWorkflowTool(makeDeps({ mode: "on" }))], promptKind: "chat" })));
 
     expect(askPrompt).toContain("Workflows needs the user's typed approval for every launch you start.");
     expect(askPrompt).toContain("decision: { workflow_launch:");
@@ -478,16 +486,19 @@ describe("createWorkflowTool", () => {
     const workflow = createWorkflowTool(makeDeps({ mode: "ask" }));
     const chat = { promptKind: "chat" as const, chatHost: { communication: true as const } };
     const prompts = [
-      renderSystemPrompt(buildSystemPrompt({ ...chat, tools: [workflow, skill], chatChangeReviewSkillAvailable: true })),
-      renderSystemPrompt(buildSystemPrompt({ ...chat, tools: [skill], chatChangeReviewSkillAvailable: true })),
-      renderSystemPrompt(buildSystemPrompt({ ...chat, tools: [workflow], chatChangeReviewSkillAvailable: false })),
+      renderSystemPrompt(buildSystemPrompt(promptOptions({ ...chat, tools: [workflow, skill], skills: ["code-review"] }))),
+      renderSystemPrompt(buildSystemPrompt(promptOptions({ ...chat, tools: [skill], skills: ["code-review"] }))),
+      renderSystemPrompt(buildSystemPrompt(promptOptions({ ...chat, tools: [workflow], skills: [] }))),
     ];
 
-    for (const prompt of prompts) {
-      expect(prompt.match(/CHAT CHANGE REVIEW:/g)).toHaveLength(1);
+    for (const prompt of prompts) expect(prompt.match(/CHAT CHANGE REVIEW:/g)).toHaveLength(1);
+    for (const prompt of [prompts[0]!, prompts[2]!]) {
       expect(prompt.match(/whether a runtime notification tells you or the user tells you later/g)).toHaveLength(1);
       expect(prompt).toContain("Read its recorded deviations yourself: a workflow handoff carries them in its declared output");
     }
+    // Without a delegation tool the chat has no delegated result to read deviations from.
+    expect(prompts[1]).toContain("Record its deviations from that intent yourself as you work.");
+    expect(prompts[1]).not.toContain("a workflow handoff carries them");
     expect(workflow.promptGuidelines?.join("\n")).not.toContain("first draft");
     expect(workflow.description).not.toContain("first draft");
   });

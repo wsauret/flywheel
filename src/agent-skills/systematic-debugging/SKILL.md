@@ -18,7 +18,7 @@ Start with a specific defect, expected behavior, available evidence, reproductio
 
 1. Run the composed root-cause-analysis method. A decisive `no-defect` result is successful completion with no edit. Stop unsuccessfully if it returns `blocked` or `exhausted`.
 2. Preserve the confirmed trigger-to-symptom causal chain and its evidence per edge.
-3. In interactive chat only, after `confirmed`, load the `design` skill and propose the fix through it; its scope check decides whether approval is needed, and approval resumes this method. Agents of a workflow and subagents follow their brief autonomously.
+3. In interactive chat only, after `confirmed`, load the `design` skill and propose the fix through it; its scope check decides whether approval is needed, and approval resumes this method. Any agent outside an interactive chat follows its brief autonomously.
 4. Create the smallest diagnosis-scoped regression through the composed test-driven-development method. If honest RED cannot be established, use only that method's declared fallback or blocked result.
 5. If any new observation refutes a causal edge, return to diagnosis. Do not continue editing a disproved explanation.
 6. Implement the smallest fix at the point where valid behavior first becomes invalid. Change one causal mechanism, not a cluster of symptoms.

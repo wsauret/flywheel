@@ -1,34 +1,27 @@
+import { attemptBrief } from "../../../helpers/attempt-brief"
 import { describe, it, expect, setSystemTime, spyOn } from "bun:test"
-import { createEmit, EventBus, type EmitFn } from "../../../../src/infra/event-bus"
+import type { EmitFn } from "../../../../src/infra/event-bus"
 import { createRuntimeEvent } from "../../../../src/infra/runtime-event-factory"
 import { parseRuntimeEventPayload } from "../../../../src/infra/runtime-event-types"
 import { mapRuntimeEventToSessionRuntimeFacts } from "../../../../src/infra/runtime-fact-mapper"
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../src/infra/event-store-types"
-import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
-import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
 import type { CommandHandoverAuthority } from "../../../../src/orchestration/agent-runtime/command-handover"
 import { publishWorkerAttempt } from "./_workflow-host-fixtures"
-import { makeWorkflowDeps } from "./_workflow-controller-fixtures"
+import { CONVERSATION, handoverWorker, publishStep, STEP, WORKFLOW } from "./_worker-step-fixtures"
 import type { SessionManager } from "../../../../src/orchestration/session/manager"
 import type { Agent, AgentFactory } from "../../../../src/orchestration/agent-runtime/types"
 import type { AgentDefinition } from "../../../../src/infra/agent-definition"
 import { scopedAgentRegistry } from "../../../../src/orchestration/modules/subagents/execution/dispatch-configuration"
-import type { ResolvedRoles } from "../../../../src/orchestration/config/roles"
-import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
 import { COMMAND_HANDOVER_IN_FLIGHT_KIND, commandHandoversOfAsync } from "../../../../src/orchestration/session/command-handover"
-import { createWorkerCallback } from "../../../../src/orchestration/workflow-host/agent-callback"
 import { createBackgroundIndex } from "../../../../src/orchestration/app-service/background-index"
 import { createSessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer"
 import type { ActiveBackgroundCommandDescriptor, BackgroundWorkResult } from "../../../../src/orchestration/agent-runtime/background-work"
 import { HandoffCorrectionExhausted } from "../../../../src/orchestration/agent-runtime/errors"
 import { HandoffInvalidError } from "../../../../src/workflows/context-bundle/handoff-errors"
-import type { AttemptRow } from "../../../../src/workflows/view/types"
-import { resolveWorkflowAgents, type ResolvedAgent } from "../../../../src/workflows/agent-resolution"
+import { resolveWorkflowAgents } from "../../../../src/workflows/agent-resolution"
 import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema"
 import { Schema } from "effect"
-import { testAuthContext } from "../../../helpers/auth-context"
-import { temporaryDirectories, testDirectories } from "../../../helpers/directories"
-import { repoDefinitions } from "../../../helpers/project-definitions"
+import { temporaryDirectories } from "../../../helpers/directories"
 import { workflowAgentInputs } from "../../../helpers/workflow-agent-inputs"
 import { fakeContainer, handedOverRow, handoverAuthority } from "../agent-runtime/_command-handover-fixtures"
 import { makeMockOps } from "../agent-runtime/tools/_bash-fixtures"
@@ -48,57 +41,14 @@ import { liveSessionControl, messageDisposition } from "../../../../src/orchestr
 import type { RestoredAgentWait } from "../../../../src/orchestration/agent-runtime/agent-loop-types"
 
 const temporary = temporaryDirectories()
-const WORKFLOW = "workflow-1"
 let sessionId: string
 let manager: SessionManager
-const CONVERSATION = "agent-step-1"
-const STEP: AttemptRow = { id: "step-1", definitionId: "work", workflowDefinitionId: "wf", name: "Work", briefId: "work", status: "running", writes: [], resumeRevertCount: 0 }
 
 async function agentStore(dir: string) {
-  const store = createSqliteEventStore(resolveEventStoreDbFile(dir))
-  const published = await publishWorkerAttempt({ projectRoot: dir, reader: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store), workflowId: WORKFLOW, attemptId: STEP.id, conversationId: CONVERSATION })
-  sessionId = published.member.sessionId
-  manager = published.manager
-  return store
-}
-
-/** A member worker built with the executor's command handover. */
-function handoverWorker(dir: string, createAgent: AgentFactory, commandHandover: CommandHandoverAuthority, emit: EmitFn = createEmit(new EventBus()), inputs = workflowAgentInputs(commandHandover.projectionReader, WORKFLOW), resolvedAgents: ReadonlyMap<string, ResolvedAgent> = resolveWorkflowAgents(Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
-  id: "wf", name: "Workflow", phases: [{ phase: "work", brief: "Do the work.", name: "Work" }],
-})), personas: ReadonlyMap<string, AgentDefinition> = new Map(), onBackgroundCommandsChanged?: (commands: readonly ActiveBackgroundCommandDescriptor[]) => void, workflowId = WORKFLOW, overrides: Partial<Pick<Parameters<typeof createWorkerCallback>[0], "attachChildProjection">> = {}) {
-  const { accountHome, userDataRoot } = testDirectories(dir)
-  return createWorkerCallback({
-    ...makeWorkflowDeps(),
-    createAgent,
-    createLLMClient: () => { throw new Error("no step here creates a client of its own") },
-    captureProviderConnection: makeWorkflowDeps().captureProviderConnection,
-    auth: testAuthContext(),
-    proactiveCompactionThreshold: () => 270_000,
-    resolveRoles: async (): Promise<ResolvedRoles> => new Map([["workflow-agent", { roleId: "workflow-agent", model: "test-model", effort: "high" }]]),
-    emit,
-    sessionId: workflowId,
-    projectRoot: dir,
-    userDataRoot,
-    accountHome,
-    executionCwd: dir,
-    moduleSelection: composeFirstPartyModules(),
-    agentInputs: inputs.agentInputs,
-    deactivateSession: id => manager.updateLifecycleState(id, "inactive"),
-    sessionEventWriter: createSessionFactWriter({ sessionId: workflowId, writer: commandHandover.writer }),
-    attachChildProjection: async input => ({
-      onEvent: event => emit(event.type, { sessionId: input.sessionId, data: event.data }),
-      lifecycle: {}, queueUserMessage() {}, updateMetrics() {}, updateBackgroundCommands: commands => onBackgroundCommandsChanged?.(commands), updateForegroundBash() {}, updateOperations() {}, dispose: async () => {},
-    }),
-    skills: repoDefinitions().skills(),
-    personas,
-    eventStore: commandHandover.reader,
-    projectionReader: commandHandover.projectionReader,
-    eventWriter: commandHandover.writer,
-    recall: async () => ({ hits: [] }),
-    commandHandover,
-    resolvedAgents,
-    ...overrides,
-  }).worker
+  const step = await publishStep(dir)
+  sessionId = step.sessionId
+  manager = step.manager
+  return step.store
 }
 
 describe("a step's command handover", () => {
@@ -138,7 +88,7 @@ describe("a step's command handover", () => {
       abort() { done.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "aborted" } }) },
       done: done.promise,
     }), authority, emit, undefined, undefined, undefined, (commands) => { live = commands })
-    const run = worker(STEP, "work", "", undefined, CONVERSATION)
+    const run = worker(STEP, attemptBrief("work"), undefined, CONVERSATION)
     try {
       await launched.promise
       await Promise.all(writes)
@@ -188,7 +138,7 @@ describe("a step's command handover", () => {
       }
     }, authority, undefined, inputs)
 
-    await worker(STEP, "work", "", undefined, CONVERSATION)
+    await worker(STEP, attemptBrief("work"), undefined, CONVERSATION)
 
     expect(runningAtRequest).toEqual([row.processId])
     expect(store.readInFlight(sessionId, COMMAND_HANDOVER_IN_FLIGHT_KIND)).toEqual([])
@@ -228,7 +178,7 @@ describe("a step's command handover", () => {
       }
     }, authority)
 
-    await worker(STEP, "work", "", undefined, CONVERSATION)
+    await worker(STEP, attemptBrief("work"), undefined, CONVERSATION)
 
     expect(events).toEqual([...closeEvents])
     expect((await commandHandoversOfAsync(asAsyncEventReadSurface(store), sessionId, CONVERSATION)).map((stored) => stored.row.toolUseId)).toEqual([...handedOver])
@@ -272,7 +222,7 @@ describe("a step's loop notices", () => {
         async *streamWithTools() { requests += 1; requested.resolve(); stop.abort(); yield { kind: "done", stopReason: "end_turn" } },
       }))
     }, authority, undefined, inputs)
-    const run = worker(STEP, "work", "", stop.signal, CONVERSATION)
+    const run = worker(STEP, attemptBrief("work"), stop.signal, CONVERSATION)
     try {
       await parked.promise
       expect(requests).toBe(0)
@@ -324,7 +274,7 @@ describe("a step's loop notices", () => {
         async *streamWithTools() { requests += 1; yield { kind: "text_delta", text: "Read the notes.", blockKey: "text-0" }; yield { kind: "done", stopReason: "end_turn" } },
       }))
     }, authority, undefined, workflowAgentInputs(authority.projectionReader, WORKFLOW))
-    const run = worker(STEP, "work", "", stop.signal, CONVERSATION)
+    const run = worker(STEP, attemptBrief("work"), stop.signal, CONVERSATION)
     try {
       expect(await parked.promise).toBe("waiting_on_work")
       expect(continued).toEqual({ expiry: { seconds: 7200, deadlineMs: at + 7_200_000 }, replyWaitIds: [] })
@@ -357,7 +307,7 @@ describe("a step's loop notices", () => {
         done: done.promise,
       }
     }, handoverAuthority({ reader: store, writer: asAsyncEventWriter(store) }))
-    const run = worker(STEP, "work", "", controller.signal, CONVERSATION)
+    const run = worker(STEP, attemptBrief("work"), controller.signal, CONVERSATION)
     try {
       await request.entered
       expect(request.observations.loginQuestions()).toHaveLength(1)
@@ -413,14 +363,14 @@ describe("a step's loop notices", () => {
     }
     const worker = handoverWorker(dir, createAgent, authority, emit)
 
-    const result = await worker(STEP, "work", "", undefined, CONVERSATION)
+    const result = await worker(STEP, attemptBrief("work"), undefined, CONVERSATION)
     expect(result.toolUses).toBe(2)
-    const resumed = await worker(STEP, "work", "", undefined, CONVERSATION)
+    const resumed = await worker(STEP, attemptBrief("work"), undefined, CONVERSATION)
     expect(resumed.toolUses).toBe(3)
 
     expect(notices).toEqual(Array.from({ length: 2 }, () => ({ sessionId, data: { message: "The agent ended its turn without waiting.", level: "info" } })))
     await publishWorkerAttempt({ projectRoot: dir, reader: authority.projectionReader, writer: authority.writer, workflowId: "retry", attemptId: "retry", conversationId: "retry-conversation" })
-    const retried = await handoverWorker(dir, createAgent, authority, emit, workflowAgentInputs(authority.projectionReader, "retry"), undefined, undefined, undefined, "retry")({ ...STEP, id: "retry" }, "retry", "", undefined, "retry-conversation")
+    const retried = await handoverWorker(dir, createAgent, authority, emit, workflowAgentInputs(authority.projectionReader, "retry"), undefined, undefined, undefined, "retry")({ ...STEP, id: "retry" }, attemptBrief("retry"), undefined, "retry-conversation")
     expect(retried.toolUses).toBe(2)
     store.close()
   })
@@ -452,7 +402,7 @@ describe("a step's loop notices", () => {
       }),
     })
 
-    await worker(STEP, "work", "", undefined, CONVERSATION)
+    await worker(STEP, attemptBrief("work"), undefined, CONVERSATION)
     expect(operations).toEqual([0, 1])
     store.close()
   })
@@ -470,7 +420,7 @@ describe("a step's persona grant", () => {
         throw new Error("unexpected agent creation")
       }, authority, undefined, workflowAgentInputs(authority.projectionReader, WORKFLOW), new Map())
 
-      await expect(worker(STEP, "work", "", undefined, CONVERSATION)).rejects.toThrow("worker invoked without admitted agent 'work'")
+      await expect(worker(STEP, attemptBrief("work"), undefined, CONVERSATION)).rejects.toThrow("worker invoked without admitted agent 'work'")
       expect(created).toBe(false)
     } finally {
       store.close()
@@ -498,7 +448,7 @@ describe("a step's persona grant", () => {
         return { send() {}, end() {}, abort() {}, done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } }) }
       }, authority, undefined, workflowAgentInputs(authority.projectionReader, WORKFLOW), resolved, personas)
 
-      await worker(STEP, "work", "", undefined, CONVERSATION)
+      await worker(STEP, attemptBrief("work"), undefined, CONVERSATION)
 
       expect(visible).toEqual(expected)
     } finally {
@@ -534,7 +484,7 @@ describe("a step's recovery between failed runs", () => {
     const diagnostic = spyOn(DebugLog, "record").mockImplementation((entry) => { if (entry.type === "agent.unattended.recovery") recoveries.push(entry.payload) })
     try {
       const worker = scriptedWorker(dir, handoverAuthority({ reader: store, writer: asAsyncEventWriter(store) }), [readCall("read-1"), readCall("read-2"), noCapacity, handoff])
-      const result = await worker(STEP, "work", "", undefined, CONVERSATION)
+      const result = await worker(STEP, attemptBrief("work"), undefined, CONVERSATION)
       expect(result.output).toBe("completed")
       expect(recoveries).toEqual([{ caller: "workflow-agent", runId: STEP.id, decision: "wait", failure: "api_error", streak: 0, delayMs: 0, served: 2 }])
     } finally {
@@ -559,7 +509,7 @@ describe("a step's recovery between failed runs", () => {
     try {
       // The walk states a time an hour away, so only the message can end the wait inside the test.
       const noCapacityForAnHour = (): ProviderStreamEvent[] => { throw new AllCandidatesExhaustedError({ message: "No access provider can run the model", recovery: { kind: "at", atMs: Date.now() + 3_600_000 } }) }
-      const run = scriptedWorker(dir, authority, [noCapacityForAnHour, handoff])(STEP, "work", "", undefined, CONVERSATION)
+      const run = scriptedWorker(dir, authority, [noCapacityForAnHour, handoff])(STEP, attemptBrief("work"), undefined, CONVERSATION)
       await armed.promise
       const control = liveSessionControl(authority.reader, sessionId)
       if (!control) throw new Error("a waiting step is live")
@@ -589,7 +539,7 @@ describe("a step's recovery between failed runs", () => {
         const authority = { ...handoverAuthority({ reader: store, writer: asAsyncEventWriter(store) }), reader: counter.reader, projectionReader: counter.reader }
         const responses = [...Array.from({ length: failures }, () => noCapacity), handoff]
         const worker = scriptedWorker(dir, authority, responses, () => { counts.push(counter.take().length) })
-        expect((await worker(STEP, "work", "", undefined, CONVERSATION)).output).toBe("completed")
+        expect((await worker(STEP, attemptBrief("work"), undefined, CONVERSATION)).output).toBe("completed")
         // The first count pays the step's start; each later one follows one recovery decision.
         return counts.slice(1)
       } finally {
@@ -622,7 +572,7 @@ describe("a step whose handoff corrections run out", () => {
       done: Promise.reject(exhausted),
     }), authority)
 
-    const run = worker(STEP, "work", "", undefined, CONVERSATION)
+    const run = worker(STEP, attemptBrief("work"), undefined, CONVERSATION)
 
     await expect(run).rejects.toBeInstanceOf(HandoffInvalidError)
     await expect(run).rejects.toThrow(`Handoff invalid for attempt ${STEP.id}: ${exhausted.message}`)

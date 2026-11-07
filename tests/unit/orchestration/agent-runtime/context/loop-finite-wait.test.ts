@@ -440,7 +440,8 @@ describe("an open wait outlives every request that only re-drives the turn", () 
   test("a nudge that lands past the automatic compaction threshold saves, compacts, and still parks on the wait", async () => {
     const r = await openWaitRun({
       humanFacing: true, contextLimit: 10_000,
-      seed: { kind: "user", content: `Watch CI.${"y".repeat(27_000)}`, origin: "human" },
+      // The seed keeps the first request under the proactive trigger and puts the nudged request over it, so a change in the tool text moves both.
+      seed: { kind: "user", content: `Watch CI.${"y".repeat(28_000)}`, origin: "human" },
       responses: [LAUNCH_WAIT, SAVE, said("Watching CI.")],
       atParks: [],
     });

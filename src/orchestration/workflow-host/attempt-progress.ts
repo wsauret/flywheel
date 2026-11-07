@@ -1,3 +1,4 @@
+import type { CapabilityCheck } from "../../infra/capability-text.js"
 import { parseProjectionFact } from "../../infra/event-projection.js"
 import { CorruptEventRowError, type AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
 import { readConversationCheckpoint, renderConversationCheckpoint } from "../session/conversation-checkpoint.js"
@@ -27,12 +28,13 @@ export async function conversationsWithServedResponse(reader: AsyncEventStateRea
   return served
 }
 
-/** The rendered latest checkpoint of one conversation of a workflow agent,
- *  which the member session that ran the conversation owns, or null when
- *  the conversation recorded none or its member session was deleted. */
-export async function memberConversationCheckpoint(reader: AsyncEventStateReadSurface, workflowId: string, conversationId: string): Promise<string | null> {
+/** The latest checkpoint of one conversation of a workflow agent, which the
+ *  member session that ran the conversation owns, rendered for the check of
+ *  the agent that reads it, or null when the conversation recorded none or
+ *  its member session was deleted. */
+export async function memberConversationCheckpoint(reader: AsyncEventStateReadSurface, workflowId: string, conversationId: string, capabilities: CapabilityCheck): Promise<string | null> {
   const member = (await workflowMembershipReader(reader).list(workflowId)).find((candidate) => candidate.conversationId === conversationId)
   if (!member) return null
   const checkpoint = await readConversationCheckpoint(reader, { kind: "session", sessionId: member.sessionId }, conversationId)
-  return checkpoint ? renderConversationCheckpoint(checkpoint) : null
+  return checkpoint ? renderConversationCheckpoint(checkpoint, capabilities) : null
 }

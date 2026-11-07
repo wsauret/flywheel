@@ -13,6 +13,7 @@ import { enginePath } from "../../../../../src/infra/claude-engine.js";
 import type { QueryLaunch, QueryLauncherConfig } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/query-launcher.js";
 import { fakeAvailability } from "../../agent-runtime/llm/_provider-chain-harness.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
+import { SHELL_CAPABILITIES } from "../../../../helpers/prompt-capabilities.js";
 
 const temporaryDirectory = temporaryDirectories();
 
@@ -136,7 +137,7 @@ describe("the Agent SDK bridge client", () => {
     // Both sides read the local date, so a fixed clock keeps them on one day.
     setSystemTime(new Date("2026-10-07T12:00:00"));
     try {
-      expect(staged.attempt.messagesToAppend?.(history, "/scratch/project")).toEqual(createClaudeReminders(MODEL, 1_000_000)(history, "/scratch/project"));
+      expect(staged.attempt.messagesToAppend?.(history, "/scratch/project", SHELL_CAPABILITIES)).toEqual(createClaudeReminders(MODEL, 1_000_000)(history, "/scratch/project", SHELL_CAPABILITIES));
     } finally {
       setSystemTime();
     }

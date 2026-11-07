@@ -5,7 +5,7 @@ import type { ModelsClient } from "../../infra/llm/models.js";
 import { getSharedModelsClient } from "../config/llm-clients.js";
 import { captureAccountConnection, createAdmittedClient, createClient, type AdmittedClientOptions, type CreateClientOptions, type EffectiveProviderConnection } from "./llm/client-factory.js";
 import { LiveAgent } from "./runner.js";
-import { prepareRunRequest, type RequestPreparer } from "./request-preparation.js";
+import { planCapabilitiesOfRun, prepareRunRequest, type CapabilityPlanner, type RequestPreparer } from "./request-preparation.js";
 import type { AgentFactory, AgentOptions, RunnableAgentOptions, RuntimeToolSurfaces } from "./types.js";
 import type { ModuleServices } from "../../infra/module-service.js";
 import type { EnvCaptureResolver } from "../../infra/env-detection.js";
@@ -76,6 +76,7 @@ interface GenerationRuntimeToolSurfaces {
   streamingEditValidation?: StreamingEditValidationService;
   /** Runtime authority for current auth storage conditions and settled mutation refusals. */
   authConditions?: Pick<AuthConditionOwner, "snapshot" | "observeMutation">;
+  headless?: true;
 }
 
 /** Completes runner-local surfaces with the authorities pinned to one runtime
@@ -96,6 +97,7 @@ export function completeRuntimeToolSurfaces(
     ...(generation.allowPersistentProcesses ? { allowPersistentProcesses: generation.allowPersistentProcesses } : {}),
     ...(generation.gitAiAttribution ? { gitAiAttribution: generation.gitAiAttribution } : {}),
     ...(generation.streamingEditValidation ? { streamingEditValidation: generation.streamingEditValidation } : {}),
+    ...(generation.headless ? { headless: true } : {}),
   };
 }
 
@@ -150,6 +152,8 @@ export function createAgentRuntime(deps: {
   notify: AdmittedClientOptions["notify"];
   /** Enables account login waiting only for an interactive executor. */
   waitForLogin?: true;
+  /** No client reviews this runtime's file changes (`RuntimeToolSurfaces.headless`). */
+  headless?: true;
   /** The profile's wait for its model discovery to settle, which every runner this factory builds carries. */
   awaitModelAccessSettled: (signal: AbortSignal) => Promise<void>;
 }) {
@@ -183,6 +187,7 @@ export function createAgentRuntime(deps: {
     ...(deps.allowPersistentProcesses ? { allowPersistentProcesses: deps.allowPersistentProcesses } : {}),
     ...(deps.gitAiAttribution ? { gitAiAttribution: deps.gitAiAttribution } : {}),
     ...(deps.streamingEditValidation ? { streamingEditValidation: deps.streamingEditValidation } : {}),
+    ...(deps.headless ? { headless: true } : {}),
   };
   const requestAdmission = (connection: EffectiveProviderConnection, runtimeConfig: RuntimeConfigRequestCapture): AdmittedClientOptions["requestAdmission"] => {
     return async (candidates) => {
@@ -336,15 +341,20 @@ export function createAgentRuntime(deps: {
     const { runnable, agentClient, captureModelRuntime } = agentParts(options);
     return new LiveAgent(runnable, agentClient, deps.definitions, breadcrumbMaintenance, undefined, captureModelRuntime);
   };
-  const prepareRequest: RequestPreparer = (options, preparation) => {
+  /** The authorities that build the requests of the session run that `options` describe, without its Agent. */
+  const runSource = (options: AgentOptions) => {
     const { runnable, agentClient, captureModelRuntime } = agentParts(options);
-    return prepareRunRequest({
-      ...preparation,
-      options: { ...runnable, providerSession: options.providerSession },
+    return {
+      options: runnable,
       definitions: deps.definitions,
       captureModelRuntime,
-      createRunner: (childOptions) => new LiveAgent(childOptions, agentClient, deps.definitions, breadcrumbMaintenance, undefined, captureModelRuntime),
-    });
+      createRunner: (childOptions: RunnableAgentOptions) => new LiveAgent(childOptions, agentClient, deps.definitions, breadcrumbMaintenance, undefined, captureModelRuntime),
+    };
   };
-  return { moduleSelection, createAgent, prepareRequest, createLLMClient, captureProviderConnection, usageProfile };
+  const prepareRequest: RequestPreparer = (options, preparation) => {
+    const source = runSource(options);
+    return prepareRunRequest({ ...preparation, ...source, options: { ...source.options, providerSession: options.providerSession } });
+  };
+  const planCapabilities: CapabilityPlanner = (options) => planCapabilitiesOfRun(runSource(options));
+  return { moduleSelection, createAgent, prepareRequest, planCapabilities, createLLMClient, captureProviderConnection, usageProfile };
 }

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { createHash } from "node:crypto"
 
 import { loadBundledDefaultCatalog } from "../../../../src/workflows/definitions/bundled-defaults.js"
+import { shippedDefinitionBundles } from "../../../../src/orchestration/modules.js"
 
 function packageIdentity(files: readonly (readonly [string, string])[]): string {
   const identity = createHash("sha256")
@@ -13,13 +14,18 @@ function packageIdentity(files: readonly (readonly [string, string])[]): string 
 }
 
 describe("bundled default catalog", () => {
-  test("lists Flywheel's own definitions and never a module's definition bundle", () => {
-    const paths = Object.keys(loadBundledDefaultCatalog().files)
+  test("lists Flywheel's own definitions and the shipped module bundles, never the development bundle", () => {
+    const paths = Object.keys(loadBundledDefaultCatalog(shippedDefinitionBundles()).files)
 
     // The development module's definitions ship only where the module does
     // and are never reference defaults, so no build publishes them.
     expect(paths.some((path) => path.startsWith("skills/typescript-bun/"))).toBe(false)
     expect(paths).not.toContain("workflows/bench-plan.yaml")
+    // A shipped bundle's packages keep their catalog paths, so an override of one still diffs.
+    expect(paths).toContain("skills/workflow-authoring/SKILL.md")
+    expect(paths).toContain("skills/workflow-authoring/examples/build-review-loop.workflow.yaml")
+    expect(paths).toContain("skills/experiment-charter/SKILL.md")
+    expect(paths).toContain("skills/experiment-finalize/finalize.sh")
 
     expect(paths).toContain("skills/design/SKILL.md")
     expect(paths.filter((path) => /^workflows\/[^/]+\.ya?ml$/.test(path))).toEqual([])
@@ -28,7 +34,7 @@ describe("bundled default catalog", () => {
   })
 
   test("publishes clean bytes with deterministic shipped identities", () => {
-    const catalog = loadBundledDefaultCatalog()
+    const catalog = loadBundledDefaultCatalog(shippedDefinitionBundles())
     const skillFiles = Object.entries(catalog.files)
       .filter(([path]) => path.startsWith("skills/design/"))
       .map(([path, file]) => [path.slice("skills/design/".length), file.content] as const)
@@ -41,7 +47,7 @@ describe("bundled default catalog", () => {
   })
 
   test("ships conditional Advisor review in the design approval contract", () => {
-    const skill = loadBundledDefaultCatalog().files["skills/design/SKILL.md"]?.content
+    const skill = loadBundledDefaultCatalog(shippedDefinitionBundles()).files["skills/design/SKILL.md"]?.content
 
     expect(skill).toContain("Advisor review first")
     expect(skill).toContain("conditionally approves the unchanged design")

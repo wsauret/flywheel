@@ -5,7 +5,7 @@ import { requireRole } from "../../config/roles.js"
 import { renderSkillRecommendationNotification } from "./reconciliation.js"
 import { createReviewUsageAccounting, resolveReviewRoute, reviewReplay, type ReviewRunSpec, type SpawnedReview } from "./learning-review.js"
 import { createLearningReviewExecution } from "./learning-review-runner.js"
-import { collectSkillLoadStats, renderSkillLoadStats } from "./skill-load-stats.js"
+import { reviewForkInstruction } from "./skill-load-stats.js"
 
 /** Builds the one-shot learning review fork for a chat session. */
 export function createLearningReviewSpawner(input: ChatModuleHostInput): (spec: ReviewRunSpec) => Promise<SpawnedReview | undefined> {
@@ -26,11 +26,7 @@ export function createLearningReviewSpawner(input: ChatModuleHostInput): (spec: 
     // the appended review prompt is the trailing user message that resolves it.
     const treeContext = await deps.treeWriter.buildContext({ allowAssistantTail: true })
     const replay = await reviewReplay(route, treeContext.messages)
-    // Load-count context so the review prefers patching the skills sessions
-    // actually reach for. The catch-up yields to the task queue between
-    // history pages, so a long skill history does not hold the executor.
-    const telemetry = renderSkillLoadStats(await collectSkillLoadStats(deps.infra.projectionReader))
-    const instruction = telemetry ? `${spec.instruction}\n\n${telemetry}` : spec.instruction
+    const instruction = await reviewForkInstruction(spec.instruction, spec.capabilities, deps.infra.projectionReader)
     const usageAccounting = createReviewUsageAccounting(spec.reviewRunId, (event) => {
       if (event.type === "model.usage.measured") emit("model.usage.measured", { sessionId, data: event.data })
       else emit("budget.stream.completed", { sessionId, data: event.data })

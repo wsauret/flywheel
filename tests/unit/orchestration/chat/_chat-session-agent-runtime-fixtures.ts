@@ -27,6 +27,7 @@ import { MODULE_IDS } from "../../../../src/protocol/module-ids.js"
 import type { WorkflowsMode } from "../../../../src/protocol/module-protocol-types.js"
 import { capabilityAccessHolding } from "../agent-runtime/tools/_fixtures"
 import { authProviders } from "../../../helpers/auth-context.js"
+import { planEveryCapability } from "../../../helpers/attempt-brief.js"
 
 export function makeMemoryTreeWriter(): ConversationTreeWriterController {
   // Production-shaped mock: durably mirrors the chat-tree-writer contract by
@@ -258,6 +259,7 @@ export function createTestChatSessionDeps(
     personas: repoDefinitions().personas(),
     createLLMClient: () => { throw new Error("createLLMClient not stubbed in this test") },
     prepareRequest: () => { throw new Error("prepareRequest not stubbed in this test") },
+    planCapabilities: planEveryCapability,
     captureProviderConnection: () => { throw new Error("captureProviderConnection not provided in this test") },
     resolveEnvSnapshot: () => { throw new Error("resolveEnvSnapshot not provided in this test") },
     conversationId: `conversation-${overrides.sessionId}`,

@@ -58,7 +58,7 @@ export const papercutsModule = {
       execute: async (host, argument) => {
         const session = host.session
         if (!session) return { kind: "warning", message: "No active chat session" }
-        const drain = await buildPapercutDrain(host.projectionReader, session.id)
+        const drain = await buildPapercutDrain(host.projectionReader, session.id, () => session.capabilities())
         if (drain.kind !== "ready") {
           await session.systemLine(drain.message)
           return { kind: "none" }

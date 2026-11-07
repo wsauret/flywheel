@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { renderCapabilityText, type CapabilityCheck } from "../infra/capability-text.js";
 import { workflowAssets as manifestWorkflowAssets } from "./agents/manifest.js";
 import { BUNDLED_REFERENCE_DIR } from "./skill-source-inventory.js";
 import type { SkillDefinition } from "./skill-schema.js";
@@ -47,7 +48,27 @@ function resolveSkillReferences(body: string): string {
   });
 }
 
-/** The prompt-ready skill body with shared references expanded. */
+/** The skill body with shared references expanded and its capability markers kept as written. */
 export function resolveSkillBody(skill: Pick<SkillDefinition, "body">): string {
   return resolveSkillReferences(skill.body);
+}
+
+/** A bundled body rendered for one reader, and each capability term that the rendering tested with its answer. */
+export interface RenderedSkillBody {
+  readonly text: string;
+  readonly conditions: ReadonlyMap<string, boolean>;
+}
+
+/** The prompt-ready bundled body for the reader that `has` describes (ARCH-CONTEXT-033): shared references expanded
+ *  first, so a reference's own `{{if:}}` blocks are conditioned too, then each block kept or dropped. `conditions`
+ *  lists the terms in the order the rendering tested them; a term after one that already held is not tested,
+ *  because it cannot change the text. Throws when the expanded body holds an unbalanced marker. */
+export function renderSkillBody(skill: Pick<SkillDefinition, "body">, has: CapabilityCheck): RenderedSkillBody {
+  const conditions = new Map<string, boolean>();
+  const text = renderCapabilityText(resolveSkillBody(skill), (term) => {
+    const holds = has(term);
+    conditions.set(term, holds);
+    return holds;
+  });
+  return { text, conditions };
 }

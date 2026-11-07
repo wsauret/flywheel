@@ -4,10 +4,11 @@ import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 import { systemPromptText } from "../../infra/agent-assets/manifest.js"
-import { agents, skillDefinitions } from "../agents/manifest.js"
+import { agents, moduleSkillDefinitions, skillDefinitions, type WorkflowAssets } from "../agents/manifest.js"
 import { definitionAssets } from "../definition-assets.js"
 import { loadAgentDefaults } from "../agents/installer.js"
 import { BUNDLED_SKILL_DIR } from "../skill-source-inventory.js"
+import type { DefinitionBundle } from "../loader.js"
 
 
 interface BundledDefaultFile {
@@ -51,11 +52,18 @@ function readFilesRecursive(dir: string): MutableTextFiles {
   return files
 }
 
-function sourceSkillFiles(): MutableTextFiles {
-  if (!existsSync(BUNDLED_SKILL_DIR)) return {}
+function sourceSkillFiles(dir: string): MutableTextFiles {
+  if (!existsSync(dir)) return {}
   return Object.fromEntries(
-    Object.entries(readFilesRecursive(BUNDLED_SKILL_DIR)).filter(([path]) => !path.startsWith("references/")),
+    Object.entries(readFilesRecursive(dir)).filter(([path]) => !path.startsWith("references/")),
   )
+}
+
+/** One shipped bundle's packages: its source tree when present, as the loader
+ *  reads it, else the compiled manifest. */
+function bundleSkillFiles({ id, root }: DefinitionBundle): WorkflowAssets {
+  const dir = join(root, "skills")
+  return existsSync(dir) ? sourceSkillFiles(dir) : moduleSkillDefinitions[id] ?? {}
 }
 
 function packageIdentity(packageFiles: readonly (readonly [string, string])[]): string {
@@ -84,10 +92,11 @@ function addFile(
 
 /** Returns every binary-owned definition from the compiled manifests, with the
  * source tree as the dev-mode fallback. The returned paths are reference-only
- * targets and are not loader roots. A module's definition bundle is not a
- * binary-owned default: it ships only where its module does and is never a
- * reference copy. */
-export function loadBundledDefaultCatalog(): BundledDefaultCatalog {
+ * targets and are not loader roots. `bundles` are the module definition
+ * bundles that the release ships: their skill packages sit at the same
+ * `skills/<id>/` paths as Flywheel's own, so an override of one still diffs
+ * and rebases. A bundle that only a source run loads is never a default. */
+export function loadBundledDefaultCatalog(bundles: readonly DefinitionBundle[]): BundledDefaultCatalog {
   const files: MutableBundledDefaultFiles = {}
   const prompt = systemPromptText || readFileSync(join(fileURLToPath(new URL("../../infra/agent-assets", import.meta.url)), "system-prompt.md"), "utf8")
   addFile(files, "system-prompt.md", "system-prompt.md", prompt)
@@ -103,9 +112,12 @@ export function loadBundledDefaultCatalog(): BundledDefaultCatalog {
     addFile(files, `agents/${path}`, `agents/${path}`, content)
   }
 
-  const skills = Object.keys(skillDefinitions).length > 0 ? skillDefinitions : sourceSkillFiles()
+  const skills = [
+    ...Object.entries(Object.keys(skillDefinitions).length > 0 ? skillDefinitions : sourceSkillFiles(BUNDLED_SKILL_DIR)),
+    ...bundles.flatMap((bundle) => Object.entries(bundleSkillFiles(bundle))),
+  ]
   const packages = new Map<string, [string, string][]>()
-  for (const [path, content] of Object.entries(skills)) {
+  for (const [path, content] of skills) {
     const separator = path.indexOf("/")
     if (separator < 1) continue
     const packageName = path.slice(0, separator)

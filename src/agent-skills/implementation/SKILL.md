@@ -31,6 +31,7 @@ When the change is larger than one bounded pass, decompose it with the composed 
 
 ## Sizing
 
+{{if:subagent}}
 When you can dispatch implementer subagents, size the work before you edit. Without that grant, implement every unit yourself.
 
 - Implement one bounded unit inline.
@@ -43,6 +44,9 @@ Dispatch only when it saves more work than it adds. When you dispatch, you own t
 - Fix a defect that you diagnosed yourself inline. A large follow-up packet names the failing command, the root cause, and the exact files, not a discovery task.
 - Each child returns local proof and deviations. Verify each unit again on the current tree, own integrated acceptance, and run the checks that judge the whole tree once, on the integrated tree, after every unit is done. Sizing changes who does the work, never whether evidence is fresh or whether a required check runs.
 - Your result accounts for the whole change, including each child's work and deviations.
+{{else}}
+Implement every unit yourself.
+{{end}}
 
 ## Rules
 

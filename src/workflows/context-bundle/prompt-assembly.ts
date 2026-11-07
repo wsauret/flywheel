@@ -1,3 +1,4 @@
+import type { CapabilityCheck } from "../../infra/capability-text.js";
 import { Log } from "../../infra/log.js";
 import type { ResolvedAgent } from "../agent-resolution.js";
 import type { SkillRegistryRevision } from "../skill-schema.js";
@@ -14,6 +15,9 @@ interface AssembleWorkerPromptInput {
    *  pins it, so a reload mid-attempt cannot change the procedure the agent
    *  runs. */
   skills: SkillRegistryRevision;
+  /** The check of the agent that runs the attempt (ARCH-CONTEXT-033): its
+   *  composed packages and its postamble render for the tools it may call. */
+  capabilities: CapabilityCheck;
   /** The vote that an agent of a list with votes casts on its item. */
   vote?: { readonly number: number; readonly count: number };
   /** What the earlier attempt of an overflow continuation recorded: its
@@ -31,12 +35,13 @@ interface AgentPrompt {
 function buildTask(
   agent: ResolvedAgent,
   skills: SkillRegistryRevision,
+  capabilities: CapabilityCheck,
 ): string {
   const parts: string[] = [];
 
-  parts.push(...renderSkillClosure(agent.dependencies, skills, `Agent "${agent.definitionId}"`));
+  parts.push(...renderSkillClosure(agent.dependencies, skills, `Agent "${agent.definitionId}"`, capabilities));
   if (agent.body) parts.push(agent.body);
-  parts.push(agent.output.instructions);
+  parts.push(agent.output.instructions(capabilities("bash")));
 
   return parts.join("\n\n");
 }
@@ -65,7 +70,7 @@ function renderEarlierAttempt({ checkpoint, fileEvidence }: NonNullable<Assemble
 
 /** Build the user prompt from the brief's description and the canonical context bundle. */
 function buildUserPrompt(
-  { attempt, contextBundle, vote, earlierAttempt }: Omit<AssembleWorkerPromptInput, "skills">,
+  { attempt, contextBundle, vote, earlierAttempt }: Omit<AssembleWorkerPromptInput, "skills" | "capabilities">,
 ): string {
   const parts: string[] = [];
   if (attempt.description) parts.push(`## Brief\n\n${attempt.description}`);
@@ -78,8 +83,8 @@ function buildUserPrompt(
 
 /** Assemble complete agent prompts from the resolved agent and one canonical context bundle. */
 export function assembleAgentPrompt(input: AssembleWorkerPromptInput): AgentPrompt {
-  const { agent, contextBundle, skills } = input;
-  const task = buildTask(agent, skills);
+  const { agent, contextBundle, skills, capabilities } = input;
+  const task = buildTask(agent, skills, capabilities);
   const userPrompt = buildUserPrompt(input);
   log.info("prompt assembled", {
     taskInstructionBytes: task.length,

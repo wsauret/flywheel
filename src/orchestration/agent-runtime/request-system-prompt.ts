@@ -9,9 +9,9 @@ import type { SessionIdentity } from "../session/session-messaging.js";
 import type { FirstPartyModuleComposition } from "../modules.js";
 import { promptKindForPurpose } from "./agent-purpose.js";
 import type { ModelInteractionProfile } from "./model-interaction-profile.js";
-import { CHAT_CHANGE_REVIEW_SKILL_ID, type BuildSystemPromptOptions } from "./system-prompt.js";
+import type { BuildSystemPromptOptions } from "./system-prompt.js";
+import { treeCapabilityCheck } from "./capability-checks.js";
 import type { KernelToolDeps } from "./tools/kernel-tool-deps.js";
-import type { ToolExposurePlan } from "./tools/tool-exposure-planner.js";
 import type { RuntimeTool } from "./tools/types.js";
 import type { AgentOptions } from "./types.js";
 
@@ -43,24 +43,26 @@ export interface RequestPromptFacts {
   readonly selfDebug: boolean;
   readonly sessionIdentity: SessionIdentity | undefined;
   readonly interactionProfile: ModelInteractionProfile;
-  /** The request's module snapshot, its planned tools, and its skill revision. */
+  /** The request's module snapshot, its advertised tools, and the logical identity of each advertised tool. */
   readonly moduleSnapshot: FirstPartyModuleComposition;
   readonly tools: ReadonlyMap<string, RuntimeTool>;
-  readonly skillRegistry: ToolExposurePlan["skillRegistry"];
+  readonly registrationIdentities: ReadonlyMap<string, string>;
   readonly kernel: KernelToolDeps;
   readonly modules: ModuleRuntimes;
   /** The memory of the run, read only for a request that carries memory. */
   readonly memory: (moduleSnapshot: FirstPartyModuleComposition) => string | null;
 }
 
-/** The options that build the system prompt of one request (`buildSystemPrompt`). The enabled modules' prompt
- *  fragments render in contribution order. A request that does not hold Learning carries no memory, and subagents and
+/** The options that build the system prompt of one request (`buildSystemPrompt`). The prompt and the enabled
+ *  modules' prompt fragments render from the tree check of the request's advertised tools, so every agent of a tree
+ *  renders the same text (ARCH-CONTEXT-033). The fragments render in contribution order. A request that does not hold Learning carries no memory, and subagents and
  *  persona benchmarks never carry memory. */
 export async function requestSystemPromptOptions(facts: RequestPromptFacts): Promise<BuildSystemPromptOptions> {
   const { purpose, moduleSnapshot, tools } = facts;
   const memoryExcluded = purpose.kind === "subagent" || purpose.kind === "persona-benchmark";
   const memorySnapshot = memoryExcluded || !moduleSnapshot.contributions.some((contribution) => contribution.domain === "memory") ? null : facts.memory(moduleSnapshot);
-  const fragmentInput = { kernel: facts.kernel, modules: facts.modules, tools, memorySnapshot };
+  const capabilities = treeCapabilityCheck(moduleSnapshot, facts.kernel.definitionAvailability.tree, [...tools.keys()].map((name) => facts.registrationIdentities.get(name) ?? name));
+  const fragmentInput = { kernel: facts.kernel, modules: facts.modules, tools, memorySnapshot, capabilities };
   const fragments = moduleSnapshot.contributions
     .flatMap((contribution) => contribution.domain === "promptFragments" ? [contribution.value] : [])
     .toSorted((left, right) => left.order - right.order);
@@ -81,7 +83,7 @@ export async function requestSystemPromptOptions(facts: RequestPromptFacts): Pro
     // share one stable tier and its prompt cache.
     ...(purpose.kind === "workflow-agent" || purpose.kind === "subagent" ? { unattended: true as const } : {}),
     ...(facts.selfDebug ? { selfDebug: true as const } : {}),
-    chatChangeReviewSkillAvailable: tools.has("skill") && facts.skillRegistry?.modelInvocable.some((skill) => skill.id === CHAT_CHANGE_REVIEW_SKILL_ID) === true,
+    capabilities,
     moduleFragments,
     ...(facts.sessionIdentity ? { sessionIdentity: facts.sessionIdentity } : {}),
     ...(facts.interactionProfile.chatPrompt ? { chatPrompt: facts.interactionProfile.chatPrompt } : {}),

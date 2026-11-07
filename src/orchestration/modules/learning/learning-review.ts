@@ -27,7 +27,8 @@ import { LEARNING_REVIEW_ROLE_ID, requireRole, type ResolvedRole, type ResolvedR
 import { withCapabilityGrant, type CapabilityAccess } from "../../agent-runtime/tools/types.js";
 import type { SessionFactWriter } from "../../session/session-fact-writer.js";
 
-import { COMBINED_REVIEW_PROMPT, MEMORY_REVIEW_PROMPT, REVIEW_TOOL_RESTRICTION, SKILL_REVIEW_PROMPT } from "./learning-review-prompts.js";
+import type { CapabilityCheck } from "../../../infra/capability-text.js";
+import { reviewInstruction, type ReviewHalf } from "./learning-review-prompts.js";
 import type { ModuleId, FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../../modules.js";
 import { moduleRequirementsForContribution, hasModuleContribution } from "../../module-requirements.js";
 
@@ -39,7 +40,6 @@ const log = Log.create({ service: "learning-review" });
  *  starves a review that patches two skills and writes memory. */
 const REVIEW_MAX_LLM_CALLS = 16;
 
-type ReviewHalf = "memory" | "skill";
 interface ReviewHalfRequirements {
   readonly memory: readonly ModuleId[];
   readonly skill: readonly ModuleId[];
@@ -81,6 +81,9 @@ export interface ReviewRunSpec {
   reviewRunId: string;
   /** The selected review prompt with the tool-restriction suffix. */
   instruction: string;
+  /** The check of the review tools that this review's grant holds, which its
+   *  instruction and every block a spawner appends to it read. */
+  capabilities: CapabilityCheck;
   maxLLMCalls: number;
   /** This review's own scoped capability boundary (ARCH-RUNTIME-068): the grant it was
    *  admitted with, which fixes whether memory and managed-skill writes are
@@ -296,6 +299,7 @@ export function createLearningReview(deps: LearningReviewDeps): LearningReview {
     memory: moduleRequirementsForContribution("tools", "memory"),
     skill: moduleRequirementsForContribution("tools", "skill_manage"),
   };
+  const toolRequirements = new Map(["skill", "skill_manage", "memory"].map((tool) => [tool, moduleRequirementsForContribution("tools", tool)]));
 
   const userTurns = createCadenceCounter();
   const skillIterations = createCadenceCounter();
@@ -309,7 +313,6 @@ export function createLearningReview(deps: LearningReviewDeps): LearningReview {
     const halves = requested.filter((half) => halfRequirements[half].every((capability) => deps.capabilities.available(capability)));
     if (halves.length === 0 || inFlight) return;
     const reviewRunId = randomUUID();
-    const prompt = halves.length === 2 ? COMBINED_REVIEW_PROMPT : halves[0] === "memory" ? MEMORY_REVIEW_PROMPT : SKILL_REVIEW_PROMPT;
     const actions: ReviewActionReport[] = [];
     const recommendations: SkillRecommendation[] = [];
     const startedAt = Date.now();
@@ -329,11 +332,14 @@ export function createLearningReview(deps: LearningReviewDeps): LearningReview {
         log.info("learning review refused", { sessionId: deps.sessionId, reviewRunId, reason: admission.reason });
         return;
       }
+      const capabilityAccess = withCapabilityGrant(deps.capabilities, admission.grant);
+      const capabilities: CapabilityCheck = (tool) => toolRequirements.get(tool)?.every((capability) => capabilityAccess.available(capability)) === true;
       const spec: ReviewRunSpec = {
         reviewRunId,
-        instruction: `${prompt}\n\n${REVIEW_TOOL_RESTRICTION}`,
+        instruction: reviewInstruction(halves, capabilities),
+        capabilities,
         maxLLMCalls: REVIEW_MAX_LLM_CALLS,
-        capabilityAccess: withCapabilityGrant(deps.capabilities, admission.grant),
+        capabilityAccess,
         moduleSelection: deps.moduleSelection(),
         learningReview: {
           reviewRunId,

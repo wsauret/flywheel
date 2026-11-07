@@ -25,7 +25,7 @@ const step: AttemptRow = {
 describe("assembleAgentPrompt", () => {
   it("places one context bundle in the user prompt", () => {
     const contextBundle = "## User Request\n\nAdd user login\n\n## Inherited Artifacts\n\nreviewed plan";
-    const result = assembleAgentPrompt({ attempt: step, agent: resolvedStep, contextBundle, skills });
+    const result = assembleAgentPrompt({ capabilities: () => true, attempt: step, agent: resolvedStep, contextBundle, skills });
     expect(result.task).toContain("You are an implementation agent.");
     expect(result.task).not.toContain("Add user login");
     expect(result.userPrompt).toContain("## Brief\n\nImplement safely.");
@@ -34,16 +34,23 @@ describe("assembleAgentPrompt", () => {
   });
 
   it("assembles only the step's own layers, body first and output requirements last", () => {
-    const result = assembleAgentPrompt({ attempt: step, agent: resolvedStep, contextBundle: "", skills });
+    const result = assembleAgentPrompt({ capabilities: () => true, attempt: step, agent: resolvedStep, contextBundle: "", skills });
     expect(result.task.startsWith("You are an implementation agent.")).toBe(true);
     expect(result.task).not.toContain("blocks merge");
-    expect(result.task.endsWith(resolvedStep.output.instructions)).toBe(true);
+    expect(result.task.endsWith(resolvedStep.output.instructions(true))).toBe(true);
     expect(result.task).toContain("**decisions** (REQUIRED, list of string)");
+  });
+
+  it("ends with the postamble for an agent without bash when its check lacks bash", () => {
+    const result = assembleAgentPrompt({ capabilities: (term) => term !== "bash", attempt: step, agent: resolvedStep, contextBundle: "", skills });
+    expect(result.task.endsWith(resolvedStep.output.instructions(false))).toBe(true);
+    expect(result.task).not.toContain("commands_run");
   });
 
   it("keeps for-item context before the pipeline bundle", () => {
     const forItem = { id: "phase-1", goal: "Implement core" };
     const result = assembleAgentPrompt({
+      capabilities: () => true,
       attempt: { ...step, item: forItem },
       agent: resolvedStep,
       contextBundle: "## User Request\n\nBuild it",
@@ -56,6 +63,7 @@ describe("assembleAgentPrompt", () => {
     // A lane of a map with votes states its vote after its item, so its
     // instructions can give each vote its own angle.
     const lane = assembleAgentPrompt({
+      capabilities: () => true,
       attempt: { ...step, item: forItem },
       agent: resolvedStep,
       contextBundle: "## User Request\n\nBuild it",

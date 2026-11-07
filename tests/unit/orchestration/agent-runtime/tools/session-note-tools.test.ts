@@ -12,6 +12,7 @@ import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { prepareToolCall, executePreparedTool } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import { makeContext } from "./_fixtures.js";
+import { promptCapabilities } from "../../../../helpers/prompt-capabilities.js";
 import { resolveConversationResources } from "../../../../../src/orchestration/session/conversation-resources.js";
 import { ConversationTreeStorage } from "../../../../../src/orchestration/session/conversation/conversation-tree-storage.js";
 import { ConversationTree } from "../../../../../src/orchestration/session/conversation/conversation-tree.js";
@@ -41,7 +42,7 @@ describe("conversation checkpoint tools", () => {
   it("replaces one typed section, records exact decisions, and isolates another conversation", async () => {
     const { root, owner, reader, plan } = fixture();
     const tools = (await plan()).tools;
-    const context = makeContext({ executionCwd: root });
+    const context = makeContext({ executionCwd: root, capabilities: promptCapabilities([{ name: "skill" }]) });
     const run = (name: string, input: { [key: string]: unknown }) => executePreparedTool(prepareToolCall({ id: name, name, input }, tools), context);
     expect((await run("checkpoint_replace", { section: "designIntent", value: { text: "Keep all decisions.", approved: true } })).outcome).toBe("ok");
     expect((await run("checkpoint_decide", { date: "2026-10-21", words: "Use the exact words.", replaces: "Summarize the decision." })).outcome).toBe("ok");
@@ -51,7 +52,12 @@ describe("conversation checkpoint tools", () => {
     expect(await readConversationCheckpoint(reader, { kind: "session", sessionId: "session" }, "other")).toBeUndefined();
     const read = await run("checkpoint_read", {});
     expect(read.content).toContain("# Design intent (approved)\n\nKeep all decisions.");
+    expect(read.content).toContain("# Relevant skills");
     expect(read.content).toContain("# Working notes");
+    // An agent that cannot load skills reads no empty Relevant skills section; every other section stays.
+    const unskilled = await executePreparedTool(prepareToolCall({ id: "read", name: "checkpoint_read", input: {} }, tools), makeContext({ executionCwd: root, capabilities: promptCapabilities([]) }));
+    expect(unskilled.content).not.toContain("# Relevant skills");
+    expect(unskilled.content).toContain("# References");
     expect(await run("checkpoint_read", { section: "nextStep" })).toMatchObject({ outcome: "ok", content: JSON.stringify("Run the focused check.") });
     expect(await run("checkpoint_read", { section: "designIntent" })).toMatchObject({ outcome: "ok", content: JSON.stringify({ text: "Keep all decisions.", approved: true }) });
     expect((await run("checkpoint_read", { section: "nextStep", offset: 0 })).outcome).toBe("error");
@@ -107,7 +113,7 @@ describe("conversation checkpoint tools", () => {
     const imported = `## nested/two.md\n\n${second}\n\n## one.md\n\n${first}`;
     expect((await owner.read())?.workingNotes).toBe(imported);
     const tools = (await plan()).tools;
-    const context = makeContext({ executionCwd: root });
+    const context = makeContext({ executionCwd: root, capabilities: promptCapabilities([]) });
     const read = (input: { [key: string]: unknown }) => executePreparedTool(prepareToolCall({ id: "read", name: "checkpoint_read", input }, tools), context);
     const overview = await read({});
     expect(overview.outcome).toBe("ok");

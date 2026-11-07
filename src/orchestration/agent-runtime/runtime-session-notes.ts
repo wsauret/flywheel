@@ -45,7 +45,5 @@ export function assembleInitialRequestContextWithSessionNotes(
   const request = toolSurface.current();
   if (!canUseCheckpoint(true, request.tools)) return requestContext;
 
-  return [requestContext, renderSessionNotesGuidance({
-    recallAvailable: request.tools.has("recall"),
-  })].filter((text) => text !== undefined).join("\n\n");
+  return [requestContext, renderSessionNotesGuidance({ has: request.capabilities })].filter((text) => text !== undefined).join("\n\n");
 }

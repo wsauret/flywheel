@@ -697,6 +697,10 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
         reject(error)
       }
     }),
+    async capabilities() {
+      const { options } = await requestOptions.prestart(engines.chat)
+      return deps.planCapabilities(options)
+    },
     requestCompact: () => {
       if (deps.rootChatCompletion?.sealed) throw new Error("The one-shot Chat invocation has already completed")
       const queued = !mailbox.parked

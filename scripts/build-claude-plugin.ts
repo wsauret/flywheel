@@ -25,6 +25,7 @@ import * as yaml from "js-yaml";
 
 import { Log } from "../src/infra/log.js";
 import { isRecord } from "../src/infra/record.js";
+import { renderCapabilityText, type CapabilityCheck } from "../src/infra/capability-text.js";
 import { claude5ChatVariant, renderClaude5ChatBody } from "../src/orchestration/agent-runtime/claude-5-chat-prompt.js";
 import { SYSTEM_PROMPT_SEPARATOR } from "../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { personaToolEntries } from "../src/orchestration/agent-runtime/tools/tool-registry.js";
@@ -46,12 +47,10 @@ const ROOT = join(import.meta.dir, "..");
 const PERSONA_DIR = join(ROOT, "src", "workflows", "agents", "personas");
 const DOCTRINE = join(ROOT, "src", "infra", "agent-assets", "engineering-doctrine.md");
 
-/** Methods that drive Flywheel's own runtime: its workflow files, its experiment loop, and its publication
- *  delegate. The host has none of it, so the plugin leaves them out. */
+/** Methods that drive Flywheel's own runtime: its publication delegate. The host has none of it, so the
+ *  plugin leaves them out. A method that only one module runs ships in that module's definition bundle, which
+ *  the plugin never reads. */
 const RUNTIME_SKILLS: ReadonlyMap<string, string> = new Map([
-  ["workflow-authoring", "it authors Flywheel workflow files"],
-  ["experiment-charter", "it runs Flywheel's experiment loop"],
-  ["experiment-finalize", "it runs Flywheel's experiment loop"],
   ["ship", "it is the method of Flywheel's publication delegate"],
 ]);
 const RUNTIME_PERSONAS: ReadonlyMap<string, string> = new Map([
@@ -126,40 +125,55 @@ export function buildClaudePlugin(version: string, author: string): ClaudePlugin
   const skills = [...revision.skills.values()];
   const closures = new Map(skills.map((skill) => [skill.id, resolveSkillClosure([skill.id], revision, `Skill "${skill.id}"`)]));
   const registered = [...new Set([...registry.values()].map(({ tool }) => tool))];
-  const skillText = new Map(skills.map((skill) => [skill.id, skillBody(skill, closures.get(skill.id) ?? [])]));
+  const skillSource = new Map(skills.map((skill) => [skill.id, skillBody(skill, closures.get(skill.id) ?? [])]));
+  const skillIds = new Set(skills.map(({ id }) => id));
+  const personaNames = new Set(personas.map(({ name }) => name));
+
+  const excluded = new Map<string, Exclusion>();
+  const isExcluded = (kind: Exclusion["kind"], id: string): boolean => excluded.has(`${kind}:${id}`);
+  // The host serves its native tools, and the plugin's skills and agents while the export keeps them. Every
+  // exported text renders its capability markers through this one check, so no marker and no passage about a
+  // capability that the host lacks, such as workflow files, reaches the plugin.
+  const has: CapabilityCheck = (term) => {
+    if (term.startsWith("skill:")) return NATIVE_TOOLS.has("skill") && skillIds.has(term.slice("skill:".length)) && !isExcluded("skill", term.slice("skill:".length));
+    if (term.startsWith("persona:")) return NATIVE_TOOLS.has("subagent") && personaNames.has(term.slice("persona:".length)) && !isExcluded("agent", term.slice("persona:".length));
+    return NATIVE_TOOLS.has(term);
+  };
+  const rendered = (source: string): string => renderCapabilityText(source, has);
 
   interface Unit {
     readonly kind: Exclusion["kind"];
     readonly id: string;
     readonly runtime: string | undefined;
-    /** The unit's text as the host reads it, before plugin names are qualified. */
-    readonly text: string;
+    /** The unit's text in Flywheel's words, with its capability markers. */
+    readonly source: string;
     readonly composes: readonly string[];
     readonly dispatches: readonly string[];
   }
-  const draft = (text: string): string => translateForHost(text, new Set());
+  /** The unit's text as the host reads it for the current exclusions, before plugin names are qualified. */
+  const draft = (unit: Unit): string => translateForHost(rendered(unit.source), new Set());
   const units: readonly Unit[] = [
     ...skills.map((skill): Unit => ({
-      kind: "skill", id: skill.id, runtime: RUNTIME_SKILLS.get(skill.id), text: draft(skillText.get(skill.id) ?? ""), composes: skill.dependencies, dispatches: skill.agents,
+      kind: "skill", id: skill.id, runtime: RUNTIME_SKILLS.get(skill.id), source: skillSource.get(skill.id) ?? "", composes: skill.dependencies, dispatches: skill.agents,
     })),
     ...personas.map((persona): Unit => ({
-      kind: "agent", id: persona.name, runtime: RUNTIME_PERSONAS.get(persona.name), text: draft(`${persona.description}\n\n${persona.systemPrompt}`), composes: persona.requiredSkills ?? [], dispatches: [],
+      kind: "agent", id: persona.name, runtime: RUNTIME_PERSONAS.get(persona.name), source: `${persona.description}\n\n${persona.systemPrompt}`, composes: persona.requiredSkills ?? [], dispatches: [],
     })),
   ];
-  const excluded = new Map<string, Exclusion>();
-  const isExcluded = (kind: Exclusion["kind"], id: string): boolean => excluded.has(`${kind}:${id}`);
   const reason = (unit: Unit): string | undefined => {
     if (unit.runtime !== undefined) return unit.runtime;
-    const lacked = flywheelOnlyTools(unit.text, registered);
+    const text = draft(unit);
+    const lacked = flywheelOnlyTools(text, registered);
     if (lacked.length > 0) return `its text names ${lacked.join(", ")}, which the host lacks`;
     const left = [
       ...unit.composes.filter((id) => isExcluded("skill", id)).map((id) => `it composes ${id}`),
       ...unit.dispatches.filter((id) => isExcluded("agent", id)).map((id) => `it dispatches ${id}`),
-      ...[...excluded.values()].filter(({ id }) => unit.text.includes(`\`${id}\``)).map(({ id }) => `its text names ${id}`),
+      ...[...excluded.values()].filter(({ id }) => text.includes(`\`${id}\``)).map(({ id }) => `its text names ${id}`),
     ];
     return left.length === 0 ? undefined : `${left[0]}, which is left out`;
   };
-  // An exclusion can exclude what composes, dispatches, or names it, so the exclusions settle in rounds.
+  // An exclusion can exclude what composes, dispatches, or names it, so the exclusions settle in rounds. Each round
+  // renders the texts again, because an exclusion also drops the passages that the check conditions on it.
   for (let changed = true; changed;) {
     changed = false;
     for (const unit of units) {
@@ -180,30 +194,24 @@ export function buildClaudePlugin(version: string, author: string): ClaudePlugin
   files.set(".claude-plugin/plugin.json", `${JSON.stringify({ name: CLAUDE_PLUGIN.name, version, description: CLAUDE_PLUGIN.description, author: { name: author } }, null, 2)}\n`);
   files.set("settings.json", `${JSON.stringify({ agent: CLAUDE_PLUGIN.name }, null, 2)}\n`);
   if (CHAT_VARIANT === undefined) throw new Error(`The default chat model ${ROLE_MODEL_DEFAULTS.chat.anthropic.model} has no Claude 5 chat body`);
-  const chatBody = renderClaude5ChatBody(CHAT_VARIANT, {
-    hasShell: NATIVE_TOOLS.has("bash"),
-    hasAskUser: NATIVE_TOOLS.has("ask_user"),
-    hasDispatch: NATIVE_TOOLS.has("subagent"),
-    canDeliver: ["subagent", "edit", "write"].some((identity) => NATIVE_TOOLS.has(identity)),
-    reviewSkill: NATIVE_TOOLS.has("skill") && pluginNames.has("code-review"),
-  }, CLAUDE_PLUGIN_HOST);
+  const chatBody = renderClaude5ChatBody(CHAT_VARIANT, has, CLAUDE_PLUGIN_HOST);
   files.set(`agents/${CLAUDE_PLUGIN.name}.md`, frontmatter(
     { name: CLAUDE_PLUGIN.name, description: CLAUDE_PLUGIN.description },
-    hostText([chatBody, readFileSync(DOCTRINE, "utf8").trim()].join(SYSTEM_PROMPT_SEPARATOR)),
+    hostText([chatBody, rendered(readFileSync(DOCTRINE, "utf8")).trim()].join(SYSTEM_PROMPT_SEPARATOR)),
   ));
   for (const persona of exportedPersonas) {
     files.set(`agents/${persona.name}.md`, frontmatter({
       name: persona.name,
-      description: hostText(persona.description),
+      description: hostText(rendered(persona.description)),
       tools: personaTools(persona).join(", "),
       model: hostModel(roleModelDefault(persona.role).anthropic.model),
       ...(persona.requiredSkills === undefined ? {} : { skills: persona.requiredSkills }),
-    }, hostText(persona.systemPrompt)));
+    }, hostText(rendered(persona.systemPrompt))));
   }
   for (const skill of exported) {
     // A skill that Flywheel keeps from the model stays invocable here: the host preloads an agent's skills only
     // when the model may invoke them.
-    files.set(`skills/${skill.id}/SKILL.md`, frontmatter({ name: skill.id, description: skill.trigger }, hostText(skillText.get(skill.id) ?? "")));
+    files.set(`skills/${skill.id}/SKILL.md`, frontmatter({ name: skill.id, description: skill.trigger }, hostText(rendered(skillSource.get(skill.id) ?? ""))));
   }
   const stale = [...HOST_REWRITES.keys()].filter((phrase) => !rewritten.has(phrase));
   if (stale.length > 0) throw new Error(`No exported text holds the phrase "${stale[0]}" that the host rewrites: update HOST_REWRITES for the changed source`);

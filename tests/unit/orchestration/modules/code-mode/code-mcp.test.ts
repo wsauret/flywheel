@@ -9,7 +9,7 @@ import type { McpToolHit } from "../../../../../src/orchestration/modules/mcp/co
 import type { McpPorts } from "../../../../../src/orchestration/modules/mcp/manager.js";
 import { codeModeRuntimeOver, codeModeServices } from "../../../../helpers/code-mode-worker.js";
 import { mcpRuntimeOver } from "../../../../helpers/mcp.js";
-import { testCapabilityModules, testKernelToolDeps, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
+import { testCapabilityModules, testKernelToolDeps, testRuntimeConfigCapture, plannedRequest } from "../../../../helpers/request-tool-surface.js";
 
 const codeModeService = codeModeServices();
 const hit: McpToolHit = { server: "work", name: "lookup", inputSchema: { type: "object" }, annotations: { readOnlyHint: true } };
@@ -42,7 +42,7 @@ async function execute(mcp: McpPorts) {
   if (code === undefined) throw new Error("missing code tool");
   // The real per-request admission path: MCP tools must be admitted through
   // their registration identity, not an injected stub.
-  const owner = await createRequestToolSurface(() => planned, testCapabilityModules, testRuntimeConfigCapture);
+  const owner = await createRequestToolSurface(() => plannedRequest(planned), testCapabilityModules, testRuntimeConfigCapture);
   const surface = await owner.resolve();
   const output: string[] = [];
   const context: ToolContext = {

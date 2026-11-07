@@ -11,28 +11,47 @@ import type { AgentDefinition } from "../../src/infra/agent-definition.js";
 
 import { DEVELOPMENT_MODULES } from "../../src/orchestration/development-modules.js";
 import { installedDefinitionBundles } from "../../src/orchestration/module-catalog.js";
-import { SHIPPED_MODULES, type FirstPartyModule } from "../../src/orchestration/modules.js";
+import { composeFirstPartyModules, SHIPPED_MODULES, type FirstPartyModule } from "../../src/orchestration/modules.js";
+import { definitionAvailabilityOf, type DefinitionAvailabilitySnapshot } from "../../src/orchestration/app-service/definition-availability.js";
 import { installedPersonaToolEntries } from "../../src/orchestration/tool-catalog.js";
 let registry: ProjectDefinitionRegistry | undefined;
+let sourceRunRegistry: ProjectDefinitionRegistry | undefined;
 let fixtureRegistry: ProjectDefinitionRegistry | undefined;
 
 /** The catalog the checked-out repository composes from in a source run: the
- *  shipped modules plus the development module whose bundle `repoDefinitions`
- *  loads. Availability over those definitions resolves against it. */
+ *  shipped modules plus the development module whose bundle
+ *  `sourceRunDefinitions` loads. Availability over those definitions resolves
+ *  against it. */
 export const repoModules: readonly FirstPartyModule[] = [...SHIPPED_MODULES, ...DEVELOPMENT_MODULES];
 
 /** The definition owner of the checked-out repository, built once per test
- *  process, with the development module's bundle the source entry installs.
- *  Tests that assert on the repository's personas and packages share
- *  it; a test that needs its own project root builds its own owner. */
+ *  process, with the definition bundles of the catalog this test realm
+ *  installs. Production loads its bundles from the catalog its availability
+ *  resolves against, so these definitions resolve under the realm's catalog
+ *  as production's do. Tests that assert on the repository's personas and
+ *  packages share it; a test that needs its own project root builds its own
+ *  owner. */
 export function repoDefinitions(): ProjectDefinitionRegistry {
   registry ??= createProjectDefinitionRegistry({
+    ...testDirectories(process.cwd()),
+    skillRoots: [],
+    bundles: installedDefinitionBundles(),
+    personaToolEntries: installedPersonaToolEntries(),
+  });
+  return registry;
+}
+
+/** The repository's definitions as a source run loads them, with the
+ *  development module's bundle. Their availability resolves only against
+ *  {@link repoModules}, which a test passes as the `modules` input. */
+export function sourceRunDefinitions(): ProjectDefinitionRegistry {
+  sourceRunRegistry ??= createProjectDefinitionRegistry({
     ...testDirectories(process.cwd()),
     skillRoots: [],
     bundles: installedDefinitionBundles(repoModules),
     personaToolEntries: installedPersonaToolEntries(),
   });
-  return registry;
+  return sourceRunRegistry;
 }
 
 /** The id of the committed fixture workflow that {@link fixtureWorkflowProject}
@@ -50,12 +69,12 @@ export function fixtureWorkflowProject(): string {
   return root;
 }
 
-/** The skill and persona owner of the fixture project, with the repository bundles. */
+/** The skill and persona owner of the fixture project, with the bundles of the realm's catalog. */
 export function fixtureDefinitions(): ProjectDefinitionRegistry {
   fixtureRegistry ??= createProjectDefinitionRegistry({
     ...testDirectories(fixtureWorkflowProject()),
     skillRoots: [],
-    bundles: installedDefinitionBundles(repoModules),
+    bundles: installedDefinitionBundles(),
     personaToolEntries: installedPersonaToolEntries(),
   });
   return fixtureRegistry;
@@ -82,6 +101,13 @@ export function fixedDefinitions(fixed: { readonly skills?: SkillRegistryRevisio
     reload: () => ({ published: false, revision: skills.revision, skills: skills.skills.size }),
     resolutions: () => [],
   };
+}
+
+/** The availability of {@link fixedDefinitions} under `moduleIds`, by
+ *  default the default selection of the realm's catalog, as a workflow host
+ *  or a dispatcher derives it from its own selection. */
+export function fixedAvailability(fixed: Parameters<typeof fixedDefinitions>[0] = {}, moduleIds: Iterable<string> = composeFirstPartyModules().enabledModuleIds): DefinitionAvailabilitySnapshot {
+  return definitionAvailabilityOf(fixedDefinitions(fixed).captureRevision(), moduleIds);
 }
 
 /** Reads one test project's explicit workflow file with the captured skill and brief sources. Throws on an invalid file. */

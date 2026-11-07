@@ -69,6 +69,8 @@ interface ManifestSkillSource {
    *  every project. */
   readonly reach: "global";
   readonly packageKey: string;
+  /** The module definition bundle this package came from, as for a filesystem package. */
+  readonly bundle?: string;
 
   /** Package-relative path to file text, including `SKILL.md`. */
   readonly files: ReadonlyMap<string, string>;

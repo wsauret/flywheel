@@ -33,6 +33,7 @@ describe("workflow output pinning", () => {
     const tool = handoffToolSchemaFromOutput(resolvedA.output);
 
     const prompt = assembleAgentPrompt({
+      capabilities: () => true,
       attempt: step,
       agent: resolvedA,
       contextBundle: "",

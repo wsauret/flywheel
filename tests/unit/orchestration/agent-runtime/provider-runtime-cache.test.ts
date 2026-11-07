@@ -156,7 +156,7 @@ describe("provider runtime cache lifetimes", () => {
     const parent = await Effect.runPromise(Scope.make());
     const cache = new ProviderRuntimeCache<object>();
     let built: ProviderSessionLifetime | undefined;
-    const { tree, release } = holdSharedTree("tree-root", () => composeFirstPartyModules());
+    const { tree, release } = holdSharedTree("tree-root", () => ({ modules: composeFirstPartyModules(), shellWriteGuard: true, allowPersistentProcesses: false }));
     await cache.resolve(composeFirstPartyModules(), {}, "model-a", async (lifetime) => { built = lifetime; return {}; }, {
       lifetime: { providerSessionKey: "session-key", scope: parent, sharedHost: tree },
     });
@@ -178,13 +178,13 @@ describe("provider runtime cache lifetimes", () => {
       lifetime: { providerSessionKey: "session-key", scope: parent, sharedHost: tree },
     });
 
-    const firstHold = holdSharedTree("cache-tree-root", () => composition);
+    const firstHold = holdSharedTree("cache-tree-root", () => ({ modules: composition, shellWriteGuard: true, allowPersistentProcesses: false }));
     const releaseFirstHost = firstHold.tree.hold("login-a");
     const first = await resolveIn(firstHold.tree);
     releaseFirstHost();
     firstHold.release();
 
-    const secondHold = holdSharedTree("cache-tree-root", () => composition);
+    const secondHold = holdSharedTree("cache-tree-root", () => ({ modules: composition, shellWriteGuard: true, allowPersistentProcesses: false }));
     const releaseSecondHost = secondHold.tree.hold("login-b");
     const second = await resolveIn(secondHold.tree);
 

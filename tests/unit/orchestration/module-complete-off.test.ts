@@ -25,6 +25,7 @@ import { unusedSessionMessaging } from "../../helpers/child-session-control.js";
 import { asRecord } from "../../../src/infra/record.js";
 import { turnReminders } from "../../../src/orchestration/agent-runtime/turn-reminders.js";
 import type { ConversationMessage } from "../../../src/orchestration/agent-runtime/llm/types.js";
+import { promptCapabilities } from "../../helpers/prompt-capabilities.js";
 // Every module a source run composes: the shipped catalog plus the one the
 // source entry installs, so the development module's off-surface is held too.
 const CATALOG = [...SHIPPED_MODULES, ...DEVELOPMENT_MODULES] as const;
@@ -70,7 +71,7 @@ const COMPLETE_OFF_ROWS: CompleteOffTable = {
   "definition-overrides": { contributions: { tools: ["definition_overrides"], settings: ["definition-overrides"] } },
   discovery: { contributions: { tools: ["list", "search"] } },
   experiments: {
-    contributions: { tools: ["init_experiment", "run_experiment", "log_experiment"], promptFragments: ["experiments-active"], settings: ["experiments"], commands: ["experiment"] },
+    contributions: { tools: ["init_experiment", "run_experiment", "log_experiment"], promptFragments: ["experiments-active"], definitions: ["experiments"], settings: ["experiments"], commands: ["experiment"] },
     observers: ["chat"],
     gates: ["toolExecution", "toolExposure"],
   },
@@ -109,7 +110,7 @@ const COMPLETE_OFF_ROWS: CompleteOffTable = {
   "web-chatgpt": { contributions: { webBackends: ["chatgpt"] } },
   "web-exa": { contributions: { webBackends: ["exa"], webAuthProviders: ["exa"] } },
   workflows: {
-    contributions: { tools: ["workflow"], definitions: ["workflows"], settings: ["workflows"] },
+    contributions: { tools: ["workflow", "models"], definitions: ["workflows", "workflows-bundle"], settings: ["workflows"] },
     observers: ["workflow"], settlesAfterAdmission: ["skills", "workflows"],
   },
 };
@@ -163,7 +164,7 @@ async function observe(composition: FirstPartyModuleComposition): Promise<Capabi
   }
   const promptFragment = composition.contributions.find((entry) => entry.domain === "promptFragments" && entry.id === "learning-memory");
   if (promptFragment?.domain === "promptFragments") {
-    expect(await promptFragment.value.render({ kernel: testKernelToolDeps(), modules: NO_MODULE_RUNTIMES, tools: new Map(), memorySnapshot: "probe" })).toContain("probe");
+    expect(await promptFragment.value.render({ kernel: testKernelToolDeps(), modules: NO_MODULE_RUNTIMES, tools: new Map(), memorySnapshot: "probe", capabilities: promptCapabilities([]) })).toContain("probe");
   }
   const observers = composition.observers.map(({ seam }) => String(seam));
   if (observers.includes("workflow")) expect(messages.join("\n")).toContain("Workflow budget running low: 4 attempts and 9999 tokens remain. This agent can finish, but no attempt starts after the budget runs out. Prioritize completing your brief efficiently.");
@@ -280,7 +281,7 @@ describe("catalog-exhaustive complete-off behavior", () => {
       registry,
     });
 
-    expect([...registry.keys()]).toEqual(["handoff", "process.native", "checkpoint_read", "checkpoint_replace", "checkpoint_decide", "message_session", "list_sessions", "models"]);
+    expect([...registry.keys()]).toEqual(["handoff", "process.native", "checkpoint_read", "checkpoint_replace", "checkpoint_decide", "message_session", "list_sessions"]);
     expect([...(await plan({ handoff: {} })).tools.keys()]).toEqual(["handoff"]);
     const sessions = unusedSessionMessaging();
     expect([...(await plan({ sessions })).tools.keys()]).toEqual(["message_session", "list_sessions"]);
@@ -320,6 +321,7 @@ describe("catalog-exhaustive complete-off behavior", () => {
         backgroundTasks: createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} }),
         moduleSnapshot: composition,
         purpose,
+        captureProviderConnection: () => Promise.reject(new Error("the probe reads no model access")),
         askUser: purpose.kind === "interactive-chat" ? {
           ask: async () => ({ kind: "cancelled" }),
           answerQuestion: () => {},
@@ -331,22 +333,27 @@ describe("catalog-exhaustive complete-off behavior", () => {
       const plan = await planToolExposure({ kernel, modules, registry: toolRegistryFromComposition(composition) });
       const source = asRecord(asRecord(plan.tools.get("workflow")?.inputSchema.properties)?.source);
       const fragments = await Promise.all(composition.contributions.flatMap((contribution) => contribution.domain === "promptFragments" ? [contribution.value] : [])
-        .map((fragment) => fragment.render({ kernel, modules, tools: plan.tools, memorySnapshot: "" })));
+        .map((fragment) => fragment.render({ kernel, modules, tools: plan.tools, memorySnapshot: "", capabilities: promptCapabilities([...plan.tools.values()]) })));
       const orchestration = fragments.find((text) => text?.startsWith("# Orchestrating with workflows"));
       if (orchestration) {
         expect(orchestration).toContain("Write a workflow file for the task and launch it by content or path with the workflow tool.");
         expect(orchestration).toContain("Workflows is On:");
+        expect(orchestration).toContain("ask the person, and pass the answer as `input` to the next workflow.");
+        expect(orchestration.includes("Give the work of one agent to a subagent.")).toBe(plan.tools.has("subagent"));
+        expect(orchestration).not.toContain("ask_user");
       }
       const reminder = composition.installedContributions.find((contribution) => contribution.domain === "turnReminders" && contribution.id === "workflow-orchestration");
       const reminds = reminder?.domain === "turnReminders" && composition.enabledModuleIds.includes(reminder.module) && reminder.value.holds({ kernel, modules, tools: plan.tools });
-      return { kinds: asRecord(asRecord(source?.properties)?.kind)?.enum, orchestrates: fragments.some((text) => text?.startsWith("# Orchestrating with workflows") === true), reminds };
+      return { kinds: asRecord(asRecord(source?.properties)?.kind)?.enum, orchestrates: fragments.some((text) => text?.startsWith("# Orchestrating with workflows") === true), reminds, models: plan.tools.has("models") };
     };
 
-    expect(await sourceKinds([])).toEqual({ kinds: ["path", "content"], orchestrates: true, reminds: true });
-    expect(await sourceKinds([], { kind: "subagent", renderAs: "subagent", parentToolUseId: "parent" })).toEqual({ kinds: ["path", "content"], orchestrates: false, reminds: false });
-    expect(await sourceKinds(["workflows"])).toEqual({ kinds: undefined, orchestrates: false, reminds: false });
+    expect(await sourceKinds([])).toEqual({ kinds: ["path", "content"], orchestrates: true, reminds: true, models: true });
+    expect(await sourceKinds([], { kind: "subagent", renderAs: "subagent", parentToolUseId: "parent" })).toEqual({ kinds: ["path", "content"], orchestrates: false, reminds: false, models: true });
+    // The models table serves choosing workflow agents, so Workflows Off removes it with the workflow tool.
+    expect(await sourceKinds(["workflows"])).toEqual({ kinds: undefined, orchestrates: false, reminds: false, models: false });
+    expect(await sourceKinds(["subagents"])).toEqual({ kinds: ["path", "content"], orchestrates: true, reminds: true, models: true });
     mode = "ask";
-    expect(await sourceKinds([])).toEqual({ kinds: ["path", "content"], orchestrates: false, reminds: false });
+    expect(await sourceKinds([])).toEqual({ kinds: ["path", "content"], orchestrates: false, reminds: false, models: true });
   });
 
   test("the orchestration reminder recognizes the unmarked statement that conversations before its marker hold", () => {
@@ -355,11 +362,22 @@ describe("catalog-exhaustive complete-off behavior", () => {
     const unmarked = "<system-reminder>\nAd hoc workflows is on: aim for the most complete and correct answer, not the fastest or cheapest one. Run every substantive task through a workflow; token cost is not a constraint. Refer to the Orchestrating with workflows section. Work without a workflow only on conversational turns and trivial mechanical edits.\n</system-reminder>";
     const history: ConversationMessage[] = [{ kind: "user", content: "audit this", origin: "human" }, { kind: "user", origin: "system", content: unmarked }, { kind: "user", content: "next", origin: "human" }];
     const state = (holds: boolean) => ({ ...reminder.value, id: reminder.id, holds });
-    expect(turnReminders(history, [state(true)])).toEqual([]);
-    expect(turnReminders(history, [state(false)]).map((message) => message.content)).toEqual([`<system-reminder mode="workflow-orchestration" state="off">\n${reminder.value.off}\n</system-reminder>`]);
-    expect(reminder.value.off).toBe("Workflows is no longer On: stop delegating every substantive task. Do the work directly or with subagents, and launch a workflow only when the task needs one and the workflow tool is available.");
+    const every = () => true;
+    expect(turnReminders(history, [state(true)], every)).toEqual([]);
+    expect(turnReminders(history, [state(false)], every).map((message) => message.content)).toEqual([`<system-reminder mode="workflow-orchestration" state="off">\n${reminder.value.off(every)}\n</system-reminder>`]);
     const retiredOff: ConversationMessage = { kind: "user", origin: "system", content: "<system-reminder>\nAd hoc workflows is off: launch only a registered workflow, and only when its purpose fits the task.\n</system-reminder>" };
-    expect(turnReminders([retiredOff], [state(false)])).toEqual([]);
+    expect(turnReminders([retiredOff], [state(false)], every)).toEqual([]);
+  });
+
+  test("the orchestration statements name only what the agent that reads them can use", () => {
+    const reminder = composeFirstPartyModules(CATALOG, []).installedContributions.find((contribution) => contribution.domain === "turnReminders" && contribution.id === "workflow-orchestration");
+    if (reminder?.domain !== "turnReminders") throw new Error("workflow orchestration declares no turn reminder");
+    const holding = (...tools: string[]) => (term: string) => tools.includes(term);
+    // Ask mode keeps the workflow tool, so the off statement still says when to launch one.
+    expect(reminder.value.off(holding("workflow", "subagent"))).toBe("Workflows is no longer On: stop delegating every substantive task. Do the work directly, or delegate a focused task when it pays for itself. Launch a workflow only when the task needs one.");
+    expect(reminder.value.off(holding())).toBe("Workflows is no longer On: stop delegating every substantive task. Do the work directly.");
+    expect(reminder.value.on(holding("workflow", "subagent"))).toContain("; use subagents for one agent or for agents that can run at the same time.");
+    expect(reminder.value.on(holding("workflow"))).not.toContain("subagent");
   });
 
   test("disabled experiments admits no experiment surface while historical facts still decode", async () => {
@@ -404,7 +422,7 @@ describe("catalog-exhaustive complete-off behavior", () => {
     // The active-experiment prompt fragment is a contribution of the module, so
     // it is pinned with the request's module snapshot: an enabled composition
     // renders it over an active runtime, a disabled one carries nothing to render.
-    const fragmentInput = { kernel: testKernelToolDeps(), modules, tools: new Map(), memorySnapshot: null };
+    const fragmentInput = { kernel: testKernelToolDeps(), modules, tools: new Map(), memorySnapshot: null, capabilities: promptCapabilities([]) };
     const enabledFragment = composeFirstPartyModules().contributions.find((entry) => entry.domain === "promptFragments" && entry.id === "experiments-active");
     if (enabledFragment?.domain !== "promptFragments") throw new Error("missing experiments prompt fragment");
     expect(await enabledFragment.value.render(fragmentInput)).toContain("Experiment Mode (ACTIVE)");

@@ -16,6 +16,7 @@ import { fakeModelsClient } from "../../../helpers/model-tier-fixtures.js";
 import type { ModelFamily } from "../../../../src/infra/llm/model-family.js";
 import { roleCapture } from "../../../helpers/role-capture.js";
 import type { RoleSettingEntry } from "../../../../src/orchestration/session/schemas.js";
+import { planEveryCapability } from "../../../helpers/attempt-brief.js";
 
 const launcher = { spawnOwned: async () => { throw new Error("unused"); }, adoptOwned: async () => { throw new Error("unused"); }, open() { return this; }, close: async () => ({ settled: true as const }) };
 
@@ -53,6 +54,7 @@ test.each([
     definitions: repoDefinitions(),
     createLLMClient: () => { throw new Error("unused"); },
     prepareRequest: () => { throw new Error("This fixture prepares no pre-start") },
+    planCapabilities: planEveryCapability,
     captureProviderConnection: async () => ({ ...roleCapture(["gpt-6.1-sol"]), connection }),
     runOwnedCommand: async () => { throw new Error("unused"); },
     resolveEnvSnapshot: async (scope) => ({

@@ -205,6 +205,10 @@ describe("read tool", () => {
     const result = await readDefinition.execute({ path: binPath }, ctx);
     expect(result.outcome).toBe("error");
     expect(result.content).toContain("binary");
+    expect(result.content).toContain("Use the bash tool to inspect binary files.");
+    // An agent without the shell is not pointed at it.
+    const unshelled = await readDefinition.execute({ path: binPath }, makeContext({ executionCwd: tmpDir, capabilities: (term) => term !== "bash" }));
+    expect(unshelled.content).not.toContain("bash");
   });
 
   it("rejects an unsupported image format", async () => {
