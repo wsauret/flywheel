@@ -1,0 +1,30 @@
+src/orchestration/agent-runtime/llm/openai-completions.ts
+  h_4b47e9e4a8b456 23,25-26,42,115-121,124,138-139,152-191,427-431
+src/orchestration/agent-runtime/tools/image-resize.ts
+  h_4b47e9e4a8b456 24-33,36-44,49-54,129-130,132-133,135,137,141,143-146,148,150-154,156,158-160,165-179,181-183,185-187
+src/orchestration/agent-runtime/tools/read.ts
+  h_4b47e9e4a8b456 19,162,235,248-253,255-256
+src/protocol/client/attachments.ts
+  h_4b47e9e4a8b456 87
+src/tui/utils/file-attachments.ts
+  h_4b47e9e4a8b456 3,23,39-40
+tests/unit/orchestration/agent-runtime/llm/openai-error-classification.test.ts
+  h_4b47e9e4a8b456 9-12,319,328,330,360-394
+tests/unit/orchestration/agent-runtime/tools/tools-read.test.ts
+  h_4b47e9e4a8b456 7,156-169,171-181
+tests/unit/protocol/client/attachments.test.ts
+  h_4b47e9e4a8b456 62
+tests/unit/tui/utils/file-attachments.test.ts
+  h_4b47e9e4a8b456 12,25-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "52a07aa7fc950456cd97729f0664139e78aea44c",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
