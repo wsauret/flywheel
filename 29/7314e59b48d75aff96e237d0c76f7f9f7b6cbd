@@ -1,0 +1,258 @@
+bench/terminal_bench/METHODOLOGY.md
+  h_4b47e9e4a8b456 11-13,31,55,59,74
+bench/terminal_bench/README.md
+  h_4b47e9e4a8b456 39-44,67-97,102,104,108
+bench/terminal_bench/analyze-tool-outcomes.ts
+  h_4b47e9e4a8b456 1,3-4,7,20,22-26,30,36,42-43,45-47,56-57
+bench/terminal_bench/configs/tb-mini-claude.toml
+  h_4b47e9e4a8b456 1-54
+bench/terminal_bench/configs/tb-mini-openai.toml
+  h_4b47e9e4a8b456 1-51
+bench/terminal_bench/disclosure-ledger.ts
+  h_4b47e9e4a8b456 23,56-62,132-133
+bench/terminal_bench/flywheel_agent.py
+  h_4b47e9e4a8b456 35-51,266-276,418-419,421-426,438-439,1389,1395-1410,1500,1502,1515,1523-1524,1527-1531,1552,1555-1559,1561-1565,1585-1590
+bench/terminal_bench/harbor-process.ts
+  h_4b47e9e4a8b456 1-18
+bench/terminal_bench/harbor_agent/flywheel_harbor_agent/__init__.py
+  h_4b47e9e4a8b456 1
+bench/terminal_bench/harbor_agent/flywheel_harbor_agent/shim.py
+  h_4b47e9e4a8b456 1-424
+bench/terminal_bench/harbor_agent/flywheel_harbor_agent/trial_runtime.py
+  h_4b47e9e4a8b456 1-433
+bench/terminal_bench/harbor_agent/pyproject.toml
+  h_4b47e9e4a8b456 1-16
+bench/terminal_bench/harbor_agent/uv.lock
+  h_4b47e9e4a8b456 1-8
+bench/terminal_bench/harbor_agent_package.py
+  h_4b47e9e4a8b456 1-273
+bench/terminal_bench/harbor_tasks.py
+  h_4b47e9e4a8b456 1-45
+bench/terminal_bench/hosted-terminal-bench.ts
+  h_4b47e9e4a8b456 1-180
+bench/terminal_bench/profiles/tb-mini-bringup-kv-store-grpc.yaml
+  h_4b47e9e4a8b456 1-14
+bench/terminal_bench/profiles/tb-mini-claude-14x1.yaml
+  h_4b47e9e4a8b456 1-28
+bench/terminal_bench/profiles/tb-mini-claude-bringup-kv-store-grpc.yaml
+  h_4b47e9e4a8b456 1-14
+bench/terminal_bench/profiles/tb-mini-openai-14x1.yaml
+  h_4b47e9e4a8b456 1-28
+bench/terminal_bench/profiles/tb-mini-openai-5x.yaml
+  h_4b47e9e4a8b456 1-25
+bench/terminal_bench/run-terminal-bench.sh
+  h_4b47e9e4a8b456 76-90
+bench/terminal_bench/run-terminal-bench.ts
+  h_4b47e9e4a8b456 1-2,8-9,13,25-30,47-49,88-90,96-111,120-121,150-155,199,223-228,230-242,255-259,269,285-290,292,295-351,359,365,374,382-444,469,473,505-559,588-591,598,621-625,632
+bench/terminal_bench/terminal-bench-config.ts
+  h_4b47e9e4a8b456 21-22,67,81,85-86,177,181,229,257,273
+bench/terminal_bench/test_flywheel_agent.py
+  h_4b47e9e4a8b456 10,62,66,540-545,706,807-857,2469,2483,2490,2499,2512,2529,2536,2543,2576
+bench/terminal_bench/test_harbor_agent_package.py
+  h_4b47e9e4a8b456 1-110
+bench/terminal_bench/test_harbor_agent_shim.py
+  h_4b47e9e4a8b456 1-205
+bench/terminal_bench/trial-store-analysis.ts
+  h_4b47e9e4a8b456 1-202
+docs/architecture-intent/directories.md
+  h_4b47e9e4a8b456 85
+docs/architecture-intent/runtime.md
+  h_4b47e9e4a8b456 23
+docs/architecture-intent/tools.md
+  h_4b47e9e4a8b456 100
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 177,179-183,351,355
+docs/product-intent/model-access.md
+  h_4b47e9e4a8b456 209-213
+docs/provider-terms.md
+  h_4b47e9e4a8b456 32,76,232-246
+scripts/check-terminology.ts
+  h_4b47e9e4a8b456 293-295
+src/cli/headless-args.ts
+  h_4b47e9e4a8b456 3-11,13,17,109-116
+src/cli/headless-snapshot-auth.ts
+  h_4b47e9e4a8b456 6,8-16,20-27,39-42,47-58
+src/cli/main.ts
+  h_4b47e9e4a8b456 10,133,137,139-140
+src/cli/root-args.ts
+  h_4b47e9e4a8b456 20,67-68
+src/cli/root-help.ts
+  h_4b47e9e4a8b456 7,44,52,55
+src/infra/auth/auth-context.ts
+  h_4b47e9e4a8b456 65-67,200-201
+src/infra/llm/access-provider.ts
+  h_4b47e9e4a8b456 205-206,245-270,275
+src/orchestration/agent-runtime/background-work.ts
+  h_4b47e9e4a8b456 198-200,300,826
+src/orchestration/agent-runtime/factory.ts
+  h_4b47e9e4a8b456 75,99,136,191
+src/orchestration/agent-runtime/llm/openai-chatgpt.ts
+  h_4b47e9e4a8b456 99,247-251
+src/orchestration/agent-runtime/request-config.ts
+  h_4b47e9e4a8b456 18,43
+src/orchestration/agent-runtime/request-kernel.ts
+  h_4b47e9e4a8b456 62-63,104
+src/orchestration/agent-runtime/shared-tree.ts
+  h_4b47e9e4a8b456 7-8,24-26
+src/orchestration/agent-runtime/tools/bash.ts
+  h_4b47e9e4a8b456 164-165,167-169,191,214,346
+src/orchestration/agent-runtime/tools/kernel-tool-deps.ts
+  h_4b47e9e4a8b456 59-61,63-66
+src/orchestration/agent-runtime/tools/tool-registry.ts
+  h_4b47e9e4a8b456 258
+src/orchestration/agent-runtime/types.ts
+  h_4b47e9e4a8b456 229-230,233-235
+src/orchestration/app-service/auth-runtime.ts
+  h_4b47e9e4a8b456 9,58-59,92,140-141,261-267,357,376-384
+src/orchestration/app-service/project-execution-ownership.ts
+  h_4b47e9e4a8b456 65-66
+src/orchestration/app-service/project-execution-runtime.ts
+  h_4b47e9e4a8b456 52,56-57,434,451,679-680
+src/orchestration/app-service/runtime-config-projection.ts
+  h_4b47e9e4a8b456 66
+src/orchestration/app-service/runtime-work-settlement.ts
+  h_4b47e9e4a8b456 11,105-106,142-151,153
+src/orchestration/auth/auth-profile-manager.ts
+  h_4b47e9e4a8b456 97-100,117-119
+src/orchestration/config/setting-definitions.ts
+  h_4b47e9e4a8b456 89,106,134,149,236
+src/orchestration/config/shell-write-guard-policy.ts
+  h_4b47e9e4a8b456 1-21
+src/orchestration/headless/acp-chat.ts
+  h_4b47e9e4a8b456 1-237
+src/orchestration/headless/benchmark-auth-file.ts
+  h_4b47e9e4a8b456 2-3,6,8-10,13,21,65-74,81-96,121-125,131,183-200,204,211-213,285,302-310,312,317-366,368-383,386-398,401-402,404-405,408-413,416-418,420-423,433,445,447-448,452,455,460,470,472-479,486-511,515-517,520-522,532-548,553,557
+src/orchestration/headless/headless-profile-runtime.ts
+  h_4b47e9e4a8b456 6-7,16,27,36,48-84,194
+src/orchestration/headless/run-headless-chat.ts
+  h_4b47e9e4a8b456 6,22-23,37-76,81-82,125-126,130-131,133,135,141-146,150,152,155-156,161-162,165,169,172-173,180,183,198-222,232,234-236,239,243,246,255,260-263,277-314
+src/orchestration/headless/run-headless-task.ts
+  h_4b47e9e4a8b456 14,40-41,172-173,188-196,220,222,457-459
+src/orchestration/headless/snapshot-eligibility.ts
+  h_4b47e9e4a8b456 1-33
+src/orchestration/modules/bash/module.ts
+  h_4b47e9e4a8b456 36,51
+src/orchestration/modules/provider-chatgpt/module.ts
+  h_4b47e9e4a8b456 10,77
+src/orchestration/modules/provider-claude-agent-sdk/cli-environment.ts
+  h_4b47e9e4a8b456 1,6,47-48,117-119
+src/orchestration/modules/provider-claude-agent-sdk/cli-launch.ts
+  h_4b47e9e4a8b456 79-80,82-83,91
+src/orchestration/modules/provider-claude-agent-sdk/client.ts
+  h_4b47e9e4a8b456 125-128
+src/orchestration/modules/provider-claude-agent-sdk/module.ts
+  h_4b47e9e4a8b456 1-4,19,92-99
+src/orchestration/modules/provider-claude-agent-sdk/names.ts
+  h_4b47e9e4a8b456 16-18
+src/orchestration/modules/provider-supergrok/module.ts
+  h_4b47e9e4a8b456 18,147
+src/orchestration/modules/provider-supergrok/token-refresh.ts
+  h_4b47e9e4a8b456 116-121,123-124,126
+src/orchestration/workflow-host/deps.ts
+  h_4b47e9e4a8b456 198,266
+src/protocol/acp.ts
+  h_4b47e9e4a8b456 1-235
+src/protocol/runtime-config-protocol-schemas.ts
+  h_4b47e9e4a8b456 23,31,51
+src/protocol/runtime-config-protocol-types.ts
+  h_4b47e9e4a8b456 23-24,65,104
+src/protocol/setting-catalog.ts
+  h_4b47e9e4a8b456 55,131
+src/tui/hooks/create-settings-store.ts
+  h_4b47e9e4a8b456 106,120,237
+src/tui/hooks/use-settings-modal.ts
+  h_4b47e9e4a8b456 548
+src/workflows/docs/cli.md
+  h_4b47e9e4a8b456 10-12,26,33,36
+src/workflows/docs/configuration.md
+  h_4b47e9e4a8b456 2243-2257
+tests/helpers/runtime-views.ts
+  h_4b47e9e4a8b456 32
+tests/helpers/terminal-bench-trial-evidence.ts
+  h_4b47e9e4a8b456 1-152
+tests/integration/bench/trial-store-analysis-standalone.test.ts
+  h_4b47e9e4a8b456 1-22
+tests/unit/bench/terminal-bench-analyzer.test.ts
+  h_4b47e9e4a8b456 4-5,9-10,14-16,21-42,47,63-68,92,117,125-163
+tests/unit/bench/terminal-bench-config.test.ts
+  h_4b47e9e4a8b456 4,35-98
+tests/unit/bench/terminal-bench-flywheel-config-evidence.test.ts
+  h_4b47e9e4a8b456 1-59
+tests/unit/bench/terminal-bench-hosted.test.ts
+  h_4b47e9e4a8b456 1-105
+tests/unit/cli/headless-args.test.ts
+  h_4b47e9e4a8b456 2,19-29
+tests/unit/cli/headless-snapshot-auth.test.ts
+  h_4b47e9e4a8b456 1-84
+tests/unit/cli/root-args.test.ts
+  h_4b47e9e4a8b456 30,33-37,206
+tests/unit/orchestration/agent-runtime/request-config.test.ts
+  h_4b47e9e4a8b456 31
+tests/unit/orchestration/agent-runtime/runtime-assembly-bash-readiness.test.ts
+  h_4b47e9e4a8b456 14-16,41-46,54-57,67,70,95-109,125-143
+tests/unit/orchestration/agent-runtime/shared-tree.test.ts
+  h_4b47e9e4a8b456 1,14,47-49,64,70,111-117,125,147-150,215-234
+tests/unit/orchestration/agent-runtime/tools/tools-bash-background.test.ts
+  h_4b47e9e4a8b456 568-576
+tests/unit/orchestration/agent-runtime/tools/tools-bash.test.ts
+  h_4b47e9e4a8b456 443-479
+tests/unit/orchestration/app-service/app-service-doubles.ts
+  h_4b47e9e4a8b456 25
+tests/unit/orchestration/app-service/app-service-startup.test.ts
+  h_4b47e9e4a8b456 10
+tests/unit/orchestration/config/config-application-modes.test.ts
+  h_4b47e9e4a8b456 40
+tests/unit/orchestration/config/config.test.ts
+  h_4b47e9e4a8b456 280-294
+tests/unit/orchestration/config/shell-write-guard-policy.test.ts
+  h_4b47e9e4a8b456 1-35
+tests/unit/orchestration/headless-chat.test.ts
+  h_4b47e9e4a8b456 11,28,59,67,99-115,378-382,399-400,404-414
+tests/unit/orchestration/headless/_auth-snapshot-fixtures.ts
+  h_4b47e9e4a8b456 1-34
+tests/unit/orchestration/headless/acp-chat.test.ts
+  h_4b47e9e4a8b456 1-346
+tests/unit/orchestration/headless/benchmark-auth-export.test.ts
+  h_4b47e9e4a8b456 1-531
+tests/unit/orchestration/headless/benchmark-auth-file.test.ts
+  h_4b47e9e4a8b456 3,7,9-12,20,37,53,81-87,195-198,200-206,209,213-216,218-222,225,229-232,234,236-239,242,245
+tests/unit/orchestration/headless/headless-cached-catalog-ownership.test.ts
+  h_4b47e9e4a8b456 26,141,148-149
+tests/unit/orchestration/modules/provider-claude-agent-sdk/client.test.ts
+  h_4b47e9e4a8b456 4-5,162-189
+tests/unit/orchestration/modules/provider-claude-agent-sdk/query-launcher.test.ts
+  h_4b47e9e4a8b456 7,288-295
+tests/unit/orchestration/workflow-host/workflow-deps.test.ts
+  h_4b47e9e4a8b456 9,15-16,79,197-232
+tests/unit/protocol/runtime-ui-patch-fixtures.ts
+  h_4b47e9e4a8b456 18
+tests/unit/tui/modals/_settings-modal-fixtures.ts
+  h_4b47e9e4a8b456 174
+tests/unit/tui/modals/settings-store.test.ts
+  h_4b47e9e4a8b456 6,10-13
+webview/src/app/capability-preset-interaction-fixture.ts
+  h_4b47e9e4a8b456 32
+webview/src/app/client-context-fixture.ts
+  h_4b47e9e4a8b456 61
+webview/src/app/sheets/setting-rows.tsx
+  h_4b47e9e4a8b456 355,394
+webview/src/client/session-settings.ts
+  h_4b47e9e4a8b456 62,157
+webview/src/client/settings-actions.test.ts
+  h_4b47e9e4a8b456 58,184-192,194,196,199,201,208,212-213,215,218,220
+webview/src/client/settings-actions.ts
+  h_4b47e9e4a8b456 31,56,89,137,175-177,241-246
+webview/src/modules/workflows/stability-fixture.tsx
+  h_4b47e9e4a8b456 291
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "297314e59b48d75aff96e237d0c76f7f9f7b6cbd",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
