@@ -9,7 +9,7 @@ let dir: string
 beforeAll(async () => { dir = await mkdtemp(join(tmpdir(), "flywheel-attach-")) })
 afterAll(async () => { await rm(dir, { recursive: true, force: true }) })
 
-const noResize = async () => null
+const noResize = async () => ({ kind: "unavailable" }) as const
 
 describe("readFileAttachment", () => {
   it("reads a text file with its type and name", async () => {
@@ -22,7 +22,8 @@ describe("readFileAttachment", () => {
     const bytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3])
     await writeFile(path, bytes)
     expect(await readFileAttachment(path, noResize)).toEqual({ refusal: { reason: "kind", mediaType: "image/png" } })
-    const resized = await readFileAttachment(path, async () => ({ data: "c21hbGw=", mimeType: "image/jpeg", originalWidth: 4000, originalHeight: 3000, width: 2000, height: 1500, wasResized: true }))
+    expect(await readFileAttachment(path, async () => ({ kind: "unreadable", reason: "Input buffer contains unsupported image format" }))).toEqual({ refusal: { reason: "unreadable" } })
+    const resized = await readFileAttachment(path, async () => ({ kind: "decoded", data: "c21hbGw=", mimeType: "image/jpeg", originalWidth: 4000, originalHeight: 3000, width: 2000, height: 1500, wasResized: true }))
     expect(resized).toEqual({ attachment: { mediaType: "image/jpeg", data: "c21hbGw=", name: "shot.png" } })
   })
   it("refuses kinds and bytes the message cannot carry", async () => {

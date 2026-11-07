@@ -59,6 +59,7 @@ describe("attachmentRefusalMessage", () => {
   it("names the file and what is accepted", () => {
     expect(attachmentRefusalMessage("paper.pdf", { reason: "kind", mediaType: "application/pdf" })).toBe("Flywheel can attach images and text files. paper.pdf is application/pdf.")
     expect(attachmentRefusalMessage("blob", { reason: "kind", mediaType: "" })).toBe("Flywheel can attach images and text files. blob is of an unknown type.")
+    expect(attachmentRefusalMessage("shot.png", { reason: "unreadable" })).toBe("Flywheel can attach images and text files. Flywheel could not decode shot.png for attachment.")
     expect(attachmentRefusalMessage("big.log", { reason: "size", limitBytes: ATTACHMENT_LIMITS.textMaxBytes })).toBe("big.log is too large to attach. The limit is 1 MB.")
     expect(attachmentRefusalMessage("x.png", { reason: "message-size", limitBytes: ATTACHMENT_LIMITS.messageMaxBytes })).toBe("x.png would take this message past 8 MB of attachments. Send what is attached first.")
   })

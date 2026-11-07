@@ -21,20 +21,37 @@ import { nativeAssetDir } from "../../../infra/native-assets.js";
 
 type SharpFactory = typeof import("sharp").default;
 
-export interface ResizedImage {
-  data: string;
-  mimeType: string;
-  originalWidth: number;
-  originalHeight: number;
-  width: number;
-  height: number;
-  wasResized: boolean;
+/** An image whose bytes the decoder read, fitted within the provider limits. */
+interface ResizedImage {
+  readonly kind: "decoded";
+  readonly data: string;
+  readonly mimeType: string;
+  readonly originalWidth: number;
+  readonly originalHeight: number;
+  readonly width: number;
+  readonly height: number;
+  readonly wasResized: boolean;
 }
+
+/** Bytes that the decoder rejected. `reason` is the decoder's first message line. */
+interface UnreadableImage {
+  readonly kind: "unreadable";
+  readonly reason: string;
+}
+
+/** The answer of `resizeImage`. `unavailable` means sharp could not load, so nothing is known about the bytes. */
+export type ImageResizeResult = ResizedImage | UnreadableImage | { readonly kind: "unavailable" };
 
 const MAX_DIMENSION = 2000;
 const MAX_BYTES = 4.5 * 1024 * 1024;
 const QUALITY_STEPS = [85, 70, 55, 40] as const;
 const SCALE_STEPS = [0.75, 0.5, 0.35, 0.25] as const;
+interface EncodingStep { readonly scale: number; readonly quality: number | undefined }
+/** Every encoding to try, largest first: PNG at the fitted size, then JPEG at falling quality and scale. */
+const ENCODING_STEPS: readonly EncodingStep[] = [
+  { scale: 1, quality: undefined },
+  ...[1, ...SCALE_STEPS].flatMap((scale) => QUALITY_STEPS.map((quality) => ({ scale, quality }))),
+];
 const VENDORED_SHARP_ENTRY = ["node_modules", "sharp", "dist", "index.cjs"] as const;
 const log = Log.create({ service: "image-resize" });
 
@@ -109,87 +126,63 @@ const PROVIDER_MEDIA_TYPES: ReadonlyMap<string, string> = new Map([
  * part: a WebP image saved as `.png` returns `image/webp`, because a provider
  * refuses a request whose stated type disagrees with the bytes.
  *
- * Bytes in an accepted format within the limits pass through unchanged. Every
+ * Bytes in an accepted format within the limits pass through unchanged after a
+ * full decode, so a truncated file that has a valid header is not sent. Every
  * other readable image is re-encoded as PNG, or as JPEG when PNG is over the
- * byte budget. Returns null when sharp is unavailable, the bytes are not a
- * readable image, or no encoding fits the budget.
+ * byte budget. Returns `unreadable` when the decoder rejects the bytes or reads
+ * a zero dimension, and `unavailable` when sharp cannot load.
  */
-export async function resizeImage(base64: string): Promise<ResizedImage | null> {
+export async function resizeImage(base64: string): Promise<ImageResizeResult> {
   const sharp = await loadSharp();
-  if (!sharp) return null;
+  if (!sharp) return { kind: "unavailable" };
 
   const inputBuf = Buffer.from(base64, "base64");
-
-  let origW = 0;
-  let origH = 0;
-  let format: string | undefined;
   try {
-    const metadata = await sharp(inputBuf).metadata();
-    origW = metadata.width ?? 0;
-    origH = metadata.height ?? 0;
-    format = metadata.format;
+    return await fitImage(sharp, inputBuf, base64);
   } catch (err) {
-    log.info("image metadata read failed", { byteLength: inputBuf.byteLength, error: errorMessage(err), errorDetail: errorDetail(err) });
-    return null;
+    // The decoder's text can quote the input bytes, so it goes to the tool output and never to the log.
+    const reason = errorMessage(err).split("\n", 1)[0] ?? "";
+    log.info("image decode failed", { byteLength: inputBuf.byteLength, kind: "decode-failed" });
+    return { kind: "unreadable", reason };
   }
+}
 
-  if (origW === 0 || origH === 0) return null;
+async function fitImage(sharp: SharpFactory, inputBuf: Buffer, base64: string): Promise<ResizedImage | UnreadableImage> {
+  const metadata = await sharp(inputBuf).metadata();
+  const origW = metadata.width ?? 0;
+  const origH = metadata.height ?? 0;
+  if (origW === 0 || origH === 0) return { kind: "unreadable", reason: "the image has no width or height" };
 
-  const passthroughType = format === undefined ? undefined : PROVIDER_MEDIA_TYPES.get(format);
+  const passthroughType = metadata.format === undefined ? undefined : PROVIDER_MEDIA_TYPES.get(metadata.format);
   if (passthroughType && origW <= MAX_DIMENSION && origH <= MAX_DIMENSION && fitsInBudget(inputBuf)) {
-    return {
-      data: base64,
-      mimeType: passthroughType,
-      originalWidth: origW,
-      originalHeight: origH,
-      width: origW,
-      height: origH,
-      wasResized: false,
-    };
+    // A header can be valid while the pixel data is cut short; only a full decode proves the provider can read it.
+    await sharp(inputBuf).stats();
+    return { kind: "decoded", data: base64, mimeType: passthroughType, originalWidth: origW, originalHeight: origH, width: origW, height: origH, wasResized: false };
   }
-
-  const encoded = (buf: Buffer, info: { width: number; height: number }, mimeType: string): ResizedImage => ({
-    data: buf.toString("base64"),
-    mimeType,
-    originalWidth: origW,
-    originalHeight: origH,
-    width: info.width,
-    height: info.height,
-    wasResized: info.width !== origW || info.height !== origH,
-  });
 
   const fitW = Math.min(origW, MAX_DIMENSION);
   const fitH = Math.min(origH, MAX_DIMENSION);
+  const encode = async ({ scale, quality }: EncodingStep) => {
+    const pipeline = sharp(inputBuf).resize(Math.round(fitW * scale), Math.round(fitH * scale), { fit: "inside" });
+    const { data, info } = await (quality === undefined ? pipeline.png() : pipeline.jpeg({ quality })).toBuffer({ resolveWithObject: true });
+    const image: ResizedImage = {
+      kind: "decoded",
+      data: data.toString("base64"),
+      mimeType: quality === undefined ? "image/png" : "image/jpeg",
+      originalWidth: origW,
+      originalHeight: origH,
+      width: info.width,
+      height: info.height,
+      wasResized: info.width !== origW || info.height !== origH,
+    };
+    return { image, fits: fitsInBudget(data) };
+  };
 
-  const { data: pngBuf, info: pngInfo } = await sharp(inputBuf)
-    .resize(fitW, fitH, { fit: "inside" })
-    .png()
-    .toBuffer({ resolveWithObject: true });
-
-  if (fitsInBudget(pngBuf)) return encoded(pngBuf, pngInfo, "image/png");
-
-  for (const quality of QUALITY_STEPS) {
-    const { data: jpegBuf, info: jpegInfo } = await sharp(inputBuf)
-      .resize(fitW, fitH, { fit: "inside" })
-      .jpeg({ quality })
-      .toBuffer({ resolveWithObject: true });
-
-    if (fitsInBudget(jpegBuf)) return encoded(jpegBuf, jpegInfo, "image/jpeg");
+  for (const step of ENCODING_STEPS.slice(0, -1)) {
+    const { image, fits } = await encode(step);
+    if (fits) return image;
   }
-
-  for (const scale of SCALE_STEPS) {
-    const scaledW = Math.round(fitW * scale);
-    const scaledH = Math.round(fitH * scale);
-
-    for (const quality of QUALITY_STEPS) {
-      const { data: scaledBuf, info: scaledInfo } = await sharp(inputBuf)
-        .resize(scaledW, scaledH, { fit: "inside" })
-        .jpeg({ quality })
-        .toBuffer({ resolveWithObject: true });
-
-      if (fitsInBudget(scaledBuf)) return encoded(scaledBuf, scaledInfo, "image/jpeg");
-    }
-  }
-
-  return null;
+  // SAFETY: ENCODING_STEPS is a non-empty literal list. Its last step, a JPEG at quality 40 within 500x500 pixels,
+  // is far under the budget, so it ends the cascade without the check.
+  return (await encode(ENCODING_STEPS.at(-1)!)).image;
 }

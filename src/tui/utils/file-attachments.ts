@@ -1,6 +1,6 @@
 import { basename } from "node:path"
 
-import type { ResizedImage } from "../../orchestration/agent-runtime/tools/image-resize.js"
+import type { ImageResizeResult } from "../../orchestration/agent-runtime/tools/image-resize.js"
 import { ATTACHMENT_LIMITS, attachmentKind, decodeUtf8Text, type AttachmentRefusal } from "../../protocol/client/attachments.js"
 
 /** An attachment before the prompt gives it a marker: the bytes, their type,
@@ -20,7 +20,7 @@ export type ReadAttachment = { readonly attachment: PendingAttachment } | { read
  *  the model what a read one does. */
 export async function readFileAttachment(
   path: string,
-  resize: (base64: string) => Promise<ResizedImage | null>,
+  resize: (base64: string) => Promise<ImageResizeResult>,
 ): Promise<ReadAttachment> {
   const file = Bun.file(path)
   const name = basename(path)
@@ -36,6 +36,7 @@ export async function readFileAttachment(
   const bytes = Buffer.from(await file.arrayBuffer())
   const base64 = bytes.toString("base64")
   const resized = await resize(base64)
-  if (resized) return { attachment: { mediaType: resized.mimeType, data: resized.data, name } }
+  if (resized.kind === "decoded") return { attachment: { mediaType: resized.mimeType, data: resized.data, name } }
+  if (resized.kind === "unreadable") return { refusal: { reason: "unreadable" } }
   return { refusal: { reason: "kind", mediaType } }
 }

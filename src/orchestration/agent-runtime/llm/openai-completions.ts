@@ -21,7 +21,8 @@ import { computeUsagePrice, createModelInfoCache } from "../../../infra/llm/llm-
 import { providerRequestHeaders } from "../../../infra/llm/provider-request-identity.js";
 import type { ModelInfo, ModelsClient, ReasoningEffort } from "../../../infra/llm/models.js";
 import { Log } from "../../../infra/log.js";
-import { classifyQuotaError, ContentFilteredError, ContextLengthExceededError, LlmStreamError, OutputLengthExceededError } from "./errors.js";
+import { asRecord } from "../../../infra/record.js";
+import { classifyQuotaError, ContentFilteredError, ContentRefusedError, ContextLengthExceededError, LlmStreamError, OutputLengthExceededError } from "./errors.js";
 import type { CompletedStopReason } from "./messages.js";
 import { parseToolArguments } from "./json-parse.js";
 import { normalizeProviderAttemptFailure } from "./provider-failure.js";
@@ -110,9 +111,9 @@ function chatCompletionsReasoningEffort(
   return effort === "max" || effort === "ultra" ? "xhigh" : effort;
 }
 
-/** Classifies a failure of the chat-completions request or of its stream. An error frame inside a 200 stream
- *  reaches here as an `APIError` with no status. */
-function classifyChatCompletionsError(err: unknown): Error {
+/** Classifies a failure of the chat-completions request whose prepared message list is `wire`, or of its stream.
+ *  An error frame inside a 200 stream reaches here as an `APIError` with no status. */
+function classifyChatCompletionsError(err: unknown, wire: readonly ChatCompletionMessageParam[]): Error {
   if (err instanceof OpenAI.APIConnectionError) return new LlmStreamError(err.message, "transient", undefined, { cause: err });
   if (err instanceof OpenAI.APIError) {
     // A spent account is terminal: Copilot serves this wire too and rejects an
@@ -126,6 +127,8 @@ function classifyChatCompletionsError(err: unknown): Error {
       return new ContextLengthExceededError(err.message, { cause: err });
     }
     if (err.status === undefined && err.code === "content_filter") return new ContentFilteredError(err.message, { cause: err });
+    const imageRefusal = chatCompletionsImageRefusal(err, wire);
+    if (imageRefusal) return imageRefusal;
   }
   if (err instanceof OpenAI.APIError && err.status !== undefined && err.status >= 500) {
     return new LlmStreamError(err.message, "overload", undefined, { cause: err });
@@ -138,8 +141,33 @@ function classifyChatCompletionsError(err: unknown): Error {
   return err instanceof Error ? err : new Error(String(err));
 }
 
-function throwChatCompletionsFailure(error: unknown): never {
-  throw normalizeProviderAttemptFailure(classifyChatCompletionsError(error));
+const IMAGE_DECODE_FAILURE = /\bdecod\w*\b[^.]*\bimage|\bimage\b[^.]*\bdecod/i;
+
+/** A content refusal when a request that carries images fails with 415, or with a 400 whose message or upstream
+ *  detail names image decoding; otherwise undefined. The host that could not decode an image refuses every later
+ *  request with the same bytes. A 404 is never one, because OpenRouter answers a provider pin that cannot serve the
+ *  model at all with the same 404 text as one that cannot take the images. The refusal names no part, because the
+ *  provider names none and one tool batch can carry several new images; the loop repairs it without a locator. */
+function chatCompletionsImageRefusal(err: InstanceType<typeof OpenAI.APIError>, wire: readonly ChatCompletionMessageParam[]): ContentRefusedError | undefined {
+  if (err.status !== 415 && err.status !== 400) return undefined;
+  const carriesImage = wire.some((message) => Array.isArray(message.content) && message.content.some((part) => part.type === "image_url"));
+  if (!carriesImage) return undefined;
+  const upstream = upstreamDetail(err);
+  if (err.status === 400 && !IMAGE_DECODE_FAILURE.test(err.message) && !(upstream !== undefined && IMAGE_DECODE_FAILURE.test(upstream))) return undefined;
+  return new ContentRefusedError("OpenAI", err, { reason: upstream === undefined ? err.message : `${err.message}: ${upstream}`, part: undefined });
+}
+
+/** OpenRouter's upstream-provider error (`error.metadata.raw`): its message when the raw body is a JSON error,
+ *  else the raw text. */
+function upstreamDetail(err: InstanceType<typeof OpenAI.APIError>): string | undefined {
+  const raw = asRecord(asRecord(err.error)?.metadata)?.raw;
+  if (typeof raw !== "string") return undefined;
+  try {
+    const message: unknown = asRecord(asRecord(JSON.parse(raw))?.error)?.message;
+    return typeof message === "string" ? message : raw;
+  } catch {
+    return raw;
+  }
 }
 
 interface StreamingToolCall {
@@ -372,6 +400,10 @@ export async function createOpenAIChatCompletionsAdapter(
       const headers = {
         ...(accessProvider === "github_copilot" ? {} : await providerRequestHeaders()),
         ...await extraHeaders?.(options),
+      };
+
+      const throwChatCompletionsFailure = (error: unknown): never => {
+        throw normalizeProviderAttemptFailure(classifyChatCompletionsError(error, descriptor.params.messages));
       };
 
       // oxlint-disable-next-line eslint/complexity -- boundary: one generator owns the ordered chat-completions stream state machine.

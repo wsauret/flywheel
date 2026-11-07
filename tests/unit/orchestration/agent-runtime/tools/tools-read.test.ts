@@ -4,7 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import sharp from "sharp";
 
-import { readDefinition } from "../../../../../src/orchestration/agent-runtime/tools/read.js";
+import { createReadDefinition, readDefinition } from "../../../../../src/orchestration/agent-runtime/tools/read.js";
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import type { RuntimeToolInput } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
@@ -153,28 +153,34 @@ describe("read tool", () => {
     }
   });
 
-  it("reads JPG file and returns structured image content parts", async () => {
-    const imgPath = path.join(tmpDir, "test.jpg");
-    const jpgBuf = Buffer.from([
-      0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46,
-      0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01,
-      0x00, 0x01, 0x00, 0x00, 0xFF, 0xD9,
-    ]);
-    fs.writeFileSync(imgPath, jpgBuf);
-
-    const ctx = makeContext({ executionCwd: tmpDir });
-    const result = await readDefinition.execute({ path: imgPath }, ctx);
-    expect(result.outcome).toBe("ok");
-    if (!Array.isArray(result.content)) throw new Error("read must return image content parts");
-    const parts = result.content;
-    expect(parts[0]).toMatchObject({ type: "image", mediaType: "image/jpeg" });
-    const image = parts[0];
-    if (image?.type !== "image") throw new Error("read must lead with an image part");
-    expect(typeof image.data).toBe("string");
-    expect(image.data.length).toBeGreaterThan(0);
-    for (const p of parts) {
-      if (p.type === "text") expect(p.text).not.toContain("data:image");
+  it("refuses image bytes the decoder rejects, and sends them unchecked only when the decoder cannot load", async () => {
+    const valid = await sharp({ create: { width: 8, height: 8, channels: 3, background: "#00f" } }).png().toBuffer();
+    const cases = [
+      { name: "header-only.jpg", bytes: Buffer.from([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xFF, 0xD9]) },
+      { name: "corrupt.png", bytes: Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]) },
+      { name: "truncated.png", bytes: valid.subarray(0, Math.floor(valid.length / 2)) },
+    ];
+    for (const { name, bytes } of cases) {
+      const filePath = path.join(tmpDir, name);
+      fs.writeFileSync(filePath, bytes);
+      const result = await readDefinition.execute({ path: filePath }, makeContext({ executionCwd: tmpDir }));
+      expect(result.outcome).toBe("error");
+      expect(typeof result.content).toBe("string");
+      // The message carries the decoder's own reason and guesses no format.
+      expect(result.content).toStartWith(`Cannot read ${filePath} as an image: `);
+      expect(result.content).not.toContain("not a valid");
     }
+
+    const withoutDecoder = createReadDefinition({ operations: {
+      readFile: async (filePath) => {
+        const file = Bun.file(filePath);
+        return { size: file.size, arrayBuffer: () => file.arrayBuffer(), stream: () => file.stream() };
+      },
+      resizeImage: async () => ({ kind: "unavailable" }),
+    } });
+    const corrupt = path.join(tmpDir, "corrupt.png");
+    const passed = await withoutDecoder.execute({ path: corrupt }, makeContext({ executionCwd: tmpDir }));
+    expect(passed).toEqual({ outcome: "ok", content: [{ type: "image", mediaType: "image/png", data: fs.readFileSync(corrupt).toString("base64") }] });
   });
 
   it("labels an image by its bytes, not its extension, and re-encodes a format providers refuse", async () => {

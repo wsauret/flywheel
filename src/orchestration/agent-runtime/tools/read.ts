@@ -16,7 +16,7 @@ import { executePathBatch, hasKind, missingPathHint, prepareReadOnlyPathInput, r
 import { listDefinition } from "./list.js";
 import { searchDefinition } from "./search.js";
 import { prepareSearchPathInput } from "./search-paths.js";
-import { type ResizedImage, resizeImage } from "./image-resize.js";
+import { type ImageResizeResult, resizeImage } from "./image-resize.js";
 import { checkNumericRange } from "./numeric-input.js";
 import { isRawSelector, type LineRange, parseSel, splitPathAndSel } from "./read-selectors.js";
 import { decodeTextSnapshot, readTextWindows } from "./read-text-windows.js";
@@ -159,7 +159,7 @@ interface ReadOperations {
     arrayBuffer(): Promise<ArrayBuffer>;
     stream(): ReadableStream<Uint8Array>;
   }>;
-  resizeImage?: (base64: string) => Promise<ResizedImage | null>;
+  resizeImage?: (base64: string) => Promise<ImageResizeResult>;
 }
 
 const DEFAULT_LINE_LIMIT = 2000;
@@ -232,7 +232,7 @@ async function readImage(
   const resize = ops.resizeImage ?? resizeImage;
   const resized = await resize(base64);
 
-  if (resized) {
+  if (resized.kind === "decoded") {
     log.debug("image read", { path: filePath, size: file.size, mediaType: resized.mimeType, resized: resized.wasResized });
     const note = resized.wasResized
       ? `(Image resized from ${resized.originalWidth}x${resized.originalHeight} to ${resized.width}x${resized.height})`
@@ -245,8 +245,15 @@ async function readImage(
       outcome: "ok",
     };
   }
+  if (resized.kind === "unreadable") {
+    return {
+      content: `Cannot read ${filePath} as an image: ${resized.reason}.`,
+      outcome: "error",
+    };
+  }
 
-  log.debug("image read (no resize)", { path: filePath, size: file.size, mediaType });
+  // Without the decoder nothing is known about the bytes, so they go as the extension names them.
+  log.debug("image read (no decoder)", { path: filePath, size: file.size, mediaType });
   return {
     content: [{ type: "image", mediaType, data: base64 }],
     outcome: "ok",

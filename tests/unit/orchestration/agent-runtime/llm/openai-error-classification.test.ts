@@ -6,7 +6,11 @@ import { classifyOpenAIStreamError, classifyResponseFailed, createOpenAIStream }
 import { ContentFilteredError, ContentRefusedError, ContextLengthExceededError, LlmStreamError, ProviderRequestValidationError, QuotaCoordinationError, QuotaExhaustedError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { createOpenAIChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/openai-completions.js";
 import { normalizeProviderAttemptFailure, ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
-import { ContentRefused, fromStreamError, TransientDisconnect } from "../../../../../src/orchestration/agent-runtime/errors.js";
+import { ApiError, ContentRefused, fromStreamError, TransientDisconnect } from "../../../../../src/orchestration/agent-runtime/errors.js";
+import { repairContentRefusal } from "../../../../../src/orchestration/agent-runtime/llm/content-repair.js";
+import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ModelInfo } from "../../../../../src/infra/llm/models.js";
+import { modelInfo } from "../../../../helpers/model-tier-fixtures.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { ChatGptAdapterTransportError } from "../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter/types.js";
 
@@ -313,7 +317,7 @@ async function namedErrorFrameFailure(data: UnknownRecord, retryAfterMs?: string
 
 /** The error the chat-completions adapter raises when the real SDK meets `error` as an HTTP response with
  *  `status`, or as an in-stream error frame when `status` is undefined. */
-async function chatCompletionsFailure(status: number | undefined, error: UnknownRecord): Promise<Error> {
+async function chatCompletionsFailure(status: number | undefined, error: UnknownRecord, request: { messages: ConversationMessage[]; info: ModelInfo | null } = { messages: [{ kind: "user", content: "hi" }], info: null }): Promise<Error> {
   const sdk = new OpenAI({
     apiKey: "test-key",
     maxRetries: 0,
@@ -322,9 +326,9 @@ async function chatCompletionsFailure(status: number | undefined, error: Unknown
       : Response.json({ error }, { status }),
   });
   const models = { async refresh() {}, getProviderCatalog() { return []; }, getTokenizerIdentity() { return undefined; } };
-  const client = await createOpenAIChatCompletionsAdapter(sdk, "gpt-4o", models, { resolvedModelMetadata: null });
+  const client = await createOpenAIChatCompletionsAdapter(sdk, "gpt-4o", models, { resolvedModelMetadata: request.info });
   try {
-    for await (const _event of client.streamWithTools({ messages: [{ kind: "user", content: "hi" }], tools: [], systemPrompt: stableSystemPrompt("system"), reasoningEffort: "off" })) {
+    for await (const _event of client.streamWithTools({ messages: request.messages, tools: [], systemPrompt: stableSystemPrompt("system"), reasoningEffort: "off" })) {
       // exhaust
     }
   } catch (failure) {
@@ -353,6 +357,43 @@ describe("chat-completions error classification", () => {
 
   test("an in-stream content_filter frame is a content filter stop", async () => {
     expect(await chatCompletionsFailure(undefined, { code: "content_filter", type: "invalid_request_error", message: "The response was filtered due to the prompt triggering content management policy." })).toBeInstanceOf(ContentFilteredError);
+  });
+
+  describe("an image the host cannot decode", () => {
+    const image = { type: "image" as const, mediaType: "image/png", data: "iVBORw==" };
+    const withImage = {
+      info: modelInfo("openai", "gpt-4o", "gpt", 1, 1, "2024-05-13", { modalities: { input: ["text", "image"], output: ["text"] } }),
+      messages: [
+        { kind: "user", content: "look at the screenshots" },
+        { kind: "assistant", content: [{ type: "tool_use", id: "call-a", name: "read", registrationId: "read", input: { path: "a.png" } }, { type: "tool_use", id: "call-b", name: "read", registrationId: "read", input: { path: "b.png" } }] },
+        { kind: "toolResult", toolUseId: "call-a", content: [image] },
+        { kind: "toolResult", toolUseId: "call-b", content: [{ type: "text", text: "(8x8)" }, image] },
+      ] satisfies ConversationMessage[],
+    };
+    const unsupportedMediaType = { message: "Provider returned error", code: 415, metadata: { raw: JSON.stringify({ error: { message: "Unsupported Media Type", type: "invalid_request_error" } }), provider_name: "Host" } };
+
+    test.each([
+      { name: "a 415 with the host's detail", status: 415, error: unsupportedMediaType, reason: "415 Provider returned error: Unsupported Media Type" },
+      { name: "a 400 that names image decoding", status: 400, error: { message: "Failed to decode image", type: "invalid_request_error" }, reason: "400 Failed to decode image" },
+    ])("$name is an unlocated content refusal, which the loop repairs by removing the newest tool batch", async ({ status, error, reason }) => {
+      const classified = await chatCompletionsFailure(status, error, withImage);
+      expect(classified).toBeInstanceOf(ContentRefusedError);
+      if (!(classified instanceof ContentRefusedError)) throw new Error("expected ContentRefusedError");
+      expect(classified.reason).toBe(reason);
+      // Two new images in one batch, and the provider names neither, so the refusal guesses no part.
+      expect(classified.part).toBeUndefined();
+      expect(fromStreamError(classified)).toBeInstanceOf(ContentRefused);
+      expect(repairContentRefusal(withImage.messages, classified, "openrouter")?.contentRepair).toEqual({ kind: "remove", toolUseIds: ["call-a", "call-b"] });
+    });
+
+    test("a 415 on a request that carries no image, and a 404 with images, stay provider errors", async () => {
+      const textOnly = await chatCompletionsFailure(415, unsupportedMediaType);
+      const noProvider = await chatCompletionsFailure(404, { message: "No allowed providers are available for the selected model.", code: 404 }, withImage);
+      for (const classified of [textOnly, noProvider]) {
+        expect(classified).not.toBeInstanceOf(ContentRefusedError);
+        expect(fromStreamError(classified)).toBeInstanceOf(ApiError);
+      }
+    });
   });
 });
 

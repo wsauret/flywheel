@@ -84,7 +84,7 @@ export type AttachmentRefusal =
 export function attachmentRefusalMessage(name: string, refusal: AttachmentRefusal): string {
   switch (refusal.reason) {
     case "kind": return `Flywheel can attach images and text files. ${name} is ${refusal.mediaType || "of an unknown type"}.`
-    case "unreadable": return `Flywheel can attach images and text files. ${name} is not readable as text.`
+    case "unreadable": return `Flywheel can attach images and text files. Flywheel could not decode ${name} for attachment.`
     case "size": return `${name} is too large to attach. The limit is ${formatBytes(refusal.limitBytes)}.`
     case "message-size": return `${name} would take this message past ${formatBytes(refusal.limitBytes)} of attachments. Send what is attached first.`
   }
