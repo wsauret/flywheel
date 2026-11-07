@@ -3,7 +3,8 @@ import { Log } from "../../infra/log.js"
 import type { NotificationEpisodeInput } from "../../infra/notification-episode.js"
 import type { LauncherScope } from "../../infra/process-supervisor.js"
 import type { ProviderConnection } from "../../infra/auth/auth-context.js"
-import { createModelListingClient } from "../../infra/llm/model-listing.js"
+import type { AccessProviderDefinition } from "../../infra/llm/access-provider.js"
+import { captureHeadlessSnapshotConnection, readHeadlessAuthSnapshot, type CapturedHeadlessSnapshot } from "./benchmark-auth-file.js"
 import type { ModelsClient } from "../../infra/llm/models.js"
 import type { UsageAuthorityGeneration, UsageSettlementAuthorityLease } from "../agent-runtime/usage-settlement.js"
 import { createProfileRequestService, type ProfileRequestWorkflowPreparation } from "../auth/profile-request-service.js"
@@ -12,7 +13,7 @@ import { authProfileEligibilityInputRevision, createEligibilityPreparation } fro
 import { createProviderModelPreferenceService } from "../app-service/provider-model-preference-service.js"
 import { providerModelPreferencePersistence } from "../app-service/provider-model-preference-persistence.js"
 import type { CaptureSubscriptionAdmission } from "../agent-runtime/factory.js"
-import type { AuthProfileResolution } from "../auth/auth-profile-manager.js"
+import { AuthProfileManager, type AuthProfileManagerOptions, type AuthProfileResolution } from "../auth/auth-profile-manager.js"
 import type { FirstPartyModuleSnapshot } from "../modules.js"
 import { installedAccessProviderDefinitions, installedCredentialProviderIds } from "../credential-provider-modules.js"
 import { loadAuthStoreWithDiagnostics } from "../../infra/auth/auth-store.js"
@@ -20,10 +21,10 @@ import { prepareWorkflowDeps, type PrepareWorkflowDepsInput, type WorkflowDeps }
 import type { CaptureRuntimeConfig } from "../agent-runtime/request-config.js"
 
 import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
-import { resolveProviderModelCatalog } from "../config/model-assignment-providers.js"
 import { normalizeAuthProfile } from "../../infra/auth/auth-profile-normalization.js"
 import { credentialSlotClassifier } from "../auth/credential-slot-classifier.js"
 import { createHeadlessUsageAuthorityOwner } from "./headless-usage-authority.js"
+import { connectionEligibilitySources } from "./snapshot-eligibility.js"
 import { getSharedModelsClient } from "../config/llm-clients.js"
 import { captureSubscriptionAdmission } from "../subscription-spend-consent/admission-capture.js"
 import { createSubscriptionSpendConsentCaptureCache } from "../subscription-spend-consent/capture-cache.js"
@@ -32,7 +33,7 @@ import { createSubscriptionUsageService, type SubscriptionUsageProfile } from ".
 import { createSubscriptionUsageServicePool } from "../auth/provider-observations/subscription-usage-service-pool.js"
 
 interface HeadlessAuthProfiles {
-  acquireAccess(options: { readonly createDefault: true }): Promise<{ close(): void }>
+  acquireAccess(options: { readonly createDefault: true; readonly createSelected?: string }): Promise<{ close(): void }>
   resolve(): Promise<AuthProfileResolution>
 }
 
@@ -42,6 +43,43 @@ export async function resolveHeadlessAuthProfile(profiles: HeadlessAuthProfiles)
   const access = await profiles.acquireAccess({ createDefault: true })
   access.close()
   return await profiles.resolve()
+}
+
+/** A headless run's own auth selection: `profile` selects the way the
+ *  environment selector does, and `snapshotPath` names a one-use auth snapshot
+ *  whose captured connection serves every request instead of the profile's
+ *  auth files. */
+export interface HeadlessAuthSelection {
+  readonly profile?: string
+  readonly snapshotPath?: string
+}
+
+/** Builds the profile manager of one headless run, in either headless mode, and resolves its profile. With a
+ *  `snapshotPath` it consumes that one-use auth snapshot and captures its access-only connection.
+ *
+ *  A snapshot names its own profile and carries all of that profile's credentials, so the manager selects that
+ *  profile the way an environment selector does. Every session admission then resolves to it, also for an attached
+ *  session that recorded another profile, because the snapshot's connection serves no other profile. A run creates
+ *  the profile, empty and under exactly that id, when the account home lacks it, such as a fresh benchmark sandbox.
+ *  Rejects, with the snapshot already consumed, when an explicit selector names a different profile. */
+export async function resolveHeadlessAuth(
+  manager: AuthProfileManagerOptions,
+  selection: HeadlessAuthSelection | undefined,
+  providers: readonly AccessProviderDefinition[],
+): Promise<{ readonly profiles: AuthProfileManager; readonly profile: AuthProfileResolution; readonly snapshot?: CapturedHeadlessSnapshot }> {
+  const selected = (selector: string | undefined) => new AuthProfileManager({ ...manager, ...(selector === undefined ? {} : { env: { FLYWHEEL_AUTH_PROFILE: selector } }) })
+  if (selection?.snapshotPath === undefined) {
+    const profiles = selected(selection?.profile)
+    return { profiles, profile: await resolveHeadlessAuthProfile(profiles) }
+  }
+  const snapshot = readHeadlessAuthSnapshot(selection.snapshotPath, providers)
+  const requested = await selected(selection.profile).resolve()
+  if (requested.source === "environment" && requested.id !== snapshot.profile) throw new Error(`The headless auth snapshot is for profile ${snapshot.profile}, but this run selects profile ${requested.id}. Run with --auth-profile ${snapshot.profile}.`)
+  const profiles = selected(snapshot.profile)
+  const access = await profiles.acquireAccess({ createDefault: true, createSelected: snapshot.profile })
+  access.close()
+  const profile = await profiles.resolve()
+  return { profiles, profile, snapshot: await captureHeadlessSnapshotConnection(snapshot, profile.directory, providers) }
 }
 
 /** Owns finite subscription admission services. Disposal closes admission and
@@ -153,29 +191,7 @@ export async function createHeadlessProfileRuntime(options: HeadlessProfileRunti
         if (await normalizeAuthProfile(profile.directory, credentialSlotClassifier(options.moduleSelection()), installedCredentialProviderIds(), installedAccessProviderDefinitions()) === "read-only") authConditions.observeNormalizationRefusal(profile.directory)
       },
     } : {}),
-    ...(options.connection ? {
-      resolveAuth: async () => {
-        if (options.connection === undefined) throw new Error("Headless connection is unavailable")
-        return { ...options.connection.auth, subscriptionCredentials: options.connection.subscriptionCredentials }
-      },
-      resolveCatalog: (deps) => resolveProviderModelCatalog({
-        ...deps,
-        preferencePersistence: options.connection?.oauthPersistence === "access-only" ? "read-only" : "persist",
-        discoveryMode: options.connection?.oauthPersistence === "access-only" && deps.discoveryMode === "cached-first"
-          ? "fresh"
-          : deps.discoveryMode,
-        listingClient: createModelListingClient({
-          authDir: options.connection?.authDir ?? options.profile.directory,
-          classifySlot: credentialSlotClassifier(options.moduleSelection()),
-          providers: accessProviderRegistry(options.moduleSelection()).selection,
-          modelsClient: options.modelsClient,
-          oauthPersistence: options.connection?.oauthPersistence,
-          modelAccess: options.connection?.modelAccess,
-          captureSubscriptions: () => options.connection?.subscriptionCredentials ?? new Map(),
-          captureCredentialLineages: () => options.connection?.auth.credentialLineages ?? {},
-        }),
-      }),
-    } : {}),
+    ...(options.connection ? connectionEligibilitySources(options.connection, options.profile.directory, options.moduleSelection, options.modelsClient) : {}),
     refreshMetadata: (signal) => options.modelsClient.refresh(signal),
   })
   let generation: UsageAuthorityGeneration | undefined

@@ -290,7 +290,9 @@ const RETIRED_TERMS: readonly RetiredTerm[] = [
   // Slice 9: tools. toolUseId stayed canonical: ~50 durable fact payload
   // schemas store the key, so toolCallId would have split the codebase into
   // two vocabularies. The glossary records the correction; toolCallId retired.
-  { pattern: /\btoolCallId\b/, replacement: "toolUseId (stored payload key is canonical)", slice: 9, active: true, allowLines: [/stored spelling/i, /toolCallId: toolUseId/, /toolCallId\?: string/, /tool_call_id/, /LaunchedFrom/, /launchedFrom/] },
+  // Agent Client Protocol version 1 fixes toolCallId as an external wire field
+  // name, so its codec spells it.
+  { pattern: /\btoolCallId\b/, replacement: "toolUseId (stored payload key is canonical)", slice: 9, active: true, allowPaths: ["src/protocol/acp.ts"], allowLines: [/stored spelling/i, /toolCallId: toolUseId/, /toolCallId\?: string/, /tool_call_id/, /LaunchedFrom/, /launchedFrom/] },
   { pattern: /\bToolInvocation\w*/, replacement: "tool call vocabulary", slice: 9, active: true },
 
   // Slice 10: providers.

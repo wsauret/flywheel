@@ -20,7 +20,7 @@ const ConfigStatusSchema = Schema.Union([
 ])
 const TierConfigViewSchema = Schema.Struct({ model: Schema.optionalKey(Schema.String), effort: Schema.optionalKey(Schema.Literals(["low", "medium", "high", "xhigh", "max", "ultra"])) })
 const RuntimeConfigValuesSchema = Schema.Struct({
-  theme: Schema.optionalKey(Schema.String), moduleSelection: Schema.Array(Schema.String), allowPersistentProcesses: Schema.Boolean, foregroundBashHoldSeconds: Schema.Int,
+  theme: Schema.optionalKey(Schema.String), moduleSelection: Schema.Array(Schema.String), allowPersistentProcesses: Schema.Boolean, shellWriteGuard: Schema.Boolean, foregroundBashHoldSeconds: Schema.Int,
   showThinking: Schema.Boolean, idleCompaction: Schema.Boolean, writeSyntaxTheme: WriteSyntaxThemeIdSchema, requireWorkflowConfirmation: Schema.Boolean, diffColors: Schema.Literals(["theme", "standard"]), compatibleRendering: Schema.Literals(["auto", "on", "off"]), webSearchProvider: Schema.Literals(["chatgpt", "exa"]),
   fontTipDismissed: Schema.Boolean, tabsHintDismissed: Schema.Boolean, proactiveCompactionThreshold: Schema.Int, autoDeleteSessionDays: NonNegativeInt, showBuild: Schema.Boolean, moduleSections: Schema.Record(Schema.String, Schema.Record(Schema.String, Schema.Union([Schema.Boolean, Schema.Array(Schema.Int)]))), autoInstall: Schema.Boolean, notificationsDesktop: Schema.Boolean,
   acknowledgedReleaseVersion: Schema.optionalKey(ReleaseVersionSchema),
@@ -28,7 +28,7 @@ const RuntimeConfigValuesSchema = Schema.Struct({
   budget: Schema.Struct({ max_invocations: NonNegativeInt, max_tokens: NonNegativeInt, max_wall_clock_minutes: NonNegativeInt }), workflow: Schema.Struct({ max_attempts: NonNegativeInt }),
 })
 const RuntimeConfigSettingIdSchema = Schema.Literals([
-  "theme", "moduleSelection", "allowPersistentProcesses", "foregroundBashHoldSeconds", "showThinking", "idleCompaction", "writeSyntaxTheme",
+  "theme", "moduleSelection", "allowPersistentProcesses", "shellWriteGuard", "foregroundBashHoldSeconds", "showThinking", "idleCompaction", "writeSyntaxTheme",
   "requireWorkflowConfirmation", "diffColors", "compatibleRendering", "webSearchProvider",
   "fontTipDismissed", "tabsHintDismissed", "acknowledgedReleaseVersion", "proactiveCompactionThreshold", "autoDeleteSessionDays", "allowTrainingRoutes",
   "autoInstall", "notificationsDesktop",
@@ -48,7 +48,7 @@ const configExpectedSchema = <S extends Schema.Top>(value: S) => Schema.Union([
 const configSettingMutationSchema = <Id extends string, S extends Schema.Top>(id: Id, value: S) => Schema.Struct({ id: Schema.Literal(id), expected: configExpectedSchema(value), desired: value })
 const workspaceSettingMutationSchema = Schema.Union([
   configSettingMutationSchema("autoDeleteSessionDays", NonNegativeInt),
-  configSettingMutationSchema("theme", Schema.String), configSettingMutationSchema("moduleSelection", Schema.Array(Schema.String)), configSettingMutationSchema("allowPersistentProcesses", Schema.Boolean),
+  configSettingMutationSchema("theme", Schema.String), configSettingMutationSchema("moduleSelection", Schema.Array(Schema.String)), configSettingMutationSchema("allowPersistentProcesses", Schema.Boolean), configSettingMutationSchema("shellWriteGuard", Schema.Boolean),
   configSettingMutationSchema("foregroundBashHoldSeconds", Schema.Number), configSettingMutationSchema("showThinking", Schema.Boolean), configSettingMutationSchema("idleCompaction", Schema.Boolean), configSettingMutationSchema("writeSyntaxTheme", WriteSyntaxThemeIdSchema),
   configSettingMutationSchema("requireWorkflowConfirmation", Schema.Boolean), configSettingMutationSchema("diffColors", Schema.Literals(["theme", "standard"])), configSettingMutationSchema("compatibleRendering", Schema.Literals(["auto", "on", "off"])),
   configSettingMutationSchema("webSearchProvider", Schema.Literals(["chatgpt", "exa"])), configSettingMutationSchema("fontTipDismissed", Schema.Boolean), configSettingMutationSchema("tabsHintDismissed", Schema.Boolean),

@@ -59,7 +59,8 @@ export interface KernelRequestFacts {
   readonly moduleSnapshot: FirstPartyModuleComposition;
   readonly live: FirstPartyModuleComposition;
   readonly runtimeConfig: RuntimeConfigRequestCapture;
-  /** The tree's captured value for a tree-hosted request, else the request's configuration (`SharedTreeCapture`). */
+  /** The described shell write guard: the tree's captured value for a tree-hosted request, else the request's
+   *  configuration (`SharedTreeCapture`). */
   readonly shellWriteGuard: boolean;
   /** The persistent-process policy that the shell schema states: the tree's captured value for a tree-hosted
    *  request, else the request's configuration (`SharedTreeCapture`). */
@@ -100,6 +101,7 @@ export function requestKernel(run: KernelRunFacts, request: KernelRequestFacts):
     ...(request.runtimeConfig.foregroundBashHoldSeconds !== undefined ? { foregroundBashHoldSeconds: request.runtimeConfig.foregroundBashHoldSeconds } : {}),
     persistentProcesses: request.runtimeConfig.allowPersistentProcesses,
     shellWriteGuard: request.shellWriteGuard,
+    ...(surfaces.enforcedShellWriteGuard ? { enforcedShellWriteGuard: surfaces.enforcedShellWriteGuard } : {}),
     persistentProcessesAdvertised: request.persistentProcessesAdvertised,
     ...(request.fileEditContract ? { fileEditContract: request.fileEditContract } : {}),
     capabilities: { available },

@@ -27,8 +27,13 @@ describe("root CLI args", () => {
     expect(await rootCliAction(["--headless", "--one-shot"])).toEqual({ kind: "run", args: ["--headless", "--one-shot"] })
     expect(await rootCliAction(["--headless", "--one-shot", "--disable-tool", "subagent"])).toEqual({ kind: "run", args: ["--headless", "--one-shot", "--disable-tool", "subagent"] })
     expect((await rootCliAction(["--headless", "--task=x", "--one-shot"])).kind).toBe("error")
-    for (const flag of ["--deadline-seconds=30", "--auth-profile=Personal", "--auth-snapshot=/scratch/auth.json", "--model=m", "--effort=low", "--system-prompt=x"]) {
+    for (const flag of ["--deadline-seconds=30", "--model=m", "--effort=low", "--system-prompt=x"]) {
       expect((await rootCliAction(["--headless", flag])).kind).toBe("error")
+    }
+    const acp = ["--headless", "--acp", "--auth-profile=benchmark", "--auth-snapshot", "/scratch/auth.json", "--disable-tool", "web"]
+    expect(await rootCliAction([...acp, "--allow-persistent-processes"])).toEqual({ kind: "run", args: acp, allowPersistentProcesses: true })
+    for (const refused of [["--acp"], ["--headless", "--acp", "--task", "x"], ["--headless", "--acp", "--session", "s"], ["--headless", "--acp", "--one-shot"]]) {
+      expect((await rootCliAction(refused)).kind).toBe("error")
     }
   })
   test("handles informational flags before runtime startup", async () => {
@@ -198,7 +203,7 @@ describe("root CLI args", () => {
     expect(usage).toContain("  --deadline-seconds <n>  Positive finite deadline in seconds for --task.")
     expect(usage).toContain("  --disable-tool <name>\n                   Disable one active first-party tool for a headless chat or\n                   direct task.")
     // A headless form wraps between bracketed groups, never inside one.
-    expect(usage).toContain("                   flywheel --headless [--session <id>] [--one-shot]\n                     [--disable-tool <name>]... (JSONL Chat)")
+    expect(usage).toContain("                   flywheel --headless [--session <id>] [--one-shot]\n                     [--disable-tool <name>]... [--auth-profile <profile>]\n                     [--auth-snapshot <absolute-path>] [--jsonl] (JSONL Chat)")
     // Module nouns list from the catalog, one row per verb, in the kernel row layout.
     expect(usage).toContain("  skills why <name>         Trace a skill's loads and writes to sessions and\n                            requests.")
     expect(usage).toContain("  workflow verify <file>    Verify a workflow file compiles and is sound. With\n                            --workflow <id>, replay a workflow read-only.")

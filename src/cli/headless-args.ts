@@ -1,11 +1,20 @@
 import { canonicalModelId } from "../infra/llm/model-id.js"
 
+const AUTH_FLAGS = "[--auth-profile <profile>] [--auth-snapshot <absolute-path>]"
+
+/** The headless invocations. The headless usage and the root help both list them, so the two cannot disagree. */
+export const HEADLESS_FORMS: readonly { readonly syntax: string; readonly note: string }[] = [
+  { syntax: `flywheel --headless [--session <id>] [--one-shot] [--disable-tool <name>]... ${AUTH_FLAGS} [--jsonl]`, note: "JSONL Chat" },
+  { syntax: `flywheel --headless --acp [--disable-tool <name>]... ${AUTH_FLAGS}`, note: "Agent Client Protocol v1 Chat" },
+  { syntax: `flywheel --headless --task <text> [--system-prompt <text>] [--model <id|tier>] [--effort <level>] [--disable-tool <name>]... ${AUTH_FLAGS} [--deadline-seconds <seconds>] [--jsonl]`, note: "Direct Task" },
+]
+
 export const HEADLESS_USAGE =
-  "Usage: flywheel --headless [--session <id>] [--one-shot] [--disable-tool <name>]... [--jsonl]\n" +
-  "       flywheel --headless --task <text> [--system-prompt <text>] [--model <id|tier>] [--effort <level>] [--disable-tool <name>]... [--auth-profile <profile>] [--auth-snapshot <absolute-path>] [--deadline-seconds <seconds>] [--jsonl]\n\n" +
+  HEADLESS_FORMS.map(({ syntax }, index) => `${index === 0 ? "Usage: " : "       "}${syntax}\n`).join("") + "\n" +
   "  --headless       Run without TUI (CI/automation)\n" +
   "  --session        Attach an existing chat without resuming its interrupted turn.\n" +
   "  --one-shot       Return after durable handoff and owned work settle; plain parking is incomplete.\n" +
+  "  --acp            Speak Agent Client Protocol version 1 on stdin and stdout instead of the JSONL channel.\n" +
   "  --task           Run one direct task through the shared production runner.\n" +
   "  --system-prompt  Replace the complete system prompt for a direct headless task; recorded in request-audit history, not secret input.\n" +
   "  --model          Use a model ID or an enabled-model tier (cheap, mid, powerful) instead of the configured chat role.\n" +
@@ -95,6 +104,14 @@ export function headlessDisabledTools(argv: readonly string[]): readonly string[
   if (values.length > 0 && !hasHeadlessFlag(argv)) throw new Error("--disable-tool is only valid with --headless")
   if (new Set(values).size !== values.length) throw new Error("--disable-tool names must not contain duplicates")
   return values
+}
+
+/** Headless chat framed as Agent Client Protocol version 1. An ACP client
+ *  opens its own session and ends it by closing input, so root argument
+ *  classification refuses the flag with a direct task, an attached session,
+ *  or one-shot return. */
+export function hasHeadlessAcpFlag(argv: readonly string[]): boolean {
+  return argv.includes("--acp")
 }
 
 export function hasHeadlessJsonlFlag(argv: readonly string[]): boolean {

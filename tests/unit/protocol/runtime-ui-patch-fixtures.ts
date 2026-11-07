@@ -15,7 +15,7 @@ const status = {
 const config = {
   revision: 1,
   values: {
-    moduleSelection: [], allowPersistentProcesses: false, foregroundBashHoldSeconds: 0, showThinking: true, idleCompaction: true, autoDeleteSessionDays: 0,
+    moduleSelection: [], allowPersistentProcesses: false, foregroundBashHoldSeconds: 0, showThinking: true, idleCompaction: true, shellWriteGuard: true, autoDeleteSessionDays: 0,
     writeSyntaxTheme: "nord", requireWorkflowConfirmation: true, diffColors: "theme", compatibleRendering: "auto",
     webSearchProvider: "chatgpt", fontTipDismissed: false, tabsHintDismissed: false, proactiveCompactionThreshold: 80,
     showBuild: false, moduleSections: {}, autoInstall: false, notificationsDesktop: false,

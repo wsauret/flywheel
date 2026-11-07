@@ -6,7 +6,7 @@ import { Log } from "../../infra/log.js"
 import type { AsyncEventWriter, AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
 import type { ModulePolicy } from "../config/module-policy.js"
 import type { RuntimeConfigOwner } from "../config/runtime-config-owner.js"
-import { AuthProfileManager, type AuthProfileResolution } from "../auth/auth-profile-manager.js"
+import type { AuthProfileResolution } from "../auth/auth-profile-manager.js"
 import { logoutProfileExternalLogins } from "../auth/auth-actions.js"
 import type { SessionManager } from "../session/manager.js"
 import type { FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../modules.js"
@@ -55,6 +55,8 @@ import { createChatDefaultRuntime } from "./chat-default-runtime.js"
 import { captureRuntimeConfigRequest } from "../agent-runtime/request-config.js"
 import { normalizeAuthProfile } from "../../infra/auth/auth-profile-normalization.js"
 import { createAuthSettlementCoordinator } from "./auth-settlement-coordinator.js"
+import { resolveHeadlessAuth, type HeadlessAuthSelection } from "../headless/headless-profile-runtime.js"
+import { connectionEligibilitySources } from "../headless/snapshot-eligibility.js"
 
 import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
 import { isExternalLoginDefinition, type AccessProviderAccountIdentity } from "../../infra/llm/access-provider.js"
@@ -87,6 +89,7 @@ export interface AuthRuntimeOptions {
    *  fails, or gets no answer, so auth attention is sent again until it lands. */
   readonly settledNotify: (episode: NotificationEpisodeInput) => Promise<void>
   readonly chatDefault: RuntimeChatDefault
+  readonly headlessAuth?: HeadlessAuthSelection
 }
 
 /** Owns the selected auth profile, profile-bound provider state, session admission, and all refresh publications for one runtime. */
@@ -132,16 +135,10 @@ export interface AuthRuntime {
 
 /** Creates the runtime's single auth authority. Provider inventory remains demand-owned. */
 export async function createAuthRuntime(options: AuthRuntimeOptions): Promise<AuthRuntime> {
-  const profileManager = new AuthProfileManager({
-    userDataRoot: options.userDataRoot,
-    projectRoot: options.projectRoot,
-    config: () => options.runtimeConfig.snapshot().config,
-  })
   // The runtime's launch authority, which the usage checks, the eligibility preparation, and profile removal start CLIs in.
   const launcher = options.workflowPreparation.launcher
-  const initialProfileAccess = await profileManager.acquireAccess({ createDefault: true })
-  initialProfileAccess.close()
-  const initialProfile = await profileManager.resolve()
+  const { profiles: profileManager, profile: initialProfile, snapshot } = await resolveHeadlessAuth({ userDataRoot: options.userDataRoot, projectRoot: options.projectRoot, config: () => options.runtimeConfig.snapshot().config }, options.headlessAuth, accessProviderRegistry(options.moduleSelection()).selection.definitions)
+  options.own("auth-headless-snapshot", snapshot, (captured) => { captured?.release() })
   let currentProfile = initialProfile
   const workflowRuns = workflowRunReader(options.eventReader)
   const workflowAuth = createWorkflowAuthOwner({
@@ -261,9 +258,13 @@ export async function createAuthRuntime(options: AuthRuntimeOptions): Promise<Au
     current: providerModels.state,
     inputRevision: authProfileEligibilityInputRevision,
     observeAuth,
-    normalizeProfile: async (profile) => {
-      if (await normalizeAuthProfile(profile.directory, installedCredentialSlotClassifier(), installedCredentialProviderIds(), installedAccessProviderDefinitions(), (occurrence) => { options.notify({ type: "raise", occurrence }) }) === "read-only") authConditions.observeNormalizationRefusal(profile.directory)
-    },
+    // A snapshot's connection serves in place of the profile's auth files,
+    // which this run neither reads nor normalizes.
+    ...(snapshot ? connectionEligibilitySources(snapshot.connection, initialProfile.directory, options.moduleSelection, getSharedModelsClient(options.userDataRoot)) : {
+      normalizeProfile: async (profile: { readonly directory: string }) => {
+        if (await normalizeAuthProfile(profile.directory, installedCredentialSlotClassifier(), installedCredentialProviderIds(), installedAccessProviderDefinitions(), (occurrence) => { options.notify({ type: "raise", occurrence }) }) === "read-only") authConditions.observeNormalizationRefusal(profile.directory)
+      },
+    }),
     refreshMetadata: (signal) => getSharedModelsClient(options.userDataRoot).refresh(signal),
     // Every session takes the eligibility that background discovery or a saved refusal published.
     apply: async (profileId) => { await settleProviderModelMutation(async () => ({ profileId })) },
@@ -353,7 +354,7 @@ export async function createAuthRuntime(options: AuthRuntimeOptions): Promise<Au
   authAttention.state(await authStatusProjection.snapshot())
   const profileRequests = createProfileRequestService({
     userDataRoot: options.userDataRoot,
-    workflowPreparation: options.workflowPreparation,
+    workflowPreparation: snapshot ? { ...options.workflowPreparation, overrides: { connection: snapshot.connection } } : options.workflowPreparation,
     prepareEligibility: async (profile, preparationOptions) => {
       await prepareEligibility(profile, preparationOptions)
       return prepareEligibility.capture(profile, (state, auth) => ({ worker: state.worker, auth }), preparationOptions.signal)
@@ -372,11 +373,15 @@ export async function createAuthRuntime(options: AuthRuntimeOptions): Promise<Au
     manager: options.manager,
     authProfiles: profileManager,
     prepare: profileRequests.prepare,
-    observe: (profileId) => authStoreObservationKey(observeAuth({ id: profileId, directory: authDir(options.userDataRoot, profileId) })),
-    preparedObservation: (prepared) => {
-      if (prepared.auth.observation === undefined) throw new Error("Admitted auth observation is unavailable")
-      return prepared.auth.observation
-    },
+    // A snapshot's connection does not change with the profile's auth files,
+    // so admission prepares once rather than against their state.
+    ...(snapshot ? {} : {
+      observe: (profileId: string) => authStoreObservationKey(observeAuth({ id: profileId, directory: authDir(options.userDataRoot, profileId) })),
+      preparedObservation: (prepared: WorkflowDeps) => {
+        if (prepared.auth.observation === undefined) throw new Error("Admitted auth observation is unavailable")
+        return prepared.auth.observation
+      },
+    }),
     materialize: materializeSessionProfile,
     workflows: workflowAuth,
   }), (admission) => admission.dispose())

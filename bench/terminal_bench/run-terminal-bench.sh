@@ -73,6 +73,21 @@ echo "Campaign warning: ${WARNING:-none}"
 echo "Auth profile: $AUTH_PROFILE"
 echo "Disabled tools: ${DISABLED_TOOLS[*]:-none}"
 echo "System prompt: $SYSTEM_PROMPT_MODE"
+if [ "$(scalar_field "$PLAN" execution_mode)" = hosted ]; then
+  echo "Packaged Flywheel commit: $(scalar_field "$PLAN" source_commit)"
+  python3 - "$PLAN" <<'PY'
+import json
+import sys
+package = json.load(open(sys.argv[1], encoding="utf-8"))["agent_package"]
+print(f"Agent package: {package['repository']} {package['ref']} at {package['commit']}")
+PY
+  echo "Preparation plan: $PLAN"
+  set +e
+  bun run "$SCRIPT_DIR/run-terminal-bench.ts" run-hosted "$PLAN"
+  HOSTED_EXIT=$?
+  set -e
+  exit "$HOSTED_EXIT"
+fi
 if [ "$DRY_RUN" = true ]; then
   echo "Preparation plan: $PLAN"
   exit 0

@@ -195,6 +195,9 @@ interface TrackArgs {
 }
 
 interface TaskLifecycle extends BackgroundWorkProgress {
+  /** Ended work whose notification has not yet committed to the conversation:
+   *  the part of `awaitedTaskCount` that only a turn can retire. */
+  pendingDeliveryCount(): number;
   /** Snapshot of active background tasks available for targeted control. */
   activeBackgroundCommands(): ActiveBackgroundCommandDescriptor[];
   /** Reads the retained output of one active task through the reader its
@@ -294,7 +297,7 @@ interface WorkflowRegistry extends TaskLifecycle, SettledNotificationFlush {
 export type BackgroundWorkRegistry = ChatRegistry | WorkflowRegistry;
 
 /** The host surface that admits child work without exposing registry lifecycle controls. */
-export type BackgroundWorkTracking = Pick<BackgroundWorkRegistry, "track" | "detach" | "processRecord" | "liveWorkReferences" | "observeWorkChanges" | "deliverDurableSubagentNotification" | "ownsNotification">;
+export type BackgroundWorkTracking = Pick<BackgroundWorkRegistry, "track" | "detach" | "processRecord" | "liveWorkReferences" | "awaitedTaskCount" | "pendingDeliveryCount" | "observeWorkChanges" | "deliverDurableSubagentNotification" | "ownsNotification">;
 
 /** Whether a handoff block waits for result delivery. Services alone require
  *  cleanup, not an automatic park; explicit process waits include them. */
@@ -820,6 +823,7 @@ export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundW
     activeTaskCount: () => { const work = outstanding(); return work.live.length + work.pending.length; },
     waitableTaskCount: () => { const work = outstanding(); return work.live.filter(waitable).length + work.pending.length; },
     awaitedTaskCount: () => { const work = outstanding(); return work.live.filter(awaits).length + work.pending.length; },
+    pendingDeliveryCount: () => outstanding().pending.length,
     liveWorkReferences,
     observeWorkChanges: (listener) => { workListeners.add(listener); return () => { workListeners.delete(listener); }; },
     holdsWait: (toolUseId) => [...active.values()].some((entry) => entry.wait && entry.meta.toolUseId === toolUseId),

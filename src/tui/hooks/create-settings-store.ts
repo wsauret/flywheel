@@ -103,6 +103,7 @@ export function createSettingsStore(config: RuntimeConfigCache, appService: Pick
   const values: SettingsValues = {
     get showThinking() { return readyValues()?.showThinking ?? MODAL_SETTINGS_DEFAULTS.showThinking },
     get idleCompaction() { return readyValues()?.idleCompaction ?? MODAL_SETTINGS_DEFAULTS.idleCompaction },
+    get shellWriteGuard() { return readyValues()?.shellWriteGuard ?? MODAL_SETTINGS_DEFAULTS.shellWriteGuard },
     get autoDeleteSessionDays() { return readyValues()?.autoDeleteSessionDays ?? MODAL_SETTINGS_DEFAULTS.autoDeleteSessionDays },
     get writeSyntaxTheme() { return readyValues()?.writeSyntaxTheme ?? MODAL_SETTINGS_DEFAULTS.writeSyntaxTheme },
     get diffColors() { return readyValues()?.diffColors ?? MODAL_SETTINGS_DEFAULTS.diffColors },
@@ -116,6 +117,7 @@ export function createSettingsStore(config: RuntimeConfigCache, appService: Pick
     switch (key) {
       case "showThinking": return resultOf(await mutateRuntimeConfig(config, appService, { type: "config.mutate", setting: { id: "showThinking", expected: { kind: "value", value: state.view.values.showThinking }, desired: Boolean(value) } }))
       case "idleCompaction": return resultOf(await mutateRuntimeConfig(config, appService, { type: "config.mutate", setting: { id: "idleCompaction", expected: { kind: "value", value: state.view.values.idleCompaction }, desired: Boolean(value) } }))
+      case "shellWriteGuard": return resultOf(await mutateRuntimeConfig(config, appService, { type: "config.mutate", setting: { id: "shellWriteGuard", expected: { kind: "value", value: state.view.values.shellWriteGuard }, desired: Boolean(value) } }))
       case "autoDeleteSessionDays": return resultOf(await mutateRuntimeConfig(config, appService, { type: "config.mutate", setting: { id: "autoDeleteSessionDays", expected: { kind: "value", value: state.view.values.autoDeleteSessionDays }, desired: typeof value === "number" ? value : 0 } }))
       case "writeSyntaxTheme":
         if (!Schema.is(WriteSyntaxThemeIdSchema)(value)) return { ok: false, error: new Error(`Invalid setting value: ${key}`) }
@@ -232,6 +234,7 @@ export function createSettingsStore(config: RuntimeConfigCache, appService: Pick
         switch (definitionId) {
           case "showThinking":
           case "idleCompaction":
+          case "shellWriteGuard":
             if (typeof value !== "boolean") throw new Error(`Invalid presentation setting value: ${definitionId}`)
             return update(definitionId, value)
           case "writeSyntaxTheme":

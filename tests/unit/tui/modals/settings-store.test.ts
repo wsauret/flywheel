@@ -3,14 +3,14 @@ import { createRoot } from "solid-js"
 import { clearMocks, configValues, COPILOT_CAP, createModal, profileConfig } from "./_settings-modal-fixtures.js"
 
 describe("createSettingsStore", () => {
-  it("turns idle compaction off through the generated Settings presentation", async () => {
+  it.each(["idleCompaction", "shellWriteGuard"] as const)("turns %s off through the generated Settings presentation", async (id) => {
     clearMocks()
     await createRoot(async (dispose) => {
       const { settings, configDispatch } = createModal()
-      expect(settings.presentation.read("idleCompaction")).toBe(true)
-      expect(await settings.presentation.update("idleCompaction", false)).toEqual({ ok: true })
-      expect(configDispatch).toHaveBeenLastCalledWith({ type: "config.mutate", setting: { id: "idleCompaction", expected: { kind: "value", value: true }, desired: false } })
-      expect(settings.presentation.read("idleCompaction")).toBe(false)
+      expect(settings.presentation.read(id)).toBe(true)
+      expect(await settings.presentation.update(id, false)).toEqual({ ok: true })
+      expect(configDispatch).toHaveBeenLastCalledWith({ type: "config.mutate", setting: { id, expected: { kind: "value", value: true }, desired: false } })
+      expect(settings.presentation.read(id)).toBe(false)
       dispose()
     })
   })

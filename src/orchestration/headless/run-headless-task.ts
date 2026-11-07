@@ -11,7 +11,7 @@ import type { BridgedPersistentProcessClient } from "../../infra/persistent-proc
 import { createKeyResolver, createOwnedCredentialCommandRunner } from "../../infra/auth/resolve-key.js"
 import { resolveConversationSearchDbFile, resolveSessionDir } from "../../infra/paths.js"
 import { acquireConversationSearchIndex } from "../../infra/conversation-fts.js"
-import { AuthProfileManager } from "../auth/auth-profile-manager.js"
+import type { AuthProfileManager } from "../auth/auth-profile-manager.js"
 import { prepareWorkflowDeps } from "../workflow-host/deps.js"
 import { createSessionFactWriter, type SessionFactWriter } from "../session/session-fact-writer.js"
 import { reconcileWorkspacePendingFileMutations } from "../session/file-mutation-recovery.js"
@@ -25,7 +25,6 @@ import { createBackgroundExecutionOwner } from "../agent-runtime/background-exec
 import { createBackgroundWorkRegistry } from "../agent-runtime/background-work.js"
 import { emitToolExecutionOutput } from "../agent-runtime/emit.js"
 import { createForegroundBashHoldController } from "../agent-runtime/foreground-bash-hold.js"
-import { captureHeadlessSnapshotConnection } from "./benchmark-auth-file.js"
 import { capabilityAccessFor } from "../agent-runtime/tools/types.js"
 import { subscribeSessionRuntimeFacts } from "../session/create-session-infra.js"
 import { createTaskProgressWriter, HEADLESS_PROGRESS_EVENT_TYPES } from "./task-progress.js"
@@ -38,7 +37,8 @@ import { createHeadlessDeadline, type HeadlessDeadlineExpired } from "./headless
 import { createHeadlessUsageAuthorityOwner, type HeadlessUsageAuthorityOwner } from "./headless-usage-authority.js"
 
 import { captureRuntimeConfigRequest } from "../agent-runtime/request-config.js"
-import { createHeadlessProfileRuntime, resolveHeadlessAuthProfile } from "./headless-profile-runtime.js"
+import { shellWriteGuardObserver } from "../config/shell-write-guard-policy.js"
+import { createHeadlessProfileRuntime, resolveHeadlessAuth } from "./headless-profile-runtime.js"
 import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
 import { personaRoleIds } from "../../workflows/definition-registry.js"
 export interface RunHeadlessTaskOptions {
@@ -169,6 +169,8 @@ export async function runHeadlessTask(task: string, options: RunHeadlessTaskOpti
   let completed = false
   let failure: unknown
   let usageAuthority: HeadlessUsageAuthorityOwner | undefined
+  let releaseSnapshot: (() => void) | undefined
+  let runEnded = false
 
   try {
     let authProfile: Awaited<ReturnType<AuthProfileManager["resolve"]>>
@@ -183,14 +185,15 @@ export async function runHeadlessTask(task: string, options: RunHeadlessTaskOpti
       const oneShotConfig = runtimeConfig.snapshot().config
       const definitionRevision = definitions.captureRevision()
       const effectivePersonaRoleIds = personaRoleIds(definitionRevision.personas)
-      const authProfiles = new AuthProfileManager({
-        userDataRoot,
-        projectRoot,
-        config: () => oneShotConfig,
-        ...(options.authProfile ? { env: { FLYWHEEL_AUTH_PROFILE: options.authProfile } } : {}),
-      })
-      authProfile = await deadline.awaitSetup(resolveHeadlessAuthProfile(authProfiles))
-      const snapshot = await deadline.awaitSetup(captureHeadlessSnapshotConnection(options.authSnapshot, authProfile.id, authProfile.directory, accessProviderRegistry(moduleSelection()).selection.definitions))
+      const capture = resolveHeadlessAuth({ userDataRoot, projectRoot, config: () => oneShotConfig }, { ...(options.authProfile ? { profile: options.authProfile } : {}), ...(options.authSnapshot === undefined ? {} : { snapshotPath: options.authSnapshot }) }, accessProviderRegistry(moduleSelection()).selection.definitions)
+      // The setup deadline can stop the wait while the capture still runs, so the capture itself registers its release.
+      capture.then(({ snapshot }) => {
+        if (runEnded) snapshot?.release()
+        else releaseSnapshot = snapshot?.release
+      }, () => undefined)
+      const resolved = await deadline.awaitSetup(capture)
+      authProfile = resolved.profile
+      const snapshot = resolved.snapshot
       const capturedProfileId = snapshot?.profileId ?? authProfile.id
       const requestConfig = captureRuntimeConfigRequest(runtimeConfig.snapshot(), capturedProfileId, options.allowPersistentProcesses)
       usageAuthority = createHeadlessUsageAuthorityOwner({ id: capturedProfileId, directory: authProfile.directory })
@@ -214,7 +217,9 @@ export async function runHeadlessTask(task: string, options: RunHeadlessTaskOpti
           resolveKey,
           persistentProcesses: options.persistentProcesses,
           allowPersistentProcesses: () => requestConfig.allowPersistentProcesses,
+          enforcedShellWriteGuard: shellWriteGuardObserver(runtimeConfig),
           capabilities: capabilityPolicy.policy,
+          headless: true,
           ...(snapshot ? { overrides: { connection: snapshot.connection } } : {}),
         },
         captureRuntimeConfig,
@@ -449,6 +454,9 @@ export async function runHeadlessTask(task: string, options: RunHeadlessTaskOpti
     completed = false
     failure = failure === undefined ? cause : new AggregateError([failure, cause], "Headless task and Usage authority settlement failed")
   }
+  // The bootstrap stopped every engine, also those of its module services, before it returned.
+  runEnded = true
+  releaseSnapshot?.()
   deadline.dispose()
 
   const attribution = headlessTaskReport(sourceArchiveSha256, toolSurfaces, model, effort)

@@ -4,6 +4,7 @@
 
 import type { CliVerbSummary } from "../orchestration/cli-contribution.js"
 import type { FirstPartyModule } from "../orchestration/modules.js"
+import { HEADLESS_FORMS } from "./headless-args.js"
 import { SUBCOMMANDS } from "./subcommands.js"
 
 const ROOT_SYNOPSIS = [
@@ -40,10 +41,7 @@ const ROOT_OPTIONS: readonly RootOption[] = [
   {
     flags: "--headless",
     description: "Run without the TUI for CI/automation:",
-    forms: [
-      { syntax: "flywheel --headless [--session <id>] [--one-shot] [--disable-tool <name>]...", note: "JSONL Chat" },
-      { syntax: "flywheel --headless --task <text> [--system-prompt <text>] [--model <id>] [--effort <level>] [--disable-tool <name>]..." },
-    ],
+    forms: HEADLESS_FORMS,
   },
   { flags: "--task <text>", description: "Run one direct headless task through the shared production runner." },
   { flags: "--deadline-seconds <n>", description: "Positive finite deadline in seconds for --task." },
@@ -51,9 +49,10 @@ const ROOT_OPTIONS: readonly RootOption[] = [
   { flags: "--model <id>", description: "Run a direct headless task on this model instead of the configured chat role." },
   { flags: "--effort <level>", description: "Reasoning effort for --model." },
   { flags: "--disable-tool <name>", description: "Disable one active first-party tool for a headless chat or direct task." },
-  { flags: "--auth-profile <profile>", description: "Select the auth profile for a direct task." },
+  { flags: "--auth-profile <profile>", description: "Select the auth profile for a headless chat or direct task." },
   { flags: "--session <id>", description: "Attach an existing headless chat without automatic Resume." },
   { flags: "--one-shot", description: "Return after durable handoff and owned work settle; plain parking is incomplete." },
+  { flags: "--acp", description: "Speak Agent Client Protocol version 1 on standard input and output instead of the JSONL channel." },
   { flags: "--auth-snapshot <path>", description: "Consume a matching one-use auth snapshot from a trusted source." },
   { flags: "--jsonl", description: "Write versioned JSONL progress and terminal records." },
   { flags: "--allow-persistent-processes", description: "Allow tools to start processes that survive this invocation." },

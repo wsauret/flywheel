@@ -1,3 +1,7 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { privateTemporaryRoot } from "../../../infra/private-temporary-root.js";
 import type { ClaudeLoginEngines } from "../../../infra/claude-engine.js";
 import type { AccessProviderDefinition, ExternalAccount, ExternalLoginPorts } from "../../../infra/llm/access-provider.js";
 import type { AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
@@ -12,7 +16,7 @@ import { profileClaudeAccounts, loginClaudeAccount, logoutClaudeAccount, logoutP
 import { drainAgentHosts, releaseLiveBridges, resumeLiveBridges } from "./live-bridges.js";
 import { claudeLoginHealth, loginProblems } from "./login-status.js";
 import { prototypeLoginConversion, replacedSubscriptionConversion } from "./profile-conversions.js";
-import { CLAUDE_AGENT_SDK_CLI_FLAG, CLAUDE_AGENT_SDK_LABEL, CLAUDE_AGENT_SDK_LOGIN_COMMAND, CLAUDE_AGENT_SDK_MODULE_ID, CLAUDE_AGENT_SDK_PROVIDER_ID, LOGIN_PROGRAM_LABEL } from "./names.js";
+import { CLAUDE_AGENT_SDK_CLI_FLAG, CLAUDE_AGENT_SDK_LABEL, CLAUDE_AGENT_SDK_LOGIN_COMMAND, CLAUDE_AGENT_SDK_MODULE_ID, CLAUDE_AGENT_SDK_PROVIDER_ID, LOGIN_PROGRAM_LABEL, TOKEN_LOGIN_VARIABLE } from "./names.js";
 import { claudeUsageReader } from "./usage-reader.js";
 
 /** The Claude accounts that the CLI holds for one auth profile, through its own login folders or explicit references. An
@@ -85,6 +89,14 @@ function providerDefinition(seams: ClaudeAgentSdkSeams) {
       login: (authDir, ports, account) => login(authDir, ports, seams, account),
       logout: (authDir, accountId, ports) => logoutClaudeAccount(claudeProfile(authDir, seams), accountId, ports),
       logoutProfile: (authDir, ports) => logoutProfileClaudeAccounts(claudeProfile(authDir, seams), ports),
+      // A headless run on a machine with no Claude login, such as a benchmark sandbox, runs on a token that the person
+      // made with `claude setup-token` (PI-MODEL-082). The engine's state for the token goes into a new directory in
+      // the engine's private temporary directory, never into an auth profile.
+      tokenLogin: {
+        hostVariable: TOKEN_LOGIN_VARIABLE,
+        identity: `${LOGIN_PROGRAM_LABEL} token`,
+        configDir: (fingerprint) => mkdtempSync(join(privateTemporaryRoot(tmpdir(), "fw-claude"), `token-${fingerprint}-`)),
+      },
     },
     profileConversions: [replacedSubscriptionConversion(accounts), prototypeLoginConversion(accounts)],
   } as const satisfies AccessProviderDefinition;

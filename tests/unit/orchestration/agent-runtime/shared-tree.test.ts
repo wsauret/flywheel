@@ -1,4 +1,4 @@
-import { describe, expect, it, spyOn } from "bun:test"
+import { beforeAll, describe, expect, it, spyOn } from "bun:test"
 import { Effect, Exit, Scope } from "effect"
 import { DebugLog } from "../../../../src/infra/debug-log.js"
 import { detectModelFamily } from "../../../../src/infra/llm/model-family.js"
@@ -11,6 +11,7 @@ import { captureForkMessages } from "../../../../src/orchestration/agent-runtime
 import { resolveRuntimeConversation } from "../../../../src/orchestration/agent-runtime/runtime-conversation.js"
 import { stableSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
 import { holdSharedTree } from "../../../../src/orchestration/agent-runtime/shared-tree.js"
+import { loadBashParser } from "../../../../src/orchestration/agent-runtime/tools/bash-parser.js"
 import type { AgentOptions, RunnableAgentOptions } from "../../../../src/orchestration/agent-runtime/types.js"
 import type { RuntimeToolInput } from "../../../../src/orchestration/agent-runtime/tools/types.js"
 import { composeFirstPartyModules, type FirstPartyModuleComposition } from "../../../../src/orchestration/modules.js"
@@ -43,9 +44,9 @@ const modelClient = (model: string) => asModelClient({
 
 /** One tree-hosted agent of the chat tree `root`: its session, its durable opening turn, and its provider lifetime,
  *  which `end` closes as the runner does. With `runScope`, the provider lifetime outlives the run, as a session's
- *  pre-start's does, and `endRun` closes the run's scope alone. `shellWriteGuard` and `allowPersistentProcesses` are the
- *  configuration's values. */
-async function treeAgent(root: string, sessionId: string, purpose: AgentOptions["purpose"], moduleSelection: () => FirstPartyModuleComposition, held: { readonly runScope?: Scope.Closeable; readonly shellWriteGuard?: boolean; readonly allowPersistentProcesses?: boolean; readonly capabilityAccess?: RunnableAgentOptions["capabilityAccess"] } = {}) {
+ *  pre-start's does, and `endRun` closes the run's scope alone. `shellWriteGuard` reads the configuration's current
+ *  value, and `allowPersistentProcesses` is the configuration's value. */
+async function treeAgent(root: string, sessionId: string, purpose: AgentOptions["purpose"], moduleSelection: () => FirstPartyModuleComposition, held: { readonly runScope?: Scope.Closeable; readonly shellWriteGuard?: () => boolean; readonly allowPersistentProcesses?: boolean; readonly capabilityAccess?: RunnableAgentOptions["capabilityAccess"] } = {}) {
   const appended: ConversationMessage[] = []
   const failing = { next: false }
   // The module selections that admitted this agent's providers.
@@ -60,12 +61,13 @@ async function treeAgent(root: string, sessionId: string, purpose: AgentOptions[
     purpose,
     agentsMd: "",
     onEvent: () => {},
-    awaitModelAccessSettled: async () => {}, captureRuntimeConfig: () => ({ ...testRuntimeConfigCapture(), shellWriteGuard: held.shellWriteGuard ?? true, allowPersistentProcesses: held.allowPersistentProcesses ?? false }),
+    awaitModelAccessSettled: async () => {}, captureRuntimeConfig: () => ({ ...testRuntimeConfigCapture(), shellWriteGuard: held.shellWriteGuard?.() ?? true, allowPersistentProcesses: held.allowPersistentProcesses ?? false }),
     captureProviderConnection: async () => { throw new Error("unused in this test") },
     runtimeSurfaces: {
       launcher: refusingLauncher,
       background,
       foregroundBashHold: createForegroundBashHoldController(() => {}),
+      ...(held.shellWriteGuard ? { enforcedShellWriteGuard: async () => held.shellWriteGuard?.() ?? true } : {}),
       sessions: { ...unusedSessionMessaging(), identity: async () => ({ sessionId, conversationId: sessionId, kind: "subagent", rootSessionId: root }) },
     },
     moduleSelection,
@@ -106,6 +108,13 @@ async function treeAgent(root: string, sessionId: string, purpose: AgentOptions[
     if (!tool) throw new Error(`expected the advertised tool ${name}`)
     return (await tool.execute(input, makeContext())).content
   }
+  // Whether the shell's execution policy refuses a write outside the project now.
+  const refusesOutsideWrite = async () => {
+    const bash = surface.tools.get("bash")
+    if (!bash?.executionPolicy) throw new Error("expected the shell's execution policy")
+    const context = makeContext({ executionCwd: "/proj", projectRoot: "/proj", scratchDir: "/proj/.flywheel/scratch" })
+    return await bash.executionPolicy({ command: "cat > /elsewhere/probe.ts <<'EOF'\nx\nEOF" }, context) !== undefined
+  }
   const advertised = [...surface.tools.keys()]
   // The opening turn's notice names the shorter list: the tools the agent may call, or those it may not.
   const notice = appended.map((message) => typeof message.content === "string" ? message.content : "").join("\n")
@@ -113,7 +122,7 @@ async function treeAgent(root: string, sessionId: string, purpose: AgentOptions[
   const refused = /These listed tools do not work for you: (.*)\. Do not call them/u.exec(notice)?.[1]?.split(", ") ?? []
   const callable = allowed ?? advertised.filter((name) => !refused.includes(name))
   return {
-    definitions, advertised, call, callable, providerModules, appended,
+    definitions, advertised, call, callable, providerModules, appended, refusesOutsideWrite,
     opening: assembled.seed.kind === "resume" ? assembled.seed.priorMessages : [],
     /** The narrowing statements that the agent's next request appends after `history`: the request is planned
      *  first, as the loop plans each request before it appends its reminders. */
@@ -134,6 +143,10 @@ async function treeAgent(root: string, sessionId: string, purpose: AgentOptions[
 }
 
 const REFUSAL = "The papercut_log tool is unavailable to this agent now: papercuts is turned off. Turn it on in Settings, or remove it from disabled_modules in flywheel.toml. Do not call papercut_log again."
+
+beforeAll(async () => {
+  await loadBashParser()
+})
 
 describe("the module capture of a chat tree's shared host", () => {
   it("gives an agent that starts after a module turned off the tree's tool bytes, and refuses that module's tools", async () => {
@@ -185,21 +198,6 @@ describe("the module capture of a chat tree's shared host", () => {
     await prestart.end()
   })
 
-  it("gives an agent that starts after the shell write guard turned off the tree's shell bytes, until the tree is captured again", async () => {
-    // Only the shell's description states the write roots.
-    const writeRoots = "Keep writes inside the project"
-    const first = await treeAgent("root-write-guard", "agent-1", SUBAGENT, () => ALL)
-    const second = await treeAgent("root-write-guard", "agent-2", SUBAGENT, () => ALL, { shellWriteGuard: false })
-
-    expect(second.definitions).toBe(first.definitions)
-    expect(second.definitions).toContain(writeRoots)
-    await first.end()
-    await second.end()
-    const next = await treeAgent("root-write-guard", "agent-3", SUBAGENT, () => ALL, { shellWriteGuard: false })
-    expect(next.definitions).not.toContain(writeRoots)
-    await next.end()
-  })
-
   it("gives an agent that starts after persistent processes turned off the tree's shell bytes, and refuses persistence at execution", async () => {
     const first = await treeAgent("root-persistence", "agent-1", SUBAGENT, () => ALL, { allowPersistentProcesses: true })
     const second = await treeAgent("root-persistence", "agent-2", SUBAGENT, () => ALL, { allowPersistentProcesses: false })
@@ -211,6 +209,26 @@ describe("the module capture of a chat tree's shared host", () => {
     await second.end()
     const next = await treeAgent("root-persistence", "agent-3", SUBAGENT, () => ALL, { allowPersistentProcesses: false })
     expect(next.definitions).not.toContain("persist_after_exit")
+    await next.end()
+  })
+
+  it("keeps the tree's shell bytes after the shell write guard changes, and enforces the current guard in every agent of the tree", async () => {
+    // Only the shell's description states the write roots.
+    const writeRoots = "Keep writes inside the project"
+    let guard = true
+    const first = await treeAgent("root-write-guard", "agent-1", SUBAGENT, () => ALL, { shellWriteGuard: () => guard })
+    guard = false
+    const second = await treeAgent("root-write-guard", "agent-2", SUBAGENT, () => ALL, { shellWriteGuard: () => guard })
+
+    expect(second.definitions).toBe(first.definitions)
+    expect(second.definitions).toContain(writeRoots)
+    expect([await first.refusesOutsideWrite(), await second.refusesOutsideWrite()]).toEqual([false, false])
+    await first.end()
+    await second.end()
+    const next = await treeAgent("root-write-guard", "agent-3", SUBAGENT, () => ALL, { shellWriteGuard: () => guard })
+    expect(next.definitions).not.toContain(writeRoots)
+    guard = true
+    expect(await next.refusesOutsideWrite()).toBe(true)
     await next.end()
   })
 

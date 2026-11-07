@@ -62,9 +62,9 @@ export type OAuthPersistencePolicy = "profile" | "memory-only" | "access-only";
 export type RuntimeCredential =
   | { readonly type: "api_key"; readonly key: Redacted.Redacted<string> }
   | { readonly type: "oauth"; readonly access: Redacted.Redacted<string>; readonly refresh?: Redacted.Redacted<string>; readonly expires: number; readonly accountId?: string; readonly enterpriseDomain?: string }
-  /** A login that another program owns. It carries no secret: only the
-   *  directory in which the program keeps the login. */
-  | { readonly type: "external"; readonly configDir: string };
+  /** A login that another program owns: the directory in which the program keeps the login, and, for a token login
+   *  that a headless auth snapshot carried, the token that only the program receives. */
+  | { readonly type: "external"; readonly configDir: string; readonly token?: Redacted.Redacted<string> };
 
 export type RuntimeOAuthCredential = Extract<RuntimeCredential, { readonly type: "oauth" }>;
 
@@ -197,6 +197,8 @@ export function currentCredentialLineage(
 }
 
 /** The redacted runtime form of a stored credential DTO. */
+export function runtimeCredential(credential: OAuthCredential): RuntimeOAuthCredential;
+export function runtimeCredential(credential: Credential): RuntimeCredential;
 export function runtimeCredential(credential: Credential): RuntimeCredential {
   return credential.type === "api_key"
     ? Object.freeze({ type: "api_key", key: Redacted.make(credential.key) })

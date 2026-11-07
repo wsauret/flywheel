@@ -195,6 +195,7 @@ export interface PrepareWorkflowDepsInput extends AccountDirectories {
   usageAuthority?: UsageAuthorityGeneration
   persistentProcesses?: PersistentProcessClient | BridgedPersistentProcessClient
   allowPersistentProcesses?: () => boolean | Promise<boolean>
+  enforcedShellWriteGuard?: () => Promise<boolean>
   gitAiAttribution?: GitAiAttributionService
   streamingEditValidation?: StreamingEditValidationService
   overrides?: WorkflowDepsOverrides
@@ -262,6 +263,7 @@ export async function prepareWorkflowDeps(input: PrepareWorkflowDepsInput): Prom
     resolveEnvSnapshot,
     persistentProcesses: input.persistentProcesses,
     allowPersistentProcesses: input.allowPersistentProcesses,
+    enforcedShellWriteGuard: input.enforcedShellWriteGuard,
     getProviderModelEligibility: input.providerModelEligibility,
     captureModelAccess: input.captureModelAccess,
     captureSubscriptionAdmission: input.captureSubscriptionAdmission,

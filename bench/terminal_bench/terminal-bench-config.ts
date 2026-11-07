@@ -18,6 +18,8 @@ const REPOSITORY_ROOT = resolve(import.meta.dir, "../..");
  *  credentials are exported under this id, so the config's `[profiles.<id>]`
  *  tables name no host profile. */
 export const TRIAL_AUTH_PROFILE = "benchmark";
+/** The macOS keychain item (service name) that holds a Claude arm's token by default. */
+const DEFAULT_CLAUDE_TOKEN_KEYCHAIN_ITEM = "flywheel-claude-oauth-token";
 
 type CampaignGrade = "leaderboard_valid" | "local_low_k" | "debug_only";
 export type JsonMap = Record<string, unknown>;
@@ -62,7 +64,7 @@ export interface ResolvedTerminalBenchConfig {
 
 /** The Flywheel config a trial installs as its `flywheel.toml`, validated on
  *  the host. It is the one source of the chat model and effort of its run. */
-export interface TerminalBenchFlywheelConfig {
+interface TerminalBenchFlywheelConfig {
   /** The path as the profile names it, relative to the repository root. */
   path: string;
   absolutePath: string;
@@ -76,10 +78,12 @@ export interface TerminalBenchFlywheelConfig {
 
 /** Where a hosted run publishes its agent package and which Hub organization
  *  owns the job. The repository has no default: each run names it. */
-export interface TerminalBenchHosting {
+interface TerminalBenchHosting {
   agentRepository: string;
   /** The Hub organization that owns the job; without one, the job is the signed-in user's own. */
   organization?: string;
+  /** The macOS keychain item from which the snapshot export of a Claude arm reads the Claude token. */
+  claudeTokenKeychainItem: string;
 }
 
 interface ResolveOptions { cwd: string; env?: Record<string, string | undefined> }
@@ -170,11 +174,11 @@ function refuseFlywheelConfig(path: string, reason: string): never {
  *  the runtime, and the shim, so a profile that needs launcher-side trial
  *  inputs (disabled tools, a system prompt, local image prebuilds) or no
  *  Flywheel config cannot run hosted. */
-function terminalBenchHosting(agentRepository: string | undefined, organization: string | undefined, headless: HeadlessProfile, prebuild: boolean): TerminalBenchHosting {
+function terminalBenchHosting(agentRepository: string | undefined, organization: string | undefined, claudeTokenKeychainItem: string, headless: HeadlessProfile, prebuild: boolean): TerminalBenchHosting {
   if (headless.flywheelConfig === undefined) throw new Error("--hosted requires headless.flywheel_config: the agent package ships the arm config");
   if (headless.disabledTools.length > 0 || headless.systemPrompt !== undefined || prebuild) throw new Error("--hosted does not support headless.disabled_tools, headless.system_prompt, or --prebuild");
   if (agentRepository === undefined || !/^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/.test(agentRepository)) throw new Error("--hosted requires --agent-repo <owner/repo> or FLYWHEEL_TB_AGENT_REPO");
-  return { agentRepository, ...(organization === undefined ? {} : { organization: requiredName(organization, "--organization or FLYWHEEL_TB_HUB_ORG") }) };
+  return { agentRepository, claudeTokenKeychainItem: requiredName(claudeTokenKeychainItem, "--claude-token-keychain-item"), ...(organization === undefined ? {} : { organization: requiredName(organization, "--organization or FLYWHEEL_TB_HUB_ORG") }) };
 }
 
 export function terminalBenchDisplayModel(model: string): string {
@@ -222,6 +226,7 @@ export async function resolveTerminalBenchConfig(args: string[], options: Resolv
   const env = options.env ?? process.env;
   let cliAgentRepository = env.FLYWHEEL_TB_AGENT_REPO;
   let cliOrganization = env.FLYWHEEL_TB_HUB_ORG;
+  let claudeTokenKeychainItem = DEFAULT_CLAUDE_TOKEN_KEYCHAIN_ITEM;
 
   for (let index = 0; index < args.length; index += 1) {
     const flag = args[index];
@@ -249,6 +254,7 @@ export async function resolveTerminalBenchConfig(args: string[], options: Resolv
       case "--hosted": hosted = true; break;
       case "--agent-repo": cliAgentRepository = next(args, index); index += 1; break;
       case "--organization": cliOrganization = next(args, index); index += 1; break;
+      case "--claude-token-keychain-item": claudeTokenKeychainItem = next(args, index); index += 1; break;
       default: throw new Error(`unsupported Terminal-Bench option: ${flag}`);
     }
   }
@@ -264,7 +270,7 @@ export async function resolveTerminalBenchConfig(args: string[], options: Resolv
   delete harborConfig.headless;
   if (headless.flywheelConfig !== undefined && cliModel !== undefined) throw new Error("--model conflicts with headless.flywheel_config: the Flywheel config pins the chat model");
   const pinned = headless.flywheelConfig === undefined ? undefined : await readFlywheelConfig(headless.flywheelConfig);
-  const hosting = hosted ? terminalBenchHosting(cliAgentRepository, cliOrganization, headless, prebuild) : undefined;
+  const hosting = hosted ? terminalBenchHosting(cliAgentRepository, cliOrganization, claudeTokenKeychainItem, headless, prebuild) : undefined;
   const flywheelConfig = pinned?.config;
   const profileAgents = harborConfig.agents === undefined ? [] : harborConfig.agents;
   if (!Array.isArray(profileAgents) || profileAgents.length > 1) throw new Error("Terminal-Bench config must select at most one agent");

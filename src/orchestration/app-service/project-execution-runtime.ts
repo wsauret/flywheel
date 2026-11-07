@@ -49,10 +49,12 @@ import { createInstalledDefinitionRegistry } from "../definition-catalog.js"
 import { createModuleProjection } from "./module-projection.js"
 import { createRuntimeConfigProjection } from "./runtime-config-projection.js"
 import { persistentProcessPolicy } from "../config/persistent-process-policy.js"
+import { shellWriteGuardObserver } from "../config/shell-write-guard-policy.js"
 import { createSessionViewLoader } from "../session-store/view.js"
 import { createFlywheelAppService, type FlywheelAppServiceDeps } from "./app-service.js"
 import { composeAuthLogin } from "./auth-login-composition.js"
-import { createAuthRuntime, type AuthRuntime, type HeadlessAuthSelection } from "./auth-runtime.js"
+import { createAuthRuntime, type AuthRuntime } from "./auth-runtime.js"
+import type { HeadlessAuthSelection } from "../headless/headless-profile-runtime.js"
 import { createLazyWorkflowController } from "./lazy-workflow-controller.js"
 import { composeModuleProtocolRuntimes } from "./module-protocol-host.js"
 import { createSessionChangesPublisher } from "./session-changes-publisher.js"
@@ -429,11 +431,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
     own: (name, resource, dispose) => scope.own(name, resource, dispose),
     subscriptionUsageThresholds: () => [],
     interactive: options.interactive === true,
-    sessionStore, workflowHosts,
-    eventReader,
-    eventWriter,
-    availability,
-    runtimeConfig,
+    sessionStore, workflowHosts, eventReader, eventWriter, availability, runtimeConfig,
     chatDefault: options.chatDefault ?? { kind: "pending" },
     persistentProcessesForcedByCli: options.allowPersistentProcesses,
     ...(options.headlessAuth === undefined ? {} : { headlessAuth: options.headlessAuth }),
@@ -450,6 +448,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
       capabilities,
       persistentProcesses: options.persistentProcesses,
       allowPersistentProcesses: effectivePersistent,
+      enforcedShellWriteGuard: shellWriteGuardObserver(runtimeConfig),
       ...(gitAiAttributionService ? { gitAiAttribution: gitAiAttributionService } : {}),
       streamingEditValidation,
       onNotification: notify,
@@ -677,10 +676,8 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
     ownedSessionIds: () => [...runtimeSupervisor.ownedSessionIds(), ...sessionStore.allIds()],
     runningChildren: () => runningChildSessionIds(eventReader),
     keptSessions: keeper.sessions,
-    pendingTurnSettlement: (sessionId) => {
-      const entry = sessionStore.get(sessionId)
-      return entry?.kind === "chat" ? entry.runner?.pendingTurnSettlement : undefined
-    },
+    pendingTurnSettlement: (sessionId) => { const entry = sessionStore.get(sessionId); return entry?.kind === "chat" ? entry.runner?.pendingTurnSettlement : undefined },
+    backgroundWork: (sessionId) => sessionStore.get(sessionId)?.runner?.backgroundTasks,
     failed: (sessionId) => runtimeSupervisor.runtimeState(sessionId)?.kind === "failed",
     onLiveSessionRemoved: (listener) => onLiveSessionRemoved(eventReader, listener),
     requiresContinuation: async (sessionId, rootSessionId) => {

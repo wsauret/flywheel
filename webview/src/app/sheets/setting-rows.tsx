@@ -352,6 +352,7 @@ function browserSettingParts(client: ClientContextValue, state: SettingRowState,
       disabled: false,
       set: () => { void state.apply({ kind: "toggle-persistent-processes" }) },
     }) },
+    "shell-write-guard": { kind: "switch", read: () => ({ ...shownFor("shell-write-guard", "shell-write-guard", "shellWriteGuard"), on: current().shellWriteGuard, disabled: false, set: (on) => { void state.apply({ kind: "set-shell-write-guard", on }) } }) },
     "web-search-provider": { kind: "choice", read: () => ({ ...shownFor("web-search-provider", "web-search", "webSearchProvider"), value: current().webSearchProvider, options: [choice("chatgpt", "ChatGPT", { kind: "set-web-search", provider: "chatgpt" }), choice("exa", "Exa", { kind: "set-web-search", provider: "exa" })] }) },
   } satisfies { readonly [K in BrowserInPlaceRowId]: InPlaceRowModel }
   const inPlace = (id: BrowserInPlaceRowId) => () => [<InPlaceSettingView row={models[id]} />]
@@ -390,6 +391,7 @@ function browserSettingParts(client: ClientContextValue, state: SettingRowState,
     "agent-capabilities": subsection,
     "agent-capability-modules": () => [<Key each={switchModules(current().capabilities, undefined)} by={(module) => module.id}>{moduleBlock}</Key>],
     "allow-persistent-processes": inPlace("allow-persistent-processes"),
+    "shell-write-guard": inPlace("shell-write-guard"),
     "web-search-provider": inPlace("web-search-provider"),
     "capability-groups": () => [
       <Key each={groups()} by={(group) => group}>

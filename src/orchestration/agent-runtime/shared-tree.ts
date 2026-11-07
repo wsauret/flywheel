@@ -4,7 +4,8 @@ import type { FirstPartyModuleComposition } from "../modules.js";
  * What every agent of one chat tree shares while the tree's shared agent host can serve it (ARCH-PROVIDERS-006, ARCH-PROVIDERS-031,
  * ARCH-RUNTIME-068). The host's launch fixes the tool list byte for byte, so every agent of the tree plans its tools
  * from one capture of what decides those bytes (`SharedTreeCapture`). A module turned off later narrows only what an
- * agent may call, and a changed shell write guard takes effect when the tree is captured again. Each request of the
+ * agent may call, and a changed shell write guard changes the shell's description when the tree is captured again,
+ * while every agent's shell enforces the current guard at once. Each request of the
  * tree prefers the login of the tree's live host among logins whose included quota expires at the same moment, so the
  * tree leaves that login only for a sooner expiring reset or when the login cannot serve.
  */
@@ -20,8 +21,9 @@ export interface SharedTree extends SharedTreeCapture {
 /** What the tree's first holder captured: every input that changes the tool bytes of the tree's host. */
 export interface SharedTreeCapture {
   readonly modules: FirstPartyModuleComposition;
-  /** Whether the shell refuses writes outside the project (`shell_write_guard`). It changes the shell tool's
-   *  description, so the tree keeps one value for all its agents (PI-AGENT-068). */
+  /** Whether the shell's description states the write roots of `shell_write_guard`. The tree keeps one value for all
+   *  its agents so that their shell bytes match (ARCH-CONTEXT-018); the shell enforces the current setting
+   *  (PI-AGENT-068). */
   readonly shellWriteGuard: boolean;
   /** Whether persistent processes are allowed (`allow_persistent_processes` or the command-line flag). It decides
    *  whether the shell schema offers `persist_after_exit`, so the tree keeps one value for all its agents; execution

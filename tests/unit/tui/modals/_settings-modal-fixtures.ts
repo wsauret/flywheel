@@ -171,7 +171,7 @@ export function moduleRuntime(options: {
 export function configValues(overrides: Partial<RuntimeConfigValues> = {}): RuntimeConfigValues {
   return {
     theme: "flywheel", moduleSelection: [], allowPersistentProcesses: false, foregroundBashHoldSeconds: 2,
-    showThinking: true, idleCompaction: true, autoDeleteSessionDays: 0, writeSyntaxTheme: "nord", requireWorkflowConfirmation: true,
+    showThinking: true, idleCompaction: true, shellWriteGuard: true, autoDeleteSessionDays: 0, writeSyntaxTheme: "nord", requireWorkflowConfirmation: true,
     diffColors: "theme", compatibleRendering: "auto", webSearchProvider: "chatgpt",
     fontTipDismissed: false, tabsHintDismissed: false, proactiveCompactionThreshold: 270_000, showBuild: false,
     moduleSections: { subscription_usage: { alert_thresholds: [] }, remote: { keep_awake: true } }, autoInstall: true,

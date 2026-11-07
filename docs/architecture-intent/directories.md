@@ -82,7 +82,7 @@ The definition-override baseline manifest lives under the account data root so t
 
 ## ARCH-DIRECTORIES-015: Benchmark trials keep state in the task workspace
 
-A benchmark trial maps both the project root and the execution directory to the workspace that the benchmark harness supplies for that trial, with persistent processes disabled. A trial never runs in the live checkout: its workspace holds a copy of the task's fixture source. That source is a pinned commit limited to an explicit list of paths, the files inside the task, or an empty tree. The trial's store is exported as evidence only after the headless host settles, and that export is a copy, not another durable authority.
+A benchmark trial maps both the project root and the execution directory to the workspace that the benchmark harness supplies for that trial, and its settings, persistent processes included, come from the trial's Flywheel config. A trial never runs in the live checkout: its workspace holds a copy of the task's fixture source. That source is a pinned commit limited to an explicit list of paths, the files inside the task, or an empty tree. The trial's store is exported as evidence only after the headless host settles, and that export is a copy, not another durable authority.
 
 ## ARCH-DIRECTORIES-016: The parent that makes a worktree owns its lifecycle
 

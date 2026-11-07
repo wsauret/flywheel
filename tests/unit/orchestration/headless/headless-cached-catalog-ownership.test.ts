@@ -23,7 +23,7 @@ import { testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.
 import { prepareWorkflowDeps } from "../../../../src/orchestration/workflow-host/deps.js";
 import type { ProfileRequestWorkflowPreparation } from "../../../../src/orchestration/auth/profile-request-service.js";
 import { chmodSync } from "node:fs";
-import { captureHeadlessSnapshotConnection } from "../../../../src/orchestration/headless/benchmark-auth-file.js";
+import { captureHeadlessSnapshotConnection, readHeadlessAuthSnapshot } from "../../../../src/orchestration/headless/benchmark-auth-file.js";
 import { applyWindowsPrivateDirectoryAcl } from "../../../../src/infra/windows-private-directory-acl.js";
 import { testAccountHome } from "../../../helpers/directories.js";
 import { repoDefinitions } from "../../../helpers/project-definitions.js";
@@ -138,16 +138,15 @@ describe("headless cached catalog ownership", () => {
       credentials: {
         openai_api: { type: "api_key", key: "transferred-openai-key" },
         google_vertex: { type: "api_key", key: "AQ.transferred-vertex-key" },
-        supergrok: [{ id: "primary", identity: "person", lineageId: "00000000-0000-4000-8000-000000000013", credential: { type: "oauth", access: "grok-token", refresh: "grok-refresh", expires: 4_000_000_000_000 } }],
+        supergrok: [{ id: "primary", identity: "person", lineageId: "00000000-0000-4000-8000-000000000013", credential: { type: "oauth", access: "grok-token", expires: 4_000_000_000_000 } }],
       },
       ...(carried ? { modelAccess: [
         { account: { kind: "singleton", providerId: "google_vertex" }, lineage: "00000000-0000-4000-8000-000000000012", outcomes: { [vertexModel]: "completed", "gemini-refused": "refused" } },
         { account: { kind: "subscription", providerId: "supergrok", instanceId: "primary" }, lineage: "00000000-0000-4000-8000-000000000013", outcomes: { "grok-allowed": "completed", "grok-refused": "refused" } },
       ] } : {}),
     }), { mode: 0o600 });
-    const captured = await captureHeadlessSnapshotConnection(authFile, "default", transferredAuthDirectory, accessProviderRegistry(testCapabilityModules()).selection.definitions);
-    if (captured === undefined) throw new Error("Missing snapshot connection");
-    const { connection } = captured;
+    const providers = accessProviderRegistry(testCapabilityModules()).selection.definitions;
+    const { connection } = await captureHeadlessSnapshotConnection(readHeadlessAuthSnapshot(authFile, providers), transferredAuthDirectory, providers);
     const { auth } = connection;
     const transferredKey = apiKey(auth, "openai_api");
     expect(transferredKey === undefined ? undefined : Redacted.value(transferredKey)).toBe("transferred-openai-key");

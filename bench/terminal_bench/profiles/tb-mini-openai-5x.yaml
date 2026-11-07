@@ -1,0 +1,25 @@
+# The Terminal-Bench mini subset on the OpenAI arm: 12 tasks, k=5, every
+# trial at once on Harbor Hub. The subset leaves out crack-7z-hash and
+# vulnerable-secret, which are cyber tasks.
+headless:
+  flywheel_config: bench/terminal_bench/configs/tb-mini-openai.toml
+datasets:
+- name: terminal-bench/terminal-bench-2-1
+  ref: sha256:7d7bdc1cbedad549fc1140404bd4dc45e5fd0ea7c4186773687d177ad3a0699a
+  task_names:
+  - terminal-bench/filter-js-from-html
+  - terminal-bench/install-windows-3.11
+  - terminal-bench/mteb-retrieve
+  - terminal-bench/db-wal-recovery
+  - terminal-bench/qemu-alpine-ssh
+  - terminal-bench/build-pmars
+  - terminal-bench/mcmc-sampling-stan
+  - terminal-bench/rstan-to-pystan
+  - terminal-bench/kv-store-grpc
+  - terminal-bench/bn-fit-modify
+  - terminal-bench/regex-log
+  - terminal-bench/custom-memory-heap-crash
+n_attempts: 5
+n_concurrent_trials: 60
+job_name: flywheel-tb-mini-openai-5x
+jobs_dir: jobs

@@ -96,7 +96,7 @@ const TOKEN_EXPIRY_BUFFER_MS = 60_000;
 const chatGptRefreshes = new Map<string, ReturnType<typeof refreshAccessToken>>();
 
 /** Which owner asked for a fresh token, so a refresh record says why it ran. */
-type ChatGPTTokenCaller = "model request" | "usage check" | "web search" | "model catalog"
+type ChatGPTTokenCaller = "model request" | "usage check" | "web search" | "model catalog" | "auth snapshot"
 
 /** A refresh never opens a browser: a rejected refresh surfaces as its error,
  *  and the person signs in again through /auth. */
@@ -242,6 +242,11 @@ async function freshChatGPTTokens(seed: StoredTokens, options: RefreshChatGPTTok
 
 export function ensureFreshChatGPTTokens(seed: StoredTokens, options?: EnsureFreshChatGPTTokensOptions): Promise<StoredTokens> {
   return freshChatGPTTokens(seed, options);
+}
+
+/** Rotates the tokens now, whatever their remaining lifetime, and persists nothing: the caller owns persistence. */
+export function rotateChatGPTTokens(current: StoredTokens, signal?: AbortSignal): Promise<StoredTokens> {
+  return refreshChatGPTTokens(current, { caller: "auth snapshot", persistence: "memory-only", ...(signal === undefined ? {} : { signal }) });
 }
 
 export interface ChatGPTTokenAccessor {

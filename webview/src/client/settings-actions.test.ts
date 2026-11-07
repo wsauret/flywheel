@@ -55,7 +55,7 @@ const nordSettings: PanelSettings = {
   persistentProcesses: { effective: false, persisted: false, forcedByCli: false },
   moduleSettings: [],
   compactionThreshold: 50_000,
-  idleCompaction: true,
+  idleCompaction: true, shellWriteGuard: true,
   autoDeleteSessionDays: 0,
   webSearchProvider: "chatgpt",
   showThinking: true,
@@ -181,39 +181,43 @@ test("automatic deletion writes whole days with the published value as its expec
   assert.equal(fixture.mutations.length, 1)
 })
 
-describe("Idle compaction settings action", () => {
-  test("writes the workspace opt-out and refreshes the projection", async () => {
-    const fixture = settingsActionsFixture({ kind: "committed", revision: 2 }, { ...nordSettings, idleCompaction: false })
+/** The workspace switches that the browser writes directly, each through its own action and setting. */
+const WORKSPACE_SWITCHES = [
+  { name: "Idle compaction", kind: "set-idle-compaction", id: "idleCompaction" },
+  { name: "Shell write guard", kind: "set-shell-write-guard", id: "shellWriteGuard" },
+] as const
 
-    assert.deepEqual(await fixture.actions.applySetting({ kind: "set-idle-compaction", on: false }), { kind: "applied" })
+for (const { name, kind, id } of WORKSPACE_SWITCHES) describe(`${name} settings action`, () => {
+  const off: PanelSettings = { ...nordSettings, [id]: false }
+
+  test("writes the workspace opt-out and refreshes the projection", async () => {
+    const fixture = settingsActionsFixture({ kind: "committed", revision: 2 }, off)
+
+    assert.deepEqual(await fixture.actions.applySetting({ kind, on: false }), { kind: "applied" })
     assert.deepEqual(fixture.mutations, [{
       type: "config.mutate",
-      setting: { id: "idleCompaction", expected: { kind: "value", value: true }, desired: false },
+      setting: { id, expected: { kind: "value", value: true }, desired: false },
     }])
-    assert.equal(fixture.settings().idleCompaction, false)
+    assert.equal(fixture.settings()[id], false)
     assert.equal(fixture.refreshes(), 1)
   })
 
   test("does not dispatch when the selected value is unchanged", async () => {
     const fixture = settingsActionsFixture({ kind: "committed", revision: 2 })
 
-    assert.deepEqual(await fixture.actions.applySetting({ kind: "set-idle-compaction", on: true }), { kind: "applied" })
+    assert.deepEqual(await fixture.actions.applySetting({ kind, on: true }), { kind: "applied" })
     assert.deepEqual(fixture.mutations, [])
   })
 
-  test("can re-enable idle compaction from the current opt-out", async () => {
-    const fixture = settingsActionsFixture(
-      { kind: "committed", revision: 2 },
-      nordSettings,
-      { ...nordSettings, idleCompaction: false },
-    )
+  test("can turn the setting on again from the current opt-out", async () => {
+    const fixture = settingsActionsFixture({ kind: "committed", revision: 2 }, nordSettings, off)
 
-    await fixture.actions.applySetting({ kind: "set-idle-compaction", on: true })
+    await fixture.actions.applySetting({ kind, on: true })
     assert.deepEqual(fixture.mutations, [{
       type: "config.mutate",
-      setting: { id: "idleCompaction", expected: { kind: "value", value: false }, desired: true },
+      setting: { id, expected: { kind: "value", value: false }, desired: true },
     }])
-    assert.equal(fixture.settings().idleCompaction, true)
+    assert.equal(fixture.settings()[id], true)
   })
 })
 

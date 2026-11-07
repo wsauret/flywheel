@@ -8,6 +8,7 @@ import type { RuntimeSupervisor } from "./runtime-supervisor-types.js"
 import type { WorkflowHosts } from "../workflow-host/host-collection.js"
 import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
 import { liveWorkflowControl, onLiveWorkChanged } from "../session/live-session-control.js"
+import type { BackgroundWorkTracking } from "../agent-runtime/background-work.js"
 
 /** Includes preflight, acknowledgement, and draining without inventing session rows. */
 export function workflowSettlementOwners(hosts: WorkflowHosts, reader: AsyncEventStateReadSurface): Pick<SettlementDeps, "busyWorkflows" | "onWorkflowChange"> {
@@ -101,6 +102,8 @@ interface SettlementDeps {
   readonly runningChildren: () => Promise<readonly string[]>
   readonly keptSessions: () => readonly string[]
   readonly pendingTurnSettlement: (sessionId: string) => Promise<void> | undefined
+  /** The background-work registry of a session's runner, which its agent loop also reads. */
+  readonly backgroundWork: (sessionId: string) => Pick<BackgroundWorkTracking, "awaitedTaskCount" | "pendingDeliveryCount"> | undefined
   readonly failed: (sessionId: string) => boolean
   readonly requiresContinuation: (sessionId: string, rootSessionId: string) => Promise<boolean>
   readonly onLiveSessionRemoved: (listener: (sessionId: string) => void) => () => void
@@ -136,9 +139,18 @@ export function createRuntimeWorkSettlement(deps: SettlementDeps): RuntimeWorkSe
         deps.client.query({ type: "questionSnapshot", sessionIds }),
       ])
       const questionIds = new Set(questions.views.filter((entry) => entry.view !== null).map((entry) => entry.sessionId))
-      // A question parks the model, not sibling commands in the same session.
+      // Background work is pending exactly when the agent loop awaits it: a
+      // service does not hold completion, and the run's close ends it unless
+      // it was launched to persist. A question parks the model, not sibling
+      // commands in the same session, but a notification of ended work cannot
+      // commit until the answer releases the turn, so it does not hold the question.
+      const awaitedWork = (sessionId: string): number => {
+        const work = deps.backgroundWork(sessionId)
+        if (!work) return 0
+        return work.awaitedTaskCount() - (questionIds.has(sessionId) ? work.pendingDeliveryCount() : 0)
+      }
       if (kept.length > 0 || children.length > 0 || workflows.length > 0 || statuses.views.some(({ sessionId, view }) =>
-        view !== null && (view.activeBackgroundCommands.length > 0
+        view !== null && (awaitedWork(sessionId) > 0
           || view.activeForegroundBashToolCallIds.length > 0
           || isActiveActivity(view.activity) || view.activeSubagentCount > 0
           || !questionIds.has(sessionId) && isWorkingStatus(view)))) return "busy"

@@ -17,7 +17,7 @@ export type RootCliAction =
 const PROJECT_ROOT_FLAG = "--project-root"
 const ALLOW_PERSISTENT_PROCESSES_FLAG = "--allow-persistent-processes"
 const REMOTE_FLAG = "--remote"
-const BOOLEAN_LAUNCH_FLAGS = new Set(["--print-logs", "--headless", "--jsonl", "--one-shot"])
+const BOOLEAN_LAUNCH_FLAGS = new Set(["--print-logs", "--headless", "--jsonl", "--one-shot", "--acp"])
 const VALUE_LAUNCH_FLAGS = new Set(["--task", "--system-prompt", "--model", "--effort", "--deadline-seconds", "--disable-tool", "--auth-profile", "--auth-snapshot", "--session"])
 const HELP_FLAGS = new Set(["--help", "-h"])
 const VERSION_FLAGS = new Set(["--version", "-v"])
@@ -64,10 +64,8 @@ export async function rootCliAction(args: readonly string[]): Promise<RootCliAct
   const hasSession = rest.some((arg) => arg === "--session" || arg.startsWith("--session="))
   if (hasSession && (!isHeadlessLaunch || hasDirectTask)) return { kind: "error", message: "--session is only valid with headless chat" }
   if (rest.includes("--one-shot") && (!isHeadlessLaunch || hasDirectTask)) return { kind: "error", message: "--one-shot is only valid with headless chat" }
-  if (isHeadlessLaunch && !hasDirectTask) {
-    const legacyFlag = rest.find((arg) => ["--deadline-seconds", "--auth-snapshot", "--auth-profile"].some((flag) => arg === flag || arg.startsWith(`${flag}=`)))
-    if (legacyFlag) return { kind: "error", message: `${legacyFlag.split("=")[0]} is only valid with --task; chat settings use protocol mutations` }
-  }
+  if (rest.includes("--acp") && (!isHeadlessLaunch || hasDirectTask || hasSession || rest.includes("--one-shot"))) return { kind: "error", message: "--acp is only valid with headless chat, without --session or --one-shot" }
+  if (isHeadlessLaunch && !hasDirectTask && hasDeadline) return { kind: "error", message: "--deadline-seconds is only valid with --task; chat settings use protocol mutations" }
   if (hasSystemPrompt && (!isHeadlessLaunch || !hasDirectTask)) return { kind: "error", message: "--system-prompt is only valid with --headless --task" }
   const hasModel = rest.some((arg) => arg === "--model" || arg.startsWith("--model="))
   if (hasModel && (!isHeadlessLaunch || !hasDirectTask)) return { kind: "error", message: "--model is only valid with --headless --task" }

@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { SYSTEM_PROMPT_DYNAMIC_BOUNDARY, type AccountInfo, type ModelInfo, type Options, type Query, type SDKControlGetUsageResponse, type SDKControlInitializeResponse, type SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { SYSTEM_PROMPT_SEPARATOR } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { Effect } from "effect";
+import { Effect, Redacted } from "effect";
 import { DebugLog, type DebugLogRecordInput } from "../../../../../src/infra/debug-log.js";
 import type { LauncherScope } from "../../../../../src/infra/process-supervisor.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
@@ -283,6 +283,14 @@ describe("the bridge query launcher", () => {
     // On Windows Flywheel's dates have no zone to give: they follow the system zone, as the engine's own do.
     trackedLauncher({ ...launcherConfig(), timeZone: undefined }, recorded.sdkQuery)(launchInput());
     expect(recorded.options[2]?.env).not.toHaveProperty("TZ");
+  });
+
+  test("a token login adds its token to the engine environment as the engine's documented token variable and changes nothing else, and the host's own token never reaches it", () => {
+    const recorded = recordingQuery();
+    trackedLauncher(launcherConfig(), recorded.sdkQuery)(launchInput());
+    trackedLauncher({ ...launcherConfig(), engineToken: Redacted.make("token-login") }, recorded.sdkQuery)(launchInput());
+    expect(recorded.options[0]?.env).not.toHaveProperty("CLAUDE_CODE_OAUTH_TOKEN");
+    expect(recorded.options[1]?.env).toEqual({ ...recorded.options[0]?.env, STEP_GATE_SOCKET: expect.any(String), CLAUDE_CODE_OAUTH_TOKEN: "token-login" });
   });
 
   test("on macOS the engine finds `security` first in the login's keychain folder, where it runs the system command in the OS account's home, so the engine keeps its login keychain while its own home is the login's", () => {

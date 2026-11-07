@@ -37,7 +37,7 @@ describe("config application modes", () => {
       .map(({ id }) => id);
 
     expect(omitted).toEqual(["auth", "custom_providers", "mcp"]);
-    expect(settingDefinitions().filter(({ protocolExposure }) => protocolExposure === "ui-safe")).toHaveLength(28);
+    expect(settingDefinitions().filter(({ protocolExposure }) => protocolExposure === "ui-safe")).toHaveLength(29);
     expect(settingDefinitions().find(({ id }) => id === "writeSyntaxTheme")).toMatchObject({
       applications: [{ mode: "live", path: [] }],
       protocolExposure: "ui-safe",

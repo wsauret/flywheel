@@ -226,8 +226,13 @@ export interface RuntimeToolSurfaces extends RunnerToolSurfaces {
   shell?: ShellRuntimeClient;
   persistentProcesses?: PersistentProcessClient | BridgedPersistentProcessClient;
   allowPersistentProcesses?: () => boolean | Promise<boolean>;
+  /** Reads the person's `shell_write_guard` when the shell checks a command (`shellWriteGuardObserver`). */
+  enforcedShellWriteGuard?: () => Promise<boolean>;
   gitAiAttribution?: GitAiAttributionService;
   streamingEditValidation?: StreamingEditValidationService;
+  /** The runtime has no client that reviews file changes: no shell command
+   *  of its agents runs in a private copy (PI-AGENT-119). A child inherits it. */
+  headless?: true;
 }
 
 export interface AgentToolInput {

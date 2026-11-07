@@ -28,6 +28,7 @@ describe("runtime config request capture", () => {
       cacheRetentionPolicies: source.config.cache_retention,
       providerSettings: {},
       allowPersistentProcesses: source.config.allow_persistent_processes,
+      shellWriteGuard: source.config.shell_write_guard,
       profileRoles: {},
       gitAiAttribution: false,
       allowTrainingRoutes: false,

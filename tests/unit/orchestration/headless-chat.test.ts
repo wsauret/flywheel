@@ -8,6 +8,7 @@ import type { PendingQuestionView } from "../../../src/protocol/question-protoco
 import type { RuntimeSessionDetailView } from "../../../src/protocol/session-detail-protocol-types.js"
 import { runHeadlessChatChannel } from "../../../src/orchestration/headless/run-headless-chat.js"
 import { createRuntimeWorkSettlement } from "../../../src/orchestration/app-service/runtime-work-settlement.js"
+import { createBackgroundWorkRegistry, type BackgroundWorkResult } from "../../../src/orchestration/agent-runtime/background-work.js"
 import type { StatusView } from "../../../src/protocol/status-protocol-types.js"
 import { catalogRow, deferred } from "../../helpers/session-catalog.js"
 import { createRuntimeUiBus } from "../../../src/orchestration/app-service/runtime-ui-bus.js"
@@ -24,6 +25,7 @@ function channelFixture(runningChildren: () => Promise<readonly string[]> = asyn
   const questions = new Map<string, PendingQuestionView>()
   const statuses = new Map<string, StatusView>()
   const pendingTurns = new Map<string, Promise<void>>()
+  const registries = new Map<string, ReturnType<typeof createBackgroundWorkRegistry>>()
   const continuations = new Set<string>()
   const listeners = new Set<(event: FrontendEvent) => void>()
   const bus = createRuntimeUiBus()
@@ -54,6 +56,7 @@ function channelFixture(runningChildren: () => Promise<readonly string[]> = asyn
     ownedSessionIds: () => [...views.keys()], runningChildren, keptSessions: () => [],
     failed: () => false,
     pendingTurnSettlement: (id) => pendingTurns.get(id),
+    backgroundWork: (id) => registries.get(id),
     requiresContinuation: async (id) => continuations.has(id) || views.get(id)?.row.admittedActions?.some((action) => action === "chat.resume") === true,
     onLiveSessionRemoved: () => () => {},
   })
@@ -61,7 +64,7 @@ function channelFixture(runningChildren: () => Promise<readonly string[]> = asyn
   const publish = (event: FrontendEvent) => { for (const listener of listeners) listener(event) }
   return {
     runtime: { client, startChatDefault: () => {}, workSettlement },
-    calls, records, views, questions, statuses, pendingTurns, continuations, bus,
+    calls, records, views, questions, statuses, pendingTurns, registries, continuations, bus,
     admission: (work: Promise<void>) => { admission = work },
     onRead: (next: typeof onRead) => { onRead = next },
     changed: () => {
@@ -89,6 +92,23 @@ function detail(id: string): Extract<RuntimeSessionDetailView, { kind: "chat" }>
       activeBackgroundCommands: [], activeForegroundBashToolCallIds: [], processorHeldToolCallIds: [],
       startedAt: 0, streamingStartedAt: null,
       accumulatedActiveMs: 0, compactionStartedAt: null,
+    },
+  }
+}
+
+/** Tracks a running background command in the session's real registry. A
+ *  `service` is a command launched with `background=true`. Its completion
+ *  notification commits when `delivery` resolves, as a mailbox commits it
+ *  only once the turn is free. `finish` ends the command. */
+function trackCommand(fixture: ReturnType<typeof channelFixture>, sessionId: string, id: string, service: boolean, delivery?: Promise<void>) {
+  const registry = fixture.registries.get(sessionId) ?? createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: async () => { await delivery } })
+  fixture.registries.set(sessionId, registry)
+  const done = deferred<BackgroundWorkResult>()
+  registry.track({ done: done.promise, meta: { id, type: "background_command", description: id, toolUseId: id }, ...(service ? { service: true as const } : {}) })
+  return {
+    finish: async (result: BackgroundWorkResult) => {
+      done.resolve(result)
+      await done.promise
     },
   }
 }
@@ -355,6 +375,11 @@ describe("headless Chat JSONL transport", () => {
         ? { activeBackgroundCommands: [{ id: "shell", toolUseId: "shell", description: "work", startedAtMs: 0 }] }
         : { waitingOnBackgroundWork: true, replyWaits: [{ sessionId: "other", name: "Other" }] }),
     })
+    // A running finite command holds settlement past an open question. Its
+    // completion notification cannot commit until the question is answered,
+    // so once it ends the question is what remains.
+    const answered = deferred<void>()
+    const command = kind === "shell" ? trackCommand(fixture, "root", "shell", false, answered.promise) : undefined
     if (kind === "shell") fixture.questions.set("root", { kind: "question", toolUseId: "ask", questions: [], timestamp: 0 })
     const reached = deferred<void>()
     let reads = 0
@@ -371,9 +396,22 @@ describe("headless Chat JSONL transport", () => {
     await Promise.resolve()
     expect(ended).toBe(false)
     expect(reads).toBe(before)
+    await command?.finish({ status: "completed", content: "" })
+    if (kind === "shell") expect(fixture.registries.get("root")?.pendingDeliveryCount()).toBe(1)
     fixture.statuses.set("root", root.status)
     fixture.changed()
     expect(await pending).toEqual({ sessionId: "root", outcome: kind === "shell" ? "input_required" : "complete" })
+    answered.resolve()
+  })
+
+  it("completes a turn that leaves a service running, as the agent loop does", async () => {
+    const fixture = channelFixture()
+    const root = detail("root")
+    fixture.statuses.set("root", { ...root.status, activeBackgroundCommands: [{ id: "server", toolUseId: "server", description: "server", startedAtMs: 0 }] })
+    const service = trackCommand(fixture, "root", "server", true)
+    try {
+      expect(await runHeadlessChatChannel(fixture.runtime, { input: [], write: fixture.write })).toEqual({ sessionId: "root", outcome: "complete" })
+    } finally { await service.finish({ status: "cancelled", content: "" }) }
   })
 
   it.each([

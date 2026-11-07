@@ -161,9 +161,12 @@ export function createBashDefinition(options?: {
   /** A read-only persona admits recognized writes only in its scratchpad
    * or to device sinks, and refuses `mutates: true`. */
   readOnly?: boolean;
-  /** False when the person turned the shell write guard off: a writing
-   *  agent's command is refused for no write target. True by default. */
+  /** Whether the description states the write roots of the shell write
+   *  guard. True by default. */
   writeGuard?: boolean;
+  /** Reads the guard when a command is checked: false means that a writing
+   *  agent's command is refused for no write target. `writeGuard` by default. */
+  enforcedWriteGuard?: () => Promise<boolean>;
   /** False in a headless runtime: the schema offers no `mutates` field, so
    *  dispatch refuses one and every command runs in place. True by default. */
   mutatingDeclaration?: boolean;
@@ -185,6 +188,7 @@ export function createBashDefinition(options?: {
   const requireManagedExecution = options?.requireManagedExecution ?? false;
   const readOnly = options?.readOnly === true;
   const writeGuard = options?.writeGuard ?? true;
+  const enforcedWriteGuard = options?.enforcedWriteGuard ?? (async () => writeGuard);
   const mutatingDeclaration = options?.mutatingDeclaration ?? true;
 
   const toolEnvironment = createToolEnvironmentFactory({
@@ -207,7 +211,7 @@ export function createBashDefinition(options?: {
     if (detachment !== "none") {
       return {
         content: backgroundCommands
-          ? "Shell-level backgrounding was not executed.\nSubmit only the server or service command with background=true. After it starts as a managed process, use the process tool for lifecycle operations."
+          ? `Shell-level backgrounding was not executed.\nSubmit only the server or service command with background=true.${persistentProcesses ? " Add persist_after_exit=true when it must keep running after the runtime exits; otherwise the runtime's exit ends it." : ""} After it starts as a managed process, use the process tool for lifecycle operations.`
           : "Shell-level backgrounding was not executed.\nRun the server as a foreground command; it moves to managed work at the runtime cap or on Detach.",
         outcome: "error",
       };
@@ -339,7 +343,7 @@ export function createBashDefinition(options?: {
     },
     async executionPolicy(input, context) {
       const shell = bashShellCommand(input, context.executionCwd);
-      return shell ? (await interceptBashCommand(shell.command, shellPolicyOptions(context, shell.cwd, platform, readOnly, writeGuard)))?.message : undefined;
+      return shell ? (await interceptBashCommand(shell.command, shellPolicyOptions(context, shell.cwd, platform, readOnly, await enforcedWriteGuard())))?.message : undefined;
     },
   });
 }

@@ -56,10 +56,14 @@ export interface KernelToolDeps {
   readonly foregroundBashHoldSeconds?: number;
   /** Effective host permission for unmanaged processes, read once per request. */
   readonly persistentProcesses?: boolean;
-  /** Whether a writing agent's shell refuses recognized writes outside the
-   *  project (PI-AGENT-068). A tree-hosted request reads its tree's capture,
-   *  so every agent of the tree advertises the same shell bytes. */
+  /** Whether the shell's description states the write roots of the guard
+   *  (PI-AGENT-068). A tree-hosted request reads its tree's capture, so every
+   *  agent of the tree advertises the same shell bytes (ARCH-CONTEXT-018). */
   readonly shellWriteGuard: boolean;
+  /** Reads the person's current `shell_write_guard` when the shell checks a
+   *  command, so that a writing agent's refusals follow Settings whatever its
+   *  description captured. Without it the shell enforces `shellWriteGuard`. */
+  readonly enforcedShellWriteGuard?: () => Promise<boolean>;
   /** Whether the shell schema offers `persist_after_exit`, from the persistent-process policy that the tree
    *  captured, so every agent of the tree advertises the same shell bytes. `persistentProcesses` is the live
    *  policy that execution enforces. */

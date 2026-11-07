@@ -2240,6 +2240,21 @@ Require confirmation before a workflow starts.
 require_workflow_confirmation = false
 ```
 
+## `shell_write_guard`
+
+### `shell_write_guard`
+
+- Type: `boolean`
+- Default: `true`
+- Application: `next-request`. Applies when the next provider request captures configuration.
+- Application: `use-time-revalidate`. Revalidates from disk when the protected operation starts.
+
+Refuse shell writes outside the project for writing agents.
+
+```toml
+shell_write_guard = true
+```
+
 ## `show_thinking`
 
 ### `show_thinking`

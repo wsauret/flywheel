@@ -33,7 +33,7 @@ const bash = {
         // tree check, its captured persistent-process policy, and its write
         // guard (`SharedTreeCapture`); `headless` is fixed for the whole runtime.
         // This agent's own selection and persona decide only which advertised
-        // inputs execution refuses.
+        // inputs execution refuses, and execution enforces the current write guard.
         const advertisesBackground = kernel.moduleSnapshot.contributions.some((entry) => entry.domain === "shellOperations" && entry.value.background)
         return {
           // The modules whose advertised part of this tool, its background input, this agent may not use.
@@ -48,6 +48,7 @@ const bash = {
             fileEditTool: kernel.fileEditContract ?? "edit",
             readOnly: kernel.readOnly === true,
             writeGuard: kernel.shellWriteGuard,
+            ...(kernel.enforcedShellWriteGuard ? { enforcedWriteGuard: kernel.enforcedShellWriteGuard } : {}),
             mutatingDeclaration: kernel.headless !== true,
             advertised: { background: advertisesBackground, persistence: kernel.persistentProcessesAdvertised, has: kernel.treeCapabilities },
           }),

@@ -202,7 +202,8 @@ export type ExternalLoginProblem =
 /** A login that another program owns: the program runs the OAuth flow,
  *  stores the token, and refreshes it. Flywheel finds the program's accounts
  *  and runs the program's own login and logout commands. It never reads,
- *  stores, or sends a token of such a login.
+ *  stores, or sends a token of such a login, except a `tokenLogin` that the
+ *  person gives to a headless run.
  *  The program's own login outside Flywheel is never one. */
 interface AccessProviderExternalLogin {
   /** The program as a person reads it: the product name of the vendor CLI that owns the login. Each client names it
@@ -241,11 +242,37 @@ interface AccessProviderExternalLogin {
    *  so removing the directory alone would leave a token that no surface can show or end. Rejects after it tried
    *  every login when one of them did not end. */
   readonly logoutProfile: (authDir: string, ports: { readonly launcher: LauncherScope }) => Promise<void>;
+  /** A login that the person made with the program itself as one long-lived token, for a headless run on a machine
+   *  that has no login of the program. A headless auth snapshot carries the token, and the run gives it only to the
+   *  program. Absent, a snapshot carries nothing for the provider. */
+  readonly tokenLogin?: ExternalTokenLogin;
+}
+
+/** How a provider takes a token login (`AccessProviderExternalLogin.tokenLogin`). */
+export interface ExternalTokenLogin {
+  /** The host environment variable from which `flywheel headless snapshot-auth` reads the token. */
+  readonly hostVariable: string;
+  /** The account as a person reads it. The program states no account for a token. */
+  readonly identity: string;
+  /** Makes a new private directory in which the program keeps its state for the token whose fingerprint is
+   *  `fingerprint`. The directory holds no token, and the run removes it when it ends. */
+  readonly configDir: (fingerprint: string) => string;
+}
+
+interface AccessProviderOAuthStrategy {
+  readonly kind: "oauth";
+  readonly credentialId: string;
+  readonly statusRank: number;
+  /** Rotates `credential` now, whatever its remaining lifetime, and returns the new credential without persisting
+   *  it: the caller persists it through the profile's compare-and-set. A provider declares this only when its
+   *  refresh token serves this rotation and nothing else, so an access-only copy of the credential, such as a
+   *  headless auth snapshot, carries no refresh token for it. Rejects when the provider refuses the rotation. */
+  readonly refresh?: (credential: RuntimeOAuthCredential, signal?: AbortSignal) => Promise<RuntimeOAuthCredential>;
 }
 
 type AccessProviderAuthStrategy =
   | { readonly kind: "api_key"; readonly statusRank: number; readonly keyPrefix?: ApiKeyPrefix }
-  | ({ readonly kind: "oauth"; readonly credentialId: string; readonly statusRank: number } & AccessProviderOAuthLogin)
+  | (AccessProviderOAuthStrategy & AccessProviderOAuthLogin)
   | ({ readonly kind: "external"; readonly statusRank: number } & AccessProviderExternalLogin);
 
 /** A definition whose login another program owns. */

@@ -277,6 +277,21 @@ describe("loadConfig: persistent process permission", () => {
   });
 });
 
+describe("loadConfig: shell write guard", () => {
+  function load(source: string): ReturnType<typeof loadConfig> {
+    const configPath = path.join(temporaryDirectory("flywheel-config-shell-write-guard-"), "flywheel.toml");
+    fs.writeFileSync(configPath, source);
+    return loadConfig(configPath, {});
+  }
+
+  it("keeps the guard on for a config written before the key existed, and reads the person's off", () => {
+    const earlier = load("allow_persistent_processes = true\nshow_thinking = true\n");
+    expect(earlier.config.shell_write_guard).toBe(true);
+    expect(earlier.warnings).toEqual([]);
+    expect(load("shell_write_guard = false\n").config.shell_write_guard).toBe(false);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Optional harness capability decoding (ARCH-STRUCTURE-024, PI-CAP-002)
 // ---------------------------------------------------------------------------

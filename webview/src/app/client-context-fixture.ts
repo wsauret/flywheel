@@ -58,7 +58,7 @@ export function fakePanelSettings(fields: Partial<PanelSettings> = {}): PanelSet
   return {
     capabilities, moduleIds: [], capabilitiesOn: 0, capabilitiesTotal: 0, capabilityPreset: "custom",
     workflowMode: capabilities.workflowsMode, persistentProcesses: capabilities.persistentProcesses, moduleSettings: [],
-    compactionThreshold: 50_000, idleCompaction: true, autoDeleteSessionDays: 0, webSearchProvider: "chatgpt",
+    compactionThreshold: 50_000, idleCompaction: true, shellWriteGuard: true, autoDeleteSessionDays: 0, webSearchProvider: "chatgpt",
     showThinking: true, showBuild: false, writeSyntaxTheme: "nord", diffColors: "theme",
     profileId: "default", providerSettings: [], gitAiAttribution: false, allowTrainingRoutes: false, problems: [],
     profile: { displayName: "Default", count: 1 }, configProblems: [],

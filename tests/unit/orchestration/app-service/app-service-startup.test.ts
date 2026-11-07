@@ -7,7 +7,7 @@ import { chatEntry, fakeManager, fakeProjections, fakeSessionStore, runtimeSuper
 const configView = {
   revision: 0,
   values: {
-    moduleSelection: [], allowPersistentProcesses: false, foregroundBashHoldSeconds: 240, showThinking: true, idleCompaction: true, autoDeleteSessionDays: 0,
+    moduleSelection: [], allowPersistentProcesses: false, foregroundBashHoldSeconds: 240, showThinking: true, idleCompaction: true, shellWriteGuard: true, autoDeleteSessionDays: 0,
     requireWorkflowConfirmation: true, writeSyntaxTheme: "nord" as const, diffColors: "theme" as const, compatibleRendering: "auto" as const, webSearchProvider: "exa" as const,
     fontTipDismissed: false, tabsHintDismissed: false, proactiveCompactionThreshold: 270_000, showBuild: false,
     moduleSections: { subscription_usage: { alert_thresholds: [75, 90, 95, 100] } }, autoInstall: true, roles: {}, profiles: {}, keybindings: {},

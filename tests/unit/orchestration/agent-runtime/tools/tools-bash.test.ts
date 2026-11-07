@@ -440,6 +440,43 @@ describe("bash tool: command policy (via tool)", () => {
     expect(scratch.outcome).toBe("ok");
   });
 
+  it("with the write guard off, refuses a writing agent no target, and keeps a read-only agent's scratchpad rule", async () => {
+    const outside = "cat > /elsewhere/probe.ts <<'EOF'\nconsole.log(1)\nEOF";
+    const unplaceable = "rm -rf \"$(cat dirs.txt)\"";
+    const run = async (options: { readonly readOnly?: boolean; readonly writeGuard?: boolean }, command: string) => {
+      const spawn = ownedSpawnProbe();
+      const ctx = makeContext({ executionCwd: "/proj", projectRoot: "/proj", scratchDir: "/proj/.flywheel/scratch", availableTools: new Set(["read", "bash"]), spawnOwned: spawn.spawnOwned });
+      const result = await dispatch(createBashDefinition({ operations: makeMockOps(), ...options }), { command }, ctx);
+      return { outcome: result.outcome, launched: spawn.launches.length > 0 };
+    };
+
+    for (const command of [outside, unplaceable]) {
+      expect({ command, ...await run({}, command) }).toEqual({ command, outcome: "error", launched: false });
+      expect({ command, ...await run({ writeGuard: false }, command) }).toEqual({ command, outcome: "ok", launched: true });
+      expect({ command, ...await run({ readOnly: true, writeGuard: false }, command) }).toEqual({ command, outcome: "error", launched: false });
+    }
+    expect(await run({ readOnly: true, writeGuard: false }, "cat > .flywheel/scratch/probe.ts <<'EOF'\nx\nEOF")).toEqual({ outcome: "ok", launched: true });
+  });
+
+  it("offers a headless runtime no mutating declaration, so a command that edits project files runs in place", async () => {
+    const edit = "perl -0pi -e 's/a/b/' src/math.ts";
+    const run = async (mutatingDeclaration: boolean, input: RuntimeToolInput) => {
+      const spawn = ownedSpawnProbe();
+      const ctx = makeContext({ executionCwd: "/proj", projectRoot: "/proj", scratchDir: "/proj/.flywheel/scratch", spawnOwned: spawn.spawnOwned });
+      const result = await dispatch(createBashDefinition({ operations: makeMockOps(), mutatingDeclaration }), input, ctx);
+      return { outcome: result.outcome, content: String(result.content), cwds: spawn.launches.map((launch) => launch.cwd) };
+    };
+    const declared = await run(false, { command: edit, mutates: true });
+    expect(declared.outcome).toBe("error");
+    expect(declared.content).toContain("unexpected parameter `mutates`");
+    expect(declared.cwds).toEqual([]);
+    const inPlace = await run(false, { command: edit });
+    expect(inPlace.outcome).toBe("ok");
+    expect(inPlace.cwds).toEqual(["/proj"]);
+    // An interactive runtime takes the same declaration to its private-copy route.
+    expect((await run(true, { command: edit, mutates: true })).content).toContain("mutation Git wrapper");
+  });
+
   it("does not intercept bun -e without file I/O", async () => {
     const result = await runCommand(
       "bun -e 'console.log(1 + 1)'",

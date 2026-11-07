@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { HEADLESS_USAGE, hasHeadlessJsonlFlag, headlessAuthProfile, headlessAuthSnapshot, headlessDeadlineSeconds, headlessDisabledTools, headlessEffort, headlessModel, headlessSystemPrompt, headlessTask, needsHeadlessUsage } from "../../../src/cli/headless-args.js"
+import { HEADLESS_USAGE, hasHeadlessAcpFlag, hasHeadlessJsonlFlag, headlessAuthProfile, headlessAuthSnapshot, headlessDeadlineSeconds, headlessDisabledTools, headlessEffort, headlessModel, headlessSystemPrompt, headlessTask, needsHeadlessUsage } from "../../../src/cli/headless-args.js"
 
 describe("headless CLI args", () => {
   it("accepts bare headless chat", () => {
@@ -14,6 +14,17 @@ describe("headless CLI args", () => {
     expect(HEADLESS_USAGE).toContain("--headless")
     expect(HEADLESS_USAGE).not.toContain("--description")
     expect(HEADLESS_USAGE).not.toContain("--workflow")
+  })
+
+  it("reads ACP chat with its auth and tool selection", () => {
+    const argv = ["--headless", "--acp", "--auth-profile", "benchmark", "--auth-snapshot", "/private/auth.json", "--disable-tool", "web"]
+    expect(hasHeadlessAcpFlag(argv)).toBe(true)
+    expect(needsHeadlessUsage(argv)).toBe(false)
+    expect(headlessAuthProfile(argv)).toBe("benchmark")
+    expect(headlessAuthSnapshot(argv)).toBe("/private/auth.json")
+    expect(headlessDisabledTools(argv)).toEqual(["web"])
+    expect(hasHeadlessAcpFlag(["--headless"])).toBe(false)
+    expect(HEADLESS_USAGE).toContain("--acp")
   })
 
   it("accepts a direct task", () => {
