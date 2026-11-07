@@ -99,6 +99,28 @@ The removed adapter also recorded Flywheel's `--task` termination object, whose 
 
 A per-trial tool list (`headless.disabled_tools`) is now the arm config's `disabled_modules`, and the chat model (`headless.model`, `--model`) is now the arm config's pinned chat role.
 
+## Task subset
+
+The `tb-mini-*` profiles run 14 tasks of Terminal-Bench 2.1 that track the full benchmark score. They rebuild the published terminal-bench-mini subset (huggingface.co/datasets/LocalLLaMA/terminal-bench-mini) with the same method: from the per-agent, per-task pass rates of the published leaderboard trials, drop tasks that every agent passes or fails, cut the rest into seven difficulty bands by field pass rate, and take tasks from the quieter half of each band by run-to-run noise.
+
+The rebuild changes three things:
+
+- It excludes 10 tasks. Eight are cyber tasks, including borderline ones: crack-7z-hash, vulnerable-secret, break-filter-js-from-html, model-extraction-relu-logits, feal-differential-cryptanalysis, feal-linear-cryptanalysis, password-recovery, and git-leak-recovery. Two cannot start: qemu-alpine-ssh and qemu-startup run Debian bullseye images, where Harbor's ACP bootstrap `apt-get install` fails with 404s because bullseye-security moved to archive.debian.org.
+- It bands a task that changed in 2.1 by its 2.1 pass rate, and drops tasks with zero spread on 2.1.
+- Inside the quieter half of a band, the shortest and cheapest task wins: its 2.1 median agent time and median cost, each over the pool median.
+
+The subset keeps the 11 usable tasks of the published subset and replaces qemu-alpine-ssh with sparql-university, crack-7z-hash with cobol-modernization, and vulnerable-secret with constraints-scheduling. Selection used Terminal-Bench 2.0 data (37 reference agents, 27,405 scored trials), and its check used Terminal-Bench 2.1 (22 leaderboard rows, 18 distinct harness and model pairs). The mean absolute error between subset score and full score is 3.8 points on the 22 rows of 2.1 (worst 8.8) and 2.9 points on the 18 pairs, against 6.3 and 4.4 for the published subset. That error beats 95% of random 14-task subsets of the eligible pool, but the subset orders close agents no better than a random subset does. One pass takes about 68 minutes of summed median agent time.
+
+Two tasks are security-themed but defensive: filter-js-from-html asks for an XSS filter, and db-wal-recovery recovers an XOR-obfuscated SQLite log. If a provider refuses one of them, replace it with its fallback from the quieter half of its own band, chosen by the same cost rule:
+
+| Task | Fallback | Next fallback | 2.1 error after the swap (22 rows / 18 pairs) |
+|---|---|---|---|
+| filter-js-from-html (band 0) | raman-fitting | sam-cell-seg | 3.4 / 3.3 points |
+| db-wal-recovery (band 1) | gcode-to-text | gpt2-codegolf | 4.1 / 3.3 points |
+| both | raman-fitting and gcode-to-text | | 3.0 / 2.8 points |
+
+A swap changes the subset, so results before and after it are not comparable without a rerun of the same tasks.
+
 ## Operating interpretation
 
 Campaign execution follows one sequence. First run `--dry-run` for each named arm and inspect its generated config, manifest, grade, source identity, interaction-profile ID, profile digest, task set, denominator, and warnings. Next run one paid `k=1` smoke against the candidate from the same source identity to verify Docker or Hub, Harbor, auth snapshot transport, task-workspace mapping, headless settlement, verifier execution, and post-settlement evidence export. Only after the smoke reconciles may the paired control and candidate campaigns run with identical source archive bytes, model, tasks, attempts, concurrency, timeout policy, and resource policy. Finalization binds each run manifest to the single source archive digest proven by all trial summaries and to the current valid analyzer result over the finalized trial set. Comparison accepts only finalized manifests carrying both records; command-line assertions have no authority. The profile bytes, proven by distinct profile digests, are the sole intended arm difference; neither arm selects an interaction profile, because the serving-model resolver owns that choice.
