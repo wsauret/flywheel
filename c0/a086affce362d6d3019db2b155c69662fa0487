@@ -1,0 +1,16 @@
+.experiment/charter.md
+  h_4b47e9e4a8b456 123
+.experiment/measure.sh
+  h_4b47e9e4a8b456 15-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c0a086affce362d6d3019db2b155c69662fa0487",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
