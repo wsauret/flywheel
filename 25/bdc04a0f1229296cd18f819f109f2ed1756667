@@ -1,0 +1,22 @@
+bench/terminal_bench/METHODOLOGY.md
+  h_4b47e9e4a8b456 59
+bench/terminal_bench/trial-store-analysis.ts
+  h_4b47e9e4a8b456 10-13,45,69-73,146-147
+tests/helpers/terminal-bench-trial-evidence.ts
+  h_4b47e9e4a8b456 1-152
+tests/integration/bench/trial-store-analysis-standalone.test.ts
+  h_4b47e9e4a8b456 1-22
+tests/unit/bench/terminal-bench-analyzer.test.ts
+  h_4b47e9e4a8b456 4-5,10,14-16,21-35,47,63-68,92,117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "25bdc04a0f1229296cd18f819f109f2ed1756667",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
