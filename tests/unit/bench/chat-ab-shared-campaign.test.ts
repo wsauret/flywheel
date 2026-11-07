@@ -5,7 +5,7 @@ import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { chatLedger, type ChatCampaign } from "../../../bench/chat-ab/chat-store.js";
 import { campaignHeadlessOutcome } from "../../../bench/chat-ab/campaign-execution.js";
 import { campaignIdentity, campaignSchedule } from "../../../bench/chat-ab/campaign-store.js";
-import { captureCampaignResult, runCampaign } from "../../../bench/chat-ab/campaign-runner.js";
+import { captureCampaignResult, runBounded, runCampaign } from "../../../bench/chat-ab/campaign-runner.js";
 import type { HeadlessBenchmarkExecution } from "../../../src/orchestration/modules/development/benchmark/headless-execution-contract.js";
 import { chatFamily, chatGrade } from "../../../bench/chat-ab/chat-family.js";
 import { runChatCampaign } from "../../../bench/chat-ab/chat-campaign.js";
@@ -383,4 +383,68 @@ describe("Chat family shared campaign", () => {
     expect(report.markdown).toContain("role-before-model / medium");
     expect(report.markdown).toContain("role-after-model / medium");
   });
+});
+
+test.each([1, 2])("runs at most %i cells at once in order, and a failure stops scheduling but lets running cells settle", async (concurrency) => {
+  const gates = new Map<number, PromiseWithResolvers<void>>();
+  const started: number[] = [];
+  const settled: number[] = [];
+  let running = 0;
+  let peak = 0;
+  const pool = runBounded([0, 1, 2, 3, 4, 5], concurrency, async (cell) => {
+    started.push(cell);
+    peak = Math.max(peak, ++running);
+    const gate = Promise.withResolvers<void>();
+    gates.set(cell, gate);
+    try {
+      await gate.promise;
+    } finally {
+      running--;
+      settled.push(cell);
+    }
+  });
+  let rejected = false;
+  pool.catch(() => { rejected = true; });
+  const turn = () => new Promise((resolve) => setImmediate(resolve));
+  const first = Array.from({ length: concurrency }, (_, index) => index);
+  await turn();
+  expect(started).toEqual(first);
+  gates.get(0)!.resolve();
+  await turn();
+  expect(started).toEqual([...first, concurrency]);
+  gates.get(concurrency)!.reject(new Error("cell failed"));
+  await turn();
+  expect(started).toEqual([...first, concurrency]);
+  for (const cell of started.filter((candidate) => !settled.includes(candidate))) {
+    expect(rejected).toBe(false);
+    gates.get(cell)!.resolve();
+    await turn();
+  }
+  await expect(pool).rejects.toThrow("cell failed");
+  expect(peak).toBe(concurrency);
+  expect(settled.toSorted()).toEqual(started);
+});
+
+test("a cell that halts on its failed outcome stops scheduling while its cleanup still runs", async () => {
+  const started: number[] = [];
+  const [failing, running, cleanup] = [Promise.withResolvers<void>(), Promise.withResolvers<void>(), Promise.withResolvers<void>()];
+  const pool = runBounded([0, 1, 2, 3], 2, async (cell, halt) => {
+    started.push(cell);
+    if (cell !== 0) return await running.promise;
+    await failing.promise;
+    halt();
+    await cleanup.promise;
+    throw new Error("cell failed");
+  });
+  const turn = () => new Promise((resolve) => setImmediate(resolve));
+  await turn();
+  expect(started).toEqual([0, 1]);
+  failing.resolve();
+  await turn();
+  running.resolve();
+  await turn();
+  expect(started).toEqual([0, 1]);
+  cleanup.resolve();
+  await expect(pool).rejects.toThrow("cell failed");
+  expect(started).toEqual([0, 1]);
 });

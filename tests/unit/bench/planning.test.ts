@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { mkdir, readFile, readdir, symlink, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import type { CampaignDesign } from "../../../bench/chat-ab/campaign-runner.js";
 import { familyCommandOptions } from "../../../bench/chat-ab/family-command.js";
 import { planningFamily } from "../../../bench/chat-ab/planning-family.js";
@@ -223,5 +223,10 @@ test("the family command line requires a dedicated results directory for campaig
   expect(familyCommandOptions(["plan", "design.json"], "planning.ts").action).toBe("plan");
   expect(() => familyCommandOptions(["run", "design.json", "--results", "out", "--fast"], "planning.ts")).toThrow("Unknown option: --fast");
   expect(() => familyCommandOptions(["run", "design.json", "--results", "out", "--reserved-evaluation"], "planning.ts")).toThrow("Unknown option");
-  expect(familyCommandOptions(["run", "design.json", "--results", "out", "--reserved-evaluation"], "coding-ab.ts", true).reservedEvaluation).toBe(true);
+  expect(familyCommandOptions(["run", "design.json", "--results", "out", "--reserved-evaluation"], "coding-ab.ts", { reservedEvaluation: true }).reservedEvaluation).toBe(true);
+  expect(() => familyCommandOptions(["judge", "results", "--baseline", "other"], "planning.ts")).toThrow("Unknown option: --baseline");
+  expect(familyCommandOptions(["judge", "results", "--baseline", "other"], "coding-ab.ts", { baseline: true }).baseline).toBe(resolve("other"));
+  expect(familyCommandOptions(["resume", "design.json", "--results", "out"], "coding-ab.ts").concurrency).toBeUndefined();
+  expect(familyCommandOptions(["resume", "design.json", "--results", "out", "--concurrency", "4"], "coding-ab.ts").concurrency).toBe(4);
+  for (const value of ["0", "1.5", "two"]) expect(() => familyCommandOptions(["run", "design.json", "--results", "out", "--concurrency", value], "coding-ab.ts")).toThrow("--concurrency must be a positive integer");
 });

@@ -4,7 +4,7 @@ import { Schema } from "effect";
 import { structuredIdentity } from "../../src/orchestration/modules/development/benchmark/content-identity.js";
 import { BenchmarkAccountingSchema } from "../../src/orchestration/modules/development/benchmark/evidence.js";
 import { JudgeCallFailure, unavailableJudgeAccounting, type JudgeModel } from "../../src/orchestration/modules/development/benchmark/judge.js";
-import { createJsonLinesLedger } from "../../src/orchestration/modules/development/benchmark/json-lines.js";
+import { createJsonLinesLedger, writeArtifactFile } from "../../src/orchestration/modules/development/benchmark/json-lines.js";
 import { judgeBlocks, type BlockJudgement, type JudgeJob } from "./block-judge.js";
 import type { CampaignExecutionOutcome } from "./campaign-store.js";
 import type { Redaction } from "./judge-inputs.js";
@@ -47,6 +47,8 @@ export interface CampaignJudgeOptions {
   readonly b: string;
   readonly authProfile: string;
   readonly dryRun?: boolean;
+  /** The completed campaign directory whose treatment b is paired with treatment a of `directory`. */
+  readonly baseline?: string;
 }
 
 /** The injectable admission seam uses the same tool-free shared judge as production. */
@@ -62,11 +64,14 @@ export async function judgeCampaignPairs<Arm extends string>(options: CampaignJu
   readonly arms: readonly [Arm, Arm];
   readonly accounting: readonly CampaignExecutionOutcome["accounting"][];
   readonly roleComparisons?: readonly Awaited<ReturnType<typeof compareCampaignRoles>>[];
+  /** The campaign identity of `options.baseline`. It keys a ledger apart from a same-campaign judge of the same labels. */
+  readonly baselineIdentity?: string;
 }, dependencies: CampaignJudgeDependencies = {}) {
   const { directory, a, b, authProfile } = options;
   const { jobs, skipped, redaction, arms } = input;
   const { StartSchema, CallSchema, SettlementSchema, ResultSchema, EventSchema } = judgeSchemas(arms);
-  const ledger = createJsonLinesLedger(async () => join(directory, `judge-${structuredIdentity([a, b])}.jsonl`), EventSchema, "reject");
+  const key = structuredIdentity(input.baselineIdentity === undefined ? [a, b] : { a, b, baseline: input.baselineIdentity });
+  const ledger = createJsonLinesLedger(async () => join(directory, `judge-${key}.jsonl`), EventSchema, "reject");
   const rows = await ledger.load();
   const starts = new Map<string, typeof StartSchema.Type>();
   const calls = new Map<string, typeof CallSchema.Type>();
@@ -116,8 +121,18 @@ export async function judgeCampaignPairs<Arm extends string>(options: CampaignJu
       const start = starts.get(id)!;
       if (row.result.winner !== null && start.identity === jobs.get(start.pair)!.identity) verdicts.set(start.pair, row.result);
     }
+    const costs = [...settlements.values()].flatMap(({ accounting: { estimatedUsd } }) => estimatedUsd.kind === "observed" ? [estimatedUsd.value] : []);
+    const count = (winner: Arm | "tie") => [...verdicts.values()].filter((verdict) => verdict.winner === winner).length;
     return {
       pairs: jobs.size, skipped, pending: jobs.size - verdicts.size, judged: verdicts.size,
+      // Slot winners mapped to treatment ids, which stay apart when a baseline treatment shares a's label.
+      summary: {
+        a: { campaign: directory, treatment: a, wins: count(arms[0]) },
+        b: { campaign: options.baseline ?? directory, treatment: b, wins: count(arms[1]) },
+        ties: count("tie"), unjudged: jobs.size - verdicts.size,
+        // Judge spend over every recorded call, retries included; null when any call's spend is unavailable.
+        usd: costs.length === calls.size ? costs.reduce((total, cost) => total + cost, 0) : null,
+      },
       roleComparisons: input.roleComparisons ?? [],
       roleChanges: renderCampaignRoleChanges(input.roleComparisons ?? []),
       wins: { [a]: [...verdicts.values()].filter(({ winner }) => winner === arms[0]).length, [b]: [...verdicts.values()].filter(({ winner }) => winner === arms[1]).length },
@@ -178,5 +193,6 @@ export async function judgeCampaignPairs<Arm extends string>(options: CampaignJu
     await ledger.append(row); results.set(start.id, row);
   }
   const { verdicts: _, ...report } = summary();
+  await writeArtifactFile(join(directory, `summary-${key}.json`), `${JSON.stringify(report.summary, null, 2)}\n`);
   return { ...report, authorityVerified: true };
 }
