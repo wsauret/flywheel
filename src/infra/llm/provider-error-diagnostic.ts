@@ -1,3 +1,4 @@
+import { Schema } from "effect";
 import { asRecord, isRecord } from "../record.js";
 import { redactSecrets } from "../redact-secrets.js";
 
@@ -29,6 +30,29 @@ export interface ProviderErrorDiagnostic {
   cause?: ProviderErrorDiagnostic;
   errors?: ProviderErrorDiagnostic[];
 }
+
+/** The strict audit decode of `ProviderErrorDiagnostic`. `Schema.Codec<T>` accepts a schema that omits an
+ * optional key, and the store gate then refuses a fact that carries it, so `satisfies` requires one field
+ * for each key of the interface. */
+export const ProviderErrorDiagnosticSchema: Schema.Codec<ProviderErrorDiagnostic> = Schema.suspend((): Schema.Codec<ProviderErrorDiagnostic> =>
+  Schema.Struct({
+    name: Schema.optionalKey(Schema.String),
+    message: Schema.String,
+    status: Schema.optionalKey(Schema.Number),
+    code: Schema.optionalKey(Schema.String),
+    type: Schema.optionalKey(Schema.String),
+    kind: Schema.optionalKey(Schema.String),
+    errno: Schema.optionalKey(Schema.String),
+    syscall: Schema.optionalKey(Schema.String),
+    address: Schema.optionalKey(Schema.String),
+    port: Schema.optionalKey(Schema.Number),
+    retryDelayMs: Schema.optionalKey(Schema.Number),
+    headers: Schema.optionalKey(Schema.Record(Schema.String, Schema.String)),
+    upstream: Schema.optionalKey(Schema.String),
+    cause: Schema.optionalKey(ProviderErrorDiagnosticSchema),
+    errors: Schema.optionalKey(Schema.mutable(Schema.Array(ProviderErrorDiagnosticSchema))),
+  } satisfies { [Key in keyof ProviderErrorDiagnostic]-?: Schema.Top })
+);
 
 const HEADER_NAMES = [
   "x-request-id",

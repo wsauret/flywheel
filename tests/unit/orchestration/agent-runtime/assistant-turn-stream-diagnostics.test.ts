@@ -5,10 +5,9 @@ import { FUNCTION_TOOL_PRESENTATION, type LLMClient, type ProviderStreamEvent, t
 import { LlmStreamError } from "../../../../src/orchestration/agent-runtime/llm/errors";
 import { normalizeProviderAttemptFailure } from "../../../../src/orchestration/agent-runtime/llm/provider-failure";
 import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../src/orchestration/agent-runtime/model-interaction-profile.js";
-import type {
-  ProviderRequestAuditHandle,
-  ProviderRequestAuditWriter,
-} from "../../../../src/orchestration/agent-runtime/llm/provider-request-audit";
+import type { ProviderRequestAuditWriter } from "../../../../src/orchestration/agent-runtime/llm/provider-request-audit";
+import type { ProviderRequestAuditFact } from "../../../../src/orchestration/session/provider-request-audit-facts";
+import { recordProviderResponse } from "../../../../src/orchestration/session/provider-request-audit-recorder";
 import { stableSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { ownHistoryTarget } from "./_model-client.js";
 
@@ -30,14 +29,14 @@ function fakeClient(stream: (opts: StreamOptions) => AsyncGenerator<ProviderStre
 
 describe("streamAssistantTurn provider failure diagnostics", () => {
   test("records redacted provider diagnostics for stream failures", async () => {
-    const responses: Array<{
-      handle: ProviderRequestAuditHandle;
-      input: Parameters<ProviderRequestAuditWriter["recordResponse"]>[1];
-    }> = [];
+    const responses: ProviderRequestAuditFact[] = [];
     const requestAudit: ProviderRequestAuditWriter = {
       recordRequest(input) { return { requestId: "request-failed", turn: input.turn }; },
+      // The real recorder runs the strict store gate, so every diagnostic key the producer emits must decode.
       recordResponse(handle, input) {
-        responses.push({ handle, input });
+        return recordProviderResponse({ observe: (fact) => responses.push(fact) }, {
+          ...input, requestId: handle.requestId, identity: { providerSessionKey: "session-key" }, turn: handle.turn, durationMs: 0,
+        });
       },
       recordUsage() {},
       recordStreamStarted() {},
@@ -45,7 +44,11 @@ describe("streamAssistantTurn provider failure diagnostics", () => {
       recordStreamCompleted() {},
     };
     const secret = ["sk", "proj", "aB3".repeat(12)].join("-");
-    const cause = Object.assign(new Error(`socket closed ${secret}`), { code: "UND_ERR_SOCKET" });
+    // OpenRouter mirrors the upstream provider's body in error.metadata.raw.
+    const cause = Object.assign(new Error(`socket closed ${secret}`), {
+      code: "UND_ERR_SOCKET",
+      error: { message: "Provider returned error", code: 502, metadata: { raw: `upstream overloaded ${secret}`, provider_name: "DeepInfra" } },
+    });
     const error = Object.assign(
       new LlmStreamError(`provider failed ${secret}`, "transient", undefined, { cause }),
       { status: 503, headers: new Headers({ "x-request-id": "req_123", authorization: `Bearer ${secret}` }) },
@@ -81,7 +84,7 @@ describe("streamAssistantTurn provider failure diagnostics", () => {
 
     expect(result.outcome.kind).toBe("stream_error");
     expect(responses).toHaveLength(1);
-    expect(responses[0]?.input).toMatchObject({
+    expect(responses[0]?.payload).toMatchObject({
       outcome: "stream_error",
       error: {
         tag: "TransientDisconnect",
@@ -95,7 +98,12 @@ describe("streamAssistantTurn provider failure diagnostics", () => {
             status: 503,
             kind: "transient",
             headers: { "x-request-id": "req_123" },
-            cause: { name: "Error", message: "socket closed [redacted secret]", code: "UND_ERR_SOCKET" },
+            cause: {
+              name: "Error",
+              message: "socket closed [redacted secret]",
+              code: "UND_ERR_SOCKET",
+              upstream: "upstream overloaded [redacted secret]",
+            },
           },
         },
       },

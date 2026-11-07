@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto"
 import type { AccessProviderCandidate, AccessProviderCatalogProvenance } from "../../infra/llm/access-provider.js"
 import { Schema } from "effect"
-import type { ProviderErrorDiagnostic } from "../../infra/llm/provider-error-diagnostic.js"
+import { ProviderErrorDiagnosticSchema, type ProviderErrorDiagnostic } from "../../infra/llm/provider-error-diagnostic.js"
 import type { ProviderRequestOptions } from "../../infra/llm/provider-options.js"
 import type { ModuleTransformerApplication } from "../module-hooks.js"
 import type { ModelInteractionProfileId } from "../agent-runtime/model-interaction-profile.js"
@@ -237,24 +237,6 @@ export const ProviderStreamSummarySchema = Schema.Struct({
   generation: GenerationMeasurementSchema,
 })
 
-const ProviderErrorDiagnosticSchema: Schema.Codec<ProviderErrorDiagnostic> = Schema.suspend((): Schema.Codec<ProviderErrorDiagnostic> =>
-  Schema.Struct({
-    name: Schema.optionalKey(Schema.String),
-    message: Schema.String,
-    status: Schema.optionalKey(Schema.Number),
-    code: Schema.optionalKey(Schema.String),
-    type: Schema.optionalKey(Schema.String),
-    kind: Schema.optionalKey(Schema.String),
-    errno: Schema.optionalKey(Schema.String),
-    syscall: Schema.optionalKey(Schema.String),
-    address: Schema.optionalKey(Schema.String),
-    port: Schema.optionalKey(Schema.Number),
-    retryDelayMs: Schema.optionalKey(Schema.Number),
-    headers: Schema.optionalKey(Schema.Record(Schema.String, Schema.String)),
-    cause: Schema.optionalKey(ProviderErrorDiagnosticSchema),
-    errors: Schema.optionalKey(Schema.mutable(Schema.Array(ProviderErrorDiagnosticSchema))),
-  })
-)
 export const ProviderRequestErrorSchema = Schema.Struct({
   tag: Schema.String,
   message: Schema.String,
