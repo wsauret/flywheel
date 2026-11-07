@@ -2,12 +2,14 @@ import { expect, test } from "bun:test"
 import { readFileSync } from "node:fs"
 import { buildSystemPrompt, type ToolPromptFields } from "../../../../src/orchestration/agent-runtime/system-prompt"
 import { renderSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
+import { promptOptions } from "../../../helpers/prompt-capabilities.js";
 
 const read = (path: string) => readFileSync(path, "utf8")
 
 test("assembled prompts require the smallest complete verification", () => {
   const corePrompt = read("src/infra/agent-assets/system-prompt.md")
-  const compiled = renderSystemPrompt(buildSystemPrompt({ corePrompt, tools: [], promptKind: "chat" }))
+  const tools: ToolPromptFields[] = ["bash", "memory"].map((name) => ({ name, action: "ui_meta", description: name }))
+  const compiled = renderSystemPrompt(buildSystemPrompt(promptOptions({ corePrompt, tools, promptKind: "chat" })))
   for (const rule of [
     "Never revert changes you did not make unless explicitly asked",
     "You may edit applicable AGENTS.md files",
@@ -29,6 +31,14 @@ test("assembled prompts require the smallest complete verification", () => {
   expect(compiled).not.toContain("not only the test suite")
   expect(compiled).not.toContain("Inspect the code to verify")
   expect(compiled).not.toContain("scratch harnesses")
+  // Without a shell the evidence rule keeps its goal and names no probe; without memory the knowledge rule names none.
+  const bare = renderSystemPrompt(buildSystemPrompt(promptOptions({ corePrompt, tools: [], promptKind: "chat" })))
+  expect(bare).toContain("Do NOT make assumptions. Prove each claim with the evidence that can settle it")
+  expect(bare).toContain("Settle such a claim with the tools you have, or report it as an unverified assumption.")
+  expect(bare).not.toContain("throwaway script")
+  expect(bare).toContain("Session notes hold current progress, plans, handoffs, and temporary findings.")
+  expect(bare).not.toContain("in memory")
+  expect(bare).not.toContain("{{")
 })
 
 test("experiments settle external and runtime claims that code reading cannot", () => {
@@ -43,8 +53,7 @@ test("experiments settle external and runtime claims that code reading cannot", 
   expect(verification).toContain("A test that mocks an external boundary does not prove that boundary")
   expect(verification).not.toContain("scratch harnesses")
   const subagentTool = read("src/orchestration/modules/subagents/tool.ts")
-  expect(subagentTool).toContain("is an experiment, not a search")
-  expect(subagentTool).toContain("explorer is read-only and cannot run it")
+  expect(subagentTool).toContain("is not a lookup: it needs an experiment against the real thing, which a read-only agent cannot run")
 })
 
 test("assembled prompts accept decisive no-change outcomes", () => {
@@ -53,7 +62,7 @@ test("assembled prompts accept decisive no-change outcomes", () => {
     { name: "ask_user", action: "ask_user", description: "Ask the user" },
   ]
   const corePrompt = read("src/infra/agent-assets/system-prompt.md")
-  const compiled = renderSystemPrompt(buildSystemPrompt({ corePrompt, tools, promptKind: "chat", chatHost: { communication: true } }))
+  const compiled = renderSystemPrompt(buildSystemPrompt(promptOptions({ corePrompt, tools, promptKind: "chat", chatHost: { communication: true } })))
 
   // The core prompt's CONSTRAINTS own the rule; the delivery block does not restate it.
   expect(compiled.split("no change is needed is a successful result")).toHaveLength(2)

@@ -1,5 +1,6 @@
 import { canUseCheckpoint, renderSessionNotesAutoCompactFallback, CHECKPOINT_TOOL_NAMES } from "../../infra/agent-assets/session-notes.js";
 import type { ExecutionWhitelist } from "./tools/tool-policy.js";
+import type { CapabilityCheck } from "../../infra/capability-text.js";
 import type { ConversationCheckpoint } from "../session/conversation-checkpoint-facts.js";
 import type { AgentLoopOptions, CompactionInstallation } from "./agent-loop-types.js";
 import { createTokenEstimationCache, estimateConversationTokens } from "./compaction/token-counter.js";
@@ -42,6 +43,8 @@ export function renderCompactionOpening(input: {
   readonly brief: string | undefined;
   readonly saved: boolean;
   readonly recallAvailable: boolean;
+  /** The agent check of the request that opens the fresh context. */
+  readonly capabilities: CapabilityCheck;
 }): string {
   const recall = input.recallAvailable ? [RECALL_HINT] : [];
   const recovery = input.checkpoint && input.saved ? [...recall, "Continue the task from the checkpoint above."]
@@ -50,7 +53,7 @@ export function renderCompactionOpening(input: {
     : input.recallAvailable ? ["Use the read-only `recall` tool to recover the latest user request and the work done for it from recorded history, then continue the task."]
     : ["Ask the person what to continue."];
   return [
-    input.checkpoint ? renderConversationCheckpoint(input.checkpoint) : "No checkpoint has been saved.",
+    input.checkpoint ? renderConversationCheckpoint(input.checkpoint, input.capabilities) : "No checkpoint has been saved.",
     ...(input.brief ? [`# Brief\n\n${input.brief}`] : []),
     ["A fresh context window has started without summarizing the prior conversation.", ...recovery].join(" "),
   ].join("\n\n");
@@ -106,7 +109,7 @@ export function createAgentLoopCompactionState(input: CompactionStateInput) {
     const checkpoint = await input.checkpoint?.read();
     const brief = await input.options.standingBrief?.();
     const additions = [
-      redactMessage({ kind: "user", content: renderCompactionOpening({ checkpoint, brief, saved, recallAvailable: input.recallAvailable() }) }, false),
+      redactMessage({ kind: "user", content: renderCompactionOpening({ checkpoint, brief, saved, recallAvailable: input.recallAvailable(), capabilities: input.surface.current().capabilities }) }, false),
     ];
     const tokenPolicy = input.requestContext.tokenPolicy();
     let measured: number | undefined;
@@ -196,9 +199,7 @@ export function createAgentLoopCompactionState(input: CompactionStateInput) {
       if (!planned || planned.announced) return;
       planned.announced = true;
       await input.pushUser(input.checkpoint
-        ? renderSessionNotesAutoCompactFallback({
-            recallAvailable: input.recallAvailable(),
-          })
+        ? renderSessionNotesAutoCompactFallback({ has: input.surface.current().capabilities })
         : "Save one concise checkpoint of the current task state now. Do not continue the task or give a final answer in this response.");
     },
     hasPlanned(): boolean {

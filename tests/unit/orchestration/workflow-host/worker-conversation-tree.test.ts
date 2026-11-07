@@ -1,3 +1,4 @@
+import { attemptBrief, planEveryCapability } from "../../../helpers/attempt-brief"
 import { workflowAgentInputs } from "../../../helpers/workflow-agent-inputs"
 import { testAuthContext } from "../../../helpers/auth-context.js"
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
@@ -96,7 +97,7 @@ function makeCapturingFactory(captured: CapturedRun[], assistantText: string): A
 function makeWorker(createAgent: AgentFactory, workerSessionId = sessionId, eventWriter: AsyncEventWriter = asAsyncEventWriter(store), inputs?: WorkflowAgentInputs, attachChildProjection?: AttachChildSessionProjection) {
   const bus = new EventBus()
   return async (...args: Parameters<ReturnType<typeof createWorkerCallback>["worker"]>) => {
-    const conversationId = args[4]
+    const conversationId = args[3]
     const workflowId = `${workerSessionId}-${conversationId ?? "missing"}`
     const { manager } = await publishWorkerAttempt({ projectRoot: baseDir, reader: asAsyncEventReadSurface(store), writer: asAsyncEventWriter(store), workflowId, attemptId: args[0].id, conversationId: conversationId ?? "missing" })
     const base = makeWorkflowDeps()
@@ -104,6 +105,7 @@ function makeWorker(createAgent: AgentFactory, workerSessionId = sessionId, even
     ...base,
     skills: base.definitions.skills(),
     personas: base.definitions.personas(),
+    planCapabilities: planEveryCapability,
     createAgent,
     auth: testAuthContext(),
     proactiveCompactionThreshold: () => 270_000,
@@ -146,7 +148,7 @@ describe("worker conversation tree", () => {
       end() {}, abort() {},
       done: Promise.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } }),
     })
-    await makeWorker(factory, sessionId, asAsyncEventWriter(store), inputs)(makeStep(), "work", "task", undefined, "conv-handoff-gate")
+    await makeWorker(factory, sessionId, asAsyncEventWriter(store), inputs)(makeStep(), attemptBrief("work", "task"), undefined, "conv-handoff-gate")
     expect(gated).toBe(true)
   })
 
@@ -175,7 +177,7 @@ describe("worker conversation tree", () => {
         end() {}, abort() {}, done: done.promise,
       }
     })
-    await worker(makeStep(), "work", "", undefined, "flush-checkpoint")
+    await worker(makeStep(), attemptBrief("work"), undefined, "flush-checkpoint")
     expect(remaining).toBe(0)
   })
 
@@ -203,7 +205,7 @@ describe("worker conversation tree", () => {
       abort() { done.resolve({ servedRequests: 0, durationMs: 0, terminal: { kind: "aborted" } }) },
       done: done.promise,
     }), sessionId, writer)
-    const observed = await worker(makeStep(), "work", "", undefined, "failed-notification")
+    const observed = await worker(makeStep(), attemptBrief("work"), undefined, "failed-notification")
       .then(() => "succeeded", (error: unknown) => error)
     expect(observed).toBe(failure)
     expect(store.readInFlight(member.sessionId, "chat.queued_background_notification").map((row) => row.payload.text)).toEqual(["later command"])
@@ -213,8 +215,8 @@ describe("worker conversation tree", () => {
     const captured: CapturedRun[] = []
     const worker = makeWorker(makeCapturingFactory(captured, "done"))
 
-    await worker(makeStep(), "first", "", undefined, "worker-hold-first")
-    await worker(makeStep(), "second", "", undefined, "worker-hold-second")
+    await worker(makeStep(), attemptBrief("first"), undefined, "worker-hold-first")
+    await worker(makeStep(), attemptBrief("second"), undefined, "worker-hold-second")
 
     const first = captured[0]?.runtimeSurfaces
     const second = captured[1]?.runtimeSurfaces
@@ -261,7 +263,7 @@ describe("worker conversation tree", () => {
     ] as const
 
     await Promise.all(sessions.map(({ sessionId: concurrentSessionId, conversationId, prompt }) =>
-      makeWorker(createAgent, concurrentSessionId)(makeStep(), prompt, "", undefined, conversationId),
+      makeWorker(createAgent, concurrentSessionId)(makeStep(), attemptBrief(prompt), undefined, conversationId),
     ))
 
     expect(captured.map((run) => run.priorMessages[0]?.content).sort()).toEqual([
@@ -289,8 +291,7 @@ describe("worker conversation tree", () => {
     const firstCaptured: CapturedRun[] = []
     await makeWorker(makeCapturingFactory(firstCaptured, "first-answer"))(
       makeStep(),
-      "do the work",
-      "step task",
+      attemptBrief("do the work", "step task"),
       undefined,
       conversationId,
     )
@@ -318,8 +319,7 @@ describe("worker conversation tree", () => {
     const secondCaptured: CapturedRun[] = []
     await makeWorker(makeCapturingFactory(secondCaptured, "second-answer"))(
       makeStep(),
-      "do the work",
-      "step task",
+      attemptBrief("do the work", "step task"),
       undefined,
       conversationId,
     )
@@ -346,7 +346,7 @@ describe("worker conversation tree", () => {
       updateChatEntry: () => {},
       remove: async () => {},
     })
-    await makeWorker(makeCapturingFactory([], "answer"), sessionId, asAsyncEventWriter(store), undefined, attach)(makeStep(), "do the work", "step task", undefined, "conv-worker-live-brief")
+    await makeWorker(makeCapturingFactory([], "answer"), sessionId, asAsyncEventWriter(store), undefined, attach)(makeStep(), attemptBrief("do the work", "step task"), undefined, "conv-worker-live-brief")
     expect(seed?.map((block) => block.kind === "userMessage" ? { kind: block.kind, content: block.content, injected: block.injected } : { kind: block.kind })).toEqual([
       { kind: "userMessage", content: "do the work\n\nstep task", injected: false },
     ])
@@ -359,8 +359,8 @@ describe("worker conversation tree", () => {
       return { ...agent, done: agent.done.then(async (result) => { briefs.push(await options.standingBrief?.()); return result }) }
     }
     const worker = makeWorker(factory)
-    await worker(makeStep(), "do the work", "step task", undefined, "conv-worker-standing-brief")
-    await worker(makeStep(), "do the work", "step task", undefined, "conv-worker-standing-brief")
+    await worker(makeStep(), attemptBrief("do the work", "step task"), undefined, "conv-worker-standing-brief")
+    await worker(makeStep(), attemptBrief("do the work", "step task"), undefined, "conv-worker-standing-brief")
     expect(briefs).toEqual(["do the work\n\nstep task", "do the work\n\nstep task"])
   })
 
@@ -374,7 +374,7 @@ describe("worker conversation tree", () => {
 
     const texts = async (): Promise<string[]> => {
       const captured: CapturedRun[] = []
-      await makeWorker(makeCapturingFactory(captured, "answer"))(makeStep(), "do the work", "step task", undefined, conversationId)
+      await makeWorker(makeCapturingFactory(captured, "answer"))(makeStep(), attemptBrief("do the work", "step task"), undefined, conversationId)
       return captured[0]!.priorMessages.map((m) => typeof m.content === "string" ? m.content : m.content.map((b) => ("text" in b ? b.text : "")).join(""))
     }
     const restated = "Your brief follows. It applies to all of the work above and to the rest of your work.\n\nstep task"
@@ -393,8 +393,7 @@ describe("worker conversation tree", () => {
     const captured: CapturedRun[] = []
     await makeWorker(makeCapturingFactory(captured, "resumed-answer"))(
       makeStep(),
-      "do the work",
-      "",
+      attemptBrief("do the work"),
       undefined,
       conversationId,
     )
@@ -420,7 +419,7 @@ describe("worker conversation tree", () => {
       ...makeCapturingFactory(captured, "answer")(options),
       interruptGeneration: () => { cuts += 1; return true },
     })
-    await makeWorker(factory, sessionId, asAsyncEventWriter(store), inputs)(makeStep(), "do the work", "", undefined, conversationId)
+    await makeWorker(factory, sessionId, asAsyncEventWriter(store), inputs)(makeStep(), attemptBrief("do the work"), undefined, conversationId)
     expect(cuts).toBe(1)
     expect(captured[0]!.priorMessages.map(({ content }) => content)).not.toContain(CONTINUATION_MESSAGES.resumed)
     expect(inputs.evidence(makeStep().id)?.cut).toEqual({ by, timestamp })
@@ -436,8 +435,7 @@ describe("worker conversation tree", () => {
     const captured: CapturedRun[] = []
     await makeWorker(makeCapturingFactory(captured, "resumed-answer"))(
       makeStep(),
-      "do the work",
-      "",
+      attemptBrief("do the work"),
       undefined,
       conversationId,
     )
@@ -460,7 +458,7 @@ describe("worker conversation tree", () => {
 
   it("rejects a worker invocation with no conversationId (must be minted before the first turn)", async () => {
     await expect(
-      makeWorker(makeCapturingFactory([], "x"))(makeStep(), "prompt", "", undefined, undefined),
+      makeWorker(makeCapturingFactory([], "x"))(makeStep(), attemptBrief("prompt"), undefined, undefined),
     ).rejects.toThrow(/conversationId/)
   })
 })
@@ -495,7 +493,7 @@ describe("worker agent-input recovery", () => {
     expect(recovered.protectedToolUseIds.size).toBe(0)
 
     const captured: CapturedRun[] = []
-    await makeWorker(makeCapturingFactory(captured, "continued"))(makeStep(), "do the work", "", undefined, conversationId)
+    await makeWorker(makeCapturingFactory(captured, "continued"))(makeStep(), attemptBrief("do the work"), undefined, conversationId)
 
     const prior = captured[0]!.priorMessages
     const rendered = JSON.stringify(prior)

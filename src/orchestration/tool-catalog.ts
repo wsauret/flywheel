@@ -1,5 +1,6 @@
 import { resolve } from "node:path"
 import { composeModules } from "../infra/module-descriptor.js"
+import { moduleDisabledReason } from "../protocol/module-ids.js"
 import { personaToolEntries, registrationNamed, toolRegistryFromComposition, type ToolRegistry } from "./agent-runtime/tools/tool-registry.js"
 import type { RuntimeToolInput, ShellCommand } from "./agent-runtime/tools/types.js"
 import { installedModules, validateModuleFactPrefixes } from "./module-catalog.js"
@@ -50,6 +51,19 @@ export function shellCommandOf(name: string, input: Readonly<RuntimeToolInput>, 
       : undefined
   }
   return registrationNamed(name, createToolRegistry())?.shellCommand?.(input, executionCwd)
+}
+
+/** Why `selection` leaves the tool of the tool term `term` off, in the words
+ *  that every refusal for a disabled module uses, or undefined while the
+ *  module that contributes the tool and every module that it needs are on.
+ *  It reads installed contributions and the installed catalog, because a
+ *  selection registers no tool of a module that it leaves off. */
+export function disabledToolReason(term: string, selection: Pick<FirstPartyModuleComposition, "enabledModuleIds" | "installedContributions">): string | undefined {
+  const enabled = new Set<string>(selection.enabledModuleIds)
+  const owner = selection.installedContributions.find((contribution) => contribution.domain === "tools" && contribution.value.name === term)?.module
+  const needed = new Set([...owner === undefined ? [] : [owner], ...registrationNamed(term, createToolRegistry())?.capabilities ?? []])
+  const missing = [...needed].filter((id) => !enabled.has(id))
+  return missing.length > 0 ? moduleDisabledReason(missing) : undefined
 }
 
 export function installedPersonaToolEntries(): ReturnType<typeof personaToolEntries> {

@@ -25,6 +25,10 @@ export interface SharedTreeCapture {
    *  its agents so that their shell bytes match (ARCH-CONTEXT-018); the shell enforces the current setting
    *  (PI-AGENT-068). */
   readonly shellWriteGuard: boolean;
+  /** Whether persistent processes are allowed (`allow_persistent_processes` or the command-line flag). It decides
+   *  whether the shell schema offers `persist_after_exit`, so the tree keeps one value for all its agents; execution
+   *  still refuses from the live policy (ARCH-TOOLS-034). */
+  readonly allowPersistentProcesses: boolean;
 }
 
 /** One holder's use of its chat tree's shared state. */

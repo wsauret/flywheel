@@ -1,12 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import {
-  COMBINED_REVIEW_PROMPT,
-  MEMORY_REVIEW_PROMPT,
-  SKILL_REVIEW_PROMPT,
-} from "../../../../../src/orchestration/modules/learning/learning-review-prompts.js";
+import { reviewInstruction } from "../../../../../src/orchestration/modules/learning/learning-review-prompts.js";
 
 describe("learning review classification", () => {
-  const prompts = [MEMORY_REVIEW_PROMPT, SKILL_REVIEW_PROMPT, COMBINED_REVIEW_PROMPT];
+  const all = () => true;
+  const prompts = [reviewInstruction(["memory"], all), reviewInstruction(["skill"], all), reviewInstruction(["memory", "skill"], all)];
 
   it("sends preferences and stable user facts to global memory", () => {
     for (const prompt of prompts) {

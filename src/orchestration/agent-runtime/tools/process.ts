@@ -9,13 +9,15 @@ import type { AdvertisedTool, ToolContext, RuntimeTool, RuntimeToolInput, ToolRe
 import { parseWorkflowTargets } from "../../../protocol/client/workflow-addresses.js";
 
 export const PROCESS_TOOL_NAME = "process";
-const PROCESS_TARGET_GUIDANCE = "When a workflow runs a phase over a list or a phase of named agents, name item keys or agent ids from its status in targets for interrupt and resume. Omit targets only to act on the whole workflow. Interrupt refuses the entire request if any named agent has not started; interrupt it once it runs, or interrupt the whole workflow. Unknown or finished targets refuse the action and list valid alternatives.";
-const PROCESS_TARGETS_SCHEMA = { type: "array", items: { type: "string" }, description: "Only for interrupt/resume of your workflow: item keys or agent ids from its status. Omit or use an empty list for the whole workflow. Unknown or finished targets refuse with valid alternatives." } as const;
+/** The targeting rules that a child with addresses states beside them in its status, so they reach only an agent
+ *  that has such a child (ARCH-CONTEXT-033). */
+const CHILD_ADDRESS_GUIDANCE = "These addresses name item keys and named-agent ids for targeted direction, and agent session ids for direct messages and replies. Never substitute an agent session id for this child's process id. When a workflow runs a phase over a list or a phase of named agents, name item keys or agent ids from its status in targets for interrupt and resume. Omit targets only to act on the whole workflow. Interrupt refuses the entire request if any named agent has not started; interrupt it once it runs, or interrupt the whole workflow. Unknown or finished targets refuse the action and list valid alternatives.";
+const PROCESS_TARGETS_SCHEMA = { type: "array", items: { type: "string" }, description: "Only for interrupt or resume of a child whose status lists addresses: item keys or agent ids from that status. Omit for the whole child. Unknown or finished targets refuse with valid alternatives." } as const;
 export const DEFAULT_WAIT_SECONDS = 240;
 // Bun converts larger timer durations to one millisecond.
 const MAX_WAIT_SECONDS = 2147483.647;
-const PROCESS_WAIT_TIMEOUT_SCHEMA = { type: "number", exclusiveMinimum: 0, maximum: MAX_WAIT_SECONDS, description: "Seconds to wait for managed work, from your estimate of its remaining duration. Estimate all work, especially subagents and workflows. Omitted: 240 seconds. Example: 7200 for two hours. Completion or expiry wakes you without stopping work. Every new wait needs a fresh estimate; this bounds only the wait." } as const;
-const PROCESS_WAIT_GUIDANCE = "When everything left depends on managed work, call process with action='wait' and soft_timeout seconds from your estimate of remaining work. Wait includes commands launched with background=true, including servers and services; background execution does not prevent waiting. Never stop or restart a command just to wait for it. Estimate all work, especially subagents and workflows; use 7200 for two hours. Without an estimate the wait lasts at most four minutes. Completion or expiry consumes this one wait without stopping work. After expiry or a status check, if nothing needs action or a reply, wait again with a fresh remaining-work estimate and no visible text. Never poll or sleep instead. Messages remain subject to their existing relation and purpose restrictions; do not send status chatter.";
+const PROCESS_WAIT_TIMEOUT_SCHEMA = { type: "number", exclusiveMinimum: 0, maximum: MAX_WAIT_SECONDS, description: "Seconds to wait for managed work, from your estimate of its remaining duration. Estimate all managed work. Omitted: 240 seconds. Example: 7200 for two hours. Completion or expiry wakes you without stopping work. Every new wait needs a fresh estimate; this bounds only the wait." } as const;
+const PROCESS_WAIT_GUIDANCE = "When everything left depends on managed work, call process with action='wait' and soft_timeout seconds from your estimate of remaining work. Wait includes every managed command, including one that transferred from the foreground. Never stop or restart a command just to wait for it. Estimate all managed work; use 7200 for two hours. Without an estimate the wait lasts at most four minutes. Completion or expiry consumes this one wait without stopping work. After expiry or a status check, if nothing needs action or a reply, wait again with a fresh remaining-work estimate and no visible text. Never poll or sleep instead. Messages remain subject to their existing relation and purpose restrictions; do not send status chatter.";
 
 /** Validates a native wait estimate against the runtime's timer range. */
 export function processWaitSeconds(input: RuntimeToolInput): number | undefined {
@@ -44,7 +46,7 @@ export function isParkingWaitCall(call: { readonly name: string; readonly input:
 const PROCESS_INPUT_SCHEMA = {
   type: "object",
   properties: {
-    process_id: { type: "string", description: "A process ID from action='list'. A subagent uses its session id; a workflow uses its workflow id. A workflow's status also names its started agents' session ids for direct messages. Never substitute an agent session id for a workflow process id. Required for stop, interrupt, resume, and read_output. Status without it lists every process; list and wait ignore it." },
+    process_id: { type: "string", description: "A process ID from action='list'; a child uses the id that list returns. Required for stop, interrupt, resume, and read_output. Status without it lists every process; list and wait ignore it." },
     action: { type: "string", enum: ["list", "status", "wait", "stop", "interrupt", "resume", "read_output"], default: "status" },
     soft_timeout: PROCESS_WAIT_TIMEOUT_SCHEMA,
     targets: PROCESS_TARGETS_SCHEMA,
@@ -87,10 +89,9 @@ async function processViews(backgroundTasks: BackgroundWorkRegistry, context: To
   return [...session, ...persistent].sort((left, right) => left.record.startedAtMs - right.record.startedAtMs || left.record.id.localeCompare(right.record.id));
 }
 
-/** The work the caller started: its commands and services, and its
- *  children. A child is one row from the durable binding, addressed by its
- *  session id, so the registry's own entries for subagents and workflows are
- *  left out. */
+/** The work the caller started: its managed commands and its children. A
+ *  child is one row from the durable binding, addressed by its id, so the
+ *  registry's own entries for children are left out. */
 async function processList(backgroundTasks: BackgroundWorkRegistry, context: ToolContext, children: ChildSessionControl | undefined): Promise<string> {
   const childRows = children && context.sessionId ? await children.list(context.sessionId) : [];
   const records = (await processViews(backgroundTasks, context))
@@ -98,10 +99,13 @@ async function processList(backgroundTasks: BackgroundWorkRegistry, context: Too
   if (records.length === 0 && childRows.length === 0) return "No managed processes and no children. Other sessions of this project are in list_sessions.";
   return [
     ...(records.length > 0 ? ["Managed processes:", ...records.map((record) => `- ${describe(record)}`)] : []),
-    ...(childRows.length > 0 ? ["Work that you started (subagent session ids and workflow ids):", ...childRows.flatMap((row) => [`- ${describeChild(row)}`, ...row.addresses.map((line) => `  ${line}`)])] : []),
+    ...(records.some((record) => record.source === "persistent") ? [PERSISTENT_RECORD_NOTE] : []),
+    ...(childRows.length > 0 ? ["Your children (each id is the child's process id):", ...childRows.flatMap((row) => [`- ${describeChild(row)}`, ...row.addresses.map((line) => `  ${line}`)])] : []),
     "Other sessions of this project are in list_sessions.",
   ].join("\n");
 }
+
+const PERSISTENT_RECORD_NOTE = "Persistent records are unavailable after host exit.";
 
 function describeChild(row: ChildRow): string {
   return `${row.id} | ${row.state} | ${row.kind} | ${row.name}`;
@@ -127,6 +131,7 @@ function describeChildStatus(status: ChildStatus): string {
     ...(status.exited ? ["An unexpected exit cut its run. action='resume' continues it."] : []),
     ...status.progress,
     ...status.addresses,
+    ...(status.addresses.length > 0 ? [CHILD_ADDRESS_GUIDANCE] : []),
     ...(next ? [next] : []),
   ].join("\n");
 }
@@ -242,7 +247,7 @@ const CONTROL_ACTIONS: ReadonlySet<unknown> = new Set(["stop", "interrupt", "res
 export const PROCESS_TOOL_DEFINITION: AdvertisedTool = {
   name: PROCESS_TOOL_NAME,
   action: "ui_meta",
-  description: "Manage the work that you started: your commands and services, persistent processes while this host client is open, and the subagents and workflows that you launched, which are your children. Sessions that you did not start are in list_sessions. Use one action: list returns the IDs that the other actions take, and a subagent's ID is its session id while a workflow's ID is its workflow id (never guess an ID from a log suffix); status inspects one process without waiting, or lists them all when no process_id is given, and for a child it gives its state, who interrupted it, and its progress. A workflow's status names item keys and named-agent ids for targeted workflow direction, and agent session ids for direct messages and replies. wait parks the loop until the next process completes or soft_timeout seconds expire (the turn's other tool calls run first; it waits on every process, so a process_id is ignored; expiry does not stop work; no wait parks on a child that you or the runtime interrupted); stop requests cancellation (termination is confirmed only when the host reports it; an unsettled result means ownership remains managed, so do not release or relaunch the process), and a stopped child shows as Canceled; interrupt cuts a running child so that its work can continue later; resume continues your own interrupted child, or starts a new attempt of a child whose run failed, unless a person made its latest interrupt; and read_output reads retained output of a command. Persistent records are unavailable after host exit. The person sees each interrupt, resume, and stop of a child in the transcript; the other actions do not render there. " + PROCESS_TARGET_GUIDANCE,
+  description: "Manage the work that you started: your managed commands and your children. Sessions that you did not start are in list_sessions. Use one action: list returns the ids that the other actions take (never guess an id from a log suffix); status inspects one process without waiting, or lists them all when no process_id is given, and for a child it gives its state, who interrupted it, its progress, and the addresses that its work takes. wait parks the loop until the next process completes or soft_timeout seconds expire (the turn's other tool calls run first; it waits on every process, so a process_id is ignored; expiry does not stop work; no wait parks on a child that you or the runtime interrupted); stop requests cancellation (termination is confirmed only when the host reports it; an unsettled result means ownership remains managed, so do not release or relaunch the process), and a stopped child shows as Canceled; interrupt cuts a running child so that its work can continue later; resume continues your own interrupted child, or starts a new attempt of a child whose run failed, unless a person made its latest interrupt; and read_output reads retained output of a command. The person sees each interrupt, resume, and stop of a child in the transcript; the other actions do not render there.",
   promptSnippet: "List, inspect, wait for, stop, interrupt, or resume the work you started, or read its output",
   promptGuidelines: [
     PROCESS_WAIT_GUIDANCE,
@@ -282,7 +287,7 @@ export function createProcessTool(backgroundTasks: BackgroundWorkRegistry, child
         // by the agent loop after the whole tool batch, when same-turn
         // dispatches are registered. A wait with nothing pending is answered
         // by the wait_notification below, not by this result.
-        return { content: `${ignored}Wait acknowledged for at most ${seconds} seconds. If background work is running, the loop parks after this turn's other tool calls finish and resumes on completion or this wait's expiry. Expiry leaves work running and consumes this wait; another wait requires a fresh remaining-work estimate. Otherwise a wait notification will report that nothing was pending.`, outcome: "ok" };
+        return { content: `${ignored}Wait acknowledged for at most ${seconds} seconds. If managed work is running, the loop parks after this turn's other tool calls finish and resumes on completion or this wait's expiry. Expiry leaves work running and consumes this wait; another wait requires a fresh remaining-work estimate. Otherwise a wait notification will report that nothing was pending.`, outcome: "ok" };
       }
       if (action !== "status" && action !== "stop" && action !== "interrupt" && action !== "resume" && action !== "read_output") {
         return { content: "process requires action to be 'list', 'status', 'wait', 'stop', 'interrupt', 'resume', or 'read_output'.", outcome: "error" };

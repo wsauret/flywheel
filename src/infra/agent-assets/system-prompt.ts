@@ -2,6 +2,7 @@
 // subagents all inject it. It belongs to no single runner, so it resolves here
 // instead of in the workflow definition registry.
 
+import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FLYWHEEL_DIR_NAME } from "../directory-authorities.js";
@@ -47,4 +48,19 @@ export function loadEngineeringDoctrineResolution(directories: AssetDirectories)
 
 export function loadEngineeringDoctrine(directories: AssetDirectories): string {
   return loadEngineeringDoctrineResolution(directories).selected?.value ?? "";
+}
+
+export type AgentAssetName = "system-prompt.md" | "engineering-doctrine.md";
+
+const bundledAssets = new Map<AgentAssetName, string>();
+
+/** The bundled bytes of one agent asset: the compiled-in manifest in a binary, the source file in a source run. A
+ *  loaded asset with these bytes is the bundled one, which alone may carry capability markers (ARCH-CONTEXT-033). */
+export function bundledAgentAsset(name: AgentAssetName): string {
+  let text = bundledAssets.get(name);
+  if (text === undefined) {
+    text = (name === "system-prompt.md" ? bundledSystemPrompt : bundledEngineeringDoctrine) || readFileSync(join(sourceRoot, name), "utf8");
+    bundledAssets.set(name, text);
+  }
+  return text;
 }

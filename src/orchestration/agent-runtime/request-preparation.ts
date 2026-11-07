@@ -6,6 +6,7 @@
  */
 
 import { randomUUID } from "node:crypto";
+import type { CapabilityCheck } from "../../infra/capability-text.js";
 import { REASONING_EFFORTS, type ReasoningEffort } from "../../infra/llm/models.js";
 import { prepareLocalTokenizer } from "../../infra/local-tokenizer.js";
 import type { ProjectDefinitionRegistry } from "../../workflows/definition-registry.js";
@@ -20,7 +21,7 @@ import type { ConversationMessage, ServingAttempt } from "./llm/types.js";
 import { resolveModelInteractionProfile, type ModelInteractionProfile } from "./model-interaction-profile.js";
 import type { ProviderSession } from "./provider-runtime-cache.js";
 import type { RequestToolSurfaceOwner } from "./request-tool-surface.js";
-import { openRequestInputs, type RequestInputs } from "./request-inputs.js";
+import { openRequestInputs, planRunCapabilities, type RequestInputs } from "./request-inputs.js";
 import { resolveRuntimeConversation } from "./runtime-conversation.js";
 import type { Agent, AgentOptions, RunnableAgentOptions } from "./types.js";
 
@@ -96,7 +97,7 @@ export async function openRequestPreparation(inputs: RequestInputs, sinks: Reque
   });
   const entryWriter = { append: writers.pushMessage, onUserMessage: sinks.onUserMessage, flush: sinks.flush };
   const appendProviderMessages = async (attempt: ServingAttempt): Promise<void> => {
-    if (admits()) await appendProviderHistory({ ...entryWriter, attempt, messages: preparation.messages, executionCwd, turnReminders: inputs.turnReminders });
+    if (admits()) await appendProviderHistory({ ...entryWriter, attempt, messages: preparation.messages, executionCwd, capabilities: inputs.tools.current().capabilities, turnReminders: inputs.turnReminders });
   };
   /** Plans the provider variant of a request on `surface`; its planned attempt becomes `planned`. */
   const prepareVariant = (surface: ResolvedSurface, signal: AbortSignal | undefined) => prepareActiveRequestVariant({
@@ -244,24 +245,52 @@ interface RunRequestPreparation extends PrestartPreparation {
  * tools, or the prompt.
  */
 export async function prepareRunRequest(input: RunRequestPreparation): Promise<AnticipatedRequest | undefined> {
-  const { options, readHistory } = input;
-  const provider = options.providerSession;
+  const opened = await openRunRequestInputs(input);
+  if (opened.planned.anticipatesRequests !== true) return undefined;
+  const { request } = await opened.build();
+  return await prepareRequest(request, input);
+}
+
+/** Answers the agent check of the first request of the run that `options` describe (ARCH-CONTEXT-033), as that
+ *  request plans its tools, with no model route (`planRunCapabilities`). The text that only this run's agent reads,
+ *  such as a workflow agent's opening turn or a skill method that a command commits to its chat, renders from it. It
+ *  builds no Agent, never waits for model access, sends no request, and writes no fact. */
+export type CapabilityPlanner = (options: AgentOptions) => Promise<CapabilityCheck>;
+
+/** The authorities that build the runs of an agent factory, with the options of one run. */
+type RunSource = Pick<RunRequestPreparation, "definitions" | "captureModelRuntime" | "createRunner"> & { readonly options: RunnableAgentOptions };
+
+/** The conversation and personas of a run that builds no Agent, as its Agent would resolve them. */
+function runConversationSource(input: RunSource) {
+  const { options } = input;
   const id = randomUUID();
-  const resolved = resolveRuntimeConversation(options.conversation, {
-    providerSessionKey: `agent-${id}`, artifactScopeId: `artifact-${id}`, retrievalSessionId: `retrieval-${id}`,
-  });
-  const conversation = readHistory === undefined ? resolved : { ...resolved, seed: async () => ({ kind: "resume" as const, priorMessages: [...await readHistory()] }) };
-  const opened = await openRequestInputs({
-    options, definitions: input.definitions, conversation,
+  return {
+    options, definitions: input.definitions,
+    conversation: resolveRuntimeConversation(options.conversation, {
+      providerSessionKey: `agent-${id}`, artifactScopeId: `artifact-${id}`, retrievalSessionId: `retrieval-${id}`,
+    }),
     personas: options.agentRegistry ?? input.definitions.personas(),
     captureModelRuntime: input.captureModelRuntime, createRunner: input.createRunner,
+  };
+}
+
+/** `CapabilityPlanner` over the authorities that build the run's requests. */
+export function planCapabilitiesOfRun(input: RunSource): Promise<CapabilityCheck> {
+  return planRunCapabilities(runConversationSource(input));
+}
+
+async function openRunRequestInputs(input: RunRequestPreparation): ReturnType<typeof openRequestInputs> {
+  const { options, readHistory } = input;
+  const provider = options.providerSession;
+  const source = runConversationSource(input);
+  const resolved = source.conversation;
+  const conversation = readHistory === undefined ? resolved : { ...resolved, seed: async () => ({ kind: "resume" as const, priorMessages: [...await readHistory()] }) };
+  return await openRequestInputs({
+    ...source, conversation,
     providerRuntimeCache: provider.cache,
     providerSessionLifetime: {
       providerSessionKey: conversation.providerSessionKey, scope: provider.scope,
       ...(provider.demand === undefined ? {} : { demand: provider.demand }),
     },
   }, { kind: "prestart", signal: input.signal });
-  if (opened.planned.anticipatesRequests !== true) return undefined;
-  const { request } = await opened.build();
-  return await prepareRequest(request, input);
 }

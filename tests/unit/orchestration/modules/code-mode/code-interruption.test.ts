@@ -17,6 +17,8 @@ interface InterruptionOptions {
   readonly openWorker?: () => InvocationWorker;
   /** Makes every batch close die after its join, as a failed terminal publication does. */
   readonly failClose?: boolean;
+  /** Whether the calling agent may run shell commands (its agent check holds `bash`). */
+  readonly bash?: boolean;
 }
 
 function interruptionFixture(execute: RuntimeTool["execute"], options: InterruptionOptions = {}) {
@@ -35,6 +37,7 @@ function interruptionFixture(execute: RuntimeTool["execute"], options: Interrupt
   const context: ToolContext = {
     executionCwd: process.cwd(), userDataRoot: "/scratch/test-account", projectRoot: process.cwd(), artifactScopeId: "session", sessionId: "session", toolUseId: "outer",
     retrievalSessionId: "session",
+    capabilities: (term) => term === "bash" && options.bash !== false,
     ...(options.signal ? { signal: options.signal } : {}),
     onExecutionOutput: (output) => { outputs.push(output); },
   };
@@ -216,7 +219,10 @@ describe("code tool interruption", () => {
     expect(await ended.tool.execute({ source: "unused" }, ended.context)).toEqual({ outcome: "error", content: "Code runtime failed: its Worker ended before it answered." });
   });
 
-  it("interrupts and settles nested work when heap growth exceeds the budget", async () => {
+  it.each([
+    { bash: true, advice: "Keep heavy computation in Bash scratch scripts." },
+    { bash: false, advice: "Move heavy computation outside Code Mode." },
+  ])("interrupts and settles nested work when heap growth exceeds the budget, and advises within the agent's tools (bash: $bash)", async ({ bash, advice }) => {
     const started = Promise.withResolvers<void>();
     const observedAbort = Promise.withResolvers<void>();
     const run = interruptionFixture(async (_input, context) => {
@@ -225,6 +231,7 @@ describe("code tool interruption", () => {
       observedAbort.resolve();
       return { content: "child finalizer", outcome: "interrupted" };
     }, {
+      bash,
       limits: { timeoutMs: 10_000, maxHeapDeltaBytes: 8 * 1024 * 1024, heapSampleMs: 5 },
       // The in-process guest shares this test process's heap, and it takes
       // its baseline when it starts. Garbage that earlier tests left would sit
@@ -250,7 +257,7 @@ describe("code tool interruption", () => {
     const result = await outer;
     await observedAbort.promise;
     expect(result.outcome).toBe("error");
-    expect(result.content).toBe("Execution exceeded the 8388608-byte heap growth budget. Keep heavy computation in Bash scratch scripts.\nCalls still running when the program ended, whose effects may have completed: slow. Check their effects before you run them again.");
+    expect(result.content).toBe(`Execution exceeded the 8388608-byte heap growth budget. ${advice}\nCalls still running when the program ended, whose effects may have completed: slow. Check their effects before you run them again.`);
     expect(run.terminals).toEqual(["interrupted"]);
   });
 

@@ -15,6 +15,7 @@ import { testKernelToolDeps } from "../../helpers/request-tool-surface.js";
 
 import { accessProviderRegistry } from "../../../src/orchestration/agent-runtime/llm/access-provider-registry.js";
 import { authProviders } from "../../helpers/auth-context.js";
+import { promptCapabilities, promptOptions } from "../../helpers/prompt-capabilities.js";
 const fixturePath = resolve(import.meta.dir, "../../fixtures/modules/baseline.json");
 
 function runtimeToolManifest(tool: AdvertisedTool) {
@@ -91,7 +92,7 @@ async function webRouting(): Promise<object> {
 function learningMemoryPrompt(snapshot: string): string {
   const prompt = learningModule.contributions.find((contribution) => contribution.domain === "promptFragments");
   if (!prompt || prompt.domain !== "promptFragments") throw new Error("Learning memory prompt contribution is missing");
-  const rendered = prompt.value.render({ kernel: testKernelToolDeps({ userDataRoot: "stable" }), modules: NO_MODULE_RUNTIMES, tools: new Map(), memorySnapshot: snapshot });
+  const rendered = prompt.value.render({ kernel: testKernelToolDeps({ userDataRoot: "stable" }), modules: NO_MODULE_RUNTIMES, tools: new Map(), memorySnapshot: snapshot, capabilities: promptCapabilities([]) });
   if (rendered === undefined) throw new Error("Learning memory prompt rendered nothing for a snapshot");
   return rendered;
 }
@@ -123,7 +124,7 @@ export async function generateCapabilityModuleBaseline(): Promise<string> {
       normalizationRejections: [normalizeModuleSelection("invalid"), normalizeModuleSelection(["unknown"]), normalizeModuleSelection(["workflows"])],
       registeredModules: MODULE_IDS,
     },
-    promptFragments: buildSystemPromptParts({
+    promptFragments: buildSystemPromptParts(promptOptions({
       promptKind: "chat",
       corePrompt: "stable core",
       engineeringDoctrine: "stable doctrine",
@@ -133,7 +134,7 @@ export async function generateCapabilityModuleBaseline(): Promise<string> {
       agentsMd: "stable agents",
       envBlock: "stable environment",
       moduleFragments: [learningMemoryPrompt("stable memory")],
-    }),
+    })),
     accessProviders: {
       ids: providerIds,
       definitions: providerIds.map((id) => ({ id, displayName: providers.displayName(id), shortName: providers.shortName(id), billing: providers.billing(id), catalogId: providers.catalogId(id) ?? null })),

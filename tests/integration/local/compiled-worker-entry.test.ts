@@ -41,6 +41,7 @@ const CODE_MODE_START: HostMessage = {
   source: "const typed: number = 6 * 7; return typed",
   descriptors: [],
   limits: { maxToolCalls: 1, maxLogBytes: 1024, maxHeapDeltaBytes: CODE_MODE_LIMITS.maxHeapDeltaBytes, heapSampleMs: CODE_MODE_LIMITS.heapSampleMs },
+  bash: true,
 }
 
 /** Builds an executable in the release's two stages: bundle with code

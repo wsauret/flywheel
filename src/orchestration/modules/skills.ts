@@ -28,6 +28,8 @@ const skill = {
           .find((grant) => grant !== undefined)
         return { tool: createSkillTool({
           revision,
+          treeCapabilities: kernel.treeCapabilities,
+          availability: kernel.definitionAvailability.live,
           personaIndex: getPersonaMetadataIndex(),
           ...(kernel.onSkillLoad ? { onLoad: kernel.onSkillLoad } : {}),
           ...(childGrant ? { childGrant } : {}),

@@ -9,6 +9,7 @@ import type { WorkflowDefinition } from "../../../../src/workflows/workflow-sche
 import { createAttemptExecutor } from "../../../../src/workflows/vm/attempt-runner.js"
 import { createMemoryStore, initialFacts, testHost } from "./host-test-support.js"
 import { testDirectories, fileTemporaryDirectory } from "../../../helpers/directories.js"
+import { EVERY_CAPABILITY } from "../../../helpers/attempt-brief.js"
 
 // Fixture packages live under a temp root this suite's own definition owner
 // reads, so a hot reload can be simulated without touching the developer's
@@ -56,11 +57,13 @@ const context: AccumulatedContext = { request: { original: "seeded", addenda: []
 function capturingAttemptExecutor(skills: SkillRegistryRevision) {
   const instructions: string[] = []
   const runner = createAttemptExecutor({
+    unavailableToolReason: (term) => `${term} is off`,
     earlierCheckpoint: async () => null,
     resolvedAgents: new Map([["work", boundWork()]]),
     context: { getContext: async () => context },
     skills,
-    worker: async (_step, _userPrompt, task) => {
+    worker: async (_step, brief) => {
+      const { task } = await brief(EVERY_CAPABILITY)
       instructions.push(task)
       return { output: "completed", handoffContent: { summary: "done" }, durationMs: 1 }
     },

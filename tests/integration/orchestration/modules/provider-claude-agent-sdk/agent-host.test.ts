@@ -15,7 +15,7 @@ import { engineShell } from "../../../../../src/orchestration/modules/provider-c
 import { cliLaunch } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-launch.js";
 import { createLauncherScope, createProcessSupervisor } from "../../../../../src/infra/process-supervisor.js";
 import { SYSTEM_PROMPT_SEPARATOR } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import { parseClaudeReminder } from "../../../../../src/orchestration/agent-runtime/llm/claude-reminders.js";
+import { canonicalShell, parseClaudeReminder } from "../../../../../src/orchestration/agent-runtime/llm/claude-reminders.js";
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { agentLoop, dispatchedIds, effortOf, hiddenRequests, hostScript, isDispatcher, lastUserTexts, LOOKUP, lookupThenAnswer, registryProxy, SYSTEM, systemTexts, textOf, TREE, wireMessages, type WireBlock } from "./_agent-host.js";
@@ -657,7 +657,7 @@ describe("the engine text that Flywheel records for a hosted agent", () => {
         expect(reminders.map((reminder) => reminder.kind).toSorted()).toEqual(["date", "environment", "model"]);
         for (const reminder of reminders) {
           const facts = reminder.kind === "model" ? [reminder.modelId] : reminder.kind === "date" ? [reminder.date]
-            : reminder.kind === "environment" ? [reminder.workingDirectory, reminder.platform, shell ?? reminder.shell, reminder.osVersion] : [];
+            : reminder.kind === "environment" ? [reminder.workingDirectory, reminder.platform, shell ?? reminder.shell ?? canonicalShell(), reminder.osVersion] : [];
           expect({ model, reminder: reminder.kind, stated: texts.some((text) => facts.every((value) => text.includes(value))) }).toEqual({ model, reminder: reminder.kind, stated: true });
         }
       }, { model, seams: { agentHosts } });

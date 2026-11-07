@@ -32,7 +32,7 @@ export function checkpointToolDefinition(kind: CheckpointToolKind): AdvertisedTo
       } : {
         section: { type: "string", enum: [...CHECKPOINT_SECTIONS] },
         value: {
-          description: "Replacement section. designIntent: {text, approved}; decisions: [{date, words, replaces}]; relevantSkills: [{id, reason}]; references: durable recall ID strings; other sections: a string.",
+          description: "Replacement section. designIntent: {text, approved}; decisions: [{date, words, replaces}]; relevantSkills: [{id, reason}]; references: durable history entry ids; other sections: a string.",
           anyOf: [
             { type: "string" },
             { type: "object", properties: { text: { type: "string" }, approved: { type: "boolean" } }, required: ["text", "approved"], additionalProperties: false },
@@ -56,7 +56,7 @@ export function createCheckpointTool(kind: CheckpointToolKind, owner: Conversati
   return {
     ...checkpointToolDefinition(kind),
     ...(kind === "replace" ? { prepareAdmission: prepareSectionValue } : {}),
-    async execute(input) {
+    async execute(input, context) {
       try {
         if (kind === "read") {
           const section = CHECKPOINT_SECTIONS.find((candidate) => candidate === input.section);
@@ -72,7 +72,10 @@ export function createCheckpointTool(kind: CheckpointToolKind, owner: Conversati
             const end = Math.min(offset + 4_000, characters.length);
             return { content: JSON.stringify({ content: characters.slice(offset, end).join(""), nextOffset: end < characters.length ? end : null }), outcome: "ok" };
           }
-          return { content: section ? JSON.stringify(checkpoint[section]) : renderConversationCheckpoint(checkpoint), outcome: "ok" };
+          if (section) return { content: JSON.stringify(checkpoint[section]), outcome: "ok" };
+          // Every agent loop sets the agent check; only a context built without a request surface lacks it.
+          if (!context.capabilities) throw new Error("the checkpoint renders only inside a request that carries the agent capability check");
+          return { content: renderConversationCheckpoint(checkpoint, context.capabilities), outcome: "ok" };
         }
         if (kind === "decide") await owner.decide(Schema.decodeUnknownSync(CheckpointDecisionSchema, { onExcessProperty: "error" })(input));
         else {

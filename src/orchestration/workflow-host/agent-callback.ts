@@ -15,6 +15,8 @@ import type { AgentDefinition } from "../../infra/agent-definition.js"
 import type { ResolvedAgent } from "../../workflows/agent-resolution.js"
 import { agentPersonaRun, personaTask } from "./agent-persona.js"
 import type { AgentOutput } from "../../workflows/vm/agent-outcome.js"
+import type { ComposeAttemptBrief } from "../../workflows/vm/attempt-runner.js"
+import type { CapabilityPlanner } from "../agent-runtime/request-preparation.js"
 import { createAgentHost } from "../runner/host.js"
 import { createBackgroundNotificationDelivery } from "../runner/background-notification-delivery.js"
 import type { AgentHostContextOptions } from "../runner/types.js"
@@ -56,16 +58,19 @@ import type { RuntimeEvent } from "../../infra/runtime-event-types.js"
 import { briefEntryId, recordedEntryText } from "../session/conversation/brief-entry.js"
 import { createToolUseCounter } from "../../infra/runtime-tool-records.js"
 import { conversationToolUseIds } from "./started-agent-states.js"
-import { acquireChildExecutionResources, type ChildExecutionResources } from "../session/child-execution-resources.js"
+import { openChildExecutionResources, type ChildExecutionResources } from "../session/child-execution-resources.js"
 import { workflowMembershipReader } from "../session/workflow-membership.js"
 import { createSessionRoleResolver } from "../config/session-role-resolver.js"
 import { createConversationTreeWriterController, type ConversationTreeWriterController } from "../chat/tree-writer.js"
-import { heldAtWakeLimit, liveWorkflowControl, registerLiveSessionControl } from "../session/live-session-control.js"
+import { registerLiveSessionControl } from "../session/live-session-control.js"
 import { createWorkflowMemberInputs } from "./member-inputs.js"
+import { workflowMemberDelivery } from "./member-delivery.js"
 
 export interface WorkerCallbackDeps {
   deactivateSession(sessionId: string): Promise<void>
   createAgent: AgentFactory
+  /** Plans an agent's run before its brief commits, so the brief renders for the agent's check (ARCH-CONTEXT-033). */
+  planCapabilities: CapabilityPlanner
   createLLMClient: LLMClientFactory
   captureProviderConnection: CaptureProviderConnection
   auth: AuthContext
@@ -168,7 +173,7 @@ interface WorkerCallbackControls {
   emitToAgent(attemptId: string): EmitFn | undefined
   releaseForegroundBash(toolUseId: string): boolean
   transferForegroundForReplacement(): Promise<void>
-  worker: (attempt: AttemptRow, userPrompt: string, task: string, signal?: AbortSignal, conversationId?: string, onToolUses?: (count: number) => void, inheritedIntent?: string) => Promise<AgentOutput>
+  worker: (attempt: AttemptRow, brief: ComposeAttemptBrief, signal?: AbortSignal, conversationId?: string, onToolUses?: (count: number) => void, inheritedIntent?: string) => Promise<AgentOutput>
   /** Cuts every running agent's worker, each of which parks in its attempt
    *  and records its turn end as interrupted by `by`. The attempts whose
    *  cuts it accepted, including workers still assembling their generation. */
@@ -240,33 +245,23 @@ export function createWorkerCallback(
   const memorySnapshot = opts.moduleSelection.contributions.flatMap((entry) => entry.domain === "memory" ? [entry.value.snapshot({ projectRoot, accountHome: opts.accountHome })] : []).filter((value): value is string => value !== null).join("\n\n") || null
   const reviews = createWorkflowModuleReviews(opts.moduleSelection, { deps: opts, memorySnapshot })
 
-  const worker = async (attempt: AttemptRow, userPrompt: string, agentTask: string, signal?: AbortSignal, conversationId?: string, onToolUses?: (count: number) => void, inheritedIntent?: string): Promise<AgentOutput> => {
+  const worker = async (attempt: AttemptRow, composeBrief: ComposeAttemptBrief, signal?: AbortSignal, conversationId?: string, onToolUses?: (count: number) => void, inheritedIntent?: string): Promise<AgentOutput> => {
     if (!conversationId) throw new Error("worker invoked without a conversationId; workflow host must mint and persist it before invoking the attempt runner")
     const resolvedAgent = resolvedAgents.get(attempt.definitionId)
     if (!resolvedAgent) throw new Error(`worker invoked without admitted agent '${attempt.definitionId}'`)
     // An agent whose record names a persona runs as that persona runs when a
     // subagent dispatch starts it, on the same system prompt and tool
     // surface as every other agent (refer to `agentPersonaRun`).
-    const persona = agentPersonaRun({ agent: resolvedAgent, personas: opts.personas, skills: opts.skills, sessionMessaging: opts.sessionMessaging !== undefined })
-    const task = personaTask(persona, agentTask)
+    const persona = agentPersonaRun({ agent: resolvedAgent, personas: opts.personas, skills: opts.skills, sessionMessaging: opts.sessionMessaging !== undefined, modules: opts.moduleSelection })
 
     const member = await workflowMembershipReader(opts.projectionReader).attempt(workflowId, attempt.id)
     if (!member || member.conversationId !== conversationId) throw new Error(`Workflow attempt ${attempt.id} has no committed session for ${conversationId}`)
     const sessionId = member.sessionId
-    // A fresh agent's tree is empty until its brief commits as its opening
-    // turn, under the agent's brief entry id. The brief commits before the
-    // live view attaches, because the view's seed is the only way a committed
-    // turn reaches it, and the agent view opens with the brief.
-    let fresh = false
-    const seedBrief = async (tree: ConversationTreeWriterController): Promise<void> => {
-      fresh = Object.keys((await tree.getState()).entriesById).length === 0
-      if (fresh) await tree.commitSystemTurn([userPrompt, task].filter(Boolean).join("\n\n"), briefEntryId(attempt.id))
-    }
-    const resources = await acquireChildExecutionResources({
+    const resources = await openChildExecutionResources({
       kind: "workflow-agent", workflowId, sessionId, conversationId, description: attempt.name,
       executionCwd: opts.executionCwd, projectRoot, eventStore,
       projectionReader: opts.projectionReader, writer: opts.eventWriter,
-      recall: (input) => opts.recall(conversationId, input), openConversation: seedBrief, attachProjection: opts.attachChildProjection,
+      recall: (input) => opts.recall(conversationId, input),
     }).catch(async (error: unknown) => { await opts.deactivateSession(sessionId); throw error })
     const resolveRoles = createSessionRoleResolver({
       reader: opts.projectionReader, projectRoot, sessionId, userDataRoot: opts.userDataRoot,
@@ -275,6 +270,9 @@ export function createWorkerCallback(
     const foregroundBashHold = createForegroundBashHoldController((ids) => { resources.projection?.updateForegroundBash(ids) })
     try {
 
+    // A fresh agent's tree is empty until its brief commits as its opening
+    // turn, under the agent's brief entry id.
+    const fresh = Object.keys((await resources.conversation.getState()).entriesById).length === 0
     // Count the committed conversation, not model context: compaction can hide
     // earlier calls from context while they still belong to this attempt.
     // The parked count of the live view reads the same rule.
@@ -299,7 +297,6 @@ export function createWorkerCallback(
     // view reads no durable tree while the agent runs.
     let toolUses = countToolUses()
     const reportToolUses = (): void => { onToolUses?.(toolUses); resources.projection?.updateOperations(toolUses) }
-    reportToolUses()
     const forward = (event: RuntimeEvent): void => {
       // An agent emits an event per streamed delta; only a new call restates
       // the count, which every view of the agent's session reads.
@@ -345,52 +342,6 @@ export function createWorkerCallback(
       // resumes only the agents that hold one.
       capacity: capacityWaitAuthority(eventStore, { target: { kind: "workflow-agent", sessionId } }),
     })
-    const initialEnd = await readChatTurnEndEvidence(opts.projectionReader, conversationId)
-    const initialQueue = await loadQueueSnapshotFromReader(opts.projectionReader, workflowId)
-    agentInput.initialize(startedAgents(initialQueue).find(({ attemptId }) => attemptId === attempt.id)?.agent, initialEnd?.turnEnd, initialEnd?.timestamp)
-    const slot: WorkerSlot = { resources, foreground: foregroundBashHold, input: agentInput, conversationId, interruptions: createWorkflowTurnInterruptions({
-      emit: emitAgent, sessionId, currentInterruption: agentInput.interruptionToRecord,
-      overrideInterruption: (by) => { agentInput.interrupt(by) },
-    }), background, recovery, runner: null, modules: undefined, continueHeldInput: privateInputs.continueHeld }
-    slots.set(attempt.id, slot)
-    const unregister = registerLiveSessionControl(eventStore, {
-      sessionId,
-      member: {
-        modules: async () => slot.modules,
-        backgroundTasks: background.tasks,
-        compact: async () => { if (injectionQueue.isHandingOff) return false; injectionQueue.enqueueCompact(); return true },
-        interrupt: (by) => interruptSlot(slot, by),
-        releaseForegroundBash: (id) => foregroundBashHold.release(id),
-        transferForegroundForReplacement: () => foregroundBashHold.transferForReplacement(),
-        terminateBackgroundWork: (id) => { background.tasks.terminate(id) },
-      },
-      state: async () => opts.agentInputs.stateOf(attempt.id),
-      withInputAdmission: privateInputs.withInputAdmission,
-      async deliver(input, decide) {
-        if (injectionQueue.isHandingOff) return { status: "refused", reason: "handing_off" }
-        let outcome = decide(opts.agentInputs.stateOf(attempt.id))
-        if (outcome.status === "refused") return outcome
-        if (outcome.status === "held" && outcome.reason === "interrupted" && input.producer?.kind !== "session") {
-          const continued = await liveWorkflowControl(eventStore, workflowId)?.handBackMember(() => agentInput.resumeFromPerson())
-          if (continued === undefined) return outcome
-          if (continued) outcome = { status: "delivered", startsTurn: true }
-        }
-        if (injectionQueue.isHandingOff) return { status: "refused", reason: "handing_off" }
-        if (privateInputs.claimDelivery(input)) {
-          injectionQueue.enqueueMessage(input, { held: heldAtWakeLimit(outcome) })
-          resources.projection?.queueUserMessage(input)
-          // A person's message ends a capacity wait at once, and the run
-          // that continues reads it (PI-MODEL-063).
-          if (input.producer?.kind !== "session" && recovery.continueNow()) return { status: "delivered", startsTurn: true }
-        }
-        if (outcome.status === "held" && outcome.reason === "interrupted" && input.producer?.kind === "session" && input.producer.envelope?.relation === "parent" && await liveWorkflowControl(eventStore, workflowId)?.handBackMember(() => agentInput.resumeFromParent()) === true) {
-          return { status: "delivered", startsTurn: true }
-        }
-        return outcome
-      },
-      notify: privateInputs.notify,
-    })
-
     const observers = createWorkflowLoopObservers({
       // An agent has message_session exactly when its host has session messaging.
       parentChannel: opts.sessionMessaging !== undefined,
@@ -410,17 +361,17 @@ export function createWorkerCallback(
     let capturedHandoff: WorkerHandoffContent | null = null
     let requestModuleConfig: CapturedModuleConfig | undefined
 
-    emitAgent("agent.logical_turn.started", { sessionId, data: { origin: "system", reason: "new_input" } })
-    emitAgent("agent.run.started", { sessionId, data: { stepIndex: 0, toolUseIds } })
-
     // The worker's conversation is a durable `conversation:<conversationId>`
     // tree, the same mechanism and writer as chat. A paused agent resumes by
     // replaying priorMessages from this tree; there is no separate cache.
-    // The brief of a fresh agent commits when its resources open (refer to
-    // `seedBrief`). Gated to the first attempt: only proven historical
+    // The brief of a fresh agent commits before its live view attaches.
+    // Gated to the first attempt: only proven historical
     // operator-only trees need a missing-context append; other resumes never
     // re-seed the context.
     let firstRun = true
+    // The agent's brief, composed for its check before the run starts.
+    let userPrompt: string
+    let task: string
 
     // The save point coalesces a turn's assistant + tool_result entries into
     // one fact/fsync. Returning the serialized flush keeps the loop from
@@ -489,20 +440,16 @@ export function createWorkerCallback(
     }
 
     const selectModel = (roles: Awaited<ReturnType<RoleResolver>>) => resolveWorkflowAgentRole(attempt, roles, persona?.role)
-    const createContextOptions = async ({ providerSessionKey }: RetryState): Promise<AgentHostContextOptions> => {
-      const roles = await resolveRoles()
-      const selectedModel = selectModel(roles)
+    // The options of one run of the agent. Its capability plan reads them before the brief commits, with no history.
+    const runOptions = (run: {
+      readonly selectedModel?: ReturnType<typeof selectModel>
+      readonly providerSessionKey?: string
+      readonly priorMessages: Awaited<ReturnType<ConversationTreeWriterController["buildContext"]>>["messages"]
+      readonly waits?: Partial<Awaited<ReturnType<typeof readAuthorizedRestoredWait>>>
+    }): AgentHostContextOptions => {
+      const { selectedModel, providerSessionKey } = run
+      const { restoredWait, continuedWait } = run.waits ?? {}
       const allowedSubagentTypes = persona?.allowedSubagentTypes ?? new Set(workflowAgentSubagents(resolvedAgent))
-
-      // Build context per attempt (resilience may rebuild the runner mid-turn):
-      // a retry must see entries flushed by the prior attempt, never stale
-      // history.
-      const { restoredWait, continuedWait } = agentInput.cut === undefined ? await readAuthorizedRestoredWait(opts.projectionReader, conversationId) : {}
-      const priorContext = await buildPriorContext(restoredWait !== undefined)
-      // beginTurn after buildContext so subsequent canonical messages buffer
-      // until the next save point.
-      treeWriter.beginTurn()
-
       const busBridge = createRunnerBusBridge({ emit: emitAgent, sessionId })
       let runnerAssembled = false
       return {
@@ -535,7 +482,7 @@ export function createWorkerCallback(
         conversation: {
           kind: "durable-tree",
           sessionId, conversationId,
-          priorMessages: priorContext.messages,
+          priorMessages: run.priorMessages,
           providerSessionKey: providerSessionKey ?? conversationId,
           resolveLeafId: () => treeWriter.getLeafId(),
           committedTree: () => treeWriter.getState(),
@@ -615,6 +562,18 @@ export function createWorkerCallback(
         ...(opts.capabilityAccess ? { capabilityAccess: opts.capabilityAccess } : {}),
       }
     }
+    const createContextOptions = async ({ providerSessionKey }: RetryState): Promise<AgentHostContextOptions> => {
+      const selectedModel = selectModel(await resolveRoles())
+      // Build context per attempt (resilience may rebuild the runner mid-turn):
+      // a retry must see entries flushed by the prior attempt, never stale
+      // history.
+      const waits = agentInput.cut === undefined ? await readAuthorizedRestoredWait(opts.projectionReader, conversationId) : {}
+      const priorContext = await buildPriorContext(waits.restoredWait !== undefined)
+      // beginTurn after buildContext so subsequent canonical messages buffer
+      // until the next save point.
+      treeWriter.beginTurn()
+      return runOptions({ selectedModel, ...(providerSessionKey === undefined ? {} : { providerSessionKey }), priorMessages: priorContext.messages, waits })
+    }
     const finalizeResources = async (): Promise<void> => {
       const failures: unknown[] = []
       try { await background.close() } catch (error) { failures.push(error) }
@@ -629,6 +588,52 @@ export function createWorkerCallback(
       if (failures.length === 1) throw failures[0]
       if (failures.length > 1) throw new AggregateError(failures, "worker tree finalization failed")
     }
+
+    const slot: WorkerSlot = { resources, foreground: foregroundBashHold, input: agentInput, conversationId, interruptions: createWorkflowTurnInterruptions({
+      emit: emitAgent, sessionId, currentInterruption: agentInput.interruptionToRecord,
+      overrideInterruption: (by) => { agentInput.interrupt(by) },
+    }), background, recovery, runner: null, modules: undefined, continueHeldInput: privateInputs.continueHeld }
+    try {
+    // The brief renders for the check of the agent's first request, which its
+    // run's own tool plan answers. A fresh brief commits before the live view
+    // attaches, because the view's seed is the only way a committed turn
+    // reaches it, and the agent view opens with the brief.
+    const capabilities = await opts.planCapabilities(runOptions({ priorMessages: [] }))
+    const brief = await composeBrief(capabilities)
+    userPrompt = brief.userPrompt
+    task = personaTask(persona, brief.task, capabilities)
+    if (fresh) await treeWriter.commitSystemTurn([userPrompt, task].filter(Boolean).join("\n\n"), briefEntryId(attempt.id))
+    await resources.attach(opts.attachChildProjection)
+    reportToolUses()
+    const initialEnd = await readChatTurnEndEvidence(opts.projectionReader, conversationId)
+    const initialQueue = await loadQueueSnapshotFromReader(opts.projectionReader, workflowId)
+    agentInput.initialize(startedAgents(initialQueue).find(({ attemptId }) => attemptId === attempt.id)?.agent, initialEnd?.turnEnd, initialEnd?.timestamp)
+    slots.set(attempt.id, slot)
+    const unregister = registerLiveSessionControl(eventStore, {
+      sessionId,
+      member: {
+        modules: async () => slot.modules,
+        backgroundTasks: background.tasks,
+        compact: async () => { if (injectionQueue.isHandingOff) return false; injectionQueue.enqueueCompact(); return true },
+        interrupt: (by) => interruptSlot(slot, by),
+        releaseForegroundBash: (id) => foregroundBashHold.release(id),
+        transferForegroundForReplacement: () => foregroundBashHold.transferForReplacement(),
+        terminateBackgroundWork: (id) => { background.tasks.terminate(id) },
+      },
+      state: async () => opts.agentInputs.stateOf(attempt.id),
+      withInputAdmission: privateInputs.withInputAdmission,
+      deliver: workflowMemberDelivery({
+        store: eventStore, workflowId, queue: injectionQueue, input: agentInput,
+        state: () => opts.agentInputs.stateOf(attempt.id),
+        claimDelivery: privateInputs.claimDelivery,
+        onQueued: (input) => { resources.projection?.queueUserMessage(input) },
+        continueNow: () => recovery.continueNow(),
+      }),
+      notify: privateInputs.notify,
+    })
+
+    emitAgent("agent.logical_turn.started", { sessionId, data: { origin: "system", reason: "new_input" } })
+    emitAgent("agent.run.started", { sessionId, data: { stepIndex: 0, toolUseIds } })
 
     // From here until it ends, the worker holds the agent's conversation: a
     // person's interrupt of the turn the runtime's cut ended is recorded
@@ -701,6 +706,8 @@ export function createWorkerCallback(
       slots.delete(attempt.id)
       for (const resolve of moduleWaiters.get(conversationId) ?? []) resolve(undefined)
       publishBackgroundCommands(attempt.id, undefined)
+    }
+    } finally {
       // Close producers, flush buffered writes, and dispose the tree in order.
       // Each boundary still runs, and finalization preserves every failure.
       // The agent's input stays open until its writes are durable, so no

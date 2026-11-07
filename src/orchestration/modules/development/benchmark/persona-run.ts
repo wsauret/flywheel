@@ -19,7 +19,9 @@ import type { AttemptTerminal } from "./run-store.js";
 import { createBenchmarkAccounting } from "./accounting.js";
 import { unavailableBenchmarkAccounting, type BenchmarkAccounting } from "./evidence.js";
 import { invokeBenchmarkAgent } from "./invocation.js";
-import type { SkillRegistryRevision } from "../../../../workflows/skill-schema.js";
+import { agentCapabilityCheck } from "../../../agent-runtime/capability-checks.js";
+import { availableToolNames } from "../../../agent-runtime/persona-tool-rules.js";
+import { definitionAvailabilityOf } from "../../../app-service/definition-availability.js";
 import type { CaptureProviderConnection } from "../../../agent-runtime/factory.js";
 import { resolveSessionRoles } from "../../../config/session-role-resolver.js";
 
@@ -146,16 +148,21 @@ export interface PersonaTaskGuidance {
 }
 
 /** Renders the exact system task sent to a persona runner. Campaign identity
- * uses this same function, so skill or persona guidance cannot drift silently. */
+ * uses this same function, so skill or persona guidance cannot drift silently.
+ * The persona's tools narrow to the runtime's modules and its instructions
+ * render for that grant, as a subagent dispatch of it does. */
 export function renderPersonaTaskGuidance(
   persona: PersonaDefinition,
   agentRegistry: ReadonlyMap<string, AgentDefinition>,
-  skills: SkillRegistryRevision,
+  runtime: Pick<BenchmarkRuntime, "definitions" | "moduleSelection">,
   tasks: ModuleAgentTasks = installedAgentTasks(),
 ): PersonaTaskGuidance {
-  const toolNames = personaToolNames(persona, agentRegistry);
+  const modules = runtime.moduleSelection();
+  const revision = runtime.definitions.captureRevision();
+  const toolNames = availableToolNames(personaToolNames(persona, agentRegistry), modules);
+  const has = agentCapabilityCheck(new Set(toolNames), definitionAvailabilityOf(revision, modules.enabledModuleIds));
   return {
-    task: tasks.task(personaInstructions(persona, skills), toolNames, persona.maxTurns),
+    task: tasks.task(personaInstructions(persona, revision.skills, has), has, persona.maxTurns),
     toolNames,
   };
 }
@@ -188,7 +195,7 @@ export async function runPersonaTask(deps: BenchmarkRuntime, request: PersonaTas
   const skills = deps.definitions.skills();
   const agentRegistry = request.agentRegistry ?? new Map<string, AgentDefinition>();
   const allowedSubagentTypes = grantedSubagentTypes(persona, agentRegistry);
-  const { task, toolNames } = renderPersonaTaskGuidance(persona, agentRegistry, skills, tasks);
+  const { task, toolNames } = renderPersonaTaskGuidance(persona, agentRegistry, deps, tasks);
   let stop: AttemptTerminal | undefined;
   request.onPhase?.("ready");
   const timer = timeoutMs === undefined ? undefined : setTimeout(() => {

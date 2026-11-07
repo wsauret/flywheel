@@ -58,7 +58,7 @@ async function dispatchSubagent(
   const childConversationId = continuation?.childConversationId ?? deps.subagentSessions.allocateId();
   const childDepth = await deps.subagentSessions.childDepth(deps.sessionId);
   const descriptionText = typeof input.description === "string" ? input.description : agentType;
-  const tools = prepareSubagentTools({ agent, context, deps, childDepth, ...(continuation ? { continuation } : {}) });
+  const tools = await prepareSubagentTools({ agent, context, deps, childDepth, ...(continuation ? { continuation } : {}) });
   if (!tools.ok) return tools.error;
   const { toolNames, task: subagentTask } = tools;
   const capabilityGrant = continuation ? continuation.capabilityGrant : access.grant;

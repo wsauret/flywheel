@@ -90,8 +90,10 @@ export async function boundHandoff(handoff: HandoffContent, budget: ResultBudget
   return text;
 }
 
-/** Bounds a text result with the same head and tail cut, breadcrumb, and
- *  recovery notice as every truncated tool result. */
+/** Bounds a text result with the same head and tail cut and breadcrumb as
+ *  every truncated tool result. The parent can read the result long after it
+ *  dispatched, when its tools may have changed, so the notice names the saved
+ *  file and no tool. */
 export async function boundText(text: string, budget: ResultBudget): Promise<string> {
   if (text.length <= budget.cap) return text;
   // UTF-8 bytes never number fewer than characters, so a byte cap bounds characters too.

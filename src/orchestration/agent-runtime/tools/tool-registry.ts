@@ -7,7 +7,6 @@ import type { ToolInteractionContract } from "../model-interaction-profile.js";
 import type { KernelToolDeps } from "./kernel-tool-deps.js";
 import { createHandoffTool, handoffDefinition } from "./handoff.js";
 import { createListSessionsTool, LIST_SESSIONS_TOOL_DEFINITION } from "./list-sessions.js";
-import { createModelsTool, MODELS_TOOL_DEFINITION } from "./models.js";
 import { createMessageSessionTool, MESSAGE_SESSION_TOOL_DEFINITION } from "./message-session.js";
 import { createProcessTool, PROCESS_TOOL_DEFINITION } from "./process.js";
 import { checkpointToolDefinition, createCheckpointTool, type CheckpointToolKind } from "./session-checkpoint.js";
@@ -52,6 +51,9 @@ export interface ToolFactoryResult {
   readonly unusable?: { readonly tool: AdvertisedTool; readonly reason: string };
   /** Named sub-omissions a present tool reports, such as one input it cannot advertise. */
   readonly omissions?: readonly { readonly name: string; readonly reason: string }[];
+  /** The modules whose part of the advertised tool, such as one input, this agent's calls are refused because the
+   *  agent's own selection turned them off (`ToolExposurePlan.turnedOff`). */
+  readonly turnedOff?: readonly ModuleId[];
   /** The registration's tool is built last, over the final eligible set. Its
    *  presence admits the modules' code-only tools, whose capability
    *  authority it becomes. One request plans at most one. */
@@ -128,14 +130,6 @@ function nativeProcess({ kernel }: ToolDeps): ToolFactoryResult {
 }
 
 const KERNEL_TOOLS = {
-  models: {
-    ...kernelPolicy("ambient", "ui_meta", "reconstruct", false, 23),
-    registrations: {
-      models: { capabilities: [], create: ({ kernel }) => kernel.captureProviderConnection
-        ? { tool: createModelsTool(kernel.captureProviderConnection, kernel.userDataRoot) }
-        : { unusable: { tool: MODELS_TOOL_DEFINITION, reason: "no live model access capture available" } } },
-    },
-  },
   checkpoint_read: sessionCheckpoint("read", 11),
   checkpoint_replace: sessionCheckpoint("replace", 12),
   checkpoint_decide: sessionCheckpoint("decide", 13),

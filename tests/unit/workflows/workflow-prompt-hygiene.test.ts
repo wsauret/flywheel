@@ -24,7 +24,7 @@ function workflowFiles(dir: string): string[] {
 const readSkill = async (id: string): Promise<string> => {
   const skills = repoDefinitions().skills();
   const skill = skills.skills.get(id);
-  if (skill) return [...renderSkillClosure(skill.dependencies, skills, `Skill "${id}"`), skill.body].join("\n\n");
+  if (skill) return [...renderSkillClosure(skill.dependencies, skills, `Skill "${id}"`, () => true), skill.body].join("\n\n");
   throw new Error(`no skill package: ${id}`);
 };
 

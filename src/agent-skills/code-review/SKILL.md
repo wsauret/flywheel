@@ -53,7 +53,11 @@ Never add an untriggered reviewer, or omit a triggered one.
 
 ## Dispatch reviewers
 
-Dispatch every selected reviewer in parallel. When you can launch a workflow file, run them as one workflow in the Review shape of `workflow-authoring`. Use self-contained prompts and never `fork: true`. Inline the target, project context paths, design rationale, constraints, assigned claims, and location format. Include this instruction; for a plan target, name the plan and plan-scope locations instead:
+Dispatch every selected reviewer in parallel.
+{{if:workflow}}
+When you can launch a workflow file, run them as one workflow in the Review shape of `workflow-authoring`.
+{{end}}
+Use self-contained prompts and never `fork: true`. Inline the target, project context paths, design rationale, constraints, assigned claims, and location format. Include this instruction; for a plan target, name the plan and plan-scope locations instead:
 
 ```text
 Review this completed change.

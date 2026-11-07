@@ -18,11 +18,19 @@ const REVISION_CAPTURE_ALLOWLIST = new Set([
   "src/orchestration/modules/workflows/migrations/workflow-identity-chain.ts",
   "src/orchestration/workflow-host/controller.ts",
   "src/orchestration/app-service/definition-availability.ts",
+  // Each request's tool plan reads the published revision once, so its skill
+  // catalog and its capability checks come from one revision.
+  "src/orchestration/agent-runtime/request-inputs.ts",
   "src/orchestration/modules/workflows/cli/verify.ts",
   // An Ask approval question of a workflow file reads the file against the
   // revision that a launch would capture, so the question binds the hash
   // of the definition that the launch admits.
   "src/orchestration/modules/workflows.ts",
+  // An explicit subagent Resume and a benchmark cell are one-shot starts:
+  // each reads the published revision once to resolve the definition
+  // availability that its child's tools and text render against.
+  "src/orchestration/modules/subagents.ts",
+  "src/orchestration/modules/development/benchmark/persona-run.ts",
 ])
 
 function sourceFiles(root: string): string[] {

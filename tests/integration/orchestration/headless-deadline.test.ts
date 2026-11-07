@@ -15,6 +15,7 @@ import { createHeadlessDeadline, HeadlessDeadlineExpired } from "../../../src/or
 import { resolveHeadlessAuthProfile } from "../../../src/orchestration/headless/headless-profile-runtime.js";
 import { authProviders } from "../../helpers/auth-context.js";
 import { fakeModelInfos } from "../../helpers/model-tier-fixtures.js";
+import { planEveryCapability } from "../../helpers/attempt-brief.js";
 
 function workflowDeps(createAgent: AgentFactory): WorkflowDeps {
   const directories = testDirectories(process.cwd());
@@ -29,6 +30,7 @@ function workflowDeps(createAgent: AgentFactory): WorkflowDeps {
     definitions: repoDefinitions(),
     createAgent,
     prepareRequest: () => { throw new Error("A headless run prepares no pre-start") },
+    planCapabilities: planEveryCapability,
     createLLMClient: async () => { throw new Error("unexpected LLM client creation"); },
     captureProviderConnection: async () => ({ connection, providers: testProviderRegistry(), runtimeConfig: testRuntimeConfigCapture(), eligibility: testProviderEligibility(), admit: () => { throw new Error("unexpected provider admission"); } }),
     runOwnedCommand: async () => { throw new Error("unexpected command"); },

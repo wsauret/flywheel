@@ -330,7 +330,7 @@
     },
     {
       "source": "inspiration/pi-autoresearch/skills/autoresearch-finalize/SKILL.md",
-      "target": "src/agent-skills/experiment-finalize/SKILL.md",
+      "target": "src/orchestration/modules/experiments/definitions/skills/experiment-finalize/SKILL.md",
       "startMarker": "---\nname: autoresearch-finalize",
       "endMarker": "only process kept experiments from the jsonl.",
       "sha256": "679eb2630bb3991c24a51326b4279e30ed61451a3e96bd79fcfcbebd2db42d47",
@@ -352,7 +352,7 @@
     },
     {
       "source": "inspiration/pi-autoresearch/skills/autoresearch-finalize/finalize.sh",
-      "target": "src/agent-skills/experiment-finalize/finalize.sh",
+      "target": "src/orchestration/modules/experiments/definitions/skills/experiment-finalize/finalize.sh",
       "startMarker": "#!/usr/bin/env bash\nset -euo pipefail",
       "endMarker": "main \"$@\"",
       "sha256": "010179881c220d918341a96825307da0326d72a97eaf9d382d35f49190056a10",
@@ -370,7 +370,7 @@
     },
     {
       "source": "inspiration/pi-autoresearch/skills/autoresearch-create/SKILL.md",
-      "target": "src/agent-skills/experiment-charter/SKILL.md",
+      "target": "src/orchestration/modules/experiments/definitions/skills/experiment-charter/SKILL.md",
       "startMarker": "Bash script (`set -euo pipefail`) that: pre-checks fast",
       "endMarker": "Add instrumentation as you learn what matters.",
       "sha256": "294bdc9e7d56bec886a8c42782fd9b526e9dd6abacd98bc20820115b27677fa0",
@@ -385,7 +385,7 @@
     },
     {
       "source": "inspiration/pi-autoresearch/skills/autoresearch-create/SKILL.md",
-      "target": "src/agent-skills/experiment-charter/SKILL.md",
+      "target": "src/orchestration/modules/experiments/definitions/skills/experiment-charter/SKILL.md",
       "startMarker": "#### Agent-supplied ASI via `log_experiment`",
       "endMarker": "re-discovering the same dead ends.",
       "sha256": "7545ec2c379da06a3744d621738808e6af796b053c0c3631c99aeb2cc791ae10",
@@ -395,7 +395,7 @@
     },
     {
       "source": "inspiration/pi-autoresearch/skills/autoresearch-create/SKILL.md",
-      "target": "src/agent-skills/experiment-charter/SKILL.md",
+      "target": "src/orchestration/modules/experiments/definitions/skills/experiment-charter/SKILL.md",
       "startMarker": "Bash script (`set -euo pipefail`) for backpressure/correctness checks",
       "endMarker": "helps the agent pinpoint what broke.",
       "sha256": "e875bbe574892dbc82c29df213d1269159605a3a806950911df90ec60d91736e",
@@ -410,7 +410,7 @@
     },
     {
       "source": "inspiration/pi-autoresearch/skills/autoresearch-create/SKILL.md",
-      "target": "src/agent-skills/experiment-charter/SKILL.md",
+      "target": "src/orchestration/modules/experiments/definitions/skills/experiment-charter/SKILL.md",
       "startMarker": "## Loop Rules",
       "endMarker": "Keep going until interrupted.",
       "sha256": "8562a76c6b7dde34705962952163c7128e5462651fcd36e3281cb9c4b4af8df3",
@@ -426,7 +426,7 @@
       "endMarker": "[ $TESTS_FAILED -eq 0 ] || exit 1",
       "sha256": "51c3c4735de1ec0698c8505a263ece1567012b5039d9956ce7690c97357b946a",
       "substitutions": [
-        { "from": "skills/autoresearch-finalize/finalize.sh and .auto paths", "to": "src/agent-skills/experiment-finalize/finalize.sh and .experiment paths" },
+        { "from": "skills/autoresearch-finalize/finalize.sh and .auto paths", "to": "src/orchestration/modules/experiments/definitions/skills/experiment-finalize/finalize.sh and .experiment paths" },
         { "from": "autoresearch/ branch names", "to": "experiment/ branch names" },
         {
           "from": "inherited Git environment",

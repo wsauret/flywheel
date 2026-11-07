@@ -24,6 +24,7 @@ import { formatFileMap, generateFileMap, lookupSymbol } from "./structural-map.j
 import { renderStructuralSummary, summarizeStructure } from "./structural-summary.js";
 import { detectTreeSitterLanguage } from "./tree-sitter-code.js";
 import type { RuntimeTool, RuntimeToolInput, ToolContext, ToolResult } from "./types.js";
+import type { CapabilityCheck } from "../../../infra/capability-text.js";
 
 const log = Log.create({ service: "agent-read" });
 
@@ -339,13 +340,21 @@ async function readSymbol(
   }
 }
 
+/** The refusal of a binary file, which names the shell only for an agent that holds it. */
+function binaryFileRefusal(filePath: string, has: CapabilityCheck | undefined): ToolResult {
+  return {
+    content: `Cannot read '${filePath}': file appears to be binary. ${has?.("bash") === false ? "Its bytes cannot be shown as text." : "Use the bash tool to inspect binary files."}`,
+    outcome: "error",
+  };
+}
+
 async function readText(
   filePath: string,
   offset: number,
   limit: number,
   ops: ReadOperations,
   record: (sha256: string) => RecordCoverage,
-  options?: { map?: boolean; symbol?: string; raw?: boolean; summarize?: boolean; signal?: AbortSignal },
+  options?: { map?: boolean; symbol?: string; raw?: boolean; summarize?: boolean; signal?: AbortSignal; has?: CapabilityCheck },
 ): Promise<ToolResult> {
   const file = await ops.readFile(filePath);
   const supportsStructure = detectTreeSitterLanguage(filePath) !== null;
@@ -359,12 +368,7 @@ async function readText(
   const { totalLines, sha256, binary } = acquired;
   const seen = record(sha256);
 
-  if (binary) {
-    return {
-      content: `Cannot read '${filePath}': file appears to be binary. Use the bash tool to inspect binary files.`,
-      outcome: "error",
-    };
-  }
+  if (binary) return binaryFileRefusal(filePath, options?.has);
 
   if (options?.summarize && "text" in acquired) {
     const summary = await summarizeStructure({ path: filePath, text: acquired.text });
@@ -428,18 +432,13 @@ async function readTextMultiRange(
   ranges: readonly LineRange[],
   ops: ReadOperations,
   record: (sha256: string) => RecordCoverage,
-  options?: { raw?: boolean; signal?: AbortSignal },
+  options?: { raw?: boolean; signal?: AbortSignal; has?: CapabilityCheck },
 ): Promise<ToolResult> {
   const file = await ops.readFile(filePath);
   const { windows, totalLines, sha256, binary } = await readTextWindows(file.stream(), ranges, options?.signal);
   const seen = record(sha256);
 
-  if (binary) {
-    return {
-      content: `Cannot read '${filePath}': file appears to be binary. Use the bash tool to inspect binary files.`,
-      outcome: "error",
-    };
-  }
+  if (binary) return binaryFileRefusal(filePath, options?.has);
 
   const blocks: string[] = [];
   const notices: string[] = [];
@@ -504,7 +503,7 @@ function searchRequested(input: Readonly<RuntimeToolInput>): boolean {
   return SEARCH_KEYS.some((key) => Object.hasOwn(input, key));
 }
 
-const READ_DESCRIPTION_HEAD = "Read a file's contents. read operates on files only, not directories; use list for directory contents. Text files are returned with ordinary one-based decimal line numbers followed by | (for example, 42|const x = 1). Append :raw to the path for verbatim content without line numbers. Append line ranges to the path: path:5-16, path:50+20 (20 lines from 50), or path:5-16,960-973 (multi-range); selectors compound, as in path:5-16:raw. Use symbol: \"functionName\" to read just that function (dot notation supported: \"Class.method\"). Use map: true to see the file's structural outline (functions, classes, types with line ranges).";
+const READ_DESCRIPTION_HEAD = "Read a file's contents; given a directory, read returns its entries. Text files are returned with ordinary one-based decimal line numbers followed by | (for example, 42|const x = 1). Append :raw to the path for verbatim content without line numbers. Append line ranges to the path: path:5-16, path:50+20 (20 lines from 50), or path:5-16,960-973 (multi-range); selectors compound, as in path:5-16:raw. Use symbol: \"functionName\" to read just that function (dot notation supported: \"Class.method\"). Use map: true to see the file's structural outline (functions, classes, types with line ranges).";
 const READ_DESCRIPTION_TAIL = "When a file is truncated, a structural map is auto-appended. Image files (PNG, JPG, GIF, WebP) are returned as base64-encoded data. You can read multiple files in parallel; always parallelize when exploring related files.";
 /** One text for both default-read behaviors, so the tool reads the same for
  *  every agent (ARCH-CONTEXT-018). */
@@ -578,7 +577,7 @@ export function createReadDefinition(options?: ReadDefinitionOptions): RuntimeTo
         if (isImageExtension(ext)) {
           result = await readImage(resolvedPath, ops);
         } else if (multiRanges) {
-          result = await readTextMultiRange(resolvedPath, multiRanges, ops, record, { raw, signal: context.signal });
+          result = await readTextMultiRange(resolvedPath, multiRanges, ops, record, { raw, signal: context.signal, ...(context.capabilities ? { has: context.capabilities } : {}) });
         } else {
           result = await readText(resolvedPath, offset, limit, ops, record, {
             map: hasMap,
@@ -586,6 +585,7 @@ export function createReadDefinition(options?: ReadDefinitionOptions): RuntimeTo
             raw,
             summarize: structuralSummary && summarize,
             signal: context.signal,
+            ...(context.capabilities ? { has: context.capabilities } : {}),
           });
         }
 
@@ -598,7 +598,7 @@ export function createReadDefinition(options?: ReadDefinitionOptions): RuntimeTo
         // The model's own tool outcome, which its durable tool result holds.
         log.debug("failed to read file", { path: rawPath, error: msg, outcome: "error" });
         const hint = errnoCode(err) === "ENOENT" ? await missingPathHint(context, resolvedPath, "any") : "";
-        return { content: `Failed to read '${rawPath}': ${msg}. Common causes: file does not exist, permission denied (the user may need to grant access), or the path points at a directory. Use list to diagnose path spelling or directory structure, then read a specific file. Do not retry blindly; diagnose first.${hint}`, outcome: "error" };
+        return { content: `Failed to read '${rawPath}': ${msg}. Common causes: file does not exist, permission denied (the user may need to grant access), or the path points at a directory. ${context.capabilities?.("list") === false ? "Check" : "Use list to diagnose"} path spelling or directory structure, then read a specific file. Do not retry blindly; diagnose first.${hint}`, outcome: "error" };
       }
     },
   };

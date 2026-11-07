@@ -94,6 +94,7 @@ export function createMockChatRunner(sessionId: string): ChatRunner {
     awaitLogicalTurnDurability: async () => {},
     requestWithContext: () => false,
     hold: async () => NO_MODULE_RUNTIMES,
+    capabilities: async () => () => true,
     holdsRunningTurn: () => false,
     interruptForReplacement: async () => false,
     interruptPlannedCut: async () => "ended",

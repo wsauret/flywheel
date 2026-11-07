@@ -4,6 +4,7 @@ import { join } from "node:path"
 import type { OwnedCommandResult, OwnedCommandRunner } from "../../../../../src/infra/owned-command.js"
 import { createSkillTool } from "../../../../../src/orchestration/agent-runtime/tools/skill.js"
 import { createFinalizeChildGrant, type FinalizeGroups } from "../../../../../src/orchestration/modules/experiments/finalize-child-run.js"
+import { shippedDefinitionBundles } from "../../../../../src/orchestration/modules.js"
 import { getPersonaMetadataIndex } from "../../../../../src/workflows/agents/agent-roles.js"
 import { readSkillPackageFiles } from "../../../../../src/workflows/skill-context.js"
 import type { SkillDefinition } from "../../../../../src/workflows/skill-schema.js"
@@ -14,13 +15,18 @@ import { makeContext } from "../../agent-runtime/tools/_fixtures.js"
 import { temporaryDirectories } from "../../../../helpers/directories.js"
 
 const REPO_ROOT = join(import.meta.dir, "..", "..", "..", "..", "..")
-const SKILL_ROOTS = [{ authority: "bundled" as const, dir: BUNDLED_SKILL_DIR, reach: "global" as const, sourceKind: "agent" as const }]
+// The experiment skills ship in the experiments module's definition bundle, beside Flywheel's own methods.
+const SKILL_ROOTS = [
+  { authority: "bundled" as const, dir: BUNDLED_SKILL_DIR, reach: "global" as const, sourceKind: "agent" as const },
+  ...shippedDefinitionBundles().map(({ id, root }) => ({ authority: "bundled" as const, dir: join(root, "skills"), reach: "global" as const, sourceKind: "module" as const, bundle: id })),
+]
+const EXPERIMENT_SKILLS = join(REPO_ROOT, "src", "orchestration", "modules", "experiments", "definitions", "skills")
 const load = loadSkillDefinitions({ roots: SKILL_ROOTS })
 const revision = publishSkillRevision(1, load.skills, load.bundledCorpus)
 const charter = load.skills.get("experiment-charter")!
 const finalize = load.skills.get("experiment-finalize")!
-const scriptSource = readFileSync(join(REPO_ROOT, "src", "agent-skills", "experiment-finalize", "finalize.sh"), "utf8")
-const loopRules = readFileSync(join(REPO_ROOT, "src", "agent-skills", "experiment-charter", "references", "loop-rules.md"), "utf8")
+const scriptSource = readFileSync(join(EXPERIMENT_SKILLS, "experiment-finalize", "finalize.sh"), "utf8")
+const loopRules = readFileSync(join(EXPERIMENT_SKILLS, "experiment-charter", "references", "loop-rules.md"), "utf8")
 
 const HASH_A = "a".repeat(40)
 const HASH_B = "b".repeat(40)
@@ -50,9 +56,9 @@ describe("experiment skill packages", () => {
     for (const key of ["name", "metric_name", "metric_unit", "direction", "measure_command", "checks_command", "work_dir", "max_iterations", "protected_paths", "sealed_paths"]) {
       expect(charter.body).toMatch(new RegExp(`^${key} = `, "m"))
     }
-    expect(charter.body).toContain("approved by the user with `ask_user` before the next section starts")
+    expect(charter.body).toContain("approved by the person before the next section starts")
     expect(charter.body).toContain("Never write a file before the complete draft is approved")
-    expect(charter.body).toContain("Run `./.experiment/measure.sh` once through Bash on the unchanged tree")
+    expect(charter.body).toContain("Run `./.experiment/measure.sh` once on the unchanged tree")
     expect(charter.body).toContain("`METRIC <metric_name>=<finite number>`")
     expect(charter.body).toContain("git add .experiment/charter.md .experiment/measure.sh .experiment/checks.sh")
     expect(charter.body).toContain("one commit holds exactly the three `.experiment` files on a clean tree")
@@ -181,7 +187,7 @@ describe("createFinalizeChildGrant", () => {
       seen.push(command[0]!)
       return result("done")
     })
-    const tool = createSkillTool({ revision, personaIndex: getPersonaMetadataIndex(), childGrant: grant })
+    const tool = createSkillTool({ treeCapabilities: () => true, availability: { skills: new Map() }, revision, personaIndex: getPersonaMetadataIndex(), childGrant: grant })
 
     const context = makeContext()
     const refused = await tool.execute({ action: "child-run", skill_id: "ship", script: "finalize.sh", input: groups }, context)

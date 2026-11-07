@@ -15,9 +15,11 @@ const code = {
   registrations: {
     code: {
       capabilities: [],
-      create: ({ modules }) => {
+      create: ({ kernel, modules }) => {
         const runtime = modules.get(codeModeRuntime)
-        return runtime ? { deferred: runtime.createTool } : { reason: "code mode is not wired" }
+        if (!runtime) return { reason: "code mode is not wired" }
+        const nestedTools = kernel.moduleSnapshot.contributions.some((contribution) => contribution.domain === "codeTools")
+        return { deferred: runtime.createTool({ nestedTools, bash: kernel.treeCapabilities("bash") }) }
       },
     },
   },

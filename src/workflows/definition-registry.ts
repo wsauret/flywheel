@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { errorMessage } from "../infra/error-message.js";
 import { Log } from "../infra/log.js";
-import { skillDefinitions as bundledSkillDefinitions } from "./agents/manifest.js";
+import { skillDefinitions as bundledSkillDefinitions, moduleSkillDefinitions } from "./agents/manifest.js";
 import { formerStepSkillWarnings } from "./retired-bindings.js";
 import type { DefinitionResolution } from "../infra/definition-resolution.js";
 import type { DefinitionBundle } from "./loader.js";
@@ -23,15 +23,15 @@ const log = Log.create({ service: "skill-registry" });
 
 
 /** Skills of every source: the packages installed under the external roots
- *  outrank Flywheel's own bundled packages, which fall back to the compiled
- *  manifest when the source tree is absent (binary mode), and the installed
- *  modules' definition bundles, which exist only where their module does. */
+ *  outrank Flywheel's own bundled packages and the installed modules'
+ *  definition bundles. Both fall back to the compiled manifest when the source
+ *  tree is absent (binary mode); a release compiles only the bundles it ships. */
 function loadSkills(roots: readonly SkillStoreRoot[], bundles: readonly DefinitionBundle[]): SkillLoad {
   return loadSkillDefinitions({
     roots: [
       ...roots.map(({ dir, reach }) => ({ authority: "external" as const, dir, reach })),
       { authority: "bundled" as const, dir: BUNDLED_SKILL_DIR, reach: "global" as const, sourceKind: "agent" as const },
-      ...bundles.map(({ id, root }) => ({ authority: "bundled" as const, dir: join(root, "skills"), reach: "global" as const, sourceKind: "module" as const, bundle: id })),
+      ...bundles.map(({ id, root }) => ({ authority: "bundled" as const, dir: join(root, "skills"), reach: "global" as const, sourceKind: "module" as const, bundle: id, manifest: Object.entries(moduleSkillDefinitions[id] ?? {}) })),
     ],
     bundledEntries: Object.entries(bundledSkillDefinitions),
   });

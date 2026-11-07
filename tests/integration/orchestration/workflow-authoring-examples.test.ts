@@ -37,7 +37,7 @@ import { mapHost, SqliteVmDriver } from "../../unit/workflows/vm/_sqlite-vm-driv
 
 const temporary = temporaryDirectories()
 const revision = repoDefinitions().captureRevision()
-const SKILL_DIR = join(import.meta.dir, "..", "..", "..", "src", "agent-skills", "workflow-authoring")
+const SKILL_DIR = join(import.meta.dir, "..", "..", "..", "src", "orchestration", "modules", "workflows", "definitions", "skills", "workflow-authoring")
 const EXAMPLES_DIR = join(SKILL_DIR, "examples")
 const read = (path: string): string => readFileSync(join(SKILL_DIR, path), "utf8")
 

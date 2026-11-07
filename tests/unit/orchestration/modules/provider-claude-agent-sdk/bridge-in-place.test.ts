@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { MessageParam, TextBlockParam } from "@anthropic-ai/sdk/resources/messages.js";
-import { createClaudeReminders, environmentReminder, type ClaudeReminder } from "../../../../../src/orchestration/agent-runtime/llm/claude-reminders.js";
+import { createClaudeReminders, environmentReminder, type HostEnvironment } from "../../../../../src/orchestration/agent-runtime/llm/claude-reminders.js";
+import { SHELL_CAPABILITIES } from "../../../../helpers/prompt-capabilities.js";
 import {
   A1, A2, answers, forwardDiagnostics, init, MACOS_ENVIRONMENT, parked, payloads, R1, readsFile, request, REQUEST_STEP, send, settle, turnDone, U1, U2, until, withBridge, type Harness, originsOf,
 } from "./_bridge-harness.js";
@@ -12,9 +13,9 @@ const U3: MessageParam = { role: "user", content: [{ type: "text", text: "Last o
 const FAILED_R1: MessageParam = { role: "user", content: [{ type: "tool_result", tool_use_id: "toolu_1", content: [{ type: "text", text: "no such file" }], is_error: true }] };
 
 /** A step's opening reminders as canonical history holds them: `environment`, the model, and today's date. */
-function openingReminders(environment: Extract<ClaudeReminder, { kind: "environment" }>): TextBlockParam[] {
-  const [, model, date] = createClaudeReminders("claude-sonnet-5-5", 200_000)([{ kind: "user", origin: "human", content: "Read a." }], environment.workingDirectory);
-  return [environmentReminder(environment), model?.content, date?.content].map((text) => ({ type: "text", text: typeof text === "string" ? text : "" }));
+function openingReminders(environment: HostEnvironment): TextBlockParam[] {
+  const [, model, date] = createClaudeReminders("claude-sonnet-5-5", 200_000)([{ kind: "user", origin: "human", content: "Read a." }], environment.workingDirectory, SHELL_CAPABILITIES);
+  return [environmentReminder(environment, SHELL_CAPABILITIES), model?.content, date?.content].map((text) => ({ type: "text", text: typeof text === "string" ? text : "" }));
 }
 
 /** One idle conversation on one query: U1, a read of `a`, its result through the handler, and "Done.". */

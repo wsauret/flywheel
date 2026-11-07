@@ -1,4 +1,5 @@
 import { redactDeep, redactSecrets } from "../../infra/redact-secrets.js";
+import type { CapabilityCheck } from "../../infra/capability-text.js";
 import { stripProviderReasoningBlocks } from "../../infra/llm/provider-reasoning-blocks.js";
 import type { ContentBlock, ConversationMessage, ServingAttempt } from "./llm/types.js";
 import type { LlmToolOutputPart } from "./llm/messages.js";
@@ -96,9 +97,11 @@ export async function appendProviderHistory(input: EntryWriter & {
   messages: readonly ConversationMessage[];
   turnReminders?: ((messages: readonly ConversationMessage[]) => Promise<readonly ConversationMessage[]>) | undefined;
   executionCwd: string;
+  /** The agent check of the request (ARCH-CONTEXT-033). */
+  capabilities: CapabilityCheck;
 }): Promise<void> {
   await appendEntries(input, [
-    ...input.attempt.messagesToAppend?.(input.messages, input.executionCwd) ?? [],
+    ...input.attempt.messagesToAppend?.(input.messages, input.executionCwd, input.capabilities) ?? [],
     ...await input.turnReminders?.(input.messages) ?? [],
   ]);
 }

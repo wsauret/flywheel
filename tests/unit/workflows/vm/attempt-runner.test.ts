@@ -17,8 +17,10 @@ import {
   completed,
   deps,
   run,
+  workerReturning,
   workSkill,
 } from "./attempt-runner-test-support.js";
+import { EVERY_CAPABILITY } from "../../../helpers/attempt-brief.js";
 interface PhaseUnit {
   readonly id: string;
   readonly goal: string;
@@ -105,7 +107,7 @@ const pendingPhaseOne: ControlAttempt = {
 
 describe("attempt runner outcomes", () => {
   it("maps a completed worker without a handoff to a missing handoff", async () => {
-    expect(expectFailure(await run({ worker: async () => ({ ...completed(null), toolUses: 2 }) }))).toMatchObject({
+    expect(expectFailure(await run({ worker: workerReturning({ ...completed(null), toolUses: 2 }) }))).toMatchObject({
       kind: "missing_handoff",
       attemptId: attempt.attemptId,
       conversationId: "conversation-1",
@@ -130,8 +132,9 @@ describe("attempt runner outcomes", () => {
   ] satisfies ReadonlyArray<readonly [string, AttemptExecutorDeps["worker"], Exclude<AttemptRunOutcome["kind"], "success">]>) (
     "maps %s to %s",
     async (_name, worker, expectedKind) => {
-      const failure = expectFailure(await run({ worker: (...args) => {
-        args[5]?.(3);
+      const failure = expectFailure(await run({ worker: async (...args) => {
+        await args[1](EVERY_CAPABILITY);
+        args[4]?.(3);
         const execute: AttemptExecutorDeps["worker"] = worker;
         return execute(...args);
       } }));
@@ -152,7 +155,7 @@ describe("attempt runner outcomes", () => {
     };
     const outcome = await run({
       resolvedAgents: reassessBindings,
-      worker: async () => completed(content),
+      worker: workerReturning(completed(content)),
     }, reassessAttempt);
     expect(outcome).toMatchObject({
       kind: "success",
@@ -178,10 +181,10 @@ describe("attempt runner outcomes", () => {
     const { source, control } = reassessingAfter(state, "phase-1");
     const outcome = await run({
       resolvedAgents: reassessBindings,
-      worker: async () => completed({
+      worker: workerReturning(completed({
         summary: "Insert work learned from phase 1.",
         changes: [{ action: "insert", phase_id: "phase-1", phase }],
-      }),
+      })),
     }, reassessAttempt, control);
 
     expect(outcome).toMatchObject({
@@ -208,10 +211,10 @@ describe("attempt runner outcomes", () => {
       const { source, control } = reassessingAfter(blockedState, "phase-1", otherAttempts);
       const outcome = await run({
         resolvedAgents: reassessBindings,
-        worker: async () => completed({
+        worker: workerReturning(completed({
           summary: "Re-spec phase 1 around the file that exists.",
           changes: [{ action: "replace", phase_id: "phase-1", phase }],
-        }),
+        })),
       }, reassessAttempt, control);
 
       expect(outcome).toMatchObject({
@@ -232,10 +235,10 @@ describe("attempt runner outcomes", () => {
     const { control } = reassessingAfter(blockedState, "phase-1", [pendingPhaseOne]);
     const outcome = await run({
       resolvedAgents: reassessBindings,
-      worker: async () => completed({
+      worker: workerReturning(completed({
         summary: "Re-spec phase 1 around the file that exists.",
         changes: [{ action: "replace", phase_id: "phase-1", phase: phaseUnit("phase-1") }],
-      }),
+      })),
     }, reassessAttempt, control);
 
     expect(outcome).toMatchObject({
@@ -257,7 +260,7 @@ describe("attempt runner outcomes", () => {
     const { control } = reassessingAfter(blockedState, "phase-1", [pendingPhaseTwo]);
     const outcome = await run({
       resolvedAgents: reassessBindings,
-      worker: async () => completed(content),
+      worker: workerReturning(completed(content)),
     }, reassessAttempt, control);
 
     expect(outcome).toMatchObject({
@@ -285,7 +288,7 @@ describe("attempt runner outcomes", () => {
     const { control } = reassessingAfter({ _tag: "completed" }, "phase-1", [pendingPhaseTwo]);
     const outcome = await run({
       resolvedAgents: reassessBindings,
-      worker: async () => completed({ summary: "Adjust the remaining roadmap.", changes }),
+      worker: workerReturning(completed({ summary: "Adjust the remaining roadmap.", changes })),
     }, reassessAttempt, control);
 
     expect(outcome).toMatchObject({
@@ -301,7 +304,7 @@ describe("attempt runner outcomes", () => {
     const content = { summary: "Adjust a phase that does not exist.", changes: [change] };
     const outcome = await run({
       resolvedAgents: reassessBindings,
-      worker: async () => completed(content),
+      worker: workerReturning(completed(content)),
     }, reassessAttempt);
 
     expect(outcome).toMatchObject({
@@ -316,10 +319,10 @@ describe("attempt runner outcomes", () => {
     const duplicate: ControlAttempt = { ...base.attempts[0]!, id: "phase-attempt-duplicate" };
     const failure = expectFailure(await run({
       resolvedAgents: reassessBindings,
-      worker: async () => completed({
+      worker: workerReturning(completed({
         summary: "Replace phase 2.",
         changes: [{ action: "replace", phase_id: "phase-2", phase: phaseUnit("phase-2") }],
-      }),
+      })),
     }, reassessAttempt, () => ({ ...base, attempts: [...base.attempts, duplicate] })));
 
     expect(failure.kind).toBe("fatal");
@@ -330,10 +333,10 @@ describe("attempt runner outcomes", () => {
     let controlReads = 0;
     const runner = createAttemptExecutor(deps({
       resolvedAgents: reassessBindings,
-      worker: async () => completed({
+      worker: workerReturning(completed({
         summary: "The remaining work is correct.",
         changes: [],
-      }),
+      })),
     }));
     const outcome = await runner.run(reassessAttempt, {
       workflowSessionId: "workflow-session",
@@ -389,7 +392,11 @@ describe("attempt runner boundaries", () => {
         await gate;
         order.push("accounting-done");
       },
-      worker: async () => { order.push("worker"); return completed(); },
+      worker: async (_step, brief) => {
+        await brief(EVERY_CAPABILITY);
+        order.push("worker");
+        return completed();
+      },
     });
     await started;
     expect(order).toEqual(["accounting-start"]);
@@ -405,7 +412,8 @@ describe("attempt runner boundaries", () => {
     let workerStarted: (() => void) | undefined;
     const started = new Promise<void>((resolve) => { workerStarted = resolve; });
     const runner = createAttemptExecutor(deps({
-      worker: async (_step, _user, _task, signal) => {
+      worker: async (_step, brief, signal) => {
+        await brief(EVERY_CAPABILITY);
         observedSignal = signal;
         workerStarted?.();
         await new Promise<void>((_resolve, reject) => {
@@ -435,7 +443,8 @@ describe("attempt runner boundaries", () => {
     let releaseWorker: (() => void) | undefined;
     const unwinding = new Promise<void>((resolve) => { releaseWorker = resolve; });
     const runner = createAttemptExecutor(deps({
-      worker: async (_step, _user, _task, signal) => {
+      worker: async (_step, brief, signal) => {
+        await brief(EVERY_CAPABILITY);
         workerStarted?.();
         await new Promise<void>((resolve) => {
           signal.addEventListener("abort", () => resolve(), { once: true });

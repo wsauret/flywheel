@@ -1,3 +1,4 @@
+import type { CapabilityCheck } from "../../infra/capability-text.js"
 import type { ChatInput, ChatInputLike } from "../../infra/chat-input.js"
 import type { ModuleRuntimes } from "../../infra/module-runtime.js"
 import type { HeldBackgroundNotification } from "../session/conversation/queued-background-notifications.js"
@@ -17,6 +18,9 @@ export interface ChatPorts {
   readonly chatModuleHosts: ModuleRuntimes
   /** Assembles the runtime without a model request and parks on background work. */
   hold(): Promise<ModuleRuntimes>
+  /** The agent check (ARCH-CONTEXT-033) of the tool surface that the chat's next request would use, planned as a
+   *  send plans it. It starts no turn, appends nothing to history, and changes no state. */
+  capabilities(): Promise<CapabilityCheck>
   enqueueInput(input: ChatInputLike): void
   /** Takes one accepted message from another session (see `LiveSessionControl.deliver`). */
   deliverHeldMessage(input: ChatInput, decide: (state: LiveRecipientState) => DeliveryOutcome): Promise<DeliveryOutcome>

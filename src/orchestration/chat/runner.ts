@@ -217,6 +217,7 @@ async function createChatRunnerInner(deps: ChatRunnerDeps): Promise<ChatRunner> 
       personas: definitionRevision.personas,
       createAgent: (options) => currentWorkflowDeps().createAgent(options),
       prepareRequest: (options, preparation) => currentWorkflowDeps().prepareRequest(options, preparation),
+      planCapabilities: (options) => currentWorkflowDeps().planCapabilities(options),
       createLLMClient: (...args) => currentWorkflowDeps().createLLMClient(...args),
       onNotification: workflowDeps.onNotification,
       captureProviderConnection: () => currentWorkflowDeps().captureProviderConnection(),

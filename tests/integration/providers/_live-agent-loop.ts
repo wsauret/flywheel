@@ -27,8 +27,9 @@ import type { StreamEvent } from "../../../src/orchestration/agent-runtime/llm/t
 import { createRequestToolSurface } from "../../../src/orchestration/agent-runtime/request-tool-surface.js";
 import { buildSystemPrompt } from "../../../src/orchestration/agent-runtime/system-prompt.js";
 import { planToolExposure } from "../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
-import { testCapabilityModules, testKernelToolDeps, testRuntimeConfigCapture } from "../../helpers/request-tool-surface.js";
+import { testCapabilityModules, testKernelToolDeps, testRuntimeConfigCapture, plannedRequest } from "../../helpers/request-tool-surface.js";
 import { liveDirectories, withLiveClient, type LiveRun } from "./_live-client.js";
+import { promptOptions } from "../../helpers/prompt-capabilities.js";
 
 const TASK = "You are a helpful coding assistant. Complete the task exactly as instructed, then stop.";
 
@@ -62,7 +63,7 @@ async function runLoop({ client, launcher }: LiveRun, input: { instruction: stri
   const events: StreamEvent[] = [];
   try {
     const tools = await createRequestToolSurface(
-      (moduleSnapshot, runtimeConfig) => planToolExposure({
+      (moduleSnapshot, runtimeConfig) => plannedRequest(planToolExposure({
         kernel: testKernelToolDeps({
           userDataRoot: liveDirectories.userDataRoot,
           moduleSnapshot,
@@ -73,7 +74,7 @@ async function runLoop({ client, launcher }: LiveRun, input: { instruction: stri
           foregroundBashHold,
         }),
         modules: NO_MODULE_RUNTIMES,
-      }),
+      })),
       testCapabilityModules,
       testRuntimeConfigCapture,
     );
@@ -83,12 +84,12 @@ async function runLoop({ client, launcher }: LiveRun, input: { instruction: stri
       tools,
       // The loop builds the prompt after it resolves each request's surface,
       // so the prompt describes exactly the tools that request advertises.
-      systemPrompt: () => buildSystemPrompt({
+      systemPrompt: () => buildSystemPrompt(promptOptions({
         promptKind: "headless",
         tools: [...tools.current().tools.values()],
         envBlock: env.envBlock,
         scratchDir,
-      }),
+      })),
       instruction: `${TASK}\n\n${input.instruction}`,
       executionCwd: input.executionCwd,
       userDataRoot: `${input.executionCwd}/.test-account`, projectRoot: input.executionCwd,

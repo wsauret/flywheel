@@ -25,6 +25,7 @@ const PersonaSchema = Schema.Struct({
   requiredSkills: Schema.optionalKey(Schema.Array(Schema.NonEmptyString)),
   role: Schema.NonEmptyString,
   allowFork: Schema.optionalKey(Schema.Boolean),
+  bundled: Schema.optionalKey(Schema.Literal(true)),
 });
 const AgentSchema = Schema.Union([PersonaSchema, Schema.Struct({ ...agentFields, kind: Schema.Literal("general") })]);
 

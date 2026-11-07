@@ -21,5 +21,8 @@ Turn one approved design into milestones, each with its own proof, ordered so th
 
 - Give each feature-bearing task explicit test file paths and scenario sentences that state input, behavior, and expected output. Cover requested behavior and justified failure branches. Use one canonical scenario per behavior; add a variant only when it exercises a distinct branch or call site, or the design names it. If no meaningful scenario can be stated, investigate until it can.
 - Every milestone has the narrowest fresh runnable command that proves its outcome: a focused test file, a type or schema smoke check, or a small script, never a full-suite command unless nothing narrower can prove the milestone. When one command cannot prove a rendered or live surface, pair a minimal smoke command with a qualitative check judged from captured evidence. Never leave milestone verification empty and do not repeat global gates in every milestone.
-- Never append `|| true` to a verification command, and never prefix the `timeout` shell utility, which is absent on macOS; bound a slow command with the bash tool's timeout parameter.
+- Never append `|| true` to a verification command, and never prefix the `timeout` shell utility, which is absent on macOS.
+{{if:bash}}
+  Bound a slow command with the bash tool's timeout parameter.
+{{end}}
 - Keep global acceptance separate: full suites, lint, boundary checks after file moves or additions, live entrypoint checks, cross-milestone behavior, and qualitative criteria. Every global criterion proves a settled requirement or an integration property that milestone-local checks cannot prove; do not restate milestone verification as global acceptance. Include at least one elegance criterion anchored to the rejected shape, `No instance of <rejected-shape> in <scope>.`, or a universal such as "No new helper added without first searching for an existing one." or "No line whose removal would not change behavior."

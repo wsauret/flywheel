@@ -20,8 +20,10 @@ import { moduleDescriptor } from "../../../../src/orchestration/config/module-de
 import { MODULE_IDS, moduleDisabledReason, type ModuleId } from "../../../../src/protocol/module-ids.js"
 import { getPersonaMetadataIndex } from "../../../../src/workflows/agents/agent-roles.js"
 import { assembleSkillInvocation } from "../../../../src/workflows/skill-invocation.js"
+import { agentCapabilityCheck, contributedToolIdentities } from "../../../../src/orchestration/agent-runtime/capability-checks.js"
+import { experimentToolOmissions } from "../../../../src/orchestration/modules/experiments/tool-execution-gate.js"
 import { testDirectories } from "../../../helpers/directories.js"
-import { repoDefinitions, repoModules } from "../../../helpers/project-definitions.js"
+import { repoModules, sourceRunDefinitions } from "../../../helpers/project-definitions.js"
 import { workflowParentBinding } from "../../../helpers/workflow-parent.js"
 import { createSupervisorTestContext, disposeSupervisorTestContext, mockRunner, supervisorBaseDeps, supervisorConversationFixture, type SupervisorTestContext } from "../../../fixtures/runtime-supervisor-fixtures.js"
 
@@ -94,7 +96,7 @@ function supervisorDouble(overrides: Partial<CommandInvokeDeps["supervisor"]> = 
 /** Skill availability over the checked-out repository's definitions, as a
  *  source run publishes it under the selection `moduleIds`. */
 async function repoAvailability(moduleIds: readonly ModuleId[]) {
-  return createDefinitionAvailability({ definitions: repoDefinitions(), modules: repoModules, capabilities: { state: () => moduleDescriptor(moduleIds, moduleIds, false) } })
+  return createDefinitionAvailability({ definitions: sourceRunDefinitions(), modules: repoModules, capabilities: { state: () => moduleDescriptor(moduleIds, moduleIds, false) } })
 }
 
 function service(overrides: Partial<CommandInvokeDeps> = {}) {
@@ -300,7 +302,7 @@ describe("command invocation", () => {
     const rendered = (id: string, args?: string) => {
       const skill = skills.skills.get(id)
       if (!skill) throw new Error(`the repository installs ${id}`)
-      return assembleSkillInvocation(skill, args, { skills, personaIndex: getPersonaMetadataIndex() })
+      return assembleSkillInvocation(skill, args, { skills, personaIndex: getPersonaMetadataIndex(), capabilities: () => true })
     }
     expect(sent).toEqual([
       { text: rendered("experiment-charter", "make tests faster"), invocation: { label: "/experiment design", args: "make tests faster" } },
@@ -308,6 +310,49 @@ describe("command invocation", () => {
       { text: rendered("bug-report-triage"), invocation: { label: "/bug-report-triage" } },
     ])
     expect(calls).toEqual([`send:${sessionId}`, `send:${sessionId}`, `send:${sessionId}`])
+  })
+
+  test("a method renders for the receiving chat's agent check, which an active experiment narrows", async () => {
+    const methodModule = {
+      id: "synthetic-methods",
+      dependencies: [],
+      availability: { kind: "available" },
+      contributions: [{ domain: "commands", id: "review-method", value: {
+        id: "review-method", title: "Review method", description: "Starts the code review method", aliases: [],
+        execute: async (host) => host.session?.startMethod({ skill: "code-review", label: "/review-method" }) ?? { kind: "none" },
+      } }],
+      observers: [],
+      transformers: [],
+      gates: [],
+    } as const satisfies FirstPartyModule
+    const all = await repoAvailability(MODULE_IDS)
+    const composition = catalog([...repoModules, methodModule])
+    const tools = contributedToolIdentities(composition)
+    // The tools an active experiment omits from the chat's next request, as its exposure gate omits them.
+    const omitted = experimentToolOmissions({ active: true, initialized: true, workDir: ctx.baseDir, protectedPaths: [], sealedPaths: ["metric.ts"] })
+    expect([...omitted.keys()].toSorted()).toEqual(["bash", "subagent"])
+    const run = async (usable: ReadonlySet<string>) => {
+      const sent: ChatInputLike[] = []
+      const check = agentCapabilityCheck(usable, all.snapshot())
+      const { invoke } = service({ availability: all, moduleSelection: () => composition, supervisor: supervisorDouble({
+        ensureChatRunner: async (sessionId) => mockRunner(sessionId, { capabilities: async () => check }),
+        sendChat: async (_sessionId, input) => { sent.push(input); return { ok: true } },
+      }).supervisor })
+      const sessionId = await ctx.manager.createChat({ name: "Method" })
+      return { outcome: await invoke(invocation({ id: "review-method", sessionId })), sent, check }
+    }
+
+    const during = await run(new Set([...tools].filter((tool) => !omitted.has(tool))))
+    expect(during.outcome).toEqual({ kind: "warning", message: "/review-method cannot start the code-review skill: it dispatches agents, and the agent that reads it cannot call the subagent tool." })
+    expect(during.sent).toEqual([])
+
+    const everything = await run(tools)
+    expect(everything.outcome).toEqual({ kind: "none" })
+    const skill = all.snapshot().skillRevision.skills.get("code-review")
+    if (!skill) throw new Error("the repository installs code-review")
+    expect(everything.sent.map((input) => typeof input === "string" ? input : input.text)).toEqual([
+      assembleSkillInvocation(skill, undefined, { skills: all.snapshot().skillRevision, personaIndex: getPersonaMetadataIndex(), capabilities: everything.check }),
+    ])
   })
 
   test("a command whose skill is unavailable names the skill and starts no turn", async () => {

@@ -16,7 +16,7 @@ function installed(id: string): SkillDefinition {
 }
 
 function invoke(skill: SkillDefinition, args?: string): string {
-  return assembleSkillInvocation(skill, args, { skills, personaIndex });
+  return assembleSkillInvocation(skill, args, { skills, personaIndex, capabilities: () => true });
 }
 
 describe("assembleSkillInvocation", () => {
@@ -25,7 +25,7 @@ describe("assembleSkillInvocation", () => {
     const consumer = testSkill("consumer", { body: "Consumer procedure.", dependencies: ["dependency"] });
     const revision = testSkillRevision([dependency, consumer]);
 
-    const prompt = assembleSkillInvocation(consumer, undefined, { skills: revision, personaIndex });
+    const prompt = assembleSkillInvocation(consumer, undefined, { skills: revision, personaIndex, capabilities: () => true });
 
     expect(prompt).toBe(`${renderSkillContext(dependency)}\n\n${renderSkillContext(consumer)}`);
   });
@@ -49,11 +49,11 @@ describe("assembleSkillInvocation", () => {
     expect(prompt).toContain("do not split a healthy dispatch in advance");
   });
 
-  it("renders a persona roster grouped by role with subagent-tool dispatch wording", () => {
+  it("renders a persona roster grouped by role with dispatch wording", () => {
     const prompt = invoke(installed("code-review"));
 
     expect(prompt).toContain("## Available Agents");
-    expect(prompt).toContain("`subagent` tool");
+    expect(prompt).toContain("Dispatch these personas where the skill body calls for agent dispatch.");
     expect(prompt).toContain("reviewer-code-quality");
     expect(prompt).toContain("reviewer-code-elegance");
     // Grouped per role: each roster line is "**<role>:** persona, persona".

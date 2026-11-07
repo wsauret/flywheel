@@ -16,6 +16,8 @@ import type { ForegroundBashHoldController } from "../foreground-bash-hold.js";
 import type { ExternalSkillChildGrant } from "./skill.js";
 import type { CapabilityAccess } from "./types.js";
 import type { FirstPartyModuleComposition } from "../../modules.js";
+import type { CapabilityCheck } from "../../../infra/capability-text.js";
+import type { DefinitionAvailabilitySnapshot } from "../../app-service/definition-availability.js";
 import type { RuntimeConfigRequestCapture } from "../request-config.js";
 import type { AgentPurpose } from "../types.js";
 import type { ModelInteractionProfile } from "../model-interaction-profile.js";
@@ -62,12 +64,26 @@ export interface KernelToolDeps {
    *  command, so that a writing agent's refusals follow Settings whatever its
    *  description captured. Without it the shell enforces `shellWriteGuard`. */
   readonly enforcedShellWriteGuard?: () => Promise<boolean>;
+  /** Whether the shell schema offers `persist_after_exit`, from the persistent-process policy that the tree
+   *  captured, so every agent of the tree advertises the same shell bytes. `persistentProcesses` is the live
+   *  policy that execution enforces. */
+  readonly persistentProcessesAdvertised: boolean;
   /** The request-pinned file edit grammar of the serving model. */
   readonly fileEditContract?: ModelInteractionProfile["fileEditContract"];
   /** Capability boundary of the request being planned (ARCH-TOOLS-002). A tool whose
    *  required capabilities this context does not hold is not advertised, and
    *  its omission names policy. */
   readonly capabilities: Pick<CapabilityAccess, "available">;
+  /** Definition availability of this request's definitions: `tree` under the modules of `moduleSnapshot` (for a
+   *  tree-hosted request, its tree's capture), and `live` under the modules this agent's own selection holds. */
+  readonly definitionAvailability: {
+    readonly tree: DefinitionAvailabilitySnapshot;
+    readonly live: DefinitionAvailabilitySnapshot;
+  };
+  /** The tree check that tool text renders from (ARCH-CONTEXT-033). Its tool terms are the tools that
+   *  `moduleSnapshot` contributes, because tool text is built before planning settles the advertised set; its
+   *  definition terms are `definitionAvailability.tree`. Every agent of one tree reads the same answers. */
+  readonly treeCapabilities: CapabilityCheck;
   /** The skill revision this request advertises and executes. Read once when
    *  the request is planned, so the catalog and the tool agree. */
   readonly skills?: SkillRegistryRevision;
@@ -80,7 +96,9 @@ export interface KernelToolDeps {
   /** Next-request policy captured at the same admission boundary as tools and providers. */
   readonly runtimeConfig: RuntimeConfigRequestCapture;
   readonly purpose: AgentPurpose;
-  readonly servingModel: ServingModel;
+  /** The model that serves this request. Absent for a capability plan (`planRunCapabilities`), which plans the run's
+   *  tools with no model route and makes no request, so its tools are never called. */
+  readonly servingModel?: ServingModel;
   /** The agent's definition marks it read-only: its shell tool refuses a
    *  command that writes a project file. */
   readonly readOnly?: boolean;

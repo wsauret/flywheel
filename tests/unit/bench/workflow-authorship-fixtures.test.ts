@@ -15,6 +15,22 @@ const fixtures = resolve(root, "bench/chat-ab/workflow-authorship")
 const retained = resolve(root, "tests/fixtures/retired-workflows/retained-project")
 const read = (path: string): string => readFileSync(path, "utf8")
 
+// A patched workflow tool is imported under its own query, so each arm builds
+// the tool that the benchmark runs; an applied patch can still name what the
+// patched source does not define.
+const WORKFLOW_TOOL = "src/orchestration/agent-runtime/tools/workflow.ts"
+const patchedWorkflowTools = new Map<string, string>()
+Bun.plugin({
+  name: "patched-workflow-tool",
+  setup(build) {
+    build.onLoad({ filter: /tools\/workflow\.ts\?bench-arm=/ }, ({ path }) => {
+      const contents = patchedWorkflowTools.get(path.slice(path.indexOf("?bench-arm=") + "?bench-arm=".length))
+      if (contents === undefined) throw new Error(`No patched workflow tool for ${path}`)
+      return { contents, loader: "ts" }
+    })
+  },
+})
+
 type Replacement = { from: string; to: string }
 type BriefEntry = { workflow: string; phase: string; source: string; replacements: Replacement[]; appendSources: string[] }
 type Ledger = { briefs: BriefEntry[]; entries: { original: string; replacement: string; reason: string }[] }
@@ -81,7 +97,7 @@ describe("frozen workflow authorship benchmark arms", () => {
   })
 
   for (const name of ["handcrafted", "handcrafted-forced", "authored-forced", "root-workflow-only", "no-learning-review"]) {
-    it(`applies ${name} without source drift`, () => {
+    it(`applies ${name} without source drift`, async () => {
       const patch = read(resolve(fixtures, "patches", `${name}.patch`))
       const files = parsePatch(patch)
       const sourcePaths = name === "root-workflow-only"
@@ -102,6 +118,16 @@ describe("frozen workflow authorship benchmark arms", () => {
         const patched = applyPatch(source, file)
         expect(patched).not.toBe(false)
         if (typeof patched !== "string") throw new Error(`Cannot apply ${name} to ${sourcePath}`)
+        if (sourcePath === WORKFLOW_TOOL) {
+          patchedWorkflowTools.set(name, patched)
+          const { createWorkflowTool }: typeof import("../../../src/orchestration/agent-runtime/tools/workflow.js") = await import(`${resolve(root, WORKFLOW_TOOL)}?bench-arm=${name}`)
+          const unused = async (): Promise<never> => { throw new Error("the description check launches no workflow") }
+          const deps: Parameters<typeof createWorkflowTool>[0] = {
+            startWorkflow: unused, resolveLaunchTarget: unused, onRenderEvent: () => {}, mode: "on", askUserAvailable: true,
+            authority: { toolActions: new Set(), personas: new Set() }, sessionDir: "/session", executionCwd: "/project", capabilities: () => true,
+          }
+          expect(createWorkflowTool(deps).description).toContain("Before you write a workflow file, load the `workflow-authoring` skill.")
+        }
         if (sourcePath === "src/orchestration/modules/workflows/orchestration.ts") {
           // Both forced arms add one identical forcing sentence to the On reminder; otherwise every arm keeps HEAD's reminders.
           const reminders = "export const ORCHESTRATION_REMINDER"

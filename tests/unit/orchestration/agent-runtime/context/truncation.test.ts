@@ -102,10 +102,20 @@ describe("limitOutput", () => {
 
   test("keeps the whole result, notice included, within maxBytes when the saved path is long", async () => {
     const executionCwd = join(testDir, ...Array.from({ length: 60 }, (_, i) => `nested-directory-${i}`));
-    const result = await limitOutput({ content: "L".repeat(50_000), maxBytes: 2_000, executionCwd, projectRoot: testDir, artifactScopeId: "sess-deep" });
+    const result = await limitOutput({ content: "L".repeat(50_000), maxBytes: 2_000, executionCwd, projectRoot: testDir, artifactScopeId: "sess-deep", capabilities: () => true });
     expect(result.text.length).toBeLessThanOrEqual(2_000);
     expect(result.text).toStartWith("LLL");
     expect(result.text).toEndWith("; grep it with the search tool if you need the removed content]");
+  });
+
+  test("names only the retrieval tool that the reading agent holds", async () => {
+    const notice = async (held: readonly string[]) => (await limitOutput({ content: "N".repeat(50_000), executionCwd: testDir, projectRoot: testDir, artifactScopeId: "sess-capabilities", capabilities: (term) => held.includes(term) })).text;
+    expect(await notice(["read"])).toEndWith("; read it with offset and limit if you need the removed content]");
+    expect(await notice(["bash"])).toEndWith("; inspect it with a shell command if you need the removed content]");
+    expect(await notice([])).toEndWith("[Output was truncated. The rest of the output is not available with your tools.]");
+    // A reader whose tools are unknown, such as crash recovery, is told where the file is and no tool.
+    const unknown = (await limitOutput({ content: "U".repeat(50_000), executionCwd: testDir, projectRoot: testDir, artifactScopeId: "sess-unknown" })).text;
+    expect(unknown).toMatch(/\n\[Full output saved to \.flywheel\/agent-outputs\/sess-unknown\/[^;\]]+\]$/);
   });
 
   test("uses toolName as breadcrumb filename prefix", async () => {
@@ -151,6 +161,7 @@ describe("limitOutput", () => {
       projectRoot: testDir,
       artifactScopeId: "sess-retained",
       toolName: "bash",
+      capabilities: () => true,
     });
     expect(result.truncated).toBe(true);
     expect(result.semanticTruncated).toBe(true);

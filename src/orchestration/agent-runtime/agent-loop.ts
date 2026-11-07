@@ -105,7 +105,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     onEvent,
     pushUser, pushMessage, onUserMessage: options.onUserMessage,
     checkpoint: options.checkpoint,
-    recallAvailable: () => surface.current().tools.has("recall"),
+    recallAvailable: () => surface.current().usableToolNames.has("recall"),
   });
   const { prepareCompactedHistory, canCompact, canPlan } = compactionState;
 

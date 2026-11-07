@@ -239,6 +239,7 @@ test("bare /btw opens the resident surface without a parent turn; an argument st
       id: "parent", executionCwd: "/scratch", host: async (handle) => composeModuleRuntimes([["side-question", host]]).get(handle),
       prompt: async () => { throw new Error("A side command must not send a parent turn") },
       startMethod: async () => { throw new Error("A side command must not start a parent method") },
+      capabilities: async () => { throw new Error("A side command must not plan a parent request") },
       systemLine: async () => { throw new Error("A side command must not write parent history") },
       review: async () => false, interrupt: () => { throw new Error("A side command must not interrupt its parent") },
       compact: async () => { throw new Error("A side command must not compact its parent") },

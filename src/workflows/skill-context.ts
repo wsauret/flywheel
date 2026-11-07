@@ -4,7 +4,8 @@ import { ContainedDirectory, ContainedPathError } from "../infra/descriptor-dire
 import type { ContainedDirectoryContract, ContainedOwnedFile } from "../infra/descriptor-directory-contract.js";
 import { contentEvidence } from "../infra/content-evidence.js";
 import { resolveSkillClosure } from "./skill-closure.js";
-import { resolveSkillBody } from "./skill-references.js";
+import type { CapabilityCheck } from "../infra/capability-text.js";
+import { renderSkillBody, resolveSkillBody, type RenderedSkillBody } from "./skill-references.js";
 import type {
   ShadowedPackage,
   SkillAuthority,
@@ -609,7 +610,20 @@ function skillBodyUsage(body: string): string {
   old bulk, and leaves the next writer with less room than you had.`;
 }
 
-export function renderSkillContext(skill: SkillDefinition): string {
+/** The canonical context of one skill for the reader that `has` describes: a bundled body's `{{if:}}` blocks render
+ *  from it, and so does its list of related skills; a `conditions:` header line names each term tested with its
+ *  answer, so the text is a function of the printed content sha256 and that line (ARCH-CONTEXT-007). Without `has`,
+ *  the body keeps its markers as written: that form is the package's identity, which definition provenance hashes,
+ *  never prompt text. */
+export function renderSkillContext(skill: SkillDefinition, has?: CapabilityCheck): string {
+  const body = renderBody(skill, has);
+  const conditions = new Map(body.conditions);
+  // A bundled header names a related skill only while its reader can load it, and records that test.
+  const related = has === undefined || skill.source.authority !== "bundled" ? skill.relatedIds : skill.relatedIds.filter((id) => {
+    const holds = has(`skill:${id}`);
+    conditions.set(`skill:${id}`, holds);
+    return holds;
+  });
   const header = [
     `# Skill: ${skill.id}${skill.name === skill.id ? "" : ` (${skill.name})`}`,
     `version: ${skill.version ?? "(unversioned)"}`,
@@ -619,6 +633,9 @@ export function renderSkillContext(skill: SkillDefinition): string {
     `package: sha256 ${skill.packageIdentity.sha256} (${skill.packageIdentity.bytes} bytes)`,
     `content: sha256 ${skill.evidence.sha256} (${skill.evidence.bytes} bytes)`,
   ];
+  if (conditions.size > 0) {
+    header.push(`conditions: ${[...conditions].map(([term, holds]) => `${term}=${holds ? "on" : "off"}`).join(" ")}`);
+  }
   // What a writer needs before it composes, not after it is refused. A body
   // enters context in full on every load and has a write-time budget, so a
   // writer that can see the headroom plans one edit instead of discovering the
@@ -631,10 +648,10 @@ export function renderSkillContext(skill: SkillDefinition): string {
   if (skill.resources.length > 0) {
     header.push(`resources (read with action:"resource"): ${skill.resources.map((resource) => `${resource.path} (${resource.bytes} bytes)`).join(", ")}`);
   }
-  if (skill.relatedIds.length > 0) header.push(`related skills: ${skill.relatedIds.join(", ")}`);
+  if (related.length > 0) header.push(`related skills: ${related.join(", ")}`);
   if (skill.shadowed) header.push(`shadows: ${describeShadowedPackage(skill.shadowed)}`);
 
-  return `${header.join("\n")}\n\n${renderBody(skill)}`;
+  return `${header.join("\n")}\n\n${body.text}`;
 }
 
 /** Name the package this one outranked: its reach, its source, and its own
@@ -649,9 +666,9 @@ function describeShadowedPackage(shadowed: ShadowedPackage): string {
  *  expanded. An external package is a third-party artifact: its body stays
  *  verbatim, because a truncated or rewritten procedure is worse than none, but
  *  it is fenced and named as untrusted data, and its markers are its own text. */
-function renderBody(skill: SkillDefinition): string {
-  if (skill.source.authority === "bundled") return resolveSkillBody(skill);
-  return fenceUntrusted("body", skill.body, skill.evidence.sha256);
+function renderBody(skill: SkillDefinition, has: CapabilityCheck | undefined): RenderedSkillBody {
+  if (skill.source.authority !== "bundled") return { text: fenceUntrusted("body", skill.body, skill.evidence.sha256), conditions: new Map() };
+  return has === undefined ? { text: resolveSkillBody(skill), conditions: new Map() } : renderSkillBody(skill, has);
 }
 
 /** One window of a package resource as the model reads it: the evidence header
@@ -716,17 +733,34 @@ function describeSkillSource(source: SkillSource): string {
  *  Throws when a declared id is not installed or the dependencies cycle. Skill
  *  packages are validated at load and persona files at parse, so a miss here
  *  means the registry changed under a definition that requires the package:
- *  dropping it would silently run a different procedure. */
+ *  dropping it would silently run a different procedure.
+ *
+ *  `has` is the check of the agent that reads the closure, which every
+ *  composed body renders for. Throws when a composed package dispatches
+ *  agents and that agent cannot call the subagent tool, because the package
+ *  would direct work the agent cannot do. */
 export function renderSkillClosure(
   rootIds: readonly string[] | undefined,
   revision: SkillRegistryRevision,
   subject: string,
+  has: CapabilityCheck,
 ): string[] {
   const closure = resolveSkillClosure(rootIds ?? [], revision, subject);
   if (closure.length === 0) return [];
+  if (!has("subagent")) {
+    const blocked = dispatchingSkill(closure);
+    if (blocked) throw new Error(`${subject} composes skill "${blocked.id}", which dispatches agents, and the agent that reads it cannot call the subagent tool`);
+  }
   const ids = closure.map((skill) => `\`${skill.id}\``).join(", ");
-  const preface = `# Composed Packages\n\nThese packages are part of your instructions and are in your context in full: ${ids}. Do not load them with the skill tool.`;
-  return [preface, ...closure.map((skill) => renderSkillContext(skill))];
+  const preface = `# Composed Packages\n\nThese packages are part of your instructions and are in your context in full: ${ids}. Do not load them.`;
+  return [preface, ...closure.map((skill) => renderSkillContext(skill, has))];
+}
+
+/** The first package of `closure` that dispatches agents, which a reader that cannot call the subagent tool cannot
+ *  carry out (ARCH-STRUCTURE-031). A module that is off needs no check here, because the availability of a skill or
+ *  persona already requires the modules of its whole closure. */
+export function dispatchingSkill(closure: readonly SkillDefinition[]): SkillDefinition | undefined {
+  return closure.find((skill) => skill.agents.length > 0);
 }
 
 interface ResourceWalk {

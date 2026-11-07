@@ -67,7 +67,7 @@ export const experimentToolExecutionGate: ToolExecutionGate = async (input): Pro
 /** Request-planning omissions required to keep charter boundaries honest. */
 export function experimentToolOmissions(snapshot: ExperimentGuardSnapshot): ReadonlyMap<string, string> {
   const omissions = new Map<string, string>()
-  if (snapshot.sealedPaths.length > 0) omissions.set("bash", "sealed experiment paths cannot be exposed to Bash")
+  if (snapshot.sealedPaths.length > 0) omissions.set("bash", "sealed experiment paths cannot be exposed to a shell")
   if (snapshot.active) omissions.set("subagent", "active experiment policy cannot be delegated")
   return omissions
 }

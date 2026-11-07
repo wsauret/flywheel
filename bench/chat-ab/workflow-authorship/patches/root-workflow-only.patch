@@ -1,7 +1,7 @@
 diff --git a/src/orchestration/agent-runtime/tools/tool-exposure-planner.ts b/src/orchestration/agent-runtime/tools/tool-exposure-planner.ts
 --- a/src/orchestration/agent-runtime/tools/tool-exposure-planner.ts
 +++ b/src/orchestration/agent-runtime/tools/tool-exposure-planner.ts
-@@ -233,6 +233,18 @@ export async function planToolExposure(input: ToolExposureInput): Promise<ToolExpo
+@@ -247,6 +247,18 @@ export async function planToolExposure(input: ToolExposureInput): Promise<ToolExpo
      registrationIdentities.set(tool.name, deferred.identity);
      registrationIds.set(tool.name, deferred.registrationId);
    }
@@ -18,5 +18,5 @@ diff --git a/src/orchestration/agent-runtime/tools/tool-exposure-planner.ts b/sr
 +  }
 +
    const usable = new Set([...providerTools.keys()].filter((name) => !ungranted.has(name) && !unusable.has(name)));
-   return { eligibleTools, tools: providerTools, omitted, usable, registrationIds, registrationIdentities, ...(skillRegistry ? { skillRegistry } : {}) };
- }
+   return {
+     eligibleTools, tools: providerTools, omitted, usable, turnedOff: canonicalModuleIds([...turnedOff]),

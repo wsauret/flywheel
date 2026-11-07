@@ -190,7 +190,7 @@ describe("compileOutput toolInput", () => {
   test("commands.min reaches the model as minItems and as an at-least qualifier", () => {
     const compiled = compileOutput({ commands: { min: 3 } });
     expect(compiled.toolInput).toMatchObject({ properties: { commands_run: { type: "array", minItems: 3 } } });
-    expect(compiled.instructions).toContain("- **commands_run** (REQUIRED, list of object, at least 3):");
+    expect(compiled.instructions(true)).toContain("- **commands_run** (REQUIRED, list of object, at least 3):");
     // The citation check states the count with the calls the worker can cite, so the strict schema does not repeat it.
     expect(decodeIssues(compiled, { summary: "Done.", commands_run: [{ toolUseId: "t1", exitCode: 0, observation: "ok", command: "bun test" }] })).toEqual([]);
   });
@@ -249,11 +249,11 @@ describe("compileOutput identity and control fields", () => {
 
 describe("compileOutput instructions", () => {
   test("renders the postamble for a representative contract", () => {
-    const { instructions } = compileOutput({ ...contract, commands: { min: 1 } });
+    const instructions = compileOutput({ ...contract, commands: { min: 1 } }).instructions(true);
     expect(instructions).toMatchSnapshot();
     expect(instructions).not.toContain("exitCode");
     for (const simple of [compileOutput({}), compileOutput({ commands: { min: 1 } })]) {
-      const json = /```json\n([\s\S]*?)\n```/u.exec(simple.instructions)?.[1];
+      const json = /```json\n([\s\S]*?)\n```/u.exec(simple.instructions(true))?.[1];
       if (!json) throw new Error("Missing handoff example");
       const example = Schema.decodeUnknownSync(Schema.Record(Schema.String, Schema.Unknown))(JSON.parse(json));
       expect(simple.toolInput.required).toEqual(Object.keys(example));
@@ -262,19 +262,37 @@ describe("compileOutput instructions", () => {
 
   test("lets the key of a field without a description state its meaning in the postamble and the tool schema", () => {
     const compiled = compileOutput({ fields: { root_cause: { type: "string" }, choice: { type: "variant", tag: "kind", cases: { a: { note: { type: "string" } } } } } });
-    expect(compiled.instructions).toContain("- **root_cause** (REQUIRED, string)\n");
-    expect(compiled.instructions).toContain("  - **note** (REQUIRED, string)\n");
+    expect(compiled.instructions(true)).toContain("- **root_cause** (REQUIRED, string)\n");
+    expect(compiled.instructions(true)).toContain("  - **note** (REQUIRED, string)\n");
     expect(compiled.toolInput).toHaveProperty(["properties", "root_cause"], { type: "string" });
     expect(compiled.toolInput).toHaveProperty(["properties", "choice", "oneOf", 0, "properties", "note"], { type: "string" });
   });
 
   test("renders the file procedure and no command rule for a file submission", () => {
-    const { instructions } = compileOutput({ submit: "file", summary: "The plan.", fields: { phases: { type: "list", of: { type: "string" }, description: "Phases." } } });
+    const instructions = compileOutput({ submit: "file", summary: "The plan.", fields: { phases: { type: "list", of: { type: "string" }, description: "Phases." } } }).instructions(true);
     expect(instructions).toContain('call `handoff` with only `{"path": "<absolute path of that file>"}`');
     // The file goes where the handoff accepts it: the agent's own scratchpad.
     expect(instructions).toContain("named `output.json` directly inside your scratchpad directory");
     expect(instructions).not.toContain("Command execution is recorded");
     expect(instructions).not.toContain("commands_run");
+  });
+});
+
+describe("compileOutput instructions without a shell", () => {
+  test("leave out commands_run, its example, and the citation rule, and keep the schema", () => {
+    const compiled = compileOutput(contract);
+    const withShell = compiled.instructions(true);
+    expect(withShell).toContain("- **commands_run** (optional, list of object): The Bash commands whose results prove");
+    expect(withShell).toContain('"toolUseId": "toolu_abc123"');
+    expect(withShell).toContain("Command execution is recorded from the calls you cite");
+
+    const withoutShell = compiled.instructions(false);
+    expect(withoutShell).not.toContain("commands_run");
+    expect(withoutShell).not.toContain("toolUseId");
+    expect(withoutShell).not.toContain("Command execution is recorded");
+    expect(withoutShell).toContain("- **files_modified** (optional, list of string)");
+    // An agent without a shell may still send an optional commands_run.
+    expect(compiled.toolInput).toHaveProperty(["properties", "commands_run"]);
   });
 });
 

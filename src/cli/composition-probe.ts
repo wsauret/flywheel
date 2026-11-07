@@ -1,6 +1,7 @@
 // This probe enters before normal command composition and owns its catalog bootstrap.
 import "../orchestration/modules.js";
 import type { StartupDirectories } from "../infra/directory-authorities.js";
+import type { CapabilityCheck } from "../infra/capability-text.js";
 import { isDevelopmentBuild } from "../infra/development-mode.js";
 import { resolveWorkflowAgents } from "../workflows/agent-resolution.js";
 import { personaInstructions } from "../workflows/agents/persona-instructions.js";
@@ -16,6 +17,10 @@ function required<T>(value: T | undefined, label: string): T {
   return value;
 }
 
+/** The probe composes for an agent that holds every capability, the default
+ *  selection's rendering, so its output depends on no machine's settings. */
+const EVERY_CAPABILITY: CapabilityCheck = () => true;
+
 /** Emit deterministic production composition for source-to-binary acceptance. */
 export function runCompositionProbe(directories: StartupDirectories): void {
   const definitions = createInstalledDefinitionRegistry({ ...directories, skillRoots: [] });
@@ -23,7 +28,7 @@ export function runCompositionProbe(directories: StartupDirectories): void {
   const revision = definitionRevision.skills;
   const personas = definitionRevision.personas;
   const personaIndex = Object.fromEntries([...personas.values()].filter((agent) => agent.kind === "persona").map(({ name, role }) => [name, { name, role }]));
-  const invocationOptions = { skills: revision, personaIndex };
+  const invocationOptions = { skills: revision, personaIndex, capabilities: EVERY_CAPABILITY };
   const direct = Object.fromEntries(["code-review", "plan-review"].map((id) => {
     const skill = required(revision.skills.get(id), `skill ${id}`);
     return [id, {
@@ -35,7 +40,7 @@ export function runCompositionProbe(directories: StartupDirectories): void {
   if (reviewer.kind !== "persona") throw new Error("Composition probe reviewer is not a persona");
   const requiredSkillIds = reviewer.requiredSkills ?? [];
   const personaClosureIds = skillClosureIds(requiredSkillIds, revision, `Persona "${reviewer.name}"`);
-  const personaComposition = personaInstructions(reviewer, revision);
+  const personaComposition = personaInstructions(reviewer, revision, EVERY_CAPABILITY);
   const file = "composition-probe.workflow.yaml";
   const loaded = loadWorkflowFile({
     file,
@@ -52,6 +57,7 @@ export function runCompositionProbe(directories: StartupDirectories): void {
     agent,
     contextBundle: "",
     skills: revision,
+    capabilities: EVERY_CAPABILITY,
   });
   const bundledSources = new Set([...revision.bundledCorpus.values()]
     .map((pkg) => required(revision.skills.get(pkg.id), `bundled skill ${pkg.id}`).source.kind));

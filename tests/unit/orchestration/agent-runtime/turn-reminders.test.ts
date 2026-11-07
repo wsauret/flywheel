@@ -3,15 +3,15 @@ import { turnReminders, type TurnReminderState } from "../../../../src/orchestra
 import type { ConversationMessage } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 
 const mode = (holds: boolean, wording = "Mode"): TurnReminderState => ({
-  id: "probe-mode", on: `${wording} is on.`, still: `${wording} is still on.`, off: `${wording} is off.`, every: 2, holds,
+  id: "probe-mode", on: () => `${wording} is on.`, still: () => `${wording} is still on.`, off: (has) => `${wording} is off.${has("probe-tool") ? " Use the probe tool." : ""}`, every: 2, holds,
   retired: { "<system-reminder>\nOld mode is on.\n</system-reminder>": "on" },
 })
 const reminder = (state: "on" | "still" | "off", body: string): ConversationMessage =>
   ({ kind: "user", origin: "system", content: `<system-reminder mode="probe-mode" state="${state}">\n${body}\n</system-reminder>` })
 const person = (text: string): ConversationMessage => ({ kind: "user", content: text, origin: "human" })
 const reply: ConversationMessage = { kind: "assistant", content: [{ type: "text", text: "done" }] }
-const said = (messages: readonly ConversationMessage[], holds: boolean, wording?: string) =>
-  turnReminders(messages, [mode(holds, wording)]).map((message) => message.content)
+const said = (messages: readonly ConversationMessage[], holds: boolean, wording?: string, tools: readonly string[] = []) =>
+  turnReminders(messages, [mode(holds, wording)], (term) => tools.includes(term)).map((message) => message.content)
 
 describe("turnReminders", () => {
   it("states a mode on the first person turn while it holds, and again only after its interval", () => {
@@ -35,6 +35,12 @@ describe("turnReminders", () => {
     expect(said(ended, false)).toEqual([])
     expect(said(ended, true)).toEqual([reminder("on", "Mode is on.").content])
     expect(said([person("hello")], false)).toEqual([])
+  })
+
+  it("renders a statement for the agent check of the request that states it", () => {
+    const stated = [person("audit this"), reminder("on", "Mode is on."), reply, person("turn it off")]
+    expect(said(stated, false, "Mode", ["probe-tool"])).toEqual([reminder("off", "Mode is off. Use the probe tool.").content])
+    expect(said(stated, false, "Mode", [])).toEqual([reminder("off", "Mode is off.").content])
   })
 
   it("recognizes its earlier statements after the wording changes, including the unmarked shape", () => {

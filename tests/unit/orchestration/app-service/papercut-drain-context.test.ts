@@ -81,13 +81,14 @@ describe("papercut drain request context", () => {
           return page
         },
       }
-      const first = await buildPapercutDrain(reader, "drain-session")
+      const allOn = async () => () => true
+      const first = await buildPapercutDrain(reader, "drain-session", allOn)
       expect(first.kind).toBe("ready")
       if (first.kind !== "ready") throw new Error("expected ready drain")
       expect(first.context).toContain("Captured observation 0")
       expect(first.context).toContain("Captured observation 256")
       expect(first.context).not.toContain("Late observation")
-      const next = await buildPapercutDrain(reader, "drain-session")
+      const next = await buildPapercutDrain(reader, "drain-session", allOn)
       expect(next.kind).toBe("ready")
       if (next.kind !== "ready") throw new Error("expected ready drain")
       expect(next.context).toContain("Late observation")

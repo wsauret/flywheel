@@ -1,6 +1,7 @@
 // Shared fixtures of the attempt-runner suites: the bound skill one attempt
 // runs, the committed control the runner reads, and the invocation itself.
 import { createContextAccumulator } from "../../../../src/workflows/context-bundle/context.js";
+import { moduleDisabledReason } from "../../../../src/protocol/module-ids.js";
 import type { AgentOutput } from "../../../../src/workflows/vm/agent-outcome.js";
 import type { ResolvedAgent } from "../../../../src/workflows/agent-resolution.js";
 import {
@@ -10,6 +11,7 @@ import {
 } from "../../../../src/workflows/vm/attempt-runner.js";
 import type { AttemptExecutionInput } from "../../../../src/workflows/vm/commands.js";
 import { testResolvedAgent, testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js";
+import { EVERY_CAPABILITY } from "../../../helpers/attempt-brief.js";
 import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js";
 
 interface HandoffContent {
@@ -47,15 +49,24 @@ export function completed(content: HandoffContent | null = {
   return { output: "completed", handoffContent: content, durationMs: 1 };
 }
 
+/** A worker that composes its brief for an agent that can call every tool, then returns `output`. */
+export function workerReturning(output: AgentOutput): AttemptExecutorDeps["worker"] {
+  return async (_attempt, brief) => {
+    await brief(EVERY_CAPABILITY);
+    return output;
+  };
+}
+
 export function deps(overrides: Partial<AttemptExecutorDeps> = {}): AttemptExecutorDeps {
   const context = createContextAccumulator();
   context.seedInput({ workflowDefinitionId: "workflow", userRequest: "Implement secure login.", timestamp: 1 });
   return {
+    unavailableToolReason: (term) => moduleDisabledReason([term]),
     earlierCheckpoint: async () => null,
     resolvedAgents: bindings,
     skills,
     context: { getContext: async (recipient) => context.getContext(recipient) },
-    worker: async () => completed(),
+    worker: workerReturning(completed()),
     recordInvocation: async () => {},
     ...overrides,
   };

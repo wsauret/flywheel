@@ -208,7 +208,7 @@ function cliBlock(block: ContentBlockParam): CliBlock {
 }
 
 function cliTool(tool: NonNullable<BridgeRequest["tools"]>[number]): CliTool {
-  if (!tool.name.startsWith(TOOL_MCP_PREFIX)) throw invalid(`the tool ${tool.name} is not a runtime MCP tool`);
+  if (!tool.name.startsWith(TOOL_MCP_PREFIX)) throw invalid(`the tool ${tool.name} lacks the runtime tool prefix`);
   return { name: tool.name.slice(TOOL_MCP_PREFIX.length), description: tool.description ?? "", inputSchema: tool.input_schema };
 }
 

@@ -11,9 +11,6 @@ import {
   type ReviewRunSpec,
   type LearningReviewConfig,
 } from "../../../../../src/orchestration/modules/learning/learning-review.js";
-import {
-  COMBINED_REVIEW_PROMPT,
-} from "../../../../../src/orchestration/modules/learning/learning-review-prompts.js";
 import { capabilityAccessFor } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import type { AgentRunResult, AgentRunTerminal } from "../../../../../src/orchestration/agent-runtime/types.js";
 import type { SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
@@ -44,14 +41,17 @@ let reviewTerminal: AgentRunTerminal = { kind: "completed" };
  *  counters and the fire. */
 let learningHeld = true;
 let admitReview = true;
+/** Whether the live selection holds Skills; a case turns it off to see the review that Skills off leaves. */
+let skillsHeld = true;
 
 function reviewCapabilityState() {
+  const held = [...(skillsHeld ? ["skills"] as const : []), ...(learningHeld ? ["learning"] as const : [])];
   return {
-    moduleIds: learningHeld ? ["skills", "learning"] as const : ["skills"] as const,
-    capabilities: learningHeld ? ["skills", "learning"] as const : ["skills"] as const,
+    moduleIds: held,
+    capabilities: held,
     requireWorkflowConfirmation: true,
     workflowsMode: "off" as const,
-    identity: learningHeld ? "skills+learning" : "skills",
+    identity: held.join("+"),
   };
 }
 
@@ -118,6 +118,12 @@ async function completeUserTurn(review: { noteUserTurn(): void; onTurnCompleted(
   await fired();
 }
 
+/** Lets the review that the case spawned complete, then waits for its settlement. */
+async function finishReview(review: Pick<ReturnType<typeof makeReview>, "settled">): Promise<void> {
+  resolveReview?.();
+  await review.settled();
+}
+
 beforeEach(() => {
   specs = [];
   recorded = [];
@@ -131,6 +137,7 @@ beforeEach(() => {
   reviewTerminal = { kind: "completed" };
   learningHeld = true;
   admitReview = true;
+  skillsHeld = true;
 });
 
 describe("learning review gating", () => {
@@ -143,14 +150,37 @@ describe("learning review gating", () => {
     expect(specs).toHaveLength(1);
     expect(specs[0]?.instruction).toContain("durable memory");
     expect(specs[0]?.instruction).not.toContain("skill library");
-    expect(specs[0]?.instruction).toContain("denied at runtime");
+    expect(specs[0]?.instruction).toContain("You can only use the skill, skill_manage, and memory tools. Other tools will be denied at runtime");
+    expect(specs[0]?.instruction).toContain("A preference is never a skill.");
+    expect(specs[0]?.capabilities("skill_manage")).toBe(true);
 
-    resolveReview?.();
-    await review.settled();
+    await finishReview(review);
     expect(recorded[0]?.type).toBe("skill.review.completed");
     expect(recorded[0]?.payload.halves).toEqual(["memory"]);
     expect(recorded[0]?.payload.trigger).toBe("turns");
     expect(recorded[0]?.payload.outcome).toBe("nothing_to_save");
+  });
+
+  it("gives a memory review with Skills off no skill guidance and only the memory tool", async () => {
+    skillsHeld = false;
+    const review = makeReview();
+    for (let turn = 0; turn < 3; turn++) review.noteUserTurn();
+    for (let call = 0; call < 4; call++) review.noteAssistantMessage("text");
+    review.onTurnCompleted();
+    await fired();
+
+    expect(specs).toHaveLength(1);
+    const instruction = specs[0]?.instruction ?? "";
+    expect(instruction).toContain("durable memory");
+    expect(instruction).toContain("Repeatable procedure (a method for a class of work, with a routing trigger, steps, verification, and failure guidance) -> not memory. Name it in your reply.");
+    expect(instruction).toContain("You can only use the memory tool. Other tools will be denied at runtime");
+    expect(instruction).not.toContain("skill_manage");
+    expect(instruction).not.toContain("a project skill");
+    expect(instruction).not.toContain("never a skill");
+    expect(instruction).not.toContain("Global skills");
+    expect(specs[0]?.capabilities("skill_manage")).toBe(false);
+
+    await finishReview(review);
   });
 
   it("fires the skill half after N LLM calls, accumulating across turns", async () => {
@@ -166,8 +196,7 @@ describe("learning review gating", () => {
     expect(specs).toHaveLength(1);
     expect(specs[0]?.instruction).toContain("otherwise leave memory and the skill library alone");
 
-    resolveReview?.();
-    await review.settled();
+    await finishReview(review);
   });
 
   it("resets the skill counter when the model itself calls skill_manage, and the memory counter on memory use", async () => {
@@ -199,8 +228,7 @@ describe("learning review gating", () => {
     expect(specs[0]?.instruction).toContain("Act on each destination the classifier selects");
 
     // Counters were reset when the review fired.
-    resolveReview?.();
-    await review.settled();
+    await finishReview(review);
     review.onTurnCompleted();
     await fired();
     expect(specs).toHaveLength(1);
@@ -234,8 +262,7 @@ describe("learning review gating", () => {
     await completeUserTurn(review);
     expect(specs).toHaveLength(1);
 
-    resolveReview?.();
-    await review.settled();
+    await finishReview(review);
   });
 
   it("refuses a review whose Learning admission lands after the disable", async () => {
@@ -258,8 +285,7 @@ describe("learning review gating", () => {
     learningHeld = false;
     admitReview = false;
     specs[0]?.learningReview.onWritten({ surface: "skill", name: "landed", action: "created", reach: "project" });
-    resolveReview?.();
-    await review.settled();
+    await finishReview(review);
 
     // The run settles on the grant it was admitted with: its write lands and its
     // completion fact is recorded.
@@ -278,8 +304,7 @@ describe("learning review gating", () => {
     await completeUserTurn(review);
     expect(specs).toHaveLength(1);
 
-    resolveReview?.();
-    await review.settled();
+    await finishReview(review);
   });
 
   it("records acted outcome and publishes one system message for created and updated skills", async () => {
@@ -291,8 +316,7 @@ describe("learning review gating", () => {
     specs[0]?.learningReview.onWritten({ surface: "skill", name: "provider-quirks", action: "patched", reach: "project", mutationEvidence });
     specs[0]?.learningReview.onWritten({ surface: "skill", name: "provider-quirks", action: "support_file", reach: "project", mutationEvidence });
     specs[0]?.learningReview.onWritten({ surface: "memory", name: "memory", action: "batch", reach: "global" });
-    resolveReview?.();
-    await review.settled();
+    await finishReview(review);
 
     expect(recorded[0]?.payload.outcome).toBe("acted");
     expect(recorded[0]?.payload.actions).toEqual([
@@ -326,8 +350,7 @@ describe("learning review gating", () => {
     await completeUserTurn(review);
     const mutationEvidence = await buildMutationDiffEvidence(buildMutationDiff([{ path: "SKILL.md", before: { kind: "text", text: "old\n" }, after: { kind: "text", text: "new\n" } }]), "agent-write", stageContent);
     specs[0]?.learningReview.onWritten({ surface: "skill", name: "provider-quirks", action: "patched", reach: "project", mutationEvidence });
-    resolveReview?.();
-    await review.settled();
+    await finishReview(review);
 
     const evidence = notices[0]?.mutationEvidence;
     if (!evidence) throw new Error("expected notice evidence");
@@ -339,8 +362,7 @@ describe("learning review gating", () => {
     await completeUserTurn(review);
 
     specs[0]?.learningReview.onWritten({ surface: "skill", name: "new-package", action: "created", reach: "project" });
-    resolveReview?.();
-    await review.settled();
+    await finishReview(review);
 
     expect(notices).toEqual([{
       content: "Created skill: `new-package`.",
@@ -354,8 +376,7 @@ describe("learning review gating", () => {
     for (let index = 0; index < 500; index += 1) {
       specs[0]?.learningReview.onWritten({ surface: "skill", name: "one-package", action: "patched", reach: "project", mutationEvidence });
     }
-    resolveReview?.();
-    await review.settled();
+    await finishReview(review);
     const notice = notices[0];
     expect(notice?.content).toBe("Updated skill: `one-package`.");
     expect(Buffer.byteLength(JSON.stringify(notice))).toBeLessThan(4096);
@@ -411,8 +432,7 @@ describe("learning review gating", () => {
         reviewTerminal = terminal;
         const review = makeReview({ memoryIntervalTurns: 1 });
         await completeUserTurn(review);
-        resolveReview?.();
-        await review.settled();
+        await finishReview(review);
         expect(recorded[0]?.payload.outcome).toBe("failed");
         expect(info.mock.calls.findLast(([message]) => message === "learning review settled")?.[1]).toMatchObject({ outcome: settledAs });
       }
@@ -431,16 +451,14 @@ describe("learning review gating", () => {
     await fired();
     specs[0]?.learningReview.onWritten({ surface: "memory", name: "memory", action: "batch", reach: "global" });
     specs[0]?.learningReview.onWritten({ surface: "skill", name: "retired", action: "archived", reach: "project" });
-    resolveReview?.();
-    await memoryReview.settled();
+    await finishReview(memoryReview);
     expect(notices).toEqual([]);
 
     const noOpReview = makeReview({ memoryIntervalTurns: 1 });
     noOpReview.noteUserTurn();
     noOpReview.onTurnCompleted();
     await fired();
-    resolveReview?.();
-    await noOpReview.settled();
+    await finishReview(noOpReview);
     expect(notices).toEqual([]);
 
     failReview = true;
@@ -457,8 +475,7 @@ describe("learning review gating", () => {
     silentReview.onTurnCompleted();
     await fired();
     specs[3]?.learningReview.onWritten({ surface: "skill", name: "silent", action: "created", reach: "project" });
-    resolveReview?.();
-    await silentReview.settled();
+    await finishReview(silentReview);
     expect(notices).toEqual([]);
   });
 
@@ -469,8 +486,7 @@ describe("learning review gating", () => {
 
     expect(specs).toHaveLength(1);
     expect(specs[0]?.instruction).toContain("Act on each destination the classifier selects");
-    resolveReview?.();
-    await review.settled();
+    await finishReview(review);
     expect(recorded[0]?.payload.trigger).toBe("manual");
   });
 
@@ -478,16 +494,14 @@ describe("learning review gating", () => {
     const review = makeReview({ notifications: "off" });
     review.learn();
     await fired();
-    resolveReview?.();
-    await review.settled();
+    await finishReview(review);
     expect(notices.map((notice) => notice.content)).toEqual(["The learning review found nothing to save from this chat."]);
 
     review.learn();
     await fired();
     specs[1]?.learningReview.onWritten({ surface: "memory", name: "user", action: "added", reach: "global" });
     specs[1]?.learningReview.onWritten({ surface: "skill", name: "deploy", action: "created", reach: "project" });
-    resolveReview?.();
-    await review.settled();
+    await finishReview(review);
     expect(notices[1]?.content).toBe("The learning review finished. Created skill: `deploy`. Saved 1 memory entry.");
 
     failReview = true;
@@ -506,8 +520,7 @@ describe("learning review gating", () => {
 
     expect(specs).toHaveLength(1);
     specs[0]?.learningReview.onWritten({ surface: "skill", name: "silent", action: "created", reach: "project" });
-    resolveReview?.();
-    await review.settled();
+    await finishReview(review);
     expect(notices).toEqual([]);
 
     review.noteUserTurn();
@@ -553,8 +566,7 @@ describe("replay", () => {
     await completeUserTurn(review);
     expect(specs).toHaveLength(1);
 
-    resolveReview?.();
-    await review.settled();
+    await finishReview(review);
   });
 
   it("resets derivation at the model's own memory writes", async () => {
@@ -581,10 +593,9 @@ describe("replay", () => {
     await fired();
     // 1 replayed + 1 live user turn, 1 replayed + 1 live LLM call: both due.
     expect(specs).toHaveLength(1);
-    expect(specs[0]?.instruction).toContain(COMBINED_REVIEW_PROMPT);
+    expect(specs[0]?.instruction).toContain("Act on each destination the classifier selects");
 
-    resolveReview?.();
-    await review.settled();
+    await finishReview(review);
   });
 
   it("keeps a reset noted while the replay runs over the replayed position", async () => {
@@ -627,8 +638,7 @@ describe("cost attribution", () => {
   it("omits the usage fields when the spawn has no usage report", async () => {
     const review = makeReview({ memoryIntervalTurns: 1 });
     await completeUserTurn(review);
-    resolveReview?.();
-    await review.settled();
+    await finishReview(review);
 
     expect(recorded[0]?.payload).not.toHaveProperty("costUsd");
   });
@@ -681,8 +691,7 @@ describe("global recommendations are recorded, never written", () => {
     await completeUserTurn(review);
 
     specs[0]?.learningReview.onRecommended(RECOMMENDATION);
-    resolveReview?.();
-    await review.settled();
+    await finishReview(review);
 
     // A recommendation writes nothing, so it is not a skill action, but the
     // review still acted: the fact carries the identity a later turn asks about.

@@ -24,8 +24,8 @@ const SHIP = {
 } satisfies AgentDefinition;
 
 /** What a dispatcher reads: the tool description and the roster its system prompt carries. */
-function modelVisible(agents: ReadonlyMap<string, AgentDefinition>): string {
-  return `${SUBAGENT_DESCRIPTION}\n\n${renderSubagentRoster(agents)}`;
+function modelVisible(agents: ReadonlyMap<string, AgentDefinition>, has: (term: string) => boolean = () => true): string {
+  return `${SUBAGENT_DESCRIPTION}\n\n${renderSubagentRoster(agents, has)}`;
 }
 
 describe("subagent prompt", () => {
@@ -74,6 +74,14 @@ describe("subagent prompt", () => {
 
     expect(prompt).toContain("- reviewer-plan-design (role: reviewer-design)");
     expect(prompt).not.toContain("Interface judgment: use a designer agent");
+  });
+
+  it("promises no publication through Ship while Bash is off, and keeps Ship in the roster", () => {
+    const agents = new Map([[SHIP.name, SHIP]]);
+    const withoutBash = modelVisible(agents, (term) => term !== "bash");
+    expect(withoutBash).toContain("- ship (role: ship)");
+    expect(withoutBash).not.toContain("Repository publication");
+    expect(modelVisible(agents)).toContain("- Repository publication: use the Ship agent");
   });
 
   it("delegates Git work to Ship with files and intent instead of parent-side analysis", () => {

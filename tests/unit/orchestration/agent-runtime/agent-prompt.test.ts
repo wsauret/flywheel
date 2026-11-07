@@ -12,6 +12,7 @@ import { testDirectories } from "../../../helpers/directories.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { promptCapabilities, promptOptions } from "../../../helpers/prompt-capabilities.js";
 
 const BASE = testBaseTools();
 // The builder takes the universal prompt as an input: production loads it from
@@ -73,24 +74,24 @@ describe("detectModelFamily", () => {
 describe("buildSystemPrompt — identity and constraints", () => {
   test("contains identity text regardless of model family", () => {
     for (const style of [ANTHROPIC_PROMPT_NOTES, SHARED_PROMPT_NOTES]) {
-      const prompt = buildSystemPrompt({
+      const prompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
         corePrompt,
         promptNotes: style,
         tools: [],
-      });
+      }));
       expect(prompt).toContain("pragmatic software engineering agent");
     }
   });
 
   test("contains constraints regardless of model family", () => {
     for (const style of [ANTHROPIC_PROMPT_NOTES, SHARED_PROMPT_NOTES]) {
-      const prompt = buildSystemPrompt({
+      const prompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
         corePrompt,
         promptNotes: style,
         tools: [],
-      });
+      }));
       expect(prompt).toContain("Do NOT make assumptions. Prove each claim with the evidence that can settle it");
     }
   });
@@ -99,11 +100,11 @@ describe("buildSystemPrompt — identity and constraints", () => {
 describe("buildSystemPrompt — per-tool guidance composition", () => {
   test("shell prompts preserve Flywheel's live output stream", () => {
     const expectedGuidance = "Never redirect, suppress, filter, or capture diagnostic output";
-    const bashPrompt = buildSystemPrompt({
+    const bashPrompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
       promptNotes: ANTHROPIC_PROMPT_NOTES,
       tools: specs("bash"),
-    });
+    }));
     expect(bashPrompt).toContain(expectedGuidance);
     expect(bashPrompt).toContain("runtime transfers a command to managed execution");
     expect(bashPrompt).toContain("stdout is the requested file artifact");
@@ -111,11 +112,11 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
 
   test("bash mechanics live in the tool description and schema, not the prompt", () => {
     const bash = BASE.get("bash")!;
-    const prompt = buildSystemPrompt({
+    const prompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
       promptNotes: ANTHROPIC_PROMPT_NOTES,
       tools: specs("bash"),
-    });
+    }));
     // Output compression semantics belong to the field that controls them.
     expect(JSON.stringify(bash.inputSchema)).toContain("omission marker");
     expect(prompt).not.toContain("omission marker");
@@ -159,23 +160,43 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
     expect(unguarded.inputSchema).toEqual(interactive.inputSchema);
   });
 
+  test("a shell without background launches, persistence, or other file tools names none of them", () => {
+    const interactive = bashToolSurface();
+    const foreground = bashToolSurface({ background: false });
+    expect(Object.keys(foreground.inputSchema.properties ?? {})).toEqual(Object.keys(interactive.inputSchema.properties ?? {}).filter((field) => field !== "background" && field !== "persist_after_exit"));
+    expect(foreground.description).not.toMatch(/background|persist_after_exit/);
+    expect(JSON.stringify(foreground.inputSchema)).not.toMatch(/background|persist/i);
+    expect(foreground.description).toContain("Never use shell-level &, nohup, or disown.");
+
+    const unpersisted = bashToolSurface({ persistence: false });
+    expect(Object.keys(unpersisted.inputSchema.properties ?? {})).toEqual(Object.keys(interactive.inputSchema.properties ?? {}).filter((field) => field !== "persist_after_exit"));
+    expect(JSON.stringify(unpersisted.inputSchema)).not.toMatch(/persist/i);
+    expect(unpersisted.description).toBe(interactive.description);
+
+    const alone = bashToolSurface({ has: () => false });
+    expect(alone.description).not.toMatch(/write tool|edit tool|search tool|edit and write/);
+    expect(alone.description).toContain("recorded and reviewed like a file edit");
+    expect(Object.keys(alone.inputSchema.properties ?? {})).toEqual(Object.keys(interactive.inputSchema.properties ?? {}));
+    expect(JSON.stringify(alone.inputSchema)).not.toContain("write tool");
+  });
+
   test("self-debug guidance advertises only the registered event-search command", () => {
-    const prompt = buildSystemPrompt({ promptKind: "chat", corePrompt, tools: specs("bash"), selfDebug: true });
+    const prompt = buildSystemPrompt(promptOptions({ promptKind: "chat", corePrompt, tools: specs("bash"), selfDebug: true }));
     expect(prompt).toContain("flywheel events search");
     expect(prompt).toContain("Before rerunning completed background work")
-    expect(prompt).toContain("subagent.completed")
-    expect(prompt).toContain("handoff.written")
+    expect(prompt).toContain("inspect its completion facts for completion evidence, its handoff facts for handoffs")
+    expect(prompt).not.toMatch(/subagent\.completed|handoff\.written/)
     expect(prompt).toContain("chat.entries.appended")
     expect(prompt).not.toContain("flywheel trace search");
     expect(prompt).not.toContain("events:search");
   });
 
   test("search guidance is content-only and lives in the description", () => {
-    const prompt = buildSystemPrompt({
+    const prompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
       promptNotes: ANTHROPIC_PROMPT_NOTES,
       tools: specs("search"),
-    });
+    }));
     expect(prompt).toContain("- search:");
     expect(prompt).not.toContain("Use search to list paths");
     const description = BASE.get("search")!.description;
@@ -185,15 +206,15 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
   });
 
   test("list guidance lives in the description and does not steer away from the shell", () => {
-    const prompt = buildSystemPrompt({
+    const prompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
       promptNotes: ANTHROPIC_PROMPT_NOTES,
       tools: specs("list"),
-    });
+    }));
     expect(prompt).toContain("- list:");
     const description = BASE.get("list")!.description;
     expect(description).not.toContain("in place of ls");
-    expect(description).toContain("Use search for file contents and read for contents of a known file");
+    expect(description).toContain("Use search for file contents.");
     expect(description).toContain("recursive path discovery");
     expect(prompt).not.toContain("ls, find, fd, or locate");
   });
@@ -208,32 +229,40 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
     expect(searchSchema).toContain("recency as tiebreaker");
     expect(searchSchema).toContain("no match cap; sorted by count");
     expect(searchSchema).toContain("Cannot combine with output_mode matching_files or count");
-    expect(renderGlobalGuidelines([GLOBAL_GUIDELINE_ID.savedOutputRecovery])[0]).toContain("saved-output file");
+    // A saved-output file is recovered with the tools that the agent has; with none of them the guideline is absent.
+    const savedOutput = (tools: string[]) => renderGlobalGuidelines([GLOBAL_GUIDELINE_ID.savedOutputRecovery], promptCapabilities(tools.map((name) => ({ name }))));
+    expect(savedOutput(["read"])[0]).toContain("names a saved-output file, read that file or search inside it for the part you need");
+    expect(savedOutput(["bash"])[0]).toContain("read that file or search inside it");
+    expect(savedOutput(["search"])[0]).toContain("names a saved-output file, search inside that file for the part you need");
+    expect(savedOutput([])).toEqual([]);
+    const marker = renderGlobalGuidelines([GLOBAL_GUIDELINE_ID.secretRedactionMarker], promptCapabilities([]))[0];
+    expect(marker).toContain("recover the bytes through a transformed view of the file, such as each line reversed;");
+    expect(marker).not.toContain("sed -n");
   });
 
   test("bash guidance is absent when bash is not loaded", () => {
-    const prompt = buildSystemPrompt({
+    const prompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
       promptNotes: ANTHROPIC_PROMPT_NOTES,
       tools: specs("read"),
-    });
+    }));
     expect(prompt).not.toContain("raw_output");
     expect(prompt).not.toContain("2>&1");
   });
 
   test("includes model-family-specific communication section", () => {
-    const anthropicPrompt = buildSystemPrompt({
+    const anthropicPrompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
       chatHost: { communication: true },
       promptNotes: ANTHROPIC_PROMPT_NOTES,
       tools: [],
-    });
-    const openaiPrompt = buildSystemPrompt({
+    }));
+    const openaiPrompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
       chatHost: { communication: true },
       promptNotes: SHARED_PROMPT_NOTES,
       tools: [],
-    });
+    }));
     expect(anthropicPrompt).toContain("No emojis");
     expect(openaiPrompt).toContain("No emojis");
     expect(anthropicPrompt).toContain("Keep it conversational");
@@ -241,8 +270,8 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
   });
 
   test("keeps chat communication guidance out of headless prompts", () => {
-    const chat = buildSystemPrompt({ promptKind: "chat", chatHost: { communication: true }, corePrompt, tools: [] });
-    const headless = buildSystemPrompt({ promptKind: "headless", corePrompt, tools: [] });
+    const chat = buildSystemPrompt(promptOptions({ promptKind: "chat", chatHost: { communication: true }, corePrompt, tools: [] }));
+    const headless = buildSystemPrompt(promptOptions({ promptKind: "headless", corePrompt, tools: [] }));
     const concise = "Be concise in narration";
     const evidence = "List the file paths and line numbers";
 
@@ -253,22 +282,22 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
   });
 
   test("Available tools list reflects only loaded tools", () => {
-    const prompt = buildSystemPrompt({
+    const prompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
       promptNotes: ANTHROPIC_PROMPT_NOTES,
       tools: specs("bash", "read", "handoff"),
-    });
+    }));
     expect(prompt).toContain("- bash:");
     expect(prompt).toContain("- read:");
     expect(prompt).toContain("- handoff:");
   });
 
   test("handoff guidance is included when tool is loaded", () => {
-    const prompt = buildSystemPrompt({
+    const prompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
       promptNotes: ANTHROPIC_PROMPT_NOTES,
       tools: specs("handoff"),
-    });
+    }));
     expect(prompt).toContain("handoff fields directly");
   });
 });
@@ -276,21 +305,21 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
 
 describe("buildSystemPrompt — subagent subagent", () => {
   test("includes subagent guidelines when subagent tool is loaded", () => {
-    const prompt = buildSystemPrompt({
+    const prompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
       promptNotes: ANTHROPIC_PROMPT_NOTES,
       tools: specs("bash", "read", "subagent"),
-    });
+    }));
     expect(prompt).toContain("- subagent:");
     expect(prompt).toContain("Terse prompts produce shallow results");
   });
 
   test("excludes subagent guidelines when subagent tool is not loaded", () => {
-    const prompt = buildSystemPrompt({
+    const prompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
       promptNotes: ANTHROPIC_PROMPT_NOTES,
       tools: specs("bash", "read"),
-    });
+    }));
     expect(prompt).not.toContain("- subagent:");
     expect(prompt).not.toContain("Terse prompts produce shallow results");
   });

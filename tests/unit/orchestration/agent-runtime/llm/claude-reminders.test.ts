@@ -3,11 +3,20 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { localDate } from "../../../../../src/infra/env-detection.js";
 import { createClaudeReminders, parseClaudeReminder } from "../../../../../src/orchestration/agent-runtime/llm/claude-reminders.js";
+import type { CapabilityCheck } from "../../../../../src/infra/capability-text.js";
+import { promptCapabilities, SHELL_CAPABILITIES } from "../../../../helpers/prompt-capabilities.js";
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { redactMessage } from "../../../../../src/orchestration/agent-runtime/agent-loop-history.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 
 const temporaryDirectory = temporaryDirectories();
+
+/** The reminders of `model` for an agent with the capabilities that each call names, the shell by default. */
+function shellReminders(model: string, contextLimit: number) {
+  const reminders = createClaudeReminders(model, contextLimit);
+  return (messages: readonly ConversationMessage[], cwd: string, has: CapabilityCheck = SHELL_CAPABILITIES) => reminders(messages, cwd, has);
+}
+const NO_SHELL = promptCapabilities([{ name: "read" }]);
 
 afterEach(() => {
   setSystemTime();
@@ -19,7 +28,7 @@ function parsed(message: ConversationMessage | undefined, previousWorkingDirecto
 }
 
 test("reminders are ordinary history and a model change reaches the next request, after a tool round or user input", () => {
-  const haiku = createClaudeReminders("claude-haiku-4-5", 200_000);
+  const haiku = shellReminders("claude-haiku-4-5", 200_000);
   const history: ConversationMessage[] = [{ kind: "user", origin: "human", content: "Keep my words." }];
   const initial = haiku(history, "/scratch");
   expect(initial).toHaveLength(3);
@@ -28,13 +37,25 @@ test("reminders are ordinary history and a model change reaches the next request
   expect(initial[1]?.content).toBe("<system-reminder>\nThe model that answers is Haiku 4.5, with the model ID claude-haiku-4-5. Its training data ends in February 2025.\n</system-reminder>");
   expect(parsed(initial[2])).toEqual({ kind: "date", date: localDate(), changed: false });
   expect(initial[2]?.content).toEndWith("</system-reminder>\n");
+  // The shell and download handling are for an agent that can call the shell: one without it reads the other facts only.
+  expect(initial[0]?.content).toContain("Treat every file that you download");
+  expect(initial[0]?.content).toContain(" - Shell: ");
+  const noShell = haiku(history, "/scratch", NO_SHELL);
+  expect(noShell[0]?.content).not.toContain("Treat every file that you download");
+  expect(noShell[0]?.content).not.toContain(" - Shell: ");
+  const facts = parsed(initial[0]);
+  if (facts?.kind !== "environment") throw new Error("The opening reminder states the environment");
+  const { shell: _shell, ...withoutShell } = facts;
+  expect(parsed(noShell[0])).toStrictEqual(withoutShell);
+  // The history of an agent without the shell holds its announcement, so the next request states it again only on a change.
+  expect(haiku([...history, ...noShell], "/scratch", NO_SHELL)).toEqual([]);
   // The label names who wrote each reminder, so a route never reads a person's text with the same bytes as one.
   expect(initial.map((message) => message.kind === "user" ? message.framing : undefined)).toEqual(["reminder", "claude", "reminder"]);
   expect(history).toEqual([{ kind: "user", origin: "human", content: "Keep my words." }]);
   history.push(...structuredClone(initial));
   expect(haiku(history, "/scratch")).toEqual([]);
   history.push({ kind: "assistant", content: [{ type: "tool_use", id: "call", name: "read", input: {} }] }, { kind: "toolResult", toolUseId: "call", content: [{ type: "text", text: "Read." }] });
-  const sonnet = createClaudeReminders("claude-sonnet-4-6", 200_000);
+  const sonnet = shellReminders("claude-sonnet-4-6", 200_000);
   const update = [{ kind: "user", origin: "system", content: "<system-reminder>\nThe model that answers is Sonnet 4.6, with the model ID claude-sonnet-4-6. Its training data ends in August 2025.\n</system-reminder>\n", framing: "claude" }] satisfies ConversationMessage[];
   expect(sonnet(history, "/scratch")).toEqual(update);
   history.push({ kind: "assistant", content: "Done." }, { kind: "user", origin: "human", content: "Next." });
@@ -75,9 +96,9 @@ test("reminders are ordinary history and a model change reaches the next request
   expect(dateUpdate).toHaveLength(1);
   expect(parsed(dateUpdate[0])).toEqual({ kind: "date", date: localDate(), changed: true });
   expect(sonnet([...dated, ...dateUpdate], "/scratch")).toEqual([]);
-  const extendedInitial = createClaudeReminders("claude-opus-4-6", 1_000_000)([{ kind: "user", origin: "human", content: "Hi." }], "/scratch");
+  const extendedInitial = shellReminders("claude-opus-4-6", 1_000_000)([{ kind: "user", origin: "human", content: "Hi." }], "/scratch");
   expect(extendedInitial[1]?.content).toBe("<system-reminder>\nThe model that answers is Opus 4.6 (1M context), with the model ID claude-opus-4-6[1m]. Its training data ends in May 2025.\n</system-reminder>");
-  const unknown = createClaudeReminders("claude-unknown-8", 200_000);
+  const unknown = shellReminders("claude-unknown-8", 200_000);
   expect(unknown([{ kind: "user", origin: "human", content: "Hi." }], "/scratch")[1]?.content).toBe("<system-reminder>\nThe model that answers has the model ID claude-unknown-8.\n</system-reminder>");
   const linked = temporaryDirectory("claude-reminder-worktree-");
   const gitDirectory = join(linked, "metadata");
@@ -90,6 +111,10 @@ test("reminders are ordinary history and a model change reaches the next request
   expect(parsed(worktree[0], "/scratch")).toEqual({ kind: "environment-update", workingDirectory: nested, isWorktree: true, isGitRepo: true });
   // Entering a worktree also states how to work in one: stay in it, and do not pop the stash list that every checkout shares.
   expect(worktree[0]?.content).toContain("git stash apply <hash>");
+  const unshelled = sonnet(resumed, nested, NO_SHELL);
+  expect(unshelled[0]?.content).toContain("The working directory is a linked worktree");
+  expect(unshelled[0]?.content).not.toContain("git stash");
+  expect(parsed(unshelled[0], "/scratch")).toEqual(parsed(worktree[0], "/scratch"));
   expect(sonnet([...resumed, ...worktree], nested)).toEqual([]);
   const exited = sonnet([...resumed, ...worktree], "/scratch");
   expect(parsed(exited[0], nested)).toEqual({ kind: "environment-update", workingDirectory: "/scratch", isWorktree: false, isGitRepo: false });
@@ -100,13 +125,13 @@ test("a new local date and a new model reach the next request, a tool round incl
   // A day apart, so the two instants name different local dates in every zone.
   const tomorrow = new Date("2026-10-10T12:00:00Z");
   setSystemTime(new Date("2026-10-09T12:00:00Z"));
-  const haiku = createClaudeReminders("claude-haiku-4-5", 200_000);
+  const haiku = shellReminders("claude-haiku-4-5", 200_000);
   const history: ConversationMessage[] = [{ kind: "user", origin: "human", content: "Read the note." }];
   history.push(...haiku(history, "/scratch"), { kind: "assistant", content: [{ type: "tool_use", id: "call", name: "read", input: {} }] }, { kind: "toolResult", toolUseId: "call", content: [{ type: "text", text: "Read." }] });
   expect(haiku(history, "/scratch")).toEqual([]);
 
   setSystemTime(tomorrow);
-  const sonnet = createClaudeReminders("claude-sonnet-4-6", 200_000);
+  const sonnet = shellReminders("claude-sonnet-4-6", 200_000);
   const toolRound = sonnet(history, "/other");
   expect(toolRound[0]).toEqual({ kind: "user", origin: "system", content: "<system-reminder>\nThe model that answers is Sonnet 4.6, with the model ID claude-sonnet-4-6. Its training data ends in August 2025.\n</system-reminder>\n", framing: "claude" });
   expect(toolRound.map((message) => parsed(message))).toEqual([expect.objectContaining({ kind: "model" }), { kind: "date", date: localDate(tomorrow), changed: true }]);
@@ -120,7 +145,7 @@ test("a new local date and a new model reach the next request, a tool round incl
 test("parsing reads back the facts of every reminder the producer writes", () => {
   setSystemTime(new Date(2026, 9, 7, 12));
   const cwd = "/scratch/a<b>&\n";
-  const [environment, model, date] = createClaudeReminders("claude-opus-4-6", 1_000_000)([{ kind: "user", origin: "human", content: "Hi." }], cwd)
+  const [environment, model, date] = shellReminders("claude-opus-4-6", 1_000_000)([{ kind: "user", origin: "human", content: "Hi." }], cwd)
     .map((message) => parsed(message));
   expect(environment).toMatchObject({ kind: "environment", workingDirectory: cwd, isWorktree: false, isGitRepo: false, platform: process.platform });
   expect(model).toEqual({
@@ -128,12 +153,12 @@ test("parsing reads back the facts of every reminder the producer writes", () =>
     text: "The model that answers is Opus 4.6 (1M context), with the model ID claude-opus-4-6[1m]. Its training data ends in May 2025.",
   });
   expect(date).toEqual({ kind: "date", date: "2026-10-07", changed: false });
-  const unknown = createClaudeReminders("claude-unknown-8", 200_000)([{ kind: "user", origin: "human", content: "Hi." }], cwd)[1];
+  const unknown = shellReminders("claude-unknown-8", 200_000)([{ kind: "user", origin: "human", content: "Hi." }], cwd)[1];
   expect(parsed(unknown)).toEqual({ kind: "model", modelId: "claude-unknown-8", text: "The model that answers has the model ID claude-unknown-8." });
 });
 
 test("parsing reads every kind of change notice", () => {
-  const reminders = createClaudeReminders("claude-sonnet-4-6", 200_000);
+  const reminders = shellReminders("claude-sonnet-4-6", 200_000);
   const linked = temporaryDirectory("claude-reminder-parse-");
   const before = join(linked, "project (was old)");
   const nested = join(linked, "project (was old) next");
@@ -176,7 +201,7 @@ test("reminders that builds before 2026-10-27 wrote still read as their facts, s
 
   setSystemTime(new Date(2026, 9, 8, 12));
   const cwd = temporaryDirectory("claude-reminder-legacy-");
-  const reminders = createClaudeReminders("claude-sonnet-4-6", 200_000);
+  const reminders = shellReminders("claude-sonnet-4-6", 200_000);
   const start: ConversationMessage = { kind: "user", origin: "human", content: "Start." };
   const legacyHistory: ConversationMessage[] = [
     start,

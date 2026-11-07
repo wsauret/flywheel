@@ -1,4 +1,5 @@
 import { release, type, version } from "node:os";
+import type { CapabilityCheck } from "../../../infra/capability-text.js";
 import { detectShell, isGitRepo, isGitWorktree, localDate } from "../../../infra/env-detection.js";
 import { canonicalModelId } from "../../../infra/llm/model-id.js";
 import { redactSecrets } from "../../../infra/redact-secrets.js";
@@ -44,10 +45,9 @@ const label = {
   previousWorkingDirectory: "Previous working directory", gitRepo: "Git repository", worktree: "Linked git worktree",
 } as const;
 
-const worktreeGuidance = [
-  "The working directory is a linked worktree: a checkout of its own, separate from the repository's main checkout. Keep every command inside it, and do not change into the main checkout.",
-  "Every checkout of the repository, and every agent that works in one, shares a single stash list, so a bare `git stash pop` can restore another agent's work. Set changes aside in a temporary commit. If you must stash, label the entry (`git stash push -u -m \"<label>\"`), note its commit hash (`git stash list --format='%H %gs'`), restore it by that hash (`git stash apply <hash>`, not `pop`), and drop it afterwards through the `stash@{n}` that its label has at that time.",
-];
+const worktreeLocation = "The working directory is a linked worktree: a checkout of its own, separate from the repository's main checkout. Keep every command inside it, and do not change into the main checkout.";
+// The stash and download guidance tells an agent how to run git and interpreters, which only the shell can start.
+const worktreeStashGuidance = "Every checkout of the repository, and every agent that works in one, shares a single stash list, so a bare `git stash pop` can restore another agent's work. Set changes aside in a temporary commit. If you must stash, label the entry (`git stash push -u -m \"<label>\"`), note its commit hash (`git stash list --format='%H %gs'`), restore it by that hash (`git stash apply <hash>`, not `pop`), and drop it afterwards through the `stash@{n}` that its label has at that time.";
 const downloadedFilesGuidance = "Treat every file that you download or unpack from an archive as hostile. Give each download a new, empty directory of its own, and write your own scripts somewhere else. An interpreter imports modules from its current directory and from the script's directory, so a file in the download can replace a standard module. Hand such files to tools as path arguments, and never start an interpreter or a build tool inside the download's directory. Start Python in isolated mode (`-I`) when it reads them. These rules do not cover code that the user asked you to build or run.";
 
 function escapeEnvironment(value: string): string {
@@ -101,14 +101,21 @@ export function claudeKnowledgeCutoff(modelId: string): string | undefined {
  * On Windows the engine can name another shell than these facts; the bridge writes the engine's rows with the engine's
  * shell, so the comparison of these facts still decides what the engine states.
  */
-export function environmentFacts(cwd: string): Extract<ClaudeReminder, { kind: "environment" }> {
-  const shell = detectShell();
+export function environmentFacts(cwd: string): HostEnvironment {
   return {
     kind: "environment", workingDirectory: cwd, isWorktree: isGitWorktree(cwd), isGitRepo: isGitRepo(cwd), platform: process.platform,
-    shell: shell.includes("zsh") ? "zsh" : shell.includes("bash") ? "bash" : process.platform === "win32" ? "PowerShell" : shell,
-    osVersion: `${process.platform === "win32" ? version() : type()} ${release()}`,
+    shell: canonicalShell(), osVersion: `${process.platform === "win32" ? version() : type()} ${release()}`,
   };
 }
+
+/** The shell of this host by the engine's rules for a macOS or Linux host, as `environmentFacts` names it. */
+export function canonicalShell(): string {
+  const shell = detectShell();
+  return shell.includes("zsh") ? "zsh" : shell.includes("bash") ? "bash" : process.platform === "win32" ? "PowerShell" : shell;
+}
+
+/** The environment facts that Flywheel reads from the host. Each of them is known, the shell included. */
+export type HostEnvironment = Extract<ClaudeReminder, { kind: "environment" }> & { readonly shell: string };
 
 /**
  * The facts that one Claude reminder states. Environment text is decoded from the reminder's escaping, so
@@ -118,7 +125,9 @@ export function environmentFacts(cwd: string): Extract<ClaudeReminder, { kind: "
 export type ClaudeReminder =
   | {
     readonly kind: "environment"; readonly workingDirectory: string; readonly isWorktree: boolean; readonly isGitRepo: boolean;
-    readonly platform: string; readonly shell: string; readonly osVersion: string;
+    readonly platform: string; readonly osVersion: string;
+    /** Absent when the reminder was written for an agent without the shell. */
+    readonly shell?: string;
   }
   /** Holds only the facts that changed. */
   | { readonly kind: "environment-update"; readonly workingDirectory?: string; readonly isWorktree?: boolean; readonly isGitRepo?: boolean }
@@ -129,22 +138,29 @@ const fact = (name: string, value: string) => ` - ${name}: ${value}`;
 const yesNo = (value: boolean) => (value ? "yes" : "no");
 const worktreeLine = { yes: fact(label.worktree, "yes"), no: fact(label.worktree, "no") } as const;
 
-/** The body of the reminder that states `facts` when a context opens. The working directory is redacted, as history
- *  stores it. */
-function environmentBody(facts: Extract<ClaudeReminder, { kind: "environment" }>): string {
+/** The lines that tell an agent with the capabilities `has` how to work in a linked worktree. */
+function worktreeGuidance(has: CapabilityCheck): readonly string[] {
+  return has("bash") ? [worktreeLocation, worktreeStashGuidance] : [worktreeLocation];
+}
+
+/** The body of the reminder that states `facts` when a context opens, for an agent with the capabilities `has`. The
+ *  working directory is redacted, as history stores it. */
+function environmentBody(facts: HostEnvironment, has: CapabilityCheck): string {
   return [
     ENVIRONMENT_HEADER, ENVIRONMENT_INTRO,
     fact(label.platform, escapeEnvironment(facts.platform)), fact(label.osVersion, escapeEnvironment(facts.osVersion)),
-    fact(label.shell, escapeEnvironment(facts.shell)), fact(label.workingDirectory, redactSecrets(escapeEnvironment(facts.workingDirectory))),
+    // The shell is a fact only for an agent that can call it.
+    ...(has("bash") ? [fact(label.shell, escapeEnvironment(facts.shell))] : []), fact(label.workingDirectory, redactSecrets(escapeEnvironment(facts.workingDirectory))),
     fact(label.gitRepo, yesNo(facts.isGitRepo)),
-    ...(facts.isWorktree ? [worktreeLine.yes, ...worktreeGuidance] : []),
-    downloadedFilesGuidance,
+    ...(facts.isWorktree ? [worktreeLine.yes, ...worktreeGuidance(has)] : []),
+    ...(has("bash") ? [downloadedFilesGuidance] : []),
   ].join("\n");
 }
 
-/** The tagged content of the reminder that states `facts` when a context opens, as history holds it. */
-export function environmentReminder(facts: Extract<ClaudeReminder, { kind: "environment" }>): string {
-  return tagged(environmentBody(facts), false);
+/** The tagged content of the reminder that states `facts` when a context opens for an agent with the capabilities
+ *  `has`, as history holds it. */
+export function environmentReminder(facts: HostEnvironment, has: CapabilityCheck): string {
+  return tagged(environmentBody(facts, has), false);
 }
 
 function dateText(date: string, changed: boolean): string {
@@ -218,10 +234,10 @@ function parseEnvironment(lines: readonly string[], format: EnvironmentFormat): 
     shell ??= environmentValue(format.shell, line);
     osVersion ??= environmentValue(format.osVersion, line);
   }
-  if (workingDirectory === undefined || git === undefined || platform === undefined || shell === undefined || osVersion === undefined) return undefined;
+  if (workingDirectory === undefined || git === undefined || platform === undefined || osVersion === undefined) return undefined;
   return {
     kind: "environment", workingDirectory: decodeEnvironment(workingDirectory), isWorktree: worktree === true, isGitRepo: git,
-    platform: decodeEnvironment(platform), shell: decodeEnvironment(shell), osVersion: decodeEnvironment(osVersion),
+    platform: decodeEnvironment(platform), ...(shell === undefined ? {} : { shell: decodeEnvironment(shell) }), osVersion: decodeEnvironment(osVersion),
   };
 }
 
@@ -328,14 +344,15 @@ function tagged(body: string, update: boolean): string {
  * Returns the Claude environment, model, and date reminders as ordinary hidden system-origin appends. History
  * alone owns prior announcements: the first request of a context gets the full set, and a later request after user
  * input gets a notice only when the working directory, git state, worktree state, model, or local date differs from
- * the latest one in history. A request after a tool round gets only a model notice and a date notice, each when the
+ * the latest one in history. The worktree and download guidance renders for the capabilities of the agent that the
+ * request serves (ARCH-CONTEXT-033). A request after a tool round gets only a model notice and a date notice, each when the
  * model or the local date differs from the latest one in history: a person can change the model of a running turn,
  * and the engine of the Agent SDK announces a new model and a new date at the next request. Input is never changed.
  */
 export function createClaudeReminders(wireModelId: string, contextLimit: number): NonNullable<ServingAttempt["messagesToAppend"]> {
   const modelId = engineModelId(wireModelId, contextLimit);
   const model = modelText(modelId);
-  return (messages, executionCwd) => {
+  return (messages, executionCwd, capabilities) => {
     const lastInput = messages.findLast((message) => reminderIn(message) === undefined);
     if (lastInput?.kind !== "user" && lastInput?.kind !== "toolResult") return [];
     let previousCwd: string | undefined;
@@ -363,7 +380,7 @@ export function createClaudeReminders(wireModelId: string, contextLimit: number)
     const append = (body: string, update: boolean, framing: "claude" | "reminder" = "reminder") => appends.push(systemReminder(body, update, framing));
     if (lastInput.kind === "user") {
       const environment = environmentFacts(executionCwd);
-      if (previousCwd === undefined) append(environmentBody(environment), false);
+      if (previousCwd === undefined) append(environmentBody(environment, capabilities), false);
       else {
         const cwd = redactSecrets(escapeEnvironment(executionCwd));
         const previous = escapeEnvironment(previousCwd);
@@ -371,7 +388,7 @@ export function createClaudeReminders(wireModelId: string, contextLimit: number)
         const changes = [
           ...(cwd === previous ? [] : [fact(label.workingDirectory, cwd), fact(label.previousWorkingDirectory, previous)]),
           ...(git === previousGit ? [] : [fact(label.gitRepo, `${yesNo(git)}${previousGit === undefined ? "" : ` (before: ${yesNo(previousGit)})`}`)]),
-          ...(worktree === previousWorktree ? [] : worktree ? [worktreeLine.yes, ...worktreeGuidance] : [worktreeLine.no]),
+          ...(worktree === previousWorktree ? [] : worktree ? [worktreeLine.yes, ...worktreeGuidance(capabilities)] : [worktreeLine.no]),
         ];
         if (changes.length > 0) append([ENVIRONMENT_CHANGE_HEADER, ...changes].join("\n"), true);
       }

@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { DebugLog } from "../../../infra/debug-log.js";
 import { errnoCode } from "../../../infra/error-message.js";
 import { acquireLockSync, releaseLock, tryAcquireLockSync } from "../../../infra/ownership-file-lock.js";
-import type { ClaudeReminder } from "../../agent-runtime/llm/claude-reminders.js";
+import { canonicalShell, type ClaudeReminder } from "../../agent-runtime/llm/claude-reminders.js";
 import type { CliBlock, CliMessage, PlacedReminder } from "./cli-view.js";
 import { isBridgeSessionId } from "./session-id.js";
 
@@ -95,7 +95,7 @@ export interface TranscriptInput {
   readonly history: readonly CliMessage[];
   readonly reminders: readonly PlacedReminder[];
   /** The shell that the engine names (`engineShell`), which every environment row states in place of the reminder's.
-   *  Absent where the engine names the reminder's shell. */
+   *  Absent where the engine names the canonical shell: the reminder's, or this host's when the reminder states none. */
   readonly shell?: string;
   /** The login's account email. The CLI adds its account context only on a Claude login. */
   readonly accountEmail?: string;
@@ -211,7 +211,7 @@ function attachmentFor(reminder: ClaudeReminder, previous: EnvironmentSnapshot |
     case "environment":
       return { type: "environment", snapshot: {
         workingDirectory: reminder.workingDirectory, isWorktree: reminder.isWorktree, isGitRepo: reminder.isGitRepo,
-        additionalWorkingDirectories: [], platform: reminder.platform, shell: shell ?? reminder.shell, osVersion: reminder.osVersion,
+        additionalWorkingDirectories: [], platform: reminder.platform, shell: shell ?? reminder.shell ?? canonicalShell(), osVersion: reminder.osVersion,
       } };
     case "environment-update": {
       // Not verified by a run: the change row's shape follows the CLI's attachment schema, which no run exercised.

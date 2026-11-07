@@ -5,7 +5,11 @@ import { createToolConcurrencyGate } from "../../../../../src/orchestration/agen
 import { boundedStringCodeModeOutput, type RuntimeTool, type ToolContext, type ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { createCatalogRenderer } from "../../../../../src/orchestration/modules/code-mode/catalog.js";
 import type { CodeModeLimits } from "../../../../../src/orchestration/modules/code-mode/limits.js";
-import { codeModeServices, codeToolOver, scriptedWorker } from "../../../../helpers/code-mode-worker.js";
+import { codeModeRuntimeOver, codeModeServices, codeToolOver, scriptedWorker } from "../../../../helpers/code-mode-worker.js";
+import { composeModuleRuntimes } from "../../../../../src/infra/module-runtime.js";
+import { composeFirstPartyModules } from "../../../../../src/orchestration/modules.js";
+import { planToolExposure } from "../../../../../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
+import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js";
 
 function runtimeTool(name: string, execute: RuntimeTool["execute"]): RuntimeTool {
   return {
@@ -86,7 +90,7 @@ describe("code tool", () => {
     const description = [
       "Run JavaScript in a confined Code Mode runtime to orchestrate tool calls and compose their results.",
       "Imports, direct filesystem access, and timers are unavailable. Do not use `fetch`; all external access goes through `tools`.",
-      "Within `{ source }`, only MCP tools (`tools.<server>.*`) listed in the Code Mode catalog or returned by `searchCatalog` are callable. Call first-class tools directly, never through code.",
+      "Within `{ source }`, only tools listed in the Code Mode catalog or returned by `searchCatalog` are callable. Call first-class tools directly, never through code.",
       "`searchCatalog` is a global function, never a member of `tools`. Call `searchCatalog(input)`, not `tools.searchCatalog(input)`.",
       'Call tools through `tools` using only exact paths and signatures from the catalog. Do not infer or normalize tool names; preserve bracket notation such as `tools.<namespace>["tool-name"](input)`.',
       "For discovery, run one script that makes all independent `searchCatalog` calls concurrently with `Promise.all`. Then run one separate real-work script with the discovered exact tool paths and signatures.",
@@ -104,6 +108,24 @@ describe("code tool", () => {
       "Heavy computation and gigabyte-scale data belong in Bash; exceeding the heap growth budget terminates the program. Program intermediates never enter model context.",
       createCatalogRenderer()({}).text,
     ]);
+  });
+  it("describes a script runtime with no tool calls, catalog, or Bash advice when the capture holds neither code-only tools nor bash", async () => {
+    const planned = await planToolExposure({
+      kernel: testKernelToolDeps({ moduleSnapshot: composeFirstPartyModules(undefined, ["mcp", "bash"]) }),
+      modules: composeModuleRuntimes([["code-mode", codeModeRuntimeOver(codeModeService())]]),
+    });
+    const code = planned.tools.get("code");
+    const text = [code?.description, ...code?.promptGuidelines ?? []].join("\n");
+    expect(code?.description).toBe([
+      "Run JavaScript in a confined Code Mode runtime to compute and compose results.",
+      "Imports, direct filesystem access, timers, and `fetch` are unavailable.",
+      "Prefer an explicit `return`; if omitted, the final top-level expression becomes the result.",
+      "A large return value does not fail: the runtime truncates it for the model and saves the full result to a breadcrumb file. Treat that as a missed projection; re-run the script with a tighter projection instead of post-processing the breadcrumb.",
+    ].join("\n"));
+    expect(text).not.toContain("searchCatalog");
+    expect(text).not.toContain("## Namespaces");
+    expect(text).not.toContain("Bash");
+    expect(text).toContain("Exceeding the heap growth budget terminates the program.");
   });
   it("formats successful string and structured values for the model", async () => {
     const run = fixture([]);

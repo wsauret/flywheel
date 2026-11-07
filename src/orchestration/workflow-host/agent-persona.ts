@@ -2,8 +2,10 @@ import type { AgentDefinition } from "../../infra/agent-definition.js"
 import type { ResolvedAgent } from "../../workflows/agent-resolution.js"
 import { personaInstructions } from "../../workflows/agents/persona-instructions.js"
 import { grantedSubagentTypes, personaToolNames, workflowAgentSubagents } from "../../workflows/agents/subagent-reachability.js"
+import type { CapabilityCheck } from "../../infra/capability-text.js"
 import type { SkillRegistryRevision } from "../../workflows/skill-schema.js"
-import { gitDisciplineRule, isReadOnlyPersona } from "../agent-runtime/persona-tool-rules.js"
+import { availableToolNames, gitDisciplineRule, isReadOnlyPersona } from "../agent-runtime/persona-tool-rules.js"
+import type { FirstPartyModuleComposition } from "../modules.js"
 
 /** How an agent of a workflow whose record names a `persona` runs: as that
  *  persona runs when a subagent dispatch starts it ("persona" in docs/terminology.md).
@@ -18,7 +20,8 @@ export interface AgentPersonaRun {
   readonly role: string
   /** The tools the agent may call: the persona's own, the handoff tool, the
    *  dispatch tools when the agent or the persona grants subagents, and the
-   *  session message tool when the host has session messaging. */
+   *  session message tool when the host has session messaging, each one the
+   *  workflow's modules can serve, as a dispatch narrows them. */
   readonly toolGrant: readonly string[]
   /** The personas the agent may dispatch: its brief's, the trial advisor
    *  default (refer to `workflowAgentSubagents`), and the persona's. */
@@ -28,9 +31,10 @@ export interface AgentPersonaRun {
    *  file, as a dispatch of the persona's shell does. */
   readonly readOnly: boolean
   /** The persona's instructions and its git discipline, as a dispatch of
-   *  the persona states them, which open the task. The tools it may call
-   *  follow in its opening turn from its first tool plan (`tool-notice.ts`). */
-  readonly instructions: string
+   *  the persona states them, which open the task, rendered for the check of
+   *  the agent's run (ARCH-CONTEXT-033). The tools it may call follow in its
+   *  opening turn from its first tool plan (`tool-notice.ts`). */
+  readonly instructions: (capabilities: CapabilityCheck) => string
 }
 
 /** The persona run of one agent, or undefined when its record names no
@@ -42,30 +46,34 @@ export function agentPersonaRun(input: {
   readonly personas: ReadonlyMap<string, AgentDefinition>
   readonly skills: SkillRegistryRevision
   readonly sessionMessaging: boolean
+  /** The workflow's modules, which the grant narrows to. */
+  readonly modules: FirstPartyModuleComposition
 }): AgentPersonaRun | undefined {
   const { agent, personas } = input
   if (agent.persona === undefined) return undefined
   const persona = personas.get(agent.persona)
   if (persona?.kind !== "persona") throw new Error(`Agent "${agent.definitionId}" runs as persona "${agent.persona}", which no installed persona provides`)
   const allowedSubagentTypes = new Set([...workflowAgentSubagents(agent), ...grantedSubagentTypes(persona, personas)])
-  const toolGrant = [...new Set([
+  const toolGrant = availableToolNames([...new Set([
     ...personaToolNames(persona, personas),
     ...(allowedSubagentTypes.size > 0 ? ["subagent", "process"] : []),
     ...(input.sessionMessaging ? ["message_session"] : []),
-  ])]
-  const git = gitDisciplineRule(toolGrant)
+  ])], input.modules)
   return {
     role: persona.role,
     toolGrant,
     allowedSubagentTypes,
     maxTurns: persona.maxTurns,
     readOnly: isReadOnlyPersona(persona),
-    instructions: [personaInstructions(persona, input.skills), ...(git === undefined ? [] : [git])].join("\n\n"),
+    instructions: (capabilities) => {
+      const git = gitDisciplineRule(capabilities)
+      return [personaInstructions(persona, input.skills, capabilities), ...(git === undefined ? [] : [git])].join("\n\n")
+    },
   }
 }
 
-/** The task of an agent that runs as a persona: the persona's instructions,
- *  then the agent's own task. */
-export function personaTask(run: AgentPersonaRun | undefined, task: string): string {
-  return run === undefined ? task : `${run.instructions}\n\n---\n\n${task}`
+/** The task of an agent that runs as a persona: the persona's instructions for the check of its run, then the
+ *  agent's own task. */
+export function personaTask(run: AgentPersonaRun | undefined, task: string, capabilities: CapabilityCheck): string {
+  return run === undefined ? task : `${run.instructions(capabilities)}\n\n---\n\n${task}`
 }

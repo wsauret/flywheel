@@ -25,6 +25,7 @@ import { executePreparedTool, prepareToolCall } from "../../../../../src/orchest
 import { makeContext } from "../tools/_fixtures.js";
 import { importLegacyCheckpointNotes } from "../../../../../src/orchestration/session/checkpoint-note-conversion.js";
 import { projectBlocksFromEntries } from "../../../../../src/orchestration/session/conversation/conversation-block-projection.js";
+import { promptCapabilities } from "../../../../helpers/prompt-capabilities.js";
 
 test("reset records reject summary payloads and historical summaries remain readable", () => {
   const decode = Schema.decodeUnknownSync(CompactionEntrySchema, { onExcessProperty: "error" });
@@ -35,7 +36,7 @@ test("reset records reject summary payloads and historical summaries remain read
 });
 
 test("notes-only system guidance does not promise a retained summary", () => {
-  const prompt = renderSessionNotesGuidance({ recallAvailable: true });
+  const prompt = renderSessionNotesGuidance({ has: promptCapabilities([{ name: "recall" }]) });
   expect(prompt).toContain("without a generated summary");
   expect(prompt).not.toContain("Retained generated summaries");
   expect(prompt).toContain("recall");
@@ -71,7 +72,7 @@ for (const trigger of ["manual", "automatic", "overflow", "idle"] as const) {
         writeFileSync(join(notes, "checkpoint.md"), "legacy working notes ".repeat(2_000));
         await importLegacyCheckpointNotes(asAsyncEventReadSurface(store), factWriter, { kind: "session", sessionId: "session" }, "conversation", notes);
       } else if (checkpointState === "present") {
-        const context = makeContext({ executionCwd: projectRoot });
+        const context = makeContext({ executionCwd: projectRoot, capabilities: promptCapabilities([{ name: "recall" }]) });
         for (const [name, input] of [
           ["checkpoint_replace", { section: "designIntent", value: { text: "Keep the exact approved intent.", approved: true } }],
           ["checkpoint_decide", { date: "2026-10-21", words: "Use the user's exact words.", replaces: "Use a summary." }],
@@ -147,7 +148,9 @@ for (const trigger of ["manual", "automatic", "overflow", "idle"] as const) {
         expect(opening.content).toContain(trigger === "overflow" ? "# Next step\n\nNext\n" : "# Next step\n\nSaved immediately before compaction.");
         expect(opening.content).not.toContain("checkpoint_read");
       } else if (checkpointState === "legacy-oversized") {
-        for (const section of ["# Design intent (draft)", "# Decisions", "# Current state", "# Open questions", "# Next step", "# Relevant skills", "# References", "# Working notes"]) expect(opening.content).toContain(section);
+        for (const section of ["# Design intent (draft)", "# Decisions", "# Current state", "# Open questions", "# Next step", "# References", "# Working notes"]) expect(opening.content).toContain(section);
+        // The agent has no skill tool, so the empty skills section stays out of its opening.
+        expect(opening.content).not.toContain("# Relevant skills");
         expect(opening.content).toContain("Working notes is too large to include");
         expect(opening.content).toContain('checkpoint_read({ "section": "workingNotes", "offset": 0 })');
         expect(opening.content).not.toContain("legacy working notes");

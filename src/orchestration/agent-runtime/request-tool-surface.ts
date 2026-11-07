@@ -14,8 +14,11 @@
  */
 
 import { errorMessage } from "../../infra/error-message.js";
+import type { CapabilityCheck } from "../../infra/capability-text.js";
+import { agentCapabilityCheck } from "./capability-checks.js";
 import { isRecord } from "../../infra/record.js";
 import type { ToolExposurePlan } from "./tools/tool-exposure-planner.js";
+import type { KernelToolDeps } from "./tools/kernel-tool-deps.js";
 import type { RuntimeTool } from "./tools/types.js";
 import { moduleDisabledReason } from "../../protocol/module-ids.js";
 import { exposedToolName, toolRegistryFromComposition } from "./tools/tool-registry.js";
@@ -142,6 +145,14 @@ interface RequestToolSurface {
   readonly usableToolNames: ReadonlySet<string>;
   /** Provider-visible tool name to its logical registration id. */
   readonly registrationIdentities: ReadonlyMap<string, string>;
+  /** The definition availability this request was planned under (`KernelToolDeps.definitionAvailability`). */
+  readonly definitionAvailability: PlannedRequest["definitionAvailability"];
+  /** The agent check (ARCH-CONTEXT-033): `usableToolNames` and the availability of this agent's own selection.
+   *  Text that this agent alone reads renders from it. */
+  readonly capabilities: CapabilityCheck;
+  /** The modules whose advertised tools this agent's calls are refused because its own selection turned them off
+   *  (`ToolExposurePlan.turnedOff`). */
+  readonly turnedOff: ToolExposurePlan["turnedOff"];
   /** Resolves old unstamped calls only when their recorded model profile selects
    *  exactly one registration for the recorded provider-visible name. */
   historicalRegistrationId(name: string, model: string | undefined, provider: import("../../infra/llm/model-family.js").ModelFamily | undefined): string | undefined;
@@ -177,8 +188,22 @@ interface StaticTokenCache {
   };
 }
 
+/** One request's tool plan with the definition availability its kernel was planned under. */
+export type PlannedRequest = ToolExposurePlan & { readonly definitionAvailability: KernelToolDeps["definitionAvailability"] };
+
+/** The logical identities of the tools that a planned request can call. */
+function usableIdentities(plan: PlannedRequest): ReadonlySet<string> {
+  return new Set([...plan.usable].map((name) => plan.registrationIdentities.get(name) ?? name));
+}
+
+/** The agent check of a planned request (ARCH-CONTEXT-033): the tools that it can call and the availability of the
+ *  agent's own selection. */
+export function requestCapabilities(plan: PlannedRequest): CapabilityCheck {
+  return agentCapabilityCheck(usableIdentities(plan), plan.definitionAvailability.live);
+}
+
 function pin(
-  plan: ToolExposurePlan,
+  plan: PlannedRequest,
   moduleSnapshot: FirstPartyModuleComposition,
   runtimeConfig: RuntimeConfigRequestCapture,
   staticTokenCache: StaticTokenCache,
@@ -187,7 +212,7 @@ function pin(
   const tools = plan.tools;
   const enabledModuleIds = new Set(moduleSnapshot.enabledModuleIds);
   const requestRegistry = toolRegistryFromComposition(moduleSnapshot);
-  const usableToolNames = new Set([...plan.usable].map((name) => plan.registrationIdentities.get(name) ?? name));
+  const usableToolNames = usableIdentities(plan);
   const applicationIdentity = crypto.randomUUID();
   let stablePrompt: RequestStablePrompt | undefined;
   let admittedProviderRequest: Promise<AdmittedModelRequest> | undefined;
@@ -197,6 +222,9 @@ function pin(
     registrationIds: plan.registrationIds,
     usableToolNames,
     registrationIdentities: plan.registrationIdentities,
+    definitionAvailability: plan.definitionAvailability,
+    capabilities: requestCapabilities(plan),
+    turnedOff: plan.turnedOff,
     historicalRegistrationId(name, model, provider) {
       if (model === undefined || provider === undefined) return undefined;
       const profile = resolveModelInteractionProfile(model, provider);
@@ -329,7 +357,7 @@ function pin(
 
 /** Owner that captures one coherent capability composition for every request. */
 export async function createRequestToolSurface(
-  plan: (moduleSnapshot: FirstPartyModuleComposition, runtimeConfig: RuntimeConfigRequestCapture, providerRuntime: RequestProviderRuntime | undefined) => ToolExposurePlan | Promise<ToolExposurePlan>,
+  plan: (moduleSnapshot: FirstPartyModuleComposition, runtimeConfig: RuntimeConfigRequestCapture, providerRuntime: RequestProviderRuntime | undefined) => PlannedRequest | Promise<PlannedRequest>,
   moduleSelection: () => FirstPartyModuleComposition,
   captureRuntimeConfig: CaptureRuntimeConfig,
   prepareProviderRuntime?: (moduleSnapshot: FirstPartyModuleComposition, runtimeConfig: RuntimeConfigRequestCapture, selection?: RequestModelSelection) => Promise<RequestProviderRuntime>,

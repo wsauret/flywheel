@@ -15,6 +15,15 @@ export interface CreateWebSearchOptions {
   preference?: WebSearchProviderId;
 }
 
+const PROVIDER_LABELS = { chatgpt: "ChatGPT", exa: "Exa" } as const satisfies { readonly [id in WebSearchProviderId]: string };
+
+/** What the person does to make web search available, naming only the
+ *  providers that the enabled module composition captures. */
+export function webSearchRemedy(providers: readonly WebSearchProviderId[]): string {
+  if (providers.length === 0) return "turn on a web retrieval backend in Settings";
+  return `connect ${providers.map((id) => PROVIDER_LABELS[id]).join(" or ")} in /auth`;
+}
+
 export function createWebSearch(options: CreateWebSearchOptions): WebSearchPort {
   const providers = options.providers;
   const preference = options.preference ?? "chatgpt";
@@ -30,7 +39,7 @@ export function createWebSearch(options: CreateWebSearchOptions): WebSearchPort 
     run(command, runOptions) {
       const provider = select();
       if (!provider) {
-        return Promise.reject(new WebSearchError("no web search provider is available: connect ChatGPT or Exa in /auth"));
+        return Promise.reject(new WebSearchError(`no web search provider is available: ${webSearchRemedy(providers.map((candidate) => candidate.id))}`));
       }
       return provider.run(command, runOptions);
     },

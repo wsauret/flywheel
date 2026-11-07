@@ -30,6 +30,7 @@ import { readWorkflowQueuedUserInputs } from "../../../../src/orchestration/sess
 import { WorkflowDefinitionSchema, type WorkflowDefinition } from "../../../../src/workflows/workflow-schema.js"
 import { INPUT_GROUP, inputBranch, inputMapWorkflow, items } from "./_map-fixtures.js"
 import { controlBeforePhases } from "../../../helpers/control-before-phases.js"
+import { EVERY_CAPABILITY } from "../../../helpers/attempt-brief.js"
 
 const roots: string[] = []
 
@@ -201,10 +202,12 @@ describe("workflow recovery atomicity", () => {
         workflow: workflowIn(fixture.revision, FIXTURE_WORKFLOW_ID), definitionRevision: fixture.revision,
         queueStore, contextStore, conversationId: (attempt) => `host-${attempt?.attemptId}`,
         attemptRunner: createAttemptExecutor({
+          unavailableToolReason: (term) => `${term} is off`,
           earlierCheckpoint: async () => null,
           resolvedAgents: fixture.bindings, skills: fixture.revision.skills, context: contextStore,
           recordInvocation: async () => {},
-          worker: async (step, prompt, _task, _signal, conversationId) => {
+          worker: async (step, brief, _signal, conversationId) => {
+            const { userPrompt: prompt } = await brief(EVERY_CAPABILITY)
             expect(reopened.read({ aggregateId }).some((fact) => fact.type === "attempt.started" && fact.payload.attemptId === step.id)).toBe(true)
             calls.push({ attemptId: step.id, prompt, conversationId })
             return { output: "context_overflow", handoffContent: null, durationMs: 1 }

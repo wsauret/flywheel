@@ -10,7 +10,7 @@ For a run that recovered from a provider's content refusal, or ended with it, se
 
 For an unattended run that recovered from a provider fault, or ended with one: `flywheel events search --session <sessionId> --type agent.unattended.recovery`. The unattended recovery policy (`src/orchestration/agent-runtime/unattended-recovery.ts`, ARCH-RUNTIME-003) writes one INFO record for each decision on a failed run of a workflow agent, a subagent child, or a headless task:
 
-- `caller`: `workflow-agent`, `subagent`, or `headless`.
+- `caller`: one of `workflow-agent`, `subagent`, or `headless`.
 - `runId`: the attempt id, the child run id, or the headless conversation id. It also names the run's wait notice scope, `unattended:wait:<runId>`.
 - `decision`: `wait` for a capacity wait or a model-access wait, which does not count as an attempt; `restart` for a fresh attempt after the pause in `delayMs`; `interrupted` when an interrupt ended a wait; `fail` when the failure stands.
 - `failure`: the failure kind of the failed run, such as `api_error`, `stream_stalled`, or `model_unavailable`.
@@ -45,11 +45,11 @@ The project's executor process ended. The account log under `~/.flywheel/log/` r
 - `executorPid`: the executor's own pid, which names its log files. It is absent when the executor exited before it reported its pid.
 - `supervisorPid`: the pid of the command supervisor that led the executor's container.
 - `lifetimeMs`: the time from launch to exit.
-- `code` or `signal`: the exit status.
+- `code` or `signal` field: the exit status.
 - `statusOf`: `payload` when the command supervisor reported the executor's own status, or `supervisor` when the supervisor died while its container still ran and the launcher ended the container; then the code or signal is the supervisor's own death. A signal that ends the whole container at once reads as `payload`.
 - `termination`: the decision Flywheel made to end the executor, when there is one.
   - When the account ended the generation itself before the exit: the account's pid (`senderPid`), the `container`, and the cause as `reason` with its `detail`.
-  - When the process guardian that held the executor's container exited, and the account's stop of the executor is not under way, the account decides the end at the kernel's report of that exit, before the supervisor ends the container: `reason` is `lost its process guardian`, and `detail.guardian` holds the `guardianPid`, its exit `code` or `signal`, and the `channel` reason when the guardian's control channel failed first. The supervisor's `stop requested` that follows only carries that decision out.
+  - When the process guardian that held the executor's container exited, and the account's stop of the executor is not under way, the account decides the end at the kernel's report of that exit, before the supervisor ends the container: `reason` is `lost its process guardian`, and `detail.guardian` holds the `guardianPid`, its exit `code` or `signal` field, and the `channel` reason when the guardian's control channel failed first. The supervisor's `stop requested` that follows only carries that decision out.
   - When the account had already read the command supervisor's own guardian proof, that proof is the `termination`, and the account decides nothing. During the account's stop the account also decides nothing: the executor joins its running stop at the stop word's signal, and that exit ends the stop with the INFO record above.
   - Otherwise, the last decision Flywheel recorded to signal the executor's container before the exit: the deciding process (`senderPid`), the `container`, the `target` the signal reached, the `signal`, the `reason`, the `evidence` the trigger rested on, and the `caller` stack of the code that decided. The supervisor's `reason` names its trigger: `controller channel ended`, `stop requested` for a controller's stop word, `stop signal received` with the `signal` as evidence, `handover deadline passed`, or a guardian proof (`guardian exited`, `guardian pid is free`, or `guardian identity mismatch`) with the `guardianPid`, `expectedIdentity`, `actualIdentity`, and `elapsedProbeMs` as evidence.
   - When the executor's own hard-exit clock ended it: the executor's pid as `senderPid` and `target`, its command supervisor as `container`, `signal` `SIGKILL`, `reason` `shutdown bound expired`, and as evidence the bound as `boundMs` and what armed the clock as `armedBy` (`account stop`, `account gone`, or `signal` with the signal's name, such as `signal SIGTERM`).

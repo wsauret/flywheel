@@ -1,3 +1,4 @@
+import { attemptBrief, planEveryCapability } from "../../../helpers/attempt-brief"
 import { afterEach, beforeEach, expect, test } from "bun:test"
 import { testAuthContext } from "../../../helpers/auth-context.js"
 import { mkdtempSync, rmSync } from "node:fs"
@@ -95,7 +96,7 @@ function factory(observe: (options: AgentOptions) => AgentRunTerminal): AgentFac
 }
 function worker(createAgent: AgentFactory, eventWriter = writer) {
   return async (...args: Parameters<ReturnType<typeof createWorkerCallback>["worker"]>) => {
-    const conversationId = args[4]
+    const conversationId = args[3]
     if (!conversationId) throw new Error("Expected conversation")
     const { manager } = await publishWorkerAttempt({ projectRoot: baseDir, reader: asAsyncEventReadSurface(store), writer, workflowId: sessionId, attemptId: step.id, conversationId })
     return createWorkerCallback({
@@ -111,7 +112,7 @@ function worker(createAgent: AgentFactory, eventWriter = writer) {
     deactivateSession: id => manager.updateLifecycleState(id, "inactive"),
     sessionEventWriter: createSessionFactWriter({ sessionId, writer }),
     eventStore: asAsyncEventReadSurface(store), projectionReader: asAsyncEventReadSurface(store), eventWriter,
-    skills: publishSkillRevision(1, new Map()), personas: new Map(),
+    skills: publishSkillRevision(1, new Map()), personas: new Map(), planCapabilities: planEveryCapability,
     resolvedAgents: new Map([["work", definition]]),
     recall: noConversationRecall,
     }).worker(...args)
@@ -134,7 +135,7 @@ test("worker commits task then original workflow inputs in insertion order befor
     ])
     expect(conversation(options).priorMessages).toHaveLength(3)
     return { kind: "aborted" }
-  }))(step, "canonical task", "", undefined, conversationId)
+  }))(step, attemptBrief("canonical task"), undefined, conversationId)
   await invoke()
   await invoke()
   expect(calls).toBe(2)
@@ -175,7 +176,7 @@ test("an active worker leaves later cells for the next idle invocation", async (
     }
     expect(heldKeys()).toEqual(["later"])
     return { kind: "aborted" }
-  }))(step, "canonical task", "", undefined, conversationId)
+  }))(step, attemptBrief("canonical task"), undefined, conversationId)
   expect(seen).toHaveLength(1)
   expect(heldKeys()).toEqual(["later"])
   expect((await branch(conversationId)).filter((entry) => entry.kind === "message")).toHaveLength(2)
@@ -183,7 +184,7 @@ test("an active worker leaves later cells for the next idle invocation", async (
     expect(conversation(options).priorMessages.at(-1)).toEqual({ kind: "user", origin: "human", content: "held during active turn" })
     expect(heldKeys()).toEqual([])
     return { kind: "aborted" }
-  }))(step, "canonical task", "", undefined, conversationId)
+  }))(step, attemptBrief("canonical task"), undefined, conversationId)
 })
 
 test("an agent in its own session that commits a live message its workflow held retires the workflow's cell", async () => {
@@ -194,7 +195,7 @@ test("an agent in its own session that commits a live message its workflow held 
     await conversation(options).append({ kind: "user", origin: "human", content: "read while running", dispatchIds: ["live-delivery"] })
     return { servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" as const } }
   })() })
-  await worker(createAgent)(step, "canonical task", "", undefined, "member-live")
+  await worker(createAgent)(step, attemptBrief("canonical task"), undefined, "member-live")
   expect((await branch("member-live")).map((entry) => entry.kind === "message" && entry.message.content)).toContain("read while running")
   expect(heldKeys()).toEqual([])
 })
@@ -229,10 +230,10 @@ test("failed task seed holds input and a new worker invocation still seeds befor
     ])
     return { kind: "aborted" }
   })
-  await expect(worker(createAgent, failingWriter)(step, "canonical task", "", undefined, "worker-seed-failed")).rejects.toThrow("seed write failed")
+  await expect(worker(createAgent, failingWriter)(step, attemptBrief("canonical task"), undefined, "worker-seed-failed")).rejects.toThrow("seed write failed")
   expect(calls).toBe(0)
   expect(heldKeys()).toEqual(["after-seed"])
-  await worker(createAgent)(step, "canonical task", "", undefined, "worker-seed-failed")
+  await worker(createAgent)(step, attemptBrief("canonical task"), undefined, "worker-seed-failed")
   expect(calls).toBe(1)
   expect(heldKeys()).toEqual([])
 })
@@ -315,11 +316,11 @@ test("a failed input append leaves only uncommitted cells held and reopening doe
     ])
     return { kind: "aborted" }
   })
-  await expect(worker(createAgent, failingWriter)(step, "canonical task", "", cancel.signal, conversationId)).rejects.toThrow("input write failed")
+  await expect(worker(createAgent, failingWriter)(step, attemptBrief("canonical task"), cancel.signal, conversationId)).rejects.toThrow("input write failed")
   expect(calls).toBe(0)
   expect(heldKeys()).toEqual(["failed"])
   expect((await branch(conversationId)).filter((entry) => entry.kind === "message")).toHaveLength(2)
-  await worker(createAgent)(step, "canonical task", "", undefined, conversationId)
+  await worker(createAgent)(step, attemptBrief("canonical task"), undefined, conversationId)
   expect(calls).toBe(1)
   expect(heldKeys()).toEqual([])
   expect((await branch(conversationId)).filter((entry) => entry.kind === "message")).toHaveLength(3)

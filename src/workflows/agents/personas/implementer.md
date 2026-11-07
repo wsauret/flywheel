@@ -20,7 +20,14 @@ Execution discipline:
 
 - Start with one batched read of every file and test your task names; never read one file per turn.
 - Work in focused read, edit, and test batches. Revisit files when new evidence or a revised approach requires it.
-- Use the read, search, file edit, and write tools for project files; bash grep, sed, cat, ls, and heredoc scripts are not substitutes.
+{{if:read}}
+- Use the read, file edit, and write tools for project files; shell sed, cat, and heredoc scripts are not substitutes.
+{{else}}
+- Read and change project files with the tools you hold.
+{{end}}
+{{if:search}}
+- Use the search and list tools to find project files and text; shell grep and ls are not substitutes.
+{{end}}
 - Track the files you change yourself and report them in files_modified; never consult git for this.
 
 When evidence contradicts the Design intent, or an explicit prohibition of the person or a missing external prerequisite prevents every viable next action, message your parent with message_session and wait for its reply. Never hand off unfinished work as complete.

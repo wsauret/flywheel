@@ -113,6 +113,79 @@ describe("renderSkillContext", () => {
 
     expect(renderSkillContext(skill)).not.toContain("body:");
   });
+
+  describe("capability markers", () => {
+    const CONDITIONED_MD = [
+      "---",
+      "description: Use for conditioned work.",
+      "---",
+      "Always do this.",
+      "{{if:bash}}",
+      "Run the probe script.",
+      "{{else}}",
+      "Settle it with your tools.",
+      "{{end}}",
+      "{{if:subagent}}",
+      "{{ref:reviewer-protocol}}",
+      "{{end}}",
+    ].join("\n");
+    const REFERENCE_LINE = "dispatch every chosen reviewer in parallel through multiple `subagent` calls";
+
+    function conditioned(authority: "bundled" | "external"): SkillDefinition {
+      const skill = authority === "bundled"
+        ? loadSkillDefinitions({ roots: [], bundledEntries: [["conditioned/SKILL.md", CONDITIONED_MD], ["conditioned/references/api.md", "{{if:bash}}\nraw\n{{end}}\n"]] }).skills.get("conditioned")
+        : (() => {
+          writePackage(ROOT, "conditioned", CONDITIONED_MD);
+          return loadSkillDefinitions({ roots: [{ authority: "external", dir: ROOT, reach: "project" }] }).skills.get("conditioned");
+        })();
+      if (!skill) throw new Error("conditioned fixture skill failed to load");
+      return skill;
+    }
+
+    it("renders a bundled body for its reader after expanding references, and names each tested term", () => {
+      const skill = conditioned("bundled");
+
+      const off = renderSkillContext(skill, () => false);
+      expect(off).toContain("conditions: bash=off subagent=off");
+      expect(off).toContain("Always do this.\nSettle it with your tools.");
+      expect(off).not.toContain("Run the probe script.");
+      expect(off).not.toContain(REFERENCE_LINE);
+      expect(off).not.toContain("{{");
+
+      const on = renderSkillContext(skill, () => true);
+      expect(on).toContain("conditions: bash=on subagent=on");
+      expect(on).toContain("Always do this.\nRun the probe script.");
+      expect(on).toContain(REFERENCE_LINE);
+      expect(on).not.toContain("Settle it with your tools.");
+    });
+
+    it("refuses to compose a package that dispatches agents for a reader that cannot call the subagent tool", () => {
+      const revision = publishSkillRevision(1, loadSkillDefinitions({ roots: [], bundledEntries: [
+        ["dispatching/SKILL.md", "---\ndescription: Use for dispatching work.\nagents:\n  - advisor\n---\nDispatch the advisor."],
+        ["wrapper/SKILL.md", "---\ndescription: Use for wrapped work.\ndependencies:\n  - dispatching\n---\nWrap it."],
+      ] }).skills);
+
+      expect(() => renderSkillClosure(["wrapper"], revision, 'Persona "reader"', (term) => term !== "subagent"))
+        .toThrow('Persona "reader" composes skill "dispatching", which dispatches agents, and the agent that reads it cannot call the subagent tool');
+      expect(renderSkillClosure(["wrapper"], revision, 'Persona "reader"', () => true).join("\n")).toContain("Dispatch the advisor.");
+    });
+
+    it("keeps the markers as written in the identity form that carries no check", () => {
+      const identity = renderSkillContext(conditioned("bundled"));
+
+      expect(identity).toContain("{{if:bash}}\nRun the probe script.\n{{else}}");
+      expect(identity).not.toContain("conditions:");
+    });
+
+    it("leaves an external body and a bundled resource byte for byte", () => {
+      const external = renderSkillContext(conditioned("external"), () => false);
+      expect(external).toContain("{{if:bash}}\nRun the probe script.\n{{else}}");
+      expect(external).toContain("{{ref:reviewer-protocol}}");
+      expect(external).not.toContain("conditions:");
+
+      expect(readSkillResource(conditioned("bundled"), "references/api.md", 0, 1_000).content).toBe("{{if:bash}}\nraw\n{{end}}\n");
+    });
+  });
 });
 
 describe("readSkillResource", () => {
@@ -468,7 +541,7 @@ describe.skipIf(process.platform === "win32")("resource paths a package declares
     writeFileSync(join(PACKAGE_DIR, "references", "notes\u0007\u2028injected.md"), "x");
     const revision = publishSkillRevision(1, loadSkillDefinitions({ roots: [{ authority: "external", dir: ROOT, reach: "project" }] }).skills);
 
-    expect(() => renderSkillClosure(["pdf-processing"], revision, 'Skill "consumer"')).toThrow("is not installed");
+    expect(() => renderSkillClosure(["pdf-processing"], revision, 'Skill "consumer"', () => true)).toThrow("is not installed");
   });
 });
 

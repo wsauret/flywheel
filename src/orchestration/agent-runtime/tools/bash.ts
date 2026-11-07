@@ -12,7 +12,7 @@ import { SCRATCH_MUTATIONS_DIR } from "../../../infra/paths.js";
 import { interceptBashCommand, type BashPolicyOptions } from "./bash-command-policy.js";
 import { recordShellFileReads } from "./bash-file-reads.js";
 import { classifyShellDetachment } from "./bash-parser.js";
-import { bashToolSurface, type FileEditToolName } from "./bash-guidance.js";
+import { bashToolSurface, type BashSurfaceOptions, type FileEditToolName } from "./bash-guidance.js";
 import { resolveToolPath, sessionPathInput } from "./tool-paths.js";
 import { checkNumericRange } from "./numeric-input.js";
 import type { BashOperations, RuntimeTool, RuntimeToolInput, ShellCommand, ToolAdmissionContext, ToolContext, ToolResult } from "./types.js";
@@ -127,6 +127,7 @@ const defaultBashOperations: BashOperations = {
 function shellPolicyOptions(context: ToolContext, cwd: string, platform: RuntimePlatform, readOnly: boolean, writeGuard: boolean): BashPolicyOptions {
   return {
     effectiveBundledSkillIds: context.effectiveBundledSkillIds,
+    ...(context.capabilities ? { capabilities: context.capabilities } : {}),
     ...(readOnly || writeGuard ? { scope: { projectRoot: context.projectRoot, userDataRoot: context.userDataRoot, cwd, scratchDir: context.scratchDir, env: process.env, dialect: platform === "win32" ? "powershell" : "bash", readOnly } } : {}),
     ids: { sessionId: context.sessionId, toolUseId: context.toolUseId, modelRequestId: context.modelRequestId },
   };
@@ -134,8 +135,8 @@ function shellPolicyOptions(context: ToolContext, cwd: string, platform: Runtime
 
 /** The refusal of an input that the bash schema advertises to every agent of a
  *  chat tree but that this agent cannot use now (ARCH-CONTEXT-018). */
-function unavailableInput(input: "background" | "persist_after_exit"): ToolResult {
-  return { content: `The ${input} input of bash is unavailable to this agent now. Do not send it again.`, outcome: "error" };
+function unavailableInput(input: "background" | "persist_after_exit", reason?: string): ToolResult {
+  return { content: `The ${input} input of bash is unavailable to this agent now${reason === undefined ? "" : `: ${reason}`}. Do not send it again.`, outcome: "error" };
 }
 
 export function createBashDefinition(options?: {
@@ -146,7 +147,9 @@ export function createBashDefinition(options?: {
   execPath?: string;
   postExitDrainGraceMs?: number;
   totalYieldMs?: number;
-  backgroundCommands?: boolean;
+  /** Why this agent may not run a command in the background, such as a turned-off module (`moduleDisabledReason`).
+   *  Absent: it may. */
+  backgroundRefusal?: string;
   persistentProcesses?: boolean;
   /** The file edit tool this request offers, so the shell prompt names it. */
   fileEditTool?: FileEditToolName;
@@ -167,6 +170,9 @@ export function createBashDefinition(options?: {
   /** False in a headless runtime: the schema offers no `mutates` field, so
    *  dispatch refuses one and every command runs in place. True by default. */
   mutatingDeclaration?: boolean;
+  /** What the schema and description advertise beyond the fields above. Every agent of a chat tree passes the
+   *  same values (ARCH-CONTEXT-018); `backgroundRefusal` and `persistentProcesses` decide what execution admits. */
+  advertised?: Pick<BashSurfaceOptions, "background" | "persistence" | "has">;
 }): RuntimeTool {
   const ops = options?.operations ?? defaultBashOperations;
   const platform = options?.platform ?? process.platform;
@@ -176,7 +182,8 @@ export function createBashDefinition(options?: {
     ?? DEFAULT_EXECUTION_OUTPUT_THROTTLE_MS;
   const postExitDrainGraceMs = options?.postExitDrainGraceMs ?? POST_EXIT_DRAIN_GRACE_MS;
   const totalYieldMs = options?.totalYieldMs ?? DEFAULT_TOTAL_YIELD_MS;
-  const backgroundCommands = options?.backgroundCommands ?? true;
+  const backgroundRefusal = options?.backgroundRefusal;
+  const backgroundCommands = backgroundRefusal === undefined;
   const persistentProcesses = options?.persistentProcesses ?? false;
   const requireManagedExecution = options?.requireManagedExecution ?? false;
   const readOnly = options?.readOnly === true;
@@ -203,7 +210,9 @@ export function createBashDefinition(options?: {
     const detachment = classifyShellDetachment(command, background);
     if (detachment !== "none") {
       return {
-        content: `Shell-level backgrounding was not executed.\nSubmit only the server or service command with background=true.${persistentProcesses ? " Add persist_after_exit=true when it must keep running after the runtime exits; otherwise the runtime's exit ends it." : ""} After it starts as a managed process, use the process tool for lifecycle operations.`,
+        content: backgroundCommands
+          ? `Shell-level backgrounding was not executed.\nSubmit only the server or service command with background=true.${persistentProcesses ? " Add persist_after_exit=true when it must keep running after the runtime exits; otherwise the runtime's exit ends it." : ""} After it starts as a managed process, use the process tool for lifecycle operations.`
+          : "Shell-level backgrounding was not executed.\nRun the server as a foreground command; it moves to managed work at the runtime cap or on Detach.",
         outcome: "error",
       };
     }
@@ -293,7 +302,7 @@ export function createBashDefinition(options?: {
   return withShellInputRepair({
     name: "bash",
     action: "shell_exec",
-    ...bashToolSurface({ ...(options?.fileEditTool ? { fileEditTool: options.fileEditTool } : {}), mutatingDeclaration, writeGuard }),
+    ...bashToolSurface({ ...options?.advertised, ...(options?.fileEditTool ? { fileEditTool: options.fileEditTool } : {}), mutatingDeclaration, writeGuard }),
     promptSnippet: "Run shell commands and scripts (tests, builds, git, servers, package managers, scratch scripts)",
     // bash already escalates its own kill timer up to MAX_TIMEOUT_SEC; the
     // dispatcher's generic watchdog would either race that mechanism or
@@ -323,7 +332,7 @@ export function createBashDefinition(options?: {
       if (persistent && !background) return { content: "Error: 'persist_after_exit=true' requires 'background=true'", outcome: "error" };
       if (persistent && timeout !== undefined) return { content: "Error: 'persist_after_exit=true' cannot be combined with 'timeout' because the runtime cannot enforce the deadline after it exits", outcome: "error" };
       if (persistent && !persistentProcesses) return unavailableInput("persist_after_exit");
-      if (background && !backgroundCommands) return unavailableInput("background");
+      if (background && backgroundRefusal !== undefined) return unavailableInput("background", backgroundRefusal);
       const effectiveContext = {
         ...context,
         ...(options?.backgroundTasks ? { backgroundTasks: options.backgroundTasks } : {}),
@@ -373,7 +382,7 @@ function repairShellInput(input: Readonly<RuntimeToolInput>, context: ToolAdmiss
     }
   }
   const implicitBackground = input.persist_after_exit === true && input.background === undefined;
-  if (implicitBackground) notices.push("Note: persist_after_exit=true implies background=true.");
+  if (implicitBackground) notices.push("Note: persist_after_exit=true implies a background launch.");
   if (notices.length === 0) return undefined;
   return { input: { ...input, ...paths, ...(timeout !== input.timeout ? { timeout } : {}), ...(implicitBackground ? { background: true } : {}) }, notice: notices.join("\n") };
 }

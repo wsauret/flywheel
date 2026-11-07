@@ -147,7 +147,8 @@ export function codeModeRuntimeOver(service: CodeModeService = createCodeModeSer
   return runtime;
 }
 
-/** The `code` tool one request would plan over `eligible`. */
-export function codeToolOver(eligible: ReadonlyMap<string, RuntimeTool>, service?: CodeModeService): RuntimeTool {
-  return codeModeRuntimeOver(service).createTool(eligible, new Set()).tool;
+/** The `code` tool one request would plan over `eligible`, for a tree whose capture holds code-only tools and bash
+ *  unless `surface` says otherwise. */
+export function codeToolOver(eligible: ReadonlyMap<string, RuntimeTool>, service?: CodeModeService, surface: Parameters<CodeModeRuntime["createTool"]>[0] = { nestedTools: true, bash: true }): RuntimeTool {
+  return codeModeRuntimeOver(service).createTool(surface)(eligible, new Set()).tool;
 }

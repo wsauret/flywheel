@@ -1,9 +1,11 @@
+import type { CapabilityCheck } from "../../../infra/capability-text.js";
 import { errorMessage } from "../../../infra/error-message.js";
 import type { PersonaMetadataIndex } from "../../../workflows/agents/persona-schema.js";
 import { readSkillResource, renderSkillResourceWindow, type SkillResourceWindow } from "../../../workflows/skill-context.js";
-import { assembleSkillInvocation } from "../../../workflows/skill-invocation.js";
+import { assembleSkillInvocation, skillInvocationRefusal } from "../../../workflows/skill-invocation.js";
 import type { SkillDefinition, SkillRegistryRevision } from "../../../workflows/skill-schema.js";
-import type { AdvertisedTool, RuntimeTool, RuntimeToolInput, ToolResult } from "./types.js";
+import type { DefinitionAvailabilitySnapshot } from "../../app-service/definition-availability.js";
+import type { AdvertisedTool, RuntimeTool, RuntimeToolInput, ToolContext, ToolResult } from "./types.js";
 import { formatToolInputProblems, validateToolInput } from "./validate-input.js";
 import { withPackageRead } from "../../../infra/package-directory-lock.js";
 
@@ -93,6 +95,13 @@ export interface SkillToolDeps {
   /** Complete skill revision advertised by this request. Load and resource calls
    *  resolve only from this revision, even after the registry publishes newer definitions. */
   readonly revision: SkillRegistryRevision;
+  /** The tree check (ARCH-CONTEXT-033). The catalog lists a model-invocable
+   *  skill only while `skill:<id>` holds, so every agent of a chat tree
+   *  advertises the same rows. */
+  readonly treeCapabilities: CapabilityCheck;
+  /** Definition availability of this agent's own module selection. A load
+   *  that the agent check refuses names the modules its entry lacks. */
+  readonly availability: Pick<DefinitionAvailabilitySnapshot, "skills">;
   /** Personas the loaded skill may dispatch, rendered as a catalog for this
    *  agent's own `subagent` tool. */
   readonly personaIndex: PersonaMetadataIndex;
@@ -126,10 +135,11 @@ export const SKILL_TOOL_DEFINITION: AdvertisedTool = {
 };
 
 export function createSkillTool(deps: SkillToolDeps): RuntimeTool {
+  const catalog = deps.revision.modelInvocable.filter((skill) => deps.treeCapabilities(`skill:${skill.id}`));
   return {
     ...SKILL_TOOL_DEFINITION,
-    promptGuidelines: buildPromptGuidelines(deps.revision.modelInvocable),
-    execute: async (input) => executeSkill(deps, input),
+    promptGuidelines: buildPromptGuidelines(catalog),
+    execute: async (input, context) => executeSkill(deps, catalog, input, context),
   };
 }
 
@@ -141,16 +151,16 @@ function buildPromptGuidelines(catalog: readonly SkillDefinition[]): readonly st
   ];
 }
 
-async function executeSkill(deps: SkillToolDeps, input: RuntimeToolInput): Promise<ToolResult> {
+async function executeSkill(deps: SkillToolDeps, catalog: readonly SkillDefinition[], input: RuntimeToolInput, context: ToolContext): Promise<ToolResult> {
   const problems = validateSkillInput(input);
   if (problems.length > 0) return { content: formatToolInputProblems("skill", problems), outcome: "error" };
 
   const revision = deps.revision;
 
   if (input.action === "load") {
-    return withSkill(revision, input.skill_id, async (skill) => {
+    return withSkill(deps, catalog, context, input.skill_id, async (skill, has) => {
       const load = async (): Promise<ToolResult> => {
-        const result = loadSkill(deps, revision, skill);
+        const result = loadSkill(deps, revision, skill, has);
         await deps.onLoad?.(skill);
         return result;
       };
@@ -160,7 +170,7 @@ async function executeSkill(deps: SkillToolDeps, input: RuntimeToolInput): Promi
     });
   }
   if (input.action === "resource") {
-    return withSkill(revision, input.skill_id, (skill) => readResource(skill, input.path, input.offset));
+    return withSkill(deps, catalog, context, input.skill_id, (skill) => readResource(skill, input.path, input.offset));
   }
   if (!deps.childGrant) return { content: 'action:"child-run" is unavailable to this agent now: no child skill is granted to it. Do not call it again.', outcome: "error" };
   if (typeof input.skill_id !== "string" || !deps.childGrant.skillIds.includes(input.skill_id)) {
@@ -198,32 +208,42 @@ function validateSkillInput(input: RuntimeToolInput): string[] {
 }
 
 /** Resolve one id against the revision. A package the model may not invoke is
- *  unavailable to it, exactly like an id that is not installed. */
+ *  unavailable to it, exactly like an id that is not installed. An installed
+ *  package that the agent check refuses (ARCH-STRUCTURE-031) is refused with
+ *  the reason, so the agent can tell the person which module to turn on. */
 async function withSkill(
-  revision: SkillRegistryRevision,
+  deps: SkillToolDeps,
+  catalog: readonly SkillDefinition[],
+  context: ToolContext,
   skillId: unknown,
-  use: (skill: SkillDefinition) => ToolResult | Promise<ToolResult>,
+  use: (skill: SkillDefinition, has: CapabilityCheck) => ToolResult | Promise<ToolResult>,
 ): Promise<ToolResult> {
   const invocable = typeof skillId === "string"
-    ? revision.modelInvocable.find((candidate) => candidate.id === skillId)
+    ? deps.revision.modelInvocable.find((candidate) => candidate.id === skillId)
     : undefined;
   if (!invocable) {
-    const available = revision.modelInvocable.slice(0, UNKNOWN_ID_CANDIDATES).map((candidate) => candidate.id).join(", ");
+    const available = catalog.slice(0, UNKNOWN_ID_CANDIDATES).map((candidate) => candidate.id).join(", ");
     return {
       content: `Unknown or unavailable skill_id ${JSON.stringify(skillId)}. Installed skills: ${available || "(none)"}. The complete catalog is in your system prompt.`,
       outcome: "error",
     };
   }
-  return use(invocable);
+  // Every agent loop sets the agent check; only a context built without a request surface lacks it.
+  const has = context.capabilities;
+  if (!has) throw new Error("the skill tool loads a package only inside a request that carries the agent capability check");
+  // An entry with a reason lacks a module of the skill's closure; an available entry is refused only when the
+  // skill or a dependency dispatches agents and this agent cannot call the subagent tool.
+  const reason = (has(`skill:${invocable.id}`) ? undefined : deps.availability.skills.get(invocable.id)?.reason)
+    ?? skillInvocationRefusal(invocable, deps.revision, has);
+  if (reason) return { content: `Skill "${invocable.id}" is unavailable: ${reason}.`, outcome: "error" };
+  return use(invocable, has);
 }
-
-
 
 /** The one direct-invocation assembly: a slash command renders the same text, so
  *  a skill reads identically however it was selected. */
-function loadSkill(deps: SkillToolDeps, revision: SkillRegistryRevision, skill: SkillDefinition): ToolResult {
+function loadSkill(deps: SkillToolDeps, revision: SkillRegistryRevision, skill: SkillDefinition, has: CapabilityCheck): ToolResult {
   return {
-    content: assembleSkillInvocation(skill, undefined, { skills: revision, personaIndex: deps.personaIndex }),
+    content: assembleSkillInvocation(skill, undefined, { skills: revision, personaIndex: deps.personaIndex, capabilities: has }),
     outcome: "ok",
   };
 }

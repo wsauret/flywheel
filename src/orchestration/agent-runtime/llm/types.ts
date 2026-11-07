@@ -1,4 +1,5 @@
 import type { Scope } from "effect";
+import type { CapabilityCheck } from "../../../infra/capability-text.js";
 import type { AccessProviderCandidate, AccessProviderCandidateAttribution, AccessProviderCatalogProvenance, AccessProviderId } from "../../../infra/llm/access-provider.js";
 import type { ModelFamily } from "../../../infra/llm/model-family.js";
 import type { CacheRetentionPolicy, ProviderRequestOptions } from "../../../infra/llm/provider-options.js";
@@ -630,10 +631,10 @@ export interface ServingAttempt {
    *  `undefined` means "no constraint" (e.g. Anthropic API key). */
   readonly availableModels?: ReadonlySet<string>;
 
-  /** Returns ordinary system-origin user messages required by this provider.
-   * The history owner appends them before counting and preparing the request.
+  /** Returns ordinary system-origin user messages required by this provider, worded for `capabilities`, the agent
+   * check of the request (ARCH-CONTEXT-033). The history owner appends them before counting and preparing the request.
    * This callback does not mutate history; existing entries determine omissions. */
-  messagesToAppend?(messages: readonly ConversationMessage[], executionCwd: string): readonly SystemOriginMessage[];
+  messagesToAppend?(messages: readonly ConversationMessage[], executionCwd: string, capabilities: CapabilityCheck): readonly SystemOriginMessage[];
 
   /** Returns the system-origin user messages that this route adds for `request`, the exact request that its client
    *  receives (`attemptRequest`), read after outbound preparation. The request's owner appends them to canonical

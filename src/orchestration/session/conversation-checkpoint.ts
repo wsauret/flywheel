@@ -1,4 +1,5 @@
 import { Schema } from "effect";
+import type { CapabilityCheck } from "../../infra/capability-text.js";
 import { contentEvidence } from "../../infra/content-evidence.js";
 import { durableOwnerAggregate, type DurableOwner } from "../../infra/durable-owner.js";
 import { createEventProjection, parseProjectionFact } from "../../infra/event-projection.js";
@@ -74,15 +75,17 @@ function renderDecisions(decisions: readonly CheckpointDecision[]): string {
   return `# Decisions\n\n${decisions.map((decision) => `## ${decision.date}\n\n${decision.words}\n\nReplaces: ${decision.replaces ?? "None"}`).join("\n\n")}`;
 }
 
-/** Renders all fixed sections. Oversized legacy Working notes become a size and paging pointer, never a partial note. */
-export function renderConversationCheckpoint(checkpoint: ConversationCheckpoint): string {
+/** Renders all fixed sections for a reader with the capabilities `has`. An empty Relevant skills section renders only
+ *  for a reader that can load skills. Oversized legacy Working notes become a size and paging pointer, never a partial
+ *  note. */
+export function renderConversationCheckpoint(checkpoint: ConversationCheckpoint, has: CapabilityCheck): string {
   const prefix = [
     `# Design intent (${checkpoint.designIntent.approved ? "approved" : "draft"})\n\n${checkpoint.designIntent.text}`,
     renderDecisions(checkpoint.decisions),
     `# Current state\n\n${checkpoint.currentState}`,
     `# Open questions\n\n${checkpoint.openQuestions}`,
     `# Next step\n\n${checkpoint.nextStep}`,
-    `# Relevant skills\n\n${checkpoint.relevantSkills.map((skill) => `- ${skill.id}: ${skill.reason}`).join("\n")}`,
+    ...(has("skill") || checkpoint.relevantSkills.length > 0 ? [`# Relevant skills\n\n${checkpoint.relevantSkills.map((skill) => `- ${skill.id}: ${skill.reason}`).join("\n")}`] : []),
     `# References\n\n${checkpoint.references.map((reference) => `- ${reference}`).join("\n")}`,
     "# Working notes",
   ].join("\n\n");

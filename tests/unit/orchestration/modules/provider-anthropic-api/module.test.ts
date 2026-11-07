@@ -6,6 +6,7 @@ import type { ConversationMessage } from "../../../../../src/orchestration/agent
 import { anthropicApiModule } from "../../../../../src/orchestration/modules/provider-anthropic-api/module.js";
 import { fakeAvailability } from "../../agent-runtime/llm/_provider-chain-harness.js";
 import { testProviderSessionLifetime } from "../../../../helpers/provider-authority.js";
+import { SHELL_CAPABILITIES } from "../../../../helpers/prompt-capabilities.js";
 
 function build(id: string, contextLimit: number): AccessProviderBuild {
   const candidate = { kind: "singleton", providerId: "anthropic_api", spendMode: "direct_api" } as const;
@@ -35,7 +36,7 @@ test("API-key client appends the shared Claude reminders", async () => {
   try {
     for (const [model, contextLimit] of [["claude-haiku-4-5", 200_000], ["claude-opus-4-6", 1_000_000]] as const) {
       const staged = await provider.value.createClient(build(model, contextLimit));
-      expect(staged.attempt.messagesToAppend?.(history, "/scratch")).toEqual(createClaudeReminders(model, contextLimit)(history, "/scratch"));
+      expect(staged.attempt.messagesToAppend?.(history, "/scratch", SHELL_CAPABILITIES)).toEqual(createClaudeReminders(model, contextLimit)(history, "/scratch", SHELL_CAPABILITIES));
     }
   } finally {
     setSystemTime();

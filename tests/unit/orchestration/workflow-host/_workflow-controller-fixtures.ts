@@ -46,6 +46,7 @@ import { authProviders } from "../../../helpers/auth-context.js"
 import { createMockWorkflowHosts } from "./_workflow-host-fixtures.js"
 import { createWorkflowAuthOwner } from "../../../../src/orchestration/workflow-host/auth-owner.js"
 import { workflowRunOwner, workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
+import { planEveryCapability } from "../../../helpers/attempt-brief.js"
 
 /** Account authorities every fixture deps object publishes. They name the
  *  isolated test account home, so nothing reads the developer's account state. */
@@ -529,6 +530,7 @@ export function makeWorkflowDeps(): WorkflowDeps {
     createAgent,
     createLLMClient,
     prepareRequest: () => { throw new Error("This fixture prepares no pre-start") },
+    planCapabilities: planEveryCapability,
     awaitModelAccessSettled: async () => {},
     captureProviderConnection: async () => ({
       connection,

@@ -28,7 +28,8 @@ import type { CommandHost } from "./app-service/command-host.js"
 import type { AccountModuleProtocolServices, ModuleProtocolContribution } from "./app-service/module-protocol-host.js"
 import type { AccountModuleService, AccountModuleServiceInputs, AccountModuleServiceOptions, AccountProjectModuleServices, ModuleProcessServices, ModuleServiceInstance, PortableModuleServices } from "./app-service/module-service-host.js"
 import type { ModuleConfigSection } from "./config/config-section.js"
-import { installedModules, publishShippedOtherModules, validateModuleFactPrefixes } from "./module-catalog.js"
+import type { DefinitionBundle } from "../workflows/loader.js"
+import { installedDefinitionBundles, installedModules, publishShippedOtherModules, validateModuleFactPrefixes } from "./module-catalog.js"
 import { CREDENTIAL_PROVIDER_MODULES } from "./credential-provider-modules.js"
 import type { AnyFactSchema } from "../infra/event-registry.js"
 import type { AuthProviderStatus } from "../protocol/auth-status-protocol-types.js"
@@ -40,7 +41,7 @@ import type { ModuleAgentTasks } from "./module-agent-tasks.js"
 import type { DEVELOPMENT_MODULES } from "./development-modules.js"
 import { askUserModule } from "./modules/ask-user.js"
 import { backgroundCommandsModule } from "./modules/background-commands.js"
-import { bashModule } from "./modules/bash.js"
+import { bashModule } from "./modules/bash/module.js"
 import { bugReportsModule } from "./modules/bug-reports/module.js"
 import { codeModeModule } from "./modules/code-mode/module.js"
 import { definitionOverridesModule } from "./modules/definition-overrides.js"
@@ -64,15 +65,18 @@ import { webChatgptModule } from "./modules/web-chatgpt.js"
 import { workflowsModule } from "./modules/workflows.js"
 
 import type { ToolExecutionGate } from "./agent-runtime/tools/tool-dispatch.js"
-import type { TurnReminderStatement } from "./agent-runtime/turn-reminders.js"
+import type { CapabilityCheck } from "../infra/capability-text.js"
+import type { TurnReminderStatement, TurnReminderText } from "./agent-runtime/turn-reminders.js"
 
 /** What a system prompt fragment renders from: the request's kernel facts and
- *  module runtimes, the tools it advertises, and the memory bytes it carries. */
+ *  module runtimes, the tools it advertises, the memory bytes it carries, and
+ *  the tree check of its advertised tools (ARCH-CONTEXT-033). */
 interface PromptFragmentInput {
   readonly kernel: KernelToolDeps
   readonly modules: ModuleRuntimes
   readonly tools: ReadonlyMap<string, RuntimeTool>
   readonly memorySnapshot: string | null
+  readonly capabilities: CapabilityCheck
 }
 
 /** A standing mode that a module states beside the person's turns: `on`
@@ -83,9 +87,9 @@ interface PromptFragmentInput {
  *  disabled module too, so `off` reaches the model after the person turns the
  *  module off. */
 interface TurnReminderContribution {
-  readonly on: string
-  readonly still: string
-  readonly off: string
+  readonly on: TurnReminderText
+  readonly still: TurnReminderText
+  readonly off: TurnReminderText
   readonly every: number
   /** Whether the mode holds for this request; read only while the module is enabled. */
   readonly holds: (input: Pick<PromptFragmentInput, "kernel" | "tools" | "modules">) => boolean
@@ -326,6 +330,13 @@ publishShippedOtherModules(SHIPPED_OTHER_MODULES)
 
 /** The catalog every release composes from. */
 export const SHIPPED_MODULES = [...CREDENTIAL_PROVIDER_MODULES, ...SHIPPED_OTHER_MODULES] as const satisfies readonly FirstPartyModule[]
+
+/** The definition bundles every release ships: the build embeds them, and the
+ *  bundled-default catalog holds their packages, so an override of one still
+ *  diffs. A source run loads the development bundle too, but never ships it. */
+export function shippedDefinitionBundles(): readonly DefinitionBundle[] {
+  return installedDefinitionBundles(SHIPPED_MODULES)
+}
 
 /** Every service registration a module retired, for the account service installer to remove. */
 export function retiredServiceInstallations(composition: FirstPartyModuleComposition = composeFirstPartyModules()): readonly RetiredServiceInstallation[] {

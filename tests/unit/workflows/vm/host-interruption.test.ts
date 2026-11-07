@@ -15,6 +15,7 @@ import { createAttemptExecutor, type AttemptRunOutcome } from "../../../../src/w
 import { createWorkflowVmHost } from "../../../../src/workflows/vm/host.js"
 import type { WorkflowVmHostDeps, WorkflowVmStartMode } from "../../../../src/workflows/vm/host-types.js"
 import { SqliteVmDriver } from "./_sqlite-vm-driver.js"
+import { EVERY_CAPABILITY } from "../../../helpers/attempt-brief.js"
 
 const drivers: SqliteVmDriver[] = []
 
@@ -277,12 +278,14 @@ describe("workflow VM host SQLite interruption", () => {
     let releaseWorker: (() => void) | undefined
     const unwinding = new Promise<void>((resolve) => { releaseWorker = resolve })
     const attemptRunner = createAttemptExecutor({
+      unavailableToolReason: (term) => `${term} is off`,
       earlierCheckpoint: async () => null,
       resolvedAgents: vm.bindings,
       context: { getContext: async () => context.getContext() },
       skills: vm.skills,
       recordInvocation: async () => {},
-      worker: async (_step, _userPrompt, _task, signal) => {
+      worker: async (_step, brief, signal) => {
+        await brief(EVERY_CAPABILITY)
         workerStarted = true
         await new Promise<void>((resolve) => { signal.addEventListener("abort", () => resolve(), { once: true }) })
         await unwinding
@@ -368,12 +371,14 @@ describe("workflow VM host SQLite interruption", () => {
     let releaseWorker: (() => void) | undefined
     const unwinding = new Promise<void>((resolve) => { releaseWorker = resolve })
     const attemptRunner = createAttemptExecutor({
+      unavailableToolReason: (term) => `${term} is off`,
       earlierCheckpoint: async () => null,
       resolvedAgents: vm.bindings,
       context: resources.contextStore,
       skills: vm.skills,
       recordInvocation: async () => {},
-      worker: async (_step, _userPrompt, _task, signal) => {
+      worker: async (_step, brief, signal) => {
+        await brief(EVERY_CAPABILITY)
         emit("agent.run.started", { sessionId: vm.sessionId, data: { stepIndex: 0 } })
         workerStarted = true
         await new Promise<void>((resolve) => { signal.addEventListener("abort", () => resolve(), { once: true }) })

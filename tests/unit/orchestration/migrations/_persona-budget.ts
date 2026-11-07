@@ -1,4 +1,5 @@
 import type { AgentDefinition } from "../../../../src/infra/agent-definition.js"
+import type { ProjectDefinitionRegistryRevision } from "../../../../src/workflows/definition-registry.js"
 
 /** A bundled persona with the turn cap that the builds before the persona
  *  budget cut shipped, whose persona hashes covered the turn cap. A test that
@@ -96,4 +97,72 @@ export function beforeScenarioBudgetCut<Definition extends AgentDefinition>(pers
     return restored.replace(current, retired)
   }, persona.systemPrompt)
   return { ...persona, systemPrompt }
+}
+
+/** Each clause of a bundled persona that the capability-text edit of
+ *  2026-11-06 rewrote, paired with its text at dd2fab076, the last revision
+ *  before that edit. No identity proof covers that edit, so a workflow paused
+ *  on those hashes reports drift; a test of an older proof rebuilds its
+ *  recorded hashes from the personas as they read before it. */
+const CAPABILITY_TEXT_AT_BASE: ReadonlyMap<string, readonly (readonly [current: string, base: string])[]> = new Map([
+  ["advisor", [[
+    "Inspect the repository read-only, only to verify",
+    "Use read, search, list, and read-only shell commands only to verify",
+  ]]],
+  ["explorer", [
+    ["and makes targeted external lookups such as documentation.", "and makes targeted non-repository external lookups such as documentation with the web tool."],
+    [
+      "- **Locate before reading.** Find every plausibly relevant location, then read only the functions or line ranges you need. Do not read entire files to find one function.",
+      "- **Search before reading.** Use search to locate relevant code, then read only the functions or line ranges that matter. Do not read entire files to find one function; use `symbol:` or `offset`/`limit` to read just what you need.",
+    ],
+    [
+      "- **Enumerate before reading.** First find every location plausibly relevant to your facet.",
+      "- **Enumerate before reading.** First surface every location plausibly relevant to your facet with search and list.",
+    ],
+    [
+      "- Use whichever of your tools fit for discovery, search, and reading.\n{{if:bash}}\n- For GitHub repository data, use read-only `gh` commands through bash or exec for pull requests, commits, diffs, reviews, and issues.\n{{end}}\n{{if:web}}\n- Use web only for data that your other tools cannot provide.\n{{end}}",
+      "- Use whichever tools fit: the file tools or read-only shell commands both work for discovery, search, and reading.\n- For GitHub repository data, use read-only `gh` commands through bash or exec for pull requests, commits, diffs, reviews, and issues. Use web only when `gh` is unavailable or cannot provide the required data.",
+    ],
+  ]],
+  ["implementer", [[
+    "{{if:read}}\n- Use the read, file edit, and write tools for project files; shell sed, cat, and heredoc scripts are not substitutes.\n{{else}}\n- Read and change project files with the tools you hold.\n{{end}}\n{{if:search}}\n- Use the search and list tools to find project files and text; shell grep and ls are not substitutes.\n{{end}}",
+    "- Use the read, search, file edit, and write tools for project files; bash grep, sed, cat, ls, and heredoc scripts are not substitutes.",
+  ]]],
+  ["ship", [
+    ["{{if:bash}}\nFollow the composed Ship method.", "Follow the composed Ship method."],
+    ["or modify repository file contents.\n{{else}}\nYou have no shell, so you cannot inspect, commit, or push. Change nothing and return Not published, with the missing shell as the condition that stopped publication.\n{{end}}", "or modify repository file contents."],
+  ]],
+  ["reviewer-uat", [[
+    "{{if:bash}}\nBound each bash invocation with the tool's timeout parameter. Do not use the `timeout` shell utility. A single command must remain bounded:\n{{else}}\nA single command must remain bounded:\n{{end}}",
+    "Bound each bash invocation with the tool's timeout parameter. Do not use the `timeout` shell utility. A single command must remain bounded:",
+  ]]],
+]);
+
+/** A bundled persona as it read at dd2fab076, before the capability-text
+ *  edit, which also added the bundled mark to persona identity. Throws when a
+ *  rewritten clause is missing, so a later edit of these personas updates
+ *  this fixture. */
+export function atCapabilityTextBase(definition: AgentDefinition): AgentDefinition {
+  if (definition.kind !== "persona") return definition;
+  const { bundled: _mark, ...persona } = definition;
+  const clauses = CAPABILITY_TEXT_AT_BASE.get(persona.name);
+  if (!clauses) return persona;
+  let { description, systemPrompt } = persona;
+  for (const [current, atBase] of clauses) {
+    if (description.includes(current)) description = description.replace(current, atBase);
+    else if (systemPrompt.includes(current)) systemPrompt = systemPrompt.replace(current, atBase);
+    else throw new Error(`Persona ${persona.name} lacks the clause: ${current.slice(0, 40)}`);
+  }
+  return { ...persona, description, systemPrompt };
+}
+
+/** Every persona of `personas` as it read at dd2fab076 (refer to {@link atCapabilityTextBase}). */
+export function personasAtCapabilityTextBase(personas: ReadonlyMap<string, AgentDefinition>): ReadonlyMap<string, AgentDefinition> {
+  return new Map([...personas].map(([name, persona]) => [name, atCapabilityTextBase(persona)]));
+}
+
+/** A definition revision whose personas read as at dd2fab076 (refer to {@link atCapabilityTextBase}). */
+export function atCapabilityTextBaseRevision(revision: ProjectDefinitionRegistryRevision): ProjectDefinitionRegistryRevision {
+  const personas = personasAtCapabilityTextBase(revision.personas);
+  return { ...revision, personas, personaRevision: { ...revision.personaRevision, personas } };
 }

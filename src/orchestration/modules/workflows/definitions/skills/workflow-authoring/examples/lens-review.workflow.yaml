@@ -1,11 +1,11 @@
 # A lens-diverse review. Each named agent reviews the same change for one
 # way it can fail, which catches failures that identical reviewers miss.
 # Each agent runs as a reviewer persona: the persona brings its review
-# method, its read-only tools, its turn limit, and its model seat, as it
-# would as a subagent, and the phase's brief and output contract apply to
-# every agent. Pick the reviewer personas that the review method would
-# dispatch for this change. The dedupe join merges what the agents find by
-# `site`, and keeps the agent that found each one in its `branch` field.
+# method, its read-only tools, its turn limit, and its model seat, and the
+# phase's brief and output contract apply to every agent. Pick the reviewer
+# personas that the review method would dispatch for this change. The
+# dedupe join merges what the agents find by `site`, and keeps the agent
+# that found each one in its `branch` field.
 id: lens-review
 name: Lens review
 description: Review one change through several reviewer personas and merge what they find.

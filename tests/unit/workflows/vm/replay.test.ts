@@ -17,7 +17,7 @@ import {
 } from "../../../../src/workflows/vm/definition-identity.js"
 import { replayWorkflowFromFacts } from "../../../../src/workflows/vm/replay.js"
 import { foldWorkflowControl } from "../../../../src/workflows/vm/fact-fold.js"
-import { beforeLexiconCut, beforeToolSteeringCut } from "../../orchestration/migrations/_persona-budget.js"
+import { atCapabilityTextBase, beforeLexiconCut, beforeToolSteeringCut } from "../../orchestration/migrations/_persona-budget.js"
 import { recoverWorkflowControl } from "../../../../src/workflows/vm/recovery.js"
 import {
   buildWorkflowControlInitializedFact,
@@ -328,8 +328,10 @@ describe("workflow fact replay", () => {
   })
 
   it("adopts the explorer hash recorded over its retired tool-steering clauses, and keeps any other change as drift", async () => {
-    const explorer = repoDefinitions().captureRevision().personas.get("explorer")
-    if (!explorer) throw new Error("Expected the bundled explorer")
+    // The explorer as it read before the capability-text edit, which no proof covers.
+    const bundled = repoDefinitions().captureRevision().personas.get("explorer")
+    if (!bundled) throw new Error("Expected the bundled explorer")
+    const explorer = atCapabilityTextBase(bundled)
     const workflowWithExplorer: WorkflowDefinition = { ...workflow, phases: [{ ...workPhase, subagents: ["explorer"] }] }
     const personas = new Map<string, AgentDefinition>([["explorer", explorer]])
     const compiled = compileWorkflowControl(workflowWithExplorer, resolveWorkflowAgents(workflowWithExplorer), { skills, personas })

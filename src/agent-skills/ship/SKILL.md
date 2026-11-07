@@ -14,6 +14,7 @@ Start with the files to publish and a short summary of user intent and implement
 
 Verification and review precede publication. This method does not request verification evidence, assess it, or repeat those checks. Integration of newer remote work still happens here. The caller repeats its narrow verification for selected files that integration changes.
 
+{{if:bash}}
 Use `commit + push` to the current branch's normal push target by default. Extra publication instructions are needed only for a user-requested pull request or nondefault destination. Do not ask the user to select the default mode.
 
 Before branch or index mutation:
@@ -43,6 +44,9 @@ After a successful push, use `git worktree list` to find each local checkout of 
 In `branch + PR` mode, create the feature branch before staging when the current branch is a base branch. Discover the actual base. Create or update a pull request whose description explains context, decisions, constraints, validation, and review guidance that the diff cannot show. When the caller supplied that account, put it in the description verbatim; it is the caller's account, so do not assess, edit, or verify it. Do not restate the file inventory or invent rationale.
 
 Missing or unauthenticated pull-request tooling can leave a successful branch, commit, and push intact, but report the pull request as unavailable. A push failure preserves the commit and reports the exact recovery command; never force-push without explicit approval.
+{{else}}
+Without a shell, this method cannot inspect Git, commit, or push. Change nothing and report the work as not published, with the missing shell as the condition that stopped publication.
+{{end}}
 
 ## Stop and result
 

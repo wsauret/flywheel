@@ -3,6 +3,7 @@ import {
   type LaunchableWorkflowToolDeps,
 } from "./workflow-tool.js";
 import type { RuntimeTool, RuntimeToolInput } from "./types.js";
+import type { CapabilityCheck } from "../../../infra/capability-text.js";
 import type { ModuleRuntimeInvocationTool } from "../../module-seams.js";
 
 /** The canonical workflow file that the tool prompt shows. It is the same
@@ -52,9 +53,9 @@ phases:
 
 const LAUNCH_DESCRIPTION = "Launch a workflow as a background child of this chat. Open its activity row to inspect it. Interrupting this chat or closing the viewer does not stop the workflow. Its launching call stays pending while interrupted work can continue. Completion or Stop settles that call and delivers one hidden runtime notification. Continue the conversation in this chat; completed workflows are read-only.";
 
-const FILE_DESCRIPTION = `${LAUNCH_DESCRIPTION} It launches a workflow file that you wrote.
+const fileDescription = (has: CapabilityCheck): string => `${LAUNCH_DESCRIPTION} It launches a workflow file that you wrote.
 
-Write a workflow file for substantive work that needs its own phases, agent mix, verification, or synthesis. A workflow file runs at least two agents, and a later agent reads the output of an earlier one; dispatch one agent, or agents that can all run at the same time, as subagents instead. Read a result yourself when you must judge it against the design. A result that you would read only to brief the next agent belongs inside the workflow, passed with \`reads\`: each relay adds that result to your context and waits for a turn of yours. When several units each need the same chain, such as build, review, and fix, and you revise, commit, or unblock each unit on its own, write the file once with an \`input\` contract and launch it by path for each unit with that unit as \`input\`. When you read the results of all units together, run one workflow over the list instead, as the canonical file below does.
+Write a workflow file for substantive work that needs its own phases, agent mix, verification, or synthesis. A workflow file runs at least two agents, and a later agent reads the output of an earlier one${has("subagent") ? "; dispatch one agent, or agents that can all run at the same time, as subagents instead" : ""}. Read a result yourself when you must judge it against the design. A result that you would read only to brief the next agent belongs inside the workflow, passed with \`reads\`: each relay adds that result to your context and waits for a turn of yours. When several units each need the same chain, such as build, review, and fix, and you revise, commit, or unblock each unit on its own, write the file once with an \`input\` contract and launch it by path for each unit with that unit as \`input\`. When you read the results of all units together, run one workflow over the list instead, as the canonical file below does.
 
 Launch a workflow file that you write in one call: workflow({ source: { kind: "content", content }, summary, description, input }). Flywheel saves the content as scratch/workflows/<id>.workflow.yaml in this session's directory, replacing a file of that name, and launches the saved file. Name a saved file with { kind: "path", path } to launch it again or after you edit it. A path names any workflow file, also one in the project: Flywheel saves a copy of a file outside that directory there and launches the copy, so do not read a file only to pass its content. The launch decodes, admits, and verifies the file before any agent starts; a refused launch starts nothing, keeps the saved file, and lists each problem. Before you write a workflow file, load the \`workflow-authoring\` skill. Keep each phase and agent name to one or two words, at most 10 characters, such as \`rename\`, \`rewrites\`, or \`verify\`, because the workflow card shows them. For the same reason, give a phase over a list of objects a \`label\` that names a short descriptive field of each item, such as \`path\` or a \`name\` like \`runbook\`; without one, its agents show only as numbers.
 
@@ -65,7 +66,7 @@ ${CANONICAL_WORKFLOW_FILE}`;
 const ASK_GUIDANCE = "Workflows needs the user's typed approval for every launch you start. Call `ask_user` with `decision: { workflow_launch: { source } }`, naming the same `source` as the `workflow` call, plus a `context` paragraph for the user. The runtime composes that question and its choices from the workflow file, so do not write approval options of your own. When you would ask the user whether to launch, make that ask the decision ask; do not ask a plain question first and a decision question second. An approved answer returns a confirmation id; pass it as `confirmation_id` when you call `workflow`. The approval covers that one source and is consumed by one launch. An approval of a workflow file covers the file as it was when you asked; after an edit, ask again.";
 const ON_GUIDANCE = "Workflows is On for this session. Call `workflow` directly without asking for workflow-launch confirmation.";
 
-const CONFIRMATION_ID_DESCRIPTION = "The confirmation id ask_user returned for the approved workflow_launch decision of this source.";
+const CONFIRMATION_ID_DESCRIPTION = "The confirmation id that the approved workflow_launch decision of this source returned.";
 
 /** How one schema carries `confirmation_id`: ASK advertises it as required,
  *  ON advertises no such field, and dispatch validates every call against the
@@ -156,15 +157,16 @@ const WORKFLOW_BASE: Pick<RuntimeTool, "name" | "action" | "promptSnippet" | "ex
 
 /** The workflow tool of one request. Its advertised schema and guidance are the
  *  mode's own: the provider never sees a `confirmation_id` field whose
- *  requirement changes behind one static signature. */
-export function createWorkflowTool(deps: LaunchableWorkflowToolDeps): RuntimeTool {
+ *  requirement changes behind one static signature. Its description renders
+ *  from `capabilities`, the tree check, so every agent of a tree reads one text. */
+export function createWorkflowTool(deps: LaunchableWorkflowToolDeps & { readonly capabilities: CapabilityCheck }): RuntimeTool {
   const core = createWorkflowToolCore(deps);
   const promptGuidelines = [...core.promptGuidelines];
   if (deps.mode === "on") promptGuidelines.push(ON_GUIDANCE);
   else if (deps.askUserAvailable) promptGuidelines.push(ASK_GUIDANCE);
   return {
     ...WORKFLOW_BASE,
-    description: FILE_DESCRIPTION,
+    description: fileDescription(deps.capabilities),
     inputSchema: workflowInputSchema(deps.mode === "ask" ? "required" : "omitted"),
     inputValidationSchema: workflowInputSchema("accepted"),
     promptGuidelines,

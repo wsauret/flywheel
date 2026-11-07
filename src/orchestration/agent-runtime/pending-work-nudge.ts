@@ -12,7 +12,7 @@ import { DEFAULT_WAIT_SECONDS } from "./tools/process.js";
 
 const log = Log.create({ service: "agent-loop" });
 
-const PENDING_WORK_NUDGE = "Managed work is still pending. To wait, call process(action='wait') with soft_timeout seconds from a fresh remaining-work estimate. Estimate all work, especially subagents and workflows. Each explicit wait ends on completion or expiry without stopping work. Do not send status chatter.";
+const PENDING_WORK_NUDGE = "Managed work is still pending. To wait, call process(action='wait') with soft_timeout seconds from a fresh remaining-work estimate. Estimate all managed work. Each explicit wait ends on completion or expiry without stopping work. Do not send status chatter.";
 
 interface PendingWorkNudgeDeps {
   readonly providerSessionKey: string;

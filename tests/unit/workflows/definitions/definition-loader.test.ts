@@ -205,7 +205,7 @@ describe("loadWorkflowDefinitions", () => {
     const { results, errors } = load();
     expect(errors).toEqual([]);
     const workflow = results.get("test-wf");
-    expect(authored(workflow, "other").output.instructions).toContain("Read through the workflow file.");
+    expect(authored(workflow, "other").output.instructions(true)).toContain("Read through the workflow file.");
     expect(authored(workflow, "other").output.fields.map(({ key }) => key)).toContain("result");
   });
 

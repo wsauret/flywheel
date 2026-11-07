@@ -146,7 +146,7 @@ describe("enforceTurnBudget", () => {
         entry("small-3", 5_000),
       ];
       const replacements = await enforceTurnBudget(entries, {
-        budgetChars: turnBudgetChars(100_000), executionCwd: dir, projectRoot: dir, artifactScopeId: "session-1",
+        budgetChars: turnBudgetChars(100_000), executionCwd: dir, projectRoot: dir, artifactScopeId: "session-1", capabilities: () => true,
       });
       expect(replacements).toHaveLength(2);
       expect(replacements.map((r) => r.toolUseId).sort()).toEqual(["big-1", "big-2"]);
@@ -156,11 +156,42 @@ describe("enforceTurnBudget", () => {
         expect(text.text).toContain("<persisted-output>");
         expect(text.text).toContain("Full output saved to:");
         expect(text.text).toContain("Preview");
+        expect(text.text).toContain("Read that file with offset/limit, or grep it with the search tool, to access specific sections.");
         // The full text is recoverable at the named path.
         const match = text.text.match(/Full output saved to: (.+)/);
         if (!match?.[1]) throw new Error("expected a saved path");
         expect(readFileSync(join(dir, match[1]), "utf8")).toContain(`${replacement.toolUseId}-head`);
       }
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("names only the retrieval tools that the reading agent holds", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "flywheel-turn-budget-"));
+    try {
+      const entries = [entry("big-1", 150_000)];
+      const textOf = async (held: readonly string[] | undefined): Promise<string> => {
+        const [replacement] = await enforceTurnBudget(entries, {
+          budgetChars: turnBudgetChars(100_000), executionCwd: dir, projectRoot: dir, artifactScopeId: `session-${held?.join("-") ?? "unknown"}`,
+          ...(held ? { capabilities: (term: string) => held.includes(term) } : {}),
+        });
+        const part = replacement?.content[0];
+        if (part?.type !== "text") throw new Error("expected text part");
+        return part.text;
+      };
+      const readOnly = await textOf(["read"]);
+      expect(readOnly).toContain("Read that file with offset/limit, to access specific sections.");
+      expect(readOnly).not.toContain("search tool");
+      const shellOnly = await textOf(["bash"]);
+      expect(shellOnly).toContain("Inspect it with a shell command, to access specific sections.");
+      const none = await textOf([]);
+      expect(none).toContain("The rest of the output is not available with your tools.");
+      expect(none).not.toMatch(/search tool|offset\/limit/);
+      // Recovery does not know the reader's tools: the block names the file and no tool.
+      const unknown = await textOf(undefined);
+      expect(unknown).toContain("Full output saved to:");
+      expect(unknown).not.toMatch(/search tool|offset\/limit|shell command|not available/);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

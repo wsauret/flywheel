@@ -10,3 +10,6 @@ export const workflowAssets: WorkflowAssets = {};
 export const agents: WorkflowAssets = {};
 
 export const skillDefinitions: WorkflowAssets = {};
+
+export interface ModuleBundleAssets { [bundle: string]: WorkflowAssets }
+export const moduleSkillDefinitions: ModuleBundleAssets = {};

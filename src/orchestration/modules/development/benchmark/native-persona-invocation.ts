@@ -109,7 +109,7 @@ export async function createNativePersonaInvocation(
           sourceRoot: root,
           accountHome: runtime.accountHome,
           usageAuthority,
-          guidanceIdentity: structuredIdentity(renderPersonaTaskGuidance(request.persona, registry, runtime.definitions.skills())),
+          guidanceIdentity: structuredIdentity(renderPersonaTaskGuidance(request.persona, registry, runtime)),
           moduleIds: runtime.moduleSelection().enabledModuleIds,
           admissionIdentity: {
             runtimeConfig: admissionIdentity.runtimeConfig,

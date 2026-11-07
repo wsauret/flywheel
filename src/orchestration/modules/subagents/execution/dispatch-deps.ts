@@ -14,6 +14,8 @@ import type { PromptKind } from "../../../agent-runtime/system-prompt.js"
 import type { BriefScope } from "../../../config/role-selection.js"
 import type { RoleResolver } from "../../../config/roles.js"
 import type { ChildSessionAuthority, ChildSessionConversation, ParentNotificationDelivery } from "../../../module-seams.js"
+import type { DefinitionAvailabilitySnapshot } from "../../../app-service/definition-availability.js"
+import type { ModuleRuntimeServices } from "../../../agent-runtime/module-runtime-services.js"
 
 export interface SubagentDispatchDeps {
   userDataRoot: string
@@ -22,6 +24,13 @@ export interface SubagentDispatchDeps {
   capabilityRequirements: readonly ModuleId[]
   allowedSubagentTypes?: ReadonlySet<string>
   skills: SkillRegistryRevision
+  /** Definition availability under the dispatcher's live selection. A fresh
+   *  dispatch refuses a persona that is unavailable here, and the child's
+   *  opening material renders against it (ARCH-CONTEXT-033). */
+  definitionAvailability: DefinitionAvailabilitySnapshot
+  /** The agent check of a child as its own first request plans its tools (`ModuleRuntimeServices.planChildCapabilities`).
+   *  A fresh dispatch keeps only the declared tools that it answers yes to, and renders the child's task from it. */
+  planChildCapabilities: ModuleRuntimeServices["planChildCapabilities"]
   modelFamily: ModelFamily
   availableModels?: ReadonlySet<string>
   modelInfos?: ReadonlyMap<string, ModelInfo>

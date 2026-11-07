@@ -3,16 +3,17 @@ import type { HandoffToolSchema } from "../../../workflow-host/handoff-tool-sche
 import type { ToolOutcome } from "../../../../infra/tool-outcome.js";
 import { formatToolInputProblems } from "../../../agent-runtime/tools/validate-input.js";
 import { gitDisciplineRule } from "../../../agent-runtime/persona-tool-rules.js";
+import type { CapabilityCheck } from "../../../../infra/capability-text.js";
 
 interface DispatchInput {
   [key: string]: unknown;
 }
 
-/** The subagent catalog: which agent types this session may dispatch and when
- *  to use them. It varies with the `subagents` of a brief and a child's granted roles,
- *  so it renders in the session tier and the dispatch tool's own bytes stay
- *  the same for every agent that shares the prompt cache. */
-export function renderSubagentRoster(agents: ReadonlyMap<string, AgentDefinition>): string {
+/** The subagent catalog: which agent types in `agents` this session may dispatch and when to use them. It varies
+ *  with the `subagents` of a brief and a child's granted roles, so it renders in the session tier and the dispatch
+ *  tool's own bytes stay the same for every agent that shares the prompt cache. A use case that needs a capability
+ *  that the tree check `has` refuses is left out: Ship publishes only through Bash. */
+export function renderSubagentRoster(agents: ReadonlyMap<string, AgentDefinition>, has: CapabilityCheck): string {
   if (agents.size === 0) return "# Subagents\n\nNo agent type is available for you to dispatch here, so do the work directly.";
   const agentList = Array.from(agents.values())
     .map((a) => a.kind === "general"
@@ -22,7 +23,7 @@ export function renderSubagentRoster(agents: ReadonlyMap<string, AgentDefinition
   const personas = Array.from(agents.values()).filter((agent) => agent.kind === "persona");
   const roles = new Set(personas.map((agent) => agent.role));
   const useCases: string[] = [];
-  if (roles.has("ship")) {
+  if (roles.has("ship") && has("bash")) {
     useCases.push("- Repository publication: use the Ship agent after the parent has completed implementation, review, and verification. Do not use fork. Send only the files you changed and a short summary of user intent and implemented design. Use your tracked file list. Do not run Git analysis or prepare a commit message for this handoff. Do not send verification evidence or ask Ship to evaluate it. Ship inspects the selected diffs, writes the commit message, commits complete selected files, including concurrent edits, and pushes. Do not ask Ship to separate authorship, select hunks, or create isolation worktrees. Add publication instructions only when the user requested a PR or a nondefault destination. For a PR, also send what changed from the approved design, the proof that the change works, and what that proof does not cover, as you wrote them for your reply; that account is the one exception to the evidence rule, and Ship puts it in the pull request description as written, without assessing it. Ship returns publication evidence, or a summary of the one precise condition that stopped publication. After a successful publication, your reply gives the three things that your instructions define.");
   }
   if (roles.has("reviewer")) {
@@ -71,8 +72,10 @@ Rationale: explain why delegation is worthwhile (minimum ${MIN_DISPATCH_RATIONAL
 The subagent's streaming output (text, tool calls) is visible to the user in real time.`;
 
 /** Closure and turn-budget preamble. A function because the budget is the
- *  dispatched agent definition's maxTurns, not a constant of the template. */
-function subagentClosure(maxTurns: number): string {
+ *  dispatched agent definition's maxTurns, not a constant of the template,
+ *  and because its rules for running checks and commands hold only for a
+ *  child that has the shell (ARCH-CONTEXT-033). */
+function subagentClosure(maxTurns: number, shell: boolean): string {
   return `# Delegated Subtask
 
 You are executing a scoped subtask. Your parent agent dispatched you with a specific assignment.
@@ -81,17 +84,17 @@ You are executing a scoped subtask. Your parent agent dispatched you with a spec
 
 No planning, no TODO tracking, no progress updates, no meta-commentary. Execute the work, then call \`handoff\` to submit your result and terminate.
 
-Your parent verifies your work after collecting your result. While working, run the narrowest check that proves each change: one test file, not a suite. Run a suite-level or project-wide gate at most once, immediately before handoff, and only when your assignment names that gate; otherwise leave final verification to your parent.
+Your parent verifies your work after collecting your result.${shell ? " While working, run the narrowest check that proves each change: one test file, not a suite. Run a suite-level or project-wide gate at most once, immediately before handoff, and only when your assignment names that gate; otherwise leave final verification to your parent." : ""}
 
 Before submitting: verify all requested deliverables are present, every claim is grounded in tool output, and no material lookup was skipped.
 
-Stay within your assignment. Your parent may be running sibling subagents on adjacent work; if you notice something outside your scope, note it in your handoff rather than pursuing it.
+Stay within your assignment. Your parent may be running sibling subagents on adjacent work; if you notice something outside your scope, note it in your handoff rather than pursuing it.${shell ? `
 
-Never re-run a failing test or command without changing code first. If a test fails and you cannot identify a fix, report the failure in your handoff rather than retrying with identical input.
+Never re-run a failing test or command without changing code first. If a test fails and you cannot identify a fix, report the failure in your handoff rather than retrying with identical input.` : ""}
 
 ## Turn Economy
 
-Every model turn is a paid round-trip, and this run has a hard budget: at most ${maxTurns} turns, then it is cut off and unreported work is lost. Reserve the last turn for the handoff, and finish in the fewest turns honest work allows: each turn carries every independent read, edit, and check you already know you need, and fixes are batched before one narrow re-verification. A bash call that is only one \`cat\`, \`grep\`, or \`ls\` is rejected; bash is for scripts, pipelines, and multi-command chains.`;
+Every model turn is a paid round-trip, and this run has a hard budget: at most ${maxTurns} turns, then it is cut off and unreported work is lost. Reserve the last turn for the handoff, and finish in the fewest turns honest work allows: each turn carries every independent read, edit, and check you already know you need, and fixes are batched before one narrow re-verification.${shell ? " A bash call that is only one `cat`, `grep`, or `ls` is rejected; bash is for scripts, pipelines, and multi-command chains." : ""}`;
 }
 
 const SUBAGENT_HANDOFF_CONTRACT = `## Handoff
@@ -105,15 +108,17 @@ When a choice that your tools cannot settle stops the work, such as a conflict w
 /** Build the subagent addendum appended after the persona (or inherited
  *  parent) instructions. The result is the child runner's `task`, which the
  *  child receives as a turn of its conversation, not in its system prompt.
- *  `maxTurns` is the dispatched agent definition's turn cap, disclosed so the
- *  child can budget. Git discipline is included only for a subagent that can
- *  mutate files (its premise is "you know your own changes") and sits beside
- *  the turn-economy rules it extends. Which tools the child may call, its
- *  read-only rule, and shell safety follow in its opening turn from its
+ *  `has` is the child's own agent check (ARCH-CONTEXT-033), so the addendum
+ *  states only rules for tools the child's plan lets it call. `maxTurns` is
+ *  the dispatched agent definition's turn cap, disclosed so the child can
+ *  budget. Git discipline is included only for a subagent that can mutate
+ *  files and run git (its premise is "you know your own changes") and sits
+ *  beside the turn-economy rules it extends. Which tools the child may call,
+ *  its read-only rule, and shell safety follow in its opening turn from its
  *  first tool plan (`tool-notice.ts`), so they state the set its calls meet. */
-export function buildSubagentTask(instructions: string, toolNames: readonly string[], maxTurns: number): string {
-  const git = gitDisciplineRule(toolNames);
-  const sections = [subagentClosure(maxTurns), ...(git === undefined ? [] : [git]), SUBAGENT_HANDOFF_CONTRACT];
+export function buildSubagentTask(instructions: string, has: CapabilityCheck, maxTurns: number): string {
+  const git = gitDisciplineRule(has);
+  const sections = [subagentClosure(maxTurns, has("bash")), ...(git === undefined ? [] : [git]), SUBAGENT_HANDOFF_CONTRACT];
   const template = sections.join("\n\n");
   return instructions ? `${instructions}\n\n---\n\n${template}` : template;
 }

@@ -16,6 +16,7 @@ import { PRUNED_DIR_GLOBS, prepareSearchPathInput, prunedDirectoriesNote } from 
 import { PRUNED_DIR_NAMES, SEARCH_CPU_LIMIT_SECONDS, SEARCH_WALL_BACKSTOP_SECONDS, searchStoppedMessage } from "./search-rules.js";
 import { formatMatchLine } from "./match-line-format.js";
 import { checkNumericRange } from "./numeric-input.js";
+import type { CapabilityCheck } from "../../../infra/capability-text.js";
 import type { GrepMatch, GrepResult } from "./ripgrep.js";
 import { grep, SearchStoppedError } from "./ripgrep.js";
 import {
@@ -169,7 +170,7 @@ export const searchDefinition: RuntimeTool = {
         if (result.skipReason) {
           const rel = displayRelativePath(searchPath, context.executionCwd);
           formatted = {
-            content: `Cannot search '${rel}': ${result.skipReason}. The file was not searched; no matches returned. If you need to inspect this file, use bash (rg/grep against the path directly) or read it via the read tool.`,
+            content: `Cannot search '${rel}': ${result.skipReason}. The file was not searched; no matches returned.${skippedFileAlternatives(context.capabilities)}`,
             outcome: "error",
           };
         } else {
@@ -239,6 +240,12 @@ type SearchEngine = "default" | "pcre2";
  *  look-around and backreferences work. Rust refuses at compile time, before any scan, so the
  *  rerun costs no second walk, and it shares the first attempt's wall-clock backstop, which
  *  admission wait can have spent. A pattern that PCRE2 also refuses reports Rust's error. */
+/** The other ways to inspect a file that search skipped, from the tools that the calling agent holds. */
+function skippedFileAlternatives(has: CapabilityCheck | undefined): string {
+  const ways = [...(has?.("bash") !== false ? ["use bash (rg/grep against the path directly)"] : []), ...(has?.("read") !== false ? ["read it via the read tool"] : [])];
+  return ways.length > 0 ? ` If you need to inspect this file, ${ways.join(" or ")}.` : "";
+}
+
 async function grepWithPcre2Fallback(options: Parameters<typeof grep>[0], signal: AbortSignal | undefined): Promise<{ result: GrepResult; engine: SearchEngine }> {
   const deadline = performance.now() + options.timeoutMs;
   try {

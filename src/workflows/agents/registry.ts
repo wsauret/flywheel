@@ -58,7 +58,7 @@ interface ParsedPersonaFile {
   readonly retiredKeys: readonly string[];
 }
 
-function parsePersonaFile(content: string, toolEntries?: readonly PersonaToolRegistryEntry[]): ParsedPersonaFile {
+function parsePersonaFile(content: string, layer: "project" | "user" | "bundled", toolEntries?: readonly PersonaToolRegistryEntry[]): ParsedPersonaFile {
   const parsed = parseFrontmatter(content);
   if (!parsed) throw new Error("Invalid persona file: missing or malformed YAML frontmatter");
 
@@ -79,6 +79,7 @@ function parsePersonaFile(content: string, toolEntries?: readonly PersonaToolReg
     ...(frontmatter.subagentRoles ? { subagentRoles: frontmatter.subagentRoles } : {}),
     ...(frontmatter.requiredSkills ? { requiredSkills: frontmatter.requiredSkills } : {}),
     ...(frontmatter.allowFork !== undefined ? { allowFork: frontmatter.allowFork } : {}),
+    ...(layer === "bundled" ? { bundled: true as const } : {}),
   };
   return { value, retiredKeys };
 }
@@ -139,7 +140,7 @@ function loadPersonaDirectory(dirPath: string, layer: "project" | "user" | "bund
       const raw = readFileSync(path, "utf8");
       const source = { path, layer, identity: createHash("sha256").update(raw).digest("hex") };
       try {
-        const { value, retiredKeys } = parsePersonaFile(raw, toolEntries);
+        const { value, retiredKeys } = parsePersonaFile(raw, layer, toolEntries);
         warnRetiredPersonaKeys(path, retiredKeys);
         candidates.set(value.name, [...(candidates.get(value.name) ?? []), { kind: "valid", source, value }]);
       } catch (err) {
@@ -165,7 +166,7 @@ function loadBundledPersonas(fallbackDir: string, toolEntries?: readonly Persona
   const candidates = new Map<string, DefinitionCandidate<AgentDefinition>[]>();
   for (const [file, raw] of Object.entries(manifestAgents)) {
     try {
-      const { value, retiredKeys } = parsePersonaFile(raw, toolEntries);
+      const { value, retiredKeys } = parsePersonaFile(raw, "bundled", toolEntries);
       warnRetiredPersonaKeys(`manifest:${file}`, retiredKeys);
       const source = { path: `manifest:${file}`, layer: "bundled" as const, identity: createHash("sha256").update(raw).digest("hex") };
       candidates.set(value.name, [{ kind: "valid", source, value }]);

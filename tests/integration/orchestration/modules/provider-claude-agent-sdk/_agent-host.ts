@@ -9,6 +9,7 @@ import type { SystemPromptTiers } from "../../../../../src/orchestration/agent-r
 import type { HostRegistry } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/agent-host/host-registry.js";
 import { assistantMessage, type StagedSdkClient, type StreamResult } from "./_claude-sdk-client.js";
 import { declaredTools, type FakeReply, type RecordedRequest } from "./_fake-host.js";
+import { SHELL_CAPABILITIES } from "../../../../helpers/prompt-capabilities.js";
 
 export const LOOKUP = { name: "lookup", description: "Looks a key up.", input_schema: { type: "object", properties: { key: { type: "string" } }, required: ["key"] } };
 export const SYSTEM = { stable: "You are a careful worker.", session: "Session tail.", conversation: "" };
@@ -100,7 +101,7 @@ export function agentLoop(client: StagedSdkClient, projectRoot: string, brief: s
     async request(signal?: AbortSignal, onEvent?: Parameters<Awaited<ReturnType<StagedSdkClient["connect"]>>["stream"]>[1]): Promise<StreamResult> {
       const { tools, effort, requestContext, providerOptions } = loop;
       const { attempt } = client.staged;
-      history.push(...attempt.messagesToAppend?.(history, projectRoot) ?? []);
+      history.push(...attempt.messagesToAppend?.(history, projectRoot, SHELL_CAPABILITIES) ?? []);
       connected ??= await client.connect();
       const prepared = (): StreamOptions => ({
         messages: [...projected(loop.outbound(history), tools), ...(requestContext === undefined ? [] : [{ kind: "user" as const, content: requestContext, requestOnly: true as const }])],

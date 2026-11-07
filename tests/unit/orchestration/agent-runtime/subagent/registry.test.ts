@@ -6,7 +6,7 @@ import { makeDeps } from "./_fixtures.js";
 describe("subagent tool — registry", () => {
   describe("renderSubagentRoster", () => {
     it("names each agent type with its details, while the tool description names none", () => {
-      const roster = renderSubagentRoster(makeDeps().agentRegistry);
+      const roster = renderSubagentRoster(makeDeps().agentRegistry, () => true);
 
       expect(roster).toContain("explorer");
       expect(roster).toContain("role: explorer");
@@ -18,7 +18,7 @@ describe("subagent tool — registry", () => {
     });
 
     it("tells an agent with no dispatchable type to do the work directly", () => {
-      expect(renderSubagentRoster(new Map())).toBe("# Subagents\n\nNo agent type is available for you to dispatch here, so do the work directly.");
+      expect(renderSubagentRoster(new Map(), () => true)).toBe("# Subagents\n\nNo agent type is available for you to dispatch here, so do the work directly.");
     });
 
     it("adds Advisor routing policy only when Advisor is scoped", () => {
@@ -31,8 +31,8 @@ describe("subagent tool — registry", () => {
         maxTurns: 20,
         systemPrompt: "Give private read-only advice.",
       };
-      const withAdvisor = renderSubagentRoster(new Map([["advisor", advisor]]));
-      const withoutAdvisor = renderSubagentRoster(makeDeps().agentRegistry);
+      const withAdvisor = renderSubagentRoster(new Map([["advisor", advisor]]), () => true);
+      const withoutAdvisor = renderSubagentRoster(makeDeps().agentRegistry, () => true);
 
       for (const text of [
         "two materially different approaches",

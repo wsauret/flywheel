@@ -12,6 +12,7 @@ import { createWorkflowVmHost } from "../../../../src/workflows/vm/host.js"
 import type { WorkflowVmHostDeps, WorkflowVmStartMode } from "../../../../src/workflows/vm/host-types.js"
 import { testSkill, testSkillRevision } from "../../../helpers/skill-fixtures.js"
 import { SqliteVmDriver } from "./_sqlite-vm-driver.js"
+import { EVERY_CAPABILITY } from "../../../helpers/attempt-brief.js"
 import type { CommittedWorkflowControl } from "../../../../src/workflows/vm/committed-control.js"
 import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js"
 import arms from "./golden/committed-v10-history-arms.json"
@@ -112,6 +113,7 @@ function restarted(vm: SqliteVmDriver, startMode: WorkflowVmStartMode, worker: W
     workflow,
     conversationId: (input) => `conversation-${input?.attemptId ?? "follow-up"}`,
     attemptRunner: createAttemptExecutor({
+      unavailableToolReason: (term) => `${term} is off`,
       earlierCheckpoint: async () => null,
       resolvedAgents: vm.bindings,
       skills: vm.skills,
@@ -144,7 +146,8 @@ describe("blocked work survives a restart", () => {
     expect(repaired).toEqual({ kind: "committed" })
     if (repaired.kind !== "committed") throw new Error("Recovery must commit")
     let acquired = 0
-    const resumed = restarted(vm, "operator_resume", async (step, prompt, _task, _signal, conversationId) => {
+    const resumed = restarted(vm, "operator_resume", async (step, brief, _signal, conversationId) => {
+      const { userPrompt: prompt } = await brief(EVERY_CAPABILITY)
       acquired += 1
       expect(step.id).toBe(corrective.id)
       expect(conversationId).toBe(`conversation-${corrective.id}`)
@@ -175,7 +178,8 @@ describe("blocked work survives a restart", () => {
 
     const prompts = new Map<string, string[]>()
     const resumedEvents: Parameters<EmitFake>[0][] = []
-    const afterRestart = restarted(vm, "operator_resume", async (step, userPrompt) => {
+    const afterRestart = restarted(vm, "operator_resume", async (step, brief) => {
+      const { userPrompt } = await brief(EVERY_CAPABILITY)
       const seen = prompts.get(step.definitionId) ?? []
       prompts.set(step.definitionId, [...seen, userPrompt])
       if (step.definitionId === "reassess") {

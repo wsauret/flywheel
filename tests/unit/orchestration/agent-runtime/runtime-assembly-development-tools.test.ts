@@ -280,7 +280,8 @@ describe("universal scoped notes assembly", () => {
     if (typeof assembled.systemPrompt !== "function") throw new Error("expected assembled prompt")
     const prompt = renderSystemPrompt(await assembled.systemPrompt(providerRuntime(surface).plannedAttempt, providerRuntime(surface).interactionProfile))
     expect(prompt).toContain("use `checkpoint_read`")
-    expect(prompt).toContain('Keep a short "Relevant skills" section')
+    // The skill guidance follows the skill tool: chat and follow-up select no tools here, so they have none.
+    expect(prompt.includes('Keep a short "Relevant skills" section')).toBe(surface.tools.has("skill"))
   })
 
   for (const kind of ["chat-learning-review", "workflow-learning-review"] as const) it(`isolates ${kind} notes by review ID`, async () => {
@@ -529,7 +530,7 @@ describe("development tool runtime assembly", () => {
 describe("request-local skill revision", () => {
   it("adds and removes chat review guidance with the next request's advertised roster", async () => {
     let revision = publishSkillRevision(1, new Map([["other", testSkill("other")]]))
-    const definitions = { ...repoDefinitions(), skills: () => revision }
+    const definitions = { ...repoDefinitions(), skills: () => revision, captureRevision: () => ({ ...repoDefinitions().captureRevision(), skills: revision }) }
     const assembled = await assembledRuntime("chat", {
       capabilityAccess: capabilityAccessFor({
         state: () => ({ moduleIds: [], capabilities: ["skills"], requireWorkflowConfirmation: true, workflowsMode: "off", identity: "skills" }),

@@ -37,7 +37,7 @@ import { workflowLaunchHost } from "../workflow-host/launch-operation-contract.j
 import { createRuntimeConfigOwner } from "../config/runtime-config-owner.js"
 import { buildCustomProvidersFromConfig, logCustomProviderDiagnostics, publishCustomProvidersFromConfig } from "../config/custom-providers.js"
 import { startModulePolicy } from "../config/module-policy.js"
-import { prepareDefinitionReconciliation, type FirstPartyModuleComposition } from "../modules.js";
+import { prepareDefinitionReconciliation, shippedDefinitionBundles, type FirstPartyModuleComposition } from "../modules.js";
 import { createRuntimeModuleComposer } from "./runtime-module-composition.js"
 import { installedAccessProviderIds } from "../credential-provider-modules.js";
 import type { WorkflowsMode } from "../../protocol/module-protocol-types.js"
@@ -381,7 +381,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
     notify,
     settlePublication: async () => { await availability.settled() },
   }), async (projection) => { await projection.dispose() })
-  const definitionCatalog = loadBundledDefaultCatalog()
+  const definitionCatalog = loadBundledDefaultCatalog(shippedDefinitionBundles())
   const definitionBaselines = await createDefinitionOverrideBaselineOwner({ userDataRoot, resolutions: definitions.resolutions(), catalog: definitionCatalog })
   const definitionOverrides = createDefinitionOverrideService({
     catalog: definitionCatalog,
@@ -635,7 +635,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
     commandInvoke,
     runtimeSupervisor,
     warmTools: async () => { await (await import("../agent-runtime/tools/bash-parser.js")).warmBashParser() },
-    publishReferences: async () => (await import("../../workflows/definitions/installer.js")).publishBundledReferences(userDataRoot),
+    publishReferences: async () => (await import("../../workflows/definitions/installer.js")).publishBundledReferences(userDataRoot, definitionCatalog),
     bus,
   } satisfies FlywheelAppServiceDeps
   startupTrace("runtime app-service deps created")

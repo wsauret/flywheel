@@ -7,7 +7,7 @@ import { decodeCanonicalConfigText } from "../../src/orchestration/config/loader
 import { detectModelFamily } from "../../src/infra/llm/model-family.js";
 import { DEFAULT_MODEL_INTERACTION_PROFILE, resolveModelInteractionProfile, type ModelInteractionProfileId } from "../../src/orchestration/agent-runtime/model-interaction-profile.js";
 import { exposedToolName, type ToolDeclaration } from "../../src/orchestration/agent-runtime/tools/tool-registry.js";
-import { bashModule } from "../../src/orchestration/modules/bash.js";
+import { bashModule } from "../../src/orchestration/modules/bash/module.js";
 import { CREDENTIAL_PROVIDER_MODULES } from "../../src/orchestration/credential-provider-modules.js";
 
 const DEFAULT_DATASET = "terminal-bench/terminal-bench-2-1";

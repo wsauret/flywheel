@@ -68,9 +68,9 @@ const memory = {
   registrations: {
     memory: {
       capabilities: ["learning"],
-      create: ({ modules }) => {
+      create: ({ kernel, modules }) => {
         const runtime = modules.get(learningRuntime)
-        return runtime ? { tool: createMemoryTool(runtime.memory) } : { reason: "no memory store available" }
+        return runtime ? { tool: createMemoryTool(runtime.memory, kernel.treeCapabilities) } : { reason: "no memory store available" }
       },
     },
   },
@@ -102,7 +102,7 @@ function renderMemoryPromptFragment(snapshot: string, writable: boolean): string
   const access = writable
     ? "A snapshot taken when this work started (in a chat, at the person's latest message); memory tool writes are durable at once and appear here in a later snapshot."
     : "A snapshot taken when this work started (in a chat, at the person's latest message). This snapshot is read-only."
-  return `# Durable Memory\n\n${access} Memory is a scarce, selective profile of the user and their working context across many sessions, not session notes. Preserve only durable facts likely to change future decisions. Keep progress, plans, handoffs, and temporary findings in session notes. Shared repository guidance belongs in AGENTS.md or its existing authority, not memory. Saving nothing is often correct. Project reach applies to this project only; global reach follows the user into every project. Each block states its reach and the sha256 of the content loaded here. Entries labeled [protected] are user-owned and permanent until the user edits the memory file. Never use memory, file-edit, shell, CLI, or other tools to change their content or protection marker.\n\n${snapshot}`
+  return `# Durable Memory\n\n${access} Memory is a scarce, selective profile of the user and their working context across many sessions, not session notes. Preserve only durable facts likely to change future decisions. Keep progress, plans, handoffs, and temporary findings in session notes. Shared repository guidance belongs in AGENTS.md or its existing authority, not memory. Saving nothing is often correct. Project reach applies to this project only; global reach follows the user into every project. Each block states its reach and the sha256 of the content loaded here. Entries labeled [protected] are user-owned and permanent until the user edits the memory file. Never use memory or any other tool to change their content or protection marker.\n\n${snapshot}`
 }
 
 const skillsCli = () => import("./learning/cli/skills.js")

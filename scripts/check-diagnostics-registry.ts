@@ -38,6 +38,11 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
+    file: "src/orchestration/agent-runtime/capability-narrowing.ts",
+    what: "narrowing statements of tree-hosted agents",
+    pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
+  },
+  {
     file: "src/orchestration/app-service/project-state-worker.ts",
     what: "state Worker operation queue and service timing",
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,

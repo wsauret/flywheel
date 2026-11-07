@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSyn
 import { basename, join } from "node:path";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import type { CliMessage, PlacedReminder } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/cli-view.js";
+import { canonicalShell } from "../../../../../src/orchestration/agent-runtime/llm/claude-reminders.js";
 import { processHolders } from "../../../../../src/infra/process-holder.js";
 import { bridgeSessionId } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/session-id.js";
 import { cliProjectSlug, lockSession, removeTranscript, sweepLeftBehindSessions, transcriptFiles, transcriptRows, writeTranscript, type TranscriptClock } from "../../../../../src/orchestration/modules/provider-claude-agent-sdk/transcript.js";
@@ -85,6 +86,13 @@ describe("the rotation transcript", () => {
     }, clock()).flatMap((written) => (written.type === "attachment" && written.attachment.type === "environment" ? [written.attachment.snapshot.shell] : []));
     expect(shells("bash")).toEqual(["bash", "bash"]);
     expect(shells()).toEqual(["PowerShell", "PowerShell"]);
+  });
+
+  test("states this host's shell for a reminder that an agent without the shell read, as the engine names its own", () => {
+    const unshelled: PlacedReminder["reminder"] = { kind: "environment", workingDirectory: "/work/a", isWorktree: false, isGitRepo: true, platform: "darwin", osVersion: "Darwin 25.3.0" };
+    const shells = transcriptRows({ sessionId: SESSION, model: "claude-sonnet-5-5", history: [HISTORY[0]!], reminders: [{ message: 0, reminder: unshelled }] }, clock())
+      .flatMap((written) => (written.type === "attachment" && written.attachment.type === "environment" ? [written.attachment.snapshot.shell] : []));
+    expect(shells).toEqual([canonicalShell()]);
   });
 
   test("writes a thinking-only answer with one orphan carrier block that the CLI keeps at load and removes before the wire", () => {

@@ -83,7 +83,7 @@ async function main(requestPath: string, resultPath: string, cancelPath: string)
       throw new Error("Native worker module selection changed");
     }
     const registry = new Map(request.registry);
-    if (structuredIdentity(renderPersonaTaskGuidance(request.persona, registry, definitions.skills())) !== request.guidanceIdentity) {
+    if (structuredIdentity(renderPersonaTaskGuidance(request.persona, registry, runtime.deps)) !== request.guidanceIdentity) {
       cause = "guidance-changed";
       throw new Error("Native worker persona guidance, skills, or tool grants changed");
     }

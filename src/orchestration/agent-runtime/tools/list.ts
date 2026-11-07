@@ -71,7 +71,7 @@ const LIST_INPUT_SCHEMA = {
 export const listDefinition: RuntimeTool = {
   name: "list",
   action: "list",
-  description: `List file and directory paths for directory inspection and candidate path discovery. Returns cwd-relative POSIX paths only; directories end in '/'. Without pattern, lists the target directory shallowly by default. With pattern, performs bounded recursive path discovery; narrow path and pattern first. Artifact directories (node_modules, dist, .git, and similar), the runtime state directory, and directories the .gitignore excludes are listed but not entered unless path names one. A listing is stopped with an error after ${SEARCH_CPU_LIMIT_SECONDS} seconds of processing time or ${SEARCH_WALL_BACKSTOP_SECONDS} seconds spent waiting on slow file reads. sort: "mtime" orders newest-first (like \`ls -t\`) for recent-file discovery, and with limit it replaces \`ls -lat | head -N\`. Confirm an optional directory exists (root listing or prior step context) before listing or searching inside it: missing optional directories such as docs/ are normal in fresh projects, and failed probes are trace noise, not discovery. Use search for file contents and read for contents of a known file.`,
+  description: `List file and directory paths for directory inspection and candidate path discovery. Returns cwd-relative POSIX paths only; directories end in '/'. Without pattern, lists the target directory shallowly by default. With pattern, performs bounded recursive path discovery; narrow path and pattern first. Artifact directories (node_modules, dist, .git, and similar), the runtime state directory, and directories the .gitignore excludes are listed but not entered unless path names one. A listing is stopped with an error after ${SEARCH_CPU_LIMIT_SECONDS} seconds of processing time or ${SEARCH_WALL_BACKSTOP_SECONDS} seconds spent waiting on slow file reads. sort: "mtime" orders newest-first (like \`ls -t\`) for recent-file discovery, and with limit it replaces \`ls -lat | head -N\`. Confirm an optional directory exists (root listing or prior step context) before listing or searching inside it: missing optional directories such as docs/ are normal in fresh projects, and failed probes are trace noise, not discovery. Use search for file contents.`,
   promptSnippet: "List file/directory paths for structure and candidate discovery.",
   inputSchema: LIST_INPUT_SCHEMA,
   inputValidationSchema: {
@@ -138,7 +138,7 @@ export const listDefinition: RuntimeTool = {
       if (err instanceof SearchStoppedError) return { content: searchStoppedMessage("list", err.stop), outcome: "error" };
       const msg = errorMessage(err);
       log.warn("list failed", { error: msg });
-      return { content: `list failed: ${msg}. Use list with a narrower path/pattern, or use read when you already know the file path.`, outcome: "error" };
+      return { content: `list failed: ${msg}. Use list with a narrower path/pattern${context.capabilities?.("read") === false ? "" : ", or use read when you already know the file path"}.`, outcome: "error" };
     }
   },
 };

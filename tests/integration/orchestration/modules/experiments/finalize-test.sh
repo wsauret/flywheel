@@ -16,7 +16,7 @@ export GIT_CONFIG_KEY_0=maintenance.auto GIT_CONFIG_VALUE_0=false
 export GIT_CONFIG_KEY_1=gc.auto GIT_CONFIG_VALUE_1=0
 export GIT_AUTHOR_NAME=finalize-test GIT_AUTHOR_EMAIL=finalize-test@example.invalid
 export GIT_COMMITTER_NAME=finalize-test GIT_COMMITTER_EMAIL=finalize-test@example.invalid
-FINALIZE="$SCRIPT_DIR/../../../../src/agent-skills/experiment-finalize/finalize.sh"
+FINALIZE="$SCRIPT_DIR/../../../../src/orchestration/modules/experiments/definitions/skills/experiment-finalize/finalize.sh"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'

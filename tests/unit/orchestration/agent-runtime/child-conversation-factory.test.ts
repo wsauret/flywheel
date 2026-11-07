@@ -1,3 +1,4 @@
+import { attemptBrief, planEveryCapability } from "../../../helpers/attempt-brief"
 import { workflowAgentInputs } from "../../../helpers/workflow-agent-inputs"
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 import * as fs from "node:fs"
@@ -86,11 +87,12 @@ describe("child conversation factory", () => {
       eventWriter: asAsyncEventWriter(store),
       skills: noSkills,
       personas: new Map(),
+      planCapabilities: planEveryCapability,
       resolvedAgents: new Map([["work", definition]]),
       recall: noConversationRecall,
     }).worker
 
-    await worker(step, "prompt", "", undefined, "worker-conversation")
+    await worker(step, attemptBrief("prompt"), undefined, "worker-conversation")
 
     if (!captured) throw new Error("Missing child conversation factory")
     const child = await captured("nested-child")

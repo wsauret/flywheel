@@ -6,6 +6,7 @@ import {
 import { renderSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../src/infra/agent-assets/system-prompt.js";
 import { fileTemporaryDirectory, testDirectories } from "../../../helpers/directories.js";
+import { promptOptions } from "../../../helpers/prompt-capabilities.js";
 
 // The prompt of an agent of a workflow: the unattended block and the stable
 // tier that every such agent shares. The assembler suite owns the prompt kinds
@@ -33,7 +34,7 @@ const buildSystemPrompt = (...args: Parameters<typeof buildSystemPromptTiers>): 
 
 describe("buildSystemPrompt -- agent of a workflow", () => {
   const build = (overrides: UnknownRecord = {}) =>
-    buildSystemPrompt({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "workflow-agent", unattended: true, agentsMd, ...overrides });
+    buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "workflow-agent", unattended: true, agentsMd, ...overrides }));
 
   it("contains core sections, tools, and agentsMd", () => {
     const result = build();
@@ -78,10 +79,12 @@ describe("buildSystemPrompt -- agent of a workflow", () => {
 // opening turn (ARCH-CONTEXT-018).
 describe("buildSystemPrompt -- every agent of a workflow", () => {
   it("puts the doctrine in the stable tier", () => {
-    const tiers = buildSystemPromptTiers({
+    const tiers = buildSystemPromptTiers(promptOptions({
       corePrompt, engineeringDoctrine, tools: TOOLS, promptKind: "workflow-agent", unattended: true, agentsMd,
       scratchDir: "/scratch", checkpointAvailable: true, selfDebug: true, envBlock: "<env>cwd</env>",
-    });
-    expect(tiers.stable).toContain(engineeringDoctrine);
+    }));
+    // The bundled doctrine renders for the tree check: with a shell it keeps its commit procedure, and no marker remains.
+    for (const section of ["WRITING:", "COMMITS:", "A repository-changing unit is complete only when", "ELEGANCE:"]) expect(tiers.stable).toContain(section);
+    expect(tiers.stable).not.toContain("{{");
   });
 });

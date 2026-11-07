@@ -49,7 +49,7 @@ import {
   withoutRetiredToolSteering,
 } from "../../../../src/workflows/vm/persona-identity-proofs.js"
 import { repoDefinitions } from "../../../helpers/project-definitions.js"
-import { beforeBudgetCut, beforeLexiconCut, beforePromptSwitchCut, beforeScenarioBudgetCut, beforeToolSteeringCut } from "../../orchestration/migrations/_persona-budget.js"
+import { beforeBudgetCut, beforeLexiconCut, beforePromptSwitchCut, beforeScenarioBudgetCut, beforeToolSteeringCut, personasAtCapabilityTextBase } from "../../orchestration/migrations/_persona-budget.js"
 import { retiredStepIdentity, withoutRetiredStepScopes } from "../../../../src/workflows/vm/retired-step-identity.js"
 import { parseWorkflowSessionFact } from "../../../../src/workflows/vm/session-facts.js"
 import { StepGrammarWorkflowSchema, type StepGrammarWorkflow } from "../../../../src/workflows/retired-step-grammar/schema.js"
@@ -389,7 +389,8 @@ describe("a persona identity that a build before the advisor default recorded", 
 })
 
 describe("a persona hash that a build before the workflow lexicon recorded", () => {
-  const bundled = repoDefinitions().captureRevision().personas
+  // The personas as they read before the capability-text edit, which no proof covers.
+  const bundled = personasAtCapabilityTextBase(repoDefinitions().captureRevision().personas)
   const named = (name: string): AgentDefinition => {
     const persona = bundled.get(name)
     if (!persona) throw new Error(`Expected the bundled ${name}`)

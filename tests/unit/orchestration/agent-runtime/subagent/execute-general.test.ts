@@ -104,14 +104,14 @@ describe("subagent tool — general agent dispatch", () => {
     rmSync(sessionDir, { recursive: true, force: true });
   });
 
-  it("adds the checkpoint tools to a continuation whose recorded tool list has none, and keeps its recorded grants", () => {
+  it("adds the checkpoint tools to a continuation whose recorded tool list has none, and keeps its recorded grants", async () => {
     const deps = generalDeps();
     const continuation: ContinuationTarget = {
       childSessionId: "child", childConversationId: "child-conversation", childRunId: "child-run",
       attempt: { kind: "same_run", expectedSeq: 1 }, task: "recorded task", toolNames: ["read", "bash", "handoff"], personaKind: "general",
       capabilityGrant: grantOf(["subagents"]), admittedModuleIds: [], skillsRevision: 0, maxTurns: 7, maxTokens: 0,
     };
-    const prepared = prepareSubagentTools({ agent: deps.agentRegistry.get("general")!, context: makeContext({ availableTools: PARENT_TOOLS }), deps, childDepth: 1, continuation });
+    const prepared = await prepareSubagentTools({ agent: deps.agentRegistry.get("general")!, context: makeContext({ availableTools: PARENT_TOOLS }), deps, childDepth: 1, continuation });
     if (!prepared.ok) throw new Error("the continuation was refused");
     expect(prepared.toolNames).toEqual(["read", "bash", "handoff", "checkpoint_read", "checkpoint_replace", "checkpoint_decide"]);
     expect(prepared.task).toBe("recorded task");

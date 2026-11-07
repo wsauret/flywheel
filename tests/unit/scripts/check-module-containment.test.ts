@@ -47,6 +47,13 @@ describe("check-module-containment", () => {
     expect(summary(report)).toEqual(["src/orchestration/app-service/host.ts module-id gizmo"]);
   });
 
+  test("a tool term that shares a module's spelling passes as the argument of a capability check", () => {
+    const report = violations({
+      "src/orchestration/app-service/host.ts": 'import type { ModuleId } from "../modules.js"\nexport const shell = (has: (term: string) => boolean) => has("gizmo") && disabledToolReason("widget", selection) === undefined\n',
+    });
+    expect(summary(report)).toEqual([]);
+  });
+
   test("the same literal in the module's homes and the registries passes", () => {
     const report = violations({
       "src/orchestration/modules/gizmo.ts": 'import type { FirstPartyModule } from "../modules.js"\nexport const gizmoModule = { id: "gizmo", dependencies: ["widget"] } as const satisfies FirstPartyModule\n',

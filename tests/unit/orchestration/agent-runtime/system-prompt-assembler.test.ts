@@ -21,6 +21,7 @@ import { testDirectories } from "../../../helpers/directories.js";
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js";
 import { NO_MODULE_RUNTIMES } from "../../../../src/infra/module-runtime.js";
 import { testKernelToolDeps } from "../../../helpers/request-tool-surface.js";
+import { promptCapabilities, promptOptions } from "../../../helpers/prompt-capabilities.js";
 
 const bashDefinition = createBashDefinition();
 
@@ -83,7 +84,7 @@ const ROLE_SPECIFIC_REMAINDER = ["Spec Quality Bar", "Documentarian mode", "Fals
 
 describe("buildSystemPrompt -- chat", () => {
   const build = (overrides: UnknownRecord = {}) =>
-    buildSystemPrompt({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat", chatHost: { communication: true }, ...overrides });
+    buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat", chatHost: { communication: true }, ...overrides }));
 
   it("contains core system prompt sections, tools, communication, and guidelines", () => {
     const result = build();
@@ -114,7 +115,6 @@ describe("buildSystemPrompt -- chat", () => {
     });
     expect(withScratch).toContain("# Scratchpad Directory");
     expect(withScratch).toContain("`/proj/.flywheel/sessions/s1/scratch`");
-    expect(withScratch).toContain("bun <script>.ts");
     expect(withScratch).toContain("All scratch is disposable");
     expect(withScratch).toContain("Keep working context in the scoped checkpoint");
 
@@ -149,17 +149,25 @@ describe("buildSystemPrompt -- chat", () => {
   });
 
   it("requires the canonical review skill for every nontrivial completed code change", () => {
-    const tools = [...TOOLS, spec("skill", { description: "Load a skill package." })];
-    const result = build({ tools, chatChangeReviewSkillAvailable: true });
+    const tools = [...TOOLS, spec("skill", { description: "Load a skill package." }), spec("subagent"), spec("workflow")];
+    const result = build({ tools, skills: ["code-review"] });
 
     expect(result).toContain("CHAT CHANGE REVIEW:");
     expect(result).toContain('load the `code-review` skill with the `skill` tool');
-    expect(result).toContain("your own edits, an implementation subagent's result, or an implementation workflow's terminal result");
+    expect(result).toContain("your own edits or a delegated result, whether");
+    expect(result).toContain("an objection to the structure starts a reshape.");
+    expect(build({ tools, skills: ["code-review", "design"] })).toContain("starts a reshape, as the `design` skill states.");
     expect(result).toContain("The skill scales its reviewer set");
     expect(result).toContain("fix valid findings, and verify with the narrowest check");
     // The first-draft revision rule has one home: this block.
     expect(result.match(/realign what missed it/g)).toHaveLength(1);
-    expect(result).toContain("Read its recorded deviations yourself: a workflow handoff carries them in its declared output");
+    expect(result).toContain("Read its recorded deviations yourself: a workflow handoff carries them in its declared output, a subagent completion in its summary.");
+    expect(build({ tools: [...TOOLS, spec("subagent")] })).toContain("Read its recorded deviations yourself: a subagent completion carries them in its summary.");
+    expect(build({ tools: [...TOOLS, spec("workflow")] })).toContain("Read its recorded deviations yourself: a workflow handoff carries them in its declared output.");
+    // A chat that can delegate nothing reads no delegation wording, and keeps the first-draft rule for its own edits.
+    const alone = build();
+    expect(alone).toContain("Every completed code change is a first draft, never a completion. Its intent is the approved design");
+    for (const delegation of ["workflow", "subagent", "delegated result"]) expect(alone).not.toContain(delegation);
     expect(result).not.toContain("single source of truth");
     expect(result).not.toContain("Always include reviewer-elegance");
     expect(result).not.toContain("reviewer-architecture");
@@ -167,7 +175,7 @@ describe("buildSystemPrompt -- chat", () => {
 
   it("keeps the first-draft rule but names no review skill unless both review inputs are available", () => {
     const tools = [...TOOLS, spec("skill", { description: "Load a skill package." })];
-    for (const result of [build({ chatChangeReviewSkillAvailable: true }), build({ tools })]) {
+    for (const result of [build({ skills: ["code-review"] }), build({ tools })]) {
       expect(result).toContain("CHAT CHANGE REVIEW:");
       expect(result).toContain("review the draft yourself");
       expect(result).not.toContain("load the `code-review` skill");
@@ -193,15 +201,15 @@ describe("buildSystemPrompt -- memory snapshot", () => {
     if (!contribution || contribution.domain !== "promptFragments") throw new Error("Learning prompt contribution is missing");
     const memoryTool: RuntimeTool = { name: "memory", action: "ui_meta", description: "memory", inputSchema: { type: "object", properties: {} }, isConcurrencySafe: true, execute: async () => ({ content: "", outcome: "ok" }) };
     const tools = new Map(writable ? [["memory", memoryTool]] : []);
-    const rendered = await contribution.value.render({ kernel: testKernelToolDeps(), modules: NO_MODULE_RUNTIMES, tools, memorySnapshot: snapshot });
+    const rendered = await contribution.value.render({ kernel: testKernelToolDeps(), modules: NO_MODULE_RUNTIMES, tools, memorySnapshot: snapshot, capabilities: promptCapabilities([...tools.values()]) });
     if (rendered === undefined) throw new Error("Learning prompt rendered nothing for a snapshot");
     return rendered;
   }
   const snapshot = "PROJECT MEMORY (user preferences and working context for this project) [reach: project | sha256:abc123 | 10% - 20/200 chars]\nUses bun everywhere.";
 
   it("renders the frozen snapshot for chat and step workers", async () => {
-    const chat = buildSystemPrompt({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat", moduleFragments: [await learningPrompt(false)] });
-    const worker = buildSystemPrompt({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "workflow-agent", moduleFragments: [await learningPrompt(false)] });
+    const chat = buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat", moduleFragments: [await learningPrompt(false)] }));
+    const worker = buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "workflow-agent", moduleFragments: [await learningPrompt(false)] }));
 
     for (const prompt of [chat, worker]) {
       expect(prompt).toContain("# Durable Memory");
@@ -211,18 +219,18 @@ describe("buildSystemPrompt -- memory snapshot", () => {
       expect(prompt).toContain("not session notes");
       expect(prompt).toContain("AGENTS.md or its existing authority, not memory");
       expect(prompt).toContain("Entries labeled [protected] are user-owned");
-      expect(prompt).toContain("Never use memory, file-edit, shell, CLI, or other tools");
+      expect(prompt).toContain("Never use memory or any other tool to change their content");
     }
   });
 
   it("permits updates only when the memory mutation tool is present", async () => {
-    const prompt = buildSystemPrompt({
+    const prompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
       corePrompt,
       tools: [...TOOLS, spec("memory")],
       envBlock: undefined,
       moduleFragments: [await learningPrompt(true)],
-    });
+    }));
 
     expect(prompt).toContain("memory tool writes are durable at once and appear here in a later snapshot");
     expect(prompt).toContain("Saving nothing is often correct");
@@ -230,7 +238,7 @@ describe("buildSystemPrompt -- memory snapshot", () => {
   });
 
   it("names the two reaches and carries each block's identity into the audited part", async () => {
-    const part = buildSystemPromptParts({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat", moduleFragments: [await learningPrompt(false)] })
+    const part = buildSystemPromptParts(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat", moduleFragments: [await learningPrompt(false)] }))
       .find((candidate) => candidate.label === "module fragment");
 
     expect(part?.text).toContain("Project reach applies to this project only");
@@ -239,20 +247,20 @@ describe("buildSystemPrompt -- memory snapshot", () => {
   });
 
   it("renders any snapshot supplied by its host without inferring policy from prompt kind", async () => {
-    const prompt = buildSystemPrompt({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "subagent", moduleFragments: [await learningPrompt(false)] });
+    const prompt = buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "subagent", moduleFragments: [await learningPrompt(false)] }));
     expect(prompt).toContain("Durable Memory");
     expect(prompt).toContain("Uses bun everywhere.");
   });
 
   it("adds no block when there is no snapshot", () => {
-    const prompt = buildSystemPrompt({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat" });
+    const prompt = buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat" }));
     expect(prompt).not.toContain("Durable Memory");
   });
 });
 
 describe("buildSystemPrompt -- subagent", () => {
   const build = (overrides: UnknownRecord = {}) =>
-    buildSystemPrompt({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "subagent", ...overrides });
+    buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "subagent", ...overrides }));
 
   it("does NOT contain the communication block or chat review guidance", () => {
     const result = build({ agentsMd });
@@ -283,25 +291,25 @@ describe("buildSystemPrompt -- elegance and proportionality doctrine", () => {
   const KINDS = ["chat", "workflow-agent", "subagent", "headless"] as const;
 
   for (const promptKind of KINDS) {
-    const compile = (tools: ToolPromptFields[]) => buildSystemPrompt({
+    const compile = (tools: ToolPromptFields[]) => buildSystemPrompt(promptOptions({
       corePrompt,
       engineeringDoctrine,
       tools,
       envBlock: undefined,
       promptKind,
-    });
+    }));
 
     it(`${promptKind} carries the elegance doctrine`, () => {
       for (const marker of ELEGANCE_MARKERS) expect(compile(TOOLS)).toContain(marker);
     });
 
     it(`${promptKind} omits the doctrine when the runner opted out`, () => {
-      const withoutDoctrine = buildSystemPrompt({
+      const withoutDoctrine = buildSystemPrompt(promptOptions({
         corePrompt,
           tools: TOOLS,
         envBlock: undefined,
         promptKind,
-      });
+      }));
       for (const section of DOCTRINE_SECTIONS) expect(withoutDoctrine).not.toContain(section);
       for (const marker of ELEGANCE_MARKERS) expect(withoutDoctrine).not.toContain(marker);
     });
@@ -330,20 +338,20 @@ describe("buildSystemPrompt -- elegance and proportionality doctrine", () => {
 
 describe("buildSystemPrompt -- cross-cutting", () => {
   it("undefined optional blocks produce no empty separators", () => {
-    const result = buildSystemPrompt({ corePrompt, tools: [], envBlock: undefined, promptKind: "chat" });
+    const result = buildSystemPrompt(promptOptions({ corePrompt, tools: [], envBlock: undefined, promptKind: "chat" }));
     expect(result).not.toContain(SEPARATOR + SEPARATOR);
     expect(result).not.toMatch(/---\s*$/);
   });
 
   it("section separator appears between known sections", () => {
-    const result = buildSystemPrompt({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat" });
+    const result = buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat" }));
     const between = result.slice(result.indexOf("CONSTRAINTS:"), result.indexOf("Available tools:"));
     expect(between).toContain("---");
   });
 
   it("buildSystemPrompt is deterministic -- same inputs produce identical output", () => {
     const opts = { corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "workflow-agent" as const, agentsMd };
-    expect(buildSystemPrompt(opts)).toBe(buildSystemPrompt(opts));
+    expect(buildSystemPrompt(promptOptions(opts))).toBe(buildSystemPrompt(promptOptions(opts)));
   });
 });
 
@@ -445,12 +453,12 @@ describe("cross-tool batching guideline", () => {
   const BATCHING = "Independent tool calls in one turn run concurrently and return together";
 
   it("buildSystemPrompt injects the canonical batching guideline exactly once", () => {
-    const result = buildSystemPrompt({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat" });
+    const result = buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat" }));
     expect(result.split(BATCHING).length - 1).toBe(1);
   });
 
   it("instructs grouping independent calls but serializing read-before-edit dependencies, consistent with purposeful tool use", () => {
-    const result = buildSystemPrompt({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat", chatHost: { communication: true } });
+    const result = buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat", chatHost: { communication: true } }));
     expect(result).toContain("reading a file before editing it");
     expect(result).toContain("not making unnecessary ones");
     expect(result).toContain("batch independent calls with distinct inputs");
@@ -469,7 +477,7 @@ describe("secret redaction marker guideline", () => {
   const MARKER_GUIDANCE = "usually marks a runtime redaction, not the true bytes";
 
   it("buildSystemPrompt injects the redaction-marker guidance exactly once", () => {
-    const result = buildSystemPrompt({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat" });
+    const result = buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat" }));
     expect(result.split(MARKER_GUIDANCE).length - 1).toBe(1);
     expect(result).toContain("Never copy");
   });
@@ -477,13 +485,13 @@ describe("secret redaction marker guideline", () => {
 
 describe("global guideline selection", () => {
   it("maps a selected canonical list while retaining tool-owned guidance and examples", () => {
-    const result = buildSystemPrompt({
+    const result = buildSystemPrompt(promptOptions({
       corePrompt,
       tools: TOOLS,
       envBlock: undefined,
       promptKind: "headless",
       globalGuidelineIds: ["batch-independent-tool-calls"],
-    });
+    }));
 
     expect(result).toContain("Independent tool calls in one turn run concurrently");
     expect(result).not.toContain("saved-output file");
@@ -494,13 +502,13 @@ describe("global guideline selection", () => {
   });
 
   it("keeps proportionality tied to request tools when a native guideline list is selected", () => {
-    const result = buildSystemPrompt({
+    const result = buildSystemPrompt(promptOptions({
       corePrompt,
       tools: [...TOOLS, spec("subagent")],
       envBlock: undefined,
       promptKind: "headless",
       globalGuidelineIds: ["secret-redaction-marker"],
-    });
+    }));
 
     expect(result).toContain("PROPORTIONALITY:");
   });
@@ -508,7 +516,7 @@ describe("global guideline selection", () => {
 
 describe("renderCommunicationBlock", () => {
   it("produces the voice paragraph, core rules, and client-neutral Markdown mechanics", () => {
-    const result = renderCommunicationBlock({ progress: "Send short updates.", modelNotes: "" });
+    const result = renderCommunicationBlock({ progress: "Send short updates.", modelNotes: "" }, promptCapabilities([]));
     expect(result).toContain("COMMUNICATION:");
     expect(result).toContain("Core rules:");
     expect(result).toContain("Markdown mechanics:");
@@ -526,14 +534,22 @@ describe("renderCommunicationBlock", () => {
   });
 
   it("discusses in prose and confirms through ask_user when the decision UI is available", () => {
-    const result = renderCommunicationBlock({ progress: "", modelNotes: "" }, true);
+    const result = renderCommunicationBlock({ progress: "", modelNotes: "" }, promptCapabilities([{ name: "ask_user" }]));
 
     expect(result).toContain("Use `ask_user` only after the discussion has settled");
     expect(result).not.toContain("so that the user can reply with a single number");
   });
 
+  it("points a challenge to the design skill only while that skill can load", () => {
+    const withDesign = renderCommunicationBlock({ progress: "", modelNotes: "" }, promptCapabilities([{ name: "skill" }], ["design"]));
+    const without = renderCommunicationBlock({ progress: "", modelNotes: "" }, promptCapabilities([]));
+    expect(withDesign).toContain("apply the Challenge method of the `design` skill: restate their model");
+    expect(without).toContain("proposes a simpler model, restate their model");
+    expect(without).not.toContain("`design` skill");
+  });
+
   it("renders shared and provider model notes in one section", () => {
-    const result = renderCommunicationBlock({ progress: "Send updates.", modelNotes: "- Extra note for this model." });
+    const result = renderCommunicationBlock({ progress: "Send updates.", modelNotes: "- Extra note for this model." }, promptCapabilities([]));
     expect(result.match(/MODEL NOTES:/g)).toHaveLength(1);
     expect(result).toContain("- Use tools purposefully. Do not call a tool unless the task requires it.");
     expect(result).toContain("- Extra note for this model.");
@@ -552,7 +568,7 @@ function assertSectionInventory(compiled: string, expectedSections: string[]): v
 }
 
 describe("regression -- subagent section inventory", () => {
-  const compiled = buildSystemPrompt({ corePrompt, engineeringDoctrine, tools: TOOLS, envBlock: undefined, promptKind: "subagent" });
+  const compiled = buildSystemPrompt(promptOptions({ corePrompt, engineeringDoctrine, tools: TOOLS, envBlock: undefined, promptKind: "subagent" }));
   assertSectionInventory(compiled, [...CORE_SECTIONS, ...DOCTRINE_SECTIONS, "Available tools:", "Guidelines:"]);
 
   it("does NOT contain sections reserved for step-agent/chat", () => {
@@ -562,7 +578,7 @@ describe("regression -- subagent section inventory", () => {
 });
 
 describe("regression -- step-agent section inventory", () => {
-  const compiled = buildSystemPrompt({ corePrompt, engineeringDoctrine, tools: TOOLS, envBlock: undefined, promptKind: "workflow-agent", agentsMd: "Always use Bun, not Node." });
+  const compiled = buildSystemPrompt(promptOptions({ corePrompt, engineeringDoctrine, tools: TOOLS, envBlock: undefined, promptKind: "workflow-agent", agentsMd: "Always use Bun, not Node." }));
   assertSectionInventory(compiled, [
     ...CORE_SECTIONS, ...DOCTRINE_SECTIONS, "Available tools:", "Guidelines:", "# Examples", "# AGENTS.md Instructions",
   ]);
@@ -574,13 +590,15 @@ describe("regression -- step-agent section inventory", () => {
 
 describe("skill guidance gating", () => {
   const skillTool = createSkillTool({
+    treeCapabilities: () => true,
+    availability: { skills: new Map() },
     revision: skillRevision,
     personaIndex: {},
   });
 
   it("advertises the roster and the scan-then-load rule only when the skill tool is exposed", () => {
-    const withSkill = buildSystemPrompt({ corePrompt, tools: [...TOOLS, skillTool], envBlock: undefined, promptKind: "chat" });
-    const withoutSkill = buildSystemPrompt({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat" });
+    const withSkill = buildSystemPrompt(promptOptions({ corePrompt, tools: [...TOOLS, skillTool], envBlock: undefined, promptKind: "chat" }));
+    const withoutSkill = buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat" }));
 
     expect(withSkill).toContain("Installed skills");
     expect(withSkill).toContain("pdf-processing");
@@ -592,7 +610,7 @@ describe("skill guidance gating", () => {
   });
 
   it("teaches the skill actions without the legacy list and page controls", () => {
-    const withSkill = buildSystemPrompt({ corePrompt, tools: [...TOOLS, skillTool], envBlock: undefined, promptKind: "chat" });
+    const withSkill = buildSystemPrompt(promptOptions({ corePrompt, tools: [...TOOLS, skillTool], envBlock: undefined, promptKind: "chat" }));
     const skillLines = withSkill.split("\n").filter((line) => line.includes('action:"load"'));
 
     expect(skillLines.length).toBeGreaterThan(0);
@@ -607,7 +625,7 @@ describe("skill guidance gating", () => {
 // discipline. Task method is loaded from a package, so no package body may be
 // baked in for every runner regardless of the work.
 describe("always-on kernel carries no package body", () => {
-  const compiled = buildSystemPrompt({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat" });
+  const compiled = buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat" }));
 
   it("leaves method owned by a package out of it", () => {
     for (const migrated of [
@@ -649,9 +667,9 @@ describe("buildSystemPrompt -- session identity", () => {
   const messageTools = [...TOOLS, spec("message_session"), spec("list_sessions")];
   const child = { sessionId: "child-1", rootSessionId: "root-1", conversationId: "child-conversation", kind: "subagent" as const, parent: { sessionId: "root-1", name: "Fix the parser" } };
   const root = { sessionId: "root-1", rootSessionId: "root-1", conversationId: "root-conversation", kind: "chat" as const };
-  const identitySection = (identity: typeof child | typeof root) => buildSystemPromptParts({
+  const identitySection = (identity: typeof child | typeof root) => buildSystemPromptParts(promptOptions({
     corePrompt, tools: messageTools, promptKind: "chat", sessionIdentity: identity,
-  }).find((part) => part.label === "session identity");
+  })).find((part) => part.label === "session identity");
 
   it("states the id, the kind, and the parent of a child, and is the same in every request", () => {
     const first = identitySection(child);
@@ -661,14 +679,15 @@ describe("buildSystemPrompt -- session identity", () => {
     expect(identitySection(root)?.text).toContain("You are session root-1, a root chat.");
     // list_sessions leaves out a session's own children, so both texts say
     // where they are.
-    for (const identity of [child, root]) expect(identitySection(identity)?.text).toContain("list_sessions shows targets that you did not start. Your own child sessions and workflows are in process(action='list').");
+    for (const identity of [child, root]) expect(identitySection(identity)?.text).toContain("list_sessions shows targets that you did not start. Your own children are in process(action='list').");
   });
 
   it("sends a child to its parent wherever an instruction says to ask the user, has a root answer a waiting child first, and tells only a root how to treat other root chats", () => {
     const text = identitySection(child)?.text ?? "";
     expect(text).toContain("message your parent with wait true");
     expect(text).toContain("Where any instruction tells you to ask the user or the person, message your parent instead.");
-    expect(identitySection(root)?.text).toContain("Reply to the exact child session that asked you before you end your turn. If you need the person first, ask the person, then reply to that session.");
+    expect(identitySection(root)?.text).toContain("Reply to the exact session that asked you before you end your turn. If you need the person first, ask the person, then reply to that session.");
+    expect(identitySection(root)?.text).toContain("A completion notice ends the open questions of the session that it reports.");
     for (const [identity, toldAboutRootChats] of [[root, true], [child, false]] as const) expect(identitySection(identity)?.text.includes("another root chat")).toBe(toldAboutRootChats);
   });
 
@@ -683,6 +702,6 @@ describe("buildSystemPrompt -- session identity", () => {
       const text = identitySection(identity)?.text ?? "";
       for (const name of moduleTools) expect(text).not.toMatch(new RegExp(`(?<![\\w'])${name}(?![\\w'])`));
     }
-    expect(buildSystemPromptParts({ corePrompt, tools: TOOLS, promptKind: "chat", sessionIdentity: root }).some((part) => part.label === "session identity")).toBe(false);
+    expect(buildSystemPromptParts(promptOptions({ corePrompt, tools: TOOLS, promptKind: "chat", sessionIdentity: root })).some((part) => part.label === "session identity")).toBe(false);
   });
 });

@@ -1,6 +1,6 @@
 import { FUNCTION_TOOL_PRESENTATION, type ConversationMessage, type LLMClient, type ModelClient, type ProviderStreamEvent as StreamEvent, type StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { ToolPromptFields } from "../../../../../src/orchestration/agent-runtime/system-prompt.js";
-import { RequestToolMap, testBaseTools, testCapabilityModules, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
+import { RequestToolMap, testBaseTools, testCapabilityModules, testDefinitionAvailability, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
 import { createCheckpointTool } from "../../../../../src/orchestration/agent-runtime/tools/session-checkpoint.js";
 import { emptyConversationCheckpoint, type ConversationCheckpointOwner } from "../../../../../src/orchestration/session/conversation-checkpoint.js";
 import { asModelClient, ownHistoryTarget } from "../_model-client.js";
@@ -135,9 +135,10 @@ export async function budgetCaptureSurface(
   const owner = await createRequestToolSurface(() => {
     const selected = tools();
     return {
-      eligibleTools: selected, tools: selected, omitted: [], usable: new Set(selected.keys()),
+      eligibleTools: selected, tools: selected, omitted: [], usable: new Set(selected.keys()), turnedOff: [],
       registrationIds: new Map([...selected.keys()].map((name) => [name, name])),
       registrationIdentities: new Map([...selected.keys()].map((name) => [name, name])),
+      definitionAvailability: testDefinitionAvailability(),
     };
   }, () => {
     const captured = generation;

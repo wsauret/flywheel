@@ -69,7 +69,7 @@ export function searchStoppedMessage(tool: "search" | "list", stop: SearchStop):
  * CPU limit, before the shim exits with status 2.
  */
 export function shellSearchStoppedMessage(program: ShellSearchProgram): string {
-  return `${program}: stopped after ${SEARCH_CPU_LIMIT_SECONDS}s of processing time. Narrow the path, or use the search tool, which skips artifact and ignored directories.`;
+  return `${program}: stopped after ${SEARCH_CPU_LIMIT_SECONDS}s of processing time. Narrow the path or the pattern.`;
 }
 
 /**

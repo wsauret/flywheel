@@ -14,27 +14,29 @@ import { canonicalize } from "../../infra/canonical-name.js";
 import { REASONING_EFFORTS, type ReasoningEffort } from "../../infra/llm/models.js";
 import { composeModuleRuntimes, type ModuleRuntimes } from "../../infra/module-runtime.js";
 import type { AgentLoopOptions } from "./agent-loop-types.js";
-import type { ModelClient, ProviderSessionLifetime, ServingAttempt } from "./llm/types.js";
+import type { ConversationMessage, ModelClient, ProviderSessionLifetime, ServingAttempt } from "./llm/types.js";
 import { stableSystemPrompt, type SystemPromptTiers } from "./llm/system-prompt-tiers.js";
 import { promptKindForPurpose } from "./agent-purpose.js";
 import type { CaptureModelRuntime, LLMClientFactory } from "./factory.js";
 import type { RuntimeConfigRequestCapture } from "./request-config.js";
-import type { ProjectDefinitionRegistry } from "../../workflows/definition-registry.js";
+import type { ProjectDefinitionRegistry, ProjectDefinitionRegistryRevision } from "../../workflows/definition-registry.js";
 import type { AgentDefinition } from "../../infra/agent-definition.js";
-import type { SkillDefinition, SkillRegistryRevision } from "../../workflows/skill-schema.js";
+import type { SkillDefinition } from "../../workflows/skill-schema.js";
 import type { FirstPartyModule, FirstPartyModuleComposition } from "../modules.js";
 import { createToolRegistry } from "../tool-catalog.js";
 import { installedModules } from "../module-catalog.js";
 import { skillLoadedFact } from "../../workflows/skill-facts.js";
 import { selectedToolNames } from "./tools/tool-dispatch.js";
-import { planToolExposure, type ToolExposurePlan, type ToolGrant } from "./tools/tool-exposure-planner.js";
-import { learningReviewToolNames, toolRegistryFromComposition } from "./tools/tool-registry.js";
-import type { KernelToolDeps } from "./tools/kernel-tool-deps.js";
-import { requestKernel, sharesTreeHost, type KernelRunFacts } from "./request-kernel.js";
-import { createModuleRuntimeServices } from "./module-runtime-services.js";
-import { createRequestToolSurface, requestModelSelectionKey, type RequestModelSelection, type RequestProviderRuntime } from "./request-tool-surface.js";
+import { callerToolGrant, planToolExposure, type ToolGrant } from "./tools/tool-exposure-planner.js";
+import { deriveChildRuntimeSurfaces, learningReviewToolNames, toolRegistryFromComposition } from "./tools/tool-registry.js";
+import type { RecallPort } from "../../protocol/conversation-recall.js";
+import type { KernelToolDeps, ServingModel } from "./tools/kernel-tool-deps.js";
+import { requestKernel, sharesTreeHost, type KernelRequestFacts, type KernelRunFacts } from "./request-kernel.js";
+import type { CapabilityCheck } from "../../infra/capability-text.js";
+import { createModuleRuntimeServices, type ChildCapabilityRun } from "./module-runtime-services.js";
+import { createRequestToolSurface, requestCapabilities, requestModelSelectionKey, type PlannedRequest, type RequestModelSelection, type RequestProviderRuntime } from "./request-tool-surface.js";
 import { resolveModelInteractionProfile } from "./model-interaction-profile.js";
-import type { Agent, AgentOptions, RunnableAgentOptions } from "./types.js";
+import type { Agent, AgentOptions, RunnableAgentOptions, RuntimeToolSurfaces } from "./types.js";
 import { createChildSlotRegistry } from "./child-slot-registry.js";
 import { loadAgentInstructions } from "./project-instructions.js";
 import { buildSystemPrompt } from "./system-prompt.js";
@@ -50,6 +52,7 @@ import { resolveCapturedRole } from "../config/role-resolution.js";
 import { createModelFallbackNotice } from "./model-fallback-notice.js";
 import { ModelUnavailable } from "./errors.js";
 import { commitToolNotice, toolNotice } from "./tool-notice.js";
+import { createCapabilityNarrowing, narrowingStatements, recordingNarrowings } from "./capability-narrowing.js";
 import { holdSharedTree, treeLogin, type SharedTree, type SharedTreeCapture } from "./shared-tree.js";
 
 /** What builds the inputs of a run's requests: the same for a send and for a pre-start. */
@@ -134,8 +137,7 @@ function learningReview(options: AgentOptions) {
     : undefined;
 }
 
-/** What the runner may call: a side call's fixed grant, or the caller's. A caller's grant names the tools of a persona,
- *  so it leaves the ambient tools callable unless it names no tool at all. */
+/** What the runner may call: a side call's fixed grant, or the caller's (`callerToolGrant`). */
 function toolGrantOf(options: AgentOptions): ToolGrant | undefined {
   switch (options.purpose.kind) {
     case "chat-learning-review":
@@ -147,11 +149,7 @@ function toolGrantOf(options: AgentOptions): ToolGrant | undefined {
     case "subagent-failure-summary":
       return SIDE_CALL_GRANT;
     default:
-      return options.toolGrant && {
-        tools: new Set(options.toolGrant),
-        ambient: options.toolGrant.length > 0,
-        ...(options.withheldTools ? { withheld: new Set(options.withheldTools) } : {}),
-      };
+      return options.toolGrant && callerToolGrant(options.toolGrant, options.withheldTools);
   }
 }
 
@@ -185,6 +183,212 @@ function headlessPromptOf(purpose: AgentOptions["purpose"]) {
   return purpose.kind === "headless-task" || purpose.kind === "learning-review-audit" || purpose.kind === "subagent-failure-summary" ? purpose.prompt : undefined;
 }
 
+/** What plans the tools of a run's requests: the run's source, its session identity, the shared state of its chat
+ *  tree when it is tree-hosted, and its turn when it sends. */
+interface RunToolsSource {
+  readonly input: Omit<RequestInputsSource, "providerRuntimeCache" | "providerSessionLifetime" | "runScope">;
+  readonly runtimeIdentity: Awaited<ReturnType<NonNullable<RuntimeToolSurfaces["sessions"]>["identity"]>> | undefined;
+  readonly tree: SharedTree | undefined;
+  readonly turn?: TurnHooks;
+  /** The serving model that the module runtimes read; absent for a capability plan. */
+  readonly servingModel?: ServingModel;
+  /** What a request's provider runtime gives its kernel: its serving model and its file-edit contract. A capability
+   *  plan has no provider runtime and gives neither. */
+  readonly serving: (providerRuntime: RequestProviderRuntime | undefined) => Pick<KernelRequestFacts, "servingModel" | "fileEditContract">;
+}
+
+/** The modules that a request's plan admits, and the modules that its own selection enables (`live`). A tree-hosted
+ *  request plans from the tree's capture and narrows to its own selection. */
+function requestModulesOf(options: RunnableAgentOptions, tree: SharedTree | undefined) {
+  return {
+    requestModules: tree === undefined ? options.moduleSelection : () => tree.modules,
+    liveModules: (requestModuleSnapshot: FirstPartyModuleComposition): FirstPartyModuleComposition => tree === undefined ? requestModuleSnapshot : options.moduleSelection(),
+  };
+}
+
+function treeCaptureOf(options: RunnableAgentOptions): SharedTreeCapture {
+  const config = options.captureRuntimeConfig();
+  return { modules: options.moduleSelection(), shellWriteGuard: config.shellWriteGuard, allowPersistentProcesses: config.allowPersistentProcesses };
+}
+
+async function runtimeIdentityOf(options: RunnableAgentOptions, sessionId: string | undefined): Promise<RunToolsSource["runtimeIdentity"]> {
+  return sessionId && options.runtimeSurfaces.sessions ? await options.runtimeSurfaces.sessions.identity(sessionId) : undefined;
+}
+
+// The surfaces that a child gets once it is published: its own handoff, background owner, and recall. A capability
+// plan reads only that they are there, and calls none of them.
+const PLANNED_CHILD_HANDOFF: NonNullable<RuntimeToolSurfaces["handoff"]> = { onContent: () => { throw new Error("A capability plan runs no tool.") } };
+const PLANNED_CHILD_RECALL: RecallPort = () => Promise.reject(new Error("A capability plan runs no tool."));
+
+/** The options that the first request of a child that `options` start plans from: this run's options with the
+ *  child's purpose and grant, and the runtime surfaces that a child gets (`deriveChildRuntimeSurfaces`). */
+export function childRunOptions(options: RunnableAgentOptions, child: ChildCapabilityRun): RunnableAgentOptions {
+  const { toolNames: _names, toolActions: _actions, toolProfile: _profile, toolGrant: _grant, withheldTools: _withheld, readOnly: _readOnly, allowedSubagentTypes: _types, ...run } = options;
+  const surfaces = options.runtimeSurfaces;
+  return {
+    ...run, ...child,
+    runtimeSurfaces: {
+      ...deriveChildRuntimeSurfaces(surfaces, { handoff: PLANNED_CHILD_HANDOFF, ...(surfaces.background ? { background: surfaces.background } : {}) }),
+      recall: PLANNED_CHILD_RECALL,
+    },
+  };
+}
+
+/** Plans the tools of a run's requests: the one path that a send, a pre-start, and a capability plan
+ *  (`planRunCapabilities`) take. It builds the run's module runtimes and its kernel for each request. */
+function runToolPlanner(source: RunToolsSource) {
+  const { input, runtimeIdentity, tree, turn } = source;
+  const { options, definitions, conversation, createRunner } = input;
+  const promptKind = promptKindForPurpose(options.purpose);
+  const sessionId = conversation.sessionId;
+  const review = learningReview(options);
+  const { liveModules } = requestModulesOf(options, tree);
+  // Module auxiliary work can outlive this run. Its caller supplies any retained provider lifetime.
+  const createLLMClient: LLMClientFactory = async (model, moduleSnapshot, runtimeConfig, lifetime) => {
+    const capture = await input.captureModelRuntime();
+    return capture.createLLMClient(model, moduleSnapshot, runtimeConfig, lifetime);
+  };
+  const runtimeSurfaces = options.runtimeSurfaces;
+  const background = runtimeSurfaces.background;
+  const childSlots = options.childSlots ?? createChildSlotRegistry();
+  const registry = input.personas;
+  const selected = selectedToolNames(options);
+  const granted = toolGrantOf(options);
+  // Dispatching a subagent starts work that outlives this turn, so it takes a
+  // host that owns it. No owner, no dispatch surface.
+  const dispatchOwner = registry.size > 0 ? background : undefined;
+  const resources = resolveConversationResources(options.sessionDir, conversation.aggregateId, review?.reviewRunId, runtimeIdentity?.importedResources);
+  const checkpointOwner = conversation.requestAccounting?.owner ?? (sessionId ? { kind: "session" as const, sessionId } : undefined);
+  const checkpointConversationId = review?.reviewRunId ?? conversation.aggregateId;
+  const checkpoint = createRuntimeSessionNotes(options, checkpointConversationId, checkpointOwner);
+
+  // Loads survive every wake of this retained runner. Learning review needs all
+  // loaded IDs, while execution policy trusts bundled package authority only.
+  const { loadedSkillIds = new Set<string>(), loadedBundledSkillIds = new Set<string>() } = input;
+
+  // A child plans from this run's conversation: the tree it shares and the
+  // checkpoint it gets are this run's tree and a checkpoint of its own.
+  const planChildCapabilities = (child: ChildCapabilityRun): Promise<CapabilityCheck> => planRunCapabilities({
+    options: childRunOptions(options, child), definitions, conversation, personas: registry,
+    captureModelRuntime: input.captureModelRuntime, createRunner,
+  });
+  const services = createModuleRuntimeServices({
+    options, conversation, definitions, promptKind, personas: registry, childSlots,
+    ...(source.servingModel ? { servingModel: source.servingModel } : {}),
+    createRunner, planChildCapabilities, createLLMClient, loadedSkillIds,
+    budgetStreamId: budgetStreamIdOf(conversation),
+    auxiliaryRequestAudit: turn?.auxiliaryRequestAudit ?? createRuntimeRequestAudit(options, conversation),
+    ...(turn?.usage.usageSettlement ? { usageSettlement: turn.usage.usageSettlement } : {}),
+    ...(review ? { review } : {}),
+    ...(dispatchOwner ? { dispatchOwner } : {}),
+  });
+  // Module runtimes follow each request's module snapshot (ARCH-STRUCTURE-027). A
+  // module's runtime is built the first time a request finds the module
+  // enabled and lives as long as the runner; a module that was never enabled
+  // never runs its factory. Each generation holds only the modules its
+  // request enables, and the host hears every new generation before the
+  // request that planned it is sent.
+  const runtimeInstances = new Map<string, unknown>();
+  let runtimeGeneration: { readonly key: string; readonly modules: ModuleRuntimes } | undefined;
+  const moduleRuntimesFor = async (requestModuleSnapshot: FirstPartyModuleComposition): Promise<ModuleRuntimes> => {
+    const enabledModuleIds = new Set(requestModuleSnapshot.enabledModuleIds);
+    const enabled = installedModules().flatMap((module: FirstPartyModule) => module.runtime && enabledModuleIds.has(module.id) ? [{ id: module.id, runtime: module.runtime }] : []);
+    const key = enabled.map(({ id }) => id).join("\u0000");
+    if (runtimeGeneration?.key === key) return runtimeGeneration.modules;
+    for (const { id, runtime } of enabled) if (!runtimeInstances.has(id)) runtimeInstances.set(id, runtime.create(services));
+    const modules = composeModuleRuntimes(enabled.map(({ id }) => [id, runtimeInstances.get(id)] as const));
+    runtimeGeneration = { key, modules };
+    if (turn) await options.lifecycle.onRuntimeAssembled?.({ modules });
+    return modules;
+  };
+  // Tool execution reads the generation that its request planned.
+  const moduleRuntimes: ModuleRuntimes = { get: (handle) => runtimeGeneration?.modules.get(handle) };
+
+  const onSkillLoad = async (skill: SkillDefinition): Promise<void> => {
+    if (review && !options.sessionEventWriter) throw new Error("self-review skill loads require a durable fact writer");
+    if (options.sessionEventWriter) {
+      const stored = await options.sessionEventWriter.record(skillLoadedFact({ name: skill.id }));
+      if (!stored) throw new Error("skill load fact writer was disposed before the load landed");
+    }
+    loadedSkillIds.add(skill.id);
+    if (skill.source.authority === "bundled") loadedBundledSkillIds.add(skill.id);
+  };
+  // What every request of the run gives its kernel (`requestKernel`).
+  const kernelRun: KernelRunFacts = {
+    options,
+    surfaces: runtimeSurfaces,
+    personas: registry,
+    ...(background ? { backgroundTasks: background.tasks } : {}),
+    ...(checkpoint ? { checkpoint } : {}),
+    treeHosted: sharesTreeHost(options.purpose),
+    captureProviderConnection: async () => {
+      const runtime = await input.captureModelRuntime();
+      if (!runtime.captureProviderConnection) throw new Error("This runtime has no model access capture.");
+      return runtime.captureProviderConnection();
+    },
+    onSkillLoad,
+  };
+  const kernelOf = (
+    requestModuleSnapshot: FirstPartyModuleComposition,
+    runtimeConfig: RuntimeConfigRequestCapture,
+    providerRuntime: RequestProviderRuntime | undefined,
+    definitionRevision: ProjectDefinitionRegistryRevision,
+    live: FirstPartyModuleComposition = liveModules(requestModuleSnapshot),
+  ): KernelToolDeps => requestKernel(kernelRun, {
+    moduleSnapshot: requestModuleSnapshot, live, runtimeConfig, definitions: definitionRevision,
+    shellWriteGuard: tree?.shellWriteGuard ?? runtimeConfig.shellWriteGuard,
+    persistentProcessesAdvertised: tree?.allowPersistentProcesses ?? runtimeConfig.allowPersistentProcesses,
+    ...source.serving(providerRuntime),
+  });
+  const planRequestTools = async (
+    requestModuleSnapshot: FirstPartyModuleComposition,
+    runtimeConfig: RuntimeConfigRequestCapture,
+    providerRuntime: RequestProviderRuntime | undefined,
+  ): Promise<PlannedRequest> => {
+    const live = liveModules(requestModuleSnapshot);
+    // Read now, not captured at assembly: the skill tool must observe the
+    // revision published when this request is planned.
+    const kernel = kernelOf(requestModuleSnapshot, runtimeConfig, providerRuntime, definitions.captureRevision(), live);
+    const plan = await planToolExposure({
+      kernel,
+      modules: await moduleRuntimesFor(requestModuleSnapshot),
+      registry: toolRegistryFromComposition(requestModuleSnapshot),
+      ...(live === requestModuleSnapshot ? {} : { live }),
+      ...(selected ? { selected } : {}),
+      ...(granted ? { granted } : {}),
+      ...(options.toolProfile ? { profile: options.toolProfile } : {}),
+    });
+    return { ...plan, definitionAvailability: kernel.definitionAvailability };
+  };
+  return { planRequestTools, kernelOf, moduleRuntimesFor, moduleRuntimes, checkpoint, checkpointOwner, checkpointConversationId, resources };
+}
+
+/** What a capability plan reads: the run's options and conversation and the authorities that build its runs. */
+export type RunCapabilitySource = Pick<RequestInputsSource, "options" | "definitions" | "conversation" | "personas" | "captureModelRuntime" | "createRunner">;
+
+/**
+ * The agent check of the first request of the run that `options` describe (ARCH-CONTEXT-033): that request's tool
+ * plan, through the path that the request takes, with no model route. It resolves no model and no provider client,
+ * so it never waits for model access, and it sends no request and writes no fact. A tool's logical identity does not
+ * depend on the serving model: the registrations that a model's interaction profile selects between, such as `edit`
+ * and `apply_patch`, are one tool. A tree-hosted run plans from its chat tree's shared state and holds that state
+ * only while it plans. The module runtimes that it creates end with the plan, and no `onRuntimeAssembled` announces
+ * them. The text that only the run's agent reads, such as its opening turn, renders from the answer.
+ */
+export async function planRunCapabilities(input: RunCapabilitySource): Promise<CapabilityCheck> {
+  const { options, conversation } = input;
+  const runtimeIdentity = await runtimeIdentityOf(options, conversation.sessionId);
+  const treeRoot = runtimeIdentity?.rootSessionId ?? options.treeRootSessionId;
+  const hold = sharesTreeHost(options.purpose) && treeRoot !== undefined ? holdSharedTree(treeRoot, () => treeCaptureOf(options)) : undefined;
+  try {
+    const { planRequestTools } = runToolPlanner({ input, runtimeIdentity, tree: hold?.tree, serving: () => ({}) });
+    const { requestModules } = requestModulesOf(options, hold?.tree);
+    return requestCapabilities(await planRequestTools(requestModules(), options.captureRuntimeConfig(), undefined));
+  } finally {
+    hold?.release();
+  }
+}
+
 /** The inputs of a run's requests, opened: the serving attempt that the run's first request plans, which the model
  *  selection and the resolve of the session's client decided, and the build of the rest. */
 interface OpenedRequestInputs {
@@ -200,22 +404,14 @@ interface OpenedRequestInputs {
  *  as the returned inputs, and no `onRuntimeAssembled` announces them: that hook announces a generation before a
  *  request that is sent, and a pre-start sends none. */
 export async function openRequestInputs(input: RequestInputsSource, use: RequestInputsUse): Promise<OpenedRequestInputs> {
-  const { options, definitions, createRunner } = input;
+  const { options } = input;
   const conversation = input.conversation;
-  const promptKind = promptKindForPurpose(options.purpose);
   const sessionId = conversation.sessionId;
   const conversationAggregateId = conversation.aggregateId;
-  const review = learningReview(options);
   const headlessPrompt = headlessPromptOf(options.purpose);
   const turn = use.kind === "send" ? use.turn : undefined;
-  // Module auxiliary work can outlive this run. Its caller supplies any retained provider lifetime.
-  const createLLMClient: LLMClientFactory = async (model, moduleSnapshot, runtimeConfig, lifetime) => {
-    const capture = await input.captureModelRuntime();
-    return capture.createLLMClient(model, moduleSnapshot, runtimeConfig, lifetime);
-  };
 
-  const { runtimeSurfaces, moduleSelection } = options;
-  const requestAccounting = conversation.requestAccounting;
+  const { runtimeSurfaces } = options;
   const providerRuntimeCache = input.providerRuntimeCache ?? new ProviderRuntimeCache<ModelClient>();
   const captureSelection = async (runtimeConfig: RuntimeConfigRequestCapture, moduleSnapshot: FirstPartyModuleComposition): Promise<RequestModelSelection> => {
     const runtime = await input.captureModelRuntime();
@@ -280,7 +476,7 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
   const readEnvSnapshot = () => options.resolveEnvSnapshot?.({ projectRoot: options.projectRoot, executionCwd: options.executionCwd });
   const [sendEnvSnapshot, runtimeIdentity] = await Promise.all([
     use.kind === "send" ? readEnvSnapshot() : undefined,
-    sessionId && runtimeSurfaces.sessions ? runtimeSurfaces.sessions.identity(sessionId) : undefined,
+    runtimeIdentityOf(options, sessionId),
   ]);
   // Memory and project instructions take effect when the run starts and, in a
   // chat, when the person starts a turn with a message or a Resume
@@ -315,7 +511,7 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
   };
   const treeHosted = sharesTreeHost(options.purpose);
   // A tree-hosted runner holds its tree's shared state for its provider
-  // lifetime and plans every request from the tree's module capture, so its
+  // lifetime and plans every request from the tree's capture, so its
   // tools match every other agent of the tree host byte for byte. Its own
   // selection (`live`) narrows what it may call and alone admits providers:
   // the capture fixes advertised tools, never provider admission
@@ -323,10 +519,9 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
   // whatever provider serves it, because a failover can move any request of
   // the tree onto the host, and the host must then see the same tools.
   const treeRoot = runtimeIdentity?.rootSessionId ?? options.treeRootSessionId;
-  const providerSessionLifetime = treeLifetime(input.providerSessionLifetime, input.runScope, treeRoot, treeHosted, () => ({ modules: moduleSelection(), shellWriteGuard: options.captureRuntimeConfig().shellWriteGuard }));
+  const providerSessionLifetime = treeLifetime(input.providerSessionLifetime, input.runScope, treeRoot, treeHosted, () => treeCaptureOf(options));
   const tree = providerSessionLifetime.sharedHost;
-  const requestModules = tree === undefined ? moduleSelection : () => tree.modules;
-  const liveModules = (requestModuleSnapshot: FirstPartyModuleComposition): FirstPartyModuleComposition => tree === undefined ? requestModuleSnapshot : moduleSelection();
+  const { requestModules, liveModules } = requestModulesOf(options, tree);
   const moduleSnapshot = requestModules();
   const initialProviderRuntime = await prepareProviderRuntime(moduleSnapshot, options.captureRuntimeConfig());
   return {
@@ -336,126 +531,30 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
       const initialRuntimeConfig = initialProviderRuntime.runtimeConfig ?? options.captureRuntimeConfig();
       const client = initialProviderRuntime.mainRoute.client;
       const planned = initialProviderRuntime.plannedAttempt;
-      const background = runtimeSurfaces.background;
-      const childSlots = options.childSlots ?? createChildSlotRegistry();
-
-      const registry = input.personas;
-      const selected = selectedToolNames(options);
-      const granted = toolGrantOf(options);
-      // Dispatching a subagent starts work that outlives this turn, so it takes a
-      // host that owns it. No owner, no dispatch surface.
-      const dispatchOwner = registry.size > 0 ? background : undefined;
-      const resources = resolveConversationResources(options.sessionDir, conversationAggregateId, review?.reviewRunId, runtimeIdentity?.importedResources);
-      const { scratchDir } = resources;
-      const checkpointOwner = requestAccounting?.owner ?? (sessionId ? { kind: "session" as const, sessionId } : undefined);
-      const checkpointConversationId = review?.reviewRunId ?? conversationAggregateId;
-      const checkpoint = createRuntimeSessionNotes(options, checkpointConversationId, checkpointOwner);
-
-      // Loads survive every wake of this retained runner. Learning review needs all
-      // loaded IDs, while execution policy trusts bundled package authority only.
-      const { loadedSkillIds = new Set<string>(), loadedBundledSkillIds = new Set<string>() } = input;
-
-      const services = createModuleRuntimeServices({
-        options, conversation, definitions, promptKind, personas: registry, childSlots,
+      const { planRequestTools, kernelOf, moduleRuntimesFor, moduleRuntimes, checkpoint, checkpointOwner, checkpointConversationId, resources } = runToolPlanner({
+        input, runtimeIdentity, tree, ...(turn ? { turn } : {}),
         servingModel: {
           model: client.model,
           modelFamily: client.modelFamily,
           ...(planned.availableModels ? { availableModels: planned.availableModels } : {}),
         },
-        createRunner, createLLMClient, loadedSkillIds,
-        budgetStreamId: budgetStreamIdOf(conversation),
-        auxiliaryRequestAudit: turn?.auxiliaryRequestAudit ?? createRuntimeRequestAudit(options, conversation),
-        ...(turn?.usage.usageSettlement ? { usageSettlement: turn.usage.usageSettlement } : {}),
-        ...(review ? { review } : {}),
-        ...(dispatchOwner ? { dispatchOwner } : {}),
-      });
-      // Module runtimes follow each request's module snapshot (ARCH-STRUCTURE-027). A
-      // module's runtime is built the first time a request finds the module
-      // enabled and lives as long as the runner; a module that was never enabled
-      // never runs its factory. Each generation holds only the modules its
-      // request enables, and the host hears every new generation before the
-      // request that planned it is sent.
-      const runtimeInstances = new Map<string, unknown>();
-      let runtimeGeneration: { readonly key: string; readonly modules: ModuleRuntimes } | undefined;
-      const moduleRuntimesFor = async (requestModuleSnapshot: FirstPartyModuleComposition): Promise<ModuleRuntimes> => {
-        const enabledModuleIds = new Set(requestModuleSnapshot.enabledModuleIds);
-        const enabled = installedModules().flatMap((module: FirstPartyModule) => module.runtime && enabledModuleIds.has(module.id) ? [{ id: module.id, runtime: module.runtime }] : []);
-        const key = enabled.map(({ id }) => id).join("\u0000");
-        if (runtimeGeneration?.key === key) return runtimeGeneration.modules;
-        for (const { id, runtime } of enabled) if (!runtimeInstances.has(id)) runtimeInstances.set(id, runtime.create(services));
-        const modules = composeModuleRuntimes(enabled.map(({ id }) => [id, runtimeInstances.get(id)] as const));
-        runtimeGeneration = { key, modules };
-        if (turn) await options.lifecycle.onRuntimeAssembled?.({ modules });
-        return modules;
-      };
-      await moduleRuntimesFor(moduleSnapshot);
-      // Tool execution reads the generation that its request planned.
-      const moduleRuntimes: ModuleRuntimes = { get: (handle) => runtimeGeneration?.modules.get(handle) };
-
-      const onSkillLoad = async (skill: SkillDefinition): Promise<void> => {
-        if (review && !options.sessionEventWriter) throw new Error("self-review skill loads require a durable fact writer");
-        if (options.sessionEventWriter) {
-          const stored = await options.sessionEventWriter.record(skillLoadedFact({ name: skill.id }));
-          if (!stored) throw new Error("skill load fact writer was disposed before the load landed");
-        }
-        loadedSkillIds.add(skill.id);
-        if (skill.source.authority === "bundled") loadedBundledSkillIds.add(skill.id);
-      };
-      // What every request of the run gives its kernel (`requestKernel`).
-      const kernelRun: KernelRunFacts = {
-        options,
-        surfaces: runtimeSurfaces,
-        personas: registry,
-        ...(background ? { backgroundTasks: background.tasks } : {}),
-        ...(checkpoint ? { checkpoint } : {}),
-        treeHosted,
-        captureProviderConnection: async () => {
-          const runtime = await input.captureModelRuntime();
-          if (!runtime.captureProviderConnection) throw new Error("This runtime has no model access capture.");
-          return runtime.captureProviderConnection();
+        serving: (providerRuntime) => {
+          const requestClient = providerRuntime?.mainRoute.client ?? client;
+          const requestPlan = providerRuntime?.plannedAttempt ?? planned;
+          return {
+            fileEditContract: providerRuntime?.interactionProfile.fileEditContract ?? initialProviderRuntime.interactionProfile.fileEditContract,
+            servingModel: {
+              model: requestClient.model,
+              modelFamily: requestClient.modelFamily,
+              ...(providerRuntime?.role?.effort ? { effort: providerRuntime.role.effort } : {}),
+              ...(providerRuntime?.mainRoute.providerOptions ? { providerOptions: providerRuntime.mainRoute.providerOptions } : {}),
+              ...(requestPlan.availableModels ? { availableModels: requestPlan.availableModels } : {}),
+            },
+          };
         },
-        onSkillLoad,
-      };
-      const kernelOf = (
-        requestModuleSnapshot: FirstPartyModuleComposition,
-        runtimeConfig: RuntimeConfigRequestCapture,
-        providerRuntime: RequestProviderRuntime | undefined,
-        skills: SkillRegistryRevision | undefined,
-        live: FirstPartyModuleComposition = liveModules(requestModuleSnapshot),
-      ): KernelToolDeps => {
-        const requestClient = providerRuntime?.mainRoute.client ?? client;
-        const requestPlan = providerRuntime?.plannedAttempt ?? planned;
-        return requestKernel(kernelRun, {
-          moduleSnapshot: requestModuleSnapshot, live, runtimeConfig, skills,
-          shellWriteGuard: tree?.shellWriteGuard ?? runtimeConfig.shellWriteGuard,
-          fileEditContract: providerRuntime?.interactionProfile.fileEditContract ?? initialProviderRuntime.interactionProfile.fileEditContract,
-          servingModel: {
-            model: requestClient.model,
-            modelFamily: requestClient.modelFamily,
-            ...(providerRuntime?.role?.effort ? { effort: providerRuntime.role.effort } : {}),
-            ...(providerRuntime?.mainRoute.providerOptions ? { providerOptions: providerRuntime.mainRoute.providerOptions } : {}),
-            ...(requestPlan.availableModels ? { availableModels: requestPlan.availableModels } : {}),
-          },
-        });
-      };
-      const planRequestTools = async (
-        requestModuleSnapshot: FirstPartyModuleComposition,
-        runtimeConfig: RuntimeConfigRequestCapture,
-        providerRuntime: RequestProviderRuntime | undefined,
-      ): Promise<ToolExposurePlan> => {
-        const live = liveModules(requestModuleSnapshot);
-        return planToolExposure({
-          // Read now, not captured at assembly: the skill tool must observe the
-          // revision published when this request is planned.
-          kernel: kernelOf(requestModuleSnapshot, runtimeConfig, providerRuntime, definitions.skills(), live),
-          modules: await moduleRuntimesFor(requestModuleSnapshot),
-          registry: toolRegistryFromComposition(requestModuleSnapshot),
-          ...(live === requestModuleSnapshot ? {} : { live }),
-          ...(selected ? { selected } : {}),
-          ...(granted ? { granted } : {}),
-          ...(options.toolProfile ? { profile: options.toolProfile } : {}),
-        });
-      };
+      });
+      const { scratchDir } = resources;
+      await moduleRuntimesFor(moduleSnapshot);
 
       const toolSurface = await createRequestToolSurface(
         planRequestTools,
@@ -488,8 +587,8 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
           interactionProfile,
           moduleSnapshot: request.moduleSnapshot,
           tools: request.tools,
-          skillRegistry: request.skillRegistry,
-          kernel: kernelOf(request.moduleSnapshot, request.runtimeConfig, request.providerRuntime, request.skillRegistry),
+          registrationIdentities: request.registrationIdentities,
+          kernel: kernelOf(request.moduleSnapshot, request.runtimeConfig, request.providerRuntime, request.definitionAvailability.tree.definitionRevision),
           modules: await moduleRuntimesFor(request.moduleSnapshot),
           memory,
         }));
@@ -502,7 +601,7 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
         if (headlessPrompt?.kind === "literal") return [];
         const request = toolSurface.current();
         const reminderInput = {
-          kernel: kernelOf(request.moduleSnapshot, request.runtimeConfig, request.providerRuntime, request.skillRegistry),
+          kernel: kernelOf(request.moduleSnapshot, request.runtimeConfig, request.providerRuntime, request.definitionAvailability.tree.definitionRevision),
           modules: await moduleRuntimesFor(request.moduleSnapshot),
           tools: request.tools,
         };
@@ -513,12 +612,18 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
       };
 
       // The resolved conversation owns seed and persistence together.
-      const persistence = conversation.persistence;
+      const persistence = { ...conversation.persistence, history: recordingNarrowings(conversation.persistence.history, sessionId) };
       // A tree-hosted agent learns from its first plan which advertised tools it
       // may not call: committed once into a durable conversation's opening turn,
-      // or request context for a conversation that keeps no history.
+      // or request context for a conversation that keeps no history. A committed
+      // notice also states the modules that the first plan turned off.
       const notice = treeHosted ? toolNotice(toolSurface.current(), options.readOnly === true) : undefined;
-      const seed = notice === undefined ? await conversation.seed() : await commitToolNotice(conversation, await conversation.seed(), notice);
+      // The narrowing reads the modules that the current request's plan refuses
+      // as turned off, so the statement and the refusals of one request agree.
+      const narrowing = treeHosted ? createCapabilityNarrowing(() => toolSurface.current().moduleSnapshot) : undefined;
+      const narrowingOf = (messages: readonly ConversationMessage[]) => narrowing?.due(messages, toolSurface.current().turnedOff);
+      const opening = await conversation.seed();
+      const seed = notice === undefined ? opening : await commitToolNotice(conversation, opening, notice, narrowingOf(opening.kind === "resume" ? opening.priorMessages : []));
 
       const sessionRequestContext = assembleInitialRequestContextWithSessionNotes(headlessPrompt, options.requestContext, checkpoint, toolSurface);
       const initialRequestContext = notice !== undefined && !persistence.committedTree
@@ -531,7 +636,10 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
           initialInteractionProfile: initialProviderRuntime.interactionProfile,
           tools: toolSurface,
           systemPrompt,
-          turnReminders: async (messages) => turnReminders(messages, await turnReminderStates()),
+          turnReminders: async (messages) => [
+            ...turnReminders(messages, await turnReminderStates(), toolSurface.current().capabilities),
+            ...narrowingStatements(narrowingOf(messages)),
+          ],
           ...(headlessPrompt?.kind === "literal" ? { literalSystemPrompt: true } : {}),
           ...(initialRequestContext !== undefined ? { initialRequestContext } : {}),
           executionCwd: options.executionCwd,

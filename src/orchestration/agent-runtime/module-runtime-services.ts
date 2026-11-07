@@ -38,6 +38,7 @@ import type { UsageSettlement } from "./usage-settlement.js";
 import type { Agent, AgentOptions, AgentPurpose, CreateChildConversation, RuntimeToolSurfaces, RunnableAgentOptions } from "./types.js";
 import type { CapabilityAccess } from "./tools/types.js";
 import type { ServingModel } from "./tools/kernel-tool-deps.js";
+import type { CapabilityCheck } from "../../infra/capability-text.js";
 import type { RuntimeConversation } from "./runtime-conversation.js";
 import { deriveChildRuntimeSurfaces } from "./tools/tool-registry.js";
 import { ownedCommandRunner } from "../../infra/owned-command.js";
@@ -60,9 +61,9 @@ export interface ModuleRuntimeServices {
   readonly promptKind: PromptKind;
   readonly effort?: AgentOptions["effort"];
   readonly providerOptions?: ProviderRequestOptions;
-  readonly model: string;
-  /** The model the runner was assembled around, as the kernel serves it to tools. */
-  readonly servingModel: ServingModel;
+  /** The model the runner was assembled around, as the kernel serves it to tools. Absent for a capability plan
+   *  (`planRunCapabilities`), which plans the run's tools with no model route and runs nothing. */
+  readonly servingModel?: ServingModel;
   readonly availableModels?: ReadonlyMap<ModelFamily, ReadonlySet<string>>;
   /** The capability boundary this runner was admitted on, for module work
    *  that starts outside a tool call and must still be admitted. */
@@ -77,6 +78,9 @@ export interface ModuleRuntimeServices {
    *  current revision is captured at each dispatch. */
   readonly boundSkills?: SkillRegistryRevision;
   readonly createRunner: (options: RunnableAgentOptions) => Agent;
+  /** The agent check of a child that this runner starts (ARCH-CONTEXT-033), as the child's first request plans its
+   *  tools (`planChildCapabilities`), so text that only the child reads renders before the child runs. */
+  readonly planChildCapabilities: (child: ChildCapabilityRun) => Promise<CapabilityCheck>;
   readonly createLLMClient: LLMClientFactory;
   readonly captureRuntimeConfig: CaptureRuntimeConfig;
   readonly captureProviderConnection?: CaptureProviderConnection;
@@ -122,15 +126,19 @@ export interface ModuleRuntimeServices {
   readonly inheritableRuntimeSurfaces: RuntimeToolSurfaces;
 }
 
+/** What a child's run takes from the runner that starts it, beyond what it inherits: its purpose and its grant. */
+export type ChildCapabilityRun = Pick<RunnableAgentOptions, "purpose" | "toolGrant" | "withheldTools" | "readOnly" | "allowedSubagentTypes">;
+
 export interface ModuleRuntimeServicesInput {
   readonly options: RunnableAgentOptions;
-  readonly servingModel: ServingModel;
+  readonly servingModel?: ServingModel;
   readonly conversation: RuntimeConversation;
   readonly definitions: ProjectDefinitionRegistry;
   readonly promptKind: PromptKind;
   readonly personas: ReadonlyMap<string, AgentDefinition>;
   readonly childSlots: ChildSlotRegistry;
   readonly createRunner: (options: RunnableAgentOptions) => Agent;
+  readonly planChildCapabilities: ModuleRuntimeServices["planChildCapabilities"];
   readonly createLLMClient: LLMClientFactory;
   readonly usageSettlement?: UsageSettlement;
   readonly budgetStreamId: string;
@@ -142,7 +150,7 @@ export interface ModuleRuntimeServicesInput {
 
 /** Names every kernel authority a runner's module runtimes may read, once. */
 export function createModuleRuntimeServices(input: ModuleRuntimeServicesInput): ModuleRuntimeServices {
-  const { options, conversation, definitions, promptKind, childSlots, createRunner, createLLMClient, usageSettlement, budgetStreamId, auxiliaryRequestAudit, review, loadedSkillIds, dispatchOwner, servingModel } = input;
+  const { options, conversation, definitions, promptKind, childSlots, createRunner, planChildCapabilities, createLLMClient, usageSettlement, budgetStreamId, auxiliaryRequestAudit, review, loadedSkillIds, dispatchOwner, servingModel } = input;
   const registry = input.personas;
   const { runtimeSurfaces, moduleSelection } = options;
   const background = runtimeSurfaces.background;
@@ -166,8 +174,7 @@ export function createModuleRuntimeServices(input: ModuleRuntimeServicesInput): 
     promptKind,
     ...(options.effort !== undefined ? { effort: options.effort } : {}),
     ...(options.providerOptions ? { providerOptions: options.providerOptions } : {}),
-    model: servingModel.model,
-    servingModel,
+    ...(servingModel ? { servingModel } : {}),
     ...(options.availableModels ? { availableModels: options.availableModels } : {}),
     ...(options.capabilityAccess ? { capabilityAccess: options.capabilityAccess } : {}),
     ...(options.resolveRoles ? { resolveRoles: options.resolveRoles } : {}),
@@ -177,6 +184,7 @@ export function createModuleRuntimeServices(input: ModuleRuntimeServicesInput): 
     definitions,
     ...(options.skills ? { boundSkills: options.skills } : {}),
     createRunner,
+    planChildCapabilities,
     createLLMClient,
     captureRuntimeConfig: options.captureRuntimeConfig,
     ...(options.captureProviderConnection ? { captureProviderConnection: options.captureProviderConnection } : {}),

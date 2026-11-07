@@ -10,7 +10,7 @@ import {
   collectSkillLoadStats,
   collectSkillWriteRecords,
   refreshSkillLoadStatsSnapshot,
-  renderSkillLoadStats,
+  reviewForkInstruction,
   skillActivitySource,
 } from "../../../../../src/orchestration/modules/learning/skill-load-stats.js";
 import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.js";
@@ -390,15 +390,26 @@ describe("collectSkillWriteRecords", () => {
   });
 });
 
-describe("renderSkillLoadStats", () => {
-  it("renders a ranked block and returns undefined when empty", () => {
-    const stats = new Map([
-      ["rare", { loads: 1, lastLoadedAt: 100 }],
-      ["hot", { loads: 9, lastLoadedAt: 200 }],
-    ]);
-    const block = renderSkillLoadStats(stats);
-    expect(block).toContain("## Skill load counts");
-    expect(block?.indexOf("hot: 9 loads")).toBeLessThan(block!.indexOf("rare: 1 load"));
-    expect(renderSkillLoadStats(new Map())).toBeUndefined();
+describe("reviewForkInstruction", () => {
+  const loads = () => [
+    toolInput({ action: "load", skill_id: "rare" }, { position: 1, timestamp: 100 }),
+    ...Array.from({ length: 3 }, (_, index) => toolInput({ action: "load", skill_id: "hot" }, { position: index + 2, timestamp: 200 })),
+  ];
+  const all = () => true;
+
+  it("appends a ranked load-count block for a review that can patch skills", async () => {
+    const instruction = await reviewForkInstruction("Review.", all, reader(loads()));
+    expect(instruction.startsWith("Review.\n\n## Skill load counts")).toBe(true);
+    expect(instruction.indexOf("hot: 3 loads")).toBeLessThan(instruction.indexOf("rare: 1 load"));
+  });
+
+  it("adds nothing when the workspace has no recorded loads", async () => {
+    expect(await reviewForkInstruction("Review.", all, reader([]))).toBe("Review.");
+  });
+
+  it("reads no load history and adds no block for a review without skill_manage", async () => {
+    const counter = countStateRequests(reader(loads()));
+    expect(await reviewForkInstruction("Review.", (term) => term !== "skill_manage", counter.reader)).toBe("Review.");
+    expect(counter.take()).toHaveLength(0);
   });
 });

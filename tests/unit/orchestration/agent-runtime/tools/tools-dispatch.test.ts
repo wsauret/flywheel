@@ -461,10 +461,10 @@ describe("skill tool own validation through dispatch", () => {
   };
   const revision = publishSkillRevision(1, new Map([[legacy.id, legacy]]));
   const tools = new Map<string, RuntimeTool>(testBaseTools())
-    .set("skill", createSkillTool({ revision, personaIndex: {} }));
+    .set("skill", createSkillTool({ treeCapabilities: () => true, availability: { skills: new Map() }, revision, personaIndex: {} }));
 
   it("refuses an unknown parameter through the tool's own validation", async () => {
-    const context = makeContext({ capabilityAccess: capabilityAccessHolding(["skills"]) });
+    const context = makeContext({ capabilityAccess: capabilityAccessHolding(["skills"]), capabilities: () => true });
     const result = await runTool(toolCall("skill", { action: "load", skill_id: "legacy-skill", topic: "pdf" }), context, tools);
 
     expect(result.outcome).toBe("error");
@@ -492,26 +492,26 @@ describe("capability admission of a model tool call", () => {
     };
     const revision = publishSkillRevision(1, new Map([[gated.id, gated]]));
     return new Map<string, RuntimeTool>(testBaseTools())
-      .set("skill", createSkillTool({ revision, personaIndex: {} }));
+      .set("skill", createSkillTool({ treeCapabilities: () => true, availability: { skills: new Map() }, revision, personaIndex: {} }));
   };
 
   it("admits a call whose capability is enabled", async () => {
     const wired = capabilityAccessHolding(["skills"]);
-    const result = await runTool(toolCall("skill", { action: "load", skill_id: "gated-skill" }), makeContext({ capabilityAccess: wired }), skillTools());
+    const result = await runTool(toolCall("skill", { action: "load", skill_id: "gated-skill" }), makeContext({ capabilityAccess: wired, capabilities: () => true }), skillTools());
     expect(result.outcome).toBe("ok");
     expect(wired.admissions).toEqual(["the skill tool"]);
   });
 
   it("refuses a stale call before the tool body runs", async () => {
     const wired = capabilityAccessHolding([]);
-    const result = await runTool(toolCall("skill", { action: "load", skill_id: "gated-skill" }), makeContext({ capabilityAccess: wired }), skillTools());
+    const result = await runTool(toolCall("skill", { action: "load", skill_id: "gated-skill" }), makeContext({ capabilityAccess: wired, capabilities: () => true }), skillTools());
     expect(result.outcome).toBe("error");
     expect(result.content).toContain("skills is turned off. Turn it on in Settings, or remove it from disabled_modules in flywheel.toml");
     expect(result.content).not.toContain("gated-skill");
   });
 
   it("refuses an optional tool where no capability policy is wired, before the tool body runs", async () => {
-    const result = await runTool(toolCall("skill", { action: "load", skill_id: "gated-skill" }), makeContext(), skillTools());
+    const result = await runTool(toolCall("skill", { action: "load", skill_id: "gated-skill" }), makeContext({ capabilities: () => true }), skillTools());
 
     expect(result.outcome).toBe("error");
     expect(result.content).toContain("holds no capability policy");
@@ -520,7 +520,7 @@ describe("capability admission of a model tool call", () => {
 
   it("uses a matching grant for an admitted operation's own continuation", async () => {
     const wired = capabilityAccessHolding([], testGrant("learning review", ["learning", "skills"]));
-    const result = await runTool(toolCall("skill", { action: "load", skill_id: "gated-skill" }), makeContext({ capabilityAccess: wired }), skillTools());
+    const result = await runTool(toolCall("skill", { action: "load", skill_id: "gated-skill" }), makeContext({ capabilityAccess: wired, capabilities: () => true }), skillTools());
     expect(result.outcome).toBe("ok");
     expect(wired.admissions).toEqual([]);
   });
@@ -552,7 +552,7 @@ describe("capability admission of a model tool call", () => {
     // Evidence of a full selection, authority over Learning alone: an unrelated
     // Skills call still admits, and is refused.
     const wired = capabilityAccessHolding([], testGrant("the learning review", ["learning"], ["learning", "skills"]));
-    const result = await runTool(toolCall("skill", { action: "load", skill_id: "gated-skill" }), makeContext({ capabilityAccess: wired }), skillTools());
+    const result = await runTool(toolCall("skill", { action: "load", skill_id: "gated-skill" }), makeContext({ capabilityAccess: wired, capabilities: () => true }), skillTools());
     expect(result.outcome).toBe("error");
     expect(wired.admissions).toEqual(["the skill tool"]);
   });

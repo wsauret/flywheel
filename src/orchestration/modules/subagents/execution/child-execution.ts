@@ -18,7 +18,7 @@ import { SUBAGENT_HANDOFF_SCHEMA } from "./prompts.js";
 import { recordSubagentCompletion } from "./run-recorder.js";
 import { buildSubagentPaused } from "../history/subagent-run-fact-writers.js";
 import { interruptedTurnEnd, isVisibleTurnEnd, type TurnInterruption } from "../../../session/conversation/turn-end-record.js";
-import { emitToolResultAvailable } from "../../../agent-runtime/emit.js";
+import { publishLiveParentResult, reconcileParentCompletion } from "./parent-delivery.js";
 import {
   failedRunResult,
   resolveSubagentResult,
@@ -66,7 +66,7 @@ const STALL_TIMEOUT_MS = 600_000;
 const RESTATED_SUBAGENT_TASK = "Your task follows. It applies to all of the work above and to the rest of this assignment.";
 
 type PreparedDispatch = Extract<Awaited<ReturnType<typeof prepareSubagentDispatch>>, { ok: true }>;
-type PreparedTools = Extract<ReturnType<typeof prepareSubagentTools>, { ok: true }>;
+type PreparedTools = Extract<Awaited<ReturnType<typeof prepareSubagentTools>>, { ok: true }>;
 
 /** Owns a published child's live resources through durable settlement. The launch
  * promise resolves once queued or running, and rejects after cleanup on startup failure. */
@@ -569,35 +569,9 @@ export function createChildExecution(options: {
     }
   });
 
-  const reconcileParentCompletion = (): void => {
-    if (pausedBy) return;
-    deps.subagentSessions.reconcileParentCompletion(deps.sessionId, async (notification) => {
-      if (await deps.deliverParentNotification?.(deps.sessionId, notification)) return true
-      const deliver = deps.backgroundTasks.deliverDurableSubagentNotification
-      if (!deliver) return false
-      deliver(notification)
-      return true
-    });
-  };
   const settleParent = async (): Promise<void> => {
     if (pausedBy) await deps.subagentSessions.deactivate(childSessionId);
-    else reconcileParentCompletion();
-  };
-  const publishLiveParentResult = (result: BackgroundWorkResult): void => {
-    // A partial run is a successful tool call whose work stopped early; the
-    // outcome stays `ok` and the detail carries the cap for the client card.
-    emitToolResultAvailable(
-      deps.onRenderEvent,
-      toolUseId,
-      [{ type: "text", text: result.content }],
-      result.status === "failed" ? "error" : result.status === "cancelled" || result.status === "stopped" ? result.status : "ok",
-      {
-        details: {
-          ...(result.usage ? { totalTokens: result.usage.totalTokens } : {}),
-          ...(result.status === "partial" ? { partial: true } : {}),
-        },
-      },
-    );
+    else reconcileParentCompletion(deps);
   };
   // The result budget is sized when the run settles: what the parent's
   // admission budget has left, divided across the batch of children
@@ -655,7 +629,7 @@ export function createChildExecution(options: {
     // commit of the settle lands after the turn.
     if (startupError !== undefined) {
       await published.failBeforeStart(startupError);
-      publishLiveParentResult(settledResult);
+      publishLiveParentResult(deps.onRenderEvent, toolUseId, settledResult);
       return settledResult;
     }
     await published.awaitDurableFacts();
@@ -706,7 +680,7 @@ export function createChildExecution(options: {
         },
         commitHeld: async (person) => commitHeldMessages(person, await readConversationBackgroundNotifications(published.projectionReader, childSessionId, childConversationId)),
       });
-      publishLiveParentResult(backgroundResult);
+      publishLiveParentResult(deps.onRenderEvent, toolUseId, backgroundResult);
     }
     const terminalDrain = await published.eventWriter.drain?.();
     if (terminalDrain?.kind === "failed") {

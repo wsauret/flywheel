@@ -9,6 +9,7 @@ import { testCapabilityModules, testProviderEligibility, testProviderRegistry } 
 import { fakeModelsClient } from "../../../helpers/model-tier-fixtures.js"
 import { testRuntimeConfigCapture } from "../../../helpers/request-tool-surface.js"
 import { authProviders } from "../../../helpers/auth-context.js"
+import { planEveryCapability } from "../../../helpers/attempt-brief.js"
 
 const directories = testDirectories(process.cwd())
 const accountHome = directories.accountHome
@@ -26,6 +27,7 @@ export function makeWorkflowDeps(createAgent: AgentFactory = () => { throw new E
     definitions: repoDefinitions(),
     createLLMClient: () => { throw new Error("unexpected LLM client creation") },
     prepareRequest: () => { throw new Error("This fixture prepares no pre-start") },
+    planCapabilities: planEveryCapability,
     captureProviderConnection: async () => ({ connection, providers: testProviderRegistry(), eligibility: testProviderEligibility(), runtimeConfig: testRuntimeConfigCapture(), admit: () => { throw new Error("unexpected provider admission") } }),
     runOwnedCommand: async () => { throw new Error("unexpected command") },
     resolveEnvSnapshot: async (scope) => ({

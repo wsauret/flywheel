@@ -29,17 +29,19 @@ describe("background management under capability policy", () => {
     }
   });
 
-  it("advertises one bash definition whatever Background Commands and persistence allow", async () => {
-    const definitions = await Promise.all([[], ["background-commands"]].flatMap((held) => [false, true].map(async (persistentProcesses) => {
-      const planned = await plan({ capabilities: capabilities(held), backgroundTasks: registry(), persistentProcesses });
+  it("advertises one bash definition from the tree's persistence policy whatever this agent's Background Commands and persistence allow", async () => {
+    const definition = async (held: readonly string[], persistentProcesses: boolean, persistentProcessesAdvertised: boolean) => {
+      const planned = await plan({ capabilities: capabilities(held), backgroundTasks: registry(), persistentProcesses, persistentProcessesAdvertised });
       const { description, promptGuidelines, inputSchema } = planned.tools.get("bash")!;
       return JSON.stringify({ description, promptGuidelines, inputSchema });
-    })));
+    };
+    const definitions = await Promise.all([[], ["background-commands"]].flatMap((held) => [false, true].map((persistentProcesses) => definition(held, persistentProcesses, true))));
 
     expect(new Set(definitions).size).toBe(1);
     expect(definitions[0]).toContain('"background"');
     expect(definitions[0]).toContain('"persist_after_exit"');
     expect(definitions[0]).toContain("Timeouts are entirely optional and should be used sparingly. They apply equally to foreground and managed background commands.");
+    expect(await definition(["background-commands"], true, false)).not.toContain('"persist_after_exit"');
   });
 
   it("refuses each advertised input this agent cannot use, before any effect", async () => {
@@ -60,8 +62,10 @@ describe("background management under capability policy", () => {
       [foregroundOnly.tools, { command: "bun server.ts", background: true, persist_after_exit: true }, "persist_after_exit"],
       [withoutPersistence.tools, { command: "bun server.ts", background: true, persist_after_exit: true }, "persist_after_exit"],
     ] as const) {
+      // A turned-off module refuses the background input and names that module; the persistence policy names none.
+      const reason = field === "background" ? ": background-commands is turned off. Turn it on in Settings, or remove it from disabled_modules in flywheel.toml" : "";
       expect(await tools.get("bash")!.execute(input, context)).toEqual({
-        content: `The ${field} input of bash is unavailable to this agent now. Do not send it again.`,
+        content: `The ${field} input of bash is unavailable to this agent now${reason}. Do not send it again.`,
         outcome: "error",
       });
     }
@@ -108,8 +112,9 @@ describe("background management under capability policy", () => {
   it("refuses a persistence request through dispatch instead of rejecting it as unknown or running it", async () => {
     const backgroundTasks = registry();
     const foregroundBashHold = createForegroundBashHoldController(() => {});
-    const disabled = await plan({ capabilities: capabilities(["background-commands"]), backgroundTasks, foregroundBashHold });
-    const enabled = await plan({ capabilities: capabilities(["background-commands"]), backgroundTasks, foregroundBashHold, persistentProcesses: true });
+    // The tree advertised persistence when it captured its policy; the live policy of `disabled` no longer allows it.
+    const disabled = await plan({ capabilities: capabilities(["background-commands"]), backgroundTasks, foregroundBashHold, persistentProcessesAdvertised: true });
+    const enabled = await plan({ capabilities: capabilities(["background-commands"]), backgroundTasks, foregroundBashHold, persistentProcesses: true, persistentProcessesAdvertised: true });
     const effects: string[] = [];
     const context = (admitted: boolean) => makeContext({
       spawnOwned: () => { effects.push("spawn"); throw new Error("ordinary background must not launch"); },

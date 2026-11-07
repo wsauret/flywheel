@@ -566,6 +566,7 @@ Module config sections -> `orchestration/modules/<id>/`, declared as the descrip
 Model providers -> `orchestration/modules/provider-<id>/` (definition, client factory, catalog fetch, OAuth flow, usage reader, affordability, allowance, settings); hosts compose the auth flag table, key check, login registry, and provider settings from definition fields and name no provider; the kernel materializes dynamic `[custom_providers]` entries in `orchestration/custom-provider-modules.ts`
 Development tooling (the benchmark tool and service, Flywheel's own agent methods, the `flywheel dev` verbs) -> `orchestration/modules/development/`; `src/orchestration/development-modules.ts` lists it and only the source entry `scripts/source-cli.ts` installs that list, so `src/cli/index.ts` and every release never name it
 Reusable agent methods -> `agent-skills/<id>/SKILL.md`
+An agent method that only one module can run -> that module's definition bundle, `orchestration/modules/<module>/definitions/skills/<id>/SKILL.md`, declared as a `definitions` contribution of kind `bundle`; a release embeds every shipped bundle, so the method leaves with its module and its default still diffs
 
 ## Registration Patterns
 

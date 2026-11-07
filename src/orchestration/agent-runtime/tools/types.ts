@@ -17,6 +17,7 @@ import type { BridgedPersistentProcessClient } from "../../../infra/persistent-p
 import type { ForegroundBashHoldController } from "../foreground-bash-hold.js";
 import type { ShellRuntimeClient } from "./shell-runtime-types.js";
 import type { ModuleRuntimes } from "../../../infra/module-runtime.js";
+import type { CapabilityCheck } from "../../../infra/capability-text.js";
 import type { AsyncEventStateReadSurface } from "../../../infra/event-store-types.js";
 import { canonicalModuleIds, MODULE_IDS, type ModuleId } from "../../../protocol/module-ids.js";
 type ToolExecutionMode = "foreground" | "background";
@@ -387,6 +388,9 @@ export interface ToolContext {
   contextAdmission?: ContextAdmission;
   /** Logical names of the tools this agent may call, for dispatch inheritance and validation. */
   availableTools?: ReadonlySet<string>;
+  /** The agent check of the request in flight (ARCH-CONTEXT-033), for text that only this agent reads, such as a
+   *  tool result or a skill load. Absent where no request surface exists. */
+  capabilities?: CapabilityCheck;
   /** Maps between the names this request's surface advertised to the provider and the logical
    *  registration ids grants and policy use. A logical id with no presented tool maps to itself. */
   toolNames?: ToolNameMap;

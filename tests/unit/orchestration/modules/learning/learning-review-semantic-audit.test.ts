@@ -195,7 +195,7 @@ describe("Learning Review semantic admission through the production entrypoint",
     expect(canonicalBody).toBeString();
     expect(candidateBytes).toContain("dependencies:\n  - implementation");
     expect(candidateBytes).not.toContain(canonicalBody ?? "missing canonical");
-    const composed = renderSkillClosure([name], revision, "acceptance").join("\n");
+    const composed = renderSkillClosure([name], revision, "acceptance", () => true).join("\n");
     expect(composed.indexOf(canonicalBody ?? "missing canonical")).toBeLessThan(composed.indexOf("Project-specific delta."));
   });
 

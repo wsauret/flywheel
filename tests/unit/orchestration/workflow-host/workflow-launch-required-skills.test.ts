@@ -1,4 +1,7 @@
 import { describe, expect, it } from "bun:test"
+import { Schema } from "effect"
+import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
+import { WorkflowDefinitionSchema } from "../../../../src/workflows/workflow-schema.js"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { prepareWorkflowLaunch, WorkflowRequiredSkillsMissingError } from "../../../../src/orchestration/workflow-host/publish.js"
@@ -31,6 +34,37 @@ const EXTERNAL_IDS = ["fixture.root", "fixture.child"] as const
 const EXTERNAL_WORKFLOW = testDependencyWorkflow()
 const externalRevision = (skills: ReturnType<typeof publishSkillRevision>) => ({
   ...definitionRevision(skills),
+})
+
+/** A workflow whose one agent must cite one command, run as `persona` when given. */
+function citingWorkflow(persona?: string) {
+  return Schema.decodeUnknownSync(WorkflowDefinitionSchema)({
+    id: "verify", name: "Verify",
+    phases: [{ phase: "check", name: "Check", brief: "Run the tests.", output: { commands: { min: 1 } }, writes: [], ...(persona === undefined ? {} : { persona }) }],
+  })
+}
+
+describe("workflow launch command evidence", () => {
+  const launch = (workflow: ReturnType<typeof citingWorkflow>, deps: ReturnType<typeof makeWorkflowDeps>, revision = fixtureDefinitions().captureRevision()) => prepareWorkflowLaunch({
+    authProfileId: "default", workflow, description: "verify", deps, projectRoot: PROJECT_CWD, definitionRevision: revision,
+  })
+
+  it("refuses an agent that must cite commands while Bash is off", async () => {
+    const withoutBash = { ...makeWorkflowDeps(), moduleSelection: () => composeFirstPartyModules(undefined, ["bash"]) }
+    await expect(launch(citingWorkflow(), withoutBash)).rejects.toThrow(
+      'Workflow "verify" agent "check" needs command evidence. bash is turned off. Turn it on in Settings, or remove it from disabled_modules in flywheel.toml.',
+    )
+    await expect(launch(citingWorkflow(), makeWorkflowDeps())).resolves.toBeDefined()
+  })
+
+  it("refuses an agent that must cite commands and runs as a persona without bash", async () => {
+    const revision = fixtureDefinitions().captureRevision()
+    const personas = new Map(revision.personas)
+    personas.set("reader", { kind: "persona", name: "reader", description: "Reads files.", maxTurns: 5, systemPrompt: "Read the files.", tools: ["read"], role: "explorer" })
+    await expect(launch(citingWorkflow("reader"), makeWorkflowDeps(), { ...revision, personas })).rejects.toThrow(
+      'Workflow "verify" agent "check" needs command evidence, and its persona "reader" declares no bash tool.',
+    )
+  })
 })
 
 describe("workflow launch required skills", () => {

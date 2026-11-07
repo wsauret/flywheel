@@ -217,6 +217,22 @@ describe("interceptBashCommand (direct)", () => {
     expect(await interceptBashCommand('git commit -m "document worktree lifecycle"', unloaded)).toBeNull();
     expect(await interceptBashCommand("printf worktree", unloaded)).toBeNull();
   });
+
+  it("gates worktree changes only while the worktree-lifecycle skill is available to the agent (D3)", async () => {
+    const availableNotLoaded = { effectiveBundledSkillIds: new Set<string>(), capabilities: () => true };
+    const unavailable = { effectiveBundledSkillIds: new Set<string>(), capabilities: (term: string) => term !== "skill:worktree-lifecycle" };
+    expect((await interceptBashCommand("git worktree add ../feature feature", availableNotLoaded))?.message).toContain('skill_id:"worktree-lifecycle"');
+    expect(await interceptBashCommand("git worktree add ../feature feature", unavailable)).toBeNull();
+  });
+
+  it("names in an interactive refusal only the file tools that the agent holds", async () => {
+    const message = async (held: readonly string[], command: string) => (await interceptBashCommand(command, { capabilities: (term) => held.includes(term) }))?.message;
+    expect(await message(["edit", "write", "read"], "vim notes.txt")).toContain("use the file edit tool for existing files, `write` for new files");
+    expect(await message([], "vim notes.txt")).toContain("use a non-interactive command");
+    expect(await message([], "vim notes.txt")).not.toMatch(/edit tool|`write`/);
+    expect(await message(["read"], "less notes.txt")).toContain("or use the read tool");
+    expect(await message([], "less notes.txt")).not.toContain("read tool");
+  });
 });
 
 describe("isYieldPlaceholderToolCall", () => {

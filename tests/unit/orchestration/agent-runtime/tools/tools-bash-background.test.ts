@@ -601,7 +601,7 @@ describe("bash persistent execution admission", () => {
     context.admitPersistentProcess = () => { effects.push("admit"); return true; };
     const admitted = await definition.execute({ command: "server", persist_after_exit: true }, context);
     expect(admitted.content).toContain("persistent:test");
-    expect(String(admitted.content)).toStartWith("Note: persist_after_exit=true implies background=true.\n");
+    expect(String(admitted.content)).toStartWith("Note: persist_after_exit=true implies a background launch.\n");
     expect(effects).toEqual(["admit", "admit", "scratch", "launch"]);
   });
 });

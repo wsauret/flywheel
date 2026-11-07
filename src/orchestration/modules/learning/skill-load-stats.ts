@@ -4,6 +4,7 @@
  *  CLI, lifecycle pruner, and learning review context. */
 
 import { capturedFacts, type AsyncEventWriter, type AsyncEventStateReadSurface, type StoredFact } from "../../../infra/event-store-types.js";
+import type { CapabilityCheck } from "../../../infra/capability-text.js";
 import type { LearningScope } from "../../../infra/learning-scope.js";
 import { createOrderedLane, type OrderedLane } from "../../../infra/ordered-lane.js";
 import { createEventProjection, parseProjectionFact } from "../../../infra/event-projection.js";
@@ -233,11 +234,20 @@ const TELEMETRY_LIMIT = 15;
  *  review prefers patching the skills sessions actually reach for. Undefined
  *  when the workspace has no recorded loads, so quiet workspaces add nothing
  *  to the review prompt. */
-export function renderSkillLoadStats(stats: ReadonlyMap<string, SkillLoadStats>): string | undefined {
+function renderSkillLoadStats(stats: ReadonlyMap<string, SkillLoadStats>): string | undefined {
   if (stats.size === 0) return undefined;
   const ranked = [...stats.entries()]
     .sort(([, a], [, b]) => b.loads - a.loads || b.lastLoadedAt - a.lastLoadedAt)
     .slice(0, TELEMETRY_LIMIT);
   const lines = ranked.map(([skillId, { loads }]) => `- ${skillId}: ${loads} load${loads === 1 ? "" : "s"}`);
   return `## Skill load counts (workspace, most loaded first)\n\n${lines.join("\n")}`;
+}
+
+/** The message that one learning review fork receives: `instruction`, then the load-count block while the review
+ *  holds `skill_manage`. A review that cannot patch a skill reads no load history, because the block names work it
+ *  cannot do. The catch-up yields to the task queue between history pages, so a long skill history does not hold
+ *  the executor. */
+export async function reviewForkInstruction(instruction: string, capabilities: CapabilityCheck, store: AsyncEventStateReadSurface): Promise<string> {
+  const telemetry = capabilities("skill_manage") ? renderSkillLoadStats(await collectSkillLoadStats(store)) : undefined;
+  return telemetry ? `${instruction}\n\n${telemetry}` : instruction;
 }

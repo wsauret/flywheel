@@ -6,6 +6,10 @@ This document states the current intended experience for Flywheel's optional cap
 
 Every optional capability is one module that a user can turn off. A module adds the same tools, commands, command-line verbs, views, and notices to every client. Turning a module off removes its contributions everywhere. It keeps the module's saved data, viewable history, and settings, which stay inactive until the module is on again. A module change applies at once in every client without a restart. Work already started finishes and can still be stopped or deleted. An off module's refusals and omissions name the module and say to turn it on in Settings or remove it from `disabled_modules`.
 
+## PI-CAP-021: Agents read only guidance that they can follow
+
+When a module is off, or Workflows is Off, no Flywheel instruction, tool text, skill, agent role, reminder, or tool result that an agent reads afterward mentions that capability. Text that needs it says what to do without it, or is absent. Refusals and stop statements still name the module. A running agent keeps the instructions it shares with its chat tree and is told once which modules it lost. Agent roles keep their remaining tools. A command rule that needs a skill applies only while that skill is available. Text that people or repositories wrote is unchanged.
+
 ## PI-CAP-017: Flywheel's own tooling is the development module
 
 Flywheel's own tooling is the `development` module. In a source run it is one module like any other, and released builds do not contain it.

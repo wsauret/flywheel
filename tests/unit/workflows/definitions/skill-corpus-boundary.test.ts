@@ -3,6 +3,7 @@ import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { createProjectDefinitionRegistry } from "../../../../src/workflows/definition-registry.js";
 import { DEVELOPMENT_MODULES } from "../../../../src/orchestration/development-modules.js";
+import { bashModule } from "../../../../src/orchestration/modules/bash/module.js";
 import { installedDefinitionBundles } from "../../../../src/orchestration/module-catalog.js";
 import {
   bundledCorpusIdentity,
@@ -65,9 +66,9 @@ describe("production core skill boundary", () => {
 
     expect([...revision.corePackages.keys()].sort()).toEqual([
       "code-review", "code-review-method", "data-integrity-review-principles", "design", "elegance-review-principles",
-      "experiment-charter", "experiment-finalize", "implementation", "implementation-planning", "interface-design", "mechanism-verification", "performance-review-principles", "plan-review",
+      "implementation", "implementation-planning", "interface-design", "mechanism-verification", "performance-review-principles", "plan-review",
       "research", "root-cause-analysis", "security-review-principles", "ship", "surface-mapping",
-      "systematic-debugging", "test-driven-development", "uat", "verification", "workflow-authoring", "worktree-lifecycle",
+      "systematic-debugging", "test-driven-development", "uat", "verification",
     ]);
     expect(revision.coreManifest.map(({ id }) => id)).toEqual([...revision.corePackages.keys()].sort());
     expect(revision.coreManifest.every((entry) => Object.isFrozen(entry))).toBe(true);
@@ -79,14 +80,16 @@ describe("production core skill boundary", () => {
     const revision = createProjectDefinitionRegistry({
       ...testDirectories(PROJECT_ROOT),
       skillRoots: [{ dir: USER_ROOT, owned: true, reach: "global" }],
-      bundles: installedDefinitionBundles(DEVELOPMENT_MODULES),
+      bundles: installedDefinitionBundles([bashModule, ...DEVELOPMENT_MODULES]),
     }).skills();
 
-    const skill = revision.skills.get("effect-lifecycle");
-    expect(skill?.source.kind === "filesystem" ? skill.source.bundle : undefined).toBe("development");
-    expect(revision.bundledCorpus.get("effect-lifecycle")?.sourceKind).toBe("module");
+    for (const [id, bundle] of [["effect-lifecycle", "development"], ["worktree-lifecycle", "bash"]] as const) {
+      const skill = revision.skills.get(id);
+      expect(skill?.source.kind === "filesystem" ? skill.source.bundle : undefined).toBe(bundle);
+      expect(revision.bundledCorpus.get(id)?.sourceKind).toBe("module");
+      expect(revision.corePackages.has(id)).toBe(false);
+    }
     expect(revision.corePackages.has("design")).toBe(true);
-    expect(revision.corePackages.has("effect-lifecycle")).toBe(false);
   });
 
   it("keeps source kind out of package and core identity", () => {

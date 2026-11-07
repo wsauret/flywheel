@@ -1,17 +1,18 @@
 import type { AgentDefinition } from "../../infra/agent-definition.js";
+import type { CapabilityCheck } from "../../infra/capability-text.js";
+import type { FirstPartyModuleComposition } from "../modules.js";
 import { READ_ONLY_SHELL_GUIDANCE } from "./tools/bash-guidance.js";
+import { registrationNamed, toolRegistryFromComposition } from "./tools/tool-registry.js";
 
 // The rules that a persona's tool set brings to its task. A persona runs as
 // a dispatched subagent or as an agent of a workflow whose record names it
 // (docs/terminology.md "persona"), and both read its rules here, so a persona means one
 // thing in both places.
 
-/** Whether a tool list holds the write or the edit tool, in any case. */
-function hasMutationTool(tools: Iterable<string>, name: "write" | "edit"): boolean {
-  for (const tool of tools) {
-    if (tool.toLowerCase() === name) return true;
-  }
-  return false;
+/** The check whose tool terms are the tools of a list, in any case. */
+function toolListCheck(tools: Iterable<string>): CapabilityCheck {
+  const held = new Set([...tools].map((tool) => tool.toLowerCase()));
+  return (term) => held.has(term);
 }
 
 /** A persona whose own definition grants neither the edit nor the write tool,
@@ -21,7 +22,20 @@ function hasMutationTool(tools: Iterable<string>, name: "write" | "edit"): boole
  *  definition, so a persona's identity hash stays the hash of what its file
  *  declares. */
 export function isReadOnlyPersona(agent: AgentDefinition): boolean {
-  return agent.kind === "persona" && !hasMutationTool(agent.tools, "edit") && !hasMutationTool(agent.tools, "write");
+  if (agent.kind !== "persona") return false;
+  const has = toolListCheck(agent.tools);
+  return !has("edit") && !has("write");
+}
+
+/** The tools of `toolNames` that `composition` can serve: each one a module
+ *  of the composition registers, with every module it needs enabled. A
+ *  persona's declared tools are a ceiling (ARCH-STRUCTURE-031), so a module
+ *  that is off removes its tools from the persona, and the persona runs with
+ *  the rest. Order is kept. */
+export function availableToolNames(toolNames: readonly string[], composition: FirstPartyModuleComposition): string[] {
+  const registry = toolRegistryFromComposition(composition);
+  const enabled = new Set<string>(composition.enabledModuleIds);
+  return toolNames.filter((name) => registrationNamed(name, registry)?.capabilities.every((id) => enabled.has(id)) === true);
 }
 
 const GIT_DISCIPLINE = `## Git Discipline
@@ -32,10 +46,12 @@ const SHELL_SAFETY = `## Safety
 
 Never run destructive commands (\`rm -rf\`, \`git clean -fd\`, \`git reset --hard\`, \`git checkout .\`). Commands targeting only \`/tmp\` are allowed.`;
 
-/** The git discipline of an agent that can change files, whose premise is
- *  that the agent knows its own changes, or undefined for any other. */
-export function gitDisciplineRule(toolNames: readonly string[]): string | undefined {
-  return hasMutationTool(toolNames, "write") || hasMutationTool(toolNames, "edit") ? GIT_DISCIPLINE : undefined;
+/** The git discipline of an agent that can change files and run git through
+ *  its shell, whose premise is that the agent knows its own changes, or
+ *  undefined for any other. `has` is the agent check of its run
+ *  (ARCH-CONTEXT-033), so the rule follows the tools its plan lets it call. */
+export function gitDisciplineRule(has: CapabilityCheck): string | undefined {
+  return (has("write") || has("edit")) && has("bash") ? GIT_DISCIPLINE : undefined;
 }
 
 /** The sections that state what an agent may do: which advertised tools it

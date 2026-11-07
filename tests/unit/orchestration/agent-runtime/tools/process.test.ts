@@ -30,10 +30,16 @@ describe("process tool", () => {
     const listed = await tool.execute({ action: "list" }, caller);
     expect(String(listed.content).match(/^- run-123 /gm)).toHaveLength(1);
     expect(listed.content).not.toContain("- member-a ");
+    expect(listed.content).not.toContain("Persistent records");
     const status = await tool.execute({ action: "status", process_id: "run-123" }, caller);
     expect(status.content).toContain("agent session: member-a");
     expect(status.content).toContain("agent session: member-b");
-    expect(tool.description).toContain("A workflow's status names item keys and named-agent ids for targeted workflow direction, and agent session ids for direct messages and replies.");
+    // The targeting rules reach an agent only beside a child's addresses; the
+    // tool text names no optional capability (ARCH-CONTEXT-033).
+    expect(status.content).toContain("Never substitute an agent session id for this child's process id.");
+    expect(status.content).toContain("name item keys or agent ids from its status in targets for interrupt and resume");
+    expect(tool.description).not.toMatch(/workflow|subagent/i);
+    expect(JSON.stringify(tool.inputSchema)).not.toMatch(/workflow|subagent/i);
   });
 
   it("accepts hours-long wait estimates and rejects invalid runtime timer durations", async () => {
@@ -212,6 +218,7 @@ describe("process tool", () => {
 
     const list = await tool.execute({ action: "list" }, persistentContext);
     expect(list.content).toContain("persistent:server");
+    expect(list.content).toContain("Persistent records are unavailable after host exit.");
     expect(list.content).toContain("persistent");
     expect(calls).toEqual([]);
 

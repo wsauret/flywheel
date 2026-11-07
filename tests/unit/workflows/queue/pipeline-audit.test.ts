@@ -10,6 +10,7 @@ import { resolveWorkflowAgents, type ResolvedAgent } from "../../../../src/workf
 import { agentRecords } from "../../../../src/workflows/workflow-schema.js";
 import { fixtureDefinitions, FIXTURE_WORKFLOW_ID, workflowIn } from "../../../helpers/project-definitions.js";
 import { createAttemptExecutor } from "../../../../src/workflows/vm/attempt-runner.js";
+import { EVERY_CAPABILITY } from "../../../helpers/attempt-brief.js";
 import { createWorkflowVmHost } from "../../../../src/workflows/vm/host.js";
 import { SqliteVmDriver } from "../vm/_sqlite-vm-driver.js";
 
@@ -158,6 +159,7 @@ describe("named workflow context bundles", () => {
       const workerFailures: unknown[] = [];
       const invocations = new Map<string, number>();
       const runner = createAttemptExecutor({
+        unavailableToolReason: (term) => `${term} is off`,
         earlierCheckpoint: async () => null,
         resolvedAgents: vm.bindings,
         skills: vm.skills,
@@ -168,7 +170,8 @@ describe("named workflow context bundles", () => {
             return context;
           },
         },
-        worker: async (step, userPrompt, task) => {
+        worker: async (step, brief) => {
+          const { userPrompt, task } = await brief(EVERY_CAPABILITY);
           const position = expected[actual.length];
           const context = contexts.at(-1);
           const binding = bindings.get(step.definitionId);

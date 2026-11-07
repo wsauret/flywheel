@@ -1,6 +1,6 @@
 import type { WorkflowReviewHost, WorkflowReviewHostInput } from "../../review-host.js"
 import { createLearningReview, createReviewUsageAccounting, resolveReviewRoute, reviewReplay, type ReviewRunSpec, type SpawnedReview } from "./learning-review.js"
-import { collectSkillLoadStats, renderSkillLoadStats } from "./skill-load-stats.js"
+import { reviewForkInstruction } from "./skill-load-stats.js"
 import { learningReviewPolicy } from "./config.js"
 import { createConversationTreeWriterController } from "../../chat/tree-writer.js"
 import { resolveWorkflowAgentRole } from "../../config/role-selection.js"
@@ -66,8 +66,7 @@ export function createWorkflowLearningReview({ deps: opts, memorySnapshot }: Wor
       await forkTree.dispose()
     }
     const replay = await reviewReplay(route, messages)
-    const telemetry = renderSkillLoadStats(await collectSkillLoadStats(opts.projectionReader))
-    const instruction = telemetry ? `${spec.instruction}\n\n${telemetry}` : spec.instruction
+    const instruction = await reviewForkInstruction(spec.instruction, spec.capabilities, opts.projectionReader)
     const usageAccounting = createReviewUsageAccounting(spec.reviewRunId, (event) => {
       if (event.type === "model.usage.measured") emit("model.usage.measured", { sessionId, data: event.data })
       else emit("budget.stream.completed", { sessionId, data: event.data })

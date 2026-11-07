@@ -6,6 +6,7 @@ import { SHIPPED_MODULES } from "../src/orchestration/modules.js";
 import { MODULE_IDS } from "../src/protocol/module-ids.js";
 import { PROTOCOL_MODULES } from "../src/protocol/modules.js";
 import { isUnderAny, MODULE_REGISTRIES, moduleFactHomes, moduleHomeId, moduleHomeImportViolation, moduleHomes } from "./module-homes.js";
+import { CAPABILITY_PHRASES, findCapabilityTableDrift, findCapabilityTermViolations, isCapabilityTermArgument, realCapabilityVocabulary } from "./capability-terms.js";
 import { MODULE_CONTAINMENT_ALLOWLIST, type ModuleContainmentAllowance } from "./module-containment-allowlist.js";
 import { scanSourceImports, type SourceImport } from "./source-imports.js";
 
@@ -26,6 +27,10 @@ import { scanSourceImports, type SourceImport } from "./source-imports.js";
 // means importing the vocabulary. A module home may name any module id,
 // because the contract declares dependencies and tool capabilities by id.
 // Domain and fact literals are distinctive and are matched everywhere.
+//
+// A module's vocabulary in model text, its tool names and capability phrases,
+// is checked by the capability-term rule in capability-terms.ts, which has no
+// exception ledger at all.
 
 export interface ModuleVocabulary {
   readonly moduleIds: readonly string[];
@@ -249,7 +254,8 @@ export function findModuleVocabularyViolations(repoRoot: string, vocabulary: Mod
       // otherwise the first reading that applies here is the leak, and one
       // report per literal per file is what an allowance names.
       const atHome = candidates.some((candidate) => isUnderAny(relPath, candidate.homes) || isUnderAny(relPath, candidate.readers));
-      const term = atHome ? undefined : candidates.find((candidate) => !(candidate.onlyWhereModuleIdsAreHandled && !handlesIds));
+      const termArgument = isCapabilityTermArgument(source, match.index ?? 0);
+      const term = atHome ? undefined : candidates.find((candidate) => !(candidate.onlyWhereModuleIdsAreHandled && !handlesIds) && !(candidate.rule === "module-id" && termArgument));
       if (!term) continue;
       reported.add(literal);
       const key = allowanceKey({ path: relPath, literal });
@@ -336,11 +342,15 @@ if (import.meta.main) {
   const repoRoot = path.resolve(import.meta.dir, "..");
   const { imports } = scanSourceImports(repoRoot, SCAN_ROOTS);
   const report = findModuleVocabularyViolations(repoRoot, realVocabulary(), MODULE_CONTAINMENT_ALLOWLIST);
+  const catalog = [...SHIPPED_MODULES, ...DEVELOPMENT_MODULES];
+  const capabilityVocabulary = await realCapabilityVocabulary(repoRoot, catalog);
+  const capabilityViolations = await findCapabilityTermViolations(repoRoot, capabilityVocabulary);
+  const capabilityDrift = findCapabilityTableDrift(repoRoot, CAPABILITY_PHRASES, capabilityVocabulary.modules);
   const homes = discoverModuleHomes(repoRoot);
   const discoveredIds = [...new Set(Object.values(homes).flat())];
   const importViolations = findModuleHomeImportViolations(imports, discoveredIds);
   const registryViolations = findModuleRegistryViolations({
-    catalog: [...SHIPPED_MODULES, ...DEVELOPMENT_MODULES],
+    catalog,
     protocol: PROTOCOL_MODULES,
     tui: clientRegistryEntries(imports, "src/tui/modules.ts", fs.readFileSync(path.join(repoRoot, "src/tui/modules.ts"), "utf8"), "TUI_MODULES"),
     web: clientRegistryEntries(imports, "webview/src/modules.ts", fs.readFileSync(path.join(repoRoot, "webview/src/modules.ts"), "utf8"), "WEB_MODULES"),
@@ -355,12 +365,18 @@ if (import.meta.main) {
   for (const violation of registryViolations) {
     console.error(`module-containment: ${violation}`);
   }
+  for (const violation of capabilityViolations) {
+    console.error(`module-containment: ${violation.path}:${violation.line} names "${violation.literal}" (capability of ${violation.module}) in model text outside that module's own text and outside a check for it; word it for the goal, or render it from a capability check (ARCH-CONTEXT-033)`);
+  }
+  for (const drift of capabilityDrift) {
+    console.error(`module-containment: ${drift}`);
+  }
   for (const allowance of report.stale) {
     console.error(`module-containment: stale allowance ${allowance.path} "${allowance.literal}" (unit ${allowance.unit}) no longer matches; remove it from scripts/module-containment-allowlist.ts`);
   }
-  const problems = report.violations.length + importViolations.length + registryViolations.length + report.stale.length;
+  const problems = report.violations.length + importViolations.length + registryViolations.length + report.stale.length + capabilityViolations.length + capabilityDrift.length;
   if (problems > 0) {
-    console.error(`\nmodule-containment: ${problems} problem(s). Module registries, homes, imports, ids, domains, and fact families must agree.`);
+    console.error(`\nmodule-containment: ${problems} problem(s). Module registries, homes, imports, ids, domains, fact families, and capability terms must agree.`);
     process.exit(1);
   }
   console.log(`module-containment: ${MODULE_CONTAINMENT_ALLOWLIST.length} allowed leak(s) remain`);

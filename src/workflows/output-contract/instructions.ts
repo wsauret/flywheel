@@ -22,7 +22,7 @@ const universalRules: readonly string[] = [
 
 const pathRule = "Each `path` value uses this machine's path syntax and can be absolute or relative to your working directory. Preserve the exact path of the artifact, including scratch files outside that directory. The path can name a file or a directory, and it must exist when you call `handoff`, unless its field says that it can name a file that does not exist yet.";
 
-const fileProcedure = "Write the complete output object as one JSON file named `output.json` directly inside your scratchpad directory, whose absolute path the Scratchpad Directory section of your instructions gives, with `write`, and repair it with `edit`. Write it there even when your brief names another location; the runtime accepts no other place. Then call `handoff` with only `{\"path\": \"<absolute path of that file>\"}`. The runtime reads the file, checks it strictly, and reports each problem with its line. Do not put the output in the `handoff` call itself.";
+const fileProcedure = "Write the complete output object as one JSON file named `output.json` directly inside your scratchpad directory, whose absolute path the Scratchpad Directory section of your instructions gives, and repair that file in place when the runtime reports a problem. Write it there even when your brief names another location; the runtime accepts no other place. Then call `handoff` with only `{\"path\": \"<absolute path of that file>\"}`. The runtime reads the file, checks it strictly, and reports each problem with its line. Do not put the output in the `handoff` call itself.";
 
 function typeLabel(field: Field): string {
   switch (field.type) {
@@ -105,15 +105,18 @@ function hasPathField(fields: FieldMap): boolean {
   return Object.values(fields).some(nestedHasPath);
 }
 
-/** Render the postamble for one contract. `payloadFields` are the keys the
+/** Render the postamble for one contract. `modelFields` are the keys the
  *  model fills in this mode: the envelope keys first, then the declared
- *  fields. */
-export function renderOutputInstructions(output: OutputObject, payloadFields: FieldMap): string {
+ *  fields. Without `commandEvidence`, the agent has no shell whose calls it
+ *  can cite (ARCH-CONTEXT-033), so the postamble leaves out `commands_run`
+ *  and the citation rule. */
+export function renderOutputInstructions(output: OutputObject, modelFields: FieldMap, commandEvidence: boolean): string {
   const fileMode = output.submit === "file";
   const declared = output.fields ?? {};
+  const payloadFields = commandEvidence ? modelFields : Object.fromEntries(Object.entries(modelFields).filter(([key]) => key !== "commands_run"));
   const envelopeFields = Object.fromEntries(Object.entries(payloadFields).filter(([key]) => envelopeKeys.some((name) => name === key)));
   const typeRules = [
-    ...(fileMode ? [] : [COMMAND_EVIDENCE_RULE]),
+    ...(fileMode || !commandEvidence ? [] : [COMMAND_EVIDENCE_RULE]),
     ...(hasPathField(declared) ? [pathRule] : []),
     ...(fileMode ? [fileProcedure] : []),
   ];

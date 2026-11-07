@@ -1,3 +1,4 @@
+import type { CapabilityCheck } from "../../infra/capability-text.js"
 import type { ProjectDirectories } from "../../infra/directory-authorities.js"
 import type { AsyncEventStateReadSurface, InFlightRecord } from "../../infra/event-store-types.js"
 import type { ModuleRuntimeHandle } from "../../infra/module-runtime.js"
@@ -48,6 +49,9 @@ export interface CommandSession {
    *  a warning that names the skill, with no turn, when the skill is not
    *  installed or the module selection does not make it available. */
   startMethod(input: CommandMethod): Promise<CommandOutcome>
+  /** The agent check (ARCH-CONTEXT-033) of the tool surface that the session's next request would use, for a
+   *  command whose prompt names a capability. It starts no turn and appends nothing to history. */
+  capabilities(): Promise<CapabilityCheck>
   /** Appends one system line to the transcript without starting a turn. */
   systemLine(message: string, level?: "info" | "error"): Promise<void>
   /** Runs the durable-learning review of this conversation. False when current policy refuses it. */

@@ -95,9 +95,9 @@ function fixtureStep(): AttemptRow {
 describe("canonical skill context", () => {
   it("is the exact text the model's skill tool loads", async () => {
     const revision = owner().skills();
-    const tool = createSkillTool({ revision, personaIndex });
+    const tool = createSkillTool({ treeCapabilities: () => true, availability: { skills: new Map() }, revision, personaIndex });
 
-    const context: ToolContext = { ...testDirectories(PROJECT_ROOT), artifactScopeId: "skill-composition", retrievalSessionId: "skill-composition" };
+    const context: ToolContext = { ...testDirectories(PROJECT_ROOT), artifactScopeId: "skill-composition", retrievalSessionId: "skill-composition", capabilities: () => true };
     const loaded = await tool.execute({ action: "load", skill_id: "alpha" }, context);
 
     expect(loaded.content).toBe(renderSkillContext(installed("alpha")));
@@ -106,25 +106,25 @@ describe("canonical skill context", () => {
   it("composes declared packages in declaration order, never sorted", () => {
     const revision = owner().skills();
 
-    expect(renderSkillClosure(["beta", "alpha"], revision, 'Skill "consumer"').slice(1)).toEqual([
+    expect(renderSkillClosure(["beta", "alpha"], revision, 'Skill "consumer"', () => true).slice(1)).toEqual([
       renderSkillContext(installed("beta")),
       renderSkillContext(installed("alpha")),
     ]);
-    expect(renderSkillClosure(undefined, revision, 'Skill "consumer"')).toEqual([]);
+    expect(renderSkillClosure(undefined, revision, 'Skill "consumer"', () => true)).toEqual([]);
   });
 
   it("tells the reader that every composed package is already in its context", () => {
     // A step or persona whose instructions name a composed package must not
     // try to load it: a dependency-only package is not loadable, and the
     // refused load shows the person an error row in a normal run.
-    const [preface] = renderSkillClosure(["beta", "alpha"], owner().skills(), 'Skill "consumer"');
+    const [preface] = renderSkillClosure(["beta", "alpha"], owner().skills(), 'Skill "consumer"', () => true);
 
     expect(preface).toContain("`beta`, `alpha`");
-    expect(preface).toContain("Do not load them with the skill tool.");
+    expect(preface).toContain("Do not load them.");
   });
 
   it("refuses to compose a package that is not installed", () => {
-    expect(() => renderSkillClosure(["gone"], owner().skills(), 'Skill "consumer"'))
+    expect(() => renderSkillClosure(["gone"], owner().skills(), 'Skill "consumer"', () => true))
       .toThrow('Skill "consumer" requires skill "gone", which is not installed');
   });
 });
@@ -134,6 +134,7 @@ describe("worker prompt composition", () => {
     const step = fixtureStep();
 
     const { task } = assembleAgentPrompt({
+      capabilities: () => true,
       attempt: step,
       agent: boundFixture(),
       contextBundle: "",
@@ -145,7 +146,7 @@ describe("worker prompt composition", () => {
   });
 
   it("puts dependency context ahead of the directly invoked body", () => {
-    const prompt = assembleSkillInvocation(installed("fixture"), undefined, { skills: owner().skills(), personaIndex });
+    const prompt = assembleSkillInvocation(installed("fixture"), undefined, { skills: owner().skills(), personaIndex, capabilities: () => true });
 
     expect(prompt).toContain(renderSkillContext(installed("alpha")));
     expect(prompt.indexOf("Alpha procedure.")).toBeLessThan(prompt.indexOf("Do the fixture work."));
@@ -153,6 +154,7 @@ describe("worker prompt composition", () => {
 
   it("leaves a step that declares no dependencies untouched", () => {
     const { task } = assembleAgentPrompt({
+      capabilities: () => true,
       attempt: fixtureStep(),
       agent: bound(WORKFLOW, "solo"),
       contextBundle: "",

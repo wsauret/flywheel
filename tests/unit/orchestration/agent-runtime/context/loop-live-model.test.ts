@@ -4,7 +4,7 @@ import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/age
 import { FUNCTION_TOOL_PRESENTATION, type LLMClient, type ProviderStreamEvent } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { asModelClient, ownHistoryTarget } from "../_model-client.js";
 import { createRequestToolSurface } from "../../../../../src/orchestration/agent-runtime/request-tool-surface.js";
-import { testCapabilityModules, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
+import { testCapabilityModules, testDefinitionAvailability, testRuntimeConfigCapture } from "../../../../helpers/request-tool-surface.js";
 import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../../src/orchestration/agent-runtime/model-interaction-profile.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 
@@ -37,7 +37,7 @@ describe("agent loop live model reassignment", () => {
     };
 
     const tools = await createRequestToolSurface(
-      () => ({ eligibleTools: new Map(), tools: new Map(), omitted: [], usable: new Set(), registrationIds: new Map(), registrationIdentities: new Map() }),
+      () => ({ eligibleTools: new Map(), tools: new Map(), omitted: [], usable: new Set(), turnedOff: [], registrationIds: new Map(), registrationIdentities: new Map(), definitionAvailability: testDefinitionAvailability() }),
       testCapabilityModules,
       testRuntimeConfigCapture,
       async () => {

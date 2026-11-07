@@ -17,6 +17,9 @@ import { createBackgroundExecutionOwner } from "../../../../../src/orchestration
 import { createBackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
 import { buildRegistry, createNotificationCapture, makeContext, makeDeps, makeMockRunnerFactory, runnerEffort, TEST_RATIONALE, childTask } from "./_fixtures.js";
 
+/** The check of a child whose plan lets it call exactly `tools`. */
+const holding = (tools: readonly string[]) => (term: string): boolean => tools.includes(term);
+
 /** The first plan of a child of a chat tree: the tools it is advertised
  *  and the ones its grant lets it call. */
 function planChildTools(grant: readonly string[], withheld: readonly string[] = []) {
@@ -154,7 +157,7 @@ describe("subagent tool — execute runner construction", () => {
       const worker = { kind: "persona", name: "worker", description: "Worker.", role: "implementer", tools: ["read"], maxTurns: 5, systemPrompt: "Work.", subagentRoles: ["explorer"] } as const;
       agentRegistry.set("worker", worker);
       const deps = makeDeps({ agentRegistry });
-      const prepared = prepareSubagentTools({ agent: worker, context: makeContext(), deps, childDepth: 3 });
+      const prepared = await prepareSubagentTools({ agent: worker, context: makeContext(), deps, childDepth: 3 });
       if (!prepared.ok) throw new Error(prepared.error.content);
 
       const plan = await planChildTools(prepared.toolNames, prepared.withheldTools);
@@ -165,18 +168,18 @@ describe("subagent tool — execute runner construction", () => {
         expect(refusal.content).toContain(`Do not call ${name} again`);
       }
       // A child that can still dispatch keeps process callable.
-      const shallow = prepareSubagentTools({ agent: worker, context: makeContext(), deps, childDepth: 2 });
+      const shallow = await prepareSubagentTools({ agent: worker, context: makeContext(), deps, childDepth: 2 });
       if (!shallow.ok) throw new Error(shallow.error.content);
       expect((await planChildTools(shallow.toolNames, shallow.withheldTools)).usable.has("process")).toBe(true);
     });
 
     it("discloses the dispatched agent's turn budget", () => {
-      const instructions = buildSubagentTask("You are a worker.", ["read", "handoff"], 42);
+      const instructions = buildSubagentTask("You are a worker.", holding(["read", "handoff"]), 42);
       expect(instructions).toContain("at most 42 turns");
     });
 
     it("keeps report handoffs complete and implementation handoffs concise", () => {
-      const instructions = buildSubagentTask("You are a worker.", ["read", "handoff"], 30);
+      const instructions = buildSubagentTask("You are a worker.", holding(["read", "handoff"]), 30);
       expect(instructions).toContain("For exploration, analysis, and review assignments, the report is the deliverable");
       expect(instructions).toContain("For implementation assignments, submit a concise completion record");
       expect(instructions).toContain("Do not paste command output or replay the work log");
@@ -184,22 +187,34 @@ describe("subagent tool — execute runner construction", () => {
     });
 
     it("tells the child to message its parent when a choice its tools cannot settle stops the work, and names no question tool", () => {
-      const instructions = buildSubagentTask("You are a worker.", ["read", "handoff", "message_session"], 30);
+      const instructions = buildSubagentTask("You are a worker.", holding(["read", "handoff", "message_session"]), 30);
       expect(instructions).toContain("message your parent with message_session and wait for its reply");
       expect(instructions).not.toContain("ask_user");
       expect(instructions).not.toContain("If truly blocked");
     });
 
-    it("includes git discipline for every file-mutating capability, adjacent to turn economy, and omits it for read-only sets", () => {
+    it("states the shell rules of closure and turn economy only to a child that has bash", () => {
+      const shelled = buildSubagentTask("You are a worker.", holding(["read", "bash", "handoff"]), 30);
+      const unshelled = buildSubagentTask("You are a worker.", holding(["read", "handoff"]), 30);
+      for (const rule of ["run the narrowest check that proves each change", "Never re-run a failing test or command", "bash is for scripts, pipelines, and multi-command chains"]) {
+        expect(shelled).toContain(rule);
+        expect(unshelled).not.toContain(rule);
+      }
+      expect(unshelled).toContain("Your parent verifies your work after collecting your result.\n\nBefore submitting:");
+      expect(unshelled).toContain("fixes are batched before one narrow re-verification.");
+    });
+
+    it("includes git discipline for every file-mutating capability with bash, adjacent to turn economy, and omits it for read-only or shell-less sets", () => {
       for (const mutatingTool of ["write", "edit"]) {
-        const mutating = buildSubagentTask("You are a worker.", ["read", mutatingTool, "handoff"], 30);
+        expect(buildSubagentTask("You are a worker.", holding(["read", mutatingTool, "handoff"]), 30)).not.toContain("## Git Discipline");
+        const mutating = buildSubagentTask("You are a worker.", holding(["read", mutatingTool, "bash", "handoff"]), 30);
         expect(mutating).toContain("## Git Discipline");
         expect(mutating).toContain("track the files you touch yourself");
         expect(mutating.indexOf("## Git Discipline")).toBeGreaterThan(mutating.indexOf("## Turn Economy"));
         expect(mutating.indexOf("## Git Discipline")).toBeLessThan(mutating.indexOf("## Handoff"));
       }
 
-      const readOnly = buildSubagentTask("You are a reviewer.", ["read", "search", "list", "bash", "handoff"], 30);
+      const readOnly = buildSubagentTask("You are a reviewer.", holding(["read", "search", "list", "bash", "handoff"]), 30);
       expect(readOnly).not.toContain("## Git Discipline");
     });
 

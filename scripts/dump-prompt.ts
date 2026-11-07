@@ -11,54 +11,37 @@
  *   bun run scripts/dump-prompt.ts worker src/cli/composition-probe.workflow.yaml fix --sizes
  *
  *
- * The tool catalog comes from the production planner (`planToolExposure`) over
- * the shipped module composition, so the dump advertises what a live request
- * advertises, and the system prompt comes from the options a live request
- * builds it from (`requestSystemPromptOptions`), with its module prompt
- * fragments and memory. Host surfaces the planner needs are stubbed at their seams:
- * ask_user answers nothing, recall finds nothing, the subagent and workflow
- * module runtimes carry the real persona registry and workflow summaries but
- * cannot dispatch, and the handoff schema is the agent's or the subagent's.
- * Worker mode gives the agent of a workflow the tools that agent-callback
- * gives it and stands a representative session scratch path in for the live one.
- * Known approximations: the memory and skill_manage tools need a live store and
- * are omitted, the web tool needs a configured provider, and the environment
- * block, which a live run reads with git, is absent.
+ * The request comes from the shared assembly (scripts/prompt-assembly.ts),
+ * which plans and builds it the way a live request does, over the shipped
+ * module composition and the default configuration. Worker mode gives the
+ * agent of a workflow the tools that agent-callback gives it and stands a
+ * representative session scratch path in for the live one.
  */
 
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { composeModuleRuntimes, type ModuleRuntimes } from "../src/infra/module-runtime.js";
 import { createInstalledDefinitionRegistry } from "../src/orchestration/definition-catalog.js";
 import { resolveWorkflowAgents } from "../src/workflows/agent-resolution.js";
 import { loadWorkflowFile, renderWorkflowFileDiagnostic } from "../src/workflows/workflow-file.js";
-import { renderSkillClosure } from "../src/workflows/skill-context.js";
+import { personaInstructions } from "../src/workflows/agents/persona-instructions.js";
 import type { SkillRegistryRevision } from "../src/workflows/skill-schema.js";
 import { assembleAgentPrompt } from "../src/workflows/context-bundle/prompt-assembly.js";
 import type { AttemptRow } from "../src/workflows/view/types.js";
 import { loadStandalonePersonaRegistry } from "../src/workflows/agents/registry.js";
 import { handoffToolSchemaFromOutput } from "../src/orchestration/workflow-host/handoff-tool-schema.js";
-import { workflowLaunchTargets } from "../src/orchestration/workflow-host/launch-origin.js";
 import { loadAgentInstructions } from "../src/orchestration/agent-runtime/project-instructions.js";
 import { buildSubagentTask, SUBAGENT_HANDOFF_SCHEMA } from "../src/orchestration/modules/subagents/execution/prompts.js";
-import type { SubagentDispatchDeps } from "../src/orchestration/modules/subagents/execution/dispatch-deps.js";
-import { buildSystemPromptParts, type SystemPromptPart } from "../src/orchestration/agent-runtime/system-prompt.js";
-import { readModuleMemory, requestSystemPromptOptions } from "../src/orchestration/agent-runtime/request-system-prompt.js";
+import type { SystemPromptPart } from "../src/orchestration/agent-runtime/system-prompt.js";
+import { readModuleMemory } from "../src/orchestration/agent-runtime/request-system-prompt.js";
 import { SYSTEM_PROMPT_SEPARATOR } from "../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { loadEngineeringDoctrine, loadSystemPrompt } from "../src/infra/agent-assets/system-prompt.js";
-import { planToolExposure, type ToolExposurePlan } from "../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
 import { personaToolEntries, toolRegistryFromComposition } from "../src/orchestration/agent-runtime/tools/tool-registry.js";
-import type { KernelToolDeps } from "../src/orchestration/agent-runtime/tools/kernel-tool-deps.js";
-import { requestKernel, sharesTreeHost } from "../src/orchestration/agent-runtime/request-kernel.js";
-import { resolveModelInteractionProfile } from "../src/orchestration/agent-runtime/model-interaction-profile.js";
-import type { RuntimeTool } from "../src/orchestration/agent-runtime/tools/types.js";
-import { createBackgroundWorkRegistry } from "../src/orchestration/agent-runtime/background-work.js";
-import { createChildSlotRegistry } from "../src/orchestration/agent-runtime/child-slot-registry.js";
 import { captureRuntimeConfigRequest } from "../src/orchestration/agent-runtime/request-config.js";
 import type { AgentPurpose } from "../src/orchestration/agent-runtime/types.js";
 import { composeFirstPartyModules } from "../src/orchestration/modules.js";
 import { loadConfig } from "../src/orchestration/config/loader.js";
 import type { AgentDefinition } from "../src/infra/agent-definition.js";
+import { planPromptRequest, plannedCapabilities, promptParts, type PlanInput, type PlannedRequest, type PromptAssembly } from "./prompt-assembly.js";
 
 const repoRoot = resolve(import.meta.dir, "..");
 const accountHome = homedir();
@@ -70,34 +53,36 @@ const definitions = createInstalledDefinitionRegistry({
   userDataRoot,
   accountHome,
 });
-/** Stand-in for the live per-session scratch directory (structure fidelity only). */
-const SAMPLE_SCRATCH_DIR = join(repoRoot, ".flywheel", "sessions", "<sessionId>", "scratch");
 const args = process.argv.slice(2).filter((a) => a !== "--sizes");
 const showSizes = process.argv.includes("--sizes");
 const mode = args[0] ?? "chat";
 
-/** The serving model of every dumped request, and its interaction profile. */
-const DUMP_MODEL = "dump-model";
-const DUMP_INTERACTION_PROFILE = resolveModelInteractionProfile(DUMP_MODEL, "anthropic");
-
-const noop = (): void => {};
-const notDispatched = (): never => { throw new Error("Prompt dumps do not dispatch subagents."); };
-/** One background owner for this dump: the workflow and process tools both
- *  manage the same task registry, exactly as a live runner does. */
-const backgroundTasks = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: noop });
 const moduleSnapshot = composeFirstPartyModules();
-/** The default configuration, captured the way a request captures it. */
-const runtimeConfig = (() => {
-  const loaded = loadConfig(undefined, process.env, userDataRoot);
-  return captureRuntimeConfigRequest({
-    revision: 0,
-    config: loaded.config,
-    warnings: loaded.warnings,
-    diagnostics: loaded.diagnostics,
-    sourceIdentity: "dump-prompt",
-    status: { kind: "missing" },
-  }, "default");
-})();
+const assembly: PromptAssembly = {
+  projectRoot: repoRoot,
+  userDataRoot,
+  accountHome,
+  scratchDir: join(repoRoot, ".flywheel", "sessions", "<sessionId>", "scratch"),
+  definitions: definitions.captureRevision(),
+  // The default configuration, captured the way a request captures it.
+  runtimeConfig: (() => {
+    const loaded = loadConfig(undefined, process.env, userDataRoot);
+    return captureRuntimeConfigRequest({
+      revision: 0,
+      config: loaded.config,
+      warnings: loaded.warnings,
+      diagnostics: loaded.diagnostics,
+      sourceIdentity: "dump-prompt",
+      status: { kind: "missing" },
+    }, "default");
+  })(),
+  capture: moduleSnapshot,
+  live: moduleSnapshot,
+  // The shipped default mode, so the dump shows what a new account's chat sees.
+  workflowsMode: "on",
+  servingModel: { model: "dump-model", modelFamily: "anthropic" },
+  hosts: false,
+};
 
 interface PromptResult {
   label: string;
@@ -108,33 +93,17 @@ interface PromptResult {
   layers: Array<[name: string, text: string, tier?: SystemPromptPart["tier"]]>;
 }
 
-/** The system prompt of one planned request, built by the options a live
- *  request builds it from (`requestSystemPromptOptions`), so its module
- *  fragments, its memory, and its stance are the request's. Its parts drive
- *  both the joined prompt and the size table. The dumped run is a durable
- *  session: it keeps a checkpoint and its facts are searchable. The core
- *  prompt resolves the same overlay chain a live runner uses; the
- *  compiled-in manifest is empty in a source checkout, so without this the
- *  dump would silently drop the first prompt layer. */
+/** The system prompt of one planned request. The core prompt resolves the
+ *  same overlay chain a live runner uses; the compiled-in manifest is empty in
+ *  a source checkout, so without this the dump would silently drop the first
+ *  prompt layer. */
 async function compile(purpose: AgentPurpose, planned: PlannedRequest) {
-  const parts = buildSystemPromptParts(await requestSystemPromptOptions({
-    purpose,
+  const parts = await promptParts(assembly, purpose, planned, {
     corePrompt: loadSystemPrompt({ projectRoot: repoRoot, userDataRoot }),
     engineeringDoctrine: loadEngineeringDoctrine({ projectRoot: repoRoot, userDataRoot }),
     agentsMd: await loadAgentInstructions({ executionCwd: repoRoot, projectRoot: repoRoot, accountHome, userDataRoot }),
-    envBlock: undefined,
-    scratchDir: SAMPLE_SCRATCH_DIR,
-    checkpoint: true,
-    selfDebug: true,
-    sessionIdentity: undefined,
-    interactionProfile: DUMP_INTERACTION_PROFILE,
-    moduleSnapshot,
-    tools: planned.tools,
-    skillRegistry: planned.skillRegistry,
-    kernel: planned.kernel,
-    modules: planned.modules,
     memory: (snapshot) => readModuleMemory(snapshot, { projectRoot: repoRoot, accountHome }),
-  }));
+  });
   return {
     systemPrompt: parts.map((p) => p.text).join(SYSTEM_PROMPT_SEPARATOR),
     layers: parts.map((p): PromptResult["layers"][number] => [p.label, p.text, p.tier]),
@@ -152,110 +121,12 @@ function loadRegistry(skills: SkillRegistryRevision): Map<string, AgentDefinitio
   ));
 }
 
-interface PlanInput {
-  skills: SkillRegistryRevision;
-  registry: ReadonlyMap<string, AgentDefinition>;
-  purpose: AgentPurpose;
-  handoffSchema?: KernelToolDeps["handoff"];
-  askUser: boolean;
-}
-
-/** One planned request: its kernel, its module runtimes, its tools, and its skill revision. */
-interface PlannedRequest {
-  readonly kernel: KernelToolDeps;
-  readonly modules: ModuleRuntimes;
-  readonly tools: Map<string, RuntimeTool>;
-  readonly skillRegistry: ToolExposurePlan["skillRegistry"];
-}
-
-/** The planner's catalog for one request. The kernel facts come from the
- *  production builder (`requestKernel`) over stub surfaces; the module runtimes
- *  carry only what tool construction and prompt fragments read (the persona
- *  registry and the workflow launch seam), because a dump never executes a tool. */
-async function planTools(input: PlanInput): Promise<PlannedRequest> {
-  const kernel = requestKernel({
-    options: { userDataRoot, purpose: input.purpose },
-    surfaces: {
-      ...(input.handoffSchema ? { handoff: { ...input.handoffSchema, onContent: noop } } : {}),
-      ...(input.askUser ? { askUser: { ask: async () => ({ kind: "cancelled" as const }), answerQuestion: noop, cancelQuestion: noop, suspendAll: () => false } } : {}),
-      recall: async () => ({ hits: [] }),
-    },
-    personas: input.registry,
-    backgroundTasks,
-    checkpoint: {
-      read: async () => undefined,
-      replace: async () => { throw new Error("Prompt dumps do not execute tools."); },
-      decide: async () => { throw new Error("Prompt dumps do not execute tools."); },
-    },
-    treeHosted: sharesTreeHost(input.purpose),
-  }, {
-    moduleSnapshot, live: moduleSnapshot, runtimeConfig, shellWriteGuard: runtimeConfig.shellWriteGuard, skills: input.skills,
-    servingModel: { model: DUMP_MODEL, modelFamily: "anthropic" },
-    fileEditContract: DUMP_INTERACTION_PROFILE.fileEditContract,
-  });
-  // Tool construction reads only the persona registry (the description comes
-  // from it); every authority below it refuses, because a dump never dispatches.
-  const subagentDeps: SubagentDispatchDeps = {
-    userDataRoot,
-    accountHome,
-    agentRegistry: input.registry,
-    capabilityRequirements: [],
-    skills: input.skills,
-    modelFamily: "anthropic",
-    parentModel: DUMP_MODEL,
-    parentPromptKind: "chat",
-    resolveRoles: notDispatched,
-    onRenderEvent: noop,
-    onChildRenderEvent: noop,
-    backgroundTasks,
-    childSlots: createChildSlotRegistry(),
-    sessionId: "dump-session",
-    providerSessionKey: "dump-session",
-    createRunner: notDispatched,
-    authProfileId: "default",
-    captureRuntimeConfig: () => runtimeConfig,
-    awaitModelAccessSettled: async () => {},
-    inheritableRuntimeSurfaces: {},
-    moduleSelection: () => moduleSnapshot,
-    subagentSessions: {
-      resolveRoles: notDispatched,
-      allocateId: notDispatched,
-      childDepth: notDispatched,
-      publish: notDispatched,
-      reconcileParentCompletion: notDispatched,
-      settleReconciliation: notDispatched,
-      registerLiveControl: notDispatched,
-      settleUnreadMessages: notDispatched,
-      deactivate: notDispatched,
-      publishNewAttempt: notDispatched,
-      prepareResume: notDispatched,
-      publishResume: notDispatched,
-    },
-  };
-  const modules = composeModuleRuntimes([
-    ["subagents", { toolDeps: () => subagentDeps }],
-    ["workflows", {
-      deps: () => ({
-        startWorkflow: async () => ({ error: "dump-prompt stub: workflow launch is not wired" }),
-        onRenderEvent: noop,
-        sessionDir: join(SAMPLE_SCRATCH_DIR, ".."),
-        executionCwd: repoRoot,
-        // The shipped default mode, so the dump shows what a new account's chat sees.
-        mode: "on" as const,
-        resolveLaunchTarget: workflowLaunchTargets({ revision: () => definitions.captureRevision(), sessionDir: join(SAMPLE_SCRATCH_DIR, ".."), executionCwd: repoRoot }),
-      }),
-      // Authority bounds what a launched file may grant its steps, which only a launch reads.
-      authority: () => ({ toolActions: new Set(), personas: new Set() }),
-    }],
-  ]);
-  const plan = await planToolExposure({ kernel, modules });
-  return { kernel, modules, tools: new Map(plan.tools), skillRegistry: plan.skillRegistry };
-}
+const planTools = (input: PlanInput): Promise<PlannedRequest> => planPromptRequest(assembly, input);
 
 async function buildChatPrompt(): Promise<PromptResult> {
   const skills = definitions.skills();
   const purpose: AgentPurpose = { kind: "interactive-chat" };
-  const planned = await planTools({ skills, registry: loadRegistry(skills), purpose, askUser: true });
+  const planned = await planTools({ personas: loadRegistry(skills), purpose, askUser: true });
   planned.tools.delete("handoff"); // chat has no handoff path
 
   return {
@@ -284,8 +155,7 @@ async function buildSubagentPrompt(agentType: string): Promise<PromptResult> {
   const purpose: AgentPurpose = { kind: "subagent", renderAs: "subagent", parentToolUseId: "dump" };
   // A persona child sees a step's tools; its task names the ones it may call.
   const planned = await planTools({
-    skills,
-    registry,
+    personas: registry,
     purpose,
     handoffSchema: { schema: SUBAGENT_HANDOFF_SCHEMA },
     askUser: false,
@@ -294,16 +164,15 @@ async function buildSubagentPrompt(agentType: string): Promise<PromptResult> {
   // Dispatch composes the persona's declared packages ahead of its role
   // instructions, so the dump mirrors that order or it reports a prompt no
   // child receives.
-  const personaInstructions = [
-    ...renderSkillClosure(agent.requiredSkills, skills, `Persona "${agent.name}"`),
-    agent.systemPrompt,
-  ].join("\n\n");
+  const has = plannedCapabilities(planned);
+  const instructions = personaInstructions(agent, skills, has);
 
   return {
     label: `SUBAGENT: ${agentType} (granted: ${granted.join(", ")})`,
     ...await compile(purpose, planned),
     // The child's task is the turn after the parent's assignment.
-    userPrompt: buildSubagentTask(personaInstructions, granted, agent.maxTurns),
+    // The task's rules name only tools, which the child may call when its grant holds them.
+    userPrompt: buildSubagentTask(instructions, (term) => has(term) && granted.includes(term), agent.maxTurns),
   };
 }
 
@@ -339,26 +208,24 @@ async function buildWorkerPrompt(workflowFile: string, definitionId: string): Pr
     resumeRevertCount: 0,
   };
 
-  const assembled = assembleAgentPrompt({
-    attempt,
-    agent,
-    contextBundle: "",
-    skills,
-  });
-
   // Mirrors the exposure of an agent of a workflow (agent-callback
-  // createContext): every agent gets the whole catalog, the handoff schema is
-  // the agent's compiled output, and agents of a workflow have no workflow tool.
+  // createContext): every agent gets the whole catalog, and the handoff schema
+  // is the agent's compiled output.
   const purpose: AgentPurpose = { kind: "workflow-agent", briefScope: { briefId: agent.briefId }, workflowAttemptId: attempt.id };
   const planned = await planTools({
-    skills,
-    registry: loadRegistry(skills),
+    personas: loadRegistry(skills),
     purpose,
     handoffSchema: { schema: handoffToolSchemaFromOutput(agent.output) },
     // Only a root chat asks the person (PI-AGENT-024).
     askUser: false,
   });
-  planned.tools.delete("workflow");
+  const assembled = assembleAgentPrompt({
+    attempt,
+    agent,
+    contextBundle: "",
+    skills,
+    capabilities: plannedCapabilities(planned),
+  });
 
   return {
     label: `WORKER: ${workflow.id}/${agent.definitionId} (brief ${agent.briefId}; tools: ${[...planned.tools.keys()].join(", ")})`,

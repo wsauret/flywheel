@@ -70,19 +70,21 @@ export function createCommandInvokeService(deps: CommandInvokeDeps): CommandInvo
     const executionCwd = recordedExecutionCwd(durable, deps.directories.projectRoot)
     let facts: SessionFactWriter | undefined
     const resident = async (): Promise<boolean> => deps.sessionStore.get(sessionId)?.kind === "chat" || await deps.supervisor.activateSession(sessionId)
+    const capabilities = async () => (await deps.supervisor.ensureChatRunner(sessionId)).capabilities()
     return {
       session: {
         id: sessionId,
         executionCwd,
         prompt: ({ text, label, args, context }) => deps.supervisor.requestChatContext(sessionId, { text, invocation: { label, ...(args === undefined ? {} : { args }) } }, context),
         async startMethod({ skill, label, args }) {
-          const method = skillMethod(skill, args, deps.availability.snapshot())
+          const method = await skillMethod(skill, args, deps.availability.snapshot(), capabilities)
           if (method.kind === "unavailable") return { kind: "warning", message: `${label} cannot start the ${skill} skill: ${method.reason}.` }
           // Committed like a person's message, not as request-only context: the
           // method governs every later turn of the conversation it starts.
           const sent = await deps.supervisor.sendChat(sessionId, { text: method.text, invocation: { label, ...(args === undefined ? {} : { args }) } })
           return sent.ok ? { kind: "none" } : { kind: "warning", message: sent.reason }
         },
+        capabilities,
         async systemLine(message, level = "info") {
           if (await resident()) deps.sessionStore.appendPreRunnerOutput(sessionId, { kind: "system", id: randomUUID(), message, level, timestamp: Date.now() })
         },

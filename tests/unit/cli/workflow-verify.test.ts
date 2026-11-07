@@ -140,7 +140,7 @@ describe("workflow verification input resolution", () => {
   })
 
   it("judges a draft outside every definition root as a path launch does, so the skill's canonical example verifies", async () => {
-    const example = path.join(import.meta.dir, "../../../src/agent-skills/workflow-authoring/examples/review-changes.workflow.yaml")
+    const example = path.join(import.meta.dir, "../../../src/orchestration/modules/workflows/definitions/skills/workflow-authoring/examples/review-changes.workflow.yaml")
     const report = await resolveWorkflowVerifyInput(example, {
       skills: definitions.skills(),
       readText: async (file) => fs.readFileSync(file, "utf8"),

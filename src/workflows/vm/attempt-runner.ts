@@ -1,4 +1,5 @@
 import { assertNever } from "../../infra/assert-never.js";
+import type { CapabilityCheck } from "../../infra/capability-text.js";
 import { isAbortError } from "../../infra/abort.js";
 import { errorMessage } from "../../infra/error-message.js";
 import { InvariantViolation } from "../../infra/invariant.js";
@@ -7,6 +8,7 @@ import { classifyError, type ErrorType, WorkerFailedError } from "../context-bun
 import { HandoffError, HandoffNotProducedError } from "../context-bundle/handoff-errors.js";
 import { assembleAgentPrompt } from "../context-bundle/prompt-assembly.js";
 import { describeOutputIssues } from "../output-contract/accept.js";
+import { commandEvidenceRefusal } from "../output-contract/envelope.js";
 import { buildAttemptContextBundle, type ArtifactContextBuilder } from "../context-bundle/attempt-artifacts.js";
 import type { WorkflowContextStore } from "../context-bundle/context-store.js";
 import type { ContextRecipient } from "../context-bundle/context.js";
@@ -34,6 +36,18 @@ interface AttemptRunHost {
   readonly conversationsOf: (attemptId: string) => Promise<readonly string[]>;
 }
 
+/** What an attempt's agent reads first: its user prompt and its task. */
+interface AttemptBrief {
+  readonly userPrompt: string;
+  readonly task: string;
+}
+
+/** Composes the brief of an attempt for the check of the agent that runs it (ARCH-CONTEXT-033): the tools that its
+ *  first request can call and the definitions available to it. The worker plans the agent's run and calls it once,
+ *  before the brief commits. It records the attempt's invocation, and it rejects when the agent cannot do the
+ *  attempt's work, as an output that requires command evidence without a usable `bash`. */
+export type ComposeAttemptBrief = (capabilities: CapabilityCheck) => Promise<AttemptBrief>;
+
 export interface AttemptExecutorDeps {
   /** Resolved agent records of this workflow, keyed by definition id. The
    *  record owns the execution policy of its graph position: its output
@@ -45,8 +59,7 @@ export interface AttemptExecutorDeps {
   readonly skills: SkillRegistryRevision;
   readonly worker: (
     attempt: AttemptRow,
-    userPrompt: string,
-    task: string,
+    brief: ComposeAttemptBrief,
     signal: AbortSignal,
     conversationId: string,
     /** Reports measured operations even when the worker throws before returning. */
@@ -56,9 +69,12 @@ export interface AttemptExecutorDeps {
   ) => Promise<AgentOutput>;
   readonly recordInvocation: () => Promise<void>;
   readonly buildArtifactContext?: ArtifactContextBuilder;
-  /** The rendered latest checkpoint of an earlier conversation of this
-   *  workflow's agents, or null when it recorded none. */
-  readonly earlierCheckpoint: (conversationId: string) => Promise<string | null>;
+  /** Why the agent of an attempt may not call the tool of the tool term
+   *  `term`, which its check refuses. */
+  readonly unavailableToolReason: (term: string) => string;
+  /** The latest checkpoint of an earlier conversation of this workflow's
+   *  agents, rendered for the agent's check, or null when it recorded none. */
+  readonly earlierCheckpoint: (conversationId: string, capabilities: CapabilityCheck) => Promise<string | null>;
 }
 
 interface AttemptRunSuccess extends AttemptOutcome {
@@ -150,11 +166,11 @@ export function attemptContextRecipient(
 export function createAttemptExecutor(deps: AttemptExecutorDeps): AttemptExecutor {
   /** What the conversations before this one recorded: the latest one's
    *  checkpoint, and the file edits of all of them, which stay on disk. */
-  async function readEarlierAttempt(attemptId: string, agentName: string, host: AttemptRunHost) {
+  async function readEarlierAttempt(attemptId: string, agentName: string, capabilities: CapabilityCheck, host: AttemptRunHost) {
     const earlier = (await host.conversationsOf(attemptId)).filter((conversationId) => conversationId !== host.conversationId);
     const latest = earlier.at(-1);
     return {
-      checkpoint: latest === undefined ? null : await deps.earlierCheckpoint(latest),
+      checkpoint: latest === undefined ? null : await deps.earlierCheckpoint(latest, capabilities),
       fileEvidence: await deps.buildArtifactContext?.([{ agentName, conversationIds: earlier, handoffs: [] }], host.signal) ?? null,
     };
   }
@@ -180,23 +196,39 @@ export function createAttemptExecutor(deps: AttemptExecutorDeps): AttemptExecuto
           conversationsOf: host.conversationsOf,
         });
 
-        const earlierAttempt = input.provenance._tag === "continuation" && input.provenance.reason === "overflow"
-          ? await readEarlierAttempt(input.attemptId, resolvedAgent.name, host)
-          : undefined;
-        const prompt = assembleAgentPrompt({
-          attempt,
-          agent: resolvedAgent,
-          contextBundle,
-          skills: deps.skills,
-          ...(input.vote === undefined ? {} : { vote: input.vote }),
-          ...(earlierAttempt === undefined ? {} : { earlierAttempt }),
-        });
-        const { task, userPrompt } = prompt;
+        // The refusal that the brief raised, which the attempt reports as its failure.
+        let refusal: string | undefined;
+        const brief: ComposeAttemptBrief = async (capabilities) => {
+          if (resolvedAgent.output.requiresCommandEvidence && !capabilities("bash")) {
+            refusal = commandEvidenceRefusal(`Workflow "${input.workflowDefinitionId}" agent "${resolvedAgent.definitionId}"`, deps.unavailableToolReason("bash"));
+            throw new Error(refusal);
+          }
+          const earlierAttempt = input.provenance._tag === "continuation" && input.provenance.reason === "overflow"
+            ? await readEarlierAttempt(input.attemptId, resolvedAgent.name, capabilities, host)
+            : undefined;
+          const { task, userPrompt } = assembleAgentPrompt({
+            attempt,
+            agent: resolvedAgent,
+            contextBundle,
+            skills: deps.skills,
+            capabilities,
+            ...(input.vote === undefined ? {} : { vote: input.vote }),
+            ...(earlierAttempt === undefined ? {} : { earlierAttempt }),
+          });
+          host.signal.throwIfAborted();
+          await deps.recordInvocation();
+          host.signal.throwIfAborted();
+          return { task, userPrompt };
+        };
 
         host.signal.throwIfAborted();
-        await deps.recordInvocation();
-        host.signal.throwIfAborted();
-        const workerOutput = await deps.worker(attempt, userPrompt, task, host.signal, host.conversationId, (count) => { toolUses = count; }, context.request.inheritedIntent);
+        let workerOutput: AgentOutput;
+        try {
+          workerOutput = await deps.worker(attempt, brief, host.signal, host.conversationId, (count) => { toolUses = count; }, context.request.inheritedIntent);
+        } catch (error) {
+          if (refusal === undefined) throw error;
+          return failure(input, host.conversationId, "fatal", `fatal error - ${refusal}`);
+        }
         toolUses = workerOutput.toolUses ?? toolUses;
         host.signal.throwIfAborted();
         if (workerOutput.output === "context_overflow") {

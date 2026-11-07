@@ -76,7 +76,7 @@ Not: Eagerly injecting every available reference.
 
 ## ARCH-CONTEXT-030: Packages reach context only through declared paths
 
-A package reaches context only through declared composition, model loading, or a user command. Its body is never copied into the instruction kernel, a brief, or a persona. Loading renders one canonical package context, grants no authority, creates no active-package state, and causes no reinjection. A declaration that names an uninstalled package is a definition error.
+A package reaches context only through declared composition, model loading, or a user command. Its body is never copied into the instruction kernel, a brief, or a persona. Loading renders one canonical package context for the capabilities of the agent that loads it. Loading grants no authority, creates no active-package state, and causes no reinjection. A declaration that names an uninstalled package is a definition error.
 
 ## ARCH-CONTEXT-017: Learned context is fallible evidence
 
@@ -87,6 +87,16 @@ User-global and project instructions, memory, and loaded skills are point-in-tim
 Every workflow agent and subagent gets one generic handoff schema and one stable system-prompt tier, and every agent and side call of a chat tree gets byte-identical tools, descriptions and schemas included. An agent's own material, its brief, instructions, context bundle, output contract, and the advertised tools that its grant refuses, goes in its opening user turn on every route, never in the system prompt. A fork does not copy another agent's grant. Material shared by one workflow or session, such as approved parent intent or the dispatchable persona catalog, renders once in the session tier after the stable prefix.
 Because: tools come first in a cached request, so a per-agent tool set or system prompt breaks cache reuse across siblings.
 Not: narrowing an agent's tool set by persona instead of refusing ungranted calls at execution.
+
+## ARCH-CONTEXT-033: Prompt text names only capabilities its reader holds
+
+Flywheel-owned text that a model reads names an optional capability only in that capability's own text, or where it renders from a capability check that holds it. Shared text names the goal, such as asking the person or waiting for managed work. A method that needs one capability ships in that capability's definitions. Text that every agent of a chat tree shares checks the tree's module capture. Text that one agent alone reads checks the tools that it may call.
+Because: guidance about a missing capability makes an agent call refused tools or follow a method that it cannot run.
+Not: A separate capability flag kept at each render site.
+
+## ARCH-CONTEXT-034: A narrowed capability is stated in the agent's own turns
+
+When a module that an agent's shared text describes turns off for that agent, its next request carries one recorded, system-origin statement. The statement names the module and says that text about it no longer applies. The conversation history alone decides whether the statement is due, so a resumed, forked, or compacted conversation decides correctly. Recorded turns never change.
 
 ## ARCH-CONTEXT-019: Workflow context flows in one direction
 

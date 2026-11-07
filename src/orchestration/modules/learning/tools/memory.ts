@@ -10,6 +10,7 @@ import { dirname } from "node:path";
 import { memoryWrittenFact } from "../../../../workflows/memory/memory-fact-writers.js";
 import type { MemoryWrittenFact } from "../../../../workflows/memory/memory-facts.js";
 import type { AsyncEventStateReadSurface } from "../../../../infra/event-store-types.js";
+import type { CapabilityCheck } from "../../../../infra/capability-text.js";
 import { Log } from "../../../../infra/log.js";
 import { normalizeMemoryTitle } from "../../../../infra/tools/memory-title.js";
 import type { LearningScope } from "../../../../infra/learning-scope.js";
@@ -40,7 +41,11 @@ const MAX_CONSOLIDATION_FAILURES_PER_TURN = 3;
 
 const log = Log.create({ service: "memory-tool" });
 
-const DESCRIPTION = `Maintain a small, selective profile of the user and their working context across many future sessions. Memory is scarce and enters future prompts: save only durable facts likely to change a future agent's decisions, not a record of this session.
+/** The memory description for a tree whose check is `has`: a repeatable procedure is sent to a skill only while the
+ *  tree can write one. */
+function description(has: CapabilityCheck): string {
+  const skills = has("skill_manage");
+  return `Maintain a small, selective profile of the user and their working context across many future sessions. Memory is scarce and enters future prompts: save only durable facts likely to change a future agent's decisions, not a record of this session.
 
 HOW: make ALL your changes in ONE call via an 'operations' array (each item: {action, content?, old_text?}). The batch applies atomically and the char limit is checked only on the FINAL result - so a single call can remove or replace stale entries to free room AND add new ones, even when an add alone would overflow. The response reports current/limit chars and confirms completion; one batch call finishes the update, so do not repeat it. Use the bare action/content/old_text fields only for a single lone change.
 
@@ -52,13 +57,14 @@ REACH: 'project' = durable user preferences and working context specific to this
 
 WHEN: consider explicit preferences, corrections that reveal lasting preferences, stable user context, and hard-won repository or tool facts that are not instructions or cheaply rediscovered. Ask whether the fact will help across many future sessions, is supported by evidence, and is absent from an existing authority. Prioritize facts that prevent the user having to explain themselves again. A mistake or verified fix alone is not a reason to save memory. Saving nothing is often correct.
 
-DESTINATIONS: Session notes hold progress, plans, handoffs, temporary findings, and completed-work summaries; never put these in memory. Shared repository instructions, commands, conventions, and architectural guidance belong in AGENTS.md or their existing repository authority. Maintain that authority rather than duplicating it in memory. Repeatable procedures belong in skills.
+DESTINATIONS: Session notes hold progress, plans, handoffs, temporary findings, and completed-work summaries; never put these in memory. Shared repository instructions, commands, conventions, and architectural guidance belong in AGENTS.md or their existing repository authority. Maintain that authority rather than duplicating it in memory.${skills ? " Repeatable procedures belong in skills." : ""}
 
 MAKING ROOM: free room in this order: delete stale entries first, then rotate out whole lower-priority entries. Compress an entry only while it stays a plain sentence a human can understand without this session's context; past that point intent is lost, so drop a whole entry instead of compressing many into fragments. If a call is still rejected, use the returned current entries and usage to recalculate one corrected batch.
 
-PROTECTED: entries labeled [protected] are user-owned and permanent until the user sets their "protected" field to false in the memory file. Never replace or remove them, and never use file-edit, shell, CLI, or other tools to alter their content or protection flag.
+PROTECTED: entries labeled [protected] are user-owned and permanent until the user sets their "protected" field to false in the memory file. Never replace or remove them, and never use any other tool to alter their content or protection flag.
 
-SKIP: trivial or obvious info, easily re-discovered facts, raw data dumps, task progress, completed-work logs, temporary TODO state. A repeatable procedure belongs in a skill, not memory.`;
+SKIP: trivial or obvious info, easily re-discovered facts, raw data dumps, task progress, completed-work logs, temporary TODO state.${skills ? " A repeatable procedure belongs in a skill, not memory." : ""}`;
+}
 
 const INPUT_SCHEMA = {
   type: "object",
@@ -120,7 +126,8 @@ export interface MemoryToolDeps {
   accountHome: string;
 }
 
-export function createMemoryTool(deps: MemoryToolDeps): RuntimeTool {
+/** The memory tool of one runner. `has` is the tree check that its description reads (ARCH-CONTEXT-033). */
+export function createMemoryTool(deps: MemoryToolDeps, has: CapabilityCheck): RuntimeTool {
   // Consecutive-failure cap, reset on any success. The tool is created per
   // runtime assembly (one user turn for chat, one attempt for workers), so
   // the counter's lifetime is one turn by construction.
@@ -129,7 +136,7 @@ export function createMemoryTool(deps: MemoryToolDeps): RuntimeTool {
   return {
     name: "memory",
     action: "ui_meta",
-    description: DESCRIPTION,
+    description: description(has),
     promptSnippet: "Save durable facts to persistent memory (project notes or global user memory)",
     inputSchema: INPUT_SCHEMA,
     isConcurrencySafe: true,

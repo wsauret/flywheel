@@ -15,6 +15,7 @@ import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js";
 import { createConversationTree } from "../../../../../src/orchestration/session/conversation/conversation-tree-handle.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { openAIResponsesTarget } from "../../../../../src/orchestration/agent-runtime/llm/openai-adapter-helpers.js";
+import { SHELL_CAPABILITIES } from "../../../../helpers/prompt-capabilities.js";
 
 const directory = temporaryDirectories();
 
@@ -141,7 +142,7 @@ describe("canonical shell replay", () => {
 describe("Claude framing", () => {
   const tier = "# Session identity\n\nYou are session one.";
   const brief: ConversationMessage = { kind: "user", origin: "human", content: "Do the work." };
-  const reminders = createClaudeReminders("claude-sonnet-5-5", 200_000)([brief], "/scratch");
+  const reminders = createClaudeReminders("claude-sonnet-5-5", 200_000)([brief], "/scratch", SHELL_CAPABILITIES);
   const engine = createHostedAgentEntries(() => true)({ messages: [brief, ...reminders], systemPrompt: { stable: "Stable.", session: "", conversation: tier }, tools: [], reasoningEffort: "medium" });
   const notice: ConversationMessage = { kind: "user", origin: "system", runtimeNotice: true, content: "<subagent_notifications>child done</subagent_notifications>" };
   const toolNotice: ConversationMessage = { kind: "user", origin: "system", framing: "tool-notice", content: "## Tools\n\nThe tool `read` is available again." };

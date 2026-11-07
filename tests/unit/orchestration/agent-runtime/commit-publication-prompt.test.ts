@@ -6,6 +6,7 @@ import { loadEngineeringDoctrine } from "../../../../src/infra/agent-assets/syst
 import { buildSystemPrompt, type PromptKind } from "../../../../src/orchestration/agent-runtime/system-prompt.js";
 import { renderSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { testDirectories } from "../../../helpers/directories.js";
+import { promptOptions } from "../../../helpers/prompt-capabilities.js";
 
 const promptRealmPath = mkdtempSync(join(tmpdir(), "commit-publication-prompt-"));
 const engineeringDoctrine = loadEngineeringDoctrine(testDirectories(promptRealmPath));
@@ -25,9 +26,19 @@ afterAll(() => rmSync(promptRealmPath, { recursive: true, force: true }));
 describe("commit publication prompt contract", () => {
   for (const promptKind of PROMPT_KINDS) {
     it(`reaches ${promptKind} agents that author code`, () => {
-      const prompt = renderSystemPrompt(buildSystemPrompt({ corePrompt: "core", engineeringDoctrine, tools: [], promptKind }));
+      const prompt = renderSystemPrompt(buildSystemPrompt(promptOptions({ corePrompt: "core", engineeringDoctrine, tools: [{ name: "bash", action: "ui_meta", description: "bash" }], promptKind })));
       expect(prompt).toContain("COMMITS:");
       for (const marker of COMMIT_MARKERS) expect(prompt).toContain(marker);
+    });
+  }
+  // Committing and pushing take a shell; an agent without one keeps the commit-message rules only.
+  for (const promptKind of PROMPT_KINDS) {
+    it(`states no commit procedure to ${promptKind} agents without a shell`, () => {
+      const prompt = renderSystemPrompt(buildSystemPrompt(promptOptions({ corePrompt: "core", engineeringDoctrine, tools: [], promptKind })));
+      expect(prompt).toContain("COMMITS:");
+      expect(prompt).toContain("One commit per unit");
+      for (const marker of COMMIT_MARKERS) expect(prompt).not.toContain(marker);
+      expect(prompt).not.toContain("{{");
     });
   }
 });

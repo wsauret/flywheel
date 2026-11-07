@@ -4,6 +4,7 @@ import {
   type ToolPromptFields,
 } from "../../../../src/orchestration/agent-runtime/system-prompt.js";
 import { renderSystemPrompt, SYSTEM_PROMPT_SEPARATOR as SEPARATOR } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
+import { promptOptions } from "../../../helpers/prompt-capabilities.js";
 
 const ACTIONS = new Map<string, ToolPromptFields["action"]>([["edit", "file_edit"], ["read", "file_read"], ["subagent", "task_subagent"], ["ask_user", "ask_user"]]);
 
@@ -11,13 +12,14 @@ function tool(name: string): ToolPromptFields {
   return { name, action: ACTIONS.get(name) ?? "ui_meta", description: `${name} tool` };
 }
 
-function chatPrompt(tools: ToolPromptFields[]): string {
-  return renderSystemPrompt(buildSystemPrompt({
+function chatPrompt(tools: ToolPromptFields[], skills: readonly string[] = []): string {
+  return renderSystemPrompt(buildSystemPrompt(promptOptions({
     corePrompt: "core",
     tools,
+    skills,
     promptKind: "chat",
     chatHost: { communication: true },
-  }));
+  })));
 }
 
 const HEADER = "CONVERSATION-FIRST DELIVERY:";
@@ -47,7 +49,14 @@ describe("conversation-first delivery guidance", () => {
   });
 
   it("leads feasibility and confirmed diagnosis into the design skill without another request", () => {
-    const result = chatPrompt([tool("read"), tool("edit"), tool("subagent"), tool("ask_user")]);
+    const tools = [tool("read"), tool("edit"), tool("subagent"), tool("ask_user"), tool("skill"), tool("memory")];
+    const result = chatPrompt(tools, ["design"]);
+    // Without the design skill and memory the route stays, and the pointers to them go.
+    const bare = deliveryBlock(chatPrompt(tools.filter((candidate) => candidate.name !== "memory")));
+    expect(bare).toContain("a confirmed bug cause starts fix design. A design");
+    expect(bare).not.toContain("`design` skill");
+    expect(bare).not.toContain("memory");
+    expect(deliveryBlock(result)).toContain("save that preference with the memory tool.");
 
     expect(result).toContain("A request to design, plan, brainstorm, or assess a proposed feature's feasibility starts the design process");
     expect(result).toContain("a confirmed bug cause starts fix design");
@@ -90,12 +99,12 @@ describe("conversation-first delivery guidance", () => {
   });
 
   it("stays out of non-interactive and read-only prompts", () => {
-    const worker = renderSystemPrompt(buildSystemPrompt({
+    const worker = renderSystemPrompt(buildSystemPrompt(promptOptions({
       corePrompt: "core",
       tools: [tool("edit"), tool("subagent")],
       promptKind: "workflow-agent",
       unattended: true,
-    }));
+    })));
 
     expect(worker).not.toContain(HEADER);
     expect(worker).not.toContain("a confirmed bug cause starts fix design");

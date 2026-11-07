@@ -13,6 +13,7 @@ import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime
 import { SHIPPED_MODULES, type FirstPartyModule, type FirstPartyModuleComposition } from "../../../../../src/orchestration/modules.js";
 import { testKernelToolDeps } from "../../../../helpers/request-tool-surface.js";
 import { moduleRuntimeServices } from "../../../../helpers/module-runtime-services.js";
+import { promptCapabilities } from "../../../../helpers/prompt-capabilities.js";
 
 interface ProbeRuntime {
   readonly greeting: string;
@@ -104,7 +105,7 @@ describe("a synthetic module under the runtime contract", () => {
     const fragment = composition.contributions.find((contribution) => contribution.domain === "promptFragments" && contribution.id === "probe-fragment");
     if (fragment?.domain !== "promptFragments") throw new Error("missing probe fragment");
     expect(fragment.module).toBe("probe");
-    expect(fragment.value.render({ kernel, modules, tools: plan.tools, memorySnapshot: null })).toBe("# Probe\n\nhello from /scratch/probe; tools: 5");
+    expect(fragment.value.render({ kernel, modules, tools: plan.tools, memorySnapshot: null, capabilities: promptCapabilities([...plan.tools.values()]) })).toBe("# Probe\n\nhello from /scratch/probe; tools: 5");
   });
 
   it("never constructs the runtime for a disabled module and omits its tool with its own reason", async () => {

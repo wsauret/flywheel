@@ -11,7 +11,7 @@ import { createAgentRuntime, type CaptureProviderConnection, type CaptureSubscri
 import type { EffectiveProviderConnection, RecordModelRefusal } from "../agent-runtime/llm/client-factory.js"
 import type { CaptureRuntimeConfig } from "../agent-runtime/request-config.js"
 import type { AgentFactory, AgentOptions } from "../agent-runtime/types.js"
-import type { RequestPreparer } from "../agent-runtime/request-preparation.js"
+import type { CapabilityPlanner, RequestPreparer } from "../agent-runtime/request-preparation.js"
 import type { ProjectDefinitionRegistry, ProjectDefinitionRegistryRevision } from "../../workflows/definition-registry.js"
 import type { NotificationEpisodeInput } from "../../infra/notification-episode.js"
 import { getSharedModelsClient } from "../config/llm-clients.js"
@@ -55,6 +55,8 @@ export interface WorkflowDeps extends AccountDirectories {
   createAgent: AgentFactory
   /** Prepares the next request of a session's run without building its Agent, for a pre-start. */
   prepareRequest: RequestPreparer
+  /** Answers the agent check of a session run's next request without sending it (`CapabilityPlanner`). */
+  planCapabilities: CapabilityPlanner
   createLLMClient: LLMClientFactory
   /** The admitted runtime's guarded profile accounting authority. */
   readonly usageProfile?: AgentOptions["usageProfile"]
@@ -131,6 +133,11 @@ export function bindWorkflowDepsToSession(base: WorkflowDeps, source: SessionWor
       captureModelRuntime,
       captureProviderConnection: async () => (await source.capture()).captureProviderConnection(),
     }, preparation),
+    planCapabilities: (options) => base.planCapabilities({
+      ...options,
+      captureModelRuntime,
+      captureProviderConnection: async () => (await source.capture()).captureProviderConnection(),
+    }),
     createLLMClient: async (...args) => {
       const current = await source.capture()
       return current.createLLMClient(...args)
@@ -288,6 +295,7 @@ export async function prepareWorkflowDeps(input: PrepareWorkflowDepsInput): Prom
     captureRuntimeConfig: input.captureRuntimeConfig,
     createAgent: overrides?.createAgent ?? runtime.createAgent,
     prepareRequest: runtime.prepareRequest,
+    planCapabilities: runtime.planCapabilities,
     createLLMClient: overrides?.createLLMClient ?? runtime.createLLMClient,
     ...(runtime.usageProfile ? { usageProfile: runtime.usageProfile } : {}),
     captureProviderConnection: runtime.captureProviderConnection,

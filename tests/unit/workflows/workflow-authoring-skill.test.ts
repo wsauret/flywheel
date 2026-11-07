@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test"
 import { Schema } from "effect"
 import * as yaml from "js-yaml"
 import { mkdirSync, readFileSync, realpathSync } from "node:fs"
+import { renderCapabilityText } from "../../../src/infra/capability-text.js"
 import { join } from "node:path"
 import { WORKFLOW_FILE_MAX_BYTES } from "../../../src/infra/workflow-yaml.js"
 import { readPathWorkflow, sessionWorkflowsDir } from "../../../src/orchestration/workflow-host/path-workflow.js"
@@ -18,8 +19,9 @@ import { temporaryDirectories } from "../../helpers/directories.js"
 import { repoDefinitions } from "../../helpers/project-definitions.js"
 
 const temporary = temporaryDirectories()
-const SKILL_DIR = join(import.meta.dir, "..", "..", "..", "src", "agent-skills", "workflow-authoring")
-const read = (path: string): string => readFileSync(join(SKILL_DIR, path), "utf8")
+const SKILL_DIR = join(import.meta.dir, "..", "..", "..", "src", "orchestration", "modules", "workflows", "definitions", "skills", "workflow-authoring")
+// The body as an agent that holds every capability reads it.
+const read = (path: string): string => renderCapabilityText(readFileSync(join(SKILL_DIR, path), "utf8"), () => true)
 
 /** The rows of the first table after `heading`, each as its trimmed cells. */
 function tableRows(markdown: string, heading: string): string[][] {
