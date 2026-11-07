@@ -1,0 +1,66 @@
+bench/terminal_bench/README.md
+  h_4b47e9e4a8b456 94-95
+bench/terminal_bench/configs/tb-mini-claude.toml
+  h_4b47e9e4a8b456 1-54
+bench/terminal_bench/hosted-terminal-bench.ts
+  h_4b47e9e4a8b456 136-161
+bench/terminal_bench/profiles/tb-mini-claude-14x1.yaml
+  h_4b47e9e4a8b456 1-28
+bench/terminal_bench/profiles/tb-mini-claude-bringup-kv-store-grpc.yaml
+  h_4b47e9e4a8b456 1-14
+bench/terminal_bench/run-terminal-bench.ts
+  h_4b47e9e4a8b456 9,107-109,438-439,530-532
+bench/terminal_bench/terminal-bench-config.ts
+  h_4b47e9e4a8b456 21-22,85-86,177,181,229,257,273
+docs/product-intent/model-access.md
+  h_4b47e9e4a8b456 209-213
+docs/provider-terms.md
+  h_4b47e9e4a8b456 32,76,232-246
+src/cli/headless-snapshot-auth.ts
+  h_4b47e9e4a8b456 10,42
+src/infra/auth/auth-context.ts
+  h_4b47e9e4a8b456 65-67
+src/infra/llm/access-provider.ts
+  h_4b47e9e4a8b456 205-206,245-259
+src/orchestration/app-service/auth-runtime.ts
+  h_4b47e9e4a8b456 141
+src/orchestration/app-service/project-execution-ownership.ts
+  h_4b47e9e4a8b456 65-66
+src/orchestration/headless/benchmark-auth-file.ts
+  h_4b47e9e4a8b456 2-3,13,65-74,81-96,285,302-310,363-366,372-379,401,420-423,515-517,532-548,553,557
+src/orchestration/headless/run-headless-task.ts
+  h_4b47e9e4a8b456 172-173,188-194,457-459
+src/orchestration/modules/provider-claude-agent-sdk/cli-environment.ts
+  h_4b47e9e4a8b456 1,6,47-48,117-119
+src/orchestration/modules/provider-claude-agent-sdk/cli-launch.ts
+  h_4b47e9e4a8b456 79-80,82-83,91
+src/orchestration/modules/provider-claude-agent-sdk/client.ts
+  h_4b47e9e4a8b456 125-128
+src/orchestration/modules/provider-claude-agent-sdk/module.ts
+  h_4b47e9e4a8b456 1-4,19,92-99
+src/orchestration/modules/provider-claude-agent-sdk/names.ts
+  h_4b47e9e4a8b456 16-18
+tests/unit/bench/terminal-bench-config.test.ts
+  h_4b47e9e4a8b456 71-75,77,79,81-82,92-93
+tests/unit/bench/terminal-bench-hosted.test.ts
+  h_4b47e9e4a8b456 5,63-72
+tests/unit/orchestration/headless/benchmark-auth-export.test.ts
+  h_4b47e9e4a8b456 3,7-9,173-219
+tests/unit/orchestration/headless/benchmark-auth-file.test.ts
+  h_4b47e9e4a8b456 85-87
+tests/unit/orchestration/modules/provider-claude-agent-sdk/client.test.ts
+  h_4b47e9e4a8b456 4-5,161-188
+tests/unit/orchestration/modules/provider-claude-agent-sdk/query-launcher.test.ts
+  h_4b47e9e4a8b456 7,288-295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2ba88f1d4d16728aede74f365d08ed8b080268bf",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
