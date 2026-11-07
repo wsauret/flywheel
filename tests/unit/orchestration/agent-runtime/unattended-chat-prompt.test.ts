@@ -14,6 +14,7 @@ import { composeFirstPartyModules, unattendedModuleIds } from "../../../../src/o
 import { canonicalModuleIds } from "../../../../src/protocol/module-ids.js";
 import { installedPersonaToolEntries } from "../../../../src/orchestration/tool-catalog.js";
 import { createProjectDefinitionRegistry } from "../../../../src/workflows/definition-registry.js";
+import { unusedSessionMessaging } from "../../../helpers/child-session-control.js";
 
 // The system prompt of an unattended chat (PI-AGENT-121) beside the interactive chat's, both built the way a live
 // request builds them (`requestSystemPromptOptions`): the unattended chat keeps the core prompt, the doctrine, and the
@@ -44,12 +45,16 @@ const policy = {
   admit: async (asked: CapabilityRequest) => ({ ok: false as const, missing: [...asked.required], reason: "planning only" }),
 };
 
-/** One request of a root chat, under the capability ceiling that the chat runner gives its purpose. */
-async function request(purpose: AgentPurpose) {
-  const capabilityAccess = capabilityAccessFor(policy, undefined, purpose.kind === "unattended-chat" ? unattendedModuleIds() : undefined);
-  const planned = await planPromptRequest(assembly, { personas: definitions.personas, purpose, askUser: true, capabilityAccess });
+const sessionIdentity = { sessionId: "root-1", rootSessionId: "root-1", conversationId: "root-conversation", kind: "chat" as const };
+
+/** One request of a root chat, under the capability ceiling that the chat runner gives its purpose, with the session
+ *  messaging that a chat runner holds. `withoutChildren` also turns off the modules that start a child session. */
+async function request(purpose: AgentPurpose, withoutChildren = false) {
+  const ceiling = purpose.kind === "unattended-chat" ? unattendedModuleIds().filter((id) => !withoutChildren || (id !== "subagents" && id !== "workflows")) : undefined;
+  const capabilityAccess = capabilityAccessFor(policy, undefined, ceiling);
+  const planned = await planPromptRequest(assembly, { personas: definitions.personas, purpose, askUser: true, capabilityAccess, sessions: unusedSessionMessaging() });
   planned.tools.delete("handoff");
-  return { tools: [...planned.tools.keys()], parts: await promptParts(assembly, purpose, planned, sources) };
+  return { tools: [...planned.tools.keys()], messageSession: planned.tools.get("message_session"), parts: await promptParts(assembly, purpose, planned, { ...sources, sessionIdentity }) };
 }
 
 describe("system prompt of an unattended chat", () => {
@@ -79,5 +84,26 @@ describe("system prompt of an unattended chat", () => {
     // brief and has no parent, so it is not told to hand off or message one.
     const guidance = unattended.parts.find((part) => part.label === "working unattended")?.text;
     expect(guidance).toBe("WORKING UNATTENDED:\nYou complete one request without a person available to answer questions. Your final reply is the result.\n\n- Never end with an offer to do the work again or in another way.");
+  });
+
+  // A root that no person reads coordinates with no peer chat, so it reaches only the children that it starts.
+  test("offers session messaging and the session identity only toward the children that it can start", async () => {
+    const MESSAGE_TOOLS = ["message_session", "list_sessions"];
+    const chat = await request({ kind: "interactive-chat" });
+    for (const tool of MESSAGE_TOOLS) expect(chat.tools).toContain(tool);
+    expect(chat.parts.map((part) => part.label)).toContain("session identity");
+
+    const alone = await request({ kind: "unattended-chat" }, true);
+    expect(alone.tools).not.toContain("subagent");
+    for (const tool of MESSAGE_TOOLS) expect(alone.tools).not.toContain(tool);
+    expect(alone.parts.map((part) => part.label)).not.toContain("session identity");
+    expect(alone.parts.map((part) => part.text).join("\n")).not.toContain("list_sessions");
+
+    const withChildren = await request({ kind: "unattended-chat" });
+    expect(withChildren.tools).toContain("subagent");
+    expect(withChildren.tools).toContain("message_session");
+    expect(withChildren.tools).not.toContain("list_sessions");
+    expect(JSON.stringify(withChildren.messageSession?.inputSchema)).not.toContain("list_sessions");
+    expect(withChildren.parts.map((part) => part.label)).not.toContain("session identity");
   });
 });

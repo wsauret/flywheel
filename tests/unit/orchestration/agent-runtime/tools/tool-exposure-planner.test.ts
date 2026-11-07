@@ -664,4 +664,28 @@ describe("every registered tool schema", () => {
     const { definitions } = await surface.prepareStablePrompt(() => stableSystemPrompt("prompt"), DEFAULT_MODEL_INTERACTION_PROFILE);
     for (const name of ["message_session", "list_sessions"]) expect(definitions.find((definition) => definition.name === name)?.input_schema).toMatchObject({ type: "object" });
   });
+
+  // An unattended chat is a root that no person reads (PI-AGENT-121): it coordinates with no peer chat, so it can
+  // reach only the children that it starts.
+  it("gives an unattended chat message_session only while it can start a child, and never list_sessions", async () => {
+    const purpose = { kind: "unattended-chat" } as const;
+    const alone = await plan({ capabilities: ALL_CAPABILITIES, sessions: sessionMessaging, purpose });
+    expect(alone.tools.has("message_session")).toBe(false);
+    expect(alone.tools.has("list_sessions")).toBe(false);
+    expect(alone.omitted).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: "list_sessions", reason: "this unattended run omits peer-session discovery" }),
+      expect.objectContaining({ name: "message_session", reason: "this unattended run omits peer-session discovery, and no planned tool starts a child session" }),
+    ]));
+
+    const withChildren = await plan({ capabilities: ALL_CAPABILITIES, sessions: sessionMessaging, purpose }, [["subagents", subagentsRuntime()]]);
+    expect(withChildren.tools.has("subagent")).toBe(true);
+    expect(withChildren.tools.has("message_session")).toBe(true);
+    expect(withChildren.tools.has("list_sessions")).toBe(false);
+
+    // The workflow tool starts child sessions too, although it renders as ui_meta.
+    const withWorkflows = await plan({ capabilities: ALL_CAPABILITIES, sessions: sessionMessaging, purpose }, [["workflows", workflowsRuntime("on")]]);
+    expect(withWorkflows.tools.has("subagent")).toBe(false);
+    expect(withWorkflows.tools.has("workflow")).toBe(true);
+    expect(withWorkflows.tools.has("message_session")).toBe(true);
+  });
 });

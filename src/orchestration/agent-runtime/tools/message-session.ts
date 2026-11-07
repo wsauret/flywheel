@@ -110,6 +110,14 @@ const REASON_TEXT = {
   duplicate: "you sent it the same text less than 30 seconds ago, so it already has this message",
 } as const satisfies { readonly [Reason in Exclude<Exclude<MessageSessionResult, { status: "delivered" }>["reason"], "address" | "workflow_wait">]: string };
 
+type ReasonText = { readonly [Reason in keyof typeof REASON_TEXT]: string };
+
+// An unattended chat has no list_sessions (PI-AGENT-121), so its text names only its own work.
+const UNATTENDED_REASON_TEXT: ReasonText = {
+  ...REASON_TEXT,
+  not_found: "no session or workflow of this project has that id for the selected target kind. Call process(action='list') to find your own work",
+};
+
 const WORKFLOW_WAIT_REFUSAL = "Not delivered: a workflow has no answering agent and takes no reply wait. To ask a question, target the particular agent session. To send workflow direction, omit wait. To wait for workflow completion, use process wait.";
 
 // A sender that sends again after a held or refused result starts the loop
@@ -121,7 +129,7 @@ const WAITING_TEXT = "Your turn parks after this batch until the reply arrives a
 /** The model-visible text of one result. It never contains a reply. A wait
  *  with no text sent nothing, so a held outcome says only whether the wait
  *  opened and why. */
-function messageSessionResultText(result: MessageSessionResult, sentText: boolean, wait: boolean, target: "session" | "workflow"): string {
+function messageSessionResultText(result: MessageSessionResult, sentText: boolean, wait: boolean, target: "session" | "workflow", reasons: ReasonText): string {
   if (target === "workflow") {
     if (result.status === "delivered") return `Delivered to workflow ${result.to} for its addressed readers. A workflow target takes no reply wait. Continue your own work.`;
     if (result.status === "held") return `Held for workflow ${result.to} until an addressed agent can read it. Do not send the message again or send a reminder. Continue your own work.`;
@@ -131,10 +139,10 @@ function messageSessionResultText(result: MessageSessionResult, sentText: boolea
       ? `Waiting on ${result.to} for a reply. ${WAITING_TEXT}`
       : `Delivered to ${result.to}. A reply, if one comes, arrives later as an incoming message; do not write it yourself.`;
     case "held":
-      if (!result.waiting) return sentText ? `Held for ${result.to}: ${REASON_TEXT[result.reason]}. ${KEPT_TEXT} Continue your own work.` : `Not waiting on ${result.to}: it cannot answer now (${result.reason}). It reads a message only when it runs again. Do not wait for it or send it a reminder. Continue your own work on your own judgment.`;
+      if (!result.waiting) return sentText ? `Held for ${result.to}: ${reasons[result.reason]}. ${KEPT_TEXT} Continue your own work.` : `Not waiting on ${result.to}: it cannot answer now (${result.reason}). It reads a message only when it runs again. Do not wait for it or send it a reminder. Continue your own work on your own judgment.`;
       // Only an interrupt holds a message that carries a wait.
       return sentText
-        ? `Held for ${result.to}: ${REASON_TEXT[result.reason]}. ${KEPT_TEXT} Waiting on ${result.to} for a reply after it resumes. ${WAITING_TEXT}`
+        ? `Held for ${result.to}: ${reasons[result.reason]}. ${KEPT_TEXT} Waiting on ${result.to} for a reply after it resumes. ${WAITING_TEXT}`
         : `Waiting on ${result.to} for a reply. It is interrupted, so it answers only after it resumes. ${WAITING_TEXT}`;
     case "refused":
       if (result.reason === "workflow_wait") return WORKFLOW_WAIT_REFUSAL;
@@ -146,10 +154,10 @@ function messageSessionResultText(result: MessageSessionResult, sentText: boolea
       if (!sentText && result.reason === "not_parent_or_child") return `Not waiting on ${result.to}: ${NOT_PARENT_OR_CHILD}. Do not wait for it or check on it. Continue your own work on your own judgment.`;
       // A refused wait states its own next step: the message can go again
       // without the wait. Every other refused message is final.
-      if (!sentText || result.reason === "not_parent_or_child") return `Not delivered to ${result.to}: ${REASON_TEXT[result.reason]}.`;
+      if (!sentText || result.reason === "not_parent_or_child") return `Not delivered to ${result.to}: ${reasons[result.reason]}.`;
       // A refused copy carries no wait, so the sender that wanted one learns
       // how to wait without sending the text again.
-      return `Not delivered to ${result.to}: ${REASON_TEXT[result.reason]}. This refusal is final: do not send this message to ${result.to} again or send a reminder. ${result.reason === "duplicate" && wait ? "To wait for its reply, call message_session with wait true and no text." : "Continue your own work."}`;
+      return `Not delivered to ${result.to}: ${reasons[result.reason]}. This refusal is final: do not send this message to ${result.to} again or send a reminder. ${result.reason === "duplicate" && wait ? "To wait for its reply, call message_session with wait true and no text." : "Continue your own work."}`;
   }
 }
 
@@ -158,38 +166,44 @@ function launchToolUseIdOf(recipient: Pick<ReplayedSession, "launchedFrom">, sen
 }
 
 /** The advertised form of the message_session tool. It names no messaging
- *  authority, so an agent without one advertises the same bytes. */
-export const MESSAGE_SESSION_TOOL_DEFINITION: AdvertisedTool = {
-  name: MESSAGE_SESSION_TOOL_NAME,
-  action: "ui_meta",
-  description: "Send one message to another session or a workflow of this project. Name whether the target is a session or a workflow. Use it only to: ask a question that blocks your work and that your own tools cannot answer; answer a question that a session asked you; revise the instructions of your own child; deliver what your person asked you to send; or tell another root chat once that a check fails in a file that it owns. A message is not a conversation. Put everything the recipient needs in one message. A question gets one answer, and an answer ends the exchange: do not reply to it unless it asks you a new question. Do not send acknowledgements, thanks, confirmations, status or progress reports, promises such as \"I will notify you when\", requests such as \"tell me when it lands\", or \"are you done?\" checks. Do not pass on a message to a session that already has it. Your person sees every message that you send or receive, so do not quote or restate one to your person unless your person asks. When a message needs a decision from your person, ask only that question, in your own words. When your own child asks a question that you cannot answer, ask your parent in your own words. Do not send the same message to several sessions other than your own children. Peers are not your workers: never ask a session that is not your own child to fix, commit, publish, or revert its files for you. A message to your own interrupted child continues its work, unless a person made its latest interrupt. To direct a workflow that you launched, target its workflow id. Omit targets for the whole workflow, or name item keys or named-agent ids from process status. Each later agent that the address covers reads the direction. A message to an agent session reaches only that agent, including a reply to its question, and never adds workflow direction. A peer message to a workflow is information for one agent, not direction. A workflow target takes no reply wait. With wait true toward your parent session or your own child session, your turn parks until its reply arrives or a notice ends the wait. With wait true and no text, you wait without sending anything. A child that you or the runtime interrupted takes no reply wait; a child that a person interrupted can keep one until it resumes. The result says only whether the message was delivered, held, or refused, and returns at once. A session that does not reply has not agreed to anything, so do not act as if it had. Never write a reply for another session yourself.",
-  promptSnippet: "Ask a blocking question, answer one, or revise your own child's instructions",
-  promptGuidelines: [
-    "One message is one question, one answer, one revision of your own child's instructions, or one thing your person asked you to send. Never acknowledge, confirm, promise a later update, or report status. A completion notice tells a parent when its child finishes; no session tells another that it finished. Return delegated results through handoff, not message_session.",
-  ],
-  inputSchema: {
-    type: "object",
-    properties: {
-      target: { type: "string", enum: ["session", "workflow"], description: "Whether to names a session or a workflow. A session receives private input. A workflow receives direction from its launching parent, or information from a peer." },
-      to: { type: "string", description: "The id of the target selected by target: a session id for one session, or a workflow id for a workflow. Use process(action='list') for your own work and list_sessions for other targets. To answer an agent's question, use that agent's session id." },
-      text: { type: "string", description: "A question that blocks your work, your answer to a question that a session asked you, revised instructions for your own child, what your person asked you to send, or the file, the check, and the exact error of a check that fails in another chat's file. Its first sentence says what the message is about and what you need from the recipient, if anything. Write complete sentences in plain English, with a space between all words and numbers. Do not start with a greeting or a preamble. It must make sense on its own: the recipient does not see your conversation. Required unless wait is true." },
-      targets: { type: "array", items: { type: "string" }, description: "Only with a workflow target that you launched: item keys or named-agent ids from process status. Omit targets for the whole workflow. Each addressed agent reads the direction, including later agents that the address covers. Unknown, ambiguous, or finished targets refuse the whole message and list valid targets. An agent-session target takes no targets. A workflow target takes no reply wait." },
-      wait: { type: "boolean", description: "Wait for a reply from your parent session or your own child session, only when you cannot continue without it. A workflow target takes no reply wait. To wait for workflow completion, use process wait instead." },
+ *  authority, so an agent without one advertises the same bytes. An
+ *  unattended chat has no list_sessions (PI-AGENT-121), so its form names
+ *  only process(action='list') for the targets that it can reach. */
+export function messageSessionToolDefinition(unattendedChat: boolean): AdvertisedTool {
+  return {
+    name: MESSAGE_SESSION_TOOL_NAME,
+    action: "ui_meta",
+    description: "Send one message to another session or a workflow of this project. Name whether the target is a session or a workflow. Use it only to: ask a question that blocks your work and that your own tools cannot answer; answer a question that a session asked you; revise the instructions of your own child; deliver what your person asked you to send; or tell another root chat once that a check fails in a file that it owns. A message is not a conversation. Put everything the recipient needs in one message. A question gets one answer, and an answer ends the exchange: do not reply to it unless it asks you a new question. Do not send acknowledgements, thanks, confirmations, status or progress reports, promises such as \"I will notify you when\", requests such as \"tell me when it lands\", or \"are you done?\" checks. Do not pass on a message to a session that already has it. Your person sees every message that you send or receive, so do not quote or restate one to your person unless your person asks. When a message needs a decision from your person, ask only that question, in your own words. When your own child asks a question that you cannot answer, ask your parent in your own words. Do not send the same message to several sessions other than your own children. Peers are not your workers: never ask a session that is not your own child to fix, commit, publish, or revert its files for you. A message to your own interrupted child continues its work, unless a person made its latest interrupt. To direct a workflow that you launched, target its workflow id. Omit targets for the whole workflow, or name item keys or named-agent ids from process status. Each later agent that the address covers reads the direction. A message to an agent session reaches only that agent, including a reply to its question, and never adds workflow direction. A peer message to a workflow is information for one agent, not direction. A workflow target takes no reply wait. With wait true toward your parent session or your own child session, your turn parks until its reply arrives or a notice ends the wait. With wait true and no text, you wait without sending anything. A child that you or the runtime interrupted takes no reply wait; a child that a person interrupted can keep one until it resumes. The result says only whether the message was delivered, held, or refused, and returns at once. A session that does not reply has not agreed to anything, so do not act as if it had. Never write a reply for another session yourself.",
+    promptSnippet: "Ask a blocking question, answer one, or revise your own child's instructions",
+    promptGuidelines: [
+      "One message is one question, one answer, one revision of your own child's instructions, or one thing your person asked you to send. Never acknowledge, confirm, promise a later update, or report status. A completion notice tells a parent when its child finishes; no session tells another that it finished. Return delegated results through handoff, not message_session.",
+    ],
+    inputSchema: {
+      type: "object",
+      properties: {
+        target: { type: "string", enum: ["session", "workflow"], description: "Whether to names a session or a workflow. A session receives private input. A workflow receives direction from its launching parent, or information from a peer." },
+        to: { type: "string", description: `The id of the target selected by target: a session id for one session, or a workflow id for a workflow. Use process(action='list') for your own work${unattendedChat ? "" : " and list_sessions for other targets"}. To answer an agent's question, use that agent's session id.` },
+        text: { type: "string", description: "A question that blocks your work, your answer to a question that a session asked you, revised instructions for your own child, what your person asked you to send, or the file, the check, and the exact error of a check that fails in another chat's file. Its first sentence says what the message is about and what you need from the recipient, if anything. Write complete sentences in plain English, with a space between all words and numbers. Do not start with a greeting or a preamble. It must make sense on its own: the recipient does not see your conversation. Required unless wait is true." },
+        targets: { type: "array", items: { type: "string" }, description: "Only with a workflow target that you launched: item keys or named-agent ids from process status. Omit targets for the whole workflow. Each addressed agent reads the direction, including later agents that the address covers. Unknown, ambiguous, or finished targets refuse the whole message and list valid targets. An agent-session target takes no targets. A workflow target takes no reply wait." },
+        wait: { type: "boolean", description: "Wait for a reply from your parent session or your own child session, only when you cannot continue without it. A workflow target takes no reply wait. To wait for workflow completion, use process wait instead." },
+      },
+      required: ["target", "to"],
+      additionalProperties: false,
     },
-    required: ["target", "to"],
-    additionalProperties: false,
-  },
-  isConcurrencySafe: true,
-  // A crash never leaves a delivered message without its call in the
-  // sender's history.
-  deferUntilAssistantCommitted: true,
-};
+    isConcurrencySafe: true,
+    // A crash never leaves a delivered message without its call in the
+    // sender's history.
+    deferUntilAssistantCommitted: true,
+  };
+}
 
 /** `tasks` is the background work of the caller's run, which holds each
- *  reply wait; a run without one cannot wait. */
-export function createMessageSessionTool(sessions: SessionMessaging, tasks?: ReplyWaitTasks): RuntimeTool {
+ *  reply wait; a run without one cannot wait. `unattendedChat` selects the
+ *  form and the result text of an unattended chat, which name no list_sessions. */
+export function createMessageSessionTool(sessions: SessionMessaging, tasks?: ReplyWaitTasks, unattendedChat = false): RuntimeTool {
+  const reasons = unattendedChat ? UNATTENDED_REASON_TEXT : REASON_TEXT;
   return {
-    ...MESSAGE_SESSION_TOOL_DEFINITION,
+    ...messageSessionToolDefinition(unattendedChat),
     async execute(input, context): Promise<ToolResult> {
       const to = typeof input.to === "string" ? input.to.trim() : "";
       const text = typeof input.text === "string" ? input.text.trim() : "";
@@ -223,10 +237,10 @@ export function createMessageSessionTool(sessions: SessionMessaging, tasks?: Rep
       // row, and the row of a held message states why it waits.
       const details = {
         ...(result.name !== undefined ? { targetName: result.name } : {}),
-        ...(result.status === "held" && text ? { statusMessage: `Held: ${REASON_TEXT[result.reason]}.` } : {}),
+        ...(result.status === "held" && text ? { statusMessage: `Held: ${reasons[result.reason]}.` } : {}),
       };
       return {
-        content: messageSessionResultText(result, text.length > 0, wait, target),
+        content: messageSessionResultText(result, text.length > 0, wait, target, reasons),
         outcome: result.status === "refused" ? "error" : "ok",
         ...(Object.keys(details).length > 0 ? { details } : {}),
       };

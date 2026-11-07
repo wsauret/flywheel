@@ -7,8 +7,8 @@ import type { ToolInteractionContract } from "../model-interaction-profile.js";
 import type { KernelToolDeps } from "./kernel-tool-deps.js";
 import { createHandoffTool, handoffDefinition } from "./handoff.js";
 import { createListSessionsTool, LIST_SESSIONS_TOOL_DEFINITION } from "./list-sessions.js";
-import { createMessageSessionTool, MESSAGE_SESSION_TOOL_DEFINITION } from "./message-session.js";
-import { createProcessTool, PROCESS_TOOL_DEFINITION } from "./process.js";
+import { createMessageSessionTool, messageSessionToolDefinition } from "./message-session.js";
+import { createProcessTool, processToolDefinition } from "./process.js";
 import { checkpointToolDefinition, createCheckpointTool, type CheckpointToolKind } from "./session-checkpoint.js";
 import type { AdvertisedTool, RuntimeTool, RuntimeToolInput, ShellCommand } from "./types.js";
 
@@ -121,12 +121,31 @@ function sessionCheckpoint(kind: CheckpointToolKind, registryOrder: number): Too
 }
 
 function nativeProcess({ kernel }: ToolDeps): ToolFactoryResult {
-  if (!kernel.backgroundTasks) return { unusable: { tool: PROCESS_TOOL_DEFINITION, reason: "no background execution owner available" } };
+  const unattendedChat = kernel.purpose.kind === "unattended-chat";
+  if (!kernel.backgroundTasks) return { unusable: { tool: processToolDefinition(unattendedChat), reason: "no background execution owner available" } };
   const producers = canonicalModuleIds(kernel.moduleSnapshot.backgroundWorkProducerIds);
   if (producers.some((capability) => kernel.capabilities.available(capability)) || kernel.backgroundTasks.activeTaskCount() > 0) {
-    return { tool: createProcessTool(kernel.backgroundTasks, kernel.sessions?.children) };
+    return { tool: createProcessTool(kernel.backgroundTasks, kernel.sessions?.children, unattendedChat) };
   }
-  return { unusable: { tool: PROCESS_TOOL_DEFINITION, reason: `no background task is running, and ${moduleDisabledReason(producers)}` } };
+  return { unusable: { tool: processToolDefinition(unattendedChat), reason: `no background task is running, and ${moduleDisabledReason(producers)}` } };
+}
+
+/** An unattended chat is the root of its tree and serves no person (PI-AGENT-121), so it coordinates with no peer
+ *  chat: the only sessions it can reach are the children it starts, through a tool whose action starts one. */
+const UNATTENDED_CHAT_PEERS = "this unattended run omits peer-session discovery";
+
+// The declaration's action, not the built tool's: the workflow tool starts sessions but renders as `ui_meta`.
+function startsChildSession(planned: ReadonlyMap<string, RuntimeTool>, registry: ToolRegistry): boolean {
+  return [...planned.keys()].some((name) => registrationNamed(name, registry)?.action === "task_subagent");
+}
+
+function messageSession({ kernel }: ToolDeps): ToolFactoryResult {
+  const unattendedChat = kernel.purpose.kind === "unattended-chat";
+  if (!kernel.sessions) return { unusable: { tool: messageSessionToolDefinition(unattendedChat), reason: "no session messaging available" } };
+  const tool = createMessageSessionTool(kernel.sessions, kernel.backgroundTasks, unattendedChat);
+  if (!unattendedChat) return { tool };
+  const registry = toolRegistryFromComposition(kernel.moduleSnapshot);
+  return { tool, refine: (planned) => startsChildSession(planned, registry) ? { tool } : { reason: `${UNATTENDED_CHAT_PEERS}, and no planned tool starts a child session` } };
 }
 
 const KERNEL_TOOLS = {
@@ -154,17 +173,18 @@ const KERNEL_TOOLS = {
   message_session: {
     ...kernelPolicy("ambient", "ui_meta", "reconstruct", false, 21),
     registrations: {
-      message_session: { capabilities: [], create: ({ kernel }) => kernel.sessions
-        ? { tool: createMessageSessionTool(kernel.sessions, kernel.backgroundTasks) }
-        : { unusable: { tool: MESSAGE_SESSION_TOOL_DEFINITION, reason: "no session messaging available" } } },
+      message_session: { capabilities: [], create: messageSession },
     },
   },
+  // It lists only sessions that the caller did not start, which an unattended chat never reaches.
   list_sessions: {
     ...kernelPolicy("ambient", "ui_meta", "reconstruct", false, 22),
     registrations: {
-      list_sessions: { capabilities: [], create: ({ kernel }) => kernel.sessions
-        ? { tool: createListSessionsTool(kernel.sessions) }
-        : { unusable: { tool: LIST_SESSIONS_TOOL_DEFINITION, reason: "no session messaging available" } } },
+      list_sessions: { capabilities: [], create: ({ kernel }) => kernel.purpose.kind === "unattended-chat"
+        ? { reason: UNATTENDED_CHAT_PEERS }
+        : kernel.sessions
+          ? { tool: createListSessionsTool(kernel.sessions) }
+          : { unusable: { tool: LIST_SESSIONS_TOOL_DEFINITION, reason: "no session messaging available" } } },
     },
   },
 } as const satisfies { readonly [name: string]: ToolDeclaration<ModuleId> };

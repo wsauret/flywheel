@@ -41,6 +41,7 @@ import type { SubagentDispatchDeps } from "../src/orchestration/modules/subagent
 import type { WorkflowsMode } from "../src/protocol/module-protocol-types.js";
 import { workflowLaunchTargets } from "../src/orchestration/workflow-host/launch-origin.js";
 import type { ProjectDefinitionRegistryRevision } from "../src/workflows/definition-registry.js";
+import type { SessionIdentity, SessionMessaging } from "../src/orchestration/session/session-messaging.js";
 
 /** What every request of one assembly shares: its roots, its definitions, its configuration, and the module
  *  capture of its chat tree. `live` is the agent's own selection, which differs from `capture` only for an agent
@@ -69,6 +70,8 @@ export interface PlanInput {
   readonly askUser: boolean;
   /** The agent's capability boundary, as its runner holds it; absent, every module of `live` is available. */
   readonly capabilityAccess?: CapabilityAccess;
+  /** The project's session messaging authority, which a live runner holds; absent, the message tools are omitted. */
+  readonly sessions?: SessionMessaging;
 }
 
 /** One planned request: its kernel, its module runtimes, its tools, and the logical identity of each tool. */
@@ -100,6 +103,7 @@ export async function planPromptRequest(assembly: PromptAssembly, input: PlanInp
       ...(input.handoffSchema ? { handoff: { ...input.handoffSchema, onContent: noop } } : {}),
       ...(input.askUser ? { askUser: { ask: async () => ({ kind: "cancelled" as const }), answerQuestion: noop, cancelQuestion: noop, suspendAll: () => false } } : {}),
       recall: async () => ({ hits: [] }),
+      ...(input.sessions ? { sessions: input.sessions } : {}),
     },
     personas: input.personas,
     backgroundTasks,
@@ -221,6 +225,8 @@ export interface PromptSources {
   readonly engineeringDoctrine: string;
   readonly agentsMd: string | undefined;
   readonly memory: Parameters<typeof requestSystemPromptOptions>[0]["memory"];
+  /** Who the session is, which a live run reads from its session messaging; absent, the section is left out. */
+  readonly sessionIdentity?: SessionIdentity;
 }
 
 /** The system prompt parts of one planned request, built by the options a live request builds it from
@@ -236,7 +242,7 @@ export async function promptParts(assembly: PromptAssembly, purpose: AgentPurpos
     scratchDir: assembly.scratchDir,
     checkpoint: true,
     selfDebug: true,
-    sessionIdentity: undefined,
+    sessionIdentity: sources.sessionIdentity,
     interactionProfile: interactionProfile(assembly),
     moduleSnapshot: assembly.capture,
     tools: planned.tools,

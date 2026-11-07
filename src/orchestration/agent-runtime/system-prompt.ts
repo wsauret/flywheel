@@ -22,6 +22,7 @@ import type { SessionIdentity } from "../session/session-messaging.js";
 import { renderSessionIdentity } from "./session-identity-prompt.js";
 import { FLYWHEEL_CHAT_HOST, renderClaude5ChatBody, type Claude5ChatVariant } from "./claude-5-chat-prompt.js";
 import { MESSAGE_SESSION_TOOL_NAME } from "./tools/message-session.js";
+import { LIST_SESSIONS_TOOL_NAME } from "./tools/list-sessions.js";
 import { ASK_USER_DISCUSSION_RULE } from "./tools/ask-user.js";
 import { SCRATCH_ENTRY_LIMIT_BYTES, SCRATCH_IDLE_DAYS } from "../session/session-artifacts.js";
 import type { AgentPurpose } from "./types.js";
@@ -291,7 +292,7 @@ export interface BuildSystemPromptOptions {
   capabilities: CapabilityCheck;
   /** Module-owned fragments pinned with one provider request, in contribution order. */
   moduleFragments?: readonly string[];
-  /** Who this session is. The section renders while `message_session` is planned. */
+  /** Who this session is. The section renders while `list_sessions` is planned. */
   sessionIdentity?: SessionIdentity;
 }
 
@@ -311,6 +312,7 @@ export function buildSystemPromptParts(opts: BuildSystemPromptOptions): SystemPr
   const hasCheckpoint = canUseCheckpoint(opts.checkpointAvailable === true, new Set(tools.map((tool) => tool.name)));
   const hasAskUser = has("ask_user");
   const hasMessageSession = tools.some((tool) => tool.name === MESSAGE_SESSION_TOOL_NAME);
+  const listsSessions = tools.some((tool) => tool.name === LIST_SESSIONS_TOOL_NAME);
   const selectedGuidelineIds = opts.globalGuidelineIds ?? null;
   const baseGuidelines = renderGlobalGuidelines(selectedGuidelineIds ?? Object.values(GLOBAL_GUIDELINE_ID), has);
   const guidelines = selectedGuidelineIds === null && opts.selfDebug === true && hasShell ? [...baseGuidelines, SELF_DEBUG_GUIDELINE] : baseGuidelines;
@@ -355,7 +357,9 @@ export function buildSystemPromptParts(opts: BuildSystemPromptOptions): SystemPr
     // scratchpad. A file writer needs its path: a `submit: file` output is
     // accepted only inside it.
     if (opts.scratchDir && (hasShell || writesFiles)) append("scratchpad", renderScratchpadBlock(opts.scratchDir));
-    if (opts.sessionIdentity && hasMessageSession) append("session identity", renderSessionIdentity(opts.sessionIdentity));
+    // The section states how a session reaches the sessions around it that it did not start, which list_sessions
+    // lists; an unattended chat that messages only its own children has neither.
+    if (opts.sessionIdentity && listsSessions) append("session identity", renderSessionIdentity(opts.sessionIdentity));
   };
   if (!workflowAgent) privateContext();
   if ((opts.purpose?.kind === "workflow-agent" || opts.purpose?.kind === "subagent") && opts.purpose.inheritedIntent !== undefined) {

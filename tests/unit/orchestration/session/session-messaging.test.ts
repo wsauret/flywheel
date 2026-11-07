@@ -147,6 +147,9 @@ describe("the words of the person", () => {
     const missing = await createMessageSessionTool(messaging).execute({ target: "session", to: "missing", text: "hello" }, context(sender, "send-2"))
     expect(missing.details).toBeUndefined()
     expect(missing.content).toBe("Not delivered to missing: no session or workflow of this project has that id for the selected target kind. Call list_sessions to find other targets, or process(action='list') to find your own work. This refusal is final: do not send this message to missing again or send a reminder. Continue your own work.")
+    // An unattended chat has no list_sessions, so its refusal names only its own work.
+    const unattended = await createMessageSessionTool(messaging, undefined, true).execute({ target: "session", to: "missing", text: "hello" }, context(sender, "send-3"))
+    expect(unattended.content).toBe("Not delivered to missing: no session or workflow of this project has that id for the selected target kind. Call process(action='list') to find your own work. This refusal is final: do not send this message to missing again or send a reminder. Continue your own work.")
   })
 })
 

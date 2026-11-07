@@ -42,6 +42,19 @@ describe("process tool", () => {
     expect(JSON.stringify(tool.inputSchema)).not.toMatch(/workflow|subagent/i);
   });
 
+  // An unattended chat has no list_sessions and no person who reads its transcript (PI-AGENT-121).
+  it("names neither list_sessions nor the person in an unattended chat, where every other run names both", async () => {
+    const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} });
+    const [attended, unattended] = [createProcessTool(registry), createProcessTool(registry, undefined, true)];
+    for (const text of ["Sessions that you did not start are in list_sessions.", "The person sees each interrupt"]) {
+      expect(attended.description).toContain(text);
+      expect(unattended.description).not.toContain(text);
+    }
+    expect(unattended.description).toContain("Use one action: list returns the ids that the other actions take");
+    expect((await attended.execute({ action: "list" }, context)).content).toBe("No managed processes and no children. Other sessions of this project are in list_sessions.");
+    expect((await unattended.execute({ action: "list" }, context)).content).toBe("No managed processes and no children.");
+  });
+
   it("accepts hours-long wait estimates and rejects invalid runtime timer durations", async () => {
     const tool = createProcessTool(createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: () => {} }));
     const estimated = await tool.execute({ action: "wait", soft_timeout: 7200 }, context);

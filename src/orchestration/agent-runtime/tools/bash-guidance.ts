@@ -1,4 +1,5 @@
 import type { CapabilityCheck } from "../../../infra/capability-text.js";
+import type { RuntimePlatform } from "./bash-script.js";
 import { SEARCH_CPU_LIMIT_SECONDS, SHELL_SEARCH_PROGRAMS, SHELL_SEARCH_RULES, type ShellSearchProgram } from "./search-rules.js";
 import type { RuntimeTool } from "./types.js";
 
@@ -25,10 +26,13 @@ const commandProperties = (background: boolean, persistence: boolean) => ({
 
 const HEAD_START = "Execute a shell command in an isolated session. Each call spawns a fresh process; environment variables, working directory changes, and shell state do not persist between calls. Commands run in bash on macOS/Linux and PowerShell on Windows. Use the cwd parameter to set the working directory instead of cd. Always quote paths containing spaces or special characters (parentheses, brackets). Chain dependent commands with && or ; within one call";
 const headEnd = (background: boolean) => `. A command that reads text typed into the terminal, such as a password, passphrase, or confirmation prompt, or a login that asks for a code or token at the prompt, belongs to the person: ${background ? "never start it in the background, and ask" : "ask"} the person to run it. A login that sends the person to a browser and only waits for the browser to finish, such as \`aws sso login\` or another SSO or device-code flow, reads nothing from the terminal: run it yourself in the foreground, and before you start it, tell the person to complete it in the browser.`;
-const head = (mutatingDeclaration: boolean, background: boolean) => `${HEAD_START}${mutatingDeclaration ? ", but keep Git commands separate from mutating commands" : ""}${headEnd(background)}`;
+// The commands that a person runs at the prompt or in a browser have no reader in an unattended chat.
+const head = (mutatingDeclaration: boolean, background: boolean, unattendedChat: boolean) => `${HEAD_START}${mutatingDeclaration ? ", but keep Git commands separate from mutating commands" : ""}${unattendedChat ? "." : headEnd(background)}`;
 const STOP_BY_ID = "Stop a process by its process-tool id or its exact PID. Do not match on a process name or a command-line pattern, because a pattern can also match unrelated processes.";
-const BACKGROUND = `Set background: true only for a server, service, or other command that must remain running; never use shell-level &, nohup, or disown. A managed background command ends when its runtime exits. Finite commands remain in this call until they complete, you select Detach, or they reach the configured runtime cap. The process tool can wait on any managed background command, whether launched with background=true or transferred from the foreground. Wait for completion or inspect its status before relying on its output; never poll with sleep or restart a command just to wait, because a managed command publishes a completion notification. ${STOP_BY_ID}`;
-const FOREGROUND_ONLY = `Never use shell-level &, nohup, or disown. Finite commands remain in this call until they complete, you select Detach, or they reach the configured runtime cap. The process tool can wait on a managed command that transferred from the foreground. Wait for completion or inspect its status before relying on its output; never poll with sleep or restart a command just to wait, because a managed command publishes a completion notification. ${STOP_BY_ID}`;
+// Detach is a client control, which an unattended chat has no person to select.
+const finiteCommands = (unattendedChat: boolean): string => unattendedChat ? "" : " Finite commands remain in this call until they complete, you select Detach, or they reach the configured runtime cap.";
+const backgroundGuidance = (unattendedChat: boolean): string => `Set background: true only for a server, service, or other command that must remain running; never use shell-level &, nohup, or disown. A managed background command ends when its runtime exits.${finiteCommands(unattendedChat)} The process tool can wait on any managed background command, whether launched with background=true or transferred from the foreground. Wait for completion or inspect its status before relying on its output; never poll with sleep or restart a command just to wait, because a managed command publishes a completion notification. ${STOP_BY_ID}`;
+const foregroundOnly = (unattendedChat: boolean): string => `Never use shell-level &, nohup, or disown.${finiteCommands(unattendedChat)} The process tool can wait on a managed command that transferred from the foreground. Wait for completion or inspect its status before relying on its output; never poll with sleep or restart a command just to wait, because a managed command publishes a completion notification. ${STOP_BY_ID}`;
 const VENV = "If the project uses Python virtualenvs, each call is a fresh shell so activations are lost: use venv/bin/python directly, or chain activation with `source venv/bin/activate && python script.py`.";
 const SCRATCH = "Writing and running scratch scripts is a normal, expected way to work: compute results, transform data, generate diffs, drive the app, or verify behavior end-to-end. `bun` is always on PATH and runs TypeScript and JavaScript directly (`bun script.ts`, or `bun -e 'code'` for inline snippets). Put scratch scripts and their outputs in the scratchpad directory.";
 const listed = (programs: readonly ShellSearchProgram[]): string => new Intl.ListFormat("en", { type: "conjunction" }).format(programs);
@@ -77,6 +81,11 @@ export interface BashSurfaceOptions {
   /** The tree check that decides which other tools the text names
    *  (ARCH-CONTEXT-033). Absent: every tool. */
   readonly has?: CapabilityCheck;
+  /** True in an unattended chat, which no person reads (PI-AGENT-121): the description leaves out the commands that
+   *  a person runs, the Detach control, and, off Windows, the Windows search rule. */
+  readonly unattendedChat?: boolean;
+  /** The platform that runs the commands. */
+  readonly platform?: RuntimePlatform;
 }
 
 const EVERY_CAPABILITY: CapabilityCheck = () => true;
@@ -89,11 +98,12 @@ const EVERY_CAPABILITY: CapabilityCheck = () => true;
  *  execution refuses each input the agent cannot use. The system prompt keeps only the
  *  output-preservation rule, which is a behavior contract rather than a
  *  description of the tool. */
-export function bashToolSurface({ fileEditTool = "edit", mutatingDeclaration = true, writeGuard = true, background = true, persistence = true, has = EVERY_CAPABILITY }: BashSurfaceOptions = {}): Pick<RuntimeTool, "description" | "promptGuidelines" | "inputSchema"> {
+export function bashToolSurface({ fileEditTool = "edit", mutatingDeclaration = true, writeGuard = true, background = true, persistence = true, has = EVERY_CAPABILITY, unattendedChat = false, platform = process.platform }: BashSurfaceOptions = {}): Pick<RuntimeTool, "description" | "promptGuidelines" | "inputSchema"> {
   const persists = background && persistence;
   const fields = commandProperties(background, persists);
+  const windowsSearch = has("search") && (!unattendedChat || platform === "win32");
   return {
-    description: [...(mutatingDeclaration ? [tail(fileEditTool, has)] : []), head(mutatingDeclaration, background), background ? BACKGROUND : FOREGROUND_ONLY, VENV, SCRATCH, ...(writeGuard ? [WRITE_ROOTS] : []), SEARCH, ...(has("search") ? [WINDOWS_SEARCH] : [])].join(" "),
+    description: [...(mutatingDeclaration ? [tail(fileEditTool, has)] : []), head(mutatingDeclaration, background, unattendedChat), background ? backgroundGuidance(unattendedChat) : foregroundOnly(unattendedChat), VENV, SCRATCH, ...(writeGuard ? [WRITE_ROOTS] : []), SEARCH, ...(windowsSearch ? [WINDOWS_SEARCH] : [])].join(" "),
     promptGuidelines: [SHELL_OUTPUT_GUIDANCE],
     inputSchema: {
       type: "object",

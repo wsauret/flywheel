@@ -92,18 +92,21 @@ async function processViews(backgroundTasks: BackgroundWorkRegistry, context: To
 /** The work the caller started: its managed commands and its children. A
  *  child is one row from the durable binding, addressed by its id, so the
  *  registry's own entries for children are left out. */
-async function processList(backgroundTasks: BackgroundWorkRegistry, context: ToolContext, children: ChildSessionControl | undefined): Promise<string> {
+async function processList(backgroundTasks: BackgroundWorkRegistry, context: ToolContext, children: ChildSessionControl | undefined, unattendedChat: boolean): Promise<string> {
   const childRows = children && context.sessionId ? await children.list(context.sessionId) : [];
   const records = (await processViews(backgroundTasks, context))
     .filter((view) => view.source !== "session" || (view.record.kind !== "subagent" && view.record.kind !== "workflow"));
-  if (records.length === 0 && childRows.length === 0) return "No managed processes and no children. Other sessions of this project are in list_sessions.";
+  const sessionsPointer = unattendedChat ? [] : [SESSIONS_POINTER];
+  if (records.length === 0 && childRows.length === 0) return ["No managed processes and no children.", ...sessionsPointer].join(" ");
   return [
     ...(records.length > 0 ? ["Managed processes:", ...records.map((record) => `- ${describe(record)}`)] : []),
     ...(records.some((record) => record.source === "persistent") ? [PERSISTENT_RECORD_NOTE] : []),
     ...(childRows.length > 0 ? ["Your children (each id is the child's process id):", ...childRows.flatMap((row) => [`- ${describeChild(row)}`, ...row.addresses.map((line) => `  ${line}`)])] : []),
-    "Other sessions of this project are in list_sessions.",
+    ...sessionsPointer,
   ].join("\n");
 }
+
+const SESSIONS_POINTER = "Other sessions of this project are in list_sessions.";
 
 const PERSISTENT_RECORD_NOTE = "Persistent records are unavailable after host exit.";
 
@@ -242,31 +245,42 @@ function processId(input: RuntimeToolInput, action: string): string | ToolResult
 /** The actions that change work. Each waits for its own turn at the gate. */
 const CONTROL_ACTIONS: ReadonlySet<unknown> = new Set(["stop", "interrupt", "resume"]);
 
+const PROCESS_SCOPE = "Manage the work that you started: your managed commands and your children.";
+const PROCESS_ACTIONS = "Use one action: list returns the ids that the other actions take (never guess an id from a log suffix); status inspects one process without waiting, or lists them all when no process_id is given, and for a child it gives its state, who interrupted it, its progress, and the addresses that its work takes. wait parks the loop until the next process completes or soft_timeout seconds expire (the turn's other tool calls run first; it waits on every process, so a process_id is ignored; expiry does not stop work; no wait parks on a child that you or the runtime interrupted); stop requests cancellation (termination is confirmed only when the host reports it; an unsettled result means ownership remains managed, so do not release or relaunch the process), and a stopped child shows as Canceled; interrupt cuts a running child so that its work can continue later; resume continues your own interrupted child, or starts a new attempt of a child whose run failed, unless a person made its latest interrupt; and read_output reads retained output of a command.";
+
 /** The advertised form of the native process tool. It names no background
- *  owner, so an agent without one advertises the same bytes. */
-export const PROCESS_TOOL_DEFINITION: AdvertisedTool = {
-  name: PROCESS_TOOL_NAME,
-  action: "ui_meta",
-  description: "Manage the work that you started: your managed commands and your children. Sessions that you did not start are in list_sessions. Use one action: list returns the ids that the other actions take (never guess an id from a log suffix); status inspects one process without waiting, or lists them all when no process_id is given, and for a child it gives its state, who interrupted it, its progress, and the addresses that its work takes. wait parks the loop until the next process completes or soft_timeout seconds expire (the turn's other tool calls run first; it waits on every process, so a process_id is ignored; expiry does not stop work; no wait parks on a child that you or the runtime interrupted); stop requests cancellation (termination is confirmed only when the host reports it; an unsettled result means ownership remains managed, so do not release or relaunch the process), and a stopped child shows as Canceled; interrupt cuts a running child so that its work can continue later; resume continues your own interrupted child, or starts a new attempt of a child whose run failed, unless a person made its latest interrupt; and read_output reads retained output of a command. The person sees each interrupt, resume, and stop of a child in the transcript; the other actions do not render there.",
-  promptSnippet: "List, inspect, wait for, stop, interrupt, or resume the work you started, or read its output",
-  promptGuidelines: [
-    PROCESS_WAIT_GUIDANCE,
-  ],
-  inputSchema: PROCESS_INPUT_SCHEMA,
-  validatesOwnInput: true,
-  isConcurrencySafe: (input) => !CONTROL_ACTIONS.has(input.action),
-  // A crash never leaves an interrupt, a resume, or a stop of a child
-  // without its call in the parent's history.
-  deferUntilAssistantCommitted: true,
-};
+ *  owner, so an agent without one advertises the same bytes. An unattended
+ *  chat lists no session that it did not start and has no person who reads
+ *  its transcript (PI-AGENT-121), so its form names neither. */
+export function processToolDefinition(unattendedChat: boolean): AdvertisedTool {
+  return {
+    name: PROCESS_TOOL_NAME,
+    action: "ui_meta",
+    description: unattendedChat
+      ? `${PROCESS_SCOPE} ${PROCESS_ACTIONS}`
+      : `${PROCESS_SCOPE} Sessions that you did not start are in list_sessions. ${PROCESS_ACTIONS} The person sees each interrupt, resume, and stop of a child in the transcript; the other actions do not render there.`,
+    promptSnippet: "List, inspect, wait for, stop, interrupt, or resume the work you started, or read its output",
+    promptGuidelines: [
+      PROCESS_WAIT_GUIDANCE,
+    ],
+    inputSchema: PROCESS_INPUT_SCHEMA,
+    validatesOwnInput: true,
+    isConcurrencySafe: (input) => !CONTROL_ACTIONS.has(input.action),
+    // A crash never leaves an interrupt, a resume, or a stop of a child
+    // without its call in the parent's history.
+    deferUntilAssistantCommitted: true,
+  };
+}
 
 /** The one tool for the work that an agent started: its commands, its
  *  services, and its children. `children` are the child controls of the
  *  project's session authority. A run without that authority, such as a
- *  headless task, starts no children, so it has none to list or control. */
-export function createProcessTool(backgroundTasks: BackgroundWorkRegistry, children?: ChildSessionControl): RuntimeTool {
+ *  headless task, starts no children, so it has none to list or control.
+ *  `unattendedChat` selects the form and the list text of an unattended chat,
+ *  which names no list_sessions. */
+export function createProcessTool(backgroundTasks: BackgroundWorkRegistry, children?: ChildSessionControl, unattendedChat = false): RuntimeTool {
   return {
-    ...PROCESS_TOOL_DEFINITION,
+    ...processToolDefinition(unattendedChat),
     async execute(input, context): Promise<ToolResult> {
       if (input.action === undefined) {
         const result = await this.execute({ ...input, action: "status" }, context);
@@ -276,7 +290,7 @@ export function createProcessTool(backgroundTasks: BackgroundWorkRegistry, child
       const targets = parseWorkflowTargets(input.targets);
       if (input.targets !== undefined && action !== "interrupt" && action !== "resume") return { content: "process targets are only valid for interrupt or resume.", outcome: "error" };
       if (targets === null) return { content: "process targets must be a list of item keys or agent ids, each a non-empty string.", outcome: "error" };
-      if (action === "list") return { content: await processList(backgroundTasks, context, children), outcome: "ok" };
+      if (action === "list") return { content: await processList(backgroundTasks, context, children, unattendedChat), outcome: "ok" };
       if (action === "wait") {
         // Models often name the process they mean. The wait parks on every
         // process anyway, so the name is ignored rather than refused.
@@ -294,7 +308,7 @@ export function createProcessTool(backgroundTasks: BackgroundWorkRegistry, child
       }
       const id = processId(input, action);
       // A status without an ID asks what is running: answer with the list.
-      if (typeof id !== "string") return action === "status" ? { content: await processList(backgroundTasks, context, children), outcome: "ok" } : id;
+      if (typeof id !== "string") return action === "status" ? { content: await processList(backgroundTasks, context, children, unattendedChat), outcome: "ok" } : id;
       const parentSessionId = context.sessionId;
       const child = children && parentSessionId && await children.isChild(parentSessionId, id) ? { children, parentSessionId } : undefined;
       if (child) return childAction(child.children, child.parentSessionId, id, action, targets);
@@ -309,7 +323,7 @@ export function createProcessTool(backgroundTasks: BackgroundWorkRegistry, child
           : persistent ? { source: "persistent", record: persistent } : undefined;
         return view
           ? { content: describe(view), outcome: "ok" }
-          : { content: `No managed process has ID '${id}'.\n${await processList(backgroundTasks, context, children)}`, outcome: "error" };
+          : { content: `No managed process has ID '${id}'.\n${await processList(backgroundTasks, context, children, unattendedChat)}`, outcome: "error" };
       }
       if (action === "stop") {
         if (backgroundTasks.terminateProcess(id, "agent")) return { content: `Stop requested for process '${id}'.`, outcome: "ok" };
@@ -319,7 +333,7 @@ export function createProcessTool(backgroundTasks: BackgroundWorkRegistry, child
           if (result === "unsettled") return { content: `Termination was not confirmed for process '${id}'. ownership remains managed; descendant processes may still be running.`, outcome: "error" };
           return { content: result === "already_exited" ? `Process '${id}' already exited.` : `Stop requested for process '${id}'.`, outcome: "ok" };
         }
-        return { content: `No active process has ID '${id}'. It may already have settled or been stopped.\n${await processList(backgroundTasks, context, children)}`, outcome: "error" };
+        return { content: `No active process has ID '${id}'. It may already have settled or been stopped.\n${await processList(backgroundTasks, context, children, unattendedChat)}`, outcome: "error" };
       }
       const limitValue = input.limit;
       const limit = typeof limitValue === "number" && Number.isFinite(limitValue) && limitValue >= 1 ? Math.min(Math.floor(limitValue), OUTPUT_QUERY_MATCH_CAP) : OUTPUT_LIMIT_DEFAULT;
@@ -330,7 +344,7 @@ export function createProcessTool(backgroundTasks: BackgroundWorkRegistry, child
       const persistent = sessionRead.ok ? undefined : await persistentRecord(context, id);
       if (!sessionRead.ok && !persistent) {
         const reason = sessionRead.reason === "unknown" ? `No managed process has ID '${id}'.` : `Process '${id}' has no pull-readable output stream.`;
-        return { content: `${reason}\n${await processList(backgroundTasks, context, children)}`, outcome: "error" };
+        return { content: `${reason}\n${await processList(backgroundTasks, context, children, unattendedChat)}`, outcome: "error" };
       }
       if (persistent) return { content: await scanPersistentOutput(context, persistent, offset, limit, query), outcome: "ok" };
       return { content: sessionRead.ok ? sessionRead.text : "", outcome: "ok" };

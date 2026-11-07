@@ -663,6 +663,18 @@ describe("bash background-execution guidance", () => {
     expect(rendered).not.toContain("background: true");
     expect(rendered).toContain("Preserve live command output.");
   });
+
+  // No person reads an unattended chat (PI-AGENT-121): it has nobody to run a prompt, a browser login, or Detach.
+  it("leaves out the person's commands, Detach, and the Windows rule off Windows in an unattended chat", () => {
+    const PERSON_TEXT = ["belongs to the person", "tell the person to complete it in the browser", "you select Detach"];
+    const WINDOWS = "On Windows, search file contents with the search tool";
+    const unattended = (platform: NodeJS.Platform) => createBashDefinition({ platform, mutatingDeclaration: false, advertised: { unattendedChat: true } }).description;
+    for (const text of [...PERSON_TEXT, WINDOWS]) expect(createBashDefinition({ platform: "linux" }).description).toContain(text);
+    for (const text of [...PERSON_TEXT, WINDOWS]) expect(unattended("linux")).not.toContain(text);
+    expect(unattended("win32")).toContain(WINDOWS);
+    // The surviving sentences are unchanged.
+    for (const text of ["Chain dependent commands with && or ; within one call. Set background: true only", "Stop a process by its process-tool id or its exact PID", "stop after 30s of processing time"]) expect(unattended("linux")).toContain(text);
+  });
 });
 
 describe("buildSystemPrompt -- session identity", () => {
@@ -693,7 +705,7 @@ describe("buildSystemPrompt -- session identity", () => {
     for (const [identity, toldAboutRootChats] of [[root, true], [child, false]] as const) expect(identitySection(identity)?.text.includes("another root chat")).toBe(toldAboutRootChats);
   });
 
-  it("names no module tool, and renders only while message_session is planned", () => {
+  it("names no module tool, and renders only while list_sessions is planned", () => {
     // "subagent" and "workflow" also name session kinds, which the section states.
     // A quoted argument value, such as the `'list'` of process(action='list'),
     // names an action of a kernel tool, not the module tool of the same name.
@@ -705,5 +717,7 @@ describe("buildSystemPrompt -- session identity", () => {
       for (const name of moduleTools) expect(text).not.toMatch(new RegExp(`(?<![\\w'])${name}(?![\\w'])`));
     }
     expect(buildSystemPromptParts(promptOptions({ corePrompt, tools: TOOLS, promptKind: "chat", sessionIdentity: root })).some((part) => part.label === "session identity")).toBe(false);
+    // An unattended chat that starts children messages them but lists no session around it.
+    expect(buildSystemPromptParts(promptOptions({ corePrompt, tools: [...TOOLS, spec("message_session")], promptKind: "headless", sessionIdentity: root })).some((part) => part.label === "session identity")).toBe(false);
   });
 });

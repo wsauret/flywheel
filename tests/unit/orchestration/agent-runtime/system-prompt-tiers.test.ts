@@ -80,7 +80,7 @@ describe("system prompt cache tiers", () => {
       chatHost: undefined,
       promptKind: "workflow-agent" as const,
       purpose: { kind: "workflow-agent", workflowAttemptId: "attempt-a", briefScope: { briefId: "review" } } satisfies AgentPurpose,
-      tools: [...tools, spec("message_session")],
+      tools: [...tools, spec("message_session"), spec("list_sessions")],
       sessionIdentity: { sessionId: "agent-a", rootSessionId: "chat", conversationId: "conversation-a", kind: "workflow-agent" as const, workflowMembership: { kind: "attempt" as const, workflowId: "run-a", attemptId: "attempt-a" }, parent: { sessionId: "chat", name: "Parent" } },
     };
     const first = buildSystemPrompt(promptOptions(options));
@@ -111,7 +111,7 @@ describe("system prompt cache tiers", () => {
     const options = {
       ...chatOptions,
       promptKind: purpose.kind === "interactive-chat" ? "chat" as const : "workflow-agent" as const,
-      tools: [...tools, spec("message_session")],
+      tools: [...tools, spec("message_session"), spec("list_sessions")],
       sessionIdentity: { sessionId: "child", rootSessionId: "chat", conversationId: "child-conversation", kind: "subagent" as const, parent: { sessionId: "chat", name: "Parent" } },
     };
     const before = buildSystemPrompt(promptOptions(options));

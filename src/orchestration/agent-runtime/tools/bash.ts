@@ -172,7 +172,7 @@ export function createBashDefinition(options?: {
   mutatingDeclaration?: boolean;
   /** What the schema and description advertise beyond the fields above. Every agent of a chat tree passes the
    *  same values (ARCH-CONTEXT-018); `backgroundRefusal` and `persistentProcesses` decide what execution admits. */
-  advertised?: Pick<BashSurfaceOptions, "background" | "persistence" | "has">;
+  advertised?: Pick<BashSurfaceOptions, "background" | "persistence" | "has" | "unattendedChat">;
 }): RuntimeTool {
   const ops = options?.operations ?? defaultBashOperations;
   const platform = options?.platform ?? process.platform;
@@ -303,7 +303,7 @@ export function createBashDefinition(options?: {
   return withShellInputRepair({
     name: "bash",
     action: "shell_exec",
-    ...bashToolSurface({ ...options?.advertised, ...(options?.fileEditTool ? { fileEditTool: options.fileEditTool } : {}), mutatingDeclaration, writeGuard }),
+    ...bashToolSurface({ ...options?.advertised, ...(options?.fileEditTool ? { fileEditTool: options.fileEditTool } : {}), mutatingDeclaration, writeGuard, platform }),
     promptSnippet: "Run shell commands and scripts (tests, builds, git, servers, package managers, scratch scripts)",
     // bash already escalates its own kill timer up to MAX_TIMEOUT_SEC; the
     // dispatcher's generic watchdog would either race that mechanism or

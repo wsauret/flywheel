@@ -2,7 +2,7 @@ import { SESSION_RELATIONS } from "../../../infra/chat-input-schema.js";
 import type { SessionListing, SessionMessaging } from "../../session/session-messaging.js";
 import type { AdvertisedTool, RuntimeTool, ToolResult } from "./types.js";
 
-const LIST_SESSIONS_TOOL_NAME = "list_sessions";
+export const LIST_SESSIONS_TOOL_NAME = "list_sessions";
 
 function row(listing: SessionListing): string {
   const membership = listing.workflowMembership;

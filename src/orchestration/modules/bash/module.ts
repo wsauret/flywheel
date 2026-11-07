@@ -31,7 +31,8 @@ const bash = {
         // Claude host fixes them at launch (ARCH-CONTEXT-018). What the tool
         // advertises reads only the tree's capture: its module snapshot, its
         // tree check, its captured persistent-process policy, and its write
-        // guard (`SharedTreeCapture`); `headless` is fixed for the whole runtime.
+        // guard (`SharedTreeCapture`); `headless` is fixed for the whole runtime,
+        // and an unattended chat keeps its own engine, so its purpose splits no tree.
         // This agent's own selection and persona decide only which advertised
         // inputs execution refuses, and execution enforces the current write guard.
         const advertisesBackground = kernel.moduleSnapshot.contributions.some((entry) => entry.domain === "shellOperations" && entry.value.background)
@@ -50,7 +51,7 @@ const bash = {
             writeGuard: kernel.shellWriteGuard,
             ...(kernel.enforcedShellWriteGuard ? { enforcedWriteGuard: kernel.enforcedShellWriteGuard } : {}),
             mutatingDeclaration: kernel.headless !== true,
-            advertised: { background: advertisesBackground, persistence: kernel.persistentProcessesAdvertised, has: kernel.treeCapabilities },
+            advertised: { background: advertisesBackground, persistence: kernel.persistentProcessesAdvertised, has: kernel.treeCapabilities, unattendedChat: kernel.purpose.kind === "unattended-chat" },
           }),
         }
       },
