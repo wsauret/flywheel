@@ -14,7 +14,7 @@ describe("Write syntax palette", () => {
     assert.ok(presentation.style)
     assert.equal(presentation.style["--fw-write-syntax-text"], "light-dark(#4d5360, #b7bcc6)")
     assert.equal(presentation.style["--fw-write-syntax-comment"], "light-dark(#656d79, #8f96a3)")
-    assert.match(css, /\.write-syntax \.diff-line > span:last-child[^{}]*\{[^}]*color: var\(--fw-write-syntax-text\)/s)
+    assert.match(css, /\.write-syntax \.diff-source > span:last-child[^{}]*\{[^}]*color: var\(--fw-write-syntax-text\)/s)
     assert.doesNotMatch(css, /\.write-syntax\s*\{[^}]*color:/s)
     assert.match(css, /\.write-syntax \.hljs-comment[^{}]*\{[^}]*var\(--fw-write-syntax-comment\)/s)
   })

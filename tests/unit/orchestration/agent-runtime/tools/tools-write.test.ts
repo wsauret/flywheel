@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -10,6 +11,7 @@ import { parseFileMutationOperationHeader, readFileMutationOperation } from "../
 import { executePreparedTool, prepareToolCall } from "../../../../../src/orchestration/agent-runtime/tools/tool-dispatch.js";
 import { testBaseTools } from "../../../../helpers/request-tool-surface.js";
 import { MAX_FILE_EDIT_BYTES } from "../../../../../src/orchestration/file-edits/retained-file-edit-host.js";
+import { FileReadLedger } from "../../../../../src/orchestration/agent-runtime/tools/file-read-ledger.js";
 import { createRecordingFileMutationStore, makeContext } from "./_fixtures.js";
 
 // Compose prepare + execute exactly as the agent loop's dispatcher does.
@@ -199,12 +201,58 @@ describe("write retained authority", () => {
     expect(recorder.prepared).toEqual([]);
   });
 
-  it("keeps an existing file unchanged and preserves the create-only error", async () => {
+  it("refuses an existing file that this run has no verified version of, naming read and edit", async () => {
     const target = path.join(tmpDir, "existing.txt");
-    fs.writeFileSync(target, "before");
-    const result = await runTool({ id: "existing", name: "write", input: { path: "existing.txt", content: "after" } }, makeContext({ executionCwd: tmpDir }), testBaseTools());
-    expect(result).toMatchObject({ outcome: "error", content: "File already exists: existing.txt. Use the edit tool to modify existing files. The write tool is only for creating new files." });
-    expect(fs.readFileSync(target, "utf8")).toBe("before");
+    fs.writeFileSync(target, "before\nsecond\n");
+    const ctx = makeContext({ executionCwd: tmpDir, readLedger: new FileReadLedger() });
+    // A search match shows lines but proves no version of the file.
+    expect((await runTool({ id: "search", name: "search", input: { pattern: "second", path: "existing.txt", output_mode: "content" } }, ctx, testBaseTools())).outcome).toBe("ok");
+    const result = await runTool({ id: "existing", name: "write", input: { path: "existing.txt", content: "after" } }, ctx, testBaseTools());
+    expect(result).toMatchObject({ outcome: "error", content: "write refused: existing.txt already exists, and this run has no verified version of it from the read tool or a file edit. Read it with read before you replace the whole file, or use edit to change part of it." });
+    expect(fs.readFileSync(target, "utf8")).toBe("before\nsecond\n");
+  });
+
+  it("replaces a file read at its current version through the shared publication, with its change record", async () => {
+    const target = path.join(tmpDir, "existing.txt");
+    fs.writeFileSync(target, "before\n");
+    const recorder = createRecordingFileMutationStore();
+    const ctx = makeContext({ executionCwd: tmpDir, toolUseId: "replace", sessionEventWriter: recorder.writer, readLedger: new FileReadLedger() });
+    expect((await runTool({ id: "read", name: "read", input: { path: "existing.txt" } }, ctx, testBaseTools())).outcome).toBe("ok");
+    const result = await runTool({ id: "replace", name: "write", input: { path: "existing.txt", content: "after\n" } }, ctx, testBaseTools());
+    expect(result.outcome).toBe("ok");
+    expect(result.content).toBe("Updated existing.txt");
+    expect(fs.readFileSync(target, "utf8")).toBe("after\n");
+    expect(recorder.changes).toMatchObject([{ path: path.join(fs.realpathSync(tmpDir), "existing.txt"), changeKind: "modified", origin: { kind: "tool_call", toolUseId: "replace" } }]);
+    const header = parseFileMutationOperationHeader(recorder.prepared[0]?.payload);
+    const operation = await readFileMutationOperation(header, recorder.readContentNode);
+    // The publication compares and swaps against the version that was read.
+    const readSha256 = createHash("sha256").update("before\n").digest("hex");
+    expect(operation).toMatchObject({ items: [{ precondition: { kind: "file", sha256: readSha256 }, candidateEvidence: { change: "modified", removedLines: 1, addedLines: 1 } }] });
+    // Its own verified publication counts as a read of the new version.
+    const again = await runTool({ id: "again", name: "write", input: { path: "existing.txt", content: "again\n" } }, { ...ctx, toolUseId: "again" }, testBaseTools());
+    expect(again.outcome).toBe("ok");
+    expect(fs.readFileSync(target, "utf8")).toBe("again\n");
+  });
+
+  it("refuses a file that changed after its read, naming a fresh read", async () => {
+    const target = path.join(tmpDir, "existing.txt");
+    fs.writeFileSync(target, "before\n");
+    const ctx = makeContext({ executionCwd: tmpDir, readLedger: new FileReadLedger() });
+    expect((await runTool({ id: "read", name: "read", input: { path: "existing.txt" } }, ctx, testBaseTools())).outcome).toBe("ok");
+    fs.writeFileSync(target, "changed by someone else\n");
+    const result = await runTool({ id: "stale", name: "write", input: { path: "existing.txt", content: "after\n" } }, ctx, testBaseTools());
+    expect(result).toMatchObject({ outcome: "error", content: "write refused: existing.txt differs from the version that this run last read or wrote. Read it again with read, then write." });
+    expect(fs.readFileSync(target, "utf8")).toBe("changed by someone else\n");
+  });
+
+  it("keeps a replaced file's byte-order mark and line endings", async () => {
+    const target = path.join(tmpDir, "windows.txt");
+    fs.writeFileSync(target, "\uFEFFone\r\ntwo\r\n");
+    const ctx = makeContext({ executionCwd: tmpDir, readLedger: new FileReadLedger() });
+    expect((await runTool({ id: "read", name: "read", input: { path: "windows.txt" } }, ctx, testBaseTools())).outcome).toBe("ok");
+    const result = await runTool({ id: "bom", name: "write", input: { path: "windows.txt", content: "uno\ndos\ntres\n" } }, ctx, testBaseTools());
+    expect(result.outcome).toBe("ok");
+    expect(fs.readFileSync(target)).toEqual(Buffer.from("\uFEFFuno\r\ndos\r\ntres\r\n"));
   });
 
   it("refuses a final symlink without changing its target", async () => {
@@ -212,7 +260,7 @@ describe("write retained authority", () => {
     fs.writeFileSync(destination, "before");
     fs.symlinkSync(destination, path.join(tmpDir, "link.txt"));
     const result = await runTool({ id: "symlink", name: "write", input: { path: "link.txt", content: "after" } }, makeContext({ executionCwd: tmpDir }), testBaseTools());
-    expect(result.content).toBe("File already exists: link.txt. Use the edit tool to modify existing files. The write tool is only for creating new files.");
+    expect(result.content).toBe("write refused: link.txt is a symbolic link. Write to the file it points to instead.");
     expect(fs.readFileSync(destination, "utf8")).toBe("before");
   });
 

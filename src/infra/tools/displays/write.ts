@@ -16,9 +16,9 @@ export const writeDisplay: ToolDisplay = {
   getDetail: (input, executionCwd) => singleLine(formatDisplayPath(strField(input, "path"), executionCwd)),
   getSentence: (_input, _cwd, presentation) => ({ name: writeDisplay.verbs.past, detail: fileSubject(presentation.detail) }),
   extractDiff: (input): ToolDiffInfo | undefined => {
-    // The write tool creates new files only; there is no prior content to diff
-    // against. Surface the written content directly so the TUI applies syntax
-    // highlighting instead of "all-added" diff coloring.
+    // The input holds only the new content, not the content it may replace.
+    // Surface it directly so the TUI applies syntax highlighting instead of
+    // "all-added" diff coloring.
     const fp = strField(input, "path") ?? "";
     const content = strField(input, "content");
     if (!content) return undefined;

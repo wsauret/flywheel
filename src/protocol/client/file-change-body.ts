@@ -130,7 +130,8 @@ export function rowPresentation(tool: ShellMutationRow, active: boolean = false)
 
 export type FileWritePolicy = "all" | "added" | "none"
 
-/** Selects source presentation for Write tools and landed shell additions, never patch additions. */
+/** Selects source presentation for Write tools and landed shell additions, never patch additions. Landed evidence
+ *  shows source only for an added file under either policy; "all" also covers a streaming Write proposal. */
 export function rowWritePolicy(tool: Pick<FrontendToolEntry, "fileChangeKind" | "declaresMutation">): FileWritePolicy {
   return tool.fileChangeKind === "create" ? "all" : isShellMutationEntry(tool) ? "added" : "none"
 }
@@ -298,7 +299,8 @@ export function fileDiffFiles(
       return [{
         id: file.path, path: file.displayPath,
         action: file.change === "added" ? "add" as const : file.change === "removed" ? "delete" as const : "update" as const,
-        presentation: writes === "all" || (writes === "added" && file.change === "added") ? "write" as const : "edit" as const,
+        // Landed evidence shows only an added file as source; a Write that replaced a file shows its real diff.
+        presentation: writes !== "none" && file.change === "added" ? "write" as const : "edit" as const,
         rows: selected.map(({ path: _path, ...row }, index) => ({
           ...row, id: `${file.path}:${index}`,
           partial: isExpanded && patch !== undefined && !patch.complete && !patch.text.endsWith("\n") && index === allRows.length - 1,

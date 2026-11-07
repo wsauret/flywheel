@@ -62,6 +62,9 @@ describe("bash tool: file reads count as reads", () => {
     expect(staleness(root, ledger, "b.ts", { start: 4, end: 4 })).toEqual({ kind: "uncovered", lines: { start: 4, end: 4 } });
     expect(staleness(root, ledger, "c.ts", { start: 5, end: 5 })).toBeUndefined();
     expect(staleness(root, ledger, "c.ts", { start: 3, end: 3 })).toEqual({ kind: "uncovered", lines: { start: 3, end: 3 } });
+    // The read is inferred from command syntax, so it never authorizes a whole-file replacement.
+    const a = canonicalMutationPath(path.join(root, "a.ts"));
+    expect(ledger.versionStaleness(a, fs.readFileSync(a))).toBe("unread");
   });
 
   it("records nothing for a failed command, shell syntax beyond plain reads, a file outside the project, or output compression would shorten", async () => {

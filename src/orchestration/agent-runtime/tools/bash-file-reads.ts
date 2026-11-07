@@ -64,7 +64,7 @@ export async function recordShellFileReads(command: string, exitCode: number | u
     if (bytes === undefined) continue;
     const coverage = printedCoverage(read.lines, bytes);
     if (coverage === undefined) continue;
-    ledger.recordRead(path, createHash("sha256").update(bytes).digest("hex"), coverage, position);
+    ledger.recordInferredRead(path, createHash("sha256").update(bytes).digest("hex"), coverage, position);
   }
 }
 

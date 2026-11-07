@@ -110,16 +110,16 @@ describe(`Agent tool usage with ${LIVE_MODEL} (real API)`, () => {
     expect(toolWasUsed(events, "bash")).toBe(true);
   }, TIMEOUT);
 
-  it("write tool blocks overwriting existing files", async () => {
+  it("write tool blocks overwriting unread files", async () => {
     const tmpDir = temporaryDirectory("agent-tool-test-");
     const filePath = path.join(tmpDir, "existing.txt");
     fs.writeFileSync(filePath, "original content");
 
     const { result, events } = await runLiveAgentLoop({
-      label: "write tool blocks overwriting existing files",
+      label: "write tool blocks overwriting unread files",
       instruction:
-        `Try to overwrite the file at ${filePath} using the write tool with content 'overwritten'. ` +
-        "The write tool should reject this because the file already exists. " +
+        `Without reading it first, try to overwrite the file at ${filePath} using the write tool with content 'overwritten'. ` +
+        "The write tool should reject this because the file exists and was not read in this run. " +
         "After the rejection, use read and edit to change the content to 'modified via edit' instead. " +
         "Do NOT use bash.",
       executionCwd: tmpDir,

@@ -132,7 +132,8 @@ describe("file change body protocol", () => {
     const diff: MutationDiff = { version: 1, files: [added, modified, { ...modified, path: "src/removed.ts", change: "removed" }], omissions: [] }
     expect((await diffModels(diff, false, rowWritePolicy(declared))).map((file) => file.presentation)).toEqual(["write", "edit", "edit"])
     expect((await diffModels(diff, false, rowWritePolicy(tool))).map((file) => file.presentation)).toEqual(["edit", "edit", "edit"])
-    expect((await diffModels(diff, false, rowWritePolicy({ fileChangeKind: "create" }))).every((file) => file.presentation === "write")).toBe(true)
+    // A Write that replaced a file landed a real diff, so only its added files show as source.
+    expect((await diffModels(diff, false, rowWritePolicy({ fileChangeKind: "create" }))).map((file) => file.presentation)).toEqual(["write", "edit", "edit"])
   })
   it.each(["create", "replace", "patch"] as const)("keeps the first twenty %s rows through streaming and retention limits", (kind) => {
     const input = createProvisionalDiffInput(kind)

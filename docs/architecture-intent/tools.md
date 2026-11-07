@@ -79,7 +79,7 @@ After a crash, at most one item of a multi-file mutation can be in doubt. Recove
 
 ## ARCH-TOOLS-016: Stale-read warnings never block an edit
 
-Each agent loop keeps one in-memory ledger of what its reads and searches showed. A publication attaches a warning when its target was never read, changed since the read, or was read only in a part that misses the replaced lines. The warning never blocks, and a verified publication refreshes the ledger. Read and search output carries ordinary line numbers and creates no editing protocol or cache authority.
+Each agent loop keeps one in-memory ledger of what its reads and searches showed. A publication attaches a warning when its target was never read, changed since the read, or was read only in a part that misses the replaced lines. The warning never blocks, and a verified publication refreshes the ledger. Whole-file replacement by write is the one exception: write replaces an existing file only at its ledger-verified version, because it discards every line the agent did not supply. Read and search output carries ordinary line numbers and creates no editing protocol; its only authority is that version check.
 Because: Flywheel has no approval gates, and compare-and-swap already refuses the one race that corrupts silently.
 
 ## ARCH-TOOLS-017: Undo rests only on exact retained evidence

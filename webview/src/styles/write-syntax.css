@@ -1,12 +1,14 @@
 /* Write source owns a catalog palette. Chat code and diff chrome stay on their
-   host tokens because this scope exists only on Write source containers. */
-.write-syntax .diff-line {
+   host tokens because this scope exists only on Write source containers. A Write
+   that replaced a file shows diff rows in the same container, so the row rules
+   select source rows only. */
+.write-syntax .diff-source {
   grid-template-columns: calc(2 * var(--fw-diff-line-number-width)) max-content;
   column-gap: var(--fw-diff-marker-width);
 }
 
 .write-syntax .code,
-.write-syntax .diff-line > span:last-child {
+.write-syntax .diff-source > span:last-child {
   color: var(--fw-write-syntax-text);
 }
 

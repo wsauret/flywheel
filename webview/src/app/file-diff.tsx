@@ -45,7 +45,7 @@ export function renderFileDiffRows(rows: FileDiffFile["rows"], path: string | un
     const marker = row.kind === "add" ? "+" : row.kind === "remove" ? "-" : " "
     const text = renderFileDiffLine(row.text, path, syntaxHighlight)
     html += syntaxHighlight
-      ? `<div class="diff-line"><span class="diff-line-number">${row.newLine ?? ""}</span><span${row.partial ? ' class="diff-partial"' : ""}>${text}</span></div>`
+      ? `<div class="diff-line diff-source"><span class="diff-line-number">${row.newLine ?? ""}</span><span${row.partial ? ' class="diff-partial"' : ""}>${text}</span></div>`
       : `<div class="diff-line diff-${kind}"><span class="diff-line-number">${row.oldLine ?? ""}</span><span class="diff-line-number">${row.newLine ?? ""}</span><span class="diff-marker">${marker}</span><span${row.partial ? ' class="diff-partial"' : ""}>${text}</span></div>`
   }
   return html
