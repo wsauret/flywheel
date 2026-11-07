@@ -1,0 +1,885 @@
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/package.json
+  s_476397d458d49e::t_602190e0d12c19 1-145
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/tests/unit/scripts/binary-native-assets.test.ts
+  s_476397d458d49e::t_bd898e6c97237d 3-4,6-13,15-16,18-22,24-28,30-34,36-37,40-43,45-47,49-56,59-65,67-71,73-75,77-79,81
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/tests/unit/scripts/build-binary-typecheck.test.ts
+  s_476397d458d49e::t_389e728ad9cfa2 1-44
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/tests/unit/scripts/build-release-manifest.test.ts
+  s_476397d458d49e::t_c29a7dedc872e3 1-5,8-21,23-27,30-33,36-37,40-41,44-53,56-58,60-74,77-80,83-87,90-94,97-101,104-108,111-115,117,119-145,147,150-153,155-157
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/tests/unit/scripts/check-doc-coherence.test.ts
+  s_476397d458d49e::t_8a7a0b525be1cd 1-4,6-11,14-25,27-42,44-53,55-63,65-66,68-70,72,74,76-77,79-83,85,87,89-90,92-96,98,100,102-121,123-124,126-127,129,131-132
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/tests/unit/scripts/check-file-sizes.test.ts
+  s_476397d458d49e::t_8af8feceb8ae36 1-83
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/tests/unit/scripts/check-filenames.test.ts
+  s_476397d458d49e::t_82983210fdb9a1 1-67
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/tests/unit/scripts/check-owned-process-launches.test.ts
+  s_476397d458d49e::t_7e83a91ce90be7 1-461
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/tests/unit/scripts/check-safety-comments.test.ts
+  s_476397d458d49e::t_38a028a042f72b 1-62
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/tests/unit/scripts/check-terminal-io.test.ts
+  s_476397d458d49e::t_4bca3aa5cac262 2-4,6-8,10-14,16-30,34-49,51-66,68-74,78-79,81-94,96-100,102-110,112-117,119
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/tests/unit/scripts/check-worker-ownership.test.ts
+  s_476397d458d49e::t_b0e1bd0996b551 1-7,9-11,13-25,27-29,31-48,50-56,58-67,69-72,74-77,79-82,84-193
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/tests/unit/scripts/commit-contract.test.ts
+  s_476397d458d49e::t_5688cbdf3d33e0 1-5,9-24,27-32,34-38,40-44,46-49,51,53-67,69-86,88-99,101-102,105-107,110-115,117-129,131,134-139,141-148,151-153,156-162,164-173,177-200,203-206,208-209
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/tests/unit/scripts/generate-config-docs.test.ts
+  s_476397d458d49e::t_11b577d9a22c7f 1-11,13-104
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/tests/unit/scripts/knip-production.test.ts
+  s_476397d458d49e::t_a8683e20443d9c 2-14,17-31,34-37,40-43,46-49,52-54,56-60,63-66,69-72,75-77
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/tests/unit/scripts/lazy-tui-view-boundary.test.ts
+  s_476397d458d49e::t_8e3e3f399bffe6 1-47
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/tests/unit/scripts/manifest.test.ts
+  s_476397d458d49e::t_574e2c8c194c66 1-3,5-19,21-23,27-39,41-50,53-56,58-61,64-68,70-78,81-96,99-115,119-122,124-126,129-133,136-149,151-166,168,171-178,180-186
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/tests/unit/scripts/opentui-native-package-patch.test.ts
+  s_476397d458d49e::t_68fb55edffc886 1-75
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/tests/unit/scripts/readiness-package-smoke.test.ts
+  s_476397d458d49e::t_ff4a60a4da3930 1,3,5-6,8-13,17,19-23,25-29
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/tests/unit/scripts/readiness.test.ts
+  s_476397d458d49e::t_bd50642403dd50 2-19,21-22,24-25,28-37,40-47,51-68,71-81,84-86,89-95
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/tests/unit/scripts/release-notes.test.ts
+  s_476397d458d49e::t_79e2d071147a33 1-52
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/tests/unit/scripts/release-publication-policy.test.ts
+  s_476397d458d49e::t_14d37b6c58d32e 1-111
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/tests/unit/scripts/release-version-gate.test.ts
+  s_476397d458d49e::t_e7ab03e9da0417 1-7,9-10,12-62
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/tests/unit/scripts/test-parallel.test.ts
+  s_476397d458d49e::t_7ed0deb86b0058 1-173,175-183,185-186
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/tests/unit/scripts/verify-production-composition.test.ts
+  s_476397d458d49e::t_2f27235f5da502 1-24
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/vscode/.vscodeignore
+  s_476397d458d49e::t_4e293877e5457d 1-31
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/vscode/docs/about-flywheel.md
+  s_476397d458d49e::t_2124807301517d 1-76
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/project/vscode/docs/releasing.md
+  s_476397d458d49e::t_69ffe48075cbaf 1-85
+bench/chat-ab/examples/planning.json
+  s_236f454bc3722f::t_9c3c3fb5106e25 3
+bench/chat-ab/tasks/debug-mutable-default/task.json
+  s_4f6b34e8fe9f1a::t_0ce7ff7bafbdec 6-7
+bench/chat-ab/tasks/session-list-empty-after-timeout/acceptance/catalog-baseline-retry.test.ts
+  s_5237d0e3980749::t_6effd0b439bef6 28,69
+bench/chat-ab/tasks/session-list-empty-after-timeout/task.json
+  s_5237d0e3980749::t_5417acdf69d635 6-7,9
+bench/chat-ab/tasks/subagent-interrupted-shows-failed/reference.patch
+  s_09db56feb8010e::t_891b97f633095b 1-104
+bench/chat-ab/tasks/subagent-interrupted-shows-failed/sandbox.patch
+  s_09db56feb8010e::t_8f109d5cee193a 2,5,10,14-117
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/auth/auth-profile-retirements.ts
+  s_f8a08ce933c33f::t_f338f64e42646c 1-54
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/auth/auth-profile-store.ts
+  s_f8a08ce933c33f::t_ca9879a0bdefeb 1-654
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/auth/auth-store-mutations.ts
+  s_f8a08ce933c33f::t_0d80fce435c980 1-661
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/auth/auth-store-types.ts
+  s_f8a08ce933c33f::t_f82f3903ce5bd1 1-96
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/auth/auth-store.ts
+  s_f8a08ce933c33f::t_e6bcd55d3674e6 1-178
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/auth/credential-comparison.ts
+  s_f8a08ce933c33f::t_c45942d44ea5e9 1-13
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/auth/locked-json-store.ts
+  s_f8a08ce933c33f::t_a23f1bf8f1e905 1-153
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/darwin-process-api.ts
+  s_f8a08ce933c33f::t_31b25e75883110 1-289
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/debug-log.ts
+  s_f8a08ce933c33f::t_e39b41bd37ae6c 1-611
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/descriptor-directory-contract.ts
+  s_f8a08ce933c33f::t_abc8ca207b4cf3 1-130
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/descriptor-directory-posix-component.ts
+  s_f8a08ce933c33f::t_c51fdc6cc204f2 1-7
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/descriptor-directory-posix.ts
+  s_f8a08ce933c33f::t_7dc7a1e51afa4f 1-691
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/descriptor-directory-win32-native.ts
+  s_f8a08ce933c33f::t_556ddd0806853c 1-523
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/descriptor-directory-win32-path.ts
+  s_f8a08ce933c33f::t_f983a6a6d51710 1-158,160-161
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/descriptor-directory-win32.ts
+  s_f8a08ce933c33f::t_ddaf64e5616735 1-614
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/descriptor-directory.ts
+  s_f8a08ce933c33f::t_a2308758b95f3b 1-208
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/diagnostics-registry.ts
+  s_f8a08ce933c33f::t_df6a6e06599502 1-91
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/directory-authorities.ts
+  s_f8a08ce933c33f::t_6f06e8e369c0bf 1-237
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/error-message.ts
+  s_f8a08ce933c33f::t_a2f587ae53ba26 1-72
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/kernel-api-open.ts
+  s_f8a08ce933c33f::t_74bc8bd90764e6 1-35
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/libc.ts
+  s_f8a08ce933c33f::t_0482237095d70a 1-87
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/literal-schema.ts
+  s_f8a08ce933c33f::t_28a242608d2f31 1-6
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/log.ts
+  s_f8a08ce933c33f::t_8a710389715d27 1-192
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/native-assets.ts
+  s_f8a08ce933c33f::t_6e868785293816 1-35
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/open-at.ts
+  s_f8a08ce933c33f::t_7f5fb65f295c65 1-45
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/ownership-file-lock.ts
+  s_f8a08ce933c33f::t_536ac450fbea04 1-671
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/private-path.ts
+  s_f8a08ce933c33f::t_ccfbfd78c6081f 1-158
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/process-container.ts
+  s_f8a08ce933c33f::t_17e50ac4afdecc 1-1006
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/process-diagnostic-reader.ts
+  s_f8a08ce933c33f::t_f6176a39e71301 1-105
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/process-holder.ts
+  s_f8a08ce933c33f::t_d3cb3c2b9692b5 1-133,135-201
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/process-liveness.ts
+  s_f8a08ce933c33f::t_dbef609d61c860 1-27
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/read-dir-at.ts
+  s_f8a08ce933c33f::t_a7fc3b9d2cb37f 1-127
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/record.ts
+  s_f8a08ce933c33f::t_e27fec42157659 1-9
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/redact-secrets.ts
+  s_f8a08ce933c33f::t_7185595842c5bc 1-83,85
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/windows-file-replacement.ts
+  s_f8a08ce933c33f::t_7cc863cc3dc863 1-139
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/windows-private-directory-acl.ts
+  s_f8a08ce933c33f::t_3e31daf2292fa1 1-178
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/windows-process-api.ts
+  s_f8a08ce933c33f::t_242e36e1bc9b75 1-211,213-266,268-292,295-305
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/with-deadline.ts
+  s_f8a08ce933c33f::t_de904f81ec18f5 1-72
+bench/tasks/coding-development/auth-battery-root-refusal/project/src/infra/write-file-under.ts
+  s_f8a08ce933c33f::t_3d03e68f5c174d 1-139
+bench/tasks/coding-development/auth-battery-root-refusal/task.json
+  s_f8a08ce933c33f::t_56c394a0faa791 6
+bench/tasks/coding-development/multi-site-battery-01/project/src/infra/repeat-coalescer.ts
+  s_9b7c1a12cde401::t_c30115edfbd689 1-84,86-90,92
+bench/tasks/coding-development/multi-site-battery-01/project/src/infra/session-fair-admission.ts
+  s_9b7c1a12cde401::t_8948b66dc0bf35 1-87
+bench/tasks/coding-development/multi-site-battery-01/project/src/infra/skill-id.ts
+  s_9b7c1a12cde401::t_1a582e97b10c40 1-10,12,14,16-17,19-56,58,60-62,64-68,70-72,74-79,81-88,90-103
+bench/tasks/coding-development/multi-site-battery-01/project/src/infra/truncate-field.ts
+  s_9b7c1a12cde401::t_5734a57350cd7b 1-30
+knip.jsonc
+  s_a1e6c45ecbee1f::t_b362729e31c26d 10-12
+src/orchestration/modules/development/benchmark/catalog.ts
+  s_2780b24d9257e3::t_73cb78039f1a02 40-41,64,93-96,98,107,231-233
+src/orchestration/modules/development/benchmark/persona-benchmark.ts
+  s_f8a08ce933c33f::t_b05f6b72533334 8,235,237,551
+bench/ab-persona/fixtures/reviews/fabricated-pins-plan/WHY.md
+  s_1fc735392350b8::t_80ef7c634c3112 3,25
+bench/chat-ab/coding-task.ts
+  s_75554ddef79be8::t_b5445ffd6ecc6e 13,26,50,77
+bench/chat-ab/tasks/auth-sibling-lost/reference.patch
+  s_75554ddef79be8::t_fd79d42cf6b937 1-78
+bench/chat-ab/tasks/auth-sibling-lost/sandbox.patch
+  s_75554ddef79be8::t_799f646c42cd9d 14-91
+bench/chat-ab/tasks/auth-sibling-lost/task.json
+  s_75554ddef79be8::t_6b6600800aeed5 6
+bench/chat-ab/tasks/config-lock-first-write/task.json
+  s_6933c06a84ca73::t_f39ac905c99c80 6
+bench/chat-ab/tasks/cut-tool-args/acceptance/cut-tool-args.test.ts
+  s_75554ddef79be8::t_70d08bb0c6d8e0 12,19,89,92,95,108,129-137,140-142,158,161,190,194,197,200,221
+bench/chat-ab/tasks/cut-tool-args/reference.patch
+  s_75554ddef79be8::t_c1c2318c3c253b 1-232
+bench/chat-ab/tasks/cut-tool-args/sandbox.patch
+  s_75554ddef79be8::t_57d53dd12a0e76 14-245
+bench/chat-ab/tasks/cut-tool-args/task.json
+  s_75554ddef79be8::t_a3281e9b031b91 6
+bench/chat-ab/tasks/debug-mutable-default/WHY.md
+  s_758f729642de3f::t_616c41a35c2c2e 15
+bench/chat-ab/tasks/metrics-resteer/WHY.md
+  s_758f729642de3f::t_cebcfd155140ae 7
+bench/chat-ab/tasks/metrics-resteer/task.json
+  s_1c6bf1a09f9f60::t_f2c65d59ecec95 6-7
+bench/chat-ab/tasks/subagent-interrupted-shows-failed/design.md
+  s_525a0ff5cc2f95::t_a936f00faf9b99 1,3,5,7
+bench/chat-ab/tasks/subagent-interrupted-shows-failed/message.md
+  s_525a0ff5cc2f95::t_57fc2acb3c5af0 1
+bench/chat-ab/tasks/subagent-interrupted-shows-failed/task.json
+  s_656df985d21031::t_16f4142b2bd6a7 6-7,13-14,17
+bench/chat-ab/tasks/template-multiphase/WHY.md
+  s_758f729642de3f::t_8eaab7eee4dfe1 7
+bench/chat-ab/tasks/template-multiphase/task.json
+  s_1c6bf1a09f9f60::t_3b62802a6ec61e 6-7
+bench/tasks/coding-development/arguments-battery-envelopes/project/src/orchestration/agent-runtime/llm/json-parse.ts
+  s_75554ddef79be8::t_1b14b55779bad7 1-196
+bench/tasks/coding-development/arguments-battery-envelopes/qualification.json
+  s_75554ddef79be8::t_180bb15c46da70 4
+bench/tasks/coding-development/arguments-battery-envelopes/task.json
+  s_75554ddef79be8::t_ae7fb3db82a7c7 6
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/darwin-process-api.ts
+  s_2f8938be57cd64::t_5b4a26941d5fd3 1-289
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/debug-log.ts
+  s_2f8938be57cd64::t_b8bc5e26b93bf8 1-611
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/descriptor-directory-contract.ts
+  s_2f8938be57cd64::t_4f0f9acaa5d1b2 1-130
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/descriptor-directory-posix-component.ts
+  s_2f8938be57cd64::t_15f0c244901f0d 1-7
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/descriptor-directory-posix.ts
+  s_2f8938be57cd64::t_4e764c4a335c72 1-683
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/descriptor-directory-win32-native.ts
+  s_2f8938be57cd64::t_9a7cde59b1f629 1-537
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/descriptor-directory-win32-path.ts
+  s_2f8938be57cd64::t_758a8938aef8cb 1-150
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/descriptor-directory-win32.ts
+  s_2f8938be57cd64::t_d87bd7793672df 1-621
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/descriptor-directory.ts
+  s_2f8938be57cd64::t_ee285a16e78c0c 1-208
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/diagnostics-registry.ts
+  s_2f8938be57cd64::t_4bd273a23784f5 1-91
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/directory-authorities.ts
+  s_2f8938be57cd64::t_d7db746240c8d0 1-237
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/error-message.ts
+  s_2f8938be57cd64::t_d0aba28efbc781 1-72
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/kernel-api-open.ts
+  s_2f8938be57cd64::t_9fce2535e70812 1-35
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/libc.ts
+  s_2f8938be57cd64::t_bd0c8285b60f67 1-87
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/log.ts
+  s_2f8938be57cd64::t_7b7594c2eafd4c 1-192
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/native-assets.ts
+  s_2f8938be57cd64::t_c4d72fc9957737 1-35
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/open-at.ts
+  s_2f8938be57cd64::t_fcd798ae1ac006 1-45
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/ownership-file-lock.ts
+  s_2f8938be57cd64::t_9c2ec661dd45cb 1-671
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/private-path.ts
+  s_2f8938be57cd64::t_2169a4ff12c2b9 1-144
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/process-container.ts
+  s_2f8938be57cd64::t_45abb8dce18609 1-1006
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/process-diagnostic-reader.ts
+  s_2f8938be57cd64::t_a13c3b81325574 1-105
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/process-holder.ts
+  s_2f8938be57cd64::t_9776e75de8fffa 1-202
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/process-liveness.ts
+  s_2f8938be57cd64::t_6fe394cc482676 1-27
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/read-dir-at.ts
+  s_2f8938be57cd64::t_484f20c9e62003 1-127
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/redact-secrets.ts
+  s_2f8938be57cd64::t_39f507971a2070 1-83,85
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/windows-file-replacement.ts
+  s_2f8938be57cd64::t_073b0a30965fc2 1-139
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/windows-private-directory-acl.ts
+  s_2f8938be57cd64::t_0c887602e63ce1 1-262
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/windows-process-api.ts
+  s_2f8938be57cd64::t_3cbffff1329e76 1-305
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/with-deadline.ts
+  s_2f8938be57cd64::t_77b775fb670898 1-72
+bench/tasks/coding-development/config-lock-battery-names/project/src/infra/write-file-under.ts
+  s_2f8938be57cd64::t_215af829939458 1-139
+bench/tasks/coding-development/config-lock-battery-names/project/src/orchestration/config/config-file.ts
+  s_2f8938be57cd64::t_9f4abf14cdd2ae 1-274
+bench/tasks/coding-development/config-lock-battery-names/task.json
+  s_2f8938be57cd64::t_ab86b484420b6b 6
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/darwin-process-api.ts
+  s_75554ddef79be8::t_72cd52e5f138ba 1-289
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/debug-log.ts
+  s_75554ddef79be8::t_43dd10531bacca 1-611
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/descriptor-directory-contract.ts
+  s_75554ddef79be8::t_80f33fd2ceba03 1-130
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/descriptor-directory-posix-component.ts
+  s_75554ddef79be8::t_32d04edef9404b 1-7
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/descriptor-directory-posix.ts
+  s_75554ddef79be8::t_179d093b5c4c31 1-683
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/descriptor-directory-win32-native.ts
+  s_75554ddef79be8::t_4c8363f82d8cbe 1-537
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/descriptor-directory-win32-path.ts
+  s_75554ddef79be8::t_75206771f0f25f 1-150
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/descriptor-directory-win32.ts
+  s_75554ddef79be8::t_460db72a11f8a4 1-621
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/descriptor-directory.ts
+  s_75554ddef79be8::t_991df4bb2b2ed8 1-208
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/diagnostics-registry.ts
+  s_75554ddef79be8::t_63a09f61b922d4 1-91
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/directory-authorities.ts
+  s_75554ddef79be8::t_d72f9cb0eb4035 1-237
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/error-message.ts
+  s_75554ddef79be8::t_da9b427fefb921 1-72
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/kernel-api-open.ts
+  s_75554ddef79be8::t_56a156178a258d 1-35
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/libc.ts
+  s_75554ddef79be8::t_5d511b921de757 1-87
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/log.ts
+  s_75554ddef79be8::t_9df86b9dbf9c91 1-192
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/native-assets.ts
+  s_75554ddef79be8::t_6f89c701e101ad 1-35
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/open-at.ts
+  s_75554ddef79be8::t_2ad19c8fcb28b8 1-45
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/ownership-file-lock.ts
+  s_75554ddef79be8::t_8063a06f1f28bf 1-671
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/private-path.ts
+  s_75554ddef79be8::t_5df844eda93d4f 1-144
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/process-container.ts
+  s_75554ddef79be8::t_465db56a12b31e 1-1006
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/process-diagnostic-reader.ts
+  s_75554ddef79be8::t_d74e30b16aa68e 1-105
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/process-holder.ts
+  s_75554ddef79be8::t_c8472d89c7bd4c 1-202
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/process-liveness.ts
+  s_75554ddef79be8::t_6012f0a36ca8fa 1-27
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/read-dir-at.ts
+  s_75554ddef79be8::t_a8d105795eed86 1-127
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/redact-secrets.ts
+  s_75554ddef79be8::t_e8be4f8f9ebaf4 1-86
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/windows-file-replacement.ts
+  s_75554ddef79be8::t_5d6416efe5049a 1-139
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/windows-private-directory-acl.ts
+  s_75554ddef79be8::t_0908084b4f86ef 1-262
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/windows-process-api.ts
+  s_75554ddef79be8::t_1b7e681cba83d9 1-305
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/with-deadline.ts
+  s_75554ddef79be8::t_7050a001d1d417 1-72
+bench/tasks/coding-development/config-lock-first-write/project/src/infra/write-file-under.ts
+  s_75554ddef79be8::t_b83ca79df531b2 1-139
+bench/tasks/coding-development/config-lock-first-write/project/src/orchestration/config/config-file.ts
+  s_75554ddef79be8::t_2d380a065d63e0 1-274
+bench/tasks/coding-development/config-lock-first-write/task.json
+  s_75554ddef79be8::t_94c2232cf325d2 6
+bench/tasks/coding-development/multi-site-battery-01/qualification.json
+  s_2f8938be57cd64::t_3ba32daea92e82 4
+bench/tasks/coding-development/multi-site-battery-01/task.json
+  s_2f8938be57cd64::t_1c2ab3e3f2d2f9 6
+bench/tasks/coding-evaluation/arguments-battery-error-evidence/project/src/orchestration/agent-runtime/llm/json-parse.ts
+  s_2f8938be57cd64::t_d06315f4c9fc88 1-196
+bench/tasks/coding-evaluation/arguments-battery-error-evidence/qualification.json
+  s_2f8938be57cd64::t_604ab4c0a28c23 4
+bench/tasks/coding-evaluation/arguments-battery-error-evidence/task.json
+  s_2f8938be57cd64::t_902704c6ceec16 6
+bench/tasks/coding-evaluation/arguments-battery-escape-state/project/src/orchestration/agent-runtime/llm/json-parse.ts
+  s_2f8938be57cd64::t_648dff5bb669fa 1-196
+bench/tasks/coding-evaluation/arguments-battery-escape-state/qualification.json
+  s_2f8938be57cd64::t_4a879b6b2b2f8d 4
+bench/tasks/coding-evaluation/arguments-battery-escape-state/task.json
+  s_2f8938be57cd64::t_6cf866aaa5a141 6
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/auth/auth-profile-retirements.ts
+  s_2f8938be57cd64::t_8ef1b3c306a5b5 1-54
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/auth/auth-profile-store.ts
+  s_2f8938be57cd64::t_8a184f90f8342e 1-654
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/auth/auth-store-mutations.ts
+  s_2f8938be57cd64::t_d0f3f1255223c1 1-661
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/auth/auth-store-types.ts
+  s_2f8938be57cd64::t_fa44c05f12b2fd 1-96
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/auth/auth-store.ts
+  s_2f8938be57cd64::t_bf28b5fdc4debc 1-178
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/auth/credential-comparison.ts
+  s_2f8938be57cd64::t_36a57822198539 1-13
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/auth/locked-json-store.ts
+  s_2f8938be57cd64::t_c4b2bfbfacbad6 1-153
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/darwin-process-api.ts
+  s_2f8938be57cd64::t_ba178c1d8e37df 1-289
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/debug-log.ts
+  s_2f8938be57cd64::t_b284c79582e13b 1-611
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/descriptor-directory-contract.ts
+  s_2f8938be57cd64::t_bec3915f105f83 1-130
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/descriptor-directory-posix-component.ts
+  s_2f8938be57cd64::t_2c92c71a7b4aaf 1-7
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/descriptor-directory-posix.ts
+  s_2f8938be57cd64::t_f67ec15b3a6a72 1-691
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/descriptor-directory-win32-native.ts
+  s_2f8938be57cd64::t_d53eb4bc600009 1-523
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/descriptor-directory-win32-path.ts
+  s_2f8938be57cd64::t_5867128182a0ce 1-162
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/descriptor-directory-win32.ts
+  s_2f8938be57cd64::t_a120cb81f797a6 1-614
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/descriptor-directory.ts
+  s_2f8938be57cd64::t_0a4faad69d98c4 1-208
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/diagnostics-registry.ts
+  s_2f8938be57cd64::t_f98a9902c23f05 1-91
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/directory-authorities.ts
+  s_2f8938be57cd64::t_de94df6b662876 1-237
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/error-message.ts
+  s_2f8938be57cd64::t_c7148624df61f4 1-72
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/kernel-api-open.ts
+  s_2f8938be57cd64::t_9d330be9f5df4f 1-35
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/libc.ts
+  s_2f8938be57cd64::t_aae5ce3a576377 1-87
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/literal-schema.ts
+  s_2f8938be57cd64::t_baab478d06a59f 1-6
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/log.ts
+  s_2f8938be57cd64::t_6a5b3ceacec64a 1-192
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/native-assets.ts
+  s_2f8938be57cd64::t_27e4c5a03d0b8a 1-35
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/open-at.ts
+  s_2f8938be57cd64::t_60add700fa0e51 1-45
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/ownership-file-lock.ts
+  s_2f8938be57cd64::t_ef40b7e1dbcdbb 1-671
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/private-path.ts
+  s_2f8938be57cd64::t_990228041a931f 1-158
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/process-container.ts
+  s_2f8938be57cd64::t_0f543f00b9d186 1-1006
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/process-diagnostic-reader.ts
+  s_2f8938be57cd64::t_885c69a903c972 1-105
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/process-holder.ts
+  s_2f8938be57cd64::t_9d79c7fc45debe 1-202
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/process-liveness.ts
+  s_2f8938be57cd64::t_e989dacbca61b8 1-27
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/read-dir-at.ts
+  s_2f8938be57cd64::t_a4b309969aad52 1-127
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/record.ts
+  s_2f8938be57cd64::t_2e712a4300ea28 1-9
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/redact-secrets.ts
+  s_2f8938be57cd64::t_24cb53498583cd 1-86
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/windows-file-replacement.ts
+  s_2f8938be57cd64::t_e809190b1bacd0 1-139
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/windows-private-directory-acl.ts
+  s_2f8938be57cd64::t_a5e88538248bcc 1-178
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/windows-process-api.ts
+  s_2f8938be57cd64::t_a937ae13e5e19f 1-305
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/with-deadline.ts
+  s_2f8938be57cd64::t_b732ef3fe8f100 1-72
+bench/tasks/coding-evaluation/auth-battery-01/project/src/infra/write-file-under.ts
+  s_2f8938be57cd64::t_1f5dedade879ee 1-139
+bench/tasks/coding-evaluation/auth-battery-01/task.json
+  s_2f8938be57cd64::t_5cb0aed58c1311 6
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/auth/auth-profile-retirements.ts
+  s_2f8938be57cd64::t_cc538cb8d2e208 1-54
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/auth/auth-profile-store.ts
+  s_2f8938be57cd64::t_58556e544f54ca 1-654
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/auth/auth-store-mutations.ts
+  s_2f8938be57cd64::t_f6257610362d27 1-661
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/auth/auth-store-types.ts
+  s_2f8938be57cd64::t_f3102285415b8e 1-96
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/auth/auth-store.ts
+  s_2f8938be57cd64::t_011307ae1deba5 1-178
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/auth/credential-comparison.ts
+  s_2f8938be57cd64::t_e7509349b1a420 1-13
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/auth/locked-json-store.ts
+  s_2f8938be57cd64::t_5f8a8f18aac6df 1-153
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/darwin-process-api.ts
+  s_2f8938be57cd64::t_20921733e407ff 1-289
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/debug-log.ts
+  s_2f8938be57cd64::t_820768edf8eabb 1-611
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/descriptor-directory-contract.ts
+  s_2f8938be57cd64::t_08fa40a9b0d692 1-130
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/descriptor-directory-posix-component.ts
+  s_2f8938be57cd64::t_e0bbad496e31ba 1-7
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/descriptor-directory-posix.ts
+  s_2f8938be57cd64::t_432ae3058a8533 1-691
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/descriptor-directory-win32-native.ts
+  s_2f8938be57cd64::t_ca81139bf7bf3e 1-523
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/descriptor-directory-win32-path.ts
+  s_2f8938be57cd64::t_26dfddf6ad0759 1-162
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/descriptor-directory-win32.ts
+  s_2f8938be57cd64::t_d52777f1adb397 1-614
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/descriptor-directory.ts
+  s_2f8938be57cd64::t_4f62ee04183fa8 1-208
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/diagnostics-registry.ts
+  s_2f8938be57cd64::t_237e5205c3a1e4 1-91
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/directory-authorities.ts
+  s_2f8938be57cd64::t_0aa6019e579f7f 1-237
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/error-message.ts
+  s_2f8938be57cd64::t_bdd7437faf9ec0 1-72
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/kernel-api-open.ts
+  s_2f8938be57cd64::t_569ca6a64c8b15 1-35
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/libc.ts
+  s_2f8938be57cd64::t_77126e478de7be 1-87
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/literal-schema.ts
+  s_2f8938be57cd64::t_bdadcbec6ad42d 1-6
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/log.ts
+  s_2f8938be57cd64::t_0750c689e7eadd 1-192
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/native-assets.ts
+  s_2f8938be57cd64::t_c15e4049a2a367 1-35
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/open-at.ts
+  s_2f8938be57cd64::t_aad15a24678291 1-45
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/ownership-file-lock.ts
+  s_2f8938be57cd64::t_49d904a6fe6c0b 1-671
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/private-path.ts
+  s_2f8938be57cd64::t_44f54e3cfd04c8 1-158
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/process-container.ts
+  s_2f8938be57cd64::t_c765aa730ce0a6 1-1006
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/process-diagnostic-reader.ts
+  s_2f8938be57cd64::t_c7bcb01ecf9520 1-105
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/process-holder.ts
+  s_2f8938be57cd64::t_8601416908ac99 1-202
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/process-liveness.ts
+  s_2f8938be57cd64::t_aa92cb45034be2 1-27
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/read-dir-at.ts
+  s_2f8938be57cd64::t_f7504c89bb5480 1-127
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/record.ts
+  s_2f8938be57cd64::t_f38e0d79545dc5 1-9
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/redact-secrets.ts
+  s_2f8938be57cd64::t_2f40babba9b84c 1-86
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/windows-file-replacement.ts
+  s_2f8938be57cd64::t_a0492cdfefd8ea 1-139
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/windows-private-directory-acl.ts
+  s_2f8938be57cd64::t_7f41c14fd8d6e8 1-178
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/windows-process-api.ts
+  s_2f8938be57cd64::t_3d92c284db9b77 1-305
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/with-deadline.ts
+  s_2f8938be57cd64::t_432886f9a537c9 1-72
+bench/tasks/coding-evaluation/auth-battery-02/project/src/infra/write-file-under.ts
+  s_2f8938be57cd64::t_b9ff7234a0ca96 1-139
+bench/tasks/coding-evaluation/auth-battery-02/task.json
+  s_2f8938be57cd64::t_d99a955a910e72 6
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/auth/auth-profile-retirements.ts
+  s_2f8938be57cd64::t_b34579986299dd 1-54
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/auth/auth-profile-store.ts
+  s_2f8938be57cd64::t_a4b8a402b2fef7 1-654
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/auth/auth-store-mutations.ts
+  s_2f8938be57cd64::t_50e2ff42d2f430 1-661
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/auth/auth-store-types.ts
+  s_2f8938be57cd64::t_34fa92392e6348 1-96
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/auth/auth-store.ts
+  s_2f8938be57cd64::t_616a2784c4aa03 1-178
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/auth/credential-comparison.ts
+  s_2f8938be57cd64::t_98af0e6015e482 1-13
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/auth/locked-json-store.ts
+  s_2f8938be57cd64::t_2b4dcaddc23e4c 1-153
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/darwin-process-api.ts
+  s_2f8938be57cd64::t_fd06c8ec915d46 1-289
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/debug-log.ts
+  s_2f8938be57cd64::t_406f2ac715282b 1-611
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/descriptor-directory-contract.ts
+  s_2f8938be57cd64::t_157db6e3a9fecd 1-130
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/descriptor-directory-posix-component.ts
+  s_2f8938be57cd64::t_b8a68072349638 1-7
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/descriptor-directory-posix.ts
+  s_2f8938be57cd64::t_b7086d43c079bd 1-691
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/descriptor-directory-win32-native.ts
+  s_2f8938be57cd64::t_3bc404bffa14ea 1-523
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/descriptor-directory-win32-path.ts
+  s_2f8938be57cd64::t_5c18c5efaa842b 1-162
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/descriptor-directory-win32.ts
+  s_2f8938be57cd64::t_1e38c99528fe9e 1-614
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/descriptor-directory.ts
+  s_2f8938be57cd64::t_82e7177b436b0a 1-208
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/diagnostics-registry.ts
+  s_2f8938be57cd64::t_247f85dd158f0a 1-91
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/directory-authorities.ts
+  s_2f8938be57cd64::t_17d8caa875c6b3 1-237
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/error-message.ts
+  s_2f8938be57cd64::t_ecbbdf0d38d8cd 1-72
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/kernel-api-open.ts
+  s_2f8938be57cd64::t_0a8cf3258bbac7 1-35
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/libc.ts
+  s_2f8938be57cd64::t_0501b6e1ec30db 1-87
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/literal-schema.ts
+  s_2f8938be57cd64::t_5b94110340363d 1-6
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/log.ts
+  s_2f8938be57cd64::t_6319fafe38354a 1-192
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/native-assets.ts
+  s_2f8938be57cd64::t_fd2f1503af3cbe 1-35
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/open-at.ts
+  s_2f8938be57cd64::t_4c0dd261b7acbd 1-45
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/ownership-file-lock.ts
+  s_2f8938be57cd64::t_c19fa7d8764436 1-671
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/private-path.ts
+  s_2f8938be57cd64::t_6b95c9e72a9b8b 1-158
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/process-container.ts
+  s_2f8938be57cd64::t_7f2e7f599df26d 1-1006
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/process-diagnostic-reader.ts
+  s_2f8938be57cd64::t_8de7cf433b65c5 1-105
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/process-holder.ts
+  s_2f8938be57cd64::t_9a2085d76575a4 1-202
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/process-liveness.ts
+  s_2f8938be57cd64::t_f569568a4e3456 1-27
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/read-dir-at.ts
+  s_2f8938be57cd64::t_6aa7fe8045539a 1-127
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/record.ts
+  s_2f8938be57cd64::t_46653f2cd6f93a 1-9
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/redact-secrets.ts
+  s_2f8938be57cd64::t_24ca3b7a8b8ad0 1-86
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/windows-file-replacement.ts
+  s_2f8938be57cd64::t_5bf81776bb5464 1-139
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/windows-private-directory-acl.ts
+  s_2f8938be57cd64::t_17fc8c1021e13e 1-178
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/windows-process-api.ts
+  s_2f8938be57cd64::t_3076c89ed5de60 1-305
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/with-deadline.ts
+  s_2f8938be57cd64::t_16ef836dd2c8f1 1-72
+bench/tasks/coding-evaluation/auth-sibling-preservation/project/src/infra/write-file-under.ts
+  s_2f8938be57cd64::t_7a883515f49e67 1-139
+bench/tasks/coding-evaluation/auth-sibling-preservation/task.json
+  s_2f8938be57cd64::t_a5944f4a5bad3f 6
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/darwin-process-api.ts
+  s_2f8938be57cd64::t_6509fdc63ed726 1-289
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/debug-log.ts
+  s_2f8938be57cd64::t_cb62332c4de260 1-611
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/descriptor-directory-contract.ts
+  s_2f8938be57cd64::t_4492d0304db794 1-130
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/descriptor-directory-posix-component.ts
+  s_2f8938be57cd64::t_053c50040bd186 1-7
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/descriptor-directory-posix.ts
+  s_2f8938be57cd64::t_ed0d2f9c2ee192 1-683
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/descriptor-directory-win32-native.ts
+  s_2f8938be57cd64::t_a125a98131df5f 1-537
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/descriptor-directory-win32-path.ts
+  s_2f8938be57cd64::t_94d48237d800fa 1-150
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/descriptor-directory-win32.ts
+  s_2f8938be57cd64::t_b0e70eafcf33e9 1-621
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/descriptor-directory.ts
+  s_2f8938be57cd64::t_81a06c7f0e3148 1-208
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/diagnostics-registry.ts
+  s_2f8938be57cd64::t_679acc37b4eede 1-91
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/directory-authorities.ts
+  s_2f8938be57cd64::t_4ab2dbac13dd20 1-237
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/error-message.ts
+  s_2f8938be57cd64::t_1c58a53aa0d34c 1-72
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/kernel-api-open.ts
+  s_2f8938be57cd64::t_27fca80ee75481 1-35
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/libc.ts
+  s_2f8938be57cd64::t_847130fd833a79 1-87
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/log.ts
+  s_2f8938be57cd64::t_a9419fb38cf513 1-192
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/native-assets.ts
+  s_2f8938be57cd64::t_cb65b9ffb6ad95 1-35
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/open-at.ts
+  s_2f8938be57cd64::t_762d890a2fc3a2 1-45
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/ownership-file-lock.ts
+  s_2f8938be57cd64::t_cd893c661279c9 1-671
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/private-path.ts
+  s_2f8938be57cd64::t_758fc6d8dd93cc 1-144
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/process-container.ts
+  s_2f8938be57cd64::t_26a51876f8d53e 1-1006
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/process-diagnostic-reader.ts
+  s_2f8938be57cd64::t_cf3c8775a08e72 1-105
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/process-holder.ts
+  s_2f8938be57cd64::t_79c8db64f6bb7a 1-202
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/process-liveness.ts
+  s_2f8938be57cd64::t_6baf3c088cb3ab 1-27
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/read-dir-at.ts
+  s_2f8938be57cd64::t_c8eed899698962 1-127
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/redact-secrets.ts
+  s_2f8938be57cd64::t_96e230dc994b7b 1-86
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/windows-file-replacement.ts
+  s_2f8938be57cd64::t_8346c89b2f0def 1-139
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/windows-private-directory-acl.ts
+  s_2f8938be57cd64::t_85b71fd442c592 1-262
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/windows-process-api.ts
+  s_2f8938be57cd64::t_b512080916fe13 1-305
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/with-deadline.ts
+  s_2f8938be57cd64::t_0397f52b514d07 1-72
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/infra/write-file-under.ts
+  s_2f8938be57cd64::t_3b04f63004400b 1-139
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/project/src/orchestration/config/config-file.ts
+  s_2f8938be57cd64::t_dc30aa722a137c 1-274
+bench/tasks/coding-evaluation/config-lock-battery-holdout-a/task.json
+  s_2f8938be57cd64::t_103d05c2263478 6
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/darwin-process-api.ts
+  s_2f8938be57cd64::t_2b9752439ca622 1-289
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/debug-log.ts
+  s_2f8938be57cd64::t_5a098b7115e228 1-611
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/descriptor-directory-contract.ts
+  s_2f8938be57cd64::t_b1045ec0e532fa 1-130
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/descriptor-directory-posix-component.ts
+  s_2f8938be57cd64::t_2da0f5837ecb83 1-7
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/descriptor-directory-posix.ts
+  s_2f8938be57cd64::t_516ddbec88f30e 1-683
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/descriptor-directory-win32-native.ts
+  s_2f8938be57cd64::t_e7329f7f73236d 1-537
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/descriptor-directory-win32-path.ts
+  s_2f8938be57cd64::t_fc3ec58fe0b4ae 1-150
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/descriptor-directory-win32.ts
+  s_2f8938be57cd64::t_ebd7c637546418 1-621
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/descriptor-directory.ts
+  s_2f8938be57cd64::t_14b35eb55429a9 1-208
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/diagnostics-registry.ts
+  s_2f8938be57cd64::t_82297e8773dbd2 1-91
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/directory-authorities.ts
+  s_2f8938be57cd64::t_851f6b83b0d2ed 1-237
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/error-message.ts
+  s_2f8938be57cd64::t_e8f0da0a6fee6b 1-72
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/kernel-api-open.ts
+  s_2f8938be57cd64::t_fe940d9ddc2db1 1-35
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/libc.ts
+  s_2f8938be57cd64::t_a39b89521614be 1-87
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/log.ts
+  s_2f8938be57cd64::t_48a94c4c8d0304 1-192
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/native-assets.ts
+  s_2f8938be57cd64::t_ee76b103763cea 1-35
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/open-at.ts
+  s_2f8938be57cd64::t_bed8247f00aac4 1-45
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/ownership-file-lock.ts
+  s_2f8938be57cd64::t_0d45d5de000805 1-671
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/private-path.ts
+  s_2f8938be57cd64::t_57990050cfc4ab 1-144
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/process-container.ts
+  s_2f8938be57cd64::t_e3e4ca92291068 1-1006
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/process-diagnostic-reader.ts
+  s_2f8938be57cd64::t_07be7403cdd9c1 1-105
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/process-holder.ts
+  s_2f8938be57cd64::t_bb6355ee327cbc 1-202
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/process-liveness.ts
+  s_2f8938be57cd64::t_83ce265266ec4a 1-27
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/read-dir-at.ts
+  s_2f8938be57cd64::t_4717e8bd04ee1b 1-127
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/redact-secrets.ts
+  s_2f8938be57cd64::t_a1603768848adf 1-86
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/windows-file-replacement.ts
+  s_2f8938be57cd64::t_ff8aed0adb38c1 1-139
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/windows-private-directory-acl.ts
+  s_2f8938be57cd64::t_f7a224d8c21581 1-262
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/windows-process-api.ts
+  s_2f8938be57cd64::t_1abb389a7978b7 1-305
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/with-deadline.ts
+  s_2f8938be57cd64::t_33e25025a6ec9d 1-72
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/infra/write-file-under.ts
+  s_2f8938be57cd64::t_216db4f4d7c9e1 1-139
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/project/src/orchestration/config/config-file.ts
+  s_2f8938be57cd64::t_af1ea88d51bde2 1-274
+bench/tasks/coding-evaluation/config-lock-battery-holdout-b/task.json
+  s_2f8938be57cd64::t_7797d3d4a9695d 6
+bench/tasks/coding-evaluation/tool-argument-completeness/project/src/orchestration/agent-runtime/llm/json-parse.ts
+  s_2f8938be57cd64::t_5a1738b21be732 1-188
+bench/tasks/coding-evaluation/tool-argument-completeness/qualification.json
+  s_2f8938be57cd64::t_17b53170e8ee3e 4
+bench/tasks/coding-evaluation/tool-argument-completeness/task.json
+  s_2f8938be57cd64::t_9128dce405562b 6,8-14
+tests/unit/bench/persona-benchmark.test.ts
+  s_852ee3eb1a4f68::t_62ea74ce402afe 437-439,457
+tests/unit/bench/review-fixtures.test.ts
+  s_4c6cfa9f87aa11::t_efcc9e574ce055 2,21,23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0a039a9c13fe85c6aa089c4500ddce701ed06c3f",
+  "prompts": {},
+  "sessions": {
+    "s_09db56feb8010e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9b2a3a6-a535-4ffa-8f8d-68579b58449e",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    },
+    "s_1c6bf1a09f9f60": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a47b5421c51d24859",
+        "model": "unknown"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    },
+    "s_1fc735392350b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a50d16e49e775350f",
+        "model": "unknown"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    },
+    "s_236f454bc3722f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa495490-00e4-415e-be06-5ae08f706d8c",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    },
+    "s_2780b24d9257e3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0fff67f-c26b-4455-b712-4b3e2bee675c",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    },
+    "s_2f8938be57cd64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a2b04184d343f9c59",
+        "model": "unknown"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    },
+    "s_476397d458d49e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b779cd2c-8a71-4e75-ae5f-a1e44cad0861",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    },
+    "s_4c6cfa9f87aa11": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a7225045045080a3f",
+        "model": "unknown"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    },
+    "s_4f6b34e8fe9f1a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b082f2d6-78be-4bb9-a1a6-cb1bb39c3330",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    },
+    "s_5237d0e3980749": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dfb3d8e7-8585-41ca-a26e-502cbe360b2e",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    },
+    "s_525a0ff5cc2f95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a8278de3b7d28d165",
+        "model": "unknown"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    },
+    "s_656df985d21031": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a2f18a5bfdd658186",
+        "model": "unknown"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    },
+    "s_6933c06a84ca73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae73a7c0d63294776",
+        "model": "unknown"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    },
+    "s_75554ddef79be8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a1526289f800b5287",
+        "model": "unknown"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    },
+    "s_758f729642de3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a8971d39590901830",
+        "model": "unknown"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    },
+    "s_852ee3eb1a4f68": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a1241d5fd9640f78b",
+        "model": "unknown"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    },
+    "s_9b7c1a12cde401": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3edd64e3-af7d-4f07-9d52-50cd3767b1bb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    },
+    "s_a1e6c45ecbee1f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "18aa3b26-f205-43a3-8c72-cd68b62a22e0",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    },
+    "s_f8a08ce933c33f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3f576de-d1ab-4217-a5f3-65da55489730",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
