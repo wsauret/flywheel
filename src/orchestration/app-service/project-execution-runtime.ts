@@ -676,10 +676,8 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
     ownedSessionIds: () => [...runtimeSupervisor.ownedSessionIds(), ...sessionStore.allIds()],
     runningChildren: () => runningChildSessionIds(eventReader),
     keptSessions: keeper.sessions,
-    pendingTurnSettlement: (sessionId) => {
-      const entry = sessionStore.get(sessionId)
-      return entry?.kind === "chat" ? entry.runner?.pendingTurnSettlement : undefined
-    },
+    pendingTurnSettlement: (sessionId) => { const entry = sessionStore.get(sessionId); return entry?.kind === "chat" ? entry.runner?.pendingTurnSettlement : undefined },
+    backgroundWork: (sessionId) => sessionStore.get(sessionId)?.runner?.backgroundTasks,
     failed: (sessionId) => runtimeSupervisor.runtimeState(sessionId)?.kind === "failed",
     onLiveSessionRemoved: (listener) => onLiveSessionRemoved(eventReader, listener),
     requiresContinuation: async (sessionId, rootSessionId) => {

@@ -352,7 +352,7 @@ Headless chat behaves like interactive chat, with standard input and output repl
 
 ## PI-AGENT-074: Headless chat ends when its owned work ends
 
-Open input permits more turns, and closing input lets submitted work finish. In one-shot mode, the agent's final reply is its result, and the agent writes it once. A turn that ends while work the agent owns still runs waits for that work. Otherwise the run completes and returns the final reply without an exit command or closed input, and the session stays available for resume.
+Open input permits more turns, and closing input lets submitted work finish. In one-shot mode, the agent's final reply is its result, and the agent writes it once. A turn that ends while work the agent owns still runs waits for that work. A service that the agent keeps running, such as a server, is not such work: the run's exit ends it unless the agent launched it to persist (PI-AGENT-047). Otherwise the run completes and returns the final reply without an exit command or closed input, and the session stays available for resume.
 
 ## PI-AGENT-075: Headless questions wait for the caller
 
