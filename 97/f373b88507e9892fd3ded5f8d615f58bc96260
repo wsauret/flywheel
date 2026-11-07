@@ -1,0 +1,39 @@
+bench/chat-ab/coding-ab.ts
+  s_4cc298506e5b5e::t_b5f401a2d02adc 7
+bench/chat-ab/family-command.ts
+  s_4941fb12bce46e::t_69c2e027505ce5 2,4,23,26-27,35,49-50,55,68,71-75,78,89,93
+tests/unit/bench/planning.test.ts
+  s_b38088edc2ec40::t_1205e98a7f3d03 3,215-220
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "97f373b88507e9892fd3ded5f8d615f58bc96260",
+  "prompts": {},
+  "sessions": {
+    "s_4941fb12bce46e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a62fc01fc4fe2d3d7",
+        "model": "unknown"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    },
+    "s_4cc298506e5b5e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9723d91e3aefadb6",
+        "model": "unknown"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    },
+    "s_b38088edc2ec40": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a4347cfa34c21e420",
+        "model": "unknown"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
