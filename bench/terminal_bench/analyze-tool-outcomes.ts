@@ -4,6 +4,7 @@ import { closeSync, constants, fstatSync, openSync, readSync, type Stats } from 
 import { lstat, readFile, readdir } from "node:fs/promises"
 import { join, resolve } from "node:path"
 import type { EventStoreReadSurface, StoredFact } from "../../src/infra/event-store-types.js"
+import { SESSION_RUNTIME_FACT_DEFINITIONS, TOOL_CONTENT_REFERENCE_FACT_DEFINITIONS } from "../../src/infra/runtime-fact-types.js"
 import { createSqliteEventReadSurface } from "../../src/infra/sqlite-event-read-surface.js"
 import { loadProviderRequestAuditFromEvents } from "../../src/orchestration/session/provider-request-audit-projection.js"
 import { reconstructProviderRequestPrompt } from "../../src/orchestration/session/provider-request-audit-reconstruction.js"
@@ -23,6 +24,8 @@ interface CommandExpectation { version: 1; executableToolNames: Set<string>; min
 // instead of pinned fact versions, so a version 1 summary is not comparable.
 export const TOOL_OUTCOME_ANALYZER_CONTRACT_VERSION = 2 as const
 export const TOOL_OUTCOME_ANALYZER_RESULT_VERSION = 2 as const
+// The stored result versions: the inline ones and those that move text to content rows.
+const TOOL_RESULT_VERSIONS = [...SESSION_RUNTIME_FACT_DEFINITIONS, ...TOOL_CONTENT_REFERENCE_FACT_DEFINITIONS].filter((definition) => definition.type === "tool.result.recorded").map((definition) => definition.version).join(", ")
 
 function object(value: unknown): JsonMap | undefined { return typeof value === "object" && value !== null && !Array.isArray(value) ? { ...value } : undefined }
 async function json(path: string): Promise<JsonMap | undefined> { try { return object(JSON.parse(await readFile(path, "utf8"))) } catch { return undefined } }
@@ -122,9 +125,9 @@ async function analyzeStore(path: string, expectation: CommandExpectation): Prom
       providerAliases.set(alias, id)
       if (joined && expectation.executableToolNames.has(String(value.toolName))) executableCount += 1
     }
-    // Version 2 is the same result with large text moved to content rows; the
-    // identity and outcome fields are unchanged.
-    for (const row of db.query<EventRow, []>("select type, version, actor, payload from event where type = 'tool.result.recorded' and version in (1, 2) and actor = 'flywheel'").iterate()) {
+    // Every registered version keeps the same identity and outcome fields; later
+    // versions only move text to content rows or add mutation evidence.
+    for (const row of db.query<EventRow, []>(`select type, version, actor, payload from event where type = 'tool.result.recorded' and version in (${TOOL_RESULT_VERSIONS}) and actor = 'flywheel'`).iterate()) {
       const value = payload(row)
       if (!nonempty(value.toolUseId) || !nonempty(value.outcome)) { settlement.identityConflicts += 1; continue }
       const id = value.toolUseId

@@ -46,6 +46,7 @@ interface EvidenceOptions {
   toolVersion?: number
   settled?: boolean
   resultModelRequestId?: string | null
+  resultVersion?: number
   includeMessages?: boolean
   dispatched?: boolean
   responded?: boolean
@@ -101,7 +102,7 @@ async function evidence(options: EvidenceOptions = {}): Promise<{ root: string; 
     append(aggregateId, "tool.input.completed", options.toolVersion ?? 2, "agent", { toolUseId, providerCallId: `call-${index + 1}`, providerToolName: options.providerToolName ?? "shell", toolName: options.toolName ?? "bash", modelRequestId: requestId });
     if (last && options.settled === false) continue;
     const result = extractToolContentFact({ type: "tool.result.recorded", version: 1, actor: "flywheel", payload: { toolUseId, outcome: "ok", content: last ? "x".repeat(4096) : "done", ...(options.resultModelRequestId === null ? {} : { modelRequestId: options.resultModelRequestId ?? requestId }) } }).fact;
-    append(aggregateId, result.type, result.version, result.actor, result.payload);
+    append(aggregateId, result.type, options.resultVersion ?? result.version, result.actor, result.payload);
   }
   if (options.conflictingAuditSession) await recordProviderResponse({ observe: (fact) => { append("session:session-2", fact.type, fact.version, fact.actor, fact.payload, "session-2"); } }, { requestId: requestIds[0], identity, turn: 1, outcome: "ok", durationMs: 1 });
   db.close();
@@ -144,6 +145,13 @@ describe("terminal bench tool outcome analyzer", () => {
     const analysis = await analyze(valid.root);
     expect(analysis.infrastructureValid).toBeTrue();
     expect(analysis.rows[0]).toMatchObject({ requestAuditValid: true, commandObserved: true, toolSettlement: { inputs: 2, results: 2, missing: 0, orphan: 0, identityConflicts: 0 }, failure: null });
+  });
+
+  test("settles tool results that the current writer records at later fact versions", async () => {
+    for (const resultVersion of [3, 4]) {
+      const analysis = await analyze((await evidence({ resultVersion })).root);
+      expect(analysis.rows[0]).toMatchObject({ toolSettlement: { inputs: 2, results: 2, missing: 0 }, failure: null });
+    }
   });
 
   test("rejects a request profile, a refused audit chain, and unsettled tool evidence", async () => {
