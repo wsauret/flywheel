@@ -1,0 +1,66 @@
+bench/terminal_bench/METHODOLOGY.md
+  h_4b47e9e4a8b456 11-13,31,74
+bench/terminal_bench/README.md
+  h_4b47e9e4a8b456 39-44,67-93,98,100
+bench/terminal_bench/analyze-tool-outcomes.ts
+  h_4b47e9e4a8b456 4,11,14,30,148,162-164
+bench/terminal_bench/configs/tb-mini-openai.toml
+  h_4b47e9e4a8b456 1-51
+bench/terminal_bench/disclosure-ledger.ts
+  h_4b47e9e4a8b456 23,56-62,132-133
+bench/terminal_bench/flywheel_agent.py
+  h_4b47e9e4a8b456 35-51,266-276,418-419,421-426,438-439,1389,1395-1410,1500,1502,1515,1523-1524,1527-1531,1552,1555-1559,1561-1565,1585-1590
+bench/terminal_bench/harbor-process.ts
+  h_4b47e9e4a8b456 1-18
+bench/terminal_bench/harbor_agent/flywheel_harbor_agent/__init__.py
+  h_4b47e9e4a8b456 1
+bench/terminal_bench/harbor_agent/flywheel_harbor_agent/shim.py
+  h_4b47e9e4a8b456 1-315
+bench/terminal_bench/harbor_agent/flywheel_harbor_agent/trial_runtime.py
+  h_4b47e9e4a8b456 1-433
+bench/terminal_bench/harbor_agent/pyproject.toml
+  h_4b47e9e4a8b456 1-16
+bench/terminal_bench/harbor_agent/uv.lock
+  h_4b47e9e4a8b456 1-8
+bench/terminal_bench/harbor_agent_package.py
+  h_4b47e9e4a8b456 1-238
+bench/terminal_bench/harbor_tasks.py
+  h_4b47e9e4a8b456 1-45
+bench/terminal_bench/hosted-terminal-bench.ts
+  h_4b47e9e4a8b456 1-141
+bench/terminal_bench/profiles/tb-mini-bringup-kv-store-grpc.yaml
+  h_4b47e9e4a8b456 1-14
+bench/terminal_bench/profiles/tb-mini-openai-5x.yaml
+  h_4b47e9e4a8b456 1-25
+bench/terminal_bench/run-terminal-bench.sh
+  h_4b47e9e4a8b456 76-90
+bench/terminal_bench/run-terminal-bench.ts
+  h_4b47e9e4a8b456 1-2,8-9,13,25-30,47-49,88-90,96-108,117-118,147-152,196,220-225,227-239,252-256,266,282-287,289,292-348,356,362,371,379-439,464,468,500-553,582-585,592,615-619,626
+bench/terminal_bench/terminal-bench-config.ts
+  h_4b47e9e4a8b456 5-6,10-11,16-20,39,43-46,63-86,125,136-177,221-224,249-251,265-268,283,320,326
+bench/terminal_bench/test_flywheel_agent.py
+  h_4b47e9e4a8b456 10,62,66,540-545,706,807-857,2469,2483,2490,2499,2512,2529,2536,2543,2576
+bench/terminal_bench/test_harbor_agent_package.py
+  h_4b47e9e4a8b456 1-100
+bench/terminal_bench/test_harbor_agent_shim.py
+  h_4b47e9e4a8b456 1-108
+tests/unit/bench/terminal-bench-analyzer.test.ts
+  h_4b47e9e4a8b456 227-247
+tests/unit/bench/terminal-bench-config.test.ts
+  h_4b47e9e4a8b456 4,35-95
+tests/unit/bench/terminal-bench-flywheel-config-evidence.test.ts
+  h_4b47e9e4a8b456 1-59
+tests/unit/bench/terminal-bench-hosted.test.ts
+  h_4b47e9e4a8b456 1-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "86e603eec39569656677520ae5deb512218be9ee",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
