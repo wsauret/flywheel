@@ -261,6 +261,8 @@ export type FirstPartyModule = ModuleDescriptor<FirstPartyContributionMap, First
   readonly retainedOperations?: readonly ModuleRetainedOperationContribution[]
   readonly retainedDiagnostics?: ModuleRetainedDiagnostics
   readonly headless?: { readonly order: number }
+  /** The module serves a person who reads the conversation, so an unattended chat leaves it out (PI-AGENT-121). */
+  readonly attended?: true
   readonly selectionPolicy?: (input: { readonly moduleIds: readonly ModuleId[]; readonly requireWorkflowConfirmation: boolean }) => string | undefined
   readonly retiredConfig?: readonly { readonly section: string; readonly key: string; readonly label: string }[]
 } & (
@@ -765,6 +767,11 @@ export function installedRetiredModuleConfig(modules: readonly FirstPartyModule[
 }
 export function headlessModuleIds(modules: readonly FirstPartyModule[] = SHIPPED_MODULES): readonly ModuleId[] {
   return modules.flatMap((module) => module.headless ? [{ id: module.id, order: module.headless.order }] : []).toSorted((left, right) => left.order - right.order).map((module) => module.id).filter(isModuleId)
+}
+/** The capability ceiling of an unattended chat: every module that does not serve a person who reads the conversation. */
+export function unattendedModuleIds(modules: readonly FirstPartyModule[] = installedModules()): readonly ModuleId[] {
+  const attended = new Set<string>(modules.flatMap((module) => module.attended ? [module.id] : []))
+  return MODULE_IDS.filter((id) => !attended.has(id))
 }
 /** Preserve one admission across preparation and the later consent-aware pass. */
 export async function prepareDefinitionReconciliation(input: DefinitionReconciliationInput, modules: readonly FirstPartyModule[] = installedModules()): Promise<(reader?: import("../infra/event-store-types.js").AsyncEventStateReadSurface) => Promise<void>> {

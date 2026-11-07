@@ -80,6 +80,20 @@ it.each([
   }
 })
 
+it("runs the root chat of an unattended invocation with the unattended purpose", async () => {
+  const { lifecycle, deps, resolvers, runnerOptions } = makeLifecycle()
+  deps.rootChatCompletion = createChatInvocationCompletion(undefined, () => {}, true)
+  try {
+    await lifecycle.enqueueInput("first")
+    await flushMicrotasks()
+    expect(runnerOptions[0]!.purpose.kind).toBe("unattended-chat")
+    resolvers[0]?.({ servedRequests: 0, durationMs: 1, terminal: { kind: "completed" } })
+    await lifecycle.settle()
+  } finally {
+    await lifecycle.terminateBackgroundWorks()
+  }
+})
+
 it("refuses to seal while accepted input commits and refuses new input after sealing", async () => {
   const { lifecycle, deps, runnerOptions, resolvers, state, session, callbacks } = makeLifecycle()
   deps.rootChatCompletion = createChatInvocationCompletion(() => {})

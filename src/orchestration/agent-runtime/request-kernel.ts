@@ -30,6 +30,7 @@ export function sharesTreeHost(purpose: AgentOptions["purpose"]): boolean {
     case "subagent-failure-summary":
       return true;
     case "interactive-chat":
+    case "unattended-chat":
     case "workflow-follow-up":
     case "headless-task":
     case "chat-routing-benchmark":

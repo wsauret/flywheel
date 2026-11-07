@@ -53,12 +53,14 @@ export type ChatTurnEnding =
 /** Owns one-shot input admission and publishes the accepted result only after durable success. The loop seals
  *  the invocation with its final reply when a turn ends and no work it owns still runs, as `claude -p` returns its
  *  final message, so a one-shot Chat needs no handoff call and writes its answer once. `onTurnEnded` hears how
- *  each turn of the root chat ended, for a headless caller that answers each turn. */
-export function createChatInvocationCompletion(onCompletion: ((content: AgentToolInput) => void) | undefined, onTurnEnded?: (ending: ChatTurnEnding) => void) {
+ *  each turn of the root chat ended, for a headless caller that answers each turn. An `unattended` invocation is one
+ *  whose client no person reads, so the root chat runs with the unattended purpose. */
+export function createChatInvocationCompletion(onCompletion: ((content: AgentToolInput) => void) | undefined, onTurnEnded?: (ending: ChatTurnEnding) => void, unattended = false) {
   let accepted: AgentToolInput | undefined
   let admitting = 0
   let pendingInput = () => false
   return {
+    unattended,
     get sealed(): boolean { return accepted !== undefined },
     get hasPendingInput(): boolean { return admitting > 0 || pendingInput() },
     bindInputSource(hasPending: () => boolean): void { pendingInput = hasPending },

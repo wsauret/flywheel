@@ -111,6 +111,12 @@ class TakeSnapshotTest(unittest.TestCase):
         # The task image's PATH stays; only the shim's own virtual environment leaves it.
         self.assertEqual(environment["PATH"], "/bun/bin:/opt/task/bin:/usr/bin")
 
+    def test_the_child_runs_an_unattended_acp_chat_on_the_staged_snapshot(self) -> None:
+        command = shim._child_command(Path("/bun/bin"), Path("/runtime"), "benchmark", Path("/stage/auth.json"))
+        self.assertEqual(command[:3], ["/bun/bin/bun", "--conditions=browser", "/runtime/src/cli/index.ts"])
+        # No person reads a trial, so the shim asks Flywheel for an unattended run (PI-AGENT-121).
+        self.assertEqual(command[3:], ["--headless", "--acp", "--unattended", "--allow-persistent-processes", "--auth-profile", "benchmark", "--auth-snapshot", "/stage/auth.json"])
+
 
 class ExportEvidenceTest(unittest.TestCase):
     def test_records_the_analysis_of_the_store_that_it_captures(self) -> None:

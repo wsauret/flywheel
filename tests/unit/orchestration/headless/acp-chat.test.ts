@@ -11,7 +11,8 @@ import type { UsageSessionStats } from "../../../../src/protocol/modules/subscri
 import type { PendingQuestionView } from "../../../../src/protocol/question-protocol-types.js"
 import type { RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types.js"
 import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/runtime-ui-bus.js"
-import type { ChatTurnEnding } from "../../../../src/orchestration/chat/runner-completion.js"
+import type { AgentToolInput } from "../../../../src/orchestration/agent-runtime/types.js"
+import { createChatInvocationCompletion, type ChatTurnEnding } from "../../../../src/orchestration/chat/runner-completion.js"
 import { acpFraming } from "../../../../src/orchestration/headless/acp-chat.js"
 import { runHeadlessChatChannel } from "../../../../src/orchestration/headless/run-headless-chat.js"
 import { recordedDispatch, runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"
@@ -52,7 +53,7 @@ const question: PendingQuestionView = {
 
 /** A root chat whose turns a test scripts: `onTurn` runs for every message
  *  or answer and owns the settlement state it ends in. */
-function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish(input: RuntimeUiPatchInput): void; output(block: FrontendOutputBlock): void; lose(block: FrontendOutputBlock): void; ended(ending: ChatTurnEnding): void; settle(outcome: HeadlessChatOutcome): Promise<void>; streamed(text: string): Promise<void> }) => void | Promise<void>) {
+function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish(input: RuntimeUiPatchInput): void; output(block: FrontendOutputBlock): void; lose(block: FrontendOutputBlock): void; ended(ending: ChatTurnEnding): void; settle(outcome: HeadlessChatOutcome): Promise<void>; streamed(text: string): Promise<void> }) => void | Promise<void>, transport: Pick<Parameters<typeof runHeadlessChatChannel>[1], "oneShot" | "completion"> = {}) {
   const bus = createRuntimeUiBus()
   const framing = acpFraming(realpathSync(CWD))
   /** The runtime reports how the root chat's turn ended, as the invocation completion does. */
@@ -126,7 +127,7 @@ function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish
     client, startChatDefault: () => {},
     workSettlement: { accepted: () => {}, read: async () => state, onChange: (listener) => { listeners.add(listener); return () => { listeners.delete(listener) } } },
   }, {
-    input, framing,
+    ...transport, input, framing,
     write: async (line) => {
       messages.push(JSON.parse(line))
       for (const wake of arrived) wake()
@@ -200,6 +201,22 @@ describe("headless chat over ACP", () => {
     ])
     const answered = fixture.messages.findIndex((message) => message.id === 2)
     expect(fixture.messages.slice(0, answered).at(-1)?.params?.update).toEqual({ sessionUpdate: "usage_update", used: 1000, size: 10_000, cost: { amount: 0.25, currency: "USD" } })
+  })
+
+  it("ends an unattended one-shot run after it answers the first prompt, while stdin stays open", async () => {
+    let handoff: AgentToolInput | undefined
+    const invocation = createChatInvocationCompletion((content) => { handoff = content }, undefined, true)
+    const fixture = acpFixture(async ({ output, settle }) => {
+      output({ kind: "text", id: "t1", content: "42", timestamp: 0 })
+      // The loop seals the invocation with the final reply when the turn ends (PI-AGENT-121).
+      invocation.seal?.("42")
+      await invocation.finish({ kind: "completed" }, async () => {})
+      await settle("complete")
+    }, { oneShot: true, completion: { invocation, bind: () => {}, result: () => handoff } })
+    await fixture.open()
+    fixture.send(prompt(2, "compute"))
+    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete", handoff: { summary: "42" } })
+    expect((await fixture.response(2)).result).toMatchObject({ stopReason: "end_turn" })
   })
 
   it("leaves the prompt unanswered after the model's last reply while work the chat owns is still busy", async () => {

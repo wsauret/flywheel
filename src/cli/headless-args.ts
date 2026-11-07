@@ -5,7 +5,7 @@ const AUTH_FLAGS = "[--auth-profile <profile>] [--auth-snapshot <absolute-path>]
 /** The headless invocations. The headless usage and the root help both list them, so the two cannot disagree. */
 export const HEADLESS_FORMS: readonly { readonly syntax: string; readonly note: string }[] = [
   { syntax: `flywheel --headless [--session <id>] [--one-shot] [--disable-tool <name>]... ${AUTH_FLAGS} [--jsonl]`, note: "JSONL Chat" },
-  { syntax: `flywheel --headless --acp [--disable-tool <name>]... ${AUTH_FLAGS}`, note: "Agent Client Protocol v1 Chat" },
+  { syntax: `flywheel --headless --acp [--unattended] [--disable-tool <name>]... ${AUTH_FLAGS}`, note: "Agent Client Protocol v1 Chat" },
   { syntax: `flywheel --headless --task <text> [--system-prompt <text>] [--model <id|tier>] [--effort <level>] [--disable-tool <name>]... ${AUTH_FLAGS} [--deadline-seconds <seconds>] [--jsonl]`, note: "Direct Task" },
 ]
 
@@ -15,6 +15,7 @@ export const HEADLESS_USAGE =
   "  --session        Attach an existing chat without resuming its interrupted turn.\n" +
   "  --one-shot       Return after durable handoff and owned work settle; plain parking is incomplete.\n" +
   "  --acp            Speak Agent Client Protocol version 1 on stdin and stdout instead of the JSONL channel.\n" +
+  "  --unattended     With --acp, run one unattended prompt. Omit built-in chat review, publication, and communication guidance. Omit the skill tool, its catalog, and ask_user.\n" +
   "  --task           Run one direct task through the shared production runner.\n" +
   "  --system-prompt  Replace the complete system prompt for a direct headless task; recorded in request-audit history, not secret input.\n" +
   "  --model          Use a model ID or an enabled-model tier (cheap, mid, powerful) instead of the configured chat role.\n" +

@@ -43,7 +43,7 @@ export function createChatRequestOptions(input: ChatRequestOptionsInput) {
       createChildConversation: deps.createChildConversation,
       moduleSelection: deps.moduleSelection,
       ...(deps.capabilityAccess ? { capabilityAccess: deps.capabilityAccess } : {}),
-      purpose: { kind: "interactive-chat" },
+      purpose: { kind: deps.rootChatCompletion?.unattended ? "unattended-chat" : "interactive-chat" },
       // Read auth at runner-creation time (per turn). With ChatSessionDeps.auth
       // backed by a getter that forwards to workflowDeps, this reflects auth
       // modal mutations applied since the prior turn.

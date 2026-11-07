@@ -8,7 +8,7 @@ const log = Log.create({ service: "session-run-observation" });
 
 /** The runs that are the turns of a session other sessions message. Forks,
  *  reviews, titles, and benchmarks share a session id but are not its turns. */
-const SESSION_TURN_PURPOSES: ReadonlySet<AgentPurpose["kind"]> = new Set(["interactive-chat", "subagent", "workflow-agent", "headless-task"]);
+const SESSION_TURN_PURPOSES: ReadonlySet<AgentPurpose["kind"]> = new Set(["interactive-chat", "unattended-chat", "subagent", "workflow-agent", "headless-task"]);
 
 /** The loop options that the observation reads and wraps. */
 type ObservedLoopOptions = Pick<AgentLoopOptions, "sessionId" | "background" | "onTurnAssistantMessage" | "lifecycle">;

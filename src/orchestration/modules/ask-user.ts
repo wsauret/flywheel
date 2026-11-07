@@ -12,7 +12,7 @@ const askUser = {
   registryOrder: 14,
   registrations: {
     ask_user: {
-      capabilities: [],
+      capabilities: ["ask-user"],
       create: ({ kernel, modules }) => {
         const controller = kernel.askUser
         if (!controller) return { unusable: { tool: ASK_USER_TOOL_DEFINITION, reason: "no ask-user controller available" } }
@@ -42,6 +42,7 @@ export const askUserModule = {
   id: "ask-user",
   dependencies: [],
   availability: { kind: "available" },
+  attended: true,
   contributions: [
     { domain: "tools", id: "ask_user", value: { kind: "tool", name: "ask_user", declaration: askUser } },
     // The kernel identity section says "ask the person" and names no module

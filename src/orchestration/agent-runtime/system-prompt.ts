@@ -228,6 +228,23 @@ You run one brief, as an agent of a workflow or as a subagent. No person reads y
 When the work of your brief is complete, submit the result with the handoff tool.`;
 }
 
+/** An unattended chat completes one request for a client with no person available to answer questions
+ *  (PI-AGENT-121): its final reply is the result, so it never ends with an offer of more work. */
+const UNATTENDED_CHAT_GUIDANCE = `WORKING UNATTENDED:
+You complete one request without a person available to answer questions. Your final reply is the result.
+
+- Never end with an offer to do the work again or in another way.`;
+
+const DOCTRINE_SECTION_BREAK = "\n\n---\n\n";
+
+/** The rendered doctrine without its bundled COMMITS section, for an unattended chat, which leaves out built-in
+ *  publication guidance (PI-AGENT-121). Only the bundled doctrine is cut; a doctrine that a person wrote goes out
+ *  byte for byte. */
+function withoutPublication(rendered: string, source: string): string {
+  if (source !== bundledAgentAsset("engineering-doctrine.md")) return rendered;
+  return rendered.split(DOCTRINE_SECTION_BREAK).filter((section) => !section.startsWith("COMMITS:")).join(DOCTRINE_SECTION_BREAK);
+}
+
 const DEFAULT_PROMPT_NOTES = SHARED_PROMPT_NOTES;
 
 // ── Top-level builder ─────────────────────────────────────────────
@@ -308,7 +325,8 @@ export function buildSystemPromptParts(opts: BuildSystemPromptOptions): SystemPr
   const hasDispatchSurface = has("subagent") || has("workflow");
   const writesFiles = has("edit") || has("write");
   const hasImplementationSurface = hasDispatchSurface || writesFiles;
-  const engineeringDoctrine = opts.engineeringDoctrine && renderAgentAsset(opts.engineeringDoctrine, "engineering-doctrine.md", has);
+  const doctrine = opts.engineeringDoctrine && renderAgentAsset(opts.engineeringDoctrine, "engineering-doctrine.md", has);
+  const engineeringDoctrine = doctrine && opts.purpose?.kind === "unattended-chat" ? withoutPublication(doctrine, opts.engineeringDoctrine ?? "") : doctrine;
   if (chat && opts.chatPrompt) {
     stable("model chat body", renderClaude5ChatBody(opts.chatPrompt, has, FLYWHEEL_CHAT_HOST));
     if (engineeringDoctrine) stable("engineering doctrine", engineeringDoctrine);
@@ -324,7 +342,7 @@ export function buildSystemPromptParts(opts: BuildSystemPromptOptions): SystemPr
       stable("communication", renderCommunicationBlock(DEFAULT_PROMPT_NOTES, has));
     }
   }
-  if (opts.unattended) stable("working unattended", renderUnattendedAgentGuidance(hasMessageSession));
+  if (opts.unattended) stable("working unattended", opts.purpose?.kind === "unattended-chat" ? UNATTENDED_CHAT_GUIDANCE : renderUnattendedAgentGuidance(hasMessageSession));
   if (agentsMd) stable("AGENTS.md instructions", `# AGENTS.md Instructions\n\n${agentsMd}\n\nThese instruction files are already loaded for you and for every agent you start. Do not read them again or restate them in a dispatch prompt. AGENTS.md files in directories that the sections above do not name are not loaded: read the one that governs a directory before you change files in it.`);
   else if (hasShell || writesFiles) {
     stable("AGENTS.md instructions", "No AGENTS.md files are loaded for your working directory. An AGENTS.md file in a directory below it is not loaded: read the one that governs a directory before you change files in it.");

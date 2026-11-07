@@ -140,7 +140,7 @@ async function runHeadless(args: readonly string[], directories: StartupDirector
       headlessAuth: { profile: headlessAuthProfile(args), snapshotPath: headlessAuthSnapshot(args) },
       ...directories, launcher: launcher.scope,
       persistentProcesses: persistentProcessManager.client(), allowPersistentProcesses,
-      workerUrl: runtimeWorkerUrl(), sessionId: headlessSession(args), oneShot: args.includes("--one-shot"), disabledTools,
+      workerUrl: runtimeWorkerUrl(), sessionId: headlessSession(args), oneShot: args.includes("--one-shot"), unattended: args.includes("--unattended"), disabledTools,
       input: process.stdin, write: (record) => new Promise<void>((resolve, reject) => {
         process.stdout.write(record, (error) => {
           if (error) reject(error)

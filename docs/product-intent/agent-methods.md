@@ -350,6 +350,10 @@ A workflow agent, subagent, or headless task recovers from provider faults alone
 
 Headless chat behaves like interactive chat, with standard input and output replacing the graphical or terminal client. It uses the same instructions, tools, conversation history, child agents, workflow supervision, authentication profile, and provider admission and failover. Its shell offers no mutating declaration. It adds no provider filter, billing ceiling, or usage pause. Standard input and output speak a versioned JSONL channel, which accepts messages, question answers or cancellations, interrupts, and stops, or Agent Client Protocol version 1, which accepts prompts and cancellations. Both stream responses and state changes.
 
+## PI-AGENT-121: An unattended Agent Client Protocol run serves no reader
+
+An Agent Client Protocol client can request an unattended one-shot run. That run leaves out the instructions and tools that serve a person who reads the conversation, such as change review, publication, communication rules, skills, and questions.
+
 ## PI-AGENT-074: Headless chat ends when its owned work ends
 
 Open input permits more turns, and closing input lets submitted work finish. In one-shot mode, the agent's final reply is its result, and the agent writes it once. A turn that ends while work the agent owns still runs waits for that work. A service that the agent keeps running, such as a server, is not such work: the run's exit ends it unless the agent launched it to persist (PI-AGENT-047). Otherwise the run completes and returns the final reply without an exit command or closed input, and the session stays available for resume.

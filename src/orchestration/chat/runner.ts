@@ -30,6 +30,7 @@ import type { ChatEntryPatch } from "../session-store/types.js"
 import type { WorkflowsMode } from "../../protocol/module-protocol-types.js"
 import type { ModulePolicy } from "../config/module-policy.js"
 import { capabilityAccessFor } from "../agent-runtime/tools/types.js"
+import { unattendedModuleIds } from "../modules.js"
 
 import type { RecallInput, RecallResult } from "../../protocol/conversation-recall.js"
 import type { AttachChildSessionProjection } from "../module-seams.js"
@@ -125,7 +126,9 @@ async function createChatRunnerInner(deps: ChatRunnerDeps): Promise<ChatRunner> 
     current: () => authAdmission.current(sessionId).workflowDeps,
   })
   const currentWorkflowDeps = () => workflowDeps
-  const capabilityAccess = deps.capabilities ? capabilityAccessFor(deps.capabilities) : undefined
+  const capabilityAccess = deps.capabilities
+    ? capabilityAccessFor(deps.capabilities, undefined, deps.rootChatCompletion?.unattended ? unattendedModuleIds() : undefined)
+    : undefined
   const captured = workflowDeps.captureRuntimeConfig()
   const definitionRevision = deps.definitions.captureRevision()
   const effectivePersonaRoleIds = personaRoleIds(definitionRevision.personas)

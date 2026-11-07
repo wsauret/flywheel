@@ -19,6 +19,8 @@ interface ChatTransport {
   readonly progressWriter?: (line: string) => void
   readonly sessionId?: string
   readonly oneShot?: boolean
+  /** No person reads the conversation (PI-AGENT-121), so the run is one-shot: its first answered turn ends it. */
+  readonly unattended?: boolean
   /** The wire framing; the versioned JSONL channel when absent. */
   readonly framing?: HeadlessChatFraming
   readonly completion?: {
@@ -92,8 +94,9 @@ export async function runHeadlessChat(options: RuntimeCompositionOptions & ChatT
   let handoff: AgentToolInput | undefined
   let root: string | undefined
   const turnEnded = options.framing?.turnEnded
-  const completion = options.oneShot || turnEnded ? {
-    invocation: createChatInvocationCompletion(options.oneShot ? (content) => { handoff = content } : undefined, turnEnded),
+  const oneShot = options.oneShot === true || options.unattended === true
+  const completion = oneShot || turnEnded ? {
+    invocation: createChatInvocationCompletion(oneShot ? (content) => { handoff = content } : undefined, turnEnded, options.unattended),
     bind: (id: string) => { root = id },
     result: () => handoff,
   } : undefined
@@ -103,7 +106,7 @@ export async function runHeadlessChat(options: RuntimeCompositionOptions & ChatT
       ...options,
       ...(completion ? { rootChatCompletion: (id: string) => id === root ? completion.invocation : undefined } : {}),
     }, (scope, lane) => createRuntimeChatKernel(options, scope, lane))
-    const result = await runHeadlessChatChannel(runtime, { ...options, completion })
+    const result = await runHeadlessChatChannel(runtime, { ...options, oneShot, completion })
     sessionId = result.sessionId
     outcome = result.outcome
   } catch (error) {

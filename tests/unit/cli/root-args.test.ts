@@ -32,7 +32,8 @@ describe("root CLI args", () => {
     }
     const acp = ["--headless", "--acp", "--auth-profile=benchmark", "--auth-snapshot", "/scratch/auth.json", "--disable-tool", "web"]
     expect(await rootCliAction([...acp, "--allow-persistent-processes"])).toEqual({ kind: "run", args: acp, allowPersistentProcesses: true })
-    for (const refused of [["--acp"], ["--headless", "--acp", "--task", "x"], ["--headless", "--acp", "--session", "s"], ["--headless", "--acp", "--one-shot"]]) {
+    expect(await rootCliAction([...acp, "--unattended"])).toEqual({ kind: "run", args: [...acp, "--unattended"] })
+    for (const refused of [["--acp"], ["--headless", "--acp", "--task", "x"], ["--headless", "--acp", "--session", "s"], ["--headless", "--acp", "--one-shot"], ["--headless", "--unattended"], ["--headless", "--task", "x", "--unattended"], ["--unattended"]]) {
       expect((await rootCliAction(refused)).kind).toBe("error")
     }
   })

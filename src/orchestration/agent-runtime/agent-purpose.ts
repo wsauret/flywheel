@@ -15,6 +15,7 @@ export function promptKindForPurpose(purpose: AgentPurpose): PromptKind {
     case "workflow-learning-review":
       return "workflow-agent";
     case "headless-task":
+    case "unattended-chat":
     case "learning-review-audit":
     case "subagent-failure-summary":
       return "headless";

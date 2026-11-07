@@ -1,4 +1,4 @@
-"""Harbor ACP entrypoint that runs `flywheel --headless --acp` inside a trial, local or on Harbor Hub.
+"""Harbor ACP entrypoint that runs `flywheel --headless --acp --unattended` inside a trial, local or on Harbor Hub.
 
 Harbor's ACP runner starts this console script in the task sandbox and speaks
 Agent Client Protocol on its stdin and stdout. Those two streams belong to the
@@ -14,8 +14,8 @@ In order, the shim:
 2. installs the package's Flywheel config, the pinned Bun release, the
    package's runtime archive, and its trial store analysis, each checked
    against its recorded SHA-256;
-3. runs Flywheel in the task workspace, relays the protocol, and forwards
-   SIGTERM to it;
+3. runs Flywheel in the task workspace as an unattended run, because no
+   person reads a trial, relays the protocol, and forwards SIGTERM to it;
 4. analyzes the trial's settled event store in a private directory and writes
    that content-free analysis into the agent logs; then publishes the analyzed
    store and Flywheel's diagnostic logs into `flywheel-evidence/` of the agent
@@ -442,7 +442,7 @@ def _exit_status(returncode: int) -> int:
 def _child_command(bin_dir: Path, runtime: Path, profile: str, stage_file: Path) -> list[str]:
     return [
         str(bin_dir / "bun"), "--conditions=browser", str(runtime / "src" / "cli" / "index.ts"),
-        "--headless", "--acp", "--allow-persistent-processes",
+        "--headless", "--acp", "--unattended", "--allow-persistent-processes",
         "--auth-profile", profile, "--auth-snapshot", str(stage_file),
     ]
 

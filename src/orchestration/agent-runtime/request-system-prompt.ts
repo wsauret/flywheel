@@ -80,8 +80,8 @@ export async function requestSystemPromptOptions(facts: RequestPromptFacts): Pro
     purpose,
     ...(isChatFacing({ purpose }) ? { chatHost: { communication: true as const } } : {}),
     // Agents of a workflow and subagents both work unattended toward a handoff, so they
-    // share one stable tier and its prompt cache.
-    ...(purpose.kind === "workflow-agent" || purpose.kind === "subagent" ? { unattended: true as const } : {}),
+    // share one stable tier and its prompt cache. An unattended chat works unattended toward its final reply.
+    ...(purpose.kind === "workflow-agent" || purpose.kind === "subagent" || purpose.kind === "unattended-chat" ? { unattended: true as const } : {}),
     ...(facts.selfDebug ? { selfDebug: true as const } : {}),
     capabilities,
     moduleFragments,

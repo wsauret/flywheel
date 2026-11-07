@@ -28,7 +28,7 @@ import { requestSystemPromptOptions } from "../src/orchestration/agent-runtime/r
 import { buildSystemPromptParts, type SystemPromptPart } from "../src/orchestration/agent-runtime/system-prompt.js";
 import type { KernelToolDeps } from "../src/orchestration/agent-runtime/tools/kernel-tool-deps.js";
 import { planToolExposure, type ToolExposurePlan } from "../src/orchestration/agent-runtime/tools/tool-exposure-planner.js";
-import type { RuntimeTool } from "../src/orchestration/agent-runtime/tools/types.js";
+import type { CapabilityAccess, RuntimeTool } from "../src/orchestration/agent-runtime/tools/types.js";
 import type { AgentPurpose } from "../src/orchestration/agent-runtime/types.js";
 import type { FirstPartyModuleComposition } from "../src/orchestration/modules.js";
 import { createCodeModeRuntime } from "../src/orchestration/modules/code-mode/runtime.js";
@@ -67,6 +67,8 @@ export interface PlanInput {
   readonly purpose: AgentPurpose;
   readonly handoffSchema?: KernelToolDeps["handoff"];
   readonly askUser: boolean;
+  /** The agent's capability boundary, as its runner holds it; absent, every module of `live` is available. */
+  readonly capabilityAccess?: CapabilityAccess;
 }
 
 /** One planned request: its kernel, its module runtimes, its tools, and the logical identity of each tool. */
@@ -93,7 +95,7 @@ export async function planPromptRequest(assembly: PromptAssembly, input: PlanInp
   // The workflow and process tools both manage one task registry, exactly as a live runner's do.
   const backgroundTasks = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: noop });
   const kernel = requestKernel({
-    options: { userDataRoot: assembly.userDataRoot, purpose: input.purpose },
+    options: { userDataRoot: assembly.userDataRoot, purpose: input.purpose, ...(input.capabilityAccess ? { capabilityAccess: input.capabilityAccess } : {}) },
     surfaces: {
       ...(input.handoffSchema ? { handoff: { ...input.handoffSchema, onContent: noop } } : {}),
       ...(input.askUser ? { askUser: { ask: async () => ({ kind: "cancelled" as const }), answerQuestion: noop, cancelQuestion: noop, suspendAll: () => false } } : {}),

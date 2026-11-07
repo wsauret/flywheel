@@ -44,6 +44,8 @@ export const skillsModule = {
   id: "skills",
   dependencies: [],
   availability: { kind: "available" },
+  // An unattended chat leaves out the skill tool and its catalog (PI-AGENT-121).
+  attended: true,
   contributions: [
     { domain: "tools", id: "skill", value: { kind: "tool", name: "skill", declaration: skill, associatedPromptRosterIds: ["skills"] } },
     { domain: "promptRosters", id: "skills", value: { definition: "skills", visibility: "model-invocable" } },

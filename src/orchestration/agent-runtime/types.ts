@@ -61,6 +61,8 @@ export type HeadlessPrompt =
 
 export type AgentPurpose =
   | { readonly kind: "interactive-chat" }
+  /** The root chat of a headless run that its client requested unattended: no person reads the conversation. */
+  | { readonly kind: "unattended-chat" }
   | { readonly kind: "chat-learning-review"; readonly review: LearningReviewRun }
   | {
       readonly kind: "workflow-agent";
