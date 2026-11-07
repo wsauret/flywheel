@@ -101,6 +101,24 @@ describe("the service requests of an agent host's engine", () => {
     expect(payloads("provider.claude_sdk.debug_output.silent")).toEqual([]);
   });
 
+  test("a step whose request the service never answered, such as a connection that dropped before the response headers, fails as a transient cut and the version stays served; a response block that the reader cannot read still fails closed", async () => {
+    const { requests, write } = host("2.1.306-unanswered");
+    requests.admitted(A);
+    write(sentBlock("log_1", { agent: A }));
+
+    expect(await requests.failure(A)).toBeInstanceOf(LlmStreamError);
+    expect(payloads("provider.claude_sdk.debug_output.silent")).toEqual([]);
+    requests.admitted(A);
+    write(sentBlock("log_2", { agent: A }));
+    expect(await requests.failure(A)).toBeInstanceOf(LlmStreamError);
+
+    const unread = host("2.1.996");
+    unread.requests.admitted(A);
+    unread.write([...sentBlock("log_1", { agent: A }), "[Anthropic SDK DEBUG] [log_1] response error (error; not retryable) {", "}"]);
+    expect(await unread.requests.failure(A)).toBeInstanceOf(ProviderRequestValidationError);
+    expect(payloads("provider.claude_sdk.debug_output.silent")).toEqual([{ sessionId: "host-session", cliVersion: "2.1.996", rule: "record-incomplete" }]);
+  });
+
   test("a status line is partial evidence: a failure whose response block the reader cannot read never completes, so its body joins nothing and the step fails closed", async () => {
     const { requests, write } = host("2.1.997");
     requests.admitted(A);

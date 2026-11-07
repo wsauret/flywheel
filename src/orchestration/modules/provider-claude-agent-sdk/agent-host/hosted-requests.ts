@@ -91,7 +91,9 @@ export interface HostedRequests {
    * The failure of the agent's step that ended without its stop. It is the service's answer of the step's complete
    * record. A record whose response began and that then ended without its stop met an SSE error, which the engine
    * reports without a key (CLI 2.1.306), so that step fails as a transient cut, as it did before. A record that still
-   * awaits its body when the bound ends fails with its status and headers. A record that does not complete in time, or
+   * awaits its body when the bound ends fails with its status and headers. A record that got no answer at all when the
+   * bound ends met a transport failure before its headers, and fails as a transient cut too, so a retry or failover
+   * sends it again. A record whose answer the reader could not read when the bound ends, or
    * a step that no record took, means that the engine's debug output is not the format that this reads: the engine's
    * version then serves nothing more (`silentDebugOutputFailure`).
    */
@@ -297,9 +299,15 @@ export function hostedRequests(config: HostedRequestsConfig): HostedRequests {
       const waited = Promise.withResolvers<Error>();
       const timer = setTimeout(() => {
         state.waiters.splice(state.waiters.indexOf(waited.resolve), 1);
-        const bodyless = state.record === undefined ? undefined : requests.withoutBody(state.record);
+        const { record } = state;
+        const bodyless = record === undefined ? undefined : requests.withoutBody(record);
         if (bodyless !== undefined) {
           const error = wireFailure(bodyless);
+          state.record = undefined;
+          state.outcome = { kind: "failed", error };
+          waited.resolve(error);
+        } else if (record !== undefined && requests.unanswered(record)) {
+          const error = endedWithoutResponse();
           state.record = undefined;
           state.outcome = { kind: "failed", error };
           waited.resolve(error);
