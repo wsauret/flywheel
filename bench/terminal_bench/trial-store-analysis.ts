@@ -5,6 +5,7 @@ import { closeSync, constants, fstatSync, openSync, readSync, type Stats } from 
 import type { EventStoreReadSurface, StoredFact } from "../../src/infra/event-store-types.js"
 import { SESSION_RUNTIME_FACT_DEFINITIONS, TOOL_CONTENT_REFERENCE_FACT_DEFINITIONS } from "../../src/infra/runtime-fact-types.js"
 import { createSqliteEventReadSurface } from "../../src/infra/sqlite-event-read-surface.js"
+import { MAX_CONTENT_FILTER_RETRIES } from "../../src/orchestration/agent-runtime/agent-loop-content-filter.js"
 import { usageEntriesFromFacts } from "../../src/orchestration/session/durable-usage.js"
 import { loadProviderRequestAuditFromEvents } from "../../src/orchestration/session/provider-request-audit-projection.js"
 import { reconstructProviderRequestPrompt } from "../../src/orchestration/session/provider-request-audit-reconstruction.js"
@@ -97,7 +98,7 @@ async function completeRequest(request: AuditedRequest, readSurface: EventStoreR
  *  analysis in its agent logs in place of its store, so a change to what the
  *  analysis states or means needs a new version, which the host refuses until
  *  its reader decodes it. */
-const TRIAL_STORE_ANALYSIS_VERSION = 3 as const
+const TRIAL_STORE_ANALYSIS_VERSION = 4 as const
 /** The agent-log file of a trial that holds its store analysis. The shim
  *  writes it under this name. */
 export const TRIAL_STORE_ANALYSIS_NAME = "flywheel-store-analysis.json"
@@ -125,16 +126,40 @@ export interface TrialStoreAnalysis {
   estimatedCostUsd: number | null
 }
 
-/** A provider response outcome, with a stream error that the provider's content refusal ended told apart
- *  as `refused`: a refusal repeats for the same content, so it is a result of the trial, not a fault. */
+/** A provider response outcome, with the provider's refusal of the content told apart as `refused`: a
+ *  stream error that a content refusal ended, such as the ChatGPT backend's `cyber_policy`, or a
+ *  content-filter stop, as Anthropic stops a response, on which the loop's retries ran out. A refusal
+ *  repeats for the same content, so it is a result of the trial, not a fault. */
 type TrialRequestOutcome = ProviderRequestOutcome | "refused"
 const isProviderRequestOutcome = Schema.is(ProviderRequestOutcomeSchema)
 const isRequestOutcome = (value: unknown): value is TrialRequestOutcome => value === "refused" || isProviderRequestOutcome(value)
 
-function trialRequestOutcome(response: JsonObject | undefined): TrialRequestOutcome {
+const isContentFilterStop = (response: JsonObject | undefined): boolean => response?.outcome === "ok" && response.stopReason === "content_filter"
+
+function trialRequestOutcome(response: JsonObject | undefined, contentFilterExhausted: () => boolean): TrialRequestOutcome {
   const outcome = response?.outcome
   if (!isProviderRequestOutcome(outcome)) throw new Error("invalid model.response_received outcome")
-  return outcome === "stream_error" && object(response?.error)?.tag === "ContentRefused" ? "refused" : outcome
+  if (outcome === "stream_error" && object(response?.error)?.tag === "ContentRefused") return "refused"
+  return isContentFilterStop(response) && contentFilterExhausted() ? "refused" : outcome
+}
+
+/** Whether the session's last response is a content-filter stop that ended its turn as a refusal, as
+ *  agent-loop-content-filter.ts decides it: it is the stop without a tool call that follows
+ *  `MAX_CONTENT_FILTER_RETRIES` retried ones, with no other stop between them. A stop with a tool call
+ *  neither counts nor resets the count. A trial that ends while a retry is still owed, such as one that Harbor
+ *  cancels, is not a refusal. */
+function contentFilterExhausted(db: Database, sessionId: string, toolCallRequests: ReadonlySet<string>): boolean {
+  let stops = 0
+  for (const row of db.query<{ payload: string }, [string]>("select payload from event where type = 'model.response_received' and actor = 'provider' and session_id = ? order by position desc").iterate(sessionId)) {
+    const response = object(JSON.parse(row.payload))
+    if (!isContentFilterStop(response)) break
+    if (toolCallRequests.has(String(response?.requestId))) {
+      if (stops === 0) return false
+      continue
+    }
+    if (++stops > MAX_CONTENT_FILTER_RETRIES) return true
+  }
+  return false
 }
 
 /** Analyzes one trial store, the private settled copy that a driver exported.
@@ -184,12 +209,13 @@ export async function analyzeTrialStore(path: string): Promise<TrialStoreAnalysi
     }
     for (const [id, inputCount] of inputCounts) { if (inputCount > 1) toolSettlement.duplicateInputs += inputCount - 1; if (!resultCounts.has(id)) toolSettlement.missing += 1 }
     for (const [id, resultCount] of resultCounts) { if (resultCount > 1) toolSettlement.duplicateResults += resultCount - 1; if (!inputCounts.has(id)) toolSettlement.orphan += 1 }
-    const finalRow = db.query<{ payload: string }, []>("select payload from event where type = 'model.response_received' and actor = 'provider' order by position desc limit 1").get()
+    const finalRow = db.query<{ payload: string; session_id: string }, []>("select payload, session_id from event where type = 'model.response_received' and actor = 'provider' order by position desc limit 1").get()
     const finalResponse = finalRow === null ? undefined : object(JSON.parse(finalRow.payload))
-    const finalRequestOutcome = finalRow === null ? null : trialRequestOutcome(finalResponse)
+    const toolCallRequests = new Set(inputRequests.values())
+    const finalRequestOutcome = finalRow === null ? null : trialRequestOutcome(finalResponse, () => contentFilterExhausted(db, finalRow.session_id, toolCallRequests))
     // A refusal can end the trial before any tool call, so the refused request
     // needs its audit chain as well; it is then the only audited request.
-    const auditedRequests = new Set(inputRequests.values())
+    const auditedRequests = new Set(toolCallRequests)
     if (finalRequestOutcome === "refused") auditedRequests.add(String(finalResponse?.requestId))
     let requestAuditComplete = audit.valid && auditedRequests.size > 0
     for (const requestId of auditedRequests) {

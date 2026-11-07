@@ -11,7 +11,7 @@ const reconcileDisclosureLedger = (options: Omit<Parameters<typeof reconcile>[0]
 
 /** The store analysis a trial records, with the evidence the ledger reads from it. */
 function analysis(finalRequestOutcome: string | null, estimatedCostUsd: number | null = null) {
-  return { version: 3, store: { sha256: "a".repeat(64), size: 1 }, toolSettlement: { inputs: 0, results: 0, missing: 0, orphan: 0, duplicateInputs: 0, duplicateResults: 0, identityConflicts: 0 }, requestAuditComplete: true, interactionProfiles: [], executableToolInputs: {}, finalRequestOutcome, estimatedCostUsd };
+  return { version: 4, store: { sha256: "a".repeat(64), size: 1 }, toolSettlement: { inputs: 0, results: 0, missing: 0, orphan: 0, duplicateInputs: 0, duplicateResults: 0, identityConflicts: 0 }, requestAuditComplete: true, interactionProfiles: [], executableToolInputs: {}, finalRequestOutcome, estimatedCostUsd };
 }
 
 async function trial(root: string, directory: string, task: string, trialName: string, summary: TrialSummary, reward: number | null, exception?: string, cost?: number, storeAnalysis?: ReturnType<typeof analysis>): Promise<void> {

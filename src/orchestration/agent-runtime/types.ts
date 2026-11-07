@@ -455,8 +455,9 @@ export type AgentFailureReason =
   | { kind: "context_overflow" }
   | { kind: "output_overflow" }
   /** `candidatesExhausted` marks a request that no access provider candidate could serve, which an optional side
-   *  call, such as a failure summary, answers with its fallback. Every other api_error is a fault of the request. */
-  | { kind: "api_error"; message: string; copy?: ProviderErrorCopy; recovery: ProviderRecovery; candidatesExhausted?: true }
+   *  call, such as a failure summary, answers with its fallback. `contentRefused` marks the provider's refusal of
+   *  the conversation content that no repair cleared. Every other api_error is a fault of the request. */
+  | { kind: "api_error"; message: string; copy?: ProviderErrorCopy; recovery: ProviderRecovery; candidatesExhausted?: true; contentRefused?: true }
   | { kind: "model_unavailable"; message: string; missing: ModelUnavailableMissing }
   | { kind: "transient_disconnect"; message: string }
   | { kind: "stream_stalled"; message: string; attribution: StallAttribution }

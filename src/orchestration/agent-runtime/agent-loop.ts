@@ -282,8 +282,8 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   // end. The chat closes its conversation writer's turn and its transcript
   // turn here, and workflow observers nudge here, so firing it mid-loop splits
   // one turn in two. Per-request durability rides flushCanonicalMessages instead.
-  const endCompletedTurn = (): Promise<void> =>
-    Promise.resolve(lifecycle?.onTurnEnded?.({ handoffWritten: false, turnCount: state.turn, runtimeConfig: surface.current().runtimeConfig }));
+  const endCompletedTurn = (contentRefused = false): Promise<void> =>
+    Promise.resolve(lifecycle?.onTurnEnded?.({ handoffWritten: false, turnCount: state.turn, ...(contentRefused ? { contentRefused: true } : {}), runtimeConfig: surface.current().runtimeConfig }));
   // A model turn finished with nothing left to run. Every human message gets
   // visible reply text before the loop goes quiet: a silent park would leave
   // the user staring at nothing while the model's answer sits in a thinking
@@ -291,14 +291,14 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   // the logical turn, before its end, and its writes stay in that turn. Any
   // other finish ends the turn, and resolveTurnEnd drains what the end's
   // observers enqueued.
-  const finishTurn = async (turnSignal: AbortSignal): Promise<"continue" | AgentLoopTerminal> => {
+  const finishTurn = async (turnSignal: AbortSignal, contentRefused = false): Promise<"continue" | AgentLoopTerminal> => {
     if (closureMode === "park" && !turnSignal.aborted && replyNudge.consumeNudge()) {
       log.info("silent reply while user awaits; injecting reply nudge instead of ending the turn", { turnCount: state.turn, providerSessionKey: options.providerSessionKey });
       await pushUser(SILENT_REPLY_NUDGE);
       return "continue";
     }
     closeSpentWait();
-    if (!state.wait || closureMode !== "handoff") await endCompletedTurn();
+    if (!state.wait || closureMode !== "handoff") await endCompletedTurn(contentRefused);
     return resolveTurnEnd(turnSignal);
   };
   // What follows the compaction a plan asked for, whether its checkpoint
@@ -702,13 +702,14 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       return end;
     }
 
-    if (await contentFilter.observe({ stopReason, hadToolCalls: toolCalls.length > 0, turnCount: state.turn }) === "retry") continue;
+    const filtered = await contentFilter.observe({ stopReason, hadToolCalls: toolCalls.length > 0, turnCount: state.turn });
+    if (filtered === "retry") continue;
 
     // A one-shot single request that may call no tool, such as a side call,
     // ends on its answer: its refused calls cannot earn it another request.
     if (toolCalls.length === 0 || (closureMode === "oneshot" && options.maxLLMCalls === 1 && requestSurface.usableToolNames.size === 0)) {
       log.debug("response completed", { stopReason, turnCount: state.turn, hadOutput: hasAssistantOutput(assistantContent), toolCalls: toolCalls.length, executableTools: requestSurface.tools.size, providerSessionKey: options.providerSessionKey });
-      const end = await finishTurn(requestSignal);
+      const end = await finishTurn(requestSignal, filtered === "refused");
       if (end === "continue") continue;
       return end;
     }

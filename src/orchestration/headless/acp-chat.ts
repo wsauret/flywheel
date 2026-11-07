@@ -5,8 +5,10 @@ import { errorMessage } from "../../infra/error-message.js"
 import {
   ACP_PROTOCOL_VERSION, AcpCancelParamsSchema, AcpInboundSchema, AcpInitializeParamsSchema, AcpNewSessionParamsSchema, AcpPromptParamsSchema,
   JSON_RPC_ERROR, acpBlockUpdates, acpError, acpPromptUsage, acpResult, acpToolOpen, acpUpdate, acpUsageUpdate,
-  type AcpStreamed, type JsonRpcId,
+  type AcpStopReason, type AcpStreamed, type JsonRpcId,
 } from "../../protocol/acp.js"
+import type { HeadlessChatOutcome } from "../../protocol/headless-chat.js"
+import type { ChatTurnEnding } from "../chat/runner-completion.js"
 import type { FrontendEvent, FrontendMutation, FrontendOutputBlock, RuntimeEventFrame } from "../../protocol/app-service-types.js"
 import { blockIdentity } from "../../protocol/block-identity.js"
 import { isBudgetPayload } from "../../protocol/budget-protocol-types.js"
@@ -26,13 +28,29 @@ const GAP_PAGE = { maxBlocks: 200, maxBytes: 4 * 1024 * 1024, includeThinkingCon
  *  message and ends the prompt; nothing answers it but the next prompt. */
 export function acpFraming(executionCwd: string): HeadlessChatFraming {
   let transcript: TranscriptStore | undefined
+  let session: ReturnType<typeof openAcpSession> | undefined
   return {
-    open: async (channel) => openAcpSession(channel, await readAppVersion(), executionCwd, (store) => { transcript = store }),
+    open: async (channel) => {
+      session = openAcpSession(channel, await readAppVersion(), executionCwd, (store) => { transcript = store })
+      return session
+    },
     final: () => {
       transcript?.dispose()
       return undefined
     },
+    turnEnded: (ending) => { session?.turnEnded(ending) },
   }
+}
+
+/** The stop reason that answers a prompt (https://agentclientprotocol.com/protocol/prompt-turn#stop-reasons),
+ *  or undefined for a turn that failed, which a JSON-RPC error answers. A failed turn is never `end_turn`, and a
+ *  channel that failed after a refusal, such as on its durable write, fails the prompt. A turn that waits on a
+ *  question ends its prompt as `end_turn`: the next prompt answers it. */
+function stopReasonOf(outcome: HeadlessChatOutcome, cancelled: boolean, ending: ChatTurnEnding | undefined): AcpStopReason | undefined {
+  if (outcome === "failed") return undefined
+  if (cancelled) return "cancelled"
+  if (ending?.kind === "refused") return "refusal"
+  return ending?.kind === "failed" || outcome === "incomplete" ? undefined : "end_turn"
 }
 
 function openAcpSession(channel: HeadlessChatChannel, version: string, executionCwd: string, adopt: (transcript: TranscriptStore) => void) {
@@ -51,6 +69,8 @@ function openAcpSession(channel: HeadlessChatChannel, version: string, execution
   let question: PendingQuestionView | undefined
   // The last error notice the running prompt streamed: why its turn failed.
   let notice: string | undefined
+  // How the last turn since the running prompt was sent ended, as the runtime reported it.
+  let ending: ChatTurnEnding | undefined
 
   const send = (lines: () => Promise<readonly string[]> | readonly string[]): void => {
     streaming = streaming.then(async () => { for (const line of await lines()) await channel.write(line) })
@@ -157,13 +177,14 @@ function openAcpSession(channel: HeadlessChatChannel, version: string, execution
       ? (await channel.client.query({ type: "questionSnapshot", sessionIds: [sessionId] })).views[0]?.view ?? undefined
       : undefined
     prompting = false
-    if (outcome === "failed" || outcome === "incomplete" && !cancelled) {
-      lines.push(acpError(id, JSON_RPC_ERROR.internal, notice ?? "The turn ended before it completed"))
+    const stopReason = stopReasonOf(outcome, cancelled, ending)
+    if (stopReason === undefined) {
+      lines.push(acpError(id, JSON_RPC_ERROR.internal, notice ?? "The turn ended before it completed", ending?.kind === "failed" ? { failure: ending.failure } : undefined))
     } else {
       // Usage stats come from the Usage module; without it the response
       // carries no token counts.
       const stats = await channel.client.query({ type: "usage.stats", sessionId }).catch(() => undefined)
-      lines.push(acpResult(id, { stopReason: cancelled ? "cancelled" : "end_turn", ...(stats ? { usage: acpPromptUsage(stats.totals.tokens) } : {}) }))
+      lines.push(acpResult(id, { stopReason, ...(stats ? { usage: acpPromptUsage(stats.totals.tokens) } : {}) }))
     }
     send(() => lines)
     await streaming
@@ -174,6 +195,7 @@ function openAcpSession(channel: HeadlessChatChannel, version: string, execution
       ? { type: "question.answer", sessionId, toolUseId: question.toolUseId, answers: Object.fromEntries(question.questions.map((entry) => [entry.question, { kind: "freeform" as const, text }])) }
       : { type: "session.send", sessionId, input: text }
     notice = undefined
+    ending = undefined
     const result = await channel.client.dispatch(command)
     if (!result.ok) return { lines: [acpError(id, JSON_RPC_ERROR.internal, result.error)], submitted: false }
     prompting = true
@@ -233,5 +255,5 @@ function openAcpSession(channel: HeadlessChatChannel, version: string, execution
     }
   }
 
-  return { frame, request }
+  return { frame, request, turnEnded: (next: ChatTurnEnding) => { ending = next } }
 }

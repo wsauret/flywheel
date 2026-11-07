@@ -44,16 +44,32 @@ describe("terminal bench tool outcome analyzer", () => {
     expect(await analyzeTrialStore(refused.storePath)).toMatchObject({ finalRequestOutcome: "refused" });
     const dropped = await evidence({ finalOutcome: "stream_error", finalError: { tag: "TransientDisconnect", message: "websocket closed" } });
     expect(await analyzeTrialStore(dropped.storePath)).toMatchObject({ finalRequestOutcome: "stream_error" });
+    const answered = await evidence({ route: "claude", stopReasons: ["content_filter", "end_turn"] });
+    expect(await analyzeTrialStore(answered.storePath)).toMatchObject({ finalRequestOutcome: "ok" });
   });
 
-  test("finalizes a refusal of the first request, before any tool call, as a scored refusal", async () => {
-    const refused = await evidence({ singleRequest: true, toolCalls: false, reward: 0, finalOutcome: "stream_error", finalError: { tag: "ContentRefused", message: "This content was flagged for possible cybersecurity risk." } });
+  test("records no refusal for a content-filter stop on which the loop still owed a retry", async () => {
+    const outcome = async (options: EvidenceOptions) => (await analyzeTrialStore((await evidence({ route: "claude", ...options })).storePath)).finalRequestOutcome;
+    // A trial that Harbor cancels while a retry is still owed ends on a served response, which its exception scores.
+    expect(await outcome({ toolCalls: false, reward: 0, stopReasons: ["content_filter"] })).toBe("ok");
+    expect(await outcome({ toolCalls: false, reward: 0, stopReasons: ["end_turn", "content_filter", "content_filter"] })).toBe("ok");
+    // A stop with a tool call runs its tools, so it ends no turn.
+    expect(await outcome({ stopReasons: ["content_filter", "content_filter", "content_filter"] })).toBe("ok");
+  });
+
+  test.each([
+    ["the ChatGPT backend's policy refusal", { route: "openai", finalOutcome: "stream_error", finalError: { tag: "ContentRefused", message: "This content was flagged for possible cybersecurity risk." } }],
+    ["the Anthropic content filter's stop that outlasted every retry", { route: "claude", stopReasons: ["content_filter", "content_filter", "content_filter"] }],
+  ] as const satisfies readonly (readonly [string, EvidenceOptions])[])("finalizes a refusal before any tool call as a scored refusal: %s", async (_name, final) => {
+    const refused = await evidence({ singleRequest: true, toolCalls: false, reward: 0, ...final });
     expect(await analyzeTrialStore(refused.storePath)).toMatchObject({ requestAuditComplete: true, executableToolInputs: {}, finalRequestOutcome: "refused" });
     expect((await analyze(refused.root)).rows[0]).toMatchObject({ requestAuditValid: true, commandObserved: false, failure: "provider_refusal" });
     const ledger = await finalizeTerminalBenchRun(refused.manifestPath, refused.root, 0);
     expect(ledger).toMatchObject({ reconciled: true, outcome: "completed", scoredTrials: 1, counts: { provider_refusal: 1, provider_infra: 0 } });
     expect(JSON.parse(await readFile(refused.manifestPath, "utf8"))).toMatchObject({ state: "finalized", analyzer_result: { summary: { failure_counts: { provider_refusal: 1 } } } });
-    // The refused request still needs its whole audit chain.
+  });
+
+  test("still needs the whole audit chain of a refused request, and refuses a silent trial as infrastructure", async () => {
     const unaudited = await evidence({ singleRequest: true, toolCalls: false, reward: 0, finalOutcome: "stream_error", finalError: { tag: "ContentRefused", message: "flagged" }, includeMessages: false });
     expect((await analyze(unaudited.root)).rows[0]).toMatchObject({ requestAuditValid: false, failure: "request_audit_invalid" });
     // Without a refusal, a trial with no tool call keeps the ordinary checks and is still refused as infrastructure.

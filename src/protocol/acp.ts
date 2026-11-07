@@ -74,6 +74,17 @@ const AcpUsageSchema = Schema.Struct({
 })
 type AcpUsage = typeof AcpUsageSchema.Type
 
+/** Why the agent stopped a prompt turn. Flywheel sends `end_turn`, `refusal`
+ *  for the provider's refusal of the conversation content, and `cancelled`; a
+ *  turn that failed otherwise is a JSON-RPC error, never a stop reason. */
+const AcpStopReasonSchema = Schema.Literals(["end_turn", "refusal", "cancelled"])
+export type AcpStopReason = typeof AcpStopReasonSchema.Type
+
+/** The JSON-RPC error `data` of a prompt whose turn failed: the kind of the
+ *  failure, such as `context_overflow` or `api_error`. */
+const AcpErrorDataSchema = Schema.Struct({ failure: Schema.String })
+type AcpErrorData = typeof AcpErrorDataSchema.Type
+
 const AcpResultSchema = Schema.Union([
   Schema.Struct({
     protocolVersion: Schema.Literal(ACP_PROTOCOL_VERSION),
@@ -82,13 +93,13 @@ const AcpResultSchema = Schema.Union([
     authMethods: Schema.Tuple([]),
   }),
   Schema.Struct({ sessionId: Schema.String }),
-  Schema.Struct({ stopReason: Schema.Literals(["end_turn", "cancelled"]), usage: Schema.optionalKey(AcpUsageSchema) }),
+  Schema.Struct({ stopReason: AcpStopReasonSchema, usage: Schema.optionalKey(AcpUsageSchema) }),
 ])
 export type AcpResult = typeof AcpResultSchema.Type
 
 const AcpOutboundSchema = Schema.Union([
   Schema.Struct({ jsonrpc: Schema.Literal("2.0"), id: JsonRpcIdSchema, result: AcpResultSchema }),
-  Schema.Struct({ jsonrpc: Schema.Literal("2.0"), id: Schema.NullOr(JsonRpcIdSchema), error: Schema.Struct({ code: Schema.Int, message: Schema.String }) }),
+  Schema.Struct({ jsonrpc: Schema.Literal("2.0"), id: Schema.NullOr(JsonRpcIdSchema), error: Schema.Struct({ code: Schema.Int, message: Schema.String, data: Schema.optionalKey(AcpErrorDataSchema) }) }),
   Schema.Struct({ jsonrpc: Schema.Literal("2.0"), method: Schema.Literal("session/update"), params: Schema.Struct({ sessionId: Schema.String, update: AcpSessionUpdateSchema }) }),
 ])
 type AcpOutbound = typeof AcpOutboundSchema.Type
@@ -97,7 +108,8 @@ const encodeOutbound = Schema.encodeSync(AcpOutboundSchema, { onExcessProperty: 
 const line = (message: AcpOutbound): string => `${JSON.stringify(encodeOutbound(message))}\n`
 
 export const acpResult = (id: JsonRpcId, result: AcpResult): string => line({ jsonrpc: "2.0", id, result })
-export const acpError = (id: JsonRpcId | null, code: number, message: string): string => line({ jsonrpc: "2.0", id, error: { code, message } })
+export const acpError = (id: JsonRpcId | null, code: number, message: string, data?: AcpErrorData): string =>
+  line({ jsonrpc: "2.0", id, error: { code, message, ...(data ? { data } : {}) } })
 export const acpUpdate = (sessionId: string, update: AcpSessionUpdate): string => line({ jsonrpc: "2.0", method: "session/update", params: { sessionId, update } })
 
 /** What a session already streamed of one transcript block: the characters of

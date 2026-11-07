@@ -49,8 +49,10 @@ describe("agent loop content_filter recovery", () => {
     const client = makeClient([contentFilterTurn, endTurn]);
     const userMessages: Array<string | ContentBlock[]> = [];
     const canonical: ConversationMessage[] = [];
+    const endings: Array<true | undefined> = [];
 
     const result = await runAgentLoop({
+      lifecycle: { onTurnEnded: (ctx) => { endings.push(ctx.contentRefused); } },
       client,
       tools: new RequestToolMap(),
       systemPrompt: stableSystemPrompt("test"),
@@ -68,14 +70,17 @@ describe("agent loop content_filter recovery", () => {
     expect(client.calls()).toBe(2);
     expect(userMessages).toHaveLength(2);
     expect(userMessages[1]).toContain("content filter");
+    expect(endings).toEqual([undefined]);
   });
 
   test("gives up after consecutive content_filter stops and surfaces a visible notice", async () => {
     const client = makeClient([contentFilterTurn]);
     const userMessages: Array<string | ContentBlock[]> = [];
     const systemMessages: Array<{ message: string; level?: "info" | "error" }> = [];
+    const endings: Array<true | undefined> = [];
 
     const result = await runAgentLoop({
+      lifecycle: { onTurnEnded: (ctx) => { endings.push(ctx.contentRefused); } },
       client,
       tools: new RequestToolMap(),
       systemPrompt: stableSystemPrompt("test"),
@@ -98,6 +103,8 @@ describe("agent loop content_filter recovery", () => {
     expect(systemMessages[0]?.message).toContain("Rephrase the request or try a different model");
     expect(systemMessages[0]?.message).not.toContain("session");
     expect(systemMessages[0]?.level).toBe("error");
+    // The turn ends as the provider's refusal of the content, which a headless caller reports.
+    expect(endings).toEqual([true]);
   });
 
   test("resets the consecutive counter on intervening non-filtered turns", async () => {

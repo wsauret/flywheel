@@ -70,6 +70,8 @@ export interface EvidenceOptions {
   finalOutcome?: ProviderRequestOutcome
   /** The runtime error that ended the last provider response. */
   finalError?: { tag: string; message: string }
+  /** The stop reason of each provider response, in place of two requests that record none. */
+  stopReasons?: readonly string[]
   /** One provider request in place of two. */
   singleRequest?: boolean
   /** Whether the model calls the shell after each response; false records no tool call. */
@@ -137,13 +139,13 @@ export async function trialEvidence(root: string, options: EvidenceOptions = {})
   append(`conversation:${conversationId}`, "chat.tree.created", 1, "flywheel", { conversationId, createdAt: new Date().toISOString() });
   if (options.includeMessages !== false) append(`conversation:${conversationId}`, "chat.entries.appended", 1, "flywheel", { conversationId, entries });
   const dedup: ConversationDedup = {};
-  const requests = options.singleRequest ? requestIds.slice(0, 1) : requestIds;
+  const requests = options.stopReasons ? options.stopReasons.map((_, index) => `request-${index + 1}`) : options.singleRequest ? requestIds.slice(0, 1) : requestIds;
   for (const [index, requestId] of requests.entries()) {
     const last = index === requests.length - 1;
     const audit = { observe: appendAudit };
     await recordProviderRequest(audit, { requestId, identity, turn: 1, promptKind: "headless", systemPrompt, messages, messageCount: messages.length, estimatedContextTokens: 1, attemptStaticTokens: 1, contextWindow: 100, tools: surface(route), omittedTools: [], interactionProfileId: profile, ...routes[route].serving, treeLeafEntryId }, dedup);
     if (!last || options.dispatched !== false) await recordProviderRequestDispatched(audit, { requestId, identity, turn: 1 });
-    if (!last || options.responded !== false) await recordProviderResponse(audit, { requestId, identity, turn: 1, outcome: last ? options.finalOutcome ?? "ok" : "ok", durationMs: 1, ...(last && options.finalError ? { error: options.finalError } : {}) });
+    if (!last || options.responded !== false) await recordProviderResponse(audit, { requestId, identity, turn: 1, outcome: last ? options.finalOutcome ?? "ok" : "ok", durationMs: 1, ...(last && options.finalError ? { error: options.finalError } : {}), ...(options.stopReasons ? { stopReason: options.stopReasons[index] } : {}) });
     if (options.toolCalls === false) continue;
     const toolUseId = `tool-${index + 1}`;
     const inputs: RuntimeEvent[] = [];

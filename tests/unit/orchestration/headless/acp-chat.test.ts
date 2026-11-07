@@ -11,6 +11,7 @@ import type { UsageSessionStats } from "../../../../src/protocol/modules/subscri
 import type { PendingQuestionView } from "../../../../src/protocol/question-protocol-types.js"
 import type { RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types.js"
 import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/runtime-ui-bus.js"
+import type { ChatTurnEnding } from "../../../../src/orchestration/chat/runner-completion.js"
 import { acpFraming } from "../../../../src/orchestration/headless/acp-chat.js"
 import { runHeadlessChatChannel } from "../../../../src/orchestration/headless/run-headless-chat.js"
 import { recordedDispatch, runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"
@@ -21,7 +22,7 @@ interface Message {
   readonly id?: number
   readonly method?: string
   readonly result?: AcpResult
-  readonly error?: { readonly code: number; readonly message: string }
+  readonly error?: { readonly code: number; readonly message: string; readonly data?: { readonly failure: string } }
   readonly params?: { readonly update: AcpSessionUpdate }
 }
 
@@ -51,8 +52,11 @@ const question: PendingQuestionView = {
 
 /** A root chat whose turns a test scripts: `onTurn` runs for every message
  *  or answer and owns the settlement state it ends in. */
-function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish(input: RuntimeUiPatchInput): void; output(block: FrontendOutputBlock): void; lose(block: FrontendOutputBlock): void; settle(outcome: HeadlessChatOutcome): Promise<void>; streamed(text: string): Promise<void> }) => void | Promise<void>) {
+function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish(input: RuntimeUiPatchInput): void; output(block: FrontendOutputBlock): void; lose(block: FrontendOutputBlock): void; ended(ending: ChatTurnEnding): void; settle(outcome: HeadlessChatOutcome): Promise<void>; streamed(text: string): Promise<void> }) => void | Promise<void>) {
   const bus = createRuntimeUiBus()
+  const framing = acpFraming(realpathSync(CWD))
+  /** The runtime reports how the root chat's turn ended, as the invocation completion does. */
+  const ended = (ending: ChatTurnEnding) => { framing.turnEnded?.(ending) }
   const calls: FrontendMutation[] = []
   const blocks: FrontendOutputBlock[] = []
   const listeners = new Set<() => void>()
@@ -82,7 +86,7 @@ function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish
   }
   const turn = async (command: FrontendMutation) => {
     state = "busy"
-    queueMicrotask(() => { onTurn({ command, publish, output, lose, settle, streamed }) })
+    queueMicrotask(() => { onTurn({ command, publish, output, lose, ended, settle, streamed }) })
     return { ok: true as const, sessionId: "root" }
   }
   const client: RuntimeClient = {
@@ -122,7 +126,7 @@ function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish
     client, startChatDefault: () => {},
     workSettlement: { accepted: () => {}, read: async () => state, onChange: (listener) => { listeners.add(listener); return () => { listeners.delete(listener) } } },
   }, {
-    input, framing: acpFraming(realpathSync(CWD)),
+    input, framing,
     write: async (line) => {
       messages.push(JSON.parse(line))
       for (const wake of arrived) wake()
@@ -253,6 +257,48 @@ describe("headless chat over ACP", () => {
     // A later turn that fails without a notice of its own states no earlier cause.
     fixture.send(prompt(3, "again"))
     expect((await fixture.response(3)).error?.message).toBe("The turn ended before it completed")
+    fixture.end()
+    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "failed" })
+  })
+
+  it("answers a turn that the run's failure ended with an error that names the failure kind, also when the chat's work settles complete", async () => {
+    let turns = 0
+    const fixture = acpFixture(async ({ output, ended, settle }) => {
+      turns++
+      if (turns === 1) {
+        // The recorded failure notice ends the conversation, so the settled read finds nothing to resume.
+        output({ kind: "system", id: "n1", level: "error", message: "The provider is overloaded", timestamp: 0 })
+        ended({ kind: "failed", failure: "api_overloaded" })
+      } else {
+        ended(turns === 2 ? { kind: "failed", failure: "context_overflow" } : { kind: "completed" })
+      }
+      return settle("complete")
+    })
+    await fixture.open()
+    fixture.send(prompt(2, "work"))
+    expect((await fixture.response(2)).error).toEqual({ code: -32603, message: "The provider is overloaded", data: { failure: "api_overloaded" } })
+    fixture.send(prompt(3, "again"))
+    expect((await fixture.response(3)).error).toEqual({ code: -32603, message: "The turn ended before it completed", data: { failure: "context_overflow" } })
+    // The next turn's ending is its own.
+    fixture.send(prompt(4, "once more"))
+    expect((await fixture.response(4)).result).toMatchObject({ stopReason: "end_turn" })
+    fixture.end()
+    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+  })
+
+  it("answers a turn that the provider's refusal of the content ended with stopReason refusal, unless the channel then failed", async () => {
+    let turns = 0
+    const fixture = acpFixture(async ({ output, ended, settle }) => {
+      output({ kind: "system", id: `n${turns}`, level: "error", message: "The provider's content filter blocked this response", timestamp: 0 })
+      ended({ kind: "refused" })
+      // The second refusal's durable write fails after the turn ended.
+      return settle(turns++ === 0 ? "complete" : "failed")
+    })
+    await fixture.open()
+    fixture.send(prompt(2, "work"))
+    expect((await fixture.response(2)).result).toMatchObject({ stopReason: "refusal" })
+    fixture.send(prompt(3, "again"))
+    expect((await fixture.response(3)).error).toMatchObject({ code: -32603 })
     fixture.end()
     expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "failed" })
   })

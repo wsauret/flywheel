@@ -291,7 +291,10 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
           busBridge.lifecycle.onTurnResumed()
         },
         onCompactionContinuation: () => moduleObserver.onCompactionContinuation(),
-        onTurnEnded: ({ runtimeConfig }) => completeCurrentModelTurn(turn, runtimeConfig),
+        onTurnEnded: ({ runtimeConfig, contentRefused }) => {
+          if (isLiveTurn(turn)) turn.completion.turnEnded(contentRefused === true)
+          return completeCurrentModelTurn(turn, runtimeConfig)
+        },
         onConnectionState: (next) => { setCurrentTurnConnectionState(turn, next) },
         onRuntimeAssembled: async ({ modules }) => {
           moduleRuntimes = modules

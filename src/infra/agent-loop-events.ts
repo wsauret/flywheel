@@ -136,6 +136,9 @@ export interface InputSource {
 export interface TurnEndedContext {
   handoffWritten: boolean;
   turnCount: number;
+  /** The provider's content filter stopped the turn's last response again
+   *  after every retry the loop allows, so the provider refused the content. */
+  contentRefused?: true;
   /** Module policy captured at the request admission boundary that completed this turn. */
   runtimeConfig?: {
     readonly moduleSections: { readonly [section: string]: unknown };

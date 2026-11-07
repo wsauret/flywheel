@@ -11,7 +11,7 @@ import { assembleProjectRuntime, type RuntimeComposition, type RuntimeCompositio
 import { createRuntimeChatKernel } from "../app-service/runtime-chat-kernel.js"
 import { claimHeadlessProjectExecution } from "../app-service/project-serving-lane.js"
 import type { AgentToolInput } from "../agent-runtime/types.js"
-import { createChatInvocationCompletion } from "../chat/runner-completion.js"
+import { createChatInvocationCompletion, type ChatTurnEnding } from "../chat/runner-completion.js"
 
 interface ChatTransport {
   readonly input: AsyncIterable<string | Uint8Array> | Iterable<string | Uint8Array>
@@ -68,10 +68,13 @@ interface HeadlessChatCodec {
 /** A wire framing of headless chat: the versioned JSONL channel or Agent
  *  Client Protocol version 1. `open` attaches it once the root chat is active,
  *  before any frame or input line reaches it. `final` is the line written
- *  after runtime disposal, if the framing has one. */
+ *  after runtime disposal, if the framing has one. `turnEnded`, for a framing
+ *  that answers each turn, hears how each turn of the root chat ended, before
+ *  the channel settles after it. */
 export interface HeadlessChatFraming {
   open(channel: HeadlessChatChannel): Promise<HeadlessChatCodec>
   final(result: HeadlessChatResult): string | undefined
+  readonly turnEnded?: (ending: ChatTurnEnding) => void
 }
 
 /** Hosts the full production Chat runtime locally, without a public listener.
@@ -88,8 +91,9 @@ export async function runHeadlessChat(options: RuntimeCompositionOptions & ChatT
   let outcome: HeadlessChatOutcome = "failed"
   let handoff: AgentToolInput | undefined
   let root: string | undefined
-  const completion = options.oneShot ? {
-    invocation: createChatInvocationCompletion((content) => { handoff = content }),
+  const turnEnded = options.framing?.turnEnded
+  const completion = options.oneShot || turnEnded ? {
+    invocation: createChatInvocationCompletion(options.oneShot ? (content) => { handoff = content } : undefined, turnEnded),
     bind: (id: string) => { root = id },
     result: () => handoff,
   } : undefined

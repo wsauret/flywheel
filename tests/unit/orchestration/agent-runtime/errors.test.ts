@@ -37,7 +37,7 @@ describe("content refusal on the runtime channel", () => {
     expect(typed.message).toBe(original)
     expect(typed.reason).toBe(refused.reason)
     expect(typed.part).toEqual(part)
-    expect(toFailureReason(typed)).toEqual({ kind: "api_error", message: original, recovery: { kind: "none" } })
+    expect(toFailureReason(typed)).toEqual({ kind: "api_error", message: original, recovery: { kind: "none" }, contentRefused: true })
   })
 })
 

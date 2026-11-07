@@ -137,7 +137,7 @@ export function toFailureReason(error: AgentRuntimeError): AgentFailureReason {
     case "ApiOverloaded": return { kind: "api_overloaded", message: error.message }
     // A refusal that the repair inside the run could not clear meets the same
     // content on every later run.
-    case "ContentRefused": return { kind: "api_error", message: error.message, ...(error.policy === undefined ? {} : { copy: contentDeclinedCopy(error.reason) }), recovery: { kind: "none" } }
+    case "ContentRefused": return { kind: "api_error", message: error.message, ...(error.policy === undefined ? {} : { copy: contentDeclinedCopy(error.reason) }), recovery: { kind: "none" }, contentRefused: true }
     // The assistant boundary settles a content filter as a response, so only a
     // caller outside it meets this; a later run can be served.
     case "ContentFiltered": return { kind: "api_error", message: error.message, recovery: { kind: "retry" } }

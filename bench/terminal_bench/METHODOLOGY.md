@@ -75,7 +75,7 @@ The run outcome is derived after Harbor settles:
 
 A positive numeric reward has no failure category. Other trials use the following precedence:
 
-1. `provider_refusal`: a last provider response with outcome `refused`, which the store analysis records for a stream error that the provider's refusal of the conversation content ended, such as the ChatGPT backend's `cyber_policy`.
+1. `provider_refusal`: a last provider response with outcome `refused`, which the store analysis records for a stream error that the provider's refusal of the conversation content ended, such as the ChatGPT backend's `cyber_policy`, and for a final response that the provider's content filter stopped, as Anthropic stops one, when Flywheel's retries ran out on it. A trial that ends while a retry is still owed is not a refusal. The agent answers such a prompt with the ACP stop reason `refusal`, and any other failed turn with a JSON-RPC error, never `end_turn`.
 2. `provider_infra`: a non-timeout Harbor exception, or a last provider response with outcome `stream_error` or `fatal_error`.
 3. `cancelled`: a timeout exception, post-cancellation capture, or a last provider response with outcome `aborted`.
 4. `cost_truncated`: a last provider response with outcome `context_overflow` or `output_overflow`.

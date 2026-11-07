@@ -8,7 +8,14 @@ import type { LlmStopReason } from "./llm/types.js";
 
 const log = Log.create({ service: "agent-loop" });
 
-const MAX_CONTENT_FILTER_RETRIES = 2;
+/** The consecutive content-filter stops without a tool call that the loop
+ *  retries before it ends the turn as the provider's refusal.
+ *
+ *  @public
+ *  `bench/terminal_bench/trial-store-analysis.ts` reads it to tell a refusal
+ *  from a trial that ended while a retry was owed. Knip does not trace bench
+ *  into the production project, so this export is not dead. */
+export const MAX_CONTENT_FILTER_RETRIES = 2;
 
 const CONTENT_FILTER_NUDGE =
   "Your previous response was stopped by the provider's content filter before it completed. This is usually a spurious classifier misfire. Continue the task from where you left off.";
@@ -25,8 +32,9 @@ export interface ContentFilterRecoveryDeps {
 export interface ContentFilterRecovery {
   /** Call once per completed turn, after assistant content is pushed. "retry"
    *  means a nudge was pushed and the loop should continue; "end" means
-   *  proceed with normal turn-end handling. */
-  observe(turn: { stopReason: LlmStopReason; hadToolCalls: boolean; turnCount: number }): Promise<"retry" | "end">;
+   *  proceed with normal turn-end handling; "refused" means the retries ran
+   *  out, so the turn ends as the provider's refusal of the content. */
+  observe(turn: { stopReason: LlmStopReason; hadToolCalls: boolean; turnCount: number }): Promise<"retry" | "end" | "refused">;
 }
 
 export function createContentFilterRecovery({ providerSessionKey, pushUser, onSystemMessage }: ContentFilterRecoveryDeps): ContentFilterRecovery {
@@ -46,7 +54,7 @@ export function createContentFilterRecovery({ providerSessionKey, pushUser, onSy
       }
       log.warn("content_filter retries exhausted; surfacing to user", { retries, turnCount, providerSessionKey });
       onSystemMessage?.(CONTENT_FILTER_BLOCKED_NOTICE, "error");
-      return "end";
+      return "refused";
     },
   };
 }

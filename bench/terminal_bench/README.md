@@ -101,7 +101,7 @@ Preparation creates one timestamped artifact directory under the configured jobs
 - `generated.json` is the validated named Harbor config used for execution.
 - `run_manifest.json` records seed provenance, the runtime source record, the agent package and its runtime archive digest, exact command, denominator, grade, and effective settings. The runtime source record contains `mode: "git_commit"` plus the requested and canonically resolved SHA. The `flywheel_config` record holds the config path, SHA-256 digest, and chat effort.
 - `metadata.yaml` identifies the agent and primary model.
-- `disclosure-ledger.json` is written during finalization from real Harbor trial evidence. A trial that ends on the provider's refusal of its content, such as the ChatGPT backend's `cyber_policy`, counts as `provider_refusal`: a scored failure of the arm that stays in the denominator, never `provider_infra`.
+- `disclosure-ledger.json` is written during finalization from real Harbor trial evidence. A trial that ends on the provider's refusal of its content, such as the ChatGPT backend's `cyber_policy` or an Anthropic content-filter stop that outlasts Flywheel's retries, counts as `provider_refusal`: a scored failure of the arm that stays in the denominator, never `provider_infra`.
 - Each trial's `agent/flywheel-run-summary.json` carries versioned settlement, cancellation, deadline-authority, and store identity evidence.
 - Each trial's `agent/flywheel-store-analysis.json` is the content-free analysis of Flywheel's durable event store for that trial. The store stays in the sandbox.
 

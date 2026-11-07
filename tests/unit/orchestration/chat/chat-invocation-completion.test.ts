@@ -1,7 +1,7 @@
 import { expect, it } from "bun:test"
 import { flushMicrotasks, makeLifecycle } from "./_chat-runner-lifecycle-fixtures"
 import { createChatControls } from "../../../../src/orchestration/chat/controls"
-import { createChatInvocationCompletion } from "../../../../src/orchestration/chat/runner-completion"
+import { createChatInvocationCompletion, type ChatTurnEnding } from "../../../../src/orchestration/chat/runner-completion"
 
 it.each(["completed", "no_capture", "failed", "flush_failed"] as const)("publishes the sealed final reply only after successful durable completion: %s", async (scenario) => {
   const { lifecycle, deps, resolvers, runnerOptions } = makeLifecycle()
@@ -52,6 +52,30 @@ it.each(["completed", "no_capture", "failed", "flush_failed"] as const)("publish
     expect(results).toEqual(scenario === "completed" ? [{ summary: "done" }] : [])
   } finally {
     held.resolve()
+    await lifecycle.terminateBackgroundWorks()
+  }
+})
+
+it.each([
+  ["a turn the model answered", "turn", { kind: "completed" }, [{ kind: "completed" }]],
+  ["a turn the content filter ended", "refused-turn", { kind: "completed" }, [{ kind: "refused" }]],
+  ["a run the provider's content refusal failed", "none", { kind: "api_error", message: "cyber_policy", recovery: { kind: "none" }, contentRefused: true }, [{ kind: "refused" }]],
+  ["a run another provider fault failed", "none", { kind: "api_error", message: "overloaded", recovery: { kind: "retry" } }, [{ kind: "failed", failure: "api_error" }]],
+  ["a run whose context overflowed", "none", { kind: "context_overflow" }, [{ kind: "failed", failure: "context_overflow" }]],
+  ["a run the caller stopped", "none", { kind: "aborted" }, []],
+] as const)("reports how each turn of the root chat ended: %s", async (_name, turnEnd, terminal, expected) => {
+  const { lifecycle, deps, resolvers, runnerOptions } = makeLifecycle()
+  const endings: ChatTurnEnding[] = []
+  deps.rootChatCompletion = createChatInvocationCompletion(undefined, (ending) => { endings.push(ending) })
+  try {
+    await lifecycle.enqueueInput("first")
+    await flushMicrotasks()
+    const options = runnerOptions[0]!
+    if (turnEnd !== "none") await options.lifecycle?.onTurnEnded?.({ handoffWritten: false, turnCount: 1, ...(turnEnd === "refused-turn" ? { contentRefused: true } : {}) })
+    resolvers[0]?.({ servedRequests: 0, durationMs: 1, terminal })
+    await lifecycle.settle()
+    expect(endings).toEqual([...expected])
+  } finally {
     await lifecycle.terminateBackgroundWorks()
   }
 })
