@@ -1,0 +1,42 @@
+scripts/prompt-assembly.ts
+  h_4b47e9e4a8b456 44,73-74,106,228-229,245
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 25,296,316,361-363
+src/orchestration/agent-runtime/tools/bash-guidance.ts
+  h_4b47e9e4a8b456 2,29-30,32-35,84-88,101,104,106
+src/orchestration/agent-runtime/tools/bash.ts
+  h_4b47e9e4a8b456 175,306
+src/orchestration/agent-runtime/tools/list-sessions.ts
+  h_4b47e9e4a8b456 5
+src/orchestration/agent-runtime/tools/message-session.ts
+  h_4b47e9e4a8b456 113-120,132,142,145,157,160,169-191,193-198,201-204,206,240,243
+src/orchestration/agent-runtime/tools/process.ts
+  h_4b47e9e4a8b456 95,99-100,105,109-110,248-250,252-273,278-281,283,293,311,326,336,347
+src/orchestration/agent-runtime/tools/tool-registry.ts
+  h_4b47e9e4a8b456 10-11,124-125,128,130-148,176,179,183-187
+src/orchestration/modules/bash/module.ts
+  h_4b47e9e4a8b456 34-35,54
+tests/unit/orchestration/agent-runtime/system-prompt-assembler.test.ts
+  h_4b47e9e4a8b456 666-677,708,720-721
+tests/unit/orchestration/agent-runtime/system-prompt-tiers.test.ts
+  h_4b47e9e4a8b456 83,114
+tests/unit/orchestration/agent-runtime/tools/process.test.ts
+  h_4b47e9e4a8b456 45-57
+tests/unit/orchestration/agent-runtime/tools/tool-exposure-planner.test.ts
+  h_4b47e9e4a8b456 667-687
+tests/unit/orchestration/agent-runtime/unattended-chat-prompt.test.ts
+  h_4b47e9e4a8b456 17,48-55,57,91-111
+tests/unit/orchestration/session/session-messaging.test.ts
+  h_4b47e9e4a8b456 150-152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "984423fd1bb822dd621e61c7d48ccd50b552a67c",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
