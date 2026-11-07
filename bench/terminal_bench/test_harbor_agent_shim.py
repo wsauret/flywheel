@@ -17,9 +17,10 @@ try:
 except ImportError:
     from harbor_agent.flywheel_harbor_agent import shim, trial_runtime
 
+SNAPSHOT_KEY = "sk-test-" + "k" * 40
 SNAPSHOT = {
     "profile": "benchmark",
-    "credentials": {"openai_api": {"type": "api_key", "key": "sk-test-" + "k" * 40}},
+    "credentials": {"openai_api": {"type": "api_key", "key": SNAPSHOT_KEY, "lineageId": "11111111-1111-4111-8111-111111111111"}},
     "modelAccess": [],
 }
 PROMPT = {"jsonrpc": "2.0", "id": 2, "method": "session/prompt", "params": {"sessionId": "root", "prompt": []}}
@@ -70,10 +71,11 @@ def _analyzer(directory: Path) -> Path:
 class TakeSnapshotTest(unittest.TestCase):
     def test_moves_the_snapshot_out_of_the_environment_into_a_private_stage(self) -> None:
         environ = {shim.SNAPSHOT_ENV: json.dumps(SNAPSHOT), "KEEP": "1"}
-        stage_file, profile = shim.take_snapshot(environ)
+        stage_file, profile, credential_values = shim.take_snapshot(environ)
         try:
             self.assertEqual(environ, {"KEEP": "1"})
             self.assertEqual(profile, "benchmark")
+            self.assertEqual(credential_values, {SNAPSHOT_KEY: "api_key.key"})
             self.assertEqual(stage_file.name, "auth.json")
             self.assertTrue(stage_file.parent.name.startswith("flywheel-auth-bundle-"))
             self.assertEqual(stat.S_IMODE(stage_file.parent.stat().st_mode), 0o700)
@@ -82,6 +84,18 @@ class TakeSnapshotTest(unittest.TestCase):
         finally:
             stage_file.unlink()
             stage_file.parent.rmdir()
+
+    def test_names_every_token_of_a_subscription_and_a_token_login_but_no_account_name(self) -> None:
+        snapshot = {
+            "profile": "benchmark",
+            "credentials": {"openai": [{"id": "instance-0001", "identity": "person@example.com", "lineageId": "22222222-2222-4222-8222-222222222222", "credential": {"type": "oauth", "access": "access-" + "a" * 30, "refresh": "refresh-" + "r" * 30, "expires": 1, "accountId": "account-identity-0001"}}]},
+            "externalLogins": {"claude": {"access": "token-" + "t" * 30}},
+        }
+        self.assertEqual(shim.snapshot_credential_values(snapshot), {
+            "access-" + "a" * 30: "oauth.access",
+            "refresh-" + "r" * 30: "oauth.refresh",
+            "token-" + "t" * 30: "external_login.access",
+        })
 
     def test_refuses_a_missing_snapshot(self) -> None:
         with self.assertRaisesRegex(RuntimeError, "FLYWHEEL_AUTH_SNAPSHOT is unset"):
@@ -99,26 +113,29 @@ class TakeSnapshotTest(unittest.TestCase):
 
 
 class ExportEvidenceTest(unittest.TestCase):
-    def test_records_the_analysis_of_the_settled_store_and_never_the_store(self) -> None:
+    def test_records_the_analysis_of_the_store_that_it_captures(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
             _store(root / "project", "ordinary event")
-            logs = root / "logs"
+            logs, private = root / "logs", root / "private"
             logs.mkdir()
-            publication, withheld = shim.export_evidence(root / "project", logs, _bun(root), _analyzer(root))
+            private.mkdir(mode=0o700)
+            publication, withheld = shim.export_evidence(root / "project", private, logs, _bun(root), _analyzer(root))
             self.assertIsNone(withheld)
             self.assertEqual(sorted(path.name for path in logs.iterdir()), [shim.ANALYSIS_NAME])
             self.assertEqual(json.loads((logs / shim.ANALYSIS_NAME).read_text())["store"], {"sha256": publication.sha256, "size": publication.size})
+            self.assertEqual(hashlib.sha256((private / ".flywheel" / "flywheel.sqlite").read_bytes()).hexdigest(), publication.sha256)
 
     def test_records_nothing_when_the_analysis_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
             _store(root / "project", "ordinary event")
-            logs = root / "logs"
+            logs, private = root / "logs", root / "private"
             logs.mkdir()
+            private.mkdir(mode=0o700)
             failing = root / "failing.py"
             failing.write_text("import sys; sys.exit(3)\n")
-            self.assertEqual(shim.export_evidence(root / "project", logs, _bun(root), failing), (None, "analysis_failed:exit_3"))
+            self.assertEqual(shim.export_evidence(root / "project", private, logs, _bun(root), failing), (None, "analysis_failed:exit_3"))
             self.assertEqual(list(logs.iterdir()), [])
 
 
@@ -128,7 +145,7 @@ class RunShutdownTest(unittest.TestCase):
     def _run(self, root: Path, export_command: list[str] | None = None, child_code: str = "pass") -> tuple[int, dict, float, bytes]:
         """Run the shim on a Harbor input that holds one prompt and stays open, and return its status, summary, time, and Harbor output."""
         project, logs = root / "project", root / "logs"
-        logs.mkdir()
+        logs.mkdir(exist_ok=True)
         tools = root / "tools"
         tools.mkdir()
         _bun(tools)
@@ -149,7 +166,7 @@ class RunShutdownTest(unittest.TestCase):
         ]
         self.addCleanup(signal.signal, signal.SIGTERM, signal.getsignal(signal.SIGTERM))
         if export_command is not None:
-            stubs.append(patch.object(shim, "_export_command", lambda: export_command))
+            stubs.append(patch.object(shim, "_command", lambda _step: export_command))
         for stub in stubs:
             stub.start()
             self.addCleanup(stub.stop)
@@ -176,17 +193,96 @@ class RunShutdownTest(unittest.TestCase):
         sender.start()
         self.addCleanup(sender.cancel)
 
-    def test_records_the_store_analysis_through_the_export_process(self) -> None:
+    def test_records_the_store_analysis_and_publishes_the_analyzed_store_and_every_log(self) -> None:
+        # The child writes a log file into the account home, as Flywheel's
+        # account-scoped processes do, beside the project log.
+        child = "import os; os.makedirs(os.path.expanduser('~/.flywheel/log')); open(os.path.expanduser('~/.flywheel/log/2-account.jsonl'), 'w').write('{}\\n')"
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
             _store(root / "project", "ordinary event")
-            status, summary, _, _ = self._run(root)
+            (root / "project" / ".flywheel" / "log").mkdir()
+            (root / "project" / ".flywheel" / "log" / "1-project.jsonl").write_text("{}\n")
+            status, summary, _, _ = self._run(root, child_code=child)
             analysis = json.loads((root / "logs" / shim.ANALYSIS_NAME).read_text())
+            evidence = root / "logs" / trial_runtime.EVIDENCE_DIR_NAME / ".flywheel"
             self.assertEqual(status, 0)
             self.assertNotIn("evidence_withheld", summary)
             self.assertEqual(summary["adapter_settlement"], "normal")
             self.assertEqual(summary["evidence_sha256"], analysis["store"]["sha256"])
+            self.assertEqual(hashlib.sha256((evidence / "flywheel.sqlite").read_bytes()).hexdigest(), analysis["store"]["sha256"])
+            self.assertEqual(sorted(path.name for path in (evidence / "log").iterdir()), ["1-project.jsonl", "2-account.jsonl"])
+            self.assertEqual(summary["debug_evidence"], {"published": [".flywheel/flywheel.sqlite", ".flywheel/log/1-project.jsonl", ".flywheel/log/2-account.jsonl"], "withheld": {}})
+            self.assertEqual(stat.S_IMODE((evidence / "flywheel.sqlite").stat().st_mode), 0o600)
             self.assertFalse((root / "logs" / "state").exists())
+
+    def test_withholds_evidence_that_holds_a_snapshot_credential_and_names_only_its_kind(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            _store(root / "project", f"a tool printed {SNAPSHOT_KEY}")
+            log = root / "project" / ".flywheel" / "log"
+            log.mkdir()
+            (log / "1-project.jsonl").write_text("{}\n")
+            # A credential in a log's name, over clean and over credential bytes.
+            (log / f"2-{SNAPSHOT_KEY}.jsonl").write_text("{}\n")
+            (log / f"3-{SNAPSHOT_KEY}.jsonl").write_text(SNAPSHOT_KEY)
+            status, summary, _, _ = self._run(root)
+            evidence = root / "logs" / trial_runtime.EVIDENCE_DIR_NAME / ".flywheel"
+            self.assertEqual(status, 0)
+            self.assertTrue(summary["evidence_exported"])
+            self.assertTrue((root / "logs" / shim.ANALYSIS_NAME).exists())
+            self.assertFalse((evidence / "flywheel.sqlite").exists())
+            self.assertEqual(summary["debug_evidence"], {"published": [".flywheel/log/1-project.jsonl"], "withheld": {
+                ".flywheel/flywheel.sqlite": "credential:api_key.key",
+                ".flywheel/log/<withheld name 2>": "credential:api_key.key",
+                ".flywheel/log/<withheld name 3>": "credential:api_key.key",
+            }})
+            for path in (root / "logs").rglob("*"):
+                self.assertNotIn(SNAPSHOT_KEY, path.name, path)
+                if path.is_file():
+                    self.assertNotIn(SNAPSHOT_KEY.encode(), path.read_bytes(), path)
+
+    def test_a_failed_publication_keeps_the_analysis_and_the_trial(self) -> None:
+        # A path the agent planted where the evidence goes is never written through.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            _store(root / "project", "ordinary event")
+            outside = root / "outside"
+            outside.mkdir()
+            (root / "logs").mkdir()
+            (root / "logs" / trial_runtime.EVIDENCE_DIR_NAME).symlink_to(outside, target_is_directory=True)
+            status, summary, _, _ = self._run(root)
+            self.assertEqual(status, 0)
+            self.assertTrue(summary["evidence_exported"])
+            self.assertEqual(summary["debug_evidence"], {"failed": "publish_failed:exit_1"})
+            self.assertEqual(list(outside.iterdir()), [])
+
+    def test_a_private_directory_that_cannot_be_made_still_writes_the_summary(self) -> None:
+        real_mkdtemp = shim.tempfile.mkdtemp
+
+        def refuse_evidence(*arguments, prefix=None, **keywords):
+            if prefix == "flywheel-evidence-":
+                raise OSError("no space left on device")
+            return real_mkdtemp(*arguments, prefix=prefix, **keywords)
+
+        with tempfile.TemporaryDirectory() as directory, patch.object(shim.tempfile, "mkdtemp", refuse_evidence):
+            root = Path(directory).resolve()
+            _store(root / "project", "ordinary event")
+            status, summary, _, _ = self._run(root)
+            self.assertEqual(status, 0)
+            self.assertEqual(summary["evidence_withheld"], "export_failed:OSError")
+            self.assertEqual(summary["debug_evidence"], {"failed": "publish_failed:OSError"})
+
+    def test_a_fifo_among_the_logs_is_withheld_without_blocking_the_others(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            _store(root / "project", "ordinary event")
+            log = root / "project" / ".flywheel" / "log"
+            log.mkdir()
+            (log / "1-project.jsonl").write_text("{}\n")
+            os.mkfifo(log / "2-fifo.jsonl", 0o600)
+            status, summary, _, _ = self._run(root)
+            self.assertEqual(status, 0)
+            self.assertEqual(summary["debug_evidence"], {"published": [".flywheel/flywheel.sqlite", ".flywheel/log/1-project.jsonl"], "withheld": {".flywheel/log/2-fifo.jsonl": "unsafe_source"}})
 
     def test_a_settled_answer_ends_flywheel_and_reaches_harbor_only_after_the_run_summary(self) -> None:
         # Harbor never closes its input here, so the child ends only because the
@@ -229,6 +325,8 @@ class RunShutdownTest(unittest.TestCase):
             self.assertLess(elapsed - sigterm_delay, 2)
             self.assertEqual(summary["adapter_settlement"], "harbor-cancellation")
             self.assertEqual(summary["evidence_withheld"], "export_deadline")
+            self.assertEqual(summary["debug_evidence"], {"failed": "publish_deadline"})
+            self.assertFalse((root / "logs" / trial_runtime.EVIDENCE_DIR_NAME).exists())
 
     def test_a_sigterm_after_a_settled_answer_is_a_normal_end(self) -> None:
         # Flywheel answers only a settled turn: a model reply with background

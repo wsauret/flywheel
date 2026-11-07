@@ -17,9 +17,11 @@ In order, the shim:
 3. runs Flywheel in the task workspace, relays the protocol, and forwards
    SIGTERM to it;
 4. analyzes the trial's settled event store in a private directory and writes
-   only that content-free analysis into the agent logs, then the run summary
-   that finalization reads. The store itself never enters the logs, because
-   Harbor scrubs secrets only in text files.
+   that content-free analysis into the agent logs; then publishes the analyzed
+   store and Flywheel's diagnostic logs into `flywheel-evidence/` of the agent
+   logs, less every file that holds a credential value of the snapshot,
+   because Harbor scrubs secrets only in text files; then writes the run
+   summary that finalization reads.
 
 Harbor's runner closes stdin when it reads the prompt's answer, sends SIGTERM
 two seconds later, and SIGKILL two seconds after that. Flywheel answers the
@@ -28,8 +30,10 @@ answer, closes the child's stdin itself, lets Flywheel end, and does step 4
 before it sends the answer on: the export of a settled trial runs on the
 quiescent store of an ended Flywheel, before Harbor's clock starts. A SIGTERM
 before a settled answer, at Harbor's agent timeout or after a cancelled turn,
-is a stop of the trial. The export then runs in its own process group under a
-deadline inside the two seconds, so the run summary is written before SIGKILL.
+is a stop of the trial. The analysis and then the publication each run in
+their own process group under one deadline inside the two seconds, so the run
+summary is written before SIGKILL, and a publication that the deadline ends
+costs no analysis.
 
 The snapshot stays readable in `/proc/<shim pid>/environ` for the whole run,
 also to a process of the same user that the agent starts: removing it from
@@ -61,11 +65,13 @@ from pathlib import Path
 from .trial_runtime import (
     BUN_RELEASE_ASSETS,
     BUN_RELEASE_BASE_URL,
+    EVIDENCE_DIR_NAME,
     AdapterSettlement,
     DeadlineAuthority,
     EvidencePublication,
     _export_settled_sqlite,
     _write_run_summary,
+    publish_debug_evidence,
 )
 
 SNAPSHOT_ENV = "FLYWHEEL_AUTH_SNAPSHOT"
@@ -86,7 +92,8 @@ _CHILD_EXIT_GRACE_SECONDS = 2.0
 # The evidence export ends this long after the first SIGTERM, so the run
 # summary lands before SIGKILL. The bound counts the child's term grace.
 _EXPORT_AFTER_SIGTERM_SECONDS = 1.6
-_EXPORT_COMMAND = "export-evidence"
+# A shorter value would match ids and words of the store, not secrets.
+_MIN_CREDENTIAL_LENGTH = 12
 
 
 class _Cancelled(Exception):
@@ -114,16 +121,43 @@ def read_build_record(package_root: Path) -> dict:
     return record
 
 
-def take_snapshot(environ: dict) -> tuple[Path, str]:
+def snapshot_credential_values(snapshot: dict) -> dict[str, str]:
+    """Each credential value of the auth snapshot `snapshot`, mapped to the kind of field that held it.
+
+    The snapshot reader of the runtime refuses every field it does not know,
+    so these are all of its secrets: each credential's API `key` or OAuth
+    `access` and `refresh` token, singleton or in a subscription collection,
+    and each token login's `access`. Lineage ids, account identities, and
+    labels name the account, not its access, and the store records them.
+    """
+    credentials = [
+        record.get("credential", record)
+        for value in snapshot.get("credentials", {}).values()
+        for record in (value if isinstance(value, list) else [value])
+    ]
+    found = {
+        credential[name]: f"{credential['type']}.{name}"
+        for credential in credentials
+        for name in ("key", "access", "refresh")
+        if name in credential
+    }
+    found.update({login["access"]: "external_login.access" for login in snapshot.get("externalLogins", {}).values()})
+    return {value: kind for value, kind in found.items() if len(value) >= _MIN_CREDENTIAL_LENGTH}
+
+
+def take_snapshot(environ: dict) -> tuple[Path, str, dict[str, str]]:
     """Move the snapshot from `environ` into a private stage file.
 
-    Returns the stage file and the snapshot's profile id. The variable leaves
-    `environ` before anything else reads it, so no child process inherits it.
+    Returns the stage file, the snapshot's profile id, and its credential
+    values (`snapshot_credential_values`), which the shim keeps in memory only
+    to withhold evidence that holds one. The variable leaves `environ` before
+    anything else reads it, so no child process inherits it.
     """
     content = environ.pop(SNAPSHOT_ENV, None)
     if not content:
         raise RuntimeError(f"{SNAPSHOT_ENV} is unset or empty")
-    profile = json.loads(content).get("profile")
+    snapshot = json.loads(content)
+    profile = snapshot.get("profile")
     if not isinstance(profile, str) or not profile:
         raise RuntimeError("auth snapshot names no profile")
     stage = Path(tempfile.mkdtemp(prefix="flywheel-auth-bundle-"))
@@ -131,7 +165,7 @@ def take_snapshot(environ: dict) -> tuple[Path, str]:
     descriptor = os.open(stage_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
     with os.fdopen(descriptor, "w") as output:
         output.write(content)
-    return stage_file, profile
+    return stage_file, profile, snapshot_credential_values(snapshot)
 
 
 def _install_bun(work: Path) -> Path:
@@ -309,38 +343,49 @@ class _Relay:
             _write_all(self._harbor_out, line)
 
 
-def export_evidence(project_root: Path, logs_dir: Path, bun: Path, analyzer: Path) -> tuple[EvidencePublication | None, str | None]:
-    """Analyze the settled store and write only the analysis to `<logs_dir>/flywheel-store-analysis.json`.
+def export_evidence(project_root: Path, private: Path, logs_dir: Path, bun: Path, analyzer: Path) -> tuple[EvidencePublication | None, str | None]:
+    """Analyze the settled store and write the analysis to `<logs_dir>/flywheel-store-analysis.json`.
 
-    The store is captured into a private directory and analyzed there by the
-    packaged trial store analysis, whose output holds counts, booleans, ids,
-    and the store's digest, never content. Returns the identity of the
-    analyzed store bytes, or None and the reason no analysis was recorded.
+    The store is captured into the private directory `private`, at
+    `.flywheel/flywheel.sqlite`, and analyzed there by the packaged trial store
+    analysis, whose output holds counts, booleans, ids, and the store's digest,
+    never content. The capture stays for `publish_debug_evidence`. Returns the
+    identity of the analyzed store bytes, or None and the reason no analysis
+    was recorded.
     """
-    private = Path(tempfile.mkdtemp(prefix="flywheel-evidence-"))
-    try:
-        publication = _export_settled_sqlite(project_root, private)
-        # The analysis's diagnostics stay out of the logs: an error message can quote store content.
-        analysis = subprocess.run(
-            [str(bun), str(analyzer), str(private / ".flywheel" / "flywheel.sqlite")],
-            cwd=private, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-            env={"PATH": _BASE_PATH, "HOME": str(private)},
-        )
-        if analysis.returncode != 0:
-            return None, f"analysis_failed:exit_{analysis.returncode}"
-        row = json.loads(analysis.stdout)
-        if row.get("store") != {"sha256": publication.sha256, "size": publication.size}:
-            return None, "analysis_identity_mismatch"
-        temporary = logs_dir / f".{ANALYSIS_NAME}.{secrets.token_hex(8)}"
-        temporary.write_text(json.dumps(row, sort_keys=True) + "\n")
-        os.replace(temporary, logs_dir / ANALYSIS_NAME)
-        return publication, None
-    finally:
-        shutil.rmtree(private, ignore_errors=True)
+    publication = _export_settled_sqlite(project_root, private)
+    # The analysis's diagnostics stay out of the logs: an error message can quote store content.
+    analysis = subprocess.run(
+        [str(bun), str(analyzer), str(private / ".flywheel" / "flywheel.sqlite")],
+        cwd=private, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+        env={"PATH": _BASE_PATH, "HOME": str(private)},
+    )
+    if analysis.returncode != 0:
+        return None, f"analysis_failed:exit_{analysis.returncode}"
+    row = json.loads(analysis.stdout)
+    if row.get("store") != {"sha256": publication.sha256, "size": publication.size}:
+        return None, "analysis_identity_mismatch"
+    temporary = logs_dir / f".{ANALYSIS_NAME}.{secrets.token_hex(8)}"
+    temporary.write_text(json.dumps(row, sort_keys=True) + "\n")
+    os.replace(temporary, logs_dir / ANALYSIS_NAME)
+    return publication, None
 
 
-def _export_command() -> list[str]:
-    return [sys.executable, "-m", "flywheel_harbor_agent.shim", _EXPORT_COMMAND]
+def _export_main(request: dict) -> dict:
+    publication, withheld = export_evidence(Path(request["project_root"]), Path(request["private"]), Path(request["logs_dir"]), Path(request["bun"]), Path(request["analyzer"]))
+    return {"withheld": withheld} if publication is None else {"sha256": publication.sha256, "size": publication.size}
+
+
+def _publish_main(request: dict) -> dict:
+    return publish_debug_evidence(Path(request["store"]), [Path(directory) for directory in request["log_directories"]], Path(request["destination"]), request["credential_values"])
+
+
+# The steps that run in a process group of their own, by the subcommand that runs each.
+_STEPS = {"export-evidence": _export_main, "publish-evidence": _publish_main}
+
+
+def _command(step: str) -> list[str]:
+    return [sys.executable, "-m", "flywheel_harbor_agent.shim", step]
 
 
 def _remove_analysis(logs_dir: Path) -> None:
@@ -348,33 +393,43 @@ def _remove_analysis(logs_dir: Path) -> None:
         path.unlink(missing_ok=True)
 
 
-def _bounded_export(project_root: Path, logs_dir: Path, bun: Path, analyzer: Path, deadline) -> tuple[EvidencePublication | None, str | None]:
-    """Run `export_evidence` in its own process group and kill the group at `deadline()`.
+def _bounded(step: str, request: dict, deadline, discard) -> tuple[dict | None, str | None]:
+    """Run the step `step` of `_STEPS` on `request` in its own process group and kill the group at `deadline()`.
 
-    `deadline` returns a monotonic time and can move earlier while the export
-    runs. A killed export leaves no analysis in the logs, so the summary
-    records the evidence as withheld.
+    `deadline` returns a monotonic time and can move earlier while the step
+    runs. Returns the step's JSON result, or None and why it gave none,
+    `<verb>_deadline` or `<verb>_failed:exit_<status>` (the verb is the first
+    word of `step`), after `discard()` removes what the step left in the logs.
     """
-    request = json.dumps({"project_root": str(project_root), "logs_dir": str(logs_dir), "bun": str(bun), "analyzer": str(analyzer)}).encode()
-    # `-m` puts its cwd first on sys.path, which is how the export imports this package.
-    export = subprocess.Popen(_export_command(), cwd=PACKAGE_ROOT, stdin=subprocess.PIPE, stdout=subprocess.PIPE, start_new_session=True)
+    verb = step.split("-")[0]
+    payload = json.dumps(request).encode()
+    # `-m` puts its cwd first on sys.path, which is how the step imports this package.
+    process = subprocess.Popen(_command(step), cwd=PACKAGE_ROOT, stdin=subprocess.PIPE, stdout=subprocess.PIPE, start_new_session=True)
     while True:
         remaining = deadline() - time.monotonic()
         if remaining <= 0:
-            os.killpg(export.pid, signal.SIGKILL)
-            export.wait()
-            _remove_analysis(logs_dir)
-            return None, "export_deadline"
+            os.killpg(process.pid, signal.SIGKILL)
+            process.wait()
+            discard()
+            return None, f"{verb}_deadline"
         try:
             # A retried communicate keeps its input and output; the short wait lets a SIGTERM move the deadline.
-            stdout, _ = export.communicate(request, timeout=min(remaining, 0.1))
+            stdout, _ = process.communicate(payload, timeout=min(remaining, 0.1))
             break
         except subprocess.TimeoutExpired:
-            request = None
-    if export.returncode != 0:
-        _remove_analysis(logs_dir)
-        return None, f"export_failed:exit_{export.returncode}"
-    result = json.loads(stdout)
+            payload = None
+    if process.returncode != 0:
+        discard()
+        return None, f"{verb}_failed:exit_{process.returncode}"
+    return json.loads(stdout), None
+
+
+def _bounded_export(project_root: Path, private: Path, logs_dir: Path, bun: Path, analyzer: Path, deadline) -> tuple[EvidencePublication | None, str | None]:
+    """`export_evidence` under `_bounded`. A killed export leaves no analysis in the logs, so the summary records the analysis as withheld."""
+    request = {"project_root": str(project_root), "private": str(private), "logs_dir": str(logs_dir), "bun": str(bun), "analyzer": str(analyzer)}
+    result, reason = _bounded("export-evidence", request, deadline, lambda: _remove_analysis(logs_dir))
+    if result is None:
+        return None, reason
     if "withheld" in result:
         return None, result["withheld"]
     return EvidencePublication(result["sha256"], result["size"]), None
@@ -431,13 +486,16 @@ def run(environ: dict, project_root: Path, logs_dir: Path = LOGS_DIR, package_ro
 
     signal.signal(signal.SIGTERM, on_sigterm)
     stage_file: Path | None = None
-    work = Path(tempfile.mkdtemp(prefix="flywheel-runtime-"))
+    credential_values: dict[str, str] = {}
+    # Resolved, because the evidence publication opens the home's log directory
+    # through no link, and the temporary root can be one (macOS's /var).
+    work = Path(tempfile.mkdtemp(prefix="flywheel-runtime-")).resolve()
     archive_sha256: str | None = None
     bin_dir: Path | None = None
     analyzer: Path | None = None
     status = 1
     try:
-        stage_file, profile = take_snapshot(environ)
+        stage_file, profile, credential_values = take_snapshot(environ)
         record = read_build_record(package_root)
         archive_sha256 = record["runtime_archive"]["sha256"]
         _log(f"build {record['build_id']} source {record['flywheel_source']['commit']}")
@@ -463,12 +521,33 @@ def run(environ: dict, project_root: Path, logs_dir: Path = LOGS_DIR, package_ro
         exporting = True
         if stage_file is not None:
             shutil.rmtree(stage_file.parent, ignore_errors=True)
-        publication, withheld = None, None
+        publication, withheld, debug_evidence = None, None, None
         if child is not None and bin_dir is not None and analyzer is not None:
+            private: Path | None = None
             try:
-                publication, withheld = _bounded_export(project_root, logs_dir, bin_dir / "bun", analyzer, lambda: sigterm_deadline)
+                private = Path(tempfile.mkdtemp(prefix="flywheel-evidence-")).resolve()
+                publication, withheld = _bounded_export(project_root, private, logs_dir, bin_dir / "bun", analyzer, lambda: sigterm_deadline)
             except Exception as error:
                 withheld = f"export_failed:{type(error).__name__}"
+                if private is None:
+                    debug_evidence = {"failed": f"publish_failed:{type(error).__name__}"}
+            if private is not None:
+                destination = logs_dir / EVIDENCE_DIR_NAME
+                request = {
+                    "store": str(private / ".flywheel" / "flywheel.sqlite"),
+                    "log_directories": [str(project_root / ".flywheel" / "log"), str(work / "home" / ".flywheel" / "log")],
+                    "destination": str(destination),
+                    # The step reads the values from its stdin pipe, never from an argument or a file.
+                    "credential_values": credential_values,
+                }
+                try:
+                    result, reason = _bounded("publish-evidence", request, lambda: sigterm_deadline, lambda: shutil.rmtree(destination, ignore_errors=True))
+                    debug_evidence = result if result is not None else {"failed": reason}
+                except Exception as error:
+                    debug_evidence = {"failed": f"publish_failed:{type(error).__name__}"}
+                finally:
+                    shutil.rmtree(private, ignore_errors=True)
+        credential_values.clear()
         settlement = AdapterSettlement("harbor-cancellation", True) if stopped else AdapterSettlement("normal", False)
         _write_run_summary(
             logs_dir,
@@ -479,6 +558,7 @@ def run(environ: dict, project_root: Path, logs_dir: Path = LOGS_DIR, package_ro
             project_root=str(project_root),
             evidence_publication=publication,
             evidence_withheld=withheld,
+            debug_evidence=debug_evidence,
         )
         if relay is not None:
             relay.release()
@@ -486,15 +566,9 @@ def run(environ: dict, project_root: Path, logs_dir: Path = LOGS_DIR, package_ro
     return status
 
 
-def _export_main() -> None:
-    request = json.load(sys.stdin)
-    publication, withheld = export_evidence(Path(request["project_root"]), Path(request["logs_dir"]), Path(request["bun"]), Path(request["analyzer"]))
-    print(json.dumps({"withheld": withheld} if publication is None else {"sha256": publication.sha256, "size": publication.size}))
-
-
 def main() -> None:
-    if sys.argv[1:] == [_EXPORT_COMMAND]:
-        _export_main()
+    if len(sys.argv) == 2 and sys.argv[1] in _STEPS:
+        print(json.dumps(_STEPS[sys.argv[1]](json.load(sys.stdin))))
         return
     environ = dict(os.environ)
     os.environ.pop(SNAPSHOT_ENV, None)

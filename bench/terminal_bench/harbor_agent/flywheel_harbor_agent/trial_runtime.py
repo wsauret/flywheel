@@ -1,7 +1,8 @@
 """What a Flywheel Terminal-Bench trial runs on and records.
 
 The ACP shim (shim.py beside this file) installs this pinned Bun release,
-exports the trial's settled event store, and writes the versioned run summary
+exports the trial's settled event store, publishes the store and the trial's
+diagnostic logs as debug evidence, and writes the versioned run summary
 that finalization reads, in a local Docker trial and on Harbor Hub alike. This
 module uses only the standard library, because the package ships it without
 Harbor.
@@ -15,6 +16,7 @@ import shutil
 import sqlite3
 import stat
 import tempfile
+from contextlib import ExitStack
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -33,6 +35,9 @@ BUN_RELEASE_ASSETS = {
 
 
 RUN_SUMMARY_NAME = "flywheel-run-summary.json"
+# The agent-log directory that holds the trial's store and diagnostic logs in
+# the layout of a project root, for `flywheel events search --project-root`.
+EVIDENCE_DIR_NAME = "flywheel-evidence"
 
 
 _NOFOLLOW = getattr(os, "O_NOFOLLOW", 0)
@@ -113,12 +118,15 @@ def _write_run_summary(
     project_root: str | None = None,
     evidence_publication: EvidencePublication | None = None,
     evidence_withheld: str | None = None,
+    debug_evidence: dict | None = None,
 ) -> dict:
     """Publish the trial's versioned run summary into the agent logs directory.
 
-    `evidence_withheld` names why a driver kept the store out of the logs, such
-    as a store that holds credential bytes; finalization then sees an
-    unexported store and refuses the trial as unverified.
+    `evidence_withheld` names why a driver recorded no store analysis;
+    finalization then sees an unexported store and refuses the trial as
+    unverified. `debug_evidence` is the outcome of `publish_debug_evidence`, or
+    `{"failed": <reason>}` when that publication did not complete; it never
+    changes how finalization judges the trial.
     """
     evidence = {
         "version": 2,
@@ -139,6 +147,8 @@ def _write_run_summary(
     }
     if evidence_withheld is not None:
         evidence["evidence_withheld"] = evidence_withheld
+    if debug_evidence is not None:
+        evidence["debug_evidence"] = debug_evidence
     destination = logs_dir / RUN_SUMMARY_NAME
     temporary = logs_dir / f".{RUN_SUMMARY_NAME}.{secrets.token_hex(8)}"
     try:
@@ -183,7 +193,8 @@ def _open_evidence_source_regular_at(
     directory_descriptor: int, name: str, expected_owner: int
 ) -> int:
     try:
-        descriptor = os.open(name, os.O_RDONLY | _NOFOLLOW, dir_fd=directory_descriptor)
+        # O_NONBLOCK: a FIFO planted under a source name must not block the open before its type is checked.
+        descriptor = os.open(name, os.O_RDONLY | os.O_NONBLOCK | _NOFOLLOW, dir_fd=directory_descriptor)
     except FileNotFoundError:
         raise
     except OSError as error:
@@ -396,3 +407,93 @@ def _export_settled_sqlite(project_root: Path, evidence_dir: Path) -> EvidencePu
             os.close(source_directory_descriptor)
         if project_descriptor is not None:
             os.close(project_descriptor)
+
+
+def _read_regular_at(directory_descriptor: int, name: str, owner: int) -> bytes:
+    descriptor = _open_evidence_source_regular_at(directory_descriptor, name, owner)
+    try:
+        chunks = []
+        while chunk := os.read(descriptor, 1024 * 1024):
+            chunks.append(chunk)
+        return b"".join(chunks)
+    finally:
+        os.close(descriptor)
+
+
+def _write_new_at(directory_descriptor: int, name: str, content: bytes) -> None:
+    descriptor = os.open(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | _NOFOLLOW, 0o600, dir_fd=directory_descriptor)
+    try:
+        view = memoryview(content)
+        while view:
+            view = view[os.write(descriptor, view):]
+    finally:
+        os.close(descriptor)
+
+
+def publish_debug_evidence(store: Path, log_directories: list[Path], destination: Path, credential_values: dict[str, str]) -> dict:
+    """Copy the analyzed store `store` and every `.jsonl` file of `log_directories` into `destination`.
+
+    The copies take the layout of a project root, `.flywheel/flywheel.sqlite`
+    and `.flywheel/log/`, so `flywheel events search --project-root
+    <destination>` reads them. `credential_values` maps each credential value
+    of the trial's auth snapshot to the kind of field that held it; a file
+    whose bytes hold one is not copied. Every source is opened without
+    following links and must be a regular, single-link file of its
+    directory's owner that nobody else can write; a missing source is
+    skipped.
+
+    Returns `{"published": [...], "withheld": {...}}`: the relative paths
+    copied, and by relative path (or by source directory) why each other
+    source was not, `credential:<kind>` or `unsafe_source`. A source whose
+    name holds a credential value is keyed by a numbered placeholder, never
+    by its name. Raises when
+    `destination` exists, so nothing is written through a planted link.
+    """
+    needles = [(value.encode(), kind) for value, kind in credential_values.items()]
+
+    def credential_in(data: bytes) -> str | None:
+        return next((kind for value, kind in needles if value in data), None)
+
+    published: list[str] = []
+    withheld: dict[str, str] = {}
+    with ExitStack() as descriptors:
+        def held(descriptor: int) -> int:
+            descriptors.callback(os.close, descriptor)
+            return descriptor
+
+        destination.mkdir(mode=0o700)
+        root = held(os.open(destination, _DIRECTORY_FLAGS))
+        os.mkdir(".flywheel", 0o700, dir_fd=root)
+        flywheel = held(os.open(".flywheel", _DIRECTORY_FLAGS, dir_fd=root))
+        os.mkdir("log", 0o700, dir_fd=flywheel)
+        log = held(os.open("log", _DIRECTORY_FLAGS, dir_fd=flywheel))
+        sources = [(store.parent, [store.name], flywheel, ".flywheel"), *((directory, None, log, ".flywheel/log") for directory in log_directories)]
+        for directory, names, target, prefix in sources:
+            try:
+                source = held(_open_absolute_path(directory, _DIRECTORY_FLAGS))
+            except RuntimeError as error:
+                if not isinstance(error.__cause__, FileNotFoundError):
+                    withheld[f"{directory}/"] = "unsafe_source"
+                continue
+            owner = os.fstat(source).st_uid
+            for name in names or sorted(entry for entry in os.listdir(source) if entry.endswith(".jsonl")):
+                # A name reaches the summary and the evidence tree, so a name that holds a credential is keyed by a placeholder.
+                kind = credential_in(os.fsencode(name))
+                if kind is not None:
+                    withheld[f"{prefix}/<withheld name {len(withheld) + 1}>"] = f"credential:{kind}"
+                    continue
+                path = f"{prefix}/{name}"
+                try:
+                    content = _read_regular_at(source, name, owner)
+                except FileNotFoundError:
+                    continue
+                except RuntimeError:
+                    withheld[path] = "unsafe_source"
+                    continue
+                kind = credential_in(content)
+                if kind is not None:
+                    withheld[path] = f"credential:{kind}"
+                    continue
+                _write_new_at(target, name, content)
+                published.append(path)
+    return {"published": published, "withheld": withheld}

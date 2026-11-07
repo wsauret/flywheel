@@ -110,8 +110,9 @@ export function manifest() {
 
 /** One reward-1 trial with two provider requests, each followed by one shell
  *  call, in a trial directory under `root`. As the shim does, it writes the
- *  analysis of the trial store into the agent logs; the store itself stays
- *  outside them, at the returned `storePath`. The audit facts and the tool
+ *  analysis of the trial store into the agent logs. The fixture keeps the
+ *  store at the returned `storePath`, because the host analyzer reads only
+ *  the analysis, never the debug copy that the shim also publishes. The audit facts and the tool
  *  inputs come from the live recorder, emitter, and fact mapper, so the
  *  fixture follows the current fact versions and identity shape. The recorder
  *  writes the tool surface only for the first request; the second request
