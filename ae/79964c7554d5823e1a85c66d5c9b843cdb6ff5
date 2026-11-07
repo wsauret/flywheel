@@ -1,0 +1,52 @@
+src/infra/agent-assets/system-prompt.md
+  h_4b47e9e4a8b456 16,20-23,25
+src/orchestration/agent-runtime/agent-loop.ts
+  h_4b47e9e4a8b456 33,96,218-224
+src/orchestration/agent-runtime/global-guidelines.ts
+  h_4b47e9e4a8b456 16
+src/orchestration/agent-runtime/run-end-process-notice.ts
+  h_4b47e9e4a8b456 1-29
+src/orchestration/agent-runtime/tools/bash-compressor.ts
+  h_4b47e9e4a8b456 29-37,44-52,56-58,60-63,66-68,74-84,88-91,93,101-103,105-107,114,117-119
+src/orchestration/agent-runtime/tools/bash-file-reads.ts
+  h_4b47e9e4a8b456 38-39,65,87-104,110
+src/orchestration/agent-runtime/tools/bash-guidance.ts
+  h_4b47e9e4a8b456 5,22-23,29-31,96
+src/orchestration/agent-runtime/tools/bash.ts
+  h_4b47e9e4a8b456 283
+src/orchestration/agent-runtime/tools/shell-execution.ts
+  h_4b47e9e4a8b456 388-390
+src/orchestration/agent-runtime/tools/shell-runtime-types.ts
+  h_4b47e9e4a8b456 38-40
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 36,39,1255
+tests/unit/orchestration/agent-runtime/agent-prompt.test.ts
+  h_4b47e9e4a8b456 101,107-110,112,145,173-178,182
+tests/unit/orchestration/agent-runtime/context/run-end-process-notice.test.ts
+  h_4b47e9e4a8b456 1-52
+tests/unit/orchestration/agent-runtime/minimal-verification-prompt.test.ts
+  h_4b47e9e4a8b456 22,24,43-52
+tests/unit/orchestration/agent-runtime/system-prompt-assembler.test.ts
+  h_4b47e9e4a8b456 463-464,664
+tests/unit/orchestration/agent-runtime/tools/bash-compressor.test.ts
+  h_4b47e9e4a8b456 46-49,57-58,60,64-82,86-92,97-98,100,105-108
+tests/unit/orchestration/agent-runtime/tools/bash-output-tail.test.ts
+  h_4b47e9e4a8b456 254-255
+tests/unit/orchestration/agent-runtime/tools/tools-bash-auto-yield.test.ts
+  h_4b47e9e4a8b456 476,501
+tests/unit/orchestration/agent-runtime/tools/tools-bash-background.test.ts
+  h_4b47e9e4a8b456 341-358
+tests/unit/orchestration/agent-runtime/tools/tools-bash.test.ts
+  h_4b47e9e4a8b456 45,600,623,631,653-654
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ae79964c7554d5823e1a85c66d5c9b843cdb6ff5",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
