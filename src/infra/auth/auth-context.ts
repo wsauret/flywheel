@@ -197,6 +197,8 @@ export function currentCredentialLineage(
 }
 
 /** The redacted runtime form of a stored credential DTO. */
+export function runtimeCredential(credential: OAuthCredential): RuntimeOAuthCredential;
+export function runtimeCredential(credential: Credential): RuntimeCredential;
 export function runtimeCredential(credential: Credential): RuntimeCredential {
   return credential.type === "api_key"
     ? Object.freeze({ type: "api_key", key: Redacted.make(credential.key) })

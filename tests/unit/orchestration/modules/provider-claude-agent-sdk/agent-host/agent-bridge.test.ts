@@ -24,7 +24,7 @@ import { silentVersions } from "../../../../../../src/orchestration/modules/prov
 
 const directory = temporaryDirectories();
 /** The chat tree of every agent of this suite, which the suite holds while it runs. */
-const TREE = holdSharedTree("tree", () => composeFirstPartyModules()).tree;
+const TREE = holdSharedTree("tree", () => ({ modules: composeFirstPartyModules(), shellWriteGuard: true })).tree;
 
 /** The fields of an agent file row that the drift test reads. */
 const AgentFileRow = Schema.Struct({

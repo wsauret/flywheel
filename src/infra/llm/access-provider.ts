@@ -243,9 +243,20 @@ interface AccessProviderExternalLogin {
   readonly logoutProfile: (authDir: string, ports: { readonly launcher: LauncherScope }) => Promise<void>;
 }
 
+interface AccessProviderOAuthStrategy {
+  readonly kind: "oauth";
+  readonly credentialId: string;
+  readonly statusRank: number;
+  /** Rotates `credential` now, whatever its remaining lifetime, and returns the new credential without persisting
+   *  it: the caller persists it through the profile's compare-and-set. A provider declares this only when its
+   *  refresh token serves this rotation and nothing else, so an access-only copy of the credential, such as a
+   *  headless auth snapshot, carries no refresh token for it. Rejects when the provider refuses the rotation. */
+  readonly refresh?: (credential: RuntimeOAuthCredential, signal?: AbortSignal) => Promise<RuntimeOAuthCredential>;
+}
+
 type AccessProviderAuthStrategy =
   | { readonly kind: "api_key"; readonly statusRank: number; readonly keyPrefix?: ApiKeyPrefix }
-  | ({ readonly kind: "oauth"; readonly credentialId: string; readonly statusRank: number } & AccessProviderOAuthLogin)
+  | (AccessProviderOAuthStrategy & AccessProviderOAuthLogin)
   | ({ readonly kind: "external"; readonly statusRank: number } & AccessProviderExternalLogin);
 
 /** A definition whose login another program owns. */

@@ -22,7 +22,7 @@ import type { WorkflowHosts } from "../../../../src/orchestration/workflow-host/
 const configView = {
   revision: 0,
   values: {
-    moduleSelection: [], allowPersistentProcesses: false, foregroundBashHoldSeconds: 240, showThinking: true, idleCompaction: true, autoDeleteSessionDays: 0, writeSyntaxTheme: "nord" as const,
+    moduleSelection: [], allowPersistentProcesses: false, foregroundBashHoldSeconds: 240, showThinking: true, idleCompaction: true, shellWriteGuard: true, autoDeleteSessionDays: 0, writeSyntaxTheme: "nord" as const,
     requireWorkflowConfirmation: true, diffColors: "theme" as const, compatibleRendering: "auto" as const, webSearchProvider: "exa" as const,
     fontTipDismissed: false, tabsHintDismissed: false, proactiveCompactionThreshold: 270_000, showBuild: false,
     moduleSections: { subscription_usage: { alert_thresholds: [75, 90, 95, 100] } }, autoInstall: true, roles: {}, profiles: {}, keybindings: {},

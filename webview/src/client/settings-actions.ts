@@ -28,6 +28,7 @@ export type InlineSettingAction =
   | { readonly kind: "set-compaction-threshold"; readonly tokens: number }
   | { readonly kind: "set-auto-delete-session-days"; readonly days: number }
   | { readonly kind: "set-idle-compaction"; readonly on: boolean }
+  | { readonly kind: "set-shell-write-guard"; readonly on: boolean }
   | { readonly kind: "set-show-thinking"; readonly on: boolean }
   | { readonly kind: "set-show-build"; readonly on: boolean }
   | { readonly kind: "set-write-syntax-theme"; readonly theme: WriteSyntaxThemeId }
@@ -52,6 +53,7 @@ export type SettingId =
   | "persistent" | "updates" | "workflow-mode" | "web-search" | "profile" | "effort" | "compaction" | "thinking"
   | "show-build" | "write-syntax-theme" | "diff-colors" | "git-attribution" | "training-routes" | "project-profile" | "reset" | "preset"
   | "idle-compaction"
+  | "shell-write-guard"
   | "auto-delete-session-days"
   | `provider-setting:${string}:${string}` | `module-setting:${string}` | `module:${string}`
 
@@ -84,6 +86,7 @@ export function settingTarget(action: InlineSettingAction): SettingId {
     case "set-compaction-threshold": return "compaction"
     case "set-auto-delete-session-days": return "auto-delete-session-days"
     case "set-idle-compaction": return "idle-compaction"
+    case "set-shell-write-guard": return "shell-write-guard"
     case "set-show-thinking": return "thinking"
     case "set-show-build": return "show-build"
     case "set-write-syntax-theme": return "write-syntax-theme"
@@ -131,6 +134,7 @@ function settingValue(action: InlineSettingAction): string | undefined {
     case "set-compaction-threshold": return String(action.tokens)
     case "set-auto-delete-session-days": return String(action.days)
     case "set-idle-compaction":
+    case "set-shell-write-guard":
     case "set-show-thinking":
     case "set-show-build":
     case "set-module-setting":
@@ -167,6 +171,9 @@ export function parseProviderSetting(text: string, setting: PanelProviderSetting
   if (!Number.isInteger(value) || value < setting.min || value > setting.max) return { problem: `A whole number from ${setting.min.toLocaleString()} to ${setting.max.toLocaleString()}, or ${setting.off} to turn it off.` }
   return { value }
 }
+
+/** The workspace switch each direct set writes. */
+const WORKSPACE_SWITCHES = { "set-idle-compaction": "idleCompaction", "set-shell-write-guard": "shellWriteGuard", "set-show-thinking": "showThinking" } as const
 
 /** `autoInstall` is the live update view's policy, read beside the settings
  *  snapshot because it changes on its own patch stream, not on config reads. */
@@ -231,11 +238,12 @@ export async function applyInlineSetting(connection: RuntimeConnection, action: 
       if (action.provider === current.webSearchProvider) return { kind: "applied" }
       return writeSetting(connection, { id: "webSearchProvider", expected: { kind: "value", value: current.webSearchProvider }, desired: action.provider })
     case "set-idle-compaction":
-      if (action.on === current.idleCompaction) return { kind: "applied" }
-      return writeSetting(connection, { id: "idleCompaction", expected: { kind: "value", value: current.idleCompaction }, desired: action.on })
-    case "set-show-thinking":
-      if (action.on === current.showThinking) return { kind: "applied" }
-      return writeSetting(connection, { id: "showThinking", expected: { kind: "value", value: current.showThinking }, desired: action.on })
+    case "set-shell-write-guard":
+    case "set-show-thinking": {
+      const id = WORKSPACE_SWITCHES[action.kind]
+      if (action.on === current[id]) return { kind: "applied" }
+      return writeSetting(connection, { id, expected: { kind: "value", value: current[id] }, desired: action.on })
+    }
     case "set-show-build":
       if (action.on === current.showBuild) return { kind: "applied" }
       return writeProjectSetting(connection, { id: "showBuild", expected: { kind: "value", value: current.showBuild }, desired: action.on })

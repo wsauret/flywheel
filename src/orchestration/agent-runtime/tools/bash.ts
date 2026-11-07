@@ -12,7 +12,7 @@ import { SCRATCH_MUTATIONS_DIR } from "../../../infra/paths.js";
 import { interceptBashCommand, type BashPolicyOptions } from "./bash-command-policy.js";
 import { recordShellFileReads } from "./bash-file-reads.js";
 import { classifyShellDetachment } from "./bash-parser.js";
-import { BASH_INPUT_SCHEMA, bashPromptFields, type FileEditToolName } from "./bash-guidance.js";
+import { bashToolSurface, type FileEditToolName } from "./bash-guidance.js";
 import { resolveToolPath, sessionPathInput } from "./tool-paths.js";
 import { checkNumericRange } from "./numeric-input.js";
 import type { BashOperations, RuntimeTool, RuntimeToolInput, ShellCommand, ToolAdmissionContext, ToolContext, ToolResult } from "./types.js";
@@ -121,11 +121,13 @@ const defaultBashOperations: BashOperations = {
 
 /** The shell policy's view of one call that runs in `cwd`. The command
  *  inherits this process's environment (`createToolEnvironmentFactory`), so
- *  its variables expand the same way here. */
-function shellPolicyOptions(context: ToolContext, cwd: string, platform: RuntimePlatform, readOnly = false): BashPolicyOptions {
+ *  its variables expand the same way here. A writing agent whose write guard
+ *  is off has no write scope, so no target refuses its command; a read-only
+ *  agent keeps its scratchpad scope whatever the guard says (PI-AGENT-068). */
+function shellPolicyOptions(context: ToolContext, cwd: string, platform: RuntimePlatform, readOnly: boolean, writeGuard: boolean): BashPolicyOptions {
   return {
     effectiveBundledSkillIds: context.effectiveBundledSkillIds,
-    scope: { projectRoot: context.projectRoot, userDataRoot: context.userDataRoot, cwd, scratchDir: context.scratchDir, env: process.env, dialect: platform === "win32" ? "powershell" : "bash", readOnly },
+    ...(readOnly || writeGuard ? { scope: { projectRoot: context.projectRoot, userDataRoot: context.userDataRoot, cwd, scratchDir: context.scratchDir, env: process.env, dialect: platform === "win32" ? "powershell" : "bash", readOnly } } : {}),
     ids: { sessionId: context.sessionId, toolUseId: context.toolUseId, modelRequestId: context.modelRequestId },
   };
 }
@@ -156,6 +158,12 @@ export function createBashDefinition(options?: {
   /** A read-only persona admits recognized writes only in its scratchpad
    * or to device sinks, and refuses `mutates: true`. */
   readOnly?: boolean;
+  /** False when the person turned the shell write guard off: a writing
+   *  agent's command is refused for no write target. True by default. */
+  writeGuard?: boolean;
+  /** False in a headless runtime: the schema offers no `mutates` field, so
+   *  dispatch refuses one and every command runs in place. True by default. */
+  mutatingDeclaration?: boolean;
 }): RuntimeTool {
   const ops = options?.operations ?? defaultBashOperations;
   const platform = options?.platform ?? process.platform;
@@ -169,6 +177,8 @@ export function createBashDefinition(options?: {
   const persistentProcesses = options?.persistentProcesses ?? false;
   const requireManagedExecution = options?.requireManagedExecution ?? false;
   const readOnly = options?.readOnly === true;
+  const writeGuard = options?.writeGuard ?? true;
+  const mutatingDeclaration = options?.mutatingDeclaration ?? true;
 
   const toolEnvironment = createToolEnvironmentFactory({
     operations: ops, platform, execPath,
@@ -279,9 +289,8 @@ export function createBashDefinition(options?: {
   return withShellInputRepair({
     name: "bash",
     action: "shell_exec",
-    ...bashPromptFields(options?.fileEditTool),
+    ...bashToolSurface({ ...(options?.fileEditTool ? { fileEditTool: options.fileEditTool } : {}), mutatingDeclaration, writeGuard }),
     promptSnippet: "Run shell commands and scripts (tests, builds, git, servers, package managers, scratch scripts)",
-    inputSchema: BASH_INPUT_SCHEMA,
     // bash already escalates its own kill timer up to MAX_TIMEOUT_SEC; the
     // dispatcher's generic watchdog would either race that mechanism or
     // fire first on a legitimately long (up to 3600s) foreground command.
@@ -321,7 +330,7 @@ export function createBashDefinition(options?: {
     },
     async executionPolicy(input, context) {
       const shell = bashShellCommand(input, context.executionCwd);
-      return shell ? (await interceptBashCommand(shell.command, shellPolicyOptions(context, shell.cwd, platform, readOnly)))?.message : undefined;
+      return shell ? (await interceptBashCommand(shell.command, shellPolicyOptions(context, shell.cwd, platform, readOnly, writeGuard)))?.message : undefined;
     },
   });
 }

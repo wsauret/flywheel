@@ -228,6 +228,9 @@ export interface RuntimeToolSurfaces extends RunnerToolSurfaces {
   allowPersistentProcesses?: () => boolean | Promise<boolean>;
   gitAiAttribution?: GitAiAttributionService;
   streamingEditValidation?: StreamingEditValidationService;
+  /** The runtime has no client that reviews file changes: no shell command
+   *  of its agents runs in a private copy (PI-AGENT-119). A child inherits it. */
+  headless?: true;
 }
 
 export interface AgentToolInput {

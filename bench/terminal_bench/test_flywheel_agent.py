@@ -534,6 +534,9 @@ class AuthSnapshotExportTest(unittest.IsolatedAsyncioTestCase):
         ))
         self.assertEqual(observed["kwargs"]["cwd"], flywheel_agent.REPO_ROOT)
         self.assertNotIn("env", observed["kwargs"])
+        with patch.object(asyncio, "create_subprocess_exec", side_effect=create):
+            await flywheel_agent._export_auth_snapshot("bench-profile", output, None, as_profile="benchmark")
+        self.assertEqual(observed["argv"][-2:], ("--as-profile", "benchmark"))
 
     async def test_pinned_install_failure_timeout_and_cancellation_clean_stage(self) -> None:
         for outcome in ("failure", "timeout", "cancellation"):
@@ -694,7 +697,7 @@ class RunTest(unittest.IsolatedAsyncioTestCase):
         self.profile_environment = patch.dict(os.environ, {flywheel_agent.AUTH_PROFILE_ENV: "bench-profile", flywheel_agent.DISABLED_TOOLS_ENV: TEST_DISABLED_TOOLS, "HOME": self.home.name})
         self.profile_environment.start()
         self.addCleanup(self.profile_environment.stop)
-        async def export_auth_snapshot(selector, output, timeout, runtime_source_commit=None):
+        async def export_auth_snapshot(selector, output, timeout, runtime_source_commit=None, as_profile=None):
             output.write_text(json.dumps(self.snapshot_bundle))
             output.chmod(0o600)
             return "bench-profile"
@@ -794,6 +797,56 @@ class RunTest(unittest.IsolatedAsyncioTestCase):
         home_setup = next(call for call in calls if "mkdir -p -m 700" in call["command"])
         self.assertNotIn("flywheel.toml", home_setup["command"])
         self.assertLess(calls.index(home_setup), calls.index(task_call))
+
+    async def test_installs_the_validated_flywheel_config_as_the_trial_home_config(self) -> None:
+        payload = b'allow_persistent_processes = true\n[profiles.benchmark.roles.chat]\nmodel = "gpt-6-luna"\neffort = "max"\n'
+        config_path = self.test_home / "arm.toml"
+        config_path.write_bytes(payload)
+        digest = hashlib.sha256(payload).hexdigest()
+        calls, root_calls, uploads = [], [], []
+        agent = FlywheelHeadless(flywheel_config_path=str(config_path), flywheel_config_sha256=digest, trial_auth_profile="benchmark")
+        agent._source_archive_sha256 = "a" * 64
+
+        async def exec_as_agent(environment, **kwargs):
+            calls.append(kwargs)
+
+        async def exec_as_root(environment, **kwargs):
+            root_calls.append(kwargs)
+            return types.SimpleNamespace(stdout=_root_stdout(kwargs["command"]))
+
+        async def upload_file(source, destination):
+            uploads.append((Path(source).read_bytes(), destination, Path(source).stat().st_mode & 0o777))
+
+        agent.exec_as_agent = exec_as_agent
+        agent.exec_as_root = exec_as_root
+        await agent.run("task", types.SimpleNamespace(upload_file=upload_file, default_user="root"), object())
+
+        self.assertEqual(self.export_snapshot_mock.await_args.kwargs["as_profile"], "benchmark")
+        config_upload = next(upload for upload in uploads if upload[1].endswith("/flywheel.toml"))
+        self.assertEqual(config_upload[0], payload)
+        self.assertEqual(config_upload[2], 0o600)
+        staged = shlex.quote(config_upload[1])
+        self.assertIn(f"chmod 600 -- {staged}", root_calls[1]["command"])
+        self.assertIn("chown root -- ", root_calls[1]["command"])
+        self.assertIn(staged, root_calls[1]["command"].split("chown", 1)[1])
+        install = next(call for call in calls if call["command"].startswith("umask 077 && cp --"))
+        task_call = next(call for call in calls if "bun --conditions=browser" in call["command"])
+        self.assertEqual(install["command"], f"umask 077 && cp -- {staged} {task_call['env']['HOME']}/.flywheel/flywheel.toml")
+        self.assertLess(calls.index(install), calls.index(task_call))
+        self.assertIn("--auth-profile benchmark", task_call["command"])
+        self.assertNotIn("FLYWHEEL_CHAT_MODEL", task_call["env"])
+        self.assertNotIn("FLYWHEEL_CHAT_EFFORT", task_call["env"])
+
+        config_path.write_bytes(payload + b"idle_compaction = true\n")
+        with self.assertRaisesRegex(RuntimeError, "Flywheel config SHA-256 mismatch"):
+            await agent.run("task", types.SimpleNamespace(upload_file=upload_file, default_user="root"), object())
+
+    def test_flywheel_config_kwargs_are_complete_and_exclude_a_second_model(self) -> None:
+        config = {"flywheel_config_path": "/repo/arm.toml", "flywheel_config_sha256": "a" * 64, "trial_auth_profile": "benchmark"}
+        self.assertEqual(FlywheelHeadless(**config).trial_auth_profile, "benchmark")
+        for invalid in ({**config, "flywheel_model": "gpt-6-luna"}, {**config, "flywheel_config_sha256": "bad"}, {**config, "flywheel_config_path": "arm.toml"}, {"flywheel_config_path": "/repo/arm.toml"}):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                FlywheelHeadless(**invalid)
 
     def test_launcher_disabled_tools_are_required_and_strict(self) -> None:
         self.assertEqual(flywheel_agent._require_disabled_tools(TEST_DISABLED_TOOLS), ("web",))

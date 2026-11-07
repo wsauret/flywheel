@@ -288,7 +288,7 @@ export function mountModuleSheetIdentity(sheet: "settings" | "status", modules: 
       },
       moduleIds: modules.ids, capabilitiesOn: 2, capabilitiesTotal: 2, capabilityPreset: "custom", workflowMode: "off",
       persistentProcesses: { persisted: false, effective: false, forcedByCli: false },
-      compactionThreshold: 50_000, idleCompaction: true, autoDeleteSessionDays: 0, webSearchProvider: "chatgpt", showThinking: true, showBuild: false,
+      compactionThreshold: 50_000, idleCompaction: true, shellWriteGuard: true, autoDeleteSessionDays: 0, webSearchProvider: "chatgpt", showThinking: true, showBuild: false,
       writeSyntaxTheme: "nord", diffColors: "theme", profileId: "default", providerSettings: [{ providerId: "copilot", key: "limit", label: "Copilot limit", description: "Usage limit", min: 0, max: 1000, off: 0, value: 100 }], gitAiAttribution: false, allowTrainingRoutes: false,
       problems: [], profile: { displayName: "Default", count: 1 }, configProblems: [], seatSlot: { kind: "role", roleId: "chat" }, seatEfforts: [],
       moduleSettings: [{ control: "config-number-list", section: "synthetic", key: "steps", min: 1, max: 9, defaultValue: [1], value: [1, 2], label: "Steps", description: "A list" }],

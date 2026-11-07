@@ -27,8 +27,13 @@ describe("root CLI args", () => {
     expect(await rootCliAction(["--headless", "--one-shot"])).toEqual({ kind: "run", args: ["--headless", "--one-shot"] })
     expect(await rootCliAction(["--headless", "--one-shot", "--disable-tool", "subagent"])).toEqual({ kind: "run", args: ["--headless", "--one-shot", "--disable-tool", "subagent"] })
     expect((await rootCliAction(["--headless", "--task=x", "--one-shot"])).kind).toBe("error")
-    for (const flag of ["--deadline-seconds=30", "--auth-profile=Personal", "--auth-snapshot=/scratch/auth.json", "--model=m", "--effort=low", "--system-prompt=x"]) {
+    for (const flag of ["--deadline-seconds=30", "--model=m", "--effort=low", "--system-prompt=x"]) {
       expect((await rootCliAction(["--headless", flag])).kind).toBe("error")
+    }
+    const acp = ["--headless", "--acp", "--auth-profile=benchmark", "--auth-snapshot", "/scratch/auth.json", "--disable-tool", "web"]
+    expect(await rootCliAction([...acp, "--allow-persistent-processes"])).toEqual({ kind: "run", args: acp, allowPersistentProcesses: true })
+    for (const refused of [["--acp"], ["--headless", "--acp", "--task", "x"], ["--headless", "--acp", "--session", "s"], ["--headless", "--acp", "--one-shot"]]) {
+      expect((await rootCliAction(refused)).kind).toBe("error")
     }
   })
   test("handles informational flags before runtime startup", async () => {

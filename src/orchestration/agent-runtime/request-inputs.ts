@@ -50,7 +50,7 @@ import { resolveCapturedRole } from "../config/role-resolution.js";
 import { createModelFallbackNotice } from "./model-fallback-notice.js";
 import { ModelUnavailable } from "./errors.js";
 import { commitToolNotice, toolNotice } from "./tool-notice.js";
-import { holdSharedTree, treeLogin, type SharedTree } from "./shared-tree.js";
+import { holdSharedTree, treeLogin, type SharedTree, type SharedTreeCapture } from "./shared-tree.js";
 
 /** What builds the inputs of a run's requests: the same for a send and for a pre-start. */
 export interface RequestInputsSource {
@@ -164,7 +164,7 @@ const treeHolds = new WeakMap<Scope.Scope, SharedTree>();
  *  tree's shared state until its owner scope closes: its run's scope (`runScope`), or else the scope of its provider
  *  lifetime, such as the provider session of a shown session, which a pre-start takes. A host that the run opened
  *  holds the tree while it lives. */
-function treeLifetime(lifetime: ProviderSessionLifetime, runScope: Scope.Scope | undefined, rootSessionId: string | undefined, treeHosted: boolean, capture: () => FirstPartyModuleComposition): ProviderSessionLifetime {
+function treeLifetime(lifetime: ProviderSessionLifetime, runScope: Scope.Scope | undefined, rootSessionId: string | undefined, treeHosted: boolean, capture: () => SharedTreeCapture): ProviderSessionLifetime {
   if (rootSessionId === undefined) return lifetime;
   const routed: ProviderSessionLifetime = { ...lifetime, treeLogin: () => treeLogin(rootSessionId) };
   if (!treeHosted) return routed;
@@ -323,7 +323,7 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
   // whatever provider serves it, because a failover can move any request of
   // the tree onto the host, and the host must then see the same tools.
   const treeRoot = runtimeIdentity?.rootSessionId ?? options.treeRootSessionId;
-  const providerSessionLifetime = treeLifetime(input.providerSessionLifetime, input.runScope, treeRoot, treeHosted, moduleSelection);
+  const providerSessionLifetime = treeLifetime(input.providerSessionLifetime, input.runScope, treeRoot, treeHosted, () => ({ modules: moduleSelection(), shellWriteGuard: options.captureRuntimeConfig().shellWriteGuard }));
   const tree = providerSessionLifetime.sharedHost;
   const requestModules = tree === undefined ? moduleSelection : () => tree.modules;
   const liveModules = (requestModuleSnapshot: FirstPartyModuleComposition): FirstPartyModuleComposition => tree === undefined ? requestModuleSnapshot : moduleSelection();
@@ -427,6 +427,7 @@ export async function openRequestInputs(input: RequestInputsSource, use: Request
         const requestPlan = providerRuntime?.plannedAttempt ?? planned;
         return requestKernel(kernelRun, {
           moduleSnapshot: requestModuleSnapshot, live, runtimeConfig, skills,
+          shellWriteGuard: tree?.shellWriteGuard ?? runtimeConfig.shellWriteGuard,
           fileEditContract: providerRuntime?.interactionProfile.fileEditContract ?? initialProviderRuntime.interactionProfile.fileEditContract,
           servingModel: {
             model: requestClient.model,

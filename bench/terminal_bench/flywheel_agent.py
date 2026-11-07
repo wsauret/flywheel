@@ -322,6 +322,17 @@ def _read_system_prompt_payload(path_value: object, sha256_value: object) -> str
         raise RuntimeError("system prompt payload must contain valid UTF-8") from error
 
 
+def _read_flywheel_config(path: str, sha256_value: str) -> bytes:
+    """Read the arm's Flywheel config and prove it is the file the launcher validated."""
+    try:
+        payload = Path(path).read_bytes()
+    except OSError as error:
+        raise RuntimeError("Flywheel config is unavailable") from error
+    if hashlib.sha256(payload).hexdigest() != sha256_value:
+        raise RuntimeError("Flywheel config SHA-256 mismatch: the file changed after the launcher validated it")
+    return payload
+
+
 _PINNED_RUNTIME_WRITE_CHUNK_SIZE = 64 * 1024
 
 
@@ -463,8 +474,13 @@ async def _export_auth_snapshot(
     output: Path,
     timeout: float | None,
     runtime_source_commit: str | None = None,
+    as_profile: str | None = None,
 ) -> str:
-    """Invoke Flywheel's host-owned snapshot boundary without exposing subprocess output."""
+    """Invoke Flywheel's host-owned snapshot boundary without exposing subprocess output.
+
+    With `as_profile`, the snapshot carries the selected profile's credentials
+    under that profile id, so a trial config's profile tables name no host profile.
+    """
     deadline = None if timeout is None else time.monotonic() + timeout
     runtime_root = REPO_ROOT
     owns_runtime_root = runtime_source_commit is not None
@@ -476,6 +492,7 @@ async def _export_auth_snapshot(
         export_argv = (
             "bun", "--conditions=browser", str(runtime_root / "src" / "cli" / "index.ts"), "headless", "snapshot-auth",
             "--auth-profile", selector, "--output", str(output),
+            *(() if as_profile is None else ("--as-profile", as_profile)),
         )
         commands = (
             (("bun", "install", "--frozen-lockfile", "--ignore-scripts"), _install_environment(runtime_root)),
@@ -1742,12 +1759,25 @@ class FlywheelHeadless(BaseInstalledAgent):
 
     dataset: str | None = None
 
-    def __init__(self, *args, dataset: str | None = None, flywheel_model: str | None = None, bun_download_cache: str | None = None, runtime_source_commit: str | None = None, profile_sha256: str | None = None, project_root_mode: str = "task_workspace", evidence_export: str = "settled_sqlite", persistent_processes: bool = True, **kwargs):
+    def __init__(self, *args, dataset: str | None = None, flywheel_model: str | None = None, bun_download_cache: str | None = None, runtime_source_commit: str | None = None, profile_sha256: str | None = None, project_root_mode: str = "task_workspace", evidence_export: str = "settled_sqlite", persistent_processes: bool = True, flywheel_config_path: str | None = None, flywheel_config_sha256: str | None = None, trial_auth_profile: str | None = None, **kwargs):
         super().__init__(*args, **kwargs)
         self.dataset = dataset
         if flywheel_model is not None and (not isinstance(flywheel_model, str) or not flywheel_model or flywheel_model.strip() != flywheel_model):
             raise ValueError("Flywheel model must be a non-empty canonical model name")
         self.flywheel_model = flywheel_model
+        # The launcher validated the config, read its pinned chat model, and
+        # named the profile id that its profile tables use; the trial takes all three together.
+        config_kwargs = (flywheel_config_path, flywheel_config_sha256, trial_auth_profile)
+        if any(value is not None for value in config_kwargs):
+            if not isinstance(flywheel_config_path, str) or not Path(flywheel_config_path).is_absolute() or not isinstance(flywheel_config_sha256, str) or not PROFILE_SHA256_PATTERN.fullmatch(flywheel_config_sha256):
+                raise ValueError("flywheel_config_path must be absolute and flywheel_config_sha256 exactly 64 lowercase hexadecimal characters")
+            if not isinstance(trial_auth_profile, str) or not re.fullmatch(r"[a-z][a-z0-9-]*", trial_auth_profile):
+                raise ValueError("trial_auth_profile must be a lowercase profile id")
+            if flywheel_model is not None:
+                raise ValueError("the Flywheel config pins the chat model; flywheel_model must be absent")
+        self.flywheel_config_path = flywheel_config_path
+        self.flywheel_config_sha256 = flywheel_config_sha256
+        self.trial_auth_profile = trial_auth_profile
         if profile_sha256 is not None and (not isinstance(profile_sha256, str) or not PROFILE_SHA256_PATTERN.fullmatch(profile_sha256)):
             raise ValueError("profile_sha256 must be exactly 64 lowercase hexadecimal characters")
         self.profile_sha256 = profile_sha256
@@ -1837,7 +1867,9 @@ class FlywheelHeadless(BaseInstalledAgent):
         token = secrets.token_hex(16)
         auth_stage = f"{AUTH_BUNDLE_STAGE_PREFIX}{token}"
         auth_file = f"{auth_stage}/auth.json"
+        config_file = f"{auth_stage}/flywheel.toml"
         quoted_file = shlex.quote(auth_file)
+        quoted_config = shlex.quote(config_file)
         isolated_home = f"{ISOLATED_HOME_PREFIX}{token}"
         quoted_stage = shlex.quote(auth_stage)
         quoted_home = shlex.quote(isolated_home)
@@ -1850,6 +1882,7 @@ class FlywheelHeadless(BaseInstalledAgent):
                 selector = _require_auth_profile_selector(os.environ.get(AUTH_PROFILE_ENV))
                 disabled_tools = _require_disabled_tools(os.environ.get(DISABLED_TOOLS_ENV))
                 system_prompt = _read_system_prompt_payload(os.environ.get(SYSTEM_PROMPT_PATH_ENV), os.environ.get(SYSTEM_PROMPT_SHA256_ENV))
+                flywheel_config = None if self.flywheel_config_path is None else _read_flywheel_config(self.flywheel_config_path, self.flywheel_config_sha256)
                 await self.exec_as_root(
                     environment,
                     command=f"umask 077 && rm -rf -- {quoted_stage} && mkdir -m 700 -- {quoted_stage}",
@@ -1857,9 +1890,15 @@ class FlywheelHeadless(BaseInstalledAgent):
                 with tempfile.TemporaryDirectory(prefix="flywheel-auth-bundle-") as local_stage:
                     local_file = Path(local_stage) / "auth.json"
                     export_remaining = None if deadline_at is None else deadline_at - time.monotonic()
-                    profile = await _export_auth_snapshot(selector, local_file, export_remaining, self.runtime_source_commit)
+                    exported_profile = await _export_auth_snapshot(selector, local_file, export_remaining, self.runtime_source_commit, as_profile=self.trial_auth_profile)
+                    profile = self.trial_auth_profile or exported_profile
                     quoted_profile = shlex.quote(profile)
                     await environment.upload_file(str(local_file), auth_file)
+                    if flywheel_config is not None:
+                        local_config = Path(local_stage) / "flywheel.toml"
+                        local_config.write_bytes(flywheel_config)
+                        local_config.chmod(0o600)
+                        await environment.upload_file(str(local_config), config_file)
                 configured_user = getattr(environment, "default_user", None)
                 if configured_user is None:
                     owner_result = await self.exec_as_agent(
@@ -1880,14 +1919,20 @@ class FlywheelHeadless(BaseInstalledAgent):
                     ),
                 )
 
+                staged_files = (quoted_file,) if flywheel_config is None else (quoted_file, quoted_config)
                 await self.exec_as_root(
                     environment,
-                    command=(
-                        f"set -eu; test -f {quoted_file}; ! test -L {quoted_file}; "
-                        f"test \"$(stat -c '%h' -- {quoted_file})\" -eq 1; chmod 600 -- {quoted_file}; "
-                        f"chown {quoted_owner} -- {quoted_file} {quoted_stage}"
-                    ),
+                    command="set -eu; " + "".join(
+                        f"test -f {path}; ! test -L {path}; "
+                        f"test \"$(stat -c '%h' -- {path})\" -eq 1; chmod 600 -- {path}; "
+                        for path in staged_files
+                    ) + f"chown {quoted_owner} -- {' '.join(staged_files)} {quoted_stage}",
                 )
+                if flywheel_config is not None:
+                    await self.exec_as_agent(
+                        environment,
+                        command=f"umask 077 && cp -- {quoted_config} {quoted_home}/.flywheel/flywheel.toml",
+                    )
                 root_result = await self.exec_as_root(environment, command="pwd -P")
                 project_root = (root_result.stdout or "").strip()
                 if not project_root.startswith("/") or "\n" in project_root or "\x00" in project_root:
@@ -1903,13 +1948,16 @@ class FlywheelHeadless(BaseInstalledAgent):
                     "BASH_ENV": "/dev/null",
                     "ENV": "/dev/null",
                     "SHELL": "/bin/bash",
-                    "FLYWHEEL_CHAT_EFFORT": os.environ.get("FLYWHEEL_CHAT_EFFORT", "max"),
                     "FLYWHEEL_SOURCE_ARCHIVE_SHA256": self._source_archive_sha256,
                 }
                 if os.environ.get("FLYWHEEL_TOOL_LIFECYCLE_TRACE") == "1":
                     env["FLYWHEEL_TOOL_LIFECYCLE_TRACE"] = "1"
-                if self.flywheel_model:
-                    env["FLYWHEEL_CHAT_MODEL"] = self.flywheel_model
+                # A Flywheel config is the one source of the chat model and effort;
+                # an environment override would outrank it.
+                if flywheel_config is None:
+                    env["FLYWHEEL_CHAT_EFFORT"] = os.environ.get("FLYWHEEL_CHAT_EFFORT", "max")
+                    if self.flywheel_model:
+                        env["FLYWHEEL_CHAT_MODEL"] = self.flywheel_model
                 env = {key: value for key, value in env.items() if value}
                 exec_kwargs = {"command": command, "env": env}
                 if remaining is not None:

@@ -20,7 +20,7 @@ Not: A recovery policy that retries or fails over inside a request.
 
 ## ARCH-RUNTIME-004: Headless chat is a frontend over the production runtime
 
-Headless chat is a frontend over the production project runtime, not a second chat composition. Its commands reach the ordinary client mutation and query boundaries, and its output derives from the same session and conversation projections. The runtime owns profile admission, failover, questions, child supervision, durable history, and the decision that the agent is done. The frontend owns only framing, correlation, and input-stream lifetime, and never answers a question on the person's behalf.
+Headless chat is a frontend over the production project runtime, not a second chat composition. Its commands reach the ordinary client mutation and query boundaries, and its output derives from the same session and conversation projections. The runtime owns profile admission, failover, questions, child supervision, durable history, and the decision that the agent is done. The frontend owns only framing, correlation, and input-stream lifetime, and never answers a question on the person's behalf. Its framing is the versioned JSONL channel or Agent Client Protocol version 1, over one channel and one settlement rule.
 
 ## ARCH-RUNTIME-005: One account service is the sole public serving placement
 

@@ -15,7 +15,7 @@ import { describeProvider } from "../../agent-runtime/llm/provider-description.j
 import type { FirstPartyModule } from "../../modules.js";
 import { applyXaiSubscriptionHeaders, XAI_SUBSCRIPTION_BASE_URL } from "./auth-types.js";
 import { loginXai } from "./oauth.js";
-import { createXaiTokenAccessor, ensureFreshXaiTokens, XaiTokenRefreshError, type XaiTokenAccessor } from "./token-refresh.js";
+import { createXaiTokenAccessor, ensureFreshXaiTokens, rotateXaiTokens, XaiTokenRefreshError, type XaiTokenAccessor } from "./token-refresh.js";
 import { createSuperGrokUsageReader } from "./usage-reader.js";
 
 const catalog = { limits: DEFAULT_DYNAMIC_CATALOG_LIMITS, extractRows: extractDataCatalogRows } as const;
@@ -144,6 +144,7 @@ const definition = {
       const tokens = await loginXai(ports);
       return { ...(tokens.email === undefined ? {} : { identity: tokens.email }), credential: oauthCredential(tokens) };
     },
+    refresh: async (credential, signal) => oauthCredential(await rotateXaiTokens(storedTokens(credential), signal)),
   },
 } as const satisfies AccessProviderDefinition;
 

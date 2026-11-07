@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { join, resolve } from "node:path";
 import { writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { resolveTerminalBenchConfig } from "../../../bench/terminal_bench/terminal-bench-config.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 import { terminalBenchAuthArgs as authArgs, terminalBenchProfile as profile } from "../../fixtures/terminal-bench-profile.js";
@@ -29,6 +30,50 @@ describe("terminal bench config resolution", () => {
     const path = join(root, "profile.yaml");
     await writeFile(path, "headless:\n  interaction_profile: luna-native-v1\ndatasets: [{ task_names: [one] }]\n");
     await expect(resolveTerminalBenchConfig([...authArgs, "--config", path], { cwd: root })).rejects.toThrow("headless contains unknown keys: interaction_profile");
+  });
+
+  test("takes the chat model from a validated Flywheel config and hands the trial its bytes", async () => {
+    const root = temporaryDirectory("tb-flywheel-config-");
+    const configPath = join(root, "arm.toml");
+    const configText = 'allow_persistent_processes = true\n[profiles.benchmark.roles.chat]\nmodel = "gpt-6.1-sol"\neffort = "high"\n';
+    await writeFile(configPath, configText);
+    const path = join(root, "profile.yaml");
+    await writeFile(path, `headless: { flywheel_config: '${configPath}' }\ndatasets: [{ task_names: [one] }]\n`);
+    const config = await resolveTerminalBenchConfig([...authArgs, "--config", path], { cwd: root });
+    const sha256 = createHash("sha256").update(configText).digest("hex");
+    expect(config.model).toBe("gpt-6.1-sol");
+    expect(config.flywheelConfig).toEqual({ path: configPath, absolutePath: configPath, sha256, chatEffort: "high" });
+    expect(config.harborConfig.agents).toEqual([{ name: "FlywheelHeadless", import_path: "bench.terminal_bench.flywheel_agent:FlywheelHeadless", model_name: "flywheel/gpt-6.1-sol", kwargs: { flywheel_config_path: configPath, flywheel_config_sha256: sha256, trial_auth_profile: "benchmark", project_root_mode: "task_workspace", evidence_export: "settled_sqlite", persistent_processes: true, profile_sha256: config.profileSha256 } }]);
+  });
+
+  test("refuses a Flywheel config that Flywheel would reject or ignore in part, or a second model source", async () => {
+    const root = temporaryDirectory("tb-flywheel-config-refusal-");
+    const configPath = join(root, "arm.toml");
+    const path = join(root, "profile.yaml");
+    const pinnedChat = '[profiles.benchmark.roles.chat]\nmodel = "gpt-6-luna"\neffort = "max"\n';
+    const resolveWith = async (configText: string, headless = `flywheel_config: '${configPath}'`, extraArgs: string[] = []) => {
+      await writeFile(configPath, configText);
+      await writeFile(path, `headless: { ${headless} }\ndatasets: [{ task_names: [one] }]\n`);
+      return resolveTerminalBenchConfig([...authArgs, "--config", path, ...extraArgs], { cwd: root });
+    };
+    await expect(resolveWith("allow_persistent_processes = [\n")).rejects.toThrow(`headless.flywheel_config ${configPath} is not a valid Flywheel config: Failed to parse config file`);
+    await expect(resolveWith(`interaction_profile = "luna-native-v1"\n${pinnedChat}`)).rejects.toThrow('Unrecognized config key "interaction_profile"');
+    await expect(resolveWith(`allow_persistent_processes = "yes"\n${pinnedChat}`)).rejects.toThrow('Invalid config value "allow_persistent_processes"');
+    await expect(resolveWith(`disabled_modules = ["no-such-module"]\n${pinnedChat}`)).rejects.toThrow("no-such-module");
+    await expect(resolveWith('[profiles.benchmark.roles.chat]\nmodel = "gpt-6-luna"\n')).rejects.toThrow("must pin model and effort in [profiles.benchmark.roles.chat]");
+    await expect(resolveWith(pinnedChat, `flywheel_config: '${configPath}', model: gpt-6-luna`)).rejects.toThrow("headless.model conflicts with headless.flywheel_config");
+    await expect(resolveWith(pinnedChat, undefined, ["--model", "gpt-6-luna"])).rejects.toThrow("--model conflicts with headless.flywheel_config");
+    await expect(resolveWith(pinnedChat, "flywheel_config: bench/terminal_bench/configs/missing.toml")).rejects.toThrow("bench/terminal_bench/configs/missing.toml is not a valid Flywheel config");
+  });
+
+  test("the checked-in OpenAI arm config passes host validation and pins Luna at max effort", async () => {
+    const root = temporaryDirectory("tb-openai-arm-");
+    const path = join(root, "profile.yaml");
+    await writeFile(path, "headless: { flywheel_config: bench/terminal_bench/configs/tb-mini-openai.toml }\ndatasets: [{ task_names: [one] }]\n");
+    const config = await resolveTerminalBenchConfig([...authArgs, "--config", path], { cwd: root });
+    expect(config.model).toBe("gpt-6-luna");
+    expect(config.flywheelConfig?.chatEffort).toBe("max");
+    expect(config.flywheelConfig?.absolutePath).toBe(resolve(process.cwd(), "bench/terminal_bench/configs/tb-mini-openai.toml"));
   });
 
   test("expects the shell tool of the profile the product selects for the model", async () => {

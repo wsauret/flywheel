@@ -1,0 +1,267 @@
+import { describe, expect, it } from "bun:test"
+import { realpathSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { PassThrough } from "node:stream"
+import type { FrontendMutation, FrontendOutputBlock, RuntimeClient } from "../../../../src/protocol/app-service-types.js"
+import type { BudgetView } from "../../../../src/protocol/budget-protocol-types.js"
+import { blockIdentity } from "../../../../src/protocol/block-identity.js"
+import type { HeadlessChatOutcome } from "../../../../src/protocol/headless-chat.js"
+import type { AcpResult, AcpSessionUpdate } from "../../../../src/protocol/acp.js"
+import type { UsageSessionStats } from "../../../../src/protocol/modules/subscription-usage.js"
+import type { PendingQuestionView } from "../../../../src/protocol/question-protocol-types.js"
+import type { RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types.js"
+import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/runtime-ui-bus.js"
+import { acpFraming } from "../../../../src/orchestration/headless/acp-chat.js"
+import { runHeadlessChatChannel } from "../../../../src/orchestration/headless/run-headless-chat.js"
+import { recordedDispatch, runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"
+import { tailWindow } from "../../../helpers/runtime-views.js"
+
+/** One line Flywheel wrote: a response or a session update. */
+interface Message {
+  readonly id?: number
+  readonly method?: string
+  readonly result?: AcpResult
+  readonly error?: { readonly code: number; readonly message: string }
+  readonly params?: { readonly update: AcpSessionUpdate }
+}
+
+interface Inbound {
+  readonly id?: number
+  readonly method: string
+  readonly params: object
+}
+
+const SUMMARY = {
+  attempts: 2, unmeasuredAttempts: 0, partialAttempts: 0, cacheComplete: true,
+  tokens: { input: 100, output: 40, cacheRead: 900, cacheWrite: 0, reasoning: 10, total: 1040 },
+  estimatedBilledUsd: 0, includedValueUsd: 0.25, priceUnavailable: false,
+}
+const STATS: UsageSessionStats = {
+  sessionId: "root", asOf: 0, partial: false, descendantCount: 0, direct: SUMMARY, descendants: SUMMARY, totals: SUMMARY, models: [], tools: [],
+  generation: { basis: "O200kBase", totals: { outputTokens: 0, durationMs: 0, measuredRequests: 0, unmeasuredRequests: 0, measuredBlocks: 0, excludedBlocks: 0, averageTokensPerSecond: null }, coverageComplete: true, models: [] },
+}
+
+/** The directory the agent runs in, which session/new must name. */
+const CWD = tmpdir()
+
+const question: PendingQuestionView = {
+  kind: "question", toolUseId: "ask", timestamp: 0,
+  questions: [{ question: "Which port?", multiSelect: false, choices: [{ kind: "option", label: "8080" }, { kind: "freeform", label: "Other" }] }],
+}
+
+/** A root chat whose turns a test scripts: `onTurn` runs for every message
+ *  or answer and owns the settlement state it ends in. */
+function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish(input: RuntimeUiPatchInput): void; output(block: FrontendOutputBlock): void; lose(block: FrontendOutputBlock): void; settle(outcome: HeadlessChatOutcome): Promise<void>; streamed(text: string): Promise<void> }) => void | Promise<void>) {
+  const bus = createRuntimeUiBus()
+  const calls: FrontendMutation[] = []
+  const blocks: FrontendOutputBlock[] = []
+  const listeners = new Set<() => void>()
+  let state: HeadlessChatOutcome | "busy" = "complete"
+  let interrupt = () => {}
+  let budget: BudgetView | null = null
+  const settle = async (outcome: HeadlessChatOutcome) => {
+    await bus.drain()
+    state = outcome
+    for (const listener of listeners) listener()
+  }
+  let position = 0
+  const publish = (input: RuntimeUiPatchInput) => {
+    if (input.payload.kind === "budget.updated") budget = input.payload.budget
+    position = bus.publish(input)?.position ?? position
+  }
+  const output = (block: FrontendOutputBlock) => {
+    const known = blocks.findIndex((resident) => blockIdentity(resident) === blockIdentity(block))
+    const index = known === -1 ? blocks.length : known
+    blocks[index] = block
+    publish({ cursor: { scope: "session", domain: "output", sessionId: "root" }, payload: { kind: "output.delta", delta: { visibleMessageCount: blocks.length, blocks: [{ kind: known === -1 ? "insert" : "upsert", index, blockId: blockIdentity(block), block }] } } })
+  }
+  /** Output whose live delta never reaches the client, as when its queue overflowed. */
+  const lose = (block: FrontendOutputBlock) => { blocks.push(block) }
+  const turn = async (command: FrontendMutation) => {
+    state = "busy"
+    queueMicrotask(() => { onTurn({ command, publish, output, lose, settle, streamed }) })
+    return { ok: true as const, sessionId: "root" }
+  }
+  const client: RuntimeClient = {
+    query: runtimeQuery({
+      budgetSnapshot: async (request) => ({ snapshotPosition: 0, views: request.sessionIds.map((sessionId) => ({ sessionId, view: budget })) }),
+      outputWindow: async ({ request }) => {
+        const start = Math.max(0, blocks.length - request.range.maxBlocks)
+        return tailWindow(blocks.slice(start), { snapshotPosition: position, startBlockIndex: start })
+      },
+      outputRange: async ({ request }) => {
+        if (request.anchor.kind !== "beforeBlock") throw new Error(`Unexpected anchor ${request.anchor.kind}`)
+        const { blockId } = request.anchor
+        const end = blocks.findIndex((block) => blockIdentity(block) === blockId)
+        const start = Math.max(0, end - request.maxBlocks)
+        return {
+          kind: "ok", consistencyToken: "fixture", anchor: request.anchor, streamingToolText: {}, streamingOutputChars: 0, blocks: blocks.slice(start, end),
+          window: { startBlockIndex: start, endBlockIndex: end - 1, hasBefore: start > 0, hasAfter: true, contentBytes: 0 },
+        }
+      },
+      questionSnapshot: async (request) => ({ snapshotPosition: 0, views: request.sessionIds.map((sessionId) => ({ sessionId, view: state === "input_required" ? question : null })) }),
+      "usage.stats": async () => STATS,
+    }),
+    dispatch: recordedDispatch((command) => { calls.push(command) }, runtimeDispatch({
+      "chat.open": async () => ({ ok: true, sessionId: "root" }),
+      "session.activate": async () => ({ ok: true, sessionId: "root" }),
+      "session.send": turn,
+      "question.answer": turn,
+      "chat.interrupt": async () => { interrupt(); return { ok: true, sessionId: "root" } },
+    })),
+    close: async () => {},
+    subscribe: (next) => { bus.addListener(next); return () => { bus.removeListener(next) } },
+  }
+  const input = new PassThrough()
+  const messages: Message[] = []
+  const arrived = new Set<() => void>()
+  const channel = runHeadlessChatChannel({
+    client, startChatDefault: () => {},
+    workSettlement: { accepted: () => {}, read: async () => state, onChange: (listener) => { listeners.add(listener); return () => { listeners.delete(listener) } } },
+  }, {
+    input, framing: acpFraming(realpathSync(CWD)),
+    write: async (line) => {
+      messages.push(JSON.parse(line))
+      for (const wake of arrived) wake()
+    },
+  })
+  const send = (message: Inbound) => { input.write(`${JSON.stringify({ jsonrpc: "2.0", ...message })}\n`) }
+  /** Resolves with the response to request `id`. */
+  const response = async (id: number): Promise<Message> => {
+    while (true) {
+      const found = messages.find((message) => message.id === id)
+      if (found) return found
+      await new Promise<void>((resolve) => { arrived.add(resolve) })
+    }
+  }
+  /** Resolves once a session update whose JSON contains `text` was written. */
+  const streamed = async (text: string): Promise<void> => {
+    while (!updates().some((update) => JSON.stringify(update).includes(text))) {
+      await new Promise<void>((resolve) => { arrived.add(resolve) })
+    }
+  }
+  const updates = () => messages.flatMap((message) => message.method === "session/update" && message.params ? [message.params.update] : [])
+  const open = async () => {
+    send({ id: 0, method: "initialize", params: { protocolVersion: 1, clientCapabilities: { fs: { readTextFile: true, writeTextFile: true }, terminal: true } } })
+    send({ id: 1, method: "session/new", params: { cwd: CWD, mcpServers: [] } })
+    return [await response(0), await response(1)]
+  }
+  return { send, response, updates, open, calls, messages, channel, end: () => { input.end() }, onInterrupt: (next: () => void) => { interrupt = next } }
+}
+
+const prompt = (id: number, text: string) => ({ id, method: "session/prompt", params: { sessionId: "root", prompt: [{ type: "text", text }] } })
+
+describe("headless chat over ACP", () => {
+  it("initializes, opens the root chat as its session, streams a turn, and answers the prompt when the turn settles", async () => {
+    // The turn streams while it runs, then ends with a reply that only the
+    // settled read delivers, as when its last delta is still on its way.
+    const fixture = acpFixture(async ({ output, publish, settle, streamed }) => {
+      output({ kind: "text", id: "t1", content: "Hel", timestamp: 0 })
+      await streamed("Hel")
+      output({ kind: "text", id: "t1", content: "Hello", timestamp: 0 })
+      output({ kind: "tool", id: "call-1", name: "bash", action: "shell_exec", presentation: { name: "Bash", detail: "ls" }, status: "pending", timestamp: 0 })
+      await streamed("in_progress")
+      output({ kind: "tool", id: "call-1", name: "bash", action: "shell_exec", presentation: { name: "Bash", detail: "ls" }, status: "completed", content: "a.txt", timestamp: 0 })
+      publish({ cursor: { scope: "session", domain: "budget", sessionId: "root" }, payload: { kind: "budget.updated", budget: { totalsLoading: false, tokens: 1040, cost: 0.3, billedCost: 0.25, priceUnavailable: false, contextPercent: 10, contextPromptTokens: 1000 } } })
+      output({ kind: "text", id: "t2", content: "Done.", timestamp: 0 })
+      await settle("complete")
+    })
+    const [initialized, opened] = await fixture.open()
+    expect(initialized?.result).toMatchObject({ protocolVersion: 1, agentCapabilities: { loadSession: false }, agentInfo: { name: "flywheel" }, authMethods: [] })
+    expect(opened?.result).toEqual({ sessionId: "root" })
+
+    fixture.send(prompt(2, "list files"))
+    expect((await fixture.response(2)).result).toEqual({
+      stopReason: "end_turn",
+      usage: { totalTokens: 1040, inputTokens: 1000, outputTokens: 40, thoughtTokens: 10, cachedReadTokens: 900, cachedWriteTokens: 0 },
+    })
+    fixture.end()
+    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+
+    expect(fixture.calls).toContainEqual({ type: "session.send", sessionId: "root", input: "list files" })
+    const updates = fixture.updates()
+    expect(updates.flatMap((update) => update.sessionUpdate === "agent_message_chunk" ? [update.content] : [])).toEqual([
+      { type: "text", text: "Hel" }, { type: "text", text: "lo" }, { type: "text", text: "Done." },
+    ])
+    expect(updates.filter((update) => update.sessionUpdate === "tool_call" || update.sessionUpdate === "tool_call_update")).toEqual([
+      { sessionUpdate: "tool_call", toolCallId: "call-1", title: "Bash ls", kind: "execute", status: "in_progress", rawInput: { tool: "bash" } },
+      { sessionUpdate: "tool_call_update", toolCallId: "call-1", status: "completed", rawInput: { tool: "bash" }, content: [{ type: "content", content: { type: "text", text: "a.txt" } }] },
+    ])
+    const answered = fixture.messages.findIndex((message) => message.id === 2)
+    expect(fixture.messages.slice(0, answered).at(-1)?.params?.update).toEqual({ sessionUpdate: "usage_update", used: 1000, size: 10_000, cost: { amount: 0.25, currency: "USD" } })
+  })
+
+  it("answers a cancelled prompt with stopReason cancelled after it interrupts the turn", async () => {
+    let end = (_outcome: HeadlessChatOutcome) => {}
+    const fixture = acpFixture(({ publish, settle }) => {
+      // A subscription run bills nothing: its equivalent value is not a cost.
+      publish({ cursor: { scope: "session", domain: "budget", sessionId: "root" }, payload: { kind: "budget.updated", budget: { totalsLoading: false, tokens: 1040, cost: 0.5, billedCost: 0, priceUnavailable: false, contextPercent: 10, contextPromptTokens: 1000 } } })
+      end = (outcome) => { void settle(outcome) }
+    })
+    fixture.onInterrupt(() => { end("incomplete") })
+    await fixture.open()
+    fixture.send(prompt(2, "work forever"))
+    await Bun.sleep(0)
+    fixture.send({ method: "session/cancel", params: { sessionId: "root" } })
+    expect((await fixture.response(2)).result).toMatchObject({ stopReason: "cancelled" })
+    expect(fixture.calls).toContainEqual({ type: "chat.interrupt", sessionId: "root" })
+    expect(fixture.updates()).toContainEqual({ sessionUpdate: "usage_update", used: 1000, size: 10_000 })
+    fixture.end()
+    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "incomplete" })
+  })
+
+  it("ends the prompt on an open question without answering it, and answers it with the next prompt", async () => {
+    let turns = 0
+    const fixture = acpFixture(({ output, settle }) => {
+      if (turns++ > 0) return settle("complete")
+      output(question)
+      return settle("input_required")
+    })
+    await fixture.open()
+    fixture.send(prompt(2, "start the server"))
+    expect((await fixture.response(2)).result).toMatchObject({ stopReason: "end_turn" })
+    expect(fixture.updates()).toContainEqual({ sessionUpdate: "agent_message_chunk", content: { type: "text", text: "Which port?\n- 8080" } })
+    expect(fixture.calls.some((command) => command.type === "question.answer" || command.type === "question.cancel")).toBe(false)
+
+    fixture.send(prompt(3, "9090"))
+    expect((await fixture.response(3)).result).toMatchObject({ stopReason: "end_turn" })
+    expect(fixture.calls).toContainEqual({ type: "question.answer", sessionId: "root", toolUseId: "ask", answers: { "Which port?": { kind: "freeform", text: "9090" } } })
+    fixture.end()
+    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+  })
+
+  it("streams the output whose live deltas were lost, in order, once the turn settles", async () => {
+    const text = (index: number): FrontendOutputBlock => ({ kind: "text", id: `t${index}`, content: `chunk-${index};`, timestamp: 0 })
+    const fixture = acpFixture(async ({ output, lose, publish, settle, streamed }) => {
+      output(text(0))
+      await streamed("chunk-0;")
+      for (let index = 1; index <= 300; index += 1) lose(text(index))
+      publish({ cursor: { scope: "workspace", domain: "runtime" }, payload: { kind: "runtime.invalidate", reason: "overflow" } })
+      output(text(301))
+      await settle("complete")
+    })
+    await fixture.open()
+    fixture.send(prompt(2, "write a lot"))
+    expect((await fixture.response(2)).result).toMatchObject({ stopReason: "end_turn" })
+    const chunks = fixture.updates().flatMap((update) => update.sessionUpdate === "agent_message_chunk" ? [update.content.text] : [])
+    expect(chunks).toEqual(Array.from({ length: 302 }, (_, index) => `chunk-${index};`))
+    fixture.end()
+    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+  })
+
+  it("refuses another working directory, a second session, model selection, and malformed input with JSON-RPC errors", async () => {
+    const fixture = acpFixture(({ settle }) => { settle("complete") })
+    fixture.send({ id: 9, method: "session/new", params: { cwd: "/", mcpServers: [] } })
+    expect((await fixture.response(9)).error?.code).toBe(-32602)
+    await fixture.open()
+    fixture.send({ id: 2, method: "session/new", params: { cwd: CWD, mcpServers: [] } })
+    fixture.send({ id: 3, method: "session/set_model", params: { sessionId: "root", modelId: "x" } })
+    fixture.send({ id: 4, method: "session/prompt", params: { sessionId: "other", prompt: [{ type: "text", text: "hi" }] } })
+    expect((await fixture.response(2)).error?.code).toBe(-32600)
+    expect((await fixture.response(3)).error?.code).toBe(-32601)
+    expect((await fixture.response(4)).error?.code).toBe(-32602)
+    fixture.end()
+    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+    expect(fixture.calls.some((command) => command.type === "session.send")).toBe(false)
+  })
+})

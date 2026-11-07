@@ -263,6 +263,7 @@ export function deriveChildRuntimeSurfaces(
     ...(parent.allowPersistentProcesses ? { allowPersistentProcesses: parent.allowPersistentProcesses } : {}),
     ...(parent.foregroundBashHold ? { foregroundBashHold: parent.foregroundBashHold } : {}),
     ...(parent.streamingEditValidation ? { streamingEditValidation: parent.streamingEditValidation } : {}),
+    ...(parent.headless ? { headless: true } : {}),
     ...(parent.sessions ? { sessions: parent.sessions } : {}),
     ...(local.handoff ? { handoff: local.handoff } : {}),
     ...(local.background ? { background: local.background } : {}),

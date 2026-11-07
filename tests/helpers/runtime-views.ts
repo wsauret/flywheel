@@ -29,7 +29,7 @@ export function configView(values: Partial<RuntimeConfigValues> = {}): RuntimeCo
   return {
     revision: 1,
     values: {
-      moduleSelection: [], allowPersistentProcesses: false, foregroundBashHoldSeconds: 0, showThinking: true, idleCompaction: true,
+      moduleSelection: [], allowPersistentProcesses: false, foregroundBashHoldSeconds: 0, showThinking: true, idleCompaction: true, shellWriteGuard: true,
       writeSyntaxTheme: "nord", requireWorkflowConfirmation: true, diffColors: "theme", compatibleRendering: "auto", webSearchProvider: "chatgpt",
       fontTipDismissed: false, tabsHintDismissed: false, proactiveCompactionThreshold: 0, autoDeleteSessionDays: 0, showBuild: false,
       moduleSections: {}, autoInstall: false, notificationsDesktop: false, profiles: {}, keybindings: {},

@@ -25,7 +25,6 @@ import { createBackgroundExecutionOwner } from "../agent-runtime/background-exec
 import { createBackgroundWorkRegistry } from "../agent-runtime/background-work.js"
 import { emitToolExecutionOutput } from "../agent-runtime/emit.js"
 import { createForegroundBashHoldController } from "../agent-runtime/foreground-bash-hold.js"
-import { captureHeadlessSnapshotConnection } from "./benchmark-auth-file.js"
 import { capabilityAccessFor } from "../agent-runtime/tools/types.js"
 import { subscribeSessionRuntimeFacts } from "../session/create-session-infra.js"
 import { createTaskProgressWriter, HEADLESS_PROGRESS_EVENT_TYPES } from "./task-progress.js"
@@ -38,7 +37,7 @@ import { createHeadlessDeadline, type HeadlessDeadlineExpired } from "./headless
 import { createHeadlessUsageAuthorityOwner, type HeadlessUsageAuthorityOwner } from "./headless-usage-authority.js"
 
 import { captureRuntimeConfigRequest } from "../agent-runtime/request-config.js"
-import { createHeadlessProfileRuntime, resolveHeadlessAuthProfile } from "./headless-profile-runtime.js"
+import { createHeadlessProfileRuntime, resolveHeadlessAuth } from "./headless-profile-runtime.js"
 import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
 import { personaRoleIds } from "../../workflows/definition-registry.js"
 export interface RunHeadlessTaskOptions {
@@ -189,8 +188,9 @@ export async function runHeadlessTask(task: string, options: RunHeadlessTaskOpti
         config: () => oneShotConfig,
         ...(options.authProfile ? { env: { FLYWHEEL_AUTH_PROFILE: options.authProfile } } : {}),
       })
-      authProfile = await deadline.awaitSetup(resolveHeadlessAuthProfile(authProfiles))
-      const snapshot = await deadline.awaitSetup(captureHeadlessSnapshotConnection(options.authSnapshot, authProfile.id, authProfile.directory, accessProviderRegistry(moduleSelection()).selection.definitions))
+      const resolved = await deadline.awaitSetup(resolveHeadlessAuth(authProfiles, options.authSnapshot, accessProviderRegistry(moduleSelection()).selection.definitions))
+      authProfile = resolved.profile
+      const snapshot = resolved.snapshot
       const capturedProfileId = snapshot?.profileId ?? authProfile.id
       const requestConfig = captureRuntimeConfigRequest(runtimeConfig.snapshot(), capturedProfileId, options.allowPersistentProcesses)
       usageAuthority = createHeadlessUsageAuthorityOwner({ id: capturedProfileId, directory: authProfile.directory })
@@ -215,6 +215,7 @@ export async function runHeadlessTask(task: string, options: RunHeadlessTaskOpti
           persistentProcesses: options.persistentProcesses,
           allowPersistentProcesses: () => requestConfig.allowPersistentProcesses,
           capabilities: capabilityPolicy.policy,
+          headless: true,
           ...(snapshot ? { overrides: { connection: snapshot.connection } } : {}),
         },
         captureRuntimeConfig,

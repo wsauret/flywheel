@@ -174,9 +174,13 @@ Git commands that change the repository run without the mutating declaration, an
 
 A process that a mutating command starts can end when the command ends. On Windows, and on Linux hosts that run the command in its own process namespace, it always ends. A long-lived process, such as a server or a watcher, belongs in a separate command that is not declared as mutating, and such a command keeps the processes it starts.
 
-## PI-AGENT-068: Agent shell writes stay inside the project
+## PI-AGENT-068: Agent shell writes stay inside the project unless the person turns the guard off
 
-Every agent's shell refuses recognized writes and deletes outside the project, the `.flywheel` folders, and the project's registered worktrees, except writes to device sinks. The working directory never widens this allowance, and an unknown working directory does not refuse a write whose literal path lies inside the allowance. A read-only agent, such as the explorer or a reviewer, may write only in its scratchpad or to device sinks. This is a guard against mistakes, not a sandbox for arbitrary programs.
+By default, every agent's shell refuses recognized writes and deletes outside the project, the `.flywheel` folders, and the project's registered worktrees, except writes to device sinks. The working directory never widens this allowance, and an unknown working directory does not refuse a write whose literal path lies inside the allowance. The person can turn the guard off for writing agents. A read-only agent always writes only in its scratchpad or to device sinks. This is a guard against mistakes, not a sandbox for arbitrary programs.
+
+## PI-AGENT-119: Headless shell commands write in place
+
+In a headless run, the shell offers no mutating declaration. Every shell command writes in place, enters no file-change record, and keeps the processes it starts as an ordinary command does. The file edit and write tools keep their change records.
 
 ## PI-AGENT-069: A refused shell write tells the agent what to do
 
@@ -344,7 +348,7 @@ A workflow agent, subagent, or headless task recovers from provider faults alone
 
 ## PI-AGENT-030: Headless chat uses standard input and output
 
-Headless chat behaves like interactive chat, with standard input and output replacing the graphical or terminal client. It uses the same instructions, tools, conversation history, child agents, workflow supervision, authentication profile, and provider admission and failover. It adds no provider filter, billing ceiling, or usage pause to the profile's normal policy. A versioned JSONL channel accepts messages, question answers or cancellations, interrupts, and stops, and streams responses and state changes.
+Headless chat behaves like interactive chat, with standard input and output replacing the graphical or terminal client. It uses the same instructions, tools, conversation history, child agents, workflow supervision, authentication profile, and provider admission and failover. Its shell offers no mutating declaration. It adds no provider filter, billing ceiling, or usage pause. Standard input and output speak a versioned JSONL channel, which accepts messages, question answers or cancellations, interrupts, and stops, or Agent Client Protocol version 1, which accepts prompts and cancellations. Both stream responses and state changes.
 
 ## PI-AGENT-074: Headless chat ends when its owned work ends
 

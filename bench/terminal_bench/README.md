@@ -36,6 +36,12 @@ bench/terminal_bench/run-terminal-bench.sh \
 
 Dirty Git provenance never blocks or changes a campaign grade. The manifest records the exact revision, clean boolean, and dirty paths for later manual audit. When `headless.runtime_source_commit` is set, the adapter builds the runtime archive only from regular Git blobs at that exact commit. It ignores modified, deleted, symlinked, and untracked worktree state. Without a pin, the existing worktree selection behavior remains active. A pin must name a commit in the public history, so that a public clone can build it; `bun run lint:bench-pins` fails on a profile whose pin is not an ancestor of HEAD. The checked-in profiles name no pin. The campaign profiles that pinned builds from before the public history were removed; results recorded with them come from those earlier builds and need a new baseline.
 
+## Flywheel config
+
+A profile can name a checked-in Flywheel config with `headless.flywheel_config`, a path relative to the repository root, such as `bench/terminal_bench/configs/tb-mini-openai.toml`. The config sets the trial's modules and settings, persistent processes included, and pins the chat model and effort in `[profiles.benchmark.roles.chat]`. Before any trial, also in a dry run, the launcher decodes the file with Flywheel's own config schema and refuses the run on any error or warning, naming the file and the problem. An unknown key, such as an interaction profile, is a warning and refuses the run. The config is the only source of the chat model: a profile that also sets `headless.model`, or a run with `--model`, is refused, and the config must pin both model and effort.
+
+The adapter checks the file against the digest the launcher recorded, uploads it into the trial as `$HOME/.flywheel/flywheel.toml`, exports the selected auth profile's credentials under the neutral profile id `benchmark`, and runs Flywheel with `--auth-profile benchmark`, so the config names no host profile. It sets no chat model or effort environment variable. A profile without `headless.flywheel_config` keeps the `headless.model` path and the trial default config.
+
 The launcher rejects non-submission settings unless the matching local admission flag is explicit:
 
 - `--allow-low-k` admits fewer than five attempts per task.
@@ -62,9 +68,9 @@ This `k=1` smoke is `debug_only`. It checks one complete launcher, generated-con
 
 Preparation creates one timestamped artifact directory under the configured jobs directory:
 
-- `preparation-plan.json` records commands and artifact paths used by the launcher.
+- `preparation-plan.json` records commands and artifact paths used by the launcher, and the Flywheel config path, SHA-256 digest, and chat effort, or `null` without one.
 - `generated.json` is the validated named Harbor config used for execution.
-- `run_manifest.json` records seed provenance, the runtime source record, exact command, denominator, grade, effective settings, and environment variable names only. Pinned records contain `mode: "git_commit"` plus the requested and canonically resolved SHA. Unpinned records contain `mode: "worktree"`.
+- `run_manifest.json` records seed provenance, the runtime source record, exact command, denominator, grade, effective settings, and environment variable names only. Pinned records contain `mode: "git_commit"` plus the requested and canonically resolved SHA. Unpinned records contain `mode: "worktree"`. The `flywheel_config` record holds the config path, SHA-256 digest, and chat effort, or `null` without one.
 - `metadata.yaml` identifies the named `FlywheelHeadless` agent and primary model.
 - `disclosure-ledger.json` is written during finalization from real Harbor trial evidence.
 - Each trial's `agent/flywheel-run-summary.json` carries versioned termination, cancellation, deadline-authority, and usage evidence.

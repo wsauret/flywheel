@@ -25,8 +25,10 @@ const bash = {
       create: ({ kernel }) => {
         const foreground = !backgroundShellModuleRequirements().every((id) => kernel.capabilities.available(id))
         // Every agent of a chat tree gets the same bash bytes, because its shared
-        // Claude host fixes them at launch (ARCH-CONTEXT-018). These flags only
-        // decide which advertised inputs execution refuses.
+        // Claude host fixes them at launch (ARCH-CONTEXT-018). The persona flags
+        // only decide which advertised inputs execution refuses. Of the surface
+        // flags, `headless` is fixed for the whole runtime, and the tree
+        // captures the write guard once for all its agents (`SharedTreeCapture`).
         return {
           tool: createBashDefinition({
             totalYieldMs: holdMs(kernel),
@@ -37,6 +39,8 @@ const bash = {
             requireManagedExecution: true,
             fileEditTool: kernel.fileEditContract ?? "edit",
             readOnly: kernel.readOnly === true,
+            writeGuard: kernel.shellWriteGuard,
+            mutatingDeclaration: kernel.headless !== true,
           }),
         }
       },

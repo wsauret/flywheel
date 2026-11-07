@@ -59,6 +59,7 @@ export interface WorkspaceSettings {
   readonly compactionThreshold: number
   readonly autoDeleteSessionDays: number
   readonly idleCompaction: boolean
+  readonly shellWriteGuard: boolean
   readonly webSearchProvider: "chatgpt" | "exa"
   readonly showThinking: boolean
   /** This project's Show build setting, as the connected runtime resolves it. */
@@ -153,6 +154,7 @@ export async function readWorkspaceSettings(connection: Pick<RuntimeConnection, 
     compactionThreshold: values.proactiveCompactionThreshold,
     autoDeleteSessionDays: values.autoDeleteSessionDays,
     idleCompaction: values.idleCompaction,
+    shellWriteGuard: values.shellWriteGuard,
     webSearchProvider: values.webSearchProvider,
     showThinking: values.showThinking,
     showBuild: values.showBuild,

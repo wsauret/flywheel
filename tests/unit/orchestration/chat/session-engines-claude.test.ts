@@ -151,7 +151,7 @@ async function until(condition: () => boolean): Promise<void> {
 
 /** The tree that a run of the session holds now. */
 function currentTree(): SharedTree {
-  const held = holdSharedTree(TREE, testCapabilityModules)
+  const held = holdSharedTree(TREE, () => ({ modules: testCapabilityModules(), shellWriteGuard: true }))
   held.release()
   return held.tree
 }

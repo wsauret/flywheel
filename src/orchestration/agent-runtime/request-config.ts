@@ -15,6 +15,7 @@ export interface RuntimeConfigRequestCapture {
    *  provider then setting; a provider module fills its own defaults. */
   readonly providerSettings: FlywheelConfig["profiles"][string]["providers"];
   readonly allowPersistentProcesses: FlywheelConfig["allow_persistent_processes"];
+  readonly shellWriteGuard: FlywheelConfig["shell_write_guard"];
   readonly profileRoles: FlywheelConfig["profiles"][string]["roles"];
   readonly gitAiAttribution: boolean;
   readonly allowTrainingRoutes: boolean;
@@ -39,6 +40,7 @@ export function captureRuntimeConfigRequest(snapshot: RuntimeConfigSnapshot, eff
     cacheRetentionPolicies: config.cache_retention,
     providerSettings: profile?.providers ?? {},
     allowPersistentProcesses: config.allow_persistent_processes || persistentProcessesForcedByCli,
+    shellWriteGuard: config.shell_write_guard,
     profileRoles: profileRoleSettings(profile?.roles),
     gitAiAttribution: profile?.git_ai_attribution ?? false,
     allowTrainingRoutes: profile?.allow_training_routes ?? false,

@@ -37,8 +37,8 @@ const modelClient = (model: string) => asModelClient({
 
 /** One tree-hosted agent of the chat tree `root`: its session, its durable opening turn, and its provider lifetime,
  *  which `end` closes as the runner does. With `runScope`, the provider lifetime outlives the run, as a session's
- *  pre-start's does, and `endRun` closes the run's scope alone. */
-async function treeAgent(root: string, sessionId: string, purpose: AgentOptions["purpose"], moduleSelection: () => FirstPartyModuleComposition, held?: { readonly runScope: Scope.Closeable }) {
+ *  pre-start's does, and `endRun` closes the run's scope alone. `shellWriteGuard` is the configuration's value. */
+async function treeAgent(root: string, sessionId: string, purpose: AgentOptions["purpose"], moduleSelection: () => FirstPartyModuleComposition, held: { readonly runScope?: Scope.Closeable; readonly shellWriteGuard?: boolean } = {}) {
   const appended: ConversationMessage[] = []
   // The module selections that admitted this agent's providers.
   const providerModules: FirstPartyModuleComposition[] = []
@@ -50,7 +50,7 @@ async function treeAgent(root: string, sessionId: string, purpose: AgentOptions[
     purpose,
     agentsMd: "",
     onEvent: () => {},
-    awaitModelAccessSettled: async () => {}, captureRuntimeConfig: testRuntimeConfigCapture,
+    awaitModelAccessSettled: async () => {}, captureRuntimeConfig: () => ({ ...testRuntimeConfigCapture(), shellWriteGuard: held.shellWriteGuard ?? true }),
     captureProviderConnection: async () => { throw new Error("unused in this test") },
     runtimeSurfaces: {
       launcher: refusingLauncher,
@@ -78,7 +78,7 @@ async function treeAgent(root: string, sessionId: string, purpose: AgentOptions[
     captureModelRuntime: async () => ({ generation: {}, createLLMClient: async (model, modules) => { if (modules) providerModules.push(modules); return modelClient(model) } }),
     createRunner: () => { throw new Error("unused in this test") },
     providerSessionLifetime: { providerSessionKey: sessionId, scope },
-    ...(held === undefined ? {} : { runScope: held.runScope }),
+    ...(held.runScope === undefined ? {} : { runScope: held.runScope }),
   })
   const surface = await assembled.tools.resolve()
   const runtime = surface.providerRuntime
@@ -99,7 +99,7 @@ async function treeAgent(root: string, sessionId: string, purpose: AgentOptions[
   return {
     definitions, advertised, call, callable, providerModules,
     end: () => Effect.runPromise(Scope.close(scope, Exit.void)),
-    endRun: () => held === undefined ? Promise.resolve() : Effect.runPromise(Scope.close(held.runScope, Exit.void)),
+    endRun: () => held.runScope === undefined ? Promise.resolve() : Effect.runPromise(Scope.close(held.runScope, Exit.void)),
   }
 }
 
@@ -150,6 +150,21 @@ describe("the module capture of a chat tree's shared host", () => {
     await prestart.end()
   })
 
+  it("gives an agent that starts after the shell write guard turned off the tree's shell bytes, until the tree is captured again", async () => {
+    // Only the shell's description states the write roots.
+    const writeRoots = "Keep writes inside the project"
+    const first = await treeAgent("root-write-guard", "agent-1", SUBAGENT, () => ALL)
+    const second = await treeAgent("root-write-guard", "agent-2", SUBAGENT, () => ALL, { shellWriteGuard: false })
+
+    expect(second.definitions).toBe(first.definitions)
+    expect(second.definitions).toContain(writeRoots)
+    await first.end()
+    await second.end()
+    const next = await treeAgent("root-write-guard", "agent-3", SUBAGENT, () => ALL, { shellWriteGuard: false })
+    expect(next.definitions).not.toContain(writeRoots)
+    await next.end()
+  })
+
   it("gives a workflow agent whose admission lacks a module the tree's tools, and refuses that module's tools from its first turn", async () => {
     const chatSubagent = await treeAgent("root-workflow", "agent-1", SUBAGENT, () => ALL)
     const workflowAgent = await treeAgent("root-workflow", "agent-2", WORKFLOW_AGENT, () => PAPERCUTS_OFF)
@@ -165,7 +180,7 @@ describe("the module capture of a chat tree's shared host", () => {
 
 describe("the login of a chat tree's shared host", () => {
   it("is the login of the newest live host that holds the tree, and no login once no host holds it", () => {
-    const { tree, release } = holdSharedTree("root-login", () => ALL)
+    const { tree, release } = holdSharedTree("root-login", () => ({ modules: ALL, shellWriteGuard: true }))
     const endFirst = tree.hold("login-1")
     const endSecond = tree.hold("login-2")
     expect(tree.login).toBe("login-2")

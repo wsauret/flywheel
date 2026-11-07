@@ -208,6 +208,8 @@ export interface PrepareWorkflowDepsInput extends AccountDirectories {
   recordModelRefusal?: RecordModelRefusal
   /** Enables account login waiting only for an interactive executor. */
   waitForLogin?: true
+  /** No client reviews this runtime's file changes (`RuntimeToolSurfaces.headless`). */
+  headless?: true
   /** The eligibility owner's wait for the profile's discovery to settle (`WorkflowDeps.awaitModelAccessSettled`). */
   awaitModelAccessSettled: (signal: AbortSignal) => Promise<void>
 }
@@ -264,6 +266,7 @@ export async function prepareWorkflowDeps(input: PrepareWorkflowDepsInput): Prom
     authConditions: input.authConditions,
     ...(input.recordModelRefusal === undefined ? {} : { recordModelRefusal: input.recordModelRefusal }),
     ...(input.waitForLogin === undefined ? {} : { waitForLogin: input.waitForLogin }),
+    ...(input.headless ? { headless: true } : {}),
     notify: input.onNotification,
     awaitModelAccessSettled: input.awaitModelAccessSettled,
   })

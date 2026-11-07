@@ -20,6 +20,8 @@ export interface RuntimeConfigValues {
   readonly theme?: string
   readonly moduleSelection: readonly string[]
   readonly allowPersistentProcesses: boolean
+  /** Whether a writing agent's shell refuses recognized writes outside the project (PI-AGENT-068). */
+  readonly shellWriteGuard: boolean
   readonly foregroundBashHoldSeconds: number
   readonly showThinking: boolean
   readonly idleCompaction: boolean
@@ -60,7 +62,7 @@ interface RuntimeConfigWarning {
 }
 
 type RuntimeConfigSettingId =
-  | "theme" | "moduleSelection" | "allowPersistentProcesses" | "foregroundBashHoldSeconds"
+  | "theme" | "moduleSelection" | "allowPersistentProcesses" | "shellWriteGuard" | "foregroundBashHoldSeconds"
   | "showThinking" | "idleCompaction" | "writeSyntaxTheme" | "requireWorkflowConfirmation" | "diffColors" | "compatibleRendering"
   | "webSearchProvider" | "fontTipDismissed" | "tabsHintDismissed" | "acknowledgedReleaseVersion"
   | "proactiveCompactionThreshold" | "autoDeleteSessionDays" | "gitAiAttribution" | "allowTrainingRoutes"
@@ -99,6 +101,7 @@ type RuntimeConfigWorkspaceSetting =
   | RuntimeConfigSettingMutation<"theme", string>
   | RuntimeConfigSettingMutation<"moduleSelection", readonly string[]>
   | RuntimeConfigSettingMutation<"allowPersistentProcesses", boolean>
+  | RuntimeConfigSettingMutation<"shellWriteGuard", boolean>
   | RuntimeConfigSettingMutation<"foregroundBashHoldSeconds", number>
   | RuntimeConfigSettingMutation<"showThinking", boolean>
   | RuntimeConfigSettingMutation<"idleCompaction", boolean>

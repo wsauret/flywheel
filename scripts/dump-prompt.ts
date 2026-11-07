@@ -189,7 +189,7 @@ async function planTools(input: PlanInput): Promise<PlannedRequest> {
     },
     treeHosted: sharesTreeHost(input.purpose),
   }, {
-    moduleSnapshot, live: moduleSnapshot, runtimeConfig, skills: input.skills,
+    moduleSnapshot, live: moduleSnapshot, runtimeConfig, shellWriteGuard: runtimeConfig.shellWriteGuard, skills: input.skills,
     servingModel: { model: DUMP_MODEL, modelFamily: "anthropic" },
     fileEditContract: DUMP_INTERACTION_PROFILE.fileEditContract,
   });

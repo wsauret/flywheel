@@ -7,7 +7,7 @@ import type { AccessProviderDefinition } from "../../../infra/llm/access-provide
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../infra/llm/model-catalog-resolution.js";
 import { ApiError } from "../../agent-runtime/errors.js";
 import { normalizeProviderAttemptFailure, ProviderAuthenticationError } from "../../agent-runtime/llm/provider-failure.js";
-import { ensureFreshChatGPTTokens, getConnectionChatGPTTokenAccessor } from "../../agent-runtime/llm/openai-chatgpt.js";
+import { ensureFreshChatGPTTokens, getConnectionChatGPTTokenAccessor, rotateChatGPTTokens } from "../../agent-runtime/llm/openai-chatgpt.js";
 import { startBrowserFlow } from "../../auth/openai-oauth.js";
 import { credentialForCandidate, stagedProviderClient, type AccessProviderFactory } from "../../agent-runtime/llm/client-factory.js";
 import { describeProvider } from "../../agent-runtime/llm/provider-description.js";
@@ -74,6 +74,7 @@ const definition = {
       const identity = tokens.email ?? tokens.accountId ?? extractDisplayIdentityFromJwt(Redacted.value(tokens.accessToken));
       return { ...(identity === undefined ? {} : { identity }), credential: oauthCredential(tokens) };
     },
+    refresh: async (credential, signal) => oauthCredential(await rotateChatGPTTokens(storedTokens(credential), signal)),
   },
   usage: {
     metricDetail: isModelWindowMetric,

@@ -53,6 +53,8 @@ export interface KernelRequestFacts {
   readonly moduleSnapshot: FirstPartyModuleComposition;
   readonly live: FirstPartyModuleComposition;
   readonly runtimeConfig: RuntimeConfigRequestCapture;
+  /** The tree's captured value for a tree-hosted request, else the request's configuration (`SharedTreeCapture`). */
+  readonly shellWriteGuard: boolean;
   readonly skills: SkillRegistryRevision | undefined;
   readonly servingModel: KernelToolDeps["servingModel"];
   readonly fileEditContract: ModelInteractionProfile["fileEditContract"];
@@ -76,6 +78,7 @@ export function requestKernel(run: KernelRunFacts, request: KernelRequestFacts):
     ...(surfaces.foregroundBashHold ? { foregroundBashHold: surfaces.foregroundBashHold } : {}),
     ...(request.runtimeConfig.foregroundBashHoldSeconds !== undefined ? { foregroundBashHoldSeconds: request.runtimeConfig.foregroundBashHoldSeconds } : {}),
     persistentProcesses: request.runtimeConfig.allowPersistentProcesses,
+    shellWriteGuard: request.shellWriteGuard,
     fileEditContract: request.fileEditContract,
     capabilities: {
       available: (capability: ModuleId) => moduleIds.has(capability) && (options.capabilityAccess?.available(capability) ?? true),
@@ -87,6 +90,7 @@ export function requestKernel(run: KernelRunFacts, request: KernelRequestFacts):
     runtimeConfig: request.runtimeConfig,
     purpose: options.purpose,
     ...(run.treeHosted ? { treeHosted: true } : {}),
+    ...(surfaces.headless ? { headless: true } : {}),
     ...(options.readOnly ? { readOnly: true } : {}),
     personas: run.personas,
     ...(options.allowedSubagentTypes ? { allowedSubagentTypes: options.allowedSubagentTypes } : {}),

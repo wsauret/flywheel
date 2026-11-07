@@ -279,7 +279,8 @@ export interface BashInterception {
 export interface BashPolicyOptions {
   /** Runner-local skill identities whose bodies loaded successfully. */
   effectiveBundledSkillIds?: ReadonlySet<string>;
-  /** Present at execution, after the tool resolves its per-call cwd. */
+  /** Present at execution, after the tool resolves its per-call cwd, unless
+   *  the person turned the write guard off for a writing agent. */
   scope?: WriteScope;
   /** Content-free correlation for the one refusal diagnostic. */
   ids?: { readonly sessionId?: string; readonly toolUseId?: string; readonly modelRequestId?: string };

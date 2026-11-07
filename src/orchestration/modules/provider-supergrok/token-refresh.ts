@@ -113,11 +113,17 @@ export interface XaiTokenRefreshDependencies {
   readonly compareAndSet: (expected: StoredTokens, next: StoredTokens, signal?: AbortSignal) => Promise<boolean>;
 }
 
+/** Exchanges the refresh token for new tokens now, whatever the remaining lifetime, and persists nothing. */
+export async function rotateXaiTokens(current: StoredTokens, signal?: AbortSignal): Promise<StoredTokens> {
+  if (!current.refreshToken) throw new XaiTokenRefreshError({ kind: "no_refresh_token" });
+  return requestRefreshedTokens(current.refreshToken, signal);
+}
+
 async function refreshXaiTokens(current: StoredTokens, dependencies: XaiTokenRefreshDependencies, persistence: import("../../../infra/auth/auth-context.js").OAuthPersistencePolicy, signal?: AbortSignal): Promise<StoredTokens> {
-  const refreshToken = current.refreshToken;
-  if (!refreshToken) throw new XaiTokenRefreshError({ kind: "no_refresh_token" });
+  // An access-only credential carries no refresh token, so this refusal comes
+  // first: it names the remedy for a headless snapshot, a new snapshot.
   if (persistence === "access-only") throw new XaiTokenRefreshError({ kind: "refresh_forbidden" });
-  const next = await requestRefreshedTokens(refreshToken, signal);
+  const next = await rotateXaiTokens(current, signal);
   signal?.throwIfAborted();
   if (persistence === "profile") await dependencies.compareAndSet(current, next, signal);
   return next;

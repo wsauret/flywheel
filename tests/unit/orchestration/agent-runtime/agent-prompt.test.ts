@@ -5,7 +5,7 @@ import { detectModelFamily } from "../../../../src/infra/llm/model-family.js";
 import { ANTHROPIC_PROMPT_NOTES } from "../../../../src/orchestration/agent-runtime/llm/provider-description.js";
 import { SHARED_PROMPT_NOTES } from "../../../../src/orchestration/agent-runtime/llm/prompt-notes.js";
 import { testBaseTools } from "../../../helpers/request-tool-surface.js";
-import { BASH_INPUT_SCHEMA, bashPromptFields, SHELL_OUTPUT_GUIDANCE } from "../../../../src/orchestration/agent-runtime/tools/bash-guidance.js";
+import { bashToolSurface, SHELL_OUTPUT_GUIDANCE } from "../../../../src/orchestration/agent-runtime/tools/bash-guidance.js";
 import { GLOBAL_GUIDELINE_ID, renderGlobalGuidelines } from "../../../../src/orchestration/agent-runtime/global-guidelines.js";
 import { loadSystemPrompt } from "../../../../src/infra/agent-assets/system-prompt.js";
 import { testDirectories } from "../../../helpers/directories.js";
@@ -126,20 +126,37 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
     expect(bash.description).toContain("scratch scripts is a normal, expected way to work");
     const mutationGuidance = "Run Git commands as separate calls without mutates. Never chain a Git command onto a mutating command. Git commands that change the repository are refused inside mutates: true; rerun them as a separate call without mutates. Read-only Git commands, including scripts and build tools that only read Git, remain allowed inside mutating commands. Set mutates: true only when the command's purpose is to change the project files you are working on, so that the change is recorded and reviewed like an edit or write tool change. Examples: heredoc and cat > writes, sed -i, Python or Bun scripts that rewrite files, formatters, code generators, and plain mv and rm. Leave it unset when the writes are side effects of running something: installing dependencies or binaries, builds, tests, caches, and servers. Write this field first, before command. Name the target tree with cwd, not an absolute cd in the command. Use relative project paths: the command runs in a private copy, and only its changes to file contents land when it exits. Processes it starts can end when it exits, so start servers and watchers in a separate call without mutates. Git objects, the index, refs, and stash changes never land from the copy. Create files to run, such as scratch scripts, with the write tool; bash only runs them.";
     for (const fileEditTool of ["edit", "apply_patch"] as const) {
-      const { description } = bashPromptFields(fileEditTool);
+      const { description } = bashToolSurface({ fileEditTool });
       const prefix = `${mutationGuidance} These mutations are recorded like changes from the ${fileEditTool} and write tools. `;
       expect(description.slice(0, prefix.length)).toBe(prefix);
       expect(description.split(mutationGuidance)).toHaveLength(2);
       expect(description).toContain("Chain dependent commands with && or ; within one call, but keep Git commands separate from mutating commands.");
     }
-    expect(BASH_INPUT_SCHEMA.properties).toEqual(expect.objectContaining({
+    expect(bashToolSurface().inputSchema.properties).toEqual(expect.objectContaining({
       mutates: { type: "boolean", description: `${mutationGuidance} Cannot be combined with persist_after_exit.` },
     }));
     expect(bash.description.startsWith(mutationGuidance)).toBe(true);
+    expect(bash.description).toContain("Keep writes inside the project, the .flywheel folders, and registered worktrees");
     expect(prompt).not.toContain("glob_pattern (not find)");
     // The prompt keeps only the behavior contract the description does not state.
     expect(prompt).toContain("Preserve live command output.");
     expect(prompt).not.toContain("scratch scripts is a normal, expected way to work");
+  });
+
+  test("a headless shell offers no mutating declaration, and a guard that is off names no write roots", () => {
+    const interactive = bashToolSurface();
+    const headless = bashToolSurface({ mutatingDeclaration: false });
+    expect(Object.keys(headless.inputSchema.properties ?? {})).toEqual(Object.keys(interactive.inputSchema.properties ?? {}).filter((field) => field !== "mutates"));
+    expect(headless.description).not.toMatch(/mutat/);
+    expect(headless.description).toContain("Chain dependent commands with && or ; within one call. A command that reads text typed into the terminal");
+    expect(headless.description).toBe(interactive.description.slice(interactive.description.indexOf("Execute a shell command")).replace(", but keep Git commands separate from mutating commands", ""));
+
+    const writeRoots = "Keep writes inside the project, the .flywheel folders, and registered worktrees; the shell refuses the writes elsewhere that it recognizes.";
+    const unguarded = bashToolSurface({ writeGuard: false });
+    expect(interactive.description).toContain(writeRoots);
+    expect(unguarded.description).not.toContain(writeRoots);
+    expect(unguarded.description).toBe(interactive.description.replace(` ${writeRoots}`, ""));
+    expect(unguarded.inputSchema).toEqual(interactive.inputSchema);
   });
 
   test("self-debug guidance advertises only the registered event-search command", () => {

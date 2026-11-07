@@ -6,12 +6,14 @@ import { bindWorkflowDepsToSession, prepareWorkflowDeps } from "../../../../src/
 import { CONFIG_DEFAULTS, type FlywheelConfig } from "../../../../src/orchestration/config/schema";
 import type { AgentFactory, AgentOptions } from "../../../../src/orchestration/agent-runtime/types";
 import type { PrepareWorkflowDepsInput, WorkflowDepsOverrides } from "../../../../src/orchestration/workflow-host/deps";
-import { repoDefinitions } from "../../../helpers/project-definitions.js";
+import { fixtureDefinitions, repoDefinitions } from "../../../helpers/project-definitions.js";
 import type { AccountDirectories } from "../../../../src/infra/directory-authorities.js";
 import { testDirectories } from "../../../helpers/directories.js";
 import { captureProviderConnection } from "../../../../src/infra/auth/auth-context.js";
 import { testCapabilityModules } from "../../../helpers/provider-authority.js";
 import { authProviders } from "../../../helpers/auth-context.js";
+import { asModelClient } from "../agent-runtime/_model-client.js";
+import type { ProviderStreamEvent, StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types.js";
 
 /** Account authorities of the isolated test account home. A case that reads the
  *  global config publishes its own instead. */
@@ -74,6 +76,7 @@ function depsInput(overrides: WorkflowDepsOverrides, account: AccountDirectories
       providerSettings: {},
       allowTrainingRoutes: false,
       allowPersistentProcesses: config.allow_persistent_processes,
+      shellWriteGuard: config.shell_write_guard,
       profileRoles: config.profiles.work?.roles ?? {},
       gitAiAttribution: config.profiles.work?.git_ai_attribution ?? false,
       budget: config.budget,
@@ -189,6 +192,42 @@ describe("prepareWorkflowDeps", () => {
     expect(deps.captureRuntimeConfig()).toMatchObject({ profileId: "work", providerSettings: { github_copilot: { monthly_credit_cap: 1200 } } })
     profileId = "personal"
     expect(deps.captureRuntimeConfig()).toMatchObject({ profileId: "personal", providerSettings: { github_copilot: { monthly_credit_cap: 0 } } })
+  })
+
+  it("gives a headless runtime's agents a Bash tool with no mutating declaration, and an interactive runtime's agents the declaration", async () => {
+    const bashOf = async (headless: boolean) => {
+      const { createAgent: _fake, ...overrides } = makeOverrides()
+      // A temporary project: a runner's completion sweeps its project's breadcrumbs.
+      const definitions = fixtureDefinitions()
+      const deps = await prepareWorkflowDeps({ ...depsInput(overrides), definitions, ...(headless ? { headless: true } : {}) })
+      const sent: StreamOptions[] = []
+      const client = asModelClient({
+        accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test", contextLimit: 100_000, outputLimit: 8_000, supportsReasoning: false,
+        promptNotes: { progress: "", modelNotes: "" },
+        priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" } as const),
+        async *streamWithTools(options): AsyncGenerator<ProviderStreamEvent> {
+          sent.push(options)
+          yield { kind: "done", stopReason: "end_turn" }
+        },
+      })
+      const agent = deps.createAgent({
+        ...testDirectories(definitions.projectRoot), model: "test", purpose: { kind: "interactive-chat" }, agentsMd: "", onEvent: () => {},
+        conversation: { kind: "stateless" }, lifecycle: { kind: "one-shot" },
+        captureModelRuntime: async () => ({ generation: {}, createLLMClient: async () => client }),
+      })
+      agent.send("work")
+      await agent.done
+      const bash = sent[0]?.tools.find((tool) => tool.name === "bash")
+      if (bash === undefined) throw new Error("the first request advertised no bash tool")
+      return bash
+    }
+
+    const headless = await bashOf(true)
+    expect(headless.input_schema).not.toHaveProperty("properties.mutates")
+    expect(headless.description).not.toMatch(/mutat/)
+    const interactive = await bashOf(false)
+    expect(interactive.input_schema).toHaveProperty("properties.mutates")
+    expect(interactive.description).toMatch(/mutat/)
   })
 
   it("captures the latest complete session runtime for each provider request", async () => {

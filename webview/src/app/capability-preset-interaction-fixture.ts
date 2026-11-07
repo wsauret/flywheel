@@ -29,7 +29,7 @@ export function mountCapabilityPreset(sheet: "settings" | "capabilities") {
     let settings: PanelSettings = {
       capabilities: current, moduleIds: initialModuleIds, capabilitiesOn: 1, capabilitiesTotal: 2, capabilityPreset: "custom",
       workflowMode: "off", persistentProcesses: current.persistentProcesses, moduleSettings: [],
-      compactionThreshold: 50_000, idleCompaction: true, autoDeleteSessionDays: 0, webSearchProvider: "chatgpt",
+      compactionThreshold: 50_000, idleCompaction: true, shellWriteGuard: true, autoDeleteSessionDays: 0, webSearchProvider: "chatgpt",
       showThinking: true, showBuild: false, writeSyntaxTheme: "nord", diffColors: "theme",
       profileId: "default", providerSettings: [], gitAiAttribution: false, allowTrainingRoutes: false, problems: [],
       profile: { displayName: "Default", count: 1 }, configProblems: [],

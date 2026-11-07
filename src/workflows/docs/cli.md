@@ -8,6 +8,7 @@ This file is generated from the command definitions. Run `bun run docs:generate`
 flywheel [options]
 flywheel <subcommand> [args]
 flywheel --headless [--session <id>] [--one-shot] [--disable-tool <name>]...
+flywheel --headless --acp [--disable-tool <name>]...
 flywheel --headless --task <text> [--system-prompt <text>] [--model <id>] [--effort <level>] [--disable-tool <name>]...
 ```
 
@@ -22,16 +23,17 @@ Running flywheel with no arguments starts the interactive TUI. An explicit --pro
 | `--project-root <dir>` | Directory that owns durable project state. Overrides FLYWHEEL_PROJECT_ROOT, established .flywheel discovery, and interactive or silent fallback selection. |
 | `--remote` | Choose a project on a machine this terminal is paired with, and open it through the relay. Pair a machine with 'flywheel remote machines add `<link>`'. |
 | `--print-logs` | Mirror structured logs to stderr. While the TUI draws on the terminal, only a redirected stderr gets them. |
-| `--headless` | Run without the TUI for CI/automation: `flywheel --headless [--session <id>] [--one-shot] [--disable-tool <name>]...` (JSONL Chat) or `flywheel --headless --task <text> [--system-prompt <text>] [--model <id>] [--effort <level>] [--disable-tool <name>]...` |
+| `--headless` | Run without the TUI for CI/automation: `flywheel --headless [--session <id>] [--one-shot] [--disable-tool <name>]...` (JSONL Chat) or `flywheel --headless --acp [--disable-tool <name>]...` (Agent Client Protocol v1 Chat) or `flywheel --headless --task <text> [--system-prompt <text>] [--model <id>] [--effort <level>] [--disable-tool <name>]...` |
 | `--task <text>` | Run one direct headless task through the shared production runner. |
 | `--deadline-seconds <n>` | Positive finite deadline in seconds for --task. |
 | `--system-prompt <text>` | Replace the full direct-task system prompt. The override is recorded in session request-audit history and is not secret input. |
 | `--model <id>` | Run a direct headless task on this model instead of the configured chat role. |
 | `--effort <level>` | Reasoning effort for --model. |
 | `--disable-tool <name>` | Disable one active first-party tool for a headless chat or direct task. |
-| `--auth-profile <profile>` | Select the auth profile for a direct task. |
+| `--auth-profile <profile>` | Select the auth profile for a headless chat or direct task. |
 | `--session <id>` | Attach an existing headless chat without automatic Resume. |
 | `--one-shot` | Return after durable handoff and owned work settle; plain parking is incomplete. |
+| `--acp` | Speak Agent Client Protocol version 1 on standard input and output instead of the JSONL channel. |
 | `--auth-snapshot <path>` | Consume a matching one-use auth snapshot from a trusted source. |
 | `--jsonl` | Write versioned JSONL progress and terminal records. |
 | `--allow-persistent-processes` | Allow tools to start processes that survive this invocation. |

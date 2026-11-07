@@ -54,6 +54,10 @@ export interface KernelToolDeps {
   readonly foregroundBashHoldSeconds?: number;
   /** Effective host permission for unmanaged processes, read once per request. */
   readonly persistentProcesses?: boolean;
+  /** Whether a writing agent's shell refuses recognized writes outside the
+   *  project (PI-AGENT-068). A tree-hosted request reads its tree's capture,
+   *  so every agent of the tree advertises the same shell bytes. */
+  readonly shellWriteGuard: boolean;
   /** The request-pinned file edit grammar of the serving model. */
   readonly fileEditContract?: ModelInteractionProfile["fileEditContract"];
   /** Capability boundary of the request being planned (ARCH-TOOLS-002). A tool whose
@@ -86,4 +90,7 @@ export interface KernelToolDeps {
    *  tree sends the same tool list. Absent or false: such a tool is omitted,
    *  as the chat's own engine needs no shared list. */
   readonly treeHosted?: boolean;
+  /** The runtime has no client that reviews file changes, so its shell
+   *  offers no mutating declaration (PI-AGENT-119). */
+  readonly headless?: true;
 }

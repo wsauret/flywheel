@@ -248,10 +248,10 @@ describe("a pre-start's request preparation", () => {
 
     await prepare(options, client).outcome
     await prepare(options, client).outcome
-    const later = holdSharedTree("prestart-tree", testCapabilityModules)
+    const later = holdSharedTree("prestart-tree", () => ({ modules: testCapabilityModules(), shellWriteGuard: true }))
     later.release()
     await session.close()
-    const afterClose = holdSharedTree("prestart-tree", testCapabilityModules)
+    const afterClose = holdSharedTree("prestart-tree", () => ({ modules: testCapabilityModules(), shellWriteGuard: true }))
     afterClose.release()
 
     expect(trees).toHaveLength(1)

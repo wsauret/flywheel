@@ -63,6 +63,7 @@ export function projectRuntimeConfig(snapshot: RuntimeConfigSnapshot, projectRoo
     ...(config.theme === undefined ? {} : { theme: config.theme }),
     moduleSelection: config.modules,
     allowPersistentProcesses: config.allow_persistent_processes,
+    shellWriteGuard: config.shell_write_guard,
     foregroundBashHoldSeconds: config.foreground_bash_hold_seconds,
     showThinking: config.show_thinking,
     idleCompaction: config.idle_compaction,

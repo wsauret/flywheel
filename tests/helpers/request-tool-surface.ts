@@ -29,6 +29,7 @@ export function testKernelToolDeps(overrides: Partial<KernelToolDeps> = {}): Ker
     capabilities: NO_CAPABILITY_ACCESS,
     moduleSnapshot: testCapabilityModules(),
     runtimeConfig: testRuntimeConfigCapture(),
+    shellWriteGuard: true,
     purpose: { kind: "interactive-chat" },
     servingModel: { model: "test-model", modelFamily: "anthropic" },
     ...overrides,

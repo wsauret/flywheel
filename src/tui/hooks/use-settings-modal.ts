@@ -545,6 +545,7 @@ export function useSettingsModal(deps: SettingsModalDeps): SettingsModalHook {
         })
       }),
     })],
+    "shell-write-guard": () => [simpleRow("shellWriteGuard")],
     "web-search-provider": () => [simpleRow("webSearchProvider")],
     "capability-groups": () => capabilities().groups.map((group) => annotateConfigDiagnosticGroup(group, settings.diagnostics())),
     sessions: () => [{ kind: "navigation", ...named("sessions"), onActivate: deps.openSessionsModal }],

@@ -86,6 +86,7 @@ export type PersistedSettingDefinition =
 const theme = { kind: "root-scalar", ownership: "generated-writer", id: "theme", path: ["theme"], applications: [{ mode: "live", path: [] }], protocolExposure: "ui-safe", schema: Schema.optionalKey(Schema.String), presentation: { kind: "custom-row" }, reset: DEFAULT_THEME_SELECTION } as const satisfies PersistedSettingDefinition;
 const moduleSelection = { kind: "custom-writer", ownership: "custom-writer", id: "moduleSelection", path: ["disabled_modules"], applications: [{ mode: "next-request", path: [] }, { mode: "use-time-revalidate", path: [] }], protocolExposure: "ui-safe", schema: Schema.Array(Schema.String).pipe(Schema.withDecodingDefaultTypeKey(Effect.succeed(MODULE_IDS)), Schema.annotate({ description: "Disable Flywheel modules by canonical module id. Every module is on unless this list names it." })), presentation: { kind: "none" } } as const satisfies PersistedSettingDefinition;
 const allowPersistentProcesses = { kind: "root-scalar", ownership: "generated-writer", id: "allowPersistentProcesses", path: ["allow_persistent_processes"], applications: [{ mode: "next-request", path: [] }, { mode: "use-time-revalidate", path: [] }], protocolExposure: "ui-safe", schema: Schema.Boolean.pipe(Schema.withDecodingDefaultTypeKey(Effect.succeed(false))), presentation: { kind: "custom-row" } } as const satisfies PersistedSettingDefinition;
+const shellWriteGuard = { kind: "root-scalar", ownership: "generated-writer", id: "shellWriteGuard", path: ["shell_write_guard"], applications: [{ mode: "next-request", path: [] }], protocolExposure: "ui-safe", schema: Schema.Boolean.pipe(Schema.withDecodingDefaultTypeKey(Effect.succeed(true))), presentation: { kind: "simple-boolean", valueFormat: "yes-no" }, reset: true } as const satisfies PersistedSettingDefinition;
 const foregroundBashHoldSeconds = { kind: "root-scalar", ownership: "generated-writer", id: "foregroundBashHoldSeconds", path: ["foreground_bash_hold_seconds"], applications: [{ mode: "next-request", path: [] }], protocolExposure: "ui-safe", schema: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: MAX_FOREGROUND_BASH_HOLD_SECONDS })).pipe(Schema.withDecodingDefaultTypeKey(Effect.succeed(DEFAULT_FOREGROUND_BASH_HOLD_SECONDS)), Schema.annotate({ description: "Maximum seconds a foreground Bash command can hold the tool call before it transfers to managed execution." })), presentation: { kind: "none" } } as const satisfies PersistedSettingDefinition;
 const showThinking = { kind: "root-scalar", ownership: "generated-writer", id: "showThinking", path: ["show_thinking"], applications: [{ mode: "live", path: [] }], protocolExposure: "ui-safe", schema: Schema.Boolean.pipe(Schema.withDecodingDefaultTypeKey(Effect.succeed(false))), presentation: { kind: "simple-boolean", valueFormat: "yes-no" }, reset: false } as const satisfies PersistedSettingDefinition;
 const idleCompaction = { kind: "root-scalar", ownership: "generated-writer", id: "idleCompaction", path: ["idle_compaction"], applications: [{ mode: "live", path: [] }, { mode: "use-time-revalidate", path: [] }], protocolExposure: "ui-safe", schema: Schema.Boolean.pipe(Schema.withDecodingDefaultTypeKey(Effect.succeed(true))), presentation: { kind: "simple-boolean", valueFormat: "yes-no" }, reset: true } as const satisfies PersistedSettingDefinition;
@@ -102,7 +103,7 @@ const autoDeleteSessionDays = { kind: "root-scalar", ownership: "generated-write
 const notificationsDesktop = { kind: "nested-scalar", ownership: "generated-writer", id: "notificationsDesktop", path: ["notifications", "desktop"], applications: [{ mode: "live", path: [] }], protocolExposure: "ui-safe", schema: Schema.Boolean.pipe(Schema.withDecodingDefaultTypeKey(Effect.succeed(true)), Schema.annotate({ description: "Show a desktop notification when a session asks you a question." })), presentation: { kind: "none" }, reset: true } as const satisfies PersistedSettingDefinition;
 const autoInstall = { kind: "nested-scalar", ownership: "generated-writer", id: "autoInstall", path: ["updates", "auto_install"], applications: [{ mode: "live", path: [] }, { mode: "use-time-revalidate", path: [] }], protocolExposure: "ui-safe", schema: Schema.Boolean.pipe(Schema.withDecodingDefaultTypeKey(Effect.succeed(true))), presentation: { kind: "custom-row" }, seed: true } as const satisfies PersistedSettingDefinition;
 
-const persistedSettingDefinitions = [theme, moduleSelection, allowPersistentProcesses, foregroundBashHoldSeconds, showThinking, idleCompaction, writeSyntaxTheme, requireWorkflowConfirmation, diffColors, compatibleRendering, webSearchProvider, fontTipDismissed, tabsHintDismissed, acknowledgedReleaseVersion, proactiveCompactionThreshold, autoDeleteSessionDays, autoInstall, notificationsDesktop ] as const satisfies readonly PersistedSettingDefinition[];
+const persistedSettingDefinitions = [theme, moduleSelection, allowPersistentProcesses, shellWriteGuard, foregroundBashHoldSeconds, showThinking, idleCompaction, writeSyntaxTheme, requireWorkflowConfirmation, diffColors, compatibleRendering, webSearchProvider, fontTipDismissed, tabsHintDismissed, acknowledgedReleaseVersion, proactiveCompactionThreshold, autoDeleteSessionDays, autoInstall, notificationsDesktop ] as const satisfies readonly PersistedSettingDefinition[];
 export const PERSISTED_SETTING_DEFINITIONS: readonly PersistedSettingDefinition[] = persistedSettingDefinitions;
 export type PersistedSettingId = (typeof persistedSettingDefinitions)[number]["id"];
 
@@ -130,7 +131,7 @@ export function persistedSettingDefinition(id: string): PersistedSettingDefiniti
 }
 
 /** The definitions a plain cycle row edits, keyed by id. */
-export const SIMPLE_SETTING_DEFINITIONS = { showThinking, idleCompaction, writeSyntaxTheme, diffColors, compatibleRendering, webSearchProvider } as const satisfies { readonly [K in PresentedSettingId]?: PersistedSettingDefinition & { readonly id: K; readonly presentation: { readonly kind: "simple-boolean" | "simple-enum" } } };
+export const SIMPLE_SETTING_DEFINITIONS = { showThinking, idleCompaction, shellWriteGuard, writeSyntaxTheme, diffColors, compatibleRendering, webSearchProvider } as const satisfies { readonly [K in PresentedSettingId]?: PersistedSettingDefinition & { readonly id: K; readonly presentation: { readonly kind: "simple-boolean" | "simple-enum" } } };
 
 type DefinitionOwnedRootField = (typeof persistedSettingDefinitions)[number]["path"][0] extends infer AuthoredRoot
   ? AuthoredRoot extends "disabled_modules" ? "modules" : AuthoredRoot
@@ -145,6 +146,7 @@ export const DEFINITION_OWNED_SCHEMA_FIELDS = {
   theme: theme.schema,
   modules: moduleSelection.schema,
   allow_persistent_processes: allowPersistentProcesses.schema,
+  shell_write_guard: shellWriteGuard.schema,
   foreground_bash_hold_seconds: foregroundBashHoldSeconds.schema,
   show_thinking: showThinking.schema,
   idle_compaction: idleCompaction.schema,
@@ -231,6 +233,7 @@ export function settingDefinitions(modules?: readonly FirstPartyModule[]): reado
 export const MODAL_SETTINGS_DEFAULTS = {
   showThinking: showThinking.reset,
   idleCompaction: idleCompaction.reset,
+  shellWriteGuard: shellWriteGuard.reset,
   writeSyntaxTheme: writeSyntaxTheme.reset,
   diffColors: diffColors.reset,
   compatibleRendering: compatibleRendering.reset,

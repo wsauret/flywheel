@@ -35,6 +35,9 @@ export interface TerminalBenchComparisonManifest {
   sourceArchiveSha256: string;
   controlProfileSha256: string;
   candidateProfileSha256: string;
+  /** Null for an arm that ran without a Flywheel config. Unequal digests mean the arms ran different configs. */
+  controlFlywheelConfigSha256: string | null;
+  candidateFlywheelConfigSha256: string | null;
   controlAnalyzer: Readonly<FinalizedAnalyzerEvidence>;
   candidateAnalyzer: Readonly<FinalizedAnalyzerEvidence>;
   fixedControls: JsonMap;
@@ -73,6 +76,9 @@ function isToolOutcomeAnalysis(value: unknown): value is ToolOutcomeAnalysis {
   });
 }
 
+/** The run's Flywheel config as the manifest and the plan record it. */
+interface FlywheelConfigRecord { path: string; sha256: string; chat_effort: string }
+
 interface PreparationPlan {
   artifact_directory: string;
   generated_config: string;
@@ -90,6 +96,7 @@ interface PreparationPlan {
   disabled_tools: string[];
   system_prompt: JsonMap;
   system_prompt_payload?: string;
+  flywheel_config: FlywheelConfigRecord | null;
   trials_directory: string;
   grade: string;
   warning: string;
@@ -168,7 +175,6 @@ function generatedConfig(config: ResolvedTerminalBenchConfig): JsonMap {
   const agent = cloneMap(agents[0], "agent");
   const kwargs = cloneMap(agent.kwargs ?? {}, "agent kwargs");
   kwargs.dataset = config.dataset;
-  kwargs.flywheel_model = config.model;
   if (config.runtimeSourceCommit !== undefined) kwargs.runtime_source_commit = config.runtimeSourceCommit;
   if (config.profileSha256 !== undefined) kwargs.profile_sha256 = config.profileSha256;
   kwargs.project_root_mode = "task_workspace";
@@ -176,7 +182,7 @@ function generatedConfig(config: ResolvedTerminalBenchConfig): JsonMap {
   kwargs.persistent_processes = true;
   agent.kwargs = kwargs;
   agents[0] = agent;
-  if (agent.name !== "FlywheelHeadless" || agent.import_path !== "bench.terminal_bench.flywheel_agent:FlywheelHeadless" || agent.model_name !== terminalBenchDisplayModel(config.model) || kwargs.flywheel_model !== config.model || kwargs.dataset !== config.dataset) {
+  if (agent.name !== "FlywheelHeadless" || agent.import_path !== "bench.terminal_bench.flywheel_agent:FlywheelHeadless" || agent.model_name !== terminalBenchDisplayModel(config.model) || kwargs.flywheel_model !== (config.flywheelConfig === undefined ? config.model : undefined) || kwargs.flywheel_config_sha256 !== config.flywheelConfig?.sha256 || kwargs.dataset !== config.dataset) {
     throw new Error("generated config agent does not match the resolved run");
   }
   const datasets = generated.datasets;
@@ -250,6 +256,7 @@ export async function prepareTerminalBenchRun(args: string[], overrides: Partial
   const systemPromptSha256 = config.systemPrompt === undefined ? undefined : createHash("sha256").update(config.systemPrompt).digest("hex");
   const systemPrompt = systemPromptSha256 === undefined ? { mode: "production" } : { mode: "override", sha256: systemPromptSha256 };
   const payloadDirectory = `${artifactDirectory}.system-prompt`;
+  const flywheelConfig: FlywheelConfigRecord | null = config.flywheelConfig === undefined ? null : { path: config.flywheelConfig.path, sha256: config.flywheelConfig.sha256, chat_effort: config.flywheelConfig.chatEffort };
   const runtimeSource = resolvedRuntimeCommit === undefined
     ? { mode: "worktree" }
     : { mode: "git_commit", requested_sha: config.runtimeSourceCommit, resolved_sha: resolvedRuntimeCommit };
@@ -272,6 +279,7 @@ export async function prepareTerminalBenchRun(args: string[], overrides: Partial
     system_prompt: systemPrompt,
     runtime_source: runtimeSource,
     profile_sha256: config.profileSha256 ?? null,
+    flywheel_config: flywheelConfig,
     execution_contract: { project_root: "task_workspace", execution_cwd: "task_workspace", evidence_export: "settled_sqlite", persistent_processes: true },
     grade: effectiveGrade,
     warning: warning ?? "",
@@ -301,6 +309,7 @@ export async function prepareTerminalBenchRun(args: string[], overrides: Partial
     auth_profile: config.authProfile,
     disabled_tools: [...config.disabledTools],
     system_prompt: systemPrompt,
+    flywheel_config: flywheelConfig,
     task_names: config.taskNames,
     prebuild: config.prebuild,
     concurrency: config.concurrency,
@@ -430,13 +439,17 @@ export async function createTerminalBenchComparisonManifest(
   const candidateSource = cloneMap(candidate.runtime_source, "candidate runtime source");
   if (controlSource.mode !== "git_commit" || candidateSource.mode !== "git_commit" || controlSource.resolved_sha !== candidateSource.resolved_sha || typeof controlSource.resolved_sha !== "string" || !/^[a-f0-9]{40}$/.test(controlSource.resolved_sha)) throw new Error("comparison requires one exact resolved source commit");
   if (typeof control.profile_sha256 !== "string" || typeof candidate.profile_sha256 !== "string" || control.profile_sha256 === candidate.profile_sha256) throw new Error("comparison requires distinct control and candidate profile digests");
+  const flywheelConfigSha256 = (manifest: JsonMap): string | null => {
+    const digest = object(manifest.flywheel_config)?.sha256;
+    return typeof digest === "string" ? digest : null;
+  };
   const fields = ["model", "dataset", "task_names", "attempts", "concurrency", "disabled_tools", "timeout_multipliers", "resource_overrides"] as const;
   const fixedControls: JsonMap = {};
   for (const field of fields) {
     if (JSON.stringify(control[field]) !== JSON.stringify(candidate[field])) throw new Error(`comparison fixed control differs: ${field}`);
     fixedControls[field] = structuredClone(control[field]);
   }
-  return { version: 2, sourceCommit: controlSource.resolved_sha, sourceArchiveSha256: control.source_archive_sha256, controlProfileSha256: control.profile_sha256, candidateProfileSha256: candidate.profile_sha256, controlAnalyzer, candidateAnalyzer, fixedControls };
+  return { version: 2, sourceCommit: controlSource.resolved_sha, sourceArchiveSha256: control.source_archive_sha256, controlProfileSha256: control.profile_sha256, candidateProfileSha256: candidate.profile_sha256, controlFlywheelConfigSha256: flywheelConfigSha256(control), candidateFlywheelConfigSha256: flywheelConfigSha256(candidate), controlAnalyzer, candidateAnalyzer, fixedControls };
 }
 
 async function main(): Promise<number> {

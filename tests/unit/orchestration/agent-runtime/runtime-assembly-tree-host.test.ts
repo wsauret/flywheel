@@ -49,7 +49,7 @@ describe("side calls of a chat tree", () => {
   })
 
   it("keeps a chat on its own process, which prefers the login of its tree's live host", async () => {
-    const { tree, release } = holdSharedTree("root-chat", () => composeFirstPartyModules())
+    const { tree, release } = holdSharedTree("root-chat", () => ({ modules: composeFirstPartyModules(), shellWriteGuard: true }))
     const endHost = tree.hold("login-b")
     try {
       const chat = await hosted({ kind: "interactive-chat" })

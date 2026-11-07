@@ -94,8 +94,10 @@ export class AuthProfileManager {
   }
 
   /** Admit the effective immutable profile directory. A missing implicit default
-   * can be created for first login. */
-  async acquireAccess(options: { readonly createDefault?: boolean } = {}): Promise<AuthProfileAccess> {
+   * can be created for first login. `createSelected` creates a missing
+   * environment-selected profile, empty, when the selection names exactly that
+   * id: a headless run whose auth snapshot carries the profile's credentials. */
+  async acquireAccess(options: { readonly createDefault?: boolean; readonly createSelected?: string } = {}): Promise<AuthProfileAccess> {
     return this.#store.withOperation((operation) => {
       const resolution = this.#resolve({
         profiles: operation.list(),
@@ -111,6 +113,9 @@ export class AuthProfileManager {
       const namesImplicitDefault = resolution.source === "environment" || (resolution.projectBinding === undefined && (sticky === undefined || sticky === DEFAULT_PROFILE));
       if (options.createDefault === true && resolution.id === DEFAULT_PROFILE && namesImplicitDefault) {
         return operation.create(DEFAULT_PROFILE);
+      }
+      if (options.createSelected !== undefined && resolution.source === "environment" && resolution.id === options.createSelected) {
+        return operation.create(options.createSelected);
       }
       throw new Error(`auth profile does not exist: ${resolution.id}`);
     });

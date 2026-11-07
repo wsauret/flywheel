@@ -76,6 +76,7 @@ interface GenerationRuntimeToolSurfaces {
   streamingEditValidation?: StreamingEditValidationService;
   /** Runtime authority for current auth storage conditions and settled mutation refusals. */
   authConditions?: Pick<AuthConditionOwner, "snapshot" | "observeMutation">;
+  headless?: true;
 }
 
 /** Completes runner-local surfaces with the authorities pinned to one runtime
@@ -96,6 +97,7 @@ export function completeRuntimeToolSurfaces(
     ...(generation.allowPersistentProcesses ? { allowPersistentProcesses: generation.allowPersistentProcesses } : {}),
     ...(generation.gitAiAttribution ? { gitAiAttribution: generation.gitAiAttribution } : {}),
     ...(generation.streamingEditValidation ? { streamingEditValidation: generation.streamingEditValidation } : {}),
+    ...(generation.headless ? { headless: true } : {}),
   };
 }
 
@@ -150,6 +152,8 @@ export function createAgentRuntime(deps: {
   notify: AdmittedClientOptions["notify"];
   /** Enables account login waiting only for an interactive executor. */
   waitForLogin?: true;
+  /** No client reviews this runtime's file changes (`RuntimeToolSurfaces.headless`). */
+  headless?: true;
   /** The profile's wait for its model discovery to settle, which every runner this factory builds carries. */
   awaitModelAccessSettled: (signal: AbortSignal) => Promise<void>;
 }) {
@@ -183,6 +187,7 @@ export function createAgentRuntime(deps: {
     ...(deps.allowPersistentProcesses ? { allowPersistentProcesses: deps.allowPersistentProcesses } : {}),
     ...(deps.gitAiAttribution ? { gitAiAttribution: deps.gitAiAttribution } : {}),
     ...(deps.streamingEditValidation ? { streamingEditValidation: deps.streamingEditValidation } : {}),
+    ...(deps.headless ? { headless: true } : {}),
   };
   const requestAdmission = (connection: EffectiveProviderConnection, runtimeConfig: RuntimeConfigRequestCapture): AdmittedClientOptions["requestAdmission"] => {
     return async (candidates) => {
