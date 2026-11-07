@@ -1,0 +1,102 @@
+bench/terminal_bench/METHODOLOGY.md
+  h_4b47e9e4a8b456 55
+bench/terminal_bench/README.md
+  h_4b47e9e4a8b456 90-92,106
+bench/terminal_bench/analyze-tool-outcomes.ts
+  h_4b47e9e4a8b456 4,22-26,36,42-43,46,56-57
+bench/terminal_bench/harbor_agent/flywheel_harbor_agent/shim.py
+  h_4b47e9e4a8b456 5-7,13-35,44,72-74,76-78,83,106,112,115-116,121,129,164-171,211-212,214-217,220-230,233-234,236-254,258-273,282-288,291-292,294,296,300,302,311,335-337,342,346,359-360,363,369,375,377,388,390,393,410
+bench/terminal_bench/harbor_agent_package.py
+  h_4b47e9e4a8b456 4-6,36-39,114-117,126,134
+bench/terminal_bench/hosted-terminal-bench.ts
+  h_4b47e9e4a8b456 1,21,23-33,35,37,39-42,88,92,148
+bench/terminal_bench/run-terminal-bench.ts
+  h_4b47e9e4a8b456 9,150
+bench/terminal_bench/terminal-bench-config.ts
+  h_4b47e9e4a8b456 65,79
+bench/terminal_bench/test_harbor_agent_package.py
+  h_4b47e9e4a8b456 19,34,69,74-75,89,91
+bench/terminal_bench/test_harbor_agent_shim.py
+  h_4b47e9e4a8b456 21,36-54,58,87,93,95-98,100-107,116-119,121-122,124,140-145,149-150,153-155,166,168,175,182-202
+bench/terminal_bench/trial-store-analysis.ts
+  h_4b47e9e4a8b456 1-193
+scripts/check-terminology.ts
+  h_4b47e9e4a8b456 293-295
+src/cli/headless-args.ts
+  h_4b47e9e4a8b456 3-11,13
+src/cli/root-help.ts
+  h_4b47e9e4a8b456 7,44
+src/orchestration/agent-runtime/factory.ts
+  h_4b47e9e4a8b456 75,99,136,191
+src/orchestration/agent-runtime/request-kernel.ts
+  h_4b47e9e4a8b456 56-57,83
+src/orchestration/agent-runtime/shared-tree.ts
+  h_4b47e9e4a8b456 7-8,24-26
+src/orchestration/agent-runtime/tools/bash.ts
+  h_4b47e9e4a8b456 161-162,164-166,184,337
+src/orchestration/agent-runtime/tools/kernel-tool-deps.ts
+  h_4b47e9e4a8b456 57-59,61-64
+src/orchestration/agent-runtime/tools/tool-registry.ts
+  h_4b47e9e4a8b456 264
+src/orchestration/agent-runtime/types.ts
+  h_4b47e9e4a8b456 229-230
+src/orchestration/app-service/auth-runtime.ts
+  h_4b47e9e4a8b456 9,58,140
+src/orchestration/app-service/project-execution-runtime.ts
+  h_4b47e9e4a8b456 52,56-57,434,451
+src/orchestration/config/setting-definitions.ts
+  h_4b47e9e4a8b456 89
+src/orchestration/config/shell-write-guard-policy.ts
+  h_4b47e9e4a8b456 1-21
+src/orchestration/headless/acp-chat.ts
+  h_4b47e9e4a8b456 7,52-53,65,69-85,88-89,122-123,161,166,176
+src/orchestration/headless/benchmark-auth-file.ts
+  h_4b47e9e4a8b456 359
+src/orchestration/headless/headless-profile-runtime.ts
+  h_4b47e9e4a8b456 16,48-58,60-78,82
+src/orchestration/headless/run-headless-chat.ts
+  h_4b47e9e4a8b456 63
+src/orchestration/headless/run-headless-task.ts
+  h_4b47e9e4a8b456 14,40,186,212
+src/orchestration/modules/bash.ts
+  h_4b47e9e4a8b456 31-32,44
+src/orchestration/workflow-host/deps.ts
+  h_4b47e9e4a8b456 191,259
+src/protocol/acp.ts
+  h_4b47e9e4a8b456 61,104-115,126-128,138,140-147,150,154-157,187-199
+src/workflows/docs/cli.md
+  h_4b47e9e4a8b456 10-12,26
+src/workflows/docs/configuration.md
+  h_4b47e9e4a8b456 2250
+tests/unit/bench/terminal-bench-analyzer.test.ts
+  h_4b47e9e4a8b456 13,257-274
+tests/unit/bench/terminal-bench-config.test.ts
+  h_4b47e9e4a8b456 88
+tests/unit/bench/terminal-bench-hosted.test.ts
+  h_4b47e9e4a8b456 16
+tests/unit/cli/root-args.test.ts
+  h_4b47e9e4a8b456 206
+tests/unit/orchestration/agent-runtime/shared-tree.test.ts
+  h_4b47e9e4a8b456 1,9,41-42,54,58,95-101,109,117-120,166,169-172,176,179,181-182
+tests/unit/orchestration/config/shell-write-guard-policy.test.ts
+  h_4b47e9e4a8b456 1-35
+tests/unit/orchestration/headless/_auth-snapshot-fixtures.ts
+  h_4b47e9e4a8b456 1-34
+tests/unit/orchestration/headless/acp-chat.test.ts
+  h_4b47e9e4a8b456 79-82,165-167,193-194,201-219,239-259,282,284-290,300-326
+tests/unit/orchestration/headless/benchmark-auth-export.test.ts
+  h_4b47e9e4a8b456 1-482
+tests/unit/orchestration/headless/benchmark-auth-file.test.ts
+  h_4b47e9e4a8b456 1,3,7,9,11-12,197-198,215,218,226-229,231,233-236,239,242
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3f3b5c7e95dd6537d4ac17d4c42a668a081b14de",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
