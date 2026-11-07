@@ -3,7 +3,7 @@ import { createHash } from "node:crypto"
 import { closeSync, constants, fchmodSync, fstatSync, lstatSync, openSync, readFileSync, rmSync, type Stats, unlinkSync, writeFileSync } from "node:fs"
 import { basename, dirname, isAbsolute } from "node:path"
 import { windowsDirectoryIsOwnerOnly } from "../../infra/windows-private-directory-acl.js"
-import { CredentialSchema, PersistentCredentialInstanceSchema, isCredentialCollection, type AuthStore, type Credential, type CredentialSlotClassifier, type OAuthCredential } from "../../infra/auth/auth-store-types.js"
+import { MeteredCredentialRecordSchema, PersistentCredentialInstanceSchema, isCredentialCollection, type AuthStore, type Credential, type CredentialLineages, type CredentialSlotClassifier, type OAuthCredential } from "../../infra/auth/auth-store-types.js"
 import { decodeAuthStoreWithDiagnostics } from "../../infra/auth/auth-store.js"
 import { replaceCredentialInstance } from "../../infra/auth/auth-store-mutations.js"
 import type { AuthProfileAccess } from "../../infra/auth/auth-profile-store.js"
@@ -51,7 +51,9 @@ function stageAdmitsOwnerOnly(stage: string, metadata: Stats): boolean {
 }
 
 const AccessCredentialInstanceSchema = PersistentCredentialInstanceSchema
-const AccessCredentialStoreSchema = Schema.Record(Schema.String, Schema.Union([CredentialSchema, Schema.Array(AccessCredentialInstanceSchema)]))
+/** A singleton carries its credential lineage the way a subscription instance does, because the run names the usage
+ *  of each request with that lineage. */
+const AccessCredentialStoreSchema = Schema.Record(Schema.String, Schema.Union([MeteredCredentialRecordSchema, Schema.Array(AccessCredentialInstanceSchema)]))
 const ModelAccessSchema = Schema.Array(Schema.Struct({
   account: Schema.Union([
     Schema.Struct({ kind: Schema.Literal("singleton"), providerId: Schema.NonEmptyString }),
@@ -96,15 +98,19 @@ function tokenFingerprint(token: Redacted.Redacted<string>): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-5${hex.slice(13, 16)}-${variant}${hex.slice(17, 20)}-${hex.slice(20, 32)}`
 }
 
-function isAccessCredentialCollection(value: Credential | readonly AccessCredentialInstance[]): value is readonly AccessCredentialInstance[] {
+function isAccessCredentialCollection(value: AccessCredentialStore[string]): value is readonly AccessCredentialInstance[] {
   return Array.isArray(value)
 }
 
-function accessCredentialStore(store: AuthStore): AccessCredentialStore {
-  return Object.fromEntries(Object.entries(store).map(([providerId, value]) => [
-    providerId,
-    isCredentialCollection(value) ? value.map((instance) => accessCredentialInstance(instance)) : value,
-  ]))
+function accessCredentialStore(store: AuthStore, lineages: CredentialLineages): AccessCredentialStore {
+  return Object.fromEntries(Object.entries(store).map(([providerId, value]) => {
+    if (isCredentialCollection(value)) return [providerId, value.map((instance) => accessCredentialInstance(instance))]
+    const lineageId = lineages[providerId]
+    // Every write of a profile mints a lineage, so only a hand-written or very old auth.json lacks one. A run without
+    // it could name the usage of no request, so the export refuses instead of inventing one.
+    if (lineageId === undefined) throw new SnapshotRefusal(`Headless auth snapshot refused: the ${providerId} credential has no lineage. Save the ${providerId} credential again on this host, then export again.`)
+    return [providerId, { ...value, lineageId }]
+  }))
 }
 
 function accessCredentialInstance(instance: Extract<AuthStore[string], readonly unknown[]>[number]): AccessCredentialInstance {
@@ -297,7 +303,7 @@ function decodeSnapshotContent(descriptor: number, providers: readonly AccessPro
       if (entry.account.kind === "subscription") {
         const instanceId = entry.account.instanceId
         if (!credential || !isAccessCredentialCollection(credential) || !credential.some((instance) => instance.id === instanceId && instance.lineageId === entry.lineage)) throw new Error("access credential lineage mismatch")
-      } else if (!credential || isAccessCredentialCollection(credential)) throw new Error("access credential is absent")
+      } else if (!credential || isAccessCredentialCollection(credential) || credential.lineageId !== entry.lineage) throw new Error("access credential lineage mismatch")
     }
     const externalLogins = snapshot.externalLogins === undefined ? undefined : new Map(Object.entries(snapshot.externalLogins).map(([providerId, { access }]) => {
       if (tokenLoginOf(providers, providerId) === undefined) throw new Error("no enabled provider takes this token login")
@@ -310,7 +316,8 @@ function decodeSnapshotContent(descriptor: number, providers: readonly AccessPro
     }
   } catch {
     log.warn("Headless auth snapshot has an unreadable shape")
-    throw new Error("Headless auth snapshot content is invalid")
+    // A snapshot that another binary wrote can fail here too, so the one message names the remedy.
+    throw new Error("Headless auth snapshot content is invalid. Export a new one with `flywheel headless snapshot-auth` from the binary of this run.")
   }
 }
 
@@ -418,7 +425,7 @@ export async function writeHeadlessAuthSnapshot(options: { readonly userDataRoot
         : resolvedCredential(provider, value)
     }
     const content = JSON.stringify({
-      profile, credentials: accessCredentialStore(credentials), modelAccess: captured.modelAccess,
+      profile, credentials: accessCredentialStore(credentials, captured.credentialLineages), modelAccess: captured.modelAccess,
       ...(tokenLogins.size === 0 ? {} : { externalLogins: Object.fromEntries([...tokenLogins].map(([providerId, token]) => [providerId, { access: Redacted.value(token) }])) }),
     } satisfies typeof SnapshotSchema.Encoded)
     if (Buffer.byteLength(content) === 0 || Buffer.byteLength(content) > MAX_BYTES) throw new Error("snapshot exceeds size limit")
@@ -431,14 +438,16 @@ export async function writeHeadlessAuthSnapshot(options: { readonly userDataRoot
       closeSync(descriptor)
     }
     return profile
-  } catch {
+  } catch (error) {
     if (created) unlinkIfSameFile(options.output, created)
+    if (error instanceof SnapshotRefusal) throw error
+    // oxlint-disable-next-line preserve-caught-error -- boundary: the CLI prints every cause of its error, and a credential encoder's failure can quote a secret.
     throw new Error("Headless auth snapshot export failed")
   }
 }
 
 /** Reads one consistent revision of the selected profile's credential store. */
-async function captureProfileStore(options: Parameters<typeof writeHeadlessAuthSnapshot>[0]): Promise<{ readonly profile: string; readonly store: AuthStore; readonly modelAccess: readonly ProviderModelAccessSnapshot[] }> {
+async function captureProfileStore(options: Parameters<typeof writeHeadlessAuthSnapshot>[0]): Promise<{ readonly profile: string; readonly store: AuthStore; readonly credentialLineages: CredentialLineages; readonly modelAccess: readonly ProviderModelAccessSnapshot[] }> {
   const manager = new AuthProfileManager({ userDataRoot: options.userDataRoot, projectRoot: options.projectRoot, env: { FLYWHEEL_AUTH_PROFILE: options.selector } })
   const profile = await manager.resolve()
   const access = await manager.acquireAccess()
@@ -467,7 +476,7 @@ async function captureProfileStore(options: Parameters<typeof writeHeadlessAuthS
             if (audit !== undefined) modelAccess.push({ account, lineage, outcomes: audit.outcomes })
           }
         }
-        return { store: kept, modelAccess }
+        return { store: kept, credentialLineages: decoded.credentialLineages, modelAccess }
       })
       if (store !== undefined) {
         if (minimumMs !== undefined) {
@@ -522,14 +531,10 @@ export async function captureHeadlessSnapshotConnection(snapshot: HeadlessAuthSn
   const profileId = snapshot.profile
   // The account context folds the whole snapshot: a subscription collection
   // with an OAuth credential reads as connected, the way a profile's does.
-  const store = subscriptionAuthStore(snapshot.credentials)
-  const credentialLineages = Object.fromEntries(Object.entries(store).flatMap(([providerId, credential]) => {
-    if (isCredentialCollection(credential)) return []
-    const saved = snapshot.modelAccess?.find(({ account }) => account.kind === "singleton" && providers.some((definition) => definition.id === account.providerId && credentialIdOf(definition) === providerId))
-    return [[providerId, saved?.lineage ?? `headless:${providerId}`]]
-  }))
+  const store = snapshotAuthStore(snapshot.credentials)
+  const credentialLineages = Object.fromEntries(Object.entries(snapshot.credentials).flatMap(([providerId, value]) => isAccessCredentialCollection(value) ? [] : [[providerId, value.lineageId]]))
   const auth = await resolveAuthContextFromStore({ store, resolveKey: async (value) => Redacted.make(value), credentialLineages })
-  const subscriptionCredentials = new Map(captureSubscriptionCredentials(providers, { kind: "decoded", store: subscriptionAuthStore(snapshot.credentials), authDir: authDirectory }))
+  const subscriptionCredentials = new Map(captureSubscriptionCredentials(providers, { kind: "decoded", store, authDir: authDirectory }))
   // A token login is the provider's one account in this run, in place of any login that the program keeps for the
   // profile. The token's fingerprint names it, so the token itself names nothing outside the program's environment.
   const tokenDirectories: string[] = []
@@ -557,18 +562,21 @@ export async function captureHeadlessSnapshotConnection(snapshot: HeadlessAuthSn
   return { profileId, connection, release: () => { for (const directory of tokenDirectories) rmSync(directory, { recursive: true, force: true }) } }
 }
 
-function subscriptionAuthStore(store: AccessCredentialStore): AuthStore {
+function snapshotAuthStore(store: AccessCredentialStore): AuthStore {
   const captured: AuthStore = {}
   for (const [providerId, value] of Object.entries(store)) {
-    captured[providerId] = isAccessCredentialCollection(value)
-      ? value.map(({ id, identity, label, lineageId, credential }) => ({
-          id,
-          identity,
-          ...(label === undefined ? {} : { label }),
-          lineageId,
-          credential,
-        }))
-      : value
+    if (isAccessCredentialCollection(value)) {
+      captured[providerId] = value.map(({ id, identity, label, lineageId, credential }) => ({
+        id,
+        identity,
+        ...(label === undefined ? {} : { label }),
+        lineageId,
+        credential,
+      }))
+      continue
+    }
+    const { lineageId: _lineageId, ...credential } = value
+    captured[providerId] = credential
   }
   return captured
 }

@@ -51,7 +51,7 @@ describe("flywheel headless snapshot-auth", () => {
     // A user data root of its own: the account home of the test process is shared with other files, which count its profiles.
     const directories = { ...testDirectories(root), userDataRoot: join(root, "user-data") }
     const access = await new AuthProfileStore(directories.userDataRoot).create("cli-real-profile", "CLI Real Profile")
-    access.writeFile("auth.json", JSON.stringify({ openai_api: { type: "api_key", key: "host-key" } }))
+    access.writeFile("auth.json", JSON.stringify({ openai_api: { type: "api_key", key: "host-key", lineageId: crypto.randomUUID() } }))
     access.close()
     const output = privateOutput(root)
     const printed = spyOn(process.stdout, "write").mockImplementation(() => true)
@@ -69,7 +69,8 @@ describe("flywheel headless snapshot-auth", () => {
     const root = temporary("flywheel-snapshot-cli-provider-")
     const directories = { ...testDirectories(root), userDataRoot: join(root, "user-data") }
     const access = await new AuthProfileStore(directories.userDataRoot).create("cli-filter-profile", "CLI Filter Profile")
-    access.writeFile("auth.json", JSON.stringify({ openai_api: { type: "api_key", key: "openai-key" }, anthropic_api: { type: "api_key", key: "anthropic-key" }, deepseek: { type: "api_key", key: "deepseek-key" } }))
+    const lineages = { openai_api: crypto.randomUUID(), anthropic_api: crypto.randomUUID(), deepseek: crypto.randomUUID() }
+    access.writeFile("auth.json", JSON.stringify(Object.fromEntries(Object.entries(lineages).map(([providerId, lineageId]) => [providerId, { type: "api_key", key: `${providerId}-key`, lineageId }]))))
     access.close()
     const output = privateOutput(root)
     const printed = spyOn(process.stdout, "write").mockImplementation(() => true)
@@ -79,6 +80,9 @@ describe("flywheel headless snapshot-auth", () => {
       printed.mockRestore()
     }
     expect(process.exitCode).not.toBe(2)
-    expect(JSON.parse(readFileSync(output, "utf8")).credentials).toEqual({ openai_api: { type: "api_key", key: "resolved-openai-key" }, deepseek: { type: "api_key", key: "resolved-deepseek-key" } })
+    expect(JSON.parse(readFileSync(output, "utf8")).credentials).toEqual({
+      openai_api: { type: "api_key", key: "resolved-openai_api-key", lineageId: lineages.openai_api },
+      deepseek: { type: "api_key", key: "resolved-deepseek-key", lineageId: lineages.deepseek },
+    })
   })
 })

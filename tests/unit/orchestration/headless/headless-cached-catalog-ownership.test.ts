@@ -136,8 +136,8 @@ describe("headless cached catalog ownership", () => {
     await writeFile(authFile, JSON.stringify({
       profile: "default",
       credentials: {
-        openai_api: { type: "api_key", key: "transferred-openai-key" },
-        google_vertex: { type: "api_key", key: "AQ.transferred-vertex-key" },
+        openai_api: { type: "api_key", key: "transferred-openai-key", lineageId: openAiLineage },
+        google_vertex: { type: "api_key", key: "AQ.transferred-vertex-key", lineageId: "00000000-0000-4000-8000-000000000012" },
         supergrok: [{ id: "primary", identity: "person", lineageId: "00000000-0000-4000-8000-000000000013", credential: { type: "oauth", access: "grok-token", expires: 4_000_000_000_000 } }],
       },
       ...(carried ? { modelAccess: [

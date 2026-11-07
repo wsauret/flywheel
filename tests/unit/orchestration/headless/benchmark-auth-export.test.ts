@@ -26,9 +26,11 @@ describe("headless auth snapshot export", () => {
     const access = await new AuthProfileStore(directories.userDataRoot).create("canonical", "Work Profile")
     const vertexLineage = crypto.randomUUID()
     const grokLineage = crypto.randomUUID()
+    const anthropicLineage = crypto.randomUUID()
+    const openAiLineage = crypto.randomUUID()
     access.writeFile("auth.json", JSON.stringify({
-      anthropic_api: { type: "api_key", key: "!direct-host-key" },
-      openai_api: { lineageId: crypto.randomUUID(), credential: { type: "api_key", key: "!nested-host-key" } },
+      anthropic_api: { type: "api_key", key: "!direct-host-key", lineageId: anthropicLineage },
+      openai_api: { lineageId: openAiLineage, credential: { type: "api_key", key: "!nested-host-key" } },
       github_copilot: [
         { id: "account-a", identity: "alice@example.com", label: "Personal", lineageId: crypto.randomUUID(), credential: { type: "oauth", access: "oauth-a", refresh: "refresh-a", expires: 123 } },
       ],
@@ -66,9 +68,9 @@ describe("headless auth snapshot export", () => {
       // can prove the snapshot was written owner-only.
       if (process.platform !== "win32") expect(statSync(output).mode & 0o777).toBe(0o600)
       const snapshot = JSON.parse(readFileSync(output, "utf8"))
-      expect(snapshot.credentials.openai_api.key).toBe("resolved-secret")
-      expect(snapshot.credentials.openai_api.key).not.toContain("host-key")
-      expect(snapshot.credentials.anthropic_api.key).toBe("resolved-secret")
+      // A singleton carries the lineage of its credential, whatever shape the profile stored it in.
+      expect(snapshot.credentials.openai_api).toEqual({ type: "api_key", key: "resolved-secret", lineageId: openAiLineage })
+      expect(snapshot.credentials.anthropic_api).toEqual({ type: "api_key", key: "resolved-secret", lineageId: anthropicLineage })
       // Copilot's run mints its access tokens from the GitHub token, so that one stays; the rotating refresh
       // tokens of ChatGPT and SuperGrok never leave the host.
       expect(snapshot.credentials.github_copilot).toEqual([
@@ -87,7 +89,9 @@ describe("headless auth snapshot export", () => {
       })))
       const captured = await captureHeadlessSnapshotConnection(readHeadlessAuthSnapshot(output, PROVIDERS), stage, PROVIDERS)
       expect(captured?.connection.modelAccess).toEqual(snapshot.modelAccess)
-      expect(captured?.connection.auth.credentialLineages.google_vertex).toBe(vertexLineage)
+      // A singleton whose provider audits no model access, such as a metered API key, names the usage of its run with
+      // the lineage of the profile's credential.
+      expect(captured.connection.auth.credentialLineages).toEqual({ anthropic_api: anthropicLineage, openai_api: openAiLineage, google_vertex: vertexLineage })
       await writeHeadlessAuthSnapshot({ userDataRoot: directories.userDataRoot, projectRoot: directories.projectRoot, selector: "canonical", output, resolveKey: async () => Redacted.make("unused"), providers: PROVIDERS })
       await expect(writeHeadlessAuthSnapshot({ userDataRoot: directories.userDataRoot, projectRoot: directories.projectRoot, selector: "canonical", output, resolveKey: async () => Redacted.make("unused"), providers: PROVIDERS })).rejects.toThrow("export failed")
     } finally {
@@ -164,6 +168,24 @@ describe("headless auth snapshot export", () => {
       const message = error instanceof Error ? error.message : ""
       expect(message).toContain(refusal)
       for (const secret of ["plain-host-key", "chatgpt-token", "chatgpt-refresh", "resolved-secret"]) expect(message).not.toContain(secret)
+      expect(existsSync(output)).toBe(false)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test("refuses a singleton credential that has no lineage, naming the provider and no secret, because its run could record no usage", async () => {
+    const root = mkdtempSync(join(tmpdir(), "flywheel-headless-auth-no-lineage-"))
+    const directories = testDirectories(root)
+    const access = await new AuthProfileStore(directories.userDataRoot).create("no-lineage", "No Lineage")
+    access.writeFile("auth.json", JSON.stringify({ deepseek: { type: "api_key", key: "plain-deepseek-key" } }))
+    access.close()
+    const output = join(privateStage(root), "auth.json")
+    try {
+      const error = await writeHeadlessAuthSnapshot({ userDataRoot: directories.userDataRoot, projectRoot: directories.projectRoot, selector: "no-lineage", output, resolveKey: async () => Redacted.make("resolved-secret"), providers: PROVIDERS, providerIds: ["deepseek"] }).then(() => undefined, (failure: unknown) => failure)
+      const message = error instanceof Error ? error.message : ""
+      expect(message).toContain("the deepseek credential has no lineage")
+      for (const secret of ["plain-deepseek-key", "resolved-secret"]) expect(message).not.toContain(secret)
       expect(existsSync(output)).toBe(false)
     } finally {
       rmSync(root, { recursive: true, force: true })
@@ -267,7 +289,7 @@ describe("headless auth snapshot export", () => {
     const directories = testDirectories(root)
     const access = await new AuthProfileStore(directories.userDataRoot).create("slow-helper", "Slow Helper")
     access.writeFile("auth.json", JSON.stringify({
-      openai_api: { type: "api_key", key: "!slow-helper" },
+      openai_api: { type: "api_key", key: "!slow-helper", lineageId: crypto.randomUUID() },
       chatgpt: [{ id: "one", identity: "one@example.com", lineageId: crypto.randomUUID(), credential: { type: "oauth", access: "first-access", refresh: "host-refresh-1", expires: Date.now() + 2 * 3600_000, accountId: "account-id" } }],
     }))
     access.close()

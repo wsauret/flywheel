@@ -115,7 +115,7 @@ describe("headless auth profile", () => {
       credentials: {
         chatgpt: [{ id: "chatgpt-primary", identity: "chatgpt@example.com", lineageId: "00000000-0000-4000-8000-000000000002", credential: { type: "oauth", access: "chatgpt-secret", expires: Date.now() + 60_000 } }],
         github_copilot: [{ id: "copilot-primary", identity: "copilot@example.com", lineageId: "00000000-0000-4000-8000-000000000003", credential: { type: "oauth", access: "copilot-secret", refresh: "github-secret", expires: Date.now() + 60_000 } }],
-        openai_api: { type: "api_key", key: "openai-secret" },
+        openai_api: { type: "api_key", key: "openai-secret", lineageId: "00000000-0000-4000-8000-000000000005" },
       },
     }), { mode: 0o600 })
     const previous = { profile: process.env.FLYWHEEL_AUTH_PROFILE, file: process.env.FLYWHEEL_BENCHMARK_AUTH_FILE }

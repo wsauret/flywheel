@@ -11,12 +11,14 @@ import { resolveHeadlessAuth } from "../../../../src/orchestration/headless/head
 import { fixture, PROVIDERS, privateStage } from "./_auth-snapshot-fixtures.js"
 import { resolveSessionAuthProfile } from "../../../../src/orchestration/session/session-auth-profile.js"
 
+const VERTEX_LINEAGE = crypto.randomUUID()
+
 describe("headless auth snapshot", () => {
   test("consumes one private selected-profile snapshot", () => {
     const bundle: HeadlessAuthSnapshot = {
       profile: "Work",
       credentials: {
-        openai_api: { type: "api_key", key: "openai-key" },
+        openai_api: { type: "api_key", key: "openai-key", lineageId: crypto.randomUUID() },
         chatgpt: [{ id: "chatgpt-primary", identity: "chatgpt@example.com", lineageId: crypto.randomUUID(), credential: { type: "oauth", access: "chatgpt-token", expires: 456 } }],
         github_copilot: [{ id: "copilot-primary", identity: "copilot@example.com", lineageId: crypto.randomUUID(), credential: { type: "oauth", access: "copilot-token", refresh: "github-token", expires: 123 } }],
       },
@@ -73,10 +75,11 @@ describe("headless auth snapshot", () => {
     ["malformed JSON", "{"],
     ["excess field", JSON.stringify({ profile: "Work", credentials: { github_copilot: { type: "oauth", access: "a", refresh: "r", expires: 1 } }, EXTRA: "no" })],
     ["oversized", "x".repeat(64 * 1024 + 1)],
-    ["unknown provider", JSON.stringify({ profile: "Work", credentials: { unknown_provider: { type: "api_key", key: "secret" } } })],
-    ["credential command", JSON.stringify({ profile: "Work", credentials: { openai_api: { type: "api_key", key: "!echo not-allowed" } } })],
+    ["unknown provider", JSON.stringify({ profile: "Work", credentials: { unknown_provider: { type: "api_key", key: "secret", lineageId: crypto.randomUUID() } } })],
+    ["credential command", JSON.stringify({ profile: "Work", credentials: { openai_api: { type: "api_key", key: "!echo not-allowed", lineageId: crypto.randomUUID() } } })],
     ["stale provider membership", JSON.stringify({ profile: "Work", credentials: {}, providerCatalogs: { chatgpt: ["gpt-test"] } })],
-    ["unknown access outcome", JSON.stringify({ profile: "Work", credentials: { google_vertex: { type: "api_key", key: "AQ.test" } }, modelAccess: [{ account: { kind: "singleton", providerId: "google_vertex" }, lineage: crypto.randomUUID(), outcomes: { model: "unknown" } }] })],
+    ["unknown access outcome", JSON.stringify({ profile: "Work", credentials: { google_vertex: { type: "api_key", key: "AQ.test", lineageId: VERTEX_LINEAGE } }, modelAccess: [{ account: { kind: "singleton", providerId: "google_vertex" }, lineage: VERTEX_LINEAGE, outcomes: { model: "unknown" } }] })],
+    ["access result for another singleton credential generation", JSON.stringify({ profile: "Work", credentials: { google_vertex: { type: "api_key", key: "AQ.test", lineageId: VERTEX_LINEAGE } }, modelAccess: [{ account: { kind: "singleton", providerId: "google_vertex" }, lineage: crypto.randomUUID(), outcomes: { model: "completed" } }] })],
     ["access account without its credential", JSON.stringify({ profile: "Work", credentials: {}, modelAccess: [{ account: { kind: "singleton", providerId: "google_vertex" }, lineage: crypto.randomUUID(), outcomes: { model: "completed" } }] })],
     ["access result for another credential generation", JSON.stringify({ profile: "Work", credentials: { supergrok: [{ id: "one", identity: "person", lineageId: crypto.randomUUID(), credential: { type: "oauth", access: "a", expires: 123 } }] }, modelAccess: [{ account: { kind: "subscription", providerId: "supergrok", instanceId: "one" }, lineage: crypto.randomUUID(), outcomes: { model: "completed" } }] })],
     // An access-only run never rotates, so a snapshot (also one an older binary wrote) carries no rotating refresh token.
@@ -110,13 +113,15 @@ describe("headless auth snapshot", () => {
     }
   })
 
-  test("rejects and consumes an OAuth scalar in an API-key provider slot", () => {
-    const { directory, path } = fixture(JSON.stringify({
-      profile: "Work",
-      credentials: { openai_api: { type: "oauth", access: "oauth", expires: 1 } },
-    }))
+  test.each([
+    ["an OAuth scalar in an API-key provider slot", { openai_api: { type: "oauth", access: "oauth", expires: 1, lineageId: crypto.randomUUID() } }],
+    // A snapshot that an older binary wrote carries no singleton lineage. It is a one-use transient file, so the
+    // reader refuses it with no conversion, and the remedy is a new export.
+    ["a singleton credential without its lineage", { deepseek: { type: "api_key", key: "deepseek-key" } }],
+  ])("rejects and consumes %s, naming the export that replaces the snapshot", (_name, credentials) => {
+    const { directory, path } = fixture(JSON.stringify({ profile: "Work", credentials }))
     try {
-      expect(() => readHeadlessAuthSnapshot(path, PROVIDERS)).toThrow("content is invalid")
+      expect(() => readHeadlessAuthSnapshot(path, PROVIDERS)).toThrow("Headless auth snapshot content is invalid. Export a new one with `flywheel headless snapshot-auth`")
       expect(existsSync(path)).toBe(false)
     } finally {
       rmSync(directory, { recursive: true, force: true })
@@ -195,7 +200,7 @@ describe("headless auth snapshot", () => {
   test("a run in an empty account home creates the snapshot's own profile and serves its credentials, and only with a snapshot", async () => {
     const root = mkdtempSync(join(tmpdir(), "flywheel-headless-auth-fresh-home-"))
     const userDataRoot = join(root, "fresh-home", ".flywheel")
-    const { directory, path } = fixture(JSON.stringify({ profile: "benchmark", credentials: { openai_api: { type: "api_key", key: "transferred-key" } } }))
+    const { directory, path } = fixture(JSON.stringify({ profile: "benchmark", credentials: { openai_api: { type: "api_key", key: "transferred-key", lineageId: crypto.randomUUID() } } }))
     try {
       await expect(resolveHeadlessAuth({ userDataRoot, projectRoot: root }, { profile: "benchmark" }, PROVIDERS)).rejects.toThrow("auth profile does not exist: benchmark")
       const resolved = await resolveHeadlessAuth({ userDataRoot, projectRoot: root }, { profile: "benchmark", snapshotPath: path }, PROVIDERS)
@@ -231,7 +236,7 @@ describe("headless auth snapshot", () => {
     const userDataRoot = join(root, "home", ".flywheel")
     const other = await new AuthProfileStore(userDataRoot).create("other", "other")
     other.close()
-    const { directory, path } = fixture(JSON.stringify({ profile: "benchmark", credentials: { openai_api: { type: "api_key", key: "transferred-key" } } }))
+    const { directory, path } = fixture(JSON.stringify({ profile: "benchmark", credentials: { openai_api: { type: "api_key", key: "transferred-key", lineageId: crypto.randomUUID() } } }))
     try {
       const resolved = await resolveHeadlessAuth({ userDataRoot, projectRoot: root, env: {} }, { snapshotPath: path }, PROVIDERS)
       expect(resolved.profile.id).toBe("benchmark")
