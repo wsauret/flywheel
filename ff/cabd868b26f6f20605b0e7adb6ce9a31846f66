@@ -1,0 +1,48 @@
+bench/terminal_bench/METHODOLOGY.md
+  h_4b47e9e4a8b456 57,78-83,85
+bench/terminal_bench/README.md
+  h_4b47e9e4a8b456 104
+bench/terminal_bench/analyze-tool-outcomes.ts
+  h_4b47e9e4a8b456 7,30-32,43,45,49
+bench/terminal_bench/disclosure-ledger.ts
+  h_4b47e9e4a8b456 5,79-80,147
+bench/terminal_bench/run-terminal-bench.ts
+  h_4b47e9e4a8b456 410
+bench/terminal_bench/trial-store-analysis.ts
+  h_4b47e9e4a8b456 100,113-114,121-123,128-138,187-195
+src/infra/llm/provider-error-copy.ts
+  h_4b47e9e4a8b456 251,270-282
+src/orchestration/agent-runtime/errors.ts
+  h_4b47e9e4a8b456 5,44-45,50,112,140
+src/orchestration/agent-runtime/llm/errors.ts
+  h_4b47e9e4a8b456 165-167,172,174,179
+src/orchestration/agent-runtime/llm/google.ts
+  h_4b47e9e4a8b456 453
+src/orchestration/agent-runtime/llm/openai-helpers.ts
+  h_4b47e9e4a8b456 69-71,93-95,374-375,382
+tests/helpers/terminal-bench-trial-evidence.ts
+  h_4b47e9e4a8b456 71-78,124,140-142,146-147
+tests/unit/bench/terminal-bench-analyzer.test.ts
+  h_4b47e9e4a8b456 42-61
+tests/unit/bench/terminal-bench-ledger.test.ts
+  h_4b47e9e4a8b456 14,38,50,86-93
+tests/unit/orchestration/agent-runtime/failure-message.test.ts
+  h_4b47e9e4a8b456 5,94-102
+tests/unit/orchestration/agent-runtime/llm/google-failure-signals.test.ts
+  h_4b47e9e4a8b456 202
+tests/unit/orchestration/agent-runtime/llm/openai-error-classification.test.ts
+  h_4b47e9e4a8b456 8-9,203-227
+tests/unit/orchestration/agent-runtime/unattended-recovery.test.ts
+  h_4b47e9e4a8b456 7,339
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ffcabd868b26f6f20605b0e7adb6ce9a31846f66",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
