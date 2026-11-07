@@ -62,6 +62,8 @@ interface OpenRecord extends ServiceRequest {
   status: number | undefined;
   requestId: string | undefined;
   headers: Headers;
+  /** A response block for the record came that the reader could not read. */
+  unread: boolean;
   /** A later model request of the same sender went out, such as the engine's non-streaming resend after a 404. The
    *  record then joins a body only by its request id, and it retires at the sender's next model request after that,
    *  so a sender keeps at most two records that no answer completed. */
@@ -88,6 +90,11 @@ export interface ServiceRequests {
    *  throws on, such as a 400 `dlp_request_denied` (CLI 2.1.306). The failure holds the response's status, request id,
    *  and headers; the record retires. Undefined when the record does not await a body. */
   withoutBody(logId: string): WireFailure | undefined;
+  /** Retires record `logId` when the debug output states no answer to it: no status line and no response block came.
+   *  True when it retired. The engine writes no status for a request that a transport failure ended before the
+   *  response headers, such as a connection that dropped, so such a record is complete evidence of that failure and
+   *  not drift of the debug format. A response block that the reader could not read is an answer, so it stays. */
+  unanswered(logId: string): boolean;
   /** Retires every record of sender `agent`, whatever evidence it still awaits: its owner reads none of them again. */
   retire(agent: string): void;
   /** Retires record `logId`, whatever evidence it still awaits: its owner reads it no more. */
@@ -142,7 +149,7 @@ export function serviceRequests(sessionId: string): ServiceRequests {
             }
           }
           const request = { logId: line.logId, agent: line.agent, model };
-          const record: OpenRecord = { ...request, state: { kind: "sent" }, status: undefined, requestId: undefined, headers: new Headers(), superseded: false };
+          const record: OpenRecord = { ...request, state: { kind: "sent" }, status: undefined, requestId: undefined, headers: new Headers(), unread: false, superseded: false };
           records.set(line.logId, record);
           own.add(record);
           bySender.set(line.agent, own);
@@ -166,6 +173,8 @@ export function serviceRequests(sessionId: string): ServiceRequests {
         case "response-unread": {
           // The status line is partial evidence: without the block's headers, such as `Retry-After`, the record stays
           // incomplete, and its consumer treats it as output that it cannot read.
+          const record = records.get(line.logId);
+          if (record !== undefined) record.unread = true;
           if (!unreadRecorded) DebugLog.record({ type: "provider.claude_sdk.response_log.unread", payload: { sessionId } });
           unreadRecorded = true;
           return undefined;
@@ -196,6 +205,12 @@ export function serviceRequests(sessionId: string): ServiceRequests {
       if (record?.state.kind !== "awaiting-body") return undefined;
       remove(record);
       return { status: record.status, body: "", headers: record.headers };
+    },
+    unanswered(logId) {
+      const record = records.get(logId);
+      if (record?.state.kind !== "sent" || record.status !== undefined || record.unread) return false;
+      remove(record);
+      return true;
     },
     retire(agent) {
       for (const record of bySender.get(agent) ?? []) remove(record);
