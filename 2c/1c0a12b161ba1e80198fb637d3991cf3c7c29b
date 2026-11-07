@@ -1,0 +1,24 @@
+bench/terminal_bench/METHODOLOGY.md
+  h_4b47e9e4a8b456 53-55
+bench/terminal_bench/README.md
+  h_4b47e9e4a8b456 96,108-109
+bench/terminal_bench/harbor_agent/flywheel_harbor_agent/shim.py
+  h_4b47e9e4a8b456 20-24,33-36,68,74,95-96,124-148,151-154,159-160,168,346-347,349-354,356-371,374-388,396-397,399-402,404-407,411-414,417,420-432,489-492,498,524,526,528-529,532-550,561,570-571
+bench/terminal_bench/harbor_agent/flywheel_harbor_agent/trial_runtime.py
+  h_4b47e9e4a8b456 4-5,19,38-40,121,125-129,150-151,196-197,410-499
+bench/terminal_bench/test_harbor_agent_shim.py
+  h_4b47e9e4a8b456 20,23,74,78,88-99,116,120,122-123,127,133,135,138,148,169,196-199,203-205,207,212-215,218-286,328-329
+tests/helpers/terminal-bench-trial-evidence.ts
+  h_4b47e9e4a8b456 113-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2c1c0a12b161ba1e80198fb637d3991cf3c7c29b",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
