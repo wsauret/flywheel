@@ -1,0 +1,18 @@
+src/infra/llm/provider-error-diagnostic.ts
+  h_4b47e9e4a8b456 1,34-56
+src/orchestration/session/provider-request-audit-types.ts
+  h_4b47e9e4a8b456 4
+tests/unit/orchestration/agent-runtime/assistant-turn-stream-diagnostics.test.ts
+  h_4b47e9e4a8b456 8-10,32,35,37-39,47-51,87,101-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8b1e885f3aa0e3688670655bafef464b43d9faf9",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
