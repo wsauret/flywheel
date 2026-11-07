@@ -1,0 +1,62 @@
+bench/terminal_bench/METHODOLOGY.md
+  h_4b47e9e4a8b456 7,9,11,13,15,31,33,51,53,55,72,78-80,86,88,90,92-99,103,105
+bench/terminal_bench/README.md
+  h_4b47e9e4a8b456 3-5,9,11,13,15,19-21,30,34-36,39,45,49,51,53,55,57,59,68-70,72-73,75,79-94,100,102-103,105-106,108,110
+bench/terminal_bench/analyze-tool-outcomes.ts
+  h_4b47e9e4a8b456 3-4,7,30,36,42-43,45-47
+bench/terminal_bench/disclosure-ledger.ts
+  h_4b47e9e4a8b456 3,24,57-60,64-72,75,78-81,129,138-140
+bench/terminal_bench/harbor-jobs.ts
+  h_4b47e9e4a8b456 20-22,85,103-107,119,121,131-150
+bench/terminal_bench/harbor_agent/flywheel_harbor_agent/shim.py
+  h_4b47e9e4a8b456 1,5-8,17,24-32,37-38,83-87,208,213-225,235-239,241-251,253-309,395-400,403-404,414,417-420,426-431,446,452,455-457,469,476,483-484
+bench/terminal_bench/harbor_agent/flywheel_harbor_agent/trial_runtime.py
+  h_4b47e9e4a8b456 1,3-7
+bench/terminal_bench/harbor_agent_package.py
+  h_4b47e9e4a8b456 5-10,24,26,33,43,49-66,94-178,188-189,215,219-221
+bench/terminal_bench/run-terminal-bench.sh
+  h_4b47e9e4a8b456 32-36,41-42,89-90,92
+bench/terminal_bench/run-terminal-bench.ts
+  h_4b47e9e4a8b456 9,95-103,117,185-189,194,199,201,241-244,248-258,277-280,309-314,320,335,342,344,347,363-364,370,402,406,452-456,463,467-499,555,577-580,593
+bench/terminal_bench/snapshot-environment.compose.yaml
+  h_4b47e9e4a8b456 1-9
+bench/terminal_bench/terminal-bench-config.ts
+  h_4b47e9e4a8b456 33,35-38,42,48,81-84,90-95,97,133-135,137-138,142-143,174-183,271-273,277-278,327-330
+bench/terminal_bench/test_harbor_agent_package.py
+  h_4b47e9e4a8b456 1,3,6,8,48-51,70,77,105-193
+bench/terminal_bench/test_harbor_agent_shim.py
+  h_4b47e9e4a8b456 1,16,18,25,38-50,128-129,136-142,144,156-167,169,171-172,183,191-202,206,208-217,227,233,235-236,242,244,249-251,256-374
+bench/terminal_bench/test_verifier_wheelhouse.py
+  h_4b47e9e4a8b456 152
+bench/terminal_bench/trial-store-analysis.ts
+  h_4b47e9e4a8b456 2,8,11,17-20,96,100-102,107-108,119-124,127-128,185-190,197,202-204,213-214
+tests/fixtures/terminal-bench-profile.ts
+  h_4b47e9e4a8b456 2-4,6,8-14
+tests/helpers/terminal-bench-trial-evidence.ts
+  h_4b47e9e4a8b456 7,15,69-72,76-86,102-104,110,113-115,137,146,163,167
+tests/integration/bench/terminal-bench-runner.test.ts
+  h_4b47e9e4a8b456 6,9,11-12,15-34,43-45,57-58,61,76-77,80,84-87,89-90,93,101,146-148,157,166-167,176,189-191,193,196-199,203-209
+tests/integration/bench/trial-store-analysis-standalone.test.ts
+  h_4b47e9e4a8b456 2,9,14
+tests/unit/bench/terminal-bench-analyzer.test.ts
+  h_4b47e9e4a8b456 24,30,37-43,131-133,138,142-146,152,154,156-157,159-160,162,164-168,185,187
+tests/unit/bench/terminal-bench-config.test.ts
+  h_4b47e9e4a8b456 7,11-12,15-20,25-28,32-40,43,48,51,56,60,62,69,76,78-80,83-91,95,97-99,104,106,108-109,113-114,120-124,129,133-136,140,143-146,150-151
+tests/unit/bench/terminal-bench-flywheel-config-evidence.test.ts
+  h_4b47e9e4a8b456 8,19-20,22,26-29,34,38-39,48
+tests/unit/bench/terminal-bench-jobs.test.ts
+  h_4b47e9e4a8b456 4,6,8,16,19,40,59,66-88,99,102
+tests/unit/bench/terminal-bench-ledger.test.ts
+  h_4b47e9e4a8b456 12-17,21,34-36,71,78,80-87,93,108,111,127-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fdd6e7c41be9851e035d6d9fb8576fc665a765c2",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
