@@ -203,7 +203,7 @@ export function createBashDefinition(options?: {
     const detachment = classifyShellDetachment(command, background);
     if (detachment !== "none") {
       return {
-        content: "Shell-level backgrounding was not executed.\nSubmit only the server or service command with background=true. After it starts as a managed process, use the process tool for lifecycle operations.",
+        content: `Shell-level backgrounding was not executed.\nSubmit only the server or service command with background=true.${persistentProcesses ? " Add persist_after_exit=true when it must keep running after the runtime exits; otherwise the runtime's exit ends it." : ""} After it starts as a managed process, use the process tool for lifecycle operations.`,
         outcome: "error",
       };
     }

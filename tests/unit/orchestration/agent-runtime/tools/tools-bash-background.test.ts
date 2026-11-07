@@ -565,6 +565,15 @@ describe("bash persistent execution admission", () => {
     expect(effects).toEqual([]);
   });
 
+  it("names persistence in the shell-backgrounding refusal only when persistence is offered", async () => {
+    for (const persistentProcesses of [true, false]) {
+      const result = await createBashDefinition({ persistentProcesses }).execute({ command: "python server.py &" }, makeContext());
+      expect(result.outcome).toBe("error");
+      expect(String(result.content)).toStartWith("Shell-level backgrounding was not executed.");
+      expect(String(result.content).includes("persist_after_exit=true")).toBe(persistentProcesses);
+    }
+  });
+
   it("re-admits permission before scratch, environment, spool, or launch effects", async () => {
     const effects: string[] = [];
     const definition = createBashDefinition({
