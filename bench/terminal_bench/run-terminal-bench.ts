@@ -6,7 +6,7 @@ import { reconcileDisclosureLedger, type DisclosureLedger } from "./disclosure-l
 import { analyzeToolOutcomes, TOOL_OUTCOME_ANALYZER_CONTRACT_VERSION, TOOL_OUTCOME_ANALYZER_RESULT_VERSION, type ToolOutcomeAnalysis } from "./analyze-tool-outcomes.js";
 import { resolveTerminalBenchConfig, terminalBenchDisplayModel, type JsonMap, type ResolvedTerminalBenchConfig } from "./terminal-bench-config.js";
 import { command, harborPython } from "./harbor-process.js";
-import { awaitHostedJob, decodeTaskTimeouts, defaultBuildAgentPackage, defaultPublishAgentPackage, defaultValidateHostedConfig, hostedJobConfig, launchedJobId, releaseTagFor, repositoryConfigPath, SECRET_VALUE_LIMIT, SNAPSHOT_SECRET, snapshotCommand, worstCaseJobSeconds, type AgentPackageBuild, type AgentPackagePublication, type TaskTimeouts } from "./hosted-terminal-bench.js";
+import { awaitHostedJob, decodeTaskTimeouts, defaultBuildAgentPackage, defaultPublishAgentPackage, defaultValidateHostedConfig, hostedJobConfig, launchedJobId, releaseTagFor, repositoryConfigPath, SECRET_VALUE_LIMIT, SNAPSHOT_SECRET, snapshotCommand, snapshotEnvironment, worstCaseJobSeconds, type AgentPackageBuild, type AgentPackagePublication, type TaskTimeouts } from "./hosted-terminal-bench.js";
 
 const WHEELHOUSE_TARGET = "/opt/flywheel-verifier-wheelhouse";
 const CACHE_TARGET = "/opt/flywheel-download-cache";
@@ -104,6 +104,9 @@ interface PreparationPlan {
   agent_package?: AgentPackagePublication;
   launch_command?: string[];
   snapshot_command?: string[];
+  /** The credential providers that the snapshot carries, and the keychain item of a Claude arm's token. */
+  snapshot_providers?: readonly string[];
+  claude_token_keychain_item?: string;
   worst_case_seconds?: number;
   download_directory?: string;
   dataset: string;
@@ -432,6 +435,8 @@ async function hostedExecution(config: ResolvedTerminalBenchConfig, dependencies
       agent_package: publication,
       launch_command: launchCommand,
       snapshot_command: snapshotCommand(config, worstCaseSeconds),
+      snapshot_providers: config.flywheelConfig.credentialProviders,
+      claude_token_keychain_item: config.hosted.claudeTokenKeychainItem,
       worst_case_seconds: worstCaseSeconds,
       download_directory: downloadDirectory,
       trials_directory: join(downloadDirectory, config.jobName),
@@ -522,7 +527,9 @@ async function runHostedTerminalBench(planPath: string): Promise<number> {
   let snapshot: string;
   try {
     await chmod(stage, 0o700);
-    await command([...stringArray(plan.snapshot_command, "plan snapshot_command"), "--output", join(stage, "auth.json")], REPOSITORY_ROOT);
+    if (typeof plan.claude_token_keychain_item !== "string") throw new Error("preparation plan lacks the Claude token keychain item");
+    const exportEnvironment = await snapshotEnvironment(stringArray(plan.snapshot_providers, "plan snapshot_providers"), plan.claude_token_keychain_item);
+    await command([...stringArray(plan.snapshot_command, "plan snapshot_command"), "--output", join(stage, "auth.json")], REPOSITORY_ROOT, exportEnvironment);
     snapshot = await readFile(join(stage, "auth.json"), "utf8");
   } finally {
     await rm(stage, { recursive: true, force: true });

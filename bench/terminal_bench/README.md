@@ -91,6 +91,8 @@ In the trial, the shim removes the snapshot from its environment, writes it to a
 
 The snapshot's tokens stay readable in `/proc/<shim pid>/environ` during the trial, also to a command of the same user that the agent runs, because a process cannot change the environment block that the kernel recorded when it started. The shim receives the job secret as an environment variable. The boundary of the snapshot is therefore the trial sandbox and the lifetime of its tokens.
 
+The Claude arm, `configs/tb-mini-claude.toml`, runs Flywheel's Claude engine route on the person's Claude subscription with Sonnet 5.5 at medium effort. Its trial has no Claude login, so it runs on a long-lived token that the person makes once with `claude setup-token` (`docs/provider-terms.md`, section 9). The launcher reads the token from the macOS keychain item `flywheel-claude-oauth-token`, or the item that `--claude-token-keychain-item <name>` names, and else from its own `CLAUDE_CODE_OAUTH_TOKEN`. It gives the token only to the one snapshot export process, and the snapshot carries it to the trial, where only the Claude engine receives it. Never add `CLAUDE_CODE_OAUTH_TOKEN` as a Hub secret of its own: the shim passes every other variable to Flywheel, so the agent's shell commands would see it. Its profiles are `tb-mini-claude-bringup-kv-store-grpc.yaml` and `tb-mini-claude-14x1.yaml`.
+
 The bring-up profile `tb-mini-bringup-kv-store-grpc.yaml` runs one fast task once; iterate on it until it passes. The mini profile `tb-mini-openai-5x.yaml` runs the 12 non-cyber tasks of the subset at `k=5`. Every preparation, local or hosted, resolves each task name through Harbor's dataset resolution and refuses a name that matches no task.
 
 ## Artifacts

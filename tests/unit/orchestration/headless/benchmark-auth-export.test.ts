@@ -1,10 +1,12 @@
 import { describe, expect, spyOn, test } from "bun:test"
 import { Redacted } from "effect"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { AuthProfileStore } from "../../../../src/infra/auth/auth-profile-store.js"
-import { captureHeadlessSnapshotConnection, readHeadlessAuthSnapshot, writeHeadlessAuthSnapshot } from "../../../../src/orchestration/headless/benchmark-auth-file.js"
+import { captureHeadlessSnapshotConnection, readHeadlessAuthSnapshot, writeHeadlessAuthSnapshot, type CapturedHeadlessSnapshot } from "../../../../src/orchestration/headless/benchmark-auth-file.js"
+import { createToolEnvironmentFactory } from "../../../../src/orchestration/agent-runtime/tools/shell-environment.js"
+import { makeContext } from "../agent-runtime/tools/_fixtures.js"
 import { testDirectories } from "../../../helpers/directories.js"
 import { composeFirstPartyModules } from "../../../../src/orchestration/modules.js"
 
@@ -162,6 +164,53 @@ describe("headless auth snapshot export", () => {
       const message = error instanceof Error ? error.message : ""
       expect(message).toContain(refusal)
       for (const secret of ["plain-host-key", "chatgpt-token", "chatgpt-refresh", "resolved-secret"]) expect(message).not.toContain(secret)
+      expect(existsSync(output)).toBe(false)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test("a provider that takes a token login exports the token from its host variable, with no login in the profile, and a run serves it as the provider's one account whose token only its credential holds, never a tool command's environment, and removes its engine directory on release", async () => {
+    const root = mkdtempSync(join(tmpdir(), "flywheel-headless-auth-token-"))
+    const directories = testDirectories(root)
+    const access = await new AuthProfileStore(directories.userDataRoot).create("token", "Token")
+    access.writeFile("auth.json", JSON.stringify({ openai_api: { type: "api_key", key: "plain-host-key" } }))
+    access.close()
+    const stage = privateStage(root)
+    const output = join(stage, "auth.json")
+    let captured: CapturedHeadlessSnapshot | undefined
+    try {
+      await writeHeadlessAuthSnapshot({ userDataRoot: directories.userDataRoot, projectRoot: directories.projectRoot, selector: "token", output, resolveKey: async () => Redacted.make("unused"), providers: PROVIDERS, providerIds: ["claude_agent_sdk"], environment: { CLAUDE_CODE_OAUTH_TOKEN: "sk-ant-oat-token" } })
+      expect(JSON.parse(readFileSync(output, "utf8"))).toEqual({ profile: "token", credentials: {}, modelAccess: [], externalLogins: { claude_agent_sdk: { access: "sk-ant-oat-token" } } })
+      captured = await captureHeadlessSnapshotConnection(readHeadlessAuthSnapshot(output, PROVIDERS), stage, PROVIDERS)
+      const accounts = captured.connection.subscriptionCredentials.get("claude_agent_sdk") ?? []
+      expect(accounts.map(({ instanceId, lineageId, identity }) => ({ instanceId, lineageId, identity }))).toEqual([{ instanceId: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/), lineageId: accounts[0]?.instanceId, identity: "Claude Code token" }])
+      const credential = accounts[0]?.credential
+      if (credential?.type !== "external" || credential.token === undefined) throw new Error("the token login has no token")
+      expect(Redacted.value(credential.token)).toBe("sk-ant-oat-token")
+      expect(readdirSync(credential.configDir)).toEqual([])
+      expect(JSON.stringify([...captured.connection.subscriptionCredentials])).not.toContain("sk-ant-oat-token")
+      const toolEnvironment = await createToolEnvironmentFactory({ operations: { ensureDir: () => {}, writeExecutable: async () => {} }, platform: process.platform, execPath: process.execPath, loginShellPath: () => undefined })(makeContext())
+      expect(toolEnvironment.CLAUDE_CODE_OAUTH_TOKEN).toBeUndefined()
+      expect(JSON.stringify(toolEnvironment)).not.toContain("sk-ant-oat-token")
+      captured.release()
+      expect(existsSync(credential.configDir)).toBe(false)
+    } finally {
+      captured?.release()
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test.each([
+    ["unset", {}],
+    ["empty", { CLAUDE_CODE_OAUTH_TOKEN: "" }],
+  ])("refuses to export a token login whose host variable is %s, naming the variable", async (name, environment) => {
+    const root = mkdtempSync(join(tmpdir(), "flywheel-headless-auth-token-refusal-"))
+    const directories = testDirectories(root)
+    await new AuthProfileStore(directories.userDataRoot).create(`token-${name}`, `Token ${name}`).then((access) => { access.close() })
+    const output = join(privateStage(root), "auth.json")
+    try {
+      await expect(writeHeadlessAuthSnapshot({ userDataRoot: directories.userDataRoot, projectRoot: directories.projectRoot, selector: `token-${name}`, output, resolveKey: async () => Redacted.make("unused"), providers: PROVIDERS, providerIds: ["claude_agent_sdk"], environment })).rejects.toThrow("claude_agent_sdk takes its login token from CLAUDE_CODE_OAUTH_TOKEN, which is unset or empty")
       expect(existsSync(output)).toBe(false)
     } finally {
       rmSync(root, { recursive: true, force: true })

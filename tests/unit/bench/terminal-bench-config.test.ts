@@ -68,15 +68,18 @@ describe("terminal bench config resolution", () => {
     await expect(resolveWith(pinnedChat, "flywheel_config: bench/terminal_bench/configs/missing.toml")).rejects.toThrow("bench/terminal_bench/configs/missing.toml is not a valid Flywheel config");
   });
 
-  test("the checked-in OpenAI arm config passes host validation and pins Terra at medium effort", async () => {
-    const root = temporaryDirectory("tb-openai-arm-");
+  test.each([
+    ["OpenAI", "tb-mini-openai.toml", "gpt-6.1-terra", ["chatgpt"]],
+    ["Claude", "tb-mini-claude.toml", "claude-sonnet-5.5", ["claude_agent_sdk"]],
+  ])("the checked-in %s arm config passes host validation, pins its model at medium effort, and names its one credential provider", async (_arm, file, model, providers) => {
+    const root = temporaryDirectory("tb-arm-");
     const path = join(root, "profile.yaml");
-    await writeFile(path, "headless: { flywheel_config: bench/terminal_bench/configs/tb-mini-openai.toml }\ndatasets: [{ task_names: [one] }]\n");
+    await writeFile(path, `headless: { flywheel_config: bench/terminal_bench/configs/${file} }\ndatasets: [{ task_names: [one] }]\n`);
     const config = await resolveTerminalBenchConfig([...authArgs, "--config", path], { cwd: root });
-    expect(config.model).toBe("gpt-6.1-terra");
+    expect(config.model).toBe(model);
     expect(config.flywheelConfig?.chatEffort).toBe("medium");
-    expect(config.flywheelConfig?.absolutePath).toBe(resolve(process.cwd(), "bench/terminal_bench/configs/tb-mini-openai.toml"));
-    expect(config.flywheelConfig?.credentialProviders).toEqual(["chatgpt"]);
+    expect(config.flywheelConfig?.absolutePath).toBe(resolve(process.cwd(), `bench/terminal_bench/configs/${file}`));
+    expect(config.flywheelConfig?.credentialProviders).toEqual(providers);
   });
 
   test("a hosted run needs an agent repository and a Flywheel config, and refuses launcher-side trial inputs", async () => {
@@ -86,8 +89,8 @@ describe("terminal bench config resolution", () => {
     const modelProfile = join(root, "model.yaml");
     await writeFile(modelProfile, "headless: { model: gpt-6-luna }\ndatasets: [{ task_names: [one] }]\n");
     const resolveHosted = (path: string, extra: string[], env: { readonly [name: string]: string } = {}) => resolveTerminalBenchConfig([...authArgs, "--config", path, "--hosted", ...extra], { cwd: root, env });
-    expect((await resolveHosted(armProfile, [], { FLYWHEEL_TB_AGENT_REPO: "owner/agent" })).hosted).toEqual({ agentRepository: "owner/agent" });
-    expect((await resolveHosted(armProfile, ["--agent-repo", "owner/agent", "--organization", "org"])).hosted).toEqual({ agentRepository: "owner/agent", organization: "org" });
+    expect((await resolveHosted(armProfile, [], { FLYWHEEL_TB_AGENT_REPO: "owner/agent" })).hosted).toEqual({ agentRepository: "owner/agent", claudeTokenKeychainItem: "flywheel-claude-oauth-token" });
+    expect((await resolveHosted(armProfile, ["--agent-repo", "owner/agent", "--organization", "org", "--claude-token-keychain-item", "other-item"])).hosted).toEqual({ agentRepository: "owner/agent", organization: "org", claudeTokenKeychainItem: "other-item" });
     await expect(resolveHosted(armProfile, [])).rejects.toThrow("--agent-repo");
     await expect(resolveHosted(armProfile, ["--agent-repo", "owner/agent", "--prebuild"])).rejects.toThrow("--prebuild");
     await expect(resolveHosted(modelProfile, ["--agent-repo", "owner/agent"])).rejects.toThrow("requires headless.flywheel_config");

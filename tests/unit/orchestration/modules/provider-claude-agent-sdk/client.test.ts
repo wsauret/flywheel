@@ -1,7 +1,8 @@
 import { describe, expect, setSystemTime, test } from "bun:test";
 import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Effect, Exit, Scope } from "effect";
+import { Effect, Exit, Redacted, Scope } from "effect";
+import { answers, init, launchFakeQuery, settle, turnDone, until, type FakeQuery } from "./_bridge-harness.js";
 import { localDateZone } from "../../../../../src/infra/env-detection.js";
 import type { LauncherScope } from "../../../../../src/infra/process-supervisor.js";
 import { providerModelInfo } from "../../../../../src/infra/llm/provider-model-info.js";
@@ -155,6 +156,34 @@ describe("the Agent SDK bridge client", () => {
     // The CLI adds its own system prefix and tool prefix, so the query holds the canonical prompt tiers and
     // Flywheel's tool names.
     expect(recorded.launches).toMatchObject([{ systemPrompt: ["Stable prompt.", "Session tail."], tools: [{ name: "read", description: "Reads a file." }], cwd: "/scratch/project", wireModelId: MODEL, contextLimit: 1_000_000 }]);
+  });
+
+  test.each([
+    ["a token login, whose config names no account, keeps serving after its first included response", true, []],
+    ["a login whose config names no account stops at its first response, because nothing confirms included usage", false, ["raise"]],
+  ])("%s", async (_name, tokenLogin, notices) => {
+    const lifetime = Effect.runSync(Scope.make());
+    const configDir = temporaryDirectory("claude-token-config-");
+    const raised: string[] = [];
+    const queries: FakeQuery[] = [];
+    const base = build({ launcher: noLaunch, lifetime, configDir });
+    const credential = { type: "external", configDir, ...(tokenLogin ? { token: Redacted.make("token-login") } : {}) } as const;
+    const staged = await createClaudeAgentSdkClient({
+      ...base, notify: (notice) => { raised.push(notice.type); },
+      connection: { ...base.connection, subscriptionCredentials: new Map([["claude_agent_sdk", [{ instanceId: "login", identity: "Claude Code token", lineageId: "login", credential }]]]) },
+    }, {
+      ...recordingLaunches().seams, inPlaceGate: () => ({ status: () => Effect.succeed("unlisted") }),
+      createLauncher: () => (launch) => { const { query, launched } = launchFakeQuery(launch, [], "auto"); queries.push(query); return launched; },
+    });
+    const client = await staged.connect();
+    const reply = (async () => { for await (const _event of client.streamWithTools({ messages: [{ kind: "user", origin: "human", content: "Read a." }], tools: [], systemPrompt: { stable: "Stable prompt.", session: "", conversation: "" } })) { /* drained */ } })();
+    await until(() => queries.length === 1);
+    queries[0]?.emit(init, ...answers("Done."), turnDone);
+    await reply;
+    await settle();
+    await Effect.runPromise(Scope.close(lifetime, Exit.void));
+
+    expect(raised).toEqual(notices);
   });
 
   test("a tool name the model invents under the MCP prefix returns to Flywheel's name space", async () => {

@@ -7,6 +7,7 @@ import { isAuthProfileName } from "../infra/paths.js"
 
 const USAGE = "Usage: flywheel headless snapshot-auth --auth-profile <id-or-unique-display-name> --output </private/flywheel-auth-bundle-*/auth.json> [--provider <id>]... [--min-valid-seconds <n>] [--as-profile <id>]\n" +
   "  --provider           Export only this credential provider's credentials, such as chatgpt. Repeat it to keep more providers.\n" +
+  "                       A provider that takes a login token reads it from the environment variable that the provider names.\n" +
   "  --min-valid-seconds  Refresh on this host each access token that expires sooner, and refuse when that is not possible.\n" +
   "  --as-profile         Name the snapshot's profile <id> instead of the exported profile's ID.\n" +
   "The snapshot contains raw access tokens and is only for a trusted target. It prints the profile ID that a run selects."
@@ -38,6 +39,7 @@ export async function runHeadlessSnapshotAuth(args: readonly string[], directori
     ...(minValidSeconds === undefined ? {} : { minValidSeconds }),
     ...(asProfile === undefined ? {} : { asProfile }),
     ...(providerIds === undefined ? {} : { providerIds }),
+    environment: process.env,
   })
   process.stdout.write(`${profile}\n`)
 }

@@ -76,10 +76,11 @@ export type CliLaunch =
   | { readonly kind: "no-host"; readonly reason: string };
 
 /** The one place that turns a credential into an engine launch, so the model listing asks the same engine and login
- *  that serves the queries. The token stays with the engine. */
+ *  that serves the queries. The token stays with the engine: the engine's own login, or the token of a token login,
+ *  which only the engine's environment receives (`cliEnvironment`). */
 export function cliLaunch(credential: RuntimeCredential | undefined, launcher: LauncherScope | undefined, seams: ClaudeAgentSdkSeams): CliLaunch {
-  const configDir = credential?.type === "external" ? credential.configDir : undefined;
-  if (configDir === undefined || !isAbsolute(configDir)) return { kind: "no-login" };
+  if (credential?.type !== "external" || !isAbsolute(credential.configDir)) return { kind: "no-login" };
+  const { configDir, token } = credential;
   if (launcher === undefined) return { kind: "no-launcher" };
   let host: EngineHost;
   try {
@@ -87,7 +88,7 @@ export function cliLaunch(credential: RuntimeCredential | undefined, launcher: L
   } catch (cause) {
     return { kind: "no-host", reason: errorMessage(cause) };
   }
-  return { kind: "ready", config: { ...host, account: { ...host.account, home: loginOwnerHome(configDir, host.account.home) }, configDir, launcher } };
+  return { kind: "ready", config: { ...host, account: { ...host.account, home: loginOwnerHome(configDir, host.account.home) }, configDir, launcher, ...(token === undefined ? {} : { engineToken: token }) } };
 }
 
 /** The observations that the seams name, or this process's. */

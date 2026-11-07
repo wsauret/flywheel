@@ -138,6 +138,7 @@ export async function createAuthRuntime(options: AuthRuntimeOptions): Promise<Au
   // The runtime's launch authority, which the usage checks, the eligibility preparation, and profile removal start CLIs in.
   const launcher = options.workflowPreparation.launcher
   const { profiles: profileManager, profile: initialProfile, snapshot } = await resolveHeadlessAuth({ userDataRoot: options.userDataRoot, projectRoot: options.projectRoot, config: () => options.runtimeConfig.snapshot().config }, options.headlessAuth, accessProviderRegistry(options.moduleSelection()).selection.definitions)
+  options.own("auth-headless-snapshot", snapshot, (captured) => { captured?.release() })
   let currentProfile = initialProfile
   const workflowRuns = workflowRunReader(options.eventReader)
   const workflowAuth = createWorkflowAuthOwner({

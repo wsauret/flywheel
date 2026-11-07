@@ -206,7 +206,11 @@ When a person enters an API key at a terminal prompt, the terminal never shows t
 
 ## PI-MODEL-027: Claude through a Claude login for each profile
 
-The Anthropic Subscription provider serves Claude models through the Claude engine that ships with Flywheel, and that engine runs and keeps each Claude sign-in. Flywheel never reads, stores, or sends a Claude sign-in token, and never reads, uses, or changes a Claude login that it did not create. Each Claude login belongs to one Flywheel profile, so a new profile has no Claude account and Disconnect logs the account out of that profile only. A profile in a separate Flywheel home of the same computer account can use such a login by reference, and Disconnect there removes only the reference.
+The Anthropic Subscription provider serves Claude models through the Claude engine that ships with Flywheel, which runs and keeps each Claude sign-in. Flywheel never reads, stores, or sends a Claude sign-in token except under PI-MODEL-082, and never reads, uses, or changes a Claude login that it did not create. Each Claude login belongs to one Flywheel profile, so a new profile has no Claude account and Disconnect logs it out of that profile only. A profile in a separate Flywheel home of the same computer account can use such a login by reference, and Disconnect there removes only the reference.
+
+## PI-MODEL-082: A headless run can use a Claude token
+
+A headless run on a machine with no Claude login can use a long-lived token that the person makes with `claude setup-token`. Flywheel carries the token only in that run's one-use auth snapshot and gives it only to the Claude engine. No shell command of the agent inherits it, and no log or stored session holds it. A command of the same OS user can still read the engine's startup environment, so the trial sandbox and the token's lifetime are its boundary.
 
 ## PI-MODEL-070: Anthropic Subscription is an ordinary provider that is on by default
 

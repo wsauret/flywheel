@@ -122,8 +122,10 @@ export async function createClaudeAgentSdkClient(build: AccessProviderBuild, sea
       recordModelRefusal: (refusal) => { build.recordModelRefusal(build.wireModelId, refusal); },
       markQuotaExhausted: (resetsAtMs) => build.availability.markQuotaExhausted(candidate, resetsAtMs),
       extraUsage: extraUsageOf(candidate.spendMode),
-      // A login that the CLI no longer holds states nothing, so its reports confirm no included usage.
-      reportsExtraUsage: () => cliLogin(launch.config.configDir)?.reportsExtraUsage === true,
+      // A login that the CLI no longer holds states nothing, so its reports confirm no included usage. A token login
+      // writes no account into its config, but its reports state the extra-usage state (engine 2.1.306:
+      // `overageStatus` and `isUsingOverage` in each rate-limit event under a `claude setup-token` token).
+      reportsExtraUsage: () => launch.config.engineToken !== undefined || cliLogin(launch.config.configDir)?.reportsExtraUsage === true,
       accountEmail: () => cliLogin(launch.config.configDir)?.email,
       onExtraUsageStop: (stop) => {
         build.notify({ type: "raise", occurrence: extraUsageNotice(stop, { providerId: candidate.providerId, instanceId: candidate.instanceId, configDir: launch.config.configDir, name: login?.label ?? login?.identity ?? CLAUDE_AGENT_SDK_LABEL }) });

@@ -1,0 +1,54 @@
+# Flywheel config of the Claude arm of the Terminal-Bench mini subset. It runs
+# Flywheel's Claude engine route on the person's Claude subscription, with the
+# token that the person made with `claude setup-token`, which the trial's auth
+# snapshot carries (PI-MODEL-082).
+# The launcher validates this file with Flywheel's config schema before any
+# trial, records its sha256 in run_manifest.json, and installs it in the trial
+# as $HOME/.flywheel/flywheel.toml. The trial exports its credentials under
+# the neutral auth profile id "benchmark", so the profile tables below apply.
+
+allow_persistent_processes = true
+# Headless shell commands write in place; the guard that stops a write
+# outside the project would refuse ordinary task setup such as package installs.
+shell_write_guard = false
+idle_compaction = false
+auto_delete_session_days = 0
+
+disabled_modules = [
+  "ask-user",
+  "bug-reports",
+  "code-mode",
+  "development",
+  "experiments",
+  "learning",
+  "mcp",
+  "papercuts",
+  "project-notifications",
+  "provider-anthropic-api",
+  "provider-chatgpt",
+  "provider-deepseek",
+  "provider-github-copilot",
+  "provider-google-api",
+  "provider-google-vertex",
+  "provider-openai-api",
+  "provider-opencode-go",
+  "provider-openrouter",
+  "provider-supergrok",
+  "remote",
+  "side-question",
+  "subagents",
+  "web",
+  "web-chatgpt",
+  "web-exa",
+  "workflows",
+]
+
+[updates]
+auto_install = false
+
+[profiles.benchmark]
+allow_training_routes = false
+
+[profiles.benchmark.roles.chat]
+model = "claude-sonnet-5.5"
+effort = "medium"

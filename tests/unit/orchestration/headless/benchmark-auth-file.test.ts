@@ -82,6 +82,9 @@ describe("headless auth snapshot", () => {
     // An access-only run never rotates, so a snapshot (also one an older binary wrote) carries no rotating refresh token.
     ["ChatGPT refresh token", JSON.stringify({ profile: "Work", credentials: { chatgpt: [{ id: "one", identity: "person", lineageId: crypto.randomUUID(), credential: { type: "oauth", access: "a", refresh: "r", expires: 123 } }] } })],
     ["SuperGrok refresh token", JSON.stringify({ profile: "Work", credentials: { supergrok: [{ id: "one", identity: "person", lineageId: crypto.randomUUID(), credential: { type: "oauth", access: "a", refresh: "r", expires: 123 } }] } })],
+    ["token login of a provider that takes none", JSON.stringify({ profile: "Work", credentials: {}, externalLogins: { chatgpt: { access: "token" } } })],
+    ["token login of an uninstalled provider", JSON.stringify({ profile: "Work", credentials: {}, externalLogins: { no_such_provider: { access: "token" } } })],
+    ["empty token login", JSON.stringify({ profile: "Work", credentials: {}, externalLogins: { claude_agent_sdk: { access: "" } } })],
   ])("rejects and consumes %s content", (_name, content) => {
     const { directory, path } = fixture(content)
     try {

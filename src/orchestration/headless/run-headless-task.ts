@@ -169,6 +169,8 @@ export async function runHeadlessTask(task: string, options: RunHeadlessTaskOpti
   let completed = false
   let failure: unknown
   let usageAuthority: HeadlessUsageAuthorityOwner | undefined
+  let releaseSnapshot: (() => void) | undefined
+  let runEnded = false
 
   try {
     let authProfile: Awaited<ReturnType<AuthProfileManager["resolve"]>>
@@ -183,7 +185,13 @@ export async function runHeadlessTask(task: string, options: RunHeadlessTaskOpti
       const oneShotConfig = runtimeConfig.snapshot().config
       const definitionRevision = definitions.captureRevision()
       const effectivePersonaRoleIds = personaRoleIds(definitionRevision.personas)
-      const resolved = await deadline.awaitSetup(resolveHeadlessAuth({ userDataRoot, projectRoot, config: () => oneShotConfig }, { ...(options.authProfile ? { profile: options.authProfile } : {}), ...(options.authSnapshot === undefined ? {} : { snapshotPath: options.authSnapshot }) }, accessProviderRegistry(moduleSelection()).selection.definitions))
+      const capture = resolveHeadlessAuth({ userDataRoot, projectRoot, config: () => oneShotConfig }, { ...(options.authProfile ? { profile: options.authProfile } : {}), ...(options.authSnapshot === undefined ? {} : { snapshotPath: options.authSnapshot }) }, accessProviderRegistry(moduleSelection()).selection.definitions)
+      // The setup deadline can stop the wait while the capture still runs, so the capture itself registers its release.
+      capture.then(({ snapshot }) => {
+        if (runEnded) snapshot?.release()
+        else releaseSnapshot = snapshot?.release
+      }, () => undefined)
+      const resolved = await deadline.awaitSetup(capture)
       authProfile = resolved.profile
       const snapshot = resolved.snapshot
       const capturedProfileId = snapshot?.profileId ?? authProfile.id
@@ -446,6 +454,9 @@ export async function runHeadlessTask(task: string, options: RunHeadlessTaskOpti
     completed = false
     failure = failure === undefined ? cause : new AggregateError([failure, cause], "Headless task and Usage authority settlement failed")
   }
+  // The bootstrap stopped every engine, also those of its module services, before it returned.
+  runEnded = true
+  releaseSnapshot?.()
   deadline.dispose()
 
   const attribution = headlessTaskReport(sourceArchiveSha256, toolSurfaces, model, effort)

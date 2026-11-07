@@ -133,6 +133,32 @@ export function snapshotCommand(config: ResolvedTerminalBenchConfig, minValidSec
   ];
 }
 
+/** The credential provider of Flywheel's Claude engine route, which takes the
+ *  token that the person made with `claude setup-token` from TOKEN_VARIABLE. */
+const CLAUDE_TOKEN_PROVIDER = "claude_agent_sdk";
+const TOKEN_VARIABLE = "CLAUDE_CODE_OAUTH_TOKEN";
+
+/** The environment of the one export process of `snapshotCommand`. When the
+ *  arm enables the Claude engine route it adds the Claude token: from the
+ *  macOS keychain item `keychainItem` when that holds one, else from the
+ *  launcher's own CLAUDE_CODE_OAUTH_TOKEN. Throws, naming both sources and no
+ *  token, when neither holds one. No other process receives the token. */
+export async function snapshotEnvironment(providers: readonly string[], keychainItem: string, env: Record<string, string | undefined> = process.env, readKeychain: (item: string) => Promise<string | undefined> = macosKeychainSecret): Promise<Record<string, string | undefined>> {
+  if (!providers.includes(CLAUDE_TOKEN_PROVIDER)) return env;
+  const token = (await readKeychain(keychainItem)) ?? env[TOKEN_VARIABLE];
+  if (token === undefined || token.length === 0) throw new Error(`the Claude arm needs the token that \`claude setup-token\` makes: store it in the macOS keychain item ${keychainItem} or set ${TOKEN_VARIABLE}`);
+  return { ...env, [TOKEN_VARIABLE]: token };
+}
+
+/** The password of the macOS keychain item whose service is `item`, or
+ *  undefined off macOS or when no such item exists. */
+async function macosKeychainSecret(item: string): Promise<string | undefined> {
+  if (process.platform !== "darwin") return undefined;
+  const child = Bun.spawn(["security", "find-generic-password", "-s", item, "-w"], { stdout: "pipe", stderr: "ignore", windowsHide: true });
+  const [stdout, exitCode] = await Promise.all([new Response(child.stdout).text(), child.exited]);
+  return exitCode === 0 && stdout.trim().length > 0 ? stdout.trim() : undefined;
+}
+
 /** The Hub job id that `harbor run --launch` printed. */
 export function launchedJobId(output: string): string {
   const match = /Launched job\s+([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/.exec(output);

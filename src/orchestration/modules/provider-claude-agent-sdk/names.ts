@@ -13,6 +13,9 @@ export const CLAUDE_AGENT_SDK_LOGIN_COMMAND = `flywheel auth login --${CLAUDE_AG
 export const CLAUDE_AGENT_SDK_LABEL = "Anthropic Subscription";
 /** The program that owns the provider's login, as a person reads it. */
 export const LOGIN_PROGRAM_LABEL = "Claude Code";
+/** The engine's documented variable for a long-lived token that `claude setup-token` makes. The snapshot export reads
+ *  the token from it, and only the engine receives it under this name. */
+export const TOKEN_LOGIN_VARIABLE = "CLAUDE_CODE_OAUTH_TOKEN";
 /** The directory, in an auth profile's directory, that holds the config directory of each Claude account of that
  *  profile. Each login has its own directory, so the CLI keeps a separate login, and a separate keychain item, for
  *  each. The CLI's default directory, which the person's own `claude` installation uses, is never one of them. The

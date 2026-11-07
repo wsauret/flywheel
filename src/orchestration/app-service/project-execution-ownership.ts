@@ -62,6 +62,8 @@ export function completeProjectExecutionOwnership(scope: RuntimeOwnership, input
     "auth-refresh-coordinator",
     "auth-eligibility-preparation",
     "auth-runtime-core",
+    // After every engine stopped in an earlier phase, so no engine still uses a token login's directory.
+    "auth-headless-snapshot",
     "auth-provider-models",
     "runtime-config",
     ...input.stateReleaseResources,

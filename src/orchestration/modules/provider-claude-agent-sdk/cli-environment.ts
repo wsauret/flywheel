@@ -1,8 +1,9 @@
+import { Redacted } from "effect";
 import { basename, dirname, resolve } from "node:path";
 import { separatedEngineEnvironment, type EngineHost } from "../../../infra/claude-engine.js";
 import { MAX_TIMER_MS } from "../../../infra/timers.js";
 import type { BridgeRequest } from "./cli-view.js";
-import { LOGIN_ACCOUNTS_DIRECTORY } from "./names.js";
+import { LOGIN_ACCOUNTS_DIRECTORY, TOKEN_LOGIN_VARIABLE } from "./names.js";
 import { STEP_GATE_SOCKET_VARIABLE } from "./step-gate.js";
 
 /** Documented engine toggles that every query sets. */
@@ -43,6 +44,8 @@ const QUERY_TOGGLES = {
 export interface CliEnvironmentConfig extends EngineHost {
   /** The account's absolute `CLAUDE_CONFIG_DIR`. The engine owns the login there. */
   readonly configDir: string;
+  /** The token of a token login, which the engine reads in place of a login in `configDir`. */
+  readonly engineToken?: Redacted.Redacted<string>;
 }
 
 /** The directory that the engine reads as the project's `claude` configuration (`--project-config-root`): the
@@ -111,6 +114,9 @@ export function cliEnvironment(config: CliEnvironmentConfig, launch: CliEnvironm
     // against the tool's schema; the CLI refuses text that is not JSON and answers the call itself, so the bridge
     // stops that query (bridge rule 1) and Flywheel runs the call that it read.
     ...(launch.eagerInputStreaming === true ? { CLAUDE_CODE_ENABLE_FINE_GRAINED_TOOL_STREAMING: "1" } : {}),
+    // The one place where the token leaves its redaction: the engine's own environment. Flywheel's environment never
+    // holds it, so no tool command that Flywheel runs inherits it.
+    ...(config.engineToken === undefined ? {} : { [TOKEN_LOGIN_VARIABLE]: Redacted.value(config.engineToken) }),
     ...config.cliEnvironment,
   };
 }
