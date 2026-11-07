@@ -21,18 +21,24 @@ describe("terminal bench tool outcome analyzer", () => {
   test("accepts current recorder evidence whose later request shares the first tool surface, on every route", async () => {
     for (const route of ["openai", "claude"] as const) {
       const valid = await evidence({ route });
-      const storePath = join(valid.root, "trial", "agent", "state", ".flywheel", "flywheel.sqlite");
-      const store = new Database(storePath, { readonly: true });
+      const store = new Database(valid.storePath, { readonly: true });
       try {
         // The coverage rests on these two writer behaviors, so the fixture states them.
         expect(store.query("select payload ->> '$.requestId' as requestId from event where type = 'tool_surface.selected'").all()).toEqual([{ requestId: requestIds[0] }]);
         expect(store.query("select version, count(*) as count from event where type = 'tool.result.recorded' group by version order by version").all()).toEqual([{ version: 1, count: 1 }, { version: 2, count: 1 }]);
       } finally { store.close(); }
-      expect(await analyzeTrialStore(storePath)).toMatchObject({ requestAuditComplete: true, executableToolInputs: { bash: 2 }, toolSettlement: { identityConflicts: 0 } });
+      expect(await analyzeTrialStore(valid.storePath)).toMatchObject({ requestAuditComplete: true, executableToolInputs: { bash: 2 }, toolSettlement: { identityConflicts: 0 }, finalRequestOutcome: "ok", estimatedCostUsd: null });
       const analysis = await analyze(valid.root);
       expect(analysis.infrastructureValid).toBeTrue();
       expect(analysis.rows[0]).toMatchObject({ requestAuditValid: true, commandObserved: true, toolSettlement: { inputs: 2, results: 2, missing: 0, orphan: 0, identityConflicts: 0 }, failure: null });
     }
+  });
+
+  test("records how the trial's model work ended and what its priced usage is estimated to cost", async () => {
+    const stopped = await evidence({ finalOutcome: "context_overflow", pricedUsageUsd: [0.25, 0.125] });
+    expect(await analyzeTrialStore(stopped.storePath)).toMatchObject({ finalRequestOutcome: "context_overflow", estimatedCostUsd: 0.375 });
+    // A dispatched request that never got its response leaves the earlier response as the final one.
+    expect(await analyzeTrialStore((await evidence({ responded: false })).storePath)).toMatchObject({ finalRequestOutcome: "ok" });
   });
 
   test("settles tool results that the current writer records at later fact versions", async () => {
@@ -122,43 +128,44 @@ describe("terminal bench tool outcome analyzer", () => {
     expect(refused.analyzer_result).toBeNull();
   });
 
-  test("finalization records a hosted agent timeout without a summary as cancelled and refuses every other missing or malformed summary", async () => {
-    const finalize = async (executionMode: "hosted" | "local", summary: string | undefined, exception = "AgentTimeoutError") => {
-      const root = temporaryDirectory("tb-hosted-timeout-");
+  test("finalization records an agent timeout without a summary as cancelled and refuses every other missing or malformed summary", async () => {
+    const finalize = async (summary: string | undefined, exception = "AgentTimeoutError") => {
+      const root = temporaryDirectory("tb-agent-timeout-");
       await mkdir(join(root, "trials", "trial", "agent"), { recursive: true });
       await writeFile(join(root, "trials", "trial", "result.json"), JSON.stringify({ task_name: "terminal-bench/task", trial_name: "trial-1", verifier_result: { rewards: { reward: 0 } }, exception_info: { exception_type: exception } }));
       if (summary !== undefined) await writeFile(join(root, "trials", "trial", "agent", "flywheel-run-summary.json"), summary);
       const manifestPath = join(root, "run_manifest.json");
-      await writeFile(manifestPath, JSON.stringify({ ...manifest(), execution_mode: executionMode, source_archive_sha256: sourceDigest }));
+      await writeFile(manifestPath, JSON.stringify({ ...manifest(), source_archive_sha256: sourceDigest }));
       const ledger = await finalizeTerminalBenchRun(manifestPath, join(root, "trials"), 0);
       return { ledger, manifest: JSON.parse(await readFile(manifestPath, "utf8")) };
     };
-    const hosted = await finalize("hosted", undefined);
-    expect(hosted.ledger).toMatchObject({ reconciled: true, outcome: "completed", counts: { cancelled: 1 } });
-    expect(hosted.manifest).toMatchObject({ state: "finalized", source_archive_sha256: sourceDigest });
-    expect(hosted.manifest.analyzer_result.analysis.rows[0]).toMatchObject({ failure: "hosted_agent_timeout" });
-    for (const refused of [await finalize("local", undefined), await finalize("hosted", "{not json"), await finalize("hosted", undefined, "RuntimeError")]) {
+    const timedOut = await finalize(undefined);
+    expect(timedOut.ledger).toMatchObject({ reconciled: true, outcome: "completed", counts: { cancelled: 1 } });
+    expect(timedOut.manifest).toMatchObject({ state: "finalized", source_archive_sha256: sourceDigest });
+    expect(timedOut.manifest.analyzer_result.analysis.rows[0]).toMatchObject({ failure: "agent_timeout" });
+    for (const refused of [await finalize("{not json"), await finalize(undefined, "RuntimeError")]) {
       expect(refused.ledger).toMatchObject({ reconciled: false, outcome: "trials_unverified" });
       expect(refused.manifest.state).toBe("refused");
     }
   });
 
-  test("reads a hosted trial's recorded store analysis in place of its store, and refuses a store or an analysis of another version", async () => {
+  test("reads a trial's recorded store analysis, never a store, and refuses an analysis of another version", async () => {
     // A record of another version keeps the current shape, so only its version decides the refusal.
-    const hosted = async (record: (analysis: TrialStoreAnalysis) => Omit<TrialStoreAnalysis, "version"> & { version: number }) => {
+    const recorded = async (record: (analysis: TrialStoreAnalysis) => Omit<TrialStoreAnalysis, "version"> & { version: number }) => {
       const fixture = await evidence();
-      const agent = join(fixture.root, "trial", "agent");
-      const analysis = await analyzeTrialStore(join(agent, "state", ".flywheel", "flywheel.sqlite"));
-      await rm(join(agent, "state"), { recursive: true });
-      await writeFile(join(agent, TRIAL_STORE_ANALYSIS_NAME), JSON.stringify(record(analysis)));
-      return (await analyzeToolOutcomes(fixture.root, { ...manifest(), execution_mode: "hosted", source_archive_sha256: sourceDigest })).rows[0];
+      await writeFile(join(fixture.root, "trial", "agent", TRIAL_STORE_ANALYSIS_NAME), JSON.stringify(record(await analyzeTrialStore(fixture.storePath))));
+      return (await analyze(fixture.root)).rows[0];
     };
-    expect(await hosted((analysis) => analysis)).toMatchObject({ storeValid: true, requestAuditValid: true, commandObserved: true, failure: null });
-    expect(await hosted((analysis) => ({ ...analysis, version: 2 }))).toMatchObject({ storeValid: false, failure: "unreadable_store" });
+    expect(await recorded((analysis) => analysis)).toMatchObject({ storeValid: true, requestAuditValid: true, commandObserved: true, failure: null });
+    expect(await recorded((analysis) => ({ ...analysis, version: 1 }))).toMatchObject({ storeValid: false, failure: "unreadable_store" });
 
-    // A hosted run never reads a store from the trial's logs.
+    // A store in the trial's logs in place of the analysis is not evidence.
     const withStore = await evidence();
-    expect((await analyzeToolOutcomes(withStore.root, { ...manifest(), execution_mode: "hosted", source_archive_sha256: sourceDigest })).rows[0]).toMatchObject({ storeValid: false, failure: "unreadable_store" });
+    const agent = join(withStore.root, "trial", "agent");
+    await rm(join(agent, TRIAL_STORE_ANALYSIS_NAME));
+    await mkdir(join(agent, "state", ".flywheel"), { recursive: true });
+    await writeFile(join(agent, "state", ".flywheel", "flywheel.sqlite"), await readFile(withStore.storePath));
+    expect((await analyze(withStore.root)).rows[0]).toMatchObject({ storeValid: false, failure: "unreadable_store" });
   });
 
   test("represents every missing expected trial and disables comparison", async () => {
@@ -175,9 +182,9 @@ describe("terminal bench tool outcome analyzer", () => {
     expect(analysis.rows).toContainEqual(expect.objectContaining({ discovered: false, failure: "missing_trial" }));
   });
 
-  test("classifies a missing store and an exported digest mismatch as an unreadable store", async () => {
+  test("classifies a missing store analysis and an exported digest mismatch as an unreadable store", async () => {
     const missing = await evidence();
-    await rm(join(missing.root, "trial", "agent", "state", ".flywheel", "flywheel.sqlite"));
+    await rm(join(missing.root, "trial", "agent", TRIAL_STORE_ANALYSIS_NAME));
     const mismatched = await evidence();
     const summaryPath = join(mismatched.root, "trial", "agent", "flywheel-run-summary.json");
     await writeFile(summaryPath, JSON.stringify({ ...JSON.parse(await readFile(summaryPath, "utf8")), evidence_sha256: "0".repeat(64) }));

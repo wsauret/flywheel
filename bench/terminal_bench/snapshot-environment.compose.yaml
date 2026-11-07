@@ -1,0 +1,9 @@
+# Docker Compose overlay of a local Terminal-Bench trial. It names the trial
+# auth snapshot variable without a value, so Docker Compose copies its value
+# from the environment of the Harbor process into the agent container when it
+# creates it. The snapshot is then in no file, command line, or log of the
+# host. The shim moves it out of its own environment before it starts Flywheel.
+services:
+  main:
+    environment:
+      - FLYWHEEL_AUTH_SNAPSHOT

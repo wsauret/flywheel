@@ -1,10 +1,10 @@
-"""What a Flywheel Terminal-Bench trial runs on and records, in both drivers.
+"""What a Flywheel Terminal-Bench trial runs on and records.
 
-The local Harbor adapter (bench/terminal_bench/flywheel_agent.py) and the
-hosted ACP shim (shim.py beside this file) install the same pinned Bun
-release, export the trial's settled event store the same way, and write the
-same versioned run summary that finalization reads. This module uses only the
-standard library, because the hosted package ships it without Harbor.
+The ACP shim (shim.py beside this file) installs this pinned Bun release,
+exports the trial's settled event store, and writes the versioned run summary
+that finalization reads, in a local Docker trial and on Harbor Hub alike. This
+module uses only the standard library, because the package ships it without
+Harbor.
 """
 
 import hashlib
@@ -103,42 +103,12 @@ def _open_owned_regular_at(
     return descriptor
 
 
-def _latest_machine_summary(log_path: Path) -> dict | None:
-    try:
-        lines = log_path.read_text().splitlines()
-    except (OSError, UnicodeError):
-        return None
-    for candidate in reversed(lines):
-        try:
-            summary = json.loads(candidate.strip())
-        except json.JSONDecodeError:
-            continue
-        if isinstance(summary, dict) and isinstance(summary.get("termination"), dict):
-            usage = summary.get("usage")
-            if usage is None or isinstance(usage, dict):
-                return summary
-    return None
-
-
-
-def _deadline_fired(summary: dict | None) -> bool:
-    """Read whether Flywheel's own deadline fired, by the one key of the termination version."""
-    termination = summary.get("termination") if summary else None
-    if not isinstance(termination, dict):
-        return False
-    # Remove after 2027-04-06: a runtime from before 2026-10-06 writes termination
-    # version 1, which states the same fact as `deadline_expired`.
-    if termination.get("version") == 1:
-        return termination.get("deadline_expired") is True
-    return termination.get("deadlineFired") is True
-
 def _write_run_summary(
     logs_dir: Path,
     settlement: AdapterSettlement,
     authority: DeadlineAuthority,
     profile_sha256: str | None = None,
     source_archive_sha256: str | None = None,
-    machine_summary: dict | None = None,
     *,
     project_root: str | None = None,
     evidence_publication: EvidencePublication | None = None,
@@ -150,7 +120,6 @@ def _write_run_summary(
     as a store that holds credential bytes; finalization then sees an
     unexported store and refuses the trial as unverified.
     """
-    machine_summary = machine_summary if machine_summary is not None else _latest_machine_summary(logs_dir / "flywheel.txt")
     evidence = {
         "version": 2,
         "adapter_settlement": settlement.kind,
@@ -170,10 +139,6 @@ def _write_run_summary(
     }
     if evidence_withheld is not None:
         evidence["evidence_withheld"] = evidence_withheld
-    if machine_summary is not None:
-        evidence["termination"] = machine_summary["termination"]
-        if "usage" in machine_summary:
-            evidence["usage"] = machine_summary["usage"]
     destination = logs_dir / RUN_SUMMARY_NAME
     temporary = logs_dir / f".{RUN_SUMMARY_NAME}.{secrets.token_hex(8)}"
     try:

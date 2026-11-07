@@ -1,10 +1,11 @@
-"""Harbor ACP entrypoint that runs `flywheel --headless --acp` inside a hosted trial.
+"""Harbor ACP entrypoint that runs `flywheel --headless --acp` inside a trial, local or on Harbor Hub.
 
 Harbor's ACP runner starts this console script in the task sandbox and speaks
 Agent Client Protocol on its stdin and stdout. Those two streams belong to the
-protocol, so this shim writes its own progress to stderr only. The Flywheel
-child reads stdin directly; its stdout passes through the shim unchanged,
-line by line, so the shim sees when the child answers the prompt.
+protocol, so this shim writes its own progress to stderr only. Both streams
+pass between Harbor and the Flywheel child through the shim unchanged, line
+by line, so the shim sees which requests are prompts and when the child
+answers one.
 
 In order, the shim:
 
@@ -13,25 +14,28 @@ In order, the shim:
 2. installs the package's Flywheel config, the pinned Bun release, the
    package's runtime archive, and its trial store analysis, each checked
    against its recorded SHA-256;
-3. runs Flywheel in the task workspace, relays its output, and forwards
+3. runs Flywheel in the task workspace, relays the protocol, and forwards
    SIGTERM to it;
 4. analyzes the trial's settled event store in a private directory and writes
    only that content-free analysis into the agent logs, then the run summary
    that finalization reads. The store itself never enters the logs, because
    Harbor scrubs secrets only in text files.
 
-Harbor's runner closes stdin when the prompt is answered, sends SIGTERM two
-seconds later, and SIGKILL two seconds after that. Flywheel answers the prompt
-only when its headless channel settles, so a SIGTERM is a stop of the trial
-only when the child had not answered the prompt when it came: Flywheel's
-teardown after a settled turn can outlast the two seconds. The export of step
-4 runs in its own process group under a deadline inside that window, so the
-run summary is always written before SIGKILL.
+Harbor's runner closes stdin when it reads the prompt's answer, sends SIGTERM
+two seconds later, and SIGKILL two seconds after that. Flywheel answers the
+prompt only when its headless channel settles. So the shim holds a settled
+answer, closes the child's stdin itself, lets Flywheel end, and does step 4
+before it sends the answer on: the export of a settled trial runs on the
+quiescent store of an ended Flywheel, before Harbor's clock starts. A SIGTERM
+before a settled answer, at Harbor's agent timeout or after a cancelled turn,
+is a stop of the trial. The export then runs in its own process group under a
+deadline inside the two seconds, so the run summary is written before SIGKILL.
 
 The snapshot stays readable in `/proc/<shim pid>/environ` for the whole run,
 also to a process of the same user that the agent starts: removing it from
 `os.environ` does not change the environment block the kernel recorded at
-exec. The shim receives the job secret as an environment variable, so the
+exec. The shim receives the snapshot as an environment variable (a Hub job
+secret, or in a local Docker trial the container's own environment), so the
 boundary of the snapshot is the trial sandbox and the lifetime of its tokens.
 """
 
@@ -76,10 +80,11 @@ _BASE_PATH = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 # Harbor sends SIGKILL two seconds after SIGTERM. The child gets this much of
 # that window: the store holds every committed fact whatever ends the child.
 _CHILD_TERM_GRACE_SECONDS = 0.5
-# The evidence export ends this long after the child exits, or this long after
-# the first SIGTERM, whichever is earlier, so the run summary lands before
-# SIGKILL. The SIGTERM bound counts the child's term grace.
-_EXPORT_BUDGET_SECONDS = 2.5
+# After a settled answer Harbor closes stdin and sends SIGTERM this much later.
+# The shim gives Flywheel the same time to end before it stops it.
+_CHILD_EXIT_GRACE_SECONDS = 2.0
+# The evidence export ends this long after the first SIGTERM, so the run
+# summary lands before SIGKILL. The bound counts the child's term grace.
 _EXPORT_AFTER_SIGTERM_SECONDS = 1.6
 _EXPORT_COMMAND = "export-evidence"
 
@@ -161,14 +166,6 @@ def _install_runtime(work: Path, archive: Path, bin_dir: Path) -> Path:
     return runtime
 
 
-def _install_store_analyzer(runtime: Path, package_root: Path, entry: dict) -> Path:
-    """Place the packaged trial store analysis at its repository path in the runtime, where its imports resolve."""
-    analyzer = runtime / entry["source_path"]
-    analyzer.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(package_root / entry["path"], analyzer)
-    return analyzer
-
-
 def _install_home(work: Path, config: Path, profile: str) -> Path:
     home = work / "home"
     (home / ".flywheel" / "auth" / "profiles" / profile).mkdir(mode=0o700, parents=True)
@@ -208,19 +205,24 @@ def child_environment(environ: dict, home: Path, bin_dir: Path, project_root: Pa
     return environment
 
 
-def prompt_answer(line: bytes) -> bool | None:
-    """Whether one ACP line from the child answers a request as a settled turn.
-
-    A prompt result settles the turn unless its stop reason is `cancelled`,
-    which Flywheel answers only after a `session/cancel`. An error response
-    also ends the request it answers. Returns None for a line that answers
-    nothing, such as a session update.
-    """
+def _message(line: bytes) -> dict | None:
     try:
         message = json.loads(line)
     except ValueError:
         return None
-    if not isinstance(message, dict) or "id" not in message or "method" in message:
+    return message if isinstance(message, dict) else None
+
+
+def prompt_answer(line: bytes, prompts: set) -> bool | None:
+    """Whether one ACP line from the child answers one of the `session/prompt` request ids `prompts` as a settled turn.
+
+    A prompt result settles the turn unless its stop reason is `cancelled`,
+    which Flywheel answers only after a `session/cancel`. An error response
+    also ends the prompt it answers. Returns None for a line that answers no
+    prompt, such as a session update or the answer to another request.
+    """
+    message = _message(line)
+    if message is None or "method" in message or message.get("id") not in prompts:
         return None
     if "error" in message:
         return True
@@ -230,19 +232,81 @@ def prompt_answer(line: bytes) -> bool | None:
     return None
 
 
-def _relay_output(source, answered: list[bool]) -> None:
-    """Copy the child's stdout to this process's stdout and keep the last answer in `answered[0]`.
+def _write_all(descriptor: int, line: bytes) -> None:
+    view = memoryview(line)
+    while view:
+        view = view[os.write(descriptor, view):]
 
-    The answer is noted before its line goes out, so it is current before
-    Harbor can read the line and send SIGTERM.
+
+class _Relay:
+    """The two protocol streams between Harbor and the Flywheel child.
+
+    Harbor's lines go to the child as they come, and the id of each
+    `session/prompt` request is noted before its line goes on, so the child
+    cannot answer a prompt that the relay does not know. The child's lines go
+    to Harbor as they come until the child answers a prompt as a settled
+    turn. The relay then holds that answer and every later child line, and
+    closes the child's stdin, as Harbor would on reading the answer, and calls
+    `on_settled`. `release` sends the held lines once the run summary is
+    written.
     """
-    for line in iter(source.readline, b""):
-        answer = prompt_answer(line)
-        if answer is not None:
-            answered[0] = answer
-        view = memoryview(line)
-        while view:
-            view = view[os.write(1, view):]
+
+    def __init__(self, child_stdin, harbor_out: int, on_settled) -> None:
+        self._child_stdin = child_stdin
+        self._harbor_out = harbor_out
+        self._on_settled = on_settled
+        self._lock = threading.Lock()
+        self._prompts: set = set()
+        self._input_closed = False
+        self._held: list[bytes] | None = None
+
+    @property
+    def settled(self) -> bool:
+        """Whether the child answered a prompt as a settled turn."""
+        return self._held is not None
+
+    def _close_input(self) -> None:
+        with self._lock:
+            if not self._input_closed:
+                self._input_closed = True
+                # A child that already exited leaves unsent bytes that the close cannot flush.
+                try:
+                    self._child_stdin.close()
+                except BrokenPipeError:
+                    pass
+
+    def relay_input(self, source) -> None:
+        for line in iter(source.readline, b""):
+            message = _message(line)
+            with self._lock:
+                if message is not None and message.get("method") == "session/prompt":
+                    self._prompts.add(message.get("id"))
+                if self._input_closed:
+                    continue
+                try:
+                    self._child_stdin.write(line)
+                    self._child_stdin.flush()
+                except BrokenPipeError:
+                    pass
+        self._close_input()
+
+    def relay_output(self, source) -> None:
+        for line in iter(source.readline, b""):
+            if self._held is not None:
+                self._held.append(line)
+                continue
+            with self._lock:
+                answer = prompt_answer(line, self._prompts)
+            if answer:
+                self._held = [line]
+                self._close_input()
+                self._on_settled()
+                continue
+            _write_all(self._harbor_out, line)
+
+    def release(self) -> None:
+        for line in list(self._held or ()):
+            _write_all(self._harbor_out, line)
 
 
 def export_evidence(project_root: Path, logs_dir: Path, bun: Path, analyzer: Path) -> tuple[EvidencePublication | None, str | None]:
@@ -328,12 +392,16 @@ def _child_command(bin_dir: Path, runtime: Path, profile: str, stage_file: Path)
     ]
 
 
-def run(environ: dict, project_root: Path, logs_dir: Path = LOGS_DIR, package_root: Path = PACKAGE_ROOT) -> int:
-    """Run one hosted trial in the task workspace `project_root` and return the exit status of the Flywheel child."""
+def run(environ: dict, project_root: Path, logs_dir: Path = LOGS_DIR, package_root: Path = PACKAGE_ROOT, harbor_in=None, harbor_out: int = 1) -> int:
+    """Run one trial in the task workspace `project_root` and return the exit status of the Flywheel child.
+
+    `harbor_in` (default: this process's stdin) and the descriptor
+    `harbor_out` carry the protocol to and from Harbor.
+    """
     profile_sha256 = environ.get(PROFILE_SHA256_ENV)
     child: subprocess.Popen | None = None
-    # The child's last answer, and whether the first SIGTERM came before a settled one.
-    answered = [False]
+    relay: _Relay | None = None
+    # Whether the first SIGTERM came before a settled answer.
     stopped = False
     exporting = False
     sigterm_deadline = math.inf
@@ -343,14 +411,23 @@ def run(environ: dict, project_root: Path, logs_dir: Path = LOGS_DIR, package_ro
         sigterm_deadline = min(sigterm_deadline, time.monotonic() + _EXPORT_AFTER_SIGTERM_SECONDS)
         if exporting:
             return
-        stopped = stopped or not answered[0]
+        stopped = stopped or relay is None or not relay.settled
         if child is None:
             raise _Cancelled
-        if child.poll() is None:
+        stop_child()
+
+    def stop_child() -> None:
+        if child is not None and child.poll() is None:
             child.terminate()
             escalation = threading.Timer(_CHILD_TERM_GRACE_SECONDS, child.kill)
             escalation.daemon = True
             escalation.start()
+
+    def on_settled() -> None:
+        # Flywheel gets the time to end that Harbor would give it after the answer.
+        teardown = threading.Timer(_CHILD_EXIT_GRACE_SECONDS, stop_child)
+        teardown.daemon = True
+        teardown.start()
 
     signal.signal(signal.SIGTERM, on_sigterm)
     stage_file: Path | None = None
@@ -366,41 +443,45 @@ def run(environ: dict, project_root: Path, logs_dir: Path = LOGS_DIR, package_ro
         _log(f"build {record['build_id']} source {record['flywheel_source']['commit']}")
         bin_dir = _install_bun(work)
         runtime = _install_runtime(work, package_root / record["runtime_archive"]["path"], bin_dir)
-        analyzer = _install_store_analyzer(runtime, package_root, record["store_analyzer"])
+        analyzer = package_root / record["store_analyzer"]["path"]
         home = _install_home(work, package_root / record["flywheel_config"]["path"], profile)
         child = subprocess.Popen(
             _child_command(bin_dir, runtime, profile, stage_file),
             cwd=project_root,
             env=child_environment(environ, home, bin_dir, project_root, archive_sha256),
+            stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
         )
-        threading.Thread(target=_relay_output, args=(child.stdout, answered), daemon=True).start()
+        relay = _Relay(child.stdin, harbor_out, on_settled)
+        threading.Thread(target=relay.relay_input, args=(harbor_in or sys.stdin.buffer,), daemon=True).start()
+        threading.Thread(target=relay.relay_output, args=(child.stdout,), daemon=True).start()
         status = _exit_status(child.wait())
     except _Cancelled:
         status = 143
     finally:
         # From here a SIGTERM only shortens the export deadline.
         exporting = True
-        export_ends = time.monotonic() + _EXPORT_BUDGET_SECONDS
         if stage_file is not None:
             shutil.rmtree(stage_file.parent, ignore_errors=True)
         publication, withheld = None, None
         if child is not None and bin_dir is not None and analyzer is not None:
             try:
-                publication, withheld = _bounded_export(project_root, logs_dir, bin_dir / "bun", analyzer, lambda: min(export_ends, sigterm_deadline))
+                publication, withheld = _bounded_export(project_root, logs_dir, bin_dir / "bun", analyzer, lambda: sigterm_deadline)
             except Exception as error:
                 withheld = f"export_failed:{type(error).__name__}"
         settlement = AdapterSettlement("harbor-cancellation", True) if stopped else AdapterSettlement("normal", False)
         _write_run_summary(
             logs_dir,
             settlement,
-            DeadlineAuthority(None, None, "deadline-blind:hosted-harbor-timeout"),
+            DeadlineAuthority(None, None, "deadline-blind:harbor-timeout"),
             profile_sha256,
             archive_sha256,
             project_root=str(project_root),
             evidence_publication=publication,
             evidence_withheld=withheld,
         )
+        if relay is not None:
+            relay.release()
         shutil.rmtree(work / "home", ignore_errors=True)
     return status
 

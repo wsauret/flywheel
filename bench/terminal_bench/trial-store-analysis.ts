@@ -1,22 +1,23 @@
 import { Database } from "bun:sqlite"
+import { Schema } from "effect"
 import { createHash } from "node:crypto"
 import { closeSync, constants, fstatSync, openSync, readSync, type Stats } from "node:fs"
 import type { EventStoreReadSurface, StoredFact } from "../../src/infra/event-store-types.js"
 import { SESSION_RUNTIME_FACT_DEFINITIONS, TOOL_CONTENT_REFERENCE_FACT_DEFINITIONS } from "../../src/infra/runtime-fact-types.js"
 import { createSqliteEventReadSurface } from "../../src/infra/sqlite-event-read-surface.js"
+import { usageEntriesFromFacts } from "../../src/orchestration/session/durable-usage.js"
 import { loadProviderRequestAuditFromEvents } from "../../src/orchestration/session/provider-request-audit-projection.js"
 import { reconstructProviderRequestPrompt } from "../../src/orchestration/session/provider-request-audit-reconstruction.js"
-import type { ProviderRequestAuditEntry } from "../../src/orchestration/session/provider-request-audit-types.js"
+import { ProviderRequestOutcomeSchema, type ProviderRequestAuditEntry, type ProviderRequestOutcome } from "../../src/orchestration/session/provider-request-audit-types.js"
 // Prompt reconstruction reads the installed module catalog to label the hidden
 // entries that each module wrote, such as the Claude engine's reminders. As in
 // a release, loading the module registry publishes the shipped catalog.
 import "../../src/orchestration/modules.js"
 
-/** The analysis of one Terminal-Bench trial store. The local driver exports
- *  the store and the host analyses it. A hosted trial runs this file inside
- *  its sandbox, `bun trial-store-analysis.ts <store>`, and records the one
- *  JSON line it prints in its agent logs in place of the store, because
- *  Harbor scrubs secrets only in text files. The hosted package carries this
+/** The analysis of one Terminal-Bench trial store. Every trial runs this file
+ *  inside its sandbox, `bun trial-store-analysis.ts <store>`, and records the
+ *  one JSON line it prints in its agent logs in place of the store, because
+ *  Harbor scrubs secrets only in text files. The agent package carries this
  *  file from the packaged commit, so it imports only `src/` and the runtime. */
 
 interface JsonObject { readonly [key: string]: unknown }
@@ -92,18 +93,19 @@ async function completeRequest(request: AuditedRequest, readSurface: EventStoreR
   }
 }
 
-/** The version of the trial store analysis. A hosted trial records its
+/** The version of the trial store analysis. A trial records its
  *  analysis in its agent logs in place of its store, so a change to what the
  *  analysis states or means needs a new version, which the host refuses until
  *  its reader decodes it. */
-const TRIAL_STORE_ANALYSIS_VERSION = 1 as const
-/** The agent-log file of a hosted trial that holds its store analysis. The
- *  hosted shim writes it under this name. */
+const TRIAL_STORE_ANALYSIS_VERSION = 2 as const
+/** The agent-log file of a trial that holds its store analysis. The shim
+ *  writes it under this name. */
 export const TRIAL_STORE_ANALYSIS_NAME = "flywheel-store-analysis.json"
 
 /** What one trial store proves, apart from the run's expectation and without
  *  content: counts, booleans, registry tool names, interaction profile ids,
- *  and the identity of the analysed bytes. */
+ *  the final request outcome, the estimated cost, and the identity of the
+ *  analysed bytes. */
 export interface TrialStoreAnalysis {
   version: typeof TRIAL_STORE_ANALYSIS_VERSION
   store: { sha256: string; size: number }
@@ -114,7 +116,15 @@ export interface TrialStoreAnalysis {
   interactionProfiles: (string | null)[]
   /** The tool inputs that joined their audited tool surface, by executable tool name. */
   executableToolInputs: { [toolName: string]: number }
+  /** The outcome of the last provider response of the trial, null when no request was answered. An
+   *  outcome other than `ok` names why the trial's model work ended: a provider failure, an abort, or
+   *  a context or output limit. */
+  finalRequestOutcome: ProviderRequestOutcome | null
+  /** The estimated cost of every priced usage entry in USD, null when no entry was priced. */
+  estimatedCostUsd: number | null
 }
+
+const isRequestOutcome = Schema.is(ProviderRequestOutcomeSchema)
 
 /** Analyzes one trial store, the private settled copy that a driver exported.
  *  The file must be a regular, single-link, owner-only file; it is read once,
@@ -172,18 +182,26 @@ export async function analyzeTrialStore(path: string): Promise<TrialStoreAnalysi
     const after = fstatSync(descriptor)
     if (before.dev !== after.dev || before.ino !== after.ino || before.size !== after.size || before.mtimeMs !== after.mtimeMs) throw new Error("evidence identity changed")
     const interactionProfiles = [...audit.interactionProfiles].sort((a, b) => String(a).localeCompare(String(b)))
-    return { version: TRIAL_STORE_ANALYSIS_VERSION, store, toolSettlement, requestAuditComplete, interactionProfiles, executableToolInputs }
+    const finalResponse = db.query<{ payload: string }, []>("select payload from event where type = 'model.response_received' and actor = 'provider' order by position desc limit 1").get()
+    const finalRequestOutcome = finalResponse === null ? null : object(JSON.parse(finalResponse.payload))?.outcome
+    if (finalRequestOutcome !== null && !isRequestOutcome(finalRequestOutcome)) throw new Error("invalid model.response_received outcome")
+    const prices = usageEntriesFromFacts(readSurface.read({ types: ["model.usage.measured"] })).flatMap((entry) => entry.coverage !== "unmeasured" && entry.price.kind === "priced" ? [entry.price.estimatedUsd] : [])
+    const estimatedCostUsd = prices.length === 0 ? null : Number(prices.reduce((total, price) => total + price, 0).toFixed(6))
+    return { version: TRIAL_STORE_ANALYSIS_VERSION, store, toolSettlement, requestAuditComplete, interactionProfiles, executableToolInputs, finalRequestOutcome, estimatedCostUsd }
   } finally { db.close(); closeSync(descriptor) }
 }
 
 function count(value: unknown): value is number { return typeof value === "number" && Number.isInteger(value) && value >= 0 }
 function invalidAnalysis(): never { throw new Error("invalid trial store analysis") }
 
-/** Decodes the store analysis that a hosted trial recorded, and refuses any
+/** Decodes the store analysis that a trial recorded, and refuses any
  *  other version or shape. */
 export function decodeTrialStoreAnalysis(value: unknown): TrialStoreAnalysis {
   const row = object(value), store = object(row?.store), settlement = object(row?.toolSettlement), inputs = object(row?.executableToolInputs), profiles = row?.interactionProfiles
   if (row?.version !== TRIAL_STORE_ANALYSIS_VERSION || !store || !nonempty(store.sha256) || !count(store.size) || !settlement || !inputs || !Array.isArray(profiles) || typeof row.requestAuditComplete !== "boolean") return invalidAnalysis()
+  const cost = row.estimatedCostUsd, outcome = row.finalRequestOutcome
+  const estimatedCostUsd = cost === null ? null : typeof cost === "number" && Number.isFinite(cost) && cost >= 0 ? cost : invalidAnalysis()
+  const finalRequestOutcome = outcome === null ? null : isRequestOutcome(outcome) ? outcome : invalidAnalysis()
   const field = (name: keyof ToolSettlement): number => { const item = settlement[name]; return count(item) ? item : invalidAnalysis() }
   return {
     version: TRIAL_STORE_ANALYSIS_VERSION,
@@ -192,6 +210,8 @@ export function decodeTrialStoreAnalysis(value: unknown): TrialStoreAnalysis {
     requestAuditComplete: row.requestAuditComplete,
     interactionProfiles: profiles.map((profile: unknown) => profile === null ? null : nonempty(profile) ? profile : invalidAnalysis()),
     executableToolInputs: Object.fromEntries(Object.entries(inputs).map(([name, item]) => [name, count(item) ? item : invalidAnalysis()])),
+    finalRequestOutcome,
+    estimatedCostUsd,
   }
 }
 

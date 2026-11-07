@@ -1,5 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join, resolve, sep } from "node:path";
+import { decodeTrialStoreAnalysis, TRIAL_STORE_ANALYSIS_NAME, type TrialStoreAnalysis } from "./trial-store-analysis.js";
 
 type LedgerCategory = "provider_infra" | "cancelled" | "cost_truncated" | "genuine" | "other";
 type RunOutcome = "completed" | "no_scored_trials" | "trials_unverified" | "harness_nonzero_exit";
@@ -20,7 +21,7 @@ export interface DisclosureLedger {
   rows: LedgerRow[];
 }
 
-interface ReconcileOptions { trialsDirectory: string; taskNames?: string[]; attempts?: number; expectedTrials?: number; harborExitCode: number; infrastructureValid: boolean; hosted?: boolean }
+interface ReconcileOptions { trialsDirectory: string; taskNames?: string[]; attempts?: number; expectedTrials?: number; harborExitCode: number; infrastructureValid: boolean }
 interface JsonEvidence { value?: JsonMap; present: boolean; valid: boolean }
 
 function object(value: unknown): JsonMap | undefined {
@@ -53,35 +54,31 @@ function exceptionType(result: JsonMap | undefined): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
-/** Whether Harbor ended a hosted trial at its agent timeout. Harbor kills the
- *  hosted agent at that deadline before the shim can write its run summary, so
- *  such a trial is cancelled evidence without a summary, not missing evidence. */
-export function isHostedAgentTimeout(result: JsonMap | undefined): boolean {
+/** Whether Harbor ended a trial at its agent timeout. Harbor stops the agent
+ *  at that deadline before the shim can write its run summary, so such a
+ *  trial is cancelled evidence without a summary, not missing evidence. */
+export function isAgentTimeout(result: JsonMap | undefined): boolean {
   return exceptionType(result) === "AgentTimeoutError";
 }
 
-function terminalKind(summary: JsonMap | undefined): string | undefined {
-  const kind = object(object(summary?.termination)?.terminal)?.kind;
-  return typeof kind === "string" ? kind : undefined;
+/** The store analysis that the trial recorded, or undefined when it recorded
+ *  none it can decode. The tool outcome analyzer refuses such a trial, so here
+ *  it only lacks the evidence that the analysis would add. */
+async function storeAnalysis(directory: string): Promise<TrialStoreAnalysis | undefined> {
+  try {
+    return decodeTrialStoreAnalysis(JSON.parse(await readFile(join(directory, "agent", TRIAL_STORE_ANALYSIS_NAME), "utf8")));
+  } catch {
+    return undefined;
+  }
 }
 
-/** Whether the run's own deadline fired, read by the one key of the
- *  termination object's version. Version 2 states it as `deadlineFired`. */
-function deadlineFired(summary: JsonMap | undefined): boolean {
-  const termination = object(summary?.termination);
-  // Remove after 2027-04-06: a summary written before 2026-10-06 carries
-  // termination version 1, which states the same fact as `deadline_expired`.
-  if (termination?.version === 1) return termination.deadline_expired === true;
-  return termination?.deadlineFired === true;
-}
-
-function failureCategory(result: JsonMap | undefined, summary: JsonMap | undefined, score: number | null): LedgerCategory | undefined {
+function failureCategory(result: JsonMap | undefined, summary: JsonMap | undefined, analysis: TrialStoreAnalysis | undefined, score: number | null): LedgerCategory | undefined {
   if (typeof score === "number" && score > 0) return undefined;
   const exception = exceptionType(result);
-  const terminal = terminalKind(summary);
-  if ((exception !== undefined && !exception.toLowerCase().includes("timeout")) || terminal === "api_error" || terminal === "model_unavailable" || terminal === "transient_disconnect" || terminal === "stream_stalled" || terminal === "api_overloaded") return "provider_infra";
-  if (exception?.toLowerCase().includes("timeout") === true || summary?.captured_after_cancellation === true || deadlineFired(summary) || terminal === "aborted" || terminal === "interrupted") return "cancelled";
-  if (terminal === "budget_exhausted" || terminal === "context_overflow" || terminal === "output_overflow") return "cost_truncated";
+  const outcome = analysis?.finalRequestOutcome;
+  if ((exception !== undefined && !exception.toLowerCase().includes("timeout")) || outcome === "stream_error" || outcome === "fatal_error") return "provider_infra";
+  if (exception?.toLowerCase().includes("timeout") === true || summary?.captured_after_cancellation === true || outcome === "aborted") return "cancelled";
+  if (outcome === "context_overflow" || outcome === "output_overflow") return "cost_truncated";
   return score === 0 ? "genuine" : "other";
 }
 
@@ -129,7 +126,7 @@ export async function reconcileDisclosureLedger(options: ReconcileOptions): Prom
     const task = result?.task_name;
     const trialName = result?.trial_name;
     const score = reward(result);
-    const summaryAdmitted = summaryEvidence.present ? summaryEvidence.valid : options.hosted === true && isHostedAgentTimeout(result);
+    const summaryAdmitted = summaryEvidence.present ? summaryEvidence.valid : isAgentTimeout(result);
     const valid = resultEvidence.present && resultEvidence.valid && summaryAdmitted && typeof task === "string" && task.length > 0 && typeof trialName === "string" && trialName.length > 0 && score !== undefined;
     evidenceValid &&= valid;
     if (!valid || typeof task !== "string" || typeof trialName !== "string" || score === undefined) continue;
@@ -138,8 +135,9 @@ export async function reconcileDisclosureLedger(options: ReconcileOptions): Prom
     taskCounts.set(task, (taskCounts.get(task) ?? 0) + 1);
     const exception = exceptionType(result);
     if (exception !== undefined) exceptionHistogram[exception] = (exceptionHistogram[exception] ?? 0) + 1;
-    const category = failureCategory(result, summaryEvidence.value, score);
-    const cost = numeric(object(result?.agent_result)?.cost_usd) ?? numeric(object(summaryEvidence.value?.usage)?.costUsd) ?? 0;
+    const analysis = await storeAnalysis(directory);
+    const category = failureCategory(result, summaryEvidence.value, analysis, score);
+    const cost = numeric(object(result?.agent_result)?.cost_usd) ?? analysis?.estimatedCostUsd ?? 0;
     rows.push({ id: trialName, task, reward: score, ...(category === undefined ? {} : { category }), cost });
   }
   if (expectedTasks.size > 0 && [...expectedTasks].some((task) => taskCounts.get(task) !== attempts)) evidenceValid = false;

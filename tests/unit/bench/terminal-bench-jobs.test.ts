@@ -1,22 +1,22 @@
 import { describe, expect, test } from "bun:test";
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { load } from "js-yaml";
 import { prepareTerminalBenchRun } from "../../../bench/terminal_bench/run-terminal-bench.js";
-import { releaseTagFor, snapshotEnvironment, worstCaseJobSeconds, type AgentPackageBuild, type AgentPackagePublication } from "../../../bench/terminal_bench/hosted-terminal-bench.js";
+import { releaseTagFor, snapshotEnvironment, worstCaseJobSeconds, type AgentPackageBuild, type AgentPackagePublication } from "../../../bench/terminal_bench/harbor-jobs.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
-import { terminalBenchAuthArgs as authArgs } from "../../fixtures/terminal-bench-profile.js";
+import { ARM_CONFIG, terminalBenchLaunchArgs as launchArgs } from "../../fixtures/terminal-bench-profile.js";
 
 const BRINGUP = resolve(process.cwd(), "bench/terminal_bench/profiles/tb-mini-bringup-kv-store-grpc.yaml");
-const ARM_CONFIG = "bench/terminal_bench/configs/tb-mini-openai.toml";
 const COMMIT = "c".repeat(40);
 const KV_TIMEOUTS = { "terminal-bench/kv-store-grpc": { agent_timeout_sec: 900, verifier_timeout_sec: 900, build_timeout_sec: 600 } };
 const PUBLICATION: AgentPackagePublication = { repository: "owner/agent", ref: "refs/heads/build/abcdef012345", commit: "d".repeat(40), branch: "build/abcdef012345", tag: null };
 
 function build(commit: string, releaseTag: string | null): AgentPackageBuild {
-  return { build_id: "abcdef012345", flywheel_source: { commit, version: "1.2.3", release_tag: releaseTag }, runtime_archive: { path: "runtime/source-archive.tar.gz", sha256: "e".repeat(64) }, flywheel_config: { path: "flywheel.toml", source_path: ARM_CONFIG, sha256: "f".repeat(64) }, store_analyzer: { path: "store-analysis/trial-store-analysis.ts", source_path: "bench/terminal_bench/trial-store-analysis.ts", sha256: "0".repeat(64) } };
+  return { build_id: "abcdef012345", flywheel_source: { commit, version: "1.2.3", release_tag: releaseTag }, runtime_archive: { path: "runtime/source-archive.tar.gz", sha256: "e".repeat(64) }, flywheel_config: { path: "flywheel.toml", source_path: ARM_CONFIG, sha256: "f".repeat(64) }, store_analyzer: { path: "store-analysis/trial-store-analysis.js", source_path: "bench/terminal_bench/trial-store-analysis.ts", sha256: "0".repeat(64) } };
 }
 
-describe("terminal bench hosted runs", () => {
+describe("terminal bench Harbor jobs", () => {
   const temporaryDirectory = temporaryDirectories();
   const dependencies = (root: string, builds: unknown[][]) => ({
     cwd: root,
@@ -37,7 +37,7 @@ describe("terminal bench hosted runs", () => {
   test("a hosted dry run publishes the package of the exact commit and writes a direct-credential Hub job", async () => {
     const root = temporaryDirectory("tb-hosted-");
     const builds: unknown[][] = [];
-    const result = await prepareTerminalBenchRun([...authArgs, "--config", BRINGUP, "--allow-low-k", "--hosted", "--agent-repo", "owner/agent", "--organization", "org"], dependencies(root, builds));
+    const result = await prepareTerminalBenchRun([...launchArgs, "--config", BRINGUP, "--allow-low-k", "--hosted", "--organization", "org"], dependencies(root, builds));
     const generated = JSON.parse(await readFile(result.generatedConfig, "utf8"));
     const manifest = JSON.parse(await readFile(result.manifest, "utf8"));
     const plan = JSON.parse(await readFile(result.preparationPlan, "utf8"));
@@ -56,11 +56,34 @@ describe("terminal bench hosted runs", () => {
       timeout_multiplier: 1,
       environment_build_timeout_multiplier: 1,
     });
-    expect(manifest).toMatchObject({ execution_mode: "hosted", grade: "debug_only", source_archive_sha256: "e".repeat(64), runtime_source: { mode: "git_commit", resolved_sha: COMMIT }, agent_package: { ...PUBLICATION, build_id: "abcdef012345", release_tag: null }, exact_command: plan.launch_command });
+    expect(manifest).toMatchObject({ execution_mode: "hosted", hosted_job_id: null, grade: "debug_only", source_archive_sha256: "e".repeat(64), runtime_source: { mode: "git_commit", resolved_sha: COMMIT }, agent_package: { ...PUBLICATION, build_id: "abcdef012345", release_tag: null }, exact_command: plan.launch_command });
     expect(plan.snapshot_command).toEqual(expect.arrayContaining(["--auth-profile", "Fixture", "--as-profile", "benchmark", "--provider", "chatgpt", "--min-valid-seconds", "6000"]));
     expect(plan.snapshot_command.filter((argument: string) => argument === "--provider")).toHaveLength(1);
     expect(plan.trials_directory).toBe(join(result.artifactDirectory, "hub", "flywheel-tb-mini-bringup-kv-store-grpc"));
     expect(plan).toMatchObject({ snapshot_providers: ["chatgpt"], claude_token_keychain_item: "flywheel-claude-oauth-token" });
+  });
+
+  test("a local run publishes the same package and names it with the same agent identity, over Docker with the snapshot overlay", async () => {
+    const builds: unknown[][] = [];
+    const prepare = (mode: string[]) => prepareTerminalBenchRun([...launchArgs, "--config", BRINGUP, "--allow-low-k", ...mode], dependencies(temporaryDirectory("tb-local-"), builds));
+    const local = await prepare([]);
+    const hosted = await prepare(["--hosted"]);
+    const read = async (path: string) => JSON.parse(await readFile(path, "utf8"));
+    const [generated, manifest, plan, hostedGenerated, hostedPlan] = await Promise.all([read(local.generatedConfig), read(local.manifest), read(local.preparationPlan), read(hosted.generatedConfig), read(hosted.preparationPlan)]);
+    expect(builds.map((row) => row.slice(0, 4))).toEqual([[COMMIT, ARM_CONFIG, manifest.flywheel_config.sha256, null], [COMMIT, ARM_CONFIG, manifest.flywheel_config.sha256, null]]);
+    const [agent] = generated.agents;
+    const [hostedAgent] = hostedGenerated.agents;
+    expect(agent).toEqual({ name: "acp", kwargs: { source: { repo_url: "https://github.com/owner/agent.git", ref: PUBLICATION.commit, source_dir: ".", manifest_path: "harbor-agent.json" } }, env: hostedAgent.env });
+    expect(hostedAgent.source).toEqual({ type: "github", repo: "owner/agent", ref: PUBLICATION.commit, path: ".", manifest: "harbor-agent.json" });
+    expect(hostedAgent.env).toEqual({ FLYWHEEL_TB_PROFILE_SHA256: manifest.profile_sha256 });
+    const overlay = resolve(process.cwd(), "bench/terminal_bench/snapshot-environment.compose.yaml");
+    expect(generated.environment).toEqual({ resources: {}, extra_docker_compose: [overlay] });
+    expect(load(await readFile(overlay, "utf8"))).toEqual({ services: { main: { environment: ["FLYWHEEL_AUTH_SNAPSHOT"] } } });
+    expect(generated.job_secrets).toBeUndefined();
+    expect(manifest).toMatchObject({ execution_mode: "local", source_archive_sha256: "e".repeat(64), agent_package: { ...PUBLICATION, build_id: "abcdef012345", release_tag: null }, exact_command: ["harbor", "run", "-c", local.generatedConfig] });
+    const shared = ["source_commit", "agent_package", "snapshot_command", "snapshot_providers", "claude_token_keychain_item", "worst_case_seconds"];
+    for (const field of shared) expect(plan[field]).toEqual(hostedPlan[field]);
+    expect(plan).toMatchObject({ execution_mode: "local", harbor_command: local.harborCommand, trials_directory: join(local.artifactDirectory, "..", "flywheel-tb-mini-bringup-kv-store-grpc") });
   });
 
   test("the export of a Claude arm alone gets the Claude token, from the keychain item before the launcher's own variable, and refuses without either", async () => {
@@ -73,10 +96,10 @@ describe("terminal bench hosted runs", () => {
   });
 
   test("every dry run refuses a task name that Harbor's dataset resolution does not match", async () => {
-    for (const mode of [[], ["--hosted", "--agent-repo", "owner/agent", "--organization", "org"]]) {
+    for (const mode of [[], ["--hosted", "--organization", "org"]]) {
       const root = temporaryDirectory("tb-unmatched-");
       const refusing = { ...dependencies(root, []), resolveTasks: async () => { throw new Error("task names match no task in terminal-bench/terminal-bench-2-1: terminal-bench/does-not-exist-xyz"); } };
-      await expect(prepareTerminalBenchRun([...authArgs, "--config", BRINGUP, "--allow-low-k", ...mode], refusing)).rejects.toThrow("terminal-bench/does-not-exist-xyz");
+      await expect(prepareTerminalBenchRun([...launchArgs, "--config", BRINGUP, "--allow-low-k", ...mode], refusing)).rejects.toThrow("terminal-bench/does-not-exist-xyz");
     }
   });
 

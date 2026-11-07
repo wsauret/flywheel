@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import { TOOL_OUTCOME_ANALYZER_CONTRACT_VERSION, TOOL_OUTCOME_ANALYZER_RESULT_VERSION } from "../../../bench/terminal_bench/analyze-tool-outcomes.js";
 import { createTerminalBenchComparisonManifest, prepareTerminalBenchRun } from "../../../bench/terminal_bench/run-terminal-bench.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
-import { terminalBenchAuthArgs as authArgs } from "../../fixtures/terminal-bench-profile.js";
+import { ARM_CONFIG, armProfile, terminalBenchLaunchArgs as launchArgs } from "../../fixtures/terminal-bench-profile.js";
 
 const CONFIG_TEXT = 'allow_persistent_processes = true\n[profiles.benchmark.roles.chat]\nmodel = "gpt-6-luna"\neffort = "max"\n';
 const CONFIG_SHA256 = createHash("sha256").update(CONFIG_TEXT).digest("hex");
@@ -15,30 +15,28 @@ describe("terminal bench Flywheel config evidence", () => {
 
   test("the manifest and the preparation plan record the config path and digest, also in a dry run", async () => {
     const root = temporaryDirectory("tb-config-evidence-");
-    const configPath = join(root, "arm.toml");
-    await writeFile(configPath, CONFIG_TEXT);
     const profilePath = join(root, "profile.yaml");
-    await writeFile(profilePath, `headless: { flywheel_config: '${configPath}' }\ndatasets: [{ task_names: [one] }]\n`);
-    const result = await prepareTerminalBenchRun([...authArgs, "--config", profilePath, "--allow-low-k", "--attempts", "1"], {
+    await writeFile(profilePath, armProfile());
+    const result = await prepareTerminalBenchRun([...launchArgs, "--config", profilePath, "--allow-low-k", "--attempts", "1"], {
       cwd: root,
-      inspectSeed: async () => ({ clean: true, revision: "abc123" }),
+      inspectSeed: async () => ({ clean: true, revision: "a".repeat(40) }),
       validateConfig: async () => undefined,
       versionProbe: async () => "test",
       harborPython: () => "python",
-      resolveTasks: async () => ({}),
+      resolveTasks: async () => ({ "terminal-bench/one": { agent_timeout_sec: 1, verifier_timeout_sec: 1, build_timeout_sec: 1 } }),
+      releaseTagFor: async () => null,
+      buildAgentPackage: async (commit, configPath, configSha256, releaseTag) => ({ build_id: "abcdef012345", flywheel_source: { commit, version: "1.2.3", release_tag: releaseTag }, runtime_archive: { path: "runtime/source-archive.tar.gz", sha256: "e".repeat(64) }, flywheel_config: { path: "flywheel.toml", source_path: configPath, sha256: configSha256 }, store_analyzer: { path: "store-analysis/trial-store-analysis.js", source_path: "bench/terminal_bench/trial-store-analysis.ts", sha256: "0".repeat(64) } }),
+      publishAgentPackage: async () => ({ repository: "owner/agent", ref: "refs/heads/build/abcdef012345", commit: "d".repeat(40), branch: "build/abcdef012345", tag: null }),
     });
     const manifest = JSON.parse(await readFile(result.manifest, "utf8"));
     const plan = JSON.parse(await readFile(result.preparationPlan, "utf8"));
     const metadata = JSON.parse(await readFile(join(result.artifactDirectory, "metadata.yaml"), "utf8"));
-    const generated = JSON.parse(await readFile(result.generatedConfig, "utf8"));
-    const record = { path: configPath, sha256: CONFIG_SHA256, chat_effort: "max" };
+    const record = { path: ARM_CONFIG, sha256: createHash("sha256").update(await readFile(ARM_CONFIG)).digest("hex"), chat_effort: "medium" };
     expect(result.dryRun).toBeTrue();
     expect(manifest.flywheel_config).toEqual(record);
     expect(plan.flywheel_config).toEqual(record);
-    expect(manifest.model).toBe("gpt-6-luna");
-    expect(metadata.models).toEqual([{ name: "flywheel/gpt-6-luna", role: "primary" }]);
-    expect(generated.agents[0].kwargs.flywheel_model).toBeUndefined();
-    expect(generated.agents[0].kwargs.flywheel_config_sha256).toBe(CONFIG_SHA256);
+    expect(manifest.model).toBe("gpt-6.1-terra");
+    expect(metadata.models).toEqual([{ name: "flywheel/gpt-6.1-terra", role: "primary" }]);
   });
 
   test("a paired comparison shows each arm's config digest", async () => {
@@ -47,7 +45,7 @@ describe("terminal bench Flywheel config evidence", () => {
     const analysis = { version: TOOL_OUTCOME_ANALYZER_RESULT_VERSION, denominator: rows.length, rows, infrastructureValid: true, comparisonAvailable: true };
     const analyzer = { analysis, summary: { version: 1, contract_version: TOOL_OUTCOME_ANALYZER_CONTRACT_VERSION, result_version: TOOL_OUTCOME_ANALYZER_RESULT_VERSION, sha256: createHash("sha256").update(`${JSON.stringify(analysis, undefined, 2)}\n`).digest("hex"), infrastructure_valid: true, denominator: rows.length, failure_counts: {} } };
     const source = { mode: "git_commit", requested_sha: "a".repeat(40), resolved_sha: "a".repeat(40) };
-    const arm = { model: "gpt-6-luna", dataset: "terminal-bench/terminal-bench-2-1", task_names: ["terminal-bench/one"], attempts: 5, concurrency: 2, disabled_tools: [], timeout_multipliers: {}, resource_overrides: {}, state: "finalized", outcome: "completed", expected_trials: 5, source_archive_sha256: "d".repeat(64), analyzer_result: analyzer, runtime_source: source };
+    const arm = { model: "gpt-6-luna", dataset: "terminal-bench/terminal-bench-2-1", task_names: ["terminal-bench/one"], attempts: 5, concurrency: 2, timeout_multipliers: {}, resource_overrides: {}, state: "finalized", outcome: "completed", expected_trials: 5, source_archive_sha256: "d".repeat(64), analyzer_result: analyzer, runtime_source: source };
     const controlPath = join(root, "control.json");
     const candidatePath = join(root, "candidate.json");
     await writeFile(controlPath, JSON.stringify({ ...arm, profile_sha256: "b".repeat(64), flywheel_config: { path: "control.toml", sha256: CONFIG_SHA256, chat_effort: "max" } }));

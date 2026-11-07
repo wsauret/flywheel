@@ -2,11 +2,12 @@
 
 A package holds only Git blobs of one exact commit: the shim project under
 bench/terminal_bench/harbor_agent/, the trial store analysis that the shim
-runs in the sandbox, the arm's Flywheel config, and the runtime archive that
-flywheel_agent.py builds from that commit. Uncommitted or
-untracked files never enter it, so a package never publishes work that is not
-in that commit. Every package gets a build id derived from its inputs, so the
-same inputs give the same package and the same published commit.
+runs in the sandbox, the arm's Flywheel config, and the runtime archive of
+that commit's runtime source. Uncommitted or untracked files never enter it,
+so a package never publishes work that is not in that commit. Every package
+gets a build id derived from its inputs, so the same inputs give the same
+package and the same published commit. Local and Harbor Hub runs use the same
+package.
 
 Run it with Harbor's Python, from the repository root:
 
@@ -20,13 +21,16 @@ Each command prints one JSON object on stdout.
 """
 
 import argparse
+import gzip
 import hashlib
+import io
 import json
 import os
 import re
 import stat
 import subprocess
 import sys
+import tarfile
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
@@ -36,12 +40,30 @@ SHIM_SOURCE = "bench/terminal_bench/harbor_agent"
 # The shim places this file at the same path in the installed runtime, where
 # its imports of `src/` resolve.
 STORE_ANALYZER_SOURCE = "bench/terminal_bench/trial-store-analysis.ts"
-STORE_ANALYZER_PATH = "store-analysis/trial-store-analysis.ts"
+STORE_ANALYZER_PATH = "store-analysis/trial-store-analysis.js"
 CONFIG_NAME = "flywheel.toml"
 ARCHIVE_PATH = "runtime/source-archive.tar.gz"
 BUILD_RECORD = "BUILD.json"
 MANIFEST_NAME = "harbor-agent.json"
 ENTRYPOINT = "flywheel-acp"
+# Exact runtime files outside SOURCE_ARCHIVE_MEMBERS that the headless runtime
+# loads. The archive takes them by exact path, so the secret-name filter does
+# not apply to them. With the members they cover SOURCE_FILE_SET in
+# src/infra/source-snapshot.ts.
+RIPGREP_ADDON_PATHS = ("crates/ripgrep/flywheel-ripgrep.linux-arm64.node", "crates/ripgrep/flywheel-ripgrep.linux-x64.node")
+TOKENIZER_ASSET_PATHS = ("crates/tokenizer/flywheel-tokenizer.wasm.zst", "crates/tokenizer/tokenizer-prebuilt.json")
+RUNTIME_ASSET_PATHS = (*RIPGREP_ADDON_PATHS, *TOKENIZER_ASSET_PATHS)
+# The runtime's SOURCE_FILE_SET plus bunfig.toml, less the tokenizer assets
+# that RUNTIME_ASSET_PATHS carries. A member names a file or a directory.
+SOURCE_ARCHIVE_MEMBERS = (
+    "LICENSE", "THIRD-PARTY-LICENSES.txt", "THIRD-PARTY-NOTICES.md", "bun.lock", "bunfig.toml",
+    "package.json", "scripts", "src", "tsconfig.json", "webview/build.ts", "webview/editor",
+    "webview/local", "webview/package.json", "webview/phone", "webview/src", "webview/tsconfig.json",
+)
+_SOURCE_ARCHIVE_MEMBER_PARTS = tuple(Path(member).parts for member in SOURCE_ARCHIVE_MEMBERS)
+# Name checks are defense in depth: the archive takes only committed blobs.
+_SECRET_SUFFIXES = frozenset({".key", ".p12", ".pem", ".pfx"})
+_CREDENTIAL_NAME_MARKERS = ("api_key", "api-key", "apikey", "service-account", "service_account", "serviceaccount", "private-key", "private_key")
 # A published package commit names no person: the same inputs give the same
 # commit SHA on every host.
 PUBLISHER_IDENTITY = {
@@ -69,15 +91,91 @@ def _sha256(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def _default_archive_builder(work: Path, archive: Path, commit: str) -> str:
-    try:
-        from .flywheel_agent import _build_archive
-    except ImportError:
-        from flywheel_agent import _build_archive
-    # The builder writes into its job directory under the archive's name.
-    digest = _build_archive(work, archive, runtime_source_commit=commit).sha256
-    (work / archive.name).rename(archive)
-    return digest
+def _is_runtime_source(path: Path) -> bool:
+    """Whether `path` is runtime source under SOURCE_ARCHIVE_MEMBERS and has no secret-shaped name."""
+    lower_parts = tuple(part.casefold() for part in path.parts)
+    lower_name = lower_parts[-1]
+    lower_suffix = Path(lower_name).suffix
+    typescript_source = lower_suffix in {".ts", ".tsx"}
+    secret_name = (
+        lower_name == ".env"
+        or lower_name.startswith(".env.")
+        or lower_name in {".envrc", ".npmrc", ".netrc", "netrc"}
+        or lower_name.startswith(("id_rsa", "id_dsa", "id_ecdsa", "id_ed25519"))
+        or any(marker in lower_name for marker in ("client_secret", "client-secret", "clientsecret"))
+        or (not typescript_source and any(marker in lower_name for marker in _CREDENTIAL_NAME_MARKERS))
+        or (not typescript_source and lower_name.startswith(("auth", "credentials", "secret", "token")))
+        or lower_suffix in _SECRET_SUFFIXES
+        or "secrets" in lower_parts
+    )
+    return not secret_name and any(path.parts[:len(member)] == member for member in _SOURCE_ARCHIVE_MEMBER_PARTS)
+
+
+def _runtime_blobs(repository: Path, commit: str) -> list[tuple[str, int, bytes]]:
+    """The (path, mode, bytes) of every regular runtime blob of `commit`, sorted by path."""
+    selectors = (*SOURCE_ARCHIVE_MEMBERS, *RUNTIME_ASSET_PATHS)
+    selected: list[tuple[str, int, str]] = []
+    for record in _git(repository, "ls-tree", "-rz", "--full-tree", commit, "--", *selectors).split(b"\0"):
+        if not record:
+            continue
+        metadata, raw_path = record.split(b"\t", 1)
+        raw_mode, object_type, object_id = metadata.decode("ascii").split(" ")
+        path = os.fsdecode(raw_path)
+        if object_type != "blob" or raw_mode not in ("100644", "100755"):
+            raise RuntimeError(f"runtime entry of commit {commit} is not a regular blob: {path}")
+        if path in RUNTIME_ASSET_PATHS or _is_runtime_source(Path(path)):
+            selected.append((path, int(raw_mode, 8), object_id))
+    missing = set(RUNTIME_ASSET_PATHS) - {path for path, _, _ in selected}
+    # Commits before 2026-09-07 predate the local tokenizer and do not import it,
+    # so they may lack both tokenizer files. A commit with only one of them is broken.
+    if missing and missing != set(TOKENIZER_ASSET_PATHS):
+        raise RuntimeError(f"commit {commit} is missing a required runtime asset: {', '.join(sorted(missing))}")
+    return [(path, mode, _git(repository, "cat-file", "blob", object_id)) for path, mode, object_id in sorted(selected)]
+
+
+def build_runtime_archive(repository: Path, archive: Path, commit: str) -> str:
+    """Write the reproducible runtime archive of `commit` to `archive` and return its SHA-256.
+
+    The archive holds only regular Git blobs of that commit, with normalized
+    owners, times, and modes, so the same commit always gives the same bytes.
+    """
+    tar_bytes = io.BytesIO()
+    with tarfile.open(fileobj=tar_bytes, mode="w", format=tarfile.PAX_FORMAT) as tar:
+        for path, mode, payload in _runtime_blobs(repository, commit):
+            member = tarfile.TarInfo(path)
+            member.size = len(payload)
+            member.mode = 0o755 if mode & 0o111 else 0o644
+            tar.addfile(member, io.BytesIO(payload))
+    compressed = io.BytesIO()
+    with gzip.GzipFile(filename="", mode="wb", compresslevel=9, fileobj=compressed, mtime=0) as gzipped:
+        gzipped.write(tar_bytes.getvalue())
+    archive.write_bytes(compressed.getvalue())
+    return _sha256(compressed.getvalue())
+
+
+def bundle_store_analyzer(repository: Path, commit: str, archive: Path, output: Path) -> None:
+    """Bundle the trial store analysis of `commit` into the one file `output`.
+
+    A trial that Harbor stops runs the analysis within 1.6 seconds after
+    SIGTERM, and under amd64 emulation on an arm64 host Bun needs about 2.4
+    seconds on one CPU to load its `src/` imports one by one, against about
+    1.5 seconds for one prebuilt file. The bundle resolves `src/` from the runtime archive of the
+    commit and packages from that archive's own `bun.lock`, as the trial's
+    runtime does. Bun runs in the extracted tree with relative paths, so the
+    bundle names no build folder and the same commit gives the same bytes.
+    """
+    with tempfile.TemporaryDirectory(prefix="flywheel-analyzer-") as directory:
+        tree = Path(directory)
+        with tarfile.open(archive, "r:gz") as source:
+            source.extractall(tree, filter="data")
+        entry = tree / STORE_ANALYZER_SOURCE
+        entry.parent.mkdir(parents=True, exist_ok=True)
+        entry.write_bytes(_git(repository, "cat-file", "blob", f"{commit}:{STORE_ANALYZER_SOURCE}"))
+        subprocess.run(["bun", "install", "--frozen-lockfile", "--ignore-scripts"], cwd=tree, check=True, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+        # Bundling msgpackr's optional native addon would inline the build
+        # folder as its `__dirname`. msgpackr loads the addon in a try block, so
+        # left external it is absent in the trial, as it was when inlined.
+        subprocess.run(["bun", "build", "--target=bun", "--external", "msgpackr-extract", STORE_ANALYZER_SOURCE, "--outfile", str(output.resolve())], cwd=tree, check=True, stdout=subprocess.DEVNULL)
 
 
 def build_package(
@@ -87,7 +185,8 @@ def build_package(
     config_sha256: str,
     release_tag: str | None,
     output: Path,
-    build_archive: Callable[[Path, Path, str], str] = _default_archive_builder,
+    build_archive: Callable[[Path, Path, str], str] = build_runtime_archive,
+    bundle_analyzer: Callable[[Path, str, Path, Path], None] = bundle_store_analyzer,
 ) -> dict:
     """Write the package of `commit` into the empty directory `output` and return its build record.
 
@@ -111,17 +210,15 @@ def build_package(
     if _sha256(config) != config_sha256:
         raise RuntimeError(f"the arm config {config_path} at commit {commit} differs from the validated config; commit it first")
     (output / CONFIG_NAME).write_bytes(config)
-    analyzer = _git(repository, "cat-file", "blob", f"{commit}:{STORE_ANALYZER_SOURCE}")
-    (output / STORE_ANALYZER_PATH).parent.mkdir()
-    (output / STORE_ANALYZER_PATH).write_bytes(analyzer)
-    analyzer_sha256 = _sha256(analyzer)
     archive = output / ARCHIVE_PATH
     archive.parent.mkdir()
-    with tempfile.TemporaryDirectory(prefix="flywheel-package-archive-") as work:
-        archive_sha256 = build_archive(Path(work), archive, commit)
+    archive_sha256 = build_archive(repository, archive, commit)
     archive.chmod(0o644)
     if _sha256(archive.read_bytes()) != archive_sha256:
         raise RuntimeError("runtime archive bytes do not match the digest its builder reported")
+    (output / STORE_ANALYZER_PATH).parent.mkdir()
+    bundle_analyzer(repository, commit, archive, output / STORE_ANALYZER_PATH)
+    analyzer_sha256 = _sha256((output / STORE_ANALYZER_PATH).read_bytes())
     flywheel_version = json.loads(_git(repository, "cat-file", "blob", f"{commit}:package.json"))["version"]
     identity = {"commit": commit, "runtime_archive_sha256": archive_sha256, "flywheel_config_sha256": config_sha256, "store_analyzer_sha256": analyzer_sha256, "shim_files": shim_files}
     build_id = _sha256(json.dumps(identity, sort_keys=True).encode())[:12]

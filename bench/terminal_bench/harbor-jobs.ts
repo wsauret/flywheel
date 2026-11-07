@@ -17,6 +17,9 @@ const QUEUE_MARGIN_SECONDS = 3600;
 const STATUS_INTERVAL_MS = 60_000;
 const REPOSITORY_ROOT = resolve(import.meta.dir, "../..");
 const PACKAGE_SCRIPT = join(REPOSITORY_ROOT, "bench/terminal_bench/harbor_agent_package.py");
+const PACKAGE_MANIFEST = "harbor-agent.json";
+/** The Docker Compose overlay that gives a local trial's agent container the snapshot. */
+const SNAPSHOT_COMPOSE_OVERLAY = join(REPOSITORY_ROOT, "bench/terminal_bench/snapshot-environment.compose.yaml");
 
 const TaskTimeoutsSchema = Schema.Struct({ agent_timeout_sec: Schema.Number, verifier_timeout_sec: Schema.Number, build_timeout_sec: Schema.Number });
 /** One task's timeouts from its pinned task.toml, as harbor_tasks.py reports them. */
@@ -79,7 +82,7 @@ export async function releaseTagFor(commit: string, listPublished: () => Promise
 /** The arm config path relative to the repository root, the form in which the package builder reads its blob. */
 export function repositoryConfigPath(absolutePath: string): string {
   const path = relative(REPOSITORY_ROOT, absolutePath);
-  if (path.startsWith("..") || isAbsolute(path)) throw new Error(`--hosted needs an arm config inside the repository: ${absolutePath}`);
+  if (path.startsWith("..") || isAbsolute(path)) throw new Error(`the agent package needs an arm config inside the repository: ${absolutePath}`);
   return path;
 }
 
@@ -97,6 +100,11 @@ export async function defaultValidateHostedConfig(path: string): Promise<void> {
   await command([harborPython(), "-c", source, path], REPOSITORY_ROOT);
 }
 
+/** The agent environment that hands the shim the profile digest it records. */
+function profileDigestEnv(config: ResolvedTerminalBenchConfig): JsonMap {
+  return config.profileSha256 === undefined ? {} : { env: { [PROFILE_SHA256_ENV]: config.profileSha256 } };
+}
+
 /** The Hub job config of a hosted run. The agent is the published package at
  *  its exact commit; its one credential is the snapshot job secret, which
  *  Harbor reads from the launcher's environment and delivers directly. */
@@ -108,14 +116,34 @@ export function hostedJobConfig(config: ResolvedTerminalBenchConfig, publication
     credential_mode: "direct",
     agents: [{
       name: "acp",
-      source: { type: "github", repo: publication.repository, ref: publication.commit, path: ".", manifest: "harbor-agent.json" },
+      source: { type: "github", repo: publication.repository, ref: publication.commit, path: ".", manifest: PACKAGE_MANIFEST },
       secrets: [SNAPSHOT_SECRET],
-      ...(config.profileSha256 === undefined ? {} : { env: { [PROFILE_SHA256_ENV]: config.profileSha256 } }),
+      ...profileDigestEnv(config),
     }],
     job_secrets: { [SNAPSHOT_SECRET]: { from_env: SNAPSHOT_SECRET } },
     datasets: [{ name: config.dataset, ...(config.datasetRef === undefined ? {} : { ref: config.datasetRef }), task_names: config.taskNames }],
     n_attempts: config.attempts,
     n_concurrent_trials: config.concurrency,
+    ...config.timeoutMultipliers,
+  };
+}
+
+/** The local Docker job config of a run: the same agent as a hosted run,
+ *  Harbor's `acp` agent fetching the published package at its exact commit,
+ *  over the profile's Harbor settings. The snapshot reaches the trial through
+ *  SNAPSHOT_COMPOSE_OVERLAY, which names the variable without a value, so
+ *  Docker Compose copies it from Harbor's environment into the agent
+ *  container: the snapshot is in no file, argument, or log of the host. */
+export function localJobConfig(config: ResolvedTerminalBenchConfig, publication: AgentPackagePublication): JsonMap {
+  return {
+    ...config.harborConfig,
+    agents: [{
+      ...config.agentOverrides,
+      name: "acp",
+      kwargs: { source: { repo_url: `https://github.com/${publication.repository}.git`, ref: publication.commit, source_dir: ".", manifest_path: PACKAGE_MANIFEST } },
+      ...profileDigestEnv(config),
+    }],
+    environment: { ...config.environment, extra_docker_compose: [SNAPSHOT_COMPOSE_OVERLAY] },
     ...config.timeoutMultipliers,
   };
 }

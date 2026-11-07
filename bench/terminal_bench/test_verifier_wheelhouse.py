@@ -149,7 +149,7 @@ class VerifierWheelhouseTest(unittest.TestCase):
         authority = (Path(__file__).parent / "run-terminal-bench.ts").read_text(encoding="utf-8")
 
         self.assertIn('array_field "$PLAN" wheelhouse_command', runner)
-        self.assertIn('array_field "$PLAN" harbor_command', runner)
+        self.assertIn('run-local "$PLAN"', runner)
         self.assertIn("verifier_wheelhouse.py", authority)
         self.assertIn('PIP_NO_INDEX: "1"', authority)
         self.assertIn('UV_NO_CONFIG: "1"', authority)

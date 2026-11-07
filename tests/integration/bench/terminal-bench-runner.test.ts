@@ -3,14 +3,35 @@ import { join, resolve } from "node:path";
 import { chmod, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { TOOL_OUTCOME_ANALYZER_CONTRACT_VERSION, TOOL_OUTCOME_ANALYZER_RESULT_VERSION } from "../../../bench/terminal_bench/analyze-tool-outcomes.js";
+import type { AgentPackageBuild } from "../../../bench/terminal_bench/harbor-jobs.js";
 import { createTerminalBenchComparisonManifest, prepareTerminalBenchRun } from "../../../bench/terminal_bench/run-terminal-bench.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
-import { terminalBenchAuthArgs as authArgs, terminalBenchProfile as profile } from "../../fixtures/terminal-bench-profile.js";
+import { terminalBenchLaunchArgs as launchArgs, terminalBenchProfile as profile } from "../../fixtures/terminal-bench-profile.js";
 
-/** The launcher these three drive is a shell script, and a shell script is not
- *  a program Windows runs. Everything above them prepares artifacts through the
+/** The launcher these drive is a shell script, and a shell script is not a
+ *  program Windows runs. Everything above them prepares artifacts through the
  *  runner's own module and holds on any host. */
 const throughTheLauncher = test.skipIf(process.platform === "win32");
+const HEAD = "c".repeat(40);
+const PUBLICATION = { repository: "owner/agent", ref: "refs/heads/build/abcdef012345", commit: "d".repeat(40), branch: "build/abcdef012345", tag: null };
+
+/** Preparation dependencies that build and publish no real package. `built` collects each packaged commit. */
+function packageDependencies(cwd: string, built: string[] = []) {
+  return {
+    cwd,
+    inspectSeed: async () => ({ clean: true, revision: HEAD }),
+    validateConfig: async () => undefined,
+    versionProbe: async () => "0.25.0",
+    harborPython: () => "harbor-python",
+    resolveTasks: async (_dataset: string, _ref: string | undefined, names: readonly string[]) => Object.fromEntries(names.map((name) => [name, { agent_timeout_sec: 1, verifier_timeout_sec: 1, build_timeout_sec: 1 }])),
+    releaseTagFor: async () => null,
+    buildAgentPackage: async (commit: string, configPath: string, configSha256: string, releaseTag: string | null): Promise<AgentPackageBuild> => {
+      built.push(commit);
+      return { build_id: "abcdef012345", flywheel_source: { commit, version: "1.2.3", release_tag: releaseTag }, runtime_archive: { path: "runtime/source-archive.tar.gz", sha256: "e".repeat(64) }, flywheel_config: { path: "flywheel.toml", source_path: configPath, sha256: configSha256 }, store_analyzer: { path: "store-analysis/trial-store-analysis.js", source_path: "bench/terminal_bench/trial-store-analysis.ts", sha256: "0".repeat(64) } };
+    },
+    publishAgentPackage: async () => PUBLICATION,
+  };
+}
 
 describe("terminal bench launch boundary", () => {
   const temporaryDirectory = temporaryDirectories();
@@ -19,15 +40,11 @@ describe("terminal bench launch boundary", () => {
     const root = temporaryDirectory("tb-run-");
     await mkdir(join(root, "jobs"));
     const profilePath = join(root, "profile.yaml");
-    await writeFile(profilePath, "headless:\n  disabled_tools: [web]\n  system_prompt: literal prompt\n");
-    const result = await prepareTerminalBenchRun([...authArgs, "--config", profilePath, "--task-names", "one two", "--job-name", "dry", "--dry-run"], {
-      cwd: root,
+    await writeFile(profilePath, profile);
+    const result = await prepareTerminalBenchRun([...launchArgs, "--config", profilePath, "--concurrency", "4", "--job-name", "dry", "--dry-run"], {
+      ...packageDependencies(root),
       now: () => new Date("2026-01-02T03:04:05Z"),
       seed: () => "seed-1",
-      inspectSeed: async () => ({ clean: true, revision: "abc123" }),
-      validateConfig: async () => undefined,
-      versionProbe: async () => "0.21.0",
-      harborPython: () => "harbor-python",
     });
     const manifest = JSON.parse(await readFile(join(result.artifactDirectory, "run_manifest.json"), "utf8"));
     const metadata = JSON.parse(await readFile(join(result.artifactDirectory, "metadata.yaml"), "utf8"));
@@ -37,30 +54,14 @@ describe("terminal bench launch boundary", () => {
     expect(manifest.state).toBe("finalized");
     expect(manifest.outcome).toBe("dry_run");
     expect(manifest.seed).toBe("seed-1");
-    expect(metadata.agent).toEqual({ name: "FlywheelHeadless", display_name: "Flywheel Headless", url: "https://github.com/wsauret/flywheel", organization: { display_name: "Flywheel" } });
-    expect(metadata.models).toEqual([{ name: "flywheel/gpt-6-luna", role: "primary" }]);
+    expect(metadata.agent).toEqual({ name: "flywheel", display_name: "Flywheel", url: "https://github.com/wsauret/flywheel", organization: { display_name: "Flywheel" } });
+    expect(metadata.models).toEqual([{ name: "flywheel/gpt-6.1-terra", role: "primary" }]);
     expect(plan.harbor_command).toEqual(["harbor", "run", "-c", join(result.artifactDirectory, "generated.json")]);
     expect(plan.grade).toBe("leaderboard_valid");
-    expect(generated.agents).toEqual([{ name: "FlywheelHeadless", import_path: "bench.terminal_bench.flywheel_agent:FlywheelHeadless", model_name: "flywheel/gpt-6-luna", kwargs: { flywheel_model: "gpt-6-luna", dataset: "terminal-bench/terminal-bench-2-1", project_root_mode: "task_workspace", evidence_export: "settled_sqlite", persistent_processes: true, profile_sha256: manifest.profile_sha256 } }]);
+    expect(generated.agents).toEqual([{ name: "acp", kwargs: { source: { repo_url: "https://github.com/owner/agent.git", ref: PUBLICATION.commit, source_dir: ".", manifest_path: "harbor-agent.json" } }, env: { FLYWHEEL_TB_PROFILE_SHA256: manifest.profile_sha256 } }]);
     expect(manifest.auth_profile).toBe("Fixture");
     expect(plan.auth_profile).toBe("Fixture");
-    expect(manifest.disabled_tools).toEqual(["web"]);
-    expect(plan.disabled_tools).toEqual(["web"]);
-    expect(manifest.system_prompt).toEqual({ mode: "override", sha256: "6a538633f3808731f36c4ab23b70dd754b212a78f655ff9eda08ee2458e31e84" });
-    expect(plan.system_prompt).toEqual({ mode: "override", sha256: "6a538633f3808731f36c4ab23b70dd754b212a78f655ff9eda08ee2458e31e84" });
-    expect(plan.system_prompt_value).toBeUndefined();
-    expect(plan.system_prompt_payload).toBe(join(`${result.artifactDirectory}.system-prompt`, "payload"));
-    expect(JSON.stringify(manifest)).not.toContain("literal prompt");
-    expect(JSON.stringify(plan)).not.toContain("literal prompt");
-    expect(await readFile(plan.system_prompt_payload, "utf8")).toBe("literal prompt");
-    expect(manifest.disabled_modules).toBeUndefined();
-    expect(plan.disabled_modules).toBeUndefined();
-    expect(plan.enabled_modules).toBeUndefined();
-    expect(generated.flywheel).toBeUndefined();
-    expect(JSON.stringify(manifest)).not.toContain("auth_provider_ids");
-    expect(JSON.stringify(plan)).not.toContain("auth_provider_ids");
     expect(JSON.stringify(generated)).not.toContain("auth_profile");
-    expect(JSON.stringify(generated)).not.toContain("auth_provider_ids");
     expect(generated.datasets[0].task_names).toEqual(["terminal-bench/one", "terminal-bench/two"]);
     expect(generated.n_attempts).toBe(5);
     expect(generated.n_concurrent_trials).toBe(4);
@@ -72,23 +73,24 @@ describe("terminal bench launch boundary", () => {
     expect(manifest.expected_interaction_profile).toBe("default");
     expect(manifest.resource_overrides).toEqual({});
     expect(manifest.profile_sha256).toMatch(/^[a-f0-9]{64}$/);
-    expect(manifest.execution_contract).toEqual({ project_root: "task_workspace", execution_cwd: "task_workspace", evidence_export: "settled_sqlite", persistent_processes: true });
+    expect(manifest.runtime_source).toEqual({ mode: "git_commit", requested_sha: HEAD, resolved_sha: HEAD });
+    expect(manifest.execution_contract).toEqual({ project_root: "task_workspace", execution_cwd: "task_workspace", evidence_export: "store_analysis", persistent_processes: true });
   });
 
-  test("resolves a pinned runtime before writing artifacts and records it", async () => {
+  test("resolves a pinned runtime before writing artifacts and packages it", async () => {
     const root = temporaryDirectory("tb-pinned-run-");
     const sha = "a".repeat(40);
     const path = join(root, "profile.yaml");
-    await writeFile(path, `headless: { runtime_source_commit: '${sha}' }\ndatasets: [{ task_names: [one] }]\n`);
-    const base = { cwd: root, inspectSeed: async () => ({ clean: true, revision: "dirty-head" }), validateConfig: async () => undefined, versionProbe: async () => "test", harborPython: () => "python" };
-    await expect(prepareTerminalBenchRun([...authArgs, "--config", path], { ...base, resolveCommit: async () => "b".repeat(40) })).rejects.toThrow("exact requested SHA");
+    await writeFile(path, `headless: { flywheel_config: bench/terminal_bench/configs/tb-mini-openai.toml, runtime_source_commit: '${sha}' }\ndatasets: [{ task_names: [one] }]\n`);
+    const built: string[] = [];
+    const base = packageDependencies(root, built);
+    await expect(prepareTerminalBenchRun([...launchArgs, "--config", path], { ...base, resolveCommit: async () => "b".repeat(40) })).rejects.toThrow("exact requested SHA");
     expect(await readdir(root)).toEqual(["profile.yaml"]);
-    await expect(prepareTerminalBenchRun([...authArgs, "--config", path], { ...base, resolveCommit: async () => { throw new Error("unknown commit"); } })).rejects.toThrow("unknown commit");
-    const result = await prepareTerminalBenchRun([...authArgs, "--config", path], { ...base, resolveCommit: async (_cwd, requested) => requested });
-    const generated = JSON.parse(await readFile(result.generatedConfig, "utf8"));
+    await expect(prepareTerminalBenchRun([...launchArgs, "--config", path], { ...base, resolveCommit: async () => { throw new Error("unknown commit"); } })).rejects.toThrow("unknown commit");
+    const result = await prepareTerminalBenchRun([...launchArgs, "--config", path], { ...base, resolveCommit: async (_cwd, requested) => requested });
     const manifest = JSON.parse(await readFile(result.manifest, "utf8"));
     const metadata = JSON.parse(await readFile(join(result.artifactDirectory, "metadata.yaml"), "utf8"));
-    expect(generated.agents[0].kwargs.runtime_source_commit).toBe(sha);
+    expect(built).toEqual([sha]);
     expect(manifest.runtime_source).toEqual({ mode: "git_commit", requested_sha: sha, resolved_sha: sha });
     expect(metadata.runtime_source).toEqual(manifest.runtime_source);
   });
@@ -96,7 +98,7 @@ describe("terminal bench launch boundary", () => {
   test("builds comparison evidence only for identical source and controls", async () => {
     const root = temporaryDirectory("tb-comparison-");
     const source = { mode: "git_commit", requested_sha: "a".repeat(40), resolved_sha: "a".repeat(40) };
-    const controls = { model: "gpt-6-luna", dataset: "terminal-bench/terminal-bench-2-1", task_names: ["terminal-bench/protein-assembly"], attempts: 5, concurrency: 2, disabled_tools: ["web"], timeout_multipliers: {}, resource_overrides: {} };
+    const controls = { model: "gpt-6-luna", dataset: "terminal-bench/terminal-bench-2-1", task_names: ["terminal-bench/protein-assembly"], attempts: 5, concurrency: 2, timeout_multipliers: {}, resource_overrides: {} };
     const controlPath = join(root, "control.json");
     const candidatePath = join(root, "candidate.json");
     const analyzerEvidence = (failure: string | null) => {
@@ -141,12 +143,10 @@ describe("terminal bench launch boundary", () => {
     const root = temporaryDirectory("tb-dirty-");
     const profilePath = join(root, "profile.yaml");
     await writeFile(profilePath, profile);
-    const result = await prepareTerminalBenchRun([...authArgs, "--config", profilePath, "--task-names", "one", "--job-name", "dirty", "--execute"], {
-      cwd: root,
-      inspectSeed: async () => ({ clean: false, revision: "abc", dirtyPaths: ["src/x.ts"] }),
+    const result = await prepareTerminalBenchRun([...launchArgs, "--config", profilePath, "--task-names", "one", "--job-name", "dirty", "--execute"], {
+      ...packageDependencies(root),
+      inspectSeed: async () => ({ clean: false, revision: HEAD, dirtyPaths: ["src/x.ts"] }),
       validateConfig: async () => { validated = true; },
-      versionProbe: async () => "0.21.0",
-      harborPython: () => "harbor-python",
     });
     expect(validated).toBeTrue();
     const manifest = JSON.parse(await readFile(result.manifest, "utf8"));
@@ -154,7 +154,7 @@ describe("terminal bench launch boundary", () => {
     expect(manifest.outcome).toBeNull();
     expect(manifest.grade).toBe("leaderboard_valid");
     expect(manifest.warning).toBe("");
-    expect(manifest.seed_provenance).toEqual({ revision: "abc", clean: false, dirty_paths: ["src/x.ts"] });
+    expect(manifest.seed_provenance).toEqual({ revision: HEAD, clean: false, dirty_paths: ["src/x.ts"] });
     expect(manifest.allow_dirty_exception).toBeUndefined();
     expect(result.dryRun).toBeFalse();
   });
@@ -163,46 +163,22 @@ describe("terminal bench launch boundary", () => {
     const root = temporaryDirectory("tb-schema-refusal-");
     const profilePath = join(root, "profile.yaml");
     await writeFile(profilePath, profile);
-    await expect(prepareTerminalBenchRun([...authArgs, "--config", profilePath, "--task-names", "one", "--job-name", "invalid"], {
-      cwd: root,
-      inspectSeed: async () => ({ clean: true, revision: "abc" }),
+    await expect(prepareTerminalBenchRun([...launchArgs, "--config", profilePath, "--task-names", "one", "--job-name", "invalid"], {
+      ...packageDependencies(root),
       validateConfig: async () => { throw new Error("schema rejected"); },
-      versionProbe: async () => "0.21.0",
-      harborPython: () => "harbor-python",
     })).rejects.toThrow("generated Harbor config refused");
     const [artifact] = await readdir(join(root, "jobs"));
     const manifest = JSON.parse(await readFile(join(root, "jobs", artifact ?? "", "run_manifest.json"), "utf8"));
     expect(manifest.state).toBe("refused");
     expect(manifest.outcome).toBe("configuration_refused");
-    expect((await readdir(join(root, "jobs"))).some((name) => name.endsWith(".system-prompt"))).toBeFalse();
   });
 
-  test("cleans private prompt payload when jobs directory creation fails", async () => {
-    const root = temporaryDirectory("tb-prompt-cleanup-");
-    const blockedJobs = join(root, "jobs");
-    const profilePath = join(root, "profile.yaml");
-    await writeFile(blockedJobs, "not a directory");
-    await writeFile(profilePath, "headless:\n  system_prompt: private prompt\ndatasets: [{ task_names: [one] }]\n");
-
-    await expect(prepareTerminalBenchRun([
-      ...authArgs,
-      "--config", profilePath,
-      "--jobs-dir", blockedJobs,
-    ], {
-      cwd: root,
-      inspectSeed: async () => ({ clean: true, revision: "abc" }),
-    })).rejects.toThrow();
-
-    expect((await readdir(root)).some((name) => name.endsWith(".system-prompt"))).toBeFalse();
-  });
-
-  throughTheLauncher("executes Harbor with only the explicit environment allowlist", async () => {
+  throughTheLauncher("a local run hands Harbor the snapshot and only the explicit environment allowlist", async () => {
     const root = temporaryDirectory("tb-harbor-env-");
     const bin = join(root, "bin");
     await mkdir(bin);
     const capture = join(root, "harbor.env");
     const plan = join(root, "plan.json");
-    const removedSourceManifest = join(root, "source-manifest.txt");
     const executable = async (name: string, source: string): Promise<string> => {
       const path = join(bin, name);
       await writeFile(path, source);
@@ -210,95 +186,26 @@ describe("terminal bench launch boundary", () => {
       return path;
     };
     const harbor = await executable("fake-harbor", `#!/bin/sh\nenv | sort > '${capture}'\n`);
-    const download = await executable("fake-download", "#!/bin/sh\nexit 0\n");
-    const wheelhouse = await executable("fake-wheelhouse", `#!/bin/sh\necho '${root}'\n`);
+    // The export writes its snapshot to the path after --output, as `flywheel headless snapshot-auth` does.
+    const exporter = await executable("fake-export", `#!/bin/sh\nwhile [ "$1" != --output ]; do shift; done\nprintf 'snapshot-sentinel' > "$2"\n`);
+    await writeFile(join(root, "manifest.json"), JSON.stringify({ expected_trials: 1 }));
     await writeFile(plan, JSON.stringify({
-      dry_run: false, grade: "debug_only", warning: "test", auth_profile: "Fixture",
-      disabled_tools: ["web"], system_prompt: { mode: "production" },
-      download_command: [download], prebuild: false, wheelhouse_command: [wheelhouse], harbor_command: [harbor],
+      harbor_command: [harbor], snapshot_command: [exporter], snapshot_providers: ["chatgpt"], claude_token_keychain_item: "unused",
       manifest: join(root, "manifest.json"), trials_directory: join(root, "trials"),
     }));
-    await executable("bun", `#!/bin/sh\ncase "$*" in *" prepare "*) echo '${plan}' ;; esac\nexit 0\n`);
-    const launcher = resolve(process.cwd(), "bench/terminal_bench/run-terminal-bench.sh");
-    const runHarbor = async () => {
-      const env = {
-        ...process.env,
-        PATH: `${bin}:${process.env.PATH ?? ""}`,
-        HOME: root,
-        FLYWHEEL_TERMINAL_BENCH_UNTRACKED_SOURCE_MANIFEST: removedSourceManifest,
-        OPENAI_API_KEY: "sentinel-openai",
-        ANTHROPIC_API_KEY: "sentinel-anthropic",
-        DEEPSEEK_API_KEY: "sentinel-deepseek",
-        GOOGLE_API_KEY: "sentinel-google",
-        GEMINI_API_KEY: "sentinel-gemini",
-        OPENROUTER_API_KEY: "sentinel-openrouter",
-        UNRELATED_SECRET: "sentinel-unrelated",
-      };
-      const child = Bun.spawn([launcher, ...authArgs, "--execute"], {
-        cwd: process.cwd(),
-        env,
-        stdout: "pipe", stderr: "pipe",
-        windowsHide: true,
-      });
-      const [exitCode, stderr] = await Promise.all([child.exited, new Response(child.stderr).text()]);
-      return { exitCode, stderr, environment: await readFile(capture, "utf8") };
-    };
-    const present = await runHarbor();
-    expect(present.exitCode, present.stderr).toBe(0);
-    expect(present.environment).toContain("FLYWHEEL_TERMINAL_BENCH_AUTH_PROFILE=Fixture\n");
-    expect(present.environment).toContain('FLYWHEEL_TERMINAL_BENCH_DISABLED_TOOLS=["web"]\n');
-    expect(present.environment).not.toContain("FLYWHEEL_TERMINAL_BENCH_UNTRACKED_SOURCE_MANIFEST=");
-    const environmentKeys = present.environment.trim().split("\n").map((entry) => entry.slice(0, entry.indexOf("=")));
-    expect(environmentKeys.filter((key) => key.endsWith("_API_KEY") || key === "UNRELATED_SECRET")).toEqual([]);
-
-  });
-
-  throughTheLauncher("dry-run stdout omits prompt bytes and cleans the private payload", async () => {
-    const root = temporaryDirectory("tb-prompt-cleanup-");
-    const bin = join(root, "bin");
-    await mkdir(bin);
-    const artifact = join(root, "artifact");
-    const payloadDirectory = `${artifact}.system-prompt`;
-    await mkdir(artifact);
-    await mkdir(payloadDirectory);
-    const payload = join(payloadDirectory, "payload");
-    await writeFile(payload, "literal prompt", { mode: 0o600 });
-    const plan = join(artifact, "preparation-plan.json");
-    await writeFile(plan, JSON.stringify({ dry_run: true, grade: "debug_only", warning: "test", auth_profile: "Fixture", disabled_tools: [], system_prompt: { mode: "override", sha256: "0".repeat(64) }, system_prompt_payload: payload }));
-    const bun = join(bin, "bun");
-    await writeFile(bun, `#!/bin/sh\necho '${plan}'\n`);
-    await chmod(bun, 0o755);
-    const child = Bun.spawn([resolve(process.cwd(), "bench/terminal_bench/run-terminal-bench.sh")], {
-      cwd: process.cwd(), env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ""}` }, stdout: "pipe", stderr: "pipe",
+    const child = Bun.spawn([process.execPath, resolve(process.cwd(), "bench/terminal_bench/run-terminal-bench.ts"), "run-local", plan], {
+      cwd: process.cwd(),
+      env: { ...process.env, HOME: root, OPENAI_API_KEY: "sentinel-openai", ANTHROPIC_API_KEY: "sentinel-anthropic", UNRELATED_SECRET: "sentinel-unrelated" },
+      stdout: "pipe", stderr: "pipe",
       windowsHide: true,
     });
     const [exitCode, stdout, stderr] = await Promise.all([child.exited, new Response(child.stdout).text(), new Response(child.stderr).text()]);
-    expect(exitCode, stderr).toBe(0);
-    expect(stdout).not.toContain("literal prompt");
-    await expect(readFile(payload, "utf8")).rejects.toThrow();
-  });
-
-  throughTheLauncher("cleans deterministic prompt payload when plan parsing fails", async () => {
-    const root = temporaryDirectory("tb-prompt-parse-failure-");
-    const bin = join(root, "bin");
-    const artifact = join(root, "artifact");
-    const payloadDirectory = `${artifact}.system-prompt`;
-    await mkdir(bin);
-    await mkdir(artifact);
-    await mkdir(payloadDirectory);
-    await writeFile(join(payloadDirectory, "payload"), "literal prompt", { mode: 0o600 });
-    const plan = join(artifact, "preparation-plan.json");
-    await writeFile(plan, JSON.stringify({ grade: { invalid: true } }));
-    const bun = join(bin, "bun");
-    await writeFile(bun, `#!/bin/sh\necho '${plan}'\n`);
-    await chmod(bun, 0o755);
-
-    const child = Bun.spawn([resolve(process.cwd(), "bench/terminal_bench/run-terminal-bench.sh")], {
-      cwd: process.cwd(), env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ""}` }, stdout: "pipe", stderr: "pipe",
-      windowsHide: true,
-    });
-    const [exitCode] = await Promise.all([child.exited, new Response(child.stdout).text(), new Response(child.stderr).text()]);
-    expect(exitCode).not.toBe(0);
-    await expect(readFile(join(payloadDirectory, "payload"), "utf8")).rejects.toThrow();
+    const environment = await readFile(capture, "utf8");
+    // The fake trials prove nothing, so finalization refuses the run.
+    expect(exitCode, stderr).toBe(1);
+    expect(environment).toContain("FLYWHEEL_AUTH_SNAPSHOT=snapshot-sentinel\n");
+    expect(`${stdout}${stderr}`).not.toContain("snapshot-sentinel");
+    const environmentKeys = environment.trim().split("\n").map((entry) => entry.slice(0, entry.indexOf("=")));
+    expect(environmentKeys.filter((key) => key.endsWith("_API_KEY") || key === "UNRELATED_SECRET")).toEqual([]);
   });
 });
