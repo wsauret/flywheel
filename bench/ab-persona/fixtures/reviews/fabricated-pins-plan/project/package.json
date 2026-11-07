@@ -86,7 +86,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "0.98.0",
     "@google/genai": "2.6.0",
-    "@modelcontextprotocol/sdk": "1.29.0",
+    "@modelcontextprotocol/sdk": "1.32.0",
     "@opentui/core": "0.5.1",
     "@opentui/solid": "0.5.1",
     "@solid-primitives/keyed": "^1.5.3",
