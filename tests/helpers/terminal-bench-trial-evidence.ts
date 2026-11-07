@@ -68,6 +68,14 @@ export interface EvidenceOptions {
   responded?: boolean
   /** The outcome of the last provider response. */
   finalOutcome?: ProviderRequestOutcome
+  /** The runtime error that ended the last provider response. */
+  finalError?: { tag: string; message: string }
+  /** One provider request in place of two. */
+  singleRequest?: boolean
+  /** Whether the model calls the shell after each response; false records no tool call. */
+  toolCalls?: boolean
+  /** The verifier reward of the trial. */
+  reward?: number
   /** The estimated cost of each priced usage entry the run measured. */
   pricedUsageUsd?: readonly number[]
   conflictingAuditSession?: boolean
@@ -113,7 +121,7 @@ export async function trialEvidence(root: string, options: EvidenceOptions = {})
   const store = join(trial, "store", "flywheel.sqlite");
   await mkdir(agent, { recursive: true });
   await mkdir(join(trial, "store"));
-  await writeFile(join(trial, "result.json"), JSON.stringify({ task_name: "terminal-bench/task", trial_name: "trial-1", verifier_result: { rewards: { reward: 1 } }, agent_result: { cost_usd: 1 } }));
+  await writeFile(join(trial, "result.json"), JSON.stringify({ task_name: "terminal-bench/task", trial_name: "trial-1", verifier_result: { rewards: { reward: options.reward ?? 1 } }, agent_result: { cost_usd: 1 } }));
   const db = createSqliteEventStore(store);
   const aggregateId = `session:${sessionId}`;
   const append = (eventAggregateId: string, type: string, version: number, actor: string, payload: TestEventPayload, eventSessionId = sessionId) => db.append({ aggregateId: eventAggregateId, sessionId: eventSessionId, type, version, actor, payload, timestamp: Date.now() });
@@ -129,12 +137,14 @@ export async function trialEvidence(root: string, options: EvidenceOptions = {})
   append(`conversation:${conversationId}`, "chat.tree.created", 1, "flywheel", { conversationId, createdAt: new Date().toISOString() });
   if (options.includeMessages !== false) append(`conversation:${conversationId}`, "chat.entries.appended", 1, "flywheel", { conversationId, entries });
   const dedup: ConversationDedup = {};
-  for (const [index, requestId] of requestIds.entries()) {
-    const last = index === requestIds.length - 1;
+  const requests = options.singleRequest ? requestIds.slice(0, 1) : requestIds;
+  for (const [index, requestId] of requests.entries()) {
+    const last = index === requests.length - 1;
     const audit = { observe: appendAudit };
     await recordProviderRequest(audit, { requestId, identity, turn: 1, promptKind: "headless", systemPrompt, messages, messageCount: messages.length, estimatedContextTokens: 1, attemptStaticTokens: 1, contextWindow: 100, tools: surface(route), omittedTools: [], interactionProfileId: profile, ...routes[route].serving, treeLeafEntryId }, dedup);
     if (!last || options.dispatched !== false) await recordProviderRequestDispatched(audit, { requestId, identity, turn: 1 });
-    if (!last || options.responded !== false) await recordProviderResponse(audit, { requestId, identity, turn: 1, outcome: last ? options.finalOutcome ?? "ok" : "ok", durationMs: 1 });
+    if (!last || options.responded !== false) await recordProviderResponse(audit, { requestId, identity, turn: 1, outcome: last ? options.finalOutcome ?? "ok" : "ok", durationMs: 1, ...(last && options.finalError ? { error: options.finalError } : {}) });
+    if (options.toolCalls === false) continue;
     const toolUseId = `tool-${index + 1}`;
     const inputs: RuntimeEvent[] = [];
     emitToolInputComplete((event) => inputs.push(event), { id: toolUseId, providerCallId: `call-${index + 1}`, modelRequestId: requestId, input: { command: "true" }, execution: { mode: "foreground", trace_kind: "tool" }, ...(options.toolCall ?? { name: "bash" }) });

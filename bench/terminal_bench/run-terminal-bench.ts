@@ -407,7 +407,7 @@ export async function finalizeTerminalBenchRun(manifestPath: string, trialsDirec
     await atomicWrite(join(dirname(manifestPath), "disclosure-ledger.json"), ledger);
   } catch {
     const outcome = harborExitCode === 0 ? "trials_unverified" : "harness_nonzero_exit";
-    ledger = { denominator: manifest.expected_trials, scoredTrials: 0, rewardDistribution: {}, exceptionHistogram: {}, taskPassRates: {}, totalCost: 0, counts: { provider_infra: 0, cancelled: 0, cost_truncated: 0, genuine: 0, other: 0 }, outcome, exitCode: harborExitCode === 0 ? 1 : harborExitCode, reconciled: false, rows: [] };
+    ledger = { denominator: manifest.expected_trials, scoredTrials: 0, rewardDistribution: {}, exceptionHistogram: {}, taskPassRates: {}, totalCost: 0, counts: { provider_refusal: 0, provider_infra: 0, cancelled: 0, cost_truncated: 0, genuine: 0, other: 0 }, outcome, exitCode: harborExitCode === 0 ? 1 : harborExitCode, reconciled: false, rows: [] };
   }
   if (analysis?.infrastructureValid === true && analysis.version === TOOL_OUTCOME_ANALYZER_RESULT_VERSION) {
     const failureCounts: Record<string, number> = {};

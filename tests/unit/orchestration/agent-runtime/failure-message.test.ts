@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test"
 import { exhaustedProvidersCopy } from "../../../../src/infra/llm/provider-error-copy.js"
 import { blockedFailureRecord, describeAgentFailure, formatAgentFailure } from "../../../../src/orchestration/agent-runtime/failure-message.js"
 import { PersistenceWriteRefused, type PersistenceWriteStage } from "../../../../src/infra/event-store-types.js"
+import { ContentRefused, toFailureReason } from "../../../../src/orchestration/agent-runtime/errors.js"
 
 describe("describeAgentFailure", () => {
   it("describes the known file stage without provider guidance", () => {
@@ -88,6 +89,15 @@ describe("formatAgentFailure", () => {
       { provider: "ChatGPT", cause: "connection", detail, resetsAtMs: undefined },
     ])
     expect(formatAgentFailure({ kind: "api_error", message: "no access provider can run", copy, recovery: { kind: "none" } })).toEndWith(`ChatGPT: Connection lost. ${detail}`)
+  })
+
+  it("says that the provider declined a policy refusal and gives its detail, never a lost connection or a retry", () => {
+    const detail = "ChatGPT backend error: This content was flagged for possible cybersecurity risk."
+    const reason = toFailureReason(new ContentRefused({ message: `OpenAI request validation failed: ${detail}`, reason: detail, policy: "cyber_policy" }))
+    expect(blockedFailureRecord(describeAgentFailure(reason))).toBe(
+      `Request declined. The provider declined this request under its content policy. Rephrase the message or try a different model. Switch models with /model. Provider detail: ${detail}`,
+    )
+    expect(formatAgentFailure(reason)).toBe(`Request declined: ${detail}`)
   })
 
   it("labels structured terminal kinds", () => {

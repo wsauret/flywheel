@@ -2,7 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { join, resolve, sep } from "node:path";
 import { decodeTrialStoreAnalysis, TRIAL_STORE_ANALYSIS_NAME, type TrialStoreAnalysis } from "./trial-store-analysis.js";
 
-type LedgerCategory = "provider_infra" | "cancelled" | "cost_truncated" | "genuine" | "other";
+type LedgerCategory = "provider_refusal" | "provider_infra" | "cancelled" | "cost_truncated" | "genuine" | "other";
 type RunOutcome = "completed" | "no_scored_trials" | "trials_unverified" | "harness_nonzero_exit";
 type JsonMap = Record<string, unknown>;
 
@@ -76,6 +76,8 @@ function failureCategory(result: JsonMap | undefined, summary: JsonMap | undefin
   if (typeof score === "number" && score > 0) return undefined;
   const exception = exceptionType(result);
   const outcome = analysis?.finalRequestOutcome;
+  // The provider's refusal of the task content ended the model work, whatever Harbor reported after it.
+  if (outcome === "refused") return "provider_refusal";
   if ((exception !== undefined && !exception.toLowerCase().includes("timeout")) || outcome === "stream_error" || outcome === "fatal_error") return "provider_infra";
   if (exception?.toLowerCase().includes("timeout") === true || summary?.captured_after_cancellation === true || outcome === "aborted") return "cancelled";
   if (outcome === "context_overflow" || outcome === "output_overflow") return "cost_truncated";
@@ -142,7 +144,7 @@ export async function reconcileDisclosureLedger(options: ReconcileOptions): Prom
   }
   if (expectedTasks.size > 0 && [...expectedTasks].some((task) => taskCounts.get(task) !== attempts)) evidenceValid = false;
   if (expectedTasks.size === 0 && rows.length !== denominator) evidenceValid = false;
-  const counts: Record<LedgerCategory, number> = { provider_infra: 0, cancelled: 0, cost_truncated: 0, genuine: 0, other: 0 };
+  const counts: Record<LedgerCategory, number> = { provider_refusal: 0, provider_infra: 0, cancelled: 0, cost_truncated: 0, genuine: 0, other: 0 };
   const rewardDistribution: Record<string, number> = {};
   const taskPassRates: DisclosureLedger["taskPassRates"] = {};
   let totalCost = 0;

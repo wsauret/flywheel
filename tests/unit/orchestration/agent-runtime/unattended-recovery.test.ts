@@ -4,6 +4,7 @@ import { applySessionNoticeOperation, type SessionNotice, type SessionNoticeOper
 import { resolveProviderNotices, runWithResilience } from "../../../../src/orchestration/agent-runtime/agent-resilience.js"
 import { fromStreamError, toFailureReason } from "../../../../src/orchestration/agent-runtime/errors.js"
 import { RouteUnavailableError } from "../../../../src/orchestration/agent-runtime/llm/errors.js"
+import { classifyResponseFailed } from "../../../../src/orchestration/agent-runtime/llm/openai-helpers.js"
 import type { AgentFailureReason, AgentRunResult } from "../../../../src/orchestration/agent-runtime/types.js"
 import { createUnattendedRecovery, endingCapacityWaitOnPersonMessage, WAIT_LIMIT_MS } from "../../../../src/orchestration/agent-runtime/unattended-recovery.js"
 import { WALL_CLOCK_CHECK_MS } from "../../../../src/infra/wall-clock-sleep.js"
@@ -335,6 +336,7 @@ describe("unattended recovery", () => {
     expect(stalled?.requestContext).toStartWith("Your previous response stalled")
     for (const failure of [
       { kind: "api_error", message: "the account does not grant the model", recovery: { kind: "none" } },
+      toFailureReason(fromStreamError(classifyResponseFailed({ code: "cyber_policy", message: "This content was flagged for possible cybersecurity risk." }, undefined))),
       { kind: "context_overflow" },
       { kind: "output_overflow" },
       { kind: "model_unavailable", message: "unknown model", missing: "offering" },

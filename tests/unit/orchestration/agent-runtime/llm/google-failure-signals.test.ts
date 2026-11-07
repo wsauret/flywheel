@@ -199,6 +199,7 @@ describe("Google failure signals", () => {
     expect(error.cause).toBeInstanceOf(ContentRefusedError);
     if (!(error.cause instanceof ContentRefusedError)) return;
     expect(error.cause.reason).toBe("PROHIBITED_CONTENT");
+    expect(error.cause.policy).toBe("PROHIBITED_CONTENT");
     expect(error.cause.part).toBeUndefined();
     expect(error.cause.cause.message).toBe("Google blocked the prompt: PROHIBITED_CONTENT: The prompt was blocked.");
     // The block is the provider's terminal answer, so its usage is the final report.

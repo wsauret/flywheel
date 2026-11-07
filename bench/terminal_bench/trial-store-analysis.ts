@@ -97,7 +97,7 @@ async function completeRequest(request: AuditedRequest, readSurface: EventStoreR
  *  analysis in its agent logs in place of its store, so a change to what the
  *  analysis states or means needs a new version, which the host refuses until
  *  its reader decodes it. */
-const TRIAL_STORE_ANALYSIS_VERSION = 2 as const
+const TRIAL_STORE_ANALYSIS_VERSION = 3 as const
 /** The agent-log file of a trial that holds its store analysis. The shim
  *  writes it under this name. */
 export const TRIAL_STORE_ANALYSIS_NAME = "flywheel-store-analysis.json"
@@ -110,21 +110,32 @@ export interface TrialStoreAnalysis {
   version: typeof TRIAL_STORE_ANALYSIS_VERSION
   store: { sha256: string; size: number }
   toolSettlement: ToolSettlement
-  /** The projection accepted every session, and every request that a tool input names has its full audit chain. */
+  /** The projection accepted every session, and every request that a tool input names, and a final request
+   *  that the provider refused, has its full audit chain. */
   requestAuditComplete: boolean
   /** The interaction profile of every audited request, null for one that recorded none. */
   interactionProfiles: (string | null)[]
   /** The tool inputs that joined their audited tool surface, by executable tool name. */
   executableToolInputs: { [toolName: string]: number }
   /** The outcome of the last provider response of the trial, null when no request was answered. An
-   *  outcome other than `ok` names why the trial's model work ended: a provider failure, an abort, or
-   *  a context or output limit. */
-  finalRequestOutcome: ProviderRequestOutcome | null
+   *  outcome other than `ok` names why the trial's model work ended: a provider failure, the provider's
+   *  refusal of the conversation content (`refused`), an abort, or a context or output limit. */
+  finalRequestOutcome: TrialRequestOutcome | null
   /** The estimated cost of every priced usage entry in USD, null when no entry was priced. */
   estimatedCostUsd: number | null
 }
 
-const isRequestOutcome = Schema.is(ProviderRequestOutcomeSchema)
+/** A provider response outcome, with a stream error that the provider's content refusal ended told apart
+ *  as `refused`: a refusal repeats for the same content, so it is a result of the trial, not a fault. */
+type TrialRequestOutcome = ProviderRequestOutcome | "refused"
+const isProviderRequestOutcome = Schema.is(ProviderRequestOutcomeSchema)
+const isRequestOutcome = (value: unknown): value is TrialRequestOutcome => value === "refused" || isProviderRequestOutcome(value)
+
+function trialRequestOutcome(response: JsonObject | undefined): TrialRequestOutcome {
+  const outcome = response?.outcome
+  if (!isProviderRequestOutcome(outcome)) throw new Error("invalid model.response_received outcome")
+  return outcome === "stream_error" && object(response?.error)?.tag === "ContentRefused" ? "refused" : outcome
+}
 
 /** Analyzes one trial store, the private settled copy that a driver exported.
  *  The file must be a regular, single-link, owner-only file; it is read once,
@@ -173,8 +184,15 @@ export async function analyzeTrialStore(path: string): Promise<TrialStoreAnalysi
     }
     for (const [id, inputCount] of inputCounts) { if (inputCount > 1) toolSettlement.duplicateInputs += inputCount - 1; if (!resultCounts.has(id)) toolSettlement.missing += 1 }
     for (const [id, resultCount] of resultCounts) { if (resultCount > 1) toolSettlement.duplicateResults += resultCount - 1; if (!inputCounts.has(id)) toolSettlement.orphan += 1 }
-    let requestAuditComplete = audit.valid && inputRequests.size > 0
-    for (const requestId of new Set(inputRequests.values())) {
+    const finalRow = db.query<{ payload: string }, []>("select payload from event where type = 'model.response_received' and actor = 'provider' order by position desc limit 1").get()
+    const finalResponse = finalRow === null ? undefined : object(JSON.parse(finalRow.payload))
+    const finalRequestOutcome = finalRow === null ? null : trialRequestOutcome(finalResponse)
+    // A refusal can end the trial before any tool call, so the refused request
+    // needs its audit chain as well; it is then the only audited request.
+    const auditedRequests = new Set(inputRequests.values())
+    if (finalRequestOutcome === "refused") auditedRequests.add(String(finalResponse?.requestId))
+    let requestAuditComplete = audit.valid && auditedRequests.size > 0
+    for (const requestId of auditedRequests) {
       if (!requestAuditComplete) break
       const request = audit.requests.get(requestId)
       requestAuditComplete = request !== undefined && await completeRequest(request, readSurface)
@@ -182,9 +200,6 @@ export async function analyzeTrialStore(path: string): Promise<TrialStoreAnalysi
     const after = fstatSync(descriptor)
     if (before.dev !== after.dev || before.ino !== after.ino || before.size !== after.size || before.mtimeMs !== after.mtimeMs) throw new Error("evidence identity changed")
     const interactionProfiles = [...audit.interactionProfiles].sort((a, b) => String(a).localeCompare(String(b)))
-    const finalResponse = db.query<{ payload: string }, []>("select payload from event where type = 'model.response_received' and actor = 'provider' order by position desc limit 1").get()
-    const finalRequestOutcome = finalResponse === null ? null : object(JSON.parse(finalResponse.payload))?.outcome
-    if (finalRequestOutcome !== null && !isRequestOutcome(finalRequestOutcome)) throw new Error("invalid model.response_received outcome")
     const prices = usageEntriesFromFacts(readSurface.read({ types: ["model.usage.measured"] })).flatMap((entry) => entry.coverage !== "unmeasured" && entry.price.kind === "priced" ? [entry.price.estimatedUsd] : [])
     const estimatedCostUsd = prices.length === 0 ? null : Number(prices.reduce((total, price) => total + price, 0).toFixed(6))
     return { version: TRIAL_STORE_ANALYSIS_VERSION, store, toolSettlement, requestAuditComplete, interactionProfiles, executableToolInputs, finalRequestOutcome, estimatedCostUsd }

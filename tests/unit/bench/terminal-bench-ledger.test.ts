@@ -11,7 +11,7 @@ const reconcileDisclosureLedger = (options: Omit<Parameters<typeof reconcile>[0]
 
 /** The store analysis a trial records, with the evidence the ledger reads from it. */
 function analysis(finalRequestOutcome: string | null, estimatedCostUsd: number | null = null) {
-  return { version: 2, store: { sha256: "a".repeat(64), size: 1 }, toolSettlement: { inputs: 0, results: 0, missing: 0, orphan: 0, duplicateInputs: 0, duplicateResults: 0, identityConflicts: 0 }, requestAuditComplete: true, interactionProfiles: [], executableToolInputs: {}, finalRequestOutcome, estimatedCostUsd };
+  return { version: 3, store: { sha256: "a".repeat(64), size: 1 }, toolSettlement: { inputs: 0, results: 0, missing: 0, orphan: 0, duplicateInputs: 0, duplicateResults: 0, identityConflicts: 0 }, requestAuditComplete: true, interactionProfiles: [], executableToolInputs: {}, finalRequestOutcome, estimatedCostUsd };
 }
 
 async function trial(root: string, directory: string, task: string, trialName: string, summary: TrialSummary, reward: number | null, exception?: string, cost?: number, storeAnalysis?: ReturnType<typeof analysis>): Promise<void> {
@@ -35,7 +35,7 @@ describe("terminal bench disclosure ledger", () => {
     await trial(root, "a__hash1", "terminal-bench/a", "a__hash1", {}, 1, undefined, undefined, analysis("ok", 1.25));
     await trial(root, "a__hash2", "terminal-bench/a", "a__hash2", {}, 0, undefined, 0.75, analysis("ok", 9));
     const ledger = await reconcileDisclosureLedger({ trialsDirectory: root, taskNames: ["terminal-bench/a"], attempts: 2, harborExitCode: 0 });
-    expect(ledger.counts).toEqual({ provider_infra: 0, cancelled: 0, cost_truncated: 0, genuine: 1, other: 0 });
+    expect(ledger.counts).toEqual({ provider_refusal: 0, provider_infra: 0, cancelled: 0, cost_truncated: 0, genuine: 1, other: 0 });
     expect(ledger.rewardDistribution).toEqual({ "0": 1, "1": 1 });
     expect(ledger.exceptionHistogram).toEqual({});
     expect(ledger.taskPassRates["terminal-bench/a"]).toEqual({ passed: 1, total: 2, rate: 0.5 });
@@ -47,7 +47,7 @@ describe("terminal bench disclosure ledger", () => {
   test("zero Harbor trials are unverified when evidence cannot reconcile", async () => {
     const root = temporaryDirectory("tb-ledger-empty-");
     const ledger = await reconcileDisclosureLedger({ trialsDirectory: root, expectedTrials: 2, harborExitCode: 0 });
-    expect(ledger.counts).toEqual({ provider_infra: 0, cancelled: 0, cost_truncated: 0, genuine: 0, other: 0 });
+    expect(ledger.counts).toEqual({ provider_refusal: 0, provider_infra: 0, cancelled: 0, cost_truncated: 0, genuine: 0, other: 0 });
     expect(ledger.outcome).toBe("trials_unverified");
   });
 
@@ -83,9 +83,14 @@ describe("terminal bench disclosure ledger", () => {
     await trial(root, "a__four", "a", "a__four", {}, 0, undefined, undefined, analysis("stream_error"));
     await trial(root, "a__five", "a", "a__five", {}, 0, undefined, undefined, analysis("aborted"));
     await trial(root, "a__six", "a", "a__six", {}, 0, undefined, undefined, analysis("ok"));
-    const ledger = await reconcileDisclosureLedger({ trialsDirectory: root, taskNames: ["a"], attempts: 6, harborExitCode: 0 });
-    expect(Object.fromEntries(ledger.rows.map((row) => [row.id, row.category]))).toEqual({ a__one: "provider_infra", a__two: "cancelled", a__three: "cost_truncated", a__four: "provider_infra", a__five: "cancelled", a__six: "genuine" });
-    expect(ledger.exceptionHistogram).toEqual({ AgentTimeoutError: 1, RuntimeError: 1 });
+    // A provider refusal is a scored failure of its own, also when Harbor reports an exception after it.
+    await trial(root, "a__seven", "a", "a__seven", {}, 0, "RuntimeError", undefined, analysis("refused"));
+    const ledger = await reconcileDisclosureLedger({ trialsDirectory: root, taskNames: ["a"], attempts: 7, harborExitCode: 0 });
+    expect(Object.fromEntries(ledger.rows.map((row) => [row.id, row.category]))).toEqual({ a__one: "provider_infra", a__two: "cancelled", a__three: "cost_truncated", a__four: "provider_infra", a__five: "cancelled", a__six: "genuine", a__seven: "provider_refusal" });
+    expect(ledger.counts.provider_refusal).toBe(1);
+    // Every trial but the one that timed out without a reward is scored, the refusal included.
+    expect(ledger.scoredTrials).toBe(6);
+    expect(ledger.exceptionHistogram).toEqual({ AgentTimeoutError: 1, RuntimeError: 2 });
   });
 
   test("ignores Harbor's job-level result.json and nested artifact results", async () => {

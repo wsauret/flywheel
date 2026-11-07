@@ -450,7 +450,7 @@ function resolveGoogleStopReason({ finishReason, promptBlock, sawToolCall }: Goo
       throw normalizeProviderAttemptFailure(new ContentRefusedError(
         "Google",
         new Error(`Google blocked the prompt: ${reason}${message ? `: ${message}` : ""}`),
-        { reason, part: undefined },
+        { reason, part: undefined, policy: reason },
       ));
     }
     // A broken response (proxy drop), not a clean end_turn; fail transient so

@@ -39,6 +39,26 @@ describe("terminal bench tool outcome analyzer", () => {
     expect(await analyzeTrialStore(stopped.storePath)).toMatchObject({ finalRequestOutcome: "context_overflow", estimatedCostUsd: 0.375 });
     // A dispatched request that never got its response leaves the earlier response as the final one.
     expect(await analyzeTrialStore((await evidence({ responded: false })).storePath)).toMatchObject({ finalRequestOutcome: "ok" });
+    // A stream error that the provider's content refusal ended is a refusal; any other stream error stays a fault.
+    const refused = await evidence({ finalOutcome: "stream_error", finalError: { tag: "ContentRefused", message: "This content was flagged for possible cybersecurity risk." } });
+    expect(await analyzeTrialStore(refused.storePath)).toMatchObject({ finalRequestOutcome: "refused" });
+    const dropped = await evidence({ finalOutcome: "stream_error", finalError: { tag: "TransientDisconnect", message: "websocket closed" } });
+    expect(await analyzeTrialStore(dropped.storePath)).toMatchObject({ finalRequestOutcome: "stream_error" });
+  });
+
+  test("finalizes a refusal of the first request, before any tool call, as a scored refusal", async () => {
+    const refused = await evidence({ singleRequest: true, toolCalls: false, reward: 0, finalOutcome: "stream_error", finalError: { tag: "ContentRefused", message: "This content was flagged for possible cybersecurity risk." } });
+    expect(await analyzeTrialStore(refused.storePath)).toMatchObject({ requestAuditComplete: true, executableToolInputs: {}, finalRequestOutcome: "refused" });
+    expect((await analyze(refused.root)).rows[0]).toMatchObject({ requestAuditValid: true, commandObserved: false, failure: "provider_refusal" });
+    const ledger = await finalizeTerminalBenchRun(refused.manifestPath, refused.root, 0);
+    expect(ledger).toMatchObject({ reconciled: true, outcome: "completed", scoredTrials: 1, counts: { provider_refusal: 1, provider_infra: 0 } });
+    expect(JSON.parse(await readFile(refused.manifestPath, "utf8"))).toMatchObject({ state: "finalized", analyzer_result: { summary: { failure_counts: { provider_refusal: 1 } } } });
+    // The refused request still needs its whole audit chain.
+    const unaudited = await evidence({ singleRequest: true, toolCalls: false, reward: 0, finalOutcome: "stream_error", finalError: { tag: "ContentRefused", message: "flagged" }, includeMessages: false });
+    expect((await analyze(unaudited.root)).rows[0]).toMatchObject({ requestAuditValid: false, failure: "request_audit_invalid" });
+    // Without a refusal, a trial with no tool call keeps the ordinary checks and is still refused as infrastructure.
+    const silent = await evidence({ singleRequest: true, toolCalls: false, reward: 0 });
+    expect((await analyze(silent.root)).rows[0]).toMatchObject({ failure: "request_audit_invalid" });
   });
 
   test("settles tool results that the current writer records at later fact versions", async () => {

@@ -66,6 +66,9 @@ function parseRetryAfterMs(message: string): number | undefined {
 }
 
 const REQUEST_VALIDATION_CODES: ReadonlySet<string> = new Set(["invalid_prompt", "invalid_request_error", "bad_request_error", "missing_required_parameter", "unsupported_parameter"]);
+/** The codes with which the ChatGPT backend and the Responses API refuse a request under a usage policy, in a
+ *  stream frame or in a 400 body. Every later request with the same content meets the same refusal. */
+const POLICY_REFUSAL_CODES: ReadonlySet<string> = new Set(["cyber_policy", "bio_policy", "misalignment_policy_violation"]);
 
 /** Classify a Responses failure frame. `error` is the frame's error payload, or the SDK `APIError` that a
  *  streamed error frame became: its `type` stands in for a missing `code`, its response headers supply the
@@ -87,6 +90,9 @@ export function classifyResponseFailed(
   const cause = error;
 
   if (code === "context_length_exceeded") return new ContextLengthExceededError(message, { cause });
+  if (code !== undefined && POLICY_REFUSAL_CODES.has(code)) {
+    return new ContentRefusedError("OpenAI", new ProviderRequestValidationError("OpenAI", message, { cause }), { reason: message, part: undefined, policy: code });
+  }
   // A request the backend rejects as malformed (an invalid prompt, an orphaned
   // function_call, a broken item chain) is deterministic: a retry replays the
   // same transcript and fails identically, so it must not enter the
@@ -365,14 +371,15 @@ export function classifyOpenAIStreamError(err: unknown, quotaObservation?: Quota
   // backoff schedule against a spent allowance.
   if (err instanceof APIError) {
     const code = typeof err.code === "string" ? err.code : undefined;
+    const body: { message?: unknown } | undefined = err.error;
+    const reason = typeof body?.message === "string" ? body.message : err.message;
     // Responses rejects unreadable content with `param: "input"`, code `invalid_value`, and no index, so the
     // refused part stays unlocated. The code is required: Responses also names `param: "input"` on other 400s,
     // such as `context_length_exceeded`, which context-overflow recovery owns below.
     if (err.status === 400 && code === "invalid_value" && err.param?.startsWith("input")) {
-      const body: { message?: unknown } | undefined = err.error;
-      const reason = typeof body?.message === "string" ? body.message : err.message;
       throw new ContentRefusedError("OpenAI", err, { reason, part: undefined });
     }
+    if (code !== undefined && POLICY_REFUSAL_CODES.has(code)) throw new ContentRefusedError("OpenAI", err, { reason, part: undefined, policy: code });
     if (code && REQUEST_VALIDATION_CODES.has(code)) {
       throw new ProviderRequestValidationError("OpenAI", err.message, { cause: err });
     }

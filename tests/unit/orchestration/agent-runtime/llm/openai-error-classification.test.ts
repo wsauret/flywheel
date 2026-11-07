@@ -5,7 +5,8 @@ import { parseChatGptAdapterErrorResponse } from "../../../../../src/orchestrati
 import { classifyOpenAIStreamError, classifyResponseFailed, createOpenAIStream } from "../../../../../src/orchestration/agent-runtime/llm/openai-helpers.js";
 import { ContentFilteredError, ContentRefusedError, ContextLengthExceededError, LlmStreamError, ProviderRequestValidationError, QuotaCoordinationError, QuotaExhaustedError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { createOpenAIChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/openai-completions.js";
-import { ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
+import { normalizeProviderAttemptFailure, ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
+import { ContentRefused, fromStreamError, TransientDisconnect } from "../../../../../src/orchestration/agent-runtime/errors.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { ChatGptAdapterTransportError } from "../../../../../src/orchestration/agent-runtime/llm/chatgpt-adapter/types.js";
 
@@ -197,6 +198,31 @@ describe("classifyOpenAIStreamError folds ChatGptAdapterApiError into the stream
     expect(classified.reason).toBe(message);
     expect(classified.cause).toBeInstanceOf(ProviderRequestValidationError);
     expect(classified.cause.message).toBe(`OpenAI request validation failed: ${message}`);
+  });
+
+  test("a ChatGPT backend policy frame is a content refusal that keeps the provider's code, and a dropped WebSocket stays a disconnect", async () => {
+    const message = "This content was flagged for possible cybersecurity risk. If this seems wrong, try rephrasing your request.";
+    const frame = await drainAdapterEvents({ type: "error", error: { type: "invalid_request_error", code: "cyber_policy", message } });
+    const refused = fromStreamError(normalizeProviderAttemptFailure(classify(new ChatGptAdapterTransportError("read", frame))).cause);
+    expect(refused).toBeInstanceOf(ContentRefused);
+    if (!(refused instanceof ContentRefused)) throw new Error("expected ContentRefused");
+    expect(refused.policy).toBe("cyber_policy");
+    expect(refused.reason).toBe(`ChatGPT backend error: ${message}`);
+
+    const dropped = classify(new ChatGptAdapterTransportError("read", new Error("websocket closed: 1006")));
+    expect(fromStreamError(normalizeProviderAttemptFailure(dropped).cause)).toBeInstanceOf(TransientDisconnect);
+  });
+
+  test.each(["cyber_policy", "bio_policy", "misalignment_policy_violation"])("a Responses %s rejection is a policy refusal over HTTP and in the stream", (code) => {
+    const streamed = classifyResponseFailed({ code, message: "flagged" }, undefined);
+    expect(streamed).toBeInstanceOf(ContentRefusedError);
+    if (!(streamed instanceof ContentRefusedError)) throw new Error("expected ContentRefusedError");
+    expect(streamed.policy).toBe(code);
+    const http = classify(new OpenAI.BadRequestError(400, { type: "invalid_request_error", code, message: "flagged" }, undefined, new Headers()));
+    expect(http).toBeInstanceOf(ContentRefusedError);
+    if (!(http instanceof ContentRefusedError)) throw new Error("expected ContentRefusedError");
+    expect(http.policy).toBe(code);
+    expect(http.reason).toBe("flagged");
   });
 
   test("an unsupported parameter rejection is not a content refusal", () => {

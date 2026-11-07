@@ -2,7 +2,7 @@ import { Schema } from "effect"
 import { PersistenceWriteRefused } from "../../infra/event-store-types.js"
 import { errorMessage } from "../../infra/error-message.js"
 import { AccessProviderIdSchema } from "../../infra/llm/access-provider.js"
-import type { ProviderErrorCopy, ProviderRecovery } from "../../infra/llm/provider-error-copy.js"
+import { contentDeclinedCopy, type ProviderErrorCopy, type ProviderRecovery } from "../../infra/llm/provider-error-copy.js"
 import { RefusedPartKindSchema } from "../../infra/llm/content-repair.js"
 import { AllCandidatesExhaustedError, ContentFilteredError, ContentRefusedError, ContextLengthExceededError, LlmStreamError, OutputLengthExceededError, QuotaCoordinationError, StreamIdleTimeoutError } from "./llm/errors.js"
 import { classifyProviderFailure, ProviderAttemptFailure, providerRecovery, type ProviderFailure } from "./llm/provider-failure.js"
@@ -41,11 +41,13 @@ export class StreamStalled extends Schema.TaggedError<StreamStalled>()("StreamSt
 }) {}
 export class ApiOverloaded extends Schema.TaggedError<ApiOverloaded>()("ApiOverloaded", { message: Schema.String }) {}
 /** The provider refused the request because of conversation content. `message` is the provider failure text
- *  the person reads, `reason` the provider's own words, and `part` the canonical tool result part it names. */
+ *  the person reads, `reason` the provider's own words, `part` the canonical tool result part it names, and
+ *  `policy` the provider's code when it refused the content under its usage policy. */
 export class ContentRefused extends Schema.TaggedError<ContentRefused>()("ContentRefused", {
   message: Schema.String,
   reason: Schema.String,
   part: Schema.optionalKey(Schema.Struct({ toolUseId: Schema.String, partIndex: Schema.Int, kind: RefusedPartKindSchema })),
+  policy: Schema.optionalKey(Schema.String),
 }) {}
 /** The provider's content filter stopped the response after the request was accepted. */
 class ContentFiltered extends Schema.TaggedError<ContentFiltered>()("ContentFiltered", { message: Schema.String }) {}
@@ -107,7 +109,7 @@ export function fromStreamError(err: unknown, failure: ProviderFailure = err ins
   if (err instanceof ContextLengthExceededError) return new ContextOverflow()
   if (err instanceof OutputLengthExceededError) return new OutputOverflow()
   if (err instanceof ContentFilteredError) return new ContentFiltered({ message: err.message })
-  if (err instanceof ContentRefusedError) return new ContentRefused({ message: errorMessage(err.cause), reason: err.reason, ...(err.part === undefined ? {} : { part: err.part }) })
+  if (err instanceof ContentRefusedError) return new ContentRefused({ message: errorMessage(err.cause), reason: err.reason, ...(err.part === undefined ? {} : { part: err.part }), ...(err.policy === undefined ? {} : { policy: err.policy }) })
   if (err instanceof StreamIdleTimeoutError && err.phase === "idle") return new StreamStalled({ message: err.message, attribution: { kind: "unattributed" } })
   if (err instanceof LlmStreamError) {
     return err.kind === "overload"
@@ -135,7 +137,7 @@ export function toFailureReason(error: AgentRuntimeError): AgentFailureReason {
     case "ApiOverloaded": return { kind: "api_overloaded", message: error.message }
     // A refusal that the repair inside the run could not clear meets the same
     // content on every later run.
-    case "ContentRefused": return { kind: "api_error", message: error.message, recovery: { kind: "none" } }
+    case "ContentRefused": return { kind: "api_error", message: error.message, ...(error.policy === undefined ? {} : { copy: contentDeclinedCopy(error.reason) }), recovery: { kind: "none" } }
     // The assistant boundary settles a content filter as a response, so only a
     // caller outside it meets this; a later run can be served.
     case "ContentFiltered": return { kind: "api_error", message: error.message, recovery: { kind: "retry" } }

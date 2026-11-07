@@ -248,15 +248,7 @@ export function classifyApiError(message: string, authProvider?: ProviderIdentit
       action: SWITCH_MODELS_ACTION,
     };
   }
-  if (CONTENT_POLICY_RE.test(message)) {
-    return {
-      presentation: "provider.content_declined",
-      title: "Request declined",
-      message: "The provider declined this request under its content policy.",
-      guidance: "Rephrase the message or try a different model.",
-      action: SWITCH_MODELS_ACTION,
-    };
-  }
+  if (CONTENT_POLICY_RE.test(message)) return contentDeclinedCopy();
   const upstreamCode = message.match(UPSTREAM_STATUS_RE)?.[0];
   if (upstreamCode !== undefined) {
     return {
@@ -272,6 +264,19 @@ export function classifyApiError(message: string, authProvider?: ProviderIdentit
     message: "The provider rejected the request.",
     guidance: "Send a message to retry.",
     detail: extractProviderErrorDetail(message),
+  };
+}
+
+/** Copy for a request that the provider declined under its content policy, with the provider's own words as
+ *  `detail` when the caller has them. */
+export function contentDeclinedCopy(detail?: string): ProviderErrorCopy {
+  return {
+    presentation: "provider.content_declined",
+    title: "Request declined",
+    message: "The provider declined this request under its content policy.",
+    guidance: "Rephrase the message or try a different model.",
+    ...(detail === undefined ? {} : { detail }),
+    action: SWITCH_MODELS_ACTION,
   };
 }
 

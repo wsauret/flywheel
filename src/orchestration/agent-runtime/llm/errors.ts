@@ -162,17 +162,21 @@ export class ProviderRequestValidationError extends Error {
  *  walk neither retries nor advances: every candidate receives the same content. `cause` is the error the adapter
  *  would throw without this classification, and its message is the failure text the person reads. `reason` is the
  *  provider's own message without a leading wire part path. `part` is the canonical tool result part the refusal
- *  names, or undefined when the refusal names no part that the adapter can locate. */
+ *  names, or undefined when the refusal names no part that the adapter can locate. `policy` is the provider's code
+ *  when it refused the content under its usage policy, such as `cyber_policy`, and undefined when it could not
+ *  read the content. */
 export class ContentRefusedError extends ProviderRequestValidationError {
   declare readonly cause: Error;
   readonly reason: string;
   readonly part: RefusedPart | undefined;
+  readonly policy: string | undefined;
 
-  constructor(provider: string, refused: Error, refusal: { readonly reason: string; readonly part: RefusedPart | undefined }) {
+  constructor(provider: string, refused: Error, refusal: { readonly reason: string; readonly part: RefusedPart | undefined; readonly policy?: string }) {
     super(provider, refusal.reason, { cause: refused });
     this.name = "ContentRefusedError";
     this.reason = refusal.reason;
     this.part = refusal.part;
+    this.policy = refusal.policy;
   }
 }
 
