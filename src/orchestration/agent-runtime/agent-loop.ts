@@ -30,6 +30,7 @@ import { consumeAgentLoopMessageInput, consumeAgentLoopResumeInput } from "./age
 import { consumeAgentLoopInput, createAgentLoopInputWaiter } from "./agent-loop-input-consumer.js";
 import type { AgentLoopOptions, AgentLoopTerminal } from "./agent-loop-types.js";
 import { createReplyNudge, SILENT_REPLY_NUDGE } from "./reply-nudge.js";
+import { createRunEndProcessNotice } from "./run-end-process-notice.js";
 import { createContextAdmission, shouldCompact } from "./compaction/compaction-policy.js";
 import type { ConversationMessage, LlmStopReason, ToolCall } from "./llm/types.js";
 import { repairContentRefusal } from "./llm/content-repair.js";
@@ -92,6 +93,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   const handoffTracker = createHandoffTracker({ background: options.background?.tasks, onStarted: lifecycle?.onHandoffStarted });
   const contentFilter = createContentFilterRecovery({ providerSessionKey: options.providerSessionKey, pushUser, onSystemMessage: options.onSystemMessage });
   const pendingWorkNudge = createPendingWorkNudge({ providerSessionKey: options.providerSessionKey, pushUser });
+  const runEndProcessNotice = createRunEndProcessNotice();
 
   const contextAnchor = requestContext.anchor;
   const compactionState = createAgentLoopCompactionState({
@@ -213,6 +215,13 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       const finalPending = await consumeLoopInput(options.inputSource?.drainPending()); interrupted = interruption();
       if (interrupted) return await interrupted;
       if (finalPending === "continue") return "continue";
+      // A rejected admission reads as a refusal, as the shell reads it.
+      const persistable = await Promise.resolve(toolContext.admitPersistentProcess?.()).catch(() => false) === true;
+      const notice = persistable ? runEndProcessNotice(options.background?.tasks.processRecords() ?? [], options.providerSessionKey) : undefined;
+      if (notice) {
+        await pushUser(notice);
+        return "continue";
+      }
       if (options.completeOnIdle?.seal?.(finalReplyText(preparation.messages)) === false) return (await awaitNextLoopInput(false, waitSignal)) === "continue" ? "continue" : inputClosedTerminal(signal?.aborted);
       return { kind: "completed" };
     }

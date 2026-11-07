@@ -473,7 +473,7 @@ describe("bash automatic yield", () => {
     [true, false],
     [undefined, true],
   ] as const)("uses raw_output=%s for a managed foreground natural exit", async (rawOutput, compressed) => {
-    const output = Array.from({ length: 300 }, (_, index) => `line ${index + 1}`).join("\n");
+    const output = Array.from({ length: 4_000 }, (_, index) => `line ${index + 1}`).join("\n");
     const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification() {} });
     const def = createBashDefinition({
       operations: makeMockOps({
@@ -498,7 +498,7 @@ describe("bash automatic yield", () => {
 
     if (typeof result.content !== "string") throw new Error("bash answers with text");
     expect(result.content.includes("lines omitted")).toBe(compressed);
-    expect(result.content.includes("line 150")).toBe(!compressed);
+    expect(result.content.includes("line 2000\n")).toBe(!compressed);
     if (rawOutput) expect(result.content).toBe(`${output}\n[exit code: 0]`);
     else expect(result.fullContent).toBe(output);
     expect(registry.activeTaskCount()).toBe(0);

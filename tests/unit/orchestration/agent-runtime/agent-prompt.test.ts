@@ -168,6 +168,11 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
     expect(JSON.stringify(foreground.inputSchema)).not.toMatch(/background|persist/i);
     expect(foreground.description).toContain("Never use shell-level &, nohup, or disown.");
 
+    // Every shell says how to stop a process; only the persist_after_exit field names the way past the runtime's exit.
+    const stopById = "Stop a process by its process-tool id or its exact PID. Do not match on a process name or a command-line pattern";
+    for (const surface of [interactive, foreground]) expect(surface.description).toContain(stopById);
+    expect(interactive.description).toContain("A managed background command ends when its runtime exits.");
+    expect(JSON.stringify(interactive.inputSchema)).toContain("Without it, runtime exit ends the command.");
     const unpersisted = bashToolSurface({ persistence: false });
     expect(Object.keys(unpersisted.inputSchema.properties ?? {})).toEqual(Object.keys(interactive.inputSchema.properties ?? {}).filter((field) => field !== "persist_after_exit"));
     expect(JSON.stringify(unpersisted.inputSchema)).not.toMatch(/persist/i);

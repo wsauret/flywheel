@@ -35,6 +35,8 @@ interface ShellFileRead {
 // Larger output exceeds the foreground output tail, so the model saw only part of it.
 const MAX_FILE_BYTES = 256 * 1024;
 const DEFAULT_HEAD_TAIL_LINES = 10;
+// `cat -n` and `nl` print a number of up to this many ASCII bytes before each line.
+const LINE_NUMBER_BYTES = 8;
 const CANDIDATE = /\b(?:cat|nl|bat|batcat|head|tail|sed)\b/;
 const NO_OP_COMMANDS = new Set(["echo", "printf", "true", ":"]);
 const CAT_FLAGS: ReadonlyMap<string, ReadonlySet<string>> = new Map([
@@ -60,7 +62,7 @@ export async function recordShellFileReads(command: string, exitCode: number | u
     if (fromRoot === "" || fromRoot === ".." || fromRoot.startsWith(`..${sep}`) || isAbsolute(fromRoot)) continue;
     const bytes = await fileBytes(path);
     if (bytes === undefined) continue;
-    const coverage = printedCoverage(read.lines, lineCount(bytes));
+    const coverage = printedCoverage(read.lines, bytes);
     if (coverage === undefined) continue;
     ledger.recordRead(path, createHash("sha256").update(bytes).digest("hex"), coverage, position);
   }
@@ -82,14 +84,30 @@ function lineCount(bytes: Uint8Array): number {
   return bytes.length > 0 && bytes[bytes.length - 1] !== 0x0a ? count + 1 : count;
 }
 
-/** The ledger coverage of the printed lines, or undefined when they are none or compression would shorten them. */
-function printedCoverage(lines: PrintedLines, total: number): "full" | readonly LineRange[] | undefined {
+/** The bytes of one-based inclusive lines `start`-`end` of `bytes`, newlines included. */
+function rangeBytes(bytes: Uint8Array, start: number, end: number): number {
+  let line = 1;
+  let from = 0;
+  for (let index = 0; index < bytes.length; index++) {
+    if (bytes[index] !== 0x0a) continue;
+    line += 1;
+    if (line === start) from = index + 1;
+    if (line > end) return index + 1 - from;
+  }
+  return bytes.length - from;
+}
+
+/** The ledger coverage of the printed lines, or undefined when they are none or compression would shorten them.
+ *  The size counts the widest line number `cat -n` or `nl` can print, so a slice near the threshold records nothing
+ *  rather than too much. */
+function printedCoverage(lines: PrintedLines, bytes: Uint8Array): "full" | readonly LineRange[] | undefined {
+  const total = lineCount(bytes);
   let start = 1;
   let end = total;
   if (lines.kind === "head") end = Math.min(lines.count, total);
   if (lines.kind === "tail") start = Math.max(1, total - lines.count + 1);
   if (lines.kind === "range") [start, end] = [lines.start, Math.min(lines.end, total)];
-  if (total === 0 || start > end || !shownUncompressed(end - start + 1)) return undefined;
+  if (total === 0 || start > end || !shownUncompressed(rangeBytes(bytes, start, end) + LINE_NUMBER_BYTES * (end - start + 1))) return undefined;
   return start === 1 && end === total ? "full" : [{ start, end }];
 }
 

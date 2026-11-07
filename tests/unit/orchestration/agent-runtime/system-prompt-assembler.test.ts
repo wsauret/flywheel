@@ -460,6 +460,8 @@ describe("cross-tool batching guideline", () => {
   it("instructs grouping independent calls but serializing read-before-edit dependencies, consistent with purposeful tool use", () => {
     const result = buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat", chatHost: { communication: true } }));
     expect(result).toContain("reading a file before editing it");
+    expect(result).toContain("Calls are independent only when none of them can change state that another one reads.");
+    expect(result).toContain("a client that opens and rewrites the database another call examines");
     expect(result).toContain("not making unnecessary ones");
     expect(result).toContain("batch independent calls with distinct inputs");
     expect(result).toContain("remove duplicate calls with the same tool name and arguments");

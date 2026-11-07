@@ -43,6 +43,10 @@ function bunFailureOutput(passing: number): string {
   return [...BUN_FAILURE_LINES.slice(0, 3), ...passes, ...BUN_FAILURE_LINES.slice(3)].join("\n");
 }
 
+// Lines of exactly `chars` characters with their newline, so sizes are exact.
+const sized = (count: number, chars: number, prefix = "line"): string[] =>
+  Array.from({ length: count }, (_, index) => `${prefix} ${index}`.padEnd(chars - 1, "."));
+
 describe("renderShellLines", () => {
   it("drops only bun passing-test records behind one counted marker and keeps every diff, code-frame, and console line", () => {
     const result = renderShellLines("bun test x.test.ts", complete(bunFailureOutput(250)), false);
@@ -50,40 +54,58 @@ describe("renderShellLines", () => {
     expect(result.output).toBe([...BUN_FAILURE_LINES.slice(0, 3), "[... 250 lines omitted ...]", ...BUN_FAILURE_LINES.slice(3)].join("\n"));
   });
 
-  it("returns output of 200 lines or fewer unchanged for every command", () => {
-    const failing = bunFailureOutput(100);
+  it("returns test-runner output of 200 lines or fewer and other output of 28,000 bytes or fewer unchanged", () => {
+    const failing = bunFailureOutput(150);
     expect(renderShellLines("bun test", complete(failing), false)).toEqual({ output: failing, compressed: false });
-    const generic = Array.from({ length: 200 }, (_, index) => `line ${index + 1}`).join("\n");
+    const generic = sized(2_800, 10).join("\n");
     expect(renderShellLines("make", complete(generic), false)).toEqual({ output: generic, compressed: false });
   });
 
-  it("marks each dropped run of generic output with its exact count around error and warning lines", () => {
-    const lines = Array.from({ length: 400 }, (_, index) => index === 100 ? "warning: alpha" : index === 250 ? "error: beta" : `line ${index}`);
+  it("counts UTF-8 bytes, so multibyte output short in characters still keeps its middle error line within the byte cap", () => {
+    // 2,000 lines of 10 characters and 19 bytes with their newline: 20,000 characters, 38,000 bytes.
+    const lines = Array.from({ length: 2_000 }, (_, index) => index === 1_000 ? "error: mid" : "\u00e9".repeat(9));
+    const result = renderShellLines("make", complete(lines.join("\n")), false);
+    expect(result.compressed).toBe(true);
+    expect(result.output).toContain("\nerror: mid\n");
+    expect(Buffer.byteLength(result.output)).toBeLessThanOrEqual(30_000);
+  });
+
+  it("keeps a final line longer than the tail window whole", () => {
+    const last = `FINAL_RESULT ${"y".repeat(13_000)}`;
+    const lines = [...sized(3_000, 10), last];
+    const result = renderShellLines("make", complete(lines.join("\n")), false);
+    expect(result.output.endsWith(`[... 2400 lines omitted ...]\n${last}`)).toBe(true);
+  });
+
+  it("keeps the first 6,000 and the last 12,000 characters of larger generic output and marks each dropped run around error and warning lines", () => {
+    // 3,000 lines of 10 characters: the head is lines 0-599 and the tail lines 1800-2999.
+    const lines = sized(3_000, 10).map((line, index) => index === 1_000 ? "warning: a" : index === 1_500 ? "error: b" : line);
     const result = renderShellLines("make", complete(lines.join("\n")), false);
     expect(result.compressed).toBe(true);
     expect(result.output).toBe([
-      ...lines.slice(0, 30),
-      "[... 70 lines omitted ...]",
-      "warning: alpha",
-      "[... 149 lines omitted ...]",
-      "error: beta",
-      "[... 109 lines omitted ...]",
-      ...lines.slice(360),
+      ...lines.slice(0, 600),
+      "[... 400 lines omitted ...]",
+      "warning: a",
+      "[... 499 lines omitted ...]",
+      "error: b",
+      "[... 299 lines omitted ...]",
+      ...lines.slice(1_800),
     ].join("\n"));
   });
 
   it("merges a line gap with the dropped runs that border it into one summed marker", () => {
-    const head = Array.from({ length: 50 }, (_, index) => `head ${index}`);
-    const tail = Array.from({ length: 50 }, (_, index) => `tail ${index}`);
+    const head = sized(1_000, 10, "head");
+    const tail = sized(2_000, 10, "tail");
     const result = renderShellLines("seq", { head, gap: { unit: "lines", count: 1000 }, tail }, false);
-    expect(result.output).toBe([...head.slice(0, 30), "[... 1030 lines omitted ...]", ...tail.slice(10)].join("\n"));
+    expect(result.output).toBe([...head.slice(0, 600), "[... 2200 lines omitted ...]", ...tail.slice(800)].join("\n"));
   });
 
   it("keeps a character gap after a fragment of one long line as its own marker and counts the lines after it", () => {
     const fragment = "x".repeat(1_000);
-    const tail = Array.from({ length: 250 }, (_, index) => `tail ${index}`);
-    const result = renderShellLines("cat", { head: [fragment], gap: { unit: "characters", count: 5000 }, tail }, false);
-    expect(result.output).toBe([fragment, "[... 5000 characters omitted ...]", ...tail.slice(0, 29), "[... 181 lines omitted ...]", ...tail.slice(210)].join("\n"));
+    // The gap ends at character 4,001, so the head runs on through tail line 199.
+    const tail = sized(2_500, 10, "tail");
+    const result = renderShellLines("cat", { head: [fragment], gap: { unit: "characters", count: 3000 }, tail }, false);
+    expect(result.output).toBe([fragment, "[... 3000 characters omitted ...]", ...tail.slice(0, 200), "[... 1100 lines omitted ...]", ...tail.slice(1_300)].join("\n"));
   });
 
   it("keeps every line in raw mode but still marks the capture gap", () => {

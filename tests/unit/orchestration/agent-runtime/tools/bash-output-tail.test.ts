@@ -251,7 +251,8 @@ describe("background Bash spool scan", () => {
 
     const numbered = Array.from({ length: 200_000 }, (_, index) => `${index + 1}`);
     const padded = settle(`\n\n${numbered.join("\n")}\n\n\n`);
-    expect(shellObservation("seq", padded, false).text).toBe(["", "", ...numbered.slice(0, 28), "[... 199934 lines omitted ...]", ...numbered.slice(-38), "", ""].join("\n"));
+    // The head keeps about 6,000 bytes and the tail about 12,000.
+    expect(shellObservation("seq", padded, false).text).toBe(["", "", ...numbered.slice(0, 1421), "[... 196865 lines omitted ...]", ...numbered.slice(-1714), "", ""].join("\n"));
 
     // The last line fills the tail window, so the bounded tail holds no line.
     const short = Array.from({ length: 199 }, (_, index) => `line ${index + 1}`);

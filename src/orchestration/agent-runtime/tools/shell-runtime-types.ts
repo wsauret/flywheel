@@ -35,6 +35,9 @@ export interface ManagedShellExecutionOptions extends ShellExecutionOptions {
   totalYieldMs?: number;
   rawOutput: boolean;
   timeoutSec?: number;
+  /** The agent can launch a command with persist_after_exit, so the reply of
+   *  a background launch names that way to outlive the runtime. */
+  persistable?: boolean;
   /** How long settlement waits after the exit for the parent-side stderr to end. */
   postExitDrainGraceMs?: number;
   onForegroundSettled?: (settled: { readonly foreground: ForegroundView; readonly executionOutputTail: string }) => void;

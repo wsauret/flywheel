@@ -280,6 +280,7 @@ export function createBashDefinition(options?: {
           ...execution,
           ...isolated,
           foreground: held,
+          persistable: persistentProcesses,
           postExitDrainGraceMs,
           ...(held && deadlineAllowsYield ? { totalYieldMs } : {}),
           ...(timeoutSec !== undefined ? { timeoutSec } : {}),

@@ -19,7 +19,7 @@ test("assembled prompts require the smallest complete verification", () => {
     "Reading code settles what that code does",
     "does not settle what a remote service returns",
     "writing a throwaway script in the scratchpad, running it against the real thing",
-    "When a probe is cheap and possible it is not optional",
+    "When a probe of how code, a tool, or a runtime behaves is cheap and possible, it is not optional",
     "Do not call a task done until you have seen it work",
     "A test that mocks an external boundary does not prove that boundary",
     "Use the smallest complete verification of the work, then stop",
@@ -39,6 +39,11 @@ test("assembled prompts require the smallest complete verification", () => {
   expect(bare).toContain("Session notes hold current progress, plans, handoffs, and temporary findings.")
   expect(bare).not.toContain("in memory")
   expect(bare).not.toContain("{{")
+  // The rules on open ambiguity and irreplaceable inputs hold with or without a shell.
+  for (const prompt of [compiled, bare]) for (const rule of [
+    "An ambiguous requirement is not a claim to prove, because evidence settles how things behave, not what the requester meant. When nobody can answer it now, choose the reading that you judge best, state the choice in your result, and finish. When a person can answer, the rules for asking still apply.",
+    "copy it first, because clients, compilers, and formatters can rewrite the files they open",
+  ]) expect(prompt).toContain(rule)
 })
 
 test("experiments settle external and runtime claims that code reading cannot", () => {

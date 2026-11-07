@@ -42,7 +42,7 @@ describe("bash tool: file reads count as reads", () => {
   async function ledgerAfter(command: string, exitCode = 0): Promise<{ root: string; ledger: FileReadLedger }> {
     const root = path.join(directory("bash-file-reads-"), "project");
     fs.mkdirSync(root);
-    for (const [name, count] of [["a.ts", 3], ["b.ts", 5], ["c.ts", 5], ["d.ts", 3], ["big.ts", 250]] as const) fs.writeFileSync(path.join(root, name), lines(count));
+    for (const [name, count] of [["a.ts", 3], ["b.ts", 5], ["c.ts", 5], ["d.ts", 3], ["big.ts", 4_000]] as const) fs.writeFileSync(path.join(root, name), lines(count));
     fs.writeFileSync(path.join(root, "..", "outside.ts"), lines(3));
     const ledger = new FileReadLedger();
     const spawn = ownedSpawnProbe(() => makeMockOwnedProcess({ exited: Promise.resolve({ code: exitCode, signal: null, statusOf: "payload" as const, ownership: "surrendered" as const }) }));
@@ -597,7 +597,7 @@ describe("bash tool: fullContent on compression", () => {
     ownedSpawnProbe(() => makeMockOwnedProcess({ stdout })).spawnOwned;
 
   it("sets fullContent to raw output when compressor drops lines", async () => {
-    const lines = Array.from({ length: 300 }, (_, i) => `line ${i + 1}`).join("\n");
+    const lines = Array.from({ length: 4_000 }, (_, i) => `line ${i + 1}`).join("\n");
     const stdout = streamOf([lines.slice(0, 1_000), lines.slice(1_000)]);
     const def = createBashDefinition({ operations: makeMockOps() });
     const ctx = makeContext({ executionCwd: "/scratch", spawnOwned: spawnWithStdout(stdout) });
@@ -620,7 +620,7 @@ describe("bash tool: fullContent on compression", () => {
   });
 
   it("raw_output: true bypasses compression entirely", async () => {
-    const lines = Array.from({ length: 300 }, (_, i) => `line ${i + 1}`).join("\n");
+    const lines = Array.from({ length: 4_000 }, (_, i) => `line ${i + 1}`).join("\n");
     const def = createBashDefinition({ operations: makeMockOps() });
     const ctx = makeContext({ executionCwd: "/scratch", spawnOwned: spawnWithStdout(streamOf(lines)) });
 
@@ -628,7 +628,7 @@ describe("bash tool: fullContent on compression", () => {
 
     expect(result.outcome).toBe("ok");
     expect(result.content).not.toContain("lines omitted");
-    expect(result.content).toContain("line 150");
+    expect(result.content).toContain("line 2000\n");
     expect(result.fullContent).toBeUndefined();
   });
 });
@@ -650,7 +650,8 @@ describe("bash tool: foreground stdout spool", () => {
       const spool = fs.readFileSync(retained.path);
 
       expect(result.content).toStartWith("1\n2\n");
-      expect(result.content).toContain("\n30\n[... 199930 lines omitted ...]\n199961\n");
+      // The head keeps 6,000 bytes (lines 1-1422), and the tail keeps the last 12,000 and the line that crosses into them.
+      expect(result.content).toContain("\n1422\n[... 196863 lines omitted ...]\n198286\n");
       expect(result.content).not.toContain("forged");
       expect(retained.path.startsWith(scratchDir)).toBe(true);
       expect(retained.bytes).toBe(new TextEncoder().encode(payload).byteLength);
