@@ -1,0 +1,14 @@
+# Bring-up profile of the DeepSeek board arm: one fast task, one attempt, at
+# low effort, on Harbor Hub or local Docker. It needs --allow-low-k and is
+# debug_only. Iterate on it until it passes before running the 3x profiles.
+headless:
+  flywheel_config: bench/terminal_bench/configs/tb-board-deepseek-low.toml
+datasets:
+- name: terminal-bench/terminal-bench-2-1
+  ref: sha256:7d7bdc1cbedad549fc1140404bd4dc45e5fd0ea7c4186773687d177ad3a0699a
+  task_names:
+  - terminal-bench/kv-store-grpc
+n_attempts: 1
+n_concurrent_trials: 1
+job_name: flywheel-tb-board-deepseek-bringup-kv-store-grpc
+jobs_dir: jobs
