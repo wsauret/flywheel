@@ -6,7 +6,7 @@ import { Log } from "../../infra/log.js"
 import type { AsyncEventWriter, AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
 import type { ModulePolicy } from "../config/module-policy.js"
 import type { RuntimeConfigOwner } from "../config/runtime-config-owner.js"
-import { AuthProfileManager, type AuthProfileResolution } from "../auth/auth-profile-manager.js"
+import type { AuthProfileResolution } from "../auth/auth-profile-manager.js"
 import { logoutProfileExternalLogins } from "../auth/auth-actions.js"
 import type { SessionManager } from "../session/manager.js"
 import type { FirstPartyModuleComposition, FirstPartyModuleSnapshot } from "../modules.js"
@@ -55,7 +55,7 @@ import { createChatDefaultRuntime } from "./chat-default-runtime.js"
 import { captureRuntimeConfigRequest } from "../agent-runtime/request-config.js"
 import { normalizeAuthProfile } from "../../infra/auth/auth-profile-normalization.js"
 import { createAuthSettlementCoordinator } from "./auth-settlement-coordinator.js"
-import { resolveHeadlessAuth } from "../headless/headless-profile-runtime.js"
+import { resolveHeadlessAuth, type HeadlessAuthSelection } from "../headless/headless-profile-runtime.js"
 import { connectionEligibilitySources } from "../headless/snapshot-eligibility.js"
 
 import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
@@ -90,15 +90,6 @@ export interface AuthRuntimeOptions {
   readonly settledNotify: (episode: NotificationEpisodeInput) => Promise<void>
   readonly chatDefault: RuntimeChatDefault
   readonly headlessAuth?: HeadlessAuthSelection
-}
-
-/** A headless run's own auth selection: `profile` selects the way the
- *  environment selector does, and `snapshotPath` names a one-use auth snapshot
- *  whose captured connection serves every request instead of the profile's
- *  auth files. */
-export interface HeadlessAuthSelection {
-  readonly profile?: string
-  readonly snapshotPath?: string
 }
 
 /** Owns the selected auth profile, profile-bound provider state, session admission, and all refresh publications for one runtime. */
@@ -144,15 +135,9 @@ export interface AuthRuntime {
 
 /** Creates the runtime's single auth authority. Provider inventory remains demand-owned. */
 export async function createAuthRuntime(options: AuthRuntimeOptions): Promise<AuthRuntime> {
-  const profileManager = new AuthProfileManager({
-    userDataRoot: options.userDataRoot,
-    projectRoot: options.projectRoot,
-    config: () => options.runtimeConfig.snapshot().config,
-    ...(options.headlessAuth?.profile === undefined ? {} : { env: { FLYWHEEL_AUTH_PROFILE: options.headlessAuth.profile } }),
-  })
   // The runtime's launch authority, which the usage checks, the eligibility preparation, and profile removal start CLIs in.
   const launcher = options.workflowPreparation.launcher
-  const { profile: initialProfile, snapshot } = await resolveHeadlessAuth(profileManager, options.headlessAuth?.snapshotPath, accessProviderRegistry(options.moduleSelection()).selection.definitions)
+  const { profiles: profileManager, profile: initialProfile, snapshot } = await resolveHeadlessAuth({ userDataRoot: options.userDataRoot, projectRoot: options.projectRoot, config: () => options.runtimeConfig.snapshot().config }, options.headlessAuth, accessProviderRegistry(options.moduleSelection()).selection.definitions)
   let currentProfile = initialProfile
   const workflowRuns = workflowRunReader(options.eventReader)
   const workflowAuth = createWorkflowAuthOwner({

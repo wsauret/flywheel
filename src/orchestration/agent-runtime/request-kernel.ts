@@ -53,7 +53,8 @@ export interface KernelRequestFacts {
   readonly moduleSnapshot: FirstPartyModuleComposition;
   readonly live: FirstPartyModuleComposition;
   readonly runtimeConfig: RuntimeConfigRequestCapture;
-  /** The tree's captured value for a tree-hosted request, else the request's configuration (`SharedTreeCapture`). */
+  /** The described shell write guard: the tree's captured value for a tree-hosted request, else the request's
+   *  configuration (`SharedTreeCapture`). */
   readonly shellWriteGuard: boolean;
   readonly skills: SkillRegistryRevision | undefined;
   readonly servingModel: KernelToolDeps["servingModel"];
@@ -79,6 +80,7 @@ export function requestKernel(run: KernelRunFacts, request: KernelRequestFacts):
     ...(request.runtimeConfig.foregroundBashHoldSeconds !== undefined ? { foregroundBashHoldSeconds: request.runtimeConfig.foregroundBashHoldSeconds } : {}),
     persistentProcesses: request.runtimeConfig.allowPersistentProcesses,
     shellWriteGuard: request.shellWriteGuard,
+    ...(surfaces.enforcedShellWriteGuard ? { enforcedShellWriteGuard: surfaces.enforcedShellWriteGuard } : {}),
     fileEditContract: request.fileEditContract,
     capabilities: {
       available: (capability: ModuleId) => moduleIds.has(capability) && (options.capabilityAccess?.available(capability) ?? true),

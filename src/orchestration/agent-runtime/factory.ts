@@ -72,6 +72,7 @@ interface GenerationRuntimeToolSurfaces {
   commandHandover?: CommandHandoverAuthority;
   persistentProcesses?: PersistentProcessClient | BridgedPersistentProcessClient;
   allowPersistentProcesses?: () => boolean | Promise<boolean>;
+  enforcedShellWriteGuard?: RuntimeToolSurfaces["enforcedShellWriteGuard"];
   gitAiAttribution?: RuntimeToolSurfaces["gitAiAttribution"];
   streamingEditValidation?: StreamingEditValidationService;
   /** Runtime authority for current auth storage conditions and settled mutation refusals. */
@@ -95,6 +96,7 @@ export function completeRuntimeToolSurfaces(
     ...(generation.commandHandover ? { commandHandover: generation.commandHandover } : {}),
     ...(generation.persistentProcesses ? { persistentProcesses: generation.persistentProcesses } : {}),
     ...(generation.allowPersistentProcesses ? { allowPersistentProcesses: generation.allowPersistentProcesses } : {}),
+    ...(generation.enforcedShellWriteGuard ? { enforcedShellWriteGuard: generation.enforcedShellWriteGuard } : {}),
     ...(generation.gitAiAttribution ? { gitAiAttribution: generation.gitAiAttribution } : {}),
     ...(generation.streamingEditValidation ? { streamingEditValidation: generation.streamingEditValidation } : {}),
     ...(generation.headless ? { headless: true } : {}),
@@ -131,6 +133,7 @@ export function createAgentRuntime(deps: {
   commandHandover?: CommandHandoverAuthority;
   persistentProcesses?: PersistentProcessClient | BridgedPersistentProcessClient;
   allowPersistentProcesses?: () => boolean | Promise<boolean>;
+  enforcedShellWriteGuard?: RuntimeToolSurfaces["enforcedShellWriteGuard"];
   /** Resolves the `<env>` block every runner this factory builds carries, so
    *  one generation probes its environment once. */
   resolveEnvSnapshot?: EnvCaptureResolver;
@@ -185,6 +188,7 @@ export function createAgentRuntime(deps: {
     ...(deps.commandHandover ? { commandHandover: deps.commandHandover } : {}),
     ...(deps.persistentProcesses ? { persistentProcesses: deps.persistentProcesses } : {}),
     ...(deps.allowPersistentProcesses ? { allowPersistentProcesses: deps.allowPersistentProcesses } : {}),
+    ...(deps.enforcedShellWriteGuard ? { enforcedShellWriteGuard: deps.enforcedShellWriteGuard } : {}),
     ...(deps.gitAiAttribution ? { gitAiAttribution: deps.gitAiAttribution } : {}),
     ...(deps.streamingEditValidation ? { streamingEditValidation: deps.streamingEditValidation } : {}),
     ...(deps.headless ? { headless: true } : {}),

@@ -2247,6 +2247,7 @@ require_workflow_confirmation = false
 - Type: `boolean`
 - Default: `true`
 - Application: `next-request`. Applies when the next provider request captures configuration.
+- Application: `use-time-revalidate`. Revalidates from disk when the protected operation starts.
 
 Refuse shell writes outside the project for writing agents.
 

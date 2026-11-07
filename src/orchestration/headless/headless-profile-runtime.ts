@@ -13,7 +13,7 @@ import { authProfileEligibilityInputRevision, createEligibilityPreparation } fro
 import { createProviderModelPreferenceService } from "../app-service/provider-model-preference-service.js"
 import { providerModelPreferencePersistence } from "../app-service/provider-model-preference-persistence.js"
 import type { CaptureSubscriptionAdmission } from "../agent-runtime/factory.js"
-import type { AuthProfileResolution } from "../auth/auth-profile-manager.js"
+import { AuthProfileManager, type AuthProfileManagerOptions, type AuthProfileResolution } from "../auth/auth-profile-manager.js"
 import type { FirstPartyModuleSnapshot } from "../modules.js"
 import { installedAccessProviderDefinitions, installedCredentialProviderIds } from "../credential-provider-modules.js"
 import { loadAuthStoreWithDiagnostics } from "../../infra/auth/auth-store.js"
@@ -45,21 +45,41 @@ export async function resolveHeadlessAuthProfile(profiles: HeadlessAuthProfiles)
   return await profiles.resolve()
 }
 
-/** Resolves the profile of one headless run, in either headless mode, and with `snapshotPath` consumes that one-use
- *  auth snapshot and captures its access-only connection. Without a snapshot it is `resolveHeadlessAuthProfile`.
+/** A headless run's own auth selection: `profile` selects the way the
+ *  environment selector does, and `snapshotPath` names a one-use auth snapshot
+ *  whose captured connection serves every request instead of the profile's
+ *  auth files. */
+export interface HeadlessAuthSelection {
+  readonly profile?: string
+  readonly snapshotPath?: string
+}
+
+/** Builds the profile manager of one headless run, in either headless mode, and resolves its profile. With a
+ *  `snapshotPath` it consumes that one-use auth snapshot and captures its access-only connection.
  *
- *  A snapshot names its own profile and carries all of that profile's credentials, so a run creates the profile,
- *  empty and under exactly that id, when the account home lacks it, such as a fresh benchmark sandbox. Rejects,
- *  with the snapshot already consumed, when the run selects a different profile than the snapshot names. */
-export async function resolveHeadlessAuth(profiles: HeadlessAuthProfiles, snapshotPath: string | undefined, providers: readonly AccessProviderDefinition[]): Promise<{ readonly profile: AuthProfileResolution; readonly snapshot?: CapturedHeadlessSnapshot }> {
-  if (snapshotPath === undefined) return { profile: await resolveHeadlessAuthProfile(profiles) }
-  const snapshot = readHeadlessAuthSnapshot(snapshotPath, providers)
-  const selected = await profiles.resolve()
-  if (selected.id !== snapshot.profile) throw new Error(`The headless auth snapshot is for profile ${snapshot.profile}, but this run selects profile ${selected.id}. Run with --auth-profile ${snapshot.profile}.`)
+ *  A snapshot names its own profile and carries all of that profile's credentials, so the manager selects that
+ *  profile the way an environment selector does. Every session admission then resolves to it, also for an attached
+ *  session that recorded another profile, because the snapshot's connection serves no other profile. A run creates
+ *  the profile, empty and under exactly that id, when the account home lacks it, such as a fresh benchmark sandbox.
+ *  Rejects, with the snapshot already consumed, when an explicit selector names a different profile. */
+export async function resolveHeadlessAuth(
+  manager: AuthProfileManagerOptions,
+  selection: HeadlessAuthSelection | undefined,
+  providers: readonly AccessProviderDefinition[],
+): Promise<{ readonly profiles: AuthProfileManager; readonly profile: AuthProfileResolution; readonly snapshot?: CapturedHeadlessSnapshot }> {
+  const selected = (selector: string | undefined) => new AuthProfileManager({ ...manager, ...(selector === undefined ? {} : { env: { FLYWHEEL_AUTH_PROFILE: selector } }) })
+  if (selection?.snapshotPath === undefined) {
+    const profiles = selected(selection?.profile)
+    return { profiles, profile: await resolveHeadlessAuthProfile(profiles) }
+  }
+  const snapshot = readHeadlessAuthSnapshot(selection.snapshotPath, providers)
+  const requested = await selected(selection.profile).resolve()
+  if (requested.source === "environment" && requested.id !== snapshot.profile) throw new Error(`The headless auth snapshot is for profile ${snapshot.profile}, but this run selects profile ${requested.id}. Run with --auth-profile ${snapshot.profile}.`)
+  const profiles = selected(snapshot.profile)
   const access = await profiles.acquireAccess({ createDefault: true, createSelected: snapshot.profile })
   access.close()
   const profile = await profiles.resolve()
-  return { profile, snapshot: await captureHeadlessSnapshotConnection(snapshot, profile.directory, providers) }
+  return { profiles, profile, snapshot: await captureHeadlessSnapshotConnection(snapshot, profile.directory, providers) }
 }
 
 /** Owns finite subscription admission services. Disposal closes admission and

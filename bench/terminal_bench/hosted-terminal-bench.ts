@@ -1,4 +1,4 @@
-import { chmod, lstat, readdir } from "node:fs/promises";
+import { Schema } from "effect";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { PUBLIC_REPO, publishedReleaseTags } from "../../scripts/release-repo.js";
 import { command, harborPython } from "./harbor-process.js";
@@ -18,19 +18,28 @@ const STATUS_INTERVAL_MS = 60_000;
 const REPOSITORY_ROOT = resolve(import.meta.dir, "../..");
 const PACKAGE_SCRIPT = join(REPOSITORY_ROOT, "bench/terminal_bench/harbor_agent_package.py");
 
+const TaskTimeoutsSchema = Schema.Struct({ agent_timeout_sec: Schema.Number, verifier_timeout_sec: Schema.Number, build_timeout_sec: Schema.Number });
 /** One task's timeouts from its pinned task.toml, as harbor_tasks.py reports them. */
-export interface TaskTimeouts { agent_timeout_sec: number; verifier_timeout_sec: number; build_timeout_sec: number }
+export type TaskTimeouts = typeof TaskTimeoutsSchema.Type;
+/** The tasks of a resolution by name, as harbor_tasks.py reports them. */
+export const decodeTaskTimeouts = Schema.decodeUnknownSync(Schema.Record(Schema.String, TaskTimeoutsSchema));
 
+const AgentPackageBuildSchema = Schema.Struct({
+  build_id: Schema.String,
+  flywheel_source: Schema.Struct({ commit: Schema.String, version: Schema.String, release_tag: Schema.NullOr(Schema.String) }),
+  runtime_archive: Schema.Struct({ path: Schema.String, sha256: Schema.String }),
+  flywheel_config: Schema.Struct({ path: Schema.String, source_path: Schema.String, sha256: Schema.String }),
+  store_analyzer: Schema.Struct({ path: Schema.String, source_path: Schema.String, sha256: Schema.String }),
+});
 /** The build record (BUILD.json) of one agent package. */
-export interface AgentPackageBuild {
-  build_id: string;
-  flywheel_source: { commit: string; version: string; release_tag: string | null };
-  runtime_archive: { path: string; sha256: string };
-  flywheel_config: { path: string; source_path: string; sha256: string };
-}
+export type AgentPackageBuild = typeof AgentPackageBuildSchema.Type;
 
+const AgentPackagePublicationSchema = Schema.Struct({ repository: Schema.String, ref: Schema.String, commit: Schema.String, branch: Schema.String, tag: Schema.NullOr(Schema.String) });
 /** Where a package was published. `commit` is the arm identity that Hub pins. */
-export interface AgentPackagePublication { repository: string; ref: string; commit: string; branch: string; tag: string | null }
+export type AgentPackagePublication = typeof AgentPackagePublicationSchema.Type;
+
+/** Harbor's job status report; only its counts decide settlement. */
+const decodeJobStatus = Schema.decodeUnknownSync(Schema.Record(Schema.String, Schema.Unknown));
 
 /** The longest a hosted job can run: every wave of trials at the slowest
  *  task's agent, verifier, and build timeouts, scaled by the largest timeout
@@ -76,11 +85,11 @@ export function repositoryConfigPath(absolutePath: string): string {
 
 export async function defaultBuildAgentPackage(commit: string, configPath: string, configSha256: string, releaseTag: string | null, output: string): Promise<AgentPackageBuild> {
   const stdout = await command([harborPython(), PACKAGE_SCRIPT, "build", "--commit", commit, "--config-path", configPath, "--config-sha256", configSha256, ...(releaseTag === null ? [] : ["--release-tag", releaseTag]), "--output", output], REPOSITORY_ROOT);
-  return JSON.parse(stdout) as AgentPackageBuild;
+  return Schema.decodeUnknownSync(AgentPackageBuildSchema)(JSON.parse(stdout));
 }
 
 export async function defaultPublishAgentPackage(directory: string, repository: string): Promise<AgentPackagePublication> {
-  return JSON.parse(await command([harborPython(), PACKAGE_SCRIPT, "publish", "--directory", directory, "--repository", repository], REPOSITORY_ROOT)) as AgentPackagePublication;
+  return Schema.decodeUnknownSync(AgentPackagePublicationSchema)(JSON.parse(await command([harborPython(), PACKAGE_SCRIPT, "publish", "--directory", directory, "--repository", repository], REPOSITORY_ROOT)));
 }
 
 export async function defaultValidateHostedConfig(path: string): Promise<void> {
@@ -136,22 +145,10 @@ export function launchedJobId(output: string): string {
 export async function awaitHostedJob(jobId: string, deadlineSeconds: number): Promise<JsonMap> {
   const deadline = Date.now() + deadlineSeconds * 1000;
   while (true) {
-    const status = JSON.parse(await command(["harbor", "hub", "job", "status", jobId, "--json"], REPOSITORY_ROOT)) as JsonMap;
+    const status = decodeJobStatus(JSON.parse(await command(["harbor", "hub", "job", "status", jobId, "--json"], REPOSITORY_ROOT)));
     console.error(`hosted job ${jobId}: ${String(status.status)} pending=${String(status.pending)} running=${String(status.running)} completed=${String(status.completed)} failed=${String(status.failed)} canceled=${String(status.canceled)}`);
     if (status.pending === 0 && status.running === 0 && typeof status.total === "number" && status.total > 0) return status;
     if (Date.now() >= deadline) throw new Error(`hosted job ${jobId} did not settle within ${deadlineSeconds} seconds`);
     await Bun.sleep(STATUS_INTERVAL_MS);
-  }
-}
-
-/** Harbor's download writes every file world-readable. The analyzer accepts
- *  only owner-only store evidence, so each downloaded trial store becomes
- *  mode 0600; a symlink or special file stays as it is and fails analysis. */
-export async function restrictDownloadedStores(trialsDirectory: string): Promise<void> {
-  for (const entry of await readdir(trialsDirectory, { withFileTypes: true })) {
-    if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
-    const store = join(trialsDirectory, entry.name, "agent", "state", ".flywheel", "flywheel.sqlite");
-    const stats = await lstat(store).catch(() => undefined);
-    if (stats?.isFile() === true) await chmod(store, 0o600);
   }
 }

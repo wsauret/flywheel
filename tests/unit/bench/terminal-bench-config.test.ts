@@ -85,7 +85,7 @@ describe("terminal bench config resolution", () => {
     await writeFile(armProfile, "headless: { flywheel_config: bench/terminal_bench/configs/tb-mini-openai.toml }\ndatasets: [{ task_names: [one] }]\n");
     const modelProfile = join(root, "model.yaml");
     await writeFile(modelProfile, "headless: { model: gpt-6-luna }\ndatasets: [{ task_names: [one] }]\n");
-    const resolveHosted = (path: string, extra: string[], env: Record<string, string> = {}) => resolveTerminalBenchConfig([...authArgs, "--config", path, "--hosted", ...extra], { cwd: root, env });
+    const resolveHosted = (path: string, extra: string[], env: { readonly [name: string]: string } = {}) => resolveTerminalBenchConfig([...authArgs, "--config", path, "--hosted", ...extra], { cwd: root, env });
     expect((await resolveHosted(armProfile, [], { FLYWHEEL_TB_AGENT_REPO: "owner/agent" })).hosted).toEqual({ agentRepository: "owner/agent" });
     expect((await resolveHosted(armProfile, ["--agent-repo", "owner/agent", "--organization", "org"])).hosted).toEqual({ agentRepository: "owner/agent", organization: "org" });
     await expect(resolveHosted(armProfile, [])).rejects.toThrow("--agent-repo");

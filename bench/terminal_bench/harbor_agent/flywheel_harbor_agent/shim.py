@@ -2,24 +2,37 @@
 
 Harbor's ACP runner starts this console script in the task sandbox and speaks
 Agent Client Protocol on its stdin and stdout. Those two streams belong to the
-protocol, so this shim writes its own progress to stderr only and hands both
-streams unchanged to the Flywheel child.
+protocol, so this shim writes its own progress to stderr only. The Flywheel
+child reads stdin directly; its stdout passes through the shim unchanged,
+line by line, so the shim sees when the child answers the prompt.
 
 In order, the shim:
 
 1. moves the auth snapshot out of the `FLYWHEEL_AUTH_SNAPSHOT` environment
    variable into a private one-use stage file;
-2. installs the package's Flywheel config, the pinned Bun release, and the
-   package's runtime archive, each checked against its recorded SHA-256;
-3. runs Flywheel in the task workspace and forwards SIGTERM to it;
-4. exports the trial's settled event store into the agent logs only when the
-   store holds no credential bytes of the snapshot, and writes the run summary
-   that finalization reads.
+2. installs the package's Flywheel config, the pinned Bun release, the
+   package's runtime archive, and its trial store analysis, each checked
+   against its recorded SHA-256;
+3. runs Flywheel in the task workspace, relays its output, and forwards
+   SIGTERM to it;
+4. analyzes the trial's settled event store in a private directory and writes
+   only that content-free analysis into the agent logs, then the run summary
+   that finalization reads. The store itself never enters the logs, because
+   Harbor scrubs secrets only in text files.
 
-Harbor's runner closes stdin when the prompt turn settles, sends SIGTERM two
-seconds later, and SIGKILL two seconds after that. The export of step 4 runs
-in its own process under a deadline inside that window, so the run summary is
-always written before SIGKILL.
+Harbor's runner closes stdin when the prompt is answered, sends SIGTERM two
+seconds later, and SIGKILL two seconds after that. Flywheel answers the prompt
+only when its headless channel settles, so a SIGTERM is a stop of the trial
+only when the child had not answered the prompt when it came: Flywheel's
+teardown after a settled turn can outlast the two seconds. The export of step
+4 runs in its own process group under a deadline inside that window, so the
+run summary is always written before SIGKILL.
+
+The snapshot stays readable in `/proc/<shim pid>/environ` for the whole run,
+also to a process of the same user that the agent starts: removing it from
+`os.environ` does not change the environment block the kernel recorded at
+exec. The shim receives the job secret as an environment variable, so the
+boundary of the snapshot is the trial sandbox and the lifetime of its tokens.
 """
 
 import hashlib
@@ -28,9 +41,9 @@ import json
 import math
 import os
 import platform
+import secrets
 import shutil
 import signal
-import sqlite3
 import subprocess
 import sys
 import tarfile
@@ -47,7 +60,6 @@ from .trial_runtime import (
     AdapterSettlement,
     DeadlineAuthority,
     EvidencePublication,
-    _copy_descriptor,
     _export_settled_sqlite,
     _write_run_summary,
 )
@@ -57,18 +69,18 @@ PROFILE_SHA256_ENV = "FLYWHEEL_TB_PROFILE_SHA256"
 LOGS_DIR = Path("/logs/agent")
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent
 BUILD_RECORD = "BUILD.json"
-# The snapshot fields that hold secret bytes, for API keys and OAuth tokens.
-_SECRET_FIELDS = frozenset({"key", "access", "refresh"})
-# Shorter strings carry no credential and would match unrelated store bytes.
-_MIN_SECRET_LENGTH = 8
+# The agent-log file that holds the trial store analysis; the host analyzer
+# reads it under this name (TRIAL_STORE_ANALYSIS_NAME).
+ANALYSIS_NAME = "flywheel-store-analysis.json"
 _BASE_PATH = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-# Harbor sends SIGKILL two seconds after SIGTERM; the child gets most of that.
-_CHILD_TERM_GRACE_SECONDS = 1.0
+# Harbor sends SIGKILL two seconds after SIGTERM. The child gets this much of
+# that window: the store holds every committed fact whatever ends the child.
+_CHILD_TERM_GRACE_SECONDS = 0.5
 # The evidence export ends this long after the child exits, or this long after
 # the first SIGTERM, whichever is earlier, so the run summary lands before
 # SIGKILL. The SIGTERM bound counts the child's term grace.
 _EXPORT_BUDGET_SECONDS = 2.5
-_EXPORT_AFTER_SIGTERM_SECONDS = 1.5
+_EXPORT_AFTER_SIGTERM_SECONDS = 1.6
 _EXPORT_COMMAND = "export-evidence"
 
 
@@ -91,24 +103,22 @@ def _sha256_file(path: Path) -> str:
 def read_build_record(package_root: Path) -> dict:
     """Read the package's build record and check every file it names by digest."""
     record = json.loads((package_root / BUILD_RECORD).read_text())
-    for entry in (record["runtime_archive"], record["flywheel_config"]):
+    for entry in (record["runtime_archive"], record["flywheel_config"], record["store_analyzer"]):
         if _sha256_file(package_root / entry["path"]) != entry["sha256"]:
             raise RuntimeError(f"package file does not match its build record: {entry['path']}")
     return record
 
 
-def take_snapshot(environ: dict) -> tuple[Path, str, frozenset[str]]:
+def take_snapshot(environ: dict) -> tuple[Path, str]:
     """Move the snapshot from `environ` into a private stage file.
 
-    Returns the stage file, the snapshot's profile id, and the secret strings
-    the snapshot holds. The variable leaves `environ` before anything else
-    reads it, so no child process inherits it.
+    Returns the stage file and the snapshot's profile id. The variable leaves
+    `environ` before anything else reads it, so no child process inherits it.
     """
     content = environ.pop(SNAPSHOT_ENV, None)
     if not content:
         raise RuntimeError(f"{SNAPSHOT_ENV} is unset or empty")
-    snapshot = json.loads(content)
-    profile = snapshot.get("profile")
+    profile = json.loads(content).get("profile")
     if not isinstance(profile, str) or not profile:
         raise RuntimeError("auth snapshot names no profile")
     stage = Path(tempfile.mkdtemp(prefix="flywheel-auth-bundle-"))
@@ -116,19 +126,7 @@ def take_snapshot(environ: dict) -> tuple[Path, str, frozenset[str]]:
     descriptor = os.open(stage_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
     with os.fdopen(descriptor, "w") as output:
         output.write(content)
-    return stage_file, profile, frozenset(_secret_strings(snapshot.get("credentials")))
-
-
-def _secret_strings(value: object):
-    if isinstance(value, dict):
-        for key, item in value.items():
-            if key in _SECRET_FIELDS and isinstance(item, str) and len(item) >= _MIN_SECRET_LENGTH:
-                yield item
-            else:
-                yield from _secret_strings(item)
-    elif isinstance(value, list):
-        for item in value:
-            yield from _secret_strings(item)
+    return stage_file, profile
 
 
 def _install_bun(work: Path) -> Path:
@@ -161,6 +159,14 @@ def _install_runtime(work: Path, archive: Path, bin_dir: Path) -> Path:
         env={"PATH": f"{bin_dir}:{_BASE_PATH}", "HOME": str(install_home)},
     )
     return runtime
+
+
+def _install_store_analyzer(runtime: Path, package_root: Path, entry: dict) -> Path:
+    """Place the packaged trial store analysis at its repository path in the runtime, where its imports resolve."""
+    analyzer = runtime / entry["source_path"]
+    analyzer.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(package_root / entry["path"], analyzer)
+    return analyzer
 
 
 def _install_home(work: Path, config: Path, profile: str) -> Path:
@@ -202,62 +208,69 @@ def child_environment(environ: dict, home: Path, bin_dir: Path, project_root: Pa
     return environment
 
 
-def store_holds_secret(path: Path, secrets_: frozenset[str]) -> bool:
-    """Whether a SQLite file holds any of `secrets_`, in its raw bytes or in any stored value.
+def prompt_answer(line: bytes) -> bool | None:
+    """Whether one ACP line from the child answers a request as a settled turn.
 
-    The value scan finds a secret that SQLite split across overflow pages,
-    which the byte scan cannot see whole.
+    A prompt result settles the turn unless its stop reason is `cancelled`,
+    which Flywheel answers only after a `session/cancel`. An error response
+    also ends the request it answers. Returns None for a line that answers
+    nothing, such as a session update.
     """
-    raw = path.read_bytes()
-    encoded = [secret.encode() for secret in secrets_]
-    if any(secret in raw for secret in encoded):
-        return True
-    connection = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
     try:
-        tables = [row[0] for row in connection.execute("select name from sqlite_master where type = 'table'")]
-        for table in tables:
-            quoted = table.replace('"', '""')
-            for row in connection.execute(f'select * from "{quoted}"'):
-                for value in row:
-                    if isinstance(value, str) and any(secret in value for secret in secrets_):
-                        return True
-                    if isinstance(value, bytes) and any(secret in value for secret in encoded):
-                        return True
-    finally:
-        connection.close()
-    return False
+        message = json.loads(line)
+    except ValueError:
+        return None
+    if not isinstance(message, dict) or "id" not in message or "method" in message:
+        return None
+    if "error" in message:
+        return True
+    result = message.get("result")
+    if isinstance(result, dict) and "stopReason" in result:
+        return result["stopReason"] != "cancelled"
+    return None
 
 
-def export_evidence(project_root: Path, logs_dir: Path, secrets_: frozenset[str]) -> tuple[EvidencePublication | None, str | None]:
-    """Export the settled store into `<logs_dir>/state/.flywheel/flywheel.sqlite`.
+def _relay_output(source, answered: list[bool]) -> None:
+    """Copy the child's stdout to this process's stdout and keep the last answer in `answered[0]`.
 
-    The store is captured, compacted, and scanned in a private directory, so
-    bytes that hold a credential never enter the logs that Harbor uploads.
-    Returns the publication, or None and the reason the store stays out.
+    The answer is noted before its line goes out, so it is current before
+    Harbor can read the line and send SIGTERM.
+    """
+    for line in iter(source.readline, b""):
+        answer = prompt_answer(line)
+        if answer is not None:
+            answered[0] = answer
+        view = memoryview(line)
+        while view:
+            view = view[os.write(1, view):]
+
+
+def export_evidence(project_root: Path, logs_dir: Path, bun: Path, analyzer: Path) -> tuple[EvidencePublication | None, str | None]:
+    """Analyze the settled store and write only the analysis to `<logs_dir>/flywheel-store-analysis.json`.
+
+    The store is captured into a private directory and analyzed there by the
+    packaged trial store analysis, whose output holds counts, booleans, ids,
+    and the store's digest, never content. Returns the identity of the
+    analyzed store bytes, or None and the reason no analysis was recorded.
     """
     private = Path(tempfile.mkdtemp(prefix="flywheel-evidence-"))
     try:
-        _export_settled_sqlite(project_root, private)
-        compacted = private / "compacted.sqlite"
-        connection = sqlite3.connect(private / ".flywheel" / "flywheel.sqlite")
-        try:
-            # VACUUM INTO writes only live pages, so freed pages that once held
-            # credential bytes are not published.
-            connection.execute("vacuum into ?", (str(compacted),))
-        finally:
-            connection.close()
-        if store_holds_secret(compacted, secrets_):
-            return None, "credential_bytes"
-        destination = logs_dir / "state" / ".flywheel"
-        destination.mkdir(mode=0o700, parents=True)
-        (logs_dir / "state").chmod(0o700)
-        published = destination / "flywheel.sqlite"
-        descriptor = os.open(compacted, os.O_RDONLY)
-        try:
-            digest = _copy_descriptor(descriptor, published)
-        finally:
-            os.close(descriptor)
-        return EvidencePublication(digest, published.stat().st_size), None
+        publication = _export_settled_sqlite(project_root, private)
+        # The analysis's diagnostics stay out of the logs: an error message can quote store content.
+        analysis = subprocess.run(
+            [str(bun), str(analyzer), str(private / ".flywheel" / "flywheel.sqlite")],
+            cwd=private, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            env={"PATH": _BASE_PATH, "HOME": str(private)},
+        )
+        if analysis.returncode != 0:
+            return None, f"analysis_failed:exit_{analysis.returncode}"
+        row = json.loads(analysis.stdout)
+        if row.get("store") != {"sha256": publication.sha256, "size": publication.size}:
+            return None, "analysis_identity_mismatch"
+        temporary = logs_dir / f".{ANALYSIS_NAME}.{secrets.token_hex(8)}"
+        temporary.write_text(json.dumps(row, sort_keys=True) + "\n")
+        os.replace(temporary, logs_dir / ANALYSIS_NAME)
+        return publication, None
     finally:
         shutil.rmtree(private, ignore_errors=True)
 
@@ -266,23 +279,27 @@ def _export_command() -> list[str]:
     return [sys.executable, "-m", "flywheel_harbor_agent.shim", _EXPORT_COMMAND]
 
 
-def _bounded_export(project_root: Path, logs_dir: Path, secrets_: frozenset[str], deadline) -> tuple[EvidencePublication | None, str | None]:
-    """Run `export_evidence` in its own process and kill it at `deadline()`.
+def _remove_analysis(logs_dir: Path) -> None:
+    for path in (logs_dir / ANALYSIS_NAME, *logs_dir.glob(f".{ANALYSIS_NAME}.*")):
+        path.unlink(missing_ok=True)
+
+
+def _bounded_export(project_root: Path, logs_dir: Path, bun: Path, analyzer: Path, deadline) -> tuple[EvidencePublication | None, str | None]:
+    """Run `export_evidence` in its own process group and kill the group at `deadline()`.
 
     `deadline` returns a monotonic time and can move earlier while the export
-    runs. A killed export leaves no store in the logs, so the summary records
-    the store as withheld. The secrets reach the export on its stdin, never in
-    its argv or environment.
+    runs. A killed export leaves no analysis in the logs, so the summary
+    records the evidence as withheld.
     """
-    request = json.dumps({"project_root": str(project_root), "logs_dir": str(logs_dir), "secrets": sorted(secrets_)}).encode()
+    request = json.dumps({"project_root": str(project_root), "logs_dir": str(logs_dir), "bun": str(bun), "analyzer": str(analyzer)}).encode()
     # `-m` puts its cwd first on sys.path, which is how the export imports this package.
-    export = subprocess.Popen(_export_command(), cwd=PACKAGE_ROOT, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    export = subprocess.Popen(_export_command(), cwd=PACKAGE_ROOT, stdin=subprocess.PIPE, stdout=subprocess.PIPE, start_new_session=True)
     while True:
         remaining = deadline() - time.monotonic()
         if remaining <= 0:
-            export.kill()
+            os.killpg(export.pid, signal.SIGKILL)
             export.wait()
-            shutil.rmtree(logs_dir / "state", ignore_errors=True)
+            _remove_analysis(logs_dir)
             return None, "export_deadline"
         try:
             # A retried communicate keeps its input and output; the short wait lets a SIGTERM move the deadline.
@@ -291,7 +308,7 @@ def _bounded_export(project_root: Path, logs_dir: Path, secrets_: frozenset[str]
         except subprocess.TimeoutExpired:
             request = None
     if export.returncode != 0:
-        shutil.rmtree(logs_dir / "state", ignore_errors=True)
+        _remove_analysis(logs_dir)
         return None, f"export_failed:exit_{export.returncode}"
     result = json.loads(stdout)
     if "withheld" in result:
@@ -315,16 +332,18 @@ def run(environ: dict, project_root: Path, logs_dir: Path = LOGS_DIR, package_ro
     """Run one hosted trial in the task workspace `project_root` and return the exit status of the Flywheel child."""
     profile_sha256 = environ.get(PROFILE_SHA256_ENV)
     child: subprocess.Popen | None = None
-    cancelled = False
+    # The child's last answer, and whether the first SIGTERM came before a settled one.
+    answered = [False]
+    stopped = False
     exporting = False
     sigterm_deadline = math.inf
 
     def on_sigterm(_signum, _frame) -> None:
-        nonlocal cancelled, sigterm_deadline
+        nonlocal stopped, sigterm_deadline
         sigterm_deadline = min(sigterm_deadline, time.monotonic() + _EXPORT_AFTER_SIGTERM_SECONDS)
         if exporting:
             return
-        cancelled = True
+        stopped = stopped or not answered[0]
         if child is None:
             raise _Cancelled
         if child.poll() is None:
@@ -335,23 +354,27 @@ def run(environ: dict, project_root: Path, logs_dir: Path = LOGS_DIR, package_ro
 
     signal.signal(signal.SIGTERM, on_sigterm)
     stage_file: Path | None = None
-    secrets_: frozenset[str] = frozenset()
     work = Path(tempfile.mkdtemp(prefix="flywheel-runtime-"))
     archive_sha256: str | None = None
+    bin_dir: Path | None = None
+    analyzer: Path | None = None
     status = 1
     try:
-        stage_file, profile, secrets_ = take_snapshot(environ)
+        stage_file, profile = take_snapshot(environ)
         record = read_build_record(package_root)
         archive_sha256 = record["runtime_archive"]["sha256"]
         _log(f"build {record['build_id']} source {record['flywheel_source']['commit']}")
         bin_dir = _install_bun(work)
         runtime = _install_runtime(work, package_root / record["runtime_archive"]["path"], bin_dir)
+        analyzer = _install_store_analyzer(runtime, package_root, record["store_analyzer"])
         home = _install_home(work, package_root / record["flywheel_config"]["path"], profile)
         child = subprocess.Popen(
             _child_command(bin_dir, runtime, profile, stage_file),
             cwd=project_root,
             env=child_environment(environ, home, bin_dir, project_root, archive_sha256),
+            stdout=subprocess.PIPE,
         )
+        threading.Thread(target=_relay_output, args=(child.stdout, answered), daemon=True).start()
         status = _exit_status(child.wait())
     except _Cancelled:
         status = 143
@@ -362,12 +385,12 @@ def run(environ: dict, project_root: Path, logs_dir: Path = LOGS_DIR, package_ro
         if stage_file is not None:
             shutil.rmtree(stage_file.parent, ignore_errors=True)
         publication, withheld = None, None
-        if child is not None:
+        if child is not None and bin_dir is not None and analyzer is not None:
             try:
-                publication, withheld = _bounded_export(project_root, logs_dir, secrets_, lambda: min(export_ends, sigterm_deadline))
+                publication, withheld = _bounded_export(project_root, logs_dir, bin_dir / "bun", analyzer, lambda: min(export_ends, sigterm_deadline))
             except Exception as error:
                 withheld = f"export_failed:{type(error).__name__}"
-        settlement = AdapterSettlement("harbor-cancellation", True) if cancelled else AdapterSettlement("normal", False)
+        settlement = AdapterSettlement("harbor-cancellation", True) if stopped else AdapterSettlement("normal", False)
         _write_run_summary(
             logs_dir,
             settlement,
@@ -384,7 +407,7 @@ def run(environ: dict, project_root: Path, logs_dir: Path = LOGS_DIR, package_ro
 
 def _export_main() -> None:
     request = json.load(sys.stdin)
-    publication, withheld = export_evidence(Path(request["project_root"]), Path(request["logs_dir"]), frozenset(request["secrets"]))
+    publication, withheld = export_evidence(Path(request["project_root"]), Path(request["logs_dir"]), Path(request["bun"]), Path(request["analyzer"]))
     print(json.dumps({"withheld": withheld} if publication is None else {"sha256": publication.sha256, "size": publication.size}))
 
 

@@ -158,9 +158,12 @@ export function createBashDefinition(options?: {
   /** A read-only persona admits recognized writes only in its scratchpad
    * or to device sinks, and refuses `mutates: true`. */
   readOnly?: boolean;
-  /** False when the person turned the shell write guard off: a writing
-   *  agent's command is refused for no write target. True by default. */
+  /** Whether the description states the write roots of the shell write
+   *  guard. True by default. */
   writeGuard?: boolean;
+  /** Reads the guard when a command is checked: false means that a writing
+   *  agent's command is refused for no write target. `writeGuard` by default. */
+  enforcedWriteGuard?: () => Promise<boolean>;
   /** False in a headless runtime: the schema offers no `mutates` field, so
    *  dispatch refuses one and every command runs in place. True by default. */
   mutatingDeclaration?: boolean;
@@ -178,6 +181,7 @@ export function createBashDefinition(options?: {
   const requireManagedExecution = options?.requireManagedExecution ?? false;
   const readOnly = options?.readOnly === true;
   const writeGuard = options?.writeGuard ?? true;
+  const enforcedWriteGuard = options?.enforcedWriteGuard ?? (async () => writeGuard);
   const mutatingDeclaration = options?.mutatingDeclaration ?? true;
 
   const toolEnvironment = createToolEnvironmentFactory({
@@ -330,7 +334,7 @@ export function createBashDefinition(options?: {
     },
     async executionPolicy(input, context) {
       const shell = bashShellCommand(input, context.executionCwd);
-      return shell ? (await interceptBashCommand(shell.command, shellPolicyOptions(context, shell.cwd, platform, readOnly, writeGuard)))?.message : undefined;
+      return shell ? (await interceptBashCommand(shell.command, shellPolicyOptions(context, shell.cwd, platform, readOnly, await enforcedWriteGuard())))?.message : undefined;
     },
   });
 }

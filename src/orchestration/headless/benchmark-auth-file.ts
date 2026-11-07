@@ -356,6 +356,7 @@ export async function writeHeadlessAuthSnapshot(options: { readonly userDataRoot
     }
   } catch (error) {
     if (error instanceof SnapshotRefusal) throw error
+    // oxlint-disable-next-line preserve-caught-error -- boundary: the CLI prints every cause of its error, and a key helper's or a credential decoder's failure can quote a secret.
     throw new Error("Headless auth snapshot export failed")
   }
   const absent = options.providerIds?.find((providerId) => captured.store[providerId] === undefined)

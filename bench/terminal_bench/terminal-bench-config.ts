@@ -62,7 +62,7 @@ export interface ResolvedTerminalBenchConfig {
 
 /** The Flywheel config a trial installs as its `flywheel.toml`, validated on
  *  the host. It is the one source of the chat model and effort of its run. */
-export interface TerminalBenchFlywheelConfig {
+interface TerminalBenchFlywheelConfig {
   /** The path as the profile names it, relative to the repository root. */
   path: string;
   absolutePath: string;
@@ -76,7 +76,7 @@ export interface TerminalBenchFlywheelConfig {
 
 /** Where a hosted run publishes its agent package and which Hub organization
  *  owns the job. The repository has no default: each run names it. */
-export interface TerminalBenchHosting {
+interface TerminalBenchHosting {
   agentRepository: string;
   /** The Hub organization that owns the job; without one, the job is the signed-in user's own. */
   organization?: string;

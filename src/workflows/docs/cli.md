@@ -7,9 +7,9 @@ This file is generated from the command definitions. Run `bun run docs:generate`
 ```text
 flywheel [options]
 flywheel <subcommand> [args]
-flywheel --headless [--session <id>] [--one-shot] [--disable-tool <name>]...
-flywheel --headless --acp [--disable-tool <name>]...
-flywheel --headless --task <text> [--system-prompt <text>] [--model <id>] [--effort <level>] [--disable-tool <name>]...
+flywheel --headless [--session <id>] [--one-shot] [--disable-tool <name>]... [--auth-profile <profile>] [--auth-snapshot <absolute-path>] [--jsonl]
+flywheel --headless --acp [--disable-tool <name>]... [--auth-profile <profile>] [--auth-snapshot <absolute-path>]
+flywheel --headless --task <text> [--system-prompt <text>] [--model <id|tier>] [--effort <level>] [--disable-tool <name>]... [--auth-profile <profile>] [--auth-snapshot <absolute-path>] [--deadline-seconds <seconds>] [--jsonl]
 ```
 
 Running flywheel with no arguments starts the interactive TUI. An explicit --project-root or FLYWHEEL_PROJECT_ROOT wins, then an established ancestor .flywheel directory. Otherwise, an interactive terminal chooses between the nearest Git root and starting directory before project services start. Once .flywheel is created, later launches discover and reuse that project root. Silent and headless invocations use the same explicit and established precedence, then silently use the nearest Git root or current directory. The account home is a project only when --project-root names it. A terminal paired with another machine also offers that machine's projects when it asks. Account-global settings live in ~/.flywheel/flywheel.toml.
@@ -23,7 +23,7 @@ Running flywheel with no arguments starts the interactive TUI. An explicit --pro
 | `--project-root <dir>` | Directory that owns durable project state. Overrides FLYWHEEL_PROJECT_ROOT, established .flywheel discovery, and interactive or silent fallback selection. |
 | `--remote` | Choose a project on a machine this terminal is paired with, and open it through the relay. Pair a machine with 'flywheel remote machines add `<link>`'. |
 | `--print-logs` | Mirror structured logs to stderr. While the TUI draws on the terminal, only a redirected stderr gets them. |
-| `--headless` | Run without the TUI for CI/automation: `flywheel --headless [--session <id>] [--one-shot] [--disable-tool <name>]...` (JSONL Chat) or `flywheel --headless --acp [--disable-tool <name>]...` (Agent Client Protocol v1 Chat) or `flywheel --headless --task <text> [--system-prompt <text>] [--model <id>] [--effort <level>] [--disable-tool <name>]...` |
+| `--headless` | Run without the TUI for CI/automation: `flywheel --headless [--session <id>] [--one-shot] [--disable-tool <name>]... [--auth-profile <profile>] [--auth-snapshot <absolute-path>] [--jsonl]` (JSONL Chat) or `flywheel --headless --acp [--disable-tool <name>]... [--auth-profile <profile>] [--auth-snapshot <absolute-path>]` (Agent Client Protocol v1 Chat) or `flywheel --headless --task <text> [--system-prompt <text>] [--model <id\|tier>] [--effort <level>] [--disable-tool <name>]... [--auth-profile <profile>] [--auth-snapshot <absolute-path>] [--deadline-seconds <seconds>] [--jsonl]` (Direct Task) |
 | `--task <text>` | Run one direct headless task through the shared production runner. |
 | `--deadline-seconds <n>` | Positive finite deadline in seconds for --task. |
 | `--system-prompt <text>` | Replace the full direct-task system prompt. The override is recorded in session request-audit history and is not secret input. |

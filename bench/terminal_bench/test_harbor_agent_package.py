@@ -16,6 +16,7 @@ HERMETIC_GIT_ENVIRONMENT = {"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTE
 CONFIG = b'allow_persistent_processes = true\nshell_write_guard = false\n'
 CONFIG_PATH = "bench/terminal_bench/configs/arm.toml"
 ARCHIVE = b"runtime archive bytes"
+ANALYZER = b"// store analysis\n"
 
 
 def _git(repository: Path, *arguments: str) -> str:
@@ -30,6 +31,7 @@ def _repository(root: Path) -> tuple[Path, str]:
         f"{package.SHIM_SOURCE}/uv.lock": b"version = 1\n",
         f"{package.SHIM_SOURCE}/flywheel_harbor_agent/shim.py": b"committed shim\n",
         CONFIG_PATH: CONFIG,
+        package.STORE_ANALYZER_SOURCE: ANALYZER,
     }
     for path, payload in files.items():
         (repository / path).parent.mkdir(parents=True, exist_ok=True)
@@ -64,11 +66,13 @@ class BuildPackageTest(unittest.TestCase):
         (self.repository / package.SHIM_SOURCE / "flywheel_harbor_agent" / "untracked.py").write_text("untracked\n")
         output, record = self._build("first")
         files = sorted(path.relative_to(output).as_posix() for path in output.rglob("*") if path.is_file())
-        self.assertEqual(files, ["BUILD.json", "flywheel.toml", "flywheel_harbor_agent/shim.py", "harbor-agent.json", "pyproject.toml", "runtime/source-archive.tar.gz", "uv.lock"])
+        self.assertEqual(files, ["BUILD.json", "flywheel.toml", "flywheel_harbor_agent/shim.py", "harbor-agent.json", "pyproject.toml", "runtime/source-archive.tar.gz", "store-analysis/trial-store-analysis.ts", "uv.lock"])
         self.assertEqual((output / "flywheel_harbor_agent" / "shim.py").read_text(), "committed shim\n")
         self.assertEqual(record["flywheel_source"], {"commit": self.commit, "version": "9.8.7", "release_tag": None})
         self.assertEqual(record["runtime_archive"], {"path": "runtime/source-archive.tar.gz", "sha256": hashlib.sha256(ARCHIVE).hexdigest()})
         self.assertEqual(record["flywheel_config"]["sha256"], hashlib.sha256(CONFIG).hexdigest())
+        self.assertEqual(record["store_analyzer"], {"path": package.STORE_ANALYZER_PATH, "source_path": package.STORE_ANALYZER_SOURCE, "sha256": hashlib.sha256(ANALYZER).hexdigest()})
+        self.assertEqual((output / package.STORE_ANALYZER_PATH).read_bytes(), ANALYZER)
         self.assertEqual(json.loads((output / "BUILD.json").read_text()), record)
         manifest = json.loads((output / "harbor-agent.json").read_text())
         self.assertEqual(manifest["version"], f"9.8.7+{record['build_id']}")
@@ -82,9 +86,9 @@ class BuildPackageTest(unittest.TestCase):
 
     def test_limits_refuse_symlinks_and_oversized_packages(self) -> None:
         output, _ = self._build("limits")
-        self.assertEqual(package.check_package_limits(output, 7, 10_000)["files"], 7)
+        self.assertEqual(package.check_package_limits(output, 8, 10_000)["files"], 8)
         with self.assertRaisesRegex(RuntimeError, "exceeds"):
-            package.check_package_limits(output, 6, 10_000)
+            package.check_package_limits(output, 7, 10_000)
         (output / "link").symlink_to(output / "uv.lock")
         with self.assertRaisesRegex(RuntimeError, "symlink"):
             package.check_package_limits(output, 100, 10_000)

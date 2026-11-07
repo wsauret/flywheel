@@ -4,7 +4,7 @@ import { readAppVersion } from "../../infra/app-version.js"
 import { errorMessage } from "../../infra/error-message.js"
 import {
   ACP_PROTOCOL_VERSION, AcpCancelParamsSchema, AcpInboundSchema, AcpInitializeParamsSchema, AcpNewSessionParamsSchema, AcpPromptParamsSchema,
-  JSON_RPC_ERROR, acpBlockUpdates, acpError, acpPromptUsage, acpResult, acpUpdate, acpUsageUpdate,
+  JSON_RPC_ERROR, acpBlockUpdates, acpError, acpPromptUsage, acpResult, acpToolOpen, acpUpdate, acpUsageUpdate,
   type AcpStreamed, type JsonRpcId,
 } from "../../protocol/acp.js"
 import type { FrontendEvent, FrontendMutation, FrontendOutputBlock, RuntimeEventFrame } from "../../protocol/app-service-types.js"
@@ -49,6 +49,8 @@ function openAcpSession(channel: HeadlessChatChannel, version: string, execution
   let prompting = false
   let cancelled = false
   let question: PendingQuestionView | undefined
+  // The last error notice the running prompt streamed: why its turn failed.
+  let notice: string | undefined
 
   const send = (lines: () => Promise<readonly string[]> | readonly string[]): void => {
     streaming = streaming.then(async () => { for (const line of await lines()) await channel.write(line) })
@@ -60,20 +62,31 @@ function openAcpSession(channel: HeadlessChatChannel, version: string, execution
     seen.add(identity)
     const next = acpBlockUpdates(block, streamed.get(identity))
     if (next.streamed !== undefined) streamed.set(identity, next.streamed)
+    if (block.kind === "system" && next.updates.length > 0) notice = block.message
     return next.updates.map((update) => acpUpdate(sessionId, update))
   })
 
-  /** The blocks before `blocks` that no window or delta brought, oldest first. */
-  const skippedBefore = async (blocks: readonly FrontendOutputBlock[], hasBefore: boolean): Promise<FrontendOutputBlock[]> => {
-    const pages: FrontendOutputBlock[][] = []
-    let first = blocks[0]
-    let more = hasBefore
-    while (first !== undefined && more && !seen.has(blockIdentity(first))) {
+  /** The current blocks before `read` that a gap can have changed, oldest
+   *  first: back to the last streamed block, whose final characters can be
+   *  lost, and back to every tool call still streamed as running, whose
+   *  result can be lost. Resident blocks outside a read are not evidence: a
+   *  merged read keeps the versions the lost deltas left behind. Blocks
+   *  already streamed in full stream nothing again. */
+  const skippedBefore = async (read: readonly FrontendOutputBlock[]): Promise<FrontendOutputBlock[]> => {
+    const pages: (readonly FrontendOutputBlock[])[] = []
+    const open = new Set([...streamed].flatMap(([identity, sent]) => acpToolOpen(sent) ? [identity] : []))
+    const reach = (page: readonly FrontendOutputBlock[]) => {
+      for (const block of page) open.delete(blockIdentity(block))
+      return page.some((block) => seen.has(blockIdentity(block)))
+    }
+    let first = read[0]
+    let more = true
+    let bounded = reach(read)
+    while (first !== undefined && more && (!bounded || open.size > 0)) {
       const page = await channel.client.query({ type: "outputRange", sessionId, request: { anchor: { kind: "beforeBlock", blockId: blockIdentity(first) }, ...GAP_PAGE } })
       if (page.kind !== "ok") break
-      const lastSeen = page.blocks.findLastIndex((block) => seen.has(blockIdentity(block)))
-      pages.unshift(page.blocks.slice(lastSeen + 1))
-      if (lastSeen !== -1) break
+      pages.unshift(page.blocks)
+      bounded = reach(page.blocks) || bounded
       first = page.blocks[0]
       more = page.window.hasBefore
     }
@@ -106,10 +119,8 @@ function openAcpSession(channel: HeadlessChatChannel, version: string, execution
         const blocks = change.replaced.map(({ next }) => next)
         send(() => updatesFor(blocks))
       } else if (change.kind === "window") {
-        send(async () => {
-          const { blocks, hasBefore } = store.view
-          return updatesFor([...await skippedBefore(blocks, hasBefore), ...blocks])
-        })
+        const { adopted } = change
+        send(async () => updatesFor([...await skippedBefore(adopted), ...adopted]))
       }
     })
     return store
@@ -147,12 +158,12 @@ function openAcpSession(channel: HeadlessChatChannel, version: string, execution
       : undefined
     prompting = false
     if (outcome === "failed" || outcome === "incomplete" && !cancelled) {
-      lines.push(acpError(id, JSON_RPC_ERROR.internal, "The turn ended before it completed"))
+      lines.push(acpError(id, JSON_RPC_ERROR.internal, notice ?? "The turn ended before it completed"))
     } else {
       // Usage stats come from the Usage module; without it the response
       // carries no token counts.
       const stats = await channel.client.query({ type: "usage.stats", sessionId }).catch(() => undefined)
-      lines.push(acpResult(id, { stopReason: cancelled ? "cancelled" : "end_turn", ...(stats ? { usage: acpPromptUsage(stats) } : {}) }))
+      lines.push(acpResult(id, { stopReason: cancelled ? "cancelled" : "end_turn", ...(stats ? { usage: acpPromptUsage(stats.totals.tokens) } : {}) }))
     }
     send(() => lines)
     await streaming
@@ -162,6 +173,7 @@ function openAcpSession(channel: HeadlessChatChannel, version: string, execution
     const command: FrontendMutation = question
       ? { type: "question.answer", sessionId, toolUseId: question.toolUseId, answers: Object.fromEntries(question.questions.map((entry) => [entry.question, { kind: "freeform" as const, text }])) }
       : { type: "session.send", sessionId, input: text }
+    notice = undefined
     const result = await channel.client.dispatch(command)
     if (!result.ok) return { lines: [acpError(id, JSON_RPC_ERROR.internal, result.error)], submitted: false }
     prompting = true

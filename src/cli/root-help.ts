@@ -4,6 +4,7 @@
 
 import type { CliVerbSummary } from "../orchestration/cli-contribution.js"
 import type { FirstPartyModule } from "../orchestration/modules.js"
+import { HEADLESS_FORMS } from "./headless-args.js"
 import { SUBCOMMANDS } from "./subcommands.js"
 
 const ROOT_SYNOPSIS = [
@@ -40,11 +41,7 @@ const ROOT_OPTIONS: readonly RootOption[] = [
   {
     flags: "--headless",
     description: "Run without the TUI for CI/automation:",
-    forms: [
-      { syntax: "flywheel --headless [--session <id>] [--one-shot] [--disable-tool <name>]...", note: "JSONL Chat" },
-      { syntax: "flywheel --headless --acp [--disable-tool <name>]...", note: "Agent Client Protocol v1 Chat" },
-      { syntax: "flywheel --headless --task <text> [--system-prompt <text>] [--model <id>] [--effort <level>] [--disable-tool <name>]..." },
-    ],
+    forms: HEADLESS_FORMS,
   },
   { flags: "--task <text>", description: "Run one direct headless task through the shared production runner." },
   { flags: "--deadline-seconds <n>", description: "Positive finite deadline in seconds for --task." },

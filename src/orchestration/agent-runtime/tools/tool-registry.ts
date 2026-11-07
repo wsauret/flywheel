@@ -261,6 +261,7 @@ export function deriveChildRuntimeSurfaces(
     ...(parent.commandHandover ? { commandHandover: parent.commandHandover } : {}),
     ...(parent.persistentProcesses ? { persistentProcesses: parent.persistentProcesses } : {}),
     ...(parent.allowPersistentProcesses ? { allowPersistentProcesses: parent.allowPersistentProcesses } : {}),
+    ...(parent.enforcedShellWriteGuard ? { enforcedShellWriteGuard: parent.enforcedShellWriteGuard } : {}),
     ...(parent.foregroundBashHold ? { foregroundBashHold: parent.foregroundBashHold } : {}),
     ...(parent.streamingEditValidation ? { streamingEditValidation: parent.streamingEditValidation } : {}),
     ...(parent.headless ? { headless: true } : {}),

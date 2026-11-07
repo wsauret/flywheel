@@ -28,7 +28,8 @@ const bash = {
         // Claude host fixes them at launch (ARCH-CONTEXT-018). The persona flags
         // only decide which advertised inputs execution refuses. Of the surface
         // flags, `headless` is fixed for the whole runtime, and the tree
-        // captures the write guard once for all its agents (`SharedTreeCapture`).
+        // captures the described write guard once for all its agents
+        // (`SharedTreeCapture`); execution enforces the current one.
         return {
           tool: createBashDefinition({
             totalYieldMs: holdMs(kernel),
@@ -40,6 +41,7 @@ const bash = {
             fileEditTool: kernel.fileEditContract ?? "edit",
             readOnly: kernel.readOnly === true,
             writeGuard: kernel.shellWriteGuard,
+            ...(kernel.enforcedShellWriteGuard ? { enforcedWriteGuard: kernel.enforcedShellWriteGuard } : {}),
             mutatingDeclaration: kernel.headless !== true,
           }),
         }

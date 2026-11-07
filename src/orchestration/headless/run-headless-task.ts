@@ -11,7 +11,7 @@ import type { BridgedPersistentProcessClient } from "../../infra/persistent-proc
 import { createKeyResolver, createOwnedCredentialCommandRunner } from "../../infra/auth/resolve-key.js"
 import { resolveConversationSearchDbFile, resolveSessionDir } from "../../infra/paths.js"
 import { acquireConversationSearchIndex } from "../../infra/conversation-fts.js"
-import { AuthProfileManager } from "../auth/auth-profile-manager.js"
+import type { AuthProfileManager } from "../auth/auth-profile-manager.js"
 import { prepareWorkflowDeps } from "../workflow-host/deps.js"
 import { createSessionFactWriter, type SessionFactWriter } from "../session/session-fact-writer.js"
 import { reconcileWorkspacePendingFileMutations } from "../session/file-mutation-recovery.js"
@@ -37,6 +37,7 @@ import { createHeadlessDeadline, type HeadlessDeadlineExpired } from "./headless
 import { createHeadlessUsageAuthorityOwner, type HeadlessUsageAuthorityOwner } from "./headless-usage-authority.js"
 
 import { captureRuntimeConfigRequest } from "../agent-runtime/request-config.js"
+import { shellWriteGuardObserver } from "../config/shell-write-guard-policy.js"
 import { createHeadlessProfileRuntime, resolveHeadlessAuth } from "./headless-profile-runtime.js"
 import { accessProviderRegistry } from "../agent-runtime/llm/access-provider-registry.js"
 import { personaRoleIds } from "../../workflows/definition-registry.js"
@@ -182,13 +183,7 @@ export async function runHeadlessTask(task: string, options: RunHeadlessTaskOpti
       const oneShotConfig = runtimeConfig.snapshot().config
       const definitionRevision = definitions.captureRevision()
       const effectivePersonaRoleIds = personaRoleIds(definitionRevision.personas)
-      const authProfiles = new AuthProfileManager({
-        userDataRoot,
-        projectRoot,
-        config: () => oneShotConfig,
-        ...(options.authProfile ? { env: { FLYWHEEL_AUTH_PROFILE: options.authProfile } } : {}),
-      })
-      const resolved = await deadline.awaitSetup(resolveHeadlessAuth(authProfiles, options.authSnapshot, accessProviderRegistry(moduleSelection()).selection.definitions))
+      const resolved = await deadline.awaitSetup(resolveHeadlessAuth({ userDataRoot, projectRoot, config: () => oneShotConfig }, { ...(options.authProfile ? { profile: options.authProfile } : {}), ...(options.authSnapshot === undefined ? {} : { snapshotPath: options.authSnapshot }) }, accessProviderRegistry(moduleSelection()).selection.definitions))
       authProfile = resolved.profile
       const snapshot = resolved.snapshot
       const capturedProfileId = snapshot?.profileId ?? authProfile.id
@@ -214,6 +209,7 @@ export async function runHeadlessTask(task: string, options: RunHeadlessTaskOpti
           resolveKey,
           persistentProcesses: options.persistentProcesses,
           allowPersistentProcesses: () => requestConfig.allowPersistentProcesses,
+          enforcedShellWriteGuard: shellWriteGuardObserver(runtimeConfig),
           capabilities: capabilityPolicy.policy,
           headless: true,
           ...(snapshot ? { overrides: { connection: snapshot.connection } } : {}),

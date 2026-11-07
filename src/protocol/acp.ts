@@ -2,7 +2,6 @@ import { Schema } from "effect"
 import type { FrontendOutputBlock, FrontendToolEntry } from "./app-service-types.js"
 import type { BudgetView } from "./budget-protocol-types.js"
 import type { PendingQuestionView } from "./question-protocol-types.js"
-import type { UsageSessionStats } from "./modules/subscription-usage.js"
 
 /** Agent Client Protocol version 1 (https://agentclientprotocol.com) as
  *  headless chat speaks it: JSON-RPC 2.0 messages, one per line, on standard
@@ -59,7 +58,7 @@ const AcpSessionUpdateSchema = Schema.Union([
     rawInput: Schema.optionalKey(RawInputSchema), content: Schema.optionalKey(ToolCallContentSchema),
   }),
   Schema.Struct({
-    sessionUpdate: Schema.Literal("tool_call_update"), toolCallId: Schema.String, status: ToolCallStatusSchema,
+    sessionUpdate: Schema.Literal("tool_call_update"), toolCallId: Schema.String, status: ToolCallStatusSchema, title: Schema.optionalKey(Schema.String),
     rawInput: Schema.optionalKey(RawInputSchema), content: Schema.optionalKey(ToolCallContentSchema),
   }),
   Schema.Struct({
@@ -102,8 +101,18 @@ export const acpError = (id: JsonRpcId | null, code: number, message: string): s
 export const acpUpdate = (sessionId: string, update: AcpSessionUpdate): string => line({ jsonrpc: "2.0", method: "session/update", params: { sessionId, update } })
 
 /** What a session already streamed of one transcript block: the characters of
- *  a text or thinking block, the status of a tool call, or a question. */
-export type AcpStreamed = number | FrontendToolEntry["status"] | "asked"
+ *  a text or thinking block, the status and title of a tool call, or that a
+ *  question or an error notice was sent. */
+export type AcpStreamed = number | AcpStreamedTool | "sent"
+
+interface AcpStreamedTool {
+  readonly status: FrontendToolEntry["status"]
+  readonly title: string
+}
+
+/** A tool call whose client was last streamed a status before its result. */
+export const acpToolOpen = (streamed: AcpStreamed | undefined): boolean =>
+  typeof streamed === "object" && (streamed.status === "streaming" || streamed.status === "pending")
 
 /** The updates that stream one block, and what the client then holds of it. */
 interface AcpBlockStream {
@@ -114,9 +123,9 @@ interface AcpBlockStream {
 /** The updates that bring a client from what it was streamed of `block` to the
  *  block itself, and what it then holds. A text or thinking block streams the
  *  characters it gained; a tool call streams once when it appears and again
- *  when its status changes; an open question streams its text once. Other
- *  blocks, such as the person's own messages and runtime notices, stream
- *  nothing. */
+ *  when its status or title changes; an open question and an error notice
+ *  stream their text once, as the agent's message. Other blocks, such as the
+ *  person's own messages and informational notices, stream nothing. */
 export function acpBlockUpdates(block: FrontendOutputBlock, streamed: AcpStreamed | undefined): AcpBlockStream {
   if (block.kind === "text" || block.kind === "thinking") {
     const from = typeof streamed === "number" ? streamed : 0
@@ -126,20 +135,26 @@ export function acpBlockUpdates(block: FrontendOutputBlock, streamed: AcpStreame
   }
   if (block.kind === "question") {
     if (streamed !== undefined || block.answers !== undefined || block.cancelled) return { updates: [], streamed }
-    return { updates: [{ sessionUpdate: "agent_message_chunk", content: { type: "text", text: questionText(block) } }], streamed: "asked" }
+    return { updates: [{ sessionUpdate: "agent_message_chunk", content: { type: "text", text: questionText(block) } }], streamed: "sent" }
   }
-  if (block.kind !== "tool" || block.status === streamed) return { updates: [], streamed }
-  const status = toolCallStatus(block.status)
+  if (block.kind === "system") {
+    if (streamed !== undefined || block.level !== "error") return { updates: [], streamed }
+    return { updates: [{ sessionUpdate: "agent_message_chunk", content: { type: "text", text: block.message } }], streamed: "sent" }
+  }
+  if (block.kind !== "tool") return { updates: [], streamed }
+  const title = `${block.presentation.name} ${block.presentation.detail}`.trim()
+  const sent = typeof streamed === "object" ? streamed : undefined
+  if (sent?.status === block.status && sent.title === title) return { updates: [], streamed }
   const content = toolResultText(block)
   const fields = {
-    toolCallId: block.id, status,
+    toolCallId: block.id, status: toolCallStatus(block.status),
     rawInput: { tool: block.name, ...(block.invocationBody ? { input: block.invocationBody.content } : {}) },
     ...(content ? { content: [{ type: "content" as const, content: { type: "text" as const, text: content } }] } : {}),
   }
-  const update: AcpSessionUpdate = streamed === undefined
-    ? { sessionUpdate: "tool_call", title: `${block.presentation.name} ${block.presentation.detail}`.trim(), kind: toolKind(block), ...fields }
-    : { sessionUpdate: "tool_call_update", ...fields }
-  return { updates: [update], streamed: block.status }
+  const update: AcpSessionUpdate = sent === undefined
+    ? { sessionUpdate: "tool_call", title, kind: toolKind(block), ...fields }
+    : { sessionUpdate: "tool_call_update", ...fields, ...(sent.title === title ? {} : { title }) }
+  return { updates: [update], streamed: { status: block.status, title } }
 }
 
 /** A pending question streams as the agent's message, which the caller
@@ -169,10 +184,19 @@ export function acpUsageUpdate(budget: BudgetView): AcpSessionUpdate | undefined
   }
 }
 
-/** The session's cumulative tokens, its own and its children's. Input counts
- *  every prompt token, cached or not; the cached ones are also stated apart. */
-export function acpPromptUsage(stats: UsageSessionStats): AcpUsage {
-  const tokens = stats.totals.tokens
+/** Token counts as the Usage module states them. */
+interface AcpTokenCounts {
+  readonly total: number
+  readonly input: number
+  readonly output: number
+  readonly reasoning: number
+  readonly cacheRead: number
+  readonly cacheWrite: number
+}
+
+/** The prompt usage of cumulative token counts. Input counts every prompt
+ *  token, cached or not; the cached ones are also stated apart. */
+export function acpPromptUsage(tokens: AcpTokenCounts): AcpUsage {
   return {
     totalTokens: tokens.total,
     inputTokens: tokens.input + tokens.cacheRead + tokens.cacheWrite,

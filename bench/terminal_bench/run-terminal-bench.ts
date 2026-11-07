@@ -6,7 +6,7 @@ import { reconcileDisclosureLedger, type DisclosureLedger } from "./disclosure-l
 import { analyzeToolOutcomes, TOOL_OUTCOME_ANALYZER_CONTRACT_VERSION, TOOL_OUTCOME_ANALYZER_RESULT_VERSION, type ToolOutcomeAnalysis } from "./analyze-tool-outcomes.js";
 import { resolveTerminalBenchConfig, terminalBenchDisplayModel, type JsonMap, type ResolvedTerminalBenchConfig } from "./terminal-bench-config.js";
 import { command, harborPython } from "./harbor-process.js";
-import { awaitHostedJob, defaultBuildAgentPackage, defaultPublishAgentPackage, defaultValidateHostedConfig, hostedJobConfig, launchedJobId, releaseTagFor, repositoryConfigPath, restrictDownloadedStores, SECRET_VALUE_LIMIT, SNAPSHOT_SECRET, snapshotCommand, worstCaseJobSeconds, type AgentPackageBuild, type AgentPackagePublication, type TaskTimeouts } from "./hosted-terminal-bench.js";
+import { awaitHostedJob, decodeTaskTimeouts, defaultBuildAgentPackage, defaultPublishAgentPackage, defaultValidateHostedConfig, hostedJobConfig, launchedJobId, releaseTagFor, repositoryConfigPath, SECRET_VALUE_LIMIT, SNAPSHOT_SECRET, snapshotCommand, worstCaseJobSeconds, type AgentPackageBuild, type AgentPackagePublication, type TaskTimeouts } from "./hosted-terminal-bench.js";
 
 const WHEELHOUSE_TARGET = "/opt/flywheel-verifier-wheelhouse";
 const CACHE_TARGET = "/opt/flywheel-download-cache";
@@ -147,7 +147,7 @@ async function defaultValidateConfig(path: string): Promise<void> {
 async function defaultResolveTasks(dataset: string, ref: string | undefined, taskNames: readonly string[]): Promise<Record<string, TaskTimeouts>> {
   const stdout = await command([harborPython(), "-I", resolve(import.meta.dir, "harbor_tasks.py"), dataset, ref ?? "", ...taskNames], process.cwd());
   const resolved = cloneMap(JSON.parse(stdout), "task resolution");
-  return cloneMap(resolved.tasks, "resolved tasks") as Record<string, TaskTimeouts>;
+  return decodeTaskTimeouts(resolved.tasks);
 }
 
 async function defaultVersionProbe(): Promise<string> {
@@ -541,7 +541,6 @@ async function runHostedTerminalBench(planPath: string): Promise<number> {
   try {
     await awaitHostedJob(jobId, plan.worst_case_seconds);
     await command(["harbor", "hub", "job", "download", jobId, "-o", plan.download_directory], REPOSITORY_ROOT);
-    await restrictDownloadedStores(plan.trials_directory);
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     harborExitCode = 1;

@@ -60,7 +60,7 @@ export interface HeadlessChatChannel {
 /** One attached framing: it turns delivered runtime frames and input lines
  *  into output lines. `request` answers a malformed line with its own error
  *  lines, and says whether the line submitted work. */
-export interface HeadlessChatCodec {
+interface HeadlessChatCodec {
   frame(frame: RuntimeEventFrame): readonly string[]
   request(line: string): Promise<{ readonly lines: readonly string[]; readonly submitted: boolean }>
 }

@@ -13,7 +13,7 @@ const KV_TIMEOUTS = { "terminal-bench/kv-store-grpc": { agent_timeout_sec: 900, 
 const PUBLICATION: AgentPackagePublication = { repository: "owner/agent", ref: "refs/heads/build/abcdef012345", commit: "d".repeat(40), branch: "build/abcdef012345", tag: null };
 
 function build(commit: string, releaseTag: string | null): AgentPackageBuild {
-  return { build_id: "abcdef012345", flywheel_source: { commit, version: "1.2.3", release_tag: releaseTag }, runtime_archive: { path: "runtime/source-archive.tar.gz", sha256: "e".repeat(64) }, flywheel_config: { path: "flywheel.toml", source_path: ARM_CONFIG, sha256: "f".repeat(64) } };
+  return { build_id: "abcdef012345", flywheel_source: { commit, version: "1.2.3", release_tag: releaseTag }, runtime_archive: { path: "runtime/source-archive.tar.gz", sha256: "e".repeat(64) }, flywheel_config: { path: "flywheel.toml", source_path: ARM_CONFIG, sha256: "f".repeat(64) }, store_analyzer: { path: "store-analysis/trial-store-analysis.ts", source_path: "bench/terminal_bench/trial-store-analysis.ts", sha256: "0".repeat(64) } };
 }
 
 describe("terminal bench hosted runs", () => {

@@ -1,8 +1,9 @@
 """Build and publish the Harbor ACP agent package of one Flywheel commit.
 
 A package holds only Git blobs of one exact commit: the shim project under
-bench/terminal_bench/harbor_agent/, the arm's Flywheel config, and the runtime
-archive that flywheel_agent.py builds from that commit. Uncommitted or
+bench/terminal_bench/harbor_agent/, the trial store analysis that the shim
+runs in the sandbox, the arm's Flywheel config, and the runtime archive that
+flywheel_agent.py builds from that commit. Uncommitted or
 untracked files never enter it, so a package never publishes work that is not
 in that commit. Every package gets a build id derived from its inputs, so the
 same inputs give the same package and the same published commit.
@@ -32,6 +33,10 @@ from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parent.parent.parent
 SHIM_SOURCE = "bench/terminal_bench/harbor_agent"
+# The shim places this file at the same path in the installed runtime, where
+# its imports of `src/` resolve.
+STORE_ANALYZER_SOURCE = "bench/terminal_bench/trial-store-analysis.ts"
+STORE_ANALYZER_PATH = "store-analysis/trial-store-analysis.ts"
 CONFIG_NAME = "flywheel.toml"
 ARCHIVE_PATH = "runtime/source-archive.tar.gz"
 BUILD_RECORD = "BUILD.json"
@@ -106,6 +111,10 @@ def build_package(
     if _sha256(config) != config_sha256:
         raise RuntimeError(f"the arm config {config_path} at commit {commit} differs from the validated config; commit it first")
     (output / CONFIG_NAME).write_bytes(config)
+    analyzer = _git(repository, "cat-file", "blob", f"{commit}:{STORE_ANALYZER_SOURCE}")
+    (output / STORE_ANALYZER_PATH).parent.mkdir()
+    (output / STORE_ANALYZER_PATH).write_bytes(analyzer)
+    analyzer_sha256 = _sha256(analyzer)
     archive = output / ARCHIVE_PATH
     archive.parent.mkdir()
     with tempfile.TemporaryDirectory(prefix="flywheel-package-archive-") as work:
@@ -114,7 +123,7 @@ def build_package(
     if _sha256(archive.read_bytes()) != archive_sha256:
         raise RuntimeError("runtime archive bytes do not match the digest its builder reported")
     flywheel_version = json.loads(_git(repository, "cat-file", "blob", f"{commit}:package.json"))["version"]
-    identity = {"commit": commit, "runtime_archive_sha256": archive_sha256, "flywheel_config_sha256": config_sha256, "shim_files": shim_files}
+    identity = {"commit": commit, "runtime_archive_sha256": archive_sha256, "flywheel_config_sha256": config_sha256, "store_analyzer_sha256": analyzer_sha256, "shim_files": shim_files}
     build_id = _sha256(json.dumps(identity, sort_keys=True).encode())[:12]
     record = {
         "schema_version": 1,
@@ -122,6 +131,7 @@ def build_package(
         "flywheel_source": {"commit": commit, "version": flywheel_version, "release_tag": release_tag},
         "runtime_archive": {"path": ARCHIVE_PATH, "sha256": archive_sha256},
         "flywheel_config": {"path": CONFIG_NAME, "source_path": config_path, "sha256": config_sha256},
+        "store_analyzer": {"path": STORE_ANALYZER_PATH, "source_path": STORE_ANALYZER_SOURCE, "sha256": analyzer_sha256},
         "shim_files": shim_files,
     }
     (output / BUILD_RECORD).write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")

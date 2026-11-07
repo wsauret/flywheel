@@ -10,6 +10,7 @@ import { chmod, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { analyzeToolOutcomes, TOOL_OUTCOME_ANALYZER_CONTRACT_VERSION } from "../../../bench/terminal_bench/analyze-tool-outcomes.js";
 import { finalizeTerminalBenchRun } from "../../../bench/terminal_bench/run-terminal-bench.js";
+import { analyzeTrialStore, TRIAL_STORE_ANALYSIS_NAME, type TrialStoreAnalysis } from "../../../bench/terminal_bench/trial-store-analysis.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 
 const temporaryDirectory = temporaryDirectories();
@@ -251,6 +252,24 @@ describe("terminal bench tool outcome analyzer", () => {
       expect(refused.ledger).toMatchObject({ reconciled: false, outcome: "trials_unverified" });
       expect(refused.manifest.state).toBe("refused");
     }
+  });
+
+  test("reads a hosted trial's recorded store analysis in place of its store, and refuses a store or an analysis of another version", async () => {
+    // A record of another version keeps the current shape, so only its version decides the refusal.
+    const hosted = async (record: (analysis: TrialStoreAnalysis) => Omit<TrialStoreAnalysis, "version"> & { version: number }) => {
+      const fixture = await evidence();
+      const agent = join(fixture.root, "trial", "agent");
+      const analysis = await analyzeTrialStore(join(agent, "state", ".flywheel", "flywheel.sqlite"));
+      await rm(join(agent, "state"), { recursive: true });
+      await writeFile(join(agent, TRIAL_STORE_ANALYSIS_NAME), JSON.stringify(record(analysis)));
+      return (await analyzeToolOutcomes(fixture.root, { ...manifest(), execution_mode: "hosted", source_archive_sha256: sourceDigest })).rows[0];
+    };
+    expect(await hosted((analysis) => analysis)).toMatchObject({ storeValid: true, requestAuditValid: true, commandObserved: true, failure: null });
+    expect(await hosted((analysis) => ({ ...analysis, version: 2 }))).toMatchObject({ storeValid: false, failure: "unreadable_store" });
+
+    // A hosted run never reads a store from the trial's logs.
+    const withStore = await evidence();
+    expect((await analyzeToolOutcomes(withStore.root, { ...manifest(), execution_mode: "hosted", source_archive_sha256: sourceDigest })).rows[0]).toMatchObject({ storeValid: false, failure: "unreadable_store" });
   });
 
   test("represents every missing expected trial and disables comparison", async () => {

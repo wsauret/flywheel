@@ -76,7 +76,10 @@ function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish
     publish({ cursor: { scope: "session", domain: "output", sessionId: "root" }, payload: { kind: "output.delta", delta: { visibleMessageCount: blocks.length, blocks: [{ kind: known === -1 ? "insert" : "upsert", index, blockId: blockIdentity(block), block }] } } })
   }
   /** Output whose live delta never reaches the client, as when its queue overflowed. */
-  const lose = (block: FrontendOutputBlock) => { blocks.push(block) }
+  const lose = (block: FrontendOutputBlock) => {
+    const known = blocks.findIndex((resident) => blockIdentity(resident) === blockIdentity(block))
+    blocks[known === -1 ? blocks.length : known] = block
+  }
   const turn = async (command: FrontendMutation) => {
     state = "busy"
     queueMicrotask(() => { onTurn({ command, publish, output, lose, settle, streamed }) })
@@ -159,6 +162,9 @@ describe("headless chat over ACP", () => {
       output({ kind: "text", id: "t1", content: "Hel", timestamp: 0 })
       await streamed("Hel")
       output({ kind: "text", id: "t1", content: "Hello", timestamp: 0 })
+      // The tool's input streams before its detail is known.
+      output({ kind: "tool", id: "call-1", name: "bash", action: "shell_exec", presentation: { name: "Bash", detail: "" }, status: "streaming", timestamp: 0 })
+      await streamed("pending")
       output({ kind: "tool", id: "call-1", name: "bash", action: "shell_exec", presentation: { name: "Bash", detail: "ls" }, status: "pending", timestamp: 0 })
       await streamed("in_progress")
       output({ kind: "tool", id: "call-1", name: "bash", action: "shell_exec", presentation: { name: "Bash", detail: "ls" }, status: "completed", content: "a.txt", timestamp: 0 })
@@ -184,11 +190,31 @@ describe("headless chat over ACP", () => {
       { type: "text", text: "Hel" }, { type: "text", text: "lo" }, { type: "text", text: "Done." },
     ])
     expect(updates.filter((update) => update.sessionUpdate === "tool_call" || update.sessionUpdate === "tool_call_update")).toEqual([
-      { sessionUpdate: "tool_call", toolCallId: "call-1", title: "Bash ls", kind: "execute", status: "in_progress", rawInput: { tool: "bash" } },
+      { sessionUpdate: "tool_call", toolCallId: "call-1", title: "Bash", kind: "execute", status: "pending", rawInput: { tool: "bash" } },
+      { sessionUpdate: "tool_call_update", toolCallId: "call-1", status: "in_progress", title: "Bash ls", rawInput: { tool: "bash" } },
       { sessionUpdate: "tool_call_update", toolCallId: "call-1", status: "completed", rawInput: { tool: "bash" }, content: [{ type: "content", content: { type: "text", text: "a.txt" } }] },
     ])
     const answered = fixture.messages.findIndex((message) => message.id === 2)
     expect(fixture.messages.slice(0, answered).at(-1)?.params?.update).toEqual({ sessionUpdate: "usage_update", used: 1000, size: 10_000, cost: { amount: 0.25, currency: "USD" } })
+  })
+
+  it("leaves the prompt unanswered after the model's last reply while work the chat owns is still busy", async () => {
+    const replied = Promise.withResolvers<() => Promise<void>>()
+    const fixture = acpFixture(async ({ output, settle, streamed }) => {
+      // The model ended its turn, but a background command still runs.
+      output({ kind: "text", id: "t1", content: "Started the server.", timestamp: 0 })
+      await streamed("Started the server.")
+      replied.resolve(() => settle("complete"))
+    })
+    await fixture.open()
+    fixture.send(prompt(2, "start a server"))
+    const finish = await replied.promise
+    await Bun.sleep(10)
+    expect(fixture.messages.some((message) => message.id === 2)).toBe(false)
+    await finish()
+    expect((await fixture.response(2)).result).toMatchObject({ stopReason: "end_turn" })
+    fixture.end()
+    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
   })
 
   it("answers a cancelled prompt with stopReason cancelled after it interrupts the turn", async () => {
@@ -208,6 +234,27 @@ describe("headless chat over ACP", () => {
     expect(fixture.updates()).toContainEqual({ sessionUpdate: "usage_update", used: 1000, size: 10_000 })
     fixture.end()
     expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "incomplete" })
+  })
+
+  it("answers a failed prompt with the turn's error notice, which it also streams as the agent's message", async () => {
+    let turns = 0
+    const fixture = acpFixture(async ({ output, settle }) => {
+      if (turns++ > 0) return settle("failed")
+      output({ kind: "system", id: "n1", level: "error", message: "The login expired", timestamp: 0 })
+      output({ kind: "system", id: "n2", level: "info", message: "Retrying", timestamp: 0 })
+      return settle("failed")
+    })
+    await fixture.open()
+    fixture.send(prompt(2, "work"))
+    expect((await fixture.response(2)).error).toEqual({ code: -32603, message: "The login expired" })
+    expect(fixture.updates().filter((update) => update.sessionUpdate === "agent_message_chunk")).toEqual([
+      { sessionUpdate: "agent_message_chunk", content: { type: "text", text: "The login expired" } },
+    ])
+    // A later turn that fails without a notice of its own states no earlier cause.
+    fixture.send(prompt(3, "again"))
+    expect((await fixture.response(3)).error?.message).toBe("The turn ended before it completed")
+    fixture.end()
+    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "failed" })
   })
 
   it("ends the prompt on an open question without answering it, and answers it with the next prompt", async () => {
@@ -232,9 +279,15 @@ describe("headless chat over ACP", () => {
 
   it("streams the output whose live deltas were lost, in order, once the turn settles", async () => {
     const text = (index: number): FrontendOutputBlock => ({ kind: "text", id: `t${index}`, content: `chunk-${index};`, timestamp: 0 })
+    const tool = (status: "pending" | "completed"): FrontendOutputBlock => ({ kind: "tool", id: "call-1", name: "bash", action: "shell_exec", presentation: { name: "Bash", detail: "ls" }, status, ...(status === "completed" ? { content: "a.txt" } : {}), timestamp: 0 })
     const fixture = acpFixture(async ({ output, lose, publish, settle, streamed }) => {
-      output(text(0))
-      await streamed("chunk-0;")
+      // A running tool and a partial text whose final versions are lost
+      // before the gap.
+      output(tool("pending"))
+      output({ kind: "text", id: "t0", content: "chunk", timestamp: 0 })
+      await streamed("chunk")
+      lose(tool("completed"))
+      lose(text(0))
       for (let index = 1; index <= 300; index += 1) lose(text(index))
       publish({ cursor: { scope: "workspace", domain: "runtime" }, payload: { kind: "runtime.invalidate", reason: "overflow" } })
       output(text(301))
@@ -244,7 +297,33 @@ describe("headless chat over ACP", () => {
     fixture.send(prompt(2, "write a lot"))
     expect((await fixture.response(2)).result).toMatchObject({ stopReason: "end_turn" })
     const chunks = fixture.updates().flatMap((update) => update.sessionUpdate === "agent_message_chunk" ? [update.content.text] : [])
-    expect(chunks).toEqual(Array.from({ length: 302 }, (_, index) => `chunk-${index};`))
+    expect(chunks).toEqual(["chunk", "-0;", ...Array.from({ length: 301 }, (_, index) => `chunk-${index + 1};`)])
+    expect(fixture.updates().filter((update) => update.sessionUpdate === "tool_call_update")).toEqual([
+      { sessionUpdate: "tool_call_update", toolCallId: "call-1", status: "completed", rawInput: { tool: "bash" }, content: [{ type: "content", content: { type: "text", text: "a.txt" } }] },
+    ])
+    fixture.end()
+    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+  })
+
+  it("streams the lost result of a running tool that the recovered window starts after", async () => {
+    const tool = (status: "pending" | "completed"): FrontendOutputBlock => ({ kind: "tool", id: "call-1", name: "bash", action: "shell_exec", presentation: { name: "Bash", detail: "ls" }, status, ...(status === "completed" ? { content: "a.txt" } : {}), timestamp: 0 })
+    const fixture = acpFixture(async ({ output, lose, publish, settle, streamed }) => {
+      output(tool("pending"))
+      // More streamed output than one window holds, so the recovered window
+      // starts at a block that already streamed.
+      for (let index = 0; index < 300; index += 1) output({ kind: "text", id: `t${index}`, content: `chunk-${index};`, timestamp: 0 })
+      await streamed("chunk-299;")
+      lose(tool("completed"))
+      publish({ cursor: { scope: "workspace", domain: "runtime" }, payload: { kind: "runtime.invalidate", reason: "overflow" } })
+      output({ kind: "text", id: "t300", content: "Done.", timestamp: 0 })
+      await settle("complete")
+    })
+    await fixture.open()
+    fixture.send(prompt(2, "run a tool"))
+    expect((await fixture.response(2)).result).toMatchObject({ stopReason: "end_turn" })
+    expect(fixture.updates().filter((update) => update.sessionUpdate === "tool_call_update")).toEqual([
+      { sessionUpdate: "tool_call_update", toolCallId: "call-1", status: "completed", rawInput: { tool: "bash" }, content: [{ type: "content", content: { type: "text", text: "a.txt" } }] },
+    ])
     fixture.end()
     expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
   })
