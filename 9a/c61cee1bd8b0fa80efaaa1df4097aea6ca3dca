@@ -1,0 +1,20 @@
+bench/terminal_bench/METHODOLOGY.md
+  h_4b47e9e4a8b456 102-123
+bench/terminal_bench/profiles/tb-mini-claude-14x1.yaml
+  h_4b47e9e4a8b456 1-4,15,19,22-24
+bench/terminal_bench/profiles/tb-mini-openai-14x1.yaml
+  h_4b47e9e4a8b456 1-4,15,19,22-24
+bench/terminal_bench/profiles/tb-mini-openai-5x.yaml
+  h_4b47e9e4a8b456 1-4,15,19,22-24,26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9ac61cee1bd8b0fa80efaaa1df4097aea6ca3dca",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
