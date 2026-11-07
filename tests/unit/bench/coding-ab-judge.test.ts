@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdir, readFile, readdir, rename, symlink, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, rmdir, symlink, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { judgeCodingCampaign } from "../../../bench/chat-ab/coding-ab-judge.js";
 import { codingLedger, type CodingCampaign, type CodingOutcomeRecord } from "../../../bench/chat-ab/coding-ab-store.js";
@@ -8,6 +8,7 @@ import { findCodingTask } from "../../../bench/chat-ab/coding-task.js";
 import type { ChatAbJudge } from "../../../bench/chat-ab/pair-judge.js";
 import { unavailableBenchmarkAccounting } from "../../../src/orchestration/modules/development/benchmark/evidence.js";
 import { JudgeCallFailure, type JudgeModel } from "../../../src/orchestration/modules/development/benchmark/judge.js";
+import { structuredIdentity } from "../../../src/orchestration/modules/development/benchmark/content-identity.js";
 import { temporaryDirectories } from "../../helpers/directories.js";
 
 const temporary = temporaryDirectories();
@@ -149,6 +150,8 @@ test("judges blinded changes in both orders with refutation and reuses only the 
   expect(calls).toBe(4);
   const rows = (await readFile(await judgeLedger(directory), "utf8")).trim().split("\n").map((line) => JSON.parse(line));
   expect(rows.filter((row) => row.kind === "pair").map((row) => row.authorityIncarnation)).toEqual(["judge-authority"]);
+  // Retained same-campaign ledgers are found under this key, so it stays the bare label pair.
+  expect(await judgeLedger(directory)).toBe(join(directory, `judge-${structuredIdentity(["before", "after"])}.jsonl`));
 });
 
 test.each(["changed", "no-model"] as const)("refuses %s treatment model evidence before judge admission", async (problem) => {
@@ -280,4 +283,81 @@ test("does not make another paid call when durable settlement storage fails", as
   expect(calls).toBe(1);
   const rows = (await readFile(`${path}.saved`, "utf8")).trim().split("\n").map((line) => JSON.parse(line));
   expect(rows.map((row) => row.kind)).toEqual(["pair", "call"]);
+  await rmdir(path);
+  await rename(`${path}.saved`, path);
+  const report = await judgeCodingCampaign({ ...options, dryRun: true }, { admit: async () => { throw new Error("Must not admit"); } });
+  expect(report.summary.usd).toBeNull();
+});
+
+test("pairs treatment a with a pinned baseline's treatment b by task and repeat, reading each side's own artifacts", async () => {
+  const campaign = await fixture(["before", "after"], 2);
+  const baseline = await fixture(["before", "after"], 2);
+  // The campaign's own copy of b is gone, so a judged pair proves b's artifacts come from the baseline directory.
+  await unlink(join(campaign.directory, "before-diff.txt"));
+  const options = { directory: campaign.directory, a: "after", baseline: baseline.directory, b: "before", authProfile: "Personal" };
+  const prompts: string[] = [];
+  const result = await judgeCodingCampaign(options, { admit: async () => admitted({ async complete(prompt, signal) {
+    prompts.push(prompt);
+    return tie.complete(prompt, signal);
+  } }) });
+  expect(result.pairs).toBe(1);
+  expect(result.skipped).toEqual([{ task: taskId, repeat: 1, reason: "both treatments need completed execution" }]);
+  expect(prompts[0]).toContain("const value = 1");
+  expect(prompts[0]).toContain("const value = 2");
+  const summary = { a: { campaign: campaign.directory, treatment: "after", wins: 0 }, b: { campaign: baseline.directory, treatment: "before", wins: 0 }, ties: 1, unjudged: 0, usd: 0.4 };
+  expect(result.summary).toEqual(summary);
+  const names = await readdir(campaign.directory);
+  const key = names.find((name) => name.startsWith("judge-"))!.slice("judge-".length, -".jsonl".length);
+  expect(key).not.toBe(structuredIdentity(["after", "before"]));
+  expect(JSON.parse(await readFile(join(campaign.directory, `summary-${key}.json`), "utf8"))).toEqual(summary);
+
+  const unchanged = await judgeCodingCampaign({ ...options, dryRun: true }, { admit: async () => { throw new Error("Must not admit"); } });
+  expect(unchanged.judged).toBe(1);
+  const ledgerPath = join(baseline.directory, "events.jsonl");
+  const rows = (await readFile(ledgerPath, "utf8")).trim().split("\n").map((line) => JSON.parse(line));
+  rows[1].at = "changed";
+  await writeFile(ledgerPath, rows.map((row) => JSON.stringify(row)).join("\n") + "\n");
+  const changed = await judgeCodingCampaign({ ...options, dryRun: true }, { admit: async () => { throw new Error("Must not admit"); } });
+  expect(changed.judged).toBe(0);
+  expect(changed.pending).toBe(1);
+});
+
+test.each([
+  ["model", "Baseline mismatch: after runs claude-opus-5.5 at high but baseline after runs gpt-6.1-sol at high"],
+  ["Claude Code binary", "Baseline mismatch: Claude Code 2.1.296 (aaaaaaaaaaaa) vs 2.1.300 (cccccccccccc)"],
+  ["task identity", `Baseline mismatch: task ${taskId} has another content or qualification identity in the baseline campaign`],
+  ["incomplete cell", `Baseline treatment after has no completed cell for ${taskId} repeat 0; resume the baseline campaign first`],
+] as const)("refuses a baseline with another %s before judge admission", async (problem, message) => {
+  const claudeCode = problem === "Claude Code binary" || problem === "incomplete cell" ? "claude-opus-5-5" : undefined;
+  const campaign = await fixture(["before", "after"], 2, "complete", claudeCode);
+  const baseline = await fixture(["before", "after"], 2, "complete", problem === "model" ? "gpt-6.1-sol" : claudeCode);
+  const manifestPath = join(baseline.directory, "campaign.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  if (problem === "Claude Code binary") Object.assign(manifest.treatments[1], { binaryVersion: "2.1.300", binarySha256: "c".repeat(64) });
+  if (problem === "task identity") manifest.tasks[0].contentIdentity = "b".repeat(64);
+  await writeFile(manifestPath, JSON.stringify(manifest));
+  if (problem === "incomplete cell") {
+    const ledgerPath = join(baseline.directory, "events.jsonl");
+    const rows = (await readFile(ledgerPath, "utf8")).trim().split("\n").filter((line) => !line.includes('"kind":"outcome","version":2,"attemptId":"after"'));
+    await writeFile(ledgerPath, rows.join("\n") + "\n");
+  }
+  await expect(judgeCodingCampaign({ directory: campaign.directory, a: "after", baseline: baseline.directory, b: "after", authProfile: "Personal" }, {
+    admit: async () => { throw new Error("Must not admit"); },
+  })).rejects.toThrow(message);
+});
+
+test("accepts a baseline whose treatments differ only in plugin, settings, binary path, or Flywheel revision", async () => {
+  const campaign = await fixture(["before", "after"], 2, "complete", "claude-opus-5-5");
+  const baseline = await fixture(["before", "after"], 2, "complete", "claude-opus-5-5");
+  const manifestPath = join(baseline.directory, "campaign.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  Object.assign(manifest.treatments[0], { revision: "other", sourceIdentity: "c".repeat(64) });
+  Object.assign(manifest.treatments[1], { plugin: { revision: "plugged", identity: "c".repeat(64) }, settingsIdentity: "c".repeat(64), binaryPath: "/scratch/other/claude" });
+  await writeFile(manifestPath, JSON.stringify(manifest));
+  for (const treatment of ["before", "after"]) {
+    const result = await judgeCodingCampaign({ directory: campaign.directory, a: treatment, baseline: baseline.directory, b: treatment, authProfile: "Personal", dryRun: true }, {
+      admit: async () => { throw new Error("Must not admit"); },
+    });
+    expect(result.pairs).toBe(1);
+  }
 });

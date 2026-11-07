@@ -4,7 +4,7 @@ import { codingFamily } from "./coding-family.js";
 import { runFamilyCommand } from "./family-command.js";
 
 if (import.meta.main) runFamilyCommand(process.argv.slice(2), {
-  usage: "coding-ab.ts", reservedEvaluation: true,
+  usage: "coding-ab.ts", reservedEvaluation: true, baselineJudge: true,
   family: () => codingFamily,
   report: renderCodingReport,
   async judge({ a, b, ...input }) {

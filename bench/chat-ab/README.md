@@ -20,7 +20,7 @@ Hidden acceptance tests and blinded judging measure quality separately from elap
 - Before the task, the adapter saves the Chat model and effort through `model.save_effort` and reads the public `sessionModelPlan`. The invocation fails when the plan does not report the requested profile, model, effort, and an available route.
 - After the subject exits, the adapter runs `flywheel events evidence --session <id>` from the same source. Requests, child sessions, and estimated and billed spend come only from that canonical evidence. Unavailable evidence stays unavailable; it is never zero.
 - When the only pending question of the root session is a workflow launch decision, the harness approves it and continues the session. It answers no other question.
-- The scheduler runs one cell at a time. It rotates the first treatment within each task and repeat. This reduces order bias; it does not remove provider load variation.
+- By default the scheduler runs one cell at a time. It rotates the first treatment within each task and repeat. This reduces order bias; it does not remove provider load variation. A coding campaign whose treatments are all Claude Code subjects can run several cells at once with `--concurrency <n>` ([Run and resume](#run-and-resume)), which trades that order-bias control for wall time.
 
 No cell has a cost ceiling.
 
@@ -108,6 +108,8 @@ bun run bench:coding resume bench/chat-ab/examples/coding-aa.json --results benc
 
 Resume validates the campaign before paid work and runs only the cells that have no completed outcome. [Cell settlement](#cell-settlement) states which outcomes retry.
 
+`--concurrency <n>` (on `plan`, `setup`, `run`, and `resume`; default 1) runs at most n cells at once, in schedule order. It is not part of campaign identity, so a resume can use another value. After the first failed cell, the runner starts no new cell, waits for the running cells to record their outcomes, and then stops as a serial run does. Each ledger record stays one whole line, because the campaign store writes one record at a time. Parallel cells give up the order-bias control of serial cells, and they share provider load. Only Claude Code treatments can run in parallel: every command refuses a value above 1 when any treatment is a Flywheel subject, because Flywheel cells share the treatment's `node_modules` cache and the operator's account store, and nothing shows that they are safe together.
+
 `--keep-sandboxes` keeps each task checkout in its cell's `workspace/` folder for investigation. A Flywheel cell's checkout holds about 2 GB with its installed packages, so use the flag only on a few cells: with it, the 176-cell parity campaign held 138 GB of checkouts by cell 62 and stopped when the disk filled. Without it, the runner captures the diff, the handoff, acceptance, and the run artifacts, and then removes the checkout. Source treatment worktrees remain under the campaign's `sources/` folder. Do not delete them manually while Git still registers them.
 
 Do not launch two writers against one results directory. Use different directories for independent campaigns.
@@ -136,6 +138,14 @@ Plan blinded judging before you spend judge quota:
 bun run bench:coding judge bench/chat-ab/results/coding-aa --a control --b candidate --auth-profile <profile> --dry-run
 bun run bench:coding judge bench/chat-ab/results/coding-aa --a control --b candidate --auth-profile <profile>
 ```
+
+To judge a treatment against a pinned baseline campaign, for example while you change a plugin, name the completed baseline campaign with `--baseline`. Treatment `--a` comes from the judged campaign, and treatment `--b` comes from the baseline:
+
+```bash
+bun run bench:coding judge bench/chat-ab/results/plugin-v2 --a claude-code-plugin --baseline bench/chat-ab/results/plain-cc --b claude-code --auth-profile <profile> --dry-run
+```
+
+Pairs match by task and repeat, over the tasks and repeats that both campaigns hold; the others are listed in `skipped`. Each side's artifacts resolve from its own results directory. The judge refuses, and names the mismatch, when a shared task has another content or qualification identity, when the two treatments' Chat models or efforts differ, when two Claude Code subjects have another binary version or hash, or when the baseline has no completed cell for a pair whose `--a` cell is complete. The plugin is the difference under test, so it is never compared, and neither is any other field of a treatment's record, such as a Flywheel subject's revision. The baseline's campaign identity and outcome records join each pair's identity, so a changed baseline judges its pairs again and an unchanged one does not. The ledger stays in the judged campaign, keyed apart from a same-campaign judge of the same labels. Without `--baseline`, judging, its pair identity, and its ledger key are unchanged.
 
 Judging compares final diffs and reports against the task request and reference fix. It uses both slot orders and a refutation pass. A verdict counts only for the artifacts and judge code that it judged. After either changes, for example after a judge fix, the old verdict stays in the ledger as history and the next judge run judges the pair again, so a finished campaign never needs a rerun to be judged. The judge refuses a changed judge account or usage authority before another model call. Candidate and judge accounting remain separate.
 
@@ -323,7 +333,7 @@ The grade of `chat-2026-10-13T20-07-40.044Z` is excluded: that campaign ran a ba
 
 ## Native reference
 
-Claude Code is a treatment of the same coding, Chat, and workflow-audit campaigns as Flywheel. It runs the real external `claude` executable from PATH, not Flywheel's bundled engine. The shared runner schedules both subjects serially and records their outcomes in `campaign.json` and `events.jsonl`.
+Claude Code is a treatment of the same coding, Chat, and workflow-audit campaigns as Flywheel. It runs the real external `claude` executable from PATH, not Flywheel's bundled engine. The shared runner schedules both subjects serially by default (a coding campaign of Claude Code treatments only can take `--concurrency`) and records their outcomes in `campaign.json` and `events.jsonl`.
 
 For a coding design JSON, keep a Flywheel source revision as one treatment and use `{ "subject": "claude-code" }` for the other. Optional `model` and `effort` fields override the design's defaults. `"ultracode": true` turns on Ultracode, Claude Code's standing opt-in to author and run a workflow for every substantive task, through the session's `--settings`; it is part of the treatment identity:
 
@@ -526,6 +536,7 @@ A coding, Chat, or workflow-audit results directory holds:
 - `cells/<treatment>-<task>-r<repeat>-<attempt>/workspace/`: the subject's side. It holds the task checkout while the cell runs, or after it with `--keep-sandboxes`, and the cell's temporary folder.
 - `cells/<treatment>-<task>-r<repeat>-<attempt>/artifacts/`: the harness side. `run-<n>/` holds `stdout.jsonl`, `stderr.txt`, `plan.json`, `evidence.json`, and the question evidence of each subject invocation. `handoff.json` and `diff.patch` hold the final report and the diff.
 - `judge-<pair-hash>.jsonl` (coding and workflow audit): each ordered comparison's calls and verdicts.
+- `summary-<pair-hash>.json` (coding and workflow audit): the latest judge run's slot results, beside the ledger of the same hash. Its shape is `{ "a": { "campaign": <dir>, "treatment": <id>, "wins": <n> }, "b": { "campaign": <dir>, "treatment": <id>, "wins": <n> }, "ties": <n>, "unjudged": <n>, "usd": <number or null> }`. `b.campaign` is the baseline directory of a baseline judge. `unjudged` counts pairs with no current verdict, and `usd` is the estimated spend of every recorded judge call, or null when any call's spend is unavailable. The judge also prints it as `summary`; a dry run prints it and writes nothing.
 - `score-<judge>/` and `compare-<baseline>-<judge>/` (Chat): judge ledgers and reports.
 
 Before you change this harness, run `bun run test -- tests/unit/bench` and `bun run lint:bench`. Check the documented no-spend commands again after you change source preparation, isolation, or subject arguments.

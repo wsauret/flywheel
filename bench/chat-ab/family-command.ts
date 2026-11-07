@@ -1,7 +1,7 @@
 // The command line that every campaign family shares:
-//   <command> plan|setup|run|resume <design.json> --results <dir>
+//   <command> plan|setup|run|resume <design.json> --results <dir> [--concurrency <n>]
 //   <command> report <results-dir>
-//   <command> judge <results-dir> --auth-profile <profile> [--a <id> --b <id>] [--dry-run]
+//   <command> judge <results-dir> --auth-profile <profile> [--a <id> --b <id>] [--baseline <results-dir>] [--dry-run]
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { requireAuthProfile } from "./campaign-args.js";
@@ -20,8 +20,11 @@ interface FamilyOptions {
   reservedEvaluation: boolean;
   keepSandboxes: boolean;
   dryRun: boolean;
+  concurrency?: number;
   a?: string;
   b?: string;
+  /** The completed campaign whose treatment b the judge pairs with treatment a of `input`. */
+  baseline?: string;
   authProfile?: string;
 }
 
@@ -29,6 +32,7 @@ interface FamilyJudgeInput {
   readonly directory: string;
   readonly a: string | undefined;
   readonly b: string | undefined;
+  readonly baseline?: string;
   readonly authProfile: string;
   readonly dryRun: boolean;
 }
@@ -42,11 +46,13 @@ export interface FamilyCommand<Task extends { readonly id: string }, Grade exten
   readonly judge: (input: FamilyJudgeInput) => Promise<Judgement>;
   /** Whether the family takes `--reserved-evaluation`. */
   readonly reservedEvaluation?: true;
+  /** Whether the family's judge takes `--baseline`. */
+  readonly baselineJudge?: true;
 }
 
 /** Parse one command line. Refuses an unknown action or flag, a flag without its value, and a campaign action that
  *  would write into the shared results root. */
-export function familyCommandOptions(argv: readonly string[], usage: string, reservedEvaluation = false): FamilyOptions {
+export function familyCommandOptions(argv: readonly string[], usage: string, accepts: { readonly reservedEvaluation?: boolean; readonly baseline?: boolean } = {}): FamilyOptions {
   const [requested, input, ...flags] = argv;
   const action = ACTIONS.find((value) => value === requested);
   if (!action || !input) throw new Error(`Usage: ${usage} plan|setup|run|resume <design.json> --results <dir>, or report|judge <results-dir>`);
@@ -59,11 +65,17 @@ export function familyCommandOptions(argv: readonly string[], usage: string, res
       return next;
     };
     if (flag === "--results") options.results = resolve(value());
-    else if (flag === "--reserved-evaluation" && reservedEvaluation) options.reservedEvaluation = true;
+    else if (flag === "--reserved-evaluation" && accepts.reservedEvaluation) options.reservedEvaluation = true;
     else if (flag === "--keep-sandboxes") options.keepSandboxes = true;
     else if (flag === "--dry-run") options.dryRun = true;
+    else if (flag === "--concurrency") {
+      const concurrency = Number(value());
+      if (!Number.isInteger(concurrency) || concurrency < 1) throw new Error("--concurrency must be a positive integer");
+      options.concurrency = concurrency;
+    }
     else if (flag === "--a") options.a = value();
     else if (flag === "--b") options.b = value();
+    else if (flag === "--baseline" && accepts.baseline) options.baseline = resolve(value());
     else if (flag === "--auth-profile") options.authProfile = value();
     else throw new Error(`Unknown option: ${flag}`);
   }
@@ -74,11 +86,11 @@ export function familyCommandOptions(argv: readonly string[], usage: string, res
 async function execute<Task extends { readonly id: string }, Grade extends object, Manifest extends CampaignManifest, Outcome extends CampaignOutcome, Judgement>(
   argv: readonly string[], command: FamilyCommand<Task, Grade, Manifest, Outcome, Judgement>,
 ): Promise<void> {
-  const options = familyCommandOptions(argv, command.usage, command.reservedEvaluation === true);
+  const options = familyCommandOptions(argv, command.usage, { reservedEvaluation: command.reservedEvaluation, baseline: command.baselineJudge });
   const { action, input } = options;
   if (action === "report") console.log(await command.report(input));
   else if (action === "judge") {
-    console.log(JSON.stringify(await command.judge({ directory: input, a: options.a, b: options.b, authProfile: requireAuthProfile(options.authProfile), dryRun: options.dryRun }), null, 2));
+    console.log(JSON.stringify(await command.judge({ directory: input, a: options.a, b: options.b, ...(options.baseline ? { baseline: options.baseline } : {}), authProfile: requireAuthProfile(options.authProfile), dryRun: options.dryRun }), null, 2));
   } else {
     const design = parseCodingDesign(JSON.parse(await readFile(input, "utf8")), options.authProfile);
     await runCampaign({ ...options, action }, async () => design, command.family(design));

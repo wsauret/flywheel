@@ -24,6 +24,32 @@ export interface CampaignRunOptions {
   reservedEvaluation: boolean;
   keepSandboxes: boolean;
   dryRun: boolean;
+  /** The most cells that run at once; absent runs one. An execution choice outside campaign identity, so a resume
+   *  may change it. Serial cells keep order-bias control; parallel cells trade it for wall time. */
+  concurrency?: number;
+}
+
+/** Run `work` over `items` in order with at most `concurrency` items at once. The first failure, or the first call of
+ *  `halt` by work that knows it failed before its cleanup ends, stops scheduling; work that already runs settles
+ *  before the first rejection is rethrown, so every started cell records its outcome. */
+export async function runBounded<Item>(items: readonly Item[], concurrency: number, work: (item: Item, halt: () => void) => Promise<void>): Promise<void> {
+  let next = 0;
+  let halted = false;
+  let failure: { readonly error: unknown } | undefined;
+  const halt = () => { halted = true; };
+  const worker = async () => {
+    while (!halted && next < items.length) {
+      const item = items[next++]!;
+      try {
+        await work(item, halt);
+      } catch (error) {
+        halted = true;
+        failure ??= { error };
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
+  if (failure) throw failure.error;
 }
 
 export interface CampaignDesign {
@@ -134,12 +160,18 @@ export async function runCampaign<Task extends { readonly id: string }, Grade ex
       const settings = { model: treatment.model ?? design.model, effort: treatment.effort ?? design.effort, authProfile: treatment.subject === "claude-code" ? design.authProfile : treatment.authProfile ?? design.authProfile, ...(roles ? { roles } : {}), ...(family.workflowsMode ? { workflowsMode: family.workflowsMode } : {}) };
       return { id, ...settings, subject: await resolveCampaignSubject(treatment, settings, run, family.treatmentIdentity?.(id)) };
     }));
+    const concurrency = input.concurrency ?? 1;
+    const serial = selections.find(({ subject }) => subject.kind !== "claude-code");
+    // Parallel Flywheel cells share the treatment's node_modules compile cache and the operator's account store, and
+    // nothing has shown them safe together; Claude Code cells share only the CLI's own locked login.
+    if (concurrency > 1 && serial) throw new Error(`--concurrency above 1 needs claude-code treatments only; ${serial.id} is a Flywheel subject`);
     const tasks = await family.loadTasks(design.tasks, input);
     const environmentIdentity = await family.environmentIdentity?.();
     if (input.action === "plan" || input.dryRun) {
       console.log(JSON.stringify({
         dryRun: true, name: design.name, ...(design.message ? { message: design.message } : {}), ...(design.challenge ? { challenge: true } : {}), model: design.model, effort: design.effort, operatorProfile: design.authProfile,
         executionProfile: design.authProfile, answers: "approve-root-workflow-launch", cells: selections.length * tasks.length * design.repeats,
+        ...(input.concurrency === undefined ? {} : { concurrency }),
         ...(family.workflowsMode ? { workflowsMode: family.workflowsMode, precondition: "Set Workflows On in account settings; every cell verifies it before task submission without changing it" } : {}),
         treatments: selections.map(({ id, subject, model, effort, authProfile, roles }) => ({ id, model, effort, authProfile: subject.kind === "claude-code" ? "Claude Code login" : authProfile, ...(roles ? { roles } : {}), ...subject.identity,
           ...(family.treatmentIdentity ? { family: family.treatmentIdentity(id) } : {}) })),
@@ -201,7 +233,7 @@ export async function runCampaign<Task extends { readonly id: string }, Grade ex
     const events = await store.load();
     const pending = family.ledger.pending(manifest, events);
     console.log(`[${family.kind}] ${pending.length} cells pending`);
-    for (const cell of pending) {
+    await runBounded(pending, concurrency, async (cell, halt) => {
       if (family.environmentIdentity && await family.environmentIdentity() !== environmentIdentity) throw new Error("Campaign skill catalog changed; refuse cell before model work");
       const treatment = prepared.get(cell.treatment)!;
       await treatment.validate();
@@ -244,11 +276,12 @@ export async function runCampaign<Task extends { readonly id: string }, Grade ex
           } } : {}),
         };
         outcome = campaignHeadlessOutcome(input.results, attempt, executions, invocation.approvals, captured, failed, questionArtifacts, family.settle);
+        if (outcome.status === "failed") halt();
         await store.append(family.ledger.decodeOutcome(manifest, outcome));
         if (sandbox && !input.keepSandboxes) await sandbox.dispose();
       }
       if (outcome.status === "failed") throw new Error(`Cell execution or capture failed; attempt retained in ${directory}. Resume after resolving the error.`);
-    }
+    });
     console.log(await family.report(input.results));
   } finally {
     await launcher.dispose();
