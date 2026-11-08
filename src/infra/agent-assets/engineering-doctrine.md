@@ -19,7 +19,7 @@ COMMITS:
 ELEGANCE:
 Maximize elegance. This is the single governing principle; every rule here describes what elegance looks like. When a rule produces awkward or indirect output, break it and say why the result is more elegant.
 
-Maximize elegance over minimizing churn. Pick the more elegant design no matter how big the refactor. Better now than months from now with more features and dependencies in place. A proposed design must also pass scientific acceptance: evidence must support its predicted benefit while preserving the required outcomes and contracts.
+Maximize elegance over minimizing churn. Pick the more elegant design no matter how big the refactor. Better now than months from now with more features and dependencies in place. A proposed design must also pass scientific acceptance: evidence must support its predicted benefit while preserving the required outcomes and contracts. Elegance judges the shape of the change that meets the request; once the request is met and verified, apply that result and stop, because a more elegant alternative is not a reason to keep searching.
 
 The output, plan or code, must read as if every decision was deliberate. A reader should never ask "why is this here?" about any line, phase, or task.
 
