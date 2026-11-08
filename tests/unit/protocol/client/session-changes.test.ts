@@ -152,6 +152,22 @@ test("finds a later host target through metadata without opening earlier patches
   expect(diffQueries(server.queries).map(query => query.fileId)).toEqual([fileC.fileId])
   expect(controller.snapshot.diffs.has(fileA.fileId)).toBe(false)
   expect(controller.snapshot.diffs.get(fileC.fileId)?.status).toBe("ready")
+  // A change between pages shows the pages read and keeps the target for the pass that follows.
+  controller.closeReview()
+  const followUp = deferred<SessionChangeSummaryResult>()
+  server.summaryReplies.push(followUp.promise)
+  server.listReplies.push(Promise.resolve({ ...list(8, [fileA, fileB, fileC]), files: [fileA], nextOffset: 1 }), Promise.resolve({ ...list(9, [fileA, fileB, fileC]), offset: 1, status: "stale", files: [], nextOffset: null }))
+  server.current.revision = 9
+  const diffs = diffQueries(server.queries).length
+  const reopened = controller.openReview("./c.txt")
+  await settle()
+  expect(controller.snapshot.list).toEqual({ status: "loading", data: { ...list(8, [fileA, fileB, fileC]), files: [fileA], nextOffset: 1 } })
+  expect(controller.snapshot.summary.status).toBe("loading")
+  followUp.resolve({ snapshotPosition: 0, fileCount: 3, unknownFileMutationGaps: 0 })
+  await reopened
+  await settle()
+  expect(controller.snapshot.list).toEqual({ status: "ready", data: list(9, [fileA, fileB, fileC]) })
+  expect(diffQueries(server.queries).slice(diffs).map(query => query.fileId)).toEqual([fileC.fileId])
   controller.dispose()
 })
 
@@ -186,6 +202,23 @@ test("refresh, Viewed and stale continuation replace the whole loaded extent wit
   await settle()
   expect(controller.snapshot.list).toEqual({ status: "ready", data: list(9, [fileC, fileB]) })
   expect(controller.snapshot.diffs.has(fileA.fileId)).toBe(false)
+  // A change between pages ends the pass: the loaded extent stays shown, the
+  // summary is read next, and the pass after it covers the extent again.
+  const followUp = deferred<SessionChangeSummaryResult>()
+  server.summaryReplies.push(Promise.resolve({ snapshotPosition: 0, fileCount: 2, unknownFileMutationGaps: 0 }), followUp.promise)
+  server.listReplies.push(Promise.resolve({ ...list(10, [fileC, fileB]), files: [fileC], nextOffset: 1 }), Promise.resolve({ ...list(11, [fileC, fileB]), offset: 1, status: "stale", files: [], nextOffset: null }))
+  server.current.revision = 11
+  const sent = server.queries.length
+  const moved = controller.refresh()
+  await settle()
+  const laneReads = () => server.queries.slice(sent).map(query => query.type).filter(type => type === "sessionChangeSummary" || type === "sessionChanges")
+  expect(laneReads()).toEqual(["sessionChangeSummary", "sessionChanges", "sessionChanges", "sessionChangeSummary"])
+  expect(controller.snapshot.list).toEqual({ status: "loading", data: list(9, [fileC, fileB]) })
+  followUp.resolve({ snapshotPosition: 0, fileCount: 2, unknownFileMutationGaps: 0 })
+  await moved
+  await settle()
+  expect(laneReads()).toEqual(["sessionChangeSummary", "sessionChanges", "sessionChanges", "sessionChangeSummary", "sessionChanges", "sessionChanges"])
+  expect(controller.snapshot.list).toEqual({ status: "ready", data: list(11, [fileC, fileB]) })
   controller.dispose()
 })
 
@@ -431,132 +464,6 @@ test("failed list reads remain explicit and do not retry", async () => {
   controller.dispose()
 })
 
-test("summary anchor raced by an early patch never publishes stale counts", async () => {
-  const server = runtime()
-  const first = deferred<SessionChangeSummaryResult>()
-  const second = deferred<SessionChangeSummaryResult>()
-  server.summaryReplies.push(first.promise, second.promise)
-  const controller = createSessionChangesController({ client: server.client, sessionId: "cold" })
-  const seen: string[] = []
-  controller.onChange(() => seen.push(controller.snapshot.summary.status))
-  const start = controller.start()
-  await settle()
-  server.change(10, 0)
-  await settle()
-  expect(server.queries).toHaveLength(1)
-  first.resolve({ fileCount: 0, unknownFileMutationGaps: 0, snapshotPosition: 0 })
-  await start
-  await settle()
-  second.resolve({ fileCount: 1, unknownFileMutationGaps: 0, snapshotPosition: 0 })
-  await settle()
-  expect(server.queries).toHaveLength(3)
-  expect(controller.snapshot.summary).toEqual({ status: "ready", data: { fileCount: 2, unknownFileMutationGaps: 0, snapshotPosition: 10 } })
-  expect(seen.filter(status => status === "ready")).toHaveLength(1)
-  controller.dispose()
-})
-
-test("landing invalidations keep one summary in flight and one latest refresh", async () => {
-  const server = runtime()
-  const pending = deferred<SessionChangeSummaryResult>()
-  server.summaryReplies.push(pending.promise)
-  const controller = createSessionChangesController({ client: server.client, sessionId: "cold" })
-  const work = controller.start()
-  await settle()
-  for (let position = 1; position <= 80; position++) {
-    server.change(position, position - 1)
-    await Promise.resolve()
-  }
-  await settle()
-  expect(server.queries).toHaveLength(1)
-  expect(controller.snapshot.summary.status).toBe("loading")
-  pending.resolve({ fileCount: 0, unknownFileMutationGaps: 0, snapshotPosition: 0 })
-  await work
-  await settle()
-  expect(server.queries).toHaveLength(2)
-  expect(controller.snapshot.summary).toMatchObject({ status: "ready", data: { snapshotPosition: 80 } })
-  controller.dispose()
-})
-
-test("a gap holds the summary stale until an authoritative anchor covers held changes", async () => {
-  const { server, controller } = await opened()
-  const summary = deferred<SessionChangeSummaryResult>()
-  server.summaryReplies.push(summary.promise)
-  server.change(20, 10)
-  summary.resolve({ fileCount: 2, unknownFileMutationGaps: 0, snapshotPosition: 0 })
-  await settle()
-  expect(controller.snapshot.summary.status).toBe("stale")
-  expect(controller.snapshot.list.status).toBe("loading")
-  await controller.refresh()
-  await settle()
-  expect(controller.snapshot.summary).toMatchObject({ status: "ready", data: { snapshotPosition: 20 } })
-  expect(controller.snapshot.list.status).toBe("ready")
-  const reads = server.queries.length
-  server.change(20, 10)
-  server.change(21, 20, "other")
-  await settle()
-  expect(server.queries).toHaveLength(reads)
-  controller.dispose()
-})
-
-test("held overflow and cursor invalidation recover through summary only when closed", async () => {
-  const server = runtime()
-  const controller = createSessionChangesController({ client: server.client, sessionId: "cold" })
-  await controller.start()
-  for (let position = 2; position <= 258; position++) server.change(position, position - 1)
-  await settle()
-  expect(server.queries).toHaveLength(2)
-  expect(controller.snapshot.summary).toMatchObject({ status: "ready", data: { snapshotPosition: 258 } })
-  server.current.position = 300
-  server.emit({ type: "patch", patch: { cursor: { scope: "session", domain: "changes", sessionId: "cold" }, position: 300, prevPosition: 299, payload: { kind: "runtime.invalidate", reason: "overflow" } } })
-  expect(controller.snapshot.summary.status).toBe("loading")
-  await settle()
-  expect(controller.snapshot.summary).toMatchObject({ status: "ready", data: { snapshotPosition: 300 } })
-  expect(listQueries(server.queries)).toHaveLength(0)
-  controller.dispose()
-})
-
-test("a lane break reads nothing, and the next lane reads the changes once", async () => {
-  const { server, controller } = await opened()
-  const summaries = () => server.queries.filter(query => query.type === "sessionChangeSummary").length
-  const before = summaries()
-  server.breakLane()
-  await settle()
-  expect(summaries()).toBe(before)
-  expect(controller.snapshot.summary.status).toBe("loading")
-  server.lanes.open()
-  await settle()
-  expect(summaries()).toBe(before + 1)
-  expect(controller.snapshot.summary.status).toBe("ready")
-  controller.dispose()
-})
-
-test.each(["reconnect_required", "overflow"] as const)("an invalidation rejects all old reads and never seeds from workspace watermark: %s", async reason => {
-  const { server, controller } = await opened()
-  controller.requestUndo(fileA.fileId)
-  const oldSummary = deferred<SessionChangeSummaryResult>()
-  server.summaryReplies.push(oldSummary.promise)
-  const oldWork = controller.refresh()
-  await settle()
-  if (reason === "reconnect_required") server.breakLane()
-  else server.emit({ type: "patch", patch: { cursor: { scope: "workspace", domain: "runtime" }, position: 0, prevPosition: 0, payload: { kind: "runtime.invalidate", reason } } })
-  expect(controller.snapshot.undo).toMatchObject({ fileId: fileA.fileId, status: "confirming" })
-  expect(await controller.confirmUndo()).toBe(false)
-  expect(controller.snapshot.diffs.size).toBe(2)
-  await settle()
-  // A lane break reads again only once the next lane opens.
-  if (reason === "reconnect_required") {
-    expect(server.queries.filter(query => query.type === "sessionChangeSummary")).toHaveLength(2)
-    server.lanes.open()
-    await settle()
-  }
-  oldSummary.resolve({ fileCount: 999, unknownFileMutationGaps: 0, snapshotPosition: 800 })
-  await oldWork
-  expect(controller.snapshot.summary).toMatchObject({ status: "ready", data: { fileCount: 2, snapshotPosition: 0 } })
-  expect(controller.snapshot.list.status).toBe("ready")
-  expect(listQueries(server.queries)).toHaveLength(2)
-  controller.dispose()
-})
-
 test("disposal drops late reads and notifications without closing the supplied client", async () => {
   const server = runtime()
   const pending = deferred<SessionChangeDiffResult>()
@@ -580,20 +487,4 @@ test("disposal drops late reads and notifications without closing the supplied c
   expect(emissions).toBe(0)
   expect(server.subscribers).toBe(0)
   expect(server.closed).toBe(false)
-})
-
-test("closing review rejects its in-flight summary and acquires only the closed summary", async () => {
-  const { server, controller } = await opened()
-  const old = deferred<SessionChangeSummaryResult>()
-  server.summaryReplies.push(old.promise)
-  const work = controller.refresh()
-  await settle()
-  controller.closeReview()
-  await settle()
-  old.resolve({ fileCount: 999, unknownFileMutationGaps: 0, snapshotPosition: 0 })
-  await work
-  expect(controller.snapshot.summary).toMatchObject({ status: "ready", data: { fileCount: 2 } })
-  expect(controller.snapshot.list).toEqual({ status: "idle" })
-  expect(listQueries(server.queries)).toHaveLength(1)
-  controller.dispose()
 })

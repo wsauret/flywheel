@@ -5,18 +5,21 @@ import { changesCursor, type FileEditToken, type SessionChangeDiffResult, type S
 import { cursorKey } from "../runtime-ui-protocol-types.js"
 import { lostWithLane } from "./connection-failures.js"
 import { createCursorIntake, isLaneBreak } from "./cursor-intake.js"
+import { createChangesRead } from "./session-changes-read.js"
 import { createMutationEvidenceReader, type MutationPatchHandle, type MutationPatchView } from "./mutation-evidence.js"
 import { sessionChangeNamesPath } from "./session-changes-copy.js"
 
 const DIFFS_IN_FLIGHT = 2
 
+/** `stale` is an answer that a change landed after: the read that covers the change follows. */
 export type ChangesSummaryState =
   | { readonly status: "idle" }
   | { readonly status: "loading" | "stale"; readonly data?: SessionChangeSummaryResult }
   | { readonly status: "ready" | "incomplete"; readonly data: SessionChangeSummaryResult }
   | { readonly status: "error"; readonly data?: SessionChangeSummaryResult; readonly error: string }
 
-/** `data` during loading or error is the previous list, for display only. */
+/** `data` during loading or error is the newest list answered that does not
+ *  shrink the shown one, for display only. */
 type ChangesListState =
   | { readonly status: "idle" }
   | { readonly status: "loading"; readonly data?: SessionChangesResult }
@@ -101,15 +104,11 @@ export function createSessionChangesController(options: {
   let disposed = false
   let unsubscribe: (() => void) | undefined
   let stopLanes: (() => void) | undefined
-  let generation = 0
   let listGeneration = 0
   // A settled Undo survives the refresh it triggers and leaves on the next invalidation.
   let invalidations = 0
   let keepUndoThroughInvalidation = -1
   let startWork = Promise.resolve()
-  let queuedRefresh: Promise<void> | undefined
-  let activeRefresh: Promise<void> | undefined
-  let changesPending = false
   let lastList: SessionChangesResult | undefined
   const diffTokens = new Map<string, FileEditToken>()
   const evidence = createMutationEvidenceReader({ connection: client, sessionId })
@@ -180,11 +179,12 @@ export function createSessionChangesController(options: {
     state = { ...state, undo: retainedUndo() }
   }
 
-  function invalidate(): void {
-    generation++
+  /** A change is known that the shown summary and list may not include. The
+   *  reads that are out continue: they answer from before it, and the read
+   *  that covers it follows them. */
+  function markChanged(): void {
     invalidations++
-    clearReview()
-    pageWork = undefined
+    state = { ...state, undo: retainedUndo() }
     for (const [fileId, diff] of state.diffs) if (diff.status === "error") diffTokens.delete(fileId)
     const summary = "data" in state.summary ? state.summary.data : undefined
     const list = "data" in state.list ? state.list.data : lastList
@@ -195,22 +195,21 @@ export function createSessionChangesController(options: {
     emit()
   }
 
-  const intake = createCursorIntake({
-    cursor,
-    onApply: refreshChanges,
-    onRecover: refreshChanges,
-  })
-
-  function refreshChanges(): void {
-    // Settlements arrive across tasks. Superseding each unfinished read fills
-    // the runtime channel before any summary can catch up.
-    if (!activeRefresh) { void refresh(); return }
-    invalidate()
-    changesPending = true
+  /** What the lane covered is void: every list, diff, and page read that is out answers for nothing. */
+  function supersede(): void {
+    clearReview()
+    pageWork = undefined
+    markChanged()
   }
 
-  async function readDiff(data: SessionChangesResult, fileId: string, token: number, readGeneration: number, onStale: () => void): Promise<void> {
-    const live = () => !disposed && generation === readGeneration && listGeneration === token
+  const intake = createCursorIntake({
+    cursor,
+    onApply: () => { void changed() },
+    onRecover: () => { void changed() },
+  })
+
+  async function readDiff(data: SessionChangesResult, fileId: string, token: number, onStale: () => void): Promise<void> {
+    const live = () => !disposed && listGeneration === token
     try {
       const result = await client.query({ type: "sessionChangeDiff", sessionId, fileId, revision: data.revision })
       if (!live()) return
@@ -276,7 +275,7 @@ export function createSessionChangesController(options: {
       continuations.delete(fileId)
       const work = sameToken(diffTokens.get(fileId), file.editToken)
         ? patches.get(fileId)?.continue(continuation?.rows, continuation?.columns) ?? Promise.resolve()
-        : readDiff(data, fileId, listGeneration, generation, () => { void refresh() })
+        : readDiff(data, fileId, listGeneration, () => { void changed() })
       void work.finally(finishDiff.bind(undefined, fileId, request))
     }
   }
@@ -300,34 +299,46 @@ export function createSessionChangesController(options: {
     pumpDiffs()
   }
 
-  async function readList(): Promise<void> {
-    if (disposed || !started || !open || !summaryReady()) return
+  /** Notes the target among the files read so far; the last page ends the search. */
+  function seekTarget(data: SessionChangesResult): void {
+    const path = targetPath
+    const target = path && data.files.find(file => sessionChangeNamesPath(path, data.executionCwd, file.path))
+    if (target) {
+      visible = new Set([target.fileId])
+      targetPath = undefined
+    }
+    if (data.nextOffset === null) targetPath = undefined
+  }
+
+  /** One pass from the first page through the loaded extent, the target, and
+   *  the file Undo confirms. A continuation the review moved under ends the
+   *  pass: the runtime refuses to continue across revisions, so the pages read
+   *  are the newest consistent list, and the read that follows starts again.
+   *  A pass that ends short of the shown list keeps the shown list, so the
+   *  review never shrinks under the reader or mixes revisions. */
+  async function readList(read: number): Promise<void> {
     const token = ++listGeneration
-    const readGeneration = generation
     const previous = "data" in state.list ? state.list.data : lastList
     state = { ...state, undo: retainedUndo(), list: { status: "loading", ...(previous ? { data: previous } : {}) } }
     emit()
+    const live = () => !disposed && listGeneration === token && open
+    const wanted = (data: SessionChangesResult) => data.files.length < (previous?.files.length ?? 1)
+      || targetPath !== undefined || (state.undo?.status === "confirming" && !data.files.some(file => file.fileId === state.undo?.fileId))
     try {
-      let data: SessionChangesResult | undefined
-      const extent = previous?.files.length ?? 1
-      do {
-        const page: SessionChangesResult = await client.query({
-          type: "sessionChanges", sessionId, offset: 0, maxFiles: 128, maxBytes: 64 * 1024,
-          ...(data && data.nextOffset !== null ? { offset: data.nextOffset, cursor: data.cursor, revision: data.revision } : {}),
-        })
-        if (disposed || generation !== readGeneration || listGeneration !== token || !open) return
-        if (page.status === "stale" || (data && (page.cursor !== data.cursor || page.revision !== data.revision))) { data = undefined; continue }
-        data = data ? { ...page, offset: 0, files: [...data.files, ...page.files] } : page
-        const path = targetPath
-        const executionCwd = data.executionCwd
-        const target = path && data.files.find(file => sessionChangeNamesPath(path, executionCwd, file.path))
-        if (target) {
-          visible = new Set([target.fileId])
-          targetPath = undefined
+      let data = await client.query({ type: "sessionChanges", sessionId, offset: 0, maxFiles: 128, maxBytes: 64 * 1024 })
+      if (!live()) return
+      seekTarget(data)
+      while (data.nextOffset !== null && wanted(data)) {
+        const page = await client.query({ type: "sessionChanges", sessionId, offset: data.nextOffset, cursor: data.cursor, revision: data.revision, maxFiles: 128, maxBytes: 64 * 1024 })
+        if (!live()) return
+        if (page.status === "stale" || page.cursor !== data.cursor || page.revision !== data.revision) {
+          void changed()
+          if (previous && data.files.length < previous.files.length) return
+          break
         }
-        if (data.nextOffset === null) targetPath = undefined
-      } while (!data || (data.nextOffset !== null && (data.files.length < extent || targetPath !== undefined
-        || (state.undo?.status === "confirming" && !data.files.some(file => file.fileId === state.undo?.fileId)))))
+        data = { ...page, offset: 0, files: [...data.files, ...page.files] }
+        seekTarget(data)
+      }
       const reconciled = reconcileList(previous, data)
       lastList = reconciled
       const viewed = state.viewed
@@ -337,12 +348,12 @@ export function createSessionChangesController(options: {
       const undo = state.undo
       const removed = undo?.status === "confirming" && reconciled.nextOffset === null
         && !reconciled.files.some(file => file.fileId === undo.fileId)
-      state = { ...state, undo: removed ? undefined : undo, viewed: settled ? undefined : viewedFile ? viewed : undefined, list: { status: "ready", data: reconciled } }
+      state = { ...state, undo: removed ? undefined : undo, viewed: settled ? undefined : viewedFile ? viewed : undefined, list: { status: reads.behind(read) ? "loading" : "ready", data: reconciled } }
       fanOutDiffs(reconciled)
       emit()
     } catch (cause) {
       // A read lost with its lane is read again on the next lane.
-      if (disposed || generation !== readGeneration || listGeneration !== token || lostWithLane(cause)) return
+      if (disposed || listGeneration !== token || lostWithLane(cause)) return
       state = { ...state, list: { status: "error", ...(previous ? { data: previous } : {}), error: errorMessage(cause) } }
       emit()
     }
@@ -355,19 +366,19 @@ export function createSessionChangesController(options: {
     const offset = data.nextOffset
     if (offset === null) return Promise.resolve()
     const token = listGeneration
-    const readGeneration = generation
     const work: Promise<void> = Promise.resolve().then(async () => {
       try {
         const page = await client.query({ type: "sessionChanges", sessionId, offset, cursor: data.cursor, revision: data.revision, maxFiles: 128, maxBytes: 64 * 1024 })
-        if (disposed || !open || token !== listGeneration || readGeneration !== generation) return
-        if (page.status === "stale" || page.cursor !== data.cursor || page.revision !== data.revision) { await refresh(); return }
+        if (disposed || !open || token !== listGeneration) return
+        if (page.status === "stale" || page.cursor !== data.cursor || page.revision !== data.revision) { await changed(); return }
         const merged = { ...page, offset: 0, files: [...data.files, ...page.files] }
         lastList = merged
-        state = { ...state, list: { status: "ready", data: merged } }
+        // A change marked while the page was out keeps the list behind.
+        state = { ...state, list: { status: state.list.status === "loading" ? "loading" : "ready", data: merged } }
         fanOutDiffs(merged)
         emit()
       } catch (cause) {
-        if (disposed || token !== listGeneration || readGeneration !== generation || lostWithLane(cause)) return
+        if (disposed || token !== listGeneration || lostWithLane(cause)) return
         state = { ...state, list: { status: "error", data, error: errorMessage(cause) } }
         emit()
       } finally {
@@ -378,47 +389,50 @@ export function createSessionChangesController(options: {
     return work
   }
 
+  /** Reads what a change can move: the summary, unless the shown one is
+   *  current, and the list while the review is open. Both are shown when they
+   *  answer, behind when a change landed after this read began. */
+  async function readChanges(read: number): Promise<void> {
+    if (disposed) return
+    if (!summaryReady() && !await readSummary(read)) return
+    if (open) await readList(read)
+  }
+
+  async function readSummary(read: number): Promise<boolean> {
+    intake.beginRead()
+    try {
+      const data = await client.query({ type: "sessionChangeSummary", sessionId })
+      if (disposed || !reads.current(read)) return false
+      // Seeding applies the patches held while the read was out; each one marks this answer behind.
+      intake.seed(data.snapshotPosition)
+      state = { ...state, summary: { status: reads.behind(read) ? "stale"
+        : data.unknownFileMutationGaps > 0 ? "incomplete" : "ready", data } }
+      emit()
+      return true
+    } catch (cause) {
+      if (disposed || !reads.current(read) || lostWithLane(cause)) return false
+      const data = "data" in state.summary ? state.summary.data : undefined
+      state = { ...state, summary: { status: "error", ...(data ? { data } : {}), error: errorMessage(cause) } }
+      emit()
+      return false
+    }
+  }
+  const reads = createChangesRead(readChanges)
+
+  /** A patch, a recovery, or a stale answer says the changes moved. */
+  function changed(): Promise<void> {
+    if (disposed || !started) return Promise.resolve()
+    markChanged()
+    return reads.changed()
+  }
+
+  /** A person, or a write this client made, asks for the changes now: the
+   *  reads that are out answer for nothing. */
   function refresh(): Promise<void> {
     if (disposed) return Promise.resolve()
     if (!started) return start()
-    invalidate()
-    // Coalesce one delivery burst, not patches or history. Generation checks
-    // let a reconnect replace an outstanding read without waiting for it.
-    if (queuedRefresh) return queuedRefresh
-    queuedRefresh = Promise.resolve().then(async () => {
-      queuedRefresh = undefined
-      if (disposed) return
-      changesPending = false
-      const token = generation
-      try {
-        const data = await client.query({ type: "sessionChangeSummary", sessionId })
-        if (disposed || generation !== token) return
-        intake.seed(data.snapshotPosition)
-        // Seeding can drain an invalidation that arrived before the summary.
-        if (disposed || generation !== token) return
-        state = { ...state, summary: { status: intake.pendingCount > 0 ? "stale"
-          : data.unknownFileMutationGaps > 0 ? "incomplete" : "ready", data } }
-        emit()
-        await readList()
-      } catch (cause) {
-        if (disposed || generation !== token || lostWithLane(cause)) return
-        const data = "data" in state.summary ? state.summary.data : undefined
-        state = { ...state, summary: { status: "error", ...(data ? { data } : {}), error: errorMessage(cause) } }
-        emit()
-      }
-    })
-    const work = queuedRefresh
-    activeRefresh = work
-    changesPending = false
-    void work.finally(() => {
-      if (activeRefresh !== work) return
-      activeRefresh = undefined
-      if (changesPending && !disposed) {
-        changesPending = false
-        void refresh()
-      }
-    })
-    return queuedRefresh
+    supersede()
+    return reads.voided()
   }
 
   function start(): Promise<void> {
@@ -429,24 +443,25 @@ export function createSessionChangesController(options: {
       if (disposed) return
       if (event.type === "patch" && event.patch.cursor.scope === "workspace"
         && event.patch.cursor.domain === "runtime" && event.patch.payload.kind === "runtime.invalidate") {
-        intake.reset()
+        supersede()
         // A lane break voids every read in flight and reads nothing: the
         // next lane reads.
-        if (isLaneBreak(event.patch)) invalidate()
-        else void refresh()
+        if (isLaneBreak(event.patch)) {
+          intake.reset()
+          reads.paused()
+        } else void reads.voided()
       } else if (event.type === "patch" && cursorKey(event.patch.cursor) === cursorKey(cursor)) {
-        const before = generation
         const classification = intake.accept(event.patch)
-        // A held invalidation cannot leave an old confirmation actionable
-        // while intake waits for its missing predecessor or first anchor.
-        if ((classification === "gap" || classification === "unseeded") && generation === before) refreshChanges()
+        // A held patch marks the list behind, so an old confirmation is not
+        // actionable while intake waits for its predecessor or first anchor.
+        if (classification === "gap" || classification === "unseeded") void changed()
       }
     })
     // Each lane reads the changes, the first among them.
     let first: Promise<void> | undefined
     stopLanes = client.onLane(() => {
-      intake.reset()
-      const read = refresh()
+      supersede()
+      const read = reads.opened()
       first ??= read
     })
     startWork = first ?? Promise.resolve()
@@ -505,12 +520,14 @@ export function createSessionChangesController(options: {
       clearReview()
       state = { ...state, list: { status: "loading", ...(lastList ? { data: lastList } : {}) } }
       emit()
-      if (started) await readList()
+      // The summary stays as it is, so the read reads only the list when the
+      // summary is current. A failed summary stays shown until a change or a
+      // refresh asks again: opening the review does not retry it.
+      if (started && state.summary.status !== "error") await reads.changed()
     },
     closeReview() {
       if (disposed) return
       open = false
-      generation++
       clearReview()
       if (state.undo?.status === "confirming") state = { ...state, undo: undefined }
       patches.clear()
@@ -522,7 +539,6 @@ export function createSessionChangesController(options: {
       lastList = undefined
       state = { ...state, list: { status: "idle" }, diffs: new Map() }
       emit()
-      if (started && state.summary.status === "loading") void refresh()
     },
     requestUndo(fileId) {
       const editToken = diffTokens.get(fileId)
