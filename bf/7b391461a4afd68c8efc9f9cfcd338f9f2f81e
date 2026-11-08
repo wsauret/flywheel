@@ -1,0 +1,14 @@
+src/orchestration/modules/development/definitions/skills/ios-uat/SKILL.md
+  h_4b47e9e4a8b456 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bf7b391461a4afd68c8efc9f9cfcd338f9f2f81e",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
