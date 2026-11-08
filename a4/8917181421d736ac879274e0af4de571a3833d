@@ -1,0 +1,24 @@
+src/orchestration/app-service/runtime-supervisor.ts
+  h_4b47e9e4a8b456 600,611-613,615
+src/orchestration/app-service/session-continuation.ts
+  h_4b47e9e4a8b456 28-30,68
+src/orchestration/app-service/session-mutation-routing.ts
+  h_4b47e9e4a8b456 39
+src/orchestration/app-service/session-runtime-actor-types.ts
+  h_4b47e9e4a8b456 135-155,180-182,190,195
+src/orchestration/app-service/session-runtime-actor.ts
+  h_4b47e9e4a8b456 18,40-41,53-54,68,78,84-86,98-103,121,125,130,132,144,146,149,152,154,158,162-180,183,185,187,189-210,215,231,235-263,271,352,355,359,361,367-368,370-378,391-393,396-400,498,506,510,517-522,525-526,531,554-555,748,755,759,798,815-816,824-826
+tests/unit/orchestration/app-service/runtime-supervisor-mailbox.test.ts
+  h_4b47e9e4a8b456 485,505-507,549-618,621-639
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a48917181421d736ac879274e0af4de571a3833d",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
