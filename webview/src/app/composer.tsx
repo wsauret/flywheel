@@ -30,6 +30,7 @@ import "../styles/composer.css"
 import { ComposerCheckpointSchema, type ComposerCheckpoint } from "../client/input-reload-checkpoint.js"
 import { Schema } from "effect"
 import { createComposerSessionDrafts } from "./composer-session-drafts.js"
+import { browseHistory, draftOf, sentMessages, type ComposerText } from "../client/composer-history.js"
 
 /** A slash command as typed: its token and the words after it. */
 interface SlashCommand {
@@ -96,7 +97,14 @@ export function Composer(props: {
   }
   /** Whether a command the composer took waits for the command catalog. */
   const [awaitingCatalog, setAwaitingCatalog] = createSignal(false)
-  const [draft, setDraft] = createSignal("")
+  /** The one holder of the box's text, the history position, and the draft
+   *  that history holds aside. */
+  const [box, setBox] = createSignal<ComposerText>({ kind: "live", text: "" })
+  const draft = createMemo(() => box().text)
+  /** Every write of the text other than history navigation is an edit, so it is live. */
+  const setDraft = (next: string | ((current: string) => string)): void => {
+    setBox((current) => ({ kind: "live", text: typeof next === "string" ? next : next(current.text) }))
+  }
   // Where the caret is, kept beside the draft: the `@` picker reads the token
   // the caret is in, which the text alone cannot say.
   const [caret, setCaret] = createSignal(0)
@@ -224,55 +232,29 @@ export function Composer(props: {
     },
   })
 
-  /** Where in history the composer currently is: -1 is the live draft, 0 the
-   *  most recent message, upwards into the past. */
-  const [historyIndex, setHistoryIndex] = createSignal(-1)
-  /** What was being written before history was entered, so leaving history
-   *  gives it back rather than discarding it. */
-  let heldDraft = ""
-
   /** Each session keeps its own unsent words and files in its memory while
    *  the page keeps it resident, so a person who checks another session and
    *  comes back finds the message as they left it, and words typed for one
    *  session never go to another. The new chat's pane keeps its own while no
    *  session is open, and the chat its first message creates takes over
    *  what the person typed while the runtime created it. */
-  const activeDraft = () => ({ text: draft(), attachments: attachments.toInput("").attachments })
+  const activeDraft = () => ({ text: draftOf(box()), attachments: attachments.toInput("").attachments })
   const subagentFinished = () => {
     const row = selectedRow(); return row?.kind === "subagent" && (row.runOutcome === "completed" || row.runOutcome === "partial")
   }
   const drafts = createComposerSessionDrafts({
     sessionId: () => state().sessionId, parentSessionId: () => state().rootSessionId, created: () => client.residents.destination.created === true,
     finished: () => state().windowCurrent && subagentFinished(), memory: client.residents.memory, read: activeDraft,
-    write: (input) => { setDraft(input.text); attachments.adopt(input.attachments ?? []) }, resetHistory: () => setHistoryIndex(-1),
+    write: (input) => { setDraft(input.text); attachments.adopt(input.attachments ?? []) }, commit: setDraft,
     send: (input) => client.actions.send(input.text, input.attachments),
     report: () => client.report("info", "This subagent finished. Your unsent draft is in the parent chat's composer."),
   })
   const focusKey = (action: string, item?: string) => JSON.stringify(["composer", state().sessionId ?? null, action, item])
 
-  /** Messages this person has sent, newest first. Read from the transcript
-   *  rather than kept as a private list, so it is the same history after a
-   *  reload, after switching chats, and after a message sent from elsewhere. */
-  const history = () => {
-    const sent: string[] = []
-    for (const block of state().blocks) {
-      if (block.kind !== "userMessage") continue
-      const text = block.content.trim()
-      // Consecutive duplicates are noise to arrow through, the same as a shell
-      // collapsing them.
-      if (text.length > 0 && text !== sent[0]) sent.unshift(text)
-    }
-    return sent
-  }
-
-  function moveHistory(delta: number): boolean {
-    const entries = history()
-    if (entries.length === 0) return false
-    const next = historyIndex() + delta
-    if (next < -1 || next >= entries.length) return false
-    if (historyIndex() === -1 && next >= 0) heldDraft = draft()
-    setHistoryIndex(next)
-    setDraft(next === -1 ? heldDraft : entries[next] ?? "")
+  function moveHistory(delta: 1 | -1): boolean {
+    const next = browseHistory(box(), sentMessages(state().blocks), delta)
+    if (next === undefined) return false
+    setBox(next)
     // The caret goes to the end, which is where someone editing a recalled
     // message wants it, and which also stops the next ArrowUp from firing
     // immediately on a multi-line entry.
@@ -298,8 +280,6 @@ export function Composer(props: {
 
   const clear = () => {
     setDraft("")
-    setHistoryIndex(-1)
-    heldDraft = ""
     if (composer) composer.style.height = "auto"
   }
 
@@ -313,7 +293,7 @@ export function Composer(props: {
     // every view, so an agent view refuses an unknown one too (PI-INTERACTION-081).
     const command = attached ? undefined : asCommand()
     if (command !== undefined) { submitCommand(command, text); return }
-    if (selectedRow()?.kind === "subagent") { drafts.submitChild(); return }
+    if (selectedRow()?.kind === "subagent") { drafts.submitChild(draft()); return }
     // An agent view's message is words for one item or agent: no file,
     // because an agent reads text only.
     if (props.input?.()?.wordsOnly) {
@@ -390,7 +370,6 @@ export function Composer(props: {
     const recalled = client.actions.recallLocal(entryId)
     if (recalled?.kind !== "input") return recalled !== undefined
     const text = attachments.restore({ text: recalled.input.text, attachments: recalled.input.attachments ?? [] })
-    setHistoryIndex(-1)
     setDraft((current) => (current.length === 0 ? text : text.length === 0 ? current : `${current}\n${text}`))
     queueMicrotask(() => {
       if (!composer) return
@@ -620,10 +599,6 @@ export function Composer(props: {
             setDraft(event.currentTarget.value)
             setCaret(event.currentTarget.selectionStart)
             grow(event.currentTarget)
-            // Editing is leaving history. Without this, ArrowUp after typing
-            // would continue from an index that no longer describes what is
-            // in the box.
-            if (historyIndex() !== -1) setHistoryIndex(-1)
           }}
           onKeyDown={onKeyDown}
           onKeyUp={syncCaret}

@@ -26,8 +26,10 @@ const settle = async () => {
 
 /** Mounts the real composer and action boundary with a deferred runtime
  *  acknowledgement. With `catalogLater`, the command catalog has not arrived
- *  when the composer mounts, until `arriveCatalog` publishes it. */
-export function mountComposerSubmission(options: { readonly catalogLater?: boolean; readonly catalog?: RuntimeCommandCatalog; readonly question?: FrontendQuestionBlock; readonly attentionAtMount?: boolean } = {}) {
+ *  when the composer mounts, until `arriveCatalog` publishes it. With
+ *  `caret: "end"`, the textarea's caret sits at the end of its value, as a
+ *  browser puts it after a programmatic value write; by default it sits at the start. */
+export function mountComposerSubmission(options: { readonly catalogLater?: boolean; readonly catalog?: RuntimeCommandCatalog; readonly question?: FrontendQuestionBlock; readonly attentionAtMount?: boolean; readonly caret?: "end" } = {}) {
   const sent: { text: string; attachments: readonly ProtocolChatAttachment[] | undefined }[] = []
   const reports: string[] = []
   const commands: { name: string; args: string | undefined }[] = []
@@ -192,6 +194,7 @@ export function mountComposerSubmission(options: { readonly catalogLater?: boole
   const previousDocument = Object.getOwnPropertyDescriptor(globalThis, "document")
   const previousResizeObserver = Object.getOwnPropertyDescriptor(globalThis, "ResizeObserver")
   const previousMutationObserver = Object.getOwnPropertyDescriptor(globalThis, "MutationObserver")
+  const previousComputedStyle = Object.getOwnPropertyDescriptor(globalThis, "getComputedStyle")
   type CapturedKey = { key: string; shiftKey: boolean; preventDefault(): void; stopPropagation(): void }
   const captures = new Set<(event: CapturedKey) => void>()
   Object.defineProperty(globalThis, "document", { configurable: true, value: {
@@ -207,6 +210,8 @@ export function mountComposerSubmission(options: { readonly catalogLater?: boole
     observe() {}
     disconnect() {}
   } })
+  // The transcript measures the sent messages that history reads.
+  Object.defineProperty(globalThis, "getComputedStyle", { configurable: true, writable: true, value: () => ({ lineHeight: "20" }) })
   return createRoot((dispose) => {
     const root = createElement("root")
     let handle: ComposerHandle | undefined
@@ -246,14 +251,15 @@ export function mountComposerSubmission(options: { readonly catalogLater?: boole
       return textContent(text)
     }
     // The composer reads its textarea's value and caret on edge keys; the
-    // memory host keeps the bound value in `properties`, with the caret at the start.
+    // memory host keeps the bound value in `properties`.
     const textarea = (): ReturnType<typeof createElement> => {
       const node = field()
       if (!("value" in node)) {
+        const caret = () => (options.caret === "end" ? String(node.properties.value ?? "").length : 0)
         Object.defineProperties(node, {
           value: { get: () => node.properties.value ?? "" },
-          selectionStart: { value: 0 },
-          selectionEnd: { value: 0 },
+          selectionStart: { get: caret },
+          selectionEnd: { get: caret },
           setSelectionRange: { value() {} },
         })
       }
@@ -273,6 +279,10 @@ export function mountComposerSubmission(options: { readonly catalogLater?: boole
       sent, reports, commands, opened, prompts, settings, rows, key, roleSubscriptions, questionAnswers, questionSkips,
       field,
       appendInput: (sessionId: string, text: string) => handle?.appendInput(sessionId, { text }),
+      /** The editor's "Add selection to chat". */
+      insertText: (text: string) => handle?.insertText(text),
+      /** The open transcript shows these messages as sent, oldest first. */
+      publishSent: (texts: readonly string[]) => setState((current) => ({ ...current, blocks: texts.map((content, index) => ({ kind: "userMessage" as const, id: `sent-${index}`, content, timestamp: index, pending: false, injected: false })) })),
       completeSubagent: (runOutcome: "completed" | "partial" = "completed") => setState((current) => ({ ...current, children: [fakeSessionSummary({ id: "child", kind: "subagent", parentSessionId: "chat", title: "Finished child", admittedActions: [], runOutcome })] })),
       capture: () => {
         if (!handle || !("capture" in handle) || typeof handle.capture !== "function") throw new Error("Composer cannot capture owned input")
@@ -424,6 +434,8 @@ export function mountComposerSubmission(options: { readonly catalogLater?: boole
         else Reflect.deleteProperty(globalThis, "ResizeObserver")
         if (previousMutationObserver) Object.defineProperty(globalThis, "MutationObserver", previousMutationObserver)
         else Reflect.deleteProperty(globalThis, "MutationObserver")
+        if (previousComputedStyle) Object.defineProperty(globalThis, "getComputedStyle", previousComputedStyle)
+        else Reflect.deleteProperty(globalThis, "getComputedStyle")
       },
     }
   })

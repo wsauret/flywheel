@@ -135,6 +135,27 @@ for (const inactive of [false, true]) {
   })
 }
 
+test("a recalled message sent to a child sends as shown, and a Send while that send is pending keeps the held draft", async () => {
+  const mounted = mountComposerSubmission()
+  try {
+    mounted.openSubagent()
+    mounted.publishSent(["old sent message"])
+    mounted.type("held words")
+    mounted.key("ArrowUp")
+    mounted.send()
+    assert.deepEqual(mounted.sent.map((sent) => sent.text), ["old sent message"])
+    mounted.type("fresh unsent words")
+    mounted.key("ArrowUp")
+    assert.equal(mounted.text(), "old sent message")
+    mounted.send()
+    assert.equal(mounted.sent.length, 1)
+    mounted.key("ArrowDown")
+    assert.equal(mounted.text(), "fresh unsent words")
+    await mounted.accept()
+    assert.equal(mounted.text(), "fresh unsent words")
+  } finally { mounted.dispose() }
+})
+
 for (const accepted of [false, true]) {
   test(`a child receipt settles after finish and navigation without touching the selected draft (accepted=${accepted})`, async () => {
     const mounted = mountComposerSubmission()

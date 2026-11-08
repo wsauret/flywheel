@@ -13,7 +13,8 @@ export function createComposerSessionDrafts(options: {
   readonly memory: (id: string) => SessionMemory | undefined
   readonly read: () => ProtocolChatInputObject
   readonly write: (input: ProtocolChatInputObject) => void
-  readonly resetHistory: () => void
+  /** Makes `text` the box's draft and leaves its files as they are. */
+  readonly commit: (text: string) => void
   readonly send: (input: ProtocolChatInputObject) => Promise<boolean>
   readonly report: () => void
 }) {
@@ -43,7 +44,6 @@ export function createComposerSessionDrafts(options: {
     current = next
     const active = options.read()
     const kept = drafts.move(next, { text: active.text, attachments: active.attachments ?? [] }, options.created())
-    options.resetHistory()
     options.write(kept ?? empty)
     finish()
   })))
@@ -52,9 +52,13 @@ export function createComposerSessionDrafts(options: {
     capture: drafts.capture,
     adopt: drafts.adopt,
     appendInput,
-    submitChild(): void {
+    /** Sends `shown`, the words the box shows, with the draft's files. An
+     *  admitted send first commits `shown` as the draft, so a recalled
+     *  message sends as the draft and its receipt settles against it. */
+    submitChild(shown: string): void {
+      if (sending || !shown.trim()) return
+      options.commit(shown)
       const input = options.read()
-      if (sending || !input.text.trim()) return
       const receipt = { source: current, parent: options.parentSessionId(), finished: options.finished() }
       sending = receipt
       void options.send({ ...input, text: input.text.trim() }).then((accepted) => {
