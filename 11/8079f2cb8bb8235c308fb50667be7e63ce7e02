@@ -1,0 +1,16 @@
+bench/terminal_bench/harbor_agent/flywheel_harbor_agent/shim.py
+  h_4b47e9e4a8b456 70,188-213,219
+bench/terminal_bench/test_harbor_agent_shim.py
+  h_4b47e9e4a8b456 148-181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "118079f2cb8bb8235c308fb50667be7e63ce7e02",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
