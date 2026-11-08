@@ -1,0 +1,16 @@
+bun.lock
+  h_4b47e9e4a8b456 35,628
+package.json
+  h_4b47e9e4a8b456 139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "47ab081f9d012c7fd657da193a5bee54f7f78591",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
