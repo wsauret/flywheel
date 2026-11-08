@@ -1,0 +1,40 @@
+docs/architecture-intent/tools.md
+  h_4b47e9e4a8b456 82
+src/infra/tools/displays/write.ts
+  h_4b47e9e4a8b456 19-21
+src/orchestration/agent-runtime/tools/bash-file-reads.ts
+  h_4b47e9e4a8b456 67
+src/orchestration/agent-runtime/tools/file-read-ledger.ts
+  h_4b47e9e4a8b456 14-16,53-54,56-64,69,77,85-86,100-107
+src/orchestration/agent-runtime/tools/write.ts
+  h_4b47e9e4a8b456 2,4-6,9,27-35,41,51,56-57,71,74,79,90-91,97-110
+src/protocol/client/file-change-body.ts
+  h_4b47e9e4a8b456 133-134,302-303
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 263-264
+tests/integration/providers/agent-tool-usage-real.test.ts
+  h_4b47e9e4a8b456 113,119,121-122
+tests/unit/orchestration/agent-runtime/tools/tools-bash.test.ts
+  h_4b47e9e4a8b456 65-67
+tests/unit/orchestration/agent-runtime/tools/tools-write.test.ts
+  h_4b47e9e4a8b456 2,14,204,206-255,263
+tests/unit/protocol/file-change-body.test.ts
+  h_4b47e9e4a8b456 135-136
+webview/src/app/file-diff.tsx
+  h_4b47e9e4a8b456 48
+webview/src/app/write-syntax.test.ts
+  h_4b47e9e4a8b456 17
+webview/src/styles/write-syntax.css
+  h_4b47e9e4a8b456 2-5,11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "26e996b1c29b20e97d0148e57c3d8d10659a350f",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
