@@ -1,0 +1,72 @@
+.gitignore
+  h_4b47e9e4a8b456 60
+bench/README.md
+  h_4b47e9e4a8b456 3,100,369
+bench/harbor/METHODOLOGY.md
+  h_4b47e9e4a8b456 7
+bench/harbor/README.md
+  h_4b47e9e4a8b456 18,20,33,35,53,86,88,96
+bench/harbor/harbor-jobs.ts
+  h_4b47e9e4a8b456 19,22
+bench/harbor/harbor_agent_package.py
+  h_4b47e9e4a8b456 4,14,17,39,42
+bench/harbor/profiles/tb-board-deepseek-bringup-kv-store-grpc.yaml
+  h_4b47e9e4a8b456 5
+bench/harbor/profiles/tb-board-deepseek-high-3x.yaml
+  h_4b47e9e4a8b456 8
+bench/harbor/profiles/tb-board-deepseek-low-3x.yaml
+  h_4b47e9e4a8b456 8
+bench/harbor/profiles/tb-mini-bringup-kv-store-grpc.yaml
+  h_4b47e9e4a8b456 5
+bench/harbor/profiles/tb-mini-claude-14x1.yaml
+  h_4b47e9e4a8b456 6
+bench/harbor/profiles/tb-mini-claude-bringup-kv-store-grpc.yaml
+  h_4b47e9e4a8b456 5
+bench/harbor/profiles/tb-mini-openai-14x1.yaml
+  h_4b47e9e4a8b456 6
+bench/harbor/profiles/tb-mini-openai-5x.yaml
+  h_4b47e9e4a8b456 6
+bench/harbor/run-terminal-bench.ts
+  h_4b47e9e4a8b456 356
+bench/harbor/test_harbor_agent_package.py
+  h_4b47e9e4a8b456 21
+knip.jsonc
+  h_4b47e9e4a8b456 8
+package.json
+  h_4b47e9e4a8b456 106
+scripts/check-bench-pins.ts
+  h_4b47e9e4a8b456 49
+src/orchestration/agent-runtime/agent-loop-content-filter.ts
+  h_4b47e9e4a8b456 15
+tests/fixtures/terminal-bench-profile.ts
+  h_4b47e9e4a8b456 4
+tests/helpers/terminal-bench-trial-evidence.ts
+  h_4b47e9e4a8b456 7
+tests/integration/bench/terminal-bench-runner.test.ts
+  h_4b47e9e4a8b456 5-7,30,84,196
+tests/integration/bench/trial-store-analysis-standalone.test.ts
+  h_4b47e9e4a8b456 14
+tests/unit/bench/terminal-bench-analyzer.test.ts
+  h_4b47e9e4a8b456 7-9
+tests/unit/bench/terminal-bench-config.test.ts
+  h_4b47e9e4a8b456 5,35,69,76,79,104
+tests/unit/bench/terminal-bench-flywheel-config-evidence.test.ts
+  h_4b47e9e4a8b456 5-6,28
+tests/unit/bench/terminal-bench-jobs.test.ts
+  h_4b47e9e4a8b456 5-6,10,16,79
+tests/unit/bench/terminal-bench-ledger.test.ts
+  h_4b47e9e4a8b456 4
+tests/unit/scripts/check-bench-pins.test.ts
+  h_4b47e9e4a8b456 26-27,33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9d28588778327d2344dcb1c4c7b6e011fdd03efa",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
