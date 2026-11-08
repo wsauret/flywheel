@@ -228,10 +228,12 @@ describe("SettingsModal list rendering", () => {
     }
   })
 
-  it("renders disclosure markers and indents inline children", async () => {
+  it("renders disclosure markers and indents inline children without cutting their labels", async () => {
+    // The child's label is one column narrower than its parent's, so only
+    // its indent can push it past the value column.
     const rows: SettingsVisibleRow[] = [
       { kind: "disclosure", id: "appearance", label: "Appearance", rows: () => [], depth: 0, disclosure: { id: "appearance", expanded: true, interaction: "disclosure-only" } },
-      { kind: "cycle", id: "thinking-child", label: "Child", value: () => "YES", onActivate: noOp, depth: 1 },
+      { kind: "cycle", id: "show-tips", label: "Show tips", value: () => "YES", onActivate: noOp, depth: 1 },
     ]
     const result = await renderSettings([], { cursor: 0, view: { kind: "list", presentation: presentation(""), rows } })
     try {
@@ -239,7 +241,8 @@ describe("SettingsModal list rendering", () => {
       const frame = result.captureCharFrame()
       expect(frame).toContain("Appearance")
       expect(frame).toContain("▾")
-      expect(lineContaining(frame, "Child").indexOf("Child")).toBeGreaterThan(lineContaining(frame, "Appearance").indexOf("Appearance"))
+      expect(lineContaining(frame, "YES")).toContain("Show tips")
+      expect(lineContaining(frame, "Show").indexOf("Show")).toBeGreaterThan(lineContaining(frame, "Appearance").indexOf("Appearance"))
       expect(frame).toContain("enter collapse")
     } finally {
       result.renderer.destroy()
@@ -287,6 +290,25 @@ describe("SettingsModal list rendering", () => {
       expect(new Set(columns).size).toBe(1)
       expect(frame).toContain("...")
       expect(frame).not.toContain("Thinking Visibility")
+    } finally {
+      result.renderer.destroy()
+    }
+  })
+
+  it("cuts a label before a value that needs at most half the row", async () => {
+    // The widest label column and the long value are equally wide, and the
+    // 72-column modal leaves one column too few for both.
+    const rows: SettingsVisibleRow[] = [
+      { kind: "cycle", id: "attribution", label: "Git AI attribution", value: () => "Off · Personal (environment)", onActivate: noOp, onStep: noOp, depth: 0 },
+      { kind: "disclosure", id: "tools", label: "Tools", rows: () => [], depth: 0, disclosure: { id: "tools", expanded: true, interaction: "disclosure-only" } },
+      { kind: "cycle", id: "persistent", label: "Allow persistent processes", value: () => "NO", onActivate: noOp, onStep: noOp, depth: 1 },
+    ]
+    const result = await renderSettings([], { width: 72, cursor: 0, view: { kind: "list", presentation: presentation(""), rows } })
+    try {
+      await result.renderOnce()
+      const frame = result.captureCharFrame()
+      expect(frame).toContain("‹ Off · Personal (environment) ›")
+      expect(valueColumn(lineContaining(frame, "‹ NO ›"), "‹ NO ›")).toBe(valueColumn(lineContaining(frame, "‹ Off"), "‹ Off"))
     } finally {
       result.renderer.destroy()
     }

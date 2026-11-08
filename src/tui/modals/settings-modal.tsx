@@ -36,8 +36,14 @@ export function SettingsModal(props: SettingsModalProps) {
   const rowContentWidth = createMemo(() => Math.max(0, modalWidth() - 9))
   const visibleItems = createMemo<readonly SettingsVisibleRow[]>(() => props.view.kind === "list" ? props.view.rows : [])
   const valueColumn = createMemo(() => {
-    const widestLabel = Math.max(0, ...visibleItems().map((row) => row.kind === "separator" ? 0 : displayWidth(row.label) + (row.warning === undefined ? 0 : 4)))
-    return Math.min(widestLabel + 4, Math.max(4, rowContentWidth() - 7))
+    const rows = visibleItems().filter((row): row is SettingsValueRow => row.kind !== "separator")
+    // A nested row's label starts `depth * 2` columns further right, so its
+    // indent counts toward the width the column must clear.
+    const widestLabel = Math.max(0, ...rows.map((row) => row.depth * 2 + displayWidth(row.label) + (row.warning === undefined ? 0 : 4)))
+    const widestValue = Math.max(0, ...rows.map((row) => displayWidth(displayValue(row))))
+    // A value states the setting, so labels give up columns first; they keep
+    // at least half the row, and only a value wider than that is cut.
+    return Math.max(4, Math.min(widestLabel + 4, Math.max(rowContentWidth() - widestValue, Math.floor(rowContentWidth() / 2))))
   })
   const title = createMemo(() => props.view.label === undefined ? KERNEL_COMMAND_NAMES.settings : `${KERNEL_COMMAND_NAMES.settings} › ${props.view.label}`)
   const footerDescription = createMemo(() => {
@@ -206,7 +212,6 @@ function rowChunks(row: SettingsVisibleRow, active: boolean, theme: ReturnType<t
   const label = truncateToWidth(row.label, Math.max(0, valueColumn - 4 - displayWidth(warning)))
   const gap = " ".repeat(Math.max(2, valueColumn - 2 - displayWidth(warning) - displayWidth(label)))
   const value = rowValue(row)
-  const displayValue = row.kind === "cycle" && row.onStep !== undefined && refusalReason(row) === undefined ? `‹ ${value} ›` : value
 
   return [
     marker,
@@ -214,14 +219,22 @@ function rowChunks(row: SettingsVisibleRow, active: boolean, theme: ReturnType<t
     ...(warning === "" ? [] : [stFg(theme.warning)(warning)]),
     settingsLabelChunk(label, active, theme),
     stFg(theme.text)(gap),
-    stFg(valueColor(value, active, theme))(displayValue),
+    stFg(valueColor(value, active, theme))(displayValue(row)),
   ]
 }
 
-function rowValue(row: Exclude<SettingsVisibleRow, { kind: "separator" }>): string {
+type SettingsValueRow = Exclude<SettingsVisibleRow, { kind: "separator" }>
+
+function rowValue(row: SettingsValueRow): string {
   if (row.unavailableReason?.()) return "N/A"
   if (row.kind === "disclosure") return modalDisclosureMarker(row.disclosure)
   return row.kind === "navigation" || row.kind === "confirmation" || row.kind === "group" ? "→" : row.value()
+}
+
+/** The value as the row shows it: a value that arrows step sits between ‹ and ›. */
+function displayValue(row: SettingsValueRow): string {
+  const value = rowValue(row)
+  return row.kind === "cycle" && row.onStep !== undefined && refusalReason(row) === undefined ? `‹ ${value} ›` : value
 }
 
 /** YES, On, Ask first, NO, Off, None, N/A, and the CLI-forced policy label
