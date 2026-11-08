@@ -97,6 +97,25 @@ test("held overflow and cursor invalidation recover through summary only when cl
   controller.dispose()
 })
 
+test("an overflow invalidation of the changes cursor voids the summary read that is out and reads at once", async () => {
+  const { server, controller } = await opened()
+  const summaries = () => server.queries.filter(query => query.type === "sessionChangeSummary").length
+  const old = deferred<SessionChangeSummaryResult>()
+  server.summaryReplies.push(old.promise)
+  void controller.refresh()
+  await settle()
+  const before = summaries()
+  // The runtime bus dropped a patch and publishes its overflow invalidation on the cursor.
+  server.current.position += 2
+  server.emit({ type: "patch", patch: { cursor: { scope: "session", domain: "changes", sessionId: "cold" }, position: server.current.position, prevPosition: server.current.position - 1, payload: { kind: "runtime.invalidate", reason: "overflow" } } })
+  await settle()
+  expect(summaries()).toBe(before + 1)
+  old.resolve({ fileCount: 999, unknownFileMutationGaps: 0, snapshotPosition: 0 })
+  await settle()
+  expect(controller.snapshot.summary).toMatchObject({ status: "ready", data: { fileCount: 2, snapshotPosition: server.current.position } })
+  controller.dispose()
+})
+
 test("a lane break reads nothing, and the next lane reads the changes once", async () => {
   const { server, controller } = await opened()
   const summaries = () => server.queries.filter(query => query.type === "sessionChangeSummary").length

@@ -5,6 +5,7 @@ import { backgroundCursor, type BackgroundWorkProgress, type BackgroundWorkRow, 
 import { cursorKey } from "../runtime-ui-protocol-types.js"
 import { lostWithLane } from "./connection-failures.js"
 import { createCursorIntake, isLaneBreak } from "./cursor-intake.js"
+import { createInvalidationRead } from "./invalidation-read.js"
 import { formatDuration } from "./format.js"
 import { workflowProgressCount } from "./workflow-progress.js"
 import { WAITING_ON_PARENT } from "./session-controls.js"
@@ -118,15 +119,14 @@ export interface BackgroundIndexController {
   readonly snapshot: BackgroundIndexState
   /** Subscribes and reads the index once for each lane. Repeated calls do not read again. */
   start(): Promise<void>
-  /** Reads the index again, keeping the last rows for display meanwhile. */
-  refresh(): Promise<void>
   onChange(listener: () => void): () => void
   /** Unsubscribes. A client disposes the controller when it stops showing the index. */
   dispose(): void
 }
 
 /** The background index of one chat, read while a client shows it. Each
- *  `background.changed` patch reads it again. Construction is passive. */
+ *  `background.changed` patch asks for a read: at most one read is out, and a
+ *  burst of patches during it asks for one more. Construction is passive. */
 export function createBackgroundIndexController(options: {
   readonly client: Pick<AttachedRuntimeClient, "query" | "subscribe" | "onLane">
   readonly sessionId: string
@@ -137,8 +137,6 @@ export function createBackgroundIndexController(options: {
   let state: BackgroundIndexState = { status: "idle" }
   let started = false
   let disposed = false
-  let generation = 0
-  let queuedRefresh: Promise<void> | undefined
   let startWork = Promise.resolve()
   let unsubscribe: (() => void) | undefined
   let stopLanes: (() => void) | undefined
@@ -148,47 +146,55 @@ export function createBackgroundIndexController(options: {
   }
   const lastRows = (): readonly BackgroundWorkRow[] | undefined => "rows" in state ? state.rows : undefined
 
-  function invalidate(): void {
-    generation++
+  /** The rows shown are behind; they stay for display until a read answers. */
+  function markBehind(): void {
+    if (state.status === "loading") return
     const rows = lastRows()
     state = { status: "loading", ...(rows ? { rows } : {}) }
     emit()
   }
 
+  /** Reads the index. An answer that a change overtook is shown as loading,
+   *  never as ready, and the read that follows makes it ready. */
+  async function readIndex(read: number): Promise<void> {
+    if (disposed) return
+    intake.beginRead()
+    try {
+      const result = await client.query({ type: "sessionBackgroundWork", sessionId })
+      if (disposed || !reads.current(read)) return
+      // Seeding applies the patches held while the read was out; each one marks this answer behind.
+      intake.seed(result.snapshotPosition)
+      state = { status: reads.behind(read) ? "loading" : "ready", rows: result.rows }
+      emit()
+    } catch (cause) {
+      // A read lost with its lane is read again on the next lane.
+      if (disposed || !reads.current(read) || lostWithLane(cause)) return
+      const rows = lastRows()
+      state = { status: "error", ...(rows ? { rows } : {}), error: errorMessage(cause) }
+      emit()
+    }
+  }
+  const reads = createInvalidationRead(readIndex)
+
+  function changed(): void {
+    if (disposed) return
+    markBehind()
+    void reads.changed()
+  }
+
+  /** The runtime invalidated what the read that is out answers for, so it reads at once (ARCH-PROTOCOL-014). */
+  function voided(): void {
+    if (disposed) return
+    markBehind()
+    void reads.voided()
+  }
+
   const intake = createCursorIntake({
     cursor,
-    onApply: () => { void refresh() },
-    onRecover: () => { void refresh() },
+    onApply: changed,
+    // A cursor invalidation reads at once; a gap the intake gave up on is one more change.
+    onRecover: (request) => { if (request.reason === "runtime_invalidated") voided(); else changed() },
   })
-
-  function refresh(): Promise<void> {
-    if (disposed) return Promise.resolve()
-    if (!started) return start()
-    invalidate()
-    // One read answers a burst of invalidations.
-    if (queuedRefresh) return queuedRefresh
-    queuedRefresh = Promise.resolve().then(async () => {
-      queuedRefresh = undefined
-      if (disposed) return
-      const token = generation
-      try {
-        const result = await client.query({ type: "sessionBackgroundWork", sessionId })
-        if (disposed || generation !== token) return
-        intake.seed(result.snapshotPosition)
-        // Seeding can drain an invalidation that arrived before the result.
-        if (disposed || generation !== token) return
-        state = { status: "ready", rows: result.rows }
-        emit()
-      } catch (cause) {
-        // A read lost with its lane is read again on the next lane.
-        if (disposed || generation !== token || lostWithLane(cause)) return
-        const rows = lastRows()
-        state = { status: "error", ...(rows ? { rows } : {}), error: errorMessage(cause) }
-        emit()
-      }
-    })
-    return queuedRefresh
-  }
 
   function start(): Promise<void> {
     if (disposed) return Promise.resolve()
@@ -198,18 +204,21 @@ export function createBackgroundIndexController(options: {
       if (disposed || event.type !== "patch") return
       if (event.patch.cursor.scope === "workspace" && event.patch.cursor.domain === "runtime" && event.patch.payload.kind === "runtime.invalidate") {
         intake.reset()
-        // A lane break voids the read in flight; the next lane reads.
-        if (isLaneBreak(event.patch)) invalidate()
-        else void refresh()
+        // A lane break voids the read that is out and reads nothing; the next lane reads.
+        if (isLaneBreak(event.patch)) {
+          markBehind()
+          reads.paused()
+        } else voided()
       } else if (cursorKey(event.patch.cursor) === cursorKey(cursor)) {
         const classification = intake.accept(event.patch)
-        if (classification === "gap" || classification === "unseeded") void refresh()
+        if (classification === "gap" || classification === "unseeded") changed()
       }
     })
     let first: Promise<void> | undefined
     stopLanes = client.onLane(() => {
       intake.reset()
-      const read = refresh()
+      markBehind()
+      const read = reads.opened()
       first ??= read
     })
     startWork = first ?? Promise.resolve()
@@ -220,7 +229,6 @@ export function createBackgroundIndexController(options: {
     sessionId,
     get snapshot() { return state },
     start,
-    refresh,
     onChange(listener) {
       if (!disposed) listeners.add(listener)
       return () => { listeners.delete(listener) }

@@ -1,14 +1,15 @@
-/** The read that the session changes controller keeps out while it shows a
- *  review (ARCH-PROTOCOL-045: the changes domain publishes invalidations).
+/** The read that a controller of an invalidation domain keeps out while a
+ *  client shows the domain (ARCH-PROTOCOL-045: the changes and background
+ *  domains publish invalidations, not copies of their state).
  *
  *  The domain's patches carry no state, so each one asks for a read. A change
  *  never voids the read that is out: that read answers from an anchor it took
  *  before it awaited, so the change is newer than its answer. The answer is
  *  shown, marked behind, and one more read follows it. A burst of changes
- *  during one read asks for exactly one more. Only a lane, or a runtime
- *  invalidation that reads at once, voids the read that is out
- *  (ARCH-PROTOCOL-014). */
-export interface ChangesRead {
+ *  during one read asks for exactly one more, so at most one read for changes
+ *  is out and at most one waits. Only a lane, or a runtime invalidation that
+ *  reads at once, voids the read that is out (ARCH-PROTOCOL-014). */
+export interface InvalidationRead {
   /** A change landed. A read that begins after this call covers it; the
    *  promise settles when that read ends, answered or not. */
   changed(): Promise<void>
@@ -80,7 +81,7 @@ function nextReadPhase(phase: ReadPhase, event: ReadEvent): ReadPhase {
 
 /** `read` performs one read and adopts its answer only while `current(read)`
  *  holds. It must not reject: a failure is the caller's state to show. */
-export function createChangesRead(read: (read: number) => Promise<void>): ChangesRead {
+export function createInvalidationRead(read: (read: number) => Promise<void>): InvalidationRead {
   let phase: ReadPhase = IDLE
   let reads = 0
 

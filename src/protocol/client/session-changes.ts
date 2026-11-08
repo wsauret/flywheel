@@ -5,7 +5,7 @@ import { changesCursor, type FileEditToken, type SessionChangeDiffResult, type S
 import { cursorKey } from "../runtime-ui-protocol-types.js"
 import { lostWithLane } from "./connection-failures.js"
 import { createCursorIntake, isLaneBreak } from "./cursor-intake.js"
-import { createChangesRead } from "./session-changes-read.js"
+import { createInvalidationRead } from "./invalidation-read.js"
 import { createMutationEvidenceReader, type MutationPatchHandle, type MutationPatchView } from "./mutation-evidence.js"
 import { sessionChangeNamesPath } from "./session-changes-copy.js"
 
@@ -205,7 +205,8 @@ export function createSessionChangesController(options: {
   const intake = createCursorIntake({
     cursor,
     onApply: () => { void changed() },
-    onRecover: () => { void changed() },
+    // A cursor invalidation reads at once; a gap the intake gave up on is one more change.
+    onRecover: (request) => { void (request.reason === "runtime_invalidated" ? voided() : changed()) },
   })
 
   async function readDiff(data: SessionChangesResult, fileId: string, token: number, onStale: () => void): Promise<void> {
@@ -417,7 +418,7 @@ export function createSessionChangesController(options: {
       return false
     }
   }
-  const reads = createChangesRead(readChanges)
+  const reads = createInvalidationRead(readChanges)
 
   /** A patch, a recovery, or a stale answer says the changes moved. */
   function changed(): Promise<void> {
@@ -431,6 +432,12 @@ export function createSessionChangesController(options: {
   function refresh(): Promise<void> {
     if (disposed) return Promise.resolve()
     if (!started) return start()
+    return voided()
+  }
+
+  /** The runtime, a person, or a write this client made voided what the reads
+   *  that are out answer for, so the changes are read at once (ARCH-PROTOCOL-014). */
+  function voided(): Promise<void> {
     supersede()
     return reads.voided()
   }
@@ -443,13 +450,13 @@ export function createSessionChangesController(options: {
       if (disposed) return
       if (event.type === "patch" && event.patch.cursor.scope === "workspace"
         && event.patch.cursor.domain === "runtime" && event.patch.payload.kind === "runtime.invalidate") {
-        supersede()
         // A lane break voids every read in flight and reads nothing: the
         // next lane reads.
         if (isLaneBreak(event.patch)) {
+          supersede()
           intake.reset()
           reads.paused()
-        } else void reads.voided()
+        } else void voided()
       } else if (event.type === "patch" && cursorKey(event.patch.cursor) === cursorKey(cursor)) {
         const classification = intake.accept(event.patch)
         // A held patch marks the list behind, so an old confirmation is not
