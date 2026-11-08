@@ -49,6 +49,12 @@ const log = Log.create({ service: "agent-bash" });
  *  again; past this many merges it is reported as not applied instead. */
 const MAX_REBASES = 3;
 
+/** The most files one publication admits. Each admitted file retains its parent directory's descriptor until its
+ *  publication settles, and Darwin's posix_spawn refuses every launch while this process holds a descriptor numbered
+ *  at or above OPEN_MAX (10240). A command such as a package install writes tens of thousands of files, so landing
+ *  them in one publication stopped every process launch of the executor until the landing ended. */
+const PUBLICATION_WINDOW = 256;
+
 /** What a landing reads of the tool call that ran its command: the session
  *  and call its changes publish under, and where the read ledger and Git AI
  *  attribution learn of them. A later build that adopted the command holds
@@ -374,7 +380,7 @@ async function publishCopyChanges(context: MutationLandingContext & Pick<ToolCon
   const present: string[] = [];
   let stop: Exclude<FileEditPublicationOutcome<PlannedFileEdit>, { readonly status: "completed" }> | undefined;
   let failure: unknown;
-  // The first round publishes every change. A file the project changed since
+  // The first round publishes every change, PUBLICATION_WINDOW files at a time. A file the project changed since
   // the copy was taken comes back as a conflict, is merged with the project's
   // current file, and publishes in the next round; a file that changes again
   // meanwhile is merged again, at most MAX_REBASES times. A file that stopped
@@ -383,19 +389,21 @@ async function publishCopyChanges(context: MutationLandingContext & Pick<ToolCon
   try {
     let pending = changes;
     for (let rebases = 0; pending.length > 0; rebases++) {
-      const outcome = await publishChanges(context, copy, pending, merges);
-      applied.push(...outcome.committedPrefix);
-      if (outcome.status === "uncertain" && outcome.settlement === "committed") applied.push(outcome.current);
-      if (outcome.status !== "completed") {
-        stop = outcome;
-        break;
+      const conflicts: string[] = [];
+      for (let start = 0; start < pending.length && !stop; start += PUBLICATION_WINDOW) {
+        const outcome = await publishChanges(context, copy, pending.slice(start, start + PUBLICATION_WINDOW), merges);
+        applied.push(...outcome.committedPrefix);
+        if (outcome.status === "uncertain" && outcome.settlement === "committed") applied.push(outcome.current);
+        if (outcome.status === "completed") conflicts.push(...outcome.conflicts);
+        else stop = outcome;
       }
+      if (stop) break;
       if (rebases === MAX_REBASES) {
-        notApplied.push(...outcome.conflicts.map(path => ({ path, reason: "it changed again after each merge" })));
+        notApplied.push(...conflicts.map(path => ({ path, reason: "it changed again after each merge" })));
         break;
       }
       const next: CopyChange[] = [];
-      for (const path of outcome.conflicts) {
+      for (const path of conflicts) {
         const change = commandChanges.get(path)!; // SAFETY: conflicts name only published paths, each a key of commandChanges.
         const rebased = await rebaseChange(change, rebase);
         if (rebased.kind === "merged") {

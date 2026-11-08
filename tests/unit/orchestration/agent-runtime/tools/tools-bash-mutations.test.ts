@@ -23,6 +23,7 @@ import { bashMutationHarness, settled } from "./_bash-mutations-harness.js";
 import { conflictMarkersNotice, notAppliedNotice } from "../../../../../src/protocol/client/file-change-body.js";
 import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/event-store-types.js";
 import { undoSessionChanges } from "../../../../../src/orchestration/file-edits/session-undo.js";
+import { RetainedFileEditAuthority } from "../../../../../src/orchestration/file-edits/retained-file-edit-host.js";
 import { getSessionChangeReview } from "../../../../../src/orchestration/session/session-change-review.js";
 import { withStore } from "../../session/file-mutation-recovery-fixture.js";
 import { Log } from "../../../../../src/infra/log.js";
@@ -214,6 +215,27 @@ describe("bash tool: mutation commands", () => {
     expect(result.executionOutputTail).toBe("mock output\n\nMake these changes again against the current files if they are still necessary.");
     const visibleOutput = `${result.executionOutputTail ?? ""}\n${notAppliedNotice(mutationOf(result.details))}`;
     expect(visibleOutput.split(notAppliedNotice(mutationOf(result.details)))).toHaveLength(2);
+  });
+
+  // Each admitted file retains a directory descriptor until its round settles. Darwin's posix_spawn refuses every
+  // launch of a process that holds a descriptor numbered at or above 10240, so a package install that lands tens of
+  // thousands of files once stopped every launch of the executor until its landing ended.
+  it("lands a command's files in bounded rounds, so the retained directories do not grow with the files it wrote", async () => {
+    const root = project([["kept.txt", "kept\n"]]);
+    const original = RetainedFileEditAuthority.admitWritable.bind(RetainedFileEditAuthority);
+    const held = { open: 0, peak: 0 };
+    const admit = spyOn(RetainedFileEditAuthority, "admitWritable").mockImplementation((...args) => {
+      const authority = original(...args);
+      const close = authority.close.bind(authority);
+      held.peak = Math.max(held.peak, ++held.open);
+      authority.close = () => { held.open -= 1; close(); };
+      return authority;
+    });
+    const files = Array.from({ length: 300 }, (_, index) => `file${index}.js`);
+    const { result } = await runMutation(root, (cwd) => { for (const file of files) fs.writeFileSync(path.join(cwd, file), file); }).finally(() => admit.mockRestore());
+    expect(mutationOf(result.details)).toMatchObject({ applied: files.length });
+    expect(files.every(file => fs.readFileSync(path.join(root, file), "utf8") === file)).toBe(true);
+    expect(held).toEqual({ open: 0, peak: 256 });
   });
 
   it("merges again when the project changes a file during publication, and reports a file that keeps changing", async () => {
