@@ -24,6 +24,7 @@ import { liveWorkflowControl, messageDisposition, type LiveRecipientState } from
 import type { ProviderStreamEvent, StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types.js"
 import { readWorkflowAgentTurnEnds, resumableAgentTurnEnd, workflowSessionActions } from "../../../../src/orchestration/session/chat-session-run-evidence.js"
 import { createWorkflowRunner } from "../../../../src/orchestration/workflow-host/runner.js"
+import { workflowRunReader } from "../../../../src/orchestration/module-catalog.js"
 import { definition, fixtureSkills, workflow } from "../../workflows/vm/host-test-support"
 import { recoverWorkflowControl } from "../../../../src/workflows/vm/recovery"
 import { NO_MODULE_RUNTIMES } from "../../../../src/infra/module-runtime.js"
@@ -504,6 +505,24 @@ describe("workflow interruption ownership", () => {
       await running.catch(() => undefined)
     } finally {
       stopWatching()
+      await runner.dispose()
+      await runtime.dispose()
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("saves the person's cut when the person's and the parent agent's whole-run Interrupts race before any agent starts, so a restart keeps the person's interrupt", async () => {
+    const root = mkdtempSync(join(tmpdir(), "flywheel-worker-racing-interrupts-"))
+    const { runtime, store, runner } = await fixtureWorkflowRun(root, async function* () {
+      yield { kind: "done", stopReason: "end_turn" }
+    })
+    try {
+      const running = runner.run()
+      await Promise.all([runner.interrupt("person"), runner.interrupt("agent")])
+      expect((await workflowRunReader(store).readCut("session"))?.by).toBe("person")
+      await runner.abort("runtime")
+      await running.catch(() => undefined)
+    } finally {
       await runner.dispose()
       await runtime.dispose()
       rmSync(root, { recursive: true, force: true })

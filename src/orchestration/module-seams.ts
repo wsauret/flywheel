@@ -31,7 +31,7 @@ import type { RoleResolver } from "./config/roles.js"
 import type { ConversationMessage } from "./agent-runtime/llm/types.js"
 import type { WorkflowDeliveryAddress } from "./session/conversation/addressed-workflow-messages.js"
 import type { ChildExecutionResources } from "./session/child-execution-resources.js"
-import type { WorkflowRunReader, WorkflowRunWriter } from "./workflow-host/run-record.js"
+import type { WorkflowRunCut, WorkflowRunReader, WorkflowRunWriter } from "./workflow-host/run-record.js"
 import type { WorkflowPublication, WorkflowLaunchBinding } from "./session/child-session-publication.js"
 import type { WorkflowSessionFact } from "../workflows/vm/session-facts.js"
 
@@ -60,7 +60,7 @@ export interface ModuleWorkflowRuns {
     readonly bus: import("./app-service/runtime-ui-bus.js").RuntimeUiBus
     readonly hosts: Pick<import("./workflow-host/host-collection.js").WorkflowHosts, "isRunning" | "onChange" | "abort">
   }): ModuleServices
-  cut(workflowId: string, cut: Awaited<ReturnType<WorkflowRunReader["readCut"]>>): EventStoreAppend
+  cut(workflowId: string, cut: WorkflowRunCut | null): EventStoreAppend
   deleted(reader: AsyncEventStateReadSurface, workflowId: string): Promise<boolean>
   settles(facts: readonly WorkflowSessionFact[]): boolean
   /** Conversion registration alone does not make a historical result stale. */

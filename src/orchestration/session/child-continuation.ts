@@ -1,6 +1,6 @@
 import type { PausedBy } from "../../infra/output-blocks.js"
 import type { ChildRunStatus, StoppedBy } from "../../protocol/app-service-types.js"
-import type { TurnEnd } from "./conversation/turn-end-record.js"
+import type { TurnEnd, TurnInterruption } from "./conversation/turn-end-record.js"
 import type { WorkflowAgentTurnEnd } from "./chat-session-run-evidence.js"
 import { WHOLE_WORKFLOW, type WorkflowDeliveryAddress } from "./conversation/addressed-workflow-messages.js"
 import { addressReachesAgent } from "../../workflows/context-bundle/context-facts.js"
@@ -39,6 +39,15 @@ export function personCutRefusal(cut: ChildCut): string {
   return cut.kind === "stop"
     ? "A person stopped this child, so only a person can resume it."
     : "A person interrupted this child, so only a person can continue it, with Resume or a message."
+}
+
+/** The control authority of an interrupter: a person, then the parent
+ *  agent, then the runtime and every other cause. A lower rank wins. */
+export const interruptRank = (by: TurnInterruption): number => by === "person" ? 0 : by === "agent" ? 1 : 2
+
+/** Selects one cut with person-first control authority; equal actors retain their original evidence. */
+export function strongestInterrupt<T extends { readonly by: TurnInterruption }>(cuts: readonly (T | undefined)[]): T | undefined {
+  return cuts.filter((cut): cut is T => cut !== undefined).toSorted((a, b) => interruptRank(a.by) - interruptRank(b.by))[0]
 }
 
 /** The strongest cut among reached attempts: person, parent, runtime, then

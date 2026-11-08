@@ -7,7 +7,7 @@ import { DEFAULT_BUDGET, toBudgetLimits } from "../../workflows/budget.js"
 import { interruptedTurnEnd, isRuntimeInterruption, type ControlInterruption, type PlannedCutInterrupt, type TurnInterruption, type WorkflowInterruption } from "../session/conversation/turn-end-record.js"
 import { readWorkflowAgentTurnEnds } from "../session/chat-session-run-evidence.js"
 import { startedAgents } from "../../workflows/vm/host-commit-controller.js"
-import { parentMayContinue, workflowStepCut, type ChildCut } from "../session/child-continuation.js"
+import { parentMayContinue, strongestInterrupt, workflowStepCut, type ChildCut } from "../session/child-continuation.js"
 import type { WorkflowView } from "../../workflows/view/types.js"
 import type { WorkflowVmHost } from "../../workflows/vm/host-types.js"
 import { TITLE_GENERATION_ROLE_ID } from "../config/roles.js"
@@ -28,7 +28,8 @@ import { retireAddressedWorkflowMessages, WHOLE_WORKFLOW, type WorkflowDeliveryA
 import { addressReachesStartedAgent, workflowInterruptRefusal } from "./workflow-addressing.js"
 import { dropQueuedUserInput, readWorkflowQueuedUserInputs } from "../session/conversation/queued-user-inputs.js"
 import type { CapabilityAdmission } from "../config/module-policy.js"
-import { createWorkflowAgentInputs, strongestInterrupt } from "./agent-inputs.js"
+import { createWorkflowAgentInputs } from "./agent-inputs.js"
+import { nextRunCut, type WorkflowRunCut } from "./run-record.js"
 import { workflowRunReader, workflowRunOwner } from "../module-catalog.js"
 import { readWorkflowUsage } from "./member-totals.js"
 import { workflowMembershipReader } from "../session/workflow-membership.js"
@@ -586,10 +587,9 @@ export function createWorkflowRunner(opts: WorkflowRunnerFactoryOptions): Workfl
     return agentInputs.compact()
   }
 
-  async function recordWholeCut(next: { readonly by: "person" | "agent" | "runtime" | "replacement"; readonly timestamp: number } | null): Promise<void> {
-    const previous = await workflowRunReader(opts.projectionReader).readCut(sessionId)
-    if (previous === null && next === null) return
-    if (previous?.by === "person" && next?.by !== "person" && next !== null) return
+  async function recordWholeCut(next: WorkflowRunCut | null): Promise<void> {
+    const current = await workflowRunReader(opts.projectionReader).readCut(sessionId)
+    if (nextRunCut(current, next) === current) return
     await eventWriter.append(workflowRunOwner().cut(sessionId, next))
   }
 

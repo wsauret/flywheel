@@ -15,6 +15,7 @@ import { addressReachesAgent } from "../../workflows/context-bundle/context-fact
 import { loadQueueSnapshotFromReader } from "../../workflows/view/view-store.js"
 import { startedAgents, type StartedAgent } from "../../workflows/vm/host-commit-controller.js"
 import { workflowInterruptRefusal } from "./workflow-addressing.js"
+import { interruptRank, strongestInterrupt } from "../session/child-continuation.js"
 
 /** The attempt of one agent that runs, which a held message's address
  *  reaches or not. */
@@ -141,13 +142,8 @@ interface AttemptInterrupt {
   readonly timestamp: number
 }
 
-const rank = (by: TurnInterruption): number => by === "person" ? 0 : by === "agent" ? 1 : 2
 const whole = (address: WorkflowDeliveryAddress): boolean => address.addressedTo.some(({ _tag }) => _tag === "workflow")
 const reaches = (address: WorkflowDeliveryAddress, agent: StartedAgent["agent"] | undefined): boolean => whole(address) || (agent !== undefined && addressReachesAgent(address.addressedTo, agent))
-/** Selects one cut with person-first control authority; equal actors retain their original evidence. */
-export function strongestInterrupt<T extends { readonly by: TurnInterruption }>(cuts: readonly (T | undefined)[]): T | undefined {
-  return cuts.filter((cut): cut is T => cut !== undefined).toSorted((a, b) => rank(a.by) - rank(b.by))[0]
-}
 
 /** The order in which a parked state wins the state of the whole workflow. */
 const STATE_RANK = { running: 0, waiting_on_work: 1, interrupted: 2, idle: 3 } as const
@@ -280,7 +276,7 @@ export function createWorkflowAgentInputs(input: {
       // hands off can no longer be cut, and nothing would consume its entry.
       const handingOff = new Set([...slots.values()].flatMap(({ agent, queue }) => agent && queue.isHandingOff ? [agent.id] : []))
       const coverage: (RunningAgent | undefined)[] = agents.length === 0 ? [undefined] : agents.filter((agent) => reaches(address, agent) && !handingOff.has(agent.id))
-      const uncovered = coverage.filter((agent) => !pending.some((entry) => rank(entry.cut.by) <= rank(by) && (entry.agent === undefined || entry.agent.id === agent?.id)))
+      const uncovered = coverage.filter((agent) => !pending.some((entry) => interruptRank(entry.cut.by) <= interruptRank(by) && (entry.agent === undefined || entry.agent.id === agent?.id)))
       if (uncovered.length === 0) return false
       const cut = { by, timestamp: Date.now() }
       pending.push(...uncovered.map((agent) => ({ agent, cut })))
@@ -336,7 +332,7 @@ export function createWorkflowAgentInputs(input: {
         interrupt(by, timestamp = Date.now()) {
           if (slot.queue.isHandingOff) return false
           const prior = effective(slot)
-          if (prior !== undefined && rank(prior.by) <= rank(by)) return false
+          if (prior !== undefined && interruptRank(prior.by) <= interruptRank(by)) return false
           slot.cut = { by, timestamp }
           slot.opening = true
           input.onChange?.()

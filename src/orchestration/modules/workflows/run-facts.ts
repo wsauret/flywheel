@@ -1,7 +1,7 @@
 import type { AsyncEventStateReadSurface, EventStoreAppend, StoredFact } from "../../../infra/event-store-types.js"
 import { parseWorkflowRunFact, type WorkflowRunFact } from "../../../workflows/run-facts.js"
 import type { SessionManager } from "../../session/manager.js"
-import type { WorkflowRunReader, WorkflowRunWriter } from "../../workflow-host/run-record.js"
+import type { WorkflowRunCut, WorkflowRunWriter } from "../../workflow-host/run-record.js"
 import { createWorkflowRunReader } from "./run-record.js"
 import type { WorkflowPublication, WorkflowLaunchBinding } from "../../session/child-session-publication.js"
 import { parseWorkflowSessionFact, type WorkflowSessionFact } from "../../../workflows/vm/session-facts.js"
@@ -50,7 +50,7 @@ export function workflowSettlement(facts: readonly WorkflowSessionFact[]): boole
     || last?.type === "workflow.control.committed" && ["ABORT", "PAUSE", "ATTEMPT_FAILED", "ATTEMPT_SUCCEEDED"].includes(last.payload.event.type)
 }
 
-export function workflowCutAppend(workflowId: string, cut: Awaited<ReturnType<WorkflowRunReader["readCut"]>>): EventStoreAppend {
+export function workflowCutAppend(workflowId: string, cut: WorkflowRunCut | null): EventStoreAppend {
   return workflowRunAppend(workflowId, { type: "workflow.run.cut.updated", version: 1, actor: "flywheel", payload: { cut } })
 }
 

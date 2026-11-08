@@ -8,7 +8,7 @@ import { factTypes } from "../../../infra/event-registry.js"
 import { readRunDefinitionLineage } from "../../../workflows/definition-provenance-projection.js"
 import { readWorkflowInputSeed } from "../../../workflows/context-bundle/context-recovery.js"
 import { parseWorkflowRunFact, WorkflowRunFactSchemas } from "../../../workflows/run-facts.js"
-import type { WorkflowRunReader, WorkflowRunRecord } from "../../workflow-host/run-record.js"
+import { nextRunCut, type WorkflowRunCut, type WorkflowRunReader, type WorkflowRunRecord } from "../../workflow-host/run-record.js"
 import { readWorkflowRecovery } from "../../../workflows/vm/recovery-fold.js"
 import type { Attempt } from "../../../workflows/vm/graph-types.js"
 
@@ -17,7 +17,7 @@ interface RunRegistration {
   readonly position: number
   readonly run: WorkflowRunRecord
   readonly request: string | null
-  readonly cut: Awaited<ReturnType<WorkflowRunReader["readCut"]>>
+  readonly cut: WorkflowRunCut | null
 }
 /** Keyed with structural sharing, so a fact copies the path to its own run
  *  and never the index of every run. */
@@ -73,7 +73,7 @@ function reduceRunIndex(state: RunIndex, event: StoredFact): RunIndex {
       return { runs: HashMap.remove(state.runs, id) }
     case "workflow.run.cut.updated":
       if (!previous) throw new Error(`Workflow ${id} cut precedes registration`)
-      return { runs: HashMap.set(state.runs, id, { ...previous, cut: fact.payload.cut }) }
+      return { runs: HashMap.set(state.runs, id, { ...previous, cut: nextRunCut(previous.cut, fact.payload.cut) }) }
   }
 }
 
