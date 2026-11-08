@@ -1,0 +1,21 @@
+tests/unit/orchestration/headless/benchmark-auth-export.test.ts
+  s_f3bb5e3b311ed0::t_1a68cd838fa202 19,209
+tests/unit/orchestration/modules/provider-claude-agent-sdk/client.test.ts
+  s_f3bb5e3b311ed0::t_553db6876051b4 174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "37e539453058c3aaa0e8f396dded747771ccded2",
+  "prompts": {},
+  "sessions": {
+    "s_f3bb5e3b311ed0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c3df007-8751-458c-9b17-d22bc9edab38",
+        "model": "unknown"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
