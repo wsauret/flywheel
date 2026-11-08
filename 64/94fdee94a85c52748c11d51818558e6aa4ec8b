@@ -1,0 +1,18 @@
+webview/src/app/screen-stack.test.ts
+  h_4b47e9e4a8b456 11-18,20-24,28,33-35,39,443-571
+webview/src/app/screen-stack.ts
+  h_4b47e9e4a8b456 14-15,69-89,109,121,152-181,183-258,262,264-290,293-297,299,301-302,408
+webview/src/modules/workflows/navigation.ts
+  h_4b47e9e4a8b456 4,131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6494fdee94a85c52748c11d51818558e6aa4ec8b",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
