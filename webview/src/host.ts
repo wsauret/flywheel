@@ -126,6 +126,12 @@ export interface HostCapabilities {
   /** The host has a keyboard that takes the client's chords, so the client
    *  offers its Keyboard shortcuts reference. */
   readonly keyboardShortcuts?: true
+  /** The page lets the client go when it hides. On `pagehide` the client
+   *  saves the reader's place and then disposes itself, in that order. A host
+   *  whose page can wait in the back-forward cache with its socket open, or
+   *  whose frame goes away with the page, sets it. Absent, the client stays
+   *  mounted through a pagehide and only saves the place. */
+  readonly releaseOnPageHide?: true
 }
 
 export interface ClientHost {

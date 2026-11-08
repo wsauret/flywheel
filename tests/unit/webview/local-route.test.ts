@@ -57,7 +57,7 @@ const bootstrap = await Bun.build({
           export function reloadOnFreshLink() {}
           export function tokenAdmitted() {}
           export function applyTabIdentity() {}
-          export function releaseWhileCached() {}
+          export function reloadWhenRestoredFromCache() {}
           export function showGate() {}
         `, loader: "js",
       }))

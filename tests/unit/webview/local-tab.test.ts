@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { faviconHref, faviconSvg, releaseWhileCached, tabState, tabTitle } from "../../../webview/local/tab.js"
+import { faviconHref, faviconSvg, reloadWhenRestoredFromCache, tabState, tabTitle } from "../../../webview/local/tab.js"
 
 describe("local browser tab identity", () => {
   test("reads the tab's state from the runtime's health first, then the session", () => {
@@ -36,15 +36,13 @@ describe("local browser tab identity", () => {
 })
 
 describe("a project tab that the browser caches", () => {
-  test("lets the project go when hidden and loads again when shown from the cache", () => {
+  test("loads again only when shown from the cache", () => {
     const page = new EventTarget()
     const calls: string[] = []
-    releaseWhileCached(page, () => calls.push("release"), () => calls.push("reload"))
+    reloadWhenRestoredFromCache(page, () => calls.push("reload"))
     page.dispatchEvent(Object.assign(new Event("pageshow"), { persisted: false }))
     expect(calls).toEqual([])
-    page.dispatchEvent(new Event("pagehide"))
-    expect(calls).toEqual(["release"])
     page.dispatchEvent(Object.assign(new Event("pageshow"), { persisted: true }))
-    expect(calls).toEqual(["release", "reload"])
+    expect(calls).toEqual(["reload"])
   })
 })

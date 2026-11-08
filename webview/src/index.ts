@@ -29,7 +29,7 @@ import { prepareDocumentReplacement } from "./client/prepare-document-replacemen
 export function mountClient(root: HTMLElement, host: ClientHost): ClientHandle {
   const scope = () => typeof host.inputScope === "function" ? host.inputScope() : host.inputScope ?? location.origin
   const storage = host.inputStorage ?? browserInputReloadStorage(scope)
-  let mounted: ClientHandle | undefined
+  let mounted: MountedClient | undefined
   let disposed = false
   const commands: ClientCommand[] = []
   void storage.load().then((bytes) => {
@@ -39,20 +39,32 @@ export function mountClient(root: HTMLElement, host: ClientHost): ClientHandle {
   }, () => {
     if (!disposed) root.textContent = "Flywheel could not restore this client's saved input. The saved data was kept. Reload this page to try again."
   })
-  return {
-    command(command) { if (mounted) mounted.command(command); else commands.push(command) },
-    dispose() { disposed = true; mounted?.dispose() },
+  // The one listener for a page going away, so the save always runs before
+  // the release: a release first would remove the save before it ran.
+  const onPageHide = (): void => {
+    mounted?.savePlace()
+    if (host.capabilities.releaseOnPageHide === true) handle.dispose()
   }
+  addEventListener("pagehide", onPageHide)
+  const handle: ClientHandle = {
+    command(command) { if (mounted) mounted.command(command); else commands.push(command) },
+    dispose() { disposed = true; removeEventListener("pagehide", onPageHide); mounted?.dispose() },
+  }
+  return handle
 }
 
-function mountLoadedClient(root: HTMLElement, host: ClientHost, scope: () => string, storage: InputReloadStorage, checkpoint: InputReloadCheckpoint | undefined): ClientHandle {
+interface MountedClient extends ClientHandle {
+  savePlace(): void
+}
+
+function mountLoadedClient(root: HTMLElement, host: ClientHost, scope: () => string, storage: InputReloadStorage, checkpoint: InputReloadCheckpoint | undefined): MountedClient {
   const diagnostic = host.onDiagnostic ?? (() => {})
   // Initial admission needs only the mounting contract. Replacement negotiates
   // its newer vocabulary separately and keeps version-1 input owners alive.
   if (host.hostContract !== undefined && !(host.hostContract >= MINIMUM_HOST_CONTRACT_VERSION)) {
     root.textContent = "This Flywheel host is older than the client the runtime serves. Update it to continue."
     diagnostic(`the host offers contract ${host.hostContract}; this client needs ${MINIMUM_HOST_CONTRACT_VERSION}`)
-    return { command() {}, dispose() { root.textContent = "" } }
+    return { command() {}, savePlace() {}, dispose() { root.textContent = "" } }
   }
   // A runtime that refuses this build is answered by loading the client again
   // through the host. The reader's place is saved first and restored by the
@@ -128,6 +140,7 @@ function mountLoadedClient(root: HTMLElement, host: ClientHost, scope: () => str
     void controller.start()
     return {
       command(command) { if (command.type === "reconnect") connection.reconnect() },
+      savePlace() {},
       dispose() { replacementLifetime.abort(); admission.dispose(); focus.dispose(); stopTouchActivation(); stopInputDiagnostics(); unmount(); controller.dispose(); void connection.close(); root.classList.remove("changes-editor") },
     }
   }
@@ -161,10 +174,10 @@ function mountLoadedClient(root: HTMLElement, host: ClientHost, scope: () => str
   // A page coming back to the foreground has usually had its socket closed
   // behind it, with or without a close event. The connection decides from the
   // lane's own evidence whether to reattach or leave a healthy lane alone.
-  // A hidden page can be discarded with no further event, and an unloading
-  // page is about to be loaded again, so both save the reader's place; a page
-  // that comes back drops it, because a later mount in the same page, such as
-  // the phone's for another project, must not open this project's session.
+  // A hidden page can be discarded with no further event, so it saves the
+  // reader's place; `mountClient` saves it for an unloading page. A page that
+  // comes back drops it, because a later mount in the same page, such as the
+  // phone's for another project, must not open this project's session.
   const onVisible = () => {
     if (document.visibilityState !== "visible") {
       savePlace()
@@ -173,9 +186,7 @@ function mountLoadedClient(root: HTMLElement, host: ClientHost, scope: () => str
     readingPlace.forget()
     connection.resume()
   }
-  const onPageHide = () => { savePlace() }
   document.addEventListener("visibilitychange", onVisible)
-  addEventListener("pagehide", onPageHide)
 
   // The checkpoint carries the messages on their way to the next page
   // however this one goes away: a reload for a newer client, which saves the
@@ -237,6 +248,7 @@ function mountLoadedClient(root: HTMLElement, host: ClientHost, scope: () => str
   })
 
   return {
+    savePlace,
     command(command) {
       if (admission.held) return
       // The connection owns lane liveness, the same as for a page that comes
@@ -255,7 +267,6 @@ function mountLoadedClient(root: HTMLElement, host: ClientHost, scope: () => str
       stopTouchActivation()
       stopInputDiagnostics()
       document.removeEventListener("visibilitychange", onVisible)
-      removeEventListener("pagehide", onPageHide)
       stopKeepingOutbox()
       unmount()
       actions.dispose()

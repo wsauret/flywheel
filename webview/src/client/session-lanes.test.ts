@@ -11,6 +11,7 @@ import { Socket } from "effect/socket"
 import { createRuntimeSession } from "./session.js"
 import { headlessClient } from "./session-host-loader-fixture.js"
 import { fakeConnection } from "./session-connection-fixture.js"
+import type { HostCapabilities } from "../host.js"
 import { detailView, tailWindow } from "../../../tests/helpers/runtime-views.js"
 import { runtimeQuery } from "../../../tests/helpers/runtime-dispatch.js"
 
@@ -191,24 +192,29 @@ function pageGlobals() {
 }
 
 /** Mounts the whole client on `fake`, as a host does on a page load. */
-function mountPage(fake: ReturnType<typeof laneConnection>) {
+function mountPage(fake: ReturnType<typeof laneConnection>, capabilities: HostCapabilities = {}) {
   headlessClient.setConnection(fake.connection)
   return headlessClient.mountForTest({
     socket: Socket.layerWebSocket("ws://localhost").pipe(Layer.provide(Socket.layerWebSocketConstructorGlobal)),
-    capabilities: {},
+    capabilities,
   })
 }
 
+// The page goes away as a browser unloads it: one pagehide, which the host
+// answers only through its capability, never by disposing the client itself.
 test("a reloaded page reads the transcript of the session it showed in its first burst, before the catalog answers", async () => {
   const page = pageGlobals()
   try {
     const before = laneConnection()
-    const first = mountPage(before)
+    let closes = 0
+    const close = before.connection.close
+    before.connection.close = async () => { closes += 1; await close.call(before.connection) }
+    mountPage(before, { releaseOnPageHide: true })
     before.lanes.open()
     await settle()
     assert.equal(headlessClient.session.sessionId, "chat-1")
     dispatchEvent(new Event("pagehide"))
-    first.dispose()
+    assert.equal(closes, 1, "the page lets its client go when it hides")
 
     const after = laneConnection({ hold: ["snapshot"] })
     const second = mountPage(after)

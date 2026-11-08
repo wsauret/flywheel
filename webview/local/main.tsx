@@ -5,7 +5,7 @@ import { mountClient } from "../src/index.js"
 import type { RuntimeHealth } from "../../src/protocol/app-service-types.js"
 import { showGate } from "./gate.js"
 import { createAddressFollower, sessionFromPath } from "./route.js"
-import { applyTabIdentity, releaseWhileCached } from "./tab.js"
+import { applyTabIdentity, reloadWhenRestoredFromCache } from "./tab.js"
 import { consumeLocalBrowserToken, localSocketUrl, reloadOnFreshLink, tokenAdmitted } from "./token.js"
 import "./theme.css"
 
@@ -71,6 +71,7 @@ function mountLocalClient(host: HTMLElement, token: string): void {
     ...(host.dataset.hostContract === undefined ? {} : { hostContract: Number(host.dataset.hostContract) }),
     capabilities: {
       keyboardShortcuts: true,
+      releaseOnPageHide: true,
       writeClipboardText: (text) => navigator.clipboard.writeText(text),
       openExternal: async (url) => {
         window.open(url, "_blank", "noopener")
@@ -88,5 +89,7 @@ function mountLocalClient(host: HTMLElement, token: string): void {
     // oxlint-disable-next-line no-console -- boundary: the browser console is the only diagnostics sink this page has
     onDiagnostic: (message, detail) => console.warn(message, detail),
   })
-  releaseWhileCached(window, () => { handle.dispose() }, () => { location.reload() })
+  // The client released itself on pagehide (`releaseOnPageHide`), so a page
+  // the browser shows again from its back-forward cache has no client left.
+  reloadWhenRestoredFromCache(window, () => { location.reload() })
 }

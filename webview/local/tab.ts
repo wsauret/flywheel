@@ -44,10 +44,10 @@ export function faviconHref(state: TabState): string {
 
 /** A tab that navigates away can keep its page alive in the browser's
  *  back-forward cache with the socket open, and that socket holds the project
- *  open. The page lets its connection go when it is hidden, and loads again
- *  when the browser shows it again from that cache. */
-export function releaseWhileCached(page: Pick<EventTarget, "addEventListener">, release: () => void, reload: () => void): void {
-  page.addEventListener("pagehide", release)
+ *  open. The client lets its connection go when the page hides, through the
+ *  host's `releaseOnPageHide` capability, so the page loads again when the
+ *  browser shows it again from that cache. */
+export function reloadWhenRestoredFromCache(page: Pick<EventTarget, "addEventListener">, reload: () => void): void {
   page.addEventListener("pageshow", (event) => {
     if ("persisted" in event && event.persisted === true) reload()
   })

@@ -45,6 +45,7 @@ const scope = `editor:${root.dataset.inputScope ?? ""}`
 
 const capabilities: HostCapabilities = {
   keyboardShortcuts: true,
+  releaseOnPageHide: true,
   canMutate: (type) => mutationTypeExposure(type) !== "omitted",
   writeClipboardText: (text) => request({ name: "writeClipboardText", text }),
   openChanges: (target) => request({ name: "openChanges", target }),
@@ -96,4 +97,3 @@ window.addEventListener("message", (event: MessageEvent<HostMessage>) => {
 })
 
 vscode.postMessage({ type: "ready" })
-window.addEventListener("pagehide", () => { handle?.dispose(); handle = undefined })
