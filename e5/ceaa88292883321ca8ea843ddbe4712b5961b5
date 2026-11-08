@@ -1,0 +1,20 @@
+tests/unit/orchestration/agent-runtime/context/_loop-fixtures.ts
+  h_4b47e9e4a8b456 181-192
+tests/unit/orchestration/agent-runtime/context/loop-interrupt-carryover.test.ts
+  h_4b47e9e4a8b456 17
+tests/unit/orchestration/agent-runtime/context/loop-interruption-barrier.test.ts
+  h_4b47e9e4a8b456 1-394
+tests/unit/orchestration/agent-runtime/context/loop-silent-system.test.ts
+  h_4b47e9e4a8b456 9,11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e5ceaa88292883321ca8ea843ddbe4712b5961b5",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
