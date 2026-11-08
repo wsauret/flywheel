@@ -1,0 +1,29 @@
+THIRD-PARTY-LICENSES.txt
+  s_f3bb5e3b311ed0::t_2e613f3e924c97 11381-11409,12222-12279,12762-12813,13249-13277,13568-13625,26342-26393
+bun.lock
+  s_f3bb5e3b311ed0::t_18c470f7d7271c 24,50,55,76,87,91,180,182,186,196,206,212,214,230,232,272,1414,1842,1898-1899,1908-1929,1954-1955,1964-1971,2026-2029,2060,2062,2080-2081,2088-2116,2122-2137,2152-2157,2186-2187,2254,2256,2258,2260,2262,2274-2294,2340-2355,2394-2395
+package.json
+  s_f3bb5e3b311ed0::t_e49aadfffdc114 128
+relay/package.json
+  s_f3bb5e3b311ed0::t_7c669356fab81e 19,24
+website/package.json
+  s_f3bb5e3b311ed0::t_1fb6821f208bb5 16
+webview/package.json
+  s_f3bb5e3b311ed0::t_2f5ca744bbeb13 17,21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "193818206d266182dc313a185d45ceb7554a7df3",
+  "prompts": {},
+  "sessions": {
+    "s_f3bb5e3b311ed0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c3df007-8751-458c-9b17-d22bc9edab38",
+        "model": "unknown"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
