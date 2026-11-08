@@ -136,6 +136,49 @@ describe("auth login instance selection", () => {
     login.dispose();
   });
 
+  test.each(["served", "forgotten"] as const)("an episode that ends outside the login (%s) before the URL still gets its sign-in step", async (exit) => {
+    const observations = createLoginObservations();
+    const target = { accountId: "one", identity: "one@example.com", configDir: "/scratch/profile-b/login" };
+    observations.recordRequest(target, "login-rejected");
+    void observations.awaitLogin("/scratch/profile-b", target, new AbortController().signal);
+    const id = observations.loginQuestions()[0]!.id;
+    const entered = Promise.withResolvers<void>();
+    const urlGate = Promise.withResolvers<void>();
+    const url = "https://example.invalid/authorize";
+    const notices: string[] = [];
+    const published = Promise.withResolvers<void>();
+    const login = createAuthLoginService({
+      resolveProfile: () => ({ id: "a", directory: "/scratch/profile-a" }), openBrowser: async () => false, recovery: () => observations,
+      resolveLoginProfile: (directory) => ({ id: "b", directory }),
+      resolveKey: async (value) => Redacted.make(value), launcher: refusingLauncher,
+      admit: async (request) => ({ ok: true, grant: { ...defaultModuleState(), ...request } }),
+      providers: async () => [provider({ providerId: "anthropic_sub", loginMethod: "browser-auth", accounts: [account("one")] })],
+      settleCatalog: () => async () => {}, refresh: async () => {}, log: silentLog,
+      publishNotice: async (notice) => { notices.push(notice.kind); published.resolve(); },
+      loginFlows: () => ({ flow: "browser", login: async () => testAuthContext(), reconnect: async (_id, ports) => {
+        entered.resolve();
+        await urlGate.promise;
+        ports.onAuthorizeUrl?.({ url });
+        await ports.onManualCodeInput?.();
+        return true;
+      } }),
+    });
+    try {
+      const pending = login.login({ providerId: "anthropic_sub", instanceId: "one", loginQuestionId: id });
+      await entered.promise;
+      if (exit === "served") observations.recordRequest(target, "served");
+      else observations.forget(target);
+      urlGate.resolve();
+      for (let flush = 0; flush < 5; flush += 1) await Promise.resolve();
+      const result = await Promise.race([pending, Promise.resolve(undefined)]);
+      expect(result).toMatchObject({ kind: "browser", authorizeUri: url });
+      if (result?.kind !== "browser") throw new Error("No browser step");
+      expect(login.completeBrowserLogin(result.operationId, Redacted.make("code#state"))).toBe(true);
+      await published.promise;
+      expect(notices).toEqual(["completed"]);
+    } finally { urlGate.resolve(); login.dispose(); }
+  });
+
   test.each(["missing-account", "unsupported", "missing-profile"] as const)("automatic preflight %s declines without adding an account", async (failure) => {
     const observations = createLoginObservations();
     const target = { accountId: "one", identity: "one@example.com", configDir: "/scratch/profile-b/login" };

@@ -15,7 +15,7 @@ import { canonicalModuleIds } from "../../protocol/module-ids.js"
 import { isExternalLoginDefinition, type ExternalLoginDefinition, type ExternalLoginQuestion, type OAuthLoginPrompt } from "../../infra/llm/access-provider.js"
 import { installedAccessProviderDefinitions } from "../credential-provider-modules.js"
 
-type LoginRecovery = Pick<ExternalLoginDefinition["auth"], "loginQuestions" | "answerLogin" | "settleLogin">
+type LoginRecovery = Pick<ExternalLoginDefinition["auth"], "answerLogin" | "settleLogin">
 
 /** The owned profile a request writes: its id keys publication, and its
  *  directory holds the credentials. */
@@ -128,10 +128,10 @@ export function createAuthLoginService(options: AuthLoginServiceOptions): AuthLo
   let outstanding: LoginOperation | undefined
   const recoveryFor = options.recovery ?? ((providerId: string) =>
     installedAccessProviderDefinitions().filter(isExternalLoginDefinition).find(({ id }) => id === providerId)?.auth)
+  // The provider can end the login episode on its own (a served request or a
+  // forgotten account). That does not end this operation: the person who said
+  // Yes still gets the sign-in step and finishes or cancels it here.
   const isCurrent = (operation: LoginOperation): boolean => outstanding === operation
-    && !operation.controller.signal.aborted
-    && (operation.recovery === undefined || operation.recovery.owner.loginQuestions().some((question) =>
-      question.id === operation.recovery?.question.id && question.phase === "logging-in"))
   const publish = (operation: LoginOperation, notice: AuthOperationNotice): Promise<void> =>
     options.publishNotice(notice, { profileId: operation.profile.id, question: operation.recovery !== undefined })
   /** Publishes the end of a long login, which its client waits for on the
@@ -233,7 +233,7 @@ export function createAuthLoginService(options: AuthLoginServiceOptions): AuthLo
     try {
       // A reconnect reports whether the account still held the credential it started from.
       if (await flow === false) throw new Error(CREDENTIAL_CHANGED)
-      if (outstanding !== operation || operation.controller.signal.aborted) return
+      if (!isCurrent(operation)) return
       options.log.info("provider login completed", { providerId })
       outstanding = undefined
       recovery?.owner.settleLogin(recovery.question.id, "renewed")
@@ -241,7 +241,7 @@ export function createAuthLoginService(options: AuthLoginServiceOptions): AuthLo
       await settle(operation, { kind: "completed", operationId, providerId })
       answerStep(operation, { kind: "completed", providerId })
     } catch (cause) {
-      if (outstanding !== operation || operation.controller.signal.aborted) return
+      if (!isCurrent(operation)) return
       const message = errorMessage(cause)
       options.log.info("provider login did not complete", { providerId })
       outstanding = undefined
