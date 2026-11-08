@@ -173,7 +173,7 @@ describe("waits outlive the run", () => {
     // The live list of commands, which replacement blockers read, never shows a wait.
     expect(w.tasks.activeBackgroundCommands()).toEqual([])
 
-    expect(w.tasks.terminateProcess("reply-wait:ask-1", "agent")).toBe(true)
+    expect(w.tasks.terminateProcess("reply-wait:ask-1", "agent")).toBe("requested")
     await settle()
     expect(w.tasks.activeTaskCount()).toBe(0)
     expect(w.notices).toEqual([])

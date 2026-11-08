@@ -137,6 +137,11 @@ interface TrackHandle {
  * at most once for targeted termination or host-owned teardown. */
 export type BackgroundKillSource = "agent" | "user" | "runtime";
 
+/** How a request to stop a task was decided: this request began its stop, a
+ *  stop of it was already under way, or nothing here can stop it because it
+ *  is unknown, settled, or has no kill control. */
+type StopDecision = "requested" | "under_way" | "refused";
+
 interface KillControl {
   run: (source: BackgroundKillSource) => void | Promise<void>;
 }
@@ -253,7 +258,7 @@ interface TaskLifecycle extends BackgroundWorkProgress {
    *  only when this call requested a new kill; false means the task is unknown,
    *  settled, or already stopping. */
   terminate(toolUseId: string): boolean;
-  terminateProcess(processId: string, source: BackgroundKillSource): boolean;
+  terminateProcess(processId: string, source: BackgroundKillSource): StopDecision;
   /** Drops the observer of one live task, and its process record, without
    *  killing it or publishing its completion, for work another owner took
    *  over. False when the task is not live here. */
@@ -318,9 +323,10 @@ interface ActiveEntry {
   hostClose: "detach" | undefined;
   wait: boolean;
   service: boolean;
-  killed: boolean;
-  /** Who asked for the kill that is under way, which names a stopped command's outcome. */
-  killedBy: BackgroundKillSource | undefined;
+  /** Who asked for the stop that is under way, or undefined while none is.
+   *  `requestStop` is its one writer. It names a stopped command's outcome,
+   *  and the task's process record reads it as `stopping`. */
+  stopRequestedBy: BackgroundKillSource | undefined;
   suppressNotification: boolean;
   stallTimer: ReturnType<typeof setTimeout> | null;
   stallFired: boolean;
@@ -450,8 +456,7 @@ export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundW
       hostClose: args.hostClose,
       wait: args.wait === true,
       service: args.service === true,
-      killed: false,
-      killedBy: undefined,
+      stopRequestedBy: undefined,
       suppressNotification: false,
       stallTimer: null,
       stallFired: false,
@@ -483,6 +488,7 @@ export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundW
       readOutput: args.readOutput,
       command: args.command,
       done: args.done,
+      stopRequested: () => entry.stopRequestedBy !== undefined,
     });
     recordCommand(commandIndexRecord(args.meta, entry.startedAtMs));
     notifyChange();
@@ -494,7 +500,7 @@ export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundW
       entry.stopObservingInterruption?.();
       const result = backgroundWorkOutcome({
         description: entry.meta.description, stallFired: entry.stallFired, stallTimeoutMs: entry.stall?.timeoutMs,
-        killedBy: entry.killed ? entry.killedBy : undefined,
+        killedBy: entry.stopRequestedBy,
       }, outcome);
       const evictedToolUseId = processes.settle(args.meta.id, { status: result.status, exit: result.exit });
       if (evictedToolUseId) lastExecutionOutputs.delete(evictedToolUseId);
@@ -520,7 +526,7 @@ export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundW
     if (!admitting) {
       entry.suppressNotification = entry.meta.type !== "background_command";
       if (entry.hostClose === "detach") detach(args.meta.id);
-      else invokeKill(entry, "runtime", false);
+      else requestStop(entry, "runtime", false);
     }
 
     return {
@@ -564,7 +570,7 @@ export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundW
       if (entry.meta.toolUseId === undefined || entry.wait) continue;
       // A shell stop is a request, not process settlement. Keep its live
       // descriptor until `done` settles so the project stays open for it.
-      if (!entry.kill || (entry.killed && entry.meta.type !== "background_command")) continue;
+      if (!entry.kill || (entry.stopRequestedBy !== undefined && entry.meta.type !== "background_command")) continue;
       const descriptor = {
         id: entry.meta.id,
         description: entry.meta.description,
@@ -612,39 +618,37 @@ export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundW
       error: errorMessage(err),
     });
     if (!retryable) return;
-    entry.killed = false;
-    entry.killedBy = undefined;
+    entry.stopRequestedBy = undefined;
     notifyChange();
   }
 
-  function invokeKill(entry: ActiveEntry, source: BackgroundKillSource, retryable: boolean): boolean {
-    if (!entry.kill || entry.killed) return false;
-    entry.killed = true;
-    entry.killedBy = source;
+  /** The one transition of a task's stop request. Every stop, whether a
+   *  person's, the agent's, or the runtime's, goes through it. */
+  function requestStop(entry: ActiveEntry, source: BackgroundKillSource, retryable: boolean): StopDecision {
+    if (!entry.kill) return "refused";
+    if (entry.stopRequestedBy !== undefined) return "under_way";
+    entry.stopRequestedBy = source;
     try {
       void Promise.resolve(entry.kill.run(source)).catch((err) => { recordKillFailure(entry, err instanceof Error ? err : new Error(String(err)), retryable); });
     } catch (err) {
       recordKillFailure(entry, err instanceof Error ? err : new Error(String(err)), retryable);
-      return false;
+      return "refused";
     }
     notifyChange();
-    return true;
+    return "requested";
   }
 
   function terminate(toolUseId: string): boolean {
     for (const entry of active.values()) {
       if (entry.meta.toolUseId !== toolUseId) continue;
-      return invokeKill(entry, "user", true);
+      return requestStop(entry, "user", true) === "requested";
     }
     return false;
   }
 
-  function terminateProcess(processId: string, source: BackgroundKillSource): boolean {
+  function terminateProcess(processId: string, source: BackgroundKillSource): StopDecision {
     const entry = active.get(processId);
-    if (!entry) return false;
-    const accepted = invokeKill(entry, source, true);
-    if (accepted) processes.markStopping(processId);
-    return accepted;
+    return entry ? requestStop(entry, source, true) : "refused";
   }
 
   function detach(processId: string): boolean {
@@ -677,7 +681,7 @@ export function createBackgroundWorkRegistry(opts: RegistryOptions): BackgroundW
       }
       entry.suppressNotification = entry.meta.type !== "background_command";
       owned.push(entry);
-      invokeKill(entry, "runtime", false);
+      requestStop(entry, "runtime", false);
     }
     notifyChange();
     await Promise.allSettled(owned.map((entry) => entry.done));

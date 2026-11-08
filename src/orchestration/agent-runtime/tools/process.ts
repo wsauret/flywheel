@@ -326,7 +326,9 @@ export function createProcessTool(backgroundTasks: BackgroundWorkRegistry, child
           : { content: `No managed process has ID '${id}'.\n${await processList(backgroundTasks, context, children, unattendedChat)}`, outcome: "error" };
       }
       if (action === "stop") {
-        if (backgroundTasks.terminateProcess(id, "agent")) return { content: `Stop requested for process '${id}'.`, outcome: "ok" };
+        const decision = backgroundTasks.terminateProcess(id, "agent");
+        if (decision === "requested") return { content: `Stop requested for process '${id}'.`, outcome: "ok" };
+        if (decision === "under_way") return { content: `A stop of process '${id}' is already under way. It settles when the process exits.`, outcome: "ok" };
         const persistent = await persistentRecord(context, id);
         if (persistent && context.persistentProcesses) {
           const result = await context.persistentProcesses.stop(id);

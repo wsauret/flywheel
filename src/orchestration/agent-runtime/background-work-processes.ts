@@ -87,8 +87,17 @@ export type BackgroundWorkOutput =
 
 type OutputReader = (request: BackgroundOutputRequest) => Promise<string>;
 
+type SettledProcessStatus = Exclude<BackgroundProcessRecord["status"], "running" | "stopping">;
+
+/** A live process reads whether a stop of it is under way from its task,
+ *  the one owner of that request; a settled one holds how it ended. */
+type ProcessState =
+  | { readonly kind: "live"; readonly stopRequested: () => boolean }
+  | { readonly kind: "settled"; readonly status: SettledProcessStatus; readonly settledAtMs: number; readonly exitCode?: number };
+
 interface ProcessEntry {
-  record: BackgroundProcessRecord;
+  identity: Pick<BackgroundProcessRecord, "id" | "kind" | "description" | "startedAtMs">;
+  state: ProcessState;
   readOutput: OutputReader | undefined;
   toolUseId: string | undefined;
   command: ManagedCommand | undefined;
@@ -105,6 +114,8 @@ interface ProcessAdmission {
   readonly readOutput: OutputReader | undefined;
   readonly command: ManagedCommand | undefined;
   readonly done: Promise<unknown>;
+  /** Whether a stop of the task is under way, which the record shows as `stopping`. */
+  readonly stopRequested: () => boolean;
 }
 
 export interface BackgroundProcessTable {
@@ -113,9 +124,7 @@ export interface BackgroundProcessTable {
   /** Records how a process ended. Resolves to the tool use of a settled
    *  record that the bounded history evicted, whose retained output the
    *  caller forgets with it. */
-  settle(id: string, end: { readonly status: BackgroundProcessRecord["status"]; readonly exit?: CommandExit | undefined }): string | undefined;
-  /** A stop of the process was accepted and its task has not settled yet. */
-  markStopping(id: string): void;
+  settle(id: string, end: { readonly status: SettledProcessStatus; readonly exit?: CommandExit | undefined }): string | undefined;
   /** Forgets one record. Resolves to its tool use, whose retained output the
    *  caller forgets with it. */
   forget(id: string): string | undefined;
@@ -127,6 +136,11 @@ export interface BackgroundProcessTable {
   /** Awaits the end of one process. The wait is event-driven and bounded;
    *  false means unknown, aborted, or timed out. */
   wait(id: string, options?: { signal?: AbortSignal; timeoutMs?: number }): Promise<boolean>;
+}
+
+function view({ identity, state }: ProcessEntry): BackgroundProcessRecord {
+  if (state.kind === "live") return { ...identity, status: state.stopRequested() ? "stopping" : "running" };
+  return { ...identity, status: state.status, settledAtMs: state.settledAtMs, ...(state.exitCode === undefined ? {} : { exitCode: state.exitCode }) };
 }
 
 export function createBackgroundProcessTable(): BackgroundProcessTable {
@@ -144,7 +158,8 @@ export function createBackgroundProcessTable(): BackgroundProcessTable {
     admit(task) {
       if (!isProcessKind(task.type)) return;
       processes.set(task.id, {
-        record: { id: task.id, kind: task.type, description: task.description, status: "running", startedAtMs: task.startedAtMs },
+        identity: { id: task.id, kind: task.type, description: task.description, startedAtMs: task.startedAtMs },
+        state: { kind: "live", stopRequested: task.stopRequested },
         readOutput: task.readOutput,
         toolUseId: task.toolUseId,
         command: task.command,
@@ -155,30 +170,21 @@ export function createBackgroundProcessTable(): BackgroundProcessTable {
       const process = processes.get(id);
       if (!process) return undefined;
       const exitCode = exitCodeOf(end.exit);
-      process.record = {
-        ...process.record,
-        status: end.status,
-        settledAtMs: Date.now(),
-        ...(exitCode === undefined ? {} : { exitCode }),
-      };
+      process.state = { kind: "settled", status: end.status, settledAtMs: Date.now(), ...(exitCode === undefined ? {} : { exitCode }) };
       settledIds.add(id);
       if (settledIds.size <= SETTLED_PROCESS_HISTORY_LIMIT) return undefined;
       const oldest = settledIds.values().next().value;
       return oldest === undefined ? undefined : forget(oldest);
-    },
-    markStopping(id) {
-      const process = processes.get(id);
-      if (process) process.record = { ...process.record, status: "stopping" };
     },
     forget,
     clear() {
       processes.clear();
       settledIds.clear();
     },
-    records: () => [...processes.values()].map((process) => ({ ...process.record })),
+    records: () => [...processes.values()].map(view),
     record(id) {
-      const record = processes.get(id)?.record;
-      return record ? { ...record } : undefined;
+      const process = processes.get(id);
+      return process ? view(process) : undefined;
     },
     command: (id) => processes.get(id)?.command,
     async readOutput(id, request) {
@@ -190,7 +196,7 @@ export function createBackgroundProcessTable(): BackgroundProcessTable {
     async wait(id, options) {
       const process = processes.get(id);
       if (!process) return false;
-      if (process.record.status !== "running" && process.record.status !== "stopping") return true;
+      if (process.state.kind === "settled") return true;
       const signal = options?.signal;
       if (signal?.aborted) return false;
 

@@ -457,7 +457,7 @@ describe("benchmark tool judge settlement", () => {
 
     // Every cell has completed and the run is inside its first judge call.
     await waitFor(() => state.judgeStarted === 1, "the first judge call to start");
-    expect(owner.tasks.terminateProcess(String(launch.taskId), "user")).toBe(true);
+    expect(owner.tasks.terminateProcess(String(launch.taskId), "user")).toBe("requested");
     expect(owner.tasks.processRecord(String(launch.taskId))?.status).toBe("stopping");
     const duplicate = await tool.execute({ action: "resume", resultId, dryRun: false }, toolContext(root, owner));
     expect(duplicate.outcome).toBe("error");

@@ -182,9 +182,8 @@ describe("subagent tool — execute lifecycle", () => {
       expect(typeof processId).toBe("string");
 
       if (typeof processId !== "string") throw new Error("dispatch did not return a process id");
-      expect(authority === "agent"
-        ? backgroundTasks.terminateProcess(processId, "agent")
-        : backgroundTasks.terminate("dispatch-call")).toBe(true);
+      if (authority === "agent") expect(backgroundTasks.terminateProcess(processId, "agent")).toBe("requested");
+      else expect(backgroundTasks.terminate("dispatch-call")).toBe(true);
       expect(await backgroundTasks.waitProcess(processId)).toBe(true);
       expect(facts).toContainEqual(expect.objectContaining({
         type: "budget.stream.completed", payload: { parentToolUseId: "nested-dispatch" },

@@ -123,6 +123,10 @@ describe("process tool", () => {
     expect(requests).toEqual([{ offset: 1, limit: 2 }, { limit: 100, query: "error:" }]);
     expect((await tool.execute({ action: "stop", process_id: "build-1" }, context)).outcome).toBe("ok");
     expect(stopSource).toBe("agent");
+    expect(await tool.execute({ action: "stop", process_id: "build-1" }, context)).toEqual({
+      outcome: "ok",
+      content: "A stop of process 'build-1' is already under way. It settles when the process exits.",
+    });
 
     done.resolve({ status: "failed", content: "stopped" });
     await done.promise;

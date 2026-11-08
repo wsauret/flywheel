@@ -34,14 +34,8 @@ describe("createBackgroundWorkRegistry (chat)", () => {
       },
     });
 
-    registry.track({
-      done: first.promise,
-      meta: { id: "t1", type: "subagent", description: "First" },
-    });
-    registry.track({
-      done: second.promise,
-      meta: { id: "t2", type: "subagent", description: "Second" },
-    });
+    registry.track({ done: first.promise, meta: { id: "t1", type: "subagent", description: "First" } });
+    registry.track({ done: second.promise, meta: { id: "t2", type: "subagent", description: "Second" } });
 
     first.resolve({ status: "completed", content: "one" });
     await firstNotification.promise;
@@ -272,7 +266,7 @@ describe("createBackgroundWorkRegistry (chat)", () => {
     expect(changes.at(-1)).toEqual([]);
   });
 
-  it("terminates one task by toolUseId, and its notification tells the model that a person stopped it", async () => {
+  it("terminates one task by toolUseId, shows it stopping until it settles, and its notification tells the model that a person stopped it", async () => {
     const notes: string[] = [];
     const terminated: string[] = [];
     const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: (text) => notes.push(text) });
@@ -292,9 +286,11 @@ describe("createBackgroundWorkRegistry (chat)", () => {
     registry.terminate("toolu_1");
     expect(terminated).toEqual(["first:user"]);
     expect(registry.activeTaskCount()).toBe(2);
+    expect(registry.processRecord("bg-1")?.status).toBe("stopping");
     first.resolve({ status: "failed", content: "terminated with code 143" });
     await delay(5);
 
+    expect(registry.processRecord("bg-1")?.status).toBe("stopped");
     expect(registry.activeTaskCount()).toBe(1);
     expect(notes).toHaveLength(1);
     expect(notes[0]).toContain("<status>stopped</status>");
@@ -565,7 +561,7 @@ describe("createBackgroundWorkRegistry (workflow)", () => {
     await receipt;
     expect(registry.awaitedTaskCount()).toBe(1);
     expect(registry.liveWorkReferences()).toEqual([{ kind: "workflow", workflowId: "flow" }]);
-    expect(registry.terminateProcess("flow", "user")).toBe(true);
+    expect(registry.terminateProcess("flow", "user")).toBe("requested");
     expect(killed).toEqual(["user"]);
   });
 
