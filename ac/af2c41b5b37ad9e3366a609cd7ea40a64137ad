@@ -1,0 +1,20 @@
+src/orchestration/workflow-host/agent-inputs.ts
+  h_4b47e9e4a8b456 134-135,144-182,213,229,325-326,338,342,349-350,371,374,379,381,400,443-444,453
+src/orchestration/workflow-host/runner.ts
+  h_4b47e9e4a8b456 446-451
+tests/unit/orchestration/workflow-host/step-input-interruptions.test.ts
+  h_4b47e9e4a8b456 193-229
+tests/unit/orchestration/workflow-host/workflow-agent-interruption.test.ts
+  h_4b47e9e4a8b456 70-71,81,154,306-333
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "acaf2c41b5b37ad9e3366a609cd7ea40a64137ad",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
