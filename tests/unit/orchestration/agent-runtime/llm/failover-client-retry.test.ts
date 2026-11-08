@@ -6,7 +6,7 @@
 import { describe, expect, test } from "bun:test";
 import type { AccessProviderId } from "../../../../../src/infra/llm/access-provider.js";
 import { AllCandidatesExhaustedError, LlmStreamError, QuotaExhaustedError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
-import type { ProviderResample, ProviderRetry, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
+import type { ProviderResample, ProviderRetry, RepetitionGuard, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { DegenerateRepetitionError } from "../../../../../src/orchestration/agent-runtime/llm/reasoning-repetition.js";
 import {
@@ -205,22 +205,22 @@ describe("in-place retry on the walk", () => {
       .toEqual(sleeps.delays.map((delayMs, index) => [index + 1, 3, delayMs, "TransientNetworkFailure"]));
   });
 
-  test.each<{ loops: number; detection: boolean[] }>([
-    { loops: 1, detection: [true, true] },
-    { loops: 5, detection: [true, true, false] },
-  ])("a response whose reasoning repeats is resampled on the same candidate at once, and the last attempt runs without detection ($loops loops)", async ({ loops, detection }) => {
+  test.each<{ loops: number; guards: RepetitionGuard[] }>([
+    { loops: 1, guards: ["detect", "detect"] },
+    { loops: 5, guards: ["detect", "detect", "reasoning_off"] },
+  ])("a response whose reasoning repeats is resampled on the same candidate at once, and the last attempt runs without reasoning or detection ($loops loops)", async ({ loops, guards }) => {
     const sleeps = sleepRecorder();
     const availability = fakeAvailability({});
     const built: AccessProviderId[] = [];
-    const detected: (boolean | undefined)[] = [];
+    const guarded: (RepetitionGuard | undefined)[] = [];
     let remaining = loops;
     const client = chain({
       candidates: [subscriptionCandidate("chatgpt"), singletonCandidate("openrouter")],
       build: async (provider) => {
         built.push(provider);
         return fakeClient(provider, async function* (options: StreamOptions) {
-          detected.push(options.detectRepetition);
-          if (options.detectRepetition && remaining > 0) {
+          guarded.push(options.repetitionGuard);
+          if (options.repetitionGuard === "detect" && remaining > 0) {
             remaining -= 1;
             throw normalizeProviderAttemptFailure(new DegenerateRepetitionError({ ratio: 0.01, windowChars: 8192, reasoningChars: 9_000 }));
           }
@@ -236,13 +236,13 @@ describe("in-place retry on the walk", () => {
     const request = await client.admitRequest();
     const events = await request.run({
       prepare: (attempt) => { preparations += 1; return preparedRequest(attempt); },
-      execute: ({ client: adapter, detectRepetition }) => executeStream(adapter, { ...streamOptions, detectRepetition }),
+      execute: ({ client: adapter, repetitionGuard }) => executeStream(adapter, { ...streamOptions, repetitionGuard }),
       onResample: (resample) => { resamples.push(resample); },
     });
 
     expect(events).toEqual([textDelta("chatgpt")]);
-    expect(detected).toEqual(detection);
-    expect(resamples).toEqual(detection.slice(1).map((_, index) => ({ attempt: index + 1, maxAttempts: 2 })));
+    expect(guarded).toEqual(guards);
+    expect(resamples).toEqual(guards.slice(1).map((guard, index) => ({ attempt: index + 1, maxAttempts: 2, nextAttemptDisablesReasoning: guard === "reasoning_off" })));
     expect(built).toEqual(["chatgpt"]);
     expect(preparations).toBe(1);
     expect(sleeps.delays).toEqual([]);

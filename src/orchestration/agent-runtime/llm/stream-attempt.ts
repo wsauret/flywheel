@@ -11,7 +11,9 @@ export interface StreamAttemptStartEvent {
   readonly maxAttempts: 1;
   readonly isFinalAttempt: true;
   readonly sawThinkingStall: false;
-  readonly disableReasoning: false;
+  /** The attempt requests reasoning off because it is the last resample of a response that repeated itself
+   *  (`RepetitionGuard`). */
+  readonly disableReasoning: boolean;
   readonly isRetry: false;
 }
 
@@ -32,7 +34,7 @@ export interface StreamAttempt {
   throwIfStreamTimedOut(): void;
 }
 
-type StreamAttemptOptions = Pick<StreamOptions, "signal" | "detectRepetition">;
+type StreamAttemptOptions = Pick<StreamOptions, "signal" | "repetitionGuard">;
 
 /**
  * Owns one adapter stream attempt, from its deadline through iterator cleanup.
@@ -55,7 +57,7 @@ export async function* withStreamAttempt<Event>(
   let deadline: ReturnType<typeof createStreamDeadline> | undefined;
   let deadlineOptions: StreamAttemptDeadlineOptions | undefined;
   let callbackFailure: { error: unknown } | undefined;
-  const repetition = options.detectRepetition ? reasoningRepetitionDetector() : undefined;
+  const repetition = options.repetitionGuard === "detect" ? reasoningRepetitionDetector() : undefined;
 
   const throwIfStreamTimedOut = (): void => {
     if (callbackFailure) throw callbackFailure.error;
@@ -112,7 +114,7 @@ export async function* withStreamAttempt<Event>(
       maxAttempts: 1,
       isFinalAttempt: true,
       sawThinkingStall: false,
-      disableReasoning: false,
+      disableReasoning: options.repetitionGuard === "reasoning_off",
       isRetry: false,
     };
     try {

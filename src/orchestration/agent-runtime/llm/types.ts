@@ -87,7 +87,6 @@ interface StreamRetryEvent {
     readonly elapsedMs: number;
     readonly summaryChars: number;
   };
-  readonly nextAttemptDisablesReasoning?: boolean;
 }
 
 export type ContentBlock =
@@ -350,7 +349,7 @@ export type ProviderStreamEvent =
   // The admitted request's walk is resampling the same candidate because the
   // response's reasoning repeated itself (`ProviderResample`). Like
   // `stream_retry`, only the turn boundary raises it.
-  | { kind: "stream_resample"; attempt: number; maxAttempts: number };
+  | ({ kind: "stream_resample" } & ProviderResample);
 
 /** The same record as a raw frame of a provider's own stream, as a transport between the adapter and the service
  *  hands it to the adapter. It is no service event: the adapter turns it into a `transport_context` event and reads
@@ -485,10 +484,16 @@ export interface StreamOptions {
   telemetry?: StreamTelemetrySink;
   /** Durable observation appended after the adapter invokes provider I/O. */
   onDispatch?: () => void | Promise<void>;
-  /** Whether the stream attempt stops a response whose reasoning collapses into repetition
-   *  (`DegenerateRepetitionError`). Only the admitted request's walk sets it, for an attempt that it can resample. */
-  detectRepetition?: boolean;
+  /** How the stream attempt guards a response against reasoning that collapses into repetition. Only the admitted
+   *  request's walk sets it (`ServingCandidate.repetitionGuard`); without it the attempt runs unguarded. */
+  repetitionGuard?: RepetitionGuard;
 }
+
+/** The repetition guard of one attempt of the walk. `detect`: the attempt stops a response whose reasoning collapses
+ *  into repetition (`DegenerateRepetitionError`), so that the walk can resample it. `reasoning_off`: the last attempt
+ *  that the resample budget allows runs with reasoning effort `off` and without detection, and is accepted in full.
+ *  The adapter decides the wire form of `off`; a model whose adapter cannot turn reasoning off reasons as before. */
+export type RepetitionGuard = "detect" | "reasoning_off";
 
 /** Resolves a captured provider policy without re-enabling explicitly uncached work.
  *  An absent entry preserves the caller's policy; `provider` omits the override. */
@@ -730,11 +735,13 @@ export interface ProviderRetry {
 }
 
 /** One resample the walk is about to make on the candidate whose response
- *  repeated itself: which resample of how many. It sends the same request at
- *  once, so a session shows it before the next attempt starts. */
+ *  repeated itself: which resample of how many, and whether the attempt that
+ *  it starts runs with reasoning off (`RepetitionGuard`). It sends the same
+ *  request at once, so a session shows it before the next attempt starts. */
 export interface ProviderResample {
   readonly attempt: number;
   readonly maxAttempts: number;
+  readonly nextAttemptDisablesReasoning: boolean;
 }
 
 /** The candidate that a request walk selected: its serving attempt, its connected client, and the request that it
@@ -742,9 +749,9 @@ export interface ProviderResample {
 export type PreparedCandidate = Readonly<{ attempt: ServingAttempt; client: LLMClient; prepared: PreparedServingRequest }>;
 
 /** One attempt the walk sends on a prepared candidate. `sample` numbers the attempts of one model response from 1,
- *  and grows by one with each resample. `detectRepetition` is false on the last attempt that the walk's resample
- *  budget allows, so that attempt is accepted in full (`StreamOptions.detectRepetition`). */
-export type ServingCandidate = PreparedCandidate & Readonly<{ sample: number; detectRepetition: boolean }>;
+ *  and grows by one with each resample. `repetitionGuard` is `reasoning_off` on the last attempt that the walk's
+ *  resample budget allows and `detect` on every earlier one (`RepetitionGuard`). */
+export type ServingCandidate = PreparedCandidate & Readonly<{ sample: number; repetitionGuard: RepetitionGuard }>;
 
 /** How one admitted request prepares its outbound revision for a candidate. */
 export interface AdmittedModelRequestPreparation {

@@ -141,8 +141,8 @@ describe("step efficiency projection", () => {
         turn: 1,
         sequence: 2,
         source: "normalized",
-        kind: "stream_retry",
-        metadata: { nextAttemptDisablesReasoning: true },
+        kind: "stream_attempt_start",
+        metadata: { disableReasoning: true },
       }, 1_460)
       appendStepStatus(store, sessionId, "completed", 2_000)
 

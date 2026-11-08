@@ -318,7 +318,7 @@ function addStreamTelemetry(
     for (const event of rawEvents) {
       if (!inInterval(event.timestamp, interval)) continue
       if (event.source === "watchdog" && event.kind === "thinking_stall") entry.thinkingStallCount += 1
-      if (event.source === "normalized" && event.kind === "stream_retry" && disablesReasoning(event.metadata)) {
+      if (event.source === "normalized" && event.kind === "stream_attempt_start" && event.metadata.disableReasoning === true) {
         entry.thinkingStallRecoveryCount += 1
       }
     }
@@ -328,10 +328,6 @@ function addStreamTelemetry(
   if (!stream.summary || !inInterval(stream.summary.completedAt ?? stream.summary.startedAt, interval)) return
   entry.thinkingStallCount += stream.summary.watchdog.thinkingStallCount
   entry.thinkingStallRecoveryCount += stream.summary.recovery.reasoningDisabledRetryCount
-}
-
-function disablesReasoning(metadata: StringMap<unknown>): boolean {
-  return metadata.nextAttemptDisablesReasoning === true
 }
 
 function addSubagent(entry: StepEfficiencyEntry, subagent: ChildExecutionMetrics, useCompletionUsageFallback: boolean): void {
@@ -453,4 +449,3 @@ export function hasStepActivity(entry: StepEfficiencyEntry): boolean {
     || entry.toolCallCount > 0
     || entry.subagentCount > 0
 }
-interface StringMap<T> { [key: string]: T }

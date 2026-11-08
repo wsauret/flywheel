@@ -97,9 +97,9 @@ function createTelemetry(writer: ProviderRequestAuditWriter, handle: ProviderReq
       }
       previousVisibleDelta = { elapsedMs: telemetryEvent.elapsedMs, kind: telemetryEvent.kind };
     }
-    if (telemetryEvent.source === "normalized" && telemetryEvent.kind === "stream_retry") {
-      streamRetryCount += 1;
-      if (telemetryEvent.metadata.nextAttemptDisablesReasoning === true) reasoningDisabledRetryCount += 1;
+    if (telemetryEvent.source === "normalized" && telemetryEvent.kind === "stream_retry") streamRetryCount += 1;
+    if (telemetryEvent.source === "normalized" && telemetryEvent.kind === "stream_attempt_start" && telemetryEvent.metadata.disableReasoning === true) {
+      reasoningDisabledRetryCount += 1;
     }
     previousAt = now;
     if (!shouldRecordRaw(telemetryEvent, rawStored)) return;
@@ -314,7 +314,6 @@ function retryMetadata(event: RetryMetadataEvent): TelemetryMetadata {
         delayMs: Math.round(event.delayMs),
         error: event.error,
         ...(event.thinkingStall ? { thinkingStall: event.thinkingStall } : {}),
-        ...(event.nextAttemptDisablesReasoning ? { nextAttemptDisablesReasoning: true } : {}),
       };
     case "stream_resample":
       return { attempt: event.attempt, maxAttempts: event.maxAttempts };

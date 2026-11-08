@@ -10,8 +10,12 @@ const REPETITION_WINDOW_CHARS = 8192;
  *  stream's own work. */
 const REPETITION_CHECK_EVERY_CHARS = 256;
 /** Deflated bytes per raw byte at or below which the window is degenerate
- *  repetition. Normal reasoning, code, tables, and hex measured 0.15 or more. */
-const REPETITION_RATIO_THRESHOLD = 0.08;
+ *  repetition. Normal reasoning, code, tables, and hex measured 0.15 or more,
+ *  and the lowest normal window, in ASCII art, 0.176. A loop that counts up,
+ *  such as "740,740,740, 741,741,741", deflates to about 0.085 to 0.088, so a
+ *  threshold of 0.08 let it run for about 150k chars; 0.12 trips on it and
+ *  keeps a margin of about 1.5x below normal reasoning. */
+const REPETITION_RATIO_THRESHOLD = 0.12;
 
 /** The reasoning of one response collapsed into repetition, so its attempt
  *  stops. `ratio` is the deflated share of the last `windowChars` chars, and

@@ -359,7 +359,7 @@ describe("request-owned fallback through SDK adapters and runtime settlement", (
   test.each([
     { responses: 1, wires: 2 },
     { responses: 3, wires: 3 },
-  ])("a response whose reasoning repeats itself is resampled unchanged on the same provider and the last attempt is accepted ($responses looping)", async ({ responses, wires }) => {
+  ])("a response whose reasoning repeats itself is resampled on the same provider and the last attempt runs without reasoning and is accepted ($responses looping)", async ({ responses, wires }) => {
     const text = readFileSync(join(import.meta.dir, "../../../fixtures/reasoning-repetition/loop.txt"), "utf8")
     const f = await fixture({ failures: [], loopingReasoning: { responses, text }, measuredFailures: true })
     expect(await f.run()).toEqual({ kind: "completed" })
@@ -369,9 +369,17 @@ describe("request-owned fallback through SDK adapters and runtime settlement", (
     for (const wire of f.wires) expect(wire.params.messages).toEqual(f.wires[0]!.params.messages)
     const upserts = f.notices.filter((notice): notice is { type: "upsert"; notice: { title: string; message: string } } =>
       typeof notice === "object" && notice !== null && "type" in notice && notice.type === "upsert")
-    expect(upserts.map((operation) => [operation.notice.title, operation.notice.message])).toEqual(
-      Array.from({ length: wires - 1 }, (_, index) => ["Model repeated itself", `Requesting a fresh response (${index + 1}/2).`]),
-    )
+    expect(upserts.map((operation) => [operation.notice.title, operation.notice.message])).toEqual([
+      ["Model repeated itself", "Requesting a fresh response (1/2)."],
+      ["Model repeated itself", "Requesting a fresh response without reasoning (2/2)."],
+    ].slice(0, wires - 1))
+    // Only the attempt after the last resample turns reasoning off; every earlier attempt keeps the session's effort.
+    expect(f.wires.map((wire) => wire.params.thinking)).toEqual([
+      f.wires[0]!.params.thinking,
+      f.wires[0]!.params.thinking,
+      { type: "disabled" } as const,
+    ].slice(0, wires))
+    expect(f.wires[0]!.params.thinking).not.toEqual({ type: "disabled" })
     expect(f.snapshots.join("\n")).not.toMatch(/Reconnecting|"status":"failed"/)
     expect(f.events.filter((event) => event.type === "model.stream.retried")).toHaveLength(0)
     expect(f.history.filter((message) => message.kind === "user")).toEqual([])
@@ -380,6 +388,10 @@ describe("request-owned fallback through SDK adapters and runtime settlement", (
     const requests = f.audit.filter((fact) => fact.type === "model.requested")
     expect(requests).toHaveLength(wires)
     expect(new Set(requests.map((fact) => fact.payload.requestId)).size).toBe(wires)
+    // The audit records the effort that each attempt sent, so the last one reads `off`.
+    const sessionEffort = requests[0]!.payload.reasoningEffort
+    expect(sessionEffort).not.toBe("off")
+    expect(requests.map((fact) => fact.payload.reasoningEffort)).toEqual([sessionEffort, sessionEffort, "off"].slice(0, wires))
     expect(f.usage.map((entry) => entry.attemptId)).toEqual(requests.map((fact) => fact.payload.requestId))
     expect(f.availability.serviceEntryCount()).toBe(0)
     expect(f.availability.genericEntryCount()).toBe(0)

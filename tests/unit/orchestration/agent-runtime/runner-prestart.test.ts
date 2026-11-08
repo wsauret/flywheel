@@ -154,8 +154,8 @@ describe("a pre-start's request preparation", () => {
     await runner.done
 
     expect(request.candidate.attempt.modelFamily).toBe("openai")
-    // The stream's signal and telemetry belong to the attempt that sends it, not to its bytes.
-    const bytes = ({ signal: _signal, telemetry: _telemetry, ...options }: StreamOptions) => JSON.stringify(options)
+    // The stream's signal, telemetry, and repetition guard belong to the attempt that sends it, not to its bytes.
+    const bytes = ({ signal: _signal, telemetry: _telemetry, repetitionGuard: _guard, ...options }: StreamOptions) => JSON.stringify(options)
     expect(streamed).toHaveLength(1)
     expect(bytes(request.request)).toBe(bytes(streamed[0]!))
   })

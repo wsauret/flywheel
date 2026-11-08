@@ -122,7 +122,7 @@ function handleProviderNoticeEvent(streamEvent: ProviderNoticeStreamEvent, optio
           presentation: "provider.reconnect_progress",
           severity: "warning",
           title: "Model repeated itself",
-          message: `Requesting a fresh response (${streamEvent.attempt}/${streamEvent.maxAttempts}).`,
+          message: `Requesting a fresh response${streamEvent.nextAttemptDisablesReasoning ? " without reasoning" : ""} (${streamEvent.attempt}/${streamEvent.maxAttempts}).`,
           retry: { count: streamEvent.attempt, maxRetries: streamEvent.maxAttempts },
         },
       });

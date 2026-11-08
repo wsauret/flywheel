@@ -316,7 +316,7 @@ export async function requestEvents(client: ModelClient, options: StreamOptions 
     signal: options.signal,
     providerOptions: options.providerOptions,
     prepare: preparedRequest,
-    execute: ({ client: adapter, detectRepetition }) => executeStream(adapter, { ...options, detectRepetition }),
+    execute: ({ client: adapter, repetitionGuard }) => executeStream(adapter, { ...options, repetitionGuard }),
   });
 }
 

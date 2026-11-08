@@ -2,7 +2,8 @@
  *  response whose reasoning collapsed into a loop, and leaves reasoning that
  *  only looks regular, such as ASCII art, prose, and code, alone. The loop
  *  fixture is real reasoning that looped; the ASCII-art fixture is the most
- *  compressible normal reasoning that the detector's calibration found. */
+ *  compressible normal reasoning that the detector's calibration found. The
+ *  counting-loop fixture is real reasoning that looped while it counted up. */
 
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
@@ -11,6 +12,7 @@ import { ProviderAttemptFailure } from "../../../../../src/orchestration/agent-r
 import { reasoningRepetitionDetector, type DegenerateRepetitionError } from "../../../../../src/orchestration/agent-runtime/llm/reasoning-repetition.js";
 import { withStreamAttempt } from "../../../../../src/orchestration/agent-runtime/llm/stream-attempt.js";
 import { armStreamLiveness, throwIfLivenessFailure } from "../../../../../src/orchestration/agent-runtime/llm/stream-liveness.js";
+import type { RepetitionGuard } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 
 const root = join(import.meta.dir, "../../../../..");
 const fixture = (name: string): string => readFileSync(join(root, "tests/fixtures/reasoning-repetition", name), "utf8");
@@ -18,7 +20,7 @@ const fixture = (name: string): string => readFileSync(join(root, "tests/fixture
 /** Streams `text` as reasoning deltas the way an adapter does, through the
  *  shared liveness controller, and reports how much it streamed and how the
  *  attempt ended. */
-async function streamReasoning(text: string, detectRepetition: boolean): Promise<{ streamed: number; error: unknown }> {
+async function streamReasoning(text: string, repetitionGuard: RepetitionGuard): Promise<{ streamed: number; disableReasoning: boolean | undefined; error: unknown }> {
   let streamed = 0;
   const stream = withStreamAttempt(async function* (attempt) {
     const liveness = armStreamLiveness(attempt, { label: "test", provider: "Test", telemetry: undefined });
@@ -36,27 +38,38 @@ async function streamReasoning(text: string, detectRepetition: boolean): Promise
       throwIfLivenessFailure(error, attempt, undefined);
       throw error;
     }
-  }, { detectRepetition });
+  }, { repetitionGuard });
+  let disableReasoning: boolean | undefined;
   try {
-    for await (const _event of stream) { /* drain */ }
-    return { streamed, error: undefined };
+    for await (const event of stream) if (event.kind === "stream_attempt_start") disableReasoning = event.disableReasoning;
+    return { streamed, disableReasoning, error: undefined };
   } catch (error) {
-    return { streamed, error };
+    return { streamed, disableReasoning, error };
   }
 }
 
 describe("reasoning repetition detection", () => {
   test("stops the attempt soon after the reasoning starts to loop", async () => {
     const loop = fixture("loop.txt");
-    const { streamed, error } = await streamReasoning(loop, true);
+    const { streamed, disableReasoning, error } = await streamReasoning(loop, "detect");
 
     if (!(error instanceof ProviderAttemptFailure)) throw new Error(`expected a provider attempt failure, got ${String(error)}`);
     expect(error.failure).toMatchObject({ _tag: "DegenerateRepetitionFailure", windowChars: 8192, reasoningChars: streamed });
     if (error.failure._tag !== "DegenerateRepetitionFailure") throw new Error("expected a repetition failure");
-    expect(error.failure.ratio).toBeLessThanOrEqual(0.08);
+    expect(error.failure.ratio).toBeLessThanOrEqual(0.12);
     // The loop in this excerpt starts near char 8,200 and trips within one window of it.
     expect(streamed).toBeGreaterThan(8_192);
     expect(streamed).toBeLessThan(loop.length);
+    expect(disableReasoning).toBe(false);
+  });
+
+  test("stops reasoning that counts up in a loop, whose windows compress less than an exact repeat", async () => {
+    const counting = fixture("counting-loop.txt");
+    const { streamed, error } = await streamReasoning(counting, "detect");
+
+    if (!(error instanceof ProviderAttemptFailure)) throw new Error(`expected a provider attempt failure, got ${String(error)}`);
+    expect(error.failure).toMatchObject({ _tag: "DegenerateRepetitionFailure", reasoningChars: streamed });
+    expect(streamed).toBeLessThan(counting.length);
   });
 
   test.each([
@@ -64,7 +77,7 @@ describe("reasoning repetition detection", () => {
     ["prose", readFileSync(join(root, "docs/architecture.md"), "utf8").slice(0, 40_000)],
     ["code", readFileSync(join(root, "src/orchestration/agent-runtime/llm/failover-client.ts"), "utf8").slice(0, 40_000)],
   ])("streams %s reasoning in full", async (_kind, text) => {
-    expect(await streamReasoning(text, true)).toEqual({ streamed: text.length, error: undefined });
+    expect(await streamReasoning(text, "detect")).toEqual({ streamed: text.length, disableReasoning: false, error: undefined });
   });
 
   test("checks the same windows whatever size the provider's deltas are", () => {
@@ -86,8 +99,8 @@ describe("reasoning repetition detection", () => {
     expect(firstTrip(looped, looped.length)?.ratio).toBe(reference.ratio);
   });
 
-  test("an attempt without detection streams a loop in full", async () => {
+  test("the last attempt runs without detection, streams a loop in full, and states that reasoning is off", async () => {
     const loop = fixture("loop.txt");
-    expect(await streamReasoning(loop, false)).toEqual({ streamed: loop.length, error: undefined });
+    expect(await streamReasoning(loop, "reasoning_off")).toEqual({ streamed: loop.length, disableReasoning: true, error: undefined });
   });
 });

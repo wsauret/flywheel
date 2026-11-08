@@ -71,7 +71,7 @@ test("turn request usage starts for the captured admission's selected attempt be
     async run<T>(request: AdmittedModelRequestRun<T>): Promise<T> {
       calls.push("admitted.run")
       const prepared = await request.prepare(selected)
-      const result = await request.execute({ attempt: selected, client: selectedClient, prepared, sample: 1, detectRepetition: false })
+      const result = await request.execute({ attempt: selected, client: selectedClient, prepared, sample: 1, repetitionGuard: "detect" })
       if (result.kind === "provider_failure" || result.kind === "repetition") {
         throw result.failure
       }

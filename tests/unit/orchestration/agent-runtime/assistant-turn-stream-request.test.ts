@@ -446,7 +446,7 @@ describe("streamAssistantTurn admitted request", () => {
       async run({ execute, prepare }) {
         const attempt = fakeAttempt("anthropic_api", "test-model")
         const prepared = await prepare(attempt)
-        const result = await execute({ attempt, prepared, sample: 1, detectRepetition: false, client: { ...attempt, async *streamWithTools() {
+        const result = await execute({ attempt, prepared, sample: 1, repetitionGuard: "detect", client: { ...attempt, async *streamWithTools() {
           admittedDispatches += 1
           yield { kind: "done", stopReason: "end_turn" }
         } } })
