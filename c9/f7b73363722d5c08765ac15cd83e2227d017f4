@@ -1,0 +1,24 @@
+webview/src/app/composer-history.test.ts
+  h_4b47e9e4a8b456 1-36
+webview/src/app/composer-session-drafts.test.ts
+  h_4b47e9e4a8b456 138-158
+webview/src/app/composer-session-drafts.ts
+  h_4b47e9e4a8b456 16-17,55-60
+webview/src/app/composer-submission-fixture.tsx
+  h_4b47e9e4a8b456 29-32,197,213-214,254,258,261-262,282-285,437-438
+webview/src/app/composer.tsx
+  h_4b47e9e4a8b456 33,100-107,241,248,254-257,296
+webview/src/client/composer-history.ts
+  h_4b47e9e4a8b456 1-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c9f7b73363722d5c08765ac15cd83e2227d017f4",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
