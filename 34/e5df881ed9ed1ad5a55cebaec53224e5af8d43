@@ -1,0 +1,14 @@
+bench/harbor/benchmarks.ts
+  h_4b47e9e4a8b456 27-30,66,80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "34e5df881ed9ed1ad5a55cebaec53224e5af8d43",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
