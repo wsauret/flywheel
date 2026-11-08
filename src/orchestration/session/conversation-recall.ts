@@ -51,7 +51,6 @@ export function createConversationRecall(deps: RecallDeps): RecallPort {
         upperPosition,
         conversationId: deps.conversationId,
         match: buildFtsMatch(raw),
-        rawQuery: raw,
         ...(entryIds ? { entryIds } : {}),
         limit: RECALL_PAGE_SIZE + 1,
         offset: (page - 1) * RECALL_PAGE_SIZE,
@@ -228,23 +227,20 @@ function expandedRecallRecord(entry: RecallEntry, index: number, offset: number,
   }
 }
 
-// FTS5 MATCH contract: REPLACE FTS5 operator characters with a space (not
-// delete), then tokenize on whitespace, drop empties, and OR-join the survivors
-// (multi-word OR semantics). Replacing with a space is load-bearing: the
-// `porter unicode61` tokenizer splits content on `-`, so "foo-bar" is indexed as
-// the terms foo + bar. Deleting the hyphen would glue the query into the bareword
-// "foobar", which can never match the tokenized content; replacing it yields
-// "foo OR bar", which does. A query that reduces to zero tokens yields an empty
-// match string, which the search treats as no hits. If the OR-joined expression
-// still throws, the infra search retries the raw query as a single quoted phrase.
-const FTS5_OPERATOR_CHARS = /["():^*-]|\bAND\b|\bOR\b|\bNOT\b|\bNEAR\b/gi
-
+/** FTS5 MATCH contract: split the query on whitespace and OR-join each word as
+ *  an FTS5 string literal, with every `"` doubled. FTS5 runs a string literal
+ *  through the table tokenizer (`porter unicode61`) as a phrase, so a word that
+ *  holds punctuation matches the content it names: "3.11" matches the terms
+ *  3 + 11, "feature-flag" matches feature + flag, and an operator word such as
+ *  OR is a plain term. Punctuation and operator words thus cannot make the
+ *  result an FTS5 syntax error. A blank
+ *  query yields an empty string, which FTS5 rejects, so a caller must not
+ *  search with it. */
 export function buildFtsMatch(query: string): string {
   return query
-    .replace(FTS5_OPERATOR_CHARS, " ")
     .split(/\s+/)
-    .map((t) => t.trim())
-    .filter((t) => t.length > 0)
+    .filter((word) => word.length > 0)
+    .map((word) => `"${word.replace(/"/g, '""')}"`)
     .join(" OR ")
 }
 interface StringMap<T> { [key: string]: T }

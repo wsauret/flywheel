@@ -1,4 +1,4 @@
-import { SQLiteError, type Database } from "bun:sqlite"
+import type { Database } from "bun:sqlite"
 import { CONVERSATION_FTS_TABLE } from "./conversation-fts.js"
 
 export interface RecallSearchHit {
@@ -14,12 +14,9 @@ export interface RecallSearchQuery {
   /** Inclusive primary snapshot ceiling, shared by page and count. */
   upperPosition: number
   conversationId: string
-  /** FTS5 MATCH expression, already sanitized by the caller (the session layer
-   *  builds it via buildFtsMatch; see the FTS5 MATCH contract). */
+  /** FTS5 MATCH expression that the caller built with buildFtsMatch (see its
+   *  FTS5 MATCH contract); this module runs it as given. */
   match: string
-  /** The agent's original raw query, used only for the quoted-phrase fallback
-   *  when the sanitized `match` still throws an FTS5 syntax error. */
-  rawQuery: string
   /** When set, restrict to these entry ids (the active-branch lineage scope).
    *  When undefined, search the whole conversation (scope:all). */
   entryIds?: ReadonlySet<string>
@@ -56,9 +53,8 @@ export interface TranscriptIndexHit extends RecallSearchHit {
 
 export interface TranscriptIndexQuery {
   upperPosition: number
-  /** FTS5 MATCH expression, sanitized by the caller as for recall. */
+  /** FTS5 MATCH expression, built by the caller as for recall. */
   match: string
-  rawQuery: string
   /** The conversations to search; undefined searches every conversation in
    *  the store, which is every session of the project. */
   conversationIds?: ReadonlySet<string>
@@ -89,10 +85,9 @@ export function searchTranscriptIndex(db: Database, query: TranscriptIndexQuery)
     order by rank
     limit $limit offset $offset
   `
-  return runWithFtsFallback(db, query, scope, (match, params) =>
-    db.query<RecallSearchSqlRow & { conversation_id: string }, [SqlParameters]>(sql)
-      .all({ ...params, $match: match, $limit: query.limit, $offset: query.offset ?? 0 })
-      .map((r) => ({ conversationId: r.conversation_id, entryId: r.entry_id, entryKind: r.entry_kind, role: r.role, snippet: r.snippet, rank: r.rank })))
+  return db.query<RecallSearchSqlRow & { conversation_id: string }, [SqlParameters]>(sql)
+    .all({ ...scope.params, $match: query.match, $upperPosition: query.upperPosition, $limit: query.limit, $offset: query.offset ?? 0 })
+    .map((r) => ({ conversationId: r.conversation_id, entryId: r.entry_id, entryKind: r.entry_kind, role: r.role, snippet: r.snippet, rank: r.rank }))
 }
 
 export function countTranscriptIndex(db: Database, query: TranscriptIndexQuery): number {
@@ -103,10 +98,8 @@ export function countTranscriptIndex(db: Database, query: TranscriptIndexQuery):
     from ${CONVERSATION_FTS_TABLE}
     where ${CONVERSATION_FTS_TABLE} match $match${scope.clause} and source_position <= $upperPosition
   `
-  return runWithFtsFallback(db, query, scope, (match, params) => {
-    const row = db.query<{ total: number }, [SqlParameters]>(sql).get({ ...params, $match: match })
-    return row?.total ?? 0
-  })
+  const row = db.query<{ total: number }, [SqlParameters]>(sql).get({ ...scope.params, $match: query.match, $upperPosition: query.upperPosition })
+  return row?.total ?? 0
 }
 
 /** The tool use id a tool result row names: the index stores a result as
@@ -131,32 +124,6 @@ function buildScopePredicate(query: RecallSearchQuery): ScopePredicate | null {
   return { clause: ` and conversation_id = $conversationId and entry_id in (${placeholders})`, params }
 }
 
-// Runs `match` against the FTS table with the scope predicate, retrying the raw
-// query as a single quoted phrase if the sanitized expression is FTS5-invalid.
-// Both the page-window search and the count run through this so the
-// quoted-phrase fallback is applied identically to each.
-function runWithFtsFallback<T>(
-  db: Database,
-  query: { match: string; rawQuery: string; upperPosition: number },
-  scope: ScopePredicate,
-  run: (match: string, params: SqlParameters) => T,
-): T {
-  try {
-    return run(query.match, { ...scope.params, $upperPosition: query.upperPosition })
-  } catch (err) {
-    // Repair-when-semantics-are-clear: a residual FTS5 MATCH parse error falls
-    // back to the raw query as a single quoted phrase, which FTS5 always parses
-    // literally. FTS5 surfaces parse failures under several SQLiteError messages
-    // ("fts5: syntax error", "unterminated string", "unknown special query");
-    // each is a MATCH-expression parse failure, so all repair the same way.
-    // Re-throw anything that is not an FTS5 MATCH parse error.
-    if (err instanceof SQLiteError && isFtsMatchParseError(err.message)) {
-      return run(`"${query.rawQuery.replace(/"/g, '""')}"`, { ...scope.params, $upperPosition: query.upperPosition })
-    }
-    throw err
-  }
-}
-
 export function searchConversationRecall(db: Database, query: RecallSearchQuery): RecallSearchHit[] {
   // Named params throughout, matching the whole codebase (event-store-search.ts).
   // The lineage allowlist is pushed INTO the SQL so FTS5 ranks only in-scope
@@ -173,10 +140,9 @@ export function searchConversationRecall(db: Database, query: RecallSearchQuery)
     order by rank
     limit $limit offset $offset
   `
-  return runWithFtsFallback(db, query, scope, (match, params) =>
-    db.query<RecallSearchSqlRow, [SqlParameters]>(sql)
-      .all({ ...params, $match: match, $limit: query.limit, $offset: query.offset ?? 0 })
-      .map((r) => ({ entryId: r.entry_id, entryKind: r.entry_kind, role: r.role, snippet: r.snippet, rank: r.rank })))
+  return db.query<RecallSearchSqlRow, [SqlParameters]>(sql)
+    .all({ ...scope.params, $match: query.match, $upperPosition: query.upperPosition, $limit: query.limit, $offset: query.offset ?? 0 })
+    .map((r) => ({ entryId: r.entry_id, entryKind: r.entry_kind, role: r.role, snippet: r.snippet, rank: r.rank }))
 }
 
 // True total number of in-scope matches, independent of any page window. The
@@ -192,12 +158,6 @@ export function countConversationRecall(db: Database, query: RecallSearchQuery):
     from ${CONVERSATION_FTS_TABLE}
     where ${CONVERSATION_FTS_TABLE} match $match${scope.clause} and source_position <= $upperPosition
   `
-  return runWithFtsFallback(db, query, scope, (match, params) => {
-    const row = db.query<{ total: number }, [SqlParameters]>(sql).get({ ...params, $match: match })
-    return row?.total ?? 0
-  })
-}
-
-function isFtsMatchParseError(message: string): boolean {
-  return /fts5: syntax error|unterminated string|unknown special query/.test(message)
+  const row = db.query<{ total: number }, [SqlParameters]>(sql).get({ ...scope.params, $match: query.match, $upperPosition: query.upperPosition })
+  return row?.total ?? 0
 }

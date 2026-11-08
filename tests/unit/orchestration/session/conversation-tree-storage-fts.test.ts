@@ -66,7 +66,7 @@ describe("appendEntries FTS", () => {
       storage.dispose()
     }
     const db = await index.through(store.currentPosition())
-    const hits = searchConversationRecall(db, { upperPosition: store.currentPosition(), conversationId, match: "from", rawQuery: "from", limit: 5 })
+    const hits = searchConversationRecall(db, { upperPosition: store.currentPosition(), conversationId, match: "from", limit: 5 })
     expect(hits.map((hit) => hit.entryId).sort()).toEqual(["a0000001", "a0000002"])
   })
 
@@ -85,7 +85,7 @@ describe("appendEntries FTS", () => {
       expect(await storage.getEntry("a0000002")).toBeUndefined()
       const db = await index.through(store.currentPosition())
       expect(db.query(`select entry_id from ${CONVERSATION_FTS_TABLE}`).all()).toEqual([{ entry_id: original.id }])
-      const hits = searchConversationRecall(db, { upperPosition: store.currentPosition(), conversationId, match: "from", rawQuery: "from", limit: 5 })
+      const hits = searchConversationRecall(db, { upperPosition: store.currentPosition(), conversationId, match: "from", limit: 5 })
       expect(hits.map((hit) => hit.entryId)).toEqual([original.id])
     } finally {
       storage.dispose()

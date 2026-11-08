@@ -9,6 +9,7 @@ import { createSqliteEventStore } from "../../../src/infra/sqlite-event-store.js
 import { acquireConversationSearchIndex, CONVERSATION_FTS_TABLE, createConversationFtsTable, indexChatEntriesForFts } from "../../../src/infra/conversation-fts.js"
 import { countConversationRecall as count, searchConversationRecall as search, type RecallSearchQuery } from "../../../src/infra/conversation-recall-search.js"
 import { DebugLog, type DebugLogRecordInput } from "../../../src/infra/debug-log.js"
+import { buildFtsMatch } from "../../../src/orchestration/session/conversation-recall.js"
 
 const CONVERSATION_ID = "conv-1"
 const AGGREGATE = `conversation:${CONVERSATION_ID}`
@@ -81,7 +82,7 @@ describe("searchConversationRecall", () => {
     await first.through(store.currentPosition())
     await Promise.all([first.dispose(), first.dispose()])
     const db = await second.through(store.currentPosition())
-    expect(count(db, { upperPosition: store.currentPosition(), conversationId: CONVERSATION_ID, match: "retained", rawQuery: "retained", limit: 5 })).toBe(1)
+    expect(count(db, { upperPosition: store.currentPosition(), conversationId: CONVERSATION_ID, match: "retained", limit: 5 })).toBe(1)
     const third = acquireConversationSearchIndex(file, source)
     await Promise.all([second.dispose(), third.dispose()])
     const reopened = acquireConversationSearchIndex(file, source)
@@ -153,7 +154,7 @@ describe("searchConversationRecall", () => {
     const index = acquireConversationSearchIndex(path.join(tmpDir, "search.sqlite"), asAsyncEventReadSurface(store))
     try {
       const db = await index.through(store.currentPosition())
-      const query = { upperPosition, conversationId: CONVERSATION_ID, match: "kafka", rawQuery: "kafka", limit: 5 }
+      const query = { upperPosition, conversationId: CONVERSATION_ID, match: "kafka", limit: 5 }
       expect(search(db, query).map((hit) => hit.entryId)).toEqual(["a"])
       expect(count(db, query)).toBe(1)
       expect(db.query("select position from conversation_index_position").get()).toEqual({ position: store.currentPosition() })
@@ -178,7 +179,7 @@ describe("searchConversationRecall", () => {
       index = acquireConversationSearchIndex(file, asAsyncEventReadSurface(store))
       try {
         const db = await index.through(store.currentPosition())
-        expect(searchConversationRecall(db, { conversationId: CONVERSATION_ID, match: "kafka", rawQuery: "kafka", limit: 5 }).map((hit) => hit.entryId)).toEqual(["a"])
+        expect(searchConversationRecall(db, { conversationId: CONVERSATION_ID, match: "kafka", limit: 5 }).map((hit) => hit.entryId)).toEqual(["a"])
       } finally {
         await index.dispose()
       }
@@ -231,7 +232,7 @@ describe("searchConversationRecall", () => {
     appendEntries("chat.entries.appended", [userEntry("a", null, `${prefix} kafka trailing context`)])
     const db = openReadDb()
     try {
-      const hits = searchConversationRecall(db, { conversationId: CONVERSATION_ID, match: "kafka", rawQuery: "kafka", limit: 5 })
+      const hits = searchConversationRecall(db, { conversationId: CONVERSATION_ID, match: "kafka", limit: 5 })
       expect(hits[0]?.snippet).toContain("[kafka]")
       expect(hits[0]?.snippet).toStartWith("...")
       expect(hits[0]?.snippet).not.toContain("prefix0")
@@ -245,7 +246,7 @@ describe("searchConversationRecall", () => {
     appendEntries("chat.entries.appended", [userEntry("b", "a", "kafka kafka kafka kafka")])
     const db = openReadDb()
     try {
-      const hits = searchConversationRecall(db, { conversationId: CONVERSATION_ID, match: "kafka", rawQuery: "kafka", limit: 5 })
+      const hits = searchConversationRecall(db, { conversationId: CONVERSATION_ID, match: "kafka", limit: 5 })
       expect(new Set(hits.map((h) => h.entryId))).toEqual(new Set(["a", "b"]))
       // The denser turn (more occurrences) ranks first under BM25.
       expect(hits[0]?.entryId).toBe("b")
@@ -260,26 +261,14 @@ describe("searchConversationRecall", () => {
     const db = openReadDb()
     try {
       const onlyB = searchConversationRecall(db, {
-        conversationId: CONVERSATION_ID, match: "kafka", rawQuery: "kafka", limit: 5, entryIds: new Set(["b"]),
+        conversationId: CONVERSATION_ID, match: "kafka", limit: 5, entryIds: new Set(["b"]),
       })
       expect(onlyB.map((h) => h.entryId)).toEqual(["b"])
       expect(onlyB[0]?.snippet).toBe("[kafka]")
       const none = searchConversationRecall(db, {
-        conversationId: CONVERSATION_ID, match: "kafka", rawQuery: "kafka", limit: 5, entryIds: new Set<string>(),
+        conversationId: CONVERSATION_ID, match: "kafka", limit: 5, entryIds: new Set<string>(),
       })
       expect(none).toEqual([])
-    } finally {
-      db.close()
-    }
-  })
-
-  test("falls back to a quoted phrase when the match is FTS5-invalid", () => {
-    appendEntries("chat.entries.appended", [userEntry("a", null, "the quick brown fox")])
-    const db = openReadDb()
-    try {
-      // An unbalanced quote in `match` throws fts5 syntax error; rawQuery is the literal phrase.
-      const hits = searchConversationRecall(db, { conversationId: CONVERSATION_ID, match: '"brown', rawQuery: "brown fox", limit: 5 })
-      expect(hits.map((h) => h.entryId)).toEqual(["a"])
     } finally {
       db.close()
     }
@@ -303,7 +292,7 @@ describe("searchConversationRecall", () => {
     try {
       const rows = db.query<{ c: number }, []>(`select count(*) as c from ${CONVERSATION_FTS_TABLE} where entry_id = 'a'`).all()
       expect(rows[0]?.c).toBe(1)
-      const hits = searchConversationRecall(db, { conversationId: CONVERSATION_ID, match: "kafka", rawQuery: "kafka", limit: 5 })
+      const hits = searchConversationRecall(db, { conversationId: CONVERSATION_ID, match: "kafka", limit: 5 })
       expect(hits.map((h) => h.entryId)).toEqual(["a"])
     } finally {
       db.close()
@@ -321,7 +310,7 @@ describe("searchConversationRecall", () => {
     const db = openReadDb()
     try {
       // limit is intentionally far below the true count: count() ignores it.
-      const resultCount = countConversationRecall(db, { conversationId: CONVERSATION_ID, match: "kafka", rawQuery: "kafka", limit: 3 })
+      const resultCount = countConversationRecall(db, { conversationId: CONVERSATION_ID, match: "kafka", limit: 3 })
       expect(resultCount).toBe(total)
     } finally {
       db.close()
@@ -335,11 +324,11 @@ describe("searchConversationRecall", () => {
     const db = openReadDb()
     try {
       const scoped = countConversationRecall(db, {
-        conversationId: CONVERSATION_ID, match: "kafka", rawQuery: "kafka", limit: 5, entryIds: new Set(["a", "c"]),
+        conversationId: CONVERSATION_ID, match: "kafka", limit: 5, entryIds: new Set(["a", "c"]),
       })
       expect(scoped).toBe(2)
       const empty = countConversationRecall(db, {
-        conversationId: CONVERSATION_ID, match: "kafka", rawQuery: "kafka", limit: 5, entryIds: new Set<string>(),
+        conversationId: CONVERSATION_ID, match: "kafka", limit: 5, entryIds: new Set<string>(),
       })
       expect(empty).toBe(0)
     } finally {
@@ -347,18 +336,20 @@ describe("searchConversationRecall", () => {
     }
   })
 
-  test("a hyphenated identifier in content matches an OR of its tokens", () => {
-    // The tokenizer splits content "feature-flag" into the terms feature + flag.
-    // buildFtsMatch (session layer) turns the query "feature-flag" into
-    // "feature OR flag"; verify that MATCH expression finds the row.
+  test("a query word with punctuation matches the content the tokenizer split", () => {
+    // The tokenizer splits "feature-flag" into feature + flag and "3.11" into
+    // 3 + 11; a bareword with "." or an unbalanced quote is an FTS5 syntax error.
     appendEntries("chat.entries.appended", [userEntry("a", null, "toggled the feature-flag rollout")])
-    appendEntries("chat.entries.appended", [userEntry("b", "a", "unrelated content")])
+    appendEntries("chat.entries.appended", [userEntry("b", "a", "boot Windows 3.11 from win311.img")])
+    appendEntries("chat.entries.appended", [userEntry("c", "b", "the quick brown fox")])
+    appendEntries("chat.entries.appended", [userEntry("d", "c", "unrelated content")])
     const db = openReadDb()
     try {
-      const hits = searchConversationRecall(db, {
-        conversationId: CONVERSATION_ID, match: "feature OR flag", rawQuery: "feature-flag", limit: 5,
-      })
-      expect(hits.map((h) => h.entryId)).toEqual(["a"])
+      for (const [query, entryId] of [["feature-flag", "a"], ["3.11 QEMU", "b"], ["win311.img", "b"], ['"brown', "c"]] as const) {
+        const recallQuery = { conversationId: CONVERSATION_ID, match: buildFtsMatch(query), limit: 5 }
+        expect(searchConversationRecall(db, recallQuery).map((h) => h.entryId)).toEqual([entryId])
+        expect(countConversationRecall(db, recallQuery)).toBe(1)
+      }
     } finally {
       db.close()
     }

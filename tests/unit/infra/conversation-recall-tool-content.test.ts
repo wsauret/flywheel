@@ -75,7 +75,7 @@ describe("conversation recall over referenced tool content", () => {
     })
 
     const db = await index.through(store.currentPosition())
-    const hits = searchConversationRecall(db, { upperPosition: store.currentPosition(), conversationId: CONVERSATION_ID, match: HIDDEN_TOKEN, rawQuery: HIDDEN_TOKEN, limit: 5 })
+    const hits = searchConversationRecall(db, { upperPosition: store.currentPosition(), conversationId: CONVERSATION_ID, match: HIDDEN_TOKEN, limit: 5 })
     expect(hits.map((hit) => hit.entryId)).toEqual(["b"])
     expect(hits[0]?.snippet).toContain(`[${HIDDEN_TOKEN}]`)
     expect(hits[0]?.snippet).toStartWith("...")
@@ -132,7 +132,7 @@ describe("conversation recall over referenced tool content", () => {
     const upper = store.currentPosition()
     const db = await index.through(upper)
     const hits = searchConversationRecall(db, {
-      upperPosition: upper, conversationId: "survivor", match: "searchable", rawQuery: "searchable", limit: 5,
+      upperPosition: upper, conversationId: "survivor", match: "searchable", limit: 5,
     })
     expect(hits.map((hit) => hit.entryId)).toEqual(["surviving-entry"])
     expect(db.query<{ position: number }, []>("select position from conversation_index_position").get()?.position).toBe(upper)

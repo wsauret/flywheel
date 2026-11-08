@@ -178,7 +178,7 @@ async function recallHits(conversationId: string, indexName: string): Promise<st
   try {
     const upperPosition = store.currentPosition()
     const db = await index.through(upperPosition)
-    return searchConversationRecall(db, { upperPosition, conversationId, match: HIDDEN_TOKEN, rawQuery: HIDDEN_TOKEN, limit: 5 })
+    return searchConversationRecall(db, { upperPosition, conversationId, match: HIDDEN_TOKEN, limit: 5 })
       .map((hit) => hit.entryId)
   } finally {
     await index.dispose()

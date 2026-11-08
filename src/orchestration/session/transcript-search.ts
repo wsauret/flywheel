@@ -54,7 +54,7 @@ export function createTranscriptSearch(deps: TranscriptSearchDeps): TranscriptSe
       conversationIds = new Set([conversationId])
     }
     const connection = await deps.index.through(upperPosition)
-    const query = { upperPosition, match, rawQuery: request.query, ...(conversationIds ? { conversationIds } : {}), limit: TRANSCRIPT_SEARCH_PAGE_SIZE, offset: (page - 1) * TRANSCRIPT_SEARCH_PAGE_SIZE }
+    const query = { upperPosition, match, ...(conversationIds ? { conversationIds } : {}), limit: TRANSCRIPT_SEARCH_PAGE_SIZE, offset: (page - 1) * TRANSCRIPT_SEARCH_PAGE_SIZE }
     const hits = searchTranscriptIndex(connection, query).flatMap((hit): TranscriptSearchHit[] => {
       const session = byConversation.get(hit.conversationId)
       // A conversation no session lists is one being deleted or a child the

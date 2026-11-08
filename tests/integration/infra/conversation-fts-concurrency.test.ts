@@ -49,7 +49,7 @@ test("independent owners replaying the same page commit it once", async () => {
 
   const db = new Database(dbFile, { readonly: true })
   try {
-    const query = { upperPosition: 1, conversationId: "conv-1", match: "shared", rawQuery: "shared", limit: 10 }
+    const query = { upperPosition: 1, conversationId: "conv-1", match: "shared", limit: 10 }
     expect(db.query<{ count: number }, []>(`select count(*) as count from ${CONVERSATION_FTS_TABLE}`).get()?.count).toBe(1)
     expect(searchConversationRecall(db, query)).toHaveLength(1)
     expect(countConversationRecall(db, query)).toBe(1)

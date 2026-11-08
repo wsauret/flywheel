@@ -96,6 +96,13 @@ describe("transcript search for people", () => {
     expect(hit).toMatchObject({ role: "tool", entryId: "toolu_9" })
   })
 
+  test("a query word with a dot finds the words it names", async () => {
+    append("conv-alpha", [user("a1", null, "boot Windows 3.11 from win311.img"), assistant("a2", "a1", "unrelated reply")])
+    for (const query of ["3.11 QEMU", "win311.img"]) {
+      expect((await search.search({ query, page: 1 })).hits.map((hit) => hit.entryId)).toEqual(["a1"])
+    }
+  })
+
   test("blank queries and conversations no session lists yield nothing", async () => {
     append("conv-orphan", [user("o1", null, "kafka orphan")])
     expect((await search.search({ query: "   ", page: 1 })).total).toBe(0)
