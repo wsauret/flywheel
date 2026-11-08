@@ -23,12 +23,18 @@ export interface SessionInfra {
 }
 
 export type MetricsWriter = (patch: BudgetMetrics) => void
-/** Owns ordered runtime-fact persistence for one bus subscription. The failure
- *  accessor reports the first dropped write after the bus has drained. */
+/** Owns ordered runtime-fact persistence for one bus subscription. */
 export interface SessionRuntimeFactSubscription {
   unsubscribe: Unsubscribe
+  /** Completeness evidence: the first fact this subscription ever lost, which
+   *  never clears. Read it after the bus has drained. */
   getPersistenceFailure(): Error | null
-  /** Waits until accepted runtime events and their writer work are durable. */
+  /** Waits until accepted runtime events and their writer work are durable.
+   *  Rejects once for each lost fact: every barrier whose drain covers the loss
+   *  fails, or else the next barrier to start; after one barrier has thrown it,
+   *  later barriers pass. A refusal is rethrown as its `PersistenceWriteRefused`
+   *  instance. The barrier always settles the writer flush, also when it reports
+   *  a loss, so the writer's retained copy of that loss is not reported again. */
   awaitDurableFacts(): Promise<void>
 }
 
@@ -53,14 +59,28 @@ export function subscribeSessionRuntimeFacts(
   },
 ): SessionRuntimeFactSubscription {
   const emit = createEmit(bus)
-  let droppedFacts = 0
-  let persistenceFailure: Error | null = null
+  const state: FactPersistence = { dropStreak: 0, firstLoss: null, unreported: null, waiting: new Set() }
 
-  const reportFailure = (event: FlywheelEvent, cause: unknown): void => {
-    const error = cause instanceof Error ? cause : new Error(String(cause))
-    persistenceFailure ??= error
+  // The one writer of `state` besides the barrier: called once per durable event.
+  const settle = (event: FlywheelEvent, outcome: { kind: "stored" } | { kind: "lost"; error: Error }): void => {
+    if (outcome.kind === "stored") {
+      if (state.dropStreak === 0) return
+      // A successful write ends the failure streak. The emergency toast has
+      // already fired and is not durable notification state.
+      state.dropStreak = 0
+      emit("agent.notice.changed", {
+        sessionId: event.sessionId,
+        data: { operation: { type: "resolve", id: "runtime-fact-persistence-drop" } },
+      })
+      return
+    }
+    const { error } = outcome
+    state.firstLoss ??= error
+    state.unreported ??= error
+    for (const barrier of state.waiting) barrier.loss ??= error
     if (error instanceof PersistenceWriteRefused) return
-    droppedFacts += 1
+    state.dropStreak += 1
+    const dropped = state.dropStreak
     emit("agent.notice.changed", {
       sessionId: event.sessionId,
       data: {
@@ -72,21 +92,21 @@ export function subscribeSessionRuntimeFacts(
             presentation: "runtime.fact_persistence_drop",
             severity: "error",
             title: "Session history is incomplete",
-            message: `${droppedFacts} runtime fact${droppedFacts === 1 ? " was" : "s were"} dropped after persistence retries: ${error.message}`,
+            message: `${dropped} runtime fact${dropped === 1 ? " was" : "s were"} dropped after persistence retries: ${error.message}`,
           },
         },
       },
     })
   }
 
-  // A successful write ends the failure streak. The emergency toast has
-  // already fired and is not durable notification state.
-  const reportRecovery = (event: FlywheelEvent): void => {
-    droppedFacts = 0
-    emit("agent.notice.changed", {
-      sessionId: event.sessionId,
-      data: { operation: { type: "resolve", id: "runtime-fact-persistence-drop" } },
-    })
+  /** The writer flush of the barrier: null for an opted-out direct writer,
+   *  which settles each record before acknowledgement. */
+  const flushWriter = async () => {
+    if (!options.sessionEventWriter.flush) {
+      if (options.requireWriterBarrier !== false) throw new Error("Session writer has no durability barrier")
+      return null
+    }
+    return options.sessionEventWriter.flush()
   }
 
   const unsubscribeDebug = bus.subscribeToTypes(DEBUG_RUNTIME_EVENT_TYPES, (event) => {
@@ -120,35 +140,56 @@ export function subscribeSessionRuntimeFacts(
         recordedFacts += 1
         await options.onStored?.(stored)
       }
-      if (droppedFacts > 0 && recordedFacts > 0) reportRecovery(event)
+      if (recordedFacts > 0) settle(event, { kind: "stored" })
     } catch (cause) {
-      reportFailure(event, cause)
+      settle(event, { kind: "lost", error: cause instanceof Error ? cause : new Error(String(cause)) })
     }
   }, { deliveryClass: "durable", label: "runtime-fact-persistence" })
 
   return {
     unsubscribe: () => { unsubscribeDebug(); unsubscribeFacts() },
-    getPersistenceFailure: () => persistenceFailure,
+    getPersistenceFailure: () => state.firstLoss,
     async awaitDurableFacts(): Promise<void> {
-      const delivery = await bus.drain({ classes: ["durable"] })
+      const barrier: WaitingBarrier = { loss: state.unreported }
+      state.waiting.add(barrier)
+      const delivery = await bus.drain({ classes: ["durable"] }).finally(() => state.waiting.delete(barrier))
       if (delivery.kind === "timed_out") {
         throw new Error(`${delivery.pending} durable event deliveries did not settle before continuation`)
       }
-      const failure = persistenceFailure
-      if (failure instanceof PersistenceWriteRefused) {
+      const { loss } = barrier
+      if (loss && state.unreported === loss) state.unreported = null
+      // A lane-backed writer keeps each rejected item until a barrier flushes it, and that item is
+      // usually the fact behind `loss`; settling the flush here makes this barrier its only report.
+      const writer = await flushWriter().catch((error: unknown) => {
+        if (loss) return null
+        throw error
+      })
+      if (loss instanceof PersistenceWriteRefused) {
         // oxlint-disable-next-line no-throw-literal -- boundary: the durable subscriber barrier preserves this retained Error subtype.
-        throw failure
+        throw loss
       }
-      if (persistenceFailure) throw new Error(persistenceFailure.message, { cause: persistenceFailure })
-      if (!options.sessionEventWriter.flush) {
-        if (options.requireWriterBarrier !== false) throw new Error("Session writer has no durability barrier")
-        return
-      }
-      const writer = await options.sessionEventWriter.flush()
-      if (writer.kind === "failed") throw new Error(writer.error.message)
+      if (loss) throw new Error(loss.message, { cause: loss })
+      if (writer?.kind === "failed") throw new Error(writer.error.message)
     },
   }
 }
+
+/** One barrier that waits for durable delivery. It reports the first loss that its bus drain covered. */
+interface WaitingBarrier { loss: Error | null }
+
+/** The persistence outcome of one subscription. Each field is a different fact
+ *  with its own lifetime:
+ *  - dropStreak: events dropped since the last event that committed a fact; it alone drives the notice.
+ *  - firstLoss: the first fact this subscription ever lost; it never clears (record completeness).
+ *  - unreported: the oldest loss that no barrier has thrown yet.
+ *  - waiting: the barriers whose bus drain is pending; each loss is given to each of them. */
+interface FactPersistence {
+  dropStreak: number
+  firstLoss: Error | null
+  unreported: Error | null
+  readonly waiting: Set<WaitingBarrier>
+}
+
 export function wireSessionSubscribers(
   bus: EventBus,
   infra: Pick<SessionInfra, "budgetStore" | "sessionEventWriter" | "toolExecutionStore">,

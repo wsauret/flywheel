@@ -4,13 +4,16 @@ import * as path from "node:path"
 import { describe, expect, it } from "bun:test"
 import { DebugLog, scanDebugLogFiles } from "../../../../src/infra/debug-log.js"
 import { createEmit, EventBus } from "../../../../src/infra/event-bus.js"
-import { PersistenceWriteRefused, type StoredFact } from "../../../../src/infra/event-store-types.js"
+import { asAsyncEventWriter, PersistenceWriteRefused, type StoredFact } from "../../../../src/infra/event-store-types.js"
+import { createEventStoreWriterLane } from "../../../../src/infra/event-store-writer-lane.js"
+import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store.js"
+import { temporaryDirectories } from "../../../helpers/directories.js"
 import type { SessionBudgetStore } from "../../../../src/orchestration/session/budget-store-types.js"
 import {
   subscribeSessionRuntimeFacts,
   wireSessionSubscribers,
 } from "../../../../src/orchestration/session/create-session-infra.js"
-import type { SessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
+import { createSessionFactWriter, type SessionFactWriter } from "../../../../src/orchestration/session/session-fact-writer.js"
 import type { SessionRuntimeFact } from "../../../../src/orchestration/session/session-runtime-event-types.js"
 import type { SessionToolExecutionStore } from "../../../../src/orchestration/session/tool-execution-types.js"
 import { presentationChannel } from "../../../../src/infra/error-presentation.js"
@@ -69,6 +72,8 @@ function toolStore(applied: StoredFact[]): SessionToolExecutionStore {
 }
 
 describe("session runtime fact subscription", () => {
+  const temporaryDirectory = temporaryDirectories()
+
   it("records bus-delivered tool input and result facts in event order", async () => {
     const bus = new EventBus()
     const facts: SessionRuntimeFact[] = []
@@ -234,6 +239,10 @@ describe("session runtime fact subscription", () => {
       data: { message: "recovered" },
     })
     await bus.drain()
+    // No barrier waited on the drop, so the next barrier reports it once;
+    // after that report, recovered persistence admits later barriers.
+    await expect(subscription.awaitDurableFacts()).rejects.toThrow("database is locked")
+    await expect(subscription.awaitDurableFacts()).resolves.toBeUndefined()
     // A drop after recovery starts a fresh streak with a fresh count.
     fail = true
     emit("agent.error.observed", {
@@ -251,6 +260,57 @@ describe("session runtime fact subscription", () => {
     expect(subscription.getPersistenceFailure()?.message).toBe("database is locked")
     subscription.unsubscribe()
     await bus.dispose()
+  })
+
+  it("fails the barrier that waits on a dropped fact even when a later fact commits first, and no barrier after it", async () => {
+    const bus = new EventBus()
+    let position = 0
+    const writer = fakeWriter(async (fact) => {
+      if (JSON.stringify(fact.payload).includes("producer output")) throw new Error("database is locked")
+      position += 1
+      return stored(fact, position)
+    })
+    const subscription = subscribeSessionRuntimeFacts(bus, { sessionEventWriter: writer })
+    const emit = createEmit(bus)
+
+    emit("agent.error.observed", { sessionId: "s1", data: { message: "producer output" } })
+    const producerBarrier = subscription.awaitDurableFacts()
+    emit("agent.error.observed", { sessionId: "s1", data: { message: "concurrent display" } })
+
+    await expect(producerBarrier).rejects.toThrow("database is locked")
+    await expect(subscription.awaitDurableFacts()).resolves.toBeUndefined()
+    subscription.unsubscribe()
+    await bus.dispose()
+  })
+
+  it("reports a lane-backed refusal once, as itself, and admits the barrier after recovery", async () => {
+    // Production writers hold a writer-lane lease, which keeps a rejected item
+    // until a barrier flushes it; the barrier that reports the loss consumes it.
+    const store = createSqliteEventStore(path.join(temporaryDirectory("runtime-fact-lane-"), "events.sqlite"))
+    const refusal = new PersistenceWriteRefused(129, 128)
+    const lane = createEventStoreWriterLane({
+      ...store,
+      commitItems: async (items) => items.map((item) => JSON.stringify(item.events[0]?.payload).includes("oversized")
+        ? { kind: "rejected", error: refusal }
+        : store.commitItems([item])[0]!),
+    })
+    const writer = createSessionFactWriter({ sessionId: "s1", writer: asAsyncEventWriter(store), lane: lane.lease({ kind: "session", sessionId: "s1" }) })
+    const bus = new EventBus()
+    const subscription = subscribeSessionRuntimeFacts(bus, { sessionId: "s1", sessionEventWriter: writer })
+    const emit = createEmit(bus)
+    try {
+      emit("agent.error.observed", { sessionId: "s1", data: { message: "oversized" } })
+      await expect(subscription.awaitDurableFacts()).rejects.toBe(refusal)
+      emit("agent.error.observed", { sessionId: "s1", data: { message: "next turn" } })
+      await expect(subscription.awaitDurableFacts()).resolves.toBeUndefined()
+      expect(store.read({ sessionId: "s1", types: ["agent.error.observed"] })).toHaveLength(1)
+    } finally {
+      subscription.unsubscribe()
+      await bus.dispose()
+      writer.dispose()
+      await lane.dispose()
+      store.close()
+    }
   })
 
   it("reports a missing stored-event acknowledgement when the caller requires durable evidence", async () => {
