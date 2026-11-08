@@ -158,18 +158,49 @@ describe("module domain monitor", () => {
       const beforeGap = attempts
       for (let position = 600; position < 603; position++) {
         fake.emit(updated("a", position, view("a", 2)))
-        const gap = timers.shift()
-        assert.ok(gap && gap.delay === 2_000)
-        gap.callback()
         await settle()
-        assert.equal(attempts, beforeGap, "continuing cursor gaps must wait for the reader's backoff")
+        assert.equal(timers.length, 0, "patches held for a read in backoff start no second recovery clock")
+        assert.equal(attempts, beforeGap, "continuing cursor patches must wait for the reader's backoff")
       }
       failed.delete("a")
       backoff.callback()
       await settle()
-      assert.equal(attempts, beforeGap + 1, "gap recovery and timer recovery coalesce into one read")
+      assert.equal(attempts, beforeGap + 1, "the backoff's read is the only read")
     } finally {
       a.dispose(); b.dispose()
+    }
+  })
+  test("a snapshot queued behind an outstanding one holds early patches without a gap deadline while it is out", async () => {
+    const timers: { callback: () => void; delay: number }[] = []
+    const inert = setTimeout(() => {}, 0)
+    clearTimeout(inert)
+    const clock: ReadTimers = { setTimeout(callback, delay) { timers.push({ callback, delay }); return inert }, clearTimeout() {} }
+    const fake = fakeConnection({ a: [{ view: view("a", 1), position: 100 }, { view: view("a", 2), position: 200 }] })
+    const original = fake.connection.query.bind(fake.connection)
+    const gates: (() => void)[] = []
+    fake.connection.query = async (query) => {
+      const result = await original(query)
+      await new Promise<void>((resolve) => { gates.push(resolve) })
+      return result
+    }
+    const monitor = createModuleDomainMonitor({ binding, connection: fake.connection, ownerId: "a", timers: clock })
+    try {
+      await settle()
+      fake.emit({ type: "patch", patch: { cursor: experimentViewCursor("a"), position: 50, prevPosition: 49, payload: { kind: "runtime.invalidate", reason: "overflow" } } })
+      await settle()
+      gates.shift()?.()
+      await settle()
+      assert.equal(fake.calls("a"), 2, "the invalidation's read starts once the first one answers")
+      timers.length = 0
+      fake.emit(updated("a", 150, view("a", 9)))
+      assert.deepEqual(timers.map(timer => timer.delay), [], "the outstanding read answers for what arrives early")
+      gates.shift()?.()
+      await settle()
+      assert.equal(fake.calls("a"), 2)
+      assert.equal(monitor.view?.runs.length, 2)
+    } finally {
+      monitor.dispose()
+      for (const open of gates.splice(0)) open()
     }
   })
   test("seeds from the selected session's snapshot through the registry binding, null when the session has no view", async () => {

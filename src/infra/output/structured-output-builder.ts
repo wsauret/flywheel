@@ -61,6 +61,36 @@ type QuestionAnswers = { [questionId in string]: string };
  *  completes. An absent field keeps the row's current value. */
 export type ToolInputFields = Partial<Pick<ToolEntry, "presentation" | "sentence" | "invocationBody" | "linkUri" | "diff" | "content" | "filetype" | "fileChangeKind" | "declaresMutation" | "targetSessionId" | "proposedDiff">>;
 
+/** The live phase of the current model response. `since` is when the work
+ *  that the next new thinking block shows began: the start of the model call
+ *  or of thinking. The first thinking block claims it (null), and every move
+ *  to another phase ends it with the phase. */
+type ResponsePhase =
+  | { readonly kind: "waiting" | "thinking"; readonly since: number | null }
+  | { readonly kind: "generating" | "tool_executing" };
+
+/** What moves the response phase. `entered` is a phase the projector drives,
+ *  `ended` closes the response, and `claimed` is a new block that takes the
+ *  anchor, so the next new thinking block starts at its own time. */
+type ResponsePhaseEvent =
+  | { readonly kind: "entered"; readonly phase: StreamPhase; readonly at: number }
+  | { readonly kind: "ended" }
+  | { readonly kind: "claimed" };
+
+const anchorOf = (phase: ResponsePhase | null): number | null =>
+  phase !== null && "since" in phase ? phase.since : null;
+
+/** The one transition of the response phase. */
+function nextResponsePhase(current: ResponsePhase | null, event: ResponsePhaseEvent): ResponsePhase | null {
+  if (event.kind === "ended") return null;
+  if (event.kind === "claimed") return current !== null && "since" in current ? { kind: current.kind, since: null } : current;
+  switch (event.phase) {
+    case "waiting": return { kind: "waiting", since: event.at };
+    case "thinking": return { kind: "thinking", since: anchorOf(current) ?? event.at };
+    default: return { kind: event.phase };
+  }
+}
+
 export class StructuredOutputBuilder {
   // blocksCap is a test seam: eviction wiring is identical at any cap, and
   // exceeding the production 20k in a test is seconds of pure allocation.
@@ -80,9 +110,8 @@ export class StructuredOutputBuilder {
   // resolves without scanning the whole block array. Kept local to this class
   // because insertOutputBlock only shifts the helper-owned maps.
   private toolIndexById = new Map<string, number>();
-  private _streamPhase: StreamPhase | null = null;
+  private phase: ResponsePhase | null = null;
   private _streamingOutputChars = 0;
-  private thinkingStartedAt: number | null = null;
   // Changes are recorded at the write site instead of reconstructed later by
   // diffing full snapshots. `needsFullResync` covers rare structural rewrites
   // (cap eviction, retraction, queued-message recall), where reindexing every
@@ -173,7 +202,7 @@ export class StructuredOutputBuilder {
     this.needsFullResync = false;
     return batch;
   }
-  get streamPhase(): StreamPhase | null { return this._streamPhase; }
+  get streamPhase(): StreamPhase | null { return this.phase?.kind ?? null; }
   get streamingOutputChars(): number { return this._streamingOutputChars; }
   get visibleMessageCountSuffix(): number { return this._visibleMessageCountSuffix; }
   addStreamingChars(count: number): void {
@@ -181,19 +210,15 @@ export class StructuredOutputBuilder {
     this.notifyChange();
   }
   setStreamPhase(phase: StreamPhase | null, timestamp: number): void {
-    const needsAnchor = (phase === "thinking" || phase === "waiting") && this.thinkingStartedAt === null;
-    if (this._streamPhase === phase && !needsAnchor) return;
-    if (this._streamPhase !== phase) {
-      log.debug("phase transition", { from: this._streamPhase, to: phase });
-      this._streamPhase = phase;
-    }
-    if (needsAnchor) this.thinkingStartedAt = timestamp;
+    const before = this.phase?.kind ?? null;
+    this.phase = nextResponsePhase(this.phase, phase === null ? { kind: "ended" } : { kind: "entered", phase, at: timestamp });
+    if (before === phase) return;
+    log.debug("phase transition", { from: before, to: phase });
     this.notifyChange();
   }
   resetPhase(): void {
-    this._streamPhase = null;
+    this.phase = nextResponsePhase(this.phase, { kind: "ended" });
     this._streamingOutputChars = 0;
-    this.thinkingStartedAt = null;
     this.notifyChange();
   }
   completeThinking(timestamp = Date.now()): void {
@@ -201,8 +226,8 @@ export class StructuredOutputBuilder {
   }
   pushThinking(text: string, timestamp: number, blockKey: string): void {
     if (!text.trim()) { this.notifyChange(); return; }
-    const blockTimestamp = this.thinkingStartedAt ?? timestamp;
-    this.thinkingStartedAt = null;
+    const blockTimestamp = anchorOf(this.phase) ?? timestamp;
+    this.phase = nextResponsePhase(this.phase, { kind: "claimed" });
     const result = appendKeyedDelta(
       this.blocks,
       this.contentIndexById,
@@ -257,7 +282,7 @@ export class StructuredOutputBuilder {
   pushText(text: string, timestamp: number, blockKey: string): void {
     this.completeThinking(timestamp);
     this._streamingOutputChars += text.length;
-    this.thinkingStartedAt = null;
+    this.phase = nextResponsePhase(this.phase, { kind: "claimed" });
     const result = appendKeyedDelta(
       this.blocks,
       this.contentIndexById,
@@ -279,7 +304,7 @@ export class StructuredOutputBuilder {
     if (toolIndex === undefined) return;
     this.completeThinking(timestamp);
     this._streamingOutputChars += text.length;
-    this.thinkingStartedAt = null;
+    this.phase = nextResponsePhase(this.phase, { kind: "claimed" });
     this.blocks.splice(toolIndex, 0, { kind: "text", id: blockKey, content: text, timestamp });
     this._visibleMessageCountSuffix++;
     rebuildBlockIndexes(this.blocks, this.agentIndexById, this.contentIndexById);
@@ -535,7 +560,7 @@ export class StructuredOutputBuilder {
     this.contentIndexById.clear();
     // toolIndexById stays: it mirrors the block array, which reset keeps, so a
     // late execution-output tail can still land on a pre-reset settled row.
-    this.thinkingStartedAt = null;
+    this.phase = nextResponsePhase(this.phase, { kind: "claimed" });
     this._streamingOutputChars = 0;
     this.notifyChange();
   }

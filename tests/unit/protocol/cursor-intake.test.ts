@@ -251,6 +251,25 @@ describe("cursor intake", () => {
     expect(h.ids()).toEqual(["b11"])
   })
 
+  test("a read that is out holds early patches past the deadline for its own seed", () => {
+    const h = harness()
+    h.intake.beginRead()
+    expect(h.intake.accept(patch(11, 10))).toBe("unseeded")
+    h.elapseGapDeadline()
+    expect(h.recovered).toEqual([])
+    h.intake.seed(10)
+    expect(h.ids()).toEqual(["b11"])
+  })
+
+  test("a read abandoned without a seed gives its held patches the deadline back", () => {
+    const h = harness()
+    h.intake.beginRead()
+    h.intake.accept(patch(11, 10))
+    h.intake.abandonRead()
+    h.elapseGapDeadline()
+    expect(h.recovered.map((request) => request.reason)).toEqual(["gap_unclosed"])
+  })
+
   test("does not ask for recovery when the seed arrives in time", () => {
     const h = harness()
     h.intake.accept(patch(11, 10))

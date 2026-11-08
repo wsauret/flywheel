@@ -60,7 +60,7 @@ export function createHeldRoles(options: {
       get view() { return view },
       get listenerCount() { return listeners.size },
       beginRefresh() {
-        intake.reset()
+        intake.beginRead()
         return ++generation
       },
       owns(request) { return !retired && request === generation },

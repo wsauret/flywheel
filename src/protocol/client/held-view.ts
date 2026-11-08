@@ -63,7 +63,7 @@ export function createHeldView<View>(options: HeldViewOptions<View>): HeldView<V
   async function refresh(): Promise<void> {
     if (disposed) return
     const read = ++generation
-    intake.reset()
+    intake.beginRead()
     try {
       const answer = await retry.read(() => disposed || read !== generation ? Promise.resolve(undefined) : options.read())
       if (disposed || read !== generation || answer === undefined) return

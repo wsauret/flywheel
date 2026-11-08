@@ -75,6 +75,22 @@ describe("OutputProjector", () => {
     expect(projector.streamPhase).toBeNull();
   });
 
+  it("stamps thinking after a tool-only response at the start of its own model call", () => {
+    const projector = new OutputProjector({ executionCwd: "/workspace" });
+
+    projector.apply({ type: "begin-turn" });
+    projector.apply({ type: "set-model-phase", phase: "waiting", timestamp: 1_000 });
+    projector.apply({ type: "tool-use", toolUseId: "t1", name: "bash", input: {}, timestamp: 1_500 });
+    projector.apply({ type: "tool-input-complete", toolUseId: "t1", name: "bash", input: { command: "ls" }, timestamp: 2_000 });
+    projector.apply({ type: "tool-result", toolUseId: "t1", outcome: "ok", content: [{ type: "text", text: "ok" }], timestamp: 60_000 });
+    projector.apply({ type: "set-model-phase", phase: "waiting", timestamp: 61_000 });
+    projector.apply({ type: "push-thinking", text: "plan", timestamp: 61_500, blockKey: "r2:0" });
+    projector.apply({ type: "complete-thinking", timestamp: 63_000 });
+
+    const thinking = projector.getBlocks().find((block) => block.kind === "thinking");
+    expect(thinking?.kind === "thinking" ? [thinking.timestamp, thinking.completedAt] : null).toEqual([61_000, 63_000]);
+  });
+
   it("materializes streaming tool input into the same preview shape as completed input", () => {
     const streamed = new OutputProjector({ executionCwd: "/workspace" });
     streamed.apply({ type: "tool-use", toolUseId: "write-1", name: "write", input: {}, timestamp: 1 });

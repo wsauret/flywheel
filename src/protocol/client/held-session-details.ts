@@ -163,7 +163,7 @@ export function createHeldSessionDetails(options: HeldSessionDetailsOptions): He
       const request = ++generation
       reread.resolve()
       reread = Promise.withResolvers()
-      intake.reset()
+      intake.beginRead()
       const superseded = () => request !== generation && latest !== undefined ? latest : undefined
       const read = (async (): Promise<HoldOutcome> => {
         try {
@@ -185,6 +185,7 @@ export function createHeldSessionDetails(options: HeldSessionDetailsOptions): He
           }
           const newer = superseded()
           if (newer) return await newer
+          intake.abandonRead()
           options.onDiagnostic?.("session detail read failed", cause)
           failure = errorMessage(cause)
           options.onChange(sessionId)

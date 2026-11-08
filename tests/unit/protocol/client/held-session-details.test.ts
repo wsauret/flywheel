@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, jest, test } from "bun:test"
 import type { RuntimeClient, SessionRow } from "../../../../src/protocol/app-service-types.js"
 import { RuntimeLaneLost } from "../../../../src/protocol/client/connection-failures.js"
 import { createHeldSessionDetails, resolveSessionRoute } from "../../../../src/protocol/client/held-session-details.js"
@@ -205,6 +205,45 @@ describe("held session details", () => {
       expect(held.detail("child")?.title).toBe("child")
       expect(held.state("child")).toEqual({ loaded: true })
     } finally { held.dispose() }
+  })
+
+  test("a read that outlasts the hold deadline still seeds and applies the patches that arrived meanwhile", async () => {
+    jest.useFakeTimers()
+    const runtime = fixture()
+    const held = createHeldSessionDetails({ client: runtime.client, onChange() {} })
+    try {
+      runtime.block()
+      const holding = held.holdSession("leaf")
+      await Promise.resolve()
+      held.accept(runtime.patch("leaf", 1, row("leaf", "early")))
+      jest.advanceTimersByTime(2_000)
+      held.accept(runtime.patch("leaf", 2, row("leaf", "later")))
+      expect(runtime.reads).toEqual(["leaf"])
+      runtime.unblock()
+      expect(await holding).toEqual({ kind: "held" })
+      expect(held.get("leaf")?.title).toBe("later")
+    } finally { held.dispose(); jest.useRealTimers() }
+  })
+
+  test("a failed read still recovers the patches it held", async () => {
+    jest.useFakeTimers()
+    let fails = true
+    const reads: string[] = []
+    const client = detailClient(async (sessionIds) => {
+      reads.push(...sessionIds)
+      if (fails) { fails = false; throw new Error("unavailable") }
+      return { snapshotPosition: 0, views: sessionIds.map(sessionId => ({ sessionId, view: view(sessionId) })) }
+    })
+    const held = createHeldSessionDetails({ client, onChange() {} })
+    try {
+      const holding = held.holdSession("leaf")
+      held.accept(fixture().patch("leaf", 1, row("leaf", "early")))
+      expect((await holding).kind).toBe("failed")
+      jest.advanceTimersByTime(2_000)
+      for (let turn = 0; turn < 5; turn += 1) await Promise.resolve()
+      expect(reads).toEqual(["leaf", "leaf"])
+      expect(held.state("leaf")).toEqual({ loaded: true })
+    } finally { held.dispose(); jest.useRealTimers() }
   })
 
   test("a detail read lost with its lane answers with the next lane's read and shows no failure", async () => {

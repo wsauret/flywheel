@@ -54,9 +54,12 @@ export function createModuleDomainMonitor<Domain extends string, Scope extends "
   })
 
   function resnapshot(): Promise<void> {
-    intake.reset()
     work = work.then(async () => {
       if (disposed) return
+      // Announced when this read starts, not when it is queued: a read queued
+      // behind another one would otherwise be unanchored by the earlier
+      // read's seed, and the gap deadline would run while it is out.
+      intake.beginRead()
       try {
         const snapshot = await retry.read(() => binding.read(connection, options.ownerId))
         if (disposed) return

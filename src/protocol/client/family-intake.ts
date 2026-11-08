@@ -169,6 +169,7 @@ export function createFamilyIntake<Scope, Snapshot, Patch extends RuntimeUiPatch
       // A cursor first seen while its scope is read holds until that read
       // seeds it; any other anchors at the family baseline.
       if (scopeKey === null || !inflight.has(scopeKey)) created.intake.seed(baseline)
+      else created.intake.beginRead()
       return created
     }
     if (scope !== null) {
@@ -183,7 +184,7 @@ export function createFamilyIntake<Scope, Snapshot, Patch extends RuntimeUiPatch
     const held = entry.intake.heldPosition
     if (held === null) return
     entry.parked = held
-    entry.intake.reset()
+    entry.intake.beginRead()
   }
 
   /** Re-anchor a cursor a read left unseeded, where it was or at the baseline. */
