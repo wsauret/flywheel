@@ -1,0 +1,18 @@
+src/infra/persistent-process-manager.ts
+  h_4b47e9e4a8b456 90
+src/infra/persistent-subprocess.ts
+  h_4b47e9e4a8b456 51,121-125,282-286,288-295,300-301,305-310,350,360-363,369
+tests/unit/infra/persistent-subprocess.test.ts
+  h_4b47e9e4a8b456 183-205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2cebe3177fe29139d200df7568f5a94158147245",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
