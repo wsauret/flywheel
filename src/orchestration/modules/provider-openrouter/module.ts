@@ -10,6 +10,7 @@ import { describeProvider } from "../../agent-runtime/llm/provider-description.j
 import type { ProviderAffordabilityFactory } from "../../agent-runtime/llm/provider-affordability.js";
 import type { FirstPartyModule } from "../../modules.js";
 import { createOpenRouterAffordability } from "./affordability.js";
+import { OPENROUTER_API_BASE, OPENROUTER_API_HOST } from "./api.js";
 import { canonicalizeOpenRouterCatalogRow, canonicalizeOpenRouterWireId, openRouterModelOutputCap } from "./model-support.js";
 
 const catalog = { limits: DEFAULT_DYNAMIC_CATALOG_LIMITS, extractRows: extractDataCatalogRows } as const;
@@ -26,6 +27,7 @@ const definition = {
   spendMode: "aggregator",
   rank: 80,
   catalogId: undefined,
+  apiHosts: [OPENROUTER_API_HOST],
   dynamicCatalog: {
     ...catalog,
     canonicalize: canonicalizeOpenRouterCatalogRow,
@@ -35,7 +37,7 @@ const definition = {
       if (credential.type !== "api_key") return { discovery: { kind: "not-attempted" }, credential };
       // Provider-call adapter: the key is unwrapped only into the header.
       const headers = { ...await openRouterRequestHeaders(), Authorization: `Bearer ${Redacted.value(credential.key)}` };
-      const discovery = await fetchCatalog("https://openrouter.ai/api/v1/models", headers, catalog, signal);
+      const discovery = await fetchCatalog(`${OPENROUTER_API_BASE}/models`, headers, catalog, signal);
       return { discovery, credential };
     },
   },
@@ -51,7 +53,7 @@ const createClient: AccessProviderFactory = async (build) => {
     const key = apiKey(build.connection.auth, definition.id);
     if (!key) throw new ApiError({ message: "No OpenRouter API key in the active auth profile. Run: flywheel auth login --openrouter", recovery: { kind: "none" } });
     const [{ default: OpenAI }, { createOpenAIChatCompletionsAdapter }] = await Promise.all([import("openai"), import("../../agent-runtime/llm/openai-completions.js")]);
-    const client = new OpenAI({ apiKey: Redacted.value(key), baseURL: "https://openrouter.ai/api/v1", defaultHeaders: await openRouterRequestHeaders(), maxRetries: 0 });
+    const client = new OpenAI({ apiKey: Redacted.value(key), baseURL: OPENROUTER_API_BASE, defaultHeaders: await openRouterRequestHeaders(), maxRetries: 0 });
     return createOpenAIChatCompletionsAdapter(client, build.model, build.modelsClient, {
       accessProvider: definition.id, providerHint: "openrouter", candidate: build.candidate, wireModelId: build.wireModelId,
       resolvedModelMetadata: build.attribution.resolvedModelMetadata ?? null,

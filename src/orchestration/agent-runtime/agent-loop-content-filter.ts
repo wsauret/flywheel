@@ -12,7 +12,7 @@ const log = Log.create({ service: "agent-loop" });
  *  retries before it ends the turn as the provider's refusal.
  *
  *  @public
- *  `bench/terminal_bench/trial-store-analysis.ts` reads it to tell a refusal
+ *  `bench/harbor/trial-store-analysis.ts` reads it to tell a refusal
  *  from a trial that ended while a retry was owed. Knip does not trace bench
  *  into the production project, so this export is not dead. */
 export const MAX_CONTENT_FILTER_RETRIES = 2;

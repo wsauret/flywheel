@@ -2,8 +2,9 @@ import { Redacted } from "effect";
 import { readBoundedJson } from "../../../infra/auth/bounded-json.js";
 import { openRouterModelOutputCap, openRouterModelPricing } from "./model-support.js";
 import type { ProviderAffordabilityCapability, ProviderAffordabilityDecision, ProviderAffordabilityEvaluation } from "../../agent-runtime/llm/provider-affordability.js";
+import { OPENROUTER_API_BASE } from "./api.js";
 
-const KEY_URL = "https://openrouter.ai/api/v1/key";
+const KEY_URL = `${OPENROUTER_API_BASE}/key`;
 const CACHE_TTL_MS = 5 * 60 * 1_000;
 const MAX_KEY_RESPONSE_BYTES = 64 * 1024;
 const KEY_CAPTURE_DEADLINE_MS = 2_000;

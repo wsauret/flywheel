@@ -70,6 +70,8 @@ function providerDefinition(seams: ClaudeAgentSdkSeams) {
     // Claude accounts reset their seven-day windows at different moments.
     usage: { expiringWindow: SEVEN_DAY_METRIC },
     catalogId: "anthropic",
+    // With the engine settings that Flywheel launches it with, the engine reaches only this host.
+    apiHosts: ["api.anthropic.com"],
     dynamicCatalog: claudeSdkDynamicCatalog(seams),
     auth: {
       kind: "external",

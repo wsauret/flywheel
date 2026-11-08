@@ -1,6 +1,6 @@
 # Model benchmarks
 
-The benchmarks measure how well a model, an effort level, and Flywheel's guidance do real coding work, so that the maintainer can select role defaults from evidence. A live run sends real model requests through a Flywheel auth profile, so it spends API money or subscription quota. You do not need to run a benchmark to contribute to Flywheel: the harness unit tests in `tests/unit/bench/` run with `bun run test`, and the commands in [Validation](#validation) check a harness change without spend. To run a benchmark, start with the [coding benchmark menu](#coding-benchmark-menu) and [`chat-ab/README.md`](chat-ab/README.md), or with [`terminal_bench/README.md`](terminal_bench/README.md) for Terminal-Bench. The rest of this page is the maintainer's record of methods and observed results.
+The benchmarks measure how well a model, an effort level, and Flywheel's guidance do real coding work, so that the maintainer can select role defaults from evidence. A live run sends real model requests through a Flywheel auth profile, so it spends API money or subscription quota. You do not need to run a benchmark to contribute to Flywheel: the harness unit tests in `tests/unit/bench/` run with `bun run test`, and the commands in [Validation](#validation) check a harness change without spend. To run a benchmark, start with the [coding benchmark menu](#coding-benchmark-menu) and [`chat-ab/README.md`](chat-ab/README.md), or with [`harbor/README.md`](harbor/README.md) for Harbor Hub benchmarks such as Terminal-Bench. The rest of this page is the maintainer's record of methods and observed results.
 
 This directory contains Flywheel's benchmark harnesses, fixtures, tasks, raw run artifacts, and the runtime/cost menu below. Detailed comparative findings live in `bench/findings/`. The coded role policy lives in `src/orchestration/config/role-model-defaults.ts`.
 
@@ -97,7 +97,7 @@ The live faces are:
 - `chat-ab/bench.ts` and `chat-ab/compare.ts`, for parent Chat work methods judged end to end on real Flywheel bugs.
 - `chat-ab/coding-ab.ts`, exposed by `bun run bench:coding`, for pinned source revisions on coding workflows. [Setup, task menu, resume, and judging](chat-ab/README.md).
 - The embedded `benchmark` Agent tool, which exposes the persona service.
-- `terminal_bench/`, `headless-task/`, and `linux-runtime-verification/`, which retain their specialized operating and evidence contracts described below.
+- `harbor/`, `headless-task/`, and `linux-runtime-verification/`, which retain their specialized operating and evidence contracts described below.
 
 ### `ab-persona/` - subagent persona benchmarks
 
@@ -366,7 +366,7 @@ A challenge that loses still gets recorded in the findings document, so the next
 
 ## Other files
 
-`terminal_bench/` holds the Terminal-Bench 2.1 integration. Its `run-terminal-bench.sh` launcher prepares and validates a generated named Harbor config before any optional paid execution. See `terminal_bench/README.md` for the operating guide and `terminal_bench/METHODOLOGY.md` for the evidence authority. This integration is separate from the model-seat harnesses above.
+`harbor/` holds the Harbor Hub integration, which runs any benchmark that `harbor/benchmarks.ts` registers, such as Terminal-Bench 2.1 and DeepSWE. Its `run-harbor.sh` launcher prepares and validates a generated named Harbor config before any optional paid execution. See `harbor/README.md` for the operating guide and `harbor/METHODOLOGY.md` for the evidence authority. This integration is separate from the model-seat harnesses above.
 
 `linux-runtime-verification/` verifies the runtime tool surface (bash, read, write, edit, search, list) inside a ps-less Debian container: `run.sh` builds the image, ships the source tree, and runs `smoke.ts` against the planned tool exposure. Requires Docker; no provider spend.
 

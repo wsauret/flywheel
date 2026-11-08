@@ -405,6 +405,10 @@ interface AccessProviderDefinitionBase {
   readonly configHints: readonly string[];
   readonly cli: CredentialProviderCli;
   readonly catalogId: string | undefined;
+  /** The hosts that this provider's requests reach, for a caller that must
+   *  allow them through a network allowlist. A provider that declares none
+   *  has hosts that no such caller knows. */
+  readonly apiHosts?: readonly string[];
   readonly dynamicCatalog?: AccessProviderDynamicCatalog;
   readonly auth: AccessProviderAuthStrategy;
   /** Configured providers use this predicate to keep their user-authored static membership. */

@@ -57,7 +57,7 @@ tests/e2e/results/
 
 # Benchmark run output (local machine paths, generated artifacts)
 bench/*/results/
-bench/terminal_bench/source-archive.lock
+bench/harbor/source-archive.lock
 
 # Vendored benchmark fixture sources stay out of code search; add new files with `git add -f`
 bench/**/project/

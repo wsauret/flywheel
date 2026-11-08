@@ -1,0 +1,38 @@
+version = 1
+revision = 5
+requires-python = ">=3.12"
+resolution-markers = [
+    "platform_machine == 'x86_64' and sys_platform == 'linux'",
+]
+supported-markers = [
+    "platform_machine == 'x86_64' and sys_platform == 'linux'",
+]
+
+[manifest]
+overrides = [
+    { name = "anyio", marker = "sys_platform == 'never'" },
+    { name = "jsonschema", marker = "sys_platform == 'never'" },
+    { name = "mcp", marker = "sys_platform == 'never'" },
+    { name = "sniffio", marker = "sys_platform == 'never'" },
+    { name = "typing-extensions", marker = "sys_platform == 'never'" },
+]
+
+[[package]]
+name = "claude-agent-sdk"
+version = "0.2.170"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/00/a1/7c0d4bab286f8e0596f07a559cd72891201fc77a9e310f9c0902ca599da9/claude_agent_sdk-0.2.170.tar.gz", hash = "sha256:6ea39c6e24abe55da4249e615c57c7c4e0fa33f8d5d08633bd642e334adb17b5", size = 398731, upload-time = "2026-10-21T04:13:53.919Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5e/8e/740bd78be8fc90b70764a136efe529eae76c3992df0b1b94b795cdbafded/claude_agent_sdk-0.2.170-py3-none-manylinux_2_17_x86_64.whl", hash = "sha256:ecd49d21e5858c5fda46dfcca82ce1ec753df88439d99bdc459b616bac26cf98", size = 125275525, upload-time = "2026-10-21T04:14:12.241Z" },
+]
+
+[[package]]
+name = "flywheel-harbor-agent"
+version = "1.0.0"
+source = { editable = "." }
+dependencies = [
+    { name = "claude-agent-sdk" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "claude-agent-sdk", specifier = "==0.2.170" }]

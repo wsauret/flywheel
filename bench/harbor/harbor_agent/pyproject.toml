@@ -1,0 +1,29 @@
+[project]
+name = "flywheel-harbor-agent"
+version = "1.0.0"
+description = "Runs Flywheel over the Agent Client Protocol in a Harbor trial."
+requires-python = ">=3.12"
+# The wheel bundles the Claude engine at claude_agent_sdk/_bundled/claude. Harbor
+# installs it in the setup phase, which has network on every benchmark, and the
+# shim links it into the runtime, so a Claude arm runs also where the agent phase
+# is offline. The package builder refuses a commit whose engine differs from it:
+# bump this pin with the Agent SDK of bun.lock (bench/harbor/README.md).
+dependencies = ["claude-agent-sdk==0.2.170"]
+
+[project.scripts]
+flywheel-acp = "flywheel_harbor_agent.shim:main"
+
+[build-system]
+requires = ["uv_build>=0.9"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+
+[tool.uv]
+# Harbor runs trials on linux/amd64 hosts with glibc.
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+# Only the engine of the wheel runs; its Python dependencies never load.
+override-dependencies = ["anyio; sys_platform == 'never'", "jsonschema; sys_platform == 'never'", "mcp; sys_platform == 'never'", "sniffio; sys_platform == 'never'", "typing-extensions; sys_platform == 'never'"]
+# The sdist holds no engine: a host without the wheel fails setup, not the trial.
+no-build-package = ["claude-agent-sdk"]

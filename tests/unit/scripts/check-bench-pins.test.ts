@@ -23,15 +23,12 @@ describe("check-bench-pins", () => {
     write(root, "bench/tasks/coding-development/vendored/project/task.json", JSON.stringify({ sandbox: { commit: sha("9") } }));
     write(root, "bench/chat-ab/tasks/patched/task.json", JSON.stringify({ sandbox: { commit: sha("b"), paths: ["src"] } }));
     write(root, "bench/chat-ab/results/campaign/sources/control/bench/chat-ab/tasks/retired/task.json", JSON.stringify({ sandbox: { commit: sha("8"), paths: ["src"] } }));
-    write(root, "bench/terminal_bench/profiles/pinned.yaml", `headless:\n  runtime_source_commit: ${sha("f")}\n`);
-    write(root, "bench/terminal_bench/profiles/live.yaml", "headless:\n  model: m\n");
 
     const pins = await collectBenchPins(root);
 
     expect(pins.map(({ source, commit }) => `${source} ${commit}`).sort()).toEqual([
       `bench/chat-ab/tasks/patched/task.json ${sha("b")}`,
       `bench/tasks/planning/subtree/task.json ${sha("a")}`,
-      `bench/terminal_bench/profiles/pinned.yaml ${sha("f")}`,
       `src/orchestration/modules/development/benchmark/catalog.ts RESEARCH_SNAPSHOT ${RESEARCH_SNAPSHOT.commit}`,
     ]);
   });
