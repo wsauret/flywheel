@@ -119,6 +119,13 @@ describe("classifyProviderFailure classification table", () => {
     expect(tagOf(statusError(501))).toBe("InvalidRequestFailure");
   });
 
+  test.each(["502", 504])("a statusless error whose code is HTTP status %p fails as that status", (code) => {
+    const failure = classifyProviderFailure(Object.assign(new Error("Provider timed out"), { code }));
+    expect(failure._tag).toBe("TransientNetworkFailure");
+    expect("status" in failure ? failure.status : undefined).toBe(Number(code));
+    expect(isProviderAttributedFailure(failure)).toBe(true);
+  });
+
   test("429 carries retry-after headers, preferring millisecond resolution", () => {
     expect(retryAfterMs(statusError(429, { "retry-after": "3" }))).toBe(3_000);
     expect(retryAfterMs(statusError(429, { "retry-after-ms": "250", "retry-after": "3" }))).toBe(250);

@@ -214,7 +214,7 @@ export function isProviderAttributedFailure(failure: ProviderFailure): boolean {
  *  ChatGPT backend error frame, as opposed to the transport reporting that
  *  the connection is gone. */
 function isProviderStated(wire: unknown): boolean {
-  return hasStatus(wire) || wire instanceof ChatGptAdapterApiError || providerServiceCode(wire) !== undefined;
+  return httpStatusOf(wire) !== undefined || wire instanceof ChatGptAdapterApiError || providerServiceCode(wire) !== undefined;
 }
 
 /** Streaming SDK errors can retain the provider's code or type without a status. */
@@ -226,13 +226,18 @@ function providerServiceCode(error: unknown): "rate_limit_exceeded" | "overloade
   return undefined;
 }
 
-function hasStatus<Failure>(error: Failure): error is Failure & { status: number } {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "status" in error &&
-    typeof error.status === "number"
-  );
+const HTTP_STATUS_CODE = /^[1-5]\d\d$/;
+
+/** The HTTP status that a wire error states: its numeric `status`, or, when it has none, a `code` that is an HTTP
+ *  status as a number or a string of digits. An OpenAI-compatible provider that fails after its stream started can
+ *  only send the status inside the error event, for example OpenRouter's `{"error":{"code":502}}`, and the SDK keeps
+ *  it as `code` with no `status`. Undefined when the error states no HTTP status. */
+export function httpStatusOf(error: unknown): number | undefined {
+  if (typeof error !== "object" || error === null) return undefined;
+  if ("status" in error && typeof error.status === "number") return error.status;
+  if (!("code" in error)) return undefined;
+  const code = typeof error.code === "number" ? String(error.code) : error.code;
+  return typeof code === "string" && HTTP_STATUS_CODE.test(code) ? Number(code) : undefined;
 }
 
 function hasHeaders<Failure>(error: Failure): error is Failure & { headers: { get(name: string): string | null } } {
@@ -247,7 +252,7 @@ function hasHeaders<Failure>(error: Failure): error is Failure & { headers: { ge
 }
 
 function isOverloadedEnvelope(error: unknown): boolean {
-  return (hasStatus(error) && error.status === 529) ||
+  return httpStatusOf(error) === 529 ||
     (error instanceof Error && error.message.includes('"type":"overloaded_error"'));
 }
 
@@ -262,7 +267,7 @@ export function isTransientNetworkError(error: unknown): boolean {
   // timeout, so both retry in place.
   if (error instanceof DOMException && error.name === "TimeoutError") return true;
   if (!(error instanceof Error)) return false;
-  if ("code" in error && (error.code === "ERR_STREAM_PREMATURE_CLOSE" || (!hasStatus(error) && error.code === "ECONNRESET"))) return true;
+  if ("code" in error && (error.code === "ERR_STREAM_PREMATURE_CLOSE" || (httpStatusOf(error) === undefined && error.code === "ECONNRESET"))) return true;
   if (error instanceof SyntaxError) return true; // torn stream → broken JSON
   return NETWORK_ERROR_PATTERN.test(error.message);
 }
@@ -305,8 +310,10 @@ export function classifyProviderFailure(error: unknown): ProviderFailure {
   }
 
   if (error instanceof LlmStreamError) {
+    const status = httpStatusOf(error.cause);
     const base = {
       message: error.message,
+      ...(status !== undefined ? { status } : {}),
       ...(error.retryDelayMs !== undefined ? { retryAfterMs: error.retryDelayMs } : {}),
       cause: error,
     };
@@ -355,7 +362,7 @@ export function classifyProviderFailure(error: unknown): ProviderFailure {
     return new DegenerateRepetitionFailure({ message: error.message, ratio: error.ratio, windowChars: error.windowChars, reasoningChars: error.reasoningChars, cause: error });
   }
 
-  const status = hasStatus(error) ? error.status : undefined;
+  const status = httpStatusOf(error);
   const base = {
     message: messageOf(error),
     ...(status !== undefined ? { status } : {}),

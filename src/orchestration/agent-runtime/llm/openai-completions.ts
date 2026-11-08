@@ -25,7 +25,7 @@ import { asRecord } from "../../../infra/record.js";
 import { classifyQuotaError, ContentFilteredError, ContentRefusedError, ContextLengthExceededError, LlmStreamError, OutputLengthExceededError } from "./errors.js";
 import type { CompletedStopReason } from "./messages.js";
 import { parseToolArguments } from "./json-parse.js";
-import { normalizeProviderAttemptFailure } from "./provider-failure.js";
+import { httpStatusOf, normalizeProviderAttemptFailure } from "./provider-failure.js";
 import { invokeProviderAttempt, normalizeProviderAttemptIterator } from "./provider-attempt-boundary.js";
 import { withStreamAttempt } from "./stream-attempt.js";
 import { OPENAI_CACHE_RATES, openAIOutputLimit } from "./provider-description.js";
@@ -112,29 +112,27 @@ function chatCompletionsReasoningEffort(
 }
 
 /** Classifies a failure of the chat-completions request whose prepared message list is `wire`, or of its stream.
- *  An error frame inside a 200 stream reaches here as an `APIError` with no status. */
+ *  An error frame inside a 200 stream reaches here as an `APIError` with no status; when its code is an HTTP status,
+ *  it classifies exactly as that status would before the stream. */
 function classifyChatCompletionsError(err: unknown, wire: readonly ChatCompletionMessageParam[]): Error {
   if (err instanceof OpenAI.APIConnectionError) return new LlmStreamError(err.message, "transient", undefined, { cause: err });
   if (err instanceof OpenAI.APIError) {
+    const status = httpStatusOf(err);
     // A spent account is terminal: Copilot serves this wire too and rejects an
     // exhausted premium allowance with 402, which must advance the provider
     // chain rather than retry against the spent account.
-    const quota = classifyQuotaError(err.status, err.message, err);
+    const quota = classifyQuotaError(status, err.message, err);
     if (quota) return quota;
-    if (err.status === 408 || err.status === 409) return new LlmStreamError(err.message, "transient", undefined, { cause: err });
+    if (status === 408 || status === 409) return new LlmStreamError(err.message, "transient", undefined, { cause: err });
     const statesContextLength = (typeof err.code === "string" && isOpenAIContextLengthMessage(err.code)) || isOpenAIContextLengthMessage(err.message);
-    if ((err.status === undefined || err.status === 400 || err.status === 413) && statesContextLength) {
+    if ((status === undefined || status === 400 || status === 413) && statesContextLength) {
       return new ContextLengthExceededError(err.message, { cause: err });
     }
-    if (err.status === undefined && err.code === "content_filter") return new ContentFilteredError(err.message, { cause: err });
-    const imageRefusal = chatCompletionsImageRefusal(err, wire);
+    if (status === undefined && err.code === "content_filter") return new ContentFilteredError(err.message, { cause: err });
+    const imageRefusal = chatCompletionsImageRefusal(err, status, wire);
     if (imageRefusal) return imageRefusal;
-  }
-  if (err instanceof OpenAI.APIError && err.status !== undefined && err.status >= 500) {
-    return new LlmStreamError(err.message, "overload", undefined, { cause: err });
-  }
-  if (err instanceof OpenAI.APIError && err.status === 429) {
-    return new LlmStreamError(err.message, "rate_limit", undefined, { cause: err });
+    if (status !== undefined && status >= 500) return new LlmStreamError(err.message, "overload", undefined, { cause: err });
+    if (status === 429) return new LlmStreamError(err.message, "rate_limit", undefined, { cause: err });
   }
   // A raw transient network error passes through: `classifyProviderFailure`
   // types it as transient and keeps the raw error as the cause.
@@ -148,12 +146,12 @@ const IMAGE_DECODE_FAILURE = /\bdecod\w*\b[^.]*\bimage|\bimage\b[^.]*\bdecod/i;
  *  request with the same bytes. A 404 is never one, because OpenRouter answers a provider pin that cannot serve the
  *  model at all with the same 404 text as one that cannot take the images. The refusal names no part, because the
  *  provider names none and one tool batch can carry several new images; the loop repairs it without a locator. */
-function chatCompletionsImageRefusal(err: InstanceType<typeof OpenAI.APIError>, wire: readonly ChatCompletionMessageParam[]): ContentRefusedError | undefined {
-  if (err.status !== 415 && err.status !== 400) return undefined;
+function chatCompletionsImageRefusal(err: InstanceType<typeof OpenAI.APIError>, status: number | undefined, wire: readonly ChatCompletionMessageParam[]): ContentRefusedError | undefined {
+  if (status !== 415 && status !== 400) return undefined;
   const carriesImage = wire.some((message) => Array.isArray(message.content) && message.content.some((part) => part.type === "image_url"));
   if (!carriesImage) return undefined;
   const upstream = upstreamDetail(err);
-  if (err.status === 400 && !IMAGE_DECODE_FAILURE.test(err.message) && !(upstream !== undefined && IMAGE_DECODE_FAILURE.test(upstream))) return undefined;
+  if (status === 400 && !IMAGE_DECODE_FAILURE.test(err.message) && !(upstream !== undefined && IMAGE_DECODE_FAILURE.test(upstream))) return undefined;
   return new ContentRefusedError("OpenAI", err, { reason: upstream === undefined ? err.message : `${err.message}: ${upstream}`, part: undefined });
 }
 

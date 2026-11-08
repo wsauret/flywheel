@@ -5,7 +5,7 @@ import { parseChatGptAdapterErrorResponse } from "../../../../../src/orchestrati
 import { classifyOpenAIStreamError, classifyResponseFailed, createOpenAIStream } from "../../../../../src/orchestration/agent-runtime/llm/openai-helpers.js";
 import { ContentFilteredError, ContentRefusedError, ContextLengthExceededError, LlmStreamError, ProviderRequestValidationError, QuotaCoordinationError, QuotaExhaustedError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { createOpenAIChatCompletionsAdapter } from "../../../../../src/orchestration/agent-runtime/llm/openai-completions.js";
-import { normalizeProviderAttemptFailure, ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
+import { isProviderAttributedFailure, normalizeProviderAttemptFailure, ProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { ApiError, ContentRefused, fromStreamError, TransientDisconnect } from "../../../../../src/orchestration/agent-runtime/errors.js";
 import { repairContentRefusal } from "../../../../../src/orchestration/agent-runtime/llm/content-repair.js";
 import type { ConversationMessage } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
@@ -353,6 +353,26 @@ describe("chat-completions error classification", () => {
     { name: "an in-stream frame", status: undefined, error: { code: "context_length_exceeded", type: "invalid_request_error", message: "Input exceeds the context window of this model." } },
   ])("$name that names the context length is a context overflow", async ({ status, error }) => {
     expect(await chatCompletionsFailure(status, error)).toBeInstanceOf(ContextLengthExceededError);
+  });
+
+  test.each([
+    { code: "502", status: 502, kind: "overload" },
+    { code: 502, status: 502, kind: "overload" },
+    { code: "504", status: 504, kind: "overload" },
+    { code: "429", status: 429, kind: "rate_limit" },
+  ])("an in-stream frame with HTTP code $code fails exactly as a $status before the stream", async ({ code, status, kind }) => {
+    const message = "Upstream error from DeepInfra: Failed to generate completions";
+    const inStream = await chatCompletionsFailure(undefined, { code, message });
+    const beforeStream = await chatCompletionsFailure(status, { code, message });
+    expect(inStream).toBeInstanceOf(LlmStreamError);
+    if (!(inStream instanceof LlmStreamError)) throw new Error("expected LlmStreamError");
+    expect(inStream.kind).toBe(kind);
+    for (const classified of [inStream, beforeStream]) {
+      const failure = normalizeProviderAttemptFailure(classified).failure;
+      expect(failure._tag).toBe(kind === "overload" ? "OverloadedFailure" : "RateLimitFailure");
+      expect("status" in failure ? failure.status : undefined).toBe(status);
+      expect(isProviderAttributedFailure(failure)).toBe(true);
+    }
   });
 
   test("an in-stream content_filter frame is a content filter stop", async () => {
