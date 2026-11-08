@@ -1,0 +1,80 @@
+docs/product-intent/interaction.md
+  h_4b47e9e4a8b456 265
+scripts/regenerate-output-seam-corpus.ts
+  h_4b47e9e4a8b456 504-505,507,509
+src/orchestration/app-service/chat-session-control.ts
+  h_4b47e9e4a8b456 31
+src/orchestration/chat/chat-queued-input-recall.ts
+  h_4b47e9e4a8b456 1-67
+src/orchestration/chat/controls.ts
+  h_4b47e9e4a8b456 28-32,218-219,221-222,227,230,294,331,336
+src/orchestration/chat/host-ports.ts
+  h_4b47e9e4a8b456 34-38
+src/orchestration/chat/runner-lifecycle.ts
+  h_4b47e9e4a8b456 23,153-156,463-465,472,592-594,596,687
+src/orchestration/chat/tree-writer.ts
+  h_4b47e9e4a8b456 155-160,204,223,500
+src/orchestration/chat/turn-mailbox.ts
+  h_4b47e9e4a8b456 33,52,55-58,84-89,91-93,95-96,178-181,183-184,186-193,199-203,206
+src/orchestration/runner/output-session.ts
+  h_4b47e9e4a8b456 48-50
+src/orchestration/runner/types.ts
+  h_4b47e9e4a8b456 67-71
+src/orchestration/session/queued-input-recall.ts
+  h_4b47e9e4a8b456 4-16,18,20
+src/orchestration/workflow-host/runner.ts
+  h_4b47e9e4a8b456 565-566,569-570,574,577
+tests/fixtures/output-seam-corpus/corpus.json
+  h_4b47e9e4a8b456 4058-4059
+tests/fixtures/runtime-supervisor-fixtures.ts
+  h_4b47e9e4a8b456 230,283
+tests/unit/infra/output/builder-drain-changes.test.ts
+  h_4b47e9e4a8b456 90-91,94-95,99,179-180
+tests/unit/orchestration/agent-runtime/agent-loop-input-consumer.test.ts
+  h_4b47e9e4a8b456 331
+tests/unit/orchestration/agent-runtime/subagent/_fixtures.ts
+  h_4b47e9e4a8b456 439
+tests/unit/orchestration/app-service/_frontend-projection-fixtures.ts
+  h_4b47e9e4a8b456 124,163
+tests/unit/orchestration/app-service/output-live-derived-equivalence.test.ts
+  h_4b47e9e4a8b456 505,507
+tests/unit/orchestration/app-service/papercut-drain-context.test.ts
+  h_4b47e9e4a8b456 106
+tests/unit/orchestration/app-service/runtime-supervisor-settlement.test.ts
+  h_4b47e9e4a8b456 184,198
+tests/unit/orchestration/chat/_chat-runner-lifecycle-fixtures.ts
+  h_4b47e9e4a8b456 50-51
+tests/unit/orchestration/chat/_chat-session-agent-runtime-fixtures.ts
+  h_4b47e9e4a8b456 101
+tests/unit/orchestration/chat/chat-controls.test.ts
+  h_4b47e9e4a8b456 60,110
+tests/unit/orchestration/chat/chat-runner-lifecycle-recall.test.ts
+  h_4b47e9e4a8b456 1-202
+tests/unit/orchestration/chat/chat-runner-lifecycle-respawn.test.ts
+  h_4b47e9e4a8b456 140
+tests/unit/orchestration/chat/chat-session-agent-runtime-queue.test.ts
+  h_4b47e9e4a8b456 14,16-20,460-539
+tests/unit/orchestration/chat/chat-session.test.ts
+  h_4b47e9e4a8b456 54,56,59-81
+tests/unit/orchestration/runner/output-session-lifecycle.test.ts
+  h_4b47e9e4a8b456 42,45,47-48,50-54
+tests/unit/orchestration/session-store/session-store-workflow-lifecycle.test.ts
+  h_4b47e9e4a8b456 58
+tests/unit/orchestration/session-store/session-store.test.ts
+  h_4b47e9e4a8b456 47
+tests/unit/orchestration/workflow-host/_workflow-host-fixtures.ts
+  h_4b47e9e4a8b456 126
+tests/unit/tui/hooks/shell-state-harness.ts
+  h_4b47e9e4a8b456 83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7393572f2fe85a9acde7d8cd38ce1ea8d02bec34",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
