@@ -348,3 +348,84 @@ test("a second tap on a chat whose open failed asks for it again", () => {
     mounted.dispose()
   }
 })
+
+test("a session link opens its child over its parent, so Back returns to the parent at once, from a chat and from a workflow agent's view", () => {
+  const attempts: readonly FrontendAttempt[] = [{ id: "agent", definitionId: "agent", briefId: "agent", name: "Agent", status: "running", sessionId: "member", history: [] }]
+  const parents = new Map([["child", "chat"], ["agent-child", "member"]])
+  const mount = () => {
+    const memory = memoryNavigation()
+    return createRoot((dispose) => {
+      const [selected, setSelected] = createSignal<string>()
+      const [tapped, setTapped] = createSignal<SessionLink>()
+      const select = (sessionId: string, link?: SessionLink) => { setTapped(link); setSelected(sessionId) }
+      // The app builds the agent navigation before the module host's stack.
+      const agents = createWorkflowNavigation({
+        reading: () => ({ detail: undefined, view: { attemptsStatus: "loaded", state: "running", attempts, tree: plainAgentTree(attempts) }, live: [] }),
+        selected, select,
+      }, memory.navigation)
+      const stack = createScreenStack(() => undefined, {
+        selectedSessionId: selected,
+        selectSession: select,
+        // The open chat's parent is known from the tap (app.tsx parentSessionId).
+        parentSessionId: (id) => id === selected() ? tapped()?.parentSessionId ?? parents.get(id) : parents.get(id),
+      }, memory.navigation)
+      return { dispose, stack, agents, selected, memory }
+    })
+  }
+  const chat = mount()
+  try {
+    chat.stack.openChat("chat")
+    // A transcript link and a Background row of the shown chat both name it as the parent.
+    chat.stack.openChat("child", { label: "Child", parentSessionId: "chat" })
+    chat.stack.back()
+    assert.equal(chat.stack.screen(), "chat")
+    assert.equal(chat.selected(), "chat", "the first Back shows the parent")
+    assert.equal(chat.memory.entries().length, 2, "the list and one chat")
+    chat.stack.back()
+    assert.equal(chat.stack.screen(), "sessions")
+  } finally {
+    chat.dispose()
+  }
+  const agent = mount()
+  try {
+    agent.stack.openChat("chat")
+    agent.agents.openAgent("run", "chat", { kind: "agent", agentNodeId: "agent", follow: true }, "chat")
+    // The agent's transcript names the agent's session as the parent.
+    agent.stack.openChat("agent-child", { label: "Agent child", parentSessionId: "member" })
+    agent.stack.back()
+    assert.equal(agent.selected(), "member", "Back from the agent's child returns to the agent")
+    assert.equal(agent.agents.place()?.kind, "agent")
+    agent.stack.back()
+    assert.equal(agent.selected(), "chat")
+    agent.stack.back()
+    assert.equal(agent.stack.screen(), "sessions")
+  } finally {
+    agent.dispose()
+  }
+})
+
+test("a selection that leaves an agent view takes the chat's entry without the agent's place, so a reload stays on the chat", () => {
+  const memory = memoryNavigation()
+  const attempts: readonly FrontendAttempt[] = [{ id: "agent", definitionId: "agent", briefId: "agent", name: "Agent", status: "running", sessionId: "member", history: [] }]
+  const reading = () => ({ detail: undefined, view: { attemptsStatus: "loaded" as const, state: "running" as const, attempts, tree: plainAgentTree(attempts) }, live: [] })
+  const mount = (initial: string | undefined) => createRoot((dispose) => {
+    const [selected, setSelected] = createSignal<string | undefined>(initial)
+    const select = (sessionId: string) => setSelected(sessionId)
+    const agents = createWorkflowNavigation({ reading, selected, select }, memory.navigation)
+    const stack = createScreenStack(() => undefined, { selectedSessionId: selected, selectSession: select, parentSessionId: () => undefined }, memory.navigation)
+    return { dispose, stack, agents, selected, setSelected }
+  })
+  const first = mount(undefined)
+  first.stack.openChat("chat")
+  first.agents.openAgent("run", "chat", { kind: "agent", agentNodeId: "agent", follow: true }, "chat")
+  // The command menu's New chat, or a kept side question, moves the selection without the stack.
+  first.setSelected("new")
+  first.dispose()
+  const reloaded = mount("new")
+  try {
+    assert.equal(reloaded.selected(), "new", "the reload is not pulled back to the agent")
+    assert.equal(reloaded.agents.place(), undefined)
+  } finally {
+    reloaded.dispose()
+  }
+})

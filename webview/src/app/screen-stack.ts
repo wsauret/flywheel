@@ -4,11 +4,14 @@ import type { SessionLink } from "../client/session-navigation.js"
 
 import { scrollerKeepsTouch, swipeAbandoned, swipeCommits, swipeDirectionOf, swipeProgress, swipeRecognized, type ScrollerState, type SwipeDirection } from "./screen-swipe.js"
 
-/** Browser history holds the list and one chat, not a trail of visited chats.
- *  Back resolves the shown session's parent at the shared popstate boundary:
- *  a chat's catalog row has none, and a child's held detail row names it,
- *  because a child is never a catalog row. A parent replaces the departed
- *  child; a root returns to the list. */
+/** Browser history holds the list and one chat entry that this stack owns,
+ *  not a trail of visited chats. Over the chat entry sit only the entries
+ *  that a level of the shown chat writes, such as a workflow's agent view,
+ *  and a child that a link opens from inside such a level. Back resolves the
+ *  shown session's parent at the shared popstate boundary: a chat's catalog
+ *  row has none, and a child's held detail row names it, because a child is
+ *  never a catalog row. A parent replaces the departed child; a root returns
+ *  to the list. */
 
 type Screen = "sessions" | "chat"
 
@@ -53,6 +56,15 @@ const STATE_KEY = "flywheelScreen"
  *  so a host that follows the selection with the page address can tell an
  *  entry the client wrote for the new selection from one it must push. */
 export const SESSION_KEY = "flywheelSession"
+/** The level inside the shown chat that a history entry shows, such as a
+ *  workflow's agent view. The level's owner writes and reads the value. The
+ *  stack's own chat entry never carries one, so the stack can tell the entry
+ *  of a level from its chat entry without knowing what the level is. */
+export const LEVEL_KEY = "flywheelPlace"
+
+function holdsLevel(state: unknown): boolean {
+  return state instanceof Object && LEVEL_KEY in state && state[LEVEL_KEY] !== undefined
+}
 
 export interface ScreenStackSelection {
   /** The session the address the page loaded on names, such as a tapped
@@ -158,7 +170,11 @@ export function createScreenStack(
       [STATE_KEY]: "chat",
       ...(sessionId === undefined ? {} : { [SESSION_KEY]: sessionId }),
     }
-    if (screen() === "chat" && !(link !== undefined && link.parentSessionId === selection?.selectedSessionId())) navigation.replaceState(entry)
+    // Another chat takes the one chat entry, and Back resolves its parent at
+    // the list. A level owns the entry it is at, so a child that a link opens
+    // from inside a level goes over the level's entry, and Back returns to it.
+    const fromLevel = link !== undefined && link.parentSessionId === selection?.selectedSessionId() && holdsLevel(navigation.state)
+    if (screen() === "chat" && !fromLevel) navigation.replaceState(entry)
     else navigation.pushState(entry)
     setCanForward(false)
     setScreen("chat")
@@ -167,8 +183,9 @@ export function createScreenStack(
   if (selection !== undefined) {
     createEffect(on(selection.selectedSessionId, (sessionId) => {
       if (screen() !== "chat" || sessionId === undefined || sessionOf(navigation.state) === sessionId) return
-      const current = navigation.state
-      navigation.replaceState({ ...(typeof current === "object" && current !== null ? current : {}), [STATE_KEY]: "chat", [SESSION_KEY]: sessionId })
+      // The selection left any level the entry showed, so the stack writes
+      // its own chat entry with no level's key.
+      navigation.replaceState({ [STATE_KEY]: "chat", [SESSION_KEY]: sessionId })
       setCanForward(false)
     }))
   }

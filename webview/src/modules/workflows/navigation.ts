@@ -1,7 +1,7 @@
 import { batch, createEffect, createMemo, createSignal, on, onCleanup, untrack, type Accessor } from "solid-js"
 import { workflowAgentModel, workflowAgentMove, type WorkflowAgentTarget } from "../../../../src/protocol/client/workflow-agent.js"
 import { workflowParked, workflowStateLabel } from "../../../../src/protocol/client/session-controls.js"
-import { SESSION_KEY, sessionOf } from "../../app/screen-stack.js"
+import { LEVEL_KEY, SESSION_KEY, sessionOf } from "../../app/screen-stack.js"
 import type { WorkflowReading } from "./inspection.js"
 import type { SessionSummary } from "../../client/view-state.js"
 
@@ -21,7 +21,6 @@ export interface HistoryPort {
   addPopStateListener(listener: (event: { readonly state: unknown }) => void): void
   removePopStateListener(listener: (event: { readonly state: unknown }) => void): void
 }
-const KEY = "flywheelPlace"
 
 /** Adopts a directly selected workflow member into its launching chat's history.
  * The effect lasts for its Solid owner and waits for the member's inspection.
@@ -50,8 +49,8 @@ export function createWorkflowAgentAdoption(
   })
 }
 function placeOf(state: unknown): WorkflowPlace | undefined {
-  if (!(state instanceof Object) || !(KEY in state)) return undefined
-  const value = state[KEY]
+  if (!(state instanceof Object) || !(LEVEL_KEY in state)) return undefined
+  const value = state[LEVEL_KEY]
   if (!(value instanceof Object) || !("workflowId" in value) || typeof value.workflowId !== "string" || !("chatSessionId" in value) || typeof value.chatSessionId !== "string" || !("kind" in value)) return undefined
   if (value.kind === "card") return { kind: "card", workflowId: value.workflowId, chatSessionId: value.chatSessionId }
   if (value.kind !== "agent" || !("target" in value) || !(value.target instanceof Object)) return undefined
@@ -73,7 +72,7 @@ const browserHistory = (): HistoryPort => ({
 /** The entry for `place`, which names the session it shows when that is
  *  known, so the page address can follow it into this entry. */
 function entry(state: unknown, place: WorkflowPlace | undefined, shown: string | undefined) {
-  return { ...(state instanceof Object ? state : {}), [KEY]: place, [SESSION_KEY]: shown }
+  return { ...(state instanceof Object ? state : {}), [LEVEL_KEY]: place, [SESSION_KEY]: shown }
 }
 export function workflowCut(reading: WorkflowReading) {
   const detail = reading.detail
