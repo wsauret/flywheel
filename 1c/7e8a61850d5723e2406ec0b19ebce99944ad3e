@@ -1,0 +1,37 @@
+docs/architecture-intent/providers.md
+  s_f3bb5e3b311ed0::t_e1d4e22921de5a 39-44
+src/orchestration/agent-runtime/llm/types.ts
+  s_f3bb5e3b311ed0::t_eb4b66e99b2b35 349-353,488-490,713-715,719-720,732-739,744-748,758,760
+src/orchestration/agent-runtime/assistant-turn-attempt.ts
+  s_f3bb5e3b311ed0::t_998aa0d94bf077 3,132,148,154,313-323,325,484
+src/orchestration/agent-runtime/llm/failover-client.ts
+  s_f3bb5e3b311ed0::t_04d63d02dd4aad 130-132,566-567,583,585-592
+tests/unit/orchestration/agent-runtime/_model-client.ts
+  s_f3bb5e3b311ed0::t_a05473c81894be 38-39
+tests/unit/orchestration/agent-runtime/agent-loop-request-surface.test.ts
+  s_f3bb5e3b311ed0::t_272ff16c60738e 331,340
+tests/unit/orchestration/agent-runtime/auxiliary-fallback-regressions.test.ts
+  s_f3bb5e3b311ed0::t_990119663cdfda 36
+tests/unit/orchestration/agent-runtime/budget-exhaust.test.ts
+  s_f3bb5e3b311ed0::t_a1bbaba4cb2739 408
+tests/unit/orchestration/agent-runtime/llm/reasoning-repetition.test.ts
+  s_f3bb5e3b311ed0::t_f2148c574a87f7 1-93
+tests/unit/orchestration/agent-runtime/runtime-assembly-usage-settlement.test.ts
+  s_f3bb5e3b311ed0::t_9fd25928399735 74-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1c7e8a61850d5723e2406ec0b19ebce99944ad3e",
+  "prompts": {},
+  "sessions": {
+    "s_f3bb5e3b311ed0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c3df007-8751-458c-9b17-d22bc9edab38",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
