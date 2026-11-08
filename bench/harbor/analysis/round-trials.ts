@@ -1,7 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { HarborBenchmark } from "../benchmarks.js";
-import type { Round, RoundRun } from "../rounds.js";
+import { UNLAUNCHED_OUTCOMES, type Round, type RoundRun } from "../rounds.js";
 import { isJsonMap, isMissingFile, jsonMap, readJsonFile, readOptionalJson, text, type JsonMap } from "./json.js";
 
 /** How a round's trial counts toward its score. */
@@ -114,6 +114,26 @@ async function runTrials(benchmark: HarborBenchmark, run: RoundRun): Promise<Rou
     trials.push({ id, task: bareTask(benchmark, result.task_name), reward: score, cost: 0, standing: lost ? "grader_lost" : "scored", directory, run });
   }
   return trials;
+}
+
+/** The tasks that the round measured, by split: the bare task names of each
+ *  measure run's manifest. The manifests are the record of what ran, so a
+ *  split that the round did not measure, or whose run ended before Harbor ran
+ *  any trial, has no entry. */
+export async function measuredSplits(benchmark: HarborBenchmark, round: Round): Promise<Map<string, string[]>> {
+  const unlaunched: ReadonlySet<unknown> = new Set(UNLAUNCHED_OUTCOMES);
+  const splits = new Map<string, string[]>();
+  for (const run of round.runs) {
+    if (run.purpose !== "measure" || run.split === undefined) continue;
+    const manifest = jsonMap(await readJsonFile(join(run.directory, "run_manifest.json")), `${run.directory}/run_manifest.json`);
+    if (manifest.state === "refused" && unlaunched.has(manifest.outcome)) continue;
+    const names = manifest.task_names;
+    if (!Array.isArray(names) || !names.every((name) => typeof name === "string")) throw new Error(`${run.directory}/run_manifest.json has no task_names`);
+    const tasks = splits.get(run.split) ?? [];
+    for (const name of names) if (!tasks.includes(bareTask(benchmark, name))) tasks.push(bareTask(benchmark, name));
+    splits.set(run.split, tasks);
+  }
+  return splits;
 }
 
 /** Every trial of every run of the round, in the round's run order. */

@@ -4,12 +4,12 @@ This document is the authority for interpreting Flywheel runs on any benchmark t
 
 ## The method
 
-A hill-climb measures one arm, a Flywheel config, on fixed task splits of one benchmark, and changes Flywheel between rounds. Each benchmark has one descriptor, and the launcher, the ledger, and the analysis read the facts of a benchmark only from it, from the pinned dataset, or from the board's data.
+A hill-climb measures one arm, a Flywheel config, on fixed task splits of one benchmark or on the whole benchmark, and changes Flywheel between rounds. Each benchmark has one descriptor, and the launcher, the ledger, and the analysis read the facts of a benchmark only from it, from the pinned dataset, or from the board's data.
 
 1. The board's data is fetched to a local cache, and the port of the board's scoring must reproduce every published cell of the benchmark before any score uses it.
-2. Splits are chosen once per benchmark from the board's per-task results. The `subset` split projects to the full benchmark; holdout splits check that a change that helps the subset also helps tasks that it did not select. The analysis proposes splits, and the person picks them.
-3. A round runs each split at the board's job settings, reruns the trials that infrastructure or a lost grader left unscored, reviews the passing trials that reached a published copy of the benchmark, and scores every scored attempt with the board's rules.
-4. The subset score projects to the full benchmark through a fit over the board's own units, and the round is compared task by task with the board's leader at the same model and effort.
+2. Splits are chosen once per benchmark from the board's per-task results. The `subset` split projects to the full benchmark; holdout splits check that a change that helps the subset also helps tasks that it did not select. The analysis proposes splits, and the person picks them. A run can also take the whole benchmark: every task of the pinned dataset except the descriptor's exclusions, which is the reserved split `all`.
+3. A round runs each split, or the whole benchmark, at the board's job settings, reruns the trials that infrastructure or a lost grader left unscored, reviews the passing trials that reached a published copy of the benchmark, and scores every scored attempt with the board's rules.
+4. The subset score projects to the full benchmark through a fit over the board's own units. A round of the whole benchmark needs no projection. The round is compared with the board's field, and task by task with the board's leader, at the same model and effort.
 
 ## Effective configuration and grades
 
@@ -21,7 +21,7 @@ Every run names a checked-in Flywheel config with `--arm`, and the agent package
 
 Every trial runs `flywheel --headless --acp --unattended --allow-persistent-processes`. `--unattended` is a general ACP mode (PI-AGENT-121). It omits built-in chat review, publication, and communication guidance, and the skill tool, its catalog, and ask_user. The run returns its final reply after owned work settles. The trial passes `--allow-persistent-processes`, and the checked-in arm configs also set `allow_persistent_processes = true`. Many tasks require a server that is still running when the verifier starts, and only a command launched with `persist_after_exit` outlives Flywheel's exit. A server that the agent starts without asking it to persist does not keep the run open: the prompt is answered when the agent's turn ends, and the server ends when Flywheel exits. A task that needs a running server therefore passes only when the agent asks for persistence, as PI-AGENT-047 requires.
 
-A run uses the arm's agent package, an explicit bounded task list (a split of the descriptor or `--task-names`), and an exact expected denominator:
+A run uses the arm's agent package, an exact bounded task list, and an exact expected denominator. The task list is a split of the descriptor, the names of `--task-names`, or, when the run gives neither, every task of the pinned dataset except the descriptor's exclusions. Harbor lists the dataset's tasks without a download, and the launcher refuses the run when the dataset does not hold an excluded task, because the run would then not be the board's whole benchmark. A run of every task measures the reserved split `all`.
 
 ```text
 expected trials = number of requested tasks * attempts per task
@@ -105,7 +105,7 @@ Harbor's agent timeout is the only deadline of a trial. The shim records the dea
 
 ## Round scoring
 
-A round is the record `<jobs dir>/rounds/<name>.json` of every run whose scored attempts pool into one score. A run joins its round when it is prepared, as a measurement of one split or as a rerun; a dry run joins no round. The round's first run records its identity: the benchmark, the packaged Flywheel commit, the arm path and SHA-256, and the chat model and effort. The launcher refuses, before any package build or publication, a run whose benchmark or identity differs, so the pooled score measures one commit and one arm, and a change to either starts a new round. A round recorded before rounds had an identity reads without one, and its next run sets it. The descriptor's splits decide which split a task belongs to, so a rerun adds attempts to its tasks wherever they are. A run without a ledger has not finished and adds nothing.
+A round is the record `<jobs dir>/rounds/<name>.json` of every run whose scored attempts pool into one score. A run joins its round when it is prepared, as a measurement of one split or as a rerun: a run with `--split` or with no task selection is a measurement, and a run with `--task-names` is a rerun. A dry run joins no round. The round's first run records its identity: the benchmark, the packaged Flywheel commit, the arm path and SHA-256, and the chat model and effort. The launcher refuses, before any package build or publication, a run whose benchmark or identity differs, so the pooled score measures one commit and one arm, and a change to either starts a new round. A round recorded before rounds had an identity reads without one, and its next run sets it. The manifests of the round's measure runs decide which tasks each measured split has, so a rerun adds attempts to its tasks wherever they are, and a split that the round did not measure has no score. A run without a ledger has not finished and adds nothing.
 
 Each trial of the round has one standing:
 
@@ -117,7 +117,7 @@ The scoring rules:
 
 - A scored trial passes if and only if its reward is at least 1 and no confirmed answer-key verdict names it. A confirmed answer-key verdict turns a pass into a fail.
 - Every scored attempt of every run of the round pools into its task. A task's pass rate is its passes over its scored attempts.
-- A split score is the mean over the split's tasks of each task's pass rate. A task with no scored attempt counts 0.
+- Each split that the round measured gets a score: the mean over the split's tasks of each task's pass rate. A task with no scored attempt counts 0.
 - Each split score is also reported over the scored tasks only, which is the board's cell rule, and without the descriptor's hub-broken tasks. A hub-broken task stays in its split, as on the board.
 - The report also counts grader-lost trials, infrastructure trials, answer-key fails, and the cost over every trial.
 
@@ -127,7 +127,7 @@ Reruns follow the board's retry rule. Each attempt slot that a measurement plann
 
 The board's data is the public Hugging Face bucket of the harness leaderboard (its run records, invalid lists, published `index/public.json`, and per-benchmark trial shards) and the registries of its Space at its current revision. `hill.ts board fetch` stores each file in `~/.cache/flywheel/harbor-board/objects/` under its content hash and writes `snapshots/<board key>.json` only after every download succeeded. A load reads only the objects that its snapshot names, so a later fetch never mixes newer inputs into an earlier snapshot.
 
-`bench/harbor/analysis/board-scoring.ts` ports the board's scoring for one benchmark, with each rule cited by the board function that it ports. A received answer key fails a trial whatever else happened; a cancelled trial is not scored; a trial whose agent never started, that died before its first model call, whose last model call failed at the provider, whose sandbox broke, or whose grader reported a negative reward is infrastructure; otherwise a reward of at least 1 passes. The board scores the earliest 3 scored attempts of each task on its full stage, and after 6 provider failures of one task it fills the open attempts with fails. A cell rate is the mean over the cell's scored tasks of each task's pass rate. `hill.ts board verify` recomputes every public cell and compares it with `public.json` at the board's precision: counts exactly, and rates, intervals, and cost to 4 significant digits. A score uses board data only after this check reports no mismatch.
+`bench/harbor/analysis/board-scoring.ts` ports the board's scoring for one benchmark, with each rule cited by the board function that it ports. A received answer key fails a trial whatever else happened; a cancelled trial is not scored; a trial whose agent never started, that died before its first model call, whose last model call failed at the provider, whose sandbox broke, or whose grader reported a negative reward is infrastructure; otherwise a reward of at least 1 passes. The board scores the earliest 3 scored attempts of each task on its full stage, and after 6 provider failures of one task it fills the open attempts with fails. A cell rate is the mean over the cell's scored tasks of each task's pass rate. `hill.ts board verify` recomputes every public cell and compares it with `public.json` at the board's precision: counts exactly, and rates, intervals, and cost to 4 significant digits. It also compares the descriptor's exclusions with the board's and exits 1 when they differ, because the launcher reads the exclusions of a whole-benchmark run from the descriptor. A score uses board data only after this check reports no mismatch.
 
 The board names harnesses in its data. The analysis treats each name as an opaque value and reads the leader from the published board.
 
@@ -151,9 +151,9 @@ where s is the residual standard deviation of the fit (the structural SD), n is 
 
 ## Comparison with the board's leader
 
-`hill.ts score --board` reads the round's model and chat effort from the round's identity, or from `--model` and `--effort`. The board model is the model id whose last path segment equals the round's model, ignoring case. The leader is the harness that the published board ranks first for that model, the full stage, and that effort.
+`hill.ts score --board` reads the round's model and chat effort from the round's identity, or from `--model` and `--effort`. The board model is the model id whose last path segment equals the round's model, ignoring case. The leader is the harness that the published board ranks first for that model, the full stage, and that effort. The command also prints the board's field at that model and effort on the full stage: each harness with its rate and interval, best rate first. It prints the projection only when the round measured `subset`.
 
-The paired comparison uses the board's own method. It takes the tasks that both the round and the leader's cell scored, over every task of the round, and computes the round's pass rate minus the leader's for each task. The difference is the mean over those tasks. Its 95% interval comes from the board's paired bootstrap: 2000 resamples of the tasks with replacement, seeded with the board's seed, the board key, and the task count, as the board seeds them. The two are tied when the interval contains 0.
+The paired comparison uses the board's own method. It takes the tasks that both the round and the leader's cell scored, over every task that the round measured, so a round of the whole Terminal-Bench 2.1 compares on all 87 tasks, and computes the round's pass rate minus the leader's for each task. The difference is the mean over those tasks. Its 95% interval comes from the board's paired bootstrap: 2000 resamples of the tasks with replacement, seeded with the board's seed, the board key, and the task count, as the board seeds them. The two are tied when the interval contains 0.
 
 ## Subset selection
 
@@ -177,7 +177,7 @@ The harness leaderboard fails a trial that used the task's reference solution, h
 
 ### Terminal-Bench 2.1
 
-Descriptor `terminal-bench-2.1`, board key `terminal-bench-2.1`. The agent phase has public network, so each trial home carries the answer-key rule file. The grader installs uv and a Python from GitHub before any test, so the GitHub-download rule of `verifier_infra` applies. A local run seals the verifier's Python dependencies into a read-only wheelhouse.
+Descriptor `terminal-bench-2.1`, board key `terminal-bench-2.1`. The descriptor excludes qemu-startup and qemu-alpine-ssh, as the board does, because their upstream images do not start on Harbor, so the whole benchmark is 87 of the dataset's 89 tasks. The agent phase has public network, so each trial home carries the answer-key rule file. The grader installs uv and a Python from GitHub before any test, so the GitHub-download rule of `verifier_infra` applies. A local run seals the verifier's Python dependencies into a read-only wheelhouse.
 
 The `subset` split has 14 tasks of Terminal-Bench 2.1 that track the full benchmark score. It rebuilds the published terminal-bench-mini subset (huggingface.co/datasets/LocalLLaMA/terminal-bench-mini) with the same method: from the per-agent, per-task pass rates of the published leaderboard trials, drop tasks that every agent passes or fails, cut the rest into seven difficulty bands by field pass rate, and take tasks from the quieter half of each band by run-to-run noise.
 
@@ -207,7 +207,7 @@ One subset task is hub-broken: Harbor's oracle agent failed custom-memory-heap-c
 
 ### DeepSWE v1.1
 
-Descriptor `deep-swe-1.1`, board key `deep-swe`. It has no splits yet: run `hill.ts subset propose --benchmark deep-swe-1.1`, and the person picks them. Until then, a run selects tasks with `--task-names`.
+Descriptor `deep-swe-1.1`, board key `deep-swe`. The descriptor excludes two tasks, as the board does: helm-unified-manifest-stream, because its reference solution fails on the board's sandbox, and vulture-persistent-analysis-cache, because its grader fails correct solutions. So the whole benchmark is 111 of the dataset's 113 tasks. It has no splits yet: run `hill.ts subset propose --benchmark deep-swe-1.1`, and the person picks them. Until then, a run with no task selection runs all 111 tasks, and a bring-up selects its task with `--task-names`.
 
 - The agent phase has no network. The trial reaches only the API hosts of the arm's enabled providers and `models.dev`, which the launcher allows. The agent package carries a compiled executable, and the setup phase, which has network, installs the Claude engine from the hash-pinned PyPI wheel, so the agent phase downloads nothing and every arm, including a Claude subscription arm (`api.anthropic.com`), can run.
 - The verifier runs in a separate environment that also has no network, and it downloads nothing from GitHub, so the GitHub-download rule does not apply and a local run seals no wheelhouse.

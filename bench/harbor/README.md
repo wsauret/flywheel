@@ -1,6 +1,6 @@
 # Harbor Hub hill-climb
 
-This directory holds Flywheel's system to hill-climb on a benchmark of Harbor Hub. A hill-climb runs Flywheel on fixed task splits of one benchmark, scores the runs with the rules of the [harness leaderboard](https://huggingface.co/spaces/joelniklaus/harness-leaderboard), projects the subset score to the full benchmark, and compares Flywheel with the board's leader task by task. The system works for each benchmark that `benchmarks.ts` registers. To add a benchmark, add one descriptor (see [Add a benchmark](#add-a-benchmark)).
+This directory holds Flywheel's system to hill-climb on a benchmark of Harbor Hub. A hill-climb runs Flywheel on fixed task splits of one benchmark, or on the whole benchmark, scores the runs with the rules of the [harness leaderboard](https://huggingface.co/spaces/joelniklaus/harness-leaderboard), projects a subset score to the full benchmark, and compares Flywheel with the board's field and with its leader task by task. The system works for each benchmark that `benchmarks.ts` registers. To add a benchmark, add one descriptor (see [Add a benchmark](#add-a-benchmark)).
 
 The system has two entry points:
 
@@ -13,12 +13,12 @@ See [METHODOLOGY.md](METHODOLOGY.md) for the measurement rules, the evidence con
 
 ## Registered benchmarks
 
-| Benchmark id | Harbor dataset | Board key | Splits | Answer-key rule file |
-|---|---|---|---|---|
-| `terminal-bench-2.1` | `terminal-bench/terminal-bench-2-1` | `terminal-bench-2.1` | `subset` (14 tasks), `holdout` (14), `holdout2` (20) | yes |
-| `deep-swe-1.1` | `datacurve/deep-swe-1-1` | `deep-swe` | none yet | no |
+| Benchmark id | Harbor dataset | Board key | Splits | Excluded tasks | Whole benchmark | Answer-key rule file |
+|---|---|---|---|---|---|---|
+| `terminal-bench-2.1` | `terminal-bench/terminal-bench-2-1` | `terminal-bench-2.1` | `subset` (14 tasks), `holdout` (14), `holdout2` (20) | qemu-startup, qemu-alpine-ssh | 87 of 89 tasks | yes |
+| `deep-swe-1.1` | `datacurve/deep-swe-1-1` | `deep-swe` | none yet | helm-unified-manifest-stream, vulture-persistent-analysis-cache | 111 of 113 tasks | no |
 
-Each descriptor pins the dataset to an exact `sha256:` ref. A run of a split that the descriptor does not have is refused, so a DeepSWE run needs `--task-names` until the person picks its splits.
+Each descriptor pins the dataset to an exact `sha256:` ref and states the tasks that the board excludes, each with the board's reason. A run of a split that the descriptor does not have is refused. A run with no task selection runs the whole benchmark, so a DeepSWE run can start before the person picks its splits (see [Whole-benchmark run](#whole-benchmark-run)).
 
 ## Requirements
 
@@ -53,8 +53,8 @@ When the agent phase of a selected task has no public network, as on DeepSWE, th
 | `--benchmark <id>` | required | A registered benchmark id. |
 | `--arm <path>` | required | The arm's Flywheel config. |
 | `--auth-profile <id>` | required | The Flywheel auth profile that the snapshot comes from. |
-| `--split <name>` or `--task-names <a,b>` | exactly one is required | A split of the descriptor, or an explicit list. A bare task name takes the benchmark's task namespace. Each name must match a task of the pinned dataset. |
-| `--round <name>` | none | The round that an executing run joins. A run with `--split` joins as a measurement, a run with `--task-names` as a rerun. A dry run joins no round, but its benchmark and identity are checked against the round. The name is a lowercase slug. See [A hill-climb round](#a-hill-climb-round). |
+| `--split <name>` or `--task-names <a,b>` | neither: every task | A split of the descriptor, or an explicit list. Give at most one of the two. A bare task name takes the benchmark's task namespace. Each name must match a task of the pinned dataset. With neither, the run takes every task of the pinned dataset except the descriptor's exclusions and measures the reserved split `all`. |
+| `--round <name>` | none | The round that an executing run joins. A run with `--split` or with no task selection joins as a measurement, a run with `--task-names` as a rerun. A dry run joins no round, but its benchmark and identity are checked against the round. The name is a lowercase slug. See [A hill-climb round](#a-hill-climb-round). |
 | `--attempts <n>` | `3` | Attempts per task. Fewer than 3 needs `--allow-low-k`. |
 | `--concurrency <n>` | `4` | Trials at the same time. On Hub, set it to the trial count to run every trial at once. |
 | `--timeout-multiplier <x>` | `1` | Harbor's agent and verifier timeout multiplier. |
@@ -98,7 +98,7 @@ ARM=bench/harbor/configs/tb-board-deepseek-high.toml
 ROUND="$JOBS/rounds/r3.json"
 ```
 
-1. Fetch the board's data and verify that the port of the board's scoring reproduces the published board. `board verify` exits 1 on any mismatch, and for a benchmark with a `subset` split it prints the projection fit.
+1. Fetch the board's data and verify that the port of the board's scoring reproduces the published board. `board verify` also checks that the descriptor's exclusions equal the board's. It exits 1 on any mismatch or when the exclusions differ, and for a benchmark with a `subset` split it prints the projection fit.
 
    ```bash
    bun bench/harbor/hill.ts board fetch --benchmark terminal-bench-2.1
@@ -174,7 +174,20 @@ ROUND="$JOBS/rounds/r3.json"
    bun bench/harbor/hill.ts score --round "$ROUND" --board
    ```
 
-   The command prints the pass count of each task, the score of each split (over all tasks, over scored tasks, and without hub-broken tasks), the grader-lost, infrastructure, and answer-key fail counts, and the cost. With `--board` it also prints the projected full score with its 90% interval and the fit, and the board's leader at the round's model and effort with the paired difference on the shared tasks. It reads the model and the chat effort from the round's identity; `--model <name> --effort <effort>` sets them, and a round recorded before rounds had an identity needs both. A model that the board does not rank still gets the projection.
+   The command prints the pass count of each task, the score of each split that the round measured (over all tasks, over scored tasks, and without hub-broken tasks), the grader-lost, infrastructure, and answer-key fail counts, and the cost. It reads the measured splits from the manifests of the round's measure runs, so it reports no split that the round did not run. With `--board` it also prints the projected full score with its 90% interval and the fit when the round measured `subset`, the board's field at the round's model and effort on the full stage (each harness with its rate and interval, best rate first), and the board's leader with the paired difference over every task that both the round and the leader scored. It reads the model and the chat effort from the round's identity; `--model <name> --effort <effort>` sets them, and a round recorded before rounds had an identity needs both. A model that the board does not rank still gets the projection.
+
+### Whole-benchmark run
+
+A run with neither `--split` nor `--task-names` runs every task of the pinned dataset except the descriptor's exclusions. That set is the board's whole benchmark: 87 tasks of Terminal-Bench 2.1 and 111 tasks of DeepSWE v1.1. The launcher lists the dataset's tasks with Harbor (`harbor_tasks.py --list <dataset> <ref>`), which downloads no task, and refuses the run when the dataset does not hold an excluded task. The run measures the reserved split `all` and joins its round as a measurement, so reruns, the scan, and the review work as in a round of splits.
+
+This example runs the board-matched DeepSeek high arm on all of Terminal-Bench 2.1 on Harbor Hub, then scores the round against the board. Replace `<profile>`, `<owner/repo>`, `<name>`, and `<jobs dir>`.
+
+```bash
+bash bench/harbor/run-harbor.sh --benchmark terminal-bench-2.1 --arm bench/harbor/configs/tb-board-deepseek-high.toml --auth-profile <profile> --agent-repo <owner/repo> --hosted --concurrency 87 --round <name> --execute
+bun bench/harbor/hill.ts score --round <jobs dir>/rounds/<name>.json --board
+```
+
+A round of all tasks prints no projection, because it measured the full benchmark itself. Its comparison with the board's leader uses all 87 tasks.
 
 ## Bring-up with one task
 
@@ -185,12 +198,12 @@ bash bench/harbor/run-harbor.sh --benchmark terminal-bench-2.1 --arm "$ARM" --au
   --task-names kv-store-grpc --attempts 1 --allow-low-k --hosted --execute
 ```
 
-For a benchmark without splits, use one task name of its dataset in `--task-names`.
+A bring-up names its task with `--task-names` on every benchmark, also on a benchmark without splits, because a run with no task selection runs the whole benchmark.
 
 ## Add a benchmark
 
-1. Add one `HarborBenchmark` descriptor to `benchmarks.ts` and add it to `HARBOR_BENCHMARKS`. The descriptor names the id, the Hub dataset and its exact ref, the task namespace, the board key (absent when the board does not rank the benchmark), the hub-broken tasks with their evidence, whether the trial home carries the answer-key rule file, the names of the benchmark's own published copies for the answer-key scan, whether the grader downloads its tools from GitHub, and whether a local run seals the verifier's Python dependencies into a wheelhouse. Start with `splits: {}`. The dataset states the timeouts and the network mode of the agent phase, and the board states its exclusions and strata, so the descriptor copies neither.
-2. Fetch and verify the board's data for it: `bun bench/harbor/hill.ts board fetch --benchmark <id>`, then `board verify`.
+1. Add one `HarborBenchmark` descriptor to `benchmarks.ts` and add it to `HARBOR_BENCHMARKS`. The descriptor names the id, the Hub dataset and its exact ref, the task namespace, the board key (absent when the board does not rank the benchmark), the tasks that the board excludes with the board's reason for each, the hub-broken tasks with their evidence, whether the trial home carries the answer-key rule file, the names of the benchmark's own published copies for the answer-key scan, whether the grader downloads its tools from GitHub, and whether a local run seals the verifier's Python dependencies into a wheelhouse. Start with `splits: {}`. The dataset states the timeouts and the network mode of the agent phase, and the board states its strata, so the descriptor copies neither. The launcher needs the exclusions without the board's data, so the descriptor states them.
+2. Fetch and verify the board's data for it: `bun bench/harbor/hill.ts board fetch --benchmark <id>`, then `board verify`, which exits 1 when the descriptor's exclusions differ from the board's.
 3. Propose splits from the board's data:
 
    ```bash

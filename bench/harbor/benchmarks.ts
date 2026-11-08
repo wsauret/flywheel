@@ -2,8 +2,10 @@
  *  benchmark has one descriptor here, and the launcher, the ledger, and the
  *  analysis read a benchmark's facts only from it. What the dataset itself
  *  states, such as timeouts and the agent's network mode, is read from the
- *  dataset; what the harness leaderboard states, such as its exclusions and
- *  strata, is read from the board's data. */
+ *  dataset; what the harness leaderboard states, such as its strata, is read
+ *  from the board's data. The exclusions are the one board fact that the
+ *  launcher needs without the board's data, so the descriptor states them and
+ *  `hill.ts board verify` refuses a descriptor that disagrees with the board. */
 export interface HarborBenchmark {
   /** The id that the command line and round records name. */
   readonly id: string;
@@ -18,6 +20,9 @@ export interface HarborBenchmark {
    *  split is the one that projects to the full benchmark. A benchmark whose
    *  splits are not chosen yet has none, and a run of a missing split is refused. */
   readonly splits: Readonly<Record<string, readonly string[]>>;
+  /** Tasks of the dataset that a run of the whole benchmark leaves out, as the
+   *  board does, each with the board's reason. */
+  readonly excluded: readonly { readonly task: string; readonly reason: string }[];
   /** Tasks whose grader fails correct work on Harbor Hub. They stay in their
    *  splits, as on the board, and scores are also reported without them. */
   readonly hubBroken: readonly { readonly task: string; readonly evidence: string }[];
@@ -34,6 +39,10 @@ export interface HarborBenchmark {
   /** Whether a local Docker run seals the verifier's Python dependencies into a wheelhouse. */
   readonly localVerifierWheelhouse: boolean;
 }
+
+/** The split that a run of every task measures: the dataset without the
+ *  benchmark's exclusions, which is the board's whole benchmark. */
+export const ALL_TASKS = "all";
 
 const TERMINAL_BENCH_2_1: HarborBenchmark = {
   id: "terminal-bench-2.1",
@@ -59,6 +68,10 @@ const TERMINAL_BENCH_2_1: HarborBenchmark = {
       "path-tracing-reverse", "protein-assembly", "regex-chess", "schemelike-metacircular-eval", "write-compressor",
     ],
   },
+  excluded: [
+    { task: "qemu-startup", reason: "its upstream image does not start on Harbor" },
+    { task: "qemu-alpine-ssh", reason: "its upstream image does not start on Harbor" },
+  ],
   hubBroken: [
     { task: "custom-memory-heap-crash", evidence: "Harbor's oracle agent failed it 8 of 8 times on Harbor Hub on 2026-11-07; failing trials fail only test_no_memory_leaks_with_valgrind." },
   ],
@@ -75,6 +88,10 @@ const DEEP_SWE_1_1: HarborBenchmark = {
   taskNamespace: "datacurve",
   boardKey: "deep-swe",
   splits: {},
+  excluded: [
+    { task: "helm-unified-manifest-stream", reason: "its reference solution fails on the board's sandbox" },
+    { task: "vulture-persistent-analysis-cache", reason: "its grader fails correct solutions" },
+  ],
   hubBroken: [],
   answerKeyRule: false,
   answerKeySources: ["deep-swe", "deepswe", "datacurve"],

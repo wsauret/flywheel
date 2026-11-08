@@ -43,8 +43,18 @@ describe("Harbor config resolution", () => {
     await expect(resolveArgs([...deepSwe, "--split", "subset"])).rejects.toThrow("deep-swe-1.1 has no split subset; its splits: none");
     await expect(resolveArgs([...launchArgs, "--split", "missing"])).rejects.toThrow("its splits: subset, holdout, holdout2");
     for (const inherited of ["constructor", "toString"]) await expect(resolveArgs([...launchArgs, "--split", inherited])).rejects.toThrow(`has no split ${inherited}`);
-    await expect(resolveArgs(launchArgs)).rejects.toThrow("exactly one of --split <name> and --task-names");
-    await expect(resolveArgs([...launchArgs, "--split", "subset", ...ONE_TASK])).rejects.toThrow("exactly one of");
+    await expect(resolveArgs([...launchArgs, "--split", "subset", ...ONE_TASK])).rejects.toThrow("at most one of --split <name> and --task-names");
+  });
+
+  test("with no selection a run measures every task of the dataset except the benchmark's exclusions", async () => {
+    const dataset = ["adaptive-rejection-sampler", "kv-store-grpc", "qemu-alpine-ssh", "qemu-startup"].map((name) => `terminal-bench/${name}`);
+    const listTasks = async (name: string, ref: string) => (name === "terminal-bench/terminal-bench-2-1" && ref === HARBOR_BENCHMARKS[0]!.dataset.ref ? dataset : []);
+    const resolveAll = (list: typeof listTasks, extra: string[] = []) => resolveHarborConfig([...launchArgs, ...extra], { cwd: temporaryDirectory("harbor-config-"), env: {}, listTasks: list });
+    const all = await resolveAll(listTasks, ["--round", "r1"]);
+    expect(all.taskNames).toEqual(["terminal-bench/adaptive-rejection-sampler", "terminal-bench/kv-store-grpc"]);
+    expect(all).toMatchObject({ split: "all", round: { name: "r1", purpose: "measure" }, expectedTrials: 6, grade: "leaderboard_valid" });
+    // An exclusion that the dataset does not hold means the descriptor no longer names the board's whole benchmark.
+    await expect(resolveAll(async () => dataset.slice(0, 3))).rejects.toThrow("holds no excluded task terminal-bench/qemu-startup");
   });
 
   test("every run names a registered benchmark and an arm config, and the removed profile input is refused", async () => {

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { confirmedTrials, readAnswerKey, recordVerdicts, writeAnswerKey } from "../../../bench/harbor/analysis/answer-key.js";
 import { rerunCommands, rerunNeeds } from "../../../bench/harbor/analysis/reruns.js";
 import { scoreRound } from "../../../bench/harbor/analysis/round-score.js";
-import { roundTrials } from "../../../bench/harbor/analysis/round-trials.js";
+import { measuredSplits, roundTrials } from "../../../bench/harbor/analysis/round-trials.js";
 import type { HarborBenchmark } from "../../../bench/harbor/benchmarks.js";
 import { resolveHarborConfig } from "../../../bench/harbor/harbor-config.js";
 import { ARM_CONFIG } from "../../fixtures/harbor-run.js";
@@ -19,6 +19,7 @@ const BENCHMARK: HarborBenchmark = {
   dataset: { name: "fixture/bench", ref: "sha256:0" },
   taskNamespace: "fixture",
   splits: { subset: ["solid", "flaky", "lost", "broken"], holdout: ["other"] },
+  excluded: [],
   hubBroken: [{ task: "broken", evidence: "fixture" }],
   answerKeyRule: false,
   answerKeySources: ["fixture-bench"],
@@ -113,7 +114,7 @@ describe("round scoring", () => {
   it("pools every run's scored attempts with the board's rules", async () => {
     const { round } = await fixtureRound();
     expect(round.runs.map((run) => run.purpose)).toEqual(["measure", "rerun"]);
-    const score = scoreRound(BENCHMARK, await roundTrials(BENCHMARK, round), new Set());
+    const score = scoreRound(BENCHMARK, await roundTrials(BENCHMARK, round), new Set(), await measuredSplits(BENCHMARK, round));
     // flaky: a 0.5 reward fails, infra is not scored, and the rerun's graded pass counts.
     expect([...score.tasks].sort()).toEqual([["broken", [1, 1]], ["flaky", [1, 2]], ["solid", [2, 2]]]);
     expect(score.infra).toBe(1);
@@ -123,7 +124,8 @@ describe("round scoring", () => {
     expect(score.costUsd).toBeCloseTo(0.1 * 7 + 0.25, 12);
     const subset = score.splits.find((split) => split.split === "subset")!;
     expect(subset).toEqual({ split: "subset", tasks: 4, score: (1 + 0.5 + 0 + 1) / 4, scoredScore: (1 + 0.5 + 1) / 3, scoredTasks: 3, withoutHubBroken: (1 + 0.5 + 0) / 3, hubBrokenTasks: 1 });
-    expect(score.splits.find((split) => split.split === "holdout")).toMatchObject({ score: 0, scoredScore: null, scoredTasks: 0 });
+    // The round measured only the subset, so it reports no score for the holdout.
+    expect(score.splits.map((split) => split.split)).toEqual(["subset"]);
   });
 
   it("finds the trials of a local run in the Harbor job directory inside its artifact directory", async () => {
@@ -146,7 +148,7 @@ describe("round scoring", () => {
     await writeAnswerKey(path, { round: "r1", benchmark: BENCHMARK.id, candidates: [{ trial: "solid-2", task: "solid", directory: "/scratch/solid-2", high: true, hosts: ["github.com"], urls: ["https://github.com/fixture-bench/x"] }], verdicts: {} });
     await expect(recordVerdicts(path, { "flaky-1": { verdict: "confirmed", evidence: "step 4" } })).rejects.toThrow("not candidates");
     await recordVerdicts(path, { "solid-2": { verdict: "confirmed", evidence: "step 4 fetched the reference solution" } });
-    const score = scoreRound(BENCHMARK, trials, confirmedTrials(await readAnswerKey(path)));
+    const score = scoreRound(BENCHMARK, trials, confirmedTrials(await readAnswerKey(path)), await measuredSplits(BENCHMARK, round));
     expect(score.tasks.get("solid")).toEqual([1, 2]);
     expect(score.answerKeyFails).toBe(1);
   });
@@ -208,6 +210,8 @@ describe("round reruns", () => {
     const planned = await rerunNeeds(BENCHMARK, grown, await roundTrials(BENCHMARK, grown));
     expect(planned.needs).toEqual(before);
     expect(planned.unlaunched).toEqual([{ run: { directory: unlaunched, purpose: "measure", split: "holdout" }, outcome: "hub_dry_run_refused" }]);
+    // It measured nothing, so its split gets no score.
+    expect([...(await measuredSplits(BENCHMARK, grown)).keys()]).toEqual(["subset"]);
   });
 
   it("refuses launcher flags that the rerun sets itself, naming the flag", async () => {

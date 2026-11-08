@@ -2,6 +2,8 @@ import { describe, expect, it } from "bun:test";
 import type { BoardConfig, BoardFact, BoardInputs, BoardRun } from "../../../bench/harbor/analysis/board-data.js";
 import { outcome, pairedDiff, publicCells, verifyPublished } from "../../../bench/harbor/analysis/board-scoring.js";
 import { PythonRandom } from "../../../bench/harbor/analysis/python-random.js";
+import { compareWithBoard, type RoundScore } from "../../../bench/harbor/analysis/round-score.js";
+import { harborBenchmark } from "../../../bench/harbor/benchmarks.js";
 
 function fact(overrides: Partial<BoardFact> & { id: string; task: string }): BoardFact {
   return {
@@ -76,5 +78,19 @@ describe("paired bootstrap", () => {
   it("draws the same doubles as CPython's generator", () => {
     expect(new PythonRandom(7).random()).toBe(0.32383276483316237);
     expect(new PythonRandom("a").random()).toBe(0.2720295377534757);
+  });
+});
+
+describe("board comparison", () => {
+  it("places a round that measured only the full split in the board's field, with no projection", () => {
+    const facts = [
+      fact({ id: "a1", task: "a" }), fact({ id: "b1", task: "b", reward: 0 }),
+      fact({ id: "a2", task: "a", harness: "h2" }), fact({ id: "b2", task: "b", harness: "h2" }),
+    ];
+    const full = { split: "full", tasks: 2, score: 0.5, scoredScore: 0.5, scoredTasks: 2, withoutHubBroken: 0.5, hubBrokenTasks: 0 };
+    const score: RoundScore = { tasks: new Map([["a", [1, 1]], ["b", [0, 1]]]), splits: [full], costUsd: 0, infra: 0, graderLost: 0, answerKeyFails: 0 };
+    const comparison = compareWithBoard(harborBenchmark("terminal-bench-2.1"), score, inputs(facts), { model: "org/Model-1", effort: "high" });
+    expect(comparison.projection).toBeUndefined();
+    expect(comparison.field.map(({ harness, rate }) => [harness, rate])).toEqual([["h2", 1], ["h1", 0.5]]);
   });
 });

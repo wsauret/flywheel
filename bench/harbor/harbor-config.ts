@@ -9,7 +9,8 @@ import { exposedToolName, type ToolDeclaration } from "../../src/orchestration/a
 import { bashModule } from "../../src/orchestration/modules/bash/module.js";
 import { CREDENTIAL_PROVIDER_MODULES } from "../../src/orchestration/credential-provider-modules.js";
 import type { AccessProviderDefinition } from "../../src/infra/llm/access-provider.js";
-import { harborBenchmark, type HarborBenchmark } from "./benchmarks.js";
+import { ALL_TASKS, harborBenchmark, type HarborBenchmark } from "./benchmarks.js";
+import { command, harborPython } from "./harbor-process.js";
 import { roundPath, type RoundRunPurpose } from "./rounds.js";
 
 const REPOSITORY_ROOT = resolve(import.meta.dir, "../..");
@@ -119,7 +120,18 @@ interface HarborHosting {
   organization?: string;
 }
 
-interface ResolveOptions { cwd: string; env?: Record<string, string | undefined> }
+interface ResolveOptions {
+  cwd: string;
+  env?: Record<string, string | undefined>;
+  /** Lists every task of a pinned dataset; Harbor's own listing by default. */
+  listTasks?: (dataset: string, ref: string) => Promise<readonly string[]>;
+}
+
+async function harborDatasetTasks(dataset: string, ref: string): Promise<readonly string[]> {
+  const listed = JSON.parse(await command([harborPython(), "-I", resolve(import.meta.dir, "harbor_tasks.py"), "--list", dataset, ref], process.cwd()));
+  if (!Array.isArray(listed?.tasks) || !listed.tasks.every((task: unknown) => typeof task === "string")) throw new Error(`Harbor listed no tasks for ${dataset}`);
+  return listed.tasks;
+}
 
 function map(value: unknown, label: string): JsonMap {
   if (typeof value !== "object" || value === null || Array.isArray(value)) throw new Error(`${label} must be an object`);
@@ -208,17 +220,28 @@ function harborHosting(organization: string | undefined, prebuild: boolean): Har
   return organization === undefined ? {} : { organization: requiredName(organization, "--organization or FLYWHEEL_HARBOR_HUB_ORG") };
 }
 
-/** The tasks a run selects: a named split of the benchmark, or an explicit
- *  list in which a bare name takes the benchmark's task namespace. */
-function selectedTasks(benchmark: HarborBenchmark, split: string | undefined, taskList: string[] | undefined): string[] {
-  if ((split === undefined) === (taskList === undefined)) throw new Error("select the tasks with exactly one of --split <name> and --task-names <a,b>");
+/** The tasks a run selects: a named split of the benchmark, an explicit list
+ *  in which a bare name takes the benchmark's task namespace, or, with
+ *  neither, every task of the pinned dataset except the benchmark's
+ *  exclusions. An exclusion that the dataset does not hold refuses the run,
+ *  because the run would then not be the board's whole benchmark. */
+async function selectedTasks(benchmark: HarborBenchmark, split: string | undefined, taskList: string[] | undefined, listTasks: NonNullable<ResolveOptions["listTasks"]>): Promise<string[]> {
+  if (split !== undefined && taskList !== undefined) throw new Error("select the tasks with at most one of --split <name> and --task-names <a,b>; give neither to run every task");
+  const namespaced = (name: string): string => name.includes("/") ? name : `${benchmark.taskNamespace}/${name}`;
+  if (split === undefined && taskList === undefined) {
+    const listed = await listTasks(benchmark.dataset.name, benchmark.dataset.ref);
+    const excluded = new Set(benchmark.excluded.map(({ task }) => namespaced(task)));
+    const missing = [...excluded].filter((task) => !listed.includes(task));
+    if (missing.length > 0) throw new Error(`${benchmark.dataset.name} holds no excluded task ${missing.join(", ")}; correct the exclusions of ${benchmark.id}`);
+    return listed.filter((task) => !excluded.has(task));
+  }
   const names = split === undefined ? taskList! : Object.hasOwn(benchmark.splits, split) ? benchmark.splits[split] : undefined;
   if (names === undefined) {
     const splits = Object.keys(benchmark.splits);
-    throw new Error(`${benchmark.id} has no split ${split}; its splits: ${splits.length === 0 ? "none" : splits.join(", ")}`);
+    throw new Error(`${benchmark.id} has no split ${split}; its splits: ${splits.length === 0 ? "none" : splits.join(", ")}; give no --split to run every task`);
   }
   if (names.length === 0) throw new Error("an explicit bounded --task-names selection is required for an exact denominator");
-  return names.map((name) => name.includes("/") ? name : `${benchmark.taskNamespace}/${name}`);
+  return names.map(namespaced);
 }
 
 export function harborDisplayModel(model: string): string {
@@ -314,7 +337,9 @@ export async function resolveHarborConfig(args: string[], options: ResolveOption
   const agentPackage = harborAgentPackage(cliAgentRepository, claudeTokenKeychainItem);
   const hosting = hosted ? harborHosting(cliOrganization, prebuild) : undefined;
   const authProfile = requiredName(cliAuthProfile, "--auth-profile");
-  const taskNames = selectedTasks(benchmark, split, taskList);
+  const taskNames = await selectedTasks(benchmark, split, taskList, options.listTasks ?? harborDatasetTasks);
+  // A run of every task measures the reserved split that names the whole benchmark.
+  const measured = taskList === undefined ? split ?? ALL_TASKS : undefined;
   const jobsDirectory = resolve(options.cwd, cliJobsDirectory ?? "jobs");
   // A bad round name refuses the run before any artifact exists.
   if (roundName !== undefined) roundPath(jobsDirectory, roundName);
@@ -330,8 +355,8 @@ export async function resolveHarborConfig(args: string[], options: ResolveOption
   const profileSha256 = createHash("sha256").update(JSON.stringify({ benchmark: benchmark.id, dataset: benchmark.dataset, arm: { path: flywheelConfig.path, sha256: flywheelConfig.sha256 }, taskNames, attempts, concurrency, timeoutMultipliers, resourceOverrides })).digest("hex");
   return {
     benchmark,
-    ...(split === undefined ? {} : { split }),
-    ...(roundName === undefined ? {} : { round: { name: roundName, purpose: split === undefined ? "rerun" : "measure" } }),
+    ...(measured === undefined ? {} : { split: measured }),
+    ...(roundName === undefined ? {} : { round: { name: roundName, purpose: measured === undefined ? "rerun" : "measure" } }),
     authProfile, expectedInteraction: harborInteraction(model), profileSha256, flywheelConfig, model,
     dataset: benchmark.dataset.name, datasetRef: benchmark.dataset.ref, agentPackage,
     ...(hosting ? { hosted: hosting } : {}),

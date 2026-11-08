@@ -34,8 +34,9 @@ export interface RoundScore {
 /** Scores a round with the board's rules: a scored trial passes iff its
  *  reward is at least 1 and no confirmed answer-key verdict names it;
  *  infrastructure and grader-lost trials are not scored; every scored
- *  attempt of every run pools into its task. */
-export function scoreRound(benchmark: HarborBenchmark, trials: readonly RoundTrial[], confirmed: ReadonlySet<string>): RoundScore {
+ *  attempt of every run pools into its task. Each measured split, such as
+ *  `measuredSplits` reads, gets a score over its tasks. */
+export function scoreRound(benchmark: HarborBenchmark, trials: readonly RoundTrial[], confirmed: ReadonlySet<string>, measured: ReadonlyMap<string, readonly string[]>): RoundScore {
   const tasks = new Map<string, [number, number]>();
   let costUsd = 0;
   let infra = 0;
@@ -57,7 +58,7 @@ export function scoreRound(benchmark: HarborBenchmark, trials: readonly RoundTri
     return counts === undefined ? undefined : counts[0] / counts[1];
   };
   const mean = (values: readonly number[]): number => values.reduce((sum, value) => sum + value, 0) / values.length;
-  const splits = Object.entries(benchmark.splits).map(([split, list]): SplitScore => {
+  const splits = [...measured].map(([split, list]): SplitScore => {
     const scored = list.flatMap((task) => rate(task) ?? []);
     const working = list.filter((task) => !broken.has(task));
     return {
@@ -77,11 +78,11 @@ export function scoreRound(benchmark: HarborBenchmark, trials: readonly RoundTri
 export interface BoardSetupChoice { readonly model: string; readonly effort: string }
 
 export interface BoardComparison {
-  readonly fit: ProjectionFit;
-  readonly looCovered: number;
-  readonly looRmse: number;
-  readonly projection: Projection;
+  /** The projection of the round's subset score, when the round measured the subset split. */
+  readonly projection?: { readonly fit: ProjectionFit; readonly looCovered: number; readonly looRmse: number; readonly projected: Projection };
   readonly setup: BoardSetupChoice;
+  /** Every harness that the board scores at the round's model and effort on the full stage, best rate first. */
+  readonly field: readonly { readonly harness: string; readonly rate: number | null; readonly ci: readonly [number, number] | null }[];
   /** The board's leader of that setup and the paired difference on the tasks both scored, when the board ranks the setup. */
   readonly leader?: { readonly harness: string; readonly rate: number | null; readonly diff: ReturnType<typeof pairedDiff> };
 }
@@ -102,26 +103,31 @@ export function calibrationUnits(cells: Iterable<BoardCell>, subset: readonly st
   return units;
 }
 
-/** Projects the round's subset score to the full benchmark with a fit over
- *  the board's units, and compares the round per task with the board's
- *  leader at the round's model and effort. Throws when the benchmark has no
- *  subset split. */
+/** Compares a round with the board at the round's model and effort: the
+ *  board's field of harnesses, the paired per-task difference with its
+ *  leader, and, when the round measured the subset split, the projection of
+ *  that score to the full benchmark with a fit over the board's units. */
 export function compareWithBoard(benchmark: HarborBenchmark, score: RoundScore, board: BoardInputs, setup: BoardSetupChoice): BoardComparison {
+  const cells = publicCells(board);
   const subset = benchmark.splits[PROJECTED_SPLIT];
   const subsetScore = score.splits.find((split) => split.split === PROJECTED_SPLIT);
-  if (subset === undefined || subsetScore === undefined) throw new Error(`${benchmark.id} has no ${PROJECTED_SPLIT} split to project`);
-  const cells = publicCells(board);
-  const units = calibrationUnits(cells.values(), subset);
-  const fit = fitProjection(units);
-  const loo = leaveOneOut(units);
   const leader = publishedLeader(board, setup.model, setup.effort);
   const leaderCell = leader === undefined ? undefined : cells.get(setupKey({ model: setup.model, stage: "full", effort: setup.effort, harness: leader }));
+  const field = [...cells.values()]
+    .filter((cell) => cell.setup.model === setup.model && cell.setup.effort === setup.effort && cell.setup.stage === "full")
+    .map((cell) => ({ harness: cell.setup.harness, rate: cell.rate, ci: cell.ci }))
+    .sort((left, right) => (right.rate ?? -1) - (left.rate ?? -1));
+  let projection: BoardComparison["projection"];
+  if (subset !== undefined && subsetScore !== undefined) {
+    const units = calibrationUnits(cells.values(), subset);
+    const fit = fitProjection(units);
+    const loo = leaveOneOut(units);
+    projection = { fit, looCovered: loo.covered, looRmse: loo.rmse, projected: project(fit, subsetScore.score) };
+  }
   return {
-    fit,
-    looCovered: loo.covered,
-    looRmse: loo.rmse,
-    projection: project(fit, subsetScore.score),
+    ...(projection === undefined ? {} : { projection }),
     setup,
+    field,
     ...(leader === undefined || leaderCell === undefined ? {} : { leader: { harness: leader, rate: leaderCell.rate, diff: pairedDiff(board.benchmark, score.tasks, leaderCell.tally) } }),
   };
 }

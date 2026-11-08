@@ -11,6 +11,11 @@ of its agent phase from its pinned task.toml. Run it with Harbor's Python:
 It prints one JSON object: {"tasks": {<name>: {"agent_timeout_sec": ...,
 "verifier_timeout_sec": ..., "build_timeout_sec": ...,
 "agent_network_mode": "public" | "no-network" | "allowlist"}}}.
+
+    python harbor_tasks.py --list <dataset> <ref-or-empty>
+
+lists every task of the pinned dataset without downloading any, as one JSON
+object: {"tasks": [<name>, ...]}.
 """
 
 import asyncio
@@ -43,6 +48,15 @@ async def resolve(dataset: str, ref: str | None, names: list[str]) -> dict:
     return {"tasks": timeouts}
 
 
+async def list_tasks(dataset: str, ref: str | None) -> dict:
+    tasks = await DatasetConfig(name=dataset, ref=ref).get_task_configs()
+    return {"tasks": sorted(task.get_task_id().get_name() for task in tasks)}
+
+
 if __name__ == "__main__":
-    dataset, ref, *names = sys.argv[1:]
-    print(json.dumps(asyncio.run(resolve(dataset, ref or None, names))))
+    if sys.argv[1] == "--list":
+        dataset, ref = sys.argv[2:]
+        print(json.dumps(asyncio.run(list_tasks(dataset, ref or None))))
+    else:
+        dataset, ref, *names = sys.argv[1:]
+        print(json.dumps(asyncio.run(resolve(dataset, ref or None, names))))

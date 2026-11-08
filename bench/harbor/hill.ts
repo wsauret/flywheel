@@ -8,7 +8,7 @@ import { publicCells, verifyPublished } from "./analysis/board-scoring.js";
 import { leaveOneOut, fitProjection } from "./analysis/projection.js";
 import { rerunCommands, rerunNeeds } from "./analysis/reruns.js";
 import { boardModel, calibrationUnits, compareWithBoard, PROJECTED_SPLIT, scoreRound } from "./analysis/round-score.js";
-import { roundTrials } from "./analysis/round-trials.js";
+import { measuredSplits, roundTrials } from "./analysis/round-trials.js";
 import { proposeSubset } from "./analysis/subset.js";
 
 const REPOSITORY_ROOT = resolve(import.meta.dir, "../..");
@@ -71,6 +71,11 @@ async function boardCommand(action: string | undefined, values: ReadonlyMap<stri
   const result = verifyPublished(board);
   console.log(`${benchmark.id}: ${board.facts.length} trial facts, ${result.cells} published cells, ${result.mismatches.length} mismatches (data fetched ${board.fetchedAt})`);
   for (const mismatch of result.mismatches) console.log(`  ${mismatch.key} ${mismatch.field}: published ${String(mismatch.published)}, recomputed ${String(mismatch.recomputed)}`);
+  // A run of every task leaves out the descriptor's exclusions, so they must be the board's.
+  const boardExcluded = [...(board.config.benchmarks[board.benchmark]?.excluded ?? [])].sort();
+  const excluded = benchmark.excluded.map(({ task }) => task).sort();
+  const exclusionsAgree = JSON.stringify(boardExcluded) === JSON.stringify(excluded);
+  console.log(exclusionsAgree ? `exclusions agree with the board: ${excluded.join(", ") || "none"}` : `exclusions differ: the board excludes ${boardExcluded.join(", ") || "none"}, ${benchmark.id} excludes ${excluded.join(", ") || "none"}`);
   const subset = benchmark.splits[PROJECTED_SPLIT];
   if (subset !== undefined) {
     const units = calibrationUnits(publicCells(board).values(), subset);
@@ -78,7 +83,7 @@ async function boardCommand(action: string | undefined, values: ReadonlyMap<stri
     const loo = leaveOneOut(units);
     console.log(`${PROJECTED_SPLIT} fit over ${fit.n} units: full = ${fit.a.toFixed(5)} + ${fit.b.toFixed(5)} * ${PROJECTED_SPLIT}; residual SD ${fit.s.toFixed(5)}; R2 ${fit.r2.toFixed(3)}; t90 ${fit.t90.toFixed(3)}; leave-one-out 90% coverage ${loo.covered}/${loo.n}, RMSE ${loo.rmse.toFixed(4)}`);
   }
-  return result.mismatches.length === 0 ? 0 : 1;
+  return result.mismatches.length === 0 && exclusionsAgree ? 0 : 1;
 }
 
 async function subsetCommand(values: ReadonlyMap<string, string>): Promise<number> {
@@ -100,7 +105,7 @@ async function subsetCommand(values: ReadonlyMap<string, string>): Promise<numbe
 async function scoreCommand(values: ReadonlyMap<string, string>, switches: ReadonlySet<string>): Promise<number> {
   const { path, round, benchmark } = await roundOf(values);
   const trials = await roundTrials(benchmark, round);
-  const score = scoreRound(benchmark, trials, confirmedTrials(await readAnswerKey(path)));
+  const score = scoreRound(benchmark, trials, confirmedTrials(await readAnswerKey(path)), await measuredSplits(benchmark, round));
   console.log(`${round.name} on ${benchmark.id}: ${round.runs.length} runs, ${trials.length} trials`);
   for (const [task, [passed, total]] of [...score.tasks].sort(([left], [right]) => left.localeCompare(right))) console.log(`  ${task.padEnd(40)} ${passed}/${total}`);
   for (const split of score.splits) {
@@ -116,8 +121,14 @@ async function scoreCommand(values: ReadonlyMap<string, string>, switches: Reado
   const model = boardModel(board, modelName);
   // The projection does not depend on the model, so a model the board does not rank still gets one.
   const comparison = compareWithBoard(benchmark, score, board, { model: model ?? modelName, effort: givenEffort ?? recorded.effort });
-  const { fit, projection } = comparison;
-  console.log(`projected full ${fixed(projection.full)} [${fixed(projection.low)}, ${fixed(projection.high)}] (90%; fit over ${fit.n} board units: full = ${fit.a.toFixed(5)} + ${fit.b.toFixed(5)} * ${PROJECTED_SPLIT}, residual SD ${fit.s.toFixed(5)}, leave-one-out coverage ${comparison.looCovered}/${fit.n})`);
+  if (comparison.projection !== undefined) {
+    const { fit, looCovered, projected } = comparison.projection;
+    console.log(`projected full ${fixed(projected.full)} [${fixed(projected.low)}, ${fixed(projected.high)}] (90%; fit over ${fit.n} board units: full = ${fit.a.toFixed(5)} + ${fit.b.toFixed(5)} * ${PROJECTED_SPLIT}, residual SD ${fit.s.toFixed(5)}, leave-one-out coverage ${looCovered}/${fit.n})`);
+  }
+  if (comparison.field.length > 0) {
+    console.log(`board at ${comparison.setup.model} ${comparison.setup.effort} (full stage):`);
+    for (const { harness, rate, ci } of comparison.field) console.log(`  ${harness.padEnd(20)} ${fixed(rate)}${ci === null ? "" : ` [${fixed(ci[0])}, ${fixed(ci[1])}]`}`);
+  }
   if (model === undefined) console.log(`the board ranks no setup for ${modelName}`);
   else if (comparison.leader === undefined) console.log(`the board ranks no ${model} at effort ${comparison.setup.effort}`);
   else {
