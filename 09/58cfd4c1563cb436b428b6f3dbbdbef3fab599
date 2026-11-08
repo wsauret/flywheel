@@ -1,0 +1,34 @@
+src/infra/output/structured-output-builder.ts
+  h_4b47e9e4a8b456 64-93,113,205,213-216,220,229-230,285,307,563
+src/protocol/client/cursor-intake.ts
+  h_4b47e9e4a8b456 80-89,97-128,137-139,178,196,198,201,210-211,216,226,233,236-241,256,262,275-277,281,284
+src/protocol/client/family-intake.ts
+  h_4b47e9e4a8b456 172,187
+src/protocol/client/held-session-details.ts
+  h_4b47e9e4a8b456 166,188
+src/protocol/client/held-view.ts
+  h_4b47e9e4a8b456 66
+tests/unit/infra/output/output-projection.test.ts
+  h_4b47e9e4a8b456 78-93
+tests/unit/protocol/client/held-session-details.test.ts
+  h_4b47e9e4a8b456 1,210-248
+tests/unit/protocol/cursor-intake.test.ts
+  h_4b47e9e4a8b456 254-272
+webview/src/client/module-domain-monitor.test.ts
+  h_4b47e9e4a8b456 162-163,168,173-205
+webview/src/client/module-domain-monitor.ts
+  h_4b47e9e4a8b456 59-62
+webview/src/client/session-roles.ts
+  h_4b47e9e4a8b456 63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0958cfd4c1563cb436b428b6f3dbbdbef3fab599",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
