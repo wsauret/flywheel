@@ -1,7 +1,7 @@
 import { batch, createEffect, createMemo, createSignal, on, onCleanup, untrack, type Accessor } from "solid-js"
 import { workflowAgentModel, workflowAgentMove, type WorkflowAgentTarget } from "../../../../src/protocol/client/workflow-agent.js"
 import { workflowParked, workflowStateLabel } from "../../../../src/protocol/client/session-controls.js"
-import { LEVEL_KEY, SESSION_KEY, sessionOf } from "../../app/screen-stack.js"
+import { LEVEL_KEY, SESSION_KEY, pushedOver, sessionOf } from "../../app/screen-stack.js"
 import type { WorkflowReading } from "./inspection.js"
 import type { SessionSummary } from "../../client/view-state.js"
 
@@ -128,7 +128,7 @@ export function createWorkflowNavigation(options: {
    *  then the place, then the selection, so a host that follows the
    *  selection finds the entry that already names the new session. */
   function commit(next: WorkflowPlace | undefined, named: string | undefined, write?: "push" | "replace") {
-    if (write === "push") port.pushState(entry(port.state, next, named))
+    if (write === "push") port.pushState(pushedOver(port.state, entry(port.state, next, named)))
     else if (write === "replace") port.replaceState(entry(port.state, next, named))
     setHere(next && { place: next, named })
     if (next && named !== undefined && named !== options.selected()) options.select(named)

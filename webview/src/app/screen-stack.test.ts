@@ -8,24 +8,35 @@ import { createWorkflowNavigation } from "../modules/workflows/navigation.js"
 import { plainAgentTree } from "../../../tests/helpers/workflow-view.js"
 import type { FrontendAttempt } from "../../../src/protocol/workflow-view-protocol-types.js"
 
-function memoryNavigation() {
-  const entries: unknown[] = [null]
-  let index = 0
+/** Browser history in memory. A deferred one queues each traversal until
+ *  `settle`, as a browser delivers its popstate after the tap's own work. A
+ *  traversal past the first entry leaves the app. */
+function memoryNavigation(options: { readonly deferred?: boolean; readonly entries?: readonly unknown[] } = {}) {
+  const entries: unknown[] = options.entries === undefined ? [null] : [...options.entries]
+  let index = entries.length - 1
+  let left = false
+  const queue: number[] = []
   const listeners = new Set<(event: { readonly state: unknown }) => void>()
-  const publish = () => {
+  const traverse = (delta: number) => {
+    const target = index + delta
+    if (target < 0) { left = true; return }
+    if (target >= entries.length || target === index) return
+    index = target
     const event = { state: entries[index] }
     for (const listener of listeners) listener(event)
   }
+  const request = (delta: number) => { if (options.deferred === true) queue.push(delta); else traverse(delta) }
   const navigation: ScreenStackNavigation = {
     get state() { return entries[index] },
     replaceState(state) { entries[index] = state },
     pushState(state) { entries.splice(++index, entries.length, state) },
-    back() { if (index > 0) { index -= 1; publish() } },
-    forward() { if (index + 1 < entries.length) { index += 1; publish() } },
+    back: () => request(-1),
+    forward: () => request(1),
+    go: request,
     addPopStateListener(listener) { listeners.add(listener) },
     removePopStateListener(listener) { listeners.delete(listener) },
   }
-  return { navigation, entries: () => [...entries] }
+  return { navigation, entries: () => [...entries], left: () => left, settle: () => { while (queue.length > 0) traverse(queue.shift()!) } }
 }
 
 class TouchRoot extends EventTarget implements SwipeRoot {
@@ -427,5 +438,134 @@ test("a selection that leaves an agent view takes the chat's entry without the a
     assert.equal(reloaded.agents.place(), undefined)
   } finally {
     reloaded.dispose()
+  }
+})
+
+test("Back from a chat that the person reached from a workflow's level goes to the list at once, whatever the level", () => {
+  const attempts: readonly FrontendAttempt[] = [{ id: "agent", definitionId: "agent", briefId: "agent", name: "Agent", status: "running", sessionId: "member", history: [] }]
+  const reading = () => ({ detail: undefined, view: { attemptsStatus: "loaded" as const, state: "running" as const, attempts, tree: plainAgentTree(attempts) }, live: [] })
+  // The agent view from the chat's inline card, and from the full-size card,
+  // which holds two entries over the chat's. Each is left by a selection
+  // that the stack does not make (New chat, a kept side question) and by an
+  // open that names no parent (a notification, a question, the host).
+  for (const origin of ["chat", "card"] as const) {
+    for (const leave of ["selection", "open"] as const) {
+      const memory = memoryNavigation()
+      const mounted = createRoot((dispose) => {
+        const [selected, setSelected] = createSignal<string>()
+        const select = (sessionId: string) => setSelected(sessionId)
+        // The app builds the agent navigation before the module host's stack.
+        const agents = createWorkflowNavigation({ reading, selected, select }, memory.navigation)
+        const stack = createScreenStack(() => undefined, { selectedSessionId: selected, selectSession: select, parentSessionId: () => undefined }, memory.navigation)
+        return { dispose, stack, agents, selected, setSelected }
+      })
+      const label = `${origin}, ${leave}`
+      try {
+        mounted.stack.openChat("chat")
+        if (origin === "card") mounted.agents.openCard("run", "chat")
+        mounted.agents.openAgent("run", "chat", { kind: "agent", agentNodeId: "agent", follow: false, historySessionId: "member" }, origin)
+        if (leave === "selection") mounted.setSelected("new")
+        else mounted.stack.openChat("new")
+        assert.equal(mounted.selected(), "new", label)
+        assert.equal(mounted.stack.screen(), "chat", label)
+        mounted.stack.back()
+        assert.equal(mounted.stack.screen(), "sessions", `${label}: the first Back reaches the list`)
+        assert.equal(mounted.selected(), "new", `${label}: the workflow does not pull the selection back`)
+        assert.deepEqual(memory.entries(), [{ flywheelScreen: "sessions" }, { flywheelScreen: "chat", flywheelSession: "new" }], `${label}: the workflow's entries are gone`)
+      } finally {
+        mounted.dispose()
+      }
+    }
+  }
+})
+
+test("a return to the list from a workflow's level ends where the person's latest tap or selection points", () => {
+  const agent = (sessionId?: string): readonly FrontendAttempt[] => [{ id: "agent", definitionId: "agent", briefId: "agent", name: "Agent", status: "running", ...(sessionId === undefined ? {} : { sessionId }), history: [] }]
+  const target = { kind: "agent", agentNodeId: "agent", follow: false, historySessionId: "member" } as const
+  const list = { flywheelScreen: "sessions" }
+  // History as a browser keeps it: a traversal arrives after the tap's own
+  // work, so everything in one tap happens while the return is under way.
+  const mount = (entries?: readonly unknown[], initial?: string, member?: string) => {
+    const memory = memoryNavigation({ deferred: true, entries })
+    return createRoot((dispose) => {
+      const [selected, setSelected] = createSignal<string | undefined>(initial)
+      const [attempts, setAttempts] = createSignal(agent(member))
+      const reading = () => ({ detail: undefined, view: { attemptsStatus: "loaded" as const, state: "running" as const, attempts: attempts(), tree: plainAgentTree(attempts()) }, live: [] })
+      const select = (sessionId: string) => setSelected(sessionId)
+      // The app builds the agent navigation before the module host's stack.
+      const agents = createWorkflowNavigation({ reading, selected, select }, memory.navigation)
+      const stack = createScreenStack(() => undefined, { selectedSessionId: selected, selectSession: select, parentSessionId: () => undefined }, memory.navigation)
+      return { dispose, memory, stack, agents, selected, setSelected, learn: (sessionId: string) => setAttempts(agent(sessionId)) }
+    })
+  }
+  const atAgent = () => {
+    const mounted = mount(undefined, undefined, "member")
+    mounted.stack.openChat("chat")
+    mounted.agents.openAgent("run", "chat", target, "chat")
+    mounted.memory.settle()
+    return mounted
+  }
+  // An agent whose session is not known yet. When a reading names it, the
+  // view writes its own entry for it and selects it, which is the view's
+  // answer, not the person's intent.
+  const atUnknownAgent = () => {
+    const mounted = mount()
+    mounted.stack.openChat("chat")
+    mounted.agents.openAgent("run", "chat", { kind: "agent", agentNodeId: "agent", follow: false }, "chat")
+    mounted.memory.settle()
+    return mounted
+  }
+  const cases: readonly { readonly name: string; readonly page: () => ReturnType<typeof mount>; readonly tap: (page: ReturnType<typeof mount>) => void; readonly selected: string | undefined }[] = [
+    // The slash panel's New chat shows the new chat before the runtime has
+    // created it, and the creation can fail.
+    { name: "New chat whose creation fails", page: atAgent, tap: (page) => page.setSelected(undefined), selected: undefined },
+    { name: "an open, then New chat", page: atAgent, tap: (page) => { page.stack.openChat("other"); page.setSelected(undefined); page.setSelected("new") }, selected: "new" },
+    { name: "an open, then an open of the shown member", page: atAgent, tap: (page) => { page.stack.openChat("other"); page.stack.openChat("member") }, selected: "member" },
+    { name: "an open, then a reading that names the agent's session", page: atUnknownAgent, tap: (page) => { page.stack.openChat("other"); page.learn("member") }, selected: "other" },
+    // The agent view as the released writers left it, with no depth, in a
+    // tab that a reload carried across the update.
+    {
+      name: "New chat from an agent entry written before entries stated their depth",
+      page: () => mount([list, { flywheelScreen: "chat", flywheelSession: "chat", flywheelPlace: undefined }, { flywheelScreen: "chat", flywheelSession: "member", flywheelPlace: { kind: "agent", workflowId: "run", chatSessionId: "chat", origin: "chat", target } }], "member", "member"),
+      tap: (page) => { page.setSelected(undefined); page.setSelected("new") },
+      selected: "new",
+    },
+  ]
+  for (const { name, page: open, tap, selected } of cases) {
+    const page = open()
+    try {
+      tap(page)
+      page.memory.settle()
+      assert.equal(page.stack.screen(), "chat", name)
+      assert.equal(page.selected(), selected, `${name}: the latest intent decides where the return ends`)
+      assert.deepEqual(page.memory.entries(), [list, { flywheelScreen: "chat", ...(selected === undefined ? {} : { flywheelSession: selected }) }], `${name}: the chat stands alone on the list`)
+      page.stack.back()
+      page.memory.settle()
+      assert.equal(page.stack.screen(), "sessions", `${name}: the first Back reaches the list`)
+      assert.equal(page.selected(), selected, `${name}: the workflow does not pull the selection back`)
+    } finally {
+      page.dispose()
+    }
+  }
+  // A Back in the same tap as the move that started the return ends it on
+  // the list, and history never goes on past it.
+  const page = atAgent()
+  try {
+    page.setSelected(undefined)
+    page.stack.back()
+    page.memory.settle()
+    assert.equal(page.stack.screen(), "sessions", "a Back during the return ends it on the list")
+    assert.equal(page.memory.left(), false, "a Back during the return does not leave the app")
+  } finally {
+    page.dispose()
+  }
+  const sessions = atUnknownAgent()
+  try {
+    sessions.stack.showSessions()
+    sessions.learn("member")
+    sessions.memory.settle()
+    assert.equal(sessions.stack.screen(), "sessions", "a reading during a return to the list does not end it on the agent")
+  } finally {
+    sessions.dispose()
   }
 })
