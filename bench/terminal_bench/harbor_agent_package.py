@@ -156,8 +156,8 @@ def build_runtime_archive(repository: Path, archive: Path, commit: str) -> str:
 def bundle_store_analyzer(repository: Path, commit: str, archive: Path, output: Path) -> None:
     """Bundle the trial store analysis of `commit` into the one file `output`.
 
-    A trial that Harbor stops runs the analysis within 1.6 seconds after
-    SIGTERM, and under amd64 emulation on an arm64 host Bun needs about 2.4
+    A trial whose turn Harbor cancels runs the analysis within 1.6 seconds
+    after SIGTERM, and under amd64 emulation on an arm64 host Bun needs about 2.4
     seconds on one CPU to load its `src/` imports one by one, against about
     1.5 seconds for one prebuilt file. The bundle resolves `src/` from the runtime archive of the
     commit and packages from that archive's own `bun.lock`, as the trial's

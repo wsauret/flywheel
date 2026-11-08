@@ -16,26 +16,35 @@ In order, the shim:
    against its recorded SHA-256, and the package's benchmark rules;
 3. runs Flywheel in the task workspace as an unattended run, because no
    person reads a trial, relays the protocol, and forwards SIGTERM to it;
-4. analyzes the trial's settled event store in a private directory and writes
-   that content-free analysis into the agent logs; then publishes the analyzed
-   store and Flywheel's diagnostic logs into `flywheel-evidence/` of the agent
-   logs, less every file that holds a credential value of the snapshot,
-   because Harbor scrubs secrets only in text files; then writes the run
-   summary that finalization reads.
+4. while Flywheel runs, publishes an evidence snapshot, its live store and its
+   diagnostic logs, into `flywheel-evidence/` of the agent logs about every
+   `_SNAPSHOT_INTERVAL_SECONDS`, less every file that holds a credential value
+   of the auth snapshot, because Harbor scrubs secrets only in text files;
+5. when Flywheel ends, analyzes the trial's settled event store in a private
+   directory and writes that content-free analysis into the agent logs; then
+   publishes the analyzed store and the logs over the last snapshot, under the
+   same credential rule; then writes the run summary that finalization reads.
 
 Harbor's runner closes stdin when it reads the prompt's answer, sends SIGTERM
 two seconds later, and SIGKILL two seconds after that. Flywheel answers the
 prompt only when its headless channel settles. So the shim holds a settled
-answer, closes the child's stdin itself, lets Flywheel end, and does step 4
+answer, closes the child's stdin itself, lets Flywheel end, and does step 5
 before it sends the answer on: the export of a settled trial runs on the
-quiescent store of an ended Flywheel, before Harbor's clock starts. A SIGTERM
-before a settled answer, at Harbor's agent timeout or after a cancelled turn,
-is a stop of the trial. The analysis and then the publication each run in
-their own process group under one deadline inside the two seconds, so the run
-summary is written before SIGKILL, and a publication that the deadline ends
-costs no analysis.
+quiescent store of an ended Flywheel, before Harbor's clock starts.
 
-The snapshot stays readable in `/proc/<shim pid>/environ` for the whole run,
+At its agent timeout Harbor cancels its exec of the runner and collects the
+agent logs at once; in local Docker no signal reaches the shim at all, and the
+shim and Flywheel run on into the verifier phase. Whatever of step 5 a
+timed-out trial runs lands after the collection, so what Harbor collects is
+the last successful evidence snapshot of step 4, taken about once an
+interval, with no analysis and no run summary, which finalization accepts as
+a cancelled trial. A SIGTERM before a settled answer, after a
+cancelled turn, is a stop of the trial: the analysis and then the publication
+each run in their own process group under one deadline inside the two
+seconds, so the run summary is written before SIGKILL, and a publication that
+the deadline ends costs no analysis and keeps the last evidence snapshot.
+
+The auth snapshot stays readable in `/proc/<shim pid>/environ` for the whole run,
 also to a process of the same user that the agent starts: removing it from
 `os.environ` does not change the environment block the kernel recorded at
 exec. The shim receives the snapshot as an environment variable (a Hub job
@@ -71,7 +80,9 @@ from .trial_runtime import (
     EvidencePublication,
     _export_settled_sqlite,
     _write_run_summary,
+    discard_partial_evidence,
     publish_debug_evidence,
+    snapshot_live_evidence,
 )
 
 SNAPSHOT_ENV = "FLYWHEEL_AUTH_SNAPSHOT"
@@ -93,6 +104,10 @@ _CHILD_EXIT_GRACE_SECONDS = 2.0
 # The evidence export ends this long after the first SIGTERM, so the run
 # summary lands before SIGKILL. The bound counts the child's term grace.
 _EXPORT_AFTER_SIGTERM_SECONDS = 1.6
+# Harbor collects a timed-out trial's agent logs while Flywheel runs, so this
+# bounds how old its evidence is. A snapshot costs one short process and a
+# copy of a store of a few megabytes.
+_SNAPSHOT_INTERVAL_SECONDS = 15.0
 # A shorter value would match ids and words of the store, not secrets.
 _MIN_CREDENTIAL_LENGTH = 12
 
@@ -385,8 +400,12 @@ def _publish_main(request: dict) -> dict:
     return publish_debug_evidence(Path(request["store"]), [Path(directory) for directory in request["log_directories"]], Path(request["destination"]), request["credential_values"])
 
 
+def _snapshot_main(request: dict) -> dict:
+    return snapshot_live_evidence(Path(request["project_root"]), [Path(directory) for directory in request["log_directories"]], Path(request["destination"]), request["credential_values"])
+
+
 # The steps that run in a process group of their own, by the subcommand that runs each.
-_STEPS = {"export-evidence": _export_main, "publish-evidence": _publish_main}
+_STEPS = {"export-evidence": _export_main, "publish-evidence": _publish_main, "snapshot-evidence": _snapshot_main}
 
 
 def _command(step: str) -> list[str]:
@@ -483,6 +502,27 @@ def run(environ: dict, project_root: Path, logs_dir: Path = LOGS_DIR, package_ro
             escalation.daemon = True
             escalation.start()
 
+    snapshots_stop = threading.Event()
+
+    def discard_partial() -> None:
+        # A killed publication runs no cleanup of its own, and Harbor can collect the logs at any moment.
+        discard_partial_evidence(logs_dir / EVIDENCE_DIR_NAME)
+
+    def publish_snapshots(request: dict) -> None:
+        # Records a change of outcome only: the first failure of a kind, and the recovery with its count.
+        failure, failures = None, 0
+        while not snapshots_stop.wait(_SNAPSHOT_INTERVAL_SECONDS):
+            started = time.monotonic()
+            # Stopping the snapshots ends the one in flight, which leaves the evidence whole.
+            _, reason = _bounded("snapshot-evidence", request, lambda: -math.inf if snapshots_stop.is_set() else min(sigterm_deadline, started + _SNAPSHOT_INTERVAL_SECONDS), discard_partial)
+            if snapshots_stop.is_set():
+                return
+            if reason is not None and reason != failure:
+                _log(f"evidence snapshot failed: {reason}")
+            elif reason is None and failure is not None:
+                _log(f"evidence snapshots resumed after {failures} failed")
+            failure, failures = reason, failures + 1 if reason is not None else 0
+
     def on_settled() -> None:
         # Flywheel gets the time to end that Harbor would give it after the answer.
         teardown = threading.Timer(_CHILD_EXIT_GRACE_SECONDS, stop_child)
@@ -498,9 +538,16 @@ def run(environ: dict, project_root: Path, logs_dir: Path = LOGS_DIR, package_ro
     archive_sha256: str | None = None
     bin_dir: Path | None = None
     analyzer: Path | None = None
+    snapshots: threading.Thread | None = None
     status = 1
     try:
         stage_file, profile, credential_values = take_snapshot(environ)
+        evidence_request = {
+            "log_directories": [str(project_root / ".flywheel" / "log"), str(work / "home" / ".flywheel" / "log")],
+            "destination": str(logs_dir / EVIDENCE_DIR_NAME),
+            # Each step reads the values from its stdin pipe, never from an argument or a file.
+            "credential_values": credential_values,
+        }
         record = read_build_record(package_root)
         archive_sha256 = record["runtime_archive"]["sha256"]
         _log(f"build {record['build_id']} source {record['flywheel_source']['commit']}")
@@ -518,12 +565,17 @@ def run(environ: dict, project_root: Path, logs_dir: Path = LOGS_DIR, package_ro
         relay = _Relay(child.stdin, harbor_out, on_settled)
         threading.Thread(target=relay.relay_input, args=(harbor_in or sys.stdin.buffer,), daemon=True).start()
         threading.Thread(target=relay.relay_output, args=(child.stdout,), daemon=True).start()
+        snapshots = threading.Thread(target=publish_snapshots, args=({**evidence_request, "project_root": str(project_root)},), daemon=True)
+        snapshots.start()
         status = _exit_status(child.wait())
     except _Cancelled:
         status = 143
     finally:
         # From here a SIGTERM only shortens the export deadline.
         exporting = True
+        snapshots_stop.set()
+        if snapshots is not None:
+            snapshots.join()
         if stage_file is not None:
             shutil.rmtree(stage_file.parent, ignore_errors=True)
         publication, withheld, debug_evidence = None, None, None
@@ -537,16 +589,10 @@ def run(environ: dict, project_root: Path, logs_dir: Path = LOGS_DIR, package_ro
                 if private is None:
                     debug_evidence = {"failed": f"publish_failed:{type(error).__name__}"}
             if private is not None:
-                destination = logs_dir / EVIDENCE_DIR_NAME
-                request = {
-                    "store": str(private / ".flywheel" / "flywheel.sqlite"),
-                    "log_directories": [str(project_root / ".flywheel" / "log"), str(work / "home" / ".flywheel" / "log")],
-                    "destination": str(destination),
-                    # The step reads the values from its stdin pipe, never from an argument or a file.
-                    "credential_values": credential_values,
-                }
+                request = {**evidence_request, "store": str(private / ".flywheel" / "flywheel.sqlite")}
                 try:
-                    result, reason = _bounded("publish-evidence", request, lambda: sigterm_deadline, lambda: shutil.rmtree(destination, ignore_errors=True))
+                    # A publication that the deadline ends leaves whole files, each its own or the last snapshot's.
+                    result, reason = _bounded("publish-evidence", request, lambda: sigterm_deadline, discard_partial)
                     debug_evidence = result if result is not None else {"failed": reason}
                 except Exception as error:
                     debug_evidence = {"failed": f"publish_failed:{type(error).__name__}"}

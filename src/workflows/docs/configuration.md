@@ -2249,7 +2249,7 @@ require_workflow_confirmation = false
 - Application: `next-request`. Applies when the next provider request captures configuration.
 - Application: `use-time-revalidate`. Revalidates from disk when the protected operation starts.
 
-Refuse shell writes outside the project for writing agents.
+Refuse Bash commands that write outside the project.
 
 ```toml
 shell_write_guard = true
