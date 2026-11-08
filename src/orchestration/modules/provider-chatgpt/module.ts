@@ -49,7 +49,7 @@ const definition = {
           caller: "model catalog",
           signal,
           persistence: oauthPersistence,
-          compareAndSet: (expected, next, refreshSignal) => replaceCredentialInstance(definition.id, instance.instanceId, storedTokensToCredential(expected), storedTokensToCredential(next), authDir, classifySlot, refreshSignal),
+          compareAndSet: (expected, next) => replaceCredentialInstance(definition.id, instance.instanceId, storedTokensToCredential(expected), storedTokensToCredential(next), authDir, classifySlot),
         });
         const discovery = await fetchChatGPTModels(tokens.accessToken, tokens.accountId, signal, definition.dynamicCatalog);
         return { discovery, credential: oauthCredential(tokens) };

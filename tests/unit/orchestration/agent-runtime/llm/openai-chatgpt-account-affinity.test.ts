@@ -6,6 +6,7 @@ import { Redacted } from "effect";
 import { CHATGPT_SSE_ZSTD_MAX_BYTES, CHATGPT_SSE_ZSTD_MIN_BYTES, createChatGPTClient } from "../../../../../src/orchestration/agent-runtime/llm/chatgpt-client.js";
 import { assertChatGptAccountUnchanged, chatGptRefreshIdentity, createChatGPTTokenAccessor, getConnectionChatGPTTokenAccessor } from "../../../../../src/orchestration/agent-runtime/llm/openai-chatgpt.js";
 import { captureProviderConnection } from "../../../../../src/infra/auth/auth-context.js";
+import { AuthStoreMutationError } from "../../../../../src/infra/auth/auth-store-mutations.js";
 import { authProviders } from "../../../../helpers/auth-context.js";
 
 function tokens(accountId?: string, refresh = `refresh-${accountId ?? "unknown"}`) {
@@ -182,25 +183,74 @@ describe("ChatGPT account affinity", () => {
     }
   });
 
-  test("cancellation during CAS persistence does not settle a rotated token", async () => {
-    const seed = { accessToken: Redacted.make("captured-access"), refreshToken: Redacted.make("captured-refresh"), expiresAtMs: 1, accountId: "account-a" };
-    const controller = new AbortController();
+  test("a stop during the refresh exchange still saves the rotated token, and the next request uses it", async () => {
+    const seed = { accessToken: Redacted.make("captured-access"), refreshToken: Redacted.make("stopped-refresh"), expiresAtMs: 1, accountId: "account-a" };
+    const sent: string[] = [];
+    const answer = Promise.withResolvers<void>();
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = Object.assign(async () => Response.json({ access_token: jwtAccessToken("account-a"), refresh_token: "rotated-refresh", expires_in: 3_600, token_type: "bearer" }), { preconnect: () => {} });
-    let persisted = false;
+    globalThis.fetch = Object.assign(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      sent.push(new URLSearchParams(String(init?.body ?? "")).get("refresh_token") ?? "");
+      await answer.promise;
+      return Response.json({ access_token: jwtAccessToken("account-a"), refresh_token: "rotated-refresh", expires_in: 3_600, token_type: "bearer" });
+    }, { preconnect: () => {} });
+    let saved = "stopped-refresh";
+    const written = Promise.withResolvers<void>();
     const accessor = createChatGPTTokenAccessor({
       seed,
       persistence: "profile",
-      compareAndSet: async (_expected, _next, signal) => {
-        controller.abort();
-        signal?.throwIfAborted();
-        persisted = true;
+      compareAndSet: async (expected, next) => {
+        if (Redacted.value(expected.refreshToken!) !== saved) return false;
+        saved = Redacted.value(next.refreshToken!);
+        written.resolve();
         return true;
       },
     });
     try {
-      await expect(accessor.fresh({ signal: controller.signal })).rejects.toBeDefined();
-      expect(persisted).toBe(false);
+      const stop = new AbortController();
+      const reason = new Error("the turn was stopped");
+      const stopped = accessor.fresh({ signal: stop.signal, caller: "model request" });
+      stop.abort(reason);
+      await expect(stopped).rejects.toBe(reason);
+      answer.resolve();
+      await Promise.race([written.promise, Bun.sleep(25)]);
+      expect(saved).toBe("rotated-refresh");
+      const next = await accessor.fresh({ caller: "model request" });
+      expect(Redacted.value(next.refreshToken!)).toBe("rotated-refresh");
+      expect(sent).toEqual(["stopped-refresh"]);
+    } finally {
+      answer.resolve();
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("a refused save surfaces the storage condition until repair, and the capture after repair saves the rotated token without a second exchange", async () => {
+    const seed = () => ({ accessToken: Redacted.make("captured-access"), refreshToken: Redacted.make("unsaved-refresh"), expiresAtMs: 1, accountId: "account-a" });
+    const sent: string[] = [];
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = Object.assign(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      sent.push(new URLSearchParams(String(init?.body ?? "")).get("refresh_token") ?? "");
+      return Response.json({ access_token: jwtAccessToken("account-a"), refresh_token: "rotated-refresh", expires_in: 3_600, token_type: "bearer" });
+    }, { preconnect: () => {} });
+    let saved = "unsaved-refresh";
+    let refusal: AuthStoreMutationError | undefined = new AuthStoreMutationError([]);
+    const compareAndSet = async (expected: { refreshToken?: Redacted.Redacted<string> }, next: { refreshToken?: Redacted.Redacted<string> }) => {
+      if (refusal !== undefined) throw refusal;
+      if (Redacted.value(expected.refreshToken!) !== saved) return false;
+      saved = Redacted.value(next.refreshToken!);
+      return true;
+    };
+    try {
+      const condition = refusal;
+      const refused = createChatGPTTokenAccessor({ seed: seed(), persistence: "profile", compareAndSet });
+      await expect(refused.fresh({ caller: "model request" })).rejects.toBe(condition);
+      await expect(refused.fresh({ caller: "model request" })).rejects.toBe(condition);
+      refusal = undefined;
+      // The store still holds the consumed token, so the capture after repair is seeded with it.
+      const recaptured = createChatGPTTokenAccessor({ seed: seed(), persistence: "profile", compareAndSet });
+      const repaired = await recaptured.fresh({ caller: "model request" });
+      expect(Redacted.value(repaired.refreshToken!)).toBe("rotated-refresh");
+      expect(saved).toBe("rotated-refresh");
+      expect(sent).toEqual(["unsaved-refresh"]);
     } finally {
       globalThis.fetch = originalFetch;
     }

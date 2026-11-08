@@ -68,14 +68,13 @@ export function createChatGptWebSearch(authDir: string, classifySlot: Credential
   const account = connection === undefined ? undefined : canonicalSubscriptionAccount(connection, "chatgpt");
   const credential = account?.credential.type === "oauth" ? account.credential : undefined;
   const tokenAccessor = connection
-    ? credential && account ? getConnectionChatGPTTokenAccessor(connection, account.instanceId, (expected, next, signal) => replaceCredentialInstance(
+    ? credential && account ? getConnectionChatGPTTokenAccessor(connection, account.instanceId, (expected, next) => replaceCredentialInstance(
       "chatgpt",
       account.instanceId,
       storedTokensToCredential(expected),
       storedTokensToCredential(next),
       connection.authDir,
       classifySlot,
-      signal,
     )) : undefined
     : standaloneAccessor(authDir, classifySlot);
   return {
