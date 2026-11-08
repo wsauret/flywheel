@@ -1,0 +1,23 @@
+third-party/reviewed/npm/opentui-core-0.8.2/FFMPEG-SOURCE.md
+  s_f3bb5e3b311ed0::t_23e17d3ac1b334 1-32
+third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-FFMPEG
+  s_f3bb5e3b311ed0::t_b94e9d3a48f54a 1-502
+third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-ZLIB
+  s_f3bb5e3b311ed0::t_e25b250f83177d 1-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eb2846761929fbcec93b22abebf677960ca166a7",
+  "prompts": {},
+  "sessions": {
+    "s_f3bb5e3b311ed0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c3df007-8751-458c-9b17-d22bc9edab38",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
