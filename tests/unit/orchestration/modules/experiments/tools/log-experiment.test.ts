@@ -41,14 +41,11 @@ const context = makeContext({ executionCwd: "/worktree", projectRoot: "/worktree
 /** An operation that measured one result and holds it for settlement. */
 async function pending(status: PendingExperimentResult["status"] = "passed", resultTree = "measured-tree") {
   const operation = testExperimentOperation()
-  await operation.begin(async () => ({ command: "measure", cwd: "/worktree" }))
-  operation.measured({
+  await operation.begin(async () => ({ command: "measure" }))
+  await operation.measured({
     status,
     metrics: { latency: 8, memory: 2 },
     durationMs: 1234,
-    measurementOutput: "",
-    checksOutput: status === "checks_failed" ? "bad" : "ok",
-    modelOutput: "",
     measuredTree: "measured-tree",
     resultTree,
   })

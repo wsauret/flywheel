@@ -231,7 +231,7 @@ function arm(deps: ExperimentViewProtocolProjectionDeps): ArmedProjection {
 }
 
 /** A stopped run's command still executes in the worktree until it returns. */
-function commandRuns(state: ExperimentOperationState<unknown>): boolean {
+function commandRuns(state: ExperimentOperationState): boolean {
   return state.status === "running" || state.status === "abandoned"
 }
 

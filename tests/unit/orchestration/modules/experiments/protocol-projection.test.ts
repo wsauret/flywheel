@@ -5,7 +5,7 @@ import { asAsyncEventReadSurface, type EventReader, type StoredFact } from "../.
 import { releaseHeldProjections } from "../../../../../src/infra/projection-registry.js"
 import { createExperimentViewProtocolProjection, createExperimentViewProtocolReader, experimentViewFromSnapshot } from "../../../../../src/orchestration/modules/experiments/protocol.js"
 import { createRuntimeUiPatchSequencer } from "../../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
-import { createExperimentOperation, type ExperimentOperation } from "../../../../../src/orchestration/modules/experiments/operation-owner.js"
+import { createExperimentOperation, type ExperimentOperation, type PendingExperimentResult } from "../../../../../src/orchestration/modules/experiments/operation-owner.js"
 import type { ChatRunner } from "../../../../../src/orchestration/chat/runner-types.js"
 import type { ExperimentFact } from "../../../../../src/orchestration/modules/experiments/facts.js"
 import type { SessionEntry } from "../../../../../src/orchestration/session-store/types.js"
@@ -96,15 +96,17 @@ function sessionStore(entries: Map<string, SessionEntry>) {
   }
 }
 
-function experimentOperation(): ExperimentOperation<unknown> {
-  return createExperimentOperation<unknown>({ listInFlight: async () => [], putInFlight: async () => {}, record: async (fact) => storedExperimentFact(fact) })
+const result = (latency: number): PendingExperimentResult => ({ status: "passed", metrics: { latency }, durationMs: 0, measuredTree: "tree", resultTree: "tree" })
+
+function experimentOperation(): ExperimentOperation {
+  return createExperimentOperation({ listInFlight: async () => [], putInFlight: async () => {}, record: async (fact) => storedExperimentFact(fact) })
 }
 
-async function begin(operation: ExperimentOperation<unknown>, command: string): Promise<void> {
-  await operation.begin(async () => ({ command, cwd: "/repo" }))
+async function begin(operation: ExperimentOperation, command: string): Promise<void> {
+  await operation.begin(async () => ({ command }))
 }
 
-function runnerWith(operation: ExperimentOperation<unknown>): ChatRunner {
+function runnerWith(operation: ExperimentOperation): ChatRunner {
   return { ...chatRunner("chat-1"), moduleRuntimes: composeModuleRuntimes([[experimentsRuntime.moduleId, { operation }]]) }
 }
 
@@ -198,7 +200,7 @@ describe("experiment view protocol projection", () => {
     await flush()
     expect(views().map((view) => view.running)).toEqual([true])
 
-    execution.measured({ metric: 8 })
+    await execution.measured(result(8))
     await flush()
     expect(views().map((view) => view.running)).toEqual([true, false])
 
@@ -218,7 +220,7 @@ describe("experiment view protocol projection", () => {
     await execution.stop(null)
     await flush()
     expect(views().map((view) => view.running).slice(3)).toEqual([true])
-    execution.measured({ metric: 9 })
+    await execution.measured(result(9))
     await flush()
     expect(views().map((view) => view.running).slice(3)).toEqual([true, false])
     projection.dispose()
@@ -245,7 +247,7 @@ describe("experiment view protocol projection", () => {
     await flush()
     expect(views().at(-1)?.running).toBe(false)
     const published = views().length
-    first.measured({ metric: 8 })
+    await first.measured(result(8))
     await flush()
     expect(views()).toHaveLength(published)
     await begin(second, "second")

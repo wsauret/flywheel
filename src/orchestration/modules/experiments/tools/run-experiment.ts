@@ -43,7 +43,7 @@ export function createRunExperimentTool(deps: RunExperimentDependencies): Runtim
             throw new Error(`Experiment iteration limit reached (${current.maxIterations}).`)
           }
           await deps.prepareScratch()
-          return { configuration: current, command: current.measureCommand, cwd: current.workDir }
+          return { configuration: current, command: current.measureCommand }
         }))
       } catch (error) {
         return failure(error instanceof Error ? error.message : String(error))
@@ -74,7 +74,7 @@ export function createRunExperimentTool(deps: RunExperimentDependencies): Runtim
           scratchDir: deps.scratchDir,
           run: deps.run,
         })
-        deps.operation.measured({ ...result, measuredTree, resultTree })
+        await deps.operation.measured({ status: result.status, metrics: result.metrics, durationMs: result.durationMs, measuredTree, resultTree })
         return { outcome: "ok", content: result.modelOutput }
       } catch (error) {
         deps.operation.failed()

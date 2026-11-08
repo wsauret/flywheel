@@ -1,8 +1,9 @@
-import { afterEach, expect, test } from "bun:test"
+import { afterEach, expect, spyOn, test } from "bun:test"
 import { mkdtemp, rm, stat } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter, type EventStoreAppend } from "../../../../../src/infra/event-store-types.js"
+import { Log } from "../../../../../src/infra/log.js"
 import type { OwnedCommandRunner, OwnedCommandResult } from "../../../../../src/infra/owned-command.js"
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js"
 import { resolveSessionDir } from "../../../../../src/infra/paths.js"
@@ -149,6 +150,14 @@ async function producePendingRun(target: Target): Promise<void> {
   expect(target.store.readInFlight("test", EXPERIMENT_OPERATION_KIND)).toHaveLength(1)
 }
 
+/** The literal hold payload that every release up to 0.1.3 wrote when a
+ *  measurement began, as a process that ended mid-measurement left it. */
+async function seedShippedRunningHold(target: Target): Promise<void> {
+  const putInFlight = target.writer.putInFlight
+  if (!putInFlight) throw new Error("expected in-flight authority")
+  await putInFlight(EXPERIMENT_OPERATION_KIND, "run", { state: "running", command: "measure", cwd: target.directory })
+}
+
 function reopen(target: Target): ExperimentsRuntime {
   const reopened = createExperimentsRuntime(experimentServices({
     projectRoot: target.directory,
@@ -163,10 +172,11 @@ function reopen(target: Target): ExperimentsRuntime {
 }
 
 /** The module's `/experiment` registration in a session whose live runner
- *  holds `runtime`, as the command service invokes it. */
-function experimentCommand(target: Target, runtime: ExperimentsRuntime): (argument: string) => Promise<CommandOutcome> {
+ *  holds `runtime`, as the command service invokes it. With no runtime the
+ *  session has no live runner, as for a session whose runner ended. */
+function experimentCommand(target: Target, runtime: ExperimentsRuntime | undefined): (argument: string) => Promise<CommandOutcome> {
   const reader = asAsyncEventReadSurface(target.store)
-  const runtimes = composeModuleRuntimes([[experimentsRuntime.moduleId, runtime]])
+  const runtimes = composeModuleRuntimes(runtime ? [[experimentsRuntime.moduleId, runtime]] : [])
   const host: CommandHost = {
     session: {
       id: "test",
@@ -181,7 +191,7 @@ function experimentCommand(target: Target, runtime: ExperimentsRuntime): (argume
       fork: async () => { throw new Error("must not fork") },
       runtime: (handle) => runtimes.get(handle),
       host: async (handle) => runtimes.get(handle),
-      facts: () => createSessionFactWriter({ sessionId: "test", writer: asAsyncEventWriter(target.store) }),
+      facts: () => target.writer,
       readInFlight: (kinds) => reader.readInFlight("test", kinds),
     },
     directories: testDirectories(target.directory),
@@ -196,9 +206,10 @@ function experimentCommand(target: Target, runtime: ExperimentsRuntime): (argume
 
 const latestMode = (target: Target) => target.store.read({ aggregateId: "session:test", types: ["experiment.mode.changed"] }).at(-1)?.payload
 
-test("a persisted run marker blocks every restart entry point without mutation", async () => {
+test("a previous-shape run marker blocks every restart entry point without mutation", async () => {
   const target = await fixture("test", null)
-  await producePendingRun(target)
+  await seedShippedRunningHold(target)
+  const warn = spyOn(Log.create({ service: "experiment-operation" }), "warn")
   const beforeCommands = target.commands.length
   const beforeFacts = target.store.countByAggregate("session:test")
   const beforeCell = target.store.readInFlight("test", EXPERIMENT_OPERATION_KIND)
@@ -212,6 +223,88 @@ test("a persisted run marker blocks every restart entry point without mutation",
   expect(target.commands).toHaveLength(beforeCommands)
   expect(target.store.countByAggregate("session:test")).toBe(beforeFacts)
   expect(target.store.readInFlight("test", EXPERIMENT_OPERATION_KIND)).toEqual(beforeCell)
+  expect(warn).not.toHaveBeenCalled()
+  warn.mockRestore()
+  target.store.close()
+})
+
+test("a measured result survives a runtime restart and settles on the reopened runner", async () => {
+  const target = await fixture("test", null)
+  await producePendingRun(target)
+  const reopened = reopen(target)
+
+  expect((await reopened.tools.logExperiment.execute({ metric: 8, status: "keep", description: "faster" }, toolContext(target, "log"))).outcome).toBe("ok")
+
+  const runs = target.store.read({ aggregateId: "session:test", types: ["experiment.run.recorded"] })
+  expect(runs.map((run) => [run.payload.status, run.payload.commit])).toEqual([["keep", "1234567"]])
+  expect(target.store.readInFlight("test", EXPERIMENT_OPERATION_KIND)).toHaveLength(0)
+  expect(await experimentCommand(target, reopened)("start")).toEqual({ kind: "warning", message: "Experiment mode is already active." })
+  target.store.close()
+})
+
+test("a restart during a settlement's Git work stays interrupted", async () => {
+  const head = commandGate((command) => command[0] === "git" && command[3] === "rev-parse")
+  const target = await fixture("test", null, undefined, head)
+  await producePendingRun(target)
+  const settling = target.runtime.tools.logExperiment.execute({ metric: 8, status: "keep", description: "faster" }, toolContext(target, "log"))
+  await head.reached
+
+  expect(await reopen(target).operation.blocker()).toBe(experimentInterruptionMessage)
+  head.release()
+  expect((await settling).outcome).toBe("ok")
+  target.store.close()
+})
+
+test("off on a reopened runner retires a pending result", async () => {
+  const target = await fixture("test", null)
+  await producePendingRun(target)
+  const reopened = reopen(target)
+
+  expect(await experimentCommand(target, reopened)("off")).toEqual({ kind: "none" })
+
+  expect(target.store.readInFlight("test", EXPERIMENT_OPERATION_KIND)).toHaveLength(0)
+  expect(reopened.operation.snapshot()).toEqual({ status: "idle" })
+  expect(await reopen(target).operation.blocker()).toBeUndefined()
+  target.store.close()
+})
+
+for (const verb of ["off", "clear", "clear discard"] as const) {
+  test(`a stop with no live runner retires a pending result with the mode (${verb})`, async () => {
+    const appends: EventStoreAppend[] = []
+    const target = await fixture("test", null, (actual) => ({
+      ...actual,
+      append: async (event) => {
+        appends.push(event)
+        return actual.append(event)
+      },
+    }))
+    await producePendingRun(target)
+
+    expect(await experimentCommand(target, undefined)(verb)).toEqual({ kind: "none" })
+
+    const stop = appends.at(-1)
+    expect(stop?.type).toBe("experiment.mode.changed")
+    expect(stop?.payload).toMatchObject({ active: false })
+    expect(stop?.inFlight).toEqual([{ op: "drop", kind: EXPERIMENT_OPERATION_KIND, key: "run" }])
+    expect(target.store.readInFlight("test", EXPERIMENT_OPERATION_KIND)).toHaveLength(0)
+    expect(await reopen(target).operation.blocker()).toBeUndefined()
+    target.store.close()
+  })
+}
+
+test("a stop with no live runner keeps interrupted work until discard", async () => {
+  const target = await fixture("test", null)
+  await seedShippedRunningHold(target)
+  const command = experimentCommand(target, undefined)
+
+  const kept = await command("clear")
+  expect(kept.kind).toBe("message")
+  expect(kept.kind === "message" ? kept.message : "").toContain("/experiment clear discard")
+  expect(target.store.readInFlight("test", EXPERIMENT_OPERATION_KIND)).toHaveLength(1)
+
+  expect(await command("clear discard")).toEqual({ kind: "none" })
+  expect(target.store.readInFlight("test", EXPERIMENT_OPERATION_KIND)).toHaveLength(0)
+  expect(await reopen(target).operation.blocker()).toBeUndefined()
   target.store.close()
 })
 
@@ -371,7 +464,7 @@ test("a stop during a keep settlement waits for it, so the kept run is recorded 
 
 test("clear keeps an interrupted operation until the person confirms with clear discard, which leaves the worktree alone", async () => {
   const target = await fixture("test", null)
-  await producePendingRun(target)
+  await seedShippedRunningHold(target)
   const reopened = reopen(target)
   const command = experimentCommand(target, reopened)
   const commandsBefore = target.commands.length

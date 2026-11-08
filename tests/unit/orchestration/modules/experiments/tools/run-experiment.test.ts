@@ -39,7 +39,7 @@ function cappedRun(runNumber: number): ExperimentRun {
   return { run: runNumber, segment: 1, commit: "abc", metric: 10, metrics: {}, status: "keep", description: "kept", timestamp: runNumber, confidence: null, durationMs: null }
 }
 
-test("replays state, measures recorded commands, and retains the complete pending result", async () => {
+test("replays state, measures recorded commands, and retains the pending result a settlement reads", async () => {
   const operation = testExperimentOperation()
   const commands: string[][] = []
   const responses = ["METRIC latency=9\nMETRIC memory=4", "ok"]
@@ -60,9 +60,6 @@ test("replays state, measures recorded commands, and retains the complete pendin
       status: "passed",
       metrics: { latency: 9, memory: 4 },
       durationMs: expect.any(Number),
-      measurementOutput: "METRIC latency=9\nMETRIC memory=4",
-      checksOutput: "ok",
-      modelOutput: "METRIC latency=9\nMETRIC memory=4",
       measuredTree: "tree-before",
       resultTree: "tree-before",
     },

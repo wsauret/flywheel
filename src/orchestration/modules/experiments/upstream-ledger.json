@@ -135,7 +135,7 @@
         {
           "from": "runtime.lastRunChecks",
           "to": "ExperimentOperation pending result",
-          "reason": "The unlogged result is the one live value the session owns until log_experiment settles it."
+          "reason": "The unlogged result is the operation's pending value, held in its durable hold until log_experiment settles it."
         },
         { "from": "measurement result without content identity", "to": "pending result bound to isolated Git tree identity before and after commands" }
       ]

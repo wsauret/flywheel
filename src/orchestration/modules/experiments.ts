@@ -7,7 +7,7 @@ import type { FirstPartyModule } from "../modules.js"
 import { createExperimentChatObserver } from "./experiments/chat-observer.js"
 import { executeExperimentCommand } from "./experiments/experiment-command.js"
 import { validateExperimentWorktree } from "./experiments/git-worktree.js"
-import { experimentInterruptionRetirement, findExperimentInterruption } from "./experiments/operation-owner.js"
+import { experimentStopRetirement, findExperimentInterruption } from "./experiments/operation-owner.js"
 import { createExperimentProjection } from "./experiments/projection.js"
 import { renderExperimentSystemPromptFragment } from "./experiments/system-prompt-fragment.js"
 import { experimentToolExecutionGate, experimentToolOmissions } from "./experiments/tool-execution-gate.js"
@@ -92,13 +92,13 @@ export const experimentsModule = {
           },
           activate: async (workDir) => { await projection.apply(await recordMode(true, workDir)) },
           // The live runner's operation owns its hold. Without a live runner no
-          // operation runs, so a stop records the mode alone, and only the
-          // person's discard retires what an ended process left.
+          // operation runs, so a stop retires what a runner would open with by
+          // the owner's own rule, in the commit of the mode fact.
           stop: async (workDir, discard) => {
             const operation = session.runtime(experimentsRuntime)?.operation
             const stored = operation
               ? await operation.stop(workDir, discard)
-              : await recordMode(false, workDir, discard ? await experimentInterruptionRetirement(readInFlight) : undefined)
+              : await recordMode(false, workDir, await experimentStopRetirement(readInFlight, discard))
             await projection.apply(stored)
           },
           prompt: (input) => session.prompt(input),
