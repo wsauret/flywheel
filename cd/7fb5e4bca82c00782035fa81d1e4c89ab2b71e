@@ -1,0 +1,30 @@
+src/infra/conversation-recall-search.ts
+  h_4b47e9e4a8b456 1,17-18,56,88-90,101-102,143-145,161-162
+src/orchestration/session/conversation-recall.ts
+  h_4b47e9e4a8b456 230-238,242-243
+src/orchestration/session/transcript-search.ts
+  h_4b47e9e4a8b456 57
+tests/integration/infra/conversation-fts-concurrency.test.ts
+  h_4b47e9e4a8b456 52
+tests/unit/infra/conversation-recall-search.test.ts
+  h_4b47e9e4a8b456 12,85,157,182,235,249,264,269,295,313,327,331,339-341,343-345,348-352
+tests/unit/infra/conversation-recall-tool-content.test.ts
+  h_4b47e9e4a8b456 78,135
+tests/unit/orchestration/migrations/tool-content-dedup.test.ts
+  h_4b47e9e4a8b456 181
+tests/unit/orchestration/session/conversation-tree-storage-fts.test.ts
+  h_4b47e9e4a8b456 69,88
+tests/unit/orchestration/session/transcript-search.test.ts
+  h_4b47e9e4a8b456 99-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cd7fb5e4bca82c00782035fa81d1e4c89ab2b71e",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
