@@ -107,10 +107,9 @@ test("a bare slash lists the top commands, every in-place setting in catalog ord
     assert.deepEqual(outline[0]?.rows, ["Authentication", "Background work", "Keyboard shortcuts"])
     // A capability group's own rows show with that group's modules, and this runtime has none.
     const groupRows = new Set(MODULE_SETTING_GROUPS.flatMap((group) => settingGroupHead(group).map((row) => row.id)))
-    // Each module's switch sits at its module's place: an ungrouped one under Agent capabilities, before Allow persistent processes.
+    // Each module's switch sits at its module's place: an ungrouped one under Agent capabilities, after every catalog row outside a group.
     const catalogRows = IN_PLACE_SETTING_ROWS.filter((row) => shownOn(row, "browser") && !groupRows.has(row.id)).map((row) => row.label)
-    const persistent = catalogRows.indexOf("Allow persistent processes")
-    assert.deepEqual(outline[1]?.rows, [...catalogRows.slice(0, persistent), "Subagents", ...catalogRows.slice(persistent)])
+    assert.deepEqual(outline[1]?.rows, [...catalogRows, "Subagents"])
     assert.deepEqual(outline[2]?.rows.slice(0, 2), ["New chat", "Compact conversation"])
     assert.deepEqual(outline[3]?.rows, ["Commands"])
   } finally { mounted.dispose() }

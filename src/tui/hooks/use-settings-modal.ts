@@ -19,7 +19,7 @@ import { AUTH_PROFILE_PENDING } from "./auth-profile-selection.js"
 import { createProfileEdit, renameProfileEdit } from "./auth-profile-edits.js"
 import type { AuthProfileSelection } from "./auth-profile-selection.js"
 import { cycleRowActions, simpleSettingRow, type SettingsEditResult, type SettingsRow, type SettingsSelectionConfirmation, type SettingsView } from "./settings-modal-types.js"
-import { CAPABILITY_PENDING, capabilityRows } from "./settings-capability-rows.js"
+import { capabilityRows } from "./settings-capability-rows.js"
 import type { ShellServices } from "./shell-state.js"
 import type { OpenSettingsDestination } from "../settings-destination.js"
 import type { RuntimeClient } from "../../protocol/app-service-types.js"
@@ -523,7 +523,8 @@ export function useSettingsModal(deps: SettingsModalDeps): SettingsModalHook {
     },
     "capability-preset": () => { const preset = capabilities().preset; return preset === undefined ? [] : [preset] },
     "workflow-mode": () => { const mode = capabilities().workflowMode; return mode === undefined ? [] : [mode] },
-    "agent-capabilities": (entry, children) => [annotateConfigDiagnosticGroup({ kind: "disclosure", id: `capability-group:${entry.label}`, label: entry.label, description: entry.description, rows: children }, settings.diagnostics())],
+    // Its rows are the ungrouped module switches, which wait for the runtime's capabilities like the preset above.
+    "agent-capabilities": (entry, children) => children().length === 0 ? [] : [annotateConfigDiagnosticGroup({ kind: "disclosure", id: `capability-group:${entry.label}`, label: entry.label, description: entry.description, rows: children }, settings.diagnostics())],
     "agent-capability-modules": () => capabilities().ungrouped,
     "allow-persistent-processes": () => [annotate({
       kind: "cycle", ...named("allow-persistent-processes"),
@@ -532,7 +533,6 @@ export function useSettingsModal(deps: SettingsModalDeps): SettingsModalHook {
         if (!policy) return "NO"
         return !policy.persisted && policy.effective && policy.forcedByCli ? "On for this run via CLI" : yesNo(policy.persisted)
       },
-      unavailableReason: () => deps.capabilities.view() ? undefined : CAPABILITY_PENDING,
       // oxlint-disable-next-line solid/reactivity -- boundary: callback becomes a keyboard event handler.
       ...cycleRowActions(() => {
         const policy = deps.capabilities.view()?.persistentProcesses
