@@ -1,0 +1,22 @@
+src/orchestration/agent-runtime/llm/failover-client.ts
+  h_4b47e9e4a8b456 440-441,445-457,459,461-469,471-497,499-500,584-585
+src/orchestration/app-service/eligibility-preparation.ts
+  h_4b47e9e4a8b456 135-157,160-163,168-169,177-198,316,338,340-342,359,395,399,423-434,440-442,471-473,489-502,521,530-533,539,586
+tests/unit/orchestration/agent-runtime/llm/failover-client-probes.test.ts
+  h_4b47e9e4a8b456 1-154
+tests/unit/orchestration/app-service/eligibility-preparation-models-dev.test.ts
+  h_4b47e9e4a8b456 286-287,303-307,352-364,373
+tests/unit/orchestration/app-service/eligibility-preparation-settlement.test.ts
+  h_4b47e9e4a8b456 23-85,282-317,319,321
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "841153d2c5389e6444b51ded80d6624e4533e73d",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
