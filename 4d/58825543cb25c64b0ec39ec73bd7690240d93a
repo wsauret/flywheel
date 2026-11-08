@@ -1,0 +1,26 @@
+THIRD-PARTY-NOTICES.md
+  h_4b47e9e4a8b456 47
+src/orchestration/agent-runtime/assistant-turn-attempt.ts
+  h_4b47e9e4a8b456 32,228,341-352
+src/orchestration/agent-runtime/llm/image-limit.ts
+  h_4b47e9e4a8b456 1-32
+src/orchestration/agent-runtime/llm/model-compat.ts
+  h_4b47e9e4a8b456 44-46,100-105,154-159
+src/orchestration/agent-runtime/llm/provider-history.ts
+  h_4b47e9e4a8b456 6,8,139-168,170-172,175,178,190-194,208-210,216-217
+src/orchestration/session/provider-request-audit-types.ts
+  h_4b47e9e4a8b456 284
+tests/unit/orchestration/agent-runtime/llm/image-limit.test.ts
+  h_4b47e9e4a8b456 1-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4d58825543cb25c64b0ec39ec73bd7690240d93a",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
