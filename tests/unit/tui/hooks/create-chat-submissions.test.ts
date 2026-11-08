@@ -1,4 +1,6 @@
 import { describe, expect, it, spyOn } from "bun:test"
+import { RpcClientError } from "effect/rpc"
+import { Socket } from "effect/socket"
 import { createMemo, createRoot } from "solid-js"
 import { DebugLog } from "../../../../src/infra/debug-log.js"
 import type { DebugLogRecordInput } from "../../../../src/infra/debug-log.js"
@@ -167,5 +169,20 @@ describe("terminal chat submissions", () => {
     } finally {
       report.mockRestore()
     }
+  })
+
+  it("says why a queued recall fails and resolves null, in the runtime's words for a refusal and in plain words for a lost lane", async () => {
+    const reports: string[] = []
+    const submissions = createTerminalChatSubmissions({ lanes: NO_LANES, dispatch: async () => ({ ok: true }), report: (message, variant) => reports.push(`${variant}: ${message}`) })
+    expect(await submissions.recallQueued("s", async () => ({ text: "queued words" }))).toEqual({ text: "queued words" })
+    expect(reports).toEqual([])
+    expect(await submissions.recallQueued("s", async () => { throw new Error("database is locked") })).toBeNull()
+    expect(reports).toEqual(["warning: Flywheel could not recall the queued message: database is locked"])
+    expect(await submissions.recallQueued("s", async () => { throw new RpcClientError.RpcClientError({ reason: new Socket.SocketCloseError({ code: 1000 }) }) })).toBeNull()
+    expect(reports).toEqual([
+      "warning: Flywheel could not recall the queued message: database is locked",
+      "warning: Flywheel could not recall the queued message: the connection to Flywheel dropped before it answered",
+    ])
+    submissions.dispose()
   })
 })
