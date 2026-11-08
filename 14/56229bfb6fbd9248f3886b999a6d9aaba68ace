@@ -1,0 +1,28 @@
+src/orchestration/module-seams.ts
+  h_4b47e9e4a8b456 34,63
+src/orchestration/modules/workflows/run-facts.ts
+  h_4b47e9e4a8b456 4,53
+src/orchestration/modules/workflows/run-record.ts
+  h_4b47e9e4a8b456 11,20,76
+src/orchestration/session/child-continuation.ts
+  h_4b47e9e4a8b456 3,44-52
+src/orchestration/workflow-host/agent-inputs.ts
+  h_4b47e9e4a8b456 18,279,335
+src/orchestration/workflow-host/run-record.ts
+  h_4b47e9e4a8b456 3-14,23
+src/orchestration/workflow-host/runner.ts
+  h_4b47e9e4a8b456 10,31-32,590-592
+tests/unit/orchestration/workflow-host/workflow-interruption.test.ts
+  h_4b47e9e4a8b456 27,514-531
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1456229bfb6fbd9248f3886b999a6d9aaba68ace",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
