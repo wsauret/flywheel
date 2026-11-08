@@ -281,7 +281,7 @@ export const PromptHistoryLoweringSchema = Schema.Struct({
   edits: Schema.Array(Schema.Struct({
     at: NonNegativeInt,
     block: Schema.optionalKey(NonNegativeInt),
-    reason: Schema.Literals(["claude-framing", "agent-host-framing", "foreign-deliberation", "progress-as-text", "foreign-thought-signature"]),
+    reason: Schema.Literals(["claude-framing", "agent-host-framing", "foreign-deliberation", "progress-as-text", "foreign-thought-signature", "image-limit"]),
   })),
 })
 

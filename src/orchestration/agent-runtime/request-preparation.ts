@@ -15,7 +15,7 @@ import { appendEntries, appendProviderHistory, createLoopMessageWriters } from "
 import { createActiveRequestContext, prepareActiveRequestVariant, readStaleMaskSeed } from "./active-request-context.js";
 import type { OutgoingContextSnapshot } from "./context-token-anchor.js";
 import { prepareAssistantTurn, type PreparedRequest } from "./assistant-turn-stream.js";
-import type { AssistantAttemptInput } from "./assistant-turn-attempt.js";
+import type { AssistantAttemptInput, ImageLimitCutRecord } from "./assistant-turn-attempt.js";
 import type { CaptureModelRuntime } from "./factory.js";
 import type { ConversationMessage, ServingAttempt } from "./llm/types.js";
 import { resolveModelInteractionProfile, type ModelInteractionProfile } from "./model-interaction-profile.js";
@@ -62,7 +62,7 @@ export interface RequestPreparationSinks {
 
 /** What a request's attempt input carries that its candidate and history do not decide. */
 type AttemptValues = Omit<AssistantAttemptInput,
-  "messages" | "prepareAttempt" | "staleMasking" | "toolHistoryProjection" | "requestContext" | "messageCount" | "estimatedContextTokens">;
+  "messages" | "prepareAttempt" | "staleMasking" | "toolHistoryProjection" | "requestContext" | "messageCount" | "estimatedContextTokens" | "imageLimitCut">;
 
 /**
  * The one preparation of a run's requests (R5): the only code that builds request bytes. A send's loop and a
@@ -83,6 +83,8 @@ export async function openRequestPreparation(inputs: RequestInputs, sinks: Reque
      *  metadata before the first request; every request replaces it from its captured composition. */
     planned: inputs.initialPlannedAttempt ?? await client.plannedAttempt(inputs.providerOptions),
     initialInteractionProfile: inputs.initialInteractionProfile ?? resolveModelInteractionProfile(client.model, client.modelFamily),
+    /** The image-limit cut that the run's requests last recorded, which every attempt of every request advances. */
+    imageLimitCut: { replaced: 0 } satisfies ImageLimitCutRecord,
   };
   const writers = createLoopMessageWriters({
     messages: () => preparation.messages, history: sinks.history, onUserMessage: sinks.onUserMessage, onSystemMessage: sinks.onSystemMessage,
@@ -153,7 +155,7 @@ export async function openRequestPreparation(inputs: RequestInputs, sinks: Reque
             ...values,
             messages: outbound.messages, prepareAttempt: requestContext.prepare,
             staleMasking: outbound.mask.staleMasking, toolHistoryProjection: outbound.toolHistoryProjection,
-            requestContext: outbound.requestContext,
+            requestContext: outbound.requestContext, imageLimitCut: preparation.imageLimitCut,
             messageCount: outbound.messages.length, estimatedContextTokens: requestContext.anchor.estimate(),
           },
         };

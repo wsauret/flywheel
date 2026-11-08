@@ -435,6 +435,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
                   toolHistoryProjection: outgoing.toolHistoryProjection,
                   messageCount: outgoing.messages.length,
                   estimatedContextTokens: outgoing.snapshot.messageTokens + prepared.attemptStaticTokens,
+                  imageLimitCut: preparation.imageLimitCut,
                 };
               },
             };

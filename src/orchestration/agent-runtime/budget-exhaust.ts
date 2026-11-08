@@ -118,6 +118,7 @@ interface PreparedBudgetExhaustionRequest {
   readonly toolHistoryProjection: PromptToolHistoryProjection | undefined;
   readonly messageCount: number;
   readonly estimatedContextTokens: number;
+  readonly imageLimitCut?: AssistantAttemptInput["imageLimitCut"];
 }
 
 /** Drives the final turn after the agent loop hits its hard cap (the loop
@@ -242,6 +243,7 @@ async function attemptExhaustionTurn(input: ExhaustionStreamInput & BudgetReques
         turn: input.turnOrdinal,
         messageCount: outgoing.messageCount,
         estimatedContextTokens: outgoing.estimatedContextTokens,
+        imageLimitCut: outgoing.imageLimitCut,
         onEvent: input.onEvent,
         reserveMessageId: input.reserveMessageId,
         releaseMessageId: input.releaseMessageId,

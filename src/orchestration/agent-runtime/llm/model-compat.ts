@@ -41,6 +41,9 @@ interface ModelCompat {
   /** Whether the Claude engine sends the model's effort inside the conversation too: the `per_turn_effort` capability of
    *  its model catalog (CLI 2.1.296). */
   perTurnEffort?: boolean;
+  /** The most images one provider request may carry, counted over all
+   *  messages, tool results included. Absent means no limit. */
+  maxImagesPerRequest?: number;
 }
 
 interface ModelCompatById { [model: string]: ModelCompat }
@@ -94,6 +97,12 @@ const MODEL_COMPAT: ModelCompatById = {
   "gemini-2.5-pro": { geminiThinkingConfigMode: "budget" },
   "gemini-2.5-flash": { geminiThinkingConfigMode: "budget" },
   "gemini-2.5-flash-lite": { geminiThinkingConfigMode: "budget" },
+
+  // DeepSeek V4.1 Flash on OpenRouter (probe of 2026-11-08, pinned to
+  // deepinfra/fp8): a request with 30 images returns 200, and one with 31 or
+  // more returns 404 because the image-support routing filter removes the
+  // DeepInfra endpoints. The count is per request, over all messages.
+  "deepseek-v4-1-flash": { maxImagesPerRequest: 30 },
 };
 
 function normalizeModelId(model: string): string {
@@ -140,6 +149,12 @@ export function keepsEarlierTurnReasoning(model: string): boolean {
 /** Anthropic models whose effort the Claude engine also sends inside the conversation (`withPerTurnEffort`). */
 export function supportsPerTurnEffort(model: string): boolean {
   return lookup(model)?.perTurnEffort === true;
+}
+
+/** The most images one request for `model` may carry (`ModelCompat.maxImagesPerRequest`), or undefined when the
+ *  model has no limit. Accepts canonical and dashed model ids. */
+export function maxImagesPerRequest(model: string): number | undefined {
+  return lookup(dashedModelId(model))?.maxImagesPerRequest;
 }
 
 /** The accepted Anthropic thinking shape for an off request. Omit means the

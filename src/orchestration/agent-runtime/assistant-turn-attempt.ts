@@ -29,7 +29,7 @@ import { renderSystemPrompt, type SystemPromptTiers } from "./llm/system-prompt-
 import type { ProviderRequestAuditHandle, ProviderRequestAuditWriter } from "./llm/provider-request-audit.js";
 import type { ModelInteractionProfile } from "./model-interaction-profile.js";
 import type { PromptHistoryLowering, PromptStaleMasking, ProviderRequestIdentity } from "../session/provider-request-audit-types.js";
-import { applyHistoryLowering, planHistoryLowering, type ProviderHistoryTarget } from "./llm/provider-history.js";
+import { applyHistoryLowering, imageLimitCut, planHistoryLowering, type ProviderHistoryTarget } from "./llm/provider-history.js";
 import type { PreparedRequestAttempt } from "./request-tool-surface.js";
 import { type AssistantTurnResult, handleStreamEvent, type TurnOutcome } from "./assistant-turn-result.js";
 import { hasAssistantOutput } from "./assistant-output.js";
@@ -81,6 +81,9 @@ export interface AssistantAttemptInput {
   /** Request-only user context appended after stale masking. */
   requestContext: string | undefined;
   turn: number;
+  /** The image-limit cut that the request's owner last recorded at INFO (`recordImageLimitCut`). Absent for a
+   *  request whose owner keeps no record, such as compaction: its bounded requests record at DEBUG only. */
+  imageLimitCut?: ImageLimitCutRecord;
   messageCount: number;
   estimatedContextTokens: number;
   onEvent: (event: ProviderStreamEvent) => void;
@@ -225,6 +228,7 @@ export function createAssistantAttempt(candidate: Readonly<{ attempt: ServingAtt
         replayIdentity = { accessProvider: target.accessProvider, provider: target.provider, api: target.api, model: target.model };
         const edits = planHistoryLowering(request.messages, target);
         const messages = applyHistoryLowering(request.messages, edits);
+        recordImageLimitCut(request.messages, target, input.turn, input.imageLimitCut);
         auditHandle = await recordAuditRequest(input, messages, edits.length === 0 ? undefined : { edits }, attemptId, providerRequestAttribution(attempt), renderedPrompt, wireTools, attemptStaticTokens, prepared, attempt.toolPresentation);
         streamTelemetry = createRequestStreamTelemetry(input.requestAudit, auditHandle);
         const settlement = input.usageSettlement;
@@ -335,6 +339,23 @@ export function createAssistantAttempt(candidate: Readonly<{ attempt: ServingAtt
     }
   }};
   return { stream, close, releaseIdentity, failure: () => failure };
+}
+
+/** The image-limit cut that one request owner last recorded at INFO. The owner holds it across its attempts and turns,
+ *  so a retry or a failover that sends the same history does not record the move again. */
+export interface ImageLimitCutRecord { replaced: number }
+
+/** Records a request that its model's image limit bounds (`imageLimitCut`): DEBUG for each such request, and INFO
+ *  once more when the cut differs from the one that `record` holds, which it then advances. A steady cut between moves
+ *  therefore adds nothing above DEBUG. Counts only, no content. */
+function recordImageLimitCut(history: readonly ConversationMessage[], target: ProviderHistoryTarget, turn: number, record: ImageLimitCutRecord | undefined): void {
+  const cut = imageLimitCut(history, target);
+  if (cut === undefined || cut.replaced === 0) return;
+  const fields = { turn, model: target.model, limit: cut.limit, images: cut.images, replaced: cut.replaced };
+  log.debug("image limit bounded request", fields);
+  if (record === undefined || record.replaced === cut.replaced) return;
+  log.info("image limit cut moved", { ...fields, previouslyReplaced: record.replaced });
+  record.replaced = cut.replaced;
 }
 
 /** Opens the audit context for one provider request. `attribution` and

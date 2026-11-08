@@ -3,7 +3,9 @@ import type { AccessProviderId } from "../../../infra/llm/access-provider.js";
 import { sessionMessageRecoveryNotice, type SessionInputProducer, type SessionMessageEnvelope } from "../../../infra/chat-input.js";
 import type { ModelFamily } from "../../../infra/llm/model-family.js";
 import type { PromptHistoryLowering } from "../../session/provider-request-audit-types.js";
+import { IMAGE_REMOVED, imagesReplaced } from "./image-limit.js";
 import { isSameProviderReplay, type LlmApi } from "./messages.js";
+import { maxImagesPerRequest } from "./model-compat.js";
 import type { ContentBlock, ConversationMessage, MessageFraming } from "./types.js";
 
 const CONTINUATION_INSTRUCTION = "Continue the original request from the retained assistant output without repeating completed work.";
@@ -134,13 +136,46 @@ export function deliberationReplays(history: readonly ConversationMessage[], tar
   return replays;
 }
 
+/** The position of each image, oldest first, in the user attachments and tool results that a request for `target`
+ *  reads of `history`. */
+function imagePositions(history: readonly ConversationMessage[], target: ProviderHistoryTarget): { at: number; block: number }[] {
+  return history.flatMap((message, at) => {
+    if ((message.kind !== "user" && message.kind !== "toolResult") || typeof message.content === "string" || !reads(message, target)) return [];
+    return message.content.flatMap((part, block) => part.type === "image" ? [{ at, block }] : []);
+  });
+}
+
+/** The images that a request for `target` replays of `history`, and how many of the oldest its model's image limit
+ *  replaces with `IMAGE_REMOVED` (`imagesReplaced`); undefined when the model has no limit. */
+export function imageLimitCut(history: readonly ConversationMessage[], target: ProviderHistoryTarget): { images: number; replaced: number; limit: number } | undefined {
+  const limit = maxImagesPerRequest(target.model);
+  if (limit === undefined) return undefined;
+  const images = imagePositions(history, target).length;
+  return { images, replaced: imagesReplaced(images, limit), limit };
+}
+
+/** The `image-limit` edits of a request for `target`, by message index. */
+function imageLimitEdits(history: readonly ConversationMessage[], target: ProviderHistoryTarget): Map<number, HistoryLoweringEdit[]> {
+  const edits = new Map<number, HistoryLoweringEdit[]>();
+  const limit = maxImagesPerRequest(target.model);
+  if (limit === undefined) return edits;
+  const images = imagePositions(history, target);
+  for (const { at, block } of images.slice(0, imagesReplaced(images.length, limit))) {
+    edits.set(at, [...edits.get(at) ?? [], { at, block, reason: "image-limit" }]);
+  }
+  return edits;
+}
+
 /** The edits that a request for `target` makes to `history`: it leaves out request framing that the target does not
- *  read, and withholds every deliberation block that it does not replay natively (`deliberationReplays`). A progress
- *  update, which the agent said to its person, goes as text instead. Edits come in history order. */
+ *  read, withholds every deliberation block that it does not replay natively (`deliberationReplays`), and replaces
+ *  the oldest images past the model's image limit (`imageLimitCut`). A progress update, which the agent said to its
+ *  person, goes as text instead. Edits come in history order. */
 export function planHistoryLowering(history: readonly ConversationMessage[], target: ProviderHistoryTarget): HistoryLoweringEdit[] {
   const replays = deliberationReplays(history, target);
+  const imageEdits = imageLimitEdits(history, target);
   return history.flatMap((message, at): HistoryLoweringEdit[] => {
     if (message.kind === "user" && !reads(message, target)) return [{ at, reason: message.framing === "claude" ? "claude-framing" : "agent-host-framing" }];
+    if (message.kind === "user" || message.kind === "toolResult") return imageEdits.get(at) ?? [];
     const replay = replays[at];
     if (message.kind !== "assistant" || typeof message.content === "string" || replay === "all") return [];
     return message.content.flatMap((part, block): HistoryLoweringEdit[] => {
@@ -150,6 +185,11 @@ export function planHistoryLowering(history: readonly ConversationMessage[], tar
       return part.type === "tool_use" && part.thoughtSignature !== undefined ? [{ at, block, reason: "foreign-thought-signature" }] : [];
     });
   });
+}
+
+/** `content` with each block that an `image-limit` edit of `edits` names replaced by `IMAGE_REMOVED`, in place. */
+function withImagesRemoved<Part>(content: readonly Part[], edits: readonly HistoryLoweringEdit[]): (Part | { type: "text"; text: string })[] {
+  return content.map((part, block) => edits.some((edit) => edit.block === block) ? { type: "text", text: IMAGE_REMOVED } : part);
 }
 
 /** Applies `edits` (`planHistoryLowering`) to the history that they were planned for. The live request and the
@@ -165,12 +205,16 @@ export function applyHistoryLowering<T extends readonly ConversationMessage[]>(h
     const message = history[edit.at];
     const fits = edit.block === undefined
       ? message?.kind === "user" && message.framing !== undefined && byMessage.get(edit.at)?.length === 1
-      : message?.kind === "assistant" && typeof message.content !== "string" && edit.block < message.content.length;
+      : edit.reason === "image-limit"
+        ? (message?.kind === "user" || message?.kind === "toolResult") && typeof message.content !== "string" && message.content[edit.block]?.type === "image"
+        : message?.kind === "assistant" && typeof message.content !== "string" && edit.block < message.content.length;
     if (!fits) throw misfit(edit);
   }
   return history.flatMap((message, at): ConversationMessage[] => {
     const own = byMessage.get(at);
     if (own === undefined) return [message];
+    if (message.kind === "toolResult") return [{ ...message, content: withImagesRemoved(message.content, own) }];
+    if (message.kind === "user" && typeof message.content !== "string" && own[0]?.block !== undefined) return [{ ...message, content: withImagesRemoved(message.content, own) }];
     if (message.kind !== "assistant" || typeof message.content === "string") return [];
     const content = message.content.flatMap((part, block): ContentBlock[] => {
       const edit = own.find((candidate) => candidate.block === block);
