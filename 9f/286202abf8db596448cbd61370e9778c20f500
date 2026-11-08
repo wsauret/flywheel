@@ -1,0 +1,28 @@
+tests/unit/webview/local-route.test.ts
+  h_4b47e9e4a8b456 60
+tests/unit/webview/local-tab.test.ts
+  h_4b47e9e4a8b456 3,39,42,46
+webview/editor/main.tsx
+  h_4b47e9e4a8b456 48
+webview/local/main.tsx
+  h_4b47e9e4a8b456 8,74,92-94
+webview/local/tab.ts
+  h_4b47e9e4a8b456 47-50
+webview/src/client/session-lanes.test.ts
+  h_4b47e9e4a8b456 14,195,199,203-204,209-212,217
+webview/src/host.ts
+  h_4b47e9e4a8b456 129-134
+webview/src/index.ts
+  h_4b47e9e4a8b456 32,42-49,51,53,56-60,67,143,177-180,251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9f286202abf8db596448cbd61370e9778c20f500",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
