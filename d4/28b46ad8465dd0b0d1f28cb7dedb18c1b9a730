@@ -1,0 +1,20 @@
+src/orchestration/modules/remote/account-relay-service.ts
+  h_4b47e9e4a8b456 166-168
+src/orchestration/modules/remote/keep-awake.ts
+  h_4b47e9e4a8b456 3,10-14,23-25,32-78,112-156,158-186
+tests/unit/orchestration/modules/remote/account-relay-service.test.ts
+  h_4b47e9e4a8b456 16,98,100,103-105,287-288,295
+tests/unit/orchestration/modules/remote/keep-awake.test.ts
+  h_4b47e9e4a8b456 6-8,10-14,17-18,20-23,25-27,29,32-33,37-57,60-61,94-110,112-117,119-182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d428b46ad8465dd0b0d1f28cb7dedb18c1b9a730",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
