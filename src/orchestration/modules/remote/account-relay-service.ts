@@ -8,7 +8,6 @@ import type { AccountService } from "../../app-service/account-service.js"
 import type { RelayChannelSocket } from "../../../protocol/modules/remote/relay-channel.js"
 import { decodeJsonFrame, DEFAULT_RELAY_URL, DEFAULT_REMOTE_APP_ORIGIN, fromBase64Url, type OpenFrame, type Placement } from "../../../protocol/modules/remote/relay-protocol.js"
 import { decodeRemoteAccountRequest, type RemoteAccountAnswer, type RemoteAccountRequest } from "../../../protocol/modules/remote/account-requests.js"
-import type { RemoteConnectionState } from "../../../protocol/modules/remote.js"
 import type { AccountModuleRequestServer } from "../../app-service/module-service-host.js"
 import { decodeProjectCreateRequest, machinePlacementId, type ProjectCreateRequest, type ProjectCreationAnswer } from "../../../protocol/modules/remote/project-creation.js"
 import { sealedSocket } from "../../../protocol/modules/remote/sealed-socket.js"
@@ -16,7 +15,7 @@ import { RUNTIME_PROTOCOL_VERSION } from "../../../protocol/runtime-liveness.js"
 import { bridgeExternalPromise } from "../../agent-runtime/external-promise-bridge.js"
 import { importLegacyRemotePlacements, mutateRemotePairingStore, onRemoteStoresWritten, readRemotePairingStore, type PairedDevice } from "./remote-pairing-store.js"
 import { createPairingWindow, exchangePairing, machineName, PAIRING_WINDOW_MS, type PairingWindow } from "./remote-pairing-exchange.js"
-import { createRelayControlChannel, type RelayControlChannel, type ServedClient } from "./relay-control-channel.js"
+import { createRelayControlChannel, linkConnection, linkFailure, type RelayControlChannel, type RelayLink, type ServedClient } from "./relay-control-channel.js"
 import { dialRelayDataChannel } from "./relay-data-channel.js"
 import { placementId } from "./remote-access.js"
 import { ensureRemoteIdentity, remoteIdentityFrom, type RemoteIdentity } from "./remote-identity.js"
@@ -134,8 +133,7 @@ export function createAccountRelayService(options: {
   let identity: RemoteIdentity | undefined
   let pairing: MachinePairing | undefined
   const windows = new Set<MachinePairing>()
-  let machineConnection: RemoteConnectionState = "off"
-  let machineError: string | null = null
+  let machineLink: RelayLink = { kind: "off" }
   let disposed = false
   const reconciliation = createBackgroundLane(log, "relay announcements")
   // A device whose client is older than the machine placement attaches to it
@@ -190,8 +188,9 @@ export function createAccountRelayService(options: {
         devices: () => devices,
         wanted: () => wanted() && dormant(record.projectRoot),
         connect,
-        onConnection: () => {},
-        onAttached: () => {},
+        // The channel records its own failures; a dormant announcement has
+        // no status to publish.
+        onLink: () => {},
         onOpen: async (frame, send) => {
           if (frame.kind !== "device") return
           if (pairedDevice(frame.deviceId) === undefined) {
@@ -215,9 +214,6 @@ export function createAccountRelayService(options: {
             }
           })())
         },
-        // The channel records its own failures; a dormant announcement has
-        // no status to publish.
-        onFailure: () => {},
       }),
     }
     return announcement
@@ -311,13 +307,11 @@ export function createAccountRelayService(options: {
     devices: () => devices,
     wanted: () => wanted() || (!disposed && windows.size > 0),
     connect,
-    onConnection: (state) => {
-      machineConnection = state
+    // The channel records its own failures; a pairing request shows them.
+    onLink: (link) => {
+      machineLink = link
+      if (link.kind === "attached" && pairing) link.send({ type: "pairing.open", windowId: pairing.window.windowId, expiresAt: pairing.window.expiresAt })
       tellRelay()
-    },
-    onAttached: (send) => {
-      machineError = null
-      if (pairing) send({ type: "pairing.open", windowId: pairing.window.windowId, expiresAt: pairing.window.expiresAt })
     },
     onOpen: async (frame) => {
       if (disposed) return
@@ -327,14 +321,10 @@ export function createAccountRelayService(options: {
         else Effect.runSync(Effect.forkIn(handlePairingOpen(current, frame), current.scope, { startImmediately: true }))
       } else if (frame.kind === "device") Effect.runSync(Effect.forkIn(handleMachineOpen(frame), channelWork, { startImmediately: true }))
     },
-    // The channel records its own failures; a pairing request shows them.
-    onFailure: (error) => {
-      machineError = error
-      tellRelay()
-    },
   })
 
-  const tellRelay = (): void => { for (const listener of pairing?.listeners ?? []) listener({ type: "relay", connection: machineConnection, lastError: machineError }) }
+  const relayAnswer = () => ({ type: "relay" as const, connection: linkConnection(machineLink), lastError: linkFailure(machineLink)?.error ?? null })
+  const tellRelay = (): void => { for (const listener of pairing?.listeners ?? []) listener(relayAnswer()) }
 
   /** Stops offering an open window: the relay withdraws it. The machine
    *  placement stays while the window lives, so a claimed window's exchange
@@ -433,7 +423,7 @@ export function createAccountRelayService(options: {
     let answers = answer({ type: "pairing", code: current.window.code, expiresAt: current.window.expiresAt })
     const tell = (update: RemoteAccountAnswer): void => { answers = answers.then(() => answer(update)) }
     current.listeners.add(tell)
-    tell({ type: "relay", connection: machineConnection, lastError: machineError })
+    tell(relayAnswer())
     const left = Promise.withResolvers<undefined>()
     const leave = (): void => left.resolve(undefined)
     withdrawn.addEventListener("abort", leave, { once: true })

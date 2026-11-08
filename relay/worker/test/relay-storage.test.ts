@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import { join } from "node:path"
 
-import { decodeRelayControlFrame, decodeRelayDeviceFrame, RELAY_MIN_STATED_HEARTBEAT_MS, RELAY_MISSED_HEARTBEATS } from "../../../src/protocol/modules/remote/relay-protocol.js"
+import { decodeRelayControlFrame, decodeRelayDeviceFrame, RELAY_MIN_STATED_HEARTBEAT_MS, RELAY_MISSED_HEARTBEATS, RELAY_PROTOCOL_VERSION, runtimeAttachSigningBytes } from "../../../src/protocol/modules/remote/relay-protocol.js"
 import type { Invocation } from "./counting-relay.js"
 import { startLocalRelay } from "./local-relay.js"
 import { attachRuntime, closedEvent, openChannel, pinging, relayIdentity, testRoute, textFrames } from "./relay-sockets.js"
@@ -155,6 +155,53 @@ test("a storage error in the cleanup of an earlier relay's rows leaves the machi
     expect(control.ws.readyState).toBe(WebSocket.OPEN)
     expect((await testRoute(relay, runtime, "invocations")).find(({ handler }) => handler === "message:attach")?.calls).toContain("list")
     control.ws.close(1000)
+  } finally {
+    await relay.miniflare.dispose()
+  }
+}, 30_000)
+
+test("a storage error while storing the allowlist closes the machine's control socket for a retry instead of refusing it", async () => {
+  // The fault is the relay's own condition. A refusal (`malformed`) would tell
+  // the machine to stop dialing; a close with no refusal is a drop it retries.
+  const relay = await startLocalRelay(COUNTING_RELAY)
+  const none = (frames: { next(): Promise<string> }) => Promise.race([frames.next(), Bun.sleep(500).then(() => "none")])
+  try {
+    const runtime = await relayIdentity()
+    const device = await relayIdentity()
+    const other = await relayIdentity()
+    const control = await attachRuntime(relay.url, runtime, device, "p".repeat(43))
+    await testRoute(relay, runtime, "fail", ["put"])
+    control.ws.send(JSON.stringify({ type: "devices", devices: [device.id, other.id] }))
+    expect(await none(control.frames)).toBe("none")
+    expect((await control.closed).code).toBe(1011)
+
+    // The first attach of another machine stores its allowlist under the same fault.
+    const fresh = await relayIdentity()
+    await testRoute(relay, fresh, "fail", ["put"])
+    const ws = new WebSocket(`${relay.url}/runtime/${fresh.id}`)
+    const frames = textFrames(ws)
+    const closed = closedEvent(ws)
+    const challenge = decodeRelayControlFrame(JSON.parse(await frames.next()))
+    if (challenge.type !== "challenge") throw new Error(`expected a challenge, got ${challenge.type}`)
+    const placement = { id: "p".repeat(43), projectLabel: "flywheel", version: "0.1.0", protocolVersion: 66, state: "live" }
+    const signature = await fresh.sign(runtimeAttachSigningBytes({ nonce: challenge.nonce, runtimeId: fresh.id, placementId: placement.id }))
+    ws.send(JSON.stringify({ type: "attach", relayProtocolVersion: RELAY_PROTOCOL_VERSION, runtimeId: fresh.id, publicKey: fresh.publicKey, placement, devices: [device.id], signature }))
+    expect(await none(frames)).toBe("none")
+    expect((await closed).code).toBe(1011)
+  } finally {
+    await relay.miniflare.dispose()
+  }
+}, 30_000)
+
+test("a frame from an admitted machine that does not decode is still refused as malformed", async () => {
+  const relay = await startLocalRelay(COUNTING_RELAY)
+  try {
+    const runtime = await relayIdentity()
+    const device = await relayIdentity()
+    const control = await attachRuntime(relay.url, runtime, device, "p".repeat(43))
+    control.ws.send(JSON.stringify({ type: "devices", devices: "not a list" }))
+    expect(JSON.parse(await control.frames.next())).toEqual({ type: "rejected", reason: "malformed" })
+    expect((await control.closed).code).toBe(1008)
   } finally {
     await relay.miniflare.dispose()
   }

@@ -110,7 +110,127 @@ class RelayRefusedError extends Error {
  *  window, a store change). The owner asking again ends any wait early. */
 type ControlFailureOutcome = "retry" | "mismatched" | "parked"
 
-type ControlSend = (frame: RuntimeControlFrame) => void
+/** Hands a frame to the attached socket. False once that socket can no
+ *  longer send. */
+type ControlSend = (frame: RuntimeControlFrame) => boolean
+
+/** A control session that failed, and what the channel does next. */
+export interface ControlFailure {
+  readonly error: string
+  readonly outcome: ControlFailureOutcome
+}
+
+/** The channel's link to the relay, which this channel alone advances and
+ *  publishes whole to its owner on every change. `off` while nothing wants a
+ *  connection. `dialing` while a session is dialed or waits out its backoff,
+ *  carrying the last failure since the relay last admitted the placement.
+ *  `attached` while the relay admits it. `parked` after a refusal that only
+ *  the owner, or minutes on a protocol mismatch, can change. Entering `off`
+ *  or `attached` drops the failure, so no reader can pair either with a
+ *  stale error. */
+export type RelayLink =
+  | { readonly kind: "off" }
+  | { readonly kind: "dialing"; readonly again: boolean; readonly failure: ControlFailure | undefined }
+  | { readonly kind: "attached"; readonly send: ControlSend }
+  | { readonly kind: "parked"; readonly failure: ControlFailure & { readonly outcome: "parked" | "mismatched" } }
+
+type LinkEvent =
+  /** A session is dialed: the first of a loop, or `again` after one ended. */
+  | { readonly type: "dial"; readonly again: boolean }
+  | { readonly type: "admitted"; readonly send: ControlSend }
+  /** A session ended while a connection is still wanted, with its failure when it failed. */
+  | { readonly type: "ended"; readonly failure: ControlFailure | undefined }
+  /** Nothing wants a connection any more. */
+  | { readonly type: "stopped" }
+
+const OFF: RelayLink = { kind: "off" }
+
+/** The one transition function of the link. Returns `link` itself when the
+ *  event changes nothing, so the owner hears only changes. */
+function advanceLink(link: RelayLink, event: LinkEvent): RelayLink {
+  switch (event.type) {
+    case "dial":
+      return link.kind === "dialing" && link.again === event.again ? link : { kind: "dialing", again: event.again, failure: linkFailure(link) }
+    case "admitted":
+      return { kind: "attached", send: event.send }
+    case "ended": {
+      const failure = event.failure
+      if (failure !== undefined && failure.outcome !== "retry") return { kind: "parked", failure: { error: failure.error, outcome: failure.outcome } }
+      return { kind: "dialing", again: true, failure: failure ?? linkFailure(link) }
+    }
+    case "stopped":
+      return link.kind === "off" ? link : OFF
+  }
+}
+
+/** The connection state a person reads for `link`. */
+export function linkConnection(link: RelayLink): RemoteConnectionState {
+  switch (link.kind) {
+    case "off":
+    case "parked":
+      return "off"
+    case "attached":
+      return "connected"
+    case "dialing":
+      return link.again ? "reconnecting" : "connecting"
+  }
+}
+
+/** What keeps `link` from attaching, when anything does. */
+export function linkFailure(link: RelayLink): ControlFailure | undefined {
+  return link.kind === "dialing" || link.kind === "parked" ? link.failure : undefined
+}
+
+/** One control session's handshake, which ends the session's result. A
+ *  `rejected` frame refuses only a socket the relay has not admitted; after
+ *  admission the close that follows it is an ordinary drop. */
+type Handshake =
+  | { readonly kind: "dialing" }
+  | { readonly kind: "opened" }
+  | { readonly kind: "admitted" }
+  | { readonly kind: "refused"; readonly reason: RelayRejectReason }
+
+/** What the socket of one control session says about its handshake. */
+type HandshakeEvent =
+  | { readonly type: "open" }
+  | { readonly type: "attached" }
+  | { readonly type: "rejected"; readonly reason: RelayRejectReason }
+
+/** The one transition function of the handshake. Every other pair leaves
+ *  `handshake` as it is; the one that matters is a `rejected` after
+ *  admission, which is not a refusal. */
+function advanceHandshake(handshake: Handshake, event: HandshakeEvent): Handshake {
+  switch (event.type) {
+    case "open":
+      return handshake.kind === "dialing" ? { kind: "opened" } : handshake
+    case "attached":
+      return handshake.kind === "opened" ? { kind: "admitted" } : handshake
+    case "rejected":
+      return handshake.kind === "opened" ? { kind: "refused", reason: event.reason } : handshake
+  }
+}
+
+/** How a session whose socket errored in `handshake` resolves. Only a socket
+ *  that never opened fails here; after the open, the close that follows
+ *  decides. */
+function erroredSession(handshake: Handshake): Effect.Effect<boolean, Error> | undefined {
+  return handshake.kind === "dialing" ? Effect.fail(new Error("relay connection failed")) : undefined
+}
+
+/** How a session whose socket closed in `handshake` resolves: whether the
+ *  relay admitted it, or why it failed. */
+function closedSession(handshake: Handshake): Effect.Effect<boolean, Error> {
+  switch (handshake.kind) {
+    case "dialing":
+      return Effect.fail(new Error("relay closed the connection before it opened"))
+    case "opened":
+      return Effect.succeed(false)
+    case "admitted":
+      return Effect.succeed(true)
+    case "refused":
+      return Effect.fail(new RelayRefusedError(handshake.reason))
+  }
+}
 
 /** The web client this process serves: the identity its build wrote and the
  *  build directory whose `phone/` holds what a phone loads. */
@@ -151,15 +271,11 @@ export interface RelayControlChannelOptions {
   readonly heartbeat?: HeartbeatTiming
   readonly random?: () => number
   readonly now?: () => number
-  readonly onConnection: (state: RemoteConnectionState) => void
-  /** The relay admitted the placement; `send` reaches it until the socket closes. */
-  readonly onAttached?: (send: ControlSend) => void
+  /** The link changed. Called with every change and never with an equal value. */
+  readonly onLink: (link: RelayLink) => void
   /** Transfers data-channel work to the placement owner before resolving.
    *  Established channels outlive this control connection and must not be awaited here. */
   readonly onOpen: (frame: OpenFrame, send: ControlSend) => Promise<void>
-  /** A control session ended with an error, and this is what the channel does
-   *  next. */
-  readonly onFailure: (error: string, outcome: ControlFailureOutcome) => void
 }
 
 export interface RelayControlChannel {
@@ -196,7 +312,7 @@ export function createRelayControlChannel(options: RelayControlChannelOptions): 
   const endedChannels = new Map<string, number>()
   // How many dials of each channel id have an open socket.
   const openDials = new Map<string, number>()
-  let control: ControlSend | undefined
+  let link: RelayLink = OFF
   let loop: { stop: (code: number, reason: string) => void; done: Promise<void> } | undefined
   let wake: (() => void) | undefined
   let disposed = false
@@ -213,6 +329,13 @@ export function createRelayControlChannel(options: RelayControlChannelOptions): 
 
   const wanted = () => !disposed && options.wanted()
 
+  function advance(event: LinkEvent): void {
+    const next = advanceLink(link, event)
+    if (next === link) return
+    link = next
+    options.onLink(next)
+  }
+
   // The first interruption of an episode records in full; later ones count by
   // cause and report once per window, with whether the channel is attached.
   const interruptions = coalesceRepeats<ChannelInterruption>({
@@ -223,7 +346,7 @@ export function createRelayControlChannel(options: RelayControlChannelOptions): 
     repeated: (_condition, repeats) => {
       const byCause: { [cause: string]: number } = {}
       for (const interruption of repeats.events) byCause[interruption.cause] = (byCause[interruption.cause] ?? 0) + 1
-      log.warn("relay control channel ended again", { placement: placementId, count: repeats.count, windowMs: repeats.windowMs, byCause, attached: control !== undefined })
+      log.warn("relay control channel ended again", { placement: placementId, count: repeats.count, windowMs: repeats.windowMs, byCause, attached: link.kind === "attached" })
     },
   })
 
@@ -272,13 +395,14 @@ export function createRelayControlChannel(options: RelayControlChannelOptions): 
     loop = {
       stop(code, reason) {
         close = { code, reason }
-        control = undefined
+        // The socket can no longer send from here; a relay change redials.
+        advance(wanted() ? { type: "dial", again: false } : { type: "stopped" })
         owner.abort()
       },
       done: Effect.runPromiseExit(runLoop(owner.signal, () => close), { signal: owner.signal }).then(() => {
         loop = undefined
         if (wanted()) ensureLoop()
-        else options.onConnection("off")
+        else advance({ type: "stopped" })
       }),
     }
   }
@@ -287,7 +411,7 @@ export function createRelayControlChannel(options: RelayControlChannelOptions): 
     return Effect.gen(function*() {
       let attempt = 0
       while (wanted()) {
-        options.onConnection(attempt === 0 ? "connecting" : "reconnecting")
+        advance({ type: "dial", again: attempt !== 0 })
         let outcome: ControlFailureOutcome = "retry"
         // Cleared here, not when a session ends: a relay change interrupts the
         // loop before that, and this attempt must not report its admission.
@@ -296,16 +420,18 @@ export function createRelayControlChannel(options: RelayControlChannelOptions): 
         const result = yield* Effect.result(runSession(signal, close))
         const attachedMs = attachedAt === undefined ? undefined : Date.now() - attachedAt
         let cause = lastClose ?? "the relay closed the connection"
+        let failure: ControlFailure | undefined
         if (Result.isFailure(result)) {
           const error = result.failure
           if (error instanceof RelayRefusedError && error.reason === "protocol_version") outcome = "mismatched"
           else if (error instanceof RelayRefusedError && PARKING_REJECTIONS.has(error.reason)) outcome = "parked"
           cause = errorMessage(error)
-          options.onFailure(cause, outcome)
+          failure = { error: cause, outcome }
         } else if (result.success) {
           attempt = 0
         }
         if (!wanted()) return
+        advance({ type: "ended", failure })
         const nextDialMs = outcome === "retry"
           ? reconnectBackoffMs(attempt, random)
           : outcome === "mismatched" ? MISMATCH_RETRY_MS * (0.5 + random() * 0.5) : undefined
@@ -316,12 +442,10 @@ export function createRelayControlChannel(options: RelayControlChannelOptions): 
         })
         if (outcome !== "retry") {
           // A new pairing window or store change is the owner asking again.
-          options.onConnection("off")
           yield* park(nextDialMs)
           attempt = 0
           continue
         }
-        options.onConnection("reconnecting")
         yield* park(nextDialMs)
         attempt = Math.min(attempt + 1, MAX_RECONNECT_ATTEMPT)
       }
@@ -351,9 +475,7 @@ export function createRelayControlChannel(options: RelayControlChannelOptions): 
       const scope = yield* Effect.scope
       const ended = yield* Deferred.make<boolean, Error>()
       let live = true
-      let opened = false
-      let admitted = false
-      let refused: RelayRejectReason | undefined
+      let handshake: Handshake = { kind: "dialing" }
       let stopHeartbeat: (() => void) | undefined
       // What this socket was handed, which tells the heartbeat a socket busy
       // sending a client file from a silent one.
@@ -362,26 +484,26 @@ export function createRelayControlChannel(options: RelayControlChannelOptions): 
         live = false
         Deferred.doneUnsafe(ended, result)
       }
-      const transmit = (data: string | Uint8Array<ArrayBuffer>): void => {
-        if (!live || signal.aborted) return
+      const transmit = (data: string | Uint8Array<ArrayBuffer>): boolean => {
+        if (!live || signal.aborted) return false
         ws.send(data)
         handedBytes += typeof data === "string" ? data.length : data.byteLength
+        return true
       }
       const sendHere: ControlSend = (frame) => transmit(JSON.stringify(frame))
-      const sendChunk = (bytes: Uint8Array<ArrayBuffer>): void => transmit(bytes)
+      const sendChunk = (bytes: Uint8Array<ArrayBuffer>): void => { transmit(bytes) }
       const onClose = (event?: CloseEvent) => {
         if (event !== undefined) lastClose ??= `${event.code}${event.reason === "" ? "" : ` ${event.reason}`}`
-        finish(!opened
-          ? Effect.fail(new Error("relay closed the connection before it opened"))
-          : refused === undefined ? Effect.succeed(admitted) : Effect.fail(new RelayRefusedError(refused)))
+        finish(closedSession(handshake))
       }
       const onError = () => {
-        if (!opened) finish(Effect.fail(new Error("relay connection failed")))
+        const result = erroredSession(handshake)
+        if (result !== undefined) finish(result)
       }
       const onOpen = () => {
         if (!live || signal.aborted) return
         clearTimeout(openTimer)
-        opened = true
+        handshake = advanceHandshake(handshake, { type: "open" })
         stopHeartbeat = heartbeat(ws, () => {
           lastClose = `${HEARTBEAT_CLOSE_CODE} ${HEARTBEAT_CLOSE_REASON}`
           ws.close(HEARTBEAT_CLOSE_CODE, HEARTBEAT_CLOSE_REASON)
@@ -407,11 +529,10 @@ export function createRelayControlChannel(options: RelayControlChannelOptions): 
               })
               return
             }
-            case "attached":
+            case "attached": {
+              handshake = advanceHandshake(handshake, { type: "attached" })
               yield* Effect.try({
                 try: () => {
-                  admitted = true
-                  control = sendHere
                   attachedAt = Date.now()
                   pruneEndedChannels()
                   for (const channelId of endedChannels.keys()) sendHere({ type: "channel.ended", channelId })
@@ -422,16 +543,14 @@ export function createRelayControlChannel(options: RelayControlChannelOptions): 
                   if (attachedBefore) log.debug("relay control channel attached", attached)
                   else log.info("relay control channel attached", attached)
                   attachedBefore = true
-                  // The owner clears what the last failure left before the
-                  // connected state publishes, so no view pairs the two.
-                  options.onAttached?.(sendHere)
-                  options.onConnection("connected")
+                  advance({ type: "admitted", send: sendHere })
                 },
                 catch: (error) => error,
               })
               return
+            }
             case "rejected":
-              refused = frame.reason
+              handshake = advanceHandshake(handshake, { type: "rejected", reason: frame.reason })
               return
             case "open":
               yield* Effect.tryPromise({ try: () => options.onOpen(frame, sendHere), catch: (error) => error })
@@ -459,7 +578,6 @@ export function createRelayControlChannel(options: RelayControlChannelOptions): 
         ws.removeEventListener("error", onError)
         ws.removeEventListener("close", onClose)
         ws.removeEventListener("message", onMessage)
-        control = undefined
       }))
       ws.addEventListener("open", onOpen, { once: true })
       ws.addEventListener("error", onError)
@@ -471,9 +589,7 @@ export function createRelayControlChannel(options: RelayControlChannelOptions): 
 
   return {
     send(frame) {
-      if (control === undefined) return false
-      control(frame)
-      return true
+      return link.kind === "attached" && link.send(frame)
     },
     channelOpened(channelId) {
       openDials.set(channelId, (openDials.get(channelId) ?? 0) + 1)
@@ -485,12 +601,12 @@ export function createRelayControlChannel(options: RelayControlChannelOptions): 
         if (!abrupt || stillOpen > 0 || disposed) return
         pruneEndedChannels()
         endedChannels.set(channelId, now())
-        control?.({ type: "channel.ended", channelId })
-        log.info("relay data channel end reported", { placement: placementId, channel: channelId, sent: control !== undefined })
+        const sent = link.kind === "attached" && link.send({ type: "channel.ended", channelId })
+        log.info("relay data channel end reported", { placement: placementId, channel: channelId, sent })
       }
     },
     connected() {
-      return control !== undefined
+      return link.kind === "attached"
     },
     reconcile(closeReason) {
       if (!wanted()) {

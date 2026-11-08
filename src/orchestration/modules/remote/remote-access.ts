@@ -17,14 +17,14 @@ import {
   type OpenFrame,
   type Placement,
 } from "../../../protocol/modules/remote/relay-protocol.js"
-import { remoteCursor, remoteProtocol, type RemoteConnectionState, type RemotePairingWindowView, type RemotePushSubscription, type RuntimeRemoteView } from "../../../protocol/modules/remote.js"
+import { remoteCursor, remoteProtocol, type RemotePairingWindowView, type RemotePushSubscription, type RuntimeRemoteView } from "../../../protocol/modules/remote.js"
 import { RUNTIME_PROTOCOL_VERSION } from "../../../protocol/runtime-liveness.js"
 import type { RuntimeUiPatchInput } from "../../../protocol/runtime-ui-protocol-types.js"
 import type { NotificationEpisodeInput } from "../../../infra/notification-episode.js"
 import type { AccountProjectRegistry } from "../../app-service/account-project-registry.js"
 import { createMutationAdmission } from "../../app-service/mutation-admission.js"
 import { bridgeExternalPromise } from "../../agent-runtime/external-promise-bridge.js"
-import { createRelayControlChannel, type ServedClient } from "./relay-control-channel.js"
+import { createRelayControlChannel, linkConnection, linkFailure, type ControlFailure, type RelayLink, type ServedClient } from "./relay-control-channel.js"
 import { dialRelayDataChannel } from "./relay-data-channel.js"
 import type { AccountServiceInstallation } from "../../app-service/account-service-installation.js"
 import type { AccountModuleFaults } from "../../app-service/module-service-host.js"
@@ -162,9 +162,9 @@ export function createRemoteAccess(options: RemoteAccessOptions): RemoteAccess {
   let probes = 0
   let vapid: StoredKeyPair | undefined
   let identity: RemoteIdentity | undefined
-  let connection: RemoteConnectionState = "off"
-  // The title of the relay alert raised since the channel last attached, so a
-  // refusal repeated on every dial stays one alert.
+  let link: RelayLink = { kind: "off" }
+  // The title of the relay alert raised since the link was last attached or
+  // off, so a refusal repeated on every dial stays one alert.
   let alerted: string | undefined
   let pairing: OpenPairingWindow | undefined
   let disposed = false
@@ -193,13 +193,13 @@ export function createRemoteAccess(options: RemoteAccessOptions): RemoteAccess {
   function problem(): string | null {
     const cause = options.accountModuleFaults?.fault(remoteProtocol.id)
     const accountFault = cause === undefined ? undefined : `A phone cannot open an asleep project: ${cause}`
-    return [accountFault, lastError].filter((part) => part != null).join("; ") || null
+    return [accountFault, lastError, linkFailure(link)?.error].filter((part) => part != null).join("; ") || null
   }
 
   function view(): RuntimeRemoteView {
     return {
       relayUrl,
-      connection,
+      connection: linkConnection(link),
       devices: devices.map((device) => ({ id: device.id, label: device.label, pairedAt: device.pairedAt, notifies: subscriptions.has(device.id), attached: [...channels].some((channel) => channel.deviceId === device.id) })),
       attachedClients: channels.size,
       pairing: pairing ? { windowId: pairing.windowId, code: pairing.code, expiresAt: pairing.expiresAt } : null,
@@ -218,10 +218,27 @@ export function createRemoteAccess(options: RemoteAccessOptions): RemoteAccess {
     for (const listener of listeners) listener(current)
   }
 
-  function setConnection(next: RemoteConnectionState): void {
-    if (connection === next) return
-    connection = next
-    publish()
+  /** A refusal raises one alert, which resolves once the link attaches or
+   *  nothing wants a connection; a retry raises none. A mismatched channel
+   *  is not an unreachable relay: the relay answered, and a relay deploy or
+   *  a newer build heals it. */
+  function followRelayAlert(next: RelayLink): void {
+    if (next.kind === "attached" || next.kind === "off") {
+      alerted = undefined
+      options.notify?.({ type: "resolve", sourceId: RELAY_NOTIFICATION_SOURCE })
+      return
+    }
+    if (next.kind !== "parked") return
+    const occurrence = relayAlert(next.failure)
+    if (alerted === occurrence.title) return
+    alerted = occurrence.title
+    options.notify?.({ type: "raise", occurrence: { sourceId: RELAY_NOTIFICATION_SOURCE, ...occurrence, severity: "alert", action: { kind: "open-settings" } } })
+  }
+
+  function relayAlert(failure: ControlFailure): { readonly title: string; readonly message: string } {
+    return failure.outcome === "mismatched"
+      ? { title: "Remote relay speaks a different protocol version", message: `${relayUrl} turned this Flywheel away: ${failure.error}.` }
+      : { title: "Remote relay unreachable", message: `Flywheel could not stay attached to ${relayUrl}: ${failure.error}` }
   }
 
   function wantsConnection(): boolean {
@@ -238,34 +255,20 @@ export function createRemoteAccess(options: RemoteAccessOptions): RemoteAccess {
     connect,
     ...(options.heartbeat === undefined ? {} : { heartbeat: options.heartbeat }),
     random,
-    onConnection: setConnection,
-    onAttached: (send) => {
+    onLink: (next) => {
       if (disposed) return
-      lastError = null
-      alerted = undefined
-      options.notify?.({ type: "resolve", sourceId: RELAY_NOTIFICATION_SOURCE })
-      if (pairing) send({ type: "pairing.open", windowId: pairing.windowId, expiresAt: pairing.expiresAt })
-      void run(recordProject)
+      link = next
+      followRelayAlert(next)
+      if (next.kind === "attached") {
+        lastError = null
+        if (pairing) next.send({ type: "pairing.open", windowId: pairing.windowId, expiresAt: pairing.expiresAt })
+        void run(recordProject)
+      }
+      publish()
     },
     onOpen: async (frame) => {
       if (disposed) return
       Effect.runSync(Effect.forkIn(handleOpen(frame), dataWork, { startImmediately: true }))
-    },
-    // The channel records the failure; this owner publishes it.
-    onFailure: (error, outcome) => {
-      lastError = error
-      if (outcome !== "retry") {
-        // A mismatched channel is not an unreachable relay: the relay
-        // answered, and a relay deploy or a newer build heals it.
-        const occurrence = outcome === "mismatched"
-          ? { title: "Remote relay speaks a different protocol version", message: `${relayUrl} turned this Flywheel away: ${error}.` }
-          : { title: "Remote relay unreachable", message: `Flywheel could not stay attached to ${relayUrl}: ${error}` }
-        if (alerted !== occurrence.title) {
-          alerted = occurrence.title
-          options.notify?.({ type: "raise", occurrence: { sourceId: RELAY_NOTIFICATION_SOURCE, ...occurrence, severity: "alert", action: { kind: "open-settings" } } })
-        }
-      }
-      publish()
     },
   })
 
@@ -508,7 +511,17 @@ export function createRemoteAccess(options: RemoteAccessOptions): RemoteAccess {
     } finally {
       ws.close(1000)
       publish()
+      // A claimed window kept the link through its exchange; an exchange that
+      // failed after the claim leaves nothing else to want it.
+      channel.reconcile("no paired devices")
     }
+  }
+
+  /** Ends an open window that no phone claimed, and with it the link when
+   *  nothing else wants one. */
+  function endPairingWindow(window: OpenPairingWindow): void {
+    closePairingWindow(window)
+    channel.reconcile("no paired devices")
   }
 
   function closePairingWindow(window: OpenPairingWindow): void {
@@ -529,7 +542,7 @@ export function createRemoteAccess(options: RemoteAccessOptions): RemoteAccess {
       if (pairing) return { windowId: pairing.windowId, code: pairing.code, expiresAt: pairing.expiresAt }
       const created = createPairingWindow({ appOrigin, relayUrl, identity: runtimeIdentity, label: placement.projectLabel, expiresAt: now() + (options.pairingWindowMs ?? PAIRING_WINDOW_MS) })
       const { windowId, code, expiresAt } = created
-      const window: OpenPairingWindow = { ...created, timer: setTimeout(() => closePairingWindow(window), expiresAt - now()) }
+      const window: OpenPairingWindow = { ...created, timer: setTimeout(() => endPairingWindow(window), expiresAt - now()) }
       window.timer.unref?.()
       pairing = window
       channel.send({ type: "pairing.open", windowId, expiresAt })
@@ -538,7 +551,7 @@ export function createRemoteAccess(options: RemoteAccessOptions): RemoteAccess {
       return { windowId, code, expiresAt }
     }),
     cancelPairing: () => run(async () => {
-      if (pairing) closePairingWindow(pairing)
+      if (pairing) endPairingWindow(pairing)
     }),
     revokeDevice: (deviceId) => run(async () => {
       await loadStore()

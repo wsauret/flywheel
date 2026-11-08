@@ -130,6 +130,18 @@ describe("remote access against a relay", () => {
     expect(stub.runtimes.size).toBe(0)
   })
 
+  test("a pairing window that ends with no paired device ends the relay connection", async () => {
+    // An identity that already exists, so no store reload follows the open
+    // and stands in for the window's own end.
+    await ensureRemoteIdentity(userDataRoot, "installed")
+    const remote = createRemote()
+    await remote.openPairing()
+    await viewWhere(remote, (view) => view.connection === "connected")
+    await remote.cancelPairing()
+    await viewWhere(remote, (view) => view.connection === "off", 1_000)
+    await waitFor(() => stub.runtimes.size === 0)
+  })
+
   test("a source run pairs as a second machine: its label says so and its store is its own", async () => {
     const remote = createRemote({ lane: "dev" })
     const { result } = await pairDevice(remote)
@@ -575,15 +587,17 @@ describe("remote access against a relay", () => {
   })
 
   test("a protocol version refusal keeps asking under one alert and clears it once the relay admits the machine", async () => {
+    await mutateRemotePairingStore(userDataRoot, "installed", (store) => {
+      store.devices = [{ id: "d".repeat(43), label: "Phone", publicKey: "AAAA", pairedAt: 1 }]
+    })
     stub.refuseRuntime = "protocol_version"
     const remote = createRemote()
-    await remote.openPairing()
     await viewWhere(remote, (view) => view.lastError !== null && view.connection === "off")
     expect(remote.view().lastError).toContain("update Flywheel with `flywheel update`")
-    // The owner asking again wakes the long wait early; the relay still
-    // refuses, and the alert already raised is not raised again.
-    await remote.cancelPairing()
-    await remote.openPairing()
+    // A store write is the owner asking again while the device still wants
+    // the link: it wakes the long wait early, the relay still refuses, and
+    // the alert already raised is not raised again.
+    await mutateRemotePairingStore(userDataRoot, "installed", () => {})
     await waitFor(() => stub.attachAttempts === 2)
     await viewWhere(remote, (view) => view.connection === "off")
     const raised = notifications.filter((operation) => operation.type === "raise")
@@ -591,8 +605,7 @@ describe("remote access against a relay", () => {
     expect(raised[0]?.type === "raise" ? raised[0].occurrence.title : undefined).toBe("Remote relay speaks a different protocol version")
     // The relay is deployed at a version that admits this build.
     stub.refuseRuntime = undefined
-    await remote.cancelPairing()
-    await remote.openPairing()
+    await mutateRemotePairingStore(userDataRoot, "installed", () => {})
     const view = await viewWhere(remote, (current) => current.connection === "connected")
     expect(view.lastError).toBeNull()
     expect(stub.attachAttempts).toBe(3)
@@ -606,11 +619,33 @@ describe("remote access against a relay", () => {
     await remote.openPairing()
     await viewWhere(remote, (view) => view.lastError !== null && view.connection === "off")
     expect(stub.attachAttempts).toBe(1)
+    // Cancelling and reopening against a relay that still refuses is a new
+    // episode: the alert resolves with the link and is raised again.
+    await remote.cancelPairing()
+    await remote.openPairing()
+    await waitFor(() => stub.attachAttempts === 2)
+    await viewWhere(remote, (view) => view.lastError !== null && view.connection === "off")
+    const relay = notifications.filter((operation) => operation.type === "resolve" ? operation.sourceId === "remote.relay" : operation.type === "raise" && operation.occurrence.sourceId === "remote.relay")
+    const title = (operation: NotificationEpisodeInput | undefined) => operation?.type === "raise" ? operation.occurrence.title : undefined
+    expect(relay.map((operation) => operation.type)).toEqual(["raise", "resolve", "raise"])
+    expect(title(relay[2])).toBe(title(relay[0]))
     stub.refuseRuntime = undefined
     await remote.cancelPairing()
     await remote.openPairing()
     await viewWhere(remote, (view) => view.connection === "connected")
-    expect(stub.attachAttempts).toBe(2)
+    expect(stub.attachAttempts).toBe(3)
+  })
+
+  test("a refusal's error and alert end once nothing wants the link", async () => {
+    await mutateRemotePairingStore(userDataRoot, "installed", (store) => {
+      store.devices = [{ id: "d".repeat(43), label: "Phone", publicKey: "AAAA", pairedAt: 1 }]
+    })
+    stub.refuseRuntime = "bad_signature"
+    const remote = createRemote()
+    await viewWhere(remote, (view) => view.lastError !== null && view.connection === "off")
+    await remote.revokeDevice("d".repeat(43))
+    await viewWhere(remote, (view) => view.devices.length === 0 && view.lastError === null, 1_000)
+    expect(notifications.at(-1)).toEqual({ type: "resolve", sourceId: "remote.relay" })
   })
 
 })

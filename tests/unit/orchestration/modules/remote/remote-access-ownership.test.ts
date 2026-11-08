@@ -225,7 +225,7 @@ describe("remote data ownership", () => {
   test("joins deferred identity and rejects its late data-channel continuation", async () => {
     const pending = Promise.withResolvers<identities.RemoteIdentity>()
     const f = await fixture(() => pending.promise)
-    const opened = f.options.onOpen(frame, () => {})
+    const opened = f.options.onOpen(frame, () => true)
     await turn()
     let settled = false
     const closing = f.remote.dispose().then(() => { settled = true })
@@ -236,7 +236,7 @@ describe("remote data ownership", () => {
     for (const ws of f.sockets) { ws.open(); ws.peerClose() }
     await Promise.all([opened, closing])
     const count = f.publications.length
-    const lateOpen = f.options.onOpen(frame, () => {})
+    const lateOpen = f.options.onOpen(frame, () => true)
     await turn()
     for (const ws of f.sockets) { ws.open(); ws.peerClose() }
     await lateOpen

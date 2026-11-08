@@ -1,66 +1,9 @@
-import { afterAll, beforeAll, describe, expect, jest, spyOn, test } from "bun:test"
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
-import { tmpdir } from "node:os"
-import { join } from "node:path"
-import { createRelayControlChannel, type RelayControlChannelOptions } from "../../../../../src/orchestration/modules/remote/relay-control-channel.js"
+import { describe, expect, jest, spyOn, test } from "bun:test"
 import type { RemoteIdentity } from "../../../../../src/orchestration/modules/remote/remote-identity.js"
-import { ASSET_CHUNK_BYTES, decodeAssetChunk, newAssetRequestId, RELAY_PING, RELAY_PROTOCOL_VERSION, runtimeAttachSigningBytes, toBase64Url } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
+import { RELAY_PING, RELAY_PROTOCOL_VERSION, runtimeAttachSigningBytes, toBase64Url } from "../../../../../src/protocol/modules/remote/relay-protocol.js"
+import { ControlSocket, fixture, identity, turn } from "./_relay-control-fixtures.js"
 import { manualHeartbeatClock } from "../../../../helpers/heartbeat-clock.js"
 import { Log } from "../../../../../src/infra/log.js"
-
-class ControlSocket extends EventTarget {
-  readyState: WebSocket["readyState"] = WebSocket.CONNECTING
-  bufferedAmount = 0
-  /** Every text frame but the heartbeat's pings, which go to `pings`. */
-  readonly sent: string[] = []
-  readonly pings: string[] = []
-  readonly binary: Uint8Array[] = []
-  readonly closes: { code: number | undefined; reason: string | undefined }[] = []
-  send(data: Parameters<WebSocket["send"]>[0]): void {
-    if (data === RELAY_PING) this.pings.push(data)
-    else if (typeof data === "string") this.sent.push(data)
-    else if (ArrayBuffer.isView(data)) this.binary.push(new Uint8Array(data.buffer, data.byteOffset, data.byteLength))
-  }
-  close(code?: number, reason?: string): void {
-    this.closes.push({ code, reason })
-    this.readyState = WebSocket.CLOSING
-  }
-  open(): void {
-    this.readyState = WebSocket.OPEN
-    this.dispatchEvent(new Event("open"))
-  }
-  message(frame: unknown): void { this.dispatchEvent(new MessageEvent("message", { data: JSON.stringify(frame) })) }
-  peerClose(): void {
-    this.readyState = WebSocket.CLOSED
-    this.dispatchEvent(new Event("close"))
-  }
-}
-
-const identity: RemoteIdentity = { runtimeId: "runtime", publicKey: new Uint8Array(32), sign: async () => new Uint8Array(64) }
-const turn = () => new Promise<void>((resolve) => setTimeout(resolve, 0))
-
-function fixture(overrides: Partial<RelayControlChannelOptions> = {}) {
-  const sockets: ControlSocket[] = []
-  const states: string[] = []
-  const failures: { error: string; outcome: string }[] = []
-  const options: RelayControlChannelOptions = {
-    relayUrl: () => "wss://relay.invalid",
-    identity: async () => identity,
-    placement: () => ({ id: "placement", projectLabel: "Project", version: "test", protocolVersion: 2, state: "live" }),
-    devices: () => ["device"],
-    wanted: () => true,
-    connect: () => {
-      const ws = new ControlSocket()
-      sockets.push(ws)
-      return ws
-    },
-    onConnection: (state) => { states.push(state) },
-    onOpen: async () => {},
-    onFailure: (error, outcome) => { failures.push({ error, outcome }) },
-    ...overrides,
-  }
-  return { channel: createRelayControlChannel(options), sockets, states, failures, options }
-}
 
 describe("relay control ownership", () => {
   test("disposal joins deferred identity without dialing after it resolves", async () => {
@@ -140,8 +83,7 @@ describe("relay control ownership", () => {
 
   test("stopping an attached channel joins signing and invalidates retained sends", async () => {
     const signature = Promise.withResolvers<Uint8Array>()
-    let send: ((frame: { type: "devices"; devices: string[] }) => void) | undefined
-    const f = fixture({ identity: async () => ({ ...identity, sign: () => signature.promise }), onAttached: (attachedSend) => { send = attachedSend } })
+    const f = fixture({ identity: async () => ({ ...identity, sign: () => signature.promise }) })
     f.channel.reconcile("start")
     await turn()
     const ws = f.sockets[0]!
@@ -155,13 +97,16 @@ describe("relay control ownership", () => {
     await turn()
     const disposedBeforeSignature = disposed
     signature.resolve(new Uint8Array(64))
-    send?.({ type: "devices", devices: [] })
+    const attached = f.links.find((link) => link.kind === "attached")
+    const lateSend = attached?.kind === "attached" && attached.send({ type: "devices", devices: [] })
     ws.message({ type: "attached" })
     await turn()
     const lateFrames = [...ws.sent]
     ws.peerClose()
     await closing
     expect(disposedBeforeSignature).toBe(false)
+    expect(attached).toBeDefined()
+    expect(lateSend).toBe(false)
     expect(lateFrames).toEqual([])
     expect(f.states.filter((state) => state === "connected")).toHaveLength(1)
     expect(f.failures).toEqual([])
@@ -240,6 +185,37 @@ describe("relay control ownership", () => {
     expect(f.states.at(-1)).toBe("off")
     expect(f.sockets).toHaveLength(1)
     f.channel.reconcile("store changed")
+    await turn()
+    expect(f.sockets).toHaveLength(2)
+    await f.channel.dispose("done")
+  })
+
+  test("a rejection after the relay admitted the placement is a drop: the channel dials again", async () => {
+    // Admission already proved the identity and the protocol version, so a
+    // later refusal (a relay fault answered as `malformed`) is no reason to park.
+    const f = fixture({ random: () => 0 })
+    f.channel.reconcile("start")
+    await turn()
+    const ws = f.sockets[0]!
+    ws.open()
+    await turn()
+    ws.message({ type: "attached" })
+    await turn()
+    jest.useFakeTimers()
+    try {
+      ws.message({ type: "rejected", reason: "malformed" })
+      ws.peerClose()
+      await Promise.resolve()
+      jest.advanceTimersByTime(0)
+      await Promise.resolve()
+      expect(f.failures).toEqual([])
+      expect(f.states.at(-1)).toBe("reconnecting")
+      // The first reconnect backoff is 125 ms with this random.
+      jest.advanceTimersByTime(125)
+      await Promise.resolve()
+    } finally {
+      jest.useRealTimers()
+    }
     await turn()
     expect(f.sockets).toHaveLength(2)
     await f.channel.dispose("done")
@@ -549,106 +525,5 @@ describe("relay control channel records", () => {
       info.mockRestore()
       warn.mockRestore()
     }
-  })
-})
-
-describe("the client this process serves, through the relay", () => {
-  const IDENTITY = "e".repeat(64)
-  let root: string
-  const script = new Uint8Array(ASSET_CHUNK_BYTES * 2 + 99).map((_, index) => index % 251)
-
-  beforeAll(async () => {
-    root = await mkdtemp(join(tmpdir(), "relay-client-assets-"))
-    await mkdir(join(root, "phone"))
-    await writeFile(join(root, "phone", "webview.js"), script)
-    await writeFile(join(root, "client.json"), JSON.stringify({ identity: IDENTITY }))
-  })
-  afterAll(async () => { await rm(root, { recursive: true, force: true }) })
-
-  async function attached(overrides: Partial<RelayControlChannelOptions> = {}) {
-    const f = fixture({ client: async () => ({ identity: IDENTITY, root }), ...overrides })
-    f.channel.reconcile("start")
-    await turn()
-    const ws = f.sockets[0]!
-    ws.open()
-    await turn()
-    ws.message({ type: "challenge", nonce: "nonce" })
-    await turn()
-    ws.message({ type: "attached" })
-    await turn()
-    return { ...f, ws }
-  }
-
-  async function settled(ws: ControlSocket, requestId: string): Promise<void> {
-    for (let attempt = 0; attempt < 50; attempt += 1) {
-      if (ws.sent.some((frame) => frame.includes(requestId) && /asset\.(end|missing)/.test(frame))) return
-      await turn()
-    }
-    throw new Error("the asset request never settled")
-  }
-
-  test("the placement announces the identity of the client this process serves", async () => {
-    const f = await attached()
-    const attach = JSON.parse(f.ws.sent[0]!)
-    expect(attach.placement).toEqual({ ...f.options.placement(), clientIdentity: IDENTITY })
-    const closing = f.channel.dispose("done")
-    f.ws.peerClose()
-    await closing
-  })
-
-  test("streams its own phone file in chunk frames between a head and an end", async () => {
-    const f = await attached()
-    const requestId = newAssetRequestId()
-    f.ws.message({ type: "asset.request", requestId, identity: IDENTITY, file: "webview.js" })
-    await settled(f.ws, requestId)
-    const frames = f.ws.sent.slice(1).map((frame) => JSON.parse(frame))
-    expect(frames).toEqual([
-      { type: "asset.head", requestId, contentType: "application/javascript; charset=utf-8" },
-      { type: "asset.end", requestId },
-    ])
-    const chunks = f.ws.binary.map((frame) => decodeAssetChunk(frame))
-    expect(chunks.map((chunk) => chunk.requestId)).toEqual([requestId, requestId, requestId])
-    expect(chunks.every((chunk) => chunk.bytes.byteLength <= ASSET_CHUNK_BYTES)).toBe(true)
-    expect(Buffer.concat(chunks.map((chunk) => chunk.bytes)).equals(Buffer.from(script))).toBe(true)
-    const closing = f.channel.dispose("done")
-    f.ws.peerClose()
-    await closing
-  })
-
-  test("refuses another identity, a file outside the phone shell, and a file it does not have", async () => {
-    const f = await attached()
-    const other = newAssetRequestId()
-    const outside = newAssetRequestId()
-    const absent = newAssetRequestId()
-    f.ws.message({ type: "asset.request", requestId: other, identity: "f".repeat(64), file: "webview.js" })
-    f.ws.message({ type: "asset.request", requestId: outside, identity: IDENTITY, file: "client.json" })
-    f.ws.message({ type: "asset.request", requestId: absent, identity: IDENTITY, file: "webview.css" })
-    for (const requestId of [other, outside, absent]) await settled(f.ws, requestId)
-    // Each request is answered on its own and carries its request id. The two
-    // failed reads settle in file-system order, so the order of the answers is
-    // not part of the contract.
-    const answers = f.ws.sent.slice(1).map((frame) => JSON.parse(frame))
-    expect(answers).toHaveLength(3)
-    expect(answers).toEqual(expect.arrayContaining([
-      { type: "asset.missing", requestId: other },
-      { type: "asset.missing", requestId: outside },
-      { type: "asset.missing", requestId: absent },
-    ]))
-    expect(f.ws.binary).toEqual([])
-    const closing = f.channel.dispose("done")
-    f.ws.peerClose()
-    await closing
-  })
-
-  test("a process with no client announces none and refuses every request", async () => {
-    const f = await attached({ client: async () => undefined })
-    expect(JSON.parse(f.ws.sent[0]!).placement).toEqual(f.options.placement())
-    const requestId = newAssetRequestId()
-    f.ws.message({ type: "asset.request", requestId, identity: IDENTITY, file: "webview.js" })
-    await settled(f.ws, requestId)
-    expect(JSON.parse(f.ws.sent.at(-1)!)).toEqual({ type: "asset.missing", requestId })
-    const closing = f.channel.dispose("done")
-    f.ws.peerClose()
-    await closing
   })
 })

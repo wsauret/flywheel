@@ -18,6 +18,7 @@ import {
   type RelayControlFrame,
   type RelayDeviceFrame,
   type RelayRejectReason,
+  type RuntimeControlFrame,
 } from "../../../src/protocol/modules/remote/relay-protocol.js"
 import { admitDevice, admitPairing, admitRuntime, presencePlacement, RateLimiter, servedPlacements, servingAnnouncement, silentAt, type PairingWindowRecord, type PlacementAnnouncement } from "./admission.js"
 import { ClientAssetServer } from "./client-assets.js"
@@ -318,6 +319,19 @@ export class RelayRuntime extends DurableObject<Env> {
     const claimed = claimedRelayProtocolVersion(value)
     if (claimed !== undefined && claimed !== RELAY_PROTOCOL_VERSION) return this.reject(ws, "protocol_version")
     const frame = decodeRuntimeControlFrame(value)
+    // A frame that decodes is one this machine may send. A fault of what it
+    // asks the relay to do is the relay's own, such as a storage write, so
+    // the socket closes for a retry and the machine is not told it sent
+    // something unreadable. The call is awaited so that a rejection of any
+    // write the method returns unawaited reaches this catch.
+    try {
+      await this.applyRuntimeFrame(ws, attachment, frame)
+    } catch {
+      closeQuietly(ws, 1011, "relay fault")
+    }
+  }
+
+  private async applyRuntimeFrame(ws: WebSocket, attachment: Extract<Attachment, { role: "runtime" }>, frame: RuntimeControlFrame): Promise<void> {
     if (frame.type === "ping") return ws.send(RELAY_PONG)
     const runtimeId = this.ctx.id.name ?? ""
     if (frame.type === "attach") {

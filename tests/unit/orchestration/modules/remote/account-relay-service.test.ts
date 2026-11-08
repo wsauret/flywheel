@@ -134,6 +134,7 @@ describe("account relay service", () => {
       const initial: RuntimeControlFrame[] = []
       const wake = (channelId: string) => dormant.options.onOpen({ type: "open", channelId, ticket: channelId, kind: "device", deviceId: "phone" }, (frame) => {
         if (dormant.held) initial.push(frame)
+        return dormant.held
       })
       const first = wake("first")
       const joined = wake("joined")
@@ -276,7 +277,7 @@ describe("account relay service", () => {
       await until(() => opens.size === 2)
       // A phone wakes one project; the other opens for a successor's continuation.
       const wake: OpenFrame = { type: "open", channelId: "channel-1", ticket: "ticket-1", kind: "device", deviceId: "phone" }
-      await opens.get("Woken")?.(wake, () => {})
+      await opens.get("Woken")?.(wake, () => true)
       await projects.open(continued)
       expect(service.phoneKeepAwake.held(woken)).toBe(true)
       expect(service.phoneKeepAwake.held(continued)).toBe(false)
@@ -400,7 +401,7 @@ describe("account relay service", () => {
       expect(sent.get("Project")).toEqual([{ type: "devices", devices: ["phone"] }])
 
       const answers: RuntimeControlFrame[] = []
-      await opens.get("Project")!({ type: "open", channelId: "wake", ticket: "wake", kind: "device", deviceId: "tablet" }, (frame) => answers.push(frame))
+      await opens.get("Project")!({ type: "open", channelId: "wake", ticket: "wake", kind: "device", deviceId: "tablet" }, (frame) => { answers.push(frame); return true })
       expect(answers).toEqual([{ type: "decline", channelId: "wake", reason: "start_failed" }])
       expect(opened).toBe(0)
       expect(projects.state(root)).toBeUndefined()
