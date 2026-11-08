@@ -1,0 +1,16 @@
+src/tui/hooks/create-chat-submissions.ts
+  h_4b47e9e4a8b456 2,4,7-11,18-20,24,57-64
+tests/unit/tui/hooks/create-chat-submissions.test.ts
+  h_4b47e9e4a8b456 2-3,173-187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9cc66df7fc7657a35a692b0d4946cdf65469a3ce",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
