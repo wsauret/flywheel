@@ -1,0 +1,27 @@
+bench/terminal_bench/harbor_agent/flywheel_harbor_agent/trial_runtime.py
+  h_4b47e9e4a8b456 4-7,45-46,436-451,453-454,461-462,496,500-507,513-514,516-518,540-545,555-559,570,585-586,596-628
+  h_4b47e9e4a8b456 452,455-460,463-494,508-509,527-534,560-568,571,573-584,587-594
+bench/terminal_bench/test_harbor_agent_shim.py
+  h_4b47e9e4a8b456 310,394-430
+  h_4b47e9e4a8b456 1,45-54,261-267,277-279,281-282,303-309,311-318,378-379,384-386
+bench/terminal_bench/README.md
+  h_4b47e9e4a8b456 30,96,109
+bench/terminal_bench/METHODOLOGY.md
+  h_4b47e9e4a8b456 55,74
+bench/terminal_bench/harbor_agent_package.py
+  h_4b47e9e4a8b456 159-160
+bench/terminal_bench/harbor_agent/flywheel_harbor_agent/shim.py
+  h_4b47e9e4a8b456 19-26,31,33-47,85,107-110,403-406,408,505-506,511-525,541,545-550,568-569,576-578,592,594-595
+  h_4b47e9e4a8b456 83,507-510
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "432b5f19ae62d39ac69eeed942b3ebe611e33d98",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
