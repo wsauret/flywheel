@@ -1,0 +1,16 @@
+src/orchestration/headless/acp-chat.ts
+  h_4b47e9e4a8b456 80-105
+tests/unit/orchestration/headless/acp-chat.test.ts
+  h_4b47e9e4a8b456 13,63-64,66-74,90-91,94,117-120,171-173,220-236,403,419
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b09c16ea2e211872f25e887df09de68422e0b39c",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
