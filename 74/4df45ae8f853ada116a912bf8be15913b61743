@@ -1,0 +1,22 @@
+src/tui/hooks/create-workflow-domain-intake.ts
+  h_4b47e9e4a8b456 31,34,48,52-56
+tests/unit/tui/hooks/create-workflow-domain-intake.test.ts
+  h_4b47e9e4a8b456 6,10,17-18,22,28,34,86-103
+tests/unit/webview/local-route.test.ts
+  h_4b47e9e4a8b456 7,161-167,169,171-194,198,201-209,219,256-258,260-262,278,286-307
+webview/src/client/workflow-agent.test.ts
+  h_4b47e9e4a8b456 126-155
+webview/src/modules/workflows/navigation.ts
+  h_4b47e9e4a8b456 27-29,84-98,105-107,121-126,128-135,137-139,141-190,192-199,202,204,207-208,210,218,224,233
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "744df45ae8f853ada116a912bf8be15913b61743",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
