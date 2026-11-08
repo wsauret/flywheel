@@ -25,8 +25,9 @@ export function createSessionContinuation(
     readonly clearFailure: () => void
     readonly ensureChatRunner: () => Promise<ChatRunner>
     readonly ownAcceptedWork: <A>(work: Promise<A>) => Promise<A>
-    readonly generation: () => number
-    readonly isGenerationValid: (generation: number) => boolean
+    /** Whether the actor is open and its session resident: work begun while
+     *  open is stale once this is false, as the actor never opens again. */
+    readonly admitsWork: () => boolean
     readonly backgroundNotifications: ReturnType<typeof createBackgroundNotificationDelivery>
     /** Reads the open display again from the conversation, in the mailbox. */
     readonly refreshDisplay: () => void
@@ -61,11 +62,10 @@ export function createSessionContinuation(
    * that supersedes either prevents the committed input from waking a turn. */
   function continueCommitted(start: (runner: ChatRunner) => boolean): () => Promise<boolean> {
     return async () => {
-      const forGeneration = owner.generation()
       try {
         const runner = await owner.ensureChatRunner()
         await (await ctx.runnerCapabilities()).authAdmission.admit(sessionId)
-        if (!owner.isGenerationValid(forGeneration)) return false
+        if (!owner.admitsWork()) return false
         return start(runner)
       } catch {
         return false

@@ -482,19 +482,7 @@ describe("RuntimeSupervisor actor mailbox", () => {
 
   test("a finished runner whose session the store cannot mark inactive still lets the next message start a new runner", async () => {
     const callbacks: ChatRunnerDeps[] = []
-    const supervisor = createRuntimeSupervisor({
-      ...supervisorBaseDeps(ctx, ctx.sessionStore, { createRunner: async (deps) => { callbacks.push(deps); return mockRunner(deps.sessionId) } }),
-      sessionViewLoader: { load: (sessionId) => loadSessionView(sessionId, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) },
-    })
-    const id = "s"
-    await ctx.manager.createChat({ id, conversationId: "conversation:s", name: "Saved chat", initialState: "inactive" })
-    const tree = await tryOpenConversationTree({ conversationId: "conversation:s", sessionId: id, store: asAsyncEventReadSurface(ctx.store), writer: asAsyncEventWriter(ctx.store) })
-    if (!tree) throw new Error("Missing durable chat tree")
-    try {
-      expect((await tree.appendMessages([{ kind: "user", content: "Earlier user turn" }])).kind).toBe("committed")
-    } finally {
-      await tree.getStorage().dispose()
-    }
+    const { supervisor, id } = await savedChat(async (deps) => { callbacks.push(deps); return mockRunner(deps.sessionId) })
     expect(await supervisor.activateSession(id)).toBe(true)
     const updateLifecycleState = ctx.manager.updateLifecycleState.bind(ctx.manager)
     ctx.manager.updateLifecycleState = async () => { throw new Error("database is locked") }
@@ -514,22 +502,10 @@ describe("RuntimeSupervisor actor mailbox", () => {
   test("a runner that ends by itself while a client shows its session leaves the session shown: the next send's runner runs the engines with no new activation, until the client releases it", async () => {
     const callbacks: ChatRunnerDeps[] = []
     const shown: (readonly [number, boolean])[] = []
-    const supervisor = createRuntimeSupervisor({
-      ...supervisorBaseDeps(ctx, ctx.sessionStore, { createRunner: async (deps) => {
-        const runner = callbacks.push(deps)
-        return mockRunner(deps.sessionId, { setShown: (next) => { shown.push([runner, next]) } })
-      } }),
-      sessionViewLoader: { load: (sessionId) => loadSessionView(sessionId, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) },
+    const { supervisor, id } = await savedChat(async (deps) => {
+      const runner = callbacks.push(deps)
+      return mockRunner(deps.sessionId, { setShown: (next) => { shown.push([runner, next]) } })
     })
-    const id = "shown"
-    await ctx.manager.createChat({ id, conversationId: "conversation:shown", name: "Shown chat", initialState: "inactive" })
-    const tree = await tryOpenConversationTree({ conversationId: "conversation:shown", sessionId: id, store: asAsyncEventReadSurface(ctx.store), writer: asAsyncEventWriter(ctx.store) })
-    if (!tree) throw new Error("Missing durable chat tree")
-    try {
-      expect((await tree.appendMessages([{ kind: "user", content: "Earlier user turn" }])).kind).toBe("committed")
-    } finally {
-      await tree.getStorage().dispose()
-    }
     expect(await supervisor.activateSession(id, { shown: true })).toBe(true)
     expect(shown).toEqual([[1, true]])
 
@@ -570,7 +546,96 @@ describe("RuntimeSupervisor actor mailbox", () => {
     expect(ctx.sessionStore.get("never-opened")).toBeUndefined()
     expect(runners).toHaveLength(1)
   })
+
+  test("a runner that attached keeps serving when its parked turn cannot be restored: no startup failure shows, and a release waits for the running turn", async () => {
+    const stops: string[] = []
+    const runner = mockRunner("pending", { awaitOwedCapacity: async () => { throw new Error("database is locked") }, prepareForShutdown: (by) => { stops.push(by) } })
+    const supervisor = supervisorWithRunner(ctx, async () => runner)
+    const sessionId = await supervisor.openSessionRuntime()
+
+    await expect(supervisor.activateSession(sessionId, { shown: true })).resolves.toBe(true)
+    expect(supervisor.runtimeState(sessionId)).toBeNull()
+    expect(chatEntry(sessionId).outputBlocks()).not.toContainEqual(expect.objectContaining({ id: "startup-failure" }))
+
+    ctx.sessionStore.updateChatEntry(sessionId, { runnerState: "streaming" })
+    await supervisor.releaseSession(sessionId)
+    await settled()
+    expect(stops).toEqual([])
+    expect(chatEntry(sessionId).runner).toBe(runner)
+    ctx.sessionStore.updateChatEntry(sessionId, { runnerState: "idle" })
+    await settled()
+    expect(ctx.sessionStore.get(sessionId)).toBeUndefined()
+  })
+
+  test("a close whose durable read fails still ends the chat's runtime, so the chat opens again and the next message starts a runner", async () => {
+    const { supervisor, id } = await savedChat(async (deps) => mockRunner(deps.sessionId))
+    expect(await supervisor.activateSession(id)).toBe(true)
+    const read = ctx.manager.read.bind(ctx.manager)
+    ctx.manager.read = async () => { throw new Error("state client read refused") }
+    try {
+      await expect(supervisor.closeChat(id)).rejects.toThrow("state client read refused")
+    } finally {
+      ctx.manager.read = read
+    }
+    expect(ctx.sessionStore.has(id)).toBe(false)
+
+    expect(await supervisor.activateSession(id)).toBe(true)
+    await expect(supervisor.sendChat(id, "after the failed close")).resolves.toEqual({ ok: true })
+    expect(chatEntry(id).runner).not.toBeNull()
+  })
+
+  test("a Close chat queued behind the release of an idle chat still marks the chat inactive", async () => {
+    const { supervisor, id } = await savedChat(async (deps) => mockRunner(deps.sessionId))
+    expect(await supervisor.activateSession(id, { shown: true })).toBe(true)
+    await expect(supervisor.sendChat(id, "a turn")).resolves.toEqual({ ok: true })
+    expect((await ctx.manager.read(id))?.lifecycleState).toBe("active")
+    ctx.sessionStore.updateChatEntry(id, { runnerState: "idle" })
+
+    // The release reaches the mailbox first and ends the runtime; the close
+    // that Close chat sends outside the session-hold lane waits behind it.
+    const released = supervisor.releaseSession(id)
+    const closed = supervisor.closeChat(id)
+    await released
+    await expect(closed).resolves.toBe(true)
+
+    expect(ctx.sessionStore.has(id)).toBe(false)
+    expect((await ctx.manager.read(id))?.lifecycleState).toBe("inactive")
+  })
+
+  test("a delete that fails to finalize leaves a session that opens again, and a second delete removes it", async () => {
+    const { supervisor, id } = await savedChat(async (deps) => mockRunner(deps.sessionId))
+    const finalize = ctx.manager.finalizeDeletionTarget.bind(ctx.manager)
+    ctx.manager.finalizeDeletionTarget = async () => { throw new Error("EPERM: session tree") }
+    try {
+      await expect(supervisor.deleteSession(id)).rejects.toThrow("EPERM: session tree")
+    } finally {
+      ctx.manager.finalizeDeletionTarget = finalize
+    }
+
+    expect(await supervisor.activateSession(id)).toBe(true)
+    expect(await supervisor.deleteSession(id)).toBe(true)
+    expect(await ctx.manager.read(id)).toBeNull()
+  })
 })
+
+/** A saved chat "s" with one earlier user turn, inactive and not resident,
+ *  under a supervisor that loads its view from the durable store. */
+async function savedChat(createRunner: (deps: ChatRunnerDeps) => Promise<ChatRunner>) {
+  const supervisor = createRuntimeSupervisor({
+    ...supervisorBaseDeps(ctx, ctx.sessionStore, { createRunner }),
+    sessionViewLoader: { load: (sessionId) => loadSessionView(sessionId, asAsyncEventReadSurface(ctx.store), asAsyncEventReadSurface(ctx.store)) },
+  })
+  const id = "s"
+  await ctx.manager.createChat({ id, conversationId: "conversation:s", name: "Saved chat", initialState: "inactive" })
+  const tree = await tryOpenConversationTree({ conversationId: "conversation:s", sessionId: id, store: asAsyncEventReadSurface(ctx.store), writer: asAsyncEventWriter(ctx.store) })
+  if (!tree) throw new Error("Missing durable chat tree")
+  try {
+    expect((await tree.appendMessages([{ kind: "user", content: "Earlier user turn" }])).kind).toBe("committed")
+  } finally {
+    await tree.getStorage().dispose()
+  }
+  return { supervisor, id }
+}
 
 function chatEntry(sessionId: string): Extract<NonNullable<ReturnType<SessionStore["get"]>>, { kind: "chat" }> {
   const entry = ctx.sessionStore.get(sessionId)

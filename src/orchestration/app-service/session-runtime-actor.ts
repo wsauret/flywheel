@@ -15,7 +15,7 @@ import { isTurnAtRest, type SessionTitlePatch } from "../../protocol/app-service
 import { entryActivity } from "../session-store/activity.js"
 import { createSessionContinuation } from "./session-continuation.js"
 import { finalizeDisposition, prepareDeactivation, prepareDisposition, shouldTombstone } from "./session-runtime-disposition.js"
-import type { ClosingDisposition, DispatchOutcome, DispatchResult, SessionMutation, SessionRuntimeActor, SessionRuntimeActorContext } from "./session-runtime-actor-types.js"
+import type { ActorLifecycle, DispatchOutcome, DispatchResult, RunnerStartup, SessionMutation, SessionRuntimeActor, SessionRuntimeActorContext } from "./session-runtime-actor-types.js"
 import { loadAgentInputProjection } from "../session/agent-input-projection.js"
 import { createSessionFactWriter } from "../session/session-fact-writer.js"
 import { holdChildReconciliationIndex } from "../session/child-reconciliation-index.js"
@@ -37,8 +37,8 @@ class StaleStartupError extends Error {
 }
 
 /** How long a lifecycle command waits for an in-flight startup to settle before
- *  tearing down anyway. markClosing already bumped the generation, so a startup
- *  that finishes later can no longer attach - it disposes its orphan runner and
+ *  tearing down anyway. The actor is already closing, so a startup that
+ *  finishes later can no longer attach - it disposes its orphan runner and
  *  exits. So this grace only buys an orderly settle for the common fast case; a
  *  wedged cold-start must never hold a close open and leave the tab unclosable.
  *  Well under the client's control deadline. */
@@ -50,12 +50,8 @@ interface PendingDelivery {
 }
 
 export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntimeActorContext): SessionRuntimeActor {
-  let generation = 0
-  let closing = false
-  let startup: { readonly generation: number; readonly id: number; readonly promise: Promise<ChatRunner> } | undefined
-  // Startups begun so far. A failed startup's cleanup compares its own id
-  // with this, so it never removes an entry that a newer startup serves.
-  let startups = 0
+  let lifecycle: ActorLifecycle = { kind: "open" }
+  let startup: RunnerStartup = { kind: "none" }
   // The actor owns its session's completion index for its whole life, and
   // every way the actor ends vacates the store, which releases it.
   const releaseReconciliationIndex = holdChildReconciliationIndex(ctx.projectionReader, sessionId)
@@ -64,33 +60,30 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
   // when `closeAtRest`, once the turn comes to rest.
   let restWatch: (() => void) | undefined
   let closeAtRest = false
-  let failedMessage: string | undefined
   let pending: PendingDelivery[] = []
   const deliveredEntryIds = new Set<string>()
   // Every ordered phase runs here, one after another. A failed phase
   // surfaces to its caller and never stops the phases queued after it.
   const { mailbox, ownAcceptedWork, awaitAcceptedWork, hasAcceptedWork, waitForStartup } =
-    createSessionWorkSettlement(() => startup?.promise)
+    createSessionWorkSettlement(() => startup.kind === "starting" ? startup.promise : undefined)
   const settleStartup = () => settleWithin(waitForStartup(), ctx.closeStartupGraceMs ?? CLOSE_STARTUP_GRACE_MS)
   const inputControl = createChatSessionControl({ store: ctx.eventStore, sessionId, lane: mailbox, runner: () => {
     const entry = ctx.sessionStore.get(sessionId)
     return entry?.kind === "chat" ? entry.runner : undefined
   } })
   let titlePending = false
-  let shutdownDisposition: ClosingDisposition | undefined
   let undo: { readonly controller: AbortController; readonly settled: Promise<SessionChangesUndoResult> } | undefined
 
   const durability: ChatDurabilityContext = chatDurabilityContext(ctx, sessionId)
-  const backgroundNotifications = createBackgroundNotificationDelivery({ sessionId, projectRoot: ctx.directories.projectRoot, eventStore: ctx.eventStore, projectionReader: ctx.projectionReader, eventWriter: ctx.eventWriter, admitsDelivery: () => !closing && !ctx.isDisposed(),
+  const backgroundNotifications = createBackgroundNotificationDelivery({ sessionId, projectRoot: ctx.directories.projectRoot, eventStore: ctx.eventStore, projectionReader: ctx.projectionReader, eventWriter: ctx.eventWriter, admitsDelivery: () => lifecycle.kind === "open" && !ctx.isDisposed(),
     // A send or activation can commit while its own reconciliation holds the
     // lane, so the sweep runs after it rather than inside it.
     sweepAfterCommit: () => { void reconcileChildSessionCompletions().catch((error: unknown) => { recordBackgroundFailure(log, "sweep after a held workflow completion", { sessionId }, error) }) },
   })
   const continuation = createSessionContinuation(sessionId, ctx, {
-    isClosing: () => closing,
-    clearFailure: () => { failedMessage = undefined },
-    generation: () => generation,
-    ensureChatRunner, isGenerationValid, backgroundNotifications, ownAcceptedWork,
+    isClosing: () => lifecycle.kind !== "open",
+    clearFailure, admitsWork,
+    ensureChatRunner, backgroundNotifications, ownAcceptedWork,
     // The runner's writer lands held work after its turn's output, so a turn
     // parked on background work takes the record too. A turn that runs or
     // asks again by now keeps its display, which is ahead of the log; the
@@ -102,8 +95,12 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
     },
   })
 
-  function isGenerationValid(forGeneration: number): boolean {
-    return !ctx.isDisposed() && !closing && generation === forGeneration && ctx.sessionStore.has(sessionId)
+  function admitsWork(): boolean {
+    return !ctx.isDisposed() && lifecycle.kind === "open" && ctx.sessionStore.has(sessionId)
+  }
+
+  function clearFailure(): void {
+    if (startup.kind === "failed") startup = { kind: "none" }
   }
 
   function drainPending(runner: ChatRunner): void {
@@ -121,18 +118,18 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
     log.debug("pending deliveries drained", { sessionId, before, remaining: pending.length, delivered: before - pending.length })
   }
 
-  async function attachReadyRunner(runner: ChatRunner, conversationId: string, forGeneration: number, children: RuntimeRunnerCapabilities["childSessions"]): Promise<void> {
+  async function attachReadyRunner(runner: ChatRunner, conversationId: string, children: RuntimeRunnerCapabilities["childSessions"]): Promise<void> {
     try {
       // Close can already be waiting for startup in the mailbox. Refuse before
       // joining it, and re-check after every asynchronous read.
-      if (!isGenerationValid(forGeneration)) throw new StaleStartupError(sessionId)
+      if (!admitsWork()) throw new StaleStartupError(sessionId)
       await children.restoreTracking(sessionId, runner.backgroundTasks)
       // Earlier sends finish their commits before this read; later sends start
       // after attach and use the runner. Startup tails never enter this phase.
       await mailbox.run(async () => {
-        if (!isGenerationValid(forGeneration)) throw new StaleStartupError(sessionId)
+        if (!admitsWork()) throw new StaleStartupError(sessionId)
         const refreshed = await readOpenChatDisplaySeed(ctx, sessionId, conversationId)
-        if (!isGenerationValid(forGeneration)) throw new StaleStartupError(sessionId)
+        if (!admitsWork()) throw new StaleStartupError(sessionId)
         replaceDisplaySeed(ctx, sessionId, refreshed)
         if (!ctx.sessionStore.attachChatRunner(sessionId, runner)) throw new StaleStartupError(sessionId)
         inputControl.attach()
@@ -144,54 +141,78 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
     }
   }
 
-  async function startChatRunner(conversationId: string, forGeneration: number, id: number): Promise<ChatRunner> {
+  async function startChatRunner(conversationId: string): Promise<ChatRunner> {
     const start = performance.now()
-    log.debug("chat runner start", { sessionId, conversationId, generation: forGeneration })
+    log.debug("chat runner start", { sessionId, conversationId })
     const shell = ctx.sessionStore.get(sessionId)
     if (shell?.kind !== "chat") throw new StaleStartupError(sessionId)
+    let runner: ChatRunner
     try {
       const capabilities = await ctx.runnerCapabilities()
-      if (!isGenerationValid(forGeneration)) throw new StaleStartupError(sessionId)
+      if (!admitsWork()) throw new StaleStartupError(sessionId)
       await capabilities.authAdmission.admit(sessionId)
-      if (!isGenerationValid(forGeneration)) throw new StaleStartupError(sessionId)
+      if (!admitsWork()) throw new StaleStartupError(sessionId)
       await ensureDurableChatSession(durability, conversationId)
       const durableSession = await ctx.manager.read(sessionId)
       const executionCwd = executionCwdFromSession(durableSession, sessionId, ctx.directories.projectRoot)
-      const runner = await capabilities.runnerLoader.createRunner(chatRunnerDeps({
+      runner = await capabilities.runnerLoader.createRunner(chatRunnerDeps({
         ctx, sessionId, conversationId, executionCwd, shell, durableSession, capabilities,
         generateTitleForNextMessage: titlePending, onFinish: enqueueChatFinish,
       }))
-      await attachReadyRunner(runner, conversationId, forGeneration, capabilities.childSessions)
-      drainPending(runner)
-      if ((await readChatTurnEndEvidence(ctx.projectionReader, conversationId, { restoreWait: true }))?.restoredWait && isGenerationValid(forGeneration)) await runner.hold()
+      await attachReadyRunner(runner, conversationId, capabilities.childSessions)
+    } catch (err) {
+      if (err instanceof StaleStartupError || !admitsWork()) log.info("chat runner stale", { sessionId, conversationId, durationMs: durationMs(start), error: errorMessage(err) })
+      else log.error("chat runner failed", { sessionId, conversationId, durationMs: durationMs(start), error: errorMessage(err), errorDetail: errorDetail(err) })
+      throw err
+    }
+    drainPending(runner)
+    await restoreParkedTurn(runner, conversationId)
+    return runner
+  }
+
+  /** A turn that a restart cut while it waited parks again on the attached
+   *  runner (ARCH-SESSIONS-038, PI-INTERACTION-102, PI-MODEL-039). The runner
+   *  serves the session from its attach on, so a step that fails here is not
+   *  a failed start: the runner stays, the cut turn stays as the transcript
+   *  shows it, and the person's Resume continues it. */
+  async function restoreParkedTurn(runner: ChatRunner, conversationId: string): Promise<void> {
+    try {
+      if ((await readChatTurnEndEvidence(ctx.projectionReader, conversationId, { restoreWait: true }))?.restoredWait && admitsWork()) await runner.hold()
       // A turn an unexpected exit cut while it waited for model capacity
       // waits again on attach, as a turn cut on background work parks again.
-      if (isGenerationValid(forGeneration)) await runner.awaitOwedCapacity()
-      return runner
+      if (admitsWork()) await runner.awaitOwedCapacity()
     } catch (err) {
-      if (err instanceof StaleStartupError || !isGenerationValid(forGeneration)) {
-        log.info("chat runner stale", { sessionId, conversationId, generation: forGeneration, durationMs: durationMs(start), error: errorMessage(err) })
-        throw err
-      }
+      if (!admitsWork()) throw err
       const message = errorMessage(err)
-      failedMessage = message
-      log.error("chat runner failed", { sessionId, conversationId, generation: forGeneration, durationMs: durationMs(start), error: message, errorDetail: errorDetail(err) })
-      ctx.sessionStore.showStartupFailure(sessionId, `Chat startup failed: ${message}`)
+      log.error("chat runner restore failed", { sessionId, conversationId, error: message, errorDetail: errorDetail(err) })
       ctx.onRunnerError?.(sessionId, message)
-      // A failed start is not work in flight. An entry that a client shows
-      // stays with its notice, as the tab's lifecycle is the session's, and
-      // the next activation or message starts the runner again. An entry that
-      // no client shows any more leaves the store; input already committed
-      // stays in the conversation.
-      if (restWatch) {
-        void mailbox.run(() => vacateFailedStart(id)).then((tail) => tail()).catch((error: unknown) => { recordBackgroundFailure(log, "vacate failed start", { sessionId }, error) })
-      }
-      throw err
+    }
+  }
+
+  /** The one transition out of `starting` for a start that rejected. A start
+   *  that failed while the actor is open shows one failure notice
+   *  (PI-INTERACTION-042) and waits for the next activation or message. A
+   *  failed start is not work in flight: an entry that a client shows stays
+   *  with its notice, as the tab's lifecycle is the session's, and an entry
+   *  that no client shows any more leaves the store; input already committed
+   *  stays in the conversation. */
+  function failStartup(failed: RunnerStartup, error: unknown): void {
+    if (startup !== failed) return
+    if (error instanceof StaleStartupError || !admitsWork()) {
+      startup = { kind: "none" }
+      return
+    }
+    const message = errorMessage(error)
+    startup = { kind: "failed", message }
+    ctx.sessionStore.showStartupFailure(sessionId, `Chat startup failed: ${message}`)
+    ctx.onRunnerError?.(sessionId, message)
+    if (restWatch) {
+      void mailbox.run(() => vacateFailedStart()).then((tail) => tail()).catch((cause: unknown) => { recordBackgroundFailure(log, "vacate failed start", { sessionId }, cause) })
     }
   }
 
   function enqueueChatFinish(message?: string): void {
-    if (closing || ctx.isDisposed()) return
+    if (lifecycle.kind !== "open" || ctx.isDisposed()) return
     // A runner can call back while ordered work awaits its disposal. Enqueue
     // without awaiting that same mailbox; dispatch already logs any rejection.
     void dispatch({ kind: "chat.finish", message }).catch(() => {})
@@ -207,21 +228,39 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
       .catch((error: unknown) => { recordBackgroundFailure(log, "prepare finished session deactivation", { sessionId }, error) })
     if (message) ctx.onRunnerError?.(sessionId, message)
     else ctx.onRunnerDone?.(sessionId)
-    try {
-      await vacateStore()
-      if (prepared) await finalizeDisposition(ctx, sessionId, prepared)
-    } finally { ctx.forget(sessionId) }
+    await endActor(prepared ? () => finalizeDisposition(ctx, sessionId, prepared) : undefined)
     log.info("session closed", { sessionId, disposition: "finished", failed: message !== undefined, durationMs: durationMs(start) })
   }
 
-  /** Removes the session's store entry, which ends its runner, and drops the
-   *  transcript state and conversation trees the entry kept resident here. */
-  async function vacateStore(): Promise<void> {
-    cancelRestWork()
-    inputControl.vacate()
-    await ctx.sessionStore.remove(sessionId)
-    await ctx.transcriptCache.release(sessionId)
-    releaseReconciliationIndex()
+  /** The one transition to ended, and the only way the actor leaves the
+   *  supervisor besides `retireIfUnused`. Every exit from closing reaches it,
+   *  also when a step before it failed: a close, delete, or finish whose read
+   *  or write fails must not leave an actor that refuses every later message.
+   *  `finalize` writes the durable outcome of the one command that calls it.
+   *  The first call ends the runtime: the entry leaves the store, `finalize`
+   *  writes after the runner ended, and the actor is forgotten last, so a
+   *  command sent meanwhile waits behind the write. A command that the
+   *  mailbox accepted before an earlier one ended the actor still writes its
+   *  outcome (a Close chat queued behind a release marks the chat inactive),
+   *  but never vacates or forgets again, so it cannot remove a newer actor
+   *  of the same session. A failed `finalize` leaves the durable session
+   *  marked active, as a crash does. */
+  async function endActor(finalize?: () => Promise<void>): Promise<void> {
+    if (lifecycle.kind === "ended") {
+      await finalize?.()
+      return
+    }
+    lifecycle = { kind: "ended" }
+    try {
+      // Removing the store entry ends the runner; the transcript state and
+      // conversation trees the entry kept resident go with it.
+      cancelRestWork()
+      inputControl.vacate()
+      await ctx.sessionStore.remove(sessionId)
+      await ctx.transcriptCache.release(sessionId)
+      releaseReconciliationIndex()
+      await finalize?.()
+    } finally { ctx.forget(sessionId) }
   }
 
   /** A start that failed and has settled is at rest: its input already
@@ -229,7 +268,7 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
    *  activation or message starts the runner again. */
   function turnAtRest(): boolean {
     const entry = ctx.sessionStore.get(sessionId)
-    if (entry?.kind !== "chat" || (failedMessage !== undefined && startup === undefined)) return true
+    if (entry?.kind !== "chat" || startup.kind === "failed") return true
     return pending.length === 0 && isTurnAtRest({ activity: entryActivity(entry), waitingOnBackgroundWork: entry.waitingOnBackgroundWork })
   }
 
@@ -310,35 +349,33 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
     const start = performance.now()
     const entry = ctx.sessionStore.get(sessionId)
     const runner = entry?.kind === "chat" && entry.runner !== null
-    stopStartup()
+    markClosing()
     ctx.sessionStore.prepareForShutdown(sessionId, "runtime")
     await settleStartup()
-    // The startup is stopped for good, so this actor ends even when the
-    // store fails to let the entry go.
-    try { await vacateStore() } finally { ctx.forget(sessionId) }
+    await endActor()
     log.info("session released", { sessionId, runner, durationMs: durationMs(start) })
   }
 
-  async function vacateFailedStart(id: number): Promise<() => Promise<boolean>> {
+  async function vacateFailedStart(): Promise<() => Promise<boolean>> {
     // A close owns its own teardown, and a newer startup owns the entry.
-    return !closing && startups === id ? settleAtRest() : ready(false)
+    return lifecycle.kind === "open" && startup.kind === "failed" ? settleAtRest() : ready(false)
   }
 
   async function teardown(disposition: "delete" | "close"): Promise<ChildSessionDeletionPlan | null> {
     const start = performance.now()
     const entry = ctx.sessionStore.get(sessionId)
-    const prepared = await prepareDisposition(ctx, sessionId, disposition)
-    const deletion = prepared.kind === "delete"
-      ? await ctx.manager.admitDeletion(sessionId)
-      : null
-    if (deletion) return deletion
-    // Once the entry starts to leave the store, the actor ends with it: a
-    // close whose write fails must not leave a session that refuses every
-    // later message.
+    let prepared: Awaited<ReturnType<typeof prepareDisposition>>
+    let deletion: ChildSessionDeletionPlan | null
     try {
-      await vacateStore()
-      if (prepared.kind !== "delete") await finalizeDisposition(ctx, sessionId, prepared)
-    } finally { ctx.forget(sessionId) }
+      prepared = await prepareDisposition(ctx, sessionId, disposition)
+      deletion = prepared.kind === "delete" ? await ctx.manager.admitDeletion(sessionId) : null
+    } catch (error) {
+      await endActor()
+      throw error
+    }
+    if (deletion) return deletion
+    const decided = prepared
+    await endActor(decided.kind === "delete" ? undefined : () => finalizeDisposition(ctx, sessionId, decided))
     log.info("session closed", { sessionId, disposition, tombstone: prepared.kind === "delete", entryKind: entry?.kind, durationMs: durationMs(start) })
     return deletion
   }
@@ -351,19 +388,16 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
       drainPending(current.runner)
       return current.runner
     }
-    if (ctx.isDisposed() || closing) throw new StaleStartupError(sessionId)
-    if (startup && startup.generation === generation) {
-      log.debug("ensure chat runner joined startup", { sessionId, generation })
+    if (ctx.isDisposed() || lifecycle.kind !== "open") throw new StaleStartupError(sessionId)
+    if (startup.kind === "starting") {
+      log.debug("ensure chat runner joined startup", { sessionId })
       return startup.promise
     }
-    failedMessage = undefined
-    const forGeneration = generation
-    const id = ++startups
-    const promise = startChatRunner(current.conversationId, forGeneration, id)
-    startup = { generation: forGeneration, id, promise }
-    log.debug("ensure chat runner created startup", { sessionId, generation: forGeneration })
-    const clearStartup = () => { if (startup?.promise === promise) startup = undefined }
-    void promise.then(clearStartup, clearStartup)
+    const promise = startChatRunner(current.conversationId)
+    const starting: RunnerStartup = { kind: "starting", promise }
+    startup = starting
+    log.debug("ensure chat runner created startup", { sessionId })
+    void promise.then(() => { if (startup === starting) startup = { kind: "none" } }, (error: unknown) => { failStartup(starting, error) })
     return promise
   }
 
@@ -461,7 +495,7 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
    * Explicit closes invalidate startup before ordering. Conditional cleanup
    * does so only after admission, so refusal leaves an open tab untouched. */
   async function runLifecycle(disposition: "delete" | "close", inactiveBefore?: number): Promise<() => Promise<boolean>> {
-    // An explicit close already bumped the generation, so startup cannot attach.
+    // An explicit close is already closing, so startup cannot attach.
     // Wait only briefly for orderly settlement; a wedged cold start must not
     // hold the close past the client's control deadline.
     if (inactiveBefore !== undefined && ctx.sessionStore.has(sessionId)) return ready(false)
@@ -469,38 +503,32 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
     const deletion = inactiveBefore === undefined ? await teardown(disposition) : await ctx.manager.admitDeletion(sessionId, inactiveBefore)
     if (inactiveBefore !== undefined) {
       if (!deletion?.targets.length) return ready(false)
-      markClosing("delete")
+      markClosing()
     }
     return async () => {
       if (deletion) {
-        await ctx.executeChildSessionDeletion(deletion)
-        await vacateStore()
-        ctx.forget(sessionId)
+        try { await ctx.executeChildSessionDeletion(deletion) } finally { await endActor() }
         if (inactiveBefore === undefined) log.info("session closed", { sessionId, disposition, tombstone: true })
       }
       return true
     }
   }
 
-  function markClosing(disposition: ClosingDisposition = "close"): void {
+  /** The one transition from open to closing: the startup in flight can no
+   *  longer attach a runner, every later one is refused, and no rest watch or
+   *  message route outlives it. A runner's failure stays reported once, and
+   *  an ended actor stays ended. */
+  function markClosing(failure?: string): void {
+    undo?.controller.abort()
     cancelRestWork()
     inputControl.vacate()
-    stopStartup()
-    shutdownDisposition = disposition
-  }
-
-  /** Invalidates the startup in flight, so it can no longer attach a runner,
-   *  and refuses every later one. */
-  function stopStartup(): void {
-    undo?.controller.abort()
-    if (!closing) {
-      closing = true
-      generation += 1
+    if (lifecycle.kind === "open" || (lifecycle.kind === "closing" && lifecycle.failure === undefined && failure !== undefined)) {
+      lifecycle = failure === undefined ? { kind: "closing" } : { kind: "closing", failure }
     }
   }
 
   async function runUndo(request: SessionChangesUndo): Promise<SessionChangesUndoResult> {
-    if (closing || ctx.isDisposed()) return { status: "refused", message: "Session is closing" }
+    if (lifecycle.kind !== "open" || ctx.isDisposed()) return { status: "refused", message: "Session is closing" }
     const controller = new AbortController()
     const operation = { controller, settled: Promise.resolve().then(() => ctx.undoChanges(request, controller.signal)) }
     undo = operation
@@ -523,8 +551,8 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
    *  never starts a model turn. Only a user input wakes the continuation, so
    *  question settlement passes wake: true. */
   async function runActivation(options?: { wake: boolean }): Promise<() => Promise<boolean>> {
-    if (closing || ctx.isDisposed()) return ready(false)
-    failedMessage = undefined
+    if (lifecycle.kind !== "open" || ctx.isDisposed()) return ready(false)
+    clearFailure()
     const activation = await activateDurableChat(ctx, sessionId)
     // An open shell can be behind the durable log: a child's completion sweep
     // or other work can commit while the shell has no runner.
@@ -717,19 +745,18 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
 
   function dispatch<C extends SessionMutation>(command: C): Promise<DispatchResult<C>> {
     const start = performance.now()
-    log.debug("dispatch start", { sessionId, command: command.kind, generation, closing })
+    log.debug("dispatch start", { sessionId, command: command.kind, lifecycle: lifecycle.kind })
     // Lifecycle commands run a synchronous preflight the instant they are
     // dispatched, before their ordered body waits behind the mailbox. Chat close
     // preserves durable input waits; workflow shutdown is awaited in teardown.
     // A tab's close ends no work, so it waits its turn in the mailbox.
     if (command.kind === "chat.finish") {
       // Report the failure at once, even when Undo delays the terminal cleanup.
-      if (ctx.sessionStore.get(sessionId)?.kind === "chat" && command.message) failedMessage = command.message
-      markClosing()
+      markClosing(ctx.sessionStore.get(sessionId)?.kind === "chat" ? command.message : undefined)
     } else if (command.kind === "session.close" && !command.atRest) {
       stopForClose()
     } else if ((command.kind === "session.delete" && command.inactiveBefore === undefined) || command.kind === "session.discard_transient") {
-      markClosing("delete")
+      markClosing()
     }
     // Only the ordered section holds the mailbox, never its tail, so a slow
     // `session.send` host startup cannot stall the next commit.
@@ -768,6 +795,7 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
   return {
     retireIfUnused() {
       if (ctx.sessionStore.has(sessionId) || hasAcceptedWork()) return
+      lifecycle = { kind: "ended" }
       releaseReconciliationIndex()
       ctx.forget(sessionId)
     },
@@ -784,18 +812,18 @@ export function createSessionRuntimeActor(sessionId: string, ctx: SessionRuntime
     hasAcceptedWork,
     joinOrderedWork: () => mailbox.settled(),
     shouldTombstone: () => shouldTombstone(ctx, sessionId),
-    closeSettled: async () => {
-      const prepared = shutdownDisposition ? await prepareDisposition(ctx, sessionId, shutdownDisposition) : { kind: "none" as const }
+    closeSettled: async (disposition) => {
+      const prepared = await prepareDisposition(ctx, sessionId, disposition)
       if (prepared.kind === "delete") {
         await ctx.executeChildSessionDeletion(await ctx.manager.admitDeletion(sessionId))
       } else {
         await finalizeDisposition(ctx, sessionId, prepared)
       }
-      shutdownDisposition = undefined
     },
     runtimeState() {
-      return failedMessage ? { kind: "failed", message: failedMessage } : startup ? { kind: "starting" } : null
+      if (lifecycle.kind === "closing" && lifecycle.failure !== undefined) return { kind: "failed", message: lifecycle.failure }
+      if (startup.kind === "failed") return { kind: "failed", message: startup.message }
+      return startup.kind === "starting" ? { kind: "starting" } : null
     },
   }
 }
-

@@ -132,8 +132,27 @@ export interface SessionRuntimeActorContext {
  *  through discards a blank chat. */
 export type ClosingDisposition = "delete" | "close" | "restart"
 
-/** Owner of one chat session's live runtime state: startup generation, the
- *  closing flag, the ordered-command mailbox, pending pre-runner deliveries,
+/** The actor's life. Open while it serves its session; closing from the
+ *  first step of a close, delete, release end, runner finish, or stop; ended
+ *  once its entry left the store and the supervisor forgot it. It never goes
+ *  back, so a startup that began while open is stale exactly when the actor
+ *  no longer is. `failure` is the message of a runner that finished with an
+ *  error, reported at once even when Undo delays the end. */
+export type ActorLifecycle =
+  | { readonly kind: "open" }
+  | { readonly kind: "closing"; readonly failure?: string }
+  | { readonly kind: "ended" }
+
+/** The start of the chat's runner. `failed` holds only while the store holds
+ *  no runner: a start fails only before its runner attaches, and a step after
+ *  the attach is the attached runner's own work. */
+export type RunnerStartup =
+  | { readonly kind: "none" }
+  | { readonly kind: "starting"; readonly promise: Promise<ChatRunner> }
+  | { readonly kind: "failed"; readonly message: string }
+
+/** Owner of one chat session's live runtime state: its life (open, closing,
+ *  ended), the start of its runner, the ordered-command mailbox, pending pre-runner deliveries,
  *  the delivered-id dedup guard, the title-pending flag, and whether a tab has
  *  asked for the chat. The supervisor holds
  *  one actor per session and the process-wide `disposed` flag; everything the
@@ -158,11 +177,9 @@ export interface SessionRuntimeActor {
    *  recorded as interrupted by the runtime, `by` names how, and resumes
    *  after the restart; an idle runner shelves its queued input. */
   prepareForShutdown(by: RuntimeInterruption): void
-  /** Invalidate any in-flight startup and capture the disposition to apply once
-   *  the actor settles. A command that already decided to erase the session marks
-   *  itself closing with `"delete"`, so the capture never re-evaluates the
-   *  tombstone predicate for a session it is about to tombstone anyway. */
-  markClosing(disposition?: ClosingDisposition): void
+  /** Marks the actor closing: a startup in flight can no longer attach its
+   *  runner, and every later start is refused. An ended actor stays ended. */
+  markClosing(): void
   settleStartup(): Promise<void>
   /** Join admitted command tails and startup without stopping or bounding them. */
   awaitAcceptedWork(): Promise<void>
@@ -170,11 +187,11 @@ export interface SessionRuntimeActor {
   joinOrderedWork(): Promise<void>
   /** Whether the chat is an empty chat, which a close removes. */
   shouldTombstone(): Promise<boolean>
-  /** Apply the captured disposition (for a close, tombstone a blank transient,
+  /** Apply `disposition` (for a close, tombstone a blank transient,
    *  otherwise keep the session inactive) for a settled actor. `disposeAll` drives it after
    *  batch-marking every actor closing and awaiting their startups; the store
    *  entries and actor map are then torn down in bulk. The tombstone-or-deactivate
    *  decision lives here, so the supervisor loop no longer hand-rolls a copy. */
-  closeSettled(): Promise<void>
+  closeSettled(disposition: ClosingDisposition): Promise<void>
   runtimeState(): Extract<SessionRuntimeView, { kind: "starting" | "failed" }> | null
 }

@@ -597,7 +597,7 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
       const disposition = clientsHold ? "restart" : "close"
       const opened = [...actors]
       const closing = opened.map(([, actor]) => actor)
-      for (const actor of closing) actor.markClosing(disposition)
+      for (const actor of closing) actor.markClosing()
       // Shutdown shelves turns; it never speaks the Escape verb. The user
       // interrupt path records a durable "Interrupted by user." marker as
       // confirmation of intent, and a runtime that is merely stopping must
@@ -608,11 +608,11 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
       // A startup that fails is a settled startup: only the close settlements
       // below carry an unsafe outcome worth reporting.
       await Promise.allSettled(closing.map((actor) => actor.settleStartup()))
-      // Startup may materialize durable metadata after the first preemptive mark.
-      // Re-capture disposition while store entries are still resident, then drain.
-      for (const actor of closing) actor.markClosing(disposition)
+      // A command that ran during the wait can have set a rest watch again;
+      // the second mark cancels it before the drain.
+      for (const actor of closing) actor.markClosing()
       await Promise.all(closing.map(actor => actor.joinOrderedWork()))
-      const actorSettlements = await Promise.allSettled(closing.map((actor) => actor.closeSettled()))
+      const actorSettlements = await Promise.allSettled(closing.map((actor) => actor.closeSettled(disposition)))
       const removed = clientsHold ? [] : await removePausedEmptyChats(open)
       const settlements = await Promise.allSettled([
         ...(deps.transcriptCache ? [] : [transcriptCache.dispose()]),

@@ -36,7 +36,7 @@ type OrderedSessionMutation =
   | { readonly kind: "session.release" }
 
 /** Two-phase lifecycle commands. Phase one calls the preemptive `markClosing`
- *  synchronously so generation is invalidated before any ordered queue wait can
+ *  synchronously so the actor is closing before any ordered queue wait can
  *  attach a stale runner; phase two performs ordered tombstone-or-deactivate
  *  cleanup. The `preflight` field type-checks that every lifecycle mutation
  *  carries the synchronous mark, distinguishing it from a plain ordered mutation
