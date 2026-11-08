@@ -94,7 +94,7 @@ function onPublicBoard(config: BoardConfig, run: BoardRun, harness: string, benc
 }
 
 /** One setup of the board: model, stage, effort, and harness. */
-export interface BoardSetup { readonly model: string; readonly stage: string; readonly effort: string; readonly harness: string }
+interface BoardSetup { readonly model: string; readonly stage: string; readonly effort: string; readonly harness: string }
 
 interface ScoredFact { readonly fact: BoardFact; readonly outcome: Outcome; readonly order: readonly [string, string] }
 
@@ -198,7 +198,7 @@ function publicBoardFacts(inputs: BoardInputs): Map<string, { setup: BoardSetup;
   return result;
 }
 
-export function setupKey(setup: BoardSetup): string {
+function setupKey(setup: BoardSetup): string {
   return [setup.model, setup.stage, setup.effort, setup.harness].join("|");
 }
 

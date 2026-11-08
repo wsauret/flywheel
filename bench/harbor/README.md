@@ -174,7 +174,7 @@ ROUND="$JOBS/rounds/r3.json"
    bun bench/harbor/hill.ts score --round "$ROUND" --board
    ```
 
-   The command prints the pass count of each task, the score of each split that the round measured (over all tasks, over scored tasks, and without hub-broken tasks), the grader-lost, infrastructure, and answer-key fail counts, and the cost. It reads the measured splits from the manifests of the round's measure runs, so it reports no split that the round did not run. With `--board` it also prints the projected full score with its 90% interval and the fit when the round measured `subset`, the board's field at the round's model and effort on the full stage (each harness with its rate and interval, best rate first), and the board's leader with the paired difference over every task that both the round and the leader scored. It reads the model and the chat effort from the round's identity; `--model <name> --effort <effort>` sets them, and a round recorded before rounds had an identity needs both. A model that the board does not rank still gets the projection.
+   The command prints the pass count of each task, the score of each split that the round measured (over all tasks, over scored tasks, and without hub-broken tasks), the grader-lost, infrastructure, and answer-key fail counts, and the cost. It reads the measured splits from the manifests of the round's measure runs, so it reports no split that the round did not run. With `--board` it also prints the projected full score with its 90% interval and the fit when the round measured `subset`, and the board's field at the round's model and effort on the full stage: each harness with its rate and interval, best rate first, and the round's paired difference over every task that both the round and that harness scored, with the board's published leader marked. It reads the model and the chat effort from the round's identity; `--model <name> --effort <effort>` sets them, and a round recorded before rounds had an identity needs both. A model that the board does not rank still gets the projection.
 
 ### Whole-benchmark run
 
@@ -187,7 +187,7 @@ bash bench/harbor/run-harbor.sh --benchmark terminal-bench-2.1 --arm bench/harbo
 bun bench/harbor/hill.ts score --round <jobs dir>/rounds/<name>.json --board
 ```
 
-A round of all tasks prints no projection, because it measured the full benchmark itself. Its comparison with the board's leader uses all 87 tasks.
+A round of all tasks prints no projection, because it measured the full benchmark itself. Its paired comparison with each harness of the board uses all 87 tasks.
 
 ## Bring-up with one task
 

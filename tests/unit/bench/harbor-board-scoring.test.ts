@@ -82,7 +82,7 @@ describe("paired bootstrap", () => {
 });
 
 describe("board comparison", () => {
-  it("places a round that measured only the full split in the board's field, with no projection", () => {
+  it("places a round that measured only the full split in the board's field, each harness with its paired difference, with no projection", () => {
     const facts = [
       fact({ id: "a1", task: "a" }), fact({ id: "b1", task: "b", reward: 0 }),
       fact({ id: "a2", task: "a", harness: "h2" }), fact({ id: "b2", task: "b", harness: "h2" }),
@@ -91,6 +91,6 @@ describe("board comparison", () => {
     const score: RoundScore = { tasks: new Map([["a", [1, 1]], ["b", [0, 1]]]), splits: [full], costUsd: 0, infra: 0, graderLost: 0, answerKeyFails: 0 };
     const comparison = compareWithBoard(harborBenchmark("terminal-bench-2.1"), score, inputs(facts), { model: "org/Model-1", effort: "high" });
     expect(comparison.projection).toBeUndefined();
-    expect(comparison.field.map(({ harness, rate }) => [harness, rate])).toEqual([["h2", 1], ["h1", 0.5]]);
+    expect(comparison.field.map(({ harness, rate, diff }) => [harness, rate, diff?.diff, diff?.nTasks])).toEqual([["h2", 1, -0.5, 2], ["h1", 0.5, 0, 2]]);
   });
 });

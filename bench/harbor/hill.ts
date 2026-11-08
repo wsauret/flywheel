@@ -125,16 +125,15 @@ async function scoreCommand(values: ReadonlyMap<string, string>, switches: Reado
     const { fit, looCovered, projected } = comparison.projection;
     console.log(`projected full ${fixed(projected.full)} [${fixed(projected.low)}, ${fixed(projected.high)}] (90%; fit over ${fit.n} board units: full = ${fit.a.toFixed(5)} + ${fit.b.toFixed(5)} * ${PROJECTED_SPLIT}, residual SD ${fit.s.toFixed(5)}, leave-one-out coverage ${looCovered}/${fit.n})`);
   }
-  if (comparison.field.length > 0) {
-    console.log(`board at ${comparison.setup.model} ${comparison.setup.effort} (full stage):`);
-    for (const { harness, rate, ci } of comparison.field) console.log(`  ${harness.padEnd(20)} ${fixed(rate)}${ci === null ? "" : ` [${fixed(ci[0])}, ${fixed(ci[1])}]`}`);
-  }
   if (model === undefined) console.log(`the board ranks no setup for ${modelName}`);
-  else if (comparison.leader === undefined) console.log(`the board ranks no ${model} at effort ${comparison.setup.effort}`);
+  else if (comparison.field.length === 0) console.log(`the board ranks no ${model} at effort ${comparison.setup.effort}`);
   else {
-    const { harness, rate, diff } = comparison.leader;
-    console.log(`board leader at ${model} ${comparison.setup.effort}: ${harness} ${fixed(rate)}`);
-    console.log(diff === null ? "no task scored by both" : `paired difference on ${diff.nTasks} shared tasks: ${diff.diff >= 0 ? "+" : ""}${diff.diff.toFixed(3)} [${diff.ci[0].toFixed(3)}, ${diff.ci[1].toFixed(3)}] (95% paired bootstrap)${diff.tied ? ", tied" : ""}`);
+    console.log(`board at ${comparison.setup.model} ${comparison.setup.effort} (full stage), with this round's paired difference on the tasks both scored (95% paired bootstrap):`);
+    for (const { harness, rate, ci, diff } of comparison.field) {
+      const paired = diff === null ? "no task scored by both" : `${diff.diff >= 0 ? "+" : ""}${diff.diff.toFixed(3)} [${diff.ci[0].toFixed(3)}, ${diff.ci[1].toFixed(3)}] on ${diff.nTasks}${diff.tied ? ", tied" : ""}`;
+      console.log(`  ${harness.padEnd(20)} ${fixed(rate)}${ci === null ? "" : ` [${fixed(ci[0])}, ${fixed(ci[1])}]`}   ${paired}${harness === comparison.leader ? "   (published leader)" : ""}`);
+    }
+    if (comparison.leader !== undefined) console.log("the published leader is the board's rank over every benchmark, complete harnesses first");
   }
   return 0;
 }

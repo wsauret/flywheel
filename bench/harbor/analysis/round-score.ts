@@ -1,6 +1,6 @@
 import type { HarborBenchmark } from "../benchmarks.js";
 import type { BoardInputs } from "./board-data.js";
-import { pairedDiff, publicCells, publishedLeader, setupKey, type BoardCell } from "./board-scoring.js";
+import { pairedDiff, publicCells, publishedLeader, type BoardCell } from "./board-scoring.js";
 import { fitProjection, leaveOneOut, project, type CalibrationUnit, type Projection, type ProjectionFit } from "./projection.js";
 import type { RoundTrial } from "./round-trials.js";
 
@@ -81,10 +81,12 @@ export interface BoardComparison {
   /** The projection of the round's subset score, when the round measured the subset split. */
   readonly projection?: { readonly fit: ProjectionFit; readonly looCovered: number; readonly looRmse: number; readonly projected: Projection };
   readonly setup: BoardSetupChoice;
-  /** Every harness that the board scores at the round's model and effort on the full stage, best rate first. */
-  readonly field: readonly { readonly harness: string; readonly rate: number | null; readonly ci: readonly [number, number] | null }[];
-  /** The board's leader of that setup and the paired difference on the tasks both scored, when the board ranks the setup. */
-  readonly leader?: { readonly harness: string; readonly rate: number | null; readonly diff: ReturnType<typeof pairedDiff> };
+  /** Every harness that the board scores at the round's model and effort on the full stage, best rate first, each with
+   *  the round's paired difference on the tasks that both scored. */
+  readonly field: readonly { readonly harness: string; readonly rate: number | null; readonly ci: readonly [number, number] | null; readonly diff: ReturnType<typeof pairedDiff> }[];
+  /** The harness that the published board ranks first for that setup. The board ranks over every benchmark it holds and
+   *  puts complete harnesses first, so its leader need not have the best rate on this benchmark. */
+  readonly leader?: string;
 }
 
 /** The calibration units of a benchmark's projection: every public full-stage
@@ -104,18 +106,17 @@ export function calibrationUnits(cells: Iterable<BoardCell>, subset: readonly st
 }
 
 /** Compares a round with the board at the round's model and effort: the
- *  board's field of harnesses, the paired per-task difference with its
- *  leader, and, when the round measured the subset split, the projection of
+ *  board's field of harnesses, each with the paired per-task difference, its
+ *  published leader, and, when the round measured the subset split, the projection of
  *  that score to the full benchmark with a fit over the board's units. */
 export function compareWithBoard(benchmark: HarborBenchmark, score: RoundScore, board: BoardInputs, setup: BoardSetupChoice): BoardComparison {
   const cells = publicCells(board);
   const subset = benchmark.splits[PROJECTED_SPLIT];
   const subsetScore = score.splits.find((split) => split.split === PROJECTED_SPLIT);
   const leader = publishedLeader(board, setup.model, setup.effort);
-  const leaderCell = leader === undefined ? undefined : cells.get(setupKey({ model: setup.model, stage: "full", effort: setup.effort, harness: leader }));
   const field = [...cells.values()]
     .filter((cell) => cell.setup.model === setup.model && cell.setup.effort === setup.effort && cell.setup.stage === "full")
-    .map((cell) => ({ harness: cell.setup.harness, rate: cell.rate, ci: cell.ci }))
+    .map((cell) => ({ harness: cell.setup.harness, rate: cell.rate, ci: cell.ci, diff: pairedDiff(board.benchmark, score.tasks, cell.tally) }))
     .sort((left, right) => (right.rate ?? -1) - (left.rate ?? -1));
   let projection: BoardComparison["projection"];
   if (subset !== undefined && subsetScore !== undefined) {
@@ -128,7 +129,7 @@ export function compareWithBoard(benchmark: HarborBenchmark, score: RoundScore, 
     ...(projection === undefined ? {} : { projection }),
     setup,
     field,
-    ...(leader === undefined || leaderCell === undefined ? {} : { leader: { harness: leader, rate: leaderCell.rate, diff: pairedDiff(board.benchmark, score.tasks, leaderCell.tally) } }),
+    ...(leader === undefined ? {} : { leader }),
   };
 }
 

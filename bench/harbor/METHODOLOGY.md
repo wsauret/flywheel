@@ -9,7 +9,7 @@ A hill-climb measures one arm, a Flywheel config, on fixed task splits of one be
 1. The board's data is fetched to a local cache, and the port of the board's scoring must reproduce every published cell of the benchmark before any score uses it.
 2. Splits are chosen once per benchmark from the board's per-task results. The `subset` split projects to the full benchmark; holdout splits check that a change that helps the subset also helps tasks that it did not select. The analysis proposes splits, and the person picks them. A run can also take the whole benchmark: every task of the pinned dataset except the descriptor's exclusions, which is the reserved split `all`.
 3. A round runs each split, or the whole benchmark, at the board's job settings, reruns the trials that infrastructure or a lost grader left unscored, reviews the passing trials that reached a published copy of the benchmark, and scores every scored attempt with the board's rules.
-4. The subset score projects to the full benchmark through a fit over the board's own units. A round of the whole benchmark needs no projection. The round is compared with the board's field, and task by task with the board's leader, at the same model and effort.
+4. The subset score projects to the full benchmark through a fit over the board's own units. A round of the whole benchmark needs no projection. The round is compared task by task with each harness of the board's field at the same model and effort.
 
 ## Effective configuration and grades
 
@@ -149,11 +149,11 @@ yhat +/- t90 * s * sqrt(1 + 1/n + (x - mean subset)^2 / Sxx)
 
 where s is the residual standard deviation of the fit (the structural SD), n is the unit count, and t90 is the one-sided 0.95 quantile of Student's t with n - 2 degrees of freedom. The board's units carry the same attempt-sampling noise in their subset scores as a round does, so the residual SD already holds that noise. A leave-one-out check fits the line without each unit, projects that unit, and reports how many units fall inside their 90% interval and the RMSE of those projections. The fit needs at least 3 units. The projection does not depend on the model, so a round of a model that the board does not rank still gets one.
 
-## Comparison with the board's leader
+## Comparison with the board
 
-`hill.ts score --board` reads the round's model and chat effort from the round's identity, or from `--model` and `--effort`. The board model is the model id whose last path segment equals the round's model, ignoring case. The leader is the harness that the published board ranks first for that model, the full stage, and that effort. The command also prints the board's field at that model and effort on the full stage: each harness with its rate and interval, best rate first. It prints the projection only when the round measured `subset`.
+`hill.ts score --board` reads the round's model and chat effort from the round's identity, or from `--model` and `--effort`. The board model is the model id whose last path segment equals the round's model, ignoring case. The command prints the board's field at that model and effort on the full stage: each harness with its rate and interval, best rate first, and the round's paired difference with that harness. It marks the published leader, the harness that the published board ranks first for that model, the full stage, and that effort. The board ranks over every benchmark it holds and puts complete harnesses first, so the leader need not have the best rate on the round's benchmark; the harness with the best rate is the first row. It prints the projection only when the round measured `subset`.
 
-The paired comparison uses the board's own method. It takes the tasks that both the round and the leader's cell scored, over every task that the round measured, so a round of the whole Terminal-Bench 2.1 compares on all 87 tasks, and computes the round's pass rate minus the leader's for each task. The difference is the mean over those tasks. Its 95% interval comes from the board's paired bootstrap: 2000 resamples of the tasks with replacement, seeded with the board's seed, the board key, and the task count, as the board seeds them. The two are tied when the interval contains 0.
+The paired comparison uses the board's own method. For each harness of the field, it takes the tasks that both the round and that harness's cell scored, over every task that the round measured, so a round of the whole Terminal-Bench 2.1 compares on all 87 tasks, and computes the round's pass rate minus the harness's for each task. The difference is the mean over those tasks. Its 95% interval comes from the board's paired bootstrap: 2000 resamples of the tasks with replacement, seeded with the board's seed, the board key, and the task count, as the board seeds them. The two are tied when the interval contains 0.
 
 ## Subset selection
 
@@ -214,7 +214,7 @@ Descriptor `deep-swe-1.1`, board key `deep-swe`. The descriptor excludes two tas
 - The grader writes a reward of -1 when it crashes. The ledger records that trial as `verifier_infra`, and the round counts it as grader-lost: not scored, and rerun.
 - Only committed work is graded. The verifier grades the patch of `git diff` from the task's base commit to `HEAD` in the workspace, so a change that the agent does not commit is not graded.
 - Each trial home carries no answer-key rule file. Nothing that the rule forbids is reachable from an agent phase without network.
-- Most of the board's DeepSWE trials ran with network access. An offline Flywheel arm is therefore compared with a mostly online field, and a comparison with the board's leader must state that difference.
+- Most of the board's DeepSWE trials ran with network access. An offline Flywheel arm is therefore compared with a mostly online field, and a comparison with the board's field must state that difference.
 
 ## Removed capabilities
 
