@@ -1,0 +1,26 @@
+src/protocol/setting-catalog.ts
+  h_4b47e9e4a8b456 55,111,132
+src/tui/hooks/use-settings-modal.ts
+  h_4b47e9e4a8b456 22,526-527
+src/workflows/docs/configuration.md
+  h_4b47e9e4a8b456 2252
+tests/unit/tui/modals/settings-modal-capabilities.test.ts
+  h_4b47e9e4a8b456 150,154
+webview/src/app/capability-preset-interaction.test.ts
+  h_4b47e9e4a8b456 240
+webview/src/app/command-panel-controls.test.ts
+  h_4b47e9e4a8b456 110,112
+webview/src/client/settings-actions.test.ts
+  h_4b47e9e4a8b456 187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5211a0a577971a929b271968a550e8d2609ccc68",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
