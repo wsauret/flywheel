@@ -1,0 +1,14 @@
+bench/harbor/harbor_agent_package.py
+  h_4b47e9e4a8b456 102-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4323a7ed4599d0800f0929133062523222c23161",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
