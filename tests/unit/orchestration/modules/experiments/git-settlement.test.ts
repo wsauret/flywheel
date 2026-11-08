@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test"
 import type { ExperimentRunRecordedFact } from "../../../../../src/orchestration/modules/experiments/facts.js"
 import { createExperimentGitSettlement } from "../../../../../src/orchestration/modules/experiments/git-settlement.js"
+import { storedExperimentFact } from "../../agent-runtime/tools/_fixtures.js"
 
 const runFact: ExperimentRunRecordedFact = {
   type: "experiment.run.recorded",
@@ -27,11 +28,10 @@ test("retires the operation marker with exactly one run fact after keep", async 
     record: async (fact, retirement) => {
       order.push("record")
       recorded.push([fact, retirement])
+      return storedExperimentFact(fact)
     },
-    retirement: () => [{ op: "drop", kind: "experiment.operation", key: "run" }],
-    complete: () => { order.push("complete") },
-    keep: async () => {
-      order.push("keep")
+    keep: async ({ measuredTree }) => {
+      order.push(`keep ${measuredTree}`)
       return "abcdef1"
     },
     revert: async () => {
@@ -40,40 +40,40 @@ test("retires the operation marker with exactly one run fact after keep", async 
     head: async () => "1234567",
   })
 
-  await settlement.settle("/worktree", runFact)
+  await settlement.settle("/worktree", runFact, false, "measured-tree")
 
-  expect(order).toEqual(["keep", "record", "complete"])
+  expect(order).toEqual(["keep measured-tree", "record"])
   expect(recorded[0]).toEqual([
     { ...runFact, payload: { ...runFact.payload, commit: "abcdef1" } },
     [{ op: "drop", kind: "experiment.operation", key: "run" }],
   ])
 })
 
-test("a successful commit whose run fact fails retains the operation marker", async () => {
-  let completed = false
-  const settlement = createExperimentGitSettlement({
-    record: async () => { throw new Error("fact failed") },
-    retirement: () => [{ op: "drop", kind: "experiment.operation", key: "run" }],
-    complete: () => { completed = true },
-    keep: async () => "committed",
-    revert: async () => { throw new Error("unexpected") },
-    head: async () => "original",
+for (const [label, record] of [
+  ["fails", async () => { throw new Error("fact failed") }],
+  ["is not acknowledged", async () => null],
+] as const) {
+  test(`a successful commit whose run fact ${label} rejects the settlement`, async () => {
+    const settlement = createExperimentGitSettlement({
+      record,
+      keep: async () => "committed",
+      revert: async () => { throw new Error("unexpected") },
+      head: async () => "original",
+    })
+
+    await expect(settlement.settle("/worktree", runFact, false, "measured-tree")).rejects.toThrow(label === "fails" ? "fact failed" : "Experiment run could not be recorded.")
   })
-
-  await expect(settlement.settle("/worktree", runFact)).rejects.toThrow("fact failed")
-
-  expect(completed).toBe(false)
-})
+}
 
 test("publishes the capped run and deactivation in one transaction", async () => {
   const facts: unknown[] = []
   let transactions = 0
   const settlement = createExperimentGitSettlement({
+    // Inside a transaction the writer queues each fact and acknowledges none.
     record: async (fact, retirement) => {
       facts.push([fact, retirement])
+      return null
     },
-    retirement: () => [{ op: "drop", kind: "experiment.operation", key: "run" }],
-    complete: () => {},
     transaction: async (publish) => {
       transactions++
       publish()
@@ -83,7 +83,7 @@ test("publishes the capped run and deactivation in one transaction", async () =>
     head: async () => "1234567",
   })
 
-  await settlement.settle("/worktree", runFact, true)
+  await settlement.settle("/worktree", runFact, true, "measured-tree")
 
   expect(transactions).toBe(1)
   expect(facts).toEqual([

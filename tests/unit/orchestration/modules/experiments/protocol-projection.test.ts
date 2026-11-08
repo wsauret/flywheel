@@ -5,7 +5,7 @@ import { asAsyncEventReadSurface, type EventReader, type StoredFact } from "../.
 import { releaseHeldProjections } from "../../../../../src/infra/projection-registry.js"
 import { createExperimentViewProtocolProjection, createExperimentViewProtocolReader, experimentViewFromSnapshot } from "../../../../../src/orchestration/modules/experiments/protocol.js"
 import { createRuntimeUiPatchSequencer } from "../../../../../src/orchestration/app-service/runtime-ui-patch-sequencer.js"
-import { ExperimentExecutionState } from "../../../../../src/orchestration/modules/experiments/execution-state.js"
+import { createExperimentOperation, type ExperimentOperation } from "../../../../../src/orchestration/modules/experiments/operation-owner.js"
 import type { ChatRunner } from "../../../../../src/orchestration/chat/runner-types.js"
 import type { ExperimentFact } from "../../../../../src/orchestration/modules/experiments/facts.js"
 import type { SessionEntry } from "../../../../../src/orchestration/session-store/types.js"
@@ -14,6 +14,7 @@ import type { RuntimeUiPatchInput } from "../../../../../src/protocol/runtime-ui
 import { inMemoryEventReader } from "../../../../helpers/in-memory-event-reader.js"
 import { chatEntry } from "../../app-service/app-service-doubles.js"
 import { chatRunner } from "../../app-service/_frontend-projection-fixtures.js"
+import { storedExperimentFact } from "../../agent-runtime/tools/_fixtures.js"
 
 // Settle asynchronous replay and the publisher's microtask batch.
 const flush = () => new Promise<void>((resolve) => { setImmediate(resolve) })
@@ -95,8 +96,16 @@ function sessionStore(entries: Map<string, SessionEntry>) {
   }
 }
 
-function runnerWith(execution: ExperimentExecutionState<unknown>): ChatRunner {
-  return { ...chatRunner("chat-1"), moduleRuntimes: composeModuleRuntimes([[experimentsRuntime.moduleId, { execution }]]) }
+function experimentOperation(): ExperimentOperation<unknown> {
+  return createExperimentOperation<unknown>({ listInFlight: async () => [], putInFlight: async () => {}, record: async (fact) => storedExperimentFact(fact) })
+}
+
+async function begin(operation: ExperimentOperation<unknown>, command: string): Promise<void> {
+  await operation.begin(async () => ({ command, cwd: "/repo" }))
+}
+
+function runnerWith(operation: ExperimentOperation<unknown>): ChatRunner {
+  return { ...chatRunner("chat-1"), moduleRuntimes: composeModuleRuntimes([[experimentsRuntime.moduleId, { operation }]]) }
 }
 
 /** The reader with every fact-reading entry point counted. */
@@ -173,8 +182,8 @@ describe("experiment view protocol projection", () => {
     projection.dispose()
   })
 
-  it("running follows the live execution state exactly and never tool facts", async () => {
-    const execution = new ExperimentExecutionState<unknown>()
+  it("running follows the live operation exactly and never tool facts", async () => {
+    const execution = experimentOperation()
     const entry = chatEntry({ runner: runnerWith(execution) })
     const log = new FactLog()
     log.commit("chat-1", mode(true))
@@ -185,11 +194,11 @@ describe("experiment view protocol projection", () => {
     await flush()
     expect(kinds()).toEqual([])
 
-    execution.start("measure")
+    await begin(execution, "measure")
     await flush()
     expect(views().map((view) => view.running)).toEqual([true])
 
-    execution.finish({ metric: 8 })
+    execution.measured({ metric: 8 })
     await flush()
     expect(views().map((view) => view.running)).toEqual([true, false])
 
@@ -200,16 +209,25 @@ describe("experiment view protocol projection", () => {
     expect(last?.running).toBe(false)
     expect(last?.runs).toHaveLength(1)
 
-    execution.clear()
+    await execution.settle(async () => ({ outcome: "settled", result: undefined }))
     await flush()
     expect(views()).toHaveLength(3)
+
+    // A stopped run's command still executes in the worktree until it returns.
+    await begin(execution, "again")
+    await execution.stop(null)
+    await flush()
+    expect(views().map((view) => view.running).slice(3)).toEqual([true])
+    execution.measured({ metric: 9 })
+    await flush()
+    expect(views().map((view) => view.running).slice(3)).toEqual([true, false])
     projection.dispose()
   })
 
   it("follows module runtime generations on the same chat runner and releases the old owner", async () => {
-    const first = new ExperimentExecutionState<unknown>()
-    const second = new ExperimentExecutionState<unknown>()
-    let modules = composeModuleRuntimes([[experimentsRuntime.moduleId, { execution: first }]])
+    const first = experimentOperation()
+    const second = experimentOperation()
+    let modules = composeModuleRuntimes([[experimentsRuntime.moduleId, { operation: first }]])
     const listeners = new Set<(value: typeof modules) => void>()
     const runner: ChatRunner = {
       ...chatRunner("chat-1"),
@@ -219,18 +237,18 @@ describe("experiment view protocol projection", () => {
     const { projection, log, views } = harness(new Map([["chat-1", chatEntry({ runner })]]))
     log.commit("chat-1", initialized(0))
     expect((await projection.snapshot("chat-1"))?.running).toBe(false)
-    first.start("first")
+    await begin(first, "first")
     await flush()
     expect(views().at(-1)?.running).toBe(true)
-    modules = composeModuleRuntimes([[experimentsRuntime.moduleId, { execution: second }]])
+    modules = composeModuleRuntimes([[experimentsRuntime.moduleId, { operation: second }]])
     for (const listener of listeners) listener(modules)
     await flush()
     expect(views().at(-1)?.running).toBe(false)
-    first.fail()
-    first.start("detached")
+    const published = views().length
+    first.measured({ metric: 8 })
     await flush()
-    expect(views().at(-1)?.running).toBe(false)
-    second.start("second")
+    expect(views()).toHaveLength(published)
+    await begin(second, "second")
     await flush()
     expect(views().at(-1)?.running).toBe(true)
     projection.dispose()
@@ -261,8 +279,8 @@ describe("experiment view protocol projection", () => {
   })
 
   it("keeps durable rows with running false when a session departs, then releases its subscription", async () => {
-    const execution = new ExperimentExecutionState<unknown>()
-    execution.start("measure")
+    const execution = experimentOperation()
+    await begin(execution, "measure")
     const { projection, store, log, views } = harness(new Map([["chat-1", chatEntry({ runner: runnerWith(execution) })]]))
     log.commit("chat-1", initialized(0))
     log.commit("chat-1", run(1, 0, 10))
@@ -273,7 +291,7 @@ describe("experiment view protocol projection", () => {
     expect(views().at(-1)).toMatchObject({ running: false, runs: [{ run: 1 }] })
     expect(await projection.snapshot("chat-1")).toBeNull()
 
-    execution.fail()
+    execution.failed()
     await flush()
     expect(views()).toHaveLength(1)
     projection.dispose()

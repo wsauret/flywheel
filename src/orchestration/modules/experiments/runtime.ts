@@ -1,5 +1,6 @@
 import { join } from "node:path"
 import { mkdir } from "node:fs/promises"
+import type { InFlightWrite } from "../../../infra/event-store-types.js"
 import { moduleRuntimeHandle } from "../../../infra/module-runtime.js"
 import { resolveSessionDir, sessionScratchDir } from "../../../infra/paths.js"
 import type { SkillRegistryRevision } from "../../../workflows/skill-schema.js"
@@ -10,16 +11,16 @@ import { createRunExperimentTool } from "./tools/run-experiment.js"
 import type { ExternalSkillChildGrant } from "../../agent-runtime/tools/skill.js"
 import type { ExperimentGuardSnapshot, RuntimeTool } from "../../agent-runtime/tools/types.js"
 import { EXPERIMENT_CHARTER_PATH } from "./charter.js"
-import { ExperimentExecutionState } from "./execution-state.js"
+import type { ExperimentFact } from "./facts.js"
 import { createFinalizeChildGrant } from "./finalize-child-run.js"
 import { captureExperimentTree, keepExperimentChanges, readExperimentHead, revertExperimentChanges } from "./git-operations.js"
 import { createExperimentGitSettlement } from "./git-settlement.js"
-import { createExperimentOperationOwner } from "./operation-owner.js"
+import { createExperimentOperation, type ExperimentOperation } from "./operation-owner.js"
 import { validateExperimentWorktree } from "./git-worktree.js"
 import { createExperimentProjection, type ExperimentSnapshot } from "./projection.js"
 
-/** The experiment loop of one runner: the three loop tools, the running and
- *  pending-result owner, the finalizer grant, and the live charter policy, all
+/** The experiment loop of one runner: the three loop tools, the operation
+ *  owner, the finalizer grant, and the live charter policy, all
  *  reading the session's one held experiment projection. */
 export interface ExperimentsRuntime {
   readonly tools: {
@@ -27,7 +28,7 @@ export interface ExperimentsRuntime {
     readonly runExperiment: RuntimeTool
     readonly logExperiment: RuntimeTool
   }
-  readonly execution: ExperimentExecutionState
+  readonly operation: ExperimentOperation
   /** The grant is a factory over the request's admitted skill revision so the
    *  finalizer script bytes come from the same revision the skill tool loads
    *  from. It is the fallback child grant: an attempt-bounded workflow grant
@@ -53,22 +54,17 @@ export function createExperimentsRuntime(services: ModuleRuntimeServices): Exper
   if (!putInFlight) return undefined
   const writer = sessionEventWriter
   const projection = createExperimentProjection(projectionReader, sessionId)
-  const execution = new ExperimentExecutionState()
-  const operation = createExperimentOperationOwner({
+  const record = (fact: ExperimentFact, inFlight?: readonly InFlightWrite[]) => writer.record(fact, undefined, inFlight)
+  const operation = createExperimentOperation({
     listInFlight: (kinds) => projectionReader.readInFlight(sessionId, kinds),
     putInFlight: (kind, key, payload) => putInFlight(kind, key, payload),
+    record,
   })
   const scratchDir = sessionScratchDir(resolveSessionDir(sessionId, projectRoot))
   const settlement = createExperimentGitSettlement({
-    record: async (fact, inFlight) => { await writer.record(fact, undefined, inFlight) },
+    record,
     transaction: (publish) => writer.transaction(publish),
-    retirement: () => operation.retirement(),
-    complete: () => operation.complete(),
-    keep: ({ cwd, description, result }) => {
-      const pending = execution.pending()
-      if (!pending) throw new Error("Experiment keep requires its pending measured tree.")
-      return keepExperimentChanges({ cwd, scratchDir, description, result, measuredTree: pending.measuredTree, run: runOwnedCommand })
-    },
+    keep: ({ cwd, description, result, measuredTree }) => keepExperimentChanges({ cwd, scratchDir, description, result, measuredTree, run: runOwnedCommand }),
     revert: (cwd) => revertExperimentChanges({ cwd, run: runOwnedCommand }),
     head: (cwd) => readExperimentHead(cwd, runOwnedCommand),
   })
@@ -85,7 +81,7 @@ export function createExperimentsRuntime(services: ModuleRuntimeServices): Exper
     }
   }
   return {
-    execution,
+    operation,
     tools: {
       initExperiment: createInitExperimentTool({
         snapshot: async () => (await snapshot()) ?? {
@@ -99,12 +95,10 @@ export function createExperimentsRuntime(services: ModuleRuntimeServices): Exper
         readCharter: () => Bun.file(join(executionCwd, EXPERIMENT_CHARTER_PATH)).text(),
         validateWorktree: (input) => validateExperimentWorktree({ ...input, run: runOwnedCommand }),
         record: async (fact) => { await writer.record(fact) },
-        executionState: execution,
         operation,
       }),
       runExperiment: createRunExperimentTool({
         replay: snapshot,
-        executionState: execution,
         operation,
         run: runOwnedCommand,
         platform: process.platform,
@@ -113,10 +107,9 @@ export function createExperimentsRuntime(services: ModuleRuntimeServices): Exper
       }),
       logExperiment: createLogExperimentTool({
         replay: snapshot,
-        executionState: execution,
         operation,
         captureTree: () => captureExperimentTree({ cwd: executionCwd, scratchDir, run: runOwnedCommand }),
-        settle: (cwd, fact, deactivate) => settlement.settle(cwd, fact, deactivate),
+        settle: (cwd, fact, deactivate, measuredTree) => settlement.settle(cwd, fact, deactivate, measuredTree),
       }),
     },
     // Finalization runs after the loop is off, so the grant does not depend

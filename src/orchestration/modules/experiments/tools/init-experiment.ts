@@ -1,7 +1,6 @@
 import { Schema } from "effect"
 import type { ExperimentInitializedFact } from "../facts.js"
-import type { ExperimentExecutionState } from "../execution-state.js"
-import type { ExperimentOperationOwner } from "../operation-owner.js"
+import type { ExperimentOperation } from "../operation-owner.js"
 import { MANDATORY_PROTECTED_PATHS, parseExperimentCharter, type ExperimentCharter } from "../charter.js"
 import { initExperimentSchema } from "../../../agent-runtime/tools/experiment-schemas.js"
 import type { RuntimeTool, RuntimeToolInput } from "../../../agent-runtime/tools/types.js"
@@ -33,8 +32,7 @@ interface InitExperimentDependencies {
   readonly readCharter: () => Promise<string>
   readonly validateWorktree: (input: { workDir: string; executionCwd: string; projectRoot: string }) => Promise<string>
   readonly record: (fact: ExperimentInitializedFact) => Promise<void>
-  readonly executionState: ExperimentExecutionState
-  readonly operation: ExperimentOperationOwner
+  readonly operation: ExperimentOperation
   readonly parseCharter?: (markdown: string) => ExperimentCharter
 }
 
@@ -51,7 +49,7 @@ export function createInitExperimentTool(deps: InitExperimentDependencies): Runt
         if (blocker) return failure(blocker)
         const snapshot = await deps.snapshot()
         if (!snapshot.mode.active) return failure("Experiment mode is not active.")
-        if (deps.executionState.snapshot().status !== "idle") return failure("Experiment execution is not idle.")
+        if (deps.operation.snapshot().status !== "idle") return failure("Experiment execution is not idle.")
         const charter = (deps.parseCharter ?? parseExperimentCharter)(await deps.readCharter())
         const supplied = decodeInput(input)
         if (!sameConfig(charter, supplied)) return failure("init_experiment arguments do not match the active charter.")

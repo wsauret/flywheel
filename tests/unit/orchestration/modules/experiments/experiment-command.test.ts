@@ -46,8 +46,8 @@ function harness(overrides: Partial<ExperimentCommandDeps> = {}) {
   const facts: ExperimentModeChangedFact[] = []
   const prompts: CommandPrompt[] = []
   const methods: CommandMethod[] = []
+  const stops: boolean[] = []
   let interrupted = false
-  let cleared = false
   const deps = {
     executionCwd: "/repo",
     projectRoot: "/repo",
@@ -55,15 +55,18 @@ function harness(overrides: Partial<ExperimentCommandDeps> = {}) {
     readCharter: async () => charter,
     validateWorktree: async () => "/repo",
     trackedFilesAreClean: async () => true,
-    recordMode: async (active: boolean, workDir: string | null) => { facts.push({ type: "experiment.mode.changed", version: 1, actor: "flywheel", payload: { active, workDir } }) },
+    activate: async (workDir: string) => { facts.push({ type: "experiment.mode.changed", version: 1, actor: "flywheel", payload: { active: true, workDir } }) },
+    stop: async (workDir: string | null, discard: boolean) => {
+      stops.push(discard)
+      facts.push({ type: "experiment.mode.changed", version: 1, actor: "flywheel", payload: { active: false, workDir } })
+    },
     prompt: async (input: CommandPrompt) => { prompts.push(input); return true },
     startMethod: async (input: CommandMethod): Promise<CommandOutcome> => { methods.push(input); return { kind: "none" } },
-    clearPending: () => { cleared = true },
     interrupt: () => { interrupted = true },
     interruption: async () => undefined,
     ...overrides,
   }
-  return { deps, facts, prompts, methods, interrupted: () => interrupted, cleared: () => cleared }
+  return { deps, facts, prompts, methods, stops, interrupted: () => interrupted }
 }
 
 describe("experiment command", () => {
@@ -85,7 +88,7 @@ describe("experiment command", () => {
     const order: string[] = []
     const prompts: CommandPrompt[] = []
     const h = harness({
-      recordMode: async () => { order.push("mode") },
+      activate: async () => { order.push("mode") },
       prompt: async (input) => { order.push("prompt"); prompts.push(input); return true },
     })
     expect(await executeExperimentCommand("start", h.deps)).toEqual({ kind: "none" })
@@ -102,15 +105,18 @@ describe("experiment command", () => {
     expect(await executeExperimentCommand("off", active.deps)).toEqual({ kind: "none" })
     expect(await executeExperimentCommand("clear", active.deps)).toEqual({ kind: "none" })
     expect(active.facts.map((fact) => fact.payload)).toEqual([{ active: false, workDir: "/repo" }, { active: false, workDir: null }])
-    expect(active.cleared()).toBe(true)
+    expect(active.stops).toEqual([false, false])
     expect(active.interrupted()).toBe(true)
   })
 
-  test("interrupted work blocks new activation but not off or clear", async () => {
+  test("interrupted work blocks new activation, and plain clear names clear discard", async () => {
     const h = harness({ interruption: async () => "Inspect the unresolved experiment operation." })
     expect(await executeExperimentCommand("start", h.deps)).toEqual({ kind: "warning", message: "Inspect the unresolved experiment operation." })
     expect(await executeExperimentCommand("off", h.deps)).toEqual({ kind: "none" })
-    expect(await executeExperimentCommand("clear", h.deps)).toEqual({ kind: "none" })
+    const clear = await executeExperimentCommand("clear", h.deps)
+    expect(clear.kind === "message" ? clear.message : "").toContain("/experiment clear discard")
+    expect(await executeExperimentCommand("clear discard", h.deps)).toEqual({ kind: "none" })
+    expect(h.stops).toEqual([false, false, true])
   })
 
   test("help, unknown syntax, and dashboard are deterministic", async () => {
@@ -119,7 +125,7 @@ describe("experiment command", () => {
     expect(help.kind).toBe("message")
     expect(help.kind === "message" ? help.message : "").toContain("Usage: /experiment")
     expect(help.kind === "message" ? help.message : "").toContain("finalize turns the kept experiments into clean, reviewable branches.")
-    expect(await executeExperimentCommand("wat", h.deps)).toEqual({ kind: "warning", message: "Usage: /experiment [design <goal>|start|off|clear|finalize|dashboard]" })
+    expect(await executeExperimentCommand("wat", h.deps)).toEqual({ kind: "warning", message: "Usage: /experiment [design <goal>|start|off|clear [discard]|finalize|dashboard]" })
     expect(await executeExperimentCommand("dashboard", h.deps)).toEqual({ kind: "open", surface: "experiment-dashboard" })
   })
 })

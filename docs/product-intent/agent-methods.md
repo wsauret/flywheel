@@ -150,6 +150,10 @@ An experiment loop runs without further prompts. The agent proposes one change a
 
 When the person runs `/experiment finalize`, Flywheel groups kept experiments into independent changesets that share no files. It proposes the grouping, and after approval creates one clean branch per group from the merge base, so each can be reviewed and merged alone.
 
+## PI-AGENT-122: A stopped or interrupted experiment never stays blocked
+
+A stop ends the experiment loop and leaves it free to start again. When an earlier operation was interrupted, Flywheel says so and does not rerun, revert, commit, or discard it by itself. After the person confirms, `/experiment clear` discards the interrupted operation and leaves the experiment worktree as it is.
+
 ## PI-AGENT-015: Workflows resume across compatible method changes
 
 Flywheel resumes a workflow when its graph and execution contracts remain compatible, records changed method content used after resume, and stops before work starts when a structural change makes the recorded run incompatible. The stopped workflow then says that its definition changed and names each changed part once. It says how to continue the work: start a new workflow, or, when the project defines every changed part, restore those parts and press Resume. Resume continues the workflow when its definition matches again, and otherwise names the parts that still differ.

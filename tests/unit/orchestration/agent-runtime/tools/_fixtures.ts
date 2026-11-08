@@ -7,7 +7,8 @@ import type { ModuleId } from "../../../../../src/orchestration/modules.js";
 import type { InFlightWrite, StoredFact } from "../../../../../src/infra/event-store-types.js";
 import { parseFileMutationFact, type FileMutationFact } from "../../../../../src/orchestration/session/file-mutation-facts.js";
 import type { SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
-import { createExperimentOperationOwner } from "../../../../../src/orchestration/modules/experiments/operation-owner.js";
+import { createExperimentOperation } from "../../../../../src/orchestration/modules/experiments/operation-owner.js";
+import type { ExperimentFact } from "../../../../../src/orchestration/modules/experiments/facts.js";
 import { moduleDisabledReason } from "../../../../../src/protocol/module-ids"
 import type { SessionContentNode } from "../../../../../src/infra/session-content.js"
 import { asAsyncEventReadSurface } from "../../../../../src/infra/event-store-types.js"
@@ -68,10 +69,18 @@ export function makeContext(overrides?: Partial<ToolContext>): ToolContext {
   };
 }
 
+/** The stored form of an experiment fact, for a writer double that acknowledges every record. */
+export function storedExperimentFact(fact: ExperimentFact): StoredFact {
+  return { aggregateId: "session:test", sessionId: "test", id: "test-1", position: 1, seq: 0, timestamp: 1, type: fact.type, version: fact.version, actor: fact.actor, payload: fact.payload };
+}
+
+/** An operation with no hold at open whose hold writes succeed. It records
+ *  no fact, so a case that stops it must build its own. */
 export function testExperimentOperation() {
-  return createExperimentOperationOwner({
+  return createExperimentOperation({
     listInFlight: async () => [],
     putInFlight: async () => {},
+    record: async () => { throw new Error("unexpected experiment fact"); },
   });
 }
 

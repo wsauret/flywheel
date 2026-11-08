@@ -3,7 +3,7 @@ import type { CommandMethod, CommandPrompt } from "../../app-service/command-hos
 import type { ExperimentSnapshot } from "./projection.js"
 import { parseExperimentCharter } from "./charter.js"
 
-const USAGE = "Usage: /experiment [design <goal>|start|off|clear|finalize|dashboard]"
+const USAGE = "Usage: /experiment [design <goal>|start|off|clear [discard]|finalize|dashboard]"
 const HELP = [
   USAGE,
   "",
@@ -11,6 +11,7 @@ const HELP = [
   "start validates the committed charter and starts the experiment loop.",
   "off leaves experiment mode.",
   "clear leaves experiment mode and clears its selected working directory.",
+  "clear discard also discards an interrupted experiment operation and leaves the worktree as it is.",
   "finalize turns the kept experiments into clean, reviewable branches.",
   "dashboard opens the experiment dashboard.",
 ].join("\n")
@@ -28,15 +29,18 @@ export interface ExperimentCommandDeps {
   readonly readCharter: () => Promise<string | null>
   readonly validateWorktree: (workDir: string) => Promise<string>
   readonly trackedFilesAreClean: (workDir: string) => Promise<boolean>
-  readonly recordMode: (active: boolean, workDir: string | null) => Promise<void>
+  readonly activate: (workDir: string) => Promise<void>
+  /** Leaves experiment mode and retires the hold of a live run; `discard`
+   *  also retires the holds of interrupted work. */
+  readonly stop: (workDir: string | null, discard: boolean) => Promise<void>
   readonly prompt: (input: CommandPrompt) => Promise<boolean>
   readonly startMethod: (input: CommandMethod) => Promise<CommandOutcome>
-  readonly clearPending: () => void
   readonly interrupt: () => void
   readonly interruption: () => Promise<string | undefined>
 }
 
 const HANDLED: CommandOutcome = { kind: "none" }
+const INTERRUPTION_KEPT = "Experiment mode is off. An interrupted experiment operation remains. Run /experiment clear discard to discard it and leave the experiment worktree as it is."
 const refused = (message: string): CommandOutcome => ({ kind: "warning", message })
 
 /** Executes one parsed `/experiment` command against its session-owned authorities. */
@@ -44,12 +48,17 @@ export async function executeExperimentCommand(argument: string | undefined, dep
   const raw = argument?.trim() ?? ""
   if (!raw) return { kind: "message", message: HELP }
   if (raw === "dashboard") return { kind: "open", surface: "experiment-dashboard" }
-  if (raw === "off" || raw === "clear") {
-    const workDir = raw === "clear" ? null : ((await deps.snapshot())?.mode.workDir ?? null)
-    await deps.recordMode(false, workDir)
-    deps.clearPending()
+  if (raw === "off") {
+    await deps.stop((await deps.snapshot())?.mode.workDir ?? null, false)
     deps.interrupt()
     return HANDLED
+  }
+  if (raw === "clear" || raw === "clear discard") {
+    const discard = raw === "clear discard"
+    await deps.stop(null, discard)
+    deps.interrupt()
+    if (discard || !(await deps.interruption())) return HANDLED
+    return { kind: "message", message: INTERRUPTION_KEPT }
   }
   if (raw === "design" || raw.startsWith("design ")) {
     const goal = raw.slice("design".length).trim()
@@ -70,7 +79,7 @@ export async function executeExperimentCommand(argument: string | undefined, dep
     if (!(await deps.trackedFilesAreClean(workDir))) {
       return refused("The experiment charter, measure script, and checks script must be tracked and the worktree must be clean.")
     }
-    await deps.recordMode(true, workDir)
+    await deps.activate(workDir)
     const dispatched = await deps.prompt({ text: EXPERIMENT_START_CONTEXT, label: "/experiment start", context: EXPERIMENT_START_CONTEXT })
     return dispatched ? HANDLED : refused("The experiment was activated, but its start context could not be delivered.")
   } catch (error) {

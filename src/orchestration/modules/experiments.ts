@@ -1,12 +1,13 @@
 import { ExperimentFactSchemas } from "./experiments/facts.js"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
+import type { InFlightWrite } from "../../infra/event-store-types.js"
 import type { ToolDeclaration } from "../agent-runtime/tools/tool-registry.js"
 import type { FirstPartyModule } from "../modules.js"
 import { createExperimentChatObserver } from "./experiments/chat-observer.js"
 import { executeExperimentCommand } from "./experiments/experiment-command.js"
 import { validateExperimentWorktree } from "./experiments/git-worktree.js"
-import { findExperimentInterruption } from "./experiments/operation-owner.js"
+import { experimentInterruptionRetirement, findExperimentInterruption } from "./experiments/operation-owner.js"
 import { createExperimentProjection } from "./experiments/projection.js"
 import { renderExperimentSystemPromptFragment } from "./experiments/system-prompt-fragment.js"
 import { experimentToolExecutionGate, experimentToolOmissions } from "./experiments/tool-execution-gate.js"
@@ -70,6 +71,12 @@ export const experimentsModule = {
         const { executionCwd } = session
         const { projectRoot } = host.directories
         const projection = createExperimentProjection(host.projectionReader, session.id)
+        const readInFlight = (kinds: readonly string[]) => session.readInFlight(kinds)
+        const recordMode = async (active: boolean, workDir: string | null, inFlight?: readonly InFlightWrite[]) => {
+          const stored = await session.facts().record({ type: "experiment.mode.changed", version: 1, actor: "flywheel", payload: { active, workDir } }, undefined, inFlight)
+          if (!stored) throw new Error("Experiment mode could not be recorded.")
+          return stored
+        }
         return executeExperimentCommand(argument, {
           executionCwd,
           projectRoot,
@@ -83,16 +90,21 @@ export const experimentsModule = {
             const result = await run(["git", "-C", workDir, "ls-files", "--error-unmatch", "--", ".experiment/charter.md", ".experiment/measure.sh", ".experiment/checks.sh"])
             return result.exitCode === 0
           },
-          recordMode: async (active, workDir) => {
-            const stored = await session.facts().record({ type: "experiment.mode.changed", version: 1, actor: "flywheel", payload: { active, workDir } })
-            if (!stored) throw new Error("Experiment mode could not be recorded.")
+          activate: async (workDir) => { await projection.apply(await recordMode(true, workDir)) },
+          // The live runner's operation owns its hold. Without a live runner no
+          // operation runs, so a stop records the mode alone, and only the
+          // person's discard retires what an ended process left.
+          stop: async (workDir, discard) => {
+            const operation = session.runtime(experimentsRuntime)?.operation
+            const stored = operation
+              ? await operation.stop(workDir, discard)
+              : await recordMode(false, workDir, discard ? await experimentInterruptionRetirement(readInFlight) : undefined)
             await projection.apply(stored)
           },
           prompt: (input) => session.prompt(input),
           startMethod: (input) => session.startMethod(input),
-          clearPending: () => { session.runtime(experimentsRuntime)?.execution.clear() },
           interrupt: () => { session.interrupt() },
-          interruption: () => findExperimentInterruption((kinds) => session.readInFlight(kinds)),
+          interruption: () => findExperimentInterruption(readInFlight),
         })
       },
     } },

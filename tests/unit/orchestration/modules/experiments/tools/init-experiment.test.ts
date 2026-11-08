@@ -1,6 +1,5 @@
 import { expect, test } from "bun:test"
 import { createInitExperimentTool } from "../../../../../../src/orchestration/modules/experiments/tools/init-experiment.js"
-import { ExperimentExecutionState } from "../../../../../../src/orchestration/modules/experiments/execution-state.js"
 import type { ExperimentInitializedFact } from "../../../../../../src/orchestration/modules/experiments/facts.js"
 import { testExperimentOperation } from "../../../agent-runtime/tools/_fixtures.js"
 
@@ -44,7 +43,6 @@ test("validates then records segment one with mandatory protections", async () =
     readCharter: async () => charter,
     validateWorktree: async () => "/repo",
     record: async (fact) => { facts.push(fact) },
-    executionState: new ExperimentExecutionState(),
     operation: testExperimentOperation(),
   })
   const result = await tool.execute({

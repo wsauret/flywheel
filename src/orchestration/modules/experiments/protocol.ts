@@ -7,7 +7,7 @@ import type { ModuleBackgroundReaders, ModuleProtocolRuntime, ModuleProtocolServ
 import { createSessionViewProjection, type SessionViewProjection, type ViewedSessionStore } from "../../app-service/session-view-projection.js"
 import { experimentsRuntime } from "./runtime.js"
 import type { ChatRunner } from "../../chat/runner-types.js"
-import type { ExperimentExecutionView } from "./execution-state.js"
+import type { ExperimentOperationState, ExperimentOperationView } from "./operation-owner.js"
 import { createExperimentProjection, EXPERIMENT_FACT_TYPES, type ExperimentProjection, type ExperimentSnapshot } from "./projection.js"
 import type { SessionEntry } from "../../session-store/types.js"
 
@@ -41,7 +41,7 @@ export function experimentsBackgroundReaders(reader: EventReader): ModuleBackgro
 
 /** Serves the `experiment_view` domain for live sessions. Durable rows come
  *  from the held experiment projection; `running` comes only from the
- *  session's live `ExperimentExecutionState` and is false once the runner is
+ *  session's live experiment operation and is false once the runner is
  *  gone. Nothing is built until the first `snapshot` or the first stored
  *  experiment fact: startup never reads an experiment aggregate or subscribes
  *  to the session store for this domain. */
@@ -67,7 +67,7 @@ interface TrackedSession {
   readonly projection: ExperimentProjection
   runner: ChatRunner | null
   unsubscribeRunner: () => void
-  execution: ExperimentExecutionView | null
+  execution: ExperimentOperationView | null
   unsubscribeExecution: () => void
   running: boolean
 }
@@ -158,19 +158,19 @@ function arm(deps: ExperimentViewProtocolProjectionDeps): ArmedProjection {
       session.runner = runner
       session.unsubscribeRunner = runner?.onModuleRuntimesChange?.(() => { void refresh(sessionId) }) ?? (() => {})
     }
-    const execution = runner?.moduleRuntimes?.get(experimentsRuntime)?.execution ?? null
+    const execution = runner?.moduleRuntimes?.get(experimentsRuntime)?.operation ?? null
     if (execution === session.execution) return
     session.unsubscribeExecution()
     session.execution = execution
     session.unsubscribeExecution = execution
       ? execution.subscribe((state) => {
-        const running = state.status === "running"
+        const running = commandRuns(state)
         if (running === session.running) return
         session.running = running
         void refresh(sessionId)
       })
       : () => {}
-    const running = execution?.snapshot().status === "running"
+    const running = execution ? commandRuns(execution.snapshot()) : false
     if (running !== session.running) {
       session.running = running
     }
@@ -228,6 +228,11 @@ function arm(deps: ExperimentViewProtocolProjectionDeps): ArmedProjection {
       for (const sessionId of tracked.keys()) release(sessionId)
     },
   }
+}
+
+/** A stopped run's command still executes in the worktree until it returns. */
+function commandRuns(state: ExperimentOperationState<unknown>): boolean {
+  return state.status === "running" || state.status === "abandoned"
 }
 
 /** A read failure is one session's problem: log it and publish no view for

@@ -1,14 +1,13 @@
 import { expect, test } from "bun:test"
 import { createLogExperimentTool } from "../../../../../../src/orchestration/modules/experiments/tools/log-experiment.js"
-import { ExperimentExecutionState, type PendingExperimentResult } from "../../../../../../src/orchestration/modules/experiments/execution-state.js"
 import { keepExperimentChanges } from "../../../../../../src/orchestration/modules/experiments/git-operations.js"
 import { createExperimentGitSettlement } from "../../../../../../src/orchestration/modules/experiments/git-settlement.js"
-import { EXPERIMENT_OPERATION_KIND, createExperimentOperationOwner, experimentInterruptionMessage } from "../../../../../../src/orchestration/modules/experiments/operation-owner.js"
+import { EXPERIMENT_OPERATION_KIND, createExperimentOperation, experimentInterruptionMessage, type PendingExperimentResult } from "../../../../../../src/orchestration/modules/experiments/operation-owner.js"
 import type { OwnedCommandRunner } from "../../../../../../src/infra/owned-command.js"
 import type { InFlightRecord } from "../../../../../../src/infra/event-store-types.js"
 import type { ExperimentSnapshot } from "../../../../../../src/orchestration/modules/experiments/projection.js"
 import type { ExperimentRunRecordedFact } from "../../../../../../src/orchestration/modules/experiments/facts.js"
-import { makeContext, testExperimentOperation } from "../../../agent-runtime/tools/_fixtures.js"
+import { makeContext, storedExperimentFact, testExperimentOperation } from "../../../agent-runtime/tools/_fixtures.js"
 
 const configuration = {
   segment: 0,
@@ -39,28 +38,28 @@ const snapshot: ExperimentSnapshot = {
 }
 const context = makeContext({ executionCwd: "/worktree", projectRoot: "/worktree" })
 
-function pending(status: PendingExperimentResult["status"] = "passed", tree = "measured-tree") {
-  const state = new ExperimentExecutionState<PendingExperimentResult>()
-  state.start("measure")
-  state.finish({
+/** An operation that measured one result and holds it for settlement. */
+async function pending(status: PendingExperimentResult["status"] = "passed", resultTree = "measured-tree") {
+  const operation = testExperimentOperation()
+  await operation.begin(async () => ({ command: "measure", cwd: "/worktree" }))
+  operation.measured({
     status,
     metrics: { latency: 8, memory: 2 },
     durationMs: 1234,
     measurementOutput: "",
     checksOutput: status === "checks_failed" ? "bad" : "ok",
     modelOutput: "",
-    measuredTree: tree,
-    resultTree: tree,
+    measuredTree: "measured-tree",
+    resultTree,
   })
-  return state
+  return operation
 }
 
 test("rejects keep when candidate content changed after measurement and preserves pending", async () => {
-  const state = pending()
+  const state = await pending()
   const tool = createLogExperimentTool({
     replay: async () => snapshot,
-    executionState: state,
-    operation: testExperimentOperation(),
+    operation: state,
     captureTree: async () => "edited-tree",
     settle: async () => { throw new Error("must not settle") },
   })
@@ -73,15 +72,10 @@ test("rejects keep when candidate content changed after measurement and preserve
 })
 
 test("rejects keep when measurement or checks changed candidate content", async () => {
-  const state = pending()
-  const value = state.pending()!
-  state.clear()
-  state.start("measure")
-  state.finish({ ...value, resultTree: "checks-mutated-tree" })
+  const state = await pending("passed", "checks-mutated-tree")
   const tool = createLogExperimentTool({
     replay: async () => snapshot,
-    executionState: state,
-    operation: testExperimentOperation(),
+    operation: state,
     captureTree: async () => "checks-mutated-tree",
     settle: async () => { throw new Error("must not settle") },
   })
@@ -91,28 +85,26 @@ test("rejects keep when measurement or checks changed candidate content", async 
 })
 
 test("requires a pending result and refuses keep after failed checks", async () => {
-  const idle = new ExperimentExecutionState<PendingExperimentResult>()
-  const idleTool = createLogExperimentTool({ replay: async () => snapshot, executionState: idle, operation: testExperimentOperation(), captureTree: async () => "measured-tree", settle: async () => {} })
+  const idleTool = createLogExperimentTool({ replay: async () => snapshot, operation: testExperimentOperation(), captureTree: async () => "measured-tree", settle: async () => {} })
   expect(await idleTool.execute({ commit: "ignored", metric: 8, status: "discard", description: "none" }, context))
     .toEqual({ outcome: "error", content: "No experiment result is pending." })
 
-  const failed = pending("checks_failed")
-  const tool = createLogExperimentTool({ replay: async () => snapshot, executionState: failed, operation: testExperimentOperation(), captureTree: async () => "measured-tree", settle: async () => {} })
+  const failed = await pending("checks_failed")
+  const tool = createLogExperimentTool({ replay: async () => snapshot, operation: failed, captureTree: async () => "measured-tree", settle: async () => {} })
   const response = await tool.execute({ commit: "ignored", metric: 8, status: "keep", description: "unsafe" }, context)
   expect(response).toEqual({ outcome: "error", content: "Cannot keep an experiment whose checks failed." })
   expect(failed.snapshot().status).toBe("pending")
 })
 
 test("preserves measured metrics and ASI, derives analysis, and deactivates at the cap", async () => {
-  const state = pending()
+  const state = await pending()
   const settled: unknown[] = []
   const tool = createLogExperimentTool({
     replay: async () => snapshot,
-    executionState: state,
-    operation: testExperimentOperation(),
+    operation: state,
     captureTree: async () => "measured-tree",
-    settle: async (_cwd, fact, deactivate) => {
-      settled.push([fact, deactivate])
+    settle: async (_cwd, fact, deactivate, measuredTree) => {
+      settled.push([fact, deactivate, measuredTree])
     },
   })
 
@@ -145,6 +137,7 @@ test("preserves measured metrics and ASI, derives analysis, and deactivates at t
       },
     },
     true,
+    "measured-tree",
   ]])
   expect(state.snapshot()).toEqual({ status: "idle" })
 })
@@ -154,10 +147,10 @@ test("a restart after measurement refuses log without deleting or replaying the 
   let settled = false
   const tool = createLogExperimentTool({
     replay: async () => snapshot,
-    executionState: new ExperimentExecutionState(),
-    operation: createExperimentOperationOwner({
+    operation: createExperimentOperation({
       listInFlight: async () => [checkpoint],
       putInFlight: async () => { throw new Error("must not redispatch") },
+      record: async () => { throw new Error("must not record") },
     }),
     captureTree: async () => { throw new Error("must not inspect") },
     settle: async () => { settled = true },
@@ -170,13 +163,10 @@ test("a restart after measurement refuses log without deleting or replaying the 
 })
 
 test("a pre-settlement tree mismatch keeps pending and refuses destructive discard", async () => {
-  const state = pending()
-  const operation = createExperimentOperationOwner({ listInFlight: async () => [], putInFlight: async () => {} })
-  await operation.begin("measure", "/worktree")
+  const operation = await pending()
   const settlements: string[] = []
   const tool = createLogExperimentTool({
     replay: async () => snapshot,
-    executionState: state,
     operation,
     captureTree: async () => "edited-tree",
     settle: async (_cwd, fact) => { settlements.push(fact.payload.status) },
@@ -189,13 +179,11 @@ test("a pre-settlement tree mismatch keeps pending and refuses destructive disca
     content: "Cannot discard experiment: candidate tree changed after the result was captured (measured-tree != edited-tree). Restore the captured tree before settling the result.",
   })
   expect(settlements).toEqual([])
-  expect(state.snapshot().status).toBe("pending")
+  expect(operation.snapshot().status).toBe("pending")
 })
 
 test("a keep-boundary candidate mismatch permits explicit discard without publishing a keep", async () => {
-  const state = pending()
-  const operation = createExperimentOperationOwner({ listInFlight: async () => [], putInFlight: async () => {} })
-  await operation.begin("measure", "/worktree")
+  const operation = await pending()
   const facts: ExperimentRunRecordedFact[] = []
   const commands: string[] = []
   const tree = "measured-tree"
@@ -212,15 +200,16 @@ test("a keep-boundary candidate mismatch permits explicit discard without publis
     return { exitCode: 0, stdout: "", stderr: "", stdoutBytes: new Uint8Array(), timedOut: false }
   }
   const settlement = createExperimentGitSettlement({
-    record: async (fact) => { if (fact.type === "experiment.run.recorded") facts.push(fact) },
-    retirement: () => operation.retirement(),
-    complete: () => operation.complete(),
-    keep: ({ cwd, description, result }) => keepExperimentChanges({
+    record: async (fact) => {
+      if (fact.type === "experiment.run.recorded") facts.push(fact)
+      return storedExperimentFact(fact)
+    },
+    keep: ({ cwd, description, result, measuredTree }) => keepExperimentChanges({
       cwd,
       scratchDir: "/scratch",
       description,
       result,
-      measuredTree: tree,
+      measuredTree,
       run,
     }),
     revert: async (cwd) => {
@@ -237,10 +226,9 @@ test("a keep-boundary candidate mismatch permits explicit discard without publis
   })
   const tool = createLogExperimentTool({
     replay: async () => ({ ...snapshot, configuration: { ...configuration, maxIterations: null } }),
-    executionState: state,
     operation,
     captureTree: async () => tree,
-    settle: (cwd, fact, deactivate) => settlement.settle(cwd, fact, deactivate),
+    settle: (cwd, fact, deactivate, measuredTree) => settlement.settle(cwd, fact, deactivate, measuredTree),
   })
 
   const keep = await tool.execute({ metric: 8, status: "keep", description: "stale at keep" }, context)
@@ -249,7 +237,7 @@ test("a keep-boundary candidate mismatch permits explicit discard without publis
     content: `Experiment tree mismatch at keep staging boundary: measured ${tree}, found ${changedTree}.`,
   })
   expect(await operation.blocker()).toBeUndefined()
-  expect(state.snapshot().status).toBe("pending")
+  expect(operation.snapshot().status).toBe("pending")
 
   expect((await tool.execute({ metric: 8, status: "discard", description: "discard stale result" }, context)).outcome).toBe("ok")
   expect(facts.map((fact) => fact.payload.status)).toEqual(["discard"])

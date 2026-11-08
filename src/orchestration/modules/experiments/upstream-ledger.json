@@ -130,11 +130,11 @@
       "endMarker": "        details: { ...details, truncation: llmTruncation.truncated ? llmTruncation : undefined, fullOutputPath },",
       "sha256": "248701d94ecee60673b38f90ffa2b0cbd894fdd8609690bc6d5465e17f79b240",
       "substitutions": [
-        { "from": "runtime.state and runtime.runningExperiment", "to": "replayed ExperimentSnapshot and ExperimentExecutionState" },
+        { "from": "runtime.state and runtime.runningExperiment", "to": "replayed ExperimentSnapshot and ExperimentOperation" },
         { "from": "Maximum experiments reached text", "to": "Experiment iteration limit reached failure" },
         {
           "from": "runtime.lastRunChecks",
-          "to": "ExperimentExecutionState pending result",
+          "to": "ExperimentOperation pending result",
           "reason": "The unlogged result is the one live value the session owns until log_experiment settles it."
         },
         { "from": "measurement result without content identity", "to": "pending result bound to isolated Git tree identity before and after commands" }
@@ -296,7 +296,7 @@
       "substitutions": [
         { "from": "Autoresearch mode active. ${trimmedArgs} ${BENCHMARK_GUARDRAIL}", "to": "EXPERIMENT_START_CONTEXT: Experiment mode active. Read .experiment/charter.md, then call init_experiment ..." },
         { "from": "/skill:autoresearch-create fallback when no prompt.md exists", "to": "start refuses without a committed charter; design dispatches /experiment-charter <goal>" },
-        { "from": "recordAutoresearchActivation and setAutoresearchMode", "to": "recordMode(true, workDir) experiment.mode.changed fact" },
+        { "from": "recordAutoresearchActivation and setAutoresearchMode", "to": "activate(workDir) experiment.mode.changed fact" },
         { "from": "fireHook before activation steer", "to": "removed: hooks are not ported" }
       ]
     },
