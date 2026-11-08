@@ -443,10 +443,12 @@ export function createWorkflowRunner(opts: WorkflowRunnerFactoryOptions): Workfl
     return Log.runWithSession(sessionId, async () => {
       const refusal = await handBackRefusal()
       if (refusal) return { kind: "refused" as const, reason: refusal.reason }
-      if (!agentInputs.hasPending(address) && !agentInputs.reached(address).some((id) => agentInputs.evidence(id)?.cut !== undefined)) return { kind: "not_parked" as const }
-      const handed = createdRuntime !== null && await handOverHeldMessages(address)
-      const resumed = await resume(address)
-      return handed || resumed ? { kind: "continued" as const } : { kind: "not_parked" as const }
+      // The cut that a person's message meets, so an agent that has not read
+      // its durable cut yet takes the Resume as its slot's hand-back.
+      if (createdRuntime === null || (await cut(address))?.kind !== "interrupt") return { kind: "not_parked" as const }
+      await handOverHeldMessages(address)
+      await resume(address)
+      return { kind: "continued" as const }
     })
   }
 

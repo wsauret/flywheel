@@ -190,3 +190,40 @@ test.each(["grouped", "individual"] as const)("a %s hand-back subtracts the same
   expect(inputs.pendingCut(WHOLE_WORKFLOW)).toBeUndefined()
   expect(inputs.state).toBe("running")
 })
+
+const pausedByPerson = { end: { reason: "paused", pausedBy: "person" }, recorded: true } as const
+
+test("a person's message that lands before a re-entered agent reads its durable cut continues the agent", () => {
+  const { inputs, attempts } = fixture("planned")
+  const a = inputs.open(attempts[0]!)
+  expect(inputs.evidence(attempts[0]!.attemptId)).toBeUndefined()
+  inputs.deliver({ text: "continue", dispatchIds: ["cell"] }, { status: "delivered", startsTurn: true })
+  inputs.resume(WHOLE_WORKFLOW)
+  a.initialize(attempts[0]!.agent, pausedByPerson, 25)
+  expect(a.cut).toBeUndefined()
+  expect(a.takeOpeningInterrupt()).toBeUndefined()
+  expect(a.queue.drainPending()).toMatchObject({ text: "continue" })
+  expect(inputs.stateOf(attempts[0]!.attemptId)).toBe("running")
+  expect(a.interrupt("person")).toBe(true)
+})
+
+test("an addressed hand-back before initialization continues only the agents its address reaches", () => {
+  const { inputs, attempts } = fixture("planned")
+  const [a, b] = [inputs.open(attempts[0]!), inputs.open(attempts[1]!)]
+  inputs.resume(item(1))
+  a.initialize(attempts[0]!.agent, pausedByPerson, 25)
+  b.initialize(attempts[1]!.agent, pausedByPerson, 25)
+  expect(a.cut).toBeUndefined()
+  expect(b.cut).toEqual({ by: "person", timestamp: 25 })
+})
+
+test("a person's interrupt after a hand-back that lands before a re-entered agent reads its durable cut opens its first generation interrupted, once", async () => {
+  const { inputs, attempts } = fixture("planned")
+  const a = inputs.open(attempts[0]!)
+  expect(await inputs.handOver([{ text: "retained", dispatchIds: ["retained"] }], () => true, { status: "delivered", startsTurn: true })).toBe(1)
+  expect(inputs.interrupt(WHOLE_WORKFLOW, "person")).toBe(true)
+  a.initialize(attempts[0]!.agent, pausedByPerson, 25)
+  expect(a.takeOpeningInterrupt()?.by).toBe("person")
+  expect(a.takeOpeningInterrupt()).toBeUndefined()
+  expect(inputs.stateOf(attempts[0]!.attemptId)).toBe("interrupted")
+})

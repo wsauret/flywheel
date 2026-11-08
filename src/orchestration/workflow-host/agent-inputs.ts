@@ -131,15 +131,53 @@ interface Slot {
   agent: StartedAgent["agent"] | undefined
   /** How the agent's loop parked, undefined while its turn runs. */
   park: TurnParkState | undefined
-  initialized: boolean
-  cut: AttemptInterrupt | undefined
-  opening: boolean
+  /** The slot's own cut and its generation-opening action. Only `advanceCut` produces its next value. */
+  cut: SlotCut
   announcement: AttemptInterrupt | undefined
 }
 
 interface AttemptInterrupt {
   readonly by: TurnInterruption
   readonly timestamp: number
+}
+
+/** The slot's own cut. `unread` until `initialize` reads the attempt's
+ *  durable turn end. A hand-back that lands meanwhile cannot clear a cut that
+ *  is not restored yet, and the slot does not know its agent yet, so it keeps
+ *  the hand-back's address; `initialize` restores the durable cut only when
+ *  no kept address reaches the agent. No generation exists before
+ *  `initialize`, so an unread slot has applied no cut and its first
+ *  generation always takes the effective cut at its opening. Once read,
+ *  `opening` says whether the next generation still takes it: an applied cut
+ *  or a Resume clears it, a new cut of the slot sets it. */
+type SlotCut =
+  | { readonly kind: "unread"; readonly handedBack: readonly WorkflowDeliveryAddress[] }
+  | { readonly kind: "read"; readonly own: AttemptInterrupt | undefined; readonly opening: boolean }
+
+type SlotCutEvent =
+  | { readonly kind: "initialize"; readonly agent: StartedAgent["agent"] | undefined; readonly restored: AttemptInterrupt | undefined }
+  | { readonly kind: "interrupt"; readonly interrupt: AttemptInterrupt }
+  | { readonly kind: "authorize"; readonly address: WorkflowDeliveryAddress }
+  | { readonly kind: "opened" }
+
+const UNREAD: SlotCut = { kind: "unread", handedBack: [] }
+
+/** The one transition of a slot's cut. The slot refuses `interrupt` and
+ *  takes no opening action while unread, so those pairs keep the state. */
+function advanceCut(state: SlotCut, event: SlotCutEvent): SlotCut {
+  if (state.kind === "unread") {
+    switch (event.kind) {
+      case "initialize": return { kind: "read", own: state.handedBack.some((address) => reaches(address, event.agent)) ? undefined : event.restored, opening: true }
+      case "authorize": return { kind: "unread", handedBack: [...state.handedBack, event.address] }
+      case "interrupt": case "opened": return state
+    }
+  }
+  switch (event.kind) {
+    case "initialize": return state
+    case "interrupt": return { kind: "read", own: event.interrupt, opening: true }
+    case "authorize": return { kind: "read", own: undefined, opening: false }
+    case "opened": return { ...state, opening: false }
+  }
 }
 
 const whole = (address: WorkflowDeliveryAddress): boolean => address.addressedTo.some(({ _tag }) => _tag === "workflow")
@@ -172,7 +210,7 @@ export function createWorkflowAgentInputs(input: {
   function pendingAt(agent: StartedAgent["agent"] | undefined): AttemptInterrupt | undefined {
     return strongestInterrupt(pending.filter((entry) => entry.agent === undefined || entry.agent.id === agent?.id).map(({ cut }) => cut))
   }
-  const effective = (slot: Slot) => strongestInterrupt([slot.cut, pendingAt(slot.agent)])
+  const effective = (slot: Slot) => strongestInterrupt([slot.cut.kind === "read" ? slot.cut.own : undefined, pendingAt(slot.agent)])
   const selected = (address: WorkflowDeliveryAddress) => [...slots.values()].filter(({ agent, queue }) => !queue.isHandingOff && reaches(address, agent))
   function pendingFor(address: WorkflowDeliveryAddress): AttemptInterrupt | undefined {
     return strongestInterrupt(pending.filter((entry) => entry.agent === undefined || reaches(address, entry.agent)).map(({ cut }) => cut))
@@ -188,8 +226,7 @@ export function createWorkflowAgentInputs(input: {
     if (address) release((agent) => reaches(address, agent))
     else if (own) release((agent) => agent !== undefined && agent.id === own.id)
     else release((agent) => reaches(WHOLE_WORKFLOW, agent))
-    slot.cut = undefined
-    slot.opening = false
+    slot.cut = advanceCut(slot.cut, { kind: "authorize", address: address ?? WHOLE_WORKFLOW })
     input.onChange?.()
   }
   function stateAt(address: WorkflowDeliveryAddress): WorkflowAgentInputs["state"] {
@@ -285,7 +322,8 @@ export function createWorkflowAgentInputs(input: {
     },
     evidence(attemptId) {
       const slot = slots.get(attemptId)
-      return slot?.initialized ? { cut: effective(slot) } : closed.get(attemptId)
+      if (slot === undefined) return closed.get(attemptId)
+      return slot.cut.kind === "unread" ? undefined : { cut: effective(slot) }
     },
     effective: (agent) => pendingAt(agent),
     hasPending: (address) => pendingFor(address) !== undefined,
@@ -297,19 +335,19 @@ export function createWorkflowAgentInputs(input: {
     reached: (address) => selected(address).map(({ attempt }) => attempt.attemptId),
     stateAt,
     open(attempt) {
-      const slot: Slot = { attempt, queue: new WorkflowInjectionQueue(), sole: new Set(), addressed: createHeldCellClaims(), agent: undefined, park: undefined, initialized: false, cut: undefined, opening: true, announcement: undefined }
+      const slot: Slot = { attempt, queue: new WorkflowInjectionQueue(), sole: new Set(), addressed: createHeldCellClaims(), agent: undefined, park: undefined, cut: UNREAD, announcement: undefined }
       slots.set(attempt.attemptId, slot)
       return {
         initialize(agent, end, timestamp = Date.now()) {
-          if (slot.initialized) return
+          if (slot.cut.kind !== "unread") return
           slot.agent = agent
-          slot.initialized = true
           const actor = end?.end.reason === "paused" ? end.end.pausedBy : undefined
           const wake = input.wake ?? WHOLE_WORKFLOW
           const kept = actor === "person" || actor === "agent"
             ? automaticWake(wake) || !reaches(wake, agent)
             : actor !== undefined && typeof wake === "object" && "capacity" in wake && !wake.capacity.has(attempt.conversationId)
-          if (input.restore !== false && actor !== undefined && kept) slot.cut = { by: actor, timestamp }
+          const restored = input.restore !== false && actor !== undefined && kept ? { by: actor, timestamp } : undefined
+          slot.cut = advanceCut(slot.cut, { kind: "initialize", agent, restored })
           input.onChange?.()
         },
         get cut() { return effective(slot) },
@@ -330,18 +368,17 @@ export function createWorkflowAgentInputs(input: {
         },
         interruptionToRecord: () => effective(slot)?.by ?? slot.announcement?.by ?? "person",
         interrupt(by, timestamp = Date.now()) {
-          if (slot.queue.isHandingOff) return false
+          if (slot.queue.isHandingOff || slot.cut.kind === "unread") return false
           const prior = effective(slot)
           if (prior !== undefined && interruptRank(prior.by) <= interruptRank(by)) return false
-          slot.cut = { by, timestamp }
-          slot.opening = true
+          slot.cut = advanceCut(slot.cut, { kind: "interrupt", interrupt: { by, timestamp } })
           input.onChange?.()
           return true
         },
         takeOpeningInterrupt() {
-          if (!slot.opening) return undefined
+          if (slot.cut.kind !== "read" || !slot.cut.opening) return undefined
           const cut = effective(slot)
-          if (cut) slot.opening = false
+          if (cut) slot.cut = advanceCut(slot.cut, { kind: "opened" })
           return cut
         },
         queue: slot.queue,
@@ -360,7 +397,7 @@ export function createWorkflowAgentInputs(input: {
         resumed() { slot.park = undefined; slot.announcement = undefined; input.onChange?.() },
         release() {
           if (slots.get(attempt.attemptId) !== slot) return
-          if (slot.initialized) closed.set(attempt.attemptId, { cut: effective(slot) })
+          if (slot.cut.kind !== "unread") closed.set(attempt.attemptId, { cut: effective(slot) })
           slots.delete(attempt.attemptId)
           input.onChange?.()
           for (const key of slot.sole) soleOwners.delete(key)
@@ -403,7 +440,8 @@ export function createWorkflowAgentInputs(input: {
       const taken = selected(address).filter((slot) => effective(slot) !== undefined)
       for (const slot of taken) slot.announcement = effective(slot)
       release((agent) => reaches(address, agent))
-      for (const slot of taken) { slot.cut = undefined; slot.opening = false }
+      // An unread slot keeps the address, because its agent and its durable cut are not known yet.
+      for (const slot of slots.values()) if (taken.includes(slot) || slot.cut.kind === "unread") slot.cut = advanceCut(slot.cut, { kind: "authorize", address })
       for (const slot of taken) slot.queue.enqueueResume()
       input.onChange?.()
       return taken.map(({ attempt }) => attempt.attemptId)
@@ -412,7 +450,7 @@ export function createWorkflowAgentInputs(input: {
       const continued = new Set<string>()
       for (const slot of slots.values()) {
         const { conversationId } = slot.attempt
-        if (!conversationIds.has(conversationId) || !slot.initialized || slot.queue.isHandingOff) continue
+        if (!conversationIds.has(conversationId) || slot.cut.kind === "unread" || slot.queue.isHandingOff) continue
         const cut = effective(slot)
         if (cut?.by === "person" || cut?.by === "agent") continue
         if (cut !== undefined) {

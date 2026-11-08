@@ -67,6 +67,8 @@ async function fixture(queuedSuccessor = false, opening?: "before" | "assembling
   let cutOpening = opening === "assembling"
   let assemblingCut: Promise<boolean> | undefined
   let earlyMessage = messageAtPublication
+  // Runs while a member opens, before its input reads the attempt's durable turn end.
+  let onAttach: ((memberSessionId: string) => Promise<void>) | undefined
   const makeRunner = (wake?: WorkflowWake, startMode: "launch" | "operator_resume" = "launch") => createWorkflowRunner({
     sessionId: "session", workflow: definition, startMode, wake, description: "task", projectRoot: root, executionCwd: root,
     runtime, projectionReader: store,
@@ -76,6 +78,7 @@ async function fixture(queuedSuccessor = false, opening?: "before" | "assembling
         earlyMessage = false
         await deliverSessionInput({ manager, projectionReader: store, eventWriter: store }, sessionId, { text: "Continue this member during initialization." })
       }
+      await onAttach?.(sessionId)
       return { onEvent() {}, queueUserMessage() {}, lifecycle: {}, updateMetrics() {}, updateBackgroundCommands() {}, updateForegroundBash() {}, updateOperations() {}, dispose: async () => {} }
     },
     workflowDeps: {
@@ -148,6 +151,7 @@ async function fixture(queuedSuccessor = false, opening?: "before" | "assembling
     async member(attemptId: string) { return (await workflowMembershipReader(store).attempt("session", attemptId))! },
     async message(sessionId: string) { return deliverSessionInput({ manager, projectionReader: store, eventWriter: store }, sessionId, { text: "Continue this agent only." }) },
     setHandBackEnabled(enabled: boolean) { handBackEnabled = enabled },
+    onAttach(hook: (memberSessionId: string) => Promise<void>) { onAttach = hook },
     async restart(wake: WorkflowWake, runtimeAttempts: readonly string[] = []) {
       await runner.abort("runtime")
       await running
@@ -296,6 +300,34 @@ test("a planned successor restores person and parent parks independently and tar
     expect(f.counts.get(first)).toBe(1)
     expect(await f.runner.cut(a)).toEqual({ kind: "interrupt", by: "person" })
     expect(await f.runner.cut(b)).toBeUndefined()
+  } finally { await f.dispose() }
+})
+
+test("a person's Resume that lands before a re-entered agent reads its durable cut continues that agent", async () => {
+  const f = await fixture()
+  try {
+    const a = await f.address("a")
+    const b = await f.address("b")
+    const queue = await f.runner.readQueue()
+    const first = queue.attempts.find(({ definitionId }) => definitionId === "a")!.id
+    const second = queue.attempts.find(({ definitionId }) => definitionId === "b")!.id
+    await f.runner.interrupt("person", a)
+    await f.runner.interrupt("agent", b)
+    await Promise.all([...f.parks.values()].map(({ promise }) => promise))
+    const member = await f.member(first)
+    let answer: unknown
+    f.onAttach(async (memberSessionId) => {
+      if (memberSessionId !== member.sessionId) return
+      answer = await f.runner.handBack(a)
+      // An agent that opens interrupted parks instead, which also ends the restart's wait.
+      void f.parks.get(first)!.promise.then(() => f.resumed.get(first)!.resolve("parked"))
+    })
+    await f.restart("planned", [first])
+    expect(answer).toEqual({ kind: "continued" })
+    expect(f.counts.get(first)).toBe(2)
+    expect(await f.runner.cut(a)).toBeUndefined()
+    expect(await f.runner.cut(b)).toEqual({ kind: "interrupt", by: "agent" })
+    expect(f.counts.get(second)).toBe(1)
   } finally { await f.dispose() }
 })
 
