@@ -35,7 +35,7 @@ describe("terminal bench disclosure ledger", () => {
     await trial(root, "a__hash1", "terminal-bench/a", "a__hash1", {}, 1, undefined, undefined, analysis("ok", 1.25));
     await trial(root, "a__hash2", "terminal-bench/a", "a__hash2", {}, 0, undefined, 0.75, analysis("ok", 9));
     const ledger = await reconcileDisclosureLedger({ trialsDirectory: root, taskNames: ["terminal-bench/a"], attempts: 2, harborExitCode: 0 });
-    expect(ledger.counts).toEqual({ provider_refusal: 0, provider_infra: 0, cancelled: 0, cost_truncated: 0, genuine: 1, other: 0 });
+    expect(ledger.counts).toEqual({ provider_refusal: 0, provider_infra: 0, verifier_infra: 0, cancelled: 0, cost_truncated: 0, genuine: 1, other: 0 });
     expect(ledger.rewardDistribution).toEqual({ "0": 1, "1": 1 });
     expect(ledger.exceptionHistogram).toEqual({});
     expect(ledger.taskPassRates["terminal-bench/a"]).toEqual({ passed: 1, total: 2, rate: 0.5 });
@@ -47,7 +47,7 @@ describe("terminal bench disclosure ledger", () => {
   test("zero Harbor trials are unverified when evidence cannot reconcile", async () => {
     const root = temporaryDirectory("tb-ledger-empty-");
     const ledger = await reconcileDisclosureLedger({ trialsDirectory: root, expectedTrials: 2, harborExitCode: 0 });
-    expect(ledger.counts).toEqual({ provider_refusal: 0, provider_infra: 0, cancelled: 0, cost_truncated: 0, genuine: 0, other: 0 });
+    expect(ledger.counts).toEqual({ provider_refusal: 0, provider_infra: 0, verifier_infra: 0, cancelled: 0, cost_truncated: 0, genuine: 0, other: 0 });
     expect(ledger.outcome).toBe("trials_unverified");
   });
 
@@ -91,6 +91,25 @@ describe("terminal bench disclosure ledger", () => {
     // Every trial but the one that timed out without a reward is scored, the refusal included.
     expect(ledger.scoredTrials).toBe(6);
     expect(ledger.exceptionHistogram).toEqual({ AgentTimeoutError: 1, RuntimeError: 2 });
+  });
+
+  test("a grader whose GitHub downloads failed before any test ran is verifier infrastructure", async () => {
+    const root = temporaryDirectory("tb-ledger-verifier-");
+    const pythonDownloadFailure = "error: Request failed after 3 retries\n  Caused by: Failed to download https://github.com/astral-sh/python-build-standalone/releases/download/20251014/cpython-3.13.9.tar.gz\n  Caused by: HTTP status server error (504 Gateway Timeout)\n";
+    const uvDownloadFailure = "curl: (22) The requested URL returned error: 504\nfailed to download https://github.com/astral-sh/uv/releases/download/0.9.5/uv-x86_64-unknown-linux-gnu.tar.gz\n/tests/test.sh: line 19: uvx: command not found\n";
+    const verifierOutput = (directory: string, text: string) => mkdir(join(root, directory, "verifier"), { recursive: true }).then(() => writeFile(join(root, directory, "verifier", "test-stdout.txt"), text));
+    await trial(root, "a__ungraded", "a", "a__ungraded", {}, 0, undefined, undefined, analysis("ok"));
+    await verifierOutput("a__ungraded", pythonDownloadFailure);
+    // A download that failed once and then succeeded on retry still ran the tests.
+    await trial(root, "a__graded", "a", "a__graded", {}, 0, undefined, undefined, analysis("ok"));
+    await verifierOutput("a__graded", `${pythonDownloadFailure}============================== 2 failed in 0.31s ===============================\n`);
+    // A timed-out agent can have left its deliverable, so the grade is unknown when the grader could not start.
+    await trial(root, "a__timeout", "a", "a__timeout", {}, 0, "AgentTimeoutError", undefined, analysis("aborted"));
+    await verifierOutput("a__timeout", uvDownloadFailure);
+    const ledger = await reconcileDisclosureLedger({ trialsDirectory: root, taskNames: ["a"], attempts: 3, harborExitCode: 0 });
+    expect(Object.fromEntries(ledger.rows.map((row) => [row.id, row.category]))).toEqual({ a__ungraded: "verifier_infra", a__graded: "genuine", a__timeout: "verifier_infra" });
+    expect(ledger.counts).toEqual({ provider_refusal: 0, provider_infra: 0, verifier_infra: 2, cancelled: 0, cost_truncated: 0, genuine: 1, other: 0 });
+    expect(ledger.outcome).toBe("completed");
   });
 
   test("ignores Harbor's job-level result.json and nested artifact results", async () => {

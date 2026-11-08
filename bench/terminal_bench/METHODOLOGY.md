@@ -79,12 +79,13 @@ A positive numeric reward has no failure category. Other trials use the followin
 
 1. `provider_refusal`: a last provider response with outcome `refused`, which the store analysis records for a stream error that the provider's refusal of the conversation content ended, such as the ChatGPT backend's `cyber_policy`, and for a final response that the provider's content filter stopped, as Anthropic stops one, when Flywheel's retries ran out on it. A trial that ends while a retry is still owed is not a refusal. The agent answers such a prompt with the ACP stop reason `refusal`, and any other failed turn with a JSON-RPC error, never `end_turn`.
 2. `provider_infra`: a non-timeout Harbor exception, or a last provider response with outcome `stream_error` or `fatal_error`.
-3. `cancelled`: a timeout exception, post-cancellation capture, or a last provider response with outcome `aborted`.
-4. `cost_truncated`: a last provider response with outcome `context_overflow` or `output_overflow`.
-5. `genuine`: an exact zero reward with complete settled runtime and verifier evidence that is not classified above.
-6. `other`: remaining unscored or uncategorized failure evidence.
+3. `verifier_infra`: a grader that could not start: `verifier/test-stdout.txt` shows a failed download from `https://github.com/` (of uv by its installer, or of a Python by uv) or `uvx: command not found`, and holds no pytest summary line. A failed download followed by a pytest summary means the tests still ran, so the trial keeps its other category.
+4. `cancelled`: a timeout exception, post-cancellation capture, or a last provider response with outcome `aborted`.
+5. `cost_truncated`: a last provider response with outcome `context_overflow` or `output_overflow`.
+6. `genuine`: an exact zero reward with complete settled runtime and verifier evidence that is not classified above.
+7. `other`: remaining unscored or uncategorized failure evidence.
 
-A `provider_refusal` is a scored failure of the arm: the provider refuses the same content on every attempt, so it is a result of the model and provider under test, never infrastructure noise. The next three categories are infrastructure or execution-limit failures, not evidence that the attempted solution was genuinely incorrect. `genuine` is reserved for a verifier-confirmed zero after those causes are excluded. This order is intentional: provider infrastructure evidence takes precedence over simultaneous cancellation evidence, and cancellation evidence takes precedence over a cost-truncation terminal. All categories remain in the fixed denominator and reports show them separately.
+A `provider_refusal` is a scored failure of the arm: the provider refuses the same content on every attempt, so it is a result of the model and provider under test, never infrastructure noise. The next four categories are infrastructure or execution-limit failures, not evidence that the attempted solution was genuinely incorrect. `genuine` is reserved for a verifier-confirmed zero after those causes are excluded. This order is intentional: provider infrastructure evidence takes precedence over simultaneous cancellation evidence, a grader that could not start takes precedence over cancellation because a timed-out agent can still have left its deliverable, and cancellation evidence takes precedence over a cost-truncation terminal. All categories remain in the fixed denominator and reports show them separately.
 
 ## Deadline authority
 
