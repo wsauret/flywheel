@@ -1,9 +1,10 @@
 """What a Flywheel Terminal-Bench trial runs on and records.
 
 The ACP shim (shim.py beside this file) installs this pinned Bun release,
-exports the trial's settled event store, publishes the store and the trial's
-diagnostic logs as debug evidence, and writes the versioned run summary
-that finalization reads, in a local Docker trial and on Harbor Hub alike. This
+publishes snapshots of the running trial's store and diagnostic logs as debug
+evidence, exports the trial's settled event store, publishes it and the logs
+over the last snapshot, and writes the versioned run summary that
+finalization reads, in a local Docker trial and on Harbor Hub alike. This
 module uses only the standard library, because the package ships it without
 Harbor.
 """
@@ -41,6 +42,8 @@ EVIDENCE_DIR_NAME = "flywheel-evidence"
 
 
 _NOFOLLOW = getattr(os, "O_NOFOLLOW", 0)
+# Marks the partial copy that an evidence publication renames over its file.
+_PARTIAL_INFIX = ".partial-"
 _DIRECTORY_FLAGS = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | _NOFOLLOW
 
 
@@ -430,24 +433,89 @@ def _write_new_at(directory_descriptor: int, name: str, content: bytes) -> None:
         os.close(descriptor)
 
 
+def _private_directory_at(parent_descriptor: int, name: str) -> int:
+    """Open the directory `name` of `parent_descriptor`, made mode 0700 when it is missing, without following a link; raises unless it is this user's and private."""
+    try:
+        os.mkdir(name, 0o700, dir_fd=parent_descriptor)
+    except FileExistsError:
+        pass
+    descriptor = os.open(name, _DIRECTORY_FLAGS, dir_fd=parent_descriptor)
+    directory_stat = os.fstat(descriptor)
+    if directory_stat.st_uid != os.getuid() or stat.S_IMODE(directory_stat.st_mode) != 0o700:
+        os.close(descriptor)
+        raise RuntimeError(f"Flywheel evidence destination directory is unsafe: {name}")
+    return descriptor
+
+
+def _replace_at(directory_descriptor: int, name: str, content: bytes) -> None:
+    partial = f".{name}{_PARTIAL_INFIX}{secrets.token_hex(8)}"
+    try:
+        _write_new_at(directory_descriptor, partial, content)
+        os.replace(partial, name, src_dir_fd=directory_descriptor, dst_dir_fd=directory_descriptor)
+    except OSError:
+        try:
+            os.unlink(partial, dir_fd=directory_descriptor)
+        except FileNotFoundError:
+            pass
+        raise
+
+
+def _remove_at(directory_descriptor: int, name: str) -> None:
+    try:
+        if stat.S_ISDIR(os.stat(name, dir_fd=directory_descriptor, follow_symlinks=False).st_mode):
+            # rmtree with dir_fd removes the tree through descriptors and never follows a link inside it.
+            shutil.rmtree(name, dir_fd=directory_descriptor)
+        else:
+            os.unlink(name, dir_fd=directory_descriptor)
+    except FileNotFoundError:
+        pass
+
+
+def discard_partial_evidence(destination: Path) -> None:
+    """Remove the partial copies that a killed or failed publication left in `destination`, and keep its whole files.
+
+    Each directory is opened without following a link. Where a directory is
+    missing or is a link, nothing was published through it, so this removes
+    nothing there.
+    """
+    with ExitStack() as descriptors:
+        try:
+            directory = _open_absolute_path(destination, _DIRECTORY_FLAGS)
+            descriptors.callback(os.close, directory)
+            for name in (".flywheel", "log"):
+                directory = os.open(name, _DIRECTORY_FLAGS, dir_fd=directory)
+                descriptors.callback(os.close, directory)
+                for entry in os.listdir(directory):
+                    if _PARTIAL_INFIX in entry:
+                        _remove_at(directory, entry)
+        except (OSError, RuntimeError):
+            pass
+
+
 def publish_debug_evidence(store: Path, log_directories: list[Path], destination: Path, credential_values: dict[str, str]) -> dict:
-    """Copy the analyzed store `store` and every `.jsonl` file of `log_directories` into `destination`.
+    """Copy the store `store` and every `.jsonl` file of `log_directories` into `destination`, over what an earlier publication left there.
 
     The copies take the layout of a project root, `.flywheel/flywheel.sqlite`
     and `.flywheel/log/`, so `flywheel events search --project-root
-    <destination>` reads them. `credential_values` maps each credential value
-    of the trial's auth snapshot to the kind of field that held it; a file
-    whose bytes hold one is not copied. Every source is opened without
-    following links and must be a regular, single-link file of its
-    directory's owner that nobody else can write; a missing source is
-    skipped.
+    <destination>` reads them. Each copy replaces its earlier version whole,
+    so a reader of `destination` at any moment sees whole files. A source
+    that is missing keeps its earlier copy; a source that is withheld loses
+    it. `credential_values` maps each credential value of the trial's auth
+    snapshot to the kind of field that held it; a file whose bytes hold one
+    is not copied. Every source is opened without following links and must be
+    a regular, single-link file of its directory's owner that nobody else can
+    write. After the copies, every other entry of `destination` is examined
+    again without following links: a regular file of this user whose name and
+    bytes hold no credential value stays, and every other entry is removed.
 
     Returns `{"published": [...], "withheld": {...}}`: the relative paths
     copied, and by relative path (or by source directory) why each other
-    source was not, `credential:<kind>` or `unsafe_source`. A source whose
+    source was not, `credential:<kind>` or `unsafe_source`, and why each
+    removed entry was, `credential:<kind>` or `unsafe_entry`. A source whose
     name holds a credential value is keyed by a numbered placeholder, never
-    by its name. Raises when
-    `destination` exists, so nothing is written through a planted link.
+    by its name. Raises when a directory of `destination` is a link or is not
+    this user's private directory, so nothing is written through a planted
+    link.
     """
     needles = [(value.encode(), kind) for value, kind in credential_values.items()]
 
@@ -456,18 +524,25 @@ def publish_debug_evidence(store: Path, log_directories: list[Path], destination
 
     published: list[str] = []
     withheld: dict[str, str] = {}
+
+    def summary_path(prefix: str, name: str) -> tuple[str, str | None]:
+        # A name reaches the summary and the evidence tree, so a name that holds a credential is keyed by a placeholder.
+        kind = credential_in(os.fsencode(name))
+        if kind is None:
+            return f"{prefix}{name}", None
+        return f"{prefix}<withheld name {len(withheld) + 1}>", f"credential:{kind}"
+
     with ExitStack() as descriptors:
         def held(descriptor: int) -> int:
             descriptors.callback(os.close, descriptor)
             return descriptor
 
-        destination.mkdir(mode=0o700)
-        root = held(os.open(destination, _DIRECTORY_FLAGS))
-        os.mkdir(".flywheel", 0o700, dir_fd=root)
-        flywheel = held(os.open(".flywheel", _DIRECTORY_FLAGS, dir_fd=root))
-        os.mkdir("log", 0o700, dir_fd=flywheel)
-        log = held(os.open("log", _DIRECTORY_FLAGS, dir_fd=flywheel))
-        sources = [(store.parent, [store.name], flywheel, ".flywheel"), *((directory, None, log, ".flywheel/log") for directory in log_directories)]
+        parent = held(os.open(destination.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)))
+        root = held(_private_directory_at(parent, destination.name))
+        flywheel = held(_private_directory_at(root, ".flywheel"))
+        log = held(_private_directory_at(flywheel, "log"))
+        written: dict[int, set[str]] = {flywheel: set(), log: set()}
+        sources = [(store.parent, [store.name], flywheel, ".flywheel/"), *((directory, None, log, ".flywheel/log/") for directory in log_directories)]
         for directory, names, target, prefix in sources:
             try:
                 source = held(_open_absolute_path(directory, _DIRECTORY_FLAGS))
@@ -477,23 +552,77 @@ def publish_debug_evidence(store: Path, log_directories: list[Path], destination
                 continue
             owner = os.fstat(source).st_uid
             for name in names or sorted(entry for entry in os.listdir(source) if entry.endswith(".jsonl")):
-                # A name reaches the summary and the evidence tree, so a name that holds a credential is keyed by a placeholder.
-                kind = credential_in(os.fsencode(name))
-                if kind is not None:
-                    withheld[f"{prefix}/<withheld name {len(withheld) + 1}>"] = f"credential:{kind}"
+                path, reason = summary_path(prefix, name)
+                if reason is None:
+                    try:
+                        content = _read_regular_at(source, name, owner)
+                    except FileNotFoundError:
+                        continue
+                    except RuntimeError:
+                        reason = "unsafe_source"
+                    else:
+                        kind = credential_in(content)
+                        reason = None if kind is None else f"credential:{kind}"
+                if reason is not None:
+                    withheld[path] = reason
+                    _remove_at(target, name)
                     continue
-                path = f"{prefix}/{name}"
-                try:
-                    content = _read_regular_at(source, name, owner)
-                except FileNotFoundError:
-                    continue
-                except RuntimeError:
-                    withheld[path] = "unsafe_source"
-                    continue
-                kind = credential_in(content)
-                if kind is not None:
-                    withheld[path] = f"credential:{kind}"
-                    continue
-                _write_new_at(target, name, content)
+                _replace_at(target, name, content)
+                written[target].add(name)
                 published.append(path)
+        # The tree outlives a publication, so each entry that this one did not
+        # write is examined again: an earlier copy whose source is now missing,
+        # a partial copy that a killed publication left, or an entry that a
+        # trial process planted. Only a regular file of this user that passes
+        # the credential check stays.
+        for directory, prefix, kept in ((root, "", {".flywheel"}), (flywheel, ".flywheel/", {"log", *written[flywheel]}), (log, ".flywheel/log/", written[log])):
+            for name in sorted(set(os.listdir(directory)) - kept):
+                if _PARTIAL_INFIX not in name:
+                    path, reason = summary_path(prefix, name)
+                    if reason is None:
+                        try:
+                            kind = credential_in(_read_regular_at(directory, name, os.getuid()))
+                        except FileNotFoundError:
+                            continue
+                        except RuntimeError:
+                            reason = "unsafe_entry"
+                        else:
+                            if kind is None:
+                                continue
+                            reason = f"credential:{kind}"
+                    withheld[path] = reason
+                _remove_at(directory, name)
     return {"published": published, "withheld": withheld}
+
+
+def snapshot_live_evidence(project_root: Path, log_directories: list[Path], destination: Path, credential_values: dict[str, str]) -> dict:
+    """Publish the store and the logs of a trial that still runs into `destination`, as `publish_debug_evidence` does.
+
+    SQLite's online backup copies one committed state of the store at
+    `<project_root>/.flywheel/flywheel.sqlite`, its WAL included, while
+    Flywheel still writes it, into a private directory, and that copy is
+    published. The pinned-descriptor checks of `_export_settled_sqlite` hold
+    only for a store that no longer changes, so a snapshot is debug evidence
+    and never the store that an analysis judges. Before Flywheel makes its
+    store, a snapshot publishes the logs only.
+    """
+    private = Path(tempfile.mkdtemp(prefix="flywheel-snapshot-")).resolve()
+    try:
+        store = private / "flywheel.sqlite"
+        try:
+            source_directory = _open_absolute_path(project_root / ".flywheel", _DIRECTORY_FLAGS)
+        except RuntimeError as error:
+            if not isinstance(error.__cause__, FileNotFoundError):
+                raise
+        else:
+            try:
+                # The backup opens the store by name, so the name is checked first as an export checks it.
+                os.close(_open_evidence_source_regular_at(source_directory, "flywheel.sqlite", os.fstat(source_directory).st_uid))
+                _backup_sqlite(project_root / ".flywheel" / "flywheel.sqlite", store)
+            except FileNotFoundError:
+                pass
+            finally:
+                os.close(source_directory)
+        return publish_debug_evidence(store, log_directories, destination, credential_values)
+    finally:
+        shutil.rmtree(private, ignore_errors=True)

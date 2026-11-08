@@ -1,3 +1,4 @@
+import errno
 import hashlib
 import json
 import os
@@ -39,6 +40,16 @@ def _store(project: Path, value: str) -> None:
     connection.execute("insert into event values (?)", (value,))
     connection.commit()
     connection.close()
+
+
+def _evidence_log(logs: Path) -> Path:
+    """The `.flywheel/log` directory of the evidence tree in `logs`, made private as an earlier publication made it."""
+    logs.mkdir(exist_ok=True)
+    directory = logs
+    for name in (trial_runtime.EVIDENCE_DIR_NAME, ".flywheel", "log"):
+        directory = directory / name
+        directory.mkdir(mode=0o700)
+    return directory
 
 
 def _drain(descriptor: int) -> bytes:
@@ -247,8 +258,14 @@ class RunShutdownTest(unittest.TestCase):
             # A credential in a log's name, over clean and over credential bytes.
             (log / f"2-{SNAPSHOT_KEY}.jsonl").write_text("{}\n")
             (log / f"3-{SNAPSHOT_KEY}.jsonl").write_text(SNAPSHOT_KEY)
+            # A trial process plants entries in the tree that an earlier publication made.
+            evidence = _evidence_log(root / "logs").parent
+            (evidence / "log" / "9-planted.jsonl").write_text(SNAPSHOT_KEY)
+            (root / "outside").mkdir()
+            (root / "outside" / "auth.json").write_text(SNAPSHOT_KEY)
+            (evidence / "log" / "link.jsonl").symlink_to(root / "outside" / "auth.json")
+            (evidence.parent / "escape").symlink_to(root / "outside", target_is_directory=True)
             status, summary, _, _ = self._run(root)
-            evidence = root / "logs" / trial_runtime.EVIDENCE_DIR_NAME / ".flywheel"
             self.assertEqual(status, 0)
             self.assertTrue(summary["evidence_exported"])
             self.assertTrue((root / "logs" / shim.ANALYSIS_NAME).exists())
@@ -257,7 +274,12 @@ class RunShutdownTest(unittest.TestCase):
                 ".flywheel/flywheel.sqlite": "credential:api_key.key",
                 ".flywheel/log/<withheld name 2>": "credential:api_key.key",
                 ".flywheel/log/<withheld name 3>": "credential:api_key.key",
+                ".flywheel/log/9-planted.jsonl": "credential:api_key.key",
+                ".flywheel/log/link.jsonl": "unsafe_entry",
+                "escape": "unsafe_entry",
             }})
+            self.assertEqual(sorted(path.name for path in evidence.parent.rglob("*")), [".flywheel", "1-project.jsonl", "log"])
+            self.assertTrue((root / "outside" / "auth.json").exists())
             for path in (root / "logs").rglob("*"):
                 self.assertNotIn(SNAPSHOT_KEY, path.name, path)
                 if path.is_file():
@@ -277,6 +299,22 @@ class RunShutdownTest(unittest.TestCase):
             self.assertTrue(summary["evidence_exported"])
             self.assertEqual(summary["debug_evidence"], {"failed": "publish_failed:exit_1"})
             self.assertEqual(list(outside.iterdir()), [])
+
+    def test_a_publication_that_fails_mid_write_leaves_no_partial_copy(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            _store(root / "project", "ordinary event")
+            destination = root / "logs" / trial_runtime.EVIDENCE_DIR_NAME
+            destination.parent.mkdir()
+            real_write = trial_runtime._write_new_at
+
+            def write_half_then_fail(descriptor: int, name: str, content: bytes) -> None:
+                real_write(descriptor, name, content[: len(content) // 2])
+                raise OSError(errno.ENOSPC, "no space left on device")
+
+            with patch.object(trial_runtime, "_write_new_at", write_half_then_fail), self.assertRaises(OSError):
+                trial_runtime.publish_debug_evidence(root / "project" / ".flywheel" / "flywheel.sqlite", [], destination, {})
+            self.assertEqual([path for path in destination.rglob("*") if not path.is_dir()], [])
 
     def test_a_private_directory_that_cannot_be_made_still_writes_the_summary(self) -> None:
         real_mkdtemp = shim.tempfile.mkdtemp
@@ -337,10 +375,15 @@ class RunShutdownTest(unittest.TestCase):
     def test_a_sigterm_that_stops_an_unsettled_turn_is_a_cancellation_bounded_from_the_sigterm(self) -> None:
         # Harbor sends SIGKILL two seconds after SIGTERM, so the summary must land
         # inside that window even when the child is still running at SIGTERM.
+        # The publication that the deadline kills leaves the whole files of the
+        # last snapshot and no partial copy in the evidence that Harbor collects.
         sigterm_delay = 0.3
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
             _store(root / "project", "ordinary event")
+            log = _evidence_log(root / "logs")
+            (log / "1-project.jsonl").write_text("{}\n")
+            (log / f".1-project.jsonl{trial_runtime._PARTIAL_INFIX}0123456789abcdef").write_text("{")
             self._sigterm_after(sigterm_delay)
             status, summary, elapsed, _ = self._run(root, [sys.executable, "-c", "import time; time.sleep(30)"], "import time; time.sleep(30)")
             self.assertEqual(status, 143)
@@ -348,7 +391,43 @@ class RunShutdownTest(unittest.TestCase):
             self.assertEqual(summary["adapter_settlement"], "harbor-cancellation")
             self.assertEqual(summary["evidence_withheld"], "export_deadline")
             self.assertEqual(summary["debug_evidence"], {"failed": "publish_deadline"})
-            self.assertFalse((root / "logs" / trial_runtime.EVIDENCE_DIR_NAME).exists())
+            self.assertEqual([path.name for path in log.iterdir()], ["1-project.jsonl"])
+
+    def test_logs_that_harbor_collects_while_flywheel_still_runs_hold_a_snapshot_of_its_live_store_and_logs(self) -> None:
+        # At its agent timeout Harbor collects the agent logs while the shim and
+        # Flywheel still run, and signals neither first. The child stands in for
+        # that collection: it commits a row that only its open WAL holds, then
+        # copies what the agent logs hold while it still runs.
+        with tempfile.TemporaryDirectory() as directory, patch.object(shim, "_SNAPSHOT_INTERVAL_SECONDS", 0.3):
+            root = Path(directory).resolve()
+            _store(root / "project", "ordinary event")
+            log = root / "project" / ".flywheel" / "log"
+            log.mkdir()
+            (log / "1-project.jsonl").write_text("{}\n")
+            (log / "2-project.jsonl").write_text(SNAPSHOT_KEY)
+            evidence, collected = root / "logs" / trial_runtime.EVIDENCE_DIR_NAME / ".flywheel", root / "collected"
+            child = (
+                "import os, shutil, sqlite3, sys, time\n"
+                "connection = sqlite3.connect('.flywheel/flywheel.sqlite')\n"
+                "connection.execute('pragma journal_mode=wal'); connection.execute('pragma wal_autocheckpoint=0')\n"
+                "connection.execute(\"insert into event values ('live event')\"); connection.commit()\n"
+                f"evidence, collected = {str(evidence)!r}, {str(collected)!r}\n"
+                "deadline = time.monotonic() + 10\n"
+                "while not os.path.exists(os.path.join(evidence, 'log', '1-project.jsonl')):\n"
+                "    if time.monotonic() > deadline: sys.exit(3)\n"
+                "    time.sleep(0.01)\n"
+                "os.makedirs(os.path.join(collected, 'log'))\n"
+                "shutil.copy(os.path.join(evidence, 'flywheel.sqlite'), collected)\n"
+                "for name in os.listdir(os.path.join(evidence, 'log')): shutil.copy(os.path.join(evidence, 'log', name), os.path.join(collected, 'log'))\n"
+            )
+            status, _, _, _ = self._run(root, child_code=child)
+            self.assertEqual(status, 0)
+            connection = sqlite3.connect(collected / "flywheel.sqlite")
+            try:
+                self.assertEqual(connection.execute("select payload from event order by rowid").fetchall(), [("ordinary event",), ("live event",)])
+            finally:
+                connection.close()
+            self.assertEqual(sorted(path.name for path in (collected / "log").iterdir()), ["1-project.jsonl"])
 
     def test_a_sigterm_after_a_settled_answer_is_a_normal_end(self) -> None:
         # Flywheel answers only a settled turn: a model reply with background
