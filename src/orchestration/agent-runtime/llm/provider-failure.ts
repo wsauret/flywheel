@@ -5,6 +5,7 @@ import { isAbortError } from "../../../infra/abort.js";
 import type { ProviderRecovery } from "../../../infra/llm/provider-error-copy.js";
 import { ChatGptAdapterApiError } from "./chatgpt-adapter/sse.js";
 import { classifyQuotaError, ContextLengthExceededError, LlmStreamError, ModelAccessRefusedError, OutputLengthExceededError, ProviderRequestValidationError, QuotaCoordinationError, QuotaExhaustedError, RouteUnavailableError } from "./errors.js";
+import { DegenerateRepetitionError } from "./reasoning-repetition.js";
 import { ThinkingStallError } from "./thinking-stall.js";
 
 // Raw SDK/HTTP errors are classified ONCE here, at the shared LLM boundary,
@@ -65,6 +66,14 @@ class AuthConditionFailure extends Error {
   }
 }
 class RequestAbortedFailure extends Schema.TaggedError<RequestAbortedFailure>()("RequestAbortedFailure", failureFields) {}
+/** The response's reasoning collapsed into repetition (`DegenerateRepetitionError`). The provider served the
+ *  request, so nothing fails over and nothing marks; the admitted request resamples it on the same candidate. */
+class DegenerateRepetitionFailure extends Schema.TaggedError<DegenerateRepetitionFailure>()("DegenerateRepetitionFailure", {
+  ...failureFields,
+  ratio: Schema.Number,
+  windowChars: Schema.Number,
+  reasoningChars: Schema.Number,
+}) {}
 /** Unrecognized failures stay outside the automatic provider failover walk. */
 class UnknownProviderFailure extends Schema.TaggedError<UnknownProviderFailure>()("UnknownProviderFailure", failureFields) {}
 
@@ -82,6 +91,7 @@ export type ProviderFailure =
   | QuotaCoordinationFailure
   | AuthConditionFailure
   | RequestAbortedFailure
+  | DegenerateRepetitionFailure
   | UnknownProviderFailure;
 
 /** The failures the access-provider chain may answer by trying the next
@@ -108,6 +118,7 @@ export function isFailoverFailure(failure: ProviderFailure): failure is Failover
     case "OutputOverflowFailure":
     case "QuotaCoordinationFailure":
     case "RequestAbortedFailure":
+    case "DegenerateRepetitionFailure":
     case "UnknownProviderFailure":
       return false;
     default: {
@@ -151,6 +162,7 @@ export function isRetryableFailure(failure: ProviderFailure): boolean {
     case "QuotaCoordinationFailure":
     case "AuthConditionFailure":
     case "RequestAbortedFailure":
+    case "DegenerateRepetitionFailure":
       return false;
     default: {
       const exhaustive: never = failure;
@@ -338,6 +350,9 @@ export function classifyProviderFailure(error: unknown): ProviderFailure {
   // not wire evidence, so `isProviderAttributedFailure` never marks on it.
   if (error instanceof ThinkingStallError) {
     return new TransientNetworkFailure({ message: error.message, cause: error });
+  }
+  if (error instanceof DegenerateRepetitionError) {
+    return new DegenerateRepetitionFailure({ message: error.message, ratio: error.ratio, windowChars: error.windowChars, reasoningChars: error.reasoningChars, cause: error });
   }
 
   const status = hasStatus(error) ? error.status : undefined;

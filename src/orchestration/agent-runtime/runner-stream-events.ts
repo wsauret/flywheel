@@ -47,7 +47,7 @@ interface StreamEventEmitContext {
 // The runtime-assembly stream handler intercepts retry telemetry and provider
 // notices before emission (they mutate session notices, not runtime events),
 // so this module never sees them.
-type EmittableStreamEvent = Exclude<StreamEvent, { kind: "stream_retry" | "stream_attempt_start" | "provider_status" }>;
+type EmittableStreamEvent = Exclude<StreamEvent, { kind: "stream_retry" | "stream_resample" | "stream_attempt_start" | "provider_status" }>;
 
 export function emitAgentStreamEvent(
   streamEvent: EmittableStreamEvent,

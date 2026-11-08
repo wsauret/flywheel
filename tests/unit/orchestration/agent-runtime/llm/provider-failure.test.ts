@@ -13,6 +13,7 @@ import {
   type ProviderFailure,
 } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { ThinkingStallError } from "../../../../../src/orchestration/agent-runtime/llm/thinking-stall.js";
+import { DegenerateRepetitionError } from "../../../../../src/orchestration/agent-runtime/llm/reasoning-repetition.js";
 
 interface StringRecord { [key: string]: string }
 
@@ -153,6 +154,14 @@ describe("classifyProviderFailure classification table", () => {
     expect(failure._tag).toBe("TransientNetworkFailure");
     expect(isRetryableFailure(failure)).toBe(true);
     expect(isFailoverFailure(failure)).toBe(true);
+    expect(isProviderAttributedFailure(failure)).toBe(false);
+  });
+
+  test("a repeating response is its own kind: not a network failure, never failover, never attributed", () => {
+    const failure = classifyProviderFailure(new DegenerateRepetitionError({ ratio: 0.01, windowChars: 8192, reasoningChars: 20_224 }));
+    expect(failure).toMatchObject({ _tag: "DegenerateRepetitionFailure", ratio: 0.01, windowChars: 8192, reasoningChars: 20_224 });
+    expect(isRetryableFailure(failure)).toBe(false);
+    expect(isFailoverFailure(failure)).toBe(false);
     expect(isProviderAttributedFailure(failure)).toBe(false);
   });
 });

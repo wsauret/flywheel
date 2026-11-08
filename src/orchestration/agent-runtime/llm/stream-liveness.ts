@@ -88,6 +88,7 @@ export function armStreamLiveness(attempt: StreamAttempt, opts: StreamLivenessOp
       resetForCurrentState();
     },
     append(text) {
+      attempt.observeReasoning(text);
       if (!activeThinking || thinkingTimeout) return;
       activeThinking.summary += text;
       resetForCurrentState();

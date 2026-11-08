@@ -128,7 +128,7 @@ describe("live/derived output equivalence", () => {
           const published = handleStreamEvent(event, turn)
           // The turn reports its terminal event after settlement, and the
           // runtime assembly intercepts the retry and notice kinds.
-          if (published.kind === "done" || published.kind === "stream_retry" || published.kind === "stream_attempt_start" || published.kind === "provider_status") continue
+          if (published.kind === "done" || published.kind === "stream_retry" || published.kind === "stream_resample" || published.kind === "stream_attempt_start" || published.kind === "provider_status") continue
           emitAgentStreamEvent(published, context)
         }
         emitTurnAssistant(context.options.onEvent, turn.assistantContent, context.costTracker, undefined, entryId)

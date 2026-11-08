@@ -18,6 +18,10 @@ When the request itself caused a failure, such as a rejected or malformed reques
 
 Flywheel retries a candidate that drops the connection, throttles, or reports overload in place with bounded backoff, and moves on only when those retries are spent. The session status shows the reconnect progress while it waits. A lost connection alone never marks a provider unreachable for other sessions, and only a failure the provider stated does. A first mark holds briefly and lengthens only while the outage persists.
 
+## PI-MODEL-083: A response whose reasoning repeats itself is resampled
+
+When a model's reasoning collapses into repetition, Flywheel stops that response and requests a fresh one from the same provider, at most twice per response, and accepts the last attempt in full. The session status says the model repeated itself, and each stopped attempt appears as its own request.
+
 ## PI-MODEL-002: Background process model visibility
 
 Background process lists prioritize the full, wrapped goal and show the current resolved model and reasoning effort for each process that has one. Internal process identifiers are not displayed.

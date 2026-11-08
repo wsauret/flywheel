@@ -58,6 +58,11 @@ const PRODUCERS: readonly Producer[] = [
     pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
   },
   {
+    file: "src/orchestration/agent-runtime/assistant-turn-attempt.ts",
+    what: "reasoning repetition trips of one wire attempt",
+    pattern: /DebugLog\.record\(\{\s*type:\s*"([^"]+)"/g,
+  },
+  {
     file: "src/infra/startup-timeline.ts",
     what: "bounded startup lifecycle summaries",
     pattern: /emit\(\{\s*type:\s*"([^"]+)"/g,

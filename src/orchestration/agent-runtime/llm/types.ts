@@ -346,7 +346,11 @@ export type ProviderStreamEvent =
   // Attempt start timestamps the silent startup window before the provider
   // emits its first stream event.
   | StreamAttemptStartEvent
-  | StreamRetryEvent;
+  | StreamRetryEvent
+  // The admitted request's walk is resampling the same candidate because the
+  // response's reasoning repeated itself (`ProviderResample`). Like
+  // `stream_retry`, only the turn boundary raises it.
+  | { kind: "stream_resample"; attempt: number; maxAttempts: number };
 
 /** The same record as a raw frame of a provider's own stream, as a transport between the adapter and the service
  *  hands it to the adapter. It is no service event: the adapter turns it into a `transport_context` event and reads
@@ -481,6 +485,9 @@ export interface StreamOptions {
   telemetry?: StreamTelemetrySink;
   /** Durable observation appended after the adapter invokes provider I/O. */
   onDispatch?: () => void | Promise<void>;
+  /** Whether the stream attempt stops a response whose reasoning collapses into repetition
+   *  (`DegenerateRepetitionError`). Only the admitted request's walk sets it, for an attempt that it can resample. */
+  detectRepetition?: boolean;
 }
 
 /** Resolves a captured provider policy without re-enabling explicitly uncached work.
@@ -703,11 +710,14 @@ export interface StagedProviderClient {
 /** How one candidate's attempt settled. `provider_failure` is the one signal
  *  that advances the chain, so it carries only the failures the chain may
  *  advance on. `login_refused` retains the settled failure value for an
- *  interactive login wait; it never advances to another candidate. */
+ *  interactive login wait; it never advances to another candidate.
+ *  `repetition` is an attempt whose reasoning collapsed into repetition,
+ *  which the walk resamples on the same candidate. */
 export type AdmittedModelRequestExecution<T> =
   | { readonly kind: "success"; readonly value: T }
   | { readonly kind: "login_refused"; readonly failure: Extract<ProviderFailure, { readonly _tag: "AuthFailure" }>; readonly value: T }
-  | { readonly kind: "provider_failure"; readonly failure: FailoverFailure };
+  | { readonly kind: "provider_failure"; readonly failure: FailoverFailure }
+  | { readonly kind: "repetition"; readonly failure: Extract<ProviderFailure, { readonly _tag: "DegenerateRepetitionFailure" }> };
 
 /** One in-place retry the walk is about to make on the candidate that just
  *  failed: which retry of how many, how long it waits first, and the failure
@@ -719,9 +729,22 @@ export interface ProviderRetry {
   readonly failure: FailoverFailure;
 }
 
+/** One resample the walk is about to make on the candidate whose response
+ *  repeated itself: which resample of how many. It sends the same request at
+ *  once, so a session shows it before the next attempt starts. */
+export interface ProviderResample {
+  readonly attempt: number;
+  readonly maxAttempts: number;
+}
+
 /** The candidate that a request walk selected: its serving attempt, its connected client, and the request that it
  *  prepared for that candidate. */
 export type PreparedCandidate = Readonly<{ attempt: ServingAttempt; client: LLMClient; prepared: PreparedServingRequest }>;
+
+/** One attempt the walk sends on a prepared candidate. `sample` numbers the attempts of one model response from 1,
+ *  and grows by one with each resample. `detectRepetition` is false on the last attempt that the walk's resample
+ *  budget allows, so that attempt is accepted in full (`StreamOptions.detectRepetition`). */
+export type ServingCandidate = PreparedCandidate & Readonly<{ sample: number; detectRepetition: boolean }>;
 
 /** How one admitted request prepares its outbound revision for a candidate. */
 export interface AdmittedModelRequestPreparation {
@@ -732,8 +755,9 @@ export interface AdmittedModelRequestPreparation {
 }
 
 export interface AdmittedModelRequestRun<T> extends AdmittedModelRequestPreparation {
-  readonly execute: (candidate: PreparedCandidate) => Promise<AdmittedModelRequestExecution<T>>;
+  readonly execute: (candidate: ServingCandidate) => Promise<AdmittedModelRequestExecution<T>>;
   readonly onRetry?: (retry: ProviderRetry) => void;
+  readonly onResample?: (resample: ProviderResample) => void;
   /** Brackets an account login wait after execution settles, outside stream deadlines. */
   readonly onLoginWait?: (waiting: boolean) => void;
 }

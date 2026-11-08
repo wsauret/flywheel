@@ -586,7 +586,7 @@ export async function createOpenAIChatCompletionsAdapter(
           throwIfLivenessFailure(err, attempt, options.signal);
           log.warn("OpenAI chat-completions stream error", { err: String(err) });
           throw err;
-        } }, { signal: options.signal });
+        } }, options);
     },
 
   } satisfies LLMClient;

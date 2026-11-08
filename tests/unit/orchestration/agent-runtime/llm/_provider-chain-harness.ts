@@ -159,7 +159,7 @@ export function fakeAvailability(script: AvailabilityScript, nowMs = Date.now())
   };
 }
 
-export function fakeClient(accessProvider: AccessProviderId, stream: () => AsyncGenerator<ProviderStreamEvent>): LLMClient {
+export function fakeClient(accessProvider: AccessProviderId, stream: LLMClient["streamWithTools"]): LLMClient {
   return { historyTarget: ownHistoryTarget,
     accessProvider,
     modelFamily: "openai",
@@ -295,14 +295,16 @@ export async function run(client: ModelClient): Promise<ProviderStreamEvent[]> {
 }
 
 /** Mirrors the production fold: only a failure the chain may advance on is
- *  handed back as `provider_failure`; every other failure leaves the chain
- *  under its own name, the way the loop surfaces a settled stream error. */
+ *  handed back as `provider_failure`, and a repeating response as
+ *  `repetition`; every other failure leaves the chain under its own name, the
+ *  way the loop surfaces a settled stream error. */
 export async function executeStream(client: LLMClient, options: StreamOptions): Promise<AdmittedModelRequestExecution<ProviderStreamEvent[]>> {
   try {
     return { kind: "success", value: await collect(client.streamWithTools(options)) };
   } catch (error) {
     if (options.signal?.aborted || error instanceof TypeError || (error instanceof DOMException && error.name === "AbortError")) throw error;
     const normalized = normalizeProviderAttemptFailure(error);
+    if (normalized.failure._tag === "DegenerateRepetitionFailure") return { kind: "repetition", failure: normalized.failure };
     if (!isFailoverFailure(normalized.failure)) throw normalized;
     return { kind: "provider_failure", failure: normalized.failure };
   }
@@ -314,7 +316,7 @@ export async function requestEvents(client: ModelClient, options: StreamOptions 
     signal: options.signal,
     providerOptions: options.providerOptions,
     prepare: preparedRequest,
-    execute: ({ client: adapter }) => executeStream(adapter, options),
+    execute: ({ client: adapter, detectRepetition }) => executeStream(adapter, { ...options, detectRepetition }),
   });
 }
 

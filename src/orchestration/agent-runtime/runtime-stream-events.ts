@@ -38,12 +38,13 @@ export function createRuntimeStreamEventHandler(input: {
 }
 
 type ProviderNoticeStreamEvent = Extract<StreamEvent, {
-  kind: "provider_status" | "stream_retry" | "stream_attempt_start";
+  kind: "provider_status" | "stream_retry" | "stream_resample" | "stream_attempt_start";
 }>;
 
 function isProviderNoticeStreamEvent(streamEvent: StreamEvent): streamEvent is ProviderNoticeStreamEvent {
   return streamEvent.kind === "provider_status"
     || streamEvent.kind === "stream_retry"
+    || streamEvent.kind === "stream_resample"
     || streamEvent.kind === "stream_attempt_start";
 }
 
@@ -111,6 +112,21 @@ function handleProviderNoticeEvent(streamEvent: ProviderNoticeStreamEvent, optio
       });
       return;
     }
+    // The connection is fine, so the connection state stays as it is: only the response is sampled again.
+    case "stream_resample":
+      options.onNotice?.({
+        type: "upsert",
+        notice: {
+          id: PROVIDER_RETRY_NOTICE_ID,
+          scope: PROVIDER_NOTICE_SCOPE,
+          presentation: "provider.reconnect_progress",
+          severity: "warning",
+          title: "Model repeated itself",
+          message: `Requesting a fresh response (${streamEvent.attempt}/${streamEvent.maxAttempts}).`,
+          retry: { count: streamEvent.attempt, maxRetries: streamEvent.maxAttempts },
+        },
+      });
+      return;
     case "stream_attempt_start":
       emitAttemptNotice(streamEvent, options);
       return;

@@ -263,6 +263,7 @@ const ANSWERS = {
   transport_context: false,
   stream_attempt_start: false,
   stream_retry: false,
+  stream_resample: false,
 } as const satisfies { readonly [Kind in ProviderStreamEvent["kind"]]: boolean }
 
 export function isProviderResponseEvent(event: ProviderStreamEvent): boolean {

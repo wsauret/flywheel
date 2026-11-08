@@ -33,7 +33,7 @@ function clientFor(streams: Stream[]): ModelClient {
             expect(options.tools).toBe(prepared.tools);
             expect(options.cacheRetention).toBe(prepared.cacheRetention);
             return streamWithTools(options);
-          } }, prepared });
+          } }, prepared, sample: 1, detectRepetition: false });
           if (result.kind === "success") return result.value;
         }
         throw new AllCandidatesExhaustedError({ message: "all accounts exhausted", recovery: { kind: "none" } });

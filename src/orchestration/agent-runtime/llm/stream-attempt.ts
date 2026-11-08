@@ -1,7 +1,9 @@
 import { mergeAbortSignals } from "../../../infra/abort.js";
 import { StreamIdleTimeoutError } from "./errors.js";
 import { normalizeProviderAttemptFailure } from "./provider-failure.js";
+import { reasoningRepetitionDetector } from "./reasoning-repetition.js";
 import { createStreamDeadline, type StreamDeadlineOptions, type StreamTimeoutEvent, type StreamTimeoutPhase } from "./stream-watchdog.js";
+import type { StreamOptions } from "./types.js";
 
 export interface StreamAttemptStartEvent {
   readonly kind: "stream_attempt_start";
@@ -24,12 +26,13 @@ export interface StreamAttempt {
   startStreamDeadline(options: StreamAttemptDeadlineOptions): void;
   resetStreamDeadline(timeoutMs?: number, phase?: StreamTimeoutPhase): void;
   recordStreamKeepalive(): void;
+  /** Takes one reasoning delta of the response. When the attempt detects repetition and the reasoning collapsed
+   *  into it, the attempt aborts and fails with `DegenerateRepetitionError`. */
+  observeReasoning(text: string): void;
   throwIfStreamTimedOut(): void;
 }
 
-interface StreamAttemptOptions {
-  readonly signal?: AbortSignal;
-}
+type StreamAttemptOptions = Pick<StreamOptions, "signal" | "detectRepetition">;
 
 /**
  * Owns one adapter stream attempt, from its deadline through iterator cleanup.
@@ -52,6 +55,7 @@ export async function* withStreamAttempt<Event>(
   let deadline: ReturnType<typeof createStreamDeadline> | undefined;
   let deadlineOptions: StreamAttemptDeadlineOptions | undefined;
   let callbackFailure: { error: unknown } | undefined;
+  const repetition = options.detectRepetition ? reasoningRepetitionDetector() : undefined;
 
   const throwIfStreamTimedOut = (): void => {
     if (callbackFailure) throw callbackFailure.error;
@@ -89,6 +93,14 @@ export async function* withStreamAttempt<Event>(
     },
     recordStreamKeepalive() {
       deadline?.keepalive();
+    },
+    observeReasoning(text) {
+      if (callbackFailure) return;
+      const detected = repetition?.observe(text);
+      if (detected === undefined) return;
+      // The adapter's catch reads this failure through `throwIfStreamTimedOut` once the abort ends its stream.
+      callbackFailure = { error: normalizeProviderAttemptFailure(detected) };
+      abort.abort();
     },
     throwIfStreamTimedOut,
   };

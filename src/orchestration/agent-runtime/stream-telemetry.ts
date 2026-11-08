@@ -182,7 +182,7 @@ type BasicMetadataEvent = Extract<ProviderStreamEvent, {
 }>;
 type ToolMetadataEvent = Extract<ProviderStreamEvent, { kind: "tool_input_start" | "tool_input_delta" | "tool_use" }>;
 type NoticeMetadataEvent = Extract<ProviderStreamEvent, { kind: "provider_status" }>;
-type RetryMetadataEvent = Extract<ProviderStreamEvent, { kind: "stream_attempt_start" | "stream_retry" }>;
+type RetryMetadataEvent = Extract<ProviderStreamEvent, { kind: "stream_attempt_start" | "stream_retry" | "stream_resample" }>;
 
 function normalizedMetadata(event: ProviderStreamEvent): TelemetryMetadata {
   if (isBasicMetadataEvent(event)) return basicMetadata(event);
@@ -222,7 +222,7 @@ function isNoticeMetadataEvent(event: ProviderStreamEvent): event is NoticeMetad
 }
 
 function isRetryMetadataEvent(event: ProviderStreamEvent): event is RetryMetadataEvent {
-  return event.kind === "stream_attempt_start" || event.kind === "stream_retry";
+  return event.kind === "stream_attempt_start" || event.kind === "stream_retry" || event.kind === "stream_resample";
 }
 
 function basicMetadata(event: BasicMetadataEvent): TelemetryMetadata {
@@ -316,6 +316,8 @@ function retryMetadata(event: RetryMetadataEvent): TelemetryMetadata {
         ...(event.thinkingStall ? { thinkingStall: event.thinkingStall } : {}),
         ...(event.nextAttemptDisablesReasoning ? { nextAttemptDisablesReasoning: true } : {}),
       };
+    case "stream_resample":
+      return { attempt: event.attempt, maxAttempts: event.maxAttempts };
     default:
       return assertNever(event);
   }

@@ -365,7 +365,7 @@ export async function createGoogleAdapter(
             },
           };
         }
-        }, { signal: options.signal });
+        }, options);
     },
 
   } satisfies LLMClient;

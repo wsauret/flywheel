@@ -51,6 +51,10 @@ const DIAGNOSTICS: ReadonlyMap<string, DiagnosticDeclaration> = new Map([
   // leader released its followers, how many waited, and how long. A hash
   // prefix names the cached prompt prefix; no content.
   ["model.prefix_hold.settled", { tier: "info" }],
+  // One record per response that the admitted request stopped because its
+  // reasoning repeated itself: the model, the provider, the attempt, the
+  // compression ratio, and the char counts. No content.
+  ["model.reasoning.repetition_detected", { tier: "info" }],
   ["model.catalog.canonical_collision", { tier: "debug" }],
   ["model.catalog.relationship_unresolved", { tier: "info" }],
   // One record per published definition revision of a project: its number,

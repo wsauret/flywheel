@@ -270,6 +270,7 @@ describe("armStreamLiveness", () => {
       startStreamDeadline: () => {},
       resetStreamDeadline: (timeoutMs) => { resets.push(timeoutMs ?? -1); },
       recordStreamKeepalive: () => {},
+      observeReasoning: () => {},
       throwIfStreamTimedOut: () => {},
     } satisfies StreamAttempt;
     const liveness = armStreamLiveness(attempt, { label: "test", provider: "Test", telemetry: undefined });
@@ -298,6 +299,7 @@ describe("armStreamLiveness", () => {
         startStreamDeadline: () => {},
         resetStreamDeadline: (timeoutMs) => { resets.push(timeoutMs ?? -1); },
         recordStreamKeepalive: () => {},
+        observeReasoning: () => {},
         throwIfStreamTimedOut: () => {},
       } satisfies StreamAttempt;
       armStreamLiveness(attempt, { label: "test", provider: "Test", telemetry: undefined }).begin("reasoning:0");
@@ -315,6 +317,7 @@ describe("armStreamLiveness", () => {
       startStreamDeadline: (options) => { deadlineOptions = options; },
       resetStreamDeadline: () => {},
       recordStreamKeepalive: () => {},
+      observeReasoning: () => {},
       throwIfStreamTimedOut: () => {},
     } satisfies StreamAttempt;
     const liveness = armStreamLiveness(attempt, { label: "test", provider: "Test", telemetry: undefined });
@@ -338,6 +341,7 @@ describe("armStreamLiveness", () => {
       startStreamDeadline: () => {},
       resetStreamDeadline: () => {},
       recordStreamKeepalive: () => {},
+      observeReasoning: () => {},
       throwIfStreamTimedOut: () => { throw new ThinkingStallError({ elapsedMs: 300_000, summary: "working" }); },
     } satisfies StreamAttempt;
 

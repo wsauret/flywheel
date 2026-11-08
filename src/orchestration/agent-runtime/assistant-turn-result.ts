@@ -97,7 +97,8 @@ export function handleStreamEvent(event: ProviderStreamEvent, result: AssistantT
     event.kind === "tool_input_delta" ||
     event.kind === "context_update" ||
     event.kind === "provider_status" ||
-    event.kind === "stream_attempt_start"
+    event.kind === "stream_attempt_start" ||
+    event.kind === "stream_resample"
   ) {
     return event;
   }

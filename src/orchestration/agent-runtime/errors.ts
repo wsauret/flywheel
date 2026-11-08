@@ -6,6 +6,7 @@ import { contentDeclinedCopy, type ProviderErrorCopy, type ProviderRecovery } fr
 import { RefusedPartKindSchema } from "../../infra/llm/content-repair.js"
 import { AllCandidatesExhaustedError, ContentFilteredError, ContentRefusedError, ContextLengthExceededError, LlmStreamError, OutputLengthExceededError, QuotaCoordinationError, StreamIdleTimeoutError } from "./llm/errors.js"
 import { classifyProviderFailure, ProviderAttemptFailure, providerRecovery, type ProviderFailure } from "./llm/provider-failure.js"
+import { DegenerateRepetitionError } from "./llm/reasoning-repetition.js"
 import { ThinkingStallError } from "./llm/thinking-stall.js"
 import type { AgentFailureReason } from "./types.js"
 
@@ -82,6 +83,7 @@ const AGENT_RUNTIME_ERRORS = [
   AgentAborted,
   ProviderAuditSettlementError,
   ThinkingStallError,
+  DegenerateRepetitionError,
   QuotaCoordinationError,
 ] as const
 
@@ -144,6 +146,9 @@ export function toFailureReason(error: AgentRuntimeError): AgentFailureReason {
     case "AgentAborted": return { kind: "aborted" }
     case "ProviderAuditSettlementError": return { kind: "api_error", message: error.message, recovery: { kind: "retry" } }
     case "ThinkingStall": return { kind: "stream_stalled", message: error.message, attribution: { kind: "unattributed" } }
+    // The walk resamples a repeating response and accepts its last attempt, so only a turn that settled during a
+    // resampled attempt, such as one that took new input, ends on it; a later run samples again.
+    case "DegenerateRepetition": return { kind: "api_error", message: error.message, recovery: { kind: "retry" } }
     // No failure kind states quota coordination, so the account that could not
     // be coordinated has to survive in the message the user reads.
     case "QuotaCoordination": return { kind: "api_error", message: `${error.provider}: ${error.message}`, recovery: { kind: "retry" } }

@@ -36,6 +36,12 @@ A Claude engine that the MCP module runs as an MCP client carries only MCP tool 
 Because: The engine reaches servers that accept Claude, while Flywheel stays the one owner of tool admission and records.
 Not: An MCP engine that runs a tool that a model requested, or that sends a model request.
 
+## ARCH-PROVIDERS-075: Degenerate repetition is resampled in place
+
+The stream attempt detects degenerate repetition in reasoning deltas and fails the attempt with its own failure kind. The admitted request resamples that kind in place on the same candidate within its own budget, without backoff, failover, outage marks, or continuation messages, and disables detection on the final attempt.
+Because: A repeating response streams steadily, so no liveness deadline ends it, and a fresh sample from the same model almost always recovers.
+Not: A loop handled as a network failure or a stall timeout, a loop that advances the failover walk, or a resample that replays the looping text or adds a reminder.
+
 ## ARCH-PROVIDERS-069: An engine process is one resource from its launch, and its files belong to its session's owner
 
 Flywheel reads the output, diagnostics, and end of each provider engine process from its launch, not from its first request, so a pre-started engine and a serving engine are one resource. A pre-started engine that ended is gone before anything asks for it. The engine's files belong to the owner of its session and are removed after that owner closes. After a crash, they are reclaimed only when that owner is proven gone.

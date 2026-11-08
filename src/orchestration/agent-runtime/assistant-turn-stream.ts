@@ -4,7 +4,7 @@ import type { AssistantTurnResult } from "./assistant-turn-result.js";
 import { isFailoverFailure } from "./llm/provider-failure.js";
 import type { PreparedRequestAttempt } from "./request-tool-surface.js";
 import { NO_SYSTEM_PROMPT } from "./llm/system-prompt-tiers.js";
-import { resolveCacheRetention, type AdmittedModelRequest, type AdmittedModelRequestExecution, type PreparedCandidate, type PreparedServingRequest, type ProviderRetry, type ProviderStreamEvent, type ServingAttempt, type StreamOptions, type TurnModelClient, type ConversationMessage } from "./llm/types.js";
+import { resolveCacheRetention, type AdmittedModelRequest, type AdmittedModelRequestExecution, type PreparedCandidate, type PreparedServingRequest, type ProviderResample, type ProviderRetry, type ProviderStreamEvent, type ServingAttempt, type ServingCandidate, type StreamOptions, type TurnModelClient, type ConversationMessage } from "./llm/types.js";
 import { estimateConversationTokens, tokenCountingPolicy } from "./compaction/token-counter.js";
 import { prepareLocalTokenizer } from "../../infra/local-tokenizer.js";
 import { redactMessage } from "./agent-loop-history.js";
@@ -15,6 +15,7 @@ type SettledAttempt<T> = { value: T; stop: boolean };
 type ExecutionInput = Pick<AssistantAttemptInput, "signal" | "onEvent" | "canonicalizeToolCall" | "canonicalizeToolName" | "onStreamAbandoned" | "onHandoffStarted">;
 type FoldAttempt<T> = (input: Partial<ExecutionInput>, settle: (attempt: Attempt) => Promise<SettledAttempt<T>>) => Promise<AdmittedModelRequestExecution<T>>;
 type StreamRetryEvent = Extract<ProviderStreamEvent, { kind: "stream_retry" }>;
+type StreamResampleEvent = Extract<ProviderStreamEvent, { kind: "stream_resample" }>;
 
 interface RequestInput {
   client: TurnModelClient;
@@ -26,10 +27,10 @@ interface RequestInput {
     readonly uncachedInputTokens: number;
     readonly cacheTokens: number;
   };
-  /** Receives the walk's in-place retries as stream events, so the session
-   *  shows the reconnect while the request waits. Absent for callers with
-   *  no presentation. */
-  onEvent?: (event: StreamRetryEvent) => void;
+  /** Receives the walk's in-place retries and resamples as stream events, so
+   *  the session shows the reconnect or the fresh response while the request
+   *  waits. Absent for callers with no presentation. */
+  onEvent?: (event: StreamRetryEvent | StreamResampleEvent) => void;
   /** Reports entry and exit of the provider walk's abortable account login wait. */
   onLoginWait?: (waiting: boolean) => void;
   /** Holds this request behind a sibling that is writing the same cached
@@ -40,7 +41,7 @@ interface RequestInput {
 
 interface PreparedExecution<T> {
   input: AssistantAttemptInput;
-  execute: (candidate: PreparedCandidate, fold: FoldAttempt<T>) => Promise<AdmittedModelRequestExecution<T>>;
+  execute: (candidate: ServingCandidate, fold: FoldAttempt<T>) => Promise<AdmittedModelRequestExecution<T>>;
 }
 
 /** One request of a loop whose bytes the loop prepares for each candidate. */
@@ -160,7 +161,9 @@ function requestRevision<Revision extends { input: AssistantAttemptInput }>(inpu
 /** Runs one admitted request. Each callback must settle actual work and close
  *  accounting before it returns. A stop ends the request without advancing
  *  candidates, and so does a failure outside the failover class: the settled
- *  attempt already records it as its outcome, and the loop surfaces that. */
+ *  attempt already records it as its outcome, and the loop surfaces that. A
+ *  response whose reasoning repeated itself goes back to the walk, which
+ *  resamples it on the same candidate. */
 export function streamAssistantTurn<T>(input: AssistantTurnRequest<T>): Promise<T>;
 export function streamAssistantTurn(input: RequestInput & AssistantAttemptInput): Promise<AssistantTurnResult>;
 export async function streamAssistantTurn<T>(input: AssistantTurnRequest<T> | (RequestInput & AssistantAttemptInput)): Promise<T | AssistantTurnResult> {
@@ -171,7 +174,10 @@ export async function streamAssistantTurn<T>(input: AssistantTurnRequest<T> | (R
     signal: input.signal,
     providerOptions: input.providerOptions,
     ...(input.onLoginWait === undefined ? {} : { onLoginWait: input.onLoginWait }),
-    ...(onEvent === undefined ? {} : { onRetry: (retry) => onEvent(streamRetryEvent(retry)) }),
+    ...(onEvent === undefined ? {} : {
+      onRetry: (retry) => onEvent(streamRetryEvent(retry)),
+      onResample: (resample: ProviderResample) => onEvent({ kind: "stream_resample", ...resample }),
+    }),
     prepare: revision.prepare,
     execute: async (candidate) => {
       // The hold sits here, where the serving route and the exact prefix are
@@ -196,7 +202,7 @@ export async function streamAssistantTurn<T>(input: AssistantTurnRequest<T> | (R
     },
   });
 
-  async function executeCandidate(candidate: PreparedCandidate, ticket: PrefixHoldTicket | undefined): Promise<AdmittedModelRequestExecution<T | AssistantTurnResult>> {
+  async function executeCandidate(candidate: ServingCandidate, ticket: PrefixHoldTicket | undefined): Promise<AdmittedModelRequestExecution<T | AssistantTurnResult>> {
     const current = revision.current();
     const fold = async <Value>(executionInput: Partial<ExecutionInput>, settle: (attempt: Attempt) => Promise<SettledAttempt<Value>>): Promise<AdmittedModelRequestExecution<Value>> => {
       const merged = { ...current.input, ...executionInput, cacheRetention: candidate.prepared.cacheRetention };
@@ -224,6 +230,11 @@ export async function streamAssistantTurn<T>(input: AssistantTurnRequest<T> | (R
         attempt.releaseIdentity();
         attemptInput.onStreamAbandoned?.("retry");
         return { kind: "provider_failure", failure };
+      }
+      if (failure?._tag === "DegenerateRepetitionFailure") {
+        attempt.releaseIdentity();
+        attemptInput.onStreamAbandoned?.("retry");
+        return { kind: "repetition", failure };
       }
       // A failed response that no other candidate replaces still ends here.
       if (failure) attemptInput.onStreamAbandoned?.("failed");

@@ -503,7 +503,7 @@ export async function createOpenAIAdapter(
             if (earlyResponseId) log.warn("OpenAI stream closed before completion", { responseId: earlyResponseId });
             failProviderAttempt(new LlmStreamError("stream closed before response.completed", "transient"));
           }
-        }, { signal: options.signal });
+        }, options);
     },
 
   } satisfies LLMClient;

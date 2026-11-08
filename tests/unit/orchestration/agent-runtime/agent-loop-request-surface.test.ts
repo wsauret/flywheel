@@ -328,7 +328,7 @@ describe("per-request provider admission", () => {
           prepare: async () => { throw new Error("this fake serves sends only") },
           async run({ execute, prepare }) {
             const prepared = await prepare(attempt)
-            const result = await execute({ attempt, prepared, client: { ...attempt, async *streamWithTools() {
+            const result = await execute({ attempt, prepared, sample: 1, detectRepetition: false, client: { ...attempt, async *streamWithTools() {
             if (admittedNumber === 1) {
               yield { kind: "tool_use", toolCall: { id: "tc", name: "noop", input: {} } }
               yield { kind: "done", stopReason: "tool_use" }
@@ -337,7 +337,7 @@ describe("per-request provider admission", () => {
               yield { kind: "done", stopReason: "end_turn" }
             }
             } } })
-            if (result.kind === "login_refused" || result.kind === "provider_failure") throw result.failure
+            if (result.kind !== "success") throw result.failure
             return result.value
           },
         }

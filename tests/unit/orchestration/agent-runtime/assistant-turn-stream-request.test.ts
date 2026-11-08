@@ -1,10 +1,11 @@
-import { attemptHistoryTarget } from "./_model-client.js";
-import { describe, expect, test } from "bun:test"
+import { describe, expect, spyOn, test } from "bun:test"
+import { DebugLog } from "../../../../src/infra/debug-log.js"
+import { DegenerateRepetitionError } from "../../../../src/orchestration/agent-runtime/llm/reasoning-repetition.js"
 
 import { streamAssistantTurn } from "../../../../src/orchestration/agent-runtime/assistant-turn-stream"
 import type { ProviderRequestAuditWriter } from "../../../../src/orchestration/agent-runtime/llm/provider-request-audit"
 import type { AdmittedModelRequest, CacheRetention, LLMClient, ModelClient, PreparedServingRequest, ProviderStreamEvent, ServingAttempt, StreamOptions } from "../../../../src/orchestration/agent-runtime/llm/types"
-import { asModelClient, fakeAttempt } from "./_model-client"
+import { asModelClient, attemptHistoryTarget, fakeAttempt } from "./_model-client"
 import { DEFAULT_MODEL_INTERACTION_PROFILE } from "../../../../src/orchestration/agent-runtime/model-interaction-profile.js"
 import { chain, fakeAvailability, singletonCandidate, subscriptionCandidate } from "./llm/_provider-chain-harness.js"
 import type { ProviderAffordabilityCapability } from "../../../../src/orchestration/agent-runtime/llm/provider-affordability.js"
@@ -399,6 +400,39 @@ describe("streamAssistantTurn admitted request", () => {
     ])
   })
 
+  test("records a repetition trip once when the turn settles on it without a resample", async () => {
+    const records: unknown[] = []
+    const record = spyOn(DebugLog, "record").mockImplementation((entry) => {
+      if (entry.type === "model.reasoning.repetition_detected") records.push(entry.payload)
+    })
+    try {
+      const client = fakeClient(async function* () {
+        throw normalizeProviderAttemptFailure(new DegenerateRepetitionError({ ratio: 0.0123, windowChars: 8192, reasoningChars: 9_000 }))
+      })
+      await streamAssistantTurn({
+        client, executionCwd: "/scratch", signal: undefined, providerOptions: undefined,
+        // A settlement that stops, as a planned compaction or a new user message does, ends the turn before the walk.
+        prepare: () => ({
+          input: {
+            interactionProfile: DEFAULT_MODEL_INTERACTION_PROFILE,
+            messages: [{ kind: "user", content: "hello" }], tools: [], systemPrompt: stableSystemPrompt("system"),
+            reasoningEffort: undefined, signal: undefined, cacheRetention: undefined,
+            providerSessionKey: undefined, promptCacheKey: undefined, providerOptions: undefined, requestAudit: undefined,
+            staleMasking: undefined, requestContext: undefined, turn: 1, messageCount: 1, estimatedContextTokens: 1, onEvent: () => {},
+          },
+          execute: (_candidate, fold) => fold({}, async (attempt) => {
+            const value = await attempt.stream()
+            await attempt.close()
+            return { value, stop: true }
+          }),
+        }),
+      })
+    } finally {
+      record.mockRestore()
+    }
+    expect(records).toEqual([{ model: "test-model", accessProvider: "anthropic_api", attempt: 1, ratio: 0.012, windowChars: 8192, reasoningChars: 9_000 }])
+  })
+
   test("dispatches through the admission selected by its request boundary", async () => {
     let facadeDispatches = 0
     let admittedDispatches = 0
@@ -412,11 +446,11 @@ describe("streamAssistantTurn admitted request", () => {
       async run({ execute, prepare }) {
         const attempt = fakeAttempt("anthropic_api", "test-model")
         const prepared = await prepare(attempt)
-        const result = await execute({ attempt, prepared, client: { ...attempt, async *streamWithTools() {
+        const result = await execute({ attempt, prepared, sample: 1, detectRepetition: false, client: { ...attempt, async *streamWithTools() {
           admittedDispatches += 1
           yield { kind: "done", stopReason: "end_turn" }
         } } })
-        if (result.kind === "login_refused" || result.kind === "provider_failure") throw result.failure
+        if (result.kind !== "success") throw result.failure
         return result.value
       },
       plannedAttempt: async () => fakeAttempt("anthropic_api", "test-model"),

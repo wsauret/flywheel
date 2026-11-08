@@ -1,5 +1,6 @@
 /** One wire attempt, its partial canonical content, and its audit and usage closure. */
 
+import { DebugLog } from "../../infra/debug-log.js";
 import { errorDetail, errorMessage } from "../../infra/error-message.js";
 import { mergeAbortSignals } from "../../infra/abort.js";
 import type { ProviderRequestOptions } from "../../infra/llm/provider-options.js";
@@ -128,7 +129,7 @@ function canonicalizeToolEvent(input: AssistantAttemptInput, event: ProviderStre
 /** The request of one attempt as its serving client takes it: the prepared revision and the conversation's request
  *  values, without the stream's callbacks. A client that anticipates the request reads the same values
  *  (`LLMClient.anticipate`). */
-export function attemptRequest(candidate: Readonly<{ attempt: ServingAttempt; prepared: import("./llm/types.js").PreparedServingRequest }>, input: AssistantAttemptInput, signal: AbortSignal | undefined): StreamOptions {
+export function attemptRequest(candidate: Readonly<{ attempt: ServingAttempt; prepared: import("./llm/types.js").PreparedServingRequest; detectRepetition?: boolean }>, input: AssistantAttemptInput, signal: AbortSignal | undefined): StreamOptions {
   const outputTokenLimit = candidate.prepared.outputTokenLimit ?? candidate.attempt.outputLimit;
   return {
     messages: input.messages,
@@ -144,12 +145,13 @@ export function attemptRequest(candidate: Readonly<{ attempt: ServingAttempt; pr
     estimatedContextTokens: input.estimatedContextTokens,
     ...(outputTokenLimit < candidate.attempt.outputLimit ? { outputTokenLimit } : {}),
     providerOptions: candidate.prepared.providerOptions,
+    ...(candidate.detectRepetition ? { detectRepetition: true } : {}),
   };
 }
 
 /** Settles usage at stream exit. The owner closes audit after canonical barriers. The serving client receives the
  *  history lowered for its target (`lowerProviderHistory`), and the audit records the lowered prompt with its edits. */
-export function createAssistantAttempt(candidate: Readonly<{ attempt: ServingAttempt; client: Pick<LLMClient, "streamWithTools" | "historyTarget">; prepared: import("./llm/types.js").PreparedServingRequest }>, input: AssistantAttemptInput, prepared: PreparedRequestAttempt | undefined) {
+export function createAssistantAttempt(candidate: Readonly<{ attempt: ServingAttempt; client: Pick<LLMClient, "streamWithTools" | "historyTarget">; prepared: import("./llm/types.js").PreparedServingRequest; sample?: number; detectRepetition?: boolean }>, input: AssistantAttemptInput, prepared: PreparedRequestAttempt | undefined) {
   const result = initialResult();
   const start = performance.now();
   let auditHandle: ProviderRequestAuditHandle | undefined;
@@ -308,8 +310,19 @@ export function createAssistantAttempt(candidate: Readonly<{ attempt: ServingAtt
       ? new StreamStalled({ message: streamError.message, attribution: { kind: "provider", provider: stalledProvider } })
       : attributedAuthFailure(streamError, failure, serving);
     const recoverable = classifyRecoverable(typed);
+    // The attempt records its own trip, because a turn can settle on the trip without the walk resampling it.
+    if (failure?._tag === "DegenerateRepetitionFailure") {
+      DebugLog.record({ type: "model.reasoning.repetition_detected", payload: {
+        model: serving.model,
+        accessProvider: serving.accessProvider,
+        attempt: candidate.sample,
+        ratio: Math.round(failure.ratio * 1_000) / 1_000,
+        windowChars: failure.windowChars,
+        reasoningChars: failure.reasoningChars,
+      } });
+    }
     if (recoverable) {
-      log.warn("assistant turn stream failed", {
+      log[typed._tag === "DegenerateRepetition" ? "debug" : "warn"]("assistant turn stream failed", {
         error: diagnostic,
         errorDetail: errorDetail(err),
         outcome: recoverable.kind,
@@ -468,6 +481,7 @@ function classifyRecoverable(typed: AgentRuntimeError): TurnOutcome | null {
     case "TransientDisconnect":
     case "StreamStalled":
     case "ApiOverloaded":
+    case "DegenerateRepetition":
     case "ContentRefused": return { kind: "stream_error", error: typed };
     // The filter stopped an accepted response: it settles as one, with the
     // content streamed so far, and the loop's content-filter nudge continues it.

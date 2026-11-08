@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk"
 import type { RawMessageStreamEvent } from "@anthropic-ai/sdk/resources/messages.js"
 import { describe, expect, test } from "bun:test"
 import { Redacted } from "effect"
-import { mkdtempSync, rmSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { captureProviderConnection, type AuthContext } from "../../../../src/infra/auth/auth-context.js"
@@ -64,6 +64,21 @@ interface Scenario {
   measuredFailures?: boolean
   model?: string
   responseText?: string
+  /** How many responses of the serving candidate open with this looping reasoning before it answers. */
+  loopingReasoning?: { responses: number; text: string }
+}
+
+/** Streams `text` as one thinking block in small deltas, the way a looping
+ *  model does, until the attempt aborts the request.
+ *  @yields {RawMessageStreamEvent} The thinking block's start, deltas, signature, and stop frames. */
+async function* thinkingFrames(text: string, signal: AbortSignal): AsyncGenerator<RawMessageStreamEvent> {
+  yield { type: "content_block_start", index: 0, content_block: { type: "thinking", thinking: "", signature: "" } }
+  for (let at = 0; at < text.length; at += 64) {
+    if (signal.aborted) throw new DOMException("This operation was aborted", "AbortError")
+    yield { type: "content_block_delta", index: 0, delta: { type: "thinking_delta", thinking: text.slice(at, at + 64) } }
+  }
+  yield { type: "content_block_delta", index: 0, delta: { type: "signature_delta", signature: "sig" } }
+  yield { type: "content_block_stop", index: 0 }
 }
 
 async function fixture(scenario: Scenario) {
@@ -117,7 +132,8 @@ async function fixture(scenario: Scenario) {
         resolvedModelMetadata: build.attribution.resolvedModelMetadata ?? modelsClient.modelInfos.get(candidateModel) ?? null,
         operations: {
           isBadRequestError: () => false,
-          createStream: async (params) => {
+          createStream: async (params, { signal }) => {
+            const looping = failureIndex < 0 && wires.filter((wire) => wire.account === account).length < (scenario.loopingReasoning?.responses ?? 0)
             wires.push({ account, params: structuredClone(params) })
             order.push(`wire:${account}`)
             if (failureIndex >= 0 && !scenario.measuredFailures && !scenario.eagerTool) throw scenario.failures[failureIndex]
@@ -137,7 +153,8 @@ async function fixture(scenario: Scenario) {
                     }
                     throw scenario.failures[failureIndex]
                   }
-                  yield* textFrames(scenario.responseText ?? "finished on authorized API")
+                  if (looping && scenario.loopingReasoning) yield* thinkingFrames(scenario.loopingReasoning.text, signal)
+                  yield* textFrames(scenario.responseText ?? "finished on authorized API", looping ? 1 : 0)
                   yield { type: "message_delta", delta: { stop_reason: "end_turn", stop_sequence: null, container: null, stop_details: null }, usage: { output_tokens: 7, input_tokens: null, cache_creation_input_tokens: null, cache_read_input_tokens: null, output_tokens_details: null, server_tool_use: null } }
                   yield { type: "message_stop" }
                 },
@@ -337,6 +354,35 @@ describe("request-owned fallback through SDK adapters and runtime settlement", (
     await expect(f.run()).rejects.toMatchObject({ _tag: "ApiError", message: "unrecognized external failure" })
     expect(f.wires.map((wire) => wire.account)).toEqual(["account-0"])
     expect(f.availability.serviceEntryCount()).toBe(0)
+  })
+
+  test.each([
+    { responses: 1, wires: 2 },
+    { responses: 3, wires: 3 },
+  ])("a response whose reasoning repeats itself is resampled unchanged on the same provider and the last attempt is accepted ($responses looping)", async ({ responses, wires }) => {
+    const text = readFileSync(join(import.meta.dir, "../../../fixtures/reasoning-repetition/loop.txt"), "utf8")
+    const f = await fixture({ failures: [], loopingReasoning: { responses, text }, measuredFailures: true })
+    expect(await f.run()).toEqual({ kind: "completed" })
+
+    expect(f.wires.map((wire) => wire.account)).toEqual(Array.from({ length: wires }, () => "anthropic_api"))
+    // A resample sends the request it sent before: no continuation message, no looping text.
+    for (const wire of f.wires) expect(wire.params.messages).toEqual(f.wires[0]!.params.messages)
+    const upserts = f.notices.filter((notice): notice is { type: "upsert"; notice: { title: string; message: string } } =>
+      typeof notice === "object" && notice !== null && "type" in notice && notice.type === "upsert")
+    expect(upserts.map((operation) => [operation.notice.title, operation.notice.message])).toEqual(
+      Array.from({ length: wires - 1 }, (_, index) => ["Model repeated itself", `Requesting a fresh response (${index + 1}/2).`]),
+    )
+    expect(f.snapshots.join("\n")).not.toMatch(/Reconnecting|"status":"failed"/)
+    expect(f.events.filter((event) => event.type === "model.stream.retried")).toHaveLength(0)
+    expect(f.history.filter((message) => message.kind === "user")).toEqual([])
+    expect(f.history.at(-1)).toMatchObject({ kind: "assistant", content: expect.arrayContaining([{ type: "text", text: "finished on authorized API" }]) })
+    // Each stopped attempt is its own request with its own usage.
+    const requests = f.audit.filter((fact) => fact.type === "model.requested")
+    expect(requests).toHaveLength(wires)
+    expect(new Set(requests.map((fact) => fact.payload.requestId)).size).toBe(wires)
+    expect(f.usage.map((entry) => entry.attemptId)).toEqual(requests.map((fact) => fact.payload.requestId))
+    expect(f.availability.serviceEntryCount()).toBe(0)
+    expect(f.availability.genericEntryCount()).toBe(0)
   })
 
   test("eager tool result commits once before replacement sees history and unfinished preview vanishes", async () => {

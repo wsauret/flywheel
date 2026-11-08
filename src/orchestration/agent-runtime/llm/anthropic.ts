@@ -578,7 +578,7 @@ export async function createAnthropicAdapter(
         } finally {
           await releaseStream?.();
         }
-        }, { signal: options.signal });
+        }, options);
     },
 
     // An anticipation never rejects, because its callers do not wait for it: a request that cannot be described, or
