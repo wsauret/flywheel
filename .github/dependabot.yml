@@ -78,3 +78,13 @@ updates:
       interval: monthly
     ignore:
       - dependency-name: "*"
+  # Review fixtures vendor manifests as raw snapshot bytes that a reviewer
+  # reads and nothing installs. A bump changes the fixture's content identity
+  # and invalidates its benchmark baseline. Security updates for a manifest
+  # without a lockfile come from the npm ecosystem, not bun.
+  - package-ecosystem: npm
+    directories: ["/bench/ab-persona/fixtures/**"]
+    schedule:
+      interval: monthly
+    ignore:
+      - dependency-name: "*"
