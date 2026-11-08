@@ -76,7 +76,6 @@ describe("release legal payload", () => {
     const packages = await productionNpmPackages(ROOT);
     expect(packages.has("highlight.js@11.12.0")).toBe(true);
     expect(packages.has("marked@17.0.1")).toBe(true);
-    expect(packages.has("marked@18.1.2")).toBe(true);
     expect(packages.has("marked@18.1.3")).toBe(true);
     expect(packages.has("zod@4.6.7")).toBe(true);
     expect([...packages].some((entry) => entry.startsWith("@types/bun@"))).toBe(false);
