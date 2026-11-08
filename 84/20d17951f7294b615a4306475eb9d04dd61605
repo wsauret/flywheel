@@ -1,0 +1,18 @@
+THIRD-PARTY-LICENSES.txt
+  h_4b47e9e4a8b456 39756-39757
+bun.lock
+  h_4b47e9e4a8b456 31,1858
+package.json
+  h_4b47e9e4a8b456 135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8420d17951f7294b615a4306475eb9d04dd61605",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
