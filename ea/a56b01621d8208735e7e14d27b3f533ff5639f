@@ -1,0 +1,16 @@
+src/tui/modals/settings-modal.tsx
+  h_4b47e9e4a8b456 39-46,222,226-228,234-239
+tests/unit/tui/modals/settings-modal-render.test.tsx
+  h_4b47e9e4a8b456 231-233,236,244-245,298-316
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eaa56b01621d8208735e7e14d27b3f533ff5639f",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
