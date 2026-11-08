@@ -1,0 +1,24 @@
+bench/terminal_bench/METHODOLOGY.md
+  h_4b47e9e4a8b456 55,74
+bench/terminal_bench/README.md
+  h_4b47e9e4a8b456 30,96,109
+bench/terminal_bench/harbor_agent/flywheel_harbor_agent/shim.py
+  h_4b47e9e4a8b456 19-26,31,33-47,84,106-109,402-405,407,504-520,536,540-545,563-564,571-573,587,589-590
+bench/terminal_bench/harbor_agent/flywheel_harbor_agent/trial_runtime.py
+  h_4b47e9e4a8b456 4-7,45-46,436-455,457,461-468,474-476,490-498,520-529,531,534-566
+bench/terminal_bench/harbor_agent_package.py
+  h_4b47e9e4a8b456 159-160
+bench/terminal_bench/test_harbor_agent_shim.py
+  h_4b47e9e4a8b456 353-388
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fa2ad37fe5f82adc055b06471477c2cef5cb4bbe",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
