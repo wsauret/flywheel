@@ -162,9 +162,10 @@ export function createAccountRelayService(options: {
   const wanted = () => !disposed && devices.length > 0
   const holdAwake = async (root: string): Promise<void> => {
     if (awakeProjects.has(root)) return
-    const wasEmpty = awakeProjects.size === 0
     awakeProjects.add(root)
-    if (wasEmpty) await options.keepAwake.hold()
+    // The hold is idempotent and owns whether an inhibitor lives, so each newly
+    // held project is a point at which a hold that gave up tries again.
+    await options.keepAwake.hold()
   }
   const releaseAwake = async (root: string): Promise<void> => {
     if (!awakeProjects.delete(root) || awakeProjects.size > 0) return

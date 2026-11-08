@@ -13,6 +13,7 @@ import { createRemoteAccess, placementId, type RemoteAccess } from "../../../../
 import * as control from "../../../../../src/orchestration/modules/remote/relay-control-channel.js"
 import * as pairing from "../../../../../src/orchestration/modules/remote/remote-pairing-store.js"
 import { canonicalPathWithMissingTail } from "../../../../../src/infra/canonical-path.js"
+import type { OwnedProcessExit } from "../../../../../src/infra/owned-subprocess.js"
 import { createAccountProjectClone } from "../../../../../src/orchestration/app-service/account-project-clone.js"
 import { ensureRemoteIdentity } from "../../../../../src/orchestration/modules/remote/remote-identity.js"
 import { requestProjectCreation, type CreatedProject } from "../../../../../src/protocol/modules/remote/project-creation.js"
@@ -94,10 +95,14 @@ describe("account relay service", () => {
       platform: "darwin",
       spawnOwned: async () => {
         await inhibitor.promise
+        const exited = Promise.withResolvers<OwnedProcessExit>()
         return {
+          exited: exited.promise,
           terminate: async () => {
             terminated += 1
-            return { code: 0, signal: null, statusOf: "payload" as const, ownership: "surrendered" as const }
+            const exit = { code: 0, signal: null, statusOf: "payload" as const, ownership: "surrendered" as const }
+            exited.resolve(exit)
+            return exit
           },
         }
       },
@@ -279,15 +284,15 @@ describe("account relay service", () => {
       await service.phoneKeepAwake.hold(continued)
       await service.phoneKeepAwake.hold(continued)
       expect(service.phoneKeepAwake.held(continued)).toBe(true)
-      // One reference for the account, whichever projects share it.
-      expect(keepAwake).toEqual({ holds: 1, releases: 0 })
+      // Each newly held project asks the binary hold, and the last release ends it.
+      expect(keepAwake).toEqual({ holds: 2, releases: 0 })
 
       await projects.close(woken)
       await until(() => !service.phoneKeepAwake.held(woken))
       expect(keepAwake.releases).toBe(0)
       await projects.close(continued)
       await until(() => !service.phoneKeepAwake.held(continued))
-      expect(keepAwake).toEqual({ holds: 1, releases: 1 })
+      expect(keepAwake).toEqual({ holds: 2, releases: 1 })
     } finally {
       await projects.dispose()
       await service.dispose()
