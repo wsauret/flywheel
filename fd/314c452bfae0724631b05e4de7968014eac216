@@ -1,0 +1,14 @@
+src/orchestration/modules/experiments/operation-owner.ts
+  h_4b47e9e4a8b456 31,41,60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fd314c452bfae0724631b05e4de7968014eac216",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
