@@ -31,10 +31,46 @@ function editorGuidance(has: CapabilityCheck): string {
   return tools.length > 0 ? `editors can't run interactively - use ${tools.join(", ")}` : "editors can't run interactively - use a non-interactive command";
 }
 
+/** Short and long Vim options whose value is the next argument (or, for a short option, the rest of its
+ *  cluster). A value such as the `-es` of `vim -u -es file` is not a flag. */
+const VIM_VALUE_FLAGS = new Set(["c", "S", "u", "U", "i", "T", "w", "W", "t", "q"]);
+const VIM_VALUE_OPTIONS = new Set(["--cmd", "--startuptime", "--servername", "--listen"]);
+
+/** Vim and Neovim also run without a terminal: silent Ex mode (`-es`, or `-e` or `-E` with `-s`; without
+ *  `-e`, `-s` reads normal-mode keys and still needs one), `--version`, `--help`, and `nvim --headless`.
+ *  Only real flags count: option values and the file names after `--` do not. */
+function vimRunsWithoutTerminal(name: string, args: readonly string[]): boolean {
+  if (name !== "vim" && name !== "nvim") return false;
+  let shortFlags = "";
+  const longFlags: string[] = [];
+  let valueNext = false;
+  for (const arg of args) {
+    if (valueNext) {
+      valueNext = false;
+      continue;
+    }
+    if (arg === "--") break;
+    if (arg.startsWith("--")) {
+      longFlags.push(arg);
+      valueNext = VIM_VALUE_OPTIONS.has(arg);
+    } else if (/^-[A-Za-z]+$/.test(arg)) {
+      const letters = arg.slice(1);
+      const valueAt = [...letters].findIndex((letter) => VIM_VALUE_FLAGS.has(letter));
+      shortFlags += valueAt < 0 ? letters : letters.slice(0, valueAt);
+      valueNext = valueAt === letters.length - 1;
+    }
+  }
+  const silentEx = /[eE]/.test(shortFlags) && shortFlags.includes("s");
+  return silentEx || shortFlags.includes("h") || longFlags.some((flag) => ["--version", "--help"].includes(flag) || (name === "nvim" && flag === "--headless"));
+}
+
 const INTERACTIVE_RULES: readonly InteractiveRule[] = [
   {
-    matches: (cmd) => new Set(["vim", "nvim", "nano", "emacs", "pico"]).has(cmd.name),
-    fallbackPattern: /(?:^|[;&|(\n])\s*(?:vim|nvim|nano|emacs|pico)(?:\s|$|[;&|)])/,
+    matches: (cmd) => new Set(["vim", "nvim", "nano", "emacs", "pico"]).has(cmd.name) && !vimRunsWithoutTerminal(cmd.name, cmd.args),
+    // Text cannot pair flags or see quotes and separators reliably, so the fallback lets vim or nvim run when
+    // a flag that can select a mode without a terminal appears anywhere after it. It runs a superset of what
+    // the parsed rule runs.
+    fallbackPattern: /(?:^|[;&|(\n])\s*(?:nano|emacs|pico|n?vim(?![\s\S]*\s['"]?(?:-[A-Za-z]*[eEsh]|--(?:version|help|headless))))(?:\s|$|[;&|)])/,
     guidance: editorGuidance,
   },
   {

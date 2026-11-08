@@ -8,6 +8,16 @@ import { interceptBashCommand, isYieldPlaceholderToolCall, refusedShellWrite } f
 import { loadBashParser } from "../../../../../src/orchestration/agent-runtime/tools/bash-parser.js";
 import { fileTemporaryDirectory } from "../../../../helpers/directories.js";
 
+const NON_INTERACTIVE_VIM = [
+  "vim -Nu NONE -n -Es data.txt -S edit.vim",
+  "vim -e -s file < cmds",
+  "vim --version",
+  "nvim --headless -c 'q'",
+  "cd /repo && vim -es file.txt -c 'wq'",
+  "vim \"a;b.txt\" -Es -c q",
+  "vim \"a|b\" --version",
+];
+
 // No preload: the policy awaits the shared parser load itself, so the first
 // command in this file runs against a cold parser.
 describe("interceptBashCommand (direct)", () => {
@@ -345,6 +355,16 @@ describe("interactive command detection (parsed)", () => {
     }
   });
 
+  it("runs vim and nvim in a mode without a terminal, and refuses a plain editor launch", async () => {
+    for (const command of NON_INTERACTIVE_VIM) {
+      expect(await interceptBashCommand(command)).toBeNull();
+    }
+    // A dash-shaped file name after `--` or an option value is not a mode flag.
+    for (const command of ["vim file.txt", "nvim", "vim -n file.txt", "vim -s keys.txt file.txt", "vim -- -es", "nvim -- --headless", "vim -u -es file", "nano file"]) {
+      expect((await interceptBashCommand(command))?.message).toContain("editors can't run interactively");
+    }
+  });
+
   it("blocks a bare interpreter that would open a REPL, but not inline execution", async () => {
     expect(await interceptBashCommand("python3")).not.toBeNull();
     expect(await interceptBashCommand("node -i")).not.toBeNull();
@@ -420,5 +440,13 @@ describe("interceptBashCommand when parser analysis is unavailable", () => {
     expect(await interceptBashCommand("sleep 240")).not.toBeNull();
     expect(await interceptBashCommand("vim notes.txt")).not.toBeNull();
     expect(await interceptBashCommand("git worktree list", { effectiveBundledSkillIds: new Set<string>() })).not.toBeNull();
+  });
+
+  it("runs every vim command that the parsed rule runs", async () => {
+    spyOn(Parser.prototype, "parse").mockReturnValue(null);
+    for (const command of NON_INTERACTIVE_VIM) {
+      expect(await interceptBashCommand(command)).toBeNull();
+    }
+    expect(await interceptBashCommand("nvim")).not.toBeNull();
   });
 })
