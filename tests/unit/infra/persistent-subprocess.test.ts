@@ -180,6 +180,29 @@ describe("persistent subprocess", () => {
     expect(words).toEqual(["go", "stop", "stop"])
   })
 
+  test("a stop after the supervisor exited sends no word over the closed control channel", async () => {
+    // The exit closes the control descriptor, and POSIX gives its number to
+    // the next file the host opens, so a later word lands in that file.
+    const events: string[] = []
+    let exit: (code: number) => void = () => {}
+    const exited = new Promise<number>((resolve) => { exit = resolve })
+    const persistent = await launchPersistentSubprocess(command, {
+      platform: posixPlatform({
+        launch: async () => ({
+          pid: 42,
+          exited,
+          control: { drained: Promise.resolve(), write: async (word) => { events.push(word) }, close: async () => { events.push("closed") } },
+          unref: () => {},
+        }),
+      }),
+    })
+
+    exit(0)
+    await persistent.exited
+    expect(await persistent.stop()).toBe("terminated")
+    expect(events).toEqual(["go", "closed"])
+  })
+
   test("failed admission closes control, awaits refusal, and invokes cleanup", async () => {
     const events: string[] = []
     let settle: ((code: number) => void) | undefined

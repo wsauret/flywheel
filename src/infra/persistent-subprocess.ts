@@ -48,6 +48,7 @@ interface PosixPersistentChild extends PersistentChild {
   readonly control: {
     readonly drained: Promise<void>
     write(word: string): Promise<void>
+    /** Called once, by the one owner of the channel. */
     close(): Promise<void>
   }
 }
@@ -117,6 +118,11 @@ export interface PersistentProcessMetadata {
 
 type PersistentStopOutcome = "terminated" | "unsettled"
 
+type PersistentLifecycle =
+  | { readonly kind: "running"; readonly control: PosixPersistentChild["control"] | undefined }
+  | { readonly kind: "exited" }
+  | { readonly kind: "released" }
+
 export interface PersistentSubprocess {
   readonly pid: number
   readonly command: readonly string[]
@@ -157,7 +163,6 @@ const supportedPlatformBase: Omit<PersistentPlatformBase, "inspect"> & Pick<Posi
       await child.exited
       throw new Error("persistent supervisor control authority is unavailable")
     }
-    let controlClosed = false
     const diagnostics = drainSupervisorDiagnostics(Bun.file(controlFd).stream(), child.pid)
     const control = {
       drained: diagnostics.done,
@@ -165,8 +170,6 @@ const supportedPlatformBase: Omit<PersistentPlatformBase, "inspect"> & Pick<Posi
         writeSync(controlFd, `${word}\n`)
       },
       async close() {
-        if (controlClosed) return
-        controlClosed = true
         await diagnostics.release()
         closeSync(controlFd)
       },
@@ -276,29 +279,35 @@ export async function launchPersistentSubprocess(command: readonly string[], opt
       throw error
     }
   }
-  let released = false
-  let status: PersistentProcessMetadata["status"] = "running"
+  // The host's hold on the process. Only a running process that this host
+  // still manages carries the supervisor's control channel, so the exit and
+  // the release each take it out in one step and close it once, and no word
+  // can reach the descriptor number after that.
+  let lifecycle: PersistentLifecycle = { kind: "running", control }
   let stopping: Promise<PersistentStopOutcome> | undefined
-  const exited = control === undefined ? child.exited : child.exited.then(async (code) => {
-    await control?.drained
-    await control?.close()
-    status = "exited"
+  const exited = child.exited.then(async (code) => {
+    const ending = lifecycle
+    if (ending.kind !== "running") return code
+    lifecycle = { kind: "exited" }
+    if (ending.control !== undefined) {
+      await ending.control.drained
+      await ending.control.close()
+    }
     return code
   })
-  if (control === undefined) void exited.then(() => { status = "exited" })
 
   const stop = (): Promise<PersistentStopOutcome> => {
-    if (released) return Promise.reject(new Error("persistent process was released"))
+    const state = lifecycle
+    if (state.kind === "released") return Promise.reject(new Error("persistent process was released"))
     if (stopping) return stopping
     const operation = platform.kind === "posix"
       ? (async (): Promise<PersistentStopOutcome> => {
-          if (supervised) {
-            const channel = control
-            if (channel === undefined) throw new Error("persistent supervisor control authority is unavailable")
-            await channel.write(encodeSupervisorWord({ kind: "stop" }))
-          } else {
-            child.kill?.("SIGTERM")
-          }
+          // A POSIX stop is proven by the exit of the supervisor or of the
+          // self-managed process, so an exit that already happened is that
+          // proof, and its control channel is already closed.
+          if (state.kind === "exited") return "terminated"
+          if (state.control !== undefined) await state.control.write(encodeSupervisorWord({ kind: "stop" }))
+          else child.kill?.("SIGTERM")
           return await platform.waitForSupervisorExit({ ...child, exited }, WINDOWS_STOP_GRACE_MS + SUPERVISOR_EXIT_MARGIN_MS)
             ? "terminated"
             : "unsettled"
@@ -338,7 +347,7 @@ export async function launchPersistentSubprocess(command: readonly string[], opt
     metadata() {
       return {
         startedAtMs,
-        status,
+        status: lifecycle.kind === "exited" ? "exited" : "running",
         stdoutBytes: platform.spoolBytes(spool.stdoutPath),
         stderrBytes: platform.spoolBytes(spool.stderrPath),
       }
@@ -348,15 +357,16 @@ export async function launchPersistentSubprocess(command: readonly string[], opt
     },
     stop,
     release() {
-      if (released) return
-      released = true
-      if (control !== undefined) void control.close()
+      const state = lifecycle
+      if (state.kind === "released") return
+      lifecycle = { kind: "released" }
+      if (state.kind === "running" && state.control !== undefined) void state.control.close()
       child.unref()
       // This launcher reads the spool no more. A writer that already exited
       // leaves nobody to hold it, and one that still runs holds it alone from
       // now on. Whoever sees that writer exit removes the spool: this process
       // while it runs, and otherwise the next persistent launch's sweep.
-      if (status === "exited") {
+      if (state.kind === "exited") {
         removeReleasedSpool()
         return
       }

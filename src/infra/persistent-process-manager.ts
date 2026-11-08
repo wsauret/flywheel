@@ -87,7 +87,7 @@ export function createPersistentProcessManager(options: PersistentProcessManager
           open()
           const managed = requireProcess(id)
           if (managed.stopping) return await managed.stopping
-          const wasExited = managed.exitCode !== undefined || managed.process.metadata().status === "exited"
+          const wasExited = managed.process.metadata().status === "exited"
           const stopping: Promise<PersistentStopResult> = managed.process.stop().then(
             (outcome): PersistentStopResult => outcome === "unsettled" ? "unsettled" : wasExited ? "already_exited" : "terminated",
             (error): PersistentStopResult => {
