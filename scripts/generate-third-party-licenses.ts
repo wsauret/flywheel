@@ -242,18 +242,21 @@ function nativeFamilySource(root: string, pkg: LockedPackage): ReviewedSource | 
       files: ["third-party/reviewed/npm/msgpackr-extract-3.0.4/LICENSE"],
     };
   }
-  if (pkg.name.startsWith("@opentui/core-") && pkg.version === "0.8.0") {
+  if (pkg.name.startsWith("@opentui/core-") && pkg.version === "0.8.2") {
     return {
-      source: "https://github.com/anomalyco/opentui/tree/v0.8.0",
+      source: "https://github.com/anomalyco/opentui/tree/v0.8.2",
       files: [
-        "third-party/reviewed/npm/opentui-core-0.8.0/LICENSE",
-        "third-party/reviewed/npm/opentui-core-0.8.0/LICENSE-GHOSTTY",
-        "third-party/reviewed/npm/opentui-core-0.8.0/LICENSE-LCMS2",
-        "third-party/reviewed/npm/opentui-core-0.8.0/LICENSE-LIBWEBP",
-        "third-party/reviewed/npm/opentui-core-0.8.0/LICENSE-STB",
-        "third-party/reviewed/npm/opentui-core-0.8.0/LICENSE-WUFFS",
-        "third-party/reviewed/npm/opentui-core-0.8.0/PATENTS-LIBWEBP",
-        "third-party/reviewed/npm/opentui-core-0.8.0/AUTHORS-LIBWEBP",
+        "third-party/reviewed/npm/opentui-core-0.8.2/LICENSE",
+        "third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-FFMPEG",
+        "third-party/reviewed/npm/opentui-core-0.8.2/FFMPEG-SOURCE.md",
+        "third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-ZLIB",
+        "third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-GHOSTTY",
+        "third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-LCMS2",
+        "third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-LIBWEBP",
+        "third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-STB",
+        "third-party/reviewed/npm/opentui-core-0.8.2/LICENSE-WUFFS",
+        "third-party/reviewed/npm/opentui-core-0.8.2/PATENTS-LIBWEBP",
+        "third-party/reviewed/npm/opentui-core-0.8.2/AUTHORS-LIBWEBP",
       ],
     };
   }
@@ -411,6 +414,8 @@ export async function generateThirdPartyLicenses(root: string): Promise<string> 
 Generated from bun.lock, exact reviewed upstream legal sources, and committed native-crate ledgers. Do not edit by hand.
 
 Sharp distributes libvips 8.18.7 and its dependency set as separately replaceable shared libraries through sharp-libvips 1.3.4. Exact corresponding source: https://github.com/lovell/sharp-libvips/tree/v1.3.4
+
+OpenTUI 0.8.2 statically links FFmpeg 9.0.2 under LGPL-2.1-or-later into its native library, which ships as the separately replaceable libopentui shared library. Exact corresponding source: https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz (SHA-256 8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e). OpenTUI source and relink instructions: https://github.com/anomalyco/opentui/tree/v0.8.2
 
 The flywheel binary embeds the Bun ${BUN_RUNTIME.version} runtime, which statically links JavaScriptCore and WebKit under LGPL-2 and tinycc under LGPL-2.1. Exact corresponding source: ${BUN_RUNTIME.webkitSource} and ${BUN_RUNTIME.tinyccSource}. Bun's own source and relink instructions: https://github.com/oven-sh/bun/tree/bun-v${BUN_RUNTIME.version}. The runtime also contains the other third-party code that Bun's license file names; each has a "bun@${BUN_RUNTIME.version} component" section below. Bun names no version for the code it ports from other projects, so the source of such a section is the upstream commit whose texts were reviewed.
 

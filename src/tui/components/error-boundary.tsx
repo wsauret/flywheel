@@ -1,6 +1,5 @@
 /** @jsxImportSource @opentui/solid */
 
-import { useTerminalDimensions } from "@opentui/solid"
 import { useTheme } from "@tui/context/theme"
 import { BOLD } from "@tui/utils/text-attributes"
 import { createSignal, For, Show } from "solid-js"
@@ -22,7 +21,6 @@ interface ErrorComponentProps {
 
 export function ErrorComponent(props: ErrorComponentProps) {
   const { theme } = useTheme()
-  const term = useTerminalDimensions()
   const [copied, setCopied] = createSignal(false)
   const reports = createTuiErrorReports({
     get client() { return props.appService },
@@ -47,18 +45,21 @@ export function ErrorComponent(props: ErrorComponentProps) {
   }
 
   return (
-    <box flexDirection="column" gap={1} padding={2}>
-      <box flexDirection="row" gap={2} alignItems="center">
+    <box flexDirection="column" flexGrow={1} gap={1} padding={2}>
+      <box flexDirection="row" flexShrink={0} gap={2} alignItems="center">
         <text fg={theme.error} attributes={BOLD} flexShrink={0}>Fatal Error</text>
         <Button label={copied() ? "Copied!" : "Copy Report"} onPress={() => { void copyError() }} />
       </box>
-      <For each={reports}>{(report) => <Show when={report.status()}>{(status) => <text fg={report.failed() ? theme.error : theme.textMuted}>{status()}</text>}</Show>}</For>
-      <box flexDirection="row" gap={2}>
+      <For each={reports}>{(report) => <Show when={report.status()}>{(status) => <text fg={report.failed() ? theme.error : theme.textMuted} flexShrink={0}>{status()}</text>}</Show>}</For>
+      <box flexDirection="row" flexShrink={0} gap={2}>
         <text fg={theme.textMuted} flexShrink={0}>Use Exit Now to close this crashed TUI</text>
         <Button label="Exit Now" onPress={handleExit} />
       </box>
       <box height={1} />
-      <scrollbox height={Math.floor(term().height * 0.7)}>
+      {/* The rows above never shrink, and a zero basis gives the stack trace only
+          the rows left over. Otherwise a short terminal makes Yoga shrink the
+          status and label rows to zero rows, which draw nothing. */}
+      <scrollbox flexGrow={1} flexBasis={0}>
         <text fg={theme.textMuted}>{props.error.stack || props.error.message}</text>
       </scrollbox>
     </box>

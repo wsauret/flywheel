@@ -88,6 +88,8 @@ The `flywheel` binary embeds the **Bun 1.4.4** runtime, because `bun build --com
 
 Flywheel distributes libvips 8.18.7 and its dependency set as separately replaceable shared libraries through sharp-libvips 1.3.4. The complete component license table, GNU GPL 3.0 and LGPL 3.0 terms, and exact source provenance at https://github.com/lovell/sharp-libvips/tree/v1.3.4 accompany the binaries in `THIRD-PARTY-LICENSES.txt`.
 
+Flywheel distributes FFmpeg 9.0.2 under LGPL-2.1-or-later, statically linked by OpenTUI 0.8.2 into the separately replaceable libopentui shared library. The LGPL-2.1 text, the FFmpeg and zlib source notice, and exact source provenance at https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz and https://github.com/anomalyco/opentui/tree/v0.8.2 accompany the binaries in `THIRD-PARTY-LICENSES.txt`.
+
 Each release archive also includes the unmodified Claude engine binary from `@anthropic-ai/claude-agent-sdk` 0.3.306, the version that `package.json` pins. `scripts/claude-engine-asset.ts` copies it from the locked platform package and checks it against the `bun.lock` integrity and the SHA-256 that the SDK manifest states. This binary is proprietary Anthropic software, and the Apache License 2.0 does not cover it. Its terms are in the SDK's `LICENSE.md`, which `THIRD-PARTY-LICENSES.txt` reproduces.
 
 ## Benchmark material
