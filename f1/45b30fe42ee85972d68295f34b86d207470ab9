@@ -1,0 +1,60 @@
+docs/architecture-intent/providers.md
+  h_4b47e9e4a8b456 41
+docs/product-intent/model-access.md
+  h_4b47e9e4a8b456 23
+src/orchestration/agent-runtime/assistant-turn-attempt.ts
+  h_4b47e9e4a8b456 24,133,140,149,155,235,375-378,386,399,404
+src/orchestration/agent-runtime/llm/failover-client.ts
+  h_4b47e9e4a8b456 73,132-133,136-139,589,596
+src/orchestration/agent-runtime/llm/reasoning-repetition.ts
+  h_4b47e9e4a8b456 13-18
+src/orchestration/agent-runtime/llm/stream-attempt.ts
+  h_4b47e9e4a8b456 14-16,37,60,117
+src/orchestration/agent-runtime/llm/types.ts
+  h_4b47e9e4a8b456 352,487-489,492-497,738-740,744,752-754
+src/orchestration/agent-runtime/runtime-stream-events.ts
+  h_4b47e9e4a8b456 125
+src/orchestration/agent-runtime/stream-telemetry.ts
+  h_4b47e9e4a8b456 100-102
+src/orchestration/modules/development/diagnostics/step-efficiency-projection.ts
+  h_4b47e9e4a8b456 321
+tests/fixtures/reasoning-repetition/counting-loop.txt
+  h_4b47e9e4a8b456 1-5
+tests/unit/orchestration/agent-runtime/_model-client.ts
+  h_4b47e9e4a8b456 38
+tests/unit/orchestration/agent-runtime/agent-loop-request-surface.test.ts
+  h_4b47e9e4a8b456 331
+tests/unit/orchestration/agent-runtime/assistant-turn-stream-request.test.ts
+  h_4b47e9e4a8b456 449
+tests/unit/orchestration/agent-runtime/assistant-turn-stream-telemetry.test.ts
+  h_4b47e9e4a8b456 415,425-427
+tests/unit/orchestration/agent-runtime/auxiliary-fallback-regressions.test.ts
+  h_4b47e9e4a8b456 36
+tests/unit/orchestration/agent-runtime/budget-exhaust.test.ts
+  h_4b47e9e4a8b456 408
+tests/unit/orchestration/agent-runtime/llm/_provider-chain-harness.ts
+  h_4b47e9e4a8b456 319
+tests/unit/orchestration/agent-runtime/llm/failover-client-retry.test.ts
+  h_4b47e9e4a8b456 9,208-211,215,222-223,239,244-245
+tests/unit/orchestration/agent-runtime/llm/reasoning-repetition.test.ts
+  h_4b47e9e4a8b456 5-6,15,23,41-42,44-45,47,54,59,63-72,80,102,104
+tests/unit/orchestration/agent-runtime/request-owned-fallback.test.ts
+  h_4b47e9e4a8b456 362,372-382,391-394
+tests/unit/orchestration/agent-runtime/runner-prestart.test.ts
+  h_4b47e9e4a8b456 157-158
+tests/unit/orchestration/agent-runtime/runtime-assembly-usage-settlement.test.ts
+  h_4b47e9e4a8b456 74
+tests/unit/orchestration/modules/development/diagnostics/step-efficiency-projection.test.ts
+  h_4b47e9e4a8b456 144-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f145b30fe42ee85972d68295f34b86d207470ab9",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
