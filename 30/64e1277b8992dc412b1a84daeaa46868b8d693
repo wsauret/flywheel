@@ -1,0 +1,28 @@
+src/orchestration/agent-runtime/background-work-processes.ts
+  h_4b47e9e4a8b456 90-97,99-100,117-118,127,141-145,161-162,173,184,186-187,199
+src/orchestration/agent-runtime/background-work.ts
+  h_4b47e9e4a8b456 140-144,261,326-329,459,491,503,529,573,621,625-630,635,638,644,649,651,684
+src/orchestration/agent-runtime/tools/process.ts
+  h_4b47e9e4a8b456 329-331
+tests/unit/orchestration/agent-runtime/background-task-registry.test.ts
+  h_4b47e9e4a8b456 37-38,269,289,293,564
+tests/unit/orchestration/agent-runtime/subagent/execute-lifecycle.test.ts
+  h_4b47e9e4a8b456 185-186
+tests/unit/orchestration/agent-runtime/tools/process.test.ts
+  h_4b47e9e4a8b456 126-129
+tests/unit/orchestration/modules/development/benchmark-tool-execution.test.ts
+  h_4b47e9e4a8b456 460
+tests/unit/orchestration/session/reply-wait-restore.test.ts
+  h_4b47e9e4a8b456 176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3064e1277b8992dc412b1a84daeaa46868b8d693",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
