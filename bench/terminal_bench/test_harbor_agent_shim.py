@@ -145,6 +145,40 @@ class TakeSnapshotTest(unittest.TestCase):
         self.assertEqual(command[3:], ["--headless", "--acp", "--unattended", "--allow-persistent-processes", "--auth-profile", "benchmark", "--auth-snapshot", "/stage/auth.json"])
 
 
+class DownloadTest(unittest.TestCase):
+    def _fetch(self, outcomes: list) -> tuple[bytes, int]:
+        calls = 0
+
+        class Response:
+            def __enter__(self): return self
+            def __exit__(self, *_): return False
+            def read(self): return b"payload"
+
+        def urlopen(url, timeout):
+            nonlocal calls
+            outcome = outcomes[calls]
+            calls += 1
+            if isinstance(outcome, Exception):
+                raise outcome
+            return Response()
+
+        with patch.object(shim.urllib.request, "urlopen", urlopen), patch.object(shim.time, "sleep", lambda _s: None):
+            return shim._download("https://example.invalid/bun.zip"), calls
+
+    def test_a_transient_gateway_error_is_retried(self) -> None:
+        gateway = shim.urllib.error.HTTPError("u", 504, "Gateway Time-out", None, None)
+        self.assertEqual(self._fetch([gateway, shim.urllib.error.URLError("reset"), b"ok"]), (b"payload", 3))
+
+    def test_a_missing_asset_fails_without_a_retry(self) -> None:
+        with self.assertRaises(shim.urllib.error.HTTPError):
+            self._fetch([shim.urllib.error.HTTPError("u", 404, "Not Found", None, None)])
+
+    def test_the_last_transient_failure_is_raised(self) -> None:
+        gateway = shim.urllib.error.HTTPError("u", 504, "Gateway Time-out", None, None)
+        with self.assertRaises(shim.urllib.error.HTTPError):
+            self._fetch([gateway] * shim._DOWNLOAD_ATTEMPTS)
+
+
 class ExportEvidenceTest(unittest.TestCase):
     def test_records_the_analysis_of_the_store_that_it_captures(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

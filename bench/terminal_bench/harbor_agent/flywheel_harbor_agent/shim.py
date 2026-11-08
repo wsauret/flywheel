@@ -67,6 +67,7 @@ import tarfile
 import tempfile
 import threading
 import time
+import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -184,13 +185,38 @@ def take_snapshot(environ: dict) -> tuple[Path, str, dict[str, str]]:
     return stage_file, profile, snapshot_credential_values(snapshot)
 
 
+_DOWNLOAD_ATTEMPTS = 5
+
+
+def _download(url: str) -> bytes:
+    """Fetch url, retrying a transient failure with backoff.
+
+    GitHub release downloads from trial sandboxes return intermittent 504s;
+    a single failed fetch would end the trial before the agent starts. Server
+    errors, throttling, and network errors retry up to _DOWNLOAD_ATTEMPTS times
+    after 2, 4, 8, and 16 seconds; any other HTTP status fails at once.
+    """
+    for attempt in range(1, _DOWNLOAD_ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(url, timeout=120) as response:
+                return response.read()
+        except urllib.error.HTTPError as error:
+            if (error.code < 500 and error.code != 429) or attempt == _DOWNLOAD_ATTEMPTS:
+                raise
+        except (urllib.error.URLError, TimeoutError):
+            if attempt == _DOWNLOAD_ATTEMPTS:
+                raise
+        print(f"flywheel-acp: download attempt {attempt} of {url} failed; retrying", file=sys.stderr)
+        time.sleep(2 ** attempt)
+    raise AssertionError("unreachable")
+
+
 def _install_bun(work: Path) -> Path:
     asset = BUN_RELEASE_ASSETS.get(platform.machine())
     if asset is None:
         raise RuntimeError(f"unsupported Bun architecture: {platform.machine()}")
     name, expected_sha256 = asset
-    with urllib.request.urlopen(f"{BUN_RELEASE_BASE_URL}/{name}", timeout=120) as response:
-        payload = response.read()
+    payload = _download(f"{BUN_RELEASE_BASE_URL}/{name}")
     if hashlib.sha256(payload).hexdigest() != expected_sha256:
         raise RuntimeError("Bun release digest mismatch")
     bin_dir = work / "bun" / "bin"
