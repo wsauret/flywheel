@@ -54,7 +54,7 @@ const question: PendingQuestionView = {
 
 /** A root chat whose turns a test scripts: `onTurn` runs for every message
  *  or answer and owns the settlement state it ends in. */
-function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish(input: RuntimeUiPatchInput): void; output(block: FrontendOutputBlock): void; lose(block: FrontendOutputBlock): void; ended(ending: ChatTurnEnding): void; settle(outcome: HeadlessChatOutcome): Promise<void>; streamed(text: string): Promise<void> }) => void | Promise<void>, transport: Pick<Parameters<typeof runHeadlessChatChannel>[1], "oneShot" | "completion"> = {}) {
+function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish(input: RuntimeUiPatchInput): void; output(block: FrontendOutputBlock): void; lose(block: FrontendOutputBlock): void; retract(block: FrontendOutputBlock): void; ended(ending: ChatTurnEnding): void; settle(outcome: HeadlessChatOutcome): Promise<void>; streamed(text: string): Promise<void> }) => void | Promise<void>, transport: Pick<Parameters<typeof runHeadlessChatChannel>[1], "oneShot" | "completion"> = {}) {
   const bus = createRuntimeUiBus()
   const framing = acpFraming(realpathSync(CWD))
   /** The runtime reports how the root chat's turn ended, as the invocation completion does. */
@@ -92,9 +92,16 @@ function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish
   }
   /** Output whose live delta never reaches the client, as when its queue overflowed. */
   const lose = (block: FrontendOutputBlock) => { resident(block) }
+  /** Removes a draft row, as a resync does: it truncates at the row and inserts the rows after it again. */
+  const retract = (block: FrontendOutputBlock) => {
+    const index = blocks.findIndex((candidate) => blockIdentity(candidate) === blockIdentity(block))
+    blocks.splice(index, 1)
+    const after = blocks.slice(index).map((row, offset) => ({ kind: "insert" as const, index: index + offset, blockId: blockIdentity(row), block: row }))
+    publish({ cursor: { scope: "session", domain: "output", sessionId: "root" }, payload: { kind: "output.delta", delta: { visibleMessageCount: blocks.length, truncateTo: index, blocks: after } } })
+  }
   const turn = async (command: FrontendMutation) => {
     state = "busy"
-    queueMicrotask(() => { onTurn({ command, publish, output, lose, ended, settle, streamed }) })
+    queueMicrotask(() => { onTurn({ command, publish, output, lose, retract, ended, settle, streamed }) })
     return { ok: true as const, sessionId: "root" }
   }
   const client: RuntimeClient = {
@@ -367,6 +374,31 @@ describe("headless chat over ACP", () => {
     fixture.send(prompt(3, "9090"))
     expect((await fixture.response(3)).result).toMatchObject({ stopReason: "end_turn" })
     expect(fixture.calls).toContainEqual({ type: "question.answer", sessionId: "root", toolUseId: "ask", answers: { "Which port?": { kind: "freeform", text: "9090" } } })
+    fixture.end()
+    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
+  })
+
+  it("streams a thought once when its finalized block replaces the streamed draft under another identity", async () => {
+    const fixture = acpFixture(async ({ output, retract, settle, streamed }) => {
+      const draft = (content: string): FrontendOutputBlock => ({ kind: "thinking", id: "run:thinking:0", content, status: "streaming", timestamp: 0 })
+      output(draft("Let me"))
+      await streamed("Let me")
+      output(draft("Let me check the tests."))
+      await streamed("check the tests.")
+      // The thought settles to its recorded part, whose block identity names
+      // the entry: the draft is retracted and the part is published whole.
+      retract(draft("Let me check the tests."))
+      output({ kind: "thinking", id: "entry:1", content: "Let me check the tests.", status: "completed", timestamp: 0 })
+      output({ kind: "text", id: "entry:2", content: "Done.", timestamp: 0 })
+      await streamed("Done.")
+      output({ kind: "thinking", id: "entry:3", content: "Let me check again.", status: "completed", timestamp: 0 })
+      await settle("complete")
+    })
+    await fixture.open()
+    fixture.send(prompt(2, "check"))
+    expect((await fixture.response(2)).result).toMatchObject({ stopReason: "end_turn" })
+    const thoughts = fixture.updates().flatMap((update) => update.sessionUpdate === "agent_thought_chunk" ? [update.content.text] : [])
+    expect(thoughts).toEqual(["Let me", " check the tests.", "Let me check again."])
     fixture.end()
     expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
   })

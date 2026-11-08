@@ -61,6 +61,12 @@ function openAcpSession(channel: HeadlessChatChannel, version: string, execution
   // Every block identity this session passed through the stream. A recovered
   // window whose first block is not here skipped output that never streamed.
   const seen = new Set<string>()
+  // The thought text the client last received. A streamed thought draft
+  // settles to a block under its recorded identity (the entry and part
+  // position), which the runtime publishes whole after it retracts the draft.
+  // An ACP client cannot take back a chunk, so a thought block not streamed
+  // before that begins with this text continues it instead of repeating it.
+  let thought: string | undefined
   // Updates go out in this one order, so the output a gap read recovers
   // streams before the live output that follows it.
   let streaming: Promise<void> = Promise.resolve()
@@ -92,12 +98,13 @@ function openAcpSession(channel: HeadlessChatChannel, version: string, execution
     for (const block of blocks) {
       const identity = blockIdentity(block)
       seen.add(identity)
-      const sent = streamed.get(identity)
+      const sent = streamed.get(identity) ?? (block.kind === "thinking" && thought !== undefined && block.content.startsWith(thought) ? thought.length : undefined)
       // A result is read only for the update that carries it, never for a
       // repeat of a row the client already holds.
       const shown = acpBlockUpdates(block, sent)
       const next = shown.updates.length > 0 ? acpBlockUpdates(await withResult(block), sent) : shown
       if (next.streamed !== undefined) streamed.set(identity, next.streamed)
+      if (block.kind === "thinking" && next.updates.length > 0) thought = block.content
       if (block.kind === "system" && next.updates.length > 0) notice = block.message
       lines.push(...next.updates.map((update) => acpUpdate(sessionId, update)))
     }
