@@ -11,8 +11,13 @@ import type { ConversationMessage, StreamOptions } from "../../../../src/orchest
 import { asModelClient } from "../agent-runtime/_model-client"
 import type { ResolvedRoles } from "../../../../src/orchestration/config/roles"
 import type { WorkflowsMode } from "../../../../src/protocol/module-protocol-types.js"
-import { captureBlocks, createTestChatSessionDeps } from "./_chat-session-agent-runtime-fixtures"
+import { captureBlocks, createStoredChatSession, createTestChatSessionDeps } from "./_chat-session-agent-runtime-fixtures"
 import { renderSystemPrompt } from "../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js"
+import { asAsyncEventReadSurface, asAsyncEventWriter, type AsyncEventWriter } from "../../../../src/infra/event-store-types"
+import { createSqliteEventStore } from "../../../../src/infra/sqlite-event-store"
+import { resolveEventStoreDbFile } from "../../../../src/infra/paths"
+import { QUEUED_USER_INPUT_IN_FLIGHT_KIND } from "../../../../src/orchestration/session/conversation/queued-user-inputs"
+import { temporaryDirectories } from "../../../helpers/directories"
 describe("chat session with agent runtime — queued message delivery", () => {
   let session: ChatRunner | null = null
 
@@ -449,6 +454,86 @@ describe("chat session with agent runtime — queued message delivery", () => {
       (m) => m.kind === "user" && String(m.content ?? "").includes("hello world"),
     )
     expect(userOccurrences).toHaveLength(1)
+  })
+})
+
+describe("chat session queued message recall", () => {
+  const temporary = temporaryDirectories()
+
+  it("a recall whose cell retirement fails keeps the message queued, and a recall that succeeds returns the words only after the cell is gone", async () => {
+    const projectRoot = temporary("chat-recall-retirement-")
+    const store = createSqliteEventStore(resolveEventStoreDbFile(projectRoot))
+    const sessionId = "chat-recall"
+    const cells = () => store.readInFlight(sessionId, QUEUED_USER_INPUT_IN_FLIGHT_KIND)
+    // The store refuses the retirement, as a spent lock retry budget does.
+    let failDrops = true
+    const storeWriter = asAsyncEventWriter(store)
+    const writer: AsyncEventWriter = {
+      ...storeWriter,
+      dropInFlight: async (...args) => {
+        if (failDrops) throw new Error("database is locked")
+        await storeWriter.dropInFlight!(...args)
+      },
+    }
+    const calls: ConversationMessage[][] = []
+    const gates = [Promise.withResolvers<void>(), Promise.withResolvers<void>()]
+    const createClient = async () => asModelClient({
+      accessProvider: "anthropic_api", modelFamily: "anthropic", model: "test", contextLimit: 100_000, outputLimit: 8_000,
+      supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },
+      priceFor() { return { status: "unavailable" as const, reason: "missing-rate-card" as const } },
+      async *streamWithTools(options: StreamOptions) {
+        calls.push([...options.messages])
+        // The first request of each person's turn holds the turn open.
+        if (calls.length === 1) await gates[0]!.promise
+        if (calls.length === 3) await gates[1]!.promise
+        yield { kind: "text_delta", text: "answer", blockKey: "b0" } as const
+        yield { kind: "done", stopReason: "end_turn" } as const
+      },
+    })
+    const requests = async (count: number): Promise<void> => {
+      const deadline = Date.now() + 3000
+      while (calls.length < count && Date.now() < deadline) await Bun.sleep(2)
+      expect(calls).toHaveLength(count)
+    }
+    const mentions = (call: readonly ConversationMessage[] | undefined, text: string): number =>
+      (call ?? []).filter((message) => message.kind === "user" && JSON.stringify(message.content).includes(text)).length
+    const { chat, parked } = await createStoredChatSession({
+      sessionId, conversationId: "conversation-recall", projectRoot,
+      reader: asAsyncEventReadSurface(store), writer, seed: async () => {},
+      overrides: { createAgent: (options) => newTestRunner(options, createClient) },
+    })
+    try {
+      await chat.send("first request")
+      await requests(1)
+      expect(await chat.send({ text: "words I take back", submissionIds: ["sub-1"] })).toBe("accepted")
+      expect(cells()).toHaveLength(1)
+
+      await expect(Promise.resolve(chat.recallQueuedMessage())).rejects.toThrow("database is locked")
+      expect(cells()).toHaveLength(1)
+      failDrops = false
+      gates[0]!.resolve()
+      await parked(1)
+      expect(mentions(calls[1], "words I take back")).toBe(1)
+      expect(cells()).toEqual([])
+
+      await chat.send("second request")
+      await requests(3)
+      expect(await chat.send({ text: "take this back too", submissionIds: ["sub-2"] })).toBe("accepted")
+      expect(cells()).toHaveLength(1)
+      const recalled = await Promise.resolve(chat.recallQueuedMessage()).then((input) => ({ input, cells: cells() }))
+      expect(recalled).toEqual({ input: { text: "take this back too", submissionIds: ["sub-2"] }, cells: [] })
+      gates[1]!.resolve()
+      await parked(2)
+
+      await chat.send("my next message")
+      await parked(3)
+      expect(mentions(calls.at(-1), "my next message")).toBe(1)
+      expect(calls.map((call) => mentions(call, "take this back too"))).toEqual(calls.map(() => 0))
+    } finally {
+      for (const gate of gates) gate.resolve()
+      await chat.dispose()
+      store.close()
+    }
   })
 })
 

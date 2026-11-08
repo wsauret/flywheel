@@ -87,24 +87,18 @@ describe("StructuredOutputBuilder — drainChanges (write-site delta minting)", 
     expect(builder.getBlocks()[0]).toMatchObject({ id: "keep", status: "completed" });
   });
 
-  it("recalling a queued message degrades to a full resync", () => {
-    builder.pushUserMessage("queued while busy", 1, true);
+  it("withdrawing a queued message degrades to a full resync", () => {
+    builder.pushUserMessage("queued while busy", 1, true, false, undefined, undefined, undefined, ["cell-1"]);
     builder.drainChanges();
 
-    const recalled = builder.recallQueued();
-    expect(recalled).toBe("queued while busy");
+    expect(builder.withdrawQueued(["cell-1"])).not.toBeNull();
+    expect(builder.getBlocks()).toEqual([]);
     expect(builder.drainChanges().fullResync).toBe(true);
   });
 
-  it("recall and drain return only the person's queued rows; a message from another session stays queued for recall", () => {
+  it("drain returns only the person's queued rows", () => {
     const from = { sessionId: "child-1", name: "Reviewer", relation: "child" as const };
-    builder.pushUserMessage("person A", 1, true);
     builder.pushUserMessage("from the child", 2, true, false, undefined, undefined, from);
-
-    expect(builder.recallQueued()).toBe("person A");
-    expect(builder.getBlocks()).toEqual([expect.objectContaining({ content: "from the child", pending: true, from })]);
-    expect(builder.recallQueued()).toBeNull();
-
     builder.pushUserMessage("person B", 3, true);
     expect(builder.drainQueued()).toEqual(["person B"]);
     expect(builder.getBlocks().every((block) => block.kind !== "userMessage" || !block.pending)).toBe(true);
@@ -182,8 +176,8 @@ describe("StructuredOutputBuilder — drainChanges (write-site delta minting)", 
   });
 
   it("once fullResync fires, further changes in the same batch are dropped until the next drain", () => {
-    builder.pushUserMessage("queued", 1, true);
-    builder.recallQueued() // structural: sets needsFullResync
+    builder.pushUserMessage("queued", 1, true, false, undefined, undefined, undefined, ["cell-1"]);
+    builder.withdrawQueued(["cell-1"]) // structural: sets needsFullResync
     builder.pushText("more", 2, "text-1")
 
     const batch = builder.drainChanges();

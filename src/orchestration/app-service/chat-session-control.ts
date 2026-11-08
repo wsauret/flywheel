@@ -28,7 +28,7 @@ export function createChatSessionControl(input: {
         sessionId: input.sessionId,
         get backgroundTasks() { return input.runner()?.backgroundTasks },
         state: async () => await input.runner()?.messageState() ?? "at_rest",
-        recallQueuedMessage: async () => input.runner()?.recallQueuedMessage() ?? null,
+        recallQueuedMessage: async () => await input.runner()?.recallQueuedMessage() ?? null,
         publishCommittedNotice: (notice) => input.runner()?.publishCommittedNotice?.(notice),
         deliver: (message, decide) => input.lane.run(async () => {
           const runner = input.runner()

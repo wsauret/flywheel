@@ -4046,7 +4046,6 @@
           }
         ],
         "liveSignals": {
-          "recalled": "sanitized queued message",
           "hasQueued": false,
           "blocks": [
             {
@@ -4056,7 +4055,8 @@
               "timestamp": 1700000001000,
               "level": "error"
             }
-          ]
+          ],
+          "withdrawn": true
         }
       }
     },

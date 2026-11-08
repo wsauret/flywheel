@@ -44,7 +44,7 @@ function createMockChatRunner(sessionId: string): ChatRunner & { calls: string[]
     dispose: async () => { calls.push("dispose") },
     send: async (text: string) => { calls.push(`send:${text}`); return "accepted" },
     deliverHeldMessage: async () => ({ status: "held", reason: "no_reader" }), messageState: async () => "at_rest",
-    recallQueuedMessage: () => null,
+    recallQueuedMessage: async () => null,
     compact: async () => { calls.push("compact"); return false },
     awaitTurnSettlement: async () => {},
     awaitLogicalTurnDurability: async () => {},

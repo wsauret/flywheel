@@ -501,11 +501,12 @@ async function liveArtifacts(corpusCase: CorpusCase, root: string): Promise<Sani
   const output = createOutputSession({ sessionId: corpusCase.sessionId, executionCwd: SANITIZED_PROJECT_DIR, updateEntry: (patch) => sessionStore.updateChatEntry(corpusCase.sessionId, patch) })
   try {
     patches.length = 0
-    output.pushUserMessage(corpusCase.liveScript.queuedText, 1_700_000_000_000, { queued: true })
+    // A queued row names its held cell, by which a recall withdraws it.
+    output.pushUserMessage(corpusCase.liveScript.queuedText, 1_700_000_000_000, { queued: true, dispatchIds: ["queued-cell"] })
     output.pushSystemMessage(corpusCase.liveScript.interruptionText, 1_700_000_001_000, { level: "error" }); output.flush()
-    const recalled = output.recallQueued(); output.flush(); await new Promise<void>((done) => { setTimeout(done, 0) })
+    const withdrawn = output.withdrawQueued(["queued-cell"]) !== null; output.flush(); await new Promise<void>((done) => { setTimeout(done, 0) })
     const deltas = patches.flatMap((patch) => patch.payload.kind === "output.delta" ? [patch.payload.delta] : [])
-    return object(sanitizable({ liveDeltas: deltas, liveSignals: { recalled, hasQueued: output.hasQueued(), blocks: output.getBlocks() } }))
+    return object(sanitizable({ liveDeltas: deltas, liveSignals: { withdrawn, hasQueued: output.hasQueued(), blocks: output.getBlocks() } }))
   } finally { output.dispose(); outputProjection.dispose(); eventStore.close(); await runtime.dispose() }
 }
 

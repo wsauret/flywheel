@@ -44,19 +44,6 @@ export function drainQueuedUserMessages(state: OutputBuilderIndexes, identity?: 
   return drained;
 }
 
-/** Removes the person's last queued row. A message from another session never
- *  returns to the person's editor, so its row stays. */
-export function popQueuedUserMessage(state: OutputBuilderIndexes): string | null {
-  for (let i = state.blocks.length - 1; i >= 0; i--) {
-    const block = state.blocks[i];
-    if (!block || block.kind !== "userMessage" || !block.pending || block.from) continue;
-    state.blocks.splice(i, 1);
-    rebuildBlockIndexes(state.blocks, state.agentIndexById, state.contentIndexById);
-    return block.content;
-  }
-  return null;
-}
-
 export function updateQuestionBlock(
   blocks: AnyBlock[],
   toolUseId: string,

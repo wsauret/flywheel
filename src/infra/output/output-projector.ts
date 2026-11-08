@@ -328,9 +328,6 @@ export class OutputProjector {
     return this.builder.drainQueued(identity);
   }
 
-  recallQueued(): string | null {
-    return this.builder.recallQueued();
-  }
   withdrawQueued(dispatchIds: readonly string[]): (() => void) | null {
     return this.builder.withdrawQueued(dispatchIds);
   }

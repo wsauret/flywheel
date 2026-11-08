@@ -98,6 +98,7 @@ export function makeMemoryTreeWriter(): ConversationTreeWriterController {
     holdsBackgroundNotification: () => false,
     async waitForBackgroundNotification() {},
     async dropQueuedUserInputs() {},
+    ownQueuedUserInputs() {},
     async flushSavePoint() {},
     async buildContext() {
       // Production hoists displayOnly onto the entry and filters it before the
@@ -193,7 +194,6 @@ export function outputSessionStub(sessionId: string): OutputSession {
     seedBlocks() {},
     hasQueued() { return false },
     drainQueued() { return [] },
-    recallQueued() { return null },
     withdrawQueued() { return null },
     pushSystemMessage() {},
     pushDivider() {},

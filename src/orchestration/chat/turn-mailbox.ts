@@ -30,6 +30,7 @@ import {
 } from "../../infra/agent-loop-events.js";
 import { normalizeChatInput, type ChatAttachment, type ChatInput, type ChatInputLike } from "../../infra/chat-input.js";
 import type { HeldBackgroundNotification } from "../session/conversation/queued-background-notifications.js";
+import type { HumanInputQueue, QueuedInputWithdrawal } from "../session/queued-input-recall.js";
 
 type WaiterWake = "input" | "cancelled";
 
@@ -48,9 +49,13 @@ function toChatInput(input: AgentLoopMessageInput): ChatInput {
   return chatInput;
 }
 
-export class ChatTurnMailbox implements InputSource {
+export class ChatTurnMailbox implements InputSource, HumanInputQueue {
   constructor(private readonly onInput?: () => void) {}
   private readonly nextTurn: AgentLoopInput[] = [];
+  // Each item's admission order, so a withdrawn input returns to its place
+  // and an observation can tell input admitted after it.
+  private readonly ordinals = new WeakMap<AgentLoopInput, number>();
+  private admitted = 0;
   private waiter: Deferred.Deferred<WaiterWake> | null = null;
 
   /** True while the agent loop owns a pending wait reservation between turns. */
@@ -76,12 +81,19 @@ export class ChatTurnMailbox implements InputSource {
     return this.nextTurn.some(isUserInput);
   }
 
+  /** Whether a queued input carries the dispatch id `key`: its held cell is
+   *  this queue's to commit or retire. */
+  holdsDispatchId(key: string): boolean {
+    return this.nextTurn.some((input) => input.kind === "message" && input.dispatchIds?.includes(key) === true);
+  }
+
   /** Observe authorizing input queued during an async reservation, excluding
-   *  input that an earlier interrupt already left waiting. Recalled input
-   *  cannot authorize the reservation either. */
+   *  input that an earlier interrupt already left waiting. Input admitted
+   *  before the observation never counts, including input that a failed
+   *  recall put back. */
   observeUserInput(): () => boolean {
-    const pending = new Set(this.nextTurn);
-    return () => this.nextTurn.some((input) => !pending.has(input) && isUserInput(input));
+    const admittedBefore = this.admitted;
+    return () => this.nextTurn.some((input) => (this.ordinals.get(input) ?? 0) > admittedBefore && isUserInput(input));
   }
 
   /** Admit an accepted message: the person's, or another session's when its
@@ -163,20 +175,35 @@ export class ChatTurnMailbox implements InputSource {
     return drained;
   }
 
-  recallLastUserMessage(): ChatInput | null {
+  /** Takes the person's latest unread message out of the queue. Its
+   *  `restore` puts it back after the input admitted before it, with the
+   *  effects of its first admission. */
+  withdrawHuman(): QueuedInputWithdrawal | null {
     for (let i = this.nextTurn.length - 1; i >= 0; i--) {
-      const input = this.nextTurn[i];
-      if (!input || !isPersonMessage(input)) continue;
+      const item = this.nextTurn[i];
+      if (!item || !isPersonMessage(item)) continue;
       this.nextTurn.splice(i, 1);
-      return toChatInput(input);
+      const ordinal = this.ordinals.get(item) ?? 0;
+      return {
+        input: toChatInput(item),
+        restore: () => {
+          const at = this.nextTurn.findIndex((queued) => (this.ordinals.get(queued) ?? 0) > ordinal);
+          this.admit(item, at < 0 ? this.nextTurn.length : at);
+        },
+      };
     }
     return null;
   }
 
   private enqueue(input: AgentLoopInput): void {
+    this.ordinals.set(input, ++this.admitted);
+    this.admit(input, this.nextTurn.length);
+  }
+
+  private admit(input: AgentLoopInput, at: number): void {
     if (input.kind !== "compact" || input.source !== "idle") this.cancelIdleCompaction();
     this.onInput?.();
-    this.nextTurn.push(input);
+    this.nextTurn.splice(at, 0, input);
     this.wakeWaiter();
   }
 

@@ -502,9 +502,9 @@ describe("live/derived output equivalence", () => {
     try {
       session.dispatchRuntimeEvent({ type: "model.content.delta", data: { delta: { type: "thinking_delta", thinking: "reasoning" }, block_key: "thought" } })
       session.dispatchRuntimeEvent({ type: "model.content.delta", data: { delta: { type: "text_delta", text: "answer" }, block_key: "answer" } })
-      session.pushUserMessage("queued", 2_000, { queued: true })
+      session.pushUserMessage("queued", 2_000, { queued: true, dispatchIds: ["queued-cell"] })
       expect(session.getBlocks().map((block) => block.kind)).toEqual(["thinking", "text", "userMessage"])
-      expect(session.recallQueued()).toBe("queued")
+      expect(session.withdrawQueued(["queued-cell"])).not.toBeNull()
       expect(session.getBlocks().map((block) => block.kind)).toEqual(["thinking", "text"])
     } finally {
       session.dispose()

@@ -20,6 +20,7 @@ import type { AgentRunResult, AgentRunTerminal } from "../agent-runtime/types.js
 import type { AgentLoopMaintenance } from "../agent-runtime/agent-loop-types.js"
 import type { ChatSessionDeps } from "./session.js"
 import { ChatTurnMailbox } from "./turn-mailbox.js"
+import { createChatQueuedInputRecall } from "./chat-queued-input-recall.js"
 import { createChatMessageDelivery, type IdleLanding } from "./runner-message-delivery.js"
 import type { OutputSession } from "../runner/output-session.js"
 import { createRunnerBusBridge } from "../runner/bus-bridge.js"
@@ -149,6 +150,10 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
     return host.turnState === "active"
   }
 
+  const recalls = createChatQueuedInputRecall({
+    mailbox, session, retire: (keys) => deps.treeWriter.dropQueuedUserInputs(keys), ended: () => state.ended,
+  })
+  deps.treeWriter.ownQueuedUserInputs((key) => mailbox.holdsDispatchId(key) || recalls.withdraws(key))
 
   async function completeCurrentModelTurn(turn: RunningChatTurn, runtimeConfig?: TurnEndedContext["runtimeConfig"]): Promise<void> {
     if (!isLiveTurn(turn)) return
@@ -455,13 +460,16 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
         // The turn settled on every exit here, and its run no longer uses the chat's client. A turn that a newer turn
         // replaced leaves the newer turn's end to it.
         if (owned) engines.turnEnded()
+        // The decision reads the queue as the open recall leaves it. An
+        // interrupt can release the slot meanwhile, so ownership is read again.
+        if (owned && recalls.open) await recalls.open
         // A stopped preparation never consumed its queue. Only later explicit
         // input can authorize a fresh lease after durable teardown, not old
         // queued input or background completion. Running-agent interrupts keep
         // the loop's existing in-memory continuation behavior.
         const authorized = runnerStarted && !turn.lease.signal.aborted || userInputAfterStartupStop?.() === true
         const canResume = !wait.stalled || mailbox.hasPendingUserMessage
-        if (owned && authorized && !state.ended && !turn.completion.sealed && mailbox.hasPending && canResume) {
+        if (ownsRunningTurn(turn) && authorized && !state.ended && !turn.completion.sealed && mailbox.hasPending && canResume) {
           host.continueAfterTurn(turn.lease, startQueuedInputTurn)
         }
       }
@@ -581,8 +589,11 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
       deps.onTreeFailure(err)
       throw err
     }
+    // The decision reads the queue as the open recall leaves it. The
+    // reservation stays held, so a send meanwhile still waits in the mailbox.
+    if (recalls.open) await recalls.open
     // The one ended check after the last await: the runner can end during
-    // the commit, and no turn starts after it ended.
+    // the commit or the recall, and no turn starts after it ended.
     if (state.ended) host.releaseTurn(reservation)
     else if (admission.landing === "wake") landing.wake()
     else if (userInputArrived()) startQueuedInputTurn()
@@ -673,7 +684,7 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
       return accepted
     },
     drainQueuedUserInputs: () => mailbox.drainUserMessages(),
-    recallQueuedUserInput: () => mailbox.recallLastUserMessage(),
+    recallQueuedUserInput: recalls.recall,
     restartWithQueuedInputs,
     requestWithContext,
     get moduleRuntimes() { return moduleRuntimes },

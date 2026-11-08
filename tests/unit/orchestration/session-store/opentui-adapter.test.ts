@@ -153,7 +153,6 @@ describe("SessionEventAdapter", () => {
       expect(first.findLast((patch) => patch.runnerState)?.runnerState).toBe("awaiting_user")
       expect(second.flatMap((patch) => patch.outputBlocks ?? [])).toEqual([])
       expect(second.some((patch) => patch.runnerState !== undefined)).toBe(false)
-      expect(adapter.recallQueuedMessage()).toBe("wrap up")
     } finally {
       sibling.disconnect()
     }
@@ -283,7 +282,6 @@ function recordingOutputSession(calls: string[]): OutputSession {
     seedBlocks() {},
     hasQueued: () => false,
     drainQueued() { calls.push("drainQueued"); return [] },
-    recallQueued: () => null,
     withdrawQueued: () => null,
     pushSystemMessage() {},
     pushDivider() {},

@@ -55,7 +55,7 @@ beforeEach(() => {
     terminateBackgroundWork: (id) => { calls.push(`terminate:${id}`) },
     compact: async () => false,
     applyProjectionEvent: () => {},
-    recallQueuedMessage: () => null,
+    recallQueuedMessage: async () => null,
   }
   factory = spyOn(runnerModule, "createWorkflowRunner").mockImplementation(() => runner)
   hosts = createWorkflowHosts({

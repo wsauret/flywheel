@@ -38,12 +38,6 @@ export class SessionEventAdapter {
     this.unsubscribe = undefined
   }
 
-  recallQueuedMessage(): string | null {
-    const recalled = this.options.outputSession.recallQueued()
-    this.flush()
-    return recalled
-  }
-
   /** Projects one event. A sole producer calls it directly, in emit order. */
   handle(event: FlywheelEvent): void {
     const { outputSession: output, updateEntry } = this.options

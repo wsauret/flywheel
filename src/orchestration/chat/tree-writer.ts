@@ -152,6 +152,12 @@ export interface ConversationTreeWriterController {
   /** Retire held queued inputs whose dispatch was taken back (the user
    *  recalled the message into the editor). */
   dropQueuedUserInputs(dispatchIds: readonly string[]): Promise<void>
+  /** Names the held queued inputs that a live reader of this conversation
+   *  still owns: an input in its queue, or one a recall withdraws. The
+   *  recovery that an idle commit runs leaves those cells to that reader,
+   *  which commits or retires each one. The reader registers once, before
+   *  its first commit. */
+  ownQueuedUserInputs(owns: (key: string) => boolean): void
   flushSavePoint(protectedToolUseIds?: ReadonlySet<string>, finalizedCheckpointSwaps?: readonly FinalizedCheckpointSwap[]): Promise<void>
   /** Build the model-visible context from the active branch. Lazily opens
    *  the tree if no turn has run yet so a freshly-resumed chat sees the
@@ -195,6 +201,7 @@ export function createConversationTreeWriterController(
   let disposed = false
   const liveNotificationKeys = new Set<string>()
   const notificationCommits = new Map<string, PromiseWithResolvers<void>>()
+  let liveQueuedInputOwner: ((key: string) => boolean) | undefined
 
   function releaseNotification(key: string): void {
     liveNotificationKeys.delete(key)
@@ -213,7 +220,7 @@ export function createConversationTreeWriterController(
     const tree = await tryOpenConversationTree(handle) ?? await createConversationTree(handle)
     const writer = createConversationTreeWriter({
       tree,
-      ownsQueuedUserInput: deps.ownsQueuedUserInput,
+      ownsQueuedUserInput: (key) => deps.ownsQueuedUserInput?.(key) === true || liveQueuedInputOwner?.(key) === true,
       ownsBackgroundNotification: (key) => liveNotificationKeys.has(key),
       releaseBackgroundNotification: releaseNotification,
       abandonBackgroundNotification: (key) => {
@@ -490,7 +497,7 @@ export function createConversationTreeWriterController(
     }
   }
 
-  return { commitUserTurn, commitQueuedUserInput, acceptRetainedOperation, commitSystemTurn, commitBackgroundNotification, commitSystemMessage, commitTurnEnd, beginTurn, endTurn, recordCanonicalMessage, reserveMessageId, releaseMessageId, suspendPending, settleSuspendedTurn, holdQueuedUserInput, recordedPersonMessage, commitHeldMessage, holdBackgroundNotification, waitForBackgroundNotification, holdsBackgroundNotification: (key) => liveNotificationKeys.has(key), dropQueuedUserInputs, flushSavePoint, buildContext, captureCommittedForkMessages, captureRawLiveMessages, recordCompaction, getLeafId, getState, recall, dispose }
+  return { commitUserTurn, commitQueuedUserInput, acceptRetainedOperation, commitSystemTurn, commitBackgroundNotification, commitSystemMessage, commitTurnEnd, beginTurn, endTurn, recordCanonicalMessage, reserveMessageId, releaseMessageId, suspendPending, settleSuspendedTurn, holdQueuedUserInput, recordedPersonMessage, commitHeldMessage, holdBackgroundNotification, waitForBackgroundNotification, holdsBackgroundNotification: (key) => liveNotificationKeys.has(key), dropQueuedUserInputs, ownQueuedUserInputs: (owns) => { liveQueuedInputOwner = owns }, flushSavePoint, buildContext, captureCommittedForkMessages, captureRawLiveMessages, recordCompaction, getLeafId, getState, recall, dispose }
 }
 
 /** Post-compaction working history, computed from a hypothetical rebuild BEFORE

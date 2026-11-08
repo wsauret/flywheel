@@ -562,21 +562,19 @@ export function createWorkflowRunner(opts: WorkflowRunnerFactoryOptions): Workfl
     for (const attemptId of attemptIds) emitToAgent(attemptId)("agent.message.injected", { sessionId, data: { message: text, origin: "user", pending: true, ...(submissionIds?.length ? { submissionIds } : {}), ...(dispatchIds?.length ? { dispatchIds } : {}), ...(from ? { from } : {}) } })
   }
 
-  function recallQueuedMessage(): ChatInputLike | null {
-    return Log.runWithSession(sessionId, () => {
+  function recallQueuedMessage(): Promise<ChatInputLike | null> {
+    return Log.runWithSession(sessionId, async () => {
       const recalled = agentInputs.recallLastUserMessage(() => true)
       if (recalled === null) return null
-      // The words went back into the editor, which is not durable state, so
-      // the cells retire here: a later agent must not read what the person
+      // The words go back into the editor, which is not durable state, so
+      // the cells retire first: a later agent must not read what the person
       // took back. A message to the workflow waits in an addressed cell, and
       // a recovery's retained input in a queued one.
       const keys = recalled.dispatchIds ?? []
-      void Promise.all([
+      await Promise.all([
         retireAddressedWorkflowMessages(eventWriter, sessionId, keys),
         ...keys.map((key) => dropQueuedUserInput(eventWriter, sessionId, key)),
-      ]).catch((error: unknown) => {
-        log.warn("recalled workflow message cell drop failed", { sessionId, error: error instanceof Error ? error.message : String(error) })
-      })
+      ])
       const { dispatchIds: _retired, ...bare } = recalled
       return bare
     })

@@ -64,7 +64,11 @@ export interface Runner {
    *  continuation shows no Resumed row either. */
   resume(options: { readonly announce: boolean }): boolean
   dispose(): Promise<void>
-  recallQueuedMessage(): ChatInputLike | null
+  /** Takes the person's latest unread queued message back for their editor.
+   *  Resolves with it only after its hold is retired, and null when nothing
+   *  unread is queued. Rejects with the store's error when the hold cannot
+   *  be retired, which leaves the message queued. */
+  recallQueuedMessage(): Promise<ChatInputLike | null>
   compact(): Promise<boolean>
   /** Fire the combined learning review immediately (the /learn command). */
   learn?(): boolean

@@ -123,7 +123,7 @@ export function createMockWorkflowHosts() {
         stepModuleRuntimes: async () => undefined, stepBackgroundTasks: () => undefined,
         releaseForegroundBash: () => false, transferForegroundForReplacement: async () => {},
         terminateBackgroundWork: () => {}, applyProjectionEvent: () => {},
-        recallQueuedMessage: () => null, compact: async () => false,
+        recallQueuedMessage: async () => null, compact: async () => false,
       })
       return options.sessionId
     }),

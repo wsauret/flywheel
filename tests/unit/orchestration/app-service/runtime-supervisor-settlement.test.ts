@@ -181,7 +181,7 @@ describe("RuntimeSupervisor question settlement, compaction, and recall", () => 
 
   test("recall resolves through the async actor path to the runner's recalled input", async () => {
     const supervisor = supervisorWithRunner(ctx, async (deps) => mockRunner(deps.sessionId, {
-      recallQueuedMessage: () => "recalled text",
+      recallQueuedMessage: async () => "recalled text",
     }))
     const sessionId = await supervisor.openSessionRuntime()
 
@@ -195,7 +195,7 @@ describe("RuntimeSupervisor question settlement, compaction, and recall", () => 
     const events: string[] = []
     const supervisor = supervisorWithRunner(ctx, async (deps) => mockRunner(deps.sessionId, {
       send: async () => { events.push("inject"); return "accepted" as const },
-      recallQueuedMessage: () => { events.push("recall"); return "queued" },
+      recallQueuedMessage: async () => { events.push("recall"); return "queued" },
     }))
     const sessionId = await supervisor.openSessionRuntime()
     // First send attaches the runner; subsequent sends inject into it.

@@ -39,17 +39,19 @@ describe("createOutputSession — queue/lifecycle/question handling", () => {
     expect(session.hasQueued()).toBe(false)
   })
 
-  it("recallQueued removes the latest queued message and returns its text", () => {
+  it("withdrawQueued removes the queued row its cell names, and its restore puts the row back in place", () => {
     const { updateEntry } = createMocks()
     session = createOutputSession({ updateEntry, executionCwd: "/workspace" })
+    const queuedTexts = () => session!.getBlocks().filter((block) => block.kind === "userMessage").map((block) => block.content)
 
-    session.pushUserMessage("first", 1000, { queued: true })
-    session.pushUserMessage("second", 2000, { queued: true })
+    session.pushUserMessage("first", 1000, { queued: true, dispatchIds: ["cell-1"] })
+    session.pushUserMessage("second", 2000, { queued: true, dispatchIds: ["cell-2"] })
 
-    expect(session.recallQueued()).toBe("second")
-    expect(session.getBlocks().filter((block) => block.kind === "userMessage").map((block) => block.content)).toEqual(["first"])
-    expect(session.recallQueued()).toBe("first")
-    expect(session.hasQueued()).toBe(false)
+    const restore = session.withdrawQueued(["cell-1"])
+    expect(queuedTexts()).toEqual(["second"])
+    expect(session.withdrawQueued(["cell-3"])).toBeNull()
+    restore?.()
+    expect(queuedTexts()).toEqual(["first", "second"])
   })
 
   // ── getBlocks ──

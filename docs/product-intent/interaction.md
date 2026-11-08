@@ -262,7 +262,7 @@ Submitting a chat message on any client shows it at once as queued, and runtime 
 
 ## PI-INTERACTION-123: Up recalls an unread queued message for editing
 
-In the terminal, Up on an empty first row recalls the latest unread queued message in the main chat or a subagent viewer, and keeps what the person typed. A message that the agent already read cannot be recalled. A message still being sent or waiting for the connection cannot be edited and shows no Edit control. Up on such a message, in the terminal and on the web, keeps it queued and says that Flywheel is still sending it.
+In the terminal, Up on an empty first row recalls the latest unread queued message in the main chat or a subagent viewer, and keeps what the person typed. A message that the agent already read cannot be recalled. A recall that Flywheel cannot complete keeps the message queued. A message still being sent or waiting for the connection cannot be edited and shows no Edit control. Up on such a message, in the terminal and on the web, keeps it queued and says that Flywheel is still sending it.
 
 ## PI-INTERACTION-124: A message that starts a chat is never sent twice
 

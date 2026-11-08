@@ -45,7 +45,9 @@ export interface OutputSession {
   hasQueued(): boolean
   /** Marks matching queued rows sent, or all queued rows without a filter. */
   drainQueued(identity?: Pick<UserMessageBlock, "submissionIds" | "dispatchIds">): string[]
-  recallQueued(): string | null
+  /** Removes the queued row that names one of `dispatchIds`, and returns
+   *  the operation that puts it back in its place; null when no queued row
+   *  names them. */
   withdrawQueued(dispatchIds: readonly string[]): (() => void) | null
   pushSystemMessage(message: string, timestamp: number, options?: SystemMessageOptions): void
   pushDivider(label: string, timestamp: number): void
@@ -202,7 +204,6 @@ export function createOutputSession(options: OutputSessionOptions): OutputSessio
     seedBlocks: (blocks: readonly AnyBlock[]) => projector.seedBlocks(blocks),
     hasQueued: () => projector.hasQueued(),
     drainQueued: (identity) => projector.drainQueued(identity),
-    recallQueued: () => projector.recallQueued(),
     withdrawQueued: (dispatchIds) => projector.withdrawQueued(dispatchIds),
     pushSystemMessage: (message: string, timestamp: number, messageOptions?: SystemMessageOptions) => projector.apply({ type: "push-system-message", message, timestamp, ...messageOptions }),
     pushDivider: (label: string, timestamp: number) => projector.apply({ type: "push-divider", label, timestamp }),

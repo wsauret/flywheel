@@ -43,7 +43,6 @@ import {
   drainQueuedUserMessages,
   enforceOutputBlockCap,
   hasQueuedUserMessage,
-  popQueuedUserMessage,
   insertOutputBlock,
   type OutputBuilderIndexes,
   patchAgentChildTool,
@@ -234,14 +233,6 @@ export class StructuredOutputBuilder {
     }
     this.notifyChange();
     return drained.filter(({ person }) => person).map(({ text }) => text);
-  }
-  recallQueued(): string | null {
-    const text = popQueuedUserMessage(this.indexes());
-    if (text === null) return null;
-    this.rebuildToolIndex();
-    this.recordStructuralChange();
-    this.notifyChange();
-    return text;
   }
   /** Removes exactly the queued row whose input is being withdrawn. */
   withdrawQueued(dispatchIds: readonly string[]): (() => void) | null {

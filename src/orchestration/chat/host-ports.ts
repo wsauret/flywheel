@@ -31,7 +31,11 @@ export interface ChatPorts {
   deliverBackgroundNotification(notification: HeldBackgroundNotification): Promise<boolean>
   requestWithContext(input: ChatInputLike, context: string): boolean
   drainQueuedUserInputs(): ChatInputLike[]
-  recallQueuedUserInput(): ChatInput | null
+  /** The person's latest unread queued message, taken back for their editor
+   *  (`recallQueuedInput`): resolves with it only once its hold is retired,
+   *  null when nothing unread is queued, and rejects with the store's error
+   *  when the hold cannot be retired, which leaves the message queued. */
+  recallQueuedUserInput(): Promise<ChatInput | null>
   restartWithQueuedInputs(inputs: readonly ChatInputLike[]): void
   /** Starts the next model request from the committed leaf. `explicit` is a
    *  person's Resume: it authorizes a runner parked after an interrupt,

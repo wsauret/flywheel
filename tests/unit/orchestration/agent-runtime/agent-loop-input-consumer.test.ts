@@ -328,7 +328,7 @@ describe("agent loop input wait reservations", () => {
     const personArrived = mailbox.observeUserInput()
     mailbox.enqueueNextTurn({ text: "from the parent", producer })
     expect(personArrived()).toBe(false)
-    expect(mailbox.recallLastUserMessage()).toBeNull()
+    expect(mailbox.withdrawHuman()).toBeNull()
     expect(mailbox.drainUserMessages()).toEqual([])
     expect(mailbox.drainPending()).toMatchObject({ kind: "message", origin: "session", producer })
 

@@ -47,7 +47,8 @@ export function makeLifecycle(selection?: Pick<ChatSessionDeps, "moduleSelection
   const ended = { count: 0 }
   const callbacks: ChatCallbacks = { onError() {}, onEnded() { ended.count += 1 } }
   const failures: string[] = []
-  const session = { ...outputSessionStub("session-respawn"), pushSystemMessage(message: string) { failures.push(message) } }
+  // The stub holds no rows, so each queued input's row is found and restored as nothing.
+  const session = { ...outputSessionStub("session-respawn"), pushSystemMessage(message: string) { failures.push(message) }, withdrawQueued: () => () => {} }
   const lifecycle = createChatRunnerLifecycle({
     deps,
     eventBus,

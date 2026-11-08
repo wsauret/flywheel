@@ -436,6 +436,7 @@ function memoryConversation(): ConversationTreeWriterController {
     waitForBackgroundNotification: async () => {},
     holdsBackgroundNotification: () => false,
     dropQueuedUserInputs: async () => {},
+    ownQueuedUserInputs: () => {},
     flushSavePoint: async () => {},
     buildContext: async () => ({ messages: [...messages] }),
     captureCommittedForkMessages: async () => [...messages],

@@ -25,7 +25,11 @@ interface ChatControls {
    *  the runner and shows its invocation as a person's message is shown.
    *  False when the chat or its one-shot invocation has ended. */
   requestWithContext(input: ChatInputLike, context: string): boolean
-  recallQueuedMessage(): ChatInput | null
+  /** Takes the person's latest unread queued message back for their editor.
+   *  Resolves with it only after its hold is retired, and null when nothing
+   *  unread is queued. Rejects with the store's error when the hold cannot
+   *  be retired, which leaves the message queued. */
+  recallQueuedMessage(): Promise<ChatInput | null>
   /** A person's interrupt: cuts the running turn and any running tool call,
    *  keeps what it committed, and hands the turn to the person. The parked
    *  loop records the turn end; Resume continues it. */
@@ -211,17 +215,19 @@ export function createChatControls(controlsInput: ChatControlsInput): ChatContro
 
   /** Shows the person's message. Its row carries the client's submission
    *  ids, which is the client's proof of delivery, so it is shown only once
-   *  the message is durable. */
+   *  the message is durable. A queued row also names its held cell, by which
+   *  a recall withdraws exactly that row. */
   function showSent(input: ChatInputLike, queued: boolean, entryId: string | undefined): void {
-    const { invocation, submissionIds } = normalizeChatInput(input)
+    const { invocation, submissionIds, dispatchIds } = normalizeChatInput(input)
+    const identity = { ...(submissionIds?.length ? { submissionIds } : {}), ...(dispatchIds?.length ? { dispatchIds } : {}) }
     if (invocation) {
       // Inline step/skill invocation: paint the divider and the raw user
       // arguments; the expanded prompt body is model-facing only.
       session.pushDivider(invocation.label, Date.now())
-      if (invocation.args) session.pushUserMessage(invocation.args, Date.now(), { entryId, queued, injected: false, ...(submissionIds?.length ? { submissionIds } : {}) })
+      if (invocation.args) session.pushUserMessage(invocation.args, Date.now(), { entryId, queued, injected: false, ...identity })
     } else {
       const images = chatInputImages(input)
-      session.pushUserMessage(chatInputText(input), Date.now(), { entryId, queued, injected: false, ...(submissionIds?.length ? { submissionIds } : {}), ...(images.length ? { images } : {}) })
+      session.pushUserMessage(chatInputText(input), Date.now(), { entryId, queued, injected: false, ...identity, ...(images.length ? { images } : {}) })
     }
   }
 
@@ -285,7 +291,7 @@ export function createChatControls(controlsInput: ChatControlsInput): ChatContro
     // A chat that ended meanwhile has no runner to take the message, which
     // its conversation keeps.
     if (state.ended) return "accepted"
-    showSent(input, queued, saved.entryId)
+    showSent(saved.input, queued, saved.entryId)
     lifecycle.enqueueInput(saved.input)
     return "accepted"
   }
@@ -313,29 +319,6 @@ export function createChatControls(controlsInput: ChatControlsInput): ChatContro
     return { input, entryId }
   }
 
-  function recallQueuedMessage(): ChatInput | null {
-    if (state.ended) return null
-    const recalled = lifecycle.recallQueuedUserInput()
-    if (!recalled) return null
-    const removed = session.recallQueued()
-    if (removed === null) {
-      lifecycle.restartWithQueuedInputs([recalled])
-      return null
-    }
-    session.flush()
-    if (recalled.dispatchIds && recalled.dispatchIds.length > 0) {
-      // The words went back into the editor, which is not durable state, so
-      // the cells retire here: recovering a message the user took back would
-      // resend what they chose not to send.
-      void treeWriter.dropQueuedUserInputs(recalled.dispatchIds).catch((err) => {
-        log.warn("queued input cell drop failed", { error: err instanceof Error ? err.message : String(err) })
-      })
-      const { dispatchIds: _retired, ...bare } = recalled
-      return bare
-    }
-    return recalled
-  }
-
   function deliverCommitted(input: ChatInputLike): boolean {
     if (state.ended) { log.warn("chat committed delivery after ended"); return false }
     if (lifecycle.invocationCompletion?.sealed) return false
@@ -345,12 +328,10 @@ export function createChatControls(controlsInput: ChatControlsInput): ChatContro
 
   function requestWithContext(input: ChatInputLike, context: string): boolean {
     if (!lifecycle.requestWithContext(input, context)) return false
-    // Never a queued row: the mailbox never recalls a context request, and
-    // recall takes the last queued row, so a queued one could be taken in
-    // place of the person's recalled message.
+    // Never a queued row: the mailbox never recalls a context request.
     showSent(input, false, undefined)
     return true
   }
 
-  return { send, deliverCommitted, requestWithContext, interrupt, holdsRunningTurn, interruptForRuntime, interruptPlannedCut, resume, abort, end, recallQueuedMessage }
+  return { send, deliverCommitted, requestWithContext, interrupt, holdsRunningTurn, interruptForRuntime, interruptPlannedCut, resume, abort, end, recallQueuedMessage: () => lifecycle.recallQueuedUserInput() }
 }

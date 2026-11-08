@@ -103,7 +103,7 @@ describe("papercut drain request context", () => {
 
     expect(mailbox.hasPendingUserMessage).toBe(true)
     expect(mailbox.drainUserMessages()).toEqual([])
-    expect(mailbox.recallLastUserMessage()).toBeNull()
+    expect(mailbox.withdrawHuman()).toBeNull()
     expect(mailbox.drainPending()).toEqual({
       kind: "request-context",
       text: drainContext,

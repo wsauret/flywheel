@@ -137,7 +137,7 @@ describe("chat runner lifecycle stranded-input respawn", () => {
       await flushMicrotasks()
       expect(preparations).toBe(1)
       expect(runnerOptions).toHaveLength(0)
-      expect(lifecycle.recallQueuedUserInput()).toEqual({ text: "queued before interrupt" })
+      await expect(lifecycle.recallQueuedUserInput()).resolves.toEqual({ text: "queued before interrupt" })
 
       const commitNotification = deps.treeWriter.commitBackgroundNotification
       deps.treeWriter.commitBackgroundNotification = async (notification) => {
