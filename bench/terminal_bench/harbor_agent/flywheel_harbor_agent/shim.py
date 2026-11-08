@@ -73,8 +73,10 @@ import zipfile
 from pathlib import Path
 
 from .trial_runtime import (
+    BUN_NPM_BASE_URL,
     BUN_RELEASE_ASSETS,
     BUN_RELEASE_BASE_URL,
+    BUN_VERSION,
     EVIDENCE_DIR_NAME,
     AdapterSettlement,
     DeadlineAuthority,
@@ -215,14 +217,26 @@ def _install_bun(work: Path) -> Path:
     asset = BUN_RELEASE_ASSETS.get(platform.machine())
     if asset is None:
         raise RuntimeError(f"unsupported Bun architecture: {platform.machine()}")
-    name, expected_sha256 = asset
-    payload = _download(f"{BUN_RELEASE_BASE_URL}/{name}")
-    if hashlib.sha256(payload).hexdigest() != expected_sha256:
+    name, zip_sha256, npm_sha256 = asset
+    package = name.removesuffix(".zip")
+    try:
+        payload = _download(f"{BUN_RELEASE_BASE_URL}/{name}")
+        from_npm = False
+    except (urllib.error.URLError, TimeoutError):
+        print("flywheel-acp: the GitHub release of Bun is unreachable; using its npm package", file=sys.stderr)
+        payload = _download(f"{BUN_NPM_BASE_URL}/{package}/-/{package}-{BUN_VERSION}.tgz")
+        from_npm = True
+    if hashlib.sha256(payload).hexdigest() != (npm_sha256 if from_npm else zip_sha256):
         raise RuntimeError("Bun release digest mismatch")
+    if from_npm:
+        with tarfile.open(fileobj=io.BytesIO(payload), mode="r:gz") as archive:
+            binary = archive.extractfile("package/bin/bun").read()
+    else:
+        with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+            binary = archive.read(f"{package}/bun")
     bin_dir = work / "bun" / "bin"
     bin_dir.mkdir(parents=True)
-    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
-        (bin_dir / "bun").write_bytes(archive.read(f"{name.removesuffix('.zip')}/bun"))
+    (bin_dir / "bun").write_bytes(binary)
     (bin_dir / "bun").chmod(0o755)
     return bin_dir
 

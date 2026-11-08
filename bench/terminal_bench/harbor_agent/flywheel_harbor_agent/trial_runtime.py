@@ -23,14 +23,20 @@ from pathlib import Path
 
 BUN_VERSION = "1.4.4"
 BUN_RELEASE_BASE_URL = f"https://github.com/oven-sh/bun/releases/download/bun-v{BUN_VERSION}"
+BUN_NPM_BASE_URL = "https://registry.npmjs.org/@oven"
+# Each architecture's Bun ships twice: a GitHub release zip and an npm package
+# tarball. The npm copy is the fallback when GitHub release downloads fail,
+# which trial sandboxes see as runs of 504s. Each digest pins its own archive.
 BUN_RELEASE_ASSETS = {
     "x86_64": (
         "bun-linux-x64.zip",
         "bf8ccbfb2b0b80159e0f9a6d15c55317add8077534dbc6130a3edb52fccb395c",
+        "93ca5a2abe45f3bcac6dd55baff8bb06c4ac824b70f89650b54e5c8b80dbef18",
     ),
     "aarch64": (
         "bun-linux-aarch64.zip",
         "baa6bb36f51d6e58561e02bbea825038a9df454f673d6d776e8bbf86f8c7850e",
+        "ab95e7e692a53d25a1baa98ee395a17f5f264aedfb3cb15811432d54142f70eb",
     ),
 }
 

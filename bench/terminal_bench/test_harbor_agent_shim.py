@@ -1,11 +1,13 @@
 import errno
 import hashlib
+import io
 import json
 import os
 import signal
 import sqlite3
 import stat
 import sys
+import tarfile
 import tempfile
 import threading
 import time
@@ -177,6 +179,37 @@ class DownloadTest(unittest.TestCase):
         gateway = shim.urllib.error.HTTPError("u", 504, "Gateway Time-out", None, None)
         with self.assertRaises(shim.urllib.error.HTTPError):
             self._fetch([gateway] * shim._DOWNLOAD_ATTEMPTS)
+
+
+class InstallBunTest(unittest.TestCase):
+    def _install(self, root: Path, npm_sha256: str | None = None) -> tuple[Path, list[str]]:
+        buffer = io.BytesIO()
+        with tarfile.open(fileobj=buffer, mode="w:gz") as archive:
+            info = tarfile.TarInfo("package/bin/bun")
+            info.size = len(b"npm bun")
+            archive.addfile(info, io.BytesIO(b"npm bun"))
+        tarball = buffer.getvalue()
+        urls: list[str] = []
+
+        def download(url: str) -> bytes:
+            urls.append(url)
+            if url.startswith(shim.BUN_RELEASE_BASE_URL):
+                raise shim.urllib.error.HTTPError(url, 504, "Gateway Time-out", None, None)
+            return tarball
+
+        asset = ("bun-linux-x64.zip", "0" * 64, npm_sha256 or hashlib.sha256(tarball).hexdigest())
+        with patch.object(shim, "_download", download), patch.object(shim, "BUN_RELEASE_ASSETS", {"x86_64": asset}), patch.object(shim.platform, "machine", lambda: "x86_64"):
+            return shim._install_bun(root), urls
+
+    def test_an_unreachable_github_release_falls_back_to_the_npm_package(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            bin_dir, urls = self._install(Path(directory))
+            self.assertEqual(urls[1], f"https://registry.npmjs.org/@oven/bun-linux-x64/-/bun-linux-x64-{shim.BUN_VERSION}.tgz")
+            self.assertEqual((bin_dir / "bun").read_bytes(), b"npm bun")
+
+    def test_the_npm_package_must_match_its_pinned_digest(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, self.assertRaisesRegex(RuntimeError, "digest mismatch"):
+            self._install(Path(directory), npm_sha256="1" * 64)
 
 
 class ExportEvidenceTest(unittest.TestCase):
