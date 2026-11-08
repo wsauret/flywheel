@@ -132,13 +132,41 @@ export interface EligibilityPreparation {
   dispose(): Promise<void>
 }
 
+/** Where one owned discovery stands. Its access audit starts only from `listing`, so a forced run that arrives
+ *  first keeps the audit from starting, and one that arrives later aborts it. */
+type DiscoveryStep =
+  | { readonly kind: "listing" }
+  | { readonly kind: "auditing"; readonly superseded: AbortController }
+  /** `by` is the discovery that takes over the audit, and the readiness that this one has not reached. */
+  | { readonly kind: "superseded"; readonly by: OwnedDiscovery }
+
+/** `audit-started`: the discovery reached its audit. `forced-run`: a login or forced refresh supersedes the audit,
+ *  started or not, because the forced run's own discovery audits after it. `recheck`: a manual recheck supersedes
+ *  only an audit that runs, and otherwise follows the discovery. */
+type DiscoveryEvent = { readonly kind: "audit-started" } | { readonly kind: "forced-run" | "recheck"; readonly by: OwnedDiscovery }
+
+function nextDiscoveryStep(step: DiscoveryStep, event: DiscoveryEvent): DiscoveryStep {
+  if (step.kind === "superseded") return step
+  if (event.kind === "audit-started") return step.kind === "listing" ? { kind: "auditing", superseded: new AbortController() } : step
+  if (step.kind === "auditing" || event.kind === "forced-run") return { kind: "superseded", by: event.by }
+  return step
+}
+
+/** A manual recheck of one account, with the inputs it was asked against. */
+interface QueuedRecheck { readonly account: AccessProviderAccountIdentity; readonly expected: EligibilityInputRevision }
+
 /** One owned background discovery of a profile: the listing, then the access audit. */
 interface OwnedDiscovery {
+  /** Written only by `advanceDiscovery`. */
+  step: DiscoveryStep
+  /** Present when the audit is a manual recheck, which the store arms only when the audit starts. */
+  readonly recheck?: QueuedRecheck
   /** Every step of the discovery. Later owned work for the profile orders after it. */
   readonly done: Promise<ProviderModelEligibilityState>
   /** The first state that a caller about to route requests can use: the listing is
    *  published and some account can serve a request, the settlement deadline after
-   *  the listing has passed, or the discovery has ended. */
+   *  the listing has passed, or the discovery has ended. A superseded discovery
+   *  ends without its audit, so its successor's readiness stands in for that end. */
   readonly ready: Promise<ProviderModelEligibilityState>
 }
 
@@ -146,7 +174,28 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
   const canServeRequest = (state: ProviderModelEligibilityState): boolean =>
     providerModelsCanServeRequest(state.enabledCandidates.values(), deps.allowTrainingRoutes(state.profileId))
   const cachedPreparations = new Map<string, Promise<ProviderModelEligibilityState>>()
-  const discoveries = new Map<string, OwnedDiscovery>()
+  /** The profile's owned discoveries that have not ended, oldest first. Each one orders after the one before it. */
+  const discoveries = new Map<string, readonly OwnedDiscovery[]>()
+  const latestDiscovery = (profileId: string): OwnedDiscovery | undefined => discoveries.get(profileId)?.at(-1)
+  /** The one writer of a discovery step; returns the new step. Leaving `auditing` aborts the audit. */
+  const advanceDiscovery = (discovery: OwnedDiscovery, event: DiscoveryEvent): DiscoveryStep => {
+    const previous = discovery.step
+    discovery.step = nextDiscoveryStep(previous, event)
+    if (previous.kind === "auditing" && discovery.step.kind !== "auditing") previous.superseded.abort(new DOMException("Audit superseded", "AbortError"))
+    return discovery.step
+  }
+  /** Supersedes the audits of every owned discovery of the profile other than `event.by`, and returns the manual
+   *  rechecks whose audit had not started, so the store never armed them; the caller queues them again. */
+  const supersedeAudits = (profileId: string, event: Exclude<DiscoveryEvent, { readonly kind: "audit-started" }>): readonly QueuedRecheck[] => {
+    const unarmed: QueuedRecheck[] = []
+    for (const discovery of discoveries.get(profileId) ?? []) {
+      if (discovery === event.by) continue
+      const before = discovery.step.kind
+      const after = advanceDiscovery(discovery, event)
+      if (before === "listing" && after.kind === "superseded" && discovery.recheck !== undefined) unarmed.push(discovery.recheck)
+    }
+    return unarmed
+  }
   const controllers = new Map<Promise<unknown>, AbortController>()
   const lastDiscovery = new Map<string, number>()
   const now = deps.now ?? Date.now
@@ -264,10 +313,9 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
   const settle = async (profile: EligibilityProfile, published: Promise<ProviderModelEligibilityState>, options?: EligibilityPreparationOptions): Promise<ProviderModelEligibilityState> => {
     const state = await published
     if (options?.settled !== true || !hasPendingDiscovery(state)) return state
-    const discovery = discoveries.get(profile.id) ?? discoverAfter(profile, Promise.resolve(state), "pending")
+    const discovery = latestDiscovery(profile.id) ?? discoverAfter(profile, Promise.resolve(state), "pending")
     return awaitWithAbortSignal(discovery.ready, options.signal)
   }
-  const audits = new Map<string, AbortController>()
   /** Serializes saved-only publications after conclusive probes. Each probe
    * waits for its own complete profile view before another result can commit. */
   const auditProjection = (profile: EligibilityProfile, signal: AbortSignal, published: (state: ProviderModelEligibilityState) => void): AuditProjection => {
@@ -287,10 +335,11 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
    * receives each state that a conclusive probe published. A forced run
    * supersedes it without an error: results already committed persist and the
    * next audit resumes with the remainder. */
-  const audit = async (profile: EligibilityProfile, state: ProviderModelEligibilityState, signal: AbortSignal, published: (state: ProviderModelEligibilityState) => void, recheck?: AccessProviderAccountIdentity): Promise<ProviderModelEligibilityState> => {
+  const audit = async (profile: EligibilityProfile, discovery: OwnedDiscovery, state: ProviderModelEligibilityState, signal: AbortSignal, published: (state: ProviderModelEligibilityState) => void, recheck?: AccessProviderAccountIdentity): Promise<ProviderModelEligibilityState> => {
     if (recheck === undefined && ![...state.inventoryCandidates.values()].some((candidate) => (candidate.audit?.remaining ?? 0) > 0)) return state
-    const superseded = new AbortController()
-    audits.set(profile.id, superseded)
+    const step = advanceDiscovery(discovery, { kind: "audit-started" })
+    if (step.kind !== "auditing") return state
+    const { superseded } = step
     const auditSignal = AbortSignal.any([signal, superseded.signal])
     const projection = auditProjection(profile, auditSignal, published)
     try {
@@ -299,7 +348,6 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
       if (superseded.signal.aborted && !signal.aborted) return deps.current(profile.id) ?? state
       throw error
     } finally {
-      if (audits.get(profile.id) === superseded) audits.delete(profile.id)
       await projection.settled()
     }
   }
@@ -308,7 +356,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
    * what listing left due. Without it, only the audit follows `operation`; a
    * `recheck` account limits that audit to it and probes it again in full. A
    * discovery that ends with a new state applies it to the profile's sessions. */
-  const discoverAfter = (profile: EligibilityProfile, operation: Promise<ProviderModelEligibilityState>, refresh: boolean | "pending", recheck?: AccessProviderAccountIdentity): OwnedDiscovery => {
+  const discoverAfter = (profile: EligibilityProfile, operation: Promise<ProviderModelEligibilityState>, refresh: boolean | "pending", recheck?: QueuedRecheck): OwnedDiscovery => {
     if (refresh !== "pending") lastDiscovery.set(profile.id, now())
     const refreshController = new AbortController()
     const ready = Promise.withResolvers<ProviderModelEligibilityState>()
@@ -344,11 +392,11 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
           log.info("request routing proceeds without the access audit at the settlement deadline", { profileId: profile.id, deadlineMs: settlementTimeoutMs })
           ready.resolve(listed)
         }, settlementTimeoutMs)
-        return await audit(profile, listed, refreshController.signal, published, recheck)
+        return await audit(profile, discovery, listed, refreshController.signal, published, recheck?.account)
       } catch (error) {
         if (!closed && !forcedRunPending) {
           const current = deps.current(profile.id)
-          if (discoveries.get(profile.id)?.done === refreshOperation && current !== undefined && hasPendingDiscovery(current)) {
+          if (latestDiscovery(profile.id) === discovery && current !== undefined && hasPendingDiscovery(current)) {
             const failed = deps.prepare({
               profileId: current.profileId,
               autoEnableNewModels: current.autoEnableNewModels,
@@ -372,16 +420,26 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
       }
     }
     const refreshOperation = discover()
-    void refreshOperation.then(readied, (error: unknown) => {
+    controllers.set(refreshOperation, refreshController)
+    const discovery: OwnedDiscovery = { step: { kind: "listing" }, done: refreshOperation, ready: ready.promise, ...(recheck === undefined ? {} : { recheck }) }
+    discoveries.set(profile.id, [...discoveries.get(profile.id) ?? [], discovery])
+    // A superseded discovery ends without the audit that its readiness waited for, so the discovery that took the
+    // audit over decides that readiness. Its own deadline still bounds the wait, and when the successor fails the
+    // caller reads this discovery's own state instead of the other run's error.
+    const readiness = async (): Promise<ProviderModelEligibilityState> => {
+      const state = await refreshOperation
+      const { step } = discovery
+      return step.kind === "superseded" ? step.by.ready.catch(() => state) : state
+    }
+    void readiness().then(readied, (error: unknown) => {
       clearTimeout(deadline)
       ready.reject(error)
     })
-    controllers.set(refreshOperation, refreshController)
-    const discovery = { done: refreshOperation, ready: ready.promise }
-    discoveries.set(profile.id, discovery)
     const release = () => {
       controllers.delete(refreshOperation)
-      if (discoveries.get(profile.id)?.done === refreshOperation) discoveries.delete(profile.id)
+      const remaining = (discoveries.get(profile.id) ?? []).filter((owned) => owned !== discovery)
+      if (remaining.length === 0) discoveries.delete(profile.id)
+      else discoveries.set(profile.id, remaining)
     }
     // The sessions take the new state after the release, so a session admission
     // that this starts never waits for this discovery.
@@ -409,12 +467,10 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
     if (existing && discoveryMode === "cached-first") return settle(profile, awaitWithAbortSignal(existing, options?.signal), options)
     const controller = new AbortController()
     const initialPreparation = deps.current(profile.id) === undefined
-    // A forced run leaves the audit's committed results in place and lets the
-    // next audit resume; it does not queue behind the probes.
-    if (discoveryMode !== "cached-first") audits.get(profile.id)?.abort(new DOMException("Audit superseded", "AbortError"))
     // Forced account/auth changes must run after any catalog discovery already
-    // owned here, rather than racing its publication.
-    const preceding = discoveryMode === "cached-first" ? undefined : discoveries.get(profile.id)?.done ?? existing
+    // owned here, rather than racing its publication. A forced run supersedes
+    // the audits of those discoveries below, so each one ends with its listing.
+    const preceding = discoveryMode === "cached-first" ? undefined : latestDiscovery(profile.id)?.done ?? existing
     const execute = () => {
       controller.signal.throwIfAborted()
       if (discoveryMode !== "cached-first") lastDiscovery.set(profile.id, now())
@@ -430,7 +486,20 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
     void operation.then(release, release)
     if (discoveryMode === "cached-first" && !discoveries.has(profile.id)) discoverAfter(profile, operation, initialPreparation || options?.refreshSavedCatalogs === true ? true : "pending")
     // A login or account change returns once the listing is validated; probing continues in the background.
-    else if (discoveryMode !== "cached-first") discoverAfter(profile, operation, false)
+    else if (discoveryMode !== "cached-first") {
+      // The forced run's own discovery takes over every earlier audit, started or not, and leaves the committed
+      // results in place for it to resume. A recheck that it supersedes before its audit armed it queues again
+      // behind the forced run, and drops itself, as any queued recheck does, when the forced run changed the
+      // inputs it was asked against.
+      const successor = discoverAfter(profile, operation, false)
+      for (const recheck of supersedeAudits(profile.id, { kind: "forced-run", by: successor })) {
+        try {
+          run.recheckAccount(profile, recheck.account, recheck.expected)
+        } catch (error) {
+          log.info("manual provider-model recheck dropped because the auth profile inputs changed", { profileId: profile.id, error: errorMessage(error) })
+        }
+      }
+    }
     return settle(profile, awaitWithAbortSignal(operation, options?.signal), options)
   }
   run.scheduleRefresh = (profile: EligibilityProfile): void => {
@@ -449,9 +518,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
   run.recheckAccount = (profile: EligibilityProfile, account: AccessProviderAccountIdentity, expected: EligibilityInputRevision): void => {
     if (closed) throw new Error("eligibility preparation is disposed")
     if (!sameInputRevision(expected, deps.inputRevision(profile))) throw new Error("provider-model recheck was requested against stale auth profile inputs")
-    // Committed probe results persist; the recheck makes every candidate due again, so the active audit has nothing left to finish first.
-    audits.get(profile.id)?.abort(new DOMException("Audit superseded", "AbortError"))
-    const preceding = discoveries.get(profile.id)?.done ?? cachedPreparations.get(profile.id)
+    const preceding = latestDiscovery(profile.id)?.done ?? cachedPreparations.get(profile.id)
     const admit = (): Promise<ProviderModelEligibilityState> => {
       const current = deps.current(profile.id)
       if (current === undefined || !sameInputRevision(expected, deps.inputRevision(profile))) {
@@ -460,13 +527,16 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
       }
       return Promise.resolve(current)
     }
-    discoverAfter(profile, preceding === undefined ? Promise.resolve().then(admit) : preceding.then(admit, admit), false, account)
+    const successor = discoverAfter(profile, preceding === undefined ? Promise.resolve().then(admit) : preceding.then(admit, admit), false, { account, expected })
+    // Committed probe results persist; the recheck makes every candidate due again, so an active audit has nothing
+    // left to finish first, and a discovery that has not reached its audit is followed instead.
+    supersedeAudits(profile.id, { kind: "recheck", by: successor })
   }
   run.republish = (profile: EligibilityProfile): Promise<void> => {
     if (closed) return Promise.reject(new Error("eligibility preparation is disposed"))
     const controller = new AbortController()
     const execute = () => prepare(profile, "cached-first", controller.signal, {})
-    const preceding = discoveries.get(profile.id)?.done ?? cachedPreparations.get(profile.id)
+    const preceding = latestDiscovery(profile.id)?.done ?? cachedPreparations.get(profile.id)
     const operation = preceding === undefined ? execute() : preceding.then(execute, execute)
     controllers.set(operation, controller)
     void operation.then(() => controllers.delete(operation), () => controllers.delete(operation))
@@ -513,7 +583,7 @@ export function createEligibilityPreparation(deps: EligibilityPreparationDeps): 
     })
   }
   run.awaitDiscovery = async (profile: EligibilityProfile, signal: AbortSignal): Promise<void> => {
-    const discovery = discoveries.get(profile.id)
+    const discovery = latestDiscovery(profile.id)
     if (discovery !== undefined) await awaitWithAbortSignal(discovery.done, signal)
   }
   const saveThroughSharedListing = ({ connection, candidate, wireModelId, refusal }: ModelRefusalRecord): Promise<boolean> => {

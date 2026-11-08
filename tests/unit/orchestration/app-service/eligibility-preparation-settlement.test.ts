@@ -20,6 +20,69 @@ type InventoryCandidate = ResolvedProviderModelCatalogs["inventoryCandidates"] e
 
 const emptyModels = (): ResolvedProviderModels => ({ catalog: new Set(), curatedDefault: new Set(), enabled: new Set(), disabled: new Set(), effective: new Set() })
 
+const grok = { kind: "subscription", providerId: "supergrok", instanceId: "primary", spendMode: "included" } as const
+const grokKey = accessProviderAccountKey(grok)
+const grokIds = ["grok-a", "grok-b"]
+interface AuditedOptions {
+  readonly auditFailure?: Error
+  readonly settlementTimeoutMs?: number
+  /** Holds the listing of a discovery mode until the promise resolves. */
+  readonly listings?: { readonly refresh?: Promise<void>; readonly fresh?: Promise<void> }
+}
+/** One account whose listing leaves two models for the audit; each probe waits for its resolver. `modes` records
+ *  each catalog resolution's discovery mode as it starts. */
+const audited = (options: AuditedOptions = {}) => {
+  const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
+  const probes = grokIds.map(() => Promise.withResolvers<void>())
+  const modes: string[] = []
+  let listed = false
+  let verified = 0
+  const prepare = createEligibilityPreparation({
+    userDataRoot: DIRECTORIES.userDataRoot,
+    allowTrainingRoutes: () => false,
+    resolveKey: async () => undefined,
+    moduleSelection: () => composeFirstPartyModules([]),
+    prepare: service.prepare,
+    publish: service.publish,
+    current: service.state,
+    inputRevision: () => ({ auth: "auth-v1", preferences: "preferences-v1" }),
+    ...options.settlementTimeoutMs === undefined ? {} : { settlementTimeoutMs: options.settlementTimeoutMs },
+    resolveCatalog: async ({ discoveryMode, onAccessAudit }) => {
+      modes.push(discoveryMode ?? "missing")
+      if (discoveryMode === "refresh" || discoveryMode === "fresh") await options.listings?.[discoveryMode]
+      if (discoveryMode === "refresh") listed = true
+      if (discoveryMode === "audit") {
+        for (const [index, modelId] of grokIds.entries()) {
+          await probes[index]!.promise
+          if (options.auditFailure !== undefined) throw options.auditFailure
+          verified += 1
+          await onAccessAudit?.({ account: grok, remaining: grokIds.length - verified, modelId, outcome: "completed" })
+        }
+      }
+      const offerings = new Map(grokIds.slice(0, verified).map((id) => [id, [{ wireModelId: id, metadata: null, dataUse: "standard" as const }] as const]))
+      const models: ResolvedProviderModels = { ...emptyModels(), catalog: new Set(offerings.keys()), curatedDefault: new Set(offerings.keys()), effective: new Set(offerings.keys()) }
+      return {
+        providers: new Map(),
+        accounts: new Map([[grokKey, models]]),
+        inventoryCandidates: new Map<string, InventoryCandidate>([[grokKey, {
+          candidate: grok, configured: true, currentConnection: true, enabledOfferings: offerings, inventoryOfferings: offerings,
+          ...listed ? { audit: { remaining: grokIds.length - verified, refused: 0 } } : {},
+          ...verified === 0 ? { outcome: { kind: "unavailable", reason: "discovery-pending" } } : {},
+        }]]),
+        modelInfos: new Map(),
+        enabledModels: new Map(),
+      }
+    },
+  })
+  const dispose = async () => {
+    for (const probe of probes) probe.resolve()
+    await prepare.dispose()
+    await service.dispose()
+  }
+  return { service, probes, prepare, modes, dispose }
+}
+const turns = async () => { for (let turn = 0; turn < 50; turn += 1) await new Promise((resolve) => setImmediate(resolve)) }
+
 describe("eligibility preparation settlement", () => {
   test("a login listing keeps its admitted composition after the live selection changes", async () => {
     const captured = composeFirstPartyModules(undefined, []);
@@ -138,9 +201,6 @@ describe("eligibility preparation settlement", () => {
     const otherAccount = ending === "another account serves" || contributor
     const allowTrainingRoutes = () => ending === "a contributor account is permitted"
     const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes, persist: async () => "next", persistAllDeselected: async () => "next" })
-    const grok = { kind: "subscription", providerId: "supergrok", instanceId: "primary", spendMode: "included" } as const
-    const grokKey = accessProviderAccountKey(grok)
-    const grokIds = ["grok-a", "grok-b"]
     const offering: CatalogModelOffering = { ...OFFERING, dataUse: contributor ? "contributor" : "standard" }
     const anthropicOfferings = new Map([["claude-fable-5.1", [offering] as const]])
     const probes = grokIds.map(() => Promise.withResolvers<void>())
@@ -219,60 +279,46 @@ describe("eligibility preparation settlement", () => {
     }
   })
 
-  describe("awaitDiscovery", () => {
-    const grok = { kind: "subscription", providerId: "supergrok", instanceId: "primary", spendMode: "included" } as const
-    const grokKey = accessProviderAccountKey(grok)
-    const grokIds = ["grok-a", "grok-b"]
-    /** One account whose listing leaves two models for the audit; each probe waits for its resolver. */
-    const audited = (options: { readonly auditFailure?: Error; readonly settlementTimeoutMs?: number } = {}) => {
-      const service = createProviderModelPreferenceService({ displayName: (id) => id, allowTrainingRoutes: () => false, persist: async () => "next", persistAllDeselected: async () => "next" })
-      const probes = grokIds.map(() => Promise.withResolvers<void>())
-      let listed = false
-      let verified = 0
-      const prepare = createEligibilityPreparation({
-        userDataRoot: DIRECTORIES.userDataRoot,
-        allowTrainingRoutes: () => false,
-        resolveKey: async () => undefined,
-        moduleSelection: () => composeFirstPartyModules([]),
-        prepare: service.prepare,
-        publish: service.publish,
-        current: service.state,
-        inputRevision: () => ({ auth: "auth-v1", preferences: "preferences-v1" }),
-        ...options.settlementTimeoutMs === undefined ? {} : { settlementTimeoutMs: options.settlementTimeoutMs },
-        resolveCatalog: async ({ discoveryMode, onAccessAudit }) => {
-          if (discoveryMode === "refresh") listed = true
-          if (discoveryMode === "audit") {
-            for (const [index, modelId] of grokIds.entries()) {
-              await probes[index]!.promise
-              if (options.auditFailure !== undefined) throw options.auditFailure
-              verified += 1
-              await onAccessAudit?.({ account: grok, remaining: grokIds.length - verified, modelId, outcome: "completed" })
-            }
-          }
-          const offerings = new Map(grokIds.slice(0, verified).map((id) => [id, [{ wireModelId: id, metadata: null, dataUse: "standard" as const }] as const]))
-          const models: ResolvedProviderModels = { ...emptyModels(), catalog: new Set(offerings.keys()), curatedDefault: new Set(offerings.keys()), effective: new Set(offerings.keys()) }
-          return {
-            providers: new Map(),
-            accounts: new Map([[grokKey, models]]),
-            inventoryCandidates: new Map<string, InventoryCandidate>([[grokKey, {
-              candidate: grok, configured: true, currentConnection: true, enabledOfferings: offerings, inventoryOfferings: offerings,
-              ...listed ? { audit: { remaining: grokIds.length - verified, refused: 0 } } : {},
-              ...verified === 0 ? { outcome: { kind: "unavailable", reason: "discovery-pending" } } : {},
-            }]]),
-            modelInfos: new Map(),
-            enabledModels: new Map(),
-          }
-        },
-      })
-      const dispose = async () => {
-        for (const probe of probes) probe.resolve()
-        await prepare.dispose()
-        await service.dispose()
-      }
-      return { service, probes, prepare, dispose }
-    }
-    const turns = async () => { for (let turn = 0; turn < 50; turn += 1) await new Promise((resolve) => setImmediate(resolve)) }
+  test("a forced run that arrives while the discovery lists waits for the listing and never for its audit, and a settled caller that came first still waits for an account that can serve", async () => {
+    const refresh = Promise.withResolvers<void>()
+    const fresh = Promise.withResolvers<void>()
+    const { service, probes, prepare, modes, dispose } = audited({ listings: { refresh: refresh.promise, fresh: fresh.promise } })
+    try {
+      await prepare(PROFILE)
+      let early: ProviderModelEligibilityState | undefined
+      const admission = prepare(PROFILE, { settled: true }).then((state) => { early = state })
+      await turns()
+      let forced = false
+      const login = prepare(PROFILE, { mode: "fresh" }).then(() => { forced = true })
 
+      refresh.resolve()
+      await turns()
+      expect(modes).toEqual(["cached-first", "refresh", "fresh"])
+      expect(early).toBeUndefined()
+
+      fresh.resolve()
+      await turns()
+      expect(forced).toBe(true)
+      expect(modes).toEqual(["cached-first", "refresh", "fresh", "audit"])
+      expect(early).toBeUndefined()
+
+      probes[0]!.resolve()
+      await admission
+      expect(early?.inventoryCandidates.get(grokKey)?.inventoryOfferings?.size).toBe(1)
+
+      probes[1]!.resolve()
+      await login
+      await prepare.awaitDiscovery(PROFILE, new AbortController().signal)
+      expect(modes.filter((mode) => mode !== "cached-first")).toEqual(["refresh", "fresh", "audit"])
+      expect(service.state(PROFILE.id)?.inventoryCandidates.get(grokKey)?.inventoryOfferings?.size).toBe(2)
+    } finally {
+      refresh.resolve()
+      fresh.resolve()
+      await dispose()
+    }
+  })
+
+  describe("awaitDiscovery", () => {
     test("resolves after the audit's last publication", async () => {
       const { service, probes, prepare, dispose } = audited()
       try {

@@ -283,6 +283,8 @@ describe("eligibility preparation with a models.dev catalog source", () => {
     const modes: string[] = []
     const rechecks: (string | undefined)[] = []
     let holdAudit = false
+    /** Held by the next listing only. */
+    let listingHold: Promise<void> | undefined
     let entered = Promise.withResolvers<void>()
     let published = Promise.withResolvers<void>()
     const prepare = createEligibilityPreparation({
@@ -298,6 +300,11 @@ describe("eligibility preparation with a models.dev catalog source", () => {
       now: () => 0,
       resolveCatalog: async ({ discoveryMode, recheckAccount, signal }) => {
         modes.push(discoveryMode ?? "missing")
+        if (discoveryMode === "fresh" && listingHold !== undefined) {
+          const held = listingHold
+          listingHold = undefined
+          await held
+        }
         if (discoveryMode === "audit") {
           rechecks.push(recheckAccount === undefined ? undefined : accessProviderAccountKey(recheckAccount))
           if (holdAudit) {
@@ -342,6 +349,19 @@ describe("eligibility preparation with a models.dev catalog source", () => {
     await published.promise
     expect(rechecks).toEqual([key, key, key])
 
+    // A forced run supersedes a recheck that waits behind a listing before its audit started, so the recheck
+    // queues again behind the forced run instead of being lost.
+    const listing = Promise.withResolvers<void>()
+    listingHold = listing.promise
+    const login = prepare(PROFILE, { mode: "fresh" })
+    prepare.recheckAccount(PROFILE, candidate, revision())
+    const relogin = prepare(PROFILE, { mode: "fresh" })
+    listing.resolve()
+    await Promise.all([login, relogin])
+    await prepare.awaitDiscovery(PROFILE, new AbortController().signal)
+    expect(modes.slice(-3)).toEqual(["fresh", "fresh", "audit"])
+    expect(rechecks).toEqual([key, key, key, key])
+
     // Queued work whose inputs changed before it started writes, publishes, and probes nothing.
     holdAudit = true
     entered = Promise.withResolvers()
@@ -350,7 +370,7 @@ describe("eligibility preparation with a models.dev catalog source", () => {
     prepare.recheckAccount(PROFILE, candidate, revision())
     auth = "auth-v2"
     await new Promise((resolve) => setTimeout(resolve, 5))
-    expect(rechecks).toEqual([key, key, key, key])
+    expect(rechecks).toEqual([key, key, key, key, key])
     await prepare.dispose()
     await service.dispose()
   })

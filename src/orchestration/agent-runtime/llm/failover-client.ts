@@ -437,63 +437,67 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
             pendingPlan ??= attribution;
             continue;
           }
+          // A stop that landed while an earlier candidate awaited claims nothing more.
+          if (mode !== "plans") waitSignal.throwIfAborted();
           // A planning read predicts what a request would do - probe - without
           // a lease it could never conclude.
           const probes: QuotaProbe[] = [];
-          if (mode === "serves" && readiness.quotaProbeDue) {
-            const state = standingQuotaState(candidate, availability, mode);
-            if (!state.available) {
-              if (state.kind === "pending") {
-                pending.push(state.pending);
-                pendingPlan ??= attribution;
-              } else {
-                recordSpent({ candidate, state });
-              }
-              continue;
-            }
-            if (state.probe !== undefined) probes.push(state.probe);
-          }
-          if (mode !== "plans") waitSignal.throwIfAborted();
-          if (mode === "serves" && readiness.serviceProbeDue) {
-            const probe = availability.claimServiceProbe(provider);
-            if (probe === undefined) {
-              for (const held of probes) availability.releaseQuotaProbe(candidate, held);
-              const current = availability.serviceStanding(provider);
-              if (current.kind === "recheck_pending") pending.push(current);
-              else recordSpent({ candidate, state: { available: false, kind: "terminal", reason: "unavailable", detail: "the outage recheck could not be coordinated.", resetsAtMs: undefined } });
-              continue;
-            }
-            probes.push(probe);
-          }
+          // The candidate owns every probe it claims until a Selection takes them; every other exit hands them back.
+          let handedOff = false;
           try {
-            const staged = await deps.build(attribution);
-            const attempt = servingAttempt(staged);
-            if (prepare === undefined) {
-              attempted.add(routeKey(attribution));
-              return { candidate, attribution, servingAttempt: attempt, probes };
+            if (mode === "serves" && readiness.quotaProbeDue) {
+              const state = standingQuotaState(candidate, availability, mode);
+              if (!state.available) {
+                if (state.kind === "pending") {
+                  pending.push(state.pending);
+                  pendingPlan ??= attribution;
+                } else {
+                  recordSpent({ candidate, state });
+                }
+                continue;
+              }
+              if (state.probe !== undefined) probes.push(state.probe);
             }
-            const prepared = await prepare(attempt);
-            if (!await affordable(attribution, prepared)) {
-              for (const held of probes) availability.releaseQuotaProbe(candidate, held);
-              continue;
+            if (mode === "serves" && readiness.serviceProbeDue) {
+              const probe = availability.claimServiceProbe(provider);
+              if (probe === undefined) {
+                const current = availability.serviceStanding(provider);
+                if (current.kind === "recheck_pending") pending.push(current);
+                else recordSpent({ candidate, state: { available: false, kind: "terminal", reason: "unavailable", detail: "the outage recheck could not be coordinated.", resetsAtMs: undefined } });
+                continue;
+              }
+              probes.push(probe);
             }
-            waitSignal.throwIfAborted();
-            const client = await staged.connect();
-            // A request stopped while its candidate connected is neither served nor prepared.
-            waitSignal.throwIfAborted();
-            if (mode === "serves") deps.routing.record({ kind: "served", model: deps.model, chosen: provider, passed: passedCandidates(spent) });
-            return select(attribution, client, prepared, probes);
-          } catch (error) {
-            for (const held of probes) availability.releaseQuotaProbe(candidate, held);
-            // Construction fails under the same rule as serving: a spent or
-            // unreachable account hands the request on, anything else ends it.
-            if (!(error instanceof ProviderAttemptFailure) || !isFailoverFailure(error.failure)) throw error;
-            if (error.failure._tag === "AuthConditionFailure") recordAuthConditions(error.failure.conditions);
-            recordSpent({
-              candidate,
-              ...(attribution.routeKind === "free" ? { wireModelId: attribution.wireModelId } : {}),
-              state: { available: false, kind: "terminal", reason: error.failure, detail: errorMessage(error), resetsAtMs: undefined },
-            });
+            try {
+              const staged = await deps.build(attribution);
+              const attempt = servingAttempt(staged);
+              if (prepare === undefined) {
+                attempted.add(routeKey(attribution));
+                handedOff = true;
+                return { candidate, attribution, servingAttempt: attempt, probes };
+              }
+              const prepared = await prepare(attempt);
+              if (!await affordable(attribution, prepared)) continue;
+              waitSignal.throwIfAborted();
+              const client = await staged.connect();
+              // A request stopped while its candidate connected is neither served nor prepared.
+              waitSignal.throwIfAborted();
+              if (mode === "serves") deps.routing.record({ kind: "served", model: deps.model, chosen: provider, passed: passedCandidates(spent) });
+              handedOff = true;
+              return select(attribution, client, prepared, probes);
+            } catch (error) {
+              // Construction fails under the same rule as serving: a spent or
+              // unreachable account hands the request on, anything else ends it.
+              if (!(error instanceof ProviderAttemptFailure) || !isFailoverFailure(error.failure)) throw error;
+              if (error.failure._tag === "AuthConditionFailure") recordAuthConditions(error.failure.conditions);
+              recordSpent({
+                candidate,
+                ...(attribution.routeKind === "free" ? { wireModelId: attribution.wireModelId } : {}),
+                state: { available: false, kind: "terminal", reason: error.failure, detail: errorMessage(error), resetsAtMs: undefined },
+              });
+            }
+          } finally {
+            if (!handedOff) for (const held of probes) availability.releaseQuotaProbe(candidate, held);
           }
         }
         if (pending.length > 0) {
@@ -573,11 +577,12 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
       let resamples = 0;
       let selection = await walk.start();
       for (;;) {
-        request.signal?.throwIfAborted();
         const attempt = selection;
         let concluded = attempt.probes.length === 0;
         const stopProbeRenewal = keepProbesAlive(attempt);
         try {
+          // Inside the try, so a stop that lands before the first attempt still hands the Selection's probes back.
+          request.signal?.throwIfAborted();
           // The candidate's own attempts: one wire attempt, then in-place
           // retries of its transient failures. A probe lease stays alive
           // across them, because the recheck is concluded by the candidate's
