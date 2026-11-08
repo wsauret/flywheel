@@ -139,7 +139,7 @@ export function createChatWaitState(input: {
         const turn = input.host.ownsTurn(lease) ? slotTurn() : undefined
         if (turn) turn.park = stalled || turnEndWaits ? "interrupted" : undefined
         if (undecidedMaintenance === decision) undecidedMaintenance = undefined
-        return { awaitsPerson: stalled || turnEndWaits, turnEndWaits }
+        return stalled || turnEndWaits ? { personWait: { turnEnd: turnEndWaits ? "recorded" : "unrecorded" } } : {}
       })
       undecidedMaintenance = decision
       return decision

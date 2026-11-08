@@ -8,7 +8,7 @@ import { ChatTurnMailbox } from "../../../../../src/orchestration/chat/turn-mail
 import { RunLifecycle } from "../../../../../src/orchestration/agent-runtime/run-lifecycle.js";
 import { FUNCTION_TOOL_PRESENTATION, type ConversationMessage, type ProviderStreamEvent, type StreamEvent, type StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
 import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
-import { makeCaptureClient, makeFakeLLMClient } from "./_loop-fixtures.js";
+import { makeCaptureClient, makeFakeLLMClient, withSessionNotes } from "./_loop-fixtures.js";
 import type { AgentLoopTerminal } from "../../../../../src/orchestration/agent-runtime/agent-loop-types.js";
 import { RequestToolMap } from "../../../../helpers/request-tool-surface.js";
 import { consumeAgentLoopInput } from "../../../../../src/orchestration/agent-runtime/agent-loop-input-consumer.js";
@@ -549,6 +549,121 @@ describe("agent loop interruption barrier", () => {
     expect(recordIndex).toBeGreaterThan(-1);
     expect(continued.findIndex((message) => message.kind === "user" && message.content === CONTINUATION_MESSAGES.resumed)).toBeGreaterThan(recordIndex);
     expect(JSON.stringify(continued)).toContain("build complete");
+
+    lifecycle.abort({ kind: "aborted" });
+    await lifecycle.done;
+  });
+
+  test("a /compact that wakes a park on background work, then an Escape, parks for the person after the reset and runs no request", async () => {
+    const mailbox = new ChatTurnMailbox();
+    const lifecycle = new RunLifecycle<AgentLoopTerminal>();
+    const task = Promise.withResolvers<BackgroundWorkResult>();
+    const registry = createBackgroundWorkRegistry({ kind: "chat", enqueueNotification: (notification) => mailbox.enqueueSilentSystem(notification) });
+    registry.track({ done: task.promise, meta: { id: "background-1", type: "background_command", description: "long build", toolUseId: "tool-1" } });
+    const answer = (text: string) => ({ events: [{ kind: "text_delta" as const, text, blockKey: text }, { kind: "done" as const, stopReason: "end_turn" as const }] });
+    const { client, capturedMessages } = makeCaptureClient([
+      { events: [{ kind: "tool_use", toolCall: { id: "wait-build", name: "process", input: { action: "wait", soft_timeout: 30 } } }, { kind: "done", stopReason: "tool_use" }] },
+      answer("checkpoint saved"),
+      answer("an unauthorized request"),
+    ]);
+    const notes = withSessionNotes(new Map([["process", createProcessTool(registry)]]));
+    const record: ConversationMessage = { kind: "user", content: interruptedTurnMessage("person", true), origin: "system" };
+    let recorded = 0;
+    let turnsEnded = 0;
+    let resets = 0;
+    const parks: { park: string; userResumeRequired: boolean }[] = [];
+    let loopError: Error | undefined;
+    void lifecycle.done.catch((error) => { loopError = error instanceof Error ? error : new Error(String(error)); });
+
+    expect(lifecycle.start((signal) => runAgentLoop({
+      client, tools: notes.tools, checkpoint: notes.checkpoint,
+      systemPrompt: stableSystemPrompt("test"), instruction: "run the build",
+      executionCwd: "/scratch", userDataRoot: "/scratch/.test-account", projectRoot: "/scratch",
+      providerSessionKey: "compact-in-park", promptCacheKey: "compact-in-park", artifactScopeId: "compact-in-park", retrievalSessionId: "compact-in-park",
+      persistence: { history: { append: () => {} }, recordInterruption: async () => { recorded += 1; return record; } },
+      seed: { kind: "fresh" },
+      onEvent: (event) => { if (event.kind === "compaction_done" && event.success) resets += 1; },
+      inputSource: mailbox,
+      background: createBackgroundExecutionOwner(registry),
+      signal, currentTurn: lifecycle,
+      lifecycle: {
+        onTurnEnded: () => { turnsEnded += 1; },
+        onTurnParked: ({ park, userResumeRequired }) => {
+          parks.push({ park, userResumeRequired });
+          // While the host lands the park's durable writes, the person sends
+          // /compact, which wakes the wait, and then presses Escape.
+          if (parks.length === 1) { mailbox.enqueueCompact(); lifecycle.interrupt(); }
+        },
+      },
+    }))).toBe(true);
+
+    await waitUntil(() => (resets > 0 && parks.length >= 2) || loopError !== undefined, "the compaction did not reset and park again");
+    throwLoopError(loopError);
+    await Bun.sleep(20);
+    expect(recorded).toBe(1);
+    expect(resets).toBe(1);
+    // The interrupted work park ended the turn once; the compaction ran its checkpoint request only.
+    expect(capturedMessages).toHaveLength(2);
+    expect(turnsEnded).toBe(1);
+    expect(parks).toEqual([{ park: "waiting_on_work", userResumeRequired: false }, { park: "interrupted", userResumeRequired: true }]);
+
+    lifecycle.abort({ kind: "aborted" });
+    await lifecycle.done;
+  });
+
+  test("an idle checkpoint that wakes an idle park, then an Escape and a settings change that withdraw it, folds later input and parks for the person", async () => {
+    const mailbox = new ChatTurnMailbox();
+    const lifecycle = new RunLifecycle<AgentLoopTerminal>();
+    const answer = (text: string) => ({ events: [{ kind: "text_delta" as const, text, blockKey: text }, { kind: "done" as const, stopReason: "end_turn" as const }] });
+    const { client, capturedMessages } = makeCaptureClient([answer("Finished."), answer("an unauthorized request")]);
+    const notes = withSessionNotes();
+    let idleCompaction = true;
+    let notified = false;
+    const resolve = notes.tools.resolve.bind(notes.tools);
+    notes.tools.resolve = async () => {
+      const surface = await resolve();
+      // A background result lands while the loop resolves the surface that
+      // withdraws the checkpoint, after the loop took the checkpoint input.
+      if (!idleCompaction && !notified) { notified = true; mailbox.enqueueSilentSystem("background task finished"); }
+      return { ...surface, runtimeConfig: { ...surface.runtimeConfig, idleCompaction } };
+    };
+    const logicalStarts: string[] = [];
+    const parks: { park: string; userResumeRequired: boolean }[] = [];
+    let loopError: Error | undefined;
+    void lifecycle.done.catch((error) => { loopError = error instanceof Error ? error : new Error(String(error)); });
+
+    expect(lifecycle.start((signal) => runAgentLoop({
+      client, tools: notes.tools, checkpoint: notes.checkpoint,
+      systemPrompt: stableSystemPrompt("test"), instruction: "say done",
+      executionCwd: "/scratch", userDataRoot: "/scratch/.test-account", projectRoot: "/scratch",
+      providerSessionKey: "idle-withdrawn", promptCacheKey: "idle-withdrawn", artifactScopeId: "idle-withdrawn", retrievalSessionId: "idle-withdrawn",
+      persistence: { history: { append: () => {} } },
+      seed: { kind: "fresh" },
+      onEvent: () => {},
+      inputSource: mailbox,
+      signal, currentTurn: lifecycle,
+      lifecycle: {
+        onLogicalTurnStarted: ({ origin }) => { logicalStarts.push(origin); },
+        onTurnParked: ({ park, userResumeRequired }) => {
+          parks.push({ park, userResumeRequired });
+          // While the host lands the park's durable writes, the idle timer wakes
+          // the wait, the person presses Escape, and then turns idle compaction off.
+          if (parks.length === 1) { mailbox.enqueueCompact("idle"); lifecycle.interrupt(); idleCompaction = false; }
+        },
+      },
+    }))).toBe(true);
+
+    await waitUntil(() => parks.length >= 3 || loopError !== undefined, "the interrupted park did not park again after the late notification");
+    throwLoopError(loopError);
+    expect(notified).toBe(true);
+    // The notification folded into history: it started no turn and no request.
+    expect(logicalStarts).toEqual([]);
+    expect(capturedMessages).toHaveLength(1);
+    expect(parks).toEqual([
+      { park: "idle", userResumeRequired: false },
+      { park: "interrupted", userResumeRequired: true },
+      { park: "interrupted", userResumeRequired: true },
+    ]);
 
     lifecycle.abort({ kind: "aborted" });
     await lifecycle.done;

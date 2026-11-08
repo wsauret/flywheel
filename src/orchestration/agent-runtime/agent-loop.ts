@@ -77,7 +77,9 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   const maxLLMCalls = options.maxLLMCalls;
   const tally = options.tally ?? createAgentRunTally();
   const priorLLMCalls = options.priorLLMCalls ?? 0;
-  let state: typeof initialLoopState = { ...initialLoopState, llmCalls: priorLLMCalls };
+  // A maintenance start whose last turn waits for the person starts in that wait.
+  const seededPersonWait = lifecycle?.maintenance?.personWait;
+  let state: typeof initialLoopState = { ...initialLoopState, llmCalls: priorLLMCalls, ...(seededPersonWait ? { personWait: seededPersonWait } : {}) };
   let logicalTurnRequestContext = options.initialRequestContext;
   // The surface a manual compaction admitted. The request that follows at
   // once reuses it. A park or a person turn discards it, so the request after
@@ -102,7 +104,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     logicalRequestContext: () => replyNudge.previewRequestContext(logicalTurnRequestContext),
     admitSurface: (next) => { admittedRequest = next; },
     compactionAllowedTools: (requestsAhead) => budgetNudge.closureWhitelist(state.llmCalls + requestsAhead)?.tools,
-    carryTurnEnd: () => turnEndRecorded,
+    carryTurnEnd: () => state.personWait?.turnEnd === "recorded",
     setMessages: (next) => { preparation.messages = next; },
     onEvent,
     pushUser, pushMessage, onUserMessage: options.onUserMessage,
@@ -114,7 +116,6 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   const messageInputEffects: Parameters<typeof consumeAgentLoopMessageInput>[3] = {
     clearRequestContext: () => { logicalTurnRequestContext = undefined; },
     logicalTurnStarted: (origin) => {
-      turnEndRecorded = false;
       lifecycle?.onLogicalTurnStarted?.({ origin, reason: "queued_input" });
       if (origin === "user") { admittedRequest = undefined; pendingWorkNudge.reset(); batchObservation.reset(); }
       state = loopTransition.logicalTurnStarted(state, origin);
@@ -150,37 +151,26 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     onCompactionContinuation: lifecycle?.onCompactionContinuation,
     }, inputOptions);
 
-  // The loop waits for the person: a maintenance start whose last turn waits
-  // for the person, or a park after an interrupt. A compaction then runs no
-  // turn of the person's: it parks where the last turn ended, waits for the
-  // person again, and records nothing new. Only a resumed turn ends the wait,
-  // so a compaction after it, or after an interrupt of the maintenance
-  // compaction, parks as any answered turn does.
-  let awaitsPerson = lifecycle?.maintenance?.awaitsPerson === true;
-  // The wait rests on a recorded turn end: one that a maintenance start read,
-  // or one that this loop recorded for an interrupt. Every compaction until
-  // the person's message or Resume carries that record past its reset, so
-  // the conversation still reads as waiting for the person (ARCH-SESSIONS-035). A
-  // stall waits for the person too, but records no turn end to carry.
-  let turnEndRecorded = lifecycle?.maintenance?.turnEndWaits === true;
   let continuedWait = lifecycle?.continuedWait;
   const awaitNextLoopInput = createAgentLoopInputWaiter({
     runSignal: signal,
     providerSessionKey: options.providerSessionKey,
     prepareWaitForInput: options.inputSource?.prepareWaitForInput?.bind(options.inputSource),
     consume: consumeLoopInput,
-    state: () => ({ turnCount: state.turn, handoffWritten: false, ...(state.wait ? { wait: state.wait } : {}) }),
+    state: () => ({ turnCount: state.turn, handoffWritten: false, ...(state.wait ? { wait: state.wait } : {}), ...(state.personWait ? { personWait: state.personWait } : {}) }),
     closeWait: () => { state = loopTransition.waitClosed(state); },
+    handBack: async (recordTurnEnd) => {
+      state = loopTransition.turnHandedBack(state);
+      if (recordTurnEnd && await recordInterruptedTurn(persistence, (record) => { preparation.messages.push(record); }, options.flushCanonicalMessages)) state = loopTransition.turnEndRecorded(state);
+    },
     backgroundTasks: options.background?.tasks,
     scheduleWaitExpiry: options.scheduleWaitExpiry,
     onTurnParked: (context) => {
-      awaitsPerson = context.userResumeRequired;
       admittedRequest = undefined;
       tally.parks += 1;
       return lifecycle?.onTurnParked?.({ ...context, idleCache: compactionState.parkedCache() });
     },
-    onTurnResumed: () => { awaitsPerson = false; turnEndRecorded = false; lifecycle?.onTurnResumed?.(); },
-    recordInterruption: async () => { if (await recordInterruptedTurn(persistence, (record) => { preparation.messages.push(record); }, options.flushCanonicalMessages)) turnEndRecorded = true; },
+    onTurnResumed: () => { lifecycle?.onTurnResumed?.(); },
     currentTurn: options.currentTurn,
   });
 
@@ -191,10 +181,13 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   const closureMode = resolveAgentLoopClosureMode(handoffRequired, options.completeOnIdle !== undefined, options.inputSource?.prepareWaitForInput !== undefined);
 
   // A turn ended with nothing left to run: queued input wins, then the loop
-  // completes, parks, or nudges per the closure mode.
+  // completes, parks, or nudges per the closure mode. While the turn is the
+  // person's, it parks for them first: the drains below start a turn for any
+  // input, and only the waiter's rule tells which input the person gave.
   const resolveTurnEnd = async (waitSignal: AbortSignal | undefined): Promise<"continue" | AgentLoopTerminal> => {
     const interruption = () => signal?.aborted ? { kind: "aborted" } as const : waitSignal?.aborted ? parkForPerson("record") : null;
     let interrupted = interruption(); if (interrupted) return await interrupted;
+    if (state.personWait) return parkForPerson();
     const pending = await consumeLoopInput(options.inputSource?.drainPending()); interrupted = interruption();
     if (interrupted) return await interrupted;
     if (pending === "continue") return "continue";
@@ -249,9 +242,9 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   // background work takes the same record inside the waiter. Background
   // notifications still enter canonical history, but only a person's message
   // or Resume authorizes another model request.
-  const parkForPerson = async (afterInterrupt: "record" | "recorded"): Promise<"continue" | AgentLoopTerminal> => {
+  const parkForPerson = async (afterInterrupt?: "record"): Promise<"continue" | AgentLoopTerminal> => {
     if (!options.inputSource?.prepareWaitForInput) return { kind: "interrupted" };
-    return (await awaitNextLoopInput(false, signal, afterInterrupt)) === "continue" ? "continue" : inputClosedTerminal(signal?.aborted);
+    return (await awaitNextLoopInput(false, signal, afterInterrupt === "record")) === "continue" ? "continue" : inputClosedTerminal(signal?.aborted);
   };
   // One-shot reactive-overflow guard viewed over LoopState: acquiring it is
   // the overflowRecoveryStarted transition; logicalTurnStarted and a served
@@ -318,11 +311,14 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
     if (signal?.aborted) return { kind: "aborted" };
     if (interruptSignal.aborted) return parkForPerson("record");
     if (operation.after === "continue") return "continue";
+    // A compaction runs no turn of the person's: while the turn is theirs it
+    // records no turn end, and the turn end parks for them again.
+    if (state.personWait) return resolveTurnEnd(turnSignal);
     if (operation.kind === "idle") {
       await endCompletedTurn();
       return resolveTurnEnd(turnSignal);
     }
-    return awaitsPerson ? parkForPerson("recorded") : finishTurn(turnSignal);
+    return finishTurn(turnSignal);
   };
 
   const takeRequestContext = (): string | undefined => replyNudge.consumeRequestContext(logicalTurnRequestContext);
@@ -336,17 +332,17 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   // message, or their Resume ends it. Input that starts a request owes no
   // nothing-pending notice.
   const restoreNotices: string[] = [];
-  if (restoredWait && !restoredWait.woken && !awaitsPerson) state = restoreAgentLoopWait(state, restoredWait, options.background?.tasks, (text) => { restoreNotices.push(text); });
+  if (restoredWait && !restoredWait.woken && !state.personWait) state = restoreAgentLoopWait(state, restoredWait, options.background?.tasks, (text) => { restoreNotices.push(text); });
   const initialConsumed = await consumeLoopInput(initialInput, lifecycle?.maintenance ? { compactAfter: "park" } : {});
   if (initialConsumed === "empty" && !restoredWait?.requestOwed) for (const notice of restoreNotices) enqueueRuntimeNotice(notice);
   // A maintenance start parks or completes after its input without a request.
   if (!restoredWait?.requestOwed && initialConsumed === "empty" && (restoredWait || ((initialInput?.kind === "compact" || initialInput?.kind === "hold") && lifecycle?.maintenance))) {
-    const end = awaitsPerson && !signal?.aborted ? await parkForPerson("recorded") : await resolveTurnEnd(signal);
+    const end = await resolveTurnEnd(signal);
     if (end !== "continue") return end;
   }
   // A run that continues the cut turn with no Resume input, as a child's
   // continuation does, takes the continued wait before its first request.
-  if (continuedWait && !awaitsPerson) {
+  if (continuedWait && !state.personWait) {
     state = restoreAgentLoopWait(state, continuedWait, options.background?.tasks, undefined);
     continuedWait = undefined;
   }
@@ -669,7 +665,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           messages: preparation.messages, onEvent,
           tokensBefore: requestContext.beforeCompaction(),
           contextLimit: preparation.planned.contextLimit,
-          prepareCompactedHistory: () => prepareCompactedHistory({ saved: false }), after: plannedOperation?.after ?? "continue", carryTurnEnd: turnEndRecorded,
+          prepareCompactedHistory: () => prepareCompactedHistory({ saved: false }), after: plannedOperation?.after ?? "continue", carryTurnEnd: state.personWait?.turnEnd === "recorded",
           emitContextUpdate: () => contextAnchor.emit(), options,
         });
         if (attempt.kind === "exhausted") return { kind: "context_overflow" };

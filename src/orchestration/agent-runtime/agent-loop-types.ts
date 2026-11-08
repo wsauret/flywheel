@@ -33,7 +33,7 @@ import type { PersistentProcessClient } from "../../infra/persistent-process-man
 import type { BridgedPersistentProcessClient } from "../../infra/persistent-process-bridge.js";
 import type { ReadCommandEvidence } from "../../workflows/output-contract/evidence.js";
 import type { StreamingEditValidationService } from "./tools/streaming-edit-validation.js";
-import type { AgentRunTally, WaitExpiry } from "./agent-loop-state.js";
+import type { AgentRunTally, PersonWait, WaitExpiry } from "./agent-loop-state.js";
 
 interface HandoffContent {
   [key: string]: unknown;
@@ -133,16 +133,14 @@ export type AgentLoopSeed =
 /** Where a maintenance runner starts. A maintenance runner starts from an
  *  already parked session to run a queued compaction or to hold the runtime
  *  for work under the session: its first compact or hold returns to the input
- *  wait instead of continuing the task. `awaitsPerson` says that the
+ *  wait instead of continuing the task. `personWait` is present when the
  *  session's last turn waits for the person, as an interrupt, an unexpected
- *  exit, or a stall leaves it. That wait then needs the person's message or
- *  Resume before a request, as a park after an interrupt does, and a message
- *  from another session or a background notification folds into history.
- *  `turnEndWaits` says that the wait rests on a recorded turn end, which a
- *  stall does not record, so a reset carries that record past itself. */
+ *  exit, or a stall leaves it. The loop then starts in that wait
+ *  (`PersonWait`): it needs the person's message or Resume before a request,
+ *  as a park after an interrupt does, and a message from another session or
+ *  a background notification folds into history. */
 export interface AgentLoopMaintenance {
-  readonly awaitsPerson: boolean;
-  readonly turnEndWaits: boolean;
+  readonly personWait?: PersonWait;
 }
 
 /** The committed wait batch and any input committed before the new loop attached.

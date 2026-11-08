@@ -2,17 +2,27 @@ import { describe, expect, it } from "bun:test"
 
 import { resumeInput, type AgentLoopInput } from "../../../../src/infra/agent-loop-events.js"
 import { createAgentLoopInputWaiter } from "../../../../src/orchestration/agent-runtime/agent-loop-input-consumer.js"
+import type { PersonWait } from "../../../../src/orchestration/agent-runtime/agent-loop-state.js"
 import { ChatTurnMailbox } from "../../../../src/orchestration/chat/turn-mailbox.js"
 import { consumeAgentLoopMessageInput } from "../../../../src/orchestration/agent-runtime/agent-loop-input.js"
 
-function waiter(overrides: Partial<Parameters<typeof createAgentLoopInputWaiter>[0]> = {}) {
+type WaiterInput = Parameters<typeof createAgentLoopInputWaiter>[0]
+// The loop owns the person wait; this fake applies its hand-back transitions.
+function waiter(overrides: Partial<WaiterInput> & { recordInterruption?: () => Promise<void>; personWait?: PersonWait } = {}) {
+  const { recordInterruption, personWait: seeded, state, ...rest } = overrides
+  let personWait = seeded
+  const base = state ?? (() => ({ turnCount: 1, handoffWritten: false }))
   return createAgentLoopInputWaiter({
     prepareWaitForInput: () => {
       throw new Error("prepareWaitForInput not provided")
     },
     consume: async () => "continue",
-    state: () => ({ turnCount: 1, handoffWritten: false }),
-    ...overrides,
+    ...rest,
+    state: () => ({ ...base(), ...(personWait ? { personWait } : {}) }),
+    handBack: async (recordTurnEnd) => {
+      personWait ??= { turnEnd: "unrecorded" }
+      if (recordTurnEnd) { await recordInterruption?.(); personWait = { turnEnd: "recorded" } }
+    },
   })
 }
 
@@ -87,7 +97,8 @@ describe("agent loop input wait reservations", () => {
           scheduled++
           return () => { cleared++ }
         },
-      })(mode === "work", run.signal, mode === "interrupted" ? "recorded" : undefined)
+        ...(mode === "interrupted" ? { personWait: { turnEnd: "recorded" as const } } : {}),
+      })(mode === "work", run.signal)
       await parked.promise
       run.abort()
       await expect(wait).resolves.toBe("empty")
@@ -221,7 +232,7 @@ describe("agent loop input wait reservations", () => {
       },
     })
 
-    const parked = wait(false, undefined, "record")
+    const parked = wait(false, undefined, true)
     mailbox.enqueueResume()
 
     await expect(parked).resolves.toBe("continue")
@@ -244,7 +255,7 @@ describe("agent loop input wait reservations", () => {
     mailbox.enqueueSilentSystem("A background task finished.")
     mailbox.enqueueWake()
     let settled = false
-    const parked = wait(false, undefined, "record").then((result) => { settled = true; return result })
+    const parked = wait(false, undefined, true).then((result) => { settled = true; return result })
     await Bun.sleep(1)
     expect(settled).toBe(false)
     expect(resumed).toBe(0)
@@ -276,7 +287,7 @@ describe("agent loop input wait reservations", () => {
       })
       enqueue()
       let settled = false
-      const parked = wait(false, undefined, "record").then((result) => { settled = true; return result })
+      const parked = wait(false, undefined, true).then((result) => { settled = true; return result })
       await Bun.sleep(1)
       expect({ name, settled }).toEqual({ name, settled: false })
       expect(consumed.every((input) => input.startLogicalTurn === false)).toBe(true)
@@ -292,7 +303,7 @@ describe("agent loop input wait reservations", () => {
       prepareWaitForInput: () => ({ commit: async () => unmarkedInputs.shift() ?? null, cancel: async () => {} }),
       consume: async (_input, options) => { unmarkedConsumed.push(options.startLogicalTurn); return "continue" },
     })
-    await expect(unmarked(false, undefined, "record")).resolves.toBe("continue")
+    await expect(unmarked(false, undefined, true)).resolves.toBe("continue")
     expect(unmarkedConsumed).toEqual([false, true])
   })
 
