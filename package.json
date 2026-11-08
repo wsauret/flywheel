@@ -136,7 +136,7 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
-    "@oxlint/plugins": "1.90.0",
+    "@oxlint/plugins": "1.91.0",
     "@types/bun": "^1.4.4",
     "@types/node": "^26.6.6",
     "@types/qrcode": "^1.5.6",
