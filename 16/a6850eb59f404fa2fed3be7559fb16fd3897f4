@@ -1,0 +1,32 @@
+src/orchestration/agent-runtime/agent-loop-input-consumer.ts
+  h_4b47e9e4a8b456 9,108-109,121,127-132,140-153,157,166,173,177,179,190-193,197,204,216,235-236,239
+src/orchestration/agent-runtime/agent-loop-state.ts
+  h_4b47e9e4a8b456 14-27,65-66,69,83-86
+src/orchestration/agent-runtime/agent-loop-types.ts
+  h_4b47e9e4a8b456 36,136,138-141,143
+src/orchestration/agent-runtime/agent-loop.ts
+  h_4b47e9e4a8b456 80-82,107,160,162-165,173,184-186,190,245,247,314-316,321,335,340,345,668
+src/orchestration/chat/runner-lifecycle.ts
+  h_4b47e9e4a8b456 217-218
+src/orchestration/chat/runner-wait-state.ts
+  h_4b47e9e4a8b456 142
+tests/unit/orchestration/agent-runtime/agent-loop-input-consumer.test.ts
+  h_4b47e9e4a8b456 5,9-14,20-25,100-101,235,258,290,306
+tests/unit/orchestration/agent-runtime/context/loop-finite-wait.test.ts
+  h_4b47e9e4a8b456 53,99
+tests/unit/orchestration/agent-runtime/context/loop-silent-system.test.ts
+  h_4b47e9e4a8b456 11,557-671
+tests/unit/orchestration/agent-runtime/context/notes-capability.test.ts
+  h_4b47e9e4a8b456 60,95,140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "16a6850eb59f404fa2fed3be7559fb16fd3897f4",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
