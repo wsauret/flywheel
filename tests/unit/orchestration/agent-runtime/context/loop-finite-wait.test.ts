@@ -50,7 +50,7 @@ describe("finite managed waits", () => {
       background: createBackgroundExecutionOwner(registry), inputSource, signal: stop.signal,
       lifecycle: {
         restoredWait: { expiry: { seconds: 60, deadlineMs }, replyWaitIds: [] },
-        ...(kind === "root" || scenario === "person_interrupt" ? { maintenance: { awaitsPerson: scenario === "person_interrupt", turnEndWaits: scenario === "person_interrupt" } } : {}),
+        ...(kind === "root" || scenario === "person_interrupt" ? { maintenance: scenario === "person_interrupt" ? { personWait: { turnEnd: "recorded" as const } } : {} } : {}),
         onTurnParked: () => { if (scenario === "person_interrupt") stop.abort(); },
       },
       scheduleWaitExpiry: (seconds, expire) => {
@@ -96,7 +96,7 @@ describe("finite managed waits", () => {
       background: createBackgroundExecutionOwner(registry), inputSource, signal: stop.signal,
       lifecycle: {
         ...wait,
-        ...(kind === "root" ? { maintenance: { awaitsPerson: false, turnEndWaits: false } } : {}),
+        ...(kind === "root" ? { maintenance: {} } : {}),
         onTurnParked: ({ park, waitRequested }) => { parks.push({ park, waitRequested }); stop.abort(); },
       },
       scheduleWaitExpiry: (seconds) => { expiries.push(seconds); return () => {}; },

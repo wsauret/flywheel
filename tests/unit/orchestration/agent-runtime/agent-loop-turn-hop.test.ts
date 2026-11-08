@@ -324,7 +324,7 @@ test("a child that asks its idle parent six questions in one run and waits for e
   const unregisterChild = registerLiveSessionControl(reader, {
     sessionId: child,
     state: async () => "running",
-    child: { runId: `${child}-run`, parentSessionId: parent, parentConversationId: `${parent}-conversation`, parentToolCallId: `${child}-tool`, modules: async () => undefined, backgroundTasks: background.tasks, stop: () => {}, interrupt: async () => {}, progress: () => ({ toolUses: 0, totalTokens: 0, startedAtMs: 0 }) },
+    child: { runId: `${child}-run`, parentSessionId: parent, parentConversationId: `${parent}-conversation`, parentToolCallId: `${child}-tool`, modules: async () => undefined, backgroundTasks: background.tasks, stop: () => {}, interrupt: async () => true, progress: () => ({ toolUses: 0, totalTokens: 0, startedAtMs: 0 }) },
     deliver: async (input, decide) => {
       queue.enqueueMessage(input)
       return decide("running")

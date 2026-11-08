@@ -14,12 +14,7 @@ import { chain, fakeAvailability, singletonCandidate } from "../llm/_provider-ch
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
 import { loginWaitingRequest } from "../_login-wait-fixture.js";
 import { ownHistoryTarget } from "../_model-client.js";
-
-async function waitUntil(condition: () => boolean, message: string): Promise<void> {
-  const deadline = Date.now() + 2_000;
-  while (!condition() && Date.now() < deadline) await Bun.sleep(2);
-  if (!condition()) throw new Error(message);
-}
+import { waitUntil } from "./_loop-fixtures.js";
 
 /** A chat's mailbox and a workflow step's injection queue: the two input
  *  sources a parked loop takes a person's Resume from. */

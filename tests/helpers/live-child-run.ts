@@ -5,7 +5,8 @@ import type { ContinuationLanes } from "../../src/orchestration/session/planned-
 import { createBackgroundWorkRegistry } from "../../src/orchestration/agent-runtime/background-work"
 
 /** Registers a subagent run as live in this process, as a dispatch does,
- *  with a control that refuses messages. Returns the unregistration. */
+ *  with a control that refuses messages and whose interrupt cuts the run.
+ *  Returns the unregistration. */
 export function registerTestChildRun(store: AsyncEventStateReadSurface, run: {
   readonly sessionId: string
   readonly runId: string
@@ -21,7 +22,7 @@ export function registerTestChildRun(store: AsyncEventStateReadSurface, run: {
     sessionId,
     state: async () => "running",
     ...(settled ? { settled } : {}),
-    child: { ...binding, modules: async () => undefined, backgroundTasks: createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: () => {} }), stop: stop ?? (() => {}), interrupt: interrupt ?? (async () => {}), progress: () => ({ toolUses: 0, totalTokens: 0, startedAtMs: 0 }) },
+    child: { ...binding, modules: async () => undefined, backgroundTasks: createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: () => {} }), stop: stop ?? (() => {}), interrupt: async (by) => { await interrupt?.(by); return true }, progress: () => ({ toolUses: 0, totalTokens: 0, startedAtMs: 0 }) },
     deliver: async () => ({ status: "refused", reason: "settled" }),
     notify: async () => false,
   })
@@ -41,8 +42,7 @@ export function interruptLiveChild(input: Omit<Parameters<ContinuationLanes["int
       interrupt: async () => {
         const running = control()
         if (!running) return false
-        await running.interrupt(by)
-        return true
+        return await running.interrupt(by)
       },
     })
   }

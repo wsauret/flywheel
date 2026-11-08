@@ -82,7 +82,7 @@ describe("a person's message to a subagent", () => {
       child: {
         runId: `${here.child}-run`, parentSessionId: here.parent, parentConversationId: here.parentConversationId, parentToolCallId: "dispatch",
         modules: async () => undefined, backgroundTasks: createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: () => {} }),
-        stop: () => {}, interrupt: async () => {}, progress: () => ({ toolUses: 0, totalTokens: 0, startedAtMs: 0 }),
+        stop: () => {}, interrupt: async () => true, progress: () => ({ toolUses: 0, totalTokens: 0, startedAtMs: 0 }),
       },
       deliver: async (_input, decide) => decide("handing_off"), notify: async () => false,
     })

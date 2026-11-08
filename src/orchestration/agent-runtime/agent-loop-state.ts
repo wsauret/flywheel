@@ -11,6 +11,20 @@ export interface AgentLoopState {
   readonly consecutiveOutputOverflows: number;
   /** The loop's one explicit wait, independent of model requests. */
   readonly wait?: OpenWait;
+  /** Present while the turn is the person's (`PersonWait`). */
+  readonly personWait?: PersonWait;
+}
+
+/** The turn waits for the person: an interrupt handed it back, or a
+ *  maintenance start found the last turn so (an interrupt, an unexpected
+ *  exit, or a stall). Only their message or Resume authorizes the next
+ *  request; every other input folds into history, and a compaction parks
+ *  for them again and records nothing new. `turnEnd` says whether a
+ *  recorded turn end carries the wait, which every compaction reset carries
+ *  past itself (ARCH-SESSIONS-035); a stall, an Escape on a park whose turn
+ *  already ended, or a loop that cannot record one records none. */
+export interface PersonWait {
+  readonly turnEnd: "recorded" | "unrecorded";
 }
 
 /** An explicit wait that parked on live work: a `process` wait, a yield
@@ -48,9 +62,11 @@ export const initialAgentLoopState: AgentLoopState = {
 /** Pure state transitions shared by every loop iteration. */
 export const agentLoopTransition = {
   turnStarted: (state: AgentLoopState): AgentLoopState => ({ ...state, turn: state.turn + 1 }),
-  /** The open wait meets the input that starts the turn on its own rule (`endsOpenWait`). */
+  /** The open wait meets the input that starts the turn on its own rule (`endsOpenWait`). A
+   *  turn that starts is no longer the person's: only their message or Resume starts one then. */
   logicalTurnStarted: (state: AgentLoopState, origin: "user" | "background"): AgentLoopState => ({
     ...state,
+    personWait: undefined,
     overflowRecoveryAttempted: false,
     consecutiveOutputOverflows: origin === "user" ? 0 : state.consecutiveOutputOverflows,
   }),
@@ -64,6 +80,10 @@ export const agentLoopTransition = {
   overflowRecoveryStarted: (state: AgentLoopState): AgentLoopState => ({ ...state, overflowRecoveryAttempted: true }),
   waitOpened: (state: AgentLoopState, wait: OpenWait): AgentLoopState => ({ ...state, wait }),
   waitClosed: (state: AgentLoopState): AgentLoopState => ({ ...state, wait: undefined }),
+  /** An interrupt gives the person the turn and ends the open wait in one step. */
+  turnHandedBack: (state: AgentLoopState): AgentLoopState => ({ ...state, wait: undefined, personWait: state.personWait ?? { turnEnd: "unrecorded" } }),
+  /** The interrupt's turn end landed in the tree and in the loop's history. */
+  turnEndRecorded: (state: AgentLoopState): AgentLoopState => ({ ...state, personWait: { turnEnd: "recorded" } }),
 };
 
 /** What one run did, for the one record of its completion. The loop keeps it

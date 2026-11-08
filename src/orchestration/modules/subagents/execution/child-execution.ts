@@ -10,14 +10,14 @@ import type { RetryState } from "../../../agent-runtime/llm/retry-budget.js";
 import { createAgentHost } from "../../../runner/host.js";
 import { AgentTurnAborted } from "../../../runner/agent-turn-types.js";
 import { createSubagentRunInputs } from "./run-inputs.js";
-import { awaitsWork, type BackgroundKillSource, type BackgroundWorkResult, type EndedWorkResult } from "../../../agent-runtime/background-work.js";
+import { awaitsWork, type BackgroundWorkResult, type EndedWorkResult } from "../../../agent-runtime/background-work.js";
 import type { ModuleRuntimes } from "../../../../infra/module-runtime.js";
 import { createChildBackgroundExecution } from "./child-background.js";
 import { isReadOnlyPersona } from "../../../agent-runtime/persona-tool-rules.js";
 import { SUBAGENT_HANDOFF_SCHEMA } from "./prompts.js";
 import { recordSubagentCompletion } from "./run-recorder.js";
 import { buildSubagentPaused } from "../history/subagent-run-fact-writers.js";
-import { interruptedTurnEnd, isVisibleTurnEnd, type TurnInterruption } from "../../../session/conversation/turn-end-record.js";
+import { interruptedTurnEnd, isVisibleTurnEnd } from "../../../session/conversation/turn-end-record.js";
 import { publishLiveParentResult, reconcileParentCompletion } from "./parent-delivery.js";
 import {
   failedRunResult,
@@ -36,7 +36,7 @@ import { withCapabilityGrant } from "../../../agent-runtime/tools/types.js";
 import { readConversationQueuedUserInputs, readUnreadMessages, type QueuedUserInputCell } from "../../../session/conversation/queued-user-inputs.js";
 import { readConversationBackgroundNotifications, type HeldBackgroundNotification } from "../../../session/conversation/queued-background-notifications.js";
 import { observeOpenReplyWaits } from "../../../session/reply-waits.js";
-import type { ContinuationTarget, SubagentContext, SubagentInput } from "./control-actions.js";
+import type { ContinuationTarget, SubagentContext } from "./control-actions.js";
 import type { prepareSubagentDispatch, prepareSubagentTools } from "./dispatch-preparation.js";
 import type { SubagentDispatchDeps } from "./dispatch-deps.js";
 import { resolveChildRole } from "./dispatch-configuration.js";
@@ -50,6 +50,7 @@ import { awaitPlannedChildResumes } from "../../../session/planned-session-conti
 import { recallQueuedInput } from "../../../session/queued-input-recall.js";
 import { createUnattendedRecovery, endingCapacityWaitOnPersonMessage } from "../../../agent-runtime/unattended-recovery.js";
 import { capacityWaitAuthority } from "../../../session/capacity-wait.js";
+import { createRunEnd } from "./run-end.js";
 
 const log = Log.create({ service: "subagent-tool" });
 
@@ -110,7 +111,6 @@ export function createChildExecution(options: {
     textState,
     turnLog: turnLogObserver,
   });
-  let capturedHandoff: SubagentInput | null = null;
   const childConversation = published.conversation;
   /** Commits held messages, then held `notices`, into the child
    *  conversation, so a resumed or retried run reads them. A pause commits
@@ -140,27 +140,23 @@ export function createChildExecution(options: {
   let stalledGeneration = false;
   let modules: ModuleRuntimes | undefined;
   const firstAssembly = Promise.withResolvers<ModuleRuntimes | undefined>();
-  let cancelledBeforeStart = false;
-  let cancellationSource: BackgroundKillSource | undefined;
-  // Set by `pause`: the run settles as paused by this actor instead of
-  // recording a completion, and its session goes inactive with its binding kept.
-  let pausedBy: TurnInterruption | undefined;
   // A delete that ends the run returns the unread messages of every sender
-  // but the parent with its tombstone, so the settle below leaves them.
+  // but the parent with its tombstone, so the settle below leaves them. It
+  // is a fact of the session, not an end of the run: a run that handed off
+  // before its delete still settles for the delete.
   let deleting = false;
-  // Cancellation fans out to every lifecycle phase: a still-queued dispatch
-  // is withdrawn from the slot queue, a running attempt aborts its runner,
-  // and the abort signal stops the resilience loop from starting another
-  // attempt (or cuts its backoff sleep short).
+  // An abort fans out to every lifecycle phase: a still-queued dispatch is
+  // withdrawn from the slot queue, a running attempt aborts its runner, and
+  // the abort signal stops the resilience loop from starting another
+  // attempt (or cuts its backoff sleep short) and ends a failure summary.
   const dispatchAbort = new AbortController();
   const dispatchSignal = mergeAbortSignals(context.signal, dispatchAbort.signal);
-  const cancelDispatch = (source: BackgroundKillSource): void => {
-    cancellationSource = source;
-    cancelledBeforeStart = true;
+  const abortRun = (): void => {
     if (acquisition?.status === "queued") acquisition.cancel();
     dispatchAbort.abort();
     runner?.abort();
   };
+  const runEnd = createRunEnd({ childSessionId, childRunId, abort: abortRun });
 
   // The tracked promise adopts the complete execution before its first asynchronous acquisition.
   const settled = Promise.withResolvers<BackgroundWorkResult>();
@@ -182,7 +178,7 @@ export function createChildExecution(options: {
       roleSessionId: childSessionId,
       ...(typeof effortForRunner === "string" ? { effort: effortForRunner } : {}),
     },
-    kill: { run: cancelDispatch },
+    kill: { run: runEnd.kill },
     stall: {
       isIdle: () => stopLoginWaitKeepAlive === undefined && inFlightToolIds.size === 0 && childBackground.owner.tasks.awaitedTaskCount() === 0,
       abort: () => { stalledGeneration = true; runner?.abort(); },
@@ -277,14 +273,20 @@ export function createChildExecution(options: {
       parentToolCallId: toolUseId,
       modules: async () => modules ?? firstAssembly.promise,
       backgroundTasks: childBackground.owner.tasks,
-      stop: (by) => { deleting = by === "deletion"; cancelDispatch(by === "agent" ? "agent" : "user"); },
+      stop: (by) => {
+        if (by === "deletion") deleting = true;
+        runEnd.stop(by === "agent" ? "agent" : "user");
+      },
+      // A refused interrupt still waits for the settlement, so a caller that
+      // goes on, such as a replacement's stop, never outruns the completion.
       async interrupt(by) {
-        pausedBy = by;
-        // The replacement's pause ends the child ahead of its executor's stop,
-        // so the child's close hands its running commands to the next build.
-        if (by === "replacement") childBackground.owner.handOverAtClose();
-        cancelDispatch("runtime");
+        const interrupted = runEnd.interrupt(by);
+        // The replacement's pause ends the child ahead of its executor's
+        // stop, so the child's close, after its aborted loop returns, hands
+        // its running commands to the next build.
+        if (interrupted && by === "replacement") childBackground.owner.handOverAtClose();
         await settled.promise.catch(() => {});
+        return interrupted;
       },
       progress: () => ({ toolUses: stats.toolUseCount, totalTokens: stats.totalInputTokens + stats.totalOutputTokens, startedAtMs: runStartedAtMs }),
     },
@@ -391,7 +393,7 @@ export function createChildExecution(options: {
     allowedSubagentTypes: grantedTypes,
     runtimeSurfaces: {
       ...deriveChildRuntimeSurfaces(deps.inheritableRuntimeSurfaces, {
-        handoff: { onContent: (content) => { capturedHandoff = content }, schema: SUBAGENT_HANDOFF_SCHEMA },
+        handoff: { onContent: runEnd.handOff, schema: SUBAGENT_HANDOFF_SCHEMA },
         background: childBackground.owner,
       }),
       // Recall is controller-bound state, never an inheritable authority.
@@ -412,7 +414,7 @@ export function createChildExecution(options: {
   let inheritedIntent: Promise<string | undefined> | undefined;
   const startRunner = (): Promise<AgentRunResult> => createAgentHost<RunnableAgentOptions>({ createRunner: deps.createRunner }).runTurn({
     createContextOptions: async (attempt: RetryState) => {
-      if (cancelledBeforeStart) throw new AgentTurnAborted();
+      if (dispatchAbort.signal.aborted) throw new AgentTurnAborted();
       await childBackground.adoptHandedOver();
       if (continuation) {
         await commitHeldMessages([], await readConversationBackgroundNotifications(published.projectionReader, childSessionId, childConversationId));
@@ -510,7 +512,11 @@ export function createChildExecution(options: {
     resilience: {
       signal: dispatchSignal,
       originalProviderSessionKey: childRunId,
-      recover: recovery.recover, settle: recovery.settle,
+      recover: recovery.recover,
+      // The loop's final return decides the run's end before the capacity
+      // wait settles, which can wait on its row's retirement, so a cut that
+      // lands meanwhile cannot replace it.
+      settle: async (result) => { runEnd.loopReturned(result.terminal); await recovery.settle(result); },
     },
   });
 
@@ -522,7 +528,7 @@ export function createChildExecution(options: {
     } catch (err) {
       // A cancelled queued dispatch is an intentional stop, not a failure:
       // settle it as `aborted` so the parent gets an interrupted result.
-      if (cancelledBeforeStart) return { durationMs: 0, servedRequests: 0, terminal: { kind: "aborted" } };
+      if (dispatchAbort.signal.aborted) return { durationMs: 0, servedRequests: 0, terminal: { kind: "aborted" } };
       throw err;
     }
     return startRunner();
@@ -531,7 +537,7 @@ export function createChildExecution(options: {
   const started = Promise.resolve().then(async (): Promise<AgentRunResult> => {
     try {
       if (continuation) runInputs.adopt(await readConversationQueuedUserInputs(published.projectionReader, childSessionId, childConversationId));
-      if (cancelledBeforeStart) return { durationMs: 0, servedRequests: 0, terminal: { kind: "aborted" } };
+      if (dispatchAbort.signal.aborted) return { durationMs: 0, servedRequests: 0, terminal: { kind: "aborted" } };
       acquisition = acquireSlot();
       if (acquisition.status === "acquired") reservation = acquisition.reservation;
     } catch (error) {
@@ -552,8 +558,9 @@ export function createChildExecution(options: {
       : startWhenSlotFrees(acquisition.reservation);
   });
   const runnerDone = started.then((result) => {
-    if (result.terminal.kind === "aborted"
-      && cancellationSource !== "user" && cancellationSource !== "agent") pausedBy ??= "runtime";
+    // A dispatch cancelled before its runner started returns here without
+    // a settle; for a run that settled, the end is already decided.
+    runEnd.loopReturned(result.terminal);
     return result;
   }).finally(async () => {
     const end = trackLoopSpan("subagent-teardown", childSessionId);
@@ -570,7 +577,7 @@ export function createChildExecution(options: {
   });
 
   const settleParent = async (): Promise<void> => {
-    if (pausedBy) await deps.subagentSessions.deactivate(childSessionId);
+    if (runEnd.current.kind === "paused") await deps.subagentSessions.deactivate(childSessionId);
     else reconcileParentCompletion(deps);
   };
   // The result budget is sized when the run settles: what the parent's
@@ -586,7 +593,7 @@ export function createChildExecution(options: {
   const resultContext = (): SubagentResultContext => ({
     agentType, childRunId, childSessionId, toolUseId, descriptionText, maxTurns,
     model: modelString,
-    getCapturedHandoff: () => capturedHandoff, textState, modelRequestId, stats, deps, turnLog,
+    end: runEnd.current, textState, modelRequestId, stats, deps, turnLog,
     parentToolUseId: context.parentToolUseId,
     budget: {
       cap: resultCap(),
@@ -595,13 +602,12 @@ export function createChildExecution(options: {
       artifactScopeId: context.artifactScopeId,
       agentType,
     },
-    ...(cancellationSource ? { cancellationSource } : {}),
     signal: dispatchSignal,
   });
   const resolveSettledRun = async (result: AgentRunResult): Promise<EndedWorkResult> => {
     const end = trackLoopSpan("subagent-completion", childSessionId);
     try {
-      if (pausedBy) {
+      if (runEnd.current.kind === "paused") {
         return { status: "stopped", content: "Subagent interrupted.", usage: usageFromStats(stats, result.durationMs) };
       }
       return await probeLoopUnit("subagent-completion", "resolve-result", () => resolveSubagentResult(result, resultContext()));
@@ -610,8 +616,7 @@ export function createChildExecution(options: {
     }
   };
   const resolveFailedRun = async (err: unknown, phase: "run" | "settlement"): Promise<EndedWorkResult> => {
-    // A persistence or owner-close failure is a defect, not a resumable cut.
-    pausedBy = undefined;
+    runEnd.fail();
     return failedRunResult(err, phase, resultContext());
   };
   // Exactly one terminal publication per dispatch, whatever the run did: the
@@ -633,10 +638,11 @@ export function createChildExecution(options: {
       return settledResult;
     }
     await published.awaitDurableFacts();
-    const successfulHandoff = capturedHandoff !== null && !pausedBy && (settledResult.status === "completed" || settledResult.status === "partial");
+    const end = runEnd.current;
+    const successfulHandoff = end.kind === "handed_off";
     if (!successfulHandoff) await childConversation.endTurn();
     let backgroundResult: BackgroundWorkResult = settledResult;
-    if (pausedBy) {
+    if (end.kind === "paused") {
       // A pause is not a completion: the run keeps its binding for resume,
       // the parent gets no result, and its card learns who paused the child.
       // The interrupt ends the turn in the child's own conversation, as a
@@ -647,20 +653,20 @@ export function createChildExecution(options: {
       // resumed run then reads every held message after the record.
       // A planned replacement's cut shows nothing: the card stays active and
       // the successor resumes the child.
-      await childConversation.commitTurnEnd(pausedBy);
+      await childConversation.commitTurnEnd(end.by);
       await commitHeldMessages(await readUnreadMessages(published.projectionReader, childSessionId));
-      const end = interruptedTurnEnd(pausedBy);
+      const turnEnd = interruptedTurnEnd(end.by);
       // `subagent.paused` stays version 1, which an older build reads: the
       // parent agent's interrupt is saved there as a person's, and the turn
       // end above, the one authority for who interrupted the child, names
       // the parent agent.
-      await published.eventWriter.record(buildSubagentPaused({ childRunId, pausedBy: end.pausedBy === "agent" ? "person" : end.pausedBy }));
-      if (isVisibleTurnEnd(end)) deps.onRenderEvent(createRuntimeEvent("agent.subagent.paused", { tool_use_id: toolUseId, paused_by: end.pausedBy }));
+      await published.eventWriter.record(buildSubagentPaused({ childRunId, pausedBy: turnEnd.pausedBy === "agent" ? "person" : turnEnd.pausedBy }));
+      if (isVisibleTurnEnd(turnEnd)) deps.onRenderEvent(createRuntimeEvent("agent.subagent.paused", { tool_use_id: toolUseId, paused_by: turnEnd.pausedBy }));
       // The parent's process record reads the run as interrupted, the word
       // every surface uses, and never as failed (PI-AGENT-020). A planned
       // replacement's cut names nobody, so the parent gets no notice: the
       // successor resumes the child.
-      backgroundResult = { ...settledResult, status: "interrupted", ...(isVisibleTurnEnd(end) ? { interruptedBy: end.pausedBy } : {}) };
+      backgroundResult = { ...settledResult, status: "interrupted", ...(isVisibleTurnEnd(turnEnd) ? { interruptedBy: turnEnd.pausedBy } : {}) };
     } else {
       // A recorded handoff returns unread human input before idle recovery can adopt it.
       await deps.subagentSessions.settleUnreadMessages({

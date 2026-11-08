@@ -6,7 +6,7 @@ import type { BackgroundWorkRegistry } from "./background-work.js";
 import type { CurrentTurnInterruption } from "./run-lifecycle.js";
 import type { PlannedCompactionOperation } from "./compaction/triggers.js";
 import type { TurnHopTracker } from "./turn-hop.js";
-import type { OpenWait } from "./agent-loop-state.js";
+import type { OpenWait, PersonWait } from "./agent-loop-state.js";
 import { WAIT_EXPIRED_TAG } from "./agent-loop-wait.js";
 
 const log = Log.create({ service: "agent-loop" });
@@ -105,6 +105,8 @@ interface LoopInputWaiterState {
   /** The loop's open explicit wait. A park on work arms the rest of its
    *  expiry, and the expiry notice states the duration it asked for. */
   readonly wait?: OpenWait;
+  /** Present while the turn is the person's: the park is an interrupted one. */
+  readonly personWait?: PersonWait;
 }
 
 interface LoopInputWaiter {
@@ -116,17 +118,18 @@ interface LoopInputWaiter {
     options: ConsumeParkedInputOptions,
   ): Promise<"empty" | "continue">;
   state(): LoopInputWaiterState;
-  /** Ends the loop's open wait: its expiry, or an interrupt that gives the
-   *  person the turn. */
+  /** Ends the loop's open wait at its expiry. */
   closeWait?(): void;
   /** The run's background tasks: what a park delivers and what it waits on. */
   readonly backgroundTasks?: Pick<BackgroundWorkRegistry, "flushSettledNotifications" | "waitableTaskCount" | "awaitedTaskCount"> & Partial<Pick<BackgroundWorkRegistry, "processRecords">>;
   onTurnParked?(context: TurnParkedContext): void | Promise<void>;
   onTurnResumed?(): void;
-  /** Records an interrupted turn's end in the tree and in the loop's history.
-   *  The waiter calls it once for each interrupt, whether the interrupt cut
-   *  a generation or a park that waited on background work. */
-  recordInterruption?(): Promise<void>;
+  /** Gives the person the turn, which ends the open wait, and, when
+   *  `recordTurnEnd`, records the interrupted turn's end in the tree and in
+   *  the loop's history. The waiter calls it once for each interrupt,
+   *  whether the interrupt cut a generation or a park that waited on
+   *  background work; `state().personWait` reads the result at once. */
+  handBack(recordTurnEnd: boolean): Promise<void>;
   /** The run's turn interruption, whose Escape carried from before a
    *  person's hand-back the waiter discards. */
   readonly currentTurn?: Pick<CurrentTurnInterruption, "discardPendingInterrupt">;
@@ -134,15 +137,24 @@ interface LoopInputWaiter {
   scheduleWaitExpiry?(seconds: number, expire: () => void): () => void;
 }
 
-/** How a park follows an interrupt: `record` when the loop's own generation
- *  was just interrupted, so the waiter records the turn end; `recorded` when
- *  the conversation's last turn already ended by an interrupt, an
- *  unexpected exit, or a stall that the person must answer. */
-type ParkAfterInterrupt = "record" | "recorded"
+/** The runtime notice that ends a wait whose expiry passed, naming the work still running. */
+function waitExpiredInput(seconds: number | undefined, backgroundTasks: LoopInputWaiter["backgroundTasks"]): AgentLoopInput {
+  return messageInput(formatRuntimeNotification({
+    tag: WAIT_EXPIRED_TAG,
+    fields: [
+      ["seconds", String(seconds)],
+      ["pending", String(backgroundTasks?.waitableTaskCount() ?? 0)],
+      ["processes", JSON.stringify(backgroundTasks?.processRecords?.().filter((record) => record.status === "running" || record.status === "stopping").map((record) => ({
+        id: record.id, kind: record.kind, elapsed_seconds: Math.floor((Date.now() - record.startedAtMs) / 1000),
+      })) ?? [])],
+    ],
+    handling: WAIT_EXPIRED_HANDLING,
+  }), { origin: "silent-system", runtimeNotice: true });
+}
 
 /** Creates the blocking input consumer that owns park and resume lifecycle
  *  effects. It is the one place an interrupt is recorded: a loop whose
- *  generation was interrupted parks here with `afterInterrupt` `record`, and
+ *  generation was interrupted parks here with `interrupted`, and
  *  a park that waits on background work, which is still the agent's turn, is
  *  interrupted here when its wait signal aborts. Either way the turn end is
  *  recorded once, and the loop parks again until a person's message or
@@ -151,27 +163,20 @@ export function createAgentLoopInputWaiter(input: LoopInputWaiter) {
   return async (
     parkedOnBackgroundWork: boolean,
     waitSignal: AbortSignal | undefined,
-    afterInterrupt?: ParkAfterInterrupt,
+    interrupted = false,
   ): Promise<"empty" | "continue"> => {
     if (!input.prepareWaitForInput) return "empty";
     const prepareWaitForInput = input.prepareWaitForInput;
-    let activeWaitSignal = waitSignal;
-    let requireUserResume = false;
     const expiry = new AbortController();
     let clearExpiry: (() => void) | undefined;
     const waitExpiry = input.state().wait?.expiry;
-    // After an interrupt only the run's own end cuts the wait: another
-    // interrupt has nothing left to cut and records nothing. A park whose
-    // turn already ended (no background work) has no turn end to record.
+    // A park whose turn already ended (no background work) has no turn end to record.
     const takeTurnBack = async (recordTurnEnd: boolean): Promise<void> => {
-      requireUserResume = true;
-      input.closeWait?.();
       clearExpiry?.();
       clearExpiry = undefined;
-      activeWaitSignal = input.runSignal;
-      if (recordTurnEnd) await input.recordInterruption?.();
+      await input.handBack(recordTurnEnd);
     };
-    if (afterInterrupt) await takeTurnBack(afterInterrupt === "record");
+    if (interrupted) await takeTurnBack(true);
     try {
     while (true) {
       // Deliver what has already settled before parking on it. The registry
@@ -182,17 +187,21 @@ export function createAgentLoopInputWaiter(input: LoopInputWaiter) {
       // arriving after it as a turn of its own.
       input.backgroundTasks?.flushSettledNotifications();
       const state = input.state();
+      // While the turn is the person's only the run's own end cuts the wait:
+      // another interrupt has nothing left to cut and records nothing.
+      const parkedForPerson = state.personWait !== undefined;
+      const activeWaitSignal = parkedForPerson ? input.runSignal : waitSignal;
       const activeBackgroundCount = (state.wait
         ? input.backgroundTasks?.waitableTaskCount()
         : input.backgroundTasks?.awaitedTaskCount()) ?? 0;
-      const park: TurnParkState = requireUserResume ? "interrupted" : parkedOnBackgroundWork || activeBackgroundCount > 0 ? "waiting_on_work" : "idle";
+      const park: TurnParkState = parkedForPerson ? "interrupted" : parkedOnBackgroundWork || activeBackgroundCount > 0 ? "waiting_on_work" : "idle";
       const waitsOnBackgroundWork = park === "waiting_on_work";
       log.debug("agent-loop parking", {
         providerSessionKey: input.providerSessionKey,
         turnCount: state.turnCount,
         handoffWritten: state.handoffWritten,
         parkedOnBackgroundWork,
-        userResumeRequired: requireUserResume,
+        userResumeRequired: parkedForPerson,
       });
       const preparedInput = prepareWaitForInput(waitsOnBackgroundWork ? mergeAbortSignals(activeWaitSignal, expiry.signal) : activeWaitSignal);
       // Awaited: the host lands the turn's last durable writes here, and the
@@ -204,7 +213,7 @@ export function createAgentLoopInputWaiter(input: LoopInputWaiter) {
           activeBackgroundCount,
           parkedOnBackgroundWork,
           waitRequested: state.wait !== undefined,
-          userResumeRequired: requireUserResume,
+          userResumeRequired: parkedForPerson,
           park,
         });
         if (waitsOnBackgroundWork && waitExpiry !== undefined && !clearExpiry) {
@@ -223,21 +232,11 @@ export function createAgentLoopInputWaiter(input: LoopInputWaiter) {
       const committed = await preparedInput.commit();
       const interruptedWait = activeWaitSignal?.aborted === true && !input.runSignal?.aborted;
       if (interruptedWait) await takeTurnBack(waitsOnBackgroundWork);
+      // Read after the hand-back: the input below meets the turn as it is now.
+      const requireUserResume = input.state().personWait !== undefined;
       const expired = committed === null && expiry.signal.aborted && !activeWaitSignal?.aborted && !requireUserResume;
       if (expired) input.closeWait?.();
-      const raw = committed ?? (expired
-        ? messageInput(formatRuntimeNotification({
-          tag: WAIT_EXPIRED_TAG,
-          fields: [
-            ["seconds", String(waitExpiry?.seconds)],
-            ["pending", String(input.backgroundTasks?.waitableTaskCount() ?? 0)],
-            ["processes", JSON.stringify(input.backgroundTasks?.processRecords?.().filter((record) => record.status === "running" || record.status === "stopping").map((record) => ({
-              id: record.id, kind: record.kind, elapsed_seconds: Math.floor((Date.now() - record.startedAtMs) / 1000),
-            })) ?? [])],
-          ],
-          handling: WAIT_EXPIRED_HANDLING,
-        }), { origin: "silent-system", runtimeNotice: true })
-        : null);
+      const raw = committed ?? (expired ? waitExpiredInput(waitExpiry?.seconds, input.backgroundTasks) : null);
       if (!raw) {
         if (interruptedWait) continue;
         return "empty";

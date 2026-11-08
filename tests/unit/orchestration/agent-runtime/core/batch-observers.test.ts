@@ -31,6 +31,13 @@ describe("RepetitionGuard", () => {
     expect(guard.observeBatch(batch, none)).toContain("sequence of 2 tool calls");
   });
 
+  it("does not fire for commands that differ only after a long shared prefix", () => {
+    const guard = createRepetitionGuard();
+    const prefix = `cd ${"/work/session/scratch".repeat(8)} && python3 -c "import pyarrow.parquet as pq; d = pq.read_table('data.parquet');`;
+    const batch = ["print(d.num_rows)", "print(d.schema)", "print(d.column(0))"].map((tail) => call("bash", { command: `${prefix} ${tail}"` }));
+    expect(guard.observeBatch(batch, none)).toBeNull();
+  });
+
   it("does not fire for varied calls or calls that differ only in object-valued arguments", () => {
     const guard = createRepetitionGuard();
     expect(guard.observeBatch([call("Read", { file_path: "/a.ts" }), call("Write", { file_path: "/b.ts" }), call("Bash", { command: "ls" })], none)).toBeNull();

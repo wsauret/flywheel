@@ -344,10 +344,10 @@ describe("explicit child Resume", () => {
       await conversation.flush?.()
       if (status === "stopped") liveChildRuns(harness.reader)[0]!.child.stop("person")
       else if (status === "cancelled") harness.backgroundTasks.terminateProcess(liveChildRuns(harness.reader)[0]!.child.runId, "agent")
-      else {
+      else if (status === "partial") {
         calls[0]!.runtimeSurfaces?.handoff?.onContent({ summary: "earlier work" })
-        results[0]!.resolve({ servedRequests: 0, durationMs: 7, terminal: status === "partial" ? { kind: "budget_exhausted" } : { kind: "api_error", message: "provider failed", recovery: { kind: "none" } } })
-      }
+        results[0]!.resolve({ servedRequests: 0, durationMs: 7, terminal: { kind: "budget_exhausted" } })
+      } else results[0]!.resolve({ servedRequests: 0, durationMs: 7, terminal: { kind: "api_error", message: "provider failed", recovery: { kind: "none" } } })
       await waitForSettled(harness, root.sessionId)
       const original = runs(harness.store, child)[0]!
       expect(original.status).toBe(status)

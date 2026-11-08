@@ -3,15 +3,17 @@ import { createSubagentDispatch } from "../../../../../src/orchestration/modules
 import type { LiveChildControl } from "../../../../../src/orchestration/session/live-session-control.js";
 import type { SessionFact, SessionFactWriter } from "../../../../../src/orchestration/session/session-fact-writer.js";
 import type { RuntimeEvent } from "../../../../../src/infra/runtime-event-types.js";
-import type { AgentRunResult } from "../../../../../src/orchestration/agent-runtime/types.js";
+import type { AgentOptions, AgentRunResult, AgentRunTerminal } from "../../../../../src/orchestration/agent-runtime/types.js";
+import { createRuntimeEvent } from "../../../../../src/infra/runtime-event-factory.js";
 import { createOutputSession } from "../../../../../src/orchestration/runner/output-session.js";
 import type { BackgroundExecutionOwner } from "../../../../../src/orchestration/agent-runtime/background-execution-owner.js";
 import type { BackgroundWorkResult } from "../../../../../src/orchestration/agent-runtime/background-work.js";
 import type { CommandHandoverAuthority } from "../../../../../src/orchestration/agent-runtime/command-handover.js";
-import { asAsyncEventReadSurface, asAsyncEventWriter } from "../../../../../src/infra/event-store-types.js";
+import { asAsyncEventReadSurface, asAsyncEventWriter, PersistenceWriteRefused, type AsyncEventStateReadSurface } from "../../../../../src/infra/event-store-types.js";
 import { resolveEventStoreDbFile } from "../../../../../src/infra/paths.js";
 import { createSqliteEventStore } from "../../../../../src/infra/sqlite-event-store.js";
 import { allCommandHandoversAsync, COMMAND_HANDOVER_IN_FLIGHT_KIND } from "../../../../../src/orchestration/session/command-handover.js";
+import { registerCapacityWaits } from "../../../../../src/orchestration/session/capacity-wait.js";
 import { temporaryDirectories } from "../../../../helpers/directories.js";
 import { fakeContainer, handedOverRow, handoverAuthority } from "../_command-handover-fixtures.js";
 import { makeMockOps } from "../tools/_bash-fixtures.js";
@@ -20,18 +22,23 @@ import { createNotificationCapture, makeContext, makeDeps, TEST_RATIONALE } from
 const temporary = temporaryDirectories();
 
 /** A dispatch whose runner holds until it is aborted, the way a held
- *  provider request does, with every seam the pause touches recorded. With
- *  `commandHandover`, its parent lends the child the executor's handover, and
- *  the child's run is `child-run`, its session `child`, and its conversation
+ *  provider request does, or until `finish`, with every seam the pause
+ *  touches recorded. With `holdOnAbort`, an abort does not end the runner, so
+ *  that `finish` decides what its loop returns. `sessionEventStore` is the
+ *  child's event store. With `commandHandover`, its
+ *  parent lends the child the executor's handover, and the child's run is
+ *  `child-run`, its session `child`, and its conversation
  *  `child-conversation`. */
-function heldDispatch(commandHandover?: CommandHandoverAuthority) {
+function heldDispatch({ commandHandover, holdOnAbort = false, sessionEventStore }: { commandHandover?: CommandHandoverAuthority; holdOnAbort?: boolean; sessionEventStore?: AsyncEventStateReadSurface } = {}) {
   const done = Promise.withResolvers<AgentRunResult>();
+  const aborted = (): void => { if (!holdOnAbort) done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }); };
   const background = Promise.withResolvers<BackgroundExecutionOwner>();
   const runningAtRequest: string[][] = [];
   const facts: SessionFact[] = [];
   const events: RuntimeEvent[] = [];
   const deactivated: string[] = [];
   let control: LiveChildControl | undefined;
+  let runnerOptions: AgentOptions | undefined;
   const notification = createNotificationCapture();
   const track = notification.backgroundTasks.track;
   notification.backgroundTasks.track = (work) => track({ ...work, ...(work.stall ? { stall: { ...work.stall, timeoutMs: 10 } } : {}) });
@@ -47,12 +54,14 @@ function heldDispatch(commandHandover?: CommandHandoverAuthority) {
   const deps = makeDeps({
     backgroundTasks: notification.backgroundTasks,
     sessionEventWriter,
+    ...(sessionEventStore ? { sessionEventStore } : {}),
     onRenderEvent: (event) => { events.push(event); output.dispatchRuntimeEvent(event); },
     ...(commandHandover ? { inheritableRuntimeSurfaces: { commandHandover } } : {}),
     createRunner: (options) => {
+      runnerOptions = options;
       runningAtRequest.push(options.runtimeSurfaces?.background?.tasks.activeBackgroundCommands().map((command) => command.id) ?? []);
       if (options.runtimeSurfaces?.background) background.resolve(options.runtimeSurfaces.background);
-      return { send() { options.lifecycle.signal?.addEventListener("abort", () => done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }), { once: true }); }, end() {}, abort() { done.resolve({ servedRequests: 0, durationMs: 1, terminal: { kind: "aborted" } }); }, done: done.promise };
+      return { send() { options.lifecycle.signal?.addEventListener("abort", aborted, { once: true }); }, end() {}, abort: aborted, done: done.promise };
     },
   });
   const ids = ["child-run", "child", "child-conversation"];
@@ -73,8 +82,54 @@ function heldDispatch(commandHandover?: CommandHandoverAuthority) {
     runningAtRequest,
     background: background.promise,
     control: () => { if (!control) throw new Error("no live session control"); return control; },
+    runner: () => { if (!runnerOptions) throw new Error("no runner"); return runnerOptions; },
+    finish: (terminal: AgentRunTerminal) => { done.resolve({ servedRequests: 1, durationMs: 1, terminal }); },
   };
 }
+
+/** Holds the child's owner close, the last step of its loop's teardown, so
+ *  that a cut lands after the loop returned and before the run settles. */
+async function holdSettlement(run: ReturnType<typeof heldDispatch>) {
+  const background = await run.background;
+  const close = background.close;
+  const closing = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  background.close = async () => { closing.resolve(); await release.promise; await close(); };
+  return { closing: closing.promise, release: () => { release.resolve(); } };
+}
+
+/** Holds the settlement of the child's capacity wait, which retires the
+ *  wait's row after the loop returned and before the run settles, so that a
+ *  cut lands then. Give `sessionEventStore` to the dispatch, then `hold` the
+ *  child's session. */
+function holdCapacitySettlement() {
+  const store = createSqliteEventStore(resolveEventStoreDbFile(temporary("child-capacity-")));
+  const surface = asAsyncEventReadSurface(store);
+  const closing = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  const ledger = registerCapacityWaits(surface, {
+    reader: { ...surface, sessionsWithInFlight: async (kind) => { closing.resolve(); await release.promise; return surface.sessionsWithInFlight(kind); } },
+    writer: asAsyncEventWriter(store),
+  });
+  return {
+    sessionEventStore: surface,
+    hold: (sessionId: string) => { ledger.hold(sessionId); },
+    closing: closing.promise,
+    release: () => { release.resolve(); },
+    dispose: () => { ledger.dispose(); store.close(); },
+  };
+}
+
+/** The run recorded a completion with `status` and no pause, and its child
+ *  stays active with no paused card. */
+function expectCompletedAs(run: ReturnType<typeof heldDispatch>, status: string): void {
+  expect(run.facts.find((fact) => fact.type === "subagent.completed")?.payload).toMatchObject({ status });
+  expect(run.facts.some((fact) => fact.type === "subagent.paused")).toBe(false);
+  expect(run.deactivated).toEqual([]);
+  expect(run.events.some((event) => event.type === "agent.subagent.paused")).toBe(false);
+}
+
+const refusedWrite: AgentRunTerminal = { kind: "local_persistence_error", error: new PersistenceWriteRefused(10, 1) };
 
 describe("subagent pause", () => {
   it("pauses when the supplied parent lifecycle signal aborts", async () => {
@@ -174,7 +229,7 @@ describe("subagent pause", () => {
     const store = createSqliteEventStore(resolveEventStoreDbFile(dir));
     const events: string[] = [];
     const container = fakeContainer(events, "handed_over");
-    const run = heldDispatch(handoverAuthority({ reader: store, writer: asAsyncEventWriter(store) }));
+    const run = heldDispatch({ commandHandover: handoverAuthority({ reader: store, writer: asAsyncEventWriter(store) }) });
     await run.tool.execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "investigate" }, makeContext({ conversationId: "parent-conversation", toolUseId: "dispatch-call" }));
     const background = await run.background;
     await background.shell.runBackground({
@@ -200,7 +255,7 @@ describe("subagent pause", () => {
     const container = fakeContainer([]);
     const row = handedOverRow(dir, { sessionId: "child", conversationId: "child-conversation" });
     store.putInFlight("child", COMMAND_HANDOVER_IN_FLIGHT_KIND, row.processId, row);
-    const run = heldDispatch(handoverAuthority({ reader: store, writer: asAsyncEventWriter(store), heard: false, adopt: () => ({ kind: "adopted", owned: container.owned }) }));
+    const run = heldDispatch({ commandHandover: handoverAuthority({ reader: store, writer: asAsyncEventWriter(store), heard: false, adopt: () => ({ kind: "adopted", owned: container.owned }) }) });
 
     await run.tool.execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "investigate" }, makeContext({ conversationId: "parent-conversation", toolUseId: "dispatch-call" }));
     await run.background;
@@ -210,6 +265,85 @@ describe("subagent pause", () => {
     await run.control().child.interrupt("runtime");
     run.output.dispose();
     store.close();
+  });
+
+  it.each(["person", "agent", "replacement"] as const)("a child that handed off completes when a %s interrupt arrives before its settlement", async (by) => {
+    const run = heldDispatch();
+    await run.tool.execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "investigate" }, makeContext({ conversationId: "parent-conversation", toolUseId: "dispatch-call" }));
+    const settlement = await holdSettlement(run);
+    run.runner().runtimeSurfaces?.handoff?.onContent({ summary: "the result" });
+    run.finish({ kind: "completed" });
+    await settlement.closing;
+    const interrupted = run.control().child.interrupt(by);
+    settlement.release();
+    const answer = await interrupted;
+    expectCompletedAs(run, "completed");
+    expect(answer).toBe(false);
+    run.output.dispose();
+  });
+
+  it("a child that handed off completes when an interrupt arrives before its loop returns", async () => {
+    const run = heldDispatch();
+    await run.tool.execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "investigate" }, makeContext({ conversationId: "parent-conversation", toolUseId: "dispatch-call" }));
+    run.runner().runtimeSurfaces?.handoff?.onContent({ summary: "the result" });
+    // The runner returns aborted if the interrupt cuts it, and completed if not.
+    const interrupted = run.control().child.interrupt("person");
+    run.finish({ kind: "completed" });
+    const answer = await interrupted;
+    expectCompletedAs(run, "completed");
+    expect(answer).toBe(false);
+    run.output.dispose();
+  });
+
+  it.each([
+    ["a text result before its owner closes", { kind: "completed" }, "completed", "owner"],
+    ["a model failure before its owner closes", { kind: "api_error", message: "provider broke", recovery: { kind: "none" } }, "failed", "owner"],
+    ["a text result before its capacity wait settles", { kind: "completed" }, "completed", "capacity"],
+    ["a model failure before its capacity wait settles", { kind: "api_error", message: "provider broke", recovery: { kind: "none" } }, "failed", "capacity"],
+  ] as const)("a child whose loop returned %s settles from it when an interrupt arrives", async (_name, terminal, status, held) => {
+    const capacity = held === "capacity" ? holdCapacitySettlement() : undefined;
+    try {
+      const run = heldDispatch(capacity ? { sessionEventStore: capacity.sessionEventStore } : {});
+      await run.tool.execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "investigate" }, makeContext({ conversationId: "parent-conversation", toolUseId: "dispatch-call" }));
+      capacity?.hold(run.control().sessionId);
+      const settlement = capacity ?? await holdSettlement(run);
+      run.runner().onEvent(createRuntimeEvent("model.assistant_message.recorded", { type: "model.assistant_message.recorded", message: { content: [{ type: "text", text: "the answer" }] } }));
+      run.finish(terminal);
+      await settlement.closing;
+      const interrupted = run.control().child.interrupt("person");
+      settlement.release();
+      const answer = await interrupted;
+      expectCompletedAs(run, status);
+      expect(answer).toBe(false);
+      run.output.dispose();
+    } finally {
+      capacity?.dispose();
+    }
+  });
+
+  it.each([
+    ["write was refused", refusedWrite],
+    ["loop then failed", { kind: "api_error", message: "the store broke", recovery: { kind: "none" } }],
+  ] as const)("a handoff whose %s fails rather than completes", async (_name, terminal) => {
+    const run = heldDispatch();
+    await run.tool.execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "investigate" }, makeContext({ conversationId: "parent-conversation", toolUseId: "dispatch-call" }));
+    const settled = run.control().settled;
+    run.runner().runtimeSurfaces?.handoff?.onContent({ summary: "the result" });
+    run.finish(terminal);
+    await settled;
+    expectCompletedAs(run, "failed");
+    run.output.dispose();
+  });
+
+  it("an interrupted run whose write was refused fails rather than pauses", async () => {
+    const run = heldDispatch({ holdOnAbort: true });
+    await run.tool.execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "investigate" }, makeContext({ conversationId: "parent-conversation", toolUseId: "dispatch-call" }));
+    const interrupted = run.control().child.interrupt("person");
+    run.finish(refusedWrite);
+    const answer = await interrupted;
+    expectCompletedAs(run, "failed");
+    expect(answer).toBe(true);
+    run.output.dispose();
   });
 
   it("a planned replacement's cut records the runtime pause but leaves the parent's card silent", async () => {

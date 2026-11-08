@@ -57,7 +57,7 @@ test("idle manual compaction without notes refuses without starting a provider r
     providerSessionKey: "idle", promptCacheKey: "idle", artifactScopeId: "idle", retrievalSessionId: "idle",
     seed: { kind: "resume", priorMessages: [{ kind: "user", content: "old task" }, { kind: "assistant", content: "old answer" }] },
     persistence: { history: { append: () => {} } },
-    lifecycle: { maintenance: { awaitsPerson: false, turnEndWaits: false } }, onEvent: () => {}, onSystemMessage: (message) => notices.push(message),
+    lifecycle: { maintenance: {} }, onEvent: () => {}, onSystemMessage: (message) => notices.push(message),
     inputSource: {
       drainPending: () => { if (queued) return null; queued = true; return compactInput(); },
       prepareWaitForInput: () => ({ commit: async () => null, cancel: async () => {} }),
@@ -92,7 +92,7 @@ for (const [start, awaitsPerson, requests, parks, turnsEnded] of [
       seed: { kind: "resume", priorMessages: [{ kind: "user", content: "old task" }, { kind: "assistant", content: "old answer" }] },
       persistence: { history: { append: () => {} } },
       lifecycle: {
-        maintenance: { awaitsPerson, turnEndWaits: awaitsPerson },
+        maintenance: awaitsPerson ? { personWait: { turnEnd: "recorded" } } : {},
         onTurnEnded: () => { observedTurnsEnded++; },
         onTurnParked: ({ userResumeRequired, turnCount }) => { observedParks.push({ userResumeRequired, turnCount }); },
       },
@@ -137,7 +137,7 @@ for (const awaitsPerson of [false, true]) {
       seed: { kind: "resume", priorMessages: [{ kind: "user", content: "old task" }, { kind: "assistant", content: "old answer" }] },
       persistence: { history: { append: () => {} } },
       lifecycle: {
-        maintenance: { awaitsPerson, turnEndWaits: awaitsPerson },
+        maintenance: awaitsPerson ? { personWait: { turnEnd: "recorded" } } : {},
         onTurnEnded: () => { observedTurnsEnded++; },
         onTurnParked: ({ userResumeRequired, turnCount }) => { observedParks.push({ userResumeRequired, turnCount }); },
       },

@@ -697,20 +697,21 @@ export async function preparePlannedSessionContinuationConsumption(input: {
  *  cut runs it, in the child's continuation lane, for every child it finds
  *  running, and the stop of an executor whose cut has begun runs it for
  *  every running child whose lane holds no step and whose row does not name
- *  the run it runs now. */
+ *  the run it runs now. Returns whether it interrupted the run: a run whose
+ *  end was already decided completes, and its successor retires the row. */
 export async function interruptChildForReplacement(input: {
   readonly projectionReader: AsyncEventStateReadSurface
   readonly writer: AsyncEventWriter
   readonly control: LiveChildControl
   readonly handoffId: string
-}): Promise<void> {
+}): Promise<boolean> {
   const { control } = input
   await authorizePlannedSessionContinuation({ reader: input.projectionReader, writer: input.writer, continuation: {
     target: { sessionId: control.sessionId, kind: "subagent" },
     handoffId: input.handoffId,
     runId: control.child.runId,
   } })
-  await control.child.interrupt("replacement")
+  return await control.child.interrupt("replacement")
 }
 
 /** How long a step re-entered after a planned replacement waits for its

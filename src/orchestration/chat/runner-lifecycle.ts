@@ -214,8 +214,8 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
     // the open wait that a Resume of a planned cut continues.
     const restored = maintenance || turn.resumes
       ? await readChatTurnEndEvidence(deps.infra.projectionReader, deps.conversationId, { restoreWait: true }) : undefined
-    const restoredWait = maintenance && !maintenance.awaitsPerson ? restored?.restoredWait : undefined
-    const continuedWait = maintenance?.awaitsPerson || turn.resumes ? restored?.continuedWait : undefined
+    const restoredWait = maintenance && !maintenance.personWait ? restored?.restoredWait : undefined
+    const continuedWait = maintenance?.personWait || turn.resumes ? restored?.continuedWait : undefined
     if (!isLiveTurn(turn)) throw new AgentTurnAborted()
     await moduleHosts.replay(treeContext.messages)
 
