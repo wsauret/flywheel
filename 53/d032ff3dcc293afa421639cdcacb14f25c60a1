@@ -1,0 +1,40 @@
+src/orchestration/app-service/runtime-supervisor.ts
+  h_4b47e9e4a8b456 311,438
+src/orchestration/modules/subagents/execution/child-execution.ts
+  h_4b47e9e4a8b456 13,20,39,53,144-146,148-151,154,159,181,276-281,283-287,289,396,417,515-519,531,540,561-563,580,596,610,619,641-642,645,656,658,663-664,669
+src/orchestration/modules/subagents/execution/result-resolver.ts
+  h_4b47e9e4a8b456 18,22,49-50,73-79,82-88,141
+src/orchestration/modules/subagents/execution/run-end.ts
+  h_4b47e9e4a8b456 1-86
+src/orchestration/session/live-session-control.ts
+  h_4b47e9e4a8b456 74-79
+src/orchestration/session/planned-session-continuation.ts
+  h_4b47e9e4a8b456 700-701,707,714
+tests/helpers/live-child-run.ts
+  h_4b47e9e4a8b456 8-9,25,45
+tests/unit/orchestration/agent-runtime/agent-loop-turn-hop.test.ts
+  h_4b47e9e4a8b456 327
+tests/unit/orchestration/agent-runtime/subagent/pause.test.ts
+  h_4b47e9e4a8b456 6-7,12,16,25-30,32,34,41,57,61,64,85-86,90-133,232,258,270-348
+tests/unit/orchestration/agent-runtime/subagent/result-resolver.test.ts
+  h_4b47e9e4a8b456 25,55,67,79,177,193
+tests/unit/orchestration/modules/subagents/subagent-continuation.test.ts
+  h_4b47e9e4a8b456 347,349-350
+tests/unit/orchestration/modules/subagents/subagent-session-send.test.ts
+  h_4b47e9e4a8b456 85
+tests/unit/orchestration/session/reply-waits.test.ts
+  h_4b47e9e4a8b456 222,264,289,305,613
+tests/unit/orchestration/session/subagent-completion-single-delivery.test.ts
+  h_4b47e9e4a8b456 239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "53d032ff3dcc293afa421639cdcacb14f25c60a1",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
