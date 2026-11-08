@@ -1,0 +1,16 @@
+src/orchestration/session/create-session-infra.ts
+  h_4b47e9e4a8b456 26,29-30,32-37,62,64-80,82-83,95,102-109,143,145,151,153-155,159-167,169,171-172,176-192
+tests/unit/orchestration/session/runtime-fact-subscriber.test.ts
+  h_4b47e9e4a8b456 7-10,16,75-76,242-245,265-315
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "30b6a22252bece6d3d337aebe7697f885fb07f6e",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
