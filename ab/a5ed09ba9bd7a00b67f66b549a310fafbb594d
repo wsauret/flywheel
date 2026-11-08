@@ -1,0 +1,20 @@
+src/orchestration/agent-runtime/llm/openai-chatgpt.ts
+  h_4b47e9e4a8b456 101-104,107,110-111,114-118,141-145,149,164-178,180-191,193-198,200-201,203,208-228,233-236,249,255-256,258-263,268,272,276-281,286,288,290-306,317
+src/orchestration/agent-runtime/web-search/chatgpt.ts
+  h_4b47e9e4a8b456 71
+src/orchestration/modules/provider-chatgpt/module.ts
+  h_4b47e9e4a8b456 52
+tests/unit/orchestration/agent-runtime/llm/openai-chatgpt-account-affinity.test.ts
+  h_4b47e9e4a8b456 9,186-189,191-197,201-204,209-253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aba5ed09ba9bd7a00b67f66b549a310fafbb594d",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
