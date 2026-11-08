@@ -1,0 +1,126 @@
+.gitignore
+  h_4b47e9e4a8b456 60
+bench/README.md
+  h_4b47e9e4a8b456 3,100,369
+bench/harbor/harbor-jobs.ts
+  h_4b47e9e4a8b456 5,10-11,12-13,21,24,26-28,30,38,53,92-93,106-119,125,135,138,145-148,150-151,155,157,158,162,164-167,175-176
+bench/harbor/harbor_agent_package.py
+  h_4b47e9e4a8b456 3-9,10-12,19,21,23,26-29,35,38,44-46,51,52,53,56,60-67,68-74,75,76-82,83-84,102-104,112-136,138-154,157-168,169-223,224-226,227-228,230,232-236,237,245,248-249,253-255,256-257,264,267-269,273-278,283,285,286,288,290,293,299,300,423,431
+bench/harbor/test_harbor_agent_package.py
+  h_4b47e9e4a8b456 2,4,10,21,24,25-40,52,54,66,68,69,81-84,86,89,96,99-100,104,112-119,124-146,149,151,158,167-169,171-172,175-177,179-190,196-234
+src/orchestration/agent-runtime/agent-loop-content-filter.ts
+  h_4b47e9e4a8b456 15
+tests/helpers/harbor-trial-evidence.ts
+  h_4b47e9e4a8b456 1,7,100
+tests/integration/bench/harbor-runner.test.ts
+  h_4b47e9e4a8b456 3,5,6,7,9,26,28,30,36,42,59,67,96,102,106,111,115,119,125,143,173,188-276
+tests/integration/bench/trial-store-analysis-standalone.test.ts
+  h_4b47e9e4a8b456 3,14
+tests/unit/bench/harbor-analyzer.test.ts
+  h_4b47e9e4a8b456 7,8,9,10,18,67,151,160,175
+tests/unit/bench/harbor-flywheel-config-evidence.test.ts
+  h_4b47e9e4a8b456 5,6,8,13,18,24,26,51
+tests/unit/bench/harbor-ledger.test.ts
+  h_4b47e9e4a8b456 4,10-11,32,58,114-127
+bench/harbor/benchmarks.ts
+  h_4b47e9e4a8b456 1-26,27-30,31-65,66,67-79,80,81-92
+bench/harbor/rounds.ts
+  h_4b47e9e4a8b456 1,2,3,4-17,18-28,29-34,35-37,38-40,41-50,51-56,57-64,65-66,67-68,69-73,74-75,76-81,82,83-89,90-91,92,93-94,95-147,148,149-158,159
+bench/harbor/analysis/answer-key.ts
+  h_4b47e9e4a8b456 1-148
+bench/harbor/analysis/board-data.ts
+  h_4b47e9e4a8b456 1-62,63,64-72,73-74,75-249,250,251-387
+bench/harbor/analysis/board-scoring.ts
+  h_4b47e9e4a8b456 1-25,26-27,28-98,99,100-167,168,169-205,206,207-216,217,218-234,235,236-357
+bench/harbor/analysis/json.ts
+  h_4b47e9e4a8b456 1-55
+bench/harbor/analysis/projection.ts
+  h_4b47e9e4a8b456 1-118
+bench/harbor/analysis/python-random.ts
+  h_4b47e9e4a8b456 1-124
+bench/harbor/analysis/reruns.ts
+  h_4b47e9e4a8b456 1-2,3,4-10,11,12-28,29,30,31,32-43,44-47,48-54,55-62,63-70,71-101,102,103-107,108,109-110,111-115,116-119,120-125,126,127-130,131-141,142,143-144
+bench/harbor/analysis/round-score.ts
+  h_4b47e9e4a8b456 1-9,10,11-133
+bench/harbor/analysis/round-trials.ts
+  h_4b47e9e4a8b456 1-4,5,6-7,8,9-46,47-49,50,51-53,54-87,88,89-122
+bench/harbor/analysis/subset.ts
+  h_4b47e9e4a8b456 1-16,17,18-28,29,30-63,64,65-120,121,122-146,147,148-169,170,171-210
+bench/harbor/disclosure-ledger.ts
+  h_4b47e9e4a8b456 24-34,102-103,170
+bench/harbor/harbor-config.ts
+  h_4b47e9e4a8b456 11-13,22,24-41,47,52-62,64-68,71-73,75,86,92-93,102-104,110,117,129-135,159,163,178-192,196,199-200,206,208,211-224,240,246-255,257-258,261-262,270-271,277-282,284-288,290-291,294,306,310-315,317-320,322-327,329-340
+bench/harbor/harbor_agent/flywheel_harbor_agent/shim.py
+  h_4b47e9e4a8b456 14-15,16-19,59,87,91-94,95-98,139,192-214,217,219,223,227,229-231,246,257,371,384,386,400,456,458,471,473,543,558,559,561-562,564,566,587,591
+bench/harbor/harbor_agent/flywheel_harbor_agent/trial_runtime.py
+  h_4b47e9e4a8b456 1-8
+bench/harbor/harbor_tasks.py
+  h_4b47e9e4a8b456 1,6-7,12-13,40-41
+bench/harbor/hill.ts
+  h_4b47e9e4a8b456 1,2-4,5,6-14,15,16-19,20,21-54,55-58,59-113,114,115-132,133-134,135-204
+bench/harbor/run-harbor.sh
+  h_4b47e9e4a8b456 30-38,53,72,76-77,83,93-99,102
+bench/harbor/run-harbor.ts
+  h_4b47e9e4a8b456 7-8,9,11,26,28,33,41,108,111-112,144-145,147,219-223,225,227-231,233-234,248,257,261,262,268-270,282,285-286,293,329,342-346,347-348,349,361-363,365,367,376,378,379,385,389,417,427-429,497-528,533,534-535,542,547-556,559,560,561,563,565,567,572-583,588-597,598,601,630,642,655,660,662-666,670,673
+bench/harbor/test_harbor_agent_shim.py
+  h_4b47e9e4a8b456 34,71-76,125,131,138,144-152,154,156-173,174-175,176-178,179-201,203,204-205,206-207,208-227,228-234,245,260,273,283-284,285
+bench/harbor/test_verifier_wheelhouse.py
+  h_4b47e9e4a8b456 148-149,159,164
+bench/harbor/trial-store-analysis.ts
+  h_4b47e9e4a8b456 18-23
+bench/harbor/verifier_wheelhouse.py
+  h_4b47e9e4a8b456 365,369,381,397,401,408
+bench/harbor/workflows/answer-key-review.workflow.yaml
+  h_4b47e9e4a8b456 1-50
+knip.jsonc
+  h_4b47e9e4a8b456 8,9
+package.json
+  h_4b47e9e4a8b456 106
+scripts/check-bench-pins.ts
+  h_4b47e9e4a8b456 32,34
+src/infra/llm/access-provider.ts
+  h_4b47e9e4a8b456 408-411
+src/orchestration/modules/provider-openrouter/affordability.ts
+  h_4b47e9e4a8b456 5,7
+src/orchestration/modules/provider-openrouter/api.ts
+  h_4b47e9e4a8b456 1-4
+src/orchestration/modules/provider-openrouter/module.ts
+  h_4b47e9e4a8b456 13,30,40,56
+tests/fixtures/harbor-run.ts
+  h_4b47e9e4a8b456 1-4,7
+tests/unit/bench/harbor-answer-key-workflow.test.ts
+  h_4b47e9e4a8b456 1-18
+tests/unit/bench/harbor-board-scoring.test.ts
+  h_4b47e9e4a8b456 1-80
+tests/unit/bench/harbor-config.test.ts
+  h_4b47e9e4a8b456 5-6,8,10-13,15-18,20,23-30,33-34,37-55,60-61,63,65,70-75,79,80,81-83,85,88-96,100-103,106-108,113,117-123,126-130,132-136,139-141,144-147
+tests/unit/bench/harbor-jobs.test.ts
+  h_4b47e9e4a8b456 5-8,10,12-13,14,15,17,21,24,26-27,34,36-37,42,44-45,47-48,50-51,53,56,60,62-63,65-66,68,74,78,82,84-86,89-90,93,94-96,97-99,100-103,104,105,106-108,109-110,111,112,113-123,124,125-129,130-143,157,159,180-183
+tests/unit/bench/harbor-projection.test.ts
+  h_4b47e9e4a8b456 1-21
+tests/unit/bench/harbor-round-score.test.ts
+  h_4b47e9e4a8b456 1-10,11,12-28,29-30,31-32,33-37,38,39-42,43-45,46,47-71,72-73,74-77,78-111,112-128,129-136,137-162,163,164,165,166-168,169,170-171,172-175,176-183,184,185-186,187-188,189-193,194,195,196-221,222-225,226,227-230
+bench/harbor/METHODOLOGY.md
+  h_4b47e9e4a8b456 1,3,5,7,9-12,14,16,18-24,30,32-34,36,38,40,42,43-44,53,64,80,85,91-98,100,106,108,110-158,160,162-166,168,170,172,174-182,190-194,196,204-211,212,213-226,230-232,234
+bench/harbor/README.md
+  h_4b47e9e4a8b456 1,3,5-21,25-42,43,44,45,46-47,49,51-72,74-92,95-98,101-124,126,128,130-181,184-185,188,190,192-194,196-198,200-202,204,206,208,210-211,212,213-217,218,220,227,229-236,239,241,246,248,250,252,254,256,258,260,264,266-268,270-271,274-276,278-279,281,283,287,293-294,297-299
+bench/harbor/harbor_agent/pyproject.toml
+  h_4b47e9e4a8b456 6-11,22-29
+bench/harbor/harbor_agent/uv.lock
+  h_4b47e9e4a8b456 4-27,33-38
+src/orchestration/modules/provider-claude-agent-sdk/module.ts
+  h_4b47e9e4a8b456 73-74
+src/infra/llm/models.ts
+  h_4b47e9e4a8b456 55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "88b4ac144b9a36eeee865398912ecd0359d80aaa",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
