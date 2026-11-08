@@ -1,0 +1,20 @@
+src/protocol/client/session-changes-read.ts
+  h_4b47e9e4a8b456 1-125
+src/protocol/client/session-changes.ts
+  h_4b47e9e4a8b456 8,14,21-22,182-185,187,198-204,207-208,211-212,278,302-319,324-326,328-337,339-341,351,356,372-373,376-377,381,392-430,434-435,446,449-452,455-457,463-464,523-526
+tests/unit/protocol/client/session-changes-reads.test.ts
+  h_4b47e9e4a8b456 1-211
+tests/unit/protocol/client/session-changes.test.ts
+  h_4b47e9e4a8b456 155-170,205-221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "263350d174039f96752ec12ff193b65f9254f9e2",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
