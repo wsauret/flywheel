@@ -308,8 +308,7 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
         if (host) return host.interrupt(by, address)
         const run = childRun()
         if (!run) return deps.sessionStore.interrupt(sessionId, by, address)
-        await run.interrupt(by)
-        return true
+        return await run.interrupt(by)
       },
       owner: () => { const current = entry(); return workflow() ?? (current?.kind === "chat" ? current.runner ?? undefined : undefined) },
     })
@@ -436,8 +435,7 @@ export function createRuntimeSupervisor(deps: RuntimeSupervisorDeps): RuntimeSup
     if (control === undefined) return false
     const row = await readPlannedSessionContinuationAsync(deps.projectionReader, sessionId)
     if (row?.handoffId === handoffId && row.runId === control.child.runId) return false
-    await interruptChildForReplacement({ projectionReader: deps.projectionReader, writer: eventWriter, control, handoffId })
-    return true
+    return await interruptChildForReplacement({ projectionReader: deps.projectionReader, writer: eventWriter, control, handoffId })
   }
   /** The cut's step for one chat or workflow: a running turn is cut, and
    *  deterministic work accepted at its save point is carried without a turn.

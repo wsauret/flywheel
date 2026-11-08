@@ -15,10 +15,11 @@ import type { RuntimeEvent } from "../../../../infra/runtime-event-types.js";
 import { PERSON_STOP_INSTRUCTION } from "../../../../infra/tool-outcome.js";
 import { formatAgentFailure } from "../../../agent-runtime/failure-message.js";
 import { failureTerminal, type AgentFailureReason, type AgentRunResult } from "../../../agent-runtime/types.js";
-import type { BackgroundKillSource, BackgroundWorkResult, EndedWorkResult } from "../../../agent-runtime/background-work.js";
+import type { BackgroundWorkResult, EndedWorkResult } from "../../../agent-runtime/background-work.js";
 import type { SubagentStats, SubagentTextState } from "./stream-filter.js";
 import type { SubagentToolCallRecord } from "./work-log.js";
 import { boundHandoff, boundText, type ResultBudget } from "./result-budget.js";
+import type { RunEnd } from "./run-end.js";
 
 interface CapturedHandoff {
   [key: string]: unknown;
@@ -45,7 +46,8 @@ export interface SubagentResultContext {
   /** Child model identity, used to attribute a degraded-provider failure to
    *  the model the child was dispatched on. */
   model?: string;
-  getCapturedHandoff: () => CapturedHandoff | null;
+  /** How the run ended, which its owner decided once. */
+  end: RunEnd;
   textState: SubagentTextState;
   modelRequestId: string | undefined;
   /** Tool-use id the dispatching runner nests under; echoed on the child's
@@ -57,7 +59,6 @@ export interface SubagentResultContext {
   /** The bound of the parent-facing content, sized when the run settles. */
   budget: ResultBudget;
   signal?: AbortSignal;
-  cancellationSource?: BackgroundKillSource;
 }
 
 export async function resolveSubagentResult(
@@ -69,24 +70,24 @@ export async function resolveSubagentResult(
   const usage = usageFromStats(stats, durationMs);
   const label = subagentLabel(agentType, descriptionText);
 
+  const budgetExhausted = result.terminal.kind === "budget_exhausted";
+  // A handoff decides the result over an abort that landed before the loop
+  // saw it written. A handoff stands only when the loop then returns
+  // completed, its budget's end, or an abort; any other failure fails the
+  // run first, so its end is no longer `handed_off` here.
+  if (ctx.end.kind === "handed_off") return await handoffSubagentResult(ctx, usage, budgetExhausted, ctx.end.payload);
+
   const failure = subagentFailure(result);
   if (failure) {
-    if (failure.kind === "aborted" && ctx.cancellationSource === "agent") {
-      return cancelledSubagentResult(ctx, usage, label);
-    }
-    // A person's Stop is terminal: the parent's call fails with who stopped
-    // it, not with a runner failure to diagnose.
-    if (failure.kind === "aborted" && ctx.cancellationSource === "user") {
-      return { status: "stopped", content: stoppedSubagentContent(agentType, descriptionText), usage };
+    // A Stop is terminal: the parent's call fails with who stopped it, not
+    // with a runner failure to diagnose. The loop's return decides the end
+    // too, so a later Stop leaves the loop's own failure.
+    if (failure.kind === "aborted" && ctx.end.kind === "stopped") {
+      return ctx.end.by === "agent"
+        ? cancelledSubagentResult(ctx, usage, label)
+        : { status: "stopped", content: stoppedSubagentContent(agentType, descriptionText), usage };
     }
     return await failedSubagentResult(result, failure, ctx, usage, label);
-  }
-
-  const budgetExhausted = result.terminal.kind === "budget_exhausted";
-
-  const handoff = ctx.getCapturedHandoff();
-  if (handoff !== null) {
-    return await handoffSubagentResult(ctx, usage, budgetExhausted, handoff);
   }
 
   const resultText = textState.finalAssistantText;
@@ -137,7 +138,7 @@ async function failedSubagentResult(
   // An abort is an outcome, not a fault. The stall watchdog, the one abort
   // that is not owner-initiated, warns at its own decision point.
   if (interrupted) {
-    log.info("subagent runner aborted", { agentType, toolUseId, childSessionId, cancellationSource: ctx.cancellationSource ?? "parent", durationMs: result.durationMs });
+    log.info("subagent runner aborted", { agentType, toolUseId, childSessionId, runEnd: ctx.end.kind, durationMs: result.durationMs });
   } else {
     log.error("subagent runner failed", {
       agentType, toolUseId, childSessionId,

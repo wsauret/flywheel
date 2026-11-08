@@ -236,7 +236,7 @@ describe("subagent completion delivery", () => {
       member: { backgroundTasks: registry, modules: async () => undefined, compact: async () => false, interrupt: () => false, releaseForegroundBash: () => false, transferForegroundForReplacement: async () => {}, terminateBackgroundWork: () => {} },
       ...(parentKind.endsWith("subagent") ? { child: {
         runId: "parent-run", parentSessionId: "root", parentConversationId: "root-conversation", parentToolCallId: "parent-call",
-        backgroundTasks: registry, modules: async () => undefined, stop: () => {}, interrupt: async () => {},
+        backgroundTasks: registry, modules: async () => undefined, stop: () => {}, interrupt: async () => true,
         progress: () => ({ toolUses: 0, totalTokens: 0, startedAtMs: 0 }),
       } } : {}),
       notify: parentKind.endsWith("subagent") ? runInputs.notify : memberInputs.notify,

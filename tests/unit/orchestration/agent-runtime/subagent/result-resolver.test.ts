@@ -22,7 +22,7 @@ function baseCtx(overrides: Partial<SubagentResultContext> = {}): SubagentResult
     toolUseId: undefined,
     descriptionText: "do a thing",
     maxTurns: 10,
-    getCapturedHandoff: () => null,
+    end: { kind: "open" },
     textState: { finalAssistantText: "" },
     modelRequestId: undefined,
     parentToolUseId: undefined,
@@ -52,7 +52,7 @@ describe("resolveSubagentResult — status derives from the typed result, not pr
     const result: AgentRunResult = { servedRequests: 0, durationMs: 5, terminal: { kind: "completed" } };
     const out = await resolveSubagentResult(
       result,
-      baseCtx({ getCapturedHandoff: () => ({ summary: "done", files_modified: ["src/app.ts"] }) }),
+      baseCtx({ end: { kind: "handed_off", payload: { summary: "done", files_modified: ["src/app.ts"] } } }),
     );
     expect(out.status).toBe("completed");
     expect(out.content).toBe(JSON.stringify({ summary: "done", files_modified: ["src/app.ts"] }, null, 2));
@@ -64,7 +64,7 @@ describe("resolveSubagentResult — status derives from the typed result, not pr
     const result: AgentRunResult = { servedRequests: 0, durationMs: 5, terminal: { kind: "budget_exhausted" } };
     const out = await resolveSubagentResult(
       result,
-      baseCtx({ getCapturedHandoff: () => ({ summary: "half done; the second file is not done" }) }),
+      baseCtx({ end: { kind: "handed_off", payload: { summary: "half done; the second file is not done" } } }),
     );
     expect(out.status).toBe("partial");
     expect(out.content).toBe(JSON.stringify({ summary: "half done; the second file is not done" }, null, 2));
@@ -76,7 +76,7 @@ describe("resolveSubagentResult — status derives from the typed result, not pr
     // earlier prompt that still sends `blockers` loses nothing.
     const legacy = { summary: "stopped", files_modified: [], blockers: ["the credential is missing"] };
     const result: AgentRunResult = { servedRequests: 0, durationMs: 5, terminal: { kind: "completed" } };
-    const out = await resolveSubagentResult(result, baseCtx({ getCapturedHandoff: () => legacy }));
+    const out = await resolveSubagentResult(result, baseCtx({ end: { kind: "handed_off", payload: legacy } }));
     expect(out.status).toBe("completed");
     expect(out.content).toContain("the credential is missing");
   });
@@ -174,7 +174,7 @@ describe("resolveSubagentResult — status derives from the typed result, not pr
     const out = await resolveSubagentResult(
       { servedRequests: 0, durationMs: 5, terminal: { kind: "aborted" } },
       baseCtx({
-        cancellationSource: "user",
+        end: { kind: "stopped", by: "user" },
         toolUseId: "tool-stopped",
         deps: { onRenderEvent: (event) => events.push(event) },
       }),
@@ -190,7 +190,7 @@ describe("resolveSubagentResult — status derives from the typed result, not pr
     const out = await resolveSubagentResult(
       { servedRequests: 0, durationMs: 5, terminal: { kind: "aborted" } },
       baseCtx({
-        cancellationSource: "agent",
+        end: { kind: "stopped", by: "agent" },
         toolUseId: "tool-cancelled",
         deps: { onRenderEvent: (event) => events.push(event) },
       }),
