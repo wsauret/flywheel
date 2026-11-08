@@ -171,7 +171,7 @@ describe("the Agent SDK bridge client", () => {
     const credential = { type: "external", configDir, ...(tokenLogin ? { token: Redacted.make("token-login") } : {}) } as const;
     const staged = await createClaudeAgentSdkClient({
       ...base, notify: (notice) => { raised.push(notice.type); },
-      connection: { ...base.connection, subscriptionCredentials: new Map([["claude_agent_sdk", [{ instanceId: "login", identity: "Claude Code token", lineageId: "login", credential }]]]) },
+      connection: { ...base.connection, subscriptionCredentials: new Map([["claude_agent_sdk", [{ instanceId: "login", identity: "token login", lineageId: "login", credential }]]]) },
     }, {
       ...recordingLaunches().seams, inPlaceGate: () => ({ status: () => Effect.succeed("unlisted") }),
       createLauncher: () => (launch) => { const { query, launched } = launchFakeQuery(launch, [], "auto"); queries.push(query); return launched; },

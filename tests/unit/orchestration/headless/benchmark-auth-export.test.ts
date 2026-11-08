@@ -16,7 +16,7 @@ import { readSavedProviderModels, recordProviderModelAccess, writeProviderModelC
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS } from "../../../../src/infra/llm/model-catalog-resolution.js"
 import { catalogProfile } from "../../../helpers/catalog-profile.js"
 import { credentialSlotClassifier } from "../../../../src/orchestration/auth/credential-slot-classifier.js"
-import { LOGIN_ACCOUNTS_DIRECTORY } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js"
+import { LOGIN_ACCOUNTS_DIRECTORY, LOGIN_PROGRAM_LABEL } from "../../../../src/orchestration/modules/provider-claude-agent-sdk/names.js"
 import { PROVIDERS, privateStage, withChatGptRefresh } from "./_auth-snapshot-fixtures.js"
 
 describe("headless auth snapshot export", () => {
@@ -206,7 +206,7 @@ describe("headless auth snapshot export", () => {
       expect(JSON.parse(readFileSync(output, "utf8"))).toEqual({ profile: "token", credentials: {}, modelAccess: [], externalLogins: { claude_agent_sdk: { access: "sk-ant-oat-token" } } })
       captured = await captureHeadlessSnapshotConnection(readHeadlessAuthSnapshot(output, PROVIDERS), stage, PROVIDERS)
       const accounts = captured.connection.subscriptionCredentials.get("claude_agent_sdk") ?? []
-      expect(accounts.map(({ instanceId, lineageId, identity }) => ({ instanceId, lineageId, identity }))).toEqual([{ instanceId: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/), lineageId: accounts[0]?.instanceId, identity: "Claude Code token" }])
+      expect(accounts.map(({ instanceId, lineageId, identity }) => ({ instanceId, lineageId, identity }))).toEqual([{ instanceId: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/), lineageId: accounts[0]?.instanceId, identity: `${LOGIN_PROGRAM_LABEL} token` }])
       const credential = accounts[0]?.credential
       if (credential?.type !== "external" || credential.token === undefined) throw new Error("the token login has no token")
       expect(Redacted.value(credential.token)).toBe("sk-ant-oat-token")
