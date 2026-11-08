@@ -13,11 +13,13 @@ function extractToolSignature(call: Pick<ToolCall, "name" | "input">): string {
   const keys = Object.keys(call.input).sort();
   // JSON for object values: String() would render every object as
   // "[object Object]", collapsing calls that differ only in nested args
-  // into one signature (a false-positive repetition guard).
+  // into one signature (a false-positive repetition guard). The whole value
+  // counts, hashed so a large input costs no memory: commands that share a
+  // long prefix, such as a `cd` into one directory, are different calls.
   const parts = keys.map((k) => {
     const value = call.input[k];
     const rendered = typeof value === "object" && value !== null ? JSON.stringify(value) : String(value);
-    return `${k}=${rendered.slice(0, 100)}`;
+    return `${k}=${Bun.hash(rendered).toString(36)}`;
   });
   return `${call.name}(${parts.join(",")})`;
 }
