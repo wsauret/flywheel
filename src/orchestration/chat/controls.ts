@@ -87,22 +87,17 @@ function queuedInputsForRestart(inputs: readonly ChatInputLike[], fallbackTexts:
 export function createChatControls(controlsInput: ChatControlsInput): ChatControls {
   const { lifecycle, session, callbacks, eventUnsubs, state, treeWriter, onTreeFailure, drainEvents, recordInterruption, supersedeInterruptedTurn } = controlsInput
 
-  // Who cut the current turn, once one did. One interruption per cut turn:
-  // after a person's interrupt the runner still holds its turn slot, parked,
-  // so the runtime's planned stop must not record a second interruption over
-  // the person's. Resumed work re-arms it.
-  let interruptedBy: TurnInterruption | null = null
   // The last message sent, which the next one waits for.
   let earlierSends: Promise<unknown> = Promise.resolve()
 
   function holdsRunningTurn(): boolean {
-    return !state.ended && interruptedBy === null && lifecycle.turnRunning
+    return !state.ended && lifecycle.turnRunning
   }
 
   function interruptForRuntime(by: RuntimeInterruption): boolean {
     if (!holdsRunningTurn() || !lifecycle.abortRunningTurn()) return false
     log.info("chat interrupted by the runtime", { by })
-    interruptedBy = by
+    lifecycle.cutTurn(by)
     session.endTurn("paused")
     if (by !== "replacement") session.pushSystemMessage(interruptedLabel("runtime"), Date.now())
     recordInterruption(by)
@@ -114,10 +109,11 @@ export function createChatControls(controlsInput: ChatControlsInput): ChatContro
     if (state.ended) return "ended"
     // A turn the runtime cut can take a while to unwind; its record is
     // queued already, so this one queues behind it and is the last.
-    const cutByRuntime = interruptedBy !== null && isRuntimeInterruption(interruptedBy)
+    const cut = lifecycle.turnCut
+    const cutByRuntime = cut?.kind === "aborted" && isRuntimeInterruption(cut.by)
     if (lifecycle.turnState !== "idle" && !cutByRuntime) return "running"
     log.info("chat interrupted after the runtime's planned cut", { by, turnUnwinding: lifecycle.turnState !== "idle" })
-    interruptedBy = by
+    lifecycle.cutTurn(by)
     session.pushSystemMessage(interruptedLabel(by), Date.now())
     recordInterruption(by)
     session.flush()
@@ -127,7 +123,6 @@ export function createChatControls(controlsInput: ChatControlsInput): ChatContro
   function resume(options: { readonly announce: boolean }): boolean {
     if (state.ended) return false
     if (!lifecycle.resumeCommitted({ explicit: true })) return false
-    interruptedBy = null
     if (options.announce) session.pushSystemMessage(RESUMED_LABEL, Date.now())
     session.flush()
     return true
@@ -138,7 +133,7 @@ export function createChatControls(controlsInput: ChatControlsInput): ChatContro
     log.info("chat interrupted by user")
     const interruptedRunner = lifecycle.interruptGeneration()
     if (!interruptedRunner) return false
-    interruptedBy = "person"
+    lifecycle.cutTurn("person")
 
     session.endTurn("paused")
 
@@ -153,8 +148,7 @@ export function createChatControls(controlsInput: ChatControlsInput): ChatContro
     // consumes it and continues with it as the next user turn. Keep turn
     // state alive so the UI reflects the resumed work. The loop's exit
     // handler tears down naturally when work truly ends.
-    const resumedTexts = session.drainQueued()
-    if (resumedTexts.length > 0) interruptedBy = null
+    session.drainQueued()
     session.flush()
     return true
   }
@@ -277,8 +271,7 @@ export function createChatControls(controlsInput: ChatControlsInput): ChatContro
 
     // A message into a running turn continues it; one after an interrupt, or
     // into a session with no runner, leaves the last turn behind.
-    if (interruptedBy !== null || lifecycle.turnState === "idle") supersedeInterruptedTurn()
-    interruptedBy = null
+    if (lifecycle.turnCut !== undefined || lifecycle.turnState === "idle") supersedeInterruptedTurn()
 
     // Durable at dispatch, so the message is shown and reaches the runner
     // only once it is saved. A message into a running turn would otherwise
@@ -346,7 +339,6 @@ export function createChatControls(controlsInput: ChatControlsInput): ChatContro
   function deliverCommitted(input: ChatInputLike): boolean {
     if (state.ended) { log.warn("chat committed delivery after ended"); return false }
     if (lifecycle.invocationCompletion?.sealed) return false
-    interruptedBy = null
     lifecycle.enqueueInput(input)
     return true
   }

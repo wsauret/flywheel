@@ -231,6 +231,24 @@ describe("a streaming chat turn", () => {
     expect(log.filter((entry) => entry.startsWith("turn-end:"))).toEqual(["turn-end:replacement"])
   })
 
+  it("that the planned cut ended leaves a command turn that starts after it running and uncut: the stop's planned cut ends that turn with its own record", async () => {
+    const log: string[] = []
+    session = await streamingChat(log, captureBlocks().updateEntry)
+    expect(await session.interruptForReplacement()).toBe(true)
+
+    expect(session.requestWithContext("/command", "request-only context")).toBe(true)
+    const deadline = Date.now() + 2_000
+    while (!log.includes("unexpected-request") && Date.now() < deadline) await Bun.sleep(5)
+    expect(log).toContain("unexpected-request")
+    expect(session.holdsRunningTurn()).toBe(true)
+    expect(await session.interruptPlannedCut("person")).toBe("running")
+
+    session.prepareForShutdown("replacement")
+    await session.dispose()
+    session = null
+    expect(log.filter((entry) => entry.startsWith("turn-end:"))).toEqual(["turn-end:replacement", "turn-end:replacement"])
+  })
+
   const stops: { by: RuntimeInterruption; turnEnds: string[]; shown: string[] }[] = [
     { by: "replacement", turnEnds: ["turn-end:replacement"], shown: [] },
     { by: "runtime", turnEnds: ["turn-end:runtime"], shown: ["Interrupted by the runtime"] },

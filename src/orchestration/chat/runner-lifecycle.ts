@@ -647,6 +647,8 @@ export function createChatRunnerLifecycle(lifecycleInput: ChatRunnerLifecycleInp
       return interrupted
     },
     get turnRunning() { return wait.turnRunning() },
+    get turnCut() { return wait.turnCut() },
+    cutTurn: (by) => { wait.cut(by) },
     setShown: engines.setShown,
     servingChanged: engines.servingChanged,
     // The teardown abort, not a person's interrupt: an interrupted loop parks

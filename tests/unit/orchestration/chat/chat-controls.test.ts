@@ -9,6 +9,7 @@ import type { OutputSession } from "../../../../src/orchestration/runner/output-
 import type { Agent } from "../../../../src/orchestration/agent-runtime/types"
 import { createBackgroundWorkRegistry } from "../../../../src/orchestration/agent-runtime/background-work"
 import { NO_MODULE_RUNTIMES } from "../../../../src/infra/module-runtime"
+import { isRuntimeInterruption } from "../../../../src/orchestration/session/conversation/turn-end-record"
 
 function outputSessionStub(calls: string[], phase: () => OutputSession["streamPhase"], echoedEntryIds?: (string | undefined)[], echoedQueued?: boolean[]): OutputSession {
   const blocks: readonly AnyBlock[] = []
@@ -65,6 +66,8 @@ function lifecycleStub(): ChatPorts {
     learn() { return false },
     interruptGeneration() { return false },
     turnRunning: false,
+    turnCut: undefined,
+    cutTurn() {},
     abortRunningTurn() { return false },
     setShown() {},
     servingChanged() {},
@@ -131,6 +134,9 @@ function createControls(interruptResult: boolean, turnState: ChatPorts["turnStat
   })
 
   const callbacks: ChatCallbacks = { onError() {}, onEnded() {} }
+  // The lifecycle's wait state owns who cut the turn in the slot; this
+  // models one turn, so a cut holds for the stub's life.
+  let cut: ChatPorts["turnCut"]
   const controls = createChatControls({
     lifecycle: {
       ...lifecycleStub(),
@@ -138,7 +144,9 @@ function createControls(interruptResult: boolean, turnState: ChatPorts["turnStat
       drainQueuedUserInputs: () => pendingInputs,
       restartWithQueuedInputs: inputs => { restarts.push([...inputs]) },
       // A runner whose turn cannot be cut models one parked with its turn answered.
-      turnRunning: turnState === "active" && interruptResult,
+      get turnRunning() { return turnState === "active" && interruptResult && cut === undefined },
+      get turnCut() { return cut },
+      cutTurn(by) { if (turnState === "active") cut = isRuntimeInterruption(by) ? { kind: "aborted", by } : { kind: "interrupted", by } },
       interruptGeneration() { calls.push("runnerInterrupt"); return interruptResult },
       abortRunningTurn() { calls.push("runnerAbortRunningTurn"); return interruptResult },
       resumeCommitted(options) { calls.push(`resumeCommitted:${options?.explicit === true ? "explicit" : "wake"}`); return resumeResult },

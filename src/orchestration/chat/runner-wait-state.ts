@@ -4,8 +4,27 @@ import { errorMessage } from "../../infra/error-message.js"
 import { Log } from "../../infra/log.js"
 import type { AgentHost, AgentHostTurnLease } from "../runner/types.js"
 import type { LiveRecipientState } from "../session/live-session-control.js"
+import { isRuntimeInterruption, type ControlInterruption, type TurnInterruption } from "../session/conversation/turn-end-record.js"
 
 const log = Log.create({ service: "chat" })
+
+/** Who cut the turn that holds the turn slot, and what the cut left of it.
+ *  `interrupted`: a person's interrupt cut its generation, and its loop
+ *  parks for them; their message or Resume continues the same turn.
+ *  `aborted`: the runtime's stop ended its run, which never runs again;
+ *  `by` names the last turn end recorded over it, the runtime's own or a
+ *  person's that queued behind it (`ChatControls.interruptPlannedCut`). */
+export type TurnCut =
+  | { readonly kind: "interrupted"; readonly by: ControlInterruption }
+  | { readonly kind: "aborted"; readonly by: TurnInterruption }
+
+/** One turn of the slot, as its loop and its interrupts report it. */
+interface SlotTurn {
+  /** How its loop parked, undefined while the turn runs. */
+  park: TurnParkState | undefined
+  /** Who cut it, undefined while no one has. */
+  cut: TurnCut | undefined
+}
 
 /** What a chat runner's turn waits for, the one record of it in memory:
  *  whether a turn runs that an interrupt would cut, and what a message from
@@ -17,8 +36,17 @@ export interface ChatWaitState {
   stall(): void
   /** A person's message or Resume answered the stall. */
   clearStall(): void
-  /** A turn runs that the runtime's interrupt would cut. */
+  /** A turn runs that the runtime's interrupt would cut: it holds the slot,
+   *  no one cut it, and its loop runs or waits on its background work. */
   turnRunning(): boolean
+  /** Who cut the turn that holds the slot; undefined with no turn in the
+   *  slot, or none that anyone cut. */
+  turnCut(): TurnCut | undefined
+  /** Someone cut the turn that holds the slot: a person's interrupt, the
+   *  runtime's abort, or a person's turn end recorded over that abort. A
+   *  cut stays the turn's: a turn that starts later holds a new lease and
+   *  starts uncut. With no turn in the slot, nothing runs to cut. */
+  cut(by: TurnInterruption): void
   /** Whether the person must act before the next request: the stall, or the
    *  durable turn end that an interrupt or an unexpected exit recorded. */
   awaitsPerson(): Promise<boolean>
@@ -32,7 +60,8 @@ export interface ChatWaitState {
    *  settled yet. No interrupt has a turn to cut meanwhile, and a message
    *  waits for the decision to learn what it meets. */
   undecidedStart(): Promise<AgentLoopMaintenance> | undefined
-  /** A logical turn started or the loop resumed from its park: a turn runs. */
+  /** A logical turn started or the loop resumed from its park: a turn runs,
+   *  and a person's cut of it is answered. */
   resumed(): void
   /** The loop parked as its `TurnParkedContext.park` states. */
   parked(state: TurnParkState): void
@@ -45,7 +74,7 @@ export interface ChatWaitState {
 }
 
 export function createChatWaitState(input: {
-  readonly host: Pick<AgentHost, "turnState" | "ownsTurn">
+  readonly host: Pick<AgentHost, "activeTurnLease" | "ownsTurn">
   readonly sessionId: string
   /** Whether the conversation's last turn ended by an interrupt or an
    *  unexpected exit, read from its durable turn end. */
@@ -56,14 +85,22 @@ export function createChatWaitState(input: {
   // concern alone; an interrupt's wait lives in the parked loop's gate and,
   // with no runner, in the durable turn end.
   let stalled = false
-  // How the loop that holds the turn slot parked, undefined while its turn
-  // runs. `idle` answered its turn with nothing running for it, so the turn
-  // is over and the runtime's interrupt has nothing to cut or record.
-  // `waiting_on_work` waits on background work of its turn, which an
-  // interrupt still cuts. `interrupted` waits for the person's Resume or
-  // message: a message from another session folds into its history and
-  // starts no request.
-  let park: TurnParkState | undefined
+  // The state of each turn, keyed by the lease that the slot holds for it,
+  // so a turn starts as running and uncut: no writer resets a past turn's
+  // park or cut for the next one. A park `idle` answered its turn with
+  // nothing running for it, so the turn is over and the runtime's interrupt
+  // has nothing to cut or record. `waiting_on_work` waits on background
+  // work of its turn, which an interrupt still cuts. `interrupted` waits for
+  // the person's Resume or message: a message from another session folds
+  // into its history and starts no request.
+  const turns = new WeakMap<AgentHostTurnLease, SlotTurn>()
+  function slotTurn(): SlotTurn | undefined {
+    const lease = input.host.activeTurnLease
+    if (lease === null) return undefined
+    let turn = turns.get(lease)
+    if (turn === undefined) turns.set(lease, turn = { park: undefined, cut: undefined })
+    return turn
+  }
   let undecidedMaintenance: Promise<AgentLoopMaintenance> | undefined
 
   /** The durable turn end is the one record of an interrupt or an unexpected
@@ -85,11 +122,22 @@ export function createChatWaitState(input: {
     get stalled() { return stalled },
     stall() { stalled = true },
     clearStall() { stalled = false },
-    turnRunning: () => input.host.turnState === "active" && undecidedMaintenance === undefined && (park === undefined || park === "waiting_on_work"),
+    turnRunning() {
+      const turn = slotTurn()
+      return turn !== undefined && turn.cut === undefined && undecidedMaintenance === undefined && (turn.park === undefined || turn.park === "waiting_on_work")
+    },
+    turnCut: () => slotTurn()?.cut,
+    cut(by) {
+      const turn = slotTurn()
+      if (turn === undefined) return
+      if (turn.cut?.kind === "aborted" || isRuntimeInterruption(by)) turn.cut = { kind: "aborted", by }
+      else turn.cut = { kind: "interrupted", by }
+    },
     awaitsPerson,
     decideMaintenance(lease) {
       const decision: Promise<AgentLoopMaintenance> = lastTurnWaitsForPerson().then((turnEndWaits) => {
-        if (input.host.ownsTurn(lease)) park = stalled || turnEndWaits ? "interrupted" : undefined
+        const turn = input.host.ownsTurn(lease) ? slotTurn() : undefined
+        if (turn) turn.park = stalled || turnEndWaits ? "interrupted" : undefined
         if (undecidedMaintenance === decision) undecidedMaintenance = undefined
         return { awaitsPerson: stalled || turnEndWaits, turnEndWaits }
       })
@@ -97,8 +145,17 @@ export function createChatWaitState(input: {
       return decision
     },
     undecidedStart: () => undecidedMaintenance,
-    resumed() { park = undefined },
-    parked(state) { park = state },
-    leasedState: () => stalled ? "interrupted" : park ?? "running",
+    resumed() {
+      const turn = slotTurn()
+      if (turn === undefined) return
+      turn.park = undefined
+      // Only a person's cut continues: the runtime's abort ended the run.
+      if (turn.cut?.kind === "interrupted") turn.cut = undefined
+    },
+    parked(state) {
+      const turn = slotTurn()
+      if (turn) turn.park = state
+    },
+    leasedState: () => stalled ? "interrupted" : slotTurn()?.park ?? "running",
   }
 }

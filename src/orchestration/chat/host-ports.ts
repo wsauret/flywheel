@@ -4,6 +4,8 @@ import type { ModuleRuntimes } from "../../infra/module-runtime.js"
 import type { HeldBackgroundNotification } from "../session/conversation/queued-background-notifications.js"
 import type { DeliveryOutcome, LiveRecipientState } from "../session/live-session-control.js"
 import type { createChatInvocationCompletion } from "./runner-completion.js"
+import type { TurnCut } from "./runner-wait-state.js"
+import type { TurnInterruption } from "../session/conversation/turn-end-record.js"
 import type { BackgroundWorkTracking } from "../agent-runtime/background-work.js"
 
 /** Interactive controls and projections layered over the shared runner host. */
@@ -45,12 +47,23 @@ export interface ChatPorts {
    *  the runner has ended. */
   awaitOwedCapacity(): Promise<boolean>
   interruptGeneration(): boolean
-  /** Whether a turn runs in the turn slot: from its start until the loop
-   *  parks with its turn answered and nothing running for it, or parks for
-   *  the person after an interrupt, an unexpected exit, or a stall. A turn
-   *  parked on a question or on background work still runs.
-   *  `abortRunningTurn` cuts exactly such a turn. */
+  /** Whether a turn runs in the turn slot and no one cut it: from its start
+   *  until the loop parks with its turn answered and nothing running for it,
+   *  or parks for the person after an interrupt, an unexpected exit, or a
+   *  stall, or until an interrupt cuts it (`cutTurn`). A turn parked on a
+   *  question or on background work still runs. `abortRunningTurn` cuts
+   *  exactly such a turn. */
   readonly turnRunning: boolean
+  /** Who cut the turn that holds the turn slot (`TurnCut`): undefined with
+   *  no turn in the slot, or one that no one cut. A turn that starts later
+   *  starts uncut, whatever cut the turn before it. */
+  readonly turnCut: TurnCut | undefined
+  /** Records who cut the turn that holds the turn slot, as the interrupt
+   *  that cut it decides: a person's interrupt, the runtime's abort, or a
+   *  person's turn end recorded over that abort. A person's cut lasts until
+   *  their message or Resume continues the turn; the runtime's lasts for the
+   *  turn's life. With no turn in the slot it records nothing. */
+  cutTurn(by: TurnInterruption): void
   /** Ends the running turn for the runtime's planned stop: the run is cut,
    *  what it committed lands at its last save point, and the turn slot is
    *  released so a resume after the restart starts a fresh request from the
