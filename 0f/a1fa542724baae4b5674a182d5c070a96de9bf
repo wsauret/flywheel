@@ -1,0 +1,21 @@
+src/orchestration/agent-runtime/tools/bash-project-mutation.ts
+  s_f3bb5e3b311ed0::t_6f2c39839429d0 52-57,383,392-398,400,402,406
+tests/unit/orchestration/agent-runtime/tools/tools-bash-mutations.test.ts
+  s_f3bb5e3b311ed0::t_1152cd20d94784 26,220-240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0fa1fa542724baae4b5674a182d5c070a96de9bf",
+  "prompts": {},
+  "sessions": {
+    "s_f3bb5e3b311ed0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c3df007-8751-458c-9b17-d22bc9edab38",
+        "model": "unknown"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
