@@ -275,7 +275,8 @@ describe("OutputWindow budgeted mounting", () => {
       scroll = layoutSlot.scroll
       scroll.offset = 0
       scroll.anchor = undefined
-      scroll.pendingTailIntent = false
+      // A reader off the tail: the second mount's new blocks are unseen output.
+      scroll.follow[1]({ kind: "detached", baseline: 240, landed: false, restoring: false })
       measuredRows = index.totalRows()
       expect(first.scrollbox.getChildren().length).toBeLessThan(180)
     } finally {

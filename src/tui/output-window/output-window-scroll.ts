@@ -1,10 +1,11 @@
 import { TextBufferRenderable, type MouseEvent, type Renderable, type ScrollBoxRenderable } from "@opentui/core"
-import { type Accessor, createComputed, createMemo, createRoot, createSignal, on, untrack } from "solid-js"
+import { type Accessor, createComputed, createMemo, createRoot, createSignal, on, type Signal, untrack } from "solid-js"
 import { patchScrollBoxLayoutHooks } from "../components/scrollbox-layout-hooks.js"
 import { createHeightIndex, type ExtentCorrection, type HeightIndex, type HeightIndexConfig } from "../hooks/create-height-index.js"
 import type { TranscriptSnapshot } from "../transcript-store/output-transcript-cache-types.js"
 import { DEFAULT_ESTIMATE } from "../hooks/output-height-estimates.js"
 import type { LaunchScroll } from "../../infra/launch-state.js"
+import type { TranscriptFollow } from "./transcript-follow.js"
 
 // Scroll virtualization keeps one authoritative offset, follows the bottom when
 // position permits, detects unhydrated edges, and compensates for prepended rows.
@@ -162,9 +163,10 @@ export interface TranscriptHeightIndexRecord {
  *  remounted OutputWindow adopts its session's slot and re-renders at exact
  *  measured row heights and the exact prior scroll position instead of
  *  re-estimating, re-measuring, and re-tailing - the visible tab-switch
- *  reflow. Both members are imperative state outside the Solid graph (a
- *  HeightIndex's extentVersion signal has no owner, so root disposal never
- *  invalidates it). */
+ *  reflow. Both members are imperative state outside the Solid graph. The two
+ *  signals they hold, a HeightIndex's extentVersion and the scroll state's
+ *  follow mode, have no owner, so root disposal never invalidates them and
+ *  the next mount reads them again. */
 export interface TranscriptLayoutSlot {
   /** The session the slot holds; the layout cache sets it. Diagnostic
    *  records of the transcript name it. */
@@ -182,8 +184,6 @@ export interface TranscriptLayoutSlot {
   /** Measured full-width row columns; seeds block wrap widths on remount so
    *  first layouts wrap the final shape (see context/row-width.ts). */
   rowWidth?: number
-  /** Absolute visible-message count captured when this client stopped following. */
-  returnToLatestBaseline?: number
   /** The place a predecessor terminal held in this session (ARCH-DISTRIBUTION-031): a
    *  block's absolute index and the rows scrolled into it. The scroll
    *  controller holds it through every repave of the opening transcript and
@@ -218,13 +218,12 @@ export interface TranscriptScrollState {
   textDepth: number
   generation: number | undefined
   lastMaxScrollTop: number
-  pendingTailIntent: boolean
   lastLeadingRows: number
   lastViewportWidth: number
   lastViewportRows: number
-  /** A land placed the reader, so reaching the bottom by it does not resume
-   *  following. Explicit input and Return to latest end it. */
-  landed: boolean
+  /** Whether the reader follows the tail, and their message baseline. The
+   *  controller's transition is its only writer. */
+  readonly follow: Signal<TranscriptFollow>
 }
 
 /** Mirrors the transcript cache's session floor (MAX_SESSIONS): layout memory

@@ -4,6 +4,7 @@ import { createRoot, createSignal } from "solid-js"
 import { LINE_WHEEL, NOTCH_WHEEL, wheelProfileFor } from "../../../src/tui/output-window/output-window-wheel.js"
 import type { TranscriptSnapshot } from "../../../src/tui/transcript-store/output-transcript-cache-types.js"
 import { createMountedRowRegistry, type TranscriptLayoutSlot } from "../../../src/tui/output-window/output-window-scroll.js"
+import { followBaseline } from "../../../src/tui/output-window/transcript-follow.js"
 import { asScrollBox, fakeScrollBox, type FakeScrollBox, mountController, snapshotFor } from "../../fixtures/output-scroll-harness.js"
 
 describe("wheel coalescing", () => {
@@ -225,6 +226,7 @@ describe("return to latest", () => {
     const slot: TranscriptLayoutSlot = {}
     const [snap] = createSignal<TranscriptSnapshot | undefined>(snapshotFor("return-latest", 200))
     let jumps = 0
+    const slotBaseline = () => slot.scroll === undefined ? undefined : followBaseline(slot.scroll.follow[0]())
 
     createRoot((dispose) => {
       const controller = mountController(slot, snap, {
@@ -239,7 +241,7 @@ describe("return to latest", () => {
       box.frame(16)
 
       expect(controller.returnToLatestBaseline()).toBe(12)
-      expect(slot.returnToLatestBaseline).toBe(12)
+      expect(slotBaseline()).toBe(12)
       dispose()
     })
 
@@ -249,10 +251,19 @@ describe("return to latest", () => {
         jumpToLatest: async () => { jumps += 1 },
       })
       expect(controller.returnToLatestBaseline()).toBe(12)
+      // The remount holds the restored place one row above the bottom.
+      const box = fakeScrollBox()
+      controller.attach(asScrollBox(box))
+      box.frame(16)
+      box.scrollHeight = 400
+      box.frame(16)
+      expect(controller.returnToLatestBaseline()).toBe(12)
       controller.returnToLatest()
       expect(controller.returnToLatestBaseline()).toBeUndefined()
-      expect(slot.returnToLatestBaseline).toBeUndefined()
+      expect(slotBaseline()).toBeUndefined()
       expect(jumps).toBe(1)
+      box.frame(16)
+      expect(box.scrollTop).toBe(390)
       dispose()
     })
   })

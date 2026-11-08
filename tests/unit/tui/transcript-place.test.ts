@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test"
+import { createSignal } from "solid-js"
 import { createHeightIndex } from "../../../src/tui/hooks/create-height-index.js"
 import { transcriptPlace, type TranscriptLayoutSlot, type TranscriptScrollState } from "../../../src/tui/output-window/output-window-scroll.js"
+import type { TranscriptFollow } from "../../../src/tui/output-window/transcript-follow.js"
 import type { TranscriptSnapshot } from "../../../src/tui/transcript-store/output-transcript-cache-types.js"
 
 /** Blocks 10..19 resident of 20, five rows each. */
@@ -20,7 +22,7 @@ function snapshot(hasAfter = false): TranscriptSnapshot {
 }
 
 function slotAt(offset: number, lastMaxScrollTop: number): TranscriptLayoutSlot {
-  const scroll: TranscriptScrollState = { offset, anchor: undefined, textDepth: 0, generation: 4, lastMaxScrollTop, pendingTailIntent: false, lastLeadingRows: 0, lastViewportWidth: 80, lastViewportRows: 0, landed: false }
+  const scroll: TranscriptScrollState = { offset, anchor: undefined, textDepth: 0, generation: 4, lastMaxScrollTop, lastLeadingRows: 0, lastViewportWidth: 80, lastViewportRows: 0, follow: createSignal<TranscriptFollow>({ kind: "following" }) }
   return {
     scroll,
     heightIndex: { index: createHeightIndex({ itemCount: 20, estimatedRows: 5, initialEstimates: [] }), generation: 4, toggles: "false", eagerCompleted: false, eagerStartedAt: undefined },

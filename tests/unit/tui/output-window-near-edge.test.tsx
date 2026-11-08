@@ -10,6 +10,7 @@ import type { FrontendOutputBlock } from "../../../src/protocol/app-service-type
 import { createOutputTranscriptCache } from "../../../src/tui/transcript-store/create-output-transcript-cache.js"
 import type { OutputTranscriptView, TranscriptSnapshot, TranscriptStatus, TranscriptWindow } from "../../../src/tui/transcript-store/output-transcript-cache-types.js"
 import type { OutputWindowCommand } from "../../../src/tui/output-window/output-window.js"
+import type { TranscriptFollow } from "../../../src/tui/output-window/transcript-follow.js"
 import type { TranscriptLayoutSlot } from "../../../src/tui/output-window/output-window-scroll.js"
 import { LINE_WHEEL } from "../../../src/tui/output-window/output-window-wheel.js"
 import { DEFAULT_ESTIMATE, heightEstimatesFromBlocks } from "../../../src/tui/hooks/output-height-estimates.js"
@@ -258,11 +259,11 @@ describe("OutputWindow near-edge paging", () => {
         textDepth: 0,
         generation: 1,
         lastMaxScrollTop: 80,
-        pendingTailIntent: false,
         lastLeadingRows: 0,
         lastViewportWidth: 0,
         lastViewportRows: 0,
-        landed: false,
+        // A reader parked off the tail who left it with every message seen.
+        follow: createSignal<TranscriptFollow>({ kind: "detached", baseline: 100, landed: false, restoring: false }),
       },
     }
     const { result } = await renderWindow(view, () => {}, command, layoutSlot)

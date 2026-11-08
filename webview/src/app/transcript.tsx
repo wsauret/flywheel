@@ -20,7 +20,7 @@ import { IntroCard } from "./intro-card.js"
 import { OpeningStage } from "./stages.js"
 import { ReturnToLatest } from "./return-to-latest.js"
 import { createBlockDisclosure } from "./block-disclosure.js"
-import { captureReaderAnchor, createBlockLanding, createOlderPageScroll, createReadingRestore, firstVisibleReaderAnchor, followTranscriptLayout, settleReaderExpansionMutation, type ReaderAnchorRect, type ReaderDisclosureIntent } from "./transcript-scroll.js"
+import { captureReaderAnchor, createBlockLanding, createOlderPageScroll, createReadingRestore, firstVisibleReaderAnchor, followTranscriptLayout, nextReaderMode, settleReaderExpansionMutation, type PendingRestore, type ReaderAnchorRect, type ReaderDisclosureIntent, type ReaderEvent, type ReaderMode } from "./transcript-scroll.js"
 import { bindSelectionGrips } from "./selection-grips.js"
 import "../styles/transcript.css"
 import "../styles/selection-grips.css"
@@ -206,24 +206,8 @@ export function Transcript(props: { readonly phoneSelection?: boolean } = {}) {
     }
   })
   let content!: HTMLDivElement
-  // Following the tail is the default, but only until the reader scrolls away
-  // from it. Yanking someone back to the bottom mid-read is the thing that
-  // makes a streaming transcript unusable. It is a signal because the view
-  // shows a way back whenever it is off: a button that appears only away from
-  // the tail, and whose tap both scrolls there and re-arms following, so the
-  // reader never has to find the exact bottom by feel to make new output
-  // scroll the page again.
-  const [following, setFollowing] = createSignal(true)
   const [messageBaseline, setMessageBaseline] = createSignal(0)
   const unseenMessages = createMemo(() => unseenMessageCount(messageBaseline(), visibleMessageCount()).unseen)
-  const leaveTail = () => {
-    if (untrack(following)) setMessageBaseline(untrack(visibleMessageCount))
-    setFollowing(false)
-  }
-  const resumeTail = () => {
-    setMessageBaseline(untrack(visibleMessageCount))
-    setFollowing(true)
-  }
   // Within a few lines of the bottom counts as on the tail, so a settling
   // layout does not read as the reader having left.
   const nearTail = () => scroller !== undefined && scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 40
@@ -234,13 +218,12 @@ export function Transcript(props: { readonly phoneSelection?: boolean } = {}) {
   // who was following the tail needs nothing restored. A return also knows
   // how many messages the reader had seen, so only what arrived since counts
   // as new; a reload counts nothing as new.
-  interface Restoring { readonly place: ReadingState; readonly seenMessages?: number; readonly pager: ReturnType<typeof createReadingRestore> }
   /** Scrolls the row that holds the saved index back to its saved offset once
    *  it is in the document and the fonts have landed, reading older pages back
    *  while the index lies before the resident window. A place that never
    *  becomes resident leaves the reader at the tail. */
-  const restoreTo = (place: ReadingState, top: NonNullable<ReadingState["top"]>, seenMessages?: number): Restoring => {
-    const pending: Restoring = {
+  const restoreTo = (place: ReadingState, top: NonNullable<ReadingState["top"]>, seenMessages?: number): PendingRestore => {
+    const pending: PendingRestore = {
       place,
       ...(seenMessages === undefined ? {} : { seenMessages }),
       pager: createReadingRestore({
@@ -254,7 +237,7 @@ export function Transcript(props: { readonly phoneSelection?: boolean } = {}) {
           if (rowId === undefined) return "before"
           const row = scroller?.querySelector<HTMLElement>(`.row[data-block="${CSS.escape(rowId)}"]`)
           if (!scroller || !row) return "pending"
-          restoring = undefined
+          dispatch({ kind: "restoreLanded" })
           // Everything resident was on screen before a reload; none of it is
           // new to the reader.
           setMessageBaseline(pending.seenMessages ?? untrack(visibleMessageCount))
@@ -267,18 +250,33 @@ export function Transcript(props: { readonly phoneSelection?: boolean } = {}) {
         loadOlder: client.actions.loadOlder,
         retry: () => { void fontsReady.then(attemptRestore) },
         settleAtTail: () => {
-          restoring = undefined
-          resumeTail()
+          dispatch({ kind: "restoreSettledAtTail" })
           scroller?.scrollTo({ top: scroller.scrollHeight, behavior: "instant" })
         },
       }),
     }
     return pending
   }
-  let restoring: Restoring | undefined = (() => {
+  // Following the tail is the default, but only until the reader scrolls away
+  // from it. Yanking someone back to the bottom mid-read is the thing that
+  // makes a streaming transcript unusable. It is a signal because the view
+  // shows a way back whenever it is off: a button that appears only away from
+  // the tail, and whose tap both scrolls there and re-arms following, so the
+  // reader never has to find the exact bottom by feel to make new output
+  // scroll the page again.
+  const [mode, setMode] = createSignal<ReaderMode>((() => {
     const place = client.readingPlace.restored
-    return place === undefined || place.following || place.top === undefined ? undefined : restoreTo(place, place.top)
-  })()
+    return place === undefined || place.following || place.top === undefined ? { kind: "following" } : { kind: "restoring", restore: restoreTo(place, place.top) }
+  })())
+  const following = createMemo(() => mode().kind === "following")
+  /** The one writer of the reader mode. Entering or leaving following counts
+   *  every message on screen as seen. */
+  const dispatch = (event: ReaderEvent): void => {
+    const previous = untrack(mode)
+    const next = nextReaderMode(previous, event)
+    if (next.kind === "following" || previous.kind === "following") setMessageBaseline(untrack(visibleMessageCount))
+    if (next !== previous) setMode(next)
+  }
   const restoredOpen = client.readingPlace.restored
   if (restoredOpen !== undefined) {
     for (const key of restoredOpen.open) disclosure.setOpen(restoredOpen.sessionId, key, true)
@@ -286,9 +284,9 @@ export function Transcript(props: { readonly phoneSelection?: boolean } = {}) {
   }
   const fontsReady = typeof document === "undefined" || document.fonts === undefined ? Promise.resolve() : document.fonts.ready.then(() => {})
   const attemptRestore = (): void => {
-    const pending = restoring
-    if (pending === undefined || !scroller || untrack(sessionId) !== pending.place.sessionId) return
-    pending.pager.attempt()
+    const current = untrack(mode)
+    if (current.kind !== "restoring" || !scroller || untrack(sessionId) !== current.restore.place.sessionId) return
+    current.restore.pager.attempt()
   }
   /** Where the reader is now: the top visible row by the absolute index of
    *  its first block, whether they follow the tail, and the rows they opened.
@@ -330,21 +328,23 @@ export function Transcript(props: { readonly phoneSelection?: boolean } = {}) {
       renderedSession = current
       readerAnchor = undefined
       setMessageBaseline(count)
-      if (restoring !== undefined && current !== "" && current !== restoring.place.sessionId) restoring = undefined
-      const kept = restoring === undefined && current !== "" ? untrack(() => client.residents.memory(current)) : undefined
-      const place = kept?.place
-      if (kept !== undefined) kept.place = undefined
-      if (place !== undefined && !place.reading.following && place.reading.top !== undefined) {
-        restoring = restoreTo(place.reading, place.reading.top, place.seenMessages)
-        setMessageBaseline(place.seenMessages)
+      const previous = untrack(mode)
+      // A reload's restore waits for its own session; an unknown session is not yet another one.
+      const waiting = previous.kind === "restoring" && (current === "" || current === previous.restore.place.sessionId)
+      if (!waiting) {
+        const kept = current === "" ? undefined : untrack(() => client.residents.memory(current))
+        const place = kept?.place
+        if (kept !== undefined) kept.place = undefined
+        if (place !== undefined && !place.reading.following && place.reading.top !== undefined) {
+          dispatch({ kind: "restoreStarted", restore: restoreTo(place.reading, place.reading.top, place.seenMessages) })
+          setMessageBaseline(place.seenMessages)
+        } else dispatch({ kind: "sessionOpened" })
       }
-      if (restoring !== undefined) {
+      if (untrack(mode).kind === "restoring") {
         // The saved row, not the tail, is where this transcript opens.
-        setFollowing(false)
         void fontsReady.then(attemptRestore)
         return
       }
-      setFollowing(true)
       // Growth after this is the observer's to pin; only the switch itself
       // scrolls here, so a publish can never yank a reader who has just
       // begun to scroll away.
@@ -372,7 +372,7 @@ export function Transcript(props: { readonly phoneSelection?: boolean } = {}) {
   // The capture listener runs before the row toggles and so before the observer
   // sees the change.
   let readerDisclosure: ReaderDisclosureIntent | undefined
-  let readerExpansion = { pending: false, following: true }
+  let expansionPending = false
   let readerAnchor: ReturnType<typeof captureReaderAnchor> | undefined
   /** The rendered rows in document order.
    *  @yields {RenderedRow} Each row, measured only as it is read. */
@@ -405,7 +405,7 @@ export function Transcript(props: { readonly phoneSelection?: boolean } = {}) {
   /** Keeps the reader's row in place through the next layout change. `reader`
    *  answers that row, so a scroll event measures it once for every owner. */
   const rememberReaderAnchor = (reader: () => RenderedRow | undefined = readerRow) => {
-    if (readerExpansion.pending || !scroller) return
+    if (expansionPending || !scroller) return
     readerAnchor = undefined
     if (untrack(following)) return
     const control = reader()
@@ -443,23 +443,22 @@ export function Transcript(props: { readonly phoneSelection?: boolean } = {}) {
     const target = scroller
     const observer = new MutationObserver(() => {
       if (landing.reconcile()) return
-      if (restoring !== undefined) {
+      if (untrack(mode).kind === "restoring") {
         void fontsReady.then(attemptRestore)
         return
       }
       if (olderPageScroll.reconcile()) readerAnchor?.rebase()
       else readerAnchor?.reconcile()
       const mutation = settleReaderExpansionMutation(
-        { pending: readerExpansion.pending, following: untrack(following) },
+        { pending: expansionPending, following: untrack(following) },
         readerDisclosure,
         target.querySelector('[aria-expanded="true"][data-expansion-pending]') !== null,
         nearTail(),
       )
-      readerExpansion = { pending: mutation.pending, following: mutation.following }
+      expansionPending = mutation.pending
       readerDisclosure = undefined
       if (mutation.consumed) {
-        if (mutation.following) resumeTail()
-        else leaveTail()
+        dispatch({ kind: "expansionSettled", following: mutation.following })
         rememberReaderAnchor()
         return
       }
@@ -467,7 +466,7 @@ export function Transcript(props: { readonly phoneSelection?: boolean } = {}) {
       rememberReaderAnchor()
     })
     observer.observe(target, { attributes: true, attributeFilter: ["aria-expanded", "data-expansion-pending"], childList: true, subtree: true, characterData: true })
-    onCleanup(followTranscriptLayout(target, content, () => restoring === undefined && !readerExpansion.pending && untrack(following), () => readerAnchor?.reconcile()))
+    onCleanup(followTranscriptLayout(target, content, () => !expansionPending && untrack(following), () => readerAnchor?.reconcile()))
     const noteDisclosure = (event: Event) => {
       if (!(event.target instanceof Element)) return
       const control = event.target.closest<HTMLElement>("[aria-expanded]")
@@ -500,9 +499,7 @@ export function Transcript(props: { readonly phoneSelection?: boolean } = {}) {
     if (!scroller) return
     scrolled = true
     const top = scroller.scrollTop
-    if (readerExpansion.pending) leaveTail()
-    else if (nearTail()) resumeTail()
-    else if (top < lastScrollTop - 2) leaveTail()
+    dispatch({ kind: "scrolled", expansionPending, nearTail: nearTail(), upward: top < lastScrollTop - 2 })
     lastScrollTop = top
     publishReader()
     let measured: { readonly row: RenderedRow | undefined } | undefined
@@ -519,10 +516,9 @@ export function Transcript(props: { readonly phoneSelection?: boolean } = {}) {
    *  its latest window. The local scroll makes the response immediate while
    *  that read brings a detached window back to the live end. */
   const jumpToLatest = () => {
-    restoring = undefined
-    readerExpansion = { pending: false, following: true }
+    expansionPending = false
     readerAnchor = undefined
-    resumeTail()
+    dispatch({ kind: "jumpedToLatest" })
     client.actions.jumpToLatest()
     scroller?.scrollTo({ top: scroller.scrollHeight, behavior: "instant" })
   }
@@ -614,9 +610,8 @@ export function Transcript(props: { readonly phoneSelection?: boolean } = {}) {
       if (!row) return false
       // The reader asked for this place, so neither a pending restore nor the
       // tail pin may move them off it.
-      restoring = undefined
+      dispatch({ kind: "blockLanded" })
       row.scrollIntoView({ block: "center", behavior: "instant" })
-      leaveTail()
       rememberReaderAnchor()
       return true
     },

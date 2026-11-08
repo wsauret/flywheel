@@ -1,5 +1,5 @@
 import type { BaseRenderable, MouseEvent, ScrollBoxRenderable } from "@opentui/core"
-import { type Accessor, batch, createEffect, createSignal, onCleanup, untrack } from "solid-js"
+import { type Accessor, batch, createEffect, createMemo, createSignal, onCleanup, untrack } from "solid-js"
 import type { HeightIndex } from "./create-height-index.js"
 import type { TranscriptSnapshot } from "../transcript-store/output-transcript-cache-types.js"
 import { blockIdentity } from "../../protocol/block-identity.js"
@@ -24,6 +24,7 @@ import {
   windowGeometry,
 } from "../output-window/output-window-scroll.js"
 import { createWheelRows, frameWheelRows, type WheelProfile, wheelProfileFor } from "../output-window/output-window-wheel.js"
+import { FOLLOWING, followBaseline, nextTranscriptFollow, type TranscriptFollow, type TranscriptFollowEvent } from "../output-window/transcript-follow.js"
 
 // The controller solely owns the scroll offset and virtualization height index.
 // Its `offset` is authoritative and the scrollbox is write-only: observed
@@ -40,6 +41,22 @@ const EVICT_MIN_BLOCKS = 200
  *  middle of the viewport. A block taller than the viewport shows from its top. */
 function centredTop(top: number, height: number, viewportRows: number): number {
   return height >= viewportRows ? top : top - Math.floor((viewportRows - height) / 2)
+}
+
+/** The scroll state of a session no mount has shown yet: at the top, following. */
+function freshScrollState(): TranscriptScrollState {
+  const [follow, setFollow] = createSignal<TranscriptFollow>(FOLLOWING)
+  return {
+    offset: 0,
+    anchor: undefined,
+    textDepth: 0,
+    generation: undefined,
+    lastMaxScrollTop: 0,
+    lastLeadingRows: 0,
+    lastViewportWidth: 0,
+    lastViewportRows: 0,
+    follow: [follow, setFollow],
+  }
 }
 
 export interface OutputScrollControllerDeps {
@@ -167,57 +184,35 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
   // from an idle renderer. frameGapMs rides along as context.
   let lastFrameAt = 0
   let wheelQueuedAt = 0
-  const [returnToLatestBaseline, setReturnToLatestBaseline] = createSignal<number | undefined>(deps.slot.returnToLatestBaseline)
-
-  function setBaseline(value: number | undefined): void {
-    if (value === undefined) Reflect.deleteProperty(deps.slot, "returnToLatestBaseline")
-    else deps.slot.returnToLatestBaseline = value
-    setReturnToLatestBaseline(value)
-  }
-
-  function reconcileFollowing(atBottom: boolean, hasAfter: boolean): void {
-    if (atBottom && !hasAfter) {
-      setBaseline(undefined)
-      return
-    }
-    if (returnToLatestBaseline() === undefined) setBaseline(deps.visibleMessageCount())
-  }
 
   // The session layout slot owns the authoritative position in place, so a keyed
   // remount adopts it without a save/restore step.
   const restored = deps.slot.scroll
-  const state: TranscriptScrollState = restored ?? {
-    offset: 0,
-    anchor: undefined,
-    textDepth: 0,
-    generation: undefined,
-    lastMaxScrollTop: 0,
-    // End pressed while newer history was unhydrated: pin the real tail once
-    // hasAfter flips false. Any explicit input cancels (captureUserOffset).
-    pendingTailIntent: false,
-    lastLeadingRows: 0,
-    lastViewportWidth: 0,
-    lastViewportRows: 0,
-    landed: false,
-  }
+  const state = restored ?? freshScrollState()
   deps.slot.scroll = state
+  const [follow, setFollow] = state.follow
+  /** The only writer of the follow mode. */
+  function transition(event: TranscriptFollowEvent): void {
+    setFollow(nextTranscriptFollow(untrack(follow), event, untrack(deps.visibleMessageCount)))
+  }
+  const returnToLatestBaseline = createMemo(() => followBaseline(follow()))
+  const restoringNow = (): boolean => {
+    const mode = follow()
+    return mode.kind === "detached" && mode.restoring
+  }
   // Remount restore latch: until the rebuilt tree's extent reaches the restored
   // offset, geometry is transient - deriving tail-follow from it (or adopting
   // lastMaxScrollTop) would read the half-mounted extent as "at the bottom" and
   // spuriously jump to the tail. A restore parked at absolute top needs the same
   // protection until the current extent proves there are still rows below it;
   // otherwise 0/0 mount geometry erases the saved off-tail bottom. The latch only
-  // guards OFF-tail restores: a restore that WAS at the bottom is positionally a
-  // fresh generation, so it skips the latch and pendingTailIntent pins the tail
-  // on the first laid-out frame - enforcing the stale pre-background offset for
-  // even one frame paints the transcript at the old position (the visible
-  // tab-switch flicker). A true generation change or any explicit input also
-  // ends the restore.
-  const restoredOffTail = restored !== undefined && state.offset < state.lastMaxScrollTop
-  let restoring = restoredOffTail
-  // A land that reached the bottom is where the reader asked to be, not the
-  // live end it would follow.
-  if (restored !== undefined && !restoredOffTail && !state.landed) state.pendingTailIntent = true
+  // guards a detached reader OFF the tail: a following or pending tail, and a
+  // restore that WAS at the bottom, are positionally a fresh generation, so the
+  // remount turns them into a pending tail that pins on the first laid-out
+  // frame - enforcing the stale pre-background offset for even one frame paints
+  // the transcript at the old position (the visible tab-switch flicker). Any
+  // explicit input, End, Return to latest, or a taken target ends the latch.
+  if (restored !== undefined) transition({ kind: "remount", offTail: state.offset < state.lastMaxScrollTop })
 
   // scrollTop seeded at the restored offset so the virtualized window mounts the
   // right neighborhood on the first render pass, before the first frame syncs.
@@ -282,9 +277,7 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
    *  behind. */
   function adoptUserOffset(e: ScrollBoxRenderable, target: number, source: string): void {
     Reflect.deleteProperty(deps.slot, "restoreAnchor")
-    restoring = false
     landing = undefined
-    state.landed = false
     const direction = Math.sign(target - state.offset)
     if (direction === -1 || direction === 1) inputDirection = direction
     state.offset = Math.max(0, Math.min(target, maxScrollTop(e)))
@@ -292,10 +285,9 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
     syncViewport(e)
     const snap = untrack(snapshot)
     captureAnchor(snap)
-    state.pendingTailIntent = false
     suppressTailFrames = 0
     state.lastMaxScrollTop = maxScrollTop(e)
-    reconcileFollowing(state.offset >= state.lastMaxScrollTop, snap?.window.hasAfter === true)
+    transition({ kind: "input", atBottom: state.offset >= state.lastMaxScrollTop, hasAfter: snap?.window.hasAfter === true })
   }
 
   function captureAnchor(snap: TranscriptSnapshot | undefined): void {
@@ -337,7 +329,7 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
     const initial = state.generation === undefined
     state.generation = snap.generation
     let placed = false
-    if (!initial && state.anchor && returnToLatestBaseline() !== undefined && !state.pendingTailIntent) {
+    if (!initial && state.anchor && follow().kind === "detached") {
       const local = state.anchorIdentity === undefined ? -1 : snap.blocks.findIndex((block) => blockIdentity(block) === state.anchorIdentity)
       const blockIndex = local >= 0
         ? (snap.window.startBlockIndex ?? 0) + local
@@ -358,7 +350,7 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
         suppressTailFrames = 1
       }
     } else if (initial && snap.window.hasAfter && snap.window.startBlockIndex !== null) {
-      setBaseline(deps.visibleMessageCount())
+      transition({ kind: "settled", atLastBottom: false, hasAfter: true })
       state.anchor = { kind: "block", blockIndex: snap.window.startBlockIndex, rowOffsetWithinBlock: 0 }
       state.offset = Math.max(0, leadingRows() + index.blockIndexToRowOffset(snap.window.startBlockIndex))
     }
@@ -368,7 +360,7 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
   }
 
   function resolveMountedReadingAnchor(): boolean {
-    if (!state.anchor || !state.textPosition || returnToLatestBaseline() === undefined || state.pendingTailIntent) return false
+    if (!state.anchor || !state.textPosition || follow().kind !== "detached") return false
     const row = deps.mountedRows?.resolveText(state.anchor.blockIndex, state.textPosition)
     if (row === undefined) return false
     state.offset = Math.max(0, row - state.textDepth)
@@ -486,10 +478,8 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
       state.offset = Math.min(state.offset, maxScrollTop(e))
     }
 
-    const count = deps.visibleMessageCount()
-    const baseline = returnToLatestBaseline()
-    if (baseline !== undefined && count < baseline) setBaseline(count)
-    if (snap.window.hasAfter) reconcileFollowing(false, true)
+    transition({ kind: "rebase" })
+    if (snap.window.hasAfter) transition({ kind: "settled", atLastBottom: false, hasAfter: true })
 
     // A target placed this frame already stands on this frame's extents and
     // leading rows, so the compensation below must not move it again.
@@ -504,13 +494,10 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
         : centredTop(top, index.blockIndexToRowOffset(target.blockIndex + 1) - top, e.viewport.height)))
       placed = true
       repositioned = true
-      state.pendingTailIntent = false
-      reconcileFollowing(false, snap.window.hasAfter)
+      transition({ kind: "target", land: target.kind === "land" })
       suppressTailFrames = 1
       pendingWheelRows = 0
-      restoring = false
       landing = target.kind === "land" ? target.blockIndex : undefined
-      state.landed = target.kind === "land"
       captureAnchor(snap)
       landOnLayout(e)
     }
@@ -536,13 +523,10 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
     if (tailReleased) suppressTailFrames -= 1
     // Geometry can move the resolved off-tail offset past the prior bottom.
     // Following comes from the slot's intent, not that new physical position.
-    tailingNow = !snap.window.hasAfter
-      && !restoring
-      && !tailReleased
-      && (returnToLatestBaseline() === undefined || state.pendingTailIntent)
+    tailingNow = !snap.window.hasAfter && !tailReleased && follow().kind !== "detached"
     if (tailingNow) {
       compensatedRows = 0
-      state.pendingTailIntent = false
+      transition({ kind: "tailPinned" })
       state.offset = maxScrollTop(e)
       writeScroll(e, state.offset, "frame.follow")
     } else {
@@ -556,7 +540,7 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
     inputDirection = 0
     repositioned = false
 
-    if (restoring) {
+    if (restoringNow()) {
       // Half-mounted geometry: keep the persisted lastMaxScrollTop and make no
       // paging/eviction decisions until the extent reaches the restored offset
       // and proves that an off-tail restore is still off-tail. The second clause
@@ -564,7 +548,7 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
       // collapse the saved 0<oldBottom state into "at bottom".
       const currentMax = maxScrollTop(e)
       if (currentMax < state.offset || currentMax <= state.offset + 1) return
-      restoring = false
+      transition({ kind: "restoreProven" })
     }
     // The extent was pre-synced from the frame's fresh layout above, so
     // maxScrollTop(e) is normally current. The compensation floor remains for
@@ -588,10 +572,9 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
       : compensatedRows === 0
         ? currentMaxScrollTop
         : Math.max(currentMaxScrollTop, compensatedMaxScrollTop)
-    reconcileFollowing(
-      tailingNow || (!state.landed && state.offset >= state.lastMaxScrollTop),
-      snap.window.hasAfter,
-    )
+    // A land that reached the bottom is where the reader asked to be, not the
+    // live end it would follow; the transition holds that rule.
+    transition({ kind: "settled", atLastBottom: tailingNow || state.offset >= state.lastMaxScrollTop, hasAfter: snap.window.hasAfter })
     if (!state.anchor) captureAnchor(snap)
     else if (!state.textPosition && state.anchor.kind === "block" && !tailingNow) {
       // Navigation can arrive before virtualization mounts the destination.
@@ -642,7 +625,7 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
       firstBlock: corrections[0]?.blockIndex,
       lastBlock: corrections.at(-1)?.blockIndex,
     })
-    if (tailingNow || restoring || readingOnLayout || !state.anchor) return
+    if (tailingNow || restoringNow() || readingOnLayout || !state.anchor) return
     const rows = upstreamCorrectionRows(corrections, state.anchor.blockIndex)
     if (rows === 0) return
     state.offset = Math.max(0, state.offset + rows)
@@ -769,14 +752,11 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
     if (!e) return
     const snap = untrack(snapshot)
     captureUserOffset(e, maxScrollTop(e), "command.bottom")
-    state.pendingTailIntent = snap?.window.hasAfter === true
-    setBaseline(undefined)
+    transition({ kind: "toBottom", hasAfter: snap?.window.hasAfter === true })
   }
 
   function returnToLatest(): void {
-    state.landed = false
-    setBaseline(undefined)
-    state.pendingTailIntent = true
+    transition({ kind: "returnToLatest" })
     void deps.jumpToLatest()
   }
 
@@ -835,9 +815,8 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
     captureAnchor(snap)
     // A toggle is explicit input: a deferred End intent must not re-pin the
     // tail the frame the release window expires.
-    state.pendingTailIntent = false
     suppressTailFrames = 2
-    reconcileFollowing(false, snap?.window.hasAfter === true)
+    transition({ kind: "preserve" })
     mutate()
   }
 
@@ -870,7 +849,7 @@ export function createOutputScrollController(deps: OutputScrollControllerDeps): 
         // rescale of the next decision first: a new offset can unmount the anchor.
         if (Number.isFinite(frameExtent) && decidedFrameId === e.ctx.frameId && e.viewport.width === state.lastViewportWidth && e.viewport.height === state.lastViewportRows && !landOnLayout(e) && e.scrollHeight !== frameExtent) {
           frameExtent = e.scrollHeight
-          if (tailingNow && returnToLatestBaseline() === undefined) state.offset = maxScrollTop(e)
+          if (tailingNow && follow().kind === "following") state.offset = maxScrollTop(e)
           else resolveMountedReadingAnchor()
         }
         writeScroll(e, state.offset, "resize.reassert")

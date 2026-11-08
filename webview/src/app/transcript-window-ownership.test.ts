@@ -217,4 +217,37 @@ describe("a restored reading place", () => {
       assert.equal(viewport.scrollTop, 800, "the reader's row keeps its place on screen")
     } finally { mounted.dispose() }
   })
+
+  test("keeps the restored row when a scroll near the tail arrives before the older page lands", async () => {
+    const settle = async () => { for (let turn = 0; turn < 20; turn += 1) await Promise.resolve() }
+    const tail = [text("c"), text("d")]
+    const mounted = mountToolGroup(tail, { sessionId: "render-ownership", following: false, top: { index: 0, offset: 0 }, open: [] })
+    try {
+      mounted.publish({ startBlockIndex: 2, hasBefore: true })
+      const viewport = mounted.viewport()
+      assert.ok(viewport)
+      viewport.scrollHeight = 5000
+      await settle()
+      const scroll = viewport.properties.onScroll
+      if (typeof scroll !== "function") throw new Error("Missing scroll handler")
+      // A clamp or a stray scroll near the tail while the older page is on its way.
+      viewport.scrollTop = 4990
+      scroll()
+      mounted.publish({ blocks: [text("a"), text("b"), ...tail], startBlockIndex: 0, hasBefore: false })
+      mounted.settlePage(true)
+      await settle()
+      mounted.frame()
+      mounted.frame()
+      const rowA = mounted.rows().find(row => row.id === "text:a")?.node
+      assert.ok(rowA)
+      rowA.properties.rectTop = -viewport.scrollTop
+      mounted.mutate()
+      await settle()
+      mounted.publish({ blocks: [text("a"), text("b"), ...tail, text("e")], startBlockIndex: 0, hasBefore: false })
+      mounted.mutate()
+      await settle()
+      assert.equal(mounted.awayFromTail(), true, "the restored reader is not following the tail")
+      assert.equal(viewport.scrollTop, 0, "live output leaves the reader on the restored row")
+    } finally { mounted.dispose() }
+  })
 })

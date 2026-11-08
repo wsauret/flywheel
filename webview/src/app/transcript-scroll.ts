@@ -1,3 +1,4 @@
+import type { ReadingState } from "../../../src/protocol/client/reading-state.js"
 import { rowHolding, rowIdentity, type TranscriptViewRow } from "../client/tool-runs.js"
 
 export interface ReaderExpansionState {
@@ -214,6 +215,57 @@ export function createReadingRestore<Window extends RestoreWindow>(options: Read
         options.retry()
       })
     },
+  }
+}
+
+/** A saved reading place that waits to land, and the pager that reads older
+ *  pages back to it. `seenMessages` is how many messages the reader had seen
+ *  there, which a reload does not know. */
+export interface PendingRestore {
+  readonly place: ReadingState
+  readonly seenMessages?: number
+  readonly pager: ReadingRestore
+}
+
+/** The one owner of the transcript's scroll position: the tail pin, the
+ *  reader, or a saved place that waits for its row. A restore never follows
+ *  the tail, because they are different variants of one value. */
+export type ReaderMode =
+  | { readonly kind: "following" }
+  | { readonly kind: "reading" }
+  | { readonly kind: "restoring"; readonly restore: PendingRestore }
+
+export type ReaderEvent =
+  | { readonly kind: "scrolled"; readonly expansionPending: boolean; readonly nearTail: boolean; readonly upward: boolean }
+  | { readonly kind: "expansionSettled"; readonly following: boolean }
+  | { readonly kind: "restoreStarted"; readonly restore: PendingRestore }
+  | { readonly kind: "restoreLanded" }
+  | { readonly kind: "restoreSettledAtTail" }
+  | { readonly kind: "blockLanded" }
+  | { readonly kind: "jumpedToLatest" }
+  | { readonly kind: "sessionOpened" }
+
+const FOLLOWING: ReaderMode = { kind: "following" }
+const READING: ReaderMode = { kind: "reading" }
+
+/** The reader mode after one event. While a restore owns the position, a
+ *  scroll event, whether the reader's or a clamp's, changes nothing: only the
+ *  restore's landing, its settling at the tail, a block landing, Return to
+ *  latest, or another session ends it. */
+export function nextReaderMode(mode: ReaderMode, event: ReaderEvent): ReaderMode {
+  switch (event.kind) {
+    case "scrolled":
+      if (mode.kind === "restoring") return mode
+      if (event.expansionPending) return READING
+      if (event.nearTail) return FOLLOWING
+      return event.upward ? READING : mode
+    case "expansionSettled": return event.following ? FOLLOWING : READING
+    case "restoreStarted": return { kind: "restoring", restore: event.restore }
+    case "restoreLanded":
+    case "blockLanded": return READING
+    case "restoreSettledAtTail":
+    case "jumpedToLatest":
+    case "sessionOpened": return FOLLOWING
   }
 }
 
