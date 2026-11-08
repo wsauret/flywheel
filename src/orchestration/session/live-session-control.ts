@@ -71,10 +71,12 @@ interface LiveChildRun {
   stop(by: "person" | "agent" | "deletion"): void
   /** Cuts the run and settles it as interrupted by `by` (saved as
    *  `paused`), keeping its binding for resume. Resolves once the run is
-   *  settled and its session inactive. The interrupt of a person, of the
-   *  parent agent, and of the runtime's planned replacement are this one
-   *  operation. */
-  interrupt(by: TurnInterruption): Promise<void>
+   *  settled and its session inactive, with false when the run's end was
+   *  already decided, such as by its handoff, the return of its loop, or a
+   *  failure; it resolves after settlement either way. The interrupt of a
+   *  person, of the parent agent, and of the runtime's planned replacement
+   *  are this one operation. */
+  interrupt(by: TurnInterruption): Promise<boolean>
   /** The operations and tokens of the current run so far, read from the
    *  run's own counters on each call and never stored. */
   progress(): LiveChildRunProgress

@@ -178,3 +178,15 @@ export async function budgetCaptureSurface(
     advance: () => { generation++; },
   };
 }
+
+/** Polls `condition` for up to 2 s and fails with `message` when it never holds. */
+export async function waitUntil(condition: () => boolean, message: string): Promise<void> {
+  const deadline = Date.now() + 2_000;
+  while (!condition() && Date.now() < deadline) await Bun.sleep(2);
+  if (!condition()) throw new Error(message);
+}
+
+/** Rethrows an error that a loop under test reported, with its cause. */
+export function throwLoopError(error: Error | undefined): void {
+  if (error !== undefined) throw new Error(error.message, { cause: error });
+}

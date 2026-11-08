@@ -35,7 +35,7 @@ export function withRequestAdmission(client: Omit<ModelClient, "admitRequest"> &
         candidateAttributions: [],
         prepare: candidate,
         run: async (request) => {
-          const result = await request.execute({ ...await candidate(request), sample: 1, detectRepetition: false });
+          const result = await request.execute({ ...await candidate(request), sample: 1, repetitionGuard: "detect" });
           if (result.kind === "provider_failure" || result.kind === "repetition") {
             throw result.failure;
           }

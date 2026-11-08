@@ -412,6 +412,7 @@ describe("streamAssistantTurn telemetry", () => {
     const telemetry = createRequestStreamTelemetry(writer, { requestId: "request-budget", turn: 1 })
     expect(telemetry).toBeDefined()
 
+    await telemetry!.observeNormalized({ kind: "stream_attempt_start", attempt: 1, maxAttempts: 1, isFinalAttempt: true, sawThinkingStall: false, disableReasoning: true, isRetry: false })
     for (let i = 0; i < 650; i++) {
       await telemetry!.observeNormalized({ kind: "text_delta", text: "x", blockKey: `text:${i}` })
     }
@@ -421,9 +422,9 @@ describe("streamAssistantTurn telemetry", () => {
     expect(rawKinds.length).toBeLessThan(650)
     expect(rawKinds).toContain("stream_retry")
     expect(summary).toMatchObject({
-      rawEventCount: 651,
-      countsByKind: { stream_retry: 1, text_delta: 650 },
-      recovery: { streamRetryCount: 1 },
+      rawEventCount: 652,
+      countsByKind: { stream_attempt_start: 1, stream_retry: 1, text_delta: 650 },
+      recovery: { streamRetryCount: 1, reasoningDisabledRetryCount: 1 },
     })
     expect(order.indexOf("summary")).toBeLessThan(order.indexOf("completed"))
   })

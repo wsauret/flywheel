@@ -21,6 +21,7 @@ import {
   providerRequestAttribution,
   presentToolHistory,
   type ProviderStreamEvent,
+  type RepetitionGuard,
   type ServingAttempt,
   type StreamOptions,
 } from "./llm/types.js";
@@ -129,14 +130,14 @@ function canonicalizeToolEvent(input: AssistantAttemptInput, event: ProviderStre
 /** The request of one attempt as its serving client takes it: the prepared revision and the conversation's request
  *  values, without the stream's callbacks. A client that anticipates the request reads the same values
  *  (`LLMClient.anticipate`). */
-export function attemptRequest(candidate: Readonly<{ attempt: ServingAttempt; prepared: import("./llm/types.js").PreparedServingRequest; detectRepetition?: boolean }>, input: AssistantAttemptInput, signal: AbortSignal | undefined): StreamOptions {
+export function attemptRequest(candidate: Readonly<{ attempt: ServingAttempt; prepared: import("./llm/types.js").PreparedServingRequest; repetitionGuard?: RepetitionGuard }>, input: AssistantAttemptInput, signal: AbortSignal | undefined): StreamOptions {
   const outputTokenLimit = candidate.prepared.outputTokenLimit ?? candidate.attempt.outputLimit;
   return {
     messages: input.messages,
     ...(input.requestContext === undefined ? {} : { requestContext: input.requestContext }),
     tools: candidate.prepared.tools,
     systemPrompt: candidate.prepared.systemPrompt,
-    reasoningEffort: input.reasoningEffort,
+    reasoningEffort: candidate.repetitionGuard === "reasoning_off" ? "off" : input.reasoningEffort,
     toolChoice: input.toolChoice,
     signal,
     cacheRetention: candidate.prepared.cacheRetention,
@@ -145,13 +146,13 @@ export function attemptRequest(candidate: Readonly<{ attempt: ServingAttempt; pr
     estimatedContextTokens: input.estimatedContextTokens,
     ...(outputTokenLimit < candidate.attempt.outputLimit ? { outputTokenLimit } : {}),
     providerOptions: candidate.prepared.providerOptions,
-    ...(candidate.detectRepetition ? { detectRepetition: true } : {}),
+    ...(candidate.repetitionGuard === undefined ? {} : { repetitionGuard: candidate.repetitionGuard }),
   };
 }
 
 /** Settles usage at stream exit. The owner closes audit after canonical barriers. The serving client receives the
  *  history lowered for its target (`lowerProviderHistory`), and the audit records the lowered prompt with its edits. */
-export function createAssistantAttempt(candidate: Readonly<{ attempt: ServingAttempt; client: Pick<LLMClient, "streamWithTools" | "historyTarget">; prepared: import("./llm/types.js").PreparedServingRequest; sample?: number; detectRepetition?: boolean }>, input: AssistantAttemptInput, prepared: PreparedRequestAttempt | undefined) {
+export function createAssistantAttempt(candidate: Readonly<{ attempt: ServingAttempt; client: Pick<LLMClient, "streamWithTools" | "historyTarget">; prepared: import("./llm/types.js").PreparedServingRequest; sample?: number; repetitionGuard?: RepetitionGuard }>, input: AssistantAttemptInput, prepared: PreparedRequestAttempt | undefined) {
   const result = initialResult();
   const start = performance.now();
   let auditHandle: ProviderRequestAuditHandle | undefined;
@@ -231,7 +232,7 @@ export function createAssistantAttempt(candidate: Readonly<{ attempt: ServingAtt
         const edits = planHistoryLowering(request.messages, target);
         const messages = applyHistoryLowering(request.messages, edits);
         recordImageLimitCut(request.messages, target, input.turn, input.imageLimitCut);
-        auditHandle = await recordAuditRequest(input, messages, edits.length === 0 ? undefined : { edits }, attemptId, providerRequestAttribution(attempt), renderedPrompt, wireTools, attemptStaticTokens, prepared, attempt.toolPresentation);
+        auditHandle = await recordAuditRequest(input, messages, edits.length === 0 ? undefined : { edits }, attemptId, providerRequestAttribution(attempt), renderedPrompt, request, attemptStaticTokens, prepared, attempt.toolPresentation);
         streamTelemetry = createRequestStreamTelemetry(input.requestAudit, auditHandle);
         const settlement = input.usageSettlement;
         if (settlement) {
@@ -371,9 +372,10 @@ function recordImageLimitCut(history: readonly ConversationMessage[], target: Pr
   record.replaced = cut.replaced;
 }
 
-/** Opens the audit context for one provider request. `attribution` and
- *  `systemPrompt` both come from the attempt that sends it, so the record
- *  states the prompt the provider actually received. */
+/** Opens the audit context for one provider request. `attribution`,
+ *  `systemPrompt`, and `request` all come from the attempt that sends it, so
+ *  the record states the prompt, tools, and reasoning effort that the provider
+ *  actually received. */
 function recordAuditRequest(
   input: AssistantAttemptInput,
   messages: ConversationMessage[],
@@ -381,7 +383,7 @@ function recordAuditRequest(
   requestId: string,
   attribution: ProviderRequestAttribution,
   systemPrompt: string,
-  tools: StreamOptions["tools"],
+  request: Pick<StreamOptions, "tools" | "reasoningEffort">,
   attemptStaticTokens: number,
   prepared: PreparedRequestAttempt | undefined,
   presentation: ServingAttempt["toolPresentation"],
@@ -394,12 +396,12 @@ function recordAuditRequest(
     attribution,
     systemPrompt,
     messages: presentToolHistory(messages, presentation),
-    tools: prepared?.auditTools ?? tools.map((tool) => ({ ...tool, name: presentation.wireName?.(tool.name) ?? tool.name, registrationId: tool.name, executableId: tool.name })),
+    tools: prepared?.auditTools ?? request.tools.map((tool) => ({ ...tool, name: presentation.wireName?.(tool.name) ?? tool.name, registrationId: tool.name, executableId: tool.name })),
     omittedTools: prepared?.omittedTools ?? [],
     messageCount: input.messageCount,
     estimatedContextTokens: input.estimatedContextTokens,
     attemptStaticTokens,
-    reasoningEffort: input.reasoningEffort,
+    reasoningEffort: request.reasoningEffort,
     cacheRetention: input.cacheRetention,
     cacheKey: input.cacheRetention === "none" ? undefined : input.promptCacheKey,
     providerOptions: input.providerOptions,

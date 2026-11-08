@@ -20,7 +20,7 @@ Flywheel retries a candidate that drops the connection, throttles, or reports ov
 
 ## PI-MODEL-083: A response whose reasoning repeats itself is resampled
 
-When a model's reasoning collapses into repetition, Flywheel stops that response and requests a fresh one from the same provider, at most twice per response, and accepts the last attempt in full. The session status says the model repeated itself, and each stopped attempt appears as its own request.
+When a model's reasoning collapses into repetition, Flywheel stops that response and requests a fresh one from the same provider, at most twice per response. The last fresh response runs without reasoning where the model allows that, and Flywheel accepts it in full. The session status says the model repeated itself, and each stopped attempt appears as its own request.
 
 ## PI-MODEL-002: Background process model visibility
 

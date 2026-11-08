@@ -405,7 +405,7 @@ describe("budget exhaust turn under failover", () => {
               expect(options.tools).toBe(preparedRequest.tools);
               // SAFETY: the attempts and streams fixtures are parallel arrays.
               return streams[index]!(options);
-            } }, prepared: preparedRequest, sample: 1, detectRepetition: false });
+            } }, prepared: preparedRequest, sample: 1, repetitionGuard: "detect" });
             if (result.kind === "success") return result.value;
           }
           throw new AllCandidatesExhaustedError({ message: "all candidates exhausted", recovery: { kind: "none" } });

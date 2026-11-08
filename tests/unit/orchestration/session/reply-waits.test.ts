@@ -219,7 +219,7 @@ describe("the end rules", () => {
     const unregisterChild = registerLiveSessionControl(here.reader, {
       sessionId: child,
       state: async () => "running",
-      child: { runId: `${child}-run`, parentSessionId: waiter, parentConversationId: `${waiter}-conversation`, parentToolCallId: `${child}-tool`, modules: async () => undefined, backgroundTasks: createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: () => {} }), stop: () => {}, interrupt: async () => {}, progress: () => ({ toolUses: 0, totalTokens: 0, startedAtMs: 0 }) },
+      child: { runId: `${child}-run`, parentSessionId: waiter, parentConversationId: `${waiter}-conversation`, parentToolCallId: `${child}-tool`, modules: async () => undefined, backgroundTasks: createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: () => {} }), stop: () => {}, interrupt: async () => true, progress: () => ({ toolUses: 0, totalTokens: 0, startedAtMs: 0 }) },
       deliver: async (_input, decide) => decide("running"),
       notify: async () => false,
     })
@@ -261,7 +261,7 @@ describe("the end rules", () => {
     unregisters.push(registerLiveSessionControl(here.reader, {
       sessionId: stopped,
       state: async () => "running",
-      child: { runId: `${stopped}-run`, parentSessionId: waiter, parentConversationId: `${waiter}-conversation`, parentToolCallId: `${stopped}-tool`, modules: async () => undefined, backgroundTasks: createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: () => {} }), stop: () => {}, interrupt: async () => {}, progress: () => ({ toolUses: 0, totalTokens: 0, startedAtMs: 0 }) },
+      child: { runId: `${stopped}-run`, parentSessionId: waiter, parentConversationId: `${waiter}-conversation`, parentToolCallId: `${stopped}-tool`, modules: async () => undefined, backgroundTasks: createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: () => {} }), stop: () => {}, interrupt: async () => true, progress: () => ({ toolUses: 0, totalTokens: 0, startedAtMs: 0 }) },
       deliver: async (_input, decide) => decide("running"),
       notify: async () => false,
     }))
@@ -286,7 +286,7 @@ describe("the end rules", () => {
     unregisters.push(registerLiveSessionControl(here.reader, {
       sessionId: settled,
       state: async () => "running",
-      child: { runId: `${settled}-run`, parentSessionId: waiter, parentConversationId: `${waiter}-conversation`, parentToolCallId: `${settled}-tool`, modules: async () => undefined, backgroundTasks: createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: () => {} }), stop: () => {}, interrupt: async () => {}, progress: () => ({ toolUses: 0, totalTokens: 0, startedAtMs: 0 }) },
+      child: { runId: `${settled}-run`, parentSessionId: waiter, parentConversationId: `${waiter}-conversation`, parentToolCallId: `${settled}-tool`, modules: async () => undefined, backgroundTasks: createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: () => {} }), stop: () => {}, interrupt: async () => true, progress: () => ({ toolUses: 0, totalTokens: 0, startedAtMs: 0 }) },
       deliver: async (_input, decide) => decide("running"),
       notify: async () => false,
     }))
@@ -302,7 +302,7 @@ describe("the end rules", () => {
     unregisters.push(registerLiveSessionControl(here.reader, {
       sessionId: released,
       state: async () => "running",
-      child: { runId: `${released}-run`, parentSessionId: waiter, parentConversationId: `${waiter}-conversation`, parentToolCallId: `${released}-tool`, modules: async () => undefined, backgroundTasks: createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: () => {} }), stop: () => {}, interrupt: async () => {}, progress: () => ({ toolUses: 0, totalTokens: 0, startedAtMs: 0 }) },
+      child: { runId: `${released}-run`, parentSessionId: waiter, parentConversationId: `${waiter}-conversation`, parentToolCallId: `${released}-tool`, modules: async () => undefined, backgroundTasks: createBackgroundWorkRegistry({ kind: "workflow", enqueueNotification: () => {} }), stop: () => {}, interrupt: async () => true, progress: () => ({ toolUses: 0, totalTokens: 0, startedAtMs: 0 }) },
       deliver: async (_input, decide) => decide("running"),
       notify: async () => false,
     }))
@@ -610,7 +610,7 @@ describe("the cycle check", () => {
     unregisters.push(registerLiveSessionControl(here.reader, {
       sessionId: c,
       state: async () => "running",
-      child: { runId: `${c}-run`, parentSessionId: b, parentConversationId: `${b}-conversation`, parentToolCallId: `${c}-tool`, modules: async () => undefined, backgroundTasks: sc.tasks, stop: () => {}, interrupt: async () => {}, progress: () => ({ toolUses: 0, totalTokens: 0, startedAtMs: 0 }) },
+      child: { runId: `${c}-run`, parentSessionId: b, parentConversationId: `${b}-conversation`, parentToolCallId: `${c}-tool`, modules: async () => undefined, backgroundTasks: sc.tasks, stop: () => {}, interrupt: async () => true, progress: () => ({ toolUses: 0, totalTokens: 0, startedAtMs: 0 }) },
       deliver: async (_input, decide) => decide("running"),
       notify: async () => false,
     }))

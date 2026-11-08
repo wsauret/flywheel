@@ -38,7 +38,7 @@ Not: An MCP engine that runs a tool that a model requested, or that sends a mode
 
 ## ARCH-PROVIDERS-075: Degenerate repetition is resampled in place
 
-The stream attempt detects degenerate repetition in reasoning deltas and fails the attempt with its own failure kind. The admitted request resamples that kind in place on the same candidate within its own budget, without backoff, failover, outage marks, or continuation messages, and disables detection on the final attempt.
+The stream attempt detects degenerate repetition in reasoning deltas and fails the attempt with its own failure kind. The admitted request resamples that kind in place on the same candidate within its own budget, without backoff, failover, outage marks, or continuation messages, and runs the final attempt with reasoning off and detection off. The adapter decides how a model turns reasoning off; a model that cannot reasons as before.
 Because: A repeating response streams steadily, so no liveness deadline ends it, and a fresh sample from the same model almost always recovers.
 Not: A loop handled as a network failure or a stall timeout, a loop that advances the failover walk, or a resample that replays the looping text or adds a reminder.
 

@@ -132,7 +132,7 @@ function renderScratchpadBlock(scratchDir: string): string {
 Your temporary files go in this session's scratchpad, not in \`/tmp\` or another system temp directory:
 \`${scratchDir}\`
 
-Typical uses are scratch scripts, the intermediate data of a task with several steps, output that is not part of the user's project, and working files for an analysis, an experiment, or a verification. Write to \`/tmp\` only when the user asks for it.
+Typical uses are scratch scripts, the intermediate data of a task with several steps, output that is not part of the user's project, and working files for an analysis, an experiment, or a verification. A file or change that the request asks for belongs at its requested path, never only in the scratchpad. Write to \`/tmp\` only when the user asks for it.
 
 The scratchpad belongs to this session, sits outside the user's project, and goes away when the session is deleted. All scratch is disposable staging: explicit tools may read it before canonical output is captured, but durable behavior must not depend on it surviving. Keep working context in the scoped checkpoint, not scratch files. You may create, overwrite, and delete scratch files freely.
 

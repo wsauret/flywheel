@@ -70,6 +70,7 @@ import type {
   PreparedCandidate,
   ServingAttempt,
   PreparedServingRequest,
+  RepetitionGuard,
   StagedProviderClient,
 
 } from "./types.js";
@@ -128,8 +129,13 @@ const RETRY_BACKOFF_MAX_MS = 30_000;
 /** A provider-declared backoff is honored as stated, up to this bound. */
 const RETRY_AFTER_MAX_MS = 60_000;
 /** Fresh samples one model response gets after its reasoning repeated itself. The attempt after the last resample
- *  runs without detection, so a response is never stopped more than this many times. */
+ *  runs without reasoning and without detection, so a response is never stopped more than this many times and a
+ *  model that keeps looping cannot loop without bound on the attempt that is accepted. */
 const REPETITION_RESAMPLE_LIMIT = 2;
+
+function repetitionGuard(resamples: number): RepetitionGuard {
+  return resamples < REPETITION_RESAMPLE_LIMIT ? "detect" : "reasoning_off";
+}
 
 /** How long retry number `retry` waits: the provider's own backoff when it
  *  declared one, else exponential from one second with jitter so concurrent
@@ -580,14 +586,14 @@ export function createFailoverClient(deps: ProviderChainDeps): ModelClient {
           if (attempt.client === undefined) throw new Error("Serving selection has no connected provider client");
           let prepared = attempt.prepared;
           for (;;) {
-            const result = await request.execute(Object.freeze({ attempt: attempt.servingAttempt, client: attempt.client, prepared, sample: resamples + 1, detectRepetition: resamples < REPETITION_RESAMPLE_LIMIT }));
+            const result = await request.execute(Object.freeze({ attempt: attempt.servingAttempt, client: attempt.client, prepared, sample: resamples + 1, repetitionGuard: repetitionGuard(resamples) }));
             request.signal?.throwIfAborted();
             if (result.kind === "repetition") {
               // The provider served the request and a fresh sample almost always recovers: the same request goes to
               // the same candidate at once, with no backoff, no outage mark, and no failover. The attempt recorded
               // the trip itself (`model.reasoning.repetition_detected`).
               resamples += 1;
-              request.onResample?.({ attempt: resamples, maxAttempts: REPETITION_RESAMPLE_LIMIT });
+              request.onResample?.({ attempt: resamples, maxAttempts: REPETITION_RESAMPLE_LIMIT, nextAttemptDisablesReasoning: repetitionGuard(resamples) === "reasoning_off" });
               continue;
             }
             if (result.kind === "success") {
