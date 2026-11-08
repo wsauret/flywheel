@@ -1,0 +1,30 @@
+bench/harbor/analysis/board-data.ts
+  h_4b47e9e4a8b456 63,73-74,250
+bench/harbor/analysis/board-scoring.ts
+  h_4b47e9e4a8b456 26-27,99,168,206,217,235
+bench/harbor/analysis/reruns.ts
+  h_4b47e9e4a8b456 11,30
+bench/harbor/analysis/round-score.ts
+  h_4b47e9e4a8b456 10
+bench/harbor/analysis/round-trials.ts
+  h_4b47e9e4a8b456 8,50,88
+bench/harbor/analysis/subset.ts
+  h_4b47e9e4a8b456 17,29,64,121,147,170
+bench/harbor/harbor-jobs.ts
+  h_4b47e9e4a8b456 12-13
+knip.jsonc
+  h_4b47e9e4a8b456 9
+src/infra/llm/models.ts
+  h_4b47e9e4a8b456 55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9a03952ec58902d9422772f973cf7d50562a4b96",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
