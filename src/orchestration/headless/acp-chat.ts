@@ -77,14 +77,32 @@ function openAcpSession(channel: HeadlessChatChannel, version: string, execution
     channel.hold(streaming)
   }
 
-  const updatesFor = (blocks: readonly FrontendOutputBlock[]): string[] => blocks.flatMap((block) => {
-    const identity = blockIdentity(block)
-    seen.add(identity)
-    const next = acpBlockUpdates(block, streamed.get(identity))
-    if (next.streamed !== undefined) streamed.set(identity, next.streamed)
-    if (block.kind === "system" && next.updates.length > 0) notice = block.message
-    return next.updates.map((update) => acpUpdate(sessionId, update))
-  })
+  /** A completed tool row whose result the runtime left out of the row
+   *  (ARCH-PROTOCOL-059), with that result read back: the client gets the
+   *  whole result, as the model did, not the row's line count. */
+  const withResult = async (block: FrontendOutputBlock): Promise<FrontendOutputBlock> => {
+    if (block.kind !== "tool" || block.status !== "completed" || block.contentOmittedLines === undefined) return block
+    const { contentOmittedLines: _omitted, ...row } = block
+    const body = await channel.client.query({ type: "outputBlockBody", sessionId, request: { blockId: blockIdentity(block) } })
+    return body.content === undefined ? row : { ...row, content: body.content }
+  }
+
+  const updatesFor = async (blocks: readonly FrontendOutputBlock[]): Promise<string[]> => {
+    const lines: string[] = []
+    for (const block of blocks) {
+      const identity = blockIdentity(block)
+      seen.add(identity)
+      const sent = streamed.get(identity)
+      // A result is read only for the update that carries it, never for a
+      // repeat of a row the client already holds.
+      const shown = acpBlockUpdates(block, sent)
+      const next = shown.updates.length > 0 ? acpBlockUpdates(await withResult(block), sent) : shown
+      if (next.streamed !== undefined) streamed.set(identity, next.streamed)
+      if (block.kind === "system" && next.updates.length > 0) notice = block.message
+      lines.push(...next.updates.map((update) => acpUpdate(sessionId, update)))
+    }
+    return lines
+  }
 
   /** The current blocks before `read` that a gap can have changed, oldest
    *  first: back to the last streamed block, whose final characters can be

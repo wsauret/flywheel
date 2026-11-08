@@ -10,6 +10,7 @@ import type { AcpResult, AcpSessionUpdate } from "../../../../src/protocol/acp.j
 import type { UsageSessionStats } from "../../../../src/protocol/modules/subscription-usage.js"
 import type { PendingQuestionView } from "../../../../src/protocol/question-protocol-types.js"
 import type { RuntimeUiPatchInput } from "../../../../src/protocol/runtime-ui-protocol-types.js"
+import { projectFrontendOutputBlock } from "../../../../src/orchestration/app-service/frontend-output-blocks.js"
 import { createRuntimeUiBus } from "../../../../src/orchestration/app-service/runtime-ui-bus.js"
 import type { AgentToolInput } from "../../../../src/orchestration/agent-runtime/types.js"
 import { createChatInvocationCompletion, type ChatTurnEnding } from "../../../../src/orchestration/chat/runner-completion.js"
@@ -59,7 +60,18 @@ function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish
   /** The runtime reports how the root chat's turn ended, as the invocation completion does. */
   const ended = (ending: ChatTurnEnding) => { framing.turnEnded?.(ending) }
   const calls: FrontendMutation[] = []
+  // The rows a client reads, as the runtime's live edge publishes them, and
+  // the blocks whose bodies a row can leave out.
   const blocks: FrontendOutputBlock[] = []
+  const bodies = new Map<string, FrontendOutputBlock>()
+  const resident = (block: FrontendOutputBlock) => {
+    bodies.set(blockIdentity(block), block)
+    const known = blocks.findIndex((candidate) => blockIdentity(candidate) === blockIdentity(block))
+    const index = known === -1 ? blocks.length : known
+    const row = projectFrontendOutputBlock(block)
+    blocks[index] = row
+    return { index, known: known !== -1, row }
+  }
   const listeners = new Set<() => void>()
   let state: HeadlessChatOutcome | "busy" = "complete"
   let interrupt = () => {}
@@ -75,16 +87,11 @@ function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish
     position = bus.publish(input)?.position ?? position
   }
   const output = (block: FrontendOutputBlock) => {
-    const known = blocks.findIndex((resident) => blockIdentity(resident) === blockIdentity(block))
-    const index = known === -1 ? blocks.length : known
-    blocks[index] = block
-    publish({ cursor: { scope: "session", domain: "output", sessionId: "root" }, payload: { kind: "output.delta", delta: { visibleMessageCount: blocks.length, blocks: [{ kind: known === -1 ? "insert" : "upsert", index, blockId: blockIdentity(block), block }] } } })
+    const { index, known, row } = resident(block)
+    publish({ cursor: { scope: "session", domain: "output", sessionId: "root" }, payload: { kind: "output.delta", delta: { visibleMessageCount: blocks.length, blocks: [{ kind: known ? "upsert" : "insert", index, blockId: blockIdentity(row), block: row }] } } })
   }
   /** Output whose live delta never reaches the client, as when its queue overflowed. */
-  const lose = (block: FrontendOutputBlock) => {
-    const known = blocks.findIndex((resident) => blockIdentity(resident) === blockIdentity(block))
-    blocks[known === -1 ? blocks.length : known] = block
-  }
+  const lose = (block: FrontendOutputBlock) => { resident(block) }
   const turn = async (command: FrontendMutation) => {
     state = "busy"
     queueMicrotask(() => { onTurn({ command, publish, output, lose, ended, settle, streamed }) })
@@ -106,6 +113,10 @@ function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish
           kind: "ok", consistencyToken: "fixture", anchor: request.anchor, streamingToolText: {}, streamingOutputChars: 0, blocks: blocks.slice(start, end),
           window: { startBlockIndex: start, endBlockIndex: end - 1, hasBefore: start > 0, hasAfter: true, contentBytes: 0 },
         }
+      },
+      outputBlockBody: async ({ request }) => {
+        const block = bodies.get(request.blockId)
+        return { blockId: request.blockId, ...(block?.kind === "tool" && block.content !== undefined ? { content: block.content } : {}) }
       },
       questionSnapshot: async (request) => ({ snapshotPosition: 0, views: request.sessionIds.map((sessionId) => ({ sessionId, view: state === "input_required" ? question : null })) }),
       "usage.stats": async () => STATS,
@@ -157,6 +168,9 @@ function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish
   return { send, response, updates, open, calls, messages, channel, end: () => { input.end() }, onInterrupt: (next: () => void) => { interrupt = next } }
 }
 
+/** A tool result larger than a live row carries inline. */
+const LARGE_RESULT = Array.from({ length: 400 }, (_, index) => `line ${index}`).join("\n")
+
 const prompt = (id: number, text: string) => ({ id, method: "session/prompt", params: { sessionId: "root", prompt: [{ type: "text", text }] } })
 
 describe("headless chat over ACP", () => {
@@ -201,6 +215,23 @@ describe("headless chat over ACP", () => {
     ])
     const answered = fixture.messages.findIndex((message) => message.id === 2)
     expect(fixture.messages.slice(0, answered).at(-1)?.params?.update).toEqual({ sessionUpdate: "usage_update", used: 1000, size: 10_000, cost: { amount: 0.25, currency: "USD" } })
+  })
+
+  it("streams the whole result of a tool whose body the live row leaves out", async () => {
+    const fixture = acpFixture(async ({ output, settle, streamed }) => {
+      output({ kind: "tool", id: "call-1", name: "bash", action: "shell_exec", presentation: { name: "Bash", detail: "cat log" }, status: "pending", timestamp: 0 })
+      await streamed("in_progress")
+      output({ kind: "tool", id: "call-1", name: "bash", action: "shell_exec", presentation: { name: "Bash", detail: "cat log" }, status: "completed", content: LARGE_RESULT, timestamp: 0 })
+      await settle("complete")
+    })
+    await fixture.open()
+    fixture.send(prompt(2, "read the log"))
+    expect((await fixture.response(2)).result).toMatchObject({ stopReason: "end_turn" })
+    expect(fixture.updates().filter((update) => update.sessionUpdate === "tool_call_update").at(-1)).toEqual(
+      { sessionUpdate: "tool_call_update", toolCallId: "call-1", status: "completed", rawInput: { tool: "bash" }, content: [{ type: "content", content: { type: "text", text: LARGE_RESULT } }] },
+    )
+    fixture.end()
+    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
   })
 
   it("ends an unattended one-shot run after it answers the first prompt, while stdin stays open", async () => {
@@ -369,7 +400,7 @@ describe("headless chat over ACP", () => {
   })
 
   it("streams the lost result of a running tool that the recovered window starts after", async () => {
-    const tool = (status: "pending" | "completed"): FrontendOutputBlock => ({ kind: "tool", id: "call-1", name: "bash", action: "shell_exec", presentation: { name: "Bash", detail: "ls" }, status, ...(status === "completed" ? { content: "a.txt" } : {}), timestamp: 0 })
+    const tool = (status: "pending" | "completed"): FrontendOutputBlock => ({ kind: "tool", id: "call-1", name: "bash", action: "shell_exec", presentation: { name: "Bash", detail: "ls" }, status, ...(status === "completed" ? { content: LARGE_RESULT } : {}), timestamp: 0 })
     const fixture = acpFixture(async ({ output, lose, publish, settle, streamed }) => {
       output(tool("pending"))
       // More streamed output than one window holds, so the recovered window
@@ -385,7 +416,7 @@ describe("headless chat over ACP", () => {
     fixture.send(prompt(2, "run a tool"))
     expect((await fixture.response(2)).result).toMatchObject({ stopReason: "end_turn" })
     expect(fixture.updates().filter((update) => update.sessionUpdate === "tool_call_update")).toEqual([
-      { sessionUpdate: "tool_call_update", toolCallId: "call-1", status: "completed", rawInput: { tool: "bash" }, content: [{ type: "content", content: { type: "text", text: "a.txt" } }] },
+      { sessionUpdate: "tool_call_update", toolCallId: "call-1", status: "completed", rawInput: { tool: "bash" }, content: [{ type: "content", content: { type: "text", text: LARGE_RESULT } }] },
     ])
     fixture.end()
     expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
