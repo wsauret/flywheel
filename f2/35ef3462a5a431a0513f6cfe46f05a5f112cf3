@@ -1,0 +1,24 @@
+src/orchestration/chat/controls.ts
+  h_4b47e9e4a8b456 94,100,112-113,116,136,151,274
+src/orchestration/chat/host-ports.ts
+  h_4b47e9e4a8b456 7-8,50-55,57-66
+src/orchestration/chat/runner-lifecycle.ts
+  h_4b47e9e4a8b456 650-651
+src/orchestration/chat/runner-wait-state.ts
+  h_4b47e9e4a8b456 7,11-28,39-40,42-49,63-64,77,88-103,125-135,139-140,148-159
+tests/unit/orchestration/chat/chat-controls.test.ts
+  h_4b47e9e4a8b456 12,69-70,137-139,147-149
+tests/unit/orchestration/chat/chat-session-replacement-interrupt.test.ts
+  h_4b47e9e4a8b456 234-251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f235ef3462a5a431a0513f6cfe46f05a5f112cf3",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
