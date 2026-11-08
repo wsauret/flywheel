@@ -12,8 +12,6 @@ type BooleanControl = ModuleConfigBooleanSettingId | Extract<ModuleConfigSetting
 
 type RuntimePolicyResult = { ok: true } | { ok: false; error: { message: string } }
 
-export const CAPABILITY_PENDING = "Capabilities are unavailable until the runtime publishes its selection"
-
 /** What the module rows read and write: the runtime's published capability
  *  projection and its mutations, the auth view a provider row reads its
  *  status from, and the config store a module's boolean rows live in. */

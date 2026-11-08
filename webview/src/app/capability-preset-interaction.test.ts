@@ -237,7 +237,7 @@ test("settings states what a switch cannot show: an adjusted value and an attrib
   try {
     await mounted.ready()
     assert.deepEqual(mounted.problems(), [])
-    mounted.publishSettings({ problems: [{ settingId: "allowPersistentProcesses", message: "Flywheel adjusted this value to one it accepts." }] })
+    mounted.publishSettings({ problems: [{ settingId: "idleCompaction", message: "Flywheel adjusted this value to one it accepts." }] })
     assert.deepEqual(mounted.problems(), ["Flywheel adjusted this value to one it accepts."])
     mounted.publishSettings({ problems: [], gitAiAttribution: true })
     mounted.publishGitAiAttribution({ kind: "unavailable", reason: "command-not-found" })

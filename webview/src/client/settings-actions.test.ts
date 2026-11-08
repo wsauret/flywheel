@@ -184,7 +184,7 @@ test("automatic deletion writes whole days with the published value as its expec
 /** The workspace switches that the browser writes directly, each through its own action and setting. */
 const WORKSPACE_SWITCHES = [
   { name: "Idle compaction", kind: "set-idle-compaction", id: "idleCompaction" },
-  { name: "Shell write guard", kind: "set-shell-write-guard", id: "shellWriteGuard" },
+  { name: "Restrict Bash writes", kind: "set-shell-write-guard", id: "shellWriteGuard" },
 ] as const
 
 for (const { name, kind, id } of WORKSPACE_SWITCHES) describe(`${name} settings action`, () => {

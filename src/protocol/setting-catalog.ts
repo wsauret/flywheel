@@ -52,7 +52,7 @@ const ROWS = {
   "capability-preset": { label: "Capabilities preset", description: "Minimal turns every module off. Full turns the defaults on.", control: "choice" },
   "workflow-mode": { label: "Workflow mode", description: "Whether agents may launch workflows, and whether they ask first.", control: "choice" },
   "allow-persistent-processes": { label: "Allow persistent processes", description: "Let selected processes outlive Flywheel; you must stop them.", control: "switch", setting: "allowPersistentProcesses" },
-  "shell-write-guard": { label: "Shell write guard", description: "Refuse shell writes outside the project for writing agents.", control: "switch", setting: "shellWriteGuard" },
+  "shell-write-guard": { label: "Restrict Bash writes", description: "Refuse Bash commands that write outside the project.", control: "switch", setting: "shellWriteGuard" },
   "web-search-provider": { label: "Web search provider", description: "The first web retrieval provider Flywheel tries.", control: "choice", setting: "webSearchProvider" },
   sessions: { label: "Sessions", description: "Browse, resume, and delete chats and workflows.", control: "screen" },
   "reset-defaults": { label: "Reset to defaults", description: "Return shared settings to their defaults.", control: "action" },
@@ -108,6 +108,7 @@ const subsection = <Id extends string>(id: Id, label: string, description: strin
 
 /** The rows a module group starts with, ahead of its modules' rows. */
 const SETTING_GROUP_HEADS = {
+  Tools: [row("shell-write-guard"), row("allow-persistent-processes")],
   "Web retrieval": [row("web-search-provider")],
 } as const satisfies { readonly [group: string]: readonly SettingCatalogRow[] }
 
@@ -128,7 +129,7 @@ export const SETTING_SECTIONS = [
   { title: "Autonomy", entries: [
     row("capability-preset"),
     row("workflow-mode"),
-    subsection("agent-capabilities", "Agent capabilities", "Configure background work, learning, skills, and subagents.", [slot("agent-capability-modules"), row("allow-persistent-processes"), row("shell-write-guard")]),
+    subsection("agent-capabilities", "Agent capabilities", "Configure background work, learning, skills, and subagents.", [slot("agent-capability-modules")]),
     slot("capability-groups"),
   ] },
   { title: "Manage", entries: [row("sessions"), row("reset-defaults")] },

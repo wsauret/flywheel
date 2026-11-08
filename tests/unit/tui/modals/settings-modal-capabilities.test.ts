@@ -147,10 +147,11 @@ describe("Settings capability rows", () => {
       const { modal } = createModal({ runtime })
       modal.openSettingsModal()
 
-      for (const id of [...CAPABILITY_ROW_IDS, PRESET_ROW_ID]) expect(rowIds(modal)).not.toContain(id)
+      for (const id of [...CAPABILITY_ROW_IDS, PRESET_ROW_ID, "capability-group:Agent capabilities"]) expect(rowIds(modal)).not.toContain(id)
       expect(runtime.capabilities.setModule).not.toHaveBeenCalled()
 
       runtime.hydrate()
+      expect(rowIds(modal)).toContain("capability-group:Agent capabilities")
       expect(valueOf(modal, "skills")).toBe("YES")
       expect(valueOf(modal, "learning")).toBe("NO")
       expect(rowOf(modal, "learning").unavailableReason?.()).toBeUndefined()
