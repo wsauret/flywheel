@@ -4,7 +4,7 @@ import { createRoot, createSignal } from "solid-js"
 import { createAddressFollower, pathForSession, sessionFromPath } from "../../../webview/local/route.js"
 import { createWorkflowAgentAdoption, createWorkflowNavigation, type HistoryPort } from "../../../webview/src/modules/workflows/navigation.js"
 import type { WorkflowReading } from "../../../webview/src/modules/workflows/inspection.js"
-import type { FrontendAttempt } from "../../../src/protocol/workflow-view-protocol-types.js"
+import type { FrontendAttempt, LoadedWorkflowView } from "../../../src/protocol/workflow-view-protocol-types.js"
 import { plainAgentTree } from "../../helpers/workflow-view.js"
 import { importBuiltModule } from "../../../webview/src/test-support/import-built-module.js"
 import { fileURLToPath } from "node:url"
@@ -158,22 +158,55 @@ function memoryTab(initialPath: string, state: unknown = null) {
   }
 }
 
+const usage = { totalCost: 0, totalBilledCost: 0, priceUnavailable: false, totalInputTokens: 0, totalOutputTokens: 0 }
+const detail: WorkflowReading["detail"] = {
+  workflowId: "run", title: "Run", workflowDefinitionId: "fixture", createdAt: "", lastUpdated: "",
+  executionCwd: "", roleAssignments: { defaults: {}, overrides: {} }, launchedFrom: { parentSessionId: "chat", conversationId: "conversation", toolUseId: "tool" },
+  auth: null, readability: "readable", admittedActions: [], totals: usage, policyUsage: usage,
+  attribution: "available", durationMs: 0, streamingStartedAt: null, activeIntervals: [], totalsLoading: false,
+}
 const attempts: readonly FrontendAttempt[] = [{ id: "agent", definitionId: "agent", briefId: "agent", name: "Agent", status: "running", sessionId: "member", history: [] }]
+const plain = (): WorkflowReading => ({ detail, view: { attemptsStatus: "loaded", state: "running", attempts, tree: plainAgentTree(attempts) }, live: [] })
 
-/** The local host and the client as `webview/local/main.tsx` composes them:
- *  the address follows each selection, and a pop selects what its entry shows. */
-function mountPage(tab: ReturnType<typeof memoryTab>, initial: string) {
+/** One item that moves from its draft agent to its review agent. */
+function item(later: boolean): WorkflowReading {
+  const view: LoadedWorkflowView = {
+    attemptsStatus: "loaded", state: "running",
+    attempts: [
+      { id: "draft-1", definitionId: "draft", briefId: "draft", name: "Draft", status: later ? "completed" : "running", sessionId: "member-draft", history: [] },
+      ...(later ? [{ id: "review-1", definitionId: "review", briefId: "review", name: "Review", status: "running" as const, sessionId: "member-review", history: [] }] : []),
+    ],
+    tree: { nodes: [
+      { id: "draft-phase", kind: "phase", form: "list", phaseId: "draft", label: "Draft", parentId: null, disposition: later ? "completed" : "running", list: { id: "items", expanded: true } },
+      { id: "draft-node", kind: "agent", definitionId: "draft", label: "Draft", parentId: "draft-phase", disposition: later ? "completed" : "running", attempts: 1, currentAttemptId: "draft-1", item: { nodeId: "item", key: "a", label: "A", ordinal: 1, text: "a" } },
+      { id: "review-phase", kind: "phase", form: "list", phaseId: "review", label: "Review", parentId: null, disposition: later ? "running" : "pending", list: { id: "items", expanded: true } },
+      { id: "review-node", kind: "agent", definitionId: "review", label: "Review", parentId: "review-phase", disposition: later ? "running" : "pending", attempts: later ? 1 : 0, ...(later ? { currentAttemptId: "review-1" } : {}), item: { nodeId: "item", key: "a", label: "A", ordinal: 1, text: "a" } },
+    ] },
+  }
+  return { detail, view, live: [] }
+}
+const members = new Map([["member", "agent"], ["member-draft", "draft-1"], ["member-review", "review-1"]])
+
+/** The local host and the client as `webview/local/main.tsx` and the
+ *  workflows module compose them: the address follows each selection, a pop
+ *  selects what its entry shows before the client hears it, and a selected
+ *  member with no place is adopted. */
+function mountPage(tab: ReturnType<typeof memoryTab>, initial: string | undefined, initialReading: WorkflowReading = plain()) {
   return createRoot((dispose) => {
     const address = createAddressFollower(tab)
     const [selected, setSelected] = createSignal(initial)
+    const [reading, setReading] = createSignal(initialReading)
     const select = (id: string) => { setSelected(id); address.follow(id) }
     tab.listeners.add(() => { const id = address.popped(); if (id !== undefined) select(id) })
-    const agents = createWorkflowNavigation({
-      reading: () => ({ detail: undefined, view: { attemptsStatus: "loaded", state: "running", attempts, tree: plainAgentTree(attempts) }, live: [] }),
-      selected, select,
-    }, tab.port)
-    address.follow(initial)
-    return { dispose, agents, selected }
+    const agents = createWorkflowNavigation({ reading, selected, select }, tab.port)
+    createWorkflowAgentAdoption(agents, () => {
+      const id = selected()
+      if (id === undefined) return undefined
+      const attemptId = members.get(id)
+      return attemptId === undefined ? { id } : { id, workflowMembership: { kind: "attempt", workflowId: "run", attemptId } }
+    }, reading)
+    if (initial !== undefined) address.follow(initial)
+    return { dispose, agents, selected, select, setReading }
   })
 }
 
@@ -182,14 +215,8 @@ describe("Back from a workflow agent view on the local browser page", () => {
     const tab = memoryTab("/")
     const page = createRoot(dispose => {
       const [selected, select] = createSignal("member")
-      const usage = { totalCost: 0, totalBilledCost: 0, priceUnavailable: false, totalInputTokens: 0, totalOutputTokens: 0 }
       const reading = (): WorkflowReading => ({
-        detail: {
-          workflowId: "run", title: "Run", workflowDefinitionId: "fixture", createdAt: "", lastUpdated: "",
-          executionCwd: "", roleAssignments: { defaults: {}, overrides: {} }, launchedFrom: { parentSessionId: "chat", conversationId: "conversation", toolUseId: "tool" },
-          auth: null, readability: "readable", admittedActions: [], totals: usage, policyUsage: usage,
-          attribution: "available", durationMs: 0, streamingStartedAt: null, activeIntervals: [], totalsLoading: false,
-        },
+        detail,
         view: { attemptsStatus: "loaded", state: "running", attempts, tree: plainAgentTree(attempts) }, live: [],
       })
       const agents = createWorkflowNavigation({ reading, selected, select }, tab.port)
@@ -226,8 +253,13 @@ describe("Back from a workflow agent view on the local browser page", () => {
     expect(tab.entries()).toBe(2)
     page.dispose()
 
-    const reloaded = mountPage(tab, "member")
+    // The page opens its address once the lane is up, and the workflow's
+    // view arrives after that.
+    const reloaded = mountPage(tab, undefined, { detail: undefined, view: undefined, live: [] })
     try {
+      reloaded.select("member")
+      reloaded.setReading(plain())
+      expect(tab.entries()).toBe(2)
       expect(reloaded.agents.place()?.kind).toBe("agent")
       expect(reloaded.agents.back()).toBe(true)
       expect(reloaded.selected()).toBe("chat")
@@ -242,13 +274,35 @@ describe("Back from a workflow agent view on the local browser page", () => {
     const tab = memoryTab("/session/member")
     const page = mountPage(tab, "member")
     try {
-      page.agents.adoptAgent("run", "chat", { kind: "agent", agentNodeId: "agent", follow: false, historySessionId: "member" })
       expect(tab.location.pathname).toBe("/session/member")
+      expect(page.agents.place()?.kind).toBe("agent")
       expect(page.agents.back()).toBe(true)
       expect(page.selected()).toBe("chat")
       expect(tab.location.pathname).toBe("/session/chat")
     } finally {
       page.dispose()
+    }
+  })
+
+  test("Back into a following agent that the person left keeps Forward to the session they went to, also after its item moved on", () => {
+    for (const movesOn of [false, true]) {
+      const tab = memoryTab("/session/chat")
+      const page = mountPage(tab, "chat", item(false))
+      try {
+        page.agents.openAgent("run", "chat", { kind: "agent", agentNodeId: "draft-node", follow: true }, "chat")
+        page.select("S")
+        if (movesOn) page.setReading(item(true))
+        expect(page.selected()).toBe("S")
+        expect(tab.location.pathname).toBe("/session/S")
+        tab.port.back()
+        expect(page.selected()).toBe(movesOn ? "member-review" : "member-draft")
+        expect(page.agents.place()?.kind).toBe("agent")
+        tab.forward()
+        expect(page.selected()).toBe("S")
+        expect(tab.location.pathname).toBe("/session/S")
+      } finally {
+        page.dispose()
+      }
     }
   })
 })

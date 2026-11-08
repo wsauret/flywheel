@@ -19,7 +19,6 @@ export function createWorkflowDomainIntake<View>(
   client: Pick<AttachedRuntimeClient, "query" | "subscribe" | "onLane">,
 ): WorkflowDomainIntake<View> {
   const [views, setViews] = createSignal<ReadonlyMap<string, View>>(new Map())
-  const requested = new Set<string>()
   const holds = new Map<string, number>()
   type Scope = { readonly kind: "cursor"; readonly cursor: RuntimeWorkflowCursorIdentity }
   const scope = (workflowId: string): Scope => ({ kind: "cursor", cursor: { scope: "workflow", domain: binding.domain, workflowId } })
@@ -29,10 +28,10 @@ export function createWorkflowDomainIntake<View>(
   const receiver = createOrderedPatchReceiver<Scope, ModuleDomainSnapshot<View>>({
     client,
     scopeKey: runtimeSnapshotScopeKey,
-    onConnected() { for (const id of requested) void receiver.resnapshot(scope(id)).catch(() => {}) },
+    onConnected() { for (const id of holds.keys()) void receiver.resnapshot(scope(id)).catch(() => {}) },
     accept(patch) {
       if (patch.cursor.scope !== "workflow" || patch.cursor.domain !== binding.domain) return null
-      if (!requested.has(patch.cursor.workflowId)) return null
+      if (!holds.has(patch.cursor.workflowId)) return null
       return patch.payload.kind === "runtime.invalidate" || binding.isPayload(patch.payload)
         ? { cursor: patch.cursor, scope: scope(patch.cursor.workflowId), patch } : null
     },
@@ -46,17 +45,15 @@ export function createWorkflowDomainIntake<View>(
       write(patch.cursor.workflowId, binding.payloadView(patch.payload, untrack(views).get(patch.cursor.workflowId)))
     },
   })
-  const ensure = (id: string): void => {
-    if (requested.has(id)) return
-    requested.add(id)
-    void receiver.resnapshot(scope(id)).catch(() => { requested.delete(id) })
-  }
-  onCleanup(() => { requested.clear(); holds.clear() })
+  onCleanup(() => { holds.clear() })
   return {
     scope: "workflow",
     retain(id) {
-      holds.set(id, (holds.get(id) ?? 0) + 1)
-      ensure(id)
+      const held = holds.get(id) ?? 0
+      holds.set(id, held + 1)
+      // The family intake owns retries: a lost lane reads every held id
+      // again, and any other failure retries on its shared backoff.
+      if (held === 0) void receiver.resnapshot(scope(id)).catch(() => {})
       let released = false
       return { release() {
         if (released) return
@@ -64,7 +61,6 @@ export function createWorkflowDomainIntake<View>(
         const count = (holds.get(id) ?? 1) - 1
         if (count > 0) { holds.set(id, count); return }
         holds.delete(id)
-        requested.delete(id)
         receiver.cancelSnapshot(scope(id))
         receiver.release(scope(id).cursor)
         write(id, null)

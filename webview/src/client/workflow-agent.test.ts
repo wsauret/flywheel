@@ -123,3 +123,33 @@ test("a question in the chat under its full-size card reveals the chat in a new 
     assert.equal(mounted.selected(), "chat")
   } finally { mounted.dispose() }
 })
+
+test("a following agent that the person left keeps the selection and the entry where they went", () => {
+  const mounted = mount()
+  try {
+    mounted.navigation.openAgent("run", "chat", { kind: "agent", agentNodeId: "draft-node", follow: true }, "chat")
+    mounted.history.port.pushState({ flywheelScreen: "chat", flywheelSession: "elsewhere" })
+    mounted.select("elsewhere")
+    mounted.setReading({ detail: undefined, view: view(true), live: [] })
+    assert.equal(mounted.selected(), "elsewhere")
+    assert.equal(mounted.navigation.place(), undefined)
+    assert.deepEqual(mounted.history.port.state, { flywheelScreen: "chat", flywheelSession: "elsewhere" })
+    mounted.history.port.back()
+    assert.equal(mounted.selected(), "member-review", "Back returns to the agent view, which shows the item's current agent")
+    mounted.history.forward()
+    assert.equal(mounted.selected(), "elsewhere")
+  } finally { mounted.dispose() }
+})
+
+test("an agent view that waits for its workflow's view ends when the person starts a new chat", () => {
+  const mounted = mount()
+  try {
+    mounted.setReading({ detail: undefined, view: undefined, live: [] })
+    mounted.navigation.openAgent("run", "chat", { kind: "agent", agentNodeId: "draft-node", follow: true }, "chat")
+    assert.equal(mounted.navigation.place()?.kind, "agent")
+    mounted.select(undefined)
+    assert.equal(mounted.navigation.place(), undefined)
+    mounted.setReading({ detail: undefined, view: view(true), live: [] })
+    assert.equal(mounted.selected(), undefined, "the view that arrives later does not move the new chat")
+  } finally { mounted.dispose() }
+})
