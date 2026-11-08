@@ -23,6 +23,11 @@ SNAPSHOT = {
     "credentials": {"openai_api": {"type": "api_key", "key": SNAPSHOT_KEY, "lineageId": "11111111-1111-4111-8111-111111111111"}},
     "modelAccess": [],
 }
+BENCHMARK_RULES = (
+    "# Benchmark rules\n"
+    "\n"
+    "This run is a trial of a public benchmark. Its rules forbid using the task's own reference solution, hidden tests, expected output, or another agent's transcript of the same task, from any copy of the benchmark, such as a GitHub repository, a Hugging Face dataset, a mirror, or an archive. A trial that fetches any of them fails. Library documentation, packages, models, datasets, and other public data that the task needs are allowed."
+)
 PROMPT = {"jsonrpc": "2.0", "id": 2, "method": "session/prompt", "params": {"sessionId": "root", "prompt": []}}
 
 
@@ -110,6 +115,17 @@ class TakeSnapshotTest(unittest.TestCase):
         self.assertEqual(environment["FLYWHEEL_PROJECT_ROOT"], "/app")
         # The task image's PATH stays; only the shim's own virtual environment leaves it.
         self.assertEqual(environment["PATH"], "/bun/bin:/opt/task/bin:/usr/bin")
+
+    def test_the_trial_home_holds_the_config_and_states_the_benchmark_rules_as_user_global_instructions(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            config = work / "config.toml"
+            config.write_text("[models]\n")
+            home = shim._install_home(work, config, "benchmark")
+            self.assertEqual((home / ".flywheel" / "flywheel.toml").read_text(), "[models]\n")
+            self.assertTrue((home / ".flywheel" / "auth" / "profiles" / "benchmark").is_dir())
+            # Flywheel reads `<HOME>/.agents/AGENTS.md` as user-global instructions, so the rule stays out of its product prompt.
+            self.assertEqual((home / ".agents" / "AGENTS.md").read_text(), BENCHMARK_RULES)
 
     def test_the_child_runs_an_unattended_acp_chat_on_the_staged_snapshot(self) -> None:
         command = shim._child_command(Path("/bun/bin"), Path("/runtime"), "benchmark", Path("/stage/auth.json"))

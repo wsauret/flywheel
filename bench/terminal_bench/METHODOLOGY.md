@@ -101,6 +101,10 @@ The removed adapter also recorded Flywheel's `--task` termination object, whose 
 
 A per-trial tool list (`headless.disabled_tools`) is now the arm config's `disabled_modules`, and the chat model (`headless.model`, `--model`) is now the arm config's pinned chat role.
 
+## Benchmark rules
+
+Each trial home carries a benchmark-only `~/.agents/AGENTS.md`, from `harbor_agent/flywheel_harbor_agent/benchmark-rules.md`, that states the harness leaderboard's answer-key rule: a trial must not use the task's reference solution, hidden tests, expected output, or another agent's transcript of the same task from any copy of the benchmark. Flywheel loads it as user-global instructions. Flywheel's product prompt does not contain this rule. Runs before this change did not have it.
+
 ## Task subset
 
 The `tb-mini-*` profiles run 14 tasks of Terminal-Bench 2.1 that track the full benchmark score. They rebuild the published terminal-bench-mini subset (huggingface.co/datasets/LocalLLaMA/terminal-bench-mini) with the same method: from the per-agent, per-task pass rates of the published leaderboard trials, drop tasks that every agent passes or fails, cut the rest into seven difficulty bands by field pass rate, and take tasks from the quieter half of each band by run-to-run noise.

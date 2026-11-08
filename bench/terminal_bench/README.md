@@ -52,7 +52,7 @@ The bring-up profile `tb-mini-bringup-kv-store-grpc.yaml` runs one fast task onc
 
 Every profile names a checked-in Flywheel config with `headless.flywheel_config`, a path relative to the repository root, such as `bench/terminal_bench/configs/tb-mini-openai.toml`. The config sets the trial's modules and settings, persistent processes included, and pins the chat model and effort in `[profiles.benchmark.roles.chat]`. It is the only source of the chat model and of the trial's tools: a profile turns a tool off by disabling the module that contributes it in `disabled_modules`, as the arm configs do for `web`, `subagents`, and `papercuts`. Before any trial, also in a dry run, the launcher decodes the file with Flywheel's own config schema and refuses the run on any error or warning, naming the file and the problem. An unknown key, such as an interaction profile, is a warning and refuses the run. A profile without `headless.flywheel_config`, or with the removed `headless.model`, `headless.disabled_tools`, or `headless.system_prompt`, is refused, and the launcher has no `--model` flag.
 
-The package carries the config, and the trial installs it as `$HOME/.flywheel/flywheel.toml` and runs Flywheel under the neutral auth profile id `benchmark`, so the config names no host profile.
+The package carries the config, and the trial installs it as `$HOME/.flywheel/flywheel.toml` and runs Flywheel under the neutral auth profile id `benchmark`, so the config names no host profile. Each trial home also carries a benchmark-only `~/.agents/AGENTS.md` that states the leaderboard's answer-key rule; Flywheel's product prompt does not contain it, and runs before this change did not have it (METHODOLOGY.md, "Benchmark rules").
 
 ## Agent package
 

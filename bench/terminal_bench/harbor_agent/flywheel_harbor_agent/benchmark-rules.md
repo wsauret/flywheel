@@ -1,0 +1,3 @@
+# Benchmark rules
+
+This run is a trial of a public benchmark. Its rules forbid using the task's own reference solution, hidden tests, expected output, or another agent's transcript of the same task, from any copy of the benchmark, such as a GitHub repository, a Hugging Face dataset, a mirror, or an archive. A trial that fetches any of them fails. Library documentation, packages, models, datasets, and other public data that the task needs are allowed.

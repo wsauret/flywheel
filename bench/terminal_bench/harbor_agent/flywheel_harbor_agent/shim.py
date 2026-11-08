@@ -13,7 +13,7 @@ In order, the shim:
    variable into a private one-use stage file;
 2. installs the package's Flywheel config, the pinned Bun release, the
    package's runtime archive, and its trial store analysis, each checked
-   against its recorded SHA-256;
+   against its recorded SHA-256, and the package's benchmark rules;
 3. runs Flywheel in the task workspace as an unattended run, because no
    person reads a trial, relays the protocol, and forwards SIGTERM to it;
 4. analyzes the trial's settled event store in a private directory and writes
@@ -79,6 +79,7 @@ PROFILE_SHA256_ENV = "FLYWHEEL_TB_PROFILE_SHA256"
 LOGS_DIR = Path("/logs/agent")
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent
 BUILD_RECORD = "BUILD.json"
+BENCHMARK_RULES = Path(__file__).resolve().parent / "benchmark-rules.md"
 # The agent-log file that holds the trial store analysis; the host analyzer
 # reads it under this name (TRIAL_STORE_ANALYSIS_NAME).
 ANALYSIS_NAME = "flywheel-store-analysis.json"
@@ -204,6 +205,10 @@ def _install_home(work: Path, config: Path, profile: str) -> Path:
     home = work / "home"
     (home / ".flywheel" / "auth" / "profiles" / profile).mkdir(mode=0o700, parents=True)
     shutil.copyfile(config, home / ".flywheel" / "flywheel.toml")
+    # The leaderboard's answer-key rule reaches the agent as user-global
+    # instructions of the trial home only, so Flywheel's own prompt never states it.
+    (home / ".agents").mkdir()
+    shutil.copyfile(BENCHMARK_RULES, home / ".agents" / "AGENTS.md")
     return home
 
 
