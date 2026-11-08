@@ -1,0 +1,32 @@
+src/tui/hooks/create-output-scroll-controller.ts
+  h_4b47e9e4a8b456 2,27,46-61,191,193-202,209-215,290,332,353,363,481-482,497,526,529,543,551,575-577,628,755,759,819,852
+src/tui/output-window/output-window-scroll.ts
+  h_4b47e9e4a8b456 2,8,166-169,224-226
+src/tui/output-window/transcript-follow.ts
+  h_4b47e9e4a8b456 1-89
+tests/unit/tui/output-window-budgeted-mount.test.tsx
+  h_4b47e9e4a8b456 278-279
+tests/unit/tui/output-window-near-edge.test.tsx
+  h_4b47e9e4a8b456 13,265-266
+tests/unit/tui/output-window-wheel.test.ts
+  h_4b47e9e4a8b456 7,229,244,254-260,263,265-266
+tests/unit/tui/transcript-place.test.ts
+  h_4b47e9e4a8b456 2,5,25
+webview/src/app/transcript-scroll.ts
+  h_4b47e9e4a8b456 1,221-271
+webview/src/app/transcript-window-ownership.test.ts
+  h_4b47e9e4a8b456 220-252
+webview/src/app/transcript.tsx
+  h_4b47e9e4a8b456 23,225-226,240,253,260-267,269-279,287-289,331-341,343,375,408,446,453,458,461,469,502,519,521,613
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a86e19dae29f2e5484e78322ff45e9143c038253",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
