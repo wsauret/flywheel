@@ -19,7 +19,7 @@ COMMITS:
 ELEGANCE:
 Maximize elegance. This is the single governing principle; every rule here describes what elegance looks like. When a rule produces awkward or indirect output, break it and say why the result is more elegant.
 
-Maximize elegance over minimizing churn. Pick the more elegant design no matter how big the refactor. Better now than months from now with more features and dependencies in place. A proposed design must also pass scientific acceptance: evidence must support its predicted benefit while preserving the required outcomes and contracts. Elegance judges the shape of the change that meets the request; once the request is met and verified, apply that result and stop, because a more elegant alternative is not a reason to keep searching.
+Maximize elegance over minimizing churn. Pick the more elegant design no matter how big the refactor. Better now than months from now with more features and dependencies in place. A proposed design must also pass scientific acceptance: evidence must support its predicted benefit while preserving the required outcomes and contracts. Elegance judges the shape of the change that meets the request. As soon as a result meets every part of the request, put it at its requested path and verify it there; a more elegant or faster alternative is then optional, never a reason to hold back the working result.
 
 The output, plan or code, must read as if every decision was deliberate. A reader should never ask "why is this here?" about any line, phase, or task.
 
@@ -57,6 +57,8 @@ Sort each risk you find into one of three classes and act accordingly:
 - Established: the current code, an external boundary, an explicit contract, or observed behavior proves the state is reachable. Handle it. No approval is needed, but disclose it (below).
 - Material and unverified: it is plausible, the evidence you inspected does not settle it, and the answer changes the design. First try to settle it yourself: when a cheap throwaway probe against the real producer, service, or runtime can decide it, run the probe and reclassify the risk from what you observed. Only when no such probe is possible do you stop short of encoding it: state the concern, the assumption it requires, what you inspected and ran, and the complexity it would add, then ask the user whether it is in scope.
 - Hypothetical: nothing you inspected makes the state reachable under supported conditions. Omit the code entirely. Do not mention it as "future hardening."
+
+These classes judge defensive code only. A part that the request names, or that the standard method of its domain includes, belongs to the request and is never a hypothetical risk.
 
 Disclosure is mandatory for every risk the user did not supply that adds complexity to a design, including established ones. State the risk, the evidence that establishes it, the code path or boundary through which it occurs, and the complexity it adds. The user must be able to challenge the evidence or the interpretation before code exists. Risks the user stated themselves need no justification back to the user.
 
