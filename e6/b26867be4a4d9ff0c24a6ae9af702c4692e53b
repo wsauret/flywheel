@@ -1,0 +1,20 @@
+src/orchestration/agent-runtime/llm/openai-completions.ts
+  h_4b47e9e4a8b456 28,115-116,120,124,126,128,131-132,134-135,149-150,154
+src/orchestration/agent-runtime/llm/provider-failure.ts
+  h_4b47e9e4a8b456 217,229-240,255,270,313,316,365
+tests/unit/orchestration/agent-runtime/llm/openai-error-classification.test.ts
+  h_4b47e9e4a8b456 8,358-377
+tests/unit/orchestration/agent-runtime/llm/provider-failure.test.ts
+  h_4b47e9e4a8b456 122-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e6b26867be4a4d9ff0c24a6ae9af702c4692e53b",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
