@@ -1,0 +1,22 @@
+bench/terminal_bench/METHODOLOGY.md
+  h_4b47e9e4a8b456 82-86,88
+bench/terminal_bench/README.md
+  h_4b47e9e4a8b456 106
+bench/terminal_bench/disclosure-ledger.ts
+  h_4b47e9e4a8b456 5,75-90,97-98,158,164
+bench/terminal_bench/run-terminal-bench.ts
+  h_4b47e9e4a8b456 410
+tests/unit/bench/terminal-bench-ledger.test.ts
+  h_4b47e9e4a8b456 38,50,96-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "98854b3b34ec3dfdb5cfd21c01d1d6ebf393e85a",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
