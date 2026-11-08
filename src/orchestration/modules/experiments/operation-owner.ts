@@ -28,7 +28,7 @@ export type ExperimentOperationState<Pending> =
   | { readonly status: "abandoned"; readonly command: string }
   | { readonly status: "interrupted" }
 
-export type ExperimentOperationEvent<Pending> =
+type ExperimentOperationEvent<Pending> =
   | { readonly type: "opened"; readonly hold: boolean }
   | { readonly type: "began"; readonly command: string }
   | { readonly type: "measured"; readonly value: Pending }
@@ -38,7 +38,7 @@ export type ExperimentOperationEvent<Pending> =
 
 /** The one transition of the operation. An event that does not apply to the
  *  current state returns it unchanged. */
-export function transition<Pending>(state: ExperimentOperationState<Pending>, event: ExperimentOperationEvent<Pending>): ExperimentOperationState<Pending> {
+function transition<Pending>(state: ExperimentOperationState<Pending>, event: ExperimentOperationEvent<Pending>): ExperimentOperationState<Pending> {
   switch (event.type) {
     case "opened": return event.hold && state.status === "idle" ? { status: "interrupted" } : state
     case "began": return state.status === "idle" ? { status: "running", command: event.command } : state
@@ -57,7 +57,7 @@ export function transition<Pending>(state: ExperimentOperationState<Pending>, ev
 
 /** How a settlement ended: its run fact retired the hold, it refused and keeps
  *  the result for a corrected call, or its outcome is unknown. */
-export type ExperimentSettleOutcome = "settled" | "kept-pending" | "unresolved"
+type ExperimentSettleOutcome = "settled" | "kept-pending" | "unresolved"
 
 interface ExperimentOperationDependencies {
   readonly listInFlight: (kinds: readonly string[]) => Promise<readonly InFlightRecord[]>
