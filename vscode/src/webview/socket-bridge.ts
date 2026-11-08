@@ -19,7 +19,8 @@ export class SocketBridge {
   private readonly channels = new Map<number, net.Socket>()
 
   constructor(
-    private readonly target: RuntimeSocketTarget,
+    /** The runtime every channel of this bridge attaches to. */
+    readonly target: RuntimeSocketTarget,
     private readonly post: (message: HostMessage) => void,
   ) {}
 
@@ -96,6 +97,15 @@ export class SocketBridge {
     if (!this.channels.has(id)) return
     this.channels.delete(id)
     this.post(error === undefined ? { type: "socket.closed", id } : { type: "socket.closed", id, error })
+  }
+
+  /** Ends every channel and reports each end to the page, which stays and
+   *  opens its channels again, through whichever bridge then serves it. */
+  end(error: string): void {
+    for (const [id, socket] of this.channels) {
+      this.settle(id, error)
+      socket.destroy()
+    }
   }
 
   /** Ends every channel without reporting it to the page, which has gone. */

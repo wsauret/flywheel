@@ -5,6 +5,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterAll, beforeAll, test, mock } from "bun:test"
 import type { HostMessage, ViewMessage } from "../../../src/protocol/client/editor-host.js"
+import type { ClientSummary } from "../../../src/protocol/client/host-contract.js"
 import { createInputReload } from "../../../webview/src/client/input-reload.js"
 import { editorInputReloadStorage } from "../../../webview/src/client/input-reload-storage.js"
 import type { ComposerCheckpoint } from "../../../webview/src/client/input-reload-checkpoint.js"
@@ -377,5 +378,119 @@ test("a reloaded page gets its own channels, and the old page's streams close", 
     host.dispose()
     for (const socket of held) socket.destroy()
     service.close()
+  }
+})
+
+test("the Changes editor keeps its page across runtime changes and attaches to the project of its review", async () => {
+  // Two lanes of the account service, as an executable setting that names a
+  // development build gives: each names the client and holds every runtime
+  // attach open, and each records the project the attach names.
+  const attaches: { readonly lane: string; readonly projectRoot: string }[] = []
+  const held: net.Socket[] = []
+  const lanes = ["installed", "dev"].map((lane) => {
+    const socketPath = join(directory, `${lane}.sock`)
+    const service = net.createServer(socket => {
+      socket.once("data", (bytes) => {
+        const attach: { intent: string; projectRoot?: string } = JSON.parse(bytes.toString().split("\n")[0]!)
+        if (attach.intent === "client") {
+          socket.end(`{"flywheel":"account.client","dir":"/runtime/webview/editor","identity":"${IDENTITY}"}\n`)
+          return
+        }
+        attaches.push({ lane, projectRoot: attach.projectRoot! })
+        held.push(socket)
+        socket.write('{"flywheel":"account.attach.ready"}\n')
+      })
+    })
+    return { socketPath, service }
+  })
+  await Promise.all(lanes.map(({ service, socketPath }) => new Promise<void>(resolve => service.listen(socketPath, resolve))))
+  const ensured: string[] = []
+  const selecting = (sessionId: string): ClientSummary => ({
+    health: { kind: "healthy" }, ready: true, sessionId, rootSessionId: sessionId, sessionTitle: undefined, executionCwd: undefined,
+    activity: undefined, busy: false, budget: undefined, hasUsableProvider: true, providers: [], changes: undefined,
+  })
+  const runtime = (lane: number, projectRoot: string, start: string) => ({
+    kind: "client", target: { socketPath: lanes[lane]!.socketPath, projectRoot, credential: "test" }, ensureRuntime: async () => { ensured.push(start) },
+  }) as const
+  const host = new ChatViewProvider(line => diagnostics.push(line), () => {}, { content: runtime(0, "/project", "first start") })
+  vscode.window.registerWebviewViewProvider(ChatViewProvider.viewType, host)
+  const sidebar = sidebars.at(-1)!
+  const registrations = host.registerChangesCommands(async () => { throw new Error("the summary names the session") })
+  const opened = panels.length
+  const attach = async (view: ReturnType<typeof panel>, id: number) => {
+    const before = attaches.length
+    view.send({ type: "socket.open", id })
+    while (attaches.length === before) await new Promise(resolve => setTimeout(resolve, 1))
+    return attaches.at(-1)
+  }
+  const capability = async (view: ReturnType<typeof panel>, requestId: number, request: { readonly name: "ensureRuntime" }) => {
+    view.send({ type: "capability", requestId, request })
+    while (!view.messages.some(message => message.type === "capability.result" && message.requestId === requestId)) await new Promise(resolve => setTimeout(resolve, 1))
+  }
+  try {
+    await served(sidebar)
+    sidebar.send({ type: "ready" })
+    await settle()
+    sidebar.send({ type: "summary", summary: selecting("old-session") })
+    await callbacks.get("flywheel.openAllChanges")?.()
+    const editor = panels[opened]!
+    await served(editor)
+    editor.send({ type: "ready" })
+    await settle()
+    // The client page keeps its policy: only the nonce's script runs, beside
+    // a transcript of untrusted model output.
+    const nonce = /script-src 'nonce-([^']+)'/.exec(editor.webview.html)?.[1]
+    assert.match(editor.webview.html, /<meta http-equiv="Content-Security-Policy" content="default-src 'none';/)
+    assert.ok(nonce !== undefined && editor.webview.html.includes(`<script nonce="${nonce}"`))
+    assert.deepEqual(await attach(editor, 1), { lane: "installed", projectRoot: "/project" })
+    const reviewing = editor.webview.html
+
+    // The same project starts again, as after Try again: a status page, then
+    // the client of the new start. The editor keeps its page, and with it the
+    // person's reading position, and asks the new start for a lost runtime.
+    host.show({ kind: "page", page: { title: "Starting Flywheel", body: "", actions: [] } })
+    host.show(runtime(0, "/project", "second start"))
+    await served(sidebar)
+    assert.equal(editor.webview.html, reviewing)
+    assert.ok(!editor.messages.some(message => message.type === "socket.closed"))
+    await capability(editor, 1, { name: "ensureRuntime" })
+    assert.deepEqual(ensured, ["second start"])
+
+    // The panel moves to another project. The session the editor reviews
+    // still exists, so the editor stays on it; the summary of the replaced
+    // client goes with it.
+    host.show(runtime(0, "/other", "third start"))
+    assert.equal(host.latestSummary, undefined)
+    await served(sidebar)
+    assert.equal(editor.webview.html, reviewing)
+    assert.deepEqual(await attach(editor, 2), { lane: "installed", projectRoot: "/project" })
+
+    // A Changes command for the new project's session points the editor at
+    // it: the session and its project change together.
+    sidebar.send({ type: "ready" })
+    await settle()
+    sidebar.send({ type: "summary", summary: selecting("new-session") })
+    await callbacks.get("flywheel.openAllChanges")?.()
+    while (editor.webview.html === reviewing || !/webview\.js/.test(editor.webview.html)) await new Promise(resolve => setTimeout(resolve, 1))
+    editor.send({ type: "ready" })
+    await settle()
+    assert.equal(panels.length, opened + 1)
+    assert.deepEqual(editor.messages.at(-1), { type: "hostCommands", ids: [...callbacks.keys()], review: { sessionId: "new-session" } })
+    assert.deepEqual(await attach(editor, 1), { lane: "installed", projectRoot: "/other" })
+
+    // The executable setting moves the runtime to another lane. The editor
+    // keeps its page; its channel ends, reported, so the client attaches again
+    // in place through the new lane.
+    const moved = editor.webview.html
+    host.show(runtime(1, "/other", "fourth start"))
+    while (!editor.messages.some(message => message.type === "socket.closed" && message.id === 1)) await new Promise(resolve => setTimeout(resolve, 1))
+    assert.equal(editor.webview.html, moved)
+    assert.deepEqual(await attach(editor, 3), { lane: "dev", projectRoot: "/other" })
+  } finally {
+    for (const registration of registrations) registration.dispose()
+    sidebar.dispose()
+    host.dispose()
+    for (const socket of held) socket.destroy()
+    for (const { service } of lanes) service.close()
   }
 })
