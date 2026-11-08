@@ -1,0 +1,16 @@
+src/orchestration/app-service/auth-login-service.ts
+  h_4b47e9e4a8b456 18,131-133,236,244
+tests/unit/orchestration/app-service/auth-login-reconnect.test.ts
+  h_4b47e9e4a8b456 139-181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1cfd70975f1baa630d45639fe6a55b03d0ab791c",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
