@@ -390,6 +390,7 @@ describe("bash tool: interactive-command detection false-positives", () => {
 });
 
 describe("bash tool: command policy (via tool)", () => {
+  const directory = temporaryDirectories();
   const runCommand = (command: string, availableTools: ReadonlySet<string>) => {
     const def = createBashDefinition({ operations: makeMockOps() });
     return dispatch(def, { command }, makeContext({ executionCwd: "/scratch", projectRoot: "/scratch", availableTools, spawnOwned: ownedSpawnProbe().spawnOwned }));
@@ -463,9 +464,9 @@ describe("bash tool: command policy (via tool)", () => {
 
   it("offers a headless runtime no mutating declaration, so a command that edits project files runs in place", async () => {
     const edit = "perl -0pi -e 's/a/b/' src/math.ts";
-    const run = async (mutatingDeclaration: boolean, input: RuntimeToolInput) => {
+    const run = async (mutatingDeclaration: boolean, input: RuntimeToolInput, scratchDir = "/proj/.flywheel/scratch") => {
       const spawn = ownedSpawnProbe();
-      const ctx = makeContext({ executionCwd: "/proj", projectRoot: "/proj", scratchDir: "/proj/.flywheel/scratch", spawnOwned: spawn.spawnOwned });
+      const ctx = makeContext({ executionCwd: "/proj", projectRoot: "/proj", scratchDir, spawnOwned: spawn.spawnOwned });
       const result = await dispatch(createBashDefinition({ operations: makeMockOps(), mutatingDeclaration }), input, ctx);
       return { outcome: result.outcome, content: String(result.content), cwds: spawn.launches.map((launch) => launch.cwd) };
     };
@@ -476,8 +477,12 @@ describe("bash tool: command policy (via tool)", () => {
     const inPlace = await run(false, { command: edit });
     expect(inPlace.outcome).toBe("ok");
     expect(inPlace.cwds).toEqual(["/proj"]);
-    // An interactive runtime takes the same declaration to its private-copy route.
-    expect((await run(true, { command: edit, mutates: true })).content).toContain("mutation Git wrapper");
+    // An interactive runtime takes the same declaration to its private-copy route, which first installs its Git shim
+    // in the scratch directory. One below a file refuses that install on every platform, so the route ends before Git
+    // runs; the fake root `/proj` cannot do that, because it is writable on Windows.
+    const blocker = path.join(directory("bash-headless-"), "file");
+    fs.writeFileSync(blocker, "");
+    expect((await run(true, { command: edit, mutates: true }, path.join(blocker, "scratch"))).content).toContain("mutation Git wrapper");
   });
 
   it("does not intercept bun -e without file I/O", async () => {
