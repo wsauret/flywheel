@@ -1,0 +1,32 @@
+src/orchestration/agent-runtime/request-kernel.ts
+  h_4b47e9e4a8b456 3,90
+src/orchestration/app-service/definition-availability.ts
+  h_4b47e9e4a8b456 330,336-337,339-340,342
+src/orchestration/modules/subagents/execution/dispatch-preparation.ts
+  h_4b47e9e4a8b456 15,153-161
+src/orchestration/workflow-host/controller.ts
+  h_4b47e9e4a8b456 48,190,195,198-204,370,543
+src/orchestration/workflow-host/launch-pipeline.ts
+  h_4b47e9e4a8b456 37-39,263
+src/orchestration/workflow-host/workflow-admission.ts
+  h_4b47e9e4a8b456 16-18,71-72,80-81,84-85,98-117
+src/workflows/skill-closure.ts
+  h_4b47e9e4a8b456 45-55
+tests/unit/orchestration/agent-runtime/subagent/tool.test.ts
+  h_4b47e9e4a8b456 10-11,93-112
+tests/unit/orchestration/workflow-host/_workflow-controller-fixtures.ts
+  h_4b47e9e4a8b456 26,386-389,391,394-395
+tests/unit/orchestration/workflow-host/workflow-controller-launch.test.ts
+  h_4b47e9e4a8b456 3-6,522-570
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4cf989d3c0a35ea2008a6d93146f010191e93058",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
