@@ -1,0 +1,36 @@
+src/agent-skills/implementation-planning/SKILL.md
+  h_4b47e9e4a8b456 3
+src/agent-skills/implementation/SKILL.md
+  h_4b47e9e4a8b456 3
+src/agent-skills/interface-design/SKILL.md
+  h_4b47e9e4a8b456 3
+src/agent-skills/mechanism-verification/SKILL.md
+  h_4b47e9e4a8b456 3
+src/agent-skills/root-cause-analysis/SKILL.md
+  h_4b47e9e4a8b456 3
+src/agent-skills/systematic-debugging/SKILL.md
+  h_4b47e9e4a8b456 3
+src/agent-skills/test-driven-development/SKILL.md
+  h_4b47e9e4a8b456 3
+src/agent-skills/verification/SKILL.md
+  h_4b47e9e4a8b456 3
+src/orchestration/agent-runtime/request-kernel.ts
+  h_4b47e9e4a8b456 77-91,105-107,127
+src/orchestration/modules/bash/definitions/skills/worktree-lifecycle/SKILL.md
+  h_4b47e9e4a8b456 3
+src/orchestration/modules/skills.ts
+  h_4b47e9e4a8b456 19-21
+tests/unit/orchestration/agent-runtime/unattended-chat-prompt.test.ts
+  h_4b47e9e4a8b456 18-20,141-144,162-164,167-179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3edbf4b537116e313949b23a37b0838488fbf0e5",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
