@@ -1,0 +1,64 @@
+bench/linux-runtime-verification/smoke.ts
+  h_4b47e9e4a8b456 24,217
+scripts/readiness-package-smoke.ts
+  h_4b47e9e4a8b456 12-13,207,210-211,214,222-223
+src/infra/file-edit/edit-input.ts
+  h_4b47e9e4a8b456 1-35
+src/infra/file-edit/string-edit.ts
+  h_4b47e9e4a8b456 36,38-39,48,52-55,483-493,495,498-499,501-502,508,514-520,523-554
+src/infra/output/partial-json.ts
+  h_4b47e9e4a8b456 46-50,52-55,73-76,81-84,104,167-170,172-173,273,289-327,380
+src/infra/output/provisional-diff-input.ts
+  h_4b47e9e4a8b456 2,10,44-58,63-72,84,91-95,101,103-110,112-123,126-131,134-137,151-160,165-173,185-195,198-202,207-214,216,224-226,232,261,265,268,271-273,277,282-289,291,294-295
+src/infra/output/streaming-tool-inputs.ts
+  h_4b47e9e4a8b456 4,148-150
+src/infra/tools/displays/edit.ts
+  h_4b47e9e4a8b456 36
+src/infra/tools/types.ts
+  h_4b47e9e4a8b456 33-35
+src/orchestration/agent-runtime/compaction/stale-tool-result-masker.ts
+  h_4b47e9e4a8b456 40-44,78-81,88-92,342-344,346-354,356-364
+src/orchestration/agent-runtime/llm/types.ts
+  h_4b47e9e4a8b456 267-268
+src/orchestration/agent-runtime/tools/coerce-input.ts
+  h_4b47e9e4a8b456 104-105,135,142,168-192
+src/orchestration/agent-runtime/tools/edit.ts
+  h_4b47e9e4a8b456 1-2,14-27,29,36,41,43-46,48,58,64
+src/orchestration/agent-runtime/tools/streaming-edit-validator.ts
+  h_4b47e9e4a8b456 5-6,41,66,119-120,123,125-127,129-132
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 75
+tests/unit/infra/file-edit/string-edit.test.ts
+  h_4b47e9e4a8b456 4,10-14,16,25-30,32-40,44-46,51-52,60,65,73-74,77,87-89,97,103,107-110,114-115,117,121-122,124,126,130-131
+tests/unit/infra/output/provisional-diff.test.ts
+  h_4b47e9e4a8b456 102-120
+tests/unit/infra/tools/partial-json.test.ts
+  h_4b47e9e4a8b456 41-57
+tests/unit/infra/tools/streaming-tool-input.test.ts
+  h_4b47e9e4a8b456 470-473,481,485-486,488
+tests/unit/orchestration/agent-runtime/context/stale-tool-result-masker.test.ts
+  h_4b47e9e4a8b456 349,353,360,370-380
+tests/unit/orchestration/agent-runtime/tools/coerce-input.test.ts
+  h_4b47e9e4a8b456 108-123
+tests/unit/orchestration/agent-runtime/tools/streaming-edit-validator.test.ts
+  h_4b47e9e4a8b456 62-74
+tests/unit/orchestration/agent-runtime/tools/tool-name-repair.test.ts
+  h_4b47e9e4a8b456 117-122
+tests/unit/orchestration/agent-runtime/tools/tools-edit.test.ts
+  h_4b47e9e4a8b456 7-8,26-35,37,46,54-96,102-103,107,120,145-148,176,201,215,230,246,251,256,261,265,273,286,289
+tests/unit/orchestration/modules/experiments/tool-execution-gate.test.ts
+  h_4b47e9e4a8b456 86,139,155
+tests/unit/scripts/readiness-package-smoke.test.ts
+  h_4b47e9e4a8b456 5,55-57,66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1fc4581cfd88a5f2f4b3ed5a8306b481339778ee",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
