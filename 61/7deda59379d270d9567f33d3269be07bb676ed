@@ -1,0 +1,26 @@
+src/orchestration/agent-runtime/agent-loop-tool-context.ts
+  h_4b47e9e4a8b456 49
+src/orchestration/agent-runtime/agent-loop.ts
+  h_4b47e9e4a8b456 108-109
+src/orchestration/agent-runtime/tools/read.ts
+  h_4b47e9e4a8b456 152-165,378,435-440,534,609
+src/orchestration/agent-runtime/tools/types.ts
+  h_4b47e9e4a8b456 405-408
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 189
+tests/unit/orchestration/agent-runtime/context/loop-planned-compaction.test.ts
+  h_4b47e9e4a8b456 16-19,25,417-469
+tests/unit/orchestration/agent-runtime/tools/tools-read.test.ts
+  h_4b47e9e4a8b456 295-314
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "617deda59379d270d9567f33d3269be07bb676ed",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
