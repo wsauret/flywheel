@@ -1,0 +1,18 @@
+bench/harbor/README.md
+  h_4b47e9e4a8b456 25
+bench/harbor/harbor-jobs.ts
+  h_4b47e9e4a8b456 135-136
+tests/unit/bench/harbor-jobs.test.ts
+  h_4b47e9e4a8b456 56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "92dc16573d705186e784fe4c4f0292a9b5d1e6eb",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
