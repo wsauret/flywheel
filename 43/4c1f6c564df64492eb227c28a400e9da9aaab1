@@ -1,0 +1,56 @@
+src/orchestration/agent-runtime/request-kernel.ts
+  h_4b47e9e4a8b456 3,90
+src/orchestration/agent-runtime/tools/types.ts
+  h_4b47e9e4a8b456 63-64,98
+src/orchestration/agent-runtime/tools/workflow-tool.ts
+  h_4b47e9e4a8b456 23,112,245-251
+src/orchestration/agent-runtime/tools/workflow.ts
+  h_4b47e9e4a8b456 178
+src/orchestration/app-service/definition-availability.ts
+  h_4b47e9e4a8b456 330,336-337,339-340,342
+src/orchestration/app-service/project-state-sessions.ts
+  h_4b47e9e4a8b456 11,111
+src/orchestration/modules/subagents/execution/dispatch-preparation.ts
+  h_4b47e9e4a8b456 15,153-161
+src/orchestration/modules/workflows/run-facts.ts
+  h_4b47e9e4a8b456 34
+src/orchestration/modules/workflows/run-record.ts
+  h_4b47e9e4a8b456 10,20,50,67
+src/orchestration/session/child-session-publication.ts
+  h_4b47e9e4a8b456 8,52-53
+src/orchestration/workflow-host/controller.ts
+  h_4b47e9e4a8b456 48,190,195,198-204,370,543
+src/orchestration/workflow-host/launch-origin.ts
+  h_4b47e9e4a8b456 10,37-42
+src/orchestration/workflow-host/launch-pipeline.ts
+  h_4b47e9e4a8b456 15,17,19,37-39,64-66,115-116,141,144,161,263,281,292
+src/orchestration/workflow-host/publish.ts
+  h_4b47e9e4a8b456 28,280,299
+src/orchestration/workflow-host/run-record.ts
+  h_4b47e9e4a8b456 2,28-29
+src/orchestration/workflow-host/workflow-admission.ts
+  h_4b47e9e4a8b456 16-18,20,24,71-72,80-81,84-85,98-117,120-125,129,131-143
+src/workflows/run-facts.ts
+  h_4b47e9e4a8b456 13-22,45-47
+src/workflows/skill-closure.ts
+  h_4b47e9e4a8b456 45-55
+tests/unit/orchestration/agent-runtime/subagent/tool.test.ts
+  h_4b47e9e4a8b456 10-11,93-112
+tests/unit/orchestration/agent-runtime/tools/workflow-tool.test.ts
+  h_4b47e9e4a8b456 178-179,181,187,191,200
+tests/unit/orchestration/workflow-host/_workflow-controller-fixtures.ts
+  h_4b47e9e4a8b456 26,386-389,391,394-395
+tests/unit/orchestration/workflow-host/workflow-controller-launch.test.ts
+  h_4b47e9e4a8b456 3-7,10,12-17,26,31,33,36,42-55,469-594
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "434c1f6c564df64492eb227c28a400e9da9aaab1",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
