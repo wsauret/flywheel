@@ -1,0 +1,18 @@
+tests/unit/orchestration/agent-runtime/agent-loop-request-surface.test.ts
+  h_4b47e9e4a8b456 15,25-26,450-626
+tests/unit/orchestration/agent-runtime/agent-loop-tools.test.ts
+  h_4b47e9e4a8b456 12,14
+tests/unit/orchestration/agent-runtime/context/loop-planned-compaction.test.ts
+  h_4b47e9e4a8b456 436,438-439,441-442
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3016f60f7589364b55a42b3cfa72d958f9496268",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
