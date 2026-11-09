@@ -1,0 +1,37 @@
+src/orchestration/modules/experiments/definitions/skills/experiment-finalize/SKILL.md
+  h_4b47e9e4a8b456 3
+src/workflows/skill-schema.ts
+  h_4b47e9e4a8b456 290-293,417-419
+  h_4b47e9e4a8b456 294,420,447,479
+src/agent-skills/design/SKILL.md
+  h_4b47e9e4a8b456 3
+src/orchestration/agent-runtime/request-kernel.ts
+  h_4b47e9e4a8b456 78-92
+  h_4b47e9e4a8b456 3,93-97,111-113,133
+tests/unit/orchestration/agent-runtime/unattended-chat-prompt.test.ts
+  h_4b47e9e4a8b456 19-20,185-233
+  h_4b47e9e4a8b456 5,16-17,21,54-88,90-102,105-108,112,123,128,161,172,234-246
+src/orchestration/modules/skills.ts
+  h_4b47e9e4a8b456 19-20
+src/workflows/skills.ts
+  h_4b47e9e4a8b456 338
+src/orchestration/modules/experiments/definitions/skills/experiment-charter/SKILL.md
+  h_4b47e9e4a8b456 3
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 363
+src/orchestration/agent-runtime/tools/types.ts
+  h_4b47e9e4a8b456 59-62,85,90,95
+src/orchestration/chat/runner.ts
+  h_4b47e9e4a8b456 129,131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c40ee81d70f5dfc317b1cfdd85cb61cc1f25b93a",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
