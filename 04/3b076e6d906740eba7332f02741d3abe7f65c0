@@ -1,0 +1,16 @@
+src/orchestration/agent-runtime/tools/coerce-input.ts
+  h_4b47e9e4a8b456 42,45
+tests/unit/orchestration/agent-runtime/tools/coerce-input.test.ts
+  h_4b47e9e4a8b456 114-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "043b076e6d906740eba7332f02741d3abe7f65c0",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
