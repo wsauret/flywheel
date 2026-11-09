@@ -1,0 +1,35 @@
+tests/unit/orchestration/agent-runtime/tools/tools-read.test.ts
+  h_4b47e9e4a8b456 295-299,301-319
+  h_4b47e9e4a8b456 300
+src/orchestration/agent-runtime/agent-loop-tool-context.ts
+  h_4b47e9e4a8b456 49
+tests/fixtures/modules/baseline.json
+  h_4b47e9e4a8b456 189
+src/orchestration/agent-runtime/tools/read.ts
+  h_4b47e9e4a8b456 152-164,377,435-437,439-441,536,611
+  h_4b47e9e4a8b456 432,438,451
+src/orchestration/agent-runtime/tools/types.ts
+  h_4b47e9e4a8b456 408-411
+  h_4b47e9e4a8b456 292-294
+src/orchestration/agent-runtime/agent-loop.ts
+  h_4b47e9e4a8b456 108-109
+tests/unit/orchestration/agent-runtime/context/loop-planned-compaction.test.ts
+  h_4b47e9e4a8b456 16-19,25,417-469
+src/orchestration/agent-runtime/agent-loop-tools.ts
+  h_4b47e9e4a8b456 787-790
+src/orchestration/agent-runtime/tools/tool-paths.ts
+  h_4b47e9e4a8b456 418-419,421,429
+tests/unit/orchestration/agent-runtime/agent-loop-tools.test.ts
+  h_4b47e9e4a8b456 1,3,25,330-354
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "75787d5d7e90c44ad6032d0568186f2dcd6be156",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
