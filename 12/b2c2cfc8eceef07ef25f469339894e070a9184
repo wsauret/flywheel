@@ -1,0 +1,18 @@
+src/orchestration/agent-runtime/request-kernel.ts
+  h_4b47e9e4a8b456 77-91,105-107,127
+src/orchestration/modules/skills.ts
+  h_4b47e9e4a8b456 19-21
+tests/unit/orchestration/agent-runtime/unattended-chat-prompt.test.ts
+  h_4b47e9e4a8b456 18-21,166-190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "12b2c2cfc8eceef07ef25f469339894e070a9184",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
