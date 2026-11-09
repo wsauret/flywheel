@@ -1,0 +1,30 @@
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 239-262,346,352
+src/infra/agent-assets/system-prompt.md
+  h_4b47e9e4a8b456 20,23-25,27
+tests/unit/orchestration/agent-runtime/minimal-verification-prompt.test.ts
+  h_4b47e9e4a8b456 44
+src/infra/capability-text.ts
+  h_4b47e9e4a8b456 6-8
+tests/unit/orchestration/agent-runtime/unattended-chat-prompt.test.ts
+  h_4b47e9e4a8b456 20-21,51-53,58,62-63,66,75,80,88-116
+scripts/check-bundled-skills.ts
+  h_4b47e9e4a8b456 40,93-94,96-97
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 67,229-232,363
+src/orchestration/agent-runtime/claude-5-chat-prompt.ts
+  h_4b47e9e4a8b456 135
+tests/unit/orchestration/agent-runtime/claude-5-chat-prompt.test.ts
+  h_4b47e9e4a8b456 39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "336d62a834ca004418ba18b455d1d88e446c1a20",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
