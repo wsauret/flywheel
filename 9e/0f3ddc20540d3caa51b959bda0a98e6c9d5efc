@@ -1,0 +1,20 @@
+bench/harbor/METHODOLOGY.md
+  h_4b47e9e4a8b456 210-214
+bench/harbor/README.md
+  h_4b47e9e4a8b456 19
+bench/harbor/benchmarks.ts
+  h_4b47e9e4a8b456 90-103
+tests/unit/bench/harbor-config.test.ts
+  h_4b47e9e4a8b456 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9e0f3ddc20540d3caa51b959bda0a98e6c9d5efc",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
