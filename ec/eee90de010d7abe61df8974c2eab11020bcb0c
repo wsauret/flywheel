@@ -1,0 +1,27 @@
+tests/unit/orchestration/agent-runtime/unattended-chat-prompt.test.ts
+  h_4b47e9e4a8b456 64,75,80,138-154,156-160
+  h_4b47e9e4a8b456 137,155,161
+src/orchestration/modules/experiments/definitions/skills/experiment-finalize/SKILL.md
+  h_4b47e9e4a8b456 3
+src/orchestration/modules/experiments/definitions/skills/experiment-charter/SKILL.md
+  h_4b47e9e4a8b456 3
+src/workflows/skills.ts
+  h_4b47e9e4a8b456 338
+src/orchestration/modules/skills.ts
+  h_4b47e9e4a8b456 19-24
+src/workflows/skill-schema.ts
+  h_4b47e9e4a8b456 290-293,416-419,446,478
+src/agent-skills/design/SKILL.md
+  h_4b47e9e4a8b456 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eceee90de010d7abe61df8974c2eab11020bcb0c",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
