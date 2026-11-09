@@ -1,0 +1,25 @@
+src/tui/hooks/auth-modal-model-actions.ts
+  s_14a8bc0bfa4dad::t_a56f88ecd04203 9
+src/tui/hooks/auth-modal-options.ts
+  s_14a8bc0bfa4dad::t_aeb56ec3f0040b 92-99
+src/tui/modals/auth-modal.tsx
+  s_14a8bc0bfa4dad::t_91a000d1d36e39 11,300
+tests/unit/tui/modals/auth-modal-models-render.test.tsx
+  s_14a8bc0bfa4dad::t_d5b5315b8b5dc0 134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f6a96d11baa4c99d537f8815b955789961759117",
+  "prompts": {},
+  "sessions": {
+    "s_14a8bc0bfa4dad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9340d33-4bef-42fe-8c6c-0cdcc77276bb",
+        "model": "unknown"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
