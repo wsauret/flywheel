@@ -105,7 +105,9 @@ const DEEP_SWE_1_1: HarborBenchmark = {
     { task: "helm-unified-manifest-stream", reason: "its reference solution fails on the board's sandbox" },
     { task: "vulture-persistent-analysis-cache", reason: "its grader fails correct solutions" },
   ],
-  hubBroken: [],
+  hubBroken: [
+    { task: "prometheus-transactional-reload-status", evidence: "Harbor's oracle agent failed it 4 of 4 times on Harbor Hub on 2026-11-09: each passed all 15 fail-to-pass tests and failed the same 10 pass-to-pass TestQueryLog cases, which skip with \"ip version not supported\" because the Hub sandbox has no IPv6." },
+  ],
   answerKeyRule: false,
   answerKeySources: ["deep-swe", "deepswe", "datacurve"],
   verifierDownloadsFromGithub: false,
