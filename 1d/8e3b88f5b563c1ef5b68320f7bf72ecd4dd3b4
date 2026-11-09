@@ -1,0 +1,14 @@
+tests/unit/orchestration/workflow-host/workflow-controller-launch.test.ts
+  h_4b47e9e4a8b456 6,534-540,569-586
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1d8e3b88f5b563c1ef5b68320f7bf72ecd4dd3b4",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
