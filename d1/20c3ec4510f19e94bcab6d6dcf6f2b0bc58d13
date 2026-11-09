@@ -1,0 +1,14 @@
+bench/harbor/configs/tb-board-deepseek-high-sub-full.toml
+  h_4b47e9e4a8b456 1-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d120c3ec4510f19e94bcab6d6dcf6f2b0bc58d13",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
