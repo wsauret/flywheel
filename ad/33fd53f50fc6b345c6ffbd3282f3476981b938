@@ -1,0 +1,26 @@
+src/orchestration/agent-runtime/tools/workflow-tool.ts
+  h_4b47e9e4a8b456 23,112,245-251
+src/orchestration/agent-runtime/tools/workflow.ts
+  h_4b47e9e4a8b456 178
+src/orchestration/workflow-host/launch-origin.ts
+  h_4b47e9e4a8b456 10,37-41
+src/orchestration/workflow-host/launch-pipeline.ts
+  h_4b47e9e4a8b456 15,109-110,137,274
+src/orchestration/workflow-host/workflow-admission.ts
+  h_4b47e9e4a8b456 17,92-96,100,102
+tests/unit/orchestration/agent-runtime/tools/workflow-tool.test.ts
+  h_4b47e9e4a8b456 178-179,181,187,191,200
+tests/unit/orchestration/workflow-host/workflow-controller-launch.test.ts
+  h_4b47e9e4a8b456 6,8-13,26,28,36-49,463-483
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ad33fd53f50fc6b345c6ffbd3282f3476981b938",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
