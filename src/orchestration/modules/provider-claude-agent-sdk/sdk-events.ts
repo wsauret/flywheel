@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { SDKAssistantMessageError, SDKMessage, SDKRateLimitInfo } from "@anthropic-ai/claude-agent-sdk";
 import type { BetaRawMessageStreamEvent } from "@anthropic-ai/sdk/resources/beta/messages/messages.js";
 import { Cause, Effect, Exit } from "effect";
+import type { AccessProviderAccessOutcome } from "../../../infra/llm/access-provider.js";
 import { ContextLengthExceededError, extendedContextRefusal, LlmStreamError, ModelAccessRefusedError, QuotaExhaustedError, StreamIdleTimeoutError } from "../../agent-runtime/llm/errors.js";
 import type { QuotaExhaustionObservation } from "../../agent-runtime/llm/provider-availability-types.js";
 import { ProviderAuthenticationError } from "../../agent-runtime/llm/provider-failure.js";
@@ -191,6 +192,33 @@ export function cliFailure(report: CliErrorReport | undefined, turnResult: CliTu
   if (result?.terminalReason === "image_error") return badRequest(text);
   if (status !== null) return Anthropic.APIError.generate(status, { type: "error", error: { type: errorType(report?.error), message: text } }, text, new Headers());
   return transportTimeout(text) ?? new LlmStreamError(text, "transient");
+}
+
+/** An access probe charges no account's quota row, so a spent allowance fails its classification instead. */
+const probeQuotaMark: QuotaMark = () => {
+  throw new Error("an access probe marks no quota");
+};
+
+/**
+ * What one access probe's messages (`probeCliModel`) show about the model: a turn that ended without an error
+ * completed; a refusal of the model itself, by the error map of every request (`cliFailure`), refused; anything else,
+ * such as a login failure, a spent allowance, a rate limit, or a cut, is inconclusive. On a subscription login, a
+ * probe that the account served from extra usage is inconclusive too, because a check never uses overage
+ * (PI-MODEL-065). A `metered` login's reports state extra usage for every request (engine 2.1.296 on an
+ * `enterprise_usage_based` seat), because that is its ordinary billing, so they decide nothing.
+ */
+export function probeOutcome(messages: readonly SDKMessage[], metered: boolean): AccessProviderAccessOutcome {
+  let report: CliErrorReport | undefined;
+  let result: CliTurnResult | undefined;
+  for (const message of messages) {
+    const input = classifySdkMessage(message);
+    if (input.kind === "cli-error") report = input.report;
+    else if (input.kind === "turn-result") result = input.result;
+    else if (!metered && input.kind === "rate-limit" && input.billing === "extra-usage") return "inconclusive";
+  }
+  if (report === undefined && result !== undefined && !result.isError) return "completed";
+  const failure = cliFailure(report, result, probeQuotaMark, undefined);
+  return failure instanceof ModelAccessRefusedError && failure.refusal.kind === "model" ? "refused" : "inconclusive";
 }
 
 /**

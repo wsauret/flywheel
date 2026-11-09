@@ -84,15 +84,23 @@ Arrow-key navigation in the authentication list keeps the selected row visible. 
 
 ## PI-MODEL-012: Complete searchable provider catalogs
 
-Every provider account's model controls show at once every usable stable model in that account's latest valid catalog, even one no other catalog matches. That catalog is the account's saved first-party catalog, which discovery refreshes in the background, or models.dev when first-party discovery is unavailable or unusable, but never a separate provider or picker section. People can search the complete list, sorted newest release first, edit it, and deselect all its models, even when discovery fails or the account cannot send requests. An account whose discovery has not yet run shows as still being discovered, never as failed or unavailable.
+Every provider account's model controls show at once every usable stable model in that account's latest valid catalog, even one no other catalog matches. That catalog is the account's saved first-party catalog, refreshed in the background. The models.dev catalog replaces it when discovery is unavailable or unusable, and joins it when the provider lists only part of what a login serves. It is never a separate provider or picker section. People can search the complete list, sorted newest release first, edit it, and deselect all its models, even when discovery fails or the account cannot send requests.
+
+## PI-MODEL-085: Undiscovered accounts show as being discovered
+
+An account whose model discovery has not yet run shows as still being discovered, never as failed or unavailable.
 
 ## PI-MODEL-064: Only checked models of a current account serve requests
 
-Outside provider controls, only models checked for a current exact account enter model selection and request routing. For providers other than SuperGrok and Google Vertex, an enabled model in the account's latest valid catalog is eligible for requests at once. Viewing or editing preferences never authorizes requests, and an account whose authentication is rejected serves no requests until a new credential replaces it.
+Outside provider controls, only models checked for a current exact account enter model selection and request routing. An enabled model in the account's latest valid catalog is eligible for requests at once, unless it waits for an access check. Viewing or editing preferences never authorizes requests, and an account whose authentication is rejected serves no requests until a new credential replaces it.
 
-## PI-MODEL-065: SuperGrok and Google Vertex models are checked before they serve
+## PI-MODEL-065: Unconfirmed models are checked before they serve
 
-SuperGrok and Google Vertex accounts show usable coding models from models.dev at once as editable preferences, while background checks that never bill or enable paid use confirm what each account can serve. Pending models stay unchecked unless the person selects them, and the profile's auto-enable default applies only after a successful check. Only a successful check makes a model eligible for requests, and an inconclusive check never erases an earlier success. An explicit refusal hides the model until the person asks for a manual recheck, and every check result survives restart and token refresh.
+SuperGrok and Google Vertex accounts show usable coding models from models.dev at once as editable preferences, and so do Claude subscription accounts for models their login does not list. Background checks confirm what each account can serve and never use overage or enable paid use. A Claude subscription check is one minimal request, billed only on a usage-billed login, as an API key is. Pending models stay unchecked unless the person selects them, and the profile's auto-enable default applies only after a successful check. Only a successful check makes a model eligible for requests.
+
+## PI-MODEL-084: Access check results persist until a recheck
+
+An inconclusive access check never erases an earlier success. An explicit refusal hides the model until the person asks for a manual recheck, and every check result survives restart and token refresh.
 
 ## PI-MODEL-066: A model refusal affects only that model and account
 

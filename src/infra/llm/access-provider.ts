@@ -326,17 +326,29 @@ export interface AccessProviderCatalogFetchResult {
  *  catalog is its models.dev rows, which the process always holds. */
 type AccessProviderDynamicCatalog = ModelCatalogContribution & {
   readonly fetch?: (input: AccessProviderCatalogFetchInput) => Promise<AccessProviderCatalogFetchResult>;
-  /** Marks an account whose listing is its usable models.dev candidates
-   *  and whose optional fetch only validates the credential. The listing audits each
-   *  candidate through this one probe and persists every conclusive result. */
-  readonly probeAccess?: (input: AccessProviderAccessProbeInput) => Promise<AccessProviderAccessOutcome>;
-};
+} & (
+  | { readonly probeAccess?: undefined; readonly liveMembership?: undefined; readonly inconclusiveEndsPass?: undefined }
+  | {
+    /** Marks an account whose usable models.dev rows are access candidates. The listing audits each candidate through
+     *  this one probe and persists every conclusive result; a candidate serves only after its probe completed. */
+    readonly probeAccess: (input: AccessProviderAccessProbeInput) => Promise<AccessProviderAccessOutcome>;
+    /** What the fetch states. Absent, the fetch only validates the credential, and every candidate waits for its
+     *  probe. `extends-baseline` is for a listing that states only part of what the login serves: the listed models
+     *  serve at once, and only the models.dev rows that the listing does not name wait for their probe (PI-MODEL-065).
+     *  Only an audited catalog can declare it, so no models.dev row joins a listing without a completed probe. */
+    readonly liveMembership?: "extends-baseline";
+    /** Set for a probe whose inconclusive answers speak for the whole account, such as a spent allowance or a login
+     *  that fails, and whose each probe is costly, such as an engine launch. The first inconclusive probe then ends
+     *  the audit pass, and the models after it stay due for the next pass. Absent, the pass probes every due model. */
+    readonly inconclusiveEndsPass?: true;
+  }
+);
 
 /** `completed` admits the model, `refused` hides it, and `inconclusive`
  *  leaves the model as it was. Only a conclusive outcome is persisted. */
 export type AccessProviderAccessOutcome = "completed" | "refused" | "inconclusive";
 
-interface AccessProviderAccessProbeInput extends AccessProviderCatalogFetchInput {
+export interface AccessProviderAccessProbeInput extends AccessProviderCatalogFetchInput {
   readonly wireModelId: string;
 }
 

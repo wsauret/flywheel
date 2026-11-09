@@ -74,23 +74,16 @@ describe("model catalog resolution", () => {
     ] });
   });
 
-  test("live rows that extend the baseline join the models.dev rows they omit, from a fresh or a saved listing", () => {
-    const extending: ModelCatalogContribution = { ...contribution, liveMembership: "extends-baseline" };
+  test("valid live rows, fresh or saved, are the whole catalog: a models.dev row they omit never joins it", () => {
     const fallback = normalizeCatalogRows([row("bundled"), row("older")], contribution);
     if (fallback.kind !== "valid") throw new Error("fixture rows must be valid");
     const live = { modelId: "newest", offerings: [{ wireModelId: "newest", metadata: { endpoint: "cli" }, dataUse: "standard" as const }] };
     const overlap = { modelId: "bundled", offerings: [{ wireModelId: "bundled", metadata: { endpoint: "cli" }, dataUse: "standard" as const }] };
-    const older = { modelId: "older", offerings: [{ wireModelId: "older", metadata: null, dataUse: "standard" as const }] };
-    const expected = [live, overlap, older];
 
-    expect(resolveModelCatalog({ authenticated: true, live: { kind: "rows", rows: [{ id: "newest", endpoint: "cli" }, { id: "bundled", endpoint: "cli" }] }, canonicalFallback: fallback.rows, contribution: extending }))
-      .toEqual({ kind: "catalog", provenance: "first-party", liveOutcome: "valid", rows: expected });
-    expect(resolveModelCatalog({ authenticated: true, live: { kind: "not-attempted" }, cachedFirstParty: [live, overlap], firstPartyProvenance: "first-party-cached", canonicalFallback: fallback.rows, contribution: extending }))
-      .toEqual({ kind: "catalog", provenance: "first-party-cached", liveOutcome: "valid", rows: expected });
-    expect(resolveModelCatalog({ authenticated: true, live: { kind: "rows", rows: [{ id: "newest", endpoint: "cli" }] }, canonicalFallback: fallback.rows, contribution }))
-      .toMatchObject({ rows: [live] });
-    expect(resolveModelCatalog({ authenticated: true, live: { kind: "auth-invalid" }, canonicalFallback: fallback.rows, contribution: extending }))
-      .toEqual({ kind: "unavailable", reason: "authentication-invalid" });
+    expect(resolveModelCatalog({ authenticated: true, live: { kind: "rows", rows: [{ id: "newest", endpoint: "cli" }, { id: "bundled", endpoint: "cli" }] }, canonicalFallback: fallback.rows, contribution }))
+      .toEqual({ kind: "catalog", provenance: "first-party", liveOutcome: "valid", rows: [live, overlap] });
+    expect(resolveModelCatalog({ authenticated: true, live: { kind: "not-attempted" }, cachedFirstParty: [live, overlap], firstPartyProvenance: "first-party-cached", canonicalFallback: fallback.rows, contribution }))
+      .toEqual({ kind: "catalog", provenance: "first-party-cached", liveOutcome: "valid", rows: [live, overlap] });
   });
 
   test("keeps provider model metadata authoritative over models.dev metadata", () => {

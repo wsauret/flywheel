@@ -184,6 +184,8 @@ const DIAGNOSTICS: ReadonlyMap<string, DiagnosticDeclaration> = new Map([
   ["provider.claude_sdk.in_place.checked", { tier: "info" }],
   ["provider.claude_sdk.debug_output.silent", { tier: "info" }],
   ["provider.claude_sdk.idle_cli.stopped", { tier: "info" }],
+  // One per access probe of an audit; only a probe engine that did not stop cleanly reaches the default level.
+  ["provider.claude_sdk.access_probe.stopped", { tier: "notable" }],
   ["provider.claude_sdk.request.hidden", { tier: "info" }],
   ["provider.claude_sdk.step.refused", { tier: "info" }],
   // Per request that the gate cannot read; the stop that the gate decides carries the count at INFO.

@@ -1,3 +1,4 @@
+import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import { homedir } from "node:os";
 import { isAbsolute } from "node:path";
 import type { RuntimeCredential } from "../../../infra/auth/auth-context.js";
@@ -29,6 +30,8 @@ export interface ClaudeAgentSdkSeams {
   readonly dispatcherStepDeadlineMs?: number;
   /** Reads the engine's login and model lineup for the model listing; tests give one that starts no process. */
   readonly describeLogin?: (config: QueryLauncherConfig, signal: AbortSignal) => Promise<CliLoginDescription>;
+  /** Sends the model access probe and returns the engine's messages of its turn; tests give one that starts no process. */
+  readonly probeModel?: (config: QueryLauncherConfig, wireModelId: string, signal: AbortSignal) => Promise<readonly SDKMessage[]>;
   /** Reads the usage of the engine's login for the usage reader; tests give one that starts no process. */
   readonly readUsage?: (config: QueryLauncherConfig, signal: AbortSignal) => Promise<CliUsage>;
   /** The usage readings that the bridges record and the usage reader reads, in place of this process's. */

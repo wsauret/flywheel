@@ -1,8 +1,9 @@
 import type { ModelInfo } from "@anthropic-ai/claude-agent-sdk";
-import type { AccessProviderCatalogFetchInput, AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
+import type { AccessProviderAccessOutcome, AccessProviderAccessProbeInput, AccessProviderCatalogFetchInput, AccessProviderDefinition } from "../../../infra/llm/access-provider.js";
 import { DEFAULT_DYNAMIC_CATALOG_LIMITS, type CatalogDiscovery, type CatalogSourceRow } from "../../../infra/llm/model-catalog-resolution.js";
 import { classifyFetchFailure } from "../../../infra/llm/model-listing.js";
 import { cliLaunch, observationsOf, type ClaudeAgentSdkSeams } from "./cli-launch.js";
+import { cliLogin } from "./cli-login.js";
 
 /** A CLI row names its model by the full wire id in `resolvedModel`; `value` is the CLI's own alias for it. */
 const WIRE_MODEL_ID = /^claude-[a-z0-9-]+$/u;
@@ -60,10 +61,40 @@ async function discoverCliModels({ credential, instance, launcher, signal }: Acc
   }
 }
 
+/** How long one access probe may take: the engine's start and one short response. A probe past it is inconclusive. */
+const ACCESS_PROBE_TIMEOUT_MS = 60_000;
+
 /**
- * The provider's catalog: the CLI's lineup joined with the models.dev `anthropic` rows. The CLI offers a curated
- * lineup, not every model the login serves, so its rows extend the models.dev membership instead of replacing it.
- * The listing owns every discovery mode, the saved catalog, and the fallback, as for every other provider.
+ * Asks the login whether it serves one model with one minimal request through the CLI that owns the login, launched
+ * in the listing caller's scope as the provider's queries are. A check never uses overage (PI-MODEL-065): a
+ * usage-billed (metered) login bills every request as an API key does, so its check is one ordinary billed request,
+ * and a subscription login is checked only while its extra usage is off, so a spent allowance refuses the request
+ * instead of billing it. A subscription login whose extra usage is on or unknown sends nothing and is inconclusive. A
+ * login or engine that cannot start, and a probe past its deadline, are inconclusive too; the probe's messages decide
+ * the rest (`probeOutcome`).
+ */
+async function probeCliModelAccess({ credential, launcher, wireModelId, signal }: AccessProviderAccessProbeInput, seams: ClaudeAgentSdkSeams): Promise<AccessProviderAccessOutcome> {
+  const launch = cliLaunch(credential, launcher, seams);
+  if (launch.kind !== "ready") return "inconclusive";
+  const login = cliLogin(launch.config.configDir);
+  const metered = login?.account.billing === "metered";
+  if (login === undefined || (!metered && login.extraUsage !== "disabled")) return "inconclusive";
+  try {
+    // The Agent SDK loads only when an audit probes, as for the listing.
+    const [{ probeCliModel }, { probeOutcome }] = await Promise.all([import("./query-launcher.js"), import("./sdk-events.js")]);
+    const probe = seams.probeModel ?? probeCliModel;
+    return probeOutcome(await probe(launch.config, wireModelId, AbortSignal.any([signal, AbortSignal.timeout(ACCESS_PROBE_TIMEOUT_MS)])), metered);
+  } catch {
+    if (signal.aborted) throw signal.reason;
+    return "inconclusive";
+  }
+}
+
+/**
+ * The provider's catalog: the CLI's lineup, which serves at once, and the models.dev `anthropic` rows that the lineup
+ * does not name. The CLI offers a curated lineup, not every model the login serves, so those rows are offered too, but
+ * each serves only after an access probe on the login completed (PI-MODEL-065). The listing owns every discovery mode,
+ * the saved catalog, and the audit, as for every other provider.
  */
 export function claudeSdkDynamicCatalog(seams: ClaudeAgentSdkSeams): NonNullable<AccessProviderDefinition["dynamicCatalog"]> {
   return {
@@ -73,5 +104,8 @@ export function claudeSdkDynamicCatalog(seams: ClaudeAgentSdkSeams): NonNullable
     modelsDevCatalogIds: ["anthropic"],
     liveMembership: "extends-baseline",
     fetch: async (input) => ({ discovery: await discoverCliModels(input, seams), credential: input.credential }),
+    probeAccess: (input) => probeCliModelAccess(input, seams),
+    // Each probe launches an engine, and its inconclusive answers, such as a spent allowance, speak for the login.
+    inconclusiveEndsPass: true,
   };
 }

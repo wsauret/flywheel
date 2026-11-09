@@ -205,10 +205,6 @@ export interface ModelCatalogContribution {
   /** Uses stated models.dev capacities instead of advertised provider capacities.
    * Missing catalog capacities leave provider metadata unchanged. */
   readonly modelsDevMetadataFields?: readonly ("contextLimit" | "totalContextLimit")[];
-  /** What the provider's own listing states. `authoritative`, the default, makes valid live rows the whole catalog.
-   *  `extends-baseline` is for a listing that states only part of what the login serves: its rows join the models.dev
-   *  rows instead of replacing them, so a model the listing names before models.dev does appears at once. */
-  readonly liveMembership?: "authoritative" | "extends-baseline";
   /** What names a model. `wire`, the default, derives the identity from the provider's wire id. `models-dev-snapshot`
    *  is for a provider whose wire ids move between model snapshots: the snapshot that models.dev records as a wire's
    *  `canonical_model_id` names the model, and a wire with no recorded snapshot keeps its wire identity. Requests
@@ -416,11 +412,7 @@ export function resolveModelCatalog(options: ResolveModelCatalogOptions): Resolv
     : validateCanonicalRows(options.canonicalFallback, options.contribution.limits);
   if (live?.kind === "valid" && live.rows.length > 0) {
     const enriched = fallback?.kind === "valid" ? enrichCatalogRows(live.rows, fallback.rows) : live.rows;
-    const listed = new Set(live.rows.map((row) => row.modelId));
-    const membership = options.contribution.liveMembership === "extends-baseline" && fallback?.kind === "valid"
-      ? [...enriched, ...fallback.rows.filter((row) => !listed.has(row.modelId))]
-      : enriched;
-    const bounded = validateCanonicalRows(membership, options.contribution.limits);
+    const bounded = validateCanonicalRows(enriched, options.contribution.limits);
     return {
       kind: "catalog",
       provenance: options.firstPartyProvenance ?? "first-party",
@@ -444,7 +436,8 @@ export function resolveModelCatalog(options: ResolveModelCatalogOptions): Resolv
   return { kind: "unavailable", reason: liveOutcome === "valid" ? "unusable" : liveOutcome };
 }
 
-function enrichCatalogRows(firstParty: readonly CatalogCanonicalRow[], metadata: readonly CatalogCanonicalRow[]): readonly CatalogCanonicalRow[] {
+/** First-party rows with the metadata that models.dev states for the same model and route filling what they omit. */
+export function enrichCatalogRows(firstParty: readonly CatalogCanonicalRow[], metadata: readonly CatalogCanonicalRow[]): readonly CatalogCanonicalRow[] {
   const metadataByModel = new Map(metadata.map((row) => [row.modelId, row]));
   return Object.freeze(firstParty.map((row) => {
     const enrichments = metadataByModel.get(row.modelId)?.offerings;
