@@ -111,6 +111,10 @@ describe("coerceToolInput", () => {
         output: { output_mode: "matching_files" },
         repairs: [{ kind: "renamed_value", path: "output_mode", from: "files_with_matches", to: "matching_files" }],
       });
+      expect(repairsOf({ output_mode: "files" }, searchSchema).output).toEqual({ output_mode: "matching_files" });
+      // A tool whose own enum declares `files` keeps it.
+      const listSchema = { type: "object", properties: { include: { type: "string", enum: ["all", "files", "directories"] } } };
+      expect(repairsOf({ include: "files" }, listSchema).repairs).toEqual([]);
       const mixed = compileOutput({ fields: { state: { type: "enum", values: [1, "unknown"] } } }).toolInput;
       expect(repairsOf({ summary: "done", state: "1" }, mixed)).toEqual({
         output: { summary: "done", state: 1 },

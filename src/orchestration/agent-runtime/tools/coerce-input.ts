@@ -39,9 +39,10 @@ const KEY_SYNONYMS: ReadonlyMap<string, readonly string[]> = new Map([
 ]);
 
 // Enum values that models write for exactly what a declared value means: many
-// models ask a search for `files_with_matches` when they want matching files.
+// models ask a search for `files_with_matches` or `files` when they want matching files.
 const VALUE_SYNONYMS: ReadonlyMap<string, string> = new Map([
   ["files_with_matches", "matching_files"],
+  ["files", "matching_files"],
 ]);
 
 // Top-level keys that carry no request for any Flywheel tool. `windowsHide` is
