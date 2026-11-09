@@ -1,0 +1,14 @@
+bench/harbor/configs/dswe-haiku-high.toml
+  h_4b47e9e4a8b456 1-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ad55d7cff85f064e132470986b8190e34145397f",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
