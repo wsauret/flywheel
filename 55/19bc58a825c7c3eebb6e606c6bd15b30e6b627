@@ -1,0 +1,18 @@
+bench/harbor/harbor-config.ts
+  h_4b47e9e4a8b456 78-79,225-237,245,253-254,350,373
+bench/harbor/harbor-jobs.ts
+  h_4b47e9e4a8b456 146
+tests/unit/bench/harbor-config.test.ts
+  h_4b47e9e4a8b456 55-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5519bc58a825c7c3eebb6e606c6bd15b30e6b627",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
