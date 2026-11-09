@@ -1,0 +1,18 @@
+bench/harbor/harbor-jobs.ts
+  h_4b47e9e4a8b456 2,85-86,90
+bench/harbor/rounds.ts
+  h_4b47e9e4a8b456 2,76
+tests/unit/bench/harbor-round-score.test.ts
+  h_4b47e9e4a8b456 177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8aac40b2427871ac2a0cbab73b1be90c1a92082b",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
