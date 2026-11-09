@@ -37,6 +37,7 @@ import { DEVELOPMENT_MODULES } from "../src/orchestration/development-modules.js
 import { installedDefinitionBundles, installModuleCatalog } from "../src/orchestration/module-catalog.js";
 import { composeFirstPartyModules, SHIPPED_OTHER_MODULES } from "../src/orchestration/modules.js";
 import { installedPersonaToolEntries } from "../src/orchestration/tool-catalog.js";
+import { UNATTENDED_CHAT_TERM } from "../src/orchestration/agent-runtime/system-prompt.js";
 
 interface CheckDirectories {
   readonly projectRoot: string;
@@ -89,9 +90,11 @@ export function knownCapabilityTerm(registry: ProjectDefinitionRegistry): (term:
 const AGENT_ASSETS: readonly AgentAssetName[] = ["system-prompt.md", "engineering-doctrine.md"];
 
 /** The marker findings of each bundled agent asset, whose text `asset` supplies. The system prompt renders each
- *  asset for its reader's check, so a misspelled term drops its passage and an unbalanced block fails assembly. */
+ *  asset for its reader's check, so a misspelled term drops its passage and an unbalanced block fails assembly. The
+ *  core prompt's check also answers the unattended-chat term. */
 export function agentAssetMarkerFindings(known: (term: string) => boolean, asset: (name: AgentAssetName) => string = bundledAgentAsset): readonly string[] {
-  return AGENT_ASSETS.flatMap((name) => markerFindings(`bundled-agent-asset: ${name}`, asset(name), known));
+  const coreKnown = (term: string): boolean => term === UNATTENDED_CHAT_TERM || known(term);
+  return AGENT_ASSETS.flatMap((name) => markerFindings(`bundled-agent-asset: ${name}`, asset(name), name === "system-prompt.md" ? coreKnown : known));
 }
 
 function capabilityMarkerFindings(registry: ProjectDefinitionRegistry, roots: readonly string[]): readonly string[] {

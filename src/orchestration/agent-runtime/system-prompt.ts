@@ -236,14 +236,30 @@ You complete one request without a person available to answer questions. Your fi
 
 - Never end with an offer to do the work again or in another way.`;
 
-const DOCTRINE_SECTION_BREAK = "\n\n---\n\n";
+/** The core prompt's term for an unattended chat, whose completion check replaces the verification scope limits
+ *  that serve a person who reviews the work. A run's purpose is no capability of its tree, so only the core prompt's
+ *  check answers the term, and every other agent renders the prompt's other branch. */
+export const UNATTENDED_CHAT_TERM = "purpose:unattended-chat";
+const unattendedChatChecks = new WeakMap<CapabilityCheck, CapabilityCheck>();
 
-/** The rendered doctrine without its bundled COMMITS section, for an unattended chat, which leaves out built-in
- *  publication guidance (PI-AGENT-121). Only the bundled doctrine is cut; a doctrine that a person wrote goes out
- *  byte for byte. */
-function withoutPublication(rendered: string, source: string): string {
-  if (source !== bundledAgentAsset("engineering-doctrine.md")) return rendered;
-  return rendered.split(DOCTRINE_SECTION_BREAK).filter((section) => !section.startsWith("COMMITS:")).join(DOCTRINE_SECTION_BREAK);
+/** `has` with the unattended-chat term held, memoized so the core prompt renders once per tree check. */
+function unattendedChatCheck(has: CapabilityCheck): CapabilityCheck {
+  let check = unattendedChatChecks.get(has);
+  if (!check) {
+    check = (term) => term === UNATTENDED_CHAT_TERM || has(term);
+    unattendedChatChecks.set(has, check);
+  }
+  return check;
+}
+
+/** The doctrine that `opts` renders. An unattended chat leaves out the bundled doctrine, as a headless task does
+ *  (PI-AGENT-121): its elegance and publication guidance serves a person who reviews the work. A doctrine that a
+ *  person wrote, which differs from the bundled bytes, still goes out byte for byte. */
+function renderedDoctrine(opts: BuildSystemPromptOptions): string | undefined {
+  const doctrine = opts.engineeringDoctrine;
+  if (!doctrine) return undefined;
+  if (opts.purpose?.kind === "unattended-chat" && doctrine === bundledAgentAsset("engineering-doctrine.md")) return undefined;
+  return renderAgentAsset(doctrine, "engineering-doctrine.md", opts.capabilities);
 }
 
 const DEFAULT_PROMPT_NOTES = SHARED_PROMPT_NOTES;
@@ -327,14 +343,13 @@ export function buildSystemPromptParts(opts: BuildSystemPromptOptions): SystemPr
   const hasDispatchSurface = has("subagent") || has("workflow");
   const writesFiles = has("edit") || has("write");
   const hasImplementationSurface = hasDispatchSurface || writesFiles;
-  const doctrine = opts.engineeringDoctrine && renderAgentAsset(opts.engineeringDoctrine, "engineering-doctrine.md", has);
-  const engineeringDoctrine = doctrine && opts.purpose?.kind === "unattended-chat" ? withoutPublication(doctrine, opts.engineeringDoctrine ?? "") : doctrine;
+  const engineeringDoctrine = renderedDoctrine(opts);
   if (chat && opts.chatPrompt) {
     stable("model chat body", renderClaude5ChatBody(opts.chatPrompt, has, FLYWHEEL_CHAT_HOST));
     if (engineeringDoctrine) stable("engineering doctrine", engineeringDoctrine);
     if (toolContext) stable("tool context", toolContext);
   } else {
-    stable("core system prompt", renderAgentAsset(opts.corePrompt ?? bundledSystemPrompt, "system-prompt.md", has));
+    stable("core system prompt", renderAgentAsset(opts.corePrompt ?? bundledSystemPrompt, "system-prompt.md", opts.purpose?.kind === "unattended-chat" ? unattendedChatCheck(has) : has));
     if (engineeringDoctrine) stable("engineering doctrine", engineeringDoctrine);
     if (hasDispatchSurface) stable("proportionality", PROPORTIONALITY_GUIDANCE);
     if (hasImplementationSurface && hasAskUser && chat) stable("conversation-first delivery", renderConversationFirstDelivery(has));

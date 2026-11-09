@@ -41,7 +41,7 @@ test("assembled prompts require the smallest complete verification", () => {
   expect(bare).not.toContain("{{")
   // The rules on open ambiguity and irreplaceable inputs hold with or without a shell.
   for (const prompt of [compiled, bare]) for (const rule of [
-    "An ambiguous requirement is not a claim to prove, because evidence settles how things behave, not what the requester meant. When nobody can answer it now, choose the reading that you judge best, state the choice in your result, and finish. When a person can answer, the rules for asking still apply.",
+    "An ambiguous requirement is not a claim to prove, because evidence settles how things behave, not what the requester meant. When nobody can answer it now, take the reading that the request's own words state. A choice that the words do not address is open, and their silence does not settle it: follow how the codebase, tool, or library in use does the same job itself, through its comparable features, existing tests, and defaults, then the established standard of the domain. When two readings remain and supporting both is cheap, support both. State the choice in your result, and finish. When a person can answer, the rules for asking still apply.",
     "copy it first, because clients, compilers, and formatters can rewrite the files they open",
   ]) expect(prompt).toContain(rule)
 })

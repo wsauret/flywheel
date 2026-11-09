@@ -64,7 +64,7 @@ An evidence-backed finding that the requested behavior already holds, or that a 
 
 ## PI-AGENT-101: Verification is the smallest complete fresh proof
 
-Flywheel verifies each change, including a revised draft, with the smallest complete fresh proof of its intended benefit and preserved behavior, and then stops. Tests alone suffice when they establish correctness, and live acceptance testing runs only when needed. Every verification pass observes the current state and never accepts earlier results. After implementation, a claim about an external service, a dependency, or runtime behavior is checked again with a cheap probe against the real system when one is possible.
+Flywheel verifies each change, including a revised draft, with fresh proof of its intended benefit and preserved behavior. Work that a person reads uses the smallest complete proof and then stops; tests alone suffice when they establish correctness, and live acceptance testing runs only when needed. An unattended one-shot run instead checks every requirement that its request names. Every verification pass observes the current state and never accepts earlier results. After implementation, a claim about an external service, a dependency, or runtime behavior is checked again with a cheap probe against the real system when one is possible.
 
 ## PI-AGENT-102: Exhaustive QA observes every surface in every pass
 
@@ -226,6 +226,10 @@ When a model response reaches its output limit, Flywheel makes only bounded auto
 
 Only a chat that no other session started asks the person. A subagent or workflow agent asks its parent with the evidence and waits for the reply only when the design and evidence cannot settle a choice or a missing prerequisite blocks every next action. The parent answers from what it knows, or asks its own parent or its person in its own words, then replies. When no parent can answer now, as in an unattended run with no connected parent chat, the child learns this at once, continues on its own judgment, and states its assumptions in its result.
 
+## PI-AGENT-123: An open choice follows the request, then established practice
+
+When nobody can answer an ambiguous requirement, the agent takes the reading that the request states. A choice that the request does not address stays open. The agent then follows how the codebase, tool, or library in use does the same job, then the established standard of the domain. It supports both readings when that is cheap, and states its choice in its result.
+
 ## PI-AGENT-082: A child never stops as blocked
 
 A child never stops as blocked. A child run ends only as completed, as partial at its turn budget, as stopped or canceled, or as failed. It fails only on a fault that only a person can clear or a fault that repeats on fresh attempts with no progress between them. Interrupted work has not ended and can resume.
@@ -356,7 +360,7 @@ Headless chat behaves like interactive chat, with standard input and output repl
 
 ## PI-AGENT-121: An unattended Agent Client Protocol run serves no reader
 
-An Agent Client Protocol client can request an unattended one-shot run. That run leaves out the instructions and tools that serve a person who reads the conversation, such as change review, publication, communication rules, skills, and questions.
+An Agent Client Protocol client can request an unattended one-shot run. That run leaves out the instructions and tools that serve a person who reads the conversation, such as change review, publication, communication rules, skills, and questions. It also leaves out Flywheel's built-in engineering doctrine; a doctrine that the user wrote still applies.
 
 ## PI-AGENT-074: Headless chat ends when its owned work ends
 

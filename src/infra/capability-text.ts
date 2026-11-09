@@ -3,7 +3,9 @@
  *
  * A `CapabilityCheck` answers whether one capability term holds for the agent
  * that reads a text. A term is a logical tool identity (`bash`, `subagent`),
- * `skill:<id>`, or `persona:<name>`. Kernel tools are never terms.
+ * `skill:<id>`, or `persona:<name>`. Kernel tools are never terms. The core
+ * system prompt also reads `purpose:unattended-chat`, which only its own
+ * render answers.
  *
  * Bundled Flywheel text marks a capability-specific passage with whole-line
  * markers, `{{if:a|b}}`, an optional `{{else}}`, and `{{end}}`. `|` means any
