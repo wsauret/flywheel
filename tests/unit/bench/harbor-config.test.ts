@@ -40,7 +40,7 @@ describe("Harbor config resolution", () => {
     expect(listed.taskNames).toEqual(["datacurve/python-statemachine-state-data-scoping", "datacurve/kcp-go-multiplexed-kcp-streams"]);
     expect(listed).toMatchObject({ dataset: "datacurve/deep-swe-1-1", datasetRef: HARBOR_BENCHMARKS[1]!.dataset.ref });
     expect(listed.split).toBeUndefined();
-    await expect(resolveArgs([...deepSwe, "--split", "subset"])).rejects.toThrow("deep-swe-1.1 has no split subset; its splits: none");
+    await expect(resolveArgs([...deepSwe, "--split", "holdout2"])).rejects.toThrow("deep-swe-1.1 has no split holdout2; its splits: subset, holdout");
     await expect(resolveArgs([...launchArgs, "--split", "missing"])).rejects.toThrow("its splits: subset, holdout, holdout2");
     for (const inherited of ["constructor", "toString"]) await expect(resolveArgs([...launchArgs, "--split", inherited])).rejects.toThrow(`has no split ${inherited}`);
     await expect(resolveArgs([...launchArgs, "--split", "subset", ...ONE_TASK])).rejects.toThrow("at most one of --split <name> and --task-names");

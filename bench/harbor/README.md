@@ -16,7 +16,7 @@ See [METHODOLOGY.md](METHODOLOGY.md) for the measurement rules, the evidence con
 | Benchmark id | Harbor dataset | Board key | Splits | Excluded tasks | Whole benchmark | Answer-key rule file |
 |---|---|---|---|---|---|---|
 | `terminal-bench-2.1` | `terminal-bench/terminal-bench-2-1` | `terminal-bench-2.1` | `subset` (14 tasks), `holdout` (14), `holdout2` (20) | qemu-startup, qemu-alpine-ssh | 87 of 89 tasks | yes |
-| `deep-swe-1.1` | `datacurve/deep-swe-1-1` | `deep-swe` | none yet | helm-unified-manifest-stream, vulture-persistent-analysis-cache | 111 of 113 tasks | no |
+| `deep-swe-1.1` | `datacurve/deep-swe-1-1` | `deep-swe` | `subset` (16 tasks), `holdout` (15) | helm-unified-manifest-stream, vulture-persistent-analysis-cache | 111 of 113 tasks | no |
 
 Each descriptor pins the dataset to an exact `sha256:` ref and states the tasks that the board excludes, each with the board's reason. A run of a split that the descriptor does not have is refused. A run with no task selection runs the whole benchmark, so a DeepSWE run can start before the person picks its splits (see [Whole-benchmark run](#whole-benchmark-run)).
 

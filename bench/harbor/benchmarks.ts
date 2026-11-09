@@ -87,7 +87,20 @@ const DEEP_SWE_1_1: HarborBenchmark = {
   dataset: { name: "datacurve/deep-swe-1-1", ref: "sha256:5affcd534fd90ac85d202d4c63f8b35ddc942140afdd5d60014a21365440a2f5" },
   taskNamespace: "datacurve",
   boardKey: "deep-swe",
-  splits: {},
+  splits: {
+    subset: [
+      "aiomonitor-task-snapshots-diff", "bandit-structured-nosec-directives", "dasel-html-document-format", "dynamodb-toolbox-lazy-recursive-schemas",
+      "expr-try-catch-errors", "ipython-session-bundle-replay", "koota-composite-trait-aspects", "narwhals-rolling-window-suite",
+      "ofetch-per-origin-circuit-breaker", "prometheus-transactional-reload-status", "prometheus-typed-label-sorting", "scc-bounded-memory-spilling",
+      "termenv-preserve-ansi-resets", "textual-kitty-key-phases", "valibot-recursive-schema-composition", "yaegi-go-embed-directives",
+    ],
+    holdout: [
+      "participle-grammar-conflict-analysis", "etree-xml-diff-patch", "tengo-destructuring-bindings", "go-genai-streamed-function-args", "ytt-jsonpath-query-api",
+      "testem-bail-on-test-failure", "gql-incremental-graphql-delivery", "httpx-streaming-json-iteration", "mashumaro-flattened-dataclass-fields",
+      "bandit-interprocedural-taint-checks", "psd-tools-blend-range-api", "happy-dom-deterministic-intersectionobserver", "clack-async-autocomplete-options",
+      "sql-formatter-bigquery-pipe-formatting", "httpx-deterministic-cookie-store",
+    ],
+  },
   excluded: [
     { task: "helm-unified-manifest-stream", reason: "its reference solution fails on the board's sandbox" },
     { task: "vulture-persistent-analysis-cache", reason: "its grader fails correct solutions" },
