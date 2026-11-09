@@ -1,0 +1,66 @@
+AGENTS.md
+  h_4b47e9e4a8b456 21,25
+CONTRIBUTING.md
+  h_4b47e9e4a8b456 21,120,140
+docs/architecture-intent/README.md
+  h_4b47e9e4a8b456 19-21,23,26,28,32-33,35-48
+docs/architecture-intent/protocol.md
+  h_4b47e9e4a8b456 3
+docs/architecture.md
+  h_4b47e9e4a8b456 5
+docs/elegance.md
+  h_4b47e9e4a8b456 64
+docs/product-intent/README.md
+  h_4b47e9e4a8b456 16-19,22,24,28-30
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 87,143,151,155,183,311,379,447,459,471
+docs/product-intent/capabilities.md
+  h_4b47e9e4a8b456 3,7,15,27,71
+docs/product-intent/interaction.md
+  h_4b47e9e4a8b456 3,95,147,155,175,209,213,217,253,257,285,301,305,309,349,357,369,381,443,455,459,471,495,499,507,603,647,651,659,667,695,711
+docs/product-intent/local-access.md
+  h_4b47e9e4a8b456 3
+docs/product-intent/model-access.md
+  h_4b47e9e4a8b456 47,75,99,217,221,249,261,301,317,329
+docs/product-intent/remote-access.md
+  h_4b47e9e4a8b456 3,59,67,119,127
+docs/product-intent/updates.md
+  h_4b47e9e4a8b456 1-115
+scripts/check-intent-corpora.ts
+  h_4b47e9e4a8b456 8-13,34-39,54-57,90-100,203,206,208,216
+src/infra/cli-subprocess.ts
+  h_4b47e9e4a8b456 20
+src/orchestration/app-service/project-control-runtime.ts
+  h_4b47e9e4a8b456 330
+src/orchestration/modules/development/definitions/skills/flywheel-design/SKILL.md
+  h_4b47e9e4a8b456 16,19
+src/orchestration/update/account-updates.ts
+  h_4b47e9e4a8b456 74
+src/orchestration/update/update-check.ts
+  h_4b47e9e4a8b456 7
+src/tui/hooks/use-status-modal.ts
+  h_4b47e9e4a8b456 56
+tests/integration/orchestration/config-watch.test.ts
+  h_4b47e9e4a8b456 9
+tests/unit/scripts/check-intent-corpora.test.ts
+  h_4b47e9e4a8b456 34-35,61,65-67,71-75,97-98,102-103,109-112,116,120,140-142,144,154-155,163
+tests/unit/tui/hooks/create-composer-border-layout.test.ts
+  h_4b47e9e4a8b456 27
+vscode/scripts/e2e-bootstrap.ts
+  h_4b47e9e4a8b456 77
+vscode/src/runtime/runtime-resolver.ts
+  h_4b47e9e4a8b456 20
+webview/src/app/toolbar.tsx
+  h_4b47e9e4a8b456 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8ac120a5379cd589456ed3f5a494714d3f8e2991",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
