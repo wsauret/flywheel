@@ -1,0 +1,20 @@
+src/infra/agent-assets/system-prompt.md
+  h_4b47e9e4a8b456 20
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 239-246,330
+tests/unit/orchestration/agent-runtime/minimal-verification-prompt.test.ts
+  h_4b47e9e4a8b456 44
+tests/unit/orchestration/agent-runtime/unattended-chat-prompt.test.ts
+  h_4b47e9e4a8b456 20-21,51-53,58,62-63,66,75,80,88-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "881ec19891a8b3847bc3335e01233e393f79d977",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
