@@ -51,7 +51,7 @@ describe("the SDK message classification", () => {
       .toEqual({ kind: "rate-limit", info: { status: "allowed_warning", rateLimitType: "five_hour", utilization: 0.9, resetsAt: 1 }, billing: "included" });
   });
 
-  test("reads the account's five-hour and seven-day windows that a rate-limit event carries, and skips a window it cannot read (CLI 2.1.295)", () => {
+  test("reads the account's five-hour and seven-day windows and its unnamed per-model weekly window that a rate-limit event carries, and skips a window it cannot read (CLI 2.1.295)", () => {
     const windows = (info: Omit<CliRateLimitInfo, "status">) => {
       const input = classifySdkMessage(rateLimitReport({ status: "allowed", ...info }));
       return input.kind === "rate-limit" ? input.windows : "not a report";
@@ -60,7 +60,12 @@ describe("the SDK message classification", () => {
     expect(windows({ unifiedWindows: {
       five_hour: { utilization: 0.42, resetsAt: 1_800_000_000 }, seven_day: { utilization: 0.17, resetsAt: 1_800_500_000 },
       seven_day_overage_included: { utilization: 0.5, resetsAt: 1_800_500_000 },
-    } })).toEqual({ fiveHour: { usedFraction: 0.42, resetsAtMs: 1_800_000_000_000 }, sevenDay: { usedFraction: 0.17, resetsAtMs: 1_800_500_000_000 } });
+    } })).toEqual({
+      fiveHour: { usedFraction: 0.42, resetsAtMs: 1_800_000_000_000 }, sevenDay: { usedFraction: 0.17, resetsAtMs: 1_800_500_000_000 },
+      // The per-model window carries no model name; a reply of the CLI names it (`UsageReadings`).
+      models: [{ usedFraction: 0.5, resetsAtMs: 1_800_500_000_000, metricKey: "seven_day_overage_included" }],
+    });
+    expect(windows({ unifiedWindows: { seven_day_overage_included: { utilization: 0.5, resetsAt: 1_800_500_000 } } })).toEqual({ models: [{ usedFraction: 0.5, resetsAtMs: 1_800_500_000_000, metricKey: "seven_day_overage_included" }] });
     // A window past its limit reads as full.
     expect(windows({ unifiedWindows: { five_hour: { utilization: 1.3, resetsAt: 1_800_000_000 }, seven_day: { utilization: "high", resetsAt: 1_800_500_000 } } }))
       .toEqual({ fiveHour: { usedFraction: 1, resetsAtMs: 1_800_000_000_000 } });

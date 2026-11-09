@@ -112,7 +112,7 @@ Usage is one view with Accounts, Spend, and History a tap apart. A line beside t
 
 ## PI-MODEL-052: Usage account rows fit each account's provider
 
-An Anthropic subscription account's headline shows its weekly usage window, and its details show the five-hour window. ChatGPT per-model windows stay hidden until the person asks for them. A Claude usage-only enterprise account reads as a metered account, with no provider allowance or usage windows, only what Flywheel tracked and billed. No account row shows an internal account id.
+An Anthropic subscription account's headline shows its weekly all-models usage window, and its details show the five-hour window and each weekly per-model window under the model's name. ChatGPT per-model windows stay hidden until the person asks for them. A Claude usage-only enterprise account reads as a metered account, with no provider allowance or usage windows, only what Flywheel tracked and billed. No account row shows an internal account id.
 
 ## PI-MODEL-053: Usage reports each account's tracked activity
 

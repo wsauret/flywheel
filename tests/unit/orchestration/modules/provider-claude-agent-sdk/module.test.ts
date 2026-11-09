@@ -419,18 +419,25 @@ describe("the Agent SDK provider module", () => {
     expect(usage.asked).toHaveLength(asked);
   });
 
-  test("shows the account's weekly window first, then five-hour usage, from the CLI's reply when no recent report holds them", async () => {
+  test("shows the account's all-models weekly window first, then five-hour usage, then each weekly window of one model under its name, from the CLI's reply when no recent report holds them", async () => {
+    const fable = { display_name: "Fable", utilization: 2, resets_at: "2027-01-16T14:00:00.505722+00:00" };
     const usage = usageFixture({ loggedIn: true, plan: "Claude Max", reply: {
       subscription_type: "max", rate_limits_available: true,
-      rate_limits: { five_hour: { utilization: 42, resets_at: "2027-01-15T10:00:00.000Z" }, seven_day: { utilization: 17.5, resets_at: null }, seven_day_opus: { utilization: 3, resets_at: null } },
+      rate_limits: {
+        five_hour: { utilization: 42, resets_at: "2027-01-15T10:00:00.000Z" }, seven_day: { utilization: 17.5, resets_at: null }, seven_day_opus: { utilization: 3, resets_at: null },
+        // An entry without a name or a numeric utilization states nothing.
+        model_scoped: [fable, { display_name: "Opus", utilization: null, resets_at: null }, { utilization: 5, resets_at: null }, "Sonnet"],
+      },
     } });
 
     const outcome = await usage.read(LOGGED_IN);
 
     expect(outcome).toMatchObject({ kind: "success", report: { providerStatus: "ok", plan: "Claude Max", metrics: [
-      { metricKey: "seven_day", label: "Seven days", rank: 0, scope: { kind: "account" }, timing: { kind: "unavailable" }, usedFraction: 0.175, used: { kind: "percentage", value: 0.175, provenance: "provider", precision: "exact" } },
+      { metricKey: "seven_day", label: "Seven days (all models)", rank: 0, scope: { kind: "account" }, timing: { kind: "unavailable" }, usedFraction: 0.175, used: { kind: "percentage", value: 0.175, provenance: "provider", precision: "exact" } },
       { metricKey: "five_hour", label: "Five hours", rank: 1, scope: { kind: "account" }, timing: { kind: "unavailable", resetAtMs: Date.parse("2027-01-15T10:00:00.000Z") }, usedFraction: 0.42, used: { kind: "percentage", value: 0.42, provenance: "provider", precision: "exact" } },
+      { metricKey: "seven_day_overage_included", label: "Seven days (Fable)", rank: 2, scope: { kind: "feature", featureKey: "Fable" }, timing: { kind: "unavailable", resetAtMs: Date.parse(fable.resets_at) }, usedFraction: 0.02, used: { kind: "percentage", value: 0.02, provenance: "provider", precision: "exact" } },
     ] } });
+    expect(outcome.kind === "success" ? outcome.report.metrics : []).toHaveLength(3);
     // The CLI that answers runs on the account's own login, at background priority in a scope of the runtime's launch
     // authority that the read closes, so a usage check never competes with a request.
     expect(usage.asked).toEqual([loginDir(usage.home)]);
@@ -445,6 +452,67 @@ describe("the Agent SDK provider module", () => {
       providerStatus: "unknown", plan: "Claude Max", metrics: [],
       spendSources: [{ kind: "automatic-billing", enablement: "enabled" }],
     } });
+    // A full window of one model spends that model's allowance only, so the account stays in service.
+    usage.answer({ loggedIn: true, reply: { rate_limits_available: true, rate_limits: { seven_day: { utilization: 40, resets_at: null }, model_scoped: [{ ...fable, utilization: 100 }] } } });
+    expect(await usage.read(LOGGED_IN)).toMatchObject({ kind: "success", report: { providerStatus: "ok", metrics: [{ metricKey: "seven_day" }, { metricKey: "seven_day_overage_included", usedFraction: 1 }] } });
+  });
+
+  test("names the unnamed weekly window of one model that a rate-limit report carries with the one model window that the CLI's last reply named, and keeps the reply's windows when it named several", async () => {
+    const usage = usageFixture();
+    const now = Date.now();
+    const login = { configDir: loginDir(usage.home), accountId: "uuid-person" };
+    const weekly = { usedFraction: 0.4, resetsAtMs: now + 86_400_000 };
+    const modelMetric = (read: Awaited<ReturnType<typeof usage.read>>) => read.kind === "success" ? read.report.metrics.filter((metric) => metric.scope.kind === "feature") : read.kind;
+    const eventModel = (usedFraction: number) => ({ usedFraction, resetsAtMs: now + 86_400_000, metricKey: "seven_day_overage_included" });
+
+    // Before any reply in this process names the model, the report's window shows under a label that names no model.
+    usage.readings.record(login, { sevenDay: weekly, models: [eventModel(0.03)] }, now - 60_000);
+    expect(modelMetric(await usage.read(LOGGED_IN))).toEqual([expect.objectContaining({ metricKey: "seven_day_overage_included", label: "Seven days (one model)", rank: 2, usedFraction: 0.03 })]);
+
+    // A reply that names one model window names the report's window; the metric key does not change.
+    const resetsAt = new Date(now + 86_400_000).toISOString();
+    usage.readings.record(login, { sevenDay: weekly }, now - 6 * 60_000);
+    usage.answer({ loggedIn: true, reply: { rate_limits_available: true, rate_limits: { seven_day: { utilization: 40, resets_at: resetsAt }, model_scoped: [{ display_name: "Fable", utilization: 2, resets_at: resetsAt }] } } });
+    const replied = modelMetric(await usage.read(LOGGED_IN));
+    expect(replied).toEqual([expect.objectContaining({ metricKey: "seven_day_overage_included", label: "Seven days (Fable)", usedFraction: 0.02 })]);
+    usage.readings.record(login, { sevenDay: weekly, models: [eventModel(0.05)] }, now);
+    expect(modelMetric(await usage.read(LOGGED_IN))).toEqual([expect.objectContaining({ metricKey: "seven_day_overage_included", label: "Seven days (Fable)", usedFraction: 0.05 })]);
+    // A report without the window keeps the window that the reply stated, so the meter stays on view.
+    usage.readings.record(login, { sevenDay: weekly }, now);
+    expect(modelMetric(await usage.read(LOGGED_IN))).toEqual(replied);
+    expect(usage.asked).toHaveLength(1);
+
+    // A reply that leaves the model list out states nothing about it, so the named window stays on view and keeps its name.
+    usage.readings.record(login, { sevenDay: weekly }, now - 6 * 60_000);
+    usage.answer({ loggedIn: true, reply: { rate_limits_available: true, rate_limits: { seven_day: { utilization: 40, resets_at: resetsAt } } } });
+    expect(modelMetric(await usage.read(LOGGED_IN))).toEqual(replied);
+    usage.readings.record(login, { sevenDay: weekly, models: [eventModel(0.06)] }, now);
+    expect(modelMetric(await usage.read(LOGGED_IN))).toEqual([expect.objectContaining({ label: "Seven days (Fable)", usedFraction: 0.06 })]);
+
+    // A named window whose reset the reply does not state stays on view when a report carries no model window.
+    usage.readings.record(login, { sevenDay: weekly }, now - 6 * 60_000);
+    usage.answer({ loggedIn: true, reply: { rate_limits_available: true, rate_limits: { seven_day: { utilization: 40, resets_at: resetsAt }, model_scoped: [{ display_name: "Fable", utilization: 9, resets_at: null }] } } });
+    await usage.read(LOGGED_IN);
+    usage.readings.record(login, { sevenDay: weekly }, now);
+    expect(modelMetric(await usage.read(LOGGED_IN))).toEqual([expect.objectContaining({ label: "Seven days (Fable)", usedFraction: 0.09, timing: { kind: "unavailable" } })]);
+
+    // With several named windows the report cannot say which one it states, so the reply's windows stay as it stated them.
+    usage.readings.record(login, { sevenDay: weekly }, now - 6 * 60_000);
+    usage.answer({ loggedIn: true, reply: { rate_limits_available: true, rate_limits: { seven_day: { utilization: 40, resets_at: resetsAt }, model_scoped: [
+      { display_name: "Fable", utilization: 2, resets_at: resetsAt }, { display_name: "Opus", utilization: 7, resets_at: resetsAt },
+    ] } } });
+    await usage.read(LOGGED_IN);
+    usage.readings.record(login, { sevenDay: weekly, models: [eventModel(0.5)] }, now);
+    expect(modelMetric(await usage.read(LOGGED_IN))).toEqual([
+      expect.objectContaining({ metricKey: "seven_day_overage_included:Fable", usedFraction: 0.02 }), expect.objectContaining({ metricKey: "seven_day_overage_included:Opus", usedFraction: 0.07 }),
+    ]);
+
+    // A window keeps its metric key when the reset of another one passes.
+    usage.readings.record(login, { sevenDay: weekly }, now - 6 * 60_000);
+    usage.answer({ loggedIn: true, reply: { rate_limits_available: true, rate_limits: { seven_day: { utilization: 40, resets_at: resetsAt }, model_scoped: [
+      { display_name: "Fable", utilization: 2, resets_at: resetsAt }, { display_name: "Opus", utilization: 7, resets_at: new Date(now - 1000).toISOString() },
+    ] } } });
+    expect(modelMetric(await usage.read(LOGGED_IN))).toEqual([expect.objectContaining({ metricKey: "seven_day_overage_included:Fable", usedFraction: 0.02 })]);
   });
 
   test("uses the windows of the account's latest rate-limit report without starting a CLI while the report is recent", async () => {
