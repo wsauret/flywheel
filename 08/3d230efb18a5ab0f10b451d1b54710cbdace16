@@ -1,0 +1,14 @@
+bench/harbor/configs/tb-haiku-high-sub-general.toml
+  h_4b47e9e4a8b456 1-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "083d230efb18a5ab0f10b451d1b54710cbdace16",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
