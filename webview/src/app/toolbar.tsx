@@ -17,7 +17,7 @@ import type { UpdateStatus } from "../../../src/protocol/update-protocol-types.j
 /** The update states the toolbar chip shows: a release a person can take or
  *  restart into, whose remedy is opening Status. A release that could not
  *  start on this machine asks nothing of the person, so only the Status rows
- *  name it (UPD-008). */
+ *  name it (PI-UPDATES-008). */
 const CHIP_UPDATE_KINDS: ReadonlySet<UpdateStatus["kind"]> = new Set(["available", "installing", "installed"])
 
 /** The header row: which chat this is, and the readings a person glances at

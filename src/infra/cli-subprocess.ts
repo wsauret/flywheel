@@ -17,7 +17,7 @@ export type ServeLane = "installed" | "dev"
 /** Names, in every command an agent runs, the session that runs it. A
  *  Flywheel client started from such a command never asks the account
  *  service to make way, so no session's command can restart the service
- *  that every other session runs on (UPD-010). */
+ *  that every other session runs on (PI-UPDATES-010). */
 export const AGENT_SESSION_ENV = "FLYWHEEL_AGENT_SESSION_ID"
 
 export function serveLaneFor(execPath: string): ServeLane {

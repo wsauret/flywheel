@@ -5,11 +5,12 @@ import * as path from "node:path";
 // the living authorities that code, tests, and documents cite by statement id,
 // so a malformed or duplicated id, an unlinked domain file, a statement that
 // names implementation detail, or a citation that resolves to nothing is a
-// build failure. A statement stays short enough to read as one contract: a body
-// of at most 100 words in sentences of at most 35 words, and an architecture
-// statement adds at most one sentence of rationale and one of rejected
-// alternative. The retired architecture decision records are no authority, so a
-// citation of them fails too.
+// build failure. A domain file holds only its title and its statements. A
+// statement states one rule, so it stays short: a body of at most 100 words in
+// sentences of at most 35 words, and an architecture statement adds at most one
+// sentence of rationale and one of rejected alternative. The retired
+// architecture decision records are no authority, so a citation of them fails
+// too.
 //
 // The citing scope is every tracked and unignored text file, listed by Git
 // rather than a directory crawl, because ignored worktrees under the
@@ -26,15 +27,16 @@ interface IntentViolation {
 
 const ARCHITECTURE_DIR = "docs/architecture-intent";
 const PRODUCT_DIR = "docs/product-intent";
-const UPDATES_FILE = `${PRODUCT_DIR}/updates.md`;
 const README = "README.md";
 
 const ARCHITECTURE_HEADING = /^## ARCH-[A-Z]+-\d{3}: \S/;
 const PRODUCT_HEADING = /^## PI-[A-Z]+-\d{3}: \S/;
-const UPDATE_BULLET = /^- `UPD-\d{3}`: \S/;
-const UPDATE_LIKE = /^-\s+`?UPD-/;
-const STATEMENT_ID = /^(?:## |- `)((?:ARCH|PI)-[A-Z]+-\d{3}|UPD-\d{3})/;
-const CITED_ID = /\b(?:(?:ARCH|PI)-[A-Z]+-\d{3}|UPD-\d{3})\b/g;
+// Markdown renders an ATX heading indented up to three spaces, and a text line
+// underlined by "=" or "-" as a setext heading, so both count as headings.
+const ANY_HEADING = /^ {0,3}#{1,6}(?:\s|$)/;
+const SETEXT_UNDERLINE = /^ {0,3}(?:=+|-+)\s*$/;
+const STATEMENT_ID = /^## ((?:ARCH|PI)-[A-Z]+-\d{3})/;
+const CITED_ID = /\b(?:ARCH|PI)-[A-Z]+-\d{3}\b/g;
 const ADR_REFERENCE = /docs\/adrs|\bADR-\d+/gi;
 // The stale-tool-result masker never masks reads of any repository's ADRs, so
 // it and its test name the conventional directory as generic behavior.
@@ -49,9 +51,10 @@ const FILE_EXTENSION = /\.(?:ts|tsx|js|jsx|mjs|cjs|json|jsonl|md|toml|ya?ml|sqli
 const RATIONALE_LINE = /^(Because|Not):/;
 const CODE_SPAN = /`[^`]*`/g;
 // A terminator, with any closing quote or bracket after it, ends a sentence only
-// before the end of the text or before a word that can open one, so "e.g. the"
-// stays inside its sentence and `says "Stop." Then` ends one.
-const SENTENCE_END = /[.?!]["'\u201D)\]]*(?=\s+[A-Z`"'\u201C([]|\s*$)/g;
+// before the end of the text or before a word that can open one, so "the end.
+// then" stays one sentence, and `says "Stop." Then` and `ends. 90% of` each end
+// one. The period of "e.g.", "i.e.", or "vs." never ends one, in either case.
+const SENTENCE_END = /(?<!\b[eE]\.[gG])(?<!\b[iI]\.[eE])(?<!\b[vV][sS])[.?!]["'\u201D)\]]*(?=\s+[A-Z0-9`"'\u201C([]|\s*$)/g;
 const MAX_BODY_WORDS = 100;
 const MAX_SENTENCE_WORDS = 35;
 const TOKEN_EDGE = /^[("'[]+|[)"'\],.;:!?]+$/g;
@@ -84,18 +87,17 @@ function corpusFiles(files: readonly string[], dir: string): string[] {
   return files.filter((file) => path.posix.dirname(file) === dir && file.endsWith(".md"));
 }
 
-/** The format rule for one line of a corpus domain file, or null when the line
- *  is not statement-shaped. */
-function formatProblem(file: string, line: string): string | null {
-  if (file === UPDATES_FILE) {
-    if (UPDATE_LIKE.test(line) && !UPDATE_BULLET.test(line)) return "expected - `UPD-<NNN>`: <statement>";
-    return null;
-  }
-  if (!line.startsWith("## ")) return null;
-  if (file.startsWith(`${ARCHITECTURE_DIR}/`)) {
-    return ARCHITECTURE_HEADING.test(line) ? null : "expected ## ARCH-<DOMAIN>-<NNN>: <title>";
-  }
-  return PRODUCT_HEADING.test(line) ? null : "expected ## PI-<DOMAIN>-<NNN>: <title>";
+/** The format rule for line `index` of a corpus domain file, or null when the
+ *  line is the file's title, a well-formed statement heading, or no heading. A
+ *  setext heading is never a title or a statement. A "---" after a blank line or
+ *  after an ATX heading is a thematic break, so it underlines nothing. */
+function formatProblem(architecture: boolean, lines: readonly string[], index: number, title: boolean): string | null {
+  const line = lines[index] ?? "";
+  const atx = ANY_HEADING.test(line);
+  if (!atx && line.trim().length > 0 && SETEXT_UNDERLINE.test(lines[index + 1] ?? "")) return "setext heading; a domain file holds only its title and statements";
+  if (title || !atx) return null;
+  const [heading, form] = architecture ? [ARCHITECTURE_HEADING, "ARCH"] : [PRODUCT_HEADING, "PI"];
+  return heading.test(line) ? null : `expected ## ${form}-<DOMAIN>-<NNN>: <title>`;
 }
 
 /** `repoPaths` holds every listed file and each of its parent directories, so
@@ -198,11 +200,12 @@ function checkCorpus(repoRoot: string, files: readonly string[], dir: string, st
   for (const file of domainFiles) {
     if (!linked.has(file)) out.push({ file, line: 1, rule: "domain-link", detail: `domain file is not linked from ${readme}` });
     const lines = readLines(repoRoot, file);
+    const title = lines.findIndex((text) => text.startsWith("# "));
     for (const [index, text] of lines.entries()) {
       const line = index + 1;
-      const format = formatProblem(file, text);
+      const format = formatProblem(architecture, lines, index, index === title);
       if (format !== null) out.push({ file, line, rule: "statement-format", detail: format });
-      const statementHeading = format === null && file !== UPDATES_FILE && text.startsWith("## ");
+      const statementHeading = format === null && text.startsWith("## ");
       for (const detail of statementHeading ? lengthProblems(lines, index, architecture) : []) out.push({ file, line, rule: "length", detail });
       const id = format === null ? STATEMENT_ID.exec(text)?.[1] : undefined;
       if (id !== undefined) {
@@ -210,7 +213,7 @@ function checkCorpus(repoRoot: string, files: readonly string[], dir: string, st
         if (first === undefined) statements.set(id, { file, line });
         else out.push({ file, line, rule: "duplicate-id", detail: `${id} is already stated at ${first.file}:${first.line}` });
       }
-      const grain = architecture ? grainProblem(text, repoPaths) : null;
+      const grain = grainProblem(text, repoPaths);
       if (grain !== null) out.push({ file, line, rule: "grain", detail: grain });
     }
   }

@@ -1,6 +1,6 @@
 # Remote Access Product Intent
 
-This document states the current intended experience for reaching a Flywheel runtime from a phone or another browser away from the machine that runs it.
+This document states the current intended experience for pairing, the relay, sealed channels, and the phone client.
 
 ## PI-REMOTE-001: Pairing is the only credential
 
@@ -56,7 +56,7 @@ A paired device can create a project on the machine by naming a repository to cl
 
 ## PI-REMOTE-022: A person can forget a dormant project
 
-A person can forget a dormant project with the `flywheel remote projects` command, from the machine's Remote view or fixed local page, or from a phone attached to that machine. A project whose directory is gone is forgotten on its own. Opening a forgotten project again on the machine offers it again.
+A person can forget a dormant project with the remote projects command, from the machine's Remote view or fixed local page, or from a phone attached to that machine. A project whose directory is gone is forgotten on its own. Opening a forgotten project again on the machine offers it again.
 
 ## PI-REMOTE-023: The machine stays awake for a phone
 
@@ -64,7 +64,7 @@ The machine stays awake while a phone uses a project that the phone opened, and 
 
 ## PI-REMOTE-024: Process initiation controls login startup
 
-On installed surfaces, the account service's login startup is an explicit action named Process initiation, which reads on or off and says how to change it. A status failure reads unavailable and offers to repair the service. A failed repair says to run `flywheel serve install` on the machine and to report a bug if that command also fails. A source build omits Process initiation.
+On installed surfaces, the account service's login startup is an explicit action named Process initiation, which reads on or off and says how to change it. A status failure reads unavailable and offers to repair the service. A failed repair says to run the serve install command on the machine and to report a bug if that command also fails. A source build omits Process initiation.
 
 ## PI-REMOTE-010: A paired phone opens straight into its session
 
@@ -116,7 +116,7 @@ Flywheel has no notification setting of its own, so allowing notifications on th
 
 ## PI-REMOTE-016: A terminal on another machine reaches the runtime through the relay
 
-A paired terminal on another machine lists the projects of the runtime's machine as open or asleep, and opens or wakes them. It opens one with `--remote` or as an added answer to its directory question, and creates nothing in a local project directory. A terminal on an older release than the machine updates itself to the machine's release and continues. A newer terminal says the machine has not updated yet and attaches once it has. A terminal on the runtime's own machine attaches locally without the relay. A remote terminal never stops, replaces, or retires that machine's runtime.
+A paired terminal on another machine lists the projects of the runtime's machine as open or asleep, and opens or wakes them. It opens one through the remote option or an added answer to its directory question, and creates nothing in a local project directory. A terminal on an older release than the machine updates itself to the machine's release and continues. A newer terminal says the machine has not updated yet and attaches once it has. A terminal on the runtime's own machine attaches locally without the relay. A remote terminal never stops, replaces, or retires that machine's runtime.
 
 ## PI-REMOTE-017: A version mismatch is explained, not hidden
 
@@ -124,4 +124,4 @@ A machine whose Flywheel is too old or too new for the relay is refused, and the
 
 ## PI-REMOTE-018: A source run pairs devices on its own
 
-The installed Flywheel and a source run of Flywheel on the same machine pair devices separately, and both can be attached to the relay at once. A paired device lists the installed Flywheel under the machine's name, and the source run as its own machine named dev followed by the machine's name in parentheses, as in `dev (Studio)`. Neither is named after a project. A paired device shows each machine's current name, which it learns whenever that machine is awake, without pairing again.
+The installed Flywheel and a source run of Flywheel on the same machine pair devices separately, and both can be attached to the relay at once. A paired device lists the installed Flywheel under the machine's name, and the source run as its own machine named dev followed by the machine's name in parentheses, as in "dev (Studio)". Neither is named after a project. A paired device shows each machine's current name, which it learns whenever that machine is awake, without pairing again.

@@ -84,7 +84,7 @@ Flywheel agents explain designs, results, and other artifacts in the conversatio
 
 ## PI-AGENT-004: Paper-cut campaigns resolve verified pain
 
-When the user invokes `/papercuts`, Flywheel validates every live project paper cut against current evidence. It closes records whose pain is resolved, no longer relevant, or not worth fixing. It investigates and prioritizes the remaining work, and resolves one root-cause fix at a time. The campaign continues until the captured backlog is resolved or the user defers it. When approval covers the campaign's scope, fixes inside that scope need no separate approval.
+When the user invokes the papercuts command, Flywheel validates every live project paper cut against current evidence. It closes records whose pain is resolved, no longer relevant, or not worth fixing. It investigates and prioritizes the remaining work, and resolves one root-cause fix at a time. The campaign continues until the captured backlog is resolved or the user defers it. When approval covers the campaign's scope, fixes inside that scope need no separate approval.
 
 ## PI-AGENT-005: File editing fits the serving model
 
@@ -140,7 +140,7 @@ Flywheel uses limited memory selectively for durable cross-session understanding
 
 ## PI-AGENT-012: Experiment loops start from an approved charter
 
-When the user invokes `/experiment design`, Flywheel leads a charter design conversation. The transcript shows it after an `/experiment design` divider, with the goal as the first user message. The charter states the objective, primary and secondary metrics, hard gates, anti-gaming rules, files in scope, protected and sealed paths, measure and checks commands, baseline procedure, and search strategy. Before the charter is complete, Flywheel proves that the measure command emits the declared metrics. The charter and its scripts are user-owned repository files. An experiment loop cannot start without a complete charter whose primary metric has been produced at least once.
+On the experiment design command, Flywheel leads a charter design conversation. The transcript shows it after the command's divider, with the goal as the first user message. The charter states the objective, primary and secondary metrics, hard gates, anti-gaming rules, files in scope, protected and sealed paths, measure and checks commands, baseline procedure, and search strategy. Before the charter is complete, Flywheel proves that the measure command emits the declared metrics. The charter and its scripts are user-owned repository files. An experiment loop cannot start without a complete charter whose primary metric has been produced at least once.
 
 ## PI-AGENT-013: Experiment loops measure, keep, and revert autonomously
 
@@ -148,11 +148,11 @@ An experiment loop runs without further prompts. The agent proposes one change a
 
 ## PI-AGENT-014: Kept experiments become reviewable branches
 
-When the person runs `/experiment finalize`, Flywheel groups kept experiments into independent changesets that share no files. It proposes the grouping, and after approval creates one clean branch per group from the merge base, so each can be reviewed and merged alone.
+When the person runs the experiment finalize command, Flywheel groups kept experiments into independent changesets that share no files. It proposes the grouping, and after approval creates one clean branch per group from the merge base, so each can be reviewed and merged alone.
 
 ## PI-AGENT-122: A stopped or interrupted experiment never stays blocked
 
-A stop ends the experiment loop and leaves it free to start again. When an earlier operation was interrupted, Flywheel says so and does not rerun, revert, commit, or discard it by itself. After the person confirms, `/experiment clear` discards the interrupted operation and leaves the experiment worktree as it is.
+A stop ends the experiment loop and leaves it free to start again. When an earlier operation was interrupted, Flywheel says so and does not rerun, revert, commit, or discard it by itself. After the person confirms, the experiment clear command discards the interrupted operation and leaves the experiment worktree as it is.
 
 ## PI-AGENT-015: Workflows resume across compatible method changes
 
@@ -180,7 +180,7 @@ A process that a mutating command starts can end when the command ends. On Windo
 
 ## PI-AGENT-068: Agent shell writes stay inside the project unless the person turns the guard off
 
-By default, every agent's shell refuses recognized writes and deletes outside the project, the `.flywheel` folders, and the project's registered worktrees, except writes to device sinks. The working directory never widens this allowance, and an unknown working directory does not refuse a write whose literal path lies inside the allowance. The person can turn the guard off for writing agents. A read-only agent always writes only in its scratchpad or to device sinks. This is a guard against mistakes, not a sandbox for arbitrary programs.
+By default, every agent's shell refuses recognized writes and deletes outside the project, Flywheel's own state folders, and the project's registered worktrees, except writes to device sinks. The working directory never widens this allowance, and an unknown working directory does not refuse a write whose literal path lies inside the allowance. The person can turn the guard off for writing agents. A read-only agent always writes only in its scratchpad or to device sinks. This is a guard against mistakes, not a sandbox for arbitrary programs.
 
 ## PI-AGENT-119: Headless shell commands write in place
 
@@ -308,7 +308,7 @@ A handoff records each command that it cites with its directory and the exit cod
 
 ## PI-AGENT-108: A workflow agent receives only the context it builds on
 
-An agent receives the output of the phase just before it and the durable outputs. It receives another earlier output only when it names that output in its `reads`, labeled with that id. A workflow is refused before it runs when an agent names an output that cannot finish before that agent starts. An agent sees the file changes made by each earlier agent it builds on, directly or through its subagents and workflows, and never changes by others. It also sees the current state of those files separately, and it is told when a change cannot be shown whole.
+An agent receives the output of the phase before it and the durable outputs. It receives another earlier output only when it names that output among its reads, labeled with that id. A workflow is refused before it runs when an agent names an output that cannot finish before that agent starts. An agent sees the file changes made by each earlier agent it builds on, directly or through its subagents and workflows, and never changes by others. It also sees the current state of those files separately, and it is told when a change cannot be shown whole.
 
 ## PI-AGENT-109: A plain file read shows the file, not a summary
 
@@ -376,7 +376,7 @@ Headless automation runs as a headless chat or as a direct task. The headless wo
 
 ## PI-AGENT-120: An Agent Client Protocol prompt states how its turn ended
 
-The answer to a prompt is `end_turn` when its turn completed and `cancelled` when the caller cancelled it. It is `refusal` when the provider refused the conversation content, by its policy or by a content filter that stopped every retry. Any other failed turn answers the prompt with an error that states why and names the kind of failure, never with `end_turn`.
+The answer to a prompt is "end_turn" when its turn completed and "cancelled" when the caller cancelled it. It is "refusal" when the provider refused the conversation content, by its policy or by a content filter that stopped every retry. Any other failed turn answers the prompt with an error that states why and names the kind of failure, never with "end_turn".
 
 ## PI-AGENT-031: Chat orchestrates substantive work with workflows
 
@@ -444,7 +444,7 @@ After a host crash or restart, each running agent of a workflow continues in its
 
 ## PI-AGENT-043: Workflow verification checks without running
 
-`flywheel workflow verify` checks a workflow file or a past run with the same rules that launch and execution use, and reports proved, partially proved, or invalid, with its uncertainties and the examples that prove each result. It never runs an agent and writes nothing. For a past run, it prints every phase, agent, and join of the run, with each join's kept and dropped entries and the records that the run left out of agent context with their reasons. When the run's history cannot be read back, it prints the reason instead of a guessed structure.
+The workflow verify command checks a workflow file or a past run with the same rules that launch and execution use. It reports proved, partially proved, or invalid, with its uncertainties and the examples that prove each result. It never runs an agent and writes nothing. For a past run, it prints every phase, agent, and join of the run, with each join's kept and dropped entries and the records that the run left out of agent context with their reasons. When the run's history cannot be read back, it prints the reason instead of a guessed structure.
 
 ## PI-AGENT-044: Subagents nest at most three deep
 
@@ -456,7 +456,7 @@ Each session's scratch folder is disposable. Flywheel removes a top-level scratc
 
 ## PI-AGENT-046: Agents work without per-call approval
 
-Flywheel never asks the person to approve an individual tool call or command; the one exception is workflow launch approval while Workflows is Ask (PI-AGENT-031). Flywheel's command guards prevent ordinary mistakes but do not confine the programs that an agent runs (PI-AGENT-068). A person who needs confinement runs Flywheel inside a boundary such as a virtual machine, a container, a low-privilege account, or a disposable checkout.
+The only tool call or command that Flywheel asks the person to approve is a workflow launch while Workflows is Ask. Flywheel's command guards prevent ordinary mistakes but do not confine the programs that an agent runs (PI-AGENT-068). A person who needs confinement runs Flywheel inside a boundary such as a virtual machine, a container, a low-privilege account, or a disposable checkout.
 
 ## PI-AGENT-047: Processes that outlive Flywheel need explicit permission
 
@@ -468,7 +468,7 @@ On macOS and Linux, an agent's shell commands find the same programs as the pers
 
 ## PI-AGENT-053: Agent searches stop when they grow too broad
 
-An agent's search and list tool calls stop after 30 processor seconds, or 120 seconds waiting on reads, and tell the agent to narrow the search. On macOS and Linux, the shell programs `grep`, `egrep`, `fgrep`, `rg`, `find`, `fd`, and `du` that agents run get the same processor limit and advice, except `find` or `fd` running a per-result command. Searches other than `du` never report or delete anything inside artifact directories, such as `node_modules`, `.git`, and the project state directory, or inside ignored directories, unless the call names one. The shell programs otherwise keep their own arguments, matching, and output.
+An agent's search and list tool calls stop after 30 processor seconds, or 120 seconds waiting on reads, and tell the agent to narrow the search. On macOS and Linux, an agent's shell runs of grep, egrep, fgrep, rg, find, fd, and du get the same processor limit and advice, except find or fd running a per-result command. Searches other than du never report or delete anything inside artifact directories, such as installed dependencies, the Git folder, and Flywheel's state folder, or inside ignored directories, unless the call names one. Otherwise these programs keep their arguments, matching, and output.
 
 ## PI-AGENT-049: Agent file changes keep what they did not change
 

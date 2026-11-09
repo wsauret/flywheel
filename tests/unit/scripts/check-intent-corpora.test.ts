@@ -10,7 +10,6 @@ const temporaryDirectory = temporaryDirectories();
 // does not itself cite a statement or a retired record when the gate scans it.
 const arch = (rest: string): string => ["ARCH", rest].join("-");
 const intent = (rest: string): string => ["PI", rest].join("-");
-const upd = (rest: string): string => ["UPD", rest].join("-");
 const adr = (rest: string): string => ["ADR", rest].join("-");
 const records = ["docs", "adrs"].join("/");
 
@@ -32,8 +31,8 @@ const ALPHA = [
 ].join("\n");
 const PRODUCT_README = ["# Product Intent", "", "- [Beta](beta.md): beta.", "- [Updates](updates.md): updates.", ""].join("\n");
 const BETA = ["# Beta", "", `## ${intent("BETA-001")}: People see their work`, "", "Work stays visible.", ""].join("\n");
-const UPDATES = ["# Updates", "", `- \`${upd("001")}\`: Updates keep logins.`, ""].join("\n");
-const CITING = `// Owned by ${arch("ALPHA-001")}, ${intent("BETA-001")}, and ${upd("001")}.\n`;
+const UPDATES = ["# Updates", "", `## ${intent("UPDATES-001")}: Updates keep logins`, "", "Updates keep logins.", ""].join("\n");
+const CITING = `// Owned by ${arch("ALPHA-001")}, ${intent("BETA-001")}, and ${intent("UPDATES-001")}.\n`;
 
 const CLEAN = {
   "docs/architecture-intent/README.md": ARCHITECTURE_README,
@@ -59,16 +58,21 @@ describe("check-intent-corpora", () => {
     expect(check(CLEAN)).toEqual([]);
   });
 
-  it("rejects statements that do not follow their corpus format", () => {
+  it("rejects statements that do not follow their corpus format and any heading but the title and statements", () => {
     expect(check({
       ...CLEAN,
       "docs/architecture-intent/alpha.md": `${ALPHA}## ${arch("ALPHA-12")}: Short number\n`,
-      "docs/product-intent/beta.md": `${BETA}## Grouping heading\n`,
-      "docs/product-intent/updates.md": `${UPDATES}- \`${upd("02")}\`: Short number.\n`,
+      // The last "---" follows a blank line, so it is a thematic break.
+      "docs/product-intent/beta.md": `${BETA}## Grouping heading\n\n   ## Indented heading\n\nSetext title\n===\n\nSetext section\n---\n\n---\n`,
+      "docs/product-intent/updates.md": `${UPDATES}### Older updates\n\n# Second title\n`,
     })).toEqual([
       { file: "docs/architecture-intent/alpha.md", line: 6, rule: "statement-format" },
       { file: "docs/product-intent/beta.md", line: 6, rule: "statement-format" },
-      { file: "docs/product-intent/updates.md", line: 4, rule: "statement-format" },
+      { file: "docs/product-intent/beta.md", line: 8, rule: "statement-format" },
+      { file: "docs/product-intent/beta.md", line: 10, rule: "statement-format" },
+      { file: "docs/product-intent/beta.md", line: 13, rule: "statement-format" },
+      { file: "docs/product-intent/updates.md", line: 6, rule: "statement-format" },
+      { file: "docs/product-intent/updates.md", line: 8, rule: "statement-format" },
     ]);
   });
 
@@ -90,23 +94,30 @@ describe("check-intent-corpora", () => {
     ]);
   });
 
-  it("rejects code spans, paths, and file names in architecture statements", () => {
+  it("rejects code spans, paths, and file names in statements of either corpus", () => {
+    const leaks = "The `owner` decides,\nlives in src/owner/,\nreads owner.ts first,\nand the reader and/or writer decides.\nIt starts from bin/launch.\n";
     expect(check({
       ...CLEAN,
       "bin/launch": "#!/bin/sh\n",
-      "docs/architecture-intent/alpha.md": `${ALPHA}The \`owner\` decides,\nlives in src/owner/,\nreads owner.ts first,\nand the reader and/or writer decides.\nIt starts from bin/launch.\n`,
+      "docs/architecture-intent/alpha.md": `${ALPHA}${leaks}`,
+      "docs/product-intent/beta.md": `${BETA}${leaks}`,
     })).toEqual([
       { file: "docs/architecture-intent/alpha.md", line: 6, rule: "grain" },
       { file: "docs/architecture-intent/alpha.md", line: 7, rule: "grain" },
       { file: "docs/architecture-intent/alpha.md", line: 8, rule: "grain" },
       { file: "docs/architecture-intent/alpha.md", line: 10, rule: "grain" },
+      { file: "docs/product-intent/beta.md", line: 6, rule: "grain" },
+      { file: "docs/product-intent/beta.md", line: 7, rule: "grain" },
+      { file: "docs/product-intent/beta.md", line: 8, rule: "grain" },
+      { file: "docs/product-intent/beta.md", line: 10, rule: "grain" },
     ]);
   });
 
-  it("caps a statement at 100 body words in sentences of at most 35 words, with one single-sentence rationale per label", () => {
+  it("caps a statement at 100 body words in sentences of at most 35 words, with one single-sentence rationale per label, and ends no sentence at an abbreviation", () => {
     // A sentence of exactly `count` words that ends with `end`.
     const sentence = (count: number, end = "now."): string => ["Readers", ...Array.from({ length: count - 2 }, () => "wait"), end].join(" ");
     const statement = (heading: string, ...body: string[]): string => `## ${heading}: Bounded\n\n${body.join("\n")}\n\n`;
+    // A code span counts as one word; the grain rule rejects it separately.
     expect(check({
       ...CLEAN,
       "docs/architecture-intent/alpha.md": [
@@ -126,8 +137,11 @@ describe("check-intent-corpora", () => {
         statement(intent("BETA-003"), "Work stays visible.", "Because: People lose track."),
         statement(intent("BETA-004"), `${sentence(20, "\"Stopped.\"")} ${sentence(20)}`),
         statement(intent("BETA-005"), "Work stays visible.", "Not: A hidden queue."),
+        statement(intent("BETA-006"), `${sentence(20, "e.g.")} ${sentence(20)}`),
+        statement(intent("BETA-007"), `${sentence(20, "Vs.")} ${sentence(20)}`),
+        statement(intent("BETA-008"), `${sentence(20)} 12 ${sentence(19)}`),
       ].join(""),
-    })).toEqual([
+    }).filter(({ rule }) => rule === "length")).toEqual([
       { file: "docs/architecture-intent/alpha.md", line: 12, rule: "length" },
       { file: "docs/architecture-intent/alpha.md", line: 16, rule: "length" },
       { file: "docs/architecture-intent/alpha.md", line: 20, rule: "length" },
@@ -137,6 +151,8 @@ describe("check-intent-corpora", () => {
       { file: "docs/architecture-intent/alpha.md", line: 40, rule: "length" },
       { file: "docs/product-intent/beta.md", line: 10, rule: "length" },
       { file: "docs/product-intent/beta.md", line: 19, rule: "length" },
+      { file: "docs/product-intent/beta.md", line: 24, rule: "length" },
+      { file: "docs/product-intent/beta.md", line: 28, rule: "length" },
     ]);
   });
 
@@ -144,7 +160,7 @@ describe("check-intent-corpora", () => {
     expect(check({
       ...CLEAN,
       "src/owner.ts": `${CITING}// Also ${arch("ALPHA-002")}.\n// See ${records}/x.md and ${adr("005").toLowerCase()}.\n`,
-      "AGENTS.md": `Follow ${upd("009")}.\n`,
+      "AGENTS.md": `Follow ${intent("UPDATES-009")}.\n`,
       "install.sh": `# See ${adr("014")}.\n`,
     })).toEqual([
       { file: "src/owner.ts", line: 2, rule: "dangling-id" },

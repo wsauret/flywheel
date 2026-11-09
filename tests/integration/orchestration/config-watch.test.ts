@@ -6,7 +6,7 @@
  *
  *  The update policy is account-global, so a settings write by another process
  *  or a hand edit of `flywheel.toml` must reach this runtime's published view
- *  without waiting for the next release check (UPD-017, ARCH-RUNTIME-058). */
+ *  without waiting for the next release check (PI-UPDATES-017, ARCH-RUNTIME-058). */
 
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";

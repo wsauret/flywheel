@@ -24,7 +24,7 @@ describe("update border status", () => {
     expect(updateBorderStatus(update({ kind: "idle" }))).toBeUndefined()
     expect(updateBorderStatus(update({ kind: "installing", version: "1.4.0" }))).toBeUndefined()
     // A release that could not start on this machine asks nothing of the
-    // person, so only the Status row names it (UPD-008).
+    // person, so only the Status row names it (PI-UPDATES-008).
     expect(updateBorderStatus(update({ kind: "refused", version: "1.4.0" }))).toBeUndefined()
     expect(updateBorderStatus(undefined)).toBeUndefined()
   })

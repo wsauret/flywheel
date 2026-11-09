@@ -18,7 +18,7 @@ Flywheel has one maintainer, who reviews issues and pull requests as time allows
 - **Commit headers follow the contract.** Refer to "Write commit messages to the contract" below.
 - **Settled provider-terms practices stay settled.** `docs/provider-terms.md` lists the practices that the maintainer settled. A review does not reopen them.
 
-The architecture is a set of living statements under `docs/architecture-intent/`. User-observable behavior is a set of living statements under `docs/product-intent/`. Read the statements for the area that you change. A change that alters one of these statements must update the statement in the same pull request.
+The architecture is a set of living statements under `docs/architecture-intent/`. User-observable behavior is a set of living statements under `docs/product-intent/`. Read the statements for the area that you change. A change that alters one of these statements must update the statement in the same pull request. The statements are not complete: when no statement covers the behavior that you change, ask the maintainer, and the answer becomes a new statement.
 
 `CLAUDE.md` only imports `AGENTS.md`, so agents that read `CLAUDE.md` get the same rules.
 
@@ -117,6 +117,7 @@ The release notes on the [Releases page](https://github.com/wsauret/flywheel/rel
 - The scope is optional and lowercase.
 - Write the subject in the imperative mood, in lowercase, with no period at the end.
 - Add a `Changelog:` trailer when the user-facing sentence is different from the subject.
+- In the body, name the intent statement that a fix restores, and the identifier of each statement that the change alters.
 - For a breaking change, put `!` after the type and add a `BREAKING CHANGE:` paragraph that says what breaks and what the user must do.
 
 Check a draft message before you commit:
@@ -136,7 +137,7 @@ Open an issue or a discussion first and wait until the maintainer agrees to the 
 - A change to a statement in `docs/product-intent/` or `docs/architecture-intent/`.
 - A refactor that moves or renames modules.
 
-Flywheel has strict design rules, so agreeing on the shape first keeps you from doing work that the review cannot accept.
+Flywheel has strict design rules, so agreeing on the shape first keeps you from doing work that the review cannot accept. For a statement change, the maintainer agrees to the statement change first. When you then design the change with an agent, your approval of the design approves the exact wording of the statement, inside what the maintainer agreed to.
 
 The review does not accept these changes:
 

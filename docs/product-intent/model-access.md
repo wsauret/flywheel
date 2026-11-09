@@ -44,7 +44,7 @@ Equivalent provider spellings and stable route variants of one model appear and 
 
 ## PI-MODEL-047: Saved model choices survive identity changes
 
-A model pinned in flywheel.toml, or chosen in an account's model preferences, under a spelling that an earlier release used keeps working. Flywheel rewrites it to the current identity once the catalog names that model.
+A model pinned in Flywheel's configuration file, or chosen in an account's model preferences, under a spelling that an earlier release used keeps working. Flywheel rewrites it to the current identity once the catalog names that model.
 
 ## PI-MODEL-048: Model lists show only routes that can do coding work
 
@@ -72,7 +72,7 @@ Provider requests identify Flywheel consistently wherever the provider permits a
 
 ## PI-MODEL-008: Model assignment inheritance indicator
 
-Model assignment lists show only the `↳` glyph when the effective model and effort both match the inherited pair, and show no indicator when either value differs.
+Model assignment lists show only the ↳ glyph when the effective model and effort both match the inherited pair, and show no indicator when either value differs.
 
 ## PI-MODEL-009: Provider controls target exact accounts
 
@@ -96,7 +96,7 @@ SuperGrok and Google Vertex accounts show usable coding models from models.dev a
 
 ## PI-MODEL-066: A model refusal affects only that model and account
 
-A provider's refusal of a model, or of only its extended context window, applies to that model on that account alone. Flywheel does not retry the refused model or window on that account, mark the provider unreachable, or mark the account's quota spent. When no candidate can serve the request, the notice names the refused model or window and offers /model, never a rate limit. The refusal survives restart and token refresh and ends after 24 hours, or at once when the account gets a new credential.
+A provider's refusal of a model, or of only its extended context window, applies to that model on that account alone. Flywheel does not retry the refused model or window on that account, mark the provider unreachable, or mark the account's quota spent. When no candidate can serve the request, the notice names the refused model or window and offers the model command, never a rate limit. The refusal survives restart and token refresh and ends after 24 hours, or at once when the account gets a new credential.
 
 ## PI-MODEL-067: A refused model or window leaves the account's offer
 
@@ -214,11 +214,11 @@ The Anthropic Subscription provider serves Claude models through the Claude engi
 
 ## PI-MODEL-082: A headless run can use a Claude token
 
-A headless run on a machine with no Claude login can use a long-lived token that the person makes with `claude setup-token`. Flywheel carries the token only in that run's one-use auth snapshot and gives it only to the Claude engine. No shell command of the agent inherits it, and no log or stored session holds it. A command of the same OS user can still read the engine's startup environment, so the trial sandbox and the token's lifetime are its boundary.
+A headless run on a machine with no Claude login can use a long-lived token that the person makes with the Claude setup-token command. Flywheel carries the token only in that run's one-use auth snapshot and gives it only to the Claude engine. No shell command of the agent inherits it, and no log or stored session holds it. A command of the same OS user can still read the engine's startup environment, so the trial sandbox and the token's lifetime are its boundary.
 
 ## PI-MODEL-070: Anthropic Subscription is an ordinary provider that is on by default
 
-Every surface that names the provider, such as Authentication, Settings, Doctor, notices, and `flywheel auth`, calls it Anthropic Subscription. The provider is on by default, needs no install, and turns off and on from an ordinary Settings row that asks nothing. The engine never updates itself or downloads anything, so a new engine comes only with a new Flywheel release. When enabled and eligible, this provider is the first provider route for Claude models, within account availability, included-capacity ordering, and paid-use consent.
+Every surface that names the provider, such as Authentication, Settings, Doctor, notices, and the auth command, calls it Anthropic Subscription. The provider is on by default, needs no install, and turns off and on from an ordinary Settings row that asks nothing. The engine never updates itself or downloads anything, so a new engine comes only with a new Flywheel release. When enabled and eligible, this provider is the first provider route for Claude models, within account availability, included-capacity ordering, and paid-use consent.
 
 ## PI-MODEL-071: Flywheel's Claude engine and the person's own install never interact
 
@@ -246,7 +246,7 @@ The login question and the runs that wait for it belong to one project. A login 
 
 ## PI-MODEL-077: Doctor reports the Claude engine and each login
 
-`/doctor` reports where the engine is, the version that the engine states, and each account with its plan, its status, and how its last request in this process ended. For each account it names the login folder and where the engine keeps the token, and a login folder that serves no account says what it holds. `/doctor` never reads a token or a credential file. An engine that does not run asks the person to reinstall Flywheel, and a Linux login without a token asks the person to log in again.
+The doctor command reports where the engine is, the version that the engine states, and each account with its plan, its status, and how its last request in this process ended. For each account it names the login folder and where the engine keeps the token, and a login folder that serves no account says what it holds. The doctor command never reads a token or a credential file. An engine that does not run asks the person to reinstall Flywheel, and a Linux login without a token asks the person to log in again.
 
 ## PI-MODEL-078: Claude extra usage pauses an account while paid use is off
 
@@ -258,7 +258,7 @@ The Anthropic Subscription provider keeps Flywheel's tool capabilities, tool exe
 
 ## PI-MODEL-080: Claude routes give the model the same environment facts
 
-At the start of each conversation context, the Anthropic Subscription and API-key providers give the model hidden reminders of the working directory, git state, platform, shell, operating-system version, model, knowledge cutoff, and local date. Later reminders state each change of working directory, git state, model, or local date. On every route, the system prompt states the turn's start date, and the local date matches the Claude engine's date. The local date's zone is `TZ` on macOS and Linux and the system zone on Windows. Each engine request states the environment once, also after rotation and at each hosted agent dispatch.
+At the start of each conversation context, the Anthropic Subscription and API-key providers give the model hidden reminders of the working directory, git state, platform, shell, operating-system version, model, knowledge cutoff, and local date. Later reminders state each change of working directory, git state, model, or local date. On every route, the system prompt states the turn's start date, and the local date matches the Claude engine's, in the TZ setting's zone on macOS and Linux and the system zone on Windows. Each engine request states the environment once, also after rotation and at each hosted agent dispatch.
 
 ## PI-MODEL-081: Context text from the Claude engine stays hidden history
 
@@ -298,7 +298,7 @@ Each time a provider refuses content in the conversation that Flywheel has not y
 
 ## PI-MODEL-032: The environment and the project select the auth profile
 
-Flywheel uses the auth profile that `FLYWHEEL_AUTH_PROFILE` names, by exact ID or else by a unique case-insensitive display name. Otherwise it uses the current project's bound profile, then the last profile the person chose, then Default. A profile named by the environment applies to that process only and never changes a saved choice. While the environment names the profile, that process cannot switch to another profile or delete the named one. A project's profile binding is private to the person's account and is never stored in the project.
+Flywheel uses the auth profile that the auth profile environment setting names, by exact ID or else by a unique case-insensitive display name. Otherwise it uses the current project's bound profile, then the last profile the person chose, then Default. A profile named by the environment applies to that process only and never changes a saved choice. While the environment names the profile, that process cannot switch to another profile or delete the named one. A project's profile binding is private to the person's account and is never stored in the project.
 
 ## PI-MODEL-033: A session keeps the auth profile it uses
 
@@ -314,7 +314,7 @@ When a person enters an API key for a provider whose keys carry a known prefix, 
 
 ## PI-MODEL-036: Custom OpenAI-compatible providers come from configuration
 
-Declaring a custom OpenAI-compatible chat-completions provider in flywheel.toml, with its endpoint, its complete model list, and an optional models.dev identity, turns it on with no module toggle or Settings row. The person adds its API key in Authentication, where the provider appears under the entry's id. An edit to the file reaches Authentication and new sessions without a restart, while an open session keeps the providers it started with. An entry that fails a semantic check, such as an invalid id or a non-HTTP address, stays visible in Authentication as misconfigured, with the reason, so the person can fix it.
+Declaring a custom OpenAI-compatible chat-completions provider in the configuration file, with its endpoint, its complete model list, and an optional models.dev identity, turns it on with no module toggle or Settings row. The person adds its API key in Authentication, where the provider appears under the entry's id. An edit to the file reaches Authentication and new sessions without a restart, while an open session keeps the providers it started with. An entry that fails a semantic check, such as an invalid id or non-HTTP address, stays visible in Authentication as misconfigured, with the reason, for the person to fix.
 
 ## PI-MODEL-037: The automatic sign-in dialog never interrupts another dialog
 
@@ -326,7 +326,7 @@ Only paid subscription accounts rotate, and a free-plan account serves only whil
 
 ## PI-MODEL-069: Sign-in keeps one free-plan account per provider
 
-On every client and in `flywheel auth login`, Flywheel refuses a free-plan sign-in when the profile already holds an account of that provider, stores nothing, and says why. When Flywheel cannot read the plan of a new account in that case, it refuses the account the same way and says to try again later. A paid sign-in beside a free-plan account of its provider first asks: "This will replace your attached free subscription because we only allow multiple copies of paid subscriptions." Confirming stores the paid account and disconnects every free-plan account of that provider, and declining stores nothing.
+On every client and in the auth login command, Flywheel refuses a free-plan sign-in when the profile already holds an account of that provider, stores nothing, and says why. When Flywheel cannot read the plan of a new account in that case, it refuses the account the same way and says to try again later. A paid sign-in beside a free-plan account of its provider first asks: "This will replace your attached free subscription because we only allow multiple copies of paid subscriptions." Confirming stores the paid account and disconnects every free-plan account of that provider, and declining stores nothing.
 
 ## PI-MODEL-039: Every agent waits out spent capacity and continues
 

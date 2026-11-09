@@ -2,23 +2,7 @@
 
 Current architecture for Flywheel's terminal and web clients: how the layers compose, where state lives, how chat, workflows, and delegated subagents run, and which extension points carry new behavior.
 
-Intended architecture is a living authority indexed by `docs/architecture-intent/README.md`, with one file per domain:
-
-- `docs/architecture-intent/agency.md` - how agents, evidence, and deterministic code divide authority over intent, work, and completion
-- `docs/architecture-intent/boundaries.md` - external input normalization, strict internal state, and secret handling
-- `docs/architecture-intent/context.md` - model-visible context assembly, inspectability, and compaction
-- `docs/architecture-intent/directories.md` - account, project, and execution directory authorities and project selection
-- `docs/architecture-intent/distribution.md` - binary builds, releases, installation, and update activation
-- `docs/architecture-intent/learning.md` - durable memory and skill scope, consent, and audit
-- `docs/architecture-intent/naming.md` - concept naming and the grammars for facts, requests, and identifiers
-- `docs/architecture-intent/protocol.md` - the runtime and client contract and client rendering boundaries
-- `docs/architecture-intent/providers.md` - provider admission, accounting, and paid-use consent
-- `docs/architecture-intent/runtime.md` - the runner host, process placement, the account service, and runtime configuration
-- `docs/architecture-intent/sessions.md` - sessions, conversations, child sessions, and their lifecycle
-- `docs/architecture-intent/structure.md` - source layers, the kernel, modules, registration, and code homes
-- `docs/architecture-intent/substrate.md` - durable history, projections, state ownership, recovery, and retry
-- `docs/architecture-intent/tools.md` - tool execution safety, external processes, and file mutation
-- `docs/architecture-intent/workflows.md` - workflow control, attempts, and verification
+Intended architecture is a living authority indexed by `docs/architecture-intent/README.md`, with one file per domain.
 
 `docs/elegance.md` is the elegance rubric that judges the architecture, and `docs/terminology.md` is the glossary of its terms.
 

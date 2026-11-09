@@ -1,6 +1,6 @@
 # Interaction Product Intent
 
-This document states the current intended experience for Flywheel's interactive controls.
+This document states the current intended experience for text entry, keyboard controls, surface-specific input behavior, launch and project selection, command-line conventions, and settings and configuration files.
 
 ## PI-INTERACTION-001: Text editing is consistent and contextual
 
@@ -92,7 +92,7 @@ In the terminal, a subagent's card opens its child's ordinary transcript in a ne
 
 ## PI-INTERACTION-155: A card header stays on one line on a phone
 
-On a phone-width web client, a subagent's or workflow's card header stays on one line that never wraps, and its controls never take a row of their own. One `⋯` control stays at the end of the line, and the header's text fades out behind it. The control, a long press on the header, or a right-click opens a menu of the actions the card admits, each with what it does. A wider web client shows each control as its own button on the header line.
+On a phone-width web client, a subagent's or workflow's card header stays on one line that never wraps, and its controls never take a row of their own. One ⋯ control stays at the end of the line, and the header's text fades out behind it. The control, a long press on the header, or a right-click opens a menu of the actions the card admits, each with what it does. A wider web client shows each control as its own button on the header line.
 
 ## PI-INTERACTION-156: Every client shows the same transcript
 
@@ -144,7 +144,7 @@ Flywheel shows how many project files the current session and every session it l
 
 ## PI-INTERACTION-108: The change review shows only its sessions' work
 
-The review shows only the work of its session and the sessions it launched, including changes outside the loaded transcript. A subagent's or workflow agent's own review covers only that session and the sessions it launched. A file that something else changed after these sessions last wrote it is neither listed nor counted, and neither are Flywheel-owned files in the project's `.flywheel` directory. A review that shows no files while it leaves out files the session changed says why.
+The review shows only the work of its session and the sessions it launched, including changes outside the loaded transcript. A subagent's or workflow agent's own review covers only that session and the sessions it launched. A file that something else changed after these sessions last wrote it is neither listed nor counted, and neither are Flywheel-owned files in the project's Flywheel state folder. A review that shows no files while it leaves out files the session changed says why.
 
 ## PI-INTERACTION-109: Viewed marks a file's latest edit as reviewed
 
@@ -152,7 +152,7 @@ A Viewed checkbox collapses the whole file and records that its latest session e
 
 ## PI-INTERACTION-110: The Changes control shows the last known count
 
-In the terminal, a clickable Changes label sits in the prompt bar beside the remote-control display, not in the statistics header. On the web client, a Changes control sits beside the prompt. Each appears only when the last known count is greater than zero, and a plus sign marks an incomplete count. It never shows loading, error, unknown, or stale labels, which appear only inside the review, and /changes remains available when the label is hidden.
+In the terminal, a clickable Changes label sits in the prompt bar beside the remote-control display, not in the statistics header. On the web client, a Changes control sits beside the prompt. Each appears only when the last known count is greater than zero, and a plus sign marks an incomplete count. It never shows loading, error, unknown, or stale labels, which appear only inside the review, and the changes command remains available when the label is hidden.
 
 ## PI-INTERACTION-111: Each changed file has one header line
 
@@ -172,7 +172,7 @@ Ask User context appears immediately before its question entry as a normal assis
 
 ## PI-INTERACTION-010: Typing anywhere goes to the prompt
 
-A printable key pressed while no editable control or dialog has the keyboard goes to the prompt. So `/` opens the command menu and a letter starts a message from anywhere in the client, with no click first, as in the TUI. Shortcuts with a modifier, space, and keys inside an editable control or an open sheet stay where they landed.
+A printable key pressed while no editable control or dialog has the keyboard goes to the prompt. So a slash opens the command menu and a letter starts a message from anywhere in the client, with no click first, as in the TUI. Shortcuts with a modifier, space, and keys inside an editable control or an open sheet stay where they landed.
 
 ## PI-INTERACTION-011: The transcript follows new output until the user leaves the bottom
 
@@ -206,15 +206,15 @@ Notification toasts and the notification list stay consistent. Condition recover
 
 ## PI-INTERACTION-016: A new chat's card names the commands that change it
 
-A blank chat opens on a card that states the model, the project, the branch of the chat's working directory when that directory is on one, and the profile when more than one exists. Each fact a command changes is followed by that command, `/model` and `/settings`, in the same words on the terminal and web clients, and the web card's commands open the matching sheet when tapped.
+A blank chat opens on a card that states the model, the project, the branch of the chat's working directory when that directory is on one, and the profile when more than one exists. Each fact a command changes is followed by that command, the model or the settings command, in the same words on the terminal and web clients. On the web card, tapping a command opens the matching sheet.
 
 ## PI-INTERACTION-113: A chat's card shows the backend's version and optional build
 
-The card shows the currently connected backend's version, including at the top of an existing session after an in-place backend update. A per-project Show build setting, off by default, adds the backend's eight-character build identifier beside the version, as in `(v0.0.10 build 3029f1ab)`. The identifier names the running build or source snapshot, and the display says `build unavailable` when the backend cannot identify its build. Version, build, and visibility update in existing cards without reopening the session.
+The card shows the currently connected backend's version, including at the top of an existing session after an in-place backend update. A per-project Show build setting, off by default, adds the backend's eight-character build identifier beside the version, as in "(v0.0.10 build 3029f1ab)". The identifier names the running build or source snapshot, and the display says "build unavailable" when the backend cannot identify its build. Version, build, and visibility update in existing cards without reopening the session.
 
 ## PI-INTERACTION-017: The web command menu opens on settings in expected-use order and shows commands to typing
 
-On the web client a bare `/` opens a menu of settings and frequent actions in one expected-use order that Flywheel ships, most-used settings first. Each setting that changes one value in place appears there with its control, and the menu lists no other slash command or skill. Typing after the slash searches that menu and the full command catalog by name and description. Picking an entry puts it in the composer. A line under the menu counts the available commands. That line and the Commands row open a sheet of the whole catalog in menu order, with descriptions.
+On the web client a bare slash opens a menu of settings and frequent actions in one expected-use order that Flywheel ships, most-used settings first. Each setting that changes one value in place appears there with its control, and the menu lists no other slash command or skill. Typing after the slash searches that menu and the full command catalog by name and description. Picking an entry puts it in the composer. A line under the menu counts the available commands. That line and the Commands row open a sheet of the whole catalog in menu order, with descriptions.
 
 ## PI-INTERACTION-083: The terminal command menu ranks commands by account-wide use
 
@@ -250,11 +250,11 @@ A workflow's launching call stays pending while the workflow runs or has interru
 
 ## PI-INTERACTION-088: Deleting a chat deletes the work it owns
 
-Deleting a parent chat stops and deletes its workflows, their agent sessions, and its other owned child sessions, including nested descendants and workflows whose agents have not started. Independent forks remain intact. Deleting a session removes it and its owned work from every client. Its recorded conversation, including provider reasoning, stays in the project's database, where `flywheel events search` can read it, until that database is removed.
+Deleting a parent chat stops and deletes its workflows, their agent sessions, and its other owned child sessions, including nested descendants and workflows whose agents have not started. Independent forks remain intact. Deleting a session removes it and its owned work from every client. Its recorded conversation, including provider reasoning, stays in the project's database, where the events search command can read it, until that database is removed.
 
 ## PI-INTERACTION-023: A chat can fork without changing its source
 
-Running `/fork` in a chat copies its committed active conversation branch and its current checkpoint into an independent paused chat. The source stays unchanged. The copy gets a distinct derived title and opens as the current chat. In the terminal, the copy opens in a new tab.
+Running the fork command in a chat copies its committed active conversation branch and its current checkpoint into an independent paused chat. The source stays unchanged. The copy gets a distinct derived title and opens as the current chat. In the terminal, the copy opens in a new tab.
 
 ## PI-INTERACTION-024: Submitted messages appear immediately
 
@@ -282,7 +282,7 @@ On a web pane wide enough to show the session list beside the transcript, the us
 
 ## PI-INTERACTION-027: The web client answers a small set of chords from anywhere
 
-On the web client, Mod+K opens the session list with its search ready to type into on a keyboard-and-mouse device. Mod+B folds the session list on a wide pane. Mod+/ opens a sheet that lists every key the client answers, including the composer's own. Mod is the platform's command key. The command menu also offers the shortcuts sheet by name.
+On the web client, Mod+K opens the session list with its search ready to type into on a keyboard-and-mouse device. Mod+B folds the session list on a wide pane. Mod+Slash opens a sheet that lists every key the client answers, including the composer's own. Mod is the platform's command key. The command menu also offers the shortcuts sheet by name.
 
 ## PI-INTERACTION-028: Messages and code blocks can be copied on the web client
 
@@ -298,15 +298,15 @@ On every client, the user searches the current session or every session in the p
 
 ## PI-INTERACTION-030: Files are mentioned from a picker on every client
 
-In the terminal and the web client, typing `@` in the composer lists matching project files and folders, best match first, and never offers ignored files, Flywheel's own state, or the repository's object store. Enter, Tab, or a click inserts the file's project-relative path as `@path` and a space, quoted when it holds a space, and the agent reads exactly that file. A bare `@` lists the top level, folders first, and picking a folder inserts `@folder/` and keeps the list open inside it. Escape closes the list and leaves what was typed.
+In the terminal and web client, typing an at sign in the composer lists matching project files and folders, best match first. It never offers ignored files, Flywheel's own state, or the repository's object store. Enter, Tab, or a click inserts a mention: an at sign and the file's project-relative path, quoted when it holds a space, then a space. The agent reads exactly that file. A bare at sign lists the top level, folders first. Picking a folder inserts its mention with a closing slash and lists the folder's contents. Escape closes the list and leaves what was typed.
 
 ## PI-INTERACTION-130: Web menus start a file mention
 
-On the web client, choosing mention from the `+` menu or the command menu opens the same file list as typing `@`. In the editor, the mention row of the `+` menu opens the editor's own file picker instead.
+On the web client, choosing mention from the plus menu or the command menu opens the same file list as typing an at sign. In the editor, the mention row of the plus menu opens the editor's own file picker instead.
 
 ## PI-INTERACTION-031: Files and photos attach to a message on every client
 
-On the web client, files or photos chosen from the `+` control, pasted into the composer, or dropped onto it attach to the next message as removable chips until sent. In the terminal, a pasted clipboard image, dragged or pasted local image paths, or files chosen through `/attach` attach the same way. The model sees an attached image as an image and a text file as its text and name. A message may have attachments and no text. A file of another kind or over the size limit is refused with a notice naming the file and what is accepted.
+On the web client, files or photos chosen from the plus control, pasted into the composer, or dropped onto it attach to the next message as removable chips until sent. The terminal attaches a pasted clipboard image, dragged or pasted local image paths, and files from the attach command the same way. The model sees an attached image as an image and a text file as its text and name. A message may have attachments and no text. A file of another kind or over the size limit is refused with a notice naming the file and what is accepted.
 
 ## PI-INTERACTION-120: A terminal image attachment shows at once and sends complete
 
@@ -346,7 +346,7 @@ When Flywheel cannot restore a project's sessions after its process stops, every
 
 ## PI-INTERACTION-118: Service start failures are explained
 
-When the background service cannot start for a cause that `flywheel kill` alone does not fix, every client that starts it shows that cause and its own remedy. The terminal keeps trying until the cause is gone.
+When the background service cannot start for a cause that the kill command alone does not fix, every client that starts it shows that cause and its own remedy. The terminal keeps trying until the cause is gone.
 
 ## PI-INTERACTION-037: The background list shows a chat's background work
 
@@ -354,7 +354,7 @@ Each chat has one background list, which shows the background commands that the 
 
 ## PI-INTERACTION-092: The background list opens on active work
 
-`/bg` opens the background list, and the web command menu offers it while background work runs. In the terminal, the background count in the prompt bar also opens the list and counts only active work. The list opens on active work: commands that run, and subagents and workflows that run or wait on their parent. One control, a button in the list or a key, shows all work instead, and each client remembers the last choice for the person who uses it.
+The background command opens the background list, and the web command menu offers it while background work runs. In the terminal, the background count in the prompt bar also opens the list and counts only active work. The list opens on active work: commands that run, and subagents and workflows that run or wait on their parent. One control, a button in the list or a key, shows all work instead, and each client remembers the last choice for the person who uses it.
 
 ## PI-INTERACTION-093: Background rows show progress and outcome
 
@@ -366,7 +366,7 @@ Clicking or tapping a row in the background list closes the list and shows the r
 
 ## PI-INTERACTION-095: A background row opens or stops its work
 
-Enter, or the Open control on the web client, opens a subagent in its viewer or a workflow's full-size card. A separate `x` control, and the `x` key in the terminal, stops a row that is still active, and on the web client Stop asks for confirmation first.
+Enter, or the Open control on the web client, opens a subagent in its viewer or a workflow's full-size card. A separate x control, and the x key in the terminal, stops a row that is still active, and on the web client Stop asks for confirmation first.
 
 ## PI-INTERACTION-096: Background command output expands in the list
 
@@ -378,7 +378,7 @@ The kill command labels the processes it plans to stop before shutdown starts an
 
 ## PI-INTERACTION-046: Kill stops only the account home it runs in
 
-The kill command stops only the Flywheel processes of the account home it runs in. It leaves a process whose account home it cannot prove running and names it. The kill command with `installed` or `dev` stops only installed builds or only source runs, and leaves the other kind running. The kill command with `all` stops every Flywheel process on the machine.
+The kill command stops only the Flywheel processes of the account home it runs in. It leaves a process whose account home it cannot prove running and names it. The kill command with the installed or the dev argument stops only installed builds or only source runs, and leaves the other kind running. The kill command with the all argument stops every Flywheel process on the machine.
 
 ## PI-INTERACTION-039: Web session IDs can be copied
 
@@ -440,7 +440,7 @@ In the terminal and on the web client, the parent chat shows every workflow it l
 
 ## PI-INTERACTION-161: A workflow card names each phase and round of its plan
 
-From launch, the card lists every phase that the workflow can reach, in run order, by its short id. Pointing at a phase shows its longer name. Each stream phase and each repeat round shows as its own phase, and each later round carries its number, such as `verify · round 2`. A phase that repairs what a check found belongs to the round of the check that it leads to. A phase that may not run reads "if needed" until an earlier phase decides, and a phase that the workflow can no longer reach reads skipped.
+From launch, the card lists every phase that the workflow can reach, in run order, by its short id. Pointing at a phase shows its longer name. Each stream phase and each repeat round shows as its own phase, and each later round carries its number, such as "verify · round 2". A phase that repairs what a check found belongs to the round of the check that it leads to. A phase that may not run reads "if needed" until an earlier phase decides, and a phase that the workflow can no longer reach reads skipped.
 
 ## PI-INTERACTION-162: Workflow progress reads as chits and a count
 
@@ -452,11 +452,11 @@ Each phase is one line with its glyph, its short id, its chits, a status column,
 
 ## PI-INTERACTION-164: A workflow line says what its agent or phase did
 
-An agent's status column reads its newest call while it runs, what it waits for before it starts, and `interrupted` while an interrupt holds it. Once the agent settles, the column reads the first sentence of its handoff summary, which states its result, or the reason it failed or was skipped. When every agent of a phase settles, the phase folds to one line that says what it did and keeps each failed agent visible under it. A phase over an empty list reads zero targets and has no chits and no agent.
+An agent's status column reads its newest call while it runs, what it waits for before it starts, and "interrupted" while an interrupt holds it. Once the agent settles, the column reads the first sentence of its handoff summary, which states its result, or the reason it failed or was skipped. When every agent of a phase settles, the phase folds to one line that says what it did and keeps each failed agent visible under it. A phase over an empty list reads zero targets and has no chits and no agent.
 
 ## PI-INTERACTION-165: A running call reads as one short sentence of what it does
 
-A running call reads as one short sentence of a verb and its subject, such as `Read model-access.md` or `Ran bun run test`. A shell command reads as what it does, with what it changes or runs first, and leaves out directory changes, environment wrappers, and output filters. A command that Flywheel does not recognize reads as the command it ran, and a call to an unknown tool reads as `Called` with the tool's name and subject. A command declared to change project files reads as `Edited` or `Wrote` and names the files that it changed once its changes land.
+A running call reads as one short sentence of a verb and its subject, such as "Read" and a file name. A shell command reads as what it does, with what it changes or runs first, and leaves out directory changes, environment wrappers, and output filters. A command that Flywheel does not recognize reads as the command it ran, and a call to an unknown tool reads as "Called" with the tool's name and subject. A command declared to change project files reads as "Edited" or "Wrote" and names the files that it changed once its changes land.
 
 ## PI-INTERACTION-166: The inline workflow card stays compact
 
@@ -468,7 +468,7 @@ The full-size card shows every phase and every agent of an expanded phase in ite
 
 ## PI-INTERACTION-168: A workflow card shows coverage and join results on settled lines
 
-A settled phase's line and the plan bar show a survey's coverage in the same words, such as `Coverage: required 7 of 9, 2 unsurveyed`. A workflow that completes with incomplete coverage keeps its completed status, and its card names the coverage beside it. A settled join's line shows how many results it kept and dropped, or how many verdicts passed, and how many agents failed. Each round's settled line names its round and, when the repeat stopped there, why it stopped.
+A settled phase's line and the plan bar show a survey's coverage in the same words, such as "Coverage: required 7 of 9, 2 unsurveyed". A workflow that completes with incomplete coverage keeps its completed status, and its card names the coverage beside it. A settled join's line shows how many results it kept and dropped, or how many verdicts passed, and how many agents failed. Each round's settled line names its round and, when the repeat stopped there, why it stopped.
 
 ## PI-INTERACTION-169: A workflow card's header names the run and holds its controls
 
@@ -492,11 +492,11 @@ Workflow surface text is never cut while its line has room, and the workflow's n
 
 ## PI-INTERACTION-173: An agent view shows the agent's brief and takes its messages
 
-The agent's transcript opens with one closed line for the brief that it received, which names its item or agent, the phase whose handoff it carries, and its length. The agent's state reads in the words of its line on the card, so a running agent never reads as interrupted. While the agent runs or waits, the view offers a words-only composer whose placeholder names the item or agent that its message reaches, and a finished agent shows no composer. The follow-up conversation's agent line reads `follow-up`.
+The agent's transcript opens with one closed line for the brief that it received, which names its item or agent, the phase whose handoff it carries, and its length. The agent's state reads in the words of its line on the card, so a running agent never reads as interrupted. While the agent runs or waits, the view offers a words-only composer whose placeholder names the item or agent that its message reaches, and a finished agent shows no composer. The follow-up conversation's agent line reads "follow-up".
 
 ## PI-INTERACTION-174: Workflow surfaces answer the keyboard
 
-In the terminal, the full-size card selects with Up and Down, opens an agent with Enter, expands and folds a phase with Enter, Right, and Left, and scrolls by page. With an empty composer, Left leaves an agent view. Tab and Shift+Tab move between agents in run order. On the web client, the full-size card's list answers the arrow keys, Home, End, and Enter. Outside a text field, `[` and `]` open the previous and next agent. The back control looks and acts as a button with hover and keyboard-focus feedback. The keyboard shortcuts sheet lists them all.
+In the terminal, the full-size card selects with Up and Down, opens an agent with Enter, expands and folds a phase with Enter, Right, and Left, and scrolls by page. With an empty composer, Left leaves an agent view. Tab and Shift+Tab move between agents in run order. On the web client, the full-size card's list answers the arrow keys, Home, End, and Enter. Outside a text field, the bracket keys open the previous and next agent. The back control looks and acts as a button with hover and keyboard-focus feedback. The keyboard shortcuts sheet lists them all.
 
 ## PI-INTERACTION-045: A running workflow agent keeps its own model seat
 
@@ -504,7 +504,7 @@ A running workflow agent's model picker identifies that agent and changes its se
 
 ## PI-INTERACTION-048: Restart brings everything back
 
-`/restart` in the terminal restarts the background service and the terminal in place, from the active release or, in a source run, the checkout's current source. The terminal returns with the same open tabs, foreground session, and unsent drafts, and other connected clients reconnect on their own. Running work continues as it does after an update, including shell commands that are still running. If the service cannot restart, the terminal stays as it was and says why.
+The restart command in the terminal restarts the background service and the terminal in place, from the active release or, in a source run, the checkout's current source. The terminal returns with the same open tabs, foreground session, and unsent drafts, and other connected clients reconnect on their own. Running work continues as it does after an update, including shell commands that are still running. If the service cannot restart, the terminal stays as it was and says why.
 
 ## PI-INTERACTION-049: Every tap answers at once
 
@@ -600,7 +600,7 @@ Every built-in terminal theme keeps text, controls, and diff content readable on
 
 ## PI-INTERACTION-061: Side questions leave the main chat in place
 
-`/btw` lets a person ask a temporary side question using the current chat's context without interrupting its work. Side questions cannot use tools and do not enter the main transcript or normal session list. Closing a side question stops its pending request and returns to the main chat without changing its draft or scroll position. Side history is temporary and bounded, and side requests keep normal request accounting and inspection.
+The btw command lets a person ask a temporary side question using the current chat's context without interrupting its work. Side questions cannot use tools and do not enter the main transcript or normal session list. Closing a side question stops its pending request and returns to the main chat without changing its draft or scroll position. Side history is temporary and bounded, and side requests keep normal request accounting and inspection.
 
 ## PI-INTERACTION-086: A person can continue or keep a side conversation
 
@@ -644,11 +644,11 @@ Each settings control shows the saved value, and while a change is being saved t
 
 ## PI-INTERACTION-068: A launch opens the nearest established project
 
-A launch with `--project-root`, else a nonempty `FLYWHEEL_PROJECT_ROOT`, opens exactly that existing directory as the project. Otherwise Flywheel opens the nearest directory with a `.flywheel` folder. It searches up from the starting directory through the nearest Git root, or only the starting directory outside Git. A monorepo package with its own folder stays its own project. When none exists and the Git root differs from the starting directory, an interactive terminal launch asks the person which to use. Otherwise the launch uses the Git root, else the starting directory. Deleting a project's `.flywheel` folder makes a later launch choose again.
+A launch with the project root option, else a nonempty matching environment setting, opens that existing directory as the project. Otherwise Flywheel opens the nearest directory with a Flywheel state folder. It searches up from the starting directory through the nearest Git root, or only that directory outside Git. A monorepo package with its own folder stays its own project. When none exists and the Git root differs from the starting directory, an interactive terminal launch asks which to use. Otherwise it uses the Git root, else the starting directory. Deleting the state folder makes a later launch choose again.
 
 ## PI-INTERACTION-069: The account home opens as a project only when named
 
-A launch that opens a project, such as a terminal launch, a headless launch, or `flywheel web`, never finds or falls back to the account home as its project. Such a launch refuses when the account home is the only candidate. The refusal says that the account home holds the account's settings and that running Flywheel elsewhere starts a project there. A paired terminal can open a project on a paired machine instead. Commands that work on the account, such as `flywheel serve` and `flywheel kill`, still run from the account home.
+A launch that opens a project, such as a terminal launch, a headless launch, or the web command, never finds or falls back to the account home as its project. Such a launch refuses when the account home is the only candidate. The refusal says that the account home holds the account's settings and that running Flywheel elsewhere starts a project there. A paired terminal can open a project on a paired machine instead. Commands that work on the account, such as the serve and kill commands, still run from the account home.
 
 ## PI-INTERACTION-070: Status names the working directory apart from the project
 
@@ -656,7 +656,7 @@ When a session's working directory differs from its project root, status and ses
 
 ## PI-INTERACTION-071: CLI subcommands that act on a noun read noun then verb
 
-A Flywheel CLI subcommand that acts on a noun reads noun then verb, separated by a space, such as `flywheel events search` and `flywheel auth login`. Every subcommand that takes a project directory takes it as `--project-root`.
+A Flywheel CLI subcommand that acts on a noun reads noun then verb, separated by a space, such as events search and auth login. Every subcommand that takes a project directory takes it as the project root option.
 
 ## PI-INTERACTION-072: A dismissed notification stays dismissed
 
@@ -664,7 +664,7 @@ Dismissing a notification hides it on every client. While its condition stays un
 
 ## PI-INTERACTION-073: Each client announces new notifications and offers one list
 
-The terminal shows one summary of open notifications at startup and one toast for each new notification. The web client shows a toolbar badge that counts the notifications that still need attention and opens their list, where resolved notifications stay as history. `/notifications` opens the list on each client. A notification offers an action button only when it has an action, and every notification can be dismissed from the list.
+The terminal shows one summary of open notifications at startup and one toast for each new notification. The web client shows a toolbar badge that counts the notifications that still need attention and opens their list, where resolved notifications stay as history. The notifications command opens the list on each client. A notification offers an action button only when it has an action, and every notification can be dismissed from the list.
 
 ## PI-INTERACTION-075: An empty chat leaves no row behind
 
@@ -692,7 +692,7 @@ When the account service exits before it listens and wrote no failure record, th
 
 ## PI-INTERACTION-079: Flywheel state is never offered for commit
 
-In a project under Git, the project's `.flywheel` folder is not offered for commit. Flywheel never edits the project's tracked files to achieve this, the rule does not reach a clone, and a project where it cannot be applied still starts normally.
+In a project under Git, the project's Flywheel state folder is not offered for commit. Flywheel never edits the project's tracked files to achieve this, the rule does not reach a clone, and a project where it cannot be applied still starts normally.
 
 ## PI-INTERACTION-080: Terminal clicks land on a header's text and anywhere in a body
 
@@ -708,4 +708,4 @@ Closing a chat's tab only stops showing the chat. Its running turn, its backgrou
 
 ## PI-INTERACTION-119: Close chat interrupts the turn and leaves workflows running
 
-Close chat is the command `/close`, which acts on the chat in front in every client and is refused in a subagent or a workflow agent. Every client offers Close chat on an active chat's session row, and Close chat asks for no confirmation. It interrupts the running turn as the runtime so that Resume can continue it, stops the chat's background commands, pauses its subagents, and closes the chat. Workflows that the chat started keep running, each with its own Stop.
+Close chat is the close command, which acts on the chat in front in every client and is refused in a subagent or a workflow agent. Every client offers Close chat on an active chat's session row, and Close chat asks for no confirmation. It interrupts the running turn as the runtime so that Resume can continue it, stops the chat's background commands, pauses its subagents, and closes the chat. Workflows that the chat started keep running, each with its own Stop.

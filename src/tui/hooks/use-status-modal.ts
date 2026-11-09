@@ -53,7 +53,7 @@ function autoInstallSummary(policy: UpdateAutoInstall): string {
 /** The Updates row. A build that does not update itself says so alone, since
  *  no policy applies to it. A release or a checkout's source that could not start on
  *  this machine is named first, in the words every client uses, because no
- *  notice names it (UPD-008, UPD-009). For every other state the row shows the policy alone; the
+ *  notice names it (PI-UPDATES-008, PI-UPDATES-009). For every other state the row shows the policy alone; the
  *  composer border names a release to take or to restart into. */
 function updatesSummary(update: UpdateStatusView): string {
   const policy = autoInstallSummary(update.autoInstall)

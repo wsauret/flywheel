@@ -74,7 +74,7 @@ Object.assign(process.env, {
       TEMP: join(home, "tmp"),
       TMP: join(home, "tmp"),
       // The Windows installer writes the user Path in the registry, which no
-      // environment override redirects (UPD-013).
+      // environment override redirects (PI-UPDATES-013).
       FLYWHEEL_NO_MODIFY_PATH: "1",
       PATH: [join(process.env.SystemRoot ?? String.raw`C:\Windows`, "System32"), process.env.SystemRoot ?? String.raw`C:\Windows`, join(process.env.SystemRoot ?? String.raw`C:\Windows`, "System32", "WindowsPowerShell", "v1.0")].join(";"),
     }

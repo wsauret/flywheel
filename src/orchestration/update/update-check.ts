@@ -4,7 +4,7 @@
  *  answer is a candidate release, the statement that this build is already
  *  current, or a reason why nothing could be learned. Nothing here installs,
  *  publishes, or coordinates: a check that answers nothing is an ordinary
- *  outcome, not a failure the user hears about (UPD-018).
+ *  outcome, not a failure the user hears about (PI-UPDATES-018).
  *
  *  The manifest URL is the release channel's mutable pointer, which is what
  *  makes "what is newest" answerable at all. The request follows every

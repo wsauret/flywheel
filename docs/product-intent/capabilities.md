@@ -1,10 +1,10 @@
 # Capabilities Product Intent
 
-This document states the current intended experience for Flywheel's optional capabilities: the modules a user can turn on or off.
+This document states the current intended experience for optional modules, what turning one off removes, and the development module.
 
 ## PI-CAP-001: Capabilities are modular and uniform
 
-Every optional capability is one module that a user can turn off. A module adds the same tools, commands, command-line verbs, views, and notices to every client. Turning a module off removes its contributions everywhere. It keeps the module's saved data, viewable history, and settings, which stay inactive until the module is on again. A module change applies at once in every client without a restart. Work already started finishes and can still be stopped or deleted. An off module's refusals and omissions name the module and say to turn it on in Settings or remove it from `disabled_modules`.
+Every optional capability is one module that a user can turn off. A module adds the same tools, commands, command-line verbs, views, and notices to every client. Turning a module off removes its contributions everywhere. It keeps the module's saved data, viewable history, and settings, which stay inactive until the module is on again. A module change applies at once in every client without a restart. Work already started finishes and can still be stopped or deleted. An off module's refusals and omissions name the module and say to turn it on in Settings or in Flywheel's configuration file.
 
 ## PI-CAP-021: Agents read only guidance that they can follow
 
@@ -12,7 +12,7 @@ When a module is off, or Workflows is Off, no Flywheel instruction, tool text, s
 
 ## PI-CAP-017: Flywheel's own tooling is the development module
 
-Flywheel's own tooling is the `development` module. In a source run it is one module like any other, and released builds do not contain it.
+Flywheel's own tooling is the development module. In a source run it is one module like any other, and released builds do not contain it.
 
 ## PI-CAP-018: A module that builds on another is off while that module is off
 
@@ -24,7 +24,7 @@ Workflows has one setting with the values Off, Ask, and On. Ask needs Ask User o
 
 ## PI-CAP-002: Modules stay on unless the person turns them off
 
-Every module is enabled by default, and each one turns on and off with no confirmation, except that a bulk change that turns off every module asks first. `flywheel.toml` records only the modules that the person turned off, in `disabled_modules`, so a module that a newer release adds is on, even when the person saved a module selection before. An invalid module selection is not an opt-out: it follows the configuration-file rules of PI-INTERACTION-076, so Flywheel keeps the last valid selection, or the default selection when no selection was ever valid.
+Every module is enabled by default, and each one turns on and off with no confirmation, except that a bulk change that turns off every module asks first. Flywheel's configuration file records only the modules that the person turned off. So a module that a newer release adds is on, even when the person saved a module selection before. An invalid module selection is not an opt-out: it follows the configuration-file rules of PI-INTERACTION-076, so Flywheel keeps the last valid selection, or the default selection when no selection was ever valid.
 
 ## PI-CAP-003: An HTTP MCP server can use Claude as its client
 
@@ -68,7 +68,7 @@ When one module's part of a screen (its status line, panel, view, or badge) fail
 
 ## PI-CAP-009: Doctor reports each enabled module separately
 
-`/doctor` reports, in its own section, the health of each enabled module that has a health check, and says when a section needs the person to act. A check that fails is reported in its section and does not stop the other checks. A module that is off adds no section.
+The doctor command reports, in its own section, the health of each enabled module that has a health check, and says when a section needs the person to act. A check that fails is reported in its section and does not stop the other checks. A module that is off adds no section.
 
 ## PI-CAP-010: Agent file changes carry Git AI attribution
 

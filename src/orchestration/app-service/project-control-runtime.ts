@@ -327,7 +327,7 @@ export async function createProjectControlRuntime(options: ProjectControlRuntime
       // A state Worker that ends before it serves is this build failing to
       // open the project, as an executor that ends before ready is: the
       // fallback counts it, so a source that cannot recover the store
-      // returns the lane to its proved build (UPD-008, UPD-009).
+      // returns the lane to its proved build (PI-UPDATES-008, PI-UPDATES-009).
       if (!state.available) options.buildProof?.failedToOpen()
       throw error
     }

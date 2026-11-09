@@ -71,7 +71,7 @@ export function createAccountUpdates(options: AccountUpdatesOptions): AccountUpd
   const view = (): UpdateStatusView => {
     const update = service.status();
     // A refusal can arrive after the notice settled, while an older release
-    // serves in place of a newer build that failed (UPD-008, UPD-012).
+    // serves in place of a newer build that failed (PI-UPDATES-008, PI-UPDATES-012).
     const showNotice = releaseNotice !== undefined && update.status.kind !== "refused";
     return { ...update, revision: update.revision + noticeRevision, ...(showNotice ? { releaseNotice } : {}) };
   };

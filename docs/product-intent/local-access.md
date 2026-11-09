@@ -1,6 +1,6 @@
 # Local Access Product Intent
 
-This document states the current intended experience for reaching a Flywheel runtime from a browser on the machine that runs it.
+This document states the current intended experience for opening a project's sessions in a browser on the machine that runs the runtime.
 
 ## PI-LOCAL-001: One command opens the project in the browser
 

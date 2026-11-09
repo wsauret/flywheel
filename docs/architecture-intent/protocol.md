@@ -1,6 +1,6 @@
 # Protocol Architecture Intent
 
-This file states the runtime and client contract and the boundaries that govern how clients render runtime state.
+This file states how the runtime and client contract and the client rendering boundaries are organized.
 
 ## ARCH-PROTOCOL-001: The runtime client protocol is the only client boundary
 

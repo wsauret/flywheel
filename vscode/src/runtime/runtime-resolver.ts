@@ -17,7 +17,7 @@ import { isVersionAtLeast } from "./supervisor.js"
  *
  *  The first compatible candidate wins. A candidate older than the minimum is
  *  reported rather than replaced: installing over it would bypass the
- *  account's own update setting (UPD-016). */
+ *  account's own update setting (PI-UPDATES-016). */
 
 /** The oldest Flywheel this build serves an editor from. It names a public
  *  release, never an unreleased one: a checkout reports the last public
