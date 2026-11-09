@@ -52,6 +52,8 @@ describe("Harbor config resolution", () => {
     const resolveAll = (list: typeof listTasks, extra: string[] = []) => resolveHarborConfig([...launchArgs, ...extra], { cwd: temporaryDirectory("harbor-config-"), env: {}, listTasks: list });
     const all = await resolveAll(listTasks, ["--round", "r1"]);
     expect(all.taskNames).toEqual(["terminal-bench/adaptive-rejection-sampler", "terminal-bench/kv-store-grpc"]);
+    // Harbor Hub refuses a job that names too many tasks, so a whole-benchmark job names the exclusions.
+    expect(all.datasetFilter).toEqual({ exclude_task_names: ["terminal-bench/qemu-startup", "terminal-bench/qemu-alpine-ssh"] });
     expect(all).toMatchObject({ split: "all", round: { name: "r1", purpose: "measure" }, expectedTrials: 6, grade: "leaderboard_valid" });
     // An exclusion that the dataset does not hold means the descriptor no longer names the board's whole benchmark.
     await expect(resolveAll(async () => dataset.slice(0, 3))).rejects.toThrow("holds no excluded task terminal-bench/qemu-startup");

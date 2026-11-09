@@ -75,6 +75,8 @@ export interface ResolvedHarborConfig {
   /** Set when the run executes on Harbor Hub instead of local Docker. */
   hosted?: HarborHosting;
   taskNames: string[];
+  /** The filter of Harbor's dataset selection that selects `taskNames`. */
+  datasetFilter: DatasetFilter;
   attempts: number;
   concurrency: number;
   expectedTrials: number;
@@ -220,12 +222,19 @@ function harborHosting(organization: string | undefined, prebuild: boolean): Har
   return organization === undefined ? {} : { organization: requiredName(organization, "--organization or FLYWHEEL_HARBOR_HUB_ORG") };
 }
 
-/** The tasks a run selects: a named split of the benchmark, an explicit list
- *  in which a bare name takes the benchmark's task namespace, or, with
- *  neither, every task of the pinned dataset except the benchmark's
- *  exclusions. An exclusion that the dataset does not hold refuses the run,
- *  because the run would then not be the board's whole benchmark. */
-async function selectedTasks(benchmark: HarborBenchmark, split: string | undefined, taskList: string[] | undefined, listTasks: NonNullable<ResolveOptions["listTasks"]>): Promise<string[]> {
+/** Harbor's dataset filter: the tasks to include, or the tasks to leave out
+ *  of the whole dataset. Harbor Hub refuses a job that names too many tasks
+ *  (111 were refused, 87 were accepted), so a run of every task names the
+ *  exclusions instead. The dataset ref is pinned by digest, so both forms
+ *  select the same tasks. */
+type DatasetFilter = { task_names: string[] } | { exclude_task_names: string[] };
+
+/** The tasks a run selects and the filter that selects them: a named split of
+ *  the benchmark, an explicit list in which a bare name takes the benchmark's
+ *  task namespace, or, with neither, every task of the pinned dataset except
+ *  the benchmark's exclusions. An exclusion that the dataset does not hold
+ *  refuses the run, because the run would then not be the board's whole benchmark. */
+async function selectedTasks(benchmark: HarborBenchmark, split: string | undefined, taskList: string[] | undefined, listTasks: NonNullable<ResolveOptions["listTasks"]>): Promise<{ taskNames: string[]; datasetFilter: DatasetFilter }> {
   if (split !== undefined && taskList !== undefined) throw new Error("select the tasks with at most one of --split <name> and --task-names <a,b>; give neither to run every task");
   const namespaced = (name: string): string => name.includes("/") ? name : `${benchmark.taskNamespace}/${name}`;
   if (split === undefined && taskList === undefined) {
@@ -233,7 +242,7 @@ async function selectedTasks(benchmark: HarborBenchmark, split: string | undefin
     const excluded = new Set(benchmark.excluded.map(({ task }) => namespaced(task)));
     const missing = [...excluded].filter((task) => !listed.includes(task));
     if (missing.length > 0) throw new Error(`${benchmark.dataset.name} holds no excluded task ${missing.join(", ")}; correct the exclusions of ${benchmark.id}`);
-    return listed.filter((task) => !excluded.has(task));
+    return { taskNames: listed.filter((task) => !excluded.has(task)), datasetFilter: { exclude_task_names: [...excluded] } };
   }
   const names = split === undefined ? taskList! : Object.hasOwn(benchmark.splits, split) ? benchmark.splits[split] : undefined;
   if (names === undefined) {
@@ -241,7 +250,8 @@ async function selectedTasks(benchmark: HarborBenchmark, split: string | undefin
     throw new Error(`${benchmark.id} has no split ${split}; its splits: ${splits.length === 0 ? "none" : splits.join(", ")}; give no --split to run every task`);
   }
   if (names.length === 0) throw new Error("an explicit bounded --task-names selection is required for an exact denominator");
-  return names.map(namespaced);
+  const taskNames = names.map(namespaced);
+  return { taskNames, datasetFilter: { task_names: taskNames } };
 }
 
 export function harborDisplayModel(model: string): string {
@@ -337,7 +347,7 @@ export async function resolveHarborConfig(args: string[], options: ResolveOption
   const agentPackage = harborAgentPackage(cliAgentRepository, claudeTokenKeychainItem);
   const hosting = hosted ? harborHosting(cliOrganization, prebuild) : undefined;
   const authProfile = requiredName(cliAuthProfile, "--auth-profile");
-  const taskNames = await selectedTasks(benchmark, split, taskList, options.listTasks ?? harborDatasetTasks);
+  const { taskNames, datasetFilter } = await selectedTasks(benchmark, split, taskList, options.listTasks ?? harborDatasetTasks);
   // A run of every task measures the reserved split that names the whole benchmark.
   const measured = taskList === undefined ? split ?? ALL_TASKS : undefined;
   const jobsDirectory = resolve(options.cwd, cliJobsDirectory ?? "jobs");
@@ -360,7 +370,7 @@ export async function resolveHarborConfig(args: string[], options: ResolveOption
     authProfile, expectedInteraction: harborInteraction(model), profileSha256, flywheelConfig, model,
     dataset: benchmark.dataset.name, datasetRef: benchmark.dataset.ref, agentPackage,
     ...(hosting ? { hosted: hosting } : {}),
-    taskNames, attempts, concurrency, expectedTrials: taskNames.length * attempts, dryRun, prebuild, grade, ...(warning === undefined ? {} : { warning }),
+    taskNames, datasetFilter, attempts, concurrency, expectedTrials: taskNames.length * attempts, dryRun, prebuild, grade, ...(warning === undefined ? {} : { warning }),
     jobName, jobsDirectory, timeoutMultipliers, resourceOverrides,
   };
 }

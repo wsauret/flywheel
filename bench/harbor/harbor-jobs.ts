@@ -143,7 +143,7 @@ export function hostedJobConfig(config: ResolvedHarborConfig, publication: Agent
 }
 
 function datasetSelection(config: ResolvedHarborConfig): JsonMap {
-  return { name: config.dataset, ref: config.datasetRef, task_names: config.taskNames };
+  return { name: config.dataset, ref: config.datasetRef, ...config.datasetFilter };
 }
 
 /** The local Docker job config of a run: the same agent as a hosted run,
