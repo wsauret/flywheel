@@ -71,6 +71,15 @@ export function isAgentTimeout(result: JsonMap | undefined): boolean {
   return exceptionType(result) === "AgentTimeoutError";
 }
 
+/** The reward that the board gives a trial: the verifier's reward, or 0 when
+ *  the verifier ran past its timeout without one. Such a trial is the agent's
+ *  failure, as when its change leaves the tests hanging, and the board scores
+ *  it a fail, not grader-lost. */
+function boardReward(result: JsonMap | undefined): number | null | undefined {
+  const score = reward(result);
+  return score === undefined && exceptionType(result) === "VerifierTimeoutError" ? 0 : score;
+}
+
 /** The store analysis that the trial recorded, or undefined when it recorded
  *  none it can decode. The tool outcome analyzer refuses such a trial, so here
  *  it only lacks the evidence that the analysis would add. */
@@ -156,7 +165,7 @@ export async function reconcileDisclosureLedger(options: ReconcileOptions): Prom
     const result = resultEvidence.value;
     const task = result?.task_name;
     const trialName = result?.trial_name;
-    const score = reward(result);
+    const score = boardReward(result);
     const summaryAdmitted = summaryEvidence.present ? summaryEvidence.valid : isAgentTimeout(result);
     const valid = resultEvidence.present && resultEvidence.valid && summaryAdmitted && typeof task === "string" && task.length > 0 && typeof trialName === "string" && trialName.length > 0 && score !== undefined;
     evidenceValid &&= valid;

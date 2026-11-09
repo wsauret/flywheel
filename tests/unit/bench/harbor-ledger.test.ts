@@ -67,6 +67,16 @@ describe("Harbor disclosure ledger", () => {
     expect(ledger.outcome).toBe("harness_nonzero_exit");
   });
 
+  test("scores a verifier timeout without a reward as a fail, as the board does", async () => {
+    const root = temporaryDirectory("tb-ledger-verifier-timeout-");
+    await mkdir(join(root, "a__hash", "agent"), { recursive: true });
+    await writeFile(join(root, "a__hash", "agent", "flywheel-run-summary.json"), "{}");
+    await writeFile(join(root, "a__hash", "result.json"), JSON.stringify({ task_name: "a", trial_name: "a__hash", verifier_result: null, exception_info: { exception_type: "VerifierTimeoutError" } }));
+    const ledger = await reconcileDisclosureLedger({ trialsDirectory: root, taskNames: ["a"], attempts: 1, harborExitCode: 0 });
+    expect(ledger.rows).toEqual([{ id: "a__hash", task: "a", reward: 0, category: "cancelled", cost: 0 }]);
+    expect(ledger.outcome).toBe("completed");
+  });
+
   test("reconciled null-only trials have no scored trials", async () => {
     const root = temporaryDirectory("tb-ledger-unscored-");
     await trial(root, "a__hash", "a", "a__hash", {}, null);
