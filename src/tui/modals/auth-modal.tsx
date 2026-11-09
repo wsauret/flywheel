@@ -8,7 +8,7 @@ import { ModalFrame } from "@tui/components/modal-frame"
 import { createEffect, createMemo, createSignal, For, Index, Match, on, onCleanup, Show, Switch, type Accessor } from "solid-js"
 import { ControlledTextField } from "../components/controlled-text-field.js"
 import type { TextEditorPresentation } from "../keymap/text-entry.js"
-import { filterProviderModelRows, soleAccount, type AuthRow, type AuthView } from "../hooks/auth-modal-options.js"
+import { filterProviderModelRows, providerModelsCanDeselect, soleAccount, type AuthRow, type AuthView } from "../hooks/auth-modal-options.js"
 import type { DisconnectConfirmation } from "../hooks/auth-modal-disconnect.js"
 import type { RuntimeAuthLoginPrompt } from "../../protocol/auth-login-protocol-types.js"
 import type { AuthAccountAttention, AuthProviderAttention, AuthProviderSource, RuntimeAuthLoginQuestion } from "../../protocol/auth-status-protocol-types.js"
@@ -297,7 +297,7 @@ function ProviderModelsView(props: { view: Extract<AuthView, { kind: "provider-m
           return <ProviderModelRowView row={row()} index={index()} cursor={props.view.cursor} width={props.width} onSelect={props.onSelect} />
         }}</For>
       </scrollbox>
-      <box paddingTop={1}><ModalFooter rows={[AUTH_CONTROL_COPY.modelSelectionNavigation]} /></box>
+      <box paddingTop={1}><ModalFooter rows={providerModelsCanDeselect(props.view) ? [AUTH_CONTROL_COPY.modelSelection, AUTH_CONTROL_COPY.modelSelectionNavigation] : [AUTH_CONTROL_COPY.modelSelectionNavigation]} /></box>
     </box>
   )
 }

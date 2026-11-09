@@ -6,7 +6,7 @@ import type { RuntimeAuthStatusScope } from "../../protocol/auth-status-protocol
 import { observeModelCatalog } from "./observe-model-catalog.js"
 import { createListModalKeys } from "../components/modal-list-keys.js"
 import { createControlledTextEditor, SINGLE_LINE_TEXT_ENTRY_POLICY } from "../keymap/text-entry.js"
-import { filterProviderModelRows, type AuthView } from "./auth-modal-options.js"
+import { filterProviderModelRows, providerModelsCanDeselect, type AuthView } from "./auth-modal-options.js"
 import { providerCatalogStatusText } from "../modals/provider-catalog-text.js"
 
 interface AuthModalModelActionDeps {
@@ -315,13 +315,6 @@ function adoptServerView(current: Extract<AuthView, { kind: "provider-models" }>
   const rows = filterProviderModelRows(result.rows, current.query)
   const kept = rows.findIndex((row) => row.modelId === selected)
   return { ...current, profileId: result.profileId, target: result.target, providerTitle: result.providerDisplayName, rows: result.rows, eligibilityRevision: result.eligibilityRevision, catalog: result.catalog, preferenceAvailable: result.preferenceAvailable, recheckAvailable: result.recheckAvailable, audit: result.audit, error: undefined, cursor: kept < 0 ? Math.min(current.cursor, Math.max(0, rows.length - 1)) : kept }
-}
-
-function providerModelsCanDeselect(view: AuthView): boolean {
-  return view.kind === "provider-models"
-    && view.catalog?.kind === "available"
-    && view.catalog.liveOutcome !== "authentication-invalid"
-    && view.rows.length > 0
 }
 
 function sameTarget(left: ProviderModelTarget, right: ProviderModelTarget): boolean {

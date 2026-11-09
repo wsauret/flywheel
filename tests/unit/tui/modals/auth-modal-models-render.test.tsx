@@ -131,6 +131,7 @@ describe("AuthModal provider models", () => {
       expect(frame).toContain("· Unavailable · Allow training routes")
       expect(frame).not.toContain("· Free")
       expect(frame).not.toContain("alt+a auto new")
+      expect(frame).toContain("type search · ctrl+d deselect all · space/enter toggle")
       expect(frame).toContain("↑↓ navigate · ← back · esc close")
     } finally {
       result.renderer.destroy()

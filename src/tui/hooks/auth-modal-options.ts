@@ -89,6 +89,14 @@ export function filterProviderModelRows(rows: readonly ProviderModelRow[], query
   return normalized.length === 0 ? rows : rows.filter((row) => row.modelId.toLowerCase().includes(normalized))
 }
 
+/** Whether ctrl+d can clear the provider's model list. The model list footer shows the shortcut under the same condition. */
+export function providerModelsCanDeselect(view: AuthView): boolean {
+  return view.kind === "provider-models"
+    && view.catalog?.kind === "available"
+    && view.catalog.liveOutcome !== "authentication-invalid"
+    && view.rows.length > 0
+}
+
 
 export function buildProviderOptions(statuses: readonly AuthProviderStatus[], consent?: SubscriptionSpendConsentView): ProviderOption[] {
   return statuses.toSorted((left, right) =>
