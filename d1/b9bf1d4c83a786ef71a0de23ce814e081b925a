@@ -1,0 +1,18 @@
+bench/harbor/METHODOLOGY.md
+  h_4b47e9e4a8b456 95
+bench/harbor/disclosure-ledger.ts
+  h_4b47e9e4a8b456 74-82,168
+tests/unit/bench/harbor-ledger.test.ts
+  h_4b47e9e4a8b456 70-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d1b9bf1d4c83a786ef71a0de23ce814e081b925a",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
