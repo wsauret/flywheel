@@ -1,0 +1,61 @@
+tests/unit/orchestration/agent-runtime/context/loop-planned-compaction.test.ts
+  h_4b47e9e4a8b456 211,230,255,260-268,270-273,276-277,290-292,307-308
+  h_4b47e9e4a8b456 13,274-275,288,337,372,389,508
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 20,241-243,345,351,386
+src/infra/capability-text.ts
+  h_4b47e9e4a8b456 7-8,18-21
+scripts/check-bundled-skills.ts
+  h_4b47e9e4a8b456 27
+tests/unit/orchestration/agent-runtime/unattended-chat-prompt.test.ts
+  h_4b47e9e4a8b456 159-181
+src/orchestration/agent-runtime/agent-loop-compaction-state.ts
+  h_4b47e9e4a8b456 23-28,93,196,198-202,204-209,230-236,239-243,246,249-250
+tests/unit/orchestration/agent-runtime/context/notes-capability.test.ts
+  h_4b47e9e4a8b456 162,164-165,169,185-186
+  h_4b47e9e4a8b456 44,82-85
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 119
+src/infra/agent-assets/session-notes.ts
+  h_4b47e9e4a8b456 2,20,30-31,39-41,45-47,57
+  h_4b47e9e4a8b456 22
+tests/unit/orchestration/agent-runtime/context/loop-interruption-barrier.test.ts
+  h_4b47e9e4a8b456 245
+tests/unit/orchestration/agent-runtime/context/loop-outgoing-context.test.ts
+  h_4b47e9e4a8b456 237,246
+  h_4b47e9e4a8b456 336-340
+tests/unit/orchestration/agent-runtime/session-notes-prompts.test.ts
+  h_4b47e9e4a8b456 13,44-45,117,122
+  h_4b47e9e4a8b456 50
+tests/unit/orchestration/agent-runtime/context/loop-finite-wait.test.ts
+  h_4b47e9e4a8b456 448
+src/orchestration/agent-runtime/agent-loop.ts
+  h_4b47e9e4a8b456 711-712
+tests/unit/orchestration/agent-runtime/context/loop-person-turn-surface.test.ts
+  h_4b47e9e4a8b456 30
+tests/unit/orchestration/agent-runtime/context/loop-tool-behavior.test.ts
+  h_4b47e9e4a8b456 20-21
+tests/unit/orchestration/agent-runtime/context/notes-only-compaction.test.ts
+  h_4b47e9e4a8b456 166-168
+tests/unit/orchestration/agent-runtime/runtime-assembly-development-tools.test.ts
+  h_4b47e9e4a8b456 332-333,339
+tests/unit/orchestration/chat/_chat-session-agent-runtime-fixtures.ts
+  h_4b47e9e4a8b456 334-340
+tests/unit/orchestration/chat/chat-compact.test.ts
+  h_4b47e9e4a8b456 64-65,127
+tests/unit/orchestration/chat/chat-session-agent-runtime-resume.test.ts
+  h_4b47e9e4a8b456 489-493
+tests/unit/orchestration/workflow-host/workflow-interruption.test.ts
+  h_4b47e9e4a8b456 548-552
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c40d653fd4e46436616e0a1bdc11ad60d5e9da41",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}

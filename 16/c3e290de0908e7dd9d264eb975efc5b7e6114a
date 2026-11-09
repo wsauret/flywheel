@@ -1,0 +1,20 @@
+src/infra/file-edit/string-edit.ts
+  h_4b47e9e4a8b456 492,504-517,531-532,534,536
+src/orchestration/agent-runtime/tools/streaming-edit-validator.ts
+  h_4b47e9e4a8b456 6,138,140,142,144-146
+tests/unit/infra/file-edit/string-edit.test.ts
+  h_4b47e9e4a8b456 87,91,150,160,162-163,171
+tests/unit/orchestration/agent-runtime/tools/streaming-edit-validator.test.ts
+  h_4b47e9e4a8b456 58,77-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "16c3e290de0908e7dd9d264eb975efc5b7e6114a",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
