@@ -22,7 +22,7 @@ Each descriptor pins the dataset to an exact `sha256:` ref and states the tasks 
 
 ## Requirements
 
-- The Harbor CLI, `harbor`, on `PATH`. The launcher uses Harbor's own Python for task resolution, config validation, and the package builder, so a dry run also needs it. A hosted run needs a Harbor Hub login.
+- The Harbor CLI, `harbor`, on `PATH`. The launcher uses Harbor's own Python for task resolution, config validation, and the package builder, so a dry run also needs it. A hosted run needs a Harbor Hub login and Harbor 0.25.1 or later (`0.25.1.dev202611090753` is the first build): from that version, Hub and the CLI read the secrets of an agent as selections with a name, a tag, and a variable name, and an earlier CLI refuses the generated job config at validation.
 - Docker, for a local run only.
 - Bun and Git. The package builder builds the Flywheel executable from the Git blobs of HEAD.
 - A public GitHub agent repository that this host can push to. Name it with `--agent-repo <owner/repo>` or `FLYWHEEL_HARBOR_AGENT_REPO`. It has no default.

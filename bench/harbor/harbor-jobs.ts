@@ -132,7 +132,8 @@ export function hostedJobConfig(config: ResolvedHarborConfig, publication: Agent
     agents: [{
       name: "acp",
       source: { type: "github", repo: publication.repository, ref: publication.commit, path: ".", manifest: PACKAGE_MANIFEST },
-      secrets: [SNAPSHOT_SECRET],
+      // Harbor 0.25.1 selects each secret by stored name and tag and names the variable it becomes in the trial.
+      secrets: [{ name: SNAPSHOT_SECRET, tag: "default", as: SNAPSHOT_SECRET }],
       ...agentFields(config, allowedHosts),
     }],
     job_secrets: { [SNAPSHOT_SECRET]: { from_env: SNAPSHOT_SECRET } },

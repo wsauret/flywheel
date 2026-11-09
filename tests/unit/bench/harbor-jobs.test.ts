@@ -53,7 +53,7 @@ describe("Harbor jobs", () => {
       job_name: "flywheel-terminal-bench-2.1-gpt-6.1-terra",
       organization: "org",
       credential_mode: "direct",
-      agents: [{ name: "acp", source: { type: "github", repo: "owner/agent", ref: PUBLICATION.commit, path: ".", manifest: "harbor-agent.json" }, secrets: ["FLYWHEEL_AUTH_SNAPSHOT"], env: { FLYWHEEL_HARBOR_PROFILE_SHA256: manifest.profile_sha256 } }],
+      agents: [{ name: "acp", source: { type: "github", repo: "owner/agent", ref: PUBLICATION.commit, path: ".", manifest: "harbor-agent.json" }, secrets: [{ name: "FLYWHEEL_AUTH_SNAPSHOT", tag: "default", as: "FLYWHEEL_AUTH_SNAPSHOT" }], env: { FLYWHEEL_HARBOR_PROFILE_SHA256: manifest.profile_sha256 } }],
       job_secrets: { FLYWHEEL_AUTH_SNAPSHOT: { from_env: "FLYWHEEL_AUTH_SNAPSHOT" } },
       datasets: [{ name: "terminal-bench/terminal-bench-2-1", ref: "sha256:7d7bdc1cbedad549fc1140404bd4dc45e5fd0ea7c4186773687d177ad3a0699a", task_names: ["terminal-bench/kv-store-grpc"] }],
       n_attempts: 1,
