@@ -1,0 +1,38 @@
+src/orchestration/agent-runtime/tools/types.ts
+  h_4b47e9e4a8b456 63-64,98
+src/orchestration/app-service/project-state-sessions.ts
+  h_4b47e9e4a8b456 11,111
+src/orchestration/modules/workflows/run-facts.ts
+  h_4b47e9e4a8b456 34
+src/orchestration/modules/workflows/run-record.ts
+  h_4b47e9e4a8b456 10,20,50,67
+src/orchestration/session/child-session-publication.ts
+  h_4b47e9e4a8b456 8,52-53
+src/orchestration/workflow-host/controller.ts
+  h_4b47e9e4a8b456 365,538
+src/orchestration/workflow-host/launch-origin.ts
+  h_4b47e9e4a8b456 38-40
+src/orchestration/workflow-host/launch-pipeline.ts
+  h_4b47e9e4a8b456 17,19,63-65,140,143,160,291
+src/orchestration/workflow-host/publish.ts
+  h_4b47e9e4a8b456 28,280,299
+src/orchestration/workflow-host/run-record.ts
+  h_4b47e9e4a8b456 2,28-29
+src/orchestration/workflow-host/workflow-admission.ts
+  h_4b47e9e4a8b456 17-18,22,93-98,102,104-116
+src/workflows/run-facts.ts
+  h_4b47e9e4a8b456 13-22,45-47
+tests/unit/orchestration/workflow-host/workflow-controller-launch.test.ts
+  h_4b47e9e4a8b456 22,32,468-477,480,482,485-495,498-515
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ebc39c00171668eb4dea88df8529073ff1d83d5b",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
