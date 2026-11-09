@@ -1,0 +1,22 @@
+scripts/check-bundled-skills.ts
+  h_4b47e9e4a8b456 40,93-94,96-97
+src/infra/agent-assets/system-prompt.md
+  h_4b47e9e4a8b456 23-25,27
+src/infra/capability-text.ts
+  h_4b47e9e4a8b456 6-8
+src/orchestration/agent-runtime/system-prompt.ts
+  h_4b47e9e4a8b456 239-254,352
+tests/unit/orchestration/agent-runtime/unattended-chat-prompt.test.ts
+  h_4b47e9e4a8b456 88-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "65e76a833c4e4d65d906fa67d0142d564b7a9885",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
