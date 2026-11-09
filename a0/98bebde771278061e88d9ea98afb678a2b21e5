@@ -1,0 +1,18 @@
+src/orchestration/agent-runtime/request-kernel.ts
+  h_4b47e9e4a8b456 5-7,100-134,148-157
+src/orchestration/modules/subagents.ts
+  h_4b47e9e4a8b456 2,280
+src/orchestration/modules/subagents/config.ts
+  h_4b47e9e4a8b456 1-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a098bebde771278061e88d9ea98afb678a2b21e5",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
