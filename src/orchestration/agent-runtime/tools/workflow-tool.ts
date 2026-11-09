@@ -20,7 +20,7 @@ import { stageWorkflowSource, type LaunchingSessionAuthority } from "../../workf
 import type { VerificationUncertaintyKind, WorkflowVerificationResult } from "../../../workflows/vm/verify-types.js";
 import type { WorkflowAgentModels } from "../../config/workflow-agent-models.js";
 
-import type { RuntimeToolInput } from "./types.js";
+import type { CapabilityAccess, RuntimeToolInput } from "./types.js";
 /** Result of an atomic workflow aggregate publication. The parent is the
  * invocation-owning chat, not a workflow/session alias. */
 export interface PublishedWorkflowLaunch {
@@ -109,6 +109,7 @@ interface WorkflowToolCallContext {
   readonly modelRequestId?: string;
   readonly parentToolUseId?: string;
   readonly conversationId?: string;
+  readonly capabilityAccess?: CapabilityAccess;
 }
 
 interface WorkflowToolDefinition<Result> {
@@ -241,7 +242,13 @@ export function createWorkflowToolCore(deps: LaunchableWorkflowToolDeps): Workfl
         ...(typeof input.cwd === "string" ? { launchCwd: input.cwd } : {}),
         ...(taskSummary(input) === undefined ? {} : { summary: taskSummary(input) }),
         ...(launchInput === undefined ? {} : { input: launchInput }),
-        model: { conversationId, toolUseId, confirmation: suppliedConfirmation(input), authority: deps.authority },
+        model: {
+          conversationId,
+          toolUseId,
+          confirmation: suppliedConfirmation(input),
+          authority: deps.authority,
+          ...(context.capabilityAccess ? { capabilityAccess: context.capabilityAccess } : {}),
+        },
       });
 
       // Refusal precedes aggregate publication and background registration.

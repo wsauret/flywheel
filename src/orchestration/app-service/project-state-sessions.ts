@@ -8,6 +8,7 @@ import { SessionLifecycleStateSchema } from "../session/types.js"
 import { PersistedAgentMessageSchema } from "../session/conversation/conversation-entry-schemas.js"
 import { persistedToConversationMessage } from "../session/conversation/conversation-tree-context.js"
 import { WorkflowSessionFactSchema } from "../../workflows/vm/session-facts.js"
+import { WorkflowCapabilityBoundarySchema } from "../../workflows/run-facts.js"
 import type { ChildSessionDeletionTarget } from "../session/child-session-deletion.js"
 import { generateSessionId } from "../../infra/session-id.js"
 import { fromStateError, StateErrorSchema, toStateError } from "./project-state-errors.js"
@@ -107,6 +108,7 @@ export const PublishWorkflowInputSchema = Schema.Struct({
   workflowDefinitionId: Schema.String,
   executionCwd: Schema.optionalKey(Schema.String),
   launchedFrom: WorkflowLaunchBindingSchema,
+  capabilityBoundary: Schema.optionalKey(WorkflowCapabilityBoundarySchema),
   initialRoles: RoleAssignmentsSchema,
   authProfileId: Schema.optionalKey(Schema.String),
   facts: Schema.Array(WorkflowSessionFactSchema),

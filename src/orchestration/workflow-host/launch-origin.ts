@@ -7,6 +7,7 @@ import type { WorkflowCallSource, WorkflowLaunchSource } from "../../infra/tools
 import type { DecisionRefusal } from "../session/agent-input-decision.js"
 import type { AgentInputDecision, WorkflowLaunchApprovalSource } from "../session/agent-input-facts.js"
 import type { ProjectDefinitionRegistryRevision } from "../../workflows/definition-registry.js"
+import type { CapabilityAccess } from "../agent-runtime/tools/types.js"
 import { describeDefinitionRefusal, readPathWorkflow, stageWorkflowSource, workflowFileName, type LaunchingSessionAuthority } from "./path-workflow.js"
 
 /** What every refusal of a model-originated launch ends with. The model cannot
@@ -33,6 +34,12 @@ export interface ModelWorkflowLaunchContext {
    *  may grant its agents. The tool derives it from its runner's planned
    *  tools. */
   readonly authority: LaunchingSessionAuthority
+  /** The capability boundary of the calling agent, as its tool call holds it.
+   *  The launch records its ceiling and whether a person reads the tree with
+   *  the run, so the workflow's agents keep them in every start of the run
+   *  (PI-AGENT-121).
+   *  Absent when the call's context holds no capability policy. */
+  readonly capabilityAccess?: CapabilityAccess
 }
 
 export interface ModelWorkflowLaunchOrigin extends ModelWorkflowLaunchContext {

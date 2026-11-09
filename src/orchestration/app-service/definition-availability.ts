@@ -327,17 +327,19 @@ interface RequirementClosure {
 
 /** What one workflow agent composes from its inline brief and persona. */
 interface AgentComposition {
+  readonly briefId: string
   readonly dependencies: readonly string[]
   readonly subagents: readonly string[]
   readonly persona: string | undefined
 }
 
-function agentCompositions(workflow: WorkflowDefinition): readonly AgentComposition[] {
+/** What each inline brief of `workflow` composes, in brief order. */
+export function agentCompositions(workflow: WorkflowDefinition): readonly AgentComposition[] {
   const records = agentRecords(workflow)
-  return [...workflowBriefs(workflow)].map(([definitionId, brief]) => {
-    const keys = records.get(definitionId)?.keys
+  return [...workflowBriefs(workflow)].map(([briefId, brief]) => {
+    const keys = records.get(briefId)?.keys
     const persona = keys?.persona
-    return { dependencies: brief.procedure.dependencies, subagents: brief.procedure.subagents, persona }
+    return { briefId, dependencies: brief.procedure.dependencies, subagents: brief.procedure.subagents, persona }
   })
 }
 

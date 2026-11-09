@@ -7,7 +7,7 @@ import { heldProjection } from "../../../infra/projection-registry.js"
 import { factTypes } from "../../../infra/event-registry.js"
 import { readRunDefinitionLineage } from "../../../workflows/definition-provenance-projection.js"
 import { readWorkflowInputSeed } from "../../../workflows/context-bundle/context-recovery.js"
-import { parseWorkflowRunFact, WorkflowRunFactSchemas } from "../../../workflows/run-facts.js"
+import { parseWorkflowRunFact, WorkflowRunFactSchemas, type WorkflowCapabilityBoundary } from "../../../workflows/run-facts.js"
 import { nextRunCut, type WorkflowRunCut, type WorkflowRunReader, type WorkflowRunRecord } from "../../workflow-host/run-record.js"
 import { readWorkflowRecovery } from "../../../workflows/vm/recovery-fold.js"
 import type { Attempt } from "../../../workflows/vm/graph-types.js"
@@ -17,6 +17,7 @@ interface RunRegistration {
   readonly position: number
   readonly run: WorkflowRunRecord
   readonly request: string | null
+  readonly capabilityBoundary: WorkflowCapabilityBoundary | undefined
   readonly cut: WorkflowRunCut | null
 }
 /** Keyed with structural sharing, so a fact copies the path to its own run
@@ -46,6 +47,7 @@ export function createWorkflowSettingsReader(reader: AsyncEventReadSurface): Omi
     read: async (id) => (await registration(id))?.run ?? null,
     readCut: async (id) => (await registration(id))?.cut ?? null,
     readCreationRequest: async (id) => (await registration(id))?.request ?? null,
+    readCapabilityBoundary: async (id) => (await registration(id))?.capabilityBoundary,
     listForParent: (parentSessionId) => registered((run) => run.launchedFrom.parentSessionId === parentSessionId),
     list: () => registered(() => true),
   }
@@ -62,7 +64,7 @@ function reduceRunIndex(state: RunIndex, event: StoredFact): RunIndex {
   switch (fact.type) {
     case "workflow.run.registered":
       if (previous) throw new Error(`Workflow ${id} has multiple run registrations`)
-      return { runs: HashMap.set(state.runs, id, { position: event.position, run: { ...fact.payload.settings, launchedFrom: fact.payload.launchedFrom }, request: fact.payload.request, cut: null }) }
+      return { runs: HashMap.set(state.runs, id, { position: event.position, run: { ...fact.payload.settings, launchedFrom: fact.payload.launchedFrom }, request: fact.payload.request, capabilityBoundary: fact.payload.capabilityBoundary, cut: null }) }
     case "workflow.run.settings.updated":
       if (!previous) throw new Error(`Workflow ${id} settings precede registration`)
       return { runs: HashMap.set(state.runs, id, { ...previous, run: { ...fact.payload.settings, ...(previous.run.userNamed && fact.payload.labelSource !== "user" ? { label: previous.run.label, shortLabel: previous.run.shortLabel, name: previous.run.name, userNamed: true } : {}), launchedFrom: previous.run.launchedFrom } }) }

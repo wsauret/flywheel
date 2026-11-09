@@ -12,9 +12,11 @@ import type { WorkflowControllerDeps } from "./controller.js"
 import { bindWorkflowDepsToSession, type AdmittedWorkflowDeps } from "./deps.js"
 import type { WorkflowLaunchLifecycle } from "./launch-lifecycle.js"
 import type { WorkflowLaunchOperation } from "./launch-operation-contract.js"
-import type { ModelWorkflowLaunchRequest, WorkflowApprovalBinding, WorkflowLaunchRefusal } from "./launch-origin.js"
+import type { ModelWorkflowLaunchOrigin, ModelWorkflowLaunchRequest, WorkflowApprovalBinding, WorkflowLaunchRefusal } from "./launch-origin.js"
 import { prepareWorkflowLaunch, publishWorkflow, WorkflowInputRejectedError } from "./publish.js"
+import type { WorkflowCapabilityBoundary } from "../../workflows/run-facts.js"
 import {
+  launchCapabilityBoundary,
   workflowCapabilityAccess,
   type ResolvedWorkflowDefinition,
   type WorkflowAdmission,
@@ -32,8 +34,9 @@ const log = Log.create({ service: "workflow-controller" })
 
 type Admitted = Extract<WorkflowAdmission, { readonly ok: true }>
 
-/** Admission of one operation over the definition its resolver finds. */
-export type AdmitWorkflowOperation = <R extends ResolvedWorkflowDefinition>(operation: string, resolve: WorkflowDefinitionResolver<R>) => Promise<WorkflowAdmission<R>>
+/** Admission of one operation over the definition its resolver finds, for a run that a person reads or, when
+ *  `unattended`, one that no person reads. */
+export type AdmitWorkflowOperation = <R extends ResolvedWorkflowDefinition>(operation: string, resolve: WorkflowDefinitionResolver<R>, unattended: boolean) => Promise<WorkflowAdmission<R>>
 
 /** What a model launch's source resolves to. A workflow file adds what its
  *  pipeline found, which the call's result reports. */
@@ -58,6 +61,9 @@ interface PreparedLaunch {
   /** The definition admission resolved; the child runs this object. */
   readonly workflow: WorkflowDefinition
   readonly workflowDeps: AdmittedWorkflowDeps
+  /** The launching agent's boundary, which `workflowDeps` holds and the run's
+   *  registration records for every later start of the run. */
+  readonly capabilityBoundary: WorkflowCapabilityBoundary | undefined
   readonly prepared: Awaited<ReturnType<typeof prepareWorkflowLaunch>>
   /** The child's directory when the launch named one; absent, the child
    *  takes its parent's directory at publication. */
@@ -106,7 +112,8 @@ export function createWorkflowLaunchPipeline(
    *  any. A launch of a workflow file names `file`, so a refusal of its flow
    *  or of its input contract is located in the file and tells the author
    *  how to repair it. */
-  async function prepare(intent: Pick<ModelWorkflowLaunchRequest, "description" | "launchCwd" | "input">, parentSessionId: string, admission: Admitted, file: PathWorkflowLaunch, parentConversationId: string): Promise<Preparation> {
+  async function prepare(intent: Pick<ModelWorkflowLaunchRequest, "description" | "launchCwd" | "input">, origin: ModelWorkflowLaunchOrigin, admission: Admitted, file: PathWorkflowLaunch): Promise<Preparation> {
+    const { chatSessionId: parentSessionId, conversationId: parentConversationId } = origin
     const { workflow } = admission
     const definitionRevision = admission.availability.definitionRevision
     // A workflow's cwd is a per-agent value that never joins the chat tree's
@@ -131,9 +138,10 @@ export function createWorkflowLaunchPipeline(
       // agent-runtime/shared-tree.ts), because advertising another set would
       // start another Claude engine process for the tree.
       const moduleSelection = deps.composeModules(admission.grant)
+      const capabilityBoundary = launchCapabilityBoundary(origin.capabilityAccess)
       const workflowDeps: AdmittedWorkflowDeps = {
         ...auth.workflowDeps,
-        capabilityAccess: workflowCapabilityAccess(deps.capabilities, admission.grant),
+        capabilityAccess: workflowCapabilityAccess(deps.capabilities, admission.grant, capabilityBoundary),
         moduleSelection: () => moduleSelection,
         definitionRevision,
       }
@@ -150,7 +158,7 @@ export function createWorkflowLaunchPipeline(
         warnings: launchWarningLines(file),
         buildDefinitionLineageFacts: deps.buildDefinitionLineageFacts,
       })
-      return { ok: true, launch: { workflow, workflowDeps, prepared, executionCwd, workflowName: workflow.name } }
+      return { ok: true, launch: { workflow, workflowDeps, capabilityBoundary, prepared, executionCwd, workflowName: workflow.name } }
     } catch (error) {
       if (error instanceof WorkflowInputRejectedError) return { ok: false, reasonKind: "input", error: error.message, recovery: WORKFLOW_FILE_RECOVERY }
       if (error instanceof WorkflowStructureRejectedError) {
@@ -252,7 +260,7 @@ export function createWorkflowLaunchPipeline(
       return refuse({ reasonKind: "origin", error: `Workflow parent ${parentSessionId} is not the host-attested chat conversation` }, { parentSessionId, origin: origin.kind })
     }
     const requested = modelSource(request)
-    const admission = await admit(requested.operation, requested.resolve)
+    const admission = await admit(requested.operation, requested.resolve, origin.capabilityAccess?.unattended === true)
     if (!admission.ok) {
       // A workflow file's refusal tells the agent how to repair the file.
       const recovery = admission.recovery === undefined ? {} : { recovery: admission.recovery }
@@ -270,7 +278,7 @@ export function createWorkflowLaunchPipeline(
       }
     const unapproved = await approval.inspect(approvalSource)
     if (unapproved) return refuse({ reasonKind: "origin", ...unapproved }, fields)
-    const preparation = await prepare(request, parentSessionId, admission, launchedFile, origin.conversationId)
+    const preparation = await prepare(request, origin, admission, launchedFile)
     if (!preparation.ok) return refuse(preparation, fields)
     const unclaimed = await approval.claim(approvalSource)
     if (unclaimed) return refuse({ reasonKind: "origin", ...unclaimed }, fields)
@@ -281,6 +289,7 @@ export function createWorkflowLaunchPipeline(
         manager,
         prepared: launch.prepared,
         launchedFrom: binding(launch.workflow.id, request.description, parentSessionId, origin.conversationId, origin.toolUseId),
+        ...(launch.capabilityBoundary ? { capabilityBoundary: launch.capabilityBoundary } : {}),
         ...(request.summary !== undefined ? { summary: request.summary } : {}),
         ...(launch.executionCwd ? { executionCwd: launch.executionCwd } : {}),
       })

@@ -1,6 +1,6 @@
 import { assertNever } from "../../infra/assert-never.js";
 import type { SkillDefinition } from "../../workflows/skill-schema.js";
-import { resolveSkillClosure } from "../../workflows/skill-closure.js";
+import { attendedClosureMembers } from "../../workflows/skill-closure.js";
 import type { ProjectDefinitionRegistryRevision } from "../../workflows/definition-registry.js";
 import { definitionAvailabilityOf } from "../app-service/definition-availability.js";
 import { canonicalModuleIds } from "../../protocol/module-ids.js";
@@ -87,7 +87,7 @@ function withoutAttendedSkills(revision: ProjectDefinitionRegistryRevision): Pro
   if (memoized) return memoized;
   // A published revision holds only skills whose closure resolves: the loader drops the rest.
   const attended = new Set([...revision.skills.skills.values()]
-    .filter((skill) => resolveSkillClosure([skill.id], revision.skills, `Skill "${skill.id}"`).some((member) => member.attended))
+    .filter((skill) => attendedClosureMembers([skill.id], revision.skills, `Skill "${skill.id}"`).length > 0)
     .map((skill) => skill.id));
   const skills = new Map([...revision.skills.skills].map(([id, definition]) => [id, attended.has(id) ? { ...definition, modelInvocable: false } : definition]));
   const unattended = { ...revision, skills: { ...revision.skills, skills, modelInvocable: revision.skills.modelInvocable.filter((definition) => !attended.has(definition.id)) } };

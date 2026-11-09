@@ -12,6 +12,7 @@ import type { AgentOptions } from "../../../agent-runtime/types.js"
 import { cloneInheritedToolNames, toolRegistryFromComposition, toolModuleRequirements } from "../../../agent-runtime/tools/tool-registry.js"
 import { grantedSubagentTypes, personaToolNames } from "../../../../workflows/agents/subagent-reachability.js"
 import { personaInstructions } from "../../../../workflows/agents/persona-instructions.js"
+import { attendedClosureMembers } from "../../../../workflows/skill-closure.js"
 import type { PromptKind } from "../../../agent-runtime/system-prompt.js"
 import { CHECKPOINT_TOOL_NAMES } from "../../../../infra/agent-assets/session-notes.js"
 import { availableToolNames, isReadOnlyPersona } from "../../../agent-runtime/persona-tool-rules.js"
@@ -149,6 +150,15 @@ export async function prepareSubagentDispatch(
   if (!continuation && availability?.available === false) {
     return { ok: false, error: { outcome: "error", content: `Subagent '${agentType}' cannot run: ${availability.reason ?? "it is unavailable"}. Dispatch another agent type or do the work directly.` } }
   }
+  const access = context.capabilityAccess ?? NO_CAPABILITY_ACCESS
+  // No person reads an unattended tree, so a persona that composes a method a person answers or approves cannot run
+  // in it (PI-AGENT-121). A continuation keeps the task its first dispatch recorded.
+  const [attended] = !continuation && access.unattended && agent.kind === "persona"
+    ? attendedClosureMembers(agent.requiredSkills ?? [], deps.skills, `Persona "${agent.name}"`)
+    : []
+  if (attended) {
+    return { ok: false, error: { outcome: "error", content: `Subagent '${agentType}' cannot run here: its persona composes the skill "${attended.id}", which a person answers or approves, and no person reads this run. Dispatch another agent type or do the work directly.` } }
+  }
   if (continuation) {
     if (agent.kind !== continuation.personaKind) return { ok: false, error: { content: `Subagent resume inputs no longer match the durable run: persona kind ${continuation.personaKind} is now ${agent.kind}`, outcome: "error" } }
     const composition = deps.moduleSelection()
@@ -177,7 +187,6 @@ export async function prepareSubagentDispatch(
     }
   }
 
-  const access = context.capabilityAccess ?? NO_CAPABILITY_ACCESS
   let admittedAccess = access
   if (!grantCovers(access.grant, deps.capabilityRequirements)) {
     const admission = await access.admit({ operation: "the subagent tool", required: deps.capabilityRequirements })

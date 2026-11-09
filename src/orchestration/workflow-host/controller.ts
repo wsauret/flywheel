@@ -45,7 +45,7 @@ import {
   type WorkflowApprovalBinding,
   type WorkflowLaunchRefusal,
 } from "./launch-origin.js"
-import { admitWorkflowOperation, workflowCapabilityAccess, type WorkflowAdmission } from "./workflow-admission.js"
+import { admitWorkflowOperation, workflowCapabilityAccess } from "./workflow-admission.js"
 import { runDefinition } from "./definition-source.js"
 import type { WorkflowLaunchApprovalSource } from "../session/agent-input-facts.js"
 import { assessWorkflowRecovery, commitWorkflowRecovery } from "./recovery-commit.js"
@@ -187,16 +187,21 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
    *  dependency preparation, publication, and lifecycle mutation, so a refusal
    *  leaves nothing behind, and an admitted operation carries the grant its
    *  workers settle on. */
-  const admit: AdmitWorkflowOperation = (operation, resolve) => admitWorkflowOperation({
+  const admit: AdmitWorkflowOperation = (operation, resolve, unattended) => admitWorkflowOperation({
     capabilities: deps.capabilities,
     availability: deps.availability,
     operation,
     resolve,
+    unattended,
   })
 
-  /** Admission of an existing run, over the definition that run executes. */
-  const admitRun = (operation: string, sessionId: string, workflowDefinitionId: string): Promise<WorkflowAdmission> =>
-    admit(operation, runDefinition({ reader: projectionReader, sessionId, workflowDefinitionId }))
+  /** Admission of an existing run, over the definition that run executes and under the capability boundary it
+   *  recorded, with the capability access its runners pass. */
+  const admitRun = async (operation: string, sessionId: string, workflowDefinitionId: string) => {
+    const boundary = await runs.readCapabilityBoundary(sessionId)
+    const admission = await admit(operation, runDefinition({ reader: projectionReader, sessionId, workflowDefinitionId }), boundary?.unattended === true)
+    return admission.ok ? { ...admission, capabilityAccess: workflowCapabilityAccess(deps.capabilities, admission.grant, boundary) } : admission
+  }
 
   const pipeline = createWorkflowLaunchPipeline(deps, lifecycle, admit)
 
@@ -362,7 +367,7 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
       const auth = await deps.authAdmission.admitWorkflow(sessionId)
       wfDeps = {
         ...auth.workflowDeps,
-        capabilityAccess: workflowCapabilityAccess(deps.capabilities, admission.grant),
+        capabilityAccess: admission.capabilityAccess,
         moduleSelection: () => moduleSelection,
         definitionRevision,
       }
@@ -535,7 +540,7 @@ export function createWorkflowController(deps: WorkflowControllerDeps): Workflow
                 workflow: admission.workflow,
                 deps: {
                   ...auth.workflowDeps,
-                  capabilityAccess: workflowCapabilityAccess(deps.capabilities, admission.grant),
+                  capabilityAccess: admission.capabilityAccess,
                   moduleSelection: () => deps.composeModules(admission.grant),
                 },
                 definitionRevision,

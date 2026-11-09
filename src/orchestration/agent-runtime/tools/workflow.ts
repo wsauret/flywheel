@@ -175,6 +175,7 @@ export function createWorkflowTool(deps: LaunchableWorkflowToolDeps & { readonly
       modelRequestId: context.modelRequestId,
       parentToolUseId: context.parentToolUseId,
       conversationId: context.conversationId,
+      ...(context.capabilityAccess ? { capabilityAccess: context.capabilityAccess } : {}),
     }),
   };
 }

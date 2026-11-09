@@ -7,7 +7,8 @@ import { createSubagentDispatch } from "../../../../../src/orchestration/modules
 import { createProjectDefinitionRegistry, type ProjectDefinitionRegistry } from "../../../../../src/workflows/definition-registry.js";
 import { renderSkillContext } from "../../../../../src/workflows/skill-context.js";
 import type { AgentDefinition } from "../../../../../src/infra/agent-definition.js";
-import { buildRegistry, makeContext, makeDeps, makeMockRunnerFactory, TEST_RATIONALE, childTask } from "./_fixtures.js";
+import { capabilityAccessFor } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
+import { buildRegistry, grantOf, makeContext, makeDeps, makeMockRunnerFactory, TEST_RATIONALE, childTask } from "./_fixtures.js";
 import { fileTemporaryDirectory, testDirectories } from "../../../../helpers/directories.js";
 
 // Fixture packages live under a temp root this suite's own definition owner
@@ -88,5 +89,25 @@ describe("subagent tool - persona skill composition", () => {
 
     expect(instructions).toContain(renderSkillContext(skill));
     expect(instructions).not.toContain("Audit procedure, revised.");
+  });
+
+  // No person reads an unattended chat's tree, so a persona that composes a method that a person answers or approves
+  // cannot run in it (PI-AGENT-121). A dispatcher that a person reads composes the method as usual.
+  it("refuses a persona that composes an attended skill under an unattended dispatcher, and composes it under an interactive one", async () => {
+    const registry = registryWith(["design"]);
+    const design = owner().skills().skills.get("design");
+    if (!design?.attended) throw new Error("the bundled design skill is not attended");
+    const { factory, calls } = makeMockRunnerFactory({ finalText: "done" });
+    const tool = createSubagentDispatch(makeDeps({ agentRegistry: registry, createRunner: factory, skills: owner().skills() }));
+    const unattended = capabilityAccessFor({
+      state: () => ({ moduleIds: [], capabilities: [], requireWorkflowConfirmation: true, workflowsMode: "off", identity: "test" }),
+      admit: async () => { throw new Error("the dispatch grant covers the subagent tool"); },
+    }, grantOf(["subagents"]), undefined, true);
+
+    const refused = await tool.execute({ persona: "explorer", rationale: TEST_RATIONALE, prompt: "look" }, makeContext({ capabilityAccess: unattended }));
+
+    expect(refused).toMatchObject({ outcome: "error", content: "Subagent 'explorer' cannot run here: its persona composes the skill \"design\", which a person answers or approves, and no person reads this run. Dispatch another agent type or do the work directly." });
+    expect(calls).toEqual([]);
+    expect(await dispatchExplorer(registry)).toContain("# Skill: design\n");
   });
 });

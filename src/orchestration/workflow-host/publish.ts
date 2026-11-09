@@ -25,6 +25,7 @@ import { bindWorkflowAgentModels, type WorkflowAgentModels } from "../config/wor
 import type { SessionManager } from "../session/manager.js"
 import type { RuntimeWorkflowInvocation, WorkflowLaunchBinding } from "../session/child-session-publication.js"
 import type { InFlightSwap } from "../../infra/event-store-types.js"
+import type { WorkflowCapabilityBoundary } from "../../workflows/run-facts.js"
 import type { RoleSettings } from "../session/schemas.js"
 import { buildWorkflowDefinitionLineageFacts } from "./definition-lineage.js"
 import type { WorkflowDeps } from "./deps.js"
@@ -276,6 +277,7 @@ interface PublishWorkflowInput {
   manager: SessionManager
   prepared: PreparedWorkflowLaunch
   launchedFrom: WorkflowLaunchBinding
+  capabilityBoundary?: WorkflowCapabilityBoundary
   summary?: string
   runtimeInvocation?: RuntimeWorkflowInvocation
   executionCwd?: string
@@ -294,6 +296,7 @@ export async function publishWorkflow(input: PublishWorkflowInput): Promise<stri
     facts: input.prepared.workflowFacts,
     ...(input.executionCwd ? { executionCwd: input.executionCwd } : {}),
     launchedFrom: input.launchedFrom,
+    ...(input.capabilityBoundary ? { capabilityBoundary: input.capabilityBoundary } : {}),
     ...(input.summary !== undefined ? { summary: input.summary } : {}),
     ...(input.runtimeInvocation ? { runtimeInvocation: input.runtimeInvocation } : {}),
     ...(input.retainedOperation ? { retainedOperation: input.retainedOperation } : {}),

@@ -1,5 +1,5 @@
 import type { DefinitionLineageView } from "../../workflows/definition-provenance-projection.js"
-import type { WorkflowLaunchBindingSchema, WorkflowRunSettingsSchema } from "../../workflows/run-facts.js"
+import type { WorkflowCapabilityBoundary, WorkflowLaunchBindingSchema, WorkflowRunSettingsSchema } from "../../workflows/run-facts.js"
 import { strongestInterrupt } from "../session/child-continuation.js"
 
 /** Who holds a workflow run's whole-run cut, and when it was made. */
@@ -25,6 +25,8 @@ export interface WorkflowRunReader {
   read(workflowId: string): Promise<WorkflowRunRecord | null>
   readRequest(workflowId: string): Promise<string | null>
   readCreationRequest(workflowId: string): Promise<string | null>
+  /** The boundary the launch recorded, or undefined when it recorded none. */
+  readCapabilityBoundary(workflowId: string): Promise<WorkflowCapabilityBoundary | undefined>
   readDefinitionLineage(workflowId: string): Promise<DefinitionLineageView>
   /** Current launch bindings determine which runs a chat owns, including zero-member runs. */
   listForParent(parentSessionId: string): Promise<readonly { readonly workflowId: string; readonly run: WorkflowRunRecord }[]>

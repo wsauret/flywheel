@@ -31,6 +31,7 @@ export function workflowRegistration(input: WorkflowPublication, executionCwd: s
         roleAssignments: { defaults: input.initialRoles, overrides: {} },
       },
       request: input.description, launchedFrom: input.launchedFrom,
+      ...(input.capabilityBoundary === undefined ? {} : { capabilityBoundary: input.capabilityBoundary }),
     },
   }), ...input.facts.map((fact) => fact.type === "workflow.control.initialized"
     ? parseWorkflowSessionFact({ ...fact, payload: { control: { ...fact.payload.control, aggregateSeq: fact.payload.control.aggregateSeq + 1 } } })

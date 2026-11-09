@@ -42,6 +42,17 @@ export function resolveSkillClosure(
   return closure;
 }
 
+/** The members of the closure of `rootIds` that a person answers or approves (`attended: true`), in closure order. No
+ *  person reads an unattended run, so none of its agents may compose or load one (PI-AGENT-121). Throws as
+ *  `resolveSkillClosure` does. */
+export function attendedClosureMembers(
+  rootIds: readonly string[],
+  revision: SkillRegistryRevision,
+  subject: string,
+): readonly SkillDefinition[] {
+  return resolveSkillClosure(rootIds, revision, subject).filter((skill) => skill.attended);
+}
+
 /** Ids of the closure, which is what definition identity records. */
 export function skillClosureIds(
   rootIds: readonly string[],

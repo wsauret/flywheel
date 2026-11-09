@@ -23,6 +23,7 @@ import type { SessionStore, SessionEntry } from "../../../../src/orchestration/s
 import { entryRuntimeDefaults } from "../../../../src/orchestration/session-store/entry-defaults"
 import { createSessionManager, type SessionManager } from "../../../../src/orchestration/session/manager"
 import type { WorkflowView } from "../../../../src/workflows/view/types"
+import type { WorkflowCapabilityBoundary } from "../../../../src/workflows/run-facts"
 import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema"
 import { captureRuntimeConfigRequest } from "../../../../src/orchestration/agent-runtime/request-config"
 import type { WorkflowDeps } from "../../../../src/orchestration/workflow-host/deps"
@@ -382,13 +383,16 @@ export function createDeps(overrides?: ControllerFixtureOverrides): FixtureContr
 
 type FixtureEventStore = ReturnType<typeof createSqliteEventStore>
 
-export async function seedWorkflowRequest(deps: WorkflowControllerDeps, sessionId: string, userRequest: string, binding: { parentSessionId?: string; toolUseId?: string } = {}): Promise<void> {
-  const workflow = await fixtureWorkflow(deps)
+/** Publish a run of the repair fixture, or of the workflow file `options.content`, with the capability boundary
+ *  `options.capabilityBoundary` when a case states one. */
+export async function seedWorkflowRequest(deps: WorkflowControllerDeps, sessionId: string, userRequest: string, options: { parentSessionId?: string; toolUseId?: string; content?: string; capabilityBoundary?: WorkflowCapabilityBoundary } = {}): Promise<void> {
+  const workflow = await fixtureWorkflow(deps, options.content)
   const prepared = await prepareWorkflowLaunch({ workflow, description: userRequest, deps: makeWorkflowDeps(), authProfileId: "default", projectRoot: deps.projectRoot, definitionRevision: DEFINITIONS.captureRevision() })
-  const origin = await modelLaunch(deps, { chatSessionId: binding.parentSessionId })
+  const origin = await modelLaunch(deps, { chatSessionId: options.parentSessionId })
   await deps.manager.publishWorkflow({
     id: sessionId, ...prepared, facts: prepared.workflowFacts,
-    launchedFrom: { parentSessionId: origin.chatSessionId, conversationId: origin.conversationId, toolUseId: binding.toolUseId ?? `launch-${sessionId}` },
+    launchedFrom: { parentSessionId: origin.chatSessionId, conversationId: origin.conversationId, toolUseId: options.toolUseId ?? `launch-${sessionId}` },
+    ...(options.capabilityBoundary === undefined ? {} : { capabilityBoundary: options.capabilityBoundary }),
   })
 }
 

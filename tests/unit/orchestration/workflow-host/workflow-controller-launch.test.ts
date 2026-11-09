@@ -1,10 +1,20 @@
 import { afterEach, describe, it, expect, mock, spyOn } from "bun:test"
 import { DebugLog } from "../../../../src/infra/debug-log"
-import { mkdtempSync, realpathSync, rmSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
+import { createDefinitionAvailability } from "../../../../src/orchestration/app-service/definition-availability.js"
+import { fileTemporaryDirectory, testDirectories } from "../../../helpers/directories.js"
+import { fullAuthority } from "../../../helpers/launch-authority.js"
+import { repoModules } from "../../../helpers/project-definitions.js"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { createWorkflowController } from "../../../../src/orchestration/workflow-host/controller"
+import { createWorkflowController, type WorkflowControllerDeps } from "../../../../src/orchestration/workflow-host/controller"
 import { MODULE_IDS } from "../../../../src/protocol/module-ids.js"
+import { plannedCapabilities, planPromptRequest, type PromptAssembly } from "../../../../scripts/prompt-assembly.js"
+import { capabilityAccessFor, type CapabilityAccess } from "../../../../src/orchestration/agent-runtime/tools/types.js"
+import { loadConfig } from "../../../../src/orchestration/config/loader.js"
+import { composeFirstPartyModules, unattendedModuleIds } from "../../../../src/orchestration/modules.js"
+import { installedPersonaToolEntries } from "../../../../src/orchestration/tool-catalog.js"
+import { createProjectDefinitionRegistry } from "../../../../src/workflows/definition-registry.js"
 import {
   cleanupProjectRoots,
   createDeps,
@@ -13,19 +23,35 @@ import {
   makeWorkflowDeps,
   modelLaunch,
   fixtureSource,
+  seedWorkflowRequest,
   until,
 } from "./_workflow-controller-fixtures"
 import { captureRuntimeConfigRequest } from "../../../../src/orchestration/agent-runtime/request-config"
 import { CONFIG_DEFAULTS } from "../../../../src/orchestration/config/schema"
-import type { AgentOptions } from "../../../../src/orchestration/agent-runtime/types"
+import type { AgentOptions, AgentPurpose } from "../../../../src/orchestration/agent-runtime/types"
 import { createMockWorkflowHosts } from "./_workflow-host-fixtures"
-import { workflowRunOwner, workflowRunReader } from "../../../../src/orchestration/module-catalog"
+import { installedDefinitionBundles, workflowRunOwner, workflowRunReader } from "../../../../src/orchestration/module-catalog"
 import type { WorkflowResult } from "../../../../src/orchestration/workflow-host/runner-types"
 import { terminalWorkflowFacts } from "../session/_child-session-reconciliation-fixtures"
+import { WHOLE_WORKFLOW } from "../../../../src/orchestration/session/conversation/addressed-workflow-messages.js"
 
 afterEach(() => {
   cleanupProjectRoots()
 })
+
+/** The capability check of one request of `purpose` under `access`, planned as a live request plans it over the
+ *  installed definitions. */
+async function plannedCapabilitiesUnder(root: string, purpose: AgentPurpose, access: CapabilityAccess) {
+  const definitions = createProjectDefinitionRegistry({ projectRoot: root, userDataRoot: root, accountHome: root, skillRoots: [], bundles: installedDefinitionBundles(), personaToolEntries: installedPersonaToolEntries() }).captureRevision()
+  const loaded = loadConfig(undefined, {}, root)
+  const modules = composeFirstPartyModules()
+  const assembly: PromptAssembly = {
+    projectRoot: root, userDataRoot: root, accountHome: root, scratchDir: join(root, "scratch"), definitions,
+    runtimeConfig: captureRuntimeConfigRequest({ revision: 0, config: loaded.config, warnings: loaded.warnings, diagnostics: loaded.diagnostics, sourceIdentity: "workflow-launch-boundary", status: { kind: "missing" } }, "default"),
+    capture: modules, live: modules, workflowsMode: "off", servingModel: { model: "prompt-model", modelFamily: "anthropic" }, hosts: false,
+  }
+  return plannedCapabilities(await planPromptRequest(assembly, { personas: definitions.personas, purpose, askUser: false, capabilityAccess: access }))
+}
 
 describe("WorkflowController", () => {
   describe("startWorkflow", () => {
@@ -439,6 +465,132 @@ describe("WorkflowController", () => {
       ]))
       await expect(controller.startWorkflow({ source: fixtureSource(deps), description: "Refused run", origin: await modelLaunch(deps) })).resolves.toEqual({ error: "the workflow file scratch/workflows/repair.workflow.yaml is unavailable" })
       expect(workflowHosts._startCalls).toHaveLength(1)
+    })
+
+    // A workflow is part of the tree of the chat that launched it, so its agents hold no capability that the chat's
+    // boundary leaves out: under an unattended chat, no question for a person and no method that a person answers.
+    // The run records that boundary, so every later start of it keeps it: a Resume, the continuation of a capacity
+    // wait, and a person's Restart.
+    it("bounds the workflow's agents and their subagents by the launching chat's capability boundary in every start of the run", async () => {
+      const surfaceOf = async (projectRoot: string, access: CapabilityAccess | undefined) => {
+        if (!access) throw new Error("expected the workflow's capability boundary")
+        const agent = await plannedCapabilitiesUnder(projectRoot, { kind: "workflow-agent", briefScope: { briefId: "repair" }, workflowAttemptId: "attempt-1" }, access)
+        const subagent = await plannedCapabilitiesUnder(projectRoot, { kind: "subagent", renderAs: "subagent", parentToolUseId: "dispatch" }, access)
+        return { askUser: access.available("ask-user"), agentDesign: agent("skill:design"), subagentDesign: subagent("skill:design"), agentSkills: agent("skill:verification") }
+      }
+      const surfacesUnder = async (launcher: (capabilities: WorkflowControllerDeps["capabilities"]) => CapabilityAccess) => {
+        const workflowHosts = createMockWorkflowHosts()
+        const deps = createDeps({ workflowHosts })
+        const controller = launchingController(deps)
+        const origin = { ...await modelLaunch(deps), capabilityAccess: launcher(deps.capabilities) }
+        const result = await controller.startWorkflow({ source: fixtureSource(deps), description: "Bounded run", origin })
+        if ("error" in result) throw new Error(result.error)
+        await until(() => workflowHosts._startCalls.length > 0, "the workflow start")
+        const { workflowId } = result
+        workflowHosts._runners.delete(workflowId)
+        expect(await controller.resumeWorkflow(workflowId)).toEqual({ kind: "resumed", sessionId: workflowId })
+        workflowHosts._runners.delete(workflowId)
+        expect(await controller.resumeWorkflow(workflowId, WHOLE_WORKFLOW, { wake: { capacity: new Set(["waiting"]) } })).toEqual({ kind: "resumed", sessionId: workflowId })
+        workflowHosts._runners.delete(workflowId)
+        // A companion that this version cannot read is the damage a person's Restart repairs.
+        await deps.eventWriter.append({ aggregateId: `workflow:${workflowId}`, sessionId: workflowId, timestamp: 2, type: "queue.created", version: 99, actor: "flywheel", payload: {} })
+        expect(await controller.restartWorkflow(workflowId)).toEqual({ kind: "restarted", sessionId: workflowId })
+        expect(workflowHosts._startCalls.map(({ startMode }) => startMode)).toEqual(["launch", "operator_resume", "operator_resume", "operator_resume"])
+        return await Promise.all(workflowHosts._startCalls.map(({ workflowDeps }) => surfaceOf(deps.projectRoot, workflowDeps.capabilityAccess)))
+      }
+
+      const attended = { askUser: true, agentDesign: true, subagentDesign: true, agentSkills: true }
+      const unattended = { askUser: false, agentDesign: false, subagentDesign: false, agentSkills: true }
+      expect(await surfacesUnder((capabilities) => capabilityAccessFor(capabilities))).toEqual([attended, attended, attended, attended])
+      expect(await surfacesUnder((capabilities) => capabilityAccessFor(capabilities, undefined, unattendedModuleIds(), true))).toEqual([unattended, unattended, unattended, unattended])
+    })
+
+    // A run recorded before the launch recorded its boundary, like a run a person's launch records now, holds no
+    // boundary, so its Resume starts with the workflow's grant alone, as it did before.
+    it("resumes a run recorded without a capability boundary under the workflow's grant alone", async () => {
+      const workflowHosts = createMockWorkflowHosts()
+      const deps = createDeps({ workflowHosts })
+      await seedWorkflowRequest(deps, "wf-unbounded", "Unbounded run")
+
+      expect(await createWorkflowController(deps).resumeWorkflow("wf-unbounded")).toEqual({ kind: "resumed", sessionId: "wf-unbounded" })
+
+      const access = workflowHosts._startCalls[0]?.workflowDeps.capabilityAccess
+      expect(access?.unattended).toBeUndefined()
+      expect(access?.available("ask-user")).toBe(true)
+    })
+  })
+
+  // No person reads an unattended chat's tree, so no agent of a workflow it launches may compose a method that a person
+  // answers or approves, whether its brief names the method or a skill that composes it (PI-AGENT-121). Admission
+  // refuses the launch and every later start of the run; a chat that a person reads launches the same workflow.
+  describe("attended skills in an unattended run", () => {
+    const repair = readFileSync(join(import.meta.dir, "../../../fixtures/workflow-project/workflows/repair.yaml"), "utf8")
+    const composing = (skill: string) => repair.replace("dependencies: [root-cause-analysis]", `dependencies: [${skill}]`)
+    const refusal = 'the agent "investigate" composes the skill "design", which a person answers or approves, and no person reads this run'
+    // The installed definitions plus one package that composes `design`.
+    const skillRoot = fileTemporaryDirectory("flywheel-attended-composition-")
+    mkdirSync(join(skillRoot, "design-review"))
+    writeFileSync(join(skillRoot, "design-review", "SKILL.md"), "---\ndescription: Use when reviewing a design.\ndependencies:\n  - design\n---\nReview the design.")
+    // Project personas that require `design`, directly or through `design-review`.
+    const personaDir = join(skillRoot, ".flywheel", "agents")
+    mkdirSync(personaDir, { recursive: true })
+    for (const [name, skill] of [["designer", "design"], ["design-reviewer", "design-review"]]) {
+      writeFileSync(join(personaDir, `${name}.md`), `---\nname: ${name}\ndescription: Designs.\nrole: Designer.\nexcludeActions: []\nrequiredSkills:\n  - ${skill}\n---\nDesign the change.`)
+    }
+    const runningAs = (persona: string) => repair.replace("dependencies: [root-cause-analysis]", `dependencies: [root-cause-analysis]\n    persona: ${persona}`)
+    const composingDefinitions = async () => {
+      const definitions = createProjectDefinitionRegistry({ ...testDirectories(skillRoot), skillRoots: [{ dir: skillRoot, owned: true, reach: "global" }], bundles: installedDefinitionBundles(), personaToolEntries: installedPersonaToolEntries() })
+      const state = () => ({ capabilities: MODULE_IDS, moduleIds: MODULE_IDS, requireWorkflowConfirmation: false, workflowsMode: "on" as const, identity: MODULE_IDS.join("+") })
+      return { definitions, availability: await createDefinitionAvailability({ definitions, modules: repoModules, capabilities: { state } }) }
+    }
+
+    it("refuses an unattended launch whose brief composes an attended skill, directly or through a skill that composes it", async () => {
+      for (const skill of ["design", "design-review"]) {
+        const workflowHosts = createMockWorkflowHosts()
+        const deps = createDeps({ workflowHosts, ...await composingDefinitions() })
+        const origin = { ...await modelLaunch(deps), capabilityAccess: capabilityAccessFor(deps.capabilities, undefined, unattendedModuleIds(), true) }
+
+        const result = await launchingController(deps).startWorkflow({ source: fixtureSource(deps, "parent-chat", composing(skill)), description: "Design it", origin })
+
+        expect(result).toEqual({ error: `the workflow file scratch/workflows/repair.workflow.yaml is unavailable: ${refusal}` })
+        expect(deps.manager.publishWorkflow).not.toHaveBeenCalled()
+        expect(workflowHosts._startCalls).toEqual([])
+      }
+    })
+
+    it("launches the same workflow from a chat that a person reads", async () => {
+      const deps = createDeps()
+
+      const result = await launchingController(deps).startWorkflow({ source: fixtureSource(deps, "parent-chat", composing("design")), description: "Design it", origin: await modelLaunch(deps) })
+
+      expect("workflowId" in result).toBe(true)
+    })
+
+    it("refuses an unattended launch whose agent runs as a persona that requires an attended skill, and launches it from a chat that a person reads", async () => {
+      for (const persona of ["designer", "design-reviewer"]) {
+        const workflowHosts = createMockWorkflowHosts()
+        const deps = createDeps({ workflowHosts, ...await composingDefinitions() })
+        const launch = async (capabilityAccess?: CapabilityAccess) => launchingController(deps).startWorkflow({
+          source: fixtureSource(deps, "parent-chat", runningAs(persona)), description: "Design it", origin: { ...await modelLaunch(deps), authority: fullAuthority([persona]), ...(capabilityAccess ? { capabilityAccess } : {}) },
+        })
+
+        expect(await launch(capabilityAccessFor(deps.capabilities, undefined, unattendedModuleIds(), true))).toEqual({
+          error: `the workflow file scratch/workflows/repair.workflow.yaml is unavailable: the agent "investigate" runs as the persona "${persona}", and the persona composes the skill "design", which a person answers or approves, and no person reads this run`,
+        })
+        expect(deps.manager.publishWorkflow).not.toHaveBeenCalled()
+        expect(workflowHosts._startCalls).toEqual([])
+
+        expect("workflowId" in await launch()).toBe(true)
+      }
+    })
+
+    it("refuses to resume an unattended run whose definition composes an attended skill", async () => {
+      const workflowHosts = createMockWorkflowHosts()
+      const deps = createDeps({ workflowHosts })
+      await seedWorkflowRequest(deps, "wf-unattended", "Unattended run", { content: composing("design"), capabilityBoundary: { unattended: true } })
+
+      expect(await createWorkflowController(deps).resumeWorkflow("wf-unattended")).toEqual({ kind: "unavailable", message: `resuming the repair workflow is unavailable: ${refusal}` })
+      expect(workflowHosts._startCalls).toEqual([])
     })
   })
 

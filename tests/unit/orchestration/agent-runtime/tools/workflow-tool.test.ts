@@ -175,18 +175,20 @@ describe("createWorkflowTool", () => {
     expect(startWorkflow).not.toHaveBeenCalled();
   });
 
-  it("attests the call context so the host can stamp a trusted model origin", async () => {
+  // The capability boundary that the call holds bounds the workflow's agents (PI-AGENT-121).
+  it("attests the call context and the caller's capability boundary so the host can stamp a trusted model origin", async () => {
     const calls: ModelWorkflowLaunch[] = [];
-    const tool = createWorkflowToolCore(makeDeps({
+    const tool = createWorkflowTool(makeDeps({
       startWorkflow: async (launch) => {
         calls.push(launch);
         return { workflowId: "run-1", parentSessionId: "parent", done: Promise.resolve({ status: "completed" as const, content: "done" }), terminate: async () => {}, interruption: NOT_INTERRUPTED, stepModels: AGENT_MODELS };
       },
     }));
+    const capabilityAccess = capabilityAccessHolding(["workflows"]);
 
     await tool.execute(
       { source: SOURCE, description: "x" },
-      { toolUseId: "tc_xyz", conversationId: "conv-9" },
+      makeToolContext({ toolUseId: "tc_xyz", conversationId: "conv-9", capabilityAccess }),
     );
 
     expect(calls).toHaveLength(1);
@@ -195,6 +197,7 @@ describe("createWorkflowTool", () => {
       toolUseId: "tc_xyz",
       confirmation: { kind: "absent" },
       authority: AUTHORITY,
+      capabilityAccess,
     });
   });
 

@@ -60,6 +60,8 @@ export interface CapabilityAccess {
    *  chat starts inherits. A method that a person answers or approves is then no capability of any agent of the tree
    *  (PI-AGENT-121). */
   readonly unattended?: true;
+  /** The only modules this boundary admits, when it admits fewer than every module. */
+  readonly ceiling?: readonly ModuleId[];
   /** Whether this context holds one capability right now. */
   available(capability: ModuleId): boolean;
   admit(request: CapabilityRequest): Promise<CapabilityAdmission>;
@@ -93,6 +95,7 @@ export function capabilityAccessFor(
   const createAccess = (activeGrant?: CapabilityGrant): CapabilityAccess => ({
     ...(activeGrant ? { grant: activeGrant } : {}),
     ...(unattended ? { unattended: true as const } : {}),
+    ...(boundedCeiling.length < MODULE_IDS.length ? { ceiling: boundedCeiling } : {}),
     available: (capability) => boundedCeiling.includes(capability)
       && (grantCovers(activeGrant, [capability]) || capabilities.state().capabilities.includes(capability)),
     admit: async (request) => {

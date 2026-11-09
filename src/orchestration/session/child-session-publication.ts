@@ -5,6 +5,7 @@ import { Log } from "../../infra/log.js"
 import type { RuntimeWorkflowInvocationPayload } from "../../infra/runtime-fact-types.js"
 import { startupTrace } from "../../infra/startup-trace.js"
 import { workflowAggregateId, type WorkflowSessionFact } from "../../workflows/vm/session-facts.js"
+import type { WorkflowCapabilityBoundary } from "../../workflows/run-facts.js"
 import { workflowRunOwner } from "../module-catalog.js"
 import type { ConversationMessage } from "../agent-runtime/llm/types.js"
 import { tryOpenConversationTree } from "./conversation/conversation-tree-handle.js"
@@ -48,6 +49,8 @@ export interface WorkflowPublication {
   readonly workflowDefinitionId: string
   readonly executionCwd?: string
   readonly launchedFrom: WorkflowLaunchBinding
+  /** The launching agent's capability boundary, which registration records for every later start of the run. */
+  readonly capabilityBoundary?: WorkflowCapabilityBoundary
   readonly initialRoles: RoleAssignments
   readonly authProfileId?: string
   readonly facts: readonly WorkflowSessionFact[]
