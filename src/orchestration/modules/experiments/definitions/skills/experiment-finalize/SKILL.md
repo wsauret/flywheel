@@ -1,5 +1,6 @@
 ---
 description: Use when finalizing kept experiments into clean, reviewable branches, one per independent change.
+attended: true
 direct-output: Report the branches created, what each contains, the overall metric improvement, and the cleanup commands directly in chat.
 ---
 

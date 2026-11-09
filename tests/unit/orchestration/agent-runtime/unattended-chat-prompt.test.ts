@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { planPromptRequest, promptParts, type PromptAssembly } from "../../../../scripts/prompt-assembly.js";
+import { plannedCapabilities, planPromptRequest, promptParts, type PromptAssembly } from "../../../../scripts/prompt-assembly.js";
 import { loadEngineeringDoctrine, loadSystemPrompt } from "../../../../src/infra/agent-assets/system-prompt.js";
 import { captureRuntimeConfigRequest } from "../../../../src/orchestration/agent-runtime/request-config.js";
 import type { AgentPurpose } from "../../../../src/orchestration/agent-runtime/types.js";
@@ -13,8 +13,12 @@ import type { CapabilityRequest } from "../../../../src/orchestration/config/mod
 import { composeFirstPartyModules, unattendedModuleIds } from "../../../../src/orchestration/modules.js";
 import { canonicalModuleIds } from "../../../../src/protocol/module-ids.js";
 import { installedPersonaToolEntries } from "../../../../src/orchestration/tool-catalog.js";
-import { createProjectDefinitionRegistry } from "../../../../src/workflows/definition-registry.js";
+import { createProjectDefinitionRegistry, type ProjectDefinitionRegistryRevision } from "../../../../src/workflows/definition-registry.js";
+import { publishSkillRevision, type SkillDefinition } from "../../../../src/workflows/skill-schema.js";
 import { unusedSessionMessaging } from "../../../helpers/child-session-control.js";
+import type { CapabilityCheck } from "../../../../src/infra/capability-text.js";
+import { interceptBashCommand } from "../../../../src/orchestration/agent-runtime/tools/bash-command-policy.js";
+import { makeContext } from "./tools/_fixtures.js";
 
 // The system prompt of an unattended chat (PI-AGENT-121) beside the interactive chat's, both built the way a live
 // request builds them (`requestSystemPromptOptions`): the unattended chat keeps the core prompt and the checkpoint, and
@@ -47,21 +51,65 @@ const policy = {
 
 const sessionIdentity = { sessionId: "root-1", rootSessionId: "root-1", conversationId: "root-conversation", kind: "chat" as const };
 
-/** One request of a root chat, under the capability ceiling that the chat runner gives its purpose, with the session
- *  messaging that a chat runner holds. `withoutChildren` also turns off the modules that start a child session, and
- *  `engineeringDoctrine` replaces the realm's doctrine. */
-async function request(purpose: AgentPurpose, withoutChildren = false, engineeringDoctrine = sources.engineeringDoctrine) {
-  const ceiling = purpose.kind === "unattended-chat" ? unattendedModuleIds().filter((id) => !withoutChildren || (id !== "subagents" && id !== "workflows")) : undefined;
-  const capabilityAccess = capabilityAccessFor(policy, undefined, ceiling);
-  const planned = await planPromptRequest(assembly, { personas: definitions.personas, purpose, askUser: true, capabilityAccess, sessions: unusedSessionMessaging() });
-  planned.tools.delete("handoff");
-  return { tools: [...planned.tools.keys()], messageSession: planned.tools.get("message_session"), parts: await promptParts(assembly, purpose, planned, { ...sources, engineeringDoctrine, sessionIdentity }) };
+/** The capability boundary that the chat runner gives a root chat of `purpose`, which every child that it starts
+ *  inherits. `withoutChildren` also turns off the modules that start a child session. */
+function rootAccess(purpose: AgentPurpose, withoutChildren: boolean) {
+  const unattended = purpose.kind === "unattended-chat";
+  const ceiling = unattended ? unattendedModuleIds().filter((id) => !withoutChildren || (id !== "subagents" && id !== "workflows")) : undefined;
+  return capabilityAccessFor(policy, undefined, ceiling, unattended);
 }
+
+/** The installed definitions with `changed` skills added or replaced, published as the registry publishes them. */
+function revisionWith(...changed: SkillDefinition[]): ProjectDefinitionRegistryRevision {
+  const skills = new Map(definitions.skills.skills);
+  for (const skill of changed) skills.set(skill.id, skill);
+  return { ...definitions, skills: publishSkillRevision(definitions.skills.revision, skills, definitions.skills.bundledCorpus) };
+}
+
+function installedSkill(id: string): SkillDefinition {
+  const skill = definitions.skills.skills.get(id);
+  if (!skill) throw new Error(`skill ${id} is not installed`);
+  return skill;
+}
+
+interface RequestOptions {
+  readonly withoutChildren?: boolean;
+  /** Replaces the realm's doctrine. */
+  readonly engineeringDoctrine?: string;
+  readonly revision?: ProjectDefinitionRegistryRevision;
+  /** The root chat whose boundary the request holds; the request's own purpose by default. */
+  readonly treeRoot?: AgentPurpose;
+}
+
+/** One request under the capability boundary of its tree's root chat, with the session messaging that a chat runner
+ *  holds. */
+async function request(purpose: AgentPurpose, { withoutChildren = false, engineeringDoctrine = sources.engineeringDoctrine, revision = definitions, treeRoot = purpose }: RequestOptions = {}) {
+  const planAssembly = { ...assembly, definitions: revision };
+  const planned = await planPromptRequest(planAssembly, { personas: definitions.personas, purpose, askUser: true, capabilityAccess: rootAccess(treeRoot, withoutChildren), sessions: unusedSessionMessaging() });
+  planned.tools.delete("handoff");
+  return { planned, tools: [...planned.tools.keys()], messageSession: planned.tools.get("message_session"), parts: await promptParts(planAssembly, purpose, planned, { ...sources, engineeringDoctrine, sessionIdentity }) };
+}
+
+/** The skill ids of a system prompt's catalog, in order. */
+function catalog(parts: readonly { readonly text: string }[]): string[] {
+  const after = parts.map((part) => part.text).join("\n").split("Installed skills, trigger descriptions only:\n")[1] ?? "";
+  const ids: string[] = [];
+  for (const row of after.split("\n")) {
+    const id = /^- ([a-z0-9-]+): /.exec(row)?.[1];
+    if (!id) break;
+    ids.push(id);
+  }
+  return ids;
+}
+
+const UNATTENDED: AgentPurpose = { kind: "unattended-chat" };
+const INTERACTIVE: AgentPurpose = { kind: "interactive-chat" };
+const SUBAGENT: AgentPurpose = { kind: "subagent", renderAs: "subagent", parentToolUseId: "dispatch" };
 
 describe("system prompt of an unattended chat", () => {
   test("leaves out the person-facing blocks, tools, the bundled doctrine, and publication rules, where the interactive chat keeps them", async () => {
     const PERSON_BLOCKS = ["chat change review", "communication", "conversation-first delivery", "engineering doctrine"];
-    const PERSON_TOOLS = ["skill", "ask_user"];
+    const PERSON_TOOLS = ["ask_user"];
     const PUBLICATION = ["commit + push", "Run the repository's standard gates first", "One commit per unit"];
     const KEPT = ["core system prompt", "session checkpoint"];
     const chat = await request({ kind: "interactive-chat" });
@@ -72,12 +120,12 @@ describe("system prompt of an unattended chat", () => {
     for (const label of PERSON_BLOCKS) expect(chat.parts.map((part) => part.label)).toContain(label);
     expect(chat.parts.map((part) => part.label)).not.toContain("working unattended");
     for (const tool of PERSON_TOOLS) expect(chat.tools).toContain(tool);
-    for (const rule of [...PUBLICATION, "Installed skills", "ELEGANCE:"]) expect(text(chat.parts)).toContain(rule);
+    for (const rule of [...PUBLICATION, "ELEGANCE:"]) expect(text(chat.parts)).toContain(rule);
 
     for (const label of KEPT) expect(labels).toContain(label);
     for (const label of PERSON_BLOCKS) expect(labels).not.toContain(label);
     for (const tool of PERSON_TOOLS) expect(unattended.tools).not.toContain(tool);
-    for (const rule of [...PUBLICATION, "Installed skills", "ELEGANCE:"]) expect(text(unattended.parts)).not.toContain(rule);
+    for (const rule of [...PUBLICATION, "ELEGANCE:"]) expect(text(unattended.parts)).not.toContain(rule);
 
     // The guidance states the unattended contract and nothing that steers the work; an unattended chat runs no
     // brief and has no parent, so it is not told to hand off or message one.
@@ -110,7 +158,7 @@ describe("system prompt of an unattended chat", () => {
 
   test("keeps a doctrine that a person wrote byte for byte", async () => {
     const written = "WRITING:\n- Follow the conventions of this repository.\n\n---\n\nCOMMITS:\n- Commit each unit.";
-    const unattended = await request({ kind: "unattended-chat" }, false, written);
+    const unattended = await request(UNATTENDED, { engineeringDoctrine: written });
     expect(unattended.parts.find((part) => part.label === "engineering doctrine")?.text).toBe(written);
   });
 
@@ -121,7 +169,7 @@ describe("system prompt of an unattended chat", () => {
     for (const tool of MESSAGE_TOOLS) expect(chat.tools).toContain(tool);
     expect(chat.parts.map((part) => part.label)).toContain("session identity");
 
-    const alone = await request({ kind: "unattended-chat" }, true);
+    const alone = await request(UNATTENDED, { withoutChildren: true });
     expect(alone.tools).not.toContain("subagent");
     for (const tool of MESSAGE_TOOLS) expect(alone.tools).not.toContain(tool);
     expect(alone.parts.map((part) => part.label)).not.toContain("session identity");
@@ -133,5 +181,67 @@ describe("system prompt of an unattended chat", () => {
     expect(withChildren.tools).not.toContain("list_sessions");
     expect(JSON.stringify(withChildren.messageSession?.inputSchema)).not.toContain("list_sessions");
     expect(withChildren.parts.map((part) => part.label)).not.toContain("session identity");
+  });
+
+  // The coding methods serve an unattended run; a method that a person answers or approves (`attended: true`) does
+  // not, and a delegated method such as `ship` is never in a catalog.
+  test("offers the skill catalog without the methods that a person answers or approves", async () => {
+    const chat = await request(INTERACTIVE);
+    const unattended = await request(UNATTENDED);
+    const chatSkills = catalog(chat.parts);
+    const unattendedSkills = catalog(unattended.parts);
+
+    expect(unattended.tools).toContain("skill");
+    for (const id of ["test-driven-development", "systematic-debugging", "root-cause-analysis", "verification", "implementation"]) expect(unattendedSkills).toContain(id);
+    for (const id of ["design", "experiment-charter", "experiment-finalize", "ship"]) expect(unattendedSkills).not.toContain(id);
+    expect(chatSkills.filter((id) => !unattendedSkills.includes(id))).toEqual(["design", "experiment-charter", "experiment-finalize"]);
+    expect(chatSkills).not.toContain("ship");
+  });
+
+  // Loading a skill renders every skill that it composes, so a skill that composes an attended method is as attended
+  // as that method: the catalog, both capability checks, and the load agree on it.
+  test("leaves out a skill that composes a method that a person answers, where the interactive chat keeps it", async () => {
+    const revision = revisionWith({ ...installedSkill("verification"), id: "composes-design", dependencies: ["design"] });
+    const surface = async (purpose: AgentPurpose) => {
+      const { planned, parts } = await request(purpose, { revision });
+      const has = plannedCapabilities(planned);
+      const skill = planned.tools.get("skill");
+      if (!skill) throw new Error("the skill tool is not planned");
+      const load = await skill.execute({ action: "load", skill_id: "composes-design" }, makeContext({ capabilities: has }));
+      const refusal = load.outcome === "error" ? String(load.content).split(".")[0] : undefined;
+      return { listed: catalog(parts).includes("composes-design"), tree: planned.kernel.treeCapabilities("skill:composes-design"), agent: has("skill:composes-design"), load: load.outcome, refusal };
+    };
+
+    expect(await surface(INTERACTIVE)).toEqual({ listed: true, tree: true, agent: true, load: "ok", refusal: undefined });
+    expect(await surface(UNATTENDED)).toEqual({ listed: false, tree: false, agent: false, load: "error", refusal: 'Unknown or unavailable skill_id "composes-design"' });
+  });
+
+  // A subagent's purpose is its own, but its tree's root decides whether a person reads the tree: the subagent holds
+  // the boundary of the chat that started it.
+  test("leaves the attended methods out of a subagent of an unattended chat, where a subagent of an interactive chat keeps them", async () => {
+    const under = async (treeRoot: AgentPurpose) => {
+      const { planned, parts } = await request(SUBAGENT, { treeRoot });
+      return { listed: catalog(parts).includes("design"), tree: planned.kernel.treeCapabilities("skill:design"), agent: plannedCapabilities(planned)("skill:design") };
+    };
+    expect(await under(INTERACTIVE)).toEqual({ listed: true, tree: true, agent: true });
+    expect(await under(UNATTENDED)).toEqual({ listed: false, tree: false, agent: false });
+  });
+
+  // A skill that an unattended chat leaves out of its catalog is no capability there, so every `skill:` term and every
+  // rule that reads one, such as the shell's worktree rule, agrees with the catalog.
+  test("reports a left-out skill as unavailable, and gates worktree commands only while their method is available", async () => {
+    const agentCheck = async (purpose: AgentPurpose, revision = definitions) => plannedCapabilities((await request(purpose, { revision })).planned);
+    const worktreeRule = async (capabilities: CapabilityCheck) => interceptBashCommand("git worktree add ../other", { capabilities, effectiveBundledSkillIds: new Set() });
+
+    const chat = await agentCheck(INTERACTIVE);
+    const unattended = await agentCheck(UNATTENDED);
+    expect(chat("skill:design")).toBe(true);
+    expect(unattended("skill:design")).toBe(false);
+    expect(unattended("skill:worktree-lifecycle")).toBe(true);
+    expect(await worktreeRule(unattended)).not.toBeNull();
+
+    const withoutWorktreeMethod = await agentCheck(UNATTENDED, revisionWith({ ...installedSkill("worktree-lifecycle"), attended: true }));
+    expect(withoutWorktreeMethod("skill:worktree-lifecycle")).toBe(false);
+    expect(await worktreeRule(withoutWorktreeMethod)).toBeNull();
   });
 });

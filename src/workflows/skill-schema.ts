@@ -287,6 +287,11 @@ export interface SkillDefinition {
    *  in chat here; the persona registry warns when the delegate does not
    *  compose it, because the method is then unreachable. */
   readonly delegate?: string;
+  /** The method needs a person who reads the conversation: it asks that
+   *  person or waits for approval. Every agent of an unattended chat's tree
+   *  leaves it, and each skill that composes it, out of its catalog and
+   *  refuses to load them (PI-AGENT-121). */
+  readonly attended?: true;
   readonly modelInvocable: boolean;
   /** `SKILL.md` body, byte-for-byte as authored. */
   readonly body: string;
@@ -409,6 +414,10 @@ const SkillFrontmatterSchema = Schema.Struct({
   // agents delegate instead of loading it. Another harness has no such agent
   // and ignores the key, so the same package stays invocable there.
   delegate: Schema.optionalKey(Schema.String),
+  // Flywheel's own field: the method needs a person who reads the
+  // conversation, because it asks that person or waits for approval. Another
+  // harness ignores the key.
+  attended: Schema.optionalKey(Schema.Boolean),
   // Flywheel's own write-contract fields, not cross-harness ones. Typed loose
   // because hand edits are legal and a malformed marker must not unpublish the
   // package: normalization degrades it to absent, and an unmarked package
@@ -435,6 +444,7 @@ export interface SkillMetadata {
   readonly agents: readonly string[];
   readonly directOutput: string | undefined;
   readonly delegate: string | undefined;
+  readonly attended: boolean;
   readonly modelInvocable: boolean;
   /** The write contract: `flywheel` accepts autonomous review writes, `user`
    *  is pinned to user-directed writes, absent refuses every write. */
@@ -466,6 +476,7 @@ export function normalizeSkillFrontmatter(raw: SkillFrontmatterInput): SkillMeta
     agents: toList(frontmatter.agents),
     directOutput: multiLine(frontmatter["direct-output"] ?? "") || undefined,
     delegate,
+    attended: frontmatter.attended ?? false,
     modelInvocable: delegate === undefined && !(frontmatter["disable-model-invocation"] ?? false),
     managed: frontmatter.managed === "flywheel" || frontmatter.managed === "user" ? frontmatter.managed : undefined,
     provenance: toProvenance(frontmatter.provenance),

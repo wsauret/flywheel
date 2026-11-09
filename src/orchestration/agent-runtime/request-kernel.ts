@@ -1,5 +1,6 @@
 import { assertNever } from "../../infra/assert-never.js";
 import type { SkillDefinition } from "../../workflows/skill-schema.js";
+import { resolveSkillClosure } from "../../workflows/skill-closure.js";
 import type { ProjectDefinitionRegistryRevision } from "../../workflows/definition-registry.js";
 import { definitionAvailabilityOf } from "../app-service/definition-availability.js";
 import { canonicalModuleIds } from "../../protocol/module-ids.js";
@@ -74,6 +75,26 @@ export interface KernelRequestFacts {
   readonly fileEditContract?: ModelInteractionProfile["fileEditContract"];
 }
 
+const unattendedRevisions = new WeakMap<ProjectDefinitionRegistryRevision, ProjectDefinitionRegistryRevision>();
+
+/** The revision that every agent of an unattended chat's tree plans under: no person reads the tree, so a method that
+ *  a person answers or approves (`attended: true`) is not model-invocable there, and neither is a skill that composes
+ *  one, because its load renders the whole closure (PI-AGENT-121). The catalog, every `skill:<id>` capability term,
+ *  and every rule that reads one, such as the shell's worktree rule, then agree. Memoized per revision, because the
+ *  definition graph is memoized per revision object, so every agent of the tree reads the same catalog bytes. */
+function withoutAttendedSkills(revision: ProjectDefinitionRegistryRevision): ProjectDefinitionRegistryRevision {
+  const memoized = unattendedRevisions.get(revision);
+  if (memoized) return memoized;
+  // A published revision holds only skills whose closure resolves: the loader drops the rest.
+  const attended = new Set([...revision.skills.skills.values()]
+    .filter((skill) => resolveSkillClosure([skill.id], revision.skills, `Skill "${skill.id}"`).some((member) => member.attended))
+    .map((skill) => skill.id));
+  const skills = new Map([...revision.skills.skills].map(([id, definition]) => [id, attended.has(id) ? { ...definition, modelInvocable: false } : definition]));
+  const unattended = { ...revision, skills: { ...revision.skills, skills, modelInvocable: revision.skills.modelInvocable.filter((definition) => !attended.has(definition.id)) } };
+  unattendedRevisions.set(revision, unattended);
+  return unattended;
+}
+
 /** What an agent's own selection holds now: a module that `live` enables and its capability access admits, and the
  *  definitions those modules make available. */
 function liveSelection(live: FirstPartyModuleComposition, capabilityAccess: CapabilityAccess | undefined, definitions: ProjectDefinitionRegistryRevision) {
@@ -87,8 +108,9 @@ function liveSelection(live: FirstPartyModuleComposition, capabilityAccess: Capa
  *  from the same facts, so it advertises what a live request advertises. */
 export function requestKernel(run: KernelRunFacts, request: KernelRequestFacts): KernelToolDeps {
   const { options, surfaces } = run;
-  const { available, definitions: live } = liveSelection(request.live, options.capabilityAccess, request.definitions);
-  const tree = definitionAvailabilityOf(request.definitions, request.moduleSnapshot.enabledModuleIds);
+  const definitions = options.capabilityAccess?.unattended ? withoutAttendedSkills(request.definitions) : request.definitions;
+  const { available, definitions: live } = liveSelection(request.live, options.capabilityAccess, definitions);
+  const tree = definitionAvailabilityOf(definitions, request.moduleSnapshot.enabledModuleIds);
   return {
     userDataRoot: options.userDataRoot,
     ...(run.captureProviderConnection ? { captureProviderConnection: run.captureProviderConnection } : {}),
@@ -108,7 +130,7 @@ export function requestKernel(run: KernelRunFacts, request: KernelRequestFacts):
     capabilities: { available },
     definitionAvailability: { tree, live },
     treeCapabilities: treeCapabilityCheck(request.moduleSnapshot, tree, contributedToolIdentities(request.moduleSnapshot)),
-    skills: request.definitions.skills,
+    skills: definitions.skills,
     ...(run.onSkillLoad ? { onSkillLoad: run.onSkillLoad } : {}),
     ...(surfaces.externalSkillChildGrant ? { externalSkillChildGrant: surfaces.externalSkillChildGrant } : {}),
     moduleSnapshot: request.moduleSnapshot,

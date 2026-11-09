@@ -1,5 +1,6 @@
 ---
 description: Use when the user invokes /experiment design to build an approved experiment charter section by section.
+attended: true
 direct-output: Report the approved charter path, the observed baseline METRIC line, and the commit that holds exactly the three .experiment files directly in chat.
 ---
 

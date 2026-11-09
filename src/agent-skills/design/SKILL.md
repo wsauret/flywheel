@@ -1,5 +1,6 @@
 ---
 description: Use for feature feasibility or designing a change or fix.
+attended: true
 ---
 
 # Design

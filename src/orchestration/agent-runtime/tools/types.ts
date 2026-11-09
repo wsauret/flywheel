@@ -56,6 +56,10 @@ const applyCapabilityGrant = Symbol("CapabilityAccess.applyGrant");
 export interface CapabilityAccess {
   /** Grant of the admitted operation this call belongs to, when there is one. */
   readonly grant?: CapabilityGrant;
+  /** Set when no person reads the work this boundary admits: an unattended chat's boundary, which every agent that the
+   *  chat starts inherits. A method that a person answers or approves is then no capability of any agent of the tree
+   *  (PI-AGENT-121). */
+  readonly unattended?: true;
   /** Whether this context holds one capability right now. */
   available(capability: ModuleId): boolean;
   admit(request: CapabilityRequest): Promise<CapabilityAdmission>;
@@ -78,15 +82,17 @@ export const NO_CAPABILITY_ACCESS: CapabilityAccess = Object.freeze({
 
 /** The capability boundary of work this policy admits. Every producer of a
  *  `CapabilityAccess` builds it here, so `available` and `admit` always read the
- *  same authority. */
+ *  same authority, and a grant applied later keeps the ceiling and `unattended`. */
 export function capabilityAccessFor(
   capabilities: Pick<ModulePolicy, "admit" | "state">,
   grant?: CapabilityGrant,
   ceiling: readonly ModuleId[] = MODULE_IDS,
+  unattended = false,
 ): CapabilityAccess {
   const boundedCeiling = canonicalModuleIds(ceiling);
   const createAccess = (activeGrant?: CapabilityGrant): CapabilityAccess => ({
     ...(activeGrant ? { grant: activeGrant } : {}),
+    ...(unattended ? { unattended: true as const } : {}),
     available: (capability) => boundedCeiling.includes(capability)
       && (grantCovers(activeGrant, [capability]) || capabilities.state().capabilities.includes(capability)),
     admit: async (request) => {

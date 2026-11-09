@@ -126,8 +126,9 @@ async function createChatRunnerInner(deps: ChatRunnerDeps): Promise<ChatRunner> 
     current: () => authAdmission.current(sessionId).workflowDeps,
   })
   const currentWorkflowDeps = () => workflowDeps
+  const unattended = deps.rootChatCompletion?.unattended === true
   const capabilityAccess = deps.capabilities
-    ? capabilityAccessFor(deps.capabilities, undefined, deps.rootChatCompletion?.unattended ? unattendedModuleIds() : undefined)
+    ? capabilityAccessFor(deps.capabilities, undefined, unattended ? unattendedModuleIds() : undefined, unattended)
     : undefined
   const captured = workflowDeps.captureRuntimeConfig()
   const definitionRevision = deps.definitions.captureRevision()

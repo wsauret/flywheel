@@ -16,6 +16,8 @@ const skill = {
     skill: {
       capabilities: ["skills"],
       create: ({ kernel, modules }) => {
+        // The kernel of every agent of an unattended chat's tree already leaves out the methods that a person answers
+        // or approves (PI-AGENT-121).
         const revision = kernel.skills
         if (!revision) return { unusable: { tool: SKILL_TOOL_DEFINITION, reason: "no skill registry available" } }
         if (revision.modelInvocable.length === 0) return { unusable: { tool: SKILL_TOOL_DEFINITION, reason: "no model-invocable skills installed" } }
@@ -44,8 +46,6 @@ export const skillsModule = {
   id: "skills",
   dependencies: [],
   availability: { kind: "available" },
-  // An unattended chat leaves out the skill tool and its catalog (PI-AGENT-121).
-  attended: true,
   contributions: [
     { domain: "tools", id: "skill", value: { kind: "tool", name: "skill", declaration: skill, associatedPromptRosterIds: ["skills"] } },
     { domain: "promptRosters", id: "skills", value: { definition: "skills", visibility: "model-invocable" } },

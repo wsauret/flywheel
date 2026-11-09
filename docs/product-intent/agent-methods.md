@@ -360,7 +360,7 @@ Headless chat behaves like interactive chat, with standard input and output repl
 
 ## PI-AGENT-121: An unattended Agent Client Protocol run serves no reader
 
-An Agent Client Protocol client can request an unattended one-shot run. That run leaves out the instructions and tools that serve a person who reads the conversation, such as change review, publication, communication rules, skills, and questions. It also leaves out Flywheel's built-in engineering doctrine; a doctrine that the user wrote still applies.
+An Agent Client Protocol client can request an unattended one-shot run. That run leaves out the instructions and tools that serve a person who reads the conversation, such as change review, publication, communication rules, and questions. It keeps the skill methods that need no person, and leaves out each skill that a person answers or approves. It also leaves out Flywheel's built-in engineering doctrine; a doctrine that the user wrote still applies.
 
 ## PI-AGENT-074: Headless chat ends when its owned work ends
 

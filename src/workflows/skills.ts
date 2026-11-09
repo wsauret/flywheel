@@ -335,6 +335,7 @@ function buildDefinition(dirName: string, contents: SkillPackage, source: SkillS
     agents: metadata.agents,
     ...(metadata.directOutput ? { directOutput: metadata.directOutput } : {}),
     ...(metadata.delegate ? { delegate: metadata.delegate } : {}),
+    ...(metadata.attended ? { attended: true } : {}),
     modelInvocable: metadata.modelInvocable,
     ...(metadata.managed ? { managed: metadata.managed } : {}),
     ...(metadata.provenance ? { provenance: metadata.provenance } : {}),
