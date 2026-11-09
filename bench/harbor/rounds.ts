@@ -1,5 +1,5 @@
 import { mkdir, open, readFile, rename, rm, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { isJsonMap, isMissingFile } from "./analysis/json.js";
 import { harborBenchmark } from "./benchmarks.js";
 
@@ -73,7 +73,7 @@ function decodeRound(value: unknown, path: string): Round {
   const runs = record.runs.map((run: unknown, index): RoundRun => {
     if (!isJsonMap(run)) return fail(`runs[${index}] must be an object`);
     const { directory, purpose, split } = run;
-    if (typeof directory !== "string" || !directory.startsWith("/")) return fail(`runs[${index}].directory must be an absolute path`);
+    if (typeof directory !== "string" || !isAbsolute(directory)) return fail(`runs[${index}].directory must be an absolute path`);
     if (purpose !== "measure" && purpose !== "rerun") return fail(`runs[${index}].purpose must be measure or rerun`);
     if (purpose === "measure" && typeof split !== "string") return fail(`runs[${index}] measures no split`);
     if (purpose === "rerun" && split !== undefined) return fail(`runs[${index}] is a rerun and names a split`);

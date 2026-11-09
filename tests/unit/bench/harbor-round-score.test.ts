@@ -174,7 +174,7 @@ describe("round reruns", () => {
     expect(rerunCommands(BENCHMARK, path, grown, needs, [], "/repo")).toEqual([]);
     // The arm is the round's own.
     expect(rerunCommands(BENCHMARK, path, round, (await rerunNeeds(BENCHMARK, round, await roundTrials(BENCHMARK, round))).needs, ["--auth-profile", "Fixture"], "/repo")).toEqual([
-      ["bash", "/repo/bench/harbor/run-harbor.sh", "--benchmark", BENCHMARK.id, "--task-names", "lost", "--attempts", "2", "--allow-low-k", "--round", "r1", "--jobs-dir", jobs, "--arm", IDENTITY.arm.path, "--auth-profile", "Fixture"],
+      ["bash", join("/repo", "bench/harbor/run-harbor.sh"), "--benchmark", BENCHMARK.id, "--task-names", "lost", "--attempts", "2", "--allow-low-k", "--round", "r1", "--jobs-dir", jobs, "--arm", IDENTITY.arm.path, "--auth-profile", "Fixture"],
     ]);
   });
 

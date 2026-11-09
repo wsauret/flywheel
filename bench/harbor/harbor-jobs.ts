@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { PUBLIC_REPO, publishedReleaseTags } from "../../scripts/release-repo.js";
 import { command, harborPython } from "./harbor-process.js";
 import { TRIAL_AUTH_PROFILE, type JsonMap, type ResolvedHarborConfig } from "./harbor-config.js";
@@ -82,11 +82,12 @@ export async function releaseTagFor(commit: string, listPublished: () => Promise
   return candidates.find((tag) => published.has(tag)) ?? null;
 }
 
-/** The arm config path relative to the repository root, the form in which the package builder reads its blob. */
+/** The arm config path relative to the repository root, in the `/`-separated
+ *  form in which the package builder reads its blob; Git refuses a `\` path. */
 export function repositoryConfigPath(absolutePath: string): string {
   const path = relative(REPOSITORY_ROOT, absolutePath);
   if (path.startsWith("..") || isAbsolute(path)) throw new Error(`the agent package needs an arm config inside the repository: ${absolutePath}`);
-  return path;
+  return path.split(sep).join("/");
 }
 
 export async function defaultBuildAgentPackage(commit: string, configPath: string, configSha256: string, answerKeyRule: boolean, releaseTag: string | null, output: string): Promise<AgentPackageBuild> {
