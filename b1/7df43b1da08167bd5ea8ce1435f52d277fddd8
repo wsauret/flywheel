@@ -1,0 +1,26 @@
+src/orchestration/modules/development/benchmark/persona-run.ts
+  h_4b47e9e4a8b456 193-197,213
+src/orchestration/modules/subagents/execution/dispatch-preparation.ts
+  h_4b47e9e4a8b456 152-153
+src/workflows/agents/subagent-reachability.ts
+  h_4b47e9e4a8b456 47-48,58,60-61
+tests/unit/bench/persona-run-accounting.test.ts
+  h_4b47e9e4a8b456 221-236
+tests/unit/orchestration/modules/subagents/subagent-continuation.test.ts
+  h_4b47e9e4a8b456 15,225-231,237,239
+tests/unit/orchestration/workflow-host/agent-persona.test.ts
+  h_4b47e9e4a8b456 42,45,99-105
+tests/unit/orchestration/workflow-host/workflow-runner.test.ts
+  h_4b47e9e4a8b456 18-21,37-39,46,51,54-55,132,252-285
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b17df43b1da08167bd5ea8ce1435f52d277fddd8",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
