@@ -59,6 +59,15 @@ const trace = await startTraceServer({ port: Number(args.port), rebuild: args.re
 const sim = await connectSimulator(args.udid)
 const checks: Check[] = []
 
+/** How far below the screen's top edge the page starts. An installed app
+ *  that does not draw under the status bar lays the page out below it, and
+ *  the shell's root fills the layout viewport whether the keyboard is up or
+ *  not, so the root's height gives the offset in every frame. */
+const pageTop = (frame: Frame): number => frame.screenHeight - (frame.root?.[3] ?? frame.screenHeight)
+
+/** Taps a point given in page coordinates, as the layout trace reports them. */
+const tapPage = (x: number, y: number): Promise<void> => sim.tap(x, y + pageTop(trace.latest()!))
+
 /** A chat is ready when the installed app shows its composer flush with the left edge and the layout has been still for a moment. */
 const chatReady = (frame: Frame): boolean =>
   frame.standalone && frame.composer !== null && Math.abs(frame.composer[0]) < 1 && frame.field !== null && frame.toolbar !== null && Date.now() - frame.t > 700
@@ -121,10 +130,11 @@ async function transition(scenario: string, action: () => Promise<void>, settleM
 
   // The header band below the status bar, and the transcript band above the
   // composer at both ends of the change: neither holds the keyboard or caret.
+  // The video is the whole screen, so the bands move down by the page offset.
   const headerBottom = bottom(before.toolbar)
   const regions: Region[] = [
-    { name: "header", top: before.safeTop, bottom: headerBottom },
-    { name: "transcript", top: headerBottom + 2, bottom: Math.min(before.composer?.[1] ?? 0, after.composer?.[1] ?? 0) - 2 },
+    { name: "header", top: before.safeTop + pageTop(before), bottom: headerBottom + pageTop(before) },
+    { name: "transcript", top: headerBottom + 2 + pageTop(before), bottom: Math.min(before.composer?.[1] ?? 0, after.composer?.[1] ?? 0) - 2 + pageTop(before) },
   ]
   const [header, transcript] = await regionActivity(video, { width: before.root?.[2] ?? 0, height: before.screenHeight }, regions)
   const spans = (activity: typeof header): string => activity!.spans.map(([from, to]) => `${from.toFixed(2)}-${to.toFixed(2)}s`).join(", ") || "none"
@@ -163,20 +173,20 @@ let failure: unknown
 try {
   const ready = await waitForChat()
   say(`chat ready: screen ${ready.root?.[2]}x${ready.screenHeight}, composer ${JSON.stringify(ready.composer)}`)
-  if (keyboardShown(ready)) await sim.tap(transcriptPoint(ready).x, transcriptPoint(ready).y)
+  if (keyboardShown(ready)) await tapPage(transcriptPoint(ready).x, transcriptPoint(ready).y)
   await Bun.sleep(800)
 
-  const first = await transition("Focus the composer", () => sim.tap(centre(trace.latest()!.field!).x, centre(trace.latest()!.field!).y))
+  const first = await transition("Focus the composer", () => tapPage(centre(trace.latest()!.field!).x, centre(trace.latest()!.field!).y))
   opened("Focus the composer", first.after)
 
-  const tapOut = await transition("Tap the transcript", () => sim.tap(transcriptPoint(first.after).x, transcriptPoint(first.after).y))
+  const tapOut = await transition("Tap the transcript", () => tapPage(transcriptPoint(first.after).x, transcriptPoint(first.after).y))
   closed("Tap the transcript", tapOut.after)
 
-  const second = await transition("Focus the composer again", () => sim.tap(centre(trace.latest()!.field!).x, centre(trace.latest()!.field!).y))
+  const second = await transition("Focus the composer again", () => tapPage(centre(trace.latest()!.field!).x, centre(trace.latest()!.field!).y))
   opened("Focus the composer again", second.after)
 
   // The accessory bar's Done key sits at its right end, just under the visual viewport.
-  const done = await transition("Done on the keyboard", () => sim.tap((second.after.root?.[2] ?? 0) - 36, keyboardTop(second.after) + 26))
+  const done = await transition("Done on the keyboard", () => tapPage((second.after.root?.[2] ?? 0) - 36, keyboardTop(second.after) + 26))
   closed("Done on the keyboard", done.after)
 } catch (error) {
   failure = error

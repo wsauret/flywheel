@@ -31,16 +31,30 @@ html, body {
 }
 #root .client { height: 100%; }
 
-/* In an installed iOS app the layout viewport is the screen minus the status
-   bar, anchored at the top, so 100%, dvh, and svh all stop a status bar's
-   height above the bottom edge and leave a band under the composer. The
-   large viewport is the whole screen there, because the app has no toolbar.
-   The host adds the class from navigator.standalone; the display-mode media
-   query stays false on iOS 26. The client's shell then fills the root, which
-   carries the keyboard inset as padding. */
-html.ios-installed,
-html.ios-installed body,
-html.ios-installed #root { height: 100lvh; }
+/* An installed iOS app that draws under the status bar has a layout viewport
+   of the screen minus the status bar, anchored at the top, so 100% stops a
+   status bar's height above the bottom edge and leaves a band under the
+   composer. The top safe-area inset is that status bar. The hosted page no
+   longer asks to draw under it, where the inset is 0 and 100% fills the
+   screen below the status bar, but this client ships with the runtime and
+   can load under an older hosted page that still asks. The host adds the
+   class from navigator.standalone; the display-mode media query stays false
+   on iOS 26. The client's shell then fills the root, which carries the
+   keyboard inset as padding. */
+html.ios-installed { height: calc(100% + env(safe-area-inset-top, 0px)); }
+
+/* iOS 27 blurs and dims the top of an installed app's screen, over the
+   header, unless a solid sticky or fixed element spans the top edge. With
+   one, iOS draws an opaque status bar in the page colour instead. It has no
+   effect in an app that draws under the status bar. The header does not
+   scroll away. Sticky makes it a stacking context, so it takes the popover
+   layer: its context popover must paint over the transcript below it. */
+#root .toolbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--fw-z-popover);
+  background: var(--fw-bg);
+}
 
 .scan-overlay {
   position: fixed;

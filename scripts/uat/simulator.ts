@@ -39,7 +39,9 @@ export async function connectSimulator(udid?: string): Promise<Simulator> {
   return {
     udid: id,
     async tap(x, y) {
-      await run([AXE, "tap", "-x", x.toFixed(1), "-y", y.toFixed(1), "--udid", id])
+      // A plain AXe tap reports success but reaches no installed web app on
+      // iOS 27; a touch with an explicit down and up does.
+      await run([AXE, "touch", "-x", x.toFixed(1), "-y", y.toFixed(1), "--down", "--up", "--delay", "0.15", "--udid", id])
     },
     async screenshot(path) {
       await run(["xcrun", "simctl", "io", id, "screenshot", "--type=png", path])
