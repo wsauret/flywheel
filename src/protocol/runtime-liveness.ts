@@ -265,8 +265,12 @@
  *  `inline.invoke` mutation is gone, because skills are agent methods that
  *  no person types. An older client would decode no command catalog from
  *  such a runtime.
+ *  Version 85: the session domain `background` carries the rows of a held
+ *  index, each changed row whole or its removal, in place of the retired
+ *  `background.changed` invalidation, and a client orders the rows. An older
+ *  peer rejects the patches.
  */
-export const RUNTIME_PROTOCOL_VERSION = 84
+export const RUNTIME_PROTOCOL_VERSION = 85
 
 export const RUNTIME_EVENT_HEARTBEAT_INTERVAL_MS = 5_000
 

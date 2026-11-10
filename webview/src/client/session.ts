@@ -12,6 +12,7 @@ import type { GitView } from "../../../src/protocol/git-protocol-types.js"
 import type { BudgetSummary } from "../../../src/protocol/client/host-contract.js"
 import type { ProviderSummary } from "../../../src/protocol/client/provider-summary.js"
 import type { StatusView } from "../../../src/protocol/status-protocol-types.js"
+import type { BackgroundIndexState } from "../../../src/protocol/client/background-index.js"
 import type { RuntimeConnection } from "../../../src/protocol/client/connection.js"
 import { isLaneBreak } from "../../../src/protocol/client/cursor-intake.js"
 import { runtimeHealth } from "../../../src/protocol/client/runtime-health.js"
@@ -180,6 +181,9 @@ export interface RuntimeSession {
    *  question projection: the dock shows it, and a chat blocked on the user
    *  says so from the list rather than only from inside its own transcript. */
   readonly pendingQuestions: ReadonlyMap<string, PendingQuestionView>
+  /** The background index of the shown session, which its resident views
+   *  follow, or undefined while no session is shown. */
+  readonly backgroundIndex: BackgroundIndexState | undefined
   /** The row this page holds for a session: its catalog row, or the detail
    *  of a held child. Undefined for a session the page holds no row for. */
   row(sessionId: string): SessionRow | undefined
@@ -703,6 +707,7 @@ export function createRuntimeSession(options: RuntimeSessionOptions): RuntimeSes
     get gitAiAttribution() { return statusViews.gitAiAttribution },
     refreshSettings,
     get pendingQuestions() { return readings.pendingQuestions },
+    get backgroundIndex() { return visible()?.background },
     row: rowOf,
     get modules() { return modules.views(visible()?.modules) },
     memory: (target) => residents.get(target)?.memory,

@@ -235,9 +235,13 @@ Not: A foreground session notice, or a second client copy of the update policy.
 
 Project notifications reach clients as a durable-resnapshot workspace domain whose patches carry a raised episode whole and a resolution or dismissal by source and episode identity, so a client folds terminal state without inferring it. The action vocabulary stays closed, targeted auth actions carry only opaque account identity, and dismissal is one lossless mutation of one exact episode.
 
-## ARCH-PROTOCOL-045: Invalidation domains anchor their reads before awaiting
+## ARCH-PROTOCOL-045: The changes domain anchors its reads before awaiting
 
-The changes and background domains publish invalidations, not copies of their state. Their publishers need no live runner and read no history beyond placing sessions in the launch tree. A summary or index read captures its cursor before it awaits durable data, so an invalidation during the read stays newer than the returned anchor. A session's changes review folds the session and every session it launched. A launched session's change invalidates the changes domain of every session that launched it. A client reads such an index only while showing it. Unavailable durable metadata is an error, never an empty summary.
+The changes domain publishes invalidations, not copies of its state. Its publisher needs no live runner and reads no history beyond placing sessions in the launch tree. A summary read captures its cursor before it awaits durable data, so an invalidation during the read stays newer than the returned anchor. A session's changes review folds the session and every session it launched. A launched session's change invalidates the changes domain of every session that launched it. A client reads a changes summary only while showing it. Unavailable durable metadata is an error, never an empty summary.
+
+## ARCH-PROTOCOL-069: The background domain publishes held index rows
+
+The background domain publishes the rows of each session's background index. The runtime holds the index of each session that a client follows, builds it once from durable facts, and advances it per change by the rows that the change touches. It publishes each changed row whole, or its removal. A client follows the background index of the session it views.
 
 ## ARCH-PROTOCOL-046: Review validity is proven by exact source identity
 

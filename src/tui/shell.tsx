@@ -201,7 +201,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
   startSessionChangesWhenReady(
     // eslint-disable-next-line solid/reactivity -- the helper tracks readiness in its owned effect
     () => firstFrame() && signals.startupStatus() === null,
-    services.startSessionChanges,
+    services.startDeferredReadings,
   )
   const processControls = createSessionProcessControls({ appService, signals, showToast: services.showToast })
   startupTrace("shell state created")
@@ -252,6 +252,7 @@ export function FlywheelShell(props: { appService: AttachedRuntimeClient; attach
       },
       transcriptInView,
       onOpenBackground: (target) => backgroundModal.openBackgroundModal(target),
+      followBackground: signals.backgroundIndex.follow,
       compactionThreshold: () => signals.runtimeConfig()?.values.proactiveCompactionThreshold,
       roleView: signals.roleView,
       childStatus: signals.childStatus,

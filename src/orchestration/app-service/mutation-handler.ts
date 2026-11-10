@@ -55,6 +55,7 @@ export async function dispatchFrontendMutation(
     | { type: "subscription_spend_consent.save" }
     | { type: "session.changes.set_viewed" }
     | { type: "session_detail.release" }
+    | { type: "background.release" }
     | { type: "output.watch" }
     | { type: "session.claim_composer_returns" }
   >,

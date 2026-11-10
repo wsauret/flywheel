@@ -37,6 +37,7 @@ const MUTATION_EXPOSURE = {
   "session.claim_composer_returns": "exposed",
   "session.release": "exposed",
   "session_detail.release": "exposed",
+  "background.release": "exposed",
   "output.watch": "exposed",
   "session.fork": "exposed",
   "session.close": "exposed",

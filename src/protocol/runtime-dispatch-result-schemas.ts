@@ -54,7 +54,7 @@ const RUNTIME_DISPATCH_RESULT_SCHEMAS = {
   "session.changes.undo": SessionChangesUndoResultSchema, "session.changes.set_viewed": SessionChangesSetViewedResultSchema,
   "chat.open": MutationResultSchema, "session.send": MutationResultSchema, "chat.compact": MutationResultSchema,
   "chat.interrupt": MutationResultSchema, "chat.resume": MutationResultSchema, "background.terminate": MutationResultSchema, "bash.detach": MutationResultSchema,
-  "session.activate": MutationResultSchema, "session.release": MutationResultSchema, "session_detail.release": MutationResultSchema, "output.watch": MutationResultSchema,
+  "session.activate": MutationResultSchema, "session.release": MutationResultSchema, "session_detail.release": MutationResultSchema, "background.release": MutationResultSchema, "output.watch": MutationResultSchema,
   "session.fork": MutationResultSchema, "session.close": MutationResultSchema, "session.delete": MutationResultSchema, "session.discard_transient": MutationResultSchema,
   "session.reorder": MutationResultSchema, "session.dismiss_notice": MutationResultSchema, "session.rename": MutationResultSchema,
   "question.answer": MutationResultSchema, "question.cancel": MutationResultSchema,

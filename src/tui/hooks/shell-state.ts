@@ -1,4 +1,4 @@
-import { createBackgroundIndexIntake, type BackgroundIndexView } from "./create-background-index.js"
+import { createBackgroundIndexFollower, type BackgroundIndexView } from "./create-background-index.js"
 import type { Accessor } from "solid-js"
 import { batch, createEffect, createMemo, createSignal, untrack } from "solid-js"
 import type { BackoffOptions } from "../../infra/backoff.js"
@@ -71,7 +71,8 @@ export type ForegroundTarget =
 export interface ShellSignals {
   spinnerStatusSource: SpinnerStatusSource
   sessionChanges: Accessor<SessionChangesView | undefined>
-  /** The background index of the session the background modal shows. */
+  /** The background indexes of the foreground session and of the child
+   *  session whose work a child viewer lists. */
   backgroundIndex: BackgroundIndexView
   agentState: Accessor<AgentState>
   /** Whether the foreground session has something an Interrupt cuts now:
@@ -193,7 +194,9 @@ export interface ShellSignals {
 }
 
 export interface ShellServices {
-  startSessionChanges: () => void
+  /** Starts the readings that wait for the first frame and runtime
+   *  readiness: the foreground session's changes and background index. */
+  startDeferredReadings: () => void
   showToast: (opts: { message: string; variant: "info" | "warning" | "error" | "success"; duration?: number }) => void
   seedSessionCatalogRow: (row: SessionCatalogRow) => void
   startKnownEmptyTranscript: OutputTranscriptCache["startKnownEmpty"]
@@ -395,7 +398,7 @@ export function createShellState(deps: {
   const sessionCatalog = createSessionCatalog({ appService: deps.appService, projectRoot: deps.projectRoot, attachedIdentity: deps.attachedIdentity })
   const intake = {
     changes: createSessionChangesIntake({ client: deps.appService, foregroundId }),
-    background: createBackgroundIndexIntake({ client: deps.appService }),
+    background: createBackgroundIndexFollower({ client: deps.appService, foregroundId }),
     session: sessionCatalog,
     // ONE output store: the same transcript cache owns the live delta intake and the
     // derived-history range reads. There is no separate projector and no cross-store bridge --
@@ -671,7 +674,10 @@ export function createShellState(deps: {
     pageForegroundOutput: foregroundSurface.pageOutput,
     refreshCommandCatalog: commandCatalog.refresh,
     commandCatalogReadiness: commandCatalog,
-    startSessionChanges: intake.changes.start,
+    startDeferredReadings: () => {
+      intake.changes.start()
+      intake.background.start()
+    },
     appService: deps.appService,
     transcripts: transcriptCache,
     sessionDetails: intake.session_detail,

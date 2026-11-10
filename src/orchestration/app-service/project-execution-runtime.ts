@@ -59,7 +59,7 @@ import { createLazyWorkflowController } from "./lazy-workflow-controller.js"
 import { composeModuleProtocolRuntimes } from "./module-protocol-host.js"
 import { createSessionChangesPublisher } from "./session-changes-publisher.js"
 import { createSessionPlacements } from "../session/session-metadata-store.js"
-import { composeBackgroundIndex } from "./background-index.js"
+import { composeBackgroundIndex } from "./background-index-publisher.js"
 import { createRuntimeSupervisor } from "./runtime-supervisor.js"
 import { createChatRunnerLoader } from "./chat-runner-loader.js"
 import type { ChatRunner } from "../chat/runner-types.js"
@@ -325,7 +325,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
     "streaming-edit-validation", createStreamingEditValidationService(), (service) => service.dispose(),
   )
   scope.own("session-changes-publisher", createSessionChangesPublisher({ onStored: eventStore.onStored, publish: bus.publish, sessionPlacements: createSessionPlacements(projectionReader) }), (publisher) => { publisher.dispose() })
-  const backgroundIndex = scope.own("background-index", composeBackgroundIndex({ reader: projectionReader, readSession: manager.read, onStored: eventStore.onStored, publish: bus.publish, sessionStore, onKeptChange: keeper.onChange }), (index) => { index.dispose() })
+  const backgroundIndex = scope.own("background-index", composeBackgroundIndex({ reader: projectionReader, readSession: manager.read, onStored: eventStore.onStored, publish: bus.publish, snapshotPosition: bus.snapshotPosition, sessionStore, onKeptChange: keeper.onChange }), (index) => { index.dispose() })
   // One service per enabled module, once per process, before any producer
   // can raise: the notify seam reads the live selection, so a module turned
   // off hears nothing and no kernel producer names one (ARCH-RUNTIME-048, ARCH-STRUCTURE-034).

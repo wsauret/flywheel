@@ -326,8 +326,7 @@ describe("account project control client", () => {
     const patches = events.flatMap((event) => event.type === "patch" ? [event.patch] : [])
     expect(patches.length).toBeGreaterThan(2)
     expect(patches.some((patch) => patch.payload.kind === privatePatch.payload.kind
-      && "row" in patch.payload
-      && patch.payload.row !== null
+      && patch.payload.kind === "session.updated"
       && patch.payload.row.activity === "generating"
       && !patch.payload.row.totalsLoading
       && patch.payload.row.totalTokens === 99)).toBe(true)

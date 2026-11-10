@@ -1,6 +1,7 @@
 import { createComponent, createRoot, createSignal } from "solid-js"
 import type { FrontendEvent } from "../../../src/protocol/app-service-types.js"
-import type { BackgroundWorkRow, BackgroundWorkTarget } from "../../../src/protocol/background-index-protocol-types.js"
+import { backgroundCursor, type BackgroundPatchPayload, type BackgroundWorkRow, type BackgroundWorkTarget } from "../../../src/protocol/background-index-protocol-types.js"
+import { backgroundIndexState, createBackgroundIndexReadings, type HeldBackgroundIndex } from "../../../src/protocol/client/background-index.js"
 import { ClientExtensionsProvider } from "./client-extensions.js"
 import type { WebModuleClient } from "../web-module-client.js"
 
@@ -15,21 +16,51 @@ const tick = async (): Promise<void> => {
 }
 
 /** Mounts the real background sheet over a chat whose transcript has loaded
- *  no block, so every card the rows name is outside the loaded window. */
-export function mountBackgroundSheet(rows: readonly BackgroundWorkRow[], stored: { [key: string]: string } = {}) {
+ *  no block, so every card the rows name is outside the loaded window. The
+ *  chat's background index is followed and read before the sheet mounts, as
+ *  the web client follows it from the chat's selection. */
+export async function mountBackgroundSheet(rows: readonly BackgroundWorkRow[], stored: { [key: string]: string } = {}) {
+  const queries: unknown[] = []
+  const mutations: unknown[] = []
+  const listeners = new Set<(event: FrontendEvent) => void>()
+  const lanes = fakeLanes()
+  const connection = fakeRuntimeConnection({
+    onQuery: (request) => { queries.push(request) },
+    onDispatch: (mutation) => { mutations.push(mutation) },
+    queries: { sessionBackgroundWork: () => ({ snapshotPosition: 1, rows }) },
+    mutations: { "background.terminate": () => ({ ok: true }), "background.release": () => ({ ok: true }) },
+  }, {
+    ...lanes.client,
+    subscribe(listener) {
+      listeners.add(listener)
+      return () => { listeners.delete(listener) }
+    },
+  })
+  let held: HeldBackgroundIndex | undefined
+  const viewState = () => fakeViewState({ sessionId: "chat", backgroundIndex: backgroundIndexState(held) })
+  const [state, setState] = createSignal(viewState())
+  const readings = createBackgroundIndexReadings({
+    client: connection,
+    admits: (sessionId) => sessionId === "chat",
+    views: {
+      get: () => held,
+      set: (_sessionId, view) => { held = view },
+      delete: () => { held = undefined },
+      keys: () => held === undefined ? [] : ["chat"],
+    },
+    changed: () => setState(viewState()),
+  })
+  readings.ensure(["chat"])
+  await tick()
+  const readBeforeMount = queries.length
+  let position = 1
   return createRoot((disposeRoot) => {
     const root = createElement("root")
-    const [state] = createSignal(fakeViewState({ sessionId: "chat" }))
-    const queries: unknown[] = []
-    const mutations: unknown[] = []
     const landings: Array<readonly [string, string]> = []
     const marked: Array<string | undefined> = []
     const selected: Array<readonly [string, unknown]> = []
     const openedTargets: BackgroundWorkTarget[] = []
     const confirmations: Array<(confirmed: boolean) => void> = []
-    const listeners = new Set<(event: FrontendEvent) => void>()
-    const lanes = fakeLanes()
-    let currentRows = rows
     let closed = 0
     Reflect.set(globalThis, "localStorage", {
       getItem: (key: string) => stored[key] ?? null,
@@ -41,18 +72,7 @@ export function mountBackgroundSheet(rows: readonly BackgroundWorkRow[], stored:
         async openAround(sessionId, entryId) { landings.push([sessionId, entryId]); return `block-${entryId}` },
         selectSession(sessionId, link) { selected.push([sessionId, link]) },
       }),
-      connection: fakeRuntimeConnection({
-        onQuery: (request) => { queries.push(request) },
-        onDispatch: (mutation) => { mutations.push(mutation) },
-        queries: { sessionBackgroundWork: () => ({ snapshotPosition: 1, rows: currentRows }) },
-        mutations: { "background.terminate": () => ({ ok: true }) },
-      }, {
-        ...lanes.client,
-        subscribe(listener) {
-          listeners.add(listener)
-          return () => { listeners.delete(listener) }
-        },
-      }),
+      connection,
       markBlock(blockId) { marked.push(blockId) },
       closeSheet() { closed += 1 },
       confirm() { return new Promise((resolve) => { confirmations.push(resolve) }) },
@@ -80,15 +100,23 @@ export function mountBackgroundSheet(rows: readonly BackgroundWorkRow[], stored:
     return {
       dispose(): void {
         disposeRoot()
+        readings.dispose()
         Reflect.deleteProperty(globalThis, "__flywheelBackgroundSheetTestClient")
         Reflect.deleteProperty(globalThis, "localStorage")
       },
       ready: tick,
       row: rowOf,
       elements: () => nodes(root),
-      refresh(next: readonly BackgroundWorkRow[]) { currentRows = next; lanes.open() },
+      /** Publishes one row patch of the chat's index. */
+      patch(payload: BackgroundPatchPayload): void {
+        position += 1
+        for (const listener of listeners) listener({ type: "patch", patch: { cursor: backgroundCursor("chat"), position, prevPosition: position - 1, payload } })
+      },
       text: () => textContent(root),
-      queries: () => queries,
+      /** The reads made before the sheet mounted, when the chat was followed. */
+      queriesBeforeMount: () => queries.slice(0, readBeforeMount),
+      /** The reads made since the sheet mounted. */
+      queriesSinceMount: () => queries.slice(readBeforeMount),
       mutations: () => mutations,
       landings: () => landings,
       marked: () => marked,

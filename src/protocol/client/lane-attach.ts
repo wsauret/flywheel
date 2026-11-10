@@ -6,9 +6,10 @@ import type { LaneEndCause, RuntimeClientDiagnostic } from "../runtime-client-di
  *  watched, and a transcript read must not see output that its lane then
  *  withholds. The transcript read goes next, because it is what the person
  *  waits for. A hold (an activation, a held detail read, or a release of
- *  either) lasts only as long as the connection that carries it, and every
- *  holder holds again on each new lane, so a hold that waited for the lane
- *  is dropped instead of sent twice. */
+ *  either or of a followed background index) lasts only as long as the
+ *  connection that carries it, and every holder holds again on each new
+ *  lane, so a hold that waited for the lane is dropped instead of sent
+ *  twice. */
 export type LaneCall = "watch" | "transcript" | "hold" | "call"
 
 export function laneCallOf(request: RuntimeQuery | FrontendMutation): LaneCall {
@@ -20,6 +21,7 @@ export function laneCallOf(request: RuntimeQuery | FrontendMutation): LaneCall {
     case "session.activate":
     case "session.release":
     case "session_detail.release":
+    case "background.release":
     case "sessionDetailSnapshot":
       return "hold"
     default:

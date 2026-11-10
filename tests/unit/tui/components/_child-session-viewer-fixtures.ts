@@ -33,7 +33,7 @@ export function viewerSurface(kind: "subagent" | "workflow-agent", overrides: Pa
   }
 }
 
-export function childBodyProps(): Pick<ChildSessionBodyProps, "layoutSlot" | "createProcessControls" | "sessionIntro" | "showThinking" | "diffColors" | "roleView" | "childStatus" | "ensureChildViews" | "modelLabel" | "onOpenModel" | "transcriptInView" | "onOpenBackground"> {
+export function childBodyProps(): Pick<ChildSessionBodyProps, "layoutSlot" | "createProcessControls" | "sessionIntro" | "showThinking" | "diffColors" | "roleView" | "childStatus" | "ensureChildViews" | "modelLabel" | "onOpenModel" | "transcriptInView" | "onOpenBackground" | "followBackground"> {
   return {
     layoutSlot: {},
     createProcessControls: () => ({ status: () => undefined, onDetach: () => {}, onStop: () => {} }),
@@ -41,6 +41,6 @@ export function childBodyProps(): Pick<ChildSessionBodyProps, "layoutSlot" | "cr
       branchName: () => undefined, modelLabel: () => undefined, profileName: () => undefined,
       fontTipDismissed: () => true, tabsHintDismissed: () => true, onDismissTabsHint: () => {}, moduleRows: () => [] },
     showThinking: false, diffColors: () => "theme", roleView: () => undefined, childStatus: () => ({ waitingOn: undefined }), ensureChildViews: () => {},
-    modelLabel: () => undefined, onOpenModel: () => {}, transcriptInView: { show: () => {} }, onOpenBackground: () => {},
+    modelLabel: () => undefined, onOpenModel: () => {}, transcriptInView: { show: () => {} }, onOpenBackground: () => {}, followBackground: () => () => {},
   }
 }

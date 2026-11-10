@@ -1,6 +1,6 @@
 /** The read that a controller of an invalidation domain keeps out while a
- *  client shows the domain (ARCH-PROTOCOL-045: the changes and background
- *  domains publish invalidations, not copies of their state).
+ *  client shows the domain (ARCH-PROTOCOL-045: the changes domain publishes
+ *  invalidations, not copies of its state).
  *
  *  The domain's patches carry no state, so each one asks for a read. A change
  *  never voids the read that is out: that read answers from an anchor it took

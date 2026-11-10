@@ -27,6 +27,7 @@ import { settingsWriteResult } from "./settings-mutations.js"
 import { createSessionHolds, type SessionHoldGrace, type SessionHolder, type SessionHoldsOptions } from "./session-holds.js"
 import { updatesCursor } from "../../protocol/update-protocol-types.js"
 import { createSessionDetailPublisher } from "./session-detail-publisher.js"
+import { createBackgroundFollows } from "./background-follows.js"
 import type { AccountUpdates } from "../update/account-updates.js"
 import { createGitProjection } from "./git-projection.js"
 import { replaceOwnedCatalogErrors } from "./catalog-error-ownership.js"
@@ -111,7 +112,8 @@ export type ProjectControlExecutor = RuntimeClient & Pick<ProjectExecutionClient
  *  (ARCH-RUNTIME-023), and its detail is no longer read. */
 export interface ProjectControlClient extends RuntimeClient {
   /** A detail snapshot holds its sessions for `connection` until a
-   *  `session_detail.release` from it or its end. */
+   *  `session_detail.release` from it or its end, and a background index
+   *  read follows its session until a `background.release` or the end. */
   query<Q extends RuntimeQuery>(query: Q, connection?: SessionHolder): Promise<RuntimeQueryResult<Q>>
   dispatch<C extends FrontendMutation>(command: C, connection?: SessionHolder): Promise<MutationResult<C>>
   /** The connection ended. Its session holds wait out their grace, and its
@@ -146,6 +148,10 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
     hide: toExecutor((client, sessionId) => client.hideSession(sessionId)),
     own,
     ...options.sessionHolds,
+  })
+  const backgroundFollows = createBackgroundFollows({
+    release: toExecutor(async (client, sessionId) => { await client.dispatch({ type: "background.release", sessionId }) }),
+    own,
   })
   const unsubscribeGeneration = options.onExecutionReset?.(() => {
     executorHeld.clear()
@@ -520,6 +526,9 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
     if (request.type === "sessionDetailSnapshot") {
       return details.snapshot(connection, request.sessionIds, syncCatalog)
     }
+    if (request.type === "sessionBackgroundWork") {
+      return backgroundFollows.read(connection, request.sessionId, () => queryRaw(request))
+    }
     if (request.type === "sessionDetail") {
       const result = await queryRaw(request)
       // A caller's detail read can seed the session's catalog row, and the
@@ -622,6 +631,10 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
     }
     if (command.type === "session_detail.release") {
       details.release(connection, command.sessionId, "read")
+      return { ok: true }
+    }
+    if (command.type === "background.release") {
+      backgroundFollows.release(connection, command.sessionId)
       return { ok: true }
     }
     if (command.type === "session.activate") return activate(command, connection)
@@ -738,6 +751,7 @@ export function createProjectControlClient(options: ProjectControlClientOptions)
     disconnect: (connection) => {
       holds.drop(connection)
       details.drop(connection)
+      backgroundFollows.drop(connection)
     },
     subscribe(listener) {
       if (closing) throw new Error("Project control client is closed")

@@ -1,13 +1,15 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, jest, test } from "bun:test"
 import { Schema } from "effect"
 import type { AttachedRuntimeClient, FrontendEvent } from "../../../../src/protocol/app-service-types.js"
-import { SessionBackgroundWorkResultSchema, type BackgroundWorkRow } from "../../../../src/protocol/background-index-protocol-types.js"
+import { backgroundCursor, SessionBackgroundWorkResultSchema, type BackgroundPatchPayload, type BackgroundWorkRow } from "../../../../src/protocol/background-index-protocol-types.js"
 import {
   backgroundIndexEntries,
+  backgroundIndexState,
   backgroundRowDetail,
   canStopBackgroundRow,
-  createBackgroundIndexController,
+  createBackgroundIndexReadings,
   stopBackgroundRow,
+  type HeldBackgroundIndex,
 } from "../../../../src/protocol/client/background-index.js"
 import { fakeLanes, LANE_BREAK } from "../../../helpers/fake-lanes.js"
 import { runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"
@@ -18,14 +20,16 @@ const row = (fields: Partial<BackgroundWorkRow> & Pick<BackgroundWorkRow, "id" |
 })
 
 /** A finished workflow whose subagent waits on it, a running command, and a
- *  finished command. */
+ *  finished command, in the index's order. */
 const ROWS: readonly BackgroundWorkRow[] = [
-  row({ id: "workflow", kind: "workflow", status: "completed", target: { kind: "workflow", workflowId: "workflow" }, cardToolUseId: "toolu_workflow" }),
-  row({ id: "reviewer", kind: "subagent", status: "waiting_on_parent", target: { kind: "session", sessionId: "reviewer" }, parentRowId: "workflow", cardToolUseId: "toolu_workflow", stop: { sessionId: "workflow", toolUseId: "toolu_reviewer" } }),
-  row({ id: "explorer", kind: "subagent", status: "failed", target: { kind: "session", sessionId: "explorer" }, parentRowId: "reviewer", cardToolUseId: "toolu_workflow" }),
-  row({ id: "server", status: "running", stop: { sessionId: "chat", toolUseId: "server" } }),
-  row({ id: "test", status: "failed", exitCode: 2, durationMs: 1_500 }),
+  row({ id: "workflow", kind: "workflow", status: "completed", startedAtMs: 100, target: { kind: "workflow", workflowId: "workflow" }, cardToolUseId: "toolu_workflow" }),
+  row({ id: "reviewer", kind: "subagent", status: "waiting_on_parent", startedAtMs: 400, target: { kind: "session", sessionId: "reviewer" }, parentRowId: "workflow", cardToolUseId: "toolu_workflow", stop: { sessionId: "workflow", toolUseId: "toolu_reviewer" } }),
+  row({ id: "explorer", kind: "subagent", status: "failed", startedAtMs: 500, target: { kind: "session", sessionId: "explorer" }, parentRowId: "reviewer", cardToolUseId: "toolu_workflow" }),
+  row({ id: "server", status: "running", startedAtMs: 200, stop: { sessionId: "chat", toolUseId: "server" } }),
+  row({ id: "test", status: "failed", startedAtMs: 300, exitCode: 2, durationMs: 1_500 }),
 ]
+/** The runtime answers the rows in no stated order. */
+const SHUFFLED: readonly BackgroundWorkRow[] = [ROWS[4]!, ROWS[2]!, ROWS[3]!, ROWS[1]!, ROWS[0]!]
 
 describe("background index rows", () => {
   test("round-trips typed workflow and session destinations without a workflow session alias", () => {
@@ -34,19 +38,28 @@ describe("background index rows", () => {
     expect(result.rows[1]?.target).toEqual({ kind: "session", sessionId: "reviewer" })
     expect(result.rows.every(entry => !("sessionId" in entry))).toBe(true)
   })
-  test("Active keeps active rows and the parent row of each active nested row, dimmed when it finished; All keeps every row with its depth", () => {
-    expect(backgroundIndexEntries(ROWS, "active").map((entry) => [entry.row.id, entry.depth, entry.dimmed])).toEqual([
+  test("Active keeps active rows and the parent row of each active nested row, dimmed when it finished; All keeps every row with its depth, from rows in any order", () => {
+    expect(backgroundIndexEntries(SHUFFLED, "active").map((entry) => [entry.row.id, entry.depth, entry.dimmed])).toEqual([
       ["workflow", 0, true],
       ["reviewer", 1, false],
       ["server", 0, false],
     ])
-    expect(backgroundIndexEntries(ROWS, "all").map((entry) => [entry.row.id, entry.depth, entry.dimmed])).toEqual([
+    expect(backgroundIndexEntries(SHUFFLED, "all").map((entry) => [entry.row.id, entry.depth, entry.dimmed])).toEqual([
       ["workflow", 0, true],
       ["reviewer", 1, false],
       ["explorer", 2, true],
       ["server", 0, false],
       ["test", 0, true],
     ])
+  })
+
+  test("rows that start together order by id, and a row whose parent row is missing is a top-level row", () => {
+    const rows = [
+      row({ id: "b", status: "running", startedAtMs: 10 }),
+      row({ id: "orphan", status: "running", startedAtMs: 5, parentRowId: "gone" }),
+      row({ id: "a", status: "running", startedAtMs: 10 }),
+    ]
+    expect(backgroundIndexEntries(rows, "all").map((entry) => [entry.row.id, entry.depth])).toEqual([["orphan", 0], ["a", 0], ["b", 0]])
   })
 
   test("a row states its status, a finished command its exit code and duration, a stopped command no exit code, and a nested row lands on its top-level card", () => {
@@ -80,149 +93,173 @@ describe("background index rows", () => {
   })
 })
 
-describe("background index controller", () => {
-  function runtime() {
+describe("background index readings", () => {
+  /** `gated` holds each read until the test settles it through `reads`. */
+  function runtime(options: { readonly fail?: () => Error | undefined; readonly gated?: boolean } = {}) {
     const lanes = fakeLanes()
     const listeners = new Set<(event: FrontendEvent) => void>()
     const queries: unknown[] = []
+    const reads: PromiseWithResolvers<void>[] = []
+    const released: unknown[] = []
     let rows: readonly BackgroundWorkRow[] = [ROWS[3]!]
     let position = 1
-    let held: PromiseWithResolvers<void>[] | undefined
     const query = runtimeQuery({ sessionBackgroundWork: async (request) => {
       queries.push(request)
-      // The runtime anchors before it awaits the rows (ARCH-PROTOCOL-045).
-      const answer = { snapshotPosition: position, rows }
-      if (held) {
-        const reply = Promise.withResolvers<void>()
-        held.push(reply)
-        await reply.promise
+      if (options.gated) {
+        const gate = Promise.withResolvers<void>()
+        reads.push(gate)
+        await gate.promise
       }
-      return answer
+      const failure = options.fail?.()
+      if (failure) throw failure
+      return { snapshotPosition: position, rows }
     } })
     const counter = countStateRequests({ query })
-    const client: Pick<AttachedRuntimeClient, "query" | "subscribe" | "onLane"> = {
+    const client: Pick<AttachedRuntimeClient, "query" | "dispatch" | "subscribe" | "onLane"> = {
       query: (request) => counter.reader.query(request),
+      dispatch: runtimeDispatch({ "background.release": async (mutation) => { released.push(mutation); return { ok: true } } }),
       subscribe: (listener) => { listeners.add(listener); return () => { listeners.delete(listener) } },
       onLane: lanes.onLane,
     }
+    const held = new Map<string, HeldBackgroundIndex>()
+    const readings = createBackgroundIndexReadings({
+      client,
+      admits: (sessionId) => sessionId === "chat",
+      views: {
+        get: (sessionId) => held.get(sessionId),
+        set: (sessionId, view) => { held.set(sessionId, view) },
+        delete: (sessionId) => { held.delete(sessionId) },
+        keys: () => held.keys(),
+      },
+    })
     const settle = async () => { for (let turn = 0; turn < 8; turn++) await Promise.resolve() }
+    const publish = async (sessionId: string, payload: BackgroundPatchPayload | { readonly kind: "runtime.invalidate"; readonly reason: "overflow" }, step = 1): Promise<void> => {
+      const prevPosition = position
+      position += step
+      for (const listener of listeners) listener({ type: "patch", patch: { cursor: backgroundCursor(sessionId), position, prevPosition: payload.kind === "runtime.invalidate" ? position - 1 : prevPosition, payload } })
+      await settle()
+    }
     return {
-      client, queries, lanes, counter, settle,
-      get subscribers() { return listeners.size },
+      readings, queries, reads, released, lanes, counter, settle,
+      state: (sessionId: string) => backgroundIndexState(held.get(sessionId)),
       setRows(next: readonly BackgroundWorkRow[]) { rows = next },
-      /** Holds every later reply until `release` answers the oldest one. */
-      hold() { held = [] },
-      async release(): Promise<void> {
-        await settle()
-        held?.shift()?.resolve()
-        await settle()
-      },
-      publish(event: FrontendEvent) { for (const listener of listeners) listener(event) },
-      async changed(sessionId: string): Promise<void> {
-        const prevPosition = position
-        position += 1
-        for (const listener of listeners) listener({ type: "patch", patch: { cursor: { scope: "session", domain: "background", sessionId }, position, prevPosition, payload: { kind: "background.changed" } } })
-        await settle()
-      },
+      publish: (event: FrontendEvent) => { for (const listener of listeners) listener(event) },
+      updated: (sessionId: string, updated: BackgroundWorkRow) => publish(sessionId, { kind: "background.row.updated", row: updated }),
+      removed: (sessionId: string, rowId: string) => publish(sessionId, { kind: "background.row.removed", rowId }),
       /** A patch was dropped at the bus limit, and its overflow invalidation follows it on the cursor. */
-      async overflowed(sessionId: string): Promise<void> {
-        position += 2
-        for (const listener of listeners) listener({ type: "patch", patch: { cursor: { scope: "session", domain: "background", sessionId }, position, prevPosition: position - 1, payload: { kind: "runtime.invalidate", reason: "overflow" } } })
-        await settle()
-      },
+      overflowed: (sessionId: string) => publish(sessionId, { kind: "runtime.invalidate", reason: "overflow" }, 2),
     }
   }
 
-  test("construction is passive; start reads once, a change of its chat reads again keeping the rows meanwhile, and dispose unsubscribes", async () => {
+  test("following reads once; row patches change the held rows in place with no read, and another session's patches cost nothing", async () => {
     const server = runtime()
-    const controller = createBackgroundIndexController({ client: server.client, sessionId: "chat" })
-    expect(server.queries).toEqual([])
-
-    await controller.start()
+    expect(server.state("chat")).toEqual({ status: "loading" })
+    server.readings.ensure(["chat"])
+    await server.settle()
     expect(server.queries).toEqual([{ type: "sessionBackgroundWork", sessionId: "chat" }])
-    expect(controller.snapshot).toEqual({ status: "ready", rows: [ROWS[3]!] })
-
-    const seen: string[] = []
-    controller.onChange(() => { seen.push(controller.snapshot.status) })
-    server.setRows(ROWS)
-    await server.changed("chat")
-    expect(seen).toEqual(["loading", "ready"])
-    expect(controller.snapshot).toEqual({ status: "ready", rows: ROWS })
-
-    await server.changed("other-chat")
-    expect(server.queries).toHaveLength(2)
-
-    controller.dispose()
-    expect(server.subscribers).toBe(0)
-  })
-
-  test.each([3, 30])("a burst of %i changes while the index is read keeps one read out and asks for one more; the overtaken answer shows as loading", async (burst) => {
-    const server = runtime()
-    const controller = createBackgroundIndexController({ client: server.client, sessionId: "chat" })
-    await controller.start()
+    expect(server.state("chat")).toEqual({ status: "ready", rows: [ROWS[3]!] })
     server.counter.take()
-    server.hold()
 
-    const first = [ROWS[3]!, ROWS[4]!]
-    server.setRows(first)
-    await server.changed("chat")
-    server.setRows(ROWS)
-    for (let change = 1; change < burst; change++) await server.changed("chat")
-    // Reads per burst do not grow with the burst: one is out.
-    expect(server.counter.take().map((request) => request.method)).toEqual(["query"])
+    const finished = { ...ROWS[3]!, status: "completed" as const, durationMs: 2_000 }
+    await server.updated("chat", finished)
+    await server.updated("chat", ROWS[4]!)
+    expect(server.state("chat")).toEqual({ status: "ready", rows: [finished, ROWS[4]!] })
+    await server.removed("chat", "server")
+    expect(server.state("chat")).toEqual({ status: "ready", rows: [ROWS[4]!] })
 
-    await server.release()
-    // The answer is valid at its anchor, so it is shown, but a change overtook it.
-    expect(controller.snapshot).toEqual({ status: "loading", rows: first })
-    expect(server.counter.take().map((request) => request.method)).toEqual(["query"])
-
-    await server.release()
-    expect(controller.snapshot).toEqual({ status: "ready", rows: ROWS })
-    await server.settle()
+    await server.updated("other-chat", ROWS[0]!)
+    expect(server.readings.sessionIds()).toEqual(["chat"])
     expect(server.counter.take()).toEqual([])
+    server.readings.dispose()
   })
 
-  test("an overflow invalidation of the cursor voids the read that is out and reads at once", async () => {
-    const server = runtime()
-    const controller = createBackgroundIndexController({ client: server.client, sessionId: "chat" })
-    await controller.start()
-    server.counter.take()
-    server.hold()
-    const first = [ROWS[3]!, ROWS[4]!]
-    server.setRows(first)
-    await server.changed("chat")
+  test("a failed read states the error and keeps the rows held, and the read is retried with backoff", async () => {
+    jest.useFakeTimers()
+    let failure: Error | undefined
+    const server = runtime({ fail: () => failure })
+    try {
+      server.readings.ensure(["chat"])
+      await server.settle()
+      failure = new Error("index build failed")
+      await server.overflowed("chat")
+      expect(server.state("chat")).toEqual({ status: "error", error: "index build failed", rows: [ROWS[3]!] })
 
-    // The runtime bus dropped a patch and publishes its overflow invalidation on the cursor.
-    server.setRows(ROWS)
-    await server.overflowed("chat")
-    expect(server.counter.take().map((request) => request.method)).toEqual(["query", "query"])
+      failure = undefined
+      server.setRows(ROWS)
+      jest.runOnlyPendingTimers()
+      await server.settle()
+      expect(server.state("chat")).toEqual({ status: "ready", rows: ROWS })
+      expect(server.queries).toHaveLength(3)
+    } finally {
+      server.readings.dispose()
+      jest.useRealTimers()
+    }
+  })
 
-    await server.release()
-    expect(controller.snapshot).toEqual({ status: "loading", rows: [ROWS[3]!] })
-    await server.release()
-    expect(controller.snapshot).toEqual({ status: "ready", rows: ROWS })
+  test("a retired session releases its follow once its last read settled, unless it is followed again, and a retired read that fails late never replaces newer rows", async () => {
+    const failures: Error[] = []
+    const server = runtime({ gated: true, fail: () => failures[0] })
+    server.readings.ensure(["chat"])
     await server.settle()
-    expect(server.counter.take()).toEqual([])
+    server.readings.retire("chat")
+    server.readings.ensure(["chat"])
+    await server.settle()
+    expect(server.reads).toHaveLength(2)
+
+    server.reads[1]!.resolve()
+    await server.settle()
+    expect(server.state("chat")).toEqual({ status: "ready", rows: [ROWS[3]!] })
+    failures.push(new Error("the released index failed to build"))
+    server.reads[0]!.resolve()
+    await server.settle()
+    expect(server.state("chat")).toEqual({ status: "ready", rows: [ROWS[3]!] })
+    expect(server.released).toEqual([])
+
+    server.readings.retire("chat")
+    await server.settle()
+    expect(server.released).toEqual([{ type: "background.release", sessionId: "chat" }])
+    server.readings.dispose()
   })
 
-  test("a lane break voids the read that is out and reads nothing; the next lane reads once", async () => {
+  test("dispose releases every followed session", async () => {
     const server = runtime()
-    const controller = createBackgroundIndexController({ client: server.client, sessionId: "chat" })
-    await controller.start()
+    server.readings.ensure(["chat"])
+    await server.settle()
+    server.readings.dispose()
+    await server.settle()
+    expect(server.released).toEqual([{ type: "background.release", sessionId: "chat" }])
+  })
+
+  test("a lane break keeps the rows held and the next lane reads once", async () => {
+    const server = runtime()
+    server.readings.ensure(["chat"])
+    await server.settle()
     server.counter.take()
-    server.hold()
-    await server.changed("chat")
 
     server.lanes.end()
     server.publish(LANE_BREAK)
-    await server.release()
-    expect(controller.snapshot).toEqual({ status: "loading", rows: [ROWS[3]!] })
-    expect(server.counter.take()).toHaveLength(1)
+    await server.settle()
+    expect(server.state("chat")).toEqual({ status: "ready", rows: [ROWS[3]!] })
+    expect(server.counter.take()).toEqual([])
 
     server.setRows(ROWS)
     server.lanes.open()
-    await server.release()
+    await server.settle()
     expect(server.counter.take()).toHaveLength(1)
-    expect(controller.snapshot).toEqual({ status: "ready", rows: ROWS })
+    expect(server.state("chat")).toEqual({ status: "ready", rows: ROWS })
+    server.readings.dispose()
+  })
+
+  test("an overflow invalidation of the cursor reads the index again", async () => {
+    const server = runtime()
+    server.readings.ensure(["chat"])
+    await server.settle()
+    server.counter.take()
+
+    server.setRows(ROWS)
+    await server.overflowed("chat")
+    expect(server.counter.take().map((request) => request.method)).toEqual(["query"])
+    expect(server.state("chat")).toEqual({ status: "ready", rows: ROWS })
+    server.readings.dispose()
   })
 })

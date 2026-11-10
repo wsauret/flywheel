@@ -204,8 +204,8 @@ const RUNTIME_DELIVERY_POLICY = {
   session_detail: durableWholeValue,
   // A signal with no value: a client reads the summary again on each one.
   changes: durableChange,
-  // A signal with no value: a client that shows the background index reads
-  // it again on each one.
+  // Each patch states one row of the index or its removal, not the whole
+  // index, so a client that missed one reads the index again.
   background: durableChange,
   output: durableChange,
   status: collapsible,

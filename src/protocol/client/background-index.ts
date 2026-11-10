@@ -1,24 +1,36 @@
 import { errorMessage } from "../../infra/error-message.js"
 import { CANCELED_LABEL, PARTIAL_LABEL, STOPPED_LABEL, SUBAGENT_INTERRUPTED_LABEL } from "../../infra/output/run-labels.js"
 import type { AttachedRuntimeClient } from "../app-service-types.js"
-import { backgroundCursor, type BackgroundWorkProgress, type BackgroundWorkRow, type BackgroundWorkStatus } from "../background-index-protocol-types.js"
-import { cursorKey } from "../runtime-ui-protocol-types.js"
+import {
+  backgroundCursor,
+  isBackgroundPayload,
+  type BackgroundPatchPayload,
+  type BackgroundWorkProgress,
+  type BackgroundWorkRow,
+  type BackgroundWorkStatus,
+} from "../background-index-protocol-types.js"
 import { lostWithLane } from "./connection-failures.js"
-import { createCursorIntake, isLaneBreak } from "./cursor-intake.js"
-import { createInvalidationRead } from "./invalidation-read.js"
+import { releaseAfterLastRead } from "./held-read-release.js"
 import { formatDuration } from "./format.js"
+import { createSessionReadingFamily, type SessionReadingFamily, type SessionViewStore } from "./session-reading-family.js"
 import { workflowProgressCount } from "./workflow-progress.js"
 import { WAITING_ON_PARENT } from "./session-controls.js"
 
 /** Active work only, or every row the chat ever started. */
 export type BackgroundIndexFilter = "active" | "all"
 
-/** `rows` while loading or after an error is the previous read, for display only. */
+/** The background index of one followed session. Loading lasts only until
+ *  the first read of the session answers; after that the client holds rows,
+ *  and an error keeps the rows it held when a later read failed. */
 export type BackgroundIndexState =
-  | { readonly status: "idle" }
-  | { readonly status: "loading"; readonly rows?: readonly BackgroundWorkRow[] }
+  | { readonly status: "loading" }
   | { readonly status: "ready"; readonly rows: readonly BackgroundWorkRow[] }
-  | { readonly status: "error"; readonly rows?: readonly BackgroundWorkRow[]; readonly error: string }
+  | { readonly status: "error"; readonly error: string; readonly rows?: readonly BackgroundWorkRow[] }
+
+/** What a client's store holds for a followed session once a read answered or failed. */
+export type HeldBackgroundIndex = Exclude<BackgroundIndexState, { readonly status: "loading" }>
+
+const LOADING: BackgroundIndexState = { status: "loading" }
 
 /** One row as a client lists it: how deep it nests, and whether it is dimmed because it finished. */
 export interface BackgroundIndexEntry {
@@ -33,16 +45,35 @@ function isActiveBackgroundRow(row: BackgroundWorkRow): boolean {
   return ACTIVE_STATUSES.has(row.status)
 }
 
-/** The rows a filter shows, in the runtime's order. Active keeps the running
- *  rows and the rows that wait on their parent, and keeps the parent row of
- *  each such nested row in view, dimmed when it finished. */
+/** The one order of a background index, which the runtime leaves to its
+ *  clients: each level in start order, ties broken by id, and each row
+ *  followed by the rows it started. A row whose parent row is not in the
+ *  index is a top-level row. */
+function orderBackgroundRows(rows: readonly BackgroundWorkRow[]): readonly (readonly [BackgroundWorkRow, number])[] {
+  const ids = new Set(rows.map((row) => row.id))
+  const children = new Map<string | undefined, BackgroundWorkRow[]>()
+  for (const row of rows) {
+    const parent = row.parentRowId !== undefined && ids.has(row.parentRowId) ? row.parentRowId : undefined
+    children.set(parent, [...children.get(parent) ?? [], row])
+  }
+  const ordered: (readonly [BackgroundWorkRow, number])[] = []
+  const visit = (parent: string | undefined, depth: number): void => {
+    const level = (children.get(parent) ?? []).toSorted((a, b) => a.startedAtMs - b.startedAtMs || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    for (const row of level) {
+      ordered.push([row, depth])
+      visit(row.id, depth + 1)
+    }
+  }
+  visit(undefined, 0)
+  return ordered
+}
+
+/** The rows a filter shows, in the index's order, from rows in any order.
+ *  Active keeps the running rows and the rows that wait on their parent, and
+ *  keeps the parent row of each such nested row in view, dimmed when it
+ *  finished. */
 export function backgroundIndexEntries(rows: readonly BackgroundWorkRow[], filter: BackgroundIndexFilter): readonly BackgroundIndexEntry[] {
   const byId = new Map(rows.map((row) => [row.id, row]))
-  const depthOf = (row: BackgroundWorkRow): number => {
-    let depth = 0
-    for (let parent = row.parentRowId; parent !== undefined && depth < rows.length; parent = byId.get(parent)?.parentRowId) depth++
-    return depth
-  }
   const shown = new Set<string>()
   for (const row of rows) {
     if (filter === "all" || isActiveBackgroundRow(row)) {
@@ -51,7 +82,7 @@ export function backgroundIndexEntries(rows: readonly BackgroundWorkRow[], filte
       }
     }
   }
-  return rows.filter((row) => shown.has(row.id)).map((row) => ({ row, depth: depthOf(row), dimmed: !isActiveBackgroundRow(row) }))
+  return orderBackgroundRows(rows).filter(([row]) => shown.has(row.id)).map(([row, depth]) => ({ row, depth, dimmed: !isActiveBackgroundRow(row) }))
 }
 
 const STATUS_LABELS = {
@@ -114,131 +145,90 @@ export async function stopBackgroundRow(client: Pick<AttachedRuntimeClient, "dis
   return true
 }
 
-export interface BackgroundIndexController {
-  readonly sessionId: string
-  readonly snapshot: BackgroundIndexState
-  /** Subscribes and reads the index once for each lane. Repeated calls do not read again. */
-  start(): Promise<void>
-  onChange(listener: () => void): () => void
-  /** Unsubscribes. A client disposes the controller when it stops showing the index. */
-  dispose(): void
+/** The state of a followed session's index from what the client's store holds for it. */
+export function backgroundIndexState(held: HeldBackgroundIndex | undefined): BackgroundIndexState {
+  return held ?? LOADING
 }
 
-/** The background index of one chat, read while a client shows it. Each
- *  `background.changed` patch asks for a read: at most one read is out, and a
- *  burst of patches during it asks for one more. Construction is passive. */
-export function createBackgroundIndexController(options: {
-  readonly client: Pick<AttachedRuntimeClient, "query" | "subscribe" | "onLane">
-  readonly sessionId: string
-}): BackgroundIndexController {
-  const { client, sessionId } = options
-  const cursor = backgroundCursor(sessionId)
-  const listeners = new Set<() => void>()
-  let state: BackgroundIndexState = { status: "idle" }
-  let started = false
-  let disposed = false
-  let startWork = Promise.resolve()
-  let unsubscribe: (() => void) | undefined
-  let stopLanes: (() => void) | undefined
+/** The rows held after one row patch: a changed row replaces the row with its id, or joins the index. */
+function foldBackgroundPayload(rows: readonly BackgroundWorkRow[], payload: BackgroundPatchPayload): readonly BackgroundWorkRow[] {
+  if (payload.kind === "background.row.removed") return rows.filter((row) => row.id !== payload.rowId)
+  const at = rows.findIndex((row) => row.id === payload.row.id)
+  return at === -1 ? [...rows, payload.row] : rows.with(at, payload.row)
+}
 
-  const emit = (): void => {
-    if (!disposed) for (const listener of listeners) listener()
-  }
-  const lastRows = (): readonly BackgroundWorkRow[] | undefined => "rows" in state ? state.rows : undefined
-
-  /** The rows shown are behind; they stay for display until a read answers. */
-  function markBehind(): void {
-    if (state.status === "loading") return
-    const rows = lastRows()
-    state = { status: "loading", ...(rows ? { rows } : {}) }
-    emit()
-  }
-
-  /** Reads the index. An answer that a change overtook is shown as loading,
-   *  never as ready, and the read that follows makes it ready. */
-  async function readIndex(read: number): Promise<void> {
-    if (disposed) return
-    intake.beginRead()
-    try {
-      const result = await client.query({ type: "sessionBackgroundWork", sessionId })
-      if (disposed || !reads.current(read)) return
-      // Seeding applies the patches held while the read was out; each one marks this answer behind.
-      intake.seed(result.snapshotPosition)
-      state = { status: reads.behind(read) ? "loading" : "ready", rows: result.rows }
-      emit()
-    } catch (cause) {
-      // A read lost with its lane is read again on the next lane.
-      if (disposed || !reads.current(read) || lostWithLane(cause)) return
-      const rows = lastRows()
-      state = { status: "error", ...(rows ? { rows } : {}), error: errorMessage(cause) }
-      emit()
-    }
-  }
-  const reads = createInvalidationRead(readIndex)
-
-  function changed(): void {
-    if (disposed) return
-    markBehind()
-    void reads.changed()
-  }
-
-  /** The runtime invalidated what the read that is out answers for, so it reads at once (ARCH-PROTOCOL-014). */
-  function voided(): void {
-    if (disposed) return
-    markBehind()
-    void reads.voided()
-  }
-
-  const intake = createCursorIntake({
-    cursor,
-    onApply: changed,
-    // A cursor invalidation reads at once; a gap the intake gave up on is one more change.
-    onRecover: (request) => { if (request.reason === "runtime_invalidated") voided(); else changed() },
+/** Follows the background index of each session a client views
+ *  (ARCH-PROTOCOL-069): one read when the client follows the session, then
+ *  row patches that change the held rows in place. A read that fails keeps
+ *  the rows held and states the error; the family's recovery reads again
+ *  with backoff. The client's store holds the indexes, and `admits` names
+ *  the sessions the client follows, so the patches of every other session
+ *  the runtime broadcasts cost nothing. A read follows the session for this
+ *  connection, so a retired session, and every session at `dispose`, sends
+ *  `background.release` once its last read settled. */
+export function createBackgroundIndexReadings(options: {
+  readonly client: Pick<AttachedRuntimeClient, "query" | "dispatch" | "subscribe" | "onLane">
+  readonly views: SessionViewStore<HeldBackgroundIndex>
+  readonly admits: (sessionId: string) => boolean
+  readonly changed?: () => void
+}): SessionReadingFamily {
+  const { client, views } = options
+  // The read that started last for each followed session. Only its failure
+  // states an error, so a retired read that fails late never replaces the
+  // rows that a newer read answered.
+  const lastReads = new Map<string, Promise<unknown>>()
+  const family: SessionReadingFamily = createSessionReadingFamily<"background", BackgroundPatchPayload, HeldBackgroundIndex>({
+    domain: "background",
+    cursor: backgroundCursor,
+    client,
+    readsOneSession: true,
+    async query(sessionIds) {
+      const sessionId = sessionIds[0]
+      if (sessionId === undefined) return { snapshotPosition: 0, views: [] }
+      const read = client.query({ type: "sessionBackgroundWork", sessionId })
+      lastReads.set(sessionId, read)
+      try {
+        const result = await read
+        return { snapshotPosition: result.snapshotPosition, views: [{ sessionId, view: { status: "ready", rows: result.rows } }] }
+      } catch (cause) {
+        // A read lost with its lane is read again on the next lane.
+        if (!lostWithLane(cause) && lastReads.get(sessionId) === read) {
+          const held = views.get(sessionId)
+          views.set(sessionId, { status: "error", error: errorMessage(cause), ...(held?.rows === undefined ? {} : { rows: held.rows }) })
+          options.changed?.()
+        }
+        throw cause
+      }
+    },
+    isPayload: isBackgroundPayload,
+    payloadView: (payload, current) => ({ status: "ready", rows: foldBackgroundPayload(current?.rows ?? [], payload) }),
+    admits: options.admits,
+    views,
+    ...(options.changed === undefined ? {} : { changed: options.changed }),
   })
 
-  function start(): Promise<void> {
-    if (disposed) return Promise.resolve()
-    if (started) return startWork
-    started = true
-    unsubscribe = client.subscribe((event) => {
-      if (disposed || event.type !== "patch") return
-      if (event.patch.cursor.scope === "workspace" && event.patch.cursor.domain === "runtime" && event.patch.payload.kind === "runtime.invalidate") {
-        intake.reset()
-        // A lane break voids the read that is out and reads nothing; the next lane reads.
-        if (isLaneBreak(event.patch)) {
-          markBehind()
-          reads.paused()
-        } else voided()
-      } else if (cursorKey(event.patch.cursor) === cursorKey(cursor)) {
-        const classification = intake.accept(event.patch)
-        if (classification === "gap" || classification === "unseeded") changed()
-      }
+  function unfollow(sessionId: string): void {
+    const lastRead = lastReads.get(sessionId)
+    if (lastRead === undefined) return
+    lastReads.delete(sessionId)
+    releaseAfterLastRead({
+      lastRead,
+      // The client can follow the session again before its last read settles.
+      free: () => !lastReads.has(sessionId),
+      release: async () => { await client.dispatch({ type: "background.release", sessionId }) },
     })
-    let first: Promise<void> | undefined
-    stopLanes = client.onLane(() => {
-      intake.reset()
-      markBehind()
-      const read = reads.opened()
-      first ??= read
-    })
-    startWork = first ?? Promise.resolve()
-    return startWork
   }
 
   return {
-    sessionId,
-    get snapshot() { return state },
-    start,
-    onChange(listener) {
-      if (!disposed) listeners.add(listener)
-      return () => { listeners.delete(listener) }
+    ...family,
+    retire(sessionId) {
+      family.retire(sessionId)
+      unfollow(sessionId)
     },
     dispose() {
-      disposed = true
-      stopLanes?.()
-      unsubscribe?.()
-      intake.reset()
-      listeners.clear()
+      family.dispose()
+      // A Map visits each entry once even when `unfollow` deletes the one it is on.
+      for (const sessionId of lastReads.keys()) unfollow(sessionId)
     },
   }
 }

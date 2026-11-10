@@ -67,6 +67,9 @@ export interface ChildSessionBodyProps {
   /** The kind of agent this view shows, which a command refused here names. */
   readonly agentKind: AgentViewKind
   readonly onOpenBackground: (target: BackgroundModalTarget) => void
+  /** Follows the background index of the shown session while this view is
+   *  open, so its background list opens on held rows. Returns the end. */
+  readonly followBackground: (sessionId: string) => () => void
   readonly roleView: (sessionId: string) => RoleAssignmentView | undefined
   /** What a child of the viewed session waits on, for its card. */
   readonly childStatus: (childSessionId: string, parentSessionId: string) => ChildCardStatus
@@ -102,6 +105,7 @@ export function ChildSessionBody(props: ChildSessionBodyProps) {
     props.input.bindOutput((type) => { setOutputCommand({ id: ++outputCommandId, type }) })
     props.input.bindMessaging(props.messaging)
     props.transcriptInView.show({ active: props.active, openModel, kind: props.agentKind })
+    onCleanup(props.followBackground(props.sessionId))
   })
   const statusNotice = () => selectPrimarySessionNotice((surface.summary()?.notices ?? []).filter((notice) => sessionNoticeChannel(notice) === "status"))
   const spinnerSource = {

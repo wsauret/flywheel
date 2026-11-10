@@ -61,7 +61,7 @@ export function fakeProjections() {
     moduleProtocol: { serve: async (query: { readonly type: string }) => { throw new Error(`Module query ${query.type} is not served in this fixture`) }, mutate: async (mutation: { readonly type: string }) => { throw new Error(`Module mutation ${mutation.type} is not handled in this fixture`) }, send: async (kind: string) => { throw new Error(`A message to a ${kind} is not handled in this fixture`) }, dispose() {} },
     sessionChanges: async () => { throw new Error("Session changes are not used in this fixture") },
     mutationEvidence: async () => { throw new Error("Mutation evidence is not used in this fixture") },
-    backgroundIndex: { rows: async () => { throw new Error("The background index is not used in this fixture") } },
+    backgroundIndex: { snapshot: async () => { throw new Error("The background index is not used in this fixture") }, release: () => {} },
     statusProjection: { snapshot: async () => null, refresh() {}, dispose() {} },
     budgetProjection: { snapshot: async () => null, dispose() {} },
     summaries: { admit: async () => {}, view: () => ({ totalsLoading: true as const }), subscribe: () => () => {}, settled: async () => {}, dispose() {} },

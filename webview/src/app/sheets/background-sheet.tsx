@@ -1,4 +1,4 @@
-import { createMemo, createSignal, onCleanup, Show, type Accessor } from "solid-js"
+import { createMemo, createSignal, Show, type Accessor } from "solid-js"
 import { keyedRows } from "../keyed-rows.js"
 
 import type { BackgroundWorkRow } from "../../../../src/protocol/background-index-protocol-types.js"
@@ -6,10 +6,8 @@ import {
   backgroundIndexEntries,
   backgroundRowDetail,
   canStopBackgroundRow,
-  createBackgroundIndexController,
   stopBackgroundRow,
   type BackgroundIndexFilter,
-  type BackgroundIndexState,
   type BackgroundIndexEntry,
 } from "../../../../src/protocol/client/background-index.js"
 import { actionKey } from "../../client/action-key.js"
@@ -23,7 +21,9 @@ import { KERNEL_COMMAND_NAMES } from "../../../../src/protocol/command-names.js"
  *  lists it: the chat's background commands and every child it started, in
  *  the order they started, a nested child under the child that started it.
  *  The runtime answers the rows from durable facts, so a long chat that loads
- *  lazily still lists work whose card is outside the loaded window. A tap
+ *  lazily still lists work whose card is outside the loaded window. The
+ *  client follows the index from the chat's selection, so the sheet opens on
+ *  held rows and row patches change them in place. A tap
  *  lands on the row's card, a child opens with Open or Enter, and Stop ends
  *  the launching call after a confirmation. */
 
@@ -58,22 +58,11 @@ export function BackgroundSheet(props: { readonly docked?: boolean; readonly onC
   const extensions = useClientExtensions()
   const state = client.state
   const [filter, setFilter] = createSignal(readFilter())
-  const [index, setIndex] = createSignal<BackgroundIndexState>({ status: "idle" })
-  // The sheet reads the index of the chat that was open when it opened, and
-  // only while it shows it.
-  const chatId = state().sessionId
-  if (chatId !== undefined) {
-    const controller = createBackgroundIndexController({ client: client.connection, sessionId: chatId })
-    const stopListening = controller.onChange(() => setIndex(controller.snapshot))
-    void controller.start()
-    onCleanup(() => {
-      stopListening()
-      controller.dispose()
-    })
-  }
+  const chatId = () => state().sessionId
+  const index = () => state().backgroundIndex
   const rows = createMemo<readonly BackgroundWorkRow[]>(() => {
     const current = index()
-    return "rows" in current ? current.rows ?? [] : []
+    return current !== undefined && "rows" in current ? current.rows ?? [] : []
   })
   const entries = createMemo(() => backgroundIndexEntries(rows(), filter()))
   const choose = (next: BackgroundIndexFilter) => {
@@ -82,9 +71,10 @@ export function BackgroundSheet(props: { readonly docked?: boolean; readonly onC
   }
   const tail = (row: BackgroundWorkRow) => row.kind === "command" && row.status === "running" ? tailOf(state().streamingToolText[row.id]?.content) : []
   const land = (row: BackgroundWorkRow) => {
-    if (chatId === undefined) return
+    const sessionId = chatId()
+    if (sessionId === undefined) return
     if (!props.docked) client.closeSheet()
-    void client.actions.openAround(chatId, row.cardToolUseId).then((blockId) => client.markBlock(blockId))
+    void client.actions.openAround(sessionId, row.cardToolUseId).then((blockId) => client.markBlock(blockId))
   }
   const open = (row: BackgroundWorkRow) => {
     const destination = row.target
@@ -96,7 +86,7 @@ export function BackgroundSheet(props: { readonly docked?: boolean; readonly onC
     }
     const sessionId = destination.sessionId
     // The chat that lists the row is the place Back returns to.
-    const link = { label: row.title, parentSessionId: chatId }
+    const link = { label: row.title, parentSessionId: chatId() }
     if (client.stack) client.stack.openChat(sessionId, link)
     else client.actions.selectSession(sessionId, link)
   }
@@ -112,7 +102,7 @@ export function BackgroundSheet(props: { readonly docked?: boolean; readonly onC
   }
   const empty = () => {
     const current = index()
-    if (current.status === "error") return `Flywheel could not read the background work: ${current.error}`
+    if (current?.status === "error") return `Flywheel could not read the background work: ${current.error}`
     return rows().length === 0 ? "No background work in this chat." : "No active background work. Choose All to see finished work."
   }
   const renderEntry = (entry: Accessor<BackgroundIndexEntry>) => (
@@ -137,8 +127,8 @@ export function BackgroundSheet(props: { readonly docked?: boolean; readonly onC
         <button class="ghost-text" aria-pressed={filter() === "all"} onClick={() => choose("all")}>All</button>
       </div>
     } contentRef={(parent) => keyedRows(parent, entries, entry => entry.row.id, renderEntry)}>
-      <Show when={chatId !== undefined} fallback={<SheetEmpty>Select a chat to see its background work.</SheetEmpty>}>
-        <Show when={entries().length === 0}><Show when={index().status === "ready" || index().status === "error"} fallback={<SheetLoading />}><SheetEmpty>{empty()}</SheetEmpty></Show></Show>
+      <Show when={chatId() !== undefined} fallback={<SheetEmpty>Select a chat to see its background work.</SheetEmpty>}>
+        <Show when={entries().length === 0}><Show when={index()?.status !== "loading"} fallback={<SheetLoading />}><SheetEmpty>{empty()}</SheetEmpty></Show></Show>
       </Show>
     </WorkspaceSurface>
   )

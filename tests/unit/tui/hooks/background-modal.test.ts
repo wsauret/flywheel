@@ -1,14 +1,17 @@
 import { describe, expect, it, mock } from "bun:test"
 import { createRoot, createSignal } from "solid-js"
-import type { FrontendMutation, MutationResult } from "../../../../src/protocol/app-service-types.js"
-import type { BackgroundWorkRow, BackgroundWorkTarget } from "../../../../src/protocol/background-index-protocol-types.js"
+import type { FrontendEvent, FrontendMutation, MutationResult } from "../../../../src/protocol/app-service-types.js"
+import { backgroundCursor, type BackgroundPatchPayload, type BackgroundWorkRow, type BackgroundWorkTarget } from "../../../../src/protocol/background-index-protocol-types.js"
 import type { BackgroundIndexState } from "../../../../src/protocol/client/background-index.js"
 import type { RoleAssignmentView } from "../../../../src/protocol/role-protocol-types.js"
 import { useBackgroundModal } from "../../../../src/tui/hooks/use-background-modal.js"
+import { createBackgroundIndexFollower, type BackgroundIndexView } from "../../../../src/tui/hooks/create-background-index.js"
 import type { ShellServices } from "../../../../src/tui/hooks/shell-state.js"
 import { createModalStack } from "../../../../src/tui/components/modal-stack.js"
 import { buildCommandCatalog } from "../../../helpers/command-catalog.js"
-import { runtimeDispatch } from "../../../helpers/runtime-dispatch.js"
+import { fakeLanes } from "../../../helpers/fake-lanes.js"
+import { runtimeDispatch, runtimeQuery } from "../../../helpers/runtime-dispatch.js"
+import { countStateRequests } from "../../../helpers/state-requests.js"
 
 type BackgroundTerminate = Extract<FrontendMutation, { readonly type: "background.terminate" }>
 
@@ -19,11 +22,11 @@ const row = (fields: Partial<BackgroundWorkRow> & Pick<BackgroundWorkRow, "id" |
 /** Two running commands, a running workflow with a finished subagent nested
  *  under it, and a finished command. */
 const ROWS: readonly BackgroundWorkRow[] = [
-  row({ id: "tool-a", title: "first server", status: "running", stop: { sessionId: "chat-1", toolUseId: "tool-a" } }),
-  row({ id: "workflow", kind: "workflow", title: "Implement", status: "running", target: { kind: "workflow", workflowId: "workflow" }, cardToolUseId: "toolu_workflow", stop: { sessionId: "chat-1", toolUseId: "toolu_workflow" } }),
-  row({ id: "reviewer", kind: "subagent", title: "Reviewer", status: "completed", target: { kind: "session", sessionId: "reviewer" }, parentRowId: "workflow", cardToolUseId: "toolu_workflow" }),
-  row({ id: "tool-b", title: "second worker", status: "running", stop: { sessionId: "chat-1", toolUseId: "tool-b" } }),
-  row({ id: "tool-c", title: "unit tests", status: "completed", exitCode: 0, durationMs: 2_000 }),
+  row({ id: "tool-a", title: "first server", status: "running", startedAtMs: 100, stop: { sessionId: "chat-1", toolUseId: "tool-a" } }),
+  row({ id: "workflow", kind: "workflow", title: "Implement", status: "running", startedAtMs: 200, target: { kind: "workflow", workflowId: "workflow" }, cardToolUseId: "toolu_workflow", stop: { sessionId: "chat-1", toolUseId: "toolu_workflow" } }),
+  row({ id: "reviewer", kind: "subagent", title: "Reviewer", status: "completed", startedAtMs: 250, target: { kind: "session", sessionId: "reviewer" }, parentRowId: "workflow", cardToolUseId: "toolu_workflow" }),
+  row({ id: "tool-b", title: "second worker", status: "running", startedAtMs: 300, stop: { sessionId: "chat-1", toolUseId: "tool-b" } }),
+  row({ id: "tool-c", title: "unit tests", status: "completed", startedAtMs: 400, exitCode: 0, durationMs: 2_000 }),
 ]
 
 const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0))
@@ -42,11 +45,15 @@ function createModal(options: {
   showToast?: ShellServices["showToast"]
   streamingToolText?: StreamingToolText
   roles?: RoleViews
+  /** The real follower, in place of a fake that holds `rows` for every session. */
+  index?: BackgroundIndexView
 } = {}) {
   const [state, setState] = createSignal<BackgroundIndexState>({ status: "ready", rows: options.rows ?? ROWS })
   const [streamingToolText, setStreamingToolText] = createSignal(options.streamingToolText ?? {})
   const [roles, setRoles] = createSignal(options.roles ?? {})
-  const shown: Array<string | undefined> = []
+  // The sessions whose held index the list read, and those it followed: none.
+  const shown = new Set<string>()
+  const followed: string[] = []
   const modals = createModalStack()
   const dispatch = mock<NonNullable<typeof options.dispatch>>(options.dispatch ?? (async () => ({ ok: true })))
   const showToast = mock<ShellServices["showToast"]>(options.showToast ?? (() => {}))
@@ -58,7 +65,11 @@ function createModal(options: {
     renderModal: () => "mock-element",
     signals: {
       foregroundId: () => "chat-1",
-      backgroundIndex: { state, show: (sessionId) => { shown.push(sessionId) }, hide: () => { shown.push(undefined) } },
+      backgroundIndex: options.index ?? {
+        state: (sessionId) => { shown.add(sessionId); return state() },
+        follow: (sessionId) => { followed.push(sessionId); return () => {} },
+        start: () => {},
+      },
       streamingToolText,
       roleView: (sessionId: string) => roles()[sessionId],
       ensureRoleViews,
@@ -70,7 +81,7 @@ function createModal(options: {
   })
   const press = (name: string) => modals.stack[0]?.onKey?.({ name })
   const ids = () => modal.backgroundModalResult().rows.map((candidate) => candidate.id)
-  return { modal, modals, dispatch, showToast, navigateToProcess, openTarget, ensureRoleViews, setState, setStreamingToolText, setRoles, shown, press, ids }
+  return { modal, modals, dispatch, showToast, navigateToProcess, openTarget, ensureRoleViews, setState, setStreamingToolText, setRoles, shown, followed, press, ids }
 }
 
 describe("useBackgroundModal", () => {
@@ -83,7 +94,9 @@ describe("useBackgroundModal", () => {
         streamingToolText: () => ({ "tool-a": { content: "workflow output\n" } }),
         navigateToProcess,
       })
-      expect(fixture.shown).toEqual(["workflow"])
+      // The viewer follows its index; the list only reads what it holds.
+      expect([...fixture.shown]).toEqual(["workflow"])
+      expect(fixture.followed).toEqual([])
       fixture.press("space")
       expect(fixture.modal.backgroundModalTail("tool-a")).toEqual(["workflow output"])
       fixture.modal.landBackgroundRow(0)
@@ -98,12 +111,12 @@ describe("useBackgroundModal", () => {
     })
   })
 
-  it("reads the index of the foreground chat while open, opens on Active, and `a` shows All with finished rows", () => {
+  it("shows the foreground chat's held index, opens on Active, and `a` shows All with finished rows", () => {
     createRoot((dispose) => {
       const fixture = createModal()
       fixture.modal.openBackgroundModal()
 
-      expect(fixture.shown).toEqual(["chat-1"])
+      expect([...fixture.shown]).toEqual(["chat-1"])
       expect(fixture.ids()).toEqual(["tool-a", "workflow", "tool-b"])
       fixture.press("a")
       expect(fixture.modal.backgroundModalFilter()).toBe("all")
@@ -119,7 +132,90 @@ describe("useBackgroundModal", () => {
       fixture.setState({ status: "ready", rows: [ROWS[3]!] })
       expect(fixture.ids()).toEqual(["tool-b"])
       fixture.press("escape")
-      expect(fixture.shown).toEqual(["chat-1", undefined])
+      // Opening and closing the list follow and let go of nothing.
+      expect(fixture.followed).toEqual([])
+      dispose()
+    })
+  })
+
+  it("opens on the held rows of the followed foreground chat with no read, and row patches change them while open and while closed", async () => {
+    const lanes = fakeLanes()
+    const listeners = new Set<(event: FrontendEvent) => void>()
+    const counter = countStateRequests({ query: runtimeQuery({ sessionBackgroundWork: async () => ({ snapshotPosition: 1, rows: ROWS }) }) })
+    let position = 1
+    const patch = (payload: BackgroundPatchPayload) => {
+      position += 1
+      for (const listener of listeners) listener({ type: "patch", patch: { cursor: backgroundCursor("chat-1"), position, prevPosition: position - 1, payload } })
+    }
+    await createRoot(async (dispose) => {
+      const index = createBackgroundIndexFollower({
+        client: {
+          query: (request) => counter.reader.query(request),
+          dispatch: runtimeDispatch({ "background.release": async () => ({ ok: true }) }),
+          subscribe: (listener) => { listeners.add(listener); return () => { listeners.delete(listener) } },
+          onLane: lanes.onLane,
+        },
+        foregroundId: () => "chat-1",
+      })
+      const fixture = createModal({ index })
+      fixture.modal.openBackgroundModal()
+      expect(fixture.modal.backgroundModalEmpty()).toBe("Reading background work…")
+      fixture.press("escape")
+      expect(counter.take()).toEqual([])
+
+      index.start()
+      await flush()
+      expect(counter.take().map((request) => request.method)).toEqual(["query"])
+
+      fixture.modal.openBackgroundModal()
+      expect(fixture.ids()).toEqual(["tool-a", "workflow", "tool-b"])
+      patch({ kind: "background.row.updated", row: { ...ROWS[3]!, status: "completed" } })
+      expect(fixture.ids()).toEqual(["tool-a", "workflow"])
+      fixture.press("escape")
+
+      patch({ kind: "background.row.removed", rowId: "tool-a" })
+      fixture.modal.openBackgroundModal()
+      expect(fixture.ids()).toEqual(["workflow"])
+      await flush()
+      expect(counter.take()).toEqual([])
+      dispose()
+    })
+  })
+
+  it("follows each child an open viewer shows beside the foreground chat, and lets the runtime go of it when the viewer closes", async () => {
+    const lanes = fakeLanes()
+    const counter = countStateRequests({ query: runtimeQuery({ sessionBackgroundWork: async () => ({ snapshotPosition: 1, rows: ROWS }) }) })
+    const released: string[] = []
+    await createRoot(async (dispose) => {
+      const index = createBackgroundIndexFollower({
+        client: {
+          query: (request) => counter.reader.query(request),
+          dispatch: runtimeDispatch({ "background.release": async (mutation) => { released.push(mutation.sessionId); return { ok: true } } }),
+          subscribe: () => () => {},
+          onLane: lanes.onLane,
+        },
+        foregroundId: () => "chat-1",
+      })
+      index.start()
+      const closeFirst = index.follow("child-1")
+      // A second viewer of the same child keeps it followed when the first closes.
+      const closeSecond = index.follow("child-1")
+      await flush()
+      expect(index.state("child-1")).toEqual({ status: "ready", rows: ROWS })
+      closeFirst()
+      await flush()
+      expect(released).toEqual([])
+      expect(index.state("child-1")).toEqual({ status: "ready", rows: ROWS })
+
+      closeSecond()
+      await flush()
+      expect(counter.take().map((request) => request.args[0])).toEqual([
+        { type: "sessionBackgroundWork", sessionId: "chat-1" },
+        { type: "sessionBackgroundWork", sessionId: "child-1" },
+      ])
+      expect(released).toEqual(["child-1"])
+      expect(index.state("child-1")).toEqual({ status: "loading" })
+      expect(index.state("chat-1")).toEqual({ status: "ready", rows: ROWS })
       dispose()
     })
   })
@@ -136,13 +232,14 @@ describe("useBackgroundModal", () => {
 
   it("hydrates linked child roles in one batch and reacts to their current model and effort", async () => {
     const rows = [
-      row({ id: "review", kind: "subagent", status: "running", target: { kind: "session", sessionId: "review" }, model: "gpt-6.1-sol", effort: "low", roleSessionId: "child-review" }),
-      row({ id: "analyze", kind: "subagent", status: "running", target: { kind: "session", sessionId: "analyze" }, model: "claude-haiku-4-5", effort: "low", roleSessionId: "child-analyze" }),
-      row({ id: "server", status: "running" }),
+      row({ id: "review", kind: "subagent", status: "running", startedAtMs: 1, target: { kind: "session", sessionId: "review" }, model: "gpt-6.1-sol", effort: "low", roleSessionId: "child-review" }),
+      row({ id: "analyze", kind: "subagent", status: "running", startedAtMs: 2, target: { kind: "session", sessionId: "analyze" }, model: "claude-haiku-4-5", effort: "low", roleSessionId: "child-analyze" }),
+      row({ id: "server", status: "running", startedAtMs: 3 }),
     ]
     const fixture = await new Promise<ReturnType<typeof createModal> & { dispose: () => void }>((resolve) => {
       createRoot((dispose) => resolve({ ...createModal({ rows }), dispose }))
     })
+    fixture.modal.openBackgroundModal()
     await flush()
 
     expect(fixture.ensureRoleViews.mock.calls.at(-1)?.[0]).toEqual(["child-review", "child-analyze"])
@@ -210,7 +307,7 @@ describe("useBackgroundModal", () => {
 
   it("opens the full-size card of the workflow whose agent started a command", () => {
     createRoot((dispose) => {
-      const rows = [ROWS[1]!, row({ id: "tool-w", title: "agent server", status: "running", parentRowId: "member", cardToolUseId: "toolu_workflow", target: { kind: "session", sessionId: "member" } })]
+      const rows = [ROWS[1]!, row({ id: "tool-w", title: "agent server", status: "running", startedAtMs: 300, parentRowId: "member", cardToolUseId: "toolu_workflow", target: { kind: "session", sessionId: "member" } })]
       const { modal, press, openTarget, navigateToProcess } = createModal({ rows })
       modal.openBackgroundModal()
       press("down")
@@ -227,6 +324,7 @@ describe("useBackgroundModal", () => {
     const { modal } = await new Promise<ReturnType<typeof createModal>>((resolve) => {
       createRoot(() => resolve(createModal({ dispatch, showToast })))
     })
+    modal.openBackgroundModal()
     modal.stopBackgroundRow(0)
     await flush()
 

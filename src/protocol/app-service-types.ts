@@ -400,6 +400,10 @@ export type FrontendMutation =
    *  so the runtime stops reading it for the sender. It never lets go of an
    *  activation: a tab the sender shows keeps its runner. */
   | { type: "session_detail.release"; sessionId: string }
+  /** Stops following the background index of the session, which the
+   *  sender's `sessionBackgroundWork` read follows (ARCH-PROTOCOL-069). When
+   *  no sender follows the session any more, the runtime lets its index go. */
+  | { type: "background.release"; sessionId: string }
   /** Names the whole set of sessions whose live output the sender's
    *  transcripts follow, replacing the set it named before. The runtime
    *  sends `output.delta` patches to a connection only for the sessions in

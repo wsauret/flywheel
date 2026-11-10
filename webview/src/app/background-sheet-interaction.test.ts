@@ -36,10 +36,11 @@ const ROWS: readonly BackgroundWorkRow[] = [
 ]
 
 test("lists running work whose card is outside the loaded window, and a tap lands on the card through openAround", async () => {
-  const mounted = mountBackgroundSheet(ROWS)
+  const mounted = await mountBackgroundSheet(ROWS)
   try {
     await mounted.ready()
-    assert.deepEqual(mounted.queries(), [{ type: "sessionBackgroundWork", sessionId: "chat" }])
+    assert.deepEqual(mounted.queriesBeforeMount(), [{ type: "sessionBackgroundWork", sessionId: "chat" }])
+    assert.deepEqual(mounted.queriesSinceMount(), [])
     assert.match(mounted.text(), /bun run dev/)
     assert.match(mounted.text(), /Reviewer/)
     assert.doesNotMatch(mounted.text(), /bun test/)
@@ -55,7 +56,7 @@ test("lists running work whose card is outside the loaded window, and a tap land
 })
 
 test("a child opens from its Open control and from Enter, with the chat as the place Back returns to", async () => {
-  const mounted = mountBackgroundSheet(ROWS)
+  const mounted = await mountBackgroundSheet(ROWS)
   try {
     await mounted.ready()
     const row = mounted.row("Reviewer")
@@ -64,18 +65,19 @@ test("a child opens from its Open control and from Enter, with the chat as the p
     open.focus()
     const wrapper = row.parent
     assert.ok(wrapper)
-    mounted.refresh([
-      { id: "new-parent", kind: "subagent", title: "New parent", startedAtMs: 50, cardToolUseId: "new-parent", status: "running" },
-      ...ROWS.map(entry => entry.id === "reviewer" ? { ...entry, parentRowId: "new-parent", title: "Current reviewer", status: "waiting_on_parent" as const, target: { kind: "session" as const, sessionId: "current-destination" } } : { ...entry }),
-    ])
+    // Row patches change the held rows in place, with no read.
+    mounted.patch({ kind: "background.row.updated", row: { id: "new-parent", kind: "subagent", title: "New parent", startedAtMs: 50, cardToolUseId: "new-parent", status: "running" } })
+    mounted.patch({ kind: "background.row.updated", row: { ...ROWS[1]!, parentRowId: "new-parent", title: "Current reviewer", status: "waiting_on_parent", target: { kind: "session", sessionId: "current-destination" } } })
     await mounted.ready()
+    assert.deepEqual(mounted.queriesSinceMount(), [])
     assert.equal(mounted.row("Current reviewer"), row)
     assert.ok(mounted.elements().includes(open))
     assert.equal(open.ownerDocument.activeElement, open)
     assert.deepEqual(wrapper.properties.style, { "--background-depth": 1 })
     const ordered = mounted.elements().filter(node => node.properties.class === "background-row")
+    // A nested row follows the row that started it.
     assert.equal(ordered[0], mounted.row("New parent").parent)
-    assert.equal(ordered[2], wrapper)
+    assert.equal(ordered[1], wrapper)
     assert.match(mounted.text(), /Waiting/)
     mounted.click("Open", "Current reviewer")
     mounted.enter("Current reviewer")
@@ -88,7 +90,7 @@ test("a child opens from its Open control and from Enter, with the chat as the p
 })
 
 test("a workflow delegates its typed card target to its module, while an agent command opens the actual member session", async () => {
-  const mounted = mountBackgroundSheet([
+  const mounted = await mountBackgroundSheet([
     { id: "workflow", kind: "workflow", title: "Implement", startedAtMs: 100, cardToolUseId: "toolu_workflow", target: { kind: "workflow", workflowId: "workflow" }, status: "running", stop: { sessionId: "chat", toolUseId: "toolu_workflow" } },
     { id: "toolu_agent_server", kind: "command", title: "agent server", startedAtMs: 200, cardToolUseId: "toolu_workflow", parentRowId: "member", target: { kind: "session", sessionId: "member" }, status: "running" },
   ])
@@ -106,7 +108,7 @@ test("a workflow delegates its typed card target to its module, while an agent c
 })
 
 test("Stop asks first, then ends the row's launching call", async () => {
-  const mounted = mountBackgroundSheet(ROWS)
+  const mounted = await mountBackgroundSheet(ROWS)
   try {
     await mounted.ready()
     mounted.click("Stop", "Reviewer")
@@ -122,7 +124,7 @@ test("Stop asks first, then ends the row's launching call", async () => {
 
 test("All shows finished work with its outcome and no Stop, and the choice is the next sheet's", async () => {
   const stored: { [key: string]: string } = {}
-  const first = mountBackgroundSheet(ROWS, stored)
+  const first = await mountBackgroundSheet(ROWS, stored)
   try {
     await first.ready()
     first.click("All")
@@ -132,7 +134,7 @@ test("All shows finished work with its outcome and no Stop, and the choice is th
   } finally {
     first.dispose()
   }
-  const second = mountBackgroundSheet(ROWS, stored)
+  const second = await mountBackgroundSheet(ROWS, stored)
   try {
     await second.ready()
     assert.match(second.text(), /bun test/)

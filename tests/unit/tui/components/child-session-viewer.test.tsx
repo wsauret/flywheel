@@ -49,7 +49,7 @@ async function renderViewer(surface: SessionSurface, input: ReturnType<typeof cr
         fontTipDismissed: () => true, tabsHintDismissed: () => true, onDismissTabsHint: () => {}, moduleRows: () => [] }}
       showThinking={false} diffColors={() => "theme"} onClose={() => {}} showToast={() => {}}
       roleView={() => undefined} childStatus={() => ({ waitingOn: undefined })} ensureChildViews={() => {}}
-      modelLabel={() => "Child model"} onOpenModel={() => {}} transcriptInView={{ show: () => {} }} onOpenBackground={() => {}} compactionThreshold={() => 40_000} {...props} />
+      modelLabel={() => "Child model"} onOpenModel={() => {}} transcriptInView={{ show: () => {} }} onOpenBackground={() => {}} followBackground={() => () => {}} compactionThreshold={() => 40_000} {...props} />
   </TickPoolProvider></ThemeProvider>, size)
   renders.push(render)
   await render.renderOnce()
@@ -69,7 +69,7 @@ function openerViewerProps(overrides: Partial<ReturnType<Parameters<typeof creat
       fontTipDismissed: () => true, tabsHintDismissed: () => true, onDismissTabsHint: () => {}, moduleRows: () => [] },
     showThinking: false, diffColors: () => "theme",
     roleView: () => undefined, childStatus: () => ({ waitingOn: undefined }), ensureChildViews: () => {},
-    modelLabel: () => "Child model", onOpenModel: () => {}, transcriptInView: { show: () => {} }, onOpenBackground: () => {}, compactionThreshold: () => undefined,
+    modelLabel: () => "Child model", onOpenModel: () => {}, transcriptInView: { show: () => {} }, onOpenBackground: () => {}, followBackground: () => () => {}, compactionThreshold: () => undefined,
     ...overrides,
   }
 }

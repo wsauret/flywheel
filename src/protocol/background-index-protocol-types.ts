@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import type { RuntimePosition, RuntimeSessionCursorIdentity } from "./runtime-ui-protocol-types.js"
+import type { RuntimePosition, RuntimeSessionCursorIdentity, RuntimeUiPatchPayload } from "./runtime-ui-protocol-types.js"
 
 /** The background index of one chat: its background commands and every
  *  child it started, with the children of each child nested under it. A
@@ -30,7 +30,7 @@ const BackgroundWorkProgressSchema = Schema.Struct({
 })
 export type BackgroundWorkProgress = typeof BackgroundWorkProgressSchema.Type
 
-const BackgroundWorkRowSchema = Schema.Struct({
+export const BackgroundWorkRowSchema = Schema.Struct({
   /** The tool use id of a command, the session id of a child. */
   id: Schema.NonEmptyString,
   kind: Schema.Literals(["command", "subagent", "workflow"]),
@@ -62,9 +62,9 @@ const BackgroundWorkRowSchema = Schema.Struct({
 export type BackgroundWorkRow = typeof BackgroundWorkRowSchema.Type
 
 export interface SessionBackgroundWorkResult {
-  /** Taken before the reads, so a patch published during them is applied over the rows. */
+  /** The position of the last row patch the rows include, so each later patch applies over them. */
   readonly snapshotPosition: RuntimePosition
-  /** In start order, each nested row directly after the rows of its parent row. */
+  /** Every row of the index, in no stated order: a client orders them (`orderBackgroundRows`). */
   readonly rows: readonly BackgroundWorkRow[]
 }
 export const SessionBackgroundWorkResultSchema: Schema.Codec<SessionBackgroundWorkResult> = Schema.Struct({
@@ -72,8 +72,16 @@ export const SessionBackgroundWorkResultSchema: Schema.Codec<SessionBackgroundWo
   rows: Schema.Array(BackgroundWorkRowSchema),
 })
 
-/** An invalidation: a client that shows the index reads it again. */
-export interface BackgroundPatchPayload { readonly kind: "background.changed" }
-export function backgroundCursor(sessionId: string): RuntimeSessionCursorIdentity {
+/** One row of a held index that changed, whole, or the removal of a row by
+ *  its id (ARCH-PROTOCOL-069). */
+export type BackgroundPatchPayload =
+  | { readonly kind: "background.row.updated"; readonly row: BackgroundWorkRow }
+  | { readonly kind: "background.row.removed"; readonly rowId: string }
+
+export function backgroundCursor(sessionId: string): RuntimeSessionCursorIdentity & { readonly domain: "background" } {
   return { scope: "session", domain: "background", sessionId }
+}
+
+export function isBackgroundPayload(payload: RuntimeUiPatchPayload): payload is BackgroundPatchPayload {
+  return payload.kind === "background.row.updated" || payload.kind === "background.row.removed"
 }

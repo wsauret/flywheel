@@ -54,7 +54,8 @@ function workspacePatch<const P extends RuntimeUiPatchPayload>(payload: P, domai
 
 export const RUNTIME_UI_PATCH_FIXTURES = {
   "changes.changed": sessionPatch({ kind: "changes.changed" }, "changes"),
-  "background.changed": sessionPatch({ kind: "background.changed" }, "background"),
+  "background.row.updated": sessionPatch({ kind: "background.row.updated", row: { id: "toolu_1", kind: "command", title: "bun test", startedAtMs: 1, cardToolUseId: "toolu_1", status: "running", stop: { sessionId: "session-1", toolUseId: "toolu_1" } } }, "background"),
+  "background.row.removed": sessionPatch({ kind: "background.row.removed", rowId: "toolu_1" }, "background"),
   "runtime.invalidate": workspacePatch({ kind: "runtime.invalidate", reason: "rebase" }, "runtime"),
   "session.added": sessionPatch({ kind: "session.added", row: sessionRow }, "session"),
   "session.updated": sessionPatch({ kind: "session.updated", row: sessionRow }, "session"),

@@ -14,6 +14,7 @@ import type { GitView } from "../../../src/protocol/git-protocol-types.js"
 import type { UpdateStatusView } from "../../../src/protocol/update-protocol-types.js"
 import { isWorkingStatus, type StatusView } from "../../../src/protocol/status-protocol-types.js"
 import type { SessionChangesSnapshot } from "../../../src/protocol/client/session-changes.js"
+import type { BackgroundIndexState } from "../../../src/protocol/client/background-index.js"
 import type { PanelSettings } from "./session-settings.js"
 import type { DesktopPermission } from "./desktop-notifier.js"
 import type { BudgetSummary } from "../../../src/protocol/client/host-contract.js"
@@ -78,6 +79,9 @@ export interface ClientViewState {
   /** The question the open session waits on, from the durable question
    *  projection, absent when none waits. The dock shows it. */
   readonly pendingQuestion?: PendingQuestionView
+  /** The background index of the open session, held from its selection, so
+   *  the background sheet opens on rows. Absent while no session is open. */
+  readonly backgroundIndex?: BackgroundIndexState
   /** Children this client has opened, never listed; `summaryOf` reads them
    *  after the catalog. */
   readonly children: readonly SessionSummary[]
@@ -331,6 +335,7 @@ function buildViewState(session: RuntimeSession, lists: SessionSummaryLists): Cl
     sessions: lists.sessions,
     newestQuestionOpenedAt: session.pendingQuestions.size > 0 ? Math.max(...[...session.pendingQuestions.values()].map((question) => question.timestamp)) : undefined,
     ...(pendingQuestion === undefined ? {} : { pendingQuestion }),
+    ...(session.backgroundIndex === undefined ? {} : { backgroundIndex: session.backgroundIndex }),
     children: lists.children,
     roleAssignments: session.roleAssignments,
     subscribeRoleAssignments: session.subscribeRoleAssignments,

@@ -102,6 +102,31 @@ describe("account project control client session holds", () => {
     } finally { await client.close() }
   })
 
+  test("the executor hears one background release when the last connection that follows a session's index lets go, by its release or its end", async () => {
+    const executor = privateExecutor()
+    executor.client.dispatch = recordedDispatch((command) => { executor.commands.push(command) }, runtimeDispatch({ "background.release": async () => ({ ok: true }) }))
+    executor.client.query = runtimeQuery({ sessionBackgroundWork: async () => ({ snapshotPosition: 0, rows: [] }) })
+    const f = fixture(executor.client)
+    const client = createProjectControlClient(f.options)
+    const terminal = new Rpc.ServerClient(1)
+    const browser = new Rpc.ServerClient(2)
+    try {
+      await client.query({ type: "sessionBackgroundWork", sessionId: "chat" }, terminal)
+      await client.query({ type: "sessionBackgroundWork", sessionId: "chat" }, browser)
+      await client.query({ type: "sessionBackgroundWork", sessionId: "child" }, terminal)
+      expect(await client.dispatch({ type: "background.release", sessionId: "chat" }, browser)).toEqual({ ok: true })
+      await settled()
+      // The terminal still follows the chat's index.
+      expect(runnerChanges(executor, "chat")).toEqual([])
+
+      client.disconnect(terminal)
+      await settled()
+      expect(runnerChanges(executor, "chat")).toEqual(["background.release"])
+      expect(runnerChanges(executor, "child")).toEqual(["background.release"])
+      expect(f.failures).toEqual([])
+    } finally { await client.close() }
+  })
+
   test("the executor hears one release when the last connection that shows a session lets go, and the chat stays", async () => {
     const executor = holdingExecutor()
     const f = fixture(executor.client)

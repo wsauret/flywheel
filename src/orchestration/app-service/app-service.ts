@@ -47,8 +47,7 @@ import type { GitAiAttributionProjection } from "./git-ai-attribution-projection
 import { commandUsageCursor } from "../../protocol/command-usage-protocol-types.js"
 import type { CommandUsageProjection } from "./command-usage-projection.js"
 import { changesCursor } from "../../protocol/session-changes-protocol-types.js"
-import { backgroundCursor } from "../../protocol/background-index-protocol-types.js"
-import type { BackgroundIndex } from "./background-index.js"
+import type { BackgroundIndexOwner } from "./background-index-publisher.js"
 import type { MutationEvidenceService } from "./mutation-evidence-service.js"
 import type { SessionChangesService } from "./session-changes-service.js"
 import type { AsyncEventStateReadSurface } from "../../infra/event-store-types.js"
@@ -111,8 +110,10 @@ export interface FlywheelAppServiceDeps {
   readonly chatDefault: () => import("../../protocol/app-service-types.js").RuntimeChatDefault
   readonly sessionChanges: () => Promise<SessionChangesService>
   readonly mutationEvidence: () => Promise<MutationEvidenceService>
-  /** The background index of each chat, read only while a client shows it. */
-  readonly backgroundIndex: BackgroundIndex
+  /** The background index of each session a client follows, held from its
+   *  first read until the account's `background.release` says that no client
+   *  follows it. */
+  readonly backgroundIndex: Pick<BackgroundIndexOwner, "snapshot" | "release">
   readonly projection: FrontendProjection
   /** The project directory this runtime opened, published as workspace state so
    *  a client shows project identity without resolving a directory itself. */
@@ -230,10 +231,7 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
       case "sessionChangeDiff": return (await deps.sessionChanges()).diff(request)
       case "mutationFiles": return (await deps.mutationEvidence()).files(request)
       case "mutationPatchWindow": return (await deps.mutationEvidence()).patchWindow(request)
-      case "sessionBackgroundWork": {
-        const snapshotPosition = bus.snapshotPosition({ kind: "cursor", cursor: backgroundCursor(request.sessionId) })
-        return { snapshotPosition, rows: await deps.backgroundIndex.rows(request.sessionId) }
-      }
+      case "sessionBackgroundWork": return await deps.backgroundIndex.snapshot(request.sessionId)
       case "snapshot": {
         const snapshotPosition = bus.snapshotPosition(runtimeReadAnchor(request.type))
         const local = await deps.projection.snapshot()
@@ -397,6 +395,11 @@ export function createFlywheelAppService(deps: FlywheelAppServiceDeps): Flywheel
     if (isSettingsMutation(mutation)) return dispatchSettingsMutation(deps, mutation)
     if (mutation.type === "session_detail.release") throw new Error(ACCOUNT_SESSION_DETAIL_ONLY)
     if (mutation.type === "output.watch") throw new Error(ACCOUNT_OUTPUT_WATCH_ONLY)
+    // The account sends it once no client follows the session's index.
+    if (mutation.type === "background.release") {
+      deps.backgroundIndex.release(mutation.sessionId)
+      return { ok: true }
+    }
     if (mutation.type === "command_usage.record" || mutation.type === "model.save_effort" || mutation.type === "model.reset_assignments" || mutation.type === "provider_model.set" || mutation.type === "provider_models.deselect_all" || mutation.type === "provider_models.recheck" || mutation.type === "provider_models.set_auto_enable" || mutation.type === "provider_free_routes.set" || mutation.type === "background.warm" || mutation.type.startsWith("auth.profile.") || mutation.type === "subscription_spend_consent.save" || mutation.type === "session.changes.set_viewed") {
       throw new Error(`Mutation ${mutation.type} reached the basic mutation dispatcher`)
     }

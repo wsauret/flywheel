@@ -3,6 +3,7 @@ import type { ResidentLanes } from "../../../src/protocol/client/residency.js"
 import type { ReadingState } from "../../../src/protocol/client/reading-state.js"
 import type { LocalChatSubmission } from "../../../src/protocol/client/chat-submissions.js"
 import { createSessionChangesController, type SessionChangesController } from "../../../src/protocol/client/session-changes.js"
+import { backgroundIndexState, createBackgroundIndexReadings, type BackgroundIndexState, type HeldBackgroundIndex } from "../../../src/protocol/client/background-index.js"
 import { createTranscriptStore, type TranscriptChange, type TranscriptStore } from "../../../src/protocol/client/transcript-store.js"
 import type { HydratedOutputBlockBody } from "../../../src/protocol/transcript-protocol-types.js"
 import { CHAT_SLOT } from "./active-model.js"
@@ -65,14 +66,18 @@ export interface SessionMemory {
 }
 
 /** Everything a page keeps for one session it showed recently: the
- *  transcript window with its opened bodies, the changes, the workflow view,
- *  the seat, the session's module views, and what the surfaces left in it.
+ *  transcript window with its opened bodies, the changes, the background
+ *  index, the workflow view, the seat, the session's module views, and what
+ *  the surfaces left in it.
  *  Each reader follows its own cursor through the lanes the residency hands
  *  it, so a hidden session stays current on an unbroken lane and goes dormant
  *  when the lane breaks. A return shows all of it at once. */
 export interface ResidentSession {
   readonly transcript: TranscriptStore
   readonly changes: SessionChangesController
+  /** The session's background index, followed from its first show
+   *  (ARCH-PROTOCOL-069), so the background sheet opens on held rows. */
+  readonly background: BackgroundIndexState
   readonly modules: SessionModuleMonitors
   readonly seat: SeatReading
   readonly memory: SessionMemory
@@ -119,11 +124,25 @@ export function createResidentSession(options: ResidentSessionOptions): Resident
   const changes = createSessionChangesController({ client: connection, sessionId })
   const stopChanges = changes.onChange(changed)
   void changes.start()
+  let background: HeldBackgroundIndex | undefined
+  const backgroundReadings = createBackgroundIndexReadings({
+    client: connection,
+    admits: (id) => id === sessionId,
+    views: {
+      get: () => background,
+      set: (_id, view) => { background = view },
+      delete: () => { background = undefined },
+      keys: () => background === undefined ? [] : [sessionId],
+    },
+    changed,
+  })
+  backgroundReadings.ensure([sessionId])
   const modules = createSessionModuleMonitors({ connection, sessionId, onChange: changed })
   const seat = createSeatReading({ connection, sessionId, slot: () => CHAT_SLOT, roles: options.roles, changed })
   return {
     transcript,
     changes,
+    get background() { return backgroundIndexState(background) },
     modules,
     seat,
     memory,
@@ -138,6 +157,7 @@ export function createResidentSession(options: ResidentSessionOptions): Resident
       transcript.dispose()
       stopChanges()
       changes.dispose()
+      backgroundReadings.dispose()
       modules.dispose()
       seat.dispose()
     },

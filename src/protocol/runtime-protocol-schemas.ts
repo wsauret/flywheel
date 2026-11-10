@@ -3,7 +3,7 @@ import { CLIENT_IDENTITY_PATTERN } from "./client-identity.js"
 import { RuntimeClientDiagnosticSchema } from "./runtime-client-diagnostics.js"
 import { RuntimeCursorIdentitySchema } from "./runtime-cursor-schemas.js"
 import { ChatInputObjectSchema } from "../infra/chat-input-schema.js"
-import { SessionBackgroundWorkQuerySchema, SessionBackgroundWorkResultSchema } from "./background-index-protocol-types.js"
+import { BackgroundWorkRowSchema, SessionBackgroundWorkQuerySchema, SessionBackgroundWorkResultSchema } from "./background-index-protocol-types.js"
 import { MutationFilesQuerySchema, MutationFilesResultSchema, MutationPatchWindowQuerySchema, MutationPatchWindowResultSchema } from "./mutation-evidence-protocol-types.js"
 import { SessionChangeSummaryQuerySchema, SessionChangeSummaryResultSchema, SessionFileChangeCountsSchema, SessionChangesQuerySchema, SessionChangesResultSchema, SessionChangeDiffQuerySchema, SessionChangeDiffResultSchema, SessionChangesSetViewedSchema, SessionChangesUndoSchema } from "./session-changes-protocol-types.js"
 import { Rpc, RpcGroup } from "effect/rpc"
@@ -258,7 +258,8 @@ const RolePatchPayloadSchema: Schema.Codec<RolePatchPayload> = Schema.Union([
 const RuntimeRoleSnapshotResultSchema: Schema.Codec<RuntimeRoleSnapshotResult> = sessionViewsResultSchema(RoleAssignmentViewSchema)
 export const RuntimeUiPatchPayloadSchema = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("changes.changed") }),
-  Schema.Struct({ kind: Schema.Literal("background.changed") }),
+  Schema.Struct({ kind: Schema.Literal("background.row.updated"), row: BackgroundWorkRowSchema }),
+  Schema.Struct({ kind: Schema.Literal("background.row.removed"), rowId: Schema.NonEmptyString }),
   Schema.Struct({ kind: Schema.Literal("runtime.invalidate"), reason: Schema.Union([Schema.Literal("overflow"), Schema.Literal("reconnect_required"), Schema.Literal("protocol_violation"), Schema.Literal("rebase")]) }),
   Schema.Struct({ kind: Schema.Literal("session.added"), row: SessionCatalogRowSchema }),
   Schema.Struct({ kind: Schema.Literal("session.updated"), row: SessionCatalogRowSchema }),
@@ -330,6 +331,7 @@ export const FrontendMutationSchema: Schema.Codec<FrontendMutation, FrontendMuta
   Schema.Struct({ type: Schema.Literal("session.activate"), sessionId: Schema.String }),
   Schema.Struct({ type: Schema.Literal("session.release"), sessionId: Schema.String }),
   Schema.Struct({ type: Schema.Literal("session_detail.release"), sessionId: Schema.String }),
+  Schema.Struct({ type: Schema.Literal("background.release"), sessionId: Schema.String }),
   Schema.Struct({ type: Schema.Literal("output.watch"), sessionIds: Schema.Array(Schema.String) }),
   SessionForkMutationSchema,
   Schema.Struct({ type: Schema.Literal("session.close"), sessionId: Schema.String, atRest: Schema.optionalKey(Schema.Literal(true)) }),

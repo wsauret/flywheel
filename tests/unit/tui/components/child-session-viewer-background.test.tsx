@@ -10,7 +10,7 @@ import { transcriptOf } from "../_output-window-transcript.js"
 import { viewerSurface } from "./_child-session-viewer-fixtures.js"
 import { createChatSubmissions } from "../../../../src/protocol/client/chat-submissions.js"
 
-test("opens background work from a subagent's chip and lands in its viewer's transcript", async () => {
+test("follows the subagent's background index while open, opens it from the chip, and lands in its viewer's transcript", async () => {
   const command = { id: "bg", toolUseId: "bash-bg", description: "Background proof", startedAtMs: 1 }
   const status: StatusView = {
     activity: "idle", activityStartedAt: 0, settledOutputPosition: null, connectionState: "connected", activeSubagentCount: 0,
@@ -26,6 +26,8 @@ test("opens background work from a subagent's chip and lands in its viewer's tra
   })
   const input = createChildSessionViewerInput({ onClose: () => {}, dispatchCommand: async () => false })
   const onOpenBackground = mock((_target: BackgroundModalTarget) => {})
+  const unfollow = mock(() => {})
+  const followBackground = mock((_sessionId: string) => unfollow)
   const render = await testRender(() => <ThemeProvider mode="dark"><TickPoolProvider>
     <ChildSessionViewer sessionId="child" createSurface={() => surface} input={input} active={() => true} focused={() => true}
       layoutSlot={{}} appService={{ query: async () => { throw new Error("unexpected query") }, dispatch: async () => { throw new Error("unexpected dispatch") } }}
@@ -36,10 +38,11 @@ test("opens background work from a subagent's chip and lands in its viewer's tra
         fontTipDismissed: () => true, tabsHintDismissed: () => true, onDismissTabsHint: () => {}, moduleRows: () => [] }}
       showThinking={false} diffColors={() => "theme"} onClose={() => {}} showToast={() => {}}
       roleView={() => undefined} childStatus={() => ({ waitingOn: undefined })} ensureChildViews={() => {}}
-      modelLabel={() => "Child model"} onOpenModel={() => {}} transcriptInView={{ show: () => {} }} onOpenBackground={onOpenBackground} compactionThreshold={() => 40_000} />
+      modelLabel={() => "Child model"} onOpenModel={() => {}} transcriptInView={{ show: () => {} }} onOpenBackground={onOpenBackground} followBackground={followBackground} compactionThreshold={() => 40_000} />
   </TickPoolProvider></ThemeProvider>, { width: 100, height: 32 })
   try {
     await render.renderOnce()
+    expect(followBackground.mock.calls).toEqual([["child"]])
     const rows = render.captureCharFrame().split("\n")
     const y = rows.findIndex((row) => row.includes("1 background process"))
     expect(y).toBeGreaterThanOrEqual(0)
@@ -52,5 +55,8 @@ test("opens background work from a subagent's chip and lands in its viewer's tra
     expect(loadAround).toHaveBeenCalledTimes(1)
     expect(loadAround).toHaveBeenCalledWith("background-entry")
     expect(render.captureCharFrame()).toContain("Background command output")
+    expect(unfollow).not.toHaveBeenCalled()
   } finally { render.renderer.destroy() }
+  // The viewer's close ends its follow.
+  expect(unfollow).toHaveBeenCalledTimes(1)
 })

@@ -360,6 +360,10 @@ The background command opens the background list, and the web command menu offer
 
 A workflow's row states how many of its agents are done of all and how many failed, and while it runs, how many agents run and their names. A finished command shows its exit status and how long it ran, or only that it ended when Flywheel did not record its end. A finished subagent or workflow shows its status: interrupted, completed, partial, failed, stopped, or canceled. A finished subagent also shows how long it ran, and finished rows are dimmed.
 
+## PI-INTERACTION-176: The background list shows its rows at once
+
+Opening the background list of the chat a person views shows its rows at once, and the rows change in place while the list is open.
+
 ## PI-INTERACTION-094: A background row shows its card in the transcript
 
 Clicking or tapping a row in the background list closes the list and shows the row's card at once in the middle of the transcript view, and loads older transcript when necessary. A card taller than the view shows from its top, and a nested row shows the card of the child that contains it. In the terminal, the card's background stays highlighted for three seconds.

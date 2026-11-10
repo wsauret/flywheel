@@ -8,6 +8,7 @@ import { chatTurnEndEvidenceOf, isPlannedCut, isProducedInput, isResumableTurnEn
 import { isWorkflowResumeCandidate } from "./resumable.js"
 import { startedAgents, type StartedAgent } from "../../workflows/vm/host-commit-controller.js"
 import { holdsInterruptedGuess, readToolExecution } from "./tool-execution-projection.js"
+import type { ToolExecutionEntry } from "./tool-execution-types.js"
 import type { SessionLifecycleState } from "./types.js"
 import { readReplyWaits } from "./conversation/reply-wait-cells.js"
 import type { RestoredAgentWait } from "../agent-runtime/agent-loop-types.js"
@@ -283,7 +284,12 @@ export interface ChildCall {
  *  no call launched. */
 export async function readChildCall(reader: AsyncEventStateReadSurface, launchedFrom: { readonly parentSessionId: string; readonly toolUseId?: string } | undefined): Promise<ChildCall | undefined> {
   if (launchedFrom?.toolUseId === undefined) return undefined
-  const tool = await readToolExecution(reader, launchedFrom.parentSessionId, launchedFrom.toolUseId)
+  return childCallOf(await readToolExecution(reader, launchedFrom.parentSessionId, launchedFrom.toolUseId))
+}
+
+/** The launching call of a child as `readChildCall` reads it, from the
+ *  call's tool execution, for a reader that reads many calls at once. */
+export function childCallOf(tool: ToolExecutionEntry | undefined): ChildCall {
   if (tool?.resultOutcome === "stopped") return { stoppedBy: "person" }
   if (tool?.resultOutcome === "cancelled") return { stoppedBy: "agent" }
   return tool !== undefined && (tool.resultEventId === undefined || holdsInterruptedGuess(tool)) ? {} : { settled: true }

@@ -10,6 +10,7 @@ import {
   stopBackgroundRow as dispatchStop,
   type BackgroundIndexEntry,
   type BackgroundIndexFilter,
+  type BackgroundIndexState,
 } from "../../protocol/client/background-index.js"
 import type { ActiveBackgroundCommandView } from "../../protocol/status-protocol-types.js"
 import { sessionServingSelection } from "../../protocol/role-protocol-types.js"
@@ -85,9 +86,13 @@ export function useBackgroundModal(deps: BackgroundModalDeps): BackgroundModalHo
   const [filter, setFilter] = createSignal<BackgroundIndexFilter>("active")
   const index = deps.signals.backgroundIndex
 
+  const indexState = createMemo<BackgroundIndexState | undefined>(() => {
+    const sessionId = target()?.sessionId
+    return sessionId === undefined ? undefined : index.state(sessionId)
+  })
   const allRows = createMemo<readonly BackgroundWorkRow[]>(() => {
-    const state = index.state()
-    return "rows" in state ? state.rows ?? [] : []
+    const state = indexState()
+    return state !== undefined && "rows" in state ? state.rows ?? [] : []
   })
 
   createEffect(() => {
@@ -104,9 +109,9 @@ export function useBackgroundModal(deps: BackgroundModalDeps): BackgroundModalHo
   })
 
   const empty = createMemo(() => {
-    const state = index.state()
-    if (state.status === "error") return `Could not read background work: ${state.error}`
-    if (allRows().length === 0) return state.status === "ready" ? "No background work in this session" : "Reading background work…"
+    const state = indexState()
+    if (state?.status === "error") return `Could not read background work: ${state.error}`
+    if (allRows().length === 0) return state?.status === "loading" ? "Reading background work…" : "No background work in this session"
     return "No active background work · a shows all"
   })
 
@@ -200,11 +205,11 @@ export function useBackgroundModal(deps: BackgroundModalDeps): BackgroundModalHo
     if (opened === undefined) return
     setCursor(0)
     setExpanded(new Set<string>())
-    // Replace first: it closes the previous entry, whose onClose hides the
-    // index and releases the target that this open sets.
-    deps.modal.replace(deps.renderModal, { onKey: handleKey, onClose: () => { index.hide(); setTarget(undefined) } })
+    // Replace first: it closes the previous entry, whose onClose releases
+    // the target that this open sets. The foreground or the child viewer
+    // that opens the list follows its index, so the list reads nothing.
+    deps.modal.replace(deps.renderModal, { onKey: handleKey, onClose: () => setTarget(undefined) })
     setTarget(opened)
-    index.show(opened.sessionId)
   }
 
   return {
