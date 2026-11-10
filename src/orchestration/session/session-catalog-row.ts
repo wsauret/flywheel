@@ -54,7 +54,7 @@ export function parentIdentity(launchedFrom: SessionLaunchedFrom | undefined): P
 }
 
 type DistributiveOmit<T, Key extends PropertyKey> = T extends unknown ? Omit<T, Key & keyof T> : never
-type CatalogTotalKey = "totalsLoading" | "totalCost" | "totalBilledCost" | "priceUnavailable" | "totalTokens" | "contextPercent" | "contextPromptTokens" | "durationMs" | "diffStats"
+type CatalogTotalKey = "totalsLoading" | "totalCost" | "totalBilledCost" | "priceUnavailable" | "totalTokens" | "contextPercent" | "contextPromptTokens" | "compactionTriggerTokens" | "durationMs" | "diffStats"
 interface CatalogTotalsDraft {
   readonly totalCost?: number
   readonly totalBilledCost?: number
@@ -62,12 +62,13 @@ interface CatalogTotalsDraft {
   readonly totalTokens?: number
   readonly contextPercent?: number
   readonly contextPromptTokens?: number
+  readonly compactionTriggerTokens?: number
   readonly durationMs?: number
   readonly diffStats?: SessionDiffStats
 }
 type CatalogRowDraft = DistributiveOmit<SessionRow, CatalogTotalKey> & CatalogTotalsDraft
 type CatalogRowPresentation = DistributiveOmit<CatalogRowDraft, "executionCwd">
-type CatalogTotals = Pick<Extract<SessionRow, { readonly totalsLoading: false }>, "totalCost" | "totalBilledCost" | "priceUnavailable" | "totalTokens" | "contextPercent" | "contextPromptTokens" | "durationMs" | "diffStats">
+type CatalogTotals = Pick<Extract<SessionRow, { readonly totalsLoading: false }>, "totalCost" | "totalBilledCost" | "priceUnavailable" | "totalTokens" | "contextPercent" | "contextPromptTokens" | "compactionTriggerTokens" | "durationMs" | "diffStats">
 
 /** Project durable metadata without inventing runtime activity or uncomputed
  *  statistics. Admitted actions come from durable evidence: a caller that
@@ -142,6 +143,7 @@ export function mergeListMetadata(row: CatalogRowPresentation, metadata: Durable
     ...statField("totalTokens", row.totalTokens ?? metadata.totalTokens),
     ...statField("contextPercent", row.contextPercent ?? metadata.contextPercent),
     ...statField("contextPromptTokens", row.contextPromptTokens ?? metadata.contextPromptTokens),
+    ...statField("compactionTriggerTokens", row.compactionTriggerTokens ?? metadata.compactionTriggerTokens),
     ...statField("durationMs", row.durationMs ?? metadata.durationMs),
     ...(diffStats ? { diffStats } : {}),
   }
@@ -172,6 +174,7 @@ export function readyCatalogRow<Row extends SessionRow>(
     totalTokens: totals.totalTokens,
     contextPercent: totals.contextPercent,
     contextPromptTokens: totals.contextPromptTokens,
+    ...(totals.compactionTriggerTokens === undefined ? {} : { compactionTriggerTokens: totals.compactionTriggerTokens }),
     durationMs: totals.durationMs,
     ...(totals.diffStats ? { diffStats: totals.diffStats } : {}),
   }
@@ -209,6 +212,7 @@ function loadingCatalogRow(row: CatalogRowDraft | SessionRow): SessionRow {
     totalTokens: _totalTokens,
     contextPercent: _contextPercent,
     contextPromptTokens: _contextPromptTokens,
+    compactionTriggerTokens: _compactionTriggerTokens,
     durationMs: _durationMs,
     diffStats: _diffStats,
     ...metadata
@@ -216,7 +220,7 @@ function loadingCatalogRow(row: CatalogRowDraft | SessionRow): SessionRow {
   return { ...metadata, totalsLoading: true }
 }
 
-function statField(key: "totalCost" | "totalBilledCost" | "totalTokens" | "contextPercent" | "contextPromptTokens" | "durationMs", value: number | undefined): CatalogTotalsDraft {
+function statField(key: "totalCost" | "totalBilledCost" | "totalTokens" | "contextPercent" | "contextPromptTokens" | "compactionTriggerTokens" | "durationMs", value: number | undefined): CatalogTotalsDraft {
   return value === undefined ? {} : { [key]: value }
 }
 

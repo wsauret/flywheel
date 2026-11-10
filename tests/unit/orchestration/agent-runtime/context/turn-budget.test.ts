@@ -9,6 +9,7 @@ import {
 import {
   CHARS_PER_TOKEN,
   createContextAdmission,
+  effectiveProactiveTrigger,
   proactiveCompactionTriggers,
   SAVE_ROUND_RESERVE_TOKENS,
   turnBudgetChars,
@@ -39,6 +40,23 @@ describe("turnBudgetChars", () => {
     expect(turnBudgetChars(100_000)).toBe(120_000);
     // Tiny window: floored.
     expect(turnBudgetChars(4_000)).toBe(16_000);
+  });
+});
+
+describe("effectiveProactiveTrigger", () => {
+  test.each([
+    // [window, configured, fresh context, trigger]
+    [1_000_000, 270_000, undefined, 270_000],
+    [1_000_000, 270_000, 50_000, 270_000],
+    // A configured count above the window share never applies.
+    [200_000, 270_000, undefined, 170_000],
+    // A fresh context that is not below the configured count moves the reset to the window share.
+    [1_000_000, 270_000, 270_000, 850_000],
+    // Below neither, and with automatic resets off, none runs.
+    [1_000_000, 270_000, 850_000, 0],
+    [1_000_000, 0, undefined, 0],
+  ])("a %i-token window configured at %i with a fresh context of %p resets at %i", (contextLimit, configured, fresh, trigger) => {
+    expect(effectiveProactiveTrigger(contextLimit, configured, fresh)).toBe(trigger);
   });
 });
 

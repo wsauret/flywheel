@@ -107,6 +107,28 @@ describe("SessionBudgetStore durable projection", () => {
     store.close();
   });
 
+  it("reads the compaction trigger of the latest context measurement, and none from a fact of the previous shape", async () => {
+    const sessionId = newSessionId();
+    const store = createSqliteEventStore(resolveEventStoreDbFile(makeTmpDir()));
+    const common = { aggregateId: `session:${sessionId}`, version: 1, timestamp: Date.now(), sessionId, type: "model.context.measured", actor: "provider" } as const;
+    const budgetStore = createSessionBudgetStore({ sessionId, emitter: noopEmitter, reader: asAsyncEventReadSurface(store), recorder: async () => null });
+
+    // The shape before the trigger existed.
+    await budgetStore.applyStoredFact(store.append({ ...common, payload: { promptTokens: 100, contextWindow: 1000 } }));
+    expect(await budgetStore.getContextUtilization()).toEqual({ promptTokens: 100, contextWindow: 1000, percent: 10 });
+
+    await budgetStore.applyStoredFact(store.append({ ...common, payload: { promptTokens: 100, contextWindow: 1000, compactionTriggerTokens: 850 } }));
+    expect(await budgetStore.getContextUtilization()).toEqual({ promptTokens: 100, contextWindow: 1000, percent: 10, compactionTriggerTokens: 850 });
+
+    await budgetStore.applyStoredFact(store.append({ ...common, payload: { promptTokens: 200, contextWindow: 1000, compactionTriggerTokens: 0 } }));
+    expect(await budgetStore.getContextUtilization()).toEqual({ promptTokens: 200, contextWindow: 1000, percent: 20, compactionTriggerTokens: 0 });
+
+    await budgetStore.applyStoredFact(store.append({ ...common, payload: { promptTokens: 300, contextWindow: 1000 } }));
+    expect(await budgetStore.getContextUtilization()).toEqual({ promptTokens: 300, contextWindow: 1000, percent: 30 });
+    budgetStore.dispose();
+    store.close();
+  });
+
   it.each([3, 30])("makes no state read for %p pushed facts that directly follow its history, and reads once at a gap another writer left", async (count) => {
     const sessionId = newSessionId();
     const store = createSqliteEventStore(resolveEventStoreDbFile(makeTmpDir()));

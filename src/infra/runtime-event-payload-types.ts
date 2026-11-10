@@ -110,6 +110,7 @@ export const ResultEventDataSchema = Schema.StructWithRest(Schema.Struct({
 export const ContextUpdateEventDataSchema = Schema.StructWithRest(Schema.Struct({
   context_prompt_tokens: Schema.Number,
   context_window: Schema.Number,
+  compaction_trigger_tokens: Schema.optionalKey(Schema.Number),
   parent_tool_use_id: Schema.optionalKey(Schema.NullOr(Schema.String)),
 }), [UnknownRecordSchema]);
 // Internal Flywheel-produced mirror of one committed canonical usage entry.

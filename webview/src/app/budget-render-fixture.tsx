@@ -30,7 +30,7 @@ function emptyModules(): ModuleDomainViews {
 const EMPTY_MODULES = emptyModules()
 
 const LOADING_BUDGET: BudgetSummary = { totalsLoading: true, compactionThreshold: 100_000 }
-const READY_BUDGET: BudgetSummary = {
+const READY_BUDGET = {
   totalsLoading: false,
   totalTokens: 12_345,
   contextPromptTokens: 4_000,
@@ -39,7 +39,7 @@ const READY_BUDGET: BudgetSummary = {
   priceUnavailable: false,
   contextPercent: 25,
   compactionThreshold: 100_000,
-}
+} as const satisfies BudgetSummary
 
 function state(budget: BudgetSummary = LOADING_BUDGET, health: RuntimeHealth = { kind: "healthy" }): ClientViewState {
   return {
@@ -275,6 +275,8 @@ export function mountCommandPanelBudget() {
     return {
       dispose,
       setReady() { setCurrent(withCompact(READY_BUDGET)) },
+      /** The ready budget with the trigger that the runtime published for the session. */
+      setPublishedTrigger(compactionTriggerTokens: number) { setCurrent(withCompact({ ...READY_BUDGET, compactionTriggerTokens })) },
       spendRow: () => panelRow("Spend"),
       compactRow: () => panelRow("Compact conversation"),
       compactValue: () => withClass(panelRow("Compact conversation") ?? root, "panel-value"),

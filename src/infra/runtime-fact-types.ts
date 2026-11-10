@@ -443,6 +443,10 @@ const ModelContextMeasured = defineRuntimeFact({
   payload: Schema.Struct({
     promptTokens: Schema.Number,
     contextWindow: Schema.Number,
+    // The context size of the next automatic reset, 0 when none can run. A
+    // fact from before 2026-11-10 or from a writer outside the agent loop
+    // states none, and a reader then falls back to the configured count.
+    compactionTriggerTokens: Schema.optionalKey(Schema.Number),
     parentToolUseId: Schema.optionalKey(Schema.String),
   }),
 });

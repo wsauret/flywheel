@@ -16,6 +16,16 @@ export function proactiveCompactionTriggers(contextLimit: number, configuredToke
   return configuredTokens < windowShare ? [configuredTokens, windowShare] : [windowShare];
 }
 
+/** The context size at which the next automatic reset runs
+ *  (ARCH-CONTEXT-036): the first trigger that `freshContextTokens` is below,
+ *  or the first trigger while no reset or deferral has measured the fresh
+ *  context. 0 when no automatic reset can run. The plan owner decides with
+ *  it, and every context measurement publishes it. */
+export function effectiveProactiveTrigger(contextLimit: number, configuredTokens: number, freshContextTokens: number | undefined): number {
+  const triggers = proactiveCompactionTriggers(contextLimit, configuredTokens);
+  return (freshContextTokens === undefined ? triggers[0] : triggers.find((tokens) => freshContextTokens < tokens)) ?? 0;
+}
+
 /** The one characters-per-token ratio of every context budget. Code-heavy
  *  output is denser, so a budget built on it is an estimate. */
 export const CHARS_PER_TOKEN = 4;

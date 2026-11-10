@@ -20,6 +20,9 @@ export interface ContextUtilization {
   promptTokens: number;
   contextWindow: number;
   percent: number;
+  /** The context size of the next automatic reset as the latest measurement
+   *  stated it: 0 when none can run, absent when it stated none. */
+  compactionTriggerTokens?: number;
 }
 
 export function computeContextPercent(promptTokens: number, contextWindow: number): number {

@@ -54,6 +54,9 @@ interface DurableSessionCatalogMetadata {
   totalTokens?: number
   contextPercent?: number
   contextPromptTokens?: number
+  /** The context size of the next automatic reset that the runtime stated: 0
+   *  when none can run, absent when the session's history states none. */
+  compactionTriggerTokens?: number
   durationMs?: number
   diffStats?: SessionDiffStats
   lastUpdated: string

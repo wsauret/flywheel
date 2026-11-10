@@ -42,6 +42,7 @@ function buildSignals(overrides: {
   elapsed?: () => number
   contextPercent?: number
   contextPromptTokens?: number
+  compactionTriggerTokens?: number
   cost?: number
   billedCost?: number
   priceUnavailable?: boolean
@@ -64,6 +65,7 @@ function buildSignals(overrides: {
     priceUnavailable: overrides.priceUnavailable ?? false,
     tokens: 0,
     contextPromptTokens: overrides.contextPromptTokens ?? (overrides.contextPercent ?? 0) * 2700,
+    ...(overrides.compactionTriggerTokens === undefined ? {} : { compactionTriggerTokens: overrides.compactionTriggerTokens }),
   })
   const foregroundSummary = () => overrides.summary ?? null
   return {
@@ -89,6 +91,53 @@ describe("header display", () => {
         theme,
       })
       expect(headerText(header)).toBe("100% ctx")
+    })
+  })
+
+  it("measures against the trigger that the runtime published, not the configured count", () => {
+    createRoot((d) => {
+      dispose = d
+      // Configured 270k on a 200k window: the runtime resets at the window share.
+      const header = createHeaderDisplay({
+        signals: buildSignals({ contextPercent: 43, contextPromptTokens: 85_000, compactionTriggerTokens: 170_000 }),
+        dimensions: () => ({ width: 120, height: 24 }),
+        theme,
+      })
+      expect(headerText(header)).toBe("50% ctx")
+      expect(header.contextCopy()).toMatchObject({
+        reading: "50% of context remaining until auto-compact.",
+        detail: "85,000 of 170,000 tokens before compaction.",
+      })
+    })
+  })
+
+  it("keeps the published trigger's percentage after the setting is turned off, until the runtime states a new trigger", () => {
+    createRoot((d) => {
+      dispose = d
+      const header = buildHeaderDisplay({
+        signals: buildSignals({ contextPercent: 43, contextPromptTokens: 85_000, compactionTriggerTokens: 170_000 }),
+        dimensions: () => ({ width: 120, height: 24 }),
+        theme,
+        compactionThreshold: () => 0,
+      })
+      expect(headerText(header)).toBe("50% ctx")
+      expect(header.contextCopy()?.reading).toBe("50% of context remaining until auto-compact.")
+    })
+  })
+
+  it("shows the window share when the runtime states that no automatic compaction can run", () => {
+    createRoot((d) => {
+      dispose = d
+      const header = createHeaderDisplay({
+        signals: buildSignals({ contextPercent: 90, contextPromptTokens: 900_000, compactionTriggerTokens: 0 }),
+        dimensions: () => ({ width: 120, height: 24 }),
+        theme,
+      })
+      expect(headerText(header)).toBe("90% ctx")
+      expect(header.contextCopy()).toMatchObject({
+        reading: "90% of the context window used.",
+        detail: "900,000 tokens in context; auto-compact is deferred.",
+      })
     })
   })
 

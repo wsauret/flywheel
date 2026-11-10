@@ -340,7 +340,9 @@ export type ProviderStreamEvent =
   // request's prompt token total (Anthropic/Google emit on message_start).
   // The agent loop also synthesizes this between turns from its own token
   // estimate, sharing the same event channel.
-  | { kind: "context_update"; promptTokens: number; contextWindow: number }
+  // `compactionTriggerTokens` is the context size of the next automatic reset
+  // (0: none can run). Only the loop's compaction plan owner states it.
+  | { kind: "context_update"; promptTokens: number; contextWindow: number; compactionTriggerTokens?: number }
   | { kind: "provider_status"; message: string; level?: "info" | "error" }
   | { kind: "done"; stopReason: CompletedStopReason; metadata?: AssistantMetadata }
   // What a transport between the adapter and the service added to this

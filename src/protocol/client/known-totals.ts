@@ -29,7 +29,7 @@ export function mergeBudgetView(prior: BudgetView | undefined, next: BudgetView)
   return next.totalsLoading && prior !== undefined && !prior.totalsLoading ? prior : next
 }
 
-function knownCatalogTotals(row: ReadyCatalogRow): Pick<ReadyCatalogRow, "totalsLoading" | "totalCost" | "totalBilledCost" | "priceUnavailable" | "totalTokens" | "contextPercent" | "contextPromptTokens" | "durationMs" | "diffStats"> {
+function knownCatalogTotals(row: ReadyCatalogRow): Pick<ReadyCatalogRow, "totalsLoading" | "totalCost" | "totalBilledCost" | "priceUnavailable" | "totalTokens" | "contextPercent" | "contextPromptTokens" | "compactionTriggerTokens" | "durationMs" | "diffStats"> {
   return {
     totalsLoading: false,
     totalCost: row.totalCost,
@@ -38,6 +38,7 @@ function knownCatalogTotals(row: ReadyCatalogRow): Pick<ReadyCatalogRow, "totals
     totalTokens: row.totalTokens,
     contextPercent: row.contextPercent,
     contextPromptTokens: row.contextPromptTokens,
+    ...(row.compactionTriggerTokens === undefined ? {} : { compactionTriggerTokens: row.compactionTriggerTokens }),
     durationMs: row.durationMs,
     ...(row.diffStats === undefined ? {} : { diffStats: row.diffStats }),
   }

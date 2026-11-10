@@ -427,6 +427,19 @@ describe("session summary index", () => {
     }
   })
 
+  test("stores the compaction trigger of the latest context measurement, and none for a measurement that states none", async () => {
+    const file = dbFile()
+    const measured = (position: number, sessionId: string, trigger?: number) => sessionSummaryFact(position, sessionId, "model.context.measured", 1, { promptTokens: 100, contextWindow: 1000, ...(trigger === undefined ? {} : { compactionTriggerTokens: trigger }) })
+    const index = acquireSessionSummaryIndex(file, sourceFor([measured(1, "a", 850), measured(2, "b")]).source)
+    try {
+      const { summaries } = await index.replay().then(() => index.readImmediate(["a", "b"]))
+      expect(summaries.get("a")?.budget).toMatchObject({ contextPromptTokens: 100, contextPercent: 10, compactionTriggerTokens: 850 })
+      expect(summaries.get("b")?.budget).not.toHaveProperty("compactionTriggerTokens")
+    } finally {
+      await index.dispose()
+    }
+  })
+
   test("rebuilds malformed stored budget state in place", async () => {
     const file = dbFile()
     const history = sourceFor([usageV4Fact(1, "a", "one")])

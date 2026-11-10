@@ -376,14 +376,14 @@ export function emitCompactionCompleted(
 
 export function emitContextUpdate(
   emit: EventEmitter,
-  promptTokens: number,
-  contextWindow: number,
+  measured: { readonly promptTokens: number; readonly contextWindow: number; readonly compactionTriggerTokens?: number },
   parentToolUseId?: string,
 ): void {
   emit(
     createRuntimeEvent("model.context.measured", {
-      context_prompt_tokens: promptTokens,
-      context_window: contextWindow,
+      context_prompt_tokens: measured.promptTokens,
+      context_window: measured.contextWindow,
+      ...(measured.compactionTriggerTokens === undefined ? {} : { compaction_trigger_tokens: measured.compactionTriggerTokens }),
       ...(parentToolUseId ? { parent_tool_use_id: parentToolUseId } : {}),
     }),
   );

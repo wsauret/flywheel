@@ -408,7 +408,7 @@ export function createSessionManager(deps: SessionManagerDeps): SessionManager {
             timestamp,
             actor: "provider",
             sessionId: targetSessionId,
-            payload: { promptTokens: context.promptTokens, contextWindow: context.contextWindow },
+            payload: { promptTokens: context.promptTokens, contextWindow: context.contextWindow, ...(context.compactionTriggerTokens === undefined ? {} : { compactionTriggerTokens: context.compactionTriggerTokens }) },
           }]
         : []),
     ]

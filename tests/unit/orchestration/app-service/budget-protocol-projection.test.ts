@@ -46,9 +46,15 @@ describe("budget protocol projection", () => {
     expect(await projection.snapshot("chat-1")).toEqual({ totalsLoading: true })
     summary.replace({ totalsLoading: false, row: row(42) })
     await flush()
-    expect(patches).toEqual([expect.objectContaining({ payload: { kind: "budget.updated", budget: {
-      totalsLoading: false, tokens: 42, cost: 1, billedCost: 0.5, priceUnavailable: false, contextPercent: 20, contextPromptTokens: 200,
-    } } })])
+    const ready = { totalsLoading: false as const, tokens: 42, cost: 1, billedCost: 0.5, priceUnavailable: false, contextPercent: 20, contextPromptTokens: 200 }
+    expect(patches).toEqual([expect.objectContaining({ payload: { kind: "budget.updated", budget: ready } })])
+    // A trigger that the runtime decides is a change of the budget on its own,
+    // and it crosses the published codec.
+    summary.replace({ totalsLoading: false, row: { ...row(42), compactionTriggerTokens: 850 } })
+    await flush()
+    const stated = { kind: "budget.updated" as const, budget: { ...ready, compactionTriggerTokens: 850 } }
+    expect(patches.slice(1)).toEqual([expect.objectContaining({ payload: stated })])
+    expect(Schema.decodeUnknownSync(BudgetPatchPayloadSchema)(stated)).toEqual(stated)
     projection.dispose()
   })
 

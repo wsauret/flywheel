@@ -45,6 +45,7 @@ const SessionCatalogReadyRowSchema = SessionCatalogRowMetadataSchema.pipe(Schema
   totalTokens: Schema.Number,
   contextPercent: Schema.Number,
   contextPromptTokens: Schema.Number,
+  compactionTriggerTokens: Schema.optionalKey(Schema.Number),
   durationMs: Schema.Number,
   diffStats: Schema.optionalKey(SessionDiffStatsSchema),
 }))

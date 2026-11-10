@@ -346,6 +346,7 @@ describe("planned agent-loop compaction", () => {
     const resets: StreamEvent[] = [];
     const deferrals: unknown[] = [];
     const freshTokens: number[] = [];
+    const publishedTriggers: (number | undefined)[] = [];
     const record = spyOn(DebugLog, "record").mockImplementation((entry) => {
       if (entry.type !== "agent.compaction.deferred") return;
       deferrals.push(entry.payload);
@@ -358,10 +359,13 @@ describe("planned agent-loop compaction", () => {
       standingBrief: async () => { briefReads++; return BRIEF; },
       persistence: { history: { append: (message) => { history.push(message); } } },
       seed: { kind: "resume", priorMessages: prior },
-      onEvent: (event) => { if (event.kind === "compaction_done" && event.success) resets.push(event); },
+      onEvent: (event) => {
+        if (event.kind === "compaction_done" && event.success) resets.push(event);
+        if (event.kind === "context_update") publishedTriggers.push(event.compactionTriggerTokens);
+      },
       onSystemMessage: (notice) => { notices.push(notice); },
     }).finally(() => record.mockRestore());
-    return { result, requests: capturedMessages.length, history, notices, resets, deferrals, freshTokens, checkpointReads, briefReads };
+    return { result, requests: capturedMessages.length, history, notices, resets, deferrals, freshTokens, publishedTriggers, checkpointReads, briefReads };
   }
   const probeCall = (id: string): ProviderStreamEvent[] => [{ kind: "tool_use", toolCall: { id, name: "probe", input: {} } }, done("tool_use")];
 
@@ -381,6 +385,9 @@ describe("planned agent-loop compaction", () => {
     expect(freshTokens).toBeGreaterThan(BRIEF.length / 4);
     expect(run.deferrals).toEqual([deferral("brief-above-trigger", freshTokens)]);
     expect(run.notices).toEqual([deferred(freshTokens)]);
+    // Every context measurement states the trigger that the deferral left, not the configured 270,000.
+    expect(run.publishedTriggers.length).toBeGreaterThanOrEqual(4);
+    expect(new Set(run.publishedTriggers)).toEqual(new Set([850_000]));
   });
 
   test("a brief above the trigger still gets one saved reset at the window share", async () => {

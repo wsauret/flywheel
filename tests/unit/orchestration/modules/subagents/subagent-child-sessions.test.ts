@@ -260,7 +260,7 @@ test("direct child publishes later output to its retained session subscription",
     }))
     emitToolInputComplete(options.onEvent, { id: "child-read", name: "read", modelRequestId: "child-request", input: { path: "child.txt" }, execution: { mode: "foreground", trace_kind: "tool" } }, { parentToolUseId: "test-tool-use" })
     emitToolResult(options.onEvent, "child-read", [{ type: "text", text: "child tool result" }], "ok", { parentToolUseId: "test-tool-use" })
-    emitContextUpdate(options.onEvent, 250, 1000, "test-tool-use")
+    emitContextUpdate(options.onEvent, { promptTokens: 250, contextWindow: 1000 }, "test-tool-use")
     await options.sessionEventWriter!.record({
       type: "model.usage.measured", version: 5, actor: "provider",
       payload: {

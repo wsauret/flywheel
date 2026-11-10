@@ -171,17 +171,24 @@ test.each([
   ], { contextLimit: 10_000 });
   const notes = withSessionNotes(new RequestToolMap([["handoff", handoffDefinition]]));
   let resets = 0;
+  const publishedTriggers: number[] = [];
   const result = await runAgentLoop({
     client, ...notes, maxLLMCalls, handoff: { onContent: () => {} },
     tools: notes.tools,
     systemPrompt: stableSystemPrompt("test"), instruction: null, executionCwd: "/scratch", userDataRoot: "/scratch/.test-account", projectRoot: "/scratch",
     providerSessionKey: "closure", promptCacheKey: "closure", artifactScopeId: "closure", retrievalSessionId: "closure",
     seed: { kind: "resume", priorMessages: [{ kind: "user", content: "retain this task" }, { kind: "assistant", content: "old work ".repeat(4000) }] },
-    onEvent: (event) => { if (event.kind === "compaction_done" && event.success) resets++; },
+    onEvent: (event) => {
+      if (event.kind === "compaction_done" && event.success) resets++;
+      if (event.kind === "context_update" && event.compactionTriggerTokens !== undefined) publishedTriggers.push(event.compactionTriggerTokens);
+    },
     persistence: { history: { append: () => {} } },
   });
   expect(result.kind).toBe("completed");
   expect(resets).toBe(expectedResets);
+  // A run that cannot admit a plan states that no automatic reset runs.
+  if (maxLLMCalls === 4) expect(new Set(publishedTriggers)).toEqual(new Set([0]));
+  else expect(publishedTriggers[0]).toBeGreaterThan(0);
   expect(capturedMessages).toHaveLength(maxLLMCalls === 4 ? 1 : 3);
   if (maxLLMCalls === 4) expect(JSON.stringify(capturedMessages[0])).toContain("retain this task");
   else expect(JSON.stringify(capturedMessages[2])).not.toContain("retain this task");

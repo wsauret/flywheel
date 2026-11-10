@@ -180,7 +180,7 @@ export function emitAgentStreamEvent(
       context.costTracker.handleUsage({ ...streamEvent, cacheReadTokens: streamEvent.cacheReadTokens ?? 0 });
       return;
     case "context_update":
-      emitContextUpdate(options.onEvent, streamEvent.promptTokens, streamEvent.contextWindow, parentToolUseId);
+      emitContextUpdate(options.onEvent, streamEvent, parentToolUseId);
       return;
     case "compaction_start":
       emitCompactionStarted(options.onEvent, parentToolUseId);

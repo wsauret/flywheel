@@ -57,6 +57,7 @@ const catalogFields = {
   totalTokens: Schema.optionalKey(Schema.Number),
   contextPercent: Schema.optionalKey(Schema.Number),
   contextPromptTokens: Schema.optionalKey(Schema.Number),
+  compactionTriggerTokens: Schema.optionalKey(Schema.Number),
   durationMs: Schema.optionalKey(Schema.Number),
   diffStats: Schema.optionalKey(DiffStatsSchema),
   lastUpdated: Schema.String,

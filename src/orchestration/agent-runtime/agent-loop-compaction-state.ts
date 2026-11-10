@@ -16,7 +16,7 @@ import type { AssistantTurnResult } from "./assistant-turn-result.js";
 import type { OutgoingContextSnapshot } from "./context-token-anchor.js";
 import { Log } from "../../infra/log.js";
 import { DebugLog } from "../../infra/debug-log.js";
-import { proactiveCompactionTriggers } from "./compaction/compaction-policy.js";
+import { effectiveProactiveTrigger, proactiveCompactionTriggers } from "./compaction/compaction-policy.js";
 import { renderConversationCheckpoint } from "../session/conversation-checkpoint.js";
 
 const log = Log.create({ service: "agent-loop" });
@@ -182,25 +182,32 @@ export function createAgentLoopCompactionState(input: CompactionStateInput) {
      *  after the request context is selected, because the fresh context
      *  counts its prefix. */
     async automaticResetDue(contextTokens: number, contextLimit: number, configuredTokens: number): Promise<boolean> {
-      const triggers = proactiveCompactionTriggers(contextLimit, configuredTokens);
-      const [first] = triggers;
+      const [first] = proactiveCompactionTriggers(contextLimit, configuredTokens);
       if (first === undefined || contextTokens < first) return false;
       if (freshContextTokens === undefined) {
         const installation = await prepareCompactedHistory({ saved: true });
         freshContextTokens = installation.measure(installation.additions);
       }
       const freshTokens = freshContextTokens;
-      const trigger = triggers.find((tokens) => freshTokens < tokens);
+      const trigger = effectiveProactiveTrigger(contextLimit, configuredTokens, freshTokens);
       if (trigger !== first && !deferralReported) {
         deferralReported = true;
         const sessionId = input.options.sessionId ?? input.options.artifactScopeId;
-        DebugLog.record({ type: "agent.compaction.deferred", payload: { sessionId, freshContextTokens: freshTokens, triggerTokens: first, effectiveTriggerTokens: trigger ?? null, contextLimit } });
+        DebugLog.record({ type: "agent.compaction.deferred", payload: { sessionId, freshContextTokens: freshTokens, triggerTokens: first, effectiveTriggerTokens: trigger || null, contextLimit } });
         const count = (tokens: number): string => tokens.toLocaleString("en-US");
-        input.options.onSystemMessage?.(`Automatic compaction is deferred: a fresh context would start at about ${count(freshTokens)} tokens, which is not below its trigger of ${count(first)} tokens. ${trigger === undefined
+        input.options.onSystemMessage?.(`Automatic compaction is deferred: a fresh context would start at about ${count(freshTokens)} tokens, which is not below its trigger of ${count(first)} tokens. ${trigger === 0
           ? "Only context overflow recovery resets this context."
           : `It now runs at ${count(trigger)} tokens, near the model's context window.`}`);
       }
-      return trigger !== undefined && contextTokens >= trigger;
+      return trigger > 0 && contextTokens >= trigger;
+    },
+    /** The context size at which the next automatic reset runs under the
+     *  pinned request's configuration, or 0 when none can run: no trigger
+     *  qualifies, or no plan can be admitted before the budget closure. Each
+     *  context measurement carries it to clients. */
+    effectiveTrigger(): number {
+      if (planned === null && !canPlan()) return 0;
+      return effectiveProactiveTrigger(input.attempt().contextLimit, input.surface.current().runtimeConfig.proactiveCompactionThreshold, freshContextTokens);
     },
     async applyCheckpoint(settled: SettledCompaction, turnSignal: AbortSignal, interruptSignal: AbortSignal): Promise<void> {
       const { operation } = settled;

@@ -51,6 +51,7 @@ const BudgetProjectionStateSchema = Schema.Struct({
   invocationsUsed: NonNegativeInt,
   contextPromptTokens: NonNegativeInt,
   contextWindow: NonNegativeInt,
+  compactionTriggerTokens: Schema.optionalKey(NonNegativeInt),
   streamBaselines: Schema.Record(Schema.String, Schema.Struct({
     cost: NonNegativeNumber,
     billedCost: NonNegativeNumber,
@@ -197,6 +198,7 @@ export function writeStoredSessionSummary(db: Database, sessionId: string, summa
       invocationsUsed: summary.budget.invocationsUsed,
       contextPromptTokens: summary.budget.contextPromptTokens,
       contextWindow: summary.budget.contextWindow,
+      compactionTriggerTokens: summary.budget.compactionTriggerTokens,
       streamBaselines: summary.budget.streamBaselines,
       committedUsageStreams: summary.budget.committedUsageStreams,
     }),

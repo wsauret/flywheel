@@ -1,7 +1,7 @@
 import type { BuiltInCommandDescriptor, CommandReading as CommandReadingKind, CommandSurfaceTarget, KernelSurface, SurfacePlace } from "../../../src/protocol/command-catalog-protocol-types.js"
 import type { SurfaceOpening } from "../../../src/protocol/client/surface-presentation.js"
 import { commandMenuGroups } from "../../../src/protocol/client/command-menu.js"
-import { compactionReading } from "../../../src/protocol/client/context-compaction.js"
+import { compactionReading, compactionTrigger } from "../../../src/protocol/client/context-compaction.js"
 import { isClientSheetId, type ClientSheetId } from "../../../src/protocol/client/host-contract.js"
 import { describeUpdateStatus } from "../../../src/protocol/client/update-status-copy.js"
 import { chatOnlyCommandNotice, UNKNOWN_COMMAND_NOTICE } from "../../../src/protocol/client/slash-route.js"
@@ -82,7 +82,7 @@ const COMMAND_READINGS = {
     const budget = client.state().budget
     if (budget === undefined) return undefined
     if (budget.totalsLoading) return { text: "totals loading", busy: true }
-    const reading = compactionReading(budget.contextPromptTokens, budget.compactionThreshold)
+    const reading = compactionReading(budget.contextPromptTokens, compactionTrigger(budget))
     return { text: reading === null ? `${Math.round(budget.contextPercent)}% of window used` : `${reading.remainingPercent}% left` }
   },
 } satisfies { readonly [K in CommandReadingKind]: (client: ClientContextValue) => CommandReading | undefined }

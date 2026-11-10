@@ -322,6 +322,7 @@ async function projectDurableHistorySessionView(sessionId: string, session: Excl
       priceUnavailable: budget.priceUnavailable,
       contextPercent: budget.contextPercent,
       contextPromptTokens: budget.contextPromptTokens,
+      ...(budget.compactionTriggerTokens === undefined ? {} : { compactionTriggerTokens: budget.compactionTriggerTokens }),
       durationMs: accumulatedActiveMs,
       ...(diffStats ? { diffStats } : {}),
     }

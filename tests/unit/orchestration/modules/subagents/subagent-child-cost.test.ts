@@ -95,7 +95,7 @@ test("child live cost counts each settled request once before and after terminal
       try {
         loop.onEvent({ kind: "done", stopReason: "end_turn" })
         // This context write follows the terminal event on the child's durable bus.
-        emitContextUpdate(options.onEvent, 250 + index, 1000, "test-tool-use")
+        emitContextUpdate(options.onEvent, { promptTokens: 250 + index, contextWindow: 1000 }, "test-tool-use")
         await projected.promise
       } finally {
         unsubscribe()

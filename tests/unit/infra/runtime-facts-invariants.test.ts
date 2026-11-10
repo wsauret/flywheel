@@ -343,6 +343,17 @@ describe("model.context.measured producer contract", () => {
       type: "model.context.measured",
       payload: { promptTokens: 1234, contextWindow: 200_000 },
     })
+    expect(fact?.payload).not.toHaveProperty("compactionTriggerTokens")
+  })
+
+  test("a stated compaction trigger reaches the fact, including zero", () => {
+    for (const trigger of [170_000, 0]) {
+      const [fact] = mapRuntimeEventToSessionRuntimeFacts({
+        type: "model.context.measured",
+        data: { context_prompt_tokens: 1234, context_window: 200_000, compaction_trigger_tokens: trigger },
+      })
+      expect(fact?.payload).toEqual({ promptTokens: 1234, contextWindow: 200_000, compactionTriggerTokens: trigger })
+    }
   })
 })
 

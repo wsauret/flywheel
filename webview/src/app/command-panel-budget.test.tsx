@@ -17,6 +17,11 @@ test("command panel keeps Compact conversation loading copy without adding a Spe
     assert.equal(mounted.compactValue()?.properties["aria-busy"], undefined)
     assert.equal(mounted.compactValueText(), "96% left")
     assert.equal(mounted.compactRow(), stable)
+    // The reading follows the trigger that the runtime published, not the configured count.
+    mounted.setPublishedTrigger(8_000)
+    assert.equal(mounted.compactValueText(), "50% left")
+    mounted.setPublishedTrigger(0)
+    assert.match(mounted.compactValueText() ?? "", /% of window used$/)
   } finally {
     mounted.dispose()
   }

@@ -9,6 +9,7 @@ export interface BudgetSummary {
   outputTokens: number
   contextPromptTokens: number
   contextPercent: number
+  compactionTriggerTokens?: number
 }
 
 export interface UsageTotals {
@@ -40,5 +41,6 @@ export function budgetSummaryFromState(state: BudgetProjectionState, descendants
     outputTokens: state.totalOutputTokens + usage.totalOutputTokens,
     contextPromptTokens: state.contextPromptTokens,
     contextPercent: context.percent,
+    ...(context.compactionTriggerTokens === undefined ? {} : { compactionTriggerTokens: context.compactionTriggerTokens }),
   }
 }

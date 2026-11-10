@@ -613,6 +613,7 @@ type SessionCatalogTotals =
     readonly totalTokens?: never
     readonly contextPercent?: never
     readonly contextPromptTokens?: never
+    readonly compactionTriggerTokens?: never
     readonly durationMs?: never
     readonly diffStats?: never
   }
@@ -624,6 +625,11 @@ type SessionCatalogTotals =
     readonly totalTokens: number
     readonly contextPercent: number
     readonly contextPromptTokens: number
+    /** The context size at which the runtime runs the session's next
+     *  automatic compaction: 0 when none can run. Absent when no measurement
+     *  of the session recorded one, or from a runtime older than this field;
+     *  a client then reads the configured count. */
+    readonly compactionTriggerTokens?: number
     readonly durationMs: number
     readonly diffStats?: SessionDiffStats
   }

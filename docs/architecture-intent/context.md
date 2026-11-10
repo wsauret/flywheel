@@ -162,3 +162,9 @@ Not: Repeating a rule in each place where a model might look for it.
 The owner of the loop's compaction plan decides whether an automatic reset is due. It compares the context with the first trigger that the fresh context is below: the configured token count, then the window share. Below neither, it plans none, and overflow recovery remains. The fresh-context size is the one that each reset measures and records, measured once more only when a run opens above the trigger. No request repeats the measurement.
 Because: A reset that reopens above its trigger plans itself again on every request and never returns to the task.
 Not: A retry counter or a cooldown on resets.
+
+## ARCH-CONTEXT-037: Each context measurement records the trigger of the next automatic reset
+
+Each context measurement records the context size at which the compaction plan owner would run the next automatic reset, or zero when none can run. Clients show progress against that recorded trigger. They use the configured count only when a measurement records none.
+Because: The trigger depends on the model's window, the fresh-context size, and the run's budget, which no client knows.
+Not: A client that computes the trigger from the configured count.

@@ -1,7 +1,7 @@
 import { StyledText, fg as stFg, type RGBA } from "@opentui/core"
 import { createMemo, type Accessor } from "solid-js"
 import { formatCostSplit, formatElapsed } from "../../protocol/client/format.js"
-import { contextGaugeCopy, type ContextGaugeCopy } from "../../protocol/client/context-compaction.js"
+import { compactionTrigger, contextGaugeCopy, type ContextGaugeCopy } from "../../protocol/client/context-compaction.js"
 import { sessionHeaderElapsedMs } from "../../protocol/client/session-time.js"
 import { displayWidth } from "../utils/text.js"
 import { isEmptyNewChat } from "../session-empty-state.js"
@@ -10,13 +10,15 @@ import type { SessionSurface } from "./create-session-surface.js"
 
 type HeaderTarget = Pick<SessionSurface, "budget" | "summary" | "elapsed">
 
-function sessionContextCopy(target: HeaderTarget, threshold: number | undefined): ContextGaugeCopy | null {
+/** The context reading of a session and the trigger it measures against, or null while either is unknown. */
+function sessionContext(target: HeaderTarget, threshold: number | undefined): { readonly copy: ContextGaugeCopy; readonly trigger: number; readonly tokens: number } | null {
   const budget = target.budget()
   const summary = target.summary()
   if (budget?.totalsLoading || summary?.totalsLoading) return null
   const tokens = budget?.contextPromptTokens ?? summary?.contextPromptTokens
   if (tokens === undefined || threshold === undefined) return null
-  return contextGaugeCopy({ contextPromptTokens: tokens, contextPercent: budget?.contextPercent ?? summary?.contextPercent ?? 0, compactionThreshold: threshold })
+  const reading = { contextPromptTokens: tokens, contextPercent: budget?.contextPercent ?? summary?.contextPercent ?? 0, compactionThreshold: threshold, compactionTriggerTokens: budget?.compactionTriggerTokens ?? summary?.compactionTriggerTokens }
+  return { copy: contextGaugeCopy(reading), trigger: compactionTrigger(reading), tokens }
 }
 
 function headerElapsedMs(target: HeaderTarget): number {
@@ -40,11 +42,10 @@ export function sessionHeaderParts(target: HeaderTarget, width: number, threshol
   const parts: string[] = []
   const elapsedMs = headerElapsedMs(target)
   if (elapsedMs >= 1000) parts.push(formatElapsed(elapsedMs))
-  const copy = sessionContextCopy(target, threshold)
-  const tokens = budget?.contextPromptTokens ?? summary?.contextPromptTokens
-  const context = width < 60 ? "" : totalsLoading && width < 80 ? "totals loading" : copy === null ? "… ctx" : threshold === 0
-    ? `${((tokens ?? 0) / 1000).toFixed(1)}k ctx`
-    : `${Math.round(copy.used * 100)}% ctx`
+  const reading = sessionContext(target, threshold)
+  const context = width < 60 ? "" : totalsLoading && width < 80 ? "totals loading" : reading === null ? "… ctx" : reading.trigger === 0 && threshold === 0
+    ? `${(reading.tokens / 1000).toFixed(1)}k ctx`
+    : `${Math.round(reading.copy.used * 100)}% ctx`
   const before = parts.join(" · ") + (parts.length > 0 && context ? " · " : "")
   const average = budget?.averageGenerationTokensPerSecond
   const speed = width >= 80 && average !== undefined ? `${Math.round(average)} tok/s` : ""
@@ -86,7 +87,7 @@ export function createHeaderDisplay(deps: HeaderDisplayDeps): HeaderDisplay {
   }
 
   const target = { budget: foregroundBudget, summary: signals.foregroundSummary, elapsed: signals.elapsed }
-  const contextCopy = createMemo(() => sessionContextCopy(target, deps.compactionThreshold()))
+  const contextCopy = createMemo(() => sessionContext(target, deps.compactionThreshold())?.copy ?? null)
 
   const headerParts = createMemo(() => {
     const state = signals.sessionState()

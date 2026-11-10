@@ -300,6 +300,7 @@ function mapContextUpdate(event: MapperEvent<"model.context.measured", ContextUp
     payload: {
       promptTokens: event.data.context_prompt_tokens,
       contextWindow: event.data.context_window,
+      ...(event.data.compaction_trigger_tokens === undefined ? {} : { compactionTriggerTokens: event.data.compaction_trigger_tokens }),
       ...(event.data.parent_tool_use_id ? { parentToolUseId: event.data.parent_tool_use_id } : {}),
     },
   }]

@@ -407,6 +407,6 @@ function detailKey(row: SessionRow | null): string {
     inputMode: row.inputMode, admittedActions: row.admittedActions,
     totalsLoading: row.totalsLoading, totalTokens: row.totalTokens, totalCost: row.totalCost,
     totalBilledCost: row.totalBilledCost, priceUnavailable: row.priceUnavailable,
-    contextPercent: row.contextPercent, contextPromptTokens: row.contextPromptTokens, durationMs: row.durationMs,
+    contextPercent: row.contextPercent, contextPromptTokens: row.contextPromptTokens, compactionTriggerTokens: row.compactionTriggerTokens, durationMs: row.durationMs,
   })
 }

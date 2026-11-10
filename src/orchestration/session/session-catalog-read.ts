@@ -121,7 +121,7 @@ export async function sessionMetadataCatalogFromState(state: SessionMetadataProj
 function toDurableSessionCatalogRow(
   entry: CurrentCatalogEntry,
   projectRoot: string,
-  budget?: { totalCost: number; totalBilledCost: number; priceUnavailable: boolean; totalTokens: number; contextPercent: number; contextPromptTokens: number },
+  budget?: { totalCost: number; totalBilledCost: number; priceUnavailable: boolean; totalTokens: number; contextPercent: number; contextPromptTokens: number; compactionTriggerTokens?: number },
   duration?: { accumulatedActiveMs: number },
   diffStats?: SessionDiffStats,
   workflowState?: WorkflowView["status"],
@@ -142,7 +142,7 @@ function toDurableSessionCatalogRow(
     // Absent, not zero, when this build did not compute stats (metadata-only
     // list): a zero here is a placeholder pretending to be data, and it
     // clobbers background-warmed stats when the row is republished.
-    ...(budget ? { totalCost: budget.totalCost, totalBilledCost: budget.totalBilledCost, priceUnavailable: budget.priceUnavailable, totalTokens: budget.totalTokens, contextPercent: budget.contextPercent, contextPromptTokens: budget.contextPromptTokens } : {}),
+    ...(budget ? { totalCost: budget.totalCost, totalBilledCost: budget.totalBilledCost, priceUnavailable: budget.priceUnavailable, totalTokens: budget.totalTokens, contextPercent: budget.contextPercent, contextPromptTokens: budget.contextPromptTokens, ...(budget.compactionTriggerTokens === undefined ? {} : { compactionTriggerTokens: budget.compactionTriggerTokens }) } : {}),
     ...(duration ? { durationMs: duration.accumulatedActiveMs } : {}),
     ...(diffStats ? { diffStats } : {}),
     lastUpdated: session.lastUpdated,

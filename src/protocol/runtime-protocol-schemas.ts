@@ -178,6 +178,7 @@ const BudgetViewSchema = Schema.Union([
     priceUnavailable: Schema.Boolean,
     contextPercent: Schema.Number,
     contextPromptTokens: Schema.Number,
+    compactionTriggerTokens: Schema.optionalKey(Schema.Number),
     averageGenerationTokensPerSecond: Schema.optionalKey(Schema.Number.check(Schema.isFinite(), Schema.isGreaterThanOrEqualTo(0))),
   }),
 ])

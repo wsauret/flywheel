@@ -22,6 +22,9 @@ export type BudgetProjectionState = {
   invocationsUsed: number
   contextPromptTokens: number
   contextWindow: number
+  // The trigger of the next automatic reset that the latest context
+  // measurement stated; absent when it stated none.
+  compactionTriggerTokens?: number
   // Last-seen cumulative counter per runner stream. The session runner,
   // subagents, and background reviews have distinct keys, so interleaved
   // readings never corrupt each other's baselines.
@@ -97,6 +100,7 @@ export function contextUtilizationFromProjection(state: BudgetProjectionState): 
     promptTokens: state.contextPromptTokens,
     contextWindow: state.contextWindow,
     percent: computeContextPercent(state.contextPromptTokens, state.contextWindow),
+    ...(state.compactionTriggerTokens === undefined ? {} : { compactionTriggerTokens: state.compactionTriggerTokens }),
   }
 }
 
@@ -157,7 +161,7 @@ function foldBudgetFact(state: BudgetProjectionState, fact: SessionRuntimeFact, 
       // context window, not this session's. Cost aggregates into the parent,
       // context never does - subagents exist to keep it out.
       if (fact.payload.parentToolUseId) return state
-      return reduceContextMeasured(state, fact.payload.promptTokens, fact.payload.contextWindow)
+      return reduceContextMeasured(state, fact.payload.promptTokens, fact.payload.contextWindow, fact.payload.compactionTriggerTokens)
     case "model.usage.measured":
       if (fact.version === 4 || fact.version === 5 || fact.version === 6) return foldCommittedUsageEntry(state, committedUsageEntry(fact), drafted)
       return foldCumulativeReading(state, usageStreamKey(fact), {
@@ -242,11 +246,14 @@ function draftedSet(set: StringMap<true>, drafted: WeakSet<object> | undefined):
   return copy
 }
 
-function reduceContextMeasured(state: BudgetProjectionState, promptTokens: number, contextWindow: number): BudgetProjectionState {
+function reduceContextMeasured(state: BudgetProjectionState, promptTokens: number, contextWindow: number, compactionTriggerTokens: number | undefined): BudgetProjectionState {
   const nextPromptTokens = promptTokens > 0 ? promptTokens : state.contextPromptTokens
   const nextContextWindow = contextWindow > 0 ? contextWindow : state.contextWindow
-  if (nextPromptTokens === state.contextPromptTokens && nextContextWindow === state.contextWindow) return state
-  return { ...state, contextPromptTokens: nextPromptTokens, contextWindow: nextContextWindow }
+  if (nextPromptTokens === state.contextPromptTokens && nextContextWindow === state.contextWindow && compactionTriggerTokens === state.compactionTriggerTokens) return state
+  // The trigger follows the latest measurement: one that states none, such
+  // as a fact from before 2026-11-10, leaves none.
+  const { compactionTriggerTokens: _stale, ...rest } = state
+  return { ...rest, contextPromptTokens: nextPromptTokens, contextWindow: nextContextWindow, ...(compactionTriggerTokens === undefined ? {} : { compactionTriggerTokens }) }
 }
 
 interface CumulativeReading {

@@ -43,7 +43,11 @@ const log = Log.create({ service: "agent-loop" });
 // oxlint-disable-next-line eslint/complexity -- boundary: one loop owns ordered provider-request, compaction, tool, and lifecycle state.
 export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoopTerminal> {
   await prepareLocalTokenizer();
-  const { instruction, executionCwd, handoff, signal, onEvent } = options;
+  const { instruction, executionCwd, handoff, signal } = options;
+  // A context measurement states the trigger of the next automatic reset, so
+  // a client shows the distance that the plan owner decides, never its own
+  // reading of the configured count.
+  const onEvent: AgentLoopOptions["onEvent"] = (event) => options.onEvent(event.kind === "context_update" ? { ...event, compactionTriggerTokens: compactionState.effectiveTrigger() } : event);
 
   const persistence = options.persistence; const historySink = persistence.history;
   const lifecycle = options.lifecycle;

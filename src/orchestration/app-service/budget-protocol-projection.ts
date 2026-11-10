@@ -89,5 +89,6 @@ function sameBudget(a: BudgetView, b: BudgetView): boolean {
     && a.priceUnavailable === b.priceUnavailable
     && a.contextPercent === b.contextPercent
     && a.contextPromptTokens === b.contextPromptTokens
+    && a.compactionTriggerTokens === b.compactionTriggerTokens
     && a.averageGenerationTokensPerSecond === b.averageGenerationTokensPerSecond
 }

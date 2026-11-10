@@ -25,7 +25,7 @@ export type RuntimeSummaryView = SummaryTotals<ReadySessionRow>
 
 /** The budget that a session's totals state. Every owner that publishes or
  *  answers a budget builds it here. */
-export function budgetViewFromRuntimeSummary(summary: SummaryTotals<Pick<ReadySessionRow, "totalTokens" | "totalCost" | "totalBilledCost" | "priceUnavailable" | "contextPercent" | "contextPromptTokens">>): BudgetView {
+export function budgetViewFromRuntimeSummary(summary: SummaryTotals<Pick<ReadySessionRow, "totalTokens" | "totalCost" | "totalBilledCost" | "priceUnavailable" | "contextPercent" | "contextPromptTokens" | "compactionTriggerTokens">>): BudgetView {
   if (summary.totalsLoading) return { totalsLoading: true }
   return {
     totalsLoading: false,
@@ -35,6 +35,7 @@ export function budgetViewFromRuntimeSummary(summary: SummaryTotals<Pick<ReadySe
     priceUnavailable: summary.row.priceUnavailable,
     contextPercent: summary.row.contextPercent,
     contextPromptTokens: summary.row.contextPromptTokens,
+    ...(summary.row.compactionTriggerTokens === undefined ? {} : { compactionTriggerTokens: summary.row.compactionTriggerTokens }),
     ...(summary.averageGenerationTokensPerSecond === undefined ? {} : { averageGenerationTokensPerSecond: summary.averageGenerationTokensPerSecond }),
   }
 }
@@ -101,6 +102,13 @@ export function createRuntimeSummaryProjection(deps: RuntimeSummaryProjectionDep
   /** The catalog owner's view of summary-owned errors: those of the last
    *  complete summary, empty while none has arrived. */
   errors(sessionId: string): readonly SessionCatalogError[]
+  /** Resolves once the held summaries of these sessions state every fact that
+   *  was stored before the call, and their subscribers have heard them. It
+   *  joins the one refresh task and waits through a replay, so only an owner
+   *  that reports settled totals uses it; a view that must answer at once
+   *  reads `view`. When the last read of a session fails, it rejects with
+   *  that read's error, and the held summaries stay as they were. */
+  current(sessionIds: readonly string[]): Promise<void>
 } {
   const relevantFactTypes: ReadonlySet<string> = new Set(sessionSummaryFactTypes())
   const held = new Map<string, RuntimeSummaryView>()
@@ -109,6 +117,9 @@ export function createRuntimeSummaryProjection(deps: RuntimeSummaryProjectionDep
   const pending = new Set<string>()
   const active = new Set<string>()
   let refresh: Promise<void> | undefined
+  // The error of each session's last refresh, while that refresh failed.
+  // Only `current` reports it; every other reader keeps the held summaries.
+  const refreshFailures = new Map<string, unknown>()
   let disposed = false
   const timeline = createStartupTimeline({ owner: "runtime-summary-hydration", stages: ["immediateRead", "totalsWait", "publication"], context: { ...deps.context, pid: String(process.pid) } })
   let initial: { requested: Set<string>; ready: Set<string>; failures: number; requests: number; superseded: number } | undefined
@@ -173,8 +184,9 @@ export function createRuntimeSummaryProjection(deps: RuntimeSummaryProjectionDep
       if (held.has(sessionId) && (force || !active.has(sessionId))) pending.add(sessionId)
     }
     if (refresh || pending.size === 0) return refresh ?? Promise.resolve()
+    let requested: readonly string[] = []
     refresh = Promise.resolve().then(async () => {
-      const requested = [...pending]
+      requested = [...pending]
       pending.clear()
       for (const sessionId of requested) active.add(sessionId)
       if (!settleKnownLoading) {
@@ -200,8 +212,11 @@ export function createRuntimeSummaryProjection(deps: RuntimeSummaryProjectionDep
         throw error
       }
       apply(result, requested)
-    }).catch(() => {
+    }).then(() => {
+      for (const sessionId of requested) refreshFailures.delete(sessionId)
+    }, (error: unknown) => {
       // Preserve the last complete totals, or initial loading. Admission retries.
+      for (const sessionId of requested) refreshFailures.set(sessionId, error)
       if (initial) initial.failures++
     }).finally(() => {
       active.clear()
@@ -252,6 +267,14 @@ export function createRuntimeSummaryProjection(deps: RuntimeSummaryProjectionDep
     })
   })
 
+  const settled = async (): Promise<void> => {
+    for (;;) {
+      const current = refresh
+      if (!current) return
+      await current
+    }
+  }
+
   return {
     async admit(sessionIds) {
       if (!initial && !initialFinished) {
@@ -278,6 +301,18 @@ export function createRuntimeSummaryProjection(deps: RuntimeSummaryProjectionDep
         void requestRefresh(sessionIds, false, true)
       }
     },
+    async current(sessionIds) {
+      for (const sessionId of sessionIds) {
+        if (!held.has(sessionId)) held.set(sessionId, { totalsLoading: true })
+      }
+      void requestRefresh(sessionIds, true)
+      // A refresh already in flight can have read before the last stored
+      // fact; the one it queues behind itself reads after this call.
+      await settled()
+      for (const sessionId of sessionIds) {
+        if (refreshFailures.has(sessionId)) throw refreshFailures.get(sessionId)
+      }
+    },
     view(sessionId) {
       let current = held.get(sessionId)
       if (!current) {
@@ -295,13 +330,7 @@ export function createRuntimeSummaryProjection(deps: RuntimeSummaryProjectionDep
       if (ready.length > 0) listener(ready)
       return () => { listeners.delete(listener) }
     },
-    async settled() {
-      for (;;) {
-        const current = refresh
-        if (!current) return
-        await current
-      }
-    },
+    settled,
     dispose() {
       if (initial) complete("incomplete")
       else timeline.finish(initialFinished ? "ready" : "incomplete")
@@ -312,6 +341,7 @@ export function createRuntimeSummaryProjection(deps: RuntimeSummaryProjectionDep
       active.clear()
       held.clear()
       heldErrors.clear()
+      refreshFailures.clear()
     },
   }
 }
