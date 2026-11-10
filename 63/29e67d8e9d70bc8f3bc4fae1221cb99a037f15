@@ -1,0 +1,19 @@
+bench/harbor/configs/tb-board-deepseek-high-sub-noadvisor.toml
+  s_14a8bc0bfa4dad::t_3073355c664a79 1-141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6329e67d8e9d70bc8f3bc4fae1221cb99a037f15",
+  "prompts": {},
+  "sessions": {
+    "s_14a8bc0bfa4dad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9340d33-4bef-42fe-8c6c-0cdcc77276bb",
+        "model": "unknown"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
