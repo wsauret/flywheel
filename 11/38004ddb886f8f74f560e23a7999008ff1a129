@@ -1,0 +1,50 @@
+docs/product-intent/agent-methods.md
+  h_4b47e9e4a8b456 267,363,445-448
+docs/product-intent/model-access.md
+  h_4b47e9e4a8b456 187
+src/orchestration/agent-runtime/agent-purpose.ts
+  h_4b47e9e4a8b456 19
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 181-182,184
+src/orchestration/agent-runtime/types.ts
+  h_4b47e9e4a8b456 85
+src/orchestration/chat/chat-request-options.ts
+  h_4b47e9e4a8b456 8,102
+src/orchestration/chat/runner.ts
+  h_4b47e9e4a8b456 261
+src/orchestration/chat/session.ts
+  h_4b47e9e4a8b456 129-130,302
+src/orchestration/session/session-title.ts
+  h_4b47e9e4a8b456 7,22-30,32-33,35-37,78-79,123-127,132,135,138,290,318
+src/orchestration/workflow-host/deps.ts
+  h_4b47e9e4a8b456 91-93,309
+src/orchestration/workflow-host/runner.ts
+  h_4b47e9e4a8b456 195
+tests/unit/orchestration/agent-runtime/core/session-title-resilience.test.ts
+  h_4b47e9e4a8b456 15,18,225,236,257-260
+tests/unit/orchestration/agent-runtime/llm/client-factory-account-binding.test.ts
+  h_4b47e9e4a8b456 31,130
+tests/unit/orchestration/agent-runtime/runner-prestart.test.ts
+  h_4b47e9e4a8b456 28,247
+tests/unit/orchestration/agent-runtime/runtime-assembly-tree-host.test.ts
+  h_4b47e9e4a8b456 15,19
+tests/unit/orchestration/agent-runtime/tree-host-key.test.ts
+  h_4b47e9e4a8b456 25,137-138
+tests/unit/orchestration/chat/chat-session.test.ts
+  h_4b47e9e4a8b456 229-268
+tests/unit/orchestration/chat/session-engines-claude.test.ts
+  h_4b47e9e4a8b456 20,135
+tests/unit/orchestration/chat/session-engines.test.ts
+  h_4b47e9e4a8b456 6,63-64,73,75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1138004ddb886f8f74f560e23a7999008ff1a129",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
