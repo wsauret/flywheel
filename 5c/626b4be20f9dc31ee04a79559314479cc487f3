@@ -1,0 +1,98 @@
+docs/architecture-intent/context.md
+  h_4b47e9e4a8b456 165-170
+src/infra/runtime-event-payload-types.ts
+  h_4b47e9e4a8b456 113
+src/infra/runtime-fact-mapper.ts
+  h_4b47e9e4a8b456 303
+src/infra/runtime-fact-types.ts
+  h_4b47e9e4a8b456 446-449
+src/orchestration/agent-runtime/agent-loop-compaction-state.ts
+  h_4b47e9e4a8b456 19,185,192,196,198,202-210
+src/orchestration/agent-runtime/agent-loop.ts
+  h_4b47e9e4a8b456 46-50
+src/orchestration/agent-runtime/compaction/compaction-policy.ts
+  h_4b47e9e4a8b456 19-28
+src/orchestration/agent-runtime/emit.ts
+  h_4b47e9e4a8b456 379,384-386
+src/orchestration/agent-runtime/llm/types.ts
+  h_4b47e9e4a8b456 343-345
+src/orchestration/agent-runtime/runner-stream-events.ts
+  h_4b47e9e4a8b456 183
+src/orchestration/app-service/budget-protocol-projection.ts
+  h_4b47e9e4a8b456 92
+src/orchestration/app-service/project-state-sessions.ts
+  h_4b47e9e4a8b456 60
+src/orchestration/app-service/runtime-summary-projection.ts
+  h_4b47e9e4a8b456 28,38,105-111,120-122,187,189,215-217,219,270-277,304-315,333,344
+src/orchestration/app-service/session-detail-projection.ts
+  h_4b47e9e4a8b456 325
+src/orchestration/app-service/session-detail-publisher.ts
+  h_4b47e9e4a8b456 410
+src/orchestration/session/budget-projection.ts
+  h_4b47e9e4a8b456 25-27,103,164,249,252-256
+src/orchestration/session/budget-store-types.ts
+  h_4b47e9e4a8b456 23-25
+src/orchestration/session/budget-summary.ts
+  h_4b47e9e4a8b456 12,44
+src/orchestration/session/manager.ts
+  h_4b47e9e4a8b456 411
+src/orchestration/session/session-catalog-read.ts
+  h_4b47e9e4a8b456 124,145
+src/orchestration/session/session-catalog-row.ts
+  h_4b47e9e4a8b456 57,65,71,146,177,215,223
+src/orchestration/session/session-catalog-types.ts
+  h_4b47e9e4a8b456 57-59
+src/orchestration/session/session-summary-index-sql.ts
+  h_4b47e9e4a8b456 54,201
+src/protocol/app-service-types.ts
+  h_4b47e9e4a8b456 616,628-632
+src/protocol/budget-protocol-types.ts
+  h_4b47e9e4a8b456 12,25-29
+src/protocol/client/context-compaction.ts
+  h_4b47e9e4a8b456 4-12,15-21,23,29-34,39,46-48,54-56,62
+src/protocol/client/known-totals.ts
+  h_4b47e9e4a8b456 32,41
+src/protocol/runtime-protocol-schemas.ts
+  h_4b47e9e4a8b456 181
+src/protocol/session-catalog-protocol-schemas.ts
+  h_4b47e9e4a8b456 48
+src/tui/hooks/create-header-display.ts
+  h_4b47e9e4a8b456 4,13-14,20-21,45-48,90
+tests/unit/infra/runtime-facts-invariants.test.ts
+  h_4b47e9e4a8b456 346-356
+tests/unit/orchestration/agent-runtime/context/loop-planned-compaction.test.ts
+  h_4b47e9e4a8b456 349,362-365,368,388-390
+tests/unit/orchestration/agent-runtime/context/notes-capability.test.ts
+  h_4b47e9e4a8b456 174,181-184,189-191
+tests/unit/orchestration/agent-runtime/context/turn-budget.test.ts
+  h_4b47e9e4a8b456 12,46-62
+tests/unit/orchestration/app-service/budget-protocol-projection.test.ts
+  h_4b47e9e4a8b456 49-57
+tests/unit/orchestration/modules/subagents/subagent-child-cost.test.ts
+  h_4b47e9e4a8b456 98
+tests/unit/orchestration/modules/subagents/subagent-child-sessions.test.ts
+  h_4b47e9e4a8b456 263
+tests/unit/orchestration/session/budget-store-persistence.test.ts
+  h_4b47e9e4a8b456 110-131
+tests/unit/orchestration/session/session-summary-index.test.ts
+  h_4b47e9e4a8b456 430-442
+tests/unit/tui/hooks/header-display.test.ts
+  h_4b47e9e4a8b456 45,68,97-143
+webview/src/app/budget-render-fixture.tsx
+  h_4b47e9e4a8b456 33,42,278-279
+webview/src/app/command-panel-budget.test.tsx
+  h_4b47e9e4a8b456 20-24
+webview/src/app/surfaces.ts
+  h_4b47e9e4a8b456 4,85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5c626b4be20f9dc31ee04a79559314479cc487f3",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
