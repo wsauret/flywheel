@@ -220,7 +220,15 @@ def _install_runtime(work: Path, archive: Path, engine_sha256: str) -> Path:
     return runtime
 
 
-def _install_home(work: Path, config: Path, profile: str, benchmark_rules: Path | None) -> Path:
+def _install_home(work: Path, config: Path, profile: str, benchmark_rules: Path | None, image_home: Path) -> Path:
+    """Make the trial home `<work>/home`, which the Flywheel child and every command it runs take as HOME.
+
+    It holds Flywheel's account state for the trial and links every other
+    entry of `image_home`, the home of the task image's user, so the caches,
+    toolchains, and user installs that tools find under HOME (`~/go`,
+    `~/.cargo`, `~/.rustup`, `~/.cache`, `~/.local`) are the image's own.
+    Removing the trial home removes only the links.
+    """
     home = work / "home"
     (home / ".flywheel" / "auth" / "profiles" / profile).mkdir(mode=0o700, parents=True)
     shutil.copyfile(config, home / ".flywheel" / "flywheel.toml")
@@ -229,6 +237,9 @@ def _install_home(work: Path, config: Path, profile: str, benchmark_rules: Path 
     if benchmark_rules is not None:
         (home / ".agents").mkdir()
         shutil.copyfile(benchmark_rules, home / ".agents" / "AGENTS.md")
+    for entry in image_home.iterdir():
+        if not os.path.lexists(home / entry.name):
+            (home / entry.name).symlink_to(entry)
     return home
 
 
@@ -559,7 +570,7 @@ def run(environ: dict, project_root: Path, logs_dir: Path = LOGS_DIR, package_ro
         executable = runtime / EXECUTABLE_NAME
         analyzer = package_root / record["store_analyzer"]["path"]
         benchmark_rules = package_root / record["benchmark_rules"]["path"] if record["benchmark_rules"] else None
-        home = _install_home(work, package_root / record["flywheel_config"]["path"], profile, benchmark_rules)
+        home = _install_home(work, package_root / record["flywheel_config"]["path"], profile, benchmark_rules, Path(environ["HOME"]))
         child = subprocess.Popen(
             _child_command(executable, profile, stage_file),
             cwd=project_root,

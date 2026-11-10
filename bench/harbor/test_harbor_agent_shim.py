@@ -135,7 +135,7 @@ class TakeSnapshotTest(unittest.TestCase):
             work = Path(directory)
             config = work / "config.toml"
             config.write_text("[models]\n")
-            home = shim._install_home(work, config, "benchmark", Path(shim.__file__).parent / "benchmark-rules.md")
+            home = shim._install_home(work, config, "benchmark", Path(shim.__file__).parent / "benchmark-rules.md", self._image_home(work))
             self.assertEqual((home / ".flywheel" / "flywheel.toml").read_text(), "[models]\n")
             self.assertTrue((home / ".flywheel" / "auth" / "profiles" / "benchmark").is_dir())
             # Flywheel reads `<HOME>/.agents/AGENTS.md` as user-global instructions, so the rule stays out of its product prompt.
@@ -146,9 +146,37 @@ class TakeSnapshotTest(unittest.TestCase):
             work = Path(directory)
             config = work / "config.toml"
             config.write_text("[models]\n")
-            home = shim._install_home(work, config, "benchmark", None)
+            home = shim._install_home(work, config, "benchmark", None, self._image_home(work))
             self.assertTrue((home / ".flywheel" / "flywheel.toml").is_file())
             self.assertFalse((home / ".agents").exists())
+
+    def _image_home(self, work: Path) -> Path:
+        """The home of the task image's user, as an image that pre-fetched Go modules and installed a Rust toolchain and a user-site Python package leaves it."""
+        image_home = work / "image-home"
+        for directory in ("go/pkg/mod/cache", ".cargo/registry", ".rustup/toolchains", ".cache/pip", ".local/lib/python3/site-packages"):
+            (image_home / directory).mkdir(parents=True)
+        (image_home / ".gitconfig").write_text("[user]\n")
+        return image_home
+
+    def test_the_trial_home_shows_the_task_image_home_so_its_tool_caches_stay_in_place(self) -> None:
+        # Tools resolve their caches and user installs under HOME, so a trial
+        # home that hid the image's home made pre-fetched modules and installed
+        # toolchains look absent.
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            config = work / "config.toml"
+            config.write_text("[models]\n")
+            image_home = self._image_home(work)
+            (image_home / ".flywheel").mkdir()
+            (image_home / ".flywheel" / "flywheel.toml").write_text("[image]\n")
+            home = shim._install_home(work, config, "benchmark", Path(shim.__file__).parent / "benchmark-rules.md", image_home)
+            for name in ("go", ".cargo", ".rustup", ".cache", ".local", ".gitconfig"):
+                self.assertEqual((home / name).resolve(), (image_home / name).resolve(), name)
+            self.assertTrue((home / "go" / "pkg" / "mod" / "cache").is_dir())
+            # Flywheel's own account state stays in the trial home, which the evidence export reads.
+            self.assertFalse((home / ".flywheel").is_symlink())
+            self.assertEqual((home / ".flywheel" / "flywheel.toml").read_text(), "[models]\n")
+            self.assertEqual((home / ".agents" / "AGENTS.md").read_text(), BENCHMARK_RULES)
 
     def test_the_child_runs_an_unattended_acp_chat_on_the_staged_snapshot(self) -> None:
         command = shim._child_command(Path("/runtime/flywheel-bin"), "benchmark", Path("/stage/auth.json"))
@@ -282,7 +310,7 @@ class RunShutdownTest(unittest.TestCase):
         stubs = [
             patch.object(shim, "read_build_record", lambda _root: {"build_id": "b" * 12, "flywheel_source": {"commit": "c" * 40}, "runtime_archive": {"path": "archive", "sha256": "d" * 64}, "flywheel_config": {"path": "config"}, "store_analyzer": {"path": str(analyzer)}, "benchmark_rules": None, "claude_engine": {"sha256": "e" * 64}}),
             patch.object(shim, "_install_runtime", lambda _work, _archive, _engine: tools),
-            patch.object(shim, "_install_home", lambda work, _config, _profile, _rules: work / "home"),
+            patch.object(shim, "_install_home", lambda work, *_: work / "home"),
             patch.object(shim, "_child_command", lambda *_: [sys.executable, "-c", child_code]),
         ]
         self.addCleanup(signal.signal, signal.SIGTERM, signal.getsignal(signal.SIGTERM))
@@ -304,7 +332,7 @@ class RunShutdownTest(unittest.TestCase):
         summary_stub.start()
         self.addCleanup(summary_stub.stop)
         started = time.monotonic()
-        status = shim.run({shim.SNAPSHOT_ENV: json.dumps(SNAPSHOT)}, project, logs, root, harbor_in, harbor_out_write)
+        status = shim.run({shim.SNAPSHOT_ENV: json.dumps(SNAPSHOT), "HOME": str(root)}, project, logs, root, harbor_in, harbor_out_write)
         elapsed = time.monotonic() - started
         output = self.harbor_output_at_summary + _drain(harbor_out_read)
         return status, json.loads((logs / "flywheel-run-summary.json").read_text()), elapsed, output
