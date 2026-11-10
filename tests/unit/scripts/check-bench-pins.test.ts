@@ -23,10 +23,12 @@ describe("check-bench-pins", () => {
     write(root, "bench/tasks/coding-development/vendored/project/task.json", JSON.stringify({ sandbox: { commit: sha("9") } }));
     write(root, "bench/chat-ab/tasks/patched/task.json", JSON.stringify({ sandbox: { commit: sha("b"), paths: ["src"] } }));
     write(root, "bench/chat-ab/results/campaign/sources/control/bench/chat-ab/tasks/retired/task.json", JSON.stringify({ sandbox: { commit: sha("8"), paths: ["src"] } }));
+    write(root, "bench/ab-persona/fixtures/reviews/real-review/source.json", JSON.stringify({ commit: sha("c") }));
 
     const pins = await collectBenchPins(root);
 
     expect(pins.map(({ source, commit }) => `${source} ${commit}`).sort()).toEqual([
+      `bench/ab-persona/fixtures/reviews/real-review/source.json ${sha("c")}`,
       `bench/chat-ab/tasks/patched/task.json ${sha("b")}`,
       `bench/tasks/planning/subtree/task.json ${sha("a")}`,
       `src/orchestration/modules/development/benchmark/catalog.ts RESEARCH_SNAPSHOT ${RESEARCH_SNAPSHOT.commit}`,

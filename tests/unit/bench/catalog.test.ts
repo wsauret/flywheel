@@ -152,3 +152,48 @@ describe("review fixture containment", () => {
     await expect(resolveReviewFixture(fixturesDir, task)).rejects.toThrow(/resolves through the symlink/);
   });
 });
+
+/** A unified diff that adds `added` lines to one new file. */
+function additionDiff(added: number): string {
+  const lines = Array.from({ length: added }, (_, index) => `+line ${index}`);
+  return `diff --git a/new.ts b/new.ts\nnew file mode 100644\n--- /dev/null\n+++ b/new.ts\n@@ -0,0 +1,${added} @@\n${lines.join("\n")}\n`;
+}
+
+describe("real-review fixtures", () => {
+  it("reads a commit source, a recorded prompt, a control manifest, and the stratum the diff implies", async () => {
+    const { fixturesDir, fixtureDir } = await syntheticReviewFixture();
+    await rm(join(fixtureDir, "project"), { recursive: true, force: true });
+    const commit = "a".repeat(40);
+    await Bun.write(join(fixtureDir, "source.json"), JSON.stringify({ commit }));
+    await Bun.write(join(fixtureDir, "prompt.md"), "Review the uncommitted change; run git diff -- new.ts.");
+    await Bun.write(join(fixtureDir, "diff.patch"), additionDiff(51));
+    await Bun.write(join(fixtureDir, "manifest.json"), JSON.stringify({ title: "Clean change", review_prompt_hint: "", defects: [] }));
+    const [task] = await createBenchmarkCatalog(syntheticRoot ?? "").reviewTasks();
+    expect(task).toMatchObject({
+      source: { kind: "commit", commit },
+      prompt: "Review the uncommitted change; run git diff -- new.ts.",
+      stratum: "S2",
+      manifest: { defects: [] },
+    });
+    expect(await resolveReviewFixture(fixturesDir, task!)).toEqual({ kind: "commit", artifactPath: join(task!.fixtureDir, "diff.patch"), commit });
+  });
+
+  it("places a diff in the stratum of its changed lines", async () => {
+    const { fixtureDir } = await syntheticReviewFixture();
+    const reviewCatalog = createBenchmarkCatalog(syntheticRoot ?? "");
+    for (const [added, stratum] of [[50, "S1"], [200, "S2"], [201, "S3"], [601, "S4"]] as const) {
+      await Bun.write(join(fixtureDir, "diff.patch"), additionDiff(added));
+      expect((await reviewCatalog.reviewTasks())[0]?.stratum).toBe(stratum);
+    }
+  });
+
+  it("refuses a drafted label until curation accepts or removes it", async () => {
+    const { fixtureDir } = await syntheticReviewFixture();
+    const defect = { id: "drift", title: "Drift", category: "correctness", files: ["ledger.ts"], catch_criteria: "Names the drift", finder: "gpt-6-astra" };
+    const write = (accepted: boolean) => Bun.write(join(fixtureDir, "manifest.json"), JSON.stringify({ title: "Ledger", review_prompt_hint: "", defects: [{ ...defect, accepted }] }));
+    await write(false);
+    await expect(createBenchmarkCatalog(syntheticRoot ?? "").reviewTasks()).rejects.toThrow(/drafted label/);
+    await write(true);
+    expect((await createBenchmarkCatalog(syntheticRoot ?? "").reviewTasks())[0]?.manifest.defects[0]).toMatchObject({ finder: "gpt-6-astra", accepted: true });
+  });
+});

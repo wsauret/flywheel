@@ -173,6 +173,25 @@ describe("standalone benchmark admission", () => {
     expect(spy.disposals).toBe(1);
   });
 
+  it("shows a pinned judge and its provider in the dry run, and names the candidate settings that share its model", async () => {
+    const { create, spy } = fakeRuntime();
+    const output: string[] = [];
+    const log = spyOn(console, "log").mockImplementation((value) => { output.push(String(value)); });
+    try {
+      await main(["--persona", "explorer", "--variant", "gpt-6-luna:high", "--variant", "gpt-6-luna:xhigh", "--judge", "gpt-6.1-sol:low", "--dry-run"], create);
+      await main(["--persona", "explorer", "--variant", "gpt-6-luna:high", "--variant", "gpt-6.1-sol:xhigh", "--judge", "gpt-6.1-sol:xhigh", "--dry-run"], create);
+    } finally { log.mockRestore(); }
+
+    const [distinct, shared] = output.map((text) => JSON.parse(text));
+    expect(distinct.providerPlans.find((plan: { role: string }) => plan.role === "judge"))
+      .toEqual({ role: "judge", model: "gpt-6.1-sol", effort: "low", profileId: "default", providers: ["openai_api"] });
+    expect(distinct.judgeModelCandidates).toEqual([]);
+    // The settings are the resolved ones; this test profile serves every candidate at high effort.
+    expect(shared.judgeModelCandidates).toEqual(["gpt-6.1-sol:high"]);
+    expect(output).toHaveLength(2);
+    expect(spy.clientBuilds).toBe(0);
+  });
+
   it("admits a resumed campaign through the selected current profile, not the stored generation", async () => {
     const projectRoot = await mkdtemp(join(tmpdir(), "flywheel-standalone-benchmark-"));
     const catalog = createBenchmarkCatalog(projectRoot);

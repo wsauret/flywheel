@@ -31,6 +31,10 @@ const RunConfigSchema = Schema.Struct({
   taskIdentity: Schema.String,
   personaGuidanceIdentity: Schema.String,
   judgeIdentity: Schema.String,
+  // The judge model and effort the campaign scores with. Absent when the campaign
+  // has no judge seat (a solo research run) or was created before 2026-11-10,
+  // when the judge was not recorded; such a judgeIdentity hashes the rubric alone.
+  judge: Schema.optionalKey(Schema.Struct({ model: Schema.String, effort: Schema.String })),
   scoringVersion: Schema.String,
   // Remove after 2027-10-26: campaigns created before source identity was recorded carry none; they stay readable
   // and rescorable, and a resume that would start a candidate refuses because their source cannot be proven.
@@ -152,6 +156,9 @@ const ReviewScoreSchema = Schema.Struct({
   caught: Schema.Array(Schema.String),
   uncertain: Schema.Array(Schema.String),
   unsupportedFindingCount: Schema.Int,
+  // Remove after 2027-11-10: persona-v2 review scores did not ask the judge for
+  // severity, so they carry no count; a report shows it as not measured.
+  unsupportedSevereFindingCount: Schema.optionalKey(Schema.Int),
 });
 const TrapVerdictSchema = Schema.Struct({
   id: Schema.String,

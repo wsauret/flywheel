@@ -8,6 +8,7 @@ import { captureProviderConnection, type AuthContext } from "../../../../../src/
 import type { FailoverPlan } from "../../../../../src/infra/llm/access-provider.js";
 import { createBenchmarkTool } from "../../../../../src/orchestration/modules/development/benchmark-tool.js";
 import { admitBenchmark, type BenchmarkAdmissionDeps } from "../../../../../src/orchestration/modules/development/benchmark/admission.js";
+import { createBenchmarkCatalog } from "../../../../../src/orchestration/modules/development/benchmark/catalog.js";
 import { createForegroundBashHoldController } from "../../../../../src/orchestration/agent-runtime/foreground-bash-hold.js";
 import type { ToolContext } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { createBackgroundWorkRegistry, type BackgroundWorkRegistry } from "../../../../../src/orchestration/agent-runtime/background-work.js";
@@ -151,7 +152,7 @@ describe("benchmark tool input contract", () => {
   });
 
   it("rejects an unknown field, including a credential, a provider override, a path and a command", async () => {
-    for (const extra of [{ tasks: ["one"] }, { apiKey: "sk-live" }, { provider: "openrouter" }, { resultsDir: "/etc" }, { command: "rm -rf /" }]) {
+    for (const extra of [{ apiKey: "sk-live" }, { provider: "openrouter" }, { resultsDir: "/etc" }, { command: "rm -rf /" }]) {
       const field = Object.keys(extra)[0];
       const result = await run({ action: "run", persona: "explorer", variants: SEATS, repeats: 1, dryRun: true, ...extra });
       expect(result.outcome).toBe("error");
@@ -262,6 +263,32 @@ describe("benchmark tool admission", () => {
     expect(report.providerPlans).toEqual(launch.providerPlans);
     expect(String(report.resultsDir)).toContain(join("bench", "ab-persona", "results"));
     expect(tasks.activeTaskCount()).toBe(0);
+  });
+
+  it("plans only the named tasks under a pinned judge, and names the candidates that share the judge's model", async () => {
+    const { deps } = toolDeps();
+    const { tasks, notifications, settled } = registry();
+    const [first] = createBenchmarkCatalog(process.cwd()).researchTasks("explorer");
+    const result = await createBenchmarkTool(deps).execute(
+      { action: "run", persona: "explorer", variants: SEATS, repeats: 1, dryRun: true, tasks: [first!.id], judge: { model: "gpt-6.1-sol", effort: "low" } },
+      context(process.cwd(), tasks),
+    );
+    expect(result.outcome).toBe("ok");
+    await settled;
+    const report = parseRecord(String(notifications[0]).split("<result>")[1]?.split("</result>")[0] ?? "");
+    expect(report.tasks).toEqual([first!.id]);
+    expect(report.cells).toBe(2);
+    expect(report.providerPlans).toContainEqual({ role: "judge", model: "gpt-6.1-sol", effort: "low", profileId: "default", providers: ["openai_api"] });
+    expect(report.judgeModelCandidates).toEqual([]);
+
+    const sharing = registry();
+    expect((await createBenchmarkTool(deps).execute(
+      { action: "run", persona: "explorer", variants: SEATS, repeats: 1, dryRun: true, judge: { model: "gpt-6-astra", effort: "low" } },
+      context(process.cwd(), sharing.tasks),
+    )).outcome).toBe("ok");
+    await sharing.settled;
+    const shared = parseRecord(String(sharing.notifications[0]).split("<result>")[1]?.split("</result>")[0] ?? "");
+    expect(shared.judgeModelCandidates).toEqual(["gpt-6-astra:medium"]);
   });
 
   it("keeps one run on capture A and admits the next run from capture B", async () => {

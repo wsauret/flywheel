@@ -3,9 +3,10 @@ import { join } from "node:path";
 import type { AgentDefinition } from "../../../../infra/agent-definition.js";
 import type { OwnedCommandRunner } from "../../../../infra/owned-command.js";
 import { loadStandalonePersonaRegistry } from "../../../../workflows/agents/registry.js";
-import { benchmarkMode, RESEARCH_TASKS_CHANGED, resolveReviewFixture, type BenchmarkCatalog, type BenchmarkMode, type ImplementTask, type ResearchTask, type ReviewTask } from "./catalog.js";
+import { benchmarkMode, RESEARCH_TASKS_CHANGED, type BenchmarkCatalog, type BenchmarkMode, type ImplementTask, type ResearchTask, type ReviewTask } from "./catalog.js";
 import { captureImplementation, provisionTaskSandbox } from "./implement-task.js";
 import { withSnapshotWorkspace, withTrialWorkspace } from "./snapshot-workspace.js";
+import { materializeReviewSandbox } from "./review-sandbox.js";
 import { buildImplementRawResults, judgeImplementPairs, renderImplementReport, scoreImplementTraps, type ImplementCandidate } from "./implement-scoring.js";
 import { judgePairs, type JudgeAttemptReport, type JudgeModel, type JudgeVerdict } from "./judge.js";
 import { judgeOverhead, renderReport, renderReviewReport, unsuccessfulOverhead, type ReportCounts } from "./reports.js";
@@ -34,8 +35,15 @@ import { validateAttempts, validateJudgeAttempts, validateRuns, validateScores }
 import { createNativePersonaInvocation } from "./native-persona-invocation.js";
 import { IMPLEMENT_TRANSCRIPT_FILE, retainImplementStore } from "./implement-evidence.js";
 import { createPersonaStore } from "./persona-store.js";
+import type { JudgeSelection } from "./admission.js";
 
-const PERSONA_SCORING_VERSION = "persona-v2";
+/** The scoring contract a campaign was judged under. Reviewer campaigns moved
+ *  to persona-v3 when the judge began counting unsupported P1/P2 findings; a
+ *  persona-v2 reviewer campaign stays readable through its report but cannot
+ *  be resumed or rescored into the new contract. */
+function scoringVersion(mode: BenchmarkMode): string {
+  return mode === "reviewer" ? "persona-v3" : "persona-v2";
+}
 const JUDGE_IDENTITY_INPUT = {
   role: "benchmark-judge",
   qualityRubric: "factual grounding with file:line citations, completeness, and concision",
@@ -53,6 +61,8 @@ export interface BenchmarkOptions {
   operation: BenchmarkOperation;
   resultsDir?: string;
   taskIds?: readonly string[];
+  /** Pins the judge instead of the profile's judge role. */
+  judge?: JudgeSelection;
 }
 
 /** A settled request: every seat, task and path the run will use. */
@@ -66,6 +76,8 @@ export interface BenchmarkPlan {
   operation: BenchmarkOperation;
   tasks: readonly PlannedTask[];
   taskIds?: readonly string[];
+  /** The pinned judge: the request's pin, or the judge a resumed campaign recorded. */
+  judge?: JudgeSelection;
 }
 
 type PlannedTask = ResearchTask | ReviewTask | ImplementTask;
@@ -101,6 +113,9 @@ export interface PersonaBenchmarkDeps {
   readonly runtime: BenchmarkRuntime;
   readonly catalog: BenchmarkCatalog;
   readonly createJudge: (evidenceDirectory?: string) => Promise<JudgeModel>;
+  /** The resolved model and effort every judge call uses, from `personaCampaignJudge`.
+   *  It is part of the campaign identity, so a resume or rescore under another judge refuses. */
+  readonly judge?: JudgeSelection;
   readonly onEvent: (event: BenchmarkEvent) => void;
   readonly signal?: AbortSignal;
   /** The identity of the Flywheel source that runs this process's candidates, from `runningSourceIdentity`.
@@ -201,6 +216,10 @@ export async function planPersonaBenchmark(options: BenchmarkOptions, catalog: B
   if (stored && options.repeats !== undefined && options.repeats !== stored.repeats) {
     throw new Error(`Results repeats ${stored.repeats} conflict with --repeats ${options.repeats}`);
   }
+  if (stored?.judge && options.judge && (options.judge.model !== stored.judge.model || options.judge.effort !== stored.judge.effort)) {
+    throw new Error(`Results judge ${stored.judge.model}:${stored.judge.effort} conflicts with --judge ${options.judge.model}:${options.judge.effort}`);
+  }
+  const judge = options.judge ?? stored?.judge;
   const repeats = options.repeats ?? stored?.repeats ?? 1;
   if (!Number.isInteger(repeats) || repeats < 1) throw new Error(`Repeats must be a positive integer, got ${repeats}`);
   const mode = benchmarkMode(persona);
@@ -216,9 +235,16 @@ export async function planPersonaBenchmark(options: BenchmarkOptions, catalog: B
     operation: options.operation,
     tasks: selectTasks(await planTasks(persona, mode, catalog), options.taskIds ?? existing?.taskIds),
     ...(options.taskIds?.length || existing ? { taskIds: options.taskIds ?? existing?.taskIds } : {}),
+    ...(judge ? { judge: { model: judge.model, effort: judge.effort } } : {}),
   };
 }
 
+
+/** Whether a campaign calls a judge: every one except a solo research seat,
+ *  which has no pair to compare. */
+export function campaignJudges(plan: Pick<BenchmarkPlan, "mode" | "variants">): boolean {
+  return plan.mode !== "research" || plan.variants.length >= 2;
+}
 
 function isReviewTask(task: PlannedTask): task is ReviewTask {
   return "fixtureDir" in task;
@@ -230,12 +256,6 @@ function isImplementTask(task: PlannedTask): task is ImplementTask {
 
 function isImplementCandidate(result: CellRunResult | ImplementCandidate): result is ImplementCandidate {
   return "diff" in result;
-}
-
-async function materializeReviewSandbox(catalog: BenchmarkCatalog, task: ReviewTask, sandbox: string): Promise<void> {
-  const fixture = await resolveReviewFixture(catalog.reviewFixturesDir, task);
-  await cp(fixture.projectDir, sandbox, { recursive: true });
-  await cp(fixture.artifactPath, join(sandbox, task.artifact));
 }
 
 function toRunResult(run: AgentRunRecord): CellRunResult {
@@ -311,11 +331,25 @@ export async function runPersonaBenchmark(plan: BenchmarkPlan, deps: PersonaBenc
   const authorityIncarnation = deps.runtime.authorityIncarnation;
   if (!profileId || !authorityIncarnation) throw new Error("Persona benchmark requires an exact profile ID and Usage-authority incarnation");
   const personaGuidanceIdentity = structuredIdentity(renderPersonaTaskGuidance(persona, registry, deps.runtime));
-  // Remove after 2027-10-16: retain the input identity of an earlier campaign on resume; selections live in request evidence.
-  const judgeIdentity = stored?.judgeIdentity ?? structuredIdentity(JUDGE_IDENTITY_INPUT);
+  const campaignScoringVersion = scoringVersion(plan.mode);
+  if (stored && stored.scoringVersion !== campaignScoringVersion) {
+    throw new Error(`These results were scored under ${stored.scoringVersion} and this harness scores under ${campaignScoringVersion}; start a new campaign (the old report stays readable with --report)`);
+  }
+  const { judge } = deps;
+  if (campaignJudges(plan)) {
+    if (!judge) throw new Error("This benchmark needs a judge, but no judge model resolved; pin one with --judge model:effort");
+    // A campaign created before 2026-11-10 recorded no judge, so its scores cannot be shown to come from this one.
+    if (stored && !stored.judge) throw new Error("These results predate the recorded benchmark judge, so new scores could mix judges; start a new campaign (the old report stays readable with --report)");
+  }
+  if (stored?.judge && (stored.judge.model !== judge?.model || stored.judge.effort !== judge.effort)) {
+    throw new Error(`These results were judged by ${stored.judge.model}:${stored.judge.effort}, but this run's judge resolved to ${judge ? `${judge.model}:${judge.effort}` : "none"}; start a new campaign`);
+  }
   const campaignInputs = {
     persona: plan.persona, mode: plan.mode, variants: plan.variants, repeats: plan.repeats,
-    taskIdentity, personaGuidanceIdentity, judgeIdentity, scoringVersion: PERSONA_SCORING_VERSION,
+    taskIdentity, personaGuidanceIdentity,
+    judgeIdentity: structuredIdentity(judge ? { ...JUDGE_IDENTITY_INPUT, judge } : JUDGE_IDENTITY_INPUT),
+    scoringVersion: campaignScoringVersion,
+    ...(judge ? { judge } : {}),
   };
   const contentIdentity = structuredIdentity({
     ...campaignInputs,
@@ -326,7 +360,7 @@ export async function runPersonaBenchmark(plan: BenchmarkPlan, deps: PersonaBenc
     stored.persona !== plan.persona || stored.mode !== plan.mode ||
     !sameVariants(stored.variants, plan.variants) || stored.repeats !== plan.repeats ||
     stored.taskIdentity !== taskIdentity || stored.personaGuidanceIdentity !== personaGuidanceIdentity ||
-    stored.judgeIdentity !== judgeIdentity || stored.scoringVersion !== PERSONA_SCORING_VERSION
+    stored.judgeIdentity !== campaignInputs.judgeIdentity
   )) throw new Error("Benchmark campaign identity changed; start a new campaign");
   const config: RunConfig = {
     kind: "benchmark-config", ...campaignInputs, stamp: plan.stamp, sourceIdentity: deps.sourceIdentity,
@@ -548,7 +582,7 @@ async function runImplementCell(cell: BenchmarkCell, task: ImplementTask, contex
 async function runReviewCell(cell: BenchmarkCell, task: ReviewTask, context: CellContext): Promise<CellRunResult> {
   await Bun.write(join(context.cellDirectory, "diff.patch"), "");
   return await withTrialWorkspace(
-    (sandbox) => materializeReviewSandbox(context.deps.catalog, task, sandbox),
+    (sandbox) => materializeReviewSandbox(context.deps.catalog, task, sandbox, context.scope.run),
     (sandbox) => runOne(cell, context, sandbox, undefined, join(context.cellDirectory, "transcript.jsonl")),
   );
 }
@@ -566,7 +600,7 @@ async function scoreAndRender(
   implementResults: readonly ImplementCandidate[],
 ): Promise<ScoredReport> {
   const { onEvent, signal } = deps;
-  const reportArgs = { persona: plan.persona, variants: plan.variants };
+  const reportArgs = { persona: plan.persona, variants: plan.variants, ...(deps.judge ? { judge: deps.judge } : {}) };
   const scoreRecords = await store.loadScores();
   const persistJudgeAttempt = (report: JudgeAttemptReport): Promise<void> => store.appendJudgeAttempt(judgeAttemptRecord(plan, report));
   const counts = async (): Promise<ReportCounts> => {
@@ -632,7 +666,7 @@ async function scoreAndRender(
       const score = scores.find((candidate) => candidate.variant === result.variant && candidate.task === result.task && candidate.repeat === result.repeat);
       const { summary: reviewText, ...run } = result;
       // A run whose judge call failed carries scoring: null; --rescore fills it in.
-      return { ...run, reviewText, scoring: score ? { caught: score.caught, uncertain: score.uncertain, unsupportedFindingCount: score.unsupportedFindingCount } : null };
+      return { ...run, reviewText, scoring: score ? { caught: score.caught, uncertain: score.uncertain, unsupportedFindingCount: score.unsupportedFindingCount, unsupportedSevereFindingCount: score.unsupportedSevereFindingCount } : null };
     });
     await store.writeArtifact("raw.json", `${JSON.stringify(scoredResults, null, 2)}\n`);
     const settledCounts = await counts();

@@ -15,29 +15,39 @@ export interface ReviewScore {
   caught: readonly string[];
   uncertain: readonly string[];
   unsupportedFindingCount: number;
+  /** Unsupported findings the review rated P1 or P2. On a control fixture,
+   *  which lists no defect, every finding is unsupported, so this is the
+   *  review's alarm count. Absent on persona-v2 scores, which did not ask. */
+  unsupportedSevereFindingCount?: number;
 }
 
 export type ReviewScoringOptions = JudgeLoopOptions<ReviewScore>;
 
-interface ParsedScore {
-  caught: readonly string[];
-  uncertain: readonly string[];
-  unsupportedFindingCount: number;
+type ParsedScore = Pick<ReviewScore, "caught" | "uncertain" | "unsupportedFindingCount" | "unsupportedSevereFindingCount">;
+
+/** The judge sees what the catch criteria need and nothing about who found a
+ *  defect or whether curation accepted it. */
+function judgedManifest(manifest: ReviewManifest): ReviewManifest {
+  return {
+    ...manifest,
+    defects: manifest.defects.map(({ id, title, category, files, catch_criteria }) => ({ id, title, category, files, catch_criteria })),
+  };
 }
 
 function buildScoringPrompt(manifest: ReviewManifest, reviewText: string): string {
   return [
     "You are scoring a review (of a code change or of an implementation plan) against seeded defects with known ground truth.",
     "A defect counts as caught only when the review identifies the defect specifically enough to satisfy its catch_criteria. Do not award credit for vague concern, a different issue in the same file, or a finding without the required causal detail. Put a defect in uncertain only when the review is close but does not clearly satisfy the criterion. Count review findings that do not correspond to any listed defect as unsupported findings.",
+    "Of the unsupported findings, also count those the review rates P1 or P2, or names with an equivalent severity such as critical, high, or blocking. A manifest can list no defects; then every finding is unsupported.",
     "",
     "## Fixture manifest",
-    JSON.stringify(manifest, null, 2),
+    JSON.stringify(judgedManifest(manifest), null, 2),
     "",
     "## Review to score",
     reviewText,
     "",
-    "Respond with only one JSON object on one line. Use only defect IDs from the manifest and do not put an ID in both arrays:",
-    `{"caught":["defect-id"],"uncertain":["defect-id"],"unsupported_finding_count":0}`,
+    "Respond with only one JSON object on one line. Use only defect IDs from the manifest and do not put an ID in both arrays. unsupported_severe_finding_count is at most unsupported_finding_count:",
+    `{"caught":["defect-id"],"uncertain":["defect-id"],"unsupported_finding_count":0,"unsupported_severe_finding_count":0}`,
   ].join("\n");
 }
 
@@ -49,22 +59,29 @@ function parseIds(value: readonly unknown[], allowed: ReadonlySet<string>): stri
   return ids;
 }
 
+function isCount(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
 function parseScore(text: string, defects: readonly ReviewDefect[]): JudgeSettlement<ParsedScore> {
   const defectIds = defects.map((defect) => defect.id);
   const allowed = new Set(defectIds);
   const fallback = (error: string): JudgeSettlement<ParsedScore> => ({
-    value: { caught: [], uncertain: defectIds, unsupportedFindingCount: 0 },
+    value: { caught: [], uncertain: defectIds, unsupportedFindingCount: 0, unsupportedSevereFindingCount: 0 },
     error,
   });
   const match = text.match(/\{[\s\S]*\}/);
   if (!match) return fallback("Judge response did not contain JSON");
   try {
     const parsed = JSON.parse(match[0]);
-    if (typeof parsed !== "object" || parsed === null || !("caught" in parsed) || !("uncertain" in parsed) || !("unsupported_finding_count" in parsed)) return fallback("Judge response was not a JSON object");
+    if (typeof parsed !== "object" || parsed === null || !("caught" in parsed) || !("uncertain" in parsed) || !("unsupported_finding_count" in parsed) || !("unsupported_severe_finding_count" in parsed)) {
+      return fallback("Judge response was not a JSON object");
+    }
     const caughtValue = parsed.caught;
     const uncertainValue = parsed.uncertain;
     const unsupported = parsed.unsupported_finding_count;
-    if (!Array.isArray(caughtValue) || !Array.isArray(uncertainValue) || typeof unsupported !== "number" || !Number.isInteger(unsupported) || unsupported < 0) {
+    const severe = parsed.unsupported_severe_finding_count;
+    if (!Array.isArray(caughtValue) || !Array.isArray(uncertainValue) || !isCount(unsupported) || !isCount(severe) || severe > unsupported) {
       return fallback("Judge response did not match the review score schema");
     }
     const caught = parseIds(caughtValue, allowed);
@@ -72,7 +89,7 @@ function parseScore(text: string, defects: readonly ReviewDefect[]): JudgeSettle
     if (caught.length !== caughtValue.length || uncertain.length !== uncertainValue.length || uncertain.some((id) => caught.includes(id))) {
       return fallback("Judge response contained invalid or duplicate defect IDs");
     }
-    return { value: { caught, uncertain, unsupportedFindingCount: unsupported }, error: null };
+    return { value: { caught, uncertain, unsupportedFindingCount: unsupported, unsupportedSevereFindingCount: severe }, error: null };
   } catch (error) {
     return fallback(`Judge response JSON failed to parse: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -110,7 +127,7 @@ export async function scoreReviews(
     if (completion.terminal === "cancelled") return scores;
     const parsed = completion.error === null
       ? parseScore(completion.value, manifest.defects)
-      : { value: { caught: [], uncertain: manifest.defects.map((defect) => defect.id), unsupportedFindingCount: 0 }, error: completion.error };
+      : { value: { caught: [], uncertain: manifest.defects.map((defect) => defect.id), unsupportedFindingCount: 0, unsupportedSevereFindingCount: 0 }, error: completion.error };
     const score: ReviewScore = {
       variant: result.variant,
       task: result.task,

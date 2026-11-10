@@ -20,6 +20,7 @@ import {
   fakeRuntime,
   pairScore,
   REVIEWER_DEFINITION,
+  verdictJudge,
 } from "./_persona-benchmark-fixtures.js";
 
 const VARIANTS = [parseVariant("model-a:medium"), parseVariant("model-b:high")];
@@ -227,7 +228,7 @@ describe("benchmark stored-record validation", () => {
       createJudge: async () => ({
         complete: async () => {
           calls++;
-          return { text: '{"caught":["rounding-drift"],"uncertain":[],"unsupported_finding_count":0}', accounting: unavailableJudgeAccounting("test") };
+          return { text: '{"caught":["rounding-drift"],"uncertain":[],"unsupported_finding_count":0,"unsupported_severe_finding_count":0}', accounting: unavailableJudgeAccounting("test") };
         },
       }),
     };
@@ -251,4 +252,126 @@ describe("benchmark stored-record validation", () => {
     await expect(runPersonaBenchmark(resume, dependencies))
       .rejects.toThrow(/names defect ghost-defect, which billing-ledger does not seed/);
   });
+
+  it("reports control alarms and unsupported P1/P2 findings by diff stratum, and marks a candidate on the judge's model", async () => {
+    const root = await reviewerProject();
+    const control = join(root, "bench", "ab-persona", "fixtures", "reviews", "clean-change");
+    await mkdir(join(control, "project"), { recursive: true });
+    await Bun.write(join(control, "diff.patch"), `diff --git a/a.ts b/a.ts\n--- a/a.ts\n+++ b/a.ts\n@@ -1 +1,60 @@\n${Array.from({ length: 60 }, (_, line) => `+${line}`).join("\n")}\n`);
+    await Bun.write(join(control, "manifest.json"), JSON.stringify({ title: "Clean change", review_prompt_hint: "", defects: [] }));
+    const catalog = createBenchmarkCatalog(root);
+    const plan = await planPersonaBenchmark({ operation: "run", persona: "reviewer-code-quality", variants: [VARIANTS[0]!], repeats: 1 }, catalog);
+    const outcome = await runPersonaBenchmark(plan, {
+      ...deps(fakeRuntime(() => ({ terminal: { kind: "completed" } })), root, []),
+      judge: { model: "model-a", effort: "high" },
+      createJudge: async () => ({
+        complete: async (prompt) => ({
+          text: prompt.includes("rounding-drift")
+            ? '{"caught":["rounding-drift"],"uncertain":[],"unsupported_finding_count":3,"unsupported_severe_finding_count":1}'
+            : '{"caught":[],"uncertain":[],"unsupported_finding_count":2,"unsupported_severe_finding_count":2}',
+          accounting: unavailableJudgeAccounting("test"),
+        }),
+      }),
+    });
+    if (outcome.status !== "completed") throw new Error(`expected completion, got ${outcome.status}`);
+    const rows = outcome.report.split("\n");
+    expect(rows).toContain("Judge: model-a:high. Candidates that share its model, marked [judge model], may be scored in their favor: model-a@medium.");
+    expect(rows.find((row) => row.startsWith("| S1 |"))).toStartWith("| S1 | 1 | 0 | model-a@medium [judge model] | 1 | 1/1 (100.0%) | 3 (1) | n/a |");
+    expect(rows.find((row) => row.startsWith("| S2 |"))).toStartWith("| S2 | 0 | 1 | model-a@medium [judge model] | 1 | n/a | 0 (0) | 1/1 (100.0%), mean 2.00 |");
+    expect(rows.find((row) => row.startsWith("| model-a@medium [judge model] | 2 |"))).toStartWith("| model-a@medium [judge model] | 2 | 1/1 (100.0%) | 0 | 3 (1) | 1/1 (100.0%), mean 2.00 |");
+  });
+
+  it("refuses to resume or rescore a reviewer campaign scored before severity was counted, and still reads it", async () => {
+    const root = await reviewerProject();
+    const catalog = createBenchmarkCatalog(root);
+    const plan = await planPersonaBenchmark({ operation: "run", persona: "reviewer-code-quality", variants: [VARIANTS[0]!], repeats: 1 }, catalog);
+    const judge = { complete: async () => ({ text: '{"caught":[],"uncertain":[],"unsupported_finding_count":0,"unsupported_severe_finding_count":0}', accounting: unavailableJudgeAccounting("test") }) };
+    await runPersonaBenchmark(plan, { ...deps(fakeRuntime(() => ({ terminal: { kind: "completed" } })), root, []), createJudge: async () => judge });
+    // The persona-v2 shape: its config names that version and its review scores carry no severity count.
+    const manifestPath = join(plan.resultsDir, "campaign.json");
+    const manifest = await Bun.file(manifestPath).json();
+    manifest.config.scoringVersion = "persona-v2";
+    await Bun.write(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    const ledgerPath = join(plan.resultsDir, "events.jsonl");
+    const records = (await Bun.file(ledgerPath).text()).trim().split("\n").map(line => JSON.parse(line));
+    await Bun.write(ledgerPath, records.map((record) => {
+      if (record.kind !== "review-score") return JSON.stringify(record);
+      const { unsupportedSevereFindingCount: _severe, ...score } = record.score;
+      return JSON.stringify({ ...record, score });
+    }).join("\n") + "\n");
+
+    expect(await (await createRunStore({ resultsRoot: catalog.resultsRoot, directory: plan.resultsDir })).loadScores())
+      .toMatchObject([{ kind: "review-score", score: { unsupportedFindingCount: 0 } }]);
+    for (const operation of ["resume", "rescore"] as const) {
+      const stored = await planPersonaBenchmark({ operation, resultsDir: plan.resultsDir, variants: [] }, catalog);
+      await expect(runPersonaBenchmark(stored, { ...deps(fakeRuntime(() => ({ terminal: { kind: "completed" } })), root, []), createJudge: async () => judge }))
+        .rejects.toThrow("scored under persona-v2 and this harness scores under persona-v3");
+    }
+  });
+
+  it("records the resolved judge, resumes under it, and refuses another judge", async () => {
+    const root = await syntheticProject();
+    const catalog = createBenchmarkCatalog(root);
+    const judge = { model: "judge-model", effort: "high" };
+    const plan = await planPersonaBenchmark({ variants: VARIANTS, repeats: 1, operation: "run", judge }, catalog);
+    const controller = new AbortController();
+    controller.abort();
+    await runPersonaBenchmark(plan, { ...deps(fakeRuntime(() => ({ terminal: { kind: "completed" } })), root, [], controller.signal), judge });
+    const config = await (await createRunStore({ resultsRoot: catalog.resultsRoot, directory: plan.resultsDir })).loadConfig();
+    expect(config.judge).toEqual(judge);
+
+    const resume = await planPersonaBenchmark({ operation: "resume", resultsDir: plan.resultsDir, variants: [] }, catalog);
+    expect(resume.judge).toEqual(judge);
+    const outcome = await runPersonaBenchmark(resume, { ...deps(fakeRuntime(() => ({ terminal: { kind: "completed" } })), root, []), judge });
+    expect(outcome.status).toBe("completed");
+    await expect(runPersonaBenchmark(resume, { ...deps(fakeRuntime(() => ({ terminal: { kind: "completed" } })), root, []), judge: { ...judge, effort: "low" } }))
+      .rejects.toThrow("judged by judge-model:high, but this run's judge resolved to judge-model:low");
+    await expect(planPersonaBenchmark({ operation: "resume", resultsDir: plan.resultsDir, variants: [], judge: { ...judge, model: "other" } }, catalog))
+      .rejects.toThrow("Results judge judge-model:high conflicts with --judge other:high");
+  });
+
+  it("refuses to resume or rescore a campaign created before the judge was recorded, and still reads it", async () => {
+    const root = await syntheticProject();
+    const { resultsDir } = await storedRun(root);
+    // Every campaign before 2026-11-10 has this shape: no judge, and a judge identity of the rubric alone.
+    const manifestPath = join(resultsDir, "campaign.json");
+    const manifest = await Bun.file(manifestPath).json();
+    delete manifest.config.judge;
+    await Bun.write(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    const catalog = createBenchmarkCatalog(root);
+    expect((await (await createRunStore({ resultsRoot: catalog.resultsRoot, directory: resultsDir })).loadConfig()).judge).toBeUndefined();
+    const judgeCalls: string[] = [];
+    const createJudge = async () => { judgeCalls.push("judge"); return verdictJudge; };
+    for (const operation of ["resume", "rescore"] as const) {
+      const plan = await planPersonaBenchmark({ operation, resultsDir, variants: [] }, catalog);
+      await expect(runPersonaBenchmark(plan, { ...deps(fakeRuntime(() => ({ terminal: { kind: "completed" } })), root, []), createJudge }))
+        .rejects.toThrow("These results predate the recorded benchmark judge");
+    }
+    expect(judgeCalls).toEqual([]);
+  });
+
+  it("refuses to run a campaign that needs a judge when no judge model resolved", async () => {
+    const root = await syntheticProject();
+    const plan = await planPersonaBenchmark({ variants: VARIANTS, repeats: 1, operation: "run" }, createBenchmarkCatalog(root));
+    let candidateCalls = 0;
+    const { judge: _judge, ...unjudged } = deps(fakeRuntime(() => { candidateCalls++; return { terminal: { kind: "completed" } }; }), root, []);
+    await expect(runPersonaBenchmark(plan, unjudged)).rejects.toThrow("no judge model resolved");
+    expect(candidateCalls).toBe(0);
+  });
 });
+
+/** A project with the reviewer persona and one defect fixture of 20 changed lines. */
+async function reviewerProject(): Promise<string> {
+  const root = await syntheticProject();
+  await Bun.write(join(root, "src", "workflows", "agents", "personas", "reviewer-code-quality.md"), REVIEWER_DEFINITION);
+  const fixture = join(root, "bench", "ab-persona", "fixtures", "reviews", "billing-ledger");
+  await mkdir(join(fixture, "project"), { recursive: true });
+  await Bun.write(join(fixture, "project", "ledger.ts"), "export const total = 1;\n");
+  await Bun.write(join(fixture, "diff.patch"), `diff --git a/ledger.ts b/ledger.ts\n--- a/ledger.ts\n+++ b/ledger.ts\n@@ -1 +1,20 @@\n${Array.from({ length: 20 }, (_, line) => `+${line}`).join("\n")}\n`);
+  await Bun.write(join(fixture, "manifest.json"), JSON.stringify({
+    title: "Billing ledger",
+    review_prompt_hint: "Read the ledger rounding path",
+    defects: [{ id: "rounding-drift", title: "Rounding drift", category: "correctness", files: ["ledger.ts"], catch_criteria: "Names the drift" }],
+  }));
+  return root;
+}

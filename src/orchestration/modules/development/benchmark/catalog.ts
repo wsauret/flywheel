@@ -29,21 +29,46 @@ export interface ReviewDefect {
   category: string;
   files: readonly string[];
   catch_criteria: string;
+  /** The model whose recorded review reported this defect. Fixtures built from
+   *  real reviews carry it; hand-authored fixtures do not. */
+  finder?: string;
+  /** Whether curation accepted this label. A built fixture drafts every label
+   *  as false, and the loader refuses a fixture until each one is accepted or
+   *  removed; a hand-authored label carries no field and counts as accepted. */
+  accepted?: boolean;
 }
 
+/** A manifest with no defects is a control: a reviewed change that no review
+ *  found anything in. */
 export interface ReviewManifest {
   title: string;
   defects: readonly ReviewDefect[];
   review_prompt_hint: string;
 }
 
-/** A review task reviews its fixture's `project/` directory, which holds every
- *  file the reviewer reads, so a public clone can run it. */
+/** Size class of the reviewed change, from the changed lines of `diff.patch`.
+ *  A plan review has no diff. */
+type ReviewStratum = "S1" | "S2" | "S3" | "S4" | "plan";
+
+/** The upper bound of changed lines for each diff stratum; above the last is S4. */
+const STRATUM_BOUNDS: readonly (readonly [Exclude<ReviewStratum, "S4" | "plan">, number])[] = [["S1", 50], ["S2", 200], ["S3", 600]];
+
+/** Where a review sandbox's files come from: the fixture's vendored `project/`
+ *  directory, or a commit of this repository with the reviewed diff applied to
+ *  its working tree. */
+export type ReviewSource = { readonly kind: "project" } | { readonly kind: "commit"; readonly commit: string };
+
+/** A review task reviews one change in a sandbox that holds every file the
+ *  reviewer reads, so a clone of the repository that holds the fixture can run it. */
 export interface ReviewTask extends BenchmarkTask {
   fixtureDir: string;
   manifest: ReviewManifest;
-  /** Reviewed artifact copied into the sandbox root: a code diff or an implementation plan. */
+  /** Reviewed artifact: a code diff or an implementation plan. A project source
+   *  copies it into the sandbox root; a commit source applies the diff to the
+   *  working tree instead. */
   artifact: "diff.patch" | "plan.md";
+  source: ReviewSource;
+  stratum: ReviewStratum;
 }
 
 /** An implementation task plus the direct subagent assignment and a bounded runtime. */
@@ -89,13 +114,13 @@ const TASKS_BY_PERSONA: TasksByPersona = {
   ],
 };
 
-/** The fixture members one review cell copies into its sandbox. */
-interface ReviewFixturePaths {
-  readonly artifactPath: string;
-  readonly projectDir: string;
-}
+/** The fixture members one review cell reads into its sandbox. A commit source
+ *  has no project directory. */
+type ReviewFixturePaths =
+  | { readonly kind: "project"; readonly artifactPath: string; readonly projectDir: string }
+  | { readonly kind: "commit"; readonly artifactPath: string; readonly commit: string };
 
-type ReviewFixtureDescriptor = Pick<ReviewTask, "id" | "fixtureDir" | "artifact">;
+type ReviewFixtureDescriptor = Pick<ReviewTask, "id" | "fixtureDir" | "artifact" | "source">;
 
 /** Resolve the fixture members of one review task, refusing anything that is not
  *  a real file or directory inside the fixtures root.
@@ -103,10 +128,32 @@ type ReviewFixtureDescriptor = Pick<ReviewTask, "id" | "fixtureDir" | "artifact"
  *  A fixture member is on disk and can change between the catalog load that
  *  first checked it and the copy that uses it, so both moments call this. */
 export async function resolveReviewFixture(fixturesRoot: string, task: ReviewFixtureDescriptor): Promise<ReviewFixturePaths> {
+  const artifactPath = await realFileUnder(fixturesRoot, join(task.fixtureDir, task.artifact), `${task.id}/${task.artifact}`);
+  if (task.source.kind === "commit") return { kind: "commit", artifactPath, commit: task.source.commit };
   return {
-    artifactPath: await realFileUnder(fixturesRoot, join(task.fixtureDir, task.artifact), `${task.id}/${task.artifact}`),
+    kind: "project",
+    artifactPath,
     projectDir: await realDirectoryUnder(fixturesRoot, join(task.fixtureDir, "project"), `${task.id}/project`),
   };
+}
+
+/** The number of added and removed lines in a unified diff. Only lines inside
+ *  a hunk count, so a removed line that starts with "--" is not read as a
+ *  file header. */
+function changedDiffLines(patch: string): number {
+  let changed = 0;
+  let inHunk = false;
+  for (const line of patch.split("\n")) {
+    if (line.startsWith("@@")) inHunk = true;
+    else if (line.startsWith("diff --git ")) inHunk = false;
+    else if (inHunk && (line.startsWith("+") || line.startsWith("-"))) changed++;
+  }
+  return changed;
+}
+
+function diffStratum(patch: string): ReviewStratum {
+  const changed = changedDiffLines(patch);
+  return STRATUM_BOUNDS.find(([, bound]) => changed <= bound)?.[0] ?? "S4";
 }
 
 export function benchmarkMode(persona: string): BenchmarkMode {
@@ -126,7 +173,30 @@ function parseDefect(value: ReturnType<typeof objectValue>, fixtureId: string): 
   if (typeof title !== "string") throw new Error(`${fixtureId}/manifest.json requires string defects[].title`);
   if (typeof category !== "string") throw new Error(`${fixtureId}/manifest.json requires string defects[].category`);
   if (typeof catchCriteria !== "string") throw new Error(`${fixtureId}/manifest.json requires string defects[].catch_criteria`);
-  return { id, title, category, files, catch_criteria: catchCriteria };
+  const { finder, accepted } = value;
+  if (finder !== undefined && typeof finder !== "string") throw new Error(`${fixtureId}/manifest.json defects[].finder must be a string`);
+  if (accepted !== undefined && typeof accepted !== "boolean") throw new Error(`${fixtureId}/manifest.json defects[].accepted must be a boolean`);
+  // A drafted label is not ground truth until curation accepts it or removes it.
+  if (accepted === false) throw new Error(`${fixtureId}/manifest.json defect ${id} is a drafted label; accept it or remove it before the fixture runs`);
+  // Absent fields stay absent, so a hand-authored manifest keeps the identity it had before these fields existed.
+  return {
+    id, title, category, files, catch_criteria: catchCriteria,
+    ...(finder === undefined ? {} : { finder }),
+    ...(accepted === undefined ? {} : { accepted }),
+  };
+}
+
+/** A commit source names one full commit ID of this repository; the reviewed
+ *  diff applies to that commit's tree. */
+async function readCommitSource(fixturesRoot: string, fixtureDir: string, fixtureId: string): Promise<ReviewSource | undefined> {
+  const path = join(fixtureDir, "source.json");
+  if (!await isPresent(path)) return undefined;
+  const value = objectValue(JSON.parse(await Bun.file(await realFileUnder(fixturesRoot, path, `${fixtureId}/source.json`)).text()), `${fixtureId}/source.json`);
+  const unknown = Object.keys(value).find((key) => key !== "commit");
+  if (unknown !== undefined) throw new Error(`${fixtureId}/source.json.${unknown} is not a source field`);
+  const commit = value.commit;
+  if (typeof commit !== "string" || !/^[0-9a-f]{40}$/.test(commit)) throw new Error(`${fixtureId}/source.json commit must be a full 40-character lowercase commit ID`);
+  return { kind: "commit", commit };
 }
 
 function parseManifest(value: ReturnType<typeof objectValue>, fixtureId: string): ReviewManifest {
@@ -143,11 +213,58 @@ function parseManifest(value: ReturnType<typeof objectValue>, fixtureId: string)
   return { title, defects: parsedDefects, review_prompt_hint: reviewPromptHint };
 }
 
-export function reviewPrompt(artifact: ReviewTask["artifact"], hint: string): string {
+/** The prompt of a fixture that records none in `prompt.md`. */
+export function reviewPrompt(artifact: ReviewTask["artifact"], hint: string, source: ReviewSource["kind"] = "project"): string {
   if (artifact === "plan.md") {
     return `Review the implementation plan in plan.md against the project in this directory. ${hint}. Verify every claim the plan makes about the code against the code itself before trusting it. Report every defect you find, citing the plan location and the file:line code evidence; be specific enough that a reader can act.`;
   }
+  if (source === "commit") {
+    return `Review the uncommitted change in this Git repository; git diff shows it. ${hint}. Report every defect you find with file:line and severity; be specific enough that a reader can act.`;
+  }
   return `Review the change in diff.patch against the project in this directory. ${hint}. Report every defect you find with file:line and severity; be specific enough that a reader can act.`;
+}
+
+/** Load every review fixture under the root, or none when the root is absent. */
+async function loadReviewFixtures(fixturesRoot: string): Promise<ReviewTask[]> {
+  let entries;
+  try {
+    entries = await readdir(fixturesRoot, { withFileTypes: true });
+  } catch (error) {
+    if (typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT") return [];
+    throw error;
+  }
+  const tasks: ReviewTask[] = [];
+  for (const entry of entries.filter((candidate) => candidate.isDirectory()).sort((a, b) => a.name.localeCompare(b.name))) {
+    const fixtureDir = await realDirectoryUnder(fixturesRoot, containedPath(fixturesRoot, entry.name), `${entry.name} review fixture`);
+    const manifestPath = await realFileUnder(fixturesRoot, join(fixtureDir, "manifest.json"), `${entry.name}/manifest.json`);
+    const manifest = parseManifest(objectValue(JSON.parse(await Bun.file(manifestPath).text()), `${entry.name}/manifest.json`), entry.name);
+    // A symlinked plan.md is present and rejected, not skipped in favor of
+    // diff.patch: a fixture member that points outside the tree is a fault.
+    const artifact: ReviewTask["artifact"] = await isPresent(join(fixtureDir, "plan.md")) ? "plan.md" : "diff.patch";
+    const source = await readCommitSource(fixturesRoot, fixtureDir, entry.name) ?? { kind: "project" as const };
+    if (source.kind === "commit" && artifact === "plan.md") throw new Error(`${entry.name} reviews a plan, so it cannot apply a diff to a commit source`);
+    const recordedPrompt = await isPresent(join(fixtureDir, "prompt.md"))
+      ? await Bun.file(await realFileUnder(fixturesRoot, join(fixtureDir, "prompt.md"), `${entry.name}/prompt.md`)).text()
+      : undefined;
+    const descriptor = { id: entry.name, fixtureDir, artifact, source };
+    const fixture = await resolveReviewFixture(fixturesRoot, descriptor);
+    const artifactBytes = new Uint8Array(await Bun.file(fixture.artifactPath).arrayBuffer());
+    tasks.push({
+      ...descriptor,
+      manifest,
+      prompt: recordedPrompt ?? reviewPrompt(artifact, manifest.review_prompt_hint, source.kind),
+      stratum: artifact === "plan.md" ? "plan" : diffStratum(new TextDecoder().decode(artifactBytes)),
+      contentIdentity: structuredIdentity({
+        manifest,
+        artifact: { name: artifact, identity: bytesIdentity(artifactBytes) },
+        // A project source keeps the serialized form it had before commit
+        // sources returned, so the identities of earlier review campaigns do not change.
+        source: fixture.kind === "commit" ? source : { kind: "project", contentIdentity: await directoryIdentity(fixture.projectDir) },
+        ...(recordedPrompt === undefined ? {} : { prompt: recordedPrompt }),
+      }),
+    });
+  }
+  return tasks;
 }
 
 function implementPrompt(): string {
@@ -203,48 +320,7 @@ export function createBenchmarkCatalog(projectRoot: string, options: {
         return { ...source, contentIdentity: structuredIdentity(source) };
       });
     },
-    async reviewTasks() {
-      let entries;
-      try {
-        entries = await readdir(reviewFixturesDir, { withFileTypes: true });
-      } catch (error) {
-        if (typeof error === "object" && error !== null && "code" in error && error.code === "ENOENT") return [];
-        throw error;
-      }
-      const tasks: ReviewTask[] = [];
-      for (const entry of entries.filter((candidate) => candidate.isDirectory()).sort((a, b) => a.name.localeCompare(b.name))) {
-        const fixtureDir = await realDirectoryUnder(reviewFixturesDir, containedPath(reviewFixturesDir, entry.name), `${entry.name} review fixture`);
-        const manifestPath = await realFileUnder(reviewFixturesDir, join(fixtureDir, "manifest.json"), `${entry.name}/manifest.json`);
-        const value = objectValue(JSON.parse(await Bun.file(manifestPath).text()), `${entry.name}/manifest.json`);
-        const manifest = parseManifest(value, entry.name);
-        // A symlinked plan.md is present and rejected, not skipped in favor of
-        // diff.patch: a fixture member that points outside the tree is a fault.
-        const artifact: ReviewTask["artifact"] = await isPresent(join(fixtureDir, "plan.md")) ? "plan.md" : "diff.patch";
-        const task = {
-          id: entry.name,
-          fixtureDir,
-          manifest,
-          artifact,
-          prompt: reviewPrompt(artifact, manifest.review_prompt_hint),
-        };
-        const fixture = await resolveReviewFixture(reviewFixturesDir, task);
-        // The source keeps the "project" kind it had beside the retired commit
-        // source, so the identities of earlier review campaigns do not change.
-        const source = { kind: "project", contentIdentity: await directoryIdentity(fixture.projectDir) };
-        tasks.push({
-          ...task,
-          contentIdentity: structuredIdentity({
-            manifest,
-            artifact: {
-              name: artifact,
-              identity: bytesIdentity(new Uint8Array(await Bun.file(fixture.artifactPath).arrayBuffer())),
-            },
-            source,
-          }),
-        });
-      }
-      return tasks;
-    },
+    reviewTasks: () => loadReviewFixtures(reviewFixturesDir),
     async implementTasks() {
       const specs = await loadImplementTasks(implementTasksDir);
       return specs.map((spec) => ({

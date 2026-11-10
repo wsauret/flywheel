@@ -51,6 +51,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
   let personaDir: string | undefined;
   let resultsRoot: string | undefined;
   let reportDir: string | undefined;
+  let judge: VariantSpec | undefined;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--dry-run") {
@@ -67,6 +68,10 @@ export function parseArgs(argv: readonly string[]): CliArgs {
       const value = argv[++i];
       if (!value) throw new Error("--variant requires a value");
       variants.push(parseVariant(value));
+    } else if (arg === "--judge") {
+      const value = argv[++i];
+      if (!value) throw new Error("--judge requires model:effort");
+      judge = parseVariant(value);
     } else if (arg === "--resume" || arg === "--rescore") {
       const value = argv[++i];
       if (!value) throw new Error(`${arg} requires a results directory`);
@@ -102,6 +107,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     ...(personaDir ? { personaDir } : {}),
     ...(resultsRoot ? { resultsRoot } : {}),
     ...(reportDir ? { reportDir } : {}),
+    ...(judge ? { judge: { model: judge.model, effort: judge.effort } } : {}),
   };
 }
 
@@ -145,7 +151,7 @@ export async function main(
 ): Promise<void> {
   const args = parseArgs(argv);
   const [
-    { admitBenchmark, benchmarkPreflightReport, benchmarkModelSeats },
+    { admitBenchmark, benchmarkPreflightReport, benchmarkModelSeats, personaCampaignJudge },
     { loadBenchmarkPersona, planPersonaBenchmark, runPersonaBenchmark },
   ] = await Promise.all([
     import("../../src/orchestration/modules/development/benchmark/admission.js"),
@@ -177,6 +183,7 @@ export async function main(
     foregroundBashHold: runtime.foregroundBashHold,
     shell: runtime.shell,
   }, benchmarkModelSeats(plan, persona.role));
+  const judge = personaCampaignJudge(admission);
   if (args.dryRun) {
     console.log(JSON.stringify(benchmarkPreflightReport(plan, admission.providerPlans), null, 2));
     return;
@@ -191,7 +198,7 @@ export async function main(
     const outcome = await runPersonaBenchmark(plan, {
       runtime: admission.runtime,
       catalog,
-      createJudge: (evidenceDirectory) => admission.createJudge(undefined, undefined, undefined, evidenceDirectory),
+      ...judge,
       onEvent: render,
       signal: controller.signal,
       sourceIdentity: await runningSourceIdentity([join(REPO_ROOT, "bench", "shared")]),

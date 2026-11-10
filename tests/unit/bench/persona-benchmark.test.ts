@@ -272,6 +272,7 @@ describe("persona benchmark service", () => {
       runtime,
       catalog: createBenchmarkCatalog(root),
       createJudge: async () => ({ complete: async () => { judged = true; return { text: "{}", accounting: unavailableJudgeAccounting("the test judge measured nothing") }; } }),
+      judge: { model: "judge-model", effort: "high" },
       onEvent: (event) => {
         events.push(event);
         if (event.kind === "benchmark.cancelled") runningAtCancellation = running;

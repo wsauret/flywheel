@@ -296,7 +296,7 @@ describe("benchmark tool action surface", () => {
     expect(tool.action).toBe("benchmark_run");
     const schema = tool.inputSchema;
     const properties = record(schema.properties);
-    expect(Object.keys(properties)).toEqual(["action", "persona", "variants", "repeats", "dryRun", "resultId"]);
+    expect(Object.keys(properties)).toEqual(["action", "persona", "variants", "repeats", "tasks", "judge", "dryRun", "resultId"]);
     expect(schema.required).toEqual(["action", "dryRun"]);
     expect(schema.additionalProperties).toBe(false);
     expect(record(properties.action).enum).toEqual(["run", "resume"]);

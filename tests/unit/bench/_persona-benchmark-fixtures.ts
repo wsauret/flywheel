@@ -77,6 +77,7 @@ export function benchmarkDeps(runtime: BenchmarkRuntime, root: string, events: B
     runtime,
     catalog: createBenchmarkCatalog(root),
     createJudge: async () => verdictJudge,
+    judge: { model: "judge-model", effort: "high" },
     onEvent: (event) => events.push(event),
     sourceIdentity: TEST_SOURCE_IDENTITY,
     ...(signal ? { signal } : {}),

@@ -233,7 +233,7 @@ describe("judged loop attempt settlement", () => {
     const results: readonly ReviewCandidate[] = [{ variant: "a", task: "t", repeat: 0, summary: "review text" }];
     const attempts: JudgeAttemptReport[] = [];
 
-    const scores = await scoreReviews(results, new Map([["t", manifest]]), answering(`{"caught":["d1"],"uncertain":[],"unsupported_finding_count":0}`), {
+    const scores = await scoreReviews(results, new Map([["t", manifest]]), answering(`{"caught":["d1"],"uncertain":[],"unsupported_finding_count":0,"unsupported_severe_finding_count":0}`), {
       onAttempt: async (report) => { attempts.push(report); },
     });
 

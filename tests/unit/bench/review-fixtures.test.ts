@@ -15,6 +15,12 @@ describe("reviewPrompt", () => {
     expect(prompt).toContain("Review the implementation plan in plan.md");
     expect(prompt).toContain("Verify every claim");
   });
+
+  test("a diff applied to a commit source is read through git diff", () => {
+    const prompt = reviewPrompt("diff.patch", "hint", "commit");
+    expect(prompt).toContain("git diff");
+    expect(prompt).not.toContain("diff.patch");
+  });
 });
 
 describe("checked-in review fixtures", () => {
@@ -25,8 +31,8 @@ describe("checked-in review fixtures", () => {
     expect(new Set(ids).size).toBe(ids.length);
     for (const task of tasks) {
       expect(["diff.patch", "plan.md"]).toContain(task.artifact);
-      expect(task.manifest.defects.length).toBeGreaterThan(0);
-      expect(task.prompt).toContain(task.artifact);
+      // A commit source applies the diff to the working tree instead of copying the artifact.
+      if (task.source.kind === "project") expect(task.prompt).toContain(task.artifact);
     }
   });
 });

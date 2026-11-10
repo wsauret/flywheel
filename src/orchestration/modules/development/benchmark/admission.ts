@@ -1,7 +1,7 @@
 import { candidateProviderId, type AccessProviderId, type AdmittedFailoverPlan } from "../../../../infra/llm/access-provider.js";
 import type { CaptureProviderConnection } from "../../../agent-runtime/factory.js";
 import { createAgentJudge, type JudgeModel } from "./judge.js";
-import type { BenchmarkPlan } from "./persona-benchmark.js";
+import { campaignJudges, type BenchmarkPlan } from "./persona-benchmark.js";
 import type { BenchmarkRuntime } from "./persona-run.js";
 import { structuredIdentity } from "./content-identity.js";
 import { resolveSessionRoles } from "../../../config/session-role-resolver.js";
@@ -21,12 +21,43 @@ export interface BenchmarkAdmissionDeps extends Omit<BenchmarkRuntime, "createAg
 /** Which side of the matrix a planned model serves. */
 type BenchmarkRole = "candidate" | "judge";
 
-/** A solo research seat has no pair to judge and does not require judge admission. */
+/** A solo research seat has no pair to judge and does not require judge admission.
+ *  A pinned judge replaces the profile's judge role. */
 export function benchmarkModelSeats(plan: BenchmarkPlan, personaRole: string): readonly BenchmarkModelSeat[] {
   return [
     ...plan.variants.map(({ model, effort }) => ({ role: "candidate" as const, roleId: personaRole, model, effort })),
-    ...(plan.mode === "research" && plan.variants.length < 2 ? [] : [{ role: "judge" as const }]),
+    ...(campaignJudges(plan) ? [{ role: "judge" as const, ...plan.judge }] : []),
   ];
+}
+
+/** The model and effort that score one persona campaign. */
+export interface JudgeSelection {
+  readonly model: string;
+  readonly effort: string;
+}
+
+/** The judge members of the persona benchmark's dependencies. */
+interface PersonaCampaignJudge {
+  readonly judge?: JudgeSelection;
+  readonly createJudge: (evidenceDirectory?: string) => Promise<JudgeModel>;
+}
+
+/** Settle the judge of one persona campaign from its admission: the judge seat's
+ *  resolved model and effort, which every judge call of the campaign must use.
+ *
+ *  Returns no selection when the plan has no judge seat or the profile serves
+ *  no judge model; the benchmark service refuses to run a campaign that needs
+ *  a judge without one. A judge may share a candidate's model; the dry run and
+ *  the report name those candidate settings. */
+export function personaCampaignJudge(admission: BenchmarkAdmission): PersonaCampaignJudge {
+  const { model, effort } = admission.providerPlans.find((plan) => plan.role === "judge") ?? {};
+  if (model === undefined || effort === undefined) return { createJudge: (evidenceDirectory) => admission.createJudge(undefined, undefined, undefined, evidenceDirectory) };
+  return {
+    judge: { model, effort },
+    createJudge: (evidenceDirectory) => admission.createJudge(model, undefined, effort, evidenceDirectory, (resolved) => {
+      if (resolved !== model) throw new Error(`The benchmark judge resolved to ${resolved}, not the campaign judge ${model}`);
+    }),
+  };
 }
 
 export interface BenchmarkModelSeat {
@@ -65,6 +96,9 @@ interface BenchmarkPreflightReport {
   readonly cells: number;
   readonly resultsDir: string;
   readonly providerPlans: readonly ProviderPlanReport[];
+  /** The candidate settings (model:effort) that run on the judge's model. A
+   *  judge can favor its own model, so a reader weighs those scores knowing it. */
+  readonly judgeModelCandidates: readonly string[];
 }
 
 export function benchmarkPreflightReport(
@@ -81,6 +115,9 @@ export function benchmarkPreflightReport(
     cells: plan.repeats * plan.tasks.length * plan.variants.length,
     resultsDir: plan.resultsDir,
     providerPlans,
+    judgeModelCandidates: providerPlans
+      .filter((candidate) => candidate.role === "candidate" && candidate.model !== undefined && candidate.model === providerPlans.find((seat) => seat.role === "judge")?.model)
+      .map((candidate) => `${candidate.model}:${candidate.effort}`),
   };
 }
 

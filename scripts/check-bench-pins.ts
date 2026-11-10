@@ -18,6 +18,7 @@ export interface BenchPin {
 
 // Each fixture file keeps its other fields; these read only the commit it names, if any.
 const isPinnedSandbox = Schema.is(Schema.Struct({ sandbox: Schema.Struct({ commit: Schema.String }) }));
+const isCommitSource = Schema.is(Schema.Struct({ commit: Schema.String }));
 
 // Each pattern matches only its corpus depth, so a vendored project/ and a
 // campaign source worktree retained under results/ are never read as fixtures.
@@ -29,7 +30,7 @@ async function files(root: string, pattern: string): Promise<string[]> {
 
 /** Collect every commit of this repository that a runnable fixture under
  *  `repoRoot` names: task sandboxes (a `<commit>:<subtree>` selector names its
- *  commit) and the research corpus. The empty
+ *  commit), review fixtures with a commit source, and the research corpus. The empty
  *  tree is an object of every repository, so a fixture that names it depends
  *  on nothing. Throws when a fixture file is not readable JSON. */
 export async function collectBenchPins(repoRoot: string): Promise<BenchPin[]> {
@@ -43,6 +44,11 @@ export async function collectBenchPins(repoRoot: string): Promise<BenchPin[]> {
   for (const path of [...benchTasks, ...chatAbTasks]) {
     const task: unknown = JSON.parse(await readFile(path, "utf8"));
     if (isPinnedSandbox(task)) add(path, task.sandbox.commit);
+  }
+  // Review fixtures with a commit source.
+  for (const path of await files(join(bench, "ab-persona", "fixtures", "reviews"), "*/source.json")) {
+    const source: unknown = JSON.parse(await readFile(path, "utf8"));
+    if (isCommitSource(source)) add(path, source.commit);
   }
   return pins.filter(({ commit }) => commit !== EMPTY_TREE);
 }

@@ -18,7 +18,7 @@ import { stripControlCharacters } from "../../../infra/control-characters.js";
 import { errorMessage } from "../../../infra/error-message.js";
 import { Log } from "../../../infra/log.js";
 import { EFFORT_VALUES } from "../../../infra/workflow-types.js";
-import { admitBenchmark, benchmarkModelSeats, benchmarkPreflightReport, type BenchmarkAdmission, type BenchmarkAdmissionDeps, type ProviderPlanReport } from "./benchmark/admission.js";
+import { admitBenchmark, benchmarkModelSeats, benchmarkPreflightReport, personaCampaignJudge, type BenchmarkAdmission, type JudgeSelection, type BenchmarkAdmissionDeps, type ProviderPlanReport } from "./benchmark/admission.js";
 import { createBenchmarkCatalog, type BenchmarkCatalog } from "./benchmark/catalog.js";
 import { runningSourceIdentity } from "./benchmark/content-identity.js";
 import {
@@ -44,7 +44,7 @@ const log = Log.create({ service: "benchmark-tool" });
  *  resolves it against the results directory and enforces containment. */
 const RESULT_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
-const RUN_FIELDS: ReadonlySet<string> = new Set(["action", "persona", "variants", "repeats", "dryRun"]);
+const RUN_FIELDS: ReadonlySet<string> = new Set(["action", "persona", "variants", "repeats", "dryRun", "tasks", "judge"]);
 const RESUME_FIELDS: ReadonlySet<string> = new Set(["action", "resultId", "dryRun"]);
 const VARIANT_FIELDS: ReadonlySet<string> = new Set(["model", "effort"]);
 
@@ -76,6 +76,21 @@ const BENCHMARK_INPUT_SCHEMA = {
       type: "integer",
       description: "run only: how many times each seat runs each task. Pass 1 for one pass.",
     },
+    tasks: {
+      type: "array",
+      items: { type: "string" },
+      description: "run only: the task or fixture IDs to run. When omitted, every task of the persona's suite runs.",
+    },
+    judge: {
+      type: "object",
+      properties: {
+        model: { type: "string", description: "The model id that judges every cell." },
+        effort: { enum: [...EFFORT_VALUES], description: "The reasoning effort the judge runs at." },
+      },
+      required: ["model", "effort"],
+      additionalProperties: false,
+      description: "run only: pins the judge instead of the profile's benchmark-judge role. It may share a candidate's model; the dry run and the report name the candidates that do.",
+    },
     dryRun: {
       type: "boolean",
       description: "Report the planned matrix and stop. No provider request is made and no results directory is written.",
@@ -91,7 +106,7 @@ const BENCHMARK_INPUT_SCHEMA = {
 
 const BENCHMARK_DESCRIPTION = `Run the model A/B benchmark for one subagent persona against this project's benchmark fixtures, or resume one that stopped. Every cell is a real persona run, so a benchmark costs real provider spend and takes many minutes; launch one only when the user asked for benchmark evidence.
 
-Use { action: "run", persona, variants, repeats, dryRun } for a new matrix, and { action: "resume", resultId, dryRun } to finish a matrix that was stopped or that had failing cells. Pass dryRun: true first to report the planned matrix without spending anything.`;
+Use { action: "run", persona, variants, repeats, dryRun } for a new matrix, with optional tasks and judge, and { action: "resume", resultId, dryRun } to finish a matrix that was stopped or that had failing cells. Pass dryRun: true first to report the planned matrix without spending anything.`;
 
 const BENCHMARK_PROMPT_GUIDELINES = [
   "A benchmark is evidence gathering, not implementation. Do not launch one to test a code change; run the project's tests instead.",
@@ -143,6 +158,18 @@ function requireVariants(value: unknown): readonly VariantSpec[] {
   return value.map(requireSeat);
 }
 
+function requireTasks(value: unknown): readonly string[] {
+  if (!Array.isArray(value) || value.length === 0 || !value.every((id) => typeof id === "string" && id.trim().length > 0)) {
+    throw new Error("benchmark tasks must be a non-empty array of task ID strings.");
+  }
+  return value;
+}
+
+function requireJudge(value: unknown): JudgeSelection {
+  const { model, effort } = requireSeat(value);
+  return { model, effort };
+}
+
 function requireRepeats(value: unknown): number {
   if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
     throw new Error("benchmark repeats must be a positive integer.");
@@ -172,6 +199,8 @@ function parseRequest(input: BenchmarkInput, catalog: BenchmarkCatalog): Benchma
         variants: requireVariants(input.variants),
         operation: "run",
         repeats: requireRepeats(input.repeats),
+        ...(input.tasks === undefined ? {} : { taskIds: requireTasks(input.tasks) }),
+        ...(input.judge === undefined ? {} : { judge: requireJudge(input.judge) }),
       },
       dryRun: requireDryRun(input.dryRun),
     };
@@ -305,12 +334,14 @@ async function launch(deps: BenchmarkAdmissionDeps, input: BenchmarkInput, conte
   let plan: BenchmarkPlan;
   let catalog: BenchmarkCatalog;
   let admission: BenchmarkAdmission;
+  let judge: ReturnType<typeof personaCampaignJudge>;
   try {
     catalog = createBenchmarkCatalog(context.executionCwd);
     request = parseRequest(input, catalog);
     plan = await planPersonaBenchmark(request.options, catalog);
     const { persona } = await loadBenchmarkPersona(plan, catalog, deps);
     admission = await admitBenchmark(deps, benchmarkModelSeats(plan, persona.role));
+    judge = personaCampaignJudge(admission);
   } catch (error) {
     return { content: errorMessage(error), outcome: "error" };
   }
@@ -367,7 +398,7 @@ async function launch(deps: BenchmarkAdmissionDeps, input: BenchmarkInput, conte
     : runningSourceIdentity().then((sourceIdentity) => runPersonaBenchmark(plan, {
         runtime: admission.runtime,
         catalog,
-        createJudge: (evidenceDirectory) => admission.createJudge(undefined, undefined, undefined, evidenceDirectory),
+        ...judge,
         onEvent: (event: BenchmarkEvent) => {
           log.info("benchmark progress", { resultId, event: event.kind });
           progress.record(event);
