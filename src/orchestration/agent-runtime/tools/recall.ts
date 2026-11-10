@@ -15,11 +15,10 @@ const RECALL_INPUT_SCHEMA = {
   },
 } as const;
 
-const RECALL_BASE: Pick<RuntimeTool, "name" | "action" | "promptSnippet" | "promptGuidelines" | "inputSchema" | "isConcurrencySafe"> = {
+const RECALL_BASE: Pick<RuntimeTool, "name" | "action" | "promptGuidelines" | "inputSchema" | "isConcurrencySafe"> = {
   name: "recall",
   action: "search",
   isConcurrencySafe: true,
-  promptSnippet: "Search prior work, decisions, and context from earlier in this session (including pre-compaction turns). Default scope is your active branch; use scope:'all' for off-lineage branches.",
   promptGuidelines: [
     "Use recall before redoing work: an exact error string, a file path, or a decision rationale from a now-summarized turn is still on disk and recall reads it.",
   ],

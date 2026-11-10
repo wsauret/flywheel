@@ -422,7 +422,6 @@ describe("ordinary runtime request", () => {
       expect(systemPrompt).toContain("PROJECT INSTRUCTIONS");
       expect(systemPrompt).toContain("# Durable Memory");
       expect(systemPrompt).toContain("CANDIDATE MEMORY");
-      expect(systemPrompt).toContain("- recall:");
       expect(systemPrompt).toContain("Open a run of tool work with one sentence that names the next step.");
       expect((JSON.stringify(request?.messages).match(new RegExp(task, "g")) ?? []).length).toBe(1);
     } finally {

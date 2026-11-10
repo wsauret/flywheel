@@ -25,7 +25,7 @@ function spec(name: string, opts: Partial<ToolPromptFields> = {}): ToolPromptFie
 }
 
 const TOOLS: ToolPromptFields[] = [
-  spec("bash", { description: "Run shell commands. Supports bash.", promptSnippet: "Execute shell commands", promptGuidelines: ["Always quote paths"], promptExamples: "bash ls -la" }),
+  spec("bash", { description: "Run shell commands. Supports bash.", promptGuidelines: ["Always quote paths"], promptExamples: "bash ls -la" }),
   spec("read", { description: "Read files from disk. Requires path.", promptGuidelines: ["Use absolute paths"] }),
 ];
 
@@ -36,11 +36,11 @@ describe("buildSystemPrompt -- agent of a workflow", () => {
   const build = (overrides: UnknownRecord = {}) =>
     buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "workflow-agent", unattended: true, agentsMd, ...overrides }));
 
-  it("contains core sections, tools, and agentsMd", () => {
+  it("contains core sections, tool guidelines, and agentsMd", () => {
     const result = build();
     for (const section of CORE_SECTIONS) expect(result).toContain(section);
     expect(result).not.toContain("PROPORTIONALITY:");
-    expect(result).toContain("Available tools:");
+    expect(result).toContain("- Always quote paths");
     expect(result).toContain(`# AGENTS.md Instructions\n\n${agentsMd}`);
   });
 

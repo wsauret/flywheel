@@ -226,7 +226,7 @@ describe("direct headless system prompt override", () => {
 
     const productionPrompt = renderSystemPrompt(await production.systemPrompt(await modelClient().plannedAttempt(), providerRuntime(production.tools.current()).interactionProfile))
     expect(productionPrompt).toStartWith("You are a helpful AI Agent.")
-    expect(productionPrompt).toContain("Available tools:")
+    expect(productionPrompt).toContain("Guidelines:")
     expect(productionPrompt).not.toContain("Universal Principles of Elegant Code")
     expect(renderSystemPrompt(await overridden.systemPrompt(await modelClient().plannedAttempt(), providerRuntime(overridden.tools.current()).interactionProfile))).toBe("literal\nbytes")
     expect((await preparedTools(overridden.tools.current())).map((tool) => tool.name)).toEqual((await preparedTools(production.tools.current())).map((tool) => tool.name))

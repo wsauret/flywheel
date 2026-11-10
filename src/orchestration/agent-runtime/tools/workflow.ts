@@ -146,10 +146,9 @@ export const WORKFLOW_RUNTIME_INVOCATION_TOOL: ModuleRuntimeInvocationTool = {
   },
 };
 
-const WORKFLOW_BASE: Pick<RuntimeTool, "name" | "action" | "promptSnippet" | "execution" | "isConcurrencySafe"> = {
+const WORKFLOW_BASE: Pick<RuntimeTool, "name" | "action" | "execution" | "isConcurrencySafe"> = {
   name: WORKFLOW_RUNTIME_INVOCATION_TOOL.name,
   action: "ui_meta",
-  promptSnippet: "Launch a workflow file as a background session from chat",
   execution: WORKFLOW_RUNTIME_INVOCATION_TOOL.execution,
   isConcurrencySafe: true,
 };

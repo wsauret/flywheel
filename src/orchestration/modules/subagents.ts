@@ -196,10 +196,11 @@ const subagent = {
         // plans the same tools (ARCH-CONTEXT-018).
         if (kernel.definitionAvailability.tree.availablePersonas.size === 0) return { reason: "every agent type is turned off in subagents.disabled_types" }
         const runtime = modules.get(subagentsRuntime)
-        if (!runtime) return { unusable: { tool: subagentToolDefinition(kernel.treeCapabilities), reason: "no subagent registry available" } }
+        const unattendedChat = kernel.unattendedTree === true
+        if (!runtime) return { unusable: { tool: subagentToolDefinition(kernel.treeCapabilities, unattendedChat), reason: "no subagent registry available" } }
         // A capability plan (`planRunCapabilities`) reads only whether the tool is usable and calls nothing.
-        if (!kernel.servingModel) return { tool: subagentToolWith(() => Promise.reject(new Error("A capability plan runs no tool.")), kernel.treeCapabilities) }
-        return { tool: createSubagentTool(runtime.toolDeps(kernel.servingModel, kernel.definitionAvailability.live), kernel.treeCapabilities) }
+        if (!kernel.servingModel) return { tool: subagentToolWith(() => Promise.reject(new Error("A capability plan runs no tool.")), kernel.treeCapabilities, unattendedChat) }
+        return { tool: createSubagentTool(runtime.toolDeps(kernel.servingModel, kernel.definitionAvailability.live), kernel.treeCapabilities, unattendedChat) }
       },
     },
   },

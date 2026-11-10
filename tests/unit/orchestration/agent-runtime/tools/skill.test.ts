@@ -556,7 +556,6 @@ describe("skill tool prompt guidance", () => {
     const tool = toolFor(revisionOf(1, [skill("pdf")]));
     const advertised = [
       tool.description,
-      tool.promptSnippet ?? "",
       ...(tool.promptGuidelines ?? []),
       JSON.stringify(tool.inputSchema),
     ].join("\n");

@@ -140,6 +140,7 @@ export function requestKernel(run: KernelRunFacts, request: KernelRequestFacts):
     moduleSnapshot: request.moduleSnapshot,
     runtimeConfig: request.runtimeConfig,
     purpose: options.purpose,
+    ...(options.capabilityAccess?.unattended ? { unattendedTree: true } : {}),
     ...(run.treeHosted ? { treeHosted: true } : {}),
     ...(surfaces.headless ? { headless: true } : {}),
     ...(options.readOnly ? { readOnly: true } : {}),

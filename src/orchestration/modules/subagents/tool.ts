@@ -61,16 +61,15 @@ const subagentPromptGuidelines = (has: CapabilityCheck): string[] => [
     ? "A question about what an external service returns, which endpoints exist, or how a dependency or the runtime behaves is not a lookup: it needs an experiment against the real thing, which a read-only agent cannot run. Run it inline or dispatch general."
     : "A question about what an external service returns, which endpoints exist, or how a dependency or the runtime behaves is not a lookup: it needs an experiment against the real thing, which a read-only agent cannot run. Run it inline.",
   `Investigate directly OR delegate; not both for the same question - paying twice for one answer is waste. Verification is the deliberate exception: for audits and reviews, independently examining the same target as ${has("type:reviewer") ? "your dispatched reviewers" : "the agents you dispatched"} is redundancy that strengthens the result, and reconciling your findings with theirs is part of the job.`,
-  "After dispatching, continue with substantive independent work if you have any. When everything left depends on pending results, call process with action='wait' and soft_timeout seconds from your estimate of remaining work. Estimate all managed work. The turn's other calls run first, then this one wait ends on completion or expiry without stopping work. After a notification, expiry, or status check, if nothing needs action or a reply, wait again with a fresh remaining-work estimate and no visible text. Never fill the gap with busywork, polling, re-reading known files, or status chatter.",
+  "After dispatching, continue with substantive independent work if you have any. When everything left depends on pending results, wait for them with process. Never fill the gap with busywork, polling, re-reading known files, or status chatter.",
 ]
 
 /** The dispatch tool as the model sees it under the tree check `has`, the same bytes for every agent of the tree. */
-export function subagentToolDefinition(has: CapabilityCheck): AdvertisedTool {
+export function subagentToolDefinition(has: CapabilityCheck, unattendedChat: boolean): AdvertisedTool {
   return {
     name: "subagent",
     action: "task_subagent",
-    description: subagentDescription(has),
-    promptSnippet: "Delegate independent investigation or scoped work to specialized subagents (parallelize with multiple calls)",
+    description: subagentDescription(has, unattendedChat),
     promptGuidelines: subagentPromptGuidelines(has),
     inputSchema: subagentInputSchema(has),
     execution: { mode: "background", traceKind: "subagent", childHasOwnViewport: true },
@@ -80,15 +79,15 @@ export function subagentToolDefinition(has: CapabilityCheck): AdvertisedTool {
   }
 }
 
-export function createSubagentTool(deps: SubagentDispatchDeps, has: CapabilityCheck): RuntimeTool {
+export function createSubagentTool(deps: SubagentDispatchDeps, has: CapabilityCheck, unattendedChat: boolean): RuntimeTool {
   const dispatch = createSubagentDispatch({ ...deps, failureSummarizerForChild: childFailureSummarizer(deps) });
   // ToolContext structurally satisfies the narrower SubagentContext.
-  return subagentToolWith(dispatch.execute, has);
+  return subagentToolWith(dispatch.execute, has, unattendedChat);
 }
 
 /** The dispatch tool under the tree check `has` with the given handler behind it. */
-export function subagentToolWith(execute: RuntimeTool["execute"], has: CapabilityCheck): RuntimeTool {
-  return { ...subagentToolDefinition(has), execute };
+export function subagentToolWith(execute: RuntimeTool["execute"], has: CapabilityCheck, unattendedChat: boolean): RuntimeTool {
+  return { ...subagentToolDefinition(has, unattendedChat), execute };
 }
 
 /** The Resume of a child, from its parent's `process` call or a person's

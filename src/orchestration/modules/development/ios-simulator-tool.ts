@@ -165,7 +165,6 @@ export function createIosSimulatorTool(deps: IosSimulatorToolDeps): RuntimeTool 
     name: "ios_simulator",
     action: "shell_exec",
     description: DESCRIPTION,
-    promptSnippet: "Observe and pilot the iOS Simulator through semantic UI automation",
     promptGuidelines: GUIDELINES,
     inputSchema: INPUT_SCHEMA,
     validatesOwnInput: true,

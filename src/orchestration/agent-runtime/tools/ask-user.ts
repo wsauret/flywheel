@@ -105,7 +105,7 @@ function askUserInputSchema(deps: AskUserToolDeps): AskUserInput {
 /** When a chat agent may ask through the decision UI. Both chat prompts and this tool's description state it. */
 export const ASK_USER_DISCUSSION_RULE = "While the user is asking questions or discussing, reply in prose and keep the discussion going. Do not call `ask_user` then. Use `ask_user` only after the discussion has settled on something, to get a final confirmation or a decision you cannot make yourself.";
 
-const ASK_USER_BASE: Pick<RuntimeTool, "name" | "action" | "description" | "promptSnippet" | "unboundedDuration" | "isConcurrencySafe" | "deferUntilAssistantCommitted"> = {
+const ASK_USER_BASE: Pick<RuntimeTool, "name" | "action" | "description" | "unboundedDuration" | "isConcurrencySafe" | "deferUntilAssistantCommitted"> = {
   name: "ask_user",
   action: "ask_user",
   description: [
@@ -120,7 +120,6 @@ const ASK_USER_BASE: Pick<RuntimeTool, "name" | "action" | "description" | "prom
     "If you recommend a default, put it first and set `recommended: true`.",
     "For multi-question forms, give each question a short `header` (≤12 chars) for the navigation chips.",
   ].join(" "),
-  promptSnippet: "Ask the user for a required decision",
   // Legitimately blocks on a human, which can take far longer than any
   // other tool call; the dispatcher's generic inactivity watchdog would
   // otherwise kill a question the user simply hasn't answered yet.

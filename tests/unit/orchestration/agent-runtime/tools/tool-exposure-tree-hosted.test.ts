@@ -28,7 +28,7 @@ describe("tool exposure of a tree-hosted agent", () => {
     const checkpoint: ConversationCheckpointOwner = { read: async () => undefined, replace: unused, decide: unused };
     const schema: HandoffToolSchema = { input: { type: "object", properties: { summary: { type: "string" } }, required: ["summary"] } };
     const advertised = (tool: RuntimeTool | undefined) => tool && JSON.stringify({
-      name: tool.name, description: tool.description, inputSchema: tool.inputSchema, promptSnippet: tool.promptSnippet, promptGuidelines: tool.promptGuidelines,
+      name: tool.name, description: tool.description, inputSchema: tool.inputSchema, promptGuidelines: tool.promptGuidelines,
     });
     const surfaced = await plan({ checkpoint, handoff: { schema } });
     const hosted = await plan({ treeHosted: true });
@@ -50,7 +50,7 @@ describe("tool exposure of a tree-hosted agent", () => {
 
   it("advertises a tree-hosted agent's surface-less module tools with a surfaced agent's bytes and refuses their calls", async () => {
     const advertised = (tool: RuntimeTool | undefined, withGuidelines = true) => tool && JSON.stringify({
-      name: tool.name, description: tool.description, inputSchema: tool.inputSchema, promptSnippet: tool.promptSnippet,
+      name: tool.name, description: tool.description, inputSchema: tool.inputSchema,
       ...(withGuidelines ? { promptGuidelines: tool.promptGuidelines } : {}),
     });
     const webSearch = { available: () => true, run: async () => { throw new Error("unused in this test"); } };

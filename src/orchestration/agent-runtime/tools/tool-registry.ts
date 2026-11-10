@@ -121,7 +121,7 @@ function sessionCheckpoint(kind: CheckpointToolKind, registryOrder: number): Too
 }
 
 function nativeProcess({ kernel }: ToolDeps): ToolFactoryResult {
-  const unattendedChat = kernel.purpose.kind === "unattended-chat";
+  const unattendedChat = kernel.unattendedTree === true;
   if (!kernel.backgroundTasks) return { unusable: { tool: processToolDefinition(unattendedChat), reason: "no background execution owner available" } };
   const producers = canonicalModuleIds(kernel.moduleSnapshot.backgroundWorkProducerIds);
   if (producers.some((capability) => kernel.capabilities.available(capability)) || kernel.backgroundTasks.activeTaskCount() > 0) {
@@ -140,10 +140,11 @@ function startsChildSession(planned: ReadonlyMap<string, RuntimeTool>, registry:
 }
 
 function messageSession({ kernel }: ToolDeps): ToolFactoryResult {
-  const unattendedChat = kernel.purpose.kind === "unattended-chat";
-  if (!kernel.sessions) return { unusable: { tool: messageSessionToolDefinition(unattendedChat), reason: "no session messaging available" } };
-  const tool = createMessageSessionTool(kernel.sessions, kernel.backgroundTasks, unattendedChat);
-  if (!unattendedChat) return { tool };
+  const unattendedTree = kernel.unattendedTree === true;
+  if (!kernel.sessions) return { unusable: { tool: messageSessionToolDefinition(unattendedTree), reason: "no session messaging available" } };
+  const tool = createMessageSessionTool(kernel.sessions, kernel.backgroundTasks, unattendedTree);
+  // Only the root reaches no session that it did not start; a child keeps the channel to its parent.
+  if (kernel.purpose.kind !== "unattended-chat") return { tool };
   const registry = toolRegistryFromComposition(kernel.moduleSnapshot);
   return { tool, refine: (planned) => startsChildSession(planned, registry) ? { tool } : { reason: `${UNATTENDED_CHAT_PEERS}, and no planned tool starts a child session` } };
 }

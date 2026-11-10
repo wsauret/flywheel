@@ -174,7 +174,6 @@ export interface RuntimeTool {
   name: string;
   action: ToolAction;
   description: string;
-  promptSnippet?: string;
   promptGuidelines?: readonly string[];
   /** Guidelines resolved while each request assembles its system prompt. */
   livePromptGuidelines?: () => readonly string[];

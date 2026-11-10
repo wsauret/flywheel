@@ -96,6 +96,10 @@ export interface KernelToolDeps {
   /** Next-request policy captured at the same admission boundary as tools and providers. */
   readonly runtimeConfig: RuntimeConfigRequestCapture;
   readonly purpose: AgentPurpose;
+  /** Set when no person reads this request's tree: the root's capability boundary is unattended, and every agent and
+   *  side call of the tree inherits it. Tool words that serve a person read this, never the agent's own purpose, so
+   *  every agent of one tree advertises the same bytes (ARCH-CONTEXT-018, PI-AGENT-121). */
+  readonly unattendedTree?: true;
   /** The model that serves this request. Absent for a capability plan (`planRunCapabilities`), which plans the run's
    *  tools with no model route and makes no request, so its tools are never called. */
   readonly servingModel?: ServingModel;

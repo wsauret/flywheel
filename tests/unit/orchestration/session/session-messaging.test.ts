@@ -84,7 +84,6 @@ describe("message_session prompting", () => {
     const kinds: PromptKind[] = ["chat", "subagent", "workflow-agent", "headless"]
     for (const promptKind of kinds) {
       const prompt = renderSystemPrompt(buildSystemPrompt(promptOptions({ tools: [tool], promptKind })))
-      expect(prompt).toContain("Ask a blocking question, answer one, or revise your own child's instructions")
       expect(prompt).toContain("One message is one question, one answer, one revision of your own child's instructions, or one thing your person asked you to send.")
       expect(prompt).toContain("Never acknowledge, confirm, promise a later update, or report status.")
       expect(prompt).toContain("Return delegated results through handoff, not message_session.")

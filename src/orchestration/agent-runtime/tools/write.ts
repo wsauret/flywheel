@@ -54,7 +54,6 @@ function createWriteDefinition(updateTool?: string): RuntimeTool {
     name: "write",
     action: "file_write",
     description: "Create a file or replace a whole existing file, including any parent directories. Replacement requires the current version of the file, read with the read tool or written with a file-editing tool during this run. Shell reads and search results do not count. Write refuses a replacement when the current bytes differ from that version. Use the file-editing tool to change part of a file. A new file receives the content exactly as supplied; display prefixes are not stripped and line endings are not transformed. A replaced file keeps its byte-order mark and line-ending style. NEVER proactively create documentation files (*.md) or README files unless explicitly requested.",
-    promptSnippet: "Create files with exact content, or replace a whole file read or written at its current version during this run.",
     inputSchema: WRITE_INPUT_SCHEMA,
     // Mutates the filesystem: not gate-safe, but the target is declarable,
     // so disjoint writes in one batch overlap in time (path-scoped gate

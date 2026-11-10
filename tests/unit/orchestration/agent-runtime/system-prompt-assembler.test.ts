@@ -6,7 +6,6 @@ import { join } from "node:path";
 import {
   buildSystemPrompt as buildSystemPromptTiers,
   buildSystemPromptParts,
-  firstSentence,
   renderToolContext,
   renderCommunicationBlock,
   type ToolPromptFields,
@@ -34,7 +33,7 @@ function spec(name: string, opts: Partial<ToolPromptFields> = {}): ToolPromptFie
 }
 
 const TOOLS: ToolPromptFields[] = [
-  spec("bash", { description: "Run shell commands. Supports bash.", promptSnippet: "Execute shell commands", promptGuidelines: ["Always quote paths"], promptExamples: "bash ls -la" }),
+  spec("bash", { description: "Run shell commands. Supports bash.", promptGuidelines: ["Always quote paths"], promptExamples: "bash ls -la" }),
   spec("read", { description: "Read files from disk. Requires path.", promptGuidelines: ["Use absolute paths"] }),
 ];
 
@@ -86,11 +85,10 @@ describe("buildSystemPrompt -- chat", () => {
   const build = (overrides: UnknownRecord = {}) =>
     buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat", chatHost: { communication: true }, ...overrides }));
 
-  it("contains core system prompt sections, tools, communication, and guidelines", () => {
+  it("contains core system prompt sections, communication, and guidelines", () => {
     const result = build();
     for (const section of CORE_SECTIONS) expect(result).toContain(section);
     expect(result).not.toContain("PROPORTIONALITY:");
-    expect(result).toContain("Available tools:");
     expect(result).toContain("COMMUNICATION:");
     expect(result).toContain("Guidelines:");
   });
@@ -345,7 +343,7 @@ describe("buildSystemPrompt -- cross-cutting", () => {
 
   it("section separator appears between known sections", () => {
     const result = buildSystemPrompt(promptOptions({ corePrompt, tools: TOOLS, envBlock: undefined, promptKind: "chat" }));
-    const between = result.slice(result.indexOf("CONSTRAINTS:"), result.indexOf("Available tools:"));
+    const between = result.slice(result.indexOf("CONSTRAINTS:"), result.indexOf("Guidelines:"));
     expect(between).toContain("---");
   });
 
@@ -355,33 +353,17 @@ describe("buildSystemPrompt -- cross-cutting", () => {
   });
 });
 
-describe("firstSentence", () => {
-  it("extracts text up to the first period-space boundary", () => {
-    expect(firstSentence("Run shell commands. Supports bash and zsh.")).toBe("Run shell commands");
-  });
-  it("trims leading whitespace then finds the first sentence boundary", () => {
-    expect(firstSentence("  \n Run shell commands. Supports bash.")).toBe("Run shell commands");
-  });
-  it("returns trimmed text when input is only whitespace plus a sentenceless string", () => {
-    expect(firstSentence("  no period here  ")).toBe("no period here");
-  });
-  it("returns empty string when period-space is at position 0", () => {
-    expect(firstSentence(". rest of text")).toBe("");
-  });
-});
-
 describe("renderToolContext", () => {
-  it("produces Available tools, Guidelines, and Examples in one block", () => {
+  it("produces Guidelines and Examples in one block, with no list of the tools", () => {
     const result = renderToolContext(
       [
         spec("bash", { description: "Run shell commands. Supports bash.", promptGuidelines: ["Always quote paths"], promptExamples: "bash ls -la" }),
-        spec("read", { description: "Read files from disk. Requires path.", promptSnippet: "Read files from disk" }),
+        spec("read", { description: "Read files from disk. Requires path." }),
       ],
       ["Be concise in your responses."],
     );
-    expect(result).toContain("Available tools:");
-    expect(result).toContain("- bash: Run shell commands");
-    expect(result).toContain("- read: Read files from disk");
+    expect(result).not.toContain("Available tools");
+    expect(result).not.toContain("Read files from disk");
     expect(result).toContain("Guidelines:");
     expect(result).toContain("- Always quote paths");
     expect(result).toContain("- Be concise in your responses.");
@@ -390,26 +372,8 @@ describe("renderToolContext", () => {
     expect(result).toContain("bash ls -la");
   });
 
-  it("uses promptSnippet when present, firstSentence fallback when absent", () => {
-    const result = renderToolContext(
-      [
-        spec("bash", { description: "Run shell commands. Long desc.", promptSnippet: "Execute shell" }),
-        spec("custom_read", { description: "Read files from disk. Requires path." }),
-      ],
-      [],
-    );
-    expect(result).toContain("- bash: Execute shell");
-    expect(result).toContain("- custom_read: Read files from disk");
-  });
-
   it("returns undefined for empty tools array", () => {
     expect(renderToolContext([], [])).toBeUndefined();
-  });
-
-  it("appends footer after tool listing", () => {
-    const footer = "Custom tools may be added.";
-    const result = renderToolContext([spec("bash", { description: "Run shell commands." })], [], footer);
-    expect(result).toContain(footer);
   });
 
   it("deduplicates identical guidelines", () => {
@@ -424,8 +388,8 @@ describe("renderToolContext", () => {
   });
 
   it("omits Guidelines section when none exist", () => {
-    const result = renderToolContext([spec("custom", { description: "Run shell." })], []);
-    expect(result).toContain("Available tools:");
+    const result = renderToolContext([spec("custom", { description: "Run shell.", promptExamples: "custom run" })], []);
+    expect(result).toContain("# Examples");
     expect(result).not.toContain("Guidelines:");
   });
 
@@ -571,7 +535,7 @@ function assertSectionInventory(compiled: string, expectedSections: string[]): v
 
 describe("regression -- subagent section inventory", () => {
   const compiled = buildSystemPrompt(promptOptions({ corePrompt, engineeringDoctrine, tools: TOOLS, envBlock: undefined, promptKind: "subagent" }));
-  assertSectionInventory(compiled, [...CORE_SECTIONS, ...DOCTRINE_SECTIONS, "Available tools:", "Guidelines:"]);
+  assertSectionInventory(compiled, [...CORE_SECTIONS, ...DOCTRINE_SECTIONS, "Guidelines:"]);
 
   it("does NOT contain sections reserved for step-agent/chat", () => {
     expect(compiled).not.toContain("COMMUNICATION:");
@@ -582,7 +546,7 @@ describe("regression -- subagent section inventory", () => {
 describe("regression -- step-agent section inventory", () => {
   const compiled = buildSystemPrompt(promptOptions({ corePrompt, engineeringDoctrine, tools: TOOLS, envBlock: undefined, promptKind: "workflow-agent", agentsMd: "Always use Bun, not Node." }));
   assertSectionInventory(compiled, [
-    ...CORE_SECTIONS, ...DOCTRINE_SECTIONS, "Available tools:", "Guidelines:", "# Examples", "# AGENTS.md Instructions",
+    ...CORE_SECTIONS, ...DOCTRINE_SECTIONS, "Guidelines:", "# Examples", "# AGENTS.md Instructions",
   ]);
 
   it("does NOT contain communication sections reserved for chat", () => {

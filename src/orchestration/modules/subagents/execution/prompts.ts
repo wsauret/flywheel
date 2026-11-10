@@ -57,8 +57,9 @@ export const MIN_DISPATCH_RATIONALE_LENGTH = 30;
 
 /** The dispatch tool's description for the tree check `has`, so every agent of a tree reads the same bytes. The
  *  catalog it names renders in the session tier (`renderSubagentRoster`). The general agent and a fork, which copies
- *  the dispatcher as the general agent does, are named only while `has` offers the general agent. */
-export const subagentDescription = (has: CapabilityCheck): string => `Launch a specialized subagent to handle a focused subtask autonomously in an isolated context. Persona agent types have their declared tools and system prompt.${has("type:general") ? " The general agent uses your model and system instructions with a child tool surface derived by the runtime registry." : ""}
+ *  the dispatcher as the general agent does, are named only while `has` offers the general agent. An unattended chat
+ *  has no person who watches a child stream (PI-AGENT-121). */
+export const subagentDescription = (has: CapabilityCheck, unattendedChat: boolean): string => `Launch a specialized subagent to handle a focused subtask autonomously in an isolated context. Persona agent types have their declared tools and system prompt.${has("type:general") ? " The general agent uses your model and system instructions with a child tool surface derived by the runtime registry." : ""}
 
 Selecting the agent (required): every dispatch MUST pass \`persona\` as the FIRST field; persona names which agent runs and has no default. Use a persona name from the Subagents catalog in your system prompt. If none fits the task, do the work directly instead of dispatching.
 
@@ -68,7 +69,6 @@ Steering a running child: use message_session to revise its instructions. You ca
 
 Writing the prompt:
 The subagent has not seen your conversation. Give it the goal, relevant file paths, constraints, and the output format you want; a well-scoped task needs only a few sentences. State a length only when your own context budget demands one; by default the subagent sizes its report to what it finds.
-When cwd targets a Git worktree, the parent keeps ownership of integrating and cleaning up that worktree.
 
 The runtime records your approved checkpoint Design intent and Decisions in the child's conversation, read-only. Keep your checkpoint current before dispatch; do not copy its intent into the brief. Everything else in an implementation brief is implementation design the subagent may revise and must report.
 
@@ -78,9 +78,9 @@ ${has("type:general") ? `The exception is a dispatch with fork: true (any agent 
 
 ` : ""}Never delegate understanding. Do not write "based on your findings, fix the bug" or "based on the research, implement it." Prompts that prove you understood (specific file paths, line numbers, what to change) produce better work.
 
-Rationale: explain why delegation is worthwhile (minimum ${MIN_DISPATCH_RATIONALE_LENGTH} characters); follow the parameter guidance.
+Rationale: explain why delegation is worthwhile (minimum ${MIN_DISPATCH_RATIONALE_LENGTH} characters); follow the parameter guidance.${unattendedChat ? "" : `
 
-The subagent's streaming output (text, tool calls) is visible to the user in real time.`;
+The subagent's streaming output (text, tool calls) is visible to the user in real time.`}`;
 
 /** Closure and turn-budget preamble. A function because the budget is the
  *  dispatched agent definition's maxTurns, not a constant of the template,
@@ -114,7 +114,7 @@ When finished, you MUST call \`handoff\` exactly once with your structured resul
 
 Your handoff is the result, not a replay of the run. For exploration, analysis, and review assignments, the report is the deliverable: include every material finding the assignment requested, with one claim per line and its \`file:line\` evidence. For implementation assignments, submit a concise completion record with the outcome, changed files, exact verification results, every material deviation from the assignment's stated approach (what it said, what you did instead, why, and the evidence), any work that is not done, and any parent action still required. Do not paste command output or replay the work log. In every handoff, omit preamble, process narration, repeated points, and restatement of the assignment.
 
-When a choice that your tools cannot settle stops the work, such as a conflict with the approved design or with an explicit prohibition of the person, message your parent with message_session and wait for its reply. Your parent holds the design and asks the person when it must. Do not give up due to uncertainty or missing information obtainable via your tools.`;
+Do not give up due to uncertainty or missing information obtainable via your tools.`;
 
 /** Build the subagent addendum appended after the persona (or inherited
  *  parent) instructions. The result is the child runner's `task`, which the

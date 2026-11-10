@@ -17,7 +17,7 @@ export const DEFAULT_WAIT_SECONDS = 240;
 // Bun converts larger timer durations to one millisecond.
 const MAX_WAIT_SECONDS = 2147483.647;
 const PROCESS_WAIT_TIMEOUT_SCHEMA = { type: "number", exclusiveMinimum: 0, maximum: MAX_WAIT_SECONDS, description: "Seconds to wait for managed work, from your estimate of its remaining duration. Estimate all managed work. Omitted: 240 seconds. Example: 7200 for two hours. Completion or expiry wakes you without stopping work. Every new wait needs a fresh estimate; this bounds only the wait." } as const;
-const PROCESS_WAIT_GUIDANCE = "When everything left depends on managed work, call process with action='wait' and soft_timeout seconds from your estimate of remaining work. Wait includes every managed command, including one that transferred from the foreground. Never stop or restart a command just to wait for it. Estimate all managed work; use 7200 for two hours. Without an estimate the wait lasts at most four minutes. Completion or expiry consumes this one wait without stopping work. After expiry or a status check, if nothing needs action or a reply, wait again with a fresh remaining-work estimate and no visible text. Never poll or sleep instead. Messages remain subject to their existing relation and purpose restrictions; do not send status chatter.";
+const PROCESS_WAIT_GUIDANCE = "When everything left depends on managed work, call process with action='wait' and soft_timeout seconds from your estimate of remaining work. Wait includes every managed command, including one that transferred from the foreground. Never stop or restart a command just to wait for it. Estimate all managed work; use 7200 for two hours. Without an estimate the wait lasts at most four minutes. The turn's other calls run first. Completion or expiry consumes this one wait without stopping work. After a notification, expiry, or status check, if nothing needs action or a reply, wait again with a fresh remaining-work estimate and no visible text. Never poll or sleep instead. Messages remain subject to their existing relation and purpose restrictions; do not send status chatter.";
 
 /** Validates a native wait estimate against the runtime's timer range. */
 export function processWaitSeconds(input: RuntimeToolInput): number | undefined {
@@ -259,7 +259,6 @@ export function processToolDefinition(unattendedChat: boolean): AdvertisedTool {
     description: unattendedChat
       ? `${PROCESS_SCOPE} ${PROCESS_ACTIONS}`
       : `${PROCESS_SCOPE} Sessions that you did not start are in list_sessions. ${PROCESS_ACTIONS} The person sees each interrupt, resume, and stop of a child in the transcript; the other actions do not render there.`,
-    promptSnippet: "List, inspect, wait for, stop, interrupt, or resume the work you started, or read its output",
     promptGuidelines: [
       PROCESS_WAIT_GUIDANCE,
     ],

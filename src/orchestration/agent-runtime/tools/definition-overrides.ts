@@ -48,7 +48,6 @@ export const DEFINITION_OVERRIDES_TOOL_DEFINITION: AdvertisedTool = {
   name: "definition_overrides",
   action: "ui_meta",
   description: "Inspect definition overrides and prepare exact keep-mine, adopt-default, or verified rebase results. A preparation is not approval. After preparation, get the person's confirmation for the preparation_id, then repeat with confirmation_id.",
-  promptSnippet: "Review and resolve user definition overrides",
   inputSchema: INPUT_SCHEMA,
   isConcurrencySafe: false,
   deferUntilAssistantCommitted: true,

@@ -183,6 +183,47 @@ describe("system prompt of an unattended chat", () => {
     expect(withChildren.parts.map((part) => part.label)).not.toContain("session identity");
   });
 
+  // PI-AGENT-121: no person watches a child stream or reads a message of an unattended chat, and its run has no
+  // installed command to inspect its own session records. A subagent runs one brief, so it never self-debugs.
+  test("leaves out the streaming sentence, the person rules of messaging, and self-debugging, where the interactive chat keeps them", async () => {
+    const STREAMING = "The subagent's streaming output (text, tool calls) is visible to the user in real time.";
+    const PERSON = ["Your person sees every message that you send or receive", "When a message needs a decision from your person", "Return delegated results through handoff"];
+    const SELF_DEBUG = "flywheel events search";
+    const surface = async (purpose: AgentPurpose, treeRoot = purpose) => {
+      const { planned, parts } = await request(purpose, { treeRoot });
+      const messageSession = planned.tools.get("message_session");
+      return {
+        tools: JSON.stringify([...planned.tools.values()].map((tool) => [tool.name, tool.description, tool.promptGuidelines, tool.inputSchema])),
+        // The tools whose words depend on whether a person reads the tree, which every agent of the tree shares.
+        treeWorded: JSON.stringify(["bash", "subagent", "message_session", "process"].map((name) => planned.tools.get(name)).map((tool) => [tool?.description, tool?.promptGuidelines, tool?.inputSchema])),
+        subagent: planned.tools.get("subagent")?.description ?? "",
+        messaging: `${messageSession?.description ?? ""}\n${messageSession?.promptGuidelines?.join("\n") ?? ""}`,
+        prompt: parts.map((part) => part.text).join("\n"),
+      };
+    };
+    const chat = await surface(INTERACTIVE);
+    const unattended = await surface(UNATTENDED);
+
+    expect(chat.subagent).toContain(STREAMING);
+    for (const rule of PERSON) expect(chat.messaging).toContain(rule);
+    expect(chat.prompt).toContain(SELF_DEBUG);
+    expect((await surface({ kind: "workflow-agent", briefScope: { briefId: "brief" }, workflowAttemptId: "attempt" })).prompt).toContain(SELF_DEBUG);
+
+    expect(unattended.subagent).not.toBe("");
+    expect(unattended.subagent).not.toContain(STREAMING);
+    expect(unattended.messaging).toContain("A message is not a conversation.");
+    for (const rule of PERSON) expect(unattended.messaging).not.toContain(rule);
+    expect(unattended.prompt).not.toContain(SELF_DEBUG);
+
+    // A child of a tree reads the tree's words, not its own purpose's (ARCH-CONTEXT-018).
+    for (const [treeRoot, rootSurface] of [[INTERACTIVE, chat], [UNATTENDED, unattended]] as const) {
+      const [first, second] = await Promise.all([surface(SUBAGENT, treeRoot), surface(SUBAGENT, treeRoot)]);
+      expect(first.prompt).not.toContain(SELF_DEBUG);
+      expect(second.tools).toBe(first.tools);
+      expect(first.treeWorded).toBe(rootSurface.treeWorded);
+    }
+  });
+
   // The coding methods serve an unattended run; a method that a person answers or approves (`attended: true`) does
   // not, and a delegated method such as `ship` is never in a catalog.
   test("offers the skill catalog without the methods that a person answers or approves", async () => {

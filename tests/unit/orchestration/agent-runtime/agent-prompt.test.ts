@@ -28,7 +28,6 @@ const SUBAGENT_SPEC: ToolPromptFields = {
   name: "subagent",
   action: "task_subagent",
   description: "Delegate investigation or scoped work to specialized subagents",
-  promptSnippet: "Delegate independent investigation or scoped work to specialized subagents (parallelize with multiple calls)",
   promptGuidelines: [
     "Write a thorough prompt. Think of each subagent as a productive junior engineer who cannot ask follow-ups once started — if you do not include it, they will not know it. Terse prompts produce shallow results.",
   ],
@@ -110,7 +109,7 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
     expect(bashPrompt).toContain("stdout is the requested file artifact");
   });
 
-  test("bash mechanics live in the tool description and schema, not the prompt", () => {
+  test("bash mechanics live in the tool description and schema, and the mutation rule only on its field", () => {
     const bash = BASE.get("bash")!;
     const prompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
@@ -127,16 +126,15 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
     expect(bash.description).toContain("scratch scripts is a normal, expected way to work");
     const mutationGuidance = "Run Git commands as separate calls without mutates. Never chain a Git command onto a mutating command. Git commands that change the repository are refused inside mutates: true; rerun them as a separate call without mutates. Read-only Git commands, including scripts and build tools that only read Git, remain allowed inside mutating commands. Set mutates: true only when the command's purpose is to change the project files you are working on, so that the change is recorded and reviewed like an edit or write tool change. Examples: heredoc and cat > writes, sed -i, Python or Bun scripts that rewrite files, formatters, code generators, and plain mv and rm. Leave it unset when the writes are side effects of running something: installing dependencies or binaries, builds, tests, caches, and servers. Write this field first, before command. Name the target tree with cwd, not an absolute cd in the command. Use relative project paths: the command runs in a private copy, and only its changes to file contents land when it exits. Processes it starts can end when it exits, so start servers and watchers in a separate call without mutates. Git objects, the index, refs, and stash changes never land from the copy. Create files to run, such as scratch scripts, with the write tool; bash only runs them.";
     for (const fileEditTool of ["edit", "apply_patch"] as const) {
-      const { description } = bashToolSurface({ fileEditTool });
-      const prefix = `${mutationGuidance} These mutations are recorded like changes from the ${fileEditTool} and write tools. `;
-      expect(description.slice(0, prefix.length)).toBe(prefix);
-      expect(description.split(mutationGuidance)).toHaveLength(2);
+      const { description, inputSchema } = bashToolSurface({ fileEditTool });
+      expect(description).not.toContain(mutationGuidance);
       expect(description).toContain("Chain dependent commands with && or ; within one call, but keep Git commands separate from mutating commands.");
+      expect(inputSchema.properties).toEqual(expect.objectContaining({
+        mutates: { type: "boolean", description: `${mutationGuidance} These mutations are recorded like changes from the ${fileEditTool} and write tools. Cannot be combined with persist_after_exit.` },
+      }));
     }
-    expect(bashToolSurface().inputSchema.properties).toEqual(expect.objectContaining({
-      mutates: { type: "boolean", description: `${mutationGuidance} Cannot be combined with persist_after_exit.` },
-    }));
-    expect(bash.description.startsWith(mutationGuidance)).toBe(true);
+    // The hint of what a shell runs leads the description.
+    expect(bash.description.startsWith("Execute a shell command, such as tests, builds, git, servers, package managers, and scratch scripts, in an isolated session.")).toBe(true);
     expect(bash.description).toContain("Keep writes inside the project, the .flywheel folders, and registered worktrees");
     expect(prompt).not.toContain("glob_pattern (not find)");
     // The prompt keeps only the behavior contract the description does not state.
@@ -180,7 +178,7 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
 
     const alone = bashToolSurface({ has: () => false });
     expect(alone.description).not.toMatch(/write tool|edit tool|search tool|edit and write/);
-    expect(alone.description).toContain("recorded and reviewed like a file edit");
+    expect(JSON.stringify(alone.inputSchema)).toContain("recorded and reviewed like a file edit");
     expect(Object.keys(alone.inputSchema.properties ?? {})).toEqual(Object.keys(interactive.inputSchema.properties ?? {}));
     expect(JSON.stringify(alone.inputSchema)).not.toContain("write tool");
   });
@@ -202,7 +200,6 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
       promptNotes: ANTHROPIC_PROMPT_NOTES,
       tools: specs("search"),
     }));
-    expect(prompt).toContain("- search:");
     expect(prompt).not.toContain("Use search to list paths");
     const description = BASE.get("search")!.description;
     expect(description).toContain("Search file contents");
@@ -216,7 +213,6 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
       promptNotes: ANTHROPIC_PROMPT_NOTES,
       tools: specs("list"),
     }));
-    expect(prompt).toContain("- list:");
     const description = BASE.get("list")!.description;
     expect(description).not.toContain("in place of ls");
     expect(description).toContain("Use search for file contents.");
@@ -286,24 +282,26 @@ describe("buildSystemPrompt — per-tool guidance composition", () => {
     expect(headless).not.toContain(evidence);
   });
 
-  test("Available tools list reflects only loaded tools", () => {
+  test("the system prompt lists no tools: the tool definitions are the one catalog", () => {
     const prompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
       promptNotes: ANTHROPIC_PROMPT_NOTES,
       tools: specs("bash", "read", "handoff"),
     }));
-    expect(prompt).toContain("- bash:");
-    expect(prompt).toContain("- read:");
-    expect(prompt).toContain("- handoff:");
+    expect(prompt).not.toContain("Available tools");
+    expect(prompt).not.toMatch(/^- (bash|read|handoff):/m);
+    expect(prompt).not.toContain("In addition to the tools above");
   });
 
-  test("handoff guidance is included when tool is loaded", () => {
+  test("handoff guidance is included when tool is loaded, and the input shape lives only in its description", () => {
     const prompt = buildSystemPrompt(promptOptions({
       promptKind: "chat",
       promptNotes: ANTHROPIC_PROMPT_NOTES,
       tools: specs("handoff"),
     }));
-    expect(prompt).toContain("handoff fields directly");
+    expect(prompt).toContain("Finish reviews and verification before handoff");
+    expect(BASE.get("handoff")!.description).toContain("Pass the handoff fields directly as the input");
+    expect(prompt).not.toContain("handoff fields directly");
   });
 });
 
@@ -315,8 +313,8 @@ describe("buildSystemPrompt — subagent subagent", () => {
       promptNotes: ANTHROPIC_PROMPT_NOTES,
       tools: specs("bash", "read", "subagent"),
     }));
-    expect(prompt).toContain("- subagent:");
     expect(prompt).toContain("Terse prompts produce shallow results");
+    expect(prompt.split("When cwd targets a Git worktree, the parent keeps ownership of integrating and cleaning up that worktree.")).toHaveLength(2);
   });
 
   test("excludes subagent guidelines when subagent tool is not loaded", () => {
@@ -325,7 +323,7 @@ describe("buildSystemPrompt — subagent subagent", () => {
       promptNotes: ANTHROPIC_PROMPT_NOTES,
       tools: specs("bash", "read"),
     }));
-    expect(prompt).not.toContain("- subagent:");
     expect(prompt).not.toContain("Terse prompts produce shallow results");
+    expect(prompt).not.toContain("Git worktree");
   });
 });

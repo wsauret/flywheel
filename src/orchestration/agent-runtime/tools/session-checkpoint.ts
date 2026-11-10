@@ -19,7 +19,6 @@ export function checkpointToolDefinition(kind: CheckpointToolKind): AdvertisedTo
       : kind === "replace"
         ? "Replace one section of your conversation's checkpoint. The complete checkpoint must fit 24,576 UTF-8 bytes; oversized writes are refused, never truncated. Read the section before replacing it."
         : "Add a dated decision to your conversation's checkpoint in the user's own words, naming the decision it replaces, or null when it replaces none. The complete checkpoint must fit 24,576 UTF-8 bytes.",
-    promptSnippet: kind === "read" ? "Read the session checkpoint." : kind === "replace" ? "Replace one checkpoint section." : "Record a user's decision.",
     inputSchema: {
       type: "object",
       properties: kind === "read" ? {

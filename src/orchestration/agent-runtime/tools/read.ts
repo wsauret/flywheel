@@ -533,7 +533,6 @@ export function createReadDefinition(options?: ReadDefinitionOptions): RuntimeTo
     name: "read",
     action: "file_read",
     description: [READ_DESCRIPTION_HEAD, DEFAULT_READ_DESCRIPTION, READ_DESCRIPTION_TAIL].join(" "),
-    promptSnippet: "Read files (numbered text; images as base64). Supports :raw, line ranges, symbol, and structural map modes.",
     inputSchema: READ_INPUT_SCHEMA,
     inputValidationSchema: { anyOf: [
       { ...READ_INPUT_SCHEMA, properties: { ...READ_INPUT_SCHEMA.properties, path: { anyOf: [{ type: "string" }, { type: "array", items: { type: "string" } }] } } },

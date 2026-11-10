@@ -71,7 +71,7 @@ async function childRun(tool: RuntimeTool, skillId: string): Promise<{ outcome: 
   return tool.execute({ action: "child-run", skill_id: skillId, script: "finalize.sh", input: {} }, makeContext())
 }
 
-const advertised = (tool: RuntimeTool) => JSON.stringify({ name: tool.name, description: tool.description, inputSchema: tool.inputSchema, promptSnippet: tool.promptSnippet })
+const advertised = (tool: RuntimeTool) => JSON.stringify({ name: tool.name, description: tool.description, inputSchema: tool.inputSchema })
 
 describe("experiment finalizer child grant exposure", () => {
   test("every grant advertises the same skill tool, so agents of one tree share one agent host", async () => {

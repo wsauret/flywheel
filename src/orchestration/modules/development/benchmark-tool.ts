@@ -390,7 +390,6 @@ export function createBenchmarkTool(deps: BenchmarkAdmissionDeps): RuntimeTool {
     name: "benchmark",
     action: "benchmark_run",
     description: BENCHMARK_DESCRIPTION,
-    promptSnippet: "Run or resume the model A/B benchmark for one subagent persona",
     promptGuidelines: BENCHMARK_PROMPT_GUIDELINES,
     inputSchema: BENCHMARK_INPUT_SCHEMA,
     execution: { mode: "background", traceKind: "tool" },

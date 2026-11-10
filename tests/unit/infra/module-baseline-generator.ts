@@ -23,7 +23,6 @@ function runtimeToolManifest(tool: AdvertisedTool) {
     name: tool.name,
     action: tool.action,
     description: tool.description,
-    promptSnippet: tool.promptSnippet ?? null,
     promptGuidelines: tool.promptGuidelines ?? [],
     promptExamples: tool.promptExamples ?? null,
     codeMode: tool.codeMode ?? null,
@@ -113,7 +112,7 @@ export async function generateCapabilityModuleBaseline(): Promise<string> {
     semanticBundle: registration.semanticBundle,
     creation: toolCreation(registration),
   }));
-  const promptTools = tools.slice(0, 2).map(({ name, policy }) => ({ name, action: policy.action, description: `${name} stable description`, promptSnippet: `${policy.action} stable snippet` }));
+  const promptTools = tools.slice(0, 2).map(({ name, policy }) => ({ name, action: policy.action, description: `${name} stable description` }));
   const manifest = {
     format: "capability-module-baseline-v3",
     tools: { actions: ToolActionSchema.literals, registrations: tools },

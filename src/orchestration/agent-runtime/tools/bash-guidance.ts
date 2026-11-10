@@ -24,7 +24,7 @@ const commandProperties = (background: boolean, persistence: boolean) => ({
   raw_output: { type: "boolean", description: "Skip output compression for this call (default: false). Output from a command that starts with bun test or bun run test drops passing-test lines when it exceeds 200 lines. Other output over about 28,000 bytes keeps about the first 6,000 and the last 12,000 bytes, and error or warning lines. Each dropped run shows an omission marker, and a notice names the file that holds the full output. Prefer streaming and chunked processing over loading everything into memory." },
 });
 
-const HEAD_START = "Execute a shell command in an isolated session. Each call spawns a fresh process; environment variables, working directory changes, and shell state do not persist between calls. Commands run in bash on macOS/Linux and PowerShell on Windows. Use the cwd parameter to set the working directory instead of cd. Always quote paths containing spaces or special characters (parentheses, brackets). Chain dependent commands with && or ; within one call";
+const HEAD_START = "Execute a shell command, such as tests, builds, git, servers, package managers, and scratch scripts, in an isolated session. Each call spawns a fresh process; environment variables, working directory changes, and shell state do not persist between calls. Commands run in bash on macOS/Linux and PowerShell on Windows. Use the cwd parameter to set the working directory instead of cd. Always quote paths containing spaces or special characters (parentheses, brackets). Chain dependent commands with && or ; within one call";
 const headEnd = (background: boolean) => `. A command that reads text typed into the terminal, such as a password, passphrase, or confirmation prompt, or a login that asks for a code or token at the prompt, belongs to the person: ${background ? "never start it in the background, and ask" : "ask"} the person to run it. A login that sends the person to a browser and only waits for the browser to finish, such as \`aws sso login\` or another SSO or device-code flow, reads nothing from the terminal: run it yourself in the foreground, and before you start it, tell the person to complete it in the browser.`;
 // The commands that a person runs at the prompt or in a browser have no reader in an unattended chat.
 const head = (mutatingDeclaration: boolean, background: boolean, unattendedChat: boolean) => `${HEAD_START}${mutatingDeclaration ? ", but keep Git commands separate from mutating commands" : ""}${unattendedChat ? "." : headEnd(background)}`;
@@ -48,14 +48,13 @@ const WRITE_ROOTS = "Keep writes inside the project, the .flywheel folders, and 
  *  for the models whose contract is the freeform patch envelope. */
 export type FileEditToolName = "edit" | "apply_patch";
 
-/** The shell prompt names the edit tool the request actually offers. A model
- *  told to use "edit" when its tool is apply_patch looks for a tool that is
- *  not there and concludes it cannot edit files at all. It names only the
- *  file tools that the tree advertises. */
-function tail(fileEditTool: FileEditToolName, has: CapabilityCheck): string {
+/** The `mutates` field is the one home of the mutation rule (ARCH-CONTEXT-035). It names the edit tool the request
+ *  actually offers: a model told to use "edit" when its tool is apply_patch looks for a tool that is not there and
+ *  concludes it cannot edit files at all. It names only the file tools that the tree advertises. */
+function mutatesDescription(fileEditTool: FileEditToolName, has: CapabilityCheck, persists: boolean): string {
   const tools = [...(has("edit") ? [fileEditTool] : []), ...(has("write") ? ["write"] : [])];
   const recorded = tools.length === 0 ? "" : ` These mutations are recorded like changes from the ${tools.join(" and ")} tool${tools.length > 1 ? "s" : ""}.`;
-  return `${mutationGuidance(has)}${recorded}`;
+  return `${mutationGuidance(has)}${recorded}${persists ? " Cannot be combined with persist_after_exit." : ""}`;
 }
 
 /** The rule a read-only agent's task text states. The shell tools themselves
@@ -107,12 +106,12 @@ export function bashToolSurface({ fileEditTool = "edit", mutatingDeclaration = t
   const fields = commandProperties(background, persists);
   const windowsSearch = has("search") && (!unattendedChat || platform === "win32");
   return {
-    description: [...(mutatingDeclaration ? [tail(fileEditTool, has)] : []), head(mutatingDeclaration, background, unattendedChat), background ? backgroundGuidance(unattendedChat) : foregroundOnly(unattendedChat), VENV, SCRATCH, ...(writeGuard ? [WRITE_ROOTS] : []), SEARCH, ...(windowsSearch ? [WINDOWS_SEARCH] : [])].join(" "),
+    description: [head(mutatingDeclaration, background, unattendedChat), background ? backgroundGuidance(unattendedChat) : foregroundOnly(unattendedChat), VENV, SCRATCH, ...(writeGuard ? [WRITE_ROOTS] : []), SEARCH, ...(windowsSearch ? [WINDOWS_SEARCH] : [])].join(" "),
     promptGuidelines: [SHELL_OUTPUT_GUIDANCE],
     inputSchema: {
       type: "object",
       properties: mutatingDeclaration
-        ? { mutates: { type: "boolean", description: `${mutationGuidance(has)}${persists ? " Cannot be combined with persist_after_exit." : ""}` }, ...fields }
+        ? { mutates: { type: "boolean", description: mutatesDescription(fileEditTool, has, persists) }, ...fields }
         : fields,
       required: ["command"],
     },

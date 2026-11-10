@@ -10,7 +10,7 @@ import { agentCapabilityCheck } from "../../../../../src/orchestration/agent-run
 
 describe("subagent tool — execute validation", () => {
     it("does not advertise a per-dispatch model tier", () => {
-      const tool = createSubagentTool(makeDeps(), () => true);
+      const tool = createSubagentTool(makeDeps(), () => true, false);
       const schema = tool.inputSchema;
       // Providers require an object root; a bare union is rejected at request time.
       expect(schema.type).toBe("object");
@@ -35,7 +35,7 @@ describe("subagent tool — execute validation", () => {
     });
 
     it("lets the dispatcher's central validator refuse a dispatch without its rationale and prompt", () => {
-      const tool = createSubagentTool(makeDeps(), () => true);
+      const tool = createSubagentTool(makeDeps(), () => true, false);
       expect(validateToolInput({ persona: "explorer" }, tool.inputSchema)).toEqual([
         "The required parameter `rationale` is missing",
         "The required parameter `prompt` is missing",

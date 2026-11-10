@@ -12,7 +12,7 @@ describe("subagent tool — registry", () => {
       expect(roster).toContain("read-only");
       expect(roster).toContain("- implementer: ");
       // The roster renders in the session tier, so the tool bytes are the same for every agent.
-      expect(subagentDescription(() => true)).not.toContain("- explorer: ");
+      expect(subagentDescription(() => true, false)).not.toContain("- explorer: ");
     });
 
     it("tells an agent with no dispatchable type to do the work directly", () => {

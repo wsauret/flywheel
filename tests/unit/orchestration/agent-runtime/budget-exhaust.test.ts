@@ -257,7 +257,7 @@ describe("budget exhaust turn under failover", () => {
       ["handoff", handoffTool],
       ["other", {
         name: "other", action: "ui_meta", description: "other tool", inputSchema: { type: "object", properties: {} },
-        promptSnippet: "other", promptGuidelines: [], isConcurrencySafe: true,
+        promptGuidelines: [], isConcurrencySafe: true,
         execute: async () => ({ content: "unused", outcome: "ok" }),
       } satisfies RuntimeTool],
     ]);
@@ -325,7 +325,7 @@ describe("budget exhaust turn under failover", () => {
       ["handoff", { ...handoffDefinition, execute: async () => ({ content: "written", outcome: "ok" as const }) }],
       ["other", {
         name: "other", action: "ui_meta", description: "other tool", inputSchema: { type: "object", properties: {} },
-        promptSnippet: "other", promptGuidelines: [], isConcurrencySafe: true,
+        promptGuidelines: [], isConcurrencySafe: true,
         execute: async () => { otherRuns += 1; return { content: "ran", outcome: "ok" }; },
       } satisfies RuntimeTool],
     ]);

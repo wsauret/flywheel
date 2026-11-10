@@ -103,7 +103,6 @@ export const searchDefinition: RuntimeTool = {
   name: "search",
   action: "search",
   description: `Search file contents using regex or literal patterns via native ripgrep; output_mode selects the result shape and tail reads the end of a file. Supports full regex syntax (e.g. "log.*Error", "function\\\\s+\\\\w+"). Literal braces need escaping ("interface\\\\{\\\\}" to find "interface{}" in Go). Searches ignored files, but a directory search skips artifact directories (${PRUNED_DIR_NAMES.slice(0, 6).join(", ")}, and similar), the runtime state directory, and every directory that the repository's .gitignore excludes; pass path at or inside one to search it explicitly. A search is stopped with an error after ${SEARCH_CPU_LIMIT_SECONDS} seconds of processing time, or after ${SEARCH_WALL_BACKSTOP_SECONDS} seconds spent waiting on slow file reads; narrow path/glob/type when that happens. path names one file or directory; glob and type constrain which files are searched, so omit path and constrain with glob to cover several roots at once. PERFORMANCE TIP: Use multiple independent search tool calls in a single response to search different patterns or directories in parallel; do not combine multiple paths in one path value.`,
-  promptSnippet: "Search file contents by regex/literal via ripgrep (matching_files or content mode). ",
   promptExamples: SEARCH_PROMPT_EXAMPLES,
   inputSchema: SEARCH_INPUT_SCHEMA,
   isConcurrencySafe: true,

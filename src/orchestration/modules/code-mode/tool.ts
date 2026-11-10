@@ -51,7 +51,6 @@ export function createCodeTool(options: CodeToolOptions): RuntimeTool {
     action: "shell_exec",
     description: description.join("\n"),
     promptGuidelines: [
-      ...description,
       options.bash
         ? "Heavy computation and gigabyte-scale data belong in Bash; exceeding the heap growth budget terminates the program. Program intermediates never enter model context."
         : "Exceeding the heap growth budget terminates the program. Program intermediates never enter model context.",

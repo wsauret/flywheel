@@ -233,7 +233,7 @@ export function prepareToolCall(rawCall: ToolCall, tools: ReadonlyMap<string, Ru
       tool,
       input: call.input,
       validationResult: {
-        content: `Unknown tool '${call.name}'; this tool is not registered in the current session. Available tools: ${available}. Either you misspelled the tool name (check the Available tools list in your system prompt) or the tool is not loaded for this run; pick one from the available set.`,
+        content: `Unknown tool '${call.name}'; this tool is not registered in the current session. Available tools: ${available}. Either you misspelled the tool name or the tool is not loaded for this run; pick one from the available set.`,
         outcome: "error",
       },
     };

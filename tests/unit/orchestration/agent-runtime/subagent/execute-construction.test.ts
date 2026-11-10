@@ -189,9 +189,11 @@ describe("subagent tool — execute runner construction", () => {
       expect(instructions).not.toContain("a rich one produces a long handoff");
     });
 
-    it("tells the child to message its parent when a choice its tools cannot settle stops the work, and names no question tool", () => {
+    // Session identity, which names the parent, is the one home of the rule to message the parent (ARCH-CONTEXT-035).
+    it("tells the child not to give up on uncertainty, leaves the message-your-parent rule to session identity, and names no question tool", () => {
       const instructions = buildSubagentTask("You are a worker.", holding(["read", "handoff", "message_session"]), 30);
-      expect(instructions).toContain("message your parent with message_session and wait for its reply");
+      expect(instructions).toContain("Do not give up due to uncertainty or missing information obtainable via your tools.");
+      expect(instructions).not.toContain("message your parent");
       expect(instructions).not.toContain("ask_user");
       expect(instructions).not.toContain("If truly blocked");
     });

@@ -82,7 +82,9 @@ export async function requestSystemPromptOptions(facts: RequestPromptFacts): Pro
     // Agents of a workflow and subagents both work unattended toward a handoff, so they
     // share one stable tier and its prompt cache. An unattended chat works unattended toward its final reply.
     ...(purpose.kind === "workflow-agent" || purpose.kind === "subagent" || purpose.kind === "unattended-chat" ? { unattended: true as const } : {}),
-    ...(facts.selfDebug ? { selfDebug: true as const } : {}),
+    // Self-debugging is host-level work: a chat and the agents of a workflow investigate their realm's sessions. A
+    // subagent runs one brief, and an unattended chat has no installed command to run (PI-AGENT-121).
+    ...(facts.selfDebug && (isChatFacing({ purpose }) || purpose.kind === "workflow-agent") ? { selfDebug: true as const } : {}),
     capabilities,
     moduleFragments,
     ...(facts.sessionIdentity ? { sessionIdentity: facts.sessionIdentity } : {}),

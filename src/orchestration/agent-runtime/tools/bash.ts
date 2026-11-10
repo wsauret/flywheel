@@ -304,7 +304,6 @@ export function createBashDefinition(options?: {
     name: "bash",
     action: "shell_exec",
     ...bashToolSurface({ ...options?.advertised, ...(options?.fileEditTool ? { fileEditTool: options.fileEditTool } : {}), mutatingDeclaration, writeGuard, platform }),
-    promptSnippet: "Run shell commands and scripts (tests, builds, git, servers, package managers, scratch scripts)",
     // bash already escalates its own kill timer up to MAX_TIMEOUT_SEC; the
     // dispatcher's generic watchdog would either race that mechanism or
     // fire first on a legitimately long (up to 3600s) foreground command.

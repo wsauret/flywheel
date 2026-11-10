@@ -639,6 +639,8 @@ describe("slim ToolDefinition with execute", () => {
     expect(result.content).toContain("bash");
     expect(result.content).toContain("handoff");
     expect(result.content).toContain("read");
+    // The system prompt lists no tools, so the error names them itself.
+    expect(result.content).not.toContain("system prompt");
   });
 
   it("bash execute validates input.command is a string", async () => {

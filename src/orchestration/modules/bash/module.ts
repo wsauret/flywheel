@@ -51,7 +51,7 @@ const bash = {
             writeGuard: kernel.shellWriteGuard,
             ...(kernel.enforcedShellWriteGuard ? { enforcedWriteGuard: kernel.enforcedShellWriteGuard } : {}),
             mutatingDeclaration: kernel.headless !== true,
-            advertised: { background: advertisesBackground, persistence: kernel.persistentProcessesAdvertised, has: kernel.treeCapabilities, unattendedChat: kernel.purpose.kind === "unattended-chat" },
+            advertised: { background: advertisesBackground, persistence: kernel.persistentProcessesAdvertised, has: kernel.treeCapabilities, unattendedChat: kernel.unattendedTree === true },
           }),
         }
       },

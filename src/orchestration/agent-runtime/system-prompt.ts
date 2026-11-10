@@ -27,33 +27,22 @@ import { ASK_USER_DISCUSSION_RULE } from "./tools/ask-user.js";
 import { SCRATCH_ENTRY_LIMIT_BYTES, SCRATCH_IDLE_DAYS } from "../session/session-artifacts.js";
 import type { AgentPurpose } from "./types.js";
 
-export type ToolPromptFields = Pick<RuntimeTool, "name" | "action" | "description" | "promptSnippet" | "promptGuidelines" | "livePromptGuidelines" | "promptExamples">;
+export type ToolPromptFields = Pick<RuntimeTool, "name" | "action" | "description" | "promptGuidelines" | "livePromptGuidelines" | "promptExamples">;
 
 export type PromptKind = "chat" | "workflow-agent" | "subagent" | "headless";
 
 
 // ── Rendering helpers ──────────────────────────────────────────────
 
-export function firstSentence(text: string): string {
-  const trimmed = text.trim();
-  const idx = trimmed.indexOf(". ");
-  return idx !== -1 ? trimmed.slice(0, idx) : trimmed;
-}
-
+/** The guidelines and examples of the request's tools. It lists no tools: the tool definitions of the request are
+ *  the one catalog (ARCH-CONTEXT-035). */
 export function renderToolContext(
   tools: ReadonlyArray<ToolPromptFields>,
   extraGuidelines: readonly string[],
-  footer?: string,
 ): string | undefined {
   if (tools.length === 0) return undefined;
 
   const sections: string[] = [];
-
-  const listing = tools.map((t) => {
-    return `- ${t.name}: ${t.promptSnippet ?? firstSentence(t.description)}`;
-  });
-  const toolsSection = `Available tools:\n${listing.join("\n")}`;
-  sections.push(footer ? `${toolsSection}\n\n${footer}` : toolsSection);
 
   const allGuidelines: string[] = [];
   for (const t of tools) {
@@ -162,12 +151,14 @@ function renderAgentAsset(text: string, name: AgentAssetName, has: CapabilityChe
   return asset;
 }
 
-/** Flywheel self-debugging is host-level work: chat agents and agents of a
- *  workflow investigate their own realm's sessions, but a dispatched subagent
- *  runs one brief and never needs the event store. */
+/** Renders only for a request whose options carry `selfDebug`, which `requestSystemPromptOptions` gives to chat
+ *  and workflow agents. */
 const SELF_DEBUG_GUIDELINE = "Session facts and traces are queryable with `flywheel events search` (see --help for filters); use it to self-debug session, workflow, or provider behavior. Before rerunning completed background work after a missed notification, inspect its completion facts for completion evidence, its handoff facts for handoffs, and `chat.entries.appended` for delivered parent notifications; a completion fact can contain only a preview and hash.";
 
-const TOOLS_FOOTER = "In addition to the tools above, certain orchestration prompts may add custom tools.";
+/** The one home of the worktree rule that both child-starting tools share (ARCH-CONTEXT-035). */
+const WORKTREE_OWNERSHIP_GUIDELINE = "When cwd targets a Git worktree, the parent keeps ownership of integrating and cleaning up that worktree.";
+const CHILD_STARTING_TOOLS: ReadonlySet<string> = new Set(["subagent", "workflow"]);
+
 /** The skill whose canonical review procedure the guidance below names. */
 const CHAT_CHANGE_REVIEW_SKILL_ID = "code-review";
 
@@ -334,8 +325,12 @@ export function buildSystemPromptParts(opts: BuildSystemPromptOptions): SystemPr
   const listsSessions = tools.some((tool) => tool.name === LIST_SESSIONS_TOOL_NAME);
   const selectedGuidelineIds = opts.globalGuidelineIds ?? null;
   const baseGuidelines = renderGlobalGuidelines(selectedGuidelineIds ?? Object.values(GLOBAL_GUIDELINE_ID), has);
-  const guidelines = selectedGuidelineIds === null && opts.selfDebug === true && hasShell ? [...baseGuidelines, SELF_DEBUG_GUIDELINE] : baseGuidelines;
-  const toolContext = renderToolContext(tools, guidelines, TOOLS_FOOTER);
+  const guidelines = [
+    ...baseGuidelines,
+    ...(selectedGuidelineIds === null && opts.selfDebug === true && hasShell ? [SELF_DEBUG_GUIDELINE] : []),
+    ...(tools.some((tool) => CHILD_STARTING_TOOLS.has(tool.name)) ? [WORKTREE_OWNERSHIP_GUIDELINE] : []),
+  ];
+  const toolContext = renderToolContext(tools, guidelines);
 
   const parts: SystemPromptPart[] = [];
   const stable = (label: string, text: string): void => { parts.push({ label, text, tier: "stable" }); };

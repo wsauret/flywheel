@@ -103,8 +103,8 @@ describe("code tool", () => {
     ];
     expect(tool.description).toBe(description.join("\n"));
     expect(tool.uncappedOutput).toBeUndefined();
+    // The description is the one home of the script rules (ARCH-CONTEXT-035); the guidelines add only what it lacks.
     expect(tool.promptGuidelines).toEqual([
-      ...description,
       "Heavy computation and gigabyte-scale data belong in Bash; exceeding the heap growth budget terminates the program. Program intermediates never enter model context.",
       createCatalogRenderer()({}).text,
     ]);

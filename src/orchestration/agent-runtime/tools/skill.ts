@@ -120,7 +120,6 @@ export const SKILL_TOOL_DEFINITION: AdvertisedTool = {
   name: "skill",
   action: "ui_meta",
   description: BASE_DESCRIPTION,
-  promptSnippet: "Load an installed skill package's instructions or files",
   inputSchema: INPUT_SCHEMA,
   // Validation is per action: a parameter meant for the other action is a
   // model-visible refusal, which the central schema validator cannot express.

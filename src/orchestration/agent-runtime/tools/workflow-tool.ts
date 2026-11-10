@@ -197,8 +197,7 @@ export function createWorkflowToolCore(deps: LaunchableWorkflowToolDeps): Workfl
     name: "workflow",
     promptGuidelines: [
       `Keep your checkpoint's approved Design intent and Decisions current before launch. The runtime records them once in the workflow's shared request context for every agent; do not copy them into the launch description or briefs. Every agent treats that intent as fixed and everything else as implementation design it may revise.`,
-      `When cwd targets a Git worktree, the parent keeps ownership of integrating and cleaning up that worktree.`,
-      `After launch, target your workflow id in message_session to add direction to its request. Without targets, every running and later agent reads it. With targets, only the addressed items or named agents read it, including later agents that the address covers. A message to an agent session reaches only that agent and never adds workflow direction. Put a change to fixed intent under the heading Design intent. A workflow target takes no reply wait.`,
+      `After launch, target your workflow id in message_session to add direction to its request. Without targets, every running and later agent reads it. With targets, only the addressed items or named agents read it, including later agents that the address covers. Put a change to fixed intent under the heading Design intent.`,
       // The launch resolves a relative path from the session directory, and
       // the file tools from the project directory first, so only the absolute
       // path names one file for both. The guideline names the directory by

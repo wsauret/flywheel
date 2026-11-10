@@ -137,7 +137,6 @@ export function createMemoryTool(deps: MemoryToolDeps, has: CapabilityCheck): Ru
     name: "memory",
     action: "ui_meta",
     description: description(has),
-    promptSnippet: "Save durable facts to persistent memory (project notes or global user memory)",
     inputSchema: INPUT_SCHEMA,
     isConcurrencySafe: true,
     execute: async (input, context) => {

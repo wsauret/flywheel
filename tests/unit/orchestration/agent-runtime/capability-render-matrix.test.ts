@@ -18,7 +18,8 @@ import { availableToolNames } from "../../../../src/orchestration/agent-runtime/
 import { captureRuntimeConfigRequest } from "../../../../src/orchestration/agent-runtime/request-config.js";
 import { interceptBashCommand } from "../../../../src/orchestration/agent-runtime/tools/bash-command-policy.js";
 import type { AgentPurpose } from "../../../../src/orchestration/agent-runtime/types.js";
-import type { RuntimeToolInput } from "../../../../src/orchestration/agent-runtime/tools/types.js";
+import { ASK_USER_DISCUSSION_RULE } from "../../../../src/orchestration/agent-runtime/tools/ask-user.js";
+import type { RuntimeTool, RuntimeToolInput } from "../../../../src/orchestration/agent-runtime/tools/types.js";
 import { loadConfig } from "../../../../src/orchestration/config/loader.js";
 import { decodeModuleState } from "../../../../src/orchestration/config/module-descriptor.js";
 import { DEVELOPMENT_MODULES } from "../../../../src/orchestration/development-modules.js";
@@ -142,7 +143,6 @@ async function render(capture: FirstPartyModuleComposition, live: FirstPartyModu
   for (const [name, tool] of planned.tools) {
     shared(`tool ${name} name`, `\`${name}\``);
     shared(`tool ${name} description`, tool.description);
-    shared(`tool ${name} snippet`, tool.promptSnippet);
     shared(`tool ${name} guidelines`, [...tool.promptGuidelines ?? [], ...tool.livePromptGuidelines?.() ?? []].join("\n"));
     shared(`tool ${name} examples`, tool.promptExamples);
     shared(`tool ${name} schema`, JSON.stringify(tool.inputSchema));
@@ -232,6 +232,57 @@ function mentions(rendered: readonly Rendered[], off: readonly string[], include
   return rendered.filter(include).flatMap((entry) => capabilityMentions(entry.text, offTerms).map(({ module, mention }) => `${entry.surface}: ${module} ${mention}`));
 }
 
+/** Each description in `schema`, at any depth. */
+function schemaDescriptions(schema: unknown): string[] {
+  if (Array.isArray(schema)) return schema.flatMap(schemaDescriptions);
+  if (typeof schema !== "object" || schema === null) return [];
+  return Object.entries(schema).flatMap(([key, value]) => key === "description" && typeof value === "string" ? [value] : schemaDescriptions(value));
+}
+
+/** The homes of one tool's text in a request: its description, the schema's own description, and each top-level
+ *  field, which holds the descriptions nested under it. */
+function toolHomes(name: string, tool: RuntimeTool): { home: string; text: string }[] {
+  const entries = Object.entries(tool.inputSchema);
+  const properties: unknown = entries.find(([key]) => key === "properties")?.[1];
+  const fields = typeof properties === "object" && properties !== null ? Object.entries(properties) : [];
+  return [
+    { home: `tool ${name} description`, text: tool.description },
+    { home: `tool ${name} schema`, text: schemaDescriptions(entries.filter(([key]) => key !== "properties").map(([, value]) => value)).join("\n") },
+    ...fields.map(([field, value]) => ({ home: `tool ${name} field ${field}`, text: schemaDescriptions(value).join("\n") })),
+  ];
+}
+
+/** The homes of the tool context part: each tool's guidelines, one home each, each tool's examples, and each
+ *  cross-tool guideline that remains. Two tools that give the same guideline render it once (`renderToolContext`),
+ *  so it is one home. */
+function toolContextHomes(tools: ReadonlyMap<string, RuntimeTool>, toolContext: string): { home: string; text: string }[] {
+  const homes = new Map<string, string>();
+  let rest = toolContext;
+  const take = (home: string, text: string, rendered: string): void => {
+    if (!homes.has(text)) homes.set(text, home);
+    rest = rest.replace(rendered, "");
+  };
+  for (const [name, tool] of tools) {
+    for (const [index, guideline] of [...tool.promptGuidelines ?? [], ...tool.livePromptGuidelines?.() ?? []].entries()) take(`tool ${name} guideline ${index}`, guideline, `- ${guideline}`);
+    if (tool.promptExamples) take(`tool ${name} examples`, tool.promptExamples, `## ${name}\n${tool.promptExamples}`);
+  }
+  for (const [index, guideline] of rest.split(/\n- /).slice(1).entries()) if (!homes.has(guideline)) homes.set(guideline, `cross-tool guideline ${index}`);
+  return [...homes].map(([text, home]) => ({ home, text }));
+}
+
+const sentencesOf = (text: string): string[] => text
+  .split(/\n+|(?<=[.!?])\s+/)
+  .map((sentence) => sentence.replace(/^[-*\d.\s]+/, "").replace(/\s+/g, " ").trim())
+  .filter((sentence) => sentence.split(" ").length >= 6);
+
+// The ask_user discussion rule governs how often a chat interrupts the person, so both chat prompts state it beside
+// the tool's description until a benchmark shows that one copy keeps that behavior.
+const SECOND_HOME_EXEMPT = new Set(sentencesOf(ASK_USER_DISCUSSION_RULE));
+// One option subschema of ask_user renders under both of its question shapes; removing the copy needs a schema-shape
+// change.
+const SHARED_OPTION_SUBSCHEMA_HOMES = "tool ask_user field options,tool ask_user field questions";
+const exempt = (sentence: string, homes: ReadonlySet<string>): boolean => SECOND_HOME_EXEMPT.has(sentence) || [...homes].toSorted().join(",") === SHARED_OPTION_SUBSCHEMA_HOMES;
+
 /** The modules that a selection leaves off once dependents follow their dependencies. */
 const turnedOff = (composition: FirstPartyModuleComposition): string[] => ALL_IDS.filter((id) => !composition.enabledModuleIds.includes(id));
 
@@ -248,6 +299,29 @@ describe("capability render matrix", () => {
       expect(mentions(await renderConfiguration(composition), turnedOff(composition))).toEqual([]);
     });
   }
+
+  // ARCH-CONTEXT-035: a rule has one home in a request. The homes are the system prompt parts, with the tool context
+  // split into each tool's guidelines, each tool's examples, and each cross-tool guideline, and each tool description
+  // and each field of each tool schema.
+  test("no sentence of one request appears in two homes", async () => {
+    const capture = selection([]);
+    const requests = [...PROFILES.map((profile) => [CHAT, profile] as const), [UNATTENDED_CHAT, PROFILES[0]!] as const, [SUBAGENT, PROFILES[0]!] as const, [GENERAL_SUBAGENT, PROFILES[0]!] as const, [WORKFLOW_AGENT, PROFILES[0]!] as const];
+    const duplicates = await Promise.all(requests.map(async ([purpose, profile]) => {
+      const { rendered, planned } = await render(capture, capture, purpose, profile);
+      const homes = [
+        ...rendered.filter((entry) => entry.surface.startsWith("prompt ")).flatMap((entry) => entry.surface === "prompt tool context"
+          ? toolContextHomes(planned.tools, entry.text)
+          : [{ home: entry.surface, text: entry.text }]),
+        ...[...planned.tools].flatMap(([name, tool]) => toolHomes(name, tool)),
+      ];
+      const seen = new Map<string, Set<string>>();
+      for (const { home, text } of homes) {
+        for (const sentence of sentencesOf(text)) seen.set(sentence, (seen.get(sentence) ?? new Set()).add(home));
+      }
+      return [...seen].filter(([sentence, at]) => at.size > 1 && !exempt(sentence, at)).map(([sentence, at]) => `${purpose.kind} ${profile.model}: "${sentence}" in ${[...at].join(", ")}`);
+    }));
+    expect(duplicates.flat()).toEqual([]);
+  });
 
   test("Minimal turns every module off, and no text names one", async () => {
     const composition = selection(ALL_IDS);

@@ -25,7 +25,7 @@ const SHIP = {
 
 /** What a dispatcher reads: the tool description and the roster its system prompt carries. */
 function modelVisible(agents: ReadonlyMap<string, AgentDefinition>, has: (term: string) => boolean = () => true): string {
-  return `${subagentDescription(has)}\n\n${renderSubagentRoster(agents, has)}`;
+  return `${subagentDescription(has, false)}\n\n${renderSubagentRoster(agents, has)}`;
 }
 
 describe("subagent prompt", () => {
@@ -55,7 +55,8 @@ describe("subagent prompt", () => {
     expect(prompt).toContain("approved checkpoint Design intent and Decisions");
     expect(prompt).toContain("do not copy its intent into the brief");
     expect(prompt).toContain("suite-level or project-wide gates are yours");
-    expect(prompt).toContain("the parent keeps ownership of integrating and cleaning up that worktree");
+    // The worktree rule that the dispatch and workflow tools share lives in the system prompt (ARCH-CONTEXT-035).
+    expect(prompt).not.toContain("the parent keeps ownership of integrating and cleaning up that worktree");
     expect(prompt).not.toContain("worktree-lifecycle");
     expect(prompt).not.toContain('kind: "steer"');
     expect(prompt).toContain("message_session");

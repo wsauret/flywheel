@@ -485,7 +485,7 @@ describe("createWorkflowTool", () => {
   });
 
   it("leaves the first-draft audit to the chat change review block in every chat configuration", () => {
-    const skill = { name: "skill", action: "ui_meta" as const, description: "Load a skill package.", promptSnippet: "Load a skill" };
+    const skill = { name: "skill", action: "ui_meta" as const, description: "Load a skill package." };
     const workflow = createWorkflowTool(makeDeps({ mode: "ask" }));
     const chat = { promptKind: "chat" as const, chatHost: { communication: true as const } };
     const prompts = [
@@ -524,8 +524,12 @@ describe("createWorkflowTool", () => {
     const guidelinesText = createWorkflowToolCore(makeDeps()).promptGuidelines.join("\n");
 
     expect(guidelinesText).toContain("After launch, target your workflow id in message_session to add direction to its request.");
-    expect(guidelinesText).toContain("A message to an agent session reaches only that agent and never adds workflow direction.");
     expect(guidelinesText).toContain("Put a change to fixed intent under the heading Design intent");
+    // The agent-session rule lives in the message_session description, the reply-wait rule on its wait field, and the
+    // worktree rule in the system prompt (ARCH-CONTEXT-035).
+    expect(guidelinesText).not.toContain("A message to an agent session reaches only that agent");
+    expect(guidelinesText).not.toContain("takes no reply wait");
+    expect(guidelinesText).not.toContain("Git worktree");
   });
 
   it("gives no workflow catalog in prompt guidelines", () => {

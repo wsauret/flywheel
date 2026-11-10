@@ -95,7 +95,6 @@ export function createSkillManageTool(deps: SkillManageToolDeps): RuntimeTool {
     name: "skill_manage",
     action: "ui_meta",
     description: DESCRIPTION,
-    promptSnippet: "Create, update, patch, archive, or restore a managed skill package",
     inputSchema: INPUT_SCHEMA,
     isConcurrencySafe: false,
     execute: async (input, context) => {
