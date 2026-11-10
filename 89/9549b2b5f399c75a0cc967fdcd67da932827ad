@@ -1,0 +1,23 @@
+src/tui/hooks/use-settings-modal.ts
+  s_14a8bc0bfa4dad::t_f5b15fc7a78f93 132-133
+  s_14a8bc0bfa4dad::t_2b46970571cd74 134-135
+  s_14a8bc0bfa4dad::t_b82e5a19e3c698 136,144
+tests/unit/tui/modals/settings-modal-auth.test.ts
+  s_14a8bc0bfa4dad::t_399655e35613f6 2,127-172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "899549b2b5f399c75a0cc967fdcd67da932827ad",
+  "prompts": {},
+  "sessions": {
+    "s_14a8bc0bfa4dad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9340d33-4bef-42fe-8c6c-0cdcc77276bb",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
