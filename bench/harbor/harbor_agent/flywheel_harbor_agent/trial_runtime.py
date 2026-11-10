@@ -200,11 +200,20 @@ def _open_evidence_source_regular_at(
 
 
 def _backup_sqlite(source_path: Path, destination_path: Path) -> None:
+    """Copy the committed state of the store into one self-contained file.
+
+    The backup copies the source header, which claims WAL mode, but only the
+    one file is published, without sidecars. A reader that opens it in memory,
+    as the store analysis does, refuses a WAL-mode image, so the copy is
+    switched to rollback journaling. The source opens read-only and keeps its
+    own journal mode.
+    """
     source = sqlite3.connect(f"file:{source_path}?mode=ro", uri=True)
     destination = sqlite3.connect(destination_path)
     try:
         source.backup(destination)
         destination.commit()
+        destination.execute("PRAGMA journal_mode=DELETE")
     finally:
         destination.close()
         source.close()

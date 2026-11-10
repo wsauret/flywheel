@@ -538,8 +538,11 @@ class RunShutdownTest(unittest.TestCase):
             )
             status, _, _, _ = self._run(root, child_code=child)
             self.assertEqual(status, 0)
-            connection = sqlite3.connect(collected / "flywheel.sqlite")
+            image = (collected / "flywheel.sqlite").read_bytes()
+            self.assertEqual((image[18], image[19]), (1, 1))
+            connection = sqlite3.connect(":memory:")
             try:
+                connection.deserialize(image)
                 self.assertEqual(connection.execute("select payload from event order by rowid").fetchall(), [("ordinary event",), ("live event",)])
             finally:
                 connection.close()
@@ -617,11 +620,18 @@ class SettledEvidenceExportTest(unittest.TestCase):
                 trial_runtime._export_settled_sqlite(workspace, evidence)
             finally:
                 connection.close()
-            exported = sqlite3.connect(evidence / ".flywheel" / "flywheel.sqlite")
+            # Only the store file is published, so its header must claim rollback
+            # journaling: an in-memory open, as the analysis makes, refuses a
+            # WAL-mode image because it cannot reach the sidecars.
+            image = (evidence / ".flywheel" / "flywheel.sqlite").read_bytes()
+            self.assertEqual((image[18], image[19]), (1, 1))
+            exported = sqlite3.connect(":memory:")
             try:
+                exported.deserialize(image)
                 self.assertEqual(exported.execute("SELECT value FROM facts ORDER BY rowid").fetchall(), [("trusted",), ("wal-only",)])
             finally:
                 exported.close()
+            self.assertEqual(sorted(path.name for path in (evidence / ".flywheel").iterdir()), ["flywheel.sqlite"])
 
     def test_refuses_an_unsafe_wal_without_publication(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
