@@ -1,0 +1,115 @@
+bench/linux-runtime-verification/smoke.ts
+  h_4b47e9e4a8b456 49
+scripts/prompt-assembly.ts
+  h_4b47e9e4a8b456 34,122
+src/orchestration/agent-runtime/capability-narrowing.ts
+  h_4b47e9e4a8b456 3-10,20-21,24,26-27,29-33,37-40,42-43,56-59,61,63-64,66-67,70-71,74-76,81,83,85,88,90,92-93,105,109,119-121
+  h_4b47e9e4a8b456 22-23
+tests/unit/orchestration/app-service/definition-availability.test.ts
+  h_4b47e9e4a8b456 92,103,284-349,354-355,357-365,367,371-375,377-379,383,385-386
+  h_4b47e9e4a8b456 4-5,15-19,350-353,356,366,368-370,376,380-382,384
+tests/unit/orchestration/config/config-application-modes.test.ts
+  h_4b47e9e4a8b456 40
+docs/terminology.md
+  h_4b47e9e4a8b456 53
+src/orchestration/modules.ts
+  h_4b47e9e4a8b456 122-123
+tests/unit/orchestration/agent-runtime/capability-render-matrix.test.ts
+  h_4b47e9e4a8b456 261
+tests/unit/orchestration/workflow-host/agent-persona.test.ts
+  h_4b47e9e4a8b456 53
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 27,56,212,342,624-626,628-632
+tests/unit/orchestration/agent-runtime/shared-tree.test.ts
+  h_4b47e9e4a8b456 50,65-68,270,302,332-362,371-372,430
+  h_4b47e9e4a8b456 14,363-370
+src/orchestration/agent-runtime/shared-tree.ts
+  h_4b47e9e4a8b456 32-35
+tests/unit/orchestration/agent-runtime/subagent/tool.test.ts
+  h_4b47e9e4a8b456 13,115-128
+src/orchestration/modules/development/benchmark/persona-run.ts
+  h_4b47e9e4a8b456 154-155,159,165-166
+  h_4b47e9e4a8b456 25,42
+src/orchestration/agent-runtime/tool-notice.ts
+  h_4b47e9e4a8b456 39-40,56
+tests/unit/orchestration/agent-runtime/capability-checks.test.ts
+  h_4b47e9e4a8b456 50-58,75-88,90,106
+tests/unit/orchestration/agent-runtime/provider-runtime-cache.test.ts
+  h_4b47e9e4a8b456 159,181,187
+tests/integration/orchestration/modules/provider-claude-agent-sdk/_claude-sdk-client.ts
+  h_4b47e9e4a8b456 127
+src/orchestration/app-service/project-execution-runtime.ts
+  h_4b47e9e4a8b456 297,299,301
+  h_4b47e9e4a8b456 75,298
+src/orchestration/agent-runtime/request-kernel.ts
+  h_4b47e9e4a8b456 7,71-73,103-104,107,116-117
+tests/unit/orchestration/chat/session-engines-claude.test.ts
+  h_4b47e9e4a8b456 154
+src/orchestration/app-service/project-execution-ownership.ts
+  h_4b47e9e4a8b456 33
+tests/unit/orchestration/agent-runtime/request-config.test.ts
+  h_4b47e9e4a8b456 6,38,47
+src/orchestration/module-catalog.ts
+  h_4b47e9e4a8b456 119-126
+src/workflows/docs/configuration.md
+  h_4b47e9e4a8b456 2342-2358
+tests/unit/bench/strategy.test.ts
+  h_4b47e9e4a8b456 206
+  h_4b47e9e4a8b456 36
+tests/unit/orchestration/agent-runtime/runtime-assembly-tree-host.test.ts
+  h_4b47e9e4a8b456 52
+tests/unit/orchestration/agent-runtime/runner-prestart.test.ts
+  h_4b47e9e4a8b456 252,255
+src/orchestration/app-service/definition-availability.ts
+  h_4b47e9e4a8b456 2-3,13-16,21-22,45,69-70,92-94,103,130,132,151,169,172,214-219,221,225-231,249-251,276-281,291,296,312,314,316,322,335,350,353-355,362,366-386,388-389,412,422-426,436-437,440-443,446,452-453,457,459-460,472,485,489-491,504-505
+  h_4b47e9e4a8b456 32-33,192-202,315
+tests/helpers/project-definitions.ts
+  h_4b47e9e4a8b456 107-110
+src/orchestration/modules/subagents.ts
+  h_4b47e9e4a8b456 34,171,278-279
+tests/helpers/request-tool-surface.ts
+  h_4b47e9e4a8b456 39
+tests/unit/orchestration/agent-runtime/tree-host-key.test.ts
+  h_4b47e9e4a8b456 224
+src/orchestration/modules/subagents/config.ts
+  h_4b47e9e4a8b456 1-26
+tests/unit/orchestration/config/config-reference.test.ts
+  h_4b47e9e4a8b456 7,40-48
+tests/unit/orchestration/modules/provider-claude-agent-sdk/agent-host/agent-bridge.test.ts
+  h_4b47e9e4a8b456 28
+src/orchestration/modules/development/benchmark/admission.ts
+  h_4b47e9e4a8b456 115
+src/orchestration/modules/development/module.ts
+  h_4b47e9e4a8b456 58
+tests/helpers/benchmark-admission.ts
+  h_4b47e9e4a8b456 67
+tests/integration/bench/benchmark-role-requests.test.ts
+  h_4b47e9e4a8b456 15,55
+tests/unit/bench/_persona-benchmark-fixtures.ts
+  h_4b47e9e4a8b456 12,47
+tests/unit/bench/persona-benchmark.test.ts
+  h_4b47e9e4a8b456 22,244,309
+tests/unit/bench/persona-run-accounting.test.ts
+  h_4b47e9e4a8b456 16-18,159,208-220
+tests/unit/orchestration/app-service/model-assignment-service-fixtures.ts
+  h_4b47e9e4a8b456 4-28
+tests/unit/orchestration/app-service/model-assignment-service.test.ts
+  h_4b47e9e4a8b456 2,26-27,564-582
+tests/unit/orchestration/app-service/model-assignment-session.test.ts
+  h_4b47e9e4a8b456 9,13
+tests/unit/orchestration/modules/development/benchmark-tool-execution.test.ts
+  h_4b47e9e4a8b456 152
+tests/unit/orchestration/modules/development/benchmark-tool.test.ts
+  h_4b47e9e4a8b456 57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2097b040c538be3fe5f1efcef9c5914d83db87c9",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
