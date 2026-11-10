@@ -1,0 +1,22 @@
+relay/app/index.html
+  h_4b47e9e4a8b456 7-8
+relay/app/manifest.webmanifest
+  h_4b47e9e4a8b456 8-9
+scripts/uat/phone-soft-keyboard.ts
+  h_4b47e9e4a8b456 62-70,133,136-137,176,179,182,185,189
+scripts/uat/simulator.ts
+  h_4b47e9e4a8b456 42-44
+webview/phone/host-theme.css
+  h_4b47e9e4a8b456 34-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "4bdc0f4527751b832fd09836e0dc2bf0365bb0c8",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
