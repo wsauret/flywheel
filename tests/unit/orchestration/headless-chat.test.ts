@@ -63,7 +63,7 @@ function channelFixture(runningChildren: () => Promise<readonly string[]> = asyn
   let position = 0
   const publish = (event: FrontendEvent) => { for (const listener of listeners) listener(event) }
   return {
-    runtime: { client, startChatDefault: () => {}, workSettlement },
+    runtime: { client, startChatDefault: () => {}, workSettlement, currentTotals: async () => {} },
     calls, records, views, questions, statuses, pendingTurns, registries, continuations, bus,
     admission: (work: Promise<void>) => { admission = work },
     onRead: (next: typeof onRead) => { onRead = next },

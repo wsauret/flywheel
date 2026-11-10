@@ -34,6 +34,7 @@ interface ChatChannelRuntime {
   readonly client: RuntimeClient
   readonly workSettlement: RuntimeComposition["workSettlement"]
   readonly startChatDefault: RuntimeComposition["startChatDefault"]
+  readonly currentTotals: RuntimeComposition["currentTotals"]
 }
 
 interface HeadlessChatResult {
@@ -50,9 +51,11 @@ export interface HeadlessChatChannel {
   /** Writes one framed line after every earlier write. A failed write fails
    *  the channel and rejects. */
   write(line: string): Promise<void>
-  /** Resolves when no input line is dispatching and the work the root owns is
-   *  no longer busy. This is the channel's one settlement rule; any number of
-   *  callers can wait on it at once. */
+  /** Resolves when no input line is dispatching, the work the root owns is
+   *  no longer busy, and the root's totals state every usage that work
+   *  recorded. This is the channel's one settlement rule; any number of
+   *  callers can wait on it at once. Rejects when the channel failed or the
+   *  totals could not be read. */
   settle(): Promise<HeadlessChatOutcome>
   /** Keeps the channel from returning until `work` settles. A rejection fails
    *  the channel. */
@@ -210,7 +213,17 @@ export async function runHeadlessChatChannel(runtime: ChatChannelRuntime, transp
               if (outputFailure !== undefined) throw new Error(errorMessage(outputFailure))
               if (inputFailure !== undefined) throw new Error(errorMessage(inputFailure))
               if (observed !== revision) continue
-              if (!dispatching && state !== "busy") return state
+              if (!dispatching && state !== "busy") {
+                // The totals follow the stored usage through a derived index,
+                // so the last request of a turn is not in them when its work
+                // ends. A budget read after settlement states the whole turn.
+                // Totals that could not be read leave no settled turn to report.
+                await runtime.currentTotals(attachedSessionId).catch((error: unknown) => {
+                  throw new Error(`The session totals could not be read: ${errorMessage(error)}`)
+                })
+                if (observed !== revision) continue
+                return state
+              }
               await new Promise<void>((resolve) => { waiters.add(resolve) })
             }
           }

@@ -391,3 +391,9 @@ The first occurrence of a condition records in full, and its repeats within a wi
 One diagnostics registry assigns every typed record family one tier: informational, notable, which reaches the default level only for a record that its producer marks failed or slow, or debug. A producer never chooses the level of a typed family, an undeclared family records at debug, and the registry and its producers agree in both directions. Work that nothing awaits records its failure once, through the handler that owns it.
 
 Not: A producer that raises its own records to the default level because one record looks useful on its own.
+
+## ARCH-RUNTIME-079: A headless channel settles on current totals
+
+A headless channel settles only when the root's work is no longer busy and the root's totals state every usage that the work recorded. A budget read after settlement therefore states the whole turn. A totals read that fails ends the turn with an error.
+Because: A client that sums usage would otherwise miss the last model request of every turn.
+Not: A channel that reports stale totals as settled.

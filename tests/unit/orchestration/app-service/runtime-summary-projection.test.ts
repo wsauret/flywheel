@@ -435,6 +435,97 @@ describe("runtime summary projection", () => {
     }
   })
 
+  test("current totals wait for the replay that states a fact stored before the call, for a held and a new session", async () => {
+    const replay = Promise.withResolvers<void>()
+    let tokens = 10
+    let stale = false
+    const published: string[][] = []
+    const projection = createRuntimeSummaryProjection({
+      background: {
+        sessionSummaryImmediate: async (ids) => stale ? loadingResult(ids) : readyResult(ids, tokens),
+        waitForTotals: async (ids) => {
+          await replay.promise
+          stale = false
+          return readyResult(ids, tokens)
+        },
+      },
+      sessionPlacements: { placement: async () => null, observe: () => {} },
+      onStored: () => () => {},
+    })
+    await projection.admit(["held"])
+    projection.subscribe((ids) => { published.push([...ids]) })
+    published.length = 0
+
+    // The store holds a later usage, and no refresh has started for it.
+    tokens = 40
+    stale = true
+    let current = false
+    const reading = projection.current(["held", "new"]).then(() => { current = true })
+    await Bun.sleep(0)
+    expect(current).toBe(false)
+    expect(projection.view("held")).toEqual({ totalsLoading: false, row: readyRow("held", 10) })
+    replay.resolve()
+    await reading
+    expect(projection.view("held")).toEqual({ totalsLoading: false, row: readyRow("held", 40) })
+    expect(projection.view("new")).toEqual({ totalsLoading: false, row: readyRow("new", 40) })
+    expect(published).toEqual([["held", "new"]])
+    projection.dispose()
+  })
+
+  test("current totals join a running refresh and wait for a read that began after the call", async () => {
+    const reads: { readonly tokens: number; readonly done: PromiseWithResolvers<void> }[] = []
+    let tokens = 10
+    const projection = createRuntimeSummaryProjection({
+      background: {
+        sessionSummaryImmediate: async (ids) => loadingResult(ids),
+        // A read states the store as it was when the read began.
+        waitForTotals: async (ids) => {
+          const read = { tokens, done: Promise.withResolvers<void>() }
+          reads.push(read)
+          await read.done.promise
+          return readyResult(ids, read.tokens)
+        },
+      },
+      sessionPlacements: { placement: async () => null, observe: () => {} },
+      onStored: () => () => {},
+    })
+    await projection.admit(["held"])
+    await Bun.sleep(0)
+    expect(reads).toHaveLength(1)
+
+    tokens = 40
+    let current = false
+    const reading = projection.current(["held"]).then(() => { current = true })
+    reads[0]?.done.resolve()
+    await Bun.sleep(0)
+    expect(current).toBe(false)
+    expect(reads.map((read) => read.tokens)).toEqual([10, 40])
+    reads[1]?.done.resolve()
+    await reading
+    expect(projection.view("held")).toEqual({ totalsLoading: false, row: readyRow("held", 40) })
+    projection.dispose()
+  })
+
+  test("current totals report a failed read while a view keeps the held totals", async () => {
+    let unreadable = false
+    const projection = createRuntimeSummaryProjection({
+      background: {
+        sessionSummaryImmediate: async (ids) => {
+          if (unreadable) throw new Error("summary read timed out")
+          return readyResult(ids, 10)
+        },
+        waitForTotals: async (ids) => readyResult(ids, 10),
+      },
+      sessionPlacements: { placement: async () => null, observe: () => {} },
+      onStored: () => () => {},
+    })
+    await projection.admit(["held"])
+    unreadable = true
+    await expect(projection.current(["held"])).rejects.toThrow("summary read timed out")
+    expect(projection.view("held")).toEqual({ totalsLoading: false, row: readyRow("held", 10) })
+    projection.dispose()
+  })
+
   test("the next public admission observes an independent writer without a local stored event", async () => {
     const replay = Promise.withResolvers<void>()
     let tokens = 10

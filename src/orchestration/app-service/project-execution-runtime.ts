@@ -132,6 +132,11 @@ export interface RuntimeComposition {
   readonly startChatDefault: () => void
   readonly adoptBlankChat: RuntimeSupervisor["adoptBlankChat"]
   readonly workSettlement: RuntimeWorkSettlement
+  /** Resolves once the session's totals, as its budget states them, include
+   *  every usage that was stored before the call. Rejects with the read's
+   *  error when the totals could not be read; the budget then states older
+   *  totals. */
+  readonly currentTotals: (sessionId: string) => Promise<void>
   /** The relay reverse transport registers its accept handler here, so a
    *  paired phone attaches to this composition through the same RPC server
    *  the local transport serves. */
@@ -270,9 +275,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
   // Construct the lazy lane before the executor kernel so every foreground
   // summary view shares it. Construction does not start its Worker.
   const backgroundClient = scope.own(
-    "background-process-client",
-    createProcessBackgroundClient({ workerUrl: options.workerUrl, logBase: projectRoot }),
-    (owned) => owned.dispose(),
+    "background-process-client", createProcessBackgroundClient({ workerUrl: options.workerUrl, logBase: projectRoot }), (owned) => owned.dispose(),
   )
   const backgroundLane = scope.own("background-lane", createRuntimeBackgroundLane(projectRoot, {
     createClient: (laneCwd) => backgroundClient.acquire(laneCwd),
@@ -731,6 +734,7 @@ async function composeRuntime(options: RuntimeCompositionOptions, scope: Runtime
     startChatDefault: authRuntime.chatDefault.start,
     adoptBlankChat: runtimeSupervisor.adoptBlankChat,
     workSettlement,
+    currentTotals: (sessionId) => projections.summaries.current([sessionId]),
     transports,
     shutdown,
     blockers: replacement.blockers,

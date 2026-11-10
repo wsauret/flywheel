@@ -54,7 +54,7 @@ const question: PendingQuestionView = {
 
 /** A root chat whose turns a test scripts: `onTurn` runs for every message
  *  or answer and owns the settlement state it ends in. */
-function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish(input: RuntimeUiPatchInput): void; output(block: FrontendOutputBlock): void; lose(block: FrontendOutputBlock): void; retract(block: FrontendOutputBlock): void; ended(ending: ChatTurnEnding): void; settle(outcome: HeadlessChatOutcome): Promise<void>; streamed(text: string): Promise<void> }) => void | Promise<void>, transport: Pick<Parameters<typeof runHeadlessChatChannel>[1], "oneShot" | "completion"> = {}) {
+function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish(input: RuntimeUiPatchInput): void; stored(budget: BudgetView): void; unreadable(error: Error): void; output(block: FrontendOutputBlock): void; lose(block: FrontendOutputBlock): void; retract(block: FrontendOutputBlock): void; ended(ending: ChatTurnEnding): void; settle(outcome: HeadlessChatOutcome): Promise<void>; streamed(text: string): Promise<void> }) => void | Promise<void>, transport: Pick<Parameters<typeof runHeadlessChatChannel>[1], "oneShot" | "completion"> = {}) {
   const bus = createRuntimeUiBus()
   const framing = acpFraming(realpathSync(CWD))
   /** The runtime reports how the root chat's turn ended, as the invocation completion does. */
@@ -86,6 +86,20 @@ function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish
     if (input.payload.kind === "budget.updated") budget = input.payload.budget
     position = bus.publish(input)?.position ?? position
   }
+  // Usage the store holds and the totals do not state yet: the totals follow
+  // the store through a derived index, which states it once it is current.
+  let unindexed: BudgetView | undefined
+  const stored = (next: BudgetView) => { unindexed = next }
+  // A failure of the next totals read, as when it passes its deadline.
+  let readFailure: Error | undefined
+  const unreadable = (error: Error) => { readFailure = error }
+  const currentTotals = async () => {
+    const failure = readFailure
+    readFailure = undefined
+    if (failure) throw failure
+    if (unindexed) publish({ cursor: { scope: "session", domain: "budget", sessionId: "root" }, payload: { kind: "budget.updated", budget: unindexed } })
+    unindexed = undefined
+  }
   const output = (block: FrontendOutputBlock) => {
     const { index, known, row } = resident(block)
     publish({ cursor: { scope: "session", domain: "output", sessionId: "root" }, payload: { kind: "output.delta", delta: { visibleMessageCount: blocks.length, blocks: [{ kind: known ? "upsert" : "insert", index, blockId: blockIdentity(row), block: row }] } } })
@@ -101,7 +115,7 @@ function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish
   }
   const turn = async (command: FrontendMutation) => {
     state = "busy"
-    queueMicrotask(() => { onTurn({ command, publish, output, lose, retract, ended, settle, streamed }) })
+    queueMicrotask(() => { onTurn({ command, publish, stored, unreadable, output, lose, retract, ended, settle, streamed }) })
     return { ok: true as const, sessionId: "root" }
   }
   const client: RuntimeClient = {
@@ -142,7 +156,7 @@ function acpFixture(onTurn: (turn: { readonly command: FrontendMutation; publish
   const messages: Message[] = []
   const arrived = new Set<() => void>()
   const channel = runHeadlessChatChannel({
-    client, startChatDefault: () => {},
+    client, startChatDefault: () => {}, currentTotals,
     workSettlement: { accepted: () => {}, read: async () => state, onChange: (listener) => { listeners.add(listener); return () => { listeners.delete(listener) } } },
   }, {
     ...transport, input, framing,
@@ -222,6 +236,56 @@ describe("headless chat over ACP", () => {
     ])
     const answered = fixture.messages.findIndex((message) => message.id === 2)
     expect(fixture.messages.slice(0, answered).at(-1)?.params?.update).toEqual({ sessionUpdate: "usage_update", used: 1000, size: 10_000, cost: { amount: 0.25, currency: "USD" } })
+  })
+
+  it("states the usage of a turn's last request before it answers the prompt", async () => {
+    const budget = (billedCost: number, contextPromptTokens: number): BudgetView => ({ totalsLoading: false, tokens: contextPromptTokens, cost: billedCost, billedCost, priceUnavailable: false, contextPercent: 10, contextPromptTokens })
+    const fixture = acpFixture(async ({ output, publish, stored, settle, streamed }) => {
+      // The first request calls a tool, and the totals state its usage while the tool runs.
+      output({ kind: "tool", id: "call-1", name: "bash", action: "shell_exec", presentation: { name: "Bash", detail: "ls" }, status: "completed", content: "a.txt", timestamp: 0 })
+      publish({ cursor: { scope: "session", domain: "budget", sessionId: "root" }, payload: { kind: "budget.updated", budget: budget(0.25, 1000) } })
+      await streamed("usage_update")
+      // The second request ends the turn: its usage is stored, and the turn
+      // settles before the totals state it.
+      output({ kind: "text", id: "t1", content: "Done.", timestamp: 0 })
+      stored(budget(0.75, 3000))
+      await settle("complete")
+    })
+    await fixture.open()
+    fixture.send(prompt(2, "list files"))
+    expect((await fixture.response(2)).result).toMatchObject({ stopReason: "end_turn" })
+    fixture.end()
+    await fixture.channel
+    const answered = fixture.messages.findIndex((message) => message.id === 2)
+    expect(fixture.messages.slice(0, answered).at(-1)?.params?.update).toEqual({ sessionUpdate: "usage_update", used: 3000, size: 30_000, cost: { amount: 0.75, currency: "USD" } })
+    expect(fixture.messages.slice(answered + 1)).toEqual([])
+  })
+
+  it("fails the prompt, and states no settled usage, when the turn's totals cannot be read", async () => {
+    const budget = (billedCost: number, contextPromptTokens: number): BudgetView => ({ totalsLoading: false, tokens: contextPromptTokens, cost: billedCost, billedCost, priceUnavailable: false, contextPercent: 10, contextPromptTokens })
+    const fixture = acpFixture(async ({ output, publish, stored, unreadable, settle, streamed }) => {
+      output({ kind: "tool", id: "call-1", name: "bash", action: "shell_exec", presentation: { name: "Bash", detail: "ls" }, status: "completed", content: "a.txt", timestamp: 0 })
+      publish({ cursor: { scope: "session", domain: "budget", sessionId: "root" }, payload: { kind: "budget.updated", budget: budget(0.25, 1000) } })
+      await streamed("usage_update")
+      output({ kind: "text", id: "t1", content: "Done.", timestamp: 0 })
+      stored(budget(0.75, 3000))
+      unreadable(new Error("summary read timed out"))
+      await settle("complete")
+    })
+    await fixture.open()
+    fixture.send(prompt(2, "list files"))
+    const answer = await fixture.response(2)
+    expect(answer.result).toBeUndefined()
+    expect(answer.error?.message).toContain("summary read timed out")
+    const answered = fixture.messages.indexOf(answer)
+    // The only usage the client holds for the turn is the live one, which
+    // the settlement did not certify.
+    expect(fixture.messages.slice(0, answered).flatMap((message) => message.params?.update.sessionUpdate === "usage_update" ? [message.params.update] : [])).toEqual([
+      { sessionUpdate: "usage_update", used: 1000, size: 10_000, cost: { amount: 0.25, currency: "USD" } },
+    ])
+    expect(fixture.messages[answered - 1]?.params?.update).toMatchObject({ sessionUpdate: "agent_message_chunk" })
+    fixture.end()
+    expect(await fixture.channel).toEqual({ sessionId: "root", outcome: "complete" })
   })
 
   it("streams the whole result of a tool whose body the live row leaves out", async () => {

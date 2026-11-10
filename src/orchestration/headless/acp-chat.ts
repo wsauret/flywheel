@@ -77,6 +77,9 @@ function openAcpSession(channel: HeadlessChatChannel, version: string, execution
   let notice: string | undefined
   // How the last turn since the running prompt was sent ended, as the runtime reported it.
   let ending: ChatTurnEnding | undefined
+  // The usage update the client last received. A live budget patch that
+  // repeats it, as the one behind a settled read does, streams nothing.
+  let usage: string | undefined
 
   const send = (lines: () => Promise<readonly string[]> | readonly string[]): void => {
     streaming = streaming.then(async () => { for (const line of await lines()) await channel.write(line) })
@@ -177,13 +180,20 @@ function openAcpSession(channel: HeadlessChatChannel, version: string, execution
     const { cursor, payload } = event.patch
     if (cursor.scope === "session" && cursor.sessionId === sessionId && isBudgetPayload(payload) && payload.kind === "budget.updated") {
       const update = acpUsageUpdate(payload.budget)
-      if (update) send(() => [acpUpdate(sessionId, update)])
+      const line = update ? acpUpdate(sessionId, update) : undefined
+      if (line !== undefined && line !== usage) {
+        usage = line
+        send(() => [line])
+      }
     }
     return []
   }
 
   const answerPrompt = async (id: JsonRpcId, store: TranscriptStore): Promise<void> => {
-    const outcome = await channel.settle()
+    // A settlement that fails, as when the turn's totals cannot be read,
+    // fails this prompt with no usage update; a failed channel also fails on
+    // its own path.
+    const settlement = await channel.settle().then((outcome) => ({ outcome }), (error: unknown) => ({ failure: errorMessage(error) }))
     // A read the store already had out when the turn settled can answer from
     // before its last output, and a refresh joins it, so the second refresh
     // reads after the settlement.
@@ -191,20 +201,27 @@ function openAcpSession(channel: HeadlessChatChannel, version: string, execution
     await store.refresh()
     await streaming
     const lines: string[] = []
-    // The settled budget reaches the client before the response that ends
-    // its prompt, which a live budget patch can still be behind.
-    const budget = (await channel.client.query({ type: "budgetSnapshot", sessionIds: [sessionId] })).views[0]?.view
-    const usage = budget ? acpUsageUpdate(budget) : undefined
-    if (usage) lines.push(acpUpdate(sessionId, usage))
+    if ("outcome" in settlement) {
+      // The settled budget, which states every request of the turn, reaches
+      // the client before the response that ends its prompt, which a live
+      // budget patch can still be behind.
+      const budget = (await channel.client.query({ type: "budgetSnapshot", sessionIds: [sessionId] })).views[0]?.view
+      const settled = budget ? acpUsageUpdate(budget) : undefined
+      if (settled) {
+        usage = acpUpdate(sessionId, settled)
+        lines.push(usage)
+      }
+    }
     // The settled read names the open question, which a live patch can still
     // be on its way to report.
-    question = outcome === "input_required"
+    question = "outcome" in settlement && settlement.outcome === "input_required"
       ? (await channel.client.query({ type: "questionSnapshot", sessionIds: [sessionId] })).views[0]?.view ?? undefined
       : undefined
     prompting = false
-    const stopReason = stopReasonOf(outcome, cancelled, ending)
+    const stopReason = "outcome" in settlement ? stopReasonOf(settlement.outcome, cancelled, ending) : undefined
     if (stopReason === undefined) {
-      lines.push(acpError(id, JSON_RPC_ERROR.internal, notice ?? "The turn ended before it completed", ending?.kind === "failed" ? { failure: ending.failure } : undefined))
+      const message = "failure" in settlement ? settlement.failure : notice ?? "The turn ended before it completed"
+      lines.push(acpError(id, JSON_RPC_ERROR.internal, message, ending?.kind === "failed" ? { failure: ending.failure } : undefined))
     } else {
       // Usage stats come from the Usage module; without it the response
       // carries no token counts.
