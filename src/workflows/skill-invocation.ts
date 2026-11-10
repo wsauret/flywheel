@@ -1,10 +1,8 @@
 import type { CapabilityCheck } from "../infra/capability-text.js";
 import type { PersonaMetadataIndex } from "./agents/persona-schema.js";
-import type { BriefPersonaSlot } from "../protocol/workflow-view-protocol-types.js";
 import { resolveSkillClosure } from "./skill-closure.js";
 import { dispatchingSkill, renderSkillContext } from "./skill-context.js";
 import type { SkillDefinition, SkillRegistryRevision } from "./skill-schema.js";
-import { compileSubagents } from "./skill-subagents.js";
 
 export interface SkillInvocationOptions {
   /** Revision the dependency closure is composed from. The caller's registry
@@ -16,16 +14,13 @@ export interface SkillInvocationOptions {
   readonly capabilities: CapabilityCheck;
 }
 
-function renderAgentSection(slots: readonly BriefPersonaSlot[]): string {
-  const lines = [
-    "## Available Agents",
-    "",
-    "Dispatch these personas where the skill body calls for agent dispatch.",
-  ];
-  for (const slot of slots) {
-    lines.push(`\n**${slot.role}:** ${slot.personas.join(", ")}`);
-  }
-  return lines.join("\n");
+/** The personas a skill declares, by the name that dispatch accepts. Throws on a name no installed persona has:
+ *  an installed third-party skill can declare any name. */
+function renderAgentSection(skill: SkillDefinition, personaIndex: PersonaMetadataIndex): string | undefined {
+  if (skill.agents.length === 0) return undefined;
+  const unknown = skill.agents.find((name) => !personaIndex[name]);
+  if (unknown) throw new Error(`Skill "${skill.id}" references unknown persona: ${unknown}`);
+  return `## Available Agents\n\nDispatch these personas where the skill body calls for agent dispatch: ${skill.agents.join(", ")}.`;
 }
 
 function renderDirectResult(skill: SkillDefinition): string | undefined {
@@ -67,8 +62,8 @@ export function assembleSkillInvocation(
   if (refusal) throw new Error(`Skill "${skill.id}" cannot be invoked: ${refusal}`);
   const sections = invocationClosure(skill, options.skills).map((member) => renderSkillContext(member, options.capabilities));
 
-  const slots = compileSubagents(skill, options.personaIndex);
-  if (slots) sections.push(renderAgentSection(slots));
+  const agents = renderAgentSection(skill, options.personaIndex);
+  if (agents) sections.push(agents);
   const directResult = renderDirectResult(skill);
   if (directResult) sections.push(directResult);
 

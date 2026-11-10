@@ -72,14 +72,16 @@ describe("subagent prompt", () => {
   it("advertises target-specific design-reviewer personas without routing planning to them", () => {
     const prompt = modelVisible(new Map([[PLAN_DESIGN_REVIEWER.name, PLAN_DESIGN_REVIEWER]]));
 
-    expect(prompt).toContain("- reviewer-plan-design (role: reviewer-design)");
+    expect(prompt).toContain("- reviewer-plan-design: Reviews interface design in implementation plans.");
+    // Dispatch accepts only the name, and one role can cover several personas, so the role is never shown.
+    expect(prompt).not.toContain("reviewer-design");
     expect(prompt).not.toContain("Interface judgment: use a designer agent");
   });
 
   it("promises no publication through Ship while Bash is off, and keeps Ship in the roster", () => {
     const agents = new Map([[SHIP.name, SHIP]]);
     const withoutBash = modelVisible(agents, (term) => term !== "bash");
-    expect(withoutBash).toContain("- ship (role: ship)");
+    expect(withoutBash).toContain("- ship: Publishes a verified repository change.");
     expect(withoutBash).not.toContain("Repository publication");
     expect(modelVisible(agents)).toContain("- Repository publication: use the Ship agent");
   });

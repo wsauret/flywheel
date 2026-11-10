@@ -255,7 +255,7 @@ describe("persona tool grants", () => {
         memorySnapshot: null,
         capabilities: () => true,
       });
-      return rendered?.split("\n").find((row, index, rows) => rows[index - 1]?.startsWith("- advisor ") === true) ?? "";
+      return rendered?.split("\n").find((row, index, rows) => rows[index - 1]?.startsWith("- advisor: ") === true) ?? "";
     };
     expect(await rosterLine([])).toContain("search, list");
     const narrowed = await rosterLine(["discovery"]);

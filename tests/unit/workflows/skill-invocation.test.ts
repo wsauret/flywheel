@@ -49,15 +49,15 @@ describe("assembleSkillInvocation", () => {
     expect(prompt).toContain("do not split a healthy dispatch in advance");
   });
 
-  it("renders a persona roster grouped by role with dispatch wording", () => {
-    const prompt = invoke(installed("code-review"));
+  it("names each declared persona only by the name that dispatch accepts", () => {
+    const skill = installed("code-review");
+    const section = invoke(skill).split("## Available Agents\n\n")[1] ?? "";
 
-    expect(prompt).toContain("## Available Agents");
-    expect(prompt).toContain("Dispatch these personas where the skill body calls for agent dispatch.");
-    expect(prompt).toContain("reviewer-code-quality");
-    expect(prompt).toContain("reviewer-code-elegance");
-    // Grouped per role: each roster line is "**<role>:** persona, persona".
-    expect(prompt).toMatch(/\*\*[\w-]+:\*\* reviewer-/);
+    expect(section).toStartWith(`Dispatch these personas where the skill body calls for agent dispatch: ${skill.agents.join(", ")}`);
+    const roles = new Set(skill.agents.map((name) => personaIndex[name]?.role ?? ""));
+    for (const role of roles) {
+      if (!skill.agents.includes(role)) expect(section).not.toMatch(new RegExp(`(^|[^\\w-])${role}([^\\w-]|$)`));
+    }
   });
 
   it("omits the persona roster for a package that declares no agents", () => {

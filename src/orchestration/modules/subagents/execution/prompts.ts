@@ -12,13 +12,14 @@ interface DispatchInput {
 /** The subagent catalog: which agent types in `agents` this session may dispatch and when to use them. It varies
  *  with the `subagents` of a brief and a child's granted roles, so it renders in the session tier and the dispatch
  *  tool's own bytes stay the same for every agent that shares the prompt cache. A use case that needs a capability
- *  that the tree check `has` refuses is left out: Ship publishes only through Bash. */
+ *  that the tree check `has` refuses is left out: Ship publishes only through Bash. Each line names an agent type
+ *  only by the name that dispatch accepts, never by its role, which several types can share. */
 export function renderSubagentRoster(agents: ReadonlyMap<string, AgentDefinition>, has: CapabilityCheck): string {
   if (agents.size === 0) return "# Subagents\n\nNo agent type is available for you to dispatch here, so do the work directly.";
   const agentList = Array.from(agents.values())
     .map((a) => a.kind === "general"
       ? `- ${a.name}: ${a.description}\n  Tools: registry-approved tools derived from your current surface, plus child handoff and granted nested-role tools`
-      : `- ${a.name} (role: ${a.role}): ${a.description}\n  Tools: ${a.tools.join(", ")}`)
+      : `- ${a.name}: ${a.description}\n  Tools: ${a.tools.join(", ")}`)
     .join("\n");
   const personas = Array.from(agents.values()).filter((agent) => agent.kind === "persona");
   const roles = new Set(personas.map((agent) => agent.role));

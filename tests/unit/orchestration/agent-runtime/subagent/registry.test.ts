@@ -8,13 +8,11 @@ describe("subagent tool — registry", () => {
     it("names each agent type with its details, while the tool description names none", () => {
       const roster = renderSubagentRoster(makeDeps().agentRegistry, () => true);
 
-      expect(roster).toContain("explorer");
-      expect(roster).toContain("role: explorer");
+      expect(roster).toContain("- explorer: ");
       expect(roster).toContain("read-only");
-      expect(roster).toContain("implementer");
-      expect(roster).toContain("role: implementer");
+      expect(roster).toContain("- implementer: ");
       // The roster renders in the session tier, so the tool bytes are the same for every agent.
-      expect(SUBAGENT_DESCRIPTION).not.toContain("role: explorer");
+      expect(SUBAGENT_DESCRIPTION).not.toContain("- explorer: ");
     });
 
     it("tells an agent with no dispatchable type to do the work directly", () => {
