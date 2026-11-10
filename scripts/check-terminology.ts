@@ -305,7 +305,7 @@ const RETIRED_TERMS: readonly RetiredTerm[] = [
   { pattern: /\bsummarizeForCompaction\b/, replacement: "compaction stem naming", slice: 11, active: true },
   { pattern: /\brunCompactionSummary\b/, replacement: "compaction stem naming", slice: 11, active: true },
   { pattern: /\bcreateSummarizer\b/, replacement: "reset compaction (no summarizer exists)", slice: 11, active: true },
-  { pattern: /\bshouldSummarize\b/, replacement: "shouldCompact", slice: 11, active: true },
+  { pattern: /\bshouldSummarize\b/, replacement: "compaction stem naming", slice: 11, active: true },
   { pattern: /\bselectUnwindTail\b/, replacement: "emergency trim naming", slice: 11, active: true },
   { pattern: /\bEMERGENCY_UNWIND_POLICY\b/, replacement: "emergency trim naming", slice: 11, active: true },
   { pattern: /\belideOlderImageParts\b/, replacement: "dropOlderImageParts", slice: 11, active: true },
