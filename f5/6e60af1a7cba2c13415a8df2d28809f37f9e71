@@ -1,0 +1,40 @@
+docs/architecture-intent/providers.md
+  h_4b47e9e4a8b456 340-350
+src/infra/llm/llm-helpers.ts
+  h_4b47e9e4a8b456 31-32,51-52
+src/orchestration/agent-runtime/assistant-turn-attempt.ts
+  h_4b47e9e4a8b456 556-558,561-567,574
+src/orchestration/agent-runtime/llm/openai-completions.ts
+  h_4b47e9e4a8b456 358-360,421,431,522-526,528-529,533
+src/orchestration/agent-runtime/llm/openai.ts
+  h_4b47e9e4a8b456 106
+src/orchestration/agent-runtime/llm/provider-description.ts
+  h_4b47e9e4a8b456 91
+src/orchestration/agent-runtime/llm/types.ts
+  h_4b47e9e4a8b456 333-338
+src/orchestration/modules/provider-openrouter/module.ts
+  h_4b47e9e4a8b456 15,61
+src/orchestration/modules/provider-openrouter/usage-charge.ts
+  h_4b47e9e4a8b456 1-17
+tests/unit/infra/llm/usage-pricing.test.ts
+  h_4b47e9e4a8b456 8-9,14,23,25-26,36-44,46,50
+tests/unit/orchestration/agent-runtime/attempt-settlement-regressions.test.ts
+  h_4b47e9e4a8b456 2,50-52,54-55,66,73-91,100
+tests/unit/orchestration/agent-runtime/llm/openai-chatgpt-adapter.test.ts
+  h_4b47e9e4a8b456 114
+tests/unit/orchestration/agent-runtime/llm/openai-completions-converter.test.ts
+  h_4b47e9e4a8b456 355-367
+tests/unit/orchestration/agent-runtime/llm/openrouter-request-shape.test.ts
+  h_4b47e9e4a8b456 16,20,432-454
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f56e60af1a7cba2c13415a8df2d28809f37f9e71",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
