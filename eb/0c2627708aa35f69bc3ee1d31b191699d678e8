@@ -1,0 +1,21 @@
+src/orchestration/modules/development/benchmark/persona-run.ts
+  s_14a8bc0bfa4dad::t_5a9da93f1af41d 164-166,173-181,209
+tests/unit/orchestration/agent-runtime/subagent/execute-construction.test.ts
+  s_14a8bc0bfa4dad::t_cbaf651053284c 14-15,30-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eb0c2627708aa35f69bc3ee1d31b191699d678e8",
+  "prompts": {},
+  "sessions": {
+    "s_14a8bc0bfa4dad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9340d33-4bef-42fe-8c6c-0cdcc77276bb",
+        "model": "unknown"
+      },
+      "human_author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
