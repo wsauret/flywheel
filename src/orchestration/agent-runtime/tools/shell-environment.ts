@@ -4,6 +4,7 @@ import process from "node:process";
 import { backgroundShellModuleRequirements } from "../../module-requirements.js";
 import { AGENT_SESSION_ENV, runsThroughBun } from "../../../infra/cli-subprocess.js";
 import { buildBunShim, isWindows, shellCommandInvocation, type RuntimePlatform } from "./bash-script.js";
+import { foregroundCommandLifetime } from "./bash-guidance.js";
 import { installSearchShims } from "./search-shims.js";
 import { grantCovers, NO_CAPABILITY_ACCESS, type BashOperations, type ToolContext, type ToolResult } from "./types.js";
 
@@ -119,5 +120,5 @@ export async function refuseBackgroundCommand(context: ToolContext): Promise<str
   if (grantCovers(access.grant, backgroundShellModuleRequirements())) return undefined;
   const admission = await access.admit({ operation: "a background shell command", required: backgroundShellModuleRequirements() });
   if (admission.ok) return undefined;
-  return `${admission.reason}. Run the finite command in the foreground without background=true. It remains in this call until it completes, you select Detach, or it reaches the configured runtime cap.`;
+  return `${admission.reason}. Run the finite command in the foreground without background=true. ${foregroundCommandLifetime(access.unattended === true)}`;
 }

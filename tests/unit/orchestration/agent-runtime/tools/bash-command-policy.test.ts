@@ -130,6 +130,9 @@ describe("interceptBashCommand (direct)", () => {
     expect(await interceptBashCommand("nohup dbt build > out.log 2>&1 & sleep 900")).not.toBeNull();
     const message = (await interceptBashCommand("sleep 240"))?.message;
     expect(message).toContain("use `process` with `{ action: \"wait\" }`");
+    // A long timeout does not keep a foreground command in its call past the runtime cap.
+    expect(message).toContain("it blocks until it exits or reaches the runtime cap, which moves it to managed execution, also when its timeout is longer; then wait for it with `process`.");
+    expect(message).not.toContain("3600");
     // The refusal teaches only patterns the bash tool contract allows, and its
     // condition loop must itself pass this policy.
     expect(message).not.toContain("trailing `&`");

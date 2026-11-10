@@ -275,7 +275,7 @@ const SLEEP_RULE: ForbiddenRule = {
   matches: (c) => c.name === "sleep" && sleepSeconds(c.args) > MAX_SLEEP_SECONDS,
   fallbackPattern: /\bsleep\s+(?:3[1-9](?!\d)|[4-9]\d(?!\d)|\d{3,}|\d+(?:\.\d+)?[mhd]\b)/,
   message:
-    "Command blocked: sleeping longer than 30s is disallowed, foreground or backgrounded. A sleep guesses how long to wait; wait on the event instead. To wait for work to finish, run that command itself in the foreground: it blocks until it exits (bound slow ones with the timeout parameter, up to 3600s). To wait for a condition, loop on a check with short sleeps, such as `until <check>; do sleep 5; done`, bounded by the timeout parameter. To wait for managed work, use `process` with `{ action: \"wait\" }` and a soft_timeout: its completion wakes you. Never use shell-level &, nohup, or disown.",
+    "Command blocked: sleeping longer than 30s is disallowed, foreground or backgrounded. A sleep guesses how long to wait; wait on the event instead. To wait for work to finish, run that command itself in the foreground: it blocks until it exits or reaches the runtime cap, which moves it to managed execution, also when its timeout is longer; then wait for it with `process`. To wait for a condition, loop on a check with short sleeps, such as `until <check>; do sleep 5; done`, bounded by the timeout parameter. To wait for managed work, use `process` with `{ action: \"wait\" }` and a soft_timeout: its completion wakes you. Never use shell-level &, nohup, or disown.",
 };
 
 interface BashCommandInspection {

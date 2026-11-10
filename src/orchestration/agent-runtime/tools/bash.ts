@@ -212,7 +212,7 @@ export function createBashDefinition(options?: {
       return {
         content: backgroundCommands
           ? `Shell-level backgrounding was not executed.\nSubmit only the server or service command with background=true.${persistentProcesses ? " Add persist_after_exit=true when it must keep running after the runtime exits; otherwise the runtime's exit ends it." : ""} After it starts as a managed process, use the process tool for lifecycle operations.`
-          : "Shell-level backgrounding was not executed.\nRun the server as a foreground command; it moves to managed work at the runtime cap or on Detach.",
+          : `Shell-level backgrounding was not executed.\nRun the server as a foreground command; it moves to managed work at the runtime cap${context.capabilityAccess?.unattended ? "" : " or on Detach"}, and the process tool then manages it.`,
         outcome: "error",
       };
     }

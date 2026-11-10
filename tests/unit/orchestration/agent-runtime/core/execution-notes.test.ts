@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 
 import { createExecutionNotesHook } from "../../../../../src/orchestration/agent-runtime/execution-notes.js";
 import type { ToolCall } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
-import type { ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
+import { NO_CAPABILITY_ACCESS, type ToolResult } from "../../../../../src/orchestration/agent-runtime/tools/types.js";
 import { makeContext } from "../tools/_fixtures.js";
 
 let nextId = 0;
@@ -73,9 +73,18 @@ describe("execution notes hook", () => {
 
     const first = hook(bashCall("slow"), slow(), ctx);
     expect(first.content).toContain("Execution note: this command consumed 2m 0s");
+    expect(first.content).toContain("you select Detach, or it reaches the runtime cap. Detach or the cap moves it to managed execution; wait for it with the process tool.");
 
     const second = hook(bashCall("slow again"), slow(), ctx);
     expect(second.content).not.toContain("Execution note:");
+  });
+
+  // No person reads an unattended chat (PI-AGENT-121), so its note names no Detach.
+  it("states the runtime cap without Detach in an unattended chat", () => {
+    const unattended = makeContext({ capabilityAccess: { ...NO_CAPABILITY_ACCESS, unattended: true } });
+    const note = createExecutionNotesHook()(bashCall("slow"), bashResult("done", { exitCode: 0, durationMs: 120_000 }), unattended).content;
+    expect(note).toContain("until it completes or reaches the runtime cap. At the cap it moves to managed execution; wait for it with the process tool.");
+    expect(note).not.toContain("Detach");
   });
 
   it("notes a command at the 90 second threshold", () => {

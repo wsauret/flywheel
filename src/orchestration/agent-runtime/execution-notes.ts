@@ -1,6 +1,7 @@
 import { formatDuration } from "../../protocol/client/format.js";
 import type { AfterToolCallHook } from "./agent-loop-tools.js";
 import { parseBashResultDetails } from "./tools/bash.js";
+import { foregroundCommandLifetime } from "./tools/bash-guidance.js";
 
 const LONG_STEP_THRESHOLD_MS = 90_000;
 const SIGNATURE_MAX_CHARS = 160;
@@ -61,7 +62,7 @@ export function createExecutionNotesHook(): AfterToolCallHook {
       note = "the same error has now occurred twice in a row. Stop retrying this command pattern; re-read the error, check your assumptions, and switch to a different approach.";
     } else if (durationMs !== undefined && durationMs >= LONG_STEP_THRESHOLD_MS && !emitted.has("long_step")) {
       emitted.add("long_step");
-      note = `this command consumed ${formatDuration(durationMs)} of wall clock. Keep finite work in the foreground so the call owns it until completion, user Detach, or the configured runtime cap. Use background mode only for a server or service that must remain running. For risky probes, set a tighter timeout.`;
+      note = `this command consumed ${formatDuration(durationMs)} of wall clock. Keep finite work in the foreground. ${foregroundCommandLifetime(context.capabilityAccess?.unattended === true)} Use background mode only for a server or service that must remain running. For risky probes, set a tighter timeout.`;
     }
     if (!note) return result;
 
