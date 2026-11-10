@@ -1,0 +1,40 @@
+docs/architecture-intent/learning.md
+  h_4b47e9e4a8b456 124-129
+docs/architecture-intent/sessions.md
+  h_4b47e9e4a8b456 39
+src/orchestration/agent-runtime/request-inputs.ts
+  h_4b47e9e4a8b456 136
+src/orchestration/chat-module-host.ts
+  h_4b47e9e4a8b456 13-14
+src/orchestration/chat/session.ts
+  h_4b47e9e4a8b456 26
+src/orchestration/modules/learning/learning-review.ts
+  h_4b47e9e4a8b456 20,257,261,389
+src/orchestration/workflow-host/agent-callback.ts
+  h_4b47e9e4a8b456 478,507
+tests/unit/orchestration/agent-runtime/runtime-assembly-development-tools.test.ts
+  h_4b47e9e4a8b456 287-288,293-294
+tests/unit/orchestration/agent-runtime/runtime-assembly-tree-host.test.ts
+  h_4b47e9e4a8b456 41
+tests/unit/orchestration/modules/learning/chat-review-recommendation.test.ts
+  h_4b47e9e4a8b456 48
+tests/unit/orchestration/modules/learning/learning-review.test.ts
+  h_4b47e9e4a8b456 3
+tests/unit/orchestration/workflow-host/workflow-runner.test.ts
+  h_4b47e9e4a8b456 24-29,205,211-212,215,291-333
+tests/unit/workflows/vm/fact-fold.test.ts
+  h_4b47e9e4a8b456 207-210
+tests/unit/workflows/vm/host-conflict.test.ts
+  h_4b47e9e4a8b456 131-134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "69d6cb3f6b2352b34b04ea39c55444c560f264b1",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
