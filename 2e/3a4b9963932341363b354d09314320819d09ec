@@ -1,0 +1,72 @@
+docs/product-intent/model-access.md
+  h_4b47e9e4a8b456 127,183-187
+src/infra/event-store-types.ts
+  h_4b47e9e4a8b456 390-391,430-432,488
+src/infra/sqlite-event-read-surface.ts
+  h_4b47e9e4a8b456 165-166,168-169,293
+src/infra/sqlite-event-store.ts
+  h_4b47e9e4a8b456 94
+src/orchestration/agent-runtime/usage-settlement.ts
+  h_4b47e9e4a8b456 249-253
+src/orchestration/app-service/project-execution-state.ts
+  h_4b47e9e4a8b456 79
+src/orchestration/app-service/project-state-client.ts
+  h_4b47e9e4a8b456 483,486
+src/orchestration/app-service/project-state-protocol.ts
+  h_4b47e9e4a8b456 140,561
+src/orchestration/app-service/project-state-worker.ts
+  h_4b47e9e4a8b456 292
+src/orchestration/modules/subscription-usage/provider-deps.ts
+  h_4b47e9e4a8b456 9,13,40-43
+src/orchestration/modules/subscription-usage/service.ts
+  h_4b47e9e4a8b456 21
+src/tui/modules/subscription-usage/modal.tsx
+  h_4b47e9e4a8b456 182,192,194,345
+src/tui/modules/subscription-usage/token-lines.tsx
+  h_4b47e9e4a8b456 18
+tests/e2e/tui-usage.sh
+  h_4b47e9e4a8b456 102
+tests/helpers/in-memory-event-reader.ts
+  h_4b47e9e4a8b456 70
+tests/unit/orchestration/agent-runtime/subagent/_fixtures.ts
+  h_4b47e9e4a8b456 364
+tests/unit/orchestration/app-service/event-read-surface-contract.test.ts
+  h_4b47e9e4a8b456 254,257,259,261-264,266-267,269
+tests/unit/orchestration/app-service/project-state-channel.test.ts
+  h_4b47e9e4a8b456 161
+tests/unit/orchestration/app-service/project-state-client.test.ts
+  h_4b47e9e4a8b456 168,170
+tests/unit/orchestration/app-service/project-state-protocol.test.ts
+  h_4b47e9e4a8b456 64
+tests/unit/orchestration/auth/provider-observations/subscription-usage-service.test.ts
+  h_4b47e9e4a8b456 145
+tests/unit/orchestration/chat/_chat-session-agent-runtime-fixtures.ts
+  h_4b47e9e4a8b456 234
+tests/unit/orchestration/modules/project-notifications/journal.test.ts
+  h_4b47e9e4a8b456 31
+tests/unit/orchestration/modules/subscription-usage/service.test.ts
+  h_4b47e9e4a8b456 36
+tests/unit/orchestration/session-store/child-session-projection.test.ts
+  h_4b47e9e4a8b456 17
+tests/unit/orchestration/session/_session-change-fixtures.ts
+  h_4b47e9e4a8b456 50
+tests/unit/orchestration/session/live-usage-settlement.test.ts
+  h_4b47e9e4a8b456 12,231-262
+tests/unit/tui/modules/subscription-usage/modal.test.tsx
+  h_4b47e9e4a8b456 62
+webview/src/modules/subscription-usage/usage-format.test.ts
+  h_4b47e9e4a8b456 121,133,149-150,239
+webview/src/modules/subscription-usage/usage-format.ts
+  h_4b47e9e4a8b456 258,291-292,294,327,343
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2e3a4b9963932341363b354d09314320819d09ec",
+  "prompts": {},
+  "humans": {
+    "h_4b47e9e4a8b456": {
+      "author": "Wesley Sauret <w.sauret@gmail.com>"
+    }
+  }
+}
