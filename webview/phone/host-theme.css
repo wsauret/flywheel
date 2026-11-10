@@ -44,16 +44,32 @@ html, body {
 html.ios-installed { height: calc(100% + env(safe-area-inset-top, 0px)); }
 
 /* iOS 27 blurs and dims the top of an installed app's screen, over the
-   header, unless a solid sticky or fixed element spans the top edge. With
+   header, unless an opaque fixed or sticky element spans the top edge. With
    one, iOS draws an opaque status bar in the page colour instead. It has no
-   effect in an app that draws under the status bar. The header does not
-   scroll away. Sticky makes it a stacking context, so it takes the popover
-   layer: its context popover must paint over the transcript below it. */
-#root .toolbar {
-  position: sticky;
+   effect in an app that draws under the status bar. WebKit finds that
+   element by a hit test 4px below the edge. It does not test again when the
+   header moves, so the header cannot be that element: a notice above it
+   takes the edge at load, and the header stays blurred after the notice
+   goes. This strip always holds the edge. It is a real element, because a
+   pseudo-element's hit resolves to its host, and nearly transparent strips
+   do not count. It is the toolbar's top padding in height and the page
+   colour, so over a toolbar it shows nothing; a stage that scrolls passes
+   under it. It sits below the sheet scrim, so an open sheet dims it. In the
+   wide layout, an iPhone on its side has no status bar and no blur, and the
+   strip would show over the session rail, so it is not drawn there. */
+.status-edge {
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
+  height: var(--fw-s2);
   z-index: var(--fw-z-popover);
   background: var(--fw-bg);
+  pointer-events: none;
+}
+/* The client's wide rung; the client fills the viewport on the phone. */
+@media (min-width: 40rem) {
+  .status-edge { display: none; }
 }
 
 .scan-overlay {

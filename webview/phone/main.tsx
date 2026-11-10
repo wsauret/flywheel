@@ -128,6 +128,27 @@ function revealInScroller(field: HTMLElement, shell: HTMLElement, keyboardTop: n
   }
 }
 
+/** Adds the top-edge strip that host-theme.css describes. The client ships
+ *  with the runtime and the hosted page does not, so the host owns it. iOS
+ *  keeps the status bar colour it sampled from the strip while the same
+ *  element holds the edge, so a change of colour scheme puts a new element
+ *  in its place, which makes iOS sample the new colour. */
+function installStatusEdge(): void {
+  const create = () => {
+    const edge = document.createElement("div")
+    edge.className = "status-edge"
+    edge.setAttribute("aria-hidden", "true")
+    return edge
+  }
+  let edge = create()
+  document.body.append(edge)
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    const fresh = create()
+    edge.replaceWith(fresh)
+    edge = fresh
+  })
+}
+
 /** A pairing link opened from the camera app lands here with the code in the
  *  fragment. It is consumed once and cleared, so a reload does not pair twice. */
 function pendingPairingCode(): string | undefined {
@@ -157,6 +178,7 @@ async function main(): Promise<void> {
   // The stylesheet sizes the shell differently in an installed iOS app, and
   // no media query tells it so; see isIosInstalledApp.
   document.documentElement.classList.toggle("ios-installed", isIosInstalledApp("standalone" in navigator ? navigator : {}))
+  installStatusEdge()
   const store = bootstrapStore()
   const relay = await createRelayHost(store, navigator.mediaDevices ? { scan: scanPairingCode } : {})
   const push = createPushCapability()

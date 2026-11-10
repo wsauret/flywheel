@@ -2,9 +2,14 @@
   touch-action: pinch-zoom;
 }
 
+/* The layer only lifts the grips, which place themselves, above the
+   transcript, so it has no size. A box over the whole screen would be what
+   iOS finds at the top edge in place of the phone's status edge strip, and
+   the header under it would go back to blurred. */
 .selection-grips {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
   z-index: var(--fw-z-tooltip);
   pointer-events: none;
 }
