@@ -486,6 +486,11 @@ describe("chat session with agent runtime — interrupt + resume", () => {
           await new Promise<void>((resolve) => { options.signal?.addEventListener("abort", () => resolve(), { once: true }) })
           return
         }
+        if (index === 1) {
+          yield { kind: "tool_use", toolCall: { id: "save", name: "checkpoint_replace", input: { section: "currentState", value: "working" } } } as const
+          yield { kind: "done", stopReason: "tool_use" } as const
+          return
+        }
         yield { kind: "done", stopReason: "end_turn" } as const
       },
       priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),

@@ -41,7 +41,7 @@ for (const missing of ["checkpoint", "checkpoint_read", "checkpoint_replace", "c
       expect(result.kind).toBe(trigger === "overflow" ? "context_overflow" : "completed");
       expect(requests).toHaveLength(1);
       expect(JSON.stringify(requests[0]?.messages)).toContain("old task");
-      expect(JSON.stringify(requests)).not.toContain("You have at most two responses");
+      expect(JSON.stringify(requests)).not.toContain("Save the checkpoint now:");
       expect(JSON.stringify(requests)).not.toContain("Save one concise checkpoint");
       if (trigger === "manual") expect(notices.join(" ")).toContain("Compaction is unavailable");
     });
@@ -79,7 +79,10 @@ for (const [start, awaitsPerson, requests, parks, turnsEnded] of [
   ["hold", true, 2, [park(true, 0), park(false, 1), park(false, 2)], 2],
 ] as const) {
   test(`maintenance ${start} parks ${awaitsPerson ? "for the person when the last turn waits for the person" : "as an answered turn"}`, async () => {
-    const { client, capturedMessages } = makeCaptureClient([0, 1, 2].map(() => ({ events: [{ kind: "text_delta", text: "saved", blockKey: "text" }, { kind: "done", stopReason: "end_turn" }] })));
+    // A compaction's request saves the checkpoint; the resumed turn answers.
+    const save = { events: [{ kind: "tool_use" as const, toolCall: { id: "save", name: "checkpoint_replace", input: { section: "currentState", value: "saved" } } }, { kind: "done" as const, stopReason: "tool_use" as const }] };
+    const answer = { events: [{ kind: "text_delta" as const, text: "answered", blockKey: "text" }, { kind: "done" as const, stopReason: "end_turn" as const }] };
+    const { client, capturedMessages } = makeCaptureClient(start === "compact" ? [save, answer, save] : [answer, save]);
     const observedParks: { userResumeRequired: boolean; turnCount: number }[] = [];
     let observedTurnsEnded = 0;
     let queued = false;
@@ -156,14 +159,14 @@ for (const awaitsPerson of [false, true]) {
 }
 
 // A plan is admitted only when its whole save round, a checkpoint read and
-// then the write, precedes the budget closure.
+// up to three writes, precedes the budget closure.
 test.each([
-  [2, "refuses a plan whose save round would reach the closure", 0],
-  [3, "saves after a read-only first response that the closure follows", 1],
+  [4, "refuses a plan whose save round would reach the closure", 0],
+  [5, "saves after a read-only first response that the closure follows", 1],
 ] as const)("automatic checkpoint with a %d-call budget %s", async (maxLLMCalls, _case, expectedResets) => {
   const toolRound = (id: string, name: string, input: { section?: string; value?: string; summary?: string }) => ({ events: [{ kind: "tool_use" as const, toolCall: { id, name, input } }, { kind: "done" as const, stopReason: "tool_use" as const }] });
   const { client, capturedMessages } = makeCaptureClient([
-    ...(maxLLMCalls === 2 ? [] : [toolRound("read", "checkpoint_read", {}), toolRound("save", "checkpoint_replace", { section: "currentState", value: "saved state" })]),
+    ...(maxLLMCalls === 4 ? [] : [toolRound("read", "checkpoint_read", {}), toolRound("save", "checkpoint_replace", { section: "currentState", value: "saved state" })]),
     toolRound("done", "handoff", { summary: "done" }),
   ], { contextLimit: 10_000 });
   const notes = withSessionNotes(new RequestToolMap([["handoff", handoffDefinition]]));
@@ -179,7 +182,7 @@ test.each([
   });
   expect(result.kind).toBe("completed");
   expect(resets).toBe(expectedResets);
-  expect(capturedMessages).toHaveLength(maxLLMCalls === 2 ? 1 : 3);
-  if (maxLLMCalls === 2) expect(JSON.stringify(capturedMessages[0])).toContain("retain this task");
+  expect(capturedMessages).toHaveLength(maxLLMCalls === 4 ? 1 : 3);
+  if (maxLLMCalls === 4) expect(JSON.stringify(capturedMessages[0])).toContain("retain this task");
   else expect(JSON.stringify(capturedMessages[2])).not.toContain("retain this task");
 });

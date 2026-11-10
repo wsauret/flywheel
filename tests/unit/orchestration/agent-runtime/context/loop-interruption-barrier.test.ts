@@ -242,7 +242,7 @@ describe("agent loop interruption barrier", () => {
     const answer = (text: string) => ({ events: [{ kind: "text_delta" as const, text, blockKey: text }, { kind: "done" as const, stopReason: "end_turn" as const }] });
     const { client, capturedMessages } = makeCaptureClient([
       { events: [{ kind: "tool_use", toolCall: { id: "wait-build", name: "process", input: { action: "wait", soft_timeout: 30 } } }, { kind: "done", stopReason: "tool_use" }] },
-      answer("checkpoint saved"),
+      { events: [{ kind: "tool_use", toolCall: { id: "save", name: "checkpoint_replace", input: { section: "currentState", value: "saved" } } }, { kind: "done", stopReason: "tool_use" }] },
       answer("an unauthorized request"),
     ]);
     const notes = withSessionNotes(new Map([["process", createProcessTool(registry)]]));

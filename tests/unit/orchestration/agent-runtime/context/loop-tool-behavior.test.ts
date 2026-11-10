@@ -17,8 +17,8 @@ describe("implicit todo prompting", () => {
     const { client } = makeCaptureClient(
       [
         { events: [
-          { kind: "text_delta", text: "Checkpoint saved.", blockKey: "checkpoint" },
-          { kind: "done", stopReason: "end_turn" },
+          { kind: "tool_use", toolCall: { id: "save", name: "checkpoint_replace", input: { section: "currentState", value: "saved" } } },
+          { kind: "done", stopReason: "tool_use" },
         ] },
         { events: [
           { kind: "text_delta", text: "Done.", blockKey: "text" },
@@ -52,10 +52,11 @@ describe("implicit todo prompting", () => {
 
     const doneIndex = events.findIndex((event) => event.kind === "compaction_done" && event.success);
     const contextIndex = events.findIndex((event, index) => index > doneIndex && event.kind === "context_update");
-    const checkpointIndex = events.findIndex((event) => event.kind === "text_delta" && event.text === "Checkpoint saved.");
+    const checkpointIndex = events.findIndex((event) => event.kind === "tool_result" && event.toolUseId === "save");
     const textIndex = events.findIndex((event) => event.kind === "text_delta" && event.text === "Done.");
 
     expect(doneIndex).toBeGreaterThanOrEqual(0);
+    expect(checkpointIndex).toBeGreaterThanOrEqual(0);
     expect(checkpointIndex).toBeLessThan(doneIndex);
     expect(contextIndex).toBeGreaterThan(doneIndex);
     expect(contextIndex).toBeLessThan(textIndex);

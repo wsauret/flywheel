@@ -61,8 +61,8 @@ describe("idle chat compaction", () => {
       priceFor() { return { status: "unavailable", reason: "missing-rate-card" } as const },
       async *streamWithTools(options: StreamOptions) {
         requests.push({ model, messages: [...options.messages] })
-        yield { kind: "text_delta", text: "durable checkpoint", blockKey: "b0" } as const
-        yield { kind: "done", stopReason: "end_turn" } as const
+        yield { kind: "tool_use", toolCall: { id: "save", name: "checkpoint_replace", input: { section: "currentState", value: "durable checkpoint" } } } as const
+        yield { kind: "done", stopReason: "tool_use" } as const
       },
     })
     const roles: ResolvedRoles = new Map([
@@ -124,7 +124,7 @@ describe("idle chat compaction", () => {
     expect(errors).toEqual([])
 
     expect(requests.map(({ model }) => model)).toEqual(["main-model"])
-    expect(requests[0]?.messages.at(-1)?.content).toContain("You have at most two responses")
+    expect(requests[0]?.messages.at(-1)?.content).toContain("Save the checkpoint now:")
     expect(record?.tokensBefore).toBeGreaterThan(0)
     expect(record?.measureTokensAfter).toEqual(expect.any(Function))
     expect(buildOptions[0]).toEqual({ allowAssistantTail: true })

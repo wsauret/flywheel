@@ -331,6 +331,13 @@ export async function createStoredChatSession(input: {
     supportsReasoning: false, promptNotes: { progress: "", modelNotes: "" },
     async *streamWithTools(options) {
       calls.push([...options.messages])
+      // A compaction's checkpoint instruction is answered with the save it asks for; every other request with text.
+      const last = options.messages.at(-1)
+      if (last?.kind === "user" && typeof last.content === "string" && last.content.includes("<context_window_reminder>")) {
+        yield { kind: "tool_use", toolCall: { id: `save-${calls.length}`, name: "checkpoint_replace", input: { section: "currentState", value: "The letter is Q." } } } as const
+        yield { kind: "done", stopReason: "tool_use" } as const
+        return
+      }
       yield { kind: "text_delta", text: "The letter is Q.", blockKey: "b0" } as const
       yield { kind: "done", stopReason: "end_turn" } as const
     },

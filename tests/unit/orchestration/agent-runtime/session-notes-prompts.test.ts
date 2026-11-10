@@ -58,7 +58,7 @@ const REPLACEMENTS = {
   ],
   auto_compact_fallback_prompt: [
     ["The next window will not automatically include this conversation.", "Compaction starts a fresh context without a generated summary; prior conversation messages are not carried into it."],
-    ["Make exactly one write or append call to `notes` now", "You have at most two responses: optionally use only `checkpoint_read` in the first response to recover saved context, then use `checkpoint_replace` or `checkpoint_decide` to save the sections that changed"],
+    ["Make exactly one write or append call to `notes` now", "Save the checkpoint now: optionally use only `checkpoint_read` in the first response to recover saved context, then use `checkpoint_replace` or `checkpoint_decide` to save the sections that changed"],
     [" with the goal, decisions, progress, learnings, next steps, and the window ID and item ID of every relevant user request still being solved, as well as important actions/tool calls for future reference.", "{request_reference_clause}, as well as important actions/tool calls for future reference. Read existing content before replacing it. Preserve saved user intent; if you cannot recover it, leave the existing checkpoint intact rather than replace it with empty recovery prose. {skill_checkpoint_guidance} {design_intent_guidance}"],
     ["Note that every non-assistant item, such as user, developer, tool response, has an item id `[id: ...]` that is immediately after its item content.", "{recall_guidance}"],
     ["After the notes result returns, call `functions.new_context`; do not use any tools other than `notes` and `functions.new_context`.", "After saving, continue in the next context; do not use other tools in this exhausted context."],

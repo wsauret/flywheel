@@ -445,7 +445,7 @@ describe("an open wait outlives every request that only re-drives the turn", () 
       responses: [LAUNCH_WAIT, SAVE, said("Watching CI.")],
       atParks: [],
     });
-    expect(r.requests[1]).toContain("You have at most two responses");
+    expect(r.requests[1]).toContain("Save the checkpoint now:");
     expect(r.parks[0]).toMatchObject({ ...WAITING, afterRequest: 3 });
     expect(r.expiries).toHaveLength(1);
     expect(r.expiries[0]).toBeCloseTo(7200, 0);

@@ -163,8 +163,9 @@ for (const trigger of ["manual", "automatic", "overflow", "idle"] as const) {
       expect(replay.filter((message) => message.kind === "user" && typeof message.content === "string" && message.content.includes("fresh context window"))).toHaveLength(1);
       expect(events.some((event) => event.kind === "compaction_done" && event.success)).toBe(true);
       expect(requests.every((request) => renderSystemPrompt(request.systemPrompt) === "normal system")).toBe(true);
-      const checkpointRequests = requests.filter((request) => JSON.stringify(request.messages).includes("You have at most two responses"));
-      expect(checkpointRequests.length).toBe(trigger === "overflow" ? 0 : 1);
+      // A save round that never writes asks until its bound of four requests before it resets unsaved.
+      const checkpointRequests = requests.filter((request) => JSON.stringify(request.messages).includes("Save the checkpoint now:"));
+      expect(checkpointRequests.length).toBe(trigger === "overflow" ? 0 : checkpointState === "present" ? 1 : 4);
       if (trigger === "idle") expect(requests).toHaveLength(2);
       else if (trigger !== "manual") {
         expect(JSON.stringify(requests.at(-1)?.messages)).not.toContain("old task");

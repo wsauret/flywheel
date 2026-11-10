@@ -27,7 +27,7 @@ describe("a person turn after a compaction", () => {
     const advertised: string[][] = []
     const { client } = makeCaptureClient([
       { events: [{ kind: "text_delta", text: "Ready.", blockKey: "text-0" }, { kind: "done", stopReason: "end_turn" }] },
-      { events: [{ kind: "text_delta", text: "Checkpoint saved.", blockKey: "text-1" }, { kind: "done", stopReason: "end_turn" }] },
+      { events: [{ kind: "tool_use", toolCall: { id: "save", name: "checkpoint_replace", input: { section: "currentState", value: "saved" } } }, { kind: "done", stopReason: "tool_use" }] },
       { events: [{ kind: "text_delta", text: "Second.", blockKey: "text-2" }, { kind: "done", stopReason: "end_turn" }] },
     ], { onRequest: (options) => advertised.push(options.tools.map((tool) => tool.name)) })
     const waits: Array<() => AgentLoopInput> = [() => { selected = withRecall.tools; return compactInput() }]

@@ -234,7 +234,7 @@ for (const priorMasked of [false, true]) for (const measurement of ["before", "a
         requests.push({ ...request, messages: [...request.messages] });
         yield { kind: "text_delta", text: compactQueued ? checkpoint : "ready", blockKey: "answer" } as const;
         if (requests.length === (priorMasked ? 2 : 1)) {
-          yield { kind: "tool_use", toolCall: { id: "checkpoint", name: "save", input: {} } } as const;
+          yield { kind: "tool_use", toolCall: { id: "checkpoint", name: "checkpoint_replace", input: { section: "currentState", value: "saved" } } } as const;
           yield { kind: "done", stopReason: "tool_use" } as const;
           return;
         }
@@ -243,12 +243,7 @@ for (const priorMasked of [false, true]) for (const measurement of ["before", "a
       priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),
     });
     let beforeHistory: ConversationMessage[] = [];
-    const { tools, checkpoint: checkpointOwner } = withSessionNotes(new RequestToolMap([["save", {
-      name: "save", description: "Save checkpoint", action: "file_read", isConcurrencySafe: true,
-      inputSchema: { type: "object", properties: {} },
-      execute: async () => ({ content: "checkpoint tool output ".repeat(500), outcome: "ok",
-        nextUserContent: [{ type: "text", text: "staged context ".repeat(200) }] }),
-    }]]));
+    const { tools, checkpoint: checkpointOwner } = withSessionNotes();
     await runAgentLoop({
       client, tools: await assemblyPinned(tools), checkpoint: checkpointOwner, systemPrompt: () => stableSystemPrompt("system prefix"), instruction: null,
       initialRequestContext: "request-only context ".repeat(100), executionCwd: "/scratch", userDataRoot: "/scratch/.test-account", projectRoot: "/scratch",
@@ -338,6 +333,11 @@ test("proactive reset reports the next request including prompt and notes", asyn
     async *streamWithTools(request) {
       requests.push({ ...request, messages: [...request.messages] });
       yield { kind: "text_delta", text: "checkpoint output ".repeat(200), blockKey: "text" } as const;
+      if (requests.length === 1) {
+        yield { kind: "tool_use", toolCall: { id: "save", name: "checkpoint_replace", input: { section: "currentState", value: "saved" } } } as const;
+        yield { kind: "done", stopReason: "tool_use" } as const;
+        return;
+      }
       yield { kind: "done", stopReason: "end_turn" } as const;
     },
     priceFor: () => ({ status: "unavailable", reason: "missing-rate-card" }),

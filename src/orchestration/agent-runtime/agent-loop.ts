@@ -638,7 +638,8 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       if (parked === "continue") continue;
       return parked;
     }
-    if (settled.turn.outcome.kind === "output_overflow" && state.consecutiveOutputOverflows > OUTPUT_OVERFLOW_CONTINUATION_LIMIT) throw settled.turn.outcome.error;
+    // A save round bounds its own truncated responses, so the overflow limit does not end it early.
+    if (settled.turn.outcome.kind === "output_overflow" && state.consecutiveOutputOverflows > OUTPUT_OVERFLOW_CONTINUATION_LIMIT && !compactionState.hasPlanned()) throw settled.turn.outcome.error;
     if (policy === "continue") continue;
 
     const { assistantContent, toolCalls, outcome } = settled.turn;
@@ -681,6 +682,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           if (end === "continue") continue;
           return end;
         }
+        if (compactionState.hasPlanned()) break;
         log.warn("output length exceeded, auto-resuming", { contentBlocks: assistantContent.length, continuation: state.consecutiveOutputOverflows });
         await pushUser("Your previous response was cut off at the output-length limit. Resume directly: no apology, no recap of what you were doing.");
         continue;
@@ -707,6 +709,8 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       if (end === "continue") continue;
       return end;
     }
+    // A save round that has not saved yet asks again, also after a text-only or failed response.
+    if (compactionState.hasPlanned()) continue;
 
     const filtered = await contentFilter.observe({ stopReason, hadToolCalls: toolCalls.length > 0, turnCount: state.turn });
     if (filtered === "retry") continue;

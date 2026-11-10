@@ -20,8 +20,12 @@ import { renderConversationCheckpoint } from "../session/conversation-checkpoint
 const log = Log.create({ service: "agent-loop" });
 
 const CHECKPOINT_WRITE_TOOLS: ReadonlySet<string> = new Set(["checkpoint_replace", "checkpoint_decide"]);
-// A save round spans at most two requests: the first may only read the checkpoint.
-const SAVE_ROUND_REQUESTS = 2;
+// A save round spans at most four requests: one that may only read the checkpoint, and up to three that try to
+// write it. A reset that follows an unsaved round opens a fresh context with no record of the latest work, so a
+// response that saves nothing is asked again until the bound. The context limit can end the round sooner,
+// through overflow recovery.
+const SAVE_ROUND_REQUESTS = 4;
+const SAVE_RETRY_NOTICE = "<context_window_reminder>\nThe checkpoint was not saved: no `checkpoint_replace` or `checkpoint_decide` call succeeded. Save the sections that changed now. Do not continue the task or use other tools in this exhausted context.\n</context_window_reminder>";
 const SAVE_ROUND_WHITELIST: ExecutionWhitelist = {
   tools: CHECKPOINT_TOOL_NAMES,
   deniedReason: (toolName) => `Tool '${toolName}' denied: this context window is exhausted and waits for its checkpoint save. Only checkpoint_read, checkpoint_replace, and checkpoint_decide run now. Save the checkpoint; the task continues in the next context.`,
@@ -86,7 +90,7 @@ interface CompactionStateInput {
 
 /** Owns the loop's compaction plan and all history replacement side effects. */
 export function createAgentLoopCompactionState(input: CompactionStateInput) {
-  let planned: { operation: PlannedCompactionOperation; recoveryAvailable: boolean; announced: boolean } | null = null;
+  let planned: { operation: PlannedCompactionOperation; requests: number; announced: boolean; unsavedNotice: boolean } | null = null;
   let idleCache: { key: string; observedAt: number; ttlMs: number } | undefined;
   const estimationCache = createTokenEstimationCache();
   const checkpointUsable = (allowed: ReadonlySet<string> | undefined): boolean => canUseCheckpoint(input.checkpoint !== undefined, input.surface.current().tools, allowed);
@@ -189,14 +193,20 @@ export function createAgentLoopCompactionState(input: CompactionStateInput) {
         idleCache = undefined;
         input.options.onSystemMessage?.("Idle compaction: saving session notes before the observed prompt cache expires.");
       }
-      planned = { operation, recoveryAvailable: true, announced: false };
+      planned = { operation, requests: 0, announced: false, unsavedNotice: false };
     },
-    /** Writes the planned checkpoint instruction once. The loop calls it at the
-     *  request boundary after it pins the checkpoint request's surface, so the
-     *  `recall` hint names a tool only when that request offers it. A plan made
-     *  while parked otherwise reads the surface pinned before the park. */
+    /** Writes the planned checkpoint instruction once, and the notice that a
+     *  response saved nothing before the request that asks again. The loop calls
+     *  it at the request boundary after it pins the checkpoint request's surface,
+     *  so the `recall` hint names a tool only when that request offers it. A plan
+     *  made while parked otherwise reads the surface pinned before the park. */
     async announce(): Promise<void> {
-      if (!planned || planned.announced) return;
+      if (!planned) return;
+      if (planned.unsavedNotice) {
+        planned.unsavedNotice = false;
+        await input.pushUser(SAVE_RETRY_NOTICE);
+      }
+      if (planned.announced) return;
       planned.announced = true;
       await input.pushUser(input.checkpoint
         ? renderSessionNotesAutoCompactFallback({ has: input.surface.current().capabilities })
@@ -217,20 +227,27 @@ export function createAgentLoopCompactionState(input: CompactionStateInput) {
       return operation;
     },
     /** Settles the plan against the response that answered its instruction.
-     *  A first response that only read the checkpoint keeps the plan for one
-     *  more response. The checkpoint is saved when the response served and one
-     *  checkpoint write succeeded. */
+     *  The checkpoint is saved when the response served and one checkpoint
+     *  write succeeded. A first response that only read the checkpoint keeps
+     *  the plan for one more response. For a plan that resets, every later
+     *  response that saved nothing, whether it read again, had its write
+     *  refused, answered in text only, or failed, is asked again until the
+     *  round reaches `SAVE_ROUND_REQUESTS`. An idle plan keeps its context when
+     *  it saves nothing, so it does not ask again. */
     settle(responseOk: boolean, calls: readonly { name: string; ok: boolean }[]): SettledCompaction | null {
       if (!planned) return null;
-      if (planned.recoveryAvailable && responseOk && calls.length > 0
-        && calls.every((call) => call.name === "checkpoint_read" && call.ok)) {
-        planned.recoveryAvailable = false;
+      planned.requests += 1;
+      const saved = responseOk && calls.some((call) => call.ok && CHECKPOINT_WRITE_TOOLS.has(call.name));
+      const firstRead = planned.requests === 1 && responseOk && calls.length > 0 && calls.every((call) => call.name === "checkpoint_read" && call.ok);
+      if (!saved && planned.requests < SAVE_ROUND_REQUESTS && (firstRead || planned.operation.kind !== "idle")) {
+        planned.unsavedNotice = !firstRead;
         return null;
       }
-      const { operation } = planned;
+      const { operation, requests } = planned;
       planned = null;
       if (operation.kind === "idle") idleCache = undefined;
-      return { operation, saved: responseOk && calls.some((call) => call.ok && CHECKPOINT_WRITE_TOOLS.has(call.name)) };
+      else if (!saved) log.info("context reset without a checkpoint save", { sessionId: input.options.sessionId ?? input.options.artifactScopeId, kind: operation.kind, requests });
+      return { operation, saved };
     },
   };
 }

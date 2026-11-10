@@ -329,13 +329,14 @@ describe("universal scoped notes assembly", () => {
     expect(assembled.initialRequestContext).toContain("use `checkpoint_read`")
     let queued = false
     await runAgentLoop({ ...assembled, inputSource: { drainPending: () => { if (queued) return null; queued = true; return compactInput() } } })
-    expect(requests).toHaveLength(2)
+    // The empty answers never save, so the save round asks until its bound of four requests, then resets.
+    expect(requests).toHaveLength(5)
     for (const request of requests) {
       expect(renderSystemPrompt(request.systemPrompt)).toBe("literal\nbytes\n")
       expect(JSON.stringify(request.messages)).toContain("caller context")
       expect(JSON.stringify(request.messages)).toContain("use `checkpoint_read`")
     }
-    expect(JSON.stringify(requests[1]?.messages)).toContain("fresh context window")
+    expect(JSON.stringify(requests[4]?.messages)).toContain("fresh context window")
   })
 
   it("does not give a stateless audit a notes directory or note guidance", async () => {

@@ -545,6 +545,11 @@ describe("workflow interruption ownership", () => {
         await new Promise<void>((resolve) => { options.signal?.addEventListener("abort", () => resolve(), { once: true }) })
         return
       }
+      if (providerCalls === 2) {
+        yield { kind: "tool_use", toolCall: { id: "save", name: "checkpoint_replace", input: { section: "currentState", value: "working" } } }
+        yield { kind: "done", stopReason: "tool_use" }
+        return
+      }
       yield { kind: "done", stopReason: "end_turn" }
     })
     const interrupted = Promise.withResolvers<void>()

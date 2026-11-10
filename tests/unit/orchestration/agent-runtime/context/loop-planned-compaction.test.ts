@@ -1,5 +1,6 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 
+import { Log } from "../../../../../src/infra/log.js";
 import { compactInput, messageInput, type AgentLoopInput, type TurnParkedContext } from "../../../../../src/infra/agent-loop-events.js";
 import { runAgentLoop } from "../../../../../src/orchestration/agent-runtime/agent-loop.js";
 import type { ConversationMessage, ProviderStreamEvent, StreamEvent, StreamOptions } from "../../../../../src/orchestration/agent-runtime/llm/types.js";
@@ -10,7 +11,7 @@ import type { RuntimeTool } from "../../../../../src/orchestration/agent-runtime
 import { RequestToolMap } from "../../../../helpers/request-tool-surface.js";
 import { budgetCaptureSurface, makeCaptureClient, withSessionNotes } from "./_loop-fixtures.js";
 import { stableSystemPrompt } from "../../../../../src/orchestration/agent-runtime/llm/system-prompt-tiers.js";
-import { OutputLengthExceededError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
+import { OutputLengthExceededError, ProviderRequestValidationError } from "../../../../../src/orchestration/agent-runtime/llm/errors.js";
 import { normalizeProviderAttemptFailure } from "../../../../../src/orchestration/agent-runtime/llm/provider-failure.js";
 import { promptCapabilities } from "../../../../helpers/prompt-capabilities.js";
 
@@ -203,7 +204,7 @@ describe("planned agent-loop compaction", () => {
     expect(parks[1]?.idleCache).toBeUndefined();
   });
 
-  test.each(["checkpoint_replace", "checkpoint_read"])("checkpoint recovery reaches %s but never a third round", async (secondTool) => {
+  test("checkpoint recovery reads the checkpoint, then saves in the next response", async () => {
     const notes = withSessionNotes();
     const calls: string[] = [];
     for (const name of ["checkpoint_read", "checkpoint_replace"]) {
@@ -222,7 +223,7 @@ describe("planned agent-loop compaction", () => {
     const { client, capturedMessages } = makeCaptureClient([
       { events: [text("Ready.", "ready"), done("end_turn")] },
       toolRound("checkpoint_read", "read-first"),
-      toolRound(secondTool, "second"),
+      toolRound("checkpoint_replace", "second"),
     ]);
     const waits: AgentLoopInput[] = [compactInput()];
     const result = await runAgentLoop({
@@ -247,15 +248,30 @@ describe("planned agent-loop compaction", () => {
       },
     });
     expect(result.kind).toBe("input_closed");
-    expect(calls).toEqual(["checkpoint_read", secondTool]);
+    expect(calls).toEqual(["checkpoint_read", "checkpoint_replace"]);
     expect(capturedMessages).toHaveLength(3);
     expect(JSON.stringify(capturedMessages[2])).toContain("Approved intent: preserve the original request");
   });
 
+  // A reset after an unsaved round opens with no record of the latest work, so a response that saves nothing is
+  // asked again, and the round resets unsaved only at its bound of four responses. An empty round answers in text
+  // only; a "fail" round is a failed provider response.
+  const probe = { id: "probe", name: "probe", input: {} };
+  const read = { id: "read", name: "checkpoint_read", input: {} };
+  const save = { id: "save", name: "checkpoint_replace", input: { section: "currentState", value: "saved state" } };
+  const refusedSave = { id: "refused", name: "checkpoint_replace", input: { section: "noSuchSection", value: "saved state" } };
+  const SAVED = "Continue the task from the checkpoint above.";
+  const UNSAVED = "This reset came before a checkpoint save, so the checkpoint above may not include the latest work. Then continue the task.";
   test.each([
-    ["saves", [{ id: "probe", name: "probe", input: {} }, { id: "save", name: "checkpoint_replace", input: { section: "currentState", value: "saved state" } }], "Continue the task from the checkpoint above."],
-    ["writes nothing", [{ id: "probe", name: "probe", input: {} }], "This reset came before a checkpoint save, so the checkpoint above may not include the latest work. Then continue the task."],
-  ] as const)("a save round that %s runs only the checkpoint tools and opens the reset with its save state", async (_case, calls, recovery) => {
+    ["saves", [[probe, save]], 0, SAVED],
+    ["reads twice, then saves", [[read], [read], [save]], 1, SAVED],
+    ["has its write refused, then saves", [[refusedSave], [save]], 1, SAVED],
+    ["answers in text only, then saves", [[], [save]], 1, SAVED],
+    ["reads, answers in text only, then saves", [[read], [], [save]], 1, SAVED],
+    ["fails, then saves", ["fail", [save]], 1, SAVED],
+    ["writes nothing", [[probe], [], [read], [probe]], 3, UNSAVED],
+    ["is cut off three times, then answers in text only", ["cut", "cut", "cut", []], 3, UNSAVED],
+  ] as const)("a save round that %s runs only the checkpoint tools and opens the reset with its save state", async (_case, rounds, notices, recovery) => {
     let stored: ConversationCheckpoint | undefined = { ...emptyConversationCheckpoint(), currentState: "earlier state" };
     const notes = withSessionNotes(new RequestToolMap([["probe", {
       name: "probe", description: "Probes", action: "file_read", isConcurrencySafe: true, inputSchema: { type: "object", properties: {} },
@@ -266,12 +282,19 @@ describe("planned agent-loop compaction", () => {
       decide: async () => stored ?? emptyConversationCheckpoint(),
     });
     let probes = 0;
-    const { client } = makeCaptureClient([
+    const { client, capturedMessages } = makeCaptureClient([
       { events: [text("Ready.", "ready"), done("end_turn")] },
-      { events: [...calls.map((toolCall) => ({ kind: "tool_use" as const, toolCall })), done("tool_use")] },
-    ]);
+      ...rounds.flatMap((calls) => typeof calls === "string" ? [] : [{ events: calls.length === 0 ? [text("Checkpoint saved.", "saved"), done("end_turn")]
+        : [...calls.map((toolCall) => ({ kind: "tool_use" as const, toolCall })), done("tool_use")] }]),
+    ], { onRequest: () => {
+      const round = rounds[capturedMessages.length - 2];
+      if (round === "fail") throw normalizeProviderAttemptFailure(new ProviderRequestValidationError("Anthropic", "refused"));
+      if (round === "cut") throw normalizeProviderAttemptFailure(new OutputLengthExceededError());
+    } });
     const history: ConversationMessage[] = [];
     const waits: AgentLoopInput[] = [compactInput()];
+    const info = spyOn(Log.create({ service: "agent-loop" }), "info");
+    const infoCalls = info.mock.calls;
     const result = await runAgentLoop({
       client, ...notes, systemPrompt: stableSystemPrompt("test"), instruction: "do it",
       executionCwd: "/scratch", userDataRoot: "/scratch/.test-account", projectRoot: "/scratch",
@@ -280,11 +303,18 @@ describe("planned agent-loop compaction", () => {
       persistence: { history: { append: (message) => { history.push(message); } } },
       seed: { kind: "fresh" }, onEvent: () => {},
       inputSource: { drainPending: () => null, prepareWaitForInput: () => ({ commit: async () => waits.shift() ?? null, cancel: async () => {} }) },
-    });
+    }).finally(() => info.mockRestore());
 
     expect(result.kind).toBe("input_closed");
+    // One request before the compaction, then one per save-round response.
+    expect(capturedMessages).toHaveLength(1 + rounds.length);
+    const unsavedResets = infoCalls.filter(([message]) => message === "context reset without a checkpoint save");
+    expect(unsavedResets).toEqual(recovery === UNSAVED ? [["context reset without a checkpoint save", { sessionId: "save-round", kind: "manual", requests: 4 }]] : []);
     expect(probes).toBe(0);
-    expect(JSON.stringify(history)).toContain("Tool 'probe' denied: this context window is exhausted");
+    if (typeof rounds[0] !== "string" && rounds[0].some((call) => call.name === "probe")) expect(JSON.stringify(history)).toContain("Tool 'probe' denied: this context window is exhausted");
+    expect(JSON.stringify(history).split("The checkpoint was not saved").length - 1).toBe(notices);
+    // A cut-off save response is asked again with the save notice, not the generic output-limit resume.
+    expect(JSON.stringify(history)).not.toContain("output-length limit");
     const opening = history.at(-1);
     if (opening?.kind !== "user" || typeof opening.content !== "string") throw new Error("expected the reset opening");
     expect(opening.content).toContain(stored?.currentState ?? "");
@@ -313,7 +343,7 @@ describe("planned agent-loop compaction", () => {
     const requests: StreamOptions[] = [];
     const { client, capturedMessages } = makeCaptureClient([
       { events: [text("Ready to compact.", "text-0"), done("end_turn")] },
-      { events: [text("Checkpoint saved.", "text-1"), done("end_turn")] },
+      { events: [{ kind: "tool_use", toolCall: { id: "save", name: "checkpoint_replace", input: { section: "currentState", value: "saved" } } }, done("tool_use")] },
     ], { onRequest: (options) => { requests.push(options); } });
     const events: StreamEvent[] = [];
     const waits: AgentLoopInput[] = [compactInput()];
@@ -348,7 +378,7 @@ describe("planned agent-loop compaction", () => {
 
     expect(result.kind).toBe("input_closed");
     expect(events).toHaveLength(1);
-    expect(JSON.stringify(capturedMessages[1])).toContain("You have at most two responses");
+    expect(JSON.stringify(capturedMessages[1])).toContain("Save the checkpoint now:");
     expect(capturedMessages).toHaveLength(2);
     expect(waitCalls).toBe(2);
     expect(requests.map((request) => request.providerSessionKey)).toEqual(["queued-compact", "queued-compact"]);
@@ -365,7 +395,7 @@ describe("planned agent-loop compaction", () => {
     };
     const { client, capturedMessages } = makeCaptureClient([
       { events: [text("First.", "text-0"), done("end_turn")] },
-      { events: [text("Checkpoint saved.", "text-1"), done("end_turn")] },
+      { events: [{ kind: "tool_use", toolCall: { id: "save", name: "checkpoint_replace", input: { section: "currentState", value: "saved" } } }, done("tool_use")] },
       { events: [{ kind: "tool_use", toolCall: { id: "tc_follow_up", name: "follow_up", input: {} } }, done("tool_use")] },
       { events: [text("Second.", "text-4"), done("end_turn")] },
     ]);
@@ -431,7 +461,7 @@ describe("planned agent-loop compaction", () => {
     const advertised: string[][] = [];
     const { client, capturedMessages } = makeCaptureClient([
       { events: [text("Ready.", "text-0"), done("end_turn")] },
-      { events: [text("Checkpoint saved.", "text-1"), done("end_turn")] },
+      { events: [{ kind: "tool_use", toolCall: { id: "save", name: "checkpoint_replace", input: { section: "currentState", value: "saved" } } }, done("tool_use")] },
       { events: [text("Second.", "text-2"), done("end_turn")] },
     ], { onRequest: (options) => advertised.push(options.tools.map((tool) => tool.name)) });
     const waits: Array<() => AgentLoopInput> = [
